@@ -5829,6 +5829,24 @@
   },
   "supplementary": [
     {
+      "path": "owner-refusal-send/before",
+      "frames": 3,
+      "surfaces": 1,
+      "themes": 1,
+      "source": "`docs/evidence/owner-refusal-send/harness/capture.mjs --tree=before`, run from a detached worktree at unmodified `origin/main` (`e48d64b81`) with the harness directory copied in. The surface is the app's own chat components over a Vite dev server whose `/__desktop` route is the shipped `desktopProxyPlugin` -> `requestDesktop` in `src/main/desktop-transport.ts`, and the owner's verdicts are substituted at the HTTP boundary by `harness/stub-owner.mjs` (its sentences are the backend's own). One command starts the stub, the dev server and a private `--headless=new` Chrome, drives the composer through a send, shoots with `Page.captureScreenshot` at `deviceScaleFactor: 2` on a 1440x900 window (2880x1800 frames), writes `readings.json` and `wire.log` beside the frames, and reaps all three. Chrome's argv is routed through `scripts/chrome-keychain.mjs`.",
+      "why": "The before half of the pair whose after half is `owner-refusal-send/after`: the incident itself. A `409 runtime_retiring` and a `503 runtime_busy` (four attempts, the app's own repeats included) both left the composer holding a claim reading \"Whether it reached the agent is not knowable\" one sentence under the owner's own \"The message was not admitted\", with the box empty and `Restore message`/`Discard message` offered - and the operator's second press produced no wire line at all, because the held claim refuses it locally. The third arm is the CONTROL: a `503 runtime_unreachable` is genuinely unknowable and reads the same in both halves, which is what the pair exists to show.",
+      "capturedAt": "2026-09-23, one run, four arms in sequence against one dev server"
+    },
+    {
+      "path": "owner-refusal-send/after",
+      "frames": 6,
+      "surfaces": 1,
+      "themes": 1,
+      "source": "The same command and the same stub, run from THIS branch: `node docs/evidence/owner-refusal-send/harness/capture.mjs <out> --tree=after`. Where the before half has three frames the after half has six, because the arm the change is about needs its second frame - the operator's own re-send, which is admitted under the SAME `request_id` and which the before half cannot produce at all.",
+      "why": "The after half of the pair. `retiring-after-first-send` and `busy-exhausted-after-first-send` show the owner's sentence standing alone with the text BACK IN THE COMPOSER and no held claim; their `-after-second-send` partners show the press landing, admitted on the identity the first attempt used (the wire log is the measurement). `busy-internal-after-first-send` is the arm with no refusal in it at all - the app's own repeats answer the busy owner, so nothing reaches the composer - and is captured in this half only, because that behaviour and its frame would be identical in both.",
+      "capturedAt": "2026-09-23, one run, four arms in sequence against one dev server"
+    },
+    {
       "path": "about-panel",
       "frames": 0,
       "source": "`docs/evidence/about-panel/harness/identity.sh` and `run.sh`, driving the BUILT app from the tree named: the `before` frame from a tree built at this branch's base, `origin/main` `f19827852` (whose menu item is still Electron's `about` ROLE, so that run raises the panel through `app.showAboutPanel()`, the call the role makes), and the `after` frame from this change's own code as it stood at `2d6665924`, the pre-fold remediation head recovered from the branch's reflog (`fix(menu): install the app's own menu before the ready handler awaits anything`) - a spelling only the clone that shot the frames resolves, which is why what it is named FOR is stated as the blobs it carries: this tree's two frame blobs, and a `src/main/window-mode.ts` blob-identical to the head the two review rounds read, `141bfbc8d`. Both are durable: they land together in `f341feef2`, the reachable spelling of that commit in the lineage `main` carries. That tree is NOT the one these pins name: `srcTree` and `scriptsTree` are re-derived from the tree under review after every fold, so they name the trees the pixels SHIP in, which the README beside this entry says in its own words. Each run is ONE instance in `inactive` mode: an isolated scratch HOME/config/`--user-data-dir`, a cwd outside the tree so its `.env` cannot be read, `VITE_DISABLE_BACKEND_MANAGER` so no backend is spawned, the app's own window mode named on the launch, the action invoked as the menu ITEM's own click handler in the app's main process over `--inspect` (a real menu click means activating the app, which these rigs exist to avoid), photographed window-only with `screencapture -l` - never the screen - and reaped by pid until the count is zero.",

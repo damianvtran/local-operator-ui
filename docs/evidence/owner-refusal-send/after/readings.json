@@ -1,0 +1,140 @@
+{
+ "tree": "after",
+ "message": "Please re-run the failing case with the trace enabled and paste the last twenty lines here.",
+ "arms": [
+  {
+   "name": "retiring",
+   "refusals": 1,
+   "expectRefusal": true,
+   "why": "one refusal, then admission - the 409 the incident turned into a held draft",
+   "first": {
+    "regionPresent": true,
+    "alertProse": "This session is switching to a newer build; the one it loaded is gone from disk. The message was not admitted - send it again once the new build is up.",
+    "visibleProse": "This session is switching to a newer build; the one it loaded is gone from disk. The message was not admitted - send it again once the new build is up.",
+    "controlLabels": [],
+    "boxValue": "Please re-run the failing case with the trace enabled and paste the last twenty lines here.",
+    "textareas": [
+     "Message"
+    ],
+    "transcriptUserRows": 0,
+    "theme": "localOperatorDark",
+    "bodyText": "Local Operator\nChat\nMy agent \nAgent hub\nSchedule \nBrow er\nSetting \nSearch\n⌘\n+\nK\nAccount unavailable\nChat \n\nAgent \n\nNo agent  yet\n\nCreate agent\nTeam \nCreate team\nAll chat \nNew chat\n⌘\n+\nN\nActive chat \n\nNothing running right now.\n\nPreviou  chat \n\nNo chat  yet. Choo e an agent, team or New chat.\n\nNew chat\n~\nChat\nRaw\ncommit =8 rowRender =2 row =0 flu he =0 flu hP50=0.00m  flu hMax=0.00m   ettledUpdate =0  eedDelta Withheld=0\nLoading conver ation…\n\nThi   e ion i   witching to a newer build; the one it"
+   },
+   "second": {
+    "regionPresent": false,
+    "alertProse": null,
+    "visibleProse": null,
+    "controlLabels": [],
+    "boxValue": "",
+    "textareas": [
+     "Message"
+    ],
+    "transcriptUserRows": 0,
+    "theme": "localOperatorDark",
+    "bodyText": "Local Operator\nChat\nMy agent \nAgent hub\nSchedule \nBrow er\nSetting \nSearch\n⌘\n+\nK\nAccount unavailable\nChat \n\nAgent \n\nNo agent  yet\n\nCreate agent\nTeam \nCreate team\nAll chat \nNew chat\n⌘\n+\nN\nActive chat \n\nNothing running right now.\n\nPreviou  chat \n\nNo chat  yet. Choo e an agent, team or New chat.\n\nUntitled chat\nChat\nRaw\ncommit =9 rowRender =2 row =0 flu he =0 flu hP50=0.00m  flu hMax=0.00m   ettledUpdate =0  eedDelta Withheld=0\nStart of conver ation\n\nPlea e re-run the failing ca e with the trace enab"
+   }
+  },
+  {
+   "name": "busy-exhausted",
+   "refusals": 4,
+   "expectRefusal": true,
+   "why": "the 503 `runtime_busy` that survives the app's own three repeats",
+   "first": {
+    "regionPresent": true,
+    "alertProse": "This session's owner is busy with another request. Retry in a moment. Your message is still in the composer. Send it again.",
+    "visibleProse": "This session's owner is busy with another request. Retry in a moment. Your message is still in the composer. Send it again.",
+    "controlLabels": [],
+    "boxValue": "Please re-run the failing case with the trace enabled and paste the last twenty lines here.",
+    "textareas": [
+     "Message"
+    ],
+    "transcriptUserRows": 0,
+    "theme": "localOperatorDark",
+    "bodyText": "Local Operator\nChat\nMy agent \nAgent hub\nSchedule \nBrow er\nSetting \nSearch\n⌘\n+\nK\nAccount unavailable\nChat \n\nAgent \n\nNo agent  yet\n\nCreate agent\nTeam \nCreate team\nAll chat \nNew chat\n⌘\n+\nN\nActive chat \n\nNothing running right now.\n\nPreviou  chat \n\nNo chat  yet. Choo e an agent, team or New chat.\n\nUntitled chat\nChat\nRaw\ncommit =13 rowRender =2 row =0 flu he =0 flu hP50=0.00m  flu hMax=0.00m   ettledUpdate =0  eedDelta Withheld=0\nLoading conver ation…\n\nThi   e ion'  owner i  bu y with another reque t."
+   },
+   "second": {
+    "regionPresent": false,
+    "alertProse": null,
+    "visibleProse": null,
+    "controlLabels": [],
+    "boxValue": "",
+    "textareas": [
+     "Message"
+    ],
+    "transcriptUserRows": 0,
+    "theme": "localOperatorDark",
+    "bodyText": "Local Operator\nChat\nMy agent \nAgent hub\nSchedule \nBrow er\nSetting \nSearch\n⌘\n+\nK\nAccount unavailable\nChat \n\nAgent \n\nNo agent  yet\n\nCreate agent\nTeam \nCreate team\nAll chat \nNew chat\n⌘\n+\nN\nActive chat \n\nNothing running right now.\n\nPreviou  chat \n\nNo chat  yet. Choo e an agent, team or New chat.\n\nUntitled chat\nChat\nRaw\ncommit =19 rowRender =4 row =1 flu he =0 flu hP50=0.00m  flu hMax=0.00m   ettledUpdate =0  eedDelta Withheld=0\nStart of conver ation\n\nPlea e re-run the failing ca e with the trace ena"
+   }
+  },
+  {
+   "name": "busy-internal",
+   "refusals": 2,
+   "expectRefusal": false,
+   "why": "the same 503 answered by the app's own repeats, so the composer never sees it",
+   "first": {
+    "regionPresent": false,
+    "alertProse": null,
+    "visibleProse": null,
+    "controlLabels": [],
+    "boxValue": "",
+    "textareas": [
+     "Message"
+    ],
+    "transcriptUserRows": 0,
+    "theme": "localOperatorDark",
+    "bodyText": "Local Operator\nChat\nMy agent \nAgent hub\nSchedule \nBrow er\nSetting \nSearch\n⌘\n+\nK\nAccount unavailable\nChat \n\nAgent \n\nNo agent  yet\n\nCreate agent\nTeam \nCreate team\nAll chat \nNew chat\n⌘\n+\nN\nActive chat \n\nNothing running right now.\n\nPreviou  chat \n\nNo chat  yet. Choo e an agent, team or New chat.\n\nUntitled chat\nChat\nRaw\ncommit =8 rowRender =0 row =0 flu he =0 flu hP50=0.00m  flu hMax=0.00m   ettledUpdate =0  eedDelta Withheld=0\nStart of conver ation\n\nPlea e re-run the failing ca e with the trace enab"
+   },
+   "second": {
+    "regionPresent": false,
+    "alertProse": null,
+    "visibleProse": null,
+    "controlLabels": [],
+    "boxValue": "",
+    "textareas": [
+     "Message"
+    ],
+    "transcriptUserRows": 0,
+    "theme": "localOperatorDark",
+    "bodyText": "Local Operator\nChat\nMy agent \nAgent hub\nSchedule \nBrow er\nSetting \nSearch\n⌘\n+\nK\nAccount unavailable\nChat \n\nAgent \n\nNo agent  yet\n\nCreate agent\nTeam \nCreate team\nAll chat \nNew chat\n⌘\n+\nN\nActive chat \n\nNothing running right now.\n\nPreviou  chat \n\nNo chat  yet. Choo e an agent, team or New chat.\n\nUntitled chat\nChat\nRaw\ncommit =13 rowRender =2 row =1 flu he =0 flu hP50=0.00m  flu hMax=0.00m   ettledUpdate =0  eedDelta Withheld=0\nStart of conver ation\n\nPlea e re-run the failing ca e with the trace ena"
+   }
+  },
+  {
+   "name": "unreachable",
+   "refusals": null,
+   "expectRefusal": true,
+   "why": "the CONTROL: a hop failure whose ack may be the only thing lost stays held",
+   "first": {
+    "regionPresent": true,
+    "alertProse": "Session owner is unavailable. Reconnect and reconcile before retrying. A message is still being held, so a different message cannot be sent yet. Whether it reached the agent is not knowable - its copy is in the transcript above - so restore it and send again only if no reply arrives.",
+    "visibleProse": "Session owner is unavailable. Reconnect and reconcile before retrying. A message is still being held, so a different message cannot be sent yet. Whether it reached the agent is not knowable - its copy is in the transcript above - so restore it and send again only if no reply arrives.",
+    "controlLabels": [
+     "Restore message",
+     "Discard message"
+    ],
+    "boxValue": "",
+    "textareas": [
+     "Message"
+    ],
+    "transcriptUserRows": 0,
+    "theme": "localOperatorDark",
+    "bodyText": "Local Operator\nChat\nMy agent \nAgent hub\nSchedule \nBrow er\nSetting \nSearch\n⌘\n+\nK\nAccount unavailable\nChat \n\nAgent \n\nNo agent  yet\n\nCreate agent\nTeam \nCreate team\nAll chat \nNew chat\n⌘\n+\nN\nActive chat \n\nNothing running right now.\n\nPreviou  chat \n\nNo chat  yet. Choo e an agent, team or New chat.\n\nUntitled chat\nChat\nRaw\ncommit =14 rowRender =2 row =1 flu he =0 flu hP50=0.00m  flu hMax=0.00m   ettledUpdate =0  eedDelta Withheld=0\nStart of conver ation\n\nPlea e re-run the failing ca e with the trace ena"
+   },
+   "second": {
+    "regionPresent": true,
+    "alertProse": "Session owner is unavailable. Reconnect and reconcile before retrying. A message is still being held, so a different message cannot be sent yet. Whether it reached the agent is not knowable - its copy is in the transcript above - so restore it and send again only if no reply arrives.",
+    "visibleProse": "Session owner is unavailable. Reconnect and reconcile before retrying. A message is still being held, so a different message cannot be sent yet. Whether it reached the agent is not knowable - its copy is in the transcript above - so restore it and send again only if no reply arrives.",
+    "controlLabels": [
+     "Restore message",
+     "Discard message"
+    ],
+    "boxValue": "",
+    "textareas": [
+     "Message"
+    ],
+    "transcriptUserRows": 0,
+    "theme": "localOperatorDark",
+    "bodyText": "Local Operator\nChat\nMy agent \nAgent hub\nSchedule \nBrow er\nSetting \nSearch\n⌘\n+\nK\nAccount unavailable\nChat \n\nAgent \n\nNo agent  yet\n\nCreate agent\nTeam \nCreate team\nAll chat \nNew chat\n⌘\n+\nN\nActive chat \n\nNothing running right now.\n\nPreviou  chat \n\nNo chat  yet. Choo e an agent, team or New chat.\n\nUntitled chat\nChat\nRaw\ncommit =16 rowRender =2 row =1 flu he =0 flu hP50=0.00m  flu hMax=0.00m   ettledUpdate =0  eedDelta Withheld=0\nStart of conver ation\n\nPlea e re-run the failing ca e with the trace ena"
+   }
+  }
+ ]
+}

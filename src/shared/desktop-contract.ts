@@ -1854,6 +1854,36 @@ export const DESKTOP_LOST_SIGHT_CODE = {
 export const RUNTIME_BUSY_CODE = "runtime_busy";
 
 /**
+ * The session OWNER's refusal while its runtime is leaving - a build handover,
+ * a signalled stop, a `/move` - relayed by the daemon as
+ * `409 {"detail": {"code": "runtime_retiring", "message": ...}}`.
+ *
+ * WHY IT IS THE SAME KIND OF FACT AS `runtime_busy`. The code is raised
+ * (`session/errors.py::RuntimeRetiring`, from `ServingSessionHandle.prompt`'s
+ * latched departure) BEFORE the message is admitted, and the sentence the far
+ * side composes says so in as many words - "The message was not admitted - send
+ * it again once the new build is up." So a send that meets it provably does not
+ * exist on the owner, and the composer owes the text back rather than a held
+ * claim whose whole content is that the outcome cannot be known.
+ *
+ * WHY THE CODE AND NEVER THE STATUS. A bare `409` establishes nothing about
+ * admission: the receipt-conflict ladder, the attachment ladder and the profile
+ * registry all answer one, and the conflicting-receipt case is a refusal of a
+ * replay whose FIRST attempt may well have been admitted. `isRefusedBeforeAdmission`
+ * therefore reads this field and not `status === 409`.
+ *
+ * WHY NOT A `retryable` FLAG, which the design of record would add to this body.
+ * Even once it exists, it would be the wrong term for this question: elsewhere
+ * the ladder sets it to mean "a retry may help", which is true of refusals that
+ * admitted something (`SubagentChildUnavailable` is the measured example), so
+ * keying on it would hand a payload back to the composer for a message that may
+ * be on the owner - the one direction this classification must never take. The
+ * code is the fact; a body's `retry_after_ms` is pacing, and it is read where the
+ * backend sends it (`messageWithBusyResend`).
+ */
+export const RUNTIME_RETIRING_CODE = "runtime_retiring";
+
+/**
  * The sentences a refusal composes into, one per code.
  *
  * NO sentence here names an update, and none tells the user to change what the
