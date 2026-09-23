@@ -257,12 +257,12 @@ worth stating rather than discovering:
   <the commit before this one>:docs/evidence/session-archive/<name>`), and the state the
   shared control was of is deleted from the app (the row-space spec's D9), which is why
   the row-space set - not this one - is where that behaviour is photographed now.
-- **The hover ground's endpoints (456..983 device) were read on the previous set's frame
-  of this state and are NOT re-read on this one.** The frame's control region moved with
-  the re-capture (the difference between the two frames is 87,462 px, and the largest
-  cluster is `433x150+933+1586` — the row's right end), so a fixed device line no longer
-  lands on the same part of the row. Recorded here as owed rather than carried as if
-  re-measured.
+- **The hover ground's endpoints are RE-READ on this set, and they changed: 456..983 before,
+  456..946 here.** See the D18/D23 paragraph below for the full reading (the row's band did
+  not move, the left edge did not move, and 37 device px at the row's right end now carry
+  three other grounds). The old line was read on the previous set's frame of this state;
+  both numbers are stated here so a reader diffing the two sets is not left to guess which
+  one the sentence quotes.
 - The row-internal geometry the 21.5 px marker figure derives from is unchanged on this
   set: the archived row's title still starts where the marker's own reserved slot ends.
 24x24, archive 24x24` at 280 and `168px … shared 24x24` at 240, identical to the
@@ -281,22 +281,31 @@ and it is now read off these artefacts rather than carried from the earlier set.
 **The row's hover ground reaches the row box's right edge (design round 3, D18;
 endpoints corrected in round 4, D23).**
 On `pair-wide/localOperatorDark.png` the hovered row's ground runs from device x **456 to
-983** at the row's own centre line (CSS 228..491.5), passing under both control slots,
-with the panel ground `srgb(42,39,34)` resuming at 984 **on the previous set's frame of
-this state** (see the re-capture note above: this frame's control region moved, so the
-endpoints are owed a fresh read here). (An earlier line said 470..982 — 470 is CSS 235,
-i.e. 7px inside the box, and the run's own endpoints are 456 and 983.) Before the D23
-fix the same frame measured CSS 228..436 — the conversation button's own ground, 56px
-short — because the class stating it on the box was inert. The scene now asserts the
-box's own computed background, with the pointer on the row and again with it on a
-control, so a class that never matches cannot pass again:
+946** at the row's own centre line (CSS 228..473), against **456..983** (CSS 228..491.5) on
+the previous set's frame of the same state, where the panel ground `srgb(42,39,34)` resumed
+at 984 and here it does not resume at all. **Nothing else moved:** the row's own band is
+y 1656..1719 on BOTH frames (measured at the ground's own colour down a column through the
+row), the ground's left edge is 456 on both, and the change is the row's right end — 37
+device px (18.5 CSS) that now carry three other grounds in sequence instead of the row's,
+read at the centre line as `srgb(47,44,41)` (947..962), `srgb(40,37,33)` (968..978) and
+`srgb(49,45,35)` (982..999) — the same three at every line of the row (1658, 1662, 1687,
+1712, 1716 all end at 946..955). **What covers that end is a question for the design round,
+not a claim here:** as measured, the ground no longer reaches the row box's right edge at
+any line of the row, which is the property D18/D23's sentence asserts, so the sentence is
+recorded against these numbers rather than against the superseded ones. (An earlier line
+said 470..982 — 470 is CSS 235, i.e. 7px inside the box; before the D23 fix the same frame
+measured CSS 228..436 — the conversation button's own ground, 56px short — because the
+class stating it on the box was inert. The scene still asserts the box's own computed
+background, with the pointer on the row and again with it on a control, so a class that
+never matches cannot pass again.)
 
 ```
-# the two probes, on the set that carries the endpoints the sentence above quotes:
-#   git show <the commit before this one>:docs/evidence/session-archive/row-controls-pair/localOperatorDark.png
-#   -> p{970,1680} srgb(48,45,42)  (the row ground)   p{990,1680} srgb(42,39,34) (past the box)
-# and on THIS set's pair-wide the same two pixels read srgb(40,37,33) / srgb(49,45,35),
-# which is the moved region rather than a different claim - hence the owed note above.
+# on THIS set's frame (the reading above):
+#   p{600,1658} srgb(48,45,42)  the row's ground, above the control band
+#   p{955,1687} srgb(47,44,41)  where the row's ground now ends, at the row's centre line
+#   p{990,1687} srgb(49,45,35)  the third ground, where the panel's ground used to resume (42,39,34)
+# and on the previous set's frame of this state (git show the commit before this one):
+#   p{970,1687} srgb(193,188,177) (the archive glyph)   p{990,1687} srgb(42,39,34) (past the box)
 ```
 
 **The withdrawn pair differs in exactly two count badges, and nowhere else.**
