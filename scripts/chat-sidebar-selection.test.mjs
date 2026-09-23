@@ -840,7 +840,17 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// inside one, it is guarded by `!current`, and it therefore can never sit
 				// inside a current row: the guard is what keeps the selected ground from
 				// being repainted as the pointer's, which is this table's subject.
-				"hover:bg-row-hover": 9,
+				// TENTH (top-bar redesign, 2026-09-23): the panel's SEARCH FIELD takes the
+				// row's own hover step rather than a ground. It is not a row and it can
+				// never sit inside one — it is the first control in the panel, above
+				// every list and below only the header label — so no `CURRENT` entry can
+				// be asked to resolve it; what it shares with the rows is the POINTER's
+				// step on this panel, which is `rowHover` for the reason the test below
+				// gives: a ground cannot say "the pointer is on this" here, because
+				// `elevated` is also every menu, popover, tooltip and dialog in the app.
+				// Its resting fill is `sunken` (it is a well) and its `border-control`
+				// edge is unchanged in both states.
+				"hover:bg-row-hover": 10,
 				// `rowCurrent` (1), the ground that beats the step above by merge order.
 				"hover:bg-row-selected": 1,
 				// The New chat row's disabled reset: it paints NOTHING, which is why no

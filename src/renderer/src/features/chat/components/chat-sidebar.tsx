@@ -54,6 +54,7 @@ import {
 	MoreHorizontal,
 	Pin,
 	Plus,
+	Search,
 	Users,
 	X,
 } from "lucide-react";
@@ -313,7 +314,7 @@ const ROW_CONTROLS_SHARED_SHOWN = "@max-[263px]/chatsidebar:flex";
  * retired here rather than kept, on three measurements (design round 1, D3):
  *
  *   1. It borrowed the wrong object. The search field directly above the list
- *      is `h-8 w-full rounded-md border border-control`; the ring was that same
+ *      is `h-8 w-full rounded-sm border border-control`; the ring was that same
  *      role at the same 1px and the same radius one line below it, and both
  *      lines measured the same ink in one frame (`#7c809f` against `#7c80a1`)
  *      — so the current row read as a filled search field. Worst on `iceberg`.
@@ -4104,8 +4105,31 @@ export function ChatSidebar({
 		    two sizes in one panel reads as an accident, and the small one was the
 		    reported defect — it was the only entry point and users did not find
 		    it. The named row replaces it rather than joining it. */}
-			<div data-titlebar-chat-heading="" className="flex h-8 items-center px-1">
-				<h2 className="text-body-sm font-medium">Chats</h2>
+			{/*
+			 * THE HEADING AND THE FIELD ARE ONE BLOCK (top-bar redesign, 2026-09-23).
+			 * The label had no vertical inset of its own, so it sat against the panel's
+			 * corner with the field 8px below it — a label floating above a box rather
+			 * than the header OF one, which is the dated read the report names. It takes
+			 * the field's own 8px inset (`my-2`). The two insets do not collapse in this
+			 * flex column, so the label sits 8px off the panel's edge and 16px above the
+			 * field: the ramp's between-components tier, because they are two things in
+			 * a header block rather than one control's internals.
+			 *
+			 * The ink is NAMED rather than inherited. The panel's own `text-ink` reaches
+			 * this row today, so this changes nothing on screen — it states the role so
+			 * the heading survives anyone repainting the panel. Sentence case and
+			 * `text-body-sm` stay: the heading names the list, it is not a section title.
+			 *
+			 * NO RULE UNDER THE BLOCK. The panel's `surface` is the whole of its ground,
+			 * and the field carries its own edge (below); a separator here would be a
+			 * third line inside one 80px block, which is the decoration this redesign
+			 * exists to remove.
+			 */}
+			<div
+				data-titlebar-chat-heading=""
+				className={cn("my-2 flex h-8 items-center px-1")}
+			>
+				<h2 className={cn("text-body-sm font-medium text-ink")}>Chats</h2>
 			</div>
 			{/* The field carries its own clear control rather than relying on
 		    Escape, which also blurs: a pointer user who wants to widen the filter
@@ -4113,12 +4137,71 @@ export function ChatSidebar({
 		    screen saying the field could be emptied at all. `pr-9` keeps the query
 		    clear of the control — the same reserved-column idiom the settings
 		    search uses on the left for its leading glyph. */}
-			<div className="relative my-2">
+			{/*
+			 * THE FIELD IS A WELL, NOT A BOX (top-bar redesign, 2026-09-23), and the
+			 * treatment is the whole of the change — the structure, the 32px height and
+			 * the `border-control` edge are what they were.
+			 *
+			 * `bg-sunken` because the field is recessed INTO the panel it filters: a
+			 * rung below `surface`, the ground that panel wears, so the control reads as
+			 * cut into the list rather than laid on top of it.
+			 *
+			 * THE `border-control` EDGE STAYS, and it is what carries the boundary. No
+			 * ground in this system clears 3:1 against another — the widest is `sunken`
+			 * against `surface` at 1.11:1 in the light brand palette — and
+			 * `scripts/contrast-contract.mjs` requires a control's own edge, fill OR
+			 * border, to clear 3:1 against the ground behind it. A borderless `sunken`
+			 * field is a control with no perceivable edge in any of the 59 themes, so
+			 * the fill is a TONE step and the border remains the control's only
+			 * boundary (branding.md § 2, "the two lines").
+			 *
+			 * That is also why hover moves the FILL and not the edge: the pointer's step is
+			 * `hover:bg-row-hover`, the panel's OWN hover rung rather than a ground — the
+			 * same step every row and every control in this panel takes, so the field
+			 * stops being the one thing here that answers the pointer in a different
+			 * language. It is also the measured one: `rowHover` carries its step off
+			 * `surface` (at least 1.5 L*, `ΔE00` 2.0, and a cast floor) where a ground is
+			 * a free choice, and `ink`/`ink-muted`/`ink-dim` are asserted on it. Nothing
+			 * lifts, scales or translates (§ 5); the transition is on the colour
+			 * properties only — `transition-colors`.
+			 *
+			 * `rounded-sm` is the CONTROL radius — 6px in this theme's own scale, where
+			 * `sm`/`md`/`lg` resolve to 6/10/14 (`styles/index.css`), and what
+			 * `shared/components/ui/input.tsx` draws every other field in the app with.
+			 * This one carried `rounded-md` (10px), which branding.md § 5 refuses on a
+			 * 32px control in as many words — "10px eats a third of its height and reads
+			 * as a lozenge" — and at 10px on 32px it did.
+			 *
+			 * A LEADING GLYPH rather than a label: the magnifier says "this filters the
+			 * list" before a word is read, and it takes the reserved-column idiom the
+			 * canvas file search already uses — 14px `Search` at `left-2`,
+			 * `pointer-events-none`, `ink-dim`, with `pl-7` giving the query its own
+			 * 28px column. NO SHORTCUT CAP: this control filters the chats and answers
+			 * to no binding; the app-wide ⌘K palette lives on the rail, and a cap here
+			 * would claim a key the field does not respond to.
+			 *
+			 * FOCUS IS THE APP'S OWN RING. The edge is present at rest and at focus, so
+			 * what a keyboard user gets is the unlayered `html :focus-visible` outline
+			 * in `styles/index.css` — the conventional affordance — rather than a
+			 * boundary that appears and disappears under the mouse.
+			 *
+			 * `placeholder:text-ink-dim` is the placeholder's register; the query itself
+			 * is `text-ink`, because text the user typed is a reading, not a caption.
+			 */}
+			<div className={cn("relative my-2")}>
+				<Search
+					className={cn(
+						"pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-ink-dim",
+					)}
+					aria-hidden="true"
+				/>
 				<input
 					ref={searchRef}
 					aria-label="Search chats and agents"
 					placeholder="Search chats and agents"
-					className="h-8 w-full rounded-md border border-control bg-surface pr-9 pl-2 text-body-sm"
+					className={cn(
+						"h-8 w-full rounded-sm border border-control bg-sunken pr-9 pl-7 text-body-sm text-ink transition-colors duration-fast ease-out-quart placeholder:text-ink-dim hover:bg-row-hover",
+					)}
 					value={query}
 					onChange={(event) => setQuery(event.target.value)}
 				/>
