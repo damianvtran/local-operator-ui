@@ -358,7 +358,7 @@ const CompositionGround: FC<{
 						agentName="Reports agent"
 						description="Quarterly reporting · on this machine"
 						onOpenOptions={() => undefined}
-						onOpenBrowser={() => undefined}
+						onToggleBrowser={() => undefined}
 						browserAttentionCount={count}
 						/* The run trigger, so the cluster really does carry all three of
 						   the right slot's choices (design round 1, D6): the badge's corner
@@ -578,7 +578,7 @@ const HeaderStory: FC<{ count: number }> = ({ count }) => (
 			agentName="Reports agent"
 			description="Quarterly reporting"
 			onOpenOptions={() => {}}
-			onOpenBrowser={() => {}}
+			onToggleBrowser={() => {}}
 			browserAttentionCount={count}
 		/>
 	</div>

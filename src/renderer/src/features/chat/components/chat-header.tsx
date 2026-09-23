@@ -100,18 +100,29 @@ type ChatHeaderProps = {
 	 * The same shape as `onOpenOptions` above, and for the same reason: the canvas
 	 * button is rendered from whether a host offered the action, so the header never
 	 * has to know which routes or environments have a canvas — or, here, a browser.
-	 * It hides while the pane is open, exactly as the canvas button does, because the
-	 * pane carries its own close and a trigger for a pane that is already up is a
-	 * no-op with a tooltip. The run trigger beside it stays visible as a toggle, and
-	 * that difference is deliberate: the canvas and the browser are surfaces you
-	 * summon and dismiss, where the run details are a pane you flip in and out of
-	 * while reading (`docs/run-sidebar.md` § 3.4).
+	 *
+	 * IT DOES NOT HIDE WHILE ITS PANE IS OPEN, and that is the fix for the operator's
+	 * report (2026-09-23). The badge on this control is the only chrome that reports
+	 * THIS conversation's waiting approvals, so a trigger that unmounted with the pane
+	 * took the count off screen with it — the repo's own live evidence reads
+	 * `badge: null` beside three live requests (`docs/evidence/browser-pane-live/`,
+	 * where the pane is open), and "the badge is sometimes missing when a request IS
+	 * outstanding" is that state. Its two neighbours still hide, and the difference is
+	 * what each control CARRIES: the canvas and console buttons hold a mark that says
+	 * "there is something in there", which the open pane already says, while this one
+	 * holds a COUNT the pane does not put in the header. So it is a real toggle rather
+	 * than the "no-op with a tooltip" the old rule hid — that objection was about a
+	 * control that re-OPENED a pane already on screen, and this one closes it.
+	 *
+	 * It reads `isBrowserPaneOpen` for the same reason the canvas button reads
+	 * `isCanvasOpen`: the pane is a property of the window's right slot, so the control
+	 * that opens it and the slot that renders it have to answer from ONE field.
 	 */
-	onOpenBrowser?: () => void;
+	onToggleBrowser?: () => void;
 	/**
 	 * Opens the conversation's console pane, or absent when this header has none.
 	 *
-	 * The fourth occupant of the same slot and the same shape as `onOpenBrowser`:
+	 * The fourth occupant of the same slot and the same shape as `onToggleBrowser`:
 	 * the header renders the trigger from whether a host offered the action, hides it
 	 * while the pane is up (the pane carries its own close), and never decides itself
 	 * which pane is showing.
@@ -180,7 +191,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	mcpServers = [],
 	listOnScreen = false,
 	readerChildId = null,
-	onOpenBrowser,
+	onToggleBrowser,
 	browserAttentionCount = 0,
 	archived = false,
 	archiveEnabled = false,
@@ -227,15 +238,21 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	 * stacks with whatever container it is dropped into, which is exactly the
 	 * silent-mis-spacing failure that rule exists to prevent.
 	 *
-	 * Each fact is about a CHILD rather than about the badge alone, and the two pane
-	 * halves are why: while the browser pane is open the browser button is unmounted,
-	 * so there is no badge on screen and no room to reserve, however many approvals
-	 * are waiting; and while the canvas is open the canvas button is unmounted, so the
-	 * badge has no neighbour's box to land in and the room would be spent on a control
-	 * that is not rendered.
+	 * Each fact is about a CHILD rather than about the badge alone, and the canvas
+	 * half is why: while the canvas is open the canvas button is unmounted, so the
+	 * badge has no neighbour's box to land in and the room would be spent on a
+	 * control that is not rendered. (THE BROWSER HALF OF THIS PARAGRAPH IS HISTORY:
+	 * the browser button used to unmount with its pane, which is the state the
+	 * operator reported as a missing badge - see `onToggleBrowser`. It stays mounted
+	 * now, so the room its badge earned is never paid for nothing.)
 	 */
-	const browserButtonShown = Boolean(onOpenBrowser) && !isBrowserPaneOpen;
-	const browserBadgeDrawn = browserButtonShown && browserAttentionCount > 0;
+	const browserButtonShown = Boolean(onToggleBrowser);
+	/* THE BADGE IS DRAWN WHENEVER THIS CONVERSATION IS WAITING ON SOMETHING. It used
+	 * to be gated on the button's own visibility (`browserButtonShown &&
+	 * browserAttentionCount > 0`), which was inert only while the button never hid
+	 * with its pane. With the trigger staying mounted that gate would be the second
+	 * way to lose the count, so it is gone rather than left as a remainder. */
+	const browserBadgeDrawn = browserAttentionCount > 0;
 	const canvasButtonShown = Boolean(onOpenOptions) && !isCanvasOpen;
 	const consoleButtonShown = Boolean(onOpenConsole) && !isConsolePaneOpen;
 
@@ -385,11 +402,15 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * THESE ARE THE RIGHT PANE'S THREE CHOICES, and they are mutually exclusive in
 			 * the STORE rather than here: each setter clears the other two
 			 * (`claimRightSlot`), so this cluster never has to know which pane is up. The
-			 * canvas and browser buttons keep their own hide-when-open rule
-			 * (`onOpenOptions && !isCanvasOpen`, `onOpenBrowser && !isBrowserPaneOpen`),
-			 * because a button that re-opens the pane already on screen is a no-op with a
-			 * tooltip; the run trigger stays, because it is a TOGGLE with an `aria-pressed`
-			 * ground and that is exactly what makes the swap reversible.
+			 * canvas and browser buttons keep their own render gates
+			 * (`onOpenOptions && !isCanvasOpen`, `onToggleBrowser`), because a button that
+			 * re-opens the pane already on screen is a no-op with a tooltip; the run trigger
+			 * and the browser trigger stay, because each is a TOGGLE whose own ground or
+			 * badge says which way it goes, and that is exactly what makes the swap
+			 * reversible. THE BROWSER TRIGGER'S OWN STAY is the operator's fix (2026-09-23),
+			 * and the asymmetry with the canvas button is deliberate rather than an
+			 * oversight: its badge is a count this header is the only chrome to carry, and
+			 * hiding it with the pane is how the count disappeared.
 			 */}
 			<div
 				className={cn(
@@ -569,13 +590,18 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				{/* The conversation's browser, third in the cluster. `ghost`/`icon` like its
 				    neighbours, and it carries the count when this conversation has a request
 				    outstanding — see `browserAttentionCount` for why a count here and a dot on
-				    the canvas button. */}
+				    the canvas button. It TOGGLES and stays mounted while its pane is open:
+				    `onToggleBrowser` is where that rule and its reason live. */}
 				{browserButtonShown && (
 					<Tooltip
 						content={
-							browserAttentionCount > 0
-								? `Open browser — ${browserAttentionCount} ${browserAttentionCount === 1 ? "approval" : "approvals"} waiting`
-								: "Open browser"
+							isBrowserPaneOpen
+								? browserAttentionCount > 0
+									? `Close browser — ${browserAttentionCount} ${browserAttentionCount === 1 ? "approval" : "approvals"} waiting`
+									: "Close browser"
+								: browserAttentionCount > 0
+									? `Open browser — ${browserAttentionCount} ${browserAttentionCount === 1 ? "approval" : "approvals"} waiting`
+									: "Open browser"
 						}
 						side="top"
 					>
@@ -583,12 +609,20 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							ref={browserButtonRef}
 							variant="ghost"
 							size="icon"
-							onClick={onOpenBrowser}
+							onClick={onToggleBrowser}
+							/* The count rides the NAME in both directions, so a screen reader hears
+							   the number whether the pane is open or closed (spec 5.1) — and the verb
+							   matches what the press does, which is the whole change. */
 							aria-label={
-								browserAttentionCount > 0
-									? `Open browser, ${browserAttentionCount} waiting`
-									: "Open browser"
+								isBrowserPaneOpen
+									? browserAttentionCount > 0
+										? `Close browser, ${browserAttentionCount} waiting`
+										: "Close browser"
+									: browserAttentionCount > 0
+										? `Open browser, ${browserAttentionCount} waiting`
+										: "Open browser"
 							}
+							aria-expanded={isBrowserPaneOpen}
 							data-tour-tag="browser-pane-trigger"
 							/*
 							 * `relative` for the badge only; the SPACING that makes room for it is the

@@ -314,7 +314,7 @@ const Header = ({
 			agentName="Old onboarding notes"
 			description="Filed away · on this machine"
 			onOpenOptions={() => undefined}
-			onOpenBrowser={() => undefined}
+			onToggleBrowser={() => undefined}
 			archived={archived}
 			archiveEnabled
 			deleteEnabled
