@@ -785,6 +785,7 @@ const STAMP_BINDING_NOTES = [
 	"candidateMacArchRestampNote",
 	"notarizeGateRestampNote",
 	"macNativeComponentsRestampNote",
+	"telemetrySwitchRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {

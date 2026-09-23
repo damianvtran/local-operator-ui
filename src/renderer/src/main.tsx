@@ -7,7 +7,7 @@ import { HashRouter } from "react-router-dom";
 import { ThemedToastContainer } from "./shared/components/common";
 import "@assets/fonts/fonts.css";
 import "@renderer/styles/index.css";
-import { config } from "@shared/config";
+import { config, telemetryEnabled } from "@shared/config";
 import type { PostHogConfig } from "posthog-js";
 import App from "./app";
 import { installDevDriver } from "./dev-driver/install";
@@ -39,36 +39,67 @@ document.addEventListener("DOMContentLoaded", () => {
 	const root = ReactDOM.createRoot(
 		document.getElementById("app") as HTMLElement,
 	);
+	/*
+	 * `PostHogProvider` MOUNTS ONLY WHEN THIS LAUNCH MAY REPORT.
+	 *
+	 * Mounting it is what calls `posthog.init` in the renderer, and initialization
+	 * is what brings the whole client with it: pageviews, autocapture, exception
+	 * capture (`capture_exceptions` above) and session replay, which is what made
+	 * a test run show up in the PostHog project as a user AND as a replay to watch.
+	 * The decision is the launch's, read from the preload bridge by
+	 * `shared/config/telemetry.ts`, because the renderer's own `VITE_*` values are
+	 * inlined at build time and so cannot express a runtime switch at all — the
+	 * reason a build that merely omitted the key still reported. That module also
+	 * holds the renderer's half of the blank-key rule (`apiKey` below is the
+	 * BUILD's key, while main decides from the launch's), so a build with no key
+	 * resolves to off here exactly as it constructs no client in main.
+	 *
+	 * With telemetry off, the provider is not rendered and NOTHING is initialized:
+	 * `posthog-js` is still imported (the same import the feature-flag provider
+	 * needs), and the measurement is that importing it constructs a client but
+	 * sends nothing — no request is made until `init`, so an off launch makes no
+	 * PostHog connection at all. The one other place in the renderer that reaches
+	 * for `posthog` is the feature-flag provider, and it is gated on the same
+	 * decision, so nothing here can re-enable what this skips.
+	 */
+	const appTree = (
+		<QueryClientProvider client={queryClient}>
+			<FeatureFlagProvider>
+				<AuthProviders>
+					<ThemeProvider>
+						<GlobalScrollbarStyles />
+						<ErrorBoundary>
+							<HashRouter>
+								<App />
+							</HashRouter>
+						</ErrorBoundary>
+						<ThemedToastContainer />
+						{/* React Query DevTools - only in development (positioned at bottom left) */}
+						{isDevelopmentMode() && (
+							<ReactQueryDevtools
+								initialIsOpen={false}
+								position="left"
+								buttonPosition="top-left"
+							/>
+						)}
+					</ThemeProvider>
+				</AuthProviders>
+			</FeatureFlagProvider>
+		</QueryClientProvider>
+	);
+
 	root.render(
 		<React.StrictMode>
-			<PostHogProvider
-				apiKey={config.VITE_PUBLIC_POSTHOG_KEY}
-				options={posthogOptions}
-			>
-				<QueryClientProvider client={queryClient}>
-					<FeatureFlagProvider>
-						<AuthProviders>
-							<ThemeProvider>
-								<GlobalScrollbarStyles />
-								<ErrorBoundary>
-									<HashRouter>
-										<App />
-									</HashRouter>
-								</ErrorBoundary>
-								<ThemedToastContainer />
-								{/* React Query DevTools - only in development (positioned at bottom left) */}
-								{isDevelopmentMode() && (
-									<ReactQueryDevtools
-										initialIsOpen={false}
-										position="left"
-										buttonPosition="top-left"
-									/>
-								)}
-							</ThemeProvider>
-						</AuthProviders>
-					</FeatureFlagProvider>
-				</QueryClientProvider>
-			</PostHogProvider>
+			{telemetryEnabled ? (
+				<PostHogProvider
+					apiKey={config.VITE_PUBLIC_POSTHOG_KEY}
+					options={posthogOptions}
+				>
+					{appTree}
+				</PostHogProvider>
+			) : (
+				appTree
+			)}
 		</React.StrictMode>,
 	);
 });

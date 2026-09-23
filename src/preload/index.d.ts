@@ -32,6 +32,17 @@ declare global {
 		 */
 		__loDevDriver?: DevDriverBridge;
 		api: {
+			/**
+			 * Whether THIS launch may report to PostHog.
+			 *
+			 * From `window`'s `additionalArguments` via the preload, never from a
+			 * `VITE_*` value: those are inlined at build time, so a build made with
+			 * the project key carries it whatever the launch says. `false` in every
+			 * launch that did not resolve to telemetry on — including one whose
+			 * switch was set to a value the app does not understand, and any host
+			 * that is not an app window (see `src/main/telemetry-launch.ts`).
+			 */
+			telemetryEnabled: boolean;
 			desktop: DesktopAPI;
 			/**
 			 * The browser feature's chrome controls. Shapes are `unknown` because

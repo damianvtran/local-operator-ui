@@ -382,7 +382,7 @@ const APP_LAUNCH_SCRIPTS = [
 	{
 		name: "dev:headless",
 		guarded: true,
-		why: "the agent-driven dev launch. `dev` re-exports the working directory's `.env` inside its own shell, which is why the prefix alone is not the guarantee - the app-side resolution is",
+		why: "the agent-driven dev launch. `dev` loads the working directory's `.env` through `dotenv-cli`, which does NOT overwrite a variable the launch already set, so this prefix reaches the app for every key - the body used to re-export that file over the launch's environment, and that clobbering re-export is gone",
 	},
 	{
 		name: "start",
