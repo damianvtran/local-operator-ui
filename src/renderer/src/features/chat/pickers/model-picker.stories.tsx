@@ -316,6 +316,28 @@ const CATALOGUE: Row[] = [
 		input_price: 0.6,
 		output_price: 2.2,
 	}),
+	/*
+	 * The two rows the operator's report was about. Both are AGGREGATOR rows, so
+	 * their `label` degrades to the selector (the backend's naming honesty rule),
+	 * and the human name therefore lives ONLY in `listing_name` -- which is what
+	 * makes `grok 4.7` a real case rather than one a pretty label would have
+	 * already answered. The `HumanNameSearch` story types the operator's exact
+	 * spelling against these.
+	 */
+	row({
+		provider: "openrouter",
+		model_id: "x-ai/grok-4.7",
+		listing_name: "SpaceXAI: Grok 4.7",
+		aggregated: true,
+		context_window: 256_000,
+	}),
+	row({
+		provider: "openrouter",
+		model_id: "openai/gpt-6-luna",
+		listing_name: "OpenAI: GPT-6 Luna",
+		aggregated: true,
+		context_window: 400_000,
+	}),
 ];
 
 /** The model the session is on when the picker opens. */
@@ -868,6 +890,9 @@ export const PersistChecked: Story = {
 	},
 };
 
+/** The Grok row's accessible name: its displayed label is the degraded selector. */
+const GROK_OPTION_NAME = /x-ai\/grok-4\.7/;
+
 /** A query that matches nothing: the list is replaced by one dim line. */
 export const Empty: Story = {
 	render: () => <Frame bridge={catalogueOnly(catalogue())} />,
@@ -876,6 +901,38 @@ export const Empty: Story = {
 		await waitFor(() =>
 			expect(screen.getByText("Nothing matches.")).toBeTruthy(),
 		);
+	},
+};
+
+/**
+ * The operator's exact spelling resolves a row whose HUMAN name is the match.
+ *
+ * This is the frame the fix exists for: `grok 4.7` used to answer
+ * `Nothing matches.` because the reseller row's `label` degrades to its selector
+ * and the picker never read `listing_name`. Both halves of the fix are visible
+ * here -- the name is in the haystack AND the query's space is normalised -- so
+ * the same query also resolves with a hyphen, a dot, or a capital. That an
+ * AGGREGATOR row is the one that resolves, while a direct provider's row sits
+ * above it in the resting list, is the ordering half: adding the name as a match
+ * target keeps the tiers, it does not promote the aggregator.
+ */
+export const HumanNameSearch: Story = {
+	render: () => <Frame bridge={catalogueOnly(catalogue())} />,
+	play: async () => {
+		await typeQuery("grok 4.7");
+		/*
+		 * The row's ACCESSIBLE NAME is its displayed label, and for a reseller row
+		 * that label degrades to the selector (`openrouter/x-ai/grok-4.7`) -- the
+		 * human name is a match INPUT, never painted. So the assertion is on the
+		 * selector: the query that used to answer `Nothing matches.` now resolves
+		 * the row, which is the whole fix.
+		 */
+		await waitFor(() =>
+			expect(
+				screen.getByRole("option", { name: GROK_OPTION_NAME }),
+			).toBeTruthy(),
+		);
+		expect(screen.queryByText("Nothing matches.")).toBeNull();
 	},
 };
 

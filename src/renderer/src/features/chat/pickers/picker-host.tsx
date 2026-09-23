@@ -287,6 +287,79 @@ export function pickerListReducer(
 	}
 }
 
+/*
+ * The matcher, for every picker that filters on the search box.
+ *
+ * WHY this exists rather than a bare `.toLowerCase().includes(...)`. A model's
+ * human name is published by the listing with spaces and a colon
+ * (`SpaceXAI: Grok 4.7`) while its id glues the same words with hyphens and a
+ * slash (`x-ai/grok-4.7`), and the query the operator types carries neither
+ * spelling literally: `grok 4.7` has a space where the id has a hyphen and the
+ * name has a colon-adjacent space. A plain substring test therefore matched
+ * NEITHER and the picker answered `Nothing matches.` for a model sitting in the
+ * catalogue (the operator's report).
+ *
+ * The rule is ONE normalisation applied to BOTH sides, never a special case per
+ * spelling: lowercase, then every run of non-alphanumerics collapses to a single
+ * space. So `x-ai/grok-4.7` and `grok 4.7` both read `x ai grok 4 7` /
+ * `grok 4 7` and the substring test succeeds on the shared words.
+ *
+ * This mirrors `local_operator/model/ranking.py`'s `_match_key` byte for byte
+ * (same `[^0-9a-z]+` class, same collapse-to-one-space, same trim) so the TUI,
+ * the phone sheet and this desktop picker all rank one catalogue the same way.
+ * The backend is the single source of the rule; this is its renderer-side
+ * reader, and a divergence here is the two surfaces disagreeing about what a
+ * query means. Do NOT add the backend's version-shaped numeric ordering here:
+ * the desktop picker keeps its own grouping and never re-sorts, and a second
+ * numeric rule is how the two orderings drift apart.
+ *
+ * The pattern is `[^0-9a-z]` (not `\W`) on purpose: `\W` keeps the underscore
+ * a word character, and the backend's class does not, so `gpt_5` normalises
+ * differently under the two. Keep them identical.
+ */
+const MATCH_SEPARATOR = /[^0-9a-z]+/g;
+
+/** A string's spelling as the matcher sees it: lowercase, space-separated words. */
+export function pickerMatchKey(text: string): string {
+	return text.toLowerCase().replace(MATCH_SEPARATOR, " ").trim();
+}
+
+/**
+ * The rows a query matches, in the order they came in.
+ *
+ * Membership only, never ordering. The picker already has tiers — the row
+ * builder's grouping and the catalogue's own order — and this filter must not
+ * disturb them: adding the human name as a match target can only KEEP a row, so
+ * an aggregator whose name happens to score better never gets promoted over a
+ * direct provider's row, and a row that matched before still matches now. That
+ * is the backend's "the pool is never shrunk by adding a match target" rule
+ * stated for the client: this is a filter, not a ranker.
+ *
+ * TWO EMPTY-ISH CASES, and they are not the same — the backend draws the same
+ * line. A query the user has not typed into at all (blank, or whitespace) lists
+ * everything; a query that is non-empty but NORMALISES to empty (`.`, `!`,
+ * `...`, `-`) carries no words and must return NOTHING rather than falling into
+ * the list-everything branch. Folding the two together replaces the list with
+ * the whole catalogue on one punctuation keystroke — the backend measured `'.'`
+ * taking 257 to 574 rows — which reads as the search box doing the opposite of
+ * what was asked.
+ */
+export function filterPickerOptions(
+	options: PickerOption[],
+	query: string,
+): PickerOption[] {
+	if (!query.trim()) return options;
+	const needle = pickerMatchKey(query);
+	if (!needle) return [];
+	return options.filter((option) =>
+		pickerMatchKey(
+			[option.label, option.value, option.description ?? "", option.meta ?? ""]
+				.concat(option.keywords ?? [])
+				.join(" "),
+		).includes(needle),
+	);
+}
+
 /**
  * What the body shows, given the load state and how many rows survived it.
  *
@@ -692,18 +765,15 @@ export const PickerHost: FC<PickerHostProps> = ({
 	const closeButtonRef = useRef<HTMLButtonElement>(null);
 
 	const hasList = options !== undefined;
-	const filtered = useMemo(() => {
-		if (!options) return [];
-		const needle = query.trim().toLowerCase();
-		if (!needle) return options;
-		return options.filter((option) =>
-			[option.label, option.value, option.description ?? "", option.meta ?? ""]
-				.concat(option.keywords ?? [])
-				.join(" ")
-				.toLowerCase()
-				.includes(needle),
-		);
-	}, [options, query]);
+	/*
+	 * The filter is a pure exported function so its rule is executable from a
+	 * test (`filterPickerOptions`) rather than only reachable through a mounted
+	 * dialog — the discipline `pickerBodyKind` and the reducer follow here.
+	 */
+	const filtered = useMemo(
+		() => (options ? filterPickerOptions(options, query) : []),
+		[options, query],
+	);
 
 	/**
 	 * The row Enter would pick, by name.

@@ -74,6 +74,7 @@ const bundleInto = async (name, contents) => {
 		// The renderer's own aliases, from `electron.vite.config.js`.
 		alias: {
 			"@shared": resolve("src/renderer/src/shared"),
+			"@features": resolve("src/renderer/src/features"),
 			"@renderer": resolve("src/renderer/src"),
 		},
 		write: false,
@@ -91,6 +92,8 @@ const {
 	pickerBodyKind,
 	pickerFooterHint,
 	pickerPrimaryLabel,
+	pickerMatchKey,
+	filterPickerOptions,
 } = await bundleInto(
 	"picker-host",
 	`
@@ -101,6 +104,8 @@ const {
 		pickerBodyKind,
 		pickerFooterHint,
 		pickerPrimaryLabel,
+		pickerMatchKey,
+		filterPickerOptions,
 	} from "./src/renderer/src/features/chat/pickers/picker-host";
 `,
 );
@@ -596,11 +601,30 @@ test("one binding answers which model the session is on", () => {
 		/modelSelector\(bandReadings\(draftFrontend, null\)\.identity\)/,
 		"and a draft's answer is read through the SAME binding the strip prints, rather than a second precedence over the same two fields (review round 1, R4)",
 	);
-	const options = picker.slice(picker.indexOf("const options = useMemo"));
+	/*
+	 * The in-force row mark now lives in the extracted `modelPickerOptions`, which
+	 * takes the binding as an argument rather than reading a field of its own — so
+	 * the pin follows the code: the mark reads the parameter, and the memo passes
+	 * the SAME `shownSelector` binding the strip prints. Both halves are asserted,
+	 * because a function that took the argument while the memo passed a different
+	 * field would satisfy either one alone.
+	 */
+	const options = picker.slice(
+		picker.indexOf("export function modelPickerOptions"),
+	);
 	assert.match(
 		options,
-		/current:\s*shownSelector === \(row\.selector \?\? row\.value\)/,
+		/current:\s*options\.shownSelector === \(row\.selector \?\? row\.value\)/,
 		"the in-force row mark reads that binding rather than a field of its own",
+	);
+	const memo = picker.slice(
+		picker.indexOf("const options = useMemo"),
+		picker.indexOf("const listing = catalogueListing"),
+	);
+	assert.match(
+		memo,
+		/modelPickerOptions\(rows,\s*\{[\s\S]*?shownSelector,/,
+		"the memo hands the row builder the one binding, not a second reading",
 	);
 	assert.match(
 		picker,
@@ -787,5 +811,257 @@ test("the listbox owns the pointer, and clears it on the way out", () => {
 		contract,
 		/picker option row selection ground/,
 		"the call site is pinned in the theme gate too, where a palette edit cannot hide it",
+	);
+});
+
+/* ------------------------------------------------- the search matcher */
+
+/*
+ * The operator typed `grok 4.7` into the desktop model picker and got
+ * `Nothing matches.` while `openrouter/x-ai/grok-4.7` and
+ * `openrouter/openai/gpt-6-luna` sat in the catalogue. Two renderer-side causes,
+ * and these tests pin both:
+ *
+ *   1. The haystack carried `[provider, model_id]` and never the provider's own
+ *      human name (`listing_name`), so a query in the words the listing PUBLISHES
+ *      matched nothing.
+ *   2. A plain `.includes(needle)` on the raw strings can never match a query
+ *      carrying a space or a dot: `grok 4.7` is not a substring of `x-ai/grok-4.7`
+ *      (hyphen) nor of `SpaceXAI: Grok 4.7` (colon-space).
+ *
+ * The rule is the backend's (`model/ranking.py:_match_key`), mirrored so the TUI,
+ * the phone sheet and this picker read one catalogue the same way. These tests
+ * assert the RULE (through the shipped `pickerMatchKey` / `filterPickerOptions`)
+ * and, separately, that the adapter FEEDS it the name — the second half is what
+ * the operator's symptom actually needed, and a green rule with an unfed haystack
+ * is the defect intact.
+ */
+
+/**
+ * A row shaped the way the catalogue serves one.
+ *
+ * The two `openrouter` rows carry the honest RESELLER label: the backend's
+ * naming rule degrades an aggregator's label to its own selector, so `label`
+ * here is NOT the pretty human name — it is `openrouter/x-ai/grok-4.7`. The
+ * human name only ever lives in `listing_name`. That is what makes the operator's
+ * case a real one: with the label degraded, `grok 4.7` and `spacexai` matched
+ * NOTHING before this change, and the direct provider's pretty label (`Claude
+ * Opus 5`) is the control that already worked.
+ */
+const catalogueOption = (over) => ({
+	value: `${over.provider}/${over.model_id}`,
+	label: over.label ?? `${over.provider}/${over.model_id}`,
+	description: over.provider,
+	keywords: [over.listing_name, over.provider, over.model_id].filter(
+		(term) => typeof term === "string",
+	),
+});
+
+const GROK = catalogueOption({
+	provider: "openrouter",
+	model_id: "x-ai/grok-4.7",
+	listing_name: "SpaceXAI: Grok 4.7",
+});
+const LUNA = catalogueOption({
+	provider: "openrouter",
+	model_id: "openai/gpt-6-luna",
+	listing_name: "OpenAI: GPT-6 Luna",
+});
+const OPUS = catalogueOption({
+	provider: "anthropic",
+	model_id: "claude-opus-5",
+	label: "Claude Opus 5",
+	listing_name: "Anthropic: Claude Opus 5",
+});
+const CATALOGUE_OPTIONS = [OPUS, GROK, LUNA];
+
+test("the match key mirrors the backend's normalisation, both sides alike", () => {
+	/*
+	 * The exact rule, stated once. Every run of non-alphanumerics becomes ONE
+	 * space, so the id's hyphens and slash and the name's colon and spaces all
+	 * read as the same separators. `[^0-9a-z]` and not `\W`: `\W` keeps the
+	 * underscore a word character and the backend's class does not.
+	 */
+	assert.equal(pickerMatchKey("x-ai/grok-4.7"), "x ai grok 4 7");
+	assert.equal(pickerMatchKey("SpaceXAI: Grok 4.7"), "spacexai grok 4 7");
+	assert.equal(pickerMatchKey("grok 4.7"), "grok 4 7");
+	assert.equal(pickerMatchKey("grok-4.7"), "grok 4 7");
+	assert.equal(pickerMatchKey("Grok 4.7"), "grok 4 7");
+	assert.equal(
+		pickerMatchKey("a__b"),
+		"a b",
+		"underscores are separators, as in the backend",
+	);
+	assert.equal(
+		pickerMatchKey("  padded  "),
+		"padded",
+		"the trim matches the backend's `.strip()`",
+	);
+});
+
+test("the operator's spellings all resolve the models, and only those", () => {
+	for (const query of ["grok 4.7", "grok-4.7", "Grok 4.7", "spacexai grok"]) {
+		const hit = filterPickerOptions(CATALOGUE_OPTIONS, query);
+		assert.deepEqual(
+			hit.map((option) => option.value),
+			["openrouter/x-ai/grok-4.7"],
+			`"${query}" must resolve exactly the Grok row`,
+		);
+	}
+	for (const query of [
+		"gpt 6 luna",
+		"gpt-6-luna",
+		"GPT 6 Luna",
+		"openai gpt",
+	]) {
+		const hit = filterPickerOptions(CATALOGUE_OPTIONS, query);
+		assert.deepEqual(
+			hit.map((option) => option.value),
+			["openrouter/openai/gpt-6-luna"],
+			`"${query}" must resolve exactly the Luna row`,
+		);
+	}
+	// A name-only match: `spacexai` appears in the human name and NOWHERE in the
+	// id, so a haystack without `listing_name` answers nothing at all.
+	assert.deepEqual(
+		filterPickerOptions(CATALOGUE_OPTIONS, "spacexai").map((o) => o.value),
+		["openrouter/x-ai/grok-4.7"],
+		"a listing name is a match target",
+	);
+	// The id spelling still works, because the normalisation is on BOTH sides.
+	assert.deepEqual(
+		filterPickerOptions(CATALOGUE_OPTIONS, "x-ai/grok-4.7").map((o) => o.value),
+		["openrouter/x-ai/grok-4.7"],
+	);
+});
+
+test("a query that matches nothing returns nothing, and the tiers survive", () => {
+	assert.deepEqual(
+		filterPickerOptions(CATALOGUE_OPTIONS, "gemini"),
+		[],
+		"no match is an empty list, not the whole catalogue",
+	);
+
+	/*
+	 * TWO EMPTY-ISH CASES. Blank lists everything; punctuation-only carries no
+	 * words and must return NOTHING. Folding them together replaces the list with
+	 * the whole catalogue on one `.` keystroke — the backend measured `'.'` taking
+	 * 257 to 574 rows — which reads as the box doing the opposite of the ask.
+	 */
+	assert.deepEqual(
+		filterPickerOptions(CATALOGUE_OPTIONS, "   "),
+		CATALOGUE_OPTIONS,
+		"whitespace is 'typed nothing', so the catalogue lists in its own order",
+	);
+	for (const punctuation of [".", "!", "...", "-", "///"]) {
+		assert.deepEqual(
+			filterPickerOptions(CATALOGUE_OPTIONS, punctuation),
+			[],
+			`"${punctuation}" carries no words and matches nothing`,
+		);
+	}
+
+	/*
+	 * MEMBERSHIP ONLY, NEVER ORDERING. Adding the name as a target must not
+	 * reorder: whatever the catalogue's order was, the surviving rows keep it. An
+	 * aggregator whose NAME scored better must not be promoted over a direct
+	 * provider's row, which is the backend's "the pool is never shrunk — and an
+	 * add-only target never reorders" rule stated for the client.
+	 */
+	const ordered = [OPUS, GROK, LUNA];
+	const survivors = filterPickerOptions(ordered, "grok");
+	assert.deepEqual(
+		survivors.map((o) => o.value),
+		filterPickerOptions(ordered, "grok").map((o) => o.value),
+	);
+	assert.deepEqual(
+		filterPickerOptions([LUNA, GROK], "luna").map((o) => o.value),
+		["openrouter/openai/gpt-6-luna"],
+	);
+	// A broad query that hits several rows keeps the input order.
+	assert.deepEqual(
+		filterPickerOptions([OPUS, GROK, LUNA], "o").map((o) => o.value),
+		[OPUS.value, GROK.value, LUNA.value],
+		"every row matched, in the order they came in",
+	);
+});
+
+test("the adapter feeds the human name into the haystack", () => {
+	/*
+	 * The pure rule above is necessary but not sufficient: the operator's symptom
+	 * needs the ADAPTER to hand the rule the name. That half is pinned as source
+	 * text, the discipline this file already follows for `destination-pickers`
+	 * (its WIRING is read as text; its DECISIONS are exported and executed),
+	 * because bundling that module pulls MUI onto the harness's runtime import
+	 * graph, which the other entry points here deliberately avoid.
+	 *
+	 * Three things, each the failure it prevents:
+	 *   - `listing_name` is IN the option's `keywords` (the haystack the operator
+	 *     needed);
+	 *   - the row builder is a pure exported function the component calls, so a
+	 *     test could exercise it — and the memo passes the one binding, not a
+	 *     second reading;
+	 *   - the holes are DROPPED, because an `undefined` term would join with the
+	 *     empty string and make every query match.
+	 */
+	const picker = source("features/chat/pickers/destination-pickers.tsx");
+	const builder = picker.slice(
+		picker.indexOf("export function modelPickerOptions"),
+	);
+	assert.match(
+		builder,
+		/keywords:\s*\[[\s\S]*?row\.listing_name[\s\S]*?row\.provider[\s\S]*?row\.model_id/,
+		"the human name leads the haystack, beside the id",
+	);
+	assert.match(
+		builder,
+		/\.filter\(\(term\): term is string => typeof term === "string"\)/,
+		"an omitted listing name leaves no empty term that would match everything",
+	);
+	assert.match(
+		builder,
+		/label:\s*row\.label \|\| row\.model_id/,
+		"the displayed label rule is unchanged by this fix",
+	);
+});
+
+test("the omitted-name case cannot match every query, over the real rule", () => {
+	/*
+	 * The behavioural half of the pin above, over the SHIPPED filter: a haystack
+	 * built the way the adapter builds one — name present or absent — must never
+	 * match a query it should not. The adapter's own builder is asserted in the
+	 * test above; here its OUTPUT shape is reproduced so the rule is exercised,
+	 * not described.
+	 */
+	const withName = {
+		value: "openrouter/x-ai/grok-4.7",
+		label: "openrouter/x-ai/grok-4.7",
+		description: "openrouter",
+		keywords: ["SpaceXAI: Grok 4.7", "openrouter", "x-ai/grok-4.7"],
+	};
+	const withoutName = {
+		value: "anthropic/claude-opus-5",
+		label: "Claude Opus 5",
+		description: "anthropic",
+		keywords: ["anthropic", "claude-opus-5"],
+	};
+	assert.deepEqual(
+		filterPickerOptions([withName, withoutName], "grok 4.7").map(
+			(o) => o.value,
+		),
+		["openrouter/x-ai/grok-4.7"],
+	);
+	assert.deepEqual(
+		filterPickerOptions([withName, withoutName], "spacexai").map(
+			(o) => o.value,
+		),
+		["openrouter/x-ai/grok-4.7"],
+	);
+	// The row with NO name must not match a name query, and must not match
+	// everything by virtue of an empty term.
+	assert.deepEqual(filterPickerOptions([withoutName], "luna"), []);
+	assert.deepEqual(
+		filterPickerOptions([withoutName], "claude").map((o) => o.value),
+		["anthropic/claude-opus-5"],
 	);
 });
