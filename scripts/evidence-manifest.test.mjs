@@ -1040,6 +1040,7 @@ const BRANCH_RECORDS = [
 	 * the wrong instrument (fold convergence round, C-4).
 	 */
 	"providerSetupUxNote",
+	"renameRefreshArgumentListPass",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
