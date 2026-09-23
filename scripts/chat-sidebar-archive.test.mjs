@@ -257,10 +257,20 @@ test("the Include archived control is inside the search block and only while a q
 
 test("the list the panel draws is the page minus the archived rows, and the search is told", () => {
 	const source = code(SIDEBAR);
-	// ONE filter, before anything reads the list: the flat list, both sections, the
-	// agent and team groups and the local half of the search all read this array.
-	assert.match(source, /visibleRows\(sessions, archiveEnabled && !widened\)/);
-	assert.match(source, /visibleRows\(sessions, archiveEnabled && !widened\)/);
+	/*
+	 * ONE filter, before anything reads the list: the flat list, both sections, the
+	 * agent and team groups and the local half of the search all read this array.
+	 *
+	 * AND IT IS FED THE ANSWERED VIEW (design round 8, D27): `visibleRows` reads a row's own
+	 * `archived` flag, so the array it is handed is the one whose flags are the DAEMON's - a
+	 * fact still in flight must not be able to take a row out of a list, because the list's
+	 * own extent is what the reader's scroll position is measured against.
+	 */
+	assert.match(
+		source,
+		/visibleRows\(answeredForMembership, archiveEnabled && !widened\)/,
+	);
+	assert.match(source, /answeredArchiveRows\(sessions, archiveFacts\)/);
 	// The request itself carries the widening, and the join is given the client's own
 	// facts plus the delete tombstones, so a press on a row rebuilt from a cached hit
 	// can be inverted and a deleted conversation cannot be drawn from one.
@@ -750,7 +760,15 @@ test("a typed /archive writes the store, reports a refusal, and offers an undo o
 	// A refused press says nothing here: the panel's register already carries it,
 	// and one press must not be reported on two surfaces.
 	assert.match(branch, /if \(!accepted\) return "consumed";/);
-	assert.match(branch, /offerArchiveUndo\(/);
+	/*
+	 * AND WHERE THE OFFER MOVED TO (design round 8, D27's second clause): the STORE raises it,
+	 * in the update that settles the fact, so the accepted departure and the band that answers
+	 * it are one commit - raised here instead, the commit between them is the one whose extent
+	 * dips below the reader's position and the browser's clamp takes the reader with it. The
+	 * store's own suite asserts the one-update property at a subscriber
+	 * (`scripts/session-archive-delete.test.mjs`), where it can be read rather than described.
+	 */
+	assert.doesNotMatch(branch, /offerArchiveUndo/);
 	/*
 	 * AND THE OFFER IS THE REGISTER'S, NOT A CLOSURE HANDED OVER HERE (design round
 	 * 2, D12). It used to carry `onUndo`, which made every offering surface own half
@@ -784,17 +802,14 @@ test("the row's press is the same act as the typed command, and keeps the reader
 	/*
 	 * ONE ACT, ONE REGISTER (UX round 1, U2). Archiving from the row takes the row
 	 * AND its control out of the list, which is exactly the situation the undo offer
-	 * exists for - so the row's press offers the same offer the typed `/archive`
-	 * does, and offers it only in the direction that removes the row (unarchiving
-	 * puts the row back, which is its own visible trace).
+	 * exists for - and the offer is the STORE's write now (design round 8, D27), raised in
+	 * the update that settles the fact so the accepted departure and the band that answers
+	 * it are ONE commit: raised from this handler instead, the commit between them is the
+	 * one whose list extent dips below the reader's position. One act, one register survives
+	 * the move - every route's accepted archive gets the same offer, from the one place that
+	 * knows the write was accepted.
 	 */
-	assert.match(source, /offerArchiveUndo\(\{/);
-	assert.match(source, /archived: true,/);
-	assert.match(
-		source,
-		/if \(archived\) return;/,
-		"unarchiving must not offer a restore",
-	);
+	assert.doesNotMatch(source, /offerArchiveUndo/);
 	// A refused press changes nothing, focus included: the row is still there and
 	// the store's sentence is beside the list.
 	assert.match(source, /if \(!accepted\) return;/);

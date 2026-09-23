@@ -59,6 +59,7 @@
 
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import type { ArchiveFact } from "@shared/store/canonical-sessions-store";
+import { useEffect } from "react";
 import { undoOfferStands } from "./chat-archived";
 
 /**
@@ -118,98 +119,56 @@ function knownArchived(sessionId: string): boolean | undefined {
 }
 
 /**
- * Offer the undo for a conversation this window has just archived.
+ * Retire the standing offer when the state it was taken from stops being true.
  *
- * Mirrors the goal confirmation's shape (`showInfoToast` with an `action`, the id
- * held so it can be taken back) rather than inventing a second offer vocabulary.
+ * WHY THIS IS A HOOK RATHER THAN PART OF THE RAISE (design round 8, D27's second clause).
+ * The offer itself is now written by the STORE, in the update that settles the archive
+ * write, because the accepted departure and the band that answers it have to land in one
+ * commit - and the store cannot call into this module (this module imports the store). What
+ * cannot move to the store is this subscription, and it should not: deciding WHEN the offer
+ * stops being true is this module's rule, the same way `undoOfferStands` and the sentence
+ * beside it are. So the panel calls this once, and the watch keys on the offer's identity -
+ * a second archive in a row re-arms it rather than stacking two.
+ *
+ * The offer's own claim, kept from the version that installed this at the raise: a press
+ * that has NOT been answered decides nothing (`fact.answered`), so an optimistic fact cannot
+ * retire an offer before the daemon has spoken - the mechanism UX round 1's U3 was about,
+ * where the panel dismissed the lane and the refusal that replaced the offer was created
+ * into the id's own unmount window.
+ *
+ * The ceiling bounds it as well, because the catalogue is not obliged to answer at all: a
+ * backend that is down leaves the fact standing, and a subscription per archive press is a
+ * listener that would outlive the press that made it.
  */
-export function offerArchiveUndo(input: {
-	sessionId: string;
-	title?: string;
-	/** The state the offer is about: what pressing Undo would take back. */
-	archived: boolean;
-}): void {
-	const store = () => useCanonicalSessionsStore.getState();
-	/*
-	 * ONE UPDATE RAISES THE OFFER AND RETIRES THE REFUSAL IT SUPERSEDES, and the two
-	 * halves are not separable without a defect.
-	 *
-	 * The lane draws one message under one stable id, so raising the offer is what
-	 * takes a refusal off the screen. Clearing the refusal in `setSessionArchived`
-	 * instead would leave a window in which the store holds neither message: the
-	 * panel's effect would dismiss the lane on that render and the offer's own toast
-	 * would then be created into the id's unmount window and destroyed with it -
-	 * the mechanism `canonical-sessions-store.ts` records beside its press (UX report
-	 * round 1, U3). Setting both in one `set` is what makes the replacement-
-	 * rather-than-dismissal property structural instead of a matter of render order.
-	 *
-	 * The refusal cleared is this conversation's own: a sentence about another row's
-	 * failed write is not superseded by this offer, and `chat-sidebar.tsx`'s lane effect now
-	 * decides which of the two it DRAWS by their write stamps (`at`), not by preferring one
-	 * kind - the `laneMessageRef` beside that effect answers only the empty-lane dismissal,
-	 * so it is not what arbitrates them (agent review round 3, R3-1; the earlier comment here
-	 * claimed otherwise and the claim was wrong).
-	 */
-	useCanonicalSessionsStore.setState((state) => ({
-		archiveUndo: {
-			sessionId: input.sessionId,
-			title: input.title,
-			archived: input.archived,
-			/*
-			 * STAMPED WITH THE WRITE THAT RAISED IT. A successful archive's press has already
-			 * advanced `answerSeq`, so this is strictly newer than the refusal it supersedes -
-			 * which is what lets the lane draw it while the refusal is still in the store.
-			 */
-			at: state.answerSeq,
-		},
-		archiveFailure:
-			state.archiveFailure?.sessionId === input.sessionId
-				? null
-				: state.archiveFailure,
-	}));
-	let closed = false;
-	const stop = () => {
-		if (closed) return;
-		closed = true;
-		unsubscribe();
-		clearTimeout(ceiling);
-		/*
-		 * CLEARED ONLY IF IT IS STILL THIS OFFER'S. Two archives in a row (the second
-		 * while the first's ceiling is running) leave two subscriptions, and the first
-		 * one's expiry must not take the SECOND offer off the screen - it would clear
-		 * an offer that is still true, which is the same lie the retirement rule
-		 * exists to avoid, one press later.
-		 */
-		const current = store().archiveUndo;
-		if (current?.sessionId === input.sessionId) store().setArchiveUndo(null);
-	};
-	const unsubscribe = useCanonicalSessionsStore.subscribe(() => {
-		/*
-		 * A PRESS THAT HAS NOT BEEN ANSWERED DECIDES NOTHING (agent review round 2, R2-1).
-		 *
-		 * The rule below reads the client's own fact first, and the fact is written
-		 * OPTIMISTICALLY - so at the press it already says the conversation no longer holds
-		 * the state the offer was taken from, before the daemon has said anything. Asking the
-		 * rule then retires the offer at the press, the panel dismisses the lane, and the
-		 * refusal that a refused write produces a few milliseconds later is created on the id
-		 * that was just dismissed - which sonner destroys with the entry it is removing. That
-		 * is the lost-message mechanism U3 was about, on the Undo control beside the Retry,
-		 * and the reason the answer owns the retirement rather than the press.
-		 *
-		 * It is one gate for every writer of this route, which is why it lives here rather than
-		 * in the control that happens to be nearest: the offer's own Undo, the header's restore
-		 * control and `/unarchive` all call `setSessionArchived`, and all three would otherwise
-		 * take the lane down before their answer.
-		 *
-		 * The ceiling still bounds the offer, so an answer that never comes costs the listener
-		 * nothing but the wait it already had.
-		 */
-		const fact = archiveFactFor(input.sessionId);
-		if (fact !== undefined && !fact.answered) return;
-		// The rule lives in `chat-archived.ts`, with the sentence it implements, so the
-		// comment and the behaviour cannot drift apart.
-		if (undoOfferStands(input.archived, knownArchived(input.sessionId))) return;
-		stop();
-	});
-	const ceiling = setTimeout(stop, ARCHIVE_UNDO_CEILING_MS);
+export function useArchiveUndoRetirement(): void {
+	const offer = useCanonicalSessionsStore((state) => state.archiveUndo);
+	useEffect(() => {
+		if (offer === null) return;
+		let closed = false;
+		/** Tear the watch down, leaving the store's value alone (an unmount is not a statement about the offer). */
+		const teardown = () => {
+			if (closed) return;
+			closed = true;
+			unsubscribe();
+			clearTimeout(ceiling);
+		};
+		/** Retire the offer, but only if it is still THIS offer's. */
+		const stop = () => {
+			teardown();
+			const current = useCanonicalSessionsStore.getState().archiveUndo;
+			if (current?.sessionId === offer.sessionId)
+				useCanonicalSessionsStore.getState().setArchiveUndo(null);
+		};
+		const unsubscribe = useCanonicalSessionsStore.subscribe(() => {
+			const fact = archiveFactFor(offer.sessionId);
+			if (fact !== undefined && !fact.answered) return;
+			// The rule lives in `chat-archived.ts`, with the sentence it implements, so the
+			// comment and the behaviour cannot drift apart.
+			if (undoOfferStands(offer.archived, knownArchived(offer.sessionId)))
+				return;
+			stop();
+		});
+		const ceiling = setTimeout(stop, ARCHIVE_UNDO_CEILING_MS);
+		return teardown;
+	}, [offer]);
 }

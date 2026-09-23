@@ -33,7 +33,6 @@ import type {
 	CanonicalFrontendState,
 	CanonicalModel,
 } from "../../../../../shared/desktop-session-contract";
-import { offerArchiveUndo } from "../archive-undo";
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
 import { canonicalTranscriptSpeaks } from "../canonical/transcript-pane";
 import { useMentionedFiles } from "../canonical/use-mentioned-files";
@@ -577,16 +576,16 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		/*
 		 * The header's archive press, in the same register as the other two routes
 		 * (UX round 1, U2): the pane's menu item, the row's control and a typed
-		 * `/archive` are ONE act, so all three offer the same Undo when the press is
-		 * accepted and the direction is the one that hides the conversation. The pane
-		 * stays open either way - archiving hides, it does not close.
+		 * `/archive` are ONE act. The pane stays open either way - archiving hides, it
+		 * does not close - and the Undo all three offer is raised by the STORE, in the
+		 * update that settles the write (design round 8, D27): raising it here instead
+		 * put the accepted departure and the band that answers it in two commits, and the
+		 * commit between them is where the list's extent dips below the reader's position.
 		 */
 		const archiveFromHeader = useCallback(
 			async (next: boolean) => {
 				if (!sessionId) return;
-				const accepted = await setSessionArchived(sessionId, next, agentName);
-				if (!accepted || !next) return;
-				offerArchiveUndo({ sessionId, title: agentName, archived: true });
+				await setSessionArchived(sessionId, next, agentName);
 			},
 			[sessionId, agentName, setSessionArchived],
 		);

@@ -59,6 +59,7 @@ const {
 	deleteConversationMessage,
 	undoOfferStands,
 	visibleRows,
+	answeredArchiveRows,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -84,6 +85,46 @@ test("the at-rest lists drop the archived rows, and drop nothing when the capabi
 	assert.deepEqual(
 		visibleRows([{ session_id: "cccccccccccc", archived: true }], false),
 		[{ session_id: "cccccccccccc", archived: true }],
+	);
+});
+
+test("a press may change the intent and not the list: an unanswered fact removes no row", () => {
+	const rows = [row("aaaaaaaaaaaa", false), row("bbbbbbbbbbbb", false)];
+	/*
+	 * THE CLAIM DESIGN ROUND 8's D27 RESTS ON, and the reason it is arithmetic rather than
+	 * taste: a row's departure shortens the list's content by its own height while the box is
+	 * still the band-0 one, so `scrollHeight − clientHeight` goes negative, the browser clamps
+	 * the reader's `scrollTop` to the new extent, and nothing gives it back when the row
+	 * returns (QA round 4 measured `8.5 -> 0`). A fact that has not been ANSWERED is the
+	 * press's intent - the row is going somewhere - and the list may not act on it.
+	 */
+	assert.deepEqual(
+		answeredArchiveRows(rows, {
+			aaaaaaaaaaaa: { archived: true, answered: false },
+		}).map((entry) => entry.session_id),
+		["aaaaaaaaaaaa", "bbbbbbbbbbbb"],
+		"an unanswered fact must not remove a row from the list",
+	);
+	/*
+	 * The same fact, answered, is what the list acts on - and it is the ANSWERED value that
+	 * is read, not the row's own: a row the wire still calls archived while an answered fact
+	 * says otherwise comes back into the list, which is what an accepted unarchive is.
+	 */
+	assert.deepEqual(
+		answeredArchiveRows(
+			[row("aaaaaaaaaaaa", false), row("bbbbbbbbbbbb", true)],
+			{ bbbbbbbbbbbb: { archived: false, answered: true } },
+		).map((entry) => entry.session_id),
+		["aaaaaaaaaaaa", "bbbbbbbbbbbb"],
+	);
+	// Identity when no answered fact applies, the house rule every merge in this repo
+	// states: an unchanged merge must not re-render a 500-row list.
+	assert.equal(answeredArchiveRows(rows, {}), rows);
+	assert.equal(
+		answeredArchiveRows(rows, {
+			aaaaaaaaaaaa: { archived: true, answered: false },
+		}),
+		rows,
 	);
 });
 

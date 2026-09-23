@@ -2184,32 +2184,6 @@ function factsNewerThan<T extends { at: number }>(
 }
 
 /**
- * The facts' own values written back over an answer that predates them.
- *
- * `replaceSessionRows` rebuilds each row's values from the page, so a page whose
- * request started before a press would regress the very row the user just
- * archived - and the panel would resurrect it under the pointer. Only the rows a
- * surviving fact names are touched; nothing is added, so a page cannot be made to
- * carry a conversation it does not hold, and the array identity is kept when no
- * fact applies (`applyAttention`'s rule: an unchanged merge must not re-render a
- * 500-row list for an answer that carried nothing new).
- */
-function applyArchiveFacts(
-	rows: CanonicalSessionRow[],
-	facts: Record<string, ArchiveFact>,
-): CanonicalSessionRow[] {
-	if (Object.keys(facts).length === 0) return rows;
-	let changed = false;
-	const next = rows.map((row) => {
-		const fact = facts[row.session_id];
-		if (!fact || row.archived === fact.archived) return row;
-		changed = true;
-		return { ...row, archived: fact.archived };
-	});
-	return changed ? next : rows;
-}
-
-/**
  * The state a delete leaves behind: the row is gone, anything this client
  * remembered about it is gone, and a TOMBSTONE is left in its place.
  *
@@ -2618,10 +2592,19 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						 * the archived rows (`include_archived: true`), so the page speaks about
 						 * the archived set as a whole and absence means "unarchived or gone"
 						 * rather than "not mentioned" (`factsNewerThan`).
+						 *
+						 * THE PAGE NO LONGER WRITES THE FACT'S VALUE ONTO THE ROWS (design round 8,
+						 * D27). It used to, to stop a page asked for before a press regressing the
+						 * row the reader just archived - and with the two row-facing readers taking
+						 * the ANSWERED view (`chat-archived.ts`'s `answeredArchiveRows` for membership,
+						 * the sidebar's `archiveFactValues` for the row's drawn value), that
+						 * protection is structural: a surviving fact outranks the page in both readers
+						 * whatever the rows carry. What stays here is the CURRENCY, which is what
+						 * settles a fact older than the request it answers.
 						 */
 						const archiveFactSet = factsNewerThan(state.archiveFacts, answerAt);
 						return {
-							sessions: applyArchiveFacts(next, archiveFactSet),
+							sessions: next,
 							pinFacts: facts,
 							archiveFacts: archiveFactSet,
 							forgotten: tombstones,
@@ -2664,10 +2647,30 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			},
 			setSessionArchived: async (sessionId, archived, title) => {
 				/*
-				 * OPTIMISTIC, AND STAMPED, which is one decision rather than two: the row
-				 * has to leave the list the moment the user presses (an archive that waits
-				 * for a round trip reads as a control that does nothing), and the answer
-				 * that follows is one this client cannot trust to be newer than the press.
+				 * STAMPED, AND A PRESS CHANGES THE INTENT RATHER THAN THE LIST (design round 8, D27).
+				 * The fact is still written optimistically - it is what tells every reader where this
+				 * conversation is GOING - but the press no longer patches `sessions`, and that patch was
+				 * what removed the row. THE ROW CARRIES THE ANSWERED STATE, THE FACT CARRIES THE
+				 * INTENDED ONE: the two row-facing readers take only answered facts (the list's one
+				 * filter and the row's own drawn value, both through `chat-archived.ts`'s answered
+				 * view), so a press may change what a conversation is about to be without changing
+				 * what the list holds.
+				 *
+				 * WHY THAT IS THE FIX RATHER THAN A TIDIER SHAPE, at QA round 4's own numbers: the row's
+				 * departure shortens the list's content by its own height while the box is still the
+				 * band-0 one, so `scrollHeight - clientHeight` goes NEGATIVE, the browser clamps the
+				 * reader's `scrollTop` to the new extent, and nothing gives it back when the row
+				 * returns - the `8.5 -> 0` QA measured. The same dip exists on the SUCCESS path
+				 * (`224.5` of content against a `248` box) whenever the departure and the band that
+				 * answers it land in different commits, which is why the offer below is raised in the
+				 * same update as the fact's settlement. Taking the departure out of the press takes the
+				 * dip out of the state, which is arithmetic rather than a race a write could lose.
+				 *
+				 * THE PRESS'S ACKNOWLEDGEMENT IS WHAT THIS COSTS, stated rather than implied: the row the
+				 * reader pressed stays drawn for the round trip - 2-4 ms on this app's own daemon, and
+				 * the whole in-flight window on a stalled one, where the press reads as inert until the
+				 * card lands. Design D28 records the register that should pay it (the row's own control,
+				 * which the reader is already on); it is not invented here.
 				 *
 				 * THE ASSUMPTION THE STAMP RESTS ON IS OWED TO QA, and this is where it is
 				 * written down rather than assumed silently. A press takes the sequence the
@@ -2679,12 +2682,18 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				 * is the route's business, not this client's: if it does not hold, an answer
 				 * can say `archived: false`, the fact is settled, and the row reappears
 				 * until the next page. QA settles what the sibling route guarantees; the
-				 * client's half (stamp, revert, refusal register) is what is exercised here.
+				 * client's half (stamp, membership, refusal register) is what is exercised here.
 				 */
 				const at = get().answerSeq + 1;
-				const previous = get().sessions.find(
-					(row) => row.session_id === sessionId,
-				)?.archived;
+				/*
+				 * THE FACT THIS PRESS REPLACES, kept so a refusal can put it back (see the catch arm). With
+				 * membership and the row's drawn value both read from the fact, the fact IS the client's
+				 * knowledge - so deleting the press's own write without restoring what it stood for would
+				 * leave a conversation the daemon holds archived reading as live (`row.archived` is the wire's
+				 * value, and the wire's last word was the page BEFORE the accepted archive). Measured on this
+				 * walk's refused-undo step: the row came back into a list that excludes archived rows.
+				 */
+				const previousFact = get().archiveFacts[sessionId] ?? null;
 				const rowTitle =
 					title ??
 					get().sessions.find((row) => row.session_id === sessionId)?.title;
@@ -2695,9 +2704,6 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						/* UNANSWERED until the write's own sentence arrives (`ArchiveFact.answered`). */
 						[sessionId]: { archived, at, answered: false },
 					},
-					sessions: state.sessions.map((row) =>
-						row.session_id === sessionId ? { ...row, archived } : row,
-					),
 				}));
 				/*
 				 * A PRESS DOES NOT RETIRE THE REFUSAL ABOUT ITS OWN CONVERSATION, and this is a
@@ -2735,6 +2741,27 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					 * window in which the offer is retired and the refusal it replaced is still the
 					 * store's newest word about that conversation.
 					 *
+					 * AND THE OFFER IS RAISED HERE TOO, IN THIS SAME UPDATE (design round 8, D27's second
+					 * clause). It used to be raised a microtask later by whichever caller pressed - the
+					 * row's `.then`, the header's, `/archive`'s - i.e. in a SECOND React commit, and the
+					 * commit between them is the one that measures `224.5` of content against a `248` box:
+					 * the departure on the success path took the extent negative, the browser clamped the
+					 * reader, and the band arrived too late to give the position back. Raised with the
+					 * settlement, the departure and its band are one commit, and their arithmetic runs the
+					 * other way (`band - rowHeight = 58 - 32 = +26px` of headroom), so the reader's place
+					 * is reachable on every accepted press. The guard is `archived === true`, which is
+					 * also what keeps the unarchive path offerless: the row comes back into the list,
+					 * which is its own visible trace (UX round 1, U2).
+					 *
+					 * AND THE REFUSAL THIS CONVERSATION'S OWN LAST PRESS LEFT IS RETIRED IN THE SAME
+					 * UPDATE, for an archive as well as for an unarchive: the lane holds one message under
+					 * one id, so raising the offer is what takes the refusal off the screen, and clearing it
+					 * in a second update would leave a window in which the store holds neither message and
+					 * the panel dismisses the lane - the create-then-destroy mechanism UX round 1, U3 is
+					 * about. `archive-undo.ts` raised the offer and cleared the refusal together for exactly
+					 * this reason; both are here now, and the offer's own retirement watch stays with its
+					 * module (`useArchiveUndoRetirement`).
+					 *
 					 * Currency, like the refusal arm below: only the newest press for this conversation
 					 * may settle it. An older press's acceptance is an answer about a state the newer
 					 * press has already replaced.
@@ -2749,8 +2776,24 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 										...state.archiveFacts,
 										[sessionId]: { archived, at, answered: true },
 									},
+							/*
+							 * AN ACCEPTED ARCHIVE STANDS THE OFFER, an accepted unarchive clears it (it has no
+							 * successor action) - and a SUPERSEDED settlement touches the lane not at all,
+							 * because the newer press owns both the fact and the message about it.
+							 */
+							archiveUndo: superseded
+								? state.archiveUndo
+								: archived
+									? {
+											sessionId,
+											/* `rowTitle` is the row's own title, which the wire may answer as null. */
+											title: rowTitle ?? undefined,
+											archived: true,
+											at,
+										}
+									: null,
 							archiveFailure:
-								!archived && state.archiveFailure?.sessionId === sessionId
+								state.archiveFailure?.sessionId === sessionId
 									? null
 									: state.archiveFailure,
 						};
@@ -2765,47 +2808,37 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						 * the newer press - the failure of a request the user has already moved
 						 * on from is not a statement about what is on screen.
 						 *
-						 * THE REVERT IS WHAT IS CONDITIONAL, NOT THE REPORT. This guard used to
-						 * return the state untouched, which dropped the refusal with it - so a
-						 * write that really was refused was answered on screen only when no
-						 * catalogue answer had settled the fact first. Measured against the real
-						 * store (the fixture shape `scripts/session-archive-delete.test.mjs` uses,
-						 * 2026-09-21): press, then a page whose request STARTS after the press
-						 * answers before the write's rejection, and `archiveFailure` stays `null` -
-						 * the press silently does nothing, the one outcome the refusal exists to
-						 * prevent. The panel's list read is a 5s poll and every catalogue frame,
-						 * so that ordering is ordinary rather than exotic.
+						 * THE REVERT IS THE FACT, AND RESTORING IT IS THE WHOLE OF IT (design round 8, D27): the
+						 * press patched neither `sessions` nor any other row state, so a refused write puts back
+						 * the fact it REPLACED - or, when there was none, leaves none. Both row-facing readers
+						 * then read what they read before the press, which is the same observable claim the version
+						 * that patched the row made. Deleting the fact instead would be a revert to the WIRE's
+						 * value, and the wire's last word about this conversation predates the accepted write the
+						 * fact was standing for: measured on the walk's refused-undo step, the row came back into
+						 * a list that excludes archived rows because the client forgot it had archived it.
 						 *
-						 * The message is a fact about the press (the write was refused) while the
-						 * revert is a fact about the row, and the two have different owners: the
-						 * row belongs to the newest write, the sentence belongs to the last press
-						 * that was actually answered.
+						 * What used to be guarded, and still is, is the REPORT: this guard returned the state
+						 * untouched once, which dropped the refusal with it - so a write that really was refused
+						 * was answered on screen only when no catalogue answer had settled the fact first. Measured
+						 * against the real store (the fixture shape `scripts/session-archive-delete.test.mjs` uses,
+						 * 2026-09-21): press, then a page whose request STARTS after the press answers before the
+						 * write's rejection, and `archiveFailure` stays `null` - the press silently does nothing,
+						 * the one outcome the refusal exists to prevent. The panel's list read is a 5s poll and
+						 * every catalogue frame, so that ordering is ordinary rather than exotic.
+						 *
+						 * The message is a fact about the press (the write was refused) while the fact's own
+						 * restoration is a fact about the intent, and the two have different owners: the sentence
+						 * belongs to the last press that was actually answered, and a superseded press owns
+						 * neither.
 						 */
 						const superseded = state.archiveFacts[sessionId]?.at !== at;
 						const facts = { ...state.archiveFacts };
-						if (!superseded) delete facts[sessionId];
+						if (!superseded) {
+							if (previousFact === null) delete facts[sessionId];
+							else facts[sessionId] = previousFact;
+						}
 						return {
 							archiveFacts: superseded ? state.archiveFacts : facts,
-							/*
-							 * The value the row carried BEFORE the press, not `!archived`: a press
-							 * is a desired state rather than a toggle, so the value to restore is
-							 * the one the press replaced. A conversation this client does not list
-							 * has no row to restore, and dropping the fact is the whole revert
-							 * there - the row is rebuilt from the wire hit, which is what it read
-							 * before the press.
-							 *
-							 * AND ONLY AN UNSUPERSEDED PRESS REVERTS AT ALL: `superseded` is the
-							 * same flag the fact above was read with, so what a newer write put on
-							 * the row stands and this failure is reported without touching it.
-							 */
-							sessions:
-								superseded || previous === undefined
-									? state.sessions
-									: state.sessions.map((row) =>
-											row.session_id === sessionId
-												? { ...row, archived: previous }
-												: row,
-										),
 							/*
 							 * THE REFUSAL TAKES ITS OWN STAMP, AND THE COUNTER MOVES WITH IT. Both lane messages
 							 * used to be stamped from the SAME counter (the refusal took `state.answerSeq` as it

@@ -22,10 +22,12 @@ import { build } from "esbuild";
  *      page whose request STARTED before the press cannot supersede it, while a
  *      page requested after it settles it. Without the stamp the two orders are
  *      indistinguishable and the row regresses under the pointer.
- *   3. THE REVERT. A refused archive press puts the row back to the value it
- *      carried before the press - not to the negation of the desired state,
- *      which is a different value whenever the client's memory and the wire
- *      disagreed - and reports one sentence, once, with the backend's own words.
+ *   3. THE PRESS CHANGES THE INTENT, NOT THE LIST. A press writes an UNANSWERED fact
+ *      and touches no row (design round 8, D27): both row-facing readers take the answered
+ *      view, so the list cannot lose a conversation - and the list's extent cannot dip -
+ *      until the daemon answers. A refused press therefore reverts by dropping the fact
+ *      (the row reads what it read before the press), and reports one sentence, once,
+ *      with the backend's own words.
  *   4. THE CONFIRMATION. A delete that is refused (409, the live-session guard)
  *      leaves the store byte-identical, row and fact and candidate alike, so the
  *      dialog can stay open and say what happened.
@@ -319,7 +321,7 @@ const storeModule = await import(
 	`data:text/javascript;base64,${Buffer.from(storeBundle.outputFiles[0].text).toString("base64")}`
 );
 const { useCanonicalSessionsStore: store } = storeModule;
-const { visibleRows } = storeModule;
+const { answeredArchiveRows, visibleRows } = storeModule;
 
 const page = (sessions, extra = {}) => ({
 	sessions: sessions.map(({ session_id, title, archived }) => ({
@@ -381,34 +383,78 @@ test("the catalogue is asked for the archived rows, and then hides them itself",
 	assert.equal(visibleRows(held, false), held);
 });
 
-test("an accepted press writes the desired state, and the row follows it at once", async () => {
+test("an accepted press settles the fact and raises its offer in ONE update, and touches no row", async () => {
 	await seed([{ session_id: SESSION, title: "Kept", archived: false }]);
 	serve({ session_id: SESSION, archived: true });
+	/*
+	 * ONE UPDATE, READ AT THE SUBSCRIBER (design round 8, D27's second clause). The departure
+	 * an accepted press intends and the Undo offer that answers it have to land in the SAME
+	 * store commit: raised a microtask later - which is where the callers raised it - the
+	 * commit between them is the one whose list extent dips below the reader's position
+	 * (`224.5` of content against a `248` box), and the browser's clamp then takes the
+	 * position with nothing to give it back. Asserted at the subscriber rather than at the
+	 * values, because two `set`s would satisfy a values-only check and still be two commits.
+	 *
+	 * AND NO ROW IS TOUCHED, which is the first clause: the press may change what the
+	 * conversation is about to be, never what the list holds.
+	 */
+	const seen = [];
+	const stop = store.subscribe((state) => {
+		seen.push({
+			answered: state.archiveFacts[SESSION]?.answered === true,
+			offer: state.archiveUndo?.sessionId === SESSION,
+			row: state.sessions[0]?.archived,
+		});
+	});
 	await store.getState().setSessionArchived(SESSION, true, "Kept");
+	stop();
 	assert.deepEqual(requests.at(-1), {
 		op: "sessions.archive",
 		sessionId: SESSION,
 		archived: true,
 	});
+	const settled = seen.filter((entry) => entry.answered);
+	assert.ok(
+		settled.length >= 1,
+		`the fact was never settled: ${JSON.stringify(seen)}`,
+	);
+	assert.deepEqual(
+		settled,
+		settled.map(() => ({ answered: true, offer: true, row: false })),
+		`a settlement without its offer is a second commit: ${JSON.stringify(seen)}`,
+	);
+	assert.ok(
+		seen.every((entry) => entry.row === false),
+		`the press must not touch a row: ${JSON.stringify(seen)}`,
+	);
 	const state = store.getState();
-	assert.equal(state.sessions[0].archived, true, "the row holds the new state");
 	assert.equal(
 		state.archiveFacts[SESSION].archived,
 		true,
 		"and the client's own fact is what makes the press invertible",
 	);
+	assert.equal(
+		state.archiveUndo.sessionId,
+		SESSION,
+		"the offer is the store's own write now, not a caller's",
+	);
 	assert.equal(state.archiveFailure, null);
 });
 
-test("a refused press is reverted to the value the row carried, and says so once", async () => {
+test("a refused press drops the intent it wrote, and says so once", async () => {
 	await seed([{ session_id: SESSION, title: "Kept", archived: false }]);
 	serve(refuse(409, "This conversation is in use by a running turn."));
 	await store.getState().setSessionArchived(SESSION, true, "Kept");
 	const state = store.getState();
+	/*
+	 * THERE IS NO ROW TO PUT BACK: the press wrote a fact and touched nothing else (D27), so
+	 * the revert IS dropping the fact - and the row reads what it read before the press,
+	 * which is the same observable claim the version that patched the row made.
+	 */
 	assert.equal(
 		state.sessions[0].archived,
 		false,
-		"the row is back to the value it carried before the press",
+		"the row still carries the wire's value, untouched by the press",
 	);
 	assert.equal(
 		state.archiveFacts[SESSION],
@@ -427,6 +473,38 @@ test("a refused press is reverted to the value the row carried, and says so once
 	 * could be the value the failed press failed to change.
 	 */
 	assert.equal(state.archiveFailure.archived, true);
+});
+
+test("a refused press puts back the fact it replaced, so an archived conversation stays archived", async () => {
+	await seed([{ session_id: SESSION, title: "Kept", archived: false }]);
+	serve({ session_id: SESSION, archived: true });
+	await store.getState().setSessionArchived(SESSION, true, "Kept");
+	const settled = store.getState().archiveFacts[SESSION];
+	assert.equal(settled.archived, true, "the archive stands");
+	/*
+	 * THE REGRESSION THIS CELL EXISTS FOR, found by the walk's refused-undo step rather than by
+	 * this suite (2026-09-22, the D27 pass): the fact is now what both row-facing readers read, so
+	 * a refused press that merely DELETED its own write dropped the client's knowledge along with
+	 * the intent - and the row, whose `archived` field is still the wire's value from the page
+	 * BEFORE the accepted archive, came back into a list that excludes archived rows (measured:
+	 * `rowLabel` "Archive ..." and `rowStillListed: true` where the walk wants the row gone).
+	 */
+	serve(refuse(409, "This conversation is in use by a running turn."));
+	await store.getState().setSessionArchived(SESSION, false, "Kept");
+	const state = store.getState();
+	assert.deepEqual(
+		state.archiveFacts[SESSION],
+		settled,
+		"the refused undo puts back the fact it replaced, stamp and all",
+	);
+	assert.deepEqual(
+		visibleRows(
+			answeredArchiveRows(state.sessions, state.archiveFacts),
+			true,
+		).map((row) => row.session_id),
+		[],
+		"and the row stays out of every list that excludes archived rows",
+	);
 });
 
 test("a refusal is reported even when a newer page has settled the write's fact", async () => {
@@ -485,17 +563,36 @@ test("a page in flight across a press cannot resurrect the row it archived", asy
 	await reading;
 	/*
 	 * The answer was ASKED ABOUT before the press and arrives after it, carrying
-	 * the pre-press value. It cannot win: the write is stamped with the answer
-	 * counter and outranks every answer older than its own request, so the row
-	 * keeps what the write put there - without this the row reappears, under the
-	 * pointer, one round trip after the user archived it.
+	 * the pre-press value. It cannot SETTLE the write: the write is stamped with the
+	 * answer counter and outranks every answer older than its own request.
+	 *
+	 * AND THE ROW IS TOUCHED BY NEITHER (design round 8, D27): the page's value stands on the
+	 * row - the row carries the ANSWERED state, the fact the intended one - so the claim
+	 * "the row does not come back" is now carried by the answered view every list reads
+	 * through, not by the row's own value. Without that view the row reappears under the
+	 * pointer one round trip after the user archived it.
 	 */
 	assert.equal(
-		store.getState().sessions[0].archived,
+		store.getState().archiveFacts[SESSION].archived,
 		true,
-		"a page that predates the press must not supersede it",
+		"a page that predates the press must not settle it",
 	);
-	assert.equal(store.getState().archiveFacts[SESSION].archived, true);
+	assert.equal(
+		store.getState().sessions[0].archived,
+		false,
+		"the page's own value stands on the row, deliberately",
+	);
+	assert.deepEqual(
+		visibleRows(
+			answeredArchiveRows(
+				store.getState().sessions,
+				store.getState().archiveFacts,
+			),
+			true,
+		).map((row) => row.session_id),
+		[],
+		"and the answered view keeps it out of every list",
+	);
 });
 
 test("a page requested after the write settles it, and the fact goes", async () => {
@@ -508,7 +605,12 @@ test("a page requested after the write settles it, and the fact goes", async () 
 	serve(page([{ session_id: SESSION, title: "Kept", archived: false }]));
 	await store.getState().fetchSessions();
 	const state = store.getState();
-	assert.equal(state.sessions[0].archived, false, "the answer wins");
+	/*
+	 * The row reads the page either way now (D27: the press patches no row), so the assertion
+	 * that carries this cell is the FACT's: the answer outranks the client's memory and the
+	 * memory goes with it.
+	 */
+	assert.equal(state.sessions[0].archived, false, "the row reads the page");
 	assert.equal(
 		state.archiveFacts[SESSION],
 		undefined,

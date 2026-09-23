@@ -2337,6 +2337,14 @@ async function scrolledArrival(cdp, { label, cap, scroll, press }) {
 				t: Math.round(performance.now() - window.__q9.t0),
 				scrollTop: list.scrollTop,
 				box: list.clientHeight,
+				/*
+				 * THE EXTENT AS WELL AS THE BOX, in the SAME sample (design round 8, D27's item 4): the
+				 * clause is about scrollHeight minus clientHeight, so a sample that carried only one of
+				 * the two could not say whether a position was ever unreachable - and pairing them is
+				 * what lets a reader see the band arriving in the same frame as the shrink. (No
+				 * backticks in this comment: it lives inside the page script's own template literal.)
+				 */
+				scrollHeight: list.scrollHeight,
 				connected: list.isConnected,
 				sameNode: named === list,
 			};
@@ -2345,6 +2353,7 @@ async function scrolledArrival(cdp, { label, cap, scroll, press }) {
 				last === undefined ||
 				last.scrollTop !== sample.scrollTop ||
 				last.box !== sample.box ||
+				last.scrollHeight !== sample.scrollHeight ||
 				last.sameNode !== sample.sameNode
 			)
 				window.__q9.samples.push(sample);
@@ -2413,6 +2422,8 @@ async function scrolledArrival(cdp, { label, cap, scroll, press }) {
 		const reading = {
 			scrollTop: list === null ? null : list.scrollTop,
 			box: list === null ? null : list.clientHeight,
+			/* The extent at the press, which the samples are compared against (D27 item 4). */
+			scrollHeight: list === null ? null : list.scrollHeight,
 			band: (() => {
 				const band = document.querySelector("[data-archive-toast-band]");
 				return band === null ? 0 : Math.round(band.getBoundingClientRect().height);
@@ -2468,18 +2479,36 @@ function arrivalReading(arrival, base) {
 	const focusedBefore = before.focused ?? {};
 	const focusedAfter = after.focused ?? {};
 	/*
-	 * A ROW MAY MOVE ONLY IF THE PRESS ITSELF TOOK ONE OUT, and then by the SAME delta for every row
-	 * that survived. A `scrollTop` write translates the content uniformly in the other direction and
-	 * a re-file shifts it, so "one delta, and it is 0 when nothing was taken out" is the clause - and
-	 * the run that removes a row reports the delta it moved by rather than passing on a coincidence.
+	 * A ROW MAY NOT MOVE AT ALL ACROSS A PRESS (design round 8, D27). This used to allow one delta when the press
+	 * itself took a row out - the shape the pre-D27 code had, where the press removed the row and the list's extent
+	 * dipped with it. With membership on the ANSWERED value a press takes nothing out, so the clause is the strict
+	 * one: no row leaves and every row keeps its top. A `scrollTop` write translates the content uniformly, which
+	 * is what this catches.
 	 */
-	const rowsHeld =
-		gone.length === 0
-			? deltas.every((delta) => delta === 0)
-			: deltas.length <= 1 &&
-				gone.length === 1 &&
-				gone[0].id === before.pressed?.id &&
-				(kept.length === 0 || deltas[0] === -gone[0].height);
+	const rowsHeld = gone.length === 0 && deltas.every((delta) => delta === 0);
+	const samples = after.instrument?.samples ?? [];
+	const scrollTopAtPress = atPress.reading?.scrollTop ?? null;
+	const extentAtPress = atPress.reading?.scrollHeight ?? null;
+	/*
+	 * THE POSITION IS HELD IN EVERY FRAME, not only at the two ends the walk reads (design D27's item 3): the
+	 * clamp this clause is about is instantaneous, so a pair that agreed could still have hidden a frame in which
+	 * the position was taken and returned (2-4 ms on a healthy daemon, and the whole in-flight window on a stalled
+	 * one - the designer's argument against the return-the-position shapes).
+	 */
+	const framesHeld =
+		scrollTopAtPress !== null &&
+		samples.length > 0 &&
+		samples.every((sample) => sample.scrollTop === scrollTopAtPress);
+	/*
+	 * AND THE EXTENT IS BYTE-EQUAL ACROSS THE PRESS, paired with each sample's box so the reader can see the shrink
+	 * and the box moving together: with the departure off the press there is nothing to take the extent below the
+	 * box, so `scrollHeight - clientHeight` never goes negative and no clamp is available to the browser.
+	 */
+	const extentHeld =
+		extentAtPress !== null &&
+		before.box?.scrollHeight === extentAtPress &&
+		after.box?.scrollHeight === extentAtPress &&
+		samples.every((sample) => sample.scrollHeight === extentAtPress);
 	return {
 		label: arrival.label,
 		stateOk:
@@ -2530,12 +2559,18 @@ function arrivalReading(arrival, base) {
 			boxAtPress: atPress.reading?.box,
 			boxAfter: after.box?.height,
 		},
-		scrollHeld: after.scrollTop === atPress.reading?.scrollTop,
+		scrollHeld:
+			after.scrollTop === atPress.reading?.scrollTop &&
+			framesHeld &&
+			extentHeld,
 		scroll: {
 			before: atPress.reading?.scrollTop,
 			after: after.scrollTop,
 			boxBefore: atPress.reading?.box,
 			boxAfter: after.box,
+			extentBefore: before.box?.scrollHeight,
+			extentAtPress: extentAtPress,
+			extentAfter: after.box?.scrollHeight,
 			samples: after.instrument?.samples ?? null,
 			sampleCount: after.instrument?.sampleCount ?? null,
 			mutations: after.instrument?.mutations ?? null,
@@ -2543,6 +2578,23 @@ function arrivalReading(arrival, base) {
 		},
 		trapped: writes !== null,
 		writes,
+		framesHeld,
+		frames: {
+			atPress: scrollTopAtPress,
+			offenders: samples
+				.filter((sample) => sample.scrollTop !== scrollTopAtPress)
+				.slice(0, 6),
+			count: samples.length,
+		},
+		extentHeld,
+		extent: {
+			atPress: extentAtPress,
+			boxAtPress: atPress.reading?.box,
+			boxAfter: after.box?.height,
+			offenders: samples
+				.filter((sample) => sample.scrollHeight !== extentAtPress)
+				.slice(0, 6),
+		},
 		rowsHeld,
 		rows: { kept: kept.length, gone, deltas },
 		yieldExact: base !== null && after.box?.height === base - after.band,
@@ -4882,8 +4934,10 @@ async function sceneSessionArchive(cdp) {
 	 * WHAT THIS ARRIVAL DOES SHOW, and it is the state the ruling names: a list that OVERFLOWS AT
 	 * REST, the reader wheeled off the top, a cursor row that reads `partly` before the press and
 	 * `outside` after it - because the band took its height off the box, the exact geometry the
-	 * pre-fix gate read as "the row left" - and the reader's `scrollTop` byte-equal across it, no
-	 * write on the container, every row at the same top, and the yield exact.
+	 * pre-fix gate read as "the row left" - and the reader's `scrollTop` byte-equal across it IN
+	 * EVERY SAMPLED FRAME, no write on the container, the list's extent byte-equal as well, every
+	 * row at the same top with nothing taken out, and the yield exact (design round 8, D27's
+	 * acceptance reading).
 	 */
 	const arrivalReadingNow = arrivalReading(
 		scrolledArrivalReading,
@@ -4900,9 +4954,19 @@ async function sceneSessionArchive(cdp) {
 		JSON.stringify(arrivalReadingNow.geometry),
 	);
 	check(
-		"and the band's arrival leaves the reader's scroll where they put it: scrollTop is byte-equal across it (QA round 4, Q-9's clause)",
+		"and the band's arrival leaves the reader's scroll where they put it: scrollTop is byte-equal across it, at the ends AND in every sampled frame (QA round 4, Q-9's clause; design round 8, D27's reading)",
 		arrivalReadingNow.scrollHeld,
 		JSON.stringify(arrivalReadingNow.scroll),
+	);
+	check(
+		"and the position is held in EVERY frame the probe sampled, not only in the two the walk reads: the clamp this clause is about is instantaneous, so a pair that agreed could hide a frame that took it and gave it back",
+		arrivalReadingNow.framesHeld,
+		JSON.stringify(arrivalReadingNow.frames),
+	);
+	check(
+		"and the list's extent is byte-equal across the press: nothing takes `scrollHeight` below the box, so the browser's clamp has nothing to act on",
+		arrivalReadingNow.extentHeld,
+		JSON.stringify(arrivalReadingNow.extent),
 	);
 	check(
 		"and nothing writes the list's own scrollTop as the band arrives: the trap is empty across the press, so the writer is named rather than inferred",
@@ -4915,7 +4979,7 @@ async function sceneSessionArchive(cdp) {
 		}),
 	);
 	check(
-		"and every row on screen at the press is at the same top after it: the band's arrival translates nothing",
+		"and every row on screen at the press is at the same top after it, with nothing taken out of the list at all: the band's arrival translates nothing and the press changes no membership (design round 8, D27)",
 		arrivalReadingNow.rowsHeld,
 		JSON.stringify(arrivalReadingNow.rows),
 	);

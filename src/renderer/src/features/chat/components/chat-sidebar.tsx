@@ -73,7 +73,7 @@ import { SESSION_SEARCH_MAX_CHARS } from "../../../../../shared/desktop-contract
 import {
 	ARCHIVE_OFFERED_VERB,
 	archiveOfferedName,
-	offerArchiveUndo,
+	useArchiveUndoRetirement,
 } from "../archive-undo";
 import {
 	type ArchivePressRecord,
@@ -81,6 +81,7 @@ import {
 	archivePressOutcome,
 } from "../chat-archive-press";
 import {
+	answeredArchiveRows,
 	archiveControlLabel,
 	archivedSearchWidened,
 	visibleRows,
@@ -1379,6 +1380,13 @@ export function ChatSidebar({
 	const archiveFailure = useCanonicalSessionsStore((s) => s.archiveFailure);
 	const archiveUndo = useCanonicalSessionsStore((s) => s.archiveUndo);
 	/*
+	 * THE OFFER'S OWN RETIREMENT WATCH (design round 8, D27). The offer is RAISED by the store
+	 * now - in the update that settles the write, so the accepted departure and the band that
+	 * answers it are one commit - and what stays with the offer's module is WHEN it stops being
+	 * true. One call, keyed on the offer's identity, so a second archive in a row re-arms it.
+	 */
+	useArchiveUndoRetirement();
+	/*
 	 * BOTH LANE MESSAGES' OWN WRITES, because the panel is what decides which message the lane
 	 * shows and therefore when a message's turn is over - and a value that outlives its message
 	 * is U10 (the two uses are beside the drawing effect's currency rule and in its clock).
@@ -1405,11 +1413,18 @@ export function ChatSidebar({
 	 * The pure search module takes plain booleans: the stamp that orders a fact
 	 * against an answer is the store's business (`applySearchAnswer`), and a row
 	 * only needs what to draw.
+	 *
+	 * ANSWERED FACTS ONLY (design round 8, D27): this map is what the ROW draws and what the
+	 * search join drops hits by, so both are decisions about what a LIST holds - and a list
+	 * may not lose a conversation on a press, only on the daemon's sentence. A fact still in
+	 * flight is the press's INTENT, and the row is told about it nowhere: what the press costs
+	 * is exactly that the pressed row stays drawn for the round trip (the store's own note
+	 * states the trade, and design D28 records the register that should pay it).
 	 */
 	const archiveFactValues = useMemo(() => {
 		const values: Record<string, boolean> = {};
 		for (const [id, fact] of Object.entries(archiveFacts))
-			values[id] = fact.archived;
+			if (fact.answered) values[id] = fact.archived;
 		return values;
 	}, [archiveFacts]);
 	const archiveView = useMemo<ArchiveView>(
@@ -1468,9 +1483,13 @@ export function ChatSidebar({
 	 * filter is off (that is what the control promises), and the archived rows
 	 * rejoin every list for as long as the query lasts.
 	 */
+	const answeredForMembership = useMemo(
+		() => answeredArchiveRows(sessions, archiveFacts),
+		[sessions, archiveFacts],
+	);
 	const listed = useMemo(
-		() => visibleRows(sessions, archiveEnabled && !widened),
-		[sessions, archiveEnabled, widened],
+		() => visibleRows(answeredForMembership, archiveEnabled && !widened),
+		[answeredForMembership, archiveEnabled, widened],
 	);
 	/*
 	 * The hits the answer actually contributes, held once: `searchChats` consumes
@@ -2416,23 +2435,19 @@ export function ChatSidebar({
 								 * the store's refusal sentence in the panel's own toast lane (design
 								 * D11 - it was a register at the panel's root before that, and the
 								 * register is deleted rather than kept beside it).
+								 *
+								 * AND AN ACCEPTED ONE NEEDS NOTHING FROM THIS HANDLER EITHER: the Undo
+								 * offer this press stands is written by the STORE, in the same update
+								 * that settles the write (design round 8, D27's second clause). It used
+								 * to be raised here, a microtask later, which put the accepted departure
+								 * and the band that answers it in two commits - and the commit between
+								 * them is the one whose extent dips below the reader's position. ONE ACT,
+								 * ONE REGISTER (UX round 1, U2) survives the move rather than being
+								 * traded for it: every surface's accepted archive raises the same offer,
+								 * from the one place that knows the write was accepted.
 								 */
 								if (!accepted) return;
 								restoreFocus();
-								/*
-								 * ONE ACT, ONE REGISTER (UX round 1, U2). Archiving takes the row AND its
-								 * control out of the list, which is exactly the situation the offer
-								 * exists for - so the row's press offers the same Undo the typed
-								 * `/archive` does, rather than the same act reporting differently
-								 * depending on which surface asked for it. Unarchiving offers none: the
-								 * row comes back into the list, which is its own visible trace.
-								 */
-								if (archived) return;
-								offerArchiveUndo({
-									sessionId: row.session_id,
-									title: row.title ?? undefined,
-									archived: true,
-								});
 							});
 						}}
 						className={cn(
@@ -3676,22 +3691,15 @@ export function ChatSidebar({
 								archiveFailure.sessionId,
 								archiveFailure.archived,
 								archiveFailure.title,
-							).then((accepted) => {
-								if (!accepted || !archiveFailure.archived) return;
-								/*
-								 * ONE ACT, ONE REGISTER (UX round 1, U2): an accepted retry is the same act
-								 * as the row's own press, so it makes the same offer rather than leaving
-								 * the refusal on screen beside a row that has just left the list. It is
-								 * also what retires the refusal: a retry of an unarchive has no successor,
-								 * and the store clears it there instead (the accepted arm of
-								 * `setSessionArchived`).
-								 */
-								offerArchiveUndo({
-									sessionId: archiveFailure.sessionId,
-									title: archiveFailure.title,
-									archived: true,
-								});
-							});
+							);
+							/*
+							 * ONE ACT, ONE REGISTER (UX round 1, U2), KEPT WITHOUT A HANDLER HERE: an
+							 * accepted retry is the same act as the row's own press, and the store raises
+							 * the same offer for it in the update that settles the write (design round 8,
+							 * D27) - so the refusal is retired by the offer landing rather than by a
+							 * second `offerArchiveUndo` in this `.then`, which is also what keeps the
+							 * departure and its band in one commit on this path too.
+							 */
 						},
 					},
 				},
