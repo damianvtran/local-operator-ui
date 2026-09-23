@@ -1832,6 +1832,28 @@ export const DESKTOP_LOST_SIGHT_CODE = {
 } as const;
 
 /**
+ * The daemon's FAST verdict on a control call aimed at a live owner that is not
+ * answering its attach socket: `503 {"detail": {"code": "runtime_busy",
+ * "message": ..., "retryable": true, "retry_after_ms": 2000}}` plus
+ * `Retry-After: 2`, within ~3 s rather than the 15 s the control bind used to
+ * wait before `runtime_unreachable` (backend workstream A of the load work;
+ * `docs/DESKTOP_API.md` on that backend).
+ *
+ * WHY IT IS NOT A LOST-SIGHT CODE. `runtime_unreachable` says nothing was
+ * established about whether the request arrived; this one is the daemon saying
+ * it refused BEFORE handing anything to the owner, and that a resend with the
+ * SAME `request_id` is safe - admission is at most once per id, so a resend can
+ * never double-deliver. That makes it the one 503 the app may repeat on its own
+ * (`admitChatDraft`'s bounded resend). A warm that gets it is dropped silently,
+ * like every other warm failure (`use-warm-session`).
+ *
+ * Reads never answer it: they serve the cold facade with `cold_reason:
+ * "owner-silent"` and `attaching: true` instead, so nothing on the read path
+ * has to know this code.
+ */
+export const RUNTIME_BUSY_CODE = "runtime_busy";
+
+/**
  * The sentences a refusal composes into, one per code.
  *
  * NO sentence here names an update, and none tells the user to change what the

@@ -327,6 +327,12 @@ const CHROME_LAUNCH_SITES = [
 		"measures what the sidebar's list container does to its scroll position while a row re-files itself (the `overflow-anchor` rule on that container)",
 	),
 	guarded(
+		"scripts/session-open-live.mjs",
+		"spawn",
+		1,
+		"measures a conversation open against a real backend",
+	),
+	guarded(
 		"scripts/session-switch-latency.mjs",
 		"spawn",
 		1,
