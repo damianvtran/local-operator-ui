@@ -395,7 +395,7 @@ const UNSCANNABLE_SPAWN_PATHS = [
 	{
 		file: "scripts/panels-without-session-evidence.mjs",
 		guarded: true,
-		why: "boots the same app through the same helper shape (`launch(command, …)`, an allowlisted child environment) on two built trees, so its frames are two runs' worth of events",
+		why: "boots the same app through the same helper shape (`launch(command, …)`, an allowlisted child environment); the rig takes no tree argument and boots the app once per scene, so the before/after pair comes from invoking it twice rather than from one run",
 	},
 	{
 		file: "scripts/hold-lifetime-rig.mjs",
@@ -405,7 +405,7 @@ const UNSCANNABLE_SPAWN_PATHS = [
 	{
 		file: "scripts/run-panel-reveal-proof.mjs",
 		guarded: true,
-		why: 'boots the real app as `spawn("npx", ["electron", …])`: the command is `npx`, so the scan classifies the site as not-Electron, and the runtime the arguments name boots the app and its two PostHog clients all the same. Found by the round-1 sweep of every spawn site whose command is not a literal `electron` - it is the shape this list exists for',
+		why: 'boots the real app as `spawn("npx", ["electron", …])`: the command is `npx`, so the scan classifies the site as not-Electron, and the runtime the arguments name boots the app and its two PostHog clients all the same. Found by the remediation sweep of every spawn site whose command is not a literal `electron` - the round-1 review sweep named the other three here - it is the shape this list exists for',
 	},
 	{
 		file: "scripts/daemon-discovery-evidence.mjs",
