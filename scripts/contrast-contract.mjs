@@ -370,6 +370,44 @@ const CONTROLS = [
 	},
 	{
 		/*
+		 * THE CHAT SIDEBAR'S SEARCH FIELD, which is a WELL rather than a raised panel:
+		 * `chat-sidebar.tsx` paints it `bg-sunken` on the `surface` list panel beside
+		 * it, with its `border-control` edge still carrying the boundary. A row of its
+		 * own rather than a reuse of "input field" above, because the pairing is the
+		 * one that can fail: no ground in this system clears 3:1 against another
+		 * (`sunken` against `surface` bottoms out at 1.11:1 in the light brand
+		 * palette), so the fill is a tone step and the edge is still the control's
+		 * only boundary - which is exactly why this row asserts a border AND a fill
+		 * and why a borderless version of this field would be a control with no
+		 * perceivable edge that every palette row stays green about.
+		 */
+		name: "chat sidebar search",
+		on: GROUNDS,
+		fill: "sunken",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
+		 * The same field under the pointer, which is a state rather than a second
+		 * control and gets its own row for the reason "primary button (hover)" above
+		 * has one: the fill moves and nothing else does, so a row that asserted only
+		 * the resting fill would be attesting a pairing the reader never sees while
+		 * the field is hovered. `rowHover` is the panel's own pointer rung (not a
+		 * ground) - the step every row and control in this panel takes - and `ink`
+		 * on it is asserted at the 7:1 the same section holds `ink`/`ink-muted`/
+		 * `ink-dim` to on both row roles. The edge stays `border-control` against the
+		 * `surface` panel behind it, which is the ground this control actually sits
+		 * on.
+		 */
+		name: "chat sidebar search (hover)",
+		on: GROUNDS,
+		fill: "rowHover",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
 		 * THE COMPOSER THAT REFUSES INPUT, which is a state rather than a second
 		 * control: `message-input.tsx` paints the composer box `bg-surface` with
 		 * `border-control` and, in this state, its ink `ink-disabled`
