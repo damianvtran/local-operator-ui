@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|browser-pane|mentions|canvas-freshness|pins|pins-scroll|pins-search|none>
+ *   --scene <states|new-chat|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|none>
  *                          which built-in scene to run (default: states)
  *   --gate-state <label>   (with --scene settings-gate) what this run's backend
  *                          state is called in the frames and the log, so two
@@ -10353,6 +10353,424 @@ async function seedOnboardingComplete(cdp) {
  * a bearer, per the isolation notes at the top of this file; the run asserts both
  * before the scene starts, so a mis-built app cannot report a false pass.
  */
+/**
+ * The two browser-approval badges: the app rail's count, and the chat header's.
+ *
+ * WHAT THIS SCENE IS FOR (operator ask, 2026-09-23). Two surfaces promise a number
+ * and neither can be judged from a still:
+ *
+ * - the APP RAIL's Browser item carries the count of LIVE approval requests ACROSS
+ *   EVERY CONVERSATION (`useAppWideApprovals`), which is the capability the 2026-09-18
+ *   removal took out of the sidebar and never put back anywhere;
+ * - the CHAT HEADER's Globe trigger carries THIS conversation's count, including while
+ *   its pane is open - the state the operator reported as a missing badge, and the
+ *   reason the trigger no longer unmounts with its pane.
+ *
+ * The claim is therefore THREE NUMBERS PER STATE, read from the app rather than
+ * counted by this script: what the host's own projection holds, what the rail says, and
+ * what the header says. A frame cannot carry any of them, so the scene asserts them and
+ * the frames are the visual half (the badge's box against the rail's width, whether the
+ * label moved, the row's height).
+ *
+ * WHY THE REQUESTS ARE RAISED THROUGH THE APP'S OWN RPC (`browserRpc`): that is the
+ * endpoint an agent's client speaks, so the entries are raised the way a real request
+ * is - including their REQUESTER, which is the field the whole attribution question
+ * turns on. Three requesters appear here and each is a case:
+ *
+ *   - this conversation's own session id (it counts on the header AND the rail);
+ *   - another conversation's (`session:other-conversation-live`, a NAME rather than a
+ *     second live session - the approval store keys on the requester string, which is
+ *     the field the tray reads) - it counts on the rail only, which is the whole point
+ *     of having a rail badge at all;
+ *   - no session identity at all (`call:...`, which is what `requesterOf` falls back to
+ *     for a caller that cannot present one, and what a subagent's own session id looks
+ *     like to the renderer: a requester, not a conversation) - it counts on the rail and
+ *     on no conversation's badge, which is why the rail's count is not the conversations'
+ *     count summed.
+ *
+ * WITHOUT `--backend` there is no chat route and so no header to photograph: the scene
+ * says which half it could not reach rather than passing on the rail alone.
+ */
+async function sceneApprovalBadges(cdp) {
+	/**
+	 * `check` with its reading on the PASS line too, because on this scene the reading IS
+	 * the claim: `check`'s third argument is shown only when the check FAILS, and a
+	 * transcript where every passing line withholds the number is a transcript nobody can
+	 * audit. Same function, both slots.
+	 */
+	const reading = (label, ok, text) => check(label, ok, text, text);
+	const hello = await verb(cdp, "hello");
+	reading(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+
+	const themes =
+		THEME === null ? ["localOperatorDark", "localOperatorLight"] : [THEME];
+
+	for (const theme of themes) {
+		const suffix = theme === "localOperatorDark" ? "dark" : "light";
+		await verb(cdp, "setTheme", theme);
+		/*
+		 * THE PANE STARTS SHUT, from the pane's OWN exit. It matters on the tree this
+		 * scene is a before/after of: there the trigger unmounts with the pane, so a pass
+		 * can leave the pane open with no header control to close it, and the next pass
+		 * would then photograph a state it did not set up.
+		 */
+		if ((await verb(cdp, "state")).browserPaneOpen === true) {
+			await verb(cdp, "press", {
+				selector: '[data-tour-tag="browser-pane-close"]',
+			});
+			await wait(300);
+		}
+		await verb(cdp, "navigate", "/chat");
+
+		/*
+		 * A CONVERSATION HAS TO BE OPEN for the header half, and that is the backend's to
+		 * provide (`session_catalogue`, the same gate `browser-pane` names). The rail half
+		 * needs none of it: the rail is on every route.
+		 */
+		let conversation = null;
+		if (BACKEND) {
+			await verb(cdp, "press", {
+				selector: '[data-tour-tag="chat-all-chats"]',
+			});
+			await verb(cdp, "press", {
+				selector: '[data-tour-tag="chat-session-row"]',
+			});
+			const live = await verb(cdp, "state");
+			conversation = live.activeSessionId ?? null;
+			note("state (chat, conversation open)", JSON.stringify(live));
+		} else {
+			note(
+				"no conversation",
+				"without --backend the chat route is the app's offline surface and has no header, so the header half of this scene is not reachable (the rail half is, and is asserted below)",
+			);
+		}
+
+		/*
+		 * 1. THE QUIET STATE. Both surfaces must draw NOTHING: a badge reading 0 is a mark
+		 * that says "nothing is being asked", and the rail in particular has to be
+		 * indistinguishable from the rail before this change.
+		 */
+		await wait(600);
+		const quiet = await readApprovalBadges(cdp);
+		note("badges (nothing pending)", JSON.stringify(quiet));
+		reading(
+			"with nothing pending neither surface draws a badge",
+			quiet.railBadge === null && quiet.headerBadge === null,
+			JSON.stringify(quiet),
+		);
+		if (conversation !== null) {
+			reading(
+				"a quiet conversation's header still offers its trigger, with no count in its name",
+				quiet.headerTrigger !== null &&
+					quiet.headerTriggerName === "Open browser",
+				JSON.stringify({
+					trigger: quiet.headerTrigger,
+					name: quiet.headerTriggerName,
+				}),
+			);
+		}
+		await captureSettled(cdp, `approval-badges-none-${suffix}`);
+
+		/*
+		 * 2. LIVE REQUESTS, three of them, one of each attribution. THE ORDER MATTERS: the
+		 * first one raised is the oldest, and the tray and any banner click name the
+		 * oldest, so the request this conversation owns is raised first.
+		 */
+		const livePending = [];
+		/*
+		 * THE ORIGINS CARRY THE THEME SUFFIX, and that is not decoration: an answer is
+		 * DURABLE (a deny is "always no for this site"), so a second pass over the same
+		 * three origins would be refused at admission and would photograph a state where
+		 * nothing is pending. Measured on this scene's first run, which denied its way to
+		 * the clear state and then asked for the same three sites again.
+		 */
+		const site = (name) => `https://${name}-${suffix}.example.com/`;
+		if (conversation !== null) {
+			const mine = await browserRpc("request_access", {
+				url: site("mine"),
+				requester: `session:${conversation}`,
+			});
+			livePending.push(mine);
+		}
+		const theirs = await browserRpc("request_access", {
+			url: site("theirs"),
+			requester: "session:other-conversation-live",
+		});
+		livePending.push(theirs);
+		const unattributed = await browserRpc("request_access", {
+			url: site("nobody"),
+			requester: "call:no-session-identity",
+		});
+		livePending.push(unattributed);
+		note(
+			"request_access (this conversation's, another's, and one no conversation owns)",
+			JSON.stringify(livePending.map((call) => call.result ?? call.error)),
+		);
+		reading(
+			"three requests are live, and each carries a different kind of requester",
+			livePending.every((call) => call.result?.state === "pending"),
+			JSON.stringify(livePending.map((call) => call.result ?? call.error)),
+		);
+
+		const pending = await cdp.evaluate(
+			"window.api.browser.state().then((state) => (state?.pendingConsent ?? []).map((entry) => ({ origin: entry.origin, requesterSessionId: entry.requesterSessionId, expiresAt: entry.expiresAt })))",
+		);
+		note("the projection's own pending set", JSON.stringify(pending));
+		const expectedRail = pending.length;
+		const expectedHeader =
+			conversation === null
+				? 0
+				: pending.filter((entry) => entry.requesterSessionId === conversation)
+						.length;
+
+		/*
+		 * 3. BOTH BADGES, with the pane CLOSED: the state every previous round measured.
+		 */
+		await waitForBadge(cdp, expectedRail);
+		const drawn = await readApprovalBadges(cdp);
+		note("badges (three pending, pane closed)", JSON.stringify(drawn));
+		reading(
+			"the rail counts EVERY live request, including the two no conversation on screen owns",
+			Number(drawn.railBadgeText) === expectedRail,
+			`rail badge ${JSON.stringify(drawn.railBadgeText)} with ${expectedRail} live in the app`,
+		);
+		reading(
+			"the rail's badge is drawn and its name carries the number",
+			drawn.railBadge !== null &&
+				drawn.railName === `Browser, ${expectedRail} waiting`,
+			JSON.stringify({ badge: drawn.railBadge, name: drawn.railName }),
+		);
+		reading(
+			"the badge does not move the rail's label, and the row is still 32px",
+			drawn.railButton.height === 32 &&
+				(quiet.railButton === null ||
+					quiet.railButton.height === drawn.railButton.height) &&
+				(quiet.railLabel === null || quiet.railLabel.x === drawn.railLabel.x),
+			JSON.stringify({
+				rowHeight: drawn.railButton.height,
+				labelX: [quiet.railLabel?.x ?? null, drawn.railLabel?.x ?? null],
+			}),
+		);
+		if (conversation !== null) {
+			reading(
+				"the header counts THIS conversation's own request and not the other two",
+				Number(drawn.headerBadgeText) === expectedHeader,
+				`header badge ${JSON.stringify(drawn.headerBadgeText)} with ${expectedHeader} attributed to this conversation of ${expectedRail} live`,
+			);
+		}
+		await captureSettled(cdp, `approval-badges-two-three-${suffix}`);
+
+		/*
+		 * 4. THE SAME COUNT WITH THE PANE OPEN, which is the operator's reported state:
+		 * the trigger used to unmount with the pane, so the count left the header with it.
+		 * The press is a real one on the real control.
+		 */
+		if (conversation !== null) {
+			/*
+			 * THE OPENING PRESS IS GUARDED ON THE PANE BEING SHUT, for the same
+			 * before/after reason the closing one is: a tree where the trigger unmounts with
+			 * its pane leaves the pane open at the end of the first pass, so a bare press
+			 * here would throw on the second pass and end the run - which is what this
+			 * scene's first before-run did, at the state it exists to photograph.
+			 */
+			const beforePress = await verb(cdp, "state");
+			if (beforePress.browserPaneOpen === true) {
+				note(
+					"pane already open",
+					"the previous pass left it open because its trigger had unmounted, so there is nothing to press",
+				);
+			} else {
+				await verb(cdp, "press", {
+					selector: '[data-tour-tag="browser-pane-trigger"]',
+				});
+			}
+			const openState = await verb(cdp, "state");
+			reading(
+				"the pane is open",
+				openState.browserPaneOpen === true,
+				JSON.stringify(openState),
+			);
+			const withPane = await readApprovalBadges(cdp);
+			note("badges (three pending, pane open)", JSON.stringify(withPane));
+			reading(
+				"the trigger and its badge are still on the header while the pane is open",
+				withPane.headerTrigger !== null &&
+					Number(withPane.headerBadgeText) === expectedHeader,
+				`trigger ${JSON.stringify(withPane.headerTrigger)}, badge ${JSON.stringify(withPane.headerBadgeText)} — the state the operator reported as a missing badge`,
+			);
+			reading(
+				"and the trigger now says it would CLOSE the pane, so it is never a control that does nothing",
+				withPane.headerTriggerName ===
+					(expectedHeader > 0
+						? `Close browser, ${expectedHeader} waiting`
+						: "Close browser"),
+				JSON.stringify(withPane.headerTriggerName),
+			);
+			await captureSettled(cdp, `approval-badges-pane-open-${suffix}`);
+			/*
+			 * AND BACK. Pressing it again must CLOSE the pane rather than be a no-op - which
+			 * is the half of "it stays mounted" that a still cannot show.
+			 *
+			 * GUARDED ON THE TRIGGER EXISTING, and that guard is the whole before/after of
+			 * this scene: on the tree WITHOUT the fix the trigger has unmounted with the pane,
+			 * so a bare `press` here would throw "nothing matches" and end the run - taking
+			 * the collapsed frames and every check after it with it. A scene that can only
+			 * reach its own claims on the fixed tree cannot show the defect it is for.
+			 */
+			if (withPane.headerTrigger === null) {
+				note(
+					"no second press",
+					"the trigger is not on the page while the pane is open, so there is nothing to press - the state this scene exists to catch",
+				);
+			} else {
+				await verb(cdp, "press", {
+					selector: '[data-tour-tag="browser-pane-trigger"]',
+				});
+				const closedAgain = await verb(cdp, "state");
+				reading(
+					"pressing the same control again closes the pane",
+					closedAgain.browserPaneOpen === false,
+					JSON.stringify(closedAgain),
+				);
+			}
+		}
+
+		/*
+		 * 5. COLLAPSED. The rail's own geometry is the risky half: a 16px badge cannot sit
+		 * outside a 48px rail, and the offset has to clear the 16px glyph inside a 32px
+		 * button. The numbers are the claim; the frame is the picture of it.
+		 */
+		await verb(cdp, "press", { selector: '[aria-label="Collapse sidebar"]' });
+		await wait(400);
+		const collapsed = await readApprovalBadges(cdp);
+		note("badges (three pending, rail collapsed)", JSON.stringify(collapsed));
+		reading(
+			"the collapsed rail is 48px and the badge stays inside it",
+			collapsed.railWidth === 48 &&
+				collapsed.railBadge !== null &&
+				collapsed.railBadge.right <= 48 &&
+				collapsed.railBadge.x >= 0,
+			JSON.stringify({ rail: collapsed.railWidth, badge: collapsed.railBadge }),
+		);
+		reading(
+			"the collapsed badge keeps its count in the control's name, because the digit is not the only channel",
+			collapsed.railName === `Browser, ${expectedRail} waiting`,
+			JSON.stringify(collapsed.railName),
+		);
+		reading(
+			"the collapsed row is still a 32px square inside the 48px rail",
+			collapsed.railButton.height === 32 &&
+				collapsed.railButton.x >= 0 &&
+				collapsed.railButton.right <= 48,
+			JSON.stringify(collapsed.railButton),
+		);
+		await captureSettled(cdp, `approval-badges-collapsed-${suffix}`);
+
+		// Put the rail back, so a second theme starts where the first one did.
+		await verb(cdp, "press", { selector: '[aria-label="Expand sidebar"]' });
+		await wait(300);
+		reading(
+			"the rail expands again for the next state",
+			(await readApprovalBadges(cdp)).railWidth === 220,
+			`rail width ${(await readApprovalBadges(cdp)).railWidth}`,
+		);
+
+		/*
+		 * 6. ANSWERED. The last thing a badge has to do is LEAVE: an approval that has been
+		 * answered is not a demand, and the count that ignores that is the one the design's
+		 * §1.2 exists to prevent. Every request this run raised is answered through the
+		 * app's own chrome, so the surfaces are driven rather than the store poked.
+		 */
+		if (conversation !== null) {
+			const answered = await cdp.evaluate(
+				"window.api.browser.state().then(async (state) => { for (const entry of state?.pendingConsent ?? []) { await window.api.browser.respondToConsent(entry.entryId, 'deny'); } return (await window.api.browser.state())?.pendingConsent?.length; })",
+			);
+			note("pending after denying every request", JSON.stringify(answered));
+			await waitForBadge(cdp, 0);
+			const cleared = await readApprovalBadges(cdp);
+			note("badges (all answered)", JSON.stringify(cleared));
+			reading(
+				"every answer removes its number from both surfaces",
+				cleared.railBadge === null && cleared.headerBadge === null,
+				JSON.stringify(cleared),
+			);
+			await captureSettled(cdp, `approval-badges-cleared-${suffix}`);
+		}
+	}
+}
+
+/**
+ * ONE READING OF BOTH BADGES AND THE BOXES THAT DECIDE WHETHER THEY FIT.
+ *
+ * `null` for a badge that is not drawn, because "no badge" and "a badge reading zero"
+ * are different pictures and the scene asserts about the difference. The rail's label
+ * and icon are read alongside the badge so "the badge did not move the label" is a
+ * measurement rather than a promise.
+ */
+function readApprovalBadges(cdp) {
+	return cdp.evaluate(`(() => {
+		const box = (el) => {
+			if (!el) return null;
+			const r = el.getBoundingClientRect();
+			return {
+				x: Math.round(r.x),
+				y: Math.round(r.y),
+				width: Math.round(r.width),
+				height: Math.round(r.height),
+				right: Math.round(r.right),
+			};
+		};
+		const railButton = document.querySelector('[data-tour-tag="nav-item-browser"]');
+		const rail = railButton ? railButton.closest('nav') : null;
+		const railBadge = railButton
+			? railButton.querySelector('[data-tour-tag="nav-browser-badge"]')
+			: null;
+		const trigger = document.querySelector('[data-tour-tag="browser-pane-trigger"]');
+		const headerBadge = trigger
+			? trigger.querySelector('[data-tour-tag="browser-pane-badge"]')
+			: null;
+		return {
+			railWidth: rail ? Math.round(rail.getBoundingClientRect().width) : null,
+			railButton: box(railButton),
+			railIcon: box(railButton ? railButton.querySelector('svg') : null),
+			railLabel: box(
+				railButton
+					? railButton.querySelector(':scope > span:not([aria-hidden="true"])')
+					: null,
+			),
+			railBadge: box(railBadge),
+			railBadgeText: railBadge ? railBadge.textContent.trim() : null,
+			railName: railButton ? railButton.getAttribute('aria-label') : null,
+			headerTrigger: box(trigger),
+			headerGlyph: box(trigger ? trigger.querySelector('svg') : null),
+			headerBadge: box(headerBadge),
+			headerBadgeText: headerBadge ? headerBadge.textContent.trim() : null,
+			headerTriggerName: trigger ? trigger.getAttribute('aria-label') : null,
+		};
+	})()`);
+}
+
+/** Wait until the rail's badge reads `expected`, or give up and say what it read.
+ * The projection arrives over IPC, so "the request was raised" and "the badge is
+ * drawn" are different moments and a scene that raced them would report a missing
+ * badge for a surface that simply had not been told yet. */
+async function waitForBadge(cdp, expected, timeoutMs = 10_000) {
+	const started = Date.now();
+	let reading = null;
+	for (;;) {
+		reading = await readApprovalBadges(cdp);
+		const drawn =
+			reading.railBadgeText === null ? 0 : Number(reading.railBadgeText);
+		if (drawn === expected) return reading;
+		if (Date.now() - started > timeoutMs) return reading;
+		await wait(150);
+	}
+}
+
 async function sceneBrowserPane(cdp) {
 	const hello = await verb(cdp, "hello");
 	check(
@@ -18324,6 +18742,7 @@ async function main() {
 			else if (SCENE === "settings-gate") await sceneSettingsGate(cdp);
 			else if (SCENE === "palette") await scenePalette(cdp);
 			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);
+			else if (SCENE === "approval-badges") await sceneApprovalBadges(cdp);
 			else if (SCENE === "pins") await scenePins(cdp);
 			else if (SCENE === "pins-scroll") await scenePinsScrolled(cdp);
 			else if (SCENE === "pins-search") await scenePinsSearch(cdp);

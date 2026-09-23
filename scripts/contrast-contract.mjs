@@ -859,20 +859,39 @@ const CONTROLS = [
 		 * measures 2.51-2.98:1 on graded grounds in seven palettes (the sibling row
 		 * above records the measurement).
 		 *
-		 * ONE GROUND, and finding that it was two is design round 1's D8: the second
-		 * entry was `surface`, reasoned as "the chat pane header's ground when PR 2 puts
-		 * the control there" - and PR 2 put it on the chat header's `canvas` and on the
-		 * pane header's `sunken`, so the row was measuring the component against a
-		 * ground it is never drawn on, which is the failure mode the row above this one
-		 * explicitly names. Both hosts' badges are drawn on `canvas` (the URL bar row is
-		 * `bg-canvas`, the chat header is the same); the pane's own header carries no
-		 * badge, and if one ever lands there its ground (`sunken`) is a row this file
-		 * would have to grow rather than quietly inherit. Measured this round: `ink` on
-		 * `warningWash` 8.39:1 at worst (tokyoNight), `borderControl` 3.34:1 on `canvas`
-		 * at worst.
+		 * TWO GROUNDS, and the second one is back on a measurement rather than on an
+		 * argument. Design round 1's D8 found the row asserting `surface` for a host
+		 * that did not exist ("the chat pane header's ground when PR 2 puts the control
+		 * there") and removed it: both badges really are drawn on `canvas` (the URL bar
+		 * is `bg-canvas`, the chat header is the same), and the row was measuring the
+		 * component against a ground it is never on.
+		 *
+		 * `surface` IS REAL NOW, and it is the APP RAIL (operator ask, 2026-09-23): the
+		 * rail's Browser item carries this same badge, and the rail is `surface` - the
+		 * row-state refinement moved it back from `sunken`, because the rows in that
+		 * list paint `rowCurrent` and `row-hover`, and those roles are authored as
+		 * steps of the panel (`sidebar-navigation.tsx`'s own note carries the
+		 * measurement). So the entry D8 removed for being fictional belongs here for
+		 * being real, and leaving it out again would leave the rail's badge - the one
+		 * badge on a ground that is not `canvas` - unmeasured by this file. (Design
+		 * 5.3 asked for `["canvas", "surface"]` on the argument that the CHAT PANE'S
+		 * HEADER is `surface`; it is `canvas` in the shipped tree, so that half of the
+		 * argument was wrong and D8 was right to delete it then. The rail is the host
+		 * that makes it true now.) The `sunken` form D8 mentions is still not a host:
+		 * nothing draws this badge on the pane's own strip.
+		 *
+		 * MEASURED AT THIS REVISION, all fifty-nine palettes: `ink` on `warningWash` 7.88:1
+		 * at worst (rosePineDawn) on either ground; `borderControl` 3.13:1 on `canvas`
+		 * (rosePineDawn) and 3.26:1 on `surface` (catppuccinMocha) at worst. The pair is
+		 * re-measured rather than carried forward because the fleet moves - the figures
+		 * this row used to state (8.39:1, 3.34:1) no longer reproduce against the same
+		 * palettes, and a stale number in a comment about a MEASUREMENT is the thing this
+		 * file exists to refuse. The two grounds are one lightness step apart, so the
+		 * `surface` figures landing beside the `canvas` ones is the expected result rather
+		 * than a copy-paste.
 		 */
 		name: "browser approvals badge",
-		on: ["canvas"],
+		on: ["canvas", "surface"],
 		fill: "warningWash",
 		border: "borderControl",
 		ink: "ink",

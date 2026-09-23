@@ -1,3 +1,4 @@
+import { useAppWideApprovals } from "@features/browser/hooks/use-app-wide-approvals";
 // One decision, one spelling: the row the reader is ON is painted by the
 // sidebar's own role string rather than by a second copy of it here. A copy is
 // what drifted twice (design rounds 3 and 4, D17/D19) and both drifts landed at
@@ -11,7 +12,7 @@ import {
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { CollapsibleAppLogo } from "@shared/components/navigation/collapsible-app-logo";
 import { UserProfileSidebar } from "@shared/components/navigation/user-profile-sidebar";
-import { Button, Tooltip } from "@shared/components/ui";
+import { Badge, Button, Tooltip } from "@shared/components/ui";
 import { useCurrentView } from "@shared/hooks/use-route-params";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -42,6 +43,13 @@ type NavItem = {
 	path: string;
 	isActive: boolean;
 	tourTag: string;
+	/**
+	 * How many browser approvals are waiting on the user, ACROSS EVERY CONVERSATION
+	 * (operator ask, 2026-09-23). Zero draws nothing at all — a badge reading `0`
+	 * would be a mark that says nothing is being asked, which is the honest
+	 * rendering of an item with no badge.
+	 */
+	attention?: number;
 };
 
 /*
@@ -145,6 +153,15 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 
 	const expanded = !isSidebarCollapsed;
 
+	/*
+	 * The rail is on EVERY route, so its Browser item answers the question no
+	 * per-conversation badge can: is an agent anywhere in this app blocked on me?
+	 * The count is the projection's own live set, unattributed requests included —
+	 * see `useAppWideApprovals` for why that one deliberately disagrees with the
+	 * chat header's count.
+	 */
+	const browserApprovals = useAppWideApprovals();
+
 	const navItems: NavItem[] = [
 		{
 			icon: MessageSquare,
@@ -183,6 +200,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			path: "/browser",
 			isActive: currentView === "browser",
 			tourTag: "nav-item-browser",
+			attention: browserApprovals,
 		},
 		{
 			icon: Settings,
@@ -199,6 +217,17 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		 * has to stay on the button itself. Putting it on a wrapper would leave
 		 * the tour dispatching a click at a div and silently doing nothing.
 		 */
+		const attention = item.attention ?? 0;
+		/*
+		 * THE NAME CARRIES THE NUMBER (operator ask, 2026-09-23): a badge is a visual
+		 * convenience over a fact the control has to STATE, and a screen reader that
+		 * found only the word "Browser" would be told there was nothing to answer
+		 * while an agent sat blocked on a prompt. Set in BOTH widths so the name does
+		 * not change with the rail's width — and only when a badge is drawn, so a
+		 * quiet rail keeps the plain label it has always had.
+		 */
+		const attentionLabel =
+			attention > 0 ? `${item.label}, ${attention} waiting` : item.label;
 		const button = (
 			<button
 				type="button"
@@ -208,9 +237,9 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				/* Collapsed there is no text in the row, and the tooltip cannot
 				   supply the name: Radix's `Trigger` adds `aria-describedby`, and
 				   only while open. */
-				aria-label={expanded ? undefined : item.label}
+				aria-label={expanded && attention === 0 ? undefined : attentionLabel}
 				className={cn(
-					"flex h-8 w-full items-center rounded-sm text-body-sm transition-colors duration-fast ease-out-quart",
+					"relative flex h-8 w-full items-center rounded-sm text-body-sm transition-colors duration-fast ease-out-quart",
 					expanded ? "justify-start gap-2 px-3" : "justify-center",
 					/*
 					 * THE DESTINATION YOU ARE ON IS A ROW STATE, not the wash. It was
@@ -246,6 +275,53 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					className={cn("shrink-0", item.isActive && "text-accent")}
 				/>
 				{expanded && <span className="truncate">{item.label}</span>}
+				{attention > 0 && (
+					/*
+					 * THE SAME BADGE THE HEADER'S GLOBE CARRIES (design 5.1), with the two
+					 * geometry decisions this rail forces and the header's icon button does
+					 * not:
+					 *
+					 * EXPANDED the badge is IN FLOW at the row's trailing edge (`ml-auto`),
+					 * not absolutely positioned at the label's corner. The row is 32px with a
+					 * 13px label, so the trailing edge IS its top-right at any size a badge
+					 * would use, and in flow is what keeps the promise the absolute form could
+					 * not: the label does not move (its own box starts at the same x as
+					 * before, right after the 16px mark) and the row's height does not change
+					 * (16px of badge inside a 32px row), which the frames beside this change
+					 * measure rather than assume. What the row DOES give up is title width:
+					 * the badge reserves its own 16px, so a label long enough to truncate
+					 * truncates about two characters earlier than it did. At 220px and a
+					 * 13px label nothing in the rail's own vocabulary comes close.
+					 *
+					 * COLLAPSED it is absolute, and the offset is bounded by the rail rather
+					 * than chosen (`-top-1.5 -right-2`): the button is a 32px square centred
+					 * in a 48px rail with an 8px list inset, so its right edge sits 8px from
+					 * the rail's own edge and a 16px badge can only clear the 16px glyph's
+					 * arc by spending those 8px — which puts its right edge exactly on the
+					 * rail's edge. That is why there is NO `ring-2 ring-surface` here, where
+					 * the header's badge has one: the ring paints 2px outward and the rail
+					 * clips at `overflow-x-hidden`, so the ring would be a notch rather than
+					 * an edge. The badge's own `border-control` is its boundary either way.
+					 *
+					 * NO `9+` CAP HERE, where the header has one: that cap exists because a
+					 * 16px badge on a 32px icon button has 12px of room before it walks back
+					 * over the glyph. This row has the space, the queue's own cap is 16, and
+					 * the true number is what the operator asked to see.
+					 */
+					<span
+						aria-hidden="true"
+						className={cn(expanded ? "ml-auto" : "absolute -top-1.5 -right-2")}
+					>
+						<Badge
+							variant="attention"
+							shape="pill"
+							className={cn("h-4 min-w-4 justify-center px-1 tabular-nums")}
+							data-tour-tag="nav-browser-badge"
+						>
+							{attention}
+						</Badge>
+					</span>
+				)}
 			</button>
 		);
 
