@@ -89,11 +89,17 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|radient-issue|settings-model|settings-fields|settings-gate|palette|browser-pane|mentions|canvas-freshness|pins|pins-scroll|pins-search|none>
+ *   --scene <states|new-chat|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|browser-pane|mentions|canvas-freshness|pins|pins-scroll|pins-search|none>
  *                          which built-in scene to run (default: states)
  *   --gate-state <label>   (with --scene settings-gate) what this run's backend
  *                          state is called in the frames and the log, so two
  *                          runs against two backends can be told apart
+ *   --authoring-expect <refresh|stale>  (with --scene authoring-refresh) which
+ *                          claim this run is in: `refresh` against a backend
+ *                          whose feed publishes `authoring` frames, `stale`
+ *                          against one that publishes none (the base-commit
+ *                          runtime), where the row must stay off screen until
+ *                          the app is remounted
  *   --backend <url>        a live, ISOLATED backend this run owns: the app's own
  *                          transport is pointed at it, so a surface gated on a
  *                          capability can be driven at all. The renderer must have
@@ -140,6 +146,7 @@ import { createRequire } from "node:module";
 import { connect, createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve, sep } from "node:path";
+import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 /*
  * Every python this harness starts is handed an environment it has decided about,
@@ -322,6 +329,22 @@ const THEME = argValue("--theme", null);
  */
 const SEARCH_TITLE = argValue("--search-title", "Sweep 001");
 const TUI_CONFIG = argValue("--tui-config", null);
+/**
+ * What `--scene authoring-refresh` expects the sidebar's authoring lists to do.
+ *
+ * `refresh` (the default) is the fixed behaviour, against a backend whose feed
+ * publishes `authoring` frames: the row arrives with nobody touching the app.
+ * `stale` is the same app, script and write against a backend that publishes no
+ * such frame - the base-commit runtime - and the claim is the defect: the row
+ * stays off screen until the app is remounted. Neither reading says anything on
+ * its own; the pair is what makes the refresh attributable to the frame rather
+ * than to a mount, a poll or a stray re-render.
+ *
+ * A value the scene does not know is refused rather than defaulted, because a
+ * typo here would silently run the OTHER half and read as the answer to the
+ * question it does not ask.
+ */
+const AUTHORING_EXPECT = argValue("--authoring-expect", "refresh");
 /**
  * Seed the profile as an EXISTING user before the scene runs.
  *
@@ -800,6 +823,21 @@ async function launchApp({
 			`--inspect=${inspectPort}`,
 			"--window-mode=headless",
 			`--window-size=${WINDOW_SIZE}`,
+			/*
+			 * The app is CHROMIUM, and this run redirects `HOME`: without this switch
+			 * OSCrypt finds no login keychain under the scratch home and asks macOS to
+			 * CREATE one, which is a dialog on the operator's screen once per boot - the
+			 * same failure `chrome-keychain.mjs` exists to prevent for the Chrome rigs,
+			 * and the spelling is taken from that module rather than retyped (its own
+			 * scan asserts the literal appears there and nowhere else).
+			 *
+			 * What it does NOT cover, and must not: a run whose SUBJECT is `safeStorage`
+			 * - the vault key round-tripping through Keychain Services is the thing being
+			 * proven there, so reaching the keychain is the point rather than collateral.
+			 * Those are named in `chrome-keychain.mjs`, and this harness does not drive
+			 * them: every scene here is about the rendered surface.
+			 */
+			MOCK_KEYCHAIN_SWITCH,
 		],
 		{ env, cwd: APP_CWD, stdio: ["ignore", "pipe", "pipe"] },
 	);
@@ -11110,6 +11148,320 @@ function readRadientIssue(cdp) {
 	})()`);
 }
 
+/**
+ * `authoring-refresh`: a write the app did not make, and whether the sidebar's
+ * Agents/Teams lists notice it with nobody touching the window.
+ *
+ * WHY THIS SCENE IS A LIVE ONE AND NOT A FRAME. The defect it exists for cannot
+ * happen without a second writer: an AGENT creates a team or a profile on the
+ * backend, with no click in this window, no navigation and no focus change, so
+ * nothing in the renderer has a reason to re-read `profiles.list`/`teams.list`
+ * and the row stays off screen until the operator reloads or switches tab. A
+ * story can render those lists; it cannot make a write arrive from outside, and
+ * it certainly cannot show that the arrival is what refreshed them. Every write
+ * below is an HTTP request from THIS script's own Node process - never through
+ * `window.api` and never through a press - which is the whole property under
+ * test: the app's only possible source for it is the machine-wide feed.
+ *
+ * THE TWO RUNS, and why the second one is the evidence. `--authoring-expect
+ * refresh` (the default) is the fixed behaviour against a backend that
+ * publishes the `authoring` frame. `--authoring-expect stale` is the SAME app,
+ * same script, same write, against a backend that publishes no such frame (the
+ * base-commit runtime): the row must NOT appear, the list must NOT be re-read,
+ * and the tab switch the operator complained about having to make must be what
+ * brings it in. That pair is what makes the reading causal rather than a
+ * coincidence - a run that only ever shows the row appearing cannot tell a
+ * frame-driven refresh from a mount, a poll or a stray re-render.
+ *
+ * The measurement is the CACHE's, not the pixels': `queryFetches` is the app's
+ * own patched `Query.prototype.fetch`, so a re-read is attributed to a real call
+ * site with a timestamp, and `queries` carries the key's `dataUpdatedAt`. The
+ * frames are the other half - the row on screen, in the section it belongs to -
+ * and the reading is what says whether the clock or the frame put it there.
+ *
+ * WHAT IT NEEDS: `--backend <url>` pointing at a daemon this run owns (both
+ * runs need the app to be able to READ the lists at all), the renderer built
+ * against the same URL, `LOCAL_OPERATOR_DESKTOP_TOKEN` in this script's
+ * environment for this script's own writes, and - for the `refresh` half - a
+ * backend whose feed publishes `authoring` frames.
+ */
+async function sceneAuthoringRefresh(cdp) {
+	const stale = AUTHORING_EXPECT === "stale";
+	const label = stale ? "no-frame" : "frame";
+	const suffix = `${process.pid}-${Date.now().toString(36)}`;
+	// Unique per run: the assertions are about a row that did not exist before
+	// this run, and a name left over from an earlier run on the same backend
+	// would make the "before" frame already carry it.
+	const teamName = `rig-team-${suffix}`;
+	const agentName = `rig-agent-${suffix}`;
+	const TEAMS_KEY = '"desktop","teams"';
+	const PROFILES_KEY = '"desktop","profiles"';
+	/*
+	 * The sidebar's own controls rather than a class name: the section is open
+	 * (its default) only while the backend advertises the capability, and the
+	 * control that creates one is rendered in both the empty and the populated
+	 * state - so it is the stable anchor for "this list is on screen".
+	 */
+	const createControl = (text) =>
+		`Array.from(document.querySelectorAll("button")).some((button) => button.textContent.trim() === ${JSON.stringify(text)})`;
+	const rowNamed = (name) =>
+		`Array.from(document.querySelectorAll("[data-entity]")).some((node) => node.textContent.includes(${JSON.stringify(name)}))`;
+	const rowNames = `Array.from(document.querySelectorAll("[data-entity]")).map((node) => node.textContent.replace(/\\s+/g, " ").trim())`;
+
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", "localOperatorDark");
+	const state = await verb(cdp, "state");
+	check(
+		"the run starts on the chat route, with the first-run wizard out of the way",
+		state.route === "/chat" && state.onboardingVisible === false,
+		`route ${state.route}, onboardingVisible ${state.onboardingVisible}`,
+	);
+
+	/*
+	 * Armed BEFORE the lists are first read, because the reads this instrument
+	 * exists to attribute begin at the mount. The verb validates itself with a
+	 * fetch of its own key; without that, a trap that never patched anything
+	 * would print a clean "0 fetches" and read as a list that needed none.
+	 */
+	const armed = await verb(cdp, "queryFetches", { arm: true });
+	note("query-fetch trap armed", JSON.stringify(armed));
+	check(
+		"the fetch trap armed and validated itself",
+		armed.armed === true && armed.validated === true,
+		JSON.stringify(armed),
+	);
+
+	const sidebar = await waitForCondition(
+		cdp,
+		`${createControl("Create agent")} && ${createControl("Create team")}`,
+		30_000,
+	);
+	check(
+		"both authoring sections are open in the sidebar",
+		sidebar.ok === true,
+		`waited ${sidebar.waitedMs}ms; Create agent / Create team controls not both present`,
+		`present after ${sidebar.waitedMs}ms`,
+	);
+	// The mount's own reads have to be over before the baseline is taken, or the
+	// baseline and the frame's refetch would be counted as one event.
+	await wait(1500);
+	const before = {
+		teams: await verb(cdp, "queryFetches", { key: TEAMS_KEY }),
+		profiles: await verb(cdp, "queryFetches", { key: PROFILES_KEY }),
+		queries: await readAuthoringQueries(cdp),
+	};
+	note(
+		"the two lists as the cache holds them, before the write",
+		JSON.stringify(before.queries),
+	);
+	note(
+		"fetches before the write",
+		`teams ${before.teams.total} from ${before.teams.callers.length} call site(s), profiles ${before.profiles.total} from ${before.profiles.callers.length}`,
+	);
+	/*
+	 * The rows are brought into view before the first frame so the pair is the
+	 * same region of the same section: a capture scrolled by the arrival of the
+	 * row would show two different parts of the sidebar and prove nothing about
+	 * either. The anchor is the section's own create control, which sits under
+	 * the rows in both frames.
+	 */
+	await cdp.evaluate(
+		`(() => { const control = Array.from(document.querySelectorAll("button")).find((button) => button.textContent.trim() === "Create team"); control.scrollIntoView({ block: "center" }); return true; })()`,
+	);
+	await wait(250);
+	const beforeFrame = await captureSettled(cdp, `authoring-before-${label}`);
+	const namesBefore = await cdp.evaluate(rowNames);
+	note(
+		"authoring rows on screen before the write",
+		JSON.stringify(namesBefore),
+	);
+	check(
+		"neither name this run will write is on screen before it is written",
+		!(
+			Array.isArray(namesBefore) ? namesBefore.join(" | ") : String(namesBefore)
+		).includes(teamName) &&
+			!(
+				Array.isArray(namesBefore)
+					? namesBefore.join(" | ")
+					: String(namesBefore)
+			).includes(agentName),
+		`rows: ${JSON.stringify(namesBefore)}`,
+	);
+
+	/*
+	 * THE WRITE, from this script's Node process: two real HTTP requests to the
+	 * backend's own authoring routes, with the bearer the run is paired with.
+	 * Nothing about the app is touched - no verb, no press, no navigation - until
+	 * the frames below are taken, which is what makes the arrival the only
+	 * variable.
+	 */
+	const wroteAt = Date.now();
+	const wrote = [
+		await authoringWrite("/v1/desktop/profiles", {
+			request_id: randomUUID(),
+			name: agentName,
+			kind: "role",
+			description: "Written by the renderer-driver's authoring-refresh scene.",
+			instructions: "Say nothing; this profile exists to be listed.",
+		}),
+		await authoringWrite("/v1/desktop/teams", {
+			request_id: randomUUID(),
+			name: teamName,
+			description: "Written by the renderer-driver's authoring-refresh scene.",
+		}),
+	];
+	note("wrote both rows from this process", JSON.stringify(wrote));
+	check(
+		"the backend accepted both writes",
+		wrote.every((entry) => entry.status === 200),
+		JSON.stringify(wrote),
+	);
+
+	/*
+	 * How long the row takes to appear, measured from the write rather than from
+	 * a fixed sleep: a backend whose authoring probe runs on its own cadence
+	 * cannot show the row instantly, and a scene that assumed it could would
+	 * flake. `stale` gets the shorter budget on purpose - its claim is that
+	 * nothing arrives, and a longer window would only make the same reading
+	 * slower.
+	 */
+	const appeared = await waitForCondition(
+		cdp,
+		rowNamed(teamName),
+		stale ? 8_000 : 20_000,
+	);
+	const appearedAgent = await waitForCondition(
+		cdp,
+		rowNamed(agentName),
+		stale ? 8_000 : 20_000,
+	);
+	const after = {
+		teams: await verb(cdp, "queryFetches", { key: TEAMS_KEY }),
+		profiles: await verb(cdp, "queryFetches", { key: PROFILES_KEY }),
+		queries: await readAuthoringQueries(cdp),
+	};
+	const route = await verb(cdp, "state");
+	note(
+		"the two lists as the cache holds them, after the write",
+		JSON.stringify(after.queries),
+	);
+	note(
+		"fetches after the write",
+		`teams ${before.teams.total} -> ${after.teams.total}, profiles ${before.profiles.total} -> ${after.profiles.total}`,
+	);
+	const refetched = (key) =>
+		after[key].total > before[key].total &&
+		after[key].callers.some((caller) => caller.lastAt >= wroteAt);
+	const afterFrame = await captureSettled(cdp, `authoring-after-${label}`);
+
+	if (stale) {
+		/*
+		 * The two halves of the defect, measured rather than asserted in prose:
+		 * the list did not move on its own, and it moved the moment the app was
+		 * remounted - which is the tab switch the operator had to make.
+		 */
+		check(
+			"with no authoring frame the row does NOT appear",
+			appeared.ok === false && appearedAgent.ok === false,
+			`the team row appeared after ${appeared.waitedMs}ms and the agent row after ${appearedAgent.waitedMs}ms`,
+			`nothing after ${appeared.waitedMs}ms / ${appearedAgent.waitedMs}ms, and the app was never touched`,
+		);
+		check(
+			"with no authoring frame the lists are not re-read",
+			!refetched("teams") && !refetched("profiles"),
+			`teams ${before.teams.total} -> ${after.teams.total}, profiles ${before.profiles.total} -> ${after.profiles.total}, write at ${wroteAt}`,
+			`no fetch for either key since the write, while the app sat on ${route.route}`,
+		);
+		await verb(cdp, "navigate", "/agent-hub");
+		await verb(cdp, "navigate", "/chat");
+		const switched = await waitForCondition(cdp, rowNamed(teamName), 20_000);
+		const switchedAgent = await waitForCondition(
+			cdp,
+			rowNamed(agentName),
+			20_000,
+		);
+		await cdp.evaluate(
+			`(() => { const control = Array.from(document.querySelectorAll("button")).find((button) => button.textContent.trim() === "Create team"); control.scrollIntoView({ block: "center" }); return true; })()`,
+		);
+		await wait(250);
+		const switchedFrame = await captureSettled(
+			cdp,
+			`authoring-after-tab-switch-${label}`,
+		);
+		check(
+			"a tab switch - the remedy the operator used - is what brings both rows in",
+			switched.ok === true && switchedAgent.ok === true,
+			`team row ${switched.ok} after ${switched.waitedMs}ms, agent row ${switchedAgent.ok} after ${switchedAgent.waitedMs}ms`,
+			`both rows on screen ${switched.waitedMs}ms after the remount, with no other change`,
+		);
+		return [beforeFrame, afterFrame, switchedFrame];
+	}
+
+	check(
+		"the authoring frame brings the team row in with nobody touching the app",
+		appeared.ok === true,
+		`the row was not on screen ${appeared.waitedMs}ms after the write`,
+		`on screen ${appeared.waitedMs}ms after the write, still on ${route.route}`,
+	);
+	check(
+		"and the agent row with it",
+		appearedAgent.ok === true,
+		`the row was not on screen ${appearedAgent.waitedMs}ms after the write`,
+		`on screen ${appearedAgent.waitedMs}ms after the write`,
+	);
+	check(
+		"neither list was re-read BEFORE the write, and both were re-read after it",
+		refetched("teams") && refetched("profiles"),
+		`teams ${before.teams.total} -> ${after.teams.total}, profiles ${before.profiles.total} -> ${after.profiles.total}, write at ${wroteAt}`,
+		`teams ${before.teams.total} -> ${after.teams.total} and profiles ${before.profiles.total} -> ${after.profiles.total}, the last fetch of each after the write`,
+	);
+	check(
+		"the app stayed on the chat route from the write to the row, so the refresh was not a navigation",
+		route.route === "/chat",
+		`route ${route.route}`,
+		`route ${route.route}`,
+	);
+	return [beforeFrame, afterFrame];
+}
+
+/** The two authoring keys, as the cache holds them. */
+async function readAuthoringQueries(cdp) {
+	const queries = await verb(cdp, "queries");
+	return queries
+		.filter(
+			(entry) =>
+				entry.key.includes('"desktop","teams"') ||
+				entry.key.includes('"desktop","profiles"'),
+		)
+		.map((entry) => ({
+			key: entry.key,
+			status: entry.status,
+			hasData: entry.hasData,
+			observers: entry.observers,
+			updatedAt: entry.updatedAt,
+		}));
+}
+
+/**
+ * One authoring write, from the harness rather than from the app.
+ *
+ * No `Origin` header: the backend's desktop plane admits a bearer-only request
+ * and refuses an Origin it does not trust, and this write is deliberately a
+ * server-side one - the point is that it is not the app's own request.
+ */
+async function authoringWrite(path, body) {
+	const response = await fetch(`${BACKEND}${path}`, {
+		method: "POST",
+		headers: {
+			"content-type": "application/json",
+			authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+		},
+		body: JSON.stringify(body),
+	});
+	const text = await response.text();
+	return { path, status: response.status, body: text.slice(0, 300) };
+}
+
 async function sceneNewChat(cdp) {
 	/*
 	 * Start anywhere but the chat route: `navigate("/chat")` is 80% of what this
@@ -17582,6 +17934,20 @@ async function main() {
 			"--scene radient-issue needs --backend: the callout is gated on a capability the backend advertises and speaks a verdict only it can give, so a run with none photographs the absence of the feature",
 		);
 	}
+	if (SCENE === "authoring-refresh" && BACKEND === null) {
+		throw new Error(
+			"--scene authoring-refresh needs --backend: the two lists are gated on the capabilities a live backend advertises, and the write this scene measures is a real request to that backend",
+		);
+	}
+	if (
+		SCENE === "authoring-refresh" &&
+		AUTHORING_EXPECT !== "refresh" &&
+		AUTHORING_EXPECT !== "stale"
+	) {
+		throw new Error(
+			`--authoring-expect takes refresh or stale (got ${JSON.stringify(AUTHORING_EXPECT)}): the two are different claims about the same run, and a defaulted typo would silently answer the other one`,
+		);
+	}
 	if (SCENE === "pins-search" && (TUI_PYTHON === null || TUI_CONFIG === null)) {
 		throw new Error(
 			"--scene pins-search needs --tui-python and --tui-config: the third surface it asserts is the store the terminal reads",
@@ -17713,6 +18079,7 @@ async function main() {
 			else if (SCENE === "states") await sceneStates(cdp);
 			else if (SCENE === "radient-issue") await sceneRadientIssue(cdp);
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);
+			else if (SCENE === "authoring-refresh") await sceneAuthoringRefresh(cdp);
 			else if (SCENE === "settings-model") await sceneSettingsModel(cdp);
 			else if (SCENE === "settings-fields") await sceneSettingsFields(cdp);
 			else if (SCENE === "settings-gate") await sceneSettingsGate(cdp);

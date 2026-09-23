@@ -49,6 +49,20 @@ scene. `--window-size WxH` sets the window (default 1380x900, the app's own
 default). The scratch tree is kept and its path printed; `--clean` removes it,
 `--out <dir>` puts frames somewhere you choose.
 
+**`--scene authoring-refresh` is the one scene whose write comes from OUTSIDE the
+app.** Its subject is an agent creating a team or a profile on the backend, so
+the write is an HTTP request from this script's own Node process to the
+backend's authoring route — never a press, never a navigation, never
+`window.api` — and what it measures is whether the sidebar's Agents/Teams lists
+notice it with nobody touching the window. `--authoring-expect refresh` (the
+default) runs against a backend whose feed publishes `authoring` frames; `stale`
+runs against one that publishes none (the installed runtime, i.e. the
+base-commit behaviour), where the row must NOT arrive and the lists must NOT be
+re-read until the app is remounted. It needs `--backend` plus the token in this
+script's environment, and the renderer built against the same URL, like every
+other `--backend` scene. Its two runs and their readings are committed as
+`docs/evidence/authoring-refresh/`.
+
 **`--backend <url>` points the app at a live, ISOLATED backend this run owns.**
 Absent (the default) the app is aimed at a port the script verified dead, so a
 scene captures an app that cannot reach a backend and every frame is publishable
