@@ -1081,6 +1081,20 @@ const BRANCH_RECORDS = [
 	 * moved, why two of them were re-taken, and what the two trees are now.
 	 */
 	"usageInFlightRemediationNote",
+	/*
+	 * Grown by this branch's fold onto `origin/main` = `e48d64b81` (the #475
+	 * telemetry-off merge), which wrote this branch's newest top-level record. It is
+	 * listed for the reason the list exists, and this one is the case the list was
+	 * written for: the fold is the only commit in this lineage that resolves
+	 * `docs/evidence/manifest.json` against a main that has moved, and a resolver who
+	 * took main's copy would drop this record and with it the only statement of which
+	 * two trees the fold moved, which of main's fields the per-field rule refuses, and
+	 * that no frame moved. (Note for a later reader, not an action: the `/usage`
+	 * convergence round's own record, `usageInFlightConvergenceNote`, is absent from
+	 * this list - the list's promise is therefore already one record short of true, and
+	 * this fold reports that rather than widening its own diff to fix it.)
+	 */
+	"foldOntoTelemetryOffNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
