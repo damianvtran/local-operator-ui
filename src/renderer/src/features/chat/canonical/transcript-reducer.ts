@@ -1658,6 +1658,40 @@ function bounded(headline: string): string {
 	return `${(lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
 }
 
+/**
+ * The key the harness stamps on a user row it minted itself.
+ *
+ * IT IS THE PYTHON SIDE'S CONSTANT, SPELLED HERE BECAUSE THE RENDERER CANNOT IMPORT
+ * PYTHON: `RENDERED_INJECTION_KEY` in `local_operator/compaction/cutpoint.py` (the
+ * stamp is written at mint in `harness/render.py`). The marker is STRUCTURAL — a
+ * field on the row's own payload — and that is the whole reason this suppression
+ * lives here: a text list copied into TypeScript would be a second decision that
+ * could disagree with the TUI's, and the harness's continuation prompt embeds the
+ * goal text, so it is a FAMILY of strings rather than one that could be matched.
+ */
+const HARNESS_INJECTION_KEY = "harness_injected";
+
+/**
+ * Whether the harness minted this row, i.e. nobody typed it.
+ *
+ * A user row carrying the stamp is the harness's own chrome — a loop prompt, a goal
+ * continuation — and the marker's own docblock on the Python side says what that
+ * means for a surface: *"a row carrying it was never typed by a person, so no
+ * human-facing surface may paint it as their words."* This reducer is where the
+ * desktop delivers on that, for BOTH of its wire paths, because the alternative is
+ * the loop's internal prompt appearing in the transcript as the user's own message.
+ *
+ * STRICT `=== true`, AND THE ASYMMETRY IS DELIBERATE: the producer writes a JSON
+ * boolean, so anything else — an absent field, a field a newer writer renamed, a
+ * string — is read as NOT injected and the row paints as it always did. Hiding a
+ * row a person really typed is a worse failure than showing one they did not, and
+ * this is the one direction of the test that fails safe.
+ */
+const isHarnessInjected = (payload: unknown): boolean => {
+	if (!payload || typeof payload !== "object") return false;
+	return (payload as Record<string, unknown>)[HARNESS_INJECTION_KEY] === true;
+};
+
 function durableRecord(
 	entry: DesktopHistoryPage["entries"][number],
 	/**
@@ -1799,6 +1833,17 @@ function durableRecord(
 	}
 	const role = String(payload.role ?? "");
 	if (role === "user") {
+		/*
+		 * A row the harness minted is dropped, not restyled.
+		 *
+		 * The durable path needs its own check even though the live path has one:
+		 * they are different branches over different payload shapes, and a session
+		 * opened fresh (or reconciled after a reattach) reads its turns back from
+		 * these rows. Suppressing only the live one would leave the harness's prompt
+		 * in the transcript of every session that was reloaded — the every-reopen
+		 * case the marker exists for.
+		 */
+		if (isHarnessInjected(payload.provider_payload)) return null;
 		const text = messageText(payload);
 		// Harness-authored user rows (recovery notices, wake prompts) are
 		// machine voice: they render as notices rather than as the person.
@@ -2295,6 +2340,14 @@ export function applyEvent(
 			if (!message || typeof message.id !== "string") return state;
 			const current = state.records[state.index.get(message.id) ?? -1];
 			if (message.role === "user") {
+				/*
+				 * The live half of the harness-chrome suppression (the durable half is in
+				 * `durableRecord`, and both are needed — see its note). The message object
+				 * has carried `provider_payload` on this path all along; it was simply
+				 * unread for this role, which is why the desktop painted a loop's internal
+				 * prompt as the user's own words.
+				 */
+				if (isHarnessInjected(message.provider_payload)) return state;
 				return upsert(state, {
 					kind: "user",
 					id: message.id,
