@@ -1976,19 +1976,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * review round 2, MINOR 1).
 				 */
 				lockedRun.current = null;
-				if (conversationId) {
-					clearReplies(conversationId);
-					clearAttachments(conversationId);
-				}
+				/*
+				 * THE CHIP ROW IS NOT CLEARED HERE ANY MORE, and that is the fix rather
+				 * than an omission. It used to be cleared on this line - i.e. once the
+				 * send had settled - while the text left the box at the echo, so the
+				 * whole in-flight window showed the transcript's copy of the message
+				 * with its attachment beside the composer's chip for the same file. The
+				 * two halves now leave together, in `use-message-input`'s `clearOnce`,
+				 * which is the one trigger both of them share (`clearStagedPayload`).
+				 */
 				return accepted;
 			},
 			[
 				onSendMessage,
 				attachments,
 				replies,
-				conversationId,
-				clearReplies,
-				clearAttachments,
 				storeCitedCredentials,
 				// The seam's own decision reads it: with a session there is nothing to
 				// defer, so only a new-chat pane hands the host a callback.
@@ -2005,6 +2007,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			handleKeyDown,
 			handleSubmit: submitMessage,
 			textareaRef,
+			sendInFlight,
 		} = useMessageInput({
 			conversationId,
 			onSubmit,
@@ -6365,10 +6368,40 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										placeholder={
 											/*
 											 * The gone-state sentence is checked FIRST, ahead of the busy one, and
-											 * that order is the whole point: `isInputDisabled` is true for a missing
-											 * conversation too, so a reader of a conversation this machine does not have
-											 * would be told "Agent is busy" about a turn nobody is running (design
-											 * round 2, D3). The remaining terms are the U8 pair, unchanged.
+											 * that order is the whole point: `isInputDisabled` is true for a
+											 * missing conversation too, so a reader of a conversation this
+											 * machine does not have would be told "Agent is busy" about a turn
+											 * nobody is running (design round 2, D3). The remaining terms are
+											 * the U8 pair, unchanged.
+											 *
+											 * "Sending your message" is the state the operator reported as
+											 * MISSING, and it is deliberately the last term before the idle
+											 * invitation. The box is emptied at the echo, so from the echo
+											 * until the send settles this composer used to have nothing to
+											 * say: it showed the idle invitation over a send that was still
+											 * going out, with the attachment chip still in the row below it.
+											 * `sendInFlight` is this composer's own press, so the sentence
+											 * cannot be inherited by a panel that mounted later.
+											 *
+											 * IT SITS BELOW `awaitingReply` ON PURPOSE. The two describe
+											 * consecutive halves of one send - still going out, then out and
+											 * being answered - and where both could be true, the one that has
+											 * moved further along is the truthful one (`awaitingReply` is the
+											 * owner's own state, so it is set only once admission answered).
+											 * What this term must never do is claim the agent is answering,
+											 * which is the whole distinction the operator asked for.
+											 *
+											 * WORDING AND INDICATOR. Sentence case, no ellipsis, no spinner,
+											 * in the composer's existing idiom - every state this box has ever
+											 * had is one of these strings and nothing else (design rounds 2 and
+											 * 3). The transcript already carries the turn's single liveness
+											 * element while this is true (branding section 7's working line,
+											 * fed by the page's `admitting`), so a second visible indicator
+											 * here would be a second liveness statement about one turn - and
+											 * anything that grew the band mid-send would move the box under
+											 * the reader's cursor. "Sending your message" names the half of
+											 * the flow this box is responsible for without claiming the half
+											 * it is not.
 											 */
 											unavailable
 												? "This conversation is gone"
@@ -6381,7 +6414,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 															"Answer the question above"
 														: awaitingReply
 															? "Waiting for the agent"
-															: "Ask me for help"
+															: sendInFlight
+																? "Sending your message"
+																: "Ask me for help"
 										}
 										value={newMessage}
 										/*

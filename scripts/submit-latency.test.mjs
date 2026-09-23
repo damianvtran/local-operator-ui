@@ -1680,7 +1680,7 @@ test("M1/M2/M3: the warm removes the engage from the send, and the control prove
 	);
 });
 
-test("M4/M5/M6: the felt claims are pinned structurally, not by this clock", () => {
+test("M4/M5/M6/M7: the felt claims are pinned structurally, not by this clock", () => {
 	/*
 	 * Stated here so the benchmark reads as one table, and asserted where the
 	 * code lives. These are deliberately NOT timed:
@@ -1705,6 +1705,20 @@ test("M4/M5/M6: the felt claims are pinned structurally, not by this clock", () 
 	 *                         remount lands before the POST resolves, so the
 	 *                         panel that receives the admission row is the
 	 *                         subscribed one.
+	 *   M7 one payload, one      the same family of felt claim, and the one the
+	 *      moment             operator reported: the message must not look SENT
+	 *                         TWICE. The clear is the defect's whole shape - the
+	 *                         text left the box at the echo while the chip row and
+	 *                         the staged replies left when the send settled, so
+	 *                         for the in-flight window the transcript held the
+	 *                         message with its attachment beside the composer's chip
+	 *                         for that same file. echo-delivery.test.mjs drives the
+	 *                         shipped hook over the shipped store and asserts that
+	 *                         all three registers leave in the same call as the
+	 *                         paint, that a refusal owes both halves back, and that
+	 *                         a held claim KEEPS its files - the guard compares
+	 *                         files as well as text, so a file that cannot come back
+	 *                         is a silent partial send rather than a retry.
 	 *
 	 * The reducer half - that the echo COALESCES with the owner's row instead of
 	 * duplicating it - is transcript-reducer.test.mjs.
@@ -1736,5 +1750,17 @@ test("M4/M5/M6: the felt claims are pinned structurally, not by this clock", () 
 		"connecting: existing-session / draft",
 		"0 / 1 (pre-POST)",
 		"canonical-chat",
+	);
+	record(
+		"M7",
+		"payload halves leave on one trigger",
+		"structural",
+		"echo-delivery",
+	);
+	record(
+		"M7",
+		"refusal / held: both halves back",
+		"structural",
+		"echo-delivery",
 	);
 });
