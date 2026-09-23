@@ -1509,6 +1509,16 @@ export async function admitChatDraft(
 			: error;
 	}
 }
+/**
+ * One press of a conversation, as the read receipt's re-arm reads it.
+ *
+ * A RECORD OF THE PRESS, not a flag that a receipt is wanted: the reader has to
+ * answer two questions with it - WHICH conversation the operator just opened,
+ * and WHETHER it is a press it has already honoured - and a boolean answers
+ * neither (`readAckRearm` on the state states the whole rule).
+ */
+export type ReadAckRearm = { sessionId: string; revision: number };
+
 type CanonicalSessionsState = {
 	sessions: CanonicalSessionRow[];
 	activeSessionId: string | null;
@@ -1812,6 +1822,38 @@ type CanonicalSessionsState = {
 	 */
 	confirmSessionMissing: (sessionId: string | null) => void;
 	/**
+	 * The operator's own gesture: "I am looking at this conversation now".
+	 *
+	 * WHY IT IS A GESTURE AND NOT A TIMER. Nothing about a mount, a focus change
+	 * or the passage of time says a person is reading a result, and the receipt
+	 * `useCompletionView` sends is a claim that they are - so the only thing that
+	 * can re-arm a receipt the retry ladder had pushed out is an act the operator
+	 * performed. Every press that opens a conversation stamps this (`rearmReadAck`,
+	 * called by `openSession`), which is exactly the act the reported defect is
+	 * about: "click into it = mark it read".
+	 *
+	 * ONE RECORD, not a log, for the reason `pinFailure` is one: there is one row
+	 * under the pointer, and a second press replaces the first rather than
+	 * queueing behind it. The `revision` is what makes two presses of the SAME row
+	 * two events rather than one truthy value.
+	 *
+	 * Deliberately NOT persisted (`partialize` names its keys): a press that
+	 * happened before a reload was honoured by the process that saw it, and a
+	 * restored stamp would be a gesture this window never witnessed.
+	 */
+	readAckRearm: ReadAckRearm | null;
+	/**
+	 * Stamp one press of a conversation for the read receipt's re-arm.
+	 *
+	 * Called by `openSession` on EVERY press, INCLUDING the press of the row the
+	 * view is already on. That press is a no-op for the switch itself (see the
+	 * action's own comment) and the one shape the reported defect turns on: the
+	 * operator's remedy for a mark that did not clear is to click the row again,
+	 * and an acknowledgement whose retry had been pushed out by the shared ladder
+	 * is what that click has to release.
+	 */
+	rearmReadAck: (sessionId: string) => void;
+	/**
 	 * Merge one machine-wide `attention` frame into its row.
 	 *
 	 * This is the unseen mark's ARRIVAL path. It used to be a 5 s
@@ -2094,6 +2136,23 @@ const mergeAttentionInto = (
 	next[index] = { ...row, attention: merged };
 	return next;
 };
+
+/**
+ * The receipt's re-arm stamp, advanced by one press of a conversation.
+ *
+ * A COUNTER rather than a timestamp, for the same reason `answerSeq` is one: the
+ * reader asks "is this a press I have NOT already honoured?", and `Date.now()`
+ * answers only when two presses land in different milliseconds - which two
+ * clicks of the same row, or a click and the route effect behind it, do not
+ * promise. A revision that only ever moves forward answers it exactly.
+ */
+const rearmedReadAck = (
+	current: ReadAckRearm | null,
+	sessionId: string,
+): ReadAckRearm => ({
+	sessionId,
+	revision: (current?.revision ?? 0) + 1,
+});
 
 /**
  * The stamp the merged row carries, as a PAIR or not at all.
@@ -2457,6 +2516,9 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			pinFailure: null,
 			pinFacts: {},
 			answerSeq: 0,
+			// Null rather than a stamp at zero: no press has been made in this window,
+			// and the receipt's re-arm reads "no press" as exactly that.
+			readAckRearm: null,
 			loading: false,
 			truncated: false,
 			statusUnavailable: [],
@@ -3061,6 +3123,11 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					...forgetSession(get(), sessionId),
 				});
 			},
+			rearmReadAck: (sessionId) => {
+				set((state) => ({
+					readAckRearm: rearmedReadAck(state.readAckRearm, sessionId),
+				}));
+			},
 			applyAttention: (sessionId, attention) => {
 				set((state) => {
 					const sessions = mergeAttentionInto(
@@ -3207,9 +3274,22 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				 * staged draft is a different view of the same session (the sidebar does
 				 * not mark the row while one is staged), so a click that leaves it is a
 				 * real move and still runs the whole switch.
+				 *
+				 * THE PRESS STILL STAMPS THE RECEIPT'S RE-ARM on both arms, which is the one
+				 * thing this action does that is NOT a no-op when the target is already
+				 * active. The press is the operator's own statement that they are looking
+				 * at this conversation now, and the acknowledgement of its completed result
+				 * is what that statement has to release: a retry the shared ladder had
+				 * pushed out (a `store_busy` refusal it did not classify, today) left the
+				 * row's mark standing over a result the operator was looking at, and their
+				 * only remedy - clicking the row again - was read as "nothing happened"
+				 * (the reported defect). `readAckRearm` states why it is one record and not
+				 * a log; `useCompletionView` is the only reader.
 				 */
-				if (get().activeSessionId === sessionId && !get().activeDraftKey)
+				if (get().activeSessionId === sessionId && !get().activeDraftKey) {
+					get().rearmReadAck(sessionId);
 					return true;
+				}
 				/*
 				 * COMMIT, AND LET THE CONVERSATION'S OWN STREAM VALIDATE IT.
 				 *
@@ -3260,6 +3340,9 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					validatingSessionId: sessionId,
 					error: null,
 				});
+				// The same stamp as the no-op arm above, for the same reason: this press is
+				// the operator's statement that they are looking at this conversation now.
+				get().rearmReadAck(sessionId);
 				return true;
 			},
 			stageDraft: (target, fresh = false) => {

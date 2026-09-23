@@ -786,6 +786,10 @@ const STAMP_BINDING_NOTES = [
 	"notarizeGateRestampNote",
 	"macNativeComponentsRestampNote",
 	"telemetrySwitchRestampNote",
+	// The seventh: `readReceiptRestampNote` states this file's own pair for the
+	// read-receipt branch, so it is held to that pair rather than read as history -
+	// the distinction `candidateMacArchRestampNote` above is in the list for.
+	"readReceiptRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {

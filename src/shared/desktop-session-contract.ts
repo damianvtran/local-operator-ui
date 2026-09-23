@@ -229,6 +229,41 @@ export type CompletionAttentionAckReceipt = {
 export const SUPERSEDED_COMPLETION_TOKEN_CODE = "superseded_completion_token";
 
 /**
+ * The backend's machine code for "the store could not take the write because
+ * another writer holds its lock": the ONE refusal of a read receipt whose remedy
+ * is the attempt itself.
+ *
+ * The string is the BACKEND's (`STORE_BUSY` in
+ * `local_operator/session/store_failures.py`, answered as
+ * `503 {"code": "store_busy", "message": ...}` by `_store_refusal` in
+ * `local_operator/server/routes/desktop_sessions.py`), copied here for the same
+ * reason the superseded token above is: the renderer cannot import Python, and a
+ * client that has to spell the backend's own string is a client that loses the
+ * classification the day the backend renames it. `scripts/completion-view-ack.test.mjs`
+ * pins both literals against the documented wire values.
+ *
+ * UNLIKE THAT ONE, THE RENDERER FORKS ON THIS CODE. `use-completion-view.ts`
+ * retries a contention refusal on its own prompt, bounded budget while every
+ * other failure takes the shared ladder (`runtime_busy` is the same shape one
+ * op over, `RUNTIME_BUSY_CODE` in `desktop-contract.ts`). Why the fork exists:
+ * contention clears by itself in the same second-scale window the send path
+ * already absorbs (`BUSY_RESENDS`), and the operator's own log shows the cost of
+ * not telling it apart - three refusals of `/seen`, ONE attempt each, minutes
+ * apart, with the completion's mark still on the row (2026-09-23, the reported
+ * defect). Treating it as a generic failure instead means either hammering a
+ * store that cannot recover or giving up on one that can.
+ *
+ * WHERE IT ARRIVES, precisely, because the body is what a client can key on:
+ * that route's refusal carries `code` and `message` and NO `retry_after_ms`
+ * today (verified in `_store_refusal`, 2026-09-23), while the transport reads
+ * `detail.retry_after_ms` into `DesktopControlError.retryAfterMs` where a
+ * backend does send it. The receipt's busy budget therefore reads that field and
+ * falls back to its own default, so a future backend can steer the wait without
+ * a client change.
+ */
+export const STORE_BUSY_CODE = "store_busy";
+
+/**
  * Whether an acknowledgement may be taken as marking this conversation READ.
  *
  * `sessions.seen` answers with the resulting attention state, and `unseen` is the
