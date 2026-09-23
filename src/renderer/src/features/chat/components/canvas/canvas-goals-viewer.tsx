@@ -4,6 +4,7 @@ import { formatTurnTimestamp } from "@shared/utils/date-utils";
 import { CircleCheck, History } from "lucide-react";
 import type { FC } from "react";
 import type { CanonicalGoalHistoryEntry } from "../../../../../../shared/desktop-session-contract";
+import { EmptyState } from "./canvas-empty-state";
 
 /**
  * The canvas pane's fourth view: the goals this session has settled.
@@ -38,17 +39,26 @@ export const CanvasGoalsViewer: FC<{
 	truncated: boolean;
 }> = ({ entries, truncated }) => {
 	if (entries.length === 0 && !truncated) {
+		/*
+		 * THE PANE'S OWN EMPTY STATE, imported rather than restated (design review round
+		 * 1, D7). This box used to be a copy with byte-identical classes; the pixels
+		 * matched and the pane's one empty-state idiom had two writers, which is the
+		 * drift that rule exists to prevent.
+		 *
+		 * THE DESCRIPTION IS THE APP'S OWN INVITATION FOR THIS ACT (design review round
+		 * 1, D9): `no goal set — /goal <text> to set one` is what the TUI's goal panel
+		 * and its `/goal` line already say (`local_operator/session/goal.py`), so the two
+		 * surfaces spell one invitation one way rather than two. Only the leading
+		 * capital differs, which is this pane's register (§ the truncation notice below
+		 * is sentence case for the same reason). The second sentence stays because it is
+		 * the pane's own answer to "what happens to a goal I finish", which the
+		 * invitation does not give.
+		 */
 		return (
-			<div
-				className={cn(
-					"flex h-full flex-col items-center justify-center gap-2 bg-canvas p-6 text-center",
-				)}
-			>
-				<h3 className={cn("text-heading text-ink")}>No goals completed yet</h3>
-				<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
-					Set one with /goal &lt;text&gt;. Finished goals are kept here.
-				</p>
-			</div>
+			<EmptyState
+				title="No goals completed yet"
+				description="No goal set — /goal <text> to set one. Finished goals are kept here."
+			/>
 		);
 	}
 	/*
@@ -78,8 +88,18 @@ export const CanvasGoalsViewer: FC<{
 			 * goals cannot read as a session that completed three goals and no more.
 			 */}
 			{truncated && (
-				<p className={cn("px-3 pb-1 text-meta text-ink-dim")}>
-					older settled goals are not carried here — this list is capped.
+				/*
+				 * SENTENCE CASE AND A MEASURE (design review round 1's D4 and D10). The notice
+				 * shipped lowercase and unmeasured: *"older settled goals are not carried here
+				 * — this list is capped"* rendered directly beside the empty state's sentence-case
+				 * description, and *"capped"* is the implementation's word where the pane's own
+				 * precedent for a truncation notice is a proper sentence. It starts with a
+				 * capital now, so the pane has ONE notice register, and it takes the pane's own
+				 * measure (`max-w-80`, as the empty state and the other canvas notices do) so at
+				 * the 400px dock floor the sentence does not run the pane's full width.
+				 */
+				<p className={cn("max-w-80 px-3 pb-1 text-meta text-ink-dim")}>
+					Older settled goals are not carried here — this list is capped.
 				</p>
 			)}
 			<ul className={cn("flex flex-col pb-1.5")}>
