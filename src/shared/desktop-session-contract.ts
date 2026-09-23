@@ -769,6 +769,18 @@ export type DesktopSnapshot = {
 	frontend: CanonicalFrontendSync;
 	history: DesktopHistoryPage;
 	cold: boolean;
+	/**
+	 * WHICH cold (`no-runtime`, `owner-silent`, ...), and whether an
+	 * authenticated dial is retained and still syncing. Both are additive on the
+	 * backend (local-operator 93542f91, v0.56.6), so an older daemon sends
+	 * neither and they are optional here. The renderer reads `cold_reason` for
+	 * one thing only: its PRESENCE proves the frame came from a backend whose
+	 * history page is the journal's tail (see `pageIsJournalTail` in
+	 * `use-canonical-session`). No surface paints either token; the pane's
+	 * existing states already say everything the user can act on.
+	 */
+	cold_reason?: string | null;
+	attaching?: boolean;
 };
 type Receipt<T extends string, P> = {
 	session_id: CanonicalSessionId;
