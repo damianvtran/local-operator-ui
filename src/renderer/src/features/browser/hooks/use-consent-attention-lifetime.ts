@@ -1,11 +1,12 @@
 import {
 	clearConsentAttention,
-	isConsentAttentionPending,
+	isConsentAttentionLive,
 	shouldForgetConsentAttention,
 	useConsentAttention,
 } from "@shared/browser-consent-attention";
 import { showInfoToast } from "@shared/utils/toast-manager";
 import { useEffect, useRef } from "react";
+import { readApprovalClock } from "../model/approval-queue-model";
 import {
 	readBrowserProjection,
 	refreshBrowserProjection,
@@ -13,27 +14,27 @@ import {
 import { useBrowserProjection } from "./use-browser-chrome";
 
 /**
- * How long the memory of a banner click lasts, decided ONCE for the whole app.
+ * What a banner click's memory does, decided ONCE for the whole app: how long it lasts,
+ * and what the operator is told when it names something that is already gone.
  *
  * WHY THE SHELL AND NOT THE SURFACES (UX review round 1, U1). Each surface used to
  * clear the attention when the named entry was not in the list it was showing, and a
  * surface can only see its own scope: the browser PANE shows one conversation, so a
- * click naming a request that belongs to NO conversation (a subagent's own session
- * id, `call:…` — the case the rail's own count exists for) was "not here" from the
- * pane's point of view, and the pane cleared the memory while the router was still
- * on its way to the `/browser` route — the surface that can show it. The click then
- * landed on the oldest row instead of the one the banner named, reproduced twice
- * (S3b vs S4: the same payload with and without a pane mounted).
+ * click naming a request that belongs to NO conversation (a subagent's own session id,
+ * `call:…` — the case the rail's own count exists for) was "not here" from the pane's
+ * point of view, and the pane cleared the memory while the router was still on its way
+ * to the `/browser` route — the surface that can show it. The click then landed on the
+ * oldest row instead of the one the banner named, reproduced twice (S3b vs S4: the same
+ * payload with and without a pane mounted).
  *
- * The shell is mounted on every route and is what performs the navigation, so its
- * read is the whole projection and it is the only caller of the clear. A surface
- * therefore never decides whether the memory is stale — it only READS it, to select
- * the request it names.
+ * The shell is mounted on every route and is what performs the navigation, so its read
+ * is the whole projection and it is the only caller of the clear. A surface therefore
+ * never decides whether the memory is stale — it only READS it, to select the request
+ * it names.
  *
- * TWO MOMENTS, ONE RULE. `useConsentAttentionLifetime` asks main the queue's current
- * state as soon as a click names something, and forgets the memory when the request
- * is gone — which is the same rule, asked once per click and then once per
- * projection, rather than a second policy.
+ * TWO MOMENTS, ONE RULE. A click is judged against a read main is asked for once per
+ * click, and the memory is forgotten when the whole queue no longer holds the request —
+ * the same predicate, asked once per click and then once per projection.
  */
 export function useConsentAttentionLifetime(): void {
 	const attention = useConsentAttention();
@@ -42,40 +43,50 @@ export function useConsentAttentionLifetime(): void {
 	// no read has landed, which is the distinction the predicates are written around.
 	const pending = projection.state?.pendingConsent;
 	const forget = shouldForgetConsentAttention(attention, pending);
-	/** The attention main has already been asked about, so the read below runs once
-	 * per click rather than once per render. */
-	const asked = useRef<string | null>(null);
+	/**
+	 * The click whose report is OWED, held independently of the memory.
+	 *
+	 * THIS IS THE ROUND-2 FIX (QA Q-2, UX U9), and the bug was a guard that outlived its
+	 * subject: the report used to be suppressed whenever `attention` had changed by the
+	 * time the read came back — and the shell's own forget effect clears the memory as
+	 * soon as the freshness read says the request is gone, which is EXACTLY the case the
+	 * report exists for. The click was therefore silent in both states it was filed for:
+	 * a request answered between the banner and the click, and a request that expired
+	 * while main still lists it. Holding the id here means the memory can be dropped —
+	 * as it should be — without dropping the obligation to say what happened.
+	 */
+	const clickOwed = useRef<string | null>(null);
 
 	/*
-	 * A CLICK IS JUDGED AGAINST A CURRENT ANSWER, and a request that was answered
-	 * between the banner and the click is REPORTED rather than silently skipped (UX
-	 * review round 1, U6).
+	 * A CLICK IS JUDGED AGAINST A CURRENT ANSWER, and a request that is no longer LIVE
+	 * when the click lands is REPORTED rather than silently skipped (U6, U9).
 	 *
-	 * The click's own promise is "take me to the request I just told you about", and
-	 * main is the only place that knows whether it is still there: the projection the
-	 * renderer holds can be up to one change old, so a click that lands on a request
-	 * answered a moment ago would open the surface with nothing in it and say nothing
-	 * about why. Asking for one fresh read per click, and saying so when the answer is
-	 * "gone", keeps the landing honest in the one case the surface cannot explain
-	 * itself: the tray shows what is live, and this says why nothing is.
+	 * The click's own promise is "take me to the request I just told you about", and main
+	 * is the only place that knows whether it is still live: the projection the renderer
+	 * holds can be up to one change old, and a request that ran out its ten minutes is
+	 * still IN `pendingConsent` (nothing in main fires at expiry), so "listed" is not
+	 * "live" — hence `isConsentAttentionLive` rather than a membership test. Asking for
+	 * one fresh read per click, and saying so when the answer is "gone", keeps the landing
+	 * honest in the one case the surface cannot explain itself: the tray shows what is
+	 * live, and this says why nothing is.
 	 *
-	 * IT CANNOT CRY WOLF. The check runs only after a read has LANDED (`undefined`
-	 * means "not read yet" and returns), and only inside the window between a click
-	 * and its first settled answer, so a request the user answers themselves a moment
-	 * later clears the memory in silence, on the effect below.
+	 * IT CANNOT CRY WOLF. The report is judged once per click, against the FIRST read
+	 * after it, and only when a read has LANDED (`undefined` means "not read yet" and
+	 * returns). A request the operator answers themselves is answered by a press in the
+	 * tray, which cannot land inside the few milliseconds between a click and its own
+	 * read; a request answered a moment later clears the memory in silence, on the effect
+	 * below.
 	 */
 	useEffect(() => {
-		if (attention === null) {
-			asked.current = null;
-			return;
-		}
-		if (asked.current === attention) return;
-		asked.current = attention;
+		if (attention === null || clickOwed.current === attention) return;
+		clickOwed.current = attention;
 		void refreshBrowserProjection().then(() => {
-			if (asked.current !== attention) return;
+			const owed = clickOwed.current;
+			if (owed === null) return;
+			clickOwed.current = null;
 			const landed = readBrowserProjection().state?.pendingConsent;
 			if (landed === undefined) return;
-			if (isConsentAttentionPending(attention, landed)) return;
+			if (isConsentAttentionLive(owed, landed, readApprovalClock())) return;
 			showInfoToast("That request is no longer waiting.");
 		});
 	}, [attention]);

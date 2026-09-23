@@ -271,7 +271,7 @@ const {
 	clearConsentAttention,
 	consentClickTarget,
 	shouldForgetConsentAttention,
-	isConsentAttentionPending,
+	isConsentAttentionLive,
 	consentAttentionSnapshot,
 	subscribeConsentAttention,
 	MAX_RESTORED_TABS,
@@ -1897,8 +1897,15 @@ test("the consent bar names the conversation that is asking (D2)", () => {
 	);
 	assert.equal(
 		requesterLabel("session-abc", [{ session_id: "session-abc", title: "  " }]),
+		"The agent in 'Untitled chat'",
+		"a conversation the app LISTS but has not titled is named with the app's own word for that state, the same one the sidebar's row uses (agent review round 2, U7: this case used to read as a stranger, which told the operator an agent they can see in their sidebar was one)",
+	);
+	assert.equal(
+		requesterLabel("subagent-8f4c1d2e-tool-call", [
+			{ session_id: "session-abc", title: "Named" },
+		]),
 		"An agent from another session",
-		"a session the app cannot name is described rather than printed as an id (UX round 1, U5: a subagent's own session id is a valid requester and not a listed conversation, and that is the case that lands on the browser route)",
+		"while a requester the app does NOT list is still described rather than printed as an id (UX round 1, U5: a subagent's own session id is a valid requester and not a listed conversation, and that is the case that lands on the browser route)",
 	);
 	assert.equal(
 		requesterLabel(null, [{ session_id: "session-abc", title: "Named" }]),
@@ -2559,9 +2566,16 @@ test("a conversation is named by its title, or by its id when it has none", () =
 	assert.equal(requesterLabel("alice", sessions), "The agent in 'Reports'");
 	assert.equal(
 		requesterLabel("bob", sessions),
+		"The agent in 'Untitled chat'",
+		"a LISTED conversation with no title yet is the app's own 'Untitled chat' rather than a stranger (agent review round 2, U7) - the sidebar draws this same row under that name",
+	);
+	assert.equal(
+		requesterLabel("dave", sessions),
 		"An agent from another session",
+		"while a requester the catalogue does not hold stays described rather than printed as an id",
 	);
 	assert.equal(requesterLabel("alice", sessions, { short: true }), "Reports");
+	assert.equal(requesterLabel("bob", sessions, { short: true }), "Untitled chat");
 	assert.equal(requesterLabel(null, sessions), "An agent");
 });
 
@@ -3439,18 +3453,77 @@ test("the shell forgets the attention, and only once the projection says the req
 		false,
 		"nothing to forget is not a reason to publish",
 	);
-	// The sibling predicate reads the same distinction the other way round, which is
-	// what the shell's click check uses to decide whether to TELL the user the request
-	// is gone rather than opening an empty tray in silence (U6).
+	/*
+	 * The sibling predicate is what the shell's click check uses to decide whether to
+	 * TELL the user the request is gone rather than opening an empty tray in silence
+	 * (U6), and round 2 changed the distinction it reads: LIVENESS rather than
+	 * membership (QA round 2, Q-2; UX U9). The three fixtures below are the three
+	 * states, and the middle one is the state the membership test got wrong - a request
+	 * that ran out its ten minutes is still IN `pendingConsent`, because nothing in main
+	 * fires at expiry, so "in the list" answered "still here" for an entry no surface
+	 * would draw.
+	 */
 	assert.equal(
-		isConsentAttentionPending("entry-1", undefined),
+		isConsentAttentionLive("entry-1", undefined, 1_000),
 		true,
 		"an unread queue reports the request as still waiting",
 	);
 	assert.equal(
-		isConsentAttentionPending("entry-1", [{ entryId: "entry-2" }]),
+		isConsentAttentionLive(
+			"entry-1",
+			[{ entryId: "entry-2", expiresAt: 9_999 }],
+			1_000,
+		),
 		false,
-		"and a read queue that does not hold it reports it as gone",
+		"a read queue that does not hold it reports it as gone",
+	);
+	assert.equal(
+		isConsentAttentionLive(
+			"entry-1",
+			[{ entryId: "entry-1", expiresAt: 1_000 }],
+			1_000,
+		),
+		false,
+		"and one that holds it but has run out its ten minutes reports it as gone too, at exactly its expiry instant",
+	);
+	assert.equal(
+		isConsentAttentionLive(
+			"entry-1",
+			[{ entryId: "entry-1", expiresAt: 1_001 }],
+			1_000,
+		),
+		true,
+		"while the instant before that boundary is still waiting",
+	);
+});
+
+test("a click's report survives the memory being dropped, which is the case it exists for (Q-2, U9)", () => {
+	const shell = shippedSource(
+		"src/renderer/src/features/browser/hooks/use-consent-attention-lifetime.ts",
+	);
+	/*
+	 * The round-2 defect was a guard that outlived its subject: the report was
+	 * suppressed whenever `attention` had changed by the time the read came back, and
+	 * the shell's own forget effect drops the memory as soon as that same read says the
+	 * request is gone. The fix is that the id under judgement is held in a ref of its
+	 * own, so the assertion is that the ref - not the live attention value - is what the
+	 * report tests. A future edit that guards the report on `attention` again fails
+	 * here.
+	 */
+	assert.match(
+		shell,
+		/clickOwed/,
+		"the click whose report is owed is held independently of the memory",
+	);
+	assert.match(
+		shell,
+		/isConsentAttentionLive\(/,
+		"and it is judged on liveness rather than on the queue holding it",
+	);
+	assert.doesNotMatch(
+		shell,
+		/if \(asked\.current !== attention\) return;/,
+		"the old guard, which silenced both states the report was filed for, is gone",
 	);
 });
 

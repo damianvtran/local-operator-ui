@@ -303,14 +303,24 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					 *    design round 1's D2 measured 0.25px of clearance, which is
 					 *    antialiasing, and the mark read as cut by the panel edge. `-right-1.5`
 					 *    holds it 3px inside, with the border's own pixel still its own.
-					 *  - TOP. `-top-2` clears the 16px glyph ENTIRELY, and that is what makes a
-					 *    TWO-DIGIT count safe here. At `-top-1.5` the badge's box ended 4px
-					 *    above the glyph's top (measured: badge y196-212 against the glyph's
-					 *    y208-224), so a one-digit pill sat clear of it and a two-digit one
-					 *    reached back over the glyph's top-right arc - and a cap does NOT buy
-					 *    that width, because `9+` and `13` are the same two characters. One
-					 *    step up puts the badge in the inter-row gap instead: its bottom edge
-					 *    lands on the glyph's top edge, and the row above has no ink there.
+					 *  - TOP. `-top-2` lifts the badge's BOX until its bottom edge sits ON the
+					 *    16px glyph's top edge, which is what makes a TWO-DIGIT count safe here:
+					 *    at `-top-1.5` the box ended 4px lower (badge y196-212 against the
+					 *    glyph's y208-224), so a two-digit pill reached further back over the
+					 *    crown - and a cap does NOT buy that width, because `9+` and `13` are the
+					 *    same two characters.
+					 *
+					 *    AND THE RING STILL CROSSES THE CROWN, which is the header's own
+					 *    arrangement rather than a shortfall of this one (design review round 2,
+					 *    D6 measured it: a 52px2 band of the stroke, x19.5-29.5 by y208.5-212,
+					 *    is painted over by the mark and its 2px of outward ring). The pill
+					 *    itself stops at the glyph's top; the ring - the separator that keeps
+					 *    the two from reading as one thick blob, exactly as on the header's icon
+					 *    button - is what enters it, and the alternative (lifting the pair until
+					 *    neither touches) is not available in a 32px-pitch list: 16px of badge
+					 *    plus 2px of ring per side cannot fit between two glyphs 16px apart, so
+					 *    something is always crossed and the round-1 choice was to make it the
+					 *    ICON'S OWN CROWN rather than the row above's ink.
 					 *
 					 * THE RING (see the badge's own comment below) is the header's answer to a
 					 * mark that overlaps its icon, and the collapsed rail needs the same thing

@@ -377,22 +377,38 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * the empty space did - the description clipped mid-sentence at 760px
 			 * while 220px of bar sat unused to its right. Growing first means the
 			 * text truncates only once there is genuinely no room left. */}
-			{/* THE FLOOR IS THE POINT (design round 1, D1). `flex-1 min-w-0` grows into
-			 * spare room but yields ALL of it, so one more control in the cluster could take
-			 * the conversation's name off the bar entirely - which is what the browser
-			 * trigger's own fix did, on the pane-open screen the operator reported from.
+			{/* THE FLOOR IS THE POINT, AND IT IS CONDITIONAL ON THE ROOM THAT PAYS FOR IT
+			 * (design round 1, D1; agent review round 2, Q-1).
 			 *
-			 * `min-w-10` (40px, two or three characters and the ellipsis) is the floor the
-			 * NARROWEST real row can pay, measured rather than picked: with the browser
-			 * pane up at 1380px the header is 240px wide, its fixed parts (avatar 32, two
-			 * 12px gaps, the `...` menu, the trigger, the console, px-4) come to 200, and
-			 * what is left for the title is 40. A larger floor did not buy a longer
-			 * fragment - it pushed the cluster 48px out of the row, which the scene reports
-			 * as `headerClusterRight` past `headerBox.right` - so the floor is the space
-			 * that exists and the fragment is what fits in it. The control that yields to
-			 * make that space is the canvas button below, and its comment carries that
-			 * half of the measurement. */}
-			<div className={cn("flex min-w-10 flex-1 flex-col")}>
+			 * `flex-1 min-w-0` grows into spare room but yields ALL of it, so one more
+			 * control in the cluster could take the conversation's name off the bar
+			 * entirely - which is what the browser trigger's own fix did, on the pane-open
+			 * screen the operator reported from. `min-w-10` (40px, two or three characters
+			 * and the ellipsis) is the floor the NARROWEST real row can pay, measured
+			 * rather than picked: with the browser pane up at 1380px the header is 240px
+			 * wide, its fixed parts (avatar 32, two 12px gaps, the `...` menu, the trigger,
+			 * the console, px-4) come to 200, and what is left for the title is 40.
+			 *
+			 * AND THE ROW'S OVERFLOW IS VISIBLE, so the floor has to be one the row can pay
+			 * for: QA's round-2 Q-1 measured the pane-open header at a 900px window with the
+			 * controls not yielding - the last one ended 4px past the row and painted UNDER
+			 * the pane, invisible and unpressable, rather than being clipped. What fixes
+			 * that is the SHED ORDER below, and the gate here is its insurance rather than
+			 * its mechanism: at the app's own minimum window (`WINDOW_MIN_WIDTH = 800`)
+			 * the pane-open header measures 220px, its remaining fixed parts 164 and the
+			 * floor 40, which fits with 16px to spare - so at every width a person can
+			 * reach the floor is applied, and the gate only stops it from being the thing
+			 * that breaks a row nothing else is left to shed
+			 * (`@[13.5rem]` = 216px, beneath every width a person can reach) and the title
+			 * yields freely below that. The controls shed FIRST - the run trigger, then the canvas
+			 * button, then the console - so on the widths a person can reach the floor is
+			 * almost always applied; the gated-off case is the last resort beneath them
+			 * rather than the mechanism. */}
+			<div
+				className={cn(
+					"flex min-w-0 flex-1 flex-col @[13.5rem]/chathdr:min-w-10",
+				)}
+			>
 				{/* `text-heading`, not `text-title`: branding.md reserves the 20px step
 				 * for section and dialog titles and states that a desktop app has no
 				 * hero. 20px over 13px also skipped two ramp steps in one bar. */}
@@ -744,7 +760,23 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 									: "Open console"
 							}
 							data-tour-tag="console-pane-trigger"
-							className={cn("relative")}
+							/* THE THIRD CONTROL THE ROW SHEDS, BELOW THE CANVAS (agent review
+							 * round 2, Q-1). At 220px - the pane-open header at a 900px window -
+							 * the row cannot hold the menu, both pane triggers and a title, and
+							 * the console is the younger of the two pane doors: the browser's
+							 * trigger carries the attention badge and is what the operator
+							 * reported about, so it does not yield. Hiding this one costs
+							 * reachability of the console ONLY while the row is that narrow, and
+							 * the pane it opens is still named in the transcript's own rows.
+							 *
+							 * 17.5rem (280px) is MEASURED rather than derived, and the measurement
+							 * is this scene at three window widths: the pane-open header is 240px
+							 * at 1380, 220px at 900 and 220px at the 800 floor, and at 240 the
+							 * row's last painted control ends at 724 inside a 740 row - so this
+							 * control's own 40px (32 plus its gap) is exactly the next 40px of row
+							 * the layout buys. Below 280 it would have ended 24px past the row,
+							 * which is the failure Q-1 recorded at 900. */
+							className={cn("relative hidden @[17.5rem]/chathdr:inline-flex")}
 						>
 							<SquareTerminal aria-hidden={true} />
 							{consoleUnseenCount > 0 && (
@@ -784,22 +816,29 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 									: `Open canvas (${shortcut})`
 							}
 							data-tour-tag="open-canvas-button"
-							/* THE CONTROL THAT YIELDS (design round 1, D1). The title block
-							 * now keeps a 96px floor, so something has to give when the row is
-							 * narrow enough that both cannot fit - and this is the one of the
-							 * four the app can lose without a loss of capability: the canvas is
-							 * also reachable from the transcript's own file tiles and the
-							 * `shortcut` this control prints. `hidden`/`inline-flex` rather than a
-							 * second render gate because the question is the ROW's width, not
-							 * the pane's state - `chat-header-cluster`'s stories pin the same
-							 * arrangement at a wide viewport, where nothing sheds.
+							/* THE SECOND CONTROL TO YIELD, and the order it yields in is the
+							 * row's (agent review round 2, Q-1; design round 2, D8).
 							 *
-							 * THE THRESHOLD is the width at which the row's fixed parts plus the
-							 * title's floor just fit: avatar 32 + the two 12px gaps + the `...`
-							 * menu 32 + the cluster (trigger 32 + 8 + canvas 32, with the badge's
-							 * `gap-3` when it is drawn) + px-4, measured in the driver scene at
-							 * both pane states rather than derived on paper. */
-							className={cn("relative hidden @[23rem]/chathdr:inline-flex")}
+							 * The canvas is the one of the cluster's controls the app can lose
+							 * without losing a capability: it is also reachable from the
+							 * transcript's own file tiles and the `shortcut` this control
+							 * prints. `hidden`/`inline-flex` rather than a second render gate
+							 * because the question is the ROW's width, not the pane's state -
+							 * `chat-header-cluster`'s stories pin the same arrangement at a wide
+							 * viewport, where nothing sheds.
+							 *
+							 * THE THRESHOLD IS 20rem (320px), one measurement along from the
+							 * console's: every control in this cluster costs 32px plus an 8px gap,
+							 * so the width that holds the console (280, measured) is exactly the
+							 * width below which this one cannot join it - 280 + 40 = 320. The
+							 * comment this replaces stated a rule whose terms came to about 15rem
+							 * while the class shipped 23rem (design round 2, D8), and the floor was
+							 * quoted as 96px while the code and the assertion are 40 (F10); both
+							 * are corrected rather than left beside a value they do not produce.
+							 * What the scene measures: 1380 -> a 240px row with this control and
+							 * the console both shed and every painted control inside by 16px; 900
+							 * and 800 -> a 220px row, the same shed, 16px inside. */
+							className={cn("relative hidden @[20rem]/chathdr:inline-flex")}
 						>
 							<FileText aria-hidden={true} />
 							{/*

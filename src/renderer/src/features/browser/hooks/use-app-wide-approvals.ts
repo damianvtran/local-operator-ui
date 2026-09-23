@@ -1,7 +1,9 @@
+import { useEffect } from "react";
 import { useBrowserProjection } from "../hooks/use-browser-chrome";
 import {
 	type ApprovalRequestInput,
 	liveApprovalCount,
+	readApprovalClock,
 	useApprovalClockValue,
 } from "../model/approval-queue-model";
 
@@ -43,5 +45,20 @@ export function useAppWideApprovals(): number {
 	const { state } = useBrowserProjection();
 	const requests = state?.pendingConsent ?? NO_REQUESTS;
 	const now = useApprovalClockValue((at) => liveApprovalCount(requests, at));
+	/*
+	 * A PROJECTION THAT LANDS IS A MOMENT TO RE-READ THE CLOCK (agent review round 2,
+	 * F11). `useApprovalQueue` owns that re-read for every surface that reads a row, and
+	 * extracting the clock (round 1, F6) took the rail out of that path: on a route where
+	 * no queue-model consumer is mounted, the count was computed against a `now` up to a
+	 * second old at the moment a refresh arrived — so a request that had already expired
+	 * but is still in `pendingConsent` (nothing in main fires at expiry) counted for one
+	 * tick where it should have read zero. Bounded and self-correcting, because the
+	 * interval starts whenever anything is live; closed here because the fix is this call
+	 * and not a second timer: `readApprovalClock` moves the ONE shared value and tells
+	 * every subscriber, including this hook's own `setNow`.
+	 */
+	useEffect(() => {
+		if (requests.length > 0) readApprovalClock();
+	}, [requests]);
 	return liveApprovalCount(requests, now);
 }
