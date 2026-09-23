@@ -1139,6 +1139,41 @@ test("a journal-tail snapshot is painted from its own page, with no /history rea
 	assert.equal(historyReads(), 0, "the snapshot's own page is the tail");
 });
 
+/*
+ * THE LIVE OWNER, which is the case the duplicate is actually paid in (agent
+ * review round 1, F2). A live owner's snapshot carries `cold_reason: null`: the
+ * backend merges `_cold_fields()` into every snapshot and that field is only a
+ * string when the facade is cold. A cold facade's page is EMPTY today, so the
+ * live owner is the one frame shape with a non-empty tail page - and a predicate
+ * that tested `typeof cold_reason === "string"` refused exactly it. The key's
+ * PRESENCE is the version probe; `null` must skip the read the same as a token.
+ */
+test("a live owner's snapshot (cold_reason: null) is painted from its own page, with no /history read", async () => {
+	const rows = [
+		userRow("r1", 100, "Start the turn."),
+		assistantRow("r2", 101, "Working on it."),
+		assistantRow("r3", 102, "One more paragraph."),
+	];
+	reset({ transcript: makeTranscript(rows) });
+	const panel = await mount();
+	deliver(openFrame(1, true));
+	deliver(
+		snapshotFrame(2, {
+			cursor: "r3",
+			entries: rows,
+			liveEvents: [],
+			coldReason: null,
+		}),
+	);
+	await pump();
+	assert.deepEqual(panel.ids(), rows.map(recordIdOf));
+	assert.equal(
+		historyReads(),
+		0,
+		"a null cold_reason still proves a journal-tail backend",
+	);
+});
+
 test("an empty journal-tail snapshot still reads its one page", async () => {
 	const rows = [
 		userRow("r1", 100, "Start the turn."),

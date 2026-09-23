@@ -35,6 +35,7 @@ import type {
 	DesktopHistoryPage,
 	DesktopSessionFrame,
 } from "../../src/shared/desktop-session-contract";
+import { DESKTOP_STREAM_DETAIL } from "../src/shared/desktop-stream-notice";
 
 /** One row of `sessions.list`, in the backend's `BackendSessionRow` shape. */
 export type SessionFixture = {
@@ -86,14 +87,16 @@ export type BridgeConfig = {
 	 */
 	latencyBySession?: Record<string, Partial<BridgeLatency>>;
 	/**
-	 * Session ids whose `sessions.get` FAILS with a 404.
+	 * Session ids this owner does not have: `sessions.get` answers 404 AND the
+	 * stream is refused 404, the way main's relay reports the desktop plane's
+	 * not-found (`status: 404` on the error frame).
 	 *
-	 * The rollback path is the half of an optimistic commit that a timing
-	 * harness cannot see, and it is the half a reviewer is entitled to watch:
-	 * a switch to a session that is gone must end with the error and the
-	 * outgoing conversation still on screen, not with a chat that will not
-	 * open. Driving it here means the claim is checked in the real renderer
-	 * rather than only in the store's own unit test.
+	 * The stream half is the one that matters now. A click no longer spends a
+	 * `sessions.get` guard read, so the ONLY thing that tells the app a target is
+	 * gone is its own stream's 404, which `chat-page` turns into
+	 * `confirmSessionMissing` (tombstone, window closed, missing-session notice).
+	 * Driving it here checks that wiring in a mounted `ChatPage` - the gate's one
+	 * caller - rather than only through the store (agent review round 1, F5).
 	 */
 	failGet?: string[];
 };
@@ -104,6 +107,8 @@ type BridgeEvent = {
 	kind: "data" | "error" | "end";
 	data?: string;
 	detail?: string;
+	/** The refusing HTTP status, as main's relay carries it. */
+	status?: number;
 };
 
 /** What the driver reads back out of the page. */
@@ -434,6 +439,8 @@ export function installSwitchBridge(config: BridgeConfig): BridgeHandle {
 		latency[op] ??
 		latency.default;
 	const log: BridgeLog = { requests: [], streams: [], latency };
+	/** `failGet` ids whose stream has already been refused; see `sessions.list`. */
+	const refused = new Set<string>();
 	const titles = new Map(config.sessions.map((row) => [row.id, row.name]));
 
 	const wait = (ms: number) =>
@@ -452,7 +459,14 @@ export function installSwitchBridge(config: BridgeConfig): BridgeHandle {
 					features: { session_catalogue: 3, canonical_stream: 2 },
 				};
 			case "sessions.list":
-				return { sessions: config.sessions, truncated: false };
+				// A conversation whose stream has answered 404 is one the owner no
+				// longer has, so the catalogue stops listing it from then on - the
+				// "deleted while its row was on screen" shape. Listing it forever
+				// would have the next poll re-add the row the tombstone removed.
+				return {
+					sessions: config.sessions.filter((row) => !refused.has(row.id)),
+					truncated: false,
+				};
 			case "sessions.get": {
 				const sessionId = String(request.sessionId);
 				if (config.failGet?.includes(sessionId)) return { notFound: true };
@@ -523,6 +537,15 @@ export function installSwitchBridge(config: BridgeConfig): BridgeHandle {
 					const streamDelay = delayFor(args.sessionId, "stream");
 					await wait(streamDelay);
 					if (cancelled) return;
+					if (config.failGet?.includes(args.sessionId)) {
+						refused.add(args.sessionId);
+						onEvent({
+							kind: "error",
+							status: 404,
+							detail: DESKTOP_STREAM_DETAIL.refused(404),
+						});
+						return;
+					}
 					seq += 1;
 					send({
 						session_id: args.sessionId,

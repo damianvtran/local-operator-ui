@@ -83,7 +83,7 @@ export function subscribeDesktopStream(args, onEvent) {
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { useCanonicalSessionStream } from "./src/renderer/src/shared/hooks/use-canonical-session.ts";',
+			'export { useCanonicalSessionStream, STREAM_SNAPSHOT_DEADLINE_MS } from "./src/renderer/src/shared/hooks/use-canonical-session.ts";',
 			// The `resync` door, which reaches the identical hazard as the Retry
 			// control above: it must cancel a pending stream retry before connecting,
 			// or it opens a second subscription over one dispose closure and orphans
@@ -266,8 +266,12 @@ async function loadHook(tag) {
  * Imported once at module scope under its own tag so the assertions below can
  * name the exact sentence a transport detail must produce.
  */
-const { streamFailureNotice, DESKTOP_STREAM_DETAIL, HISTORY_UNREADABLE } =
-	await loadHook("notice");
+const {
+	streamFailureNotice,
+	DESKTOP_STREAM_DETAIL,
+	HISTORY_UNREADABLE,
+	STREAM_SNAPSHOT_DEADLINE_MS,
+} = await loadHook("notice");
 
 /** The hook's view, and its handle, as last rendered. */
 function mountHook(module, sessionId, enabled = true) {
@@ -339,12 +343,22 @@ async function flushFrames() {
  * (a bounded, backing-off budget), and reading them is cheaper and stricter
  * than waiting 23.5s of wall clock.
  */
-async function runTimers() {
+async function runTimers({ deadline = false } = {}) {
 	const delays = [];
-	for (let pass = 0; pass < 64 && timerQueue.length > 0; pass += 1) {
+	/*
+	 * The per-connection snapshot deadline (`STREAM_SNAPSHOT_DEADLINE_MS`) is left
+	 * QUEUED unless a case asks for it. This drain runs timers in arming order, not
+	 * due order, and in real time every retry delay (at most 8 s) lands before the
+	 * 20 s bound its connection re-arms - so draining the bound here would model a
+	 * clock no page has. The cases about the bound pass `{ deadline: true }`.
+	 */
+	const due = (entry) =>
+		deadline || entry.delay !== STREAM_SNAPSHOT_DEADLINE_MS;
+	for (let pass = 0; pass < 64 && timerQueue.some(due); pass += 1) {
 		// Oldest first, so a retry that re-arms another timer is drained in order.
 		timerQueue.sort((a, b) => a.id - b.id);
-		const entry = timerQueue.shift();
+		const at = timerQueue.findIndex(due);
+		const [entry] = timerQueue.splice(at, 1);
 		delays.push(entry.delay);
 		entry.callback();
 		await new Promise((resolve) => setTimeout(resolve, 0));
@@ -659,6 +673,63 @@ test("a failed history read on an empty transcript is retried, then surfaced ins
 		"nothing is invented to fill the gap",
 	);
 });
+
+/*
+ * A STREAM THAT NEVER SPEAKS (design round 1, D1). With the click's guard read
+ * gone, its 20 s deadline no longer ends an open against a frozen owner: the
+ * desktop plane acquires the bridge before it answers the stream's headers, so
+ * the subscription neither errors nor delivers a frame, and the pane sat on
+ * "Loading conversation..." past +75 s. The pane's own bound has to land on the
+ * lost-connection state with Reconnect - once, not through the retry budget - and
+ * an `open` frame without a snapshot must not satisfy it.
+ */
+for (const arm of ["says nothing", "opens but never snapshots"]) {
+	test(`a stream that ${arm} lands on the lost-connection notice at the snapshot deadline (D1)`, async () => {
+		test_state.streams.length = 0;
+		timerQueue.length = 0;
+		const mounted = mountHook(await loadHook(`deadline-${arm}`), SESSION);
+		await settle();
+		assert.equal(test_state.streams.length, 1);
+		if (arm === "opens but never snapshots") {
+			send(openFrame());
+			await settle();
+		}
+		assert.equal(mounted.view().status, "connecting");
+		const bound = timerQueue.filter(
+			(entry) => entry.delay === STREAM_SNAPSHOT_DEADLINE_MS,
+		);
+		assert.equal(bound.length, 1, "one bound per connection");
+		assert.equal(STREAM_SNAPSHOT_DEADLINE_MS, 20_000);
+		await runTimers({ deadline: true });
+		assert.equal(mounted.view().status, "unavailable");
+		assert.deepEqual(
+			mounted.view().failure,
+			streamFailureNotice(DESKTOP_STREAM_DETAIL.ended),
+			"the existing lost-connection sentence, with its Reconnect action",
+		);
+		assert.equal(mounted.view().failure.action, "reconnect");
+		assert.equal(
+			test_state.streams.length,
+			1,
+			"terminal: the bound does not spend the retry budget on a frozen owner",
+		);
+		assert.equal(test_state.streams[0].disposed, true, "and it lets go");
+		// Reconnect re-arms both the stream and its bound, and a snapshot clears it.
+		mounted.view().retry();
+		await settle();
+		assert.equal(test_state.streams.length, 2);
+		send(openFrame());
+		send(snapshotFrame([userEntry("m1", "hello")]));
+		await settle();
+		assert.equal(mounted.view().status, "live");
+		assert.equal(
+			timerQueue.filter((entry) => entry.delay === STREAM_SNAPSHOT_DEADLINE_MS)
+				.length,
+			0,
+			"the first snapshot disarms the bound",
+		);
+	});
+}
 
 test("an empty applied page IS a claim the app may make", async () => {
 	test_state.streams.length = 0;

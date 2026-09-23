@@ -295,13 +295,18 @@ const RUN = (count) => `(async () => {
 })()`;
 
 /**
- * The rollback, driven in the real renderer.
+ * A switch to a conversation that is gone, driven in the real renderer.
  *
- * The target's guard read fails, so nothing about the happy-path timing
- * applies here; what is read back is what the user is left with - the session
- * they were in, the sentence explaining the failure, and no half-switched
- * panel. `view()` reads the error out of the RENDERED text, because the
- * promise being checked is about the screen and not about the store.
+ * This arm used to watch the guard read's ROLLBACK (the view returned to the
+ * outgoing session under an "Unknown session" banner). The click no longer
+ * spends that read, so there is no rollback to watch: the stream's own 404 is
+ * the signal, and what the user is left with is the target's pane on the
+ * missing-session notice, the id tombstoned out of the catalogue, and the send
+ * window closed. That chain runs through `chat-page`'s stream effect
+ * (`confirmSessionMissing`), which no unit test mounts - so this is the harness
+ * that pins it in a mounted `ChatPage` (agent review round 1, F4/F5).
+ * `view()` reads the notice off the RENDERED page, because the promise being
+ * checked is about the screen and not about the store.
  */
 const FAIL_RUN = `(async () => {
 	const probe = window.__lopSwitch;
@@ -313,17 +318,18 @@ const FAIL_RUN = `(async () => {
 	 * held at some instant between two paints.
 	 */
 	const recorder = probe.record();
-	const run = await probe.switchTo(meta.incoming, "failing");
+	// Not awaited first: \`switchTo\` settles on a painted transcript, which a gone
+	// conversation never has, so awaiting it would read the view at its 20 s
+	// deadline rather than at the notice.
+	const switching = probe.switchTo(meta.incoming, "failing");
 	const started = performance.now();
 	const frame = () =>
 		new Promise((resolve) => requestAnimationFrame(() => resolve()));
-	while (
-		probe.view().activeSessionId !== meta.outgoing &&
-		performance.now() - started < 5000
-	)
+	while (!probe.view().errorShown && performance.now() - started < 5000)
 		await frame();
 	const atRollback = probe.view();
 	const rollbackAt = performance.now();
+	const run = await switching;
 	/*
 	 * WATCH LONGER THAN THE CATALOGUE'S OWN TIMER. sessions.list is polled
 	 * every five seconds, and that poll is what erased the sentence on the
@@ -1511,6 +1517,7 @@ const main = async () => {
 	}
 	if (FAIL_GET) {
 		const {
+			meta,
 			before,
 			run,
 			atRollback,
@@ -1534,17 +1541,26 @@ const main = async () => {
 		 * outlive the five-second poll that used to wipe it, and the run waits for
 		 * at least one of those polls (`pollsAfterRollback`) before asking.
 		 */
+		/*
+		 * `atRollback` keeps its name for the JSON's readers, but it is the view at
+		 * the frame the missing-session notice first painted: there is no rollback.
+		 */
 		const verdict = {
 			"the switch committed the target first": run.committedAt !== null,
-			"the view came back to the outgoing session":
-				atRollback.activeSessionId === before.activeSessionId,
-			"the failure sentence was recorded in the store": stats.recorded,
-			"the failure sentence reached a painted frame": stats.shownFrames > 0,
-			"the sentence is stated on exactly one surface": stats.maxSurfaces === 1,
-			"the sentence outlived a catalogue poll":
+			"the view stays on the target, not the outgoing session":
+				atRollback.activeSessionId === meta.incoming,
+			"the stream's 404 closed the window and tombstoned the id":
+				stats.recorded &&
+				atRollback.validating === null &&
+				!atRollback.incomingListed,
+			"the missing-session notice reached a painted frame":
+				stats.shownFrames > 0,
+			"the notice is stated on exactly one surface": stats.maxSurfaces === 1,
+			"the notice outlived a catalogue poll":
 				stats.shownAtEnd && pollsAfterRollback > 0,
-			"the sidebar marks the outgoing session again":
-				atRollback.selectedRow === before.selectedRow,
+			"the click spent no sessions.get on the target": !requests.includes(
+				`sessions.get:${meta.incoming}`,
+			),
 		};
 		const passed = Object.values(verdict).every(Boolean);
 		if (AS_JSON) {
@@ -1566,18 +1582,18 @@ const main = async () => {
 			);
 		} else {
 			console.log(
-				"guard-read failure — the rollback, driven in the real renderer",
+				"gone conversation — the stream's 404, driven in the real renderer",
 			);
 			console.log(`  before:      ${JSON.stringify(before)}`);
-			console.log(`  at rollback: ${JSON.stringify(atRollback)}`);
+			console.log(`  at notice:   ${JSON.stringify(atRollback)}`);
 			console.log(`  6.2 s later: ${JSON.stringify(after)}`);
 			console.log(
-				`  the switch committed at ${run.committedAt === null ? "-" : "yes"} and its read settled at ${run.getSettledAt === null ? "-" : "yes"}, then rolled back`,
+				`  the switch committed: ${run.committedAt === null ? "no" : "yes"}; a sessions.get settled: ${run.getSettledAt === null ? "no (none issued)" : "yes"}`,
 			);
 			console.log(
-				`  frames: ${stats.frames} sampled, ${stats.shownFrames} showing the sentence` +
+				`  frames: ${stats.frames} sampled, ${stats.shownFrames} showing the notice` +
 					` (first ${stats.firstShownAt ?? "-"}, last ${stats.lastShownAt ?? "-"}),` +
-					` ${pollsAfterRollback} catalogue poll(s) after the rollback`,
+					` ${pollsAfterRollback} catalogue poll(s) after the notice`,
 			);
 			console.log(`  transitions: ${JSON.stringify(stats.transitions)}`);
 			console.log(`  requests: ${requests.join(", ")}`);
@@ -1671,7 +1687,14 @@ main().then(
 		 * run had finished and written every frame while the process sat there.
 		 */
 		teardown();
-		process.exit(0);
+		/*
+		 * `exitCode`, not a hard 0: every arm reports a failed verdict by setting
+		 * `process.exitCode = 1`, and `process.exit(0)` overwrote it, so a run that
+		 * printed FAIL still exited green - the dead-instrument shape agent review
+		 * round 1 (F4) was about, one level up. Measured: a mutation that drops the
+		 * stream-404 wiring printed FAIL and exited 0 before this.
+		 */
+		process.exit(process.exitCode ?? 0);
 	},
 	(error) => {
 		teardown();
