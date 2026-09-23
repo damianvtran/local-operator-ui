@@ -19,12 +19,17 @@ import {
 	attachWebauthnChooser,
 	installWebauthn,
 } from "../webauthn";
+import type { RaiseReport } from "../window-raise";
 import { ApprovalStore } from "./approvals";
 import { CdpPool } from "./cdp";
+import { consentClickHandler } from "./consent-click";
 import { ConsentNotifier } from "./consent-notifier";
 import { DownloadArmer } from "./downloads";
 import type { DriveableView } from "./electron-types";
-import { BrowserHost, isReportableLoadFailure } from "./host";
+import {
+	BrowserHost,
+	isReportableLoadFailure,
+} from "./host";
 import { registerBrowserIpc, unregisterBrowserIpc } from "./ipc";
 import { startLogCapture, stopLogCapture } from "./log-capture";
 import { OwnershipLedger } from "./ownership";
@@ -110,6 +115,15 @@ export interface StartBrowserHostOptions {
 	 * consent banner when nobody is at the screen (design 11.4).
 	 */
 	windowShow: "focus" | "inactive" | "never";
+	/**
+	 * Where a raise reports its one line, so a consent banner's click is
+	 * attributable the way every other raise is.
+	 *
+	 * OPTIONAL, and it is the app's own logger that supplies it: the raise itself is
+	 * `window-raise.ts`'s decision, and this module's only part in it is to say that
+	 * the OPERATOR asked — which is what the `banner-click` trigger records.
+	 */
+	reportRaise?: RaiseReport;
 	/**
 	 * The app's notifier, forwarded verbatim to the console host so a console
 	 * surface's completion can be raised as a banner (design 12.3). The console rides
@@ -437,19 +451,23 @@ export async function startBrowserHost(
 	 * own header states the rule). Not per pending ENTRY: with a real queue, a busy
 	 * minute of arrivals would otherwise raise one banner per request. Declared here
 	 * because the approvals store's change hook raises it, and `windowShow` is the
-	 * ONLY permission it needs — this module never decides whether a window comes
-	 * forward (design 11.4).
+	 * plan the CLICK comes forward under — this module still never decides whether a
+	 * window comes forward (design 11.4), it hands the plan to `window-raise.ts`.
 	 */
 	const consentNotifier = new ConsentNotifier({
 		show: options.windowShow,
-		// A banner click NAVIGATES A ROUTE AND NOTHING ELSE. It must not raise the
-		// window: "never steal focus" is the rule for every browser this project
-		// starts (design 11.4), and `window-raise.ts` stays the only module that
-		// decides whether a window comes forward.
-		onAttention: (entryId) =>
-			options.window.webContents.send("browser-consent-attention", {
-				entryId,
-			}),
+		/*
+		 * The click's own rule lives in `consentClickHandler` (see it: the delivered
+		 * payload, the order, and the raise are all asserted there), and this is the
+		 * wiring that gives it the real window and the real plan. `windowShow` is the
+		 * plan the click comes forward under — this module still never decides whether a
+		 * window comes forward (design 11.4), it hands the plan to `window-raise.ts`.
+		 */
+		onAttention: consentClickHandler({
+			window: options.window,
+			show: options.windowShow,
+			report: options.reportRaise,
+		}),
 		log,
 	});
 

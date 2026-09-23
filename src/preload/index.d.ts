@@ -143,7 +143,14 @@ declare global {
 				onStateChanged: (callback: () => void) => () => void;
 				onConsentChanged: (callback: () => void) => () => void;
 				onConsentAttention: (
-					callback: (payload: { entryId: string }) => void,
+					callback: (payload: {
+						entryId: string;
+						/** The conversation whose agent asked, or null for a request no
+						 * conversation owns (`sessionRequesterOf` in main). Declared here as
+						 * the implementation does, because this file is the renderer's
+						 * contract and the two are read from opposite sides of the process. */
+						requesterSessionId: string | null;
+					}) => void,
 				) => () => void;
 				onPopupBlocked: (
 					callback: (payload: { tabId: number; url: string }) => void,

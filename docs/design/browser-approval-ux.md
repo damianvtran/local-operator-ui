@@ -22,6 +22,69 @@ slot in when it lands.
 
 ---
 
+## Addendum — three of this document's rulings were revised on 2026-09-23
+
+Recorded here rather than edited in place, for the reason
+`docs/design/sidebar-conversation-browser.md` gives for its own reversal note: the
+sections below are the record of what was decided, and this is what keeps that record
+from reading as the contract. Each one was an operator report about the shipped
+surfaces, and each is now built — these are the amendments, not proposals.
+
+**1. §7.3's "the click keeps navigating to `/browser`" is superseded — it prefers the
+ASKING CONVERSATION.** The alternative §7.3 rejected ("having the click open the pane
+in the asking conversation's route") was rejected for breaking "the one property the
+fix was made for, that the click works from anywhere without knowing which
+conversation is open". The click still works from anywhere: it reads the requester on
+the event, never the conversation that happens to be open. What the rejection cost was
+the request's own context — the operator reported the click "does nothing and they
+must click the tab by hand", because it navigated a route in a window that was never
+brought forward (see 2). So the landing rule is now: the asking conversation's pane
+when the requester names a conversation the app can show, and `/browser` otherwise
+(`consentClickTarget`, `shared/browser-consent-attention.ts`), with the named request
+in the pane's tray either way.
+
+**2. The banner click RAISES THE WINDOW, where it deliberately did not before.**
+`consent-notifier.ts` used to record "the click therefore only tells the renderer to
+bring the browser route forward; the app's own `window-raise.ts` is still the only
+module that decides whether a window comes up, and this one never calls it". That is
+still true — this module still never calls it — and the WIRING now does
+(`consent-click.ts`, trigger `banner-click`). The banner exists for the window that is
+behind another application or on another Space (design 9.2), so a click that lands
+*nothing there* is the failure it was raised to prevent. The mode gate is unchanged:
+a `never` plan raises nothing and reports nothing.
+
+**3. §5.3's contrast row is right for a reason it did not have at the time, and the
+badge has a FOURTH host: the APP RAIL.** The rail's Browser item now carries the live
+count across every conversation (`use-app-wide-approvals.ts`) — the same
+`Badge variant="attention" shape="pill"` §5.1 specifies, on the rail's `surface`
+ground, which is the `["canvas", "surface"]` row §5.3 asked for and D8 deleted (the
+chat pane's header, the second ground D8's argument rested on, turned out to be
+`canvas` in the shipped tree; the rail is the `surface` host that makes the entry
+true). This restores, on the rail rather than per row, the capability the 2026-09-18
+removal recorded as lost in `sidebar-conversation-browser.md` ("it was the only surface
+reporting ANOTHER conversation's pending browser approvals without opening the browser
+— the sidebar now reports nothing at all"). It is also the answer to the requests no
+conversation's badge can carry: the map behind §5.1 is keyed on `requesterSessionId`, so
+a request raised by a subagent — whose own session id is a valid requester and not a
+conversation the app lists — or by a caller the host could not attribute lights NO
+conversation's badge. The rail's count includes those, deliberately and by name in its
+own docstring.
+
+**4. The header's Globe trigger no longer unmounts with its pane.** The implementation
+recorded that rule as a COST in `sidebar-conversation-browser.md` ("the header's Globe
+is unmounted while the pane is open" — the "one-line follow-up" that note said was
+"deliberately not implemented"), and the operator's report is that cost being paid: the
+badge is the only chrome that reports this conversation's count, so a trigger that
+leaves with the pane takes the number with it (`docs/evidence/browser-pane-live/` reads
+`badge: null` beside three live requests, with the pane open). Both halves of the
+original reasoning are answered rather than overruled: the trigger is a TOGGLE — it
+closes the pane, so it is not "a no-op with a tooltip" — and it stays mounted whether
+or not a badge is drawn, so nothing unmounts under a pointer or a caret. Its two
+neighbours in the cluster still hide, and what discriminates is what each control
+CARRIES: a mark the open pane already shows, versus a count it does not.
+
+---
+
 ## 0. The four asks, and what each actually requires
 
 The operator asked for four things across three messages. Stated as
