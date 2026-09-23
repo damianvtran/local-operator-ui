@@ -31,6 +31,32 @@
  * - `status` is a static `"live"`, `error` is `null`. The reader's own state is
  *   the absence lines below, not the stream's connection status.
  *
+ * **The result is the child's LAST MESSAGE, and this page paints it as nothing
+ * else.** The foot used to carry its own `Result` block built from
+ * `SubagentRow.resultText`, and that was wrong twice over. It is a LOSSY
+ * duplicate: the runtime clips the wire's `result_text` (`frontend_state.py`'s
+ * `JOB_RESULT_WIRE_CHARS = 2_000`, `:143-164`) while the child's own final
+ * assistant row holds the same text verbatim, so the roster copy could only ever
+ * be a prefix of the page's own last row. And it was unbounded, so a long result
+ * grew a `shrink-0` sibling until the conversation — the one `flex-1` child of
+ * an `overflow-hidden` column — was squeezed to no height at all, which is the
+ * defect this header records. The TUI, which is the surface § 5 ports, never
+ * painted one either: its child page keeps the settled `result_text` for exactly
+ * one fact, a job cancelled while parked (`subagent_view.py:1808-1812`), and a
+ * result reaches a reader there as the child's own last transcript row.
+ *
+ * Removing it also puts this page back inside `branding.md` § 7's hierarchy: the
+ * answer is prose at reading weight, and the foot holds quiet statements rather
+ * than a second card repeating the answer under the conversation that just made
+ * it.
+ *
+ * The clipped copy is NOT gone everywhere, because there is one case where it is
+ * the only copy left: a page this reader cannot open at all — a child with no
+ * `session_id`, `pending`, `gone`, or `ready` with nothing painted. Those states
+ * keep a BOUNDED preview that says what it is (`ResultPreview`), and the failure
+ * block stays unconditionally, because `error_text` is `str(exc)` from the
+ * parent's runner and is in no child transcript at all.
+ *
  * No second stream subscription exists anywhere in here: the child's page is a
  * file behind a GET.
  */
@@ -145,41 +171,67 @@ export type RunChildReaderProps = {
 };
 
 /**
- * The outcome block's copy, from the roster row rather than the transcript
- * (`§5.1`): the row already carries the child's terminal text, and reading it
- * out of a paged window would be a second, weaker source for the same fact.
+ * A failure's own words — the one outcome the child's conversation does NOT
+ * carry, and the reason this block outlived the result block beside it.
+ *
+ * `error_text` is `str(exc)` from the PARENT's runner, so no child transcript
+ * holds it (`frontend_state.py`: `JOB_ERROR_WIRE_CHARS` is deliberately generous
+ * for exactly this reason, while `result_text` is clipped because the transcript
+ * does have it). It is therefore UNGATED on the transcript state: a page this
+ * reader could not open at all is the case where the exception is most needed.
+ *
+ * MACHINE VOICE, verbatim, and never paraphrased: an exception's own words are
+ * the only version of it a reader can act on, and a summarised exception is a
+ * claim nobody can check (`run-detail-subagents.tsx` makes the same argument for
+ * the roster's one-line summary). Bounded (`max-h-40 overflow-auto`) because it
+ * is a sibling of the conversation rather than its content, and an unbounded
+ * sibling displaces the only `flex-1` child of this `overflow-hidden` column —
+ * the shape the result block was removed for.
  */
-const OutcomeBlock = ({ row }: { row: SubagentRow }) => {
-	if (row.errorText) {
-		return (
-			/*
-			 * MACHINE VOICE, verbatim, and never paraphrased: an exception's own
-			 * words are the only version of it a reader can act on, and a
-			 * summarised exception is a claim nobody can check (`run-detail-subagents.tsx`
-			 * makes the same argument for the roster's one-line summary).
-			 */
-			<pre
-				className={cn(
-					"mt-1 max-h-40 overflow-auto rounded-md border border-danger-border bg-danger-wash px-2 py-1.5 font-mono text-mono-sm whitespace-pre-wrap break-words text-ink",
-				)}
-			>
-				{row.errorText}
-			</pre>
-		);
-	}
-	if (row.resultText) {
-		return (
-			<p
-				className={cn(
-					"mt-1 rounded-md border border-hairline bg-surface px-2 py-1.5 text-body-sm whitespace-pre-wrap break-words text-ink",
-				)}
-			>
-				{row.resultText}
-			</p>
-		);
-	}
-	return null;
-};
+const FailureText = ({ text }: { text: string }) => (
+	<pre
+		className={cn(
+			"mt-1 max-h-40 overflow-auto rounded-md border border-danger-border bg-danger-wash px-2 py-1.5 font-mono text-mono-sm whitespace-pre-wrap break-words text-ink",
+		)}
+	>
+		{text}
+	</pre>
+);
+
+/**
+ * The clipped result, for the states that have no conversation to read instead.
+ *
+ * This is the ONE survivor of the block the header docstring removes, and it is
+ * honest about being a fragment: the wire's `result_text` is truncated at
+ * `JOB_RESULT_WIRE_CHARS` (`frontend_state.py:143-164`, cut mid-word — the roster
+ * sidecar on this machine held 500-character values), so a block that announced
+ * itself as "Result" would be claiming the child's whole answer from a prefix of
+ * it. Hence the label (`Result preview`, in the reader's own foot) and the line
+ * under it, which is the rest of the honesty: the conversation the full text is
+ * in is not on this page, which is exactly why the preview is here at all.
+ *
+ * BOUNDED like the failure block, and that is a requirement rather than a
+ * preference: every state that renders this one renders it INSTEAD of a
+ * conversation, so an unbounded preview would be the takeover the change
+ * removed, in the states with the least to look at. `max-h-40 overflow-auto`
+ * makes it scroll rather than push, and `text-body-sm` keeps it prose rather than
+ * machine voice — the clipping is the app's, not something the child said.
+ */
+const ResultPreview = ({ text }: { text: string }) => (
+	<div className={cn("mt-1 flex flex-col gap-1")}>
+		<p
+			className={cn(
+				"max-h-40 overflow-auto rounded-md border border-hairline bg-surface px-2 py-1.5 text-body-sm whitespace-pre-wrap break-words text-ink",
+			)}
+		>
+			{text}
+		</p>
+		<p className={cn("text-meta text-ink-muted")}>
+			This is a shortened copy. This subagent's conversation is not available
+			here.
+		</p>
+	</div>
+);
 
 /**
  * The brief: the child's authored instruction, folded, with the hidden line
@@ -391,6 +443,21 @@ export const RunChildReader = ({
 	 * refetch that leaves the state alone.
 	 */
 	const hasTranscript = state === "ready" && painted.records.length > 0;
+	/*
+	 * Whether the foot may paint the clipped preview at all: i.e. whether the
+	 * BODY above has no conversation to paint instead.
+	 *
+	 * The four states are the ones that render a `QuietLine` rather than the
+	 * transcript, one line apart in the markup below, so the two cannot disagree
+	 * about which states those are. `loading` is deliberately NOT one of them,
+	 * although `hasTranscript` is false there: a page in flight is a conversation
+	 * that is expected momentarily, and a preview that appeared and then vanished
+	 * under itself would be a flicker around the foot of a pane that is already
+	 * about to fill in. `pending` and `loading` are the pair the distinction is
+	 * for, and they are one predicate apart.
+	 */
+	const previewsClippedResult =
+		!row.childSessionId || (!hasTranscript && state !== "loading");
 	useEffect(() => {
 		/*
 		 * Which element holds focus for THIS state: the transcript when one is painted,
@@ -625,28 +692,40 @@ export const RunChildReader = ({
 						 * and `useChildTranscript` exposes no reconnect of its own. The
 						 * prop is required by `CanonicalTranscript` so the live chat
 						 * surface can never paint a notice without its action; this
-						 * reader paints no notice (`failure` is null and its own
-						 * unavailable states are rendered by the page's foot), so the
-						 * handler is unreachable rather than an inert control.
+						 * reader paints no notice at all (`failure` is null, and its
+						 * unavailable states are the body's own quiet lines rather than
+						 * a notice), so the handler is unreachable rather than an inert
+						 * control.
 						 */
 						onReconnect={() => {}}
 						attachmentScope={attachmentScope}
 					/>
 				)}
 				{/*
-				 * The outcome, at the foot of the page, from the ROSTER ROW (§5.1) —
-				 * the TUI's roster-carries-the-outcome rule applied in the page. It
-				 * needs no new wire data and no read of the transcript's tail, and it
-				 * is where a reader looks for "how did this end" without scrolling a
-				 * conversation to its last row. It renders only once the child has
-				 * settled, which is why it cannot be the only thing in the foot slot.
+				 * The failure, at the foot and UNGATED on what the body painted: the
+				 * exception is the parent's, not the child's, so no transcript holds
+				 * it and there is nothing to prefer it to (`FailureText`).
 				 */}
-				{(row.errorText || row.resultText) && (
+				{row.errorText && (
+					<div className={cn("shrink-0 border-hairline border-t px-3 py-2")}>
+						<span className={cn("text-meta text-ink-muted")}>Failed</span>
+						<FailureText text={row.errorText} />
+					</div>
+				)}
+				{/*
+				 * The clipped result, and ONLY where the body painted no conversation
+				 * (`previewsClippedResult`) — otherwise the page's own last message IS
+				 * the result and this block would be a lossy second copy of it under
+				 * the conversation that just made it (the header docstring). The
+				 * failure wins the slot when both are on the wire, which is the
+				 * precedence the single outcome block had before this change.
+				 */}
+				{!row.errorText && previewsClippedResult && row.resultText && (
 					<div className={cn("shrink-0 border-hairline border-t px-3 py-2")}>
 						<span className={cn("text-meta text-ink-muted")}>
-							{row.errorText ? "Failed" : "Result"}
+							Result preview
 						</span>
-						<OutcomeBlock row={row} />
+						<ResultPreview text={row.resultText} />
 					</div>
 				)}
 			</div>

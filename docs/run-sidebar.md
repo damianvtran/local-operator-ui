@@ -523,10 +523,11 @@ that already arrives (no wire change): `childSessionId` (from `session_id` — t
 child's transcript directory name, `harness/comms.py:752-768`), `parentJobId`
 (from `parent_job_id`), and `childCount` (derived in the renderer by grouping the
 session's `task` rows on `parent_job_id` — over the LINEAGE, so a parent's control
-counts the descendants the roster does not list). `resultText` and `errorText`
-become full strings rather than `errorLine` alone, because the reader's outcome
-block needs the whole thing (§ 5.2) — the roster's own `errorLine` rule (first
-line only, `run-detail-model.ts:679-681`) is unchanged.
+counts the descendants the roster does not list). `errorText` becomes a full
+string rather than `errorLine` alone, because the reader prints the exception
+verbatim; `resultText` is the wire's CLIPPED copy of the result, read only in the
+states where no conversation can be painted at all (§ 5.1) — the roster's own
+`errorLine` rule (first line only, `run-detail-model.ts:679-681`) is unchanged.
 
 ---
 
@@ -577,11 +578,39 @@ is drawn:
   `launch_message_id` keeps the brief and whatever the transcript holds —
   duplicating wrapper text is the TUI's own chosen failure mode and it is the
   safer direction.
-- **The outcome is rendered from the roster row, not from the transcript**:
-  `result_text` when the child settled normally, `error_text` verbatim when it
-  failed (the row's own machine-voice rule, `run-detail-model.ts:643-681`). This
-  is the TUI's roster-carries-the-outcome rule (`subagent_panel.py:641-660`) applied
-  in the page, and it needs no new wire data.
+- **The result is the child's own LAST MESSAGE, and the page paints nothing
+  else for it.** § 5.1's earlier rule — an outcome block at the foot, from the
+  roster row — is withdrawn, because it was wrong twice over. It was a LOSSY
+  duplicate: the wire's `result_text` is truncated (`frontend_state.py:143-164`,
+  `JOB_RESULT_WIRE_CHARS = 2_000`, cut mid-word) while the child's final
+  assistant row holds the same text verbatim, so the block could only ever be a
+  prefix of the page's own last row. And it was unbounded, so a long result grew
+  a `shrink-0` sibling until the conversation — the only `flex-1` child of an
+  `overflow-hidden` column — was squeezed to no height at all, which is the
+  defect the operator reported. The TUI, which is the surface § 5 ports, never
+  painted one either: its child page keeps the settled `result_text` for exactly
+  one fact, a job cancelled while parked (`subagent_view.py:1808-1812`), and the
+  result reaches a reader there as the child's own last transcript row.
+  `branding.md` § 7's hierarchy points the same way: the answer is prose at
+  reading weight, and a second card under the conversation that just made it is
+  the second rail the port exists to avoid.
+- **The failure is the one exception, and a clipped PREVIEW is the other.**
+  `error_text` is `str(exc)` from the PARENT's runner, so no child transcript
+  holds it (`frontend_state.py` is explicit: `JOB_ERROR_WIRE_CHARS` is generous,
+  `result_text` is clipped BECAUSE the transcript has it). That block therefore
+  stays at the foot, ungated on the transcript state, in machine voice and at
+  `max-h-40 overflow-auto` — unchanged, including for a page that would not open
+  at all, which is where the exception is most needed. Where the conversation
+  cannot be read AT ALL — no `session_id`, `pending`, `gone`, or `ready` with
+  nothing painted — the clipped `result_text` is likewise the only copy left, so
+  it stays as a **bounded, honestly-labelled preview**: `Result preview`,
+  `max-h-40 overflow-auto`, prose rather than machine voice, and one quiet line
+  saying that the full copy is in a conversation this page does not have ("This
+  is a shortened copy. This subagent's conversation is not available here.").
+  `loading` is deliberately NOT one of those states, although there is nothing
+  painted then either: the page is in flight, and a preview that appeared and
+  then vanished under itself would be a flicker at the foot of a pane that is
+  already about to fill in.
 - **Images**: durable rows carry digests, not bytes
   (`transcript._externalize_attachments`; the parent's route at
   `server/routes/desktop_sessions.py:341-352` exists precisely because of that).
@@ -875,9 +904,9 @@ than a puzzle.
 | event | rendering |
 |---|---|
 | child emits a progress beat | nothing structural; the pulse triggers a tail refetch |
-| child settles (success) | one final refetch, outcome block appears, the header's status icon and elapsed settle, the elapsed timer stops |
-| child fails | final refetch, outcome block becomes the verbatim `error_text` in machine voice, header icon takes `danger`, the dot rule in § 3.4 no longer applies (the row is on screen) |
-| child is cancelled / interrupted / paused / swept (`gone`) | the header's state word changes; the body stops following; the outcome block says what the wire said |
+| child settles (success) | one final refetch, the result is the page's own last row and the foot stays quiet (§ 5.1), the header's status icon and elapsed settle, the elapsed timer stops |
+| child fails | final refetch, the foot prints the verbatim `error_text` in machine voice — the one outcome no transcript holds — header icon takes `danger`, the dot rule in § 3.4 no longer applies (the row is on screen) |
+| child is cancelled / interrupted / paused / swept (`gone`) | the header's state word changes; the body stops following; where the conversation cannot be read at all, the foot states the wire's clipped result as a preview (§ 5.1) |
 | child never wrote a transcript | the body shows one quiet line naming that fact (`pending`: the child's directory exists and `transcript.jsonl` does not) and the reader retries on the next pulse |
 | the child's session directory is missing | the body shows the final "session directory is no longer on disk" line (`gone`). **This is what `gone` means**: the route derives both absences from the FILESYSTEM (`desktop_sessions.child_transcript`), and only a missing DIRECTORY is final — a transcript file that has been moved aside, pruned or never written leaves the same two facts on disk as a child that never appended, so the route answers `pending` and this line is not reachable through it (round 1, Q10). The copy states the filesystem, not the child's history. |
 | entry cursor vanished mid-read (compaction) | re-read the tail, dedupe by id |
@@ -1819,8 +1848,10 @@ per `branding.md` § 9's checklist.
 | `swap-canvas-open` | the canvas open with the run trigger still visible and pressed-state-free; then the run panel open with the canvas closed (before/after) |
 | `swap-run-open` | the mirror: the flow a click makes, both directions |
 | `reader-live` | a child's reader open on a **running** child (see below) |
-| `reader-settled` | the same child settled: outcome block, settled clock, no pulse |
-| `reader-failed` | the verbatim exception in the outcome block, `danger` on the header icon only |
+| `reader-settled` | the same child settled: settled clock, no pulse, and a quiet foot — the result is the conversation's own last row (§ 5.1) |
+| `reader-failed` | the verbatim exception at the foot — no transcript holds it — with `danger` on the header icon only |
+| `reader-result-inline` | a settled child with a LONG result: the result is the conversation's last message and the foot says nothing. The pair's other half is `reader-result-preview`, and the state this frame retires is the unbounded `Result` block that displaced the page. |
+| `reader-result-preview` | the same long result with the conversation **gone**: the bounded, honestly-labelled preview and its copy, in the state that has nothing left to push back with |
 | `reader-pending` / `reader-gone` | § 10.1's two absences, with their separate copy |
 | `reader-nested` | breadcrumb path + back affordance with two levels |
 | `reader-child-controls` | a member's page whose child count is ONE: the descend control's singular label and its accessible name, in the only state that can show either, beside the peer stepper for the same child |
@@ -1901,7 +1932,7 @@ covering at least:
 | swap | canvas open → click run trigger; then canvas button | exactly one pane; the other's state is closed; no layout jump in the header |
 | roster | a session with ≥7 children | rows in priority order; `+N more` expands and every child is reachable; failed row never shed |
 | reader live | click a running child; watch it write | the body grows without a manual refresh; the header's elapsed ticks; the pulse cadence is capped (network tab or backend log) |
-| reader settle | let the child finish | final read, outcome block, clock stops, no further requests |
+| reader settle | let the child finish | final read, the result is the conversation's own last row with a quiet foot (§ 5.1), clock stops, no further requests |
 | reader failures | a child that fails; a child whose transcript file is removed; a child that never wrote | the three renderings of § 5.7 / § 10.1, each with its own copy |
 | nested | a grandchild | breadcrumb path, back pops one level, child control descends |
 | back/close | `Escape` at each level, the close button, the trigger toggle | focus lands where § 9 says; no orphaned scroll |
