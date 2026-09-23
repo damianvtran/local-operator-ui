@@ -5530,6 +5530,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						runDetails={runDetails}
 						isSmallView={isSmallView}
 						/*
+						 * The judge stalling is a state the user cannot read off 0px of ink, so the
+						 * row writes one sentence about it to the transcript (design D2) — through
+						 * the composer's EXISTING note channel rather than a second one, which is
+						 * that prop's own rule (`onSlashNote`). A pane with no canonical session
+						 * falls back to the legacy chat store inside it, so the sentence always
+						 * lands somewhere the user reads.
+						 */
+						onNote={onSlashNote}
+						/*
 						 * The row's last activity chip unmounts when its work settles. If
 						 * that chip held focus the browser drops it to `<body>`, so the row
 						 * hands it back HERE rather than finding the box itself: this is

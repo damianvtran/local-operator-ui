@@ -85,6 +85,7 @@ const bundle = await build({
 				wakeClause,
 			} from "./src/renderer/src/features/chat/components/run-details";
 			import { RunDetailWakes } from "./src/renderer/src/features/chat/components/run-details/run-detail-wakes";
+			import { GoalPicker } from "./src/renderer/src/features/chat/pickers/destination-pickers";
 			import { ThemedToastContainer } from "./src/renderer/src/shared/components/common/themed-toast-container";
 			import * as toasts from "./src/renderer/src/shared/utils/toast-manager";
 			import { scrollRegionToTop } from "./src/renderer/src/shared/lib/scroll";
@@ -96,6 +97,7 @@ const bundle = await build({
 				renderToStaticMarkup(createElement(ComposerStatusRow, props));
 			export const renderWakes = (props) =>
 				renderToStaticMarkup(createElement(RunDetailWakes, props));
+			export { GoalPicker };
 			export { toasts };
 			export { ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalDoneLabel, goalDismissLabel, goalDoneToastText, goalClearedText, goalStateWord, goalCapability, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, scrollRegionToTop, useUiPreferencesStore };
 		`,
@@ -156,6 +158,7 @@ const {
 	ComposerStatusRow,
 	shouldRestoreComposerFocus,
 	renderWakes,
+	GoalPicker,
 	goalDisclosureLabel,
 	goalClearLabel,
 	goalDoneLabel,
@@ -1526,7 +1529,13 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	 * accessible name already states the action.
 	 */
 	tokens(
-		"import { AlarmClock, Check, Info, Repeat, X } from",
+		/*
+		 * `CircleCheck` is the fifth glyph and it is the settled chip's own mark
+		 * (design review round 1, D6): the erase keeps the shipped `X`, the `Done` control
+		 * keeps `Check`, and the control that only puts a settled chip away wears the mark
+		 * the pane's settled row wears rather than the one that erases.
+		 */
+		"import { AlarmClock, Check, CircleCheck, Info, Repeat, X } from",
 		"<Info aria-hidden={true}",
 		"size-3.5",
 	);
@@ -1880,15 +1889,21 @@ test("the reveal moves ONE region, and its arithmetic is the region's own", () =
 });
 
 /**
- * The shipped row in a DOM, beside the textarea the composer owns.
+ * A shipped component in a DOM, beside the textarea the composer owns.
  *
  * `jsdom` is a devDependency this repo already renders shipped components with
  * (`suggestion-stack-react.test.mjs`), and `react-dom/client` is imported AFTER
  * the globals exist because it feature-detects `document` at import time.
  * `cleanup` restores every global it replaced, so the server-rendering tests in
  * this file are unaffected by the order they run in.
+ *
+ * THE HARNESS IS SHARED, and the name says so (it was `rowInDom` while the row was
+ * its only caller): the `GoalPicker` mounts through it too, for the assertions that
+ * need a control's RENDERED markup from behind a portal — a static render of a dialog
+ * is empty, because Radix's portal has no container on the server. The two extra
+ * globals that costs are recorded where they are defined below.
  */
-async function rowInDom() {
+async function domHarness() {
 	const dom = new JSDOM("<div id='root'></div>", { pretendToBeVisual: true });
 	const { window } = dom;
 	const originals = new Map();
@@ -1953,6 +1968,16 @@ async function rowInDom() {
 		 * re-arms `itemFits` and drives `resize()` in the same step should fix the shim
 		 * first rather than write around it.
 		 */
+		/*
+		 * THREE GLOBALS THE PICKERS NEED AND THE ROW DOES NOT, and the difference is the
+		 * dialog: `GoalPicker` renders through `PickerHost`, whose Radix dialog PORTALS, and
+		 * a portal brings a focus scope (which watches the DOM through a
+		 * `MutationObserver`) and a floating layer that can observe intersection. jsdom
+		 * implements both; a mount that omits them throws inside the portal rather than
+		 * skipping the measurement.
+		 */
+		MutationObserver: window.MutationObserver,
+		IntersectionObserver: window.IntersectionObserver,
 		ResizeObserver: class {
 			constructor(callback) {
 				observers.push({ callback, targets: [] });
@@ -2084,7 +2109,7 @@ test("the shipped row hands focus back on a same-count swap, driven", async () =
 	 * reads the browser's own `activeElement`, so the focus the callback asks for is
 	 * observed and not assumed.
 	 */
-	const { window: dom, root, cleanup } = await rowInDom();
+	const { window: dom, root, cleanup } = await domHarness();
 	/*
 	 * Radix's tooltip provider settles a state update after a render returns, so
 	 * React prints its own "not wrapped in act" notice. It is harness noise rather
@@ -2606,7 +2631,7 @@ test("the shipped dismisses run the owner's own command, and the goal's does not
 	 * which is what `desktop-api.ts` reads first and the same seam
 	 * `scripts/mcp-auth-complete-no-retry.test.mjs` stubs.
 	 */
-	const { window: dom, root, cleanup } = await rowInDom();
+	const { window: dom, root, cleanup } = await domHarness();
 	const quiet = [];
 	const realError = console.error;
 	console.error = (...args) => void quiet.push(String(args[0]));
@@ -2999,7 +3024,7 @@ test("the loop's figure is painted exactly while the row's own box carries it", 
 	 * (`2 of 100000 turns`, i.e. figures no boundary was sized for) rather than the
 	 * `iterations: 5` fixture that printed `2 of 5 turns`.
 	 */
-	const { window: dom, root, cleanup, resize } = await rowInDom();
+	const { window: dom, root, cleanup, resize } = await domHarness();
 	try {
 		const widths = { row: 0, item: 0 };
 		stubWidths(dom, widths);
@@ -3110,7 +3135,7 @@ test("an idle reading is not a settled identity, so an acknowledged chip comes b
 	 * should return stayed hidden. A detached app or a replaced driver produces exactly
 	 * that order without an observed `running` frame.
 	 */
-	const { window: dom, root, cleanup } = await rowInDom();
+	const { window: dom, root, cleanup } = await domHarness();
 	const requests = [];
 	dom.api = { desktop: { request: async (request) => requests.push(request) } };
 	try {
@@ -3186,7 +3211,7 @@ test("each dismiss owns its own in-flight state, and the busy one stays painted"
 	 * is the whole subject: a promise that never resolves is what a hung owner looks
 	 * like to the renderer.
 	 */
-	const { window: dom, root, cleanup } = await rowInDom();
+	const { window: dom, root, cleanup } = await domHarness();
 	const pending = [];
 	const answer = {
 		status: 200,
@@ -3293,7 +3318,7 @@ test("the goal's undo belongs to its own clearing, and the confirmation names it
 	 * The toast is the app's own container, mounted here because the row speaks through
 	 * that channel and the assertion is about what a person could press.
 	 */
-	const { window: dom, root, cleanup, frame } = await rowInDom();
+	const { window: dom, root, cleanup, frame } = await domHarness();
 	const requests = [];
 	dom.api = {
 		desktop: {
@@ -3820,5 +3845,274 @@ test("the /goal --history receipt renders through the existing block path", () =
 		transcript,
 		/whitespace-pre-wrap break-words text-body-sm text-ink-muted/,
 		"the note's own row is the one that keeps the receipt's newlines",
+	);
+});
+
+/* ---------------------------------------------------------------- */
+/* The delta of the batched remediation round: the picker's gate,    */
+/* the stalled note, and the two marks the done chip carries         */
+/* ---------------------------------------------------------------- */
+
+/**
+ * The `/goal` picker's rendered markup, from a DOM.
+ *
+ * A STATIC RENDER CANNOT SEE THIS COMPONENT AT ALL, and that is the instrument
+ * question the assertion lives or dies on: `GoalPicker` renders through `PickerHost`,
+ * whose Radix dialog PORTALS, and a portal has no container on the server, so
+ * `renderToStaticMarkup` returns the empty string. Mounting it is therefore the only
+ * way to read what the picker actually paints — the same harness the row's driven
+ * tests use, for the same reason (`domHarness`).
+ */
+async function pickerMarkup(frontend) {
+	const { window: dom, root, cleanup } = await domHarness();
+	try {
+		await act(async () =>
+			root.render(
+				createElement(GoalPicker, {
+					sessionId: "s-1",
+					canonical: { frontend },
+					onClose: () => {},
+				}),
+			),
+		);
+		return dom.document.body.innerHTML;
+	} finally {
+		cleanup();
+	}
+}
+
+test("the picker gates Mark done on the lifecycle fields, in both directions", async () => {
+	/*
+	 * Agent review round 1's F4: the CHIP's capability gate is pinned, and the picker's
+	 * — the same predicate at the second of the two paths that converge on `done` — had
+	 * no test at all (`grep -rln "GoalPicker" scripts/*.mjs` found nothing), so a future
+	 * edit could have sent the bare word from here to a backend that would store it as
+	 * the user's goal, and every suite would have stayed green.
+	 */
+	const capable = await pickerMarkup({
+		goal: "Ship it",
+		session_id: "s-1",
+		goal_status: "active",
+		goal_judge: { state: "waiting" },
+	});
+	assert.match(capable, />Mark done</);
+	assert.match(capable, />Clear goal</);
+	// The judge row is readable here because there IS a goal for it to be reading.
+	assert.match(capable, />Judge</);
+	assert.match(capable, />waiting</);
+
+	const legacy = await pickerMarkup({ goal: "Ship it", session_id: "s-1" });
+	assert.doesNotMatch(
+		legacy,
+		/>Mark done</,
+		"a backend without the lifecycle fields is offered no new control",
+	);
+	assert.match(legacy, />Clear goal</);
+	assert.doesNotMatch(
+		legacy,
+		/>Judge</,
+		"and no judge row: the state it would print does not exist on that wire",
+	);
+
+	const done = await pickerMarkup({
+		goal: "Ship it",
+		session_id: "s-1",
+		goal_status: "done",
+		goal_judge: {
+			state: "done",
+			verdict: "achieved",
+			reason: "Every check passed.",
+		},
+	});
+	assert.doesNotMatch(
+		done,
+		/>Mark done</,
+		"a settled goal cannot be marked done twice",
+	);
+	/*
+	 * AND THE SENTENCE NAMES THE RECORD, NOT THE DECIDER (design review round 1,
+	 * D3). `done` is written by the judge's ACHIEVED and by the user's own `Done`
+	 * press alike — the user's path leaves `reason` empty — so a sentence crediting
+	 * the judge was false on that path and contradicted the `Judge` row beneath it.
+	 */
+	assert.match(done, /This goal is settled\. It stays in the goal history/);
+	assert.doesNotMatch(done, /The judge called this done/);
+});
+
+test("the picker prints no judge for a goal that does not exist", async () => {
+	/*
+	 * Design review round 1's D5: `capable` is `typeof goal_status === "string"`, which
+	 * is true on any new backend INCLUDING one whose goal is empty, and `judgeWord`
+	 * falls back to `idle` — so `/goal` on a session with no goal printed `Judge: idle`,
+	 * a readout about a judge with nothing to judge, in the picker whose job at that
+	 * moment is to take the first goal.
+	 */
+	const noGoal = await pickerMarkup({
+		goal: "",
+		session_id: "s-1",
+		goal_status: "active",
+		goal_judge: { state: "idle" },
+	});
+	assert.doesNotMatch(noGoal, />Judge</);
+	/*
+	 * And nothing to act on either: the trailing pair lives inside the chip, which the
+	 * row gates on there being a goal at all — so a session with no goal is offered no
+	 * `Mark done`, and the picker's job here is to take the first goal.
+	 */
+	assert.doesNotMatch(noGoal, />Mark done</);
+	assert.doesNotMatch(noGoal, />Clear goal</);
+	// Whitespace is the same absence, by the row's own rule for the same state.
+	const blank = await pickerMarkup({
+		goal: "   ",
+		session_id: "s-1",
+		goal_status: "active",
+	});
+	assert.doesNotMatch(blank, />Judge</);
+});
+
+test("the judge stalling is said ONCE, through the composer's note channel", async () => {
+	/*
+	 * Design review round 1's D2, the desktop half. `stalled` is the one judge state
+	 * with an action behind it — the user has to send a message for the loop to go on —
+	 * and it was announced by 0px of ink alone (the label's step to `text-ink`), which
+	 * nobody reads off a chip they are not already looking at. The row now writes the
+	 * design's own sentence to the transcript, through the channel the composer already
+	 * owns, on the TRANSITION and never per render.
+	 */
+	/*
+	 * A ROW THAT MOUNTS ONTO AN ALREADY-STALLED GOAL SAYS NOTHING, and that is the split
+	 * between this half and the backend's durable note: this row is keyed on the
+	 * conversation, so announcing on mount would write a fresh duplicate every time a
+	 * user switched back to it. What this half owns is the stall they are THERE for.
+	 */
+	const mounted = await domHarness();
+	try {
+		const silent = [];
+		await act(async () =>
+			mounted.root.render(
+				createElement(ComposerStatusRow, {
+					frontend: {
+						goal: "Ship it",
+						session_id: "s-1",
+						goal_status: "active",
+						goal_judge: { state: "stalled" },
+					},
+					runDetails: null,
+					onNote: (text) => silent.push(text),
+				}),
+			),
+		);
+		assert.deepEqual(silent, []);
+	} finally {
+		mounted.cleanup();
+	}
+
+	const { window: dom, root, cleanup } = await domHarness();
+	try {
+		const notes = [];
+		const element = (judgeState) =>
+			createElement(ComposerStatusRow, {
+				frontend: {
+					goal: "Ship it",
+					session_id: "s-1",
+					goal_status: "active",
+					goal_judge: { state: judgeState },
+				},
+				runDetails: null,
+				onNote: (text) => notes.push(text),
+			});
+		await act(async () => root.render(element("judging")));
+		assert.deepEqual(
+			notes,
+			[],
+			"a judge still working says nothing: nothing has happened to the user yet",
+		);
+		await act(async () => root.render(element("stalled")));
+		assert.deepEqual(notes, [
+			"goal stalled: judge could not decide — send a message to continue",
+		]);
+		// One per ENTRY, not one per render: the state is still stalled on this frame.
+		await act(async () => root.render(element("stalled")));
+		assert.equal(
+			notes.length,
+			1,
+			"the stall is not re-announced on every frame",
+		);
+		// Leaving the state re-arms it, so a second stall is its own fact.
+		await act(async () => root.render(element("judging")));
+		await act(async () => root.render(element("stalled")));
+		assert.equal(notes.length, 2, "a new stall is a new announcement");
+		/*
+		 * And the row the note is written for is still the row that shipped: the note is
+		 * an ADDITION, not a replacement for the ink step the design keeps beside it.
+		 */
+		assert.match(dom.document.body.innerHTML, /Goal:/);
+	} finally {
+		cleanup();
+	}
+});
+
+test("the settled chip's control is marked apart from the erase", () => {
+	/*
+	 * Design review round 1's D6. `Dismiss` and `Clear goal` share the slot and share
+	 * `DISMISS_WORD`, so below the stacked band both were one unlabeled X with two
+	 * different consequences: the erase removes the standing goal, the dismiss only puts
+	 * the settled chip away and leaves the history entry behind. The DISMISS yields its
+	 * mark (the shipped X stays on the erase, where muscle memory put it) and wears the
+	 * pane's own mark for a settled goal row.
+	 */
+	const control = (markup, attribute) => {
+		const from = markup.indexOf(attribute);
+		assert.notEqual(from, -1, `${attribute} renders`);
+		return markup.slice(from, markup.indexOf("</button>", from));
+	};
+	const active = renderRow({
+		frontend: goalFrontend({ goal_status: "active" }),
+		runDetails: null,
+	});
+	assert.match(control(active, "data-status-goal-dismiss"), /lucide-x/);
+	assert.match(control(active, "data-status-goal-done"), /lucide-check/);
+	const done = renderRow({
+		frontend: goalFrontend({ goal_status: "done" }),
+		runDetails: null,
+	});
+	const dismiss = control(done, "data-status-goal-dismiss");
+	assert.match(dismiss, /lucide-circle-check/);
+	assert.doesNotMatch(
+		dismiss,
+		/lucide-x/,
+		"the erase's mark is not on the control that does not erase",
+	);
+	assert.doesNotMatch(dismiss, /lucide-check/);
+	/*
+	 * THE WORD IS STILL THERE and still the control's name at every width, so the mark
+	 * is a second tell rather than the only one.
+	 */
+	assert.match(done, />Dismiss</);
+	assert.match(
+		done,
+		/aria-label="Dismiss the finished goal — it stays in the goal history — Ship it"/,
+	);
+});
+
+test("the chip's done tag carries its own size step", () => {
+	/*
+	 * Design review round 1's D8. The tag's step was inherited from the chip's box
+	 * (`READING_BOX` is `text-meta`), so the tag and the value it sits beside shared
+	 * both ink and size and the strike was the only differentiator — where the pane's
+	 * row tag and the to-do row's tag each state their own step.
+	 */
+	const markup = renderRow({
+		frontend: goalFrontend({ goal_status: "done" }),
+		runDetails: null,
+	});
+	assert.match(
+		markup,
+		/<span class="[^"]*\btext-meta\b[^"]*"[^>]*>— done<\/span>/,
+	);
+	// Still not struck: the tag stays readable on the row it settles.
+	assert.doesNotMatch(
+		markup,
+		/<span class="[^"]*line-through[^"]*"[^>]*>— done/,
 	);
 });

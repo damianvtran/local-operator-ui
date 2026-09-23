@@ -110,7 +110,7 @@ import {
 	showErrorToast,
 	showInfoToast,
 } from "@shared/utils/toast-manager";
-import { AlarmClock, Check, Info, Repeat, X } from "lucide-react";
+import { AlarmClock, Check, CircleCheck, Info, Repeat, X } from "lucide-react";
 import {
 	type ReactNode,
 	useEffect,
@@ -243,6 +243,26 @@ const GOAL_DONE_TOAST_TEXT = "Goal done";
  * receipt and the pane cannot spell one state three ways.
  */
 const GOAL_DONE_TAG = "— done";
+
+/**
+ * The ONE-SHOT note the row writes when the judge ENTERS `stalled`.
+ *
+ * WHY A SENTENCE AT ALL, when the chip already steps its label to `text-ink`:
+ * `stalled` is the one judge state with an action behind it — the user has to send a
+ * message for the loop to continue — and the ink step is 0px, silent, and readable
+ * only by someone already looking at the chip. The design's § 6 register says a state
+ * the JUDGE reaches by itself is stated once, in words, in the transcript
+ * (design review round 1, D2); the ink step stays as the persistent mark beside it.
+ *
+ * It is the design's own sentence, verbatim, and it is deliberately NOT built from
+ * the wire's `goal_judge.reason`: a note composed from a field the design has not
+ * read would be copy nobody authored, and the one string the register quotes is this
+ * one. The tail is the picker's shipped `stalled — send a message to continue` clause
+ * (`destination-pickers.tsx`), so the row and the dialog say the same thing in the
+ * same words.
+ */
+const GOAL_STALLED_NOTE =
+	"goal stalled: judge could not decide — send a message to continue";
 
 /**
  * The two owner commands the dismiss controls run are IMPORTED, name and VALUE
@@ -928,6 +948,20 @@ export type ComposerStatusRowProps = {
 	 * See the effect that calls it for why this row needs it at all.
 	 */
 	onFocusComposer?: () => void;
+	/**
+	 * Say one sentence in the composer's own note idiom.
+	 *
+	 * THE ROW WRITES ONE NOTE and it is why this prop exists: the judge deciding to
+	 * STOP driving a goal is a transition the user cannot see happen (see
+	 * `GOAL_STALLED_NOTE`), and the transcript is where an outcome is read. The channel
+	 * is the composer's, not a second one grown here — `MessageInput` supplies its
+	 * `onSlashNote`, whose own rule is that the dispatcher owns that surface and a
+	 * component reaching for a note of its own would be a second route to it.
+	 *
+	 * Optional, like `onFocusComposer` and for the same reason: a story that renders
+	 * the row on its own must not have to invent a destination for a sentence.
+	 */
+	onNote?: (text: string) => void;
 };
 
 export const ComposerStatusRow = ({
@@ -935,6 +969,7 @@ export const ComposerStatusRow = ({
 	runDetails,
 	isSmallView = false,
 	onFocusComposer,
+	onNote,
 }: ComposerStatusRowProps) => {
 	const revealPlan = useUiPreferencesStore(
 		(state) => state.revealRunPanelSection,
@@ -1010,6 +1045,32 @@ export const ComposerStatusRow = ({
 	const goalCapable = goalCapability(frontend);
 	const goalState = goalStateWord(goalStatus, goalJudge?.state);
 	const goalStalled = goalState === "stalled";
+	/*
+	 * THE STALLED NOTE, and it is deliberately about the TRANSITION rather than about
+	 * the state (design review round 1, D2's desktop half).
+	 *
+	 * One sentence per ENTRY into `stalled`, re-armed the moment the judge leaves it,
+	 * because the thing the note reports is an event — the judge stopped driving this
+	 * goal — and a note driven off the state alone would say it again on every render.
+	 *
+	 * THE REF IS SEEDED FROM THE FIRST RENDER, so a row that MOUNTS onto an
+	 * already-stalled goal says nothing: that case is a user arriving at a stall that
+	 * happened while they were elsewhere, and the durable announcement for it belongs
+	 * to the backend's own note (the other half of D2) rather than to a renderer-local
+	 * line that would be re-written on every conversation switch — this row is keyed on
+	 * `conversationId`, so it remounts on each one. What this half owns is the stall a
+	 * user is THERE for, which is the one they can only otherwise learn from 0px of ink.
+	 */
+	const stalledNoted = useRef(goalStalled);
+	useEffect(() => {
+		if (!goalStalled) {
+			stalledNoted.current = false;
+			return;
+		}
+		if (stalledNoted.current) return;
+		stalledNoted.current = true;
+		onNote?.(GOAL_STALLED_NOTE);
+	}, [goalStalled, onNote]);
 	/*
 	 * A FINISHED plan still shows, in the model's settled spelling
 	 * (`All to-dos resolved`, or `All to-dos closed` where anything was dropped):
@@ -1815,7 +1876,31 @@ export const ComposerStatusRow = ({
 										label={goalDismissName}
 										word={GOAL_DISMISS_TEXT}
 										icon={
-											<X
+											/*
+											 * A DISTINGUISHABLE MARK AT THE COLUMN FLOOR (design review round 1, D6).
+											 *
+											 * `GOAL_DISMISS_TEXT` and `Clear goal` share `DISMISS_WORD`, so below the
+											 * stacked band both controls are one glyph with the word dropped — and the
+											 * two this pair can be are DIFFERENT consequences: the erase removes the
+											 * standing goal, the dismiss only puts the settled chip away, leaving the
+											 * history entry behind. A struck value and a tag are the whole tell at 172px.
+											 *
+											 * The DISMISS yields its mark and not the erase control's, because the shipped
+											 * `X` is the erase: `Clear goal` has carried it since this row existed and
+											 * moving it would move muscle memory onto the new control (§ the trailing
+											 * comment above). `CircleCheck` is the pane's own mark for a settled goal row
+											 * (`canvas-goals-viewer.tsx`), so the settled chip's control wears the mark
+											 * its RECORD wears; it is distinct from the `Done` control's plain `Check`,
+											 * which is the other half of the pair and never on screen with it.
+											 *
+											 * The alternative — keeping a word for the dismiss at the floor — is refused
+											 * on the row's pinned budgets: the stacked band's 156px content box is already
+											 * the band where the value yields (D1), and a word would move the cost from a
+											 * wrap the row absorbs to a paint past its column. A 14px glyph for a 14px
+											 * glyph moves no budget: the control's box, the row's 32 / 54 / 160px steps
+											 * and the 120px body cap are untouched.
+											 */
+											<CircleCheck
 												aria-hidden={true}
 												className={cn("size-3.5 shrink-0")}
 											/>
@@ -1916,7 +2001,16 @@ export const ComposerStatusRow = ({
 								 * expensive at the column floor.
 								 */}
 								{goalDone && (
-									<span className={cn("shrink-0 text-ink-dim")}>
+									/*
+									 * `text-meta` IS STATED rather than inherited (design review round 1, D8). The
+									 * chip's box already sets it (`READING_BOX`), so this changes no pixel today —
+									 * what it does is make the tag's step the TAG's, as the pane's row tag and the
+									 * to-do row's are, so a future move of the chip's own size cannot drag the tag
+									 * with the value it sits beside. The value yields its ink
+									 * (`line-through text-ink-dim`); the tag keeps its word upright and readable,
+									 * which is the to-do row's own rule for a crossed-out row.
+									 */
+									<span className={cn("shrink-0 text-meta text-ink-dim")}>
 										{GOAL_DONE_TAG}
 									</span>
 								)}
