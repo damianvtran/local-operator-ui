@@ -784,6 +784,7 @@ const STAMP_BINDING_NOTES = [
 	"settingsGateRestampNote",
 	"candidateMacArchRestampNote",
 	"notarizeGateRestampNote",
+	"macNativeComponentsRestampNote",
 	"telemetrySwitchRestampNote",
 ];
 
