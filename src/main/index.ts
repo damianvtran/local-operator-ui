@@ -75,6 +75,11 @@ import {
 	withRememberedDirectory,
 } from "./picker-directory";
 import { createUserShellPath } from "./shell-path";
+import {
+	describeTelemetryLaunch,
+	resolveTelemetryLaunch,
+	telemetryArgument,
+} from "./telemetry-launch";
 import { UpdateService, holdLaunchForLiveInstall } from "./update-service";
 import { ViewerEndpoint } from "./viewer-endpoint";
 import { ViewerRecordPublisher } from "./viewer-record";
@@ -286,11 +291,38 @@ if (process.platform === "darwin" && app.dock) {
 	}
 }
 
-// Initialize PostHog
-const posthogClient = new PostHog(backendConfig.VITE_PUBLIC_POSTHOG_KEY, {
-	host: backendConfig.VITE_PUBLIC_POSTHOG_HOST,
-	enableExceptionAutocapture: true,
+/*
+ * PostHog, or nothing at all.
+ *
+ * WHY THIS IS A DECISION RATHER THAN A CONSTRUCTOR CALL. A test, harness, QA or
+ * CI run boots this real app, and until this switch existed every one of them
+ * registered as a user and as a session replay in the "Local Operator Usage"
+ * project: the shipped build carries the live project key by default, so a run
+ * that simply omitted the variable still had one, and an explicitly empty one
+ * threw in the constructor at module load (before `app.whenReady()`, surfacing
+ * as an error dialog). `resolveTelemetryLaunch` owns the two ways this becomes
+ * "off" — the launch's switch, and a build with no key — and reads the switch
+ * from `launchEnv`, the environment this process was LAUNCHED with, so a `.env`
+ * in the checkout can neither silence a real user nor speak for a rig.
+ *
+ * `null` rather than a client with a no-op configuration, because the point is
+ * that nothing is constructed: no client, no queue, no flush, and nothing to
+ * shut down (see the `process.on("exit")` handler below, which is the other half
+ * of this decision). An ordinary launch is unaffected: no switch, a key, and
+ * `posthogClient` is the same client it was.
+ */
+const telemetryLaunch = resolveTelemetryLaunch({
+	env: launchEnv,
+	projectKey: backendConfig.VITE_PUBLIC_POSTHOG_KEY,
 });
+const telemetryLine = describeTelemetryLaunch(telemetryLaunch);
+if (telemetryLine) console.log(telemetryLine);
+const posthogClient = telemetryLaunch.enabled
+	? new PostHog(backendConfig.VITE_PUBLIC_POSTHOG_KEY, {
+			host: backendConfig.VITE_PUBLIC_POSTHOG_HOST,
+			enableExceptionAutocapture: true,
+		})
+	: null;
 
 // Create application menu without developer tools in production
 /**
@@ -1040,6 +1072,23 @@ const devDriverWebPreferences =
 		? { additionalArguments: [devDriverArgument(devDriverArming.outDir)] }
 		: {};
 
+/*
+ * The renderer's half of the telemetry decision, ALWAYS written.
+ *
+ * WHY THIS ONE IS NOT CONDITIONAL, when the dev driver's entry above is. The dev
+ * driver is an opt-in, so its absence can safely mean "off"; telemetry's default
+ * is ON, so if silence also meant "on" then any window created by a path that
+ * forgot to compose this entry would ship the events this switch exists to stop —
+ * and the preload could not tell that case apart from a host that is not an app
+ * window at all. Spelling the decision out on every window makes the renderer's
+ * fail-closed default (`resolveTelemetryEnabled`: only an explicit `true` counts)
+ * safe to hold. The two words are the whole vocabulary, and they live in
+ * `./telemetry-launch`, which the preload reads back out of its own argv.
+ */
+const telemetryWebPreferences = {
+	additionalArguments: [telemetryArgument(telemetryLaunch.enabled)],
+};
+
 // Radient tokens and OAuth state used to live in an electron-store session
 // file here. The backend AuthStore owns provider credentials now and the
 // desktop bearer is process-scoped, so main keeps no credential store.
@@ -1104,18 +1153,22 @@ function launchArgumentFlags(
 /**
  * Everything this app puts in a renderer process's argv, in one value.
  *
- * WHY IT EXISTS. There are two sources now — the conversation or catalogue a
- * window was created for (`launchArgumentFlags`) and the dev driver's arming
- * entry (`devDriverWebPreferences`) — and both express themselves through the
- * SAME `webPreferences.additionalArguments` slot. Spreading them as two separate
- * entries at the call site does not union them: the second spread overwrites the
- * first's array, so an armed run that also names a session would carry one flag
+ * WHY IT EXISTS. There are three sources now — the conversation or catalogue a
+ * window was created for (`launchArgumentFlags`), the dev driver's arming
+ * entry, and the telemetry decision (`telemetryWebPreferences`, which is on
+ * every window) — and all of them express themselves through the SAME
+ * `webPreferences.additionalArguments` slot. Spreading them as separate entries
+ * at the call site does not union them: a later spread overwrites the earlier
+ * one's array, so an armed run that also names a session would carry one flag
  * and silently drop the other, with a well-formed window either way. This is the
- * one place that decides, so the two can never disagree about who wins.
+ * one place that decides, so the sources can never disagree about who wins.
  *
  * Empty means `{}` and not `additionalArguments: []`, for the reason
  * `launchArgumentFlags` gives: "this launch adds no option at all" has to be
- * true of the object, not merely equivalent to it.
+ * true of the object, not merely equivalent to it. With telemetry always
+ * present that branch is unreachable from the call sites below, and it is kept
+ * deliberately: this function's contract is "compose whatever applies", not
+ * "there is always something".
  */
 function rendererArgumentFlags(
 	initialSession: string | null,
@@ -1125,6 +1178,7 @@ function rendererArgumentFlags(
 		...(launchArgumentFlags(initialSession, openCatalogue)
 			.additionalArguments ?? []),
 		...(devDriverWebPreferences.additionalArguments ?? []),
+		...(telemetryWebPreferences.additionalArguments ?? []),
 	];
 	return flags.length > 0 ? { additionalArguments: flags } : {};
 }
@@ -3379,7 +3433,10 @@ process.on("exit", () => {
 			error,
 		);
 	}
-	posthogClient.shutdown();
+	// Nothing was constructed when telemetry is off, so there is nothing to
+	// flush or close — and a bare `posthogClient.shutdown()` here would be a
+	// TypeError on the exit path of every rig-shaped run.
+	posthogClient?.shutdown();
 });
 
 process.on("uncaughtException", (error) => {

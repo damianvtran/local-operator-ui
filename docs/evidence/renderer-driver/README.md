@@ -210,11 +210,14 @@ The five limits a reader should know before quoting them:
   `WebContentsView`, and a renderer capture does not include it. A browser-chrome
   review needs the page captured separately through the browser host's own
   `screenshot` RPC, and a single composed image has to be labelled as composed.
-- **The run is not network-isolated.** It reaches no backend, but the app's own
-  telemetry still leaves the machine during a run (`us.i.posthog.com`); the
-  harness's isolation covers the operator's state — profile, config dir, log
-  directory, backend URL — and not egress. `docs/agent-driver.md` states this
-  where a reader will look for it.
+- **The run is not network-isolated.** It reaches no backend, and it no longer
+  reports to PostHog either — the harness hands the app
+  `LOCAL_OPERATOR_UI_TELEMETRY=off` (`scripts/telemetry-off.mjs`), so no client is
+  constructed in either process; the frames in this directory predate that switch,
+  which is why the limit was recorded as egress rather than as a defect — but the
+  harness's isolation still covers the operator's state — profile, config dir,
+  log directory, backend URL — and not egress generally. `docs/agent-driver.md`
+  states this where a reader will look for it.
 - **Both frames are one of two byte-forms, not the bytes.** Twelve runs gave the
   light frame as 92986 B eight times and 92980 B four times, differing in 12
   pixels of edge antialiasing on the sidebar's search field; a thirteenth gave the
