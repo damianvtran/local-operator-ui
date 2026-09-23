@@ -156,6 +156,7 @@ import { withNotificationsOff } from "./notifications-off.mjs";
  * interpreter, so a new one has to say so there as well as here.
  */
 import { pythonChildEnv } from "./python-child-env.mjs";
+import { contentGeometryMatches } from "./renderer-content-geometry.mjs";
 
 const ROOT = process.cwd();
 
@@ -2651,11 +2652,11 @@ async function sceneStates(cdp) {
 		`${JSON.stringify(facts.windowSize)} for a requested ${WINDOW_SIZE}`,
 	);
 	check(
-		"the content area is smaller than the window by the platform's chrome only",
-		facts.contentBounds.width === facts.windowSize.width &&
-			facts.contentBounds.height < facts.windowSize.height &&
-			facts.windowSize.height - facts.contentBounds.height <= 40,
-		`window ${JSON.stringify(facts.windowSize)} content ${JSON.stringify(facts.contentBounds)}`,
+		facts.platform === "darwin"
+			? "macOS hidden-titlebar content exactly matches the full window size"
+			: "native-chrome content matches the window width and is 1–40 px shorter",
+		contentGeometryMatches(facts),
+		`platform=${facts.platform} window ${JSON.stringify(facts.windowSize)} content ${JSON.stringify(facts.contentBounds)}`,
 	);
 
 	/*

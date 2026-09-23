@@ -223,6 +223,7 @@ export const BackendCompatibilityBanner = () => {
 		 */
 		<div className="w-full">
 			<Alert
+				data-titlebar-banner=""
 				variant="warning"
 				// Setup state, not an interruption: it is present from first paint
 				// so it does not need the assertive announcement the connectivity

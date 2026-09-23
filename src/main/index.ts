@@ -75,6 +75,7 @@ import {
 	withRememberedDirectory,
 } from "./picker-directory";
 import { createUserShellPath } from "./shell-path";
+import { titlebarOptions } from "./titlebar-options";
 import { UpdateService, holdLaunchForLiveInstall } from "./update-service";
 import { ViewerEndpoint } from "./viewer-endpoint";
 import { ViewerRecordPublisher } from "./viewer-record";
@@ -588,6 +589,7 @@ function createWindow(
 	 */
 	// Create the browser window.
 	const mainWindow = new BrowserWindow({
+		...titlebarOptions(process.platform),
 		width: windowLaunch.width,
 		height: windowLaunch.height,
 		// The layout is verified down to 800x600 and not below: the app rail,

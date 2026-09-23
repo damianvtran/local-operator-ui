@@ -97,6 +97,7 @@ const App: FC = () => {
 	const {
 		isCommandPaletteOpen,
 		isCreateAgentDialogOpen,
+		isSidebarCollapsed,
 		closeCreateAgentDialog,
 	} = useUiPreferencesStore();
 
@@ -415,7 +416,13 @@ const App: FC = () => {
 			 * labels stay 1x1 and rendered afterwards, so screen readers still
 			 * announce them; nothing is hidden, it is merely contained.
 			 */}
-			<div className="relative flex h-screen flex-col overflow-hidden">
+			<div
+				className="relative flex h-screen flex-col overflow-hidden"
+				data-titlebar-platform={
+					navigator.platform.toUpperCase().indexOf("MAC") >= 0 ? "mac" : "other"
+				}
+				data-titlebar-sidebar-collapsed={isSidebarCollapsed ? "true" : "false"}
+			>
 				{/*
 				 * THE TWO FULL-BLEED BANDS ARE THE SHELL'S FIRST CHILDREN, and this
 				 * container is a COLUMN for exactly that reason (D9).

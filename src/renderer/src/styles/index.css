@@ -3,6 +3,73 @@
 @import "./themes.generated.css";
 
 /*
+ * macOS hides Electron's native titlebar but keeps its traffic lights and their
+ * native hit targets over the renderer. The renderer must therefore leave those
+ * controls alone, reserve their top-left safe area, and mark only empty header
+ * surfaces draggable; interactive descendants opt back out so clicks still work.
+ */
+[data-titlebar-platform="mac"] [data-titlebar-drag] {
+	-webkit-app-region: drag;
+}
+
+[data-titlebar-platform="mac"]
+	[data-titlebar-drag]
+	:is(
+		button,
+		a,
+		input,
+		textarea,
+		select,
+		[role="button"],
+		[role="menuitem"],
+		[contenteditable="true"],
+		[data-titlebar-no-drag]
+	) {
+	-webkit-app-region: no-drag;
+}
+
+[data-titlebar-platform="mac"] [data-titlebar-banner] {
+	/*
+	 * Alerts paint their semantic wash across the full root, including under the
+	 * OS-owned traffic lights. Restore theme canvas only across that 80px lane;
+	 * transparent gradient pixels leave the warning/danger wash around the copy.
+	 */
+	background-image: linear-gradient(
+		to right,
+		var(--color-canvas) 0 80px,
+		transparent 80px
+	);
+	padding-left: 80px;
+}
+
+[data-titlebar-platform="mac"]
+	[data-titlebar-sidebar][data-sidebar-collapsed="true"]
+	[data-titlebar-brand],
+[data-titlebar-platform="mac"]
+	[data-titlebar-sidebar][data-sidebar-collapsed="true"]
+	[data-titlebar-rail-toggle] {
+	display: none;
+}
+
+/* Keep the expanded brand and toggle outside the system controls' native lane. */
+[data-titlebar-platform="mac"]
+	[data-titlebar-sidebar][data-sidebar-collapsed="false"]
+	[data-titlebar-rail-header] {
+	padding-left: 80px;
+}
+
+/*
+ * The collapsed rail is 48px wide, so the chat-list heading begins under the
+ * remaining 32px of the native controls' lane. Offset only that heading: the
+ * main chat header is farther right and must keep its normal content padding.
+ */
+[data-titlebar-platform="mac"]
+	[data-titlebar-sidebar-collapsed="true"]
+	[data-titlebar-chat-heading] {
+	padding-left: 2rem;
+}
+
+/*
  * The single token source for everything already ported to Tailwind.
  *
  * Colour comes in as `var(--lo-*)`, defined per theme in themes.generated.css
