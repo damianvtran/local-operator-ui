@@ -333,6 +333,12 @@ jobs:
         run: |
           node scripts/test-validate-release.mjs
           node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs scripts/ci-scope.test.mjs
+          # The per-architecture contract, over EVERY workflow that packages macOS
+          # rather than over the one that was fixed first. `publish.yml` was fixed
+          # for the v0.30.10 brick and `signed-update-candidate.yml` was not, so its
+          # bytecode check failed on the x64 candidate of every release and the only
+          # workflow that verifies a release shipped read as permanently red.
+          node --test scripts/mac-build-arch.test.mjs
           node --test scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/entry-point.test.mjs scripts/require-report.test.mjs
           # The attach path's recovery branches, against a local stub upload endpoint: a
           # stalled attempt retried, a `starter` record repaired, a same-size asset
