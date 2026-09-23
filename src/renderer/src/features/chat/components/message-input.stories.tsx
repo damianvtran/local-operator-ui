@@ -163,6 +163,25 @@ const SLASH_COMMANDS: SlashCommandMeta[] = [
 		"session.loop",
 		{ arguments: "required" },
 	),
+	/*
+	 * `/rename`, with the OPTIONAL argument mode and the ANY shape the real
+	 * registry declares (`slash_commands.py`: `ArgumentMode.OPTIONAL`,
+	 * `ArgumentShape.ANY`, destination `session.rename`). It is here because
+	 * `/rename` is the ONE command whose argument list is a renderer-local
+	 * spelling list rather than a backend entity route, so a fixture that named
+	 * only entity-list commands could not photograph the flag row at all — a
+	 * frame of `/rename ref` with no row would be a frame of the DEFECT.
+	 *
+	 * The alias is the registry's own (`aliases=("title",)`): the help row a user
+	 * learns the command from is `/title`, so a fixture that dropped it would
+	 * answer a different question than the app does.
+	 */
+	slashCommand(
+		"rename",
+		"Name this conversation, or /title --refresh",
+		"session.rename",
+		{ arguments: "optional", aliases: ["title"], argument_shape: "any" },
+	),
 ];
 
 /*
