@@ -2237,6 +2237,58 @@ export function replaceSessionRows(
 }
 let navigationGeneration = 0;
 let refreshGeneration = 0;
+/*
+ * Mount, transition, poll and focus triggers can overlap while every caller reads
+ * the same catalogue. Serialize those reads to preserve the store's global
+ * generation ordering. Calls in flight invalidate that answer and collapse into
+ * one trailing read using the most recently requested page limit.
+ */
+let sessionRefresh: {
+	limit: number;
+	invalidated: boolean;
+	promise: Promise<unknown>;
+} | null = null;
+
+function coalesceSessionCatalogueRequest<T>(
+	limit: number,
+	request: (limit: number) => Promise<T>,
+): Promise<T> {
+	const active = sessionRefresh;
+	if (active) {
+		active.invalidated = true;
+		active.limit = limit;
+		return active.promise as Promise<T>;
+	}
+
+	const flight = {
+		limit,
+		invalidated: false,
+		promise: null as unknown as Promise<T>,
+	};
+	sessionRefresh = flight;
+	flight.promise = (async () => {
+		try {
+			while (true) {
+				flight.invalidated = false;
+				let answer: T;
+				try {
+					answer = await request(flight.limit);
+				} catch (error) {
+					if (flight.invalidated) continue;
+					throw error;
+				}
+				if (flight.invalidated) continue;
+				// Clear synchronously with the final validity check so an invalidation
+				// cannot land after the loop decides to stop and go unserved.
+				if (sessionRefresh === flight) sessionRefresh = null;
+				return answer;
+			}
+		} finally {
+			if (sessionRefresh === flight) sessionRefresh = null;
+		}
+	})();
+	return flight.promise;
+}
 
 /**
  * What main asked THIS window to open, resolved through the shared reader.
@@ -2358,44 +2410,48 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				set({ answerSeq: answerAt });
 				set({ loading: true, error: null });
 				try {
-					const result = await desktopResult<{
-						sessions: BackendSessionRow[];
-						truncated?: boolean;
-						/**
-						 * The reads the daemon could not answer, additive and optional. A
-						 * daemon that sends nothing here is one that answered all of them.
-						 */
-						degraded?: string[];
-					}>({
-						op: "sessions.list",
+					const result = await coalesceSessionCatalogueRequest(
 						limit,
-						/*
-						 * THE ARCHIVED ROWS ARE ASKED FOR AND THEN HIDDEN HERE, rather than left
-						 * out by the route. The default `false` is a promise to clients that
-						 * predate archiving - they must keep the list they had, and this app
-						 * asks for them, so it must be the one to decide what is drawn:
-						 *
-						 *   - `visibleRows` partitions them out of EVERY default list, so the
-						 *     surface is the one the brief asks for (Active, Previous and the
-						 *     flat list all exclude them);
-						 *   - the open conversation's own state is known after a reload even
-						 *     when the conversation was archived elsewhere (from the terminal, or
-						 *     from another window) - without this, a restored archived session
-						 *     would look ordinary and offer no unarchive at all, which is
-						 *     precisely the "archived with no way back" trap the design record
-						 *     names in Claude desktop's behaviour;
-						 *   - and a row found by the "Include archived" search can be restored
-						 *     from its own control even when the hit's own page never carried it.
-						 *
-						 * The cost this carries, stated rather than discovered: archived rows
-						 * compete for the page's 500-row cap like any other row, so a store with
-						 * more than 500 conversations where most are archived can push live rows
-						 * off the page. The route cannot answer both questions at once today,
-						 * and the alternative - hiding the archived set from this client
-						 * entirely - fails the two bullets above.
-						 */
-						include_archived: true,
-					});
+						(pageLimit) =>
+							desktopResult<{
+								sessions: BackendSessionRow[];
+								truncated?: boolean;
+								/**
+								 * The reads the daemon could not answer, additive and optional. A
+								 * daemon that sends nothing here is one that answered all of them.
+								 */
+								degraded?: string[];
+							}>({
+								op: "sessions.list",
+								limit: pageLimit,
+								/*
+								 * THE ARCHIVED ROWS ARE ASKED FOR AND THEN HIDDEN HERE, rather than left
+								 * out by the route. The default `false` is a promise to clients that
+								 * predate archiving - they must keep the list they had, and this app
+								 * asks for them, so it must be the one to decide what is drawn:
+								 *
+								 *   - `visibleRows` partitions them out of EVERY default list, so the
+								 *     surface is the one the brief asks for (Active, Previous and the
+								 *     flat list all exclude them);
+								 *   - the open conversation's own state is known after a reload even
+								 *     when the conversation was archived elsewhere (from the terminal, or
+								 *     from another window) - without this, a restored archived session
+								 *     would look ordinary and offer no unarchive at all, which is
+								 *     precisely the "archived with no way back" trap the design record
+								 *     names in Claude desktop's behaviour;
+								 *   - and a row found by the "Include archived" search can be restored
+								 *     from its own control even when the hit's own page never carried it.
+								 *
+								 * The cost this carries, stated rather than discovered: archived rows
+								 * compete for the page's 500-row cap like any other row, so a store with
+								 * more than 500 conversations where most are archived can push live rows
+								 * off the page. The route cannot answer both questions at once today,
+								 * and the alternative - hiding the archived set from this client
+								 * entirely - fails the two bullets above.
+								 */
+								include_archived: true,
+							}),
+					);
 					if (generation !== refreshGeneration) return;
 					const rows = result.sessions.map(({ id, name, mtime, ...rest }) => ({
 						...rest,

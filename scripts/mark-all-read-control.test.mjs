@@ -142,6 +142,10 @@ const APPROVAL = { code: "approval", label: "Approval needed" };
  */
 let held = null;
 let requests = [];
+const defaultAck = async (request) => {
+	requests.push(request);
+	return { read: [], superseded: [], unknown: [] };
+};
 const serve = (receipt) => {
 	requests = [];
 	globalThis.__ack = async (request) => {
@@ -149,10 +153,7 @@ const serve = (receipt) => {
 		return receipt;
 	};
 };
-globalThis.__ack = async (request) => {
-	requests.push(request);
-	return { read: [], superseded: [], unknown: [] };
-};
+globalThis.__ack = defaultAck;
 
 /*
  * The modules replaced wholesale, and the patterns the plugin matches them by.
@@ -460,14 +461,16 @@ test("the control keeps focus and its ring stop for the whole request", async ()
 	 * ring is never shorter than the DOM being walked.
 	 */
 	const harness = await mount(PILE);
+	let resolveAck;
+	let heldAck;
 	try {
-		let resolveAck;
 		globalThis.__ack = (request) => {
 			requests.push(request);
-			held = new Promise((resolve) => {
+			heldAck = new Promise((resolve) => {
 				resolveAck = resolve;
 			});
-			return held;
+			held = heldAck;
+			return heldAck;
 		};
 		requests = [];
 		const control = harness.control();
@@ -499,7 +502,13 @@ test("the control keeps focus and its ring stop for the whole request", async ()
 		assert.equal(requests.length, 1, "a re-entry sent a second request");
 		await act(async () => {
 			resolveAck({ read: [], superseded: [SESSION, OTHER], unknown: [] });
-			await held;
+			/*
+			 * The held transport is one-shot. Restore a resolving responder before its
+			 * completion can trigger a coalesced catalogue read, so that read cannot join
+			 * another never-resolving copy of this mock.
+			 */
+			globalThis.__ack = defaultAck;
+			await heldAck;
 		});
 		assert.equal(
 			store.getState().sessions.filter((row) => row.attention?.unseen).length,
@@ -507,6 +516,13 @@ test("the control keeps focus and its ring stop for the whole request", async ()
 			"the refused batch cleared marks",
 		);
 	} finally {
+		// Also release the one-shot request if an assertion failed before its normal completion.
+		globalThis.__ack = defaultAck;
+		if (resolveAck && heldAck) {
+			resolveAck({ read: [], superseded: [], unknown: [] });
+			await heldAck;
+		}
+		held = null;
 		await harness.unmount();
 	}
 });
