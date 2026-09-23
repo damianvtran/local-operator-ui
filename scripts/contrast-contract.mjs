@@ -1827,7 +1827,7 @@ const STRUCTURAL_CALL_SITES = [
 		 * and the bar and the rows share one ground with nothing between them, with
 		 * every colour row still green.
 		 *
-		 * FIVE PINS, because the mask has two branches and only the first is the one
+		 * SEVEN PINS, because the mask has two branches and only the first is the one
 		 * Electron ships. The SHIPPED branch's `animation-range` is the half that
 		 * decides whether the fade exists at all and which end of the scroll it is
 		 * anchored to - this container is `flex-col-reverse`, so a range measured off
@@ -1844,18 +1844,97 @@ const STRUCTURAL_CALL_SITES = [
 		 * scrolled under the bar). The pinned string is the two declarations and the
 		 * braces between them, tabs included, so a reformat fails closed.
 		 *
-		 * ROUND 3 ADDED THE OTHER TWO, AND THEY PIN THE SAME BRANCH RATHER THAN THE
+		 * ROUND 3 ADDED TWO MORE, AND THEY PIN THE SAME BRANCH RATHER THAN THE
 		 * OTHER ONE (review R3-1). One on the FILL MODE, because `both` is what
 		 * applies the ramp outside its own span and holds its `from` value on the
 		 * element at rest; one on the TIMELINE AND RANGE AS ONE CONTIGUOUS RUN,
 		 * because `scroll(self)` is what makes the range measure this container's
 		 * scrollport and each declaration means the shipped thing only beside the
-		 * other. Each row carries its own measured reason below.
+		 * other. ROUND 4 ADDED THE LAST TWO (review R4-1, R4-2): the ANIMATION NAME,
+		 * which is what binds the keyframes to this element at all - with no name no
+		 * keyframe is ever sampled, so the mask rests at the `0px` the element
+		 * declares at every offset and not only at rest - and the REGISTRATION BLOCK
+		 * above the rules, which is what makes the animated length TYPED and therefore
+		 * interpolable at all (measured: without it the same keyframe pair resolves
+		 * discretely, so the fade snaps instead of tracking the scroll). Each row
+		 * carries its own measured reason below.
 		 */
 		what: "transcript top-edge mask (the shipped scroll-timeline branch)",
 		file: "src/renderer/src/styles/index.css",
 		must: "animation-range: calc(100% - 24px) 100%",
 		why: "the header draws no rule, so this mask is the only separation between the bar and the rows; the range decides whether the fade is full at rest or absent there, which no colour assertion can see",
+	},
+	{
+		/*
+		 * WHY THE REGISTRATION IS A ROW OF ITS OWN (round-4 review, R4-2). It is the
+		 * precondition of every other pin in this group, and its deletion used to be
+		 * GREEN here, so nothing else in the file could see it. Deleting the block
+		 * leaves `--lo-transcript-top-fade` an UNREGISTERED custom property, and an
+		 * unregistered custom property does not interpolate - it animates discretely,
+		 * which is exactly the failure `styles/index.css`'s own comment above the
+		 * block names as the reason the length is registered rather than the gradient
+		 * being animated ("it flips discretely at 50% of the range, so the fade would
+		 * POP in at 12px of scroll instead of ramping").
+		 *
+		 * MEASURED, because the round that raised this could not measure it and asked
+		 * for the cost rather than for a guess. In Electron 44.3.0 - the version this
+		 * branch pins - with the mask CSS extracted verbatim from this file into a
+		 * probe page (a hidden `show:false` window, a 1300px-scrollable
+		 * `flex-col-reverse` transcript in a 300px pane), reading the resolved
+		 * `--lo-transcript-top-fade` at every offset of the register's own 24px span:
+		 *
+		 *   block present     0px 1px 2px ... 23px 24px at 0..24px above the oldest end
+		 *                     (and 24px at every offset above 24px)
+		 *   block deleted     0px at 0-12px, 24px from 13px up - the flip at the 50%
+		 *                     point of the range, i.e. discretely
+		 *
+		 * So the deletion does NOT cost only the resting value: it converts the fade
+		 * from a ramp that tracks the scroll into a two-state SNAP in the last 24px of
+		 * travel, which is the pop this whole block exists to prevent. The block is
+		 * therefore pinned rather than deferred, and pinned as ONE CONTIGUOUS SLICE
+		 * (tabs included, as the keyframe-pair row below is) because the registrable
+		 * fact is the block, not any one descriptor: `syntax` is what makes it a typed
+		 * `<length>`, while a missing `inherits` or `initial-value` makes the whole
+		 * `@property` rule invalid and returns the property to the same unregistered
+		 * state - three one-line deletions with one measured consequence.
+		 *
+		 * The pinned string is the rule exactly as this file spells it, with no
+		 * trailing newline, so a reformat fails closed; it occurs once in the file.
+		 */
+		what: "transcript top-edge mask custom property registration",
+		file: "src/renderer/src/styles/index.css",
+		must: '@property --lo-transcript-top-fade {\n\tsyntax: "<length>";\n\tinherits: false;\n\tinitial-value: 0px;\n}',
+		why: "registration is what makes the animated length typed, so the keyframe pair interpolates instead of animating discretely; without the block the fade snaps between 0px and 24px at the 50% point of the range rather than tracking the scroll, and no range/keyframe/fallback row or colour assertion can see it",
+	},
+	{
+		/*
+		 * WHY THE ANIMATION NAME IS A ROW OF ITS OWN (round-4 review, R4-1). It is the
+		 * last one-line deletion in this block that used to leave the gate GREEN, and
+		 * it is the same species as R3-1 above. `animation-name` is what binds the
+		 * `@keyframes transcript-top-fade` pair to this element; with the declaration
+		 * gone no animation applies at all, so no keyframe is ever sampled and the
+		 * mask rests at the `--lo-transcript-top-fade: 0px` the element declares - the
+		 * value `styles/index.css`'s own comment on that declaration defines in place
+		 * as "a hard edge at 0px, i.e. no fade at all". That is round 1's symptom
+		 * class and MORE of it than round 1 had: the fade is gone at every offset,
+		 * not only at the resting one, because the timeline never produces a value.
+		 *
+		 * The fallback branch cannot rescue it on the engine this app ships, which is
+		 * why the row is on the name rather than left to that branch: the fallback is
+		 * `@supports not (animation-timeline: scroll())` and Electron 44.3.0 takes the
+		 * supports branch, so the fallback is not painted there at all.
+		 *
+		 * IT IS PINNED RATHER THAN LEFT TO ITS NEIGHBOURS BECAUSE ITS REMOVAL IS ONE
+		 * LINE AND WAS GREEN HERE (measured in round 4, before this row existed: delete
+		 * the declaration, rc 0, 26933 assertions - the range row, the fill-mode row,
+		 * the timeline+range row, the keyframe-pair row, the fallback row and every
+		 * palette assertion all hold). A row the deletion of one line cannot break is
+		 * not a row, and this row is the one that breaks.
+		 */
+		what: "transcript top-edge mask animation name (the shipped scroll-timeline branch)",
+		file: "src/renderer/src/styles/index.css",
+		must: "animation-name: transcript-top-fade;",
+		why: "the name is what binds the keyframe pair to this element; without it no keyframe is sampled and the mask rests at the declared 0px at every offset, which is a hard cut along the whole scroll and not only at rest, and the `@supports not (...)` fallback cannot cover it on an engine that takes the supports branch",
 	},
 	{
 		/*
