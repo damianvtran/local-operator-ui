@@ -1140,6 +1140,18 @@ const entry = (
  * duplication the reader used to paint, and a story that set only the long one
  * would be a fixture for a wire that does not exist.
  *
+ * THE WIRE'S CLIP IS MARKED, and the first cut of this fixture was not: it was
+ * `LONG_RESULT.slice(0, 2_000)`, which is what a length-only reading of
+ * `_bound_job_text_in_place` gives and is NOT what the runtime sends. The clip
+ * appends an ellipsis (`job[key] = value[:limit] + "…"`,
+ * `frontend_state.py:2829-2841`), and that mark is the only evidence a renderer
+ * has that a value was shortened — which is why the reader's own label and
+ * honesty line are gated on it (`run-child-reader.tsx`'s `WIRE_CLIP_MARKER`) and
+ * why the cut and uncut fixtures have to differ by more than their length. The
+ * truncation here is against the tighter of the field's 2_000 and the row's
+ * share of the frame budget, so a clipped value is `limit + 1` characters and
+ * NOT necessarily 2_001: the fixture states the field's own bound.
+ *
  * The length is not decoration either: the removed block was unbounded, and its
  * takeover needed a result that could not fit the pane. This one does not fit in
  * the 160px the bounded preview allows, which is the point of both frames that
@@ -1156,8 +1168,12 @@ const RESULT_PARAGRAPHS = [
 	"Recommended next step: reissue INV-2031 and INV-2044, and check the February application on INV-2077 before anything is sent.",
 ];
 export const LONG_RESULT = RESULT_PARAGRAPHS.join("\n\n");
-/** What `JOB_RESULT_WIRE_CHARS` leaves of it on the roster frame. */
-export const CLIPPED_RESULT = LONG_RESULT.slice(0, 2_000);
+/**
+ * What `JOB_RESULT_WIRE_CHARS` leaves of it on the roster frame: the first
+ * 2_000 characters and the marker `_bound_job_text_in_place` appends, so the
+ * value says for itself that it is a prefix.
+ */
+export const CLIPPED_RESULT = `${LONG_RESULT.slice(0, 2_000)}…`;
 
 /**
  * A child's transcript page, as the reader's route answers one (`§ 10.1`).

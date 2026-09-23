@@ -2237,22 +2237,43 @@ test("the long-result fixture is the wire's CLIPPED prefix of the conversation's
 	/*
 	 * The two values are one claim, not two strings, and the claim is the reason
 	 * the reader's foot stopped painting the roster row (`§ 5.1`): the wire's
-	 * `result_text` is a PREFIX of what the child's own last row holds. A fixture
-	 * whose pair did not satisfy that would let a frame — or the render test that
-	 * uses it — prove the opposite of what it says, and the way it would go wrong
-	 * is silent: two unrelated strings still render, still differ, still pass a
-	 * `not equal` assertion.
+	 * `result_text` is a PREFIX of what the child's own last row holds, marked
+	 * where the wire cut it. A fixture whose pair did not satisfy that would let a
+	 * frame — or the render test that uses it — prove the opposite of what it says,
+	 * and the way it would go wrong is silent: two unrelated strings still render,
+	 * still differ, still pass a `not equal` assertion.
 	 */
 	assert.ok(
 		fixtures.LONG_RESULT.length > 2_000,
 		"the long result must exceed the wire's own bound or there is no clip",
 	);
-	assert.equal(fixtures.CLIPPED_RESULT, fixtures.LONG_RESULT.slice(0, 2_000));
-	assert.equal(fixtures.LONG_RESULT.startsWith(fixtures.CLIPPED_RESULT), true);
-	// Cut by CHARACTER COUNT, not at a sentence or a word — which is what makes
-	// the wire copy a fragment rather than a short answer. Asserted as the two
-	// characters straddling the bound both being non-space.
-	assert.equal(WHITESPACE.test(fixtures.CLIPPED_RESULT.slice(-1)), false);
+	assert.equal(
+		fixtures.CLIPPED_RESULT,
+		`${fixtures.LONG_RESULT.slice(0, 2_000)}…`,
+	);
+	/*
+	 * ...and the MARKER is part of that claim rather than decoration. The runtime
+	 * marks what it cut (`frontend_state.py`'s `value[:limit] + "…"`), and the
+	 * reader now reads that mark: the foot's label drops to a plain `Result` and
+	 * its shortening sentence disappears when a value arrives whole
+	 * (`run-child-reader.tsx`, `WIRE_CLIP_MARKER`). A fixture carrying the bare
+	 * prefix would be a value the runtime never sends, and the two states would
+	 * then be indistinguishable in every render test that uses it — which is what
+	 * this fixture was before round 1's C2/D1.
+	 */
+	assert.equal(fixtures.CLIPPED_RESULT.slice(-1), "…");
+	assert.equal(
+		fixtures.LONG_RESULT.startsWith(fixtures.CLIPPED_RESULT.slice(0, -1)),
+		true,
+	);
+	// Cut by CHARACTER COUNT, not at a sentence or a word, which is what makes the
+	// wire copy a fragment rather than a short answer. Asserted at the SEAM (the
+	// last character the wire kept and the first it dropped) rather than at the
+	// value's own ends, since the end is now the marker.
+	assert.equal(
+		WHITESPACE.test(fixtures.LONG_RESULT.slice(1_999, 2_000)),
+		false,
+	);
 	assert.equal(
 		WHITESPACE.test(fixtures.LONG_RESULT.slice(2_000, 2_001)),
 		false,

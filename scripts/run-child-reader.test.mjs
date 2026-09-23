@@ -22,7 +22,15 @@ import { renderToStaticMarkup } from "react-dom/server";
  *      say what it is, so no state can reproduce the takeover the block caused
  *      (an unbounded `shrink-0` sibling over the only `flex-1` child of an
  *      `overflow-hidden` column does not shrink the sibling, it squeezes the
- *      page).
+ *      page);
+ *   3. what that preview CLAIMS is gated on the wire's own evidence. The label
+ *      drops to a plain `Result` and the shortening sentence disappears when the
+ *      value carries no clip marker, and the one `result_text` in the product
+ *      that is not an outcome at all (`CANCELLED_BEFORE_START`, the manager's
+ *      stamp on a job cancelled while parked) is asserted to paint NO foot at
+ *      all — it is spent as the row's state word instead, the slot the TUI uses
+ *      for it. Both claims are about what is on screen, so the markup is what
+ *      they are asserted against.
  *
  * The claims are asserted on the RENDERED MARKUP rather than on a predicate the
  * component exports: a test of a predicate this file could have written itself
@@ -35,7 +43,7 @@ const bundle = await build({
 	stdin: {
 		contents: `export { RunChildReader } from "./src/renderer/src/features/chat/components/run-details/run-child-reader";
 export * as fixtures from "./src/renderer/src/features/chat/components/run-details/run-details.fixtures";
-export { deriveRunDetails } from "./src/renderer/src/features/chat/components/run-details/run-detail-model";`,
+export { CANCELLED_BEFORE_START, deriveRunDetails } from "./src/renderer/src/features/chat/components/run-details/run-detail-model";`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -64,10 +72,10 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 let RunChildReader;
 let fixtures;
 let deriveRunDetails;
+let CANCELLED_BEFORE_START;
 try {
-	({ RunChildReader, fixtures, deriveRunDetails } = await import(
-		bundlePath.href
-	));
+	({ RunChildReader, fixtures, deriveRunDetails, CANCELLED_BEFORE_START } =
+		await import(bundlePath.href));
 } finally {
 	await unlink(bundlePath);
 }
@@ -79,7 +87,10 @@ try {
  * the difference between "no block" and "no result block".
  */
 /** The footer's sentence (§ 5.6), which every state carries and none of this changes. */
-const READ_ONLY_FOOTER = /Read-only — this is the subagent&#x27;s conversation/;
+const READ_ONLY_FOOTER =
+	/Read-only — this is the subagent&#x27;s page, not a way to steer it\./;
+/** The sentence the footer used to say, which is false in the absence states. */
+const OLD_FOOTER_CLAIM = /this is the subagent&#x27;s conversation/;
 const RESULT_LABEL = /<span[^>]*>Result<\/span>/;
 const RESULT_PREVIEW_LABEL = /<span[^>]*>Result preview<\/span>/;
 const FAILURE_LABEL = /<span[^>]*>Failed<\/span>/;
@@ -98,6 +109,15 @@ const MONO = /font-mono/;
 /** The exact words of the preview's honesty line, with React's escaping. */
 const PREVIEW_NOTE =
 	/This is a shortened copy\. This subagent&#x27;s conversation is not available\s+here\./;
+/** The same absence stated WITHOUT the shortening claim, for a whole value. */
+const WHOLE_RESULT_NOTE =
+	/<p[^>]*>This subagent&#x27;s conversation is not available\s+here\.<\/p>/;
+/** The absence sentence itself, whether or not it is prefixed by the clip claim. */
+const ABSENCE_LINE =
+	/This subagent&#x27;s conversation is not available\s+here\./;
+/** The failure block's own bound statement, printed only for a clipped exception. */
+const FAILURE_CLIP_NOTE =
+	/Shortened at the wire\. The runtime records at most the first 2,000\s+characters of an error\./;
 /** The failure block, with its class list captured: machine voice, bounded. */
 const FAILURE_PARAGRAPH = /<pre class="([^"]*)">FileNotFoundError/;
 const FAILURE_TEXT = /FileNotFoundError: \[Errno 2\] No such file or directory/;
@@ -290,6 +310,204 @@ test("the failure is painted verbatim, in every transcript state, and wins the s
 		both.includes("Four of the 412 March invoices are unpaid"),
 		false,
 	);
+});
+
+test("the label and the shortening line follow the WIRE's marker, not the length", () => {
+	/*
+	 * `frontend_state._bound_job_text_in_place` clips a job's free text and MARKS
+	 * the cut (`value[:limit] + "…"`), so the marker is the only evidence a
+	 * renderer has that a value was shortened. Length is NOT that evidence, and
+	 * these are the cases that say so:
+	 *
+	 *   - a value of exactly the field's bound (2_000) is NOT clipped by the
+	 *     runtime — the clip fires on `len(value) > limit` — and the same is true
+	 *     one character under it;
+	 *   - a value at the bound PLUS the marker is the shape the clip produces;
+	 *   - a value clipped by the frame SHARE is marked at well under the bound,
+	 *     which is the case a `length >= 2_000` test would call whole.
+	 */
+	for (const [name, result, label, shortened] of [
+		["exactly the bound, unmarked", "x".repeat(2_000), RESULT_LABEL, false],
+		["one character under the bound", "x".repeat(1_999), RESULT_LABEL, false],
+		[
+			"the shape the clip leaves at the bound",
+			`${"x".repeat(2_000)}…`,
+			RESULT_PREVIEW_LABEL,
+			true,
+		],
+		[
+			"a value the frame SHARE clipped, under the bound",
+			`${"x".repeat(1_200)}…`,
+			RESULT_PREVIEW_LABEL,
+			true,
+		],
+	]) {
+		const html = renderReader({
+			job: { ...SETTLED, result },
+			page: fixtures.childPage({ state: "gone" }),
+		});
+		assert.match(html, label, `${name}: the label`);
+		assert.equal(
+			label === RESULT_PREVIEW_LABEL,
+			RESULT_PREVIEW_LABEL.test(html),
+			`${name}: the other label is not also painted`,
+		);
+		assert.equal(
+			PREVIEW_NOTE.test(html),
+			shortened,
+			`${name}: the shortening claim`,
+		);
+		// The reason the block is here at all is a fact about the PANE, so it is
+		// stated either way -- what changes is only the claim about the value.
+		assert.match(html, ABSENCE_LINE, `${name}: the absence is still stated`);
+		if (shortened) {
+			// A whole value carries the absence sentence ALONE: the two-sentence
+			// paragraph is only ever the clipped one.
+			assert.match(
+				html,
+				PREVIEW_NOTE,
+				`${name}: the clip claim travels with it`,
+			);
+		} else {
+			assert.match(html, WHOLE_RESULT_NOTE, `${name}: and nothing else`);
+		}
+	}
+});
+
+test("a child cancelled before it started is a STATE, not a result preview", () => {
+	/*
+	 * `harness/jobs.cancel` stamps `CANCELLED_BEFORE_START` on a job whose runner
+	 * was never entered (`harness/jobs.py:204`, `:1166-1167`), so this row's
+	 * `result_text` is a state word and not an outcome. Read as a result it was
+	 * the pane's worst four lines: the body's absence line, a `Result preview`
+	 * label over the stamp, and a claim that a 25-character value had been
+	 * shortened -- repeating the absence it sat under.
+	 */
+	const html = renderReader({
+		job: {
+			status: "cancelled",
+			settledSecondsAgo: 96,
+			progress: undefined,
+			result: CANCELLED_BEFORE_START,
+			sessionId: null,
+		},
+		page: fixtures.childPage({ state: "gone" }),
+	});
+
+	// The stamp is SPENT, as the row's own state word -- the slot the TUI puts it
+	// in (`subagent_view.py:3371-3391`), rather than a second vocabulary beside
+	// the `cancelled` the fold would otherwise print.
+	assert.match(
+		html,
+		/<span[^>]*>cancelled before it started<\/span>/,
+		"the parked cancel is the row's state word",
+	);
+	// And NOT as a result: no outcome label at all, no foot block, no claim that
+	// anything was shortened.
+	assert.equal(ANY_OUTCOME_LABEL.test(html), false);
+	assert.equal(PREVIEW_NOTE.test(html), false);
+	assert.equal(FAILURE_LABEL.test(html), false);
+	// The body still says why there is nothing to read, and the foot still
+	// closes the pane.
+	assert.match(html, /no session id/);
+	assert.match(html, READ_ONLY_FOOTER);
+});
+
+test("a clipped exception says where the bound is, and a whole one says nothing", () => {
+	const LONG_ERROR = `FileNotFoundError: [Errno 2] No such file or directory: 'ledger/q1.csv'\n${"    at reconcile (ledger/reconcile.py:412)\n".repeat(60)}`;
+	const FAILED = {
+		status: "failed",
+		settledSecondsAgo: 8,
+		progress: undefined,
+	};
+
+	const clipped = renderReader({
+		job: { ...FAILED, error: `${LONG_ERROR.slice(0, 2_000)}…` },
+		page: fixtures.childPage({ state: "gone" }),
+	});
+	assert.match(clipped, FAILURE_CLIP_NOTE, "the bound is stated");
+	// The line says where the WIRE stopped; the block still prints the
+	// exception's own words, whole, at the same bound as before.
+	assert.match(clipped, FAILURE_TEXT);
+	assert.ok(
+		clipped.includes("at reconcile (ledger/reconcile.py:412)"),
+		"the exception's own text is what is painted",
+	);
+	const block = clipped.match(FAILURE_PARAGRAPH);
+	assert.ok(block);
+	assert.match(block[1], MAX_HEIGHT);
+	assert.match(block[1], MONO);
+
+	const whole = renderReader({
+		job: { ...FAILED, error: "ValueError: unpaid total does not match" },
+		page: fixtures.childPage({ state: "gone" }),
+	});
+	assert.equal(
+		FAILURE_CLIP_NOTE.test(whole),
+		false,
+		"no bound is claimed over a whole value",
+	);
+});
+
+test("the read-only line names the page in every state it is painted in", () => {
+	/*
+	 * The foot is unconditional, so its one sentence has to be true in the states
+	 * the body says have no conversation: "this is the subagent's conversation"
+	 * told a reader twice that there was nothing to read and then named the
+	 * missing thing as the thing on screen.
+	 */
+	for (const [name, options] of [
+		[
+			"a child with a readable conversation",
+			{ job: SETTLED, page: fixtures.childPage({ includeTool: true }) },
+		],
+		["a running child", { page: fixtures.childPage({ includeTool: true }) }],
+		[
+			"a gone page",
+			{ job: SETTLED, page: fixtures.childPage({ state: "gone" }) },
+		],
+		[
+			"a pending page",
+			{ job: SETTLED, page: fixtures.childPage({ state: "pending" }) },
+		],
+		[
+			"a row with no session id",
+			{ job: { ...SETTLED, sessionId: null }, page: fixtures.childPage() },
+		],
+		[
+			"a failed child",
+			{
+				job: {
+					status: "failed",
+					settledSecondsAgo: 8,
+					progress: undefined,
+					error: "ValueError: unpaid total does not match",
+				},
+				page: fixtures.childPage({ state: "gone" }),
+			},
+		],
+		[
+			"a child cancelled before it started",
+			{
+				job: {
+					status: "cancelled",
+					settledSecondsAgo: 96,
+					progress: undefined,
+					result: CANCELLED_BEFORE_START,
+					sessionId: null,
+				},
+				page: fixtures.childPage({ state: "gone" }),
+			},
+		],
+	]) {
+		const html = renderReader(options);
+		assert.match(html, READ_ONLY_FOOTER, `${name}: the pane's own contract`);
+		assert.equal(
+			OLD_FOOTER_CLAIM.test(html),
+			false,
+			`${name}: no claim about a conversation`,
+		);
+	}
 });
 
 test("a running child with a conversation has a quiet foot", () => {

@@ -54,7 +54,7 @@ import {
 	deriveMcpServers,
 	deriveRunDetails,
 } from "./run-detail-model";
-import { mcpGrantInFlight } from "./run-detail-model";
+import { CANCELLED_BEFORE_START, mcpGrantInFlight } from "./run-detail-model";
 import * as fixtures from "./run-details.fixtures";
 import { RunPanel } from "./run-panel";
 import type { McpRemedyControls } from "./use-mcp-remedy";
@@ -1551,6 +1551,107 @@ export const ReaderResultPreview: Story = {
 			openPanel={true}
 			readerChildId="job-reader"
 			previewPage={fixtures.childPage({ state: "gone" })}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The one state the preview must NOT be painted in: a child cancelled while
+ * PARKED, whose `result_text` is the runtime's state stamp rather than an
+ * outcome.
+ *
+ * `harness/jobs.py`'s `cancel()` stamps `CANCELLED_BEFORE_START` on a job whose
+ * runner was never entered (`:1166-1167`, gated on `started_at is None`), so the
+ * row's `result_text` is 25 characters of state and not a page of output. Read
+ * as a result it produced the worst four lines in the pane: the body's own
+ * absence line, then a `Result preview` label over the stamp, then a claim that
+ * the copy had been SHORTENED — over a value the wire's 2_000-character bound
+ * never touched — repeating the absence. The TUI spends this value as the page
+ * title's state word instead (`subagent_view.py:3371-3391`), and so does this
+ * pane now: the stamp is the row's state word and the foot paints NOTHING.
+ *
+ * A frame is the only evidence for it, because the fix is the absence of a
+ * block: the reader's model test asserts the markup, and this is the same claim
+ * as pixels. The clock is deliberately absent — a job cancelled before its
+ * runner was entered has no `start_time`, and the row omits the duration rather
+ * than inventing one (`job_elapsed:414-417`) — so the state word is the only
+ * thing the chrome row carries about what happened, which is where the TUI puts
+ * it too.
+ */
+export const ReaderCancelledBeforeStart: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails({
+				nowMs: fixtures.FIXTURE_NOW_MS,
+				jobs: [
+					fixtures.readerChild({
+						status: "cancelled",
+						settledSecondsAgo: 96,
+						/*
+						 * A job whose runner was never entered has NO launch time, and this
+						 * fixture then carries `start_time: 0` — the value the runtime sends
+						 * for that state, and the reason the row omits the duration rather
+						 * than inventing `0s` (`job_elapsed:414-417`).
+						 */
+						startedSecondsAgo: undefined,
+						progress: undefined,
+						result: CANCELLED_BEFORE_START,
+						sessionId: null,
+					}),
+				],
+				todos: [],
+			})}
+			openPanel={true}
+			readerChildId="job-reader"
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * `reader-result-preview` at the pane's own FLOOR (design round 1, D4).
+ *
+ * The set carries a floor frame for every other READER surface it declares
+ * (`reader-childless-floor`, `reader-descendants-floor`,
+ * `reader-deep-children-floor`, and the breadcrumb's own `reader-deep-floor`),
+ * because the pane's 320px minimum is a width the app promises and a row's shed
+ * rules only bite there. The two surfaces this change ADDED shipped at 1280x900
+ * only, and the preview is the one that has to survive the floor: it is the
+ * only content in its state, and its box is at the `max-h-40` cap in both —
+ * measured off the rendered DOM, 395x160 at the 420px pane against 295x160 at the
+ * floor, with `scrollHeight` 831 against 1,065 because the same copy needs more
+ * lines in the narrower column. (The honesty line under it is TWO lines at both
+ * widths, 34.8px, rather than the three the finding predicted — which is what
+ * the frame is for.)
+ *
+ * The rig declares 800x700 for it, the same size as the three floor frames
+ * above and for their reason: the pane at its floor plus the chat column's own.
+ *
+ * Read with `reader-result-preview`: the same tree, the same result, the same
+ * label. What changes at the floor is where the lines break, and how much of the
+ * copy the box's fixed 160px holds (19% of it at 420px, 15% at the floor).
+ */
+export const ReaderResultPreviewFloor: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails({
+				nowMs: fixtures.FIXTURE_NOW_MS,
+				jobs: [
+					fixtures.readerChild({
+						status: "done",
+						settledSecondsAgo: 12,
+						progress: undefined,
+						result: fixtures.CLIPPED_RESULT,
+					}),
+				],
+				todos: [],
+			})}
+			openPanel={true}
+			readerChildId="job-reader"
+			previewPage={fixtures.childPage({ state: "gone" })}
+			/* The pane's own floor, which is the width this frame is about. */
+			width={320}
 		/>
 	),
 	decorators: [withCanvasClosed],
