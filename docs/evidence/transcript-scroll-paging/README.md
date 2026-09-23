@@ -808,8 +808,9 @@ sub-pixel.
 
 **What `maximumPostInputFrameDeltaPx` measures, and what it excludes.** The
 value is the largest absolute change in the held row's viewport offset between
-CONSECUTIVE frames of `afterInputFrames`, which is the frames at or after the
-input stamp — and it is computed over `afterInputFrames.slice(1)`, so the
+CONSECUTIVE entries of the arm's `frameTimeline` that carry the held row id and
+sit at or after the input stamp — `laterInputArm.postInputFrames` is the count of
+those entries — and it is computed over that slice `.slice(1)`, so the
 reader's own first post-input frame is EXCLUDED. That first frame is the step
 itself (here `-180.0`px); the metric is the movement AFTER the step, so `0.00`
 means "the row did not move again after the reader's input landed", not "the row
@@ -823,16 +824,21 @@ page's rows mount BELOW the held row and the browser's own `overflow-anchor`
 `anchorDrift` computes zero and it does not write `scrollTop` AT ALL on this path
 — which is why BOTH arms record zero writes during the hold, not only the
 later-input arm. The write probe is therefore proven live by an explicit scoped
-write (`probeLiveness.sawsTwo`), not by expecting the hook to write; and the
-claim that separates the arms is the per-frame held-row offset, not the write
-count. A future run on a path where the hook DOES correct (a height-changing row
-above the anchor) would turn the write count into the discriminating signal; this
+write (`probeLiveness.sawsTwo`), not by expecting the hook to write; and on this
+surface the write count cannot separate the arms — which is why the write count
+is not offered as one. A future run on a path where the hook DOES correct (a
+height-changing row above the anchor) would turn the write count into the
+discriminating signal; this
 surface does not, and the README says so rather than reading a zero as proof.
 
 **The layout-only arm is not a discriminating control on this surface (QA round
 2, Q-4).** The two arms record the SAME `0` programmatic writes and the same
-`0.00` post-input delta, so the write count cannot separate them, and neither can
-this surface's null. Constructing a control that does would need a row shape
+`0.00` post-input delta, so neither the write count nor the per-frame held-row
+delta separates them, and this surface's null separates nothing either. (The two
+arms' settled offsets differ — `-172.31` against `-90.5` — but only because the
+reader's own notch stepped the later-input arm's row; that is the reader's
+motion, not a correction the app made, so it is not a discriminating reading.)
+Constructing a control that would discriminate needs a row shape
 where `overflow-anchor` does not absorb the landing (a row whose height changes
 ABOVE the anchor), which is a new capture rather than a re-read — and the
 justification is recorded in `review-measurements.json`'s
@@ -867,11 +873,16 @@ back in A       rows  60  scrollTop     0  activeSessionId b708b843a001  firstRo
   judged against, so "B's identity over A's scrolled rows" is a classification
   the reading can actually produce. `switch-measurements.json`'s
   `frames.classifier` reports the two set sizes, the scrolled top row id and
-  whether it is in A's set (`scrolledTopRowIsInA: true`), so the reading is
-  auditable; the run refuses if the sets are not disjoint, because then a frame's
-  first row could identify nothing. The classifier is SYMMETRIC — a frame is
-  stale when its identity and its painted rows disagree in EITHER direction, not
-  only the round-2 direction.
+  whether it is in A's set (`scrolledTopRowIsInA: true`), and the run REFUSES to
+  capture unless that membership holds — so a future re-capture whose deep scroll
+  landed on a row outside A's durable set fails the run instead of keeping a zero
+  that no longer rests on a discriminating set. The run also refuses if the sets
+  are not disjoint, because then a frame's first row could identify nothing.
+  What a reader can audit from the artifact is those facts and the per-frame
+  timeline behind them; the full id sets are not published, so the classification
+  is not reproducible from the JSON alone. The classifier is SYMMETRIC — a frame
+  is stale when its identity and its painted rows disagree in EITHER direction,
+  not only the round-2 direction.
 - **The sampling covers every content change (UX round 2, U1).** Round 2's
   timeline had two multi-frame gaps (~60ms and ~73ms) sitting exactly on the
   content transitions, so a one- or two-frame stale flash could fall inside a gap
@@ -884,11 +895,9 @@ back in A       rows  60  scrollTop     0  activeSessionId b708b843a001  firstRo
   a time bound would fail on the host's own main-thread stalls, which is exactly
   what the observer makes irrelevant. `frames.maxInterFrameGapMs` and
   `frames.transitionGaps` are still recorded as the description of where the
-  thread stalled, but they are a record, not a gate. (The observer is what
-  makes the instrument discriminating rather than the clock: on the first run
-  with it, the pre-paint samples from a `localStorage` write were themselves two
-  "stale" readings that the wall-clock sampler never saw — the round-2 zero was
-  an artefact of the gap, not of the switch.)
+  thread stalled, but they are a record, not a gate. (What makes the instrument
+  discriminating rather than the clock is the observer, not a wall-clock bound:
+  the round-2 zero was an artefact of the gap, not of the switch.)
 - **The frames** `switch-01-scrolled-in-a`, `switch-02-settled-in-b`,
   `switch-03-back-in-a` are the three settled states, and each names the
   conversation it shows in BOTH the header and the highlighted sidebar row (the
