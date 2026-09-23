@@ -1218,8 +1218,10 @@ export function clickFooter(input: ClickFooterInput): string | null {
 	}
 	if (input.nameThenMessage) return "Click chooses this name.";
 	if (!input.runs) return "Click completes this value.";
-	const command = input.command ? `/${input.command} ` : "";
-	return `Click runs ${command}${input.value}.`.trim();
+	const command = input.command ? `/${input.command}` : "";
+	const value = input.value ? ` ${input.value}` : "";
+	// An empty argument is a real command state, not a blank slot to print.
+	return `Click runs ${command}${value}.`;
 }
 
 /**

@@ -1000,6 +1000,10 @@ test("the click footer says what a click will do, in each state", () => {
 	);
 	assert.equal(clickFooter(base), "Click runs /model openai/gpt-5.");
 	assert.equal(
+		clickFooter({ ...base, value: "" }),
+		"Click runs /model.",
+	);
+	assert.equal(
 		clickFooter({ ...base, runs: false }),
 		"Click completes this value.",
 	);
