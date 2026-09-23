@@ -2073,6 +2073,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				team: sessionStatus?.frontend?.active_team,
 				agent: sessionStatus?.frontend?.active_agent,
 			},
+			activeModel: sessionStatus?.frontend?.selected_model,
 		});
 
 		/*
@@ -3579,8 +3580,36 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const isBusy = Boolean(isLoading && currentJobId);
 		const isInputDisabled = unavailable || isBusy;
 
+		const handleSlashAction = useCallback(
+			async (row: Extract<CompletionRow, { kind: "action" }>["row"]) => {
+				if (
+					isInputDisabled ||
+					row.disabled ||
+					row.id !== "model-default" ||
+					!onSlashCommand
+				) return;
+				/*
+				 * `default` is not a catalogue model, so the planner correctly refuses
+				 * to treat it as a model choice. The explicit action invokes the same
+				 * backend command with the bare argument; no completed text is sent.
+				 */
+				slash.close();
+				const outcome = await onSlashCommand({
+					name: "model",
+					args: "default",
+				});
+				/* Retain the typed command on refusal so nothing disappears silently. */
+				if (outcome === "consumed") setNewMessage("");
+			},
+			[isInputDisabled, onSlashCommand, slash.close, setNewMessage],
+		);
+
 		const handleSlashPick = useCallback(
 			async (row: CompletionRow, disposition: { run: boolean }) => {
+				if (row.kind === "action") {
+					if (disposition.run) await handleSlashAction(row.row);
+					return;
+				}
 				/*
 				 * THE REFUSAL COVERS THE POPUP'S CLICK TOO (review round 1, MAJOR 2).
 				 * A pick does not type into the box - it writes the completion into it
@@ -3781,6 +3810,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				// dependency array is what keeps that guard reading the CURRENT state
 				// rather than the state of the render that first built the callback.
 				isInputDisabled,
+				handleSlashAction,
 			],
 		);
 		/*
@@ -6080,7 +6110,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * composer band did (round 2, R1). Keep every bound between here
 					 * and the band on the popup's SIBLINGS, never on its ancestors.
 					 */}
-					<SlashSuggestionsPopup state={slash} onPick={handleSlashPick} />
+					<SlashSuggestionsPopup
+						state={slash}
+						onPick={handleSlashPick}
+						onActionPick={handleSlashAction}
+					/>
 					{/*
 					 * MOUNTED AFTER THE SLASH POPUP, and that order is the whole of the
 					 * "which list owns this caret" answer: the two grammars can both be live

@@ -28,7 +28,14 @@ const bundle = await build({
 	platform: "node",
 	write: false,
 });
-const { formatWindow, formatPricePair, trimPrice, argumentRows } = await import(
+const {
+	formatWindow,
+	formatPricePair,
+	trimPrice,
+	argumentRows,
+	modelDefaultActionRow,
+	shouldRunArgumentAction,
+} = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
@@ -101,6 +108,35 @@ const modelRow = (over = {}) => ({
 	aggregated: false,
 	routed: false,
 	...over,
+});
+
+test("default is a separate, exact model action and never a catalogue row", () => {
+	const action = modelDefaultActionRow(
+		"default",
+		{ provider: "anthropic", model_id: "claude-opus-5" },
+		true,
+		true,
+	);
+	assert.equal(action.kind, "action");
+	assert.equal(action.id, "model-default");
+	assert.deepEqual(action.model, {
+		provider: "anthropic",
+		model_id: "claude-opus-5",
+	});
+	assert.equal(shouldRunArgumentAction(action, true), true);
+	assert.equal(shouldRunArgumentAction(action, false), false);
+	assert.equal(
+		modelDefaultActionRow(
+			"default",
+			{ provider: "anthropic", model_id: "claude-opus-5" },
+			false,
+			true,
+		),
+		null,
+	);
+	const unavailable = modelDefaultActionRow("default", null, true, true);
+	assert.equal(unavailable.disabled, true);
+	assert.equal(shouldRunArgumentAction(unavailable, true), false);
 });
 
 test("a model row carries the provider, the window and the price pair", () => {

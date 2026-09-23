@@ -62,6 +62,7 @@ import {
 	inlineArgumentFor,
 } from "../pickers/picker-registry";
 import {
+	type ArgumentActionRow,
 	type ArgumentRow,
 	type ArgumentSource,
 	FLAG_LIST_SOURCES,
@@ -69,6 +70,7 @@ import {
 	flagTokenDraws,
 	flagTokenSelects,
 	isRendererLocalSource,
+	modelDefaultActionRow,
 	showsUnmatchedList,
 } from "./slash-argument-rows";
 import {
@@ -169,7 +171,8 @@ export type CompletionRow =
 	 * cannot describe something Enter will not do.
 	 */
 	| { kind: "command"; command: SlashCommandMeta; label: string }
-	| { kind: "argument"; row: ArgumentRow };
+	| { kind: "argument"; row: ArgumentRow }
+	| { kind: "action"; row: ArgumentActionRow };
 
 /**
  * The registry row a typed word names, primary or alias.
@@ -446,6 +449,8 @@ export type SlashCompletionArgs = {
 	sessionId?: string;
 	/** The session's active profile, for the roster lists' current marker. */
 	activeProfile?: { team?: unknown; agent?: unknown };
+	/** The active session model, used only to describe `/model default`. */
+	activeModel?: { provider?: unknown; model_id?: unknown } | null;
 	/**
 	 * Whether the pane this composer sits on can address a SESSION — the
 	 * dispatcher's own question, passed down from the page that builds it.
@@ -463,6 +468,7 @@ export function useSlashCompletion({
 	selectionStart,
 	sessionId,
 	activeProfile,
+	activeModel,
 	paneHasSession = false,
 }: SlashCompletionArgs): SlashCompletionState {
 	const capabilities = useDesktopCapabilities();
@@ -720,16 +726,34 @@ export function useSlashCompletion({
 		enabled,
 	);
 
-	const argumentMatches = useMemo(
-		() =>
-			inline && argumentContext
-				? matchChoices(argumentContext.value, argumentList.rows).map(
-						({ choice }) =>
-							({ kind: "argument", row: choice }) as CompletionRow,
-					)
-				: [],
-		[inline, argumentContext, argumentList.rows],
-	);
+	const argumentMatches = useMemo(() => {
+		if (!inline || !argumentContext) return [];
+		/*
+		 * `default` is a direct machine-setting operation, not a model catalogue
+		 * entry. It replaces the catalogue matches so fuzzy survivors can never
+		 * take index zero and switch the model when the user intended the action.
+		 */
+		if (inline.source === "model") {
+			const action = modelDefaultActionRow(
+				argumentContext.value,
+				activeModel,
+				argumentContext.value === "default" &&
+				argumentContext.end === inputValue.length,
+			paneHasSession,
+			);
+			if (action) return [{ kind: "action" as const, row: action }];
+		}
+		return matchChoices(argumentContext.value, argumentList.rows).map(
+			({ choice }) => ({ kind: "argument" as const, row: choice }),
+		);
+	}, [
+		inline,
+		argumentContext,
+		argumentList.rows,
+		activeModel,
+		inputValue,
+		paneHasSession,
+	]);
 
 	/*
 	 * The caret's phase, from the ONE function that defines it, so the two lists
@@ -799,7 +823,7 @@ export function useSlashCompletion({
 			? null
 			: phase;
 
-	const matches =
+	const matches: CompletionRow[] =
 		phaseWithFlagList === "argument" ? argumentMatches : commandMatches;
 	const eligible = enabled && phaseWithFlagList !== null;
 	const visible =
@@ -943,6 +967,7 @@ export function useSlashCompletion({
 type SlashSuggestionsPopupProps = {
 	state: SlashCompletionState;
 	onPick: (row: CompletionRow, disposition: { run: boolean }) => void;
+	onActionPick?: (row: ArgumentActionRow) => void;
 };
 
 /** Detail-column visibility threshold, in the popup's own width.
@@ -958,6 +983,7 @@ const NUMBERS_MIN = "@min-[24rem]/slash:inline";
 export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 	state,
 	onPick,
+	onActionPick,
 }) => {
 	const listId = state.listId;
 	const activeRef = useRef<HTMLLIElement | null>(null);
@@ -976,6 +1002,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 	const argument = state.phase === "argument";
 	const activeRow = state.matches[state.active];
 	const activeArgument = activeRow?.kind === "argument" ? activeRow.row : null;
+	const activeAction = activeRow?.kind === "action" ? activeRow.row : null;
 	const activeCommand = activeRow?.kind === "command" ? activeRow : null;
 	/*
 	 * The footer names what Enter does in the state the user is looking at. The
@@ -1021,7 +1048,14 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 				: undefined,
 		inlineRuns: state.inline?.runs ?? false,
 	});
-	const footer = enterFooter({
+	const footer = activeAction
+		? {
+				text: activeAction.disabled
+					? "A current model is needed to set a default."
+					: "Enter sets the current model as the default for new sessions.",
+				key: activeAction.disabled ? null : "Enter",
+				}
+		: enterFooter({
 		phase: argument ? "argument" : "command",
 		command: state.argumentCommand,
 		label: activeCommand?.label ?? "",
@@ -1188,6 +1222,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 								// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox option cannot be a native <option>.
 								role="option"
 								aria-selected={index === state.active}
+								aria-disabled={row.kind === "action" ? row.row.disabled : undefined}
 								aria-current={
 									row.kind === "argument" && row.row.current
 										? "true"
@@ -1222,13 +1257,22 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 									// A click names one exact row with a pointer, which is not the
 									// guess the keyboard's ambiguity gate protects against — so a
 									// pointer pick of a runnable row runs it (`editor.py:8040`).
-									onPick(row, { run: true });
+									if (row.kind === "action") {
+									if (!row.row.disabled) {
+									if (onActionPick) onActionPick(row.row);
+										else onPick(row, { run: true });
+									}
+									return;
+								}
+								onPick(row, { run: true });
 								}}
 								onMouseEnter={() => state.setActiveHover(index)}
 							>
 								{row.kind === "command"
 									? commandRowContent(row)
-									: argumentRowContent(row)}
+									: row.kind === "action"
+										? actionRowContent(row.row)
+										: argumentRowContent(row)}
 							</li>
 						))}
 					</ul>
@@ -1242,7 +1286,9 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 				 * ABSENT whenever there is no row to act on (an empty argument list).
 				 */
 				<div className="border-t border-hairline px-3 py-1 text-meta text-ink-dim">
-					{footer ? <p>{footer}</p> : null}
+					{footer ? (
+						<p>{typeof footer === "string" ? footer : footer.text}</p>
+					) : null}
 					{click ? <p>{click}</p> : null}
 				</div>
 			)}
@@ -1287,6 +1333,20 @@ function commandRowContent(row: Extract<CompletionRow, { kind: "command" }>) {
 					{command.arguments === "required" ? "needs a value" : "value?"}
 				</span>
 			)}
+		</>
+	);
+}
+
+function actionRowContent(row: ArgumentActionRow) {
+	return (
+		<>
+			<span className={cn("shrink-0 font-medium", row.disabled && "text-ink-muted")}>
+				{row.name}
+			</span>
+			<span className="min-w-0 flex-1 truncate text-ink-muted">
+				{row.description}
+			</span>
+			<span className="shrink-0 text-meta text-ink-dim">Action</span>
 		</>
 	);
 }

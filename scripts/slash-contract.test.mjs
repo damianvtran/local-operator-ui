@@ -26,7 +26,7 @@ const bundle = await build({
 			'export * from "./src/renderer/src/features/chat/components/slash-contract";',
 			/* The matcher and the row shaper, because the no-match state below is
 			   DERIVED the way the component derives it rather than asserted. */
-			'export { argumentRows } from "./src/renderer/src/features/chat/components/slash-argument-rows";',
+			'export { argumentRows, modelDefaultActionRow } from "./src/renderer/src/features/chat/components/slash-argument-rows";',
 			/* Dissolved by the same idea, one list over: the `/rename` flag vocabulary and
 			   its two shape tests, so the data-loss cases below are the SHIPPED rule.
 			   `slashRunAllowed`/`slashKeyIntent` come off the contract export above. */
@@ -52,6 +52,7 @@ const bundle = await build({
 });
 const {
 	activeRowRuns,
+	modelDefaultActionRow,
 	argumentEmptyCopy,
 	argumentRows,
 	armedOnlyVocabulary,
@@ -576,6 +577,45 @@ test("Enter runs only when the choice is unambiguous (criterion 10)", () => {
 
 test("Escape closes and latches the phase", () => {
 	assert.deepEqual(route({ key: "Escape" }), { kind: "close" });
+});
+
+test("model default is one direct Enter/click action, never model completion", () => {
+	const action = modelDefaultActionRow(
+		"default",
+		{ provider: "openrouter", model_id: "openai/gpt-5" },
+		true,
+		true,
+	);
+	const row = { kind: "action", row: action };
+	const state = {
+		open: true,
+		composing: false,
+		key: "Enter",
+		active: 0,
+		matches: [row],
+		argumentCommand: "model",
+		argumentQuery: "default",
+		runs: true,
+		nameThenMessage: false,
+	};
+	assert.deepEqual(slashKeyIntent(state), {
+		kind: "apply",
+		index: 0,
+		run: true,
+	});
+	assert.deepEqual(
+		slashKeyIntent({ ...state, key: "Tab" }),
+		{ kind: "apply", index: 0, run: false },
+	);
+	assert.equal(rowId(row), "act-model-default");
+	assert.equal(
+		argumentRows(
+			"model",
+			[{ value: "openrouter/openai/gpt-5", name: "GPT-5" }],
+			{ provider: "openrouter", model_id: "openai/gpt-5" },
+		).length,
+		1,
+	);
 });
 
 test("an explicit arrow choice survives the same list and only the same list", () => {

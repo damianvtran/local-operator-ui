@@ -914,7 +914,18 @@ export const ModelPicker: FC<PickerContext> = ({
 			 */
 			busyText={draft ? "Resolving the model…" : "Switching the model…"}
 			busyLabel={draft ? "Resolving the model" : "Switching the model"}
-			result={draft ? draftPick.result : combined}
+			result={
+				draft
+					? draftPick.result
+					: persist.result
+						? {
+							...persist.result,
+							text: [command.result?.text, persist.result.text]
+								.filter(Boolean)
+								.join("\n"),
+						}
+						: combined
+			}
 			toolbar={
 				/*
 				 * A draft's toolbar has no default checkbox, and that is the whole of
@@ -941,8 +952,20 @@ export const ModelPicker: FC<PickerContext> = ({
 								: "Also make it the default for new sessions"}
 						</PickerCheck>
 					)}
-					<Button
-						variant="ghost"
+					<div className="flex items-center gap-2">
+						{!draft && (
+							<Button
+							variant="ghost"
+							size="sm"
+							type="button"
+							disabled={!currentSelector || command.busy}
+							onClick={() => void command.run("model", "default")}
+							>
+								Set current model as default
+							</Button>
+						)}
+						<Button
+							variant="ghost"
 						size="sm"
 						type="button"
 						/*
@@ -969,7 +992,8 @@ export const ModelPicker: FC<PickerContext> = ({
 						) : (
 							"Refresh from providers"
 						)}
-					</Button>
+						</Button>
+					</div>
 				</div>
 			}
 		/>
@@ -1001,6 +1025,8 @@ export const EffortPicker: FC<PickerContext> = ({
 	);
 	const command = useSessionCommand(sessionId);
 	const draftPick = useDraftPick(draft, note);
+	const defaultSetting = useOperation();
+	const [saveAsDefault, setSaveAsDefault] = useState(false);
 	/* Same key as the model dialog's: the selection in force, not the snapshot the
 	   dialog opened on, so the rungs offered are the current model's (R2). */
 	const draftPreview = useQuery({
@@ -1017,6 +1043,8 @@ export const EffortPicker: FC<PickerContext> = ({
 	const currentRung = draft
 		? (draftModel?.reasoning_effort ?? null)
 		: (entities.data?.current ?? null);
+
+
 	const options = useMemo<PickerOption[]>(
 		() =>
 			rungs.map((value) => ({
@@ -1068,6 +1096,17 @@ export const EffortPicker: FC<PickerContext> = ({
 			open
 			onClose={onClose}
 			title="Reasoning effort"
+			toolbar={!draft ? (
+				<PickerCheck
+					checked={saveAsDefault}
+					onCheckedChange={setSaveAsDefault}
+					tone="muted"
+				>
+					{saveAsDefault
+						? "This pick also sets the default effort for new sessions"
+						: "Also make it the default effort for new sessions"}
+				</PickerCheck>
+			) : undefined}
 			description={
 				noOptions
 					? unresolved
@@ -1101,7 +1140,24 @@ export const EffortPicker: FC<PickerContext> = ({
 			}
 			onPick={(value) => {
 				if (!draft) {
-					void command.run("effort", value);
+						void command.run("effort", value).then(async ({ outcome }) => {
+						if (saveAsDefault && outcome && outcome.kind !== "error") {
+							const saved = await defaultSetting.perform(
+								() =>
+									desktopResult({
+										op: "settings.edit",
+										key: "model_effort",
+										value,
+									}),
+								() => ({
+									tone: "success",
+									text: `Default effort for new sessions: ${effortDisplay(value)}.`,
+								}),
+								"The default effort was not saved",
+							);
+							if (saved) await entities.refetch();
+						}
+					});
 					return;
 				}
 				/*
@@ -1122,8 +1178,8 @@ export const EffortPicker: FC<PickerContext> = ({
 					},
 				);
 			}}
-			busy={draft ? draftPick.busy : command.busy}
-			result={draft ? draftPick.result : command.result}
+			busy={draft ? draftPick.busy : command.busy || defaultSetting.busy}
+			result={draft ? draftPick.result : defaultSetting.result ?? command.result}
 			/*
 			 * The wait names its work (design D23). A draft's effort pick resolves
 			 * through `sessions.preview` before it records anything, exactly as the

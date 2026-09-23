@@ -32,7 +32,8 @@ import { slashContext } from "./slash-token";
  */
 export type RoutableRow =
 	| { kind: "command"; label: string }
-	| { kind: "argument"; row: { value: string; alert?: boolean } };
+	| { kind: "argument"; row: { value: string; alert?: boolean } }
+	| { kind: "action"; row: { id: string; disabled: boolean } };
 
 /** What a key does to the list. `pass` hands the event back to the composer. */
 export type SlashKeyIntent =
@@ -569,6 +570,17 @@ export function slashKeyIntent(input: SlashKeyInput): SlashKeyIntent {
 		case "Tab": {
 			const row = input.matches[input.active];
 			if (!row) return { kind: "pass" };
+			if (row.kind === "action") {
+				/*
+				 * Direct action rows are never completed into composer text. Enter acts
+				 * once; Tab remains the safe, non-mutating completion key.
+				 */
+				return {
+					kind: "apply",
+					index: input.active,
+					run: input.key === "Enter" && !row.row.disabled,
+				};
+			}
 			if (row.kind === "command") {
 				/*
 				 * Tab is the completion key in BOTH phases: it takes the highlighted
@@ -688,9 +700,9 @@ export function slashKeyIntent(input: SlashKeyInput): SlashKeyIntent {
  * literal `"command"` while the shipped component keyed on the label.
  */
 export function rowId(row: RoutableRow): string {
-	return row.kind === "command"
-		? `cmd-${row.label}`
-		: `arg-${row.row.value.replace(/[^\w.-]/g, "_")}`;
+	if (row.kind === "command") return `cmd-${row.label}`;
+	if (row.kind === "action") return `act-${row.row.id}`;
+	return `arg-${row.row.value.replace(/[^\w.-]/g, "_")}`;
 }
 
 /**
