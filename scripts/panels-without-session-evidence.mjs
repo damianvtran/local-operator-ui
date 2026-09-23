@@ -54,6 +54,7 @@ import {
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { withTelemetryOff } from "./telemetry-off.mjs";
 
 const REPO = fileURLToPath(new URL("..", import.meta.url));
 const argValue = (name, fallback = null) => {
@@ -465,7 +466,17 @@ async function startBackend() {
 /* --------------------------------- the app --------------------------------- */
 
 function appEnv() {
-	return {
+	/*
+	 * `withTelemetryOff`, like the notification switch beside it, and for the same
+	 * reason it has to be set HERE rather than inherited: this function's result is
+	 * the only environment the app is handed, and the inherited half is an
+	 * allowlist, so an operator's export reaches neither switch. The app this rig
+	 * boots carries the live PostHog project key in both processes and the
+	 * renderer's copy is inlined at build time, so a photographed run is otherwise
+	 * a user in the product's analytics and a replay beside it. See
+	 * `telemetry-off.mjs`.
+	 */
+	return withTelemetryOff({
 		...baseEnv,
 		HOME,
 		LOCAL_OPERATOR_CONFIG_DIR: CONFIG_DIR,
@@ -484,7 +495,7 @@ function appEnv() {
 		 */
 		VITE_LOCAL_OPERATOR_API_URL: API_URL,
 		VITE_DISABLE_BACKEND_MANAGER: "true",
-	};
+	});
 }
 
 function assertBuiltForThisBackend() {

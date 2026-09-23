@@ -49,7 +49,10 @@ document.addEventListener("DOMContentLoaded", () => {
 	 * The decision is the launch's, read from the preload bridge by
 	 * `shared/config/telemetry.ts`, because the renderer's own `VITE_*` values are
 	 * inlined at build time and so cannot express a runtime switch at all — the
-	 * reason a build that merely omitted the key still reported.
+	 * reason a build that merely omitted the key still reported. That module also
+	 * holds the renderer's half of the blank-key rule (`apiKey` below is the
+	 * BUILD's key, while main decides from the launch's), so a build with no key
+	 * resolves to off here exactly as it constructs no client in main.
 	 *
 	 * With telemetry off, the provider is not rendered and NOTHING is initialized:
 	 * `posthog-js` is still imported (the same import the feature-flag provider

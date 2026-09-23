@@ -1,5 +1,16 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import {
+	chmodSync,
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	readdirSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { test } from "node:test";
 import { TELEMETRY_ENV } from "./telemetry-off.mjs";
@@ -7,6 +18,21 @@ import { TELEMETRY_ENV } from "./telemetry-off.mjs";
 /**
  * Every call site in this repo that starts the app — or the suite that starts it
  * — turns the app's telemetry off in the environment it hands over.
+ *
+ * WHAT "EVERY" MEANS HERE, because the two halves of that sentence are checked
+ * differently and the difference is the one a reader has to know: the scan below
+ * finds the sites whose COMMAND reads as the Electron runtime, and the
+ * `UNSCANNABLE_SPAWN_PATHS` list at the bottom holds the app-booting paths it
+ * cannot see — a command that arrives as a variable, a helper's parameter, or a
+ * wrapper (`npx electron`). Both halves are pinned, and the four paths added in
+ * the round-1 remediation are the ones a scan of this shape misses by
+ * construction: `attach-frame-evidence.mjs` and
+ * `panels-without-session-evidence.mjs` spawn a `command` argument from their own
+ * `launch` helper, `hold-lifetime-rig.mjs` spawns a packaged bundle's
+ * `CFBundleExecutable`, and `run-panel-reveal-proof.mjs` boots the app as
+ * `spawn("npx", ["electron", …])`. An earlier revision of this file claimed the
+ * scan covered every site and, in the same breath, relied on a table assertion
+ * that could not see any of the four.
  *
  * Why a table the test walks rather than a case per rig, and why a SIBLING of
  * `notification-spawn-sites.test.mjs` rather than an extension of it. The two
@@ -362,6 +388,26 @@ const UNSCANNABLE_SPAWN_PATHS = [
 		why: "boots the real PACKAGED app three times (incumbent, candidate, second launch) on GitHub's runner, and cannot run on the operator's machine at all - exempt for notifications for exactly that reason, guarded here because a packaged test run is still a user in the product's analytics",
 	},
 	{
+		file: "scripts/attach-frame-evidence.mjs",
+		guarded: true,
+		why: "boots the real app for its frames through its own `launch(command, …)` helper, so the COMMAND is a parameter rather than an `electron` spelling the scan can classify - and its child environment is built from an ALLOWLIST, so an operator's export never reaches the app either. Guarded inside the builder that hands out that environment, which is what covers every boot in the file",
+	},
+	{
+		file: "scripts/panels-without-session-evidence.mjs",
+		guarded: true,
+		why: "boots the same app through the same helper shape (`launch(command, …)`, an allowlisted child environment) on two built trees, so its frames are two runs' worth of events",
+	},
+	{
+		file: "scripts/hold-lifetime-rig.mjs",
+		guarded: true,
+		why: "boots a real PACKAGED `.app` by the bundle's own `CFBundleExecutable`, which no `electron` command text can be scanned for; it does inherit `process.env`, so the switch is applied to the environment it assembles",
+	},
+	{
+		file: "scripts/run-panel-reveal-proof.mjs",
+		guarded: true,
+		why: 'boots the real app as `spawn("npx", ["electron", …])`: the command is `npx`, so the scan classifies the site as not-Electron, and the runtime the arguments name boots the app and its two PostHog clients all the same. Found by the round-1 sweep of every spawn site whose command is not a literal `electron` - it is the shape this list exists for',
+	},
+	{
 		file: "scripts/daemon-discovery-evidence.mjs",
 		guarded: false,
 		why: "starts a real `lop serve` daemon to drive the electron-free discovery modules; no app process and no renderer exist in it, so there is no PostHog client of this app's anywhere in the run",
@@ -378,7 +424,7 @@ const APP_LAUNCH_SCRIPTS = [
 	{
 		name: "dev:headless",
 		guarded: true,
-		why: "the agent-driven dev launch. `dev` re-exports the working directory's `.env` inside its own shell, which is why the prefix alone is not the guarantee - the app-side resolution reads the launch environment before that fold",
+		why: "the agent-driven dev launch. `dev` loads the working directory's `.env` through `dotenv-cli`, which does NOT overwrite a variable the launch already set, so this prefix survives into the app - a fact pinned by its own test below rather than assumed, because the `dev` body used to re-export that file over the launch's environment and a `.env` line in the empty shape silently re-armed the run",
 	},
 	{
 		name: "start",
@@ -431,9 +477,13 @@ test("every Electron spawn site in scripts/ and bin/ is named, and the guarded o
 		if (row.noEnv) {
 			// The negative half of an exemption: this row is exempt BECAUSE it
 			// inherits the caller's environment, so it must go on not overriding it.
+			// The pattern covers the shorthand a `: {` alone would miss: `{ env }`,
+			// `{ env, … }` and `{ env }` after another key all override the
+			// environment, and the row this pins is the published launcher's promise
+			// that the caller's own export reaches the app.
 			assert.doesNotMatch(
 				site.text,
-				/env\s*:/,
+				/env\s*[:},]/,
 				`${where} claims to pass no environment (${row.why}), and now it passes one - either drop the override or drop the exemption`,
 			);
 		}
@@ -455,9 +505,110 @@ test("every Electron spawn site in scripts/ and bin/ is named, and the guarded o
 	assert.ok(
 		[...APP_SPAWN_SITES, ...UNSCANNABLE_SPAWN_PATHS].filter(
 			(row) => row.guarded,
-		).length >= 14,
-		"the guarded rows are the point of this file: the eleven app-proof rigs, the suite's own runner, the CI smoke test and the signed-update verifier",
+		).length >= 18,
+		"the guarded rows are the point of this file: the eleven app-proof rigs, the suite's own runner, the CI smoke test, the signed-update verifier and the four app-booting paths the scan cannot see",
 	);
+});
+
+test("a checkout .env cannot flip the dev family in either direction", () => {
+	/*
+	 * WHY THIS TEST SPAWNS ANYTHING, when the rest of this file is a text scan.
+	 * `pnpm dev` and `pnpm dev:headless` load the working directory's `.env`
+	 * INSIDE a shell the app is launched from, and the round-1 review measured what
+	 * that cost: the `dev` body re-exported the file after the caller's prefix, so
+	 * a `.env` line reading LOCAL_OPERATOR_UI_TELEMETRY= (the empty shape, which
+	 * the app folds back to "unset" - telemetry on, no off-line printed to reveal
+	 * it) or =on re-armed a `dev:headless` run. That is a fact about a SCRIPT's
+	 * behaviour, so a shape assertion alone would not see it.
+	 *
+	 * ONE SUBSTITUTION, stated rather than hidden: `npx dotenv-cli` resolves the
+	 * PACKAGE, which on a host without it cached means the registry; the `dotenv`
+	 * bin in this checkout is dotenv-cli's own entry point with the same `-e .env
+	 * --` arguments, and it is the layer whose non-override this rests on. The
+	 * pattern is asserted first, so a rewrite of `dev` fails here rather than
+	 * silently testing nothing.
+	 *
+	 * The stub `electron-vite` reports the environment the app's process would
+	 * inherit - which is the app's reading, because main resolves from the
+	 * environment it was launched with.
+	 */
+	const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+	const body = pkg.scripts.dev;
+	// The shape half: no re-export of the file over the launch, for ANY key.
+	assert.doesNotMatch(
+		body,
+		/export\s+\$\(/,
+		"scripts.dev must not re-export the .env over the environment the launch already set: a launch's environment outranking a file is the principle both switches rest on",
+	);
+	assert.match(
+		body,
+		/npx dotenv-cli -e \.env -- /,
+		"this test substitutes the dotenv bin for `npx dotenv-cli` and reads that spelling out of the body; a rewrite of the script must fail here rather than be tested vacuously",
+	);
+	const loadable = body.replace(
+		/npx dotenv-cli/,
+		join(process.cwd(), "node_modules", ".bin", "dotenv"),
+	);
+
+	const root = mkdtempSync(join(tmpdir(), "lo-telemetry-dev-"));
+	try {
+		const bin = join(root, "bin");
+		mkdirSync(bin, { recursive: true });
+		const stub = join(bin, "electron-vite");
+		writeFileSync(
+			stub,
+			`#!/bin/sh\nprintf 'telemetry=%s\\nprobe=%s\\n' "\${LOCAL_OPERATOR_UI_TELEMETRY-unset}" "\${LO_TELEMETRY_PIN_PROBE-unset}"\n`,
+		);
+		chmodSync(stub, 0o755);
+
+		const run = (envLine, launchValue) => {
+			writeFileSync(
+				join(root, ".env"),
+				`VITE_LOG_LEVEL=debug\nLO_TELEMETRY_PIN_PROBE=from-file\n${envLine === null ? "" : `${envLine}\n`}`,
+			);
+			const env = {
+				...process.env,
+				PATH: `${bin}:${join(process.cwd(), "node_modules", ".bin")}:${process.env.PATH}`,
+			};
+			if (launchValue === null) delete env[TELEMETRY_ENV];
+			else env[TELEMETRY_ENV] = launchValue;
+			const out = execFileSync("bash", ["-c", loadable], {
+				cwd: root,
+				encoding: "utf8",
+				env,
+				stdio: ["ignore", "pipe", "pipe"],
+			});
+			return Object.fromEntries(
+				out
+					.split("\n")
+					.filter(Boolean)
+					.map((line) => line.split("=")),
+			);
+		};
+
+		// The two shapes that used to re-arm it, and the one that was always fine.
+		for (const envLine of [`${TELEMETRY_ENV}=`, `${TELEMETRY_ENV}=on`, null]) {
+			const seen = run(envLine, "off");
+			assert.equal(
+				seen.telemetry,
+				"off",
+				`a launch that says off must stay off whatever the .env line is: ${envLine === null ? "<key absent>" : envLine}`,
+			);
+			// The file is still LOADED: this is a rule about precedence, not a
+			// retreat from `.env`, and a key the launch never set still arrives.
+			assert.equal(
+				seen.probe,
+				"from-file",
+				"the checkout .env must still supply the keys the launch did not set",
+			);
+		}
+
+		// The other direction, so the fix cannot be "always off": with the launch
+		// silent, the file's own value is what the app reads.
+		assert.equal(run(`${TELEMETRY_ENV}=on`, null).telemetry, "on");
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
 });
 
 test("the app-spawning paths the scan cannot see are still there, and their reason still holds", () => {

@@ -118,8 +118,18 @@ export function resolveTelemetryLaunch(input: {
 	if (raw !== undefined && raw.trim() !== "") {
 		const value = raw.trim().toLowerCase();
 		if (!ON_VALUES.includes(value) && !OFF_VALUES.includes(value)) {
+			/*
+			 * THE TWO HALVES CARRY DIFFERENT FACTS, deliberately: `offReason` says WHY
+			 * the launch is off without repeating the value, and `problems` names what
+			 * arrived and what would have been accepted. `describeTelemetryLaunch`
+			 * joins them, so a value in both read as one fact stated twice - measured
+			 * on the PR's own evidence as `switched off because
+			 * LOCAL_OPERATOR_UI_TELEMETRY="flase" is not a value this launch
+			 * understands; LOCAL_OPERATOR_UI_TELEMETRY="flase" is not understood
+			 * (accepted: ...)`.
+			 */
 			return off(
-				`switched off because ${TELEMETRY_ENV}="${raw}" is not a value this launch understands`,
+				`switched off because ${TELEMETRY_ENV} is not a value this launch understands`,
 				[
 					`${TELEMETRY_ENV}="${raw}" is not understood (accepted: ${ON_VALUES.join(", ")} to keep telemetry, ${OFF_VALUES.join(", ")} to switch it off); telemetry is off, because an unrecognised setting is refused rather than obeyed`,
 				],
@@ -160,9 +170,11 @@ export function telemetryArgument(enabled: boolean): string {
  *
  * `null` for an argument that is absent or unintelligible (a bare
  * `--lo-telemetry` with no value, or a value that is neither word). The
- * renderer's rule is that only an explicit `on` enables anything, so
- * "unintelligible" and "absent" are deliberately the same answer here — and it
- * is the closed one.
+ * renderer's rule is that only an explicit `on` enables anything — and that the
+ * build it is running in must carry a project key, because the renderer's key is
+ * inlined at build time and this argument cannot speak for it — so
+ * "unintelligible" and "absent" are deliberately the same answer here, and it is
+ * the closed one.
  */
 export function readTelemetryArgument(
 	argv: readonly string[],

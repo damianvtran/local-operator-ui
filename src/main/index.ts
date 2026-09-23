@@ -1081,9 +1081,10 @@ const devDriverWebPreferences =
  * forgot to compose this entry would ship the events this switch exists to stop —
  * and the preload could not tell that case apart from a host that is not an app
  * window at all. Spelling the decision out on every window makes the renderer's
- * fail-closed default (`resolveTelemetryEnabled`: only an explicit `true` counts)
- * safe to hold. The two words are the whole vocabulary, and they live in
- * `./telemetry-launch`, which the preload reads back out of its own argv.
+ * fail-closed default (`resolveTelemetryEnabled`: an explicit `true` from the
+ * bridge AND a non-blank key in the build it made) safe to hold. The two words
+ * are the whole vocabulary, and they live in `./telemetry-launch`, which the
+ * preload reads back out of its own argv.
  */
 const telemetryWebPreferences = {
 	additionalArguments: [telemetryArgument(telemetryLaunch.enabled)],
