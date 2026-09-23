@@ -3778,3 +3778,42 @@ test("the lifecycle's derived strings, one per state", () => {
 	assert.equal(GOAL_DONE_ARGS, "done");
 	assert.equal(GOAL_DISMISS_ARGS, "dismiss");
 });
+
+/* ---------------------------------------------------------------- */
+/* The `/goal --history` receipt, and where its lines go             */
+/* ---------------------------------------------------------------- */
+
+/**
+ * The receipt needs NO desktop renderer of its own, and this pin is what says so
+ * rather than assuming it: `kind="block"` with `data.items` is already the shape
+ * the desktop turns into a transcript note (`slash-dispatch.ts`), built for
+ * `team_list` and its siblings, and the wire's `[text, facts]` pair is exactly the
+ * 2-tuple that path reads — the TUI's own block renderer reads the same pair, so
+ * one shape serves two hosts.
+ *
+ * It also settles the one question the design could not answer from source (its
+ * §10.1): whether a multi-line note keeps its newlines in the transcript. The text
+ * is joined with `"\n"` and the row that paints it is `whitespace-pre-wrap`, so
+ * `/goal --history` renders as one row per goal rather than as a paragraph — which
+ * is what §4.2 assumed and could not verify.
+ */
+test("the /goal --history receipt renders through the existing block path", () => {
+	const dispatch = code("src/renderer/src/features/chat/components/slash-dispatch.ts");
+	/*
+	 * The gate is on `result.text` FIRST: a block whose result also carries prose
+	 * prints the prose, which is the shipped precedence and not something this
+	 * feature may quietly reverse.
+	 */
+	assert.match(dispatch, /else if \(result\.kind === "block"\)/);
+	assert.match(dispatch, /items\?: \[string, string\]\[\]/);
+	assert.match(dispatch, /data\.items\.map\(\(\[k, v\]\) => `\$\{k\}: \$\{v\}`\)/);
+	assert.match(dispatch, /\.join\("\\n"\)/);
+	const transcript = code(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+	);
+	assert.match(
+		transcript,
+		/whitespace-pre-wrap break-words text-body-sm text-ink-muted/,
+		"the note's own row is the one that keeps the receipt's newlines",
+	);
+});
