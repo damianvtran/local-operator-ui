@@ -10,9 +10,11 @@ import {
 	FolderOpen,
 	ListTree,
 	PanelRightClose,
+	Target,
 } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import type { FC, ReactNode } from "react";
+import type { CanonicalGoalHistoryEntry } from "../../../../../../shared/desktop-session-contract";
 import type { MentionScanHandle } from "../../canonical/use-mentioned-files";
 import {
 	canvasShortcutAction,
@@ -23,6 +25,7 @@ import { createFile } from "../../utils/file-creation";
 import { getFileTypeFromPath } from "../../utils/file-types";
 import { CanvasContent } from "./canvas-content";
 import { CanvasFileViewer } from "./canvas-file-viewer";
+import { CanvasGoalsViewer } from "./canvas-goals-viewer";
 import {
 	CANVAS_DOCUMENT_PANEL_ID,
 	CANVAS_SELECTED_TAB_ID,
@@ -32,6 +35,16 @@ import { CanvasVariablesViewer } from "./canvas-variables-viewer";
 import { CreateFileDialog } from "./create-file-dialog";
 import { DocumentFreshnessBar } from "./document-freshness-bar";
 import { tabFollowingClose } from "./tab-selection";
+
+/**
+ * The empty history, as ONE array rather than a fresh `[]` per render.
+ *
+ * `Canvas` is memoised and this is a default prop: a literal default would be a new
+ * identity on every parent render, so the memo would never hold and the pane would
+ * re-render on every frame of a turn. The constant is what makes "no history" a
+ * stable value rather than a new one per paint.
+ */
+const EMPTY_GOAL_HISTORY: CanonicalGoalHistoryEntry[] = [];
 
 type CanvasProps = {
 	/**
@@ -112,10 +125,32 @@ type CanvasProps = {
 	 * and was not searched.
 	 */
 	scan?: MentionScanHandle | null;
+
+	/**
+	 * The session's settled goals, newest first, straight off the frame.
+	 *
+	 * Passed in rather than fetched, deliberately (the history ruling): the pane is a
+	 * browsing surface, and a fetch would give it a loading state, an error state and
+	 * a second cache that could disagree with the chip about the same session. An
+	 * older backend publishes no such field, and the empty array is then the honest
+	 * answer — a session with an old backend has no history to show, which is exactly
+	 * what an empty list means.
+	 */
+	goalHistory?: CanonicalGoalHistoryEntry[];
+
+	/**
+	 * The wire dropped older entries to stay inside its bound.
+	 *
+	 * Carried separately because the LIST cannot express it: a capped list and a
+	 * complete one are pixel-identical, so the pane would silently under-report
+	 * without this flag — and under-reporting a project record is the one failure the
+	 * flag exists to prevent.
+	 */
+	goalHistoryTruncated?: boolean;
 };
 
 /**
- * The three canvas views, as a segmented control.
+ * The canvas views, as a segmented control.
  *
  * Previously three independent ghost buttons sitting in the same row as two
  * unrelated actions and the close control — six identical 32px icon squares in
@@ -128,7 +163,8 @@ type CanvasProps = {
  * Hand-rolled against the `Tabs` visual contract rather than built on the
  * primitive because the views are not panels in one accessible tab set: the
  * variables view is a different data source, not a panel of this widget.
- * `role="radiogroup"` is what "one of three, always one" actually means.
+ * `role="radiogroup"` is what "one of these, always one" actually means — the
+ * count it holds is not fixed, and the goals segment made it four.
  */
 const VIEWS: {
 	value: CanvasViewMode;
@@ -154,13 +190,31 @@ const VIEWS: {
 		tourTag: "canvas-variables-view-button",
 		Icon: ListTree,
 	},
+	/*
+	 * LAST, after the two artifact views and the session's variables: the pane's own
+	 * order is "what you made" (documents, files) then "what the session holds"
+	 * (variables) then "what you intended" (goals), and a history that has to be
+	 * scrolled for is a history nobody reads.
+	 *
+	 * `Target` is unused anywhere else in this app — verified by grep before it was
+	 * chosen — so the glyph cannot be confused with one on screen beside it (the
+	 * `PanelRight` collision the record already recorded for this switcher).
+	 */
+	{
+		value: "goals",
+		label: "Goals",
+		tourTag: "canvas-goals-view-button",
+		Icon: Target,
+	},
 ];
 
 const ViewSwitcher: FC<{
 	current: CanvasViewMode;
 	onChange: (view: CanvasViewMode) => void;
 	fileCount: number;
-}> = ({ current, onChange, fileCount }) => (
+	/** The settled goals the Goals segment's name counts; see the count note below. */
+	goalCount: number;
+}> = ({ current, onChange, fileCount, goalCount }) => (
 	// A `fieldset` rather than a div with `role="group"`: the element already
 	// means "these controls belong together", and it is the only way the group
 	// gets an accessible name without inventing ARIA for it. Its UA border and
@@ -176,15 +230,23 @@ const ViewSwitcher: FC<{
 		{VIEWS.map(({ value, label, tourTag, Icon }) => {
 			const isActive = current === value;
 			/*
-			 * The count rides the Files segment's name, not a badge. This is where a
-			 * user who already knows the canvas exists looks for "is there anything
-			 * here", and the segment is the one control that is on screen in every
-			 * view; a number rendered inside a 24px icon button would either clip or
-			 * push the row apart.
+			 * The count rides the Files and Goals segments' names, not a badge. This is
+			 * where a user who already knows the canvas exists looks for "is there
+			 * anything here", and the segment is the one control that is on screen in
+			 * every view; a number rendered inside a 24px icon button would either clip
+			 * or push the row apart.
+			 *
+			 * Only these two can say a number: a count of documents is a count of open
+			 * tabs the strip below already prints, and a count of variables is not known
+			 * to this component at all (its viewer fetches). A segment with no number is
+			 * simply its own name.
 			 */
+			const counted =
+				value === "files" ? fileCount : value === "goals" ? goalCount : 0;
+			const noun = value === "files" ? "file" : "goal";
 			const name =
-				value === "files" && fileCount > 0
-					? `${label} view, ${fileCount} ${fileCount === 1 ? "file" : "files"}`
+				counted > 0
+					? `${label} view, ${counted} ${counted === 1 ? noun : `${noun}s`}`
 					: `${label} view`;
 			return (
 				<Tooltip key={value} content={name}>
@@ -294,6 +356,8 @@ const CanvasComponent: FC<CanvasProps> = ({
 	currentWorkingDirectory,
 	fileCount = 0,
 	scan = null,
+	goalHistory = EMPTY_GOAL_HISTORY,
+	goalHistoryTruncated = false,
 }) => {
 	const [isCreateFileDialogOpen, setCreateFileDialogOpen] = useState(false);
 	const [isCreatingFile, setIsCreatingFile] = useState(false);
@@ -546,6 +610,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 					current={currentView}
 					onChange={setCurrentView}
 					fileCount={fileCount}
+					goalCount={goalHistory.length}
 				/>
 				<div className={cn("flex shrink-0 items-center gap-0.5")}>
 					<Tooltip content={`New file (${modifierKey} + N)`}>
@@ -587,7 +652,6 @@ const CanvasComponent: FC<CanvasProps> = ({
 					</Tooltip>
 				</div>
 			</div>
-
 			{currentView === "documents" && (
 				<>
 					{/* Tabs for document navigation */}
@@ -691,7 +755,6 @@ const CanvasComponent: FC<CanvasProps> = ({
 					)}
 				</>
 			)}
-
 			{currentView === "files" && conversationId && (
 				/*
 				 * `key` on the CONVERSATION, so a switch to another conversation starts the
@@ -728,6 +791,19 @@ const CanvasComponent: FC<CanvasProps> = ({
 				<CanvasVariablesViewer
 					sessionId={sessionId}
 					turnTerminal={turnTerminal}
+				/>
+			)}
+			{/*
+			 * The goals view needs NO session id and makes no call: its rows are the
+			 * frame's `goal_history`, already in the snapshot this pane's owner holds.
+			 * That is the whole reason it is a view of the pane rather than a panel that
+			 * fetches — and the reason it renders on a draft pane too, where the honest
+			 * answer is the empty state (a draft has no settled goals yet).
+			 */}
+			{currentView === "goals" && (
+				<CanvasGoalsViewer
+					entries={goalHistory}
+					truncated={goalHistoryTruncated}
 				/>
 			)}
 			{/* Placeholder if no conversation context for files or variables view */}

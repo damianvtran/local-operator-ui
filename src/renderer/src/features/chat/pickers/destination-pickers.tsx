@@ -86,9 +86,9 @@ import {
 	GOAL_CLEAR_ARGS,
 	GOAL_COMMAND,
 	GOAL_DONE_ARGS,
-	goalStateWord,
 	LOOP_COMMAND,
 	LOOP_STOP_ARGS,
+	goalStateWord,
 	loopIsRunning,
 } from "./session-commands";
 import {
