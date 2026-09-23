@@ -791,6 +791,14 @@ const CanvasFrame = ({
 	sessionId = STORY_SESSION_ID,
 	goalHistory = [],
 	goalHistoryTruncated = false,
+	/*
+	 * DEFAULTS TO TRUE: this is the backend the frame stands for — the app as it ships,
+	 * with the fourth segment present. The `false` state is the one a frame seeds
+	 * explicitly (`CanvasWithoutTheGoalLifecycle`), because a frame that inferred the
+	 * capability from `goalHistory.length` could not show the state it exists for: a
+	 * backend that HAS settled goals and carried none of them.
+	 */
+	goalCapable = true,
 }: {
 	view: "documents" | "files" | "variables" | "goals";
 	/**
@@ -831,6 +839,13 @@ const CanvasFrame = ({
 	 * capped list that must not read as a complete one.
 	 */
 	goalHistoryTruncated?: boolean;
+	/**
+	 * Whether this frame's backend publishes the goal lifecycle (`goal_status` and
+	 * friends), which is what decides if the pane offers its fourth view at all.
+	 *
+	 * A CAPABILITY, NOT A LIST SIZE — see the note on the default below.
+	 */
+	goalCapable?: boolean;
 	/**
 	 * The completeness state of the Files scan, for the stories that exist to show
 	 * what the panel head says while it is paging, when it stops short, and when it
@@ -893,6 +908,7 @@ const CanvasFrame = ({
 					scan={scan}
 					goalHistory={goalHistory}
 					goalHistoryTruncated={goalHistoryTruncated}
+					goalCapable={goalCapable}
 					onChangeActiveDocument={() => {}}
 					onClose={() => {}}
 					onCloseDocument={() => {}}
@@ -1895,6 +1911,10 @@ const ViewerFrame = ({ document }: { document: CanvasDocument }) => {
 					initialDocuments={[document]}
 					conversationId={VIEWER_CONVERSATION_ID}
 					agentId="story-agent"
+					/* The app this frame stands for has the goal lifecycle: the frames show the app as
+					   it ships, so the switcher is the four-segment one (`CanvasFrame`'s default, and
+					   `CanvasWithoutTheGoalLifecycle` is the frame that shoots the other state). */
+					goalCapable={true}
 					onChangeActiveDocument={() => {}}
 					onClose={() => {}}
 					onCloseDocument={() => {}}
@@ -2410,6 +2430,38 @@ export const GoalHistoryEmptyAndCapped: Story = {
 				activeId={null}
 				goalHistory={GOAL_HISTORY.slice(0, 2)}
 				goalHistoryTruncated={true}
+			/>
+		</div>
+	),
+};
+
+/* ---------------------------------------------------------------- */
+/* The capability gate (UX round 1, U4)                              */
+/* ---------------------------------------------------------------- */
+
+/**
+ * The pane on a backend that predates the goal lifecycle: THREE segments, and no
+ * `Goals` view to open.
+ *
+ * THIS IS THE FRAME THE GATE EXISTS FOR, and it is the one nobody would ever see by
+ * accident. The chip's `Done`/`Dismiss` controls have been gated on the wire's fields
+ * since they were written (§ 7 of the design record — an old backend stores the literal
+ * `done` as the user's goal); the pane was not, so the same backend got a fourth
+ * segment over a view that could never fill, whose empty state promises *"Finished
+ * goals are kept here"* about a backend that keeps nothing. Absent is the honest
+ * answer, and the pair of frames here is what makes the two states distinguishable at a
+ * glance: the shipped three-segment chrome beside the four-segment one every other
+ * canvas story shoots.
+ */
+export const CanvasWithoutTheGoalLifecycle: Story = {
+	render: () => (
+		<div className="flex flex-col gap-4">
+			<CanvasFrame view="documents" activeId={null} goalCapable={false} />
+			<CanvasFrame
+				view="documents"
+				activeId={null}
+				width={400}
+				goalCapable={false}
 			/>
 		</div>
 	),
