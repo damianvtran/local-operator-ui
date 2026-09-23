@@ -1936,6 +1936,20 @@ export const GoalPicker: FC<PickerContext> = ({
 	const capable = goalCapability(frontend);
 	const judge = frontend?.goal_judge ?? null;
 	/*
+	 * WHETHER THERE IS A GOAL FOR A JUDGE TO BE READING (design review round 1, D5).
+	 *
+	 * `capable` is `typeof goal_status === "string"`, so it is true on any new backend
+	 * — INCLUDING one whose goal is the empty string — and `judgeWord` then falls back
+	 * to `idle`. `/goal` opened on a session with no goal therefore printed
+	 * `Judge: idle`: a readout about a judge with nothing to judge, in the picker whose
+	 * whole job at that moment is to take the first goal. The row's own rule for the
+	 * same state is to paint the judge's resting state NOWHERE (`goalStateWord` returns
+	 * `""` and the chip says nothing at all), and this row follows it —
+	 * including the TRIM, because the row treats a whitespace-only goal as no goal and
+	 * the picker's field is the one place such a value can be typed.
+	 */
+	const hasGoal = current.trim().length > 0;
+	/*
 	 * The judge's state, in the chip's own vocabulary (`goalStateWord`) so the dialog
 	 * and the row cannot describe one state with two words. A goal at rest gets the
 	 * word instead of the chip's deliberate silence, because a readout with room for it
@@ -1953,9 +1967,19 @@ export const GoalPicker: FC<PickerContext> = ({
 			open
 			onClose={onClose}
 			title="Session goal"
+			/*
+			 * NEUTRAL ON PURPOSE (design review round 1, D3). `done` has TWO authors — the
+			 * judge's ACHIEVED and the user's own `Done` press / `/goal --done` — and on the
+			 * user's path the history entry's `reason` is `""`, which the wire's own docblock
+			 * calls "an act of judgement by a person, not a model verdict". The shipped
+			 * sentence attributed that act to the judge and then contradicted the `Judge` row
+			 * directly beneath it, which reads `waiting`/`idle` in exactly that case. This
+			 * sentence names the RECORD rather than the decider, so it is true of both
+			 * authors and of a goal settled by either route.
+			 */
 			description={
 				done
-					? "The judge called this done. It stays in the goal history — dismiss it to clear the chip."
+					? "This goal is settled. It stays in the goal history — dismiss it to clear the chip."
 					: current
 						? "The standing goal is prepended to every turn. Clear it to remove it."
 						: "A standing goal the agent keeps in view on every turn."
@@ -1989,12 +2013,15 @@ export const GoalPicker: FC<PickerContext> = ({
 						/>
 					</PickerField>
 					{/*
-					 * THE JUDGE ROW EXISTS ONLY WHERE THERE IS A JUDGE TO READ, which is
-					 * exactly when the backend publishes `goal_judge` — the same capability
-					 * signal the actions are gated on. Showing it on a backend that has no
-					 * judge would invent a state out of the absent field.
+					 * THE JUDGE ROW EXISTS ONLY WHERE THERE IS A JUDGE TO READ, which is why the
+					 * backend publishes `goal_judge` — the same capability signal the actions are
+					 * gated on — AND a goal for it to be reading (design review round 1, D5: the
+					 * capability alone is true on a session with no goal, and `/goal` then printed
+					 * `Judge: idle` about a goal that does not exist). Showing it on a backend that
+					 * has no judge would invent a state out of the absent field; showing it with no
+					 * goal would invent a judge.
 					 */}
-					{capable && (
+					{capable && hasGoal && (
 						<PickerField label="Judge">
 							<span className="text-ink-muted text-body-sm">{judgeLine}</span>
 						</PickerField>
