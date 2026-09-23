@@ -241,11 +241,24 @@ const GOAL_DONE_TOAST_TEXT = "Goal done";
  * accessible names. It is the wire's own `goal_status` value verbatim, on the loop
  * chip's rule that a status word is printed AS THE WIRE SPELLS IT, so a chip, a
  * receipt and the pane cannot spell one state three ways.
+ *
+ * THE RECORD'S SURVIVAL IS NOT ON THE PAINT, DELIBERATELY (UX round 1, U7 — recorded
+ * rather than fixed, because a reviewer reading the struck value plus this tag alone
+ * cannot tell a decision from an oversight). A struck value and `— done` say what
+ * HAPPENED; that the record is KEPT is stated in three places a user actually reaches
+ * and in none of them for pixels: the `Dismiss` control's tooltip and accessible name
+ * (`goalDismissLabel`, the one whose press could look like it destroys something), the
+ * toast on the done press itself, and the picker's settled description. A fourth mark
+ * HERE would cost the row's pinned budgets — the tag is already the first thing the
+ * band gives up (`DISMISS_REVEAL`/`NARROW_HIDDEN`) — to repeat a fact at 24px beside
+ * the control that states it, which is the chrome-for-its-own-sake the row's own ink
+ * law refuses.
  */
 const GOAL_DONE_TAG = "— done";
 
 /**
- * The ONE-SHOT note the row writes when the judge ENTERS `stalled`.
+ * The ONE-SHOT notes the row writes when the judge ENTERS `stalled` — ONE SENTENCE
+ * PER CAUSE, chosen by the reason the wire carries.
  *
  * WHY A SENTENCE AT ALL, when the chip already steps its label to `text-ink`:
  * `stalled` is the one judge state with an action behind it — the user has to send a
@@ -254,15 +267,82 @@ const GOAL_DONE_TAG = "— done";
  * the JUDGE reaches by itself is stated once, in words, in the transcript
  * (design review round 1, D2); the ink step stays as the persistent mark beside it.
  *
- * It is the design's own sentence, verbatim, and it is deliberately NOT built from
- * the wire's `goal_judge.reason`: a note composed from a field the design has not
- * read would be copy nobody authored, and the one string the register quotes is this
- * one. The tail is the picker's shipped `stalled — send a message to continue` clause
- * (`destination-pickers.tsx`), so the row and the dialog say the same thing in the
- * same words.
+ * WHY TWO SENTENCES AND NOT ONE (UX round 1, U1): the backend stops a judged goal at
+ * TWO different bounds and publishes which one in `goal_judge.reason` — the breaker
+ * (`STALLED_BREAKER_REASON`, consecutive unreadable verdicts) and the cap
+ * (`STALLED_CAP_REASON`, the auto-continuation budget). Its own constants carry the
+ * warning this note exists to honour: a surface that reported one cause for the other
+ * *"would send the user looking for a provider problem that does not exist"*
+ * (`session/goal_judge.py`). A judgement that no longer answers and a goal that
+ * simply ran out of auto-continuations are two different next moves, so one sentence
+ * for both would be a claim the record does not support.
+ *
+ * The two sentences are the design's § 6 copy table, verbatim, and they are now
+ * BUILDERS of the wire's reason rather than a constant: the field was added to
+ * `CanonicalGoalJudge` for exactly this, so the sentence follows the cause instead of
+ * the cause being rounded to the sentence. The tail is the picker's shipped
+ * `stalled — send a message to continue` clause (`destination-pickers.tsx`), so the
+ * row and the dialog say the same thing in the same words, and it is true of both
+ * bounds: the breaker re-judges at the next turn end and the cap's streak is
+ * per-streak, so a user-authored turn restarts either.
+ *
+ * THE FALLBACK IS NOT SILENCE, and it is not a guess either. A reason this build
+ * cannot name is a cause added after it, and saying nothing would restore the very
+ * bug D2 closed — a stopped goal reads exactly like a waiting one — while naming the
+ * breaker for it would be U1 over again. The third sentence is the backend's own
+ * fallback for the same case (`STALLED_UNKNOWN_NOTICE` in `session/goal_judge.py`),
+ * so the two hosts state an unnamed stall in the same words: it names no bound, and
+ * it says what is true of any stall — the auto-continuation stopped.
  */
-const GOAL_STALLED_NOTE =
+const GOAL_STALLED_BREAKER_NOTE =
 	"goal stalled: judge could not decide — send a message to continue";
+const GOAL_STALLED_CAP_NOTE =
+	"goal stalled: reached the continuation limit — send a message to continue";
+const GOAL_STALLED_UNKNOWN_NOTE =
+	"goal stalled: auto-continuation stopped — send a message to continue";
+
+/**
+ * The wire's own spellings of the two stall causes, as `goal_judge.reason` carries
+ * them (`session/goal_judge.py`).
+ *
+ * A MIRROR, not an import: the two halves of this feature are a Python package and a
+ * TypeScript renderer, so there is no mechanism that would keep one constant from
+ * being read as the other. What holds them together is this comment and the test that
+ * pins both sentences — the same discipline the contract's closed-vocabulary fields
+ * are read under.
+ *
+ * THE CAP IS MATCHED BY SHAPE rather than by literal, and that is the one place this
+ * mirror is looser than the breaker's. The breaker's reason is a fixed phrase; the
+ * cap's is an f-string over the budget (`stopped after 12 continuations`), so a
+ * literal here would silently downgrade the cap's sentence to the fallback the day
+ * the backend moves that number — a copy regression with no test to catch it, since a
+ * pin on `stopped after 12 continuations` would stay green while the product moved.
+ * Head and tail are both required, so a reason that merely mentions continuations is
+ * not claimed to be the cap.
+ */
+const STALLED_BREAKER_REASON = "judge could not decide";
+const STALLED_CAP_REASON_HEAD = "stopped after ";
+const STALLED_CAP_REASON_TAIL = " continuations";
+
+/**
+ * The sentence a stall owes the user, for the reason the judge published.
+ *
+ * One derived string rather than a ternary at the call site, for the reason every
+ * other label on this row is derived: the sentence a person reads and the sentence a
+ * test can pin are the same function, and a state cannot reach the transcript with a
+ * cause it did not carry.
+ */
+export const goalStalledNote = (reason: string | undefined): string => {
+	const named = (reason ?? "").trim();
+	if (named === STALLED_BREAKER_REASON) return GOAL_STALLED_BREAKER_NOTE;
+	if (
+		named.startsWith(STALLED_CAP_REASON_HEAD) &&
+		named.endsWith(STALLED_CAP_REASON_TAIL)
+	) {
+		return GOAL_STALLED_CAP_NOTE;
+	}
+	return GOAL_STALLED_UNKNOWN_NOTE;
+};
 
 /**
  * The two owner commands the dismiss controls run are IMPORTED, name and VALUE
@@ -336,17 +416,37 @@ export const goalClearedText = (cleared: string): string => {
 };
 
 /**
- * The mark-done confirmation: `Goal done · <the goal's leading words>`.
+ * The mark-done confirmation: `Goal done · <the goal's leading words>` PLUS the two
+ * facts the press cannot be taken back over.
  *
- * THE SENTENCE NAMES WHERE THE GOAL WENT, and that is why the clip is in it rather
- * than a bare `Goal done`. This control has no undo (§ the constants above), so the
- * confirmation is the only thing standing between the press and a user who wants it
- * back: it names the value, and the value is findable in the `Goals` view and in
- * `/goal --history`. The clip is the same word-cut as the clear's, so the two
- * confirmations on this row are one shape.
+ * THE DESIGN'S OWN TWO HALVES, AND THEY DISAGREED (UX round 1, U2). § 2.3 justifies the
+ * deliberate absence of an undo with *"the toast's own words name the recovery path"*,
+ * and § 6 pins the sentence's shape as `Goal done · <28-char clip>`. Shipped, that was
+ * `Goal done · Reconcile the March…` and nothing else: it named the value and no
+ * recovery, on the one press in this feature with no undo behind it and a history row
+ * behind it that no wire spelling can delete. Both halves hold here — the § 6 shape is
+ * kept, clip and all, and the sentence now carries the recovery the § 2.3 sentence
+ * promised.
+ *
+ * WHY WORDS AND NOT AN `Undo`. The undo is refused by the design (§ 2.3(a)) for a
+ * reason this string must not paper over: an undo would have to retract the history
+ * entry the press just wrote, and no slash spelling can do that, so an `Undo` here
+ * would file a false project record — the one artefact this feature exists to make
+ * trustworthy. What the toast CAN honestly do is say where the goal went and how to
+ * put it back, which is exactly the sentence the design asked for.
+ *
+ * BOTH CLAUSES ARE THE APP'S ALREADY-AUTHORED WORDS, not new copy: `it stays in the
+ * goal history` is the settled state's clause (the `Dismiss` control's name and the
+ * picker's settled description), and `/goal <text>` is the app's own spelling for the
+ * set form (`no goal set — /goal <text> to set one`). It is also the reason the toast
+ * is a sentence rather than an affordance: `/goal <text>` re-arms the same goal in one
+ * command, so the recovery is a fact the user can act on immediately.
+ *
+ * The clip is the same word-cut as the clear's, so the two confirmations on this row
+ * are one shape.
  */
 export const goalDoneToastText = (goal: string): string =>
-	`${GOAL_DONE_TOAST_TEXT} · ${goalWordClip(goal)}`;
+	`${GOAL_DONE_TOAST_TEXT} · ${goalWordClip(goal)} — it stays in the goal history; /goal <text> sets it again`;
 
 /**
  * One line, leading WORDS, ellipsis — the clip both goal confirmations print.
@@ -1060,8 +1160,15 @@ export const ComposerStatusRow = ({
 	 * line that would be re-written on every conversation switch — this row is keyed on
 	 * `conversationId`, so it remounts on each one. What this half owns is the stall a
 	 * user is THERE for, which is the one they can only otherwise learn from 0px of ink.
+	 *
+	 * THE SENTENCE IS DERIVED FROM THE REASON AT THE ENTRY, not at the render (UX round
+	 * 1, U1): `stalledReason` is read once beside the state it belongs to, so the note a
+	 * transition writes and the cause the wire published at that same transition are one
+	 * reading — and the ref means a later frame that respells the reason cannot rewrite
+	 * what was already said.
 	 */
 	const stalledNoted = useRef(goalStalled);
+	const stalledReason = goalJudge?.reason;
 	useEffect(() => {
 		if (!goalStalled) {
 			stalledNoted.current = false;
@@ -1069,8 +1176,8 @@ export const ComposerStatusRow = ({
 		}
 		if (stalledNoted.current) return;
 		stalledNoted.current = true;
-		onNote?.(GOAL_STALLED_NOTE);
-	}, [goalStalled, onNote]);
+		onNote?.(goalStalledNote(stalledReason));
+	}, [goalStalled, stalledReason, onNote]);
 	/*
 	 * A FINISHED plan still shows, in the model's settled spelling
 	 * (`All to-dos resolved`, or `All to-dos closed` where anything was dropped):
@@ -1605,6 +1712,16 @@ export const ComposerStatusRow = ({
 		 *   project record.
 		 * - `dismissed` says NOTHING. The chip shrinking is the feedback, on this row's
 		 *   own rule that a success the wire already narrates needs no announcement.
+		 *
+		 * THE THREE REGISTERS ARE PROPORTIONATE TO WHAT EACH PRESS CAN STRAND, and that is
+		 * the budget rather than an accident of which one was written first (UX round 1,
+		 * U8): the clear is the only one of the three whose text leaves the wire, so it is
+		 * the only one that gets an AFFORDANCE; the record strands nothing visible and can
+		 * be re-armed in one command, so it gets the sentence instead of the control
+		 * (`goalDoneToastText` names where it went and how to put it back) — and the
+		 * dismiss strands nothing at all, because the chip is a window onto a record that
+		 * survives it, so it gets nothing. Sounding louder on the reversible press would
+		 * be the row buying attention it does not need.
 		 *
 		 * A FAILURE is the same in all three cases and always speaks: no wire narrates
 		 * it, and the prefix is the control's own words.
