@@ -439,6 +439,18 @@ const stepRuns = (entry, pattern) =>
 	);
 
 /**
+ * A step's name as `runSteps` records it: the `name:` field, or the first line of
+ * its `run:` when the step has none.
+ *
+ * BOTH directions of the credential-scope rule key on this, and that is the point:
+ * keying one of them on `step.name` alone made a COMPLIANT unnamed step read as
+ * `...:build:undefined binds ... but notarises nothing` - a false red on a step that
+ * does everything right (review round 2).
+ */
+const stepKey = (workflow, job, step) =>
+	`${workflow}:${job}:${step.name ?? (typeof step.run === "string" ? step.run.split("\n")[0] : "")}`;
+
+/**
  * A step's EFFECTIVE environment, in GitHub's own precedence: workflow, then job,
  * then step, each overriding the last.
  *
@@ -586,7 +598,7 @@ for (const workflow of SHIPPING_WORKFLOWS) {
 			for (const credential of APPLE_CREDENTIALS) {
 				assert.ok(
 					typeof env[credential] === "string" && env[credential].length > 0,
-					`$labelhas no $credentialin its effective environment. Notarisation needs all three credentials and skips quietly without them, so the disk image is left unnotarised: the notarisation step's own gate refuses that there, and Gatekeeper would refuse the image on a user's machine - the friction the build was supposed to prevent, caught after it instead of by it.`,
+					`${label} has no ${credential} in its effective environment. Notarisation needs all three credentials and skips quietly without them, so the disk image is left unnotarised: the notarisation step's own gate refuses that there, and Gatekeeper would refuse the image on a user's machine - the friction the build was supposed to prevent, caught after it instead of by it.`,
 				);
 			}
 		}
@@ -663,7 +675,7 @@ for (const workflow of SHIPPING_WORKFLOWS) {
 					(credential) => credential in (step.env ?? {}),
 				);
 				if (bound.length === 0) continue;
-				const key = `${workflow}:${job}:${step.name}`;
+				const key = stepKey(workflow, job, step);
 				assert.ok(
 					notarisingSteps.has(key) || key in NOTARIZATION_CREDENTIAL_CHECKERS,
 					`${key} binds ${bound.join(", ")} but notarises nothing, so a secret is handed to a step that cannot use it. Either take the binding off, add the step to the notarising set above if it really does notarise, or - if it is a presence check - register it in NOTARIZATION_CREDENTIAL_CHECKERS with its reason.`,
