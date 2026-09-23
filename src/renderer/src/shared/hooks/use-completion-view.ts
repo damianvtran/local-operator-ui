@@ -339,9 +339,9 @@ export function useCompletionView(
 			 * exactly the remedy an operator has for a mark that did not clear. It
 			 * clears everything the ladder had built up (the pushed-out next attempt
 			 * and the spent contention budget), because the gesture is new information
-			 * about the reader rather than another retry of the same refusal. Read
-			 * live rather than subscribed: this hook renders nothing, so a subscription
-			 * here would be a second, staler copy of one fact.
+			 * about the reader rather than another retry of the same refusal. Read live
+			 * rather than subscribed, which the stamp's own docblock below states the
+			 * reason for.
 			 */
 			const press = useCanonicalSessionsStore.getState().readAckRearm;
 			if (
@@ -363,13 +363,6 @@ export function useCompletionView(
 			 * session is still streaming, then the store's selection.
 			 */
 			if (!live.current.ready || live.current.streaming) return;
-			/*
-			 * THE SUBJECT, RE-READ FOR THIS ATTEMPT, and the attempt's token comes off
-			 * it rather than off the render this loop was created in: that is what makes
-			 * a superseded refusal resolvable at all (the state that arrives names the
-			 * current completion, so the next attempt acknowledges THAT one), and what
-			 * keeps the loop honest when the FEED is the channel that moved first.
-			 */
 			/*
 			 * THE SUBJECT, RE-READ FOR THIS ATTEMPT, and the attempt's token comes off
 			 * it rather than off the render this loop was created in: that is what makes
