@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
@@ -13,15 +14,11 @@ import { build } from "esbuild";
  * neither is visible to a story, because a story supplies the props directly
  * and can therefore depict a state the container cannot produce:
  *
- *  - Asking for live numbers put `live` in the query key, so the new key had no
- *    data: `isLoading` went true and the body replaced the cached table with
- *    the word `Loading` for the whole multi-second provider probe. Worse, on a
- *    failed attempt's retry backoff the body fell through to the EMPTY-STATE
- *    copy ("No usage reports. Sign in to a provider…") in front of a user who
- *    has reports — a false statement about their situation, not a sparse one.
- *  - "Ask providers again" was inert: `setLive(true)` on an already-`true`
- *    state is a React no-op, the key does not change, and a fresh query does
- *    not refetch. The only recovery was Esc and reopen.
+ *  - The cache snapshot alone omitted newly stored accounts until the user
+ *    clicked. The open path now performs a distinct live-but-cache-aware read,
+ *    and the explicit ask has its own forced identity for repeatable clicks.
+ *  - Cached reports remain placeholders while either live mode is in flight,
+ *    so the existing table stays visible during the provider round trip.
  *
  * These also decide whether the committed `loading` and `fetching` evidence
  * frames photograph reachable states, which is the one thing a reviewer cannot
@@ -38,7 +35,10 @@ const bundle = await build({
 			import { createElement } from "react";
 			import { renderToStaticMarkup } from "react-dom/server";
 			import { QueryClientProvider } from "@tanstack/react-query";
-			import { UsageDialog, UsageView } from "./src/renderer/src/features/chat/pickers/usage-view";
+			import {
+				UsageDialog,
+				UsageView,
+			} from "./src/renderer/src/features/chat/pickers/usage-view";
 			/*
 			 * The STORIES themselves, so the evidence frames are asserted against
 			 * the container rather than against a restatement of them here. A copy
@@ -49,7 +49,10 @@ const bundle = await build({
 			export const loadingStoryArgs = Loading.args;
 			export const fetchingStoryArgs = Fetching.args;
 			export { QueryClient, QueryObserver } from "@tanstack/react-query";
-			export { usageQueryOptions } from "./src/renderer/src/features/chat/pickers/usage-view";
+			export {
+				usageQueryOptions,
+				nextUsageAskId,
+			} from "./src/renderer/src/features/chat/pickers/usage-view";
 			/*
 			 * The APP's own query defaults, so the client below is the shipped
 			 * policy rather than a convenient one. See newClient.
@@ -112,7 +115,9 @@ const bundle = await build({
 			 * Radix's `Portal` calls `createPortal` into `document.body`, which does
 			 * not exist under `renderToStaticMarkup`, so the real `DialogContent`
 			 * renders to the empty string and every assertion below would pass
-			 * vacuously against `''`. There is no jsdom in this repo.
+			 * vacuously against `''`. The dialog chrome is replaced only for this
+			 * static fixture; query transitions are covered by the real query
+			 * observer below and the container wiring by a source assertion.
 			 *
 			 * The four replacements are the overlay FRAME only — an element that
 			 * renders its children inline. Everything under assertion stays the
@@ -194,11 +199,28 @@ const {
 	loadingStoryArgs,
 	renderDialog,
 	renderUsage,
+	nextUsageAskId,
 	usageQueryOptions,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
 const NOW = 1_760_000_000_000;
+
+const requestModeCounts = (observed) => ({
+	cached: observed.filter((request) => !request.live && !request.refresh)
+		.length,
+	auto: observed.filter((request) => request.live && !request.refresh).length,
+	ask: observed.filter((request) => request.live && request.refresh).length,
+});
+
+function assertRequestModeCounts(observed, expected) {
+	assert.deepEqual(requestModeCounts(observed), expected);
+	assert.equal(
+		observed.length,
+		Object.values(expected).reduce((total, count) => total + count, 0),
+		"every bridge request must belong to exactly one usage mode",
+	);
+}
 
 function emptyPayload() {
 	return { reports: [], source: "cached", fetched_at: NOW };
@@ -282,19 +304,169 @@ const newClient = () =>
 /** Let react-query settle its microtasks and any queued state. */
 const settle = (ms = 20) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** Seed the cached (live: false) key the dialog opens on. */
-async function seedCached(client, provider = "") {
-	respond = async () => ({ status: 200, body: { result: payload("cached") } });
-	await client.fetchQuery({
-		queryKey: ["desktop", "usage", provider, false],
-		queryFn: async () => {
-			const { desktopResult } = await import(
-				"./_usage-container.transport.mjs"
-			).catch(() => ({}));
-			return undefined;
-		},
+test("UsageView wires open checks, scoped provider arguments, and remount-safe asks", () => {
+	const source = readFileSync(
+		"src/renderer/src/features/chat/pickers/usage-view.tsx",
+		"utf8",
+	);
+	const container = source.slice(source.indexOf("export const UsageView"));
+	const openEffectStart = container.indexOf("useEffect(() => {");
+	const openEffectEnd = container.indexOf("}, []);", openEffectStart);
+	assert.ok(openEffectStart >= 0, "UsageView must declare its open effect");
+	assert.ok(openEffectEnd > openEffectStart, "the open effect must run once");
+	assert.ok(
+		container.slice(openEffectStart, openEffectEnd).includes('setMode("auto")'),
+		"the mounted view must transition from the cached snapshot to auto mode",
+	);
+	const providerLine = container.indexOf(
+		"const provider = action.args.trim() || undefined;",
+	);
+	const queryLine = container.indexOf(
+		"const usage = useQuery(usageQueryOptions(provider, mode, askId));",
+	);
+	assert.ok(
+		providerLine >= 0 && queryLine > providerLine,
+		"the slash argument must reach the real usage query options",
+	);
+	assert.match(source, /setAskId\(nextUsageAskId\(\)\);/);
+});
+
+test("mounting a new auto observer rechecks a fresh cached usage key", async () => {
+	const client = newClient();
+	const observed = [];
+	respond = async (request) => {
+		observed.push(request);
+		return { status: 200, body: { result: payload("live") } };
+	};
+	const options = usageQueryOptions("radient", "auto");
+	await client.fetchQuery(options);
+	assert.equal(observed.length, 1, "the cache is primed by a real bridge read");
+	assert.equal(observed[0].live, true);
+	assert.equal(observed[0].refresh, false);
+	const cachedQuery = client
+		.getQueryCache()
+		.find({ queryKey: options.queryKey });
+	assert.ok(cachedQuery);
+	assert.ok(cachedQuery.state.dataUpdatedAt > 0);
+	const staleTime = client.defaultQueryOptions(options).staleTime;
+	assert.ok(staleTime > 0);
+	assert.equal(
+		cachedQuery.isStaleByTime(staleTime),
+		false,
+		"the remount must start with a fresh, not merely stale, cache entry",
+	);
+
+	// A new observer is the actual useQuery mount path; re-applying options to
+	// the priming observer would not exercise refetchOnMount against fresh data.
+	const beforeMount = observed.length;
+	const reopened = new QueryObserver(client, options);
+	const unsubscribe = reopened.subscribe(() => {});
+	await settle();
+	assert.equal(observed.length, beforeMount + 1);
+	assert.deepEqual(observed.at(-1), {
+		op: "usage.get",
+		provider: "radient",
+		live: true,
+		refresh: false,
 	});
-}
+
+	unsubscribe();
+	client.clear();
+});
+
+test("slash provider argument reaches the usage bridge request", async () => {
+	const client = newClient();
+	const before = requests.length;
+	respond = async () => ({ status: 200, body: { result: payload("live") } });
+	await client.fetchQuery(usageQueryOptions("radient", "auto"));
+	assert.equal(requests.length, before + 1);
+	assert.equal(requests.at(-1).provider, "radient");
+	client.clear();
+});
+
+test("ask identities survive observer remounts and force distinct bridge reads", async () => {
+	const client = newClient();
+	const observed = [];
+	respond = async (request) => {
+		observed.push(request);
+		return { status: 200, body: { result: payload("live") } };
+	};
+
+	const firstId = nextUsageAskId();
+	const firstOptions = usageQueryOptions("radient", "ask", firstId);
+	const first = new QueryObserver(client, firstOptions);
+	const stopFirst = first.subscribe(() => {});
+	await settle();
+	assert.equal(observed.length, 1);
+	assert.equal(observed[0].live, true);
+	assert.equal(observed[0].refresh, true);
+	stopFirst();
+
+	// A separate mount gets its id from the same module sequence the component
+	// uses. The distinct query identity must bypass the still-fresh ask cache.
+	const secondId = nextUsageAskId();
+	assert.ok(secondId > firstId, "ask ids must be monotonic across mounts");
+	const secondOptions = usageQueryOptions("radient", "ask", secondId);
+	assert.notDeepEqual(secondOptions.queryKey, firstOptions.queryKey);
+	const second = new QueryObserver(client, secondOptions);
+	const stopSecond = second.subscribe(() => {});
+	await settle();
+	assert.equal(observed.length, 2, "the remounted ask must reach the bridge");
+	assert.deepEqual(
+		observed.map(({ live, refresh }) => ({ live, refresh })),
+		[
+			{ live: true, refresh: true },
+			{ live: true, refresh: true },
+		],
+	);
+
+	stopSecond();
+	client.clear();
+});
+
+test("open paints cached rows, discovers Radient automatically, then forces each ask", async () => {
+	const client = newClient();
+	const fresh = payload("live");
+	fresh.reports[0].provider = "radient";
+	fresh.reports[0].identity = "radient@example.com";
+	let release;
+	const { observer, unsubscribe, ask, observed } = await openUsage(client, {
+		response: (request) =>
+			request.refresh
+				? Promise.resolve({ status: 200, body: { result: fresh } })
+				: new Promise((resolve) => {
+						release = () => resolve({ status: 200, body: { result: fresh } });
+					}),
+	});
+
+	assert.equal(
+		observer.getCurrentResult().data.reports[0].provider,
+		"anthropic",
+	);
+	assertRequestModeCounts(observed, { cached: 1, auto: 1, ask: 0 });
+	assert.equal(observed.at(-1).live, true);
+	assert.equal(observed.at(-1).refresh, false);
+	assert.equal(observer.getCurrentResult().isFetching, true);
+	release();
+	await settle();
+	assert.equal(observer.getCurrentResult().data.reports[0].provider, "radient");
+	assert.equal(
+		observer.getCurrentResult().data.reports[0].identity,
+		"radient@example.com",
+	);
+
+	ask(1);
+	await settle();
+	assert.equal(observed.at(-1).refresh, true);
+	assertRequestModeCounts(observed, { cached: 1, auto: 1, ask: 1 });
+	ask(2);
+	await settle();
+	assert.equal(observed.at(-1).refresh, true);
+	assertRequestModeCounts(observed, { cached: 1, auto: 1, ask: 2 });
+
+	unsubscribe();
+	client.clear();
+});
 
 test("the loading story photographs the toolbar the container really produces", async () => {
 	// The `loading` evidence frame photographed `Ask providers now`, ENABLED,
@@ -305,26 +477,20 @@ test("the loading story photographs the toolbar the container really produces", 
 	// check any other way, which is what makes an unreachable frame worse than
 	// no frame.
 	//
-	// The in-flight label at FIRST PAINT is `Reading cached usage`, not
-	// `Asking providers`: opening the view reads the backend's cache, and the
-	// ask has not been made (UX U9). The two labels are asserted apart here
-	// precisely because they used to be the same string.
+	// The first render reads the cached snapshot. The effect then starts the
+	// distinct automatic cache-aware check without claiming an explicit ask.
 	//
 	// So this asserts the STORY against the CONTAINER rather than either against
 	// itself: render the container at first paint, render the dialog with the
 	// story's own args, and require the toolbars to agree.
 	const client = newClient();
-	let release;
-	respond = () =>
-		new Promise((resolve) => {
-			release = () => resolve({ status: 200, body: { result: payload() } });
-		});
+	const beforeRender = requests.length;
 
 	const firstPaint = renderUsage(client);
 	assert.match(
 		text(firstPaint),
 		/Reading cached usage/,
-		"first paint must show the in-flight label for a CACHED read",
+		"the cached snapshot is the first render before the effect runs",
 	);
 	assert.doesNotMatch(
 		text(firstPaint),
@@ -339,6 +505,11 @@ test("the loading story photographs the toolbar the container really produces", 
 	assert.doesNotMatch(text(firstPaint), /Ask providers now/);
 	// And the body is the loading state, not the empty-state copy.
 	assert.doesNotMatch(text(firstPaint), /No usage reports/);
+	assert.equal(
+		requests.length - beforeRender,
+		0,
+		"static SSR does not run effects or issue backend requests",
+	);
 
 	// The story's own args, read from the story module rather than restated
 	// here — a copy would pass while the committed frame stayed wrong.
@@ -346,7 +517,7 @@ test("the loading story photographs the toolbar the container really produces", 
 	assert.match(
 		text(storyFrame),
 		/Reading cached usage/,
-		"the loading story must depict the toolbar the container produces",
+		"the loading story depicts the cached snapshot before the effect",
 	);
 	assert.match(
 		storyFrame,
@@ -354,9 +525,8 @@ test("the loading story photographs the toolbar the container really produces", 
 		"the loading story's action must be disabled, as it is in the app",
 	);
 	assert.doesNotMatch(text(storyFrame), /Ask providers now/);
+	assert.equal(requests.length - beforeRender, 0);
 
-	release?.();
-	await settle();
 	client.clear();
 });
 
@@ -368,8 +538,8 @@ test("the fetching story photographs a state the container can now reach", async
 	// real, and this asserts the story's args are the ones the container
 	// actually hands over mid-ask.
 	const client = newClient();
-	respond = async () => ({ status: 200, body: { result: payload("cached") } });
-	const { observer, unsubscribe, release } = await askLive(client);
+	const { observer, unsubscribe, release, observed } = await askLive(client);
+	assertRequestModeCounts(observed, { cached: 1, auto: 1, ask: 1 });
 	const live = observer.getCurrentResult();
 
 	// What the container passes at this instant.
@@ -383,6 +553,7 @@ test("the fetching story photographs a state the container can now reach", async
 	assert.equal(fetchingStoryArgs.fetching, fromContainer.fetching);
 	assert.equal(Boolean(fetchingStoryArgs.loading), fromContainer.loading);
 	assert.ok(fromContainer.payload, "the container must still hold a payload");
+	assertRequestModeCounts(observed, { cached: 1, auto: 1, ask: 1 });
 	// Both render a table with the in-flight label above it.
 	for (const [name, args] of [
 		["container", fromContainer],
@@ -401,34 +572,52 @@ test("the fetching story photographs a state the container can now reach", async
 });
 
 /**
- * Drive the SHIPPED query options through the key switch a live ask performs.
- *
- * This is the heart of the finding and it cannot be faked: the options are the
- * container's own (`usageQueryOptions`), the observer is what `useQuery` is
- * built on, and switching its key is exactly what `setLive(true)` does. What is
- * asserted is the state the container would hand `UsageDialog` at that instant.
+ * Drive the shipped query options through the same cache/auto/ask transitions
+ * as the container. The observer is what `useQuery` is built on, and its bridge
+ * requests let these tests verify the mode contract alongside its state.
  */
-async function askLive(client, { hang = true } = {}) {
-	const observer = new QueryObserver(
-		client,
-		usageQueryOptions(undefined, false),
-	);
-	const unsubscribe = observer.subscribe(() => {});
-	await settle();
-
+async function openUsage(client, { hang = true, response } = {}) {
 	let release;
-	respond = () =>
-		hang
+	const observed = [];
+	const answer = (request) => {
+		if (!request.live)
+			return { status: 200, body: { result: payload("cached") } };
+		if (response) return response(request);
+		return hang
 			? new Promise((resolve) => {
 					release = () =>
 						resolve({ status: 200, body: { result: payload("live") } });
 				})
 			: Promise.reject(new Error("providers refused"));
+	};
+	respond = (request) => {
+		observed.push(request);
+		return answer(request);
+	};
 
-	// The ask: same options, `live` now true — a DIFFERENT query key.
-	observer.setOptions(usageQueryOptions(undefined, true));
+	const observer = new QueryObserver(
+		client,
+		usageQueryOptions(undefined, "cached"),
+	);
+	const unsubscribe = observer.subscribe(() => {});
+	await settle();
+	observer.setOptions(usageQueryOptions(undefined, "auto"));
 	await settle(5);
-	return { observer, unsubscribe, release: () => release?.() };
+	return {
+		observer,
+		unsubscribe,
+		observed,
+		release: () => release?.(),
+		ask: (requestId) =>
+			observer.setOptions(usageQueryOptions(undefined, "ask", requestId)),
+	};
+}
+
+async function askLive(client, options) {
+	const opened = await openUsage(client, options);
+	opened.ask(1);
+	await settle(5);
+	return opened;
 }
 
 test("asking for live numbers keeps the cached table on screen", async () => {
@@ -438,9 +627,9 @@ test("asking for live numbers keeps the cached table on screen", async () => {
 	// against the TUI, which paints cached reports while the fetch runs behind
 	// them (`UsagePanel.show_cached`).
 	const client = newClient();
-	respond = async () => ({ status: 200, body: { result: payload("cached") } });
 
-	const { observer, unsubscribe, release } = await askLive(client);
+	const { observer, unsubscribe, release, observed } = await askLive(client);
+	assertRequestModeCounts(observed, { cached: 1, auto: 1, ask: 1 });
 	const state = observer.getCurrentResult();
 
 	// The state the dialog receives mid-ask: the previous payload is STILL there
@@ -465,11 +654,13 @@ test("a failed ask never shows empty-state copy to a user who has reports", asyn
 	// provider that publishes quota…" — shown to someone looking at their own
 	// reports a moment earlier. That is a false claim about their situation.
 	const client = newClient();
-	respond = async () => ({ status: 200, body: { result: payload("cached") } });
 
-	const { observer, unsubscribe } = await askLive(client, { hang: false });
+	const { observer, unsubscribe, observed } = await askLive(client, {
+		hang: false,
+	});
 	await settle(60);
 	const state = observer.getCurrentResult();
+	assertRequestModeCounts(observed, { cached: 1, auto: 1, ask: 1 });
 
 	assert.equal(state.isError, true, "the ask must have failed");
 	// react-query DROPS the placeholder on a final error, so the query itself
@@ -524,7 +715,7 @@ test("a failed ask with nothing cached still reports the failure", async () => {
 	assert.doesNotMatch(frame, /No usage reports/);
 });
 
-test("a second ask cannot be a state set, because that sends nothing", async () => {
+test("each explicit ask gets a fresh query key", async () => {
 	// Why "Ask providers again" was inert: the handler was `setLive(true)`, and
 	// once `live` is already true that is a React no-op — the query key does not
 	// change, so react-query re-applies the SAME options and a still-fresh query
@@ -541,37 +732,21 @@ test("a second ask cannot be a state set, because that sends nothing", async () 
 	// itself is verified against the running app's request log — see the
 	// remediation comment on the PR.
 	const client = newClient();
-	respond = async () => ({ status: 200, body: { result: payload("live") } });
-
-	const observer = new QueryObserver(
-		client,
-		usageQueryOptions(undefined, true),
-	);
-	const unsubscribe = observer.subscribe(() => {});
+	const { unsubscribe, ask, observed } = await openUsage(client, {
+		response: async () => ({ status: 200, body: { result: payload("live") } }),
+	});
 	await settle(30);
+	assertRequestModeCounts(observed, { cached: 1, auto: 1, ask: 0 });
+	assert.equal(observed.at(-1).refresh, false);
 
-	const afterFirstAsk = requests.length;
-	assert.ok(afterFirstAsk > 0, "the first ask must have reached the bridge");
-
-	// Exactly what `setLive(true)` produced on an already-live view.
-	observer.setOptions(usageQueryOptions(undefined, true));
+	ask(1);
 	await settle(30);
-	assert.equal(
-		requests.length,
-		afterFirstAsk,
-		"re-applying the same options sends nothing — this is the dead button",
-	);
-
-	// The shipped handler's recovery: an explicit refetch, which does reach the
-	// backend and does force it past its own cache.
-	await observer.refetch();
-	await settle();
-	assert.equal(
-		requests.length,
-		afterFirstAsk + 1,
-		"asking again must send another request",
-	);
-	const last = requests[requests.length - 1];
+	assertRequestModeCounts(observed, { cached: 1, auto: 1, ask: 1 });
+	assert.equal(observed.at(-1).refresh, true);
+	ask(2);
+	await settle(30);
+	assertRequestModeCounts(observed, { cached: 1, auto: 1, ask: 2 });
+	const last = observed[observed.length - 1];
 	assert.equal(last.op, "usage.get");
 	assert.equal(last.live, true);
 	assert.equal(last.refresh, true);
@@ -585,8 +760,13 @@ test("the empty-state copy still renders when there genuinely are no reports", a
 	// rendering: a user with no quota-publishing provider still needs the
 	// sentence that names the remedy.
 	const client = newClient();
-	client.setQueryData(["desktop", "usage", "", false], emptyPayload());
+	client.setQueryData(
+		usageQueryOptions(undefined, "cached").queryKey,
+		emptyPayload(),
+	);
+	const beforeRender = requests.length;
 	const rendered = text(renderUsage(client));
+	assert.equal(requests.length - beforeRender, 0);
 	assert.match(rendered, /No usage reports/);
 	assert.match(rendered, /Sign in to a provider that publishes quota/);
 	// And no tally, since there is nothing to count.
@@ -600,7 +780,10 @@ test("the scroll body is a labelled, focusable region", async () => {
 	// End / arrows did nothing — at real-account density roughly two thirds of
 	// the content sits below the fold, locked behind a mouse wheel.
 	const client = newClient();
-	client.setQueryData(["desktop", "usage", "", false], payload("cached"));
+	client.setQueryData(
+		usageQueryOptions(undefined, "cached").queryKey,
+		payload("cached"),
+	);
 	const rendered = renderUsage(client);
 	// A labelled `<section>` IS the region landmark, so the role is implicit —
 	// asserted on the element rather than on a `role` attribute that biome
@@ -643,7 +826,7 @@ test("the query owns its retry contract instead of inheriting the global one", (
 	// click and any settled state, which is the window a failed ask showed
 	// nothing in. The value matters less than the fact that this query STATES
 	// one; an option object that omits `retry` is the defect.
-	const options = usageQueryOptions(undefined, true);
+	const options = usageQueryOptions(undefined, "ask", 1);
 	assert.ok(
 		Object.hasOwn(options, "retry"),
 		"usageQueryOptions must state its own retry policy, not inherit it",
@@ -663,12 +846,12 @@ test("a failed ask settles and carries a reason under the shipped policy", async
 	// the query settles into a real error state carrying the provider's own
 	// message.
 	const client = newClient();
-	respond = async () => ({ status: 200, body: { result: payload("cached") } });
-
-	const before = requests.length;
-	const { observer, unsubscribe } = await askLive(client, { hang: false });
+	const { observer, unsubscribe, observed } = await askLive(client, {
+		hang: false,
+	});
 	await settle(60);
 	const state = observer.getCurrentResult();
+	assertRequestModeCounts(observed, { cached: 1, auto: 1, ask: 1 });
 
 	assert.equal(state.isError, true, "the failed ask must reach an error state");
 	assert.ok(
@@ -678,11 +861,7 @@ test("a failed ask settles and carries a reason under the shipped policy", async
 	assert.equal(state.fetchStatus, "idle", "nothing may still be in flight");
 	// Exactly one attempt per ask: the retry contract, observed at the bridge
 	// rather than read off the options.
-	assert.equal(
-		requests.length - before,
-		2,
-		"the cached read plus exactly one live attempt — no silent retry",
-	);
+	assertRequestModeCounts(observed, { cached: 1, auto: 1, ask: 1 });
 	// The reason survives, which is what the receipt prints. `askLive`'s failure
 	// mode is a rejected bridge call, so the shipped transport reports it as an
 	// unreachable backend rather than as a provider's own refusal — either way
@@ -702,23 +881,22 @@ test("the re-ask sends a request after a failure, measured at the bridge", async
 	// the rendered label, because the label was already right while the click
 	// was dead.
 	const client = newClient();
-	respond = async () => ({ status: 200, body: { result: payload("cached") } });
 
-	const { observer, unsubscribe } = await askLive(client, { hang: false });
+	const { observer, unsubscribe, ask, observed } = await askLive(client, {
+		hang: false,
+	});
 	await settle(60);
 	assert.equal(observer.getCurrentResult().isError, true);
+	assertRequestModeCounts(observed, { cached: 1, auto: 1, ask: 1 });
 
-	const afterFailure = requests.length;
-	// The shipped handler's recovery path on an already-live view.
-	await observer.refetch().catch(() => undefined);
+	const afterFailure = observed.length;
+	// Re-enter ask mode with a new identity, as the button handler does.
+	ask(2);
 	await settle(60);
 
-	assert.equal(
-		requests.length - afterFailure,
-		1,
-		"asking again after a failure must reach the backend",
-	);
-	const last = requests[requests.length - 1];
+	assert.equal(observed.length - afterFailure, 1);
+	assertRequestModeCounts(observed, { cached: 1, auto: 1, ask: 2 });
+	const last = observed[observed.length - 1];
 	assert.equal(last.op, "usage.get");
 	assert.equal(last.live, true);
 	assert.equal(last.refresh, true);
@@ -769,8 +947,10 @@ test("an unanswered load shows neither the empty copy nor a false receipt", asyn
 });
 
 test("the in-flight label distinguishes a cached read from a live ask", async () => {
-	// U9: opening the view reads the backend's cache, and labelling that
-	// `Asking providers` claimed a provider probe the user never asked for.
+	// Opening does a cache-aware check, not the user's forced ask; the labels
+	// distinguish both modes from reading the cached snapshot alone. The separate
+	// polite output exists only during an explicit ask so its status is announced
+	// without repeating visible copy or chattering during automatic checks.
 	const cachedRead = text(
 		renderDialog({
 			payload: null,
@@ -782,15 +962,47 @@ test("the in-flight label distinguishes a cached read from a live ask", async ()
 	assert.match(cachedRead, /Reading cached usage/);
 	assert.doesNotMatch(cachedRead, /Asking providers/);
 
-	const liveAsk = text(
+	const automaticCheck = text(
 		renderDialog({
 			payload: payload("cached"),
 			loading: false,
 			fetching: true,
-			asked: true,
+			checking: true,
 		}),
 	);
+	assert.match(automaticCheck, /Checking provider usage/);
+	assert.doesNotMatch(automaticCheck, /Asking providers/);
+
+	const liveAskMarkup = renderDialog({
+		payload: payload("cached"),
+		loading: false,
+		fetching: true,
+		asked: true,
+	});
+	const liveAsk = text(liveAskMarkup);
 	assert.match(liveAsk, /Asking providers/);
+	assert.match(
+		liveAskMarkup,
+		/<output[^>]*aria-live="polite"[^>]*>Getting fresh usage from providers\.<\/output>/,
+		"the explicit in-flight ask must be announced through a polite live region",
+	);
+
+	const settledAsk = renderDialog({
+		payload: payload("live"),
+		loading: false,
+		fetching: false,
+		asked: true,
+	});
+	assert.doesNotMatch(
+		settledAsk,
+		/Getting fresh usage from providers\./,
+		"the live region must go quiet once the ask settles",
+	);
+	assert.doesNotMatch(
+		automaticCheck,
+		/Getting fresh usage from providers\./,
+		"a cache-aware check must not masquerade as a manual ask",
+	);
 });
 
 test("a balance row is spoken as missing a limit, not as missing a report", async () => {

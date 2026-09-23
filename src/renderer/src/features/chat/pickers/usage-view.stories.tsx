@@ -329,6 +329,22 @@ export const Loading: Story = {
 	args: { ...base, payload: null, loading: true, fetching: true },
 };
 
+/**
+ * The automatic cache-aware check after the cached snapshot painted.
+ *
+ * It is live, but not a forced provider ask: this is the state a newly stored
+ * account reaches when `/usage` opens, and the label must not imply the user
+ * pressed the explicit refresh action.
+ */
+export const Checking: Story = {
+	args: {
+		...base,
+		payload: payload([anthropic, openrouter]),
+		fetching: true,
+		checking: true,
+	},
+};
+
 /** No provider publishes quota, or none is signed in. */
 export const Empty: Story = {
 	args: { ...base, payload: payload([]) },

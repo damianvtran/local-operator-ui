@@ -784,6 +784,7 @@ const STAMP_BINDING_NOTES = [
 	"settingsGateRestampNote",
 	"candidateMacArchRestampNote",
 	"notarizeGateRestampNote",
+	"usageAutoCheckRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1049,6 +1050,14 @@ const BRANCH_RECORDS = [
 	 */
 	"providerSetupUxNote",
 	"renameRefreshArgumentListPass",
+	/*
+	 * Grown by the `/usage` pass, whose re-stamp is this branch's newest top-level
+	 * record. It is listed for the reason the list exists: a fold that starts from
+	 * main's manifest would drop it (and with it the note that says which two tree
+	 * hashes this branch's delta moved) without a word, and the re-derived tokens
+	 * the token-binding test holds would then read as a claim about main's trees.
+	 */
+	"usageAutoCheckRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
