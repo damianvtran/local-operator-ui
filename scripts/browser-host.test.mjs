@@ -1402,7 +1402,7 @@ test("the click on a banner names the OLDEST live request, and who asked for it"
  * ONE log, because the ORDER is half of what the handler promises and two separate
  * arrays could not show it.
  */
-function recordingWindow({ minimized = false } = {}) {
+function recordingWindow({ minimized = false, destroyed = false } = {}) {
 	const calls = [];
 	return {
 		calls,
@@ -1414,6 +1414,7 @@ function recordingWindow({ minimized = false } = {}) {
 		focus: () => calls.push(["focus"]),
 		isMinimized: () => minimized,
 		restore: () => calls.push(["restore"]),
+		isDestroyed: () => destroyed,
 	};
 }
 
@@ -1432,7 +1433,9 @@ test("a consent click names the request, then comes forward through the raise po
 		const window = recordingWindow();
 		const reported = [];
 		consentClickHandler({
-			window,
+			// The window is ASKED FOR at click time rather than captured, which is the
+			// U2 fix: a banner outlives the window it was raised for.
+			window: () => window,
 			show,
 			report: (line) => reported.push(line),
 		})("entry-1", "session:2d5ad5da0025");
@@ -1475,12 +1478,72 @@ test("a requester that names no conversation arrives as null, so the click falls
 	// conversation and must reach the renderer as `null` rather than as a bare id the
 	// app would then look up as a session (host.ts's `sessionRequesterOf`).
 	const window = recordingWindow();
-	consentClickHandler({ window, show: "focus" })("entry-1", "call:abc123");
+	consentClickHandler({ window: () => window, show: "focus" })(
+		"entry-1",
+		"call:abc123",
+	);
 	assert.deepEqual(window.calls[0], [
 		"send",
 		"browser-consent-attention",
 		{ entryId: "entry-1", requesterSessionId: null },
 	]);
+});
+
+test("a click whose window is gone lands through the app's recreate path instead of throwing (U2)", () => {
+	// UX ROUND 1, U2: the one remaining way the operator's report ("I click it and
+	// nothing happens") still held. A banner outlives its window — macOS keeps it in
+	// Notification Center — and the app stays alive in the Dock after `closed`, so the
+	// click arrives into a main process whose window is destroyed. Measured on Electron
+	// 44.3.0: reading `webContents` there throws `Object has been destroyed`, so the old
+	// handler threw in main instead of landing anywhere.
+	const destroyed = recordingWindow({ destroyed: true });
+	const reopened = [];
+	assert.doesNotThrow(() => {
+		consentClickHandler({
+			window: () => destroyed,
+			show: "focus",
+			reopen: (payload) => reopened.push(payload),
+		})("entry-1", "session:2d5ad5da0025");
+	}, "a destroyed window must not take the click with it");
+	assert.deepEqual(
+		reopened,
+		[{ entryId: "entry-1", requesterSessionId: "2d5ad5da0025" }],
+		"the request is handed to the app's own recreate path, carrying the same payload the renderer would have been sent",
+	);
+	assert.deepEqual(
+		destroyed.calls,
+		[],
+		"and nothing is asked of the destroyed window, not even a send",
+	);
+
+	// No window AND no recreate path: the click reports the no-target line rather than
+	// pretending something happened, and still does not throw.
+	const reported = [];
+	consentClickHandler({
+		window: () => null,
+		show: "focus",
+		report: (line) => reported.push(line),
+	})("entry-1", "session:2d5ad5da0025");
+	assert.equal(reported.length, 1, "the click says it had nowhere to land");
+	assert.match(
+		reported[0],
+		/^trigger=banner-click mode=none .*reason=no-target/,
+		"and names the reason, so the next silent click is greppable",
+	);
+
+	// `window` is asked for ONCE per click: a handler that captured it could not see a
+	// window that appeared between the raise and the click.
+	let asked = 0;
+	const live = recordingWindow();
+	consentClickHandler({
+		window: () => {
+			asked += 1;
+			return live;
+		},
+		show: "focus",
+	})("entry-2", "session:x");
+	assert.equal(asked, 1, "one resolution per click");
+	assert.equal(live.calls[0][1], "browser-consent-attention");
 });
 
 test("an inactive plan orders the window forward without un-minimising it", () => {
@@ -1489,7 +1552,10 @@ test("an inactive plan orders the window forward without un-minimising it", () =
 	// because this handler is a NEW caller of that policy and a new caller is where a
 	// policy gets re-decided by accident.
 	const window = recordingWindow({ minimized: true });
-	consentClickHandler({ window, show: "inactive" })("entry-1", "session:x");
+	consentClickHandler({ window: () => window, show: "inactive" })(
+		"entry-1",
+		"session:x",
+	);
 	assert.deepEqual(
 		window.calls,
 		[

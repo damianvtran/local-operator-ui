@@ -22,7 +22,7 @@ slot in when it lands.
 
 ---
 
-## Addendum — three of this document's rulings were revised on 2026-09-23
+## Addendum — this document's rulings were revised on 2026-09-23
 
 Recorded here rather than edited in place, for the reason
 `docs/design/sidebar-conversation-browser.md` gives for its own reversal note: the
@@ -82,6 +82,37 @@ closes the pane, so it is not "a no-op with a tooltip" — and it stays mounted 
 or not a badge is drawn, so nothing unmounts under a pointer or a caret. Its two
 neighbours in the cluster still hide, and what discriminates is what each control
 CARRIES: a mark the open pane already shows, versus a count it does not.
+
+**5. THE THREE COUNTS HAVE THREE SCOPES, DELIBERATELY, and they are meant to
+disagree.** The rail counts every live request in the app (unattributed ones included);
+the chat header counts THIS conversation's, because it is that conversation's control;
+the URL bar counts its own surface's scope. QA measured the first two disagreeing on one
+screen (rail "4" against the URL-bar chip's "2") and correctly did not raise it — this
+paragraph exists so the next reader does not "fix" the difference either. Each is
+arithmetic over the same projection and the same clock; what differs is the question,
+and §5.1's grammar is about how a number looks, not about which number.
+
+**6. A CLICK WHILE THE USER IS ALREADY ON `/browser` MOVES THEM OFF IT, and that is the
+accepted cost of 1 above** (UX round 1, U3: reproduced, S3). The route shows every live
+request; landing prefers the asking conversation, so the click narrows the view to the
+tray of the conversation that asked — the named request is still on screen, and the
+queue view is one press away. The alternative (keep the route when the named entry is
+already visible on it) would make the landing rule depend on which route the user
+happened to be on, which is exactly the "works from anywhere without knowing what is
+open" property the original rejection was protecting.
+
+**7. THE COLLAPSED RAIL'S BADGE IS CAPPED AT `9+`, AND ITS EDGE ROLE IS `ink-muted`.**
+Both are §5.1's own rules applied to the rail's 48px width rather than new ones: the
+cap is the grammar the chat header already keeps (a two-digit pill grows leftward into
+the Globe's arc, measured in design round 1's D3), and the edge role is what lets one
+role clear the 3:1 non-text floor on all four grounds this mark is drawn on — `canvas`,
+`surface`, and the rail row's `rowSelected`/`rowHover`, which is where the operator's
+own report came from (code review F2, design D5; §5.1 and §5.3 carry the figures).
+
+**8. A CLICK THAT NAMES A REQUEST WHICH IS ALREADY ANSWERED SAYS SO.** The landing is
+unchanged — the surface shows what is live — but the request is now judged against a
+fresh read (`use-consent-attention-lifetime.ts`) and a click that names something gone
+reports it rather than opening an empty tray in silence (UX round 1, U6).
 
 ---
 
@@ -507,9 +538,9 @@ specified to the role and to the assertion.
 |---|---|---|
 | Shape | `rounded-full`, `h-4 min-w-4 px-1`, `text-meta`, tabular numbers | One of the three places `rounded-full` is allowed (`badge.tsx:15`), and a count that changes width on every decision is a twitch |
 | Fill | `bg-warning-wash` | One meaning, already in this feature: "an agent is blocked on you" (the tab's Waiting chip) |
-| Edge | `border border-control` | `warningBorder` measures 2.51-2.98:1 on graded grounds in seven palettes — recorded in `contrast-contract.mjs`'s "browser waiting marker chip" row. `border-control` is the contract's own answer |
-| Ink | `text-ink` | 8.62:1 on the danger wash measured for the sibling chip; `warning` as ink is not the same triple |
-| Position | absolute, top-right of the Approvals control, `-translate-y-1/2 translate-x-1/2` | The operator's "corner of the button". The control gains `pr-4` so the badge never sits over the label |
+| Edge | `border border-ink-muted` | Revised 2026-09-23 by code review F2 / design D5: `warningBorder` measures 2.51-2.98:1 on graded grounds in seven palettes, and `border-control` — the interim answer — clears 3:1 on `canvas` (3.13) and `surface` (3.26) but NOT on the rail's row grounds (2.77 on `row-selected`, 2.92 on `row-hover`, twelve of fifty-nine palettes under the floor). The fill cannot carry the boundary either (1.00-1.19:1 on every ground), so the edge is the whole boundary and `ink-muted` is the quietest role that clears it everywhere: 5.63:1 worst |
+| Ink | `text-ink` | 5.73:1 worst over all fifty-nine palettes (oneDark), against the badge's own wash. The 8.62:1 this row used to carry for the sibling chip does not reproduce, and ink against a fill does not depend on the ground |
+| Position | absolute, top-right of the Approvals control, `-translate-y-1/2 translate-x-1/2` | The operator's "corner of the button". The control gains `pr-4` so the badge never sits over the label. **THE RAIL IS THE ONE HOST THAT DIVERGES** (2026-09-23): its item is a row rather than a corner control, so the badge sits IN FLOW at the row's trailing edge (`ml-auto`, its right edge 20px inside the rail) instead of being stamped over a corner — and COLLAPSED at 48px there is no room outside the 32px button at all, so it is only there that the mark is anchored to the button's corner with `-top-1.5 -right-1.5`, capped at `9+`, and held 2px clear of the rail's own 1px border |
 | Content | the live count, and `aria-label` on the control: "Approvals, 3 waiting" | Screen readers get the number as part of the control's name, never as a bare floating digit |
 
 **The accent is deliberately not spent here.** The accent budget is about three
@@ -519,11 +550,18 @@ three agent tabs alone exhaust it. A count is passive; the marker is the thing
 the user must not miss.
 
 **Primitive:** `Badge` (`badge.tsx:17-41`) gains one variant,
-`attention: "border-control bg-warning-wash text-ink"`, and the badge is rendered
-`variant="attention" shape="pill"`. The alternative — `variant="warning"` plus a
-`className` that overrides half of it — is precisely the drift the primitive
+`attention: "border-ink-muted bg-warning-wash text-ink"`, and the badge is rendered
+`variant="attention" shape="pill" size="count"`. The alternative — `variant="warning"`
+plus a `className` that overrides half of it — is precisely the drift the primitive
 exists to prevent; the second alternative, a new bespoke span, breaks
-`branding.md:467-471`.
+`branding.md:467-471`. **The count's geometry and its cap moved onto the primitive
+on 2026-09-23** (design D4): three hosts had the same
+`h-4 min-w-4 justify-center px-1 tabular-nums` string and had already drifted, so the
+box is `size="count"` and the digits are spelled by `countLabel(count, cap?)`. The cap
+is the caller's argument because it is a fact about the host's width, not about the
+badge: `9+` where the mark is anchored to a 32px control's corner (the chat header, the
+collapsed rail) and the true number where the host can grow (the URL bar's chip, the
+expanded rail).
 
 ### 5.2 The ordinal, anchored three ways
 
@@ -548,15 +586,18 @@ Three `CONTROLS` rows and one modification. Without them
 
 | Row | `on` | fill | border | ink |
 |---|---|---|---|---|
-| `browser approvals badge` **(new)** | `["canvas", "surface"]` | `warningWash` | `borderControl` | `ink` |
+| `browser approvals badge` **(new)** | `["canvas", "surface", "rowSelected", "rowHover"]` | `warningWash` | `inkMuted` | `ink` |
 | `browser approvals tray row (selected)` **(new)** | `["surface"]` | `elevated` | `borderControl` | `ink` |
 | `browser approvals dock` **(new)** | `["canvas"]` | `surface` | `borderControl` | `ink` |
 | `browser tab (hover)` **(new)** | `["sunken"]` | `elevated` | *(none)* | `ink` |
 | `browser active tab` **(modified)** | `["sunken"]` | `canvas` | `borderControl` | `ink` |
 
-Notes for whoever edits the file: the badge's two grounds are the URL bar
-(`bg-canvas`, `browser-url-bar.tsx:120-123`) and the chat pane's header
-(`surface`), because the same control carries the badge in both hosts; the
+Notes for whoever edits the file: the badge's grounds are the URL bar
+(`bg-canvas`, `browser-url-bar.tsx:120-123`), the chat pane's header (`surface`), and
+the app rail's Browser row in its two states (2026-09-23: `rowSelected` while `/browser`
+is the route, `rowHover` under the pointer) — the rail is the host that made the
+two-ground version incomplete, and the `inkMuted` edge is what lets one role clear the
+3:1 floor on all four; the
 active tab's fill becomes `canvas` (the page's own ground) and its bottom edge
 stops existing, so its `on` list loses `surface` — the ground step alone is
 1.11:1 in the dark palettes, which is the measurement D18 already recorded, so

@@ -10,6 +10,7 @@ import {
 	DropdownMenuTrigger,
 	Skeleton,
 	Tooltip,
+	countLabel,
 } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -209,8 +210,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	 * exact number. Only the glyph is capped - a user who needs the count reads it,
 	 * and a user who needs to know it is a lot sees that too.
 	 */
-	const badgeText =
-		browserAttentionCount > 9 ? "9+" : String(browserAttentionCount);
+	const badgeText = countLabel(browserAttentionCount, 9);
 	const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
 	const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
 	// Read here rather than passed in: the pane is a property of the window's right
@@ -349,7 +349,15 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * only thing separating them.
 			 */
 			className={cn(
-				"flex h-14 shrink-0 items-center gap-3 border-control border-b px-4",
+				/*
+				 * `@container/chathdr` is the row's own width, which is what the title's
+				 * floor needs to ask about. It is NOT the viewport: this header narrows
+				 * when a right-slot pane opens, and the pane is exactly the state where an
+				 * unfloored title disappeared (design round 1, D1 - measured: the title's
+				 * box held no ink at all while the pane was up, because `flex-1 min-w-0`
+				 * lets it yield before any control does).
+				 */
+				"@container/chathdr flex h-14 shrink-0 items-center gap-3 border-control border-b px-4",
 			)}
 			data-tour-tag="chat-header"
 		>
@@ -369,7 +377,22 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * the empty space did - the description clipped mid-sentence at 760px
 			 * while 220px of bar sat unused to its right. Growing first means the
 			 * text truncates only once there is genuinely no room left. */}
-			<div className={cn("flex min-w-0 flex-1 flex-col")}>
+			{/* THE FLOOR IS THE POINT (design round 1, D1). `flex-1 min-w-0` grows into
+			 * spare room but yields ALL of it, so one more control in the cluster could take
+			 * the conversation's name off the bar entirely - which is what the browser
+			 * trigger's own fix did, on the pane-open screen the operator reported from.
+			 *
+			 * `min-w-10` (40px, two or three characters and the ellipsis) is the floor the
+			 * NARROWEST real row can pay, measured rather than picked: with the browser
+			 * pane up at 1380px the header is 240px wide, its fixed parts (avatar 32, two
+			 * 12px gaps, the `...` menu, the trigger, the console, px-4) come to 200, and
+			 * what is left for the title is 40. A larger floor did not buy a longer
+			 * fragment - it pushed the cluster 48px out of the row, which the scene reports
+			 * as `headerClusterRight` past `headerBox.right` - so the floor is the space
+			 * that exists and the fragment is what fits in it. The control that yields to
+			 * make that space is the canvas button below, and its comment carries that
+			 * half of the measurement. */}
+			<div className={cn("flex min-w-10 flex-1 flex-col")}>
 				{/* `text-heading`, not `text-title`: branding.md reserves the 20px step
 				 * for section and dialog titles and states that a desktop app has no
 				 * hero. 20px over 13px also skipped two ramp steps in one bar. */}
@@ -391,7 +414,6 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 					</span>
 				)}
 			</div>
-
 			{/*
 			 * The header's action cluster: the run-panel trigger, the browser pane's trigger,
 			 * then the canvas button, as one group at the end of the bar. The cluster carries
@@ -671,9 +693,8 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 									<Badge
 										variant="attention"
 										shape="pill"
-										className={cn(
-											"h-4 min-w-4 justify-center px-1 tabular-nums ring-2 ring-canvas",
-										)}
+										size="count"
+										className="ring-2 ring-canvas"
 										data-tour-tag="browser-pane-badge"
 									>
 										{badgeText}
@@ -763,7 +784,22 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 									: `Open canvas (${shortcut})`
 							}
 							data-tour-tag="open-canvas-button"
-							className={cn("relative")}
+							/* THE CONTROL THAT YIELDS (design round 1, D1). The title block
+							 * now keeps a 96px floor, so something has to give when the row is
+							 * narrow enough that both cannot fit - and this is the one of the
+							 * four the app can lose without a loss of capability: the canvas is
+							 * also reachable from the transcript's own file tiles and the
+							 * `shortcut` this control prints. `hidden`/`inline-flex` rather than a
+							 * second render gate because the question is the ROW's width, not
+							 * the pane's state - `chat-header-cluster`'s stories pin the same
+							 * arrangement at a wide viewport, where nothing sheds.
+							 *
+							 * THE THRESHOLD is the width at which the row's fixed parts plus the
+							 * title's floor just fit: avatar 32 + the two 12px gaps + the `...`
+							 * menu 32 + the cluster (trigger 32 + 8 + canvas 32, with the badge's
+							 * `gap-3` when it is drawn) + px-4, measured in the driver scene at
+							 * both pane states rather than derived on paper. */
+							className={cn("relative hidden @[23rem]/chathdr:inline-flex")}
 						>
 							<FileText aria-hidden={true} />
 							{/*

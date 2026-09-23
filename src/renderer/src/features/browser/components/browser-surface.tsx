@@ -1,8 +1,4 @@
-import {
-	clearConsentAttention,
-	shouldForgetConsentAttention,
-	useConsentAttention,
-} from "@shared/browser-consent-attention";
+import { useConsentAttention } from "@shared/browser-consent-attention";
 import {
 	useBrowserViewSuppressed,
 	useSuppressBrowserView,
@@ -368,38 +364,19 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	}, []);
 
 	// A banner click names the request it was raised for, and the shell has already
-	// navigated here (see `shared/browser-consent-attention`). Two things follow: the
-	// band shows THAT request rather than the oldest, and the attention is dropped
-	// once it is no longer pending — answered, expired or cancelled — so a later
-	// request does not inherit an answer given to an earlier one (review round 1, R8).
+	// navigated here (see `shared/browser-consent-attention`). This surface's part is
+	// to SELECT it — the band shows THAT request rather than the oldest.
+	//
+	// IT DOES NOT DECIDE WHEN THE MEMORY IS DROPPED, and that is deliberate (UX round
+	// 1, U1): a surface sees one scope, so this one read "not in my list" as "gone" for
+	// a request that belongs to no conversation here and cleared the memory before the
+	// router had mounted the surface the click was for. The shell owns that question
+	// now (`use-consent-attention-lifetime.ts`, called once in `app.tsx`); every
+	// surface only reads the answer.
 	const attention = useConsentAttention();
 	const named = attention
 		? pendingRequests.find((entry) => entry.entryId === attention)
 		: undefined;
-	/*
-	 * THE ATTENTION SURVIVES UNTIL THE PROJECTION CAN SPEAK FOR IT.
-	 *
-	 * This used to clear the moment the named entry was not in the list it had — and
-	 * on the path the attention exists for, that list is EMPTY: a banner click arrives
-	 * on a route where this surface is not mounted, the shell navigates, the surface
-	 * MOUNTS, and its first render has no projection yet (`state === null`), so
-	 * `pendingRequests` is `[]`, `named` is undefined and the effect dropped the
-	 * attention before the read that would have shown it landed. The click then
-	 * selected the oldest row instead of the request it named — the half of R8 the
-	 * route fix did not reach, because the route fix was measured with the surface
-	 * already mounted.
-	 *
-	 * `requests === undefined` is "this surface does not know yet", and not knowing is
-	 * not a reason to forget. The rule itself is `shouldForgetConsentAttention`'s, so
-	 * it can be asserted without a render; the `null` guard above it is the CALL's,
-	 * because there is nothing to remember in the first place.
-	 */
-	const projectionLanded = requests !== undefined;
-	useEffect(() => {
-		if (attention === null) return;
-		if (shouldForgetConsentAttention(attention, named, projectionLanded))
-			clearConsentAttention(attention);
-	}, [attention, named, projectionLanded]);
 	// An attention click moves the selection, but a LOCAL selection is not thrown
 	// away by an unrelated refresh: only a named request takes the selection over.
 	useEffect(() => {

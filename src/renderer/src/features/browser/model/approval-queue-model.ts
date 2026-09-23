@@ -449,6 +449,51 @@ function holdApprovalClock(): () => void {
 }
 
 /**
+ * The shared clock ALONE: its value, and the interval held while anything is live.
+ *
+ * WHY IT IS EXTRACTED FROM `useApprovalQueue` (agent review round 1, F6). The rail's
+ * badge wants liveness and nothing else — it reads no row, resolves nothing and
+ * numbers nothing — and taking the queue model for the clock meant building `rows`
+ * and `waiting` and running `reconcileResolved` from two effects per tick for state
+ * the rail never reads. Cheap is not the same as free here: the rail is mounted on
+ * every route for the whole life of the app, and the model's own docs say why its
+ * bookkeeping is worth having (a transition detector), which is not a claim about
+ * this consumer.
+ *
+ * `live` is a FUNCTION rather than a count because the count depends on `now`, which
+ * this hook owns: a caller that had to compute liveness outside it would need a
+ * second clock value to do it with, which is the thing there must be one of. The
+ * callback is called during render and is not part of any effect's identity — the
+ * effect keys on the number it returns, which is the same rule the queue model used
+ * before this was extracted (a fresh `requests` array per projection refresh, re-held
+ * on every refresh, is a timer that never fires).
+ */
+export function useApprovalClockValue(live: (now: number) => number): number {
+	const [now, setNow] = useState(() => clockNow);
+	const held = live(now);
+	/*
+	 * THE GATE IS THE LIVE COUNT, not the projection's length (review round 1,
+	 * finding 4). `pendingConsent` is main's queue filtered AT PROJECTION TIME and
+	 * nothing in main fires at expiry, so after the last request expires the
+	 * projection keeps its dead entries until some unrelated change arrives — the
+	 * badge correctly falls to zero while this timer kept waking the app once a second
+	 * for a list that cannot change.
+	 */
+	useEffect(() => {
+		if (held === 0) return;
+		return holdApprovalClock();
+	}, [held]);
+	/** Follow the shared clock. `setNow` is stable, so this subscribes once. */
+	useEffect(() => {
+		clockSubscribers.add(setNow);
+		return () => {
+			clockSubscribers.delete(setNow);
+		};
+	}, []);
+	return now;
+}
+
+/**
  * The queue model as a hook over the projection.
  *
  * The shared interval runs ONLY while something is pending — see the clock above,
@@ -461,7 +506,7 @@ export function useApprovalQueue(
 	requests: ReadonlyArray<ApprovalRequestInput>,
 	tabs: ReadonlyArray<ApprovalTabInput>,
 ): ApprovalQueueModel {
-	const [now, setNow] = useState(() => clockNow);
+	const now = useApprovalClockValue((at) => liveRequests(requests, at).length);
 	const previous = useRef<ReadonlyArray<ApprovalRequestInput>>([]);
 	const [resolved, setResolved] = useState<ResolvedRow[]>([]);
 	/** The entries this host answered. A ref, not state: the projection's next
@@ -521,29 +566,6 @@ export function useApprovalQueue(
 	useEffect(() => {
 		for (const row of resolved) reported.current.add(row.key);
 	}, [resolved]);
-
-	/*
-	 * THE GATE IS THE LIVE COUNT, not the projection's length (review round 1,
-	 * finding 4). `pendingConsent` is main's queue filtered AT PROJECTION TIME and
-	 * nothing in main fires at expiry, so after the last request expires the
-	 * projection keeps its dead entries until some unrelated change arrives — the
-	 * rows and the badge correctly fall to zero while this timer kept waking the
-	 * route once a second for a list that cannot change, against the rule stated
-	 * below.
-	 */
-	const live = liveRequests(requests, now).length;
-	useEffect(() => {
-		if (live === 0) return;
-		return holdApprovalClock();
-	}, [live]);
-
-	/** Follow the shared clock. `setNow` is stable, so this subscribes once. */
-	useEffect(() => {
-		clockSubscribers.add(setNow);
-		return () => {
-			clockSubscribers.delete(setNow);
-		};
-	}, []);
 
 	// A new projection is also a moment to re-read the clock: without this the
 	// first render after an arrival could use a `now` up to a second stale, which

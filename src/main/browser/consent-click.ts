@@ -42,17 +42,64 @@ export type ConsentClickWindow = RaisableWindow & {
 	webContents: { send(channel: string, payload: unknown): void };
 };
 
+/** What the renderer is told, and what the no-window path has to carry forward. */
+export interface ConsentAttentionPayload {
+	entryId: string;
+	requesterSessionId: string | null;
+}
+
+/** The channel the payload rides. Declared once: the preload subscribes to this
+ * name and the no-window path below sends on it, which is the pair that has to
+ * agree. */
+export const CONSENT_ATTENTION_CHANNEL = "browser-consent-attention";
+
 export function consentClickHandler(options: {
-	window: ConsentClickWindow;
+	/**
+	 * The window to deliver to, ASKED FOR AT CLICK TIME rather than captured.
+	 *
+	 * This was a `BrowserWindow` instance, and that is what made the no-window case
+	 * throw (UX review round 1, U2; measured on Electron 44.3.0: reading
+	 * `webContents` on a destroyed window throws `Object has been destroyed`, and so
+	 * does the send). A banner outlives its window: macOS keeps the raised banner in
+	 * Notification Center, and its `click` listener is a closure on the notifier, so
+	 * the click arrives into a main process whose window is gone — the app is alive
+	 * in the Dock, which is exactly the operator's own state. `null` and `isDestroyed()`
+	 * are the same event here and are answered the same way.
+	 */
+	window: () => ConsentClickWindow | null;
 	show: "focus" | "inactive" | "never";
 	report?: RaiseReport;
+	/**
+	 * Where the click goes when there is NO window to send to.
+	 *
+	 * The sibling completion banner states the rule (`desktop-notifier.ts`: "No
+	 * window: the app is alive in the dock, which is the operator's own reported
+	 * case. This used to return here, so the click did nothing at all"), and the app
+	 * owns the answer because it owns window creation — `src/main/index.ts` parks the
+	 * request and opens a window under the OPERATOR's plan, then delivers it when the
+	 * renderer can hear it. Absent, a click with no window raises nothing and reports
+	 * `banner-click` on the no-target line rather than throwing.
+	 */
+	reopen?: (payload: ConsentAttentionPayload) => void;
 }): (entryId: string, requester: string) => void {
 	return (entryId, requester) => {
-		options.window.webContents.send("browser-consent-attention", {
+		const payload: ConsentAttentionPayload = {
 			entryId,
 			requesterSessionId: sessionRequesterOf(requester),
-		});
-		raiseWindow(options.window, options.show, {
+		};
+		const target = options.window();
+		if (target === null || target.isDestroyed()) {
+			if (options.reopen) {
+				options.reopen(payload);
+				return;
+			}
+			options.report?.(
+				"trigger=banner-click mode=none requested=no-window reason=no-target",
+			);
+			return;
+		}
+		target.webContents.send(CONSENT_ATTENTION_CHANNEL, payload);
+		raiseWindow(target, options.show, {
 			trigger: "banner-click",
 			report: options.report,
 		});

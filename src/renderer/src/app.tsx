@@ -2,6 +2,7 @@ import type { FC } from "react";
 import { Suspense, lazy, useEffect } from "react";
 import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 
+import { useConsentAttentionLifetime } from "@features/browser/hooks/use-consent-attention-lifetime";
 // ChatPage is the boot route (/ redirects to /chat), so it stays statically
 // imported: lazy-loading it would put a Suspense fallback on first paint.
 import { ChatPage } from "@features/chat/components/chat-page";
@@ -335,6 +336,8 @@ const App: FC = () => {
 	// trigger `banner-click`), so this half is only ever "remember which request was
 	// named, and land on it" — the change that made the click come forward at all did
 	// not put a window call in the renderer.
+	useConsentAttentionLifetime();
+
 	useEffect(() => {
 		const unsubscribe = window.api?.browser?.onConsentAttention?.((payload) => {
 			// Read through `getState()` rather than a selector: this listener must not be

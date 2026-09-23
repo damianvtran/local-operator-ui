@@ -76,6 +76,9 @@ const PROBE = `
 	import { BrowserLoadFailure, loadFailureSentence } from "./src/renderer/src/features/browser/components/browser-load-failure";
 	import { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
 	import { browserBridgeAvailable, clearBrowserProjectionReadError, readBrowserProjection, refreshBrowserProjection, subscribeBrowserProjection } from "./src/renderer/src/features/browser/model/browser-projection-store";
+	import { SidebarNavigation } from "./src/renderer/src/shared/components/navigation/sidebar-navigation";
+	import { MemoryRouter } from "react-router-dom";
+	import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 	import { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
 
 	export function renderBrowserChrome() {
@@ -134,6 +137,10 @@ const PROBE = `
 		loadFailureSentence,
 		useCanonicalSessionsStore,
 		useUiPreferencesStore,
+		SidebarNavigation,
+		MemoryRouter,
+		QueryClient,
+		QueryClientProvider,
 	};
 `;
 
@@ -178,6 +185,7 @@ const bundle = await build({
 	alias: {
 		"@shared": "./src/renderer/src/shared",
 		"@features": "./src/renderer/src/features",
+		"@assets": "./src/renderer/src/assets",
 	},
 	// `mainFields`/`conditions` so a dependency is taken from its ESM entry: several
 	// of these packages ship a CJS build that calls `require("react")` at import
@@ -185,7 +193,20 @@ const bundle = await build({
 	mainFields: ["module", "main"],
 	conditions: ["import"],
 	external: ["react", "react-dom", "react-dom/server", "react/jsx-runtime"],
-	loader: { ".css": "empty" },
+	// Vite's `import.meta.env` is read at IMPORT time by the app's config loader, which
+	// the rail pulls in (`load-config.ts`): bundling for node leaves it undefined and the
+	// module throws before a single test runs (`chat-link-affordances.test.mjs` records
+	// the same trap). The URL is dead on purpose — nothing here should reach a service.
+	define: { "import.meta.env": "__viteEnv" },
+	banner: {
+		js: 'const __viteEnv = { VITE_LOCAL_OPERATOR_API_URL: "http://127.0.0.1:45998" };',
+	},
+	// `@assets` carries the rail's logo, which is a `.png` the rail imports: the
+	// render above pulls the real `SidebarNavigation` in, so the alias and a loader
+	// for the binary are what let the badge be rendered WITHOUT a second hand-rolled
+	// copy of the component (agent review round 1, F8). The image itself has no
+	// assertion here, so it loads empty — the same choice `.css` already made.
+	loader: { ".css": "empty", ".png": "empty" },
 	jsx: "automatic",
 });
 // Written to a real file rather than imported as a data: URL: the bundle now
@@ -242,10 +263,15 @@ const {
 	loadFailureSentence,
 	useCanonicalSessionsStore,
 	useUiPreferencesStore,
+	SidebarNavigation,
+	MemoryRouter,
+	QueryClient,
+	QueryClientProvider,
 	noteConsentAttention,
 	clearConsentAttention,
 	consentClickTarget,
 	shouldForgetConsentAttention,
+	isConsentAttentionPending,
 	consentAttentionSnapshot,
 	subscribeConsentAttention,
 	MAX_RESTORED_TABS,
@@ -1871,8 +1897,8 @@ test("the consent bar names the conversation that is asking (D2)", () => {
 	);
 	assert.equal(
 		requesterLabel("session-abc", [{ session_id: "session-abc", title: "  " }]),
-		"The agent in conversation session-abc",
-		"an untitled session stands in as its id, the way this app treats one everywhere else",
+		"An agent from another session",
+		"a session the app cannot name is described rather than printed as an id (UX round 1, U5: a subagent's own session id is a valid requester and not a listed conversation, and that is the case that lands on the browser route)",
 	);
 	assert.equal(
 		requesterLabel(null, [{ session_id: "session-abc", title: "Named" }]),
@@ -1961,7 +1987,7 @@ test("the consent bar states each choice's own lifetime, and that the profile is
 	);
 	assert.ok(
 		markup.includes(
-			"Request 2 from The agent in conversation session-abc: login.example.com",
+			"Request 2 from An agent from another session: login.example.com",
 		),
 		"and the chip's accessible name carries the ordinal, the ASKING conversation and the authority (UX round 1, U2: two requests for one site must not read the same)",
 	);
@@ -2533,7 +2559,7 @@ test("a conversation is named by its title, or by its id when it has none", () =
 	assert.equal(requesterLabel("alice", sessions), "The agent in 'Reports'");
 	assert.equal(
 		requesterLabel("bob", sessions),
-		"The agent in conversation bob",
+		"An agent from another session",
 	);
 	assert.equal(requesterLabel("alice", sessions, { short: true }), "Reports");
 	assert.equal(requesterLabel(null, sessions), "An agent");
@@ -3266,6 +3292,14 @@ test("the app-wide count includes the requests no conversation owns, and drops t
 		0,
 		"an empty projection is zero and not a badge",
 	);
+	// THE BOUNDARY, pinned here as well as in `liveRequests` (agent review round 1, F7:
+	// the count keeps its OWN loop, so the `liveRequests` boundary case does not cover
+	// it — a mutation of `now < expiresAt` to `<=` survived every test in this file).
+	assert.equal(
+		liveApprovalCount([{ ...requests[1], expiresAt: now }], now),
+		0,
+		"at exactly its expiry instant the request is not counted, the same boundary every other reader in this feature uses",
+	);
 	// And the per-conversation map really cannot answer this question, which is why the
 	// count above is not derived from it: `alice` is one of the three, not the three.
 	assert.equal(
@@ -3273,6 +3307,65 @@ test("the app-wide count includes the requests no conversation owns, and drops t
 		1,
 		"the conversation's own count stays its own",
 	);
+});
+
+test("the rail's Browser item draws that count, with the number in its accessible name", async () => {
+	// THE RAIL'S OWN WIRING, pinned at the unit level (agent review round 1, F8): the
+	// arithmetic above was covered and the badge the operator actually asked for was
+	// not — it was reachable only through the app driver's scene and the frames
+	// attached to the PR, so a change that stopped rendering the mark would not have
+	// failed a test. `renderToStaticMarkup` is enough for exactly the reason the store
+	// documents: the component BODY runs and no effects do, and the snapshot this reads
+	// is primed by a real read before the render.
+	const previousWindow = globalThis.window;
+	const live = (entryId, requesterSessionId) => ({
+		...PENDING,
+		entryId,
+		requesterSessionId,
+	});
+	globalThis.window = {
+		// The rail reads the route from the HASH rather than from the router context
+		// (`path-utils.ts` handles both formats), so the stub has to answer for it.
+		location: { hash: "#/chat", pathname: "/chat" },
+		api: {
+			browser: {
+				state: async () => ({
+					tabs: [],
+					// This conversation's, another's, and one no conversation owns: the
+					// rail's question is "is anything waiting on me", so all three count.
+					pendingConsent: [
+						live("one", "alice"),
+						live("two", "bob"),
+						live("three", null),
+					],
+					approvedGrants: [],
+				}),
+			},
+		},
+	};
+	try {
+		await refreshBrowserProjection();
+		// The rail's profile block asks for the Radient identity through React Query,
+		// so the render needs the provider the real app mounts around it; nothing
+		// fetches here, because `renderToStaticMarkup` runs no effects.
+		const markup = render(
+			el(
+				QueryClientProvider,
+				{ client: new QueryClient() },
+				el(MemoryRouter, null, el(SidebarNavigation)),
+			),
+		);
+		assert.ok(
+			markup.includes('data-tour-tag="nav-browser-badge"'),
+			"the rail's Browser item draws the mark",
+		);
+		assert.ok(
+			markup.includes('aria-label="Browser, 3 waiting"'),
+			"and the control's own name carries the count, because the digit is not the only channel (spec 5.1) — including for the request no conversation owns",
+		);
+	} finally {
+		globalThis.window = previousWindow;
+	}
 });
 
 test("a banner click lands on the asking conversation, or on the browser route", () => {
@@ -3313,30 +3406,75 @@ test("a banner click lands on the asking conversation, or on the browser route",
 	);
 });
 
-test("an attention is dropped only once the surface has a projection to read", () => {
-	// THE HALF OF R8 THE ROUTE FIX DID NOT REACH. A banner click arrives on a route
-	// where the browser surface is not mounted; the shell navigates; the surface MOUNTS
-	// with no projection yet, so its pending list is empty and the first version of the
-	// effect read that as "the request is gone" and forgot it before the read landed.
-	// The click then selected the oldest row instead of the one it named.
+test("the shell forgets the attention, and only once the projection says the request is gone", () => {
+	// UX ROUND 1, U1 — WHO ASKS THIS, AND WHY IT HAD TO CHANGE. It used to be each
+	// SURFACE's question, asked against the list that surface was showing — and a
+	// surface sees one scope. The pane on conversation A therefore read a click naming
+	// a request that belongs to NO conversation (a subagent's own session id) as "not
+	// here" and cleared the memory while the router was still on its way to the
+	// `/browser` route, which is the surface that can show it: the click landed on the
+	// oldest row instead of the one the banner named (reproduced twice, S3b vs S4 —
+	// the same payload with and without a pane mounted).
+	//
+	// The question belongs to the SHELL, which is mounted on every route, owns the
+	// navigation, and reads the WHOLE queue — so "absent" means gone rather than "not
+	// in my corner of it".
 	assert.equal(
-		shouldForgetConsentAttention("entry-1", undefined, false),
+		shouldForgetConsentAttention("entry-1", undefined),
 		false,
 		"not knowing yet is not a reason to forget",
 	);
 	assert.equal(
-		shouldForgetConsentAttention("entry-1", undefined, true),
+		shouldForgetConsentAttention("entry-1", []),
 		true,
-		"once a projection has landed, an entry that is absent from the scope is gone",
+		"once the whole queue has landed and the request is not in it, it is gone",
 	);
 	assert.equal(
-		shouldForgetConsentAttention("entry-1", { entryId: "entry-1" }, true),
+		shouldForgetConsentAttention("entry-1", [{ entryId: "entry-1" }]),
 		false,
 		"and the entry it names is never dropped while it is still there",
 	);
 	assert.equal(
-		shouldForgetConsentAttention(null, undefined, true),
+		shouldForgetConsentAttention(null, []),
 		false,
 		"nothing to forget is not a reason to publish",
+	);
+	// The sibling predicate reads the same distinction the other way round, which is
+	// what the shell's click check uses to decide whether to TELL the user the request
+	// is gone rather than opening an empty tray in silence (U6).
+	assert.equal(
+		isConsentAttentionPending("entry-1", undefined),
+		true,
+		"an unread queue reports the request as still waiting",
+	);
+	assert.equal(
+		isConsentAttentionPending("entry-1", [{ entryId: "entry-2" }]),
+		false,
+		"and a read queue that does not hold it reports it as gone",
+	);
+});
+
+test("only the shell clears the attention, so a pane cannot lose a request it cannot show (U1)", () => {
+	const shell = shippedSource(
+		"src/renderer/src/features/browser/hooks/use-consent-attention-lifetime.ts",
+	);
+	const surface = shippedSource(
+		"src/renderer/src/features/browser/components/browser-surface.tsx",
+	);
+	const app = shippedSource("src/renderer/src/app.tsx");
+	assert.match(
+		shell,
+		/clearConsentAttention\(/,
+		"the shell is where the memory is dropped",
+	);
+	assert.doesNotMatch(
+		surface,
+		/clearConsentAttention|shouldForgetConsentAttention/,
+		"a surface never decides: it only reads the memory to select the request it names, which is what keeps a click destined for /browser alive across the pane's own mount",
+	);
+	assert.match(
+		app,
+		/useConsentAttentionLifetime\(\)/,
+		"and the rule is mounted once, by the shell that is on every route",
 	);
 });
