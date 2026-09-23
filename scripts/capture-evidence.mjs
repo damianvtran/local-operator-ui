@@ -1311,6 +1311,11 @@ export const STORIES = [
 	   (`chat-run-panel-live/`), because the drill-in is a flow against a real
 	   backend and no story can produce it (`§ 11.3`). */
 	["chat-run-panel--reader-live", 1280, 900],
+	/* The other half of `reader-live`: a running child that has reported no
+	   activity, so the foot carries the relay's own default word (`§ 5.8`). The
+	   pair is what shows the line renders a WIRE string when there is one and the
+	   harness's fallback when there is not. */
+	["chat-run-panel--reader-no-activity", 1280, 900],
 	["chat-run-panel--reader-settled", 1280, 900],
 	["chat-run-panel--reader-failed", 1280, 900],
 	["chat-run-panel--reader-nested", 1280, 900],

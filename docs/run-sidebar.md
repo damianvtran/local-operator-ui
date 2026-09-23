@@ -875,12 +875,81 @@ than a puzzle.
 | event | rendering |
 |---|---|
 | child emits a progress beat | nothing structural; the pulse triggers a tail refetch |
-| child settles (success) | one final refetch, outcome block appears, the header's status icon and elapsed settle, the elapsed timer stops |
+| child settles (success) | one final refetch, outcome block appears, the foot's working line is withdrawn (§ 5.8), the header's status icon and elapsed settle, the elapsed timer stops |
 | child fails | final refetch, outcome block becomes the verbatim `error_text` in machine voice, header icon takes `danger`, the dot rule in § 3.4 no longer applies (the row is on screen) |
-| child is cancelled / interrupted / paused / swept (`gone`) | the header's state word changes; the body stops following; the outcome block says what the wire said |
+| child is cancelled / interrupted / paused / swept (`gone`) | the header's state word changes; the body stops following; the foot's working line is withdrawn (§ 5.8, the gate is `running`); the outcome block says what the wire said |
 | child never wrote a transcript | the body shows one quiet line naming that fact (`pending`: the child's directory exists and `transcript.jsonl` does not) and the reader retries on the next pulse |
 | the child's session directory is missing | the body shows the final "session directory is no longer on disk" line (`gone`). **This is what `gone` means**: the route derives both absences from the FILESYSTEM (`desktop_sessions.child_transcript`), and only a missing DIRECTORY is final — a transcript file that has been moved aside, pruned or never written leaves the same two facts on disk as a child that never appended, so the route answers `pending` and this line is not reachable through it (round 1, Q10). The copy states the filesystem, not the child's history. |
 | entry cursor vanished mid-read (compaction) | re-read the tail, dedupe by id |
+
+### 5.8 The working line at the foot
+
+The page's foot carries the child's CURRENT activity, the way the parent
+conversation's foot does: one line, the parent transcript's `WorkingLine`, which
+is the TUI's tail row (`subagent_view.py:_tail_entry`, `:2823-2868`) ported. The
+failure it answers is the one that row's own docstring records — a child's last
+block is often settled prose, the model pausing between tool calls, so without it
+the bottom of a LIVE page is indistinguishable from a finished one.
+
+**The fact is the wire's, not the page's, and that is why it is an input rather
+than a derivation.** `SubagentRow.activity` is `latest_details.progress`, fed by
+the child relay's `report_progress` (`harness/jobs.py:1291-1299`). It cannot be
+recovered from the child's records: the reader reduces a DURABLE page, and every
+durable tool row lands on `phase: "done"` (`transcript-reducer.ts:1152-1160`), so
+`deriveWorkingLine` over those records could only ever answer `thinking`. So the
+reader derives the line from the row it already holds
+(`deriveChildWorkingLine`, `run-detail-model.ts`) and hands it to
+`CanonicalTranscript` as its `workingLine` prop — the one live-session concept the
+reader supplies rather than switches off.
+
+**`waiting`/`starting` were the wrong channel for it**, which is worth stating
+because they look like the obvious fit: `waiting` makes the derivation read THIS
+pane's records (for the reader, the child's durable rows, which carry no running
+tool, so it would answer `thinking` over any activity the child reported), and
+`starting` names a send this app admitted — the admitted-send rung belongs to the
+pane that issued the send, and a child reader can never be that pane.
+
+**The vocabulary is the parent line's, by the relay's own design**
+(`harness/subagent.py`'s `_make_relay` docstring, `:1207-1246`): the model's
+stated intent while a tool runs, `running N tools` for a batch, `responding`
+while prose is actually streaming, `thinking` for a model call in flight with
+nothing streamed yet — "a reader watching both surfaces at once should not have
+to learn two vocabularies for one state". An empty activity is therefore
+`thinking`, which is the relay's own word for it (`intent.py:298-340`), not a
+fallback the renderer invented.
+
+**The phase is a classification, and the clock rests on it.** A batch sheds its
+calls one at a time and re-derives its label each time; `working-line.tsx`
+restarts the clock when the PHASE changes and never when the label alone does.
+The relay calls `tool_activity`/`batch_activity` from exactly three places — the
+`ToolExecutionStartEvent` and `ToolExecutionEndEvent` arms and the empty-batch
+fallback (`subagent.py:1288-1345`) — and the arms that emit the two named
+constants are the ones that do NOT call them, so every progress string that is
+neither of those words was emitted with a tool call still running. `thinking` ->
+`thinking`, `responding` -> `responding`, anything else -> `running`: closed over
+the vocabulary the relay can produce. One ambiguity is tolerated and recorded
+rather than hidden — a model-authored INTENT that is exactly one of the two
+reserved words misfiles the clock's restart, never the label.
+
+**Only a `running` child gets a line, and that is a deliberate departure from
+the TUI.** `_tail_entry` paints its row for a queued child too; here the gate is
+`status === "running"`, because the relay emits nothing before a child's first
+event and "thinking" over a child that has not started is a claim the wire never
+made. The header already carries that child's own word instead (§ 5.2's
+`stateWord`), which is the honest statement of a queued or paused page.
+
+**The label is passed through untouched**, and one divergence is recorded rather
+than repaired: the relay has no display layer, so it hands `tool_activity` the
+tool name as called (`intent.py:310-327`) and a child's label reads `running
+mcp__linear_create_issue` where the parent's reads `running create_issue`. The
+roster row above the reader prints the identical wire string
+(`run-detail-subagents.tsx`), so the child's own surfaces keep saying one thing;
+a second spelling here would be the app answering the same question twice.
+
+The frames are the three answers, in `docs/evidence/chat-run-panel/`:
+`reader-live` (a wire activity), `reader-no-activity` (`thinking`), and
+`reader-settled` / `reader-failed` (no line — the settle withdraws it and the
+outcome block owns the foot).
 
 ---
 

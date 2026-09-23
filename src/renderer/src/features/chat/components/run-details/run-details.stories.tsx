@@ -1426,6 +1426,35 @@ export const ReaderLive: Story = {
 };
 
 /**
+ * A running child that has reported NO activity yet: the relay's own default
+ * word, `thinking`, on the foot (`docs/run-sidebar.md` § 5.8).
+ *
+ * The state between a child's first beat and its first progress string — and the
+ * one the line must still answer for, because "nothing to report yet" is exactly
+ * when a reader looks at the foot and asks what it is doing. It is the pair's
+ * other half: `reader-live` carries a real activity string, this carries the
+ * fallback, and a frame with neither would let a line that only ever renders a
+ * wire string pass as complete. The page holds prose and no tool row, which is
+ * the shape that produces the state — a tool row would have reported
+ * `running ...`.
+ */
+export const ReaderNoActivity: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails({
+				nowMs: fixtures.FIXTURE_NOW_MS,
+				jobs: [fixtures.readerChild({ progress: undefined })],
+				todos: [],
+			})}
+			openPanel={true}
+			readerChildId="job-reader"
+			previewPage={fixtures.childPage()}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
  * The same child settled: the outcome block carries the final text, the settled
  * clock, and no pulse.
  */

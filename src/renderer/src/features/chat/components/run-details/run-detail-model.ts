@@ -1,4 +1,5 @@
 import type { TranscriptRecord } from "../../canonical/transcript-reducer";
+import type { WorkingLineState } from "../../canonical/working-line-model";
 
 /**: the arithmetic behind the header popover.
  *
@@ -358,6 +359,92 @@ export type SubagentRow = {
 	 * second, vaguer vocabulary for the same fact.
 	 */
 	stateWord: string;
+};
+
+/**
+ * The working line a RUNNING child's reader paints at the foot of its page
+ * (`docs/run-sidebar.md` § 5), or `null` when there is nothing to claim.
+ *
+ * WHY THIS IS NOT `deriveWorkingLine`. The parent transcript derives its foot
+ * from the pane's own live records (`canonical/working-line-model.ts`). The
+ * reader's records are the child's DURABLE page, and `transcript-reducer.ts`
+ * maps every durable tool row to `phase: "done"` (`:1152-1160`), so the parent's
+ * derivation over them could only ever answer `thinking` — it could never carry
+ * the child's real activity. That activity is already on the wire: this row's
+ * own `activity` is `latest_details.progress`, fed by the child relay's
+ * `report_progress` into `job.latest_details = {"progress": details}`
+ * (`~/local-operator/harness/jobs.py:1291-1299`), and the reader already
+ * receives the row.
+ *
+ * THE VOCABULARY IS THE PARENT WORKING LINE'S OWN, by the relay's own design
+ * (`harness/subagent.py`'s `_make_relay` docstring, `:1207-1246`): the model's
+ * stated intent while a tool runs, `running N tools` for a batch, `responding`
+ * while prose is actually streaming, `thinking` for a model call in flight with
+ * nothing streamed yet — "a reader watching both surfaces at once should not
+ * have to learn two vocabularies for one state". The constants live in
+ * `local_operator/harness/intent.py`: `ACTIVITY_THINKING`, `ACTIVITY_RESPONDING`,
+ * `tool_activity` and `batch_activity` (`:298-340`), which is also the set the
+ * parent's own derivation reconstructs from its live records.
+ *
+ * THE PHASE IS A CLASSIFICATION, NOT A GUESS, and that is what keeps the clock
+ * honest. `working-line.tsx`'s contract (points 2 and 3) restarts the clock when
+ * the PHASE changes and never when the label alone does, because a batch sheds
+ * its calls one by one and re-derives its label each time. The relay calls
+ * `tool_activity`/`batch_activity` from exactly three places — the
+ * `ToolExecutionStartEvent` and `ToolExecutionEndEvent` arms and the empty-batch
+ * fallback (`subagent.py:1288-1345`) — and the arms that emit the two named
+ * constants are the ones that do NOT call them. So every progress string that is
+ * neither exactly `thinking` nor exactly `responding` was emitted while at least
+ * one tool call was running, and the mapping is closed over the vocabulary the
+ * relay can produce: `thinking` -> `thinking`, `responding` -> `responding`,
+ * anything else -> `running`. One ambiguity is tolerated and recorded rather
+ * than hidden: a model-authored INTENT string that is exactly `thinking` or
+ * `responding` misfiles the clock's restart, never the label.
+ *
+ * WHY `activity || "thinking"`. `thinking` is the relay's own word for a child
+ * with nothing to report yet — `batch_activity`'s empty case answers exactly
+ * that (`intent.py:337-340`) — so this is the wire's default, not a fallback the
+ * renderer invented. The classification below reads the RESOLVED label rather
+ * than the raw field, which is the same statement made once: an absent field and
+ * the word `thinking` are one state, and a phase keyed to the raw field would
+ * put the fallback's own label in the `running` phase and restart the clock on
+ * nothing.
+ *
+ * WHY A QUEUED CHILD PAINTS NOTHING. `status` is the gate, and `running` is the
+ * only value that passes: `activity` is non-null while a child is queued too,
+ * but `thinking` over a child that has not started is a claim the wire never
+ * made — the relay emits nothing before the child's first event. The reader's
+ * header already says `queued`/`paused` in its `stateWord`, which is the honest
+ * statement of that state. The TUI paints its tail row for a queued child
+ * (`subagent_view.py:2864-2868`); departing from it is deliberate, as is the
+ * phase classification above.
+ *
+ * The LABEL is passed through untouched. No intent is re-derived here and no
+ * display-name layer is applied, because the relay has none: it hands
+ * `tool_activity` the tool name as called (`intent.py:310-327`), so a child's
+ * label reads `running mcp__linear_create_issue` where the parent's reads
+ * `running create_issue`. That divergence is recorded in `docs/run-sidebar.md`
+ * § 5 rather than repaired here — the roster row above the reader prints the
+ * identical wire string (`run-detail-subagents.tsx`), so the child's own
+ * surfaces keep saying one thing.
+ */
+export const deriveChildWorkingLine = (
+	row: SubagentRow,
+): WorkingLineState | null => {
+	if (row.status !== "running") return null;
+	// The label the relay would have sent for this state, and the phase the
+	// classification reads: see the docstring on why the fallback is classified
+	// rather than the raw field.
+	const activity = row.activity || "thinking";
+	return {
+		activity,
+		phase:
+			activity === "thinking"
+				? "thinking"
+				: activity === "responding"
+					? "responding"
+					: "running",
+	};
 };
 
 /**
