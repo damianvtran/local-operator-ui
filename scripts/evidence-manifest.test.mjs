@@ -784,6 +784,20 @@ const STAMP_BINDING_NOTES = [
 	"settingsGateRestampNote",
 	"candidateMacArchRestampNote",
 	"notarizeGateRestampNote",
+	/*
+	 * `usageAutoCheckRestampNote` left this list when the remediation below
+	 * re-derived both stamps: its pair is now history, written as bare SHAs in the
+	 * note itself, because leaving it here would have held a fold's values to this
+	 * file as if they were its own — the defect the list exists for.
+	 */
+	/*
+	 * `usageInFlightRemediationNote` left this list when the convergence round
+	 * below re-derived both stamps on top of it: its pair is now history, written
+	 * as bare SHAs in the note itself, because leaving it here would have held a
+	 * superseded pair to this file as if it were its own. `usageInFlightConvergenceNote`
+	 * carries the binding the round it records re-derived.
+	 */
+	"usageInFlightConvergenceNote",
 	"macNativeComponentsRestampNote",
 	"telemetrySwitchRestampNote",
 	// The seventh: `readReceiptRestampNote` states this file's own pair for the
@@ -1055,6 +1069,36 @@ const BRANCH_RECORDS = [
 	 */
 	"providerSetupUxNote",
 	"renameRefreshArgumentListPass",
+	/*
+	 * Grown by the `/usage` pass, whose re-stamp is this branch's newest top-level
+	 * record. It is listed for the reason the list exists: a fold that starts from
+	 * main's manifest would drop it (and with it the note that says which two tree
+	 * hashes this branch's delta moved) without a word, and the re-derived tokens
+	 * the token-binding test holds would then read as a claim about main's trees.
+	 */
+	"usageAutoCheckRestampNote",
+	/*
+	 * Grown by the `/usage` in-flight remediation, this branch's newest top-level
+	 * record and the one that re-derived both stamps and moved four frames. It is
+	 * listed for the reason the list exists: a fold that started from main's
+	 * manifest would drop it, and with it the only statement of which four frames
+	 * moved, why two of them were re-taken, and what the two trees are now.
+	 */
+	"usageInFlightRemediationNote",
+	/*
+	 * Grown by this branch's fold onto `origin/main` = `e48d64b81` (the #475
+	 * telemetry-off merge), which wrote this branch's newest top-level record. It is
+	 * listed for the reason the list exists, and this one is the case the list was
+	 * written for: the fold is the only commit in this lineage that resolves
+	 * `docs/evidence/manifest.json` against a main that has moved, and a resolver who
+	 * took main's copy would drop this record and with it the only statement of which
+	 * two trees the fold moved, which of main's fields the per-field rule refuses, and
+	 * that no frame moved. (Note for a later reader, not an action: the `/usage`
+	 * convergence round's own record, `usageInFlightConvergenceNote`, is absent from
+	 * this list - the list's promise is therefore already one record short of true, and
+	 * this fold reports that rather than widening its own diff to fix it.)
+	 */
+	"foldOntoTelemetryOffNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
