@@ -282,6 +282,14 @@ worth stating rather than discovering:
   ones the older paragraphs quote: `180px` with `24x24` boxes and `168px` against a `24x24`
   shared control is the superseded layout's account, and the control it counts does not
   exist in this tree.
+- **Known limits of the shipped instrument, stated rather than left implicit.** (a) The
+  committed walk's rAF sampler is BLIND to the scroll clamp this set is about: its samples are
+  taken per frame, and a clamp that lands inside one frame is simply not in the series - which
+  is why the arrival's own mutation-callback assertion is the only place the clamp is caught,
+  and why the instrument that fixed the defect could not itself see it (QA round 7 named
+  exactly this gap). (b) D28's state - a pressed row's own acknowledgement register - cannot
+  be photographed here at all, because the committed stub cannot hold `sessions.archive`; this
+  set does not fake it, and the deferral is recorded in the manifest.
 
 **The archived marker costs a ragged title column of 21.5px (design round 1 D4;
 re-derived on THIS set by design round 3).** In `search-on/{dark,light}`
@@ -298,12 +306,17 @@ On `pair-wide/localOperatorDark.png` the hovered row's ground runs from device x
 967** at the row's own centre line — **CSS 228..483.5**, the row box's right edge — against
 **456..983** (CSS 228..491.5) on the previous set's frame of the same state, the difference
 being the `[scrollbar-gutter:stable]` inset of 8 px this head reserves. Half of that edge is
-read through this PR's own hover flyout: the run is the row's ground in its exact token
-(`srgb(48,45,42)`) up to **946**, then the SAME ground one unit per channel darker
-(`srgb(47,44,41)`) to **967** — the flyout's shadow falling over it, not another surface —
-then the panel ground at 968..979, the flyout's border at **980..981** (= the row box's
-right edge `484` + the flyout's `sideOffset 6` = `490` CSS, matching the committed
-`flyout.left = 490`), and its fill (`bg-elevated`) from 982. The corroboration is the
+read through this PR's own hover flyout: the run is the row's ground in its exact token up
+to **946**, then the SAME ground dimmed to **967** - the flyout's shadow falling over it, not
+another surface - then the panel ground at 968..979 (dimmed by the same shadow), the flyout's
+border at **980..981** (= the row box's right edge `484` + the flyout's `sideOffset 6` = `490`
+CSS, matching the committed `flyout.left = 490`), and its fill (`bg-elevated`) from 982. **The
+dim is a RAMP, not a value**: on this frame the ground reads `srgb(48,45,42)` at x 941..946 and
+steps down through `srgb(47,44,41)` to `srgb(46,43,41)` by 967, and the panel ground under the
+same shadow reads `srgb(40,37,33)` at 970 falling to `srgb(40,37,32)` at 979 - so quoting one
+number for "the dimmed run" is a channel off depending on where it is sampled (QA round 7,
+Q-14; the light palette's ground reads `srgb(236,235,231)` with the same ramp). The
+corroboration is the
 frame's own sibling: on `row-hover-body`, which draws no flyout, the same row's ground reads
 UNDIMMED to 967, the panel ground runs 968..999 and there is nothing at 980. **The D18/D23
 property therefore still holds** — the ground reaches the box's right edge on this set too;
