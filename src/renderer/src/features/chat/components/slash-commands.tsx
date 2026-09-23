@@ -738,8 +738,8 @@ export function useSlashCompletion({
 				argumentContext.value,
 				activeModel,
 				argumentContext.value === "default" &&
-				argumentContext.end === inputValue.length,
-			paneHasSession,
+					argumentContext.end === inputValue.length,
+				paneHasSession,
 			);
 			if (action) return [{ kind: "action" as const, row: action }];
 		}
@@ -1054,98 +1054,101 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 					? "A current model is needed to set a default."
 					: "Enter sets the current model as the default for new sessions.",
 				key: activeAction.disabled ? null : "Enter",
-				}
+			}
 		: enterFooter({
-		phase: argument ? "argument" : "command",
-		command: state.argumentCommand,
-		label: activeCommand?.label ?? "",
-		nameThenMessage: state.inline?.nameThenMessage ?? false,
-		runs: pickRuns,
-		/*
-		 * Whether this row's completion OPENS a list, asked of the registry table the
-		 * composer itself reads (`inlineArgumentFor`) rather than of a second list of
-		 * command names. It separates the two `runs: false` command states the copy
-		 * has to word differently (UX round 1, U4): `/model` completes and opens its
-		 * list, `/clear` completes and is run by the NEXT Enter.
-		 */
-		opensList: Boolean(
-			activeCommand && inlineArgumentFor(activeCommand.command.destination),
-		),
-		value: activeArgument?.value ?? "",
-		matched: Boolean(activeRow),
-		/*
-		 * The arming's own two inputs, read off the row's ROUTE (`pickArmsCommand`)
-		 * and off the draft (`state.hoists`) rather than written as a command name:
-		 * this line described "Enter completes the command." for the one row whose
-		 * Enter hoists and stages, and it stayed green because the test that pinned
-		 * it never asked the pick what it does (review F2 / QA Q5).
-		 */
-		arms:
-			activeRow?.kind === "command"
-				? pickArmsCommand(activeRow, state.armedOnlyCommands)
-				: false,
-		// The row's own `consumes_prompt`: the free-text rows reassemble on a pick
-		// instead of running, which is what their two lines have to say (UX U2/U3).
-		takesDraft:
-			activeRow?.kind === "command" ? activeRow.command.consumes_prompt : false,
-		// The armed row's destination, so the promise this line makes about the
-		// next Enter is the note's own sentence rather than a second one (design D4).
-		destination: activeDestination,
-		/*
-		 * The pane clause, folded with the destination exactly as the staged note
-		 * folds it (`message-input.tsx`): the dispatcher refuses a destination that
-		 * needs a conversation, and a MACHINE panel (`/info`, `/usage`, `/analytics`)
-		 * does not — it runs on a sessionless pane. Passing the raw bit here left the
-		 * footer the only surface still promising "this pane needs an open
-		 * conversation" for a command that then runs, which is the disagreement § 3.1
-		 * centralised the predicate to prevent; it was unreachable only because no
-		 * machine panel currently declares a staging route (code review round 1, m3).
-		 * The predicate is the table's, so this line and the dispatcher cannot
-		 * disagree.
-		 */
-		paneHasSession: destinationNeedsSession(activeDestination)
-			? state.paneHasSession
-			: true,
-		hoists: state.hoists,
-		unambiguous: activeArgument
-			? slashRunAllowed({
-					argumentQuery: state.argumentQuery,
-					value: activeArgument.value,
-					total: state.matches.length,
-					destructive: slashDestructive(
-						state.argumentCommand,
-						activeArgument.alert,
-					),
-					chosenByHand: state.chosenByHand,
-					/*
-					 * A FLAG list's row acts on a whole-token vocabulary test rather than on
-					 * the matcher's reach (`slashRunAllowed`'s `selectsFlag`). `undefined`
-					 * for every catalogue list, which is what keeps `/model`, `/theme` and
-					 * the rest byte-identical.
-					 */
-					selectsFlag: FLAG_LIST_SOURCES.has(
-						state.inline?.source as ArgumentSource,
-					)
-						? (query: string) => flagTokenSelects(state.inline?.source, query)
-						: undefined,
-				})
-			: activeCommand
-				? commandChoiceUnambiguous({
-						query: state.commandQuery,
-						label: activeCommand.label,
-						total: state.matches.length,
-						chosenByHand: state.chosenByHand,
-					})
-				: false,
-		/*
-		 * The ambiguous line's two inputs: the word typed and the prefix the
-		 * candidates share. The SAME `sharedCommandPrefix` the router extends to, so
-		 * the copy cannot claim a growth the key will not make (it is a no-op when
-		 * the word is already the prefix, and when the candidates share nothing).
-		 */
-		query: state.commandQuery,
-		prefix: sharedCommandPrefix(commandLabels(state.matches)),
-	});
+				phase: argument ? "argument" : "command",
+				command: state.argumentCommand,
+				label: activeCommand?.label ?? "",
+				nameThenMessage: state.inline?.nameThenMessage ?? false,
+				runs: pickRuns,
+				/*
+				 * Whether this row's completion OPENS a list, asked of the registry table the
+				 * composer itself reads (`inlineArgumentFor`) rather than of a second list of
+				 * command names. It separates the two `runs: false` command states the copy
+				 * has to word differently (UX round 1, U4): `/model` completes and opens its
+				 * list, `/clear` completes and is run by the NEXT Enter.
+				 */
+				opensList: Boolean(
+					activeCommand && inlineArgumentFor(activeCommand.command.destination),
+				),
+				value: activeArgument?.value ?? "",
+				matched: Boolean(activeRow),
+				/*
+				 * The arming's own two inputs, read off the row's ROUTE (`pickArmsCommand`)
+				 * and off the draft (`state.hoists`) rather than written as a command name:
+				 * this line described "Enter completes the command." for the one row whose
+				 * Enter hoists and stages, and it stayed green because the test that pinned
+				 * it never asked the pick what it does (review F2 / QA Q5).
+				 */
+				arms:
+					activeRow?.kind === "command"
+						? pickArmsCommand(activeRow, state.armedOnlyCommands)
+						: false,
+				// The row's own `consumes_prompt`: the free-text rows reassemble on a pick
+				// instead of running, which is what their two lines have to say (UX U2/U3).
+				takesDraft:
+					activeRow?.kind === "command"
+						? activeRow.command.consumes_prompt
+						: false,
+				// The armed row's destination, so the promise this line makes about the
+				// next Enter is the note's own sentence rather than a second one (design D4).
+				destination: activeDestination,
+				/*
+				 * The pane clause, folded with the destination exactly as the staged note
+				 * folds it (`message-input.tsx`): the dispatcher refuses a destination that
+				 * needs a conversation, and a MACHINE panel (`/info`, `/usage`, `/analytics`)
+				 * does not — it runs on a sessionless pane. Passing the raw bit here left the
+				 * footer the only surface still promising "this pane needs an open
+				 * conversation" for a command that then runs, which is the disagreement § 3.1
+				 * centralised the predicate to prevent; it was unreachable only because no
+				 * machine panel currently declares a staging route (code review round 1, m3).
+				 * The predicate is the table's, so this line and the dispatcher cannot
+				 * disagree.
+				 */
+				paneHasSession: destinationNeedsSession(activeDestination)
+					? state.paneHasSession
+					: true,
+				hoists: state.hoists,
+				unambiguous: activeArgument
+					? slashRunAllowed({
+							argumentQuery: state.argumentQuery,
+							value: activeArgument.value,
+							total: state.matches.length,
+							destructive: slashDestructive(
+								state.argumentCommand,
+								activeArgument.alert,
+							),
+							chosenByHand: state.chosenByHand,
+							/*
+							 * A FLAG list's row acts on a whole-token vocabulary test rather than on
+							 * the matcher's reach (`slashRunAllowed`'s `selectsFlag`). `undefined`
+							 * for every catalogue list, which is what keeps `/model`, `/theme` and
+							 * the rest byte-identical.
+							 */
+							selectsFlag: FLAG_LIST_SOURCES.has(
+								state.inline?.source as ArgumentSource,
+							)
+								? (query: string) =>
+										flagTokenSelects(state.inline?.source, query)
+								: undefined,
+						})
+					: activeCommand
+						? commandChoiceUnambiguous({
+								query: state.commandQuery,
+								label: activeCommand.label,
+								total: state.matches.length,
+								chosenByHand: state.chosenByHand,
+							})
+						: false,
+				/*
+				 * The ambiguous line's two inputs: the word typed and the prefix the
+				 * candidates share. The SAME `sharedCommandPrefix` the router extends to, so
+				 * the copy cannot claim a growth the key will not make (it is a no-op when
+				 * the word is already the prefix, and when the candidates share nothing).
+				 */
+				query: state.commandQuery,
+				prefix: sharedCommandPrefix(commandLabels(state.matches)),
+			});
 	const click = clickFooter({
 		phase: argument ? "argument" : "command",
 		command: state.argumentCommand,
@@ -1222,7 +1225,9 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 								// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox option cannot be a native <option>.
 								role="option"
 								aria-selected={index === state.active}
-								aria-disabled={row.kind === "action" ? row.row.disabled : undefined}
+								aria-disabled={
+									row.kind === "action" ? row.row.disabled : undefined
+								}
 								aria-current={
 									row.kind === "argument" && row.row.current
 										? "true"
@@ -1258,13 +1263,13 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 									// guess the keyboard's ambiguity gate protects against — so a
 									// pointer pick of a runnable row runs it (`editor.py:8040`).
 									if (row.kind === "action") {
-									if (!row.row.disabled) {
-									if (onActionPick) onActionPick(row.row);
-										else onPick(row, { run: true });
+										if (!row.row.disabled) {
+											if (onActionPick) onActionPick(row.row);
+											else onPick(row, { run: true });
+										}
+										return;
 									}
-									return;
-								}
-								onPick(row, { run: true });
+									onPick(row, { run: true });
 								}}
 								onMouseEnter={() => state.setActiveHover(index)}
 							>
@@ -1340,7 +1345,9 @@ function commandRowContent(row: Extract<CompletionRow, { kind: "command" }>) {
 function actionRowContent(row: ArgumentActionRow) {
 	return (
 		<>
-			<span className={cn("shrink-0 font-medium", row.disabled && "text-ink-muted")}>
+			<span
+				className={cn("shrink-0 font-medium", row.disabled && "text-ink-muted")}
+			>
 				{row.name}
 			</span>
 			<span className="min-w-0 flex-1 truncate text-ink-muted">

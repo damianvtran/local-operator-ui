@@ -199,6 +199,7 @@ import { CredentialChipLayer } from "./credential-chip-layer";
 import { CredentialOverlay, composerTextBox } from "./credential-overlay";
 
 import { useAtResolution } from "../hooks/use-at-resolution";
+import { writeModelDefaultSettings } from "../pickers/model-default-settings";
 /*
  * The `@` mention layer: the tokenizer, the list over the field, and the chip
  * layer that draws behind the field's own glyphs. Three modules rather than one
@@ -229,7 +230,6 @@ import {
 	handleSlashKeyDown,
 	useSlashCompletion,
 } from "./slash-commands";
-import { writeModelDefaultSettings } from "../pickers/model-default-settings";
 import { completionFor } from "./slash-completion";
 /*
  * `extensionFor` comes from the CONTRACT module rather than from the popup

@@ -71,11 +71,11 @@ import {
 	specUnresolved,
 } from "../session-status/session-model";
 import { forkBudgetRefusal } from "../utils/message-budget";
+import { catalogueListing } from "./model-catalogue-listing";
 import {
 	effortCommandSucceeded,
 	writeModelDefaultSettings,
 } from "./model-default-settings";
-import { catalogueListing } from "./model-catalogue-listing";
 import {
 	PickerCheck,
 	PickerField,
