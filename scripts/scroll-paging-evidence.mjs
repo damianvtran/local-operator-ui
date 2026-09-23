@@ -1712,9 +1712,12 @@ if (MODE === "review") {
 	 * `anchorDrift` computes zero and it does not write on this path AT ALL - which
 	 * is why the setup shows no writes either. A write probe therefore cannot, by
 	 * itself, separate "the hook stood down" from "the browser never needed it".
-	 * The per-frame held-row offset is what answers THAT half: it is recorded
-	 * across the landing on both arms, and the two arms are compared on the same
-	 * row over the same growth.
+	 * The per-frame held-row offset was recorded across the landing on both arms to
+	 * answer THAT half, and the measurement refused it (review round 4, R4-1): both
+	 * arms read the same 0.00 px, because `overflow-anchor` absorbs the landing on
+	 * both, so the offset does NOT separate them either. NO browser-arm signal
+	 * separates these two arms on this surface; the separation is only reachable
+	 * where the hook actually corrects, which is what the HOOK test drives.
 	 */
 	if (laterInputArm.programmaticScrollTopWrites.length !== 0) {
 		throw new Error(
@@ -1755,16 +1758,21 @@ if (MODE === "review") {
 		},
 		/*
 		 * What separates the two arms, stated in the artefact rather than left for a
-		 * reader to infer from two identical zeros (QA round 2, Q-4).
+		 * reader to infer from two identical zeros (QA round 2, Q-4; corrected in
+		 * review round 4, R4-1).
 		 *
 		 * On THIS scroller the durable page mounts below the held row and the
 		 * browser's own `overflow-anchor` (column-reverse, bottom origin) pins the row
 		 * in place, so the hook's `anchorDrift` computes zero on both arms and NEITHER
-		 * writes `scrollTop`. The write count therefore cannot separate them here, and
-		 * a control that records the same zero as the treatment is not a control on
-		 * this surface. Making it discriminate would need a row shape where
-		 * `overflow-anchor` does not absorb the landing (a height-changing row ABOVE
-		 * the anchor); constructing one is a new capture, not a re-read.
+		 * writes `scrollTop`. Both arms therefore record the same 0 write count AND the
+		 * same 0.00 px post-input held-row delta, so NO browser-arm signal separates them
+		 * here: `browserArmsSeparateOn` is null for exactly that reason. An earlier
+		 * revision of this block named the per-frame held-row offset as the separating
+		 * signal, which the measurements do not support - the two arms read the same
+		 * zero - so it is not claimed. A control that records the same zero as the
+		 * treatment is not a control on this surface; making it discriminate would need a
+		 * row shape where `overflow-anchor` does not absorb the landing (a height-changing
+		 * row ABOVE the anchor), which is a new capture, not a re-read.
 		 *
 		 * The discriminating proof of the correction path is the HOOK test, which
 		 * drives the production `useScrollPaging` against a JSDOM scroller whose
@@ -1774,8 +1782,9 @@ if (MODE === "review") {
 		 */
 		discrimination: {
 			surface: "the durable-page landing absorbs itself via overflow-anchor",
-			browserArmsSeparateOn:
-				"per-frame held-row offset, NOT programmatic write count",
+			browserArmsSeparateOn: null,
+			browserArmsDoNotSeparateReason:
+				"both arms record 0 programmatic scrollTop writes and the same 0.00 px post-input held-row delta",
 			programmaticWriteCountSeparatesArms: false,
 			discriminatingProof: "scripts/transcript-paging-hook.test.mjs",
 		},
@@ -1924,12 +1933,14 @@ if (MODE === "switch") {
 	 * So each session's whole durable row set is read from `sessions.history` over
 	 * the page's own same-origin transport, paged to the end. Those ids are what
 	 * the conversation CONTAINS; a frame is then classified by which set its
-	 * first painted row belongs to. `classifier` in the JSON reports the sets'
-	 * sizes, their disjointness and the scrolled top row id with its membership in
-	 * A's set; the full id sets are not published, so a reader can check those
-	 * three facts and the per-frame timeline, but cannot re-derive the
-	 * classification from the artifact alone. The README states exactly that much
-	 * rather than calling the reading auditable.
+	 * first painted row belongs to. `classifier` in the JSON reports the two set
+	 * sizes and the scrolled top row id with its membership in A's set; the full id
+	 * sets are not published, so a reader can check those facts and the per-frame
+	 * timeline, but cannot re-derive the classification from the artifact alone.
+	 * Disjointness is not a reported FIXTURE fact but a run-time GATE: the run
+	 * refuses to capture unless the two sets are disjoint (a frame's first row could
+	 * otherwise identify nothing). The README states exactly that much rather than
+	 * calling the reading auditable.
 	 */
 	async function knownRowIds(sessionId) {
 		return JSON.parse(

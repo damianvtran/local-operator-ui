@@ -3625,7 +3625,8 @@
       },
       "discrimination": {
         "surface": "the durable-page landing absorbs itself via overflow-anchor",
-        "browserArmsSeparateOn": "per-frame held-row offset, NOT programmatic write count",
+        "browserArmsSeparateOn": null,
+        "browserArmsDoNotSeparateReason": "both arms record 0 programmatic scrollTop writes and the same 0.00 px post-input held-row delta",
         "programmaticWriteCountSeparatesArms": false,
         "discriminatingProof": "scripts/transcript-paging-hook.test.mjs"
       }

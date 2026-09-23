@@ -834,7 +834,8 @@ surface does not, and the README says so rather than reading a zero as proof.
 **The layout-only arm is not a discriminating control on this surface (QA round
 2, Q-4).** The two arms record the SAME `0` programmatic writes and the same
 `0.00` post-input delta, so neither the write count nor the per-frame held-row
-delta separates them, and this surface's null separates nothing either. (The two
+delta separates them, and `browserArmsSeparateOn` is `null` on this surface for
+exactly that reason. (The two
 arms' settled offsets differ — `-172.31` against `-90.5` — but only because the
 reader's own notch stepped the later-input arm's row; that is the reader's
 motion, not a correction the app made, so it is not a discriminating reading.)
