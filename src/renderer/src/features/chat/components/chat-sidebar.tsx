@@ -318,6 +318,14 @@ const ROW_CONTROLS_SHARED_SHOWN = "@max-[263px]/chatsidebar:flex";
  *      role at the same 1px and the same radius one line below it, and both
  *      lines measured the same ink in one frame (`#7c809f` against `#7c80a1`)
  *      — so the current row read as a filled search field. Worst on `iceberg`.
+ *      THE FIELD HAS SINCE BECOME A WELL (`bg-sunken`; top-bar redesign), so
+ *      that one frame's identical ink is no longer the whole of this argument —
+ *      the two surfaces no longer share a fill. What they still share is the
+ *      pair the argument actually rests on: the same 1px `border-control` as the
+ *      control's sole boundary, at the same 6px radius, one line above the list
+ *      — so a row edge would still read as a second input beside the first. The
+ *      fills now differ, in the direction that helps: the field is recessed to
+ *      `sunken`, and the row's own mark is a fill on `surface`.
  *   2. `border-control` is `docs/branding.md` § 2's *sole visual boundary of an
  *      input, select, checkbox or outlined button*. A nav row is none of those,
  *      and no other role in the system carries a 3:1 structural floor, so a
@@ -4108,12 +4116,27 @@ export function ChatSidebar({
 			{/*
 			 * THE HEADING AND THE FIELD ARE ONE BLOCK (top-bar redesign, 2026-09-23).
 			 * The label had no vertical inset of its own, so it sat against the panel's
-			 * corner with the field 8px below it — a label floating above a box rather
-			 * than the header OF one, which is the dated read the report names. It takes
-			 * the field's own 8px inset (`my-2`). The two insets do not collapse in this
-			 * flex column, so the label sits 8px off the panel's edge and 16px above the
-			 * field: the ramp's between-components tier, because they are two things in
-			 * a header block rather than one control's internals.
+			 * corner - a label floating above a box rather than the header OF one, which
+			 * is the dated read the report names - and it now takes the field's own 8px
+			 * inset (`my-2`). THE PANEL'S OWN `p-2` SITS OUTSIDE THAT, so the label's box
+			 * is 16px from the panel's edge, not 8: two numbers with two owners, and an
+			 * entry that records this should name both.
+			 *
+			 * ONE INSET BETWEEN THE LABEL AND ITS FIELD, NOT TWO (design round 1, D5).
+			 * With the inset on both sides the gap between the label's baseline and the
+			 * field's top edge measured 28px - wider than the ~20px from the field down to
+			 * the `Agents` label below it - so the heading read as belonging to the panel's
+			 * corner rather than to the field it names. The FIELD's own top margin is the
+			 * one that goes: the wrapper keeps its `mb-2` bottom, the heading keeps its
+			 * `my-2`, and what is left between them is the single 8px the ramp owes between
+			 * two things in one block. The perceived gap is larger than that margin because
+			 * the label's 10px of ink is centred (`items-center`) in a 32px line box, which
+			 * leaves 11px of it below the baseline: measured on the rendered panel, the
+			 * heading's baseline now sits 19.75px above the field's top edge, against 28px
+			 * with both insets in place - and against the ~20px from the field down to the
+			 * `Agents` label, which is the comparison that matters: the label is one step
+			 * from its field rather than two, and no longer further from it than the field
+			 * is from the list it filters.
 			 *
 			 * The ink is NAMED rather than inherited. The panel's own `text-ink` reaches
 			 * this row today, so this changes nothing on screen — it states the role so
@@ -4155,15 +4178,28 @@ export function ChatSidebar({
 			 * the fill is a TONE step and the border remains the control's only
 			 * boundary (branding.md § 2, "the two lines").
 			 *
-			 * That is also why hover moves the FILL and not the edge: the pointer's step is
-			 * `hover:bg-row-hover`, the panel's OWN hover rung rather than a ground — the
-			 * same step every row and every control in this panel takes, so the field
-			 * stops being the one thing here that answers the pointer in a different
-			 * language. It is also the measured one: `rowHover` carries its step off
-			 * `surface` (at least 1.5 L*, `ΔE00` 2.0, and a cast floor) where a ground is
-			 * a free choice, and `ink`/`ink-muted`/`ink-dim` are asserted on it. Nothing
-			 * lifts, scales or translates (§ 5); the transition is on the colour
-			 * properties only — `transition-colors`.
+			 * WHAT THE POINTER MOVES: THE INK INSIDE THE WELL, NOT THE WELL. It was
+			 * `hover:bg-row-hover` - the step every row in this panel takes - and that is
+			 * the one step this control cannot use, because `rowHover` carries its offset
+			 * off `surface`: measured in the dark brand palette it is LIGHTER THAN THE
+			 * PANEL'S OWN GROUND (`sunken` L* 9.92 -> `rowHover` L* 18.65, against
+			 * `surface` 15.87), so the pointer made the well rise above the surface it is
+			 * cut into. The one step in the system that is both lighter than `sunken` and
+			 * still below `surface` is `canvas`, a GROUND - and a ground cannot be a state
+			 * on this panel: `chat-sidebar-selection.test.mjs` forbids it across the
+			 * sidebar's own surfaces, for the reason that list gives (`elevated` is also
+			 * every menu, popover, tooltip and dialog in the app), and the guard cannot
+			 * suspend that for one control without going blind to the rows it exists for.
+			 * So the fill is `sunken` at rest AND under the pointer, and the pointer
+			 * brightens the well's own ink instead: the leading glyph and the placeholder
+			 * move one step, `ink-dim` -> `ink-muted`, a role step the INKS loop already
+			 * asserts on this fill (5.0 and 5.5 at the two weights). The trade, stated
+			 * rather than hidden: the field answers the pointer in the ink's register while
+			 * the rows beside it answer in the fill's, so it is the one control here that
+			 * does. The EDGE is untouched in both states - the control's only boundary must
+			 * not appear or disappear under the mouse, which is also why the register moved
+			 * rather than the edge. Nothing lifts, scales or translates (§ 5); the
+			 * transition is on the colour properties only — `transition-colors`.
 			 *
 			 * `rounded-sm` is the CONTROL radius — 6px in this theme's own scale, where
 			 * `sm`/`md`/`lg` resolve to 6/10/14 (`styles/index.css`), and what
@@ -4188,10 +4224,10 @@ export function ChatSidebar({
 			 * `placeholder:text-ink-dim` is the placeholder's register; the query itself
 			 * is `text-ink`, because text the user typed is a reading, not a caption.
 			 */}
-			<div className={cn("relative my-2")}>
+			<div className={cn("group relative mb-2")}>
 				<Search
 					className={cn(
-						"pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-ink-dim",
+						"pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-ink-dim transition-colors duration-fast ease-out-quart group-hover:text-ink-muted",
 					)}
 					aria-hidden="true"
 				/>
@@ -4200,7 +4236,7 @@ export function ChatSidebar({
 					aria-label="Search chats and agents"
 					placeholder="Search chats and agents"
 					className={cn(
-						"h-8 w-full rounded-sm border border-control bg-sunken pr-9 pl-7 text-body-sm text-ink transition-colors duration-fast ease-out-quart placeholder:text-ink-dim hover:bg-row-hover",
+						"h-8 w-full rounded-sm border border-control bg-sunken pr-9 pl-7 text-body-sm text-ink transition-colors duration-fast ease-out-quart placeholder:text-ink-dim group-hover:placeholder:text-ink-muted",
 					)}
 					value={query}
 					onChange={(event) => setQuery(event.target.value)}
