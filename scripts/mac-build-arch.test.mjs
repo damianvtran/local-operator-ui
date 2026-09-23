@@ -43,7 +43,14 @@
  *  4. promoting a Release stays unreachable without the macOS artifact gate,
  *     and that gate is the one carrying the bytecode probe - the invariant
  *     AGENTS.md states as "the artifact gate is the safety net that makes a
- *     release from a tag defensible".
+ *     release from a tag defensible";
+ *  5. every step that notarises CAN notarise, because both halves of it skip
+ *     QUIETLY when `NOTARIZE`/`APPLE_*` are absent: one log line and exit 0, which
+ *     is a pass as far as `scripts/require-report.sh` and the artifact checks can
+ *     tell - and the thing that shipped in the run where a step split moved the
+ *     disk-image notarisation out of the step that held its env (both `dmg-spctl`
+ *     rows answered `rejected | source=Unnotarized Developer ID` on disk images
+ *     that were otherwise perfectly signed).
  *
  * HOW A PASS IS READ, and why it is read this way. A `pnpm <script>` step is not
  * the command it runs: `pnpm dist:all` is `pnpm run build && electron-builder
@@ -159,6 +166,13 @@ const ARCH_FLAG = /--(arm64|x64|universal)\b/g;
 /** The Electron dist a pass fetches; `g`-flagged for `matchAll`. */
 const FETCHED_ARCH = /npm_config_arch=([A-Za-z0-9_]+)/g;
 const VERIFY_ARTIFACTS = /verify-macos-artifacts/;
+/** The disk-image notarisation, as the script a step invokes and as the file it runs. */
+const NOTARIZE_SCRIPT = "notarize-dmg";
+const NOTARIZE_ARTIFACTS = /notarize-artifacts\.mjs/;
+/** The skip gate inside that script, asserted so this file's premise is checked. */
+const NOTARIZE_SKIP_GATE = /NOTARIZE !== "true"/;
+/** The credentials notarisation needs, all three, or it skips. */
+const APPLE_CREDENTIALS = ["APPLE_ID", "APPLE_ID_PASSWORD", "APPLE_TEAM_ID"];
 const REQUIRE_REPORT = /require-report\.sh/;
 const BYTECODE_CHECK_ID = /id: "app-bytecode-loadable"/;
 const FEED_SAVE = /merge-update-feed\.mjs[^\n]*--save/;
@@ -335,12 +349,50 @@ const macPasses = (name) =>
 		.filter((entry) => entry.invocations.length > 0);
 
 /** The steps of a workflow that run `merge-update-feed.mjs` in the given mode. */
-const feedSteps = (name, pattern) =>
+const feedSteps = (name, pattern) => stepsRunning(name, pattern);
+
+/**
+ * The steps of a workflow that invoke a package.json script, directly or as the
+ * command a wrapper runs.
+ *
+ * The WORDS are searched rather than the resolved segments, because these
+ * workflows run their gates as `bash scripts/require-report.sh "<label>" pnpm
+ * --silent <script>`: the segment's first word is `bash`, so the `pnpm <script>`
+ * inside it is not a segment of its own and `executedSegments` has nothing to
+ * expand. The script's body is read back from package.json by the caller, so a
+ * name that stopped pointing at the script this test is about fails there.
+ */
+const stepsInvoking = (name, script) =>
 	runSteps(name).filter(({ step }) =>
+		executedSegments(step.run).some(({ words }) => words.includes(script)),
+	);
+
+/** The steps of a workflow whose executed commands match `pattern`. */
+function stepsRunning(name, pattern) {
+	return runSteps(name).filter(({ step }) =>
 		executedSegments(step.run).some(({ words }) =>
 			pattern.test(words.join(" ")),
 		),
 	);
+}
+
+/**
+ * A step's EFFECTIVE environment, in GitHub's own precedence: workflow, then job,
+ * then step, each overriding the last.
+ *
+ * Read rather than assumed, because that is the whole defect this stands over:
+ * `publish.yml` puts the notarisation flag at the WORKFLOW and this repository's
+ * candidate workflow puts it at the JOB, so a check that looked only at the step
+ * would red on both of them.
+ */
+function effectiveEnv(name, job, step) {
+	const workflow = WORKFLOWS.get(name);
+	return {
+		...workflow.env,
+		...workflow.jobs[job].env,
+		...step.env,
+	};
+}
 
 /** How a pass is named in a failure: the workflow, the job, the step, and the command it reached. */
 const where = (workflow, entry, invocation) =>
@@ -432,6 +484,58 @@ for (const workflow of SHIPPING_WORKFLOWS) {
 			[...named].sort(),
 			["arm64", "x64"],
 			`${workflow} names macOS architectures ${JSON.stringify([...named].sort())}; the release ships ${JSON.stringify(["arm64", "x64"])}.`,
+		);
+	});
+
+	test(`${workflow}: the steps that notarise carry the flag and the credentials that make it happen`, () => {
+		// Both halves of notarisation - `scripts/notarize.js` on `afterSign` for each
+		// app bundle, `scripts/notarize-artifacts.mjs` for each disk image - gate on
+		// `NOTARIZE === "true"` AND all three `APPLE_*` values, and both SKIP QUIETLY
+		// without them: one log line, exit 0. A skip therefore satisfies
+		// `scripts/require-report.sh` (whose check is emptiness, not meaning) and the
+		// artifact checks, and the release ships a disk image macOS refuses - measured
+		// on audit run 35846109424, where the two `dmg-spctl` rows answered `rejected |
+		// source=Unnotarized Developer ID` while every app-level row passed.
+		const notarising = stepsInvoking(workflow, NOTARIZE_SCRIPT);
+		assert.ok(
+			notarising.length > 0,
+			`${workflow} no longer runs the disk-image notarisation, so this assertion has nothing to be about. If that is intended, say so here: an unnotarised disk image is refused by Gatekeeper on a user's machine.`,
+		);
+		// That `notarize-dmg` is still the disk-image notarisation, read from
+		// package.json rather than assumed from its name.
+		assert.match(
+			String(PACKAGE_SCRIPTS[NOTARIZE_SCRIPT]),
+			NOTARIZE_ARTIFACTS,
+			`pnpm ${NOTARIZE_SCRIPT} no longer runs scripts/notarize-artifacts.mjs, so the step this test requires credentials for is no longer the disk-image notarisation.`,
+		);
+		// The packaging passes are in the list because the APP BUNDLE inside each
+		// image is notarised during its own pass (`afterSign`), and a disk image can
+		// only be stapled over an app that was notarised.
+		for (const entry of [...notarising, ...passes]) {
+			const env = effectiveEnv(workflow, entry.job, entry.step);
+			const label = `${workflow}:${entry.job}:${entry.name}`;
+			assert.ok(
+				String(env.NOTARIZE).toLowerCase() === "true",
+				`${label} has no NOTARIZE=true in its effective environment (step over job over workflow). Both notarisation paths skip quietly without it - one log line, exit 0 - so the gate it feeds passes on an unnotarised artifact: audit run 35846109424 printed 'Skipping disk image notarization: NOTARIZE not set to true' and then shipped both images unnotarised.`,
+			);
+			for (const credential of APPLE_CREDENTIALS) {
+				assert.ok(
+					typeof env[credential] === "string" && env[credential].length > 0,
+					`${label} has no ${credential} in its effective environment. Notarisation needs all three credentials and skips quietly without them, so the disk image ships unnotarised and Gatekeeper refuses it.`,
+				);
+			}
+		}
+		// The premise, read from the script rather than assumed: if the skip gate is
+		// refactored away, this test stops being about the real one and should say so
+		// rather than keep passing on a rule nobody enforces any more.
+		const notarizeArtifacts = readFileSync(
+			new URL("../scripts/notarize-artifacts.mjs", import.meta.url),
+			"utf8",
+		);
+		assert.match(
+			notarizeArtifacts,
+			NOTARIZE_SKIP_GATE,
+			'scripts/notarize-artifacts.mjs no longer skips on `NOTARIZE !== "true"`, so the flag this test requires may no longer be the one that decides whether a disk image is notarised - re-read that script and this assertion together.',
 		);
 	});
 

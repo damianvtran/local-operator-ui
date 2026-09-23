@@ -274,6 +274,32 @@ jobs:
     # 30-50 min, and the bound exists because a codesign hang once sat for ~5h50m
     # (run 33948569170) instead of failing. A wedged step must fail bounded.
     timeout-minutes: 75
+    # THE NOTARISATION ENVELOPE IS ONE BLOCK, HELD AT THE JOB.
+    #
+    # Both halves of this job's notarisation gate on `NOTARIZE === "true"` AND all
+    # three `APPLE_*` values, and BOTH SKIP QUIETLY when any is absent: each logs
+    # one line ('Skipping notarization: NOTARIZE not set to true') and returns
+    # success - `scripts/notarize.js` for each app bundle (`afterSign`), and
+    # `scripts/notarize-artifacts.mjs` for each disk image. A skip therefore
+    # satisfies `scripts/require-report.sh`, whose emptiness check is the only
+    # thing standing over that exit status.
+    #
+    # That is exactly how the two-pass split lost the disk images: the single build
+    # step used to carry this env and to run the notarisation gates INSIDE itself,
+    # so splitting the gates into their own step dropped the flag with them. The
+    # run printed `Skipping disk image notarization: NOTARIZE not set to true`, every
+    # artifact check passed on the apps, and `dmg-spctl` then refused both images
+    # with `rejected | source=Unnotarized Developer ID` (audit run 35846109424).
+    #
+    # Job-level rather than step-level so a step added here cannot lose it by
+    # omission, and deliberately NOT workflow-level like `publish.yml`'s: this
+    # workflow's `exact-update` job exists to run on a fresh VM with no Apple
+    # credentials at all, and a workflow-wide value would hand it the flag.
+    env:
+      NOTARIZE: 'true'
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
     # THE ENVIRONMENT NO LONGER GATES ON A HUMAN, and that is deliberate: the
     # operator asked for releases that need no human input, and a required reviewer
     # is exactly that input. What remains is the environment's **branch policy**
@@ -390,11 +416,7 @@ jobs:
       # otherwise silently reuse pass one's runtime and reintroduce the bug.
       - name: Build signed candidate (arm64)
         env:
-          NOTARIZE: 'true'
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           # The four variables the vite plugin requires, taken from the same
           # repository secrets every release build uses. They are not decoration:
           # `scripts/vite-plugins/replace-backend-config.ts` throws
@@ -449,11 +471,7 @@ jobs:
 
       - name: Build signed candidate (x64)
         env:
-          NOTARIZE: 'true'
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           # Same four bindings as the arm64 pass above, and the same names: a
           # step that builds without them dies in `loadConfig` before compiling
           # anything, and `scripts/check-build-env.mjs` fails the release
@@ -494,9 +512,22 @@ jobs:
       # release: it walks every app bundle and every image BOTH passes produced,
       # and `app-bytecode-loadable` is the one check that asks a bundle's own
       # Electron to load the bytecode inside it.
+      # `notarize-dmg` is FIRST here and it is the step that has to prove it runs:
+      # the flag it gates on now comes from this job's own `env` block, which is
+      # the fix for the run where this step printed `Skipping disk image
+      # notarization: NOTARIZE not set to true` and both `dmg-spctl` checks then
+      # refused the images. `scripts/mac-build-arch.test.mjs` asserts this step's
+      # EFFECTIVE env carries the flag and all three credentials, so the quiet
+      # skip cannot come back one step at a time.
+      - name: Notarize and staple the disk images
+        run: bash scripts/require-report.sh "Disk image notarization" pnpm --silent notarize-dmg
+
+      # `verify-macos-artifacts` is the gate this workflow failed on for every
+      # release before the per-architecture split: it walks every app bundle and
+      # every image BOTH passes produced, and `app-bytecode-loadable` is the one
+      # check that asks a bundle's own Electron to load the bytecode inside it.
       - name: Verify the signed candidate (both architectures)
         run: |
-          bash scripts/require-report.sh "Disk image notarization" pnpm --silent notarize-dmg
           bash scripts/require-report.sh "macOS artifact verification" pnpm --silent verify-macos-artifacts
           bash scripts/require-report.sh "Packaged closure check" node scripts/check-packaged-closure.mjs --dist dist
           git diff --exit-code package.json
