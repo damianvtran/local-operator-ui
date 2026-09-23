@@ -354,16 +354,18 @@ pnpm dev:headless
 # accept the profile the dev app already uses.
 
 # A harness that already spawns Electron itself: the switch rides the environment.
-LOCAL_OPERATOR_UI_WINDOW_MODE=headless npx electron . --remote-debugging-port=9451
+LOCAL_OPERATOR_UI_WINDOW_MODE=headless LOCAL_OPERATOR_UI_TELEMETRY=off npx electron . --remote-debugging-port=9451
 
 # Omit the mode and it is still headless: the scratch profile says what this is.
-npx electron . --user-data-dir="$SCRATCH/profile" --remote-debugging-port=9451
+# The telemetry switch does not ride along with that assumption - name it, or the
+# run reports to the product's own analytics as a user and a session replay.
+LOCAL_OPERATOR_UI_TELEMETRY=off npx electron . --user-data-dir="$SCRATCH/profile" --remote-debugging-port=9451
 
 # And a launch that passes NOTHING is a run too, when it is not a packaged app
 # and has no terminal on either stream. That is a rig's shape rather than a
 # person's — a person typing the same command in a terminal still gets a window
 # — and it is the shape that was still stealing focus, so name the mode anyway.
-npx electron ./out/main/index.js --window-mode=headless --window-size=1380x900
+LOCAL_OPERATOR_UI_TELEMETRY=off npx electron ./out/main/index.js --window-mode=headless --window-size=1380x900
 ```
 
 **WHAT A SCRATCH PROFILE DOES NOT COVER, and an unpackaged run on a FRESH machine
@@ -385,6 +387,13 @@ the operator's real roots: run it where `managed-python/dev/` already has a
 selection, or drive the provisioning directly against an isolated
 `LOCAL_OPERATOR_SUPPORT_PATH`/`LOCAL_OPERATOR_VENV_PATH` as the install-script CI
 job does, rather than booting the app and hoping.
+
+`pnpm app:headless` and `pnpm dev:headless` carry both kill switches themselves
+(the notification one and the telemetry one — see *An agent-driven run does not
+banner either* and *An agent-driven run sends no telemetry either* below); a raw
+`npx electron` line names them, because nothing else on that path would and the
+environment variable is the only channel a launch that bypasses the npm scripts
+has.
 
 `npx local-operator-ui` spawns Electron with this process's environment, so the
 same switch covers a check of the published launcher — **from the release that
@@ -579,7 +588,10 @@ kill-switch binding: the tree-ownership rule above - `detached`, the group signa
 the profile reap - is asserted by no test, so it is enforced by review (R4). The
 deliberate exceptions
 (`notification-evidence.mjs`, interactive `pnpm dev` / `pnpm start`) are named in
-that module and in the table.
+that module and in the table. Telemetry is the same shape one project over
+(`scripts/telemetry-off.mjs`, pinned by a SIBLING scan rather than by another
+column here — the two disagree on real rows, see *An agent-driven run sends no
+telemetry either* below).
 
 **The switch is about PRESENCE, not about the value.** `notify.py` reads it with
 `os.environ.get()` and silences on any non-empty string, so `0`, `1` and `no` all
@@ -648,6 +660,129 @@ the hand-run hop command left two headless trees of eight processes each with
 roots at `ppid 1`, and the app's single-instance lock - PER `--user-data-dir`
 rather than machine-wide, as `renderer-driver.mjs` measures - then turned the
 following launch in that same tree into "Another instance is already running".
+
+### An agent-driven run sends no telemetry either
+
+The app ships a live PostHog project key by DEFAULT (`VITE_PUBLIC_POSTHOG_KEY`'s
+schema default in both `src/main/backend/config.ts` and the renderer's
+`env-schema.ts` is the real `phc_…` key), and it uses it in two processes: main
+constructs a `posthog-node` client at module load and the renderer mounts
+`posthog-js`'s provider with `capture_exceptions`. Every test, harness, QA and CI
+run therefore arrived in the "Local Operator Usage" project as a USER, with the
+renderer's session recorder making it a replay to watch as well — which is what
+inflated its MAU and filled its replay list with runs nobody made.
+
+`LOCAL_OPERATOR_UI_TELEMETRY` is the switch, and it is resolved like the window
+mode and the driver's opt-in: from `launchEnv`, the environment the process was
+LAUNCHED with, never from `process.env` after `backend/config.ts` folds a
+working-directory `.env` over it. A file in a checkout can therefore neither
+silence a real user's analytics nor speak for a rig. `on`/`1`/`true`/`yes` keep
+it; `off`/`0`/`false`/`no` switch it off; NOTHING SET keeps it on, because that is
+the shipped app on a user's own machine. A value that is none of those is refused
+loudly and lands on OFF — the same "refuse rather than obey or ignore" rule as
+`window-mode.ts`, with the OPPOSITE fallback: there a typo keeps `normal` because
+the alternative is a silently hidden window, here a typo means no telemetry
+because the alternative is a run's events in a customer-facing dashboard. An
+EMPTY value is not a choice in either direction (a stale export, a `.env` line in
+the empty shape) and reads as unset.
+
+Off means no client exists at all, in either process:
+
+- **Main** constructs none (`src/main/telemetry-launch.ts` decides, and
+  `src/main/index.ts` constructs only on `true`), so there is no queue, no flush
+  and nothing to shut down — `posthogClient` is `null` and the exit handler's
+  `shutdown` is conditional. A blank or absent `VITE_PUBLIC_POSTHOG_KEY` gets the
+  same no-client answer, which is what fixes the crash this file used to record:
+  `new PostHog("")` throws at module load, before `app.whenReady()`, and surfaced
+  as a main-process error dialog rather than a log line.
+- **The renderer** is told through the window's `additionalArguments`, because its
+  own configuration is inlined at BUILD time and a runtime switch cannot reach it
+  as a variable: main composes `--lo-telemetry=on|off` into every window's
+  `webPreferences` (in `rendererArgumentFlags`, the one place that unions those
+  entries), the preload reads it out of its own `argv` and exposes
+  `window.api.telemetryEnabled`, and `shared/config/telemetry.ts` reads that.
+  WRITTEN ON EVERY WINDOW, unlike the dev driver's opt-in entry, precisely so
+  "no entry" can never be a normal launch's spelling: the renderer's rule is
+  fail-closed (`true` or nothing), and a window created by a future path that
+  forgot the entry must report nothing rather than report by default. With it off
+  the provider is not mounted (no pageview, no autocapture, no session replay, no
+  exception capture) and the feature-flag provider runs its all-defaults branch,
+  which never calls `posthog.reloadFeatureFlags()` and never initializes
+  anything.
+
+A launch that switched it off says so on stdout — `[telemetry] off: switched off
+by LOCAL_OPERATOR_UI_TELEMETRY="off"` — for the same reason the window mode
+announces itself: a rig that believes it sent nothing and one that really sent
+nothing have to be told apart from outside the app.
+
+`scripts/telemetry-off.mjs` applies it to a child environment
+(`withTelemetryOff`), and `scripts/telemetry-spawn-sites.test.mjs` enumerates the
+sites that boot the app or the suite, failing on a new one that is not in its
+table. Two halves, and the split is worth knowing before trusting the word
+"every": the scan sees the sites whose COMMAND is the runtime binary, and a
+second list in the same file names the app-booting paths a text scan cannot see —
+the suite's runner, the CI smoke test, the signed-update verifier, and four rigs
+that boot the app through a variable or a wrapper
+(`scripts/attach-frame-evidence.mjs` and
+`scripts/panels-without-session-evidence.mjs` spawn their helper's `command`
+argument; `scripts/hold-lifetime-rig.mjs` spawns a packaged `.app`'s
+`CFBundleExecutable`; `scripts/run-panel-reveal-proof.mjs` spawns
+`npx electron`). Each of those rows asserts the switch's call is present, so a
+rig that loses it fails the scan by name. **It is a sibling of the notification scan rather than another column in
+it, because the two disagree on real rows**: `scripts/npx-smoke-test.mjs` (the
+`npx-sanity-check` job, which LAUNCHES the packed app on macOS) and
+`scripts/verify-signed-update.mjs` (which boots the real packaged app three times
+on GitHub's runner) are deliberately unguarded for notifications — a released
+build has no parked gate to banner about — and are guarded here, because they are
+exactly the runs that were reporting from a hosted runner on every release. The
+rigs that boot a bare Electron scenario rather than the app
+(`session-cookie-electron.test.mjs`, `notification-evidence.mjs`) and the
+published launcher are exempt, each with its reason in the table, and
+`scripts/telemetry-launch.test.mjs` pins the decision itself in process
+(off-spellings, the refused typo, the blank key, the argv round-trip, and the
+renderer's fail-closed reader).
+
+What it does NOT cover, stated because it is easy to over-read: a rig that boots
+the app WITHOUT the switch still reports (this repository cannot switch off a
+launch it does not make — that is why the scan exists); `pnpm start`, `pnpm dev`
+and the published `npx local-operator-ui` keep their analytics, since those are a
+person's own app on their own screen; and the switch reaches the app's own two
+clients and nothing else in the stack, because the backend is a separately
+installed package this repository does not pin. A caller who sets `on`
+deliberately is also obeyed — `withTelemetryOff` is a default rather than an
+override, and an export of `on` in the shell a rig runs from travels into that
+rig's child by that rule.
+
+A `.env` IN A CHECKOUT CANNOT RE-ARM TELEMETRY, and `pnpm dev` is the one path
+where a file gets a hearing at all — so it is worth stating how far that goes,
+and the one place where it reaches further. `dev` loads the working directory's
+`.env` through `dotenv-cli`, whose default is NOT
+to overwrite a variable already in the environment: the LAUNCH's value wins for
+every key, and the file supplies the keys the launch did not set. That is
+deliberate and load-bearing rather than incidental, because `dev:headless` is
+`pnpm dev` with the switch as a prefix: the prefix has to outrank the file for
+the agent-driven dev launch to hold. An earlier spelling of `dev` re-exported the
+file inside its own shell after that prefix, which let a `.env` line reading
+`LOCAL_OPERATOR_UI_TELEMETRY=` (empty — the app folds it back to "unset", so
+telemetry stayed ON with no off-line printed) or `=on` re-arm the run;
+`scripts/telemetry-spawn-sites.test.mjs` now runs that body against a scratch
+`.env` in all three shapes and fails if the precedence moves back. The trade that
+buys one rule for every key, in one sentence: a `pnpm dev` started from a terminal
+that injects `VITE_*` variables — the Cursor/vscode case the re-export was
+written for — now has the terminal's value beat the checkout's `.env` for every
+key, rather than the other way round.
+
+The KEY runs the other way, and the paragraph above is deliberately narrow about
+it: a file can make a `dev` run quieter than its launcher asked, but never
+louder. `src/main/backend/config.ts` folds a checkout `.env` over `process.env`
+with dotenv `override: true`, and `src/main/telemetry-launch.ts` resolves main's
+switch from `backendConfig.VITE_PUBLIC_POSTHOG_KEY` — correct and deliberate,
+because a build's key IS product configuration and that fold is exactly where it
+is supposed to come from. So a blank `VITE_PUBLIC_POSTHOG_KEY=` line in a
+checkout resolves a `pnpm dev` run to off (`offReason: "this build carries no
+PostHog project key"`), because the schema's `.default()` fills only an ABSENT
+value. Fail-closed, and not a leak: the switch half above is the half the
+guarantee is about, and it is the half a file cannot move.
 
 ### A `headless` run takes no Dock tile, and leaves when its launcher does
 
@@ -1247,10 +1382,17 @@ PATH=/tmp/pnpm-good/node_modules/.bin:$PATH CSC_IDENTITY_AUTO_DISCOVERY=false \
   pnpm exec electron-builder --dir --arm64
 ```
 
-**The end-to-end check is the launch, not the build.** With a valid build env -
-note that an empty `VITE_PUBLIC_POSTHOG_KEY` throws inside `new PostHog(...)` at
-module load, before `app.whenReady()`, and surfaces as a main-process error
-dialog rather than a log line - the marker proves the closure came through:
+**The end-to-end check is the launch, not the build.** With a valid build env —
+any `VITE_PUBLIC_POSTHOG_KEY` INCLUDING a blank one, which is now a supported
+"no telemetry" rather than the crash it used to be (an empty key threw inside
+`new PostHog(...)` at module load, before `app.whenReady()`, and surfaced as a
+main-process error dialog rather than a log line; `src/main/telemetry-launch.ts`
+constructs no client for it and `LOCAL_OPERATOR_UI_TELEMETRY=off` is the switch a
+run uses; and the RENDERER is held to the same blank key —
+`src/renderer/src/shared/config/telemetry.ts` resolves it against the key that
+build inlined, so a blank-key build mounts no provider there either, which is the
+half that used to answer differently from main) — the marker proves the closure
+came through:
 
 ```bash
 LOCAL_OPERATOR_UI_SMOKE_TEST=true "dist/mac-arm64/Local Operator.app/Contents/MacOS/Local Operator"

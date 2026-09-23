@@ -1,6 +1,7 @@
 import { electronAPI } from "@electron-toolkit/preload";
 import { type IpcRendererEvent, contextBridge, ipcRenderer } from "electron";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
+import { readTelemetryArgument } from "../main/telemetry-launch";
 import type {
 	BackendUpdateCompletion,
 	BackendUpdateErrorReport,
@@ -197,6 +198,25 @@ const api = {
 			},
 		},
 	},
+	/**
+	 * Whether THIS launch may report to PostHog, read synchronously from this
+	 * process's own argv.
+	 *
+	 * The window's `additionalArguments`, composed by `rendererArgumentFlags` in
+	 * `src/main/index.ts` from the launch fact in `src/main/telemetry-launch.ts`.
+	 * It travels this way because the renderer's own configuration is inlined at
+	 * BUILD time (its `VITE_*` values), so a variable set at launch cannot reach
+	 * it — which is exactly why a rig that merely omitted the key still shipped
+	 * one, the defect this closes.
+	 *
+	 * FAIL-CLOSED: `readTelemetryArgument` answers `null` for an absent or
+	 * unintelligible entry and `?? false` is what gets exposed, so a host that is
+	 * not a window main created (Storybook, a bare renderer, a future window path
+	 * that forgot the entry) reports nothing rather than reporting by default.
+	 * The renderer's reader is `resolveTelemetryEnabled` in
+	 * `shared/config/telemetry.ts`, which holds the same rule.
+	 */
+	telemetryEnabled: readTelemetryArgument(process.argv)?.enabled ?? false,
 	// Add methods to open files and URLs
 	openFile: (filePath: string): Promise<FileActionOutcome> =>
 		ipcRenderer.invoke("open-file", filePath),
