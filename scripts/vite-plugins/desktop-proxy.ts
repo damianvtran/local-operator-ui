@@ -118,6 +118,19 @@ export function desktopProxyPlugin(): Plugin {
 					 */
 					if (frontendReplace === "1") query.set("frontend_replace", "1");
 					const suffix = query.size > 0 ? `?${query}` : "";
+					/*
+					 * THE UPSTREAM DIES WITH THE BROWSER'S SOCKET. Without this the fetch
+					 * below kept reading after the page closed its EventSource, so every
+					 * switch left one subscriber registered on the backend, and a bridge
+					 * accepts 32 (`SUBSCRIBER_COUNT`): after ~32 opens of one conversation
+					 * its stream answered 409 "Too many event subscribers" for good -
+					 * measured on the real-backend open harness, where every later open
+					 * painted from `/history` and never went live. Main's relay already
+					 * aborts on close (`desktop-stream.ts`); this is the same rule for the
+					 * development transport.
+					 */
+					const upstreamAbort = new AbortController();
+					res.on("close", () => upstreamAbort.abort());
 					try {
 						const upstream = await fetch(
 							new URL(
@@ -130,6 +143,7 @@ export function desktopProxyPlugin(): Plugin {
 									Authorization: `Bearer ${token}`,
 								},
 								redirect: "error",
+								signal: upstreamAbort.signal,
 							},
 						);
 						if (!upstream.ok || !upstream.body) {
@@ -172,7 +186,7 @@ export function desktopProxyPlugin(): Plugin {
 						 * detail it emits for any dropped connection, so the shared vocabulary is
 						 * reached by closing rather than by a sentence that cannot be delivered.
 						 */
-						if (res.headersSent) {
+						if (res.headersSent || upstreamAbort.signal.aborted) {
 							res.destroy();
 							return;
 						}
