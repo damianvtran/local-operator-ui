@@ -41,12 +41,17 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
+import { expect, screen, userEvent, waitFor } from "@storybook/test";
+
+const MODEL_DEFAULT_LABEL = /Set current model as default/;
 import type { FC } from "react";
 import "../../../styles/index.css";
+import { writeModelDefaultSettings } from "../pickers/model-default-settings";
 import {
 	type ArgumentRow,
 	type ArgumentSource,
 	argumentRows,
+	modelDefaultActionRow,
 } from "./slash-argument-rows";
 import {
 	type CompletionRow,
@@ -511,6 +516,69 @@ export const CommandPhaseFuzzy: Story = {
 };
 
 /** `/team ` typed: the roster, with the session's current team marked. */
+export const ArgumentPhaseModelDefaultAction: Story = {
+	render: () => {
+		const page = window as unknown as {
+			__slashDefaultWrites?: { key: "hosting" | "model_name"; value: string }[];
+		};
+		page.__slashDefaultWrites = [];
+		const action = modelDefaultActionRow(
+			"default",
+			{ provider: "anthropic", model_id: "claude-opus-5" },
+			true,
+			true,
+		);
+		return (
+			<Box width={720} draft="/model default">
+				<SlashSuggestionsPopup
+					state={state({
+						phase: "argument",
+						argumentCommand: "model",
+						inline: { source: "model", nameThenMessage: false, runs: true },
+						argumentQuery: "default",
+						paneHasSession: true,
+						matches: [
+							{
+								kind: "action",
+								row: action ?? {
+									kind: "action",
+									id: "model-default",
+									name: "Set current model as default",
+									description: "No active session model is available to save.",
+									model: null,
+									disabled: true,
+								},
+							},
+						],
+					})}
+					onPick={noop}
+					onActionPick={(row) => {
+						if (!row.model) return;
+						void writeModelDefaultSettings(row.model, async (key, value) => {
+							page.__slashDefaultWrites?.push({ key, value });
+						});
+					}}
+				/>
+				<output data-testid="default-writes">ready</output>
+			</Box>
+		);
+	},
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("option", { name: MODEL_DEFAULT_LABEL }),
+		);
+		await waitFor(() =>
+			expect(
+				(window as unknown as { __slashDefaultWrites?: unknown[] })
+					.__slashDefaultWrites,
+			).toEqual([
+				{ key: "hosting", value: "anthropic" },
+				{ key: "model_name", value: "claude-opus-5" },
+			]),
+		);
+	},
+};
+
 export const ArgumentPhaseTeams: Story = {
 	render: () => (
 		<Box width={720} draft="/team ">

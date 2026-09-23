@@ -229,6 +229,7 @@ import {
 	handleSlashKeyDown,
 	useSlashCompletion,
 } from "./slash-commands";
+import { writeModelDefaultSettings } from "../pickers/model-default-settings";
 import { completionFor } from "./slash-completion";
 /*
  * `extensionFor` comes from the CONTRACT module rather than from the popup
@@ -3586,22 +3587,32 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					isInputDisabled ||
 					row.disabled ||
 					row.id !== "model-default" ||
-					!onSlashCommand
-				) return;
+					!row.model
+				)
+					return;
 				/*
-				 * `default` is not a catalogue model, so the planner correctly refuses
-				 * to treat it as a model choice. The explicit action invokes the same
-				 * backend command with the bare argument; no completed text is sent.
+				 * A session command cannot write machine configuration: the active owner
+				 * may be remote. Use the same validated local settings path as the model
+				 * picker's explicit action, and keep failures visible in the composer.
 				 */
 				slash.close();
-				const outcome = await onSlashCommand({
-					name: "model",
-					args: "default",
-				});
-				/* Retain the typed command on refusal so nothing disappears silently. */
-				if (outcome === "consumed") setNewMessage("");
+				try {
+					await writeModelDefaultSettings(row.model, (key, value) =>
+						desktopResult({ op: "settings.edit", key, value }),
+					);
+					setNewMessage("");
+					onSlashNote?.(
+						`Default for new sessions: ${row.model.provider}/${row.model.model_id}`,
+					);
+				} catch (error) {
+					onSlashNote?.(
+						`The default was not saved: ${
+							error instanceof Error ? error.message : "the backend refused it"
+						}`,
+					);
+				}
 			},
-			[isInputDisabled, onSlashCommand, slash.close, setNewMessage],
+			[isInputDisabled, slash.close, setNewMessage, onSlashNote],
 		);
 
 		const handleSlashPick = useCallback(

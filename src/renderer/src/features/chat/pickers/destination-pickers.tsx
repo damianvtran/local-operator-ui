@@ -71,6 +71,10 @@ import {
 	specUnresolved,
 } from "../session-status/session-model";
 import { forkBudgetRefusal } from "../utils/message-budget";
+import {
+	effortCommandSucceeded,
+	writeModelDefaultSettings,
+} from "./model-default-settings";
 import { catalogueListing } from "./model-catalogue-listing";
 import {
 	PickerCheck,
@@ -758,16 +762,15 @@ export const ModelPicker: FC<PickerContext> = ({
 				await persist.perform(
 					async () => {
 						try {
-							await desktopResult({
-								op: "settings.edit",
-								key: "hosting",
-								value: provider,
-							});
-							await desktopResult({
-								op: "settings.edit",
-								key: "model_name",
-								value: modelId,
-							});
+							await writeModelDefaultSettings(
+								{ provider, model_id: modelId },
+								(key, settingValue) =>
+									desktopResult({
+										op: "settings.edit",
+										key,
+										value: settingValue,
+									}),
+							);
 							return value;
 						} catch (error) {
 							/*
@@ -919,11 +922,11 @@ export const ModelPicker: FC<PickerContext> = ({
 					? draftPick.result
 					: persist.result
 						? {
-							...persist.result,
-							text: [command.result?.text, persist.result.text]
-								.filter(Boolean)
-								.join("\n"),
-						}
+								...persist.result,
+								text: [command.result?.text, persist.result.text]
+									.filter(Boolean)
+									.join("\n"),
+							}
 						: combined
 			}
 			toolbar={
@@ -955,43 +958,60 @@ export const ModelPicker: FC<PickerContext> = ({
 					<div className="flex items-center gap-2">
 						{!draft && (
 							<Button
-							variant="ghost"
-							size="sm"
-							type="button"
-							disabled={!currentSelector || command.busy}
-							onClick={() => void command.run("model", "default")}
+								variant="ghost"
+								size="sm"
+								type="button"
+								disabled={!currentSelector || command.busy || persist.busy}
+								onClick={() => {
+									if (!selected) return;
+									void persist.perform(
+										() =>
+											writeModelDefaultSettings(selected, (key, value) =>
+												desktopResult({
+													op: "settings.edit",
+													key,
+													value,
+												}),
+											),
+										() => ({
+											tone: "success",
+											text: `Default for new sessions: ${currentSelector}`,
+										}),
+										DEFAULT_SAVE_FAILURE,
+									);
+								}}
 							>
 								Set current model as default
 							</Button>
 						)}
 						<Button
 							variant="ghost"
-						size="sm"
-						type="button"
-						/*
-						 * A control that looks enabled has to DO something (design D13).
-						 *
-						 * Settled, this used to read `Live list` and its click set `live` to a
-						 * value it already had — a second click changed nothing and said
-						 * nothing, while the button kept the idle control's ink and weight, so it
-						 * was indistinguishable from one that works. It keeps its verb instead
-						 * and re-lists when pressed; the row count under it is what says the
-						 * listing came from the providers.
-						 */
-						onClick={() => {
-							if (live) void catalogue.refetch();
-							else setLive(true);
-						}}
-						disabled={catalogue.isFetching}
-					>
-						{refreshing ? (
-							<span className="flex items-center gap-2">
-								<Spinner size="xs" />
-								Refreshing…
-							</span>
-						) : (
-							"Refresh from providers"
-						)}
+							size="sm"
+							type="button"
+							/*
+							 * A control that looks enabled has to DO something (design D13).
+							 *
+							 * Settled, this used to read `Live list` and its click set `live` to a
+							 * value it already had — a second click changed nothing and said
+							 * nothing, while the button kept the idle control's ink and weight, so it
+							 * was indistinguishable from one that works. It keeps its verb instead
+							 * and re-lists when pressed; the row count under it is what says the
+							 * listing came from the providers.
+							 */
+							onClick={() => {
+								if (live) void catalogue.refetch();
+								else setLive(true);
+							}}
+							disabled={catalogue.isFetching}
+						>
+							{refreshing ? (
+								<span className="flex items-center gap-2">
+									<Spinner size="xs" />
+									Refreshing…
+								</span>
+							) : (
+								"Refresh from providers"
+							)}
 						</Button>
 					</div>
 				</div>
@@ -1044,7 +1064,6 @@ export const EffortPicker: FC<PickerContext> = ({
 		? (draftModel?.reasoning_effort ?? null)
 		: (entities.data?.current ?? null);
 
-
 	const options = useMemo<PickerOption[]>(
 		() =>
 			rungs.map((value) => ({
@@ -1096,17 +1115,19 @@ export const EffortPicker: FC<PickerContext> = ({
 			open
 			onClose={onClose}
 			title="Reasoning effort"
-			toolbar={!draft ? (
-				<PickerCheck
-					checked={saveAsDefault}
-					onCheckedChange={setSaveAsDefault}
-					tone="muted"
-				>
-					{saveAsDefault
-						? "This pick also sets the default effort for new sessions"
-						: "Also make it the default effort for new sessions"}
-				</PickerCheck>
-			) : undefined}
+			toolbar={
+				!draft ? (
+					<PickerCheck
+						checked={saveAsDefault}
+						onCheckedChange={setSaveAsDefault}
+						tone="muted"
+					>
+						{saveAsDefault
+							? "This pick also sets the default effort for new sessions"
+							: "Also make it the default effort for new sessions"}
+					</PickerCheck>
+				) : undefined
+			}
 			description={
 				noOptions
 					? unresolved
@@ -1140,8 +1161,8 @@ export const EffortPicker: FC<PickerContext> = ({
 			}
 			onPick={(value) => {
 				if (!draft) {
-						void command.run("effort", value).then(async ({ outcome }) => {
-						if (saveAsDefault && outcome && outcome.kind !== "error") {
+					void command.run("effort", value).then(async ({ outcome }) => {
+						if (saveAsDefault && effortCommandSucceeded(outcome)) {
 							const saved = await defaultSetting.perform(
 								() =>
 									desktopResult({
@@ -1179,7 +1200,9 @@ export const EffortPicker: FC<PickerContext> = ({
 				);
 			}}
 			busy={draft ? draftPick.busy : command.busy || defaultSetting.busy}
-			result={draft ? draftPick.result : defaultSetting.result ?? command.result}
+			result={
+				draft ? draftPick.result : (defaultSetting.result ?? command.result)
+			}
 			/*
 			 * The wait names its work (design D23). A draft's effort pick resolves
 			 * through `sessions.preview` before it records anything, exactly as the

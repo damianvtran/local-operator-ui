@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
+
+const SETTINGS_REFUSED = /settings refused/;
 import { build } from "esbuild";
 
 /*
@@ -20,7 +22,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/features/chat/components/slash-argument-rows";',
+			'export * from "./src/renderer/src/features/chat/components/slash-argument-rows"; export { effortCommandSucceeded, writeModelDefaultSettings } from "./src/renderer/src/features/chat/pickers/model-default-settings";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -35,6 +37,8 @@ const {
 	argumentRows,
 	modelDefaultActionRow,
 	shouldRunArgumentAction,
+	effortCommandSucceeded,
+	writeModelDefaultSettings,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -137,6 +141,43 @@ test("default is a separate, exact model action and never a catalogue row", () =
 	const unavailable = modelDefaultActionRow("default", null, true, true);
 	assert.equal(unavailable.disabled, true);
 	assert.equal(shouldRunArgumentAction(unavailable, true), false);
+});
+
+test("model default writes hosting then model name and stops on refusal", async () => {
+	const writes = [];
+	await writeModelDefaultSettings(
+		{ provider: "anthropic", model_id: "claude-opus-5" },
+		async (key, value) => writes.push([key, value]),
+	);
+	assert.deepEqual(writes, [
+		["hosting", "anthropic"],
+		["model_name", "claude-opus-5"],
+	]);
+	const failed = [];
+	await assert.rejects(
+		writeModelDefaultSettings(
+			{ provider: "openai", model_id: "gpt-5" },
+			async (key, value) => {
+				failed.push([key, value]);
+				if (key === "hosting") throw new Error("settings refused");
+			},
+		),
+		SETTINGS_REFUSED,
+	);
+	assert.deepEqual(failed, [["hosting", "openai"]]);
+});
+
+test("only an informational effort notice permits saving a machine default", () => {
+	assert.equal(effortCommandSucceeded({ kind: "notice", style: "info" }), true);
+	assert.equal(
+		effortCommandSucceeded({ kind: "notice", style: "warning" }),
+		false,
+	);
+	assert.equal(
+		effortCommandSucceeded({ kind: "error", style: "error" }),
+		false,
+	);
+	assert.equal(effortCommandSucceeded(null), false);
 });
 
 test("a model row carries the provider, the window and the price pair", () => {

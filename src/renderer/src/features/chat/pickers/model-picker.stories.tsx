@@ -51,6 +51,11 @@
 
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, fireEvent, screen, userEvent, waitFor } from "@storybook/test";
+
+const DEFAULT_MODEL_LABEL = /Set current model as default/;
+const SAVE_DEFAULT_FAILED = /The default was not saved/;
+const EFFORT_DEFAULT_LABEL = /default effort for new sessions/i;
+const EFFORT_DEFAULT_SUCCESS = /Default effort for new sessions: High/;
 import type { FC } from "react";
 import "../../../styles/index.css";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
@@ -60,7 +65,11 @@ import type {
 	NativeDesktopAction,
 } from "../../../../../shared/desktop-control-contract";
 import type { SlashCommandMeta } from "../components/slash-commands";
-import { ModelPicker, type PickerContext } from "./destination-pickers";
+import {
+	EffortPicker,
+	ModelPicker,
+	type PickerContext,
+} from "./destination-pickers";
 
 const noop = () => {};
 
@@ -76,6 +85,13 @@ const MODEL_SPEC: SlashCommandMeta = {
 	consumes_prompt: false,
 	destination: "model",
 	execution: "owner",
+};
+
+const EFFORT_SPEC: SlashCommandMeta = {
+	...MODEL_SPEC,
+	name: "effort",
+	description: "Choose reasoning effort for this session",
+	destination: "effort",
 };
 
 const MODEL_ACTION: NativeDesktopAction = {
@@ -97,7 +113,13 @@ const MODEL_ACTION: NativeDesktopAction = {
  * (or a 30s deadline) instead of the picker. Installing a bridge is therefore
  * what makes the populated states reachable at all.
  */
-type BridgeRequest = { op: string; live?: boolean };
+type BridgeRequest = {
+	op: string;
+	live?: boolean;
+	key?: string;
+	value?: unknown;
+	command?: string;
+};
 
 /** A promise that never settles: the frame is the state while it is pending. */
 const pending = <T,>(): Promise<T> => new Promise<T>(() => {});
@@ -142,6 +164,7 @@ if (typeof window !== "undefined") {
 			desktop?: { request: (r: BridgeRequest) => Promise<DesktopResponse> };
 		};
 		__pickerCatalogueCalls?: { total: number };
+		__pickerSettingsWrites?: { key: string; value: unknown }[];
 	};
 	const api = page.api ?? {};
 	page.api = api;
@@ -154,6 +177,35 @@ if (typeof window !== "undefined") {
 			const seen = page.__pickerCatalogueCalls ?? { total: 0 };
 			page.__pickerCatalogueCalls = seen;
 			if (request.op === "models.catalogue") seen.total += 1;
+			if (request.op === "settings.edit") {
+				const writes = page.__pickerSettingsWrites ?? [];
+				page.__pickerSettingsWrites = writes;
+				writes.push({ key: request.key ?? "", value: request.value });
+				return Promise.resolve(ok({ key: request.key, value: request.value }));
+			}
+			if (request.op === "commands.entities" && request.command === "effort") {
+				return Promise.resolve(
+					ok({
+						entities: [
+							{ value: "low", name: "low" },
+							{ value: "medium", name: "medium" },
+							{ value: "high", name: "high" },
+						],
+						current: "medium",
+					}),
+				);
+			}
+			if (request.op === "sessions.command")
+				return Promise.resolve(
+					ok({
+						result: {
+							kind: "notice",
+							text: "Effort set",
+							style: "info",
+							data: {},
+						},
+					}),
+				);
 			return bridge
 				? bridge(request)
 				: Promise.reject(new Error("no bridge installed for this story"));
@@ -258,6 +310,11 @@ const PICKED = {
 	model_id: "anthropic/claude-haiku-4-5",
 };
 
+const EFFORT_ACTION: NativeDesktopAction = {
+	...MODEL_ACTION,
+	destination: "effort",
+};
+
 const catalogue = (
 	over: Partial<DesktopModelCatalogue> = {},
 ): DesktopModelCatalogue => ({
@@ -286,6 +343,7 @@ type FrameProps = {
 	bridge: (request: BridgeRequest) => Promise<DesktopResponse>;
 	/** The model the session is on (the session frame's stand-in). */
 	selected?: { provider: string; model_id: string } | null;
+	picker?: "model" | "effort";
 };
 
 /**
@@ -295,11 +353,16 @@ type FrameProps = {
  * (`sessionId`, `canonical`, `onClose`); the rest are the dispatcher's, so they
  * are filled here rather than pretended into meaningful values.
  */
-const Frame: FC<FrameProps> = ({ bridge: storyBridge, selected = CURRENT }) => {
+const Frame: FC<FrameProps> = ({
+	bridge: storyBridge,
+	selected = CURRENT,
+	picker = "model",
+}) => {
 	installBridge(storyBridge);
+	const isEffort = picker === "effort";
 	const ctx: PickerContext = {
-		action: MODEL_ACTION,
-		spec: MODEL_SPEC,
+		action: isEffort ? EFFORT_ACTION : MODEL_ACTION,
+		spec: isEffort ? EFFORT_SPEC : MODEL_SPEC,
 		sessionId: "sess",
 		canonical: {
 			frontend: selected ? { selected_model: selected } : null,
@@ -318,7 +381,7 @@ const Frame: FC<FrameProps> = ({ bridge: storyBridge, selected = CURRENT }) => {
 		dispatch: noop,
 		rebind: noop,
 	};
-	return <ModelPicker {...ctx} />;
+	return isEffort ? <EffortPicker {...ctx} /> : <ModelPicker {...ctx} />;
 };
 
 /** A bridge that answers the catalogue and refuses everything else. */
@@ -538,6 +601,165 @@ export const Busy: Story = {
  * The command answered. The strip quotes the owner verbatim, the footer's right
  * button becomes `Done`, and the in-force indicator has moved to the picked row.
  */
+export const SetCurrentAsDefault: Story = {
+	render: () => (
+		<Frame
+			bridge={(request) =>
+				request.op === "models.catalogue"
+					? catalogueOnly(catalogue())(request)
+					: Promise.resolve(ok({ key: request.key, value: request.value }))
+			}
+		/>
+	),
+	play: async () => {
+		const page = window as unknown as {
+			__pickerSettingsWrites?: { key: string; value: unknown }[];
+		};
+		page.__pickerSettingsWrites = [];
+		await userEvent.click(
+			await screen.findByRole("button", { name: DEFAULT_MODEL_LABEL }),
+		);
+		await waitFor(() =>
+			expect(page.__pickerSettingsWrites).toEqual([
+				{ key: "hosting", value: CURRENT.provider },
+				{ key: "model_name", value: CURRENT.model_id },
+			]),
+		);
+		await waitFor(() =>
+			expect(
+				screen.getByText(`Default for new sessions: ${CURRENT_SELECTOR}`),
+			).toBeTruthy(),
+		);
+	},
+};
+
+/** A refused first setting write shows an error and never writes half a model. */
+export const EffortSetAsDefault: Story = {
+	render: () => (
+		<Frame
+			picker="effort"
+			bridge={(request) => {
+				if (request.op === "commands.entities")
+					return Promise.resolve(
+						ok({
+							entities: [
+								{ value: "low", name: "low" },
+								{ value: "medium", name: "medium" },
+								{ value: "high", name: "high" },
+							],
+							current: "medium",
+						}),
+					);
+				if (request.op === "settings.edit") {
+					const page = window as unknown as {
+						__pickerSettingsWrites?: { key: string; value: unknown }[];
+					};
+					const writes = page.__pickerSettingsWrites ?? [];
+					page.__pickerSettingsWrites = writes;
+					writes.push({
+						key: request.key ?? "",
+						value: request.value,
+					});
+					return Promise.resolve(
+						ok({ key: request.key, value: request.value }),
+					);
+				}
+				if (request.op === "sessions.command")
+					return Promise.resolve(
+						ok({
+							result: {
+								kind: "notice",
+								text: "Effort set",
+								style: "info",
+								data: {},
+							},
+						}),
+					);
+				return Promise.resolve(ok({}));
+			}}
+		/>
+	),
+	play: async () => {
+		const page = window as unknown as {
+			__pickerSettingsWrites?: { key: string; value: unknown }[];
+		};
+		page.__pickerSettingsWrites = [];
+		await userEvent.click(
+			await screen.findByRole("checkbox", { name: EFFORT_DEFAULT_LABEL }),
+		);
+		await userEvent.click(await screen.findByRole("option", { name: "High" }));
+		await waitFor(() =>
+			expect(page.__pickerSettingsWrites).toEqual([
+				{ key: "model_effort", value: "high" },
+			]),
+		);
+		await waitFor(() =>
+			expect(screen.getByText(EFFORT_DEFAULT_SUCCESS)).toBeTruthy(),
+		);
+	},
+};
+
+export const EffortRefusedDoesNotSaveDefault: Story = {
+	render: () => (
+		<Frame
+			picker="effort"
+			bridge={(request) => {
+				if (request.op === "commands.entities")
+					return Promise.resolve(
+						ok({
+							entities: [{ value: "low" }, { value: "high" }],
+							current: "low",
+						}),
+					);
+				if (request.op === "sessions.command")
+					return Promise.resolve(
+						ok({
+							result: {
+								kind: "notice",
+								text: "Refused",
+								style: "warning",
+								data: {},
+							},
+						}),
+					);
+				return Promise.resolve(ok({}));
+			}}
+		/>
+	),
+	play: async () => {
+		const page = window as unknown as {
+			__pickerSettingsWrites?: { key: string; value: unknown }[];
+		};
+		page.__pickerSettingsWrites = [];
+		await userEvent.click(
+			await screen.findByRole("checkbox", { name: EFFORT_DEFAULT_LABEL }),
+		);
+		await userEvent.click(await screen.findByRole("option", { name: "High" }));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		await waitFor(() => expect(page.__pickerSettingsWrites).toEqual([]));
+	},
+};
+
+export const SetCurrentAsDefaultRefused: Story = {
+	render: () => (
+		<Frame
+			bridge={(request) =>
+				request.op === "models.catalogue"
+					? catalogueOnly(catalogue())(request)
+					: Promise.resolve(refuse(400, "settings refused"))
+			}
+		/>
+	),
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: DEFAULT_MODEL_LABEL }),
+		);
+		await waitFor(() =>
+			expect(screen.getByText(SAVE_DEFAULT_FAILED)).toBeTruthy(),
+		);
+	},
+};
+
 export const Result: Story = {
 	render: () => (
 		<Frame
