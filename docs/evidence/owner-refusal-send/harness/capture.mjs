@@ -185,6 +185,9 @@ const PROBE = `(() => {
 	const controlLabels = region
 		? [...region.querySelectorAll("button")].map((b) => (b.textContent || "").trim())
 		: [];
+	const scroller = document.querySelector("[data-lo-canonical-transcript]");
+	const transcriptRows = scroller ? [...scroller.querySelectorAll("[data-record-id]")] : [];
+	const hasKind = Boolean(scroller?.querySelector("[data-record-kind]"));
 	return {
 		regionPresent: !!region,
 		alertProse: region
@@ -194,7 +197,30 @@ const PROBE = `(() => {
 		controlLabels,
 		boxValue: textarea ? textarea.value : null,
 		textareas: [...document.querySelectorAll("textarea")].map((t) => t.getAttribute("aria-label")),
-		transcriptUserRows: document.querySelectorAll('[data-role="user"], [data-testid="user-row"]').length,
+		/* The transcript's painted rows, and - where the page can name a row's
+		   SPEAKER - how many of them are the operator's own. Two fields rather than
+		   one because the marker the count needs is itself part of this branch: the
+		   probe that preceded these matched '[data-role="user"],
+		   [data-testid="user-row"]', none of which exists anywhere in 'src/', so it
+		   read 0 over frames that plainly painted the echo - a dead instrument
+		   standing under the one claim the transcript half of these frames makes
+		   (agent review R-5, design D1).
+
+		   'transcriptRows' spans BOTH halves ('data-record-id' is on every row of
+		   the shipping transcript, including origin/main's), so it is the reading the
+		   two halves can be compared on. 'transcriptUserRows' is the speaker-scoped
+		   one, and it is 'null' ONLY where rows are painted on a page that carries no
+		   'data-record-kind' (the origin/main half): "this page cannot name a
+		   speaker" and "no user row is painted" are different facts, and the second
+		   is the one the frames are about - a page with no rows at all answers 0,
+		   which is exactly what a retracted echo leaves behind. */
+		transcriptRows: transcriptRows.length,
+		transcriptUserRows:
+			transcriptRows.length === 0
+				? 0
+				: hasKind
+					? transcriptRows.filter((row) => row.dataset.recordKind === "user").length
+					: null,
 		theme: document.documentElement.dataset.theme,
 		/* What the page SAYS, for the failure a frame cannot explain on its own: a run
 		   that reports "nothing mounted" is a question about a screen nobody saw. */
