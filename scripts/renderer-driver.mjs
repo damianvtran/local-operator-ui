@@ -156,6 +156,7 @@ import { withNotificationsOff } from "./notifications-off.mjs";
  * interpreter, so a new one has to say so there as well as here.
  */
 import { pythonChildEnv } from "./python-child-env.mjs";
+import { withTelemetryOff } from "./telemetry-off.mjs";
 
 const ROOT = process.cwd();
 
@@ -740,6 +741,12 @@ async function launchApp({
 	 * silences the app's own banner and has no reach into the backend's, so the
 	 * switch goes into the environment this child is handed. See
 	 * `notifications-off.mjs`.
+	 *
+	 * `withTelemetryOff` beside it, for the same class of defect one project over:
+	 * this rig boots the real app on a scratch profile, the build it boots carries
+	 * the live PostHog project key, and the renderer's own configuration is inlined
+	 * at build time — so nothing about the scratch tree could stop the run being
+	 * counted as a user and recorded as a session replay. See `telemetry-off.mjs`.
 	 */
 	const env = withNotificationsOff({
 		...process.env,
@@ -750,6 +757,7 @@ async function launchApp({
 		// backend in the scratch HOME.
 		VITE_DISABLE_BACKEND_MANAGER: "true",
 	});
+	withTelemetryOff(env);
 	for (const key of Object.keys(env)) {
 		if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete env[key];
 	}
