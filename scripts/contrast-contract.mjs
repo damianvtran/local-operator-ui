@@ -1827,7 +1827,7 @@ const STRUCTURAL_CALL_SITES = [
 		 * and the bar and the rows share one ground with nothing between them, with
 		 * every colour row still green.
 		 *
-		 * THREE PINS, because the mask has two branches and only the first is the one
+		 * FIVE PINS, because the mask has two branches and only the first is the one
 		 * Electron ships. The SHIPPED branch's `animation-range` is the half that
 		 * decides whether the fade exists at all and which end of the scroll it is
 		 * anchored to - this container is `flex-col-reverse`, so a range measured off
@@ -1843,11 +1843,67 @@ const STRUCTURAL_CALL_SITES = [
 		 * restoring exactly the operator's symptom (0px at rest, full where nothing is
 		 * scrolled under the bar). The pinned string is the two declarations and the
 		 * braces between them, tabs included, so a reformat fails closed.
+		 *
+		 * ROUND 3 ADDED THE OTHER TWO, AND THEY PIN THE SAME BRANCH RATHER THAN THE
+		 * OTHER ONE (review R3-1). One on the FILL MODE, because `both` is what
+		 * applies the ramp outside its own span and holds its `from` value on the
+		 * element at rest; one on the TIMELINE AND RANGE AS ONE CONTIGUOUS RUN,
+		 * because `scroll(self)` is what makes the range measure this container's
+		 * scrollport and each declaration means the shipped thing only beside the
+		 * other. Each row carries its own measured reason below.
 		 */
 		what: "transcript top-edge mask (the shipped scroll-timeline branch)",
 		file: "src/renderer/src/styles/index.css",
 		must: "animation-range: calc(100% - 24px) 100%",
 		why: "the header draws no rule, so this mask is the only separation between the bar and the rows; the range decides whether the fade is full at rest or absent there, which no colour assertion can see",
+	},
+	{
+		/*
+		 * WHY THE FILL MODE IS A ROW OF ITS OWN (round-3 review, R3-1). The range,
+		 * the keyframes and the fallback above/below all describe the ramp's SHAPE
+		 * and its SPAN; not one of them can see whether the animation applies
+		 * anywhere outside that span, and `both` is the half that does. The ramp's
+		 * `from` value is the 24px the fade rests at, and the `to` value is what it
+		 * travels to at the oldest end, so without the fill the element keeps the
+		 * `--lo-transcript-top-fade: 0px` it declares - at rest, on a conversation
+		 * nobody has scrolled, which is the state the operator's report is about and
+		 * the one `styles/index.css`'s own comment on this declaration names.
+		 *
+		 * IT IS PINNED RATHER THAN LEFT TO ITS NEIGHBOURS BECAUSE ITS REMOVAL IS ONE
+		 * LINE AND WAS GREEN HERE (measured in round 3, before this row existed:
+		 * delete the declaration, rc 0, 26931 assertions, the range row, the
+		 * keyframe-pair row, the fallback row and every palette assertion hold). A
+		 * row the deletion of one line cannot break is not a row.
+		 */
+		what: "transcript top-edge mask fill mode (the shipped scroll-timeline branch)",
+		file: "src/renderer/src/styles/index.css",
+		must: "animation-fill-mode: both;",
+		why: "the fill is what applies the ramp outside its own range and holds its 24px on the element at rest; without it the mask sits at the declared 0px whenever the range does not cover the offset, which is round 1's hard cut at rest, and no range/keyframe/fallback or colour row can see the deletion",
+	},
+	{
+		/*
+		 * AND THE TIMELINE GOES WITH THE RANGE, IN ONE CONTIGUOUS STRING (round-3
+		 * review, R3-1). `animation-timeline: scroll(self)` is the declaration that
+		 * makes the range measure THIS element's own scrollport at all; the two are
+		 * one fact written as two lines, and the separated edit is the one the rows
+		 * above cannot catch: the range row's `must` is a substring of the range
+		 * declaration alone and stays satisfied with the timeline gone, at which
+		 * point the range is measured against nothing and the mask is driven by
+		 * whatever timeline the engine falls back to rather than by this
+		 * container's scroll.
+		 *
+		 * The pinned string runs from the timeline declaration through the range
+		 * declaration with the newline and the stylesheet's own tab indentation
+		 * between them, so a line inserted, removed or reordered inside the run fails
+		 * closed, and no other line in the file can stand in for it (mutation-tested:
+		 * relocating the timeline declaration out of the run, or deleting either
+		 * line of it, turns this gate red; the range row alone stayed green under
+		 * the relocation).
+		 */
+		what: "transcript top-edge mask timeline and range (the shipped scroll-timeline branch)",
+		file: "src/renderer/src/styles/index.css",
+		must: "animation-timeline: scroll(self);\n\t\tanimation-range: calc(100% - 24px) 100%;",
+		why: "`self` is what makes the range measure this container's own scrollport, so the two declarations are one fact and neither means the shipped thing alone; pinning the contiguous run is what refuses an edit that leaves both lines individually present",
 	},
 	{
 		what: "transcript top-edge mask keyframe pair (the direction of the shipped ramp)",
