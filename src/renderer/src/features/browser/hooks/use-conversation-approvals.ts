@@ -19,13 +19,23 @@ import { useConversationBrowserSummaries } from "./use-conversation-browser-summ
  * `summariseConversations` over the one shared projection, so a conversation's badge
  * here cannot disagree with the pane's tray; the badge is now the only surface drawing
  * it, and the rule is unchanged — live requests (`expiresAt > now`) whose requester is
- * this conversation, counted off the app's single clock. What the deletion costs is
- * stated where it belongs: nothing in the chrome now surfaces ANOTHER conversation's
- * waiting request without opening the browser.
+ * this conversation, counted off the app's single clock.
+ *
+ * WHAT THE DELETION COST IS NO LONGER UNANSWERED (operator ask, 2026-09-23). It used to
+ * read "nothing in the chrome now surfaces ANOTHER conversation's waiting request
+ * without opening the browser", and that was true of THIS hook from the day the mark
+ * went: a request whose requester is another conversation — or no conversation at all,
+ * which is a subagent's own session id or a caller the host could not attribute —
+ * contributes to no conversation and so lights no conversation's badge. The rail's
+ * Browser item now carries that count app-wide (`use-app-wide-approvals.ts`), which is
+ * what makes the difference between the two hooks a rule rather than a gap: this one
+ * answers "is an agent in THIS conversation blocked on me", that one answers "is
+ * anything in this app waiting on me at all".
  *
  * A DRAFT OWNS NO REQUESTS: with no session id the count is zero rather than every
  * request in the app. A chat whose header badge counted another conversation's
- * approval would be telling the user to answer a prompt that is not theirs.
+ * approval would be telling the user to answer a prompt that is not theirs — and the
+ * rail is where a user who wants the app-wide number looks instead.
  */
 export function useConversationApprovals(sessionId: string | null): number {
 	const { summaries } = useConversationBrowserSummaries();

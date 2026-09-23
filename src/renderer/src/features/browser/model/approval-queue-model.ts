@@ -143,6 +143,33 @@ export function liveRequests(
 	return requests.filter((request) => now < request.expiresAt);
 }
 
+/**
+ * How many approvals the WHOLE APP is waiting on, off the projection.
+ *
+ * THIS IS NOT `summariseConversations`, and the difference is the whole reason it
+ * exists (operator ask, 2026-09-23). The per-conversation summaries are keyed on
+ * `requesterSessionId` and drop every request whose requester is not a session
+ * identity — a bare request id, a subagent's own session, a caller the host could
+ * not attribute. That is right for a badge on ONE conversation, which must not
+ * claim another's ask, and wrong for the rail's Browser item, which answers "is
+ * anything waiting on me AT ALL": an unattributed live request is still an
+ * approval the operator has to answer, and a count that ignored it would tell them
+ * the app has nothing to ask while an agent sits blocked.
+ *
+ * `expiresAt > now` for the same reason `liveRequests` filters: main fires nothing
+ * at expiry, so `pendingConsent.length` keeps counting a request that ran out its
+ * ten minutes until some unrelated change happens to push a projection (design
+ * 1.2, 3.3). Two rules, one instant: the caller passes the shared clock.
+ */
+export function liveApprovalCount(
+	requests: ReadonlyArray<{ expiresAt: number }>,
+	now: number,
+): number {
+	let live = 0;
+	for (const request of requests) if (now < request.expiresAt) live += 1;
+	return live;
+}
+
 /** The remaining time, in words (§3.3): a user deciding whether to grant a
  * durable approval should know when the agent's own window closes. Rounded UP,
  * because "expires in 9 minutes" must not be said of 8m20s of remaining life. */
