@@ -889,7 +889,22 @@ export function useSlashDispatch({
 			 */
 			if (entry?.kind === "aside") {
 				if (args) {
-					void askAside(sessionId, args).catch(() => {});
+					/*
+					 * THE PANE'S SUBSCRIPTION ID TRAVELS WITH THE ASK, on this door too.
+					 * The answer's chunks are published on the session's stream, which every
+					 * attached viewer of that session reads, so an owner that routes them to
+					 * the requesting subscription needs to be told which one asked - and
+					 * leaving it off here would make the ONE-ENTER path (the door this whole
+					 * branch exists for) the one that never receives a chunk, painting the
+					 * settled answer with no thinking state and no streaming. The id is the
+					 * `open` frame's `payload.subscription_id`, which the canonical handle
+					 * keeps; it is absent only before the stream's first `open`.
+					 */
+					void askAside(
+						sessionId,
+						args,
+						canonical.subscriptionId ?? undefined,
+					).catch(() => {});
 				} else {
 					openAsidePanel(sessionId);
 				}

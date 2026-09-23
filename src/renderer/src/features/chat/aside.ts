@@ -56,13 +56,28 @@ export function openAsidePanel(sessionId: string): void {
  * Returns the id the answer streams under, which is the request id this call
  * generated — the same id the response names, and the one the panel already
  * subscribed to. Throws on a refusal AFTER recording it on the turn, so the
- * panel states the reason and a caller that must decide what to do with the
- * user's text (the composer) can answer `false` without inventing a second copy
- * of the sentence.
+ * panel states the reason.
+ *
+ * THE RETURNED PROMISE IS THE ANSWER'S, NOT THE QUESTION'S, and a caller may
+ * therefore IGNORE it. The turn and its stream entry are registered by
+ * `beginAsk` SYNCHRONOUSLY, before the request leaves, which is what lets the
+ * panel paint the question and its thinking state in the same commit the
+ * composer's box empties — and what lets the composer hand the box back to the
+ * user at the press rather than at the answer (see `chat-page.tsx`'s aside
+ * branch, and `slash-dispatch.ts`'s own note on the same trade). A refusal is
+ * recorded on the panel by this function whether or not the caller waits.
+ *
+ * `subscriptionId` NAMES THE VIEWER THAT WANTS THE CHUNKS. The stream is read by
+ * every attached viewer of a session, so an owner that routes `aside_delta` to
+ * the requesting subscription needs this id or the caller receives none of them;
+ * it is the `open` frame's `payload.subscription_id`, kept on the canonical
+ * view and passed in by the call site that holds it. Undefined when the stream
+ * has not opened yet, which costs the live half and not the answer.
  */
 export async function askAside(
 	sessionId: string,
 	question: string,
+	subscriptionId?: string,
 ): Promise<string> {
 	const asideId = uuidv4();
 	const store = useAsideStore.getState();
@@ -79,6 +94,7 @@ export async function askAside(
 			requestId: asideId,
 			text: question,
 			asideId: continuation,
+			subscriptionId,
 		});
 		/*
 		 * The RESPONSE's text is authoritative and REPLACES what the deltas
@@ -230,19 +246,34 @@ export function asideAdoptReady(
  * is said by the surface that refused. A silent dead control reads as a broken
  * key, and this app's other disabled controls carry their reason beside them for
  * the same reason (`cwdReadOnlyReason`, the composer's own refusals).
+ *
+ * ONE FACT PER LINE, which is why two of these are as short as they are (design
+ * round 1, D2): the panel's empty state already tells the user to type a question
+ * in the composer, and the error state already states the cause in its alert — so
+ * a reason that restated either was the same instruction painted twice around a
+ * dead button.
+ *
+ * THE WAIT IS DERIVED FROM `streaming`, NOT FROM `settled` (design round 1, D3),
+ * and that is the difference between a true sentence and a false one. An answer's
+ * deltas finish painting ~0.6s before the POST returns, so gating the SENTENCE on
+ * `settled` printed "wait for the answer" underneath a complete answer. Only the
+ * CONTROL is gated on `settled` (`asideAdoptReady`); what the panel SAYS is
+ * derived from the flag the paint itself uses. The is-nothing-to-add case is
+ * derived from the same flag: a sentence about the answer's ARRIVAL has no
+ * honest form once the text is on screen.
  */
 export function asideAdoptBlockedReason(
 	stream: AsideStream | undefined,
 	sessionStreaming: boolean,
 ): string | null {
 	if (!stream) {
-		return "Ask a question first — there is no exchange to add yet.";
+		return "Nothing to add yet.";
 	}
 	if (stream.error !== null) {
-		return "The aside could not be answered, so there is nothing to add.";
+		return "Nothing to add.";
 	}
-	if (!stream.settled) {
-		return "Wait for the answer before adding this to the conversation.";
+	if (stream.streaming) {
+		return "The exchange is still settling — a moment before it can be added.";
 	}
 	if (sessionStreaming) {
 		return "This conversation is working. Adding the aside while it runs would splice a message into a live turn.";

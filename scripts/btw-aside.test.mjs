@@ -88,7 +88,10 @@ const bundle = await build({
 	format: "esm",
 	platform: "node",
 	write: false,
-	alias: { "@shared": "./src/renderer/src/shared" },
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@features": "./src/renderer/src/features",
+	},
 	plugins: [
 		{
 			name: "aside-transport-fixture",
@@ -120,6 +123,40 @@ const bundle = await build({
 	],
 });
 
+/*
+ * THE COMPOSER'S PURE RULES, in their OWN bundle, through the real module.
+ *
+ * `use-message-input` reaches the canonical-session hook, so it cannot share the
+ * aside bundle above: that one replaces the whole desktop-api module with the
+ * transport fixture, and the canonical graph imports more from it than the
+ * fixture declares. Built instead with the api itself and `import.meta.env`
+ * defined, which is all the module needs to load in node - and nothing in it is
+ * CALLED, so the real transport is never reached. The rules under test are
+ * exported precisely so they can be asserted without mounting the composer
+ * (`clearSubmittedText`'s own note).
+ */
+const composerBundle = await build({
+	stdin: {
+		contents: `
+			export {
+				clearSubmittedText,
+				recordsSubmittedMessage,
+				SEND_HELD,
+				SEND_OFF_RECORD,
+			} from "./src/renderer/src/shared/hooks/use-message-input";`,
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@features": "./src/renderer/src/features",
+	},
+	define: { "import.meta.env": "{}" },
+});
+
 const {
 	useAsideStore,
 	applyAsideDelta,
@@ -140,6 +177,15 @@ const {
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
+const {
+	clearSubmittedText,
+	recordsSubmittedMessage,
+	SEND_HELD,
+	SEND_OFF_RECORD,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(composerBundle.outputFiles[0].text).toString("base64")}`
+);
+
 /*
  * The assertions' own regex literals, HOISTED to the top level: this tree's
  * `useTopLevelRegex` rule charges a literal constructed inside a function, and
@@ -148,14 +194,68 @@ const {
  * said so — the same shape `canonical-chat.test.mjs` records at its own top.
  */
 const RE_ADOPT_SESSION_WORKING = /would splice a message into a live turn/;
-const RE_ADOPT_NOTHING = /nothing to add/;
-const RE_ADOPT_NO_EXCHANGE = /no exchange to add/;
+/*
+ * The two short reasons are asserted as whole strings rather than matched, so the
+ * COPY is pinned and not merely a fragment of it: the point of the design round's
+ * D2 is that each line carries one fact, and a regex over a substring would pass
+ * against the sentence that carried three.
+ */
+const NO_EXCHANGE_REASON = "Nothing to add yet.";
+const NOTHING_TO_ADD_REASON = "Nothing to add.";
+/*
+ * The wait is derived from the flag the paint uses, so its sentence describes the
+ * SETTLING and not the answer's arrival - `Wait for the answer` is what printed
+ * underneath an answer that had already arrived (design round 1, D3).
+ */
+const SETTLING_REASON =
+	"The exchange is still settling — a moment before it can be added.";
 const RE_ASIDE_RECEIPT =
 	/Receipt<"aside_delta", \{ aside_id: string; delta: string \}>/;
 const RE_ASIDE_EVENT = /Event<"aside_delta"/;
 const RE_ASIDE_DELTA = /aside_delta/;
 const RE_ROUTE_DELTA = /applyAsideDelta\(frame\.payload\.aside_id/;
 const RE_ROUTE_DELTAS = /applyAsideDeltas\(frames\)/;
+/*
+ * The view-batch rule (round 1, F5): the two frame types that move no view field,
+ * and the bail-out that keeps an aside answer from repainting the pane per chunk.
+ * The bail-out is source-level for the same reason the routing assertions below
+ * are - this hook cannot be bundled in a node test (see the file's header).
+ */
+const RE_VIEW_BATCH_PREDICATE =
+	/frame\.type !== "aside_delta" && frame\.type !== "heartbeat"/;
+const RE_VIEW_BATCH_BAILOUT =
+	/if \(!batchMovesView\(frames\)\) return current;/;
+/*
+ * The pairing contract (round 1, PAIRING CHANGE): the op carries the asking
+ * viewer's subscription id and the request body names it, because the answer's
+ * chunks are published on a stream every attached viewer reads.
+ */
+const RE_ASIDE_OP_SUBSCRIPTION =
+	/subscriptionId: z\.string\(\)\.regex\(SUBSCRIPTION_ID_PATTERN\)\.optional\(\),/;
+const RE_ASIDE_BODY_SUBSCRIPTION = /subscription_id: request\.subscriptionId,/;
+/*
+ * The aside ask leaves the composer WITHOUT BEING AWAITED (round 1, F1). Awaiting
+ * it held the box's clear and the composer's `admitting` state for the whole POST,
+ * so a question visibly being answered above sat in the box and a follow-up typed
+ * meanwhile was concatenated onto it by the next Enter.
+ */
+const RE_ASIDE_FIRE_AND_FORGET = /void askAside\(/;
+const RE_ASIDE_AWAITED = /await askAside\(/;
+const RE_ASIDE_OUTCOME = /return SEND_OFF_RECORD;/;
+/*
+ * What a `open` frame hands the renderer is what the ask must name, so the id's
+ * origin is asserted rather than assumed: the routing fix is only correct if the
+ * value sent with the ask is the stream's own subscription id.
+ */
+const RE_SUBSCRIPTION_IN_FRAME = /subscription_id/;
+/*
+ * The panel's own round-1 fixes: the live region (F4), the cap derived from the
+ * answer's line box rather than chosen as 240px (D1), and the disabled control's
+ * reason still present so the gate keeps saying why (D2).
+ */
+const RE_PANEL_LIVE_REGION = /<output className="sr-only" aria-live="polite">/;
+const RE_PANEL_CAP_DERIVED = /asideExchangeCap/;
+const RE_PANEL_CAP_SELECTOR = /max-h-\[240px\]/;
 const RE_PANEL_LABEL = /aria-labelledby=\{titleId\}/;
 const RE_MODAL_MARKS = /role="dialog"|role="alertdialog"|aria-modal/;
 const RE_DIALOG_IMPORTS = /picker-host|ui\/dialog|ui\/sheet|ui\/popover/;
@@ -164,7 +264,14 @@ const RE_PANEL_GATE = /asideSessionId && aside !== null/;
 const RE_DESTINATION = /"session\.aside": \{ kind: "aside" \}/;
 const RE_OLD_PICKER = /AsidePicker/;
 const RE_DISPATCH_ASIDE = /if \(entry\?\.kind === "aside"\)/;
-const RE_DISPATCH_ASK = /askAside\(sessionId, args\)/;
+/*
+ * The command door asks with the SAME subscription id the composer does (round 1,
+ * PAIRING CHANGE): the one-Enter path is the door this branch exists for, so an
+ * ask that named no subscription would leave the frame that streams the answer
+ * unreachable from exactly the surface the feature is about.
+ */
+const RE_DISPATCH_ASK =
+	/askAside\(\s*sessionId,\s*args,\s*canonical\.subscriptionId/;
 const RE_DISPATCH_OPEN = /openAsidePanel\(sessionId\)/;
 
 const SESSION = "session-aside-1";
@@ -461,8 +568,20 @@ test("the adopt gate needs a settled answer and an idle session", () => {
 	assert.equal(asideAdoptReady(beginAsideStream(), false), false);
 	assert.equal(
 		asideAdoptBlockedReason(beginAsideStream(), false),
-		"Wait for the answer before adding this to the conversation.",
+		SETTLING_REASON,
 	);
+	/*
+	 * THE SENTENCE IS DERIVED FROM THE FLAG THE PAINT USES (round 1, D3). An
+	 * answer's deltas finish painting about 0.6s before the POST returns, so a
+	 * stream that holds the COMPLETE answer and is still `streaming` must not be
+	 * told the answer has not arrived - which is what "Wait for the answer before
+	 * adding this to the conversation" said underneath that complete answer. The
+	 * wait is stated, the arrival is not, and the CONTROL stays on `settled`.
+	 */
+	const painted = applyAsideDelta(beginAsideStream(), "an answer");
+	assert.equal(painted.settled, false);
+	assert.equal(asideAdoptReady(painted, false), false);
+	assert.equal(asideAdoptBlockedReason(painted, false), SETTLING_REASON);
 	// The TUI's second: splicing a message into a live batch is a request no
 	// provider accepts.
 	assert.equal(asideAdoptReady(settled, true), false);
@@ -470,20 +589,106 @@ test("the adopt gate needs a settled answer and an idle session", () => {
 		asideAdoptBlockedReason(settled, true) ?? "",
 		RE_ADOPT_SESSION_WORKING,
 	);
-	// And a failed ask offers nothing to add.
+	/*
+	 * And a failed ask offers nothing to add - ONE fact, because the alert above
+	 * the control already states the cause (round 1, D2: the same instruction was
+	 * being painted twice, once as the backend's refusal sentence paraphrased and
+	 * once as this reason).
+	 */
 	assert.equal(
 		asideAdoptReady(failedAsideStream(undefined, "no"), false),
 		false,
 	);
-	assert.match(
-		asideAdoptBlockedReason(failedAsideStream(undefined, "no"), false) ?? "",
-		RE_ADOPT_NOTHING,
+	assert.equal(
+		asideAdoptBlockedReason(failedAsideStream(undefined, "no"), false),
+		NOTHING_TO_ADD_REASON,
 	);
 	// No aside at all is its own sentence rather than a crash.
 	assert.equal(asideAdoptReady(undefined, false), false);
-	assert.match(
-		asideAdoptBlockedReason(undefined, false) ?? "",
-		RE_ADOPT_NO_EXCHANGE,
+	assert.equal(asideAdoptBlockedReason(undefined, false), NO_EXCHANGE_REASON);
+});
+
+/* --------------------------------------------------------- the composer's half */
+
+/*
+ * THE OFF-RECORD DESTINATION LEAVES NO TRACE, in two places at once (round 1,
+ * F2). `submittedMessages` is persisted (`conversation-input-store.ts` writes the
+ * whole `inputByConversation` to `localStorage`) and recalled by Up-arrow, so a
+ * question typed at the composer while the panel is attached must not be written
+ * into it while the same question typed after a bare `/btw` is not - which door
+ * the user came through cannot decide whether the question outlives the app.
+ */
+test("an off-record ask is not written into the persisted composer history", () => {
+	assert.equal(recordsSubmittedMessage(SEND_OFF_RECORD), false);
+	// The conversation's own send is, and the two failure answers are not: `false`
+	// put the text back in the box, and `SEND_HELD` keeps the retry on the store's
+	// claim rather than in a log it would have to be recalled from.
+	assert.equal(recordsSubmittedMessage(true), true);
+	assert.equal(recordsSubmittedMessage(undefined), true);
+	assert.equal(recordsSubmittedMessage(false), false);
+	assert.equal(recordsSubmittedMessage(SEND_HELD), false);
+});
+
+/*
+ * THE CONCATENATION THE REVIEW TRACED (round 1, F1). The box is retired at the
+ * PRESS, not at the answer, so a follow-up typed while the answer streams starts
+ * from an empty box; the clear that lands later may only write over text this
+ * submit is still carrying, so it cannot join the two questions.
+ */
+test("a follow-up typed while the answer streams is not concatenated onto the question", () => {
+	/* 1. The press, with the aside attached and "q1" in the box. */
+	const submitted = "q1";
+	let box = submitted;
+	// The off-record outcome retires the box as the submit settles, which - with
+	// the ask no longer awaited - is the same task as the press.
+	box = clearSubmittedText(box, submitted);
+	assert.equal(box, "");
+	/* 2. The user types the next question while the answer is still arriving. */
+	box += "q2";
+	assert.equal(box, "q2");
+	/* 3. The late clear - the composer's own, or an echo's - sees a box that no
+	 *    longer holds the submitted text, so it is a no-op rather than a join. */
+	assert.equal(clearSubmittedText(box, submitted), "q2");
+	assert.equal(box.includes(submitted), false);
+});
+
+/*
+ * AND THE ASK ITSELF IS REGISTERED BY THE PRESS, which is the mechanism the clear
+ * above rests on: `beginAsk` runs synchronously, so the panel has the question and
+ * a stream entry to receive a delta before the request has even been sent. A
+ * caller that ignores the returned promise therefore loses nothing.
+ */
+test("an aside ask is registered and its answer needs no await", async () => {
+	reset();
+	let release;
+	handler = () =>
+		new Promise((resolve) => {
+			release = resolve;
+		});
+	const inFlight = askAside(SESSION, "q1", "a".repeat(32));
+	// Nothing has been awaited: the transport is still holding the request.
+	assert.equal(calls.length, 1);
+	const attached = useAsideStore.getState().attached[SESSION];
+	assert.equal(attached.turns.length, 1);
+	assert.equal(attached.turns[0].question, "q1");
+	assert.equal(
+		useAsideStore.getState().streams[attached.turns[0].asideId].streaming,
+		true,
+	);
+	/*
+	 * THE SUBSCRIPTION TRAVELS WITH THE ASK (round 1, PAIRING CHANGE). The answer's
+	 * chunks are published on the session's stream, which every attached viewer
+	 * reads, so the owner has to be told which subscription asked or the panel gets
+	 * none of them and degrades to the settled answer alone.
+	 */
+	assert.equal(calls[0].subscriptionId, "a".repeat(32));
+	release({
+		data: { aside_id: "unused", text: "an answer", off_record: true },
+	});
+	await inFlight;
+	assert.equal(
+		useAsideStore.getState().streams[attached.turns[0].asideId].text,
+		"an answer",
 	);
 });
 
@@ -505,6 +710,89 @@ test("the frame is live-only and never reaches the transcript reducer", () => {
 	const hook = read("src/renderer/src/shared/hooks/use-canonical-session.ts");
 	assert.match(hook, RE_ROUTE_DELTA);
 	assert.match(hook, RE_ROUTE_DELTAS);
+});
+
+/*
+ * AND THE BATCH IS TAKEN OUT OF THE VIEW UPDATE TOO (round 1, F5). Taking the
+ * chunks out before the transcript reducer is half the rule; the other half is
+ * that the batch must not reach `setView`, whose updater always returns a fresh
+ * view object - so every `aside_delta` batch re-rendered the whole pane, the
+ * composer subtree included, once per chunk for the length of the answer.
+ */
+test("a batch of off-record chunks does not repaint the view", () => {
+	const hook = read("src/renderer/src/shared/hooks/use-canonical-session.ts");
+	// The two types that move no view field, spelled once for the batch rule.
+	assert.match(hook, RE_VIEW_BATCH_PREDICATE);
+	// `current`, not a fresh object: handing React the same reference is what
+	// makes the bail-out a non-render rather than a cheap one.
+	assert.match(hook, RE_VIEW_BATCH_BAILOUT);
+});
+
+/*
+ * THE PRESS HANDS THE BOX BACK (round 1, F1). `askAside` is called without being
+ * awaited, so the composer's own clear runs at the press rather than at the
+ * answer, and the outcome the branch returns is the off-record one - which is
+ * what keeps the text out of the history log and out of the box (F2).
+ */
+test("the aside ask leaves the composer without being awaited", () => {
+	const page = read("src/renderer/src/features/chat/components/chat-page.tsx");
+	assert.match(page, RE_ASIDE_FIRE_AND_FORGET);
+	assert.doesNotMatch(page, RE_ASIDE_AWAITED);
+	assert.match(page, RE_ASIDE_OUTCOME);
+});
+
+/*
+ * THE SENTENCE AND THE PRESS AGREE (round 1, F3). A pending question card and an
+ * attached aside can hold at once, and the gate branch is the one that wins in
+ * `chat-page.tsx` (an `approval` gate is answered from the composer or not at
+ * all). The placeholder is therefore read here as an ORDER: the gate's term must
+ * come before the aside's, or the box promises a route the press does not take.
+ */
+test("the placeholder names the destination the press actually reaches", () => {
+	const composer = read(
+		"src/renderer/src/features/chat/components/message-input.tsx",
+	);
+	const gate = composer.indexOf("Answer the question above");
+	const aside = composer.indexOf("Ask off the record — Esc closes the aside");
+	assert.notEqual(gate, -1);
+	assert.notEqual(aside, -1);
+	assert.ok(
+		gate < aside,
+		"the gate's placeholder term must precede the aside's: while a gate is unanswered the press answers the GATE",
+	);
+});
+
+/*
+ * THE PANEL'S OWN ROUND-1 FIXES, read where they live: one live region carrying the
+ * PHASE rather than the answer (F4), and a cap derived from the answer's own line
+ * box instead of the 240px that cut through one (D1).
+ */
+test("the panel announces its phases and caps itself in whole line boxes", () => {
+	const panel = read(
+		"src/renderer/src/features/chat/components/aside-panel.tsx",
+	);
+	assert.match(panel, RE_PANEL_LIVE_REGION);
+	assert.match(panel, RE_PANEL_CAP_DERIVED);
+	// The number this replaces is gone rather than left beside the derivation: two
+	// caps in one element is how the partial line comes back.
+	assert.doesNotMatch(panel, RE_PANEL_CAP_SELECTOR);
+});
+
+/*
+ * THE PAIRING CONTRACT (round 1, PAIRING CHANGE). The backend fix routes
+ * `aside_delta` to the subscription that asked; a POST that does not name one
+ * receives none of the frames, which would leave the panel with the settled
+ * answer and no streaming at all.
+ */
+test("the ask carries the subscription its chunks belong to", () => {
+	const contract = read("src/shared/desktop-contract.ts");
+	// OPTIONAL, so an owner that predates the routing still accepts the request.
+	assert.match(contract, RE_ASIDE_OP_SUBSCRIPTION);
+	assert.match(contract, RE_ASIDE_BODY_SUBSCRIPTION);
+	// And the id is the stream's own, so the lease and the routing cannot disagree
+	// about which subscription a viewer is.
+	const engage = read("src/main/backend/session-engage.ts");
+	assert.match(engage, RE_SUBSCRIPTION_IN_FRAME);
 });
 
 test("the panel is not a modal and owns none of the app's keys", () => {

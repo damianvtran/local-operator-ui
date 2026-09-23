@@ -11701,6 +11701,831 @@ async function authoringWrite(path, body) {
 	return { path, status: response.status, body: text.slice(0, 300) };
 }
 
+/**
+ * `/btw` — the aside, driven end to end in BOTH trees by one scene.
+ *
+ * WHY ONE SCENE AND NOT TWO. The change is a replacement of one surface by
+ * another, so the most useful pair of frames is the SAME steps taken in the same
+ * order against each tree, with the assertions stating what each tree did at
+ * each step. A scene per tree would let a step quietly differ between them and
+ * the pair would stop being a comparison.
+ *
+ * WHAT IT ASSERTS, RATHER THAN PHOTOGRAPHS. The report this change answers has
+ * four complaints, and every one of them is a claim a frame cannot make on its
+ * own:
+ *
+ *   1. "a second Enter" — after ONE `Input.dispatchKeyEvent` Enter, the AFTER
+ *      tree must have the panel up on the chat route with the question already
+ *      asked (the panel paints the question and its thinking line); the BEFORE
+ *      tree must have a Radix dialog up and NO answer, which is the second press
+ *      the report is about.
+ *   2. "the composer took nothing" — a probe typed while the aside is up must
+ *      land in the composer's textarea in the AFTER tree; in the BEFORE tree the
+ *      composer must be unreachable (Radix marks outside content `aria-hidden`
+ *      with `pointer-events: none`), which is read as the composer's own
+ *      `hitTest` plus its painted value.
+ *   3. "input appears erased" — in the BEFORE tree typing into the dialog's own
+ *      value-pinned field must leave the painted value EMPTY; the AFTER tree has
+ *      no such field, and its answer streams into the panel instead.
+ *   4. "only the final answer was shown" — between the ask and the first chunk
+ *      the AFTER tree paints a thinking line, and with text arriving the panel's
+ *      answer is a PREFIX of the settled answer. Both are read, not assumed: the
+ *      mid-stream frame is only taken while the text is present but incomplete.
+ *
+ * IT ALSO STATES THE ADOPT GATE AND THE ACCESSIBILITY SHAPE, because a panel
+ * whose control is dead and never says why is the failure mode the gate's own
+ * comment names: the disabled control must carry its reason while the exchange
+ * is unfinished, and the enabled one must be reachable and advertised (the
+ * chord cap is painted beside it).
+ *
+ * THE TREE IS DETECTED, NEVER PASSED IN: which surface appeared after the first
+ * Enter is the app's answer, and a scene that was TOLD which tree it is could
+ * pass on a tree where nothing it claims is true.
+ */
+async function sceneBtwAside(cdp) {
+	const FIELD = 'textarea[aria-label="Message"]';
+	const PANEL = "[data-lo-aside-panel]";
+	const DIALOG = '[role="dialog"]';
+	const QUESTION = "what does the retry budget actually cap?";
+	const TAIL = "wrong, not the provider"; // the last clause of the stub's answer
+
+	/**
+	 * The band, the panel and the modal, read as the app paints them.
+	 *
+	 * Everything here is a property of the app's own DOM: the boxes come from
+	 * `getBoundingClientRect`, the copy from `textContent`, the adopt control's
+	 * state from its own `disabled`, and the composer's reachability from
+	 * `elementFromPoint` at its centre (which is the only honest way to ask
+	 * whether a modal has taken the pointer, since the attribute that does it is
+	 * on an ancestor).
+	 */
+	const readBand = () =>
+		cdp.evaluate(`(() => {
+			const box = (el) => {
+				if (!el) return null;
+				const r = el.getBoundingClientRect();
+				return {
+					x: Math.round(r.x), y: Math.round(r.y),
+					right: Math.round(r.right), bottom: Math.round(r.bottom),
+					w: Math.round(r.width), h: Math.round(r.height),
+				};
+			};
+			const text = (el) => (el ? el.textContent.replace(/\\s+/g, " ").trim() : null);
+			const buttons = (root) =>
+				root
+					? Array.from(root.querySelectorAll("button")).map((b) => ({
+							text: b.textContent.replace(/\\s+/g, " ").trim(),
+							label: b.getAttribute("aria-label"),
+							disabled: b.disabled,
+						}))
+					: null;
+			const field = document.querySelector(${JSON.stringify(FIELD)});
+			const panel = document.querySelector(${JSON.stringify(PANEL)});
+			const dialog = document.querySelector(${JSON.stringify(DIALOG)});
+			const active = document.activeElement;
+			const dialogField = dialog ? dialog.querySelector("textarea") : null;
+			const hiddenByAncestor = (el) => {
+				let node = el ? el.parentElement : null;
+				while (node) {
+					if (node.getAttribute && node.getAttribute("aria-hidden") === "true") return true;
+					node = node.parentElement;
+				}
+				return false;
+			};
+			return {
+				field: box(field),
+				fieldMatches: document.querySelectorAll(${JSON.stringify(FIELD)}).length,
+				/** The textarea's ancestors, so an odd rect can be explained rather
+				 * than guessed at: which element is 34px tall, where the frame is, and
+				 * whether a transform is in the chain. */
+				fieldAncestors: (() => {
+					const out = [];
+					let node = field ? field.parentElement : null;
+					for (let depth = 0; depth < 6 && node; depth++) {
+						out.push({
+							tag: node.tagName.toLowerCase(),
+							cls: String(node.className ?? "").slice(0, 90),
+							rect: box(node),
+							transform: getComputedStyle(node).transform,
+							position: getComputedStyle(node).position,
+						});
+						node = node.parentElement;
+					}
+					return out;
+				})(),
+				fieldValue: field ? field.value : null,
+				fieldHittable: (() => {
+					if (!field) return null;
+					const r = field.getBoundingClientRect();
+					const hit = document.elementFromPoint(
+						Math.round(r.left + r.width / 2),
+						Math.round(r.top + r.height / 2),
+					);
+					return hit !== null && (hit === field || field.contains(hit) || (hit.contains && hit.contains(field)));
+				})(),
+				fieldHiddenByAncestor: hiddenByAncestor(field),
+				activeIsField: active === field,
+				active: active
+					? active.tagName.toLowerCase() +
+						(active.getAttribute("aria-label")
+							? "[" + active.getAttribute("aria-label") + "]"
+							: "")
+					: null,
+				box: box(field ? field.parentElement : null),
+				composerBox: (() => {
+					/*
+					 * THE COMPOSER'S OWN FRAME, found the way the app itself finds it: by
+					 * the shared measure class (chat-measure.ts), which is the one
+					 * element both the panel and the box carry. The field's parent is NOT
+					 * that element - it is inset by the box's own padding - and comparing
+					 * the panel against it reported a 17px misalignment that does not
+					 * exist on screen.
+					 */
+					const shared = Array.from(
+						document.querySelectorAll(
+							'[class*="@min-[750px]/chatcol:max-w-[900px]"]',
+						),
+					);
+					const frame = field
+						? shared.find((el) => el.contains(field))
+						: null;
+					return box(frame ?? null);
+				})(),
+				panel: box(panel),
+				panelText: text(panel),
+				panelTag: panel ? panel.tagName.toLowerCase() : null,
+				panelLabelledBy: panel ? panel.getAttribute("aria-labelledby") : null,
+				panelTitleText: panel
+					? text(panel.querySelector("h1, h2, h3"))
+					: null,
+				panelButtons: buttons(panel),
+				panelAlert: panel ? text(panel.querySelector('[role="alert"]')) : null,
+				panelThinking: panel ? panel.textContent.includes("thinking…") : null,
+				dialog: box(dialog),
+				dialogText: text(dialog),
+				dialogTitle: dialog ? text(dialog.querySelector("h1, h2, h3")) : null,
+				dialogFieldValue: dialogField ? dialogField.value : null,
+				dialogButtons: buttons(dialog),
+				dialogFieldHidden: hiddenByAncestor(dialogField),
+			};
+		})()`);
+
+	/** The control in a button list whose text starts with `label`. */
+	const button = (list, label) =>
+		(list ?? []).find((entry) => entry.text.startsWith(label)) ?? null;
+
+	/**
+	 * Start the session's runtime the way the renderer does, and wait for it.
+	 *
+	 * The composer mounts as soon as the pane does; the OWNER that answers an
+	 * aside boots on the first ask and can take seconds. Warming first is what
+	 * separates "the panel never painted the answer" from "the backend was still
+	 * starting", and this rig's whole claim is about the panel.
+	 */
+	const warm = async () => {
+		await fetch(`${BACKEND}/v1/desktop/sessions/${sessionId}/warm`, {
+			method: "POST",
+			headers: {
+				"content-type": "application/json",
+				authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+			},
+			body: "{}",
+		}).catch(() => null);
+		for (let attempt = 0; attempt < 120; attempt++) {
+			const response = await fetch(
+				`${BACKEND}/v1/desktop/sessions/${sessionId}`,
+				{
+					headers: {
+						authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+					},
+				},
+			).catch(() => null);
+			const body = response ? await response.json().catch(() => null) : null;
+			if (body && JSON.stringify(body).includes('"cold":false')) return true;
+			await wait(500);
+		}
+		return false;
+	};
+
+	// ---- the run's own preconditions ----------------------------------------
+	const hello = await verb(cdp, "hello");
+	note("hello", JSON.stringify(hello, null, 2));
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown",
+		facts.windowMode === "headless" && facts.visible === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", "localOperatorDark");
+
+	/*
+	 * A session on this run's own backend, in this run's own scratch tree: the
+	 * aside's op is keyed by a session id, so a draft (which has none) could not
+	 * ask at all. The same `POST /v1/desktop/sessions` the desktop UI makes.
+	 */
+	const workspace = join(SCRATCH, "btw-workspace");
+	mkdirSync(workspace, { recursive: true });
+	const created = await createBackendSession(workspace);
+	note(
+		"the session this scene asks from",
+		JSON.stringify(created.id ? { id: created.id } : created.body),
+	);
+	if (!created.id) {
+		throw new Error(
+			`no session on the backend (${JSON.stringify(created.body)}): this scene needs --backend pointing at an isolated daemon this run owns, with --backend-records so discovery admits it and --seed-onboarding-complete so the first-run wizard is out of the way`,
+		);
+	}
+	const sessionId = created.id;
+	await verb(cdp, "navigate", `/chat/${sessionId}`);
+	for (let attempt = 0; attempt < 80; attempt++) {
+		const present = await cdp.evaluate(
+			`document.querySelector(${JSON.stringify(FIELD)}) !== null`,
+		);
+		if (present) break;
+		await wait(100);
+	}
+	const rested = await readBand();
+	if (rested.field === null) {
+		throw new Error(
+			"no composer on screen for the session this scene created: check that the backend is on a port the PAGE allows (8080 here — `src/renderer/index.html` pins connect-src to 1111/8080, and 1111 is the operator's own backend) and that the renderer was built with VITE_LOCAL_OPERATOR_API_URL set to that same URL",
+		);
+	}
+	note("the band at rest", JSON.stringify(rested));
+	check(
+		"the composer is on screen and holds the caret before anything is typed",
+		rested.activeIsField === true,
+		JSON.stringify({ active: rested.active, field: rested.field }),
+	);
+	const warmed = await warm();
+	note(
+		"the session's owner",
+		warmed ? "warm (snapshot.cold = false)" : "NEVER WARMED",
+	);
+
+	// ---- ONE Enter ----------------------------------------------------------
+	await cdp.send("Input.insertText", { text: `/btw ${QUESTION}` });
+	await wait(150);
+	const typedLine = await readBand();
+	check(
+		"the slash line is in the composer, typed through the browser's own input pipeline",
+		typedLine.fieldValue === `/btw ${QUESTION}`,
+		`composer holds ${JSON.stringify(typedLine.fieldValue)}`,
+	);
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+
+	/*
+	 * WHICH SURFACE THE ONE PRESS PRODUCED is the scene's fork, and it is read
+	 * rather than passed in: the AFTER tree attaches the panel and asks in the
+	 * same press, the BEFORE tree presents a modal and asks only on a second one.
+	 */
+	let opened = await readBand();
+	for (let attempt = 0; attempt < 60; attempt++) {
+		if (opened.panel !== null || opened.dialog !== null) break;
+		await wait(100);
+		opened = await readBand();
+	}
+	const AFTER = opened.panel !== null;
+	const BEFORE = opened.dialog !== null;
+	if (!AFTER && !BEFORE) {
+		throw new Error(
+			`one Enter produced neither the aside panel nor the aside dialog (composer holds ${JSON.stringify(opened.fieldValue)}): the press did not reach the /btw route, so nothing about the aside is being measured`,
+		);
+	}
+	const TREE = AFTER ? "after" : "before";
+	/*
+	 * A prefix for the frame files, so a second pass at another WINDOW SIZE (the
+	 * narrow column, where the band's small-view branch is the one that renders)
+	 * writes beside the first rather than over it.
+	 */
+	const FRAME_PREFIX = RUN_LABEL ? `${TREE}-${RUN_LABEL}` : TREE;
+	note(
+		"which surface one Enter produced",
+		AFTER
+			? "the composer-attached panel ([data-lo-aside-panel])"
+			: "a Radix modal dialog ([role=dialog])",
+	);
+	check(
+		"one Enter produced exactly one of the two surfaces (never both)",
+		AFTER !== BEFORE,
+		JSON.stringify({ panel: opened.panel, dialog: opened.dialog }),
+	);
+
+	/*
+	 * The panel's own accessibility shape, from the browser's accessibility tree
+	 * rather than from attributes: `<section>` with an accessible name IS a
+	 * region, and the name is what makes it one.
+	 */
+	if (AFTER) {
+		const ax = await cdp
+			.send("Accessibility.getFullAXTree", {})
+			.catch((error) => ({ error: String(error) }));
+		const axNodes = ax?.result?.nodes ?? [];
+		const named = axNodes.filter(
+			(node) =>
+				node.name?.value === "Aside" ||
+				String(node.name?.value ?? "").startsWith("Aside"),
+		);
+		note(
+			"the panel in the accessibility tree",
+			JSON.stringify({
+				nodes: axNodes.length,
+				error: ax.error ?? null,
+				regions: axNodes
+					.filter((node) => node.role?.value === "region")
+					.map((node) => node.name?.value),
+				named: named.map((node) => ({
+					role: node.role?.value,
+					name: node.name?.value,
+					ignored: node.ignored,
+				})),
+			}),
+		);
+		check(
+			"the panel is named in the accessibility tree (a named section IS a region)",
+			named.some((node) => node.role?.value === "region"),
+			JSON.stringify(named.map((n) => `${n.role?.value}:${n.name?.value}`)),
+		);
+		check(
+			"the panel is not a dialog, so the composer keeps the app's keys",
+			!named.some((node) => node.role?.value === "dialog"),
+			JSON.stringify(named.map((node) => node.role?.value)),
+		);
+	}
+
+	const frames = [];
+	const take = async (label, mode = "settled") => {
+		const frame =
+			mode === "settled"
+				? await captureSettled(cdp, `${FRAME_PREFIX}-${label}`)
+				: await capture(cdp, `${FRAME_PREFIX}-${label}`);
+		frames.push({ ...frame, mode });
+		note(
+			"frame",
+			JSON.stringify({ label: frame.label, mode, ...frame.pixels }),
+		);
+		return frame;
+	};
+
+	if (AFTER) {
+		// ---- thinking: the panel is up, the question is asked, nothing has
+		// arrived yet. The adopt control must be dead AND must say why.
+		const thinking = await readBand();
+		check(
+			"the question is on the panel in the same press that typed it",
+			(thinking.panelText ?? "").includes(QUESTION),
+			`panel text is ${JSON.stringify(thinking.panelText)}`,
+		);
+		check(
+			"the panel is a sibling of the composer box, not the box itself",
+			thinking.panel !== null &&
+				thinking.composerBox !== null &&
+				thinking.panel.bottom <= thinking.composerBox.y + 1,
+			`panel ${JSON.stringify(thinking.panel)} vs composer box ${JSON.stringify(thinking.composerBox)}: a gap of ${thinking.composerBox.y - thinking.panel.bottom}px between them`,
+		);
+		check(
+			"the panel and the composer box share one left and right edge",
+			thinking.panel !== null &&
+				thinking.composerBox !== null &&
+				Math.abs(thinking.panel.x - thinking.composerBox.x) <= 1 &&
+				Math.abs(thinking.panel.right - thinking.composerBox.right) <= 1,
+			`panel x${thinking.panel?.x}..${thinking.panel?.right} box x${thinking.composerBox?.x}..${thinking.composerBox?.right}`,
+		);
+		check(
+			"the composer keeps the caret while the aside is up",
+			thinking.activeIsField === true,
+			JSON.stringify({ active: thinking.active }),
+		);
+		const adoptThinking = button(thinking.panelButtons, "Add to conversation");
+		check(
+			"the adopt control is present and disabled before the answer settles",
+			adoptThinking !== null && adoptThinking.disabled === true,
+			JSON.stringify(thinking.panelButtons),
+		);
+		check(
+			"the disabled adopt control states its reason on the panel",
+			(thinking.panelText ?? "").includes(
+				"The exchange is still settling — a moment before it can be added.",
+			),
+			JSON.stringify(thinking.panelText),
+		);
+		check(
+			"the panel paints the thinking line, and only one liveness element",
+			thinking.panelThinking === true &&
+				(thinking.panelText ?? "").split("thinking…").length === 2,
+			JSON.stringify(thinking.panelText),
+		);
+		check(
+			"the close control is labelled for a screen reader",
+			button(thinking.panelButtons, "") !== null &&
+				(thinking.panelButtons ?? []).some(
+					(entry) => entry.label === "Close the aside",
+				),
+			JSON.stringify(thinking.panelButtons),
+		);
+		await take("01-panel-thinking", "raw");
+
+		// ---- mid-stream: text is present and INCOMPLETE. The frame is only
+		// taken while that is true, so it cannot be a settled answer mislabelled.
+		let partial = null;
+		for (let attempt = 0; attempt < 80; attempt++) {
+			const now = await readBand();
+			const text = now.panelText ?? "";
+			if (text.includes("Transport failures") && !text.includes(TAIL)) {
+				partial = now;
+				break;
+			}
+			if (text.includes(TAIL)) break;
+			await wait(50);
+		}
+		if (partial !== null) {
+			check(
+				"the mid-stream frame carries partial text rather than the whole answer",
+				partial.panel !== null &&
+					partial.panelText.includes("Transport failures") &&
+					!partial.panelText.includes(TAIL),
+				JSON.stringify(partial.panelText),
+			);
+			await take("02-panel-midstream", "raw");
+		} else {
+			check(
+				"the answer streamed in more than one visible step",
+				false,
+				"no frame caught the answer in a partially-written state: the fake provider's chunks were not visibly separated, or the answer settled between two reads",
+			);
+		}
+
+		// ---- settled. The answer's last chunk reaches the panel BEFORE the POST
+		// that settles the turn returns, so `settled` is a distinct state from
+		// "the text is complete" and is waited for rather than assumed - the gap
+		// is measured here, because the panel is disabled and saying "wait for the
+		// answer" for exactly that window.
+		let settled = await readBand();
+		let textCompleteAt = null;
+		for (let attempt = 0; attempt < 240; attempt++) {
+			if ((settled.panelText ?? "").includes(TAIL)) {
+				textCompleteAt = Date.now();
+				break;
+			}
+			await wait(100);
+			settled = await readBand();
+		}
+		check(
+			"the settled answer is on the panel",
+			(settled.panelText ?? "").includes(TAIL),
+			JSON.stringify(settled.panelText),
+		);
+		let adoptLiveAt = null;
+		for (let attempt = 0; attempt < 240; attempt++) {
+			const live = button(settled.panelButtons, "Add to conversation");
+			if (live !== null && live.disabled === false) {
+				adoptLiveAt = Date.now();
+				break;
+			}
+			await wait(50);
+			settled = await readBand();
+		}
+		note(
+			"how long the adopt control lagged the fully-painted answer",
+			textCompleteAt === null
+				? "the answer never completed within the wait"
+				: `${adoptLiveAt === null ? "never went live" : `${adoptLiveAt - textCompleteAt}ms`}`,
+		);
+		const adoptSettled = button(settled.panelButtons, "Add to conversation");
+		check(
+			"the adopt control is live once the exchange has settled",
+			adoptSettled !== null && adoptSettled.disabled === false,
+			JSON.stringify(settled.panelButtons),
+		);
+		check(
+			"the blocked reason is gone once the control is live",
+			!(settled.panelText ?? "").includes(
+				"The exchange is still settling — a moment before it can be added.",
+			),
+			JSON.stringify(settled.panelText),
+		);
+		check(
+			"the adopt chord is advertised beside the control",
+			(settled.panelText ?? "").includes("+F"),
+			JSON.stringify(settled.panelText),
+		);
+		check(
+			"the panel keeps its contract sentence and the answer, and no second liveness line",
+			(settled.panelText ?? "").includes(
+				"off the record — nothing here joins the conversation",
+			) && settled.panelThinking === false,
+			JSON.stringify(settled.panelText),
+		);
+		await take("03-panel-settled");
+	}
+
+	if (BEFORE) {
+		check(
+			"one Enter opened a modal and did NOT ask: no answer is on it yet",
+			opened.dialogFieldValue === QUESTION,
+			`the dialog's field holds ${JSON.stringify(opened.dialogFieldValue)}, dialog title ${JSON.stringify(opened.dialogTitle)}`,
+		);
+		check(
+			"the modal is a dialog role, which is what takes the app's keys",
+			opened.dialog !== null && opened.dialogTitle === "Aside (off the record)",
+			JSON.stringify({ dialog: opened.dialog, title: opened.dialogTitle }),
+		);
+		await take("01-modal-open", "raw");
+	}
+
+	/*
+	 * THE REPORTED BUG, DRIVEN. A probe typed while the aside is up must reach the
+	 * composer in the AFTER tree. In the BEFORE tree the composer is outside a
+	 * modal, and the two readings that say so are the composer's own hit test and
+	 * its painted value — a click is deliberately NOT delivered there, because a
+	 * Radix modal dismisses on an outside press and that would end the very state
+	 * under test.
+	 */
+	const probe = "composer probe line";
+	let beforeProbe = await readBand();
+	if (AFTER) {
+		await clickAt(cdp, FIELD);
+		beforeProbe = await readBand();
+		check(
+			"the composer takes the pointer while the panel is up",
+			beforeProbe.fieldHittable !== false && beforeProbe.activeIsField === true,
+			JSON.stringify({
+				hittable: beforeProbe.fieldHittable,
+				active: beforeProbe.active,
+			}),
+		);
+	}
+	await cdp.send("Input.insertText", { text: probe });
+	await wait(250);
+	const afterProbe = await readBand();
+	if (AFTER) {
+		check(
+			"a probe typed while the panel is up LANDS in the composer and stays",
+			afterProbe.fieldValue === probe,
+			`composer holds ${JSON.stringify(afterProbe.fieldValue)}`,
+		);
+		check(
+			"the panel is still up after typing in the composer",
+			afterProbe.panel !== null,
+			JSON.stringify(afterProbe.panel),
+		);
+		await take("04-composer-typed-while-panel-up");
+	} else {
+		check(
+			"the composer cannot be reached while the modal is up (Radix marks it aria-hidden, pointer-events: none)",
+			beforeProbe.fieldHittable === false &&
+				beforeProbe.fieldHiddenByAncestor === true,
+			JSON.stringify({
+				hittable: beforeProbe.fieldHittable,
+				hidden: beforeProbe.fieldHiddenByAncestor,
+			}),
+		);
+		check(
+			"a probe typed while the modal is up does NOT land in the composer",
+			afterProbe.fieldValue === "",
+			`composer holds ${JSON.stringify(afterProbe.fieldValue)}`,
+		);
+		await take("02-composer-blocked");
+
+		/*
+		 * THE SECOND GESTURE, and this is the report's own complaint: the BEFORE tree
+		 * asks nothing on the press that typed the question, so the answer only
+		 * arrives after a SECOND one - the modal's own submit control.
+		 *
+		 * The walk is a KEYBOARD walk (Tab from the field, then Enter on the submit
+		 * button) rather than a pointer click, because it measures two things at once:
+		 * that the second gesture exists, and where it sits in the modal's focus
+		 * order. The focus order is recorded rather than asserted - it belongs to the
+		 * surface being replaced - and the submission is asserted.
+		 */
+		await clickAt(cdp, `${DIALOG} textarea`);
+		await wait(150);
+		const focusWalk = [];
+		let submitted = false;
+		for (let step = 0; step < 6 && !submitted; step++) {
+			const active = await cdp.evaluate(`(() => {
+				const a = document.activeElement;
+				return a
+					? {
+							tag: a.tagName.toLowerCase(),
+							type: a.getAttribute("type"),
+							label: a.getAttribute("aria-label"),
+							text: (a.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 40),
+						}
+					: null;
+			})()`);
+			focusWalk.push(active);
+			if (active && (active.type === "submit" || active.text === "Ask")) {
+				await pressChord(cdp, {
+					key: "Enter",
+					code: "Enter",
+					virtualKeyCode: 13,
+				});
+				submitted = true;
+				break;
+			}
+			await pressChord(cdp, { key: "Tab", code: "Tab", virtualKeyCode: 9 });
+			await wait(120);
+		}
+		note("the modal's focus order", JSON.stringify(focusWalk));
+		check(
+			"the modal's own control is what asks, and only a second gesture reaches it",
+			submitted === true,
+			`no submit control was reachable by Tab in 6 steps: ${JSON.stringify(focusWalk)}`,
+		);
+		let answered = await readBand();
+		for (let attempt = 0; attempt < 240; attempt++) {
+			if ((answered.dialogText ?? "").includes(TAIL)) break;
+			await wait(100);
+			answered = await readBand();
+		}
+		check(
+			"the second gesture is what asks in this tree — the finished answer, all at once",
+			(answered.dialogText ?? "").includes(TAIL),
+			JSON.stringify(answered.dialogText),
+		);
+		check(
+			"the composer is still unreachable after the answer lands",
+			answered.fieldHittable === false && answered.fieldValue === "",
+			JSON.stringify({
+				hittable: answered.fieldHittable,
+				value: answered.fieldValue,
+			}),
+		);
+		await take("03-modal-answered");
+
+		/*
+		 * THE PICTURE-DEPENDENT ERASE, and it can only be taken AFTER an answer has
+		 * landed: the field's painted value is `answer ? "" : text`, so before the
+		 * first answer the box shows what is typed into it and after one it is
+		 * pinned empty however much is typed. That is the report's third complaint,
+		 * and it is a second mechanism beside the modal's reach.
+		 */
+		await clickAt(cdp, `${DIALOG} textarea`);
+		await wait(150);
+		const focused = await readBand();
+		await cdp.send("Input.insertText", { text: probe });
+		await wait(250);
+		const typed = await readBand();
+		note(
+			"the modal's own follow-up field",
+			JSON.stringify({
+				focusedBefore: focused.active,
+				valueAfterTyping: typed.dialogFieldValue,
+				composerValue: typed.fieldValue,
+			}),
+		);
+		check(
+			"after an answer, typing into the modal's follow-up field leaves the painted value EMPTY (the pinned value)",
+			typed.dialogFieldValue === "" || typed.dialogFieldValue === null,
+			`the dialog's field paints ${JSON.stringify(typed.dialogFieldValue)} after ${JSON.stringify(probe)} was typed into it`,
+		);
+		await take("04-followup-erased");
+	}
+
+	// ---- Escape ------------------------------------------------------------
+	await pressChord(cdp, { key: "Escape", code: "Escape", virtualKeyCode: 27 });
+	let closed = await readBand();
+	for (let attempt = 0; attempt < 60; attempt++) {
+		if (closed.panel === null && closed.dialog === null) break;
+		await wait(100);
+		closed = await readBand();
+	}
+	check(
+		"Escape closes the aside and leaves neither surface up",
+		closed.panel === null && closed.dialog === null,
+		JSON.stringify({ panel: closed.panel, dialog: closed.dialog }),
+	);
+	check(
+		"the composer holds the caret again after Escape",
+		closed.activeIsField === true,
+		JSON.stringify({ active: closed.active, field: closed.field }),
+	);
+	if (AFTER) {
+		check(
+			"the composer's own text survived the aside being closed",
+			closed.fieldValue === probe,
+			`composer holds ${JSON.stringify(closed.fieldValue)}`,
+		);
+	}
+	await take(`${AFTER ? "05" : "05"}-escape-restored`);
+
+	/*
+	 * The two remaining states of the panel, and only the AFTER tree has them: a
+	 * bare `/btw` (an empty panel, the next line becomes its first question) and an
+	 * ask the backend refused (the error is ON the panel, not in a toast).
+	 */
+	if (AFTER) {
+		// Clear the probe out of the composer first (`Cmd+A` then type, the
+		// gesture a user makes; `Input.insertText` inserts AT THE CARET and would
+		// otherwise prefix the command line with the probe).
+		await clickAt(cdp, FIELD);
+		await pressChord(cdp, {
+			key: "a",
+			code: "KeyA",
+			virtualKeyCode: 65,
+			modifiers: MODIFIER.meta,
+			commands: ["selectAll"],
+		});
+		await cdp.send("Input.insertText", { text: "/btw" });
+		await wait(150);
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		let empty = await readBand();
+		for (let attempt = 0; attempt < 60; attempt++) {
+			if (empty.panel !== null) break;
+			await wait(100);
+			empty = await readBand();
+		}
+		check(
+			"a bare /btw attaches an EMPTY panel rather than asking nothing visible",
+			empty.panel !== null &&
+				(empty.panelText ?? "").includes(
+					"Type a question in the composer below",
+				),
+			JSON.stringify(empty.panelText),
+		);
+		const adoptEmpty = button(empty.panelButtons, "Add to conversation");
+		check(
+			"the empty panel's adopt control is disabled and says there is nothing to add",
+			adoptEmpty !== null &&
+				adoptEmpty.disabled === true &&
+				(empty.panelText ?? "").includes("Nothing to add yet."),
+			JSON.stringify({ text: empty.panelText, buttons: empty.panelButtons }),
+		);
+		await take("06-empty-panel-bare-btw");
+
+		/*
+		 * The refusal needs its OWN panel, so this closes the empty one first:
+		 * while an aside is attached the composer's Enter addresses the ASIDE
+		 * rather than dispatching the command again.
+		 */
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		await wait(300);
+		await cdp.send("Input.insertText", {
+			text: "/btw TOOLCALL2: keep calling tools",
+		});
+		await wait(150);
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		let refused = await readBand();
+		for (let attempt = 0; attempt < 300; attempt++) {
+			if (refused.panelAlert !== null) break;
+			await wait(100);
+			refused = await readBand();
+		}
+		check(
+			"a refused ask states the refusal ON the panel, not in a toast",
+			refused.panelAlert !== null,
+			JSON.stringify(refused.panelAlert),
+		);
+		check(
+			"the panel's error is an alert, and the adopt control stays disabled with its reason",
+			refused.panelAlert !== null &&
+				button(refused.panelButtons, "Add to conversation")?.disabled === true,
+			JSON.stringify({
+				alert: refused.panelAlert,
+				buttons: refused.panelButtons,
+			}),
+		);
+		await take("07-panel-error");
+	}
+
+	check(
+		"every capture wrote a PNG of the requested size",
+		frames.every(
+			(frame) =>
+				frame.bytes > 1000 &&
+				frame.pixels.width ===
+					frame.viewport.width * frame.viewport.devicePixelRatio &&
+				frame.pixels.height ===
+					frame.viewport.height * frame.viewport.devicePixelRatio,
+		),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: ${frame.pixels.width}x${frame.pixels.height}, ${frame.bytes}B`,
+			)
+			.join(" | "),
+	);
+	check(
+		"every settled capture is a frame the app held still for, with no toast on it",
+		frames
+			.filter((frame) => frame.mode === "settled")
+			.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: ${frame.mode}, stable=${frame.stable}, toastFree=${frame.toastFree}`,
+			)
+			.join(" | "),
+	);
+	return { tree: TREE, frames };
+}
+
 async function sceneNewChat(cdp) {
 	/*
 	 * Start anywhere but the chat route: `navigate("/chat")` is 80% of what this
@@ -18158,6 +18983,11 @@ async function main() {
 	 * (agent review round 2, NIT-2). Reading argv and refusing costs nothing, and
 	 * the same argument holds for every scene that names an instrument it needs.
 	 */
+	if (SCENE === "btw-aside" && BACKEND === null) {
+		throw new Error(
+			"--scene btw-aside needs --backend: the aside is answered by the daemon (sessions.aside) and its answer streams over the session's own SSE frames, so a run with no backend photographs an app that can never be asked anything",
+		);
+	}
 	if (SCENE === "sidebar-split" && BACKEND === null) {
 		throw new Error(
 			"--scene sidebar-split needs --backend: the boundary only exists while both regions do, and the list region is gated on the catalogue a live backend advertises",
@@ -18318,6 +19148,7 @@ async function main() {
 			else if (SCENE === "states") await sceneStates(cdp);
 			else if (SCENE === "radient-issue") await sceneRadientIssue(cdp);
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);
+			else if (SCENE === "btw-aside") await sceneBtwAside(cdp);
 			else if (SCENE === "authoring-refresh") await sceneAuthoringRefresh(cdp);
 			else if (SCENE === "settings-model") await sceneSettingsModel(cdp);
 			else if (SCENE === "settings-fields") await sceneSettingsFields(cdp);

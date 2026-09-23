@@ -13,7 +13,11 @@ import { ChatLayout } from "@shared/components/common/chat-layout";
 import { useCanonicalSessionStream } from "@shared/hooks/use-canonical-session";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
-import { SEND_HELD, type SendOutcome } from "@shared/hooks/use-message-input";
+import {
+	SEND_HELD,
+	SEND_OFF_RECORD,
+	type SendOutcome,
+} from "@shared/hooks/use-message-input";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
 import { useWarmSession } from "@shared/hooks/use-warm-session";
 import { cn } from "@shared/lib/utils";
@@ -1146,14 +1150,37 @@ function SessionPanel({
 			 * an aside path that skipped them would be the one route that does not (the
 			 * interface note: an aside is an off-record ANSWER, not an exemption).
 			 * Below, because every step after this point turns text into a TURN of the
-			 * conversation — the gate answer, the stream wait, `admitChatDraft` — and an
-			 * aside is precisely the exchange that must not become one.
+			 * conversation — the stream wait, `admitChatDraft` — and an aside is
+			 * precisely the exchange that must not become one.
 			 *
-			 * THE QUESTION IS PAINTED BEFORE IT IS SENT: `askAside` registers the turn in
-			 * the store the panel renders from before it posts, so the panel shows the
-			 * question and its thinking state in the same commit that clears the box.
-			 * A refusal answers `false`, which is what puts the text back in the box —
-			 * nothing was admitted — and the panel states the reason it was refused.
+			 * THE PENDING-GATE BRANCH ABOVE OUTRANKS IT, and the composer's placeholder
+			 * is what names the winner (`message-input.tsx` puts `awaitingAnswer` ahead
+			 * of the aside term for exactly this reason). An `approval` gate has NO
+			 * OTHER ANSWER PATH: its card says "Reply yes or no in the composer", and
+			 * the aside can be left standing for as long as the user likes, while the
+			 * agent is parked on that gate. Making the aside win would leave a blocked
+			 * turn unanswerable except by closing the panel first.
+			 *
+			 * THE QUESTION IS PAINTED BEFORE IT IS SENT, AND THE BOX IS HANDED BACK AT
+			 * THE PRESS. `askAside` registers the turn in the store the panel renders
+			 * from BEFORE it posts, so the panel shows the question and its thinking
+			 * state in the same commit that clears the box — and this branch does NOT
+			 * AWAIT the ask, which is what makes that commit the press rather than the
+			 * answer. Awaiting it held the composer's own clear and its `admitting`
+			 * state for the whole POST, so a question visibly being answered above sat
+			 * in the box as well, and a follow-up typed meanwhile made the eventual
+			 * clear a no-op — the next Enter then asked "q1q2" as a NEW turn. The
+			 * `/btw` dispatcher's own branch states the same rule for its own door.
+			 *
+			 * A FAILED ASK DOES NOT PUT THE TEXT BACK, deliberately, and that is why
+			 * the outcome is `SEND_OFF_RECORD` rather than `false`. The failure is
+			 * unknowable in the way `SEND_HELD` describes — the ask was REGISTERED, so
+			 * "nothing reached the owner" is false and the retry is not the box's to
+			 * offer — and the only text a restore could write into is a box the user
+			 * has since left alone, so whether it came back would depend on a race they
+			 * cannot see. Nothing is lost on screen: the panel keeps the question
+			 * painted and states the refusal under it, in the surface that owns the
+			 * exchange.
 			 */
 			const aside = sessionId
 				? useAsideStore.getState().attached[sessionId]
@@ -1173,14 +1200,25 @@ function SessionPanel({
 					);
 					return false;
 				}
-				try {
-					await askAside(sessionId, content);
-					return true;
-				} catch {
-					// The refusal is stated on the panel by `askAside`; the composer keeps the
-					// text so the user can edit and send it again.
-					return false;
-				}
+				/*
+				 * THE SUBSCRIPTION TRAVELS WITH THE ASK. The stream is read by every
+				 * attached viewer of this session, so an owner that routes `aside_delta`
+				 * to the subscription that asked — rather than broadcasting it — needs to
+				 * be told which one that is, and without it the panel degrades to the
+				 * settled answer with no thinking state and no streaming. The id is the
+				 * `open` frame's own (`use-canonical-session` keeps it on the view, which
+				 * is also what the watch lease above leases it with), and it is absent
+				 * only before the stream's first `open`.
+				 */
+				void askAside(
+					sessionId,
+					content,
+					canonical.subscriptionId ?? undefined,
+				).catch(() => {
+					// The refusal is already on the panel (`askAside` records it on the
+					// turn), and this call site has nothing to add to it.
+				});
+				return SEND_OFF_RECORD;
 			}
 			/*
 			 * A SEND PRESSED BEFORE THE STREAM HAS ANSWERED WAITS FOR IT, and then

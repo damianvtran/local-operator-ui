@@ -56,6 +56,51 @@ export type AsidePanelProps = {
 };
 
 /**
+ * The answer's own type step, in ONE place, because the exchange's cap is derived
+ * from it (see `asideExchangeCap`).
+ *
+ * `lineHeight: 1.6` is the transcript's own leading, and `var(--text-body)` its
+ * own size at the wide step — the aside reads as the agent's answer, not as a
+ * second kind of prose, and a surface that picked its own step would be the
+ * second typography this panel exists to avoid.
+ */
+const ASIDE_ANSWER_LINE_HEIGHT = 1.6;
+
+/** The whole number of the answer's line boxes the exchange shows before it scrolls. */
+const ASIDE_EXCHANGE_LINES = 10;
+
+/** The answer's size and leading, from the step it is painted at. */
+const asideAnswerType = (
+	isSmallView: boolean,
+): { fontSize: string; lineHeight: number } => ({
+	fontSize: isSmallView ? "var(--text-body-sm)" : "var(--text-body)",
+	lineHeight: ASIDE_ANSWER_LINE_HEIGHT,
+});
+
+/**
+ * The exchange's cap, DERIVED from the answer's line box rather than chosen.
+ *
+ * WHY IT IS DERIVED (design round 1, D1). A cap in round pixels lands wherever
+ * it lands inside a line, and the one this replaces did exactly that: 240px
+ * against this answer's 22.4px line box (14px at `1.6`) cuts at 10.71 lines, so
+ * the last visible row was a row of letter TOPS under a complete line — read as
+ * a rendering accident rather than as "there is more", which is the precise
+ * symptom `chat-measure.ts`'s `CAPPED_BLOCK` was introduced to remove for the
+ * composer's other capped blocks. The cap is therefore a WHOLE NUMBER OF THE
+ * ANSWER'S OWN LINE BOXES, and the size and leading in the expression are the
+ * ones the answer is painted at (both read from `asideAnswerType`), so moving
+ * the type step moves the cap with it instead of silently re-introducing the
+ * partial line.
+ *
+ * The cap is on the exchange REGION and the panel carries no `max-height` and no
+ * `overflow` of its own: the composer band must carry neither (the slash popup
+ * is an unportaled child of it), so each growable part of the band caps itself —
+ * the shape the composer's attachment strip and textarea already use.
+ */
+const asideExchangeCap = (isSmallView: boolean): string =>
+	`calc(${asideAnswerType(isSmallView).fontSize} * ${ASIDE_ANSWER_LINE_HEIGHT} * ${ASIDE_EXCHANGE_LINES})`;
+
+/**
  * One turn's answer, in the state it is in.
  *
  * `text` is painted through `MarkdownRenderer` at the transcript's own steps, so
@@ -75,10 +120,7 @@ const AsideAnswer: FC<{
 			{stream.text.length > 0 && (
 				<MarkdownRenderer
 					content={stream.text}
-					styleProps={{
-						fontSize: isSmallView ? "var(--text-body-sm)" : "var(--text-body)",
-						lineHeight: 1.6,
-					}}
+					styleProps={asideAnswerType(isSmallView)}
 					linkify={stream.settled}
 				/>
 			)}
@@ -129,6 +171,39 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 	const stream = lastTurn ? streams[lastTurn.asideId] : undefined;
 	const ready = asideAdoptReady(stream, sessionStreaming);
 	const blocked = asideAdoptBlockedReason(stream, sessionStreaming);
+	/*
+	 * WHAT A SCREEN READER IS TOLD, AND WHY IT IS A PHASE SENTENCE RATHER THAN
+	 * THE ANSWER (review round 1, F4).
+	 *
+	 * The panel is the app's only streaming surface outside the transcript's own
+	 * live regions, and it announced nothing: the question was taken, the answer
+	 * was arriving and the exchange had settled all in silence. The house pattern
+	 * for a transition a reader did not initiate is one `<output aria-live="polite">`
+	 * carrying the PHASE (`older-history-slot.tsx`, the working line) — and the
+	 * phase is the whole point here. Mirroring the answer into a live region would
+	 * announce once per chunk, which is worse than announcing nothing: the text
+	 * arrives many times per answer, a `polite` region is not interruptible, and
+	 * the reader would be hearing the answer's tail long after it finished.
+	 *
+	 * SO THE ANNOUNCEMENT IS A FUNCTION OF THE TWO FLAGS AND NEVER OF THE TEXT,
+	 * which is also what keeps it from re-announcing: React re-renders the panel on
+	 * every chunk, and the region's CONTENT does not change until the phase does.
+	 * `streaming` covers the thinking state and the streaming one together, because
+	 * they are one phase to a listener: nothing had arrived, and text is arriving.
+	 *
+	 * The empty panel is deliberately silent. Its text is one sentence, it is the
+	 * surface the user has just summoned with their own keypress, and there is
+	 * nothing yet to wait for — whereas the states below are the ones a reader
+	 * cannot see arrive.
+	 */
+	const announcement =
+		stream === undefined
+			? null
+			: stream.error !== null
+				? "The aside was not answered"
+				: stream.streaming
+					? "Asking the aside"
+					: "The aside answered";
 	// `navigator.platform`, derived at the call site exactly as `chat-sidebar.tsx`
 	// and `chat-header.tsx` do it: the cap is a promise about a key, and an
 	// awaited platform would flash the wrong one.
@@ -210,16 +285,30 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 			</div>
 
 			{/*
+			 * THE ONE LIVE REGION THIS PANEL OWNS, and it is the phase, not the text:
+			 * see `announcement` above for why a per-chunk announcement would be worse
+			 * than none. `sr-only` rather than painted, so the visual surface keeps § 7's
+			 * one-element-per-turn rule (the thinking line).
+			 */}
+			<output className="sr-only" aria-live="polite">
+				{announcement}
+			</output>
+
+			{/*
 			 * The exchange, bounded HERE rather than by an ancestor: the composer band
 			 * must carry no `max-height` and no `overflow` (the slash popup is an
 			 * unportaled `absolute bottom-full` child of it), so the rule is that each
 			 * growable part of the band caps itself — the shape the composer's own
-			 * attachment strip and textarea already use.
+			 * attachment strip and textarea already use. The value is `asideExchangeCap`,
+			 * a whole number of the answer's own line boxes rather than a round height.
 			 */}
-			<div className="flex max-h-[240px] flex-col gap-3 overflow-y-auto">
+			<div
+				className="flex flex-col gap-3 overflow-y-auto"
+				style={{ maxHeight: asideExchangeCap(isSmallView) }}
+			>
 				{attachment.turns.length === 0 ? (
 					<p className="text-body-sm text-ink-muted">
-						Ask a side question in the composer below — it is answered here.
+						Type a question in the composer below — the answer lands here.
 					</p>
 				) : (
 					attachment.turns.map((turn) => (

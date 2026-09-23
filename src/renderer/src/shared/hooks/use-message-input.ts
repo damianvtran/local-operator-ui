@@ -65,8 +65,61 @@ import {
  */
 export const SEND_HELD = "held";
 
+/**
+ * An accepted send that went OFF THE RECORD rather than into the conversation.
+ *
+ * The aside destination (`/btw`, and a composer send while the panel is
+ * attached) is the one accepted outcome whose text must neither be restored on
+ * failure nor written to the per-conversation history log.
+ *
+ * NOT RECORDED, because the aside's whole promise is that it leaves no trace:
+ * `submittedMessages` is persisted to `localStorage`
+ * (`conversation-input-store.ts`) and loaded back by Up-arrow as though the
+ * question had been sent to the thread, which is exactly what
+ * `aside-store.ts`'s own header refuses for anything durable ("a store that
+ * wrote to `localStorage` would be the one place an off-record exchange outlived
+ * its session"). The `/btw <question>` door never touched that log either, so
+ * which door the user came through must not decide whether the question outlives
+ * the app.
+ *
+ * NOT RESTORED on failure, and that is a decision rather than an omission. Its
+ * difference from `false`: a `false` outcome means nothing reached the owner, so
+ * the box is where the text belongs. Here the ask WAS registered — the panel is
+ * painting the question and its stream entry exists — so the failure is
+ * unknowable in the way `SEND_HELD` describes, and the refusal is stated on the
+ * panel that owns the exchange, with the question still painted above it. A
+ * restore writes only into an EMPTY box (`restoreSubmittedText`), so whether the
+ * text came back would depend on whether the user had started typing again — a
+ * race with no visible rule, and one that would silently lose the half of it the
+ * user cared about.
+ *
+ * WHAT IT DOES DO is retire the box: the text leaves at the PRESS, not at the
+ * answer, which is what keeps the follow-up that replaced it out of the question
+ * already asked.
+ */
+export const SEND_OFF_RECORD = "off-record";
+
 /** What a submit reported back to the composer. See `SEND_HELD`. */
-export type SendOutcome = undefined | boolean | typeof SEND_HELD;
+export type SendOutcome =
+	| undefined
+	| boolean
+	| typeof SEND_HELD
+	| typeof SEND_OFF_RECORD;
+
+/**
+ * Whether an accepted submit is written to the per-conversation history log.
+ *
+ * Exported and pure so the off-record rule is pinned by a test rather than
+ * argued from its call site — the shape `clearSubmittedText` below uses for the
+ * text transitions, and for the same reason (a rule stated in one place and
+ * bypassed in another is what review UX-1's U2 was).
+ *
+ * The two failure answers are not recorded either, and for their own documented
+ * reasons: `false` put the text back in the box, so the log would hold a message
+ * that was never sent, and `SEND_HELD` leaves the retry on the store's claim.
+ */
+export const recordsSubmittedMessage = (outcome: SendOutcome): boolean =>
+	outcome !== false && outcome !== SEND_HELD && outcome !== SEND_OFF_RECORD;
 
 /**
  * Which text a composer transition may write over what the user has typed.
@@ -650,6 +703,12 @@ export const useMessageInput = ({
 		 * clear something the user has typed in the meantime.
 		 */
 		let cleared = false;
+		/*
+		 * Declared OUTSIDE the try because the box's own retirement is decided after
+		 * it, from the outcome: see `recordsSubmittedMessage` for the one accepted
+		 * outcome that is deliberately not written to the history log.
+		 */
+		let outcome: SendOutcome;
 		const clearOnce = () => {
 			if (cleared) return;
 			cleared = true;
@@ -668,7 +727,7 @@ export const useMessageInput = ({
 			draftMessageRef.current = "";
 		};
 		try {
-			const outcome = await onSubmit?.(submitted, clearOnce);
+			outcome = await onSubmit?.(submitted, clearOnce);
 			if (outcome === false) {
 				// A refusal is the ONE outcome that returns the text to the user's
 				// editing: nothing was admitted, so the composer is where it belongs -
@@ -699,7 +758,13 @@ export const useMessageInput = ({
 		 * retire the box. When the echo did clear it, this is a no-op.
 		 */
 		clearOnce();
-		addSubmittedMessage(conversationId, submitted);
+		/*
+		 * AND THE HISTORY LOG IS FOR THE CONVERSATION'S OWN SENDS ONLY: an off-record
+		 * ask retires the box exactly like any other accepted send, but leaves no
+		 * entry for Up-arrow to recall and nothing on disk. See `SEND_OFF_RECORD`.
+		 */
+		if (recordsSubmittedMessage(outcome))
+			addSubmittedMessage(conversationId, submitted);
 		// Cleared BEFORE the store write so a synchronous restore inside
 		// `onSubmit` is not immediately overwritten by this submit's own clear.
 		retireDraft();

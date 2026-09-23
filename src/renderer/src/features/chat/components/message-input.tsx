@@ -2223,7 +2223,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * otherwise drag a caret the user had moved to the end of the box.
 		 */
 		const caretSeededFor = useRef<string | null>(null);
-		// biome-ignore lint/correctness/useExhaustiveDependencies: the value and the identity are the triggers; the ref makes it once
 		useLayoutEffect(() => {
 			if (conversationId === undefined) return;
 			if (caretSeededFor.current === conversationId) return;
@@ -6482,27 +6481,37 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 											 * would be told "Agent is busy" about a turn nobody is running (design
 											 * round 2, D3). The remaining terms are the U8 pair, unchanged.
 											 *
-											 * THE ASIDE TERM sits after the two refusals and before the U8 pair, and
-											 * both sides of that position are load-bearing. After them, because a box
-											 * that takes no keystrokes must not be invited to take one: "Ask off the
-											 * record" over a read-only composer is a promise nothing can keep. Before
-											 * them, because while the panel is attached the box's DESTINATION has
-											 * changed — Enter sends to the aside, not to the conversation — and
-											 * "Ask me for help" would be this app claiming a route the press no longer
-											 * takes. The exit is named beside the verb for the reason the `@` list's
-											 * own line names its ("Nothing to insert · Esc closes").
+											 * THE ASIDE TERM SITS AFTER THE TWO REFUSALS AND AFTER THE GATE, and
+											 * both sides of that position are load-bearing. After the refusals,
+											 * because a box that takes no keystrokes must not be invited to take
+											 * one: "Ask off the record" over a read-only composer is a promise
+											 * nothing can keep. After `awaitingAnswer`, because while a question
+											 * card is unanswered the press does NOT reach the aside — the gate
+											 * branch outranks it in `chat-page.tsx` — and the surface whose whole
+											 * job is naming the destination cannot name the wrong one.
+											 *
+											 * WHY THE GATE WINS RATHER THAN THE ASIDE (the one place this could
+											 * have gone the other way): an `approval` gate has no other answer
+											 * path — its card says exactly that, "Reply yes or no in the
+											 * composer" — while the attached aside keeps its exchange on screen
+											 * and its next question is simply the one after this answer. Saying
+											 * "Ask off the record" over a box whose Enter answers the gate would
+											 * be the app promising a route the press does not take.
+											 *
+											 * The exit is named beside the verb for the reason the `@` list's own
+											 * line names its ("Nothing to insert · Esc closes").
 											 */
 											unavailable
 												? "This conversation is gone"
 												: isInputDisabled
 													? "Agent is busy"
-													: aside !== null
-														? "Ask off the record — Esc closes the aside"
-														: awaitingAnswer
-															? // Names the thing the box is now for, without restating
-																// the question card or the waiting line (§ 7 keeps one
-																// liveness statement per turn, and the card owns it).
-																"Answer the question above"
+													: awaitingAnswer
+														? // Names the thing the box is now for, without restating
+															// the question card or the waiting line (§ 7 keeps one
+															// liveness statement per turn, and the card owns it).
+															"Answer the question above"
+														: aside !== null
+															? "Ask off the record — Esc closes the aside"
 															: awaitingReply
 																? "Waiting for the agent"
 																: "Ask me for help"

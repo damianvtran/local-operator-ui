@@ -101,6 +101,33 @@ function applyAsideDeltas(frames: DesktopSessionFrame[]): void {
 	}
 }
 
+/**
+ * Whether a frame batch can move the session VIEW at all.
+ *
+ * ONLY TWO TYPES CANNOT, and they are exactly the two the fold in the flush
+ * treats as invisible: `heartbeat` (skipped on the first line of the loop, and
+ * never touching a view field) and `aside_delta` (routed to `aside-store` by
+ * `applyAsideDeltas` above, and deliberately not a transcript event). Everything
+ * else - `open`, `gap`, `snapshot`, `event`, `attention`, `frontend.update`,
+ * `frontend.replace` - writes something the pane paints.
+ *
+ * WHY THE DISTINCTION IS WORTH A FUNCTION (review round 1, F5). The flush's
+ * `setView` builds and returns a FRESH view object every time it runs, so a
+ * batch of nothing but aside chunks re-rendered the whole pane - the composer
+ * subtree included - once per chunk, at chunk cadence, for the whole answer. The
+ * pane-wide re-render per batch is pre-existing; what the aside adds is a new
+ * source of batches at that cadence.
+ *
+ * EXISTS OUTSIDE THE UPDATER, taking the batch as an argument, because the two
+ * rules it would otherwise restate (a frame's type, and whether a chunk belongs
+ * to the view) live one function above and must not be spelled a second time.
+ */
+function batchMovesView(frames: DesktopSessionFrame[]): boolean {
+	return frames.some(
+		(frame) => frame.type !== "aside_delta" && frame.type !== "heartbeat",
+	);
+}
+
 export type CanonicalSessionStatus =
 	| "connecting"
 	| "live"
@@ -1648,6 +1675,19 @@ export function useCanonicalSessionStream(
 					"lop:transcript:flush:end",
 				);
 				paintedIds.current = next.transcript.index;
+				/*
+				 * AN OFF-RECORD BATCH PAINTS NOTHING, so it must not repaint the pane
+				 * either (review round 1, F5). The loop above has still RUN for these
+				 * frames, which is what keeps `receiptRef` current — the receipt cursor is
+				 * advanced by the same arm for every frame carrying an epoch and a seq, and
+				 * THE REF is what bounds a reconnect's replay. The only field such a batch
+				 * writes into `next` is the view's mirror of that cursor, and every other
+				 * field of `next` is the reference `current` already holds: returning
+				 * `current` therefore hands React the identical object and the pane does not
+				 * re-render at all, while an aside answer streams into the panel and the
+				 * conversation, the composer and the transcript are left alone.
+				 */
+				if (!batchMovesView(frames)) return current;
 				return next;
 			});
 			if (needsReconcile || missingLabels.length > 0) {
