@@ -603,10 +603,11 @@ test("model default is one direct Enter/click action, never model completion", (
 		index: 0,
 		run: true,
 	});
-	assert.deepEqual(
-		slashKeyIntent({ ...state, key: "Tab" }),
-		{ kind: "apply", index: 0, run: false },
-	);
+	assert.deepEqual(slashKeyIntent({ ...state, key: "Tab" }), {
+		kind: "apply",
+		index: 0,
+		run: false,
+	});
 	assert.equal(rowId(row), "act-model-default");
 	assert.equal(
 		argumentRows(
@@ -999,10 +1000,7 @@ test("the click footer says what a click will do, in each state", () => {
 		"Click chooses this name.",
 	);
 	assert.equal(clickFooter(base), "Click runs /model openai/gpt-5.");
-	assert.equal(
-		clickFooter({ ...base, value: "" }),
-		"Click runs /model.",
-	);
+	assert.equal(clickFooter({ ...base, value: "" }), "Click runs /model.");
 	assert.equal(
 		clickFooter({ ...base, runs: false }),
 		"Click completes this value.",
