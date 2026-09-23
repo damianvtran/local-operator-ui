@@ -928,3 +928,163 @@ test("a not-answering row's remedy is reachable by focus, and only on that row",
 		await harness.unmount();
 	}
 });
+
+test("the receipt's own state is drawn on its own row, and the give-up arm is announced once", async () => {
+	/*
+	 * UX round 1's U1 and U2, on the PANEL's half of the fix. The loop that knows
+	 * what the receipt is doing lives in the transcript
+	 * (`useCompletionView`, asserted in `scripts/completion-view-ack.test.mjs`);
+	 * what this case drives is where the operator meets it - the row's flyout
+	 * clause, the `sr-only` sentence its `aria-describedby` names (the keyboard
+	 * channel, and the one the receipt's copy did not have at all), and the single
+	 * announcement the give-up arm makes in the panel's own toast lane.
+	 *
+	 * Read through the SHIPPED row and the SHIPPED toast container: the states are
+	 * staged the way the loop stages them (`readAckNotice` is one record on the
+	 * store), so what is asserted is the rendering the app ships for them.
+	 */
+	globalThis.__ack = (request) =>
+		request.op === "sessions.list"
+			? Promise.resolve({
+					status: 200,
+					body: { result: { sessions: PILE, truncated: false } },
+				})
+			: Promise.resolve({ read: [], superseded: [], unknown: [] });
+	const harness = await mount(PILE);
+	const toastHost = document.createElement("div");
+	document.body.append(toastHost);
+	const toastRoot = createRoot(toastHost);
+	await act(async () => {
+		toastRoot.render(React.createElement(ThemedToastContainer));
+	});
+	/** Every sentence on screen, so no assertion depends on sonner's DOM shape. */
+	const notices = () => document.body.textContent ?? "";
+	/** The state the loop publishes, staged exactly as it publishes it. */
+	const publish = async (kind, revision, reason) => {
+		await act(async () => {
+			store.setState({
+				readAckNotice: { sessionId: SESSION, kind, revision, reason },
+			});
+		});
+	};
+	try {
+		/**
+		 * The row's flyout lines for the CURRENT state.
+		 *
+		 * `flyoutLines` sleeps a fixed 40 ms and reads the first `[role="tooltip"]` in
+		 * the document, which on a busy host is the previous row's tooltip - the flake
+		 * QA round 1 recorded against it, and the reason this case reads one row three
+		 * times with the flyout CLOSED in between (the primitive keeps any other open
+		 * tooltip's content mounted while it opens a new one, so a second read without
+		 * this would compare the previous state's sentence). It waits for the event
+		 * rather than for the clock: the tooltip whose own text names the row.
+		 */
+		const receiptFlyout = async (button, title) => {
+			button.dispatchEvent(
+				new DOM.window.FocusEvent("focusout", { bubbles: true }),
+			);
+			await new Promise((resolve) => setTimeout(resolve, 60));
+			for (let attempt = 0; attempt < 40; attempt += 1) {
+				button.dispatchEvent(
+					new DOM.window.FocusEvent("focusin", { bubbles: true }),
+				);
+				await new Promise((resolve) => setTimeout(resolve, 50));
+				const tip = [...document.querySelectorAll('[role="tooltip"]')].find(
+					(element) => element.textContent?.includes(title),
+				);
+				if (tip) {
+					return [...tip.children].map(
+						(line) => line.textContent?.trim() ?? "",
+					);
+				}
+			}
+			return null;
+		};
+
+		const row = harness
+			.ring()
+			.find((element) =>
+				element.textContent?.includes("Reconcile the supplier ledger"),
+			);
+		const other = harness
+			.ring()
+			.find((element) =>
+				element.textContent?.includes("Quarterly revenue model"),
+			);
+		assert.ok(row && other, "the rows did not render");
+
+		// IN FLIGHT: the mark stays and the clause says the receipt is being tried.
+		await publish("pending", 1);
+		assert.match(
+			(await receiptFlyout(row, "Reconcile the supplier ledger"))?.at(-1) ?? "",
+			/marking read$/,
+			"the in-flight cue is not on the row",
+		);
+		// The other conversation is told nothing at all: no clause on its flyout,
+		// and nothing for its description to name.
+		assert.equal(
+			other.getAttribute("aria-describedby"),
+			null,
+			"another conversation was handed this receipt's clause",
+		);
+		assert.doesNotMatch(
+			notices(),
+			/The unread mark was not cleared/,
+			"an in-flight receipt was announced as a failure",
+		);
+
+		// THE PRESS THAT CANNOT SUCCEED: the reason, and the move that works.
+		await publish("offscreen", 2);
+		assert.match(
+			(await receiptFlyout(row, "Reconcile the supplier ledger"))?.at(-1) ?? "",
+			/· scroll to the result to mark this chat read$/,
+			"the off-screen refusal is not named on the row",
+		);
+		const id = row.getAttribute("aria-describedby");
+		assert.ok(id, "the row points at no receipt clause");
+		const clause = document.getElementById(id);
+		assert.ok(
+			clause,
+			`aria-describedby names "${id}", which rendered nothing — a description that resolves to nothing is worse than none`,
+		);
+		assert.equal(
+			clause.textContent,
+			"scroll to the result to mark this chat read",
+		);
+		assert.ok(
+			row.parentElement?.querySelector(`#${id}`),
+			"the clause is not rendered outside the row, so it is collected into its name",
+		);
+
+		// THE GIVE-UP ARM: one sentence, in the lane the bulk receipt already uses.
+		await publish("unsettled", 3, new Error("the store refused"));
+		assert.match(
+			(await receiptFlyout(row, "Reconcile the supplier ledger"))?.at(-1) ?? "",
+			/· not marked read · click the chat to try again$/,
+			"the deferred state is not named on the row",
+		);
+		assert.match(
+			notices(),
+			/The unread mark was not cleared\. Click the chat to try again\./,
+			"the give-up arm was never announced",
+		);
+		const announced = (
+			notices().match(/The unread mark was not cleared/g) ?? []
+		).length;
+		// The same statement seen again - a re-render, or the loop's next tick -
+		// is not a second event.
+		await act(async () => {
+			store.setState({ sessions: [...store.getState().sessions] });
+		});
+		assert.equal(
+			(notices().match(/The unread mark was not cleared/g) ?? []).length,
+			announced,
+			"the same receipt statement was announced twice",
+		);
+	} finally {
+		globalThis.__ack = undefined;
+		await act(async () => toastRoot.unmount());
+		toastHost.remove();
+		await harness.unmount();
+	}
+});
