@@ -1426,6 +1426,43 @@ export const ReaderLive: Story = {
 };
 
 /**
+ * The foot at the pane's 320px floor, carrying the LONGEST label a live child's
+ * line can be handed (design round 1, D3).
+ *
+ * `running mcp__linear_create_issue` is the shape `tool_activity` falls back to
+ * when the model stated no intent — the tool name as CALLED, which the relay has
+ * no display layer to shorten (`intent.py:310-327`) and which `§ 5.8` records as
+ * the one divergence from the parent's own foot. It is also the widest value this
+ * row can receive, and at the floor the pane leaves the label roughly 41
+ * characters, so this is the frame in which the label has to truncate INSIDE the
+ * row rather than wrapping or pushing the clock's reserved slot off the rail.
+ *
+ * Read with `reader-live`: the same child, the same page, one arm of the relay's
+ * vocabulary apart — a stated intent there, the named-tool fallback here.
+ */
+export const ReaderLiveFloor: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails({
+				nowMs: fixtures.FIXTURE_NOW_MS,
+				jobs: [
+					fixtures.readerChild({
+						progress: "running mcp__linear_create_issue",
+					}),
+				],
+				todos: [],
+			})}
+			openPanel={true}
+			readerChildId="job-reader"
+			previewPage={fixtures.childPage({ includeTool: true })}
+			/* The pane's own floor, the width the truncation above is about. */
+			width={320}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
  * A running child that has reported NO activity yet: the relay's own default
  * word, `thinking`, on the foot (`docs/run-sidebar.md` § 5.8).
  *

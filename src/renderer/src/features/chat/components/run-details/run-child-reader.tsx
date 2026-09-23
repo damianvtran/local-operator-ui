@@ -42,12 +42,14 @@
  * It is handed to `CanonicalTranscript` as its `workingLine` prop rather than
  * DERIVED by it, because a child's activity is not recoverable from the page the
  * reader fetches: the durable tool rows all reduce to `phase: "done"`
- * (`transcript-reducer.ts`), so the parent's own derivation could only ever say
- * `thinking`. The fact is on the wire, though — `SubagentRow.activity` is the
- * child relay's `report_progress` string — so the reader derives the line from
- * the row it already holds (`deriveChildWorkingLine`, `run-detail-model.ts`) and
- * the parent component paints it. See that function for the vocabulary, the
- * phase classification and the queued gate.
+ * (`transcript-reducer.ts:1867`), so the parent's derivation over them paints
+ * nothing for the props this reader passes, and the one change that would make it
+ * speak — claiming a `waiting` pane — could only ever say `thinking`. The fact is
+ * on the wire, though — `SubagentRow.activity` is the child relay's
+ * `report_progress` string — so the reader derives the line from the row it
+ * already holds (`deriveChildWorkingLine`, `run-detail-model.ts`) and the parent
+ * component paints it. See that function for the vocabulary, the phase
+ * classification, the withheld clock and the queued gate.
  *
  * No second stream subscription exists anywhere in here: the child's page is a
  * file behind a GET.
@@ -373,13 +375,14 @@ export const RunChildReader = ({
 	/*
 	 * The foot of the page: what this child is doing, as the wire last said it.
 	 * Derived rather than read raw so the one rule — which children get a line, and
-	 * which phase the clock runs in — stays in the model beside the row it reads
-	 * (`deriveChildWorkingLine`, whose docstring carries the vocabulary and the one
-	 * deliberate departure from the TUI's queued child).
+	 * which phase it is in — stays in the model beside the row it reads
+	 * (`deriveChildWorkingLine`, whose docstring carries the vocabulary, the
+	 * withheld clock, and the one deliberate departure from the TUI's queued
+	 * child).
 	 *
 	 * Derived on every render rather than memoised, and that is deliberate: it is a
 	 * ternary over two fields of a row the pane re-derives at 1 Hz anyway, and the
-	 * component it feeds is inert to a fresh object — `WorkingLine` keys its clock
+	 * component it feeds is inert to a fresh object — `WorkingLine` keys its phase
 	 * off the PHASE STRING (`working-line.tsx`) and holds its spinner frame in
 	 * state, so the same phase with the same activity paints the same frame
 	 * whatever the object's identity. A memo here would buy a re-render of one row
@@ -558,6 +561,16 @@ export const RunChildReader = ({
 			 * main transcript's ground, so the child's conversation resolves against
 			 * the same plane the parent's does — the "reads like the parent
 			 * transcript" requirement is partly a GROUND requirement (§ 7).
+			 *
+			 * KNOWN GAP, DELIBERATELY DEFERRED (review round 1, R3 / QA Q-1): a
+			 * RUNNING child whose page is still empty — `pending`, `gone`, `loading`,
+			 * or `ready` with no rows — paints no foot line, because these arms
+			 * answer with a `QuietLine` and never reach `CanonicalTranscript` (and
+			 * so never receive `workingLine`). The activity string is on the row
+			 * already; what is missing is a composition decision about a line ABOVE
+			 * an absence sentence whose copy `§ 10.1` owns. `docs/run-sidebar.md`
+			 * `§ 5.8` records it, and a test pins the current behaviour so it cannot
+			 * change unnoticed.
 			 */}
 			<div
 				className={cn("flex min-h-0 flex-1 flex-col overflow-hidden bg-canvas")}
@@ -627,7 +640,8 @@ export const RunChildReader = ({
 						 * The foot: what the child is doing, from the roster row rather than from
 						 * `painted.records`. Passing it is the whole change - omitted, the parent
 						 * derives from the records it was given, and a child's durable rows reduce
-						 * to `phase: "done"`, so the derivation could only ever say `thinking`.
+						 * to `phase: "done"` (`transcript-reducer.ts:1867`), so the derivation
+						 * paints nothing here; its phase is `null` for a pane that claims no send.
 						 * `null` - a settled child, or a queued one - paints nothing.
 						 */
 						workingLine={workingLine}
