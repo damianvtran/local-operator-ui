@@ -1355,6 +1355,15 @@ export const STORIES = [
 	/* A lineage of depth 3 with the pane at its 320px floor: the width the
 	   breadcrumb's cap has to survive (round 2's open residual risk). */
 	["chat-run-panel--reader-deep-floor", 800, 700],
+	/* The result, in the two states the reader can be in when it is on the wire:
+	   `reader-result-inline` paints it where the conversation is on disk (the
+	   page's own last row, with a foot that says nothing), and
+	   `reader-result-preview` paints the bounded, honestly-labelled preview the
+	   reader keeps for the states that have no conversation at all. Taken as a
+	   pair because the defect they settle was one block growing over the pane:
+	   the same long result once WITH something to push against and once without. */
+	["chat-run-panel--reader-result-inline", 1280, 900],
+	["chat-run-panel--reader-result-preview", 1280, 900],
 	/* The two EXITS from a reader, which are the one kind of state this set can
 	   photograph and a keyboard walk could not: the press moves the TREE.
 	   `back-to-roster` is where the defect was and is the after half of the pair

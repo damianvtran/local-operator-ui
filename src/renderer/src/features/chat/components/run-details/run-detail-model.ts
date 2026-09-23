@@ -278,19 +278,30 @@ export type SubagentRow = {
 	 * `error_text`, the WHOLE thing, on a failed child.
 	 *
 	 * `errorLine` stays the ROSTER's field — a list row's summary is one line
-	 * (`§4.1`) — and this is the reader's, whose outcome block prints the
+	 * (`§4.1`) — and this is the reader's, whose failure block prints the
 	 * exception verbatim (`§5.1`). Two fields rather than one because the two
 	 * surfaces want different amounts of the same string, and a row that carried
 	 * only the full text would make the roster's shed rule a formatting decision
 	 * inside a list row.
+	 *
+	 * It is the ONE outcome the child's conversation does not also hold: the
+	 * runtime's wire bound for it is generous precisely because `error_text` is
+	 * `str(exc)` from the parent's runner and is in no child transcript
+	 * (`frontend_state.py`'s comment on `JOB_ERROR_WIRE_CHARS`), so the reader
+	 * cannot prefer the page to it the way it now prefers the page to
+	 * `resultText`.
 	 */
 	errorText: string | null;
 	/**
-	 * `result_text`, whole, on a settled child.
+	 * `result_text`, as far as the wire carries it, on a settled child.
 	 *
-	 * The reader's outcome block renders this instead of reading the child's
-	 * transcript for it (`§5.1`): the roster row already carries the outcome, and
-	 * the TUI makes the same choice for the same reason.
+	 * AS FAR AS THE WIRE CARRIES IT, and that is the whole reason this field is
+	 * now a PREVIEW rather than the reader's answer: the runtime truncates it at
+	 * `JOB_RESULT_WIRE_CHARS = 2_000` (`frontend_state.py:143-164`, cut mid-word)
+	 * because both free-text fields live verbatim in the CHILD's own transcript,
+	 * which the reader pages in. The child's last durable row therefore states the
+	 * result the reader shows, and this field is read only for the states where no
+	 * conversation can be painted at all (`run-child-reader.tsx`).
 	 */
 	resultText: string | null;
 	/**
@@ -1030,11 +1041,11 @@ const deriveChild = (
 		// `§8`: the first line of `error_text` is a failure's one-line summary —
 		// the row is the summary, the child's page is the detail.
 		errorLine: status === "failed" && errorText ? errorText : null,
-		// The failure's WHOLE text and the settled run's whole result: the reader's
-		// outcome block prints either verbatim (`§5.1`), which is why these are not
-		// derived from `errorLine`. `error_text` is NOT gated on the folded status:
-		// a runtime whose word this renderer does not recognise still failed, and
-		// the reader must be able to show why.
+		// The failure's WHOLE text and the settled run's wire-clipped result: the
+		// reader prints either verbatim (`§5.1`), which is why these are not derived
+		// from `errorLine`. `error_text` is NOT gated on the folded status: a runtime
+		// whose word this renderer does not recognise still failed, and the reader
+		// must be able to show why.
 		errorText: fullErrorText || null,
 		resultText: fullResultText || null,
 		childSessionId: wireText(job.session_id) || null,

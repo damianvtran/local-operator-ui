@@ -38,7 +38,8 @@ type JobSpec = {
 	progress?: string;
 	/** `error_text`, on a failure. */
 	error?: string;
-	/** `result_text`, on a normal settle — the reader's success outcome (`§ 5.1`). */
+	/** `result_text`, on a normal settle — the reader's bounded preview, and only
+	 * in the states where no conversation can be painted (`§ 5.1`). */
 	result?: string;
 	/** `session_id`, the reader's key. `null` is a job the runtime has not given one. */
 	sessionId?: string | null;
@@ -77,10 +78,12 @@ const child = (spec: JobSpec): Record<string, unknown> => ({
 	error_text: spec.error ?? "",
 	/*
 	 * `result_text` is EMPTY unless a spec supplies one, and that default was a
-	 * defect in the first cut of this fixture: `reader-settled` claimed an outcome
-	 * block its own frame could not contain, because no story could set the field.
-	 * A settled child's outcome is a state `§ 5.7` names, so the fixture has to be
-	 * able to carry it.
+	 * defect in the first cut of this fixture: `reader-settled` claimed a block its
+	 * own frame could not contain, because no story could set the field. A settled
+	 * child is a state `§ 5.7` names, so the fixture has to be able to carry it —
+	 * and since the reader now paints the field only where the conversation is
+	 * unreadable, a story that means to photograph it sets it on a page whose
+	 * state makes that true (`reader-result-preview`).
 	 */
 	result_text: spec.result ?? "",
 	session_id: spec.sessionId === undefined ? "a1b2c3d4e5f6" : spec.sessionId,
@@ -1126,6 +1129,37 @@ const entry = (
 });
 
 /**
+ * A settled child's result, at a length that makes the reader's foot the subject.
+ *
+ * Two values rather than one, and the relationship between them IS the fixture's
+ * claim: `LONG_RESULT` is what the child's own transcript holds — the text a
+ * reader sees as the conversation's last message — and `CLIPPED_RESULT` is what
+ * the WIRE carries of it (`frontend_state.py:143-164`, `JOB_RESULT_WIRE_CHARS =
+ * 2_000`), cut mid-word because the runtime truncates by character count and not
+ * at a sentence. A story that set only the clipped value could not show the
+ * duplication the reader used to paint, and a story that set only the long one
+ * would be a fixture for a wire that does not exist.
+ *
+ * The length is not decoration either: the removed block was unbounded, and its
+ * takeover needed a result that could not fit the pane. This one does not fit in
+ * the 160px the bounded preview allows, which is the point of both frames that
+ * use it.
+ */
+const RESULT_PARAGRAPHS = [
+	"Four of the 412 March invoices are unpaid, and I checked each one against the ledger rather than against the export's own status column, because the two disagree about one of them.",
+	"Northwind has two: INV-2031, 44 days old, and INV-2077, 12 days old. Contoso has one, INV-2044, 31 days old. Fabrikam has one, INV-2069, 19 days old, and it is the only one whose due date has already passed twice, once before the payment run and once after it.",
+	"The outstanding total across those four is $18,420 against $1,204,880 invoiced for the month, so 1.5% of the month's value is open. Two of the four have reminder emails on record, and two do not; the two without are the two oldest, which is the pattern I would expect if a reminder is what moves a customer to pay.",
+	"I could not confirm any of the four from the export alone, which is why each figure above comes from the ledger. The export's own column disagrees on INV-2077, where it reads paid while the ledger shows the payment applied to the February invoice instead. I have left that row untouched rather than correcting it in either direction, because which of the two documents is wrong is not a question this export can answer at all.",
+	"For the other three the ledger and the export agree, and the amounts I have quoted are the ledger's, which is the one the reminders are generated from. If the ledger is the billing truth, the export is a reporting view of it and its status column is the thing to fix; if it is the other way round, then the reminder run is chasing customers who have already paid and the fix is on the collections side instead.",
+	"One more thing worth stating, because it decides what a reader should do with the total: three of the four carry part payments against earlier invoices, so the outstanding figure here is the current balance rather than the invoiced amount. INV-2077's part payment is the February application above; INV-2044 was paid down in January and again in February; and INV-2069 carries a credit from a returned order that nobody applied until the February run.",
+	"Nothing in the March export shows those part payments, which is the second reason I am quoting the ledger. If the two are reconciled by hand each month then this is where the time goes, and a matching rule that applied credits to the invoice they name would take that work off the list; that is a change to the ledger's own tooling and not something I can do from here.",
+	"Recommended next step: reissue INV-2031 and INV-2044, and check the February application on INV-2077 before anything is sent.",
+];
+export const LONG_RESULT = RESULT_PARAGRAPHS.join("\n\n");
+/** What `JOB_RESULT_WIRE_CHARS` leaves of it on the roster frame. */
+export const CLIPPED_RESULT = LONG_RESULT.slice(0, 2_000);
+
+/**
  * A child's transcript page, as the reader's route answers one (`§ 10.1`).
  *
  * The story set needs these because a fixture cannot prove the PULSE, but it can
@@ -1138,11 +1172,20 @@ export const childPage = ({
 	launchTurn = false,
 	includeTool = false,
 	includeImage = false,
+	finalResult,
 }: {
 	state?: "ready" | "pending" | "gone";
 	launchTurn?: boolean;
 	includeTool?: boolean;
 	includeImage?: boolean;
+	/**
+	 * A closing assistant message, which is where a result actually lives.
+	 *
+	 * A settled child's last durable row IS its result — that is the premise of
+	 * the reader's rule — so a frame that means to show a result on the page has
+	 * to append one rather than point the row's own `result_text` at the reader.
+	 */
+	finalResult?: string;
 } = {}): DesktopChildTranscriptPage => ({
 	state,
 	has_more: false,
@@ -1218,6 +1261,12 @@ export const childPage = ({
 			"assistant",
 			"Three of the four match the ledger. The fourth has no counterpart, so I cannot confirm it from this export alone.",
 		),
+		/*
+		 * The result, in its own chronological place: last, because that is where a
+		 * child's result is. `ts` 280 is the newest instant on this page (the
+		 * readings count BACK from `FIXTURE_NOW_MS`, so a smaller number is later).
+		 */
+		...(finalResult ? [entry("c-a4", 280, "assistant", finalResult)] : []),
 	],
 });
 
