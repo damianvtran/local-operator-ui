@@ -135,6 +135,24 @@ function writeFatMachO(path, cpuTypes, { magic, bits = 32, count } = {}) {
 		const at = 8 + index * stride;
 		if (bigEndian) header.writeUInt32BE(cpuType, at);
 		else header.writeUInt32LE(cpuType, at);
+		if (stride !== 32) return;
+		// A `fat_arch_64` is not just a longer entry: its `offset` and `size` are 64-bit
+		// words, so the fields after the cputype pair must be written at the wide
+		// offsets. They are filled with the values `lipo` writes (2^14-aligned
+		// offsets, a real slice size, align 14) rather than left zero, because the
+		// wrong-stride case below depends on what a stride-20 read of these bytes
+		// would answer, and a table of zeros would let that read answer 0 weakly.
+		if (bigEndian) {
+			header.writeUInt32BE(3, at + 4);
+			header.writeBigUInt64BE(BigInt(16384 * (index + 1)), at + 8);
+			header.writeBigUInt64BE(81600n, at + 16);
+			header.writeUInt32BE(14, at + 24);
+		} else {
+			header.writeUInt32LE(3, at + 4);
+			header.writeBigUInt64LE(BigInt(16384 * (index + 1)), at + 8);
+			header.writeBigUInt64LE(81600n, at + 16);
+			header.writeUInt32LE(14, at + 24);
+		}
 	});
 	writeFileSync(path, header);
 }
@@ -737,17 +755,19 @@ test("a 64-bit fat component is recognised and read, not skipped", () => {
 		MACH_O_CPUTYPE.ARM64,
 	]);
 
-	// THE STRIDE IS THE ASSERTION'S POINT: read at the 32-bit stride, the second
-	// entry's `cputype` is one of its 64-bit offsets, and the file answers an
-	// architecture nobody wrote. So a header truncated before its LAST entry's
-	// cputype cannot answer at all, which pins the stride from the other side.
+	// THE STRIDE IS THE ASSERTION'S POINT, AND THIS IS THE CASE THAT PINS IT. A
+	// two-entry 64-bit table is 8 + 2*32 = 72 bytes; a two-entry 32-bit table is
+	// 8 + 2*20 = 48. So a prefix of 48 bytes is SHORT of the wide table and refuses,
+	// while at the narrow stride that same 48 bytes is a COMPLETE table and the read
+	// answers a second "architecture" out of the first entry's 64-bit `size` word.
+	// Cutting this fixture to 40 bytes - as it was first written - would not
+	// discriminate: 40 is short of both strides and answers `null` either way, so
+	// the case would pass under a stride-20 reader and pin nothing (round 2, n4).
 	const cutLastEntry = join(dir, "fat64-cut");
 	writeFatMachO(cutLastEntry, [MACH_O_CPUTYPE.ARM64, MACH_O_CPUTYPE.X86_64], {
 		bits: 64,
 	});
-	// 8 + 32 = 40 bytes is the first entry entire and the second not started; at
-	// the 32-bit stride that same prefix would look like a complete 2-entry table.
-	writeFileSync(cutLastEntry, readFileSync(cutLastEntry).subarray(0, 40));
+	writeFileSync(cutLastEntry, readFileSync(cutLastEntry).subarray(0, 48));
 	assert.equal(machOArchitectures(cutLastEntry), null);
 
 	// The shared magic set carries all four fat spellings, which is what makes the
