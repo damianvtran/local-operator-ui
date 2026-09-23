@@ -60,6 +60,9 @@ const bundle = await build({
 				shouldRestoreComposerFocus,
 				goalDisclosureLabel,
 				goalClearLabel,
+				goalDoneLabel,
+				goalDismissLabel,
+				goalDoneToastText,
 				goalClearedText,
 				loopActionLabel,
 				loopAffordance,
@@ -86,13 +89,15 @@ const bundle = await build({
 			import * as toasts from "./src/renderer/src/shared/utils/toast-manager";
 			import { scrollRegionToTop } from "./src/renderer/src/shared/lib/scroll";
 			import { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
+			import { goalStateWord, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS } from "./src/renderer/src/features/chat/pickers/session-commands";
+			import { goalCapability } from "./src/shared/desktop-session-contract";
 
 			export const renderRow = (props) =>
 				renderToStaticMarkup(createElement(ComposerStatusRow, props));
 			export const renderWakes = (props) =>
 				renderToStaticMarkup(createElement(RunDetailWakes, props));
 			export { toasts };
-			export { ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalClearedText, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, scrollRegionToTop, useUiPreferencesStore };
+			export { ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalDoneLabel, goalDismissLabel, goalDoneToastText, goalClearedText, goalStateWord, goalCapability, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, scrollRegionToTop, useUiPreferencesStore };
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -153,7 +158,14 @@ const {
 	renderWakes,
 	goalDisclosureLabel,
 	goalClearLabel,
+	goalDoneLabel,
+	goalDismissLabel,
+	goalDoneToastText,
 	goalClearedText,
+	goalStateWord,
+	goalCapability,
+	GOAL_DONE_ARGS,
+	GOAL_DISMISS_ARGS,
 	ThemedToastContainer,
 	toasts,
 	loopActionLabel,
@@ -1394,9 +1406,15 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	 * `sr-only` floor rule is gone, and the label's `shrink-0` is what makes the
 	 * yield order hold where both chips share a line - the snippet yields, the
 	 * count never does.
+	 *
+	 * The label's ink step while `stalled` rides the SAME span (0px, the loudest ink on
+	 * the row, paired with the word in the accessible name) rather than a second
+	 * element, so the pin is on `shrink-0` PLUS the conditional and not on a bare
+	 * `cn("shrink-0")`: a reordering or an added class must not cost a review round,
+	 * but a second label span would.
 	 */
 	assert.doesNotMatch(source, /chatcol:sr-only/);
-	tokens('cn("shrink-0")', "{GOAL_LABEL}");
+	tokens('"shrink-0"', 'goalStalled && "text-ink"', "{GOAL_LABEL}");
 
 	/*
 	 * The row owns the first-chip rule (design review round 1, D5): one constant,
@@ -1508,7 +1526,7 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	 * accessible name already states the action.
 	 */
 	tokens(
-		"import { AlarmClock, Info, Repeat, X } from",
+		'import { AlarmClock, Check, Info, Repeat, X } from',
 		"<Info aria-hidden={true}",
 		"size-3.5",
 	);
@@ -2810,13 +2828,18 @@ test("the two outcomes that speak do so in the person's own words", () => {
 	 * carries it, so the confirmation carries the one press that takes it back, and the
 	 * restore runs through the same command channel with the CLEARED text.
 	 */
+	/*
+	 * The local is `settled`, not `cleared`, because the same press path now carries
+	 * the mark-done confirmation as well — and the CAPTURE is still before the wire
+	 * moves, which is the property this pin exists to keep.
+	 */
 	assert.match(
 		row,
-		/showInfoToast\(goalClearedText\(cleared\), \{/,
+		/showInfoToast\(goalClearedText\(settled\), \{/,
 		"the confirmation names what it cleared (UX round 2, U7)",
 	);
 	assert.match(row, /label: GOAL_UNDO_TEXT,/);
-	assert.match(row, /onClick: \(\) => void restoreGoal\(cleared\)/);
+	assert.match(row, /onClick: \(\) => void restoreGoal\(settled\)/);
 	assert.match(
 		row,
 		/goalCommand\.run\(GOAL_COMMAND, text, GOAL_UNDO_FAILURE\)/,
@@ -2835,7 +2858,14 @@ test("the two outcomes that speak do so in the person's own words", () => {
 		/const loopCommand = useSessionCommand\(frontend\?\.session_id \?\? ""\);/,
 	);
 	assert.doesNotMatch(row, /const command = useSessionCommand/);
-	assert.match(row, /disabled=\{goalCommand\.busy\}/);
+	/*
+	 * The busy flag now reaches the button through the shared `GoalControl`'s `busy`
+	 * prop for the goal's three controls, and directly for the loop's. The property
+	 * the pin keeps is unchanged: a control is disabled by ITS OWN channel's flag.
+	 */
+	assert.match(row, /busy=\{goalCommand\.busy\}/);
+	assert.match(row, /busy=\{goalDoneCommand\.busy\}/);
+	assert.match(row, /busy=\{goalDismissCommand\.busy\}/);
 	assert.match(row, /disabled=\{loopCommand\.busy\}/);
 	// The pair the two controls dispatch, and neither of them is a label.
 	assert.match(
@@ -3475,4 +3505,233 @@ test("the goal's undo belongs to its own clearing, and the confirmation names it
 	} finally {
 		cleanup();
 	}
+});
+
+/* ---------------------------------------------------------------- */
+/* The goal's lifecycle: the done paint, the two controls, the gate  */
+/* ---------------------------------------------------------------- */
+
+/*
+ * THE CAPABILITY GATE IS THE POINT OF THIS SECTION, so it is asserted first and in
+ * both directions: a snapshot carrying the lifecycle fields renders the new
+ * controls, and one lacking them renders the row EXACTLY as it shipped with no new
+ * argument anywhere in the markup. The failure this prevents is measured rather
+ * than imagined — a released backend stored the literal `--clear` as the user's
+ * goal (`docs/composer-status-tabs.md` §12.4) — and `done` is the same class of
+ * word with a second loss channel, because setting a goal also supersedes.
+ */
+const goalFrontend = (fields) =>
+	frontendWith({ goal: "Ship it", ...fields });
+
+test("a backend without the lifecycle fields renders no new control at all", () => {
+	const markup = renderRow({
+		frontend: frontendWith({ goal: "Ship it" }),
+		runDetails: null,
+	});
+	// The shipped chip and its shipped dismiss are untouched.
+	assert.match(markup, /Goal:/);
+	assert.match(markup, /data-status-goal-dismiss=""/);
+	assert.match(markup, /Clear goal/);
+	// And nothing new — neither the control nor its word nor its command.
+	assert.doesNotMatch(markup, /data-status-goal-done/);
+	assert.doesNotMatch(markup, />Done</);
+	assert.doesNotMatch(markup, /line-through/);
+	assert.doesNotMatch(markup, /— done/);
+	// The gate itself, stated as the predicate the row reads.
+	assert.equal(goalCapability({ goal: "Ship it" }), false);
+	assert.equal(goalCapability(null), false);
+	assert.equal(
+		goalCapability({ goal: "Ship it", goal_status: "" }),
+		true,
+		"an EMPTY status is a real value of the capability, not an absent field",
+	);
+});
+
+test("an active goal on a capable backend carries both controls, inboard first", () => {
+	const markup = renderRow({
+		frontend: goalFrontend({ goal_status: "active" }),
+		runDetails: null,
+	});
+	const done = markup.indexOf("data-status-goal-done");
+	const clear = markup.indexOf("data-status-goal-dismiss");
+	assert.notEqual(done, -1, "the mark-done control exists on a capable backend");
+	assert.notEqual(clear, -1, "the shipped clear is still there");
+	assert.ok(
+		done < clear,
+		"Done sits INBOARD of the clear: the shipped X keeps the trailing edge, so no muscle memory moves and the new control never lands under a pointer headed for the X",
+	);
+	assert.match(markup, />Done</);
+	assert.match(markup, />Clear goal</);
+});
+
+test("a done goal swaps to one Dismiss and paints the strike and the tag", () => {
+	const markup = renderRow({
+		frontend: goalFrontend({ goal_status: "done" }),
+		runDetails: null,
+	});
+	// Exactly one control, and it is the dismiss.
+	assert.match(markup, /data-status-goal-dismiss=""/);
+	assert.doesNotMatch(
+		markup,
+		/data-status-goal-done/,
+		"while done, mark-done and delete reach the same wire state, so one fact gets one spelling",
+	);
+	assert.match(markup, />Dismiss</);
+	assert.doesNotMatch(markup, /Clear goal/);
+	/*
+	 * THE STRIKE IS ON THE VALUE AND NOWHERE ELSE. Counted rather than matched
+	 * once, because the assertion that matters is that the label and the tag did
+	 * NOT also acquire it: a struck tag is the readability defect the to-do row
+	 * already records, and a struck `Goal:` would cross out a control's label.
+	 */
+	assert.equal(
+		(markup.match(/line-through/g) ?? []).length,
+		1,
+		"the value is struck, and exactly one element is",
+	);
+	assert.match(markup, /<span class="[^"]*\bline-through\b[^"]*"[^>]*>Ship it<\/span>/);
+	assert.match(markup, /<span class="[^"]*\bshrink-0\b[^"]*"[^>]*>— done<\/span>/);
+	assert.doesNotMatch(markup, /<span class="[^"]*line-through[^"]*"[^>]*>— done/);
+	assert.doesNotMatch(markup, /<span class="[^"]*line-through[^"]*"[^>]*>Goal:</);
+	// The settled ink is the app's role for settled work.
+	assert.match(markup, /<span class="[^"]*\btext-ink-dim\b[^"]*"[^>]*>Ship it<\/span>/);
+});
+
+test("the judge's live states cost no pixels and ride the names, stalled aside", () => {
+	/*
+	 * `judging` and `continuing` render IDENTICALLY to active — no glyph, no clause,
+	 * no count — and the state travels in the one derived string. The assertion is on
+	 * the VISIBLE row with the accessible names stripped: the names DIFFER by design
+	 * (§1.3 puts the state there), and an unstripped comparison would either fail for
+	 * the right reason or be weakened into matching nothing. Ids go with them,
+	 * because two independent renders mint their own.
+	 */
+	const visible = (markup) =>
+		markup
+			.replace(/aria-label="[^"]*"/g, "")
+			.replace(/id="[^"]*"/g, "")
+			.replace(/aria-controls="[^"]*"/g, "");
+	const active = renderRow({
+		frontend: goalFrontend({ goal_status: "active" }),
+		runDetails: null,
+	});
+	for (const state of ["judging", "continuing", "idle", "waiting"]) {
+		const markup = renderRow({
+			frontend: goalFrontend({
+				goal_status: "active",
+				goal_judge: { state },
+			}),
+			runDetails: null,
+		});
+		assert.equal(
+			visible(markup),
+			visible(active),
+			`a ${state} judge must paint the active chip's pixels byte for byte`,
+		);
+	}
+	// The word is in the accessible name, where a screen reader finds it.
+	assert.match(active, /aria-label="Expand the session goal — Ship it"/);
+	const judging = renderRow({
+		frontend: goalFrontend({
+			goal_status: "active",
+			goal_judge: { state: "judging" },
+		}),
+		runDetails: null,
+	});
+	assert.match(judging, /aria-label="Expand the session goal — working, Ship it"/);
+	/*
+	 * `stalled` is the one state that moves, and it costs 0px in WIDTH: the label's
+	 * ink steps to the loudest on the row and the word goes in the name. Nothing
+	 * else in the markup may differ, which is what this pair of assertions pins.
+	 */
+	const stalled = renderRow({
+		frontend: goalFrontend({
+			goal_status: "active",
+			goal_judge: { state: "stalled" },
+		}),
+		runDetails: null,
+	});
+	assert.match(stalled, /aria-label="Expand the session goal — stalled, Ship it"/);
+	assert.match(stalled, /<span class="[^"]*\btext-ink\b[^"]*"[^>]*>Goal:<\/span>/);
+	assert.doesNotMatch(active, /<span class="[^"]*\btext-ink\b[^"]*"[^>]*>Goal:<\/span>/);
+	assert.ok(
+		stalled.length - active.length < 120,
+		"the stalled paint is an ink step on an existing span, not new markup",
+	);
+	// The done chip's name carries `done`, because a strike is invisible to a
+	// screen reader and to a non-styled paint.
+	const done = renderRow({
+		frontend: goalFrontend({ goal_status: "done" }),
+		runDetails: null,
+	});
+	assert.match(done, /aria-label="Expand the session goal — done, Ship it"/);
+});
+
+test("both new control words drop at the column floor while their names survive", () => {
+	const NARROW = "@max-[240px]/chatcol:hidden";
+	const active = renderRow({
+		frontend: goalFrontend({ goal_status: "active" }),
+		runDetails: null,
+	});
+	const done = renderRow({
+		frontend: goalFrontend({ goal_status: "done" }),
+		runDetails: null,
+	});
+	/*
+	 * The word is dropped, the NAME never is: at the floor the control is an icon
+	 * with an accessible name, which is the shipped rule for `Clear goal` and the
+	 * reason a new control must not invent a second one.
+	 */
+	for (const [markup, label] of [
+		[active, "Mark the goal done — Ship it"],
+		[done, "Dismiss the finished goal — it stays in the goal history — Ship it"],
+	]) {
+		assert.match(
+			markup,
+			new RegExp(`<span class="[^"]*${NARROW.replace(/[[\]@/]/g, "\\$&")}[^"]*">`),
+		);
+		assert.match(markup, new RegExp(`aria-label="${label}"`));
+	}
+	assert.match(active, new RegExp(`class="[^"]*${NARROW.replace(/[[\]@/]/g, "\\$&")}[^"]*">Clear goal<`));
+});
+
+test("the lifecycle's derived strings, one per state", () => {
+	assert.equal(
+		goalDisclosureLabel("Ship it", false, ""),
+		"Expand the session goal — Ship it",
+	);
+	assert.equal(
+		goalDisclosureLabel("Ship it", false, "working"),
+		"Expand the session goal — working, Ship it",
+	);
+	assert.equal(
+		goalDisclosureLabel("Ship it", true, "done"),
+		"Collapse the session goal — done, Ship it",
+	);
+	assert.equal(goalDoneLabel("Ship it"), "Mark the goal done — Ship it");
+	assert.equal(
+		goalDismissLabel("Ship it"),
+		"Dismiss the finished goal — it stays in the goal history — Ship it",
+	);
+	/*
+	 * The judge's word, and the open-reader rule: a member this build does not know
+	 * is NOT claimed to be anything. `""` is the resting word, and a surface that
+	 * must print something in it chooses its own (the picker prints `waiting`).
+	 */
+	assert.equal(goalStateWord("done", "judging"), "done");
+	assert.equal(goalStateWord("active", "stalled"), "stalled");
+	assert.equal(goalStateWord("active", "judging"), "working");
+	assert.equal(goalStateWord("active", "continuing"), "working");
+	assert.equal(goalStateWord("active", "waiting"), "");
+	assert.equal(goalStateWord("active", "quiescing"), "");
+	assert.equal(goalStateWord(undefined, undefined), "");
+	// The confirmations: the mark-done names the value and offers nothing back.
+	assert.equal(goalDoneToastText("Ship the release"), "Goal done · Ship the release");
+	assert.equal(
+		goalClearedText("Ship the release"),
+		"Goal cleared · Ship the release",
+	);
+	// The verbs the controls send are the whole-argument aliases the backend takes.
+	assert.equal(GOAL_DONE_ARGS, "done");
+	assert.equal(GOAL_DISMISS_ARGS, "dismiss");
 });
