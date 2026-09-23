@@ -791,6 +791,7 @@ const STAMP_BINDING_NOTES = [
 	 * file as if they were its own — the defect the list exists for.
 	 */
 	"usageInFlightRemediationNote",
+	"macNativeComponentsRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
