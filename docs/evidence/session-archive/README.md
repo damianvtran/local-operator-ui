@@ -25,9 +25,11 @@ window resize would photograph the same panel at the same width.
 >   control) and **`row-controls-pair-rest`**'s "two reserved slots" - the shed
 >   constant, the shared menu and the rest reservation are all gone (that spec's
 >   D9): the pair is drawn at every width, and at rest NOTHING is reserved on an
->   unpinned row. The `row-space` scene's own after frames
->   (`docs/evidence/sidebar-row-space/after/`) are where that state is now
->   photographed and asserted.
+>   unpinned row. **The frames themselves were removed in the 2026-09-23
+>   re-capture** (they are recoverable from history, and they were, when they
+>   shipped, the record of the state it replaced). The `row-space` scene's own
+>   after frames (`docs/evidence/sidebar-row-space/after/`) are where that state
+>   is now photographed and asserted.
 > - **`archive-refused*` and `undo-offer`** - the offer and the refusal are the
 >   panel's own sonner toast lane now (that spec's D11), not a register line: the
 >   element they are of no longer exists, and the after set's `offer-toast-280`
@@ -37,11 +39,17 @@ window resize would photograph the same panel at the same width.
 > The frames themselves are untouched: they are what the register looked like, and
 > a reader wanting the current behaviour should open the row-space set.
 >
-> **ADDED 2026-09-22: `refusal-band-280/{dark,light}`.** The refusal's CURRENT shape -
-> the panel's own band - now has a frame of its own in this set, because the row-space
-> set carries only OFFERS and the band's tallest case is the refusal (design round 4,
-> D15). `archive-refused*` and `undo-offer` stay exactly as they are: they are the
-> record of the register, not of the lane.
+> **ADDED 2026-09-22 as `refusal-band-280`, FOLDED INTO `archive-refused` 2026-09-23.** The
+> refusal's CURRENT shape - the panel's own band - is what the scene draws today, so its
+> frame is `archive-refused`, re-captured here; the row-space set carries only OFFERS and
+> the band's tallest case is the refusal (design round 4, D15). The separate
+> `refusal-band-280` name was a second label for this same state at the 280 panel, and the
+> re-capture dropped the duplicate. **The box the D15 row quotes is re-confirmed on this
+> head's own run**: the scene's `measure` reports `band 142 / card 134` at the 280 panel,
+> the same numbers (`264x142` / `248x134`) the row carries. The register-era frames
+> (`archive-refused*`, `undo-offer` as they were before this re-capture) are recoverable
+> from history, and the set's own copy of those states now shows the lane, which is what
+> the app draws.
 
 **One stub per launch**, because the scene MUTATES the stub (it archives two
 conversations), so a second launch against the same process starts from a
@@ -73,22 +81,30 @@ LOCAL_OPERATOR_DESKTOP_TOKEN=stub-token-archive node scripts/renderer-driver.mjs
 # the loop is kept as the recipe that took them. `archive-refused*` and
 # `undo-offer` are still emitted, but they are TOAST frames now and are captured
 # through `captureWithToast` rather than `captureSettled`.
+# NOTE (2026-09-23): the labels ARE the directory names now. This pass re-captured the
+# whole set at the head that folded #430 (the offer's band reserved in the commit that
+# lets a row go), so the sed mapping below is gone for every frame the scene emits
+# today, and three renames landed: `pair-wide` / `pair-rest` / `pair-pin` / `pair-narrow`
+# are the scene's own names for what the old convention called `row-controls-pair`,
+# `row-controls-pair-rest`, `row-controls-pin-hover` and `row-controls-*` (the narrow
+# band's shared control, which is deleted and whose frames are gone with it), and
+# `search-off` / `search-on` replace `search-live-only` / `search-include-archived`.
+# `settle-probe` is a new frame: the helper's own still before the arrival sequence, and
+# it is NAMED here because the row-space set's copy was the thing design round 9's D26
+# filed as unnamed.
 for f in at-rest row-hover row-hover-body search-off search-on delete-dialog \
          delete-refused archive-refused archive-refused-chats-only header-archived \
-         undo-offer deleted-open pair-wide pair-rest pair-pin pair-narrow; do
+         undo-offer deleted-open pair-wide pair-rest pair-pin pair-narrow settle-probe; do
   d=docs/evidence/session-archive/$f
   mkdir -p "$d"
-  cp /tmp/archive-frames-dark/$(echo $f | \
-       sed 's/search-off/search-live-only/;s/search-on/search-include-archived/;s/pair-wide/row-controls-pair/;s/pair-rest/row-controls-pair-rest/;s/pair-pin/row-controls-pin-hover/;s/pair-narrow/row-controls-shared/;s/shared-rest/row-controls-shared-rest/;s/shared-hover/row-controls-shared-hover/;s/shared-menu/row-controls-shared-menu/').png \
-     "$d/localOperatorDark.png"
-done
+  cp /tmp/archive-frames-dark/$f.png "$d/localOperatorDark.png"
+  cp /tmp/archive-frames-light/$f.png "$d/localOperatorLight.png"
+  # every directory is its own label: the label-to-directory step is a copy, not a rename
+  # (the sed that mapped `search-off`/`search-on`/`pair-*` onto the OLD names is removed)
+  # (`refusal-band-280` was a layout name for the band's refusal at the 280 panel; that
+  #  state is what `archive-refused` is of at this head, so the duplicate is gone)
 
-# …then the same two steps with --theme localOperatorLight into
-#    --out /tmp/archive-frames-light, copying into the same directories as
-#    localOperatorLight.png. The scene labels two frames differently from the
-#    directory names (`search-off` → `search-live-only`, `search-on` →
-#    `search-include-archived`); the sed above is that mapping, and it is the only
-#    renaming step - every other directory is the label.
+done
 
 # 3. the withdrawn half: the same app against a daemon with no archive store,
 #    again on a FRESH stub and its own records directory
@@ -106,11 +122,10 @@ cp /tmp/archive-frames-withdrawn/search-off.png \
 ```
 
 The scene asserts before it photographs. Run 1 (dark) and run 2 (light) report
-`ALL CHECKS PASSED` with **nineteen frames each**; the withdrawn run reports the same
-with two. The set committed here is therefore **42 PNGs** (19 + 19 + 2, plus the two
-frames of `refusal-band-280` - see the row below), and the count is stated because the
-round brief and the manifest's earlier `headNote` both said 24 — a number that was
-already stale when they were written. What the assertions cover, in the run's own words: the catalogue
+`ALL CHECKS PASSED` with **seventeen frames each**; the withdrawn run reports the same
+with two. The set committed here is therefore **36 PNGs** (17 + 17 + 2), and the count
+is stated because this paragraph's predecessor said nineteen-with-a-rename-mapping and
+the manifest's earlier `headNote` said 24 — both stale when written. What the assertions cover, in the run's own words: the catalogue
 answered, the archived conversation matches nothing before the control is on and a
 row after it, the delete confirmation is open on the conversation the menu was
 opened on, **Cancel hands the keyboard back to the header trigger**, the refused
@@ -154,21 +169,18 @@ line, the register, the Retry) is what those frames are of.
 | `at-rest/{dark,light}` | the panel with the capability present, nothing archived on screen | **nothing is DRAWN at rest**: no marker, no search-block chrome — while the 24px slot is still RESERVED (see the numbers below) | `--theme <palette>`, no scene step beyond `navigate("/chat")` |
 | `row-hover/{dark,light}` | the pointer parked on the archive control of a live row | the affordance appears on the pointer's row and nowhere else, without the row moving (`group-hover`, opacity only) — and the control under the pointer is the one that reads at full ink: brightest glyph pixels `#F1EEE7` (241) in the archive slot against `#C1BCB1` (193) in the pin slot beside it, both sampled inside their own 24px boxes (design round 4, D22, measured here rather than described) | the scene moves the **real** pointer (`Input.dispatchMouseEvent` at the control's box, from the `measure` verb) before the shutter |
 | `row-hover-body/{dark,light}` | the same row, pointer on its TITLE | the pair with `row-hover` settles design round 1 D5: the row's own highlight is a property of the ROW, not of the control's 24px box | the same, with the pointer 60px right of the row's left edge |
-| `row-controls-pair/{dark,light}` | the panel at its **280px default**, pointer on the row that carries an unread mark | the delivered rule: **two sibling reserved slots** (pin, then archive) reveal on that row and nowhere else, at a measured title width of **180px** — and the shared control is NOT drawn | the scene writes the panel width the divider writes (`setSidebarWidth`, 280), asserts the pair's box and the shared control's ABSENCE, then moves the real pointer onto the row |
-| `row-controls-shared/{dark,light}` | the same panel at its **240px clamp minimum**, same row | the rule's other half: the pair is SHED and **one shared pin+archive control** stands in its place, at a measured title width of **168px** — the same two acts, one slot, no act lost | the same, at 240, with both controls' boxes read (`pin 0x0, archive 0x0, shared 24x24`) so "shed" is a measurement rather than a description |
-| `row-controls-pin-hover/{dark,light}` | the 280px pair with the pointer parked on the **PIN** control | the pin's own step, which is the D22 change that lands on a RELEASED surface: main's pin declared no `hover:` colour at all, so this frame measures it rather than asserting it by construction — with the pointer on the pin the slots read `#F1EEE7` (241) / `#211E19` (33) in the pin's box against `#C1BCB1` (193) / `#4D4941` (77) in the archive's, dark and light (agent review round 4, R4-4) | the same run as `row-controls-pair`, with the pointer then moved onto `[data-session-pin]` and a second capture |
-| `row-controls-pair-rest/{dark,light}` | the same 280px panel, pointer PARKED off the list | the other half of the pair's rule: the slots are RESERVED with nothing drawn in them — two boxes, no glyphs — which a frame with the pointer on the row cannot show, because the pointer is what reveals them | the same run, with the pointer parked before the shutter |
-| `row-controls-shared-hover/{dark,light}` | the 240px panel with the pointer on the **shared trigger**, nothing open | the one state D25 found unphotographed, and the arm of D22 measured cleanly: the trigger reads `#F1EEE7` (241) under the pointer against `#C1BCB1` (193) when the pointer is merely on the row, dark (`#211E19`/33 against `#4D4941`/77 in light) | the same run at 240, with the pointer moved onto `[data-session-actions]` and NO click, so nothing is open |
-| `row-controls-shared-rest/{dark,light}` | the 240px panel, pointer parked | the shared control at REST, which is the state it was measured wrong in (design round 2, D10): it used to be drawn in the row's own ink at rest and to DIM under the pointer, so every row wore a title-weight glyph at the width with least room. Nothing is drawn here now | the same, at 240, with the pointer parked |
-| `row-controls-shared-menu/{dark,light}` | the shared control opened with the pointer, at 240 | the affordance that NAMES its two acts (`Pin/Unpin conversation`, `Archive/Unarchive conversation`), so "one slot, no act lost" is a picture rather than a claim about the source | a real click on `[data-session-actions]`, then `Escape` closes it before the scene continues |
-| `search-live-only/{dark,light}` | `notes` typed in the search box, `Include archived` off | the search block gains its one control only while a query exists; the archived conversation is NOT in the answer, and `[data-session-archived]` matches nothing | the scene types into the field through the input pipeline, then asserts the absence |
-| `search-include-archived/{dark,light}` | the same query, the control ON | the archived conversation is reachable from the search, carries the muted leading marker, and the sidebar has gained no section to hold it | a real click on the checkbox, then an assertion that `[data-session-archived]` now matches and is in the viewport |
+| `pair-wide/{dark,light}` | the panel at its **280px default**, pointer on the row that carries an unread mark | the delivered rule: **two sibling reserved slots** (pin, then archive) reveal on that row and nowhere else, at a measured title width of **180px** — and the shared control is NOT drawn | the scene writes the panel width the divider writes (`setSidebarWidth`, 280), asserts the pair's box and the shared control's ABSENCE, then moves the real pointer onto the row |
+| `pair-pin/{dark,light}` | the 280px pair with the pointer parked on the **PIN** control | the pin's own step, which is the D22 change that lands on a RELEASED surface: main's pin declared no `hover:` colour at all, so this frame measures it rather than asserting it by construction — with the pointer on the pin the slots read `#F1EEE7` (241) / `#211E19` (33) in the pin's box against `#C1BCB1` (193) / `#4D4941` (77) in the archive's, dark and light (agent review round 4, R4-4) | the same run as `row-controls-pair`, with the pointer then moved onto `[data-session-pin]` and a second capture |
+| `pair-rest/{dark,light}` | the same 280px panel, pointer PARKED off the list | the other half of the pair's rule: the slots are RESERVED with nothing drawn in them — two boxes, no glyphs — which a frame with the pointer on the row cannot show, because the pointer is what reveals them | the same run, with the pointer parked before the shutter |
+| `search-off/{dark,light}` | `notes` typed in the search box, `Include archived` off | the search block gains its one control only while a query exists; the archived conversation is NOT in the answer, and `[data-session-archived]` matches nothing | the scene types into the field through the input pipeline, then asserts the absence |
+| `search-on/{dark,light}` | the same query, the control ON | the archived conversation is reachable from the search, carries the muted leading marker, and the sidebar has gained no section to hold it | a real click on the checkbox, then an assertion that `[data-session-archived]` now matches and is in the viewport |
+| `pair-narrow/{dark,light}` | the pair at the panel's **240px clamp minimum** | the pair is drawn at EVERY width now (the row-space spec's D9 deleted the shared control this row used to photograph): same two slots, same two acts, narrower panel - and the driver asserts the shared control is not in the document at all, so "shed" can no longer be confused with "drawn elsewhere" | the same run as `pair-wide`, at 240 |
+| `settle-probe/{dark,light}` | the helper's own still, taken immediately before the arrival sequence | **the frame this set used to carry unnamed** (design round 9's D26 filed the row-space set's copy as identical to another frame and cited by neither README nor manifest): it is the settled list the arrival probes perturb, kept so the pre-arrival state is a picture rather than a claim, and it is named here for that reason | a plain `capture` through the arrival helper, before any press |
 | `delete-dialog/{dark,light}` | the header's conversation menu → `Delete conversation…` | the one permanent delete asks with the danger role, names the conversation, says the transcript cannot be undone, and does nothing on its own | two real clicks (the trigger, then the item), then the dialog's box is measured |
 | `delete-refused/{dark,light}` | the same dialog, `Delete` pressed on a conversation a live session claims | the refusal stays **in the dialog that asked**, the route's sentence is quoted and the window's own remedy follows it, and the keyboard is back on **Cancel** | the stub answers 409 for one conversation `live_claim: true`; the scene presses Confirm and then measures `[data-cancel-action]` for `focused` |
 | `archive-refused/{dark,light}` |
 | `archive-refused-chats-only/{dark,light}` | the refused archive with the **entity region collapsed by the panel's own control** | R4-1's proof, in the mode that was broken: the register is a root child beside the pin's failure line, so it survives `chats-only` — the scene asserts `[data-sidebar-region="entities"]` is UNMOUNTED and that the sentence and its Retry are both in the viewport, which is the assertion the old text-adjacency test could not make | the cluster's hide control hovered and pressed (`movePointer` + `pressPointerStationary`), asserted, then the restore row pressed to return |
  the archive control pressed on the same claimed conversation | a refused archive reports in the panel's own register - at the panel's root, drawn in EVERY assembly mode (`chats-only` included, agent review round 4's R4-1) - with the **Retry** that re-sends the desired state | the scene clicks the row's control and asserts `[data-session-archive-failure]` is in the viewport |
-| `refusal-band-280/{dark,light}` | the archive control pressed on the conversation a running session claims, at the panel's **280px default** - the frame the design round's **D15** asked for, because the band's largest case had no measured box | the refusal in the shape D14 puts it in: the panel's own bottom band rather than an overlay, holding the **full** card. WHAT THE CARD CONTAINS IS ITS MEASURED BOX, not a line count: **248x134** at this panel, against the band's ceiling of `calc(100% - 56px)` - so the whole refusal is drawn and the clip is not reached (the earlier draft of this row said "the sentence is nine lines", which is a claim about prose this frame does not carry; QA round 3, D21). The box, read in both palettes rather than quoted, and RE-READ OFF THIS HEAD'S OWN RE-CAPTURED FRAME rather than carried from the pre-fix one (design round 7's D25: the row had been left quoting `248x142` / `264x150` against a frame that reads 8px shorter, three places in all): **band 264x142 at x 228..492** (`y 718..860`), **card 248x134 at x 228..476** (`y 726..859`), panel 280x868, gap 8 - so `band.height == card.height + 8` as D14's ruling says, and the document's `216x170` / `216x206` are both stale in x AND y at this head. THE CARD'S X IS A READING THE RULING'S TABLE GETS WRONG: D14's table predicts the card "unchanged" at `244..492` (`panel.right - 8`), and the measured card sits at the LANE's left edge, **228..476**, with 16px of slack on the lane's right - the same left-anchoring `offer-toast-320` measures at the wider lane. Reported as a finding rather than reconciled here: nothing in the band's height ruling depends on x | ONE launch per palette on a fresh stub: the scene presses the row's control, asserts the refusal is in the lane with a hit-testable Retry, and reads the band, the card and the panel with `measure` |
 | `header-archived/{dark,light}` | the open conversation archived from its own menu, no dialog open | archiving the OPEN conversation keeps the pane open and adds the header's `Archived` pill with its restore control beside it | the scene archives from the menu, asserts the pill is in the viewport AND `activeSessionId` is still that conversation, and waits out the offer's 15s ceiling so nothing transient is over the pill's ink |
 | `undo-offer/{dark,light}` | a row's archive just succeeded | a successful archive offers **Undo** on the surface that performed it, as a **panel register at the panel's root** rather than a toast: the box is inside the panel (measured x 228..492 of the panel's 220..500) and disjoint from the composer's Send control (x 1307..1339), and it is still on screen after the catalogue's answers land | a real click on the row's control, then a plain `capture` (this is the frame that is OF the offer, so it carries its own `stable` + `offerOnScreen` checks alongside the `toastFree` ones — and the scene asserts the register's box is inside the panel and does not intersect Send) |
 | `deleted-open/{dark,light}` | the OPEN conversation deleted from its own menu | the pane lands on the missing-session notice that already existed — naming the conversation that is gone, with the composer refusing input — and the route stays on the deleted id rather than being swapped for a blank pane | the stub deletes an `idle`, unclaimed conversation; the scene asserts `#lo-missing-session-notice` is in the viewport AND `activeSessionId` is still that conversation |
@@ -227,23 +239,38 @@ does not** — 180 px and 168 px, both measured above. That is worth stating bec
 the opposite was assumed when this set was planned: the unread mark is drawn in
 the row's reserved STATUS slot, which is laid out before the title and does not
 take width from it. What costs title width is a control slot, and only that. The
-frames carry the mark anyway (`row-controls-{pair,shared}` hover the unread row),
-so the claim and the picture are of the same row.
+frames carry the mark anyway (`pair-wide`, `pair-pin` and `pair-narrow` hover the unread
+row), so the claim and the picture are of the same row.
 
-**The set was re-shot at the fold, and the numbers above are this set's.** Every
-frame here was re-shot with the same three commands after `origin/main` was folded
-in (`13b5e1b41`, 0.30.3, #408's sidebar split), on fresh stubs, one launch per
-palette, `ALL CHECKS PASSED` on all three; 24 of the 34 frames changed, because the
-fold rewrote the panel they are pictures of. Two consequences for the claims on this
-page: the hover ground's endpoints were re-read on THIS set (456..983 device, below),
-and the row-internal geometry the 21.5px marker figure derives from is unchanged on
-it — the driver's own report on this run is `status row 180px, unread row 180px; pin
+**The set was re-captured at the #430 fold (2026-09-23), and the numbers below are this
+set's where they could be re-derived on it.** Every frame here was re-shot with the same
+two launches per palette plus the withdrawn run, on fresh stubs, at
+`2c2e1a8c8` — the head that reserves the offer's band in the commit that lets a row go —
+and the ledger is: **22 frames the set already carried were replaced, 14 arrived under
+the labels this driver emits, and 10 the scene no longer draws were removed** (the
+narrow band's seven `row-controls-shared*` frames, `refusal-band-280`, and the two
+search frames whose states are now `search-off` and `search-on`). Three consequences
+worth stating rather than discovering:
+
+- The scene emits the labels the directories now carry, so the label-to-directory sed
+  mapping is gone. The frames removed are recoverable from history (`git show
+  <the commit before this one>:docs/evidence/session-archive/<name>`), and the state the
+  shared control was of is deleted from the app (the row-space spec's D9), which is why
+  the row-space set - not this one - is where that behaviour is photographed now.
+- **The hover ground's endpoints (456..983 device) were read on the previous set's frame
+  of this state and are NOT re-read on this one.** The frame's control region moved with
+  the re-capture (the difference between the two frames is 87,462 px, and the largest
+  cluster is `433x150+933+1586` — the row's right end), so a fixed device line no longer
+  lands on the same part of the row. Recorded here as owed rather than carried as if
+  re-measured.
+- The row-internal geometry the 21.5 px marker figure derives from is unchanged on this
+  set: the archived row's title still starts where the marker's own reserved slot ends.
 24x24, archive 24x24` at 280 and `168px … shared 24x24` at 240, identical to the
 numbers the figure was taken from, which is why the figure itself was not re-derived
 pixel by pixel.
 
 **The archived marker costs a ragged title column of 21.5px (design round 1 D4;
-re-derived on THIS set by design round 3).** In `search-include-archived/{dark,light}`
+re-derived on THIS set by design round 3).** In `search-on/{dark,light}`
 the archived row's title starts at **CSS 274.5** and its live sibling's at **253.0**
 — 21.5px, the marker being a 13 × 12 CSS box glyph at `--lo-ink-dim` (5.70:1 dark /
 5.74:1 light on the panel). The number is the design round's measurement on the
@@ -253,21 +280,23 @@ and it is now read off these artefacts rather than carried from the earlier set.
 
 **The row's hover ground reaches the row box's right edge (design round 3, D18;
 endpoints corrected in round 4, D23).**
-On `row-controls-pair/localOperatorDark.png` the hovered row's ground runs from
-device x **456 to 983** at the row's own centre line (CSS 228..491.5), passing under
-both control slots, with the panel ground `srgb(42,39,34)` resuming at 984. (An
-earlier line said 470..982 — 470 is CSS 235, i.e. 7px inside the box, and the run's
-own endpoints are 456 and 983.) Before this
-round's fix the same frame measured CSS 228..436 — the conversation button's own
-ground, 56px short — because the class stating it on the box was inert. The scene
-now asserts the box's own computed background, with the pointer on the row and
-again with it on a control, so a class that never matches cannot pass again:
+On `pair-wide/localOperatorDark.png` the hovered row's ground runs from device x **456 to
+983** at the row's own centre line (CSS 228..491.5), passing under both control slots,
+with the panel ground `srgb(42,39,34)` resuming at 984 **on the previous set's frame of
+this state** (see the re-capture note above: this frame's control region moved, so the
+endpoints are owed a fresh read here). (An earlier line said 470..982 — 470 is CSS 235,
+i.e. 7px inside the box, and the run's own endpoints are 456 and 983.) Before the D23
+fix the same frame measured CSS 228..436 — the conversation button's own ground, 56px
+short — because the class stating it on the box was inert. The scene now asserts the
+box's own computed background, with the pointer on the row and again with it on a
+control, so a class that never matches cannot pass again:
 
 ```
-magick docs/evidence/session-archive/row-controls-pair/localOperatorDark.png \
-  -format "%[pixel:p{970,1680}]" info:      # -> srgb(48,45,42), the row ground
-magick docs/evidence/session-archive/row-controls-pair/localOperatorDark.png \
-  -format "%[pixel:p{990,1680}]" info:      # -> srgb(42,39,34), past the box
+# the two probes, on the set that carries the endpoints the sentence above quotes:
+#   git show <the commit before this one>:docs/evidence/session-archive/row-controls-pair/localOperatorDark.png
+#   -> p{970,1680} srgb(48,45,42)  (the row ground)   p{990,1680} srgb(42,39,34) (past the box)
+# and on THIS set's pair-wide the same two pixels read srgb(40,37,33) / srgb(49,45,35),
+# which is the moved region rather than a different claim - hence the owed note above.
 ```
 
 **The withdrawn pair differs in exactly two count badges, and nowhere else.**
