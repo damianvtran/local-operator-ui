@@ -343,18 +343,20 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 					<Bot className={cn("size-4")} aria-hidden={true} />
 				</AvatarFallback>
 			</Avatar>
-			{/* ONE LINE: name, separator, description, at one `items-center`. The
-			 * wrapper keeps `min-w-0 flex-1` for the reason it always had it - the
-			 * block grows before the empty space to its right does, so the text
-			 * truncates only once there is genuinely no room - and inside it the
-			 * PRIORITY between the two runs is expressed in flex terms rather than in
-			 * prose: the description is `flex-1`, so its base size is zero and the name
-			 * takes the width it needs first. A name longer than the whole row still
-			 * shrinks (`min-w-0 truncate`) rather than pushing the action cluster off
-			 * the bar. */}
+			{/* ONE LINE: name then description, on ONE BASELINE. The wrapper keeps
+			 * `min-w-0 flex-1` for the reason it always had it - the block grows before
+			 * the empty space to its right does, so the text truncates only once there is
+			 * genuinely no room. `items-baseline` rather than `items-center`, because
+			 * centring aligns each run's LINE BOX and the two runs are different type
+			 * steps (16px heading, 13px body-sm), so their baselines landed 2px apart
+			 * (measured on the rendered header: name baseline 26.0, description baseline
+			 * 24.0, both line-box centres on 20) and the description read as lifted
+			 * against the name. The two runs now share the coordinate a reader sees them
+			 * on. The OUTER row keeps `items-center`, so the avatar and the action cluster
+			 * are still centred against the bar rather than dropped to its baseline. */}
 			<div
 				data-titlebar-no-drag=""
-				className={cn("flex min-w-0 flex-1 items-center gap-2")}
+				className={cn("flex min-w-0 flex-1 items-baseline gap-2")}
 			>
 				{/* `text-heading`, not `text-title`: branding.md reserves the 20px step
 				 * for section and dialog titles and states that a desktop app has no
@@ -362,14 +364,19 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				<h2 className={cn("min-w-0 truncate text-heading text-ink")}>
 					{agentName}
 				</h2>
-				{/* The separator is decoration and carries nothing a screen reader needs,
-				 * so it is `aria-hidden` - and it is rendered only when there IS a second
-				 * run to separate it from: with no description, the name sits alone. */}
-				{(descriptionPending || Boolean(description)) && (
-					<span className={cn("shrink-0 text-ink-dim")} aria-hidden="true">
-						·
-					</span>
-				)}
+				{/* NO SEPARATOR GLYPH (design round 1, D3, on the spec's own licence: "if
+				 * it reads as fussy in the frames, drop the glyph and let `gap` do it"). A
+				 * middle dot here is the same glyph the description already uses twice
+				 * inside itself, at a different size and three quarters of a pixel off their
+				 * line, so the reader gets three dots and no way to tell which is structure
+				 * and which is punctuation. The runs are separated by the 8px `gap` and by
+				 * the type steps themselves - 16px `ink` against 13px `ink-muted`.
+				 *
+				 * The PRIORITY between the two runs is expressed in flex terms rather than
+				 * in prose: the description is `flex-1`, so its base size is zero and the
+				 * name takes the width it needs first, and only then does the name itself
+				 * shrink (`min-w-0 truncate`) rather than pushing the action cluster off the
+				 * bar. */}
 				{descriptionPending ? (
 					/* `bg-elevated` for the same measured reason the transcript
 					 * placeholder takes it: the header's ground is `canvas`, where the
@@ -636,6 +643,35 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								 * cluster widens its own gap so the badge's outward move is paid for on the
 								 * other side (the cluster's own comment carries that half).
 								 *
+								 * THE TWO OFFSETS ARE NOW DIFFERENT, and the vertical one is the 40px bar's
+								 * arithmetic rather than a second spacing step. `-2.5` was chosen against the
+								 * 56px bar, where the 32px control sat 12px down and a 10px outward move still
+								 * left the badge 2px inside the bar. At 40px the same control sits 4px down, and
+								 * measured on the rendered header `-2.5` puts the badge's box at y -2.3 to 13.7
+								 * and its ring 4.3px ABOVE the bar's first pixel row - and `ChatHeader` is the
+								 * first child of a chat column that is `overflow-hidden`, so that half of the
+								 * pill was clipped on every platform, and on macOS the bar IS the window's top
+								 * strip with nothing above it (design round 1, D2). `-1` is the smallest step
+								 * that clears it: the box lands at 3.7 to 19.7 and the ring at 1.7 to 21.7, all
+								 * inside the bar. It is measured rather than derived because the badge is an
+								 * inline box inside a line box, so its top sits 3.7px below the wrapper's own -
+								 * which is the reason the wrapper's offset and the pill's edge are not the same
+								 * number. The HORIZONTAL offset is deliberately untouched: it is what keeps the
+								 * ring clear of the Globe's arc, and a vertical move does not move it sideways.
+								 *
+								 * WHAT THE 4.3px OF DROP COSTS AT `9+`, measured rather than reasoned: the badge
+								 * is right-anchored, so a wider glyph run grows LEFTWARDS - at `9+` it is 25.45px
+								 * and its left edge is 7.45px inside the Globe's 16px box (unchanged by this
+								 * fix; `one-approval` is 0.27px clear of it). Above the bar's top edge that
+								 * overlap only crossed the glyph's topmost arc, and the two rendered frames
+								 * show the difference: dropping the pill into the bar brings it across the
+								 * upper-right of the stroke. Two ways out exist and neither is this fix's to
+								 * take: a larger outward offset moves the ring into the neighbour's box (the
+								 * reservation below exists to stop exactly that), and a reserve INSIDE the
+								 * control - the Approvals idiom, `pr-5` on a labelled button - would move the
+								 * glyph and so the cluster's own arithmetic. Flagged for design round 2 with
+								 * both states' frames.
+								 *
 								 * THE VISUAL IS CAPPED, THE LABEL IS NOT. `min-w-4 px-1` grows with every digit
 								 * and the badge is right-anchored, so three digits reach ~23px against the 12px
 								 * of room the offset above leaves - it would have walked back over the glyph the
@@ -647,7 +683,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							{browserBadgeDrawn && (
 								<span
 									className={cn(
-										"pointer-events-none absolute -top-2.5 -right-2.5",
+										"pointer-events-none absolute -top-1 -right-2.5",
 									)}
 								>
 									<Badge
@@ -682,7 +718,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				 * `SquareTerminal` RATHER THAN `Terminal`, and the distinction is
 				 * load-bearing at 16px: `bash`'s bare `Terminal` is the shell the agent
 				 * ran, and this is the app's own framed surface (§6.1, §14.4). Two
-				 * terminals told apart at a glance in one 56px bar is the whole
+				 * terminals told apart at a glance in one 40px bar is the whole
 				 * requirement.
 				 */}
 				{consoleButtonShown && (

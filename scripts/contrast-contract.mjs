@@ -380,29 +380,24 @@ const CONTROLS = [
 		 * only boundary - which is exactly why this row asserts a border AND a fill
 		 * and why a borderless version of this field would be a control with no
 		 * perceivable edge that every palette row stays green about.
+		 *
+		 * AND NO ROW FOR THE POINTER, unlike the two buttons above, because the pointer
+		 * no longer moves this control's fill. It did: `hover:bg-row-hover` raised the
+		 * well above the very panel it is cut into (`rowHover` carries its offset off
+		 * `surface`, so it measures above it in the dark brand palette), and the only
+		 * step that stays inside the recess is `canvas` - a GROUND, which
+		 * `chat-sidebar-selection.test.mjs` refuses as a state on this panel for the
+		 * reason it gives (`elevated` is also every menu, popover, tooltip and dialog in
+		 * the app). So the pointer moves the field's INK instead - `ink-dim` to
+		 * `ink-muted` on the glyph and the placeholder - and both of those roles are
+		 * already asserted on `sunken` by the `INKS` loop in this file (5.0 and 5.5).
+		 * A hover row here would restate a pairing this file already measures; the row
+		 * it replaces asserted `ink` on that fill at 4.5:1 while its prose claimed the
+		 * section's 7:1 floor.
 		 */
 		name: "chat sidebar search",
 		on: GROUNDS,
 		fill: "sunken",
-		border: "borderControl",
-		ink: "ink",
-	},
-	{
-		/*
-		 * The same field under the pointer, which is a state rather than a second
-		 * control and gets its own row for the reason "primary button (hover)" above
-		 * has one: the fill moves and nothing else does, so a row that asserted only
-		 * the resting fill would be attesting a pairing the reader never sees while
-		 * the field is hovered. `rowHover` is the panel's own pointer rung (not a
-		 * ground) - the step every row and control in this panel takes - and `ink`
-		 * on it is asserted at the 7:1 the same section holds `ink`/`ink-muted`/
-		 * `ink-dim` to on both row roles. The edge stays `border-control` against the
-		 * `surface` panel behind it, which is the ground this control actually sits
-		 * on.
-		 */
-		name: "chat sidebar search (hover)",
-		on: GROUNDS,
-		fill: "rowHover",
 		border: "borderControl",
 		ink: "ink",
 	},
@@ -1828,14 +1823,30 @@ const STRUCTURAL_CALL_SITES = [
 		 * the pin follows the mark that replaced it rather than the rule. The
 		 * separation is now the transcript's own top edge dissolving under the bar,
 		 * which means `chat-header.tsx` has no boundary left to pin and the mask in
-		 * `styles/index.css` is the half no palette assertion can see: drop the
-		 * fallback branch and an engine without scroll timelines renders the hard cut
-		 * the rule was removed for, with every colour row still green.
+		 * `styles/index.css` is the half no palette assertion can see: drop the mask
+		 * and the bar and the rows share one ground with nothing between them, with
+		 * every colour row still green.
+		 *
+		 * TWO PINS, because the mask has two branches and only the first is the one
+		 * Electron ships. The SHIPPED branch's `animation-range` is the half that
+		 * decides whether the fade exists at all and which end of the scroll it is
+		 * anchored to - this container is `flex-col-reverse`, so a range measured off
+		 * the tail puts the fade where the app is not, which is exactly what
+		 * `animation-range: 0 24px` did: a hard-cut row at rest under a rule-less bar.
+		 * The fallback is pinned on its own DECLARATION rather than on its `@supports`
+		 * condition, because a condition survives the block being emptied and an
+		 * emptied fallback branch IS a hard cut on an engine with no scroll timeline.
 		 */
-		what: "transcript top-edge mask fallback",
+		what: "transcript top-edge mask (the shipped scroll-timeline branch)",
 		file: "src/renderer/src/styles/index.css",
-		must: "@supports not (animation-timeline: scroll())",
-		why: "the header no longer draws a rule, so this mask is the only thing separating the bar from the rows, and the fallback branch is the half that keeps that true on an engine with no scroll timeline",
+		must: "animation-range: calc(100% - 24px) 100%",
+		why: "the header draws no rule, so this mask is the only separation between the bar and the rows; the range decides whether the fade is full at rest or absent there, which no colour assertion can see",
+	},
+	{
+		what: "transcript top-edge mask fallback declaration",
+		file: "src/renderer/src/styles/index.css",
+		must: "black 24px",
+		why: "an engine with no scroll timeline gets a permanent 24px fade from this declaration; pinning the declaration rather than the `@supports` condition is what makes an emptied block fail this gate",
 	},
 	{
 		/*
