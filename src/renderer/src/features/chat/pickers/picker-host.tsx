@@ -355,7 +355,10 @@ export function pickerPrimaryLabel(state: {
 	result: PickerResult | null;
 }): string {
 	if (state.busy) return "Close";
-	return state.result && state.result.tone !== "error" ? "Done" : "Close";
+	return state.result &&
+		(state.result.tone === "success" || state.result.tone === "info")
+		? "Done"
+		: "Close";
 }
 
 /**
@@ -1160,7 +1163,10 @@ export const PickerHost: FC<PickerHostProps> = ({
 					</div>
 				)}
 
-				<div className="flex items-center justify-between gap-3 px-5 py-4">
+				<div
+					className="flex items-center justify-between gap-3 px-5 py-4"
+					data-picker-footer
+				>
 					{/*
 					 * The hint names the row Enter would pick (UX U1) and truncates rather
 					 * than wrapping, because a long model name here is the only text in the
@@ -1273,8 +1279,9 @@ export const PickerCheck: FC<{
 }> = ({ checked, onCheckedChange, children, tone = "muted" }) => {
 	const id = useId();
 	return (
-		<div className="flex items-center gap-2">
+		<div className="flex items-start gap-2">
 			<Checkbox
+				className="mt-0.5"
 				id={id}
 				checked={checked}
 				onCheckedChange={(next) => onCheckedChange(next === true)}
