@@ -83,7 +83,7 @@ export function subscribeDesktopStream(args, onEvent) {
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { useCanonicalSessionStream, STREAM_SNAPSHOT_DEADLINE_MS } from "./src/renderer/src/shared/hooks/use-canonical-session.ts";',
+			'export { useCanonicalSessionStream, STREAM_SNAPSHOT_DEADLINE_MS, STREAM_SNAPSHOT_RECHECK_MS } from "./src/renderer/src/shared/hooks/use-canonical-session.ts";',
 			// The `resync` door, which reaches the identical hazard as the Retry
 			// control above: it must cancel a pending stream retry before connecting,
 			// or it opens a second subscription over one dispose closure and orphans
@@ -271,6 +271,7 @@ const {
 	DESKTOP_STREAM_DETAIL,
 	HISTORY_UNREADABLE,
 	STREAM_SNAPSHOT_DEADLINE_MS,
+	STREAM_SNAPSHOT_RECHECK_MS,
 } = await loadHook("notice");
 
 /** The hook's view, and its handle, as last rendered. */
@@ -343,7 +344,7 @@ async function flushFrames() {
  * (a bounded, backing-off budget), and reading them is cheaper and stricter
  * than waiting 23.5s of wall clock.
  */
-async function runTimers({ deadline = false } = {}) {
+async function runTimers({ deadline = false, recheck = false } = {}) {
 	const delays = [];
 	/*
 	 * The per-connection snapshot deadline (`STREAM_SNAPSHOT_DEADLINE_MS`) is left
@@ -352,8 +353,14 @@ async function runTimers({ deadline = false } = {}) {
 	 * 20 s bound its connection re-arms - so draining the bound here would model a
 	 * clock no page has. The cases about the bound pass `{ deadline: true }`.
 	 */
+	/*
+	 * The one silent re-check a fired bound arms (`STREAM_SNAPSHOT_RECHECK_MS`)
+	 * is held back the same way, so a case about the bound itself reads the
+	 * notice the bound lands on, and the D5 case asks for the re-check by name.
+	 */
 	const due = (entry) =>
-		deadline || entry.delay !== STREAM_SNAPSHOT_DEADLINE_MS;
+		(deadline || entry.delay !== STREAM_SNAPSHOT_DEADLINE_MS) &&
+		(recheck || entry.delay !== STREAM_SNAPSHOT_RECHECK_MS);
 	for (let pass = 0; pass < 64 && timerQueue.some(due); pass += 1) {
 		// Oldest first, so a retry that re-arms another timer is drained in order.
 		timerQueue.sort((a, b) => a.id - b.id);
@@ -730,6 +737,71 @@ for (const arm of ["says nothing", "opens but never snapshots"]) {
 		);
 	});
 }
+
+/*
+ * A STALL THAT OUTLIVES THE BOUND, THEN ANSWERS (design round 2, D5). The bound
+ * is terminal so a frozen owner costs one 20 s wait rather than minutes of
+ * retries, but an owner that recovers must not leave the pane on "Lost the
+ * connection" until someone presses Reconnect. The pane asks exactly ONCE more
+ * by itself, and that one re-check is all it spends: a second silent connection
+ * lands on the same notice and nothing asks again until a snapshot proves the
+ * stream works, which re-earns the re-check for the next stall.
+ */
+test("a fired bound re-checks once by itself, heals when the owner answers, and never loops (D5)", async () => {
+	test_state.streams.length = 0;
+	timerQueue.length = 0;
+	const mounted = mountHook(await loadHook("recheck"), SESSION);
+	await settle();
+	await runTimers({ deadline: true });
+	assert.equal(mounted.view().status, "unavailable");
+	assert.equal(test_state.streams.length, 1);
+	assert.equal(
+		timerQueue.filter((entry) => entry.delay === STREAM_SNAPSHOT_RECHECK_MS)
+			.length,
+		1,
+		"one re-check armed by the fired bound",
+	);
+	assert.equal(STREAM_SNAPSHOT_RECHECK_MS, 10_000);
+	// The re-check fires and the owner is still silent: its own bound lands on the
+	// notice again, and this time nothing is armed behind it.
+	await runTimers({ recheck: true });
+	assert.equal(
+		test_state.streams.length,
+		2,
+		"the re-check opened ONE connection",
+	);
+	await runTimers({ deadline: true, recheck: true });
+	assert.equal(mounted.view().status, "unavailable");
+	assert.equal(
+		test_state.streams.length,
+		2,
+		"and a second silence asks nothing more",
+	);
+	assert.equal(timerQueue.length, 0, "no timer left behind a spent re-check");
+	// The user's Reconnect still works, and a snapshot re-earns the re-check.
+	mounted.view().retry();
+	await settle();
+	assert.equal(test_state.streams.length, 3);
+	send(openFrame());
+	send(snapshotFrame([userEntry("m1", "hello")]));
+	await settle();
+	assert.equal(mounted.view().status, "live");
+	// Healing without the user: a fresh mount, one silence, then the owner answers
+	// on the re-check's connection.
+	test_state.streams.length = 0;
+	timerQueue.length = 0;
+	const healed = mountHook(await loadHook("recheck-heal"), SESSION);
+	await settle();
+	await runTimers({ deadline: true });
+	assert.equal(healed.view().status, "unavailable");
+	await runTimers({ recheck: true });
+	assert.equal(test_state.streams.length, 2);
+	send(openFrame());
+	send(snapshotFrame([userEntry("m1", "hello")]));
+	await settle();
+	assert.equal(healed.view().status, "live", "the pane healed with no press");
+	assert.equal(healed.view().failure, null);
+});
 
 test("an empty applied page IS a claim the app may make", async () => {
 	test_state.streams.length = 0;

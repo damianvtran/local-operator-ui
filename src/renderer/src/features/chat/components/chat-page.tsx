@@ -211,6 +211,29 @@ const HELD_DESCRIPTION_LINE = "\u00a0";
 /** How a send held for the validation window ends; see `send`. */
 type WindowOutcome = "ready" | "failed" | "gone" | "abandoned";
 
+/**
+ * Whether the chat view is still showing `sessionId` - the id this pane would be
+ * handed if it were mounted now. Read through `panelSessionIdOfView`, the one
+ * expression the pane's own key is computed from, so a held send and the pane
+ * cannot disagree about which conversation the user is in.
+ */
+function viewIsOnThisSession(
+	state: ReturnType<typeof useCanonicalSessionsStore.getState>,
+	sessionId: string | undefined,
+): boolean {
+	const draft = state.activeDraftKey
+		? state.drafts[state.activeDraftKey]
+		: undefined;
+	return (
+		Boolean(sessionId) &&
+		panelSessionIdOfView(
+			state.activeDraftKey,
+			draft?.sessionId,
+			state.activeSessionId,
+		) === sessionId
+	);
+}
+
 function SessionPanel({
 	identity,
 	draftKey,
@@ -1123,7 +1146,10 @@ function SessionPanel({
 			 * text stays in the box and the composer shows its existing in-flight
 			 * state (`admitting`) - until the stream decides:
 			 *
-			 *   - `ready`: the first snapshot closed the window; admit as normal.
+			 *   - `ready`: THIS panel's stream went live and the first snapshot
+			 *     closed the window; admit as normal.
+			 *   - `abandoned`: the view moved to another conversation first; nothing
+			 *     is sent anywhere, and the draft stays with this conversation.
 			 *   - `failed`: the stream reached `unavailable` (retry budget or the
 			 *     snapshot deadline). The refusal then states the STREAM's own
 			 *     sentence - the same one the transcript shows with its Reconnect -
@@ -1138,6 +1164,28 @@ function SessionPanel({
 			 * settles the wait as abandoned. The store's own refusal in
 			 * `admitChatDraft` stays as the rule for every other caller.
 			 */
+			/*
+			 * A SEND WHOSE CONVERSATION THE USER HAS ALREADY LEFT GOES NOWHERE
+			 * (agent review round 2, R2-F1). Checked before the window, because by
+			 * the time a press reaches here the switch may already have moved the
+			 * window to the other conversation - and then this pane's session reads
+			 * as not-in-a-window, the hold below is skipped, and the store's own
+			 * refusal cannot catch it either (it refuses only the session the window
+			 * names). Reproduced on the BUILT app with a real Enter and a real click
+			 * on another row, when the message carried a pasted image: the send
+			 * awaits the image decode above, the click lands in that gap, and the
+			 * message went to the conversation just left - 1 POST and 1 journal row
+			 * there, 3 of 3 runs. Without an attachment nothing yields before this
+			 * point, so the press is decided in its own task (0 of 5 runs at 0-5 ms
+			 * gaps). `session-switch-latency.mjs --held-leave` is the committed
+			 * reproduction (press and switch in one task). `false` keeps the text
+			 * with this conversation's draft, the same outcome as `abandoned`.
+			 */
+			if (
+				sessionId &&
+				!viewIsOnThisSession(useCanonicalSessionsStore.getState(), sessionId)
+			)
+				return false;
 			if (
 				sessionId &&
 				isSessionUnvalidated(
@@ -1636,6 +1684,12 @@ function SessionPanel({
 	const windowOpen = useCanonicalSessionsStore((state) =>
 		isSessionUnvalidated(state.validatingSessionId, sessionId),
 	);
+	// A dependency of the held sends' settle effect below: leaving the
+	// conversation is an answer for them (`abandoned`), and it has to be heard in
+	// the commit that moves the view, not only when the pane unmounts.
+	const viewOnThisSession = useCanonicalSessionsStore((state) =>
+		viewIsOnThisSession(state, sessionId),
+	);
 	useEffect(() => {
 		if (!sessionId || !windowOpen) return;
 		const store = useCanonicalSessionsStore.getState();
@@ -1654,16 +1708,36 @@ function SessionPanel({
 		const waiters = windowWaiters.current.splice(0);
 		for (const settle of waiters) settle(outcome);
 	};
+	/*
+	 * `ready` is THIS PANEL'S OWN EVIDENCE, never merely "the window is no longer
+	 * this session's" (agent review round 2, R2-F1). The two read the same while
+	 * the user stays and differ exactly when they leave: `openSession(other)`
+	 * moves `validatingSessionId` to `other`, which the old test read as this
+	 * session being confirmed. On the measured orderings the unmount's
+	 * `abandoned` won that race (`session-switch-latency.mjs --held-leave
+	 * --leave-after=400`: 0 sends before and after this change), so this is the
+	 * rule stated rather than a measured leak - the leak that DID reproduce is
+	 * the one `send` guards before it reaches the window at all.
+	 *
+	 * So the view moving off this session settles the wait as `abandoned`
+	 * without depending on which effect commits first, and `ready` additionally
+	 * needs this panel's stream to be `live`, the frame `confirmSessionLive`
+	 * closed the window on.
+	 */
 	const windowOutcome = (): WindowOutcome | null => {
 		if (streamRef.current.missing) return "gone";
+		if (!viewIsOnThisSession(useCanonicalSessionsStore.getState(), sessionId))
+			return "abandoned";
+		const status = streamRef.current.status;
+		if (status === "unavailable") return "failed";
 		if (
-			!isSessionUnvalidated(
+			isSessionUnvalidated(
 				useCanonicalSessionsStore.getState().validatingSessionId,
 				sessionId,
 			)
 		)
-			return "ready";
-		return streamRef.current.status === "unavailable" ? "failed" : null;
+			return null;
+		return status === "live" ? "ready" : null;
 	};
 	const awaitWindow = () => {
 		const now = windowOutcome();
@@ -1677,7 +1751,7 @@ function SessionPanel({
 		if (windowWaiters.current.length === 0) return;
 		const outcome = windowOutcome();
 		if (outcome) settleWindowWaiters(outcome);
-	}, [windowOpen, canonical.status, canonical.missing]);
+	}, [windowOpen, viewOnThisSession, canonical.status, canonical.missing]);
 	// A held send whose pane unmounts (the user opened another conversation) is
 	// abandoned rather than delivered into a conversation nobody is looking at.
 	useEffect(() => {
