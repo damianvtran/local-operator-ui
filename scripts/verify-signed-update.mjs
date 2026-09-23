@@ -219,8 +219,8 @@ function startOwned(executable, args, label, env = safeEnv()) {
 		 * live PostHog project key in both of its processes, so a CI run is a user in
 		 * the product's analytics and a session replay beside it. Applied at the one
 		 * place this script decides what a child gets rather than at the three launch
-		 * calls, so a fourth launch added later is covered without being remembered.
-		 * The python children this also reaches have no PostHog client of their own.
+		 * calls, so a fourth launch added later is covered without being remembered —
+		 * and the non-app children this also reaches have no PostHog client at all.
 		 * See `telemetry-off.mjs`.
 		 */
 		env: withTelemetryOff(env),
