@@ -337,6 +337,16 @@ test("the /rename flag list is the one row the backend honours, aliased", () => 
 	 * would "tidy away": it looks redundant next to a name that `refresh`
 	 * subsequence-matches, and its whole job is RANK (`matchChoices` scores on
 	 * name and aliases, displays `name`).
+	 *
+	 * ROUND 1 (U3) ADDED THE BARE SYNONYMS to that list — `update` and `retitle`,
+	 * which the backend honours and the first cut left unreachable. They are ALIASES
+	 * and not rows, so the visible list stays ONE choice while a user who knows one
+	 * of those words can find it; `--update`/`--retitle` are pinned here too because
+	 * the dashed spellings are what a user who learned the flag shape reaches for.
+	 * `--auto` is in NEITHER the aliases nor the rows, deliberately: it is the one
+	 * honoured spelling with no bare twin, so it cannot be reached by typing a word
+	 * a user already knows — only by being taught, and this list is not where the
+	 * backend's tolerance gets advertised.
 	 */
 	const rows = argumentRows("title-refresh", [], null);
 	assert.equal(rows.length, 1);
@@ -345,7 +355,7 @@ test("the /rename flag list is the one row the backend honours, aliased", () => 
 		name: "--refresh",
 		description: "Re-read the conversation and name it again",
 		detail: "resumes auto-naming",
-		aliases: ["refresh"],
+		aliases: ["refresh", "update", "retitle", "--update", "--retitle"],
 	});
 	// The flag form is what a pick writes AND what a run sends, so a row whose
 	// `value` drifted from its `name` would run a different spelling than it

@@ -1,5 +1,5 @@
 {
-  "origin": "http://localhost:6035",
+  "origin": "http://localhost:6043",
   "story": "chat-message-input--slash-enter",
   "theme": "localOperatorDark",
   "viewport": {
@@ -7,7 +7,7 @@
     "height": 900
   },
   "driver": "scripts/slash-enter-proof.mjs",
-  "at": "2026-09-22T21:55:03.932Z",
+  "at": "2026-09-23T01:32:13.973Z",
   "cases": [
     {
       "name": "enter-runs-analytics",
@@ -37,8 +37,8 @@
         "ran": "/analytics",
         "enterNote": null
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/enter-runs-analytics-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/enter-runs-analytics-after.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/enter-runs-analytics-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/enter-runs-analytics-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -71,8 +71,8 @@
         "ran": "none",
         "enterNote": null
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/enter-completes-a-list-command-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/enter-completes-a-list-command-after.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/enter-completes-a-list-command-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/enter-completes-a-list-command-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -105,8 +105,8 @@
         "ran": "none",
         "enterNote": null
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/tab-never-runs-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/tab-never-runs-after.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/tab-never-runs-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/tab-never-runs-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -145,8 +145,8 @@
         "ran": "none",
         "enterNote": "Enter needs a row you pick: ↓ then Enter · Tab completes this row."
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/ambiguous-enter-grows-the-prefix-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/ambiguous-enter-grows-the-prefix-after.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/ambiguous-enter-grows-the-prefix-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/ambiguous-enter-grows-the-prefix-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -185,8 +185,8 @@
         "ran": "none",
         "enterNote": "Enter needs a row you pick: ↓ then Enter · Tab completes this row."
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/ambiguous-enter-keeps-the-written-message-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/ambiguous-enter-keeps-the-written-message-after.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/ambiguous-enter-keeps-the-written-message-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/ambiguous-enter-keeps-the-written-message-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -217,8 +217,7 @@
           "/exitQuit the app",
           "/loginAuthenticate a providervalue?",
           "/logoutRemove stored provider credentialsvalue?",
-          "/loopLoop toward a goal: /loop <goal text>, /loop <n>, or /loop stop to cancelneeds a value",
-          "/rename/titleName this conversation, or /title --refreshvalue?"
+          "/loopLoop toward a goal: /loop <goal text>, /loop <n>, or /loop stop to cancelneeds a value"
         ],
         "active": "/analyticsAggregated token-consumption analytics across all sessionsvalue?",
         "ran": "none",
@@ -241,15 +240,14 @@
           "/exitQuit the app",
           "/loginAuthenticate a providervalue?",
           "/logoutRemove stored provider credentialsvalue?",
-          "/loopLoop toward a goal: /loop <goal text>, /loop <n>, or /loop stop to cancelneeds a value",
-          "/rename/titleName this conversation, or /title --refreshvalue?"
+          "/loopLoop toward a goal: /loop <goal text>, /loop <n>, or /loop stop to cancelneeds a value"
         ],
         "active": "/analyticsAggregated token-consumption analytics across all sessionsvalue?",
         "ran": "none",
         "enterNote": "Enter needs a row you pick: ↓ then Enter · Tab completes this row."
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/ambiguous-enter-at-bare-slash-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/ambiguous-enter-at-bare-slash-after.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/ambiguous-enter-at-bare-slash-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/ambiguous-enter-at-bare-slash-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -289,8 +287,8 @@
         "ran": "none",
         "enterNote": "Enter needs a row you pick: ↓ then Enter · Tab completes this row."
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/ambiguous-enter-at-the-shared-prefix-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/ambiguous-enter-at-the-shared-prefix-after.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/ambiguous-enter-at-the-shared-prefix-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/ambiguous-enter-at-the-shared-prefix-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -323,8 +321,8 @@
         "ran": "none",
         "enterNote": null
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/enter-completes-and-the-next-enter-runs-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/enter-completes-and-the-next-enter-runs-after.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/enter-completes-and-the-next-enter-runs-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/enter-completes-and-the-next-enter-runs-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -356,8 +354,8 @@
         "ran": "/analytics",
         "enterNote": null
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/click-runs-analytics-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/click-runs-analytics-after.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/click-runs-analytics-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/click-runs-analytics-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -390,8 +388,8 @@
         "ran": "none",
         "enterNote": null
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/rename-suggests-on-dash-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/rename-suggests-on-dash-before.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-suggests-on-dash-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-suggests-on-dash-before.png",
       "verdict": "FAIL",
       "mismatches": [
         "list: null (expected \"Command arguments\")",
@@ -428,8 +426,8 @@
         "ran": "none",
         "enterNote": null
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/rename-suggests-on-double-dash-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/rename-suggests-on-double-dash-before.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-suggests-on-double-dash-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-suggests-on-double-dash-before.png",
       "verdict": "FAIL",
       "mismatches": [
         "list: null (expected \"Command arguments\")",
@@ -466,8 +464,8 @@
         "ran": "none",
         "enterNote": null
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/rename-suggests-on-r-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/rename-suggests-on-r-before.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-suggests-on-r-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-suggests-on-r-before.png",
       "verdict": "FAIL",
       "mismatches": [
         "list: null (expected \"Command arguments\")",
@@ -504,8 +502,8 @@
         "ran": "none",
         "enterNote": null
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/rename-suggests-on-ref-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/rename-suggests-on-ref-before.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-suggests-on-ref-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-suggests-on-ref-before.png",
       "verdict": "FAIL",
       "mismatches": [
         "list: null (expected \"Command arguments\")",
@@ -542,8 +540,8 @@
         "ran": "none",
         "enterNote": null
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/rename-suggests-on-bare-word-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/rename-suggests-on-bare-word-before.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-suggests-on-bare-word-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-suggests-on-bare-word-before.png",
       "verdict": "FAIL",
       "mismatches": [
         "list: null (expected \"Command arguments\")",
@@ -580,8 +578,8 @@
         "ran": "none",
         "enterNote": null
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/rename-empty-space-offers-nothing-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/rename-empty-space-offers-nothing-before.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-empty-space-offers-nothing-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-empty-space-offers-nothing-before.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -612,8 +610,8 @@
         "ran": "none",
         "enterNote": null
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/rename-click-runs-the-refresh-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/rename-click-runs-the-refresh-after.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-click-runs-the-refresh-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-click-runs-the-refresh-after.png",
       "verdict": "FAIL",
       "mismatches": [
         "ran: \"none\" (expected \"/rename --refresh\")",
@@ -638,7 +636,7 @@
         "enterNote": null
       },
       "after": {
-        "draft": "",
+        "draft": "/rename ",
         "list": null,
         "phase": null,
         "rows": [],
@@ -646,8 +644,8 @@
         "ran": "/rename",
         "enterNote": null
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/rename-bare-enter-opens-the-form-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/rename-bare-enter-opens-the-form-after.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-bare-enter-opens-the-form-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-bare-enter-opens-the-form-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -669,7 +667,7 @@
         "enterNote": null
       },
       "after": {
-        "draft": "",
+        "draft": "/rename quarterly review",
         "list": null,
         "phase": null,
         "rows": [],
@@ -677,12 +675,177 @@
         "ran": "/rename quarterly review",
         "enterNote": null
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/rename-titled-enter-keeps-the-title-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/before-frames-clean/rename-titled-enter-keeps-the-title-after.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-titled-enter-keeps-the-title-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-titled-enter-keeps-the-title-after.png",
       "verdict": "PASS",
       "mismatches": []
+    },
+    {
+      "name": "rename-one-word-title-stays-a-title",
+      "why": "`/rename fresh` + Enter: a word that the subsequence matcher reaches `--refresh` from, and a TITLE by the backend's own parser (`parse_title_arg('fresh')` is `(False, 'fresh')`). The first version ran a refresh here and discarded the typed name; the base tree sets the title.",
+      "gesture": "Enter after typing \"/rename fresh\"",
+      "expect": {
+        "ran": "/rename fresh",
+        "list": null
+      },
+      "before": {
+        "draft": "/rename fresh",
+        "list": null,
+        "phase": null,
+        "rows": [],
+        "active": null,
+        "ran": "none",
+        "enterNote": null
+      },
+      "after": {
+        "draft": "/rename fresh",
+        "list": null,
+        "phase": null,
+        "rows": [],
+        "active": null,
+        "ran": "/rename fresh",
+        "enterNote": null
+      },
+      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-one-word-title-stays-a-title-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-one-word-title-stays-a-title-after.png",
+      "verdict": "PASS",
+      "mismatches": []
+    },
+    {
+      "name": "rename-hyphen-title-stays-a-title",
+      "why": "`/rename -fresh` + Enter, the spelling the UX and design rounds both reported: ONE token with no whitespace, so the whitespace guard did not exclude it — only the whole-token vocabulary test does. Sets the literal title, as it did before the feature existed.",
+      "gesture": "Enter after typing \"/rename -fresh\"",
+      "expect": {
+        "ran": "/rename -fresh",
+        "list": null
+      },
+      "before": {
+        "draft": "/rename -fresh",
+        "list": null,
+        "phase": null,
+        "rows": [],
+        "active": null,
+        "ran": "none",
+        "enterNote": null
+      },
+      "after": {
+        "draft": "/rename -fresh",
+        "list": null,
+        "phase": null,
+        "rows": [],
+        "active": null,
+        "ran": "/rename -fresh",
+        "enterNote": null
+      },
+      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-hyphen-title-stays-a-title-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-hyphen-title-stays-a-title-after.png",
+      "verdict": "PASS",
+      "mismatches": []
+    },
+    {
+      "name": "rename-partial-flag-completes-not-runs",
+      "why": "`/rename ref` + Enter: a PARTIAL spelling of the flag. Enter COMPLETES it to the full spelling instead of running — so a half-typed word can never spend a provider call. The completion replaces the ARGUMENT span only (no trailing space, unlike a command-word completion), so the row goes on matching and the list stays up for the second Enter, which is the `/compact` two-Enter path.",
+      "gesture": "Enter after typing \"/rename ref\"",
+      "expect": {
+        "ran": "none",
+        "draft": "/rename --refresh"
+      },
+      "before": {
+        "draft": "/rename ref",
+        "list": null,
+        "phase": null,
+        "rows": [],
+        "active": null,
+        "ran": "none",
+        "enterNote": null
+      },
+      "after": {
+        "draft": "/rename ref",
+        "list": null,
+        "phase": null,
+        "rows": [],
+        "active": null,
+        "ran": "/rename ref",
+        "enterNote": null
+      },
+      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-partial-flag-completes-not-runs-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-partial-flag-completes-not-runs-after.png",
+      "verdict": "FAIL",
+      "mismatches": [
+        "ran: \"/rename ref\" (expected \"none\")",
+        "draft: \"/rename ref\" (expected \"/rename --refresh\")"
+      ]
+    },
+    {
+      "name": "rename-partial-then-full-runs-on-the-second-enter",
+      "why": "The other half of the two-Enter path: after the completion above, ONE more Enter runs it, because the box now holds the full spelling. Stated as its own case because 'completes' is only acceptable if the second press works, and the pair is what makes the extra keystroke a deliberate gate rather than a dead end.",
+      "gesture": "Enter after typing \"/rename ref\"",
+      "expect": {
+        "ran": "/rename --refresh",
+        "draft": "",
+        "list": null
+      },
+      "before": {
+        "draft": "/rename ref",
+        "list": null,
+        "phase": null,
+        "rows": [],
+        "active": null,
+        "ran": "none",
+        "enterNote": null
+      },
+      "after": {
+        "draft": "/rename ref",
+        "list": null,
+        "phase": null,
+        "rows": [],
+        "active": null,
+        "ran": "/rename ref, /rename ref",
+        "enterNote": null
+      },
+      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-partial-then-full-runs-on-the-second-enter-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-partial-then-full-runs-on-the-second-enter-after.png",
+      "verdict": "FAIL",
+      "mismatches": [
+        "ran: \"/rename ref, /rename ref\" (expected \"/rename --refresh\")",
+        "draft: \"/rename ref\" (expected \"\")"
+      ]
+    },
+    {
+      "name": "rename-full-flag-runs",
+      "why": "`/rename --refresh` + Enter: the FULL spelling, so one Enter runs it — the behaviour a user who learned the flag from the row expects, and the one the operator's report asked for.",
+      "gesture": "Enter after typing \"/rename --refresh\"",
+      "expect": {
+        "ran": "/rename --refresh",
+        "draft": "",
+        "list": null
+      },
+      "before": {
+        "draft": "/rename --refresh",
+        "list": null,
+        "phase": null,
+        "rows": [],
+        "active": null,
+        "ran": "none",
+        "enterNote": null
+      },
+      "after": {
+        "draft": "/rename --refresh",
+        "list": null,
+        "phase": null,
+        "rows": [],
+        "active": null,
+        "ran": "/rename --refresh",
+        "enterNote": null
+      },
+      "beforeFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-full-flag-runs-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/8263aa76aa34/scratchpad/FINAL-before/rename-full-flag-runs-after.png",
+      "verdict": "FAIL",
+      "mismatches": [
+        "draft: \"/rename --refresh\" (expected \"\")"
+      ]
     }
   ],
   "pageProblems": [],
-  "failures": 6
+  "failures": 9
 }

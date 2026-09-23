@@ -17,6 +17,7 @@
  */
 
 import { effortDisplay } from "../session-status/session-model";
+import { pyTrim } from "./slash-token";
 
 /** The row a list renders. Mirrors `ArgumentChoice`. */
 export type ArgumentRow = {
@@ -142,6 +143,138 @@ export function isRendererLocalSource(
 export const FLAG_LIST_SOURCES: ReadonlySet<ArgumentSource> = new Set([
 	"title-refresh",
 ]);
+
+/**
+ * The words a FLAG list's rows answer to, per source — the vocabulary its
+ * selection rule reads.
+ *
+ * `TITLE_REFRESH_ROWS` states which spelling is WRITTEN and which merely FINDS
+ * the row; this set states which spellings the command's backend HONOURS as the
+ * flag, which is what `flagTokenSelects` needs to decide whether Enter may act
+ * on the token a user typed. They are deliberately different lists: `--auto` is
+ * honoured and not offered (see `TITLE_REFRESH_ROWS`' own comment on why the
+ * accept-set is a tolerance and the row list a recommendation), so an Enter on
+ * `--auto` acts even though no row advertises it.
+ *
+ * Derived from `session/naming.py`'s `TITLE_REFRESH_FLAGS` / `TITLE_REFRESH_WORDS`
+ * verbatim, case-folded the way `parse_title_arg` case-folds its comparison
+ * (`.casefold()` there, `toLowerCase()` here — the two agree for every ASCII word
+ * in this vocabulary, which is the only kind the vocabulary contains).
+ */
+export const FLAG_VOCABULARY: Partial<
+	Record<ArgumentSource, ReadonlySet<string>>
+> = {
+	"title-refresh": new Set([
+		"refresh",
+		"update",
+		"retitle",
+		"--refresh",
+		"--auto",
+		"--update",
+		"--retitle",
+	]),
+};
+
+/**
+ * Whether a typed argument token NAMES a flag this list's source acts on.
+ *
+ * THE RULE THE OPERATOR'S REPORT TURNED INTO A DATA-LOSS FIX. The first version
+ * of this feature drew the row for any query the matcher could reach it with —
+ * which is every SUBSEQUENCE of `--refresh`, i.e. `-`, `-f`, `-es`, `ref`, `r` —
+ * and the single-survivor arm of `isUnambiguous` then RAN it on Enter. So
+ * `/rename -fresh`, `/rename fresh`, `/rename ref` and `/rename re` all
+ * dispatched `rename --refresh`, where the base tree set that literal title: a
+ * one-word title beginning with a hyphen, or one that happens to share letters
+ * with `refresh`, was silently converted into a provider call that also RELEASED
+ * the user's own name. Measured on the built app by the QA pass (`/rename fresh`,
+ * `ref`, `refr`, `re`, `es`, `resh`, `refreh`, `r` all sent `--refresh`).
+ *
+ * So the token must be accepted by the BACKEND's own rule rather than by the
+ * matcher's reach: `parse_title_arg` acts only on a BARE flag whose whole,
+ * whitespace-free, case-folded text is in the vocabulary. Three consequences,
+ * each one a case the review rounds measured:
+ *
+ *   - `refresh` and `--refresh` act (full spellings).
+ *   - `ref`, `-f`, `r` and every other PREFIX do not — the list may offer to
+ *     COMPLETE them, but Enter completes instead of running.
+ *   - `-fresh`, `fresh`, `re` and every other near-miss do not, because they are
+ *     not in the vocabulary at all — so a one-word title that merely looks like
+ *     the flag stays a title, which is the property the first version broke.
+ *
+ * Whitespace is the load-bearing half and mirrors `parse_title_arg`'s own split:
+ * a `--`-leading token with prose after it is a TITLE (and a bare `--` is the
+ * option terminator, also a title), so `/rename - Q3 review` and
+ * `/rename -- draft` are untouched by this feature at either end.
+ *
+ * `undefined`/`""` query answers FALSE: an empty argument is the FORM's state,
+ * not a flag, which is the same reason `slashRunAllowed` refuses to run on an
+ * empty query.
+ */
+export function flagTokenSelects(
+	source: ArgumentSource | undefined,
+	query: string,
+): boolean {
+	const vocabulary = source ? FLAG_VOCABULARY[source] : undefined;
+	if (!vocabulary) return false;
+	const token = pyTrim(query);
+	if (!token) return false;
+	if (token.includes(" ") || token.includes("\t")) return false;
+	return vocabulary.has(token.toLowerCase());
+}
+
+/**
+ * Whether a typed argument is FLAG-SHAPED: a bare token that could still become
+ * a flag, so the row may be drawn over it.
+ *
+ * This is the DRAW half of the rule above, and it is deliberately wider than
+ * `flagTokenSelects`: the point of the list is to be found while the user is
+ * still typing, so `-`, `--`, `r`, `ref` must all offer the row even though only
+ * `refresh`/`--refresh` act on Enter. `acts` says which of the two questions is
+ * being asked, because they look alike and are not:
+ *
+ *   - drawing asks "could this text still become this flag?" — a non-empty,
+ *     whitespace-free token that is a PREFIX of a vocabulary spelling.
+ *   - acting asks "is this text the flag?" — `flagTokenSelects`, whole-token.
+ *
+ * A PREFIX IS THE WHOLE OF THE DRAW RULE, and it is narrower than the matcher on
+ * purpose — that narrowing IS the fix. The first version left the draw to
+ * `matchChoices`, whose scorer is a SUBSEQUENCE matcher, so `-fresh` was a
+ * subsequence of `--refresh` and drew the row; Enter's single-survivor arm then
+ * ran it and the typed title was gone. Every spelling the row exists for is a
+ * prefix of one it writes (`-`, `--`, `r`, `re`, `ref`, `refresh`), so the
+ * subsequence tail bought nothing here and cost a data-loss case. `-f` and `-es`
+ * are subsequences that were also dropped, deliberately: they are not what any
+ * spelling of this flag looks like being typed.
+ *
+ * The whitespace test is the other half of the same narrowing and mirrors
+ * `parse_title_arg`'s own split: `/rename quarterly review` and
+ * `/rename - Q3 review` contain a space, so no row is drawn and the list cannot
+ * narrow a title down to a flag. `-fresh` has no space and could never have been
+ * excluded by it — which is why the prefix rule, not the whitespace rule, is what
+ * closes that case.
+ *
+ * The whitespace test is INLINED rather than a module constant, deliberately: a
+ * second separator class in the composer path is exactly what
+ * `slash-token.test.mjs`'s F4-1 guard exists to refuse — this file's rows are
+ * strings and the ONE Python-whitespace definition is `slash-token.ts`'s. The
+ * test is written as `indexOf(" ")` rather than a class so adding it cannot
+ * re-open that hole, and a tab inside a flag's spelling is not a case worth a
+ * shared export.
+ */
+export function flagTokenDraws(
+	source: ArgumentSource | undefined,
+	query: string,
+): boolean {
+	const vocabulary = source ? FLAG_VOCABULARY[source] : undefined;
+	if (!vocabulary) return false;
+	const token = pyTrim(query);
+	if (!token || token.includes(" ") || token.includes("\t")) return false;
+	const lowered = token.toLowerCase();
+	for (const spelling of vocabulary) {
+		if (spelling.startsWith(lowered)) return true;
+	}
+	return false;
+}
 
 /**
  * Whether this source may draw a list at all when its query matched no row.
@@ -317,6 +450,24 @@ const asNumber = (value: unknown): number =>
  * recommendation; the parser's accept-set is a tolerance. Offering `update`
  * beside `refresh` would turn one action into three advertised choices.
  *
+ * THEY ARE ALIASES INSTEAD, WHICH IS THE ROUND-1 ANSWER TO U3. "Not a row" was
+ * being read as "unreachable", and the UX round was right that a user who knows
+ * the word `update` (from another tool, or from the backend's own refusal
+ * message) should be able to FIND this row while typing it. An alias does exactly
+ * that and nothing more: `matchChoices` scores against name AND aliases but
+ * displays `name`, so `update` reaches the row, the row goes on teaching
+ * `--refresh`, and the rendered list still offers ONE choice — no second row, no
+ * wider description, and the `~55`-cell wrap budget the verbatim TUI sentence
+ * sits inside is untouched. It also keeps the host's promise that what is
+ * DISPLAYED is what is written: a pick of the row writes `--refresh`, which the
+ * backend honours, whatever word found it.
+ *
+ * `--auto` is in neither the aliases nor the rows, deliberately: it is the one
+ * spelling with no bare twin, so it cannot be reached by typing a word a user
+ * already knows — it can only be learned from this list, and this list is not the
+ * place to learn it (see above). A user who types it anyway is HONOURED by the
+ * backend (`flagTokenSelects` carries it), which is the correct asymmetry.
+ *
  * The DESCRIPTION and DETAIL are the TUI's own strings, verbatim, so the two
  * hosts say the same thing about the same flag: the description states the call
  * and the detail states the RELEASE — that a refresh hands the name back to
@@ -333,9 +484,31 @@ export const TITLE_REFRESH_ROWS: readonly ArgumentRow[] = [
 		name: "--refresh",
 		description: "Re-read the conversation and name it again",
 		detail: "resumes auto-naming",
-		aliases: ["refresh"],
+		aliases: ["refresh", "update", "retitle", "--update", "--retitle"],
 	},
 ];
+
+/**
+ * The rows a FLAG list hands its caller, as FRESH objects every call.
+ *
+ * `[...TITLE_REFRESH_ROWS]` is NOT this, and the difference is a real one rather
+ * than tidiness: a shallow copy shares the row OBJECTS, so a caller that wrote
+ * `rows[0].current = true` (the argument-list code does exactly that shape of
+ * edit for the model/effort lists) would mutate the module constant and every
+ * later render would see it. The table above is `readonly` to say the rows are
+ * not a caller's to change; a copy that shares them does not honour that.
+ *
+ * The copy is per-call rather than `structuredClone`-deep for the reason the
+ * argument list is re-derived per render anyway: the objects are four primitive
+ * fields, so a spread IS the whole depth, and `aliases` is a frozen-looking
+ * literal no code path writes to.
+ */
+export function titleRefreshRows(): ArgumentRow[] {
+	return TITLE_REFRESH_ROWS.map((row) => ({
+		...row,
+		aliases: row.aliases ? [...row.aliases] : undefined,
+	}));
+}
 
 /** The row's own selector, in the one spelling the wire and the picker share. */
 function modelSelectorOf(row: ModelEntity): string {
@@ -470,6 +643,6 @@ export function argumentRows(
 		 * matches on that render.
 		 */
 		case "title-refresh":
-			return [...TITLE_REFRESH_ROWS];
+			return titleRefreshRows();
 	}
 }

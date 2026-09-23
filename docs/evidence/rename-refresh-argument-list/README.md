@@ -41,6 +41,11 @@ express the command to be able to fail for the right reason.
 | `rename-click-runs-the-refresh` | click the `--refresh` row after `/rename ref` | `ran: none`, draft kept (`/rename ref`) — the report's second half | `draft: ""`, `ran: /rename --refresh` |
 | `rename-bare-enter-opens-the-form` | Enter after `/rename ` | `ran: /rename`, `draft: ""` | unchanged |
 | `rename-titled-enter-keeps-the-title` | Enter after `/rename quarterly review` | `ran: /rename quarterly review` | unchanged |
+| `rename-one-word-title-stays-a-title` | Enter after `/rename fresh` | `ran: /rename fresh` — the title | unchanged |
+| `rename-hyphen-title-stays-a-title` | Enter after `/rename -fresh` | `ran: /rename -fresh` — the title | unchanged |
+| `rename-partial-flag-completes-not-runs` | Enter after `/rename ref` | `ran: none` (no list existed) | `ran: none`, box holds `/rename --refresh` — completed, NOT run |
+| `rename-partial-then-full-runs-on-the-second-enter` | Enter, then Enter, after `/rename ref` | — | `ran: /rename --refresh` |
+| `rename-full-flag-runs` | Enter after `/rename --refresh` | `ran: /rename --refresh`, draft kept | `ran: /rename --refresh`, box cleared |
 
 The five suggestion rows are the operator's first defect: on the base the list
 never opens for a dash, the dashes, `r`, `ref` or the bare word, so there is
@@ -54,27 +59,57 @@ The click row is the second defect, and the frames are the whole of the
 difference: the base leaves the draft in the composer and runs nothing, the
 branch empties the composer and dispatches `rename --refresh`.
 
-The three no-regression rows are on BOTH sides deliberately, because they are
-the behaviour that must not change and the base is where "unchanged" is
-established rather than asserted. `rename-empty-space-offers-nothing` is the
-load-bearing one: `/rename ` + Enter has always opened the naming form, and a
-flag list that opened on the empty query would complete the word to `--refresh`
-and make that form unreachable by the gesture that opens it. The empty-query arm
-of `slashRunAllowed` and `showsUnmatchedList` are the two halves of that rule.
+## Round 1's blocker, and why five of these cases exist
+The first cut of this feature DREW the flag row over any token the subsequence
+matcher could reach `--refresh` with, and Enter's single-survivor arm then RAN it.
+The agent review, the QA pass, the design round and the UX round each found it
+independently, and the QA pass reproduced it on the BUILT app against a recording
+backend: `/rename fresh`, `ref`, `refr`, `re`, `es`, `resh`, `refreh` and `r` each
+posted `{"command":"rename","args":"--refresh"}` where the base tree set that
+literal title — so a one-word name that merely shares letters with `refresh`
+became a provider call that also RELEASED the user's own name. `/rename -fresh`
+was the worse spelling: one token with no whitespace, so the whitespace guard did
+not exclude it.
+
+The fix is a whole-token test against the backend's own vocabulary
+(`flagTokenSelects`; `session/naming.py`'s `TITLE_REFRESH_FLAGS` /
+`TITLE_REFRESH_WORDS`) for ACTING, and a PREFIX test (`flagTokenDraws`) for
+DRAWING. The last five rows above are its guards.
+
+The no-regression rows are on BOTH sides deliberately, because they are the
+behaviour that must not change and the base is where "unchanged" is established
+rather than asserted. `rename-empty-space-offers-nothing` is the load-bearing
+one: `/rename ` + Enter has always opened the naming form, and a flag list that
+opened on the empty query would complete the word to `--refresh` and make that
+form unreachable by the gesture that opens it.
 
 ## The driver's verdicts are the executable form of the table
 
 `node scripts/slash-enter-proof.mjs` exits non-zero when a gesture does not do
 what the rule requires, so:
 
-- on the branch: **18/18** gestures behave as required;
-- on the base (with the fixture applied): **12/18** — exactly the six cases the
-  change is about fail, and the twelve the change does not touch pass, which is
-  the no-regression half stated as a check rather than a claim.
+- on the branch: **23/23** gestures behave as required;
+- on the base (with the fixture applied): **14/23** — the nine cases the change is
+  about fail there (the five suggestion rows, the click, and the three
+  flag/title rows), and the fourteen the change does not touch pass, which is the
+  no-regression half stated as a check rather than a claim.
 
 `result-before.json` and `result-after.json` carry, per case, the typed word, the
 gesture, the before and after DOM state, the expectation, the verdict and the
 frame paths.
+
+## What these frames cannot show: the receipt
+
+Round 1 (UX U2, design D3) asked for a line for a paid, irreversible act, and the
+fix is a pre-flight notice in `slash-dispatch.ts` (`refreshing the title…`,
+the TUI's own wording) keyed on the POSTED argument. **These frames do not show
+it, and cannot**: this story mounts the composer, not the dispatcher, so the
+notice's surface (the canonical transcript note) does not exist here. The
+predicate the line reads is pinned in `scripts/slash-contract.test.mjs`
+(`flagTokenSelects` against the one vocabulary, for every honoured spelling and
+for no title), and the line itself was verified in the live app by QA round 1
+(its matrix records the receipt arriving in the rendered conversation). A reader
+looking for the receipt's frame should read QA's matrix, not this folder.
 
 ## Reproducing it
 

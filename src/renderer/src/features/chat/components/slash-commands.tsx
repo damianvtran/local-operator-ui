@@ -64,7 +64,10 @@ import {
 import {
 	type ArgumentRow,
 	type ArgumentSource,
+	FLAG_LIST_SOURCES,
 	argumentRows,
+	flagTokenDraws,
+	flagTokenSelects,
 	isRendererLocalSource,
 	showsUnmatchedList,
 } from "./slash-argument-rows";
@@ -766,7 +769,7 @@ export function useSlashCompletion({
 				: null;
 
 	/*
-	 * A FLAG list does not follow the catalogue's unmatched rule.
+	 * A FLAG list draws on its OWN shape rule, not on the matcher's reach.
 	 *
 	 * `purePhase === "argument"` is true the moment the word-terminating space is
 	 * typed, and for a catalogue source that is exactly right: the empty argument
@@ -778,20 +781,21 @@ export function useSlashCompletion({
 	 * command's presentation) unreachable by the gesture that opens it. Measured on
 	 * the real component before this rule existed.
 	 *
-	 * The condition is TWO clauses and both are load-bearing, which is why it is
-	 * not written as `matches.length` alone: `matchChoices` answers the EMPTY query
-	 * with the whole list (that is how a catalogue list opens), so a flag list would
-	 * still be non-empty at the space. A flag list therefore draws only when the user
-	 * has typed something AND it matches a row — which also keeps a TITLE out of the
-	 * list (`/rename quarterly review` names the conversation; nothing should be
-	 * drawn over the sentence). Every other source keeps its behaviour exactly.
+	 * WHAT `flagTokenDraws` ADDS OVER THE FIRST VERSION, and why it is not merely
+	 * `matches.length`: the empty query must draw nothing (the FORM case above), and
+	 * a WHITESPACE-CONTAINING argument must draw nothing (a TITLE —
+	 * `/rename quarterly review` names the conversation, and nothing may be drawn
+	 * over the sentence). Those two were the first version's whole guard, and they
+	 * were not enough: `-fresh` is one token with no space and is a SUBSEQUENCE of
+	 * `--refresh`, so the matcher reached it, the row drew, and Enter ran a refresh
+	 * over the user's typed title. The draw rule is therefore a PREFIX test against
+	 * the source's own vocabulary — the spellings the row exists to be found by —
+	 * so a title-shaped token cannot draw the row at all, whoever's mistake reaches
+	 * it. Every other source keeps its behaviour exactly.
 	 */
-	const flagListQuery = pyTrim(argumentContext?.value ?? "");
+	const flagDraw = flagTokenDraws(inline?.source, argumentContext?.value ?? "");
 	const phaseWithFlagList =
-		phase === "argument" &&
-		!showsUnmatchedList(inline?.source) &&
-		(flagListQuery === "" ||
-			matchChoices(flagListQuery, argumentList.rows).length === 0)
+		phase === "argument" && !showsUnmatchedList(inline?.source) && !flagDraw
 			? null
 			: phase;
 
@@ -1079,6 +1083,17 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 						activeArgument.alert,
 					),
 					chosenByHand: state.chosenByHand,
+					/*
+					 * A FLAG list's row acts on a whole-token vocabulary test rather than on
+					 * the matcher's reach (`slashRunAllowed`'s `selectsFlag`). `undefined`
+					 * for every catalogue list, which is what keeps `/model`, `/theme` and
+					 * the rest byte-identical.
+					 */
+					selectsFlag: FLAG_LIST_SOURCES.has(
+						state.inline?.source as ArgumentSource,
+					)
+						? (query: string) => flagTokenSelects(state.inline?.source, query)
+						: undefined,
 				})
 			: activeCommand
 				? commandChoiceUnambiguous({
@@ -1378,6 +1393,15 @@ export function handleSlashKeyDown(
 		nameThenMessage: state.inline?.nameThenMessage ?? false,
 		runs: state.inline?.runs ?? false,
 		chosenByHand: state.chosenByHand,
+		/*
+		 * The flag list's own whole-token test, bound to the ACTIVE list's source, so
+		 * the keyboard's run decision is the same question the footer answers and the
+		 * same one the click path asks (`handleSlashPick`). `undefined` for every
+		 * catalogue list.
+		 */
+		selectsFlag: FLAG_LIST_SOURCES.has(state.inline?.source as ArgumentSource)
+			? (query: string) => flagTokenSelects(state.inline?.source, query)
+			: undefined,
 	});
 	switch (intent.kind) {
 		case "move":

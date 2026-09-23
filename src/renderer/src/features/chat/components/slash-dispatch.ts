@@ -84,6 +84,7 @@ import {
 	isCompactStartNotice,
 	refreshCompactionOutcome,
 } from "./compact-receipt";
+import { flagTokenSelects } from "./slash-argument-rows";
 import type { SlashCommandMeta } from "./slash-commands";
 import type { SlashCommandInvocation } from "./slash-submit";
 
@@ -528,6 +529,38 @@ export function useSlashDispatch({
 							true,
 						);
 						return "consumed";
+					}
+					/*
+					 * THE PRE-FLIGHT LINE FOR A PAID, IRREVERSIBLE ACT (UX round 1, U2; design
+					 * round 1, D3). `/rename --refresh` spends a provider call and RELEASES
+					 * `user_set`, i.e. it hands the conversation's name back to automatic
+					 * naming — and the desktop was showing nothing until the receipt landed,
+					 * where the TUI prints `refreshing the title…` first. A user who typed the
+					 * word as a guess had no way to know a call had been placed at all.
+					 *
+					 * THE RECEIPT AFTER IT IS NOT A SUBSTITUTE, which is why both exist here
+					 * while `/compact` deliberately has only one. `compact`'s start is visible
+					 * in the transcript (`compaction_start` paints a rung), so a note would
+					 * announce a third time what two surfaces already say. A refresh paints
+					 * NOTHING until it settles, and its wait is bounded by the provider
+					 * (`routed_refresh`, an 8 s ceiling), so the line is the only thing
+					 * between the keystroke and the answer. Same idiom as the TUI's, same
+					 * ellipsis, so the two hosts read alike.
+					 *
+					 * IT IS KEYED ON THE DISPATCHED ARGUMENT, not on the row or the list: a
+					 * user may reach the refresh by ANY honoured spelling (`--refresh`,
+					 * `refresh`, `--auto`, `update`, ... — the backend's `parse_title_arg`),
+					 * or by typing `/rename refresh` outright with no list ever drawn, and
+					 * every one of them spends the same call. The test is therefore the same
+					 * predicate the run gate uses — `flagTokenSelects` against the
+					 * `title-refresh` vocabulary, the one derivation — asked about what is
+					 * about to be POSTED.
+					 */
+					if (
+						spec.name === "rename" &&
+						flagTokenSelects("title-refresh", args)
+					) {
+						note("refreshing the title…");
 					}
 					try {
 						const receipt = await desktopResult<DesktopCommandReceipt>({

@@ -309,6 +309,64 @@ const CASES = [
 		noListBefore: true,
 		expect: { ran: "/rename quarterly review", list: null },
 	},
+	/*
+	 * THE DATA-LOSS CASES round 1 found, kept here as gestures rather than only as
+	 * unit assertions because they are what the QA and UX rounds reproduced on the
+	 * BUILT app: `/rename fresh` and the rest of the fuzzy frontier dispatched
+	 * `rename --refresh` on the first Enter, where the base tree set that literal
+	 * title. Each is one word, prefix-free of the flag, and every one of them is a
+	 * plausible name a user would type (`fresh`, `refund`'s shorter cousin,
+	 * `refreh` as a typo). The expectation is the BASE tree's behaviour — the title
+	 * is dispatched verbatim — which is what makes these the regression guard for
+	 * the fix rather than a description of the new rule.
+	 */
+	{
+		name: "rename-one-word-title-stays-a-title",
+		why: "`/rename fresh` + Enter: a word that the subsequence matcher reaches `--refresh` from, and a TITLE by the backend's own parser (`parse_title_arg('fresh')` is `(False, 'fresh')`). The first version ran a refresh here and discarded the typed name; the base tree sets the title.",
+		word: "rename fresh",
+		key: "Enter",
+		/*
+		 * `ran` IS THE DISCRIMINATING FIELD and it is the only one asserted. The BASE
+		 * tree keeps the draft in the box here while this branch clears it, and that
+		 * difference is the RIG's rather than the app's: both trees run identical
+		 * composer code, but the base opens no list for `/rename fresh`, so the wait
+		 * before the reading resolves on its timeout instead of on a list and the
+		 * `draft` is read at a different moment in the async clear. Asserting it would
+		 * pin the harness's timing, not the behaviour — while `ran` is exactly the
+		 * fact the defect was about and is stable on both sides.
+		 */
+		expect: { ran: "/rename fresh", list: null },
+	},
+	{
+		name: "rename-hyphen-title-stays-a-title",
+		why: "`/rename -fresh` + Enter, the spelling the UX and design rounds both reported: ONE token with no whitespace, so the whitespace guard did not exclude it — only the whole-token vocabulary test does. Sets the literal title, as it did before the feature existed.",
+		word: "rename -fresh",
+		key: "Enter",
+		// `ran` only, for the harness reason the case above states.
+		expect: { ran: "/rename -fresh", list: null },
+	},
+	{
+		name: "rename-partial-flag-completes-not-runs",
+		why: "`/rename ref` + Enter: a PARTIAL spelling of the flag. Enter COMPLETES it to the full spelling instead of running — so a half-typed word can never spend a provider call. The completion replaces the ARGUMENT span only (no trailing space, unlike a command-word completion), so the row goes on matching and the list stays up for the second Enter, which is the `/compact` two-Enter path.",
+		word: "rename ref",
+		key: "Enter",
+		expect: { ran: "none", draft: "/rename --refresh" },
+	},
+	{
+		name: "rename-partial-then-full-runs-on-the-second-enter",
+		why: "The other half of the two-Enter path: after the completion above, ONE more Enter runs it, because the box now holds the full spelling. Stated as its own case because 'completes' is only acceptable if the second press works, and the pair is what makes the extra keystroke a deliberate gate rather than a dead end.",
+		word: "rename ref",
+		key: "Enter",
+		secondGesture: { key: "Enter" },
+		expect: { ran: "/rename --refresh", draft: "", list: null },
+	},
+	{
+		name: "rename-full-flag-runs",
+		why: "`/rename --refresh` + Enter: the FULL spelling, so one Enter runs it — the behaviour a user who learned the flag from the row expects, and the one the operator's report asked for.",
+		word: "rename --refresh",
+		key: "Enter",
+		expect: { ran: "/rename --refresh", draft: "", list: null },
+	},
 ];
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -697,7 +755,9 @@ try {
 			? `type "/${testCase.word}" and read the list`
 			: testCase.click
 				? `click on the "${testCase.click}" row after typing "/${testCase.word}"`
-				: `${testCase.key} after typing "/${testCase.word}"`;
+				: testCase.secondGesture
+					? `${testCase.key}, then ${testCase.secondGesture.key}, after typing "/${testCase.word}"`
+					: `${testCase.key} after typing "/${testCase.word}"`;
 		await reset();
 		await send("Page.addScriptToEvaluateOnNewDocument", {
 			source: `try { localStorage.setItem(${JSON.stringify(PREFS_KEY)}, JSON.stringify({ state: { themeName: ${JSON.stringify(THEME)} }, version: 0 })); } catch {}`,
@@ -741,6 +801,17 @@ try {
 				await press(...KEYS[testCase.key]);
 			}
 			await sleep(400);
+			/*
+			 * A SECOND gesture, for the cases whose whole claim is "this key completes
+			 * AND the next one runs it". Without it the pair would have to be asserted
+			 * as a buffer string, which is exactly the shape whose trailing space moved
+			 * under the first version of this rig and was invisible to a hand-built
+			 * string (review F7).
+			 */
+			if (testCase.secondGesture) {
+				await press(...KEYS[testCase.secondGesture.key]);
+				await sleep(400);
+			}
 		}
 		const after = testCase.typeOnly ? before : await evaluate(READ_STATE);
 		const afterFrame = testCase.typeOnly

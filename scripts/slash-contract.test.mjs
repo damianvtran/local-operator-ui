@@ -26,7 +26,13 @@ const bundle = await build({
 			'export * from "./src/renderer/src/features/chat/components/slash-contract";',
 			/* The matcher and the row shaper, because the no-match state below is
 			   DERIVED the way the component derives it rather than asserted. */
+			/* The matcher and the row shaper, because the no-match state below is
+			   DERIVED the way the component derives it rather than asserted. */
 			'export { argumentRows } from "./src/renderer/src/features/chat/components/slash-argument-rows";',
+			/* Dissolved by the same idea, one list over: the `/rename` flag vocabulary and
+			   its two shape tests, so the data-loss cases below are the SHIPPED rule.
+			   `slashRunAllowed`/`slashKeyIntent` come off the contract export above. */
+			'export { FLAG_LIST_SOURCES, FLAG_VOCABULARY, flagTokenDraws, flagTokenSelects, showsUnmatchedList, titleRefreshRows } from "./src/renderer/src/features/chat/components/slash-argument-rows";',
 			'export { matchChoices } from "./src/renderer/src/features/chat/components/slash-rank";',
 			/* The arming route's own write, so the pick case below asserts the line a
 			   pick STAGES and not only the fact that it arms. */
@@ -58,6 +64,10 @@ const {
 	clickFooter,
 	enterFooter,
 	extensionFor,
+	FLAG_LIST_SOURCES,
+	FLAG_VOCABULARY,
+	flagTokenDraws,
+	flagTokenSelects,
 	matchChoices,
 	lockedCommandNote,
 	lockedRunUndoCap,
@@ -71,12 +81,15 @@ const {
 	reassembledNote,
 	rowId,
 	rowTakesDraft,
+	showsUnmatchedList,
 	sharedCommandPrefix,
 	slashArgumentContext,
 	slashDestructive,
 	slashKeyIntent,
+	slashRunAllowed,
 	stagedNote,
 	stagedPromiseVerb,
+	titleRefreshRows,
 	stagedSentence,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -2234,4 +2247,363 @@ test("a bare destructive word is destructive in this host, and an ordinary one i
 	// The argument-row arm is unchanged: a row that paints its own destructive
 	// detail still routes through it.
 	assert.equal(slashDestructive("model", true), true);
+});
+
+/*
+ * ---- the `/rename` flag list, and the data-loss case the first cut shipped ----
+ *
+ * ROUND 1 FOUND THE SAME BLOCKER ON FOUR INDEPENDENT ROUNDS (agent review R1-3,
+ * QA Q-1, design D1, UX U1): the list drew over any token the subsequence matcher
+ * could reach `--refresh` with, and Enter's single-survivor arm then RAN the
+ * refresh. The QA pass measured it on the built app — `/rename fresh`, `ref`,
+ * `refr`, `re`, `es`, `resh`, `refreh` and `r` all posted `{"command":"rename",
+ * "args":"--refresh"}` where the base tree set that literal title — so a one-word
+ * name that merely shares letters with `refresh` was converted into a provider
+ * call that also released the user's own name.
+ *
+ * THESE CASES FAIL ON THE BASE TREE, which is the property that makes them the
+ * guard for the fix rather than a description of it: every `flagTokenSelects` /
+ * `flagTokenDraws` / `selectsFlag` symbol they read does not exist there, so the
+ * file stops at resolution. The agent review's own correction is why they are on
+ * THESE functions and not on `isUnambiguous` alone — replayed against the base
+ * module, `isUnambiguous('refresh','--refresh',1,…)` is already TRUE via the
+ * single-survivor arm, so an assertion on the gate alone would have held on both
+ * trees and pinned nothing.
+ */
+test("a flag token ACTS only when the backend's own parser would act on it", () => {
+	// The full spellings the backend honours (`naming.TITLE_REFRESH_WORDS` and
+	// `TITLE_REFRESH_FLAGS`), case-folded the way `parse_title_arg` compares.
+	for (const spelling of [
+		"refresh",
+		"update",
+		"retitle",
+		"--refresh",
+		"--auto",
+		"--update",
+		"--retitle",
+	])
+		assert.equal(
+			flagTokenSelects("title-refresh", spelling),
+			true,
+			`${spelling} is a refresh the backend honours`,
+		);
+	// A PREFIX is not the flag: these must COMPLETE, not run. `ref` and `r` are
+	// the spellings the operator asked to be SUGGESTED, and being suggested is the
+	// whole of what they are owed — running on them is the two-Enter path.
+	for (const partial of ["r", "re", "ref", "refr", "-", "--", "-r", "--ref"])
+		assert.equal(
+			flagTokenSelects("title-refresh", partial),
+			false,
+			`${partial} is a prefix, so Enter completes it`,
+		);
+	// THE DATA-LOSS CASES, named so a regression is legible: each of these is a
+	// plausible one-word TITLE that the matcher reaches `--refresh` from.
+	for (const title of [
+		"fresh",
+		"-fresh",
+		"re",
+		"es",
+		"resh",
+		"refreh",
+		"-re",
+		"-f",
+	])
+		assert.equal(
+			flagTokenSelects("title-refresh", title),
+			false,
+			`${title} is a title, not the flag`,
+		);
+	// A flag with prose after it is a title (`parse_title_arg` splits on the first
+	// whitespace), and a bare `--` is the option terminator — also a title.
+	for (const withProse of [
+		"- Q3 review",
+		"-- draft",
+		"refresh the title",
+		"quarterly review",
+	])
+		assert.equal(
+			flagTokenSelects("title-refresh", withProse),
+			false,
+			`${withProse} is a title`,
+		);
+	// The empty argument is the FORM's state, not a flag.
+	assert.equal(flagTokenSelects("title-refresh", ""), false);
+	assert.equal(flagTokenSelects("title-refresh", "   "), false);
+	// A catalogue source has no flag vocabulary at all, so the arm never fires.
+	assert.equal(flagTokenSelects("model", "refresh"), false);
+	assert.equal(flagTokenSelects(undefined, "refresh"), false);
+});
+
+test("a flag token DRAWS on a prefix, so the row is found but a title is not", () => {
+	// Every spelling the operator reported must still SUGGEST the row.
+	for (const typed of [
+		"-",
+		"--",
+		"r",
+		"re",
+		"ref",
+		"refr",
+		"refresh",
+		"refresh",
+	])
+		assert.equal(
+			flagTokenDraws("title-refresh", typed),
+			true,
+			`typing ${typed} must offer the row`,
+		);
+	// ... including the dashed partials the operator types on the way. Each is a
+	// PREFIX of one of the dashed spellings, which is the whole draw rule.
+	for (const typed of ["--r", "--re", "--ref", "--u", "--up", "--a", "--au"])
+		assert.equal(flagTokenDraws("title-refresh", typed), true, typed);
+	// A TITLE-SHAPED token draws NOTHING. This is the case the first cut shipped:
+	// `-fresh` is one token with no whitespace and a SUBSEQUENCE of `--refresh`, so
+	// the matcher reached it and the row drew over the user's title.
+	for (const title of [
+		"-fresh",
+		"fresh",
+		"es",
+		"resh",
+		"-re",
+		"-f",
+		"zzz",
+		"x",
+	])
+		assert.equal(
+			flagTokenDraws("title-refresh", title),
+			false,
+			`${title} must not draw the flag row`,
+		);
+	// The whitespace boundary, which is what keeps a real title out of the list.
+	for (const title of ["quarterly review", "- Q3 review", "-- draft"])
+		assert.equal(flagTokenDraws("title-refresh", title), false, title);
+	// The empty argument draws nothing, which is what keeps `/rename `s FORM
+	// reachable: a list drawn there would complete the word to `--refresh`.
+	assert.equal(flagTokenDraws("title-refresh", ""), false);
+	assert.equal(flagTokenDraws("title-refresh", "  "), false);
+	// Catalogue sources keep their own behaviour exactly.
+	assert.equal(flagTokenDraws("model", "ref"), false);
+	assert.equal(flagTokenDraws(undefined, "ref"), false);
+});
+
+test("the run gate refuses a flag row until the token names the flag", () => {
+	const gate = (query, chosenByHand = false) =>
+		slashRunAllowed({
+			argumentQuery: query,
+			value: "--refresh",
+			total: 1,
+			destructive: false,
+			chosenByHand,
+			selectsFlag: (q) => flagTokenSelects("title-refresh", q),
+		});
+	// The full spelling runs, by keyboard or by pointer.
+	assert.equal(gate("refresh"), true);
+	assert.equal(gate("--refresh"), true);
+	assert.equal(gate("REFRESH"), true);
+	assert.equal(gate("--auto"), true);
+	// A partial completes and waits for the second Enter...
+	for (const partial of ["r", "ref", "-", "--"])
+		assert.equal(gate(partial), false, partial);
+	// ... AND AN ARROW KEY DOES NOT BUY THE RUN, which is the one place this gate
+	// deviates from every other one in the module and is deliberate: `chosenByHand`
+	// means "this is the row I mean", and for a flag row the row is one act whose
+	// spellings are the whole list — the arrow cannot say the ACT was meant. The
+	// completion it gets instead puts the flag in the buffer in full.
+	assert.equal(gate("ref", true), false);
+	assert.equal(gate("refresh", true), true);
+	// The data-loss titles, through the gate, which is the shape QA measured.
+	for (const title of ["fresh", "-fresh", "re", "es", "resh", "refreh"])
+		assert.equal(gate(title), false, title);
+	// WITHOUT the flag binding the gate is the matcher's, so the catalogue lists
+	// are untouched: this is the assertion that keeps the new arm scoped.
+	assert.equal(
+		slashRunAllowed({
+			argumentQuery: "refresh",
+			value: "--refresh",
+			total: 1,
+			destructive: false,
+			chosenByHand: false,
+		}),
+		true,
+		"a list without the flag binding keeps its single-survivor behaviour",
+	);
+});
+
+test("the router hands a flag list its whole-token arm, and completes on a partial", () => {
+	const flagRow = { kind: "argument", row: titleRefreshRows()[0] };
+	const intent = (query, key = "Enter", chosenByHand = false) =>
+		slashKeyIntent({
+			key,
+			composing: false,
+			open: true,
+			active: 0,
+			matches: [flagRow],
+			argumentQuery: query,
+			commandQuery: "",
+			argumentCommand: "rename",
+			nameThenMessage: false,
+			runs: true,
+			chosenByHand,
+			selectsFlag: (q) => flagTokenSelects("title-refresh", q),
+		});
+	// The full spelling runs on one Enter.
+	assert.deepEqual(intent("refresh"), { kind: "apply", index: 0, run: true });
+	// A partial completes — NOT runs — which is the fix, stated at the router.
+	for (const partial of ["r", "ref", "-", "--"])
+		assert.deepEqual(
+			intent(partial),
+			{ kind: "apply", index: 0, run: false },
+			partial,
+		);
+	// ... and a title-shaped token is refused the run even though it matched.
+	for (const title of ["fresh", "-fresh", "re"])
+		assert.deepEqual(
+			intent(title),
+			{ kind: "apply", index: 0, run: false },
+			title,
+		);
+	// Tab never runs, whatever the spelling.
+	assert.deepEqual(intent("refresh", "Tab"), {
+		kind: "apply",
+		index: 0,
+		run: false,
+	});
+});
+
+test("a flag list's rows are fresh objects, so a caller cannot mutate the table", () => {
+	// R1-6: `[...TITLE_REFRESH_ROWS]` shares the row OBJECTS, so an argument-list
+	// edit of the shape the model/effort lists do would write through to the module
+	// constant and every later render would see it.
+	const first = titleRefreshRows();
+	first[0].current = true;
+	first[0].aliases?.push("mutated");
+	const second = titleRefreshRows();
+	assert.equal(second[0].current, undefined, "the table's row is untouched");
+	assert.deepEqual(second[0].aliases, [
+		"refresh",
+		"update",
+		"retitle",
+		"--update",
+		"--retitle",
+	]);
+	// ... and it is a COPY rather than the constant itself.
+	assert.notEqual(first, second);
+});
+
+test("only the flag list draws unmatched, and only it carries a vocabulary", () => {
+	// R1-5: the two source sets had no direct test — only the end-to-end driver
+	// covered the rule that keeps `/rename `s form reachable.
+	assert.equal(flagTokenSelects("title-refresh", "refresh"), true);
+	for (const source of [
+		"model",
+		"effort",
+		"approvals",
+		"team",
+		"agent",
+		"theme",
+	])
+		assert.equal(FLAG_LIST_SOURCES.has(source), false, source);
+	assert.equal(FLAG_LIST_SOURCES.has("title-refresh"), true);
+	// A source in FLAG_LIST_SOURCES must have a vocabulary, or its rows would be
+	// permanently un-runnable: the two sets are read together and must agree.
+	for (const source of FLAG_LIST_SOURCES)
+		assert.ok(
+			Object.hasOwn(FLAG_VOCABULARY, source),
+			`${source} draws unmatched but has no flag vocabulary`,
+		);
+	// The draw rule is the flag lists' alone.
+	assert.equal(showsUnmatchedList("title-refresh"), false);
+	for (const source of [
+		"model",
+		"effort",
+		"approvals",
+		"team",
+		"agent",
+		"theme",
+	])
+		assert.equal(showsUnmatchedList(source), true, source);
+	assert.equal(showsUnmatchedList(undefined), true);
+});
+
+test("the synonyms FIND the row without widening it (U3)", () => {
+	/*
+	 * Round 1's U3: the backend honours `update`/`retitle` and their flag forms,
+	 * and the first cut left a user who knows one of those words unable to find the
+	 * row at all. The fix is ALIASES rather than rows — the visible list still
+	 * offers ONE choice — so the assertion is two-sided: every honoured bare word
+	 * reaches the row, and the row still DISPLAYS (and writes) `--refresh`.
+	 */
+	const rows = titleRefreshRows();
+	for (const typed of ["refresh", "update", "retitle"])
+		assert.equal(
+			matchChoices(typed, rows).length,
+			1,
+			`typing ${typed} must find the flag row`,
+		);
+	// A partial of a synonym finds it too, on the same fuzzy habit as every other
+	// list: `upd` is a subsequence of `--update`.
+	for (const typed of ["upd", "ret", "up"])
+		assert.equal(
+			matchChoices(typed, rows).length,
+			1,
+			`typing ${typed} must find the flag row`,
+		);
+	// ... and the DISPLAYED name is never the alias that matched, which is what
+	// keeps the list teaching one spelling.
+	for (const typed of ["refresh", "update", "retitle", "upd", "ret"]) {
+		const [match] = matchChoices(typed, rows);
+		assert.equal(match.name, "--refresh", `displayed for ${typed}`);
+		assert.equal(match.choice.value, "--refresh", `written for ${typed}`);
+	}
+	// `--auto` is the one honoured spelling with no bare twin, so it is NOT an
+	// alias: it cannot be found by typing a word a user already knows, which is the
+	// asymmetry the row's own comment argues for.
+	assert.equal(
+		matchChoices("auto", rows).length,
+		0,
+		"a bare `auto` is not a spelling anyone teaches, so the row must not answer it",
+	);
+	// The vocabulary still HONOURS it, though — so a user who types the flag is
+	// obeyed rather than having `--auto` stored as a title.
+	assert.equal(flagTokenSelects("title-refresh", "--auto"), true);
+});
+
+test("the pre-flight refresh line is keyed on the POSTED argument (U2/D3)", () => {
+	/*
+	 * The notice itself lives in `slash-dispatch.ts` (a hook, unbundleable here),
+	 * so what is pinned is the PREDICATE it reads — which is the half that can be
+	 * wrong: a line keyed on the row, the list, or the literal `--refresh` would
+	 * miss every other honoured spelling a user can type straight in
+	 * (`/rename refresh`, `/rename --auto`, `/rename update`, ...), and each of
+	 * those spends the same provider call and releases the same `user_set`.
+	 */
+	for (const posted of [
+		"--refresh",
+		"refresh",
+		"--auto",
+		"update",
+		"retitle",
+		"--update",
+		"--retitle",
+		"REFRESH",
+	])
+		assert.equal(
+			flagTokenSelects("title-refresh", posted),
+			true,
+			`/${posted} spends a refresh and must say so before it does`,
+		);
+	// A TITLE never gets the line: it sets a name, costs nothing, and is
+	// reversible by renaming again.
+	for (const posted of [
+		"quarterly review",
+		"fresh",
+		"-fresh",
+		"ref",
+		"",
+		"my title",
+	])
+		assert.equal(
+			flagTokenSelects("title-refresh", posted),
+			false,
+			`"${posted}" is a title, so nothing is spent`,
+		);
 });
