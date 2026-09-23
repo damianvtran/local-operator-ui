@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
-import { test } from "node:test";
+import { after, test } from "node:test";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { build } from "esbuild";
+import { JSDOM } from "jsdom";
+import React, { act } from "react";
 
 /*
  * The `/usage` CONTAINER's query wiring, asserted by rendering it.
@@ -45,9 +48,11 @@ const bundle = await build({
 			 * of the args would keep passing while the committed frame stayed a
 			 * picture of an unreachable state, which is the whole finding.
 			 */
-			import { Fetching, Loading } from "./src/renderer/src/features/chat/pickers/usage-view.stories";
+			import { Checking, Fetching, Loading } from "./src/renderer/src/features/chat/pickers/usage-view.stories";
 			export const loadingStoryArgs = Loading.args;
 			export const fetchingStoryArgs = Fetching.args;
+			export const checkingStoryArgs = Checking.args;
+			export { UsageDialog, UsageView };
 			export { QueryClient, QueryObserver } from "@tanstack/react-query";
 			export {
 				usageQueryOptions,
@@ -176,24 +181,53 @@ const bundle = await build({
  */
 let respond = async () => ({ status: 200, body: { result: emptyPayload() } });
 const requests = [];
-globalThis.window = {
-	api: {
-		desktop: {
-			request: async (request) => {
-				requests.push(request);
-				return respond(request);
-			},
+
+/*
+ * A REAL DOM, because the defects this file now pins are about what the
+ * CONTAINER does over time and what it PAINTS while it does it.
+ *
+ * Every test below used to go through `renderToStaticMarkup`, and a static
+ * render runs no effects: the mount effect that reached the automatic check
+ * could not fire in the harness, so no test here could observe the request the
+ * open is supposed to issue, the answer it abandoned, or the body it painted
+ * while the live read was still out. That gap is exactly why two majors stayed
+ * green (review R2/Q1/Q2): the suite pinned a shape the container never
+ * creates. `react-dom/client` plus jsdom runs the effects, and the container's
+ * own rendered DOM becomes the thing asserted.
+ *
+ * The static renders stay: they are how a CONTROLLED state - a specific prop
+ * combination a mounted container cannot be frozen into - is asserted.
+ */
+const dom = new JSDOM("<!doctype html><html><body></body></html>", {
+	pretendToBeVisual: true,
+});
+globalThis.window = dom.window;
+globalThis.document = dom.window.document;
+globalThis.HTMLElement = dom.window.HTMLElement;
+// React only wraps updates in `act` when it is told this is a test environment.
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+dom.window.api = {
+	desktop: {
+		request: async (request) => {
+			requests.push(request);
+			return respond(request);
 		},
 	},
 };
+after(() => {
+	dom.window.close();
+});
 
 // Written to a real file rather than a data: URL: React DOM's server build
 // resolves its own CJS entry at import time, which a data: URL has no base for.
+const { createRoot } = await import("react-dom/client");
 const bundlePath = new URL("./_usage-container.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
 	QueryClient,
 	QueryObserver,
+	UsageView,
+	checkingStoryArgs,
 	defaultQueryOptions,
 	fetchingStoryArgs,
 	loadingStoryArgs,
@@ -304,19 +338,78 @@ const newClient = () =>
 /** Let react-query settle its microtasks and any queued state. */
 const settle = (ms = 20) => new Promise((resolve) => setTimeout(resolve, ms));
 
-test("UsageView wires open checks, scoped provider arguments, and remount-safe asks", () => {
+/**
+ * One mounted `/usage` container, with its effects actually run.
+ *
+ * `renderUsage` above is a static render and stays the right tool for a
+ * controlled prop state; this is for the questions a static render cannot
+ * answer at all - which bridge requests an OPEN issues, and what is on screen
+ * while one of them is still out. The waits go through `act` so React flushes
+ * the state those promises produce before the assertions read the DOM.
+ *
+ * The dialog chrome is the same stub `renderUsage` uses, so what renders here
+ * is the shipped container and body, not a Radix imitation of them.
+ */
+async function mountUsage(client, args = "") {
+	const host = document.createElement("div");
+	document.body.appendChild(host);
+	const root = createRoot(host);
+	await act(async () => {
+		root.render(
+			React.createElement(
+				QueryClientProvider,
+				{ client },
+				React.createElement(UsageView, {
+					onClose: () => undefined,
+					action: { args },
+				}),
+			),
+		);
+	});
+	return {
+		/** The text a user reads, with markup and layout whitespace removed. */
+		text: () => text(host.innerHTML),
+		html: () => host.innerHTML,
+		/**
+		 * Let time pass inside `act`, so every state update the bridge's promises
+		 * produce is flushed to the DOM before an assertion reads it.
+		 */
+		settle: (ms = 30) =>
+			act(async () => {
+				await settle(ms);
+			}),
+		unmount: async () => {
+			await act(async () => root.unmount());
+			host.remove();
+		},
+	};
+}
+
+test("UsageView enters on the automatic check and scopes the query to the slash argument", () => {
 	const source = readFileSync(
 		"src/renderer/src/features/chat/pickers/usage-view.tsx",
 		"utf8",
 	);
 	const container = source.slice(source.indexOf("export const UsageView"));
-	const openEffectStart = container.indexOf("useEffect(() => {");
-	const openEffectEnd = container.indexOf("}, []);", openEffectStart);
-	assert.ok(openEffectStart >= 0, "UsageView must declare its open effect");
-	assert.ok(openEffectEnd > openEffectStart, "the open effect must run once");
+	/*
+	 * The mode the view STARTS in is the whole finding (R1/Q1): subscribing on
+	 * `cached` and flipping to `auto` from a mount effect made `refetchOnMount`
+	 * inert, because react-query reads that option at subscribe time. So the entry
+	 * mode is asserted, and the flip is asserted ABSENT — a mount effect that sets
+	 * it back would restore the defect while leaving the entry mode intact.
+	 */
+	assert.match(
+		container,
+		/useState<UsageQueryMode>\("auto"\)/,
+		"the view must ENTER on the automatic check",
+	);
 	assert.ok(
-		container.slice(openEffectStart, openEffectEnd).includes('setMode("auto")'),
-		"the mounted view must transition from the cached snapshot to auto mode",
+		!container.includes('setMode("auto")'),
+		"no mount effect may switch the mode into `auto`: that switch is what made refetchOnMount inert",
+	);
+	assert.ok(
+		container.includes('usageQueryOptions(provider, "cached")'),
+		"the cached snapshot must stay mounted as its own query, so a cold open can paint it",
 	);
 	const providerLine = container.indexOf(
 		"const provider = action.args.trim() || undefined;",
@@ -331,7 +424,19 @@ test("UsageView wires open checks, scoped provider arguments, and remount-safe a
 	assert.match(source, /setAskId\(nextUsageAskId\(\)\);/);
 });
 
-test("mounting a new auto observer rechecks a fresh cached usage key", async () => {
+test("a fresh automatic entry is re-checked on both ways into the key", async () => {
+	/*
+	 * R1/R2. The previous option set covered only ONE of the two ways this key can
+	 * be entered, and the test beside it pinned the way the container never took,
+	 * which is why the defect was green. Both are asserted here, against an entry
+	 * that the APP's own policy calls FRESH, because fresh is the state the defect
+	 * lived in:
+	 *
+	 *  - SUBSCRIBE on the key: the container's own mount path, answered by
+	 *    `refetchOnMount: "always"`;
+	 *  - `setOptions` ONTO the key: a provider-argument change or a remount, which
+	 *    never consults `refetchOnMount` and is answered by `staleTime: 0` instead.
+	 */
 	const client = newClient();
 	const observed = [];
 	respond = async (request) => {
@@ -343,21 +448,16 @@ test("mounting a new auto observer rechecks a fresh cached usage key", async () 
 	assert.equal(observed.length, 1, "the cache is primed by a real bridge read");
 	assert.equal(observed[0].live, true);
 	assert.equal(observed[0].refresh, false);
-	const cachedQuery = client
-		.getQueryCache()
-		.find({ queryKey: options.queryKey });
-	assert.ok(cachedQuery);
-	assert.ok(cachedQuery.state.dataUpdatedAt > 0);
-	const staleTime = client.defaultQueryOptions(options).staleTime;
-	assert.ok(staleTime > 0);
+	const primed = client.getQueryCache().find({ queryKey: options.queryKey });
+	assert.ok(primed);
+	assert.ok(primed.state.dataUpdatedAt > 0);
 	assert.equal(
-		cachedQuery.isStaleByTime(staleTime),
+		primed.isStaleByTime(defaultQueryOptions.queries.staleTime),
 		false,
-		"the remount must start with a fresh, not merely stale, cache entry",
+		"the re-check must start with a fresh, not merely stale, cache entry",
 	);
 
-	// A new observer is the actual useQuery mount path; re-applying options to
-	// the priming observer would not exercise refetchOnMount against fresh data.
+	// The mount path, which is the shape the container now takes.
 	const beforeMount = observed.length;
 	const reopened = new QueryObserver(client, options);
 	const unsubscribe = reopened.subscribe(() => {});
@@ -369,8 +469,33 @@ test("mounting a new auto observer rechecks a fresh cached usage key", async () 
 		live: true,
 		refresh: false,
 	});
-
 	unsubscribe();
+
+	// The key-switch path. `setOptions` asks only whether the target query is
+	// stale, so this fetches nothing unless the entry is PERMANENTLY stale — the
+	// assertion that fails on the previous head.
+	const switched = new QueryObserver(
+		client,
+		usageQueryOptions("radient", "cached"),
+	);
+	const stopSwitched = switched.subscribe(() => {});
+	await settle();
+	const beforeSwitch = observed.length;
+	switched.setOptions(options);
+	await settle();
+	assert.equal(
+		observed.length,
+		beforeSwitch + 1,
+		"a transition INTO the automatic key must re-check even a fresh entry",
+	);
+	assert.deepEqual(observed.at(-1), {
+		op: "usage.get",
+		provider: "radient",
+		live: true,
+		refresh: false,
+	});
+
+	stopSwitched();
 	client.clear();
 });
 
@@ -468,64 +593,83 @@ test("open paints cached rows, discovers Radient automatically, then forces each
 	client.clear();
 });
 
-test("the loading story photographs the toolbar the container really produces", async () => {
+test("the loading story photographs the skeleton body the container paints", async () => {
 	// The `loading` evidence frame photographed `Ask providers now`, ENABLED,
 	// and the shipped container cannot produce that at first paint: react-query
-	// sets `isLoading` and `isFetching` together on a first load, so the action
-	// is always in-flight and disabled. The frame was a picture of a state the
-	// app has no path to — and loading is precisely the state a reviewer cannot
-	// check any other way, which is what makes an unreachable frame worse than
-	// no frame.
+	// sets `isLoading` and `isFetching` together on a first load. The frame was a
+	// picture of a state the app had no path to — and loading is precisely the
+	// state a reviewer cannot check any other way, which is what makes an
+	// unreachable frame worse than no frame.
 	//
-	// The first render reads the cached snapshot. The effect then starts the
-	// distinct automatic cache-aware check without claiming an explicit ask.
+	// TWO things changed in this round, and the assertions below follow both
+	// rather than restating the old ones:
 	//
-	// So this asserts the STORY against the CONTAINER rather than either against
-	// itself: render the container at first paint, render the dialog with the
-	// story's own args, and require the toolbars to agree.
+	//  - The action is no longer disabled by a read the user did not start, so
+	//    the frame is re-taken with an ENABLED action. What the frame documents
+	//    is the skeleton BODY, which every open paints.
+	//  - The container now ENTERS on the automatic check, so its own first paint
+	//    carries `Checking provider usage` rather than this story's
+	//    `Reading cached usage`. That wording is the cached snapshot read's own,
+	//    and `docs/evidence/chat-usage/README.md` says where it is used. The
+	//    reachable first paint is pinned below from a real MOUNT; the story is
+	//    asserted against its own committed frame.
 	const client = newClient();
-	const beforeRender = requests.length;
 
-	const firstPaint = renderUsage(client);
-	assert.match(
-		text(firstPaint),
-		/Reading cached usage/,
-		"the cached snapshot is the first render before the effect runs",
-	);
-	assert.doesNotMatch(
-		text(firstPaint),
-		/Asking providers/,
-		"first paint must not claim a live provider ask the user never made",
-	);
-	assert.match(
-		firstPaint,
-		/<button[^>]*\sdisabled(?=[\s>=])/,
-		"the action is disabled while the first load is out",
-	);
-	assert.doesNotMatch(text(firstPaint), /Ask providers now/);
-	// And the body is the loading state, not the empty-state copy.
-	assert.doesNotMatch(text(firstPaint), /No usage reports/);
-	assert.equal(
-		requests.length - beforeRender,
-		0,
-		"static SSR does not run effects or issue backend requests",
-	);
+	let release;
+	respond = async () =>
+		new Promise((resolve) => {
+			release = () =>
+				resolve({ status: 200, body: { result: payload("live") } });
+		});
+	const view = await mountUsage(client);
+	try {
+		assert.match(
+			view.text(),
+			/Loading provider usage/,
+			"the skeleton is the first paint of an open",
+		);
+		assert.match(
+			view.text(),
+			/Checking provider usage/,
+			"the open's own read is what the first paint names",
+		);
+		assert.doesNotMatch(
+			view.text(),
+			/Asking providers/,
+			"first paint must not claim an ask the user never made",
+		);
+		assert.doesNotMatch(
+			view.html(),
+			/<button[^>]*\sdisabled(?=[\s>=])/,
+			"a background read must leave the action usable",
+		);
+		assert.doesNotMatch(view.text(), /No usage reports/);
+	} finally {
+		release?.();
+		await view.unmount();
+	}
 
 	// The story's own args, read from the story module rather than restated
 	// here — a copy would pass while the committed frame stayed wrong.
+	const beforeStatic = requests.length;
 	const storyFrame = renderDialog({ ...loadingStoryArgs });
 	assert.match(
 		text(storyFrame),
 		/Reading cached usage/,
-		"the loading story depicts the cached snapshot before the effect",
+		"the loading frame names the cached read, not an ask",
 	);
-	assert.match(
+	assert.doesNotMatch(text(storyFrame), /Asking providers/);
+	assert.doesNotMatch(
 		storyFrame,
 		/<button[^>]*\sdisabled(?=[\s>=])/,
-		"the loading story's action must be disabled, as it is in the app",
+		"the frame must agree with the story it is captured from: a background read leaves the action enabled",
 	);
-	assert.doesNotMatch(text(storyFrame), /Ask providers now/);
-	assert.equal(requests.length - beforeRender, 0);
+	assert.doesNotMatch(text(storyFrame), /No usage reports/);
+	assert.equal(
+		requests.length - beforeStatic,
+		0,
+		"a static render issues no backend requests",
+	);
 
 	client.clear();
 });
@@ -569,6 +713,197 @@ test("the fetching story photographs a state the container can now reach", async
 	await settle();
 	unsubscribe();
 	client.clear();
+});
+
+test("opening /usage re-checks a FRESH automatic entry, so a new login appears", async () => {
+	/*
+	 * R1/Q1, reproduced on the path the container actually takes.
+	 *
+	 * The previous revision subscribed on the `cached` key and switched to `auto`
+	 * from a mount effect. react-query consults `refetchOnMount` only from
+	 * `QueryObserver.onSubscribe`, so the switch went through `setOptions` — which
+	 * asks only whether the target query `isStale` — and inside the app's
+	 * 5-minute `staleTime` the answer was no: the open issued NO request at all.
+	 * That is the reported flow exactly (open `/usage`, store a Radient login,
+	 * open it again seconds later), and the provider set stayed as it was.
+	 *
+	 * So the entry is primed with a real bridge read and confirmed FRESH under
+	 * the app's own policy before the view opens; the open must still cross the
+	 * bridge. On the previous head this assertion reads 0.
+	 */
+	const client = newClient();
+	const observed = [];
+	respond = async (request) => {
+		observed.push(request);
+		return { status: 200, body: { result: payload("live") } };
+	};
+	const options = usageQueryOptions("radient", "auto");
+	await client.fetchQuery(options);
+	assert.equal(observed.length, 1, "the cache is primed by a real bridge read");
+	const primed = client.getQueryCache().find({ queryKey: options.queryKey });
+	assert.equal(
+		primed.isStaleByTime(defaultQueryOptions.queries.staleTime),
+		false,
+		"the reopen starts from an entry the app's own 5-minute policy calls fresh",
+	);
+
+	const before = observed.length;
+	const view = await mountUsage(client, "radient");
+	await view.settle();
+	try {
+		const opened = observed.slice(before);
+		assertRequestModeCounts(opened, { cached: 1, auto: 1, ask: 0 });
+		const autoRequest = opened.find(
+			(request) => request.live && !request.refresh,
+		);
+		assert.deepEqual(autoRequest, {
+			op: "usage.get",
+			provider: "radient",
+			live: true,
+			refresh: false,
+		});
+	} finally {
+		await view.unmount();
+		client.clear();
+	}
+});
+
+test("a cold open paints the cached rows while the live read is still out", async () => {
+	/*
+	 * Q2/D1/U1. The cached snapshot answers in a local read; the live check is a
+	 * network round trip across every signed-in provider. The previous revision
+	 * switched keys before the snapshot answered, so its result was never
+	 * rendered and the body was the skeleton for the whole live check — worse
+	 * than the branch it replaced, which painted the backend's cached rows on a
+	 * single SQLite read. Measured here as the user sees it: the row label is on
+	 * screen while the live read is deliberately never answered.
+	 */
+	const client = newClient();
+	respond = async (request) =>
+		request.live
+			? new Promise(() => undefined)
+			: { status: 200, body: { result: payload("cached") } };
+	const view = await mountUsage(client);
+	await view.settle(60);
+	try {
+		assert.match(
+			view.text(),
+			/5-hour/,
+			"the cached numbers must paint while the live read is out",
+		);
+		assert.doesNotMatch(
+			view.text(),
+			/Loading provider usage/,
+			"the skeleton must be gone once the cached answer landed",
+		);
+		assert.match(view.text(), /Checking provider usage/);
+	} finally {
+		await view.unmount();
+		client.clear();
+	}
+});
+
+test("a failed automatic read keeps the cached numbers on screen", async () => {
+	/*
+	 * Q3, same root cause as Q2. The automatic read is unforced and unrequested,
+	 * and when it failed the cached answer that had arrived seconds earlier was
+	 * thrown away with it, so the open ended in an error body where `main` kept
+	 * the table. A failure of a probe the user did not start must not take their
+	 * numbers with it.
+	 */
+	const client = newClient();
+	respond = async (request) => {
+		if (!request.live)
+			return { status: 200, body: { result: payload("cached") } };
+		throw new Error("providers refused");
+	};
+	const view = await mountUsage(client);
+	await view.settle(80);
+	try {
+		assert.match(
+			view.text(),
+			/5-hour/,
+			"the cached numbers must survive a failed automatic read",
+		);
+		assert.doesNotMatch(view.text(), /Loading provider usage/);
+		assert.doesNotMatch(
+			view.text(),
+			/No usage reports/,
+			"the empty state must never render for a user who has numbers",
+		);
+	} finally {
+		await view.unmount();
+		client.clear();
+	}
+});
+
+test("the checking story's args are the ones the container hands over, and the check is announced", async () => {
+	/*
+	 * D2: `Checking` was the one in-flight story the container pin did not
+	 * reach, so it could drift into depicting a toolbar the container cannot
+	 * produce — the failure mode the pin exists for.
+	 *
+	 * U3: the polite region stayed silent for the automatic check, which is the
+	 * only in-flight state this view adds. The label that changes is on a
+	 * disabled-then-enabled control the user is not on, so a screen-reader user
+	 * had no in-flight state and no completion signal for the flow this view
+	 * exists to fix.
+	 */
+	const client = newClient();
+	const observed = [];
+	respond = async (request) => {
+		observed.push(request);
+		return { status: 200, body: { result: payload("live") } };
+	};
+	// Prime the automatic key so the re-check has rows to keep on screen and
+	// `isLoading` is false, then let the re-check hang: that is the instant the
+	// story depicts.
+	await client.fetchQuery(usageQueryOptions(undefined, "auto"));
+	respond = async () => new Promise(() => undefined);
+	const view = await mountUsage(client);
+	await view.settle();
+	const observer = new QueryObserver(
+		client,
+		usageQueryOptions(undefined, "auto"),
+	);
+	const stop = observer.subscribe(() => {});
+	try {
+		const live = observer.getCurrentResult();
+		// What the container passes at this instant, read from the same query the
+		// container renders rather than restated.
+		const fromContainer = {
+			payload: live.data,
+			loading: live.isLoading,
+			fetching: live.isFetching,
+			checking: true,
+			asked: false,
+		};
+		assert.ok(fromContainer.payload, "the container must still hold a payload");
+		assert.equal(checkingStoryArgs.fetching, fromContainer.fetching);
+		assert.equal(Boolean(checkingStoryArgs.loading), fromContainer.loading);
+		assert.equal(checkingStoryArgs.checking, true);
+		assert.equal(Boolean(checkingStoryArgs.asked), false);
+		for (const [name, args] of [
+			["container", fromContainer],
+			["story", checkingStoryArgs],
+		]) {
+			const frame = text(renderDialog(args));
+			assert.match(frame, /Checking provider usage/, name);
+			assert.match(frame, /5-hour/, `${name} keeps the cached numbers`);
+			assert.doesNotMatch(frame, /Asking providers/, name);
+		}
+		// The automatic check is announced; the ask's sentence stays the ask's.
+		assert.match(
+			view.html(),
+			/<output[^>]*aria-live="polite"[^>]*>Checking provider usage<\/output>/,
+			"the automatic check must be announced through the polite region",
+		);
+		assert.doesNotMatch(view.html(), /Getting fresh usage from providers\./);
+	} finally {
+		stop();
+		await view.unmount();
+		client.clear();
+	}
 });
 
 /**
@@ -948,9 +1283,10 @@ test("an unanswered load shows neither the empty copy nor a false receipt", asyn
 
 test("the in-flight label distinguishes a cached read from a live ask", async () => {
 	// Opening does a cache-aware check, not the user's forced ask; the labels
-	// distinguish both modes from reading the cached snapshot alone. The separate
-	// polite output exists only during an explicit ask so its status is announced
-	// without repeating visible copy or chattering during automatic checks.
+	// distinguish both modes from reading the cached snapshot alone. The polite
+	// output is mounted from the first paint so there is a node to announce into,
+	// and it names whichever read is out — the automatic check included, because
+	// the label that changes is on a control the user is not on (UX U3).
 	const cachedRead = text(
 		renderDialog({
 			payload: null,
@@ -962,16 +1298,20 @@ test("the in-flight label distinguishes a cached read from a live ask", async ()
 	assert.match(cachedRead, /Reading cached usage/);
 	assert.doesNotMatch(cachedRead, /Asking providers/);
 
-	const automaticCheck = text(
-		renderDialog({
-			payload: payload("cached"),
-			loading: false,
-			fetching: true,
-			checking: true,
-		}),
-	);
+	const automaticCheckMarkup = renderDialog({
+		payload: payload("cached"),
+		loading: false,
+		fetching: true,
+		checking: true,
+	});
+	const automaticCheck = text(automaticCheckMarkup);
 	assert.match(automaticCheck, /Checking provider usage/);
 	assert.doesNotMatch(automaticCheck, /Asking providers/);
+	assert.match(
+		automaticCheckMarkup,
+		/<output[^>]*aria-live="polite"[^>]*>Checking provider usage<\/output>/,
+		"the automatic check must be announced, not only the explicit ask",
+	);
 
 	const liveAskMarkup = renderDialog({
 		payload: payload("cached"),
@@ -998,8 +1338,24 @@ test("the in-flight label distinguishes a cached read from a live ask", async ()
 		/Getting fresh usage from providers\./,
 		"the live region must go quiet once the ask settles",
 	);
+	const settledCheck = renderDialog({
+		payload: payload("live"),
+		loading: false,
+		fetching: false,
+		checking: true,
+	});
 	assert.doesNotMatch(
-		automaticCheck,
+		settledCheck,
+		/Checking provider usage/,
+		"the live region must go quiet once the automatic check settles",
+	);
+	assert.match(
+		settledCheck,
+		/<output[^>]*aria-live="polite"[^>]*><\/output>/,
+		"the region stays mounted and empty between checks, so the next one has a node to land in",
+	);
+	assert.doesNotMatch(
+		automaticCheckMarkup,
 		/Getting fresh usage from providers\./,
 		"a cache-aware check must not masquerade as a manual ask",
 	);

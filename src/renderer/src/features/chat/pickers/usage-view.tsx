@@ -494,7 +494,11 @@ export type UsageDialogProps = {
 	error?: string | null;
 	/** A live fetch is in flight: the action says so instead of spinning. */
 	fetching?: boolean;
-	/** Whether the automatic cache-aware live check is in flight. */
+	/**
+	 * Whether the in-flight read is the automatic cache-aware check rather than
+	 * the user's own ask. It picks the announcement wording; the action is
+	 * disabled for the ask alone.
+	 */
 	checking?: boolean;
 	/** Whether the user has explicitly asked for live numbers. */
 	asked?: boolean;
@@ -613,14 +617,37 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 					    explicit forced ask. Keep that in-flight state distinct so the
 					    receipt and repeat-ask promise only describe an actual click. */}
 					{/*
-					 * A disabled button cannot keep focus, and the focus catcher moves to
-					 * the report list while its label changes. Keep an empty polite region
-					 * mounted between asks so assistive tech hears only the explicit
-					 * in-flight request; distinct wording avoids echoing the button label.
+					 * The polite region names whatever is in flight, including the automatic
+					 * check this view runs on every open.
+					 *
+					 * It used to stay silent for that check, on the argument that the button's
+					 * relabel is enough — but that relabel happens on a control the user is not
+					 * on (`activeElement` is BODY while the check runs), so a screen-reader
+					 * user got no in-flight state and no completion signal for the flow this
+					 * view exists to fix (UX U3). Distinct wording per mode keeps it from
+					 * echoing the button and from letting a cache-aware check masquerade as the
+					 * manual ask, and the node stays mounted and EMPTY at rest and after
+					 * settle, so it announces only on a real transition.
 					 */}
 					<output aria-live="polite" className={cn("sr-only")}>
-						{fetching && asked ? "Getting fresh usage from providers." : ""}
+						{fetching
+							? asked
+								? "Getting fresh usage from providers."
+								: checking
+									? "Checking provider usage"
+									: ""
+							: ""}
 					</output>
+					{/*
+					 * The action is disabled for the user's OWN ask, never for a background
+					 * read.
+					 *
+					 * `disabled={fetching}` took it out of the tab order for the whole
+					 * automatic check on every open (measured: it was not tabbable until
+					 * the check settled), so the one control that shortens the wait was
+					 * the one the wait switched off (UX U1, second half). A read the user
+					 * did not start must not block the control they did.
+					 */}
 					<Button
 						ref={actionRef}
 						className={cn("ml-auto")}
@@ -628,7 +655,7 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 						size="sm"
 						type="button"
 						onClick={onFetchLive}
-						disabled={fetching}
+						disabled={asked && fetching}
 					>
 						{fetching
 							? asked
@@ -765,8 +792,23 @@ export const usageQueryOptions = (
 		 * `auto` result in React Query's cache: a newly stored login is invisible
 		 * until the backend is asked again. This is a cache-aware backend read, not
 		 * a forced provider probe, so it avoids spending rate-limited quota calls.
+		 *
+		 * TWO options, because the mount path and the key-switch path consult
+		 * DIFFERENT ones — and until this round only the mount path was covered, so
+		 * the guarantee was inert on the open that matters (review R1/Q1).
+		 * `refetchOnMount` is read only by `QueryObserver.onSubscribe`, so it fires
+		 * because this view now ENTERS on the `auto` key rather than switching to
+		 * it; every other way into the key — a provider-argument change, a
+		 * remount — goes through `setOptions`, which is gated on `isStale` and
+		 * never looks at `refetchOnMount`. `staleTime: 0` is what makes `isStale`
+		 * permanently true, so both paths re-check. With the app's 5-minute
+		 * default the second path issued NO request at all, and the reported flow —
+		 * store a Radient login, reopen `/usage` seconds later — still showed the
+		 * old provider set.
 		 */
-		...(mode === "auto" ? { refetchOnMount: "always" as const } : {}),
+		...(mode === "auto"
+			? { refetchOnMount: "always" as const, staleTime: 0 }
+			: {}),
 		/*
 		 * Keep the cached table on screen while the live key loads.
 		 *
@@ -819,22 +861,40 @@ export const usageQueryOptions = (
  * the slash line's argument.
  */
 export const UsageView: FC<MachinePanelContext> = ({ onClose, action }) => {
-	const [mode, setMode] = useState<UsageQueryMode>("cached");
+	/*
+	 * The view ENTERS on `auto`, and that is load-bearing rather than tidy.
+	 *
+	 * Subscribing on the `cached` key and flipping to `auto` from a mount effect
+	 * — the previous wiring — made `refetchOnMount: "always"` inert, because the
+	 * observer's subscription happens on `cached` and the flip goes through
+	 * `QueryObserver.setOptions`, which asks only whether the target query is
+	 * stale. Inside the app's 5-minute `staleTime` the answer was no, so a
+	 * reopen issued no request at all and a login stored seconds earlier stayed
+	 * invisible (review R1/Q1). `auto` from the first render means the option is
+	 * consulted on the one path that reads it.
+	 */
+	const [mode, setMode] = useState<UsageQueryMode>("auto");
 	const [askId, setAskId] = useState(0);
 	const provider = action.args.trim() || undefined;
 	const usage = useQuery(usageQueryOptions(provider, mode, askId));
-
-	useEffect(() => {
-		// Let the cached snapshot paint before the cache-aware request starts.
-		// It discovers newly stored accounts without forcing every provider on
-		// each open, which would spend rate-limited quota probes unnecessarily.
-		setMode("auto");
-	}, []);
+	/*
+	 * The cached snapshot, as its OWN query rather than as the key the view
+	 * starts on.
+	 *
+	 * It exists for one job: the instant first paint. A cold open renders before
+	 * either read answers, and the backend's cached rows are a single local read
+	 * that lands long before the live, every-provider, rate-limited one — so a
+	 * view that abandoned the snapshot when it switched keys painted the
+	 * skeleton for the whole live check and threw the cached answer away
+	 * (review Q2/D1/U1), which is worse than the branch it replaced. Kept as a
+	 * second query it simply stays mounted, and its answer is adopted below.
+	 */
+	const snapshot = useQuery(usageQueryOptions(provider, "cached"));
 
 	/*
 	 * Ask again, and mean it.
 	 *
-	 * Each click advances `askCount`, producing a new query identity with
+	 * Each click advances `askId`, producing a new query identity with
 	 * `refresh: true`. Reusing the automatic key would serve its cache-aware
 	 * result, and repeating the same key would let react-query reuse a fresh
 	 * forced answer rather than honor the user's next explicit request.
@@ -879,10 +939,13 @@ export const UsageView: FC<MachinePanelContext> = ({ onClose, action }) => {
 		failureReason,
 	} = usage;
 	const settledAt = Math.max(dataUpdatedAt, errorUpdatedAt);
-	const askedRef = useRef(false);
-	if (mode === "ask") askedRef.current = true;
 	useEffect(() => {
-		if (!askedRef.current || mode !== "ask") return;
+		/*
+		 * `mode` alone guards this, and a separate `askedRef` used to sit here:
+		 * the mode only ever advances (`auto` → `ask`) and never returns, so the
+		 * ref's first clause could not be the deciding one (review R6).
+		 */
+		if (mode !== "ask") return;
 		if (isError) {
 			setOutcome({ tone: "error", text: errorText(error) });
 			return;
@@ -907,8 +970,9 @@ export const UsageView: FC<MachinePanelContext> = ({ onClose, action }) => {
 	}, [mode, settledAt, isError, error, failureCount, failureReason]);
 
 	/*
-	 * The last payload that actually arrived, kept so a failed ask cannot blank
-	 * the table the user is reading.
+	 * The last payload that actually arrived, kept so a failed read cannot blank
+	 * the table the user is reading — and so a cold open paints the cached rows
+	 * it already has.
 	 *
 	 * `placeholderData` covers the request and its retry backoff, but on the
 	 * FINAL error react-query drops the placeholder: `data` goes undefined and
@@ -917,8 +981,18 @@ export const UsageView: FC<MachinePanelContext> = ({ onClose, action }) => {
 	 * previous answer untrue — it is last-known, which is a state this view
 	 * already knows how to render honestly — so the numbers stay and the
 	 * failure is reported in the action's receipt instead.
+	 *
+	 * ANY answer this view receives is last-known, whichever read produced it.
+	 * Two writers, and both are load-bearing: the cached snapshot is what a COLD
+	 * open paints while the live read is still out (review Q2/D1/U1), and the
+	 * live answer supersedes it. Order is the precedence, so the live payload is
+	 * written second and wins in a render that received both. Without the first
+	 * writer the snapshot was never adopted, so an automatic read that failed
+	 * seconds after a good cached answer left the error as the body with the
+	 * numbers gone (review Q3).
 	 */
 	const lastGood = useRef<UsagePayload | null>(null);
+	if (snapshot.data) lastGood.current = snapshot.data;
 	if (usage.data) lastGood.current = usage.data;
 	const payload = usage.data ?? lastGood.current;
 
@@ -942,7 +1016,9 @@ export const UsageView: FC<MachinePanelContext> = ({ onClose, action }) => {
 			payload={payload}
 			// `isLoading` is false while placeholder data stands in, so the body's
 			// own guard (`loading && !payload`) is what decides; this stays the
-			// honest report of "no data of this key's own yet".
+			// honest report of "no data of this key's own yet". It stays true for
+			// the whole cold open under the automatic check, which is why the
+			// last-known snapshot is what actually paints the table there.
 			loading={usage.isLoading}
 			// An error with numbers still on screen is reported by the action's
 			// receipt, not by replacing the table the user is reading. With nothing
