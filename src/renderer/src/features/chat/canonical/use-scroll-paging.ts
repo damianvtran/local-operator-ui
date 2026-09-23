@@ -14,7 +14,7 @@ import {
 	type PagingState,
 	SETTLE_MS,
 	TAIL_EPS_PX,
-	anchorDrift,
+	anchorDriftForCurrentInput,
 	decide,
 	initialPagingState,
 	isExhausted,
@@ -213,10 +213,11 @@ export function useScrollPaging({
 	const live = useRef({ hiddenRows, hasMore, onWiden, onLoadOlder });
 	live.current = { hiddenRows, hasMore, onWiden, onLoadOlder };
 
-	const anchor = useRef<{ sample: AnchorSample | null; until: number }>({
-		sample: null,
-		until: 0,
-	});
+	const anchor = useRef<{
+		sample: AnchorSample | null;
+		until: number;
+		inputRevision: number;
+	}>({ sample: null, until: 0, inputRevision: 0 });
 	// Writes this hook makes to `scrollTop`. The resulting `scroll` event is our
 	// own motion and must never be attributed to the reader (clause A).
 	const programmatic = useRef(0);
@@ -232,7 +233,13 @@ export function useScrollPaging({
 	 * tail, say) would report a flick's worth of travel for a reader who has only
 	 * just put their fingers on the pad.
 	 */
-	const travel = useRef({ fromTail: 0, at: 0, extent: 0, clamped: false });
+	const travel = useRef({
+		fromTail: 0,
+		at: 0,
+		extent: 0,
+		clamped: false,
+		revision: 0,
+	});
 	const pump = useRef<number>(0);
 	const settleTimer = useRef<number>(0);
 
@@ -323,7 +330,16 @@ export function useScrollPaging({
 			anchor.current.sample = null;
 			return;
 		}
-		const drift = anchorDrift(held, measureHeld(held.id));
+		const drift = anchorDriftForCurrentInput(
+			held,
+			measureHeld(held.id),
+			anchor.current.inputRevision,
+			travel.current.revision,
+		);
+		if (drift === null) {
+			anchor.current.sample = null;
+			return;
+		}
 		if (drift === 0) return;
 		programmatic.current += 1;
 		/*
@@ -356,6 +372,7 @@ export function useScrollPaging({
 		anchor.current = {
 			sample: sampleAnchor(),
 			until: performance.now() + ANCHOR_HOLD_MS,
+			inputRevision: travel.current.revision,
 		};
 	}, [sampleAnchor]);
 
@@ -536,7 +553,13 @@ export function useScrollPaging({
 			const clampFollow =
 				held.clamped && extent > held.extent ? extent - held.extent : 0;
 			const moved = first ? 0 : fromTail - held.fromTail - clampFollow;
-			travel.current = { fromTail, at, extent, clamped: atHardTop };
+			travel.current = {
+				fromTail,
+				at,
+				extent,
+				clamped: atHardTop,
+				revision: held.revision,
+			};
 			state.current = noteInput(state.current, {
 				direction,
 				continuous,
@@ -551,6 +574,12 @@ export function useScrollPaging({
 				travelledPx: Math.max(0, moved),
 			});
 			if (deliberate) setFailed(false);
+			travel.current = {
+				...travel.current,
+				revision: travel.current.revision + 1,
+			};
+			anchor.current.sample = null;
+			anchor.current.until = 0;
 			schedule();
 		},
 		[containerRef, measure, schedule],
@@ -565,7 +594,11 @@ export function useScrollPaging({
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reset on session change only
 	useEffect(() => {
 		state.current = initialPagingState();
-		anchor.current = { sample: null, until: 0 };
+		anchor.current = {
+			sample: null,
+			until: 0,
+			inputRevision: travel.current.revision,
+		};
 		/*
 		 * The DOM half's measurement state belongs to the conversation too
 		 * (review round 1, R1-6). Left alone, the first input of a NEW conversation
@@ -576,7 +609,13 @@ export function useScrollPaging({
 		 * fresh conversation carries no speed and no travel, exactly as the first
 		 * notch of the first-ever conversation does.
 		 */
-		travel.current = { fromTail: 0, at: 0, extent: 0, clamped: false };
+		travel.current = {
+			fromTail: 0,
+			at: 0,
+			extent: 0,
+			clamped: false,
+			revision: travel.current.revision + 1,
+		};
 		setFailed(false);
 		setRevealInFlight(false);
 		// A fresh conversation may already be shorter than its viewport with more

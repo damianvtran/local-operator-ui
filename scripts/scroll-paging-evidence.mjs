@@ -55,7 +55,12 @@ const APP = process.argv[2] ?? "http://localhost:5199";
 const SESSION = process.argv[3];
 const OUT = process.argv[4] ?? "docs/evidence/transcript-scroll-paging";
 const MODE = process.argv[5] ?? "after";
-
+// Use the shipped ChatPage browser harness rather than Vite's generic index:
+// its session query seeds the route/store before first render, and its verified
+// document response keeps localStorage writes on a real same-origin page.
+const HARNESS_PAGE = new URL("/submit-latency-evidence.html", APP).href;
+const ENTRY = `${HARNESS_PAGE}?session=${encodeURIComponent(SESSION ?? "")}`;
+const BOOT = HARNESS_PAGE;
 if (!SESSION) {
 	console.error(
 		"usage: scroll-paging-evidence.mjs <app-origin> <session-id> <out> <mode>",
@@ -137,6 +142,8 @@ if (!page) throw new Error("no page target in the private Chromium");
 void browserId;
 
 let nextId = 1;
+let bootHttpStatus = null;
+const bootUrl = new URL(BOOT);
 const pending = new Map();
 /** Every `sessions.history` op the renderer issued, in order. See clause B. */
 const historyRequests = [];
@@ -145,6 +152,16 @@ const desktopOps = [];
 const ws = new WebSocket(page.webSocketDebuggerUrl);
 ws.onmessage = (event) => {
 	const msg = JSON.parse(event.data);
+	if (msg.method === "Network.responseReceived") {
+		const response = msg.params?.response;
+		if (
+			msg.params?.type === "Document" &&
+			response?.url &&
+			new URL(response.url).origin === bootUrl.origin &&
+			new URL(response.url).pathname === bootUrl.pathname
+		)
+			bootHttpStatus = response.status;
+	}
 	if (msg.method === "Network.requestWillBeSent") {
 		/*
 		 * Count the op out of the POST BODY, not out of the URL.
@@ -356,12 +373,16 @@ const watchHeldRow = (id, ms) =>
   const samples = [];
   const extents = [];
   const times = [];
+  const frames = [];
   const until = performance.now() + ${ms};
   await new Promise((done) => {
     const tick = () => {
-      samples.push(read());
+      const t = performance.now();
+      const offset = read();
+      samples.push(offset);
       extents.push(el.scrollHeight);
-      times.push(performance.now());
+      times.push(t);
+      frames.push({ t, anchorOffset: offset, scrollTop: el.scrollTop, scrollHeight: el.scrollHeight, rows: el.querySelectorAll('[data-record-id]').length, inputEndedAt: window.__loPagingInputEndedAt ?? null });
       if (performance.now() < until) requestAnimationFrame(tick); else done();
     };
     requestAnimationFrame(tick);
@@ -402,6 +423,8 @@ const watchHeldRow = (id, ms) =>
     last: samples.at(-1) ?? null,
     netDrift: Number((((samples.at(-1) ?? 0) - (samples[0] ?? 0))).toFixed(2)),
     extentGrewBy: extents.at(-1) - extents[0],
+    inputEndedAt: stopAt,
+    frames,
   };
 })()`);
 
@@ -548,16 +571,6 @@ async function notchUntil(
 	const state = await probe();
 	return { notches: maxNotches, state, reached: false };
 }
-
-/**
- * The pinned-at-the-hard-top state the two freeze scenarios are about.
- *
- * Distance only, deliberately: adding "and nothing is loading" would make the
- * setup wait for the arm's own reveals and stop in a different place on each
- * arm, which is the defect this helper exists to remove. The reader is at the
- * wall the moment the wall says so, on both arms, whatever is in flight.
- */
-const atTheWall = (state) => state.ok && state.distanceFromTop <= HARD_TOP_PX;
 
 /**
  * Where a slow approach begins: close enough that the measured act reaches the
@@ -1219,7 +1232,17 @@ const ELECTRON_SHIM = `(() => {
  * it turns a recurrence into a loud failure instead of a plausible zero.
  */
 await send("Page.addScriptToEvaluateOnNewDocument", { source: ELECTRON_SHIM });
-await send("Page.navigate", { url: `${APP}/#/chat` });
+const bootNavigation = await send("Page.navigate", { url: BOOT });
+if (bootNavigation.errorText)
+	throw new Error(
+		`capture boot navigation failed: ${JSON.stringify({ boot: BOOT, ...bootNavigation })}`,
+	);
+for (let i = 0; i < 60 && bootHttpStatus === null; i++) await sleep(100);
+const bootStatus = bootHttpStatus;
+if (bootStatus !== 200)
+	throw new Error(
+		`capture boot did not return HTTP 200: ${JSON.stringify({ boot: BOOT, status: bootStatus })}`,
+	);
 // `about:blank` has an opaque origin with no localStorage, so the navigation
 // has to have COMMITTED before the onboarding state can be written. Poll the
 // document's own origin rather than guessing a sleep.
@@ -1236,12 +1259,25 @@ for (let i = 0; i < 60; i++) {
 	if (res.result?.value === true) break;
 }
 await sleep(3000);
+const bootFacts = JSON.parse(
+	await evaluate(
+		"JSON.stringify({href:location.href, origin:location.origin, protocol:location.protocol, title:document.title})",
+	),
+);
+if (
+	!bootFacts.origin.startsWith("http") ||
+	new URL(bootFacts.href).origin !== new URL(BOOT).origin ||
+	bootStatus !== 200
+)
+	throw new Error(
+		`capture boot did not commit to the requested HTTP origin with status 200: ${JSON.stringify({ bootStatus, bootFacts })}`,
+	);
 await evaluate(
 	// Both keys: the current one the store actually persists, and the legacy one
 	// so its migration path is exercised rather than bypassed.
 	`(() => { localStorage.setItem('onboarding-storage', JSON.stringify({state:{isComplete:true,isModalComplete:true,isTourComplete:true,currentStep:'complete'},version:0})); return true; })()`,
 );
-await send("Page.navigate", { url: `${APP}/#/chat/${SESSION}` });
+await send("Page.navigate", { url: ENTRY });
 await sleep(500);
 // A real document load, so the store re-hydrates from what was just written.
 await send("Page.reload", { ignoreCache: false });
@@ -1418,7 +1454,6 @@ report.steps.push({
 	detail: isolated,
 });
 await shot(`${MODE}-04-after-isolated-reveals`);
-
 /* ---------------------------------------------------------------------------
  * PHASE 2 — the gestures this change is about.
  *
