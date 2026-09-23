@@ -26,6 +26,7 @@ import {
 	useSpeechToTextManager,
 } from "@shared/hooks/use-speech-to-text-manager";
 import { cn } from "@shared/lib/utils";
+import { useAsideStore } from "@shared/store/aside-store";
 import {
 	buildSendPayload,
 	withholdsRetryHint,
@@ -73,6 +74,12 @@ import type {
 	CanonicalFrontendState,
 	CanonicalModel,
 } from "../../../../../shared/desktop-session-contract";
+import {
+	adoptAside,
+	asideAdoptChord,
+	asideAdoptReady,
+	closeAside,
+} from "../aside";
 import { composerFocusIsOurs, shouldTabIntoAnswerOptions } from "../ask-answer";
 import {
 	CAPPED_BLOCK,
@@ -203,6 +210,7 @@ import {
 	activeModelForDefault,
 	writeModelDefaultSettings,
 } from "../pickers/model-default-settings";
+import { AsidePanel } from "./aside-panel";
 /*
  * The `@` mention layer: the tokenizer, the list over the field, and the chip
  * layer that draws behind the field's own glyphs. Three modules rather than one
@@ -461,6 +469,27 @@ type MessageInputProps = {
 	 * something else, and no send is gated by it.
 	 */
 	awaitingAnswer?: boolean;
+	/**
+	 * The canonical session the aside panel addresses, or undefined on a pane that
+	 * has none (a draft, a legacy pane).
+	 *
+	 * The panel is the ONE above-composer surface that is not derived from
+	 * anything this component already holds: it is keyed by the session the
+	 * dispatcher's `/btw` addressed, and the store that holds it is keyed the same
+	 * way. Absent means no panel can be attached here, which is the honest answer
+	 * for every harness that mounts a composer alone.
+	 */
+	asideSessionId?: string;
+	/**
+	 * Whether that session is mid-turn — the second term of the adopt gate
+	 * (`asideAdoptReady`, mirroring the TUI's `_aside_can_fork`: splicing a message
+	 * into a live turn is a request no provider accepts).
+	 *
+	 * Passed in rather than read here for the reason `canonicalStop.active` is: the
+	 * page that owns the canonical stream owns the answer, and a second reading of
+	 * it here is a second thing that can disagree with the Stop control beside it.
+	 */
+	asideStreaming?: boolean;
 	/**
 	 * Is a copy of the held payload painted in the transcript above?
 	 *
@@ -1185,6 +1214,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			isLoading,
 			awaitingReply = false,
 			awaitingAnswer = false,
+			asideSessionId,
+			asideStreaming = false,
 			heldCopyOnScreen,
 			conversationId,
 			messages,
@@ -1240,6 +1271,19 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			(cwdWritePath?.kind === "move"
 				? undefined
 				: agentData?.current_working_directory);
+		/*
+		 * The aside attached to this session, or null.
+		 *
+		 * ONE subscription for what the composer itself needs — the placeholder that
+		 * names the destination and the two keys that act on it — while the PANEL
+		 * subscribes to the streaming text on its own. That split is deliberate: the
+		 * attachment changes on the attach/detach/ask edges, whereas every
+		 * `aside_delta` rewrites one stream entry, and a composer this size must not
+		 * repaint per chunk of an answer it does not display.
+		 */
+		const aside = useAsideStore((state) =>
+			asideSessionId ? (state.attached[asideSessionId] ?? null) : null,
+		);
 		const removeReply = useConversationInputStore((state) => state.removeReply);
 		const clearReplies = useConversationInputStore(
 			(state) => state.clearReplies,
@@ -4093,6 +4137,47 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					return;
 				}
 				/*
+				 * THE ASIDE'S TWO KEYS, after the two lists and before the submit.
+				 *
+				 * The lists run first because their Escape closes THEM: a popup the user is
+				 * looking at owns its own exit before the surface behind it does, which is
+				 * the same precedence `use-interrupt-on-escape.ts` records one rung up (a
+				 * press the composer claims with `preventDefault` cannot also stop the
+				 * turn — that is why both branches here prevent it).
+				 *
+				 * ESC CLOSES THE ASIDE and routing returns to the conversation at once,
+				 * because the routing IS this attachment: the composer's `send` asks the
+				 * store where a submitted draft goes, so with the attachment gone the next
+				 * Enter goes to the thread. The panel's own close control makes the same
+				 * call through the same function.
+				 */
+				if (aside !== null && event.key === "Escape") {
+					event.preventDefault();
+					closeAside(asideSessionId ?? "");
+					return;
+				}
+				if (aside !== null && asideAdoptChord(event)) {
+					/*
+					 * Readiness is asked AT PRESS TIME rather than subscribed, and that is the
+					 * same decision as the `aside` subscription above: every `aside_delta`
+					 * rewrites a stream entry, and this composer must not repaint per chunk of
+					 * an answer it does not itself paint. An unfit press falls through — the
+					 * chord does nothing rather than being consumed — and the panel is already
+					 * saying why the control is not live.
+					 */
+					const lastTurn = aside.turns.at(-1);
+					const stream = lastTurn
+						? useAsideStore.getState().streams[lastTurn.asideId]
+						: undefined;
+					if (!asideAdoptReady(stream, asideStreaming)) return;
+					event.preventDefault();
+					void adoptAside(asideSessionId ?? "").catch(() => {
+						// The refusal is stated on the panel (`adoptAside` writes it there); this
+						// call site has nothing to add to it.
+					});
+					return;
+				}
+				/*
 				 * THE ATOMIC DELETE, after the two lists and before the submit: a Backspace at
 				 * a chip's right edge (or a Delete at its left) takes the whole token in one
 				 * keystroke and one undo step, through the same `replaceSpan` the inline slash
@@ -4184,6 +4269,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				newMessage,
 				caret,
 				isInputDisabled,
+				aside,
+				asideSessionId,
+				asideStreaming,
 			],
 		);
 
@@ -6071,6 +6159,30 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					</output>
 				)}
 				{/*
+				 * THE ASIDE PANEL, ABOVE THE BOX AND INSIDE THE BAND.
+				 *
+				 * In-flow and unportaled, like every other above-composer surface this band
+				 * carries (the status row, the interrupt notice, the alert). It is a SIBLING of
+				 * the box's anchoring wrapper rather than a child of it, so the slash popup —
+				 * whose `bottom-full` resolves against that wrapper — still paints in its own
+				 * strip and never inside the panel. And it is a plain element rather than a
+				 * Radix layer, which is the whole fix: a modal traps focus and disables the
+				 * pointer outside itself, and the composer underneath is the surface the user
+				 * still has to type in (`aside-panel.tsx` carries the mechanism).
+				 *
+				 * The conditional renders into ITS OWN SLOT: a falsy child keeps its position in
+				 * this children list, so the wrapper after it keeps its index and the textarea
+				 * is never unmounted and remounted — the one thing in this band that must not be
+				 * recreated under the user's hands.
+				 */}
+				{asideSessionId && aside !== null && (
+					<AsidePanel
+						sessionId={asideSessionId}
+						sessionStreaming={asideStreaming}
+						isSmallView={isSmallView}
+					/>
+				)}
+				{/*
 				 * THE SENTENCE AND THE BOX SHARE ONE ANCHORING ELEMENT, and that is the round-3
 				 * fix for the composer's own layout around the capture (design round 3, D1; UX
 				 * round 3, U14; code review round 3, MAJOR 1; QA round 3, Q1/Q2).
@@ -6369,19 +6481,31 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 											 * conversation too, so a reader of a conversation this machine does not have
 											 * would be told "Agent is busy" about a turn nobody is running (design
 											 * round 2, D3). The remaining terms are the U8 pair, unchanged.
+											 *
+											 * THE ASIDE TERM sits after the two refusals and before the U8 pair, and
+											 * both sides of that position are load-bearing. After them, because a box
+											 * that takes no keystrokes must not be invited to take one: "Ask off the
+											 * record" over a read-only composer is a promise nothing can keep. Before
+											 * them, because while the panel is attached the box's DESTINATION has
+											 * changed — Enter sends to the aside, not to the conversation — and
+											 * "Ask me for help" would be this app claiming a route the press no longer
+											 * takes. The exit is named beside the verb for the reason the `@` list's
+											 * own line names its ("Nothing to insert · Esc closes").
 											 */
 											unavailable
 												? "This conversation is gone"
 												: isInputDisabled
 													? "Agent is busy"
-													: awaitingAnswer
-														? // Names the thing the box is now for, without restating
-															// the question card or the waiting line (§ 7 keeps one
-															// liveness statement per turn, and the card owns it).
-															"Answer the question above"
-														: awaitingReply
-															? "Waiting for the agent"
-															: "Ask me for help"
+													: aside !== null
+														? "Ask off the record — Esc closes the aside"
+														: awaitingAnswer
+															? // Names the thing the box is now for, without restating
+																// the question card or the waiting line (§ 7 keeps one
+																// liveness statement per turn, and the card owns it).
+																"Answer the question above"
+															: awaitingReply
+																? "Waiting for the agent"
+																: "Ask me for help"
 										}
 										value={newMessage}
 										/*

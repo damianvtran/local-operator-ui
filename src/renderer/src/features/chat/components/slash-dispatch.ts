@@ -53,6 +53,7 @@ import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import type { NativeDesktopAction } from "../../../../../shared/desktop-control-contract";
 import type { DesktopCommandReceipt } from "../../../../../shared/desktop-session-contract";
+import { askAside, openAsidePanel } from "../aside";
 import {
 	ARCHIVE_ALREADY_ARCHIVED_REASON,
 	ARCHIVE_NOT_ARCHIVED_REASON,
@@ -857,6 +858,41 @@ export function useSlashDispatch({
 			 */
 			if (entry?.kind === "machine-panel") {
 				presentMachinePanel(spec, args, sessionId);
+				return "consumed";
+			}
+
+			/*
+			 * `/btw` — THE ASIDE PANEL, above the composer and never a dialog.
+			 *
+			 * ONE ENTER, WHICH IS THE WHOLE RULE THIS BRANCH EXISTS FOR. The question
+			 * used to be routed into a MODAL picker's form state and asked only when the
+			 * user pressed Enter a second time inside it — and that dialog was modal, so
+			 * the composer it sits over took no keystrokes at all while it was up. Here
+			 * the question is asked by the SAME press that typed it: the panel is opened
+			 * (the composer's band shows it above the box) and the ask leaves at once.
+			 *
+			 * The text leaves the composer in this press — a whole-draft command is a
+			 * `whole` clear (`applyPlan`) — so the question has to be somewhere the user
+			 * can read it the instant it goes. It is: `askAside` registers the turn in the
+			 * store the panel renders from BEFORE it posts, so the panel paints the
+			 * question and its thinking state in the same commit the box empties.
+			 * That is also why this branch does not AWAIT the ask: the answer can take
+			 * seconds, and returning the outcome would hold the composer's own clear until
+			 * the model finished — leaving a question in the box that is visibly being
+			 * answered above it. A refusal lands on the panel, which is the surface that
+			 * asked for it (the TUI's own rule for this card).
+			 *
+			 * A BARE `/btw` opens the panel EMPTY and asks nothing: there is no question
+			 * yet, and the next line typed into the composer becomes the aside's first
+			 * turn — the box's own `send` asks the same store where a draft goes, so no
+			 * second command is needed to say so.
+			 */
+			if (entry?.kind === "aside") {
+				if (args) {
+					void askAside(sessionId, args).catch(() => {});
+				} else {
+					openAsidePanel(sessionId);
+				}
 				return "consumed";
 			}
 

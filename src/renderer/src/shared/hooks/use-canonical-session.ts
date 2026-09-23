@@ -52,6 +52,7 @@ import {
 	desktopResult,
 	subscribeDesktopStream,
 } from "@shared/api/local-operator/desktop-api";
+import { useAsideStore } from "@shared/store/aside-store";
 import { dropPaint, readPaint, writePaint } from "@shared/store/paint-cache";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -73,6 +74,32 @@ import {
 } from "../../../../shared/desktop-stream-notice";
 /* The child-pulse rule (§ 5.3): the event set, the id rule and the bump. */
 import { applySubagentPulse, seedSubagentPulses } from "./subagent-pulse";
+
+/**
+ * Route the aside chunks in one frame batch to their own store.
+ *
+ * WHY THIS IS HERE RATHER THAN IN THE TRANSCRIPT REDUCER, and why it is not a
+ * branch of the loop below either. An `aside_delta` is a live-only chunk of an
+ * OFF-RECORD exchange (see the frame's own comment): it is deliberately not an
+ * `event`, precisely so it can never reach `applyEvent`/`applyLiveSeed` and be
+ * painted into the conversation the aside promised not to join. So it is taken
+ * out of the batch before the reducer sees it, keyed by `aside_id`, and landed in
+ * `aside-store` where the panel reads it.
+ *
+ * IT RUNS OUTSIDE THE React UPDATER below, which is load-bearing rather than
+ * tidy: an updater is required to be pure and React invokes it twice under
+ * StrictMode, so appending a chunk from inside it would double that chunk's text
+ * on screen — a defect that would look like the model stuttering, and one the
+ * authoritative settle would then hide at the end of the answer.
+ */
+function applyAsideDeltas(frames: DesktopSessionFrame[]): void {
+	for (const frame of frames) {
+		if (frame.type !== "aside_delta") continue;
+		useAsideStore
+			.getState()
+			.applyAsideDelta(frame.payload.aside_id, frame.payload.delta);
+	}
+}
 
 export type CanonicalSessionStatus =
 	| "connecting"
@@ -1157,6 +1184,12 @@ export function useCanonicalSessionStream(
 			const frames = pending.current;
 			pending.current = [];
 			if (frames.length === 0) return;
+			/*
+			 * The off-record chunks first, and outside the state update: see
+			 * `applyAsideDeltas` for why they can be neither a reducer branch nor a write
+			 * from inside the updater.
+			 */
+			applyAsideDeltas(frames);
 			// Decided here, from the frames, not inside the React updater: an
 			// updater runs lazily (and twice under StrictMode), so a side effect
 			// keyed off it would either never fire or fire on the discarded pass.

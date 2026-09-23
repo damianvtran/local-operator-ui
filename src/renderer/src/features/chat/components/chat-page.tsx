@@ -17,6 +17,7 @@ import { SEND_HELD, type SendOutcome } from "@shared/hooks/use-message-input";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
 import { useWarmSession } from "@shared/hooks/use-warm-session";
 import { cn } from "@shared/lib/utils";
+import { useAsideStore } from "@shared/store/aside-store";
 import {
 	SEND_UNCONFIRMED_MESSAGE,
 	SESSION_UNVALIDATED_CODE,
@@ -46,6 +47,7 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import { pairingHasRemedy } from "../../../../../shared/backend-status";
 import { DESKTOP_MESSAGE_BUDGET_BYTES } from "../../../../../shared/desktop-contract";
+import { askAside } from "../aside";
 import {
 	type AnswerOutcome,
 	type SendLock,
@@ -1133,6 +1135,52 @@ function SessionPanel({
 			if (refusal) {
 				setSendError(refusal);
 				return false;
+			}
+			/*
+			 * WHILE AN ASIDE IS ATTACHED THE COMPOSER ADDRESSES THE ASIDE.
+			 *
+			 * WHY HERE, BETWEEN THE REFUSALS ABOVE AND EVERYTHING BELOW. Above, because
+			 * the two refusals this path already owns are about the PAYLOAD rather than
+			 * about the surface it is addressed to — a message too large, or a file the
+			 * app could not read, is refused the same way whoever it was meant for, and
+			 * an aside path that skipped them would be the one route that does not (the
+			 * interface note: an aside is an off-record ANSWER, not an exemption).
+			 * Below, because every step after this point turns text into a TURN of the
+			 * conversation — the gate answer, the stream wait, `admitChatDraft` — and an
+			 * aside is precisely the exchange that must not become one.
+			 *
+			 * THE QUESTION IS PAINTED BEFORE IT IS SENT: `askAside` registers the turn in
+			 * the store the panel renders from before it posts, so the panel shows the
+			 * question and its thinking state in the same commit that clears the box.
+			 * A refusal answers `false`, which is what puts the text back in the box —
+			 * nothing was admitted — and the panel states the reason it was refused.
+			 */
+			const aside = sessionId
+				? useAsideStore.getState().attached[sessionId]
+				: undefined;
+			if (sessionId && aside) {
+				if (attachments.length > 0) {
+					/*
+					 * An aside carries TEXT ONLY on the wire (the op's body is `text` and the
+					 * exchange's own id), so a send with files would answer a question that
+					 * silently omitted them — the one outcome worse than a refusal, because it
+					 * looks like it worked. Stated through the composer's own error surface,
+					 * where the chips that have to be removed are. `false` keeps both halves
+					 * with the user.
+					 */
+					setSendError(
+						"An aside answers text only. Remove the attached files to ask it.",
+					);
+					return false;
+				}
+				try {
+					await askAside(sessionId, content);
+					return true;
+				} catch {
+					// The refusal is stated on the panel by `askAside`; the composer keeps the
+					// text so the user can edit and send it again.
+					return false;
+				}
 			}
 			/*
 			 * A SEND PRESSED BEFORE THE STREAM HAS ANSWERED WAITS FOR IT, and then
