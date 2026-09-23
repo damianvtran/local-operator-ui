@@ -55,7 +55,19 @@ const APP = process.argv[2] ?? "http://localhost:5199";
 const SESSION = process.argv[3];
 const OUT = process.argv[4] ?? "docs/evidence/transcript-scroll-paging";
 const MODE = process.argv[5] ?? "after";
-
+/*
+ * The SECOND conversation, for the `switch` arm only: the scrolled A->B->A
+ * switch needs a target to switch to. Kept out of argv so the documented three-
+ * positional recipe is unchanged; an env var names it the way the harnesses
+ * here already name their other out-of-band inputs.
+ */
+const SWITCH_TARGET = process.env.SCROLL_PAGING_SWITCH_TARGET ?? null;
+// Use the shipped ChatPage browser harness rather than Vite's generic index:
+// its session query seeds the route/store before first render, and its verified
+// document response keeps localStorage writes on a real same-origin page.
+const HARNESS_PAGE = new URL("/submit-latency-evidence.html", APP).href;
+const ENTRY = `${HARNESS_PAGE}?session=${encodeURIComponent(SESSION ?? "")}`;
+const BOOT = HARNESS_PAGE;
 if (!SESSION) {
 	console.error(
 		"usage: scroll-paging-evidence.mjs <app-origin> <session-id> <out> <mode>",
@@ -102,6 +114,7 @@ const chrome = spawn(
 		"--remote-debugging-port=0",
 		"about:blank",
 	]),
+	{ detached: true },
 );
 const browserWs = await new Promise((resolve, reject) => {
 	let buf = "";
@@ -120,7 +133,7 @@ const browserWs = await new Promise((resolve, reject) => {
 });
 const cleanup = () => {
 	try {
-		chrome.kill();
+		process.kill(-chrome.pid, "SIGKILL");
 	} catch {}
 	try {
 		rmSync(dataDir, { recursive: true, force: true });
@@ -137,14 +150,36 @@ if (!page) throw new Error("no page target in the private Chromium");
 void browserId;
 
 let nextId = 1;
+let bootHttpStatus = null;
+const bootUrl = new URL(BOOT);
 const pending = new Map();
 /** Every `sessions.history` op the renderer issued, in order. See clause B. */
 const historyRequests = [];
 /** Every desktop op, so a zero above can be told apart from a dead counter. */
 const desktopOps = [];
+const desktopRequestById = new Map();
+const desktopResponses = [];
 const ws = new WebSocket(page.webSocketDebuggerUrl);
 ws.onmessage = (event) => {
 	const msg = JSON.parse(event.data);
+	if (msg.method === "Network.responseReceived") {
+		const response = msg.params?.response;
+		if (response?.url?.includes("/__desktop")) {
+			const request = desktopRequestById.get(msg.params.requestId);
+			desktopResponses.push({
+				op: request?.op ?? null,
+				status: response.status,
+				url: response.url,
+			});
+		}
+		if (
+			msg.params?.type === "Document" &&
+			response?.url &&
+			new URL(response.url).origin === bootUrl.origin &&
+			new URL(response.url).pathname === bootUrl.pathname
+		)
+			bootHttpStatus = response.status;
+	}
 	if (msg.method === "Network.requestWillBeSent") {
 		/*
 		 * Count the op out of the POST BODY, not out of the URL.
@@ -171,6 +206,7 @@ ws.onmessage = (event) => {
 				op = "<unparsed>";
 			}
 			desktopOps.push({ op, at: Date.now() });
+			desktopRequestById.set(msg.params.requestId, { op, at: Date.now() });
 			if (op === "sessions.history")
 				historyRequests.push({ op, at: Date.now() });
 		}
@@ -356,12 +392,16 @@ const watchHeldRow = (id, ms) =>
   const samples = [];
   const extents = [];
   const times = [];
+  const frames = [];
   const until = performance.now() + ${ms};
   await new Promise((done) => {
     const tick = () => {
-      samples.push(read());
+      const t = performance.now();
+      const offset = read();
+      samples.push(offset);
       extents.push(el.scrollHeight);
-      times.push(performance.now());
+      times.push(t);
+      frames.push({ t, anchorOffset: offset, scrollTop: el.scrollTop, scrollHeight: el.scrollHeight, rows: el.querySelectorAll('[data-record-id]').length, inputEndedAt: window.__loPagingInputEndedAt ?? null });
       if (performance.now() < until) requestAnimationFrame(tick); else done();
     };
     requestAnimationFrame(tick);
@@ -402,6 +442,8 @@ const watchHeldRow = (id, ms) =>
     last: samples.at(-1) ?? null,
     netDrift: Number((((samples.at(-1) ?? 0) - (samples[0] ?? 0))).toFixed(2)),
     extentGrewBy: extents.at(-1) - extents[0],
+    inputEndedAt: stopAt,
+    frames,
   };
 })()`);
 
@@ -548,16 +590,6 @@ async function notchUntil(
 	const state = await probe();
 	return { notches: maxNotches, state, reached: false };
 }
-
-/**
- * The pinned-at-the-hard-top state the two freeze scenarios are about.
- *
- * Distance only, deliberately: adding "and nothing is loading" would make the
- * setup wait for the arm's own reveals and stop in a different place on each
- * arm, which is the defect this helper exists to remove. The reader is at the
- * wall the moment the wall says so, on both arms, whatever is in flight.
- */
-const atTheWall = (state) => state.ok && state.distanceFromTop <= HARD_TOP_PX;
 
 /**
  * Where a slow approach begins: close enough that the measured act reaches the
@@ -1219,7 +1251,17 @@ const ELECTRON_SHIM = `(() => {
  * it turns a recurrence into a loud failure instead of a plausible zero.
  */
 await send("Page.addScriptToEvaluateOnNewDocument", { source: ELECTRON_SHIM });
-await send("Page.navigate", { url: `${APP}/#/chat` });
+const bootNavigation = await send("Page.navigate", { url: BOOT });
+if (bootNavigation.errorText)
+	throw new Error(
+		`capture boot navigation failed: ${JSON.stringify({ boot: BOOT, ...bootNavigation })}`,
+	);
+for (let i = 0; i < 60 && bootHttpStatus === null; i++) await sleep(100);
+const bootStatus = bootHttpStatus;
+if (bootStatus !== 200)
+	throw new Error(
+		`capture boot did not return HTTP 200: ${JSON.stringify({ boot: BOOT, status: bootStatus })}`,
+	);
 // `about:blank` has an opaque origin with no localStorage, so the navigation
 // has to have COMMITTED before the onboarding state can be written. Poll the
 // document's own origin rather than guessing a sleep.
@@ -1236,12 +1278,34 @@ for (let i = 0; i < 60; i++) {
 	if (res.result?.value === true) break;
 }
 await sleep(3000);
+const bootFacts = JSON.parse(
+	await evaluate(
+		"JSON.stringify({href:location.href, origin:location.origin, protocol:location.protocol, title:document.title})",
+	),
+);
+if (
+	!bootFacts.origin.startsWith("http") ||
+	new URL(bootFacts.href).origin !== new URL(BOOT).origin ||
+	bootStatus !== 200
+)
+	throw new Error(
+		`capture boot did not commit to the requested HTTP origin with status 200: ${JSON.stringify({ bootStatus, bootFacts })}`,
+	);
 await evaluate(
 	// Both keys: the current one the store actually persists, and the legacy one
-	// so its migration path is exercised rather than bypassed.
-	`(() => { localStorage.setItem('onboarding-storage', JSON.stringify({state:{isComplete:true,isModalComplete:true,isTourComplete:true,currentStep:'complete'},version:0})); return true; })()`,
+	// so its migration path is exercised rather than bypassed. The third is the
+	// sidebar's "Previous chats" disclosure: it is collapsed until the reader
+	// opens it, and a collapsed section renders NO session rows at all - so the
+	// switch arm's click would have nothing to land on. Written here for every arm
+	// because it is inert for the others and a second write site is how one of
+	// them goes stale.
+	`(() => {
+		localStorage.setItem('onboarding-storage', JSON.stringify({state:{isComplete:true,isModalComplete:true,isTourComplete:true,currentStep:'complete'},version:0}));
+		localStorage.setItem('chat-sidebar-disclosures', JSON.stringify({ previous: true }));
+		return true;
+	})()`,
 );
-await send("Page.navigate", { url: `${APP}/#/chat/${SESSION}` });
+await send("Page.navigate", { url: ENTRY });
 await sleep(500);
 // A real document load, so the store re-hydrates from what was just written.
 await send("Page.reload", { ignoreCache: false });
@@ -1283,6 +1347,895 @@ if (!state.ok) {
 	throw new Error(`transcript not mounted: ${state.reason}`);
 }
 report.steps.push({ step: "opened", ...state, aim: await aim() });
+
+if (MODE === "review") {
+	/*
+	 * Two arms in one run, and the SECOND is the control that makes the first
+	 * mean anything.
+	 *
+	 * The finding (QA Q1) asks whether later reader input invalidates an active
+	 * anchor hold without a stale `scrollTop` write during real layout growth.
+	 * "Zero programmatic writes" answers that ONLY if a write is something the
+	 * apparatus could have seen - a hook that never corrects at all scores the
+	 * same zero. So this mode runs the SAME procedure twice against the same real
+	 * backend, differing only in whether a real wheel input lands during the hold:
+	 *
+	 *   arm "later-input": arm the hold, deliver a real wheel input, release the
+	 *                      held page, let it grow - expect NO stale correction.
+	 *   arm "layout-only": arm the hold, DO NOT touch the input, release the held
+	 *                      page, let it grow - expect the correction to fire.
+	 *
+	 * The second arm is the control: if it too recorded zero writes, the
+	 * instrument would be dead and the first arm's zero would prove nothing. It
+	 * is also the "layout-only growth retains correction" half the contract
+	 * promises, so it is a claim in its own right rather than only a control.
+	 */
+	/**
+	 * Arm the hold on a real durable page and keep the response HELD at the
+	 * browser boundary, so the reader's later input can be ordered before the
+	 * page lands. No request or response is faked: the wrapper waits before the
+	 * normal same-origin proxy, and the real backend still supplies the page.
+	 */
+	async function openHoldCode() {
+		return `(() => {
+			const originalFetch = window.fetch.bind(window);
+			window.__loPagingHistoryWait = null;
+			window.__loPagingReleaseHistory = null;
+			window.fetch = async (input, init) => {
+				const url = typeof input === 'string' ? input : input?.url ?? '';
+				let op = null;
+				try { op = JSON.parse(init?.body ?? '{}').op ?? null; } catch {}
+				if (!window.__loPagingHistoryWait && url.includes('/__desktop') && op === 'sessions.history') {
+					window.__loPagingHistoryWait = { op, at: performance.now() };
+					await new Promise(resolve => { window.__loPagingReleaseHistory = resolve; });
+				}
+				return originalFetch(input, init);
+			};
+			return true;
+		})()`;
+	}
+	/**
+	 * Install ONLY the `scrollTop` setter probe. Liveness is proven by an explicit
+	 * scoped write the caller makes through it, so the instrument does not depend
+	 * on the hook writing - measured on this scroller, the hook does NOT write on
+	 * the durable-page path at all, because the browser's own `overflow-anchor`
+	 * (`column-reverse`, bottom origin) anchors the held row in place and the
+	 * hook's `anchorDrift` computes zero drift.
+	 */
+	const installWriteProbe = `(() => {
+		const el = document.querySelector('[data-lo-canonical-transcript]');
+		if (!el) throw new Error('no transcript to instrument');
+		let proto = el;
+		let descriptor;
+		while (proto && !descriptor) {
+			descriptor = Object.getOwnPropertyDescriptor(proto, 'scrollTop');
+			proto = Object.getPrototypeOf(proto);
+		}
+		if (!descriptor?.get || !descriptor?.set) throw new Error('scrollTop accessor unavailable');
+		window.__loPagingScrollTopWrites = [];
+		Object.defineProperty(el, 'scrollTop', {
+			configurable: true,
+			get() { return descriptor.get.call(this); },
+			set(value) {
+				window.__loPagingScrollTopWrites.push({ at: performance.now(), from: descriptor.get.call(this), to: value });
+				descriptor.set.call(this, value);
+			},
+		});
+		return true;
+	})()`;
+	/**
+	 * Install the per-frame sampler of one identified row, after the anchor is
+	 * known. Distinct from the write probe so the sampler's own row id can be the
+	 * held row rather than whatever was topmost when the probe went in.
+	 */
+	const installFrameSampler = (heldId) => `(() => {
+			const el = document.querySelector('[data-lo-canonical-transcript]');
+			window.__loPagingInputAt = null;
+			const heldId = ${JSON.stringify(heldId)};
+			const sample = () => {
+				const row = el.querySelector('[data-record-id="' + CSS.escape(heldId) + '"]');
+				return row ? { at: performance.now(), id: heldId, offset: Number((row.getBoundingClientRect().top - el.getBoundingClientRect().top).toFixed(2)), extent: el.scrollHeight, scrollTop: el.scrollTop, rows: el.querySelectorAll('[data-record-id]').length } : null;
+			};
+			window.__loPagingReviewFrames = [];
+			const tick = () => {
+				const frame = sample();
+				if (frame) window.__loPagingReviewFrames.push(frame);
+				requestAnimationFrame(tick);
+			};
+			requestAnimationFrame(tick);
+			return { installed: true, id: heldId, start: sample() };
+		})()`;
+
+	const readLoadButton = () =>
+		evaluate(`(() => {
+			const transcript = document.querySelector('[data-lo-canonical-transcript]');
+			return [...transcript.querySelectorAll('button')].find(button =>
+				/Load earlier messages/i.test(button.textContent ?? ''),
+			)?.textContent?.trim() ?? null;
+		})()`);
+
+	/*
+	 * One arm, run from a FRESH document.
+	 *
+	 * Every arm reloads first because a document is the unit a reveal spends: a
+	 * previous arm leaves a durable page fetched and mounted, and an arm begun
+	 * from that state would be measuring a transcript the reader never arrives
+	 * at. The reload also re-installs the instrument cleanly - the setter probe
+	 * and the frame recorder are page state, and a reload is the one reset that
+	 * cannot half-happen.
+	 *
+	 * The setup cadence is probe-driven, NOT a fling, and the reason is measured.
+	 * A single 60-notch fling at -400 walked the whole three-page fixture to
+	 * `exhausted` in one act (rows 260, "Start of conversation"), spending the
+	 * pages the click must be able to request. One -200 notch every 220ms never
+	 * armed a widen at all: each notch settled (SETTLE_MS 120) alone and the
+	 * reader never crossed into the prefetch zone. A six-notch burst at a 30ms
+	 * frame cadence with a 900ms settle between bursts is what a state probe
+	 * measured landing on the "Load earlier messages" affordance with rows 100
+	 * and hiddenRows 0 - the widened window, no durable page spent yet.
+	 */
+	async function runHoldArm({ laterInput, shotPrefix }) {
+		await send("Page.reload", { ignoreCache: false });
+		report.mount = await awaitTranscriptMount();
+		await sleep(2500);
+
+		const pageStats = JSON.parse(
+			await evaluate(`JSON.stringify({
+				origin: location.origin,
+				href: location.href,
+				rows: [...document.querySelectorAll('[data-lo-canonical-transcript] [data-record-id]')].length,
+				firstRow: document.querySelector('[data-lo-canonical-transcript] [data-record-id]')?.textContent?.trim().slice(0, 40) ?? null,
+			})`),
+		);
+		await shot(`${shotPrefix}-00-opened`);
+
+		await evaluate(await openHoldCode());
+		// The write probe goes in BEFORE the widening. Liveness is proven by an
+		// explicit scoped write of our own (below), NOT by hoping the hook writes:
+		// measured on this scroller, a local widen is absorbed by the browser's own
+		// `overflow-anchor` and the hook's `anchorDrift` computes zero, so the hook
+		// does not write at all on this path. An instrument whose liveness depends
+		// on the thing under test firing is not an instrument.
+		await evaluate(installWriteProbe);
+		const probeLiveness = await evaluate(`(() => {
+			const el = document.querySelector('[data-lo-canonical-transcript]');
+			const before = window.__loPagingScrollTopWrites.length;
+			const original = el.scrollTop;
+			el.scrollTop = original + 1;
+			el.scrollTop = original;
+			const after = window.__loPagingScrollTopWrites.length;
+			window.__loPagingScrollTopWrites = [];
+			return { recorded: after - before, sawsTwo: after - before === 2 };
+		})()`);
+		if (!probeLiveness?.sawsTwo) {
+			throw new Error(
+				`the scrollTop setter probe did not record a scoped write of our own, so it cannot see a correction: ${JSON.stringify(probeLiveness)}`,
+			);
+		}
+
+		let buttonText = await readLoadButton();
+		let stateBeforePage = await probe();
+		for (let burst = 0; burst < 12 && !buttonText; burst++) {
+			for (let i = 0; i < 6; i++) {
+				await wheel(-180);
+				await sleep(30);
+			}
+			await sleep(900);
+			buttonText = await readLoadButton();
+			stateBeforePage = await probe();
+		}
+		if (!buttonText) {
+			throw new Error(
+				`review setup did not expose the durable load button: ${JSON.stringify(stateBeforePage)}`,
+			);
+		}
+
+		const anchorBefore = await probe();
+		if (!anchorBefore.anchor)
+			throw new Error("review capture has no visible anchor");
+		const rowsBefore = anchorBefore.rows;
+		const extentBefore = anchorBefore.scrollHeight;
+		// Reset the write list for the measured stretch: everything from the click
+		// onward is what the later-input claim is about.
+		await evaluate(
+			"(() => { window.__loPagingScrollTopWrites = []; return true; })()",
+		);
+		await evaluate(installFrameSampler(anchorBefore.anchor.id));
+
+		// Click the real affordance. The held fetch blocks inside the wrapper, so
+		// control returns here with the request in flight and the anchor armed.
+		const requestBefore = historyRequests.length;
+		await evaluate(`(() => {
+			const transcript = document.querySelector('[data-lo-canonical-transcript]');
+			const button = [...transcript.querySelectorAll('button')].find(node => /Load earlier messages/i.test(node.textContent ?? ''));
+			if (!button) throw new Error('load-earlier button disappeared before click');
+			button.click();
+			return true;
+		})()`);
+		for (let i = 0; i < 120; i++) {
+			const held = await evaluate("Boolean(window.__loPagingHistoryWait)");
+			if (held) break;
+			await sleep(50);
+		}
+		const heldRequest = JSON.parse(
+			(await evaluate("JSON.stringify(window.__loPagingHistoryWait)")) ??
+				"null",
+		);
+		if (!heldRequest)
+			throw new Error(
+				"the real Load earlier action did not request sessions.history",
+			);
+		const heldAnchor = await probe();
+		await shot(`${shotPrefix}-01-hold-armed`);
+
+		if (laterInput) {
+			await wheel(180);
+			await evaluate(
+				"(() => { window.__loPagingInputAt = performance.now(); return true; })()",
+			);
+			await sleep(160);
+			await shot(`${shotPrefix}-02-after-reader-input-before-growth`);
+		} else {
+			// The control arm: a short settle so the two arms differ only in the
+			// input, not in how long the hold was allowed to stand before release.
+			await sleep(160);
+			await shot(`${shotPrefix}-02-hold-still-before-growth`);
+		}
+		await evaluate("window.__loPagingReleaseHistory?.() ?? true");
+
+		let after = await probe();
+		for (let i = 0; i < 240 && after.rows <= rowsBefore; i++) {
+			await sleep(50);
+			after = await probe();
+		}
+		// Let any correction the hook owes land before reading the write list.
+		await sleep(700);
+		after = await probe();
+		await shot(`${shotPrefix}-03-after-real-page-landing`);
+
+		const trace = JSON.parse(
+			await evaluate(`JSON.stringify({
+				frames: window.__loPagingReviewFrames,
+				inputAt: window.__loPagingInputAt,
+				writes: window.__loPagingScrollTopWrites,
+			})`),
+		);
+		const heldId = anchorBefore.anchor.id;
+		const sameRowFrames = trace.frames.filter((frame) => frame.id === heldId);
+		/*
+		 * The frames that answer the finding are the ones AFTER the input stamp,
+		 * when the app acts alone. With no terminal input stamp (the control arm)
+		 * the whole window counts: nothing moved the reader, so every frame is the
+		 * app acting.
+		 */
+		const afterInputFrames =
+			trace.inputAt === null
+				? sameRowFrames
+				: sameRowFrames.filter((frame) => frame.at >= trace.inputAt);
+		const frameDelta = afterInputFrames
+			.slice(1)
+			.map((frame, index) =>
+				Math.abs(frame.offset - afterInputFrames[index].offset),
+			);
+		/*
+		 * The correction the contract promises for layout-only growth: the hook's
+		 * own write to `scrollTop`. It is read from the setter probe, not inferred,
+		 * and it is what distinguishes the two arms.
+		 */
+		return {
+			step: laterInput
+				? "later-reader-input-then-real-page-growth"
+				: "layout-only-growth-no-reader-input",
+			laterInput,
+			page: pageStats,
+			entry: ENTRY,
+			bootStatus,
+			origin: new URL(ENTRY).origin,
+			buttonText,
+			probeLiveness,
+			anchorId: heldId,
+			rowsBefore,
+			rowsAfter: after.rows,
+			extentBefore,
+			extentAfter: after.scrollHeight,
+			growthPx: after.scrollHeight - extentBefore,
+			requests: historyRequests.slice(requestBefore),
+			historyRequestsTotal: historyRequests.length,
+			desktopResponses: desktopResponses.slice(),
+			anchorBefore: anchorBefore.anchor,
+			anchorAtHold: heldAnchor.anchor,
+			anchorAfter: await evaluate(`(() => {
+				const el = document.querySelector('[data-lo-canonical-transcript]');
+				const row = el.querySelector('[data-record-id="' + CSS.escape(${JSON.stringify(heldId)}) + '"]');
+				return row ? { id: row.dataset.recordId, offset: Number((row.getBoundingClientRect().top - el.getBoundingClientRect().top).toFixed(2)) } : null;
+			})()`),
+			inputAt: trace.inputAt,
+			consecutiveFrames: sameRowFrames.length,
+			postInputFrames: afterInputFrames.length,
+			maximumPostInputFrameDeltaPx: Math.max(0, ...frameDelta),
+			programmaticScrollTopWrites: trace.writes,
+			frameTimeline: trace.frames,
+		};
+	}
+
+	const laterInputArm = await runHoldArm({
+		laterInput: true,
+		shotPrefix: "review-later-input",
+	});
+	const layoutOnlyArm = await runHoldArm({
+		laterInput: false,
+		shotPrefix: "review-layout-only",
+	});
+	report.review = {
+		captureUrl: ENTRY,
+		laterInputArm,
+		layoutOnlyArm,
+	};
+
+	const assertArm = (arm) => {
+		if (arm.bootStatus !== 200 || arm.origin !== new URL(APP).origin) {
+			throw new Error(
+				`review capture did not stay on the requested HTTP origin: ${JSON.stringify({ status: arm.bootStatus, origin: arm.origin, requested: new URL(APP).origin })}`,
+			);
+		}
+		if (arm.rowsAfter <= arm.rowsBefore || arm.growthPx <= 0) {
+			throw new Error(`the real page did not land: ${JSON.stringify(arm)}`);
+		}
+		if (
+			!arm.desktopResponses.some(
+				(response) =>
+					response.op === "sessions.history" && response.status === 200,
+			)
+		) {
+			throw new Error(
+				`no successful real sessions.history response was observed: ${JSON.stringify(arm.desktopResponses)}`,
+			);
+		}
+	};
+	assertArm(laterInputArm);
+	assertArm(layoutOnlyArm);
+
+	/*
+	 * What makes this a measurement rather than a hope, and what it does NOT
+	 * claim.
+	 *
+	 * 1. THE INSTRUMENT IS LIVE: the setter probe recorded a scoped write of our
+	 *    own (`probeLiveness.sawsTwo`), asserted per arm, so "zero writes" below is
+	 *    a reading from a working probe and not a dead one.
+	 * 2. THE LATER-INPUT STALE WRITE IS ABSENT: an element-scoped setter write to
+	 *    `scrollTop` after the reader's own input would be the stale correction this
+	 *    change removes, and there must be none.
+	 *
+	 * WHAT IS NOT CLAIMED, and this is the measurement's honest limit: on this
+	 * scroller a durable page's rows are mounted BELOW the held row and the
+	 * browser's own `overflow-anchor` does the anchoring-in-place, so the hook's
+	 * `anchorDrift` computes zero and it does not write on this path AT ALL - which
+	 * is why the setup shows no writes either. A write probe therefore cannot, by
+	 * itself, separate "the hook stood down" from "the browser never needed it".
+	 * The per-frame held-row offset was recorded across the landing on both arms to
+	 * answer THAT half, and the measurement refused it (review round 4, R4-1): both
+	 * arms read the same 0.00 px, because `overflow-anchor` absorbs the landing on
+	 * both, so the offset does NOT separate them either. NO browser-arm signal
+	 * separates these two arms on this surface; the separation is only reachable
+	 * where the hook actually corrects, which is what the HOOK test drives.
+	 */
+	if (laterInputArm.programmaticScrollTopWrites.length !== 0) {
+		throw new Error(
+			`the later-input arm recorded a stale scrollTop write after the reader's input: ${JSON.stringify({ writes: laterInputArm.programmaticScrollTopWrites })}`,
+		);
+	}
+
+	const landingDelta = (arm) => {
+		const frames = arm.frameTimeline.filter(
+			(frame) => frame.id === arm.anchorId,
+		);
+		const after =
+			arm.inputAt === null
+				? frames
+				: frames.filter((frame) => frame.at >= arm.inputAt);
+		return {
+			maxFrameDeltaPx: Math.max(
+				0,
+				...after
+					.slice(1)
+					.map((frame, index) => Math.abs(frame.offset - after[index].offset)),
+			),
+			settledOffset: after.at(-1)?.offset ?? null,
+		};
+	};
+	report.review.summary = {
+		laterInputArm: {
+			probeLiveness: laterInputArm.probeLiveness,
+			programmaticWritesDuringHold:
+				laterInputArm.programmaticScrollTopWrites.length,
+			...landingDelta(laterInputArm),
+		},
+		layoutOnlyArm: {
+			probeLiveness: layoutOnlyArm.probeLiveness,
+			programmaticWritesDuringHold:
+				layoutOnlyArm.programmaticScrollTopWrites.length,
+			...landingDelta(layoutOnlyArm),
+		},
+		/*
+		 * What separates the two arms, stated in the artefact rather than left for a
+		 * reader to infer from two identical zeros (QA round 2, Q-4; corrected in
+		 * review round 4, R4-1).
+		 *
+		 * On THIS scroller the durable page mounts below the held row and the
+		 * browser's own `overflow-anchor` (column-reverse, bottom origin) pins the row
+		 * in place, so the hook's `anchorDrift` computes zero on both arms and NEITHER
+		 * writes `scrollTop`. Both arms therefore record the same 0 write count AND the
+		 * same 0.00 px post-input held-row delta, so NO browser-arm signal separates them
+		 * here: `browserArmsSeparateOn` is null for exactly that reason. An earlier
+		 * revision of this block named the per-frame held-row offset as the separating
+		 * signal, which the measurements do not support - the two arms read the same
+		 * zero - so it is not claimed. A control that records the same zero as the
+		 * treatment is not a control on this surface; making it discriminate would need a
+		 * row shape where `overflow-anchor` does not absorb the landing (a height-changing
+		 * row ABOVE the anchor), which is a new capture, not a re-read.
+		 *
+		 * The discriminating proof of the correction path is the HOOK test, which
+		 * drives the production `useScrollPaging` against a JSDOM scroller whose
+		 * geometry is controlled: it asserts the layout-only growth IS corrected and
+		 * the after-input commit is NOT. That test is named here so a reader does not
+		 * read the browser arms' shared zero as evidence the arms agree.
+		 */
+		discrimination: {
+			surface: "the durable-page landing absorbs itself via overflow-anchor",
+			browserArmsSeparateOn: null,
+			browserArmsDoNotSeparateReason:
+				"both arms record 0 programmatic scrollTop writes and the same 0.00 px post-input held-row delta",
+			programmaticWriteCountSeparatesArms: false,
+			discriminatingProof: "scripts/transcript-paging-hook.test.mjs",
+		},
+	};
+
+	writeFileSync(
+		join(OUT, "review-measurements.json"),
+		`${JSON.stringify(report, null, 2)}\n`,
+	);
+	console.log(JSON.stringify(report, null, 2));
+	ws.close();
+	cleanup();
+	process.exit(0);
+}
+
+// Scroll to the top of what is rendered: a long run of notches, paced so the
+// implementation sees a continuous gesture rather than one burst.
+if (MODE === "switch") {
+	/*
+	 * The scrolled-conversation-switch arm (QA Q2, UX round 1).
+	 *
+	 * The claim a reader can falsify from the screen is narrow and testable: when
+	 * the reader is SCROLLED INTO history in conversation A and clicks conversation
+	 * B, the transcript must show B - not carry A's offset, and not paint a frame
+	 * of A's rows under B's identity. So this arm drives the real sidebar rows the
+	 * shipped `ChatPage` renders (data-session-row), samples the scroller and the
+	 * store's own activeSessionId every animation frame across each switch, and
+	 * photographs the settled state of each.
+	 *
+	 * It is a SEPARATE run from `review`, not because the switch cannot be driven
+	 * in one - it can, in this same page - but because the two measure different
+	 * things and a run that failed the paging hold must not also lose the switch
+	 * frames. `switch` needs two seeded conversations; the target is named by
+	 * SCROLL_PAGING_SWITCH_TARGET.
+	 */
+	if (!SWITCH_TARGET) {
+		throw new Error(
+			"the switch arm needs a second conversation: set SCROLL_PAGING_SWITCH_TARGET",
+		);
+	}
+	const pageStats = await evaluate(`JSON.stringify({
+		origin: location.origin,
+		href: location.href,
+		rows: [...document.querySelectorAll('[data-lo-canonical-transcript] [data-record-id]')].length,
+	})`);
+	report.switch = { page: JSON.parse(pageStats), entry: ENTRY };
+
+	/*
+	 * The store's own idea of which conversation is active, read from its persisted
+	 * state rather than inferred from the DOM. This is the independent half of the
+	 * claim: the rows on screen are what the reader sees, and `activeSessionId` is
+	 * what the app believes it is showing. A switch that moves only one of them is
+	 * the defect, so both are sampled.
+	 */
+	const readActive = `(() => { try { return JSON.parse(localStorage.getItem('canonical-sessions-storage') || '{}').state?.activeSessionId ?? null; } catch { return null; } })()`;
+	const sampleScroller = `(() => {
+		const el = document.querySelector('[data-lo-canonical-transcript]');
+		if (!el) return null;
+		const first = el.querySelector('[data-record-id]');
+		return {
+			rows: el.querySelectorAll('[data-record-id]').length,
+			scrollTop: Math.round(el.scrollTop),
+			scrollHeight: el.scrollHeight,
+			clientHeight: el.clientHeight,
+			firstRowId: first?.dataset.recordId ?? null,
+			firstRowText: first?.textContent?.trim().slice(0, 24) ?? null,
+		};
+	})()`;
+	const snapshot = async () => ({
+		activeSessionId: await evaluate(readActive),
+		...(await evaluate(sampleScroller)),
+	});
+
+	const sidebarIds = await evaluate(
+		`JSON.stringify([...document.querySelectorAll('[data-session-row]')].map(r => r.getAttribute('data-session-row')))`,
+	);
+	report.switch.start = await snapshot();
+	/*
+	 * Each conversation's OWN visible label, read from its sidebar row (design
+	 * round 2, D2). The set is captured from the frames alone, so a reader has to
+	 * be able to tell the two conversations apart without the JSON: the seeder is
+	 * given a distinct title per conversation (see `seed-paging-session.mjs`) and
+	 * these strings are what the row paints, quoted here so a caption can name the
+	 * session a frame shows rather than leaving it to the row numbers.
+	 */
+	report.switch.labels = JSON.parse(
+		await evaluate(`JSON.stringify({
+			a: document.querySelector('[data-session-row="${SESSION}"]')?.innerText?.trim() ?? null,
+			b: document.querySelector('[data-session-row="${SWITCH_TARGET}"]')?.innerText?.trim() ?? null,
+		})`),
+	);
+	/*
+	 * The frames have to be self-identifying (D2), and they are the set's only
+	 * claim about the switch. Two conversations seeded under the same title paint
+	 * identical chrome, so this asserts the seeding actually differs before any
+	 * frame is taken - a run that would produce indistinguishable stills fails
+	 * here rather than shipping them.
+	 */
+	if (
+		!report.switch.labels.a ||
+		!report.switch.labels.b ||
+		report.switch.labels.a === report.switch.labels.b
+	) {
+		throw new Error(
+			`the two conversations do not carry distinct visible labels, so a reader of the frames alone could not tell which session is shown (seed each with its own title - see scripts/seed-paging-session.mjs): ${JSON.stringify(report.switch.labels)}`,
+		);
+	}
+	if (!sidebarIds.includes(SWITCH_TARGET)) {
+		throw new Error(
+			`the switch target is not in the sidebar: ${JSON.stringify({ sidebar: JSON.parse(sidebarIds), target: SWITCH_TARGET })}`,
+		);
+	}
+
+	// Scroll deep into A's history first, so the switch is measured from a
+	// scrolled state rather than from the arrival state the bug is invisible in.
+	for (let burst = 0; burst < 6; burst++) {
+		for (let i = 0; i < 6; i++) {
+			await wheel(-180);
+			await sleep(30);
+		}
+		await sleep(800);
+	}
+	const scrolledA = await snapshot();
+	report.switch.scrolledA = scrolledA;
+	await shot("switch-01-scrolled-in-a");
+
+	const clickRow = (id) =>
+		evaluate(`(() => {
+			const row = document.querySelector('[data-session-row="${id}"]');
+			if (!row) return 'no-row';
+			const button = row.querySelector('button') ?? row;
+			button.click();
+			return 'clicked';
+		})()`);
+
+	/*
+	 * The conversations' KNOWN row sets, read from the backend that owns them
+	 * (UX round 2, U2).
+	 *
+	 * The round-2 classifier derived `idsA` from the `firstRowId`s of the frames it
+	 * had ALREADY labelled A, then used that set to judge B-labelled frames - so
+	 * the exact hazard (B's identity painted over A's SCROLLED rows) could never
+	 * appear in `idsA` and scored clean by construction. The set a frame is judged
+	 * against must come from the conversation, not from the frames under test.
+	 *
+	 * So each session's whole durable row set is read from `sessions.history` over
+	 * the page's own same-origin transport, paged to the end. Those ids are what
+	 * the conversation CONTAINS; a frame is then classified by which set its
+	 * first painted row belongs to. `classifier` in the JSON reports the two set
+	 * sizes and the scrolled top row id with its membership in A's set; the full id
+	 * sets are not published, so a reader can check those facts and the per-frame
+	 * timeline, but cannot re-derive the classification from the artifact alone.
+	 * Disjointness is not a reported FIXTURE fact but a run-time GATE: the run
+	 * refuses to capture unless the two sets are disjoint (a frame's first row could
+	 * otherwise identify nothing). The README states exactly that much rather than
+	 * calling the reading auditable.
+	 */
+	async function knownRowIds(sessionId) {
+		return JSON.parse(
+			await evaluate(`(async () => {
+				const ids = [];
+				let beforeId = null;
+				for (let page = 0; page < 12; page++) {
+					const res = await fetch('/__desktop', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ op: 'sessions.history', sessionId: ${JSON.stringify(sessionId)}, limit: 500, ...(beforeId ? { beforeId } : {}) }),
+					});
+					const body = await res.json();
+					// The desktop transport wraps the page twice - the page itself sits
+					// under body.result, the shape requestDesktop returns.
+					const page = body?.body?.result ?? {};
+					const entries = page.entries ?? [];
+					for (const e of entries) if (e?.id) ids.push(e.id);
+					if (!page.has_more || entries.length === 0) break;
+					beforeId = entries[entries.length - 1].id;
+				}
+				return JSON.stringify(ids);
+			})()`),
+		);
+	}
+	const idsA = new Set(await knownRowIds(SESSION));
+	const idsB = new Set(await knownRowIds(SWITCH_TARGET));
+	if (idsA.size === 0 || idsB.size === 0) {
+		throw new Error(
+			`a seeded conversation returned no durable rows, so the stale-content classifier would have nothing to judge against: ${JSON.stringify({ session: SESSION, rowsA: idsA.size, target: SWITCH_TARGET, rowsB: idsB.size })}`,
+		);
+	}
+	const overlap = [...idsA].filter((id) => idsB.has(id));
+	if (overlap.length > 0) {
+		throw new Error(
+			`the two conversations' row sets are not disjoint, so a frame's first row cannot identify it: ${JSON.stringify({ overlap: overlap.slice(0, 4) })}`,
+		);
+	}
+	/*
+	 * The DISCRIMINATING PROPERTY, asserted rather than published (UX round 3,
+	 * U5). The reading is only worth anything if the scrolled A top row whose
+	 * identity could be painted over B's rows is a row A actually owns: that is
+	 * what lets a B-labelled frame over it classify as stale at all (UX round 2,
+	 * U2). `scrolledTopRowIsInA` was reported but never gated, so a re-capture
+	 * where the deep scroll landed on a row outside A's durable set would keep
+	 * its zero and silently lose the property the reading rests on. Refuse here,
+	 * before any switch is performed, so the failure is the run's and not a
+	 * reader's to notice.
+	 */
+	if (!scrolledA.firstRowId || !idsA.has(scrolledA.firstRowId)) {
+		throw new Error(
+			`the scrolled A top row is not in A's known row set, so the classifier could not tell a B-labelled frame over A's scrolled rows from A's own: ${JSON.stringify({ scrolledTopRowId: scrolledA.firstRowId, scrolledRows: scrolledA.rows, rowsA: idsA.size })}`,
+		);
+	}
+
+	/*
+	 * The per-frame recorder. A flash of stale content is a frame that IS a
+	 * picture of the wrong conversation, and only consecutive frames can see it -
+	 * a before/after probe pair reports the same settled state whether a wrong
+	 * frame painted or not.
+	 *
+	 * CONTINUOUS, not rAF-only (UX round 2, U1). The round-2 timeline had two
+	 * multi-frame gaps (~60ms and ~73ms) that landed exactly on the content
+	 * transitions, so a one- or two-frame stale flash would fall inside a gap and
+	 * the count would still read 0.
+	 *
+	 * The sampler is driven by THREE sources, and the third is the one that closes
+	 * the hole:
+	 *
+	 * - `requestAnimationFrame`, aligned to vsync;
+	 * - a 4ms `setInterval`, which fires in the idle gaps between frames;
+	 * - a `MutationObserver` over the whole document (childList, subtree,
+	 *   attributes, characterData).
+	 *
+	 * The observer is what makes the series COMPLETE for the hazard under test. A
+	 * stale frame (B's identity over A's rows) is a change to the painted DOM, and
+	 * a change to the painted DOM is a mutation - so a sample is recorded AT the
+	 * mutation, before the next paint. No DOM state can exist between two samples
+	 * without one of them being a sample of it, which is the property rAF and the
+	 * interval alone could not promise on a busy main thread (the round-2 gaps
+	 * were exactly the main thread not running them). The interval and rAF stay
+	 * because they also sample STABLE states, which the settle comparison wants.
+	 */
+	await evaluate(`(() => {
+		window.__loSwitchFrames = [];
+		let last = 0;
+		const record = (source) => {
+			const now = performance.now();
+			// A sub-frame source can fire more than once in a microtask turn; a
+			// duplicate stamp is one sample, not a gap, so it is dropped rather than
+			// recorded.
+			if (now - last < 0.5) return;
+			last = now;
+			const el = document.querySelector('[data-lo-canonical-transcript]');
+			let active = null;
+			try { active = JSON.parse(localStorage.getItem('canonical-sessions-storage') || '{}').state?.activeSessionId ?? null; } catch {}
+			const first = el?.querySelector('[data-record-id]');
+			window.__loSwitchFrames.push({
+				at: now,
+				source,
+				activeSessionId: active,
+				rows: el ? el.querySelectorAll('[data-record-id]').length : 0,
+				scrollTop: el ? Math.round(el.scrollTop) : null,
+				firstRowId: first?.dataset.recordId ?? null,
+			});
+		};
+		window.__loSwitchMutations = 0;
+		const tick = () => { record('raf'); requestAnimationFrame(tick); };
+		window.__loSwitchInterval = setInterval(() => record('interval'), 4);
+		window.__loSwitchObserver = new MutationObserver(() => { window.__loSwitchMutations++; record('observer'); });
+		window.__loSwitchObserver.observe(document.documentElement, { childList: true, subtree: true, attributes: true, characterData: true });
+		requestAnimationFrame(tick);
+		return true;
+	})()`);
+
+	const toB = await clickRow(SWITCH_TARGET);
+	if (toB !== "clicked") throw new Error(`switching to B failed: ${toB}`);
+	await sleep(1500);
+	const settledB = await snapshot();
+	report.switch.settledB = settledB;
+	await shot("switch-02-settled-in-b");
+
+	const toA = await clickRow(SESSION);
+	if (toA !== "clicked") throw new Error(`switching back to A failed: ${toA}`);
+	await sleep(1500);
+	const settledA = await snapshot();
+	report.switch.settledA = settledA;
+	await shot("switch-03-back-in-a");
+
+	// Stop the interval and the observer now the run is over, so a leaked timer or
+	// observer cannot keep running after the JSON is read.
+	await evaluate(
+		"(() => { clearInterval(window.__loSwitchInterval); window.__loSwitchObserver?.disconnect(); return true; })()",
+	);
+
+	const frames = JSON.parse(
+		(await evaluate("JSON.stringify(window.__loSwitchFrames)")) ?? "[]",
+	);
+
+	/*
+	 * Classify each frame by WHOSE rows it is painting, against the two
+	 * conversations' KNOWN row sets (U2) rather than against the frames
+	 * themselves. A frame is STALE when the identity it carries and the rows it
+	 * paints DISAGREE in EITHER direction:
+	 *
+	 *   - active B over A's rows (the round-2 direction), and
+	 *   - active A over B's rows (the mirror). The round-3 sampler was checked for
+	 *     the mirror because the symmetric test is the one that closes the round-2
+	 *     asymmetry, NOT because a run observed it: the committed capture reports
+	 *     0 stale and its return-switch frame carries A's identity over A's rows,
+	 *     and an intermediate claim that it had been seen once was not
+	 *     reproducible, so it is not asserted anywhere.
+	 *
+	 * Both are "stale content", and checking only one direction is the asymmetry
+	 * that let the second one through.
+	 */
+	const classify = (frame) => {
+		if (frame.firstRowId === null) return "empty";
+		if (idsA.has(frame.firstRowId)) return "A";
+		if (idsB.has(frame.firstRowId)) return "B";
+		return "unknown";
+	};
+	const identityOf = (frame) =>
+		frame.activeSessionId === SESSION
+			? "A"
+			: frame.activeSessionId === SWITCH_TARGET
+				? "B"
+				: "other";
+	const staleFrames = frames.filter((f) => {
+		const painted = classify(f);
+		const identity = identityOf(f);
+		// Only A and B rows can contradict an identity; empty and unknown cannot.
+		return (
+			(painted === "A" || painted === "B") &&
+			(identity === "A" || identity === "B") &&
+			painted !== identity
+		);
+	});
+
+	/*
+	 * The gap analysis (U1). Each consecutive pair is one step. The ROUND-2 answer
+	 * to U1 was to demand a wall-clock gap bound, but on this host the main thread
+	 * stalls for tens of ms at exactly the transitions, so a time bound is a
+	 * measurement of the machine, not of the sampler's coverage. The round-3 fix is
+	 * structural: the `MutationObserver` records a sample AT every DOM change, so a
+	 * frame of stale content - which IS a DOM change - cannot exist between two
+	 * samples. What this section therefore reports is (a) how many mutations the
+	 * observer saw, proving the recorder was driven by the DOM and not only by the
+	 * clock, and (b) the wall-clock gaps, recorded rather than asserted, so a
+	 * reader can see where the main thread stalled AND that the observer covered
+	 * it. Both facts are in the JSON beside the frames' own story.
+	 *
+	 * The stale count below is the DISCRIMINATING reading, and it is read against
+	 * the conversations' known rows: a stale frame is one whose identity and whose
+	 * painted rows disagree. The round-2 zero could not rise because `idsA` was
+	 * built from the frames themselves; this count can.
+	 */
+	const MAX_FRAME_GAP_MS = 34;
+	const steps = [];
+	for (let i = 1; i < frames.length; i++) {
+		const prev = frames[i - 1];
+		const next = frames[i];
+		const changed =
+			prev.activeSessionId !== next.activeSessionId ||
+			prev.rows !== next.rows ||
+			prev.firstRowId !== next.firstRowId;
+		steps.push({
+			fromIndex: i - 1,
+			toIndex: i,
+			gapMs: Number((next.at - prev.at).toFixed(1)),
+			contentChanged: changed,
+			from: {
+				activeSessionId: prev.activeSessionId,
+				rows: prev.rows,
+				firstRowId: prev.firstRowId,
+			},
+			to: {
+				activeSessionId: next.activeSessionId,
+				rows: next.rows,
+				firstRowId: next.firstRowId,
+			},
+		});
+	}
+	const gaps = steps.map((s) => s.gapMs);
+	const maxGapMs = gaps.length > 0 ? Math.max(...gaps) : null;
+	const transitionGaps = steps.filter(
+		(s) => s.contentChanged && s.gapMs > MAX_FRAME_GAP_MS,
+	);
+	const mutationsObserved = Number(
+		(await evaluate("window.__loSwitchMutations")) ?? 0,
+	);
+	report.switch.frames = {
+		total: frames.length,
+		distinctActiveIds: [...new Set(frames.map((f) => f.activeSessionId))],
+		staleContentFrames: staleFrames.length,
+		staleContentFirstFrame: staleFrames[0]?.at ?? null,
+		classifier: {
+			sessionA: SESSION,
+			sessionB: SWITCH_TARGET,
+			rowsA: idsA.size,
+			rowsB: idsB.size,
+			scrolledTopRowId: scrolledA.firstRowId,
+			scrolledTopRowIsInA: scrolledA.firstRowId
+				? idsA.has(scrolledA.firstRowId)
+				: null,
+		},
+		maxInterFrameGapMs: maxGapMs,
+		transitionGapMs: transitionGaps.map((s) => s.gapMs),
+		transitionGaps,
+		timeline: frames,
+		steps,
+	};
+
+	const ok =
+		settledB.activeSessionId === SWITCH_TARGET &&
+		settledA.activeSessionId === SESSION;
+	if (!ok) {
+		throw new Error(
+			`the switch did not move the active conversation as expected: ${JSON.stringify({ settledB: settledB.activeSessionId, settledA: settledA.activeSessionId, target: SWITCH_TARGET, session: SESSION })}`,
+		);
+	}
+	/*
+	 * The sampling assertion, in the round-3 shape. U1's hazard is a stale frame
+	 * hiding in a sampling gap, and the fix is that there IS no gap any more: the
+	 * `MutationObserver` records a sample at every DOM change, so a stale frame -
+	 * which is a DOM change - is always between two samples. The assertion is
+	 * therefore that the observer was actually driving the recorder
+	 * (mutationsObserved > 0 when the switch painted), not a wall-clock bound: a
+	 * time bound would fail on the host's own main-thread stalls, which the
+	 * observer exists precisely to make irrelevant. The wall-clock gaps remain in
+	 * the JSON as a record of where the thread stalled, not as a gate.
+	 */
+	if (mutationsObserved === 0) {
+		throw new Error(
+			"the MutationObserver recorded no mutations across a switch that repainted the document, so the sampler was not driven by the DOM and a stale frame could have gone unobserved",
+		);
+	}
+	report.switch.verdict = {
+		offsetCarriedFromA:
+			settledB.scrollTop !== 0 && Math.abs(settledB.scrollTop) > 1,
+		settledBScrollTop: settledB.scrollTop,
+		settledAScrollTop: settledA.scrollTop,
+		staleContentFrames: staleFrames.length,
+		mutationsObserved,
+		maxInterFrameGapMs: maxGapMs,
+	};
+	writeFileSync(
+		join(OUT, "switch-measurements.json"),
+		`${JSON.stringify(report, null, 2)}\n`,
+	);
+	console.log(JSON.stringify(report, null, 2));
+	ws.close();
+	cleanup();
+	process.exit(0);
+}
 
 // Scroll to the top of what is rendered: a long run of notches, paced so the
 // implementation sees a continuous gesture rather than one burst.
@@ -1418,7 +2371,6 @@ report.steps.push({
 	detail: isolated,
 });
 await shot(`${MODE}-04-after-isolated-reveals`);
-
 /* ---------------------------------------------------------------------------
  * PHASE 2 — the gestures this change is about.
  *
@@ -1740,6 +2692,7 @@ report.phase2Timeline = phase2.map((entry) => ({
 }));
 
 report.historyRequestsTotal = historyRequests.length;
+report.desktopResponses = desktopResponses;
 // The positive control: if this is 0 the harness saw no traffic at all and
 // every history count above is meaningless rather than reassuring.
 report.desktopOpsTotal = desktopOps.length;
