@@ -1962,6 +1962,24 @@ export const GoalPicker: FC<PickerContext> = ({
 			}
 			form={
 				<>
+					{/*
+					 * THE STRUCK VALUE, while the goal is done — the same settled paint the
+					 * chip and the pane use (`line-through text-ink-dim` on the value, the
+					 * app's role for a record rather than an instruction). It carries NO new
+					 * copy: the word is the wire's `done`, already in the description above and
+					 * in the Judge row below, and this element is the VALUE.
+					 *
+					 * The field beneath is still a live textarea, and that is deliberate: a
+					 * struck textarea is not a thing, and the picker is where a user types the
+					 * goal that supersedes this one. So the settled state is stated here and the
+					 * editable value stays editable, rather than the one being sacrificed to the
+					 * other.
+					 */}
+					{done && (
+						<p className={cn("text-body-sm text-ink-dim line-through")}>
+							{current}
+						</p>
+					)}
 					<PickerField label="Goal">
 						<Textarea
 							value={goal}
