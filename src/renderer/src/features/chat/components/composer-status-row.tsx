@@ -235,7 +235,7 @@ const GOAL_DONE_TEXT = "Done";
 const GOAL_DISMISS_TEXT = "Dismiss";
 const GOAL_DONE_FAILURE = "Could not mark the goal done";
 const GOAL_DISMISS_FAILURE = "Could not dismiss the goal";
-const GOAL_DONE_TEXT_TOAST = "Goal done";
+const GOAL_DONE_TOAST_TEXT = "Goal done";
 /*
  * The goal's settled word, printed on the chip's tag and used to build the
  * accessible names. It is the wire's own `goal_status` value verbatim, on the loop
@@ -326,7 +326,7 @@ export const goalClearedText = (cleared: string): string => {
  * confirmations on this row are one shape.
  */
 export const goalDoneToastText = (goal: string): string =>
-	`${GOAL_DONE_TEXT_TOAST} · ${goalWordClip(goal)}`;
+	`${GOAL_DONE_TOAST_TEXT} · ${goalWordClip(goal)}`;
 
 /**
  * One line, leading WORDS, ellipsis — the clip both goal confirmations print.
