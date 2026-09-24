@@ -1,0 +1,595 @@
+{
+  "label": "head",
+  "scen": "b-finished",
+  "tree": "/Users/damian/local-operator-ui/.worktrees/qa490r7-head-40ac63",
+  "events": [],
+  "windowMode": "[window-mode] window mode headless: 1380x900, window created and never shown, page throttling off, no Dock tile",
+  "first": {
+    "t": 63,
+    "rows": 30,
+    "standIns": 0,
+    "blank": 0,
+    "readsAnsweredYet": 0,
+    "sample": [
+      {
+        "id": "tool:toolu_01U8pmogfTz51LPmm7X3Aztb",
+        "name": "bash",
+        "summary": "olrvzvstsgljjkpoevicempfhetzghhovuoetlzwhhhbinkdopmesbpybgeqnjjltzwjwhpwrjbiuidgnkohaqbudpzyhitytzktbbfcx",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01LitBejhWuGxB7Y8sj3kuiY",
+        "name": "edit",
+        "summary": "jcilqzkdbpvxpyeolusxmbcnoymeizxlnvswitunxichapsdnogrtaxjqciakwwvrrkfcnxbtqalkasvk",
+        "counts": "+19 -1"
+      },
+      {
+        "id": "tool:toolu_012dMwJzP3XvWNyHkF2KaX1f",
+        "name": "bash",
+        "summary": "becllkyfstoxngnrhsprpxersydvmppqyibvtxqilxtmnahjipvjmlkboyhcrjahifcygarvwtbvuodcpxvuzioprsuhbkfuwruqwlanvpbfqreohvgywfesm",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01HUJ75JkSkupEVnCxtD8bir",
+        "name": "bash",
+        "summary": "umptbmwfqzrofaydtojvglwnpztjlbwomupbgodapyqsbnfwswlhjkndaxeblodmzefslkfjthlxatfxxghugiprdmydgrcspltpcpzurmigfwtwsprcncxfa",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01ShGubNPBDBMSYveNkD9okM",
+        "name": "bash",
+        "summary": "umptbmwfqzrofaydtojvglwnpztjlbwomupbgodapyqsbnfwswlhjkndaxeblodmzefslkfjthlxatfxxghugiprdmydgrcspltpcpzurmigfwtwsprcncxfa",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_016RP6iYmPgKQXCFwCWc5Rwc",
+        "name": "bash",
+        "summary": "xzgcenwzlydwprvowgohqvkanfzxxywrqpsajhbkcadlgvnhmtszvusmoqeyegnydsmuflcvvqnmoasxhvdznmsqzgucttqccvptebsujjmvn",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01AbiYa649WyHntM2bMERASZ",
+        "name": "bash",
+        "summary": "xzgcenwzlydwprvowgohqvkanfzxxywrqpsajhbkcadlgvnhmtszvusmoqeyegnydsmuflcvvqnmoasxhvdznmsqzgucttqccvptebsujjmvn",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01K8J175GxtZpWXvmxwj3N8R",
+        "name": "bash",
+        "summary": "hdsryjksywqzpqyesofnjpouljkankuvbylpewmmyststdladjkxqslinogsucaxchfxryisqvthvaaeyptntnrrkpatwyzsbkfaqubektgwzrhdzictlqeoa",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01AYtVtH4MDnenmwnUQK9iYb",
+        "name": "bash",
+        "summary": "jkxskiaihrkjafutkaloxqdbhfhlahaigdxcxujawzbyijewbrwgbfixtnqagsupkjigjkzpaaucpzhtvjzywcgkkjslxjbulbwsrmexfzdxowfpgxupigrfg",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_017XD1uBc8sqqegaq1zhP3y7",
+        "name": "bash",
+        "summary": "krxxnacydonnesqszqcngqyougknlvqpqutivlntyljrvpcedcqegewjbjwkyhhjwgdyetbphlskmzvgbigomwucfsxumvfritktjdrrfjqiahvlndxhdopoo",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01452zQo8uJymbVYds3k85CK",
+        "name": "bash",
+        "summary": "soxskipzstonqfdqhsnrqukiqoywapcausjhzmwifsahxenbtwvdnwtmyivdmxrfefpuectcjxjfywpjzaamsmfzqvhzmlggncnbvyxlscerdgicrdvseglku",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_019iVPR8Cj8pLkCSCiYPZ7hW",
+        "name": "bash",
+        "summary": "spgqzwaloradqdipqffikycppsxbsmjvtdkbbdksmgjssfcxgdkjagbaccugchldnmvwulwevaynjtveqydbbcsfnyzjomkjlidyvpqwrlkqvbyjtyuqlxtpm",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01Me6n8RqX5jdfBCZcsFzWmK",
+        "name": "bash",
+        "summary": "sackdwqqfexnfugquwhyqvesciegxcrwmwyhmxunokbaibrnxknccqhfsgiwmjlhgfsflcrfpwewfhbkiobdlyonxtoesehcipsyaavtqwuztbltjmetblszy",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01LSkCEXRep3r3DZ5ow6EKsj",
+        "name": "bash",
+        "summary": "odjbvcsqcouxrusgkkfeeorrnheopdeswgpnxdfdfnwudukgqirhwcdgkssenwdcxkpbmhxxgolorxtpoyevbzlhmagdjeyrjiuxdpfnovhvonkuvnefddcqy",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01PQqgTedDWo5Ek9vnrjAms3",
+        "name": "bash",
+        "summary": "zcwfsxhrunrfbjcldhhciefvetyupljszufmmvzzgqxxzsmhzjbnrkgobzaaouqmevedichezqrfrmislshizecncsqvrkdmnkjqqoublpxlqkyuyhkutobut",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_013NKUZBnqjQuKnaG56s8N4E",
+        "name": "bash",
+        "summary": "nvulsznihusndssjxxiwbaelspvkhamcrykyjazfvenwbwvyoieaklkanfgnfaziufyunjqbhehcqhmmyqoyvtqwhaxpiclmgssnxbqdycxjlotybezoxeijy",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01AgbTvjQVVRopU4YdfyeZBL",
+        "name": "bash",
+        "summary": "kcymxcowzbjizlxgajrujqjxuiwyfenbzqaiuiizkzkbzwexxavthouwmsuxkqjkywhpqvkvmhggkitttukgpgghckygqaelzkmodjiudujyoqehqigtprdqo",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01RqkmE2xa6yVZ3aiHZNjqxi",
+        "name": "bash",
+        "summary": "vmplmzuodpbdzzdquzpevhsdczisjxllefbyrtrlsfpfokizoewznrhakzquxincychvzwyqiwlmtxytzjlljzwsraplllzxtgbrrdzpddugblqkgtzlsjgzi",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_012fKdfodDVMsvvRLVZQTEJV",
+        "name": "bash",
+        "summary": "ydldcspzlfppyvvxdebmsuwzndlrflmhegllbeexzkcgzzysdluoehkdijjvkxrfknczuxrncslhuamguaydossshlskxvkiwglzcawmxvwsuhtysabghsytl",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01NV6CkJrA43g4hvJnfwXk4T",
+        "name": "bash",
+        "summary": "ztcsqtikistnfvsacwmabjmpazrlxejyvjhxtatndgohqepltmnmjvcvoyrxnqsairerazhmjiolnknejucylleuvurpshbqwzauvhfbiwtgxhvawziydepjm",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01WUL6nqWDEwRguTmb53EzD2",
+        "name": "bash",
+        "summary": "nwkkicuhpeaeqovalfjkuqwykxtijncggtjwbvtrhvknsujbwkcccvunwduokmbrqwqpynumakujmyvtzloccbqujvvetqyxadlzznaovuiuguygwssnrcmuv",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_015ruT5EZCPVbTXkvhq78yeZ",
+        "name": "bash",
+        "summary": "drzxjwkycxsbduqdnhbuckhbbontdoiqrxcqfdaropmrvtyvnprltymrelqufenioangpznfsghtlwkclebnssuddwfivledyto",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_013noitQLaGjJErEXDdVk5Uo",
+        "name": "bash",
+        "summary": "iriafqnxmqbclfxgionqpvegyjwdzwfnbmmwxdqtamjmhzgxrixnabffxnospktcoodcjcysrkukjitcvshiqfgmtfeiioxlniqjimacqvsycbhokeshdpora",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01NFJiLHMNS4BQK8PBKXdZz8",
+        "name": "bash",
+        "summary": "dnilzvxnotapiltqstjdvzwnzfwvqqseuiqoxrleqaalczemudwigcmuiokqnvwxodxeobwduuyjmlwdyfjapbcqoijlffuwcejgavdxtfvbntmexmwblbrro",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01QsaLhU21YN7uJ5twndR94r",
+        "name": "bash",
+        "summary": "lwdrlzdpdmxydmsatfediebmazantvaamdmucezyndfgoltnjfbfsokntwtjwuyeloyfevwfbeyncisehvlkfyjnopkonmxbenbiqlyqqweaxmuhrqmhakvqh",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_0132f1Q5eKLBY7yCJjC5pYs1",
+        "name": "read",
+        "summary": "quiyhmsipkrkxxyauhqpvjptrlrkliycqakvkujnogsvitthuvhpressiunxoklqmlvnocxwxwr",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01Twmk4pQkcrGjbdB3H4bvhj",
+        "name": "bash",
+        "summary": "ucpvgapwhvqofdaacsgzukjpfulymshkioxchblfxjftxlyjbdlddagmlriuhztzmpmvapoyktcsddyolnhznfnhqrzkjwmzasbthtcobwvesepswnjiwjwwo",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01U3Y21CrbaP1HVMGcKMapJu",
+        "name": "edit",
+        "summary": "quiyhmsipkrkxxyauhqpvjptrlrkliycqakvkujnogsvitthuvhpressiunxoklqmlvnocxwxwr",
+        "counts": "+91 -19"
+      },
+      {
+        "id": "tool:toolu_01UtMp1sh6pMoH3wYiDzPbkR",
+        "name": "read",
+        "summary": "quiyhmsipkrkxxyauhqpvjptrlrkliycqakvkujnogsvitthuvhpressiunxoklqmlvnocxwxwr",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_014PpG948EtdrXA1ZZDcLsoF",
+        "name": "read",
+        "summary": "quiyhmsipkrkxxyauhqpvjptrlrkliycqakvkujnogsvitthuvhpressiunxoklqmlvnocxwxwr",
+        "counts": ""
+      }
+    ]
+  },
+  "timeline": [
+    {
+      "t": 63,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 190,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 298,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 402,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 506,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 610,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 714,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 818,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 921,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 1068,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 1174,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 1278,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 1382,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 1489,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 1592,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 1696,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 1800,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 1904,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 2007,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 2112,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 2232,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 2333,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 2438,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 2555,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 2660,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 2764,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 2867,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 2969,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 3072,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 3175,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 3279,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 3385,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 3494,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 3598,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 3707,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 3811,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 3916,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 4020,
+      "rows": 30,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    }
+  ],
+  "openFrames": [
+    {
+      "k": "chat,0,0,0",
+      "from": 0,
+      "to": 0,
+      "frames": 1
+    },
+    {
+      "k": "1490,0,0,0",
+      "from": 23,
+      "to": 33,
+      "frames": 4
+    },
+    {
+      "k": "1490,30,0,0",
+      "from": 109,
+      "to": 2501,
+      "frames": 289
+    }
+  ],
+  "historyOnOpen": [],
+  "readsBeforeOpen": 0,
+  "settled": {
+    "rows": 30,
+    "standIns": 0,
+    "blank": 0,
+    "hash": "#/chat/5eed1abe1490",
+    "standInRows": [],
+    "blankRows": []
+  },
+  "domAtSettle": {
+    "ids": [
+      "2dd851a5b09a44e88d045d43da98b39f",
+      "tool:toolu_01U8pmogfTz51LPmm7X3Aztb",
+      "tool:toolu_01LitBejhWuGxB7Y8sj3kuiY",
+      "tool:toolu_012dMwJzP3XvWNyHkF2KaX1f",
+      "tool:toolu_01HUJ75JkSkupEVnCxtD8bir",
+      "10c5acaff810473ba0047a526505d512",
+      "tool:toolu_01ShGubNPBDBMSYveNkD9okM",
+      "tool:toolu_016RP6iYmPgKQXCFwCWc5Rwc",
+      "tool:toolu_01AbiYa649WyHntM2bMERASZ",
+      "tool:toolu_01K8J175GxtZpWXvmxwj3N8R",
+      "tool:toolu_01AYtVtH4MDnenmwnUQK9iYb",
+      "tool:toolu_017XD1uBc8sqqegaq1zhP3y7",
+      "tool:toolu_01452zQo8uJymbVYds3k85CK",
+      "ab309857ec1d4a74b47bb4da1a2ff9df",
+      "tool:toolu_019iVPR8Cj8pLkCSCiYPZ7hW",
+      "tool:toolu_01Me6n8RqX5jdfBCZcsFzWmK",
+      "a1551945c7e34f058ec268eead103f34",
+      "tool:toolu_01LSkCEXRep3r3DZ5ow6EKsj",
+      "tool:toolu_01PQqgTedDWo5Ek9vnrjAms3",
+      "tool:toolu_013NKUZBnqjQuKnaG56s8N4E",
+      "tool:toolu_01AgbTvjQVVRopU4YdfyeZBL",
+      "tool:toolu_01RqkmE2xa6yVZ3aiHZNjqxi",
+      "tool:toolu_012fKdfodDVMsvvRLVZQTEJV",
+      "tool:toolu_01NV6CkJrA43g4hvJnfwXk4T",
+      "tool:toolu_01WUL6nqWDEwRguTmb53EzD2",
+      "tool:toolu_015ruT5EZCPVbTXkvhq78yeZ",
+      "tool:toolu_013noitQLaGjJErEXDdVk5Uo",
+      "tool:toolu_01NFJiLHMNS4BQK8PBKXdZz8",
+      "tool:toolu_01QsaLhU21YN7uJ5twndR94r",
+      "tool:toolu_0132f1Q5eKLBY7yCJjC5pYs1",
+      "tool:toolu_01Twmk4pQkcrGjbdB3H4bvhj",
+      "tool:toolu_01U3Y21CrbaP1HVMGcKMapJu",
+      "tool:toolu_01UtMp1sh6pMoH3wYiDzPbkR",
+      "tool:toolu_014PpG948EtdrXA1ZZDcLsoF"
+    ],
+    "standIns": []
+  },
+  "settledShot": "/Users/damian/.local-operator/sessions/40aca639e57c/scratchpad/r7/out/head-b-finished-02-settled.png",
+  "editRows": [
+    {
+      "id": "tool:toolu_01LitBejhWuGxB7Y8sj3kuiY",
+      "name": "edit",
+      "summary": "jcilqzkdbpvxpyeolusxmbcnoymeizxlnvswitunxichapsdnogrtaxjqciakwwvrrkfcnxbtqalkasv",
+      "counts": "+19 -1"
+    },
+    {
+      "id": "tool:toolu_01U3Y21CrbaP1HVMGcKMapJu",
+      "name": "edit",
+      "summary": "quiyhmsipkrkxxyauhqpvjptrlrkliycqakvkujnogsvitthuvhpressiunxoklqmlvnocxwxwr",
+      "counts": "+91 -19"
+    }
+  ],
+  "unknownRoutes": [
+    "POST /v1/desktop/radient",
+    "GET /v1/agents",
+    "GET /v1/credentials",
+    "GET /v1/desktop/commands",
+    "GET /v1/desktop/sessions/5eed1abe1490/command-entities",
+    "GET /v1/desktop/sessions/5eed1abe1490/mcp"
+  ],
+  "historyAll": []
+}

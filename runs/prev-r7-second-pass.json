@@ -1,0 +1,758 @@
+{
+  "label": "prev",
+  "scen": "r7-second-pass",
+  "tree": "/Users/damian/local-operator-ui/.worktrees/qa490r7-prev-40ac63",
+  "events": [
+    {
+      "t": 4811,
+      "what": "pass1-settled"
+    },
+    {
+      "t": 6065,
+      "what": "away"
+    },
+    {
+      "t": 6086,
+      "what": "back"
+    }
+  ],
+  "windowMode": "[window-mode] window mode headless: 1380x900, window created and never shown, page throttling off, no Dock tile",
+  "first": {
+    "t": 159,
+    "rows": 33,
+    "standIns": 0,
+    "blank": 1,
+    "readsAnsweredYet": 0,
+    "sample": [
+      {
+        "id": "tool:toolu_01KbMDnt2m2FzxyDMkC1Q83k",
+        "name": "bash",
+        "summary": "yotsxllnunhdotdqdkhherymeidredhsaitiskdhoeplyukkjbeatangjuzpxyxshsxbkysludwfjhbaffdmnlfqbtdtyvljpbtrvlhzxdzkypecuzmchpckx",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01HN42bybBHuxQQNtgdqRCRy",
+        "name": "bash",
+        "summary": "ctxwhrgvoboxhdkoozdeqqjcnrmhssqeiftowitmzshgqqctayccszcfwjtfcrrqqtzhqbgsvasfuqqdiwofslyurwaanhgetftffqoutmhvlbjwdffwkfcnu",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01HrTwpzPy2tSbWqc2oZpxnX",
+        "name": "bash",
+        "summary": "lzvcystqdrbeeknclcgawmctrowttoynxeoasojudnqcxyluekylcqbbomxbepuzahkfaxxouydpqatzdmwhizibvqxfjtorjeldpzxqyfcswsggijkkfwwar",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01WxavbfHmTZX5fyz97geJ4b",
+        "name": "bash",
+        "summary": "zdcbrfxkmqidhtsyrznxmvsalymzrqpabqwdgsunnznxypwatgalbdngcguksrzdymjdpyxbnnawqvmnxnvvoxcvuwankjfjojpngazvlayyvirmqkklcrdrg",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01Mhq4hiwkJ79ykkcenehuhF",
+        "name": "bash",
+        "summary": "vkmrkdnuwgtjxxxoqgypbztedgafdakhedzboizobzewjnjtqvrxjewegfgojznjiqxnhrgdnjofxprofgpidmawzwpkoxqheffwhnkzjdqyemnyqcwwbqvcr",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_018UhtvDm7dUcDfoEbTNMyNa",
+        "name": "bash",
+        "summary": "grhvtartjosadaloitpbtbbjayjxqdgvddrthivpjrxtlgmlrxhgmgughlxmdqbdpfiautiwwrxaaefcfwrueedyyodtiwrjccppqiofxljsivnizaxnbfaej",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01MU5Ag6fyK1jUEpxijkMW7M",
+        "name": "bash",
+        "summary": "kcqtyhtimtacnogovzqbajpfhvetxayphczlllypqinitcbmfevzptxsnoklqgjggyikrxnxzerksgraylcmvzhdtlesjaizqgfgbcdcanwlotehnmiiltfpo",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01VREcSbGfgJuRmC9mxFuMfd",
+        "name": "read",
+        "summary": "jcilqzkdbpvxpyeolusxmbcnoymeizxlnvswitunxichapsdnogrtaxjqciakwwvrrkfcnxbtqalkasvk",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_017XoYD5bbQNSaDV4ZpqEM5k",
+        "name": "bash",
+        "summary": "xuzzoonzakjbqobkcsxxbwwersgsspmqmsmtyeksolmjysuyzahzonnybamxduexdisbwebigibcusvlgemokhnvqdssslvoujdbapgxvigscqgdzxaqgvqfw",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_012c2FUp64snbsHGB5WpoJax",
+        "name": "bash",
+        "summary": "jsbiptmrjfrbvelqqdwmvmvhpfmycctpcfjsughgzdvylwxxvlaxgynsjgtwyfxaziratzyowqbxddshmwcpcsloskkbezfkpdykxkfprrkjriuhdowaiifji",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01Xz9LiKf8zaQuLQ2qZjdNwN",
+        "name": "bash",
+        "summary": "qstghacvfkceknlpkzhmishhqufncupsaclykqioofuxfopvaxbjnadlxudxmxpeczfcbmjjtpkkhvvyfnopadisjdxhihbomeposqaokcldgqdqpsbkjdetm",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01JBF4hGc6y5NoGzTqEyBwr6",
+        "name": "bash",
+        "summary": "gwmvqupxyivhfcwivrtkxaxqcqsygkewctytbdzwnwqykfjrpxtesftubtfsbsgkuejfyruwkjtswhwwtlqykbxictkxbybqtghcghasfhpppeketegmrhxhh",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_015cKT2pN2rE1vfiUwZvd88H",
+        "name": "bash",
+        "summary": "csnwehsxcctrqfadxwluhdwapauoykjdelntvmfipmqfswxqrlcerumvoryghkqpkpkjxmfbdbjvdoydidnjfranfjilydxsyuwhgxbadbnuuvgqmvrinufxk",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01P5kbrGcnfJ289gR4ysVk8Q",
+        "name": "bash",
+        "summary": "ivisraowswduusetypdkovzpjjcvlabafrlgetfxsophdyrezvmulepuawyscnnbpvvgblfdnbowqdhnkoclcmjazwbuzfxcorxvsxkfsuazzohqrfclbfsyn",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01FXnnm9JcEBN9yewVW3SCva",
+        "name": "bash",
+        "summary": "asbgtqjhoeyvyjbocipzflumorkunaxoqyyczbalpsqbvyvimantzvpyjvihpkfepykglolboalpfuseyjahnlsisskwtefubitbabmeqhhzwukkcltgawcpf",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01W3nufHdn2JyZLNr6QiCn6W",
+        "name": "bash",
+        "summary": "kbgjnyilbukzupzxckmswejargeltdevuoxkngupdnaxqqvyvmifjsshfexqjsyqsssslbdnvplxfkcbodgljvslquqxifzteewnlnvnsvflebiqmyizeumoa",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01JTopYmd4BxCm12rBLdQauL",
+        "name": "bash",
+        "summary": "chvfohyutkrwwbtgexffvutnlyvpuokycdoqtnuzlfdetqyhyfecjgdltnilcpcbuncxevpbgesvkcnencqkvmvscyjorxmobcqwafosqsrtoxzchuudyrjzv",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01FfKLXdVgTB46M6dfNxDpKv",
+        "name": "bash",
+        "summary": "rvqkmizegfsdsaijyucjoovijsulhgxvdljjywtnhdrcjandumnqjnoqvazjxbkscqgeifryyjiihnelluzighmxuvhsltjodleskgolmoukvulpogedqloic",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_013RQP1jggRvTvVukd1ooVPi",
+        "name": "read",
+        "summary": "jcilqzkdbpvxpyeolusxmbcnoymeizxlnvswitunxichapsdnogrtaxjqciakwwvrrkfcnxbtqalkasvk",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01KkZmyAeUqYAStZbzaoYvwS",
+        "name": "read",
+        "summary": "yodcoohsucjlvbfwbhceihdwhnojwuyshrnbedyocssxkabvnufrhgnfidojkbclhseopbmp",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_0115sVd47cd9EeQhSCQQVBRD",
+        "name": "edit",
+        "summary": "yodcoohsucjlvbfwbhceihdwhnojwuyshrnbedyocssxkabvnufrhgnfidojkbclhseopbmp",
+        "counts": "+59"
+      },
+      {
+        "id": "tool:toolu_01U8pmogfTz51LPmm7X3Aztb",
+        "name": "bash",
+        "summary": "olrvzvstsgljjkpoevicempfhetzghhovuoetlzwhhhbinkdopmesbpybgeqnjjltzwjwhpwrjbiuidgnkohaqbudpzyhitytzktbbfcx",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01LitBejhWuGxB7Y8sj3kuiY",
+        "name": "edit",
+        "summary": "jcilqzkdbpvxpyeolusxmbcnoymeizxlnvswitunxichapsdnogrtaxjqciakwwvrrkfcnxbtqalkasvk",
+        "counts": "+19 -1"
+      },
+      {
+        "id": "tool:toolu_012dMwJzP3XvWNyHkF2KaX1f",
+        "name": "bash",
+        "summary": "becllkyfstoxngnrhsprpxersydvmppqyibvtxqilxtmnahjipvjmlkboyhcrjahifcygarvwtbvuodcpxvuzioprsuhbkfuwruqwlanvpbfqreohvgywfesm",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01HUJ75JkSkupEVnCxtD8bir",
+        "name": "bash",
+        "summary": "umptbmwfqzrofaydtojvglwnpztjlbwomupbgodapyqsbnfwswlhjkndaxeblodmzefslkfjthlxatfxxghugiprdmydgrcspltpcpzurmigfwtwsprcncxfa",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01ShGubNPBDBMSYveNkD9okM",
+        "name": "bash",
+        "summary": "umptbmwfqzrofaydtojvglwnpztjlbwomupbgodapyqsbnfwswlhjkndaxeblodmzefslkfjthlxatfxxghugiprdmydgrcspltpcpzurmigfwtwsprcncxfa",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_016RP6iYmPgKQXCFwCWc5Rwc",
+        "name": "bash",
+        "summary": "xzgcenwzlydwprvowgohqvkanfzxxywrqpsajhbkcadlgvnhmtszvusmoqeyegnydsmuflcvvqnmoasxhvdznmsqzgucttqccvptebsujjmvn",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01AbiYa649WyHntM2bMERASZ",
+        "name": "bash",
+        "summary": "xzgcenwzlydwprvowgohqvkanfzxxywrqpsajhbkcadlgvnhmtszvusmoqeyegnydsmuflcvvqnmoasxhvdznmsqzgucttqccvptebsujjmvn",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01K8J175GxtZpWXvmxwj3N8R",
+        "name": "bash",
+        "summary": "hdsryjksywqzpqyesofnjpouljkankuvbylpewmmyststdladjkxqslinogsucaxchfxryisqvthvaaeyptntnrrkpatwyzsbkfaqubektgwzrhdzictlqeoa",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01AYtVtH4MDnenmwnUQK9iYb",
+        "name": "bash",
+        "summary": "jkxskiaihrkjafutkaloxqdbhfhlahaigdxcxujawzbyijewbrwgbfixtnqagsupkjigjkzpaaucpzhtvjzywcgkkjslxjbulbwsrmexfzdxowfpgxupigrfg",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_017XD1uBc8sqqegaq1zhP3y7",
+        "name": "bash",
+        "summary": "krxxnacydonnesqszqcngqyougknlvqpqutivlntyljrvpcedcqegewjbjwkyhhjwgdyetbphlskmzvgbigomwucfsxumvfritktjdrrfjqiahvlndxhdopoo",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01SYNTHETICNOTINJOURNAL000",
+        "name": "bash",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01452zQo8uJymbVYds3k85CK",
+        "name": "bash",
+        "summary": "soxskipzstonqfdqhsnrqukiqoywapcausjhzmwifsahxenbtwvdnwtmyivdmxrfefpuectcjxjfywpjzaamsmfzqvhzmlggncnbvyxlscerdgicrdvseglku",
+        "counts": ""
+      }
+    ]
+  },
+  "timeline": [
+    {
+      "t": 51,
+      "rows": 0,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 159,
+      "rows": 33,
+      "standIns": 0,
+      "blank": 1,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 267,
+      "rows": 33,
+      "standIns": 0,
+      "blank": 1,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 372,
+      "rows": 33,
+      "standIns": 0,
+      "blank": 1,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 477,
+      "rows": 36,
+      "standIns": 2,
+      "blank": 0,
+      "reads": 2,
+      "answered": 1
+    },
+    {
+      "t": 580,
+      "rows": 36,
+      "standIns": 2,
+      "blank": 0,
+      "reads": 2,
+      "answered": 1
+    },
+    {
+      "t": 683,
+      "rows": 36,
+      "standIns": 2,
+      "blank": 0,
+      "reads": 2,
+      "answered": 1
+    },
+    {
+      "t": 788,
+      "rows": 58,
+      "standIns": 1,
+      "blank": 0,
+      "reads": 2,
+      "answered": 2
+    },
+    {
+      "t": 893,
+      "rows": 58,
+      "standIns": 1,
+      "blank": 0,
+      "reads": 2,
+      "answered": 2
+    },
+    {
+      "t": 997,
+      "rows": 58,
+      "standIns": 1,
+      "blank": 0,
+      "reads": 2,
+      "answered": 2
+    },
+    {
+      "t": 1102,
+      "rows": 58,
+      "standIns": 1,
+      "blank": 0,
+      "reads": 2,
+      "answered": 2
+    },
+    {
+      "t": 1206,
+      "rows": 58,
+      "standIns": 1,
+      "blank": 0,
+      "reads": 2,
+      "answered": 2
+    },
+    {
+      "t": 1314,
+      "rows": 58,
+      "standIns": 1,
+      "blank": 0,
+      "reads": 2,
+      "answered": 2
+    },
+    {
+      "t": 1418,
+      "rows": 58,
+      "standIns": 1,
+      "blank": 0,
+      "reads": 2,
+      "answered": 2
+    },
+    {
+      "t": 1521,
+      "rows": 58,
+      "standIns": 1,
+      "blank": 0,
+      "reads": 2,
+      "answered": 2
+    },
+    {
+      "t": 1638,
+      "rows": 58,
+      "standIns": 1,
+      "blank": 0,
+      "reads": 2,
+      "answered": 2
+    },
+    {
+      "t": 1742,
+      "rows": 58,
+      "standIns": 1,
+      "blank": 0,
+      "reads": 2,
+      "answered": 2
+    },
+    {
+      "t": 1844,
+      "rows": 58,
+      "standIns": 1,
+      "blank": 0,
+      "reads": 2,
+      "answered": 2
+    },
+    {
+      "t": 1951,
+      "rows": 58,
+      "standIns": 1,
+      "blank": 0,
+      "reads": 2,
+      "answered": 2
+    },
+    {
+      "t": 2057,
+      "rows": 58,
+      "standIns": 1,
+      "blank": 0,
+      "reads": 2,
+      "answered": 2
+    },
+    {
+      "t": 2173,
+      "rows": 58,
+      "standIns": 1,
+      "blank": 0,
+      "reads": 2,
+      "answered": 2
+    },
+    {
+      "t": 2278,
+      "rows": 58,
+      "standIns": 1,
+      "blank": 0,
+      "reads": 2,
+      "answered": 2
+    },
+    {
+      "t": 2382,
+      "rows": 58,
+      "standIns": 1,
+      "blank": 0,
+      "reads": 2,
+      "answered": 2
+    },
+    {
+      "t": 2487,
+      "rows": 58,
+      "standIns": 1,
+      "blank": 0,
+      "reads": 2,
+      "answered": 2
+    },
+    {
+      "t": 2601,
+      "rows": 58,
+      "standIns": 1,
+      "blank": 0,
+      "reads": 2,
+      "answered": 2
+    },
+    {
+      "t": 2708,
+      "rows": 58,
+      "standIns": 1,
+      "blank": 0,
+      "reads": 2,
+      "answered": 2
+    },
+    {
+      "t": 2814,
+      "rows": 58,
+      "standIns": 1,
+      "blank": 0,
+      "reads": 2,
+      "answered": 2
+    },
+    {
+      "t": 2921,
+      "rows": 58,
+      "standIns": 1,
+      "blank": 0,
+      "reads": 2,
+      "answered": 2
+    },
+    {
+      "t": 3026,
+      "rows": 58,
+      "standIns": 1,
+      "blank": 0,
+      "reads": 2,
+      "answered": 2
+    },
+    {
+      "t": 3130,
+      "rows": 58,
+      "standIns": 1,
+      "blank": 0,
+      "reads": 2,
+      "answered": 2
+    }
+  ],
+  "openFrames": [
+    {
+      "k": "chat,0,0,0",
+      "from": 0,
+      "to": 0,
+      "frames": 1
+    },
+    {
+      "k": "1490,0,0,0",
+      "from": 25,
+      "to": 121,
+      "frames": 5
+    },
+    {
+      "k": "1490,33,0,1",
+      "from": 151,
+      "to": 426,
+      "frames": 34
+    },
+    {
+      "k": "1490,36,2,0",
+      "from": 432,
+      "to": 735,
+      "frames": 37
+    },
+    {
+      "k": "1490,58,1,0",
+      "from": 742,
+      "to": 2501,
+      "frames": 212
+    }
+  ],
+  "historyOnOpen": [
+    {
+      "sid": "5eed1abe1490",
+      "at": 125,
+      "limit": 107,
+      "asked": 107,
+      "beforeId": null,
+      "mode": "ok",
+      "answeredAt": 426,
+      "rows": 107
+    },
+    {
+      "sid": "5eed1abe1490",
+      "at": 432,
+      "limit": 110,
+      "asked": 110,
+      "beforeId": "2380c435e22a447ca5b475ababd137ec",
+      "mode": "ok",
+      "answeredAt": 733,
+      "rows": 110
+    }
+  ],
+  "readsBeforeOpen": 0,
+  "settled": {
+    "rows": 58,
+    "standIns": 1,
+    "blank": 0,
+    "hash": "#/chat/5eed1abe1490",
+    "standInRows": [
+      {
+        "id": "tool:toolu_01SYNTHETICNOTINJOURNAL000",
+        "name": "bash",
+        "summary": "… no page names this",
+        "counts": ""
+      }
+    ],
+    "blankRows": []
+  },
+  "domAtSettle": {
+    "ids": [
+      "tool:toolu_011Cm1iM5UfFZG5zwcV9VuN4",
+      "tool:toolu_011hiZpNBstmbxA1QB5Qv6RX",
+      "tool:toolu_01BvjVvmo2qie6xsnLXKmpzH",
+      "tool:toolu_014s1xm84Y7Tf8JK8TwiB9vv",
+      "tool:toolu_01HZ62ohdaCYdQjuPymjdQRs",
+      "tool:toolu_017AJ6uc2xsUj4kS8AyQBs1b",
+      "tool:toolu_01KXcAipFpznF5MN6Q3Kiqzv",
+      "tool:toolu_01CzsLBi7dCthMFEWh68YQgU",
+      "tool:toolu_01Sket1YkYGums2YKb1P3PFg",
+      "tool:toolu_014npkByGNuPZXQxp4xTvhME",
+      "tool:toolu_016CnXyivfJ2CPwwPzPbU8EN",
+      "tool:toolu_01GfJMsnMziQQQa1n2yeWaPr",
+      "tool:toolu_01W5QkVco1ffj3zXeGHXL6Fa",
+      "tool:toolu_01X2d5seAfBKSu6xAJvgdf9D",
+      "tool:toolu_01Di3U5xULc9ddBDbzBwKAwM",
+      "tool:toolu_01RZRNeXNmkErfbVDxwjDkvi",
+      "tool:toolu_01MUwgSJTWnKvVLNgNihnvZo",
+      "tool:toolu_01VgZ1j4CtKvPoj3W7gYvRro",
+      "tool:toolu_01CXfFDhWWoSad4mPvdqFuX6",
+      "tool:toolu_019SXJqpWAFxbaruV98rnZG2",
+      "tool:toolu_01YBpcyjBx573hwwwNVWeZwJ",
+      "tool:toolu_012M39Y1uq9oY3PmagP1FKUd",
+      "tool:toolu_014TGCtWm8PFXDecV1fpz9n8",
+      "tool:toolu_01JqcAjwSyFQxRL4Th77FneZ",
+      "tool:toolu_01VjaEyUjXRom7MzNZwQQgSA",
+      "tool:toolu_01KbMDnt2m2FzxyDMkC1Q83k",
+      "tool:toolu_01HN42bybBHuxQQNtgdqRCRy",
+      "tool:toolu_01HrTwpzPy2tSbWqc2oZpxnX",
+      "tool:toolu_01WxavbfHmTZX5fyz97geJ4b",
+      "tool:toolu_01Mhq4hiwkJ79ykkcenehuhF",
+      "tool:toolu_018UhtvDm7dUcDfoEbTNMyNa",
+      "tool:toolu_01MU5Ag6fyK1jUEpxijkMW7M",
+      "tool:toolu_01VREcSbGfgJuRmC9mxFuMfd",
+      "tool:toolu_017XoYD5bbQNSaDV4ZpqEM5k",
+      "tool:toolu_012c2FUp64snbsHGB5WpoJax",
+      "tool:toolu_01Xz9LiKf8zaQuLQ2qZjdNwN",
+      "tool:toolu_01JBF4hGc6y5NoGzTqEyBwr6",
+      "tool:toolu_015cKT2pN2rE1vfiUwZvd88H",
+      "tool:toolu_01P5kbrGcnfJ289gR4ysVk8Q",
+      "tool:toolu_01FXnnm9JcEBN9yewVW3SCva",
+      "tool:toolu_01W3nufHdn2JyZLNr6QiCn6W",
+      "tool:toolu_01JTopYmd4BxCm12rBLdQauL",
+      "tool:toolu_01FfKLXdVgTB46M6dfNxDpKv",
+      "tool:toolu_013RQP1jggRvTvVukd1ooVPi",
+      "tool:toolu_01KkZmyAeUqYAStZbzaoYvwS",
+      "tool:toolu_0115sVd47cd9EeQhSCQQVBRD",
+      "2dd851a5b09a44e88d045d43da98b39f",
+      "tool:toolu_01U8pmogfTz51LPmm7X3Aztb",
+      "tool:toolu_01LitBejhWuGxB7Y8sj3kuiY",
+      "tool:toolu_012dMwJzP3XvWNyHkF2KaX1f",
+      "tool:toolu_01HUJ75JkSkupEVnCxtD8bir",
+      "10c5acaff810473ba0047a526505d512",
+      "tool:toolu_01ShGubNPBDBMSYveNkD9okM",
+      "tool:toolu_016RP6iYmPgKQXCFwCWc5Rwc",
+      "tool:toolu_01AbiYa649WyHntM2bMERASZ",
+      "tool:toolu_01K8J175GxtZpWXvmxwj3N8R",
+      "tool:toolu_01AYtVtH4MDnenmwnUQK9iYb",
+      "tool:toolu_017XD1uBc8sqqegaq1zhP3y7",
+      "tool:toolu_01SYNTHETICNOTINJOURNAL000",
+      "tool:toolu_01452zQo8uJymbVYds3k85CK"
+    ],
+    "standIns": [
+      {
+        "id": "tool:toolu_01SYNTHETICNOTINJOURNAL000",
+        "summary": "… no page names this"
+      }
+    ]
+  },
+  "settledShot": "/Users/damian/.local-operator/sessions/40aca639e57c/scratchpad/r7/out/prev-r7-second-pass-02-settled.png",
+  "editRows": [
+    {
+      "id": "tool:toolu_0115sVd47cd9EeQhSCQQVBRD",
+      "name": "edit",
+      "summary": "yodcoohsucjlvbfwbhceihdwhnojwuyshrnbedyocssxkabvnufrhgnfidojkbclhseopbmp",
+      "counts": "+59"
+    },
+    {
+      "id": "tool:toolu_01LitBejhWuGxB7Y8sj3kuiY",
+      "name": "edit",
+      "summary": "jcilqzkdbpvxpyeolusxmbcnoymeizxlnvswitunxichapsdnogrtaxjqciakwwvrrkfcnxbtqalkasv",
+      "counts": "+19 -1"
+    }
+  ],
+  "pass1": {
+    "rows": 58,
+    "standIns": 1,
+    "blank": 0,
+    "reads": 2,
+    "streams": 1
+  },
+  "pass2": {
+    "reads": [
+      {
+        "sid": "5eed1abe1490",
+        "at": 6096,
+        "limit": 107,
+        "asked": 107,
+        "beforeId": null,
+        "mode": "ok",
+        "answeredAt": 6396,
+        "rows": 107
+      },
+      {
+        "sid": "5eed1abe1490",
+        "at": 6402,
+        "limit": 110,
+        "asked": 110,
+        "beforeId": "2380c435e22a447ca5b475ababd137ec",
+        "mode": "ok",
+        "answeredAt": 6703,
+        "rows": 110
+      }
+    ],
+    "streamsBefore": 1,
+    "streamsAfter": 2
+  },
+  "pass2Settled": {
+    "rows": 58,
+    "standIns": 1,
+    "blank": 0,
+    "readsAfter": 2
+  },
+  "pass2Mounted": [
+    "tool:toolu_01SYNTHETICNOTINJOURNAL000"
+  ],
+  "readsAtSettle": 4,
+  "probe": [
+    {
+      "id": "toolu_01SDbpziaz9MBtxwosfMLe2d",
+      "mounted": false
+    },
+    {
+      "id": "toolu_01SYNTHETICNOTINJOURNAL000",
+      "mounted": true,
+      "name": "bash",
+      "summary": "… no page names this"
+    }
+  ],
+  "probeAnyId": [
+    {
+      "id": "toolu_01SDbpziaz9MBtxwosfMLe2d",
+      "ids": []
+    },
+    {
+      "id": "toolu_01SYNTHETICNOTINJOURNAL000",
+      "ids": [
+        "tool:toolu_01SYNTHETICNOTINJOURNAL000"
+      ]
+    }
+  ],
+  "standInsAll": [
+    {
+      "id": "tool:toolu_01SYNTHETICNOTINJOURNAL000",
+      "name": "bash",
+      "summary": "… no page names this"
+    }
+  ],
+  "unknownRoutes": [
+    "POST /v1/desktop/radient",
+    "GET /v1/agents",
+    "GET /v1/credentials",
+    "GET /v1/desktop/commands",
+    "GET /v1/desktop/sessions/5eed1abe1490/command-entities",
+    "GET /v1/desktop/sessions/5eed1abe1490/mcp",
+    "GET /v1/desktop/sessions/b0b0b0b0b0b0/command-entities",
+    "GET /v1/desktop/sessions/b0b0b0b0b0b0/mcp"
+  ],
+  "historyAll": [
+    {
+      "sid": "5eed1abe1490",
+      "at": 125,
+      "limit": 107,
+      "asked": 107,
+      "beforeId": null,
+      "mode": "ok",
+      "answeredAt": 426,
+      "rows": 107
+    },
+    {
+      "sid": "5eed1abe1490",
+      "at": 432,
+      "limit": 110,
+      "asked": 110,
+      "beforeId": "2380c435e22a447ca5b475ababd137ec",
+      "mode": "ok",
+      "answeredAt": 733,
+      "rows": 110
+    },
+    {
+      "sid": "5eed1abe1490",
+      "at": 6096,
+      "limit": 107,
+      "asked": 107,
+      "beforeId": null,
+      "mode": "ok",
+      "answeredAt": 6396,
+      "rows": 107
+    },
+    {
+      "sid": "5eed1abe1490",
+      "at": 6402,
+      "limit": 110,
+      "asked": 110,
+      "beforeId": "2380c435e22a447ca5b475ababd137ec",
+      "mode": "ok",
+      "answeredAt": 6703,
+      "rows": 110
+    },
+    {
+      "sid": "5eed1abe1490",
+      "at": 8807,
+      "limit": 100,
+      "asked": 100,
+      "beforeId": "5e4a385ca24b415a96fcc7faac7c251f",
+      "mode": "hang"
+    }
+  ]
+}
