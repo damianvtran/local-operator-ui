@@ -18,7 +18,9 @@ import { build } from "esbuild";
  *      seed's end re-applied over the durable row with `details: null`.
  *
  * THE FIXTURE IS THE REAL SESSION (`scripts/fixtures/seed-label-gap.json`), cut
- * from a copy of `~/.local-operator/sessions/70ddfaaf163a/transcript.jsonl` —
+ * from a copy of `~/.local-operator/sessions/<session>/transcript.jsonl`, the
+ * conversation this PR reports, whose id is a placeholder here for the same reason
+ * `derivation` in the fixture does not record it —
  * one turn of assistant / tool / `session_spend.v1` repeating. `derivation` in
  * the file states every transform. Two moments are carried:
  *
@@ -241,7 +243,9 @@ const RECONCILE_WALK_MAX_REQUESTS =
 const RECONCILE_WALK_MAX_ROWS = sessionModule.RECONCILE_WALK_MAX_ROWS ?? 500;
 const LABEL_HOLD_MAX_MS = sessionModule.LABEL_HOLD_MAX_MS ?? 0;
 
-const SESSION = "70ddfaaf163a";
+// The fixture's conversation, by placeholder: the real id is the operator's, not
+// this public repository's, and nothing here reads the value as an id.
+const SESSION = "<session>";
 
 /* ------------------------------------------- the React stand-in (one cell per call) */
 
@@ -876,6 +880,30 @@ const endFrame = (callId, output, at = 2_000) => ({
 /** A call id no page can ever name: the shape a replay of a pruned turn leaves. */
 const UNPRESENT = "toolu_01SYNTHETICNOTINJOURNAL000";
 
+/*
+ * ROUND 4, R11: the veto is narrow, and these pin it. A `tool_call_compose` with
+ * `dictation_complete` and NO `not_run_reason` is a call still waiting at a gate —
+ * the backend keeps it in the seed until its own `tool_execution_start` replaces it,
+ * and its assistant row is written when the round closes, so no page can name it
+ * yet. Refusing the floor for one turned the whole walk's floor off, which is the
+ * cost class QA ruled FAIL (minor) in round 2: measured on the round-4 head, the
+ * two shapes below cost 2 reads / 429 rows and 4 / 431 where they had cost 1 / 325
+ * and 1 / 107.
+ */
+const PENDING_COMPOSE = "toolu_01PENDINGGATECALLNOTRUNYET";
+const pendingCompose = () => ({
+	type: "tool_call_compose",
+	tool_call_id: PENDING_COMPOSE,
+	tool_name: "bash",
+	dictation_complete: true,
+});
+
+/**
+ * The orphan on the edge of a 107-row page (the size `reconcileLimit(2)` asks for):
+ * its result row is journal index 300 and its assistant row 299, outside the page.
+ */
+const ORPHAN_ON_107_ROW_PAGE = "toolu_014TGCtWm8PFXDecV1fpz9n8";
+
 /**
  * The fixture's own tail-page orphan: the call whose RESULT is the oldest row of
  * the `labels` moment's first 104-row page, its assistant row being one row older
@@ -1478,4 +1506,78 @@ test("a later mount does not re-hold a row whose label an earlier read found", a
 		"and the read still fires, so the labels are still being chased",
 	);
 	assert.equal(handle().labelPending.size, 0, "the hold is released at settle");
+});
+
+test("a call still waiting at a gate does not refuse the floor", async () => {
+	const { durable, page, liveEvents } = moment("labels");
+	const at = Math.max(...liveEvents.map((event) => event.started_at_epoch));
+	const { handle } = await open({
+		page,
+		// The reviewer's first shape: the real seed, a stray placed OLDEST (the
+		// position `labelTargetsBehind` counts as behind), and the pending compose
+		// NEWEST — newer than everything a page names, which is why no page can
+		// label it and why it has no business stopping the walk.
+		liveEvents: [
+			endFrame(UNPRESENT, "nothing durable names this call", at),
+			...liveEvents,
+			pendingCompose(),
+		],
+		durable,
+	});
+	const reads = historyReads();
+	assert.equal(reads.length, 1, `one page (read ${reads.length})`);
+	assert.equal(reads[0].limit, reconcileLimit(69), "sized by the goal");
+	const tools = handle().transcript.records.filter(
+		(record) => record.kind === "tool",
+	);
+	assert.ok(
+		!tools.some(
+			(record) => record.toolCallId === PENDING_COMPOSE && record.args,
+		),
+		"and the pending call is not labelled, because no row states its arguments",
+	);
+	assert.equal(handle().labelPending.size, 0, "with the hold released");
+});
+
+test("a lone unlabelable call stops at the page its orphan needs, not at the journal", async () => {
+	const { durable, page } = moment("labels");
+	const at = Math.max(
+		...moment("labels").liveEvents.map((event) => event.started_at_epoch),
+	);
+	const { handle } = await open({
+		page,
+		liveEvents: [
+			pendingCompose(),
+			endFrame(UNPRESENT, "no page names this", at),
+		],
+		durable,
+	});
+	const reads = historyReads();
+	// The reviewer's third shape, and the one number that does NOT return to its
+	// round-3 value: the walk costs TWO pages here, not the one page it cost on the
+	// round-3 head. That is R6a's own cost rather than an R11 over-read — a 107-row
+	// page opens on a result at journal index 300 whose assistant row is 299, so the
+	// correct walk fetches that pair, and the second page labels it. What the pending
+	// compose contributes is a target to the page's SIZE (107 = `reconcileLimit(2)`)
+	// and nothing to the walk, which is what R11 is about.
+	assert.equal(
+		reads[0].limit,
+		reconcileLimit(2),
+		"the first page is sized by the goal",
+	);
+	assert.equal(reads.length, 2, `two pages (read ${reads.length})`);
+	assert.equal(
+		reads.reduce((total, read) => total + read.limit, 0),
+		217,
+		"107 for the goal, 110 for the orphan's pair",
+	);
+	const tools = handle().transcript.records.filter(
+		(record) => record.kind === "tool",
+	);
+	assert.ok(
+		tools.some(
+			(record) => record.toolCallId === ORPHAN_ON_107_ROW_PAGE && record.args,
+		),
+		"and that second page is what labels the orphan on the first page's edge",
+	);
 });

@@ -3354,6 +3354,33 @@ export function seedCallStarts(
 }
 
 /**
+ * The calls whose frame STATES that they will never run: a compose with a reason.
+ *
+ * The startless calls split in two, and the split is what round 4's R11 added. A
+ * `tool_call_compose` carrying a `not_run_reason` is a verdict — the call is over,
+ * so a durable row naming it may already be in the journal and a page could still
+ * label it. One carrying only `dictation_complete` is a call still waiting at a
+ * gate: the backend keeps it in the seed until its `tool_execution_start` replaces
+ * it, and its assistant row is written when the round closes, so NO page can name
+ * it yet. Only the first kind is worth refusing the floor for (`pagePassedOldestStart`).
+ */
+export function seedVerdictCalls(
+	liveEvents: readonly Record<string, unknown>[] | null | undefined,
+): Set<string> {
+	const verdicts = new Set<string>();
+	for (const event of liveEvents ?? []) {
+		if (!event) continue;
+		const frame = event as LiveEvent;
+		if (frame.type !== "tool_call_compose") continue;
+		const reason = frame.not_run_reason;
+		if (typeof reason !== "string" || reason.trim().length === 0) continue;
+		const callId = String(frame.tool_call_id ?? "");
+		if (callId) verdicts.add(callId);
+	}
+	return verdicts;
+}
+
+/**
  * How much earlier than a call's own start an assistant row may be journaled.
  *
  * Five seconds against a measured worst case of 1.369 s over 418,566 real pairs
@@ -3409,21 +3436,32 @@ export function pageOrphanResultInstants(
  * chasing, and `entries` is the page it just read, whose OLDEST row is what
  * answers.
  *
- * A TARGET WITH NO STATED INSTANT REFUSES THE FLOOR OUTRIGHT (round 3, R6b), which
- * is the opposite of what this did first. Skipping such a target let a co-target's
- * instant set the floor alone and end the walk before it: every `tool_call_compose`
- * target is startless BY TYPE (the frame has no clock field — a call that never
- * ran, or whose dictation is complete), so a settled call from the current round
- * was enough to stop the walk while a blocked or not-run call from an earlier one
- * sat unlabelled behind it (measured: 1 read and unlabelled against `f1ef98c4c`'s
- * 3 reads and labelled). A target that states no instant states no floor either,
- * and the walk keeps its other exits.
+ * A TARGET WITH NO STATED INSTANT REFUSES THE FLOOR when the caller lists it in
+ * `startlessVeto` (round 3, R6b). Skipping every startless target let a co-target's
+ * instant set the floor alone and end the walk before it: a `tool_call_compose`
+ * target is startless BY TYPE — the frame has no clock field — so a settled call
+ * from the current round was enough to stop the walk while a not-run call from an
+ * earlier one sat unlabelled behind it (measured: 1 read and unlabelled against
+ * `f1ef98c4c`'s 3 reads and labelled).
+ *
+ * AND THE VETO IS NARROW, which is round 4's R11. It applies only to the calls the
+ * caller names (`seedVerdictCalls`: a compose that STATES the call never ran, so a
+ * durable row may exist to find), and the caller passes only the targets that are
+ * BEHIND what has been read (`labelTargetsBehindIds`) — the same set the walk's own
+ * goal is measured over. Firing it for every startless target instead turned the
+ * floor off for a whole walk whenever the seed carried a call still waiting at a
+ * gate, which is the ordinary state of a later call in a multi-call round: measured
+ * on the round-4 head, a join that cost one read of 325 rows cost two of 429, and
+ * one of 331 cost three of 500 on the row cap. Neither kind of startless call can
+ * be labelled by a page while it is merely pending, so refusing the floor for one
+ * only pays for pages that cannot end the walk.
  */
 export function pagePassedOldestStart(
 	entries: DesktopHistoryPage["entries"],
 	targets: Iterable<string>,
 	starts: ReadonlyMap<string, number>,
 	orphanInstants: ReadonlyMap<string, number> = new Map(),
+	startlessVeto: ReadonlySet<string> = new Set(),
 ): boolean {
 	const oldestSeconds = entries[0]?.ts;
 	if (typeof oldestSeconds !== "number" || !Number.isFinite(oldestSeconds))
@@ -3431,8 +3469,12 @@ export function pagePassedOldestStart(
 	let floor: number | null = null;
 	for (const callId of targets) {
 		const at = starts.get(callId);
-		// See the doc: no instant on any target means no floor at all.
-		if (at === undefined) return false;
+		if (at === undefined) {
+			// See the doc: a startless call refuses the floor only when a page could
+			// still label it, which is the caller's `startlessVeto` to say.
+			if (startlessVeto.has(callId)) return false;
+			continue;
+		}
 		if (floor === null || at < floor) floor = at;
 	}
 	for (const at of orphanInstants.values()) {
@@ -3516,7 +3558,7 @@ export function labelGapCandidates(
  * target is labelled, so this ratio decides how many requests a join costs and
  * never whether the rows get their labels.
  *
- * The session in the report (`70ddfaaf163a`) needs 3.03: its turn repeats
+ * The session in the report (`<session>`) needs 3.03: its turn repeats
  * assistant, tool, `session_spend.v1`, and at 2 its first read left 23 of 68
  * calls without a label.
  */
@@ -3688,23 +3730,40 @@ export function reconcileWalkDone(connected: boolean, unlabelled: number) {
  * this rule a join during a round with finished calls would page to the 500-row
  * bound on every open, hunting rows that do not exist yet (round 1, R1).
  */
+export function labelTargetsBehindIds(
+	order: readonly string[],
+	targets: ReadonlySet<string>,
+	found: ReadonlySet<string>,
+): string[] {
+	// A target the seed no longer names was evicted from it by newer calls (a
+	// round-end retry carries ids from an earlier snapshot's seed), so it is
+	// older than everything in `order` and is behind whatever was read.
+	const ordered = new Set(order);
+	const behind: string[] = [];
+	for (const id of targets)
+		if (!ordered.has(id) && !found.has(id)) behind.push(id);
+	for (const id of order) {
+		if (found.has(id)) return behind;
+		if (targets.has(id)) behind.push(id);
+	}
+	// No call in `order` was found: every target is still unaccounted for.
+	return behind;
+}
+
+/**
+ * How many label targets are still behind what has been read (`labelTargetsBehindIds`).
+ *
+ * Kept as a count because that is what `reconcileLimit` sizes a page from, and
+ * derived from the ids so the two callers cannot come to disagree about which
+ * targets are behind — round 4's R11 was a walk that used a narrower set for the
+ * floor than for its own goal.
+ */
 export function labelTargetsBehind(
 	order: readonly string[],
 	targets: ReadonlySet<string>,
 	found: ReadonlySet<string>,
 ): number {
-	// A target the seed no longer names was evicted from it by newer calls (a
-	// round-end retry carries ids from an earlier snapshot's seed), so it is
-	// older than everything in `order` and is behind whatever was read.
-	const ordered = new Set(order);
-	let behind = 0;
-	for (const id of targets) if (!ordered.has(id) && !found.has(id)) behind += 1;
-	for (const id of order) {
-		if (found.has(id)) return behind;
-		if (targets.has(id)) behind += 1;
-	}
-	// No call in `order` was found: every target is still unaccounted for.
-	return behind;
+	return labelTargetsBehindIds(order, targets, found).length;
 }
 
 /**
