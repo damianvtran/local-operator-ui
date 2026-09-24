@@ -20,7 +20,8 @@ type CollapsibleAppLogoProps = {
  *
  * What remains is a logo, which is all it ever needed to be. It carries no
  * padding or alignment of its own: the rail's header owns where it sits, which
- * is the only place that knows the rail is 48px tall and inset 20px.
+ * is the only place that knows the rail wears a 40px brand row inset 20px, with
+ * the macOS traffic-light lane as a row of its own above it.
  *
  * The mark is 24px and the wordmark is `text-body` — one step down from the
  * `text-heading` it was. A 32px mark beside a 16px semibold wordmark made the
