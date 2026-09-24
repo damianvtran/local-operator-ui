@@ -777,3 +777,66 @@ test("the catalogue frame publishes the revision the sidebar refetches on", () =
 	});
 	assert.deepEqual(globalThis.__stateSets, [7]);
 });
+
+/*
+ * A FRAME FOR A ROW THE CLIENT DOES NOT HOLD (paged catalogue, design §4.4).
+ *
+ * `applySessionStatus` drops a frame whose id the store does not carry, and under
+ * paged membership that is the TAIL: a conversation past the head page is not held
+ * until its group is expanded or the flat list is extended. The row that arrives
+ * later therefore shows the status the PAGE computed, which can be older than a
+ * frame this client already received and discarded.
+ *
+ * THAT IS AN ACCEPTED FAILURE MODE, and this test exists to pin it as one rather
+ * than to celebrate it: the bound is one row, one poll cycle, and only for rows
+ * that are not loaded - and the alternative (a `pendingStatus` map consulted by
+ * `heldStatusOver`) is state for a value nothing is drawing yet. A future change
+ * that adds it will fail here, which is exactly when somebody should have to
+ * decide whether the row is visible before it is loaded.
+ */
+test("a frame for a row that is not loaded is dropped, and the page's own value stands", async () => {
+	seeded({
+		status: { code: "busy", label: "Working" },
+		status_revision: 4,
+		status_epoch: EPOCH,
+	});
+	// A frame for a conversation this client does not list: the tail, before its
+	// page has arrived.
+	await store
+		.getState()
+		.applySessionStatus(
+			OTHER,
+			{ code: "complete", label: "Complete" },
+			9,
+			EPOCH,
+		);
+	assert.equal(
+		store.getState().sessions.some((row) => row.session_id === OTHER),
+		false,
+		"a frame never inserts a row: membership is the list's, never the feed's",
+	);
+
+	// The page arrives later and carries the status IT computed at its own moment.
+	await list([
+		wire(),
+		wire({
+			id: OTHER,
+			name: "A tail chat",
+			mtime: 1_760_000_100,
+			status: { code: "approval", label: "Approval needed" },
+			status_revision: 3,
+			status_epoch: EPOCH,
+		}),
+	]);
+	assert.deepEqual(
+		store.getState().sessions.find((row) => row.session_id === OTHER)?.status,
+		{ code: "approval", label: "Approval needed" },
+		"the page's own reading is what the row draws, even though a newer frame was thrown away",
+	);
+	assert.equal(
+		store.getState().sessions.find((row) => row.session_id === OTHER)
+			?.status_revision,
+		3,
+		"and its stamp is the page's, which is how the next frame supersedes it",
+	);
+});

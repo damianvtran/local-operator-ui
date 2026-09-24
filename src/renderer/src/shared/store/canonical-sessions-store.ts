@@ -1910,9 +1910,25 @@ export function headAnswerRows(args: {
 	const tail = new Set(args.tailIds);
 	const pageIds = new Set(args.page.map((row) => row.session_id));
 	const headHeld = headHeldRows(args.sessions, args.scopeIds);
-	const survivors = headHeld.filter(
-		(row) => tail.has(row.session_id) && !pageIds.has(row.session_id),
-	);
+	/*
+	 * WHICH ROWS THE ANSWER DOES NOT SPEAK FOR, and there are exactly two kinds.
+	 * A row a SCOPE holds belongs to that scope's answer, never to this one -
+	 * dropping it here would delete an expanded group's whole page the first time a
+	 * poll landed with the group open. A row an EXTENSION fetched was positioned by
+	 * rank rather than by the page, so a top-of-the-catalogue answer cannot speak
+	 * for it either. Every other head-held row the answer omits has left the
+	 * catalogue and goes.
+	 *
+	 * THE SURVIVORS KEEP THE ORDER THEY HAD, which is why this filters the previous
+	 * array rather than concatenating two groups: the panel draws its sections and
+	 * its flat list in ARRAY ORDER, so re-bucketing them would re-file every scoped
+	 * row to the end of the list under an otherwise unchanged page.
+	 */
+	const survivors = args.sessions.filter((row) => {
+		if (pageIds.has(row.session_id)) return false;
+		if (args.scopeIds.has(row.session_id)) return true;
+		return tail.has(row.session_id);
+	});
 	/*
 	 * THE MERGE BASE IS EVERY HEAD-HELD ROW, not only the survivors. `merge` is
 	 * `{...current, ...incoming}`, so a row the page carries must be merged against
