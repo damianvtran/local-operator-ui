@@ -1075,7 +1075,13 @@ test("the picker lists the providers by itself, on the backend's cadence", () =>
  * about the SIDEBAR's own session-catalogue focus refetch
  * (`chat-sidebar.tsx`), which is a different read and a deliberate one — a local
  * sessions list whose comment says focus "is the one moment a stale catalogue is
- * about to be looked at". This change does not touch it.
+ * about to be looked at". This change does not touch it. NOR does it prove that a
+ * real macOS app switch DELIVERS the hidden-to-visible transition being opted out
+ * of (QA round 1, Q1): the channel is query-core's focus manager, which
+ * `QueryClientProvider` wires to the window's `visibilitychange` on mount, and both
+ * rigs in this repository that need the transition drive it synthetically. Given
+ * the transition, the counts above hold; if the packaged app never delivers it, the
+ * options are INERT rather than wrong, because the change can only remove reads.
  */
 test("a focus change does not re-list the live catalogue the picker is showing", async () => {
 	const picker = source("features/chat/pickers/destination-pickers.tsx");

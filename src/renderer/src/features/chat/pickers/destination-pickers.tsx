@@ -622,15 +622,27 @@ export const ModelPicker: FC<PickerContext> = ({
 		/*
 		 * FOCUS IS NOT AN ASK, and on this key it is the sharpest form of that rule.
 		 * `staleTime: 0` above means the live document is stale the moment it lands,
-		 * so under the inherited `refetchOnWindowFocus: true` EVERY focus while the
-		 * dialog is open re-lists every provider the user has signed in to: a real
-		 * round trip per provider, against that provider's own rate limit. Alt-tabbing
-		 * out and back is how a user amplifies their own rate limiting, which is the
-		 * reported complaint. The asks are the refresh control (which calls `refetch`
-		 * and so still reads immediately) and the cadence below; a window that came
-		 * back is neither. The option is stated HERE rather than inherited precisely
-		 * because this key is the one that is always stale — see
-		 * `SNAPSHOT_READ_OPTIONS`, the app's single statement of the focus half.
+		 * so under the inherited `refetchOnWindowFocus: true` a DELIVERED focus
+		 * re-lists every provider the user has signed in to: a real round trip per
+		 * provider, against that provider's own rate limit, which is how a user
+		 * amplifies their own rate limiting by alt-tabbing out and back — the reported
+		 * complaint. The asks are the refresh control (which calls `refetch` and so
+		 * still reads immediately) and the cadence below; a window that came back is
+		 * neither. The option is stated HERE rather than inherited precisely because
+		 * this key is the one that is always stale — see `SNAPSHOT_READ_OPTIONS`, the
+		 * app's single statement of the focus half.
+		 *
+		 * DELIVERY IS NOT PART OF THE CLAIM, and saying so is QA round 1's Q1 rather
+		 * than a hedge: the channel this opts out of is query-core's focus manager,
+		 * which `QueryClientProvider` wires to the window's `visibilitychange` on
+		 * mount, and that a real macOS app switch delivers that transition to THIS
+		 * renderer is not measured anywhere in this repository. Both rigs here that
+		 * need the transition drive it synthetically (`scripts/hub-round-trips.mjs`
+		 * patches `document.visibilityState`; `scripts/attach-frame-evidence.mjs`
+		 * dispatches the event), and the measurement that settles it would need a
+		 * windowed app boot with a real app switch — a window on the operator's screen,
+		 * which is why no round has taken it. If a real switch never delivers it, this
+		 * line is INERT rather than wrong: the change can only remove reads.
 		 *
 		 * `refetchOnReconnect` is already silent app-wide and is named beside it
 		 * rather than left to the global, so a change to that default cannot re-arm a
@@ -651,9 +663,20 @@ export const ModelPicker: FC<PickerContext> = ({
 		placeholderData: keepPreviousData,
 		/*
 		 * The "periodically refetch" half of the operator's report, and the half this
-		 * app owns. For as long as the dialog is open the live listing is re-asked on
-		 * the picker cadence - `PICKER_CADENCE_MS` - so a model published during a
+		 * app owns. WHILE THE WINDOW IS FOCUSED the live listing is re-asked on the
+		 * picker cadence - `PICKER_CADENCE_MS` - so a model published during a
 		 * working session appears without the dialog being closed and reopened.
+		 *
+		 * "While the window is focused" is load-bearing rather than padding (review
+		 * round 1, R1-2): `refetchIntervalInBackground` is unset, so query-core skips a
+		 * tick that comes due while the window is hidden and the NEXT one resumes the
+		 * cadence - up to `PICKER_CADENCE_MS` AFTER the user comes back, never at the
+		 * moment they do. Before this change the focus refetch covered exactly that
+		 * gap; now nothing does, and re-covering it with
+		 * `refetchIntervalInBackground: true` would re-list every provider while the
+		 * user is away, which is the unasked provider traffic the focus option exists
+		 * to remove. What a returning user has instead is stated above: the refresh
+		 * control, one click, on a key whose `staleTime: 0` makes it read immediately.
 		 *
 		 * The BACKEND half of the same behaviour (answering that read at the picker's
 		 * TTL rather than from a document that can be 24 hours old) is a separate
