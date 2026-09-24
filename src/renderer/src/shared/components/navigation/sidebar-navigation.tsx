@@ -1,3 +1,4 @@
+import { useAppWideApprovals } from "@features/browser/hooks/use-app-wide-approvals";
 // One decision, one spelling: the row the reader is ON is painted by the
 // sidebar's own role string rather than by a second copy of it here. A copy is
 // what drifted twice (design rounds 3 and 4, D17/D19) and both drifts landed at
@@ -11,7 +12,7 @@ import {
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { CollapsibleAppLogo } from "@shared/components/navigation/collapsible-app-logo";
 import { UserProfileSidebar } from "@shared/components/navigation/user-profile-sidebar";
-import { Button, Tooltip } from "@shared/components/ui";
+import { Badge, Button, Tooltip } from "@shared/components/ui";
 import { useCurrentView } from "@shared/hooks/use-route-params";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -42,6 +43,13 @@ type NavItem = {
 	path: string;
 	isActive: boolean;
 	tourTag: string;
+	/**
+	 * How many browser approvals are waiting on the user, ACROSS EVERY CONVERSATION
+	 * (operator ask, 2026-09-23). Zero draws nothing at all — a badge reading `0`
+	 * would be a mark that says nothing is being asked, which is the honest
+	 * rendering of an item with no badge.
+	 */
+	attention?: number;
 };
 
 /*
@@ -145,6 +153,15 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 
 	const expanded = !isSidebarCollapsed;
 
+	/*
+	 * The rail is on EVERY route, so its Browser item answers the question no
+	 * per-conversation badge can: is an agent anywhere in this app blocked on me?
+	 * The count is the projection's own live set, unattributed requests included —
+	 * see `useAppWideApprovals` for why that one deliberately disagrees with the
+	 * chat header's count.
+	 */
+	const browserApprovals = useAppWideApprovals();
+
 	const navItems: NavItem[] = [
 		{
 			icon: MessageSquare,
@@ -183,6 +200,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			path: "/browser",
 			isActive: currentView === "browser",
 			tourTag: "nav-item-browser",
+			attention: browserApprovals,
 		},
 		{
 			icon: Settings,
@@ -199,6 +217,17 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		 * has to stay on the button itself. Putting it on a wrapper would leave
 		 * the tour dispatching a click at a div and silently doing nothing.
 		 */
+		const attention = item.attention ?? 0;
+		/*
+		 * THE NAME CARRIES THE NUMBER (operator ask, 2026-09-23): a badge is a visual
+		 * convenience over a fact the control has to STATE, and a screen reader that
+		 * found only the word "Browser" would be told there was nothing to answer
+		 * while an agent sat blocked on a prompt. Set in BOTH widths so the name does
+		 * not change with the rail's width — and only when a badge is drawn, so a
+		 * quiet rail keeps the plain label it has always had.
+		 */
+		const attentionLabel =
+			attention > 0 ? `${item.label}, ${attention} waiting` : item.label;
 		const button = (
 			<button
 				type="button"
@@ -208,9 +237,9 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				/* Collapsed there is no text in the row, and the tooltip cannot
 				   supply the name: Radix's `Trigger` adds `aria-describedby`, and
 				   only while open. */
-				aria-label={expanded ? undefined : item.label}
+				aria-label={expanded && attention === 0 ? undefined : attentionLabel}
 				className={cn(
-					"flex h-8 w-full items-center rounded-sm text-body-sm transition-colors duration-fast ease-out-quart",
+					"relative flex h-8 w-full items-center rounded-sm text-body-sm transition-colors duration-fast ease-out-quart",
 					expanded ? "justify-start gap-2 px-3" : "justify-center",
 					/*
 					 * THE DESTINATION YOU ARE ON IS A ROW STATE, not the wash. It was
@@ -246,6 +275,115 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					className={cn("shrink-0", item.isActive && "text-accent")}
 				/>
 				{expanded && <span className="truncate">{item.label}</span>}
+				{attention > 0 && (
+					/*
+					 * THE SAME BADGE THE HEADER'S GLOBE CARRIES (design 5.1), with the two
+					 * geometry decisions this rail forces and the header's icon button does
+					 * not:
+					 *
+					 * EXPANDED the badge is IN FLOW at the row's trailing edge (`ml-auto`),
+					 * not absolutely positioned at the label's corner. The row is 32px with a
+					 * 13px label, so the trailing edge IS its top-right at any size a badge
+					 * would use, and in flow is what keeps the promise the absolute form could
+					 * not: the label does not move (its own box starts at the same x as
+					 * before, right after the 16px mark) and the row's height does not change
+					 * (16px of badge inside a 32px row), which the frames beside this change
+					 * measure rather than assume. What the row DOES give up is title width:
+					 * the badge reserves its own 16px, so a label long enough to truncate
+					 * truncates about two characters earlier than it did. At 220px and a
+					 * 13px label nothing in the rail's own vocabulary comes close.
+					 *
+					 * COLLAPSED it is absolute, and BOTH numbers of the offset are bounded by
+					 * the rail rather than chosen (`-top-2 -right-1`, measured in `--scene
+					 * approval-badges`):
+					 *
+					 *  - RIGHT. The button is a 32px square in a 48px rail with an 8px list
+					 *    inset, so its right edge sits 8px from the rail's own edge. At
+					 *    `-right-2` a 16px badge's right edge landed ON the rail's 1px border -
+					 *    design round 1's D2 measured 0.25px of clearance, which is
+					 *    antialiasing, and the mark read as cut by the panel edge. The shipped
+					 *    offset is `-right-1`, which holds the ring's outward paint 3px inside
+					 *    the rail's OUTER edge - 2.5px from its 1px border, which keeps its own
+					 *    pixel its own. (`-right-1.5` was the step before the ring arrived,
+					 *    when the badge had no 2px of outward paint to place.)
+					 *  - TOP. `-top-2` lifts the badge's BOX until its bottom edge is just into
+					 *    the 16px glyph's top edge - measured, not asserted: the box is
+					 *    y194-210 against ink that starts at y208.5, so 1.5px of the stroke is
+					 *    under the pill's own border and 46px more under its 2px of outward
+					 *    ring. That is what makes a TWO-DIGIT count safe here: at `-top-1.5` the
+					 *    box ended 4px lower (y196-212), so a two-digit pill reached further back
+					 *    over the crown - and a cap does NOT buy that width, because `9+` and
+					 *    `13` are the same two characters.
+					 *
+					 *    AND THE RING IS THE BULK OF THAT INTRUSION, which is the header's own
+					 *    arrangement rather than a shortfall of this one (design rounds 2 and 3,
+					 *    D6/D11: 52 of the icon's stroke pixels over a 10x3.5px band, x19.5-29.5
+					 *    by y208.5-212, of which 46 sit under the ring). The ring is the
+					 *    separator that keeps the mark and the glyph from reading as one thick
+					 *    blob, exactly as on the header's icon button, and the alternative
+					 *    (lifting the pair until neither touches) is not available in a
+					 *    32px-pitch list: 16px of badge plus 2px of ring per side cannot fit
+					 *    between two glyphs 16px apart, so something is always crossed and the
+					 *    round-1 choice was to make it the ICON'S OWN CROWN rather than the row
+					 *    above's ink. The band and the counts are measured in
+					 *    `docs/evidence/browser-approval-badges/README.md`'s width table.
+					 *
+					 * THE RING (see the badge's own comment below) is the header's answer to a
+					 * mark that overlaps its icon, and the collapsed rail needs the same thing
+					 * once a second digit arrives. It is affordable here only because the offset
+					 * moved IN: 2px of outward paint at the old `-right-2` would have been
+					 * clipped by the rail's `overflow-x-hidden`, which is what the first cut of
+					 * this note refused - correctly, at that offset. The badge's own edge role
+					 * (`ink-muted` - design D5, code review F2) is still what has to clear the
+					 * 3:1 floor on every ground.
+					 *
+					 * NO `9+` CAP HERE, where the header has one. That cap is a GEOMETRY rule
+					 * rather than a grammar: the header's badge is anchored to a 32px icon
+					 * button with 12px of room, and three digits would walk back over its glyph
+					 * - so it caps the visible digits and keeps the number in the tooltip and
+					 * the `aria-label` (spec 5.1). This row protects the same thing with the
+					 * offset above, so the operator sees the number they asked for. The value is
+					 * one queue's worth either way: the approvals cap is 16, so two digits are
+					 * always the whole answer.
+					 */
+					<span
+						aria-hidden="true"
+						className={cn(expanded ? "ml-auto" : "absolute -top-2 -right-1")}
+					>
+						<Badge
+							variant="attention"
+							shape="pill"
+							size="count"
+							/*
+							 * THE RING IS THE HEADER'S DISCIPLINE, APPLIED HERE (design round 1,
+							 * D3). The chat header's badge sits on a 32px icon button and
+							 * OVERLAPS its glyph deliberately - that is what `-top-2.5` and a
+							 * `ring-2 ring-canvas` together mean: the mark may cross the icon, but
+							 * the ring is the gap that keeps the two from merging into one thick
+							 * blob. The rail's collapsed row is the same 32px button in a 48px
+							 * rail, and at a SECOND digit its pill is ~25px wide with its left edge
+							 * at x20 - seven pixels back over the icon's crown - where a one-digit
+							 * pill (18px) still cleared it. A cap does not buy that width (`9+` and
+							 * `13` are the same two characters, measured), so the collapsed form
+							 * takes the ring as well, and with it the ring's 2px of outward paint
+							 * counted against the rail's edge: `-right-1` holds the mark's ring 3px
+							 * inside the rail's 1px border, where the earlier `-right-2` put the
+							 * unringed edge ON it (D2's measured 0.25px).
+							 *
+							 * `ring-surface` rather than the header's `ring-canvas`, because the
+							 * ground here is the rail's own panel - the role the row sits on at
+							 * rest. On the two state grounds (`row-selected`, `row-hover`) the halo
+							 * is one step off rather than absent, which is the cost of a mark whose
+							 * ground changes; a ring that matched every state does not exist as one
+							 * role.
+							 */
+							className={expanded ? undefined : "ring-2 ring-surface"}
+							data-tour-tag="nav-browser-badge"
+						>
+							{attention}
+						</Badge>
+					</span>
+				)}
 			</button>
 		);
 

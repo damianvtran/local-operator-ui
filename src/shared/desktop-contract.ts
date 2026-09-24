@@ -1872,6 +1872,52 @@ export const DESKTOP_LOST_SIGHT_CODE = {
 export const RUNTIME_BUSY_CODE = "runtime_busy";
 
 /**
+ * The session OWNER's refusal while its runtime is leaving - a build handover,
+ * a signalled stop, a `/move`.
+ *
+ * NOT YET ON THE WIRE, AND KEPT ANYWAY. This constant names the code the backend
+ * half of the change will put on that refusal (design of record section 6 B2);
+ * today the desktop ladder does not send it. Captured from the real ladder rather
+ * than read off a literal (`docs/evidence/owner-refusal-send/harness/capture-bodies.py`,
+ * backend `origin/main` = `5bc34c90`): `RuntimeRetiring` is a `ValueError`
+ * (`session/errors.py`) and the ladder's coded `except (ReceiptConflict, ValueError)`
+ * arm covers only the attachment, profile-registry, superseded-token and
+ * deletion-refused errors, so this one falls to `raise HTTPException(409, str(error))`
+ * and arrives as `409 {"detail": "This session is switching to a newer build; the one
+ * it loaded is gone from disk. The message was not admitted - send it again once the
+ * new build is up."}` - a STRING, with no `code` for the renderer to read. So this
+ * branch's retiring term is inert until that backend change ships: the refusal an
+ * operator meets today still lands in the held state, and its own sentence is the
+ * only thing on screen that says the message was not admitted. The app's answer to
+ * the CODED shape is pinned in `scripts/canonical-chat.test.mjs` so the day the code
+ * arrives the behaviour is already asserted; the frames ship the uncoded body,
+ * because that is what a real owner answers with.
+ *
+ * WHY IT BELONGS WITH `runtime_busy` ANYWAY. Once coded, the fact is the same
+ * kind: the refusal is raised from the latched departure BEFORE the message is
+ * admitted, and its sentence says so in as many words. A send that meets it
+ * provably does not exist on the owner, so the composer owes the text back rather
+ * than a held claim whose whole content is that the outcome cannot be known.
+ *
+ * WHY THE CODE AND NEVER THE STATUS. A bare `409` establishes nothing about
+ * admission: the receipt-conflict ladder, the attachment ladder and the profile
+ * registry all answer one, and the conflicting-receipt case is a refusal of a
+ * replay whose FIRST attempt may well have been admitted. `isRefusedBeforeAdmission`
+ * therefore reads this field and not `status === 409`.
+ *
+ * WHY NOT A `retryable` FLAG either way. It is not a statement about admission in
+ * EITHER direction, so it cannot be a safe positive or a safe negative: the
+ * `runtime_busy` body the app does trust carries `"retryable": true` while
+ * establishing that nothing was admitted (measured above), and the ladder's other,
+ * admitting refusals set it to mean "a retry may help" (`SubagentChildUnavailable`
+ * is the measured example). Keying on it would hand a payload back to the composer
+ * for a message that may be on the owner - the one direction this classification
+ * must never take. The code is the fact; a body's `retry_after_ms` is pacing, and it
+ * is read where the backend sends it (`messageWithBusyResend`).
+ */
+export const RUNTIME_RETIRING_CODE = "runtime_retiring";
+
+/**
  * The sentences a refusal composes into, one per code.
  *
  * NO sentence here names an update, and none tells the user to change what the
