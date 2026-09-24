@@ -857,6 +857,38 @@ export function asideScrollToTurn(input: {
 }
 
 /**
+ * What re-runs the panel's move toward the newest question: every change that can
+ * grow the newest turn's box, as ONE primitive.
+ *
+ * WHY THE ANSWER'S LENGTH WAS NOT ENOUGH (QA round 4, Q33). The move re-runs as the
+ * turn grows, because its target only becomes reachable once the region can scroll
+ * that far (design round 3, D11). It used to be triggered by the answer's length
+ * alone, and a REFUSAL grows the turn without growing the answer: the `409`
+ * (`aside_unanswered`, `aside_empty_answer`, a prefix the owner no longer holds)
+ * replaces the one-line `thinking…` with an alert of up to five lines, the length
+ * stays 0, and nothing re-ran. The region stayed at the ceiling the append's first
+ * clamp had reached, short of its new bottom by exactly the alert's growth.
+ * Measured: 15-20px hidden at wide (the line saying what Esc costs) and 78-117px at
+ * narrow (4 of 5 lines).
+ *
+ * So the key also names the turn's PHASE, which is exactly what changes when the
+ * in-flight line is replaced: live, settled, or refused. A settle changes the phase
+ * too, which covers the one other late replacement (the thinking line or the last
+ * chunk replaced by the response's own text, possibly of the same length).
+ *
+ * The rule itself is unchanged, because the trigger only decides WHEN it is asked
+ * again: the target is still the question's own top, the move still stops at it,
+ * and a reader's scroll still ends the turn's move for good. A string rather than an
+ * object, so an idle re-render compares equal and cannot re-run the effect.
+ */
+export function asideScrollTrigger(stream: AsideStream | undefined): string {
+	if (!stream) return "none";
+	const phase =
+		stream.error !== null ? "refused" : stream.settled ? "settled" : "live";
+	return `${phase}:${stream.text.length}`;
+}
+
+/**
  * What the panel's one live region says, as a function of the newest turn.
  *
  * THE PHASE IS STILL THE SHAPE (review round 1, F4): a region that mirrored the

@@ -13,6 +13,7 @@ import {
 	asideAnnouncement,
 	asideQuestionTopOffset,
 	asideScrollToTurn,
+	asideScrollTrigger,
 	closeAside,
 } from "../aside";
 import { CHAT_MEASURE } from "../chat-measure";
@@ -299,18 +300,20 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 	const scrollDone = useRef<string | null>(null);
 	const lastTurnId = attachment?.turns.at(-1)?.asideId ?? null;
 	/*
-	 * The newest turn's own length, as the effect's OTHER trigger.
+	 * The newest turn's growth, as the effect's OTHER trigger.
 	 *
-	 * The target below is only reachable once the answer has grown enough for the
-	 * region to be able to scroll that far, so the effect has to re-run as the answer
-	 * arrives - and this is the value that says it has, without subscribing to the
+	 * The target below is only reachable once the turn has grown enough for the
+	 * region to be able to scroll that far, so the effect has to re-run as the turn
+	 * grows - and this is the value that says it has, without subscribing to the
 	 * whole stream object (which is replaced on every chunk and would re-render the
-	 * panel for its own sake). It is a number, so an idle re-render cannot re-run the
-	 * effect at all.
+	 * panel for its own sake). It is the answer's length AND the turn's phase, because
+	 * a refusal replaces the thinking line without adding a character of answer (QA
+	 * round 4, Q33; `asideScrollTrigger`). It is a string, so an idle re-render cannot
+	 * re-run the effect at all.
 	 */
-	const newestAnswerLength = lastTurnId
-		? (streams[lastTurnId]?.text.length ?? 0)
-		: 0;
+	const newestTurnGrowth = asideScrollTrigger(
+		lastTurnId ? streams[lastTurnId] : undefined,
+	);
 	/*
 	 * THE QUESTION MOVES TO THE REGION'S TOP, AND THE MOVE SURVIVES THE ANSWER ARRIVING
 	 * (design round 3, D11, and it is not D6's per-chunk follow).
@@ -328,7 +331,7 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 	 * is the `> 1` test - one pixel of drift is the device's rounding, more than that
 	 * is a scroll, and a scroll ends this turn's move permanently.
 	 */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: the newest answer's length is the effect's TRIGGER and not a value it reads -- the target is reachable only once the answer has grown enough, and the movement itself is read from the DOM. See the block above.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the newest turn's growth is the effect's TRIGGER and not a value it reads -- the target is reachable only once the turn has grown enough, and the movement itself is read from the DOM. See the block above.
 	useEffect(() => {
 		if (!lastTurnId) return;
 		if (scrollDone.current === lastTurnId) return;
@@ -361,7 +364,7 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 		if (wanted === Math.max(0, asideQuestionTopOffset(geometry))) {
 			scrollDone.current = lastTurnId;
 		}
-	}, [lastTurnId, newestAnswerLength]);
+	}, [lastTurnId, newestTurnGrowth]);
 	// Absent rather than conditional-in-the-parent at this level too: the panel's
 	// own store subscription is what makes it appear, and a caller that removed it
 	// must remove the attachment (or the panel would paint over the composer).

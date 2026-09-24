@@ -84,6 +84,7 @@ const bundle = await build({
 				asideAskBlockedReason,
 				asideQuestionTopOffset,
 				asideScrollToTurn,
+				asideScrollTrigger,
 				asideAnnouncement,
 				asideAnnounceableText,
 				asideModelDeclined,
@@ -238,6 +239,7 @@ const {
 	asideAskBlockedReason,
 	asideQuestionTopOffset,
 	asideScrollToTurn,
+	asideScrollTrigger,
 	asideAnnouncement,
 	asideAnnounceableText,
 	asideModelDeclined,
@@ -412,8 +414,14 @@ const RE_PANEL_REASON_ID = /<p id=\{blockedId\}/;
  * gate ahead of the aside term, so a label that named the aside while a gate was
  * pending named a destination the press does not reach.
  */
+/*
+ * Anchored on the TOOLTIP's own `content={` (agent review round 6, R6-2): the label
+ * and the tooltip share one expression, so an unanchored pattern was satisfied by the
+ * label alone and a mutation of the tooltip only (M9) passed. The tooltip's WHY
+ * comment sits between the brace and the expression, hence the optional block.
+ */
 const RE_SEND_VERB =
-	/aside !== null && !awaitingAnswer\s*\?\s*"Ask the aside"\s*:\s*"Send message"/;
+	/content=\{\s*(?:\/\*[\s\S]*?\*\/\s*)?aside !== null && !awaitingAnswer\s*\?\s*"Ask the aside"\s*:\s*"Send message"\s*\}/;
 const RE_SEND_LABEL =
 	/aria-label=\{\s*aside !== null && !awaitingAnswer\s*\?\s*"Ask the aside"\s*:\s*"Send message"\s*\}/;
 const RE_PANEL_CAP_COUNTS_QUESTION =
@@ -434,10 +442,26 @@ const RE_PANEL_SCROLLS_UNTIL_REACHED =
 const RE_PANEL_YIELDS_TO_THE_READER =
 	/Math\.abs\(region\.scrollTop - written\.offset\) > 1/;
 /*
+ * The move's trigger is the newest turn's GROWTH, phase included (QA round 4, Q33):
+ * the value test below pins what the trigger distinguishes, and this pins that the
+ * panel's effect is keyed on it rather than on the answer's length alone.
+ */
+const RE_PANEL_SCROLL_TRIGGER =
+	/const newestTurnGrowth = asideScrollTrigger\(\s*lastTurnId \? streams\[lastTurnId\] : undefined,\s*\);/;
+/*
  * The busy line's retirement (U12/D13): the effect is gated on the busy code and
  * asks the same predicate the gate uses, so the line ends with the state it names —
  * on the answer settling and on the panel closing alike.
  */
+/*
+ * The ONE line both halves of U12 hang on (agent review round 6, R6-3): the busy
+ * sentence is raised WITH its code, and the code is what `withholdsRetryHint` drops
+ * the "Send it again" suffix for and what the retire effect below is gated on.
+ * Without it the line regains the suffix and is never retired, and every value test
+ * stays green, because the setter lives in a component this harness cannot mount.
+ */
+const RE_PAGE_RAISES_THE_BUSY_CODE =
+	/const noteAsideRefusal = useCallback\(\(sentence: string\) => \{\s*setSendError\(sentence\);\s*setSendErrorCode\(ASIDE_STILL_ANSWERING_CODE\);\s*\}, \[\]\);/;
 const RE_PAGE_RETIRES_THE_BUSY_LINE =
 	/if \(sendErrorCode !== ASIDE_STILL_ANSWERING_CODE\) return;\s*if \(asideBusy\) return;\s*clearError\(\);/;
 const RE_PANEL_REGION_FOCUSABLE =
@@ -1821,6 +1845,7 @@ test("an ask is refused in the app while the exchange is still answering", () =>
 		/export const ASIDE_STILL_ANSWERING_CODE = "aside_still_answering";/,
 	);
 	assert.match(sessions, /code === ASIDE_STILL_ANSWERING_CODE \|\|/);
+	assert.match(page, RE_PAGE_RAISES_THE_BUSY_CODE);
 	assert.match(page, RE_PAGE_RETIRES_THE_BUSY_LINE);
 	assert.match(page, /noteAsideRefusal,/);
 	assert.match(dispatch, /noteAsideRefusal\?: \(sentence: string\) => void;/);
@@ -1964,9 +1989,69 @@ test("an appended turn is scrolled into the region's view, and on to the questio
 	// target rather than a pin to content.
 	assert.match(panel, RE_PANEL_SCROLLS_UNTIL_REACHED);
 	assert.match(panel, RE_PANEL_YIELDS_TO_THE_READER);
-	// The per-chunk trigger, so the move survives the answer arriving at all.
-	assert.match(panel, /\}, \[lastTurnId, newestAnswerLength\]\);/);
+	// The per-chunk trigger, so the move survives the answer arriving at all - and
+	// the refusal that REPLACES the thinking line with no answer at all (Q33).
+	assert.match(panel, RE_PANEL_SCROLL_TRIGGER);
+	assert.match(panel, /\}, \[lastTurnId, newestTurnGrowth\]\);/);
 	assert.match(panel, RE_PANEL_REGION_FOCUSABLE);
+});
+
+/*
+ * A REFUSAL THAT REPLACES THE THINKING LINE RE-RUNS THE MOVE (QA round 4, Q33).
+ *
+ * The move above re-runs as the newest turn grows, and it used to learn of that growth
+ * from the answer's LENGTH alone. A refused follow-up grows the turn by up to five
+ * lines of alert while the answer stays empty, so nothing re-ran and the region rested
+ * at the ceiling the append's clamp had reached: 15-20px of the alert hidden at wide
+ * (the clause that says what Esc costs) and 78-117px at narrow (4 of 5 lines), in
+ * every case exactly `maxScroll - scrollTop` after the refusal landed.
+ *
+ * Driven through the REAL store transitions an ask goes through, so the trigger is
+ * asserted on the streams the panel actually reads rather than on hand-built ones.
+ */
+test("a refusal that replaces the thinking line re-runs the move toward the question", () => {
+	reset();
+	const store = () => useAsideStore.getState();
+	const trigger = (id) => asideScrollTrigger(store().streams[id]);
+
+	assert.equal(asideScrollTrigger(undefined), "none");
+
+	// A refused follow-up: in flight with nothing, then refused with nothing. The
+	// answer's length is 0 on both sides - the old trigger's blind spot.
+	store().beginAsk(SESSION, "turn-refused", "a follow-up the model declines");
+	const inFlight = trigger("turn-refused");
+	store().failAside("turn-refused", "The model did not answer your aside in text.");
+	assert.equal(store().streams["turn-refused"].text.length, 0);
+	assert.notEqual(
+		trigger("turn-refused"),
+		inFlight,
+		"the refusal grew the turn, so the move must be asked again",
+	);
+
+	// A refusal that lands after some chunks is a change too, at the same length.
+	store().beginAsk(SESSION, "turn-cut", "a follow-up cut short");
+	store().applyAsideDelta("turn-cut", "part");
+	const beforeCut = trigger("turn-cut");
+	store().failAside("turn-cut", "The aside was not answered.");
+	assert.notEqual(trigger("turn-cut"), beforeCut);
+
+	// A settle whose text equals what streamed replaces the live line as well.
+	store().beginAsk(SESSION, "turn-settled", "an answered follow-up");
+	const live = trigger("turn-settled");
+	store().settleAside("turn-settled", "");
+	assert.notEqual(trigger("turn-settled"), live);
+
+	/*
+	 * AND IT STAYS A TRIGGER, NOT A FOLLOW: an unchanged stream compares equal, so an
+	 * idle re-render cannot re-run the effect, and the effect's own two early returns
+	 * (target reached, reader scrolled - pinned in the test above) still end the move.
+	 */
+	assert.equal(trigger("turn-refused"), trigger("turn-refused"));
+	assert.equal(
+		asideScrollTrigger({ text: "abc", streaming: true, settled: false, error: null }),
+		asideScrollTrigger({ text: "abc", streaming: true, settled: false, error: null }),
+	);
+	assert.equal(typeof trigger("turn-refused"), "string");
 });
 
 /*
