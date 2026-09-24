@@ -2649,75 +2649,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		);
 
 		/*
-		 * THE BOX TAKES BACK A REFUSED SEND'S TEXT FROM THE STORE.
-		 *
-		 * `useMessageInput` already restores a refused send by writing the submitted
-		 * text into its own state, and that is enough only while the composer that
-		 * sent it is still mounted. It is NOT, on the arm a "New chat" uses: the send
-		 * creates the session inside its own call, the page re-keys this panel onto
-		 * the id that send minted, and React unmounts the composer whose state held
-		 * the text. The replacement mounts empty, because the text is per-conversation
-		 * local state and this conversation did not exist when the send began - so the
-		 * refusal's own instruction ("move it below your text") pointed at text that
-		 * was no longer anywhere on screen, and the only control left was Discard
-		 * (UX round 3 U14, QA round 3 Q7).
-		 *
-		 * So the store's retained row supplies it (`refusedBeforeAdmissionText`) and
-		 * this adopts it - the same rule, and the same `restoreSubmittedText`, that the
-		 * local restore applies, now applied to a box that can be newly mounted: on a
-		 * remount the refusal is adopted again, which is also what makes the text
-		 * reachable after a reload instead of sitting in a persisted row no route
-		 * renders. Only an EMPTY box is written, so anything typed while the send was
-		 * in flight is never overwritten.
-		 *
-		 * THE CHIPS COME BACK WITH THE TEXT, on that same rule and for the same
-		 * reason (`refusedBeforeAdmissionAttachments`). The user's files are staged in
-		 * the conversation-input store under the PRE-FLIP identity, so the composer
-		 * that mounts here has an empty chip row while the store's row still holds the
-		 * list - and a resend of the adopted text therefore went out with the wording
-		 * and WITHOUT the file, silently, and retired the row that recorded it (round
-		 * 7, R17). Adopting the paths is what makes the restored draft send exactly
-		 * what it shows: the chip row and the payload the next Send carries are the
-		 * same list, and images are re-encoded from those paths by the send itself.
-		 *
-		 * BOTH HALVES GO THROUGH ONE DECISION (`adoptRefusedPayload`), not through the
-		 * pair's two rules read independently: the chip write used to sit below the
-		 * TEXT rule's early return, so on the arm where the two rules disagree - the
-		 * box holds text the user typed, the chip row is empty - the refusal's file
-		 * was dropped with nothing said, and a later edit to the text rule would have
-		 * changed which refusals restore files without anything failing (round 8,
-		 * MINOR-2). The decision adopts each half into its own empty slot - what a
-		 * slot that already holds the user's own content keeps, the user keeps - and
-		 * answers `withheld` when it had to hold one half back while taking the other.
-		 * That answer is SAID on screen below, because a draft carrying one half of a
-		 * refused payload looks exactly like a draft carrying all of it.
-		 *
-		 * The caret goes to the END of the restored text, which is where the user's
-		 * was when they pressed Send - and it is not cosmetic here. The planner reads
-		 * the token AT THE CARET (`slash-submit.ts`), so a newly mounted composer left
-		 * at position 0 reads a leading `/usage` line as the command to RUN and the
-		 * next Send splices it out instead of attempting the message: the refusal's
-		 * own remedy would be the thing that swallowed it. At the end of the draft the
-		 * text reads as prose, exactly as it did on the arm that never re-mounted, and
-		 * the popup the box had opened at position 0 closes with it.
-		 *
-		 * A LAYOUT effect, because the adoption belongs to this commit's paint rather
-		 * than to the one after it: as a passive effect the remounted composer painted
-		 * an EMPTY box - with the refusal's copy already above it - for one frame
-		 * before the text landed (round 7, R20). The caret write it feeds is a layout
-		 * effect for the same reason.
-		 *
-		 * Guarded on the payload already being handed over, once per distinct payload
-		 * and never twice for the same one: without that, emptying the box on purpose
-		 * would re-fill it on the next render, and a dismissal - which keeps the
-		 * payload and clears only the sentence - would do the same. The marker is
-		 * therefore named for what it is: it records that this composer has CONSIDERED
-		 * this payload, which on the arm where the box already holds the user's own
-		 * text happens without the write landing. A marker claiming the write instead
-		 * would have to move below the early return, and that placement is the re-fill
-		 * above (round 7, R22).
-		 */
-		/*
 		 * NO ADOPTION EFFECT LIVES HERE ANY MORE, and that is the point of the change:
 		 * a refused payload used to arrive as two props (text and file paths) that this
 		 * component merged into the box in a layout effect, which only worked while the
@@ -5117,13 +5048,24 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				actions: sendError?.actions ?? [],
 				retry: sendError?.retry === true,
 				/*
-				 * Clear is offered whenever the notice is: the box may hold the returned
-				 * message, or a claim may be waiting to be dropped, and in both cases
-				 * the user's way out is to empty the composer and be done with it. It is
-				 * also the ONE control on the pairing arms, where the payload cannot be
-				 * sent at all until the app is repaired.
+				 * Clear is offered whenever the notice is - the box may hold the returned
+				 * message, or a claim may be waiting to be dropped, and in both cases the
+				 * user's way out is to empty the composer and be done with it. It is also
+				 * the ONE control on the pairing arms, where the payload cannot be sent at
+				 * all until the app is repaired.
+				 *
+				 * AND NOT on a MUTED notice, which is the other half of the same rule
+				 * (spec §4's table gives both muted rows no actions). A muted notice is a
+				 * statement of fact rather than a failure - the send lock ("Your last
+				 * message is still sending.") and the late delivery ("Your earlier message
+				 * was delivered.") - and on both the box holds text the user typed and
+				 * still means to send. Clear beside that sentence is a destructive control
+				 * offered over a state with nothing to repair, which is the shape this
+				 * change exists to remove rather than relocate.
 				 */
-				clear: sendError?.onClear !== undefined || hasSomethingToClear,
+				clear:
+					sendError?.muted !== true &&
+					(sendError?.onClear !== undefined || hasSomethingToClear),
 			};
 		}, [sendError, newMessage, replies, attachments]);
 
