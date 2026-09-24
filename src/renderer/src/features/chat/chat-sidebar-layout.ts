@@ -59,6 +59,25 @@ export const SIDEBAR_SHEET_WIDTH = SIDEBAR_DEFAULT_WIDTH;
 export const SIDEBAR_DOCK_MIN_PX = 1024;
 
 /**
+ * The chat pane's own floor, in pixels: the redesign's §B1, and the number the
+ * bands below are argued from.
+ *
+ * IT IS RECORDED, NOT YET APPLIED, and that distinction is the whole reason it is
+ * here rather than in the component that draws the column. The applied floor today
+ * is `min-w-[220px]` on the column beside the pane (`chat-content.tsx`), read back
+ * from the element by the right pane's capacity arithmetic; §I's plan raises it to
+ * this number as the FIRST of three yielding steps (chat floor, then the sidebar to
+ * the icon strip, then the canvas overlaying), which is a layout change to the same
+ * row and lands as its own commit.
+ *
+ * Naming it now, before that commit, is what lets the arithmetic be checked against
+ * the spec instead of a literal: `scripts/chat-pane-floors.test.mjs` asserts this
+ * constant, the applied class, and the two sums the band 880 is derived from - so
+ * the commit that moves the floor is caught here whether it moves it up or down.
+ */
+export const CHAT_PANE_MIN_PX = 480;
+
+/**
  * The first window width at which the CHAT PANE can hold its own floor beside a
  * docked sidebar. 880 is the spec's number and it is deliberately NOT the dock's
  * own sum: 260 + 480 = 740 is the pane's floor plus the sidebar's width, and the
