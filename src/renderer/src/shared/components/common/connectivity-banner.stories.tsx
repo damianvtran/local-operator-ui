@@ -487,7 +487,7 @@ export const Unattachable: Story = {
 				desktopAvailable: false,
 				failures: 0,
 				detail:
-					"http://127.0.0.1:1111 (pid 42411, uv-tool, v0.55.6) is running a Local Operator daemon this app has no key for. Nothing was started over it. Stop it from the install that owns it with `lop services reclaim 42411` (`lop services status` lists what is running). It keeps probing for a server it can open.",
+					"http://127.0.0.1:1111 (pid 42411, uv-tool, v0.55.6) is running a Local Operator daemon this app has no key for. Nothing was started over it. Stop it from the install that owns it with lop services reclaim 42411 (lop services status lists what is running). It keeps probing for a server it can open.",
 			}),
 		),
 	],
@@ -523,7 +523,7 @@ export const BothAddressesHeld: Story = {
 				desktopAvailable: false,
 				failures: 0,
 				detail:
-					"http://127.0.0.1:1111 (pid 42411, uv-tool, v0.55.6) and http://127.0.0.1:8080 (pid 53501, local-operator, v0.55.5) are running Local Operator daemons this app has no key for. Nothing was started over them. Stop them from the installs that own them with `lop services reclaim <pid>` (`lop services status` lists what is running). It keeps probing for a server it can open.",
+					"http://127.0.0.1:1111 (pid 42411, uv-tool, v0.55.6) and http://127.0.0.1:8080 (pid 53501, local-operator, v0.55.5) are running Local Operator daemons this app has no key for. Nothing was started over them. Stop them from the installs that own them with lop services reclaim <pid> (lop services status lists what is running). It keeps probing for a server it can open.",
 			}),
 		),
 	],
@@ -567,7 +567,7 @@ export const ServingOnFallback: Story = {
 					 * `holder` above describes, pinned by `scripts/connectivity-banner-copy.test.mjs`.
 					 */
 					reclaim:
-						"Stop it from the install that owns it with `lop services reclaim 42411` (`lop services status` lists what is running).",
+						"Stop it from the install that owns it with lop services reclaim 42411 (lop services status lists what is running).",
 				},
 			}),
 		),

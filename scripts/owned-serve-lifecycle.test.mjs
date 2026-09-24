@@ -2008,6 +2008,48 @@ test("a start that never lands claims no address, on either arm (R2-2)", async (
 	await m.stop(false);
 });
 
+/*
+ * THE PUSH THAT CARRIES A CLAIM IS THE ONE THAT HAS THE REASON (agent round 3, R3-1).
+ *
+ * `registerOwnedDaemon` LANDS the app, and a landing clears the reason - it has to,
+ * because a landing may be on a different address altogether - so the snapshot IT pushed
+ * described a fallback spawn with `holder: null`: the ADOPTED arm's sentence ("the daemon
+ * this app is using was already running, so it did not start one") about a daemon this
+ * app had just started, and with the reclaim act withheld for one IPC round trip. The
+ * push after `recordSubstitutionReason` is the fix, and this case asserts it over EVERY
+ * push the launch makes rather than over the final read, which was always correct.
+ */
+test("every claim pushed at a fallback spawn names the holder and the act (R3-1)", async () => {
+	const occupied = await squatter(livePid());
+	const fallbackPort = await freePort();
+	const m = await manager();
+	m.configuredUrl = occupied.address;
+	m.fallbackSpawnUrls = [`http://127.0.0.1:${fallbackPort}`];
+	const pushed = [];
+	m.onStatusChange((snapshot) => pushed.push(snapshot));
+	assert.equal(await m.start(), true, "the launch takes the fallback");
+	const claimed = pushed.filter(
+		(snapshot) => snapshot.addressSubstitution?.kind === "substituted",
+	);
+	assert.ok(
+		claimed.length > 0,
+		"the fallback launch published the claim at least once",
+	);
+	for (const snapshot of claimed) {
+		assert.notEqual(
+			snapshot.addressSubstitution.holder,
+			null,
+			`a claim about a daemon this app started names its holder (pushed for ${snapshot.url})`,
+		);
+		assert.match(
+			String(snapshot.addressSubstitution.reclaim),
+			/lop services reclaim/,
+			"and carries the act, which is the whole of what an operator can do from here",
+		);
+	}
+	await m.stop(false);
+});
+
 test("both addresses held: nothing is started, both holders are named, no child to quit over", async () => {
 	const configured = await squatter(livePid());
 	const fallback = await squatter(process.pid);

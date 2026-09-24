@@ -382,6 +382,20 @@ export function describeHolders(refusals: OriginOccupancy[]): string {
 }
 
 /**
+ * How many holders a sentence is about.
+ *
+ * ONE COUNT FOR TWO AGREEMENTS (agent round 3, R3-2). `describeHolders` words its class
+ * clause from a holder count, so the act appended to that clause has to agree with the
+ * same count and not with the number of PIDS: two holders that published one pid
+ * between them produced "Stop it from the install that owns it with `reclaim 42411`"
+ * beside "are running Local Operator daemons" - the same disagreement design round 2's
+ * D9 removed for the both-pids case, and a breach of this file's own rule for the
+ * placeholder. One helper, asked by both composers, so the two cannot drift apart
+ * again.
+ */
+const holderCount = (refusals: OriginOccupancy[]): number => refusals.length;
+
+/**
  * The act an operator can take about these holders, or the empty string where no
  * act exists.
  *
@@ -410,15 +424,28 @@ export function reclaimClause(refusals: OriginOccupancy[]): string {
 		.map((occupancy) => occupancy.occupant.pid)
 		.filter((pid): pid is number => pid !== null);
 	if (pids.length === 0) return "";
-	const command =
-		pids.length === 1
-			? `lop services reclaim ${pids[0]}`
-			: "lop services reclaim <pid>";
-	const direct =
-		pids.length === 1
-			? "it from the install that owns it"
-			: "them from the installs that own them";
-	return ` Stop ${direct} with \`${command}\` (\`lop services status\` lists what is running).`;
+	/*
+	 * BOTH HALVES FOLLOW THE HOLDER COUNT (agent round 3, R3-2), and the command names a
+	 * pid only where the sentence is about ONE holder: with two holders named, the act is
+	 * plural and the command keeps the placeholder, which is what the doc comment above
+	 * promises. Nothing here reads `pids.length` except the early return.
+	 */
+	const single = holderCount(refusals) === 1 && pids.length === 1;
+	const command = single
+		? `lop services reclaim ${pids[0]}`
+		: "lop services reclaim <pid>";
+	const direct = single
+		? "it from the install that owns it"
+		: "them from the installs that own them";
+	/*
+	 * NO BACKTICKS AROUND THE COMMAND (design round 3, D18). This string is rendered by
+	 * `AlertDescription` as PLAIN TEXT - the delimiters were markdown for a span that does
+	 * not exist - so an operator saw a live grave accent in the same face as the prose,
+	 * around the one sentence this change exists to make legible. Dropping them is the
+	 * honest fix for a plain-text surface; a mono span would need the contract to carry
+	 * segments rather than a sentence, which is a bigger change than this round's.
+	 */
+	return ` Stop ${direct} with ${command} (lop services status lists what is running).`;
 }
 
 /**
@@ -556,6 +583,25 @@ export type OriginOccupancy =
 
 /** The one kind that does not claim a Local Operator server is present. */
 type SilentOccupancy = Extract<OriginOccupancy, { kind: "silent" }>;
+
+/**
+ * The reason a launch is on an address it is not configured for, as the record carries
+ * it: what held the configured address, and the act that frees it.
+ *
+ * Both are null when this app observed no holder, which is what an attach path means
+ * rather than a gap in the record: a launch that adopts a daemon discovered elsewhere
+ * never asked the configured address anything.
+ */
+interface SubstitutionReason {
+	holder: string | null;
+	reclaim: string | null;
+}
+
+/** Shared rather than rebuilt per landing: it is never mutated, only replaced. */
+const NO_SUBSTITUTION_REASON: SubstitutionReason = Object.freeze({
+	holder: null,
+	reclaim: null,
+});
 
 const execPromise = promisify(exec);
 
@@ -715,10 +761,7 @@ export class BackendServiceManager {
 	 * moment the holder is observable at all.
 	 */
 	private servedElsewhere: string | null = null;
-	private substitutionReason: {
-		holder: string | null;
-		reclaim: string | null;
-	} = { holder: null, reclaim: null };
+	private substitutionReason: SubstitutionReason = NO_SUBSTITUTION_REASON;
 	/** A failed probe or unreadable record is not evidence that spawning is safe. */
 	private discoveryBlocksSpawn = false;
 	/**
@@ -990,7 +1033,8 @@ export class BackendServiceManager {
 	 *
 	 * `holder`/`reclaim` are the one fact the derivation cannot recover, because the
 	 * gate is the only witness to what held the address; they are kept beside the
-	 * landing (`recordSubstitutionReason`) and reach a surface only through an arm
+	 * landing (`substitutionReasonFor`, which the landing publishes) and reach a surface
+	 * only through an arm
 	 * that is true. Null holder/reclaim is the honest state for a launch that adopted
 	 * somebody else's daemon: it never asked the configured address anything.
 	 */
@@ -1030,17 +1074,27 @@ export class BackendServiceManager {
 	}
 
 	/**
-	 * Adopt a validated daemon, and record WHERE the app landed.
+	 * Adopt a validated daemon, and record WHERE the app landed and WHY it landed there.
 	 *
 	 * Every landing in this class goes through here - the spawn's registration and
-	 * both attach paths - which is what makes the record a property of the app's
+	 * both attach paths - which is what makes the claim a property of the app's
 	 * address rather than of one code path (agent round 2, R2-1). `servedElsewhere`
 	 * survives a landing on the configured address on purpose: it is what a return
 	 * has to name.
+	 *
+	 * THE REASON TRAVELS WITH THE LANDING rather than being written beside it (agent
+	 * round 3, R3-1). It used to be cleared here and re-recorded by the caller AFTER
+	 * this call returned, which meant the snapshot this landing pushed carried
+	 * `holder: null` for a fallback spawn - the ADOPTED arm's sentence about a daemon
+	 * the app had just started, and with the act withheld - until the next read. Now
+	 * the spawn path hands the reason in and the landing publishes it, so there is one
+	 * push per landing and it is the true one. The default is the empty pair, which is
+	 * what an attach path means: this app observed no holder because it never asked.
 	 */
 	private attachDaemon(
 		identity: DaemonIdentity,
 		options: { owned: boolean },
+		reason: SubstitutionReason = NO_SUBSTITUTION_REASON,
 	): void {
 		this.daemonState.attach(identity, options);
 		const configured = normaliseAddress(this.configuredUrl);
@@ -1048,34 +1102,25 @@ export class BackendServiceManager {
 		if (landed && configured && landed !== configured) {
 			this.servedElsewhere = landed;
 		}
-		/*
-		 * A landing clears the reason: it belongs to the address the app was pushed
-		 * off, and this landing may be on a different one (an adopted daemon). The
-		 * spawn path re-records it immediately after registering, where the gate's
-		 * own refusals are in hand.
-		 */
-		this.clearSubstitutionReason();
+		this.substitutionReason = reason;
 	}
 
 	/**
-	 * The reason a fallback was taken, recorded WHERE THE LANDING IS (agent round 2,
-	 * R2-2): the gate decides on a target before the spawn, but nothing about the
-	 * decision is announced until the daemon it started answers, so the reason is
-	 * written here rather than there. A failed start therefore leaves no reason
-	 * behind, and the claim (`addressSubstitutionFor`) is not there to render anyway.
+	 * The reason a fallback was taken, composed where the gate's refusals are still in
+	 * hand - and HANDED to the landing rather than written beside it (agent round 2,
+	 * R2-2 for the timing, agent round 3, R3-1 for the hand-off). A start that never
+	 * lands never carries this anywhere, and the claim is not there to render it
+	 * anyway.
 	 */
-	private recordSubstitutionReason(refusals: OriginOccupancy[]): void {
-		this.substitutionReason =
-			refusals.length > 0
-				? {
-						holder: describeHolders(refusals),
-						reclaim: reclaimClause(refusals).trim() || null,
-					}
-				: { holder: null, reclaim: null };
-	}
-
-	private clearSubstitutionReason(): void {
-		this.substitutionReason = { holder: null, reclaim: null };
+	private substitutionReasonFor(
+		refusals: OriginOccupancy[],
+	): SubstitutionReason {
+		return refusals.length > 0
+			? {
+					holder: describeHolders(refusals),
+					reclaim: reclaimClause(refusals).trim() || null,
+				}
+			: NO_SUBSTITUTION_REASON;
 	}
 
 	getStreamRelay(): DesktopStreamRelay {
@@ -2755,17 +2800,20 @@ export class BackendServiceManager {
 					break;
 				if (healthy) {
 					this.isRunning = true;
+					/*
+					 * THE REASON IS COMPOSED HERE AND HANDED TO THE LANDING (agent round 2, R2-2;
+					 * agent round 3, R3-1). The gate picked the target earlier, but nothing about
+					 * that decision is true until the daemon it started answers - and this is the
+					 * only frame that still has the gate's refusals, so the landing is given the
+					 * reason rather than writing it after the fact. That is what stops the snapshot
+					 * the landing PUSHES from describing a fallback spawn as an adoption (the
+					 * `holder: null` arm, and no reclaim act) for one IPC round trip.
+					 */
+					const reason = this.substitutionReasonFor(refusals);
 					// Registered BEFORE readiness is announced: the Settings row's
 					// version comes from this registration, and a consumer that
 					// re-reads capabilities on `backendReady` must already see it.
-					await this.registerOwnedDaemon(child);
-					/*
-					 * The REASON the app is on this address is recorded here, with the landing
-					 * (agent round 2, R2-2): the gate picked the target earlier, but nothing
-					 * about that decision is true until the daemon it started answers, and a
-					 * reason recorded at intent time outlived a start that never landed.
-					 */
-					this.recordSubstitutionReason(refusals);
+					await this.registerOwnedDaemon(child, reason);
 					this.startHealthCheck();
 					this.notifyBackendReady();
 					return true;
@@ -2852,7 +2900,10 @@ export class BackendServiceManager {
 	 * second arm is the case of an install predating the record format, which is
 	 * reachable on a fixed port exactly as the deprecated adoption path allows.
 	 */
-	private async registerOwnedDaemon(child: ChildProcess): Promise<void> {
+	private async registerOwnedDaemon(
+		child: ChildProcess,
+		reason: SubstitutionReason = NO_SUBSTITUTION_REASON,
+	): Promise<void> {
 		const identity = await this.ownedDaemonIdentity(child);
 		if (!identity) {
 			/*
@@ -2873,7 +2924,7 @@ export class BackendServiceManager {
 			);
 			return;
 		}
-		this.attachDaemon(identity, { owned: true });
+		this.attachDaemon(identity, { owned: true }, reason);
 		// Spawned by this app with this app's desktop token, so the plane accepts
 		// it. Never asserted for a daemon this app did not start.
 		this.daemonState.setPairing(DAEMON_PAIRED);
