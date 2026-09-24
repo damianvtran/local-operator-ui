@@ -2257,7 +2257,16 @@ export const NewSessionPicker: FC<PickerContext> = ({
 		const value = await op.perform(
 			async () => {
 				const id = await createSession(
-					cwd.trim() || (canonical.frontend?.cwd ?? "~"),
+					/*
+					 * A PEER GETS `~`, NEVER THIS MACHINE'S PATH (QA round 1, Q9; backend
+					 * PR #1540). The route forwards `cwd` now and VALIDATES it on the
+					 * peer, answering 409 with the path that does not exist there and the
+					 * device it does not exist on - so sending the local pane's directory
+					 * to a peer would produce exactly that refusal on every real network.
+					 * `~` is the one path that means the same thing on both ends, which is
+					 * also where the peer would have started anyway.
+					 */
+					chosen ? "~" : cwd.trim() || (canonical.frontend?.cwd ?? "~"),
 					undefined,
 					requestIdRef.current,
 					undefined,
@@ -2269,7 +2278,15 @@ export const NewSessionPicker: FC<PickerContext> = ({
 			(id) => ({
 				tone: "success",
 				text: chosen
-					? `New conversation ${id} on ${deviceLabel(chosen)}. The previous one keeps running.`
+					? /* CREATED IS NOT YET RUNNING (backend PR #1540): a promptless create on a
+					     peer answers with the id in ~1 s and warms the runtime in the
+					     background, so "on <peer>" alone would imply it is up there. It says
+					     the conversation exists and is starting, which is what the wire
+					     supports; the row's own state settles by the next list read, and a
+					     failed warm is recorded on the peer as `session.create.warm_failed`
+					     (an audit record this renderer has no field for, so it is not
+					     invented here). */
+						`New conversation ${id} on ${deviceLabel(chosen)}; it is starting there. The previous one keeps running.`
 					: `New conversation ${id}. The previous one keeps running.`,
 			}),
 			chosen
