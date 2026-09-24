@@ -1,0 +1,46 @@
+# The provider sign-in, the Providers page, first run and the empty chat
+
+Twenty-six states for the change that makes a provider reachable from the app: the
+Providers settings page (a first run, connected, and a row's overflow menu open),
+the sign-in panel in every state it has, the three first-run steps, and the two
+surfaces that tell a user with nothing connected what to do about it.
+
+The panel's states are the point of the set, because the defect it fixes was a
+state machine rather than a layout: `idle`, `waiting-first-click-released-backend`
+(the RELEASED backend's sequence, where the authorization URL arrives on the first
+POLL - the sequence the blocked first click was measured on) and
+`waiting-url-on-start-reply` (the newer backend, where it is on the POST reply),
+`device-code`, the optional-paste flow with its disclosure shut and open, a paste
+that IS the flow, `succeeded-with-default` with the backend's defaults receipt,
+`expired`, `gone-404`, `failed`, `api-key`, `invalid-key`, `key-saved`,
+`key-saved-unchecked`, and a local runtime's probe.
+
+These frames come from `scripts/capture-evidence.mjs` driving Storybook, which is
+the committed and re-derivable route. The exact command that wrote them:
+
+```
+pnpm exec storybook dev -p 6217 --ci --quiet     # 6017 was another worktree's
+node scripts/capture-evidence.mjs http://localhost:6217 \
+  --only=provider-sign-in-onboarding-- \
+  --themes=localOperatorDark --allow-backend --theme-settle-ms=90000
+```
+
+`--allow-backend` because these stories stub the whole desktop transport
+(`window.api.desktop.request`), so a live backend on 1111 cannot reach a pixel of
+them - and the frames this set replaced were taken the same way. The run is
+narrowed, so it writes this set and leaves every other set's bytes alone, which is
+what `partialCapture` in the manifest records.
+
+One theme rather than the twelve-palette sweep: the change's own frames were
+rendered in `localOperatorDark`, so the stills a reviewer compares here and the
+stills on the PR agree frame for frame. The palette contract over the whole set is
+`pnpm check-themes`' business, not this directory's.
+
+BEFORE: the surfaces this set replaces are the committed ones of the previous
+provider-setup pass - `../onboarding-providersetup/` (the 18-card grid in the
+onboarding dialog and in the Settings column) - and, upstream of that pass,
+`../provider-setup-ux-before/`.
+
+The design audit that named these states, with the matching BEFORE frames and the
+per-state target spec, is the design round's own document on the PR; this
+directory is the re-derivable half of it.
