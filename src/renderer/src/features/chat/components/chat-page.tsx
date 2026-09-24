@@ -1897,7 +1897,7 @@ function SessionPanel({
 	 * live duplicate in review round 1 stayed invisible (B4).
 	 */
 	const lateDelivered = useConversationInputStore(
-		(state) => state.inputByConversation[identity]?.lateDelivered === true,
+		(state) => state.inputByConversation[identity]?.lateDelivered,
 	);
 	const notice = composerNoticeFor({
 		error: sendError,

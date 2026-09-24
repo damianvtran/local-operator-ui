@@ -838,6 +838,18 @@ export const SEND_FAILURE_COPY = {
 	 * text is the user's own and stays. Muted, no actions.
 	 */
 	lateDelivery: "Your earlier message was delivered.",
+	/*
+	 * AND THE ONE THAT NAMES WHAT IS IN THE BOX (review round 2, D4). The plain
+	 * sentence above is true whatever the box holds, which is what the `overlap` arm
+	 * needs - the user edited inside the delivered words and no boundary between
+	 * theirs and the message's is knowable. Where the delivered message HAS come out
+	 * of the box (`draft-only`), the user is looking at their own unsent line under a
+	 * sentence about a different message, and saying so is the difference between
+	 * "the app lost my draft" and "the app kept it": measured in round 1 as the
+	 * auto-clear that looked like the app losing the text (Q-4).
+	 */
+	lateDeliveryDraft:
+		"Your earlier message was delivered. What's here now hasn't been sent.",
 } as const;
 
 export const RETRY_LABEL = "Retry";

@@ -2,6 +2,7 @@ import {
 	SEND_FAILURE_COPY,
 	SESSION_UNVALIDATED_CODE,
 } from "@shared/store/canonical-sessions-store";
+import type { LateDeliveryBox } from "@shared/store/conversation-input-store";
 import {
 	DESKTOP_DEADLINE_EXCEEDED_CODE,
 	DESKTOP_LOST_SIGHT_CODE,
@@ -52,11 +53,21 @@ export function composerNoticeFor(input: {
 	rowCode: string | undefined;
 	/** What the classifier decided for the row's failure, when the row carries it. */
 	rowRetry: boolean | undefined;
-	/** The row's note that a handed-back message was delivered after all. */
-	lateDelivered: boolean;
+	/**
+	 * The row's note that a handed-back message was delivered after all, and which
+	 * box it sits over - the delivered message has come OUT of the composer, or it
+	 * is still in there because the user edited inside it (`LateDeliveryBox`).
+	 */
+	lateDelivered: LateDeliveryBox | undefined;
 }): ComposerSendError | undefined {
 	if (input.lateDelivered)
-		return { message: SEND_FAILURE_COPY.lateDelivery, muted: true };
+		return {
+			message:
+				input.lateDelivered === "draft-only"
+					? SEND_FAILURE_COPY.lateDeliveryDraft
+					: SEND_FAILURE_COPY.lateDelivery,
+			muted: true,
+		};
 	if (input.error)
 		return {
 			message: input.error,
