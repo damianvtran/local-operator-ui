@@ -23,9 +23,7 @@ import {
 } from "@shared/browser-consent-attention";
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
 
-import { BackendCompatibilityBanner } from "@shared/components/common/backend-compatibility-banner";
 import { ChatLayout } from "@shared/components/common/chat-layout";
-import { ConnectivityBanner } from "@shared/components/common/connectivity-banner";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
 import { LowCreditsDialog } from "@shared/components/common/low-credits-dialog";
 import { ModelsInitializer } from "@shared/components/common/models-initializer";
@@ -509,10 +507,23 @@ const App: FC = () => {
 				 * `docs/evidence/band-occlusion/`; the rig that takes them is
 				 * `scripts/band-occlusion-evidence.mjs`.
 				 */}
-				<ConnectivityBanner />
-
-				<BackendCompatibilityBanner />
-
+				{/*
+				 * THE SHELL ROOT HAS NO STATUS SURFACE ANY MORE (§F2, D3).
+				 *
+				 * A connectivity band and a compatibility band used to mount here, above
+				 * the window's own region: they took their height out of the shell at the
+				 * top of the screen, over the sidebar rail and under the traffic lights,
+				 * and each carried its own Retry for the same fact. §F2 moves both into
+				 * the conversation pane - `chat-content.tsx` mounts the strip and the
+				 * compatibility band under its top row - so the chrome above the app
+				 * belongs to the window and nothing else, and one live region states the
+				 * connection instead of two.
+				 *
+				 * The region below keeps `flex-1 min-h-0 overflow-hidden`, which was
+				 * written for the case where a band above it took height; with no band it
+				 * is simply the shell's body, and the rule still holds for any surface a
+				 * pane adds inside it.
+				 */}
 				{/*
 				 * The app itself, in the space the bands leave. `flex-1 min-h-0` rather
 				 * than `h-screen`: this element's height is the window MINUS whatever the
