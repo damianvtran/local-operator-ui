@@ -769,13 +769,16 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							 * reachability of the console ONLY while the row is that narrow, and
 							 * the pane it opens is still named in the transcript's own rows.
 							 *
-							 * 17.5rem (280px) is MEASURED rather than derived, and the measurement
-							 * is this scene at three window widths: the pane-open header is 240px
-							 * at 1380, 220px at 900 and 220px at the 800 floor, and at 240 the
-							 * row's last painted control ends at 724 inside a 740 row - so this
-							 * control's own 40px (32 plus its gap) is exactly the next 40px of row
-							 * the layout buys. Below 280 it would have ended 24px past the row,
-							 * which is the failure Q-1 recorded at 900. */
+							 * 17.5rem (280px) is the middle rung of the ladder the canvas's own
+							 * comment states: a control here costs 32px plus `gap-3` (12), so the
+							 * measured step is 44px, and this threshold is one 40px rung below the
+							 * canvas's. The query is read against the header's CONTENT box - its
+							 * `px-4` sits outside the container's inline size - which is why the
+							 * window that photographs this band is 1460 and not 1420. The widths
+							 * each rung was measured at are in ONE place, the width table in
+							 * `docs/evidence/browser-approval-badges/README.md`; this comment
+							 * states the rule rather than restating numbers a gap change would
+							 * invalidate. */
 							className={cn("relative hidden @[17.5rem]/chathdr:inline-flex")}
 						>
 							<SquareTerminal aria-hidden={true} />
@@ -827,17 +830,22 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							 * `chat-header-cluster`'s stories pin the same arrangement at a wide
 							 * viewport, where nothing sheds.
 							 *
-							 * THE THRESHOLD IS 20rem (320px), one measurement along from the
-							 * console's: every control in this cluster costs 32px plus an 8px gap,
-							 * so the width that holds the console (280, measured) is exactly the
-							 * width below which this one cannot join it - 280 + 40 = 320. The
-							 * comment this replaces stated a rule whose terms came to about 15rem
-							 * while the class shipped 23rem (design round 2, D8), and the floor was
-							 * quoted as 96px while the code and the assertion are 40 (F10); both
-							 * are corrected rather than left beside a value they do not produce.
-							 * What the scene measures: 1380 -> a 240px row with this control and
-							 * the console both shed and every painted control inside by 16px; 900
-							 * and 800 -> a 220px row, the same shed, 16px inside. */
+							 * THE RULE: a control in this cluster costs 32px plus the gap beside
+							 * it, and the gap that resolves while the badge and the canvas are
+							 * drawn is `gap-3` - measured on the frames at 1600 as 44px per step
+							 * (cluster 164 = 4x32 + 3x12, and every box gap reads 12: `...`
+							 * 780..812, globe 824..856, console 868..900, canvas 912..944). The
+							 * class below is one step of that ladder (320 = the console's 280 +
+							 * 40), which is 4px tighter than the measured 44: the difference is
+							 * taken out of the TITLE's fragment, never out of the row, and the
+							 * margin above where a control strictly fits is what keeps that
+							 * fragment readable rather than the two-character floor. The
+							 * measurements themselves live in ONE place - the width table in
+							 * `docs/evidence/browser-approval-badges/README.md` - so a change to
+							 * the gap cannot leave a number stale here: this comment states the
+							 * rule and points at that table. (The comment it replaces carried a
+							 * 15rem rule beside a 23rem class - design round 2's D8 - and a 96px
+							 * floor beside a 40px one, F10.) */
 							className={cn("relative hidden @[20rem]/chathdr:inline-flex")}
 						>
 							<FileText aria-hidden={true} />

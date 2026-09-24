@@ -112,13 +112,24 @@ claiming it: the rail prints the true count. A `9+` cap was considered for the r
 the chat header keeps one — a two-digit pill grows leftward into the Globe's arc,
 measured in design round 1's D3 — and the rail's own answer turned out to be geometry
 rather than grammar: `-top-2` lifts the pill's box until its bottom edge sits on the
-glyph's top edge, so two digits fit where one did, and the `ring-2 ring-canvas` is what
-separates the mark from the crown it crosses. The header still caps because it has 12px
+glyph's top edge, so two digits fit where one did, and a ring is what separates the mark
+from the crown it crosses. **THE RING IS THE HOST'S OWN GROUND, WHICH IS WHY IT IS NOT
+THE HEADER'S ROLE** (design round 3, D9): the header's badge carries `ring-2
+ring-canvas` because the surface behind it there is `canvas`, and the collapsed rail's
+carries `ring-2 ring-surface` because the row behind it is the panel's `surface` - the
+frame shows the pill's own rows pixel-identical to `surface` (`#2b2721`) where
+`ring-canvas` (`#22201c`, 8 L* darker) would be a visible 2px halo. The rule is "the
+ring is the colour of what is behind the mark, so the mark reads as sitting on a gap
+rather than on the glyph", not "the rail wears the header's ring". The header still caps because it has 12px
 of room and a three-digit count, while the rail's queue holds at most 16 requests — two
 digits are always the whole answer, so a cap there would hide a number the operator
-asked for to protect a glyph the offset already protects. Round 2's D6 recorded the
-cost precisely: the ring crosses the crown over a measured 52px2 band
-(x19.5-29.5, y208.5-212). That is the header's own arrangement rather than a shortfall
+asked for to protect a glyph the offset already protects. Rounds 2 and 3 recorded the
+cost precisely (D6, D11): the mark removes 52 of the icon's stroke pixels over a
+10x3.5px band (x19.5-29.5, y208.5-212), and the pill's box (y194-210) IS 1.5px into that
+stroke - 15 of the 52 sit under the pill's own 1px border and the other 46 under its 2px
+of ring. So the ring is the bulk of the intrusion rather than all of it, and every number
+in this paragraph lives in the width table of
+`docs/evidence/browser-approval-badges/README.md`. That is the header's own arrangement rather than a shortfall
 of this one — in a 32px-pitch list, 16px of badge plus 2px of ring per side cannot fit
 between two glyphs 16px apart, so the choice round 1 made was to cross the ICON'S OWN
 crown rather than the row above's ink.
@@ -149,19 +160,25 @@ missed — at a 900px window the pane-open row is 220px wide, and the control it
 pay for was not clipped (the row's `overflow` is VISIBLE) but painted 4px UNDER the pane,
 invisible and unpressable. A floor is only a floor where there is something under it, so
 the row now sheds in an order rather than by one control's own threshold: the run
-trigger first (`@[20rem]` — everything it reports is in the transcript below it, and it
+trigger first (`@[22.5rem]` — everything it reports is in the transcript below it, and it
 is the only control whose width a run would vary), then the canvas button (`@[20rem]`),
 then the console trigger (`@[17.5rem]` — the browser trigger never yields, because it
-carries the attention badge and is what the operator reported about). Each threshold is
-MEASURED rather than derived, and the measurement is the same scene at three window
-widths: the pane-open header is 240px at 1380, 220px at 900, and 220px at the 800 floor
-(`WINDOW_MIN_WIDTH`). At 240 the row's last painted control ends 16px inside it, so the
-console's own 40px (including its gap) is the first thing the next 40px of row buys
-(280), and the canvas is one step beyond that (320). The title's floor holds at every
-width a person can reach - at 220 the row has 164px of fixed parts, so the floor and 16px
-to spare - and its `@[13.5rem]` gate is insurance beneath that range rather than the
-mechanism. The driver scene asserts, at 1380, 900 and the 800 floor and in both palettes,
-that EVERY painted control lies inside the row.
+carries the attention badge and is what the operator reported about). THE LADDER'S RULE is stated once, in the code that implements it (`chat-header.tsx`'s
+two comments): a control in that cluster costs 32px plus the gap beside it, the gap that
+resolves while the badge and the canvas are drawn is `gap-3`, and the measured step is
+therefore 44px; the shipped thresholds advance 40px per rung (run trigger 22.5rem, canvas
+20rem, console 17.5rem), so each rung keeps 4px less title than its own step's arithmetic
+would give, and the margin above where a control strictly fits (248 for the console, 292
+for the canvas) is what keeps the title a readable fragment rather than the bare
+two-character floor. THE QUERY READS THE HEADER'S CONTENT BOX, NOT ITS BORDER BOX: its
+`px-4` sits outside the container's inline size, which is why the window that photographs
+the console's band is 1460 (row 320, content 288) and not 1420. Every width and every box
+in this paragraph is measured in ONE place - the width table of
+`docs/evidence/browser-approval-badges/README.md` - and this record points at it rather
+than restating numbers a change to the gap would invalidate. What the driver scene
+guarantees at every width it runs, and in both palettes, is the invariant the rungs are
+only a means to: EVERY painted control lies inside the row, and the title keeps its floor
+wherever the row can pay for it.
 
 ---
 
@@ -589,7 +606,7 @@ specified to the role and to the assertion.
 | Fill | `bg-warning-wash` | One meaning, already in this feature: "an agent is blocked on you" (the tab's Waiting chip) |
 | Edge | `border border-ink-muted` | Revised 2026-09-23 by code review F2 / design D5: `warningBorder` measures 2.51-2.98:1 on graded grounds in seven palettes, and `border-control` — the interim answer — clears 3:1 on `canvas` (3.13) and `surface` (3.26) but NOT on the rail's row grounds (2.77 on `row-selected`, 2.92 on `row-hover`, twelve of fifty-nine palettes under the floor). The fill cannot carry the boundary either (1.00-1.19:1 on every ground), so the edge is the whole boundary and `ink-muted` is the quietest role that clears it everywhere: 5.63:1 worst |
 | Ink | `text-ink` | 5.73:1 worst over all fifty-nine palettes (oneDark), against the badge's own wash. The 8.62:1 this row used to carry for the sibling chip does not reproduce, and ink against a fill does not depend on the ground |
-| Position | absolute, top-right of the Approvals control, `-translate-y-1/2 translate-x-1/2` | The operator's "corner of the button". The control gains `pr-4` so the badge never sits over the label. **THE RAIL IS THE ONE HOST THAT DIVERGES** (2026-09-23): its item is a row rather than a corner control, so the badge sits IN FLOW at the row's trailing edge (`ml-auto`, its right edge 20px inside the rail) instead of being stamped over a corner — and COLLAPSED at 48px there is no room outside the 32px button at all, so it is only there that the mark is anchored to the button's corner: `-top-2 -right-1` (revised 2026-09-23 by design round 2's D7, which found this row still describing the pre-round-1 offsets), held 3px clear of the rail's own 1px border, carrying the badge's `ring-2 ring-canvas` because its pill reaches back over the Globe's crown, and printing the TRUE count rather than a `9+` cap — the offsets, not a digit cap, are what protect the glyph here (addendum 7) |
+| Position | absolute, top-right of the Approvals control, `-translate-y-1/2 translate-x-1/2` | The operator's "corner of the button". The control gains `pr-4` so the badge never sits over the label. **THE RAIL IS THE ONE HOST THAT DIVERGES** (2026-09-23): its item is a row rather than a corner control, so the badge sits IN FLOW at the row's trailing edge (`ml-auto`, its right edge 20px inside the rail) instead of being stamped over a corner — and COLLAPSED at 48px there is no room outside the 32px button at all, so it is only there that the mark is anchored to the button's corner: `-top-2 -right-1` (revised 2026-09-23 by design round 2's D7, which found this row still describing the pre-round-1 offsets), held 3px clear of the rail's OUTER edge (2.5px from its 1px border, which keeps its own pixel its own), carrying the badge's `ring-2 ring-surface` because its pill reaches back over the Globe's crown, and printing the TRUE count rather than a `9+` cap — the offsets, not a digit cap, are what protect the glyph here (addendum 7) |
 | Content | the live count, and `aria-label` on the control: "Approvals, 3 waiting" | Screen readers get the number as part of the control's name, never as a bare floating digit |
 
 **The accent is deliberately not spent here.** The accent budget is about three
