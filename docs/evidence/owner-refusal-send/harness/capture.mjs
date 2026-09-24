@@ -100,6 +100,25 @@ const ARMS = [
 		expectRefusal: true,
 		why: "the CONTROL: a hop failure whose ack may be the only thing lost stays held",
 	},
+	/*
+	 * THE DEADLINE ARM, and the one the operator's screenshot came from (review
+	 * round 1, B3/B4 and the Q-matrix's Q2-Q5): the owner holds the first request
+	 * past the app's own 20 s budget and then ADMITS it, so the frame is the real
+	 * transport deadline over the real composer rather than a substituted error.
+	 *
+	 * THREE CLAIMS IN ONE RUN: the message and its file are still in the box with
+	 * one sentence and both controls (the whole PR); the retry is the operator's own
+	 * remedy and it works (the second send admits); and the two attempts carry ONE
+	 * request id, which is what makes the owner's receipt a de-duplication rather
+	 * than a second message - the no-duplicate proof, read off the owner's own log.
+	 */
+	{
+		name: "timeout-admitted",
+		refusals: 0,
+		holdMs: 21_000,
+		expectRefusal: true,
+		why: "the transport deadline over a live, slow owner: the message is kept and one sentence offers the retry the receipt de-duplicates",
+	},
 ];
 
 /** Same minimal CDP client as `scripts/capture-evidence.mjs`. */
@@ -584,6 +603,15 @@ const main = async () => {
 			arm.expectRefusal ? "refusal" : "sent",
 		);
 		const first = await evaluate(PROBE);
+		/*
+		 * WHAT THE NOTICE OFFERS, read while it is still on screen. It is read here
+		 * rather than after the remedy because the remedy removes it - measured: a
+		 * read taken afterwards found an empty control list and reported the notice as
+		 * offering nothing.
+		 */
+		const firstControls = await evaluate(
+			`[...document.querySelectorAll('[role="alert"] button')].map((b) => b.textContent.trim())`,
+		);
 		await shoot("after-first-send");
 
 		if (arm.expectRefusal) {
@@ -602,6 +630,46 @@ const main = async () => {
 		}
 
 		const second = await evaluate(PROBE);
+		/*
+		 * THE WIRE CLAIM, for the arm whose whole point is one message: the attempts
+		 * this arm made carry the SAME request id, so the owner's receipt answers the
+		 * second with the first's admission. A fresh id here is a second message the
+		 * user never asked for, and it is counted rather than argued.
+		 */
+		if (arm.name === "timeout-admitted") {
+			const ids = [
+				...readFileSync(logPath, "utf8").matchAll(/request_id=([0-9a-f-]+)/g),
+			].map((m) => m[1]);
+			if (ids.length < 2)
+				throw new Error(
+					`arm ${arm.name}: expected two attempts at the owner, saw ${ids.length} (${JSON.stringify(ids)})`,
+				);
+			if (new Set(ids).size !== 1)
+				throw new Error(
+					`arm ${arm.name}: the retry went out under a DIFFERENT request id, so one message became two: ${JSON.stringify(ids)}`,
+				);
+			if (!first.boxValue?.includes(MESSAGE.slice(0, 20)))
+				throw new Error(
+					`arm ${arm.name}: the failed send did not keep the message in the box (box: ${JSON.stringify(first.boxValue)})`,
+				);
+			const controls = firstControls;
+			if (!controls.includes("Retry") || !controls.includes("Clear"))
+				throw new Error(
+					`arm ${arm.name}: the notice does not offer both controls (${JSON.stringify(controls)})`,
+				);
+			readings.arms.push({
+				...arm,
+				first,
+				second,
+				requestIds: ids,
+				controls,
+			});
+			wireLog.push(`${arm.name}:\n${readFileSync(logPath, "utf8").trim()}`);
+			killGroup(owner);
+			owner = null;
+			process.stdout.write(`arm ${arm.name}: ${arm.why}\n`);
+			continue;
+		}
 		readings.arms.push({ ...arm, first, second });
 		wireLog.push(`${arm.name}:\n${readFileSync(logPath, "utf8").trim()}`);
 		// The owner that answered these frames is done with before the next one

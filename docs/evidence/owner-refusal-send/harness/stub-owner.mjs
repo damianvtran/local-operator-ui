@@ -67,6 +67,8 @@
 import { appendFileSync } from "node:fs";
 import { createServer } from "node:http";
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 const PORT = Number(process.env.OWNER_REFUSAL_PORT ?? 8791);
 const LOG = process.env.OWNER_REFUSAL_LOG ?? "/tmp/owner-refusal-wire.log";
 const ARM = process.env.OWNER_REFUSAL_ARM ?? "retiring";
@@ -114,6 +116,21 @@ const ARMS = {
 		status: 503,
 		code: "runtime_unreachable",
 		sentence: SENTENCE.unreachable,
+	},
+	/*
+	 * THE OWNER ALIVE AND SLOW, which is the arm the operator's screen came from:
+	 * nothing is refused, the request is HELD past the app's own 20 s control
+	 * budget, and then it is ADMITTED. So the app's deadline is reached while the
+	 * owner is still working - a real hang, not a substituted error - and the
+	 * message does land afterwards, which is what makes the retry's identity the
+	 * thing the evidence has to measure: a second attempt with a DIFFERENT request
+	 * id would be a second message, and the wire log is where that is counted.
+	 */
+	"timeout-admitted": {
+		refusals: 0,
+		holdMs: 21_000,
+		status: 200,
+		code: "held 21s, then admitted",
 	},
 };
 
@@ -167,6 +184,18 @@ createServer(async (req, res) => {
 	if (path.endsWith("/messages") && req.method === "POST") {
 		messages += 1;
 		const refused = messages <= arm.refusals;
+		/*
+		 * THE HOLD, before anything is written or answered: the first attempt is held
+		 * past the app's deadline on purpose, and the log line records the attempt and
+		 * the request id either way - it is what the run's no-duplicate assertion reads.
+		 */
+		if (arm.holdMs && messages === 1) {
+			appendFileSync(
+				LOG,
+				`${new Date().toISOString()} POST ${path} attempt=1 request_id=${payload?.request_id} -> held ${arm.holdMs}ms (the app's own deadline is reached while this is pending)\n`,
+			);
+			await sleep(arm.holdMs);
+		}
 		appendFileSync(
 			LOG,
 			`${new Date().toISOString()} POST ${path} attempt=${messages} request_id=${payload?.request_id} -> ${
