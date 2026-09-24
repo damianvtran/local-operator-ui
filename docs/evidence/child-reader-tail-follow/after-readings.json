@@ -2,7 +2,7 @@
   "arm": "after",
   "armModule": "src/renderer/src/features/chat/components/run-details/run-child-reader.tsx",
   "expectDigest": "a08da51c23492e08370455d33cb09cf5",
-  "head": "820660f3d1534d3bc7a42dedcc2d93ecc145bd85",
+  "head": "1ef85b0fefdb14e564bd8c16858d0c55f21fd90d",
   "modules": [
     {
       "path": "src/renderer/src/features/chat/components/run-details/run-child-reader.tsx",
@@ -86,7 +86,7 @@
           "bottom": 835
         }
       },
-      "reads": 29
+      "reads": 27
     },
     {
       "step": "A0 at the tail",
@@ -144,7 +144,7 @@
           "bottom": 835
         }
       },
-      "reads": 29
+      "reads": 28
     },
     {
       "step": "A1 after a batch",
@@ -202,7 +202,7 @@
           "bottom": 835
         }
       },
-      "reads": 31
+      "reads": 30
     },
     {
       "step": "A2 after a batch",
@@ -260,7 +260,7 @@
           "bottom": 835
         }
       },
-      "reads": 34
+      "reads": 33
     },
     {
       "step": "A3 after a batch",
@@ -318,7 +318,7 @@
           "bottom": 835
         }
       },
-      "reads": 37
+      "reads": 36
     },
     {
       "step": "B0 scrolled up",
@@ -376,7 +376,7 @@
           "bottom": 835
         }
       },
-      "reads": 37
+      "reads": 36
     },
     {
       "step": "B1 after a batch",
@@ -434,7 +434,7 @@
           "bottom": 835
         }
       },
-      "reads": 40
+      "reads": 39
     },
     {
       "step": "B2 after a batch",
@@ -492,7 +492,7 @@
           "bottom": 835
         }
       },
-      "reads": 42
+      "reads": 41
     },
     {
       "step": "C0 scrolled up",
@@ -550,7 +550,7 @@
           "bottom": 835
         }
       },
-      "reads": 43
+      "reads": 41
     },
     {
       "step": "C1 back at the tail",
@@ -608,7 +608,7 @@
           "bottom": 835
         }
       },
-      "reads": 43
+      "reads": 42
     },
     {
       "scrollTop": -3,
@@ -665,7 +665,7 @@
       },
       "step": "E0 3px off the tail",
       "theme": "localOperatorDark",
-      "reads": 43,
+      "reads": 42,
       "expected": "placed and read in the same frame, inside TAIL_EPS_PX"
     },
     {
@@ -782,12 +782,12 @@
           "bottom": 835
         }
       },
-      "reads": 48
+      "reads": 49
     },
     {
       "step": "D0 settled",
       "theme": "localOperatorDark",
-      "expected": "no cadence is left: the read count stops moving",
+      "expected": "no cadence is left: the read count has stopped moving",
       "scrollTop": -3,
       "fromBottom": 3,
       "extent": 5351,
@@ -843,9 +843,9 @@
       "reads": 50
     },
     {
-      "step": "D1 six seconds later",
+      "step": "D1 eleven seconds later",
       "theme": "localOperatorDark",
-      "expected": "the read count is unchanged (no 5s safety-net poll)",
+      "expected": "the read count is unchanged across two 5s poll intervals",
       "scrollTop": -3,
       "fromBottom": 3,
       "extent": 5351,
@@ -1345,7 +1345,7 @@
           "bottom": 835
         }
       },
-      "reads": 27
+      "reads": 29
     },
     {
       "step": "A0 at the tail",
@@ -1403,7 +1403,7 @@
           "bottom": 835
         }
       },
-      "reads": 28
+      "reads": 29
     },
     {
       "step": "A1 after a batch",
@@ -1461,7 +1461,7 @@
           "bottom": 835
         }
       },
-      "reads": 30
+      "reads": 31
     },
     {
       "step": "A2 after a batch",
@@ -1519,7 +1519,7 @@
           "bottom": 835
         }
       },
-      "reads": 33
+      "reads": 34
     },
     {
       "step": "A3 after a batch",
@@ -1577,7 +1577,7 @@
           "bottom": 835
         }
       },
-      "reads": 36
+      "reads": 37
     },
     {
       "step": "B0 scrolled up",
@@ -1635,7 +1635,7 @@
           "bottom": 835
         }
       },
-      "reads": 36
+      "reads": 37
     },
     {
       "step": "B1 after a batch",
@@ -1693,7 +1693,7 @@
           "bottom": 835
         }
       },
-      "reads": 39
+      "reads": 40
     },
     {
       "step": "B2 after a batch",
@@ -1751,7 +1751,7 @@
           "bottom": 835
         }
       },
-      "reads": 41
+      "reads": 42
     },
     {
       "step": "C0 scrolled up",
@@ -1867,7 +1867,7 @@
           "bottom": 835
         }
       },
-      "reads": 42
+      "reads": 43
     },
     {
       "scrollTop": -3,
@@ -1924,7 +1924,7 @@
       },
       "step": "E0 3px off the tail",
       "theme": "localOperatorLight",
-      "reads": 42,
+      "reads": 43,
       "expected": "placed and read in the same frame, inside TAIL_EPS_PX"
     },
     {
@@ -1983,7 +1983,7 @@
           "bottom": 835
         }
       },
-      "reads": 45
+      "reads": 46
     },
     {
       "step": "E2 after a second batch",
@@ -2041,12 +2041,12 @@
           "bottom": 835
         }
       },
-      "reads": 47
+      "reads": 48
     },
     {
       "step": "D0 settled",
       "theme": "localOperatorLight",
-      "expected": "no cadence is left: the read count stops moving",
+      "expected": "no cadence is left: the read count has stopped moving",
       "scrollTop": -3,
       "fromBottom": 3,
       "extent": 5351,
@@ -2099,12 +2099,12 @@
           "bottom": 835
         }
       },
-      "reads": 48
+      "reads": 49
     },
     {
-      "step": "D1 six seconds later",
+      "step": "D1 eleven seconds later",
       "theme": "localOperatorLight",
-      "expected": "the read count is unchanged (no 5s safety-net poll)",
+      "expected": "the read count is unchanged across two 5s poll intervals",
       "scrollTop": -3,
       "fromBottom": 3,
       "extent": 5351,
@@ -2157,7 +2157,7 @@
           "bottom": 835
         }
       },
-      "reads": 48
+      "reads": 49
     },
     {
       "step": "F0 40px off the tail",
@@ -2215,7 +2215,7 @@
           "bottom": 835
         }
       },
-      "reads": 48
+      "reads": 49
     },
     {
       "step": "F1 after a batch",
@@ -2273,7 +2273,7 @@
           "bottom": 835
         }
       },
-      "reads": 48
+      "reads": 49
     },
     {
       "step": "G0 the control appearing",
@@ -2331,7 +2331,7 @@
           "bottom": 835
         }
       },
-      "reads": 48
+      "reads": 49
     },
     {
       "step": "G1 hover",
@@ -2389,7 +2389,7 @@
           "bottom": 835
         }
       },
-      "reads": 48
+      "reads": 49
     },
     {
       "scrollTop": -147,
@@ -2446,7 +2446,7 @@
       },
       "step": "G2 focus (22 tabs)",
       "theme": "localOperatorLight",
-      "reads": 48,
+      "reads": 49,
       "tabOrderIndex": 0,
       "tabOrderLength": 22,
       "expected": "keyboard focus lands on the control, and it sits with the pane's own controls rather than after the conversation"
@@ -2507,7 +2507,7 @@
           "bottom": 835
         }
       },
-      "reads": 48
+      "reads": 49
     },
     {
       "step": "H0 a failed child, scrolled up",
@@ -2540,13 +2540,13 @@
           "bottom": 835
         }
       },
-      "reads": 48
+      "reads": 49
     },
     {
       "step": "H1 a child with no session id",
       "theme": "localOperatorLight",
       "expected": "no control and no band: there is no scroller to lead back to",
-      "reads": 48
+      "reads": 49
     }
   ]
 }

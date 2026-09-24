@@ -2,7 +2,7 @@
   "arm": "before",
   "armModule": "src/renderer/src/features/chat/components/run-details/run-child-reader.tsx",
   "expectDigest": "8c68061ca3ab3ba680c40b1fc17f0795",
-  "head": "e92b176897b2016453b02e491c5a725343b27b70",
+  "head": "1ef85b0fefdb14e564bd8c16858d0c55f21fd90d",
   "modules": [
     {
       "path": "src/renderer/src/features/chat/components/run-details/run-child-reader.tsx",
@@ -49,7 +49,19 @@
       "bottomId": "entry-assistant-20-reply",
       "button": null,
       "band": null,
-      "reads": 27
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 29
     },
     {
       "step": "A0 at the tail",
@@ -70,7 +82,19 @@
       "bottomId": "entry-assistant-20-reply",
       "button": null,
       "band": null,
-      "reads": 28
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 29
     },
     {
       "step": "A1 after a batch",
@@ -91,7 +115,19 @@
       "bottomId": "entry-assistant-21-reply",
       "button": null,
       "band": null,
-      "reads": 30
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 31
     },
     {
       "step": "A2 after a batch",
@@ -112,7 +148,19 @@
       "bottomId": "entry-assistant-22-reply",
       "button": null,
       "band": null,
-      "reads": 33
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 34
     },
     {
       "step": "A3 after a batch",
@@ -133,7 +181,19 @@
       "bottomId": "entry-assistant-23-reply",
       "button": null,
       "band": null,
-      "reads": 36
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 37
     },
     {
       "step": "B0 scrolled up",
@@ -154,7 +214,19 @@
       "bottomId": "entry-assistant-21-reply",
       "button": null,
       "band": null,
-      "reads": 36
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 37
     },
     {
       "step": "B1 after a batch",
@@ -175,7 +247,19 @@
       "bottomId": "entry-assistant-21-reply",
       "button": null,
       "band": null,
-      "reads": 39
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 40
     },
     {
       "step": "B2 after a batch",
@@ -196,7 +280,19 @@
       "bottomId": "entry-assistant-21-reply",
       "button": null,
       "band": null,
-      "reads": 42
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 43
     },
     {
       "step": "C0 scrolled up",
@@ -217,7 +313,19 @@
       "bottomId": "entry-assistant-21-reply",
       "button": null,
       "band": null,
-      "reads": 42
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 43
     },
     {
       "step": "C1 back at the tail",
@@ -238,7 +346,19 @@
       "bottomId": "entry-assistant-25-reply",
       "button": null,
       "band": null,
-      "reads": 42
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 43
     },
     {
       "scrollTop": -3,
@@ -256,9 +376,21 @@
       "bottomId": "entry-assistant-25-reply",
       "button": null,
       "band": null,
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
       "step": "E0 3px off the tail",
       "theme": "localOperatorDark",
-      "reads": 42,
+      "reads": 43,
       "expected": "placed and read in the same frame, inside TAIL_EPS_PX"
     },
     {
@@ -280,7 +412,19 @@
       "bottomId": "entry-assistant-26-reply",
       "button": null,
       "band": null,
-      "reads": 45
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 46
     },
     {
       "step": "E2 after a second batch",
@@ -301,12 +445,24 @@
       "bottomId": "entry-assistant-27-reply",
       "button": null,
       "band": null,
-      "reads": 48
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 49
     },
     {
       "step": "D0 settled",
       "theme": "localOperatorDark",
-      "expected": "no cadence is left: the read count stops moving",
+      "expected": "no cadence is left: the read count has stopped moving",
       "scrollTop": -3,
       "fromBottom": 3,
       "extent": 5351,
@@ -322,12 +478,24 @@
       "bottomId": "entry-assistant-27-reply",
       "button": null,
       "band": null,
-      "reads": 49
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 50
     },
     {
-      "step": "D1 six seconds later",
+      "step": "D1 eleven seconds later",
       "theme": "localOperatorDark",
-      "expected": "the read count is unchanged (no 5s safety-net poll)",
+      "expected": "the read count is unchanged across two 5s poll intervals",
       "scrollTop": -3,
       "fromBottom": 3,
       "extent": 5351,
@@ -343,7 +511,19 @@
       "bottomId": "entry-assistant-27-reply",
       "button": null,
       "band": null,
-      "reads": 49
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 50
     },
     {
       "step": "F0 40px off the tail",
@@ -364,7 +544,19 @@
       "bottomId": "entry-assistant-27-reply",
       "button": null,
       "band": null,
-      "reads": 49
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 50
     },
     {
       "step": "F1 after a batch",
@@ -385,7 +577,19 @@
       "bottomId": "entry-assistant-27-reply",
       "button": null,
       "band": null,
-      "reads": 49
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 50
     },
     {
       "step": "G0 the control appearing",
@@ -406,7 +610,19 @@
       "bottomId": "entry-assistant-25-reply",
       "button": null,
       "band": null,
-      "reads": 49
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 50
     },
     {
       "step": "H0 a failed child, scrolled up",
@@ -427,13 +643,25 @@
       "bottomId": "entry-assistant-23",
       "button": null,
       "band": null,
-      "reads": 49
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 691.75
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 50
     },
     {
       "step": "H1 a child with no session id",
       "theme": "localOperatorDark",
       "expected": "no control and no band: there is no scroller to lead back to",
-      "reads": 49
+      "reads": 50
     },
     {
       "step": "0 seeded",
@@ -454,6 +682,18 @@
       "bottomId": "entry-assistant-20-reply",
       "button": null,
       "band": null,
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
       "reads": 29
     },
     {
@@ -475,6 +715,18 @@
       "bottomId": "entry-assistant-20-reply",
       "button": null,
       "band": null,
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
       "reads": 29
     },
     {
@@ -496,6 +748,18 @@
       "bottomId": "entry-assistant-21-reply",
       "button": null,
       "band": null,
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
       "reads": 31
     },
     {
@@ -517,6 +781,18 @@
       "bottomId": "entry-assistant-22-reply",
       "button": null,
       "band": null,
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
       "reads": 34
     },
     {
@@ -538,6 +814,18 @@
       "bottomId": "entry-assistant-23-reply",
       "button": null,
       "band": null,
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
       "reads": 37
     },
     {
@@ -559,6 +847,18 @@
       "bottomId": "entry-assistant-21-reply",
       "button": null,
       "band": null,
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
       "reads": 37
     },
     {
@@ -580,6 +880,18 @@
       "bottomId": "entry-assistant-21-reply",
       "button": null,
       "band": null,
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
       "reads": 40
     },
     {
@@ -601,7 +913,19 @@
       "bottomId": "entry-assistant-21-reply",
       "button": null,
       "band": null,
-      "reads": 42
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 43
     },
     {
       "step": "C0 scrolled up",
@@ -622,6 +946,18 @@
       "bottomId": "entry-assistant-21-reply",
       "button": null,
       "band": null,
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
       "reads": 43
     },
     {
@@ -643,6 +979,18 @@
       "bottomId": "entry-assistant-25-reply",
       "button": null,
       "band": null,
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
       "reads": 43
     },
     {
@@ -661,6 +1009,18 @@
       "bottomId": "entry-assistant-25-reply",
       "button": null,
       "band": null,
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
       "step": "E0 3px off the tail",
       "theme": "localOperatorLight",
       "reads": 43,
@@ -685,6 +1045,18 @@
       "bottomId": "entry-assistant-26-reply",
       "button": null,
       "band": null,
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
       "reads": 46
     },
     {
@@ -706,12 +1078,24 @@
       "bottomId": "entry-assistant-27-reply",
       "button": null,
       "band": null,
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
       "reads": 49
     },
     {
       "step": "D0 settled",
       "theme": "localOperatorLight",
-      "expected": "no cadence is left: the read count stops moving",
+      "expected": "no cadence is left: the read count has stopped moving",
       "scrollTop": -3,
       "fromBottom": 3,
       "extent": 5351,
@@ -727,12 +1111,24 @@
       "bottomId": "entry-assistant-27-reply",
       "button": null,
       "band": null,
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
       "reads": 50
     },
     {
-      "step": "D1 six seconds later",
+      "step": "D1 eleven seconds later",
       "theme": "localOperatorLight",
-      "expected": "the read count is unchanged (no 5s safety-net poll)",
+      "expected": "the read count is unchanged across two 5s poll intervals",
       "scrollTop": -3,
       "fromBottom": 3,
       "extent": 5351,
@@ -748,6 +1144,18 @@
       "bottomId": "entry-assistant-27-reply",
       "button": null,
       "band": null,
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
       "reads": 50
     },
     {
@@ -769,6 +1177,18 @@
       "bottomId": "entry-assistant-27-reply",
       "button": null,
       "band": null,
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
       "reads": 50
     },
     {
@@ -790,6 +1210,18 @@
       "bottomId": "entry-assistant-27-reply",
       "button": null,
       "band": null,
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
       "reads": 50
     },
     {
@@ -811,6 +1243,18 @@
       "bottomId": "entry-assistant-25-reply",
       "button": null,
       "band": null,
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
       "reads": 50
     },
     {
@@ -832,6 +1276,18 @@
       "bottomId": "entry-assistant-23",
       "button": null,
       "band": null,
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 691.75
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
       "reads": 50
     },
     {

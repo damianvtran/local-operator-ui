@@ -87,46 +87,46 @@ the prop.
 
 | step | arm | top | fromTail | cut | cover | band | tab | button | reads |
 |---|---|---|---|---|---|---|---|---|---|
-| A0 at the tail | before | 0 | 0 | 0.0 | - | - | - | absent | 28 |
-| A0 at the tail | after | 0 | 0 | 0.0 | 0.0 | 48 | - | off/inert | 29 |
-| A1 after a batch | before | 0 | 0 | 0.0 | - | - | - | absent | 30 |
-| A1 after a batch | after | 0 | 0 | 0.0 | 0.0 | 48 | - | off/inert | 31 |
-| A2 after a batch | before | 0 | 0 | 0.0 | - | - | - | absent | 33 |
-| A2 after a batch | after | 0 | 0 | 0.0 | 0.0 | 48 | - | off/inert | 34 |
-| A3 after a batch | before | 0 | 0 | 0.0 | - | - | - | absent | 36 |
-| A3 after a batch | after | 0 | 0 | 0.0 | 0.0 | 48 | - | off/inert | 37 |
-| B0 scrolled up | before | -600 | 600 | 558.6 | - | - | - | absent | 36 |
-| B0 scrolled up | after | -600 | 600 | 558.6 | 0.0 | 48 | - | on | 37 |
-| B1 after a batch | before | -868 | 868 | 826.6 | - | - | - | absent | 39 |
-| B1 after a batch | after | -868 | 868 | 826.6 | 0.0 | 48 | - | on | 40 |
-| B2 after a batch | before | -1114 | 1114 | 1072.6 | - | - | - | absent | 42 |
-| B2 after a batch | after | -1114 | 1114 | 1072.6 | 0.0 | 48 | - | on | 42 |
-| C0 scrolled up | before | -1114 | 1114 | 1072.6 | - | - | - | absent | 42 |
-| C0 scrolled up | after | -1114 | 1114 | 1072.6 | 0.0 | 48 | - | on | 43 |
-| C1 back at the tail | before | 0 | 0 | 0.0 | - | - | - | absent | 42 |
-| C1 back at the tail | after | 0 | 0 | 0.0 | 0.0 | 48 | - | off/inert | 43 |
-| E0 3px off the tail | before | -3 | 3 | 0.0 | - | - | - | absent | 42 |
-| E0 3px off the tail | after | -3 | 3 | 0.0 | 0.0 | 48 | - | off/inert | 43 |
-| E1 after a batch | before | -3 | 3 | 0.0 | - | - | - | absent | 45 |
+| A0 at the tail | before | 0 | 0 | 0.0 | - | - | - | absent | 29 |
+| A0 at the tail | after | 0 | 0 | 0.0 | 0.0 | 48 | - | off/inert | 28 |
+| A1 after a batch | before | 0 | 0 | 0.0 | - | - | - | absent | 31 |
+| A1 after a batch | after | 0 | 0 | 0.0 | 0.0 | 48 | - | off/inert | 30 |
+| A2 after a batch | before | 0 | 0 | 0.0 | - | - | - | absent | 34 |
+| A2 after a batch | after | 0 | 0 | 0.0 | 0.0 | 48 | - | off/inert | 33 |
+| A3 after a batch | before | 0 | 0 | 0.0 | - | - | - | absent | 37 |
+| A3 after a batch | after | 0 | 0 | 0.0 | 0.0 | 48 | - | off/inert | 36 |
+| B0 scrolled up | before | -600 | 600 | 558.6 | - | - | - | absent | 37 |
+| B0 scrolled up | after | -600 | 600 | 558.6 | 0.0 | 48 | - | on | 36 |
+| B1 after a batch | before | -868 | 868 | 826.6 | - | - | - | absent | 40 |
+| B1 after a batch | after | -868 | 868 | 826.6 | 0.0 | 48 | - | on | 39 |
+| B2 after a batch | before | -1114 | 1114 | 1072.6 | - | - | - | absent | 43 |
+| B2 after a batch | after | -1114 | 1114 | 1072.6 | 0.0 | 48 | - | on | 41 |
+| C0 scrolled up | before | -1114 | 1114 | 1072.6 | - | - | - | absent | 43 |
+| C0 scrolled up | after | -1114 | 1114 | 1072.6 | 0.0 | 48 | - | on | 41 |
+| C1 back at the tail | before | 0 | 0 | 0.0 | - | - | - | absent | 43 |
+| C1 back at the tail | after | 0 | 0 | 0.0 | 0.0 | 48 | - | off/inert | 42 |
+| E0 3px off the tail | before | -3 | 3 | 0.0 | - | - | - | absent | 43 |
+| E0 3px off the tail | after | -3 | 3 | 0.0 | 0.0 | 48 | - | off/inert | 42 |
+| E1 after a batch | before | -3 | 3 | 0.0 | - | - | - | absent | 46 |
 | E1 after a batch | after | -3 | 3 | 0.0 | 0.0 | 48 | - | off/inert | 46 |
-| E2 after a second batch | before | -3 | 3 | 0.0 | - | - | - | absent | 48 |
-| E2 after a second batch | after | -3 | 3 | 0.0 | 0.0 | 48 | - | off/inert | 48 |
-| D0 settled | before | -3 | 3 | 0.0 | - | - | - | absent | 49 |
+| E2 after a second batch | before | -3 | 3 | 0.0 | - | - | - | absent | 49 |
+| E2 after a second batch | after | -3 | 3 | 0.0 | 0.0 | 48 | - | off/inert | 49 |
+| D0 settled | before | -3 | 3 | 0.0 | - | - | - | absent | 50 |
 | D0 settled | after | -3 | 3 | 0.0 | 0.0 | 48 | - | off/inert | 50 |
-| D1 six seconds later | before | -3 | 3 | 0.0 | - | - | - | absent | 49 |
-| D1 six seconds later | after | -3 | 3 | 0.0 | 0.0 | 48 | - | off/inert | 50 |
-| F0 40px off the tail | before | -40 | 40 | 0.0 | - | - | - | absent | 49 |
+| D1 eleven seconds later | before | -3 | 3 | 0.0 | - | - | - | absent | 50 |
+| D1 eleven seconds later | after | -3 | 3 | 0.0 | 0.0 | 48 | - | off/inert | 50 |
+| F0 40px off the tail | before | -40 | 40 | 0.0 | - | - | - | absent | 50 |
 | F0 40px off the tail | after | -40 | 40 | 0.0 | 0.0 | 48 | - | on | 50 |
-| F1 after a batch | before | -40 | 40 | 0.0 | - | - | - | absent | 49 |
+| F1 after a batch | before | -40 | 40 | 0.0 | - | - | - | absent | 50 |
 | F1 after a batch | after | -40 | 40 | 0.0 | 0.0 | 48 | - | on | 50 |
-| G0 the control appearing | before | -600 | 600 | 558.6 | - | - | - | absent | 49 |
+| G0 the control appearing | before | -600 | 600 | 558.6 | - | - | - | absent | 50 |
 | G0 the control appearing | after | -600 | 600 | 558.6 | 0.0 | 48 | - | on | 50 |
 | G1 hover | after | -600 | 600 | 558.6 | 0.0 | 48 | - | on/hover | 50 |
 | G2 focus (21 tabs) | after | -147 | 147 | 105.6 | 0.0 | 48 | 0/22 | on/hover/focus | 50 |
 | G3 after the press | after | 0 | 0 | 0.0 | 0.0 | 48 | - | off/inert/focus | 50 |
-| H0 a failed child, scrolled up | before | -1284 | 1284 | 1268.0 | - | - | - | absent | 49 |
+| H0 a failed child, scrolled up | before | -1284 | 1284 | 1268.0 | - | - | - | absent | 50 |
 | H0 a failed child, scrolled up | after | -635 | 635 | 619.0 | - | - | - | absent | 50 |
-| H1 a child with no session id | before | - | - | - | - | - | - | absent | 49 |
+| H1 a child with no session id | before | - | - | - | - | - | - | absent | 50 |
 | H1 a child with no session id | after | - | - | - | - | - | - | absent | 50 |
 
 Read these ways:
