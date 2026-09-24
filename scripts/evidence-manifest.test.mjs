@@ -1115,21 +1115,15 @@ const BRANCH_RECORDS = [
 	 */
 	"usageInFlightConvergenceNote",
 	/*
-	 * Grown by the mesh-desktop pass, this branch's newest top-level record and the
-	 * one that re-derived both stamps after a change that moves BOTH trees the file
-	 * binds: five renderer modules and four shared contract files under `src/`, and a
-	 * new test file plus three re-pointed sidebar anchors under `scripts/`. It is
-	 * listed for the reason the list exists - a fold that started from main's
-	 * manifest would drop it, and with it the only statement of which two trees this
-	 * delta moved and that no frame in the sweep was re-taken.
-	 */
-	"meshDesktopRestampNote",
 	/*
-	 * Main's newest record, carried by the fold rather than inherited by accident: it
-	 * landed on `origin/main` after this branch was cut, and a resolver who took either
-	 * side wholesale would have dropped it or this pass's own.
+	 * THE FOLD DEMOTES WHAT IT SUPERSEDES, and this list is where that shows: main's
+	 * `modelPickerLiveListingNote` and `modelPickerRemediationRestampNote` claimed the
+	 * pair `origin/main` shipped (bfa32f5fe / 27ac3612e) and the fold moved both trees
+	 * again, so their quoted pairs became bare SHAs and they left this list in the same
+	 * commit - exactly what happened to the eight notes before them, and the reason
+	 * they were listed at all.
 	 */
-	"agentOpenedRestampNote",
+	"meshDesktopRound2RestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

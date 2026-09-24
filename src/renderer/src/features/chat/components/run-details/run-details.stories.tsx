@@ -1426,6 +1426,74 @@ export const ReaderLive: Story = {
 };
 
 /**
+ * The foot at the pane's 320px floor, carrying the longest label a live child's
+ * line can be MINTED with (design round 1, D3).
+ *
+ * `running mcp__linear_create_issue` is the shape `tool_activity` falls back to
+ * when the model stated no intent — the tool name as CALLED, which the relay has
+ * no display layer to shorten (`intent.py:310-327`) and which `§ 5.8` records as
+ * the one divergence from the parent's own foot. At the floor the label box
+ * leaves ≈179 px ≈ 24 characters, so this is the frame in which the label has to
+ * truncate INSIDE the row rather than wrapping or pushing the clock's reserved
+ * slot off the rail. The row's other arm — a model-authored INTENT — is unbounded
+ * and can exceed the default pane's ≈38-40 characters, and no frame carries that
+ * case; it is a known gap rather than a claim (round 2, D2-1).
+ *
+ * Read with `reader-live`: the same child, the same page, one arm of the relay's
+ * vocabulary apart — a stated intent there, the named-tool fallback here.
+ */
+export const ReaderLiveFloor: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails({
+				nowMs: fixtures.FIXTURE_NOW_MS,
+				jobs: [
+					fixtures.readerChild({
+						progress: "running mcp__linear_create_issue",
+					}),
+				],
+				todos: [],
+			})}
+			openPanel={true}
+			readerChildId="job-reader"
+			previewPage={fixtures.childPage({ includeTool: true })}
+			/* The pane's own floor, the width the truncation above is about. */
+			width={320}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * A running child that has reported NO activity yet: the relay's own default
+ * word, `thinking`, on the foot (`docs/run-sidebar.md` § 5.8).
+ *
+ * The state between a child's first beat and its first progress string — and the
+ * one the line must still answer for, because "nothing to report yet" is exactly
+ * when a reader looks at the foot and asks what it is doing. It is the pair's
+ * other half: `reader-live` carries a real activity string, this carries the
+ * fallback, and a frame with neither would let a line that only ever renders a
+ * wire string pass as complete. The page holds prose and no tool row, which is
+ * the shape that produces the state — a tool row would have reported
+ * `running ...`.
+ */
+export const ReaderNoActivity: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails({
+				nowMs: fixtures.FIXTURE_NOW_MS,
+				jobs: [fixtures.readerChild({ progress: undefined })],
+				todos: [],
+			})}
+			openPanel={true}
+			readerChildId="job-reader"
+			previewPage={fixtures.childPage()}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
  * The same child settled: the settled clock, no pulse, and a quiet foot.
  *
  * The row still carries a `result_text` — that is what the wire sends for a
