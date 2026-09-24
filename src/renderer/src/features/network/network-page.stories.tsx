@@ -87,6 +87,14 @@ const base: Omit<NetworkViewProps, "state"> = {
 	}),
 };
 
+/*
+ * The two sentences the dialogs are asserted through, hoisted to module scope:
+ * biome's `useTopLevelRegex` is a request not to rebuild a literal inside a
+ * function, and a play function is one.
+ */
+const TYPED_CONFIRMATION = /Type the network's name to confirm/;
+const REDEEM_SENTENCE = /must redeem it itself/;
+
 const meta = {
 	title: "Network/Networks tab",
 	component: NetworkView,
@@ -192,7 +200,7 @@ export const RemoveConfirmation: Story = {
 	},
 	play: async () => {
 		await userEvent.click(await screen.findByText("Remove from network…"));
-		await screen.findByText(/Type the network's name to confirm/);
+		await screen.findByText(TYPED_CONFIRMATION);
 	},
 };
 
@@ -209,6 +217,6 @@ export const InviteMinted: Story = {
 	play: async () => {
 		await userEvent.click(await screen.findByText("Add to network…"));
 		await userEvent.click(await screen.findByText("Create invite"));
-		await screen.findByText(/must redeem it itself/);
+		await screen.findByText(REDEEM_SENTENCE);
 	},
 };
