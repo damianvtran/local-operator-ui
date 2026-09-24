@@ -188,9 +188,31 @@ const ids = (rows) => rows.map((provider) => provider.id);
 /** The markup the grid paints for one census, without a DOM and without a fetch. */
 function render(rows) {
 	const client = new QueryClient({
-		defaultOptions: { queries: { staleTime: Number.POSITIVE_INFINITY } },
+		defaultOptions: {
+			queries: {
+				staleTime: Number.POSITIVE_INFINITY,
+				/*
+				 * The grid now observes the (disabled) verdict query, which a static
+				 * render leaves with no observer and so schedules for removal after
+				 * the default five minutes -- a live timer that held this file open
+				 * for 300 s after its last assertion (measured).
+				 */
+				gcTime: Number.POSITIVE_INFINITY,
+			},
+		},
 	});
 	client.setQueryData(desktopKeys.providers, rows);
+	/*
+	 * The grid holds its card list until the Radient login verdict can answer
+	 * (`provider-grid.tsx`, the verdict's mount gate), and that read is gated on
+	 * the capability answer. A static render never fetches, so the answer is
+	 * seeded: a paired runtime WITHOUT `tunnel`, which issues no verdict read and
+	 * leaves every chip to the census -- the premise every case here is about.
+	 */
+	client.setQueryData(desktopKeys.capabilities, {
+		desktop_available: true,
+		features: {},
+	});
 	return renderProviderGrid(client);
 }
 

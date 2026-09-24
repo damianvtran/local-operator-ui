@@ -24,12 +24,34 @@ import { openAuthorization } from "@shared/api/local-operator/desktop-api";
 import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Badge, Button, Input, Label } from "@shared/components/ui";
+/*
+ * The verdict is read through the composer callout's own module rather than a
+ * query of this feature's: the chip and the callout share one cache entry for
+ * `GET /v1/auth/status`, so they cannot disagree about one verdict at one
+ * instant (see `useRadientAuthStatus`).
+ */
+import {
+	radientSessionIssueKey,
+	useRadientLoginVerdict,
+} from "@shared/hooks/use-radient-session-issue";
+/*
+ * The MODULE, not the `@shared/hooks` barrel: the barrel carries
+ * `use-connectivity-status`, which reads the renderer's config at import time and
+ * therefore throws in any Node bundle that does not define `import.meta.env` --
+ * `scripts/backend-error-surfaces.test.mjs` bundles this grid and says so in its own
+ * docblock. Importing the leaf keeps this feature out of that graph.
+ */
+import { useRadientUserQuery } from "@shared/hooks/use-radient-user-query";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useQueryClient } from "@tanstack/react-query";
 import { Check, Copy, Eye, EyeOff, RotateCcw } from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { primaryMethod } from "./provider-labels";
+import {
+	loginClaim,
+	primaryMethod,
+	providerReadiness,
+} from "./provider-labels";
 
 /**
  * Reachability for a local provider, stated only after it has been checked.
@@ -143,6 +165,75 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	onConnected,
 }) => {
 	const queryClient = useQueryClient();
+	/*
+	 * The verdict on this machine's Radient sign-in. This panel rendered its
+	 * "Signed in" badge from `provider.configured` alone, which is a fact about
+	 * the credential store: a revoked grant kept the row, kept that flag, and
+	 * left the panel telling the user they were signed in while the sentence
+	 * directly above it said they were not (UX U1). Called before the panel's
+	 * early returns, so the hook order is the same for every provider.
+	 *
+	 * `retryOnMount: false` for the reason the account read below carries it, on
+	 * the other key (QA round 3, Q-8): this panel REPORTS the verdict its host
+	 * (the grid, or the account section's sign-in block) already reads, and with
+	 * the default a panel mounting on a FAILED, data-less verdict re-commissioned
+	 * it. Every card press on a failing `GET /v1/auth/status` became a loop -
+	 * measured at 1,579 requests in 20 s and a grid stuck on "Loading providers" -
+	 * because the grid's hold unmounted this panel for each re-read and its
+	 * remount started the next. See `RadientLoginVerdictOptions` for the
+	 * mechanism, and `useRadientAuthStatus`'s `settling` for the gate's half.
+	 */
+	const login = useRadientLoginVerdict({ retryOnMount: false });
+	/**
+	 * The app's own answer about whether a Radient sign-in is stored, and whether
+	 * it could be asked at all (see `loginState`; design round 1's D3 is why the
+	 * chip may not fall back to the credential row when the verdict is absent).
+	 *
+	 * `retryOnMount: false` IS THE FIX FOR THE ONE REGRESSION THIS PR CAUSED, and
+	 * it is here rather than in the hook because it is a property of THIS caller:
+	 * the panel REPORTS this read, it does not own it. Round 2 measured what an
+	 * owning observer costs when it lives inside a subtree the read's own loading
+	 * state unmounts (design D7, QA Q-5, one defect from two rigs):
+	 *
+	 *   the account section early-returns its spinner for `isLoading`, which is
+	 *   true again the moment any observer starts a read; the sign-in block it
+	 *   hides contains this panel, so this panel is unmounted by the very read it
+	 *   is watching. React Query re-runs a FAILED, data-less query when a new
+	 *   observer mounts on it (`@tanstack/query-core@5.73.3`
+	 *   `shouldLoadOnMount`, `retryOnMount` default true), so the sequence is:
+	 *   read fails / the section renders its content / this panel mounts / the
+	 *   mount re-commissions the read / the section spins again / this panel is
+	 *   unmounted / repeat. Measured on the real composition (settings section +
+	 *   its sign-in block) in this repo's jsdom harness: 14 account reads in 14 s,
+	 *   the section never leaving the spinner, `status: pending`,
+	 *   `fetchStatus: fetching`, `failureCount: 2` -- the same shape QA read off
+	 *   the live app (54 reads a boot, ~1/s) and design read off its own rig
+	 *   (39 in 30 s on this head against 4 on `origin/main`). With this option the
+	 *   same composition settles in one read and renders the sentence, the chip
+	 *   and the sign-in control.
+	 *
+	 * WHAT WAS RULED OUT, because the leading hypothesis was the other one: the
+	 * hook's options are written inline (`queryKey: radientUserKeys.user()`, an
+	 * inline `retry`), and a fresh options object per render was the suspect. It is
+	 * not the cause. Ten forced re-renders of an errored observer whose `queryKey`
+	 * array and `retry` function are rebuilt every render start ZERO further reads
+	 * (React Query hashes the key by value and only compares options), and hoisting
+	 * `retry` to module scope AND pinning the key to one module-level array leaves
+	 * the loop at exactly 14 reads in 14 s. Only the mount is load-bearing, which
+	 * is why the fix is one option on this call and not a rewrite of the hook.
+	 */
+	const { accountRead, unavailable } = useRadientUserQuery({
+		retryOnMount: false,
+	});
+	/**
+	 * The badge's own words, from the same predicate the grid's cards use, so one
+	 * credential cannot be called two things on one screen -- including the
+	 * WITHHELD answer (`null`, design round 4's D12): while no read that can
+	 * support a claim has answered, the grid's card shows none and neither does
+	 * this badge.
+	 */
+	const claim = loginClaim(provider.id, login, { accountRead, unavailable });
+	const readiness = claim === null ? null : providerReadiness(provider, claim);
 	const [methodId, setMethodId] = useState<string | null>(null);
 	const [operation, setOperation] = useState<AuthOperation | null>(null);
 	const [starting, setStarting] = useState(false);
@@ -191,6 +282,21 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		 * same event as far as the catalogue is concerned.
 		 */
 		void queryClient.invalidateQueries({ queryKey: desktopKeys.catalogue });
+		/*
+		 * And the VERDICT, whose query is what the chip actually reads (code round
+		 * 2, M3). It sits AFTER the catalogue line rather than between the two
+		 * above, because `scripts/picker-feedback.test.mjs` pins the providers and
+		 * catalogue invalidations within a bounded distance of each other, and a
+		 * comment this long between them breaks that pin. Without this a sign-in that just succeeded from this panel left
+		 * the grid and this panel saying "Needs re-authentication" until the 60 s
+		 * poll or a window focus -- the user who fixed the fault was told it was
+		 * still broken, on the surface that had just fixed it. Reproduced with this
+		 * PR's harness: refused / press the card / `auth.status` answers `succeeded`
+		 * (verdict `ok`) / back to providers, and the grid still read "Needs
+		 * re-authentication" with the verdict request count unchanged at 1 and
+		 * `{credential_id: 7, state: "login_required"}` still in the cache.
+		 */
+		void queryClient.invalidateQueries({ queryKey: radientSessionIssueKey });
 		onConnected?.();
 	}, [queryClient, onConnected]);
 
@@ -393,8 +499,18 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 								{starting ? <Spinner size="sm" /> : null}
 								{method.label}
 							</Button>
-							{provider.configured && (
-								<Badge variant="success">Signed in</Badge>
+							{/* The row's own badge, keyed on the login verdict rather than on
+							    the credential row -- and NOT painted until a read that can
+							    support it has answered (`loginClaim`), because a claim it is
+							    about to correct is what design round 1's D6 and round 4's D12
+							    measured. No slot is reserved here, unlike the grid card: the
+							    badge sits at the END of the button's row, so its arrival moves
+							    nothing else. The prose rides the same `title` the grid's chip
+							    carries, so the long form is reachable on both surfaces. */}
+							{provider.configured && readiness && (
+								<Badge variant={readiness.tone} title={readiness.detail}>
+									{readiness.label}
+								</Badge>
 							)}
 						</div>
 					)}

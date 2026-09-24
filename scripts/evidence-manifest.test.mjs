@@ -795,11 +795,21 @@ const STAMP_BINDING_NOTES = [
 	 * as bare SHAs in the notes themselves, which is the convention
 	 * `usageAutoCheckRestampNote` and `usageInFlightRemediationNote` left by first.
 	 */
-	// The tenth, and the one that re-derived the pair: it states this file's own trees for
-	// the mesh-desktop pass, so it is held to them rather than read as history - the
-	// distinction `candidateMacArchRestampNote` was listed for. `meshDesktopRound2RestampNote`
-	// left this list in the same commit that replaced its pair, with its values written as
-	// bare SHAs in the note itself (the convention the paragraph above states).
+	/*
+	 * The tenth, and the one that re-derived the pair: it states this file's own trees
+	 * for the mesh-desktop pass, so it is held to them rather than read as history -
+	 * the distinction `candidateMacArchRestampNote` was listed for.
+	 *
+	 * THIS FOLD DEMOTED MAIN'S FIVE, in the same commit that replaced their pair:
+	 * `usageInFlightConvergenceNote`, `macNativeComponentsRestampNote`,
+	 * `telemetrySwitchRestampNote`, `readReceiptRestampNote` and
+	 * `modelCatalogueFocusRestampNote` each quoted the pair `origin/main` shipped when this
+	 * branch folded onto it, and a backticked token in this list is ALWAYS the value the
+	 * file ships - so keeping them would have held a superseded pair to this file as if it
+	 * were its own. Their values are written as bare SHAs in the notes themselves, which is
+	 * the convention the paragraph above states. `meshDesktopRound2RestampNote` left this
+	 * list the same way one pass earlier.
+	 */
 	"meshDesktopRound3RestampNote",
 ];
 
