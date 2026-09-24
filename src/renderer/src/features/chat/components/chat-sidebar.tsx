@@ -3693,8 +3693,24 @@ export function ChatSidebar({
 			 * given the side below a rule, which is what keeps the 10px band inside
 			 * padding rather than over a row's pixels.
 			 */
+			/*
+			 * `relative` IS THE CONTAINMENT, and it is what makes this pane's own
+			 * scrolled rows stop inflating the PANEL's (and the window's) scrollable
+			 * overflow. Measured on the built app with the driver's `sidebar-sections`
+			 * scene: with the pane `static`, a 20-row chats list made the nav report
+			 * `scrollHeight 890` against a `clientHeight` of 576 - content inside a
+			 * scroller, counted by the scroller's ANCESTORS - so the column carried an
+			 * overflow region of its own and, wrapped in the `overflow-x-hidden` the
+			 * shell used to carry, a third scrollbar. Giving the pane its own
+			 * positioning context puts every absolutely positioned row descendant into
+			 * THIS pane's containing block, where the pane's own clip contains it:
+			 * measured, nav `576/576` and shell `868/868`. `contain: paint` measures the
+			 * same and is the stronger rule - it would also clip shadows and anything a
+			 * future row wants to draw outside its box - so the containing block is the
+			 * one taken.
+			 */
 			className={cn(
-				"min-h-0 flex-1 space-y-4 overflow-y-auto [overflow-anchor:none]",
+				"relative min-h-0 flex-1 space-y-4 overflow-y-auto [overflow-anchor:none]",
 				entityHasRuleAbove ? "border-t border-hairline px-1 pt-2 pb-1" : "p-1",
 			)}
 		>
@@ -4550,7 +4566,7 @@ export function ChatSidebar({
 				 * always show scrollbars it is the ~15px above. The trade is stated in the
 				 * spec's § 11 rather than left to be discovered from the de-aligned right edge.
 				 */
-				"space-y-4 overflow-y-auto [overflow-anchor:none] [scrollbar-gutter:stable]",
+				"relative space-y-4 overflow-y-auto [overflow-anchor:none] [scrollbar-gutter:stable]",
 				/*
 				 * Two shapes, and which one is drawn is the difference between a split
 				 * and a collapse: with both regions on screen this container is the
