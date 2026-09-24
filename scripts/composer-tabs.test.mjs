@@ -1294,7 +1294,12 @@ test("the trigger's dot is ONE mark in two inks, and the ink is the whole distin
 test("the row mounts inside the form, ABOVE the alert and therefore above the box", () => {
 	const source = code(COMPOSER);
 	const row = source.indexOf("<ComposerStatusRow");
-	const alert = source.indexOf('role="alert"');
+	// The region's role is a two-arm expression now (a failure asserts, the late
+	// delivery announces politely - review round 2, NIT), so the boundary is the
+	// expression rather than the literal.
+	const alert = source.indexOf(
+		'role={composerAlert.polite ? "status" : "alert"}',
+	);
 	const box = source.indexOf("COMPOSER_BOX,");
 	assert.ok(row > -1, "the composer mounts the row");
 	assert.ok(

@@ -781,37 +781,21 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  */
 const STAMP_BINDING_NOTES = [
 	"shellPathRestampNote",
-	"settingsGateRestampNote",
-	"candidateMacArchRestampNote",
-	"notarizeGateRestampNote",
+	"roundThreeNoticeRestampNote",
 	/*
-	 * `usageAutoCheckRestampNote` left this list when the remediation below
-	 * re-derived both stamps: its pair is now history, written as bare SHAs in the
-	 * note itself, because leaving it here would have held a fold's values to this
-	 * file as if they were its own — the defect the list exists for.
+	 * FIVE NOTES LEFT THIS LIST AT REVIEW ROUND 3, and the reason is the one the
+	 * comments in this block have recorded for every earlier departure:
+	 * `usageInFlightConvergenceNote`, `macNativeComponentsRestampNote`,
+	 * `telemetrySwitchRestampNote`, `readReceiptRestampNote` and
+	 * `composerNoticeRemediationNote` each record a capture or a fold that re-stamped
+	 * this file WITHOUT re-capturing the sets behind it, so the pair they quote is
+	 * history. Round 3 re-derived both trees again (the composer-alert rig was re-run
+	 * for the notice-arms frames), and holding those five to the new values would have
+	 * made each of them certify a binding it was never about. `shellPathRestampNote`
+	 * stays because round 3 updated its quoted pair to the shipped one, and round 3's
+	 * own note joins it: a note that says "these are the values this file ships" is
+	 * exactly what this list is for.
 	 */
-	/*
-	 * `usageInFlightRemediationNote` left this list when the convergence round
-	 * below re-derived both stamps on top of it: its pair is now history, written
-	 * as bare SHAs in the note itself, because leaving it here would have held a
-	 * superseded pair to this file as if it were its own. `usageInFlightConvergenceNote`
-	 * carries the binding the round it records re-derived.
-	 */
-	"usageInFlightConvergenceNote",
-	"macNativeComponentsRestampNote",
-	"telemetrySwitchRestampNote",
-	// The seventh: `readReceiptRestampNote` states this file's own pair for the
-	// read-receipt branch, so it is held to that pair rather than read as history -
-	// the distinction `candidateMacArchRestampNote` above is in the list for.
-	"readReceiptRestampNote",
-	/*
-	 * And the eighth, the round-1 remediation of the failed-send notice: it states
-	 * this file's own pair (both trees moved, which the note says in as many words)
-	 * and declares the two supplementary sets this round added and the three story
-	 * sets it withdrew, so it is held to the stamps it ships rather than read as
-	 * history.
-	 */
-	"composerNoticeRemediationNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
