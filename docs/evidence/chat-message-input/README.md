@@ -575,12 +575,16 @@ reference before the re-shoot and what moved was the caption band and the
 composer's control area - pixels this reading is blind to by construction. So the
 claim this section stands behind is the canvas's, not the whole frame's.
 
-The frames that were flagged a second time are byte-identical to a fresh capture,
-which is how the residue was settled: `obsidian` 22, `monokai` 2, `neon` 3,
-`localOperatorDark` 1, each up to four units by this instrument (an independent
-modal-ring census reads `obsidian` at two, so the magnitude is instrument-
-dependent while the list is not), and they belong to the stories rather than to a
-generation - a re-shoot that changes no bytes is the proof.
+The residue was settled by re-capture rather than by argument, and the scope of
+that measurement matters: three sample frames (`pending-send-payload/obsidian`,
+`idle/monokai`, `stop-slot-settled/obsidian`) re-captured byte-identically, and
+QA's four `obsidian` frames later proved byte-stable across two captures two
+rounds apart. That is what byte-identity was measured ON - it is not a claim about
+the whole residue class, which round 4 classified from a full-set capture by the
+difference's own scale instead (below). The residue is one list in both documents,
+by the canvas pixel: `obsidian` 22, `monokai` 2, `neon` 3, `localOperatorDark` 1,
+each up to four units (the independent modal-ring census reads `obsidian` at two,
+so the magnitude is instrument-dependent while the list is not).
 
 ### Round 4's remediation: enumerated by content, not by colour
 
@@ -599,16 +603,23 @@ frame stands in a colour space.
 in ten palettes (the sentence `- Enter is held: clear the box to release your
 words` against the retired `- Enter will expose them`) and `pending-send-small-view`
 in five (an inherited send, against the withdrawn "the echo has landed"), which are
-re-shot here and confirmed at the pixels. The other 203 differ only below the
-threshold that matters: at most 57 units on isolated anti-aliased pixels, or a
-whole-frame shift of at most 27 units, with no repaint anywhere in the frame - the
-rasterization class, left as committed and recorded rather than re-shot, QA's four
-`obsidian` frames included. One content-sized class was examined and deliberately
-left: `credential-pill-cleared`'s twelve frames repaint thousands of pixels, but the
-content is the story's own nondeterminism (the credential token id changes per run,
-and the removal toast is present in some runs and not others), so a fresh capture of
-them would ship frames no second run reproduces. The manifest's round-4 note carries
-the numbers per family.
+re-shot here and confirmed at the pixels. The other 203 were checked against the
+difference's own magnitude distribution, not against byte-identity, and QA's
+measurements are the ones recorded: 97-99% of the pixels that differ are within 7
+units, the largest connected region of them is 11,887 px, and the class's ceiling
+is 83 units on a single pixel - the 57-unit figure round 4 quoted is exact only
+for the four `obsidian` frames it was measured on - with a whole-frame shift of at
+most 27 units where the change is not local, and no repaint anywhere in a frame.
+Two different things were bundled under one name there and this section separates
+them: deterministic generation drift, where a frame reproduces byte-for-byte
+across captures taken rounds apart and differs from the committed one only by that
+distribution (QA's four `obsidian` frames are this), and genuine nondeterminism,
+where no second capture reproduces the frame at all - `credential-pill-cleared`'s
+twelve frames are its exemplar, repainting thousands of pixels with a content that
+changes per run (the credential token id, and whether the removal toast is up), so
+a fresh capture of them would ship frames no second run reproduces. Both classes
+are left as committed and recorded rather than re-shot, and the manifest's round-4
+note carries the numbers per family.
 
 THE ARM THESE FRAMES MODEL (design round 1, D5): the EXISTING-SESSION arm - one
 composer with a stable `conversationId`, which is the only arm a story can hold
