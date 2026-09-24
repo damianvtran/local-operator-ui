@@ -855,6 +855,28 @@ test("addresses are normalised so an address comparison is exact", () => {
 		"the host is folded case-insensitively, as DNS names are",
 	);
 	/*
+	 * THE FULLY QUALIFIED SPELLING OF THE SAME NAME (agent round 2, N1). `localhost.` is
+	 * `localhost` to a resolver and `new URL` keeps the dot, so the fold still had one
+	 * spelling of one listener that compared unequal to its own record.
+	 */
+	assert.equal(
+		normaliseAddress("http://localhost.:1111"),
+		"http://127.0.0.1:1111",
+		"a trailing dot is the qualified spelling of the same host",
+	);
+	/*
+	 * A SCHEMELESS `host:port` IS NOT AN ADDRESS (agent round 2, N2). `new URL` reads it
+	 * as a scheme with an empty host, and the first version of this function returned
+	 * that - `localhost://:80` - as a non-null address the record comparison then
+	 * trusted. No hostname means no address.
+	 */
+	assert.equal(
+		normaliseAddress("localhost:1111"),
+		null,
+		"a schemeless host:port is refused rather than invented into an address",
+	);
+	assert.equal(normaliseAddress("127.0.0.1:1111"), null);
+	/*
 	 * IPv6 loopback keeps its own identity - a daemon bound to `::1` alone is not
 	 * reachable at `127.0.0.1` - but its own two spellings are folded to the one the
 	 * URL parser hands back, because a serve record stores the host bare.

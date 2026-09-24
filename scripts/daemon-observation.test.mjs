@@ -46,9 +46,11 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import {
+	copyFileSync,
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
+	readdirSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
@@ -1048,6 +1050,120 @@ test("a launch re-attaches to the daemon the previous run left running, via the 
 		await withoutToken.stop(false);
 		await reattaching?.stop(false).catch(() => {});
 		await scene.dispose();
+	}
+});
+
+/*
+ * WHERE THIS APP IS SERVING IS DERIVED, NOT REMEMBERED (agent round 2, R2-1).
+ *
+ * The field that carries this fact had exactly one producer - the spawn gate - and
+ * that produced two wrong answers in opposite directions, both in this file's own
+ * territory:
+ *
+ *   (a) the launch that ADOPTS a daemon on another address never runs the gate, so the
+ *       snapshot said nothing at all while the app was on 8080 rather than on the
+ *       address it is configured for. That is the second launch of the 2026-09-23
+ *       incident, one launch after the fallback was taken, and it was byte-for-byte
+ *       the invisibility the presentation exists to remove.
+ *   (b) a substitution was never retracted: once `discoverAndAttach` moved the app
+ *       back to the configured address, the snapshot still carried `serving: <the old
+ *       address>` beside a `url` that was the configured one, and the act it offered
+ *       named a pid that may by then be the daemon the operator is using.
+ *
+ * Both halves are exercised over the REAL discovery path, because that is the path
+ * both the second launch and the recovery take. The config root is assembled by hand
+ * so exactly one daemon has published a record at a time - that is what makes it
+ * deterministic rather than a race between two live candidates.
+ */
+test("an adopted daemon on another address is reported, and a landing on the configured address retracts it (R2-1)", async () => {
+	const configured = await daemonScene({ instanceId: "instance-configured" });
+	const elsewhere = await daemonScene({ instanceId: "instance-elsewhere" });
+	/*
+	 * The configured address is read by the CONSTRUCTOR - it is what the app is told to
+	 * serve on - so the hook has to be set before the manager exists, not after.
+	 */
+	globalThis.__testConfiguredUrl = configured.address;
+	const manager = new BackendServiceManager();
+	managers.add(manager);
+	const root = mkdtempSync(join(tmpdir(), "daemon-observation-swap-"));
+	const runDir = join(root, "run", "serve");
+	mkdirSync(runDir, { recursive: true });
+	const recordsOf = (scene) => join(scene.root, "run", "serve");
+	const showRecords = (scene) => {
+		for (const file of readdirSync(recordsOf(scene))) {
+			copyFileSync(join(recordsOf(scene), file), join(runDir, file));
+		}
+	};
+	const hideRecords = (scene) => {
+		for (const file of readdirSync(recordsOf(scene))) {
+			rmSync(join(runDir, file), { force: true });
+		}
+	};
+	try {
+		/* Only the OTHER daemon has a record, so this launch adopts it. */
+		showRecords(elsewhere);
+		process.env.LOCAL_OPERATOR_CONFIG_DIR = root;
+		assert.equal(
+			await manager.checkExistingBackend(),
+			true,
+			"the daemon another launch left running is adopted",
+		);
+		const adopted = manager.getStatusSnapshot();
+		assert.equal(adopted.url, elsewhere.address);
+		const swap = adopted.addressSubstitution;
+		assert.equal(
+			swap?.kind,
+			"substituted",
+			"and the app says which address it is on instead of the one it is configured for",
+		);
+		assert.equal(swap.configured, configured.address);
+		assert.equal(swap.serving, elsewhere.address);
+		assert.equal(
+			swap.holder,
+			null,
+			"with no holder: no gate ran, so no address was refused",
+		);
+		assert.equal(
+			swap.reclaim,
+			null,
+			"and no act is invented for a holder nobody observed",
+		);
+
+		/*
+		 * THE RECOVERY LANDS ON THE CONFIGURED ADDRESS: the daemon the app was using is
+		 * gone, and the operator's own is now serving the address the app is configured
+		 * for - the act the band's own copy instructs. `discoverAndAttach` is the entry
+		 * both the startup adoption and the recovery use.
+		 */
+		await elsewhere.die();
+		hideRecords(elsewhere);
+		showRecords(configured);
+		assert.equal(
+			await manager.discoverAndAttach(),
+			true,
+			"the daemon on the configured address is found and attached",
+		);
+		const returned = manager.getStatusSnapshot();
+		assert.equal(returned.url, configured.address);
+		assert.equal(
+			returned.addressSubstitution?.kind,
+			"returned",
+			"the move back is reported, not left as a substitution the app has already left",
+		);
+		assert.equal(returned.addressSubstitution.configured, configured.address);
+		assert.equal(
+			returned.addressSubstitution.serving,
+			elsewhere.address,
+			"and it names the address the app was on until it moved back",
+		);
+		console.log(
+			`adopted ${elsewhere.address} while configured for ${configured.address}; recovery moved the app back`,
+		);
+	} finally {
+		await manager.stop(false);
+		await elsewhere.dispose();
+		await configured.dispose();
+		rmSync(root, { recursive: true, force: true });
 	}
 });
 

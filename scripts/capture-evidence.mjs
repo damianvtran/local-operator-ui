@@ -4383,6 +4383,14 @@ export const STORIES = [
 	["common-connectivity-banner--both-addresses-held", 1024, 300],
 	["common-connectivity-banner--serving-on-fallback", 1024, 300],
 	["common-connectivity-banner--returned-to-configured", 1024, 300],
+	/*
+	 * And the fourth state this round adds, for the same reason: `serving-on-fallback`
+	 * above is the FALLBACK TAKEN, and this is the same address one launch later, when the
+	 * app ADOPTS the daemon that launch left running. No spawn gate runs then, so the
+	 * state carried no substitution at all and the app was silently on another address
+	 * (agent review round 2, R2-1a).
+	 */
+	["common-connectivity-banner--attached-elsewhere", 1024, 300],
 	/* The machine-offline claim itself, and the one state the internet banner may
 	   paint: a negative reading that has held across the grace and been confirmed
 	   by a second one. Its companion - the same reading BEFORE the grace, which

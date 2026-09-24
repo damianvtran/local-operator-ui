@@ -49,10 +49,12 @@ export const ConnectivityBanner = ({
 	/*
 	 * Whether main's address-substitution notice has been dismissed.
 	 *
-	 * Deliberately NOT reset when the snapshot changes, unlike the internet flag above:
-	 * the notice it dismisses is the record that the app RETURNED to the address it is
-	 * configured for, which no later snapshot retracts. A dismissal that a re-render
-	 * undid would be a control that does not work.
+	 * Scoped to the NOTICE rather than to the window: the flag only suppresses the
+	 * dismissal-carrying notice it was set on, and is re-armed the moment that notice
+	 * leaves the screen (see the effect below). A dismissal that a re-render undid
+	 * would be a control that does not work; a dismissal that outlived its notice was a
+	 * second return nobody ever saw, which is the same invisibility this state exists to
+	 * remove one state over (agent round 2, R2-3).
 	 */
 	const [dismissedAddressNotice, setAddressNoticeDismissed] = useState(false);
 	/*
@@ -244,6 +246,17 @@ export const ConnectivityBanner = ({
 	 */
 	const serverIssue = isInternetIssue ? null : serverBannerCopy(serverSnapshot);
 	const addressNotice = serverSnapshot?.addressSubstitution ?? null;
+	/*
+	 * RE-ARMED WHENEVER THE DISMISSIBLE NOTICE IS NOT THE ONE ON SCREEN (agent round
+	 * 2, R2-3). Without this, dismissing "back on 1111" silenced every later return in
+	 * the same window: the app could substitute again (that band carries no `dismiss`,
+	 * so it painted) and the next return was swallowed by a flag set on a notice that
+	 * had already been replaced. This is not the case the flag exists to prevent - the
+	 * notice it dismissed is gone, not re-rendered.
+	 */
+	useEffect(() => {
+		if (serverIssue?.dismiss !== true) setAddressNoticeDismissed(false);
+	}, [serverIssue?.dismiss]);
 	const addressNoticeDismissed =
 		serverIssue?.dismiss === true && dismissedAddressNotice;
 	const showBanner = isInternetIssue

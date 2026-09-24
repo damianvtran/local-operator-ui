@@ -655,7 +655,16 @@ export function recordAddress(record: ServeRecord): string {
 function canonicalHost(host: string): string {
 	const bare =
 		host.startsWith("[") && host.endsWith("]") ? host.slice(1, -1) : host;
-	const lower = bare.toLowerCase();
+	/*
+	 * ONE TRAILING DOT IS THE FULLY QUALIFIED SPELLING OF THE SAME NAME (agent round
+	 * 2, N1): `localhost.` is `localhost` to a resolver, and `new URL` keeps the dot,
+	 * so before this the fold had exactly one spelling of one listener that compared
+	 * unequal to its own record. The dot is dropped for the COMPARISON only - a name
+	 * that is not loopback keeps the spelling it arrived with, so this cannot
+	 * silently rewrite a host a record is keyed on.
+	 */
+	const unqualified = bare.endsWith(".") ? bare.slice(0, -1) : bare;
+	const lower = unqualified.toLowerCase();
 	if (lower === "localhost") return "127.0.0.1";
 	if (lower === "::1" || lower === "0:0:0:0:0:0:0:1") return "::1";
 	return bare;
@@ -1090,6 +1099,14 @@ export function normaliseAddress(
 	if (!url) return null;
 	try {
 		const parsed = new URL(url);
+		/*
+		 * A SCHEMELESS `host:port` IS NOT AN ADDRESS (agent round 2, N2). `new URL`
+		 * reads `localhost:1111` as scheme `localhost:` with an empty host and the
+		 * default port, and the first version of this function returned that - as
+		 * `localhost://:80` - looking like an address the record comparison could
+		 * trust. No hostname means no address: refuse rather than invent one.
+		 */
+		if (!parsed.hostname) return null;
 		const port = parsed.port || (parsed.protocol === "https:" ? "443" : "80");
 		return addressOf(
 			parsed.protocol,
