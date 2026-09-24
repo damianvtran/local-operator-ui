@@ -1,0 +1,383 @@
+port8080.lock taken
+rig up: proxy 18592 on 8080 -> daemon 18350 on 61535, stub 61530; 1111 untouched
+== regress (btw-r2) at 10:44:11 ==
+[build] current: assets 2026-09-24T09:45:16.171Z >= sources 2026-09-24T09:42:45.787Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/.local-operator/sessions/a198c9e9adbd/scratchpad/rig2/run-regress/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/qa482-r3-a198c9
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-18650
+  frames        /Users/damian/.local-operator/sessions/a198c9e9adbd/scratchpad/rig2/frames/regress
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-18650/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/qa482-r3-a198c9/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown
+        mode=headless visible=false focused=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] R2 session
+        b29ae58f5755
+[PASS] (b) one Enter attaches the panel with the question asked
+        "Asideoff the record — nothing here joins the conversationAsking the asideQuestion: what does the retry budget actually cap?thinking…Add to conversation⌘+FThe exchange is still settling — a moment before it can be added."
+[note] frame
+        {"label":"qa2-regress-01-thinking","mode":"raw","width":2760,"height":1736}
+[note] frame
+        {"label":"qa2-regress-02-partial-a","mode":"raw","width":2760,"height":1736}
+[note] frame
+        {"label":"qa2-regress-03-partial-b","mode":"raw","width":2760,"height":1736}
+[note] (b) visible answer length samples
+        [{"ms":1,"len":0},{"ms":195,"len":0},{"ms":425,"len":0},{"ms":618,"len":0},{"ms":811,"len":0},{"ms":1009,"len":0},{"ms":1244,"len":0},{"ms":1486,"len":0},{"ms":1687,"len":0},{"ms":1878,"len":28},{"ms":2171,"len":57},{"ms":2415,"len":57},{"ms":2605,"len":81},{"ms":2820,"len":115},{"ms":3010,"len":115},{"ms":3221,"len":141},{"ms":3425,"len":181},{"ms":3628,"len":181},{"ms":3831,"len":204},{"ms":4040,"len":245}]
+[PASS] (b) the answer was painted at >=3 distinct partial lengths before settling
+        distinct lengths [28,57,81,115,141,181,204,245]; partial A 28, B 57
+[PASS] (b) the settled panel holds the whole answer and adopt goes live
+        [{"text":"","label":"Close the aside","disabled":false},{"text":"Add to conversation","label":null,"disabled":false}]
+[note] frame
+        {"label":"qa2-regress-04-settled","mode":"settled","width":2760,"height":1736}
+[PASS] (f) typing with the panel up lands in the composer; caret kept; Send live
+        {"value":"composer probe line","active":"textarea[Message]","send":{"present":true,"disabled":false},"stop":false}
+[note] frame
+        {"label":"qa2-regress-05-typed-while-panel-up","mode":"settled","width":2760,"height":1736}
+[PASS] (f) Enter with the panel up routes to the ASIDE (panel gains the line; transcript unchanged; box emptied at the press)
+        {"panelHasIt":true,"transcriptSame":true,"value":""}
+[note] frame
+        {"label":"qa2-regress-06-enter-routed-to-aside","mode":"settled","width":2760,"height":1736}
+[PASS] (f) Esc closes the panel and keeps the composer's text and caret
+        {"panel":null,"value":"escape keeps this line","active":"textarea[Message]"}
+[PASS] (f) after Esc the next Enter joins the CONVERSATION
+        "Start of conversationescape keeps this line6:44 AM⣾waiting for the agent0s"
+[note] frame
+        {"label":"qa2-regress-07-escape-then-send-joined-thread","mode":"raw","width":2760,"height":1736}
+[note] threaded turn idle
+        {"streaming":false,"working":false}
+[PASS] (f) bare /btw attaches the EMPTY panel; adopt disabled with 'Nothing to add yet.'
+        "Asideoff the record — nothing here joins the conversationType a question in the composer below — the answer lands here.Add to conversation⌘+FNothing to add yet."
+[note] frame
+        {"label":"qa2-regress-08-empty-panel","mode":"raw","width":2760,"height":1736}
+[PASS] (f) the next Enter on the empty panel is its first question, off the transcript
+        {"panel":"Asideoff the record — nothing here joins the conversationAsking the asideQuestion: what gets adopted into the conversation?thinking…Add to conversation⌘+FThe ex"}
+[note] (f) injected turn
+        status 200
+[PASS] (f) while the session streams the panel says why and adopt is disabled
+        {"text":"y that succeeds resets the window A 4xx never spends it: the request was wrong, not the provider.Add to conversation⌘+FThis conversation is working. Adding the aside while it runs would splice a message into a live turn.","control":{"x":608,"y":674,"disabled":true}}
+[PASS] (f) pressing the disabled adopt does nothing (panel stays; question not in transcript)
+        {"panel":true}
+[note] frame
+        {"label":"qa2-regress-09-adopt-refused-while-streaming","mode":"raw","width":2760,"height":1736}
+[PASS] (a) adopt control is live once the session is idle
+[note] (a) transcript before adopt
+        "Start of conversationescape keeps this line6:44 AMTransport failures and owner 5xx responses, per provider, inside a moving window. each transport failure spends one each owner 5xx spends one a retry that succeeds resets the window A 4xx never spends it: the request was wrong, not the provider.6:44 AMINJECTED TURN: speak while the aside is open6:44 AMTransport failures and owner 5xx responses, per provider, inside a moving window. each transport failure spends one each owner 5xx spends one a retry that succeeds resets the window A 4xx never spends it: the request was wrong, not the provider.6:44 AM"
+[note] (a) transcript after adopt
+        "Start of conversationescape keeps this line6:44 AMTransport failures and owner 5xx responses, per provider, inside a moving window. each transport failure spends one each owner 5xx spends one a retry that succeeds resets the window A 4xx never spends it: the request was wrong, not the provider.6:44 AMINJECTED TURN: speak while the aside is open6:44 AMTransport failures and owner 5xx responses, per provider, inside a moving window. each transport failure spends one each owner 5xx spends one a retry that succeeds resets the window A 4xx never spends it: the request was wrong, not the provider.6:44 AMwhat gets adopted into the conversation?6:44 AMTransport failures and owner 5xx responses, per provider, inside a moving window. each transport failure spends one each owner 5xx spends one a retry that succeeds resets the window A 4xx never spends it: the request was wrong, not the provider.6:44 AM"
+[note] (a) daemon durable rows
+        before: question present=false; after: present=true (status 200/200)
+[PASS] (a) LIVE: the adopted question AND answer are painted in the transcript without leaving the pane
+        painted 118ms after the press; question rows 1, answer-head 2->3
+[PASS] (a) the adopted exchange is painted exactly once (no duplicate rows from the re-read)
+        question occurrences: 1
+[note] frame
+        {"label":"qa2-regress-10-adopted-painted-live","mode":"settled","width":2760,"height":1736}
+[PASS] (a) AFTER RE-ENTERING the conversation the adopted exchange is still painted, once
+        3ms after re-entering; question occurrences 1
+[note] frame
+        {"label":"qa2-regress-11-adopted-after-reentering","mode":"settled","width":2760,"height":1736}
+[PASS] (a') an ask AFTER the adopt's re-read still streams (>=3 partial lengths)
+        distinct lengths [28,57,81,115,141,181,204,245]
+[PASS] (e) aside_unanswered (tool call twice): the refusal is ON the panel (role=alert) with the backend's sentence
+        "The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again."
+[PASS] (e) aside_unanswered (tool call twice): adopt disabled; stated once (not also in the transcript or composer band)
+        {"adopt":{"text":"Add to conversation","label":null,"disabled":true},"pageOccurrencesBefore":0,"after":1,"band":null}
+[note] frame
+        {"label":"qa2-regress-12-refusal-unanswered-twice","mode":"settled","width":2760,"height":1736}
+[PASS] (e) aside_unanswered (a call then silence): the refusal is ON the panel (role=alert) with the backend's sentence
+        "The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again."
+[PASS] (e) aside_unanswered (a call then silence): adopt disabled; stated once (not also in the transcript or composer band)
+        {"adopt":{"text":"Add to conversation","label":null,"disabled":true},"pageOccurrencesBefore":0,"after":1,"band":null}
+[note] frame
+        {"label":"qa2-regress-13-refusal-unanswered-silence","mode":"settled","width":2760,"height":1736}
+[PASS] (e) aside_empty_answer: the refusal is ON the panel (role=alert) with the backend's sentence
+        "The model answered your aside with no text at all, so the exchange has no answer to keep. Ask again."
+[PASS] (e) aside_empty_answer: adopt disabled; stated once (not also in the transcript or composer band)
+        {"adopt":{"text":"Add to conversation","label":null,"disabled":true},"pageOccurrencesBefore":0,"after":1,"band":null}
+[note] frame
+        {"label":"qa2-regress-14-refusal-empty-answer","mode":"settled","width":2760,"height":1736}
+[PASS] (e) the composer is still usable after a refused ask
+        {"value":"after the refusal","send":{"present":true,"disabled":false}}
+[PASS] (c) slash door: the panel was up with the question and closed by Esc BEFORE any answer
+        {"upText":"Asideoff the record — nothing here joins the conversationAsking the asideQuestion: TOOLCALL2: F9 slash door, closed before the answerthinking…Add to conversation⌘+FThe exchange is still settling — a m","closed":true,"box":""}
+[note] (c) slash door: where the refusal surfaced
+        {"ms":5047,"inTranscript":1,"inBand":false,"panel":null}
+[PASS] (c) slash door: the refusal after Esc is stated in the TRANSCRIPT as a note
+        {"slashNote":{"ms":5047,"inTranscript":1,"inBand":false,"panel":null},"transcriptTail":"ot the provider.6:44 AMYour aside “TOOLCALL2: F9 slash door, closed before the answer” got no answer: The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again."}
+[PASS] (c) slash door: the refusal is stated exactly once
+        occurrences 0 -> 1
+[note] frame
+        {"label":"qa2-regress-15-f9-slash-door-note-after-esc","mode":"settled","width":2760,"height":1736}
+[PASS] (c) composer door: the panel held the question and Esc closed it before the answer
+        {"up":"Asideoff the record — nothing here joins the conversationAsking the asideQuestion: TOOLCALL2: F9 composer door, closed before the answerthinking…Add to conversation⌘+FThe exchange is still settling — ","closed":true}
+[note] (c) composer door: where the refusal surfaced
+        {"ms":5153,"band":"Your aside “TOOLCALL2: F9 composer door, closed before the answer” got no answer: The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.","inTranscript":0}
+[PASS] (c) composer door: the refusal after Esc is stated in the composer's error line
+        {"ms":5153,"band":"Your aside “TOOLCALL2: F9 composer door, closed before the answer” got no answer: The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.","inTranscript":0}
+[PASS] (c) composer door: the refusal is stated exactly once (not also as a transcript note)
+        occurrences 1 -> 2
+[note] frame
+        {"label":"qa2-regress-16-f9-composer-door-error-line-after-esc","mode":"raw","width":2760,"height":1736}
+[PASS] every capture wrote a PNG of the requested size
+  [renderer] [attention] b29ae58f5755 receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
+    at pEe (file:///Users/damian/local-operator-ui-worktrees/qa482-r3-a198c9/out/renderer/assets/index-B-M7T2J3.js:812:94627)
+    at async Tt (file:///Users/damian/local-operator-ui-worktrees/qa482-r3-a198c9/out/renderer/assets/index-B-M7T2J3.js:812:95762)
+[PASS] no process from this run outlived its boot
+
+frames: qa2-regress-01-thinking.png, qa2-regress-02-partial-a.png, qa2-regress-03-partial-b.png, qa2-regress-04-settled.png, qa2-regress-05-typed-while-panel-up.png, qa2-regress-06-enter-routed-to-aside.png, qa2-regress-07-escape-then-send-joined-thread.png, qa2-regress-08-empty-panel.png, qa2-regress-09-adopt-refused-while-streaming.png, qa2-regress-10-adopted-painted-live.png, qa2-regress-11-adopted-after-reentering.png, qa2-regress-12-refusal-unanswered-twice.png, qa2-regress-13-refusal-unanswered-silence.png, qa2-regress-14-refusal-empty-answer.png, qa2-regress-15-f9-slash-door-note-after-esc.png, qa2-regress-16-f9-composer-door-error-line-after-esc.png
+frames directory: /Users/damian/.local-operator/sessions/a198c9e9adbd/scratchpad/rig2/frames/regress
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-18650/app-scene.log
+scratch removed (--clean)
+
+ALL CHECKS PASSED
+== regress driver exit: 0 ==
+total 10432
+drwxr-xr-x@ 18 damian  staff     576 Sep 24 06:45 .
+drwxr-xr-x@  4 damian  staff     128 Sep 24 06:44 ..
+-rw-r--r--@  1 damian  staff  264753 Sep 24 06:44 qa2-regress-01-thinking.png
+-rw-r--r--@  1 damian  staff  269540 Sep 24 06:44 qa2-regress-02-partial-a.png
+-rw-r--r--@  1 damian  staff  274535 Sep 24 06:44 qa2-regress-03-partial-b.png
+-rw-r--r--@  1 damian  staff  309999 Sep 24 06:44 qa2-regress-04-settled.png
+-rw-r--r--@  1 damian  staff  305265 Sep 24 06:44 qa2-regress-05-typed-while-panel-up.png
+-rw-r--r--@  1 damian  staff  341632 Sep 24 06:44 qa2-regress-06-enter-routed-to-aside.png
+-rw-r--r--@  1 damian  staff  207807 Sep 24 06:44 qa2-regress-07-escape-then-send-joined-thread.png
+-rw-r--r--@  1 damian  staff  305424 Sep 24 06:44 qa2-regress-08-empty-panel.png
+-rw-r--r--@  1 damian  staff  370023 Sep 24 06:44 qa2-regress-09-adopt-refused-while-streaming.png
+-rw-r--r--@  1 damian  staff  372275 Sep 24 06:44 qa2-regress-10-adopted-painted-live.png
+-rw-r--r--@  1 damian  staff  372269 Sep 24 06:44 qa2-regress-11-adopted-after-reentering.png
+-rw-r--r--@  1 damian  staff  379212 Sep 24 06:45 qa2-regress-12-refusal-unanswered-twice.png
+-rw-r--r--@  1 damian  staff  378636 Sep 24 06:45 qa2-regress-13-refusal-unanswered-silence.png
+-rw-r--r--@  1 damian  staff  371718 Sep 24 06:45 qa2-regress-14-refusal-empty-answer.png
+-rw-r--r--@  1 damian  staff  378362 Sep 24 06:45 qa2-regress-15-f9-slash-door-note-after-esc.png
+-rw-r--r--@  1 damian  staff  409886 Sep 24 06:45 qa2-regress-16-f9-composer-door-error-line-after-esc.png
+8080 released before this command returned
+port8080.lock released
+--- proxy counters (/Users/damian/.local-operator/sessions/a198c9e9adbd/scratchpad/rig2/run-regress/proxy-stats.json) ---
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-24T10:44:17.282Z",
+      "url": "/v1/desktop/sessions/b29ae58f5755/asides",
+      "asideId": "d4f0911c-64eb-438c-af1c-c9cbfcf2d6e0",
+      "continues": null,
+      "questionHead": "what does the retry budget actually cap?",
+      "text": "what does the retry budget actually cap?",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "ae383095d35c4c2793e210977c77546f",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"d4f0911c-64eb-438c-af1c-c9cbfcf2d6e0\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T10:44:23.156Z",
+      "url": "/v1/desktop/sessions/b29ae58f5755/asides",
+      "asideId": "808ba2d8-9e37-40b6-8f62-97b1286400c9",
+      "continues": "d4f0911c-64eb-438c-af1c-c9cbfcf2d6e0",
+      "questionHead": "composer probe line",
+      "text": "composer probe line",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "ae383095d35c4c2793e210977c77546f",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"808ba2d8-9e37-40b6-8f62-97b1286400c9\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T10:44:35.008Z",
+      "url": "/v1/desktop/sessions/b29ae58f5755/asides",
+      "asideId": "5bd3ae3c-e3f1-4a5f-bcb1-8cc932fed771",
+      "continues": null,
+      "questionHead": "what gets adopted into the conversation?",
+      "text": "what gets adopted into the conversation?",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "ae383095d35c4c2793e210977c77546f",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"5bd3ae3c-e3f1-4a5f-bcb1-8cc932fed771\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T10:44:56.904Z",
+      "url": "/v1/desktop/sessions/b29ae58f5755/asides",
+      "asideId": "f3df0cce-6169-4907-aee6-f968681f8ff8",
+      "continues": null,
+      "questionHead": "after the adopt, does the stream still arrive?",
+      "text": "after the adopt, does the stream still arrive?",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "6f4b1837b64d4449afef5afcfda63ccf",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"f3df0cce-6169-4907-aee6-f968681f8ff8\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T10:45:01.144Z",
+      "url": "/v1/desktop/sessions/b29ae58f5755/asides",
+      "asideId": "560eea96-c26c-4aa1-b503-ec3d50077553",
+      "continues": null,
+      "questionHead": "TOOLCALL2: keep calling tools",
+      "text": "TOOLCALL2: keep calling tools",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "6f4b1837b64d4449afef5afcfda63ccf",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-24T10:45:07.148Z",
+      "url": "/v1/desktop/sessions/b29ae58f5755/asides",
+      "asideId": "998cf588-093a-4d74-97f8-14deea8aa639",
+      "continues": null,
+      "questionHead": "TOOLSILENT: call a tool then go quiet",
+      "text": "TOOLSILENT: call a tool then go quiet",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "6f4b1837b64d4449afef5afcfda63ccf",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-24T10:45:13.008Z",
+      "url": "/v1/desktop/sessions/b29ae58f5755/asides",
+      "asideId": "a548432c-32be-44c2-90d1-94eba16f78bb",
+      "continues": null,
+      "questionHead": "EMPTYANS: say nothing at all",
+      "text": "EMPTYANS: say nothing at all",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "6f4b1837b64d4449afef5afcfda63ccf",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_empty_answer\",\"message\":\"The model answered your aside with no text at all, so the exchange has no answer to keep. Ask again.\"}}"
+    },
+    {
+      "at": "2026-09-24T10:45:16.848Z",
+      "url": "/v1/desktop/sessions/b29ae58f5755/asides",
+      "asideId": "a85b1218-6239-4c41-bf64-1c8f6c601ff0",
+      "continues": null,
+      "questionHead": "TOOLCALL2: F9 slash door, closed before the answer",
+      "text": "TOOLCALL2: F9 slash door, closed before the answer",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "6f4b1837b64d4449afef5afcfda63ccf",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-24T10:45:23.565Z",
+      "url": "/v1/desktop/sessions/b29ae58f5755/asides",
+      "asideId": "fc70cd47-ba32-4a0a-8d24-0d67fe4ea802",
+      "continues": null,
+      "questionHead": "TOOLCALL2: F9 composer door, closed before the answer",
+      "text": "TOOLCALL2: F9 composer door, closed before the answer",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "6f4b1837b64d4449afef5afcfda63ccf",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-24T10:44:12.211Z",
+      "subscriptionId": "97ec3692cfe54d16",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/b29ae58f5755/events?frontend_replace=1",
+      "openedAt": "2026-09-24T10:44:14.761Z",
+      "subscriptionId": "ae383095d35c4c2793e210977c77546f",
+      "asideDeltas": 24,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    },
+    {
+      "url": "/v1/desktop/sessions/b29ae58f5755/events?frontend_replace=1",
+      "openedAt": "2026-09-24T10:44:44.636Z",
+      "subscriptionId": "6f4b1837b64d4449afef5afcfda63ccf",
+      "asideDeltas": 8,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    }
+  ],
+  "asideDeltaFrames": 32,
+  "deltasBySubscription": {
+    "ae383095d35c4c2793e210977c77546f": 24,
+    "6f4b1837b64d4449afef5afcfda63ccf": 8
+  },
+  "deltasByAside": {
+    "d4f0911c-64eb-438c-af1c-c9cbfcf2d6e0": 8,
+    "808ba2d8-9e37-40b6-8f62-97b1286400c9": 8,
+    "5bd3ae3c-e3f1-4a5f-bcb1-8cc932fed771": 8,
+    "f3df0cce-6169-4907-aee6-f968681f8ff8": 8
+  },
+  "refused422": 0,
+  "messagePosts": [
+    {
+      "at": "2026-09-24T10:44:28.653Z",
+      "url": "/v1/desktop/sessions/b29ae58f5755/messages",
+      "kind": "message",
+      "text": "escape keeps this line",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"e6fa429f-c44e-485f-af12-50a0a2b50ad4\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T10:44:28.656Z"
+    },
+    {
+      "at": "2026-09-24T10:44:39.678Z",
+      "url": "/v1/desktop/sessions/b29ae58f5755/messages",
+      "kind": "message",
+      "text": "INJECTED TURN: speak while the aside is open",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"248b24a6-4bb5-4154-9f94-ccf26931284b\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T10:44:39.678Z"
+    }
+  ]
+}
+--- end counters ---

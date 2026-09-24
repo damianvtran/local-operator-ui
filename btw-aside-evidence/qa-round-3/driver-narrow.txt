@@ -1,0 +1,547 @@
+port8080.lock taken
+rig up: proxy 86076 on 8080 -> daemon 85899 on 64959, stub 64956; 1111 untouched
+== narrow (btw-r3) at 10:55:34 ==
+[build] current: assets 2026-09-24T10:53:43.425Z >= sources 2026-09-24T10:52:49.512Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/.local-operator/sessions/a198c9e9adbd/scratchpad/rig2/run-narrow/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/qa482-r3-a198c9
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-86135
+  frames        /Users/damian/.local-operator/sessions/a198c9e9adbd/scratchpad/rig2/frames/narrow
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-86135/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/qa482-r3-a198c9/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown
+        mode=headless visible=false focused=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] R3 session
+        4a244a566fa7
+[PASS] Q18a fresh ask refused (409 aside_unanswered): the panel's alert is the owner's sentence, with NO escape clause
+        {"alerts":["The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again."],"wire":{"status":409,"continues":null,"response":"{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"}}
+[note] frame
+        {"label":"qa3-narrow-01-u1-fresh-refused","mode":"raw","width":1600,"height":1736}
+[PASS] Q18b U1: asking again in the SAME panel after a refusal is ANSWERED (no 'no longer available')
+        {"alerts":["The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again."],"wire":{"status":200,"continues":null}}
+[PASS] Q18b wire: the retry is a FRESH ask (no aside_id continuation of the refused id) and the owner answered 200
+        {"status":200,"continues":null,"refusedId":"f43e1c8e-a511-407b-9d9c-4e3ff37c8709"}
+[note] frame
+        {"label":"qa3-narrow-02-u1-asked-again-answered","mode":"settled","width":1600,"height":1736}
+[PASS] Q18c a refused CONTINUATION states the owner's sentence PLUS the escape clause
+        {"alerts":["The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.","The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again. Close this aside and start a new one with /btw."],"wire":{"status":409,"continues":"e899d5d0-60f0-4054-8ae4-1c6f0b9c1686"}}
+[PASS] Q18c wire: the continuation named the last ANSWERED turn's id
+        {"continues":"e899d5d0-60f0-4054-8ae4-1c6f0b9c1686","answeredId":"e899d5d0-60f0-4054-8ae4-1c6f0b9c1686"}
+[note] frame
+        {"label":"qa3-narrow-03-u1-continuation-refused-escape-clause","mode":"raw","width":1600,"height":1736}
+[PASS] Q18d after a refused continuation the next ask continues the last ANSWERED turn and is answered
+        {"wire":{"status":200,"continues":"e899d5d0-60f0-4054-8ae4-1c6f0b9c1686"}}
+[PASS] Q23a 409 aside_empty_answer on a continuation: the owner's sentence + escape clause, on the panel
+        {"alerts":["The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.","The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again. Close this aside and start a new one with /btw.","The model answered your aside with no text at all, so the exchange has no answer to keep. Ask again. Close this aside and start a new one with /btw."],"wire":{"status":409,"response":"{\"detail\":{\"code\":\"aside_empty_answer\",\"message\":\"The model answered your aside with no text at all, so the exchange has no answer to keep. Ask again.\"}}"}}
+[note] frame
+        {"label":"qa3-narrow-04-u1-answered-after-refused-continuation-and-empty","mode":"settled","width":1600,"height":1736}
+[PASS] Q19a U2 composer door: Enter mid-stream keeps the text in the box and says why
+        {"midLenAtPress":28,"value":"u2 follow-up typed while the answer streams","band":["The aside is still answering — send the question when it finishes. Your message is still in the composer. Send it again."],"stillStreaming":true}
+[PASS] Q19a nothing left: the follow-up is not on the panel and no aside POST was made for it
+        {"postsBefore":6,"postsNow":6,"onPanel":0}
+[note] frame
+        {"label":"qa3-narrow-05-u2-followup-refused-midstream-text-kept","mode":"raw","width":1600,"height":1736}
+[note] Q19 the moment the whole first answer is visible (before its POST settles)
+        {"announce":"Asking the aside","value":"u2 follow-up typed while the answer streams","band":["The aside is still answering — send the question when it finishes. Your message is still in the composer. Send it again."]}
+[note] Q19 tail-visible -> settled window
+        634ms
+[PASS] Q19b once the first answer settles the box still holds the follow-up (no loss), no alert on the panel from it
+        {"value":"u2 follow-up typed while the answer streams","alerts":["The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.","The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again. Close this aside and start a new one with /btw.","The model answered your aside with no text at all, so the exchange has no answer to keep. Ask again. Close this aside and start a new one with /btw."],"band":["The aside is still answering — send the question when it finishes. Your message is still in the composer. Send it again."]}
+[PASS] Q19c the kept follow-up, sent after settle, is answered in the same panel; the busy line is retired
+        {"wire":{"status":200,"continues":"63876da4-0055-4d9d-8a9c-f5155f02c88b"},"band":[],"value":""}
+[note] frame
+        {"label":"qa3-narrow-06-u2-followup-answered-after-settle","mode":"settled","width":1600,"height":1736}
+[PASS] Q19d U2 /btw door mid-answer: 'retained' — the box keeps `/btw <q>`, the busy sentence is stated, nothing sent
+        {"value":"/btw u2 slash follow-up while answering","busyOnPage":1,"inTranscript":1}
+[note] frame
+        {"label":"qa3-narrow-07-u2-slash-door-retained-midstream","mode":"raw","width":1600,"height":1736}
+[note] Q20 geometry after the long first answer settled
+        {"scrollTop":0,"clientHeight":232,"scrollHeight":1955,"maxScroll":1723,"turns":1,"lastTurnContentOffset":0,"questionTopInRegion":0,"questionBottomInRegion":39,"questionFullyVisible":true,"questionText":"Question: LONGANSWER: d6 first, a long answer"}
+[note] frame
+        {"label":"qa3-narrow-08-d6-long-first-answer-settled","mode":"settled","width":1600,"height":1736}
+[note] Q20 scroll samples after the append (ms, scrollTop, maxScroll, turn offset, question top/bottom in region, visible)
+        [[1,1797,1797,1966.7,169.7,208.7,true],[44,1797,1797,1966.7,169.7,208.7,true],[87,1797,1797,1966.7,169.7,208.7,true],[130,1797,1797,1966.7,169.7,208.7,true],[174,1797,1797,1966.7,169.7,208.7,true],[220,1797,1797,1966.7,169.7,208.7,true],[264,1797,1797,1966.7,169.7,208.7,true],[307,1797,1797,1966.7,169.7,208.7,true],[351,1797,1797,1966.7,169.7,208.7,true],[395,1797,1797,1966.7,169.7,208.7,true],[439,1797,1797,1966.7,169.7,208.7,true],[482,1797,1797,1966.7,169.7,208.7,true],[527,1797,1797,1966.7,169.7,208.7,true],[572,1797,1797,1966.7,169.7,208.7,true],[615,1797,1797,1966.7,169.7,208.7,true],[659,1797,1797,1966.7,169.7,208.7,true],[702,1797,1797,1966.7,169.7,208.7,true],[744,1797,1797,1966.7,169.7,208.7,true],[789,1797,1797,1966.7,169.7,208.7,true],[844,1797,1797,1966.7,169.7,208.7,true],[889,1797,1797,1966.7,169.7,208.7,true],[933,1797,1797,1966.7,169.7,208.7,true],[980,1797,1797,1966.7,169.7,208.7,true],[1025,1797,1797,1966.7,169.7,208.7,true],[1068,1797,1797,1966.7,169.7,208.7,true],[1117,1797,1797,1966.7,169.7,208.7,true],[1166,1797,1797,1966.7,169.7,208.7,true],[1212,1797,1797,1966.7,169.7,208.7,true],[1255,1797,1797,1966.7,169.7,208.7,true],[1299,1797,1797,1966.7,169.7,208.7,true],[1343,1797,1797,1966.7,169.7,208.7,true],[1388,1797,1797,1966.7,169.7,208.7,true],[1432,1797,1797,1966.7,169.7,208.7,true],[1478,1797,1797,1966.7,169.7,208.7,true],[1522,1797,1797,1966.7,169.7,208.7,true],[1564,1797,1797,1966.7,169.7,208.7,true],[1608,1797,1797,1966.7,169.7,208.7,true],[1650,1797,1797,1966.7,169.7,208.7,true],[1692,1797,1797,1966.7,169.7,208.7,true],[1739,1797,1797,1966.7,169.7,208.7,true],[1784,1797,1797,1966.7,169.7,208.7,true],[1827,1797,1797,1966.7,169.7,208.7,true],[1871,1797,1799,1966.7,169.7,208.7,true],[1916,1797,1799,1966.7,169.7,208.7,true],[1961,1797,1799,1966.7,169.7,208.7,true],[2004,1797,1799,1966.7,169.7,208.7,true],[2057,1797,1799,1966.7,169.7,208.7,true],[2110,1797,1799,1966.7,169.7,208.7,true],[2155,1797,1819,1966.7,169.7,208.7,true],[2199,1797,1819,1966.7,169.7,208.7,true],[2241,1797,1819,1966.7,169.7,208.7,true],[2286,1797,1819,1966.7,169.7,208.7,true],[2329,1797,1819,1966.7,169.7,208.7,true],[2380,1797,1819,1966.7,169.7,208.7,true],[2427,1797,1819,1966.7,169.7,208.7,true],[2471,1797,1840,1966.7,169.7,208.7,true],[2515,1797,1840,1966.7,169.7,208.7,true],[2559,1797,1840,1966.7,169.7,208.7,true],[2603,1797,1840,1966.7,169.7,208.7,true],[2647,1797,1840,1966.7,169.7,208.7,true],[2692,1797,1840,1966.7,169.7,208.7,true],[2738,1797,1840,1966.7,169.7,208.7,true],[2781,1797,1898,1966.7,169.7,208.7,true],[2825,1797,1898,1966.7,169.7,208.7,true],[2867,1797,1898,1966.7,169.7,208.7,true],[2915,1797,1898,1966.7,169.7,208.7,true],[2958,1797,1898,1966.7,169.7,208.7,true],[3003,1797,1898,1966.7,169.7,208.7,true],[3046,1797,1898,1966.7,169.7,208.7,true],[3090,1797,1923,1966.7,169.7,208.7,true],[3133,1797,1923,1966.7,169.7,208.7,true],[3177,1797,1923,1966.7,169.7,208.7,true],[3219,1797,1923,1966.7,169.7,208.7,true],[3266,1797,1923,1966.7,169.7,208.7,true],[3317,1797,1923,1966.7,169.7,208.7,true],[3361,1797,1923,1966.7,169.7,208.7,true],[3405,1797,1968,1966.7,169.7,208.7,true],[3448,1797,1968,1966.7,169.7,208.7,true],[3491,1797,1968,1966.7,169.7,208.7,true],[3535,1797,1968,1966.7,169.7,208.7,true],[3579,1797,1968,1966.7,169.7,208.7,true],[3624,1797,1968,1966.7,169.7,208.7,true],[3667,1797,1968,1966.7,169.7,208.7,true],[3710,1797,1989,1966.7,169.7,208.7,true],[3754,1797,1989,1966.7,169.7,208.7,true],[3796,1797,1989,1966.7,169.7,208.7,true],[3840,1797,1989,1966.7,169.7,208.7,true],[3887,1797,1989,1966.7,169.7,208.7,true],[3936,1797,1989,1966.7,169.7,208.7,true],[3981,1797,2010,1966.7,169.7,208.7,true]]
+[PASS] Q20a D6: before the append the region overflowed and rested at its top (the state the bug needs)
+        {"scrollTop":0,"clientHeight":232,"scrollHeight":1955,"maxScroll":1723,"turns":1,"lastTurnContentOffset":0,"questionTopInRegion":0,"questionBottomInRegion":39,"questionFullyVisible":true,"questionText":"Question: LONGANSWER: d6 first, a long answer"}
+[PASS] Q20b D6: on the append the region scrolled to the new turn — scrollTop == min(maxScroll, turn offset), question fully visible
+        {"first":{"ms":1,"scrollTop":1797,"clientHeight":232,"scrollHeight":2029,"maxScroll":1797,"turns":2,"lastTurnContentOffset":1966.7,"questionTopInRegion":169.7,"questionBottomInRegion":208.7,"questionFullyVisible":true,"questionText":"Question: d6 follow-up asked under a long answer"},"expectedScrollTop":1797}
+[PASS] Q20c D6: ONE scroll per append — scrollTop does not follow the chunks while the follow-up streams
+        distinct scrollTop values while streaming: [1797]; samples 90
+[note] frame
+        {"label":"qa3-narrow-09-d6-after-append-turn-in-view","mode":"raw","width":1600,"height":1736}
+[note] Q20 geometry after the follow-up settled
+        {"scrollTop":1797,"clientHeight":232,"scrollHeight":2242,"maxScroll":2010,"turns":2,"lastTurnContentOffset":1966.7,"questionTopInRegion":169.7,"questionBottomInRegion":208.7,"questionFullyVisible":true,"questionText":"Question: d6 follow-up asked under a long answer"}
+[note] frame
+        {"label":"qa3-narrow-10-d6-follow-up-settled","mode":"settled","width":1600,"height":1736}
+[note] Q21 staged
+        {"quote":{"selected":"selected","pressed":true},"replies":["Transport failures and owner"],"attachments":1}
+[PASS] Q21a an aside ask with a FILE chip is refused before it leaves: text, quote and file chip all kept, reason stated
+        {"value":"d1 ask with a file staged","replies":["Transport failures and owner"],"attachments":1,"band":["An aside answers text only. Remove the attached files to ask it. Your message is still in the composer. Send it again."]}
+[note] frame
+        {"label":"qa3-narrow-11-d-file-chip-refused-locally-all-kept","mode":"raw","width":1600,"height":1736}
+[PASS] Q21b the ask leaves with the quote: the box empties at the press but the QUOTE chip stays while the answer is pending
+        {"value":"","replies":["Transport failures and owner"],"thinking":true}
+[note] frame
+        {"label":"qa3-narrow-12-d-quote-kept-while-answer-pending","mode":"raw","width":1600,"height":1736}
+[note] Q21 staged DURING the flight
+        {"quote":{"selected":"selected","pressed":true},"replies":["Transport failures and owner","per provider"],"attachments":1}
+[note] Q21 when the answer text is complete but the POST has not settled
+        {"announce":"Asking the aside","replies":["Transport failures and owner","per provider"]}
+[PASS] Q21c wire: the aside POST carried the staged quote as a <reply-to> prefix and was answered
+        {"status":200,"text":"<reply-to>Transport failures and owner</reply-to>\nd1 ask with a file staged"}
+[PASS] Q21d ANSWERED: the quote the ask carried is cleared; the quote and file staged during the flight are KEPT
+        {"replies":["per provider"],"attachments":1}
+[note] frame
+        {"label":"qa3-narrow-13-d-answered-carried-quote-cleared-new-ones-kept","mode":"settled","width":1600,"height":1736}
+[PASS] Q21e REFUSED (409): the quote the ask carried is KEPT in the composer
+        {"wire":{"status":409,"text":"<reply-to>per provider</reply-to>\nTOOLCALL2: d3 refused with a quote staged"},"replies":["per provider"],"alerts":["The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again. Close this aside and start a new one with /btw."]}
+[note] frame
+        {"label":"qa3-narrow-14-d-refused-quote-kept","mode":"raw","width":1600,"height":1736}
+[note] Q22 before the press
+        {"quote":{"selected":"selected","pressed":true},"value":"HOLDSEND e thread message carrying a quote and a file","replies":["moving window"],"attachments":1,"placeholder":"Ask me for help","send":"Send message"}
+[note] Q22 per-animation-frame trace after the press [t ms, value length, replies, attachments, echo rows, placeholder]
+        [[0,53,1,1,0,"Ask me for help"],[7,53,1,1,0,"Sending your message"],[16,53,0,0,0,"Sending your message"],[23,0,0,0,1,"Sending your message"],[1199,0,0,0,1,"Sending your message"],[1207,0,0,0,1,"Sending your message"]]
+[note] Q22 per-mutation trace (every DOM change, not only painted frames) [t, value, replies, attachments, echo]
+        [[5,53,1,1,0],[10,53,0,0,0],[21,0,0,0,1]]
+[FAIL] Q22a #479: in every PAINTED frame the text and the chips are both present or both gone (one moment)
+        {"splitFrames":[[16,53,0,0,0,"Sending your message"]]}
+[PASS] Q22b #479: while the message is held in flight the empty box says 'Sending your message'; Send is named 'Send message'
+        {"placeholder":"Sending your message","send":"Send message","heldPosts":[{"held":12000,"forwardedAt":null}]}
+[note] frame
+        {"label":"qa3-narrow-15-e-thread-send-in-flight-sending-placeholder","mode":"raw","width":1600,"height":1736}
+[PASS] Q22c with the message still in flight, `/btw <q>` attaches the panel; the box names the aside, not 'Sending'; Send is 'Ask the aside'
+        {"placeholder":"Ask off the record — Esc closes the aside","send":"Ask the aside","value":"","messageForwarded":null}
+[PASS] Q22d the aside asked during the flight is answered (200) while the message is STILL held
+        {"wire":{"status":200},"messageForwarded":null,"alert":null}
+[note] frame
+        {"label":"qa3-narrow-16-e-aside-answered-while-message-in-flight","mode":"settled","width":1600,"height":1736}
+[note] Q22e composer door during the flight (observation)
+        {"value":"e composer-door question during the flight","sendLabel":"Ask the aside","sendDisabled":true,"onPanel":0,"post":null,"band":[],"placeholder":"Ask off the record — Esc closes the aside","messageForwarded":null}
+[PASS] Q22e composer-door ask while a thread message is in flight: the text is not lost (asked, or kept in the box)
+        {"value":"e composer-door question during the flight","posted":false}
+[note] frame
+        {"label":"qa3-narrow-17-e-composer-door-during-flight","mode":"raw","width":1600,"height":1736}
+[note] Q22f after the held message was forwarded
+        {"value":"e composer-door question during the flight","onPanel":0,"post":null,"placeholder":"Ask off the record — Esc closes the aside","band":[],"message":{"at":"2026-09-24T10:56:48.415Z","url":"/v1/desktop/sessions/4a244a566fa7/messages","kind":"message","text":"<reply-to>moving window</reply-to>\nHOLDSEND e thread message carrying a quote and a file","images":1,"held":12000,"status":200,"response":"{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"bc574a45-43ba-41c9-9ec7-72bc9e45c304\",\"replayed\":false}}","forwardedAt":"2026-09-24T10:57:00.421Z"}}
+[PASS] Q22g wire: the held thread message carried the quote prefix and the image (what the chips staged)
+        {"text":"<reply-to>moving window</reply-to>\nHOLDSEND e thread message carrying a quote and a file","images":1,"status":200}
+[note] frame
+        {"label":"qa3-narrow-18-e-after-release","mode":"raw","width":1600,"height":1736}
+[PASS] Q22h once the thread message has settled, the same Enter on the kept text asks the aside and is answered
+        {"wire":{"status":200}}
+[note] frame
+        {"label":"qa3-narrow-19-e-composer-door-after-release-answered","mode":"settled","width":1600,"height":1736}
+[note] Q22 placeholder after Esc
+        {"placeholder":"Ask me for help","send":"Send message"}
+[PASS] every capture wrote a PNG of the requested size
+
+---- app log (tail) ----
+[window-mode] headless run launched by pid 86135; it quits when that process goes
+06:55:35.365 › [discovery] record directory /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-86135/config/run/serve (1 record(s))
+06:55:35.390 › [shell-path] /bin/zsh reports PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Applications/Ghostty.app/Contents/MacOS
+06:55:35.390 › Shell environment variables loaded successfully. PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Applications/Ghostty.app/Contents/MacOS
+06:55:35.399 › [discovery] candidate http://127.0.0.1:8080 pid 85899 v0.62.21 prefix /Users/damian/local-operator-worktrees/qa482-r3-a198c9/.venv (configured URL)
+06:55:35.399 › [discovery] picked http://127.0.0.1:8080 (pid 85899, v0.62.21, configured)
+06:55:35.408 › Attached to daemon http://127.0.0.1:8080 (pid 85899, v0.62.21, editable, record /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-86135/config/run/serve/85899.json)
+06:55:35.409 › Discovered a daemon; the backend manager is configured not to spawn or kill one.
+06:55:35.501 › Update service initialized. Dev mode: true, NPX install: false
+06:55:35.502 › Unpackaged instance: no packaged install state to leave alone.
+06:55:35.502 › Periodic update checks scheduled (every 5 minutes)
+06:55:35.502 › macOS auto-update requires app signing
+06:55:35.503 › [webauthn] Touch ID passkeys are off: unpackaged — an unpackaged run has no signature to carry the entitlement, so there is no group to configure
+06:55:35.511 › [browser] denied a media permission request from (unknown origin)
+06:55:35.511 › [browser] denied a media permission request from (unknown origin)
+06:55:35.512 › [browser] denied a web-app-installation permission request from (unknown origin)
+06:55:35.512 › [browser] denied a geolocation permission request from (unknown origin)
+06:55:35.606 › [browser] denied a media permission request from (unknown origin)
+06:55:35.606 › [browser] denied a media permission request from (unknown origin)
+06:55:35.606 › [browser] denied a web-app-installation permission request from (unknown origin)
+06:55:35.606 › [browser] denied a geolocation permission request from (unknown origin)
+06:55:35.612 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
+06:55:35.613 › [browser] host on 127.0.0.1:64990 (proto 1), profile /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-86135/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+06:55:35.679 › [browser] tab 1 navigated to about:blank
+06:55:35.825 › Checking for UI updates...
+06:55:35.825 › Skip checkForUpdates because application is not packed and dev update config is not forced
+06:55:36.055 › Checking for UI updates...
+06:55:36.055 › Skip checkForUpdates because application is not packed and dev update config is not forced
+[window-mode] state: visible=false focused=false focusable=false size=800x900 content=800x868
+06:55:38.504 › Checking for updates... (silent mode: true)
+06:55:38.504 › Skip checkForUpdates because application is not packed and dev update config is not forced
+06:55:38.505 › Checking for backend updates... (silent mode: true)
+06:55:38.505 › Skip backend update check in dev mode unless forced
+06:55:43.950 › [about-panel] suppressed by window mode headless: a headless run raises no window
+06:55:50.506 › The pre-split environment at /Users/damian/Library/Application Support/Local Operator/local-operator-venv is built on the interpreter inside /Applications/Local Operator.app; it is left exactly as it is, and this instance does not use it.
+06:56:22.718 › [about-panel] suppressed by window mode headless: a headless run raises no window
+06:56:34.785 › [about-panel] suppressed by window mode headless: a headless run raises no window
+06:56:47.284 › [about-panel] suppressed by window mode headless: a headless run raises no window
+06:57:08.286 › [about-panel] suppressed by window mode headless: a headless run raises no window
+
+[PASS] no process from this run outlived its boot
+
+frames: qa3-narrow-01-u1-fresh-refused.png, qa3-narrow-02-u1-asked-again-answered.png, qa3-narrow-03-u1-continuation-refused-escape-clause.png, qa3-narrow-04-u1-answered-after-refused-continuation-and-empty.png, qa3-narrow-05-u2-followup-refused-midstream-text-kept.png, qa3-narrow-06-u2-followup-answered-after-settle.png, qa3-narrow-07-u2-slash-door-retained-midstream.png, qa3-narrow-08-d6-long-first-answer-settled.png, qa3-narrow-09-d6-after-append-turn-in-view.png, qa3-narrow-10-d6-follow-up-settled.png, qa3-narrow-11-d-file-chip-refused-locally-all-kept.png, qa3-narrow-12-d-quote-kept-while-answer-pending.png, qa3-narrow-13-d-answered-carried-quote-cleared-new-ones-kept.png, qa3-narrow-14-d-refused-quote-kept.png, qa3-narrow-15-e-thread-send-in-flight-sending-placeholder.png, qa3-narrow-16-e-aside-answered-while-message-in-flight.png, qa3-narrow-17-e-composer-door-during-flight.png, qa3-narrow-18-e-after-release.png, qa3-narrow-19-e-composer-door-after-release-answered.png
+frames directory: /Users/damian/.local-operator/sessions/a198c9e9adbd/scratchpad/rig2/frames/narrow
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-86135/app-scene.log
+scratch removed (--clean)
+
+1 CHECK(S) FAILED
+== narrow driver exit: 1 ==
+total 10800
+drwxr-xr-x@ 21 damian  staff     672 Sep 24 06:57 .
+drwxr-xr-x@ 10 damian  staff     320 Sep 24 06:53 ..
+-rw-r--r--@  1 damian  staff  288642 Sep 24 06:55 qa3-narrow-01-u1-fresh-refused.png
+-rw-r--r--@  1 damian  staff  300925 Sep 24 06:55 qa3-narrow-02-u1-asked-again-answered.png
+-rw-r--r--@  1 damian  staff  293308 Sep 24 06:55 qa3-narrow-03-u1-continuation-refused-escape-clause.png
+-rw-r--r--@  1 damian  staff  295441 Sep 24 06:56 qa3-narrow-04-u1-answered-after-refused-continuation-and-empty.png
+-rw-r--r--@  1 damian  staff  315587 Sep 24 06:56 qa3-narrow-05-u2-followup-refused-midstream-text-kept.png
+-rw-r--r--@  1 damian  staff  295856 Sep 24 06:56 qa3-narrow-06-u2-followup-answered-after-settle.png
+-rw-r--r--@  1 damian  staff  291666 Sep 24 06:56 qa3-narrow-07-u2-slash-door-retained-midstream.png
+-rw-r--r--@  1 damian  staff  310113 Sep 24 06:56 qa3-narrow-08-d6-long-first-answer-settled.png
+-rw-r--r--@  1 damian  staff  312755 Sep 24 06:56 qa3-narrow-09-d6-after-append-turn-in-view.png
+-rw-r--r--@  1 damian  staff  306297 Sep 24 06:56 qa3-narrow-10-d6-follow-up-settled.png
+-rw-r--r--@  1 damian  staff  264054 Sep 24 06:56 qa3-narrow-11-d-file-chip-refused-locally-all-kept.png
+-rw-r--r--@  1 damian  staff  285270 Sep 24 06:56 qa3-narrow-12-d-quote-kept-while-answer-pending.png
+-rw-r--r--@  1 damian  staff  261566 Sep 24 06:56 qa3-narrow-13-d-answered-carried-quote-cleared-new-ones-kept.png
+-rw-r--r--@  1 damian  staff  278109 Sep 24 06:56 qa3-narrow-14-d-refused-quote-kept.png
+-rw-r--r--@  1 damian  staff  269978 Sep 24 06:56 qa3-narrow-15-e-thread-send-in-flight-sending-placeholder.png
+-rw-r--r--@  1 damian  staff  263669 Sep 24 06:56 qa3-narrow-16-e-aside-answered-while-message-in-flight.png
+-rw-r--r--@  1 damian  staff  264194 Sep 24 06:56 qa3-narrow-17-e-composer-door-during-flight.png
+-rw-r--r--@  1 damian  staff  296340 Sep 24 06:57 qa3-narrow-18-e-after-release.png
+-rw-r--r--@  1 damian  staff  296733 Sep 24 06:57 qa3-narrow-19-e-composer-door-after-release-answered.png
+8080 released before this command returned
+port8080.lock released
+--- proxy counters (/Users/damian/.local-operator/sessions/a198c9e9adbd/scratchpad/rig2/run-narrow/proxy-stats.json) ---
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-24T10:55:44.167Z",
+      "url": "/v1/desktop/sessions/4a244a566fa7/asides",
+      "asideId": "f43e1c8e-a511-407b-9d9c-4e3ff37c8709",
+      "continues": null,
+      "questionHead": "TOOLCALL2: u1 refuse this first ask",
+      "text": "TOOLCALL2: u1 refuse this first ask",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "7d0e09add83e436981d91790a3878fc1",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-24T10:55:49.491Z",
+      "url": "/v1/desktop/sessions/4a244a566fa7/asides",
+      "asideId": "e899d5d0-60f0-4054-8ae4-1c6f0b9c1686",
+      "continues": null,
+      "questionHead": "u1 a plain question after the refusal",
+      "text": "u1 a plain question after the refusal",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "7d0e09add83e436981d91790a3878fc1",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"e899d5d0-60f0-4054-8ae4-1c6f0b9c1686\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T10:55:54.747Z",
+      "url": "/v1/desktop/sessions/4a244a566fa7/asides",
+      "asideId": "5371947a-2f18-4af0-aced-ba106d124f25",
+      "continues": "e899d5d0-60f0-4054-8ae4-1c6f0b9c1686",
+      "questionHead": "TOOLCALL2: u1 refuse a continuation",
+      "text": "TOOLCALL2: u1 refuse a continuation",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "7d0e09add83e436981d91790a3878fc1",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-24T10:56:00.017Z",
+      "url": "/v1/desktop/sessions/4a244a566fa7/asides",
+      "asideId": "f063f196-5428-4b39-b8c8-3fea425d9690",
+      "continues": "e899d5d0-60f0-4054-8ae4-1c6f0b9c1686",
+      "questionHead": "u1 a question after the refused continuation",
+      "text": "u1 a question after the refused continuation",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "7d0e09add83e436981d91790a3878fc1",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"f063f196-5428-4b39-b8c8-3fea425d9690\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T10:56:04.882Z",
+      "url": "/v1/desktop/sessions/4a244a566fa7/asides",
+      "asideId": "3db6ed32-1f16-4896-8c1e-f405cf803c65",
+      "continues": "f063f196-5428-4b39-b8c8-3fea425d9690",
+      "questionHead": "EMPTYANS: u1 empty continuation",
+      "text": "EMPTYANS: u1 empty continuation",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "7d0e09add83e436981d91790a3878fc1",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_empty_answer\",\"message\":\"The model answered your aside with no text at all, so the exchange has no answer to keep. Ask again.\"}}"
+    },
+    {
+      "at": "2026-09-24T10:56:07.779Z",
+      "url": "/v1/desktop/sessions/4a244a566fa7/asides",
+      "asideId": "63876da4-0055-4d9d-8a9c-f5155f02c88b",
+      "continues": "f063f196-5428-4b39-b8c8-3fea425d9690",
+      "questionHead": "u2 first question, answer streams",
+      "text": "u2 first question, answer streams",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "7d0e09add83e436981d91790a3878fc1",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"63876da4-0055-4d9d-8a9c-f5155f02c88b\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T10:56:12.492Z",
+      "url": "/v1/desktop/sessions/4a244a566fa7/asides",
+      "asideId": "0288ced4-c622-487c-92c1-e70df0838bc7",
+      "continues": "63876da4-0055-4d9d-8a9c-f5155f02c88b",
+      "questionHead": "u2 follow-up typed while the answer streams",
+      "text": "u2 follow-up typed while the answer streams",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "7d0e09add83e436981d91790a3878fc1",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"0288ced4-c622-487c-92c1-e70df0838bc7\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T10:56:17.808Z",
+      "url": "/v1/desktop/sessions/4a244a566fa7/asides",
+      "asideId": "76cd0d4f-7dae-4d50-86d5-8451511b1d79",
+      "continues": "0288ced4-c622-487c-92c1-e70df0838bc7",
+      "questionHead": "u2 second question for the slash door",
+      "text": "u2 second question for the slash door",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "7d0e09add83e436981d91790a3878fc1",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"76cd0d4f-7dae-4d50-86d5-8451511b1d79\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T10:56:22.926Z",
+      "url": "/v1/desktop/sessions/4a244a566fa7/asides",
+      "asideId": "ee48291c-ff09-449b-b2ed-387b0373213c",
+      "continues": null,
+      "questionHead": "LONGANSWER: d6 first, a long answer",
+      "text": "LONGANSWER: d6 first, a long answer",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "7d0e09add83e436981d91790a3878fc1",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"ee48291c-ff09-449b-b2ed-387b0373213c\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    },
+    {
+      "at": "2026-09-24T10:56:28.887Z",
+      "url": "/v1/desktop/sessions/4a244a566fa7/asides",
+      "asideId": "622d47b5-b141-4cbe-b336-bd69436a11b6",
+      "continues": "ee48291c-ff09-449b-b2ed-387b0373213c",
+      "questionHead": "d6 follow-up asked under a long answer",
+      "text": "d6 follow-up asked under a long answer",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "7d0e09add83e436981d91790a3878fc1",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"622d47b5-b141-4cbe-b336-bd69436a11b6\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T10:56:35.993Z",
+      "url": "/v1/desktop/sessions/4a244a566fa7/asides",
+      "asideId": "ab40f456-ef33-4f44-a498-3f7cd290d3e4",
+      "continues": null,
+      "questionHead": "<reply-to>Transport failures and owner</reply-to>\nd1 ask wit",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nd1 ask with a file staged",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "7d0e09add83e436981d91790a3878fc1",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"ab40f456-ef33-4f44-a498-3f7cd290d3e4\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T10:56:41.629Z",
+      "url": "/v1/desktop/sessions/4a244a566fa7/asides",
+      "asideId": "7a055132-5696-4516-8224-62168318a4f3",
+      "continues": "ab40f456-ef33-4f44-a498-3f7cd290d3e4",
+      "questionHead": "<reply-to>per provider</reply-to>\nTOOLCALL2: d3 refused with",
+      "text": "<reply-to>per provider</reply-to>\nTOOLCALL2: d3 refused with a quote staged",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "7d0e09add83e436981d91790a3878fc1",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-24T10:56:49.840Z",
+      "url": "/v1/desktop/sessions/4a244a566fa7/asides",
+      "asideId": "7895a8cb-49ea-47a4-8666-140d124cdb2c",
+      "continues": null,
+      "questionHead": "e aside asked while a message is in flight",
+      "text": "e aside asked while a message is in flight",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "7d0e09add83e436981d91790a3878fc1",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"7895a8cb-49ea-47a4-8666-140d124cdb2c\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T10:57:03.093Z",
+      "url": "/v1/desktop/sessions/4a244a566fa7/asides",
+      "asideId": "2a7c125d-336a-4601-b94c-cd8c206fd727",
+      "continues": "7895a8cb-49ea-47a4-8666-140d124cdb2c",
+      "questionHead": "e composer-door question during the flight",
+      "text": "e composer-door question during the flight",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "7d0e09add83e436981d91790a3878fc1",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"2a7c125d-336a-4601-b94c-cd8c206fd727\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-24T10:55:35.550Z",
+      "subscriptionId": "4dbc8511457dfae8",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/4a244a566fa7/events?frontend_replace=1",
+      "openedAt": "2026-09-24T10:55:37.762Z",
+      "subscriptionId": "7d0e09add83e436981d91790a3878fc1",
+      "asideDeltas": 82,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    }
+  ],
+  "asideDeltaFrames": 82,
+  "deltasBySubscription": {
+    "7d0e09add83e436981d91790a3878fc1": 82
+  },
+  "deltasByAside": {
+    "e899d5d0-60f0-4054-8ae4-1c6f0b9c1686": 8,
+    "f063f196-5428-4b39-b8c8-3fea425d9690": 8,
+    "63876da4-0055-4d9d-8a9c-f5155f02c88b": 8,
+    "0288ced4-c622-487c-92c1-e70df0838bc7": 8,
+    "76cd0d4f-7dae-4d50-86d5-8451511b1d79": 8,
+    "ee48291c-ff09-449b-b2ed-387b0373213c": 10,
+    "622d47b5-b141-4cbe-b336-bd69436a11b6": 8,
+    "ab40f456-ef33-4f44-a498-3f7cd290d3e4": 8,
+    "7895a8cb-49ea-47a4-8666-140d124cdb2c": 8,
+    "2a7c125d-336a-4601-b94c-cd8c206fd727": 8
+  },
+  "refused422": 0,
+  "messagePosts": [
+    {
+      "at": "2026-09-24T10:55:39.063Z",
+      "url": "/v1/desktop/sessions/4a244a566fa7/messages",
+      "kind": "message",
+      "text": "seed turn for quoting",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"e98a7b2a-7a6c-43f3-8789-9bb87c7143e9\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T10:55:39.063Z"
+    },
+    {
+      "at": "2026-09-24T10:56:48.415Z",
+      "url": "/v1/desktop/sessions/4a244a566fa7/messages",
+      "kind": "message",
+      "text": "<reply-to>moving window</reply-to>\nHOLDSEND e thread message carrying a quote and a file",
+      "images": 1,
+      "held": 12000,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"bc574a45-43ba-41c9-9ec7-72bc9e45c304\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T10:57:00.421Z"
+    }
+  ]
+}
+--- end counters ---
