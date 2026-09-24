@@ -30,6 +30,7 @@ import { showInfoToast } from "@shared/utils/toast-manager";
 import { Copy, TriangleAlert } from "lucide-react";
 import { type FC, useEffect, useRef } from "react";
 import type { McpCatalogOperation } from "../../../../../../shared/desktop-control-contract";
+import { publicSignInReason } from "./integration-model";
 
 export type SignInPhase =
 	/** Not started: the dialog explains, the user presses Continue. */
@@ -110,7 +111,9 @@ export function signInProgress(
 		link: null,
 		// The absent-reason case still says so rather than leaving the reader to
 		// wonder whether the dialog lost it (N4).
-		reason: operation.message?.trim() ?? "The server didn't say why.",
+		reason:
+			publicSignInReason(operation.message, keyRoute) ??
+			"The server didn't say why.",
 		nextStep: signInNextStep(operation.message ?? null, keyRoute),
 	};
 }
@@ -243,6 +246,14 @@ export const IntegrationSignInDialog: FC<IntegrationSignInDialogProps> = ({
 			open
 			onClose={close}
 			maxWidth="xs"
+			/*
+			 * `fullWidth` is not cosmetic here (D19): every phase is capped by
+			 * `max-w-md`, but a SHORT phase - the one-sentence success state -
+			 * collapsed to the 320 px floor, so the panel snapped 64 px narrower on
+			 * each side at the moment the user came back from the browser and their
+			 * eye was on it. `w-full` makes every phase hold the same 448 px.
+			 */
+			fullWidth
 			title={`Sign in to ${name}`}
 			/*
 			 * Initial focus belongs on the control the dialog opens FOR, not on
@@ -289,19 +300,21 @@ export const IntegrationSignInDialog: FC<IntegrationSignInDialogProps> = ({
 		>
 			<div
 				/*
-				 * `p-1.5 -mx-1.5`: the inset is there to give a control's outline
-				 * room inside the dialog's scroll body, and the negative margin
-				 * puts the TEXT back on the title's edge (D7). The two classes are
-				 * the same 6 px seen from opposite sides, which is why the padding
-				 * cannot be dropped: the controls inside carry their own `px-1.5`
-				 * (D12, round 2) so that the room a focus ring needs is the room the
-				 * scroll container still shows.
+				 * `p-1.5` is the room a control's outline needs inside the dialog's scroll
+				 * body, and it is all of the body's geometry: the negative margin that
+				 * used to sit beside it made the body 12 px wider than the scroller, so
+				 * the box was 404 px inside a 398 px area and the scroller drew a stray
+				 * horizontal strip under the last control (n3). The prose carries its own
+				 * `-mx-1.5`, which puts the TEXT back on the title's edge (D7) without
+				 * making anything overflow, and the controls inside sit one step in - the
+				 * 6 px the ring needs, which is the shared-component indent the design
+				 * round deferred as D20.
 				 */
-				className="-mx-1.5 flex flex-col gap-3 p-1.5 text-body text-ink-muted"
+				className="flex flex-col gap-3 p-1.5 text-body text-ink-muted"
 				aria-live="polite"
 			>
 				{phase.kind === "ready" ? (
-					<p>
+					<p className="-mx-1.5">
 						Local Operator opens your browser so you can approve access to{" "}
 						{name}.
 						{action === "reauth"
@@ -310,7 +323,7 @@ export const IntegrationSignInDialog: FC<IntegrationSignInDialogProps> = ({
 					</p>
 				) : null}
 				{phase.kind === "starting" ? (
-					<p className="flex items-center gap-2">
+					<p className="-mx-1.5 flex items-center gap-2">
 						<Spinner size="xs" />
 						Starting sign-in…
 					</p>
@@ -328,8 +341,8 @@ export const IntegrationSignInDialog: FC<IntegrationSignInDialogProps> = ({
 						<p
 							className={
 								progress.tone === "success"
-									? "flex items-start gap-2 text-ink"
-									: "flex items-start gap-2 text-ink"
+									? "-mx-1.5 flex items-start gap-2 text-ink"
+									: "-mx-1.5 flex items-start gap-2 text-ink"
 							}
 						>
 							{progress.tone === "progress" ? (
@@ -346,26 +359,25 @@ export const IntegrationSignInDialog: FC<IntegrationSignInDialogProps> = ({
 						{/* The server's own words, quieter than the line that frames
 						    them (D6). */}
 						{progress.reason ? (
-							<p className="text-ink-muted">{progress.reason}</p>
+							<p className="-mx-1.5 text-ink-muted">{progress.reason}</p>
 						) : null}
 						{progress.nextStep ? (
-							<p className="text-ink-muted">{progress.nextStep}</p>
+							<p className="-mx-1.5 text-ink-muted">{progress.nextStep}</p>
 						) : null}
 					</div>
 				) : null}
 				{progress?.link && progress.tone === "progress" ? (
 					/*
-					 * `px-1.5`: the row holds two focusable controls, and the scroll body
-					 * the ring is drawn inside is widened by `-mx-1.5`. Without this the
-					 * ring's left and right sides fall outside the container's clip and
-					 * a focused control looks unmarked (D12, round 2).
+					 * The row holds two focusable controls, and they sit where every other
+					 * control in this dialog sits - one step in from the prose (the body's
+					 * `p-1.5`), which is the room the ring is drawn in (D12, n3).
 					 *
 					 * The URL owns its own line (`min-w-0 flex-1` + a nowrap row) so the
 					 * copy control anchors to the END of the truncated URL instead of
 					 * wrapping to the line below it, where it read as the leading icon
 					 * of "Open the sign-in page" (D14, round 2).
 					 */
-					<div className="flex flex-col items-start gap-1 px-1.5">
+					<div className="flex flex-col items-start gap-1">
 						<div className="flex w-full min-w-0 items-center gap-1">
 							<span
 								className="min-w-0 flex-1 truncate font-mono text-ink-dim text-mono-sm"

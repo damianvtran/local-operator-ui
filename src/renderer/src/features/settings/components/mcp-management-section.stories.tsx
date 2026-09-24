@@ -925,6 +925,76 @@ export const NeedsAKey: Story = {
 	},
 };
 
+/**
+ * A sign-out that FAILED: the credential is still there, so the row says so in
+ * its own words and leads with the retry, under Needs attention (m-2, Q3, U16).
+ *
+ * The state the round-3 reviews measured on a live daemon: a SQLite lock made the
+ * backend's credential delete fail, and the row used to sit among healthy Ready
+ * rows with no primary action at all.
+ */
+export const FailedSignOut: Story = {
+	render: () => {
+		installBridge({
+			catalog: catalog(
+				[
+					row("linear", {
+						status: "not_started",
+						status_basis: "stored",
+						auth: {
+							kind: "oauth",
+							signed_in: true,
+							secret_refs: [{ id: "LINEAR_TOKEN", state: "encrypted" }],
+						},
+						tool_count: 3,
+						tool_count_basis: "last_seen",
+						actions: ["test", "reauth", "sign_out", "remove"],
+					}),
+				],
+				{
+					operations: [
+						op("linear", {
+							action: "logout",
+							status: "failed",
+							message:
+								"The stored credential could not be removed. Try again, or remove the server to clear it.",
+						}),
+					],
+				},
+			),
+		});
+		return <Ground />;
+	},
+};
+
+/**
+ * An expired check on a `stored` row: no timestamp is published, so the reading
+ * comes from the count the backend still stands behind, and claims no time
+ * ("Worked earlier · 12 tools") under Connected (U10, Q1).
+ *
+ * `READY_ECHO` is the same shape one count smaller, and it is the row that used
+ * to read "Ready · Test" the moment the page reloaded.
+ */
+export const ExpiredCheck: Story = {
+	render: () => {
+		installBridge({
+			catalog: catalog([
+				row("docs-search", {
+					status: "not_started",
+					status_basis: "stored",
+					status_observed_at: null,
+					auth: { kind: "oauth", signed_in: true, secret_refs: [] },
+					tool_count: 12,
+					tool_count_basis: "last_seen",
+					actions: ["test", "sign_out", "remove"],
+				}),
+				READY_ECHO,
+			]),
+		});
+		return <Ground />;
+	},
+};
+
 /** A live chat's idle row: "Not connected", with Connect as its one action (F3). */
 export const NotConnected: Story = {
 	render: () => {

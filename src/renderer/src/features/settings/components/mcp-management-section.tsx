@@ -204,11 +204,27 @@ export const McpManagementSection: FC<{
 	const dialogReturn = useRef<HTMLElement | null>(null);
 	const [focusAfterAdd, setFocusAfterAdd] = useState<string | null>(null);
 	/*
-	 * The row a COMPLETED sign-in belonged to (U12). It is a third deferred move
-	 * beside the two below because it waits for a different thing: not for a row
-	 * to appear, but for the row to stop asking for the credential it just got.
+	 * The row a dialog's work belonged to, and how far to wait for its control
+	 * (U12, U18, m-4).
+	 *
+	 * ONE mechanism for four flows rather than one per dialog, because the rule is
+	 * the same in all of them: the control to return to is the row's OWN - its
+	 * primary, or its menu when it has none - and it does not exist until the list
+	 * has been re-read, so focusing at close time lands on `<body>` a frame later.
+	 * That is the whole of U18, and U12 was the same defect with the wait spelled
+	 * out.
+	 *
+	 * `waitForSignIn` is the one thing the flows do not share: after a COMPLETED
+	 * sign-in the row still leads with the Sign in button until the catalog reads
+	 * the new credential back, and focusing a button that is about to unmount is
+	 * how focus reaches `<body>` again. After a cancellation, a key save or a
+	 * sign-out there is nothing to wait for.
 	 */
-	const [focusAfterSignIn, setFocusAfterSignIn] = useState<string | null>(null);
+	const [focusRow, setFocusRow] = useState<{
+		name: string;
+		waitForSignIn: boolean;
+		until: number;
+	} | null>(null);
 	const [focusAfterRemove, setFocusAfterRemove] = useState<{
 		index: number;
 	} | null>(null);
@@ -251,7 +267,18 @@ export const McpManagementSection: FC<{
 	 */
 	const closeSignIn = useCallback(
 		(name: string, outcome: "signed-in" | "dismissed") => {
-			if (outcome === "signed-in") setFocusAfterSignIn(name);
+			/*
+			 * BOTH outcomes arm the move (U18): dismissing a sign-in the user
+			 * STARTED leaves a row whose next step is still the row's own control -
+			 * and for a first sign-in the row's Sign in is the button that opened
+			 * the dialog, which unmounts as the row's own state settles, so leaving
+			 * it to the opener reference is how focus reached `<body>`.
+			 */
+			setFocusRow({
+				name,
+				waitForSignIn: outcome === "signed-in",
+				until: Date.now() + FOCUS_ARM_MS,
+			});
 			closeDialog();
 		},
 		[closeDialog],
@@ -416,6 +443,14 @@ export const McpManagementSection: FC<{
 			case "fix":
 				openConfig(row);
 				return;
+			case "sign_out":
+				/*
+				 * A sign-out that FAILED leads with the retry (m-2), and it opens
+				 * the same confirm the overflow item does: the action carries the
+				 * user's intent, so no second path may diverge from it.
+				 */
+				setConfirm({ name: row.name, kind: "sign_out" });
+				return;
 			default: {
 				// `test` or `connect`: the two primaries that are one request.
 				const kind = action.kind;
@@ -500,7 +535,15 @@ export const McpManagementSection: FC<{
 		}
 		void run(row.name, "sign_out", () =>
 			control({ action: "logout", name: row.name }),
-		);
+		).then(() => {
+			// The confirm's menu item is unmounted by Radix, so the row's own
+			// control is where the next Tab should start (U18).
+			setFocusRow({
+				name: row.name,
+				waitForSignIn: false,
+				until: Date.now() + FOCUS_ARM_MS,
+			});
+		});
 	};
 
 	const onAdd = async (
@@ -568,7 +611,17 @@ export const McpManagementSection: FC<{
 			projectScopeAvailable={projectScopeAvailable}
 			projectLabel={document?.cwd ? compactHome(document.cwd) : null}
 			onSubmit={onAdd}
-			onCancel={() => setShowAdd(false)}
+			onCancel={() => {
+				setShowAdd(false);
+				/*
+				 * Cancel and Escape both come through here, and both left focus on
+				 * `<body>` - the form is inline, so the button that opened it is
+				 * still on the page and is where the reader was (U18). Deferred by
+				 * a macrotask because the form is unmounted by this same state
+				 * change, and a focus call inside it competes with that.
+				 */
+				window.setTimeout(() => addSlotRef.current?.focus(), 0);
+			}}
 		/>
 	);
 
@@ -619,28 +672,51 @@ export const McpManagementSection: FC<{
 	}, [focusAfterRemove, visible]);
 
 	/*
-	 * Where a COMPLETED sign-in leaves focus (U12). It cannot move at close time:
-	 * the catalog has not read the new credential back yet, so the row still
-	 * leads with the Sign in button that is about to unmount - focusing it is how
-	 * focus ends up on `<body>` again a frame later. It waits for the row to stop
-	 * asking, then lands on the row's own control, or its menu when it has none
-	 * (which is what a just-signed-in row shows).
+	 * Where a dialog's work leaves focus (U12, U18). It cannot move at close time:
+	 * the catalog has not read the change back yet, so the row still leads with
+	 * the control that is about to unmount - focusing it is how focus ends up on
+	 * `<body>` again a frame later.
+	 *
+	 * THE DEADLINE IS THE POINT (m-4). The move used to stay armed until the row
+	 * stopped asking for a sign-in, so a success-closed dialog followed by a
+	 * catalog read that still asked for one could fire much later, and take focus
+	 * from wherever the user had moved on to. Past the deadline the move is
+	 * DROPPED rather than performed: a focus move that does not happen is a small
+	 * thing, one that happens at the wrong moment is not.
 	 */
 	useEffect(() => {
-		if (!focusAfterSignIn) return;
-		const row = servers.find((server) => server.name === focusAfterSignIn);
+		if (!focusRow) return;
+		if (Date.now() > focusRow.until) {
+			setFocusRow(null);
+			return;
+		}
+		const row = servers.find((server) => server.name === focusRow.name);
 		if (!row) {
-			setFocusAfterSignIn(null);
+			setFocusRow(null);
 			return;
 		}
 		const primary = primaryAction(row, operations, integrations.memories);
-		if (primary?.kind === "sign_in" || primary?.kind === "reauth") return;
+		if (
+			focusRow.waitForSignIn &&
+			(primary?.kind === "sign_in" || primary?.kind === "reauth")
+		)
+			return;
 		const element = primary
 			? rowPrimaryRefs.current[row.name]
 			: rowOverflowRefs.current[row.name];
 		if (element) element.focus();
-		setFocusAfterSignIn(null);
-	}, [focusAfterSignIn, servers, operations, integrations.memories]);
+		setFocusRow(null);
+	}, [focusRow, servers, operations, integrations.memories]);
+
+	/* Disarm the move when its window closes, so nothing is left waiting. */
+	useEffect(() => {
+		if (!focusRow) return;
+		const timer = window.setTimeout(
+			() => setFocusRow(null),
+			Math.max(focusRow.until - Date.now(), 0),
+		);
+		return () => window.clearTimeout(timer);
+	}, [focusRow]);
 
 	return (
 		<SettingsSection
@@ -924,8 +1000,22 @@ export const McpManagementSection: FC<{
 						void integrations
 							.storeKeys(dialog.name, values, confirmedReplace, header)
 							.then((result) => {
-								if (result.saved) setDialog(null);
-								else setKeyFailure(result.message);
+								if (!result.saved) {
+									setKeyFailure(result.message);
+									return;
+								}
+								/*
+								 * A saved key changes the row, so focus follows the row
+								 * (U18): the dialog closes, and the row it belongs to may
+								 * have no primary of its own afterwards - then its menu is
+								 * the control to land on, which is the rule U12 applies.
+								 */
+								setDialog(null);
+								setFocusRow({
+									name: dialog.name,
+									waitForSignIn: false,
+									until: Date.now() + FOCUS_ARM_MS,
+								});
 							})
 							.catch((cause) =>
 								setKeyFailure(integrationFailureMessage("key", cause, false)),
@@ -937,6 +1027,14 @@ export const McpManagementSection: FC<{
 		</SettingsSection>
 	);
 };
+
+/**
+ * How long a deferred focus move stays armed (m-4): long enough for the read that
+ * follows an action to land (the list polls every 2 s while something is moving,
+ * and a catalog read answers in well under that), and short enough that it cannot
+ * fire after the user has moved on by themselves.
+ */
+const FOCUS_ARM_MS = 4_000;
 
 /** `/Users/x/proj` as `~/proj`, for a label. Machine paths stay machine voice elsewhere. */
 const HOME_PREFIX = /^\/(?:Users|home)\/[^/]+(?=\/|$)/;

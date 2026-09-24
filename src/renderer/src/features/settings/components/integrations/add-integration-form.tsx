@@ -35,6 +35,7 @@ import {
 	type FC,
 	type FormEvent,
 	type KeyboardEvent,
+	type MouseEvent,
 	useEffect,
 	useRef,
 	useState,
@@ -167,6 +168,22 @@ export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 				{problem}
 			</p>
 		) : null;
+
+	/*
+	 * A press on a control in the actions row must not blur the field above it
+	 * (U19).
+	 *
+	 * WHY: the blur validates the field, and an invalid one adds an error line
+	 * ABOVE the actions. That reflow happened between mousedown and mouseup - the
+	 * button moved 25.5 px, mouseup landed above it, and no click fired, so
+	 * clicking Add integration with an empty Name did nothing at all while Enter
+	 * worked. Cancelling the default press action keeps focus where the reader put
+	 * it, so the geometry the press started in is the geometry it ends in and the
+	 * click lands. The keyboard path is untouched, and the reader who pressed is
+	 * moved into the invalid field by the submit itself.
+	 */
+	const keepGeometryStable = (event: MouseEvent<HTMLButtonElement>) =>
+		event.preventDefault();
 
 	return (
 		<form
@@ -350,10 +367,22 @@ export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 					{ADD_INTEGRATION_PICKUP_NOTE}
 				</p>
 				<div className="flex gap-2">
-					<Button type="button" variant="ghost" size="md" onClick={onCancel}>
+					<Button
+						type="button"
+						variant="ghost"
+						size="md"
+						onMouseDown={keepGeometryStable}
+						onClick={onCancel}
+					>
 						Cancel
 					</Button>
-					<Button type="submit" variant="primary" size="md" disabled={saving}>
+					<Button
+						type="submit"
+						variant="primary"
+						size="md"
+						disabled={saving}
+						onMouseDown={keepGeometryStable}
+					>
 						{saving ? <Spinner size="xs" /> : null}
 						Add integration
 					</Button>

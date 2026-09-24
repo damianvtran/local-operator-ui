@@ -163,7 +163,25 @@ export const runningOperationFor = (
  *   `connecting` and the previous group is no longer in the payload;
  * - `needsKey` - a sign-in that failed because the server publishes no OAuth
  *   metadata, which is when the page must offer the key route even though the
- *   backend cannot yet offer it in `actions` (U3).
+ *   backend cannot yet offer it in `actions` (U3);
+ * - `needsSignIn` - a read that said this row needs a sign-in, held until the
+ *   row is connected. Cancelling a sign-in is a no-op, so the row must not fall
+ *   back to the idle word on the strength of the attempt the user abandoned,
+ *   and the backend's probe verdict ages out of the payload long before the
+ *   user's intent does (U14);
+ * - `disconnectedAt` - the moment the USER pressed Disconnect. A live overlay is
+ *   optional by contract and degrades to the config answer on identical
+ *   back-to-back reads, so one config-only read must not contradict an act the
+ *   user just performed (Q2);
+ * - `lastDecisive` - the newest settled operation this page has seen for the
+ *   row. Operations are scoped to a folder, global rows are not, so a scoped
+ *   document must not erase what a global row already recorded (U17).
+ *
+ * THE STRUCTURE IS SERIALISABLE AND PERSISTED, and that is a constraint, not a
+ * detail: the backend publishes no observation time on a `stored` row, so a
+ * reading that lives only in this component's ref dies with the reload and the
+ * row decays to "Ready" (U10/Q1). The storage layer is in
+ * `use-integrations.ts`; what it writes is this shape and nothing else.
  *
  * Nothing here is invented: each field records something the backend DID say,
  * or an action the user DID take, and every one of them is dropped as soon as a
@@ -182,6 +200,11 @@ export type RowMemory = {
 	pinnedGroup: IntegrationGroupId | null;
 	pinnedOperationId: string | null;
 	needsKey: boolean;
+	needsSignIn: boolean;
+	/** Milliseconds since the epoch, from the Disconnect the user pressed. */
+	disconnectedAt: number | null;
+	/** The newest settled operation seen here, pruned to what the rules read. */
+	lastDecisive: McpCatalogOperation | null;
 };
 
 export type RowMemories = Record<string, RowMemory | undefined>;
@@ -194,6 +217,9 @@ export const NO_MEMORY: RowMemory = {
 	pinnedGroup: null,
 	pinnedOperationId: null,
 	needsKey: false,
+	needsSignIn: false,
+	disconnectedAt: null,
+	lastDecisive: null,
 };
 
 /** The row's memory, or the empty one, so callers never branch on undefined. */
@@ -201,6 +227,59 @@ export const memoryFor = (
 	memories: RowMemories | undefined,
 	name: string,
 ): RowMemory => memories?.[name] ?? NO_MEMORY;
+
+/**
+ * The newest operation this page knows of for a row: this read's, or the one it
+ * recorded earlier.
+ *
+ * Operations are scoped to the document's cwd while global rows are not, so a
+ * project document answers `operations: []` for a global row whose last sign-out
+ * this page watched happen. Reading only the document made the row's recorded
+ * state depend on which chat was open last (U17); the memory is the same fact
+ * one read older, which is what the rules here are already allowed to use.
+ */
+export const rememberedDecisiveFor = (
+	name: string,
+	operations: readonly McpCatalogOperation[],
+	memory: RowMemory | undefined,
+): McpCatalogOperation | null =>
+	decisiveOperationFor(name, operations) ?? memory?.lastDecisive ?? null;
+
+/**
+ * The slice of an operation worth remembering, and the only part that is stored.
+ *
+ * `authorization_url` and `browser_opened` are deliberately dropped: nothing in
+ * this file reads them, and a consent URL is not a thing to keep in a renderer's
+ * store after the dialog that showed it has gone.
+ */
+export const pruneOperation = (
+	operation: McpCatalogOperation,
+): McpCatalogOperation => ({
+	id: operation.id,
+	name: operation.name,
+	action: operation.action,
+	status: operation.status,
+	created_at: operation.created_at,
+	credential_removed: operation.credential_removed,
+	...(operation.message ? { message: operation.message } : {}),
+});
+
+/**
+ * Whether a row's reading is one that says it WORKED.
+ *
+ * Two sources, because the backend guarantees only the second: this page's own
+ * stamp from a read that saw the row connected, and a `last_seen` tool count on
+ * a `stored` row - a count the backend still stands behind with no time
+ * attached. Without this, a reload with no memory left the row on "Ready",
+ * which is a row the page knows nothing about (U10/Q1).
+ */
+export const workedReadingOf = (
+	row: Pick<IntegrationRow, "status_basis" | "tool_count" | "tool_count_basis">,
+	memory: RowMemory,
+): boolean =>
+	typeof row.tool_count === "number" &&
+	(memory.connectedAt !== null ||
+		(row.status_basis === "stored" && row.tool_count_basis === "last_seen"));
 
 /**
  * The newest operation recorded for a row, running or settled.
@@ -290,6 +369,19 @@ export function publicRowReason(
 		if (next === text) break;
 		text = next;
 	}
+	/*
+	 * An HTTP status in brackets is a number, not an explanation (n4): the row it
+	 * sits on already leads with Add key, so "rejected our credentials (401) - set
+	 * its API key or headers" told the reader a 401 and "our" while the control
+	 * beside it said what to do. The code is stripped and the rest of the
+	 * sentence is left as the server's own account of what happened; a number
+	 * that is part of a longer token is untouched.
+	 */
+	text = text
+		.replace(/\s*\(\s*\d{3}\s*\)/g, "")
+		.replace(/\s+([.,;])/g, "$1")
+		.replace(/\s{2,}/g, " ")
+		.trim();
 	return text || null;
 }
 
@@ -342,7 +434,7 @@ export function integrationStatus(
 	 * cannot word: a sign-out the user just performed, and a sign-in that
 	 * failed. Both are the backend's own records, not this page's guess.
 	 */
-	const lastOperation = decisiveOperationFor(row.name, operations);
+	const lastOperation = rememberedDecisiveFor(row.name, operations, memory);
 	/*
 	 * Through the shared predicates, never re-spelled here: this line used to be
 	 * its own copy of the rule (`status !== "running"`), so fixing `isSignedOut`
@@ -355,7 +447,16 @@ export function integrationStatus(
 	 * declaration directly in a switch clause is a lint error here
 	 * (`noSwitchDeclarations`), because another clause can fall into it.
 	 */
-	const observedAt = memory.connectedAt ?? row.status_observed_at;
+	/*
+	 * THE MEMORY ONLY, NEVER `row.status_observed_at` (M-1). The backend sets that
+	 * field on the `live` and `probe` bases alone, so a `stored` row always carries
+	 * null there and reading it as a fallback could restore nothing; when a
+	 * backend did send it, it is epoch SECONDS while `relativeTime` does
+	 * millisecond arithmetic, and a six-minute-old value rendered "Worked 20700 d
+	 * ago". `RowMemory.connectedAt` is milliseconds and this page writes it
+	 * itself, which is the only unit claim that is safe to make here.
+	 */
+	const workedBefore = workedReadingOf(row, memory);
 	const failedSignOut =
 		isFailedSignOut(lastOperation) && row.status !== "connected";
 	const lastSignInFailed =
@@ -429,9 +530,32 @@ export function integrationStatus(
 				return {
 					label: "Sign-out didn't finish",
 					tone: "warning",
-					detail:
-						publicRowReason(lastOperation?.message) ??
-						"The sign-in is still saved.",
+					/*
+					 * PLAIN WORDS, NOT THE BACKEND'S DEVELOPER TEXT (U16). The raw reason
+					 * here was a SQLite error on a readonly database and a warning that a
+					 * "fresh grant would silently reuse it" - true, alarming, and no help
+					 * at all to the person looking at the row. The technical text belongs in
+					 * the config/file view, which is where a reader debugging a lock goes;
+					 * the row states what did or did not happen and the step that retries.
+					 */
+					detail: "The sign-in is still saved. Try Sign out again.",
+					busy: false,
+				};
+			/*
+			 * A DISCONNECT THE USER PRESSED IS AUTHORITATIVE (Q2). The backend's live
+			 * overlay is optional by contract and is measured degrading to the config
+			 * answer on identical back-to-back reads (12 live / 8 config in 20 reads
+			 * inside one second), so the single read this page makes after a
+			 * Disconnect can legitimately say nothing about the runtime - and read as
+			 * health it made the row say "Worked just now" with no Connect, while the
+			 * backend said not connected. The user just said this server should stop;
+			 * until a read confirms it is connected again, the row says so.
+			 */
+			if (memory.disconnectedAt !== null)
+				return {
+					label: "Not connected",
+					tone: "neutral",
+					detail: null,
 					busy: false,
 				};
 			/*
@@ -460,6 +584,24 @@ export function integrationStatus(
 					busy: false,
 				};
 			/*
+			 * A read that said this row needs a sign-in still stands after an attempt
+			 * the user CANCELLED (U14). Cancelling is a no-op, and the backend's own
+			 * probe verdict ages out of the payload - what is left is a bare
+			 * `not_started`, so the row was filed under Available with no primary
+			 * action on the strength of the attempt the user abandoned. Held until a
+			 * read says the row is connected.
+			 */
+			if (memory.needsSignIn)
+				return {
+					label:
+						row.auth.kind === "api_key" || needsKeyFor(row, operations, memory)
+							? "Needs a key"
+							: "Needs sign-in",
+					tone: "warning",
+					detail: publicRowReason(row.status_reason),
+					busy: false,
+				};
+			/*
 			 * An expired check keeps its last RESULT rather than decaying into
 			 * the idle word: the row worked, and how long ago is the useful part
 			 * (U1). It needs a remembered reading, plus a count the backend still
@@ -478,12 +620,14 @@ export function integrationStatus(
 			 */
 			if (
 				row.status_basis === "stored" &&
-				observedAt !== null &&
-				observedAt !== undefined &&
-				typeof row.tool_count === "number"
+				workedBefore &&
+				memory.disconnectedAt === null
 			)
 				return {
-					label: `Worked ${relativeTime(now, observedAt)} · ${toolCountLabel(row.tool_count)}`,
+					label:
+						memory.connectedAt !== null
+							? `Worked ${relativeTime(now, memory.connectedAt)} · ${toolCountLabel(row.tool_count as number)}`
+							: `Worked earlier · ${toolCountLabel(row.tool_count as number)}`,
 					tone: "success",
 					detail: null,
 					busy: false,
@@ -506,6 +650,43 @@ export function integrationStatus(
 			// is the status's tooltip instead (`READY_EXPLANATION`).
 			return { label: "Ready", tone: "neutral", detail: null, busy: false };
 	}
+}
+
+/**
+ * The label the key dialog's replace checkbox carries, for `count` fields.
+ *
+ * Shared with `credentialsRefusalMessage` in `use-integrations.ts`: the refusal
+ * sentence names this control, so a sentence and a checkbox that derived their
+ * wording separately is exactly how the dialog came to name a control it did not
+ * draw (U15, n-3).
+ */
+export const replaceControlLabel = (count: number): string =>
+	count === 1 ? "Replace the saved key" : "Replace saved keys";
+
+/**
+ * The server's own failure sentence, minus any advice this row cannot take.
+ *
+ * The backend's `oauth_unsupported` reason ends "...or add its key instead",
+ * which is right on a row that offers the key route, and on a row that does not
+ * it names a control the surface never draws - the same defect `signInNextStep`
+ * was fixed for (D15), one line further up the same dialog (n-1, U11's
+ * remaining contradiction). The clause is DROPPED rather than reworded:
+ * everything the server said about what happened stands, and this page has no
+ * business improving on the rest.
+ */
+export const SIGN_IN_KEY_ADVICE =
+	/[,;]?\s*(?:or|and)?\s*add (?:its|a|the) key instead\.?\s*$/i;
+
+export function publicSignInReason(
+	reason: string | null | undefined,
+	keyRoute: boolean,
+): string | null {
+	const trimmed = reason?.trim() ?? "";
+	if (!trimmed) return null;
+	if (keyRoute) return trimmed;
+	const stripped = trimmed.replace(SIGN_IN_KEY_ADVICE, "").trim();
+	if (!stripped) return trimmed;
+	return /\.$/.test(stripped) ? stripped : `${stripped}.`;
 }
 
 /** What "Ready" means, for the status's tooltip. */
@@ -575,7 +756,14 @@ export function integrationMeta(
 /* --------------------------------------------------------------- actions */
 
 export type PrimaryAction = {
-	kind: "sign_in" | "set_key" | "reauth" | "test" | "connect" | "fix";
+	kind:
+		| "sign_in"
+		| "set_key"
+		| "reauth"
+		| "test"
+		| "connect"
+		| "fix"
+		| "sign_out";
 	label: string;
 	/**
 	 * How the button is drawn, when the action is one the row does not need
@@ -626,7 +814,7 @@ export function primaryAction(
 	// the backend again. The audit's own table gives this row "Check again".
 	if (!isKnownIntegrationStatus(row.status))
 		return has("test") ? { kind: "test", label: "Check again" } : null;
-	const lastOperation = decisiveOperationFor(row.name, operations);
+	const lastOperation = rememberedDecisiveFor(row.name, operations, memory);
 	const signInFailed =
 		lastOperation?.status === "failed" && isSignInAction(lastOperation);
 	switch (row.status) {
@@ -640,12 +828,15 @@ export function primaryAction(
 			 * metadata (U3), and it is BEFORE the sign-in check so a row offering
 			 * both leads with the key (R2-6).
 			 *
-			 * `key` - the backend's own `add_key`/`set_key` - is deliberately NOT
-			 * required (U11): the credentials write is a page-level capability, so
-			 * offering Sign in to an untested key-only server invites an action
-			 * that cannot work. The backend only learns a server needs a key by
-			 * watching a Test fail, so before that press its actions list says
-			 * nothing, and the page must not read that silence as "use OAuth".
+			 * `key` is NOT required here, and that is deliberate (R2-6): the
+			 * credentials write is a page-level capability on the catalog route, so a
+			 * row this page has learned wants a key offers Add key even though the
+			 * backend's own `actions` list does not name it yet. U11 is the OTHER
+			 * half of that rule and is still DEFERRED: with no evidence at all - an
+			 * untested server - the page offers Sign in rather than inventing a key
+			 * action the backend did not list, because the backend only learns a
+			 * server wants a key by watching a Test fail. So this line is not a claim
+			 * that the key is always available; it is the page using what it knows.
 			 */
 			if (maybeNeedsKey) return { kind: "set_key", label: "Add key" };
 			if (has("sign_in")) return { kind: "sign_in", label: "Sign in" };
@@ -662,6 +853,35 @@ export function primaryAction(
 			if (isSignedOut(lastOperation) && has("sign_in"))
 				return { kind: "sign_in", label: "Sign in" };
 			/*
+			 * A sign-out that FAILED leaves the credential exactly where it was and
+			 * asks the user to try again (R2-2, m-2): the row's own words already
+			 * say "Sign-out didn't finish", and the next step beside them was only
+			 * in the overflow. A `sign_out` primary keeps the words and the control
+			 * together, which is also why the row sits under Needs attention
+			 * (`integrationGroupOf`).
+			 */
+			if (isFailedSignOut(lastOperation) && has("sign_out"))
+				return { kind: "sign_out", label: "Sign out again" };
+			/*
+			 * A Disconnect leads back the way the user came (Q2): the status reads
+			 * "Not connected", so the row must offer the control that connects it -
+			 * not the "worked" demotion further down, which would leave a
+			 * Not-connected row with no action at all.
+			 */
+			if (memory.disconnectedAt !== null && has("connect"))
+				return { kind: "connect", label: "Connect" };
+			/*
+			 * A sign-in the user CANCELLED changes nothing, so the row keeps the
+			 * route the read that asked for a sign-in offered (U14).
+			 */
+			if (memory.needsSignIn) {
+				if (maybeNeedsKey && key) return { kind: "set_key", label: "Add key" };
+				if (has("sign_in")) return { kind: "sign_in", label: "Sign in" };
+				// No sign-in in `actions` any more: fall through, so the row leads
+				// with a control the backend still offers rather than one it
+				// withdrew.
+			}
+			/*
 			 * The key route here only when the backend LISTS one. A cold row is
 			 * not asking for credentials - it is asking to be turned on - and
 			 * leading with Add key on a `disconnected` row would displace the
@@ -675,14 +895,12 @@ export function primaryAction(
 			 * A row that HAS been checked leads with nothing (D1): its Test is in
 			 * the overflow, exactly where a connected row's Test already is, so a
 			 * page of ten idle servers is not a column of ten identical buttons
-			 * (audit D8, one button per row instead of four).
+			 * (audit D8, one button per row instead of four). The evidence is either
+			 * this page's stamp or a `last_seen` count the backend still stands
+			 * behind (`workedReadingOf`, Q1), so the same rule covers the row whose
+			 * stamp was lost with the reload.
 			 */
-			if (
-				memory.connectedAt !== null &&
-				typeof row.tool_count === "number" &&
-				!has("connect")
-			)
-				return null;
+			if (workedReadingOf(row, memory) && !has("connect")) return null;
 			/*
 			 * Starting it is NOT a re-test, so the demotion above does not apply:
 			 * `connect` is offered by a live runtime (the catalog route offers it
@@ -781,7 +999,12 @@ export function needsKeyFor(
 	 * end of a long session.
 	 */
 	if (!offersKey(row)) return false;
-	const lastOperation = latestOperationFor(row.name, operations);
+	/*
+	 * The remembered operation, not only this document's: `linear`'s failed
+	 * sign-in is global while the document may be a project's, and losing the
+	 * discovery with the scope is how a row that needs a key read as Ready (U17).
+	 */
+	const lastOperation = rememberedDecisiveFor(row.name, operations, memory);
 	if (
 		lastOperation &&
 		isSignInAction(lastOperation) &&
@@ -938,12 +1161,35 @@ export function integrationGroupOf(
 	// again".
 	if (row.status === "needs_sign_in" || row.status === "error")
 		return "attention";
-	const lastOperation = decisiveOperationFor(row.name, operations);
+	const lastOperation = rememberedDecisiveFor(row.name, operations, memory);
 	// A sign-out and a failed sign-in are the user's own last acts on the row,
 	// and both leave it needing a credential (U2, U3).
 	if (isSignedOut(lastOperation) && row.status !== "connected")
 		return "attention";
+	/*
+	 * A sign-out that FAILED belongs where its own words already put it (m-2,
+	 * Q3): "Sign-out didn't finish" in a warning tone beside a group of healthy
+	 * Ready rows is a row that contradicts its own section - and its group moved
+	 * again on a reload, so the two readings disagreed with each other as well as
+	 * with the words.
+	 */
+	if (isFailedSignOut(lastOperation) && row.status !== "connected")
+		return "attention";
+	/*
+	 * A Disconnect the user pressed takes the row back to the idle group until a
+	 * read says it is connected again (Q2), and it is asked BEFORE the credential
+	 * questions for the same reason the status asks it there: it is the newest
+	 * thing that happened to the row, and the row's words and its group have to
+	 * agree.
+	 */
+	if (memory.disconnectedAt !== null) return "ready";
 	if (needsKeyFor(row, operations, memory)) return "attention";
+	/*
+	 * A read that said this row needs a sign-in keeps it under Needs attention
+	 * until something contradicts it (U14): a cancelled attempt is not evidence
+	 * about the server, and the backend's own verdict ages out of the payload.
+	 */
+	if (memory.needsSignIn && row.status !== "connected") return "attention";
 	if (
 		lastOperation?.status === "failed" &&
 		isSignInAction(lastOperation) &&
@@ -958,12 +1204,12 @@ export function integrationGroupOf(
 	 * runtime reporting `not_started` is not an expired check; it is the chat
 	 * saying this server is off, and the group has to follow the payload
 	 * (R2-3, round 2: a live Disconnect sat in Connected).
+	 *
+	 * The evidence is this page's own stamp or a `last_seen` count the backend
+	 * still stands behind (`workedReadingOf`), which is what keeps the group
+	 * honest across a reload (Q1).
 	 */
-	if (
-		row.status_basis === "stored" &&
-		(memory.connectedAt !== null || row.status_observed_at !== null) &&
-		typeof row.tool_count === "number"
-	)
+	if (row.status_basis === "stored" && workedReadingOf(row, memory))
 		return "connected";
 	if (running && running.action !== "test") return "attention";
 	return "ready";
@@ -1018,7 +1264,11 @@ export function advanceMemories(
 	for (const row of document.servers) {
 		const before = memoryFor(previous, row.name);
 		const running = runningOperationFor(row.name, document.operations);
-		const lastOperation = decisiveOperationFor(row.name, document.operations);
+		const lastOperation = rememberedDecisiveFor(
+			row.name,
+			document.operations,
+			before,
+		);
 		const signedOut = isSignedOut(lastOperation);
 		const connected =
 			row.status === "connected" &&
@@ -1047,6 +1297,22 @@ export function advanceMemories(
 			// server has no authorization server does not expire with the
 			// operation that revealed it.
 			needsKey: connected ? false : before.needsKey || failure,
+			/*
+			 * A sign-in the user cancelled is a NO-OP, and the backend's probe verdict
+			 * does not outlive the operation that ended - so the row kept the
+			 * observation where the backend keeps none (U14). Cleared by a completed
+			 * sign-out, whose own wording (Signed out | Sign in) is the more specific
+			 * truth about the same row.
+			 */
+			needsSignIn:
+				connected || signedOut
+					? false
+					: before.needsSignIn || row.status === "needs_sign_in",
+			// Cleared by any read that says the row is working: a live runtime that
+			// has the server up again contradicts the Disconnect, and its own
+			// "connected" is the stronger fact.
+			disconnectedAt: connected ? null : before.disconnectedAt,
+			lastDecisive: lastOperation ? pruneOperation(lastOperation) : null,
 		};
 		/*
 		 * The group the row occupies while nothing is in flight. Read with THIS
@@ -1063,10 +1329,201 @@ export function advanceMemories(
 	return next;
 }
 
+/**
+ * Whether the "only global integrations are shown" banner applies (m-3).
+ *
+ * The banner says THIS CHAT's folder is gone, so it may only be shown while the
+ * folder being read is the one that was refused. Keyed on the refusal alone it
+ * stayed true for the whole mount, and switching to a chat whose folder is fine
+ * still carried the banner over a project catalog that was reading perfectly.
+ */
+export const folderUnavailableFor = (
+	refusedCwd: string | null,
+	resolvedCwd: string | null,
+): boolean => refusedCwd !== null && resolvedCwd === refusedCwd;
+
+/* ------------------------------------------------- persisted row memory */
+
+/**
+ * Where the settled memories live between reloads, and how each one is keyed.
+ *
+ * WHY THIS EXISTS AT ALL: the backend publishes no observation time on a
+ * `stored` row - `status_observed_at` is set on the `live` and `probe` bases
+ * alone - so a reading this page keeps only in a ref is gone the moment the
+ * window reloads, and the row decays to "Ready". That was measured twice from a
+ * real reload of an expired check (U10/Q1), and the page is the only party that
+ * watched the transition, so the page is where it has to be kept.
+ *
+ * KEYED BY THE CONFIG FILE THAT OWNS THE ROW, then the row's name: the same name
+ * can exist in a project catalog and in the global one, and a reading from one is
+ * not evidence about the other.
+ */
+export const ROW_MEMORY_STORAGE_KEY =
+	"local-operator.settings.integrations.row-memory";
+
+export const rowMemoryStorageKey = (sourcePath: string, name: string): string =>
+	`${sourcePath}#${name}`;
+
+/** The entries to persist for this document's rows, keyed for the store. */
+export function memoriesTable(
+	memories: RowMemories,
+	document: Pick<IntegrationDocument, "servers"> | undefined,
+): Record<string, RowMemory> {
+	const table: Record<string, RowMemory> = {};
+	if (!document) return table;
+	for (const row of document.servers) {
+		const memory = memories[row.name];
+		if (memory) table[rowMemoryStorageKey(row.source.path, row.name)] = memory;
+	}
+	return table;
+}
+
+/**
+ * The memories this page did not have, read back from the store.
+ *
+ * Only rows ABSENT from `memories` are seeded. A row already in the map carries a
+ * LATER reading than the store does - including a deliberate clear, such as the
+ * `connectedAt` a Disconnect wipes (Q2) - and re-seeding it would resurrect
+ * exactly the value the page dropped.
+ */
+export function seedMemories(
+	memories: RowMemories,
+	document: Pick<IntegrationDocument, "servers"> | undefined,
+	stored: Record<string, unknown>,
+): RowMemories {
+	if (!document) return memories;
+	let next: RowMemories | null = null;
+	for (const row of document.servers) {
+		if (Object.prototype.hasOwnProperty.call(memories, row.name)) continue;
+		const parsed = parseRowMemory(
+			stored[rowMemoryStorageKey(row.source.path, row.name)],
+		);
+		if (!parsed) continue;
+		next = next ?? { ...memories };
+		next[row.name] = parsed;
+	}
+	return next ?? memories;
+}
+
+const MEMORY_GROUP_IDS: readonly IntegrationGroupId[] = [
+	"attention",
+	"connected",
+	"ready",
+];
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+	typeof value === "object" && value !== null && !Array.isArray(value);
+
+const finiteOrNull = (value: unknown): number | null =>
+	typeof value === "number" && Number.isFinite(value) ? value : null;
+
+const groupOrNull = (value: unknown): IntegrationGroupId | null =>
+	MEMORY_GROUP_IDS.includes(value as IntegrationGroupId)
+		? (value as IntegrationGroupId)
+		: null;
+
+/**
+ * A stamp this page may treat as MILLISECONDS, or null.
+ *
+ * Refused rather than converted below 10^12: that is the year 2001 in
+ * milliseconds, so a number under it is not a millisecond time this store could
+ * have written - and the value that rendered a real six-minute-old check as
+ * "Worked 20700 d ago" was epoch SECONDS. This page writes milliseconds only, so
+ * this fires on a store some other build wrote, which is not a reading to
+ * describe a row with.
+ */
+const millisecondsOrNull = (value: unknown): number | null => {
+	const stamp = finiteOrNull(value);
+	return stamp !== null && stamp >= 1_000_000_000_000 ? stamp : null;
+};
+
+function parseStoredOperation(value: unknown): McpCatalogOperation | null {
+	if (!isRecord(value)) return null;
+	if (typeof value.id !== "string" || typeof value.name !== "string")
+		return null;
+	const action = value.action;
+	const status = value.status;
+	if (
+		action !== "login" &&
+		action !== "logout" &&
+		action !== "reauth" &&
+		action !== "test"
+	)
+		return null;
+	if (
+		status !== "running" &&
+		status !== "complete" &&
+		status !== "cancelled" &&
+		status !== "failed"
+	)
+		return null;
+	return {
+		id: value.id,
+		name: value.name,
+		action,
+		status,
+		created_at: finiteOrNull(value.created_at) ?? 0,
+		credential_removed: value.credential_removed === true,
+		...(typeof value.message === "string" ? { message: value.message } : {}),
+	};
+}
+
+/**
+ * One stored entry, or null when it is not shaped like one this build wrote.
+ *
+ * `localStorage` is a store the user can edit and an older build can have
+ * written, so every field is read for its type and anything unrecognised is
+ * dropped rather than trusted. An entry that would restore nothing at all is
+ * null, which leaves the row reading exactly as it would on a fresh install.
+ */
+export function parseRowMemory(value: unknown): RowMemory | null {
+	if (!isRecord(value)) return null;
+	const connectedAt = millisecondsOrNull(value.connectedAt);
+	const disconnectedAt = millisecondsOrNull(value.disconnectedAt);
+	const needsKey = value.needsKey === true;
+	const needsSignIn = value.needsSignIn === true;
+	const lastDecisive = parseStoredOperation(value.lastDecisive);
+	if (
+		connectedAt === null &&
+		disconnectedAt === null &&
+		!needsKey &&
+		!needsSignIn &&
+		!lastDecisive
+	)
+		return null;
+	return {
+		connectedAt,
+		connectedToolCount: finiteOrNull(value.connectedToolCount),
+		settledGroup: groupOrNull(value.settledGroup),
+		pinnedGroup: groupOrNull(value.pinnedGroup),
+		pinnedOperationId:
+			typeof value.pinnedOperationId === "string"
+				? value.pinnedOperationId
+				: null,
+		needsKey,
+		needsSignIn,
+		disconnectedAt,
+		lastDecisive,
+	};
+}
+
 /* --------------------------------------------------------------- polling */
 
 /** How often the list is re-read while something on it is still moving. */
 export const INTEGRATIONS_POLL_MS = 2_000;
+
+/**
+ * How long the list keeps re-reading after a control the user pressed (Q2).
+ *
+ * SHORT, because a live overlay answers or degrades inside the same second when
+ * it is up at all, and the window closes early the moment a live read arrives.
+ * BOUNDED, because a page that always asks is a read every 2 s forever on a
+ * screen that is usually sitting idle - and LONG ENOUGH to cover a runtime that
+ * has to start a server before it can answer. The memory the control writes is
+ * what makes the row honest in the meantime; this window is how the row gets to
+ * hear the confirmation.
+ */
+export const CONTROL_SETTLE_MS = 8_000;
 
 /**
  * The list's refetch interval: every 2 s while a row is connecting or an

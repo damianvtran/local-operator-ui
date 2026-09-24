@@ -21,8 +21,9 @@ const bundle = await build({
 		contents:
 			'export * from "./src/renderer/src/features/settings/components/integrations/integration-model";' +
 			'export { catalogControlBody, sessionControlBody, catalogCwdFor, newestRosterRow, sessionCwdFromSnapshot, rememberCatalogCwd, rememberedCatalogCwd, CATALOG_CWD_STORAGE_KEY } from "./src/renderer/src/features/settings/components/integrations/use-integrations";' +
+			'export { readRowMemoryTable, writeRowMemories, credentialsRefusalMessage } from "./src/renderer/src/features/settings/components/integrations/use-integrations";' +
 			'export { signInProgress } from "./src/renderer/src/features/settings/components/integrations/integration-sign-in-dialog";' +
-			'export { keylessReference, keyDialogSave, KEYLESS_VALUE_KEY } from "./src/renderer/src/features/settings/components/integrations/integration-key-dialog";' +
+			'export { keylessReference, keyDialogSave, KEYLESS_VALUE_KEY, MAX_REFERENCE_LENGTH } from "./src/renderer/src/features/settings/components/integrations/integration-key-dialog";' +
 			'export { forgetCatalogCwd, cwdAfterRefusal, catalogQueryErrorIsInvalidCwd, CATALOG_CWD_STORAGE_KEY as CWD_KEY } from "./src/renderer/src/features/settings/components/integrations/use-integrations";' +
 			'export { isSignedOut, isFailedSignOut } from "./src/renderer/src/features/settings/components/integrations/integration-model";' +
 			'export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";' +
@@ -571,51 +572,65 @@ test("a refusal code this build has never seen still gets a true sentence", () =
 	}
 });
 
-test("a dialog body that widens itself keeps the room a focused control's ring needs (D12)", () => {
+test("a dialog body keeps the room a focused control's ring needs (D12, n3)", () => {
 	/*
-	 * Round 2's MAJOR: `p-1.5 -mx-1.5` on a dialog body put the prose back on the
-	 * title's edge and, in the same stroke, pushed the control out to the
-	 * container's content box - so the ring, which is `outline-width: 2px` at
-	 * `outline-offset: 2px` (src/renderer/src/styles/index.css) and is clipped by
-	 * the scroll body it sits in, lost its left and right sides. Measured on the
-	 * rendered stories in both brand palettes: the focused input's mid row carried
-	 * 0 accent pixels before this round's fix (outline solid, `:focus-visible`
-	 * true, 0 px of room either side) and 4 after (2 per side, 6 px of room).
+	 * Round 2's MAJOR: with nothing between the body and the control, the control
+	 * spanned the container's content box exactly, and the ring - `outline-width:
+	 * 2px` at `outline-offset: 2px` (src/renderer/src/styles/index.css), clipped
+	 * by the scroll body it sits in - lost its left and right sides.
+	 *
+	 * Round 2 fixed it with `p-1.5 -mx-1.5` on the body plus a `px-1.5` wrapper
+	 * per control. That drew the ring, and cost two things the design round then
+	 * raised: the body was 12 px wider than its scroller, so the scroller showed a
+	 * stray horizontal strip (404 px of content inside a 398 px area, n3), and
+	 * every label and input sat 6 px inside the prose edge (D20, deferred as the
+	 * shared-component change it is).
+	 *
+	 * THIS ROUND'S SHAPE is the body's own `p-1.5` alone - the body exactly as
+	 * wide as the scroller, so there is nothing to scroll horizontally - with
+	 * `-mx-1.5` on the PROSE, which is what puts the text back on the title's edge
+	 * (D7) without making anything overflow. The control therefore sits 6 px in
+	 * from the text edge, which is the room the ring is drawn in. Re-measured on
+	 * the rendered stories in both brand palettes: 4 accent pixels on the focused
+	 * input's mid row (2 per side), the same number round 2 measured for the fix
+	 * that introduced the strip.
 	 *
 	 * WHAT THIS PINS, AND WHAT IT CANNOT: it reads the source, so it cannot tell
-	 * whether the classes land on the right elements - the frames and the numbers
-	 * above are what answer that. This is what fails if the room is dropped again
-	 * in a refactor, which is exactly how it was lost the first time.
+	 * whether the padding lands on the element the control is inside. The frames
+	 * and the pixel count are what answer that; this is what fails when the room
+	 * is dropped again in a refactor, which is how it was lost the first time.
 	 */
-	/*
-	 * The COUNT is the pin, and it is deliberate: "at least one px-1.5" survived
-	 * deleting one of them, which is the shape of the regression this exists for.
-	 * Each number is the number of wrappers in that file that hold a focusable
-	 * control, so a restructure that legitimately changes it must say so here.
-	 * The key dialog has three (the two label+input wrappers and the replace
-	 * checkbox row); the sign-in dialog has one (the link row).
-	 */
-	for (const [file, wrappers] of [
-		[
-			"src/renderer/src/features/settings/components/integrations/integration-key-dialog.tsx",
-			3,
-		],
-		[
-			"src/renderer/src/features/settings/components/integrations/integration-sign-in-dialog.tsx",
-			1,
-		],
+	for (const file of [
+		"src/renderer/src/features/settings/components/integrations/integration-key-dialog.tsx",
+		"src/renderer/src/features/settings/components/integrations/integration-sign-in-dialog.tsx",
 	]) {
 		const source = readFileSync(file, "utf8");
+		/*
+		 * The room, and the reason it is the body's own padding: the negative
+		 * margin beside it is what made the scroller wider than its viewport.
+		 *
+		 * The WHOLE class string is asserted, not "some class containing p-1.5":
+		 * the label wrappers carry `gap-1.5`, which a loose pattern matches, and
+		 * removing the body's padding then survived this pin (measured).
+		 */
 		assert.match(
 			source,
-			/className="[^"]*-mx-1\.5[^"]*p-1\.5[^"]*"/,
-			`${file}: the body widens itself with -mx-1.5 beside p-1.5`,
+			/className="flex flex-col gap-3 p-1\.5 text-body text-ink-muted"/,
+			`${file}: the scroll body carries p-1.5, the room the outline is drawn in`,
 		);
-		const room = [...source.matchAll(/className="[^"]*px-1\.5/g)].length;
-		assert.equal(
-			room,
-			wrappers,
-			`${file}: every wrapper holding a focusable control carries px-1.5 (found ${room}, expected ${wrappers})`,
+		assert.doesNotMatch(
+			source,
+			/className="[^"]*-mx-1\.5[^"]*p-1\.5[^"]*"/,
+			`${file}: the body must not widen itself with -mx-1.5, which overflows the scroller (n3)`,
+		);
+		/*
+		 * The text edge, which the negative margin has to reach: prose on the
+		 * title's edge while the body stays the scroller's width.
+		 */
+		assert.match(
+			source,
+			/<p className="[^"]*-mx-1\.5/,
+			`${file}: the prose carries -mx-1.5 so its text sits on the title's edge (D7)`,
 		);
 	}
 });
@@ -1007,9 +1022,22 @@ test("an expired check keeps its last RESULT and its group (U1)", () => {
 	// And it leads with nothing: its Test is in the overflow, no test button.
 	assert.equal(m.primaryAction(expired, [], later), null);
 
-	// Without the memory - a fresh page load - the idle word is all it can say,
-	// which is honest: nothing here has checked it.
-	assert.equal(m.integrationStatus(expired, [], undefined, at).label, "Ready");
+	/*
+	 * Without the memory - a fresh page load - the row still does not decay to
+	 * the idle word (Q1): the backend's own `last_seen` count is a reading it
+	 * stands behind, and "Worked earlier · 1 tool" is the whole of what that
+	 * payload supports. No time is claimed, because none was sent.
+	 */
+	const cold = m.integrationStatus(expired, [], undefined, at);
+	assert.equal(cold.label, "Worked earlier · 1 tool");
+	assert.equal(cold.tone, "success");
+	assert.equal(m.integrationGroupOf(expired, [], undefined), "connected");
+	/*
+	 * And with no evidence at all - no memory, no count - the idle word is the
+	 * honest one: nothing here has checked it, so the page says nothing.
+	 */
+	const bare = { ...expired, tool_count: null, tool_count_basis: null };
+	assert.equal(m.integrationStatus(bare, [], undefined, at).label, "Ready");
 });
 
 test("a live runtime's idle row is NOT called Ready (F3)", () => {
@@ -1401,32 +1429,80 @@ test("add_key is the key route, under the backend's own shape (U3, #1511 aa92715
 	assert.equal(m.primaryAction(postgres, [], undefined).label, "Add key");
 });
 
-test("a keyless write names the header and derives a valid reference", () => {
+test("a keyless write derives a PER-SERVER reference (U15)", () => {
 	/*
 	 * `POST /v1/desktop/mcp/credentials` with `header` needs exactly one id in
-	 * `values`, and the id reaches the config as `${ID}` - whose syntax is
-	 * `[A-Za-z_][A-Za-z0-9_]*`. So the derivation has to produce that, whatever
-	 * the user typed as a header name.
+	 * `values`, and the id reaches the config as `${ID}`, which the backend then
+	 * resolves from the encrypted store. The id is therefore the store's name for
+	 * the secret, and deriving it from the HEADER alone made two unrelated
+	 * services that both want `X-Api-Key` share one secret: the second write came
+	 * back `replace_confirmation_required`, the dialog had no control to answer
+	 * it, and answering it by overwriting would have broken the integration that
+	 * worked (U15).
+	 *
+	 * THE BACKEND'S OWN PATTERN is `SECRET_ID_RE` in `mcp/config.py`:
+	 * `^[A-Za-z_][A-Za-z0-9_]{0,127}$` - so 128 characters is the hard cap, and
+	 * the derivation has to stay inside it whatever the user typed.
 	 */
-	assert.equal(m.keylessReference("Authorization"), "AUTHORIZATION");
-	assert.equal(m.keylessReference("x-api-key"), "X_API_KEY");
-	assert.equal(m.keylessReference("  X Api Key  "), "X_API_KEY");
-	assert.equal(m.keylessReference("7-token"), "K_7_TOKEN");
-	assert.equal(m.keylessReference(""), "");
-	assert.equal(m.keylessReference("  "), "");
-	for (const header of [
-		"Authorization",
-		"x-api-key",
-		"7-token",
-		"a",
-		"A.B/C",
+	const backendReference = /^[A-Za-z_][A-Za-z0-9_]{0,127}$/;
+	assert.equal(
+		m.keylessReference("acme-new", "X-Api-Key"),
+		"ACME_NEW_X_API_KEY",
+		"the integration's name leads, so two services cannot collide",
+	);
+	assert.equal(m.keylessReference("acme-new", "Authorization"), "ACME_NEW_AUTHORIZATION");
+	/*
+	 * The defect itself, stated as a test: the same header on two servers must
+	 * NOT produce one id.
+	 */
+	assert.notEqual(
+		m.keylessReference("acme-key", "X-Api-Key"),
+		m.keylessReference("acme-new", "X-Api-Key"),
+	);
+	assert.equal(m.keylessReference("acme-new", "x-api-key"), "ACME_NEW_X_API_KEY");
+	assert.equal(m.keylessReference("acme-new", "  X Api Key  "), "ACME_NEW_X_API_KEY");
+	assert.equal(m.keylessReference("7-token", "Authorization"), "K_7_TOKEN_AUTHORIZATION");
+	// Nothing to name yet: the field is empty, so the Save button stays disabled.
+	assert.equal(m.keylessReference("", ""), "");
+	assert.equal(m.keylessReference("acme-new", "  "), "");
+	/*
+	 * A name that normalises to something the reference alphabet cannot START
+	 * with gets a prefix, and one that normalises cleanly (leading separators
+	 * stripped) needs none.
+	 */
+	assert.equal(m.keylessReference("-bad-", "Authorization"), "BAD_AUTHORIZATION");
+	assert.equal(m.keylessReference("7-token", "x-api-key"), "K_7_TOKEN_X_API_KEY");
+	for (const [name, header] of [
+		["acme-new", "Authorization"],
+		["acme-new", "x-api-key"],
+		["7-token", "a"],
+		["a", "A.B/C"],
+		["a".repeat(100), "x".repeat(80)],
 	]) {
+		const reference = m.keylessReference(name, header);
 		assert.match(
-			m.keylessReference(header),
-			/^[A-Za-z_][A-Za-z0-9_]*$/,
-			`${header} must derive a reference the ${"${ID}"} syntax accepts`,
+			reference,
+			backendReference,
+			`${name}/${header} must derive a reference the backend accepts`,
+		);
+		assert.ok(
+			reference.length <= m.MAX_REFERENCE_LENGTH,
+			`${name}/${header} stayed inside the cap`,
 		);
 	}
+	/*
+	 * A name long enough to be truncated keeps a digest of the FULL name, so two
+	 * long names sharing a prefix cannot collide into one secret - the defect
+	 * this naming exists to fix, one indirection further out.
+	 */
+	const long = m.keylessReference(`${"s".repeat(120)}one`, "X-Api-Key");
+	const longer = m.keylessReference(`${"s".repeat(120)}two`, "X-Api-Key");
+	assert.notEqual(long, longer, "a truncated reference still tells the servers apart");
+	assert.equal(
+		long,
+		m.keylessReference(`${"s".repeat(120)}one`, "X-Api-Key"),
+		"and it is stable across calls, so a re-save finds the same secret",
+	);
 });
 
 test("a keyless credential write carries the header to the right endpoint", () => {
@@ -1464,9 +1540,10 @@ test("the key dialog hands onSave the HEADER, not just the values (R2-1)", () =>
 	 * function the button calls.
 	 */
 	const keyless = m.keyDialogSave({
+		name: "acme-new",
 		keyless: true,
 		freeName: "X-Api-Key",
-		names: ["X_API_KEY"],
+		names: ["ACME_NEW_X_API_KEY"],
 		values: { [m.KEYLESS_VALUE_KEY]: "  s3cret  " },
 		replace: false,
 		canReplace: false,
@@ -1478,11 +1555,11 @@ test("the key dialog hands onSave the HEADER, not just the values (R2-1)", () =>
 	);
 	assert.deepEqual(
 		Object.keys(keyless.values),
-		["X_API_KEY"],
-		"exactly one id, which is what `add_key` requires beside a header",
+		["ACME_NEW_X_API_KEY"],
+		"exactly one id, and it is this server's own (U15)",
 	);
 	assert.equal(
-		keyless.values.X_API_KEY,
+		keyless.values.ACME_NEW_X_API_KEY,
 		"s3cret",
 		"trimmed, and the value is the secret",
 	);
@@ -1490,6 +1567,7 @@ test("the key dialog hands onSave the HEADER, not just the values (R2-1)", () =>
 
 	// The referenceful mode is the `set_key` write it always was: no header.
 	const referenced = m.keyDialogSave({
+		name: "acme-api",
 		keyless: false,
 		freeName: "",
 		names: ["PGPASSWORD", "PGUSER"],
@@ -1620,7 +1698,7 @@ test("the expired-check memory is for a STORED basis, never a live one (R2-3)", 
 	);
 });
 
-test("the key route leads, and it is offered even when the backend is silent (R2-6, U11)", () => {
+test("the key route leads on the page's evidence, while a silent row still gets Sign in (R2-6; U11 deferred)", () => {
 	/*
 	 * R2-6: deleting the "Add key leads over Sign in" branch left every test
 	 * green, which is how a fix regresses silently. A row that offers both must
@@ -1681,36 +1759,38 @@ test("the key route leads, and it is offered even when the backend is silent (R2
 	assert.equal(m.primaryAction(oauth, [], undefined).label, "Sign in");
 });
 
-test("the expired-check reading survives a reload (U10, R2-7)", () => {
+test("the expired-check reading survives a reload (U10, Q1)", () => {
 	/*
-	 * The UX round's evidence: after an app reload the row went back to "Ready |
-	 * Test" in Available and the whole Connected group vanished, because the
-	 * memory lived only in the hook's ref. With NO memories at all - which is
-	 * what a reload leaves - the reading now comes from the row's own
-	 * `status_observed_at`, the same fact the memory stood in for.
+	 * WHAT THE BACKEND ACTUALLY SENDS. The first version of this test fed the
+	 * model a `stored` row carrying `status_observed_at`, and the whole fix rested
+	 * on that field arriving - but `catalog.py` sets it on the `live` and `probe`
+	 * bases alone, so a stored row always carries null and the fallback could
+	 * never fire against a real backend. The row below is the payload the UX and
+	 * QA walks captured: stored, `not_started`, null timestamp, a last-seen count.
+	 *
+	 * The reading therefore has to come from what the PAGE keeps, and the shape
+	 * that survives a reload is the store `use-integrations` writes:
+	 * `memoriesTable` -> the store -> `seedMemories` on the next mount. Both
+	 * halves are exercised here, so the round-trip is pinned rather than the
+	 * functions separately.
 	 */
-	const now = 1_000_000;
+	const store = new Map();
+	const storage = {
+		getItem: (key) => (store.has(key) ? store.get(key) : null),
+		setItem: (key, value) => void store.set(key, value),
+	};
 	const expired = row("notion", {
 		status: "not_started",
 		status_basis: "stored",
-		status_observed_at: now - 6 * 60 * 1000,
+		status_observed_at: null,
 		tool_count: 12,
 		tool_count_basis: "last_seen",
 	});
-	const status = m.integrationStatus(expired, [], undefined, now);
-	assert.equal(status.label, "Worked 6 min ago · 12 tools");
-	assert.equal(status.tone, "success");
-	assert.equal(
-		m.integrationGroupOf(expired, [], undefined),
-		"connected",
-		"and it is still where the user last saw it",
-	);
+	const document = { servers: [expired], operations: [] };
 
-	/*
-	 * The memory still wins when it is fresher: a live probe observed while the
-	 * page was open is a better reading than the stored one.
-	 */
-	const justNow = m.advanceMemories(
+	// Page one: the probe answered, the page watched it, and it wrote that down.
+	const at = Date.now() - 6 * 60 * 1000;
+	const seen = m.advanceMemories(
 		undefined,
 		{
 			servers: [
@@ -1722,12 +1802,64 @@ test("the expired-check reading survives a reload (U10, R2-7)", () => {
 			],
 			operations: [],
 		},
-		now,
+		at,
 	);
-	assert.match(
-		m.integrationStatus(expired, [], justNow, now).label,
-		/^Worked just now|^Worked 0/,
+	m.writeRowMemories(m.memoriesTable(seen, document), storage);
+	assert.ok(store.size > 0, "the reading was written to the store");
+
+	// Page two: a fresh mount, no refs, only what the store holds.
+	const reloaded = m.seedMemories({}, document, m.readRowMemoryTable(storage));
+	const status = m.integrationStatus(expired, [], reloaded);
+	assert.equal(status.label, "Worked 6 min ago · 12 tools");
+	assert.equal(status.tone, "success");
+	assert.equal(
+		m.integrationGroupOf(expired, [], reloaded),
+		"connected",
+		"and it is still where the user last saw it",
 	);
+	// Its Test belongs in the overflow, exactly as on a connected row.
+	assert.equal(m.primaryAction(expired, [], reloaded), null);
+
+	/*
+	 * NO MEMORY AT ALL - a first run, or a store that was cleared - still does not
+	 * decay to "Ready": the row's own `last_seen` count is evidence the backend
+	 * stands behind, and the page says exactly that much and no more.
+	 */
+	const cold = m.integrationStatus(expired, [], undefined);
+	assert.equal(cold.label, "Worked earlier · 12 tools");
+	assert.equal(m.integrationGroupOf(expired, [], undefined), "connected");
+	// And with no count either, the idle word is the honest one.
+	assert.equal(
+		m.integrationStatus(
+			{ ...expired, tool_count: null, tool_count_basis: null },
+			[],
+			undefined,
+		).label,
+		"Ready",
+	);
+
+	/*
+	 * THE SECONDS TRAP, as the review measured it. `status_observed_at` is epoch
+	 * SECONDS while every clock in this page is milliseconds, and reading it as
+	 * milliseconds rendered a real six-minute-old check as "Worked 20700 d ago".
+	 * The field is not read at all now, so the row falls back to the count.
+	 */
+	const seconds = {
+		...expired,
+		status_observed_at: Math.floor((Date.now() - 6 * 60 * 1000) / 1000),
+	};
+	const secondsReading = m.integrationStatus(seconds, [], undefined);
+	assert.equal(secondsReading.label, "Worked earlier · 12 tools");
+	assert.doesNotMatch(secondsReading.label, /20700 d/);
+	assert.doesNotMatch(secondsReading.label, / d ago/);
+
+	/*
+	 * And an entry the page did not write is not trusted: a millisecond stamp is
+	 * required, so a seconds-valued one is refused rather than converted into a
+	 * claim about when the row last worked.
+	 */
+	assert.equal(m.parseRowMemory({ connectedAt: 1_700_000_000 }), null);
+	assert.ok(m.parseRowMemory({ connectedAt: Date.now() }));
 });
 
 test("a refused folder is dropped, forgotten, and recognised by code (R2-4)", () => {
@@ -1815,9 +1947,16 @@ test("a refusal from the live route refreshes the list before it is reported (R2
 	 * QueryClient spy is not available here and the source is what pins the
 	 * ORDER that makes the row's sentence true.
 	 */
+	/*
+	 * ENDS AT `liveControl`, which is declared between these two and contains its
+	 * own invalidate-and-rethrow pair. Ending at `storeKeys` - as this slice did
+	 * - swallowed that function, so the lazy pattern below matched liveControl's
+	 * pair instead, and deleting `control()`'s own 409 invalidate left the suite
+	 * green (m-1, reproduced by the reviewer).
+	 */
 	const catalog = source.slice(
 		source.indexOf("const control = useCallback("),
-		source.indexOf("const storeKeys = useCallback("),
+		source.indexOf("const liveControl = useCallback("),
 	);
 	assert.match(
 		catalog,
@@ -1871,4 +2010,519 @@ test("the key route is offered only where the backend lists it (round-3 eligibil
 			name,
 		);
 	}
+});
+
+/* ------------------------------------ round 3 (Q2, m-2..m-4, U14-U19, n-1..n4) */
+
+test("cancelling a FIRST sign-in leaves the row needing one (U14 residual)", () => {
+	/*
+	 * The backend's own verdict ("needs_sign_in") ages out of the payload with its
+	 * probe TTL, and a cancelled attempt is a NO-OP - so what is left is a bare
+	 * `not_started`, and the row was filed under Available with no primary action
+	 * on the strength of the attempt the user abandoned.
+	 */
+	const needs = row("linear-two", {
+		status: "needs_sign_in",
+		status_basis: "probe",
+		auth: { kind: "oauth", signed_in: false, secret_refs: [] },
+		actions: ["test", "sign_in", "remove"],
+	});
+	const memories = m.advanceMemories(
+		undefined,
+		{ servers: [needs], operations: [] },
+		1_000,
+	);
+	assert.equal(
+		memories["linear-two"].needsSignIn,
+		true,
+		"the read that asks for a sign-in is remembered",
+	);
+
+	// The attempt the user started, then cancelled.
+	const cancelled = op("linear-two", { id: "b".repeat(32), status: "cancelled", created_at: 2 });
+	const after = {
+		...needs,
+		status: "not_started",
+		status_basis: "stored",
+		status_reason: null,
+	};
+	const later = m.advanceMemories(
+		memories,
+		{ servers: [after], operations: [cancelled] },
+		2_000,
+	);
+	const status = m.integrationStatus(after, [cancelled], later);
+	assert.equal(status.label, "Needs sign-in");
+	assert.equal(status.tone, "warning");
+	assert.equal(m.integrationGroupOf(after, [cancelled], later), "attention");
+	const primary = m.primaryAction(after, [cancelled], later);
+	assert.equal(primary.kind, "sign_in");
+	assert.equal(primary.label, "Sign in");
+
+	// The signed-out path keeps its own, more specific wording (round 2's fix).
+	const completed = op("linear-two", {
+		id: "c".repeat(32),
+		action: "logout",
+		status: "complete",
+		created_at: 3,
+	});
+	const signedOut = m.advanceMemories(
+		later,
+		{ servers: [after], operations: [completed] },
+		3_000,
+	);
+	const signedOutStatus = m.integrationStatus(after, [completed], signedOut);
+	assert.equal(signedOutStatus.label, "Signed out");
+	assert.equal(signedOut["linear-two"].needsSignIn, false);
+	assert.equal(m.primaryAction(after, [completed], signedOut).label, "Sign in");
+
+	// A completed sign-in clears it: the row is connected, so nothing is asked for.
+	const connected = {
+		...after,
+		status: "connected",
+		status_basis: "probe",
+		tool_count: 3,
+		tool_count_basis: "probe",
+	};
+	const settled = m.advanceMemories(
+		later,
+		{ servers: [connected], operations: [] },
+		4_000,
+	);
+	assert.equal(settled["linear-two"].needsSignIn, false);
+	assert.equal(
+		m.integrationStatus(connected, [], settled).label,
+		"Connected · 3 tools",
+	);
+});
+
+test("a failed sign-out files under Needs attention and leads with the retry (m-2, Q3, U16)", () => {
+	const signedIn = row("linear", {
+		status: "connected",
+		status_basis: "probe",
+		tool_count: 3,
+		auth: {
+			kind: "oauth",
+			signed_in: true,
+			secret_refs: [{ id: "LINEAR_TOKEN", state: "encrypted" }],
+		},
+		actions: ["test", "reauth", "sign_out", "remove"],
+	});
+	const failedLogout = op("linear", {
+		action: "logout",
+		status: "failed",
+		message:
+			"MCP logout failed for 'linear': could not delete the stored credential for http://127.0.0.1:8296/mcp (attempt to write a readonly database) - it is still in place, so a fresh grant would silently reuse it",
+	});
+	const memories = m.advanceMemories(
+		undefined,
+		{ servers: [signedIn], operations: [] },
+		1_000,
+	);
+	// What the backend answers afterwards: still stored, still signed in.
+	const after = {
+		...signedIn,
+		status: "not_started",
+		status_basis: "stored",
+		tool_count: 3,
+		tool_count_basis: "last_seen",
+	};
+	const status = m.integrationStatus(after, [failedLogout], memories);
+	assert.equal(status.label, "Sign-out didn't finish");
+	assert.equal(status.tone, "warning");
+	/*
+	 * U16: the reason this row used to print was the backend's developer text - a
+	 * SQLite error and "a fresh grant would silently reuse it" - which is true,
+	 * alarming, and no help to the person looking at the row. It stays in the
+	 * config/file view.
+	 */
+	assert.doesNotMatch(status.detail, /readonly|fresh grant|MCP logout|sqlite/i);
+	assert.match(status.detail, /still saved/i);
+	assert.match(status.detail, /Sign out again/);
+	/*
+	 * m-2 / Q3: the row's own words are a warning, so its group has to be the one
+	 * that holds rows needing a decision - it sat under Connected while the page
+	 * stayed mounted and moved to Available on a reload, two readings that
+	 * disagreed with each other as well as with the words.
+	 */
+	assert.equal(
+		m.integrationGroupOf(after, [failedLogout], memories),
+		"attention",
+	);
+	const primary = m.primaryAction(after, [failedLogout], memories);
+	assert.equal(primary.kind, "sign_out");
+	assert.equal(primary.label, "Sign out again");
+});
+
+test("a Disconnect the user pressed is authoritative until a read confirms (Q2)", () => {
+	/*
+	 * After a live Disconnect the page re-reads once and stops polling, and that
+	 * read can land on the config-only answer: the overlay was measured flapping
+	 * 12 live / 8 config across 20 reads inside one second. The pre-Disconnect
+	 * "worked" memory then worded the row as a success - "Worked just now ·
+	 * 2 tools" under Connected, with no Connect - while the backend said not
+	 * connected. The memory the control writes is what makes the row honest
+	 * whatever the next read says.
+	 */
+	const live = row("docs-search", {
+		status: "connected",
+		status_basis: "live",
+		tool_count: 12,
+	});
+	const memories = m.advanceMemories(
+		undefined,
+		{ servers: [live], operations: [] },
+		1_000,
+	);
+	assert.equal(memories["docs-search"].connectedAt, 1_000);
+
+	// The press: what the hook writes before the re-read is awaited.
+	const pressed = {
+		...memories,
+		"docs-search": {
+			...memories["docs-search"],
+			connectedAt: null,
+			disconnectedAt: 2_000,
+		},
+	};
+	const stored = row("docs-search", {
+		status: "not_started",
+		status_basis: "stored",
+		tool_count: 12,
+		tool_count_basis: "last_seen",
+		actions: ["test", "connect", "remove"],
+	});
+	assert.equal(
+		m.integrationStatus(stored, [], pressed).label,
+		"Not connected",
+		"the config-only read does not restore a worked reading",
+	);
+	assert.equal(m.integrationGroupOf(stored, [], pressed), "ready");
+	assert.equal(
+		m.primaryAction(stored, [], pressed).kind,
+		"connect",
+		"and the row still offers the way back",
+	);
+
+	// Still authoritative one read later, and through `advanceMemories`.
+	const later = m.advanceMemories(
+		pressed,
+		{ servers: [stored], operations: [] },
+		3_000,
+	);
+	assert.equal(m.integrationStatus(stored, [], later).label, "Not connected");
+	assert.equal(m.integrationGroupOf(stored, [], later), "ready");
+
+	// A read that says it is CONNECTED is the confirmation, and clears the claim.
+	const back = {
+		...live,
+		status: "connected",
+		status_basis: "live",
+		tool_count: 12,
+		tool_count_basis: "live",
+	};
+	const confirmed = m.advanceMemories(
+		later,
+		{ servers: [back], operations: [] },
+		4_000,
+	);
+	assert.equal(confirmed["docs-search"].disconnectedAt, null);
+	assert.equal(
+		m.integrationStatus(back, [], confirmed).label,
+		"Connected · 12 tools",
+	);
+});
+
+test("a scoped document does not erase a global row's recorded state (U17)", () => {
+	/*
+	 * Operations are scoped to a cwd while global rows are not, so a project
+	 * document answers `operations: []` for a row whose last sign-out this page
+	 * watched happen - and `linear` went from "Sign-out didn't finish" to "Ready"
+	 * by opening a chat in a project folder.
+	 */
+	const global = row("linear", {
+		status: "not_started",
+		status_basis: "stored",
+		auth: {
+			kind: "oauth",
+			signed_in: true,
+			secret_refs: [{ id: "LINEAR_TOKEN", state: "encrypted" }],
+		},
+		actions: ["test", "sign_out", "remove"],
+	});
+	const failedLogout = op("linear", { action: "logout", status: "failed" });
+	// The page watched it happen under the default (global) document.
+	const memories = m.advanceMemories(
+		undefined,
+		{ servers: [global], operations: [failedLogout] },
+		1_000,
+	);
+	assert.ok(memories.linear.lastDecisive, "the operation is remembered");
+
+	// Then a project document arrives, and it carries no operations for the row.
+	const scoped = m.advanceMemories(
+		memories,
+		{ servers: [global], operations: [] },
+		2_000,
+	);
+	assert.equal(
+		m.integrationStatus(global, [], scoped).label,
+		"Sign-out didn't finish",
+		"the recorded state survives the scope change",
+	);
+	assert.equal(m.integrationGroupOf(global, [], scoped), "attention");
+	assert.equal(m.primaryAction(global, [], scoped).label, "Sign out again");
+	// And the memory is what it reads: no operations at all is the same answer.
+	assert.equal(
+		m.integrationStatus(global, [], scoped).label,
+		m.integrationStatus(global, [], memories).label,
+	);
+});
+
+test("the folder banner follows the folder that was refused (m-3)", () => {
+	/*
+	 * The flag used to stay true for the whole mount, so switching to a chat whose
+	 * folder is fine still carried "This chat's folder no longer exists" over a
+	 * project catalog that was reading perfectly.
+	 */
+	assert.equal(m.folderUnavailableFor("/home/u/gone", "/home/u/gone"), true);
+	assert.equal(m.folderUnavailableFor("/home/u/gone", "/home/u/here"), false);
+	assert.equal(m.folderUnavailableFor("/home/u/gone", null), false);
+	assert.equal(m.folderUnavailableFor(null, "/home/u/here"), false);
+});
+
+test("the dialog's reason line never names the key route a row does not have (n-1)", () => {
+	const backendReason =
+		"No OAuth authorization server was discovered for this server; check its URL and your network, or add its key instead.";
+	// With a key route the sentence stands as the server wrote it.
+	assert.equal(m.publicSignInReason(backendReason, true), backendReason);
+	/*
+	 * Without one, the trailing advice is dropped rather than reworded: it names a
+	 * control this surface cannot draw, which is the defect `signInNextStep` was
+	 * fixed for (D15) one line further up the same dialog, and U11's remaining
+	 * contradiction.
+	 */
+	const honest = m.publicSignInReason(backendReason, false);
+	assert.doesNotMatch(honest, /add its key/i);
+	assert.match(honest, /No OAuth authorization server was discovered/);
+	assert.match(honest, /\.$/, "and it still ends as a sentence");
+	// An absent reason stays absent, so the caller can say the server gave none.
+	assert.equal(m.publicSignInReason(null, false), null);
+	assert.equal(m.publicSignInReason("   ", false), null);
+	// A sentence with nothing to strip is untouched.
+	assert.equal(
+		m.publicSignInReason("The server refused the redirect.", false),
+		"The server refused the redirect.",
+	);
+});
+
+test("a credentials refusal names the control the dialog actually draws (n-3)", () => {
+	/*
+	 * Two things this pins. First, the `invalid_target` sentence had no test at
+	 * all: rewording it or deleting it left the suite green, because it existed
+	 * only inside a callback. Second, the conflict sentence named "Replace saved
+	 * values" - a plural label the dialog stopped using, and on a keyless row a
+	 * control that was not on screen at all (U15).
+	 */
+	assert.equal(
+		m.credentialsRefusalMessage("saved", [], {}),
+		null,
+		"a saved write has no message",
+	);
+	const conflict = m.credentialsRefusalMessage(
+		"replace_confirmation_required",
+		[],
+		{ ACME_NEW_X_API_KEY: "v" },
+	);
+	assert.match(conflict, new RegExp(m.replaceControlLabel(1)));
+	assert.doesNotMatch(conflict, /Replace saved values/);
+	assert.match(
+		m.credentialsRefusalMessage(
+			"replace_confirmation_required",
+			[],
+			{ A: "1", B: "2" },
+		),
+		new RegExp(m.replaceControlLabel(2)),
+		"the plural label is named when the dialog draws that one",
+	);
+	const invalid = m.credentialsRefusalMessage("invalid_target", [], {
+		AUTHORIZATION: "v",
+	});
+	assert.match(invalid, /can't carry this key/i);
+	assert.match(invalid, /Nothing was saved/);
+	// A code nobody knows still says what happened, naming the ids the backend
+	// refused, and falls back to the ids the write carried when it named none.
+	assert.match(
+		m.credentialsRefusalMessage("write_failed", ["A", "B"], { A: "1", B: "2" }),
+		/A, B/,
+	);
+	assert.match(
+		m.credentialsRefusalMessage("write_failed", [], { C: "1" }),
+		/C/,
+	);
+});
+
+test("a row's reason drops a status code, which explains nothing (n4)", () => {
+	/*
+	 * The rejected-key reason read "acme-new rejected our credentials (401) - set
+	 * its API key or headers": a number where an explanation belongs, on a row
+	 * whose action already says what to do (Add key).
+	 */
+	assert.equal(
+		m.publicRowReason("acme-new rejected our credentials (401) - set its API key or headers"),
+		"acme-new rejected our credentials - set its API key or headers",
+	);
+	// A number that is part of a longer token is not a status code.
+	assert.equal(
+		m.publicRowReason("MCP-401-server refused the read"),
+		"MCP-401-server refused the read",
+	);
+	// The transport prefixes are still stripped, and only those.
+	assert.equal(m.publicRowReason("connection closed: boom"), "boom");
+	assert.equal(m.publicRowReason("/mcp reload"), null);
+	assert.equal(m.publicRowReason(null), null);
+});
+
+test("the dialogs and the row list keep the geometry and the rules the walk measured (D19, n3, U18, U19, m-4)", () => {
+	/*
+	 * Source pins, and their limits stated: this suite bundles the model, not the
+	 * components, so it cannot render them. What it can do is fail when the line
+	 * that carries a rule is deleted, which is how each of these was lost once.
+	 * The rendered proof is the captured frames and the walk's measurements.
+	 */
+	const signIn = readFileSync(
+		"src/renderer/src/features/settings/components/integrations/integration-sign-in-dialog.tsx",
+		"utf8",
+	);
+	/*
+	 * D19: every phase is capped by `max-w-md`, and a short phase collapsed to the
+	 * 320 px floor - so the panel snapped 64 px narrower on each side at the exact
+	 * moment the user came back from the browser. `fullWidth` holds one width.
+	 */
+	assert.match(
+		signIn,
+		/^\t\t\tfullWidth$/m,
+		"the sign-in dialog passes the prop that holds one width across its phases (D19)",
+	);
+
+	const keyDialog = readFileSync(
+		"src/renderer/src/features/settings/components/integrations/integration-key-dialog.tsx",
+		"utf8",
+	);
+	// n3: neither body may widen itself past its scroller, which drew a stray
+	// horizontal strip under the last control.
+	for (const [file, source] of [
+		["key", keyDialog],
+		["sign-in", signIn],
+	]) {
+		assert.doesNotMatch(
+			source,
+			/className="[^"]*-mx-1\.5[^"]*p-1\.5[^"]*"/,
+			`${file}: the scroll body is the scroller's own width (n3)`,
+		);
+	}
+	/*
+	 * U19: a press on a control in the add form's actions row must not blur the
+	 * field above it, because the blur can insert an error line and move the
+	 * button between mousedown and mouseup - which is how a click on Add
+	 * integration with an empty Name did nothing at all while Enter worked.
+	 */
+	const addForm = readFileSync(
+		"src/renderer/src/features/settings/components/integrations/add-integration-form.tsx",
+		"utf8",
+	);
+	const stable = [...addForm.matchAll(/onMouseDown=\{keepGeometryStable\}/g)].length;
+	assert.equal(
+		stable,
+		2,
+		`both controls in the actions row hold their geometry across the press (found ${stable}, expected 2)`,
+	);
+	const section = readFileSync(
+		"src/renderer/src/features/settings/components/mcp-management-section.tsx",
+		"utf8",
+	);
+	/*
+	 * m-4: the deferred focus move is armed with a DEADLINE and dropped past it.
+	 * Armed until the row stopped asking for a sign-in, it could take focus long
+	 * after the dialog that armed it, from wherever the user had moved on to.
+	 */
+	assert.match(
+		section,
+		/Date\.now\(\) > focusRow\.until/,
+		"a stale focus move is dropped rather than performed (m-4)",
+	);
+	assert.match(
+		section,
+		/until: Date\.now\(\) \+ FOCUS_ARM_MS/,
+		"and every arm site carries the deadline",
+	);
+	// U18: the four completions that used to leave focus on `<body>`.
+	assert.match(
+		section,
+		/closeSignIn = useCallback\(/,
+		"the sign-in dialog hands focus back through the row (U12, U18)",
+	);
+	const arms = [...section.matchAll(/setFocusRow\(\{/g)].length;
+	assert.ok(
+		arms >= 3,
+		`the row-focus move is armed by the sign-in close, the sign-out confirm and a key save (found ${arms})`,
+	);
+	assert.match(
+		addForm,
+		/onCancel|onCancel\(\)/,
+		"the add form's cancel is wired to the section, which returns focus to its opener (U18)",
+	);
+	assert.match(
+		section,
+		/onCancel=\{\(\) => \{\n\t\t\t\tsetShowAdd\(false\);/,
+		"and that handler puts focus back on Add integration",
+	);
+
+	/*
+	 * Q2's wiring half, pinned at the source for the same reason: the rule lives
+	 * in the model (tested above), but a rule nothing writes is a rule that does
+	 * nothing. The hook has to record the user's Disconnect, and the list has to
+	 * keep asking for a bounded window afterwards - otherwise the one read that
+	 * follows can land on the config-only answer and the row never hears the
+	 * confirmation.
+	 */
+	const hook = readFileSync(
+		"src/renderer/src/features/settings/components/integrations/use-integrations.ts",
+		"utf8",
+	);
+	assert.match(
+		hook,
+		/disconnectedAt: Date\.now\(\)/,
+		"the hook writes the user's Disconnect into the row's memory (Q2)",
+	);
+	assert.match(
+		hook,
+		/markControlMemory\(request\)/,
+		"and it does so on the control path, not only in a test",
+	);
+	/*
+	 * AND THE WINDOW IS DECLARED BEFORE THE QUERIES THAT READ IT. React Query
+	 * calls `refetchInterval` during the render that builds the options, so a
+	 * `pollIntervalFor` declared further down the component body is in its
+	 * temporal dead zone the first time it is asked - measured on the built app as
+	 * `ReferenceError: Cannot access 'ee' before initialization`, which took the
+	 * whole Settings page down to a blank screen. No unit test can see that; this
+	 * asserts the ORDER, and the live walk is what proves the page renders.
+	 */
+	assert.ok(
+		hook.indexOf("const pollIntervalFor = useCallback(") <
+			hook.indexOf("const catalogQuery = useQuery"),
+		"the poll helper is declared before the first query that calls it",
+	);
+	const polls = [...hook.matchAll(/refetchInterval: \(query\) =>\s*\n?\s*pollIntervalFor\(/g)].length;
+	assert.equal(
+		polls,
+		2,
+		`both routes poll through the settle window (found ${polls}, expected 2)`,
+	);
+	assert.match(
+		hook,
+		/Date\.now\(\) < settleUntilRef\.current\s*\n\s*\? INTEGRATIONS_POLL_MS\s*\n\s*: integrationsPollInterval\(data\)/,
+		"which polls every tick inside the window and hands back to the moving-row rule after it (Q2)",
+	);
 });

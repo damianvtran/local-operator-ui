@@ -50,12 +50,20 @@ import type {
 	McpCatalog,
 } from "../../../../../../shared/desktop-control-contract";
 import {
+	CONTROL_SETTLE_MS,
+	INTEGRATIONS_POLL_MS,
 	type IntegrationDocument,
+	ROW_MEMORY_STORAGE_KEY,
 	type RowMemories,
+	type RowMemory,
 	advanceMemories,
 	catalogFromSessionState,
+	folderUnavailableFor,
 	integrationsPollInterval,
+	memoriesTable,
 	memoryFor,
+	replaceControlLabel,
+	seedMemories,
 } from "./integration-model";
 
 /**
@@ -154,6 +162,118 @@ export function rememberCatalogCwd(
 		// A full or unavailable store is not a reason to fail a render: the
 		// snapshot read is still the authority, and this is only the first paint.
 	}
+}
+
+/**
+ * Where the SETTLED row memories are kept between reloads.
+ *
+ * WHY: the backend publishes no observation time on a `stored` row, so a reading
+ * this page holds only in a ref dies with the reload and the row decays to
+ * "Ready" - measured twice from a real reload of an expired check (U10/Q1). The
+ * page is the only party that watched the transition, so this is where it is
+ * kept. The pure half (which entries, and how they are validated) is in
+ * `integration-model.ts`; this half is only the I/O.
+ */
+export type MemoryStorage = Pick<Storage, "getItem" | "setItem">;
+
+/** The store's own shape, kept as `unknown` until each entry is validated. */
+const memoryStorage = (): MemoryStorage | null =>
+	typeof localStorage === "undefined" ? null : localStorage;
+
+export function readRowMemoryTable(
+	storage: MemoryStorage | null = memoryStorage(),
+): Record<string, unknown> {
+	if (!storage) return {};
+	try {
+		const raw = storage.getItem(ROW_MEMORY_STORAGE_KEY);
+		if (!raw) return {};
+		const parsed: unknown = JSON.parse(raw);
+		if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+			return {};
+		return parsed as Record<string, unknown>;
+	} catch {
+		/*
+		 * A store that cannot be read is a page with NO memory, not a failed
+		 * render: every row still paints, reading exactly as it would on a first
+		 * run, which is the honest answer when nothing can be recalled.
+		 */
+		return {};
+	}
+}
+
+/**
+ * The most entries the store keeps.
+ *
+ * MERGED, not replaced, because a document is not the whole picture: the session
+ * route lists a subset of the rows the catalog route does, so pruning to the
+ * rows in hand would throw away readings a later route still needs (U17's lesson
+ * one layer down). The cap is the bound on that growth, and it is far above the
+ * handful of entries a machine with, say, a dozen servers and a few projects
+ * ever produces.
+ */
+export const ROW_MEMORY_STORAGE_LIMIT = 256;
+
+export function writeRowMemories(
+	table: Record<string, RowMemory>,
+	storage: MemoryStorage | null = memoryStorage(),
+): void {
+	if (!storage) return;
+	try {
+		const next: Record<string, unknown> = {
+			...readRowMemoryTable(storage),
+			...table,
+		};
+		const keys = Object.keys(next);
+		if (keys.length > ROW_MEMORY_STORAGE_LIMIT) {
+			const kept: Record<string, unknown> = {};
+			for (const key of keys.slice(-ROW_MEMORY_STORAGE_LIMIT))
+				kept[key] = next[key];
+			storage.setItem(ROW_MEMORY_STORAGE_KEY, JSON.stringify(kept));
+			return;
+		}
+		storage.setItem(ROW_MEMORY_STORAGE_KEY, JSON.stringify(next));
+	} catch {
+		// Same rule as the reader: a full or unavailable store is not a failed
+		// render, and every rule that needs memory stands down without it.
+	}
+}
+
+/**
+ * What a credentials write answers with, in the page's own words.
+ *
+ * Extracted from the two routes that call it - catalog and session - which had
+ * drifted into two copies of the same sentences, and made a value the suite can
+ * assert: rewording or deleting the `invalid_target` sentence used to leave the
+ * suite green, because it existed only inside a callback (n-3).
+ */
+export function credentialsRefusalMessage(
+	code: string | null | undefined,
+	failedIds: readonly string[],
+	values: Record<string, string>,
+): string | null {
+	if (code === "saved") return null;
+	if (code === "replace_confirmation_required") {
+		/*
+		 * NAME THE CONTROL THE DIALOG ACTUALLY DRAWS. The sentence used to say
+		 * "Replace saved values", a plural label the dialog stopped using in round
+		 * 2 - and on a keyless row it named a control that was not on screen at
+		 * all, which is the dead end U15 was raised for. The label is derived the
+		 * same way the checkbox derives it, so the two cannot drift again.
+		 */
+		const label = replaceControlLabel(Object.keys(values).length);
+		return `A saved value already exists for this key. Tick \u201c${label}\u201d to overwrite it.`;
+	}
+	if (code === "invalid_target")
+		/*
+		 * `add_key`'s own refusal (backend #1511), and it is nothing to do with the
+		 * store: the header cannot carry the key - the transport owns it, it is
+		 * already set on the server, or the name is not a header. NOTHING WAS
+		 * WRITTEN, and saying so is the difference between a user fixing the header
+		 * and a user hunting a lock that is not locked (R2-1).
+		 */
+		return "That header can't carry this key. It may already be set on the server, or belong to the transport - try a different header name. Nothing was saved.";
+	const failed = failedIds.length ? failedIds : Object.keys(values);
+	return `Not saved: ${failed.join(", ")}. The encrypted store may be locked.`;
 }
 
 /**
@@ -442,6 +562,41 @@ export function useIntegrations({
 		rememberCatalogCwd(activeSessionId, cwd);
 	}, [route, activeSessionId, cwd]);
 
+	/*
+	 * THE WINDOW IS SET UP HERE, ABOVE THE QUERIES, and that placement is the
+	 * point: React Query calls `refetchInterval` during the render that builds its
+	 * options, so a `pollIntervalFor` declared later in this component body is in
+	 * its temporal dead zone when it is first asked - measured on the built app as
+	 * `ReferenceError: Cannot access 'ee' before initialization`, which took the
+	 * whole Settings page down to a blank screen.
+	 */
+	/*
+	 * After a control, the page keeps asking for a short BOUNDED window.
+	 *
+	 * Why it is needed at all: a live overlay answers or degrades inside the same
+	 * second when it is up, and the query stops polling the moment nothing is
+	 * "moving" - so without a window the page may never see a `live` read after
+	 * the press, which is the only read that can CONFIRM what the user just did.
+	 * Why it is bounded: a page that always asks spends a read every 2 s on a
+	 * screen that is usually idle, and the window closes early as soon as a live
+	 * read arrives.
+	 */
+	const settleUntilRef = useRef(0);
+	const [settleUntil, setSettleUntil] = useState(0);
+	const startSettling = useCallback(() => {
+		const until = Date.now() + CONTROL_SETTLE_MS;
+		settleUntilRef.current = until;
+		setSettleUntil(until);
+	}, []);
+
+	const pollIntervalFor = useCallback(
+		(data: IntegrationDocument | undefined): number | false =>
+			Date.now() < settleUntilRef.current
+				? INTEGRATIONS_POLL_MS
+				: integrationsPollInterval(data),
+		[],
+	);
+
 	const catalogQuery = useQuery<McpCatalog, Error>({
 		queryKey: catalogKey,
 		queryFn: () => fetchMcpCatalog(cwd, overlay),
@@ -452,7 +607,7 @@ export function useIntegrations({
 		 */
 		enabled: route === "catalog" && !resolvingCwd,
 		staleTime: 10_000,
-		refetchInterval: (query) => integrationsPollInterval(query.state.data),
+		refetchInterval: (query) => pollIntervalFor(query.state.data),
 	});
 
 	/*
@@ -478,7 +633,7 @@ export function useIntegrations({
 		enabled: route === "session" && Boolean(readSessionId),
 		staleTime: 10_000,
 		refetchInterval: (query) =>
-			integrationsPollInterval(
+			pollIntervalFor(
 				query.state.data
 					? catalogFromSessionState(query.state.data, readSessionId ?? "")
 					: undefined,
@@ -493,6 +648,21 @@ export function useIntegrations({
 	}, [route, catalogQuery.data, sessionQuery.data, readSessionId]);
 
 	/*
+	 * A live read is the CONFIRMATION the window is waiting for, so it closes as
+	 * soon as one arrives: the row is now being described by the runtime itself,
+	 * which is the authority `memory.disconnectedAt` was standing in for.
+	 */
+	useEffect(() => {
+		if (!settleUntil) return;
+		const live =
+			document?.servers.some((row) => row.status_basis === "live") ?? false;
+		if (!live) return;
+		settleUntilRef.current = 0;
+		setSettleUntil(0);
+	}, [document, settleUntil]);
+
+
+	/*
 	 * The memories are advanced INSIDE the memo rather than in an effect,
 	 * because the group a running operation pins must be known to the very
 	 * render that first sees the operation: an effect would lag one paint, which
@@ -503,9 +673,36 @@ export function useIntegrations({
 	const [memoryEpoch, setMemoryEpoch] = useState(0);
 	const memories = useMemo(() => {
 		void memoryEpoch;
-		memoriesRef.current = advanceMemories(memoriesRef.current, document);
+		memoriesRef.current = advanceMemories(
+			/*
+			 * Seeded from the store for the rows this page has not seen yet, and
+			 * only those: a row already in the map carries a LATER reading than
+			 * the store does - including a deliberate clear - so re-seeding would
+			 * resurrect the value that clear removed (`seedMemories`). Read inside
+			 * the memo rather than into a ref so a reload's FIRST render already
+			 * has the reading, which is the frame the row paints on (Q1).
+			 */
+			seedMemories(memoriesRef.current, document, readRowMemoryTable()),
+			document,
+		);
 		return memoriesRef.current;
 	}, [document, memoryEpoch]);
+
+	/*
+	 * The store is written from the same object the rules read, and only when the
+	 * entries changed: this effect runs on every poll tick while something is
+	 * moving, and an unconditional write would be a `localStorage` write every
+	 * 2 s for a page that is merely watching.
+	 */
+	const persistedRef = useRef("");
+	useEffect(() => {
+		const table = memoriesTable(memories, document);
+		if (!Object.keys(table).length) return;
+		const serialised = JSON.stringify(table);
+		if (serialised === persistedRef.current) return;
+		persistedRef.current = serialised;
+		writeRowMemories(table);
+	}, [memories, document]);
 
 	const markNeedsKey = useCallback((name: string) => {
 		const before = memoryFor(memoriesRef.current, name);
@@ -514,6 +711,32 @@ export function useIntegrations({
 			...memoriesRef.current,
 			[name]: { ...before, needsKey: true },
 		};
+		setMemoryEpoch((epoch) => epoch + 1);
+	}, []);
+
+	/*
+	 * The row's memory after a control the USER pressed (Q2).
+	 *
+	 * A Disconnect is the one that matters: the page re-reads the list once
+	 * afterwards and then stops polling, and that read is measured landing on the
+	 * config-only answer (the live overlay flapped 12 live / 8 config across 20
+	 * reads inside a second), so the row went on saying "Worked just now" under
+	 * Connected with no Connect offered while the backend said not connected. The
+	 * user's own act contradicts "worked" whatever the next read says, so the
+	 * remembered reading is dropped here and the row stops claiming health until
+	 * a read says it is connected again - which is what clears `disconnectedAt`
+	 * (`advanceMemories`).
+	 */
+	const markControlMemory = useCallback((request: IntegrationControl) => {
+		if (request.action !== "disconnect" && request.action !== "connect") return;
+		const before = memoryFor(memoriesRef.current, request.name);
+		const next: RowMemory =
+			request.action === "disconnect"
+				? { ...before, connectedAt: null, disconnectedAt: Date.now() }
+				: // Connecting clears the claim: the user is asking for it back, and
+					// the read that follows is what confirms it.
+					{ ...before, disconnectedAt: null };
+		memoriesRef.current = { ...memoriesRef.current, [request.name]: next };
 		setMemoryEpoch((epoch) => epoch + 1);
 	}, []);
 
@@ -526,6 +749,8 @@ export function useIntegrations({
 				try {
 					const next = await controlMcpCatalog(cwd, body);
 					queryClient.setQueryData(catalogKey, next);
+					markControlMemory(request);
+					startSettling();
 					return next.operation?.id ?? null;
 				} catch (cause) {
 					/*
@@ -549,6 +774,8 @@ export function useIntegrations({
 					sessionId: readSessionId,
 					control: sessionControlBody(request),
 				});
+				markControlMemory(request);
+				startSettling();
 				const key = mcpKeys.list(readSessionId);
 				// `connect`/`reload`/`remove` answer with the snapshot; a grant answers
 				// with its operation, so only a document-shaped answer is written.
@@ -564,7 +791,15 @@ export function useIntegrations({
 			}
 			return null;
 		},
-		[route, cwd, catalogKey, queryClient, readSessionId],
+		[
+			route,
+			cwd,
+			catalogKey,
+			queryClient,
+			readSessionId,
+			markControlMemory,
+			startSettling,
+		],
 	);
 
 	/*
@@ -603,12 +838,29 @@ export function useIntegrations({
 					void queryClient.invalidateQueries({ queryKey: catalogKey });
 					throw cause;
 				}
+				/*
+				 * The user's own Disconnect is remembered BEFORE the re-read is
+				 * awaited: the read can legitimately come back on the config-only
+				 * answer, which is measured flapping with the live one inside the
+				 * same second, and a row that then read "Worked just now" told the
+				 * user their Disconnect had done nothing (Q2).
+				 */
+				markControlMemory(request);
+				startSettling();
 				await queryClient.invalidateQueries({ queryKey: catalogKey });
 				return null;
 			}
 			return control(request);
 		},
-		[route, overlay, queryClient, catalogKey, control],
+		[
+			route,
+			overlay,
+			queryClient,
+			catalogKey,
+			control,
+			markControlMemory,
+			startSettling,
+		],
 	);
 
 	const storeKeys = useCallback(
@@ -631,21 +883,11 @@ export function useIntegrations({
 				if (result.code !== "saved")
 					return {
 						saved: false,
-						message:
-							result.code === "replace_confirmation_required"
-								? "A saved value already exists for this key. Tick “Replace saved values” to overwrite it."
-								: result.code === "invalid_target"
-									? /*
-										 * `add_key`'s own refusal (backend #1511), and it is
-										 * nothing to do with the store: the header cannot
-										 * carry the key - the transport owns it, it is
-										 * already set on the server, or the name is not a
-										 * header. NOTHING WAS WRITTEN, and saying so is the
-										 * difference between a user fixing the header and
-										 * a user hunting a lock that is not locked (R2-1).
-										 */
-										"That header can't carry this key. It may already be set on the server, or belong to the transport - try a different header name. Nothing was saved."
-									: `Not saved: ${(result.failed_ids.length ? result.failed_ids : Object.keys(values)).join(", ")}. The encrypted store may be locked.`,
+						message: credentialsRefusalMessage(
+							result.code,
+							result.failed_ids,
+							values,
+						),
 					};
 				/*
 				 * A saved key is only worth something once the server accepts it, so
@@ -680,10 +922,11 @@ export function useIntegrations({
 				if (stored.data?.code !== "saved")
 					return {
 						saved: false,
-						message:
-							stored.data?.code === "replace_confirmation_required"
-								? "A saved value already exists for this key. Tick “Replace saved values” to overwrite it."
-								: `Not saved: ${(stored.data?.failed_ids?.length ? stored.data.failed_ids : Object.keys(values)).join(", ")}. The encrypted store may be locked.`,
+						message: credentialsRefusalMessage(
+							stored.data?.code,
+							stored.data?.failed_ids ?? [],
+							values,
+						),
 					};
 				try {
 					await control({ action: "connect", name });
@@ -720,7 +963,7 @@ export function useIntegrations({
 		 * chat folder was deleted must be told why the project rows are missing,
 		 * rather than left to conclude the page is broken (R2-4).
 		 */
-		folderUnavailable: refusedCwd !== null,
+		folderUnavailable: folderUnavailableFor(refusedCwd, resolvedCwd),
 		refetch,
 		control: liveControl,
 		storeKeys,
