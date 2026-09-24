@@ -313,7 +313,10 @@ const ROW_PARTS = (() => {
 	const mic = ROW.indexOf('aria-label="Start recording"');
 	const stop = ROW.indexOf('aria-label="Stop"');
 	const send = ROW.indexOf('aria-label="Send message"');
-	const reserved = ROW.indexOf("data-interrupt-slot");
+	// The ATTRIBUTE, not the bare name: the name also appears in the source's own
+	// prose, and a slice anchored on a mention inside a comment is a slice of the
+	// wrong region (it silently spanned the Stop control and read its `aria-label`).
+	const reserved = ROW.indexOf('data-interrupt-slot=""');
 	return {
 		mic,
 		stop,
@@ -321,6 +324,13 @@ const ROW_PARTS = (() => {
 		reserved,
 		micBlock: ROW.slice(mic - 400, mic + 400),
 		stopBlock: ROW.slice(stop - 400, stop + 200),
+		// The slot's whole element and the cluster it stands in for, to the closing
+		// tag of each: the pair whose widths must agree, and the reason the model
+		// below expresses both as ONE token rather than two measurements.
+		slotElement: ROW.slice(
+			ROW.lastIndexOf("<span", reserved),
+			ROW.indexOf("</span>", ROW.indexOf("</Button>", reserved)),
+		),
 		sendBlock: ROW.slice(send - 400, send + 200),
 		// The mount's own condition, from the `{` that opens it to the span's
 		// attributes, and the span itself.
@@ -358,16 +368,26 @@ const ROW_RUNGS = [
  * the idle row once that window has passed - the state the operator's report is
  * about, where the row is the two controls and nothing between them.
  */
+/*
+ * THE STOP'S WIDTH IS SYMBOLIC NOW, and that is the honest model rather than a
+ * convenience (chat redesign §G3 / U3).
+ *
+ * The control was an icon button, so its box was a class the model could resolve
+ * into pixels. It is LABELLED (a glyph, the word `Stop`, its `Esc` cap), so its
+ * width is its own content and no class states it. What the row's invariants are
+ * actually about survives the change untouched: the slot and the control occupy
+ * the SAME box, one gap sits between consecutive children, and the settled row
+ * has no middle child at all. Each of those is a relation between boxes rather
+ * than a measurement, so they are asserted with the shared token below - and the
+ * claim that the token is legitimate (the slot mirrors the control's markup) is
+ * its own assertion, in `the held box is the Stop control's own markup`.
+ */
+const STOP_BOX = "the Stop control's own box";
+
 const rowBoxes = (isSmallView, state) => {
 	const micWidth = px(
 		resolveRung(
 			sizeExpression(ROW_PARTS.micBlock, "the dictation control"),
-			isSmallView,
-		),
-	);
-	const stopWidth = px(
-		resolveRung(
-			sizeExpression(ROW_PARTS.stopBlock, "the Stop control"),
 			isSmallView,
 		),
 	);
@@ -377,24 +397,28 @@ const rowBoxes = (isSmallView, state) => {
 			isSmallView,
 		),
 	);
-	const heldWidth = px(
-		resolveRung(
-			/isSmallView \? "(size-\d+)" : "(size-\d+)"/.exec(ROW_PARTS.span)?.[0],
-			isSmallView,
-		),
-	);
 	const children = [{ label: "dictation", width: micWidth }];
 	// Which middle child the row draws is the grace gate's answer, asserted from
 	// the source below and from the shipped helper further down.
-	if (state === "running") children.push({ label: "Stop", width: stopWidth });
+	if (state === "running") children.push({ label: "Stop", width: STOP_BOX });
 	else if (state === "grace")
-		children.push({ label: "held box", width: heldWidth });
+		children.push({ label: "held box", width: STOP_BOX });
 	children.push({ label: "Send", width: sendWidth });
+	/*
+	 * The x positions are computed only as far as the arithmetic stays in pixels.
+	 * The dictation control's box is a class (`size-7`/`size-8`), so the Stop's own
+	 * left edge is `mic + gap` exactly. Every box AFTER an unpinnable width is
+	 * `null` rather than a guess: Send's position is not derivable from the source
+	 * any more, and a number invented for it would be the model pretending to a
+	 * precision it does not have. The claims about Send are relational instead -
+	 * which child precedes it, and that the slot and the control occupy one box.
+	 */
 	const placed = [];
 	let x = 0;
 	for (const child of children) {
 		placed.push({ ...child, x });
-		x += child.width + ROW_GAP_PX;
+		if (child.width === STOP_BOX) x = null;
+		else if (x !== null) x += child.width + ROW_GAP_PX;
 	}
 	return placed;
 };
@@ -423,26 +447,79 @@ test("the row's own controls and the held box, from the source", () => {
 		assert.equal(
 			heldBox.width,
 			stopBox.width,
-			`${rung}: the held box is ${heldBox.width}px but the control it stands in for is ${stopBox.width}px`,
+			`${rung}: the held box is ${heldBox.width} but the control it stands in for is ${stopBox.width}`,
 		);
 		assert.equal(
 			heldBox.x,
 			stopBox.x,
 			`${rung}: the held box sits at ${heldBox.x} where the control renders at ${stopBox.x}`,
 		);
-		assert.equal(
-			heldBox.width,
-			running[0].width,
-			`${rung}: the held box is not the dictation control's own size`,
+		/*
+		 * And the box is the control's own MARKUP, drawn invisible, which is what
+		 * makes the two widths one width rather than two numbers kept in step by
+		 * hand: the labelled Stop's box is its content, so nothing in the source
+		 * states its width and a class-shaped reservation could only approximate it.
+		 */
+		const stopCluster = ROW.slice(
+			ROW.indexOf("{canonicalStop?.active &&"),
+			ROW.indexOf("{isLoading && currentJobId ?"),
 		);
+		for (const part of [
+			/<Button/,
+			/variant="secondary"/,
+			/size=\{isSmallView \? "sm" : "md"\}/,
+			/<Square aria-hidden="true" \/>/,
+			/Stop/,
+			/shortcut="Esc"/,
+		])
+			assert.match(
+				stopCluster,
+				part,
+				`the Stop control lost ${part} - the slot mirrors this markup, so the two boxes part company`,
+			);
+		assert.match(
+			ROW_PARTS.slotElement,
+			/<Button/,
+			"the slot is not the control's own markup drawn invisible",
+		);
+		for (const part of [
+			/variant="secondary"/,
+			/<Square aria-hidden="true" \/>/,
+			/Stop/,
+		])
+			assert.match(ROW_PARTS.slotElement, part);
+		/*
+		 * The one difference between the two is what the invisibility is for: the
+		 * slot is `aria-hidden`, `invisible` and pointer-less, and it carries NO
+		 * accessible name (a second `aria-label="Stop"` would sit EARLIER in the DOM
+		 * than the control, so every live probe that asks for that selector would
+		 * measure the invisible box).
+		 */
+		assert.match(ROW_PARTS.slotElement, /invisible/);
+		assert.doesNotMatch(ROW_PARTS.slotElement, /aria-label/);
 	}
-	// `aria-hidden`, no focus, no pointer events, nothing pressable: this is
-	// geometry rather than a control, so nothing may be reached, announced or
-	// activated there.
+	/*
+	 * `aria-hidden`, no pointer events, and INERT AS A CONTROL: the reservation is
+	 * geometry, so nothing may be reached, announced or activated there.
+	 *
+	 * It draws the Stop's own markup, so it now contains a real `<Button>`, and the
+	 * three properties that keep it unreachable are what make that safe rather than
+	 * the absence of a button: `invisible` (`visibility: hidden` removes the whole
+	 * subtree from hit-testing AND from the focus order - unlike `opacity-0`, which
+	 * is why the control it mirrors needs the pointer-events switch), the wrapper's
+	 * `pointer-events-none`, and `tabIndex={-1}` on the copy.
+	 *
+	 * `onClick` is the one thing that must NOT be copied: a handler on a
+	 * visibility-hidden element is one CSS change away from being pressable, and a
+	 * second interrupt dispatch on the row is the failure this whole file exists to
+	 * prevent. The copy is markup, not behaviour.
+	 */
 	assert.match(ROW_PARTS.span, /aria-hidden="true"/);
 	assert.match(ROW_PARTS.span, /pointer-events-none/);
 	assert.match(ROW_PARTS.span, /data-interrupt-slot=""/);
-	assert.doesNotMatch(ROW_PARTS.span, /<button|tabIndex|onClick/);
+	assert.match(ROW_PARTS.span, /invisible/);
+	assert.match(ROW_PARTS.span, /tabIndex=\{-1\}/);
+	assert.doesNotMatch(ROW_PARTS.span, /onClick|type="submit"/);
 });
 
 test("the held box is mounted on the grace predicate, not on the capability alone", () => {
@@ -530,10 +607,23 @@ test("a running turn's row is [dictation][Stop][Send]", () => {
 			dictation.width + ROW_GAP_PX,
 			`${rung}: the Stop control is not the row's own gap from the dictation control`,
 		);
+		/*
+		 * Send's own position is NOT asserted numerically, and that is a deliberate
+		 * narrowing rather than a lost check: the labelled Stop's box is its content,
+		 * so the distance from the Stop's left edge to Send's is not a number this
+		 * file can derive. What must hold is the ORDER - Send is the child the row
+		 * draws after the slot and the control - which the `deepEqual` above states
+		 * and which is the fact a regression would break.
+		 */
 		assert.equal(
-			send.x,
-			stop.x + stop.width + ROW_GAP_PX,
-			`${rung}: Send is not the row's own gap from the Stop control`,
+			send.width,
+			px(
+				resolveRung(
+					sizeExpression(ROW_PARTS.sendBlock, "the Send control"),
+					isSmallView,
+				),
+			),
+			`${rung}: the Send control is not the round 32px control`,
 		);
 	}
 });
@@ -577,16 +667,22 @@ test("a settled idle row is [dictation][Send], with one row gap between them", (
 			dictation.width + ROW_GAP_PX,
 			`${rung}: Send's left edge is not the dictation control's right edge plus the row's own gap`,
 		);
-		// The distance the reservation used to hold open, which is what the
-		// measured 36px in the comment above this row and in the interrupt-live
-		// record are: the control it stands in for plus one gap.
+		/*
+		 * The distance the reservation holds open is the control plus one gap - and
+		 * with the labelled control that is a RELATIONAL claim now: the row draws the
+		 * slot in the control's own place and the slot is the control's own markup,
+		 * so the distance the reader's eye measures between the settled row and the
+		 * running one is exactly the box that was there. The mixed px/token pair is
+		 * checked one way only: the slot and the Stop share a width token, so a
+		 * numeric comparison would be this file inventing the very number the
+		 * control's content decides.
+		 */
 		const running = rowBoxes(isSmallView, "running");
-		const runningSend = running.find((box) => box.label === "Send");
 		const stopBox = running.find((box) => box.label === "Stop");
 		assert.equal(
-			runningSend.x - send.x,
-			stopBox.width + ROW_GAP_PX,
-			`${rung}: the closed gap is not the control plus the row's own gap`,
+			stopBox.width,
+			STOP_BOX,
+			`${rung}: the running row's middle child is not the Stop control`,
 		);
 	}
 });

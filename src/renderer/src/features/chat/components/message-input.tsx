@@ -201,6 +201,7 @@ import { ComposerTipRow } from "./composer-tip";
 import { CredentialChipLayer } from "./credential-chip-layer";
 import { CredentialOverlay, composerTextBox } from "./credential-overlay";
 
+import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { useAtResolution } from "../hooks/use-at-resolution";
 import {
 	activeModelForDefault,
@@ -1148,15 +1149,26 @@ export type MessageInputHandle = {
 };
 
 /*
- * The composer boundary, defined once: one `border-control` edge on a
- * `bg-surface` ground. The focus ring is the base-layer `:focus-visible`
- * outline, promoted from the textarea to this box via `:has` so the whole
- * composer — previews and toolbar included — reads as one control; the
- * textarea suppresses its own outline so there is never a second ring inside
- * the box. No decorative shadow.
+ * The composer box, defined once: an `elevated` panel, radius 16, and NO edge at
+ * rest (chat redesign §G1; design round 1's D12).
+ *
+ * It wore `border-control` on `bg-surface`, and on the dark brand palette that
+ * edge is the accent's green: the composer was the loudest thing on the screen at
+ * rest, a ring around an empty box, while the transcript - the surface the reader
+ * came for - sat at `canvas` with nothing pointing at it. §G1 spends the accent
+ * on READY (the send control's fill) and on FOCUS (the ring below), and separates
+ * the panel from its column with the lightness step the system already has:
+ * `elevated` over `canvas` is the same pair every menu, popover and dialog in the
+ * app uses.
+ *
+ * THE FOCUS RING IS UNCHANGED and is now the only boundary: the base-layer
+ * `:focus-visible` outline, promoted from the textarea to this box via `:has` so
+ * the whole composer - previews and toolbar included - reads as one control; the
+ * textarea suppresses its own outline, so there is never a second ring inside the
+ * box. No decorative shadow.
  */
 const COMPOSER_BOX = cn(
-	"mx-auto flex w-full flex-col border border-control bg-surface",
+	"mx-auto flex w-full flex-col bg-elevated",
 	"box-border transition-colors duration-fast ease-out-quart",
 	// Scoped to `textarea`, not a bare `has-[:focus-visible]`.
 	//
@@ -6179,6 +6191,25 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 */}
 					<AtSuggestionsPopup state={at} onPick={handleAtPick} />
 					{/*
+					 * THE SCROLL-TO-BOTTOM DISC, anchored to this wrapper because this wrapper
+					 * IS the composer's top edge (§G5): the disc is `bottom-full`, so it sits
+					 * 12px ABOVE the panel at whatever height the panel has.
+					 *
+					 * HIDDEN WHILE A COMPOSER MENU IS OPEN, which is the other half of D15:
+					 * the slash list and the `@` picker anchor to this same 4px strip, and a
+					 * disc floating over the menu's own last row is the overlap the round
+					 * photographed. It is also not drawn at all when the reader is already at
+					 * the newest row (`isFarFromBottom`), so the two states that own this
+					 * strip are never drawn together.
+					 */}
+					{!slash.open && !at.open && (
+						<ScrollToBottomButton
+							visible={isFarFromBottom}
+							onClick={scrollToBottom}
+							hasNewActivity={hasNewActivity}
+						/>
+					)}
+					{/*
 					 * The capture's own sentence, in the `<output>` register the interrupt notice
 					 * above the composer already uses: the result of a user action, said politely.
 					 *
@@ -7161,23 +7192,87 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												aria-hidden="true"
 												data-interrupt-slot=""
 												className={cn(
-													"pointer-events-none",
-													isSmallView ? "size-7" : "size-8",
+													"pointer-events-none invisible flex items-center gap-1",
 												)}
-											/>
+											>
+												{/*
+												 * THE RESERVATION IS THE STOP'S OWN BOX, INVISIBLE, and that is
+												 * what makes "holding the place moves nothing" true rather than
+												 * nearly true (chat redesign §G3, U3).
+												 *
+												 * It was an empty `size-7`/`size-8` square, which is exactly
+												 * the box the OLD icon Stop occupied. The control is labelled now
+												 * - a glyph plus the word `Stop` plus its `Esc` cap - so a square
+												 * reservation would leave the dictation control 60-odd pixels
+												 * short of where the turn's own row puts it, and the mic would
+												 * jump left at the instant the turn starts and back again when it
+												 * ends: the re-layout class this slot exists to bound, in the
+												 * window where the reader is most likely to be aiming at it.
+												 *
+												 * A measured width would be a second expression of the control's
+												 * own layout, and the two would drift the first time the label or
+												 * the cap changed. This renders the SAME markup with a real box
+												 * (`visibility: hidden` keeps layout, unlike `display: none`), so
+												 * the two boxes agree by construction; it carries NO accessible
+												 * accessible name and no labelling attribute, because it must
+												 * stay out of the live probes that select the control by its
+												 * own name and must not be announced.
+												 */}
+												<Button
+													variant="secondary"
+													size={isSmallView ? "sm" : "md"}
+													type="button"
+													tabIndex={-1}
+												>
+													<Square aria-hidden="true" />
+													Stop
+												</Button>
+												<span className={cn("text-ink-dim")}>
+													<KeyboardShortcut shortcut="Esc" />
+												</span>
+											</span>
 										)}
 									{canonicalStop?.active && (
-										<Tooltip content="Stop this session's current work">
-											<span>
+										/*
+										 * THE STOP IS LABELLED, AND IT NAMES ITS OWN KEY (§G3, U3).
+										 *
+										 * It was a bare 24px `danger` square whose tooltip said
+										 * "Stop session" and nothing said that Escape does the same
+										 * thing - so the one control a reader reaches for while a turn
+										 * runs was the least legible control in the composer, and the
+										 * accelerator beside it was invisible. Now it is §G3's own
+										 * shape: a `surface` control with a `border-control` edge, the
+										 * `Square` glyph, the word `Stop`, and the `Esc` cap - and
+										 * `aria-keyshortcuts` carries the accelerator to assistive tech
+										 * rather than only to the eye.
+										 *
+										 * NOT `variant="danger"`: stopping is not a failure and §B8
+										 * reserves the danger role for facts that went wrong. The
+										 * `secondary` variant is `surface` + `border-control` + `ink`,
+										 * which is exactly the spec's description.
+										 */
+										<Tooltip content="Stop this session's current work (Esc)">
+											<span className="flex items-center gap-1">
 												<Button
-													variant="danger"
-													size={isSmallView ? "icon-sm" : "icon"}
+													variant="secondary"
+													size={isSmallView ? "sm" : "md"}
 													type="button"
 													onClick={canonicalStop.onStop}
 													aria-label="Stop"
+													aria-keyshortcuts="Escape"
 												>
 													<Square aria-hidden="true" />
+													Stop
 												</Button>
+												{/*
+												 * The cap is DECORATIVE here: `aria-keyshortcuts` above
+												 * already states the binding, and a `KeyboardShortcut`
+												 * carries its own `kbd` text into the accessible name - two
+												 * statements of one binding inside one control.
+												 */}
+												<span aria-hidden="true" className="text-ink-dim">
+													<KeyboardShortcut shortcut="Esc" />
+												</span>
 											</span>
 										</Tooltip>
 									)}
@@ -7200,6 +7295,22 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										!isTranscribing && (
 											<Tooltip content="Send message">
 												<span>
+													{/*
+													 * THE SEND IS A ROUND, FILLED 32px CIRCLE, AND IT IS THE
+													 * ONLY FILLED CONTROL IN THE COMPOSER (§G1; §B8): the accent
+													 * is spent on READY, which is what a filled send means.
+													 *
+													 * `rounded-full` overrides the primitive's `rounded-sm`:
+													 * every other control in the app is a rounded square, and
+													 * the composer's primary action is the one place the shape
+													 * itself says "this is the button that sends".
+													 *
+													 * `disabled:bg-surface` over the primitive's `sunken`, because
+													 * the panel is `elevated` now: a `sunken` fill would read as a
+													 * hole cut into the panel, while `surface` is the step DOWN
+													 * from it that says "not available yet" - and `ink-disabled`
+													 * on the arrow is the primitives's own disabled ink.
+													 */}
 													<Button
 														variant="primary"
 														size={isSmallView ? "icon-sm" : "icon"}
@@ -7210,6 +7321,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 															isLoading ||
 															(!newMessage.trim() && attachments.length === 0)
 														}
+														className="rounded-full disabled:bg-surface"
 														aria-label="Send message"
 													>
 														<Send aria-hidden="true" />
@@ -7545,12 +7657,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					) : null}
 					{inputContent}
 				</div>
-				<ScrollToBottomButton
-					visible={isFarFromBottom}
-					onClick={scrollToBottom}
-					bottomDistance={isSmallView ? 120 : 160}
-					hasNewActivity={hasNewActivity}
-				/>
 			</div>
 		);
 	},
