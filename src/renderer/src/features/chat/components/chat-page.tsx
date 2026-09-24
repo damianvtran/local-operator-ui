@@ -996,8 +996,18 @@ function SessionPanel({
 	 * this page and the composer (the transport's, the guard's, the held
 	 * paragraph's and the generic tail's).
 	 */
-	const reportFailure = (error: unknown) => {
-		const copy = sendFailureCopy(error);
+	const reportFailure = (
+		error: unknown,
+		/**
+		 * See `sendFailureClass`: whether an earlier attempt under this message's
+		 * request id could have been admitted. The send's own catch has it
+		 * (`previous`), and without it this path and the ROW would classify the same
+		 * codeless 409 differently - a notice offering a press the row has already
+		 * decided against.
+		 */
+		priorAttemptUnresolved = false,
+	) => {
+		const copy = sendFailureCopy(error, undefined, priorAttemptUnresolved);
 		setSendError(copy.message);
 		setSendErrorCode(copy.code);
 		setSendErrorRetry(copy.retry);
@@ -1305,7 +1315,7 @@ function SessionPanel({
 			// runtime exception is a stack-trace fragment - with the backend
 			// stopped this line rendered "TypeError: fetch failed" inside the
 			// alert's own prose. See `userFacingMessage`.
-			reportFailure(error);
+			reportFailure(error, previous?.admissionAttempted === true);
 			/*
 			 * ONE ANSWER, because the STORE has already done the work: every failure
 			 * class hands the payload back to this conversation's composer through one
@@ -1658,10 +1668,14 @@ function SessionPanel({
 	 * `draft.error` is the last one the store recorded, which survives a remount
 	 * and so is what a user returning to the chat sees.
 	 *
-	 * `onDiscard` is offered only when the store is actually holding a claim
-	 * (`submittedText`). Without one there is nothing for `discardDraft` to
-	 * clear, and an always-present Discard would imply the app is retaining
-	 * something it is not.
+	 * THE DISCARD CONTROL AND THE CLAIM ARE BOTH GONE (review round 2, NIT). This
+	 * comment described an `onDiscard` that was offered only while the store held a
+	 * claim in `submittedText` - the released app's model, where a failed message was
+	 * kept outside the composer and had to be restored or discarded. Nothing is kept
+	 * outside the composer any more (the payload is returned to the box, see
+	 * `returnPayloadToComposer`), so the control has no subject and the sentence above
+	 * it was the last place in the pane still describing it. `submittedText` survives
+	 * as the retry rule's comparison basis, not as something anybody has to release.
 	 */
 	const clearError = () => {
 		setSendError(null);

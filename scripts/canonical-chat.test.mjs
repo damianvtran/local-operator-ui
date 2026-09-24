@@ -1729,9 +1729,15 @@ test("the notice is ONE sentence from ONE place, and the composer renders it rat
 		"src/renderer/src/features/chat/components/chat-page.tsx",
 		"utf8",
 	);
+	/*
+	 * AND THE FACT THE CODELESS 409 IS SPLIT BY (review round 2, Q2-1). The pane had
+	 * to start passing it too: the row and the pane classify the SAME failure, and a
+	 * door that answered differently from the row would offer a press the row has
+	 * already decided against.
+	 */
 	assert.match(
 		page,
-		/const copy = sendFailureCopy\(error\);/,
+		/const copy = sendFailureCopy\(error, undefined, priorAttemptUnresolved\);/,
 		"the composer's notice no longer comes from the one classifier, so a door can carry its own copy again",
 	);
 	assert.match(
@@ -1847,15 +1853,31 @@ test("the notice is ONE sentence from ONE place, and the composer renders it rat
 	 * pin is no longer "the name is absent" but "the name is only ever a legacy
 	 * read": three occurrences, one per legitimate role, and the guard among them.
 	 */
+	/*
+	 * FIVE NOW, AND ALL FIVE ARE READS INSIDE THE ONE MIGRATION (review round 2,
+	 * R1/R3). The count is the pin:  the field's declaration; the gate that decides a
+	 * row IS a released claim; and the three uses that carry the marker's own code
+	 * into the migrated row - the sentence's code, the press derived from it, and the
+	 * clear that ends the move. What the count forbids is unchanged: nothing writes a
+	 * claim, and nothing outside `migrateHeldClaim` reads the name.
+	 */
 	assert.equal(
 		(storeSource.match(/heldClaimCode/g) ?? []).length,
-		3,
-		"`heldClaimCode` has grown a fourth use, so something is writing or reading a claim again rather than reading the released app's marker once",
+		5,
+		"`heldClaimCode` has grown another use, so something is writing or reading a claim again rather than reading the released app's marker once",
 	);
+	/*
+	 * AND THE GATE IS STILL A GATE (review round 2, R3 rewrote it). It no longer
+	 * waits for the marker's mere presence - the released app's own rows can carry no
+	 * code at all, and refusing those left the message stranded in `submittedText` -
+	 * but it still refuses every row THIS build wrote, which is what the second
+	 * term is: `errorRetry` is a field this build writes on each failure it records
+	 * and the released app never wrote, so its absence is the released row's shape.
+	 */
 	assert.match(
 		storeSource,
-		/if \(draft\.heldClaimCode === undefined\) return false;/,
-		"the migration no longer requires the released app's marker, so it can fire on a row this build wrote",
+		/draft\.heldClaimCode !== undefined \|\| draft\.errorRetry === undefined/,
+		"the migration no longer distinguishes the released app's rows from this build's, so it can fire on a row this build wrote",
 	);
 });
 
@@ -3402,10 +3424,16 @@ test("a failure that establishes nothing about admission is still unknowable - a
 	 * pre-admission refusal like any other - echo retracted, no latch, and the
 	 * backend's own sentence as the copy.
 	 */
-	const unknowable = [
-		{ status: 503, code: "runtime_unreachable" },
-		{ status: 409, code: undefined },
-	];
+	/*
+	 * AND THE CODELESS 409 IS NO LONGER ONE OF THEM (review round 2, Q2-1). On a
+	 * FRESH attempt - which is what this loop drives, since every iteration starts
+	 * from a new draft - a 409 with no code is the daemon refusing the BODY, and the
+	 * assertion in the second block below is the opposite of the one here. The
+	 * receipt conflict, which is the arm that still establishes nothing, needs an
+	 * unresolved attempt under the SAME id first, and it is pinned by its own case in
+	 * `composer-send-failure.test.mjs` (`sendFailureClass`'s second argument).
+	 */
+	const unknowable = [{ status: 503, code: "runtime_unreachable" }];
 	for (const arm of unknowable) {
 		reset();
 		globalThis.__canonicalRequest = async (request) => {
@@ -3463,6 +3491,44 @@ test("a failure that establishes nothing about admission is still unknowable - a
 		assert.equal(
 			store.getState().drafts[key].error,
 			SEND_FAILURE_COPY.unconfirmed,
+		);
+	}
+
+	/*
+	 * THE OTHER SIDE, for the codeless 409: a refusal decided before admission, so
+	 * nothing about the message's fate is in question and the row must not latch -
+	 * which is what makes the Retry the composer used to offer over it a press that
+	 * re-posts the same refused body for ever.
+	 */
+	reset();
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return { session_id: "222222222222", binding: null };
+		throw new DesktopControlError(
+			409,
+			"this message's text alone fills 1.1 MB of the 1.0 MB limit, leaving no room for its attachments; shorten the text or send the images on their own",
+		);
+	};
+	{
+		const refusedKey = store
+			.getState()
+			.stageDraft({ kind: "agent", name: "reviewer" });
+		await assert.rejects(admitChatDraft(refusedKey, input));
+		assert.equal(
+			store.getState().drafts[refusedKey].admissionAttempted,
+			false,
+			"a codeless 409 on a fresh attempt states that this body was refused",
+		);
+		assert.equal(
+			sendFailureCopy(
+				new DesktopControlError(
+					409,
+					"this message's text alone fills 1.1 MB of the 1.0 MB limit, leaving no room for its attachments; shorten the text or send the images on their own",
+				),
+			).retry,
+			false,
+			"Retry over a refusal that meets the same bytes again is the loop QA measured",
 		);
 	}
 
@@ -4245,7 +4311,15 @@ test("an ambiguous failure keeps the echo, and only a pre-admission refusal retr
 		return { key, requestId };
 	};
 
-	for (const status of [503, 409, 500, "network"]) {
+	/*
+	 * 409 LEFT THIS LIST IN REVIEW ROUND 2 (Q2-1). A codeless 409 on a fresh attempt
+	 * is the daemon refusing the body - the sender-side budget ladder - so the echo
+	 * is retracted exactly as it is for 413/422, and the arm is asserted in the
+	 * second loop below. The receipt conflict, which DOES keep the echo, cannot be
+	 * reached here: it needs an unresolved attempt under the same id, which this
+	 * helper never leaves behind.
+	 */
+	for (const status of [503, 500, "network"]) {
 		const { key, requestId } = await send(status);
 		assert.equal(
 			echoes.filter((e) => e.kind === "retract").length,
@@ -4260,7 +4334,7 @@ test("an ambiguous failure keeps the echo, and only a pre-admission refusal retr
 		assert.equal(echoes.filter((e) => e.kind === "echo").at(-1).id, requestId);
 	}
 
-	for (const status of [413, 422]) {
+	for (const status of [413, 422, 409]) {
 		const { key, requestId } = await send(status);
 		const retracted = echoes.filter((e) => e.kind === "retract");
 		assert.equal(

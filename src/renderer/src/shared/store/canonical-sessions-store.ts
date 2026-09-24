@@ -758,8 +758,58 @@ export function retryWillFail(code: string | undefined): boolean {
  */
 export type SendFailureClass = "not_sent" | "unknown" | "gone";
 
-export function sendFailureClass(error: unknown): SendFailureClass {
+/**
+ * A 409 the daemon answered with a sentence and no code.
+ *
+ * Both arms the route produces this way are refusals the app can act on or wait
+ * out; which one it is, is decided by `sendFailureClass`'s caller-supplied fact
+ * rather than by the text.
+ */
+function isCodelessConflict(error: unknown): boolean {
+	return (
+		error instanceof DesktopControlError &&
+		error.status === 409 &&
+		sendFailureCode(error) === undefined
+	);
+}
+
+export function sendFailureClass(
+	error: unknown,
+	/**
+	 * Whether an EARLIER attempt under this message's request id could have been
+	 * admitted (`ChatDraft.admissionAttempted`). It is what tells the two 409s the
+	 * daemon answers without a code apart - see `isCodelessConflict`.
+	 */
+	priorAttemptUnresolved = false,
+): SendFailureClass {
 	if (isRefusedBeforeAdmission(error)) return "not_sent";
+	/*
+	 * THE CODELESS 409, SPLIT IN TWO BY ONE FACT THE STORE ALREADY HOLDS.
+	 *
+	 * The daemon answers two quite different things with `409` and no code: a
+	 * RECEIPT CONFLICT (this request id already has a receipt, so the attempt under
+	 * it may well have been admitted - an unknown outcome, and the app must not
+	 * pretend to know) and a REFUSAL OF THE BODY, which is what the sender-side
+	 * budget ladder raises when the text has eaten the frame's room for its images
+	 * (`attach_client.py`'s `OversizedRequest`, a `ValueError`, answered by the
+	 * route's `raise HTTPException(409, str(error))`).
+	 *
+	 * QA proved the arm reachable in one step and the defect real (round 2, Q2-1):
+	 * two ~3.4 MB images plus 199,000 characters, and the composer showed "Couldn't
+	 * confirm your message was sent. Sending it again is safe." with Retry over a
+	 * refusal the daemon had just explained - and the press re-posted the identical
+	 * body for ever, which is the one thing this design exists to stop.
+	 *
+	 * The fact that separates them is not in the sentence and must not be read out
+	 * of it (matching prose is how a rule stops matching): a receipt conflict can
+	 * only exist for an id the journal has SEEN, and the store knows whether it has
+	 * ever left an attempt under this id unresolved. No earlier attempt - or one the
+	 * daemon answered with a stated refusal, which is what `admissionAttempted`
+	 * being false means - and the only thing a 409 can be is a refusal of this body,
+	 * decided before any receipt existed. That reading also cannot loop: the refusal
+	 * offers no press, so the same bytes cannot be re-posted by a control.
+	 */
+	if (isCodelessConflict(error) && !priorAttemptUnresolved) return "not_sent";
 	/*
 	 * A 404 is its own class rather than a refusal: the conversation the message
 	 * was addressed to does not exist, so the content is worth keeping and copying
@@ -884,12 +934,18 @@ export function sendFailureCopy(
 	 * the code a composer branches on can never disagree (see the store's catch).
 	 */
 	codeOverride?: string,
+	/**
+	 * See `sendFailureClass`: whether an earlier attempt under this request id could
+	 * have been admitted. Defaulted, so every existing caller - including the pane's
+	 * own classification of a failure it caught - answers as it always did.
+	 */
+	priorAttemptUnresolved = false,
 ): {
 	message: string;
 	retry: boolean;
 	code?: string;
 } {
-	const klass = sendFailureClass(error);
+	const klass = sendFailureClass(error, priorAttemptUnresolved);
 	const code = codeOverride ?? sendFailureCode(error);
 	const fallback = userFacingMessage(error, SEND_FAILURE_COPY.generic);
 	if (klass === "gone")
@@ -1275,8 +1331,22 @@ export function composerIdentityFor(
 	key: string,
 	sessionId: string | null | undefined,
 ): string {
+	/*
+	 * AND THE `send:` FORM NAMES ITS SESSION (review round 2, R1). A draft for an
+	 * EXISTING conversation is keyed `send:<sessionId>` (`draftIdentityFor`), and
+	 * the released app wrote no `sessionId` beside it - only the create branch did.
+	 * Reading that key as a draft key left the id undefined, so this answered with
+	 * the KEY itself, which is an identity no composer is ever keyed by: the
+	 * released app's claim went to an orphan row, and the migration then cleared
+	 * `submittedText`, so the message was unrecoverable and the notice's Retry
+	 * pressed against an empty box.
+	 */
+	const named = key.startsWith("send:") ? key.slice("send:".length) : null;
 	return (
-		panelIdentityFor(key.startsWith("draft:") ? key : null, sessionId) ?? key
+		panelIdentityFor(
+			key.startsWith("draft:") ? key : null,
+			sessionId ?? named,
+		) ?? key
 	);
 }
 
@@ -1325,7 +1395,23 @@ export function migrateHeldClaim(
 	 * the app that held the message outside the composer" rather than "does this row
 	 * look like a failure".
 	 */
-	if (draft.heldClaimCode === undefined) return false;
+	/*
+	 * AND A CLAIM WITH NO CODE IS STILL THE RELEASED APP'S (review round 2, R3).
+	 * Keying the whole gate on `heldClaimCode` alone rejected the released app's own
+	 * rows whenever the failure behind them carried no code at all - its renderer
+	 * raised `DesktopControlError(null, ...)` for its own deadline and for a failed
+	 * IPC - and the message stayed in `submittedText` with no reader and a Retry
+	 * over an empty box.
+	 *
+	 * So the test is the row's SHAPE, and the field that carries it is `errorRetry`:
+	 * this build writes it on every failure it records (see the catch in
+	 * `admitChatDraft`, the only writer besides this function), and the released app
+	 * never wrote it, because it did not exist. A row that has none, and looks like a
+	 * released claim in every other way, IS one.
+	 */
+	const releasedClaim =
+		draft.heldClaimCode !== undefined || draft.errorRetry === undefined;
+	if (!releasedClaim) return false;
 	if (!draft.admissionAttempted || draft.submittedText === undefined)
 		return false;
 	const identity = composerIdentityFor(key, draft.sessionId);
@@ -1353,8 +1439,20 @@ export function migrateHeldClaim(
 		 * and offers the press that answers it.
 		 */
 		error: SEND_FAILURE_COPY.unconfirmed,
-		errorCode: undefined,
-		errorRetry: true,
+		/*
+		 * THE CLAIM'S OWN CODE, kept rather than dropped (review round 2, NIT): it is
+		 * what the notice's controls are derived from, and a row that records an
+		 * unknown outcome while throwing away the only fact that says WHICH unknown
+		 * outcome it was is a row the next reader has to guess about.
+		 */
+		errorCode: draft.heldClaimCode,
+		/*
+		 * And the press from that code, through the same rule every other row uses
+		 * (`retryWillFail`), rather than the hard-wired `true` this used to write. A
+		 * released claim whose code names a refusal the app can act on must not offer
+		 * a Retry that meets it again.
+		 */
+		errorRetry: !retryWillFail(draft.heldClaimCode),
 		/*
 		 * And the marker that makes the move once-only, whatever the row's shape: a
 		 * pane that mounts twice finds `migratedHeld`, and a row written by THIS build
@@ -1820,7 +1918,11 @@ export async function admitChatDraft(
 			: sendFailureCode(error);
 		// One call, so the sentence the row keeps and the control it offers cannot
 		// come from two classifications of the same failure.
-		const copy = sendFailureCopy(error, failureCode);
+		const copy = sendFailureCopy(
+			error,
+			failureCode,
+			previous?.admissionAttempted === true,
+		);
 		/*
 		 * DID IT LAND AFTER ALL? Only a failure with an UNKNOWN outcome can be
 		 * answered this way, and only when the id the owner would have used is

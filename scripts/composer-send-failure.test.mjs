@@ -236,6 +236,19 @@ test("every failure class resolves once, and the notice says which it is", () =>
 			"not_sent",
 			false,
 		],
+		/*
+		 * THE CODELESS 409 IS SPLIT, so it is listed by the fact that decides it
+		 * rather than as one arm (review round 2, Q2-1): with nothing unresolved under
+		 * the id, a 409 the daemon answered with a sentence is a refusal of THIS body
+		 * - the sender-side budget ladder's shape - and the same status AFTER an
+		 * unresolved attempt is the receipt conflict, which stays unknown (pinned by
+		 * its own case below and in `sendFailureClass`'s docblock).
+		 */
+		[
+			new DesktopControlError(409, "no room for its attachments"),
+			"not_sent",
+			false,
+		],
 		[
 			new UserFacingError("unreadable", UNREADABLE_ATTACHMENT_CODE),
 			"not_sent",
@@ -258,7 +271,18 @@ test("every failure class resolves once, and the notice says which it is", () =>
 			"unknown",
 			true,
 		],
-		[new DesktopControlError(409, "conflict", undefined), "unknown", true],
+		/*
+		 * The receipt conflict, and it is the FOURTH column that makes it one: the
+		 * status is the same as the row above it and the difference is a fact the
+		 * store holds - an attempt under this id is already out there, so the message
+		 * may have been admitted and the app must not pretend to know it was not.
+		 */
+		[
+			new DesktopControlError(409, "conflict", undefined),
+			"unknown",
+			true,
+			true,
+		],
 		[
 			new DesktopControlError(401, "refused", undefined, "pairing.refused"),
 			"unknown",
@@ -268,9 +292,13 @@ test("every failure class resolves once, and the notice says which it is", () =>
 		// gone: the conversation is not there, so only the content is salvageable.
 		[new DesktopControlError(404, "not found", undefined), "gone", false],
 	];
-	for (const [error, klass, retry] of cases) {
-		assert.equal(sendFailureClass(error), klass, `class of ${error.message}`);
-		const copy = sendFailureCopy(error);
+	for (const [error, klass, retry, priorAttemptUnresolved = false] of cases) {
+		assert.equal(
+			sendFailureClass(error, priorAttemptUnresolved),
+			klass,
+			`class of ${error.message}`,
+		);
+		const copy = sendFailureCopy(error, undefined, priorAttemptUnresolved);
 		assert.equal(copy.retry, retry, `retry of ${error.message}`);
 		assert.equal(typeof copy.message, "string");
 		assert.ok(copy.message.length > 0);
@@ -703,7 +731,14 @@ test("a row the released app left behind comes home once, with this app's senten
 		true,
 		"the released app's row is the one it is for",
 	);
-	const row = composerRow(composerIdentityFor(key, SESSION));
+	/*
+	 * THE EXPECTATION IS THE LITERAL the composer is keyed by, and NOT
+	 * `composerIdentityFor(key, SESSION)` (review round 2, R1). Computing it with the
+	 * function under test made this pin circular: it agreed with whatever that
+	 * function answered, including the orphan identity it answered for a `send:` key,
+	 * so the defect it was meant to catch could not fail it.
+	 */
+	const row = composerRow(SESSION);
 	assert.equal(row?.pendingText, "kept outside the composer");
 	assert.equal(
 		draftRow().heldClaimCode,
@@ -1132,5 +1167,179 @@ test("after a late delivery the next send carries only the user's own line", asy
 		sent[0].text,
 		"my own next line",
 		"the press sent the delivered words again: this is the duplicate the round reproduced",
+	);
+});
+
+/* ------------------------------------------------- the daemon's codeless 409 */
+
+/*
+ * Q2-1, PROVEN LIVE BY QA AND FIXED HERE (review round 2).
+ *
+ * The daemon answers its sender-side budget refusal - the text has filled the
+ * frame's room for its images - with `409` and a sentence and no code, which the
+ * classification read as an unknown outcome: the composer showed "Couldn't confirm
+ * your message was sent. Sending it again is safe." with Retry over a refusal it
+ * had just explained, and the press re-posted the identical body for ever.
+ *
+ * The two arms are separated by the one fact that tells them apart and is already
+ * recorded: a receipt conflict can only exist for an id the journal has seen, and
+ * `admissionAttempted` says whether this app has ever left an attempt under this
+ * id unresolved.
+ */
+test("a codeless 409 on a fresh attempt is a refusal: the daemon's sentence, no Retry", async () => {
+	reset();
+	/*
+	 * The composer's own echo write, which is what puts the payload in flight: a real
+	 * send is pressed from a mounted composer and this is the one write that paints
+	 * it (`beginInFlight`), so the return path has something to hand back.
+	 */
+	const store = useConversationInputStore.getState();
+	store.setCurrentInput(SESSION, input.text);
+	store.beginInFlight(SESSION, {
+		text: input.text,
+		attachments: [],
+		replies: [],
+	});
+	responses.push(
+		new DesktopControlError(
+			409,
+			"this message's text alone fills 1.1 MB of the 1.0 MB limit, leaving no room for its attachments; shorten the text or send the images on their own",
+		),
+	);
+	await assert.rejects(admitChatDraft(key, input, SESSION));
+	const row = draftRow();
+	assert.equal(
+		row.errorCode,
+		undefined,
+		"the row was given a code the daemon never sent",
+	);
+	assert.equal(
+		row.error,
+		"this message's text alone fills 1.1 MB of the 1.0 MB limit, leaving no room for its attachments; shorten the text or send the images on their own",
+		"the daemon's own sentence is the one fact the user has to act on",
+	);
+	assert.equal(
+		row.errorRetry,
+		false,
+		"Retry is offered over a refusal that meets the same bytes again for ever - the loop QA measured",
+	);
+	assert.equal(row.admissionAttempted, false);
+	const box = useConversationInputStore.getState().inputByConversation[SESSION];
+	assert.ok(
+		box?.pendingText === input.text || box?.currentInput === input.text,
+		"the refused message is not back in the composer",
+	);
+});
+
+test("a codeless 409 after an unresolved attempt stays an unknown outcome", async () => {
+	reset();
+	/* An outcome the app could not establish: the latch, and no stated refusal. */
+	const store = useConversationInputStore.getState();
+	store.setCurrentInput(SESSION, input.text);
+	store.beginInFlight(SESSION, {
+		text: input.text,
+		attachments: [],
+		replies: [],
+	});
+	responses.push(new DesktopControlError(504, "deadline_exceeded"));
+	await assert.rejects(admitChatDraft(key, input, SESSION));
+	assert.equal(draftRow().admissionAttempted, true);
+	/*
+	 * And now the same id is replayed and the daemon answers a codeless 409 - which,
+	 * with an attempt already out there, is the receipt conflict: the message may
+	 * have been admitted, so it stays unknown and the press is offered.
+	 */
+	responses.push(
+		new DesktopControlError(
+			409,
+			"Request ID was already used with different input",
+		),
+	);
+	await assert.rejects(admitChatDraft(key, input, SESSION));
+	assert.equal(
+		draftRow().errorRetry,
+		true,
+		"a receipt conflict is not a refusal of this body: the attempt it conflicts with is the one whose fate is unknown",
+	);
+});
+
+/* ------------------------------------------------ the released app's claim */
+
+/*
+ * R1 AND R3, THE TWO HALVES OF THE MIGRATION THAT REVIEW ROUND 2 FOUND BROKEN.
+ *
+ * R1: a released claim for an EXISTING conversation is keyed `send:<sessionId>`
+ * and carries no `sessionId` of its own (the released app wrote one only on its
+ * create branch). `composerIdentityFor` resolved only `draft:` keys, so it
+ * answered the KEY - an identity no composer is keyed by - and the message went to
+ * an orphan row while the same pass cleared `submittedText`: unrecoverable, with a
+ * Retry that pressed against an empty box.
+ *
+ * R3: the gate that made the migration safe also rejected the released app's own
+ * rows whenever the failure behind them carried no code at all (its renderer
+ * raised `DesktopControlError(null, ...)` for its own deadline and for a failed
+ * IPC), which left exactly the same stranded state.
+ */
+test("a released claim for an existing conversation comes home under the session", () => {
+	reset();
+	const legacy = {
+		key,
+		createRequestId: "create-legacy",
+		admissionRequestId: "admission-legacy",
+		// NOTE: no `sessionId` - the released app wrote one only for a create.
+		pending: false,
+		admissionAttempted: true,
+		submittedText: "kept outside the composer",
+		submittedAttachments: ["/tmp/shot.png"],
+		heldClaimCode: "send_unconfirmed",
+		error: "The app waits up to 20 seconds for this request.",
+	};
+	useCanonicalSessionsStore.setState({ drafts: { [key]: legacy } });
+	assert.equal(migrateHeldClaim(key, legacy), true);
+	const row = useConversationInputStore.getState().inputByConversation[SESSION];
+	assert.equal(
+		row?.pendingText,
+		"kept outside the composer",
+		"the released claim went to the identity NO composer is keyed by, so the user cannot see or recover their message",
+	);
+	assert.deepEqual(
+		row?.attachments.map((chip) => chip.path),
+		["/tmp/shot.png"],
+	);
+});
+
+test("a released claim whose failure carried no code is still the released app's", () => {
+	reset();
+	const legacy = {
+		key,
+		createRequestId: "create-legacy",
+		admissionRequestId: "admission-legacy",
+		sessionId: SESSION,
+		pending: false,
+		admissionAttempted: true,
+		submittedText: "kept outside the composer",
+		submittedAttachments: [],
+		// The released app's own deadline, and no claim code: `errorRetry` is a field
+		// this build invented, so its absence is the shape of every released row.
+		error:
+			"The app waits up to 20 seconds for this request, and it was still running when the app stopped waiting.",
+	};
+	useCanonicalSessionsStore.setState({ drafts: { [key]: legacy } });
+	assert.equal(
+		migrateHeldClaim(key, legacy),
+		true,
+		"a released claim with no code was refused, leaving the message in `submittedText` with no reader and a Retry over an empty box",
+	);
+	const row = useConversationInputStore.getState().inputByConversation[SESSION];
+	assert.equal(row?.pendingText, "kept outside the composer");
+	assert.equal(
+		draftRow().errorCode,
+		undefined,
+		"the claim carried no code, so the row must not invent one",
+	);
+	assert.equal(
+		draftRow().errorRetry,
+		true,
+		"an unknown outcome is pressable: the claim's own (absent) code says so",
 	);
 });
