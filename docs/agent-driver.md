@@ -329,6 +329,13 @@ rule:
   reading taken mid-transition describes a layout that was never on screen - measured:
   chat 942 / canvas 179 at 1380 in one run against the settled 560/560 the frame shows.
 
+- **`sidebar-sections`** — the one sidebar's two sections, Agents + Teams and
+  Chats, both drawn on a column nobody has touched, and the draggable boundary
+  between them. It seeds an agent, a team and eight chats through the backend's
+  own routes, then photographs the default, two drags, both floors (72px each),
+  a keyboard resize, a relaunch that must redraw the same persisted height, and the
+  bubbled brand mark in the brand row, the 56px strip and the empty state, in both
+  brand palettes. **Requires `--backend`** (the sections are gated on the catalogue).
 - **`canvas-freshness`** — the canvas document kept current with the file on
   disk. The scene writes the file ITSELF, from outside the app, which is the only
   way to produce the event the feature exists for, and it sets the mtime to a

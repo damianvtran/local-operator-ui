@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|none>
+ *   --scene <states|new-chat|first-send|sidebar-sections|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|none>
  *                          which built-in scene to run (default: states)
  *   --gate-state <label>   (with --scene settings-gate) what this run's backend
  *                          state is called in the frames and the log, so two
@@ -15157,6 +15157,305 @@ async function sceneSidebarSplit(cdp, handle) {
 	return link;
 }
 
+/**
+ * The one sidebar's TWO SECTIONS and the boundary between them, as the operator
+ * asked for them on the preview (2026-09-24): Agents + Teams and Chats both
+ * VISIBLE, sized RELATIVE to each other by a drag, the size PERSISTED - plus the
+ * bubbled brand mark at the three places it leads a surface.
+ *
+ * WHY A SCENE BESIDE `sidebar-split` RATHER THAN MORE STEPS IN IT. That scene
+ * walks the boundary's own controls (the intent-gated plate, collapse, restore,
+ * swap) from a column it FORCES to "both"; the claim here is about the column
+ * nobody has touched, so this scene deliberately writes NOTHING to the regions
+ * before its first frame - the default is the subject. Its frames are the evidence
+ * for the default, the two drag positions, the floors, the keyboard and the
+ * relaunch, in both brand palettes.
+ *
+ * It seeds the backend with an agent, a team and a handful of chats first, because
+ * both sections have to have rows for "visible sections" to mean anything - an empty
+ * catalogue would photograph two headings.
+ */
+async function sceneSidebarSections(cdp, handle) {
+	let link = cdp;
+	const seeded = [];
+	for (let index = 0; index < 8; index += 1) {
+		seeded.push((await createBackendSession()).status);
+	}
+	const authored = [
+		await authoringWrite("/v1/desktop/profiles", {
+			request_id: randomUUID(),
+			name: "docs-writer",
+			kind: "role",
+			description: "Keeps AGENTS.md and the guides current.",
+			instructions: "Write for the next reader.",
+		}),
+		await authoringWrite("/v1/desktop/profiles", {
+			request_id: randomUUID(),
+			name: "release-owner",
+			kind: "role",
+			description: "Cuts releases and posts the refs.",
+			instructions: "Own one release window at a time.",
+		}),
+		await authoringWrite("/v1/desktop/teams", {
+			request_id: randomUUID(),
+			name: "chat-redesign",
+			description: "Designer, coder, reviewer and QA on the chat surface.",
+		}),
+	];
+	note(
+		"seeded",
+		JSON.stringify({
+			sessions: seeded,
+			authored: authored.map((a) => a.status),
+		}),
+	);
+
+	const ready = async (c) =>
+		waitForCondition(
+			c,
+			`Boolean(document.querySelector(${JSON.stringify(SPLIT_ENTITIES)}) && document.querySelector(${JSON.stringify(SPLIT_CHATS)}) && document.querySelector(${JSON.stringify(SPLIT_SEPARATOR)}) && document.querySelector('[data-entity]') && document.querySelector('[data-session-row]'))`,
+			30_000,
+		);
+	const geometry = (c) =>
+		c.evaluate(`(() => {
+			const box = (s) => { const n = document.querySelector(s); if (!n) return null; const r = n.getBoundingClientRect(); return { y: Math.round(r.y), h: Math.round(r.height) }; };
+			const sep = document.querySelector(${JSON.stringify(SPLIT_SEPARATOR)});
+			return {
+				entities: box(${JSON.stringify(SPLIT_ENTITIES)}),
+				chats: box(${JSON.stringify(SPLIT_CHATS)}),
+				separator: sep ? { now: Number(sep.getAttribute("aria-valuenow")), min: Number(sep.getAttribute("aria-valuemin")), max: Number(sep.getAttribute("aria-valuemax")), tabIndex: sep.tabIndex, label: sep.getAttribute("aria-label") } : null,
+				agentsChevron: document.querySelector('[aria-label="Show the agent list"], [aria-label="Hide the agent list"]') !== null,
+				// The two numbers \`chat-sidebar-sections.test.mjs\` pins as the real panel:
+				// the box the sections share, and the nav's content box (\`p-2\` = 16).
+				capacity: (() => { const e = document.querySelector(${JSON.stringify(SPLIT_ENTITIES)}); const c = document.querySelector(${JSON.stringify(SPLIT_CHATS)}); return e && c ? Math.round(e.getBoundingClientRect().height + c.getBoundingClientRect().height) : null; })(),
+				panel: (() => { const n = document.querySelector('nav[aria-label="Chats"]'); return n ? n.clientHeight - 16 : null; })(),
+			};
+		})()`);
+
+	// --- 1. the untouched column: nothing written to the regions first ----
+	await verb(link, "setTheme", "localOperatorDark");
+	await verb(link, "navigate", "/chat");
+	const first = await ready(link);
+	check(
+		"an untouched column draws BOTH sections and the boundary",
+		first.ok,
+		JSON.stringify(first.last),
+	);
+	const stored0 = await splitPreferences(link);
+	note(
+		"regions as stored before any press",
+		String(stored0.state?.chatSidebarRegions),
+	);
+	const rest = await geometry(link);
+	note("default geometry", JSON.stringify(rest));
+	check(
+		"the Agents row carries no disclosure chevron any more",
+		rest.agentsChevron === false,
+		String(rest.agentsChevron),
+	);
+	check(
+		"the chats take the larger share at rest",
+		rest.chats !== null &&
+			rest.entities !== null &&
+			rest.chats.h > rest.entities.h,
+		JSON.stringify(rest),
+	);
+	await parkPointer(link);
+	await captureSettled(link, "sections-default-dark");
+
+	// --- 2. two drag positions, each written and drawn -------------------
+	const dragTo = async (dy, label) => {
+		const sep = await splitBox(link, SPLIT_SEPARATOR);
+		await movePointer(link, sep.x, sep.y);
+		await dragSplit(link, sep.x, sep.y, dy);
+		await parkPointer(link);
+		const prefs = await splitPreferences(link);
+		const geo = await geometry(link);
+		note(
+			`after a ${dy}px drag`,
+			JSON.stringify({ stored: prefs.state?.chatSidebarListHeight, geo }),
+		);
+		check(
+			`a ${dy}px drag writes the chats height it draws`,
+			typeof prefs.state?.chatSidebarListHeight === "number" &&
+				geo.chats !== null &&
+				Math.abs(geo.chats.h - geo.separator.now) <= 1,
+			JSON.stringify({
+				stored: prefs.state?.chatSidebarListHeight,
+				drawn: geo.chats?.h,
+				announced: geo.separator?.now,
+			}),
+		);
+		await captureSettled(link, label);
+		return { stored: prefs.state?.chatSidebarListHeight, geo };
+	};
+	const up = await dragTo(-120, "sections-dragged-up-dark");
+	const down = await dragTo(220, "sections-dragged-down-dark");
+	check(
+		"the two drag positions are different sizes",
+		up.stored !== down.stored,
+		`${up.stored} vs ${down.stored}`,
+	);
+
+	// --- 3. the floors: drag far past each end ---------------------------
+	const toTop = await dragTo(-2000, "sections-floor-agents-dark");
+	check(
+		"dragging to the top leaves Agents + Teams at its 72px floor",
+		toTop.geo.entities !== null && toTop.geo.entities.h >= 72 - 1,
+		JSON.stringify(toTop.geo.entities),
+	);
+	const toBottom = await dragTo(2000, "sections-floor-chats-dark");
+	check(
+		"dragging to the bottom leaves Chats at its 72px floor",
+		toBottom.geo.chats !== null &&
+			Math.round(toBottom.geo.chats.h) === 72 &&
+			toBottom.geo.separator.min === 72,
+		JSON.stringify(toBottom.geo),
+	);
+
+	// --- 4. the keyboard: Tab-reachable, and the arrows resize ------------
+	const reachable = await link.evaluate(
+		`document.querySelector(${JSON.stringify(SPLIT_SEPARATOR)}).tabIndex === 0`,
+	);
+	check(
+		"the boundary is in the Tab order",
+		reachable === true,
+		String(reachable),
+	);
+	await link.evaluate(
+		`document.querySelector(${JSON.stringify(SPLIT_SEPARATOR)}).focus(); true`,
+	);
+	const beforeKey = (await geometry(link)).separator.now;
+	for (let press = 0; press < 5; press += 1) {
+		await pressChord(link, {
+			key: "ArrowUp",
+			code: "ArrowUp",
+			virtualKeyCode: 38,
+		});
+		await wait(60);
+	}
+	await wait(250);
+	const afterKey = await geometry(link);
+	const keyed = (await splitPreferences(link)).state?.chatSidebarListHeight;
+	note(
+		"keyboard",
+		JSON.stringify({
+			before: beforeKey,
+			after: afterKey.separator.now,
+			stored: keyed,
+		}),
+	);
+	check(
+		"ArrowUp on the focused boundary resizes and persists",
+		afterKey.separator.now !== beforeKey && keyed === afterKey.separator.now,
+		`${beforeKey} -> ${afterKey.separator.now}, stored ${keyed}`,
+	);
+
+	// --- 5. a middle position, then the second palette in the same state --
+	await setSplitPreferences(link, { chatSidebarListHeight: 300 });
+	await ready(link);
+	await parkPointer(link);
+	await captureSettled(link, "sections-300-dark");
+	await verb(link, "setTheme", "localOperatorLight");
+	await wait(300);
+	await captureSettled(link, "sections-300-light");
+	await setSplitPreferences(link, { chatSidebarListHeight: null });
+	await ready(link);
+	await parkPointer(link);
+	await captureSettled(link, "sections-default-light");
+
+	// --- 6. the 56px strip's mark, both palettes --------------------------
+	await setSplitPreferences(link, { isSidebarCollapsed: true });
+	await waitForCondition(
+		link,
+		`Boolean(document.querySelector("[data-sidebar-strip] [data-brand-mark]"))`,
+		10_000,
+	);
+	await parkPointer(link);
+	await captureSettled(link, "strip-mark-light");
+	await verb(link, "setTheme", "localOperatorDark");
+	await wait(300);
+	await captureSettled(link, "strip-mark-dark");
+	await setSplitPreferences(link, { isSidebarCollapsed: false });
+
+	// --- 7. the relaunch: a dragged size SURVIVES a new process -----------
+	await ready(link);
+	const sep = await splitBox(link, SPLIT_SEPARATOR);
+	await movePointer(link, sep.x, sep.y);
+	await dragSplit(link, sep.x, sep.y, -90);
+	await parkPointer(link);
+	const beforeRestart = await splitPreferences(link);
+	const drawnBefore = await geometry(link);
+	note(
+		"before the relaunch",
+		JSON.stringify({
+			stored: beforeRestart.state?.chatSidebarListHeight,
+			drawn: drawnBefore.chats,
+		}),
+	);
+	await captureSettled(link, "sections-before-relaunch-dark");
+	const firstPid = handle.pid;
+	await stopApp(handle);
+	const again = await launchApp({
+		armed: true,
+		logName: "app-scene-restart.log",
+		tag: "scene",
+	});
+	app = again;
+	await waitForDevtools(again);
+	link.close();
+	link = await CdpClient.attach(again.port, "out/renderer/index.html");
+	await waitForBridge(link);
+	await verb(link, "navigate", "/chat");
+	await ready(link);
+	await wait(600);
+	await parkPointer(link);
+	const afterRestart = await splitPreferences(link);
+	const drawnAfter = await geometry(link);
+	note(
+		"after the relaunch",
+		JSON.stringify({
+			pid: `${firstPid} -> ${again.pid}`,
+			stored: afterRestart.state?.chatSidebarListHeight,
+			drawn: drawnAfter.chats,
+		}),
+	);
+	check(
+		"the relaunch is a different process",
+		again.pid !== firstPid,
+		`${firstPid} -> ${again.pid}`,
+	);
+	check(
+		"the dragged size survives the relaunch, stored and drawn",
+		afterRestart.state?.chatSidebarListHeight ===
+			beforeRestart.state?.chatSidebarListHeight &&
+			drawnAfter.chats?.h === drawnBefore.chats?.h,
+		`stored ${beforeRestart.state?.chatSidebarListHeight} -> ${afterRestart.state?.chatSidebarListHeight}, drawn ${drawnBefore.chats?.h} -> ${drawnAfter.chats?.h}`,
+	);
+	await captureSettled(link, "sections-after-relaunch-dark");
+
+	// --- 8. the empty state's mark, both palettes -------------------------
+	const newChat = await splitBox(link, "[data-new-chat-row]");
+	if (newChat !== null)
+		await pressPointerStationary(link, newChat.x, newChat.y);
+	const empty = await waitForCondition(
+		link,
+		`Boolean(document.querySelector("[data-lo-empty-mark] [data-brand-mark]"))`,
+		15_000,
+	);
+	check(
+		"the empty state draws the bubbled mark",
+		empty.ok,
+		JSON.stringify(empty.last),
+	);
+	await parkPointer(link);
+	await captureSettled(link, "empty-mark-dark");
+	await verb(link, "setTheme", "localOperatorLight");
+	await wait(300);
+	await captureSettled(link, "empty-mark-light");
+	return link;
+}
+
 async function sceneMentions(cdp) {
 	const hello = await verb(cdp, "hello");
 	note("hello", JSON.stringify(hello, null, 2));
@@ -19469,6 +19768,11 @@ async function main() {
 	 * (agent review round 2, NIT-2). Reading argv and refusing costs nothing, and
 	 * the same argument holds for every scene that names an instrument it needs.
 	 */
+	if (SCENE === "sidebar-sections" && BACKEND === null) {
+		throw new Error(
+			"--scene sidebar-sections needs --backend: both sections are gated on the catalogue a live backend advertises, and the scene seeds an agent, a team and chats through that backend's own routes",
+		);
+	}
 	if (SCENE === "sidebar-split" && BACKEND === null) {
 		throw new Error(
 			"--scene sidebar-split needs --backend: the boundary only exists while both regions do, and the list region is gated on the catalogue a live backend advertises",
@@ -19659,6 +19963,8 @@ async function main() {
 			else if (SCENE === "mentions") await sceneMentions(cdp);
 			else if (SCENE === "sidebar-split")
 				cdp = await sceneSidebarSplit(cdp, app);
+			else if (SCENE === "sidebar-sections")
+				cdp = await sceneSidebarSections(cdp, app);
 			else if (SCENE === "canvas-freshness")
 				await sceneCanvasFreshness(cdp, app);
 			else if (SCENE !== "none") throw new Error(`unknown scene "${SCENE}"`);
