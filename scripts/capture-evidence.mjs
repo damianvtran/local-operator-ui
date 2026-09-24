@@ -1311,6 +1311,17 @@ export const STORIES = [
 	   (`chat-run-panel-live/`), because the drill-in is a flow against a real
 	   backend and no story can produce it (`§ 11.3`). */
 	["chat-run-panel--reader-live", 1280, 900],
+	/* The other half of `reader-live`: a running child that has reported no
+	   activity, so the foot carries the relay's own default word (`§ 5.8`). The
+	   pair is what shows the line renders a WIRE string when there is one and the
+	   harness's fallback when there is not. */
+	["chat-run-panel--reader-no-activity", 1280, 900],
+	/* The foot at the pane's floor with the longest label the row can be handed —
+	   the relay's named-tool fallback, 32 characters against the ~41 the floor
+	   leaves — so truncation inside the row is photographed rather than assumed
+	   (design round 1, D3), and `§ 5.8`'s recorded divergence from the parent's
+	   own foot is pictured rather than only described. */
+	["chat-run-panel--reader-live-floor", 800, 700],
 	["chat-run-panel--reader-settled", 1280, 900],
 	["chat-run-panel--reader-failed", 1280, 900],
 	["chat-run-panel--reader-nested", 1280, 900],
@@ -2796,6 +2807,61 @@ export const STORIES = [
 	["chat-model-picker--empty", 900, 560],
 	["chat-model-picker--partial-error", 900, 560],
 	["chat-model-picker--narrow", 560, 820],
+	/*
+	   THE OPUS FRAMES, and why they are declared by `dir` rather than by story.
+
+	   The operator's report is a difference between two LISTINGS under one
+	   state of the dialog - open, `opus` typed - so `after-registry-only-opus`
+	   is the in-flight half (the rows the dialog opens on, with the automatic
+	   listing out) and `after-provider-listing-opus` is the settled one, with
+	   the row the provider lists and the registry does not (`Claude Opus 5.5`,
+	   absent from a registry that stops at `claude-opus-5`). Both are 620 tall:
+	   the row sets are one to three rows, and a 760 frame of a one-row list is
+	   mostly ground, which is what `check-evidence`'s uniformity ceiling refuses
+	   (the same reason `refresh-pending` and `partial-error` are short).
+
+	   THE `before-` HALF IS DELIBERATELY NOT DECLARED HERE. It is a frame of
+	   ANOTHER TREE (`origin/main`'s own picker), and this table is swept from the
+	   tree the run boots: a later unfiltered sweep would re-capture the same
+	   story here - where it renders `Checking providers…` and a disabled control
+	   - into the `before-` directory, silently replacing a base-tree claim with a
+	   head-tree picture, and nothing checks per-frame digests (review round 1,
+	   R1-3). It lives in `model-picker-live-listing-before/` instead, declared as
+	   a `supplementary` set in `docs/evidence/manifest.json`, which is where this
+	   repository keeps a cross-tree half (`chat-canonical-user-card-measure-before`,
+	   `chat-composer-band/before`).
+
+	   THE NARROW IN-FLIGHT FRAME is the design round's open question at 560px:
+	   the same story, the same withheld live answer, at the width where the
+	   toolbar has the least slack (review round 1, design D1's narrow half).
+
+	   `after-live-listing-failed` is the state review round 1 filed twice from
+	   two directions (code R1-1, UX U3): the automatic listing fails and the rows
+	   stay, with the failure as a note above them. */
+	[
+		"chat-model-picker--registry-only-opus",
+		900,
+		620,
+		{ dir: "after-registry-only-opus" },
+	],
+	[
+		"chat-model-picker--registry-only-opus",
+		560,
+		820,
+		{ dir: "after-registry-only-opus-narrow" },
+	],
+	[
+		"chat-model-picker--provider-listing-opus",
+		900,
+		620,
+		{ dir: "after-provider-listing-opus" },
+	],
+	[
+		"chat-model-picker--live-listing-failed",
+		900,
+		620,
+		{ dir: "after-live-listing-failed" },
+	],
 	/* The explicit current-model machine-default action and its refused write. */
 	["chat-model-picker--set-current-as-default", 900, 820],
 	["chat-model-picker--set-current-as-default-refused", 900, 820],
@@ -5019,6 +5085,50 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * test that evaluates the source text in a bare scope is what holds that.
  */
 export const storyDrew = (counted) => counted - 2 >= 7;
+
+/**
+ * A console line that means the story's PHASE threw, whatever it threw.
+ *
+ * EVERY `XxxError:` IS PART OF THE PATTERN, and the names are deliberately not a
+ * list. QA round 4's Q-12 added `^Error:`; that was still a list, and the next
+ * hole was measured on this machine rather than reasoned about: the model
+ * picker's own evidence pass shipped a frame whose play had thrown ``TypeError:
+ * Received `callback` arg must be a function`` (a `waitFor` called without a
+ * callback), the pattern did not match it, the sweep exited 0 and printed
+ * `Captured 4 frames` - and the frame was presented as evidence for a state the
+ * play never reached. A guard that enumerates the error types a story may throw
+ * is a guard that is one mistake behind; what a console entry starting
+ * `<Something>Error:` means is that the story's phase threw, whatever the
+ * subclass is.
+ *
+ * The over-match is deliberate and cheap: a page console that carries a thrown
+ * error during a story's phase is a run to look at, not a frame to keep.
+ * `Unable to perform pointer interaction` stays named because it is
+ * `user-event`'s own refusal rather than an Error.
+ *
+ * Exported so the cases that decided it are a TEST rather than the reviewer's
+ * manual probe: `capture-evidence.test.mjs` drives the measured `TypeError`, a
+ * plain `Error`, the `user-event` refusal and a benign DevTools line through
+ * this constant, and pins that the sweep is reading the constant rather than a
+ * copy of it.
+ *
+ * `Uncaught ` is optional because a thrown Error the page reports itself arrives
+ * with that prefix, and the pattern is anchored at the line's start (review
+ * round 2, NIT 2). TWO RESIDUES, named so neither is re-found as a new defect
+ * (round 3's NIT):
+ *
+ *   - a phase that throws a NON-Error - `throw "boom"`, a thrown object, and
+ *     equally the `Uncaught (in promise) TypeError: ...` spelling - which the
+ *     console renders without a line beginning `<Something>Error:` at all. That
+ *     is inherent to reading console TEXT rather than to this pattern, and the
+ *     under-match is bounded rather than open: an unhandled rejection is
+ *     reported through `Runtime.exceptionThrown`, and this sweep reads
+ *     `Runtime.consoleAPICalled` only, so those forms do not reach the guard;
+ *   - a page that logs an error-shaped line while its story is fine. The
+ *     over-match is deliberate and cheap: a run to look at, not a frame to keep.
+ */
+export const PLAY_FAILURE =
+	/^(?:Uncaught )?\w*Error:|Unable to perform pointer interaction/;
 
 class Cdp {
 	constructor(ws) {
@@ -7343,21 +7453,11 @@ const main = async () => {
 						.map((arg) => arg.value ?? arg.description ?? "")
 						.join(" "),
 				)
-				.find((text) =>
-					/*
-					 * `^Error:` IS PART OF THE PATTERN NOW, and QA round 4's Q-12 is why: this
-					 * guard knew the two shapes `@storybook/test` throws and the pointer refusal
-					 * user-event produces, so a `play` that threw its own `Error` — which is
-					 * exactly what the console pane's selection story did — was reported to the
-					 * console and IGNORED, and the sweep photographed twelve frames of a state
-					 * the play had already rejected. The comment above this block said that limit
-					 * out loud; a limit that ships a wrong frame is not a disclosure, it is the
-					 * defect. A thrown `Error:` in a story's phase now stops the sweep.
-					 */
-					/^(AssertionError|TestingLibraryElementError|Error:)|Unable to perform pointer interaction/.test(
-						text,
-					),
-				);
+				// The pattern's own reasoning lives beside its definition (`PLAY_FAILURE`),
+				// because a rule this easy to widen needs its cases testable rather than
+				// described where the sweep reads them: `capture-evidence.test.mjs` drives
+				// the measured miss and the refusals through this same constant.
+				.find((text) => PLAY_FAILURE.test(text));
 			if (playFailure) {
 				throw new Error(
 					`${story} @ ${theme}: the story's play function THREW — ${playFailure.split("\n")[0].slice(0, 200)}. The story's own assertions rejected the state this frame would have photographed, so the frame is not taken and the sweep stops here. Run the story in Storybook to see it fail.`,

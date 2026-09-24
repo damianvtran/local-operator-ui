@@ -29,6 +29,7 @@ import { join } from "node:path";
 import { after, test } from "node:test";
 
 import {
+	PLAY_FAILURE,
 	THEME_SETTLE_DEFAULT_MS,
 	THEME_SETTLE_ENV,
 	THEME_SETTLE_POLL_MS,
@@ -132,6 +133,75 @@ test("a directory the sweep empties is removed, one that still holds prose is no
  * broken story from the outside, so the number has to be pinned where the next
  * person to move it can see the measurement it came from.
  */
+/*
+ * The play-failure guard, driven over the case that widened it.
+ *
+ * WHY THIS IS A TEST. The guard decides whether a frame is EVIDENCE: a story
+ * whose play threw must not be photographed, because the picture then shows a
+ * state the play's own assertions had just rejected. Its widening was reasoned
+ * from a measured miss - the model picker's evidence pass shipped a frame whose
+ * play had thrown ``TypeError: Received `callback` arg must be a function``,
+ * the sweep exited 0 and printed `Captured 4 frames` - and a rule that keeps
+ * being widened by hand is a rule whose next hole is found in the same place.
+ * The cases that decided it are pinned here instead, and the last assertion
+ * pins that the sweep still reads this constant rather than a copy of it.
+ */
+test("a play that threw a TypeError is caught, and a healthy console is not", () => {
+	// The measured miss, verbatim from the console entry that produced it.
+	assert.ok(
+		PLAY_FAILURE.test("TypeError: Received `callback` arg must be a function"),
+		"a TypeError out of a play is exactly the case that shipped a frame of a state the play never reached",
+	);
+	assert.ok(
+		PLAY_FAILURE.test(
+			"Error: expected 'Claude Opus 5' to equal 'Claude Opus 5.5'",
+		),
+		"and the plain Error an `expect` raises stays caught",
+	);
+	assert.ok(
+		PLAY_FAILURE.test(
+			"Unable to perform pointer interaction as the element has `pointer-events: none`",
+		),
+		"`user-event`'s own refusal is not an Error and stays named",
+	);
+	assert.ok(
+		PLAY_FAILURE.test(
+			"Uncaught Error: Cannot read properties of undefined (reading 'rows')",
+		),
+		"a thrown Error the page reports itself carries the `Uncaught ` prefix, and the anchor must not miss it (round 2, reviewer NIT 2)",
+	);
+	for (const benign of [
+		"Download the React DevTools for a better development experience: https://react.dev/link/react-devtools",
+		'Warning: Each child in a list should have a unique "key" prop.',
+		"Models listing failed: provider anthropic did not answer",
+	]) {
+		assert.ok(
+			!PLAY_FAILURE.test(benign),
+			`a page console line that is not a thrown phase must not stop a sweep: ${benign}`,
+		);
+	}
+
+	/*
+	 * And the copy-drift half: the pattern exists ONCE in the sweep, at its
+	 * definition, and the call site reads it by name. A second literal there -
+	 * which is how this guard was widened twice - fails here.
+	 */
+	const source = readFileSync(
+		new URL("./capture-evidence.mjs", import.meta.url),
+		"utf8",
+	);
+	assert.equal(
+		source.split("\\w*Error:").length - 1,
+		1,
+		"the play-failure pattern's error clause is defined once",
+	);
+	assert.match(
+		source,
+		/\.find\(\(text\) => PLAY_FAILURE\.test\(text\)\)/,
+		"and the sweep matches console entries through the exported constant",
+	);
+});
+
 test("the drawn-story floor rejects the decorator's own furniture", () => {
 	assert.equal(storyDrew(0), false);
 	assert.equal(storyDrew(1), false);
