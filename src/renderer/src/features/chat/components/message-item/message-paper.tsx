@@ -122,7 +122,9 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 							// `paintsSomething`-era padding of 12px inline / 10px block for the
 							// same reason.
 							"relative rounded-frame bg-surface text-ink break-words",
-							isSmallView ? "max-w-[92%] px-3 py-2.5" : "max-w-[85%] px-3 py-2.5",
+							isSmallView
+								? "max-w-[92%] px-3 py-2.5"
+								: "max-w-[85%] px-3 py-2.5",
 						)}
 					>
 						<div ref={messageContentRef} className={cn("relative")}>
