@@ -2984,7 +2984,8 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								title,
 								peer: to,
 								reason:
-									"the device answered something this app could not read, so where it is now is unknown; this list updates within 30 s, so check that device first.",
+									// Four lines at 280 px, the same measurement as the timeout arm below.
+									"the answer could not be read; check that device first.",
 							},
 						});
 						return false;
@@ -3074,7 +3075,15 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 									title,
 									peer: to,
 									reason:
-										"the request was sent, so it may already be there; this list updates within 30 s, so check that device first.",
+										/*
+										 * FOUR LINES AT 280 px, MEASURED (design round 2, D16): the
+										 * six-line version this replaces measured 104 px of a 280px
+										 * panel, and the designer asked for four. "This list updates
+										 * within 30 s" is the clause that goes - the list does update,
+										 * and the sentence keeps the two facts a reader acts on: it may
+										 * already be there, and which device to check.
+										 */
+										"it may already be there; check that device first.",
 								},
 					});
 					return false;
