@@ -295,13 +295,15 @@ test("the signed-in census renders no cue anywhere", () => {
 	assert.equal(html.split('data-provider-id="radient"').length - 1, 1);
 });
 
-test("only the provider step takes the grid measure, and both measures are clamped", () => {
-	assert.equal(STEP_PANEL_WIDTH[OnboardingStep.CONNECT_PROVIDER], "grid");
-	// One entry: every other step falls through to the form measure. A step added
-	// later that wanted the grid's width has to say so here, in a red test.
-	assert.deepEqual(Object.keys(STEP_PANEL_WIDTH), [
-		OnboardingStep.CONNECT_PROVIDER,
-	]);
+test("every step takes the same panel measure, and it is clamped", () => {
+	/*
+	 * Design round 1's D6: step 1 used to ask for a wider measure than steps 2 and
+	 * 3, so pressing Continue narrowed the dialog by about 200px and the title, the
+	 * step indicator and the close button all jumped inward mid-flow. An EMPTY map
+	 * is the fix stated as a rule: every step resolves to the one measure, so a step
+	 * added later cannot quietly widen the frame that holds the others.
+	 */
+	assert.deepEqual(Object.keys(STEP_PANEL_WIDTH), []);
 	/*
 	 * Design round 1's D1: the panel is `w-full` and this frame used to clamp
 	 * only its height, so a measure wider than the viewport painted its own
@@ -315,6 +317,6 @@ test("only the provider step takes the grid measure, and both measures are clamp
 			`the ${shape} measure must be clamped against the viewport`,
 		);
 	}
-	assert.match(ONBOARDING_PANEL_WIDTHS.grid, /min\(60rem/);
-	assert.match(ONBOARDING_PANEL_WIDTHS.form, /min\(35rem/);
+	assert.match(ONBOARDING_PANEL_WIDTHS.single, /min\(40rem/);
+	assert.equal(Object.keys(ONBOARDING_PANEL_WIDTHS).length, 1);
 });

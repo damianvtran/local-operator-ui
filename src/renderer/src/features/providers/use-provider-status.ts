@@ -66,6 +66,52 @@ export function useDefaultModel(): {
  * app simply could not read is the worse failure, and the connectivity banner
  * already owns "the server is not answering".
  */
+export function providerStatusFrom(input: {
+	censusEnabled: boolean;
+	censusLoaded: boolean;
+	configLoading: boolean;
+	/** The configured default hosting, or null. */
+	hosting: string | null;
+	/** The census rows, as `providers.list` returned them. */
+	rows: Array<{
+		id: string;
+		local?: boolean;
+		has_credential?: boolean;
+		stored_credentials?: number;
+	}>;
+}): { needsProvider: boolean; isKnown: boolean } {
+	const { censusEnabled, censusLoaded, configLoading, hosting, rows } = input;
+	const isKnown = censusEnabled && censusLoaded && !configLoading;
+	/*
+	 * A CONFIGURED `hosting` is not the same fact as a usable provider. Signing
+	 * out clears the credential (`auth.logout`) and leaves `hosting` in the
+	 * config, so after signing out of the only provider there was no card, no
+	 * status line and no placeholder - while every send failed against a default
+	 * whose key was gone (code round 1 m3).
+	 *
+	 * The row decides, because only the census knows whether the credential is
+	 * still there: local runtimes and providers that need no credential count as
+	 * usable (this answers "can anything answer a message", not "is a cloud key
+	 * present"), and a `hosting` whose row this census does not carry is trusted,
+	 * because a backend that cannot describe the provider is not evidence that it
+	 * is unusable.
+	 */
+	const hostingRow = hosting
+		? (rows.find((row) => row.id === hosting) ?? null)
+		: null;
+	const hostingUsable =
+		hosting !== null &&
+		(hostingRow === null ||
+			hostingRow.local === true ||
+			hostingRow.has_credential === true ||
+			(hostingRow.stored_credentials ?? 0) > 0);
+	return {
+		isKnown,
+		needsProvider: isKnown && !hostingUsable && !hasConnectedProvider(rows),
+	};
+}
+
+/** The hook: the same rule over the two reads the chat already has. */
 export function useProviderStatus(): {
 	needsProvider: boolean;
 	isKnown: boolean;
@@ -74,10 +120,11 @@ export function useProviderStatus(): {
 	const censusEnabled = desktopFeatureEnabled(capabilities.data, "auth");
 	const providers = useDesktopProviders(censusEnabled);
 	const { hosting, isLoading } = useDefaultModel();
-	const isKnown = censusEnabled && providers.isSuccess && !isLoading;
-	return {
-		isKnown,
-		needsProvider:
-			isKnown && !hosting && !hasConnectedProvider(providers.data ?? []),
-	};
+	return providerStatusFrom({
+		censusEnabled,
+		censusLoaded: providers.isSuccess,
+		configLoading: isLoading,
+		hosting,
+		rows: providers.data ?? [],
+	});
 }

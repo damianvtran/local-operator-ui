@@ -37,7 +37,7 @@ import {
 	useOnboardingStore,
 } from "@shared/store/onboarding-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { screen, userEvent } from "@storybook/test";
+import { screen, userEvent, waitFor } from "@storybook/test";
 import { Plug } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useLayoutEffect, useState } from "react";
@@ -95,7 +95,16 @@ type Script =
 	/** Fails with the backend's sentence. */
 	| "fail"
 	/** The backend no longer holds the operation (404). */
-	| "gone";
+	| "gone"
+	/**
+	 * A flow that needs a paste BEFORE it has any URL at all: QwenCloud's Token
+	 * Plan asks for the key first (QA round 1 Q2).
+	 */
+	| "paste-before-url"
+	/** Waiting, on the newer backend, where `launch_url` is the loopback alias. */
+	| "launch-url-waiting"
+	/** Another window started a sign-in: this one ends cancelled, not failed. */
+	| "superseded";
 
 type BridgeOptions = {
 	providers?: DesktopProvider[];
@@ -140,6 +149,15 @@ const snapshot = (
 	...extra,
 });
 
+/** The scripts whose state is settled from the start reply. */
+const TERMINAL_SCRIPTS = new Set<Script>([
+	"succeed",
+	"expire",
+	"fail",
+	"gone",
+	"superseded",
+]);
+
 const installBridge = (options: BridgeOptions) => {
 	let polls = 0;
 	window.__openedAuth = [];
@@ -159,6 +177,43 @@ const installBridge = (options: BridgeOptions) => {
 						input_required: true,
 						input_optional: true,
 						prompt_id: "p1",
+					}),
+				);
+			case "paste-before-url":
+				/*
+				 * No `auth_url` at all: the panel has to show the field, because the
+				 * field IS how this flow proceeds (QA round 1 Q2).
+				 */
+				return ok(
+					snapshot("input_required", {
+						auth_url: null,
+						input_required: true,
+						input_optional: false,
+						prompt_id: "token-plan",
+					}),
+				);
+			case "launch-url-waiting":
+				/*
+				 * What every callback flow on the newer backend reports: `auth_url` is
+				 * the provider's page and `launch_url` is the loopback alias of it. A
+				 * panel that prefers `launch_url` for the host names `localhost:54549`
+				 * as the provider (code round 1 M1).
+				 */
+				return ok(
+					snapshot("waiting", {
+						auth_url: AUTH_URL,
+						launch_url: "http://localhost:54549/launch",
+					}),
+				);
+			case "superseded":
+				/*
+				 * The supersede the backend reports when another window starts a
+				 * sign-in: cancelled, in its own words, which is a NEUTRAL state and
+				 * not a failure (the panel renders it as such).
+				 */
+				return ok(
+					snapshot("cancelled", {
+						message: "Replaced by a new sign-in.",
 					}),
 				);
 			case "paste-required":
@@ -205,9 +260,7 @@ const installBridge = (options: BridgeOptions) => {
 							}),
 						);
 			case "gone":
-				return polls < 2
-					? ok(waiting)
-					: {
+				return {
 							status: 404,
 							body: {
 								detail: "This sign-in is no longer available. Start again.",
@@ -246,6 +299,14 @@ const installBridge = (options: BridgeOptions) => {
 						},
 					});
 				case "auth.start":
+					/*
+					 * The TERMINAL states start already settled. They used to arrive on
+					 * a later poll, which made every capture of them a race with the
+					 * shutter: the frames that shipped were the waiting panel under
+					 * four names (M3/D1/Q8). What each terminal state LOOKS like is
+					 * this story's subject; how it arrives is the unit tests'.
+					 */
+					if (TERMINAL_SCRIPTS.has(script)) return statusFor();
 					return ok(
 						script.startsWith("current") || script === "optional-paste"
 							? snapshot("waiting", { auth_url: AUTH_URL })
@@ -361,6 +422,51 @@ const openRow = async (name: RegExp) => {
 	await userEvent.click(await screen.findByRole("button", { name }));
 };
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Wait for the panel to REACH a state, rather than for the clock to pass.
+ *
+ * The terminal stories' plays used a fixed 3800ms sleep and the rig shoots when
+ * the play resolves, so four terminal frames were committed 900ms into a state
+ * that arrives about 1.5s later: succeeded / expired / gone-404 / failed shipped
+ * as four copies of the waiting panel (code round 1 M3, design round 1 D1).
+ * Waiting on the attribute is what makes the frame a photograph of the state it
+ * names, and `expectPresent` in `scripts/capture-evidence.mjs` is the rig's own
+ * half of the same claim.
+ */
+/**
+ * Press the flow's start button only when the panel is IDLE, then wait for the
+ * state the frame claims.
+ *
+ * WHY THE GUARD: Storybook re-runs a story's play when the frame around it
+ * changes -- and the capture rig changes the theme between the two frames it
+ * takes of every state. A play that pressed unconditionally therefore started a
+ * SECOND sign-in on the theme switch, so the shot showed "Opening your browser"
+ * while the state the story is named for had already been reached and thrown
+ * away: four terminal rows shipped as copies of the waiting panel for exactly
+ * this reason, on top of the too-short sleep (code round 1 M3, design round 1
+ * D1, QA round 1 Q8). Pressing from idle makes the play idempotent, so the
+ * second pass leaves the settled frame alone.
+ */
+const startIfIdle = async (state: string) => {
+	if (document.querySelector('[data-sign-in-state="idle"]') !== null) {
+		await userEvent.click(
+			await screen.findByRole("button", { name: CONTINUE_IN_BROWSER }),
+		);
+	}
+	await waitForState(state);
+};
+
+const waitForState = async (state: string, timeout = 15000) => {
+	await waitFor(
+		() => {
+			if (document.querySelector(`[data-sign-in-state="${state}"]`) === null) {
+				throw new Error(`the panel never reached ${state}`);
+			}
+		},
+		{ timeout },
+	);
+};
 
 /* ----------------------------------------------------------- settings page */
 
@@ -517,6 +623,59 @@ export const PanelPasteRequired = panelStory(
 	"anthropic",
 );
 
+/*
+ * The Token Plan's DEVICE method on its own: it is the one that asks for a paste
+ * before it has any URL, and leaving the key method off the row removes a tab
+ * click from the play (a step that raced the tab list in one theme).
+ */
+const OPTS_PASTE_BEFORE_URL: BridgeOptions = {
+	script: "paste-before-url",
+	providers: CENSUS.filter((row) => row.id === "alibaba-token-plan").map(
+		(row) => ({
+			...row,
+			auth_methods: row.auth_methods.filter((m) => m.kind === "device"),
+		}),
+	),
+};
+/**
+ * The paste IS the flow and there is no URL yet: the field renders instead of a
+ * spinner, which is what a released backend's Token Plan sign-in needs (Q2).
+ */
+export const PanelPasteRequiredNoUrl = panelStory(
+	OPTS_PASTE_BEFORE_URL,
+	/Sign in: QwenCloud/,
+	async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: /Get a sign-in code/ }),
+		);
+		await wait(2200);
+	},
+	"alibaba-token-plan",
+);
+
+const OPTS_LAUNCH_URL: BridgeOptions = { script: "launch-url-waiting" };
+/**
+ * Waiting with `launch_url` set: the sentence names the PROVIDER, never the
+ * loopback alias the backend uses for its own callback (code round 1 M1, UX N2).
+ */
+export const PanelWaitingLaunchUrl = panelStory(
+	OPTS_LAUNCH_URL,
+	/Sign in: Anthropic/,
+	clickContinue,
+	"anthropic",
+);
+
+const OPTS_SUPERSEDED: BridgeOptions = { script: "superseded" };
+/** Superseded by another sign-in: cancelled, with the backend's own sentence. */
+export const PanelCancelledSuperseded = panelStory(
+	OPTS_SUPERSEDED,
+	/Sign in: Anthropic/,
+	async () => {
+		await startIfIdle("unfinished");
+	},
+	"anthropic",
+);
+
 const OPTS_DEVICE: BridgeOptions = { script: "device-legacy" };
 /** Device code on the released backend: the code parsed out of "Enter code:". */
 export const PanelDeviceCode = panelStory(
@@ -540,10 +699,7 @@ export const PanelSucceededWithDefault = panelStory(
 	OPTS_SUCCEED,
 	/Sign in: Anthropic/,
 	async () => {
-		await userEvent.click(
-			await screen.findByRole("button", { name: CONTINUE_IN_BROWSER }),
-		);
-		await wait(3800);
+		await startIfIdle("succeeded");
 	},
 	"anthropic",
 );
@@ -554,10 +710,7 @@ export const PanelExpired = panelStory(
 	OPTS_EXPIRE,
 	/Sign in: Anthropic/,
 	async () => {
-		await userEvent.click(
-			await screen.findByRole("button", { name: CONTINUE_IN_BROWSER }),
-		);
-		await wait(3800);
+		await startIfIdle("unfinished");
 	},
 	"anthropic",
 );
@@ -568,10 +721,7 @@ export const PanelGone404 = panelStory(
 	OPTS_GONE,
 	/Sign in: Anthropic/,
 	async () => {
-		await userEvent.click(
-			await screen.findByRole("button", { name: CONTINUE_IN_BROWSER }),
-		);
-		await wait(3800);
+		await startIfIdle("unfinished");
 	},
 	"anthropic",
 );
@@ -582,10 +732,7 @@ export const PanelFailed = panelStory(
 	OPTS_FAIL,
 	/Sign in: Anthropic/,
 	async () => {
-		await userEvent.click(
-			await screen.findByRole("button", { name: CONTINUE_IN_BROWSER }),
-		);
-		await wait(3800);
+		await startIfIdle("unfinished");
 	},
 	"anthropic",
 );
@@ -712,6 +859,28 @@ export const OnboardingStep2Applied: Story = {
 };
 
 const OPTS_PROPOSED: BridgeOptions = { providers: signedIn(["anthropic"]) };
+/*
+ * The CURRENT-user path, not the new-backend one: a released backend sends no
+ * `suggested_model` and applies no defaults on sign-in, so the step has nothing
+ * to confirm and must ASK -- and the provider it displays is the one Continue has
+ * to write (code round 1 M2, QA round 1 Q3, UX round 1 U1).
+ */
+const OPTS_CHOOSE: BridgeOptions = {
+	providers: signedIn(["openrouter"]).map((row) => ({
+		...row,
+		suggested_model: null,
+	})),
+};
+/** Step 2 on a released backend: nothing applied, nothing suggested, pick it. */
+export const OnboardingStep2Choose: Story = {
+	render: () => (
+		<Bridge options={OPTS_CHOOSE}>
+			<div className="h-screen bg-canvas">
+				<OnboardingAt step={OnboardingStep.DEFAULT_MODEL} />
+			</div>
+		</Bridge>
+	),
+};
 /** Step 2 on an older backend: nothing applied, the suggestion preselected. */
 export const OnboardingStep2Proposed: Story = {
 	render: () => (

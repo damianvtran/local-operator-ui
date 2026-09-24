@@ -200,6 +200,10 @@ import {
 	ConnectProviderCard,
 	NoProviderLine,
 } from "@features/providers/connect-provider-card";
+import {
+	NO_PROVIDER_NOTICE,
+	useConnectProviderStore,
+} from "@features/providers/connect-provider-store";
 import { sampleSuggestions } from "./composer-suggestions";
 import { ComposerTipRow } from "./composer-tip";
 import { CredentialChipLayer } from "./credential-chip-layer";
@@ -4728,11 +4732,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					activeElement &&
 					(activeElement.tagName === "INPUT" ||
 						activeElement.tagName === "TEXTAREA");
-				if (!isInputFocused) {
+				/*
+				 * Not while nothing is connected: the empty chat's headline invites a
+				 * question and the connect card asks for a provider, and autofocus put
+				 * the composer's accent outline on screen as a third, competing signal
+				 * (design round 1 D5). Typing is still allowed - the user clicks in when
+				 * they want to.
+				 */
+				if (!isInputFocused && !noProvider) {
 					textareaRef.current?.focus();
 				}
 			}
-		}, [isInputDisabled, isRecording, isTranscribing, textareaRef]);
+		}, [isInputDisabled, isRecording, isTranscribing, textareaRef, noProvider]);
 
 		useEffect(() => {
 			window.electron.ipcRenderer
@@ -5391,8 +5402,25 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				sendError?.heldClaimCode,
 				heldCopyOnScreen === true,
 			);
+			const providerConnectActions =
+				sendError?.message && NO_PROVIDER_NOTICE.test(sendError.message)
+					? [
+							{
+								label: "Connect a provider",
+								onClick: () => useConnectProviderStore.getState().openConnect(),
+							},
+						]
+					: [];
 			return {
 				message: sendError?.message,
+				/*
+				 * THE BACKEND'S "no model provider" REFUSAL ARRIVES HERE, as this
+				 * alert, not as a transcript record. The action the transcript notice
+				 * gained was therefore never rendered for the case it was written for -
+				 * a user who sends with nothing connected got the sentence, a Settings
+				 * path to type out, and no way to act (QA round 1 Q5, UX round 1 N3).
+				 * One action, opening the same dialog the other surfaces open.
+				 */
 				/*
 				 * "Send it again" is only true when the next send would be ACCEPTED.
 				 *
@@ -5426,7 +5454,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				// is, the user can see it and Enter retries it.
 				showHeld: held !== undefined && !heldInBox,
 				heldCopy,
-				actions: sendError?.actions ?? [],
+				actions: [...(sendError?.actions ?? []), ...providerConnectActions],
 				// Offered only when the box does not already hold the payload -
 				// restoring what is already there does nothing.
 				restore: held !== undefined && !heldInBox ? held : undefined,
@@ -7228,6 +7256,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 														disabled={
 															isInputDisabled ||
 															isLoading ||
+															/*
+															 * Spec § 6: with nothing connected Send is disabled by
+															 * COLOUR STEP. It used to be enabled and answered the press
+															 * with a backend refusal, which taught the user that the
+															 * app half-works (QA round 1 Q7). Typing stays allowed:
+															 * the box is where the failure is explained.
+															 */
+															noProvider ||
 															(!newMessage.trim() && attachments.length === 0)
 														}
 														aria-label="Send message"
@@ -7577,7 +7613,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							: "w-full",
 					)}
 				>
-					{showEmptyChatPrompt ? (
+					{/*
+					 * With nothing connected there is no question to ask yet: the card
+					 * below says what to do, and a headline inviting a prompt the app
+					 * cannot run pointed the two strongest signals on the screen in
+					 * opposite directions (design round 1 D5).
+					 */}
+					{showEmptyChatPrompt && !noProvider ? (
 						<h2 className="text-center text-ink text-title">
 							What can I help you with today?
 						</h2>

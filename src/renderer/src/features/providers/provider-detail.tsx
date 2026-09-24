@@ -77,12 +77,7 @@ import {
 	unfinishedMessage,
 } from "./provider-catalog";
 import { primaryMethod } from "./provider-labels";
-import {
-	INITIAL_SIGN_IN_STATE,
-	type SignInFlow,
-	type SignInState,
-	createSignInFlow,
-} from "./sign-in-flow";
+import { useSignInSession } from "./sign-in-sessions";
 
 /**
  * Reachability for a local provider.
@@ -152,9 +147,16 @@ const LocalProviderReachability: FC<{ provider: DesktopProvider }> = ({
 					) : null}
 				</p>
 			)}
-			{result && !result.reachable && (
+			{/*
+			 * The reason only when it says something the line above does not: the
+			 * backend's own failure sentence repeats the address it could not reach,
+			 * which printed the same address twice in two faces (design round 1 D9).
+			 */}
+			{result &&
+			!result.reachable &&
+			!(provider.base_url && result.detail.includes(provider.base_url)) ? (
 				<p className="text-ink-dim text-meta">{result.detail}</p>
-			)}
+			) : null}
 			<Button
 				variant="secondary"
 				size="sm"
@@ -273,6 +275,16 @@ const SignedIn: FC<{
 	actionLabel: string;
 	onAction: () => void;
 	primaryAction: boolean;
+	/** Overrides the headline, for the states that are not a plain success. */
+	headline?: string;
+	/**
+	 * `unchecked` is a save whose key the backend did not verify. The success
+	 * colour and the word "connected" are spent only on a verified success
+	 * (branding contract, design round 1 D4), so this tone moves the check to
+	 * `text-ink-muted` and promotes the caveat from the dimmest line on the panel
+	 * to a body-sized muted one.
+	 */
+	tone?: "success" | "unchecked";
 }> = ({
 	brand,
 	verb,
@@ -282,18 +294,25 @@ const SignedIn: FC<{
 	actionLabel,
 	onAction,
 	primaryAction,
+	headline,
+	tone = "success",
 }) => (
 	<div className="flex flex-col gap-3" data-sign-in-state="succeeded">
 		<div className="flex items-center gap-2">
-			<CircleCheck size={20} className="text-success" aria-hidden="true" />
+			<CircleCheck
+				size={20}
+				className={tone === "unchecked" ? "text-ink-muted" : "text-success"}
+				aria-hidden="true"
+			/>
 			<output className="text-heading text-ink">
-				{verb === "Connected" ? `${brand} connected` : `Signed in to ${brand}`}
+				{headline ??
+					(verb === "Connected" ? `${brand} connected` : `Signed in to ${brand}`)}
 			</output>
 		</div>
 		{defaults?.receipt ? (
 			<p className="text-body-sm text-ink-muted">
 				{defaults.receipt}
-				{defaults.hosting && onChangeModel ? (
+				{onChangeModel ? (
 					<>
 						{" "}
 						<Button variant="link" size="sm" onClick={onChangeModel}>
@@ -303,8 +322,25 @@ const SignedIn: FC<{
 				) : null}
 			</p>
 		) : null}
+		{/*
+		 * A receipt with no hosting is a change that did NOT happen: on an older
+		 * backend the sign-in writes a credential and leaves the default alone, so
+		 * saying so is the difference between "nothing happened" and "your model
+		 * is unchanged" (code round 1, m5).
+		 */}
+		{defaults && !defaults.hosting && defaults.receipt ? (
+			<p className="text-body-sm text-ink-muted">
+				Your default model is unchanged.
+			</p>
+		) : null}
 		{unverified ? (
-			<p className="text-ink-dim text-meta">
+			<p
+				className={
+					tone === "unchecked"
+						? "text-body-sm text-ink-muted"
+						: "text-ink-dim text-meta"
+				}
+			>
 				Saved, but not checked yet: {unverified}
 			</p>
 		) : null}
@@ -329,14 +365,12 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 }) => {
 	const queryClient = useQueryClient();
 	const [methodId, setMethodId] = useState<string | null>(null);
-	const [flow, setFlow] = useState<SignInState>(INITIAL_SIGN_IN_STATE);
 	const [keyValue, setKeyValue] = useState("");
 	const [keySaving, setKeySaving] = useState(false);
 	const [keyError, setKeyError] = useState<string | null>(null);
 	const [keySaved, setKeySaved] = useState<SaveKeyResult | null>(null);
 	const [promptValue, setPromptValue] = useState("");
 	const [promptError, setPromptError] = useState<string | null>(null);
-	const flowRef = useRef<SignInFlow | null>(null);
 	const brand = brandOf(provider);
 
 	// Resolved by METHOD identity, not provider id: a provider can offer several
@@ -385,29 +419,33 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	const onConnectedRef = useRef(refreshProviders);
 	onConnectedRef.current = refreshProviders;
 
-	useEffect(() => {
-		const instance = createSignInFlow({
-			start: (id) =>
-				desktopResult<AuthOperation>({ op: "auth.start", provider: id }),
-			read: (id) => desktopResult<AuthOperation>({ op: "auth.status", id }),
-			cancel: (id) => desktopResult({ op: "auth.cancel", id }),
-			// Main opens the operation's CURRENT url and never takes one from
-			// the renderer, so a compromised render path cannot turn this into
-			// a general link opener; it also dedups the same operation and url.
-			open: (id, reopen) => openAuthorization(id, reopen),
-			poll: pollAuthOperation,
-			onChange: setFlow,
-			onSucceeded: () => onConnectedRef.current(),
-		});
-		flowRef.current = instance;
-		// Unmount stops polling only; the flow itself belongs to the backend.
-		return () => instance.dispose();
-	}, []);
+	/*
+	 * The flow lives in a per-provider session rather than in this component
+	 * (sign-in-sessions.ts): the row this panel is rendered on MOVES into
+	 * "Connected" the moment a credential lands, which remounts this panel -- and
+	 * a flow owned by the panel went back to idle with it, so a user who had just
+	 * signed in was invited to do it again and never saw the receipt (QA round 1
+	 * Q1, UX U3). Attaching instead also resumes an operation that is still
+	 * running when the panel comes back (UX U4).
+	 */
+	const { flow: flowHandle, state: flow } = useSignInSession(provider.id, () => ({
+		start: (id: string) =>
+			desktopResult<AuthOperation>({ op: "auth.start", provider: id }),
+		read: (id: string) =>
+			desktopResult<AuthOperation>({ op: "auth.status", id }),
+		cancel: (id: string) => desktopResult({ op: "auth.cancel", id }),
+		// Main opens the operation's CURRENT url and never takes one from the
+		// renderer, so a compromised render path cannot turn this into a general
+		// link opener; it also dedups the same operation and url.
+		open: (id: string, reopen: boolean) => openAuthorization(id, reopen),
+		poll: pollAuthOperation,
+		onSucceeded: () => onConnectedRef.current(),
+	}));
 
 	// A panel reused for another provider starts clean.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: provider.id is the reset trigger
 	useEffect(() => {
-		flowRef.current?.reset();
+		flowHandle.reset();
 		setMethodId(null);
 		setKeyValue("");
 		setKeyError(null);
@@ -418,7 +456,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		setMethodId(next);
 		setKeyError(null);
 		setKeySaved(null);
-		flowRef.current?.reset();
+		flowHandle.reset();
 	};
 
 	const submitPrompt = useCallback(async () => {
@@ -474,7 +512,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	const doneLabel = context === "dialog" ? "Continue" : "Done";
 	const finish = () => {
 		setKeySaved(null);
-		flowRef.current?.reset();
+		flowHandle.reset();
 		onDone?.();
 	};
 
@@ -504,8 +542,14 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	const operation = flow.operation;
 	const keyHelpId = `key-help-${provider.id}`;
 
+	/*
+	 * Hidden once the flow is settled. A finished sign-in with "Claude
+	 * subscription | API key" still above it invites a method switch on a result
+	 * the user is done with, and in the unfinished states the tabs duplicate the
+	 * "Use an API key instead" action right below them (design round 1, D4).
+	 */
 	const methodTabs =
-		provider.auth_methods.length > 1 ? (
+		provider.auth_methods.length > 1 && flow.phase !== "settled" ? (
 			<Tabs value={method.method_id} onValueChange={chooseMethod}>
 				<TabsList aria-label="How to connect">
 					{provider.auth_methods.map((candidate) => (
@@ -527,8 +571,22 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 						brand={brand}
 						verb="Connected"
 						defaults={keySaved.defaults_applied}
+						/*
+						 * `valid: true` is the only verified answer. `null` is the backend
+						 * saying it could not check, and ABSENT is a released backend that
+						 * checks nothing at all and answers `{}` -- treating that as success
+						 * printed "Radient connected" for a fabricated key (code round 1
+						 * Q6, UX U1).
+						 */
 						unverified={
-							keySaved.valid === null ? (keySaved.reason ?? null) : null
+							keySaved.valid === true
+								? null
+								: (keySaved.reason ??
+									"this Local Operator does not check keys, so it will be tested on your first message.")
+						}
+						tone={keySaved.valid === true ? "success" : "unchecked"}
+						headline={
+							keySaved.valid === true ? undefined : `${brand} key saved`
 						}
 						onChangeModel={onChangeModel}
 						actionLabel={doneLabel}
@@ -583,8 +641,14 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	}
 
 	/* ----------------------------------------------- browser / device flows */
-	const start = () => void flowRef.current?.start(method.id);
-	const host = hostOf(operation?.launch_url ?? operation?.auth_url);
+	const start = () => void flowHandle.start(method.id);
+	/*
+	 * `auth_url` ONLY. `launch_url` is the loopback `/launch` alias the backend
+	 * reports for EVERY callback flow (measured on #1507: `localhost:54549`), so
+	 * preferring it named a port as the provider in the waiting sentence and in
+	 * the paste label (code round 1 M1, UX N2).
+	 */
+	const host = hostOf(operation?.auth_url);
 	const deviceCode = operation ? deviceCodeOf(operation) : null;
 	const minutes = operation ? minutesLeft(operation.expires_in) : null;
 	/*
@@ -622,7 +686,17 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		);
 	} else if (
 		flow.phase === "starting" ||
-		(flow.phase === "active" && operation && !operation.auth_url && !deviceCode)
+		(flow.phase === "active" &&
+			operation &&
+			!operation.auth_url &&
+			!deviceCode &&
+			/*
+			 * A flow that NEEDS a paste can ask for it before it has any URL at
+			 * all: QwenCloud's Token Plan wants the key first. Without this
+			 * clause the panel sat on "Getting a code" with no field to type in
+			 * and no way to finish the sign-in (QA round 1 Q2).
+			 */
+			!(operation.input_required && !pasteIsFallback))
 	) {
 		body = (
 			<div className="flex items-center gap-3" data-sign-in-state="starting">
@@ -633,14 +707,14 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 				<Button
 					variant="ghost"
 					size="sm"
-					onClick={() => void flowRef.current?.cancel()}
+					onClick={() => void flowHandle.cancel()}
 				>
 					Cancel
 				</Button>
 			</div>
 		);
 	} else if (flow.phase === "active" && operation && deviceCode) {
-		const page = operation.launch_url ?? operation.auth_url;
+		const page = operation.auth_url;
 		body = (
 			<div
 				className="flex flex-col items-start gap-3"
@@ -661,13 +735,13 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 						label={page ? "Copy code and open page" : "Copy code"}
 						variant="primary"
 						onCopied={() => {
-							if (page) void flowRef.current?.reopen();
+							if (page) void flowHandle.reopen();
 						}}
 					/>
 					<Button
 						variant="ghost"
 						size="sm"
-						onClick={() => void flowRef.current?.cancel()}
+						onClick={() => void flowHandle.cancel()}
 					>
 						Cancel
 					</Button>
@@ -680,7 +754,14 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 			</div>
 		);
 	} else if (flow.phase === "active" && operation) {
-		const pasteField = operation.input_required ? (
+		/*
+	 * Built once, placed by whichever state owns it: the paste-required panel
+	 * makes its Continue the PRIMARY action (the field is the only way forward
+	 * there, design round 1 D10) while the waiting panel's disclosure keeps it
+	 * secondary, because the browser is still the flow in that state.
+	 */
+	const pasteField = (primary: boolean) =>
+		operation.input_required ? (
 			<div className="flex flex-col gap-2">
 				<Label htmlFor={`prompt-${operation.id}`}>
 					{host ? `Code from ${host}` : "Code from the sign-in page"}
@@ -699,7 +780,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 						/>
 					</div>
 					<Button
-						variant="secondary"
+						variant={primary ? "primary" : "secondary"}
 						size="md"
 						disabled={!promptValue}
 						onClick={() => void submitPrompt()}
@@ -725,12 +806,12 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 					<p className="text-body text-ink">
 						Paste the code {host ?? "the provider"} shows after you approve
 					</p>
-					<div className="w-full">{pasteField}</div>
+					<div className="w-full">{pasteField(true)}</div>
 					<div className="flex flex-wrap items-center gap-2">
 						<Button
 							variant="secondary"
 							size="sm"
-							onClick={() => void flowRef.current?.reopen()}
+							onClick={() => void flowHandle.reopen()}
 						>
 							<ExternalLink aria-hidden="true" />
 							{flow.opened ? "Open browser again" : "Open sign-in page"}
@@ -741,7 +822,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 						<Button
 							variant="ghost"
 							size="sm"
-							onClick={() => void flowRef.current?.cancel()}
+							onClick={() => void flowHandle.cancel()}
 						>
 							Cancel
 						</Button>
@@ -773,7 +854,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 						<Button
 							variant="secondary"
 							size="sm"
-							onClick={() => void flowRef.current?.reopen()}
+							onClick={() => void flowHandle.reopen()}
 						>
 							<ExternalLink aria-hidden="true" />
 							{flow.opened ? "Open browser again" : "Open sign-in page"}
@@ -784,7 +865,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 						<Button
 							variant="ghost"
 							size="sm"
-							onClick={() => void flowRef.current?.cancel()}
+							onClick={() => void flowHandle.cancel()}
 						>
 							Cancel
 						</Button>
@@ -799,7 +880,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 							summary="Browser showed a code? Paste it here"
 							className="w-full"
 						>
-							<div className="pt-2">{pasteField}</div>
+							<div className="pt-2">{pasteField(false)}</div>
 						</Disclosure>
 					) : null}
 				</div>

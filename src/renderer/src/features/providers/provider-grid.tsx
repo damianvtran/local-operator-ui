@@ -34,7 +34,6 @@ import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
 import { Spinner } from "@shared/components/common/spinner";
 import {
 	Alert,
-	Badge,
 	Button,
 	DropdownMenu,
 	DropdownMenuContent,
@@ -279,6 +278,21 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 		target?.focus();
 	}, [focusRow]);
 
+	/*
+	 * The row the user acted on MOVES into "Connected" when its credential lands,
+	 * and in a scrolled dialog or settings page that move carried the receipt off
+	 * screen: the success moment this PR designs happened out of view, and the
+	 * dialog looked as though nothing had happened (UX round 1 U3). The view
+	 * follows the row rather than the row staying put, which keeps "Connected" one
+	 * block. `nearest` is deliberate: a row already on screen does not move.
+	 */
+	useEffect(() => {
+		if (selectedId === null) return;
+		rowButtons.current.get(selectedId)?.closest("li")?.scrollIntoView({
+			block: "nearest",
+		});
+	}, [selectedId, connected.length]);
+
 	const toggle = (id: string) => {
 		if (selectedId === id) {
 			setSelectedId(null);
@@ -406,8 +420,19 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 						ref={(element) => {
 							rowButtons.current.set(provider.id, element);
 						}}
-						// The accent is spent once in this block: on the recommendation.
-						variant={isRecommended ? "primary" : "secondary"}
+						/*
+						 * The accent is spent once in this block, on the recommendation --
+						 * but only while the recommendation is genuinely the next action.
+						 * Once another row's panel is open, or a provider is already
+						 * connected, the real next action is in that panel and the promoted
+						 * row competed with it: two accent-filled primaries in one small
+						 * dialog (design round 1 D2). The "Recommended" label stays.
+						 */
+						variant={
+							isRecommended && !open && selectedId === null && connected.length === 0
+								? "primary"
+								: "secondary"
+						}
 						size="sm"
 						aria-expanded={open}
 						aria-label={`${open ? "Close" : rowActionLabel(provider)}: ${brandOf(provider)}`}
@@ -437,7 +462,16 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 							{connectedRowMeta(provider, modelName)}
 						</span>
 					</div>
-					{isDefault ? <Badge variant="outline">Default</Badge> : null}
+					{/*
+					 * A plain label, not a bordered one: `border-control` is the boundary
+					 * of things you can press, and the bordered chip measured the same
+					 * height and radius as the row's own secondary button, so on the
+					 * Connected row it read as a clickable "Default" control next to the
+					 * overflow (design round 1 D3, UX N5).
+					 */}
+					{isDefault ? (
+						<span className="text-ink-muted text-meta">Default</span>
+					) : null}
 					{confirmSignOut === provider.id ? (
 						<div className="flex items-center gap-2">
 							<span className="text-body-sm text-ink">
@@ -479,7 +513,23 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 									</DropdownMenuItem>
 								) : null}
 								{isDefault && onChangeModel ? (
-									<DropdownMenuItem onSelect={onChangeModel}>
+									<DropdownMenuItem
+										onSelect={() => {
+											/*
+											 * Deferred by two frames on purpose. Radix restores focus
+											 * to the menu's trigger as it closes, and a focus() call
+											 * scrolls its target into view -- which cancelled the
+											 * smooth scroll to the model settings the handler had
+											 * just started, so "Change model…" did nothing by mouse
+											 * or by keyboard while the sidebar's own route to the
+											 * same section worked (UX round 1 U2). Running the
+											 * handler after that restore lets the scroll land.
+											 */
+											requestAnimationFrame(() => {
+												requestAnimationFrame(() => onChangeModel?.());
+											});
+										}}
+									>
 										Change model…
 									</DropdownMenuItem>
 								) : null}

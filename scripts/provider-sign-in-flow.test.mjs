@@ -34,6 +34,7 @@ const bundle = await build({
 			'export * from "./src/renderer/src/features/providers/sign-in-flow";',
 			'export { pollAuthOperation, AUTH_OPERATION_POLL_MS } from "./src/renderer/src/shared/api/local-operator/auth-operation";',
 			'export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
+			'export { attachSignInSession, peekSignInState, resetSignInSessions } from "./src/renderer/src/features/providers/sign-in-sessions";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -54,6 +55,9 @@ const {
 	pollAuthOperation,
 	AUTH_OPERATION_POLL_MS,
 	DesktopControlError,
+	attachSignInSession,
+	peekSignInState,
+	resetSignInSessions,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -506,4 +510,216 @@ test("a spent deadline is expired whatever the state says; a live one is not", (
 		effectiveOperation(op("x", "starting", { expires_in: 0 })).state,
 		"starting",
 	);
+});
+
+/* ---------------------------------------------------------------------------
+ * The rules the first review round added, each one a measured failure.
+ * ------------------------------------------------------------------------ */
+
+test("a DEVICE flow is not auto-opened: the code has to be on screen first", async () => {
+	const scripted = backend({
+		startReplies: [op("d1", "waiting", { auth_url: URL_A, user_code: "V84J-2LN0K" })],
+	});
+	const { flow } = flowFor(scripted);
+	await flow.start("openai");
+	await settle();
+	/*
+	 * The device page asks the user to ENTER a code that is still in the app, so
+	 * an automatic open put them in front of it with nothing to type - and the
+	 * primary press that copies the code opened a SECOND tab (QA Q4, UX U7).
+	 */
+	assert.deepEqual(scripted.calls.open, [], "no automatic open for a device flow");
+	// The press that copies the code is what opens it, exactly once.
+	await flow.reopen();
+	await settle();
+	assert.deepEqual(
+		scripted.calls.open.map((call) => call.reopen),
+		[true],
+		"the primary press opens the page, with reopen=true",
+	);
+	flow.dispose();
+});
+
+test("an open the app could NOT make is not retried by the poll", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const scripted = backend({
+		startReplies: [op("o1", "starting")],
+		reads: [op("o1", "waiting", { auth_url: URL_A })],
+	});
+	let attempts = 0;
+	const { flow } = flowFor({
+		...scripted,
+		deps: {
+			...scripted.deps,
+			open: async () => {
+				attempts += 1;
+				throw new Error("no handler for the scheme");
+			},
+		},
+	});
+	await flow.start("anthropic");
+	await settle();
+	t.mock.timers.tick(AUTH_OPERATION_POLL_MS * 4);
+	await settle();
+	/*
+	 * Ten attempts in twelve seconds was the measured behaviour, and on a machine
+	 * where the open fails through an OS dialog that is a dialog every 1.5 s
+	 * (UX U5). The poll asks main ONCE and the manual press is the retry.
+	 */
+	assert.equal(attempts, 1, "the poll must not re-ask after a failed open");
+	assert.equal(flow.getState().openFailed, true);
+	assert.equal(flow.getState().opened, false);
+	// Leave no timer armed and no mocked clock in place for the next test.
+	flow.dispose();
+	t.mock.timers.reset();
+});
+
+test("a start superseded during its own cancel never reaches the backend (m2)", async () => {
+	const scripted = backend({
+		startReplies: [op("s1", "starting"), op("s2", "starting")],
+		reads: [op("s1", "waiting", { auth_url: URL_A })],
+	});
+	const states = [];
+	let flow;
+	const cancelSeen = [];
+	scripted.deps.cancel = async (id) => {
+		cancelSeen.push(id);
+		// The user closes the panel (or picks another provider) while the cancel
+		// is in flight: `reset()` bumps the flow's token.
+		if (cancelSeen.length === 1) flow.reset();
+		return {};
+	};
+	flow = createSignInFlow({
+		...scripted.deps,
+		poll: (id, onUpdate, options) =>
+			pollAuthOperation(id, onUpdate, { ...options, read: scripted.deps.read }),
+		onChange: (state) => states.push(state),
+	});
+	await flow.start("anthropic");
+	await settle();
+	await flow.start("anthropic");
+	await settle();
+	assert.deepEqual(
+		scripted.calls.start,
+		["anthropic"],
+		"the second start must not run once its own token is stale",
+	);
+	flow.dispose();
+});
+
+test("a NEW url for the same operation drops 'opened' first, then opens", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const URL_B = "https://claude.ai/oauth/authorize?state=b";
+	const scripted = backend({
+		startReplies: [op("u1", "starting")],
+		reads: [op("u1", "waiting", { auth_url: URL_A }), op("u2", "waiting", { auth_url: URL_B })],
+	});
+	const { flow, states } = flowFor(scripted);
+	await flow.start("anthropic");
+	await settle();
+	t.mock.timers.tick(AUTH_OPERATION_POLL_MS + 10);
+	await settle();
+	assert.ok(
+		states.some((state) => state.opened === false && state.openFailed === false),
+		"'opened' must be false for the URL that has not been opened yet",
+	);
+	assert.equal(scripted.calls.open.length, 2, "each distinct URL opens once");
+	flow.dispose();
+	t.mock.timers.reset();
+});
+
+test("pausing stops the poll and KEEPS the state; resuming re-attaches to it", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const scripted = backend({
+		startReplies: [op("p1", "starting")],
+		reads: [op("p1", "waiting", { auth_url: URL_A })],
+	});
+	const { flow } = flowFor(scripted);
+	await flow.start("anthropic");
+	await settle();
+	const readsWhileAttached = scripted.calls.read.length;
+	flow.pause();
+	await settle();
+	t.mock.timers.tick(AUTH_OPERATION_POLL_MS * 3);
+	await settle();
+	assert.equal(
+		scripted.calls.read.length,
+		readsWhileAttached,
+		"a paused flow stops polling",
+	);
+	assert.equal(
+		flow.getState().phase,
+		"active",
+		"a paused flow keeps the operation it was following",
+	);
+	flow.resume();
+	await settle();
+	t.mock.timers.tick(AUTH_OPERATION_POLL_MS + 10);
+	await settle();
+	assert.ok(
+		scripted.calls.read.length > readsWhileAttached,
+		"resuming polls the live operation again",
+	);
+	flow.dispose();
+	t.mock.timers.reset();
+});
+
+test("a settled state survives a detach/re-attach, success and refusal alike", async () => {
+	resetSignInSessions();
+	const scripted = backend({
+		startReplies: [
+			op("k1", "waiting", {
+				auth_url: URL_A,
+				defaults_applied: {
+					hosting: "anthropic",
+					model: "claude-opus-5-5",
+					model_name: "Claude Opus 5.5",
+					receipt: "Set default hosting to 'anthropic'.",
+				},
+			}),
+		],
+		reads: [op("k1", "waiting", { auth_url: URL_A })],
+	});
+	const deps = {
+		...scripted.deps,
+		poll: (id, onUpdate, options) =>
+			pollAuthOperation(id, onUpdate, { ...options, read: scripted.deps.read }),
+	};
+	const first = attachSignInSession("anthropic", deps, () => {});
+	await first.flow.start("anthropic");
+	await settle();
+	// The backend settles the flow as succeeded; the panel that was showing it
+	// unmounts because its row moved into "Connected" (QA Q1).
+	scripted.deps.read = async () =>
+		op("k1", "succeeded", {
+			defaults_applied: {
+				hosting: "anthropic",
+				model: "claude-opus-5-5",
+				model_name: "Claude Opus 5.5",
+				receipt: "Set default hosting to 'anthropic'.",
+			},
+		});
+	await first.flow.reopen().catch(() => {});
+	first.detach();
+	assert.equal(
+		peekSignInState("anthropic").operation?.state,
+		"waiting",
+		"state is retained across the detach, not dropped",
+	);
+
+	/*
+	 * A refusal is kept too: the panel that comes back is where the reason was, and
+	 * clearing it on detach also wiped it whenever a re-render remounted the panel
+	 * (the terminal frames' captures caught exactly that).
+	 */
+	const failed = attachSignInSession("deepseek", deps, () => {});
+	await failed.flow.start("deepseek");
+	await settle();
+	failed.detach();
+	assert.notEqual(
+		peekSignInState("deepseek").phase,
+		"idle",
+		"a refused or unfinished flow is still there when the panel returns",
+	);
+	resetSignInSessions();
 });

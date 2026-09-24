@@ -116,10 +116,18 @@ export function methodName(method: ProviderMethod): string {
  * The browser's destination is appended by the caller once `auth_url` is
  * known, because naming a domain before the backend has chosen one is a guess.
  */
+/*
+ * One line per method, and the SUBSCRIPTION half of the app now says what it
+ * costs relative to the other half. The two choices this panel offers are two
+ * different billings - a plan the user already pays for, or a key billed per use
+ * - and only the plan side was described at all: a reader could not tell whether
+ * adding a key charged them again (UX round 1 U8).
+ */
 const METHOD_BLURBS: Record<string, string> = {
-	anthropic: "Use your Claude Pro or Max plan.",
-	openai: "Use your ChatGPT Plus or Pro plan.",
-	"openai-device": "Use your ChatGPT plan, signing in with a one-time code.",
+	anthropic: "Use your Claude Pro or Max plan. No extra charge.",
+	openai: "Use your ChatGPT Plus or Pro plan. No extra charge.",
+	"openai-device":
+		"Use your ChatGPT plan, signing in with a one-time code. No extra charge.",
 	radient: "One browser sign-in. Nothing to paste.",
 };
 
@@ -141,7 +149,13 @@ export function monogramOf(brand: string): string {
 	const word = words[0] ?? brand;
 	const inner = UPPERCASE_LETTER.exec(word.slice(1));
 	if (inner) return `${word[0]}${inner[0]}`.toUpperCase();
-	return `${word[0]?.toUpperCase() ?? ""}${word[1]?.toLowerCase() ?? ""}`;
+	/*
+	 * TWO uppercase letters, one rule for the whole tile row: the fallback used to
+	 * keep the second letter lower-case, so the tiles read "Ol" (Ollama), "Go",
+	 * "Ra" beside "OA", "DS", "XA" - and in the tile's face Ollama's "Ol" is
+	 * indistinguishable from "OI" (design round 1 D8).
+	 */
+	return `${word[0]?.toUpperCase() ?? ""}${word[1]?.toUpperCase() ?? ""}`;
 }
 
 /** The three ways to get model access, in the order the page lists them. */

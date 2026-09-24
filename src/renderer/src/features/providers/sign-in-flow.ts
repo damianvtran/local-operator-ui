@@ -39,12 +39,25 @@
  * - **Supersede is a cancellation with its own sentence.** When another window
  *   starts a sign-in, the backend ends this one as `cancelled` with "Replaced by
  *   a new sign-in."; it is rendered as that, not as a failure.
+ * - **A device flow does not open the page by itself.** The page asks the user to
+ *   ENTER a code they have not seen yet, so an automatic open lands them on it
+ *   with nothing to type; the press that copies the code opens it, in that order
+ *   (design § 3, UX U7, QA Q4).
+ * - **A failed open is not retried by the poll.** Main is asked again only when
+ *   the user presses the manual "Open sign-in page", not on every tick: a machine
+ *   with no handler for the scheme answers a failed open with an OS dialog, and
+ *   one per 1.5 s poll is a flood (UX U5).
+ * - **A start that was superseded before it began never begins.** `start` awaits
+ *   its own previous operation's cancel, which is where the user can close the
+ *   panel or pick another provider; the token is re-checked after that await for
+ *   the same reason `resolveConflict` checks it (code round 1, m2).
  */
 
 import { isTerminalAuthState } from "@shared/api/local-operator/auth-operation";
 import type { PollAuthOperationOptions } from "@shared/api/local-operator/auth-operation";
 import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import type { AuthOperation } from "@shared/api/local-operator/desktop-api";
+import { deviceCodeOf } from "./provider-catalog";
 
 /** Where the flow is, as the panel renders it. */
 export type SignInPhase =
@@ -148,13 +161,10 @@ export function effectiveOperation(operation: AuthOperation): AuthOperation {
 }
 
 /** A snapshot standing in for an operation the backend no longer holds. */
-function goneSnapshot(
-	previous: AuthOperation | null,
-	id: string,
-): AuthOperation {
+function goneSnapshot(id: string, provider: string): AuthOperation {
 	return {
 		id,
-		provider: previous?.provider ?? "",
+		provider,
 		state: "expired",
 		message: "This sign-in is no longer available. Start again.",
 		auth_url: null,
@@ -177,6 +187,10 @@ export type SignInFlow = {
 	reset: () => void;
 	/** Stop polling without cancelling: the flow belongs to the backend. */
 	dispose: () => void;
+	/** Stop polling and keep the state, so a remounting panel can attach to it. */
+	pause: () => void;
+	/** Re-attach to a live operation that pausing left alone. */
+	resume: () => void;
 	getState: () => SignInState;
 };
 
@@ -202,6 +216,12 @@ export function createSignInFlow(deps: SignInDeps): SignInFlow {
 	const tryOpen = async (operation: AuthOperation, token: number) => {
 		const url = operation.auth_url;
 		if (!url) return;
+		/*
+		 * The device page is not auto-opened: it asks the user to type a code that is
+		 * still in the app, so the primary press that copies the code is what opens
+		 * it (design § 3, UX U7).
+		 */
+		if (deviceCodeOf(operation)) return;
 		const key = `${operation.id}|${url}`;
 		if (openedKey === key) return;
 		// Claimed BEFORE the await, so the start reply and a poll that land in
@@ -212,8 +232,10 @@ export function createSignInFlow(deps: SignInDeps): SignInFlow {
 			if (token === generation) emit({ opened: true, openFailed: false });
 		} catch {
 			// The flow is still running and the link is still copyable, so this
-			// is a fallback to offer rather than a failure to settle on.
-			openedKey = null;
+			// is a fallback to offer rather than a failure to settle on, and the
+			// claim above is KEPT so the poll does not ask main again on every tick:
+			// a machine with no handler for the scheme answers each ask with an OS
+			// dialog, so the user's manual press is the retry (UX U5).
 			if (token === generation) emit({ opened: false, openFailed: true });
 		}
 	};
@@ -256,7 +278,7 @@ export function createSignInFlow(deps: SignInDeps): SignInFlow {
 				if (lastStarted?.id === operation.id) lastStarted = null;
 				emit({
 					phase: "settled",
-					operation: goneSnapshot(state.operation, operation.id),
+					operation: goneSnapshot(operation.id, operation.provider),
 				});
 			},
 		});
@@ -326,6 +348,15 @@ export function createSignInFlow(deps: SignInDeps): SignInFlow {
 				} catch {
 					// Terminal already, or gone; either way it no longer holds the slot.
 				}
+				/*
+				 * That await is a window, and the user is in it: closing the panel
+				 * or picking another provider during the cancel must stop this
+				 * start from ever happening. A backend start nothing is watching
+				 * is the state this guard exists to prevent - and on a newer
+				 * backend the start would supersede another window's flow (code
+				 * round 1, m2).
+				 */
+				if (token !== generation) return;
 			}
 			try {
 				const started = await deps.start(provider);
@@ -376,6 +407,25 @@ export function createSignInFlow(deps: SignInDeps): SignInFlow {
 			} catch {
 				if (token === generation) emit({ openFailed: true });
 			}
+		},
+		pause() {
+			/*
+			 * Stop polling without forgetting. The flow belongs to the backend and
+			 * the state belongs to the user's view of it: a panel that unmounts (the
+			 * row it lived on moved into Connected, or the user went Back to the
+			 * list) must not lose a settled receipt or a live sign-in, because both
+			 * are what the panel that comes back has to show (design round 1 Q1,
+			 * UX U3-U4).
+			 */
+			generation += 1;
+			stop();
+		},
+		resume() {
+			const operation = state.operation;
+			if (!operation) return;
+			if (isTerminalAuthState(effectiveOperation(operation).state)) return;
+			generation += 1;
+			follow(operation, generation);
 		},
 		reset() {
 			generation += 1;

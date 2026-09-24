@@ -27,6 +27,16 @@ export const ConnectProviderStep: FC<ConnectProviderStepProps> = ({
 			Your agents need a model to think with. Sign in with an account you
 			already have, or add an API key.
 		</p>
-		<ProviderGrid context="dialog" featuredOnly onDone={onContinue} />
+		<ProviderGrid
+			context="dialog"
+			featuredOnly
+			onDone={onContinue}
+			/*
+			 * Step 2 IS the model step, so the receipt's "Change" and the step's own
+			 * Continue are the same move: the receipt showed no way to change the
+			 * model it named inside onboarding (code round 1, m5).
+			 */
+			onChangeModel={onContinue}
+		/>
 	</div>
 );

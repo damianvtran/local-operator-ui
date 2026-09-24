@@ -47,9 +47,18 @@ import { type ReactNode, useRef } from "react";
  * grid 686px, and the layout falls to two 337px cards rather than losing its
  * frame (design round 1, D1).
  */
+/**
+ * ONE measure for the whole flow.
+ *
+ * It used to be two (`form` 35rem, `grid` 60rem) and the step that took the grid's
+ * changed the dialog's width by about 200px when Continue was pressed, so the
+ * title, the step indicator and the close button jumped inward mid-flow (design
+ * round 1 D6). 40rem is the measure step 1's rows were measured to fit at
+ * (`narrow-dialog.png` in the design round's frames), so one value covers all
+ * three steps and the frame that holds them stays still.
+ */
 export const ONBOARDING_PANEL_WIDTHS = {
-	form: "max-w-[min(35rem,calc(100vw-4rem))]",
-	grid: "max-w-[min(60rem,calc(100vw-4rem))]",
+	single: "max-w-[min(40rem,calc(100vw-4rem))]",
 } as const;
 
 /** Which of those measures a step asks for. */
@@ -113,7 +122,7 @@ export const OnboardingDialog = ({
 	stepIndicators,
 	children,
 	actions,
-	width = "form",
+	width = "single",
 	className,
 	onDismiss,
 }: OnboardingDialogProps): ReactNode => {

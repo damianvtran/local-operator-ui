@@ -52,24 +52,22 @@ const STEP_SEQUENCE: OnboardingStep[] = [
 ];
 
 /**
- * The panel measure each step is laid out at, for the steps that are not a
- * form.
+ * The panel measure each step is laid out at -- EMPTY, because every step takes
+ * the same one.
  *
- * One entry, and it is here rather than at the `OnboardingDialog` call site
- * below because the value is a decision about the STEP rather than an argument
- * at a render: the provider step renders a grid of registry rows and asks for
- * the measure that fits a third column of cards; every other step asks for the
- * form measure by default. See `ONBOARDING_PANEL_WIDTHS` for the arithmetic.
+ * It used to map step 1 to a wider `grid` measure, and the dialog narrowed from
+ * about 960px to 560px when Continue was pressed: the title, the step indicator
+ * and the close button all jumped inward mid-flow (design round 1 D6). One
+ * measure for the flow is the fix, and an empty map is how that is stated rather
+ * than left to each call site to remember.
  *
- * EXPORTED because it is a rule CI has to be able to check: `scripts/provider-grid-pin.test.mjs`
- * asserts the mapping, so that a step added later cannot silently inherit the
- * grid's measure (or the grid step lose it) without a red test.
+ * EXPORTED because it is a rule CI has to be able to check:
+ * `scripts/provider-grid-pin.test.mjs` asserts it is empty and that the single
+ * measure is clamped, so a step added later cannot quietly widen the dialog.
  */
 export const STEP_PANEL_WIDTH: Partial<
 	Record<OnboardingStep, OnboardingPanelWidth>
-> = {
-	[OnboardingStep.CONNECT_PROVIDER]: "grid",
-};
+> = {};
 
 /**
  * Props for the OnboardingModal component
@@ -100,6 +98,16 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	const connected = hasConnectedProvider(providers.data ?? []);
 	/** Step 2 registers the write a PROPOSED default needs on Continue. */
 	const beforeContinue = useRef<(() => Promise<void>) | null>(null);
+	/*
+	 * And what it still needs from the user before Continue can mean anything.
+	 * A step that can be walked past with nothing chosen lands the user in a chat
+	 * that cannot run (QA round 1 Q3, UX U1), so the step says what is missing
+	 * here and Continue is disabled for exactly as long as it is missing it.
+	 */
+	const [stepBlock, setStepBlock] = useState<string | null>(null);
+	const registerStepBlock = useCallback((reason: string | null) => {
+		setStepBlock(reason);
+	}, []);
 	const [continuing, setContinuing] = useState(false);
 	const registerBeforeContinue = useCallback(
 		(run: (() => Promise<void>) | null) => {
@@ -182,7 +190,12 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 					/>
 				);
 			case OnboardingStep.DEFAULT_MODEL:
-				return <DefaultModelStep onBeforeContinue={registerBeforeContinue} />;
+				return (
+					<DefaultModelStep
+						onBeforeContinue={registerBeforeContinue}
+						onBlockReason={registerStepBlock}
+					/>
+				);
 			case OnboardingStep.EXTRAS:
 				return <ExtrasStep />;
 			default:
@@ -201,8 +214,13 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	 * - step 2: Back, then primary "Continue";
 	 * - step 3: Back, then ghost "Skip" and primary "Finish".
 	 */
+	const blocked = currentStep === OnboardingStep.DEFAULT_MODEL && stepBlock !== null;
 	const dialogActions = (
-		<div className="flex w-full items-center justify-between gap-3">
+		<div className="flex w-full flex-col gap-2">
+			{blocked ? (
+				<p className="text-ink-dim text-meta">{stepBlock}</p>
+			) : null}
+			<div className="flex w-full items-center justify-between gap-3">
 			<div>
 				{isFirst ? (
 					<Button variant="ghost" size="lg" onClick={finish}>
@@ -225,11 +243,12 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 						variant="primary"
 						size="lg"
 						onClick={() => void handleNext()}
-						disabled={continuing}
+						disabled={continuing || blocked}
 					>
 						{isLast ? "Finish" : "Continue"}
 					</Button>
 				) : null}
+			</div>
 			</div>
 		</div>
 	);
@@ -316,7 +335,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			title={dialogTitle}
 			stepIndicators={finalStepIndicatorsProp}
 			actions={dialogActions}
-			width={STEP_PANEL_WIDTH[currentStep] ?? "form"}
+			width={STEP_PANEL_WIDTH[currentStep] ?? "single"}
 		>
 			{stepContent}
 		</OnboardingDialog>

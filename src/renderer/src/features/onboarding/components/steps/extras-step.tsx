@@ -52,7 +52,7 @@ export const ExtrasStep: FC = () => {
 				<h3 id="onboarding-extras-search" className="text-heading text-ink">
 					Web search
 				</h3>
-				<SearchApiStep />
+				<SearchApiStep showCredentialDescription={false} />
 			</section>
 		</div>
 	);

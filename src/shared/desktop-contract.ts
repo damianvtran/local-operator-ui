@@ -2892,7 +2892,13 @@ export type AuthOperation = {
 	defaults_applied?: DefaultsApplied | null;
 	/** A device flow's one-time code, as its own field. */
 	user_code?: string | null;
-	/** The page a device code is entered on, when it differs from `auth_url`. */
+	/**
+	 * A loopback alias for the SAME page as `auth_url`, reported by every
+	 * callback flow on the newer backend (`http://localhost:<port>/launch`), and
+	 * never by a device flow. It is not a second page and not a device page: a
+	 * reader that names a provider to the user takes `auth_url`'s host, which is
+	 * what the panel does (code round 1 M1).
+	 */
 	launch_url?: string | null;
 	/**
 	 * True when the paste box is only a FALLBACK: the flow completes on its own
