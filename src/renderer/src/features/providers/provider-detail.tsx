@@ -263,18 +263,6 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	const refreshProviders = useCallback(() => {
 		void queryClient.invalidateQueries({ queryKey: desktopKeys.providers });
 		/*
-		 * And the VERDICT, whose query is what the chip actually reads (code round
-		 * 2, M3). Without this a sign-in that just succeeded from this panel left
-		 * the grid and this panel saying "Needs re-authentication" until the 60 s
-		 * poll or a window focus -- the user who fixed the fault was told it was
-		 * still broken, on the surface that had just fixed it. Reproduced with this
-		 * PR's harness: refused / press the card / `auth.status` answers `succeeded`
-		 * (verdict `ok`) / back to providers, and the grid still read "Needs
-		 * re-authentication" with the verdict request count unchanged at 1 and
-		 * `{credential_id: 7, state: "login_required"}` still in the cache.
-		 */
-		void queryClient.invalidateQueries({ queryKey: radientSessionIssueKey });
-		/*
 		 * The CATALOGUE is dropped at the same moment, and that is the point of this
 		 * line rather than a tidy-up: the models a provider offers are a function of
 		 * the credential, so a listing fetched before a sign-in is exactly the one
@@ -294,6 +282,21 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		 * same event as far as the catalogue is concerned.
 		 */
 		void queryClient.invalidateQueries({ queryKey: desktopKeys.catalogue });
+		/*
+		 * And the VERDICT, whose query is what the chip actually reads (code round
+		 * 2, M3). It sits AFTER the catalogue line rather than between the two
+		 * above, because `scripts/picker-feedback.test.mjs` pins the providers and
+		 * catalogue invalidations within a bounded distance of each other, and a
+		 * comment this long between them breaks that pin. Without this a sign-in that just succeeded from this panel left
+		 * the grid and this panel saying "Needs re-authentication" until the 60 s
+		 * poll or a window focus -- the user who fixed the fault was told it was
+		 * still broken, on the surface that had just fixed it. Reproduced with this
+		 * PR's harness: refused / press the card / `auth.status` answers `succeeded`
+		 * (verdict `ok`) / back to providers, and the grid still read "Needs
+		 * re-authentication" with the verdict request count unchanged at 1 and
+		 * `{credential_id: 7, state: "login_required"}` still in the cache.
+		 */
+		void queryClient.invalidateQueries({ queryKey: radientSessionIssueKey });
 		onConnected?.();
 	}, [queryClient, onConnected]);
 
