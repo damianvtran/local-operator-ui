@@ -369,7 +369,7 @@ const RE_PAGE_ASIDE_BUSY_GATE =
 const RE_DISPATCH_ASIDE_BUSY_GATE =
 	/const busy = asideAskBlockedReason\(\s*useAsideStore\.getState\(\),\s*sessionId,\s*\);\s*if \(busy\) \{\s*note\(busy, true\);\s*return "retained";/;
 const RE_PAGE_CLEARS_ASIDE_REFUSAL =
-	/clearAsideRefusal: \(\) => \{\s*setSendError\(null\);\s*setSendErrorCode\(undefined\);/;
+	/clearError = useCallback\(\(\) => \{\s*setSendError\(null\);\s*setSendErrorCode\(undefined\);\s*\}, \[\]\);/;
 const RE_DISPATCH_CLEARS_ASIDE_REFUSAL = /clearAsideRefusal\?\.\(\);/;
 const RE_PANEL_RETURNS_FOCUS = /onReturnFocus\?\.\(\)/g;
 const RE_PANEL_DESCRIBED_BY =

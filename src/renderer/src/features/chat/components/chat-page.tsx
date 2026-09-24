@@ -859,6 +859,23 @@ function SessionPanel({
 	 *     from, and a picker that opens onto an empty list is a dead control wearing
 	 *     a live one's clothes.
 	 */
+	/*
+	 * Retire whatever the composer's error line is holding.
+	 *
+	 * ONE IMPLEMENTATION FOR BOTH ITS CALLERS, because both are the same act: the
+	 * page's own controls (the alert's dismiss, the held-claim controls) and the
+	 * aside door below, which retires the line when it starts a new aside (design
+	 * round 2, D7 - the line outlived the aside it described). It is a
+	 * `useCallback` because the aside door hands it to `useSlashDispatch`, whose
+	 * `dispatch` lists it as a dependency: a fresh identity per render would
+	 * rebuild that callback on every render of this page, and the values it writes
+	 * through are the two setters, which never change.
+	 */
+	const clearError = useCallback(() => {
+		setSendError(null);
+		setSendErrorCode(undefined);
+	}, []);
+
 	const {
 		dispatch,
 		dispatchFromControl,
@@ -902,10 +919,7 @@ function SessionPanel({
 		 * the dispatcher cannot reach the setter on its own. A new attempt makes every
 		 * line on that surface stale, which is the whole scope of the clear.
 		 */
-		clearAsideRefusal: () => {
-			setSendError(null);
-			setSendErrorCode(undefined);
-		},
+		clearAsideRefusal: clearError,
 
 		/*
 		 * The pane's own selection, handed to the dispatcher only where a pick can
@@ -1785,10 +1799,6 @@ function SessionPanel({
 	 */
 	const activeError = sendError || draft?.error;
 	const activeErrorCode = sendErrorCode ?? draft?.errorCode;
-	const clearError = () => {
-		setSendError(null);
-		setSendErrorCode(undefined);
-	};
 	/*
 	 * A remedy that worked retires the message that asked for it.
 	 *
