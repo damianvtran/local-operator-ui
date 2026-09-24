@@ -46,6 +46,14 @@ export interface RaisableWindow {
 	focus(): void;
 	isMinimized(): boolean;
 	restore(): void;
+	/**
+	 * Whether this window still exists. Part of the slice because a RAISE can be
+	 * asked for by something older than the window it names — a banner in
+	 * Notification Center outlives the window it was raised for (see
+	 * `browser/consent-click.ts`), and reading any other member of a destroyed
+	 * window throws `Object has been destroyed`.
+	 */
+	isDestroyed(): boolean;
 }
 
 /**

@@ -71,11 +71,14 @@ const PROBE = `
 	import { BrowserApprovalsTray, defaultApprovalHeaderLabel, paneApprovalHeaderLabel } from "./src/renderer/src/features/browser/components/browser-approvals-tray";
 	import { BrowserApprovalsDock } from "./src/renderer/src/features/browser/components/browser-approvals-dock";
 	import { BrowserTabStrip, stateChips, tabFloor } from "./src/renderer/src/features/browser/components/browser-tab-strip";
-	import { approvalRows, approvalScopeLabel, liveRequests, originOfUrl, reconcileResolved, remainingLabel, requestsInScope, waitingOrdinals, RESOLVED_KEEP } from "./src/renderer/src/features/browser/model/approval-queue-model";
+	import { approvalRows, approvalScopeLabel, liveApprovalCount, liveRequests, originOfUrl, reconcileResolved, remainingLabel, requestsInScope, waitingOrdinals, RESOLVED_KEEP } from "./src/renderer/src/features/browser/model/approval-queue-model";
 	import { closeConversationIntent, closeOthersIntent, closeToTheRightIntent, groupTabsBySession, pooledTabs, scopeFromKey, scopeKey, sessionDisplayName, summariseConversations, tabsBySession, tabsInScope } from "./src/renderer/src/features/browser/model/tab-index-model";
 	import { BrowserLoadFailure, loadFailureSentence } from "./src/renderer/src/features/browser/components/browser-load-failure";
 	import { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
 	import { browserBridgeAvailable, clearBrowserProjectionReadError, readBrowserProjection, refreshBrowserProjection, subscribeBrowserProjection } from "./src/renderer/src/features/browser/model/browser-projection-store";
+	import { SidebarNavigation } from "./src/renderer/src/shared/components/navigation/sidebar-navigation";
+	import { MemoryRouter } from "react-router-dom";
+	import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 	import { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
 
 	export function renderBrowserChrome() {
@@ -106,6 +109,7 @@ const PROBE = `
 		paneApprovalHeaderLabel,
 		approvalRows,
 		approvalScopeLabel,
+		liveApprovalCount,
 		liveRequests,
 		originOfUrl,
 		reconcileResolved,
@@ -133,6 +137,10 @@ const PROBE = `
 		loadFailureSentence,
 		useCanonicalSessionsStore,
 		useUiPreferencesStore,
+		SidebarNavigation,
+		MemoryRouter,
+		QueryClient,
+		QueryClientProvider,
 	};
 `;
 
@@ -177,6 +185,7 @@ const bundle = await build({
 	alias: {
 		"@shared": "./src/renderer/src/shared",
 		"@features": "./src/renderer/src/features",
+		"@assets": "./src/renderer/src/assets",
 	},
 	// `mainFields`/`conditions` so a dependency is taken from its ESM entry: several
 	// of these packages ship a CJS build that calls `require("react")` at import
@@ -184,7 +193,20 @@ const bundle = await build({
 	mainFields: ["module", "main"],
 	conditions: ["import"],
 	external: ["react", "react-dom", "react-dom/server", "react/jsx-runtime"],
-	loader: { ".css": "empty" },
+	// Vite's `import.meta.env` is read at IMPORT time by the app's config loader, which
+	// the rail pulls in (`load-config.ts`): bundling for node leaves it undefined and the
+	// module throws before a single test runs (`chat-link-affordances.test.mjs` records
+	// the same trap). The URL is dead on purpose — nothing here should reach a service.
+	define: { "import.meta.env": "__viteEnv" },
+	banner: {
+		js: 'const __viteEnv = { VITE_LOCAL_OPERATOR_API_URL: "http://127.0.0.1:45998" };',
+	},
+	// `@assets` carries the rail's logo, which is a `.png` the rail imports: the
+	// render above pulls the real `SidebarNavigation` in, so the alias and a loader
+	// for the binary are what let the badge be rendered WITHOUT a second hand-rolled
+	// copy of the component (agent review round 1, F8). The image itself has no
+	// assertion here, so it loads empty — the same choice `.css` already made.
+	loader: { ".css": "empty", ".png": "empty" },
 	jsx: "automatic",
 });
 // Written to a real file rather than imported as a data: URL: the bundle now
@@ -199,20 +221,16 @@ const {
 	render,
 	el,
 	BrowserConsentBar,
-	BrowserConsentRequest,
-	BrowserApprovalsTray,
-	BrowserApprovalsDock,
-	BrowserTabStrip,
 	stateChips,
 	tabFloor,
 	BrowserPage,
 	BrowserPane,
-	PANE_SURFACE_ID,
 	requesterLabel,
 	defaultApprovalHeaderLabel,
 	paneApprovalHeaderLabel,
 	approvalRows,
 	approvalScopeLabel,
+	liveApprovalCount,
 	liveRequests,
 	originOfUrl,
 	reconcileResolved,
@@ -238,10 +256,16 @@ const {
 	subscribeBrowserProjection,
 	BrowserLoadFailure,
 	loadFailureSentence,
-	useCanonicalSessionsStore,
 	useUiPreferencesStore,
+	SidebarNavigation,
+	MemoryRouter,
+	QueryClient,
+	QueryClientProvider,
 	noteConsentAttention,
 	clearConsentAttention,
+	consentClickTarget,
+	shouldForgetConsentAttention,
+	isConsentAttentionLive,
 	consentAttentionSnapshot,
 	subscribeConsentAttention,
 	MAX_RESTORED_TABS,
@@ -1867,8 +1891,15 @@ test("the consent bar names the conversation that is asking (D2)", () => {
 	);
 	assert.equal(
 		requesterLabel("session-abc", [{ session_id: "session-abc", title: "  " }]),
-		"The agent in conversation session-abc",
-		"an untitled session stands in as its id, the way this app treats one everywhere else",
+		"The agent in 'Untitled chat'",
+		"a conversation the app LISTS but has not titled is named with the app's own word for that state, the same one the sidebar's row uses (agent review round 2, U7: this case used to read as a stranger, which told the operator an agent they can see in their sidebar was one)",
+	);
+	assert.equal(
+		requesterLabel("subagent-8f4c1d2e-tool-call", [
+			{ session_id: "session-abc", title: "Named" },
+		]),
+		"An agent from another session",
+		"while a requester the app does NOT list is still described rather than printed as an id (UX round 1, U5: a subagent's own session id is a valid requester and not a listed conversation, and that is the case that lands on the browser route)",
 	);
 	assert.equal(
 		requesterLabel(null, [{ session_id: "session-abc", title: "Named" }]),
@@ -1957,7 +1988,7 @@ test("the consent bar states each choice's own lifetime, and that the profile is
 	);
 	assert.ok(
 		markup.includes(
-			"Request 2 from The agent in conversation session-abc: login.example.com",
+			"Request 2 from An agent from another session: login.example.com",
 		),
 		"and the chip's accessible name carries the ordinal, the ASKING conversation and the authority (UX round 1, U2: two requests for one site must not read the same)",
 	);
@@ -2529,9 +2560,19 @@ test("a conversation is named by its title, or by its id when it has none", () =
 	assert.equal(requesterLabel("alice", sessions), "The agent in 'Reports'");
 	assert.equal(
 		requesterLabel("bob", sessions),
-		"The agent in conversation bob",
+		"The agent in 'Untitled chat'",
+		"a LISTED conversation with no title yet is the app's own 'Untitled chat' rather than a stranger (agent review round 2, U7) - the sidebar draws this same row under that name",
+	);
+	assert.equal(
+		requesterLabel("dave", sessions),
+		"An agent from another session",
+		"while a requester the catalogue does not hold stays described rather than printed as an id",
 	);
 	assert.equal(requesterLabel("alice", sessions, { short: true }), "Reports");
+	assert.equal(
+		requesterLabel("bob", sessions, { short: true }),
+		"Untitled chat",
+	);
 	assert.equal(requesterLabel(null, sessions), "An agent");
 });
 
@@ -3222,5 +3263,288 @@ test("each host stamps its own dock tag, so a run can say which dock it drove", 
 		paneTags[0],
 		routeTags[0],
 		"the two hosts cannot share one dock tag, or a run could not say which dock its frames show",
+	);
+});
+
+test("the app-wide count includes the requests no conversation owns, and drops the expired", () => {
+	// R1'S ARITHMETIC (operator ask, 2026-09-23), and the two ways a count derived from
+	// `pendingConsent.length` would be wrong:
+	//
+	//   - it would count an entry that ran out its ten minutes, because nothing in main
+	//     fires at expiry (`approval-queue-model.ts` says so at length);
+	//   - and it would MISS nothing, which is the point: an unattributed request is one
+	//     no conversation's badge can carry (`summariseConversations` drops
+	//     `requesterSessionId === null` by design), so if this count dropped it too the
+	//     rail would say the app is quiet while an agent sits blocked on a prompt.
+	const now = 2_000;
+	const requests = [
+		// Expired at `now`.
+		{ entryId: "expired", requesterSessionId: "alice", expiresAt: 1_000 },
+		// This conversation's, and a foreign conversation's: indistinguishable here, on
+		// purpose. The rail's question is "is anything waiting on me".
+		{ entryId: "mine", requesterSessionId: "alice", expiresAt: 9_000 },
+		{ entryId: "theirs", requesterSessionId: "bob", expiresAt: 9_000 },
+		// No attribution at all: a `call:`/request-id requester, or a subagent's own
+		// session, which is not a conversation the sidebar lists.
+		{ entryId: "unattributed", requesterSessionId: null, expiresAt: 9_000 },
+	];
+	assert.equal(
+		liveApprovalCount(requests, now),
+		3,
+		"every live request counts, and only the live ones do",
+	);
+	assert.equal(
+		liveApprovalCount(requests, 10_000),
+		0,
+		"past every TTL the rail draws no badge, off the renderer's own clock",
+	);
+	assert.equal(
+		liveApprovalCount([], now),
+		0,
+		"an empty projection is zero and not a badge",
+	);
+	// THE BOUNDARY, pinned here as well as in `liveRequests` (agent review round 1, F7:
+	// the count keeps its OWN loop, so the `liveRequests` boundary case does not cover
+	// it — a mutation of `now < expiresAt` to `<=` survived every test in this file).
+	assert.equal(
+		liveApprovalCount([{ ...requests[1], expiresAt: now }], now),
+		0,
+		"at exactly its expiry instant the request is not counted, the same boundary every other reader in this feature uses",
+	);
+	// And the per-conversation map really cannot answer this question, which is why the
+	// count above is not derived from it: `alice` is one of the three, not the three.
+	assert.equal(
+		summariseConversations([], requests, now).get("alice")?.pendingApprovals,
+		1,
+		"the conversation's own count stays its own",
+	);
+});
+
+test("the rail's Browser item draws that count, with the number in its accessible name", async () => {
+	// THE RAIL'S OWN WIRING, pinned at the unit level (agent review round 1, F8): the
+	// arithmetic above was covered and the badge the operator actually asked for was
+	// not — it was reachable only through the app driver's scene and the frames
+	// attached to the PR, so a change that stopped rendering the mark would not have
+	// failed a test. `renderToStaticMarkup` is enough for exactly the reason the store
+	// documents: the component BODY runs and no effects do, and the snapshot this reads
+	// is primed by a real read before the render.
+	const previousWindow = globalThis.window;
+	const live = (entryId, requesterSessionId) => ({
+		...PENDING,
+		entryId,
+		requesterSessionId,
+	});
+	globalThis.window = {
+		// The rail reads the route from the HASH rather than from the router context
+		// (`path-utils.ts` handles both formats), so the stub has to answer for it.
+		location: { hash: "#/chat", pathname: "/chat" },
+		api: {
+			browser: {
+				state: async () => ({
+					tabs: [],
+					// This conversation's, another's, and one no conversation owns: the
+					// rail's question is "is anything waiting on me", so all three count.
+					pendingConsent: [
+						live("one", "alice"),
+						live("two", "bob"),
+						live("three", null),
+					],
+					approvedGrants: [],
+				}),
+			},
+		},
+	};
+	try {
+		await refreshBrowserProjection();
+		// The rail's profile block asks for the Radient identity through React Query,
+		// so the render needs the provider the real app mounts around it; nothing
+		// fetches here, because `renderToStaticMarkup` runs no effects.
+		const markup = render(
+			el(
+				QueryClientProvider,
+				{ client: new QueryClient() },
+				el(MemoryRouter, null, el(SidebarNavigation)),
+			),
+		);
+		assert.ok(
+			markup.includes('data-tour-tag="nav-browser-badge"'),
+			"the rail's Browser item draws the mark",
+		);
+		assert.ok(
+			markup.includes('aria-label="Browser, 3 waiting"'),
+			"and the control's own name carries the count, because the digit is not the only channel (spec 5.1) — including for the request no conversation owns",
+		);
+	} finally {
+		globalThis.window = previousWindow;
+	}
+});
+
+test("a banner click lands on the asking conversation, or on the browser route", () => {
+	// R3'S LANDING RULE (operator ask, 2026-09-23). The conversation is preferred
+	// because the pane's tray is the surface that shows the named request beside the
+	// work it belongs to; the browser route is the fallback for a request no
+	// conversation owns, and it is the SAME fallback as before this change.
+	const sessions = [
+		{ session_id: "2d5ad5da0025" },
+		{ session_id: "e059761608ae" },
+	];
+	assert.deepEqual(
+		consentClickTarget("2d5ad5da0025", sessions),
+		{ kind: "conversation", sessionId: "2d5ad5da0025" },
+		"a requester the app can show is opened, with the pane that shows its tray",
+	);
+	assert.deepEqual(
+		consentClickTarget(null, sessions),
+		{ kind: "browser" },
+		"an unattributed request owns no conversation, so it falls back",
+	);
+	assert.deepEqual(
+		consentClickTarget("c1d2e3f4a5b6", sessions),
+		{ kind: "browser" },
+		// A SUBAGENT's own session id is a valid requester and not a conversation: the
+		// backend gives a child its own id (`harness/subagent.py` builds `ToolContext`
+		// with `session_id=transcript.directory.name`), so this is the reachable case
+		// behind "the badge is sometimes missing" — nothing in the chrome can attribute
+		// that request to the conversation the operator is on, and the rail's count is
+		// where it is answered. Opening a conversation that does not exist would land on
+		// the transcript's missing-session notice, which is the worse fallback.
+		"a session the app does not list is not a conversation to open",
+	);
+	assert.deepEqual(
+		consentClickTarget("2d5ad5da0025", []),
+		{ kind: "browser" },
+		"a catalogue that has not loaded yet falls back rather than opening nothing",
+	);
+});
+
+test("the shell forgets the attention, and only once the projection says the request is gone", () => {
+	// UX ROUND 1, U1 — WHO ASKS THIS, AND WHY IT HAD TO CHANGE. It used to be each
+	// SURFACE's question, asked against the list that surface was showing — and a
+	// surface sees one scope. The pane on conversation A therefore read a click naming
+	// a request that belongs to NO conversation (a subagent's own session id) as "not
+	// here" and cleared the memory while the router was still on its way to the
+	// `/browser` route, which is the surface that can show it: the click landed on the
+	// oldest row instead of the one the banner named (reproduced twice, S3b vs S4 —
+	// the same payload with and without a pane mounted).
+	//
+	// The question belongs to the SHELL, which is mounted on every route, owns the
+	// navigation, and reads the WHOLE queue — so "absent" means gone rather than "not
+	// in my corner of it".
+	assert.equal(
+		shouldForgetConsentAttention("entry-1", undefined),
+		false,
+		"not knowing yet is not a reason to forget",
+	);
+	assert.equal(
+		shouldForgetConsentAttention("entry-1", []),
+		true,
+		"once the whole queue has landed and the request is not in it, it is gone",
+	);
+	assert.equal(
+		shouldForgetConsentAttention("entry-1", [{ entryId: "entry-1" }]),
+		false,
+		"and the entry it names is never dropped while it is still there",
+	);
+	assert.equal(
+		shouldForgetConsentAttention(null, []),
+		false,
+		"nothing to forget is not a reason to publish",
+	);
+	/*
+	 * The sibling predicate is what the shell's click check uses to decide whether to
+	 * TELL the user the request is gone rather than opening an empty tray in silence
+	 * (U6), and round 2 changed the distinction it reads: LIVENESS rather than
+	 * membership (QA round 2, Q-2; UX U9). The three fixtures below are the three
+	 * states, and the middle one is the state the membership test got wrong - a request
+	 * that ran out its ten minutes is still IN `pendingConsent`, because nothing in main
+	 * fires at expiry, so "in the list" answered "still here" for an entry no surface
+	 * would draw.
+	 */
+	assert.equal(
+		isConsentAttentionLive("entry-1", undefined, 1_000),
+		true,
+		"an unread queue reports the request as still waiting",
+	);
+	assert.equal(
+		isConsentAttentionLive(
+			"entry-1",
+			[{ entryId: "entry-2", expiresAt: 9_999 }],
+			1_000,
+		),
+		false,
+		"a read queue that does not hold it reports it as gone",
+	);
+	assert.equal(
+		isConsentAttentionLive(
+			"entry-1",
+			[{ entryId: "entry-1", expiresAt: 1_000 }],
+			1_000,
+		),
+		false,
+		"and one that holds it but has run out its ten minutes reports it as gone too, at exactly its expiry instant",
+	);
+	assert.equal(
+		isConsentAttentionLive(
+			"entry-1",
+			[{ entryId: "entry-1", expiresAt: 1_001 }],
+			1_000,
+		),
+		true,
+		"while the instant before that boundary is still waiting",
+	);
+});
+
+test("a click's report survives the memory being dropped, which is the case it exists for (Q-2, U9)", () => {
+	const shell = shippedSource(
+		"src/renderer/src/features/browser/hooks/use-consent-attention-lifetime.ts",
+	);
+	/*
+	 * The round-2 defect was a guard that outlived its subject: the report was
+	 * suppressed whenever `attention` had changed by the time the read came back, and
+	 * the shell's own forget effect drops the memory as soon as that same read says the
+	 * request is gone. The fix is that the id under judgement is held in a ref of its
+	 * own, so the assertion is that the ref - not the live attention value - is what the
+	 * report tests. A future edit that guards the report on `attention` again fails
+	 * here.
+	 */
+	assert.match(
+		shell,
+		/clickOwed/,
+		"the click whose report is owed is held independently of the memory",
+	);
+	assert.match(
+		shell,
+		/isConsentAttentionLive\(/,
+		"and it is judged on liveness rather than on the queue holding it",
+	);
+	assert.doesNotMatch(
+		shell,
+		/if \(asked\.current !== attention\) return;/,
+		"the old guard, which silenced both states the report was filed for, is gone",
+	);
+});
+
+test("only the shell clears the attention, so a pane cannot lose a request it cannot show (U1)", () => {
+	const shell = shippedSource(
+		"src/renderer/src/features/browser/hooks/use-consent-attention-lifetime.ts",
+	);
+	const surface = shippedSource(
+		"src/renderer/src/features/browser/components/browser-surface.tsx",
+	);
+	const app = shippedSource("src/renderer/src/app.tsx");
+	assert.match(
+		shell,
+		/clearConsentAttention\(/,
+		"the shell is where the memory is dropped",
+	);
+	assert.doesNotMatch(
+		surface,
+		/clearConsentAttention|shouldForgetConsentAttention/,
+		"a surface never decides: it only reads the memory to select the request it names, which is what keeps a click destined for /browser alive across the pane's own mount",
+	);
+	assert.match(
+		app,
+		/useConsentAttentionLifetime\(\)/,
+		"and the rule is mounted once, by the shell that is on every route",
 	);
 });
