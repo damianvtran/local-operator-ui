@@ -883,12 +883,13 @@ export const SEND_FAILURE_COPY = {
 	sendLock: "Your last message is still sending.",
 	/** The same lock, with the question that explains it on screen. */
 	gateLock: "Answer the question above first.",
-	/**
-	 * The late confirmation: a message handed back to the composer turned out to
-	 * have been delivered after all, and the box had been edited since, so its
-	 * text is the user's own and stays. Muted, no actions.
+	/*
+	 * THE PLAIN `lateDelivery` SENTENCE IS GONE (review round 4, n2). It was the
+	 * `overlap` arm's wording until `lateDeliveryOverlap` named the box, and after
+	 * that its only reader was a story rendering a `draft-only` state - copy the app
+	 * no longer produces for that state. Two sentences remain, one per arm, and both
+	 * have a caller.
 	 */
-	lateDelivery: "Your earlier message was delivered.",
 	/*
 	 * AND THE ONE THAT NAMES WHAT IS IN THE BOX (review round 2, D4). The plain
 	 * sentence above is true whatever the box holds, which is what the `overlap` arm

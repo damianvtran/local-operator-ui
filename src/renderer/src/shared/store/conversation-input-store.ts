@@ -349,6 +349,22 @@ function foldReturn(
 }
 
 /**
+ * Whether the `overlap` note is still true of the box the user is now typing in.
+ *
+ * The sentence says the DELIVERED message's words are still in the composer, which
+ * stops being true the moment the user deletes them - and a promise about a box
+ * that no longer exists is worse than no sentence at all because the user can see
+ * it is not there (UX round 4, U17). Only the `overlap` arm is asked: on
+ * `draft-only` the delivered words have already left the box, so that note is about
+ * the delivery rather than the contents and stays true however the box changes.
+ */
+function overlapStillTrue(row: ConversationInputState, next: string): boolean {
+	const delivered = row.returned?.text ?? "";
+	if (delivered === "") return false;
+	return next.includes(delivered);
+}
+
+/**
  * What the composer row holds right now, as one comparable payload - the text
  * the box will show once any pending return is adopted.
  */
@@ -779,7 +795,11 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 				});
 			},
 
-			setCurrentInput: (conversationId, value, unredactedChars = 0) => {
+			setCurrentInput: (
+				conversationId: string,
+				value: string,
+				unredactedChars = 0,
+			) => {
 				const existing = get().inputByConversation[conversationId] || {
 					currentInput: "",
 					submittedMessages: [],
@@ -792,6 +812,20 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 						...get().inputByConversation,
 						[conversationId]: {
 							...existing,
+							/*
+							 * THE `overlap` SENTENCE RETIRES WITH THE WORDS IT DESCRIBES (UX round 4,
+							 * U17). It says the delivered message's words are still in the box,
+							 * which stops being true the moment the user deletes them - and a
+							 * sentence about a box that no longer exists is the app describing a
+							 * state the user can see is not there. Only the `overlap` arm clears
+							 * this way: on `draft-only` the delivered words are already out, so the
+							 * note is about the DELIVERY and stays true however the box changes.
+							 */
+							lateDelivered:
+								existing.lateDelivered === "overlap" &&
+								!overlapStillTrue(existing, value)
+									? undefined
+									: existing.lateDelivered,
 							currentInput: value,
 							/*
 							 * AN EMPTY DRAFT DISCLOSES NOTHING, enforced here rather than at each

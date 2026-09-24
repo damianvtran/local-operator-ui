@@ -61,7 +61,7 @@ import {
 	turnStopped,
 } from "../canonical/working-line-model";
 import { catalogueTitleUpdate, resolveChatTitle } from "../chat-title";
-import { composerNoticeFor } from "../composer-notice";
+import { caughtFailureNotice, composerNoticeFor } from "../composer-notice";
 import {
 	type DraftResolution,
 	type DraftSelectionTarget,
@@ -996,22 +996,43 @@ function SessionPanel({
 	 * this page and the composer (the transport's, the guard's, the held
 	 * paragraph's and the generic tail's).
 	 */
-	const reportFailure = (
-		error: unknown,
-		/**
-		 * See `sendFailureClass`: whether an earlier attempt under this message's
-		 * request id could have been admitted. The send's own catch has it
-		 * (`previous`), and without it this path and the ROW would classify the same
-		 * codeless 409 differently - a notice offering a press the row has already
-		 * decided against.
-		 */
-		priorAttemptUnresolved = false,
-	) => {
-		const copy = sendFailureCopy(error, undefined, priorAttemptUnresolved);
-		setSendError(copy.message);
-		setSendErrorCode(copy.code);
-		setSendErrorRetry(copy.retry);
-		setSendErrorMuted(false);
+	/*
+	 * The FALLBACK for a failure the store wrote no row for - a throw before a draft
+	 * existed. It classifies fact-less on purpose: the only fact the pane has at that
+	 * point is the pre-send snapshot, which is the off-by-one review round 4 named
+	 * (`caughtFailureNotice` carries the argument). Every failure the store DID
+	 * classify is rendered from the row it wrote.
+	 */
+	const caughtFailureCopy = (error: unknown) =>
+		sendFailureCopy(error, undefined, false);
+	/*
+	 * THE ROW IS THE CLASSIFICATION, SO THE PANE RENDERS IT RATHER THAN REPEATING IT
+	 * (review round 4, M1). The store classifies every failure once, with the fact it
+	 * actually used - `replay && previous?.admissionAttempted`, i.e. about the id the
+	 * attempt carried - and writes the sentence, the code and the press onto the row.
+	 * Classifying again here cannot be as right: `previous` at this point is the
+	 * PRE-SEND row, so an edited payload (which rotates the request id in the same
+	 * call) got the unknown-outcome sentence and a Retry over a body the daemon had
+	 * just refused, while the row it was standing in for said the opposite - one
+	 * failure rendering two ways, and only on screen.
+	 *
+	 * `composerNoticeFor` prefers this local copy over the row's, so reading the row
+	 * here is what makes the two agree. `false` when the store wrote nothing (a
+	 * failure before a draft existed), which leaves `reportFailure` below as the
+	 * fallback rather than the rule.
+	 */
+	const reportCaughtFailure = (draftKey: string, error: unknown) => {
+		const row = useCanonicalSessionsStore.getState().drafts[draftKey];
+		const notice = caughtFailureNotice({
+			rowError: row?.error,
+			rowCode: row?.errorCode,
+			rowRetry: row?.errorRetry,
+			fallback: () => caughtFailureCopy(error),
+		});
+		setSendError(notice?.message ?? null);
+		setSendErrorCode(notice?.code);
+		setSendErrorRetry(notice?.retry === true);
+		setSendErrorMuted(notice?.muted === true);
 	};
 	const send = async (
 		content: string,
@@ -1331,7 +1352,7 @@ function SessionPanel({
 			// runtime exception is a stack-trace fragment - with the backend
 			// stopped this line rendered "TypeError: fetch failed" inside the
 			// alert's own prose. See `userFacingMessage`.
-			reportFailure(error, previous?.admissionAttempted === true);
+			reportCaughtFailure(key, error);
 			/*
 			 * ONE ANSWER, because the STORE has already done the work: every failure
 			 * class hands the payload back to this conversation's composer through one
@@ -1929,6 +1950,39 @@ function SessionPanel({
 	const lateDelivered = useConversationInputStore(
 		(state) => state.inputByConversation[identity]?.lateDelivered,
 	);
+	/*
+	 * AND THE LOCK'S OWN ANSWER GOES WHEN THE FLIGHT DOES (review round 4, M2 - also
+	 * QA's Q4-1, the designer's D11 and UX's U16).
+	 *
+	 * The sentence a refused mid-flight press gets is a claim about a send that is
+	 * still out, so it must not outlive the send. It used to be latched with nothing
+	 * to retire it: the SUCCESS path deletes the draft row, so the reconciliation
+	 * effect never runs, and the line stayed up under a transcript that already held
+	 * the message - a screen telling the user their delivered message was still on
+	 * its way. On a slow ordinary send (no failure, no hold long enough to trip the
+	 * deadline) that stale claim is the common case, and it is what UX measured
+	 * turning a follow-up into one glued row: with nothing saying the send finished,
+	 * the next message was appended to the refused one and went out as a single row.
+	 *
+	 * Derived from the ROW's own `pending` rather than cleared per outcome, because
+	 * the store already clears that on EVERY ending - a success (`finishDraft`
+	 * removes the row), a failure, a delivery reconciled after the fact - so one
+	 * condition covers them and a future ending cannot forget to retire the line.
+	 */
+	useEffect(() => {
+		/*
+		 * THE GATE'S OWN LOCK IS NOT THIS ONE'S BUSINESS: `answerLockedSend` picks
+		 * `gateLock` when an approval is still waiting, and that notice belongs to the
+		 * QUESTION on screen rather than to the flight, so it retires when the gate does
+		 * (the pane's own read) and not when the row stops being pending.
+		 */
+		const gatePending = canonical.frontend?.pending_gate != null;
+		if (draft?.pending === true || gatePending || !sendErrorMuted) return;
+		setSendError(null);
+		setSendErrorCode(undefined);
+		setSendErrorRetry(false);
+		setSendErrorMuted(false);
+	}, [draft?.pending, canonical.frontend?.pending_gate, sendErrorMuted]);
 	const notice = composerNoticeFor({
 		error: sendError,
 		code: sendErrorCode,

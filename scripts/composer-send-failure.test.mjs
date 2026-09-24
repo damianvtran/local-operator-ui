@@ -69,7 +69,7 @@ globalThis.__canonicalEcho = (event) => {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {useConversationInputStore, mergeReturnedText, mergeReturnedPayload, composerHoldsExactly, rehydrateInputRows} from "./src/renderer/src/shared/store/conversation-input-store"; export {composerNoticeFor, retryOfferedForFailureCode} from "./src/renderer/src/features/chat/composer-notice"; export {DesktopControlError, UserFacingError} from "@shared/api/local-operator/desktop-api"; export {RUNTIME_BUSY_CODE, RUNTIME_RETIRING_CODE, DESKTOP_DEADLINE_EXCEEDED_CODE} from "./src/shared/desktop-contract";',
+			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {useConversationInputStore, mergeReturnedText, mergeReturnedPayload, composerHoldsExactly, rehydrateInputRows} from "./src/renderer/src/shared/store/conversation-input-store"; export {caughtFailureNotice, composerNoticeFor, retryOfferedForFailureCode} from "./src/renderer/src/features/chat/composer-notice"; export {DesktopControlError, UserFacingError} from "@shared/api/local-operator/desktop-api"; export {RUNTIME_BUSY_CODE, RUNTIME_RETIRING_CODE, DESKTOP_DEADLINE_EXCEEDED_CODE} from "./src/shared/desktop-contract";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -131,6 +131,7 @@ const {
 	admitChatDraft,
 	composerHoldsExactly,
 	composerIdentityFor,
+	caughtFailureNotice,
 	composerNoticeFor,
 	migrateHeldClaim,
 	retryOfferedForFailureCode,
@@ -1436,6 +1437,84 @@ test("a row this build left at the latch is not migrated as the released app's c
 		row.submittedText,
 		input.text,
 		"the replay pin was cleared while the id stayed, so the next send would carry a re-derived body under an id the owner may hold",
+	);
+});
+
+/*
+ * M1 (review round 4), WHERE THE USER READS IT.
+ *
+ * R2-1 was fixed in the stored row and not on screen: the pane classified the same
+ * failure a second time, from the pre-send row, so on this arm the row said not-sent
+ * with no press while the screen said "Couldn't confirm your message was sent.
+ * Sending it again is safe." with a Retry - and a remount flipped the same failure to
+ * the daemon's sentence. The pin below drives the arm and asserts what the pane's own
+ * helper renders from the row, then shows what the old path would have rendered, so a
+ * regression to a second classification fails here rather than on a user's screen.
+ */
+test("the pane renders the store's classification, and not one of its own", async () => {
+	reset();
+	const store = useConversationInputStore.getState();
+	store.setCurrentInput(SESSION, input.text);
+	store.beginInFlight(SESSION, {
+		text: input.text,
+		attachments: [],
+		replies: [],
+	});
+	responses.push(new DesktopControlError(504, "deadline_exceeded"));
+	await assert.rejects(admitChatDraft(key, input, SESSION));
+	const codeless = new DesktopControlError(
+		409,
+		"this message's text alone fills 1.1 MB of the 1.0 MB limit, leaving no room for its attachments; shorten the text or send the images on their own",
+	);
+	responses.push(codeless);
+	await assert.rejects(
+		admitChatDraft(
+			key,
+			{ ...input, text: "Review this, and the diff too" },
+			SESSION,
+		),
+	);
+	const row = draftRow();
+	const shown = caughtFailureNotice({
+		rowError: row.error,
+		rowCode: row.errorCode,
+		rowRetry: row.errorRetry,
+		fallback: () => {
+			throw new Error(
+				"the store wrote a row for this failure, so the pane must not fall back to its own classifier",
+			);
+		},
+	});
+	assert.equal(
+		shown?.message,
+		row.error,
+		"the pane renders a sentence the row does not carry",
+	);
+	assert.equal(
+		shown?.retry,
+		false,
+		"the pane offers a press the row has already decided against",
+	);
+	assert.doesNotMatch(
+		shown?.message ?? "",
+		/Sending it again is safe/,
+		"the unknown-outcome sentence rendered over a body the daemon refused",
+	);
+	/*
+	 * AND THE DISCRIMINATOR: the fact-less pre-send classification the pane used to
+	 * make (`previous?.admissionAttempted`, which is TRUE here because an earlier
+	 * attempt under the OLD id went unresolved) renders something else entirely.
+	 */
+	const stale = sendFailureCopy(codeless, undefined, true);
+	assert.notEqual(
+		stale.message,
+		shown?.message,
+		"the pre-send fact would have rendered the same sentence, so this arm cannot see the defect it is for",
+	);
+	assert.equal(
+		stale.retry,
+		true,
+		"the old path offered a Retry over a refusal, which is what the finding measured",
 	);
 });
 

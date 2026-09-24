@@ -2455,7 +2455,13 @@ export const DeliveredLate: Story = {
 			 */
 			stageChip={false}
 			returned={{ text: "a line I typed instead", lateDelivered: "draft-only" }}
-			sendError={{ message: SEND_FAILURE_COPY.lateDelivery, muted: true }}
+			/*
+			 * `lateDeliveryDraft`, because that is what the app produces for this
+			 * state: the delivered message has come OUT of the box, so the sentence
+			 * says so (review round 4, n2). The plain `lateDelivery` string it used to
+			 * read is gone - the arm that needs it is `overlap`, and it has its own.
+			 */
+			sendError={{ message: SEND_FAILURE_COPY.lateDeliveryDraft, muted: true }}
 			label="the earlier message turned out to have been delivered: one muted line, the user's own edit untouched, and no control to act on"
 		/>
 	),

@@ -256,7 +256,13 @@ const PROBE = `(() => {
 	 */
 	let box = textarea;
 	while (box && getComputedStyle(box).borderTopWidth === "0px") box = box.parentElement;
-	const notice = document.querySelector('[role="alert"]');
+	/*
+	 * THE NOTICE, IN EITHER REGISTER (design round 4, D12). A muted statement of fact
+	 * is `role="status"` - the late-delivery line is one - and this rig looked only
+	 * for `role="alert"`, so `--only=892-delivered` found nothing and exited rc=1 on a
+	 * tree where the notice was rendering correctly.
+	 */
+	const notice = document.querySelector('[role="alert"], [role="status"]');
 	const form = textarea ? textarea.closest("form") : null;
 	const send = [...document.querySelectorAll("button")].find((b) => b.type === "submit");
 	/*
@@ -591,7 +597,7 @@ const main = async () => {
 					expression: `(() => {
 						if (document.fonts.status !== "loaded") return false;
 						if (!document.querySelector("textarea")) return false;
-						if (!${JSON.stringify(["idle", "edited-idle"])}.includes(${JSON.stringify(state)}) && !document.querySelector('[role="alert"]')) return false;
+						if (!${JSON.stringify(["idle", "edited-idle"])}.includes(${JSON.stringify(state)}) && !document.querySelector('[role="alert"], [role="status"]')) return false;
 						const column = document.querySelector("[data-lo-geometry-column]");
 						return !!column && column.getBoundingClientRect().width > 0;
 					})()`,
