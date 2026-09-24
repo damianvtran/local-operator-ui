@@ -71,24 +71,20 @@ const VIEWPORT = { width: 1440, height: 817 };
 const ONLY = flag("only");
 
 const CASES = [
-	{ column: 892, states: ["idle", "unreadable", "split"] },
-	{ column: 472, states: ["idle", "unreadable", "split"] },
-	{ column: 172, states: ["idle", "unreadable", "split"] },
+	{ column: 892, states: ["idle", "notice", "muted"] },
+	{ column: 472, states: ["idle", "notice", "muted"] },
+	{ column: 172, states: ["idle", "notice", "muted"] },
 ];
 
 /*
- * WHICH STATES THE BORDER INVARIANT CAN BE MEASURED BETWEEN.
- *
- * The composer's border is the ALERT's budget, not the draft's: the band is
- * bottom-anchored, so the region grows upward into the transcript. A draft that
- * is itself taller (the `split` state carries a chip row and restored text)
- * lifts the border on its own, which is the composer behaving correctly and has
- * nothing to do with the region. So the comparison is `idle` against a state
- * with the SAME draft and a different alert: `unreadable`, which holds the one
- * sentence the cap was written for, and which at 172px is long enough to hit the
- * cap itself.
+ * WHICH STATE EACH NOTICE IS COMPARED AGAINST, and why a comparison is possible
+ * at all. The composer's band is bottom-anchored, so the box is pinned by its
+ * bottom edge and anything added ABOVE it grows upward into the transcript -
+ * which is the invariant, and it needs a baseline holding the SAME draft with no
+ * notice to be a statement about the notice rather than about the draft. `idle`
+ * is that baseline, and it stages the same returned text and the same chip.
  */
-const BORDER_BASELINE = { unreadable: "idle" };
+const BORDER_BASELINE = { notice: "idle", muted: "idle" };
 
 const THEME = flag("theme") ?? "localOperatorDark";
 
@@ -153,155 +149,69 @@ class Cdp {
 const PROBE = `(() => {
 	const round = (n) => Math.round(n * 10) / 10;
 	const rect = (el) => {
+		if (!el) return null;
 		const r = el.getBoundingClientRect();
-		return { top: round(r.top), bottom: round(r.bottom), left: round(r.left), right: round(r.right), height: round(r.height) };
+		return { top: round(r.top), bottom: round(r.bottom), left: round(r.left), right: round(r.right), height: round(r.height), width: round(r.width) };
 	};
-	/*
-	 * The composer's own box first, because it is measured in EVERY state
-	 * including the ones with no alert at all: the cap's invariant is that this
-	 * edge and the send control do not move when the region fills, and an
-	 * invariant needs the baseline it is compared against. The box is found by
-	 * walking up from the textarea to the first ancestor that draws a border,
-	 * which is the boundary control the region is aligned to.
-	 */
 	const textarea = document.querySelector("textarea");
+	/*
+	 * The composer's own box: walked up from the textarea to the first ancestor
+	 * that draws a border, which is the boundary every other number here is read
+	 * against.
+	 */
 	let box = textarea;
 	while (box && getComputedStyle(box).borderTopWidth === "0px") box = box.parentElement;
-	const region = document.querySelector('[role="alert"]');
-	const base = {
-		present: !!region,
+	const notice = document.querySelector('[role="alert"]');
+	const form = textarea ? textarea.closest("form") : null;
+	const send = [...document.querySelectorAll("button")].find((b) => b.type === "submit");
+	/*
+	 * What the notice renders, as opposed to what it is fed: the SENTENCE count is
+	 * the shape claim (one sentence, not a paragraph), the controls are the
+	 * remedy claim (at most Retry and Clear), and the register is the ink claim (a
+	 * muted notice is a fact rather than a failure).
+	 */
+	const paragraphs = notice ? notice.querySelectorAll("p").length : 0;
+	return {
 		theme: document.documentElement.dataset.theme,
 		viewport: { width: window.innerWidth, height: window.innerHeight },
-		composerBoxTop: box ? round(box.getBoundingClientRect().top) : null,
-		send: null,
-		region: null,
-		children: [],
-		controls: null,
-		failureText: null,
-		failureIndex: null,
-		failureVisibleLines: null,
-		failureLines: null,
-		failureWholeVisible: null,
-		noticeIndex: null,
-		// The tiles in the composer's chip row, by the control each one carries.
-		// Part of the state under test: the split this harness renders exists only
-		// because the row already holds a file of the user's own.
+		noticePresent: !!notice,
+		notice: rect(notice),
+		noticeParagraphs: paragraphs,
+		noticeControls: notice
+			? [...notice.querySelectorAll("button")].map((b) => b.textContent.trim())
+			: [],
+		noticeRegister: notice
+			? notice.querySelector(".text-danger")
+				? "danger"
+				: notice.querySelector(".text-ink-muted")
+					? "muted"
+					: "none"
+			: "none",
+		noticeText: notice
+			? (notice.textContent ?? "").replace(/\\s+/g, " ").trim().slice(0, 200)
+			: null,
+		/*
+		 * Source prose that reached the DOM. A JSX comment written as a bare block
+		 * between two elements is a text node and renders: this harness's own first
+		 * version shipped that way, adding 224px of the comment describing the fix
+		 * to the block it was fixing.
+		 */
+		strayText: notice
+			? [...notice.childNodes]
+					.filter((n) => n.nodeType === 3 && (n.textContent ?? "").trim().length > 0)
+					.map((n) => n.textContent.trim().slice(0, 60))
+			: [],
+		textarea: rect(textarea),
+		boxTop: box ? round(box.getBoundingClientRect().top) : null,
+		boxBottom: box ? round(box.getBoundingClientRect().bottom) : null,
+		form: rect(form),
+		send: rect(send),
+		// The tiles in the chip row: the returned file is part of the state under
+		// test, and it is also what makes the box taller, so it is measured.
 		chips: [...document.querySelectorAll("button")].filter((b) =>
 			/remove attachment/i.test(b.getAttribute("aria-label") ?? ""),
 		).length,
-	};
-	if (!region) return base;
-	const rr = region.getBoundingClientRect();
-	const regionStyle = getComputedStyle(region);
-	/*
-	 * WHICH ELEMENT IS THE WINDOW, read off the layout rather than named: the
-	 * region's capped PROSE block is its child that scrolls (UX round 1, U3 moved
-	 * the cap one level in so the remedy controls could sit outside it). Everything
-	 * this file used to measure against the region - how many lines of the failure
-	 * are visible, how much content there is - is a question about THAT box, and
-	 * the region's own box is now prose plus the pinned controls.
-	 */
-	const capped = [...region.children].find(
-		(el) => getComputedStyle(el).overflowY === "auto",
-	) ?? region;
-	const cr = capped.getBoundingClientRect();
-	const cappedStyle = getComputedStyle(capped);
-	const regionBox = {
-		top: round(cr.top),
-		bottom: round(cr.bottom),
-		height: round(cr.height),
-		clientHeight: capped.clientHeight,
-		scrollHeight: capped.scrollHeight,
-		scrollTop: capped.scrollTop,
-		overflowY: cappedStyle.overflowY,
-		/*
-		 * The region's own box as well: the controls' claim is about THIS one - they
-		 * are pinned inside the region and outside its scroll box, so their rect has
-		 * to be inside the region's.
-		 */
-		regionTop: round(rr.top),
-		regionBottom: round(rr.bottom),
-		regionHeight: round(rr.height),
-		regionOverflowY: regionStyle.overflowY,
-		/*
-		 * Text nodes that are not whitespace, as text. JSX has no comment syntax
-		 * of its own: a block comment written between two elements is TEXT, not a
-		 * comment, and it renders as prose inside this region. A stray one is
-		 * invisible to any test that reads the source marker order - this file
-		 * passed its own unit test on the very build where the region carried
-		 * 224px of the comment describing the fix. Checked at both levels now, since
-		 * the prose block is where the copy lives and the region is where the stray
-		 * comment was written.
-		 */
-		strayText: [region, capped]
-			.flatMap((root) => [...root.childNodes])
-			.filter((n) => n.nodeType === 3 && n.textContent.trim().length > 0)
-			.map((n) => n.textContent.trim().slice(0, 60)),
-	};
-	const children = [...capped.children].map((el, index) => {
-		const cs = getComputedStyle(el);
-		return {
-			index,
-			tag: el.tagName.toLowerCase(),
-			muted: el.className.includes("text-ink-muted"),
-			ranked: el.className.includes("font-medium"),
-			text: (el.innerText || el.textContent || "").replace(/\\s+/g, " ").trim(),
-			...rect(el),
-			lineHeight: round(Number.parseFloat(cs.lineHeight) || 0),
-		};
-	});
-	const failure = children.find((c) => c.ranked) ?? null;
-	const notice = children.find((c) => c.muted && !c.ranked) ?? null;
-	/*
-	 * THE CONTROLS, and the U3 claim about them: they are the region's children
-	 * that are NOT the scrolling block. The insideCapped flag re-asks the question the
-	 * probe would otherwise assume - if a later edit puts them back under the cap,
-	 * this says so instead of photographing the consequence.
-	 */
-	const controlsEl = [...region.children].find((el) => el !== capped) ?? null;
-	const controls = controlsEl
-		? {
-				...rect(controlsEl),
-				buttons: controlsEl.querySelectorAll("button").length,
-				insideCapped: capped.contains(controlsEl),
-				visible: controlsEl.getBoundingClientRect().height > 0,
-			}
-		: null;
-	if (failure) {
-		const lineHeight = failure.lineHeight || 20;
-		const lines = Math.max(1, Math.round(failure.height / lineHeight));
-		failure.lines = lines;
-		/*
-		 * How much of the actionable sentence is INSIDE the capped block's visible
-		 * window, in lines. This is the number D12 is about: pre-fix the block
-		 * showed 0 of 12 at the narrowest reachable width.
-		 */
-		failure.visibleLines = Math.max(
-			0,
-			Math.min(lines, Math.floor((regionBox.bottom - failure.top) / lineHeight + 0.001)),
-		);
-		failure.wholeVisible =
-			failure.top >= regionBox.top - 0.5 && failure.bottom <= regionBox.bottom + 0.5;
-	}
-	const send = [...document.querySelectorAll("button")].find((b) =>
-		/send/i.test(b.getAttribute("aria-label") ?? b.textContent ?? ""),
-	);
-	return {
-		...base,
-		region: regionBox,
-		children,
-		controls,
-		failureText: failure ? failure.text : null,
-		failureIndex: failure ? failure.index : null,
-		failureVisibleLines: failure ? failure.visibleLines : null,
-		failureLines: failure ? failure.lines : null,
-		failureWholeVisible: failure ? failure.wholeVisible : null,
-		noticeIndex: notice ? notice.index : null,
-		chips: [...document.querySelectorAll("button")].filter((b) =>
-			/remove attachment/i.test(b.getAttribute("aria-label") ?? ""),
-		).length,
-		composerBoxTop: box ? round(box.getBoundingClientRect().top) : null,
-		send: send ? rect(send) : null,
+		draft: textarea ? textarea.value : null,
 	};
 })()`;
 
@@ -413,115 +323,76 @@ const startChrome = async () => {
  * The assertions, stated once so the report can name the finding each number
  * answers. `measurement` is one probe result, `idle` the same column's baseline.
  */
+/**
+ * The assertions, stated once so the report can name the finding each number
+ * answers. `measurement` is one probe result, `idle` the same column's baseline
+ * with the same draft and no notice.
+ */
 const assertions = (measurement, idle, column) => {
 	const failures = [];
-	if (!measurement.present) return [`no alert region rendered at ${column}px`];
 	const fail = (message) => failures.push(`${column}px: ${message}`);
+	if (!measurement.noticePresent) return [`no notice rendered at ${column}px`];
 	/*
-	 * Nothing in this region may be prose that came from the SOURCE. A JSX
-	 * comment written as a bare block between two elements is a text node, and it
-	 * renders: this harness's own first version shipped that way, adding 224px of
-	 * the comment describing the fix to the block it was fixing. The source-order
-	 * unit test cannot see it — the markers are still in the order it asserts.
+	 * THE SHAPE: one sentence, at most the two controls the copy table allows. The
+	 * screen the operator reported was the transport's twenty-second paragraph over
+	 * an empty composer with two links under it; a frame that cannot fail this
+	 * cannot prove the replacement.
 	 */
-	if (measurement.region.strayText.length > 0)
+	if (measurement.noticeParagraphs !== 1)
 		fail(
-			`the region renders ${measurement.region.strayText.length} stray text node(s), i.e. source prose shown to the user: ${JSON.stringify(measurement.region.strayText)}`,
+			`the notice renders ${measurement.noticeParagraphs} sentence blocks; the table gives one, and a second block is the paragraph the operator reported`,
+		);
+	if (measurement.state === "muted" && measurement.noticeControls.length > 0)
+		fail(
+			`the muted notice offers ${measurement.noticeControls.length} control(s) (${measurement.noticeControls.join(", ")}); both muted arms are statements of fact with no action to take`,
+		);
+	if (measurement.state !== "muted" && measurement.noticeControls.length > 2)
+		fail(
+			`the notice offers ${measurement.noticeControls.length} controls (${measurement.noticeControls.join(", ")}); the table allows at most Retry and Clear`,
+		);
+	if (measurement.state === "muted" && measurement.noticeRegister !== "muted")
+		fail(
+			`the muted notice is drawn as ${measurement.noticeRegister}, so a statement of fact reads as something to repair`,
+		);
+	if (measurement.state === "notice" && measurement.noticeRegister !== "danger")
+		fail(
+			`the failure notice is drawn as ${measurement.noticeRegister}, so a message the app could not confirm is the least visible line on the screen`,
+		);
+	if (measurement.strayText.length > 0)
+		fail(
+			`the notice renders ${measurement.strayText.length} stray text node(s), i.e. source prose shown to the user: ${JSON.stringify(measurement.strayText)}`,
 		);
 	/*
-	 * D12, first half: the actionable sentence is the FIRST thing in the window.
-	 * The block is capped, so DOM order is the priority order.
+	 * THE POSITION: the notice is above the box rather than under it, which is the
+	 * one arrangement where a sentence of any length costs the user nothing.
 	 */
-	if (measurement.failureIndex !== 0)
-		fail(
-			`the failure is child ${measurement.failureIndex} of the capped block, so the cap can show context above it (D12)`,
-		);
 	if (
-		measurement.noticeIndex !== null &&
-		measurement.noticeIndex < measurement.failureIndex
+		measurement.notice.bottom > measurement.textarea.top + 0.5 ||
+		measurement.notice.top > measurement.textarea.top
 	)
 		fail(
-			`the muted context (child ${measurement.noticeIndex}) renders above the failure (D12)`,
+			`the notice is not above the box (notice ${measurement.notice.top}..${measurement.notice.bottom}, box top ${measurement.textarea.top})`,
 		);
 	/*
-	 * U3: the remedy is OUTSIDE the cap, and that is the whole finding.
-	 *
-	 * At the app's own minimum window (800x568, which it clamps to) the region used
-	 * to be 236px of copy in a 120px window with both controls ~90px below the
-	 * visible area and no cue that the region scrolled - the operator saw a failure
-	 * and no way out of it. The fix is structural rather than a taller cap (raising
-	 * it moves the composer's top border and can take Send off screen), so what is
-	 * asserted here is the structure: whatever element holds the controls is not a
-	 * descendant of the element that scrolls, and it is inside the region's own
-	 * box.
+	 * THE INVARIANT THE WHOLE ARRANGEMENT EXISTS FOR, and the number this rig is
+	 * for: with the same draft, a notice appearing must not move the line the user
+	 * is typing or the composer's own bottom edge. The band is bottom-anchored, so
+	 * the notice grows upward into the transcript instead.
 	 */
-	if (measurement.controls) {
-		if (measurement.controls.insideCapped)
+	if (idle) {
+		if (Math.abs(idle.textarea.top - measurement.textarea.top) > 1)
 			fail(
-				"the remedy controls are inside the scrolling prose block, so a long alert scrolls them out of the window (UX round 1, U3)",
+				`the line the user is typing moved from ${idle.textarea.top} to ${measurement.textarea.top} when the notice rendered; it must not move at all`,
 			);
-		if (measurement.region.regionOverflowY === "auto")
+		if (Math.abs((idle.boxBottom ?? 0) - (measurement.boxBottom ?? 0)) > 1)
 			fail(
-				"the alert REGION scrolls as a whole, so nothing in it can be pinned (UX round 1, U3): the cap belongs to the prose block",
-			);
-		if (
-			measurement.controls.top < measurement.region.regionTop - 0.5 ||
-			measurement.controls.bottom > measurement.region.regionBottom + 0.5
-		)
-			fail(
-				`the controls are not inside the region's own box: ${measurement.controls.top}..${measurement.controls.bottom} against ${measurement.region.regionTop}..${measurement.region.regionBottom}`,
-			);
-		if (measurement.controls.bottom > measurement.viewport.height)
-			fail(
-				`the remedy controls are off screen: their bottom is ${measurement.controls.bottom} in a ${measurement.viewport.height}px window (UX round 1, U3)`,
+				`the composer's bottom edge moved from ${idle.boxBottom} to ${measurement.boxBottom} when the notice rendered`,
 			);
 	}
 	/*
-	 * D12, second half: at the NARROWEST reachable width the failure's first line
-	 * is inside the visible window, not below the fold. This is the finding's own
-	 * measurement — pre-fix, the refusal began at offset 144 in a 120px window.
+	 * And the control the notice's own sentence names stays on screen: the failure
+	 * the old capped region produced was a remedy scrolled out of the window.
 	 */
-	if ((measurement.failureVisibleLines ?? 0) < 1)
-		fail(
-			`not one line of the failure is visible: it starts at offset ${measurement.children[measurement.failureIndex]?.top - measurement.region.top} of a ${measurement.region.clientHeight}px window (D12)`,
-		);
-	/*
-	 * D6: THE CAP'S WINDOW STILL ENDS ON A LINE, with more than one paragraph in
-	 * the block.
-	 *
-	 * `CAPPED_BLOCK` is a whole number of lines *of the block's leading*, which is
-	 * only true while every child starts on that grid. The `gap-1` this block used to
-	 * carry put a second paragraph 4px off it, so the 120px window cut 4px into a
-	 * line and the last visible line was a row of glyph tops with its descenders
-	 * shaved - the artifact the whole-line cap exists to prevent, measured against
-	 * the wide frame as the control (design round 2, D6). The spacing is one leading
-	 * now, which the cap's arithmetic already accounts for at any number of children,
-	 * and this is the assertion that sees it: a sub-leading offset between children
-	 * fails here rather than being visible only in a still.
-	 */
-	for (const child of measurement.children) {
-		const leading = child.lineHeight || 20;
-		const offset = child.top - measurement.region.top;
-		if (Math.abs(offset - Math.round(offset / leading) * leading) > 0.5)
-			fail(
-				`the prose block's child ${child.index} starts ${offset}px from the block's top, which is not a whole line of its ${leading}px leading: the cap's window then cuts a line rather than ending on one (design round 2, D6)`,
-			);
-	}
-	/*
-	 * The cap's own invariant, and the reason "raise the cap" is not an answer:
-	 * with the same draft, the composer's top border does not move when the alert
-	 * renders - however much the region holds, up to its cap - so the send
-	 * control cannot be pushed off the window. `baseline` is null in the states
-	 * where no such comparison exists (see `BORDER_BASELINE`).
-	 */
-	if (
-		idle?.composerBoxTop != null &&
-		measurement.composerBoxTop != null &&
-		Math.abs(idle.composerBoxTop - measurement.composerBoxTop) > 0.5
-	)
-		fail(
-			`the composer's top border moved from ${idle.composerBoxTop} to ${measurement.composerBoxTop} when the alert rendered`,
-		);
 	if (measurement.send && measurement.send.bottom > measurement.viewport.height)
 		fail(
 			`the send control is off screen: its bottom is ${measurement.send.bottom} in a ${measurement.viewport.height}px window`,
@@ -652,22 +523,35 @@ const main = async () => {
 			`\ncomposer alert geometry — ${THEME}, ${VIEWPORT.width}x${VIEWPORT.height} CSS\n`,
 		);
 		console.log(
-			"column  state       block(client/scroll)  failure  visible/total  notice  chips  box-top  send-bottom",
+			"column  state    notice(top..bottom h)   sentences  controls          register  chips  box-top  box-bottom  box-top delta  send-bottom/window",
 		);
 		for (const m of measurements) {
+			const idle = measurements.find(
+				(candidate) =>
+					candidate.column === m.column && candidate.state === "idle",
+			);
+			const delta =
+				idle && m.textarea && idle.textarea
+					? Math.round((m.textarea.top - idle.textarea.top) * 10) / 10
+					: null;
 			console.log(
 				[
 					String(m.column).padStart(6),
-					m.state.padEnd(11),
-					m.present
-						? `${m.region.clientHeight}/${m.region.scrollHeight}`.padEnd(21)
-						: "-".padEnd(21),
-					m.present ? String(m.failureIndex) : "-",
-					m.present ? `${m.failureVisibleLines}/${m.failureLines}` : "-",
-					m.noticeIndex === null ? "-" : String(m.noticeIndex),
-					String(m.chips),
-					String(m.composerBoxTop),
-					m.send ? String(m.send.bottom) : "-",
+					m.state.padEnd(8),
+					(m.noticePresent
+						? `${m.notice.top}..${m.notice.bottom} h${m.notice.height}`
+						: "-"
+					).padEnd(23),
+					String(m.noticeParagraphs).padEnd(10),
+					(m.noticeControls.length ? m.noticeControls.join("+") : "-").padEnd(
+						17,
+					),
+					String(m.noticeRegister).padEnd(9),
+					String(m.chips).padEnd(6),
+					String(m.boxTop).padEnd(8),
+					String(m.boxBottom).padEnd(11),
+					String(delta).padEnd(13),
+					m.send ? `${m.send.bottom}/${m.viewport.height}` : "-",
 				].join("  "),
 			);
 		}
