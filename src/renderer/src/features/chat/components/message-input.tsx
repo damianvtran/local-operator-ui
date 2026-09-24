@@ -306,6 +306,18 @@ export type ComposerSendError = {
 	 */
 	muted?: boolean;
 	/**
+	 * Whether this line is ANNOUNCED rather than asserted (review round 2, NIT).
+	 *
+	 * `muted` is about ink and weight; this is about the screen reader. The muted
+	 * register holds two quite different events: the send lock, which answers a press
+	 * the user just made (assertive - what they do next depends on it), and the late
+	 * delivery, which is the app catching up with a message that arrived on its own
+	 * (polite). Rendering both inside the failure's `role="alert"` region made a
+	 * reader interrupt itself to say the message that had just been delivered had not
+	 * been sent - and re-announce the failure it replaced.
+	 */
+	polite?: boolean;
+	/**
 	 * The extra remedies a specific refusal owns - choosing an agent for an
 	 * unresolved attachment, the agents page for an unreachable registry. They sit
 	 * beside Retry and Clear rather than replacing them.
@@ -5040,6 +5052,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			return {
 				message: sendError?.message,
 				muted: sendError?.muted === true,
+				polite: sendError?.polite === true,
 				actions: sendError?.actions ?? [],
 				retry: sendError?.retry === true,
 				/*
@@ -5289,7 +5302,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * statement of fact rather than a failure, so it takes neither.
 					 */
 					<div
-						role="alert"
+						/*
+						 * The late-delivery line is a STATUS, not an alarm: it is the app
+						 * catching up, not a press that failed. Its own region rather than the
+						 * failure's means a screen reader announces it once, without
+						 * interrupting itself to repeat the sentence it just replaced
+						 * (review round 2, NIT).
+						 */
+						role={composerAlert.polite ? "status" : "alert"}
 						className={cn(
 							CHAT_MEASURE,
 							"flex flex-col gap-1 text-body-sm",

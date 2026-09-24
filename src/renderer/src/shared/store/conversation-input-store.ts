@@ -608,16 +608,26 @@ function stripDeliveredPayload(
 	returned: ReturnedPayload,
 ): { row: ConversationInputState; box: LateDeliveryBox } {
 	const placed = returned.text;
-	const boxed = mergeReturnedText(row.currentInput ?? "", row.pendingText ?? "");
+	const boxed = mergeReturnedText(
+		row.currentInput ?? "",
+		row.pendingText ?? "",
+	);
 	let text = boxed;
 	let box: LateDeliveryBox = "overlap";
 	if (placed === "") {
 		box = "draft-only";
-	} else if (boxed === placed) {
-		text = "";
-		box = "draft-only";
-	} else if (boxed.startsWith(`${placed}\n\n`)) {
-		text = boxed.slice(placed.length + 2);
+	} else if (boxed.startsWith(placed)) {
+		/*
+		 * A PREFIX IS THE WHOLE TEST, and no separator is assumed. The user types
+		 * after the returned message wherever their caret is - straight on, or after
+		 * one Enter, or after two - and `mergeReturnedText` only writes the blank line
+		 * when IT composed the merge. Requiring that exact separator made the ordinary
+		 * case (the caret at the end of the returned text, typing straight on) read as
+		 * "edited", which is the arm the duplicate survives in. What is left after the
+		 * delivered text is the user's own draft, however they spaced it, so only the
+		 * line breaks IMMEDIATELY after it are dropped - never their indentation.
+		 */
+		text = boxed.slice(placed.length).replace(/^\n+/, "");
 		box = "draft-only";
 	}
 	const chipIds = new Set(returned.chipIds);
@@ -1038,7 +1048,8 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 					(candidate.currentInput ?? "") === "" &&
 					(candidate.attachments ?? []).length === 0 &&
 					(candidate.replies ?? []).length === 0;
-				const hadPayload = row.returned !== undefined || row.inFlight !== undefined;
+				const hadPayload =
+					row.returned !== undefined || row.inFlight !== undefined;
 				/*
 				 * TWO ARMS, and both are about what is ON SCREEN. A row handed the payload
 				 * back compares against the record of it (`composerHoldsExactly`); a row

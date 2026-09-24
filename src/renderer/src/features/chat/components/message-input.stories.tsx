@@ -2349,11 +2349,14 @@ export const FailedUnknown: Story = {
 /** The same shape for a message that provably never left: a 413. */
 export const FailedNotSent: Story = {
 	render: () => {
+		/*
+		 * THE APP'S OWN SENTENCE, not a short stand-in (review round 2, D6 - the same
+		 * defect the round-1 D3 fixed one story above, still standing here): the
+		 * transport's 413 is twice this length, and a story that hand-writes a shorter
+		 * one shows a screen the app never produces.
+		 */
 		const copy = copyFor(
-			new DesktopControlError(
-				413,
-				"This message is too large to send in one request.",
-			),
+			new DesktopControlError(413, DESKTOP_REQUEST_TOO_LARGE_DETAIL),
 		);
 		return (
 			<PendingSendHarness

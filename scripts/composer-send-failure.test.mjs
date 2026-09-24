@@ -1127,18 +1127,97 @@ test("a late delivery takes the delivered message out of the box, not the user's
 		"draft-only",
 		"the note must say the box now holds only the user's own draft, so the sentence can say so",
 	);
+	const lateNotice = composerNoticeFor({
+		error: null,
+		code: undefined,
+		retry: false,
+		muted: false,
+		rowError: undefined,
+		rowCode: undefined,
+		rowRetry: undefined,
+		lateDelivered: row.lateDelivered,
+	});
+	assert.equal(lateNotice.message, SEND_FAILURE_COPY.lateDeliveryDraft);
+	/*
+	 * AND IT IS ANNOUNCED, NOT ASSERTED (review round 2, NIT). The muted register
+	 * holds two events: the send lock, which answers a press the user just made, and
+	 * this one, which is the app catching up. Rendering both inside the failure's
+	 * `role="alert"` made a screen reader interrupt itself to repeat the sentence the
+	 * late delivery had just replaced.
+	 */
+	assert.equal(
+		lateNotice.polite,
+		true,
+		"the late-delivery line must be a polite status, not an alert beside the failure it replaced",
+	);
 	assert.equal(
 		composerNoticeFor({
-			error: null,
+			error: SEND_FAILURE_COPY.unconfirmed,
 			code: undefined,
-			retry: false,
+			retry: true,
 			muted: false,
 			rowError: undefined,
 			rowCode: undefined,
 			rowRetry: undefined,
-			lateDelivered: row.lateDelivered,
-		}).message,
-		SEND_FAILURE_COPY.lateDeliveryDraft,
+			lateDelivered: undefined,
+		}).polite,
+		undefined,
+		"a failure the user is waiting on stays assertive",
+	);
+});
+
+test("the delivered words come out however the user spaced their own line", () => {
+	reset();
+	const store = useConversationInputStore.getState();
+	for (const [typed, expected] of [
+		// Straight on, caret at the end of the returned message.
+		["and my own next line", "and my own next line"],
+		// After one Enter, and after two - the two ways a person starts a new line.
+		["\nand my own next line", "and my own next line"],
+		["\n\nand my own next line", "and my own next line"],
+		// Indentation is the user's, and stays: only the line breaks are the join.
+		["\n  indented continuation", "  indented continuation"],
+	]) {
+		reset();
+		const row = useConversationInputStore.getState();
+		row.beginInFlight(SESSION, {
+			text: "the message that went",
+			attachments: [],
+			replies: [],
+		});
+		row.returnInFlight(SESSION, SESSION);
+		row.adoptReturnedText(SESSION);
+		row.setCurrentInput(SESSION, `the message that went${typed}`);
+		useConversationInputStore.getState().reconcileDelivered(SESSION);
+		const after =
+			useConversationInputStore.getState().inputByConversation[SESSION];
+		assert.equal(
+			after?.currentInput,
+			expected,
+			`typing ${JSON.stringify(typed)} after a late delivery left the box as ${JSON.stringify(after?.currentInput)}`,
+		);
+		assert.equal(after?.lateDelivered, "draft-only");
+	}
+	// A box the user EDITED inside the delivered words cannot be separated, and it
+	// is left alone rather than guessed at.
+	reset();
+	const overlapStore = useConversationInputStore.getState();
+	overlapStore.beginInFlight(SESSION, {
+		text: "the message that went",
+		attachments: [],
+		replies: [],
+	});
+	overlapStore.returnInFlight(SESSION, SESSION);
+	overlapStore.adoptReturnedText(SESSION);
+	overlapStore.setCurrentInput(SESSION, "the message that WENT, fixed");
+	useConversationInputStore.getState().reconcileDelivered(SESSION);
+	const edited =
+		useConversationInputStore.getState().inputByConversation[SESSION];
+	assert.equal(edited?.currentInput, "the message that WENT, fixed");
+	assert.equal(
+		edited?.lateDelivered,
+		"overlap",
+		"a box that no longer starts with the delivered text must be left alone, and the note must not claim it holds nothing of that message",
 	);
 });
 
