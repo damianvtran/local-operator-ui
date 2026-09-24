@@ -2462,10 +2462,18 @@ test("the dialogs and the row list keep the geometry and the rules the walk meas
 		/closeSignIn = useCallback\(/,
 		"the sign-in dialog hands focus back through the row (U12, U18)",
 	);
+	/*
+	 * U18's four completions, pinned by name so a fifth site cannot quietly
+	 * replace one: the sign-in close, the sign-out confirm and a successful key
+	 * save arm the deferred row move, and the add form's cancel hands focus back
+	 * to the control that OPENED it (the form is inline, and its opener is still
+	 * on screen).
+	 */
 	const arms = [...section.matchAll(/setFocusRow\(\{/g)].length;
-	assert.ok(
-		arms >= 3,
-		`the row-focus move is armed by the sign-in close, the sign-out confirm and a key save (found ${arms})`,
+	assert.equal(
+		arms,
+		3,
+		`the deferred row move is armed by exactly these three completions (found ${arms})`,
 	);
 	assert.match(
 		addForm,
@@ -2474,8 +2482,8 @@ test("the dialogs and the row list keep the geometry and the rules the walk meas
 	);
 	assert.match(
 		section,
-		/onCancel=\{\(\) => \{\n\t\t\t\tsetShowAdd\(false\);/,
-		"and that handler puts focus back on Add integration",
+		/onCancel=\{\(\) => \{\n\t\t\t\tsetShowAdd\(false\);[\s\S]{0,400}?addSlotRef\.current\?\.focus\(\)/,
+		"and that handler puts focus back on Add integration, not on <body>",
 	);
 
 	/*
