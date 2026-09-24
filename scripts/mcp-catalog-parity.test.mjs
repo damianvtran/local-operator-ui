@@ -300,10 +300,7 @@ test("the payload's rows group and read their scope/source correctly", () => {
 		[
 			// `linear` is mid-sign-in, and it STAYS in the group the user left it
 			// in rather than jumping the moment it was pressed.
-			[
-				"attention",
-				["linear", "postgres-prod", "acme-api", "acme-broken"],
-			],
+			["attention", ["linear", "postgres-prod", "acme-api", "acme-broken"]],
 			["connected", ["github"]],
 			["ready", ["filesystem", "borrowed-github"]],
 		],

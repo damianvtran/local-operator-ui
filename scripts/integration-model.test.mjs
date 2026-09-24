@@ -1162,9 +1162,17 @@ test("add_key is the key route, under the backend's own shape (U3, #1511 aa92715
 	const primary = m.primaryAction(acme, [], undefined);
 	assert.equal(primary.kind, "set_key");
 	assert.equal(primary.label, "Add key");
-	assert.equal(m.integrationStatus(acme, [], undefined, 1_000).label, "Needs a key");
+	assert.equal(
+		m.integrationStatus(acme, [], undefined, 1_000).label,
+		"Needs a key",
+	);
 	// And nothing on the row offers a sign-in.
-	assert.equal(m.overflowItems(acme, [], undefined).some((item) => item.kind === "sign_in"), false);
+	assert.equal(
+		m
+			.overflowItems(acme, [], undefined)
+			.some((item) => item.kind === "sign_in"),
+		false,
+	);
 
 	/*
 	 * A server whose config DOES declare references keeps the backend's other
@@ -1196,7 +1204,13 @@ test("a keyless write names the header and derives a valid reference", () => {
 	assert.equal(m.keylessReference("7-token"), "K_7_TOKEN");
 	assert.equal(m.keylessReference(""), "");
 	assert.equal(m.keylessReference("  "), "");
-	for (const header of ["Authorization", "x-api-key", "7-token", "a", "A.B/C"]) {
+	for (const header of [
+		"Authorization",
+		"x-api-key",
+		"7-token",
+		"a",
+		"A.B/C",
+	]) {
 		assert.match(
 			m.keylessReference(header),
 			/^[A-Za-z_][A-Za-z0-9_]*$/,

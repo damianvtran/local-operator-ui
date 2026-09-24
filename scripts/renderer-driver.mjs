@@ -13374,25 +13374,33 @@ async function sceneSettingsIntegrations(cdp) {
 	 * EVALUATED, so `\n` in it becomes a real newline in the evaluated source and
 	 * a character class containing one is a syntax error at the far end.
 	 */
-	const refusal = await waitForScene(
+	/*
+	 * A BOOLEAN, because `waitForScene`'s third argument is ATTEMPTS (20 ms
+	 * apart), not milliseconds, and it only accepts an exact `true`: an earlier
+	 * version of this check returned the matched TEXT, so it timed out while the
+	 * sentence was on screen - the frame beside it is what caught that.
+	 */
+	const refusalSeen = await waitForScene(
 		cdp,
 		`(() => {
 			const text = document.body.innerText;
 			const at = text.indexOf("It no longer exists");
-			if (at < 0) return false;
-			return text.slice(at, at + 120).split(String.fromCharCode(10))[0];
+			return at >= 0 && text.indexOf("refreshed", at) > at;
 		})()`,
-		/*
-		 * Generous: the sentence arrives only AFTER the re-read lands, because it
-		 * is rendered as an orphan once the row it belonged to is gone. Measured on
-		 * a loaded host: a 1.5 s window reported `refusal=false` and the very next
-		 * frame shows the alert on screen.
-		 */
-		6000,
+		300,
 	);
+	const refusal = refusalSeen
+		? await cdp.evaluate(
+				`(() => {
+					const text = document.body.innerText;
+					const at = text.indexOf("It no longer exists");
+					return text.slice(at, at + 120).split(String.fromCharCode(10))[0];
+				})()`,
+			)
+		: false;
 	check(
 		"F2: and the sentence that says the list was refreshed is on screen, not lost with the row",
-		typeof refusal === "string" && /refreshed/.test(refusal),
+		refusalSeen === true,
 		`refusal=${JSON.stringify(refusal)}`,
 	);
 	frames.push(await captureSettled(cdp, "integrations-live-12-stale-refusal"));

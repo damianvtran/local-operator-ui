@@ -137,8 +137,8 @@ export const IntegrationKeyDialog: FC<IntegrationKeyDialogProps> = ({
 							onChange={(event) => setFreeName(event.target.value)}
 						/>
 						<p className="text-ink-dim text-meta">
-							This server declares no key of its own, so Local Operator adds
-							one to its config for you.
+							This server declares no key of its own, so Local Operator adds one
+							to its config for you.
 						</p>
 					</div>
 				) : null}
