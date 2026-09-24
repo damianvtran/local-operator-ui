@@ -107,7 +107,14 @@ export const NetworkView: FC<NetworkViewProps> = ({
 						    the loading and empty states were on the page already and stay
 						    silent. The same choice the chat sidebar's catalogue error makes. */}
 						<Alert variant="danger" role="alert">
-							Could not read this device's networks. {state.message}
+							{/*
+							 * ONE SENTENCE, JOINED WITH A COLON (design round 2, D15). The
+							 * backend's clause is lowercase because it was written to follow a
+							 * colon; after a full stop it read as a typo (`networks. the relay is
+							 * not running`).
+							 */}
+							Could not read this device's networks:{" "}
+							<BackendSentence text={state.message} />
 						</Alert>
 						<Button variant="secondary" size="sm" onClick={onRetry}>
 							Retry
@@ -155,13 +162,16 @@ export const NetworkView: FC<NetworkViewProps> = ({
 				<InviteDialog
 					device={inviting}
 					networks={topology.networks
-						// A network the device is already an ACTIVE member of is not an
-						// invite target: re-inviting a member mints a token nobody can
-						// redeem.
+						// A network the device holds ANY membership row in is not an
+						// invite target: re-inviting an active member mints a token nobody
+						// can redeem, and re-inviting a REVOKED one is refused for a second
+						// reason - a burned device id is never admitted again, however the
+						// invite is minted (QA round 1, Q5; measured as a
+						// `device_id_conflict` on the redeeming device).
 						.filter(
 							(network) =>
 								!network.members.some(
-									(member) => member.device_id === inviting.id && member.active,
+									(member) => member.device_id === inviting.id,
 								),
 						)
 						.map((network) => ({
@@ -374,6 +384,33 @@ const InviteDialog: FC<{
 };
 
 /** The routed page: the data half of `NetworkView`. */
+/**
+ * The backend's own sentence, with its `backticked` commands in the machine voice.
+ *
+ * Those sentences are written for a terminal, so a command arrives in backticks -
+ * and in proportional type the ticks render as literal characters, which reads as
+ * a typo rather than as a command (design round 2, D15). The WORDS are untouched:
+ * the plane's copy is the product's copy, so only the ticks change, into the same
+ * monospaced register the empty state below already uses for `lop network init`.
+ */
+const BACKTICK_SPAN = /`([^`]+)`/;
+
+const BackendSentence = ({ text }: { text: string }) => (
+	<>
+		{text.split(BACKTICK_SPAN).map((part, index) =>
+			index % 2 === 1 ? (
+				// biome-ignore lint/suspicious/noArrayIndexKey: the split parts are a fixed sequence, so the index IS their identity
+				<span key={index} className="font-mono">
+					{part}
+				</span>
+			) : (
+				// biome-ignore lint/suspicious/noArrayIndexKey: same
+				<span key={index}>{part}</span>
+			),
+		)}
+	</>
+);
+
 export const NetworkPage: FC = () => {
 	const capabilities = useDesktopCapabilities();
 	const enabled = desktopFeatureEnabled(capabilities.data, "peers");

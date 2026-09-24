@@ -128,6 +128,42 @@ export type RelaySubscribeArgs = {
 	afterSeq?: number;
 };
 
+/**
+ * The backend's own refusal, when the body carries one.
+ *
+ * Read from a BOUNDED copy: a refusal body is small, and a proxy that answers a
+ * megabyte of HTML for a refused stream must not be able to make this app hold it.
+ * Anything unparseable is an absence, not an error - the caller falls back to the
+ * transport's own sentence.
+ */
+const readStreamRefusal = async (
+	response: Response,
+): Promise<{ code?: string; message?: string }> => {
+	try {
+		const text = (await response.text()).slice(0, 4_096);
+		const body = JSON.parse(text) as {
+			detail?: unknown;
+			message?: unknown;
+		};
+		const detail =
+			typeof body.detail === "object" && body.detail !== null
+				? (body.detail as { code?: unknown; message?: unknown })
+				: null;
+		const code = typeof detail?.code === "string" ? detail.code : undefined;
+		const message =
+			typeof detail?.message === "string" && detail.message.trim()
+				? detail.message
+				: typeof body.message === "string" && body.message.trim()
+					? body.message
+					: typeof body.detail === "string" && body.detail.trim()
+						? body.detail
+						: undefined;
+		return { ...(code ? { code } : {}), ...(message ? { message } : {}) };
+	} catch {
+		return {};
+	}
+};
+
 export type RelayEvent =
 	| { streamId: string; kind: "data"; data: string }
 	| {
@@ -145,6 +181,13 @@ export type RelayEvent =
 			 * gone (M6).
 			 */
 			status?: number;
+			/**
+			 * The backend's own token for the refusal, when its body carried one
+			 * (`session_is_remote` is the one this app acts on): a 409 is one arm of
+			 * many ladders, and the token names the condition while the sentence
+			 * names the remedy.
+			 */
+			code?: string;
 	  }
 	| { streamId: string; kind: "end" };
 
@@ -275,14 +318,36 @@ export class DesktopStreamRelay {
 				redirect: "error",
 				signal,
 			});
-			if (!response.ok || !response.body) {
+			if (!response.ok) {
+				/*
+				 * A REFUSAL THAT NAMES ITSELF IS THE BACKEND'S TO SPEAK. The plane
+				 * answers 409 `session_is_remote` for a conversation that lives on
+				 * another device, and its `detail.message` says which device and the
+				 * two ways in - a sentence this renderer cannot compose, because the
+				 * device name is the peer's. Without carrying it the reader was told
+				 * the conversation "was deleted", which is false about their own live
+				 * work (QA round 1, Q2).
+				 */
+				const refusal = await readStreamRefusal(response);
+				emit({
+					streamId,
+					kind: "error",
+					detail:
+						refusal.message ?? DESKTOP_STREAM_DETAIL.refused(response.status),
+					// Carried so the renderer can tell "this conversation is gone"
+					// from "this transport is down" from "this conversation is on
+					// another device". Each is a different answer; only one of them
+					// is about this machine's copy of the session.
+					status: response.status,
+					...(refusal.code ? { code: refusal.code } : {}),
+				});
+				return;
+			}
+			if (!response.body) {
 				emit({
 					streamId,
 					kind: "error",
 					detail: DESKTOP_STREAM_DETAIL.refused(response.status),
-					// Carried so the renderer can tell "this conversation is gone"
-					// from "this transport is down". Both are refusals; only one of
-					// them is about the session, and the two need different words.
 					status: response.status,
 				});
 				return;

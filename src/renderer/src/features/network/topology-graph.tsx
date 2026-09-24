@@ -126,18 +126,30 @@ export function TopologyGraph({
 	const networkById = new Map(layout.networks.map((node) => [node.id, node]));
 	const deviceById = new Map(layout.devices.map((node) => [node.id, node]));
 	/*
-	 * Whether the device has anywhere left to be invited TO: a network it is not an
-	 * active member of. Computed here rather than in `DeviceCard`, which sees one
-	 * device and cannot know what the other networks hold (design round 1, D7).
+	 * Where the device has left to be invited TO, computed here rather than in
+	 * `DeviceCard`, which sees one device and cannot know what the other networks
+	 * hold (design round 1, D7).
+	 *
+	 * ANY MEMBERSHIP ROW BLOCKS, REVOKED INCLUDED (QA round 1, Q5). `active` used to
+	 * be the test, so a device that had been REMOVED from a network counted as "not
+	 * a member" and the card offered `Add to network…` there - an invite that can
+	 * never be redeemed: a burned device id is never admitted again, however the
+	 * invite is minted ("a burned id is never admitted again", measured as
+	 * `device_id_conflict` on the redeeming device). Offering a control that ends in
+	 * that sentence is the dead end D7 removed from the other side.
 	 */
-	const canInvite = (device: DeviceNode) =>
-		layout.networks.some(
+	const inviteState = (device: DeviceNode): InviteState => {
+		const open = layout.networks.some(
 			(network) =>
 				!device.memberships.some(
-					(membership) =>
-						membership.networkId === network.id && membership.active,
+					(membership) => membership.networkId === network.id,
 				),
 		);
+		if (open) return "open";
+		return device.memberships.some((membership) => !membership.active)
+			? "removed"
+			: "members";
+	};
 
 	return (
 		<div
@@ -304,7 +316,7 @@ export function TopologyGraph({
 									device={node}
 									nowSeconds={nowSeconds}
 									actions={actions}
-									canInvite={canInvite(node)}
+									inviteState={inviteState(node)}
 								/>
 							</PopoverContent>
 						</Popover>
@@ -331,19 +343,30 @@ const Fact = ({ label, children }: { label: string; children: ReactNode }) => (
  * The reason is the backend's words verbatim - it glosses the relay's protocol
  * tokens, and this app keeps no vocabulary of its own.
  */
+/**
+ * What a device's invite affordance may offer.
+ *
+ * `members` and `removed` are both "nothing to invite" but they are not the same
+ * fact, and the card says which (QA round 1, Q5): a device that holds a REVOKED
+ * membership anywhere may not be re-invited, because a burned id is never
+ * admitted again however the invite is minted.
+ */
+type InviteState = "open" | "members" | "removed";
+
 export function DeviceCard({
 	device,
 	nowSeconds,
 	actions,
-	canInvite,
+	inviteState,
 }: {
 	device: DeviceNode;
 	nowSeconds: number;
 	actions: DeviceActions;
-	/** Whether any network exists that this device is not already an active
-	 * member of. Computed by `TopologyGraph` from the topology, because the card
-	 * sees one device and cannot know what the others hold. */
-	canInvite: boolean;
+	/** What this device can still be invited to. Computed by `TopologyGraph` from
+	 * the topology, because the card sees one device and cannot know what the
+	 * others hold - and because "removed" and "member everywhere" need different
+	 * words (QA round 1, Q5). */
+	inviteState: InviteState;
 }) {
 	return (
 		<div data-device-card={device.id} className="space-y-3">
@@ -420,7 +443,7 @@ export function DeviceCard({
 				   this device belongs to" - offered-but-broken, which §2.7 itself calls
 				   the worst option. With no candidate the card states the fact instead of
 				   promising an action it cannot take. */
-				(canInvite ? (
+				(inviteState === "open" ? (
 					<button
 						type="button"
 						className="text-meta text-ink underline"
@@ -430,7 +453,9 @@ export function DeviceCard({
 					</button>
 				) : (
 					<p className="text-meta text-ink-dim">
-						In every network this device belongs to
+						{inviteState === "removed"
+							? "A device removed from its networks needs a new identity before it can be invited again"
+							: "In every network this device belongs to"}
 					</p>
 				))}
 		</div>

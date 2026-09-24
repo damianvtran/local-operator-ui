@@ -44,11 +44,23 @@ export function MoveChatHere({
 	peerLabel,
 	rows,
 	onMove,
+	isMoving,
 }: {
 	peerLabel: string;
 	/** This device's conversations, newest first (the sidebar's `rest`). */
 	rows: CanonicalSessionRow[];
 	onMove: (row: CanonicalSessionRow) => void;
+	/**
+	 * Whether that conversation already has a move in flight (QA round 1, Q3).
+	 *
+	 * The menu is the surface that STARTS a move, and it did not read the store's
+	 * `transfers`: the conversation being moved stayed listed and pressable, and every
+	 * press minted a fresh request id - which is exactly what the route's at-most-once
+	 * guard keys on, so one gesture reached the peer's relay twice, 3 ms apart. The
+	 * store refuses a second move now; this is the visible half of the same rule, so
+	 * the reader is not offered a control that will do nothing.
+	 */
+	isMoving?: (sessionId: string) => boolean;
 }) {
 	const choices = rows.slice(0, MOVE_MENU_LIMIT);
 	return (
@@ -70,8 +82,15 @@ export function MoveChatHere({
 					<DropdownMenuItem disabled>No chats on this device</DropdownMenuItem>
 				) : (
 					choices.map((row) => (
-						<DropdownMenuItem key={row.session_id} onSelect={() => onMove(row)}>
+						<DropdownMenuItem
+							key={row.session_id}
+							disabled={isMoving?.(row.session_id) === true}
+							onSelect={() => onMove(row)}
+						>
 							<span className="truncate">{row.title || "Untitled chat"}</span>
+							{isMoving?.(row.session_id) === true && (
+								<span className="shrink-0 text-ink-dim">Moving…</span>
+							)}
 						</DropdownMenuItem>
 					))
 				)}

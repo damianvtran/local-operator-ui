@@ -795,10 +795,12 @@ const STAMP_BINDING_NOTES = [
 	 * as bare SHAs in the notes themselves, which is the convention
 	 * `usageAutoCheckRestampNote` and `usageInFlightRemediationNote` left by first.
 	 */
-	// The ninth, and the one that re-derived the pair: it states this file's own trees for
+	// The tenth, and the one that re-derived the pair: it states this file's own trees for
 	// the mesh-desktop pass, so it is held to them rather than read as history - the
-	// distinction `candidateMacArchRestampNote` was listed for.
-	"meshDesktopRound2RestampNote",
+	// distinction `candidateMacArchRestampNote` was listed for. `meshDesktopRound2RestampNote`
+	// left this list in the same commit that replaced its pair, with its values written as
+	// bare SHAs in the note itself (the convention the paragraph above states).
+	"meshDesktopRound3RestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {

@@ -42,7 +42,14 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { type FC, useCallback, useEffect, useMemo, useState } from "react";
+import {
+	type FC,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import type { DesktopModelSelection } from "../../../../../shared/desktop-contract";
@@ -2233,6 +2240,15 @@ export const NewSessionPicker: FC<PickerContext> = ({
 	const peerRows = peersEnabled ? (peers.data?.peers ?? []) : [];
 	const [device, setDevice] = useState(THIS_DEVICE);
 	const chosen = peerRows.find((peer) => peer.device_id === device);
+	/*
+	 * ONE REQUEST ID PER OPENED PICKER (QA round 1, Q4b). `createSession` defaults
+	 * this to a fresh uuid per CALL, so a second press of Create - which is what a
+	 * reader does after a timeout - minted a SECOND conversation on the peer: the
+	 * route's at-most-once guard keys on this id and could not see the retry as one.
+	 * Held for the life of the picker: pressing Create twice sends the same request
+	 * twice, and the route answers the second from its own record.
+	 */
+	const requestIdRef = useRef<string>(uuidv4());
 	const op = useOperation();
 	const createSession = useCanonicalSessionsStore(
 		(state) => state.createSession,
@@ -2243,7 +2259,7 @@ export const NewSessionPicker: FC<PickerContext> = ({
 				const id = await createSession(
 					cwd.trim() || (canonical.frontend?.cwd ?? "~"),
 					undefined,
-					undefined,
+					requestIdRef.current,
 					undefined,
 					chosen ? chosen.device_id : undefined,
 				);
@@ -2277,15 +2293,18 @@ export const NewSessionPicker: FC<PickerContext> = ({
 									<SelectValue />
 								</SelectTrigger>
 								{/*
-								 * BOUNDED, because one of these labels carries the backend's
-								 * reason in full: a `SelectContent` sizes to its content, and a
-								 * device that is unreachable with a sentence attached stretched
-								 * the panel past the dialog that owns it. The cap lets the
-								 * reason WRAP instead - the design's own worry ("the inline
-								 * `— unreachable: <reason>` is exactly the kind of string that
-								 * overflows a select").
+								 * THE PANEL IS EXACTLY AS WIDE AS THE CONTROL THAT OPENED IT
+								 * (design round 2, D14). One of these labels carries the
+								 * backend's reason in full, and the round-1 cap (`max-w-26rem`)
+								 * made the reason CLIP rather than wrap: the viewport kept the
+								 * trigger's own `min-w`, so the text wrapped at 534 px and was
+								 * then cut at 416 - losing the address a user would act on, and
+								 * making the panel narrower than its own trigger, which
+								 * `select.tsx`'s comment explicitly guards against. Sizing the
+								 * content to the trigger's width makes wrapping and clipping
+								 * agree, and the panel can no longer outgrow the dialog either.
 								 */}
-								<SelectContent className="max-w-[26rem]">
+								<SelectContent className="w-(--radix-select-trigger-width)">
 									<SelectItem value={THIS_DEVICE}>This device</SelectItem>
 									{peerRows.map((peer) => (
 										<SelectItem
@@ -2293,39 +2312,77 @@ export const NewSessionPicker: FC<PickerContext> = ({
 											value={peer.device_id}
 											disabled={!peer.reachable}
 										>
-											{peer.reachable
-												? deviceLabel(peer)
-												: `${deviceLabel(peer)} — unreachable${
-														peer.unreachable_reason
-															? `: ${peer.unreachable_reason}`
-															: ""
-													}`}
+											{/*
+											 * THE REASON IS NOT DISABLED INK (design round 2, D18): the
+											 * option is unselectable, but the reason is the only
+											 * information here and it is READ, not clicked - `ink-dim`
+											 * is 5.25:1 dark / 6.14:1 light on `elevated` where the
+											 * inherited `ink-disabled` measured 1.99:1 and 2.96:1.
+											 * The name keeps the disabled ink, so the option still
+											 * reads as unselectable (with no hover wash and
+											 * `aria-disabled`).
+											 */}
+											<span className="min-w-0">
+												<span className="block truncate">
+													{deviceLabel(peer)}
+												</span>
+												{!peer.reachable && (
+													<span className="block text-ink-dim">
+														{`unreachable${
+															peer.unreachable_reason
+																? `: ${peer.unreachable_reason}`
+																: ""
+														}`}
+													</span>
+												)}
+											</span>
 										</SelectItem>
 									))}
 								</SelectContent>
 							</Select>
 						</PickerField>
 					)}
-					<PickerField
-						label="Working directory"
-						/* The directory is resolved on the device that runs the session,
-						   so the hint names that device rather than always "this machine". */
-						hint={
-							chosen
-								? `Must exist on ${deviceLabel(chosen)}.`
-								: "Must exist on this machine."
-						}
-					>
-						<Input
-							value={cwd}
-							onChange={(event) => setCwd(event.target.value)}
-						/>
-					</PickerField>
+					{/*
+					 * A PEER CREATE HAS NO WORKING DIRECTORY TO CHOOSE (QA round 1, Q9).
+					 * The route does not forward `cwd` for a peer - "An empty cwd makes the
+					 * peer default to its own home" - so this field said `Must exist on
+					 * <peer>.` over a value that was never sent, never validated, and never
+					 * used: a create pointed at `/nonexistent/on/this/mac` answered 200 and
+					 * ran in the peer's home. Asking for a path and then ignoring it is
+					 * worse than not asking, because the reader believes the session runs
+					 * where they typed. Hidden for a peer, with the place it WILL run
+					 * stated instead; the local form is byte-identical to the one it always
+					 * was.
+					 */}
+					{chosen ? (
+						<PickerField
+							label="Working directory"
+							hint={`Starts in ${deviceLabel(chosen)}'s home folder.`}
+						>
+							<p className="text-body-sm text-ink-dim">
+								{`This app cannot choose a folder on ${deviceLabel(chosen)} yet.`}
+							</p>
+						</PickerField>
+					) : (
+						<PickerField
+							label="Working directory"
+							htmlFor="new-session-cwd"
+							hint="Must exist on this machine."
+						>
+							<Input
+								id="new-session-cwd"
+								value={cwd}
+								onChange={(event) => setCwd(event.target.value)}
+							/>
+						</PickerField>
+					)}
 				</>
 			}
 			onSubmit={submit}
 			submitLabel="Create"
-			submitDisabled={!cwd.trim()}
+			/* Nothing to fill in for a peer: the field it would have checked is gone
+			   rather than sitting empty and blocking the form (QA round 1, Q9). */
+			submitDisabled={!chosen && !cwd.trim()}
 			busy={op.busy}
 			result={op.result}
 		/>

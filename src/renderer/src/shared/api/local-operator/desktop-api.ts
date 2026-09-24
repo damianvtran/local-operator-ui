@@ -520,6 +520,14 @@ export function subscribeDesktopStream(
 		 * text for a conversation that is simply gone.
 		 */
 		status?: number;
+		/**
+		 * The backend's own token for the refusal, when its body carried one.
+		 *
+		 * Main reads it (`desktop-stream.ts`); the browser dev path cannot see a
+		 * status at all, so a code there is an absence and the arm that needs it is
+		 * Electron-only - the same shape `status` already has.
+		 */
+		code?: string;
 	}) => void,
 ): () => void {
 	const native = window.api?.desktop?.stream;

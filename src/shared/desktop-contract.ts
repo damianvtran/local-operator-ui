@@ -2350,8 +2350,23 @@ const DESKTOP_LONG_READ_DEADLINE_MS = 90_000;
  * The margin is generous on purpose. Exceeding a budget here is reported as an
  * UNCONFIRMED move, never as a refusal (round-1 review, M4), so a margin that is
  * too small is a false alarm rather than a lost answer.
+ *
+ * FIFTEEN SECONDS WAS NOT ENOUGH, and the measurement is the reason it is 45 (QA
+ * round 1, Q4a). The route's own overhead ABOVE `wait_s` was measured at ~30 s
+ * against a real peer: `wait_s: 0` answered after 30.5 s, `wait_s: 5` after
+ * 35.2 s, `wait_s: 30` after 60.3 s. Under a 15 s margin the app's deadline always
+ * fired first, so the reader got "could not confirm the move" and the route's
+ * precise answer ("Nothing was deleted: this device still holds the
+ * conversation.") never arrived - and the user could not act on either. A margin
+ * of 45 s covers the measured overhead with room, and it is a CEILING rather than
+ * a wait: a route that answers in 2.1 s (the measured healthy move) still resolves
+ * the moment it answers.
+ *
+ * The same margin is used for a peer CREATE (`desktopRequestBoundS`'s second
+ * arm), where the backend's own budget is 120 s: an app bound below the budget it
+ * waits on is the layer that gives up first, which is the whole defect (Q4b).
  */
-export const DESKTOP_TRANSFER_MARGIN_MS = 15_000;
+export const DESKTOP_OPERATION_MARGIN_MS = 45_000;
 /** What the renderer asks the route to wait, when the user has not chosen. */
 export const DESKTOP_TRANSFER_WAIT_S = 30;
 
@@ -2406,12 +2421,35 @@ const LONG_READ_OPS: ReadonlySet<string> = new Set([
 export function desktopRequestBoundS(request: {
 	op: DesktopRequest["op"];
 	wait_s?: number;
+	/** The peer a create was addressed to, when one was (QA round 1, Q4b). */
+	peer?: string | null;
 }): number | null {
+	if (request.op === "sessions.create") {
+		/*
+		 * A CREATE ON A PEER IS NOT A CONTROL CALL. The route's own budget for it is
+		 * `create_on_peer`'s 120 s, and it measured 15.9 s and 22.1 s on LOOPBACK -
+		 * the fastest case there will ever be. Under this app's generic 20 s control
+		 * budget the create timed out, told the user the peer "did not create the
+		 * conversation", and then the conversation appeared anyway on the next poll
+		 * (QA round 1, Q4b). A local create keeps the standing budget: there is no
+		 * second device in it.
+		 */
+		return request.peer ? DESKTOP_PEER_CREATE_BOUND_S : null;
+	}
 	if (request.op !== "sessions.transfer") return null;
 	const wait = request.wait_s;
 	if (typeof wait !== "number" || !Number.isFinite(wait)) return null;
 	return Math.min(Math.max(wait, 0), 300);
 }
+
+/**
+ * What a create asked to run on a peer is given before this app gives up.
+ *
+ * The PEER's own create budget, taken from the route rather than invented here:
+ * the app must sit above the layer it is waiting on, or the reader is told the
+ * peer refused when the peer was still working (QA round 1, Q4b).
+ */
+export const DESKTOP_PEER_CREATE_BOUND_S = 120;
 
 /**
  * The deadline one op's request may run for.
@@ -2426,8 +2464,11 @@ export function desktopRequestDeadlineMs(
 	op: DesktopRequest["op"],
 	boundS: number | null = null,
 ): number {
-	if (op === "sessions.transfer" && boundS !== null)
-		return Math.round(boundS * 1000) + DESKTOP_TRANSFER_MARGIN_MS;
+	if (
+		(op === "sessions.transfer" || op === "sessions.create") &&
+		boundS !== null
+	)
+		return Math.round(boundS * 1000) + DESKTOP_OPERATION_MARGIN_MS;
 	return LONG_READ_OPS.has(op)
 		? DESKTOP_LONG_READ_DEADLINE_MS
 		: DESKTOP_CONTROL_DEADLINE_MS;
@@ -2748,6 +2789,15 @@ export type DesktopStreamEvent = {
 	 * and a frame-budget overflow are failures, not refusals.
 	 */
 	status?: number;
+	/**
+	 * The backend's own token for the refusal, when its body carried one.
+	 *
+	 * 409 is one arm of several ladders on that plane, so the TOKEN is what a
+	 * client keys on and the sentence is what a person reads: `session_is_remote`
+	 * names the one condition this app renders differently, because the answer is
+	 * not "gone" but "on another device, and here are the two ways in".
+	 */
+	code?: string;
 };
 
 /**

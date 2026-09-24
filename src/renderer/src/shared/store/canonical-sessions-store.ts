@@ -438,16 +438,18 @@ export const UNCONFIRMED_SEND_CODE = "unconfirmed_send";
 const TRANSFER_WAIT_S = DESKTOP_TRANSFER_WAIT_S;
 
 /**
- * Whether a failed move is CONFIRMED not to have happened.
+ * Whether a failed request is CONFIRMED not to have happened.
  *
- * A refusal is an answer: the route looked at the move and said no (`fenced`,
- * `in_flight_turn`, `unreachable`, `occupied` arrive as 4xx `message`), so nothing
- * changed on either device and the notice may say so. Everything else - a deadline
- * (`status: null`), a transport failure, a 5xx that may have applied the move
- * before failing - leaves the outcome unknown, and the wording must say that
- * instead (round-1 review, M4).
+ * A refusal is an answer: the route looked at the move (or the create) and said no
+ * (`fenced`, `in_flight_turn`, `unreachable`, `occupied`, a capability refusal -
+ * all arrive as 4xx `message`), so nothing changed on either device and the notice
+ * may say so. Everything else - a deadline (`status: null`, which is what a
+ * request that ran out of this app's own budget carries), a transport failure, a
+ * 5xx that may have applied the request before failing - leaves the outcome
+ * unknown, and the wording must say that instead (round-1 review, M4; QA round 1,
+ * Q4, where a CREATE's deadline was filed as "the peer refused").
  */
-const transferRefusal = (error: unknown): boolean =>
+const desktopRefusal = (error: unknown): boolean =>
 	error instanceof DesktopControlError &&
 	error.status !== null &&
 	error.status >= 400 &&
@@ -2008,8 +2010,25 @@ type CanonicalSessionsState = {
 	 * refusal establishes and this state cannot.
 	 */
 		| { kind: "refused"; peer: string; reason: string }
+		/**
+		 * A create on a peer that was never answered: the request was sent and the
+		 * conversation may exist there. Not `refused`, which claims the device said
+		 * no (QA round 1, Q4b - a 20 s app budget filed a 120 s backend as a refusal).
+		 */
+		| { kind: "create-unconfirmed"; peer: string; reason: string }
+		/**
+		 * A move this app did not send, because the conversation is the one the pane
+		 * has open (QA round 1, Q4a). Nothing changed, and the user can act on it.
+		 */
+		| { kind: "move-blocked"; title: string; reason: string }
 		| { kind: "move-failed"; title: string; reason: string }
-		| { kind: "move-unconfirmed"; title: string; reason: string }
+		| {
+				kind: "move-unconfirmed";
+				title: string;
+				reason: string;
+				/** The device the move was addressed to, so the notice can name it (D16). */
+				peer: string;
+		  }
 		| null;
 	clearMeshNotice: () => void;
 	/**
@@ -2855,6 +2874,47 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			meshNotice: null,
 			clearMeshNotice: () => set({ meshNotice: null }),
 			transferSession: async (sessionId, to, title) => {
+				/*
+				 * ONE MOVE PER CONVERSATION AT A TIME (QA round 1, Q3).
+				 *
+				 * Every press minted a FRESH `request_id`, so a second press while the
+				 * first was still running could not be recognised as the same move: the
+				 * route's at-most-once guard keys on that id, and the peer's relay
+				 * logged two pulls 3 ms apart for one gesture. The row's own dimming and
+				 * `aria-busy` were already right - the menu that STARTS the move simply
+				 * did not read `transfers`. Refusing here rather than there closes it for
+				 * every entrance (the sidebar menu, the command palette, a future one),
+				 * because the store is what knows a move is in flight.
+				 */
+				if (get().transfers[sessionId] !== undefined) return false;
+				/*
+				 * A CONVERSATION OPEN IN THIS WINDOW CANNOT BE MOVED, and the route
+				 * cannot say so (QA round 1, Q4a): the source runtime refuses while ANY
+				 * other viewer is attached - the desktop's own pane counts - and that
+				 * refusal reaches the peer's log rather than the caller, so the app waits
+				 * out its deadline and then reads "the outcome is unconfirmed". Measured:
+				 * the same conversation moved in 2.1 s once the pane was on another chat,
+				 * and failed nine times while it was on screen, including once after the
+				 * route was navigated back. Telling the truth here costs nothing and saves
+				 * the whole wait, which is the difference between an actionable sentence
+				 * and a minute of nothing.
+				 *
+				 * The check is on the pane's ACTIVE conversation rather than on the
+				 * subscriber, because the stream subscription lives inside whichever panel
+				 * is showing it: `activeSessionId` is the store's own record of that, and
+				 * a draft (no session) cannot be moved.
+				 */
+				if (get().activeSessionId === sessionId) {
+					set({
+						meshNotice: {
+							kind: "move-blocked",
+							title,
+							reason:
+								"it is open here, and a conversation that is open in this window cannot be moved. Switch to another chat, then move it.",
+						},
+					});
+					return false;
+				}
 				set((state) => ({
 					transfers: { ...state.transfers, [sessionId]: to },
 					meshNotice: null,
@@ -2901,8 +2961,9 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								 */
 								kind: "move-unconfirmed",
 								title,
+								peer: to,
 								reason:
-									"the device answered something this app could not read, so where the conversation is now is unknown. It will be listed where it actually is within half a minute; check the other device before trying again.",
+									"the device answered something this app could not read, so where it is now is unknown; this list updates within 30 s, so check that device first.",
 							},
 						});
 						return false;
@@ -2951,7 +3012,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					 * reader "nothing changed" invited a second move of a session that may
 					 * already live elsewhere. The list is re-read for the same reason.
 					 */
-					const refused = transferRefusal(error);
+					const refused = desktopRefusal(error);
 					if (!refused) void get().fetchSessions();
 					set({
 						meshNotice: refused
@@ -2981,8 +3042,9 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 									 */
 									kind: "move-unconfirmed",
 									title,
+									peer: to,
 									reason:
-										"the request was sent, so the move may have happened. It will be listed where it actually is within half a minute; check the other device before trying again.",
+										"the request was sent, so it may already be there; this list updates within 30 s, so check that device first.",
 								},
 					});
 					return false;
@@ -3589,12 +3651,27 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					 * the catalogue's `error`, which would read as "chats could not load".
 					 */
 					if (peer) {
+						/*
+						 * A REFUSAL AND A DEADLINE ARE DIFFERENT ANSWERS (QA round 1,
+						 * Q4b): the peer's route answers 4xx in words when it declines,
+						 * and anything else means the request was sent and the outcome is
+						 * unconfirmed - the create measured 15.9-22.1 s on loopback under
+						 * a 20 s app budget, and the sidebar filed that timeout as
+						 * "damians-MacBook-Pro refused:", over a conversation that existed
+						 * on that device by the time the user read it.
+						 */
 						set({
-							meshNotice: {
-								kind: "refused",
-								peer,
-								reason: storeErrorMessage(error, "it did not answer"),
-							},
+							meshNotice: desktopRefusal(error)
+								? {
+										kind: "refused",
+										peer,
+										reason: storeErrorMessage(error, "it did not answer"),
+									}
+								: {
+										kind: "create-unconfirmed",
+										peer,
+										reason: storeErrorMessage(error, "it did not answer"),
+									},
 						});
 						throw error;
 					}

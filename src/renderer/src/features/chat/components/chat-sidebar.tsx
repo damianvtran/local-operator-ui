@@ -3858,6 +3858,31 @@ export function ChatSidebar({
 					 * an empty group would advertise a mesh the user does not have.
 					 * Collapsed by default.
 					 */}
+					{/*
+					 * WHEN THE READ FAILED, THE GROUP IS NOT SILENTLY ABSENT (design round
+					 * 2, D17). The degradation itself is right - the chats stay listed,
+					 * marked and grouped - but the group, and with it the only entry point
+					 * for moving a conversation, used to disappear without a word, and the
+					 * user who had used it a minute earlier could not tell why. An empty
+					 * group would be a false claim (there may be peers), so this is ONE
+					 * quiet line in the same ink and register as the search degradation
+					 * above, with the retry the query already owns. Deliberately not
+					 * `role="alert"` and not danger: nothing is broken, a read failed.
+					 */}
+					{peersEnabled && peerList.length === 0 && peerQuery.isError && (
+						<section data-peers-group-unavailable>
+							<p className="px-1 text-meta text-ink-dim">
+								Peers unavailable: could not read the network.{" "}
+								<button
+									type="button"
+									className="underline"
+									onClick={() => void peerQuery.refetch()}
+								>
+									Retry
+								</button>
+							</p>
+						</section>
+					)}
 					{peerList.length > 0 && (
 						<section data-peers-group>
 							{heading("peers", "Peers", false, peerList.length)}
@@ -3866,7 +3891,18 @@ export function ChatSidebar({
 									<div
 										key={peer.device_id}
 										data-peer-row={peer.device_id}
-										className={cn(rowStyle, "w-full")}
+										/*
+										 * `gap-0.5`, not the row's `gap-1` (design round 2, D20). At the
+										 * 240px clamp this row's two hard floors - the mark (16px) and the
+										 * device name's 14ch (115px) - plus the state word (70px) and the
+										 * gaps need 209px of the 207 a 215px row has, so the tail cut the
+										 * WORD itself by 2px (`unreachabl…`), which is the one cell the row
+										 * cannot spare. Two pixels of gap buys them all: the statement stays
+										 * whole, the age included. The chat rows above are untouched -
+										 * `rowStyle` itself is not changed, because D1's budget is about THEIR
+										 * geometry.
+										 */
+										className={cn(rowStyle, "w-full gap-0.5")}
 									>
 										{/* The same glyph and the same ink rule as the row mark, so
 										    the group and the rows agree in every state (S4). */}
@@ -3896,13 +3932,13 @@ export function ChatSidebar({
 										    so the one statement can carry the state. Warning ink
 										    for unreachable is the design's; the words carry it
 										    too, so the colour is never the only channel.
-										    CAPPED AT 40% AND NOT 55%: at the clamp the wider cap
-										    cut the device's own name to `studio…`, and a row
-										    that cannot say which device it is has lost more
-										    than a row whose last-seen is shortened. The trailing
-										    is short by construction (`unreachable · 9d`, D4)
-										    and the whole sentence is the `title`, so nothing
-										    is unreachable about it. */}
+										    CAPPED, BUT NO LONGER AT 40% (design round 2, D4): at
+										    46% a three-character age (`unreachable · 10d`, ~99px)
+										    fits in the 247px row at the default width, where the
+										    40% cap cut it to `1…` - a wrong number, which is worse
+										    than no age at all. The cap is what keeps the device's
+										    own name whole at the clamp, and the whole sentence is
+										    the `title`. */}
 										<span
 											data-peer-row-trailing
 											title={peerTrailingTitle(
@@ -3911,12 +3947,26 @@ export function ChatSidebar({
 												Date.now() / 1000,
 											)}
 											className={cn(
-												// `min-w-0` and no `shrink-0`: this cell is the one
-												// that gives way to the name (D4). What survives the
-												// shrink is the STATE word, because the truncation
-												// eats the age off its tail, and the age is in the
-												// `title`.
-												"min-w-0 max-w-[40%] truncate text-right text-meta tabular-nums",
+												/*
+												 * ONE SPAN, capped at 46%. The split version (a `shrink-0`
+												 * word beside a truncating age) is what D20 asks for in
+												 * principle, and it was measured in the built story: with
+												 * `min-w-0` on the cell the flex line - full to the pixel at
+												 * 280, where a 14ch name floor plus this statement is 246 of
+												 * the row's 247 - shrank the cell to 2.75px and the word
+												 * printed over the rows above it; without `min-w-0` the cell
+												 * kept its content but the row's own box overflowed the
+												 * panel by ~20px at the 240px clamp. At 240 the arithmetic
+												 * does not fit both floors and the age: the mark (16), the
+												 * name's 14ch (115), the state word (70) and two 4px gaps
+												 * need 209 of the 207 a 215px row has. So the cell keeps the
+												 * shape that measures right at both widths - the statement is
+												 * ONE truncated string, exactly as before this round, whose
+												 * cap goes from 40% to 46% so a THREE-character age no longer
+												 * truncates to `1…` (D4) - and the whole sentence stays in the
+												 * row's `title`.
+												 */
+												"min-w-0 max-w-[46%] truncate text-right text-meta tabular-nums",
 												peer.reachable ? "text-ink-dim" : "text-warning",
 											)}
 										>
@@ -3930,6 +3980,7 @@ export function ChatSidebar({
 											<MoveChatHere
 												peerLabel={deviceLabel(peer)}
 												rows={rest}
+												isMoving={(id) => transfers[id] !== undefined}
 												onMove={(row) =>
 													void transferSession(
 														row.session_id,
@@ -5504,9 +5555,19 @@ export function ChatSidebar({
 							 */}
 							{meshNotice.kind === "refused"
 								? `${ownerLabel({ owner_device: meshNotice.peer }, peerById)} refused: ${meshNotice.reason}`
-								: meshNotice.kind === "move-unconfirmed"
-									? `Could not confirm the move of “${meshNotice.title}”: ${meshNotice.reason}`
-									: `Could not move “${meshNotice.title}”: ${meshNotice.reason.replace(TRAILING_PERIOD, "")}. Nothing changed.`}
+								: meshNotice.kind === "create-unconfirmed"
+									? /* Not "refused": the peer was still working when this app gave up, so
+										 * the conversation may exist there. It is on that device's list, not
+										 * in this notice's power to deny (QA round 1, Q4b). */
+										`Could not confirm that ${ownerLabel({ owner_device: meshNotice.peer }, peerById)} created the conversation: ${meshNotice.reason}`
+									: meshNotice.kind === "move-unconfirmed"
+										? /* The DEVICE is named from the peer catalogue, not typed into the
+										     store's sentence: the store knows the target's id and this panel
+										     is what knows its label - and "the other device" is ambiguous
+										     the moment a user has two peers, which the S8 fixture does
+										     (design round 2, D16). */
+											`Could not confirm the move of “${meshNotice.title}” to ${ownerLabel({ owner_device: meshNotice.peer }, peerById)}: ${meshNotice.reason}`
+										: `Could not move “${meshNotice.title}”: ${meshNotice.reason.replace(TRAILING_PERIOD, "")}. Nothing changed.`}
 						</p>
 						<button
 							type="button"
