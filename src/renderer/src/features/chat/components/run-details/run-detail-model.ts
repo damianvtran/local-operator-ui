@@ -428,7 +428,7 @@ export type SubagentRow = {
  * `phase: "done"` — the tool arm of `durableRecord` (`:1867`, declared `:1661`)
  * — so over those records the parent's derivation answers NOTHING for the props
  * this reader passes: `waiting` and `starting` are both false, so it returns
- * `null` (`working-line-model.ts:520`) and the foot stays empty. Driving it from
+ * `null` (`working-line-model.ts:600`) and the foot stays empty. Driving it from
  * `waiting` instead — the one change that would make it speak — is what could
  * only ever have said `thinking`, because a durable page holds no running tool
  * row for the batch arm to count. Neither is the child's real activity, and that

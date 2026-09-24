@@ -7,7 +7,7 @@
  * `applyHistoryPage` into a FRESH `TranscriptState`, and painted by the parent's
  * own `CanonicalTranscript` — because the durable-row → record mapping already
  * drops exactly the bookkeeping a child's transcript is full of
- * (`SILENT_CUSTOM_TYPES`, `transcript-reducer.ts:502-509`) and the point of the
+ * (`SILENT_CUSTOM_TYPES`, `transcript-reducer.ts:895`) and the point of the
  * port is that the child's conversation reads like the parent's. A second
  * grammar for the same durable rows is the two rails `branding.md` § 7 forbids.
  *

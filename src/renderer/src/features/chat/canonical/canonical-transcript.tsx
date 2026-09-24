@@ -194,7 +194,7 @@ export type CanonicalTranscriptProps = {
 	 * reduces every durable tool row to `phase: "done"` — the tool arm of
 	 * `durableRecord` (`:1867`, declared `:1661`) — so for the props this reader
 	 * passes (neither `waiting` nor `starting`) `deriveWorkingLine` over those
-	 * records paints NOTHING and returns `null` (`working-line-model.ts:520`). The
+	 * records paints NOTHING and returns `null` (`working-line-model.ts:600`). The
 	 * relay's progress string is the only place the child's own fact exists, so the
 	 * reader hands the line in from the roster row it already holds
 	 * (`deriveChildWorkingLine`, `run-detail-model.ts`).
