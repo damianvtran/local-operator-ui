@@ -1563,3 +1563,31 @@ test("a refusal from the live route refreshes the list before it is reported (R2
 		"and refreshes BEFORE it rethrows, so the sentence is true when printed",
 	);
 });
+
+test("the key route is offered only where the backend lists it (round-3 eligibility)", () => {
+	/*
+	 * Backend #1511's round-3 rule, relayed with the fixture re-pin: a LITERAL
+	 * header server is not eligible for `add_key`, and the backend does not list
+	 * it. The page's affordances follow the list, so a server that carries its
+	 * header verbatim gets no key button - and, from the same fixture, the two
+	 * servers that ARE offered a key verb get exactly one.
+	 */
+	const literal = row("literal-header", {
+		status: "needs_sign_in",
+		status_basis: "stored",
+		auth: { kind: "api_key", signed_in: false, secret_refs: [] },
+		actions: ["test", "sign_in", "remove"],
+	});
+	assert.equal(m.offersKey(literal), false, "no key verb means no key affordance");
+	assert.equal(m.primaryAction(literal, [], undefined).kind, "sign_in");
+	assert.equal(
+		m.overflowItems(literal, [], undefined).some((item) => item.kind === "set_key"),
+		false,
+		"and not hidden in the overflow either",
+	);
+
+	// The two the fixture does offer one, under either name.
+	for (const name of ["acme-api", "postgres-prod"]) {
+		assert.equal(m.offersKey(row(name, { auth: { kind: "api_key", signed_in: false, secret_refs: [] }, actions: ["test", name === "acme-api" ? "add_key" : "set_key", "remove"] })), true, name);
+	}
+});

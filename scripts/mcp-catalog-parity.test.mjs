@@ -50,7 +50,7 @@ import { build } from "esbuild";
 /** The backend revision and version this copy was taken from. */
 const FIXTURE = "scripts/fixtures/mcp-catalog-0.62.17.json";
 const BACKEND_SOURCE =
-	"damianvtran/local-operator#1511, branch feat/sessionless-mcp-catalog, head aa927158a (backend 0.62.17)";
+	"damianvtran/local-operator#1511, branch feat/sessionless-mcp-catalog, head e2ac4b95e (backend 0.62.17). The fixture is byte-identical to the one at aa927158a - the round-3 remediation changed the write path and the eligibility rule, not the payload - so this is a re-check against the new head rather than a re-vendor";
 
 const bundle = await build({
 	stdin: {
