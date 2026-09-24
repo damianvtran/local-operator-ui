@@ -543,6 +543,26 @@ const catalogueOnly =
  * the same frame and the story photographs the automatic listing under a
  * caption about the button.
  */
+/**
+ * A live answer that settles ONCE and then FAILS.
+ *
+ * This is the state code review round 2's R2-1 was about, and the reason the note
+ * has two sentences rather than one: on a SAME-KEY refetch failure react-query
+ * KEEPS the previous `data`, so the picker draws the provider listing that
+ * answered a moment ago under a sentence about a FAILED read. Claiming those rows
+ * are "the shipped models" would be false in a way the user can check by looking
+ * at the selectors they came to search - so the sentence follows the document
+ * (`providerListingNotice(drawnFromRegistry)`), and this story is where the live
+ * half of that pair is visible instead of only unit-tested.
+ */
+const liveThenRefuse = (data: DesktopModelCatalogue) => {
+	let calls = 0;
+	return () =>
+		++calls === 1
+			? Promise.resolve(ok(data))
+			: Promise.resolve(refuse(500, "Provider listing is unavailable."));
+};
+
 const liveOnce = (data: DesktopModelCatalogue) => {
 	let calls = 0;
 	return () =>
@@ -1190,6 +1210,53 @@ export const LiveListingFailed: Story = {
 		 * transport belongs when the user has rows to work with.
 		 */
 		expect(screen.queryByText(/Provider listing is unavailable\./)).toBeNull();
+	},
+};
+
+/**
+ * The OTHER failure: the live listing HAS answered, and the re-ask failed.
+ *
+ * Distinct from `LiveListingFailed` above, which is a first read that never
+ * produced a document at all - there the rows below the sentence really are the
+ * registry's. Here a complete provider listing is on screen, the same-key
+ * refetch fails, and the sentence has to say what the rows ARE rather than name
+ * a provenance they do not have (round 2, code review R2-1; design round 3's D2,
+ * which filed the missing story rather than the missing clause).
+ */
+export const RefetchFailedOverLiveRows: Story = {
+	render: () => (
+		<Frame
+			bridge={catalogueOnly(
+				registryCatalogue(),
+				liveThenRefuse(liveCatalogue()),
+			)}
+		/>
+	),
+	play: async () => {
+		/*
+		 * The automatic listing has to have LANDED before the button is pressed:
+		 * that read is what puts provider rows in the cache, and the whole point of
+		 * this state is that those rows survive the failure below.
+		 */
+		await waitFor(() => expect(catalogueCalls().live).toBe(1), SLOW);
+		await waitFor(
+			() => expect(screen.getAllByRole("option").length).toBeGreaterThan(3),
+			SLOW,
+		);
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Refresh from providers" }),
+		);
+		await waitFor(
+			() =>
+				expect(screen.getByText(/The provider listing failed/)).toBeTruthy(),
+			SLOW,
+		);
+		// The clause is the live one, and the registry's clause is absent - this is
+		// the assertion the whole story exists for.
+		expect(screen.getByText(/the last listing that answered/)).toBeTruthy();
+		expect(screen.queryByText(/the shipped models/)).toBeNull();
+		// And the rows it is drawn over are the provider listing's, not deleted.
+		expect(screen.getAllByRole("option").length).toBeGreaterThan(3);
 	},
 };
 

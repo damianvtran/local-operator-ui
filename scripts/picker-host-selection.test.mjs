@@ -56,6 +56,7 @@ globalise("document", dom.window.document);
 globalise("navigator", dom.window.navigator);
 globalise("localStorage", dom.window.localStorage);
 globalise("HTMLElement", dom.window.HTMLElement);
+globalise("HTMLInputElement", dom.window.HTMLInputElement);
 globalise("Element", dom.window.Element);
 globalise("Node", dom.window.Node);
 globalise("KeyboardEvent", dom.window.KeyboardEvent);
@@ -98,6 +99,15 @@ globalise(
 		disconnect() {}
 	},
 );
+/*
+ * jsdom implements no scrolling at all, and the host scrolls on two occasions: a
+ * query change resets the list to its top (UX U6) and the active row is brought
+ * into view. Both are real behaviour this file does not measure (it has no layout
+ * to measure them with), so the two calls are stubbed on the prototype rather
+ * than left to throw inside a component that is otherwise fine.
+ */
+dom.window.Element.prototype.scrollTo = () => {};
+dom.window.Element.prototype.scrollIntoView = () => {};
 globalise("requestAnimationFrame", (callback) => setTimeout(callback, 0));
 globalise("cancelAnimationFrame", (handle) => clearTimeout(handle));
 after(() => {
@@ -157,6 +167,22 @@ const mount = (props) => {
 		render,
 		unmount: () => act(() => root.unmount()),
 	};
+};
+
+/**
+ * Type into the search box the way a user does, through the native setter React
+ * reads. `type` is the only way this file changes the host's own `query` state -
+ * which is what U7's typing half is about.
+ */
+const type = async (input, text) => {
+	const setter = Object.getOwnPropertyDescriptor(
+		dom.window.HTMLInputElement.prototype,
+		"value",
+	).set;
+	await act(async () => {
+		setter.call(input, text);
+		input.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+	});
 };
 
 const key = (element, name) =>
@@ -270,10 +296,17 @@ test("the marked row, the announced row, the footer and Enter are one row", asyn
 		// Each entry presses ARROW DOWN from wherever the mark already is, which
 		// walks across the first group boundary and then to the last row.
 		for (let step = 0; step < presses; step += 1) key(input, "ArrowDown");
-		assert.equal(
-			marked()?.getAttribute("data-value") ?? marked()?.id,
-			marked()?.id,
-			"the marked row exists (a sanity check on the selector, not a claim)",
+		/*
+		 * The mark has to be ON a row before the three comparisons below mean
+		 * anything: `marked()` returns `undefined` when no row carries
+		 * `aria-selected="true"`, and every assertion after this one would compare
+		 * `undefined` with `undefined` and pass. Round 3 filed the previous form of
+		 * this line (which compared the mark with itself) as an assertion that could
+		 * never fail, on any tree.
+		 */
+		assert.ok(
+			marked(),
+			"a row carries the mark at all - the selector this file reads the user's view through still matches",
 		);
 		const label = labelOf(marked());
 		assert.equal(
@@ -331,12 +364,21 @@ test("the click path agrees with the mark, not with the slot", async () => {
 		"GPT-6 Luna",
 		"the fourth RENDERED row is the second group's first row",
 	);
-	assert.equal(
-		document.querySelector("input")?.getAttribute("aria-activedescendant"),
-		target.id === ""
-			? null
-			: document.querySelector("input")?.getAttribute("aria-activedescendant"),
-		"the announced row is read from the input (sanity, not a claim)",
+	/*
+	 * Two facts that make the click's own assertion mean something, rather than the
+	 * self-comparison round 3 filed: the announcement resolves to a real element,
+	 * and it is NOT already the row about to be clicked - so the band landing there
+	 * afterwards is the click's doing and not the mount's.
+	 */
+	const beforeClick = announced(document.querySelector("input"));
+	assert.ok(
+		beforeClick,
+		"`aria-activedescendant` names an element that exists in this list",
+	);
+	assert.notEqual(
+		beforeClick?.id,
+		target.id,
+		"and the row the click is about to touch is not the row the mount already marked",
 	);
 	await act(async () => {
 		target.dispatchEvent(
@@ -466,6 +508,141 @@ test("a row that vanishes under the highlight stays named until the user acts", 
 		footerText(),
 		/^Arrows move/,
 		"moving the highlight returns the ordinary hint",
+	);
+	view.unmount();
+});
+
+test("the sentence goes when the row it is about is listed again", async () => {
+	/*
+	 * UX U7, driven on the real host: the user steers onto a live-only row, the
+	 * landing drops it and the sentence names the replacement - and then the row
+	 * the sentence calls MISSING comes back (which is what the user's own recovery
+	 * control produces: the provider listing answers and the row is on screen
+	 * again). Measured in the wild: the listing answered 191ms after the press and
+	 * the sentence was still up, because nothing about that press ran through the
+	 * rule that decides the sentence. It does now, in the same pass the row returns.
+	 */
+	const base = { open: true, onClose: () => {}, title: "Model" };
+	const withLiveOnly = [
+		{
+			value: "anthropic/claude-opus-5",
+			label: "Claude Opus 5",
+			group: "Signed in",
+			current: true,
+		},
+		{
+			value: "anthropic/claude-opus-5.5",
+			label: "Claude Opus 5.5",
+			group: "Signed in",
+		},
+		{
+			value: "anthropic/claude-sonnet-5",
+			label: "Claude Sonnet 5",
+			group: "Signed in",
+		},
+	];
+	const picked = [];
+	const view = mount({
+		...base,
+		options: withLiveOnly,
+		onPick: (value) => {
+			picked.push(value);
+		},
+	});
+	const input = document.querySelector("input");
+	key(input, "ArrowDown");
+	assert.equal(labelOf(marked()), "Claude Opus 5.5");
+
+	// The landing drops the row the user is on: the sentence appears.
+	const withoutIt = withLiveOnly.filter(
+		(option) => option.value !== "anthropic/claude-opus-5.5",
+	);
+	view.render({
+		...base,
+		options: withoutIt,
+		onPick: (value) => {
+			picked.push(value);
+		},
+	});
+	assert.equal(
+		footerText(),
+		"The row you were on is gone · Enter picks Claude Opus 5",
+		"the row is gone, so the sentence says so",
+	);
+	const markAfterLanding = labelOf(marked());
+
+	// And it comes back - the same row, listed again.
+	view.render({
+		...base,
+		options: withLiveOnly,
+		onPick: (value) => {
+			picked.push(value);
+		},
+	});
+	assert.equal(
+		footerText(),
+		"Arrows move · Enter picks Claude Opus 5 · Esc closes",
+		"the sentence is retired the moment the row it is about is listed again - it is a claim about a row that is MISSING",
+	);
+	assert.equal(
+		labelOf(marked()),
+		markAfterLanding,
+		"and the highlight is not hopped back onto the recovered row: no second unbidden move of the user's selection",
+	);
+	view.unmount();
+});
+
+test("typing retires the sentence even when the row it names survives", async () => {
+	/*
+	 * Round 3's clearing minor, driven: the sentence's row survives the filter, so
+	 * the old rule's held-row branch answered before `queryChanged` was consulted
+	 * and the sentence stayed up while the user typed. The held row keeping the
+	 * HIGHLIGHT is deliberate; the sentence is a separate claim.
+	 */
+	const base = { open: true, onClose: () => {}, title: "Model" };
+	const rows = [
+		{
+			value: "anthropic/claude-opus-5",
+			label: "Claude Opus 5",
+			group: "Signed in",
+			current: true,
+		},
+		{
+			value: "anthropic/claude-opus-5.5",
+			label: "Claude Opus 5.5",
+			group: "Signed in",
+		},
+		{
+			value: "anthropic/claude-sonnet-5",
+			label: "Claude Sonnet 5",
+			group: "Signed in",
+		},
+	];
+	const view = mount({ ...base, options: rows, onPick: () => {} });
+	const input = document.querySelector("input");
+	key(input, "ArrowDown");
+
+	const withoutIt = rows.filter(
+		(option) => option.value !== "anthropic/claude-opus-5.5",
+	);
+	view.render({ ...base, options: withoutIt, onPick: () => {} });
+	assert.equal(
+		footerText(),
+		"The row you were on is gone · Enter picks Claude Opus 5",
+		"the sentence is up before the user types",
+	);
+
+	/*
+	 * `opus` rather than a label word: the default matcher matches the row's own
+	 * VALUE (`anthropic/claude-opus-5`), case-sensitively - so it narrows the list
+	 * to the held row, which is exactly the state round 3 measured: the sentence's
+	 * row survives the filter.
+	 */
+	await type(input, "opus");
+	assert.equal(
+		footerText(),
+		"Arrows move · Enter picks Claude Opus 5 · Esc closes",
+		"and typing takes it away, with the row the sentence named still listed",
 	);
 	view.unmount();
 });

@@ -491,10 +491,10 @@ test("a row that vanishes under the user's highlight is named, not silently repl
 	});
 	assert.equal(gone.index, 1);
 	assert.equal(gone.held, "claude-sonnet-5");
-	assert.equal(
+	assert.deepEqual(
 		gone.retargeted,
-		"claude-sonnet-5",
-		"Enter's new target is named, because the row it was on is gone",
+		{ lost: "claude-opus-5.5", label: "claude-sonnet-5" },
+		"Enter's new target is named, because the row it was on is gone - and the ROW it is about travels with the words, so a later pass can tell when the sentence stops being true (UX U7)",
 	);
 
 	/*
@@ -529,6 +529,66 @@ test("a row that vanishes under the user's highlight is named, not silently repl
 		steered: true,
 	});
 	assert.equal(typedAway.retargeted, null);
+
+	/*
+	 * U7, AND THE TWO WAYS THE SENTENCE STOPS BEING TRUE. Both are decided here,
+	 * in the rule that knows the list, the query's change and the sentence at
+	 * once - no second mechanism beside it.
+	 *
+	 * (a) The row it is about is LISTED AGAIN. That is what the user's own
+	 * recovery control produces: the provider listing answers and the row the
+	 * sentence calls missing is on screen. Measured on the shipped component
+	 * (`scripts/picker-host-selection.test.mjs`) as well as here.
+	 */
+	const recovered = pickerPlacement({
+		options: [
+			rows[0],
+			options(["claude-opus-5.5"], "claude-opus-5")[0],
+			rows[1],
+		],
+		held: "claude-sonnet-5",
+		active: 1,
+		query: "opus",
+		queryChanged: false,
+		steered: true,
+		retarget: { lost: "claude-opus-5.5", label: "claude-sonnet-5" },
+	});
+	assert.equal(
+		recovered.retargeted,
+		null,
+		"the sentence goes the moment the row it is about is listed again - it is a claim about a missing row",
+	);
+	assert.equal(
+		recovered.held,
+		"claude-sonnet-5",
+		"and the highlight is NOT hopped back onto the recovered row: the user has been told what Enter sends, and a second unbidden move of their selection is the defect U1 exists to prevent",
+	);
+
+	/*
+	 * (b) The user's own typing, in the case round 3 measured: the row the
+	 * sentence would keep SURVIVES the filter. The highlight staying put is the
+	 * highlight's business; the sentence is a separate claim, and typing is the
+	 * user saying they are done with the explanation.
+	 */
+	const retyped = pickerPlacement({
+		options: [rows[1], options(["claude-sonnet-5"], "claude-opus-5")[0]],
+		held: "claude-sonnet-5",
+		active: 1,
+		query: "sonnet",
+		queryChanged: true,
+		steered: true,
+		retarget: { lost: "claude-opus-5.5", label: "claude-sonnet-5" },
+	});
+	assert.equal(
+		retyped.retargeted,
+		null,
+		"typing retires the sentence even when the row it names survives the filter (round 3, the clearing minor)",
+	);
+	assert.equal(
+		retyped.held,
+		"claude-sonnet-5",
+		"and the held row keeps the highlight, as it always has across a query change",
+	);
 });
 
 test("typing is the user's own act, so it re-places without a message", () => {
