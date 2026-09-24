@@ -43,6 +43,7 @@ import {
 	labelGapCandidates,
 	markLiveRecordsTruncated,
 	reconcileLimit,
+	removeLocalRecord,
 	removeRecord,
 	seedCallsMissingLabels,
 } from "@features/chat/canonical/transcript-reducer";
@@ -760,6 +761,56 @@ export function seedPendingEchoes(
  * paint it cancels was queued would leave the echo painted for a message that
  * was provably never admitted.
  */
+/**
+ * What became of an attempt to retract an unconfirmed echo.
+ *
+ * `retracted` - the row was this app's own echo and is gone, so the message is
+ * not on the owner's transcript and the content belongs back with the user.
+ * `owner` - the row is the owner's, which means the message WAS delivered and the
+ * failure was the response to it; nothing may be retracted.
+ * `queued` - no transcript is mounted for this session, so the retraction is
+ * parked exactly as the echo was and the pane's own reconciliation decides it
+ * when a panel mounts.
+ */
+export type EchoRetraction = "retracted" | "owner" | "queued";
+
+/**
+ * Retract an echo whose send failed, but ONLY while it is still our own echo.
+ *
+ * The counterpart of `retractPendingUser` for the case where the app cannot say
+ * whether the message reached the session. Both rows would carry the same id, so
+ * the id cannot answer the question - `appendPendingUser`'s `local` flag does, and
+ * an owner row (its `message_start`, or a durable history row) never has it. See
+ * `removeLocalRecord` for why that distinction is worth a field on the record.
+ */
+export function retractLocalEcho(
+	sessionId: string,
+	id: string,
+): EchoRetraction {
+	const target = echoTargets.get(sessionId);
+	if (!target) {
+		/*
+		 * Nothing is mounted, so the echo this retracts has not been painted yet
+		 * either - it is sitting in the buffer with it. Queued in the same order it
+		 * was painted, and conditional on the same flag when it lands.
+		 */
+		deliverEcho(sessionId, (state) => removeLocalRecord(state, id));
+		return "queued";
+	}
+	let outcome: EchoRetraction = "queued";
+	target((state) => {
+		const record = state.records[state.index.get(id) ?? -1];
+		if (!record || record.kind !== "user") return state;
+		if (!record.local) {
+			outcome = "owner";
+			return state;
+		}
+		outcome = "retracted";
+		return removeRecord(state, id);
+	});
+	return outcome;
+}
+
 export function retractPendingUser(sessionId: string, id: string): void {
 	deliverEcho(sessionId, (state) => removeRecord(state, id));
 }

@@ -13,27 +13,26 @@ import { ChatLayout } from "@shared/components/common/chat-layout";
 import { useCanonicalSessionStream } from "@shared/hooks/use-canonical-session";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
-import { SEND_HELD, type SendOutcome } from "@shared/hooks/use-message-input";
+import type { SendOutcome } from "@shared/hooks/use-message-input";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
 import { useWarmSession } from "@shared/hooks/use-warm-session";
 import { cn } from "@shared/lib/utils";
 import {
-	SEND_UNCONFIRMED_MESSAGE,
+	SEND_FAILURE_COPY,
 	SESSION_UNVALIDATED_CODE,
 	SESSION_UNVALIDATED_MESSAGE,
-	UNCONFIRMED_SEND_CODE,
 	UNREADABLE_ATTACHMENT_CODE,
 	admitChatDraft,
 	draftIdentityFor,
-	isRefusedBeforeAdmission,
 	isSessionUnvalidated,
+	migrateHeldClaim,
 	panelIdentityFor,
 	panelSessionIdOfView,
-	refusedBeforeAdmissionAttachments,
-	refusedBeforeAdmissionText,
+	sendFailureCopy,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
+import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	useCallback,
@@ -53,7 +52,6 @@ import {
 	answerReport,
 	answerValue,
 	createSendLock,
-	errorCodeOf,
 } from "../ask-answer";
 import {
 	type AdmittedSend,
@@ -362,6 +360,19 @@ function SessionPanel({
 	const lastCatalogueState = useRef("");
 	const [sendError, setSendError] = useState<string | null>(null);
 	const [sendErrorCode, setSendErrorCode] = useState<string | undefined>();
+	/*
+	 * THE NOTICE'S TWO DECISIONS, kept beside the sentence they belong to.
+	 *
+	 * `retry` is whether a Retry control renders at all: a refusal whose remedy is
+	 * something else, or one the far side will refuse again the instant it is
+	 * pressed, is better served by Clear alone than by a button that fails
+	 * (`retryWillFail`, applied where the failure is classified). `muted` is the
+	 * register: a failure is `danger` ink, and the two statements that are not
+	 * failures - the send lock, and a message that turned out to have been
+	 * delivered after all - are ink-muted.
+	 */
+	const [sendErrorRetry, setSendErrorRetry] = useState(false);
+	const [sendErrorMuted, setSendErrorMuted] = useState(false);
 	/**
 	 * What the last interrupt left running, for the composer's own notice.
 	 *
@@ -975,9 +986,21 @@ function SessionPanel({
 	 * could never see a failure that came from pressing an option (code review
 	 * round 1, R-MINOR).
 	 */
-	const reportFailure = (error: unknown, fallback: string) => {
-		setSendError(userFacingMessage(error, fallback));
-		setSendErrorCode(errorCodeOf(error));
+	/*
+	 * ONE CLASSIFIER AND ONE TABLE, for every failure a send can have.
+	 *
+	 * `sendFailureCopy` owns the sentence, whether Retry can help, and the code -
+	 * so the composer renders the same words whichever door the failure came
+	 * through, instead of the four hand-written copies that used to live between
+	 * this page and the composer (the transport's, the guard's, the held
+	 * paragraph's and the generic tail's).
+	 */
+	const reportFailure = (error: unknown) => {
+		const copy = sendFailureCopy(error);
+		setSendError(copy.message);
+		setSendErrorCode(copy.code);
+		setSendErrorRetry(copy.retry);
+		setSendErrorMuted(false);
 	};
 	const send = async (
 		content: string,
@@ -1045,16 +1068,28 @@ function SessionPanel({
 			 * that is the case the user can see a reason for: the question above is
 			 * visibly mid-answer.
 			 */
+			/*
+			 * MUTED, AND WITH NO CONTROLS. Nothing failed here: the press never became
+			 * a send, the payload is still in the box exactly as the user left it, and
+			 * the only useful thing to say is when the box will take a press again.
+			 * Offering Retry over a lock would be a control that cannot work, which is
+			 * the shape this whole change removes.
+			 */
 			setSendError(
 				canonical.frontend?.pending_gate
-					? "Waiting for the answer to the question above. Your message was not sent — send it again in a moment."
-					: "Still sending your last message. Your message was not sent — send it again in a moment.",
+					? SEND_FAILURE_COPY.gateLock
+					: SEND_FAILURE_COPY.sendLock,
 			);
+			setSendErrorCode(undefined);
+			setSendErrorRetry(false);
+			setSendErrorMuted(true);
 			return false;
 		}
 		setAdmitting(true);
 		setSendError(null);
 		setSendErrorCode(undefined);
+		setSendErrorRetry(false);
+		setSendErrorMuted(false);
 		try {
 			/*
 			 * No command check here, deliberately. The composer's planner already
@@ -1123,6 +1158,8 @@ function SessionPanel({
 			if (unreadableRefusal) {
 				setSendError(unreadableRefusal);
 				setSendErrorCode(UNREADABLE_ATTACHMENT_CODE);
+				setSendErrorRetry(false);
+				setSendErrorMuted(false);
 				return false;
 			}
 			// Refuse BEFORE admission, where the sizes are still known and the
@@ -1131,7 +1168,15 @@ function SessionPanel({
 			// the unchanged-payload guard and the user cannot drop an image to fit.
 			const refusal = messageBudgetRefusal(content, images);
 			if (refusal) {
+				/*
+				 * Clear alone: the remedy is to change the payload (remove an image,
+				 * split the text), so a Retry that re-sent the same bytes would be
+				 * refused for the same reason.
+				 */
 				setSendError(refusal);
+				setSendErrorCode(undefined);
+				setSendErrorRetry(false);
+				setSendErrorMuted(false);
 				return false;
 			}
 			/*
@@ -1201,6 +1246,8 @@ function SessionPanel({
 								SESSION_UNVALIDATED_MESSAGE,
 						);
 						setSendErrorCode(SESSION_UNVALIDATED_CODE);
+						setSendErrorRetry(true);
+						setSendErrorMuted(false);
 					}
 					return false;
 				}
@@ -1257,32 +1304,23 @@ function SessionPanel({
 			// runtime exception is a stack-trace fragment - with the backend
 			// stopped this line rendered "TypeError: fetch failed" inside the
 			// alert's own prose. See `userFacingMessage`.
-			reportFailure(error, SEND_UNCONFIRMED_MESSAGE);
+			reportFailure(error);
 			/*
-			 * TWO failures, and the composer acts differently on each.
+			 * ONE ANSWER, because the STORE has already done the work: every failure
+			 * class hands the payload back to this conversation's composer through one
+			 * path (`returnPayloadToComposer` - text, chips and staged quotes, whether
+			 * the outcome was a provable refusal or an unknown one), and the class
+			 * that turns out to have been DELIVERED after all does not reach here at
+			 * all - it resolves as a success, so the box stays empty and the message
+			 * stays in the transcript.
 			 *
-			 * Refused before admission - 413/422, the read window, and the owner's
-			 * own `runtime_busy`/`runtime_retiring` refusals, plus every
-			 * pre-transport refusal above: nothing reached the owner, so the text
-			 * belongs back in the box (`false`). The owner's two are the ones the
-			 * incident turned into a held draft: a 503 carrying `runtime_busy` and a
-			 * 409 carrying `runtime_retiring` were both read as UNKNOWABLE, so the
-			 * composer claimed it could not tell whether the message landed, over a
-			 * message the backend had already said it never accepted. It is keyed on
-			 * the CODES and not on those statuses because a bare 409 is also the
-			 * receipt-conflict refusal, whose replay may have been admitted the first
-			 * time - the same predicate's note carries the boundary.
-			 *
-			 * Anything else is UNKNOWABLE: the owner may have admitted the command
-			 * before the response was lost, which is why the echo is deliberately
-			 * left painted in the transcript. Putting the same text back in the box
-			 * would then show one message twice, under copy that names only the box
-			 * (design round 1's D1) - so the answer is `SEND_HELD`, the box stays
-			 * empty, and the retry travels through the store's claim and its own
-			 * "Restore message" control. One predicate, exported from the
-			 * store, so this cannot drift from the echo's retraction rule.
+			 * So `false` is "do not retire the draft": the hook must not clear the
+			 * text the store has just put back, and must not record this as a sent
+			 * message. There is no second case to distinguish here any more - the
+			 * distinction that used to matter (unknown vs refused) is what the store
+			 * acts on, and it acted before this line ran.
 			 */
-			return isRefusedBeforeAdmission(error) ? false : SEND_HELD;
+			return false;
 		} finally {
 			sendLock.release();
 			setAdmitting(false);
@@ -1797,204 +1835,119 @@ function SessionPanel({
 	// deleted the row that the settling request then patched - reintroducing the
 	// invisible-claim dead end one layer down. A request that may be executing is
 	// not something to offer an escape from; the escapes appear once it settles.
-	const heldText =
-		draft?.admissionAttempted && !draft.pending
-			? draft.submittedText
-			: undefined;
 	/*
-	 * The text a PRE-ADMISSION refusal owes the box.
+	 * A MESSAGE THE PREVIOUS RELEASE HELD OUTSIDE THE COMPOSER COMES HOME.
 	 *
-	 * Its own field rather than `heldText`, because the two are opposite answers
-	 * to opposite facts: `heldText` means the message may already be on the owner
-	 * and the box must stay empty, this one means it provably never left the
-	 * renderer and belongs back in the box. The composer puts this one back
-	 * (`refusedBeforeAdmissionText` carries the why); what matters here is that the
-	 * page cannot supply it from local state, because the refusal outlives the
-	 * composer that sent it - on the created-session arm the panel is remounted
-	 * under the id that very send minted, and the row is the only surviving copy
-	 * (UX round 3 U14, QA round 3 Q7).
+	 * Run from the pane rather than from hydration, and once per row: the released
+	 * app kept an unconfirmed message in a claim on the draft row with an explicit
+	 * "Restore message" link, and an app that has removed that link must not strand
+	 * one. Gated on the pane existing at all, which is what keeps a row for a
+	 * DELETED conversation from resurrecting its draft into a live composer (risk
+	 * R6) - a migration during hydration has no such fact available to it.
 	 */
-	const refusedText = refusedBeforeAdmissionText(draft);
+	useEffect(() => {
+		if (!draftIdentity) return;
+		migrateHeldClaim(draftIdentity, draft);
+	}, [draftIdentity, draft]);
+
 	/*
-	 * The other half of the same payload, carried the same way and for the same
-	 * reason: the composer's chips live under the identity the send was made from,
-	 * so the composer that mounts after the flip cannot reconstruct the file list
-	 * the refused send was carrying. Restoring the text without it is a send that
-	 * silently drops the user's file, and the row that recorded it is retired by
-	 * the very resend that lost it (round 7, R17).
+	 * THE AUTOMATIC RECONCILIATION: a message that was handed back turned out to
+	 * have been delivered.
+	 *
+	 * The row the owner publishes is keyed by the request id (`appendPendingUser`
+	 * says why), so a user record for that id that is NOT this app's own echo is
+	 * the owner's - proof the message landed, whatever the app was told at the
+	 * time. It arrives from any of the three routes the transcript has: the live
+	 * stream, a reconnect replay, or the history page on the next open, which is
+	 * what makes this work across a restart.
+	 *
+	 * Two answers, one comparison: a composer still holding exactly what was sent
+	 * is emptied in silence (the user asked for it to go, and it went), and a
+	 * composer edited since keeps every word of the edit and is told in one muted
+	 * line that the earlier message arrived (see `reconcileDelivered`).
 	 */
-	const refusedAttachments = refusedBeforeAdmissionAttachments(draft);
-	const releaseHeld = () => {
-		if (draftIdentity)
-			useCanonicalSessionsStore.getState().releaseClaim(draftIdentity);
-		clearError();
-	};
-	const composerSendError =
-		activeError || heldText !== undefined || refusedText !== undefined
-			? {
-					message: activeError ?? undefined,
-					// The "what to do" half of the error contract travels with the
-					// message. An unresolved attachment needs a profile chosen; an
-					// unreachable registry needs the agents page. Any other code has no
-					// specific remedy, so it offers none rather than a generic button.
-					/*
-					 * The CODE, not a pre-computed answer drawn from it.
-					 *
-					 * Two questions on this screen are answered by the store's own
-					 * predicates and must not be answered twice: whether the composer's
-					 * generic retry hint is true (`withholdsRetryHint` - the read window
-					 * refuses the retry for exactly as long as its notice is on screen,
-					 * UX round 3, U9; the leading-slash policy refuses this text forever,
-					 * UX round 2, U13), and whether the held line may say the outcome is
-					 * unknowable (`isStoreWriteRefusal` - a store that could not write
-					 * KNOWS nothing was saved, and telling the operator to wait for a
-					 * reply that cannot come contradicts the sentence above it, UX round
-					 * 1, U4). Passing the code lets the composer ask both, in the one
-					 * place that renders them; passing a boolean would put the second
-					 * question's answer here as well, which is how two readers of one
-					 * fact come to disagree about it.
-					 */
-					code: activeErrorCode,
-					actions:
-						// The unconfirmed-send guard's remedies are Restore and the abandon
-						// control, both rendered by the composer from `heldText`. It must
-						// not also offer a code-specific action, or the row carries two
-						// answers to the same question.
-						activeErrorCode === UNCONFIRMED_SEND_CODE
-							? undefined
-							: activeErrorCode === "unresolved_attachment"
-								? [
-										{
-											label: "Choose agent",
-											onClick: () => void dispatch({ name: "agent", args: "" }),
-										},
-										{
-											label: "Choose team",
-											onClick: () => void dispatch({ name: "team", args: "" }),
-										},
-									]
-								: activeErrorCode === "profile_registry_unavailable"
-									? [
-											{
-												label: "Manage agents",
-												onClick: () => navigate("/agents"),
-											},
-										]
-									: undefined,
-					/*
-					 * The held payload itself, so the composer can put it back.
-					 *
-					 * The guard demands a byte-identical retry of a message the user can
-					 * no longer see - asking them to retype it is asking for the one
-					 * thing they cannot do. Handing over the text turns "retry it
-					 * unchanged" from an instruction into a control.
-					 */
-					heldText,
-					/*
-					 * The payload a PRE-ADMISSION refusal owes the box, on the same grounds as
-					 * `heldText` above: the composer cannot reconstruct text it never kept, and
-					 * on the created-session arm it is not even the same composer any more.
-					 * The box rule that consumes it (`restoreSubmittedText`) only writes an
-					 * EMPTY box, so the user's own typing still wins.
-					 *
-					 * Carried independently of `message`, which is why the payload also exists
-					 * when `refusedText` is the only term: dismissing the alert clears the copy
-					 * and the code, and a dismissal must not be what makes a two-line message
-					 * unreachable again - the record ends when the draft does.
-					 */
-					refusedText,
-					/*
-					 * The files that go back with it. Same terms as `refusedText` above - the
-					 * composer's own chip row is per-identity and was staged under the identity
-					 * the flip replaced - and on the same refusal row, so the two arrive and are
-					 * dropped together.
-					 */
-					refusedAttachments,
-					/*
-					 * The held payload's other half, on the same terms as `heldText` above and
-					 * from the same row: the unchanged-payload guard compares text AND files
-					 * AND images, so the composer's "the held message is back in the box" test
-					 * needs the files as well as the text. Without them it said a box holding
-					 * the text but one chip fewer was the held payload, and rendered
-					 * "Send it again" over the guard that then refused every press (UX round
-					 * 1, U2). The store records both in one update at admission, so the two
-					 * travel together here too rather than one being inferable from the other.
-					 */
-					heldAttachments:
-						heldText !== undefined ? draft?.submittedAttachments : undefined,
-					/*
-					 * The CLAIM's own verdict, from the row, and the reason the held line no
-					 * longer reads `code` above.
-					 *
-					 * `code` is about the last ATTEMPT. The flow this PR exists for is
-					 * refusal -> `Restore message` -> drop the file -> Enter, and the last
-					 * attempt there is refused by the unchanged-payload GUARD, whose code is
-					 * `unconfirmed_send`. A held line selected by that code reverted to
-					 * "whether it reached the agent is not knowable ... send again only if no
-					 * reply arrives" one screen after this app said "Nothing was saved",
-					 * with the disk off the screen (UX round 2, U10). The guard throws before
-					 * the row is written, so the store's verdict is still on the row - it was
-					 * simply never recorded against the CLAIM, and `errorCode` is not it:
-					 * `onDismiss` clears that one the moment the operator acknowledges the
-					 * sentence, while the payload it describes is still held. `heldClaimCode`
-					 * travels with the payload for exactly that reason.
-					 *
-					 * Gated on `heldText` like the fields above it: without a claim there is no
-					 * verdict to state, and a stale one would describe a payload the composer
-					 * is not holding.
-					 */
-					heldClaimCode:
-						heldText !== undefined ? draft?.heldClaimCode : undefined,
-					onRestoreHeld:
-						heldText !== undefined ? () => clearError() : undefined,
-					/*
-					 * Two different abandonments, because they lose different things.
-					 *
-					 * `onDiscard` drops the whole draft and is what the user wants when
-					 * the message is finished with. `onReleaseHeld` drops only the claim
-					 * and keeps the row - the composer picks it when the box holds text
-					 * that is NOT the held payload, i.e. the user has already moved on and
-					 * discarding would silently destroy what they just typed.
-					 */
-					// Same settled-send condition as `heldText`: discarding a draft whose
-					// admission is still in flight is what manufactured the ghost row.
-					onDiscard:
-						draft?.submittedText && !draft.pending
-							? () => {
-									if (draftIdentity)
-										useCanonicalSessionsStore
-											.getState()
-											.discardDraft(draftIdentity);
-									clearError();
-								}
-							: undefined,
-					onReleaseHeld: heldText !== undefined ? releaseHeld : undefined,
-					/*
-					 * Editing dismisses the alert, and must clear the STORE's copy too -
-					 * `draft.error` outlives local state, so clearing only `sendError`
-					 * would leave the message hanging over text the user has since
-					 * fixed, which is the exact defect being replaced.
-					 *
-					 * It clears the error and nothing else. `submittedText` and
-					 * `admissionAttempted` are a claim about a request that may already
-					 * be executing on the owner, and a keystroke is not evidence about
-					 * that - so the unchanged-send guard survives, and a genuinely
-					 * different message still gets refused with its own message until
-					 * the user discards. Discard is the only control that drops a claim.
-					 */
-					onDismiss: () => {
-						clearError();
-						// Unconditional: `errorCode` used to be cleared only when a
-						// `draft.error` existed to clear alongside it, so a code recorded
-						// by local state alone outlived the message that explained it.
-						if (draftIdentity && draft)
-							useCanonicalSessionsStore.getState().updateDraft(draftIdentity, {
-								error: undefined,
-								errorCode: undefined,
-							});
-					},
-				}
+	const unresolvedRequestId =
+		draft?.admissionAttempted && !draft.pending
+			? draft.admissionRequestId
 			: undefined;
+	const settledByOwner = useCanonicalSessionsStore(() =>
+		unresolvedRequestId
+			? canonical.transcript.index.get(unresolvedRequestId)
+			: undefined,
+	);
+	const ownerHasIt = useCanonicalSessionsStore(() => {
+		if (!unresolvedRequestId) return false;
+		const record = canonical.transcript.records[settledByOwner ?? -1];
+		return record?.kind === "user" && !record.local;
+	});
+	useEffect(() => {
+		if (!unresolvedRequestId || !ownerHasIt || !draftIdentity) return;
+		useConversationInputStore.getState().reconcileDelivered(identity);
+		useCanonicalSessionsStore
+			.getState()
+			.finishDraft(draftIdentity, draft?.sessionId ?? sessionId ?? "");
+	}, [
+		unresolvedRequestId,
+		ownerHasIt,
+		draftIdentity,
+		draft?.sessionId,
+		sessionId,
+		identity,
+	]);
+
+	const composerSendError = activeError
+		? {
+				message: activeError,
+				code: activeErrorCode,
+				/*
+				 * The two decisions the notice row needs, both taken where the failure
+				 * was classified (`sendFailureCopy`) rather than re-derived here from a
+				 * code: Retry renders only where a press can work, and the register is
+				 * danger for a failure, muted for the two statements that are not
+				 * failures (the send lock, and a message that was delivered late).
+				 * `draft.error` - the row's own copy of a failure that outlived this
+				 * component - carries no such flags, so it takes the conservative pair:
+				 * danger, and Retry offered (the user can always see for themselves).
+				 */
+				retry: sendErrorRetry && draft?.error === undefined,
+				muted: sendErrorMuted,
+				actions: undefined,
+				// The composer's Send, which is the whole of Retry: pressing it replays
+				// an unchanged payload under its own request id, and sends an edited one
+				// as a new message. See `admitChatDraft`'s replay rule.
+				onRetry: () => input.current?.submitNow(),
+				onClear: () => {
+					if (identity)
+						useConversationInputStore.getState().clearComposer(identity);
+					clearError();
+					if (draftIdentity)
+						useCanonicalSessionsStore.getState().discardDraft(draftIdentity);
+					input.current?.focusInput();
+				},
+				/*
+				 * Editing dismisses the notice, and must clear the STORE's copy too -
+				 * `draft.error` outlives local state, so clearing only `sendError` would
+				 * leave the message hanging over text the user has since fixed, which is
+				 * the exact defect being replaced.
+				 *
+				 * It clears the SENTENCE and nothing else. The claim
+				 * (`admissionAttempted`, the request id, the pinned payload) is a fact
+				 * about a request that may already be executing on the owner, and a
+				 * keystroke is not evidence about that: an edit followed by Send is a
+				 * NEW message under a new id (the replay rule), and if the first one
+				 * landed after all, the reconciliation says so.
+				 */
+				onDismiss: () => {
+					clearError();
+					if (draftIdentity && draft)
+						useCanonicalSessionsStore.getState().updateDraft(draftIdentity, {
+							error: undefined,
+							errorCode: undefined,
+						});
+				},
+			}
+		: undefined;
+
 	return (
 		<div className="flex h-full min-h-0 flex-col">
 			{/*

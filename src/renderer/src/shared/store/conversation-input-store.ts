@@ -63,7 +63,216 @@ type ConversationInputState = {
 	 * needs: the notice says how many characters, never which.
 	 */
 	unredactedChars?: number;
+	/**
+	 * The message that left this composer and has not been confirmed yet.
+	 *
+	 * WHY IT EXISTS. The composer empties at the echo (the transcript shows the
+	 * message from that moment), so between the echo and the settle the payload
+	 * lives nowhere the user can edit it. A quit or a crash inside that window used
+	 * to restore the text without its files (the chips had already left the row),
+	 * and a failed send had to keep a second copy of the payload elsewhere to hand
+	 * back. Written in the same store update that clears the box, so there is no
+	 * instant at which the payload is in neither place.
+	 *
+	 * Removed on success (`settleInFlight`). On failure, and on the first hydrate
+	 * after a restart (nothing is in flight in a fresh process), it is RETURNED to
+	 * the composer (`returnInFlight`), which is the only way unsent content ever
+	 * comes back.
+	 */
+	inFlight?: SentPayload;
+	/**
+	 * The last payload handed back to this composer, kept so the delivery
+	 * reconciliation can tell whether the box still holds exactly that message
+	 * (clear it silently) or the user has since edited it (say it was delivered and
+	 * leave their text alone). Dropped by the next send, by Clear and by the
+	 * reconciliation itself.
+	 */
+	returned?: SentPayload;
+	/**
+	 * Returned text the box has not taken in yet.
+	 *
+	 * WHY THE TEXT WAITS AND THE CHIPS DO NOT. Chips and quotes are read straight
+	 * from this row, so merging them here is the whole of their return. The text
+	 * also lives in the composer hook's own state, which is the copy the user is
+	 * typing into; the hook takes this over (`adoptReturnedText`) as soon as it is
+	 * mounted for this conversation and not inside a masked credential capture.
+	 * Merging into `currentInput` at return time instead would merge against a
+	 * copy that is stale during a capture (the capture does not persist its
+	 * keystrokes), and the capture's own write at its end would then overwrite
+	 * the returned message.
+	 */
+	pendingText?: string;
+	/**
+	 * Set when a message this composer gave back turned out to have been delivered
+	 * after all, but the box had been edited since so it could not simply be
+	 * cleared. Drives the muted "Your earlier message was delivered." line, and
+	 * goes on the next edit, send or Clear.
+	 */
+	lateDelivered?: boolean;
 };
+
+/**
+ * One message as the composer held it when it was sent: the box text before any
+ * reply wrapping or credential substitution, the chip paths, and the staged
+ * quotes. Everything needed to put the composer back exactly as it was.
+ */
+export type SentPayload = {
+	text: string;
+	attachments: string[];
+	replies: Reply[];
+	unredactedChars?: number;
+	/**
+	 * True when `text` was written while a masked credential capture was open, so
+	 * it must never reach disk (`partialize` blanks it). Held in memory only; a
+	 * restart in that window returns the files and quotes but not the text.
+	 */
+	volatileText?: boolean;
+};
+
+/**
+ * Merge a returned message into what the composer holds now.
+ *
+ * The failed message came FIRST, so it goes first; anything typed during the
+ * flight follows after a blank line and is never overwritten. Chips are a union
+ * by path and quotes a union by id, returned first. Nothing is ever withheld, so
+ * there is no "part of your message could not come back" state to explain.
+ *
+ * IDEMPOTENT: applying the same return twice (a hydrate after a crash that
+ * happened after the return was written, for example) changes nothing the
+ * second time. A merged box is by construction not byte-equal to the claim, so
+ * its Send goes out as a new message - which it is.
+ */
+export function mergeReturnedText(current: string, returned: string): string {
+	if (returned === "") return current;
+	if (current === "") return returned;
+	if (current === returned || current.startsWith(`${returned}\n\n`))
+		return current;
+	return `${returned}\n\n${current}`;
+}
+
+export function mergeReturnedPayload(
+	current: {
+		text: string;
+		attachments: readonly string[];
+		replies: readonly Reply[];
+	},
+	returned: {
+		text: string;
+		attachments: readonly string[];
+		replies: readonly Reply[];
+	},
+): { text: string; attachments: string[]; replies: Reply[] } {
+	const paths = [...returned.attachments];
+	for (const path of current.attachments)
+		if (!paths.includes(path)) paths.push(path);
+	const replies = [...returned.replies];
+	for (const reply of current.replies)
+		if (!replies.some((kept) => kept.id === reply.id)) replies.push(reply);
+	return {
+		text: mergeReturnedText(current.text, returned.text),
+		attachments: paths,
+		replies,
+	};
+}
+
+const EMPTY_ROW: ConversationInputState = {
+	currentInput: "",
+	submittedMessages: [],
+	currentHistoryIndex: null,
+	replies: [],
+	attachments: [],
+};
+
+/**
+ * Fold a payload back into a row: chips and quotes now, text through
+ * `pendingText` (see that field for why the text waits).
+ *
+ * Chip ids are minted fresh for returned paths, because the chip the payload
+ * left with was removed at the echo and a reused id could collide with a chip
+ * attached since.
+ */
+function foldReturn(
+	row: ConversationInputState,
+	payload: SentPayload,
+	mintId: () => string,
+): ConversationInputState {
+	const attachments = [...(row.attachments ?? [])];
+	const returnedChips = payload.attachments
+		.filter((path) => !attachments.some((chip) => chip.path === path))
+		.map((path) => ({ id: mintId(), path }));
+	const replies = [...(row.replies ?? [])];
+	const returnedReplies = payload.replies.filter(
+		(reply) => !replies.some((kept) => kept.id === reply.id),
+	);
+	const text = payload.text;
+	return {
+		...row,
+		attachments: [...returnedChips, ...attachments],
+		replies: [...returnedReplies, ...replies],
+		pendingText:
+			text === ""
+				? row.pendingText
+				: mergeReturnedText(row.pendingText ?? "", text),
+		// The disclosure travels with the characters it describes (see
+		// `unredactedChars`), so a returned draft re-raises it.
+		unredactedChars: Math.max(
+			row.unredactedChars ?? 0,
+			payload.unredactedChars ?? 0,
+		),
+		returned: payload,
+		inFlight: undefined,
+		lateDelivered: undefined,
+	};
+}
+
+/**
+ * What the composer row holds right now, as one comparable payload - the text
+ * the box will show once any pending return is adopted.
+ */
+function effectivePayload(row: ConversationInputState) {
+	return {
+		text: mergeReturnedText(row.currentInput ?? "", row.pendingText ?? ""),
+		attachments: (row.attachments ?? []).map((chip) => chip.path),
+		replies: row.replies ?? [],
+	};
+}
+
+/** Whether the composer row holds exactly the payload it was given back. */
+export function composerHoldsExactly(
+	row: ConversationInputState | undefined,
+	payload: SentPayload,
+): boolean {
+	if (!row) return false;
+	const now = effectivePayload(row);
+	return (
+		now.text.trim() === payload.text.trim() &&
+		now.attachments.length === payload.attachments.length &&
+		now.attachments.every((path, i) => path === payload.attachments[i]) &&
+		now.replies.length === payload.replies.length &&
+		now.replies.every((reply, i) => reply.id === payload.replies[i]?.id)
+	);
+}
+
+/**
+ * The persisted rows as a fresh process should see them.
+ *
+ * Nothing is in flight in a new process, so every persisted `inFlight` is a
+ * message whose send was interrupted by a quit or a crash: it goes back into
+ * its composer. If it was in fact delivered, the conversation's reconciliation
+ * clears it again the moment the transcript shows the message.
+ *
+ * Pure and exported so a test can run it over a captured serialized state.
+ */
+export function rehydrateInputRows(
+	rows: Record<string, ConversationInputState> | undefined,
+	mintId: () => string = () => crypto.randomUUID(),
+): Record<string, ConversationInputState> {
+	const out: Record<string, ConversationInputState> = {};
+	for (const [id, row] of Object.entries(rows ?? {})) {
+		out[id] = row.inFlight ? foldReturn(row, row.inFlight, mintId) : row;
+	}
+	return out;
+}
 
 /**
  * Store state interface
@@ -178,6 +387,68 @@ type ConversationInputStoreState = {
 	 * @param conversationId - The ID of the conversation
 	 */
 	clearAll: (conversationId: string) => void;
+
+	/**
+	 * Move the composer's payload into `inFlight` and empty the composer, in one
+	 * update: text (only if the box still holds exactly what was sent), the chips
+	 * and the quotes that went with it. `record: false` is the plain retire for a
+	 * send that never echoes (a slash command, a gate answer): nothing is left in
+	 * flight because nothing can fail back into the box.
+	 */
+	beginInFlight: (
+		conversationId: string,
+		payload: {
+			text: string;
+			attachments: readonly Attachment[];
+			replies: readonly Reply[];
+			volatileText?: boolean;
+		},
+		record?: boolean,
+	) => void;
+
+	/** The send landed: nothing is in flight or waiting to be reconciled. */
+	settleInFlight: (conversationIds: readonly string[]) => void;
+
+	/**
+	 * Hand an unconfirmed message back to its composer.
+	 *
+	 * `from` is the identity the composer had when it sent, `to` the one the
+	 * conversation lives under now - they differ after the New-chat identity flip
+	 * (`draft:<uuid>` becomes the session id). Whatever the `from` row still holds
+	 * moves across with the in-flight payload, so nothing is stranded under an
+	 * identity no pane will show again.
+	 */
+	returnInFlight: (from: string, to: string) => void;
+
+	/**
+	 * Take any returned text into the box: merges it with the text the composer
+	 * holds now, writes the result back, and returns it for the hook to show.
+	 * `null` when nothing was waiting.
+	 */
+	adoptReturnedText: (conversationId: string) => string | null;
+
+	/**
+	 * Put a payload back into a composer that has no send in flight - the one-time
+	 * migration of a message the previous release held outside the composer.
+	 */
+	returnPayload: (conversationId: string, payload: SentPayload) => void;
+
+	/**
+	 * A message that was handed back turned out to be delivered. When the
+	 * composer still holds exactly that message it is emptied silently; otherwise
+	 * the user's edits are kept and `lateDelivered` is raised.
+	 */
+	reconcileDelivered: (conversationId: string) => void;
+
+	/** Clear: text, chips, quotes, any waiting return and the delivered note. */
+	clearComposer: (conversationId: string) => void;
+
+	/**
+	 * Drop the late-delivery note. It is a statement about one message, so it
+	 * goes on the first thing the user does with the composer (an edit, a send, a
+	 * clear) rather than on a timer.
+	 */
+	dismissLateDelivery: (conversationId: string) => void;
 };
 
 /**
@@ -438,11 +709,210 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 					inputByConversation: rest,
 				});
 			},
+
+			beginInFlight: (conversationId, payload, record = true) => {
+				const row = get().inputByConversation[conversationId] ?? EMPTY_ROW;
+				const chipIds = new Set(payload.attachments.map((chip) => chip.id));
+				const replyIds = new Set(payload.replies.map((reply) => reply.id));
+				const textLeaves = row.currentInput === payload.text;
+				set({
+					inputByConversation: {
+						...get().inputByConversation,
+						[conversationId]: {
+							...row,
+							currentInput: textLeaves ? "" : row.currentInput,
+							unredactedChars: textLeaves ? 0 : row.unredactedChars,
+							attachments: (row.attachments ?? []).filter(
+								(chip) => !chipIds.has(chip.id),
+							),
+							replies: (row.replies ?? []).filter(
+								(reply) => !replyIds.has(reply.id),
+							),
+							inFlight: record
+								? {
+										text: payload.text,
+										attachments: payload.attachments.map((chip) => chip.path),
+										replies: [...payload.replies],
+										unredactedChars: textLeaves ? row.unredactedChars : 0,
+										volatileText: payload.volatileText,
+									}
+								: row.inFlight,
+							// A new send supersedes the last returned message and its note.
+							returned: undefined,
+							lateDelivered: undefined,
+						},
+					},
+				});
+			},
+
+			settleInFlight: (conversationIds) => {
+				const rows = { ...get().inputByConversation };
+				let changed = false;
+				for (const id of conversationIds) {
+					const row = rows[id];
+					if (!row || (!row.inFlight && !row.returned)) continue;
+					rows[id] = { ...row, inFlight: undefined, returned: undefined };
+					changed = true;
+				}
+				if (changed) set({ inputByConversation: rows });
+			},
+
+			returnInFlight: (from, to) => {
+				const rows = { ...get().inputByConversation };
+				const source = rows[from];
+				const payload = source?.inFlight ?? rows[to]?.inFlight;
+				let target = rows[to] ?? EMPTY_ROW;
+				if (from !== to && source) {
+					/*
+					 * The identity flip: the pane that sent is gone, and anything its row
+					 * still holds (text that never reached the echo, chips attached during
+					 * the create hop) belongs to the conversation that now exists.
+					 */
+					target = foldReturn(
+						target,
+						{
+							text: source.currentInput ?? "",
+							attachments: (source.attachments ?? []).map((chip) => chip.path),
+							replies: source.replies ?? [],
+							unredactedChars: source.unredactedChars,
+						},
+						() => crypto.randomUUID(),
+					);
+					target = { ...target, returned: rows[to]?.returned };
+					delete rows[from];
+				}
+				if (payload)
+					target = foldReturn(target, payload, () => crypto.randomUUID());
+				if (!payload && from === to) return;
+				rows[to] = target;
+				set({ inputByConversation: rows });
+			},
+
+			adoptReturnedText: (conversationId) => {
+				const row = get().inputByConversation[conversationId];
+				if (row?.pendingText === undefined) return null;
+				// Against the persisted text rather than the hook's state: the hook's
+				// state is one render behind on a fresh mount (its initialiser has
+				// only just asked for the persisted value), and outside a capture the
+				// two are the same text because every keystroke writes it here.
+				const merged = mergeReturnedText(
+					row.currentInput ?? "",
+					row.pendingText,
+				);
+				set({
+					inputByConversation: {
+						...get().inputByConversation,
+						[conversationId]: {
+							...row,
+							currentInput: merged,
+							pendingText: undefined,
+						},
+					},
+				});
+				return merged;
+			},
+
+			returnPayload: (conversationId, payload) => {
+				const row = get().inputByConversation[conversationId] ?? EMPTY_ROW;
+				if (row.inFlight) return;
+				set({
+					inputByConversation: {
+						...get().inputByConversation,
+						[conversationId]: foldReturn(row, payload, () =>
+							crypto.randomUUID(),
+						),
+					},
+				});
+			},
+
+			reconcileDelivered: (conversationId) => {
+				const row = get().inputByConversation[conversationId];
+				if (!row) return;
+				const delivered = row.returned ?? row.inFlight;
+				const exact = delivered ? composerHoldsExactly(row, delivered) : false;
+				set({
+					inputByConversation: {
+						...get().inputByConversation,
+						[conversationId]: exact
+							? {
+									...row,
+									currentInput: "",
+									unredactedChars: 0,
+									attachments: [],
+									replies: [],
+									pendingText: undefined,
+									returned: undefined,
+									inFlight: undefined,
+									lateDelivered: undefined,
+								}
+							: {
+									...row,
+									returned: undefined,
+									inFlight: undefined,
+									// Only worth saying when something of that message is still
+									// on screen for the user to wonder about.
+									lateDelivered: delivered ? true : undefined,
+								},
+					},
+				});
+			},
+
+			dismissLateDelivery: (conversationId) => {
+				const row = get().inputByConversation[conversationId];
+				if (!row?.lateDelivered) return;
+				set({
+					inputByConversation: {
+						...get().inputByConversation,
+						[conversationId]: { ...row, lateDelivered: undefined },
+					},
+				});
+			},
+
+			clearComposer: (conversationId) => {
+				const row = get().inputByConversation[conversationId];
+				if (!row) return;
+				set({
+					inputByConversation: {
+						...get().inputByConversation,
+						[conversationId]: {
+							...row,
+							currentInput: "",
+							unredactedChars: 0,
+							attachments: [],
+							replies: [],
+							pendingText: undefined,
+							returned: undefined,
+							lateDelivered: undefined,
+						},
+					},
+				});
+			},
 		}),
 		{
 			name: "conversation-input-store",
+			/*
+			 * NEVER A CREDENTIAL ON DISK. A payload written while a masked capture was
+			 * open keeps its text in memory only - the same rule the keystroke path
+			 * follows (`draftHeld`). `pendingText` is derived from a payload that
+			 * already passed this gate, so it needs no second one.
+			 */
 			partialize: (state) => ({
-				inputByConversation: state.inputByConversation,
+				inputByConversation: Object.fromEntries(
+					Object.entries(state.inputByConversation).map(([id, row]) => [
+						id,
+						row.inFlight?.volatileText
+							? { ...row, inFlight: { ...row.inFlight, text: "" } }
+							: row,
+					]),
+				),
+			}),
+			// Every hydrate is a fresh process: see `rehydrateInputRows`.
+			merge: (persisted, current) => ({
+				...current,
+				inputByConversation: rehydrateInputRows(
+					(persisted as Partial<ConversationInputStoreState> | undefined)
+						?.inputByConversation,
+				),
 			}),
 		},
 	),
