@@ -371,14 +371,18 @@ test("the busy resend is bounded, and hands the refusal to the composer with the
 	assert.equal(draft.pending, false);
 	assert.equal(draft.errorCode, "runtime_busy");
 	/*
-	 * NOTHING IS HELD FOR A REFUSAL LIKE THIS, and that is the change: a busy
-	 * owner says in its own code that it did not take the message, so the payload
-	 * goes back to the composer (the store's one return path; the composer's side
-	 * of it is pinned in `composer-send-failure.test.mjs`) and the claim is
-	 * dropped. Keeping `submittedText` here would leave a message the app was told
-	 * was never admitted looking like one whose fate it cannot establish.
+	 * NOTHING IS LATCHED FOR A REFUSAL LIKE THIS, AND THE PAYLOAD IS STILL THE
+	 * ROW'S - and the difference between those two facts is the change. A busy
+	 * owner says in its own code that it did not take the message, so the latch is
+	 * off: the pane shows no send in flight, and the app makes no claim about a
+	 * fate. The TEXT stays on the row as the retry rule's comparison basis
+	 * (`payloadMatchesClaim`), because that is what makes an unchanged re-send an
+	 * idempotent replay under the id the owner already answered, rather than a
+	 * second message from an owner that had in fact queued the first. The copy the
+	 * user acts on is in the composer (the store's one return path; its side of
+	 * that is pinned in `composer-send-failure.test.mjs`).
 	 */
-	assert.equal(draft.submittedText, undefined);
+	assert.equal(draft.submittedText, "Review this");
 	assert.equal(draft.admissionAttempted, false);
 });
 
