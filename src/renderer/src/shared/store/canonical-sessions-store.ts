@@ -21,6 +21,7 @@ import {
 	type DesktopModelSelection,
 	type DesktopRequest,
 	RUNTIME_BUSY_CODE,
+	RUNTIME_RETIRING_CODE,
 } from "../../../../shared/desktop-contract";
 import {
 	type CompletionAttention,
@@ -703,6 +704,24 @@ export const ANSWER_NOT_SENT_CODE = "answer_not_sent";
  * question of a code (is the retry the remedy), and this is that question's
  * answer, stated by the failure that owns it.
  *
+ * The eighth is `runtime_retiring`, and it is here for D13's reason rather than
+ * U2's: the remedy that owns this refusal is the SENTENCE, which the owner
+ * composes with its own condition attached — "The message was not admitted —
+ * send it again once the new build is up." The composer's unqualified "Send it
+ * again" directly under that clause names a press the drain refuses again, so it
+ * is the weaker of two instructions about one act. Withholding it costs nothing
+ * the operator needs: the text itself is back in the box (a provably-unadmitted
+ * refusal does not latch — see `isRefusedBeforeAdmission`), and the sentence that
+ * replaced the hint says when to press. INERT TODAY, like the term it reads:
+ * that refusal arrives as a plain string `detail` with no `code`, so nothing
+ * reaches this predicate until the backend half lands (`RUNTIME_RETIRING_CODE`
+ * carries the capture), and today's frame for that arm is the held state.
+ * The sibling `runtime_busy` is NOT on this
+ * list, and the difference is the same order of reasoning: its own sentence names
+ * no such condition, the app has already spent its internal repeats by the time
+ * the composer sees it, and a press then is exactly the remedy the owner asked
+ * for.
+ *
  * The guard's own code is the one with a history of being left out, and where the
  * hint is not merely redundant but self-contradicting: the operator's own remedy on
  * 2026-09-17 - drop the image that pushed the write over the threshold - lands
@@ -727,7 +746,8 @@ export function withholdsRetryHint(code: string | undefined): boolean {
 		code === UNCONFIRMED_SEND_CODE ||
 		code === STORE_OUT_OF_SPACE_CODE ||
 		code === STORE_UNAVAILABLE_CODE ||
-		code === ANSWER_NOT_SENT_CODE
+		code === ANSWER_NOT_SENT_CODE ||
+		code === RUNTIME_RETIRING_CODE
 	);
 }
 
@@ -906,27 +926,71 @@ export function panelIdentityOfView(
  * transcript (`true`). A second copy of this predicate is how the two consumers
  * come to disagree about one failure.
  *
- * 413 and 422 are raised before the prompt reaches the session (the reasoning is
- * spelled out on the un-latch below), so the message provably does not exist on
- * the owner. The read window's refusal is the third case and the same kind of
- * fact: it is raised before the draft is even touched, so nothing reached the
- * owner either. Every other failure is unknowable.
+ * FOUR FAMILIES, and each is a refusal raised before the prompt can reach the
+ * session, so the message provably does not exist on the owner.
+ *
+ * 1. 413 and 422, which are ours and are raised before `fetch` is even called
+ *    (the reasoning is spelled out on the un-latch below).
+ * 2. The read window's refusal, raised before the draft is touched.
+ * 3. A `runtime_busy` 503 - the owner telling a control call to come back. The
+ *    app already repeats that request under its own id (`messageWithBusyResend`),
+ *    so this arm decides only what a send looks like once those repeats are
+ *    spent, and the answer the owner gave is still "I did not take it".
+ * 4. A `runtime_retiring` 409 - the owner is leaving (a build handover, a
+ *    signalled stop, a `/move`) and refuses the turn as it latches. The
+ *    sentence the far side composes for it says "The message was not admitted".
+ *    INERT TODAY: that refusal arrives as a plain string `detail` with no
+ *    `code`, so this term cannot fire until the backend half lands (see
+ *    `RUNTIME_RETIRING_CODE` for the capture). It is kept because the answer is
+ *    already right for the day the code arrives, and because dropping it would
+ *    make that day a silent regression.
+ *
+ * WHAT MUST STAY ON THE OTHER SIDE, because the defect this class fixes has a
+ * mirror image that is worse: treated as unknowable, a provably-unadmitted
+ * refusal makes the app claim it cannot tell whether the message landed - and
+ * treated as admitted-nothing, a genuinely-unknown outcome makes a message the
+ * agent may be answering vanish and invites a duplicate send. So a bare 409
+ * (receipt conflict, an attachment ladder arm), a bare 503, a `runtime_unreachable`
+ * (the hop failure whose ack may have been the only thing lost), a transport
+ * failure and the unchanged-payload guard all stay UNKNOWABLE, and are keyed on
+ * the codes above rather than on a status or a `retryable` flag that other
+ * refusals share.
  */
 export function isRefusedBeforeAdmission(error: unknown): boolean {
-	return (
-		(error instanceof DesktopControlError &&
-			(error.status === 413 || error.status === 422)) ||
+	if (error instanceof DesktopControlError) {
 		/*
-		 * The read window's own refusal belongs in this answer, not beside it. It
-		 * is raised before anything is written to the draft and before the
-		 * transport is reached, so "nothing reached the owner" is exactly as true
-		 * of it as of a 413 - and the composer reads this one predicate to decide
-		 * whether the text goes back in the box (`false`) or stays out because the
-		 * outcome is unknowable (`SEND_HELD`). A second copy of that judgement at
-		 * the call site is how the two come to disagree about one refusal.
+		 * Ours, before `fetch`: 413 is the byte-budget guard in
+		 * `src/main/desktop-transport.ts` and 422 is the `safeParse` ahead of it, so
+		 * neither has a response to have been ambiguous about. 422 is also
+		 * reachable from the backend (an unknown command, a malformed body) and
+		 * still belongs here: a validation refusal is decided before the prompt is
+		 * admitted, so no work started either way.
 		 */
-		(error instanceof UserFacingError &&
-			error.code === SESSION_UNVALIDATED_CODE)
+		if (error.status === 413 || error.status === 422) return true;
+		/*
+		 * The two codes the OWNER answers with, per the note above. Read as codes and
+		 * not as a status or a flag: the same status carries refusals whose admission
+		 * is genuinely unknown (a conflicting receipt's 409), and `retryable` is not a
+		 * statement about admission in EITHER direction - the `runtime_busy` body the
+		 * app does act on carries `retryable: true` while establishing that nothing was
+		 * admitted, so it is neither a safe positive nor a safe negative
+		 * (`RUNTIME_RETIRING_CODE` carries the captured bodies).
+		 */
+		return (
+			error.code === RUNTIME_BUSY_CODE || error.code === RUNTIME_RETIRING_CODE
+		);
+	}
+	/*
+	 * The read window's own refusal belongs in this answer, not beside it. It is
+	 * raised before anything is written to the draft and before the transport is
+	 * reached, so "nothing reached the owner" is exactly as true of it as of a
+	 * 413 - and the composer reads this one predicate to decide whether the text
+	 * goes back in the box (`false`) or stays out because the outcome is unknowable
+	 * (`SEND_HELD`). A second copy of that judgement at the call site is how the
+	 * two come to disagree about one refusal.
+	 */
+	return (
+		error instanceof UserFacingError && error.code === SESSION_UNVALIDATED_CODE
 	);
 }
 
@@ -1073,8 +1137,12 @@ export function isSessionUnvalidated(
  * `retry_after_ms` (2 s today) is about 15 s of patience end to end, the same
  * order as the 15 s the old control bind spent waiting before it gave up, and
  * each attempt answers fast, so the whole loop never approaches the renderer's
- * own 20 s per-request deadline. Past that the composer shows the refusal with
- * the text kept, exactly the existing retryable path.
+ * own 20 s per-request deadline. Past that the refusal reaches the composer, which
+ * hands the text BACK to the box rather than holding it against the transcript:
+ * each attempt failed before admission, so the code is one of
+ * `isRefusedBeforeAdmission`'s and the send does not latch. Holding it would
+ * describe the operator's own message as one whose fate cannot be known, which is
+ * the one thing this owner has just said it is not.
  *
  * The cap on one wait is there because the hint comes off the wire: a backend
  * that asked for a minute must not park a send that long with nothing on screen
@@ -1396,7 +1464,11 @@ export async function admitChatDraft(
 		 * un-latch drift apart, and they must not: they are answers to the same
 		 * question. 413 and 422 are raised before the prompt reaches the session
 		 * (the reasoning is spelled out on the un-latch below), so the message
-		 * provably does not exist on the owner and the echo must go.
+		 * provably does not exist on the owner and the echo must go. So are the
+		 * owner's own refusals - 503 `runtime_busy` on today's wire, and 409
+		 * `runtime_retiring` once the backend relays its code - which is why the
+		 * incident's held draft was an echo kept over a message the backend had already
+		 * said it never took.
 		 *
 		 * Every OTHER failure keeps the echo painted, which looks wrong and is
 		 * not: the outcome is unknowable, the owner may have admitted the command
@@ -1472,6 +1544,32 @@ export async function admitChatDraft(
 			// of that identity check - so the one action that would make the message
 			// fit, removing a screenshot, was the one action forbidden. The only way
 			// out was discarding the message.
+			//
+			// AND THE SAME TRAP WAS REACHED BY TWO REFUSALS THAT ARE NOT OURS. The
+			// owner refuses a turn it will not serve - 503 `runtime_busy` when it is
+			// occupied, 409 `runtime_retiring` while its runtime is leaving - and
+			// both are raised BEFORE the prompt is admitted, so both are this same
+			// kind of fact. Neither was in the predicate, so a send that met one was
+			// latched and held: the composer said its fate was unknowable, the
+			// operator was offered "Restore message" for a message the backend had
+			// already said it never took, and the app's own repeats for `runtime_busy`
+			// (above) had already been spent by the time they saw it. Read as CODES
+			// and never as those statuses or a `retryable` flag: a bare 409 is also
+			// the receipt-conflict refusal, whose first attempt may have been admitted,
+			// and `retryable` is not a statement about admission either way - the
+			// `runtime_busy` body itself carries `retryable: true` while establishing
+			// that nothing was admitted (the capture is on `RUNTIME_RETIRING_CODE`).
+			// Of the two codes this change adds, `runtime_busy` is live on today's
+			// wire and `runtime_retiring` is not: that refusal arrives as a plain
+			// string detail with no code, so its term here is inert until the backend
+			// half lands - see `RUNTIME_RETIRING_CODE`.
+			// `isRefusedBeforeAdmission` carries the full boundary.
+			//
+			// THE LATCH IS WHAT MAKES THE DIFFERENCE VISIBLE, which is why this is
+			// the line the two codes had to join: it is the flag the composer gates
+			// `heldText` on, so while it is set the text cannot go back in the box
+			// and every resend must be byte-identical. Clearing it is what hands the
+			// operator their own message back.
 			...(refusedBeforeAdmission
 				? // Nothing is held on this arm (the flag's own contract above says so), so the
 					// claim's verdict goes with the claim. Left behind, it would describe a
