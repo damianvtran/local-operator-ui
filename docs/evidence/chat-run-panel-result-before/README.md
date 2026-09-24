@@ -25,12 +25,18 @@ These are the other half of the pair, and the pair is the claim:
 | `reader-result-inline` before vs after | **322,520** px dark / **310,535** light. Before, the `Result` block has taken the pane: the conversation above it is squeezed to the brief and a date, and the block runs off the bottom edge. After, the result IS the conversation's last row, bottom-pinned, and the foot carries only the read-only line. |
 | `reader-result-preview` before vs after | **321,921** / **305,110**. Before, the block is unbounded and unlabelled — `Result` — over a body with nothing left to push back with. After, a `Result preview` inside `max-h-40 overflow-auto`, under one quiet line saying the conversation the fuller copy is in is not on this page. |
 | `reader-settled` before vs after | **185,402** / **165,074**. The smallest of the three, and correctly so: the same block, over a shorter fixture result. |
-| `reader-live` before vs after | **11,246 px dark (0.98%) / 10,132 light (0.88%)** — the CONTROL, and it now moves a little instead of agreeing exactly. The reason is the same reason the other three moved: this round re-took the after half, and the running child's foot carries the **read-only line**, whose copy changed ("this is the subagent's conversation" -> "...page") in every reader state. What the control still measures is the MAGNITUDE: a foot whose only change is one sentence moves ~11k px, and the three pairs above move ~185k-322k, which is the outcome block rather than the run. Read the old byte-identical pairing in the paragraph below as the FIRST pass's reading, taken before the copy changed. |
+| `reader-live` before vs after | **3,017 px dark (0.26%) / 9,672 light (0.84%)** — the CONTROL, and it moves a little instead of agreeing exactly. The reason is the same reason the other three moved: this set's after half was re-taken, twice now, and the running child's foot carries the **read-only line**, whose copy changed ("this is the subagent's conversation" -> "...page") in every reader state. What the control measures is the MAGNITUDE: a foot whose only change is one sentence moves thousands of px, and the three pairs above move ~185k-322k, which is the outcome block rather than the run. Read the old byte-identical pairing in the paragraph below as the FIRST pass's reading, taken before the copy changed. |
 
-These four numbers were re-measured after the round that re-took the after halves
-(the reader group was re-shot on the folded tree; see the sibling README's own
-note). Only the right-hand side moved — every frame in this set is still the
-one photographed at `b7bed8d96`, and this set is still not re-taken by anything.
+These four numbers were re-measured by the second round that took the reader
+again — the fold onto the 0.30.21 window (`ffa54512e`), which re-shot the whole
+reader group on the folded tree because that fold carries an attribute into the
+component the reader paints with (see the sibling README's own note). Only the
+right-hand side moved, and only for the control: the three outcome-block pairs
+come back **identical to the reading above** because their after halves are
+byte-identical, while `reader-live`'s two after halves were re-taken and its
+control moved from 11,246/10,132 to 3,017/9,672. Every frame in *this* set is
+still the one photographed at `b7bed8d96`, and this set is still not re-taken by
+anything.
 
 ## How it was taken
 
