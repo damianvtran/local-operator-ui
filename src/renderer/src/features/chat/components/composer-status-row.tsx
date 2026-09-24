@@ -337,6 +337,11 @@ const GOAL_STALLED_UNKNOWN_NOTE =
 const STALLED_BREAKER_REASON = "judge could not decide";
 const STALLED_CAP_REASON_HEAD = "stopped after ";
 const STALLED_CAP_REASON_TAIL = " continuations";
+/*
+ * Digits only: the backend's budget is an int, and anything else is not a count this
+ * build may print as one. Top-level for `lint/performance/useTopLevelRegex`.
+ */
+const STALLED_CAP_COUNT = /^\d+$/;
 
 /**
  * The sentence a stall owes the user, for the reason the judge published.
@@ -357,9 +362,7 @@ export const goalStalledNote = (reason: string | undefined): string => {
 			STALLED_CAP_REASON_HEAD.length,
 			named.length - STALLED_CAP_REASON_TAIL.length,
 		);
-		// Digits only: the backend's budget is an int, and anything else is not a count
-		// this build may print as one.
-		return /^\d+$/.test(count)
+		return STALLED_CAP_COUNT.test(count)
 			? goalStalledCapNote(count)
 			: GOAL_STALLED_CAP_FALLBACK_NOTE;
 	}
