@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
 import { after, test } from "node:test";
 import { build } from "esbuild";
@@ -445,6 +446,56 @@ test("a late delivery takes the delivered words out of the box", async () => {
 		boxText(),
 		"and my own next line",
 		"the box still holds the delivered message, so the next press sends it again",
+	);
+});
+
+/*
+ * U6, AND IT IS A RULE ABOUT A CONTROL, so it is pinned where the control's own
+ * predicate is written (this suite mounts the composer; the pane's send lock is
+ * pinned by the pane's own suites).
+ *
+ * The Send control used to be disabled for the whole flight, so the second press
+ * the previous round fixed was never delivered to the pane: the send lock's line
+ * ("Your last message is still sending.") was unreachable from the one control a
+ * user reaches for. The refusal belongs to the store, which is where a second
+ * admission is actually refused.
+ */
+test("the send control is pressable while a send is in flight", () => {
+	const composer = readFileSync(
+		"src/renderer/src/features/chat/components/message-input.tsx",
+		"utf8",
+	);
+	/*
+	 * The control's OWN predicate, sliced out of the file rather than matched across
+	 * it: `message-input.tsx` has other disabled rules (`isInputDisabled || isLoading`
+	 * guards a slash action half a file away), and a file-wide match would pin one of
+	 * those instead of the button this finding is about.
+	 */
+	const at = composer.indexOf('aria-label="Send message"');
+	assert.ok(at > 0, "the send control moved");
+	const button = composer.slice(
+		composer.lastIndexOf("<Button", at),
+		composer.indexOf("</Button>", at),
+	);
+	assert.match(
+		button,
+		/disabled=\{/,
+		"the send control has no predicate at all",
+	);
+	/*
+	 * COMMENTS STRIPPED, which is the convention every other source assertion in this
+	 * repository follows and here it is load-bearing: the fix's own comment says "and
+	 * not `isLoading` any more", so matching the raw text would fail on the sentence
+	 * explaining the change.
+	 */
+	const code = button.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	assert.ok(
+		!code.includes("isLoading"),
+		"the send control is disabled for the whole flight again, so the press the send lock exists to answer cannot reach it",
+	);
+	assert.ok(
+		code.includes("isInputDisabled"),
+		"a box that refuses input must still disable the press",
 	);
 });
 
