@@ -3509,8 +3509,8 @@ export function ChatSidebar({
 				reservations(bandRef.current) -
 				reservations(pinRef.current);
 			/*
-			 * The panel's own content box, which is what the shipped
-			 * `max-h-[45%]` resolved against before the regions moved into this
+			 * The panel's own content box, which is what the list's fallback
+			 * `max-h-[60%]` resolves against, not the regions' own
 			 * container. `p-2` is 8px on each side, and the nav's class list is
 			 * pinned byte-for-byte by `scripts/contrast-contract.mjs`, so the 16
 			 * cannot drift without that gate failing.
@@ -3639,13 +3639,14 @@ export function ChatSidebar({
 	 */
 	const entityHasRuleAbove = bothVisible && split.order === "chats-first";
 	/*
-	 * No rule over the list while it is alone: the entities' way back is the
-	 * `Agents` destination's own disclosure now (`sidebar-navigation.tsx`), so the
-	 * `Show agents and teams` row this rule used to sit under is not drawn (see
-	 * `restoreRow`), and a hairline over the list's first label would be the
-	 * drawn line §B3 removes from the sidebar.
+	 * The list's rule is the boundary's resting line while both sections are
+	 * drawn, and it also sits under a restore row drawn above the list (the
+	 * hidden entities' `Show agents and teams`), which is the line that tells the
+	 * row apart from the list's own first section label.
 	 */
-	const listHasRuleAbove = bothVisible && split.order === "entities-first";
+	const listHasRuleAbove = bothVisible
+		? split.order === "entities-first"
+		: restoreAtTop;
 
 	const entityRegion = (
 		/*
@@ -4557,7 +4558,7 @@ export function ChatSidebar({
 				 * alone, it is the one that fills the column and its `flex-1` is the
 				 * mirror of the entity region's.
 				 */
-				bothVisible ? "max-h-[45%] shrink-0" : "min-h-0 flex-1",
+				bothVisible ? "max-h-[60%] shrink-0" : "min-h-0 flex-1",
 				listHasRuleAbove ? "border-t border-hairline pt-2" : "",
 			)}
 		>
@@ -5012,13 +5013,14 @@ export function ChatSidebar({
 	 * controls instead of one.
 	 */
 	/*
-	 * ONLY FOR THE HIDDEN CHATS LIST. The hidden ENTITIES' way back is the
-	 * `Agents` destination row's disclosure chevron one group above (§C1.3), and
-	 * this row repeating it - `Show agents and teams`, over a hairline, above the
-	 * list - was one of the four list concepts the design round counted (D1).
+	 * FOR EITHER HIDDEN SECTION. An earlier cut drew this only for the chats list
+	 * and gave the entities an `Agents` destination-row chevron as their way back;
+	 * that chevron is gone (both sections are visible by default and the column is
+	 * sized by the boundary, the operator's call on the preview), so this row is
+	 * again the one way back for whichever section the boundary's cluster hid.
 	 */
 	const restoreRow =
-		split.restore === "chats" ? (
+		split.restore !== null ? (
 			<button
 				type="button"
 				data-sidebar-restore={split.restore}

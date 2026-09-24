@@ -65,8 +65,21 @@ export const SIDEBAR_MIN_REGION_PX = 72;
  */
 export const SIDEBAR_SPLIT_OFFERED_PX = SIDEBAR_MIN_REGION_PX * 2;
 
-/** Today's `max-h-[45%]`, kept as the fraction it is. */
-export const SIDEBAR_AUTO_MAX_FRACTION = 0.45;
+/**
+ * The chats list's share of the panel under the AUTO rule (no dragged height).
+ *
+ * IT WAS 0.45 (the old list pane's `max-h-[45%]`), and it moved with the default
+ * below: that fraction was written for a list pane that sat UNDER an agents tree
+ * in a second column, where the tree was the pane's main content. In the one
+ * sidebar the chats list is the column's main content and the agents + teams
+ * section sits above it, so under the old fraction a fresh column gave the tree
+ * 55% of the body and the chats 45% - the "agents push the chats down" shape the
+ * one-sidebar merge exists to remove (design round 1, D1). 0.6 gives the chats
+ * the larger share while the list is long, and the rule is still a CAP over the
+ * content's height: a short list draws at its own height and the section above
+ * fills the rest. A drag replaces all of this with the user's own number.
+ */
+export const SIDEBAR_AUTO_MAX_FRACTION = 0.6;
 
 /**
  * The largest height the parser will believe, and it exists so a nonsense
@@ -80,18 +93,22 @@ export const SIDEBAR_AUTO_MAX_FRACTION = 0.45;
 export const SIDEBAR_MAX_STORED_PX = 4_000;
 
 /**
- * The regions a column that has never been touched draws.
+ * The regions a column that has never been touched draws: BOTH.
  *
- * IT WAS "both", and the change is the one-sidebar merge rather than a taste
- * call: with the rail gone, this column is the app's whole left side, so an
- * agents tree drawn above the chat list pushes the chats below the fold - which
- * is the defect the merge exists to remove (measured on the baseline: the list
- * started below the fold's midpoint and held ~8 rows at 900px). The `Agents`
- * destination's own disclosure is what opens it, it writes this same value, and
- * the list's restore row still names the region when it is hidden - so the
- * agents list is one press away and no state is unreachable.
+ * The operator's call on the preview (2026-09-24): "make sure that we have
+ * visible sections for agent+teams and chats ... but keep the UX of being able
+ * to relatively size them in the sidebar". An earlier cut of the one-sidebar
+ * merge defaulted this to "chats" (the agents tree behind the `Agents` row's
+ * disclosure) so the tree could not push the chats below the fold; the operator
+ * rejected hiding the section, so the fold problem is answered by the SPLIT
+ * instead - the chats take the larger auto share (`SIDEBAR_AUTO_MAX_FRACTION`),
+ * both sections keep a `SIDEBAR_MIN_REGION_PX` floor, and the boundary between
+ * them is the draggable, persisted `chatSidebarListHeight`.
+ *
+ * It is also main's value, so a profile that already stored "both" and one that
+ * stored nothing draw the same column.
  */
-export const DEFAULT_SIDEBAR_REGIONS: SidebarRegions = "chats";
+export const DEFAULT_SIDEBAR_REGIONS: SidebarRegions = "both";
 export const DEFAULT_SIDEBAR_ORDER: SidebarOrder = "entities-first";
 
 /** Which single region a restore row is offering to bring back. */
@@ -186,11 +203,11 @@ export function regionVisibility(regions: SidebarRegions): {
 /**
  * The cap the AUTO rule puts on the list region.
  *
- * Two terms, and the smaller wins. The first is today's `max-h-[45%]`, applied
+ * Two terms, and the smaller wins. The first is `SIDEBAR_AUTO_MAX_FRACTION`, applied
  * to the PANEL'S OWN content box rather than to this region's container: those
  * are the same box in the shipped layout and not the same box once the two
- * regions live in a container of their own (the container is 45% of a panel
- * shorter than the panel, and the cap would silently move by about 36px at a
+ * regions live in a container of their own (the container is a fraction of a
+ * panel shorter than the panel, and the cap would silently move by tens of px at a
  * 900px window - a change nobody asked for, on the arrangement this change is
  * required to leave alone). The second is the split's own floor: the list can
  * never be tall enough to squeeze the entity region below `SIDEBAR_MIN_REGION_PX`.
@@ -233,7 +250,7 @@ export type SidebarSplitInput = {
 	drawnListHeight: number;
 	/**
 	 * The panel's own content-box height, px: the box the shipped
-	 * `max-h-[45%]` resolved against, and therefore the box `autoRegionCap`
+	 * `max-h-[60%]` resolves against, and therefore the box `autoRegionCap`
 	 * has to measure the fraction against too. `0` before it is known.
 	 */
 	panelContentHeight: number;
@@ -247,7 +264,7 @@ export type SidebarSplit = {
 	listVisible: boolean;
 	/** Which edge of the LIST region the boundary sits on (S1's sign table). */
 	side: "top" | "bottom";
-	/** `null` means today's rule, applied by the component (`max-h-[45%]`). */
+	/** `null` means the auto rule, applied by the component (`max-h-[60%]`). */
 	listHeight: number | null;
 	/**
 	 * The list region's inline max-height, px, or `null` for "no inline cap".
