@@ -1160,7 +1160,11 @@ test("R3: an unknown outcome returns BOTH halves, and the retry is the Send that
 		prime: () => stagePayload(),
 		onSubmit: ({ onEchoPainted, box }) => {
 			onEchoPainted?.();
-			assert.equal(box(), "", "the box empties at the echo, which is the window this arm is about");
+			assert.equal(
+				box(),
+				"",
+				"the box empties at the echo, which is the window this arm is about",
+			);
 			returnInFlight();
 			return false;
 		},
@@ -1170,9 +1174,17 @@ test("R3: an unknown outcome returns BOTH halves, and the retry is the Send that
 		input.text,
 		"the text comes back with the files, so one press of Send carries the whole message again",
 	);
-	assert.deepEqual(held.chips(), [STAGED.chip], "and the chip the send was carrying");
+	assert.deepEqual(
+		held.chips(),
+		[STAGED.chip],
+		"and the chip the send was carrying",
+	);
 	assert.deepEqual(held.replies(), [STAGED.reply], "and the staged quote");
-	assert.equal(held.inFlightGone, true, "with nothing left for a restart to restore");
+	assert.equal(
+		held.inFlightGone,
+		true,
+		"with nothing left for a restart to restore",
+	);
 });
 
 test("R1: a send that never echoes still takes both halves once it settles", async () => {
@@ -1206,7 +1218,11 @@ test("the staged-payload rules are the store route's two transitions", async () 
 	assert.deepEqual(
 		mergeReturnedPayload(
 			{ text: "", attachments: [], replies: [] },
-			{ text: "", attachments: [STAGED.chip], replies: [{ id: "r1", text: "q" }] },
+			{
+				text: "",
+				attachments: [STAGED.chip],
+				replies: [{ id: "r1", text: "q" }],
+			},
 		),
 		{
 			text: "",
@@ -1236,7 +1252,10 @@ test("the staged-payload rules are the store route's two transitions", async () 
 		[STAGED.chip, "/tmp/mine.png"],
 		"and both file lists survive, returned first",
 	);
-	assert.deepEqual(union.replies.map((reply) => reply.id), ["r1", "r2"]);
+	assert.deepEqual(
+		union.replies.map((reply) => reply.id),
+		["r1", "r2"],
+	);
 
 	// The two transitions, over the real store and the real row.
 	const inputStore = useConversationInputStore.getState();

@@ -79,7 +79,7 @@ export const desktopResult = request => globalThis.__canonicalRequest(request);`
 				);
 				builder.onLoad({ filter: /.*/, namespace: "echo-fixture" }, () => ({
 					contents:
-						"export const echoPendingUser = () => {};\nexport const retractPendingUser = () => {};\nexport const retractLocalEcho = () => \"retracted\";\nexport const discardPendingEchoes = () => {};",
+						'export const echoPendingUser = () => {};\nexport const retractPendingUser = () => {};\nexport const retractLocalEcho = () => "retracted";\nexport const discardPendingEchoes = () => {};',
 					loader: "js",
 				}));
 			},
