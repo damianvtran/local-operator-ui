@@ -16,12 +16,21 @@
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import type { DesktopProvider } from "@shared/api/local-operator/desktop-api";
 import {
+	desktopFeatureEnabled,
 	desktopKeys,
+	useDesktopCapabilities,
 	useDesktopProviders,
 } from "@shared/api/local-operator/desktop-hooks";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@shared/components/ui/select";
 import { Textarea } from "@shared/components/ui/textarea";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
 import { cn } from "@shared/lib/utils";
@@ -62,6 +71,7 @@ import {
 	selectionFromModel,
 	selectionSelector,
 } from "../draft-selection";
+import { deviceLabel, usePeers } from "../peers-store";
 import {
 	bandReadings,
 	effortDisplay,
@@ -2023,12 +2033,31 @@ export const ResumePicker: FC<PickerContext> = ({
 	);
 };
 
+/** The device choice's value for "this device": never a device id, which starts `d_`. */
+const THIS_DEVICE = "this-device";
+
 export const NewSessionPicker: FC<PickerContext> = ({
 	canonical,
 	onClose,
 	rebind,
 }) => {
 	const [cwd, setCwd] = useState(canonical.frontend?.cwd ?? "");
+	/*
+	 * WHERE the conversation is created: this device, or a peer by device id
+	 * (`mesh-ui.md` §2.6). The choice exists only when the backend advertises
+	 * `features.peers` AND lists at least one peer - otherwise the form is exactly
+	 * the one it always was, and `peer` is never sent.
+	 *
+	 * Unreachable peers are listed but DISABLED with their reason, rather than
+	 * hidden: a device that vanished from the choice would read as "removed from
+	 * the network", and the reason says what to fix.
+	 */
+	const capabilities = useDesktopCapabilities();
+	const peersEnabled = desktopFeatureEnabled(capabilities.data, "peers");
+	const peers = usePeers(peersEnabled);
+	const peerRows = peersEnabled ? (peers.data?.peers ?? []) : [];
+	const [device, setDevice] = useState(THIS_DEVICE);
+	const chosen = peerRows.find((peer) => peer.device_id === device);
 	const op = useOperation();
 	const createSession = useCanonicalSessionsStore(
 		(state) => state.createSession,
@@ -2038,18 +2067,26 @@ export const NewSessionPicker: FC<PickerContext> = ({
 			async () => {
 				const id = await createSession(
 					cwd.trim() || (canonical.frontend?.cwd ?? "~"),
+					undefined,
+					undefined,
+					undefined,
+					chosen ? chosen.device_id : undefined,
 				);
 				if (!id) throw new Error("the backend did not return a session id");
 				return id;
 			},
 			(id) => ({
 				tone: "success",
-				text: `New conversation ${id}. The previous one keeps running.`,
+				text: chosen
+					? `New conversation ${id} on ${deviceLabel(chosen)}. The previous one keeps running.`
+					: `New conversation ${id}. The previous one keeps running.`,
 			}),
-			"The conversation was not created",
+			chosen
+				? `${deviceLabel(chosen)} did not create the conversation`
+				: "The conversation was not created",
 		);
 		if (value) rebind(value);
-	}, [op, createSession, cwd, canonical.frontend?.cwd, rebind]);
+	}, [op, createSession, cwd, canonical.frontend?.cwd, rebind, chosen]);
 	return (
 		<PickerHost
 			open
@@ -2057,12 +2094,50 @@ export const NewSessionPicker: FC<PickerContext> = ({
 			title="New conversation"
 			description="Starts a fresh canonical session. Work in the current one continues."
 			form={
-				<PickerField
-					label="Working directory"
-					hint="Must exist on this machine."
-				>
-					<Input value={cwd} onChange={(event) => setCwd(event.target.value)} />
-				</PickerField>
+				<>
+					{peerRows.length > 0 && (
+						<PickerField label="Device" htmlFor="new-session-device">
+							<Select value={device} onValueChange={setDevice}>
+								<SelectTrigger id="new-session-device">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value={THIS_DEVICE}>This device</SelectItem>
+									{peerRows.map((peer) => (
+										<SelectItem
+											key={peer.device_id}
+											value={peer.device_id}
+											disabled={!peer.reachable}
+										>
+											{peer.reachable
+												? deviceLabel(peer)
+												: `${deviceLabel(peer)} — unreachable${
+														peer.unreachable_reason
+															? `: ${peer.unreachable_reason}`
+															: ""
+													}`}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</PickerField>
+					)}
+					<PickerField
+						label="Working directory"
+						/* The directory is resolved on the device that runs the session,
+						   so the hint names that device rather than always "this machine". */
+						hint={
+							chosen
+								? `Must exist on ${deviceLabel(chosen)}.`
+								: "Must exist on this machine."
+						}
+					>
+						<Input
+							value={cwd}
+							onChange={(event) => setCwd(event.target.value)}
+						/>
+					</PickerField>
+				</>
 			}
 			onSubmit={submit}
 			submitLabel="Create"
