@@ -27,6 +27,7 @@ import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { cn } from "@shared/lib/utils";
 import {
 	type CanonicalSessionRow,
+	setPeerCatalogueAdvertised,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -87,6 +88,15 @@ import {
 	visibleRows,
 } from "../chat-archived";
 import {
+	isRemoteRow,
+	localRows,
+	ownerLabel,
+	peerReachable,
+	peerReason,
+	peerSections,
+	peerTrailing,
+} from "../chat-peers";
+import {
 	type ArchiveView,
 	chatCountAnnouncement,
 	hitsAnswerQuery,
@@ -103,6 +113,7 @@ import {
 	unreadMarkKind,
 } from "../mark-all-read";
 import { newChatShortcutCap } from "../new-chat-shortcut";
+import { deviceLabel, usePeers } from "../peers-store";
 import { readAckCopy, readAckNoticeSentence } from "../read-ack-notice";
 import { catalogueGate } from "../sidebar-catalogue-gate";
 import {
@@ -110,6 +121,8 @@ import {
 	hideRegion,
 	resolveSidebarSplit,
 } from "../sidebar-split";
+import { MoveChatHere } from "./chat-peer-move";
+import { ChatRemoteMark } from "./chat-remote-mark";
 import { ChatRowTitle } from "./chat-row-title";
 
 /*
@@ -121,6 +134,8 @@ import { ChatRowTitle } from "./chat-row-title";
  * restore row names its region in words instead of pointing at a node that does
  * not exist yet.
  */
+/** A backend reason's own full stop, dropped so S7's sentence does not end in `..`. */
+const TRAILING_PERIOD = /\.$/;
 const ENTITY_REGION_ID = "chat-sidebar-entities";
 const CHAT_REGION_ID = "chat-sidebar-chats";
 
@@ -823,6 +838,30 @@ export function ChatSidebar({
 	 * advertise nothing.
 	 */
 	const pinsEnabled = desktopFeatureEnabled(capabilities.data, "session_pins");
+	/*
+	 * THE MESH GATE, read once and passed to every peer decision below as a
+	 * parameter (`chat-peers.ts`): with `features.peers` absent the partition
+	 * functions are the identity, the peer query is never issued, and no peer
+	 * section, mark or group is mounted - the sidebar a user without a network
+	 * has always had. `chat-sidebar-peers.test.mjs` pins that DOM identity.
+	 */
+	const peersEnabled = desktopFeatureEnabled(capabilities.data, "peers");
+	const transferEnabled =
+		peersEnabled &&
+		desktopFeatureEnabled(capabilities.data, "session_transfer");
+	// Tells the store's list read to ask for peer rows; see the setter for why
+	// this is module state rather than an argument on eight callers.
+	setPeerCatalogueAdvertised(peersEnabled);
+	const peerQuery = usePeers(peersEnabled);
+	const peerList = peersEnabled ? (peerQuery.data?.peers ?? []) : [];
+	const peerById = useMemo(
+		() => new Map(peerList.map((peer) => [peer.device_id, peer])),
+		[peerList],
+	);
+	const transfers = useCanonicalSessionsStore((s) => s.transfers);
+	const meshNotice = useCanonicalSessionsStore((s) => s.meshNotice);
+	const clearMeshNotice = useCanonicalSessionsStore((s) => s.clearMeshNotice);
+	const transferSession = useCanonicalSessionsStore((s) => s.transferSession);
 	const pinFailure = useCanonicalSessionsStore((s) => s.pinFailure);
 	/*
 	 * The client's own pin state for conversations this panel's page does not carry
@@ -1588,7 +1627,12 @@ export function ChatSidebar({
 	 * whether or not there are hits — so what the notice describes is what the
 	 * user is still getting, not a replacement for it.
 	 */
-	const search = useChatSearch(query, ready && searchSupported, widened);
+	const search = useChatSearch(
+		query,
+		ready && searchSupported,
+		widened,
+		peersEnabled,
+	);
 	const overLong = search.refused;
 	/*
 	 * The rows the LISTS may draw, which is the page minus the archived ones unless
@@ -1692,7 +1736,16 @@ export function ChatSidebar({
 	 * badge, which is `children().length`.
 	 */
 	const pinned = pinnedRows(matching, pinsEnabled);
-	const rest = unpinnedRows(matching, pinsEnabled);
+	/*
+	 * `Active`/`Previous` draw THIS device's rows only; a peer's rows are drawn in
+	 * that peer's section below `Previous chats` (`mesh-ui.md` §2.4). With the gate
+	 * off `localRows` returns its input, so `rest` is the array it always was. The
+	 * flat `All chats` list keeps every row (`restAll`), where the remote mark is
+	 * the only annotation.
+	 */
+	const restAll = unpinnedRows(matching, pinsEnabled);
+	const rest = localRows(restAll, peersEnabled);
+	const peerGroups = peerSections(restAll, peerList, peersEnabled);
 	const draft = activeDraftKey ? drafts[activeDraftKey] : undefined;
 	const bindingName = (row: CanonicalSessionRow) =>
 		row.binding?.team || row.binding?.agent || "";
@@ -1849,6 +1902,8 @@ export function ChatSidebar({
 			binding: bindingName(row),
 		});
 		const pinned = row.pinned === true;
+		/** Where this row is being moved to right now, or undefined (S6). */
+		const moving = peersEnabled ? transfers[row.session_id] : undefined;
 		/** The row's own name, used by the archive control's accessible name and tooltip
 		 * and by the marker's `sr-only` sentence: one string, so the two channels cannot
 		 * name the same row differently. */
@@ -1969,6 +2024,27 @@ export function ChatSidebar({
 					 */}
 					{readAck ? ` · ${readAck.clause}` : ""}
 				</span>
+				{/*
+				 * WHERE the conversation lives, as the design's tooltip clause spells it
+				 * (`mesh-ui.md` §1.6): `on <label>`, or `on <label> — unreachable: <reason>`
+				 * with the reason in the BACKEND's words. A move in flight says so here
+				 * too, because the dimmed row alone does not say where it is going.
+				 */}
+				{peersEnabled && (isRemoteRow(row) || moving !== undefined) && (
+					<span className="block">
+						{moving !== undefined
+							? moving === "local"
+								? "Moving to this device…"
+								: `Moving to ${ownerLabel({ owner_device: moving }, peerById)}…`
+							: peerReachable(row, peerById)
+								? `on ${ownerLabel(row, peerById)}`
+								: `on ${ownerLabel(row, peerById)} — unreachable${
+										peerReason(row, peerById)
+											? `: ${peerReason(row, peerById)}`
+											: ""
+									}`}
+					</span>
+				)}
 			</>
 		);
 		const rowButton = (
@@ -1996,6 +2072,13 @@ export function ChatSidebar({
 				 * and hoping the difference is the row.
 				 */
 				data-session-archived={archived ? "true" : undefined}
+				/*
+				 * S6, a move in flight (`mesh-ui.md` §2.5): the row stays IN PLACE and says
+				 * it is busy. Both attributes are absent on every other row, so a row that
+				 * is not moving carries exactly the attributes it always did.
+				 */
+				aria-busy={moving !== undefined ? true : undefined}
+				data-session-moving={moving !== undefined ? "true" : undefined}
 				className={cn(
 					rowStyle,
 					// `w-full` became `min-w-0 grow` when the wrapper arrived: the button shares
@@ -2004,6 +2087,10 @@ export function ChatSidebar({
 					"min-w-0 grow text-left",
 					nested && "pl-7",
 					current && rowCurrent,
+					// The dim is an INK step, not the design sketch's `opacity-60`: branding
+					// § 6 forbids opacity as a state signal (it composites below the 4.5:1
+					// floor on four palettes), and `ink-dim` is the app's "not live" role.
+					moving !== undefined && "text-ink-dim",
 					// m4: the unread mark is NOT here. `font-semibold` on this
 					// `flex-1 truncate` title rewrote the visible string when the
 					// mark arrived, re-truncating text under the reader's cursor;
@@ -2082,6 +2169,18 @@ export function ChatSidebar({
 					onSelectConversation(row.session_id);
 				}}
 			>
+				{/*
+				 * THE LOCALITY MARK, first child and on REMOTE rows only. A local row
+				 * renders nothing here - not an empty slot - so its geometry is the one it
+				 * had before the mesh existed; `chat-remote-mark.tsx` states the 179 px
+				 * title budget this protects.
+				 */}
+				{peersEnabled && isRemoteRow(row) && (
+					<ChatRemoteMark
+						owner={ownerLabel(row, peerById)}
+						reachable={peerReachable(row, peerById)}
+					/>
+				)}
 				<ChatSessionStatus row={row} />
 				{/*
 				 * THE ARCHIVED MARKER, and where it sits is the decision this file owes an
@@ -3611,6 +3710,72 @@ export function ChatSidebar({
 							</>
 						)}
 					</section>
+					{/*
+					 * THE `Peers` GROUP (`mesh-ui.md` §2.4): the devices themselves, beside
+					 * `Agents` and `Teams`. Why a list at all when the chats' sections already
+					 * name peers: a peer with no cached conversations would otherwise be
+					 * invisible, and an unreachable peer is exactly what the user wants to
+					 * see. Mounted ONLY when at least one peer exists and the gate is on -
+					 * an empty group would advertise a mesh the user does not have.
+					 * Collapsed by default.
+					 */}
+					{peerList.length > 0 && (
+						<section data-peers-group>
+							{heading("peers", "Peers", false, peerList.length)}
+							{(query || isOpen("peers", false)) &&
+								peerList.map((peer) => (
+									<div
+										key={peer.device_id}
+										data-peer-row={peer.device_id}
+										className={cn(rowStyle, "w-full")}
+									>
+										{/* The same glyph and the same ink rule as the row mark, so
+										    the group and the rows agree in every state (S4). */}
+										<ChatRemoteMark
+											owner={deviceLabel(peer)}
+											reachable={peer.reachable}
+										/>
+										<span className="min-w-0 flex-1 truncate">
+											{deviceLabel(peer)}
+										</span>
+										{/* This slot is the row's OWN - nothing else claims it -
+										    so the one statement can carry the state. Warning ink
+										    for unreachable is the design's; the words carry it
+										    too, so the colour is never the only channel.
+										    CAPPED AND TRUNCATING, because both halves of this row
+										    want width and only one may win: measured on the S4
+										    frame, an uncapped `unreachable · last seen 9d ago`
+										    left the device's own name as `studio…`, and a row
+										    that cannot say which device it is has lost more
+										    than a row that cuts its own last-seen off. The
+										    whole sentence is the `title`, so the truncated
+										    half is still reachable. */}
+										<span
+											title={peerTrailing(peer, Date.now() / 1000)}
+											className={cn(
+												"max-w-[55%] shrink-0 truncate text-right text-meta tabular-nums",
+												peer.reachable ? "text-ink-dim" : "text-warning",
+											)}
+										>
+											{peerTrailing(peer, Date.now() / 1000)}
+										</span>
+										{transferEnabled && peer.reachable && (
+											<MoveChatHere
+												peerLabel={deviceLabel(peer)}
+												rows={rest}
+												onMove={(row) =>
+													void transferSession(
+														row.session_id,
+														peer.device_id,
+														row.title || "Untitled chat",
+													)
+												}
+											/>
+										)}
+									</div>
+								))}
+						</section>
+					)}
 				</div>
 			)}
 		</div>
@@ -4455,7 +4620,10 @@ export function ChatSidebar({
 				</section>
 			)}
 			{all ? (
-				<section>{rest.map((row) => sessionRow(row))}</section>
+				/* The FLAT list keeps every row, a peer's included: it has no peer
+				   headings, so the remote mark is the only thing saying where a row
+				   lives (`mesh-ui.md` §2.3). `restAll` is `rest` with the gate off. */
+				<section>{restAll.map((row) => sessionRow(row))}</section>
 			) : (
 				<>
 					<section>
@@ -4497,7 +4665,7 @@ export function ChatSidebar({
 							 * the panel itself contradicts. The rows are `rest`'s, so the
 							 * section still holds none of the pinned ones.
 							 */
-							(matching.some((row) => row.active) ? (
+							(localRows(matching, peersEnabled).some((row) => row.active) ? (
 								rest.filter((row) => row.active).map((row) => sessionRow(row))
 							) : (
 								<p className="px-2 text-meta text-ink-dim">
@@ -4517,6 +4685,54 @@ export function ChatSidebar({
 						{(query || isOpen("previous")) &&
 							rest.filter((row) => !row.active).map((row) => sessionRow(row))}
 					</section>
+					{/*
+					 * ONE SECTION PER PEER, after `Previous chats` (`mesh-ui.md` §2.4), built
+					 * from the existing `heading()` primitive so a peer costs no new widget
+					 * and no new width. Keyed by DEVICE ID; the label is the name. Collapsed
+					 * by default like `Previous chats`. A peer with no rows still has its
+					 * section - its count is the only place the list can say it is quiet -
+					 * but not while a query is narrowing the list, where an empty section is
+					 * noise under a search that did not ask about it.
+					 *
+					 * `peerGroups` is `[]` with the gate off, so this renders nothing and the
+					 * list is exactly the one it was.
+					 */}
+					{peerGroups
+						.filter((group) => !query.trim() || group.rows.length > 0)
+						.map((group) => {
+							const key = `peer:${group.deviceId}`;
+							const reason = group.reachable
+								? ""
+								: (peerById.get(group.deviceId)?.unreachable_reason ?? "") ||
+									(group.rows[0]?.unreachable_reason ?? "");
+							const title = heading(
+								key,
+								group.heading,
+								false,
+								group.rows.length,
+							);
+							return (
+								<section key={key} data-peer-section={group.deviceId}>
+									{/* The reason is the heading's TOOLTIP, never its label: a
+									    sentence inside a truncating 240 px heading is cut to a
+									    word, and the suffix already says the state. */}
+									{reason ? (
+										<Tooltip content={reason} side="right" align="start">
+											{title}
+										</Tooltip>
+									) : (
+										title
+									)}
+									{/* S6's announcement: the count changes when a move lands, and a
+									    screen reader hears it without the heading being focused. */}
+									<p aria-live="polite" className="sr-only">
+										{`${group.rows.length} ${group.rows.length === 1 ? "chat" : "chats"} on ${group.label}`}
+									</p>
+									{(query || isOpen(key)) &&
+										group.rows.map((row) => sessionRow(row))}
+								</section>
+							);
+						})}
 				</>
 			)}
 			{/* A COLD-START sentence, not an empty-list one: it says the store
@@ -5092,6 +5308,33 @@ export function ChatSidebar({
 		    describes the same narrowing for a different cause and offers a remedy
 		    (update the app) that cannot help THIS box — shorten the query and that
 		    notice returns for the reason it was written for. */}
+				{/*
+				 * S5 and S7 (`mesh-ui.md` §2.5): a peer refused a create, or a move
+				 * failed. `role="alert"` because the user just asked for something and it
+				 * did not happen; the rows are unchanged, and the sentence says so. The
+				 * reason is the BACKEND's words verbatim - the relay glosses its own
+				 * protocol tokens, and a paraphrase here would be a second vocabulary.
+				 */}
+				{peersEnabled && meshNotice && (
+					<div
+						role="alert"
+						data-mesh-notice={meshNotice.kind}
+						className="flex items-start gap-2 pb-2 text-meta text-warning"
+					>
+						<p className="min-w-0 flex-1">
+							{meshNotice.kind === "refused"
+								? `${ownerLabel({ owner_device: meshNotice.peer }, peerById)} refused: ${meshNotice.reason}`
+								: `Could not move “${meshNotice.title}”: ${meshNotice.reason.replace(TRAILING_PERIOD, "")}. Nothing changed.`}
+						</p>
+						<button
+							type="button"
+							className="shrink-0 underline"
+							onClick={clearMeshNotice}
+						>
+							Dismiss
+						</button>
+					</div>
+				)}
 				{overLong && ready && (
 					<p className="pb-2 text-meta text-ink-muted">
 						Search terms are limited to {SESSION_SEARCH_MAX_CHARS} characters.
