@@ -217,30 +217,41 @@ A change that wires the query differently could repaint every state above it, so
 the states whose SEQUENCES this change moves were re-captured in both palettes
 and compared against the committed bytes:
 
-- **Re-taken, and changed:** `after-live-listing-failed` — the note's copy
-  (R2-1) and its line break (D6). The BEFORE half is the committed frame at this
-  branch's previous head, still readable at
-  `https://github.com/damianvtran/local-operator-ui/raw/ffccfe5ab/docs/evidence/chat-model-picker/after-live-listing-failed/localOperatorDark.webp`
-  (and `...Light.webp` beside it); the AFTER half is the file here. Both are the
-  same state — the picker open with `opus` typed, the live listing failed, ONE
-  registry row drawn from the search `anthropic/claude-opus-5` (the play asserts
-  exactly one `option` row and that it names Claude Opus 5), with the read counts
-  of *The request counts these frames carry* above: the registry paint plus the
-  live read, and the live read one is the one that failed — and the only
-  difference in them is the sentence and where it breaks: before, `…the shipped models; Refresh from / providers tries
-  again.` across two lines with the control's own label split between them;
-  after, `…the shipped models; / Refresh from providers tries again.` with the
-  phrase whole.
-- **Re-taken, byte-identical:** `after-registry-only-opus`,
-  `after-registry-only-opus-narrow`, `refresh-pending`, and
-  `after-provider-listing-opus` **relative to the round-1 tree** — see the
-  measurement below.
+- **Re-captured at this head and NOT committed: `after-live-listing-failed`** —
+  the state the note's copy (R2-1) and its line break (D6) belong to. The file
+  here is the PREVIOUS head's bytes, byte-identical across `ffccfe5ab..2cbea5ef8`
+  (`16302ddab867ef7b900f98a43424970234f09e39` dark,
+  `a485ded4abacd9ea0e014c6b67f9fc6c4b2ec144` light), because four re-captures
+  taken for this round landed in the automatic pass's in-flight window
+  (`Checking…`, no note) rather than on the settled failure — byte-identical to
+  each other, and reproduced by the same capture from the ROUND-1 tree in the same
+  Storybook instance, which is what makes the cause the environment the rig runs
+  in rather than this diff. The settled state IS reachable at this head (the
+  story's own play asserts it, and a browser read of the story shows it), and the
+  play now waits for the retry to settle before the sweep may shoot it, so **a
+  future sweep should re-take this frame**. What the committed bytes show is
+  therefore the PRE-fix sentence: `…the shipped models; Refresh from / providers
+  tries again.` across two lines with the control's own label split between them.
+  The POST-fix copy — `…the shipped models; / Refresh from providers tries
+  again.`, the phrase whole — is the second half of the pair attached to the PR.
+  Both are the same state and the same rows: the picker open with `opus` typed,
+  ONE registry row drawn from the search `anthropic/claude-opus-5` (the play
+  asserts exactly one `option` row and that it names Claude Opus 5), with the read
+  counts of *The request counts these frames carry* above.
+- **Re-taken and CHANGED, relative to the round-1 tree:**
+  `after-provider-listing-opus` — its bytes at this head differ from the committed
+  ones, and that difference is not this branch's: captured from the round-1 tree
+  in the same Storybook instance it is byte-identical to this head's frame, while
+  both differ from the committed bytes by 1159 pixels of the toolbar row's
+  rasterisation. See the measurement below.
+- **Re-taken, byte-identical to the round-1 tree:** `after-registry-only-opus`,
+  `after-registry-only-opus-narrow`, `refresh-pending`.
 - **Not re-taken:** the earlier states, whose sequences this change does not
   reach — `populated`, `keyboard-highlight`, `busy`, `result`, `persist-checked`,
   `hovered`, `narrow`, `empty`, `loading`, and the set-default and effort
   states. Their frames are the committed bytes.
 
-The measurement behind the middle line, because it is the kind of claim that
+The measurement behind the changed bullet, because it is the kind of claim that
 otherwise reads as a re-run rather than an A/B: `after-provider-listing-opus`
 re-captured from THIS tree differs from the committed bytes by 1159 pixels
 (`magick compare -metric AE`) — a 1px text-rasterization shift across the

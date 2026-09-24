@@ -383,15 +383,28 @@ export function pickerBodyKind(state: {
  * screen saying so (UX U2).
  *
  * `retargeted` IS TRI-STATE, and the third state is why the round-2 fix works:
- * a NAME sets it, `null` CLEARS it (the one case that should — the user's own
- * typing, which re-places the list and leaves nothing to explain), and
- * `undefined` means THIS PASS HAS NOTHING TO SAY and the caller must leave
- * whatever is set alone. The pass that loses the row sets the name; the pass
- * that re-places the highlight on the survivor runs one render later, sees the
- * survivor in place, and has to say nothing — a two-state `string | null` made
- * it clear the sentence it had just set, which is how a correct rule shipped a
- * message no user ever saw (measured: 137 samples across the vanish, never once
- * on screen).
+ * a sentence sets it, `null` CLEARS it, and `undefined` means THIS PASS HAS
+ * NOTHING TO SAY and the caller must leave whatever is set alone. The pass that
+ * loses the row sets the sentence; the pass that re-places the highlight on the
+ * survivor runs one render later, sees the survivor in place, and has to say
+ * nothing — a two-state `string | null` made it clear the sentence it had just
+ * set, which is how a correct rule shipped a message no user ever saw (measured:
+ * 137 samples across the vanish, never once on screen).
+ *
+ * AND THE SENTENCE IS RETIRED BY THE SAME RULE, in the two ways it can stop
+ * being true (UX U7, review round 3's clearing minors). It carries the row it is
+ * ABOUT (`lost`), not only the words: a sentence of the form "the row you were
+ * on is gone" is false the moment that row is listed again, which is exactly
+ * what the recovery control produces — measured: the provider listing answers
+ * 191ms after the press, the row is back on screen, and the sentence was still
+ * up because nothing about that press ran through this rule. And the user's own
+ * typing retires it too, INCLUDING when the row it would keep survives the
+ * filter: the held row staying put is the highlight's business, and the sentence
+ * is a separate claim about a row that is no longer missing.
+ *
+ * Both retirements live here rather than in an effect or a handler, because the
+ * rule is the one place that sees the list, the query's change and the sentence
+ * together; a second mechanism beside it is how the first one goes stale.
  */
 export function pickerPlacement(state: {
 	options: PickerOption[];
@@ -404,29 +417,58 @@ export function pickerPlacement(state: {
 	queryChanged: boolean;
 	/** The highlight is the user's (they moved it, or clicked a row). */
 	steered: boolean;
+	/** The sentence on screen and the row it is about; `null` when there is none. */
+	retarget?: { lost: string; label: string } | null;
 }): {
 	index: number;
 	held: string | null;
-	/** A row to name, `null` to clear it, `undefined` to leave it alone. */
-	retargeted: string | null | undefined;
+	/** A sentence to show, `null` to clear it, `undefined` to leave it alone. */
+	retargeted: { lost: string; label: string } | null | undefined;
 	steered: boolean;
 } {
 	const { options, held, active, query, queryChanged, steered } = state;
+	const retarget = state.retarget ?? null;
 	if (options.length === 0) {
 		return { index: 0, held: null, retargeted: null, steered: false };
 	}
 	const heldIndex =
 		held === null ? -1 : options.findIndex((option) => option.value === held);
-	if (heldIndex >= 0) {
-		// The row survived the change: the highlight moved, the SELECTION did not,
-		// and anything already said about a lost row stays until the user acts.
-		return { index: heldIndex, held, retargeted: undefined, steered };
-	}
 	const clamped = Math.max(0, Math.min(active, options.length - 1));
 	const currentIndex = query
 		? -1
 		: options.findIndex((option) => option.current);
 	const index = currentIndex >= 0 ? currentIndex : clamped;
+	if (
+		retarget !== null &&
+		options.some((option) => option.value === retarget.lost)
+	) {
+		/*
+		 * THE ROW THE SENTENCE IS ABOUT IS LISTED AGAIN, so the sentence is no
+		 * longer true and goes - in the same pass, wherever the highlight is. The
+		 * highlight itself is NOT moved back to it: the user has seen the landing
+		 * named and been told what Enter sends, and hopping their selection a
+		 * second time, on a press they made to fix the LISTING rather than the
+		 * selection, is the unbidden movement U1 exists to prevent.
+		 */
+		return {
+			index: heldIndex >= 0 ? heldIndex : index,
+			held: heldIndex >= 0 ? held : (options[index]?.value ?? null),
+			retargeted: null,
+			steered,
+		};
+	}
+	if (heldIndex >= 0) {
+		// The row survived the change: the highlight moved, the SELECTION did not.
+		// The sentence still goes if the user is the one who typed - the held row
+		// staying put is the highlight's business, and "the row you were on is
+		// gone" is a claim about a row that is missing (review round 3, MINOR).
+		return {
+			index: heldIndex,
+			held,
+			retargeted: queryChanged ? null : undefined,
+			steered,
+		};
+	}
 	const landed = options[index];
 	if (queryChanged) {
 		// The user asked for a narrower set: this is the dialog's own placement,
@@ -441,7 +483,10 @@ export function pickerPlacement(state: {
 	return {
 		index,
 		held: landed?.value ?? null,
-		retargeted: steered ? (landed?.label ?? null) : undefined,
+		retargeted:
+			steered && held !== null && landed !== undefined
+				? { lost: held, label: landed.label }
+				: undefined,
 		steered,
 	};
 }
@@ -748,7 +793,10 @@ export const PickerHost: FC<PickerHostProps> = ({
 	const activeValueRef = useRef<string | null>(null);
 	const steeredRef = useRef(false);
 	const placedQueryRef = useRef<string | null>(null);
-	const [retargeted, setRetargeted] = useState<string | null>(null);
+	const [retargeted, setRetargeted] = useState<{
+		lost: string;
+		label: string;
+	} | null>(null);
 	// The pointer's position and the picked row's mark, one reducer (see
 	// `pickerListReducer`): both are the LIST's interaction state, they expire on
 	// different edges, and keeping them together is what makes "the pointer left"
@@ -968,16 +1016,21 @@ export const PickerHost: FC<PickerHostProps> = ({
 			query,
 			queryChanged,
 			steered: steeredRef.current,
+			// The sentence already on screen, so the rule can retire it the moment
+			// the row it is about is listed again (UX U7).
+			retarget: retargeted,
 		});
 		activeValueRef.current = placed.held;
 		steeredRef.current = placed.steered;
 		setActive(placed.index);
-		// `undefined` means this pass has nothing to say about it: the retarget set
-		// by the pass that LOST the row must survive the pass that re-placed the
+		// `undefined` means this pass has nothing to say about the sentence: the one
+		// set by the pass that LOST the row must survive the pass that re-placed the
 		// highlight, which is this component's own next render - a fix that cleared
-		// it there measured 137 samples of the sentence never once on screen.
+		// it there measured 137 samples of the sentence never once on screen. A pass
+		// that DOES have something to say returns the sentence, or `null` to retire
+		// it (the lost row listed again, or the user's own typing).
 		if (placed.retargeted !== undefined) setRetargeted(placed.retargeted);
-	}, [ordered, query, active]);
+	}, [ordered, query, active, retargeted]);
 	/*
 	 * A query change scrolls the list back to its top (UX U6).
 	 *
@@ -1427,7 +1480,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 									rowCount: filtered.length,
 									activeLabel,
 									busyText,
-									retargetedLabel: retargeted,
+									retargetedLabel: retargeted?.label ?? null,
 								})}
 							</span>
 						) : (
@@ -1437,7 +1490,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 								rowCount: filtered.length,
 								activeLabel,
 								busyText,
-								retargetedLabel: retargeted,
+								retargetedLabel: retargeted?.label ?? null,
 							})
 						)}
 					</span>

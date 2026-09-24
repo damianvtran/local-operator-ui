@@ -4987,12 +4987,18 @@ export const storyDrew = (counted) => counted - 2 >= 7;
  *
  * `Uncaught ` is optional because a thrown Error the page reports itself arrives
  * with that prefix, and the pattern is anchored at the line's start (review
- * round 2, NIT 2). The residue the anchor cannot reach is a phase that throws a
- * NON-Error - `throw "boom"`, a thrown object - which the console renders as a
- * value with no `<Something>Error:` line at all. That is inherent to reading
- * console text rather than to this pattern, and it is recorded here so it is not
- * re-found as a new defect: the class the widening targeted (every `Error`
- * subclass) is closed.
+ * round 2, NIT 2). TWO RESIDUES, named so neither is re-found as a new defect
+ * (round 3's NIT):
+ *
+ *   - a phase that throws a NON-Error - `throw "boom"`, a thrown object, and
+ *     equally the `Uncaught (in promise) TypeError: ...` spelling - which the
+ *     console renders without a line beginning `<Something>Error:` at all. That
+ *     is inherent to reading console TEXT rather than to this pattern, and the
+ *     under-match is bounded rather than open: an unhandled rejection is
+ *     reported through `Runtime.exceptionThrown`, and this sweep reads
+ *     `Runtime.consoleAPICalled` only, so those forms do not reach the guard;
+ *   - a page that logs an error-shaped line while its story is fine. The
+ *     over-match is deliberate and cheap: a run to look at, not a frame to keep.
  */
 export const PLAY_FAILURE =
 	/^(?:Uncaught )?\w*Error:|Unable to perform pointer interaction/;
