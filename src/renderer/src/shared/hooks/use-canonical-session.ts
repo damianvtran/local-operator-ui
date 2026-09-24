@@ -55,7 +55,7 @@ import {
 	removeRecord,
 	seedCallStarts,
 	seedCallsMissingLabels,
-	seedVerdictCalls,
+	seedWaitingComposes,
 } from "@features/chat/canonical/transcript-reducer";
 import { tailCarriesOutcome } from "@features/chat/components/compact-receipt";
 import { modelSelector } from "@features/chat/session-status/session-model";
@@ -556,10 +556,10 @@ type LabelWalk = {
 	 */
 	starts: ReadonlyMap<string, number>;
 	/**
-	 * The targets whose own frame says they never ran (`seedVerdictCalls`): the only
-	 * startless calls that may refuse the floor (round 4, R11).
+	 * The targets still waiting at a gate (`seedWaitingComposes`): the only startless
+	 * calls whose missing instant does NOT refuse the floor (round 6, R16).
 	 */
-	verdicts: ReadonlySet<string>;
+	waiting: ReadonlySet<string>;
 };
 
 /** A reconcile that is not a label read: connect to the painted rows, nothing more. */
@@ -570,7 +570,7 @@ const NO_LABEL_WALK: LabelWalk = {
 	found: new Set(),
 	pending: [],
 	starts: new Map(),
-	verdicts: new Set(),
+	waiting: new Set(),
 };
 
 /**
@@ -662,11 +662,11 @@ type LabelGapState = {
 	 */
 	starts: Map<string, number>;
 	/**
-	 * The calls whose own frame states they will never run (`seedVerdictCalls`):
-	 * the only startless calls whose missing instant may refuse the floor, and so
-	 * held per conversation like the instants themselves.
+	 * The startless calls that are still WAITING at a gate (`seedWaitingComposes`):
+	 * the one kind whose missing instant may NOT refuse the floor, and so held per
+	 * conversation like the instants themselves.
 	 */
-	verdicts: Set<string>;
+	waiting: Set<string>;
 };
 
 const LABEL_GAP_SESSIONS_MAX = 8;
@@ -692,12 +692,12 @@ const LABEL_GAP_MAX_PAINTED = 2_048;
 const LABEL_GAP_MAX_STARTS = 1_024;
 
 /**
- * How many never-ran calls one conversation remembers.
+ * How many waiting calls one conversation remembers.
  *
  * Same order of magnitude as the instants it accompanies, and bounded like them
- * because a long conversation keeps announcing calls it never ran.
+ * because a long turn keeps announcing calls it has dispatched and not started.
  */
-const LABEL_GAP_MAX_VERDICTS = 1_024;
+const LABEL_GAP_MAX_WAITING = 1_024;
 
 /**
  * The key an absent session id gets.
@@ -732,7 +732,7 @@ function labelGapFor(sessionId: string | undefined): LabelGapState {
 		depth: 0,
 		order: [],
 		starts: new Map(),
-		verdicts: new Set(),
+		waiting: new Set(),
 	};
 	labelGaps.set(key, fresh);
 	while (labelGaps.size > LABEL_GAP_SESSIONS_MAX) {
@@ -1679,10 +1679,12 @@ export function useCanonicalSessionStream(
 						behindTargets,
 						labels.starts,
 						behindOrphanInstants(),
-						// Only a never-ran call may refuse the floor: it may have a durable
-						// row to find, where a call still waiting at a gate cannot have one.
+						// Every startless call may refuse the floor but one still waiting at a
+						// gate: it cannot have a durable row yet, so no page can label it and
+						// the floor has nothing to protect (round 6, R16). These are the
+						// EXEMPT ones, which is why the filter keeps the waiting set.
 						new Set(
-							behindTargets.filter((callId) => labels.verdicts.has(callId)),
+							behindTargets.filter((callId) => labels.waiting.has(callId)),
 						),
 					);
 					if (floored || reachedTurnStart) return false;
@@ -1857,12 +1859,12 @@ export function useCanonicalSessionStream(
 					if (oldest === undefined) break;
 					labelGapRef.current.starts.delete(oldest);
 				}
-				for (const callId of seedVerdictCalls(seedEvents))
-					labelGapRef.current.verdicts.add(callId);
-				while (labelGapRef.current.verdicts.size > LABEL_GAP_MAX_VERDICTS) {
-					const oldest = labelGapRef.current.verdicts.values().next().value;
+				for (const callId of seedWaitingComposes(seedEvents))
+					labelGapRef.current.waiting.add(callId);
+				while (labelGapRef.current.waiting.size > LABEL_GAP_MAX_WAITING) {
+					const oldest = labelGapRef.current.waiting.values().next().value;
 					if (oldest === undefined) break;
-					labelGapRef.current.verdicts.delete(oldest);
+					labelGapRef.current.waiting.delete(oldest);
 				}
 			}
 			/*
@@ -2253,7 +2255,7 @@ export function useCanonicalSessionStream(
 								targets,
 								order,
 								starts: labelGapRef.current.starts,
-								verdicts: labelGapRef.current.verdicts,
+								waiting: labelGapRef.current.waiting,
 								every: new Set([...order, ...targets]),
 								found: new Set(
 									pageLabels(

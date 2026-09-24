@@ -3354,30 +3354,38 @@ export function seedCallStarts(
 }
 
 /**
- * The calls whose frame STATES that they will never run: a compose with a reason.
+ * The calls whose frame says they are still WAITING: a compose with no reason.
  *
- * The startless calls split in two, and the split is what round 4's R11 added. A
- * `tool_call_compose` carrying a `not_run_reason` is a verdict — the call is over,
- * so a durable row naming it may already be in the journal and a page could still
- * label it. One carrying only `dictation_complete` is a call still waiting at a
- * gate: the backend keeps it in the seed until its `tool_execution_start` replaces
- * it, and its assistant row is written when the round closes, so NO page can name
- * it yet. Only the first kind is worth refusing the floor for (`pagePassedOldestStart`).
+ * The ONE startless kind that does not refuse the floor, and the exception is the
+ * whole point (round 6, R16). A `tool_call_compose` with no `not_run_reason` is a
+ * call still at a gate: the backend keeps it in the seed until its own
+ * `tool_execution_start` replaces it, its assistant row is written when the round
+ * closes, so NO page can name it yet — refusing the floor for it buys pages that
+ * cannot end the walk (round 4's R11 measured 1 read of 325 rows becoming 2 of 429,
+ * and 1 of 331 becoming 3 of 500 on the row cap).
+ *
+ * Every OTHER startless call does refuse the floor, which is what R16 corrected:
+ * round 5's rule let only a compose that STATES a verdict block it, so a settled
+ * `tool_execution_end` carrying no clock — what a producer older than v0.57.0
+ * sends, or a viewer that joined after the call started sees — was skipped. That
+ * call DID run and a page can label it, and leaving the floor on cost it its label
+ * (measured: 2 reads and the output stand-in where the round-5 head made 3 and
+ * labelled it).
  */
-export function seedVerdictCalls(
+export function seedWaitingComposes(
 	liveEvents: readonly Record<string, unknown>[] | null | undefined,
 ): Set<string> {
-	const verdicts = new Set<string>();
+	const waiting = new Set<string>();
 	for (const event of liveEvents ?? []) {
 		if (!event) continue;
 		const frame = event as LiveEvent;
 		if (frame.type !== "tool_call_compose") continue;
 		const reason = frame.not_run_reason;
-		if (typeof reason !== "string" || reason.trim().length === 0) continue;
+		if (typeof reason === "string" && reason.trim().length > 0) continue;
 		const callId = String(frame.tool_call_id ?? "");
-		if (callId) verdicts.add(callId);
+		if (callId) waiting.add(callId);
 	}
-	return verdicts;
+	return waiting;
 }
 
 /**
@@ -3436,32 +3444,29 @@ export function pageOrphanResultInstants(
  * chasing, and `entries` is the page it just read, whose OLDEST row is what
  * answers.
  *
- * A TARGET WITH NO STATED INSTANT REFUSES THE FLOOR when the caller lists it in
- * `startlessVeto` (round 3, R6b). Skipping every startless target let a co-target's
- * instant set the floor alone and end the walk before it: a `tool_call_compose`
- * target is startless BY TYPE — the frame has no clock field — so a settled call
- * from the current round was enough to stop the walk while a not-run call from an
- * earlier one sat unlabelled behind it (measured: 1 read and unlabelled against
- * `f1ef98c4c`'s 3 reads and labelled).
+ * A TARGET WITH NO STATED INSTANT REFUSES THE FLOOR unless the caller names it in
+ * `startlessWaiting` as a call still waiting at a gate (`seedWaitingComposes`). Skipping EVERY
+ * startless target let a co-target's instant set the floor alone and end the walk
+ * before it: a `tool_call_compose` target is startless BY TYPE — the frame has no
+ * clock field — so a settled call from the current round was enough to stop the
+ * walk while a not-run call from an earlier one sat unlabelled behind it (measured:
+ * 1 read and unlabelled against `f1ef98c4c`'s 3 reads and labelled).
  *
- * AND THE VETO IS NARROW, which is round 4's R11. It applies only to the calls the
- * caller names (`seedVerdictCalls`: a compose that STATES the call never ran, so a
- * durable row may exist to find), and the caller passes only the targets that are
- * BEHIND what has been read (`labelTargetsBehindIds`) — the same set the walk's own
- * goal is measured over. Firing it for every startless target instead turned the
- * floor off for a whole walk whenever the seed carried a call still waiting at a
- * gate, which is the ordinary state of a later call in a multi-call round: measured
- * on the round-4 head, a join that cost one read of 325 rows cost two of 429, and
- * one of 331 cost three of 500 on the row cap. Neither kind of startless call can
- * be labelled by a page while it is merely pending, so refusing the floor for one
- * only pays for pages that cannot end the walk.
+ * THE EXCEPTION IS ONE KIND, and R16 is why it is the exception rather than the
+ * rule: a compose still WAITING at a gate cannot be labelled by any page yet, so
+ * exempting it costs nothing, while every other startless call — a never-ran
+ * compose WITH a reason, a blocked call, a settled end frame whose producer states
+ * no clock — did run or did end, and a page may hold the row that labels it. The
+ * caller narrows further with the walk's own behind set (`labelTargetsBehindIds`),
+ * so a call of the round still running, newer than everything a page has named, is
+ * not a target the floor is asked about (round 4's R11).
  */
 export function pagePassedOldestStart(
 	entries: DesktopHistoryPage["entries"],
 	targets: Iterable<string>,
 	starts: ReadonlyMap<string, number>,
 	orphanInstants: ReadonlyMap<string, number> = new Map(),
-	startlessVeto: ReadonlySet<string> = new Set(),
+	startlessWaiting: ReadonlySet<string> = new Set(),
 ): boolean {
 	const oldestSeconds = entries[0]?.ts;
 	if (typeof oldestSeconds !== "number" || !Number.isFinite(oldestSeconds))
@@ -3470,10 +3475,10 @@ export function pagePassedOldestStart(
 	for (const callId of targets) {
 		const at = starts.get(callId);
 		if (at === undefined) {
-			// See the doc: a startless call refuses the floor only when a page could
-			// still label it, which is the caller's `startlessVeto` to say.
-			if (startlessVeto.has(callId)) return false;
-			continue;
+			// See the doc: every startless call refuses the floor but the kind the caller
+			// names as still waiting, because no page can label that kind yet.
+			if (startlessWaiting.has(callId)) continue;
+			return false;
 		}
 		if (floor === null || at < floor) floor = at;
 	}

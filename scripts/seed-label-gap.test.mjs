@@ -899,6 +899,20 @@ const pendingCompose = () => ({
 });
 
 /**
+ * A settled end whose producer states NO clock — what a backend older than v0.57.0
+ * sends, or what a viewer that joined after the call started sees. The call DID run,
+ * so a page may hold the assistant row that labels it (round 6, R16).
+ */
+const endFrameWithoutStart = (callId, output) => ({
+	type: "tool_execution_end",
+	tool_call_id: callId,
+	tool_name: "bash",
+	result: { content: [{ text: output }], details: null },
+	duration_s: 0.2,
+	is_error: false,
+});
+
+/**
  * The orphan on the edge of a 107-row page (the size `reconcileLimit(2)` asks for):
  * its result row is journal index 300 and its assistant row 299, outside the page.
  */
@@ -1580,4 +1594,46 @@ test("a lone unlabelable call stops at the page its orphan needs, not at the jou
 		),
 		"and that second page is what labels the orphan on the first page's edge",
 	);
+});
+
+test("a settled call whose end frame states no clock still refuses the floor", async () => {
+	/*
+	 * ROUND 6, R16. Round 5's rule let only a compose that STATES a verdict refuse the
+	 * floor, so a settled `tool_execution_end` carrying no `started_at_epoch` — an older
+	 * producer, or a viewer that joined after the call began — was skipped: the floor
+	 * stayed on, the walk stopped after two pages, and that row kept its output stand-in.
+	 * It did run, a page holds its assistant row, and the reviewer's swap of R6(b)'s
+	 * compose for one of these measured 3 pages and labelled on the round-5 head's
+	 * predecessor against 2 and unlabelled here.
+	 *
+	 * The rule is now the other way round: every startless target refuses the floor but
+	 * a compose still waiting at a gate, which no page can label anyway.
+	 */
+	const { durable, page, liveEvents } = moment("labels");
+	const at = Math.max(...liveEvents.map((event) => event.started_at_epoch));
+	const { handle } = await open({
+		page,
+		liveEvents: [
+			endFrameWithoutStart(EARLIER_TURN_CALL, "a settled call with no clock"),
+			endFrame(UNPRESENT, "no page names this", at),
+		],
+		durable,
+	});
+	const reads = historyReads();
+	assert.equal(reads.length, 3, `three pages (read ${reads.length})`);
+	assert.equal(
+		reads.reduce((total, read) => total + read.limit, 0),
+		324,
+		"107 + 110 + 107, the same walk R6(b)`s verdict compose costs",
+	);
+	const tools = handle().transcript.records.filter(
+		(record) => record.kind === "tool",
+	);
+	assert.ok(
+		tools.some(
+			(record) => record.toolCallId === EARLIER_TURN_CALL && record.args,
+		),
+		"and the earlier turn`s row is labelled rather than left with its output",
+	);
+	assert.equal(handle().labelPending.size, 0, "with the hold released");
 });
