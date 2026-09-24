@@ -273,6 +273,26 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		 * `{credential_id: 7, state: "login_required"}` still in the cache.
 		 */
 		void queryClient.invalidateQueries({ queryKey: radientSessionIssueKey });
+		/*
+		 * The CATALOGUE is dropped at the same moment, and that is the point of this
+		 * line rather than a tidy-up: the models a provider offers are a function of
+		 * the credential, so a listing fetched before a sign-in is exactly the one
+		 * that cannot hold whatever the account just unlocked — the operator's report
+		 * is a model released since lop's last build being absent from the picker
+		 * after a successful sign-in.
+		 *
+		 * The backend already drops its cached listing documents when a credential
+		 * changes (`providers/controller._invalidate_cached_listing`), so nothing has
+		 * to be re-listed here; what is missing without this line is the RENDERER
+		 * forgetting its own copy. `desktopKeys.catalogue` is the prefix both of the
+		 * picker's keys sit under, so one call drops the registry document and the
+		 * live one together — the next open re-reads both.
+		 *
+		 * This runs on every credential write this panel performs (the polling loop's
+		 * success and the API-key save), which is deliberate: each of them is the
+		 * same event as far as the catalogue is concerned.
+		 */
+		void queryClient.invalidateQueries({ queryKey: desktopKeys.catalogue });
 		onConnected?.();
 	}, [queryClient, onConnected]);
 
