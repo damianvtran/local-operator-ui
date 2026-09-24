@@ -1181,6 +1181,20 @@ const main = async () => {
 		 * it is the arm's subject - and without this the detector waits for a state this
 		 * arm has already changed.
 		 */
+		/*
+		 * FOR THE TWO ARMS THAT NEED IT AND NO OTHERS (design round 5, D13). Their
+		 * flights SUCCEED, so the rig's own settle detector - which reads the composer -
+		 * waits for an empty box that this phase has just filled. A clear on EVERY arm
+		 * rewrites the arms whose subject IS the box: re-capturing the committed deadline
+		 * arm at head produced a frame where the user's typed follow-up had disappeared,
+		 * which is the data loss this change exists to remove - evidence lying about the
+		 * product it measures.
+		 */
+		if (
+			arm.custom !== "press-during-flight-settles" &&
+			arm.custom !== "press-twice-no-stall"
+		)
+			return;
 		await evaluate(`(() => {
 				const area = document.querySelector('textarea[aria-label="Message"]');
 				const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
