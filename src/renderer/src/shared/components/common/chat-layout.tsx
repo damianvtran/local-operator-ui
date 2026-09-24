@@ -168,6 +168,12 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 			// A foreign overlay - a dialog, a menu, a listbox - owns its own keys.
 			if (!ownSheet && pressLandsOnOverlay(event.target)) return;
 			event.preventDefault();
+			/*
+			 * ONE SPELLING OF THE THRESHOLD, from the module that owns it: the strip's
+			 * own expand control reads the SAME constant (below), and two copies of
+			 * "the width at which the dock is free" is how a chord and a control start
+			 * disagreeing about what a narrow window is.
+			 */
 			if (viewportWidth >= SIDEBAR_DOCK_MIN_PX) toggleSidebar();
 			else setSheetRequested((open) => !open);
 		},
