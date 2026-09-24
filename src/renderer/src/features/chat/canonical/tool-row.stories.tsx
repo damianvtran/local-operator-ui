@@ -3112,6 +3112,21 @@ export const AggregateFortyCalls: Story = {
 		<Frame
 			height={900}
 			records={[
+				/*
+				 * THE TURN IS COMPLETE, and that is what makes the frame evidence for
+				 * D8 rather than only for the fold: the user's block opens it and the
+				 * answer closes it, so the FOOT LINE's `40 actions` is on the same
+				 * frame as the fold's own summary. The two disagreeing (a fold saying 7
+				 * while the foot said 8) was design round 1's D8, and forty calls is
+				 * where a fold that drops its first row hides the most.
+				 */
+				{
+					kind: "user",
+					id: "u1",
+					ts: TS,
+					text: "The row-identity test is flaky on CI. Work out why, and fix it.",
+					images: [],
+				},
 				...Array.from({ length: 40 }, (_, index) =>
 					tool({
 						id: `tool:forty-${index}`,
@@ -3133,6 +3148,16 @@ export const AggregateFortyCalls: Story = {
 						isError: index === 0,
 					}),
 				),
+				{
+					kind: "assistant",
+					id: "a1",
+					ts: TS + 60_000,
+					text: "Fixed: the row ids were minted per frame rather than per record, so a re-render re-keyed every row and the memo never held. The run ids are stable now and the suite has been green for twelve consecutive runs.",
+					streaming: false,
+					complete: true,
+					stopReason: null,
+					error: false,
+				},
 			]}
 		/>
 	),
