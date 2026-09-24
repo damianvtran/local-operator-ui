@@ -26,7 +26,6 @@ import {
 	CLEAR_LABEL,
 	RETRY_LABEL,
 	buildSendPayload,
-	pressLockCopy,
 } from "@shared/store/canonical-sessions-store";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
@@ -4680,23 +4679,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				void applyPlan(plan, newMessage, caret);
 				return;
 			}
-			/*
-			 * AND THE PRESS IS ANSWERED WHEN A FLIGHT IS ALREADY OPEN (review round 3,
-			 * U6). The composer is where the press lands, and it can see the flight
-			 * (`isLoading`), so the answer is given here rather than left to the store's
-			 * own refusal - which was silent, which is what the UX round measured: an
-			 * enabled Send control, three presses, and no line anywhere. The sentence is
-			 * the pane's own lock sentence, chosen by the same helper the pane uses, so
-			 * the two answers to one press cannot disagree.
-			 *
-			 * The press does NOT become a second send: the store refuses a pending row at
-			 * admission and the pane's lock covers the rest, so this only decides what the
-			 * user is told. It clears when the flight ends, because the fact does.
-			 */
-			if (isLoading) {
-				setLockedPress(true);
-				return;
-			}
 			submitMessage();
 		};
 
@@ -5064,34 +5046,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * there is a claim to drop (or a returned payload waiting to be adopted), and
 		 * it is that second half `hasSomethingToClear` reads.
 		 */
-		/*
-		 * A press that arrived while a flight was open, which is the composer's own
-		 * answer to (U6). Cleared when the flight ends rather than on a timer: the
-		 * sentence is true only while something is still on its way out.
-		 */
-		const [lockedPress, setLockedPress] = useState(false);
-		useEffect(() => {
-			if (!isLoading && lockedPress) setLockedPress(false);
-		}, [isLoading, lockedPress]);
 		const composerAlert = useMemo(() => {
 			const boxPayload = buildSendPayload(newMessage, replies);
 			const hasSomethingToClear = boxPayload !== "" || attachments.length > 0;
-			/*
-			 * THE PRESS THAT LANDED WHILE A FLIGHT WAS OPEN (review round 3, U6),
-			 * stated in the notice row the user is already reading, muted and with no
-			 * controls: nothing failed, the payload is untouched, and there is nothing
-			 * to press. It yields to a real failure's sentence - a failure is the
-			 * bigger fact, and a failure ends the flight that this one is about.
-			 */
-			if (lockedPress && sendError?.message === undefined)
-				return {
-					message: pressLockCopy(sessionStatus?.frontend?.pending_gate),
-					muted: true,
-					polite: false,
-					actions: [],
-					retry: false,
-					clear: false,
-				};
 			return {
 				message: sendError?.message,
 				muted: sendError?.muted === true,
@@ -5118,14 +5075,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					sendError?.muted !== true &&
 					(sendError?.onClear !== undefined || hasSomethingToClear),
 			};
-		}, [
-			sendError,
-			newMessage,
-			replies,
-			attachments,
-			lockedPress,
-			sessionStatus?.frontend?.pending_gate,
-		]);
+		}, [sendError, newMessage, replies, attachments]);
 
 		/*
 		 * The session issue: the state of this machine's Radient sign-in, and the one

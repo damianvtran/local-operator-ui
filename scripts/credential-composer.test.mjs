@@ -768,52 +768,6 @@ const openCapture = async (frame, { prose = "" } = {}) => {
 /* B2 — the button and the key take ONE answer                          */
 /* ------------------------------------------------------------------ */
 
-/*
- * U6 (review round 3): a press that arrives while a flight is open must be
- * ANSWERED on screen, not swallowed. The control is pressable during a flight on
- * purpose (it stopped being disabled in round 2), and a pressable control that
- * answers nothing is worse than an honestly unavailable one - it is what makes a
- * user press again over a box that by then holds both messages.
- *
- * Driven rather than read: a real click on the shipped control, and the assertion
- * is what the DOM renders.
- */
-test("a press during a flight is answered by the composer's own notice", async () => {
-	const frame = await mount({ isLoading: true });
-	await type(frame, "a second message");
-	await clickSend(frame);
-	assert.equal(
-		frame.sent.length,
-		0,
-		"nothing is admitted while a flight is open - the store's own guard is unchanged",
-	);
-	const alert = window.document.querySelector(
-		'[role="alert"], [role="status"]',
-	);
-	assert.ok(alert, "the press produced no notice row at all");
-	assert.match(
-		alert.textContent ?? "",
-		/still sending/,
-		"the press was answered by nothing, so the user cannot tell the key worked",
-	);
-});
-
-/*
- * And the control case in the same mount style: with no flight open the same
- * press IS the send, so the pin above is about the flight and not about the
- * control having stopped working.
- */
-test("the same press with no flight open still sends", async () => {
-	const frame = await mount();
-	await type(frame, "a second message");
-	await clickSend(frame);
-	assert.equal(
-		frame.sent.length,
-		1,
-		"the press did not reach the page outside a flight",
-	);
-});
-
 test("the Send button and Enter take the same answer to an open masked span", async () => {
 	const frame = await mount();
 	await openCapture(frame, { prose: "deploy with " });

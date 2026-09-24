@@ -780,7 +780,13 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  * than being read as history - the distinction the paragraph above draws.
  */
 const STAMP_BINDING_NOTES = [
-	"roundThreeNoticeRestampNote",
+	/*
+	 * AND THIS LIST NAMES MAIN'S NOTE NOW, not the branch's (review round 3's
+	 * remediation folded onto a moved `origin/main` and took its manifest with it, so
+	 * the file's newest binding claim is main's own). The rule is unchanged: the note
+	 * keeps the pair the file ships, re-spelled on every fold.
+	 */
+	"childWorkingLineFoldRestampNote",
 	/*
 	 * AND `shellPathRestampNote` LEFT THIS LIST AT REVIEW ROUND 3 as well, for the
 	 * reason every departure here has recorded: its own text says it was "held to"
