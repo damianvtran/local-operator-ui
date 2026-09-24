@@ -1828,16 +1828,19 @@ different cache key shows only what some replica holds *now*, and it returns 404
 just as willingly while the origin has nothing, which is why the two discriminating
 reads here — a cache-buster on the tarball URL, and the
 `Accept: application/vnd.npm.install-v1+json` packument, which is its own cache
-entry — and that flip is consistent with npm's own record appearing when it says it
-did (the reads themselves carried no timestamps, so treat the ordering as what
-npm's clock implies rather than as observed). Read them as "the version is there
-now", never as "the publish worked all along", and report an absence as an absence
-rather than as a failed publish. **Give an absence a test before acting on it:**
-npm's own `time` entry is the discriminator — if it lists the version, the publish
-landed and there is nothing to repair; if it does not, wait past the ordinary lag
-measured here (6m54s-8m40s across five versions, against 27m06s for the one above)
-before treating the version as missing at all, because every cache key reports an
-absence whether the version is genuinely missing or merely not yet recorded.
+entry — flipped only once npm's own record existed; that ordering is what npm's
+`time` entry implies rather than something observed, since the reads carried no
+timestamps. Read them as "the version is there now", never as "the publish worked
+all along", and report an absence as an absence rather than as a failed publish.
+**Give an absence a test before acting on it:** the job's own `+ <pkg>@<version>`
+line and its provenance entry are the proof npm *accepted* the publish, and npm's
+`time` entry is the proof it *records* it — with neither there yet, that is not
+evidence the version is missing, and every cache key reports an absence either way.
+Any fallback wait must be sized against the **worst** lag measured here — 27m06s for
+v0.30.24, against 6m54s-8m40s for the five versions before it — because a wait sized
+on the ordinary case would have declared 0.30.24 missing for eighteen minutes while
+npm was still recording it, which is the too-early repair this paragraph exists to
+prevent.
 
 **A `workflow_dispatch` repair cannot publish to npm, and that is by design.** The
 npm steps are gated on the event rather than on the tag — `Ensure npm supports
