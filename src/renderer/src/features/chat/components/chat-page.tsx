@@ -18,7 +18,6 @@ import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
 import { useWarmSession } from "@shared/hooks/use-warm-session";
 import { cn } from "@shared/lib/utils";
 import {
-	SEND_FAILURE_COPY,
 	SESSION_UNVALIDATED_CODE,
 	SESSION_UNVALIDATED_MESSAGE,
 	UNREADABLE_ATTACHMENT_CODE,
@@ -28,6 +27,7 @@ import {
 	migrateHeldClaim,
 	panelIdentityFor,
 	panelSessionIdOfView,
+	pressLockCopy,
 	sendFailureCopy,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
@@ -1048,6 +1048,20 @@ function SessionPanel({
 		if (!key) return false;
 		const previous = store.drafts[key];
 		/*
+		 * THE ANSWER TO A PRESS THIS SCREEN CANNOT TAKE YET, in the app's own words and
+		 * register, chosen by the one rule (`pressLockCopy`). Both refusals below use
+		 * it - this conversation's own send still out, and a lock held by another send
+		 * - so the sentence cannot drift between them, and the composer's own answer to
+		 * a press on a flight it can see reads the same helper.
+		 */
+		const answerLockedSend = (): false => {
+			setSendError(pressLockCopy(canonical.frontend?.pending_gate));
+			setSendErrorCode(undefined);
+			setSendErrorRetry(false);
+			setSendErrorMuted(true);
+			return false;
+		};
+		/*
 		 * The read window's refusal is the STORE's, not this function's: a send
 		 * addressed to a session whose guard read has not answered is refused at
 		 * admission (`admitChatDraft`), so the rule holds for every caller rather
@@ -1064,7 +1078,17 @@ function SessionPanel({
 		 * the panel has already told the user they are in the target, and the two
 		 * can only disagree for a round trip.
 		 */
-		if (previous?.pending) return false;
+		/*
+		 * THE PRESS IS ANSWERED, NOT SWALLOWED (review round 3, U6).
+		 *
+		 * This returned `false` in silence: on a conversation whose own send was still
+		 * out, the user's second press produced no line at all, which is
+		 * indistinguishable from a broken key - and looking broken is what makes a user
+		 * press again over a box that by then holds both messages. The design's own
+		 * sentence for it exists ("Your last message is still sending."), so the
+		 * refusal says it.
+		 */
+		if (previous?.pending) return answerLockedSend();
 		if (!sendLock.tryAcquire()) {
 			/*
 			 * A send attempted while an answer (or another send) is in flight used to
@@ -1086,15 +1110,7 @@ function SessionPanel({
 			 * Offering Retry over a lock would be a control that cannot work, which is
 			 * the shape this whole change removes.
 			 */
-			setSendError(
-				canonical.frontend?.pending_gate
-					? SEND_FAILURE_COPY.gateLock
-					: SEND_FAILURE_COPY.sendLock,
-			);
-			setSendErrorCode(undefined);
-			setSendErrorRetry(false);
-			setSendErrorMuted(true);
-			return false;
+			return answerLockedSend();
 		}
 		setAdmitting(true);
 		setSendError(null);
