@@ -22,6 +22,25 @@ export const desktopKeys = {
 	commands: ["desktop", "commands"] as const,
 	accounts: ["desktop", "auth", "accounts"] as const,
 	/**
+	 * The model catalogues, keyed by the `live` flag the read carried.
+	 *
+	 * A PREFIX rather than a leaf, because two readers ask for two different
+	 * listings: the picker asks `live: false` (the shipped registry, painted on
+	 * the keystroke) and then `live: true` (the providers' own listing), while the
+	 * settings combobox asks only the first. Invalidating the prefix therefore
+	 * drops BOTH documents, which is what every caller below actually needs.
+	 *
+	 * It is here, rather than spelled at each reader, because THREE sites now have
+	 * to agree on it: `destination-pickers.tsx`'s picker, the settings combobox
+	 * (which shares the picker's `live: false` entry rather than fetching the same
+	 * catalogue twice), and the two credential-change points that have to forget
+	 * it - `provider-detail.tsx` when a sign-in succeeds and `LogoutPicker` when an
+	 * account is removed. The failure a second spelling produces is silent: an
+	 * invalidation against a key nobody reads leaves the stale rows painted and
+	 * reports success.
+	 */
+	catalogue: ["desktop", "models"] as const,
+	/**
 	 * One session's stored credential NAMES, as the picker's list reads them.
 	 *
 	 * A factory rather than a constant because the key carries the session, and it
