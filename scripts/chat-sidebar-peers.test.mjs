@@ -1061,15 +1061,44 @@ test("M2: a remote row with no owner opens NO section, and is not hidden either"
 });
 
 test("M4: the move's budget follows its own wait, and no other op's does", () => {
+	/*
+	 * THE ROUTE'S OWN BOUND, BY SHAPE, from ONE helper (backend PR #1540 and its
+	 * review). A move that keeps nothing behind is `wait_s + 30`; one that KEEPS a
+	 * copy is `wait_s + 300`, which is 255 s more - the gap a client that ignored
+	 * `keep` would fall through, still reporting an unconfirmed move 4 minutes early.
+	 */
 	assert.equal(
-		desktopRequestBoundS({ op: "sessions.transfer", wait_s: 30 }),
-		30,
+		desktopRequestBoundS({ op: "sessions.transfer", wait_s: 30, to: "d_abc" }),
+		60,
+	);
+	assert.equal(
+		desktopRequestBoundS({
+			op: "sessions.transfer",
+			wait_s: 30,
+			to: "d_abc",
+			keep: true,
+		}),
+		330,
 	);
 	// The schema's ceiling is 300 s, and a request past it is clamped rather than
 	// believed.
 	assert.equal(
-		desktopRequestBoundS({ op: "sessions.transfer", wait_s: 9_000 }),
-		300,
+		desktopRequestBoundS({
+			op: "sessions.transfer",
+			wait_s: 9_000,
+			to: "d_abc",
+		}),
+		330,
+	);
+	/*
+	 * A RECALL IS NOT A MOVE: `to: "local"` is bounded by the DESTINATION's own
+	 * retire-and-record deadline plus the copy, which no `wait_s` describes - so it
+	 * takes a standing ceiling rather than a derived number, and its outcome is always
+	 * the unconfirmed one.
+	 */
+	assert.equal(
+		desktopRequestBoundS({ op: "sessions.transfer", wait_s: 30, to: "local" }),
+		180,
 	);
 	assert.equal(desktopRequestBoundS({ op: "sessions.transfer" }), null);
 	assert.equal(desktopRequestBoundS({ op: "sessions.list" }), null);
@@ -1082,8 +1111,9 @@ test("M4: the move's budget follows its own wait, and no other op's does", () =>
 	 * that gave up first and the route's precise answer never reached the reader
 	 * (QA round 1, Q4a).
 	 */
-	assert.equal(desktopRequestDeadlineMs("sessions.transfer", 30), 75_000);
-	assert.equal(desktopRequestDeadlineMs("sessions.transfer", 300), 345_000);
+	assert.equal(desktopRequestDeadlineMs("sessions.transfer", 60), 105_000);
+	assert.equal(desktopRequestDeadlineMs("sessions.transfer", 330), 375_000);
+	assert.equal(desktopRequestDeadlineMs("sessions.transfer", 180), 225_000);
 	// An op without a bound keeps the standing budgets.
 	assert.equal(desktopRequestDeadlineMs("sessions.transfer"), 20_000);
 	assert.equal(desktopRequestDeadlineMs("sessions.list"), 20_000);
