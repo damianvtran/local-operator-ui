@@ -94,6 +94,8 @@ const bundle = await build({
 				reportUncarriedAsideRefusal,
 				asideAdoptChord,
 				asideAdoptCap,
+				asideAdoptConfirm,
+				asideAdoptChordStep,
 				asideAdoptReady,
 				asideAdoptBlockedReason,
 			} from "./src/renderer/src/features/chat/aside";
@@ -246,6 +248,8 @@ const {
 	reportUncarriedAsideRefusal,
 	asideAdoptChord,
 	asideAdoptCap,
+	asideAdoptConfirm,
+	asideAdoptChordStep,
 	asideAdoptReady,
 	asideAdoptBlockedReason,
 	__registerCanonicalResync,
@@ -741,6 +745,42 @@ test("the chord is the app's modifier plus f, and nothing else", () => {
 	assert.equal(asideAdoptChord(press()), false);
 	assert.equal(asideAdoptCap(true), "⌘+F");
 	assert.equal(asideAdoptCap(false), "Ctrl+F");
+});
+
+/*
+ * THE CHORD ASKS ONCE BEFORE IT ADOPTS (UX round 2, U16; the operator's ruling).
+ * `⌘+F` is Find everywhere else, adopting cannot be taken back, and it used to
+ * commit the exchange 52ms after one press. The chord is kept; the first press
+ * states on the panel what a second will do, and only the second adopts.
+ */
+test("the adopt chord confirms on its first press and adopts on its second", () => {
+	// The step is keyed on the newest turn: an arm for one exchange never adopts a
+	// later one the user has not seen the confirm for.
+	assert.equal(asideAdoptChordStep(null, "t1"), "arm");
+	assert.equal(asideAdoptChordStep("t1", "t1"), "adopt");
+	assert.equal(asideAdoptChordStep("t1", "t2"), "arm");
+	// The receipt names the key and that the act is permanent.
+	assert.equal(
+		asideAdoptConfirm(true),
+		"Press ⌘+F again to add the aside to the conversation. Once added, it stays there.",
+	);
+	assert.match(asideAdoptConfirm(false), /^Press Ctrl\+F again/);
+
+	// The composer applies it: the first press raises the confirm on the panel's
+	// notice line and returns BEFORE `adoptAside`; the second clears the arm and adopts.
+	const input = read(
+		"src/renderer/src/features/chat/components/message-input.tsx",
+	);
+	assert.match(
+		input,
+		/asideAdoptChordStep\(adoptArmedTurn\.current, lastTurn\.asideId\) ===\s*"arm"\s*\) \{\s*adoptArmedTurn\.current = lastTurn\.asideId;\s*useAsideStore\s*\.getState\(\)\s*\.setAsideNotice\(sessionForAside, asideAdoptConfirm\(IS_MAC\)\);\s*return;\s*\}\s*adoptArmedTurn\.current = null;\s*void adoptAside\(sessionForAside\)/,
+	);
+	// A new ask clears the notice, so a stale confirm cannot sit over a new exchange.
+	reset();
+	useAsideStore.getState().attachAside(SESSION);
+	useAsideStore.getState().setAsideNotice(SESSION, asideAdoptConfirm(true));
+	useAsideStore.getState().beginAsk(SESSION, "t2", "next");
+	assert.equal(useAsideStore.getState().attached[SESSION].notice, null);
 });
 
 test("the adopt gate needs a settled answer and an idle session", () => {

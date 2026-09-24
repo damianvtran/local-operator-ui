@@ -692,6 +692,42 @@ export const asideAdoptCap = (isMac: boolean): string =>
 	isMac ? "⌘+F" : "Ctrl+F";
 
 /**
+ * The sentence the FIRST adopt chord puts on the panel instead of adopting.
+ *
+ * WHY THE CHORD ASKS ONCE (UX round 2, U16; the operator's ruling). `⌘+F` is Find
+ * in every browser and in this app's own canvas editors, and adopting is the one
+ * act on this panel that cannot be taken back: the off-the-record exchange enters
+ * the model's context for good. Measured before this: the panel was gone 52ms
+ * after the press, with no confirmation and no undo - so a user reaching for Find
+ * out of habit adopted by accident. The chord is KEPT (it is the TUI's `^f` for
+ * this gesture) and made recoverable with the smallest thing that does it: the
+ * first press says what a second press will do, on the panel's own notice line,
+ * and only the second press adopts. The pointer control is not gated - a click on
+ * a button labelled "Add to conversation" is not muscle memory for anything else.
+ *
+ * The words are the panel's own: the tooltip's verb ("Add the aside to the
+ * conversation") and the header's contract ("nothing here joins the
+ * conversation"), so the confirm is the receipt the panel already states, not a
+ * new promise.
+ */
+export const asideAdoptConfirm = (isMac: boolean): string =>
+	`Press ${asideAdoptCap(isMac)} again to add the aside to the conversation. Once added, it stays there.`;
+
+/**
+ * What an adopt chord does, given which turn the last one armed.
+ *
+ * Keyed on the NEWEST TURN'S ID rather than on a boolean, so an arm can never
+ * carry over to an exchange the user has not seen the confirm for: a follow-up
+ * asked after the first press appends a turn, and the next chord arms again.
+ */
+export function asideAdoptChordStep(
+	armedTurnId: string | null,
+	newestTurnId: string,
+): "arm" | "adopt" {
+	return armedTurnId === newestTurnId ? "adopt" : "arm";
+}
+
+/**
  * Whether the adopt control is live — the TUI's `_aside_can_fork`, in two terms.
  *
  * The exchange must be SETTLED (the model's answer is in hand, so the turns the

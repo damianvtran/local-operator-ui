@@ -81,6 +81,8 @@ import type {
 import {
 	adoptAside,
 	asideAdoptChord,
+	asideAdoptChordStep,
+	asideAdoptConfirm,
 	asideAdoptReady,
 	closeAside,
 } from "../aside";
@@ -1289,6 +1291,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const aside = useAsideStore((state) =>
 			asideSessionId ? (state.attached[asideSessionId] ?? null) : null,
 		);
+		/*
+		 * The newest aside turn the adopt chord has ARMED, or null (UX round 2, U16).
+		 *
+		 * A ref rather than state: nothing here paints it - the panel's own notice line
+		 * states the confirm - and the keydown handler is the only reader. Keyed on the
+		 * turn id (`asideAdoptChordStep`), so an arm never outlives the exchange it was
+		 * shown for; the panel's `beginAsk`/`attachAside` clear the notice it raised.
+		 */
+		const adoptArmedTurn = useRef<string | null>(null);
 		const removeReply = useConversationInputStore((state) => state.removeReply);
 		const clearReplies = useConversationInputStore(
 			(state) => state.clearReplies,
@@ -4255,9 +4266,30 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					const stream = lastTurn
 						? useAsideStore.getState().streams[lastTurn.asideId]
 						: undefined;
-					if (!asideAdoptReady(stream, asideStreaming)) return;
+					if (!lastTurn || !asideAdoptReady(stream, asideStreaming)) return;
 					event.preventDefault();
-					void adoptAside(asideSessionId ?? "").catch(() => {
+					/*
+					 * THE FIRST PRESS ASKS, THE SECOND ADOPTS (UX round 2, U16). `⌘+F` is Find
+					 * everywhere else and adopting cannot be taken back, so a press from habit
+					 * must not be the one that commits an off-the-record exchange to the
+					 * model's context. The confirm goes on the panel's notice line - the
+					 * surface already reserved for what the panel has to say about adopting -
+					 * so it is one interaction and no new surface. `asideAdoptConfirm` records
+					 * why the pointer control is not gated the same way.
+					 */
+					const sessionForAside = asideSessionId ?? "";
+					if (
+						asideAdoptChordStep(adoptArmedTurn.current, lastTurn.asideId) ===
+						"arm"
+					) {
+						adoptArmedTurn.current = lastTurn.asideId;
+						useAsideStore
+							.getState()
+							.setAsideNotice(sessionForAside, asideAdoptConfirm(IS_MAC));
+						return;
+					}
+					adoptArmedTurn.current = null;
+					void adoptAside(sessionForAside).catch(() => {
 						// The refusal is stated on the panel (`adoptAside` writes it there); this
 						// call site has nothing to add to it.
 					});
