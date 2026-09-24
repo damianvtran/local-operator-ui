@@ -69,10 +69,7 @@ import type {
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
 import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
 import { MarkdownRenderer } from "../components/markdown-renderer";
-import {
-	AGENT_GUTTER,
-	MessageContainer,
-} from "../components/message-item/message-container";
+import { MessageContainer } from "../components/message-item/message-container";
 import { TurnTimestamp } from "../components/message-item/turn-timestamp";
 import { ReplyPreview } from "../components/reply-preview";
 import {
@@ -350,6 +347,26 @@ const UserRow = memo(function UserRow({
 		() => parseReplies(record.text),
 		[record.text],
 	);
+	/*
+	 * Whether this turn is long enough to need D2's eight-line clamp, MEASURED
+	 * rather than guessed from a character count: the box is clamped first and
+	 * then asked whether it is hiding anything, so a `Show more` can never appear
+	 * on a turn that is already fully visible. Skipped while expanded, where the
+	 * clamp is off and the box would always report itself as fitting.
+	 */
+	const [expanded, setExpanded] = useState(false);
+	const [clamped, setClamped] = useState(false);
+	const bodyRef = useRef<HTMLDivElement>(null);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `remainingContent` is a
+	// re-measure TRIGGER, not a value this body reads. A turn whose text changes under
+	// the same row id - a streamed answer, a re-render with new prose - has to be asked
+	// again whether it now overflows, and dropping the dependency would strand the
+	// affordance on the first measurement of the row's life.
+	useLayoutEffect(() => {
+		if (expanded) return;
+		const el = bodyRef.current;
+		if (el) setClamped(el.scrollHeight > el.clientHeight + 1);
+	}, [expanded, remainingContent]);
 	return (
 		<MessageContainer isUser isSmallView={isSmallView}>
 			{/*
@@ -375,18 +392,31 @@ const UserRow = memo(function UserRow({
 				<div ref={turnRef} className="group relative flex w-full justify-end">
 					<div
 						className={cn(
-							// `border-control`, not `hairline`. The bubble keeps its own
-							// ground (`surface`) on a column that is `canvas` for the working
-							// surface's sake (see chat-content.tsx), so the fill is a
-							// lightness step as well as this edge - but a step is not an
-							// edge, and this border is still the boundary the design contract
-							// asks for. Because the agent side has no bubble at all, the edge
-							// is also the whole visual distinction between the two speakers.
-							// Removing it would lose information, which is the contract's own
-							// test for a structural boundary, so it takes the role with the
-							// 3:1 floor rather than the decorative one with no floor.
-							"relative rounded-frame border border-control bg-surface text-ink break-words",
-							isSmallView ? "max-w-[92%] px-3 py-2" : "max-w-[75%] px-4 py-3",
+							// THE FILL IS THE BOUNDARY, NOT AN OUTLINE (D10).
+							//
+							// This carried `border-control`, chosen because a border was the
+							// only edge the design contract would let this block take - it is
+							// the role with the 3:1 floor, and removing the edge looked like
+							// losing the one thing that said which speaker was which. Frames
+							// say otherwise. The bubble sits on a `canvas` column and takes
+							// the `surface` ground, a +2.53 to +5.0 L* step across the
+							// palettes (median 3.54, §B3), and the block is ALSO an aside by
+							// its own width (§D2), narrower than the prose beside it: a fill
+							// plus a narrower width is a boundary twice over. The rule on top
+							// of them was the third and loudest mark on the quietest object
+							// in the transcript, and where `control` is dark it read as an
+							// outline drawing rather than as a message. Branding §5's own
+							// rule is to remove a border before tightening spacing.
+							//
+							// `max-w-[85%]` of the 640 column is 544px (§D2), so the block
+							// reads as an aside by width and never needs a cap on its TEXT
+							// (branding §7 - the block's own width is what caps it). Padding
+							// is 12px inline and 10px block; `rounded-frame` is the ramp's
+							// 10px step, unchanged.
+							"relative rounded-frame bg-surface text-ink break-words",
+							isSmallView
+								? "max-w-[92%] px-3 py-2.5"
+								: "max-w-[85%] px-3 py-2.5",
 						)}
 					>
 						{/*
@@ -397,7 +427,22 @@ const UserRow = memo(function UserRow({
 						 * `markdown.css`'s measure comment carries the report and the numbers, and
 						 * the rule that also keeps a cap off the agent's answer.
 						 */}
-						<div className={cn("relative")}>
+						<div
+							ref={bodyRef}
+							className={cn(
+								"relative",
+								/*
+								 * Eight lines of `text-body` at 1.55 is 8 x 21.7 = 174px (D2).
+								 *
+								 * The clamp is on the BLOCK, because a pasted stack trace is
+								 * still one user turn and would otherwise own the pane - and
+								 * the affordance below is rendered only when the clamp is
+								 * actually hiding something, so a turn that fits never grows a
+								 * control that reveals nothing.
+								 */
+								!expanded && clamped ? "max-h-[174px] overflow-hidden" : "",
+							)}
+						>
 							{/* The quote a quoted turn was sent with, rendered as the same
 							    recessed block the composer stages it in - the reader sees one
 							    idiom for "this is quoted" whether it is pending or sent. */}
@@ -415,6 +460,25 @@ const UserRow = memo(function UserRow({
 								content={remainingContent}
 								credentialCitations
 							/>
+							{clamped && (
+								/*
+								 * A 30px full-width row INSIDE the block, with no divider
+								 * (D2, the Raycast idiom): the clamp and its release are one
+								 * object, so the release sits on the block's own ground
+								 * rather than behind a rule between them.
+								 */
+								<button
+									type="button"
+									onClick={() => setExpanded((value) => !value)}
+									aria-expanded={expanded}
+									className={cn(
+										"mt-1 h-[30px] w-full text-center text-ink-muted text-meta",
+										"hover:text-ink",
+									)}
+								>
+									{expanded ? "Show less" : "Show more"}
+								</button>
+							)}
 							{record.images.length > 0 && (
 								<div className={cn("mt-2 flex flex-col gap-2")}>
 									{record.images.map((image, index) => (
@@ -471,13 +535,11 @@ const UserRow = memo(function UserRow({
 const AssistantRow = memo(function AssistantRow({
 	record,
 	isSmallView,
-	showAvatar,
 	closesTurn,
 	conversationId,
 }: {
 	record: Extract<TranscriptRecord, { kind: "assistant" }>;
 	isSmallView: boolean;
-	showAvatar: boolean;
 	closesTurn: boolean;
 	conversationId?: string;
 }) {
@@ -512,11 +574,7 @@ const AssistantRow = memo(function AssistantRow({
 	if (!paintsSomething(record)) return null;
 	const refused = record.stopReason === "refusal" || record.error;
 	return (
-		<MessageContainer
-			isUser={false}
-			isSmallView={isSmallView}
-			showAvatar={showAvatar}
-		>
+		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			{/*
 			 * No measure class here. The answer takes the full row content box, which
 			 * is the box `ToolRow` resolves against, so prose and ledger in one turn
@@ -635,6 +693,11 @@ const AssistantRow = memo(function AssistantRow({
 			 */}
 			{closesTurn && (
 				<div className={cn("mt-1")}>
+					{/* The turn's OWN stamp, kept (D3), and gated by `closesTurn` to the
+					    turn's last block rather than to every settled answer: D9 removes a
+					    stamp per MESSAGE and per TOOL GROUP, not the turn's one line. The
+					    redesign's next commit folds the actions onto this line; the stamp
+					    itself is already where §D3 puts it. */}
 					<TurnTimestamp timestamp={record.ts} scope="answer" />
 				</div>
 			)}
@@ -664,13 +727,11 @@ const AssistantRow = memo(function AssistantRow({
 const ToolRow = memo(function ToolRow({
 	record,
 	isSmallView,
-	showAvatar,
 	nameColumn,
 	scope,
 }: {
 	record: Extract<TranscriptRecord, { kind: "tool" }>;
 	isSmallView: boolean;
-	showAvatar: boolean;
 	nameColumn: number;
 	scope: AttachmentScope | null;
 }) {
@@ -791,61 +852,17 @@ const ToolRow = memo(function ToolRow({
 		/>
 	) : undefined;
 	/*
-	 * The stamp at the foot of the EXPANDED section, and the reason it is a
-	 * sibling of the body rather than a line inside `ToolDetail`.
+	 * The disclosure's body, and nothing else.
 	 *
-	 * The operator asked for the time "at the bottom right of the expanded
-	 * section", and the expanded section is this composition — the arguments or
-	 * the diff, then the result — not the pane component alone. Both body shapes
-	 * get the stamp from here: a settled `write`/`edit` whose expansion is the
-	 * DIFF (`isDiffBodyRow`) never mounts `ToolDetail` at all, so a stamp handled
-	 * inside the pane would be missing from exactly the rows whose payload is
-	 * longest and whose time is most worth knowing.
-	 *
-	 * It is also the only placement that survives the pane's own scrolling.
-	 * `ToolDetail`'s two sections are each their own `overflow-auto` box with a
-	 * `detailOverflowLabel` report under them, and that report is deliberately
-	 * OUTSIDE its scroller so it stays true at rest; anything INSIDE the pane is
-	 * scrolled away at rest on a long payload, which is a stamp that is not "at
-	 * the bottom of the expanded section" for the rows that most need one. Below
-	 * the pane there is nothing to scroll: the stamp is on screen the moment the
-	 * row opens, with the last line that is true of the payload immediately above
-	 * it.
-	 *
-	 * The air above it is the disclosure content's own `gap-2`
-	 * (`shared/components/ui/disclosure.tsx`), which is the one spacing the shared
-	 * idiom owns; the stamp takes the rhythm of the section it sits in rather than
-	 * adding a margin of its own. Its right edge is the pane's, because both are
-	 * in the same indented column.
-	 *
-	 * A COLLAPSED row has no body at all — `hasDetail`/`isDiffBodyRow` return
-	 * false and the ledger row renders its disabled branch, which structurally
-	 * cannot render children — so a run of twenty calls stays twenty quiet lines
-	 * with no stamps. That quiet is what the hover-only model was protecting, and
-	 * it is why the stamp lives inside the disclosure instead of under every row.
+	 * A stamp used to sit at the foot of this section, placed as a sibling of the
+	 * body so that it survived the pane's own scrolling. D9 deletes it: the stamp
+	 * belongs to the TURN (one line, at the turn's foot), never to a tool group, and
+	 * a run of twenty calls therefore stays twenty quiet lines with no clocks. The
+	 * rows that expanded by default were the ones carrying the loudest, longest
+	 * payloads, so the stamp was appearing on exactly the rows where the ledger's
+	 * quiet mattered most.
 	 */
-	const details = body ? (
-		<>
-			{body}
-			{/*
-			 * `pr-4` is the row's own meta column, and it is what keeps a ledger row to
-			 * ONE right edge. The disclosure's trigger is `w-full` inside a box that also
-			 * carries `-mx-2 px-2` (`trace/tool-row.tsx`), and that negative margin bleeds
-			 * on the LEFT only, so the trigger's box ends 8px short of the row and its own
-			 * `px-2` puts the duration 8px further in again - 16px in total, measured at
-			 * 1074 against the row's 1090 at 1280 and 364 against 380 at 420, in both
-			 * palettes. The pane and the disclosure content column both reach the row's
-			 * true edge, so without this the stamp sat 16px right of the duration one line
-			 * above it: two right edges inside one card (design round 1, D2). The stamp
-			 * moves onto the meta column rather than the trigger growing, because the
-			 * trigger's bleed is what the row's hover ground is drawn from and restyling
-			 * that ground is a different change from this one.
-			 */}
-			<div className={cn("flex justify-end pr-4")}>
-				<TurnTimestamp timestamp={record.ts} scope="tool" />
-			</div>
-		</>
-	) : undefined;
+	const details = body ? <>{body}</> : undefined;
 	// Screenshots sit under the row and OUTSIDE the disclosure, which is where
 	// the TUI mounts them. Hiding a picture behind a toggle is the complaint
 	// being fixed, not a smaller version of it.
@@ -867,11 +884,7 @@ const ToolRow = memo(function ToolRow({
 			</div>
 		) : undefined;
 	return (
-		<MessageContainer
-			isUser={false}
-			isSmallView={isSmallView}
-			showAvatar={showAvatar}
-		>
+		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<ToolLedgerRow
 				toolName={record.toolName}
 				summary={summary}
@@ -1063,22 +1076,16 @@ const NoticeRow = memo(function NoticeRow({
 const PeerRow = memo(function PeerRow({
 	record,
 	isSmallView,
-	showAvatar,
 	nameColumn,
 }: {
 	record: Extract<TranscriptRecord, { kind: "peer" }>;
 	isSmallView: boolean;
-	showAvatar: boolean;
 	nameColumn: number;
 }) {
 	const detail = peerHasDetail(record.sender, record.body);
 	if (!detail) {
 		return (
-			<MessageContainer
-				isUser={false}
-				isSmallView={isSmallView}
-				showAvatar={showAvatar}
-			>
+			<MessageContainer isUser={false} isSmallView={isSmallView}>
 				<ToolLedgerRow
 					toolName="peer"
 					summary={peerSummary(record.sender, record.body)}
@@ -1090,11 +1097,7 @@ const PeerRow = memo(function PeerRow({
 		);
 	}
 	return (
-		<MessageContainer
-			isUser={false}
-			isSmallView={isSmallView}
-			showAvatar={showAvatar}
-		>
+		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<ToolLedgerRow
 				toolName="peer"
 				summary={peerSummary(record.sender, record.body)}
@@ -1166,21 +1169,15 @@ const PeerRow = memo(function PeerRow({
 const WakeRow = memo(function WakeRow({
 	record,
 	isSmallView,
-	showAvatar,
 	nameColumn,
 }: {
 	record: Extract<TranscriptRecord, { kind: "wake" }>;
 	isSmallView: boolean;
-	showAvatar: boolean;
 	nameColumn: number;
 }) {
 	const prompt = wakePromptBody(record.text);
 	return (
-		<MessageContainer
-			isUser={false}
-			isSmallView={isSmallView}
-			showAvatar={showAvatar}
-		>
+		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<ToolLedgerRow
 				toolName="wake"
 				summary={wakeReceiptHeadline(record.text)}
@@ -1241,7 +1238,6 @@ const TranscriptRow = memo(function TranscriptRow({
 				<AssistantRow
 					record={record}
 					isSmallView={isSmallView}
-					showAvatar={row.showAvatar}
 					closesTurn={row.closesTurn}
 					conversationId={conversationId}
 				/>
@@ -1252,7 +1248,6 @@ const TranscriptRow = memo(function TranscriptRow({
 				<ToolRow
 					record={record}
 					isSmallView={isSmallView}
-					showAvatar={row.showAvatar}
 					nameColumn={nameColumn}
 					scope={scope}
 				/>
@@ -1263,7 +1258,6 @@ const TranscriptRow = memo(function TranscriptRow({
 				<PeerRow
 					record={record}
 					isSmallView={isSmallView}
-					showAvatar={row.showAvatar}
 					nameColumn={nameColumn}
 				/>
 			);
@@ -1273,7 +1267,6 @@ const TranscriptRow = memo(function TranscriptRow({
 				<WakeRow
 					record={record}
 					isSmallView={isSmallView}
-					showAvatar={row.showAvatar}
 					nameColumn={nameColumn}
 				/>
 			);
@@ -1941,12 +1934,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						 * about a conversation that no longer exists. It is NOT a retry:
 						 * retrying asks a question whose answer is about the session.
 						 */
-						<div
-							className={cn(
-								"mb-4 flex flex-col gap-2",
-								!isSmallView && AGENT_GUTTER,
-							)}
-						>
+						<div className="mb-4 flex flex-col gap-2">
 							{/*
 							 * `id` is what the refused composer points its `aria-describedby` at
 							 * (UX round 1, U3): this sentence is the pane's statement of WHY the box
@@ -2063,12 +2051,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						// takes slightly more than `trace` because it is the one row that
 						// is not a completed action, and slightly less than a turn
 						// boundary because the turn has not ended.
-						<div
-							className={cn(
-								GAP.item[isSmallView ? 1 : 0],
-								!isSmallView && AGENT_GUTTER,
-							)}
-						>
+						<div className={GAP.item[isSmallView ? 1 : 0]}>
 							<WorkingLine
 								activity={working.activity}
 								phase={working.phase}
@@ -2080,7 +2063,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 
 					{/* Tier 1: the pending gate is always last while it is actionable. */}
 					{gate && (
-						<div className={cn("mt-6", !isSmallView && AGENT_GUTTER)}>
+						<div className={GAP.item[isSmallView ? 1 : 0]}>
 							<AgentQuestion
 								/*
 								 * The eyebrow says what is happening, and the options are disabled
