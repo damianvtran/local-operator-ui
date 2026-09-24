@@ -948,15 +948,6 @@ async function resolveCredentialStore(
 	return null;
 }
 
-/**
- * `RESTORE_LABEL` moved to `@shared/hooks/use-message-input`, beside the sentence
- * that names it (`heldClaimCopy`), for the reason the comment it carried here
- * gave when both lived in this file: the button and the sentence must hold ONE
- * string. It is the sentence that moved - the held line is now built by a pure
- * function, so the store's copy and the control's label can be read together
- * (and driven by a test) rather than reconstructed from this component's JSX.
- */
-
 const EMPTY_REPLIES: Reply[] = [];
 const EMPTY_ATTACHMENTS: Attachment[] = [];
 
@@ -1816,9 +1807,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				/*
 				 * THE MAP IS CLEARED ONCE THE STORE HOLDS THE VALUES (§9.5), and only
 				 * then: a REFUSED send keeps it, because the operator's unsent draft must
-				 * not lose the value behind a pill they can still see. `SEND_HELD` is the
-				 * same case — the message may be on the owner and its own retry lives on
-				 * the store's claim, so the value has to stay until that resolves.
+				 * not lose the value behind a pill they can still see. A REFUSED send is
+				 * the only case that needs the sentence now, and it needs it more than
+				 * ever: the failed message is back in the composer with its pill still
+				 * rendered, and its retry is a press over the same bytes - so the value
+				 * stays until the buffer that cites it is retired for another reason.
 				 */
 				/*
 				 * THE MAP IS RETIRED ONCE THE STORE HOLDS THE VALUES (§9.5) AND THE BUFFER
@@ -1830,9 +1823,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * effect below performs it in the commit that empties the box, so the two
 				 * cannot be seen apart. A REFUSED send keeps the map, because the
 				 * operator's unsent draft must not lose the value behind a pill they can
-				 * still see. `SEND_HELD` is the same case — the message may be on the owner
-				 * and its own retry lives on the store's claim, so the value has to stay
-				 * until that resolves.
+				 * still see. A REFUSED send is the only case that needs the sentence now,
+				 * and it needs it more than ever: the failed message is back in the
+				 * composer with its pill still rendered, and its retry is a press over the
+				 * same bytes - so the value stays until the buffer that cites it is retired
+				 * for another reason.
 				 */
 				retirePayloads.current = true;
 				setDisclosure(null);

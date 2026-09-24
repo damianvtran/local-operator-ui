@@ -76,7 +76,13 @@ import {
  * composer, which the STORE does now, so the hook has nothing left to distinguish.
  */
 
-/** What a submit reported back to the composer. See `SEND_HELD`. */
+/**
+ * What a submit reported back to the composer: `false` when it was refused before
+ * admission, `true` when it settled. There is no third answer any more, and that
+ * is the change rather than an omission - a failure of either kind leaves the
+ * payload in the composer (the STORE's one return path writes it), so nothing here
+ * has to describe where the message went.
+ */
 export type SendOutcome = undefined | boolean;
 
 /**
