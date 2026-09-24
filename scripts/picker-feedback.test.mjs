@@ -92,6 +92,7 @@ const {
 	pickerBodyKind,
 	pickerFooterHint,
 	pickerPrimaryLabel,
+	pickerPlacement,
 	filterPickerOptions,
 } = await bundleInto(
 	"picker-host",
@@ -103,6 +104,7 @@ const {
 		pickerBodyKind,
 		pickerFooterHint,
 		pickerPrimaryLabel,
+		pickerPlacement,
 		filterPickerOptions,
 	} from "./src/renderer/src/features/chat/pickers/picker-host";
 `,
@@ -123,12 +125,13 @@ const { modelPickerMatchKey, matchModelPickerOptions } = await bundleInto(
 `,
 );
 
-const { catalogueListing, failedProviders } = await bundleInto(
-	"catalogue-listing",
-	`
-	export { catalogueListing, failedProviders } from "./src/renderer/src/features/chat/pickers/model-catalogue-listing";
+const { catalogueListing, failedProviders, PROVIDER_LISTING_FAILED } =
+	await bundleInto(
+		"catalogue-listing",
+		`
+	export { catalogueListing, failedProviders, PROVIDER_LISTING_FAILED } from "./src/renderer/src/features/chat/pickers/model-catalogue-listing";
 `,
-);
+	);
 
 const { modelSelector } = await bundleInto(
 	"session-model",
@@ -411,6 +414,160 @@ test("closing while busy is called Close, not Cancel", () => {
 	);
 });
 
+/* ------------------------------------------- the keyboard's row (U1/U2) -- */
+
+/** A filtered option list, as the host builds one. */
+const options = (values, current = null) =>
+	values.map((value) => ({ value, label: value, current: value === current }));
+
+test("a re-list that moves every row leaves the highlight on the user's row", () => {
+	/*
+	 * UX U1, and it is the defect this change made the default path: the
+	 * automatic provider listing lands ~2.3 s after the dialog opens and the
+	 * cadence re-lists every 15 minutes, so the option list moves under the user
+	 * repeatedly. The old rule re-placed the highlight on the CURRENT MODEL
+	 * whenever the list changed identity and no query was typed — measured with
+	 * the highlight on row 3 and the footer reading `Enter picks Anthropic:
+	 * Claude Haiku 4.5`, then back on row 0 and `Enter picks Claude Opus 5`.
+	 *
+	 * The fixture is the same rows ROTATED by one, which is the sharpest form of
+	 * the case: an index-held highlight follows the slot, a row-held one follows
+	 * the model, and the two answers differ in a way the assertion can see.
+	 */
+	const rows = options(
+		[
+			"claude-opus-5",
+			"claude-sonnet-5",
+			"claude-haiku-4-5",
+			"gpt-5.4",
+			"gemma-4",
+		],
+		"claude-opus-5",
+	);
+	const landed = [rows[4], ...rows.slice(0, 4)];
+	const placed = pickerPlacement({
+		options: landed,
+		held: "gpt-5.4",
+		active: 3,
+		query: "",
+		queryChanged: false,
+		steered: true,
+	});
+	assert.equal(placed.held, "gpt-5.4");
+	assert.equal(
+		landed[placed.index].value,
+		"gpt-5.4",
+		"the row the user chose keeps the highlight, wherever the landing put it",
+	);
+	assert.notEqual(
+		landed[placed.index].current,
+		true,
+		"and the highlight did NOT go back to the current model, which is exactly what the old rule did",
+	);
+	assert.equal(
+		placed.retargeted,
+		null,
+		"nothing went missing, so nothing is said",
+	);
+	assert.equal(placed.steered, true, "and the row is still the user's");
+});
+
+test("a row that vanishes under the user's highlight is named, not silently replaced", () => {
+	/*
+	 * UX U2: the row set can change under the user by design now, and the old
+	 * clamp moved the highlight to whatever occupied the slot — so Enter acted on
+	 * a model the user never chose, with nothing on screen saying so. When the
+	 * row is gone the placement still happens (a picker with no highlight would
+	 * be worse), but it is STATED.
+	 */
+	const rows = options(["claude-opus-5", "claude-sonnet-5"], "claude-opus-5");
+	const gone = pickerPlacement({
+		options: rows,
+		held: "claude-opus-5.5",
+		active: 2,
+		query: "opus",
+		queryChanged: false,
+		steered: true,
+	});
+	assert.equal(gone.index, 1);
+	assert.equal(gone.held, "claude-sonnet-5");
+	assert.equal(
+		gone.retargeted,
+		"claude-sonnet-5",
+		"Enter's new target is named, because the row it was on is gone",
+	);
+
+	/*
+	 * And the other direction, which must NOT be said: a row the user never
+	 * steered was never theirs, so a landing that moves the component's own
+	 * placement is not a retarget.
+	 */
+	const untouched = pickerPlacement({
+		options: rows,
+		held: "claude-opus-5.5",
+		active: 2,
+		query: "opus",
+		queryChanged: false,
+		steered: false,
+	});
+	assert.equal(untouched.retargeted, null);
+});
+
+test("typing is the user's own act, so it re-places without a message", () => {
+	const rows = options(
+		["claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5"],
+		"claude-sonnet-5",
+	);
+	const typed = pickerPlacement({
+		options: rows,
+		held: "gemma-4",
+		active: 3,
+		query: "",
+		queryChanged: true,
+		steered: true,
+	});
+	assert.equal(
+		typed.retargeted,
+		null,
+		"a narrowed list is not a row that went missing",
+	);
+	assert.equal(typed.steered, false, "the placement is the dialog's again");
+	assert.equal(
+		typed.index,
+		1,
+		"with no query the placement is the current model's row, as it has always been",
+	);
+
+	const filtered = pickerPlacement({
+		options: rows,
+		held: null,
+		active: 99,
+		query: "claude",
+		queryChanged: true,
+		steered: false,
+	});
+	assert.equal(
+		filtered.index,
+		rows.length - 1,
+		"with a query typed it clamps rather than jumping to the current model",
+	);
+
+	const empty = pickerPlacement({
+		options: [],
+		held: "claude-opus-5",
+		active: 4,
+		query: "zzz",
+		queryChanged: true,
+		steered: true,
+	});
+	assert.deepEqual(empty, {
+		index: 0,
+		held: null,
+		retargeted: null,
+		steered: false,
+	});
+});
+
 /* ----------------------------------------------------------- the body */
 
 test("a partial listing failure keeps the list and only adds a note", () => {
@@ -469,6 +626,75 @@ test("a partial listing failure keeps the list and only adds a note", () => {
 
 	assert.deepEqual(failedProviders({ errors: { a: "x" } }), ["a"]);
 	assert.deepEqual(failedProviders(undefined), []);
+});
+
+test("a failed read with rows in hand is a note, not a wall of error text", () => {
+	/*
+	 * Review round 1, R1-1 (UX U3 is the same defect read from the user's side),
+	 * executed over the SHIPPED rule rather than pinned as source text: the
+	 * automatic listing made a read the user never asked for capable of destroying
+	 * the list they already had.
+	 *
+	 * WHY THE LIBRARY DOES NOT SAVE IT, which is what makes this rule load-bearing:
+	 * `placeholderData: keepPreviousData` carries the previous key's rows only while
+	 * the new key is PENDING — a query that settles as `error` has no data at all —
+	 * so an errored live read reaches the picker with `data: undefined`, the old
+	 * `isError` branch returned `loadError`, and the host draws `loadError` IN
+	 * PLACE of the list. The caller therefore hands this the document to DRAW: the
+	 * live answer when there is one, the registry's own when there is not.
+	 */
+	const stringify = (error) =>
+		error instanceof Error ? error.message : String(error);
+	const failed = {
+		isError: true,
+		error: new Error("the transport refused it"),
+	};
+
+	const withRows = catalogueListing(
+		{
+			models: [{ provider: "anthropic", model_id: "claude-opus-5" }],
+			source: "initial",
+			errors: {},
+			credentials_known: true,
+		},
+		failed,
+		stringify,
+	);
+	assert.equal(
+		withRows.loadError,
+		null,
+		"rows in hand are what the user reads, whatever the read did",
+	);
+	assert.equal(withRows.notice, PROVIDER_LISTING_FAILED);
+	assert.match(
+		withRows.notice ?? "",
+		/Refresh from providers/,
+		"the note names something the user can DO, not only what went wrong (UX U3)",
+	);
+	assert.equal(
+		withRows.noticeDetail,
+		"the transport refused it",
+		"the failure's own sentence travels in the note's detail, beside the note",
+	);
+
+	/*
+	 * And the other half, which is the state this branch was written for: a read
+	 * with nothing behind it still IS the body. Asserted because a rule that turned
+	 * every failure into a note would hide a first-load failure behind an empty
+	 * list — the note is drawn above the body, so with no rows it would say nothing
+	 * at all.
+	 */
+	const nothing = catalogueListing(undefined, failed, stringify);
+	assert.equal(nothing.notice, null);
+	assert.match(nothing.loadError ?? "", /transport refused/);
+
+	const emptyRows = catalogueListing(
+		{ models: [], source: "initial", errors: {}, credentials_known: true },
+		failed,
+		stringify,
+	);
+	assert.equal(emptyRows.notice, null);
+	assert.match(emptyRows.loadError ?? "", /transport refused/);
 });
 
 test("the body's four states are ordered, and a note is not one of them", () => {
@@ -606,8 +832,13 @@ test("the picker lists the providers by itself, on the backend's cadence", () =>
 	 *      flag, which is what makes one invalidation at a credential change drop
 	 *      both documents;
 	 *   3. the cadence is the backend's own number, not a second one;
-	 *   4. the "Refreshing…" label stays gated on `live`, so the registry paint is
-	 *      not labelled as a listing the user asked for (design D8).
+	 *   4. the listing label stays gated on `live`, so the registry paint is never
+	 *      labelled as a listing at all (design D8), and the label distinguishes the
+	 *      AUTOMATIC pass from the user's own click (design D2, UX U4);
+	 *   5. the refresh control's slot is WIDTH-RESERVED, because the label swap is
+	 *      otherwise a layout change under a pointer that is not moving (design D1);
+	 *   6. a live read that fails still draws the REGISTRY document it fell back to,
+	 *      rather than a wall of error text where the rows were (review round 1, R1-1).
 	 */
 	const picker = source("features/chat/pickers/destination-pickers.tsx");
 
@@ -638,10 +869,30 @@ test("the picker lists the providers by itself, on the backend's cadence", () =>
 	);
 	assert.match(
 		picker,
-		// The gate, not the word: a live fetch is the only one that may claim to be
-		// refreshing, and it stays so now that the fetch is automatic.
 		/const refreshing = live && catalogue\.isFetching;/,
-		"only a live fetch may say 'Refreshing…' (design D8)",
+		"only a live fetch may claim that a listing is running (design D8)",
+	);
+	assert.ok(
+		picker.includes(
+			'const refreshingLabel = asked ? "Refreshing…" : "Checking…"',
+		),
+		"the automatic pass and the user's own click read differently, because a control nobody pressed must not borrow the word the click produces (design D2, UX U4)",
+	);
+	assert.ok(
+		picker.includes(
+			'const refreshingLabel = asked ? "Refreshing…" : "Checking…"',
+		),
+		"and the automatic label fits INSIDE the reserved width: a busy label wider than the idle one puts the row's reflow back (design D1, measured at 12px when this one read `Checking providers…`)",
+	);
+	assert.ok(
+		picker.includes('className="min-w-[149px]"'),
+		"the refresh slot reserves the IDLE label's own box (149px, read off the DOM), so the narrower busy labels swap inside a slot whose edges do not move and the controls beside it do not slide (design D1: 38px, twice per open and again on every cadence tick)",
+	);
+	assert.ok(
+		picker.includes(
+			"const catalogueDocument = catalogue.data ?? registry.data;",
+		),
+		"the picker draws the live answer when it has one and the registry's own document otherwise, which is what keeps the painted rows through a failed live read (review round 1, R1-1)",
 	);
 });
 
@@ -679,6 +930,65 @@ test("a credential change drops the catalogue the renderer is holding", () => {
 		picker,
 		/invalidateQueries\(\{ queryKey: desktopKeys\.accounts \}\);[\s\S]{0,1200}?invalidateQueries\(\{ queryKey: desktopKeys\.catalogue \}\)/,
 		"removing an account drops the catalogue too, for the same reason",
+	);
+});
+
+test("one invalidation reaches both catalogue keys, and nothing else", async () => {
+	/*
+	 * QA round 1's Q-1 was a coverage gap rather than a defect: the credential half
+	 * of the report ("a sign-in must drop the cache") was pinned as source text and
+	 * its contract was measured in QA's own scratch harness, but nothing IN THE
+	 * REPOSITORY executed it. The trap that gap hides is the silent one — an
+	 * invalidation spelled against a key nobody reads leaves stale rows painted and
+	 * reports success, which is exactly what the shared `desktopKeys.catalogue`
+	 * binding exists to prevent.
+	 *
+	 * So this runs the SHIPPED binding against react-query's own cache: the binding
+	 * is bundled (external packages, so it is the installed react-query, not a copy)
+	 * and one non-exact invalidation is issued exactly as the two credential-change
+	 * call sites issue it.
+	 *
+	 * WHAT IT DOES NOT REPLACE, stated so it is not read as more than it is: a real
+	 * sign-in. No story mounts `ProviderDetail` and a real one needs a live backend,
+	 * so the end-to-end walk stays unexecuted in this repository (QA round 1, Q-1).
+	 * This is the half that can be executed here, and it is now a test rather than a
+	 * one-off reading.
+	 */
+	const { QueryClient, desktopKeys } = await bundleInto(
+		"catalogue-keys",
+		`
+		import { QueryClient } from "@tanstack/react-query";
+		export { QueryClient };
+		export { desktopKeys } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";
+	`,
+	);
+	const client = new QueryClient();
+	const registryKey = [...desktopKeys.catalogue, false];
+	const liveKey = [...desktopKeys.catalogue, true];
+	client.setQueryData(registryKey, {
+		models: [{ provider: "anthropic", model_id: "claude-opus-5" }],
+	});
+	client.setQueryData(liveKey, {
+		models: [{ provider: "anthropic", model_id: "claude-opus-5.5" }],
+	});
+	client.setQueryData(desktopKeys.providers, { items: [] });
+
+	await client.invalidateQueries({ queryKey: desktopKeys.catalogue });
+
+	const invalidated = (key) =>
+		client.getQueryState(key)?.isInvalidated === true;
+	assert.ok(
+		invalidated(registryKey),
+		"the registry document the dialog paints first is dropped",
+	);
+	assert.ok(
+		invalidated(liveKey),
+		"and the live one with it: one prefix, both keys ((invalidateQueries) matching is non-exact by default)",
+	);
+	assert.equal(
+		invalidated(desktopKeys.providers),
+		false,
+		"and nothing else — the invalidation is scoped to the catalogue, so a credential change does not re-list the providers page's own queries",
 	);
 });
 

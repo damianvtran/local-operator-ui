@@ -2670,31 +2670,36 @@ export const STORIES = [
 	["chat-model-picker--partial-error", 900, 560],
 	["chat-model-picker--narrow", 560, 820],
 	/*
-	   THE OPUS PAIR, and why it is three entries rather than two.
+	   THE OPUS FRAMES, and why they are declared by `dir` rather than by story.
 
 	   The operator's report is a difference between two LISTINGS under one
-	   state of the dialog - open, `opus` typed - and the state is the same
-	   before and after the change, so the pair has to be shot from two TREES:
-	   `before-` is `origin/main`'s own picker (no automatic listing at all),
-	   and the two `after-` frames are this branch's. `after-registry-only-opus`
-	   is the in-flight half - the rows the dialog opens on, with the automatic
-	   listing out - and `after-provider-listing-opus` is the settled one, with
-	   the row the provider lists and the registry does not (`Claude Opus 5.5`, 
-	   absent from a registry that stops at `claude-opus-5`). All three are 620
-	   tall: the row sets are one to three rows, and a 760 frame of a one-row
-	   list is mostly ground, which is what `check-evidence`'s uniformity ceiling
-	   refuses (the same reason `refresh-pending` and `partial-error` are short).
+	   state of the dialog - open, `opus` typed - so `after-registry-only-opus`
+	   is the in-flight half (the rows the dialog opens on, with the automatic
+	   listing out) and `after-provider-listing-opus` is the settled one, with
+	   the row the provider lists and the registry does not (`Claude Opus 5.5`,
+	   absent from a registry that stops at `claude-opus-5`). Both are 620 tall:
+	   the row sets are one to three rows, and a 760 frame of a one-row list is
+	   mostly ground, which is what `check-evidence`'s uniformity ceiling refuses
+	   (the same reason `refresh-pending` and `partial-error` are short).
 
-	   `dir` rather than the story leaf, because ONE story serves two of the
-	   three (the registry-only state before and after the change is one story
-	   photographed twice), and `--dirs=` is what lets each be captured on its
-	   own tree. */
-	[
-		"chat-model-picker--registry-only-opus",
-		900,
-		620,
-		{ dir: "before-registry-only-opus" },
-	],
+	   THE `before-` HALF IS DELIBERATELY NOT DECLARED HERE. It is a frame of
+	   ANOTHER TREE (`origin/main`'s own picker), and this table is swept from the
+	   tree the run boots: a later unfiltered sweep would re-capture the same
+	   story here - where it renders `Checking providers…` and a disabled control
+	   - into the `before-` directory, silently replacing a base-tree claim with a
+	   head-tree picture, and nothing checks per-frame digests (review round 1,
+	   R1-3). It lives in `model-picker-live-listing-before/` instead, declared as
+	   a `supplementary` set in `docs/evidence/manifest.json`, which is where this
+	   repository keeps a cross-tree half (`chat-canonical-user-card-measure-before`,
+	   `chat-composer-band/before`).
+
+	   THE NARROW IN-FLIGHT FRAME is the design round's open question at 560px:
+	   the same story, the same withheld live answer, at the width where the
+	   toolbar has the least slack (review round 1, design D1's narrow half).
+
+	   `after-live-listing-failed` is the state review round 1 filed twice from
+	   two directions (code R1-1, UX U3): the automatic listing fails and the rows
+	   stay, with the failure as a note above them. */
 	[
 		"chat-model-picker--registry-only-opus",
 		900,
@@ -2702,10 +2707,22 @@ export const STORIES = [
 		{ dir: "after-registry-only-opus" },
 	],
 	[
+		"chat-model-picker--registry-only-opus",
+		560,
+		820,
+		{ dir: "after-registry-only-opus-narrow" },
+	],
+	[
 		"chat-model-picker--provider-listing-opus",
 		900,
 		620,
 		{ dir: "after-provider-listing-opus" },
+	],
+	[
+		"chat-model-picker--live-listing-failed",
+		900,
+		620,
+		{ dir: "after-live-listing-failed" },
 	],
 	/* The explicit current-model machine-default action and its refused write. */
 	["chat-model-picker--set-current-as-default", 900, 820],
@@ -7232,18 +7249,24 @@ const main = async () => {
 				)
 				.find((text) =>
 					/*
-					 * `^Error:` IS PART OF THE PATTERN NOW, and QA round 4's Q-12 is why: this
-					 * guard knew the two shapes `@storybook/test` throws and the pointer refusal
-					 * user-event produces, so a `play` that threw its own `Error` — which is
-					 * exactly what the console pane's selection story did — was reported to the
-					 * console and IGNORED, and the sweep photographed twelve frames of a state
-					 * the play had already rejected. The comment above this block said that limit
-					 * out loud; a limit that ships a wrong frame is not a disclosure, it is the
-					 * defect. A thrown `Error:` in a story's phase now stops the sweep.
+					 * EVERY `XxxError:` IS PART OF THE PATTERN NOW, and the names are no
+					 * longer a list. QA round 4's Q-12 added `^Error:`; that was still a list,
+					 * and the next hole was measured on this machine rather than reasoned
+					 * about: the model picker's own evidence pass shipped a frame whose play
+					 * had thrown `TypeError: Received `callback` arg must be a function` (a
+					 * `waitFor` called without a callback), the pattern did not match it, the
+					 * sweep exited 0 and printed `Captured 4 frames` — and the frame was
+					 * presented as evidence for a state the play never reached. A guard that
+					 * enumerates the error types a story may throw is a guard that is one
+					 * mistake behind; what a console entry starting `<Something>Error:` means
+					 * is that the story's phase threw, whatever the subclass is.
+					 *
+					 * The over-match is deliberate and cheap: a page console that carries a
+					 * thrown error during a story's phase is a run to look at, not a frame to
+					 * keep. `Unable to perform pointer interaction` stays named because it is
+					 * `user-event`'s own refusal rather than an Error.
 					 */
-					/^(AssertionError|TestingLibraryElementError|Error:)|Unable to perform pointer interaction/.test(
-						text,
-					),
+					/^(\w*Error):|Unable to perform pointer interaction/.test(text),
 				);
 			if (playFailure) {
 				throw new Error(

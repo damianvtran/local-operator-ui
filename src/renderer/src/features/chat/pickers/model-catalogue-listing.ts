@@ -13,8 +13,10 @@
  * The distinction is real on the wire: `DesktopModelCatalogue.errors` is a
  * partial-failure map keyed by provider, and an answer that carries it still
  * carries `models`. So a partial failure is a NOTE (`notice`, drawn above the
- * list) and only a query that threw is `loadError` (drawn in place of the
- * list).
+ * list), and so is a total one once the caller has rows to draw - the registry
+ * document the dialog opened on (see the `isError` branch below, review round 1
+ * R1-1) - while `loadError` (drawn in place of the list) is reserved for a read
+ * that has nothing behind it at all.
  *
  * Not in `destination-pickers.tsx` because that file imports React and the
  * whole picker surface, and a rule this easy to get wrong is worth asserting on
@@ -54,6 +56,32 @@ export function catalogueListing(
 	noticeDetail: string | null;
 } {
 	if (query.isError) {
+		/*
+		 * A FAILED READ IS ONLY A WALL OF ERROR TEXT WHEN THERE IS NOTHING TO DRAW.
+		 *
+		 * This is the rule design D4 established for the partial failure, applied to
+		 * the total one, and it is what keeps the automatic listing from undoing the
+		 * dialog's first paint (review round 1, R1-1; UX U3 is the same defect read
+		 * from the user's side). `keepPreviousData` carries the previous key's rows
+		 * only while the new key is PENDING - a query that settles as `error` has no
+		 * data at all - so a live listing that failed used to take the painted
+		 * registry rows with it, on every open, with no click behind the read.
+		 *
+		 * The caller therefore hands this the document the picker should DRAW (the
+		 * live answer when there is one, the registry's own otherwise). Rows in hand
+		 * mean a NOTE naming what the user can do, and the failure's own words stay
+		 * in the tooltip where the developer-facing sentence belongs; no rows at all
+		 * means the query's failure IS the body, which is the state this branch was
+		 * written for.
+		 */
+		const rows = data?.models ?? [];
+		if (rows.length > 0) {
+			return {
+				loadError: null,
+				notice: PROVIDER_LISTING_FAILED,
+				noticeDetail: errorText(query.error),
+			};
+		}
 		return {
 			loadError: errorText(query.error),
 			notice: null,
@@ -69,3 +97,15 @@ export function catalogueListing(
 		noticeDetail: failed.join(", "),
 	};
 }
+
+/**
+ * What the dialog says when the provider listing failed and it still has rows.
+ *
+ * It names the STATE of the rows (they are the shipped ones, not a provider's)
+ * and something the user can DO about it, because the alternative the operator
+ * saw was a red line of transport copy with every row deleted and only the
+ * control that had just failed left to press (UX U3). Sentence case, monospace
+ * for machine voice only; the button it names is the one beside the list.
+ */
+export const PROVIDER_LISTING_FAILED =
+	"The provider listing failed. The rows below are the shipped models; Refresh from providers tries again.";

@@ -686,15 +686,65 @@ export const ModelPicker: FC<PickerContext> = ({
 		if (catalogueSettled) setLive(true);
 	}, [catalogueSettled]);
 	/*
-	 * Only a LIVE fetch says "Refreshing…": it is the one that re-lists the
+	 * The REGISTRY document, subscribed rather than read once, because it is a
+	 * FALLBACK as well as the first paint (review round 1, R1-1).
+	 *
+	 * WHY THE LIVE READ NEEDS ONE AT ALL. `keepPreviousData` carries the previous
+	 * key's rows only while the new key is PENDING; the moment a query settles as
+	 * `error` it has no data, so a live listing that failed left the picker with
+	 * nothing — and `catalogueListing`'s `isError` branch then drew one line of
+	 * error text where the painted registry rows had been. That is design D4's
+	 * defect (1450 rows replaced by a wall of text) re-entered on a path no click
+	 * gates any more: the read the user never asked for destroyed the list they
+	 * already had. The registry document is still in the cache under its own key.
+	 *
+	 * `enabled: false` because this observer never issues a read: the query above
+	 * owns the registry fetch, and a second fetch of the same key would be a
+	 * duplicate on the one path where a request is visible. It shares that key's
+	 * cache entry, so `registry.data` is the same document the first paint used,
+	 * and it keeps the same `staleTime` so the two observers cannot disagree about
+	 * whether their shared entry is fresh.
+	 */
+	const registry = useQuery({
+		queryKey: [...desktopKeys.catalogue, false],
+		queryFn: () =>
+			desktopResult<DesktopModelCatalogue>({
+				op: "models.catalogue",
+				live: false,
+			}),
+		enabled: false,
+		staleTime: 60_000,
+	});
+	/*
+	 * What the picker DRAWS, which is the live answer when there is one and the
+	 * registry's document otherwise: a failed live read falls back to the rows the
+	 * dialog opened on rather than to nothing.
+	 */
+	const catalogueDocument = catalogue.data ?? registry.data;
+	/*
+	 * Only a LIVE fetch says the listing is running: it is the one that re-lists the
 	 * providers, whichever started it - the automatic promotion above or the
 	 * button. The initial (registry) load is also `isFetching`, and labelling that
-	 * "Refreshing…" would describe a listing the user never asked for (design D8);
-	 * gating on `live` is what keeps that true now that the live fetch is itself
-	 * automatic, and it is why an open dialog briefly reads "Refreshing…" while a
-	 * listing it did start is out.
+	 * as a listing in flight would describe a read the user never asked for
+	 * (design D8).
+	 *
+	 * The LABEL then distinguishes the two starters (review round 1, design D2 and
+	 * UX U4): the automatic pass reads `Checking…` and the user's own click reads
+	 * `Refreshing…`, because `Refreshing…` is a word the user's click produces and,
+	 * with the pass now automatic, the same word on a control nobody pressed made
+	 * the two states indistinguishable from the surface. It is the TUI's own
+	 * vocabulary for the same distinction (`tui/app.py`'s picker footer reads
+	 * `checking providers…` while its automatic fetch runs), shortened to the
+	 * reserved width below: the reserve is the IDLE label's width, so a busy label
+	 * that outgrew it would put the row's reflow back - measured, 12px on the link
+	 * beside it - which is the defect the reserve exists to remove (design D1).
 	 */
 	const refreshing = live && catalogue.isFetching;
+	const [asked, setAsked] = useState(false);
+	useEffect(() => {
+		if (!catalogue.isFetching) setAsked(false);
+	}, [catalogue.isFetching]);
+	const refreshingLabel = asked ? "Refreshing…" : "Checking…";
 	const command = useSessionCommand(sessionId);
 	/*
 	 * A DRAFT pane's own reading, from the ONE query the pane itself reads.
@@ -774,32 +824,32 @@ export const ModelPicker: FC<PickerContext> = ({
 	 * disagree.
 	 */
 	const rowAuth = useMemo(() => {
-		const known = catalogue.data?.credentials_known !== false;
+		const known = catalogueDocument?.credentials_known !== false;
 		const map = new Map<string, "runnable" | "needs-sign-in" | "unknown">();
-		for (const row of (catalogue.data?.models ?? []) as CatalogueRow[]) {
+		for (const row of (catalogueDocument?.models ?? []) as CatalogueRow[]) {
 			map.set(
 				selectorOf(row),
 				!known ? "unknown" : row.connected ? "runnable" : "needs-sign-in",
 			);
 		}
 		return map;
-	}, [catalogue.data]);
+	}, [catalogueDocument]);
 
 	const options = useMemo<PickerOption[]>(() => {
-		const rows = (catalogue.data?.models ?? []) as CatalogueRow[];
+		const rows = (catalogueDocument?.models ?? []) as CatalogueRow[];
 		// `connected` is also true when the credential store could not be read,
 		// which is why every model once sat under "Connected" on a fixture with
 		// no credentials at all (D5). With that unknown, the picker still lists
 		// everything -- an empty model list would be a worse lie -- but it stops
 		// claiming an auth state it does not have.
-		const known = catalogue.data?.credentials_known !== false;
+		const known = catalogueDocument?.credentials_known !== false;
 		return modelPickerOptions(rows, {
 			credentialsKnown: known,
 			shownSelector,
 		});
-	}, [catalogue.data, shownSelector]);
+	}, [catalogueDocument, shownSelector]);
 
-	const listing = catalogueListing(catalogue.data, catalogue, errorText);
+	const listing = catalogueListing(catalogueDocument, catalogue, errorText);
 
 	const onPick = useCallback(
 		async (value: string, option: PickerOption) => {
@@ -1048,7 +1098,7 @@ export const ModelPicker: FC<PickerContext> = ({
 			 * rule and its reasoning live in `model-picker-match.ts`.
 			 */
 			matcher={matchModelPickerOptions}
-			loading={catalogue.isLoading}
+			loading={catalogue.isLoading && !catalogueDocument}
 			loadError={listing.loadError}
 			notice={listing.notice}
 			noticeDetail={listing.noticeDetail}
@@ -1147,22 +1197,48 @@ export const ModelPicker: FC<PickerContext> = ({
 							 * and re-lists when pressed; the row count under it is what says the
 							 * listing came from the providers.
 							 *
-							 * The picker now promotes itself to the live listing on mount, so the
-							 * settled state is the common one and `setLive(true)` is the
-							 * pre-promotion window alone (a click landed inside the first paint's
-							 * tick). Both paths stay: the button has to re-list whether or not the
-							 * automatic listing has already run.
+							 * The picker now promotes itself to the live listing once the registry
+							 * read SETTLES, so the settled state is the common one and
+							 * `setLive(true)` is the pre-promotion window alone (a click landed
+							 * inside the first paint's tick). Both paths stay: the button has to
+							 * re-list whether or not the automatic listing has already run.
 							 */
 							onClick={() => {
+								// The label distinguishes this from the automatic pass (design D2,
+								// UX U4): the click is the ask, the promotion is not.
+								setAsked(true);
 								if (live) void catalogue.refetch();
 								else setLive(true);
 							}}
 							disabled={catalogue.isFetching}
+							/*
+							 * A RESERVED WIDTH for the slot the label changes inside (design D1).
+							 *
+							 * The label swap is not a text change in place: with the row laid out
+							 * `justify-between`, the narrower busy label let every control to its
+							 * left slide. Measured on this change's own frames: `Set current model as
+							 * default` sat at x 389-551 settled and x 427-589 in flight - a 38px
+							 * shift under a pointer that is not moving, twice per open, and again on
+							 * every cadence tick.
+							 *
+							 * 149px IS THE IDLE LABEL'S OWN BOX, read off the DOM rather than off a
+							 * frame: in the served story the control is 149 wide settled, 132 in
+							 * flight and 132 while the user's click is out - i.e. `Refreshing…` and
+							 * `Checking…` are both NARROWER than the reserve, so the slot's edges do
+							 * not move and the click target stays where the user aimed it. (132 was
+							 * the first attempt, taken from the text's ink in the frames rather than
+							 * from the box: it left a 17px shift, because the idle label's box is
+							 * wider than its glyphs.)
+							 *
+							 * `min-w` rather than a fixed `w`: a theme with wider type is free to
+							 * grow the control rather than truncate it.
+							 */
+							className="min-w-[149px]"
 						>
 							{refreshing ? (
 								<span className="flex items-center gap-2">
 									<Spinner size="xs" />
-									Refreshing…
+									{refreshingLabel}
 								</span>
 							) : (
 								"Refresh from providers"
