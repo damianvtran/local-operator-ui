@@ -91,6 +91,15 @@ The stub counts the catalogue reads it answers, split into `total` and `live`:
   play asserts `live: 2` for the manual re-ask, which is the click re-listing on
   top of the automatic one.
 
+  Those counts are the ones a listing that ANSWERS produces, which is the
+  condition round 2's QA made explicit (Q2-2): a failing live read is asked
+  twice — three reads in all, the registry paint, the live read and its one
+  retry — because this query inherits the application's default policy
+  (`retry: 1`, `src/renderer/src/shared/api/query-client.ts`) rather than
+  overriding it. The retry is deliberate and stays: a provider blip is exactly
+  what a background convenience read should survive, and a second policy for
+  this one query would be a second thing to keep in step with the app's.
+
 ### What these frames do NOT prove
 
 - **Nothing about a real provider.** No request left this machine; the rows are
@@ -143,21 +152,105 @@ The two frames this moved besides the new ones are `after-registry-only-opus`
 measurement behind the claim that every SETTLED frame of this surface — the
 eleven earlier states included — is unchanged by this round.
 
-### The existing frames of this surface were not re-taken, and that was measured
+### Review round 2's remediation, and what it moved
 
-A change that wires the query differently could repaint every state above it,
-so the two most representative were re-captured at this head and compared
-against the committed bytes: `populated` and `refresh-pending`, both palettes,
-came back **byte-identical** — the automatic listing answers with the same rows
-the registry did in these fixtures and settles before the shutter, so nothing in
-the eleven earlier frames moves. `refresh-pending` is the interesting one: its
-frame is now reached by a different sequence (the automatic listing settles, and
-the click's read is the one held pending) and is the same picture, which is what
-`liveOnce` in the story file exists to arrange.
+Round 2 worked two MAJORs (both about one contract: the row the user sees is the
+row Enter acts on), three MINORs and two observations:
 
-That comparison is a measurement with a caveat worth stating: it was taken by a
-narrowed run over `--dirs=populated,refresh-pending`, and `--dirs` matches the
-directory name across EVERY surface, so the same command also re-captured five
-unrelated `panels-*` states. Those ten frames were restored from `HEAD` rather
-than committed — this branch's diff carries no frame outside
-`chat-model-picker/`, and that is checkable in the commit itself.
+- **U2, second attempt — the sentence was computed and then erased.** The
+  retarget rule was right and the effect around it was wrong: the placement
+  re-runs when it writes `active`, that run finds the survivor in place, and a
+  two-state `string | null` had it CLEAR the sentence it had just set. `retargeted`
+  is tri-state now — a name sets it, `null` clears it (the user's own typing), and
+  `undefined` means this pass has nothing to say. Proven in
+  `scripts/picker-host-selection.test.mjs`, which drives the real `PickerHost`:
+  the test fails on the two-state rule and passes on the tri-state one.
+- **U5 — the mark, the footer, `aria-activedescendant`, the scroll target, the
+  click path and `pick` were reading TWO index spaces.** The rows render GROUPED,
+  so the rendered order is a permutation of the filtered list, and past the point
+  where the orders diverge the marked row and the row Enter sent were different
+  models. There is one space now (`ordered`, derived from the grouped list) that
+  every index-bearing read uses. Same test file, same discipline: it fails when
+  the two spaces are put back and passes with one.
+- **R2-1 — the failure note claimed the wrong provenance.** On a same-key refetch
+  failure react-query keeps `data`, so the failed cadence tick drew the previous
+  PROVIDER listing under a sentence saying the rows were the shipped models. The
+  note now follows the document it is drawn over (both sentences are pinned in
+  `scripts/picker-feedback.test.mjs`).
+- **D6 — the note wrapped the control's own label.** The quoted phrase is one
+  unbreakable token now (`\u00a0`), so the note breaks before `Refresh` instead
+  of between `from` and `providers`. The pair that shows it is attached to the
+  PR: the BEFORE half is the committed frame at this branch's previous head, and
+  the AFTER half is a browser capture of this story on this tree
+  (`chat-model-picker--live-listing-failed`, dark), because the rig's shutter for
+  that state cannot currently be relied on — see the note below.
+- **The failed-listing frame here is the previous head's, and that is measured.**
+  Re-capturing `after-live-listing-failed` at this head produced a picture of the
+  automatic pass IN FLIGHT (`Checking…`, no note) rather than the settled failure
+  the file is named for: four attempts, byte-identical each time. It is not this
+  diff — the same capture from the ROUND-1 tree (`git checkout 9a87bc2a0^ -- src`)
+  produces the same in-flight frame in the same Storybook instance, so the
+  difference is the environment the rig runs in, not the code under it — and the
+  story's own play does reach the settled state (asserted, and read from the DOM
+  in a browser). Until that race is understood the frame stays as the previous
+  head's bytes and its sentence is the PRE-FIX copy: the post-fix copy is the
+  browser half on the PR. Recorded rather than quietly shipped, because a frame
+  named for a state it does not show is the defect the rig's own play guard
+  exists to prevent.
+- **Q2-3 — the widened play guard is a test.** A story whose play throws is not
+  evidence, and the guard that decides that is now an exported constant with the
+  cases that widened it driven through it, including the `TypeError` that shipped
+  a frame of a state the play never reached, and a source check that the sweep
+  reads the constant rather than a copy.
+- **D4 / U6 — the dialog's re-centring is NOT fixed here.** It moves 48px when the
+  landing changes the row set (design's measurement; UX measured the search field
+  49px under the caret, per open and per cadence tick). Both candidate repairs
+  change the dialog for every state rather than this one — reserving the list's
+  full 420px height leaves dead space in the eleven short states, and top-anchored
+  growth moves a dialog that is deliberately centred. Deferred with the numbers
+  rather than guessed at; what the user sees meanwhile is the dialog re-centring
+  once per open, and once per tick only when the row count actually changes.
+
+### Which of the earlier frames were re-taken, and which were not
+
+A change that wires the query differently could repaint every state above it, so
+the states whose SEQUENCES this change moves were re-captured in both palettes
+and compared against the committed bytes:
+
+- **Re-taken, and changed:** `after-live-listing-failed` — the note's copy
+  (R2-1) and its line break (D6). The BEFORE half is the committed frame at this
+  branch's previous head, still readable at
+  `https://github.com/damianvtran/local-operator-ui/raw/ffccfe5ab/docs/evidence/chat-model-picker/after-live-listing-failed/localOperatorDark.webp`
+  (and `...Light.webp` beside it); the AFTER half is the file here. Both are the
+  same state — the picker open with `opus` typed, the live listing failed, ONE
+  registry row drawn from the search `anthropic/claude-opus-5` (the play asserts
+  exactly one `option` row and that it names Claude Opus 5), with the read counts
+  of *The request counts these frames carry* above: the registry paint plus the
+  live read, and the live read one is the one that failed — and the only
+  difference in them is the sentence and where it breaks: before, `…the shipped models; Refresh from / providers tries
+  again.` across two lines with the control's own label split between them;
+  after, `…the shipped models; / Refresh from providers tries again.` with the
+  phrase whole.
+- **Re-taken, byte-identical:** `after-registry-only-opus`,
+  `after-registry-only-opus-narrow`, `refresh-pending`, and
+  `after-provider-listing-opus` **relative to the round-1 tree** — see the
+  measurement below.
+- **Not re-taken:** the earlier states, whose sequences this change does not
+  reach — `populated`, `keyboard-highlight`, `busy`, `result`, `persist-checked`,
+  `hovered`, `narrow`, `empty`, `loading`, and the set-default and effort
+  states. Their frames are the committed bytes.
+
+The measurement behind the middle line, because it is the kind of claim that
+otherwise reads as a re-run rather than an A/B: `after-provider-listing-opus`
+re-captured from THIS tree differs from the committed bytes by 1159 pixels
+(`magick compare -metric AE`) — a 1px text-rasterization shift across the
+toolbar row, with no geometry change (the dialog's band measures rows 92..527 in
+both) and no copy change. Captured again from the same tree, it is byte-stable,
+so it is not run noise; captured from the **round-1 tree at `HEAD`** — the
+pre-round-2 files, served by the same Storybook, same rig, same command — it is
+byte-identical to this round's frame. So the shift is not this change's: the
+committed bytes were shot before the two folds this lane took, and the frames
+have not reproduced at this base since. Recorded rather than quietly re-taken,
+because "the other frames are untouched" is a claim a later reader will want to
+be able to check, and at this base the honest form of it is the A/B above rather
+than byte-equality with a stale commit.

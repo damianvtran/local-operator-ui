@@ -381,6 +381,17 @@ export function pickerBodyKind(state: {
  * (`queryChanged` is false), the landing is NAMED through `retargeted`, because
  * Enter would otherwise act on a row the user never chose, with nothing on
  * screen saying so (UX U2).
+ *
+ * `retargeted` IS TRI-STATE, and the third state is why the round-2 fix works:
+ * a NAME sets it, `null` CLEARS it (the one case that should — the user's own
+ * typing, which re-places the list and leaves nothing to explain), and
+ * `undefined` means THIS PASS HAS NOTHING TO SAY and the caller must leave
+ * whatever is set alone. The pass that loses the row sets the name; the pass
+ * that re-places the highlight on the survivor runs one render later, sees the
+ * survivor in place, and has to say nothing — a two-state `string | null` made
+ * it clear the sentence it had just set, which is how a correct rule shipped a
+ * message no user ever saw (measured: 137 samples across the vanish, never once
+ * on screen).
  */
 export function pickerPlacement(state: {
 	options: PickerOption[];
@@ -396,7 +407,8 @@ export function pickerPlacement(state: {
 }): {
 	index: number;
 	held: string | null;
-	retargeted: string | null;
+	/** A row to name, `null` to clear it, `undefined` to leave it alone. */
+	retargeted: string | null | undefined;
 	steered: boolean;
 } {
 	const { options, held, active, query, queryChanged, steered } = state;
@@ -406,7 +418,9 @@ export function pickerPlacement(state: {
 	const heldIndex =
 		held === null ? -1 : options.findIndex((option) => option.value === held);
 	if (heldIndex >= 0) {
-		return { index: heldIndex, held, retargeted: null, steered };
+		// The row survived the change: the highlight moved, the SELECTION did not,
+		// and anything already said about a lost row stays until the user acts.
+		return { index: heldIndex, held, retargeted: undefined, steered };
 	}
 	const clamped = Math.max(0, Math.min(active, options.length - 1));
 	const currentIndex = query
@@ -427,7 +441,7 @@ export function pickerPlacement(state: {
 	return {
 		index,
 		held: landed?.value ?? null,
-		retargeted: steered ? (landed?.label ?? null) : null,
+		retargeted: steered ? (landed?.label ?? null) : undefined,
 		steered,
 	};
 }
@@ -868,6 +882,40 @@ export const PickerHost: FC<PickerHostProps> = ({
 		[options, query, matcher],
 	);
 
+	/*
+	 * THE ONE INDEX SPACE the mark, the footer, `aria-activedescendant`, the
+	 * scroll target, the click path and `pick` all read (UX U5).
+	 *
+	 * WHY IT IS A VALUE AND NOT AN AGREEMENT. The list renders GROUPED: options
+	 * arrive in the order their source listed them and the dialog re-sorts them
+	 * into the sections the user reads (`Signed in` first), so the rendered order
+	 * is a PERMUTATION of `filtered`. Ids and `isActive` come from a running index
+	 * over the rendered order, and while `active` indexed `filtered` the two
+	 * spaces diverged wherever the orders did: measured on the operator's own
+	 * catalogue shape, pressing ArrowDown eight times with no query left the MARK
+	 * on `openai/gpt-6-luna` while the footer said `Enter picks x-ai/grok-4.7` and
+	 * Enter sent `openrouter/x-ai/grok-4.7`. The click path had the same split —
+	 * clicking a row sent the option the OLD index space held at that position, so
+	 * the band stayed on the row above. Pre-existing on `origin/main`, and fixed
+	 * here because this change leans on exactly this contract: the automatic
+	 * listing moves rows under a highlight and every claim about "the row the user
+	 * chose" is a claim about this index.
+	 *
+	 * `filtered` remains what the filter produced — the same SET, its own order —
+	 * which is why the counts and the empty decision below can read either.
+	 */
+	const grouped = useMemo(() => {
+		const groups = new Map<string, PickerOption[]>();
+		for (const option of filtered) {
+			const key = option.group ?? "";
+			const bucket = groups.get(key);
+			if (bucket) bucket.push(option);
+			else groups.set(key, [option]);
+		}
+		return [...groups.entries()];
+	}, [filtered]);
+	const ordered = useMemo(() => grouped.flatMap(([, rows]) => rows), [grouped]);
+
 	/**
 	 * The row Enter would pick, by name.
 	 *
@@ -876,7 +924,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 	 * user which model the key is about to switch them to without moving the
 	 * pointer or fighting their scroll.
 	 */
-	const activeLabel = filtered[active]?.label ?? null;
+	const activeLabel = ordered[active]?.label ?? null;
 
 	// Reset per open so a re-opened picker never carries a stale filter.
 	useEffect(() => {
@@ -914,7 +962,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 		const queryChanged = placedQueryRef.current !== query;
 		placedQueryRef.current = query;
 		const placed = pickerPlacement({
-			options: filtered,
+			options: ordered,
 			held: activeValueRef.current,
 			active,
 			query,
@@ -924,8 +972,12 @@ export const PickerHost: FC<PickerHostProps> = ({
 		activeValueRef.current = placed.held;
 		steeredRef.current = placed.steered;
 		setActive(placed.index);
-		setRetargeted(placed.retargeted);
-	}, [filtered, query, active]);
+		// `undefined` means this pass has nothing to say about it: the retarget set
+		// by the pass that LOST the row must survive the pass that re-placed the
+		// highlight, which is this component's own next render - a fix that cleared
+		// it there measured 137 samples of the sentence never once on screen.
+		if (placed.retargeted !== undefined) setRetargeted(placed.retargeted);
+	}, [ordered, query, active]);
 	/*
 	 * A query change scrolls the list back to its top (UX U6).
 	 *
@@ -1002,32 +1054,32 @@ export const PickerHost: FC<PickerHostProps> = ({
 	const onKeyDown = useCallback(
 		(event: KeyboardEvent<HTMLInputElement>) => {
 			if (event.nativeEvent.isComposing) return;
-			if (event.key === "ArrowDown" && filtered.length > 0) {
+			if (event.key === "ArrowDown" && ordered.length > 0) {
 				event.preventDefault();
 				// The highlight is the user's from here on (UX U1): a listing that
 				// arrives while they are moving through the rows must not take it.
-				const next = (active + 1) % filtered.length;
-				activeValueRef.current = filtered[next]?.value ?? null;
+				const next = (active + 1) % ordered.length;
+				activeValueRef.current = ordered[next]?.value ?? null;
 				steeredRef.current = true;
 				setRetargeted(null);
 				setActive(next);
-			} else if (event.key === "ArrowUp" && filtered.length > 0) {
+			} else if (event.key === "ArrowUp" && ordered.length > 0) {
 				event.preventDefault();
-				const next = (active - 1 + filtered.length) % filtered.length;
-				activeValueRef.current = filtered[next]?.value ?? null;
+				const next = (active - 1 + ordered.length) % ordered.length;
+				activeValueRef.current = ordered[next]?.value ?? null;
 				steeredRef.current = true;
 				setRetargeted(null);
 				setActive(next);
 			} else if (event.key === "Enter") {
 				event.preventDefault();
-				if (hasList && filtered.length > 0 && onPick) {
-					void pick(filtered[active]);
+				if (hasList && ordered.length > 0 && onPick) {
+					void pick(ordered[active]);
 				} else if (onSubmit && !submitDisabled && !busy) {
 					void onSubmit();
 				}
 			}
 		},
-		[filtered, active, hasList, onPick, onSubmit, submitDisabled, busy, pick],
+		[ordered, active, hasList, onPick, onSubmit, submitDisabled, busy, pick],
 	);
 
 	const handleFormSubmit = useCallback(
@@ -1037,17 +1089,6 @@ export const PickerHost: FC<PickerHostProps> = ({
 		},
 		[onSubmit, submitDisabled, busy],
 	);
-
-	const grouped = useMemo(() => {
-		const groups = new Map<string, PickerOption[]>();
-		for (const option of filtered) {
-			const key = option.group ?? "";
-			const bucket = groups.get(key);
-			if (bucket) bucket.push(option);
-			else groups.set(key, [option]);
-		}
-		return [...groups.entries()];
-	}, [filtered]);
 
 	// Which of the four body states this render is in. The decision is a pure
 	// export so its order (loading before error before empty) is asserted rather
@@ -1125,7 +1166,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 								aria-expanded={true}
 								aria-controls={listId}
 								aria-activedescendant={
-									filtered[active] ? `${listId}-${active}` : undefined
+									ordered[active] ? `${listId}-${active}` : undefined
 								}
 								aria-autocomplete="list"
 								value={query}

@@ -849,7 +849,19 @@ export const ModelPicker: FC<PickerContext> = ({
 		});
 	}, [catalogueDocument, shownSelector]);
 
-	const listing = catalogueListing(catalogueDocument, catalogue, errorText);
+	/*
+	 * Which document was actually drawn, for the failure note's provenance clause:
+	 * the live answer when the live query has one - a failed SAME-KEY refetch keeps
+	 * `data`, which is how the note came to claim the rows below were the shipped
+	 * models while it was drawing a provider's own (round 2, code review R2-1) -
+	 * and the registry's document otherwise.
+	 */
+	const listing = catalogueListing(
+		catalogueDocument,
+		catalogue,
+		errorText,
+		catalogue.data === undefined,
+	);
 
 	const onPick = useCallback(
 		async (value: string, option: PickerOption) => {

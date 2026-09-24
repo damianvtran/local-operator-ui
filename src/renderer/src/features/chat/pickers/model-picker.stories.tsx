@@ -1162,6 +1162,23 @@ export const LiveListingFailed: Story = {
 				expect(screen.getByText(/The provider listing failed/)).toBeTruthy(),
 			SLOW,
 		);
+		/*
+		 * AND IT WAITS FOR THE RETRY TO SETTLE, which is what makes this frame a
+		 * picture of the state it claims (review round 2, the frame's own re-capture).
+		 * The refusal above is answered once and asked AGAIN a second later, because
+		 * this query inherits the application's default `retry: 1`
+		 * (`src/renderer/src/shared/api/query-client.ts`) - and while that retry is out
+		 * the control reads `Checking…` and no note is drawn. The note's first
+		 * appearance therefore precedes the settled state by about a second, which is
+		 * exactly the window a shutter fired off the earlier assertion landed in: a
+		 * re-capture of this story produced a `Checking…` frame filed under the name of
+		 * the FAILED state. Waiting for the pass to be out of flight pins the frame to
+		 * the state the file names, without touching the retry policy the app ships.
+		 */
+		await waitFor(
+			() => expect(screen.queryByText(/Checking…/)).toBeNull(),
+			SLOW,
+		);
 		await waitFor(
 			() => expect(screen.getAllByRole("option").length).toBe(1),
 			SLOW,

@@ -4959,6 +4959,44 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  */
 export const storyDrew = (counted) => counted - 2 >= 7;
 
+/**
+ * A console line that means the story's PHASE threw, whatever it threw.
+ *
+ * EVERY `XxxError:` IS PART OF THE PATTERN, and the names are deliberately not a
+ * list. QA round 4's Q-12 added `^Error:`; that was still a list, and the next
+ * hole was measured on this machine rather than reasoned about: the model
+ * picker's own evidence pass shipped a frame whose play had thrown ``TypeError:
+ * Received `callback` arg must be a function`` (a `waitFor` called without a
+ * callback), the pattern did not match it, the sweep exited 0 and printed
+ * `Captured 4 frames` - and the frame was presented as evidence for a state the
+ * play never reached. A guard that enumerates the error types a story may throw
+ * is a guard that is one mistake behind; what a console entry starting
+ * `<Something>Error:` means is that the story's phase threw, whatever the
+ * subclass is.
+ *
+ * The over-match is deliberate and cheap: a page console that carries a thrown
+ * error during a story's phase is a run to look at, not a frame to keep.
+ * `Unable to perform pointer interaction` stays named because it is
+ * `user-event`'s own refusal rather than an Error.
+ *
+ * Exported so the cases that decided it are a TEST rather than the reviewer's
+ * manual probe: `capture-evidence.test.mjs` drives the measured `TypeError`, a
+ * plain `Error`, the `user-event` refusal and a benign DevTools line through
+ * this constant, and pins that the sweep is reading the constant rather than a
+ * copy of it.
+ *
+ * `Uncaught ` is optional because a thrown Error the page reports itself arrives
+ * with that prefix, and the pattern is anchored at the line's start (review
+ * round 2, NIT 2). The residue the anchor cannot reach is a phase that throws a
+ * NON-Error - `throw "boom"`, a thrown object - which the console renders as a
+ * value with no `<Something>Error:` line at all. That is inherent to reading
+ * console text rather than to this pattern, and it is recorded here so it is not
+ * re-found as a new defect: the class the widening targeted (every `Error`
+ * subclass) is closed.
+ */
+export const PLAY_FAILURE =
+	/^(?:Uncaught )?\w*Error:|Unable to perform pointer interaction/;
+
 class Cdp {
 	constructor(ws) {
 		this.ws = ws;
@@ -7282,27 +7320,11 @@ const main = async () => {
 						.map((arg) => arg.value ?? arg.description ?? "")
 						.join(" "),
 				)
-				.find((text) =>
-					/*
-					 * EVERY `XxxError:` IS PART OF THE PATTERN NOW, and the names are no
-					 * longer a list. QA round 4's Q-12 added `^Error:`; that was still a list,
-					 * and the next hole was measured on this machine rather than reasoned
-					 * about: the model picker's own evidence pass shipped a frame whose play
-					 * had thrown `TypeError: Received `callback` arg must be a function` (a
-					 * `waitFor` called without a callback), the pattern did not match it, the
-					 * sweep exited 0 and printed `Captured 4 frames` — and the frame was
-					 * presented as evidence for a state the play never reached. A guard that
-					 * enumerates the error types a story may throw is a guard that is one
-					 * mistake behind; what a console entry starting `<Something>Error:` means
-					 * is that the story's phase threw, whatever the subclass is.
-					 *
-					 * The over-match is deliberate and cheap: a page console that carries a
-					 * thrown error during a story's phase is a run to look at, not a frame to
-					 * keep. `Unable to perform pointer interaction` stays named because it is
-					 * `user-event`'s own refusal rather than an Error.
-					 */
-					/^(\w*Error):|Unable to perform pointer interaction/.test(text),
-				);
+				// The pattern's own reasoning lives beside its definition (`PLAY_FAILURE`),
+				// because a rule this easy to widen needs its cases testable rather than
+				// described where the sweep reads them: `capture-evidence.test.mjs` drives
+				// the measured miss and the refusals through this same constant.
+				.find((text) => PLAY_FAILURE.test(text));
 			if (playFailure) {
 				throw new Error(
 					`${story} @ ${theme}: the story's play function THREW — ${playFailure.split("\n")[0].slice(0, 200)}. The story's own assertions rejected the state this frame would have photographed, so the frame is not taken and the sweep stops here. Run the story in Storybook to see it fail.`,
@@ -8000,3 +8022,4 @@ if (isEntryPoint(import.meta.url)) {
 		teardown();
 	}
 }
+
