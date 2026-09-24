@@ -50,7 +50,9 @@ export const defaultQueryOptions: DefaultOptions = {
 };
 
 /**
- * What a read that is a snapshot the user opened adds to the defaults above.
+ * What a read whose freshness is the user's own action adds to the defaults
+ * above — a snapshot they opened, or (the third consumer below) a live listing
+ * whose only asks are a button and a cadence.
  *
  * `refetchOnWindowFocus: false` is the whole entry, and it is a fix rather than
  * a preference. The app default is `true`, which for these reads means a full
@@ -64,10 +66,14 @@ export const defaultQueryOptions: DefaultOptions = {
  * catalogue panels (`panel-queries.ts`), the `/usage` view and the `/model`
  * picker's live catalogue read (`features/chat/pickers/destination-pickers.tsx`)
  * all read a snapshot the user opened, and none of them is refreshed by a focus
- * change. The picker's is the sharpest case of the three: its live key carries
- * `staleTime: 0`, so without this an inherited focus refetch is not a stale
- * snapshot re-read — it is a fresh provider round trip per signed-in provider,
- * which is a request the user never asked for against a provider's rate limit.
+ * change. The picker's is the sharpest case of the three AND the one this
+ * constant's name fits least: its live key carries `staleTime: 0`, so without
+ * this an inherited focus refetch is not a stale snapshot re-read — it is a fresh
+ * provider round trip per signed-in provider, which is a request the user never
+ * asked for against a provider's rate limit. The name stays for the two reads it
+ * was written for (a rename is a separate change across three call sites and the
+ * tests that assert them), so the rule is stated by this comment rather than by
+ * the identifier.
  *
  * `retry` is deliberately NOT part of this object. It is a per-read decision
  * with a per-read reason — `panel-queries.ts` accepts one retry for an ordinary
