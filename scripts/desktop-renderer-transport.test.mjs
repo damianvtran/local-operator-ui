@@ -924,7 +924,29 @@ test("the send path refuses on an unreadable attachment, before admission", () =
 	);
 	assert.match(
 		send,
-		/setSendError\(unreadableRefusal\);\s*setSendErrorCode\(UNREADABLE_ATTACHMENT_CODE\);\s*return false;/,
+		/setSendError\(unreadableRefusal\);/,
+		"the unreadable refusal is computed and never reaches the composer, so the file is still lost",
+	);
+	/*
+	 * AND THE BRANCH RETURNS, read off the branch rather than by adjacency: the
+	 * refusal's own register is set up between the code and the return
+	 * (`setSendErrorRetry(false)`/`setSendErrorMuted(false)`, which is what keeps a
+	 * muted notice from a previous failure from painting this one), so an
+	 * adjacency regex would pin the order of two unrelated statements and fail on
+	 * the next one added between them.
+	 */
+	const refusalBranch = send.slice(
+		send.indexOf("if (unreadableRefusal) {"),
+		send.indexOf("}", send.indexOf("if (unreadableRefusal) {")) + 1,
+	);
+	assert.match(
+		refusalBranch,
+		/setSendErrorCode\(UNREADABLE_ATTACHMENT_CODE\);/,
+		"the refusal is raised without its code, so the composer cannot tell this arm from a generic failure",
+	);
+	assert.match(
+		refusalBranch,
+		/return false;/,
 		"the unreadable refusal is computed and the send proceeds anyway, so the file is still lost",
 	);
 	/*
