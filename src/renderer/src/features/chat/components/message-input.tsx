@@ -5343,7 +5343,19 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										type="button"
 										variant="link"
 										size="sm"
-										className={cn("cursor-pointer text-body-sm underline")}
+										/*
+										 * WEIGHT RATHER THAN COLOUR, and that is the design round's
+										 * finding (D2) answered without a second palette rule: the two
+										 * ink roles these controls used (`ink` and `ink-dim`) measure
+										 * 1.05-1.11 apart in sage, iceberg, localOperatorLight, dune and
+										 * synth, so "Retry is the primary of the two" was invisible in
+										 * five of the twelve themes. A weight difference is the same
+										 * difference in all of them, and Retry is the control the
+										 * sentence is asking for.
+										 */
+										className={cn(
+											"cursor-pointer font-medium text-body-sm underline",
+										)}
 										onClick={() => sendError.onRetry?.()}
 									>
 										{RETRY_LABEL}
@@ -5354,6 +5366,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										type="button"
 										variant="link"
 										size="sm"
+										/*
+										 * `aria-label` because "Clear" on its own names no object for a
+										 * screen reader: read out of the notice it is a verb with nothing
+										 * after it, and the visible label stays short on purpose (review
+										 * round 1, U8).
+										 */
+										aria-label="Clear message"
 										className={cn(
 											"cursor-pointer text-ink-dim text-body-sm underline",
 										)}
