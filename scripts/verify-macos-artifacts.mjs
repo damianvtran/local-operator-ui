@@ -26,28 +26,39 @@ import {
 	openSync,
 	readFileSync,
 	readdirSync,
+	realpathSync,
 	rmSync,
 	statSync,
 } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
 	BYTECODE_TREE_NAMES,
 	LAYOUT,
+	LIPO_ARCH,
+	PYTHON_VERSION,
+	UV_VERSION,
 	seedResourceDir,
-} from "./bundled-python-layout.mjs";
+} from "./bundled-runtime-layout.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 import {
 	EMBEDDED_PROVISIONING_PROFILE_PATH,
 	profileBackedEntitlementKeys,
 } from "./macos-entitlement-policy.mjs";
 import {
+	MACH_O_CPUTYPE,
+	PRUNED_SEED_OPTIONAL_PATHS,
 	PRUNED_SEED_PATHS,
 	SEED_STDLIB_MARKER,
+	machOArchitectures,
+	machOCpuType,
+	machOExecutables,
 	machOFiles,
 	seedExecBitFiles,
 	seedModeViolations,
 } from "./prune-python-seed.mjs";
 import {
+	bundledUvToolCheck,
 	finalContainerChecks,
 	finalMetadataChecks,
 	privatePythonSeedCheck,
@@ -59,6 +70,19 @@ const XCRUN = "/usr/bin/xcrun";
 const SECURITY = "/usr/bin/security";
 
 /**
+ * The bytecode probe `app-bytecode-loadable` runs inside the bundle under test.
+ *
+ * Resolved from THIS module's own URL rather than from `process.cwd()`, because
+ * the gate is invoked through `scripts/require-report.sh` from the repository
+ * root on CI and by hand from anywhere else; a relative path would turn a probe
+ * that cannot be found into a spawn failure that reads like a brick.
+ */
+const BYTECODE_PROBE = join(
+	dirname(fileURLToPath(import.meta.url)),
+	"bytecode-accepts-probe.cjs",
+);
+
+/**
  * How long the spawn probe is given before its child counts as never-exited.
  *
  * The probe runs the main executable in Electron's node mode, whose whole job
@@ -68,6 +92,44 @@ const SECURITY = "/usr/bin/security";
  * the bound catches is red, which is the direction a release gate must fail in.
  */
 export const SPAWN_PROBE_TIMEOUT_MS = 60_000;
+
+/**
+ * The same bound for a probe whose child this host must TRANSLATE to run.
+ *
+ * WHY A BOUND OF ITS OWN RATHER THAN A BIGGER ONE FOR EVERYBODY. Rosetta 2 is
+ * the only translator macOS ships, it only runs x86_64 code on an arm64 host,
+ * and the release's macOS job runs on an arm64 runner while checking BOTH
+ * architectures' artifacts. The translation is a one-time, per-launch cost paid
+ * by the first exec, and - this is the part that makes it invisible to the
+ * predicate above - it is paid in WAIT rather than in work: measured on this
+ * machine, the x64 launcher of a shipped bundle in node mode took 24.7 s of wall
+ * clock against 0.5 s of user time on its first exec and 1.2 s on its second,
+ * with the executable byte-identical between them, because the only thing that
+ * changed was Rosetta's cache.
+ *
+ * WHAT IT COST THE RELEASE, and why the tight bound is the wrong instrument for
+ * a translated child. Measured on v0.30.9 (run 35701146672, both of its
+ * attempts): 2 of the gate's 6 `app-spawn` checks went red, both on x64 bundles,
+ * while the arm64 bundles answered the same question in 4-6 s - and the SAME
+ * launcher bytes passed later in the SAME run, twice, so what failed was the
+ * bound rather than the artifact. The 60 s bound is not a performance
+ * expectation (see above); it catches the third refusal shape, a spawn the OS
+ * neither completes nor refuses, and on a translated child it was measuring the
+ * translator instead.
+ *
+ * WHAT IT DOES NOT RELAX. A refusal at exec is decided at exec and is immediate:
+ * it arrives as a signal or a non-zero status, or as a child that never exits at
+ * all, and all three are still red here. The predicate is untouched and the
+ * tight bound still applies to every child this host can run natively - which is
+ * the arm64 artifact on an arm64 runner (the one an Apple-Silicon user installs)
+ * and the x64 artifact on an Intel runner. Only a child this host must translate
+ * is given longer to ANSWER.
+ *
+ * 300 s is not calibrated to a measurement - there is no upper bound to measure
+ * on a loaded runner - it is 5x the value that tripped and 12x this host's cold
+ * cost. Beyond it the shape on the other end is a spawn that is not coming back.
+ */
+export const SPAWN_PROBE_TRANSLATED_TIMEOUT_MS = 300_000;
 
 /**
  * The rendered WebAuthn keychain access group, as it appears in a signed app's
@@ -211,6 +273,44 @@ export function mainExecutablePath(appPath) {
 }
 
 /**
+ * Whether this host has to TRANSLATE the executable a spawn check runs.
+ *
+ * The question is asked of the header of the file that will be exec'd, not of the
+ * bundle, the artifact's name or the architecture of a neighbouring binary:
+ * translation is decided by the kernel when it loads THAT file. `machOCpuType`
+ * answers `null` for a fat launcher and for anything unreadable, and both keep the
+ * tight bound: a fat bundle is one this gate REFUSES rather than ships
+ * (`app-one-bundled-python` fails any app that is not a single architecture, and
+ * `mac.target` builds one per architecture), and "could not tell" must not
+ * silently buy patience at a release gate.
+ *
+ * Rosetta is the only translator macOS has, so the pair is an arm64 host against
+ * an x86_64 child. An arm64 child on an x64 host is not translated, it is
+ * refused, and that refusal is exactly the shape the probe exists to observe: it
+ * keeps the tight bound. `hostArch` is a parameter so the rule can be asserted on
+ * a host other than the one running the test.
+ */
+export function hostTranslatesExecutable(executable, hostArch = process.arch) {
+	return (
+		hostArch === "arm64" && machOCpuType(executable) === MACH_O_CPUTYPE.X86_64
+	);
+}
+
+/**
+ * The bound a check that EXECS `executable` gets, decided in one place.
+ *
+ * Two checks in this file run a child out of the bundle under test - the spawn
+ * probe and the seed-version ask - and both are exposed to the same translation,
+ * so the rule is written once rather than twice as a ternary. Every other check
+ * here reads files and needs no bound at all.
+ */
+export function execBound(executable, hostArch = process.arch) {
+	return hostTranslatesExecutable(executable, hostArch)
+		? SPAWN_PROBE_TRANSLATED_TIMEOUT_MS
+		: SPAWN_PROBE_TIMEOUT_MS;
+}
+
+/**
  * The entitlements an embedded provisioning profile authorizes, if it has one.
  *
  * Why `security cms -D` rather than a plist read: `embedded.provisionprofile`
@@ -238,10 +338,18 @@ export function readEmbeddedProfileEntitlements(appPath, run) {
  * everything else, and both of those can exit 0 - so the verdict has to read
  * the output, not the status that reports whether spctl itself ran.
  */
-export function artifactChecks({ appPath, dmgPath, profile = null }) {
+export function artifactChecks({
+	appPath,
+	dmgPath,
+	profile = null,
+	hostArch = process.arch,
+}) {
 	const checks = [];
 	const bundleId = appPath ? bundleIdentifierFromInfoPlist(appPath) : null;
 	const embedded = profile ?? { present: false, entitlements: null };
+	// The launcher the checks exec, resolved once: the spawn probe's bound depends
+	// on the architecture in ITS header, and both are read from one path lookup.
+	const executable = appPath ? mainExecutablePath(appPath) : null;
 	if (appPath) {
 		checks.push(
 			{
@@ -299,13 +407,63 @@ export function artifactChecks({ appPath, dmgPath, profile = null }) {
 			{
 				id: "app-spawn",
 				scope: "app",
-				target: mainExecutablePath(appPath),
+				target: executable,
 				description:
 					"the app's main executable really spawns (run in Electron's node mode, which exits immediately unless the OS refuses the exec)",
-				command: mainExecutablePath(appPath),
+				command: executable,
 				args: ["-p", "process.exit(0)"],
 				env: { ELECTRON_RUN_AS_NODE: "1" },
-				timeoutMs: SPAWN_PROBE_TIMEOUT_MS,
+				// Two bounds, not one: a child this host must translate answers in a
+				// translation's time rather than in its own, and `timedOut` would
+				// otherwise report the translator as an OS refusal. See
+				// `SPAWN_PROBE_TRANSLATED_TIMEOUT_MS` for what was measured.
+				timeoutMs: execBound(executable, hostArch),
+				expect: (result) =>
+					result.status === 0 && !result.signal && !result.timedOut,
+			},
+			/*
+			 * THE PROBE THAT WOULD HAVE CAUGHT THE 0.30.10 x64 BRICK.
+			 *
+			 * `app-spawn` above proves the OS will EXEC the launcher. It does not
+			 * prove the app can LOAD, and those came apart in v0.30.10: the x64 DMG
+			 * shipped the arm64 runner's V8 bytecode (both DMGs carried a
+			 * byte-identical `out/main/index.jsc`, sha256 23a37ddc…) because
+			 * `pnpm dist:mac` compiled bytecode once and packaged it for both
+			 * architectures. Every launch threw `Invalid or incompatible cached data
+			 * (cachedDataRejected)` out of `bytecode-loader.cjs` — the user saw
+			 * Electron's "A JavaScript error occurred in the main process" dialog and
+			 * the app never opened.
+			 *
+			 * Measured on the real broken bundle on an M3: `codesign --verify --deep
+			 * --strict` exits 0, `spctl` answers "accepted / Notarized Developer ID",
+			 * `stapler validate` passes, and `app-spawn` exits 0 — because
+			 * `ELECTRON_RUN_AS_NODE=1 <exe> -p 'process.exit(0)'` evaluates the string
+			 * it is handed and never requires `app.asar`. Six green checks on a bundle
+			 * that cannot start. Nothing here loaded the payload, so this check does.
+			 *
+			 * The probe runs UNDER THE BUNDLE'S OWN ELECTRON, which is what makes the
+			 * verdict meaningful: the x64 bundle answers in x86_64 terms even though
+			 * an arm64 runner is holding the file. It asks V8 for the same
+			 * `cachedDataRejected` flag the loader throws on and never runs the
+			 * compiled wrapper, so it starts no app, writes nothing and leaves nothing
+			 * behind. See `scripts/bytecode-accepts-probe.cjs`.
+			 *
+			 * Exit 1 is REJECTED (the brick). Exit 2 is PROBE-ERROR — unreadable or
+			 * unparseable — and is red too: "could not tell" must never ship.
+			 */
+			{
+				id: "app-bytecode-loadable",
+				scope: "app",
+				target: executable,
+				description:
+					"the app's own Electron accepts the V8 bytecode it ships (arm64 bytecode in an x64 bundle is refused at load, and every signature check passes on it)",
+				command: executable,
+				args: [
+					BYTECODE_PROBE,
+					join(appPath, "Contents/Resources/app.asar/out/main/index.jsc"),
+				],
+				env: { ELECTRON_RUN_AS_NODE: "1" },
+				timeoutMs: execBound(executable, hostArch),
 				expect: (result) =>
 					result.status === 0 && !result.signal && !result.timedOut,
 			},
@@ -437,7 +595,7 @@ const BUNDLED_PYTHON_TREES = BYTECODE_TREE_NAMES;
  * the one its architecture runs (`backend-installer.ts` `findPython`), so a
  * bundle with two trees carries an interpreter the machine cannot execute - half
  * the interpreter's weight again, in every download and every update. `afterPack`
- * (`scripts/prune-python-resource.mjs`) is what removes the other one, and this
+ * (`scripts/prune-bundled-resources.mjs`) is what removes the other one, and this
  * is the check that the removal happened: the failure mode is a silent 47 MB,
  * because a bundle carrying both trees still runs perfectly.
  */
@@ -667,7 +825,12 @@ function appCheck(id, appPath, description, work) {
  */
 export function seedRoot(appPath) {
 	try {
-		const parent = join(appPath, "Contents", "Resources", LAYOUT.seedNamespace);
+		const parent = join(
+			appPath,
+			"Contents",
+			"Resources",
+			LAYOUT.python.seedNamespace,
+		);
 		const names = readdirSync(parent).filter((name) =>
 			LAYOUT.architectures.includes(name),
 		);
@@ -703,52 +866,114 @@ export function prunedSeedCheck(appPath) {
 			const root = seedRoot(appPath);
 			if (root == null)
 				throw new Error(
-					`No single Contents/Resources/${LAYOUT.seedNamespace}/<arch> directory to check`,
+					`No single Contents/Resources/${LAYOUT.python.seedNamespace}/<arch> directory to check`,
 				);
-			const back = PRUNED_SEED_PATHS.filter(
+			const back = [...PRUNED_SEED_PATHS, ...PRUNED_SEED_OPTIONAL_PATHS].filter(
 				(relative) => lstatOrNull(join(root, relative)) !== null,
 			);
 			if (back.length > 0)
 				throw new Error(
 					`${back.length} pruned path(s) are back under the seed: ${back.join(", ")}. scripts/setup-python-resource.sh runs scripts/prune-python-seed.mjs; a build that skips it ships them again.`,
 				);
-			return `${PRUNED_SEED_PATHS.length} pruned path(s) absent`;
+			return `${PRUNED_SEED_PATHS.length + PRUNED_SEED_OPTIONAL_PATHS.length} pruned path(s) absent`;
 		},
 	);
 }
 
-/** Execute bits under the seed, which only a Mach-O file may carry.
+/** Execute bits under the seed: which files may carry one, and which must.
  *
- * The count is asserted beside the predicate because the predicate alone is
- * satisfied by a seed with no execute bit anywhere - including the interpreter
- * itself, which the app executes through its managed copy. */
+ * TWO DIRECTIONS, and the split is the correction of a false positive this gate
+ * produced for the `20260901` seed:
+ *
+ *  - NOTHING that is not a Mach-O may carry a bit. This is the direction the
+ *    prune is written for (`clearIncidentalExecBits`): the upstream tree ships
+ *    `0o755` on dozens of Python SOURCE files, and a bundle that carries those
+ *    says "run me" about data. Unchanged.
+ *  - Every Mach-O whose filetype is MH_EXECUTE MUST carry one, and the
+ *    interpreter the app spawns must be one of them. The kernel execs exactly
+ *    that filetype; `bin/python3` (a link to `bin/python3.12`) is what a managed
+ *    runtime's venv runs, so this is the functional requirement, asserted by
+ *    name rather than inferred from a count.
+ *
+ * WHY THE COUNT EQUALITY IS GONE, and why its removal is a strengthening rather
+ * than a loosening. This check used to require the number of files carrying an
+ * execute bit to EQUAL the number of Mach-O files. That is satisfied only while
+ * every Mach-O in the tree is something the app executes, and it was a proxy for
+ * "the interpreter kept its bit". The `20260901` build breaks the premise: it
+ * ships Tcl/Tk 9.0 as loadable libraries (`MH_DYLIB`, and the four under
+ * `lib/itcl4.3.8/` and `lib/thread3.0.6/` at mode 0644) where the `20250529`
+ * build shipped those pieces as `.a` archives. Under the count rule a perfectly
+ * correct seed fails (7 bits against 11 Mach-O) and the only ways out are
+ * chmod'ing libraries that nothing execs or deleting the assertion. Under this
+ * rule the same tree passes, an executable that LOST its bit fails (which the
+ * count could mask: a library that gained a bit while the interpreter lost one
+ * keeps the totals equal), and the interpreter is asserted directly.
+ *
+ * The modes are upstream's, not ours: measured in the raw
+ * `cpython-3.12.14+20260901-aarch64-apple-darwin-install_only.tar.gz`, before any
+ * prune, `lib/itcl4.3.8/libitcl4.3.8.dylib` is `0644` while
+ * `lib/libpython3.12.dylib` is `0755` - so no packaging step of ours dropped it,
+ * and the seed is not normalised in this direction (a `chmod +x` here would make
+ * the gate pass by changing the artifact it is supposed to be checking, and the
+ * loss this gate exists to catch happens AFTER the prune, in the copy, the seal
+ * and the ZIP, where no build step can reach).
+ *
+ * The library half is not a claim that a 0644 library is fine in the abstract -
+ * it is a reading: `dlopen` mmaps, it does not exec, and `ctypes.CDLL` loads
+ * this seed's own 0644 `libitcl4.3.8.dylib` in this seed's own interpreter.
+ */
 export function seedModeCheck(appPath) {
 	return appCheck(
 		"app-seed-exec-bits",
 		appPath,
-		"every execute bit under the seed belongs to a Mach-O file",
+		"every execute bit belongs to a Mach-O file, and every Mach-O the app execs carries one",
 		() => {
 			const root = seedRoot(appPath);
 			if (root == null)
 				throw new Error(
-					`No single Contents/Resources/${LAYOUT.seedNamespace}/<arch> directory to check`,
+					`No single Contents/Resources/${LAYOUT.python.seedNamespace}/<arch> directory to check`,
 				);
 			const violations = seedModeViolations(root);
 			if (violations.length > 0)
 				throw new Error(
 					`${violations.length} seed file(s) carry an execute bit without a Mach-O header: ${violations.slice(0, 4).join(", ")}${violations.length > 4 ? ` (and ${violations.length - 4} more)` : ""}`,
 				);
-			const execBits = seedExecBitFiles(root).length;
-			const machO = machOFiles(root).length;
-			if (machO === 0)
+			const machO = machOFiles(root);
+			if (machO.length === 0)
 				throw new Error(
 					"No Mach-O file under the seed at all: the interpreter and its library are gone",
 				);
-			if (execBits !== machO)
+			const bits = new Set(seedExecBitFiles(root));
+			const executables = machOExecutables(root);
+			if (executables.length === 0)
 				throw new Error(
-					`${execBits} seed file(s) carry an execute bit but ${machO} are Mach-O; the two counts must agree`,
+					"No executable Mach-O under the seed at all: nothing here is a filetype the kernel will run, so the interpreter is gone or replaced by a library",
 				);
-			return `${machO} Mach-O file(s), each carrying the execute bit and nothing else`;
+			const bitless = executables.filter((relative) => !bits.has(relative));
+			if (bitless.length > 0)
+				throw new Error(
+					`${bitless.length} executable seed file(s) do not carry the execute bit: ${bitless.slice(0, 4).join(", ")}${bitless.length > 4 ? ` (and ${bitless.length - 4} more)` : ""}. A managed runtime runs the copy it made of bin/python3; a packaging step that dropped the mode (a ZIP does) leaves an interpreter the OS refuses to spawn, which is the failure this check exists for.`,
+				);
+			// The interpreter BY NAME: the assertion above covers every executable,
+			// and this one says which file the app actually runs, so a seed that
+			// replaced it cannot pass on some other executable's bit. Both sides go
+			// through `realpathSync`, because on macOS a temporary root is reached as
+			// `/var/...` while its real path is `/private/var/...` and a one-sided
+			// call would make the relative path escape the tree it belongs to.
+			const fromRoot = realpathSync(root);
+			const interpreter = lstatOrNull(join(root, "bin/python3"))
+				? relative(fromRoot, realpathSync(join(root, "bin/python3")))
+				: null;
+			if (interpreter == null)
+				throw new Error(
+					"The seed has no bin/python3, so there is no interpreter for the app to run",
+				);
+			if (!executables.includes(interpreter) || !bits.has(interpreter))
+				throw new Error(
+					`The seed's bin/python3 resolves to ${interpreter}, which is not an executable Mach-O carrying the execute bit`,
+				);
+			const libraries = machO.length - executables.length;
+			return `${machO.length} Mach-O file(s): ${executables.length} executable(s) carrying the execute bit (bin/python3 among them), ${libraries} loadable librar${libraries === 1 ? "y" : "ies"} the loader mmaps, and no other seed file carrying one`;
 		},
 	);
 }
@@ -772,7 +997,7 @@ export function seedBootstrapCheck(appPath) {
 			const root = seedRoot(appPath);
 			if (root == null)
 				throw new Error(
-					`No single Contents/Resources/${LAYOUT.seedNamespace}/<arch> directory to check`,
+					`No single Contents/Resources/${LAYOUT.python.seedNamespace}/<arch> directory to check`,
 				);
 			const missing = [];
 			for (const relative of [
@@ -794,6 +1019,86 @@ export function seedBootstrapCheck(appPath) {
 			if (missing.length > 0)
 				throw new Error(`the seed cannot build a venv: ${missing.join(", ")}`);
 			return `venv bootstrap present (${wheels.join(", ")})`;
+		},
+	);
+}
+
+/**
+ * The interpreter the bundle ships IS the one the definition declares.
+ *
+ * WHY THIS EXISTS, and why it is the only check here that runs something. The
+ * declared version is the one thing in this layout that nothing else can see:
+ * `pnpm setup-python` DERIVES its download URL from it, so a build that ran the
+ * step is right by construction, while a build that did not - `resources/`
+ * staged weeks ago, a checkout that pulled a version bump and rebuilt - ships
+ * the previous patch release under the new declaration, and every other check in
+ * this gate passes: `lib/python3.12` exists in both (measured: the tree's own
+ * version markers carry the major.minor and nothing finer - `_sysconfigdata`'s
+ * `VERSION` is `3.12`), so a prune list, a marker path and a completeness check
+ * derived from `{pyver}` all agree with a 3.12.10 tree. Four patch releases, three
+ * of them security, is the gap this closes.
+ *
+ * WHY EXECUTING IS ACCEPTABLE HERE, and it is the only place in this repository
+ * that executes the seed in place. The namespace is inert DATA for the app - no
+ * venv resolves into it, and nothing the app runs reads it (`managed-python.ts`
+ * `ditto`s a copy out and builds the venv against that) - and this gate is not
+ * the app: it is a reader of the artifact, on a tree extracted from a DMG or a
+ * ZIP, and `--version` is the only way to read a patch level the tree itself does
+ * not record. The two switches make it a read: `-I` (ignore every `PYTHON*`
+ * variable and the user site directory) and `-B` (write no bytecode), the same
+ * pair the app's own runtime smoke child is started with. Measured on a real
+ * 3.12.14 seed tree: `bin/python3 -I -B --version` printed `Python 3.12.14` and
+ * left the tree's file set and every file's sha256 unchanged.
+ */
+/**
+ * The one check in this group that RUNS the seed, and why it is bounded.
+ *
+ * Every sibling reads files (`seedModeCheck`, `prunedSeedCheck`,
+ * `seedBootstrapCheck`, `bundledBytecodeCheck`, `privatePythonSeedCheck`); this
+ * one asks the interpreter its version, which makes it the same class of
+ * blindness the spawn probe removes one check to the left - a child nobody is
+ * measuring. v0.30.9 is the worked example: that release failed on a child which
+ * had to be TRANSLATED before it could answer (run `35701146672`), and this
+ * interpreter is an x86_64 child inside the x64 bundle that the arm64 runner must
+ * translate on its first exec exactly as the launcher is. It takes the bound
+ * `execBound` picks, so a native ask keeps the tight bound and a translated one
+ * is not mistaken for a hang.
+ */
+export function seedVersionCheck(
+	appPath,
+	{ run = spawnRunner, hostArch = process.arch } = {},
+) {
+	return appCheck(
+		"app-seed-python-version",
+		appPath,
+		`the bundled seed is the declared Python ${PYTHON_VERSION}`,
+		() => {
+			const root = seedRoot(appPath);
+			if (root == null)
+				throw new Error(
+					`No single Contents/Resources/${LAYOUT.python.seedNamespace}/<arch> directory to check`,
+				);
+			const python = join(root, "bin", "python3");
+			if (!existsSync(python))
+				throw new Error(`The seed has no bin/python3 to ask: ${python}`);
+			const result = run(
+				python,
+				["-I", "-B", "--version"],
+				undefined,
+				undefined,
+				execBound(python, hostArch),
+			);
+			const printed = `${result.stdout}${result.stderr}`.trim();
+			const match = /^Python (\d+\.\d+\.\d+)$/.exec(printed);
+			if (result.status !== 0 || match == null)
+				throw new Error(
+					`The seed's interpreter could not report its version (exit ${result.status ?? "none"}): ${printed || "no output"}`,
+				);
+			if (match[1] !== PYTHON_VERSION)
+				throw new Error(
+					`The bundle ships Python ${match[1]} while src/shared/bundled-runtime-layout.json declares ${PYTHON_VERSION}; run scripts/setup-python-resource.sh so the staged seed is the declared one (a version bump that nothing re-stages ships the previous patch release under the new number)`,
+				);
+			return `bin/python3 reports Python ${match[1]}`;
 		},
 	);
 }
@@ -829,6 +1134,126 @@ export function bundleExecutables(appPath) {
 		const stat = lstatSync(join(appPath, relative), { throwIfNoEntry: false });
 		return Boolean(stat?.isFile() && (stat.mode & 0o111) !== 0);
 	});
+}
+
+/**
+ * The Mach-O `cputype` each architecture lipo names, from the two declarations
+ * that already exist rather than from a third map.
+ *
+ * `LIPO_ARCH` (`scripts/bundled-runtime-layout.mjs`) says which lipo spelling
+ * each architecture DIRECTORY carries - `x64` the directory, `x86_64` the answer
+ * `lipo -archs` gives - and `MACH_O_CPUTYPE` is the one spelling of the header
+ * words. Reverse-mapped below for the log line; a cputype this does not name is
+ * printed as its hex value rather than rounded to a neighbouring architecture.
+ */
+const CPU_TYPE_BY_LIPO_ARCH = {
+	[LIPO_ARCH.arm64]: MACH_O_CPUTYPE.ARM64,
+	[LIPO_ARCH.x64]: MACH_O_CPUTYPE.X86_64,
+};
+const LIPO_ARCH_BY_CPU_TYPE = new Map(
+	Object.entries(CPU_TYPE_BY_LIPO_ARCH).map(([name, type]) => [type, name]),
+);
+
+/** The name lipo would give a slice's `cputype`, or its hex value if unknown. */
+function lipoArchName(cpuType) {
+	return (
+		LIPO_ARCH_BY_CPU_TYPE.get(cpuType) ??
+		`cputype 0x${cpuType.toString(16).padStart(8, "0")}`
+	);
+}
+
+/** A path list capped to what one log line can carry, with the rest counted. */
+function cappedList(entries, limit = 10) {
+	return `${entries.slice(0, limit).join(", ")}${entries.length > limit ? ` (and ${entries.length - limit} more)` : ""}`;
+}
+
+/**
+ * THE CHECK macOS 27'S OWN NOTICE ASKED FOR.
+ *
+ * macOS 27 is Apple-silicon-only (macOS 26 Tahoe was the last macOS for
+ * Intel-based Macs), and from macOS 28 Rosetta is gone for apps entirely. What
+ * Apple's own page for the transition says is that the user "might be notified
+ * that support is ending for Intel-based apps, and that the app or a component
+ * used by the app will not work with a future release of macOS (macOS 28)", and
+ * that "Starting with macOS 28, the next major macOS release, Rosetta
+ * functionality will be available only for certain older, unmaintained games
+ * that rely on Intel-based frameworks" (support.apple.com/en-us/102527, published
+ * 2026-09-21). The dialog an operator reported on a macOS 27 host words the same
+ * thing as "This version of \"Local Operator\" includes a component that will not
+ * open in macOS 28, the next major release" — quoted here as the reported dialog
+ * rather than as the page's text, because the page carries no such sentence.
+ * Either way the consequence is the same and it is what this check asserts: a
+ * component inside the bundle that carries ONLY a foreign architecture cannot
+ * open there at all. This product has shipped that shape before: before #138 a
+ * universal build carried BOTH bundled interpreters, half of it unrunnable on
+ * either machine.
+ *
+ * WHY NOTHING ELSE HERE COVERS IT: the neighbouring checks each read one named
+ * thing - the Electron Framework's architecture (`bundleArchitectures`), the
+ * interpreter seed's directory name (`privatePythonSeedCheck`), the bundled
+ * `uv`'s `lipo -archs` (`bundledUvToolCheck`). A foreign-only component in any
+ * other shape - an x64 `.node`, a helper, a second interpreter tree under a name
+ * nobody enumerated, a future resource group - passes all of them, and the only
+ * symptom is the notice on a user's machine.
+ *
+ * WHAT IS ASSERTED, and why each half is load-bearing:
+ *
+ *  - The bundle's own architecture comes from `bundleArchitectures(appPath)` and
+ *    must be EXACTLY ONE. This project ships one artifact per architecture, so a
+ *    fat bundle has no single architecture to hold its components to; rounding to
+ *    a nearby answer is how a bundle nobody can install passes a gate.
+ *  - EVERY Mach-O in the bundle - not only the executables - must carry that
+ *    architecture AMONG its slices. A dylib and a `.node` are loadable
+ *    components and the notice names components, so a universal one PASSES (it
+ *    opens natively) and a foreign-only one FAILS.
+ *  - A component whose slices cannot be read FAILS. "We could not ask" is not
+ *    "it is native"; the failure message says which of the two happened.
+ */
+export function nativeComponentsCheck(appPath, { run = spawnRunner } = {}) {
+	return appCheck(
+		"app-native-components",
+		appPath,
+		"every Mach-O component carries the bundle's own architecture (macOS 28 removes Rosetta for apps, so a foreign-only component cannot open there)",
+		() => {
+			const { archs, error } = bundleArchitectures(appPath, { run });
+			if (error != null)
+				throw new Error(
+					`The bundle's own architecture could not be read, and it is what every component is measured against: ${error}`,
+				);
+			if (archs.length !== 1)
+				throw new Error(
+					`The bundle's Electron Framework reports ${archs.length === 0 ? "no architecture" : `${archs.length} architectures (${archs.join(", ")})`}; this project ships one artifact per architecture, so there is no single architecture to hold its components to`,
+				);
+			const expected = CPU_TYPE_BY_LIPO_ARCH[archs[0]];
+			if (expected == null)
+				throw new Error(
+					`The bundle is ${archs[0]}, an architecture this gate has no Mach-O cputype for (it knows ${Object.keys(CPU_TYPE_BY_LIPO_ARCH).join(", ")})`,
+				);
+			const components = machOFiles(appPath);
+			if (components.length === 0)
+				throw new Error(
+					"No Mach-O component at all under the bundle: its own binaries are gone, so there is nothing to hold to an architecture",
+				);
+			const unreadable = [];
+			const foreign = [];
+			for (const relative of components) {
+				const slices = machOArchitectures(join(appPath, relative));
+				if (slices == null) unreadable.push(relative);
+				else if (!slices.includes(expected)) foreign.push({ relative, slices });
+			}
+			const problems = [];
+			if (unreadable.length > 0)
+				problems.push(
+					`${unreadable.length} Mach-O component(s) whose architecture could not be read, which is not the same as native: ${cappedList(unreadable)}`,
+				);
+			if (foreign.length > 0)
+				problems.push(
+					`${foreign.length} of ${components.length} Mach-O component(s) do not carry ${archs[0]}: ${cappedList(foreign.map(({ relative, slices }) => `${relative} [${slices.map(lipoArchName).join(" + ")}]`))}`,
+				);
+			if (problems.length > 0) throw new Error(problems.join("; "));
+			return `${components.length} Mach-O components, all carrying ${archs[0]}`;
+		},
+	);
 }
 
 /**
@@ -1218,13 +1643,19 @@ export function verifyArtifacts({
 			bundledBytecodeCheck(path),
 			bundledPythonCheck(path, { run, expectArch: arch }),
 			privatePythonSeedCheck(path, { expectArch: arch }),
-			// The three halves of the seed's weight, each asserted where the build
-			// assembled it: the content nothing imports, the execute bits that mean
-			// nothing in a bundle, and the venv bootstrap the pruning must not have
-			// reached.
+			bundledUvToolCheck(path, { expectArch: arch, run }),
+			// The bundle-wide sweep: the three checks above hold one NAMED thing to an
+			// architecture each, so this is the one that would catch a foreign-only
+			// component under a name nobody enumerated.
+			nativeComponentsCheck(path, { run }),
+			// The four halves of the bundled runtime's weight, each asserted where
+			// the build assembled it: the content nothing imports, the execute bits
+			// that mean nothing in a bundle, the venv bootstrap the pruning must not
+			// have reached, and the interpreter's own version.
 			prunedSeedCheck(path),
 			seedModeCheck(path),
 			seedBootstrapCheck(path),
+			seedVersionCheck(path, { run }),
 		];
 	};
 	for (const appPath of appPaths) {
@@ -1242,15 +1673,18 @@ export function verifyArtifacts({
 		);
 		results.push(...runChecks({ appPath, dmgPath: null, run, profile }));
 		results.push(...profileAuthorizationCheck(appPath, { run, profile }));
-		// Neither of the next six is a `codesign` question: all are about what the
-		// build assembled, and they fail with the offending paths so the fix is
+		// Neither of the next nine is a `codesign` question: all are about what
+		// the build assembled, and they fail with the offending paths so the fix is
 		// obvious.
 		results.push(bundledBytecodeCheck(appPath));
 		results.push(bundledPythonCheck(appPath, { run }));
 		results.push(privatePythonSeedCheck(appPath));
+		results.push(bundledUvToolCheck(appPath, { run }));
+		results.push(nativeComponentsCheck(appPath, { run }));
 		results.push(prunedSeedCheck(appPath));
 		results.push(seedModeCheck(appPath));
 		results.push(seedBootstrapCheck(appPath));
+		results.push(seedVersionCheck(appPath, { run }));
 	}
 	for (const dmgPath of dmgPaths) {
 		if (!existsSync(dmgPath)) {
@@ -1302,7 +1736,7 @@ export function verifyArtifacts({
 		);
 		if (interpreters) {
 			log(
-				`The app does not ship the bundled interpreter its architecture needs: ${interpreters.output}. The afterPack step in scripts/prune-python-resource.mjs keeps only that tree, and it runs before signing, so fix the build rather than the bundle.`,
+				`The app does not ship the bundled interpreter its architecture needs: ${interpreters.output}. The afterPack step in scripts/prune-bundled-resources.mjs keeps only that tree, and it runs before signing, so fix the build rather than the bundle.`,
 			);
 		}
 		// The refusal this gate most needed and did not have: a bundle macOS will not
@@ -1313,6 +1747,17 @@ export function verifyArtifacts({
 		if (spawn) {
 			log(
 				`The app does not spawn: ${spawn.output}. macOS decides this at exec, not at verification — a restricted entitlement with no embedded provisioning profile is refused by amfid (measured: -413 "No matching profile found", SIGKILL at spawn) while codesign, spctl and stapler all pass. Embed the profile that authorizes the claim, or remove the claim; see scripts/macos-entitlement-policy.mjs.`,
+			);
+		}
+		// The other remedy that lives in the BUILD rather than in the signing step,
+		// and the one whose raw output ("REJECTED …") says what happened but not
+		// what to change.
+		const bytecodeLoadable = failures.find(
+			(result) => result.id === "app-bytecode-loadable",
+		);
+		if (bytecodeLoadable) {
+			log(
+				`The app cannot load the V8 bytecode it ships: ${bytecodeLoadable.output}. V8 accepts cached data only from its own version, flags AND architecture, so a bundle built in the same pass as the other architecture's — one \`pnpm run build\` feeding an \`electron-builder\` that packages arm64 and x64 — carries the runner's bytecode and dies at every launch with cachedDataRejected, while codesign, spctl, stapler and the spawn probe all pass. Build each macOS architecture in its own pass, with node_modules/electron/dist fetched for THAT arch (npm_config_arch); see the macOS build steps in .github/workflows/publish.yml.`,
 			);
 		}
 		const authorization = failures.find(

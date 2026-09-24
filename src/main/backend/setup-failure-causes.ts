@@ -28,6 +28,21 @@ export const SETUP_FAILURE_CAUSES: Array<[RegExp, string]> = [
 		"This Mac ran out of disk space while setting up the backend. Free some space and retry.",
 	],
 	[
+		/*
+		 * THE UNREACHABLE INDEX, and it goes above the file one on purpose.
+		 *
+		 * pip's "Could not find a version that satisfies the requirement" matched the
+		 * file pattern's `could not find` and was therefore reported to the user as a
+		 * missing file whose download or copy did not finish - sending them to look for
+		 * a broken download when the actual remedy was the network (UX U4, measured on
+		 * a first-run install against an unreachable index). `No matching
+		 * distribution` is the same failure under pip's other name for it; the last two
+		 * are pip's and the resolver's own words for "the network is the problem".
+		 */
+		/Could not find a version|No matching distribution|ConnectionError|connection error|Temporary failure in name resolution|Failed to establish a new connection/i,
+		"Local Operator could not reach the package index, which is usually the network or a proxy. Check the connection and retry.",
+	],
+	[
 		/Another Local Operator instance is preparing/i,
 		"Another copy of Local Operator is setting up its backend right now. Retry in a moment.",
 	],
@@ -45,7 +60,7 @@ export const SETUP_FAILURE_CAUSES: Array<[RegExp, string]> = [
 		"The backend was installed but did not start correctly.",
 	],
 	[
-		/ENOENT|no such file or directory|could not find|did not match its signed seed/i,
+		/ENOENT|no such file or directory|did not match its signed seed/i,
 		"A file the setup needed was missing, which usually means the download or the copy did not finish.",
 	],
 ];

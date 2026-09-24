@@ -32,6 +32,17 @@ declare global {
 		 */
 		__loDevDriver?: DevDriverBridge;
 		api: {
+			/**
+			 * Whether THIS launch may report to PostHog.
+			 *
+			 * From `window`'s `additionalArguments` via the preload, never from a
+			 * `VITE_*` value: those are inlined at build time, so a build made with
+			 * the project key carries it whatever the launch says. `false` in every
+			 * launch that did not resolve to telemetry on — including one whose
+			 * switch was set to a value the app does not understand, and any host
+			 * that is not an app window (see `src/main/telemetry-launch.ts`).
+			 */
+			telemetryEnabled: boolean;
 			desktop: DesktopAPI;
 			/**
 			 * The browser feature's chrome controls. Shapes are `unknown` because
@@ -143,7 +154,14 @@ declare global {
 				onStateChanged: (callback: () => void) => () => void;
 				onConsentChanged: (callback: () => void) => () => void;
 				onConsentAttention: (
-					callback: (payload: { entryId: string }) => void,
+					callback: (payload: {
+						entryId: string;
+						/** The conversation whose agent asked, or null for a request no
+						 * conversation owns (`sessionRequesterOf` in main). Declared here as
+						 * the implementation does, because this file is the renderer's
+						 * contract and the two are read from opposite sides of the process. */
+						requesterSessionId: string | null;
+					}) => void,
 				) => () => void;
 				onPopupBlocked: (
 					callback: (payload: { tabId: number; url: string }) => void,
@@ -224,6 +242,42 @@ declare global {
 						mode: "none" | "session" | "open";
 					}) => void,
 				) => () => void;
+				/**
+				 * A signal, not the state: refetch `state()` when it fires.
+				 *
+				 * `console-state` is the one projection (design 10.2), so this carries
+				 * nothing and the renderer re-reads rather than receiving a second, partial
+				 * description of the same surfaces that could drift from the first.
+				 */
+				onStateChanged: (callback: () => void) => () => void;
+			};
+			/**
+			 * The capture view's own bridge (design 13.2/13.3).
+			 *
+			 * A SEPARATE NAMESPACE FROM `console`, deliberately: the console namespace
+			 * authorizes the app's window's main frame, and a renderer that exists to be
+			 * photographed must not be able to read, type into or resize a surface. This
+			 * one carries exactly what a reconstruction needs - a measurement request, the
+			 * record's bytes, and two answers - and nothing that could act on a surface.
+			 */
+			desktopCapture: {
+				/** Main asks for the cell's pixel size, once per window. */
+				onMeasure: (callback: () => void) => () => void;
+				/** The page's answer: the same measurement the pane reports to main. */
+				measured: (report: { cellWidth: number; cellHeight: number }) => void;
+				/** Main feeds one surface's record to paint. */
+				onFeed: (
+					callback: (payload: {
+						nonce?: number;
+						surface?: string;
+						cols: number;
+						rows: number;
+						theme: string | null;
+						bytes_base64: string;
+					}) => void,
+				) => () => void;
+				/** The page's "I have painted", with the renderer it painted with. */
+				settled: (report: { renderer: string }) => void;
 			};
 			/**
 			 * The server-status signal, from the MAIN process.

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { spawn, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
 import {
 	copyFileSync,
@@ -7,7 +7,6 @@ import {
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
-	readdirSync,
 	realpathSync,
 	rmSync,
 	statSync,
@@ -24,6 +23,7 @@ import { pythonChildEnv } from "./python-child-env.mjs";
 const guard = fileURLToPath(
 	new URL("./evidence-run-guard.py", import.meta.url),
 );
+const SOURCE_FILE_EXTENSION = /\.(?:mjs|js|ts|tsx)$/;
 /*
  * One environment for every python this file starts, and it states the python
  * variables rather than inheriting them (scripts/python-child-env.mjs): these
@@ -568,6 +568,35 @@ function callSites(text, name) {
 	return found;
 }
 
+function trackedSourceFiles(cwd = process.cwd()) {
+	const roots = ["scripts", "docs", "src", "bin"].filter((root) =>
+		existsSync(join(cwd, root)),
+	);
+	// Tracked paths stay stable while parallel tests create and remove transient
+	// bundles; argv keeps filenames from being interpreted as shell syntax.
+	return execFileSync("git", ["-C", cwd, "ls-files", "-z"], {
+		encoding: "utf8",
+	})
+		.split("\0")
+		.filter(Boolean)
+		.filter((file) => roots.some((root) => file.startsWith(`${root}/`)))
+		.filter((file) => SOURCE_FILE_EXTENSION.test(file))
+		.filter((file) => !file.includes("node_modules"))
+		.filter((file) => file !== "scripts/evidence-run-guard.test.mjs");
+}
+
+test("the source census ignores a transient untracked module", (t) => {
+	const repo = mkdtempSync(join(tmpdir(), "evidence-census-test-"));
+	t.after(() => rmSync(repo, { recursive: true, force: true }));
+	mkdirSync(join(repo, "scripts"));
+	writeFileSync(join(repo, "scripts", "tracked.mjs"), "export {};\n");
+	execFileSync("git", ["init", "-q", repo]);
+	execFileSync("git", ["-C", repo, "add", "--", "scripts/tracked.mjs"]);
+	const transient = join(repo, "scripts", "_interrupt-control.bundle.mjs");
+	writeFileSync(transient, "assertFramePaints();\n");
+	assert.deepEqual(trackedSourceFiles(repo), ["scripts/tracked.mjs"]);
+});
+
 test("every call site of the guard's async readers awaits them", () => {
 	/*
 	 * QA round 1, Q-1: `assertFramePaints` became async in this change and one call
@@ -588,16 +617,7 @@ test("every call site of the guard's async readers awaits them", () => {
 	 * flagged; if a future caller needs that shape, this test is where the
 	 * conversation happens rather than in a silent omission.
 	 */
-	const roots = ["scripts", "docs", "src", "bin"].filter((root) =>
-		existsSync(root),
-	);
-	const files = roots
-		.flatMap((root) =>
-			readdirSync(root, { recursive: true }).map((f) => join(root, String(f))),
-		)
-		.filter((file) => /\.(?:mjs|js|ts|tsx)$/.test(file))
-		.filter((file) => !file.includes("node_modules"))
-		.filter((file) => file !== "scripts/evidence-run-guard.test.mjs");
+	const files = trackedSourceFiles();
 	const offenders = [];
 	let sites = 0;
 	for (const file of files) {

@@ -752,7 +752,8 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
 });
 
 /**
- * The note's own quoted stamp values, held to the values the file ships.
+ * The notes whose backticked stamp tokens are claims about THIS file, held to the
+ * values it ships.
  *
  * WHY THIS EXISTS. A prose restatement of a value cannot check itself, and the
  * round-4 review found this exact failure: `settingsGateRestampNote` named
@@ -761,30 +762,70 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  * `9982fa27b`. Read on its own, the sentence looked like a claim about the
  * shipped value and was the opposite of one.
  *
- * THE CONVENTION THIS PINS: inside that note, a backticked `srcTree`/
+ * THE CONVENTION THIS PINS: inside a note in this list, a backticked `srcTree`/
  * `scriptsTree` token is ALWAYS the value this file ships, and the round's
- * history is written as bare SHAs. Scoped to that note deliberately -
- * `headNote` quotes a pair belonging to the fold it records, which is a
- * historical identity by design, not a stamp claim.
+ * history is written as bare SHAs.
+ *
+ * WHY THE LIST IS A LIST (widened for the fold convergence round's C-1, which is
+ * the same defect one note over). `headNote`, `installerNetworkRestampNote`, the
+ * console notes and `reloadReanchorRestampNote` quote pairs belonging to the folds
+ * they record - a historical identity by design, not a stamp claim - so they are
+ * deliberately not here. `shellPathRestampNote` is: the fold onto `d7397b055`
+ * substituted ONE token of each pair in it and left the other, so under a sentence
+ * beginning "It moves BOTH trees this file binds" the note named main's trees as
+ * this file's - wrong in both directions, and green everywhere because this test
+ * named a single note. Two notes claim this file's binding; both are asked.
+ * `candidateMacArchRestampNote` is the third: it states the transition it made
+ * AND quotes both stamps as this file's own values, so it is held to them rather
+ * than being read as history - the distinction the paragraph above draws.
  */
-test("the settings-gate note quotes the stamp values the file ships", () => {
+const STAMP_BINDING_NOTES = [
+	"shellPathRestampNote",
+	"settingsGateRestampNote",
+	"candidateMacArchRestampNote",
+	"notarizeGateRestampNote",
+	/*
+	 * `usageAutoCheckRestampNote` left this list when the remediation below
+	 * re-derived both stamps: its pair is now history, written as bare SHAs in the
+	 * note itself, because leaving it here would have held a fold's values to this
+	 * file as if they were its own — the defect the list exists for.
+	 */
+	/*
+	 * `usageInFlightRemediationNote` left this list when the convergence round
+	 * below re-derived both stamps on top of it: its pair is now history, written
+	 * as bare SHAs in the note itself, because leaving it here would have held a
+	 * superseded pair to this file as if it were its own. `usageInFlightConvergenceNote`
+	 * carries the binding the round it records re-derived.
+	 */
+	"usageInFlightConvergenceNote",
+	"macNativeComponentsRestampNote",
+	"telemetrySwitchRestampNote",
+	// The seventh: `readReceiptRestampNote` states this file's own pair for the
+	// read-receipt branch, so it is held to that pair rather than read as history -
+	// the distinction `candidateMacArchRestampNote` above is in the list for.
+	"readReceiptRestampNote",
+];
+
+test("the notes that claim this file's binding quote the stamp values it ships", () => {
 	const manifest = JSON.parse(
 		readFileSync("docs/evidence/manifest.json", "utf8"),
 	);
-	const quoted = [
-		...String(manifest.settingsGateRestampNote).matchAll(
-			/`(srcTree|scriptsTree)`\s*`([0-9a-f]{7,40})`/g,
-		),
-	];
-	assert.ok(
-		new Set(quoted.map(([, key]) => key)).size === 2,
-		"the settings-gate note must quote both stamps it ships, so a reader can compare them without leaving the note",
-	);
-	for (const [, key, value] of quoted) {
+	for (const note of STAMP_BINDING_NOTES) {
+		const quoted = [
+			...String(manifest[note]).matchAll(
+				/`(srcTree|scriptsTree)`\s*`([0-9a-f]{7,40})`/g,
+			),
+		];
 		assert.ok(
-			manifest[key].startsWith(value),
-			`the settings-gate note quotes ${key} ${value} while the file ships ${manifest[key]}`,
+			new Set(quoted.map(([, key]) => key)).size === 2,
+			`${note} must quote both stamps it ships, so a reader can compare them without leaving the note`,
 		);
+		for (const [, key, value] of quoted) {
+			assert.ok(
+				manifest[key].startsWith(value),
+				`${note} quotes ${key} ${value} while the file ships ${manifest[key]}`,
+			);
+		}
 	}
 });
 
@@ -1017,6 +1058,67 @@ const BRANCH_RECORDS = [
 	"roundFourRePortNote",
 	"chatSlashHighlightEvidence",
 	"themeLegibilityCapture",
+	/*
+	 * Grown by the provider-setup pass, which wrote this branch's newest top-level
+	 * record. It is the entry that makes the list's own promise true for it: the
+	 * fold onto `d7397b055` merged the manifest key-by-key and kept this record
+	 * because nothing had to drop it, but nothing would have caught it if it had -
+	 * and the pair of fields the same fold had to re-read (see
+	 * `refreshedThemesUnionNote`) is the case where a KEY-GRANULAR merge is exactly
+	 * the wrong instrument (fold convergence round, C-4).
+	 */
+	"providerSetupUxNote",
+	"renameRefreshArgumentListPass",
+	/*
+	 * Grown by the `/usage` pass, whose re-stamp is this branch's newest top-level
+	 * record. It is listed for the reason the list exists: a fold that starts from
+	 * main's manifest would drop it (and with it the note that says which two tree
+	 * hashes this branch's delta moved) without a word, and the re-derived tokens
+	 * the token-binding test holds would then read as a claim about main's trees.
+	 */
+	"usageAutoCheckRestampNote",
+	/*
+	 * Grown by the `/usage` in-flight remediation, this branch's newest top-level
+	 * record and the one that re-derived both stamps and moved four frames. It is
+	 * listed for the reason the list exists: a fold that started from main's
+	 * manifest would drop it, and with it the only statement of which four frames
+	 * moved, why two of them were re-taken, and what the two trees are now.
+	 */
+	"usageInFlightRemediationNote",
+	/*
+	 * Grown by this branch's fold onto `origin/main` = `e48d64b81` (the #475
+	 * telemetry-off merge), which wrote this branch's newest top-level record. It is
+	 * listed for the reason the list exists, and this one is the case the list was
+	 * written for: the fold is the only commit in this lineage that resolves
+	 * `docs/evidence/manifest.json` against a main that has moved, and a resolver who
+	 * took main's copy would drop this record and with it the only statement of which
+	 * two trees the fold moved, which of main's fields the per-field rule refuses, and
+	 * that no frame moved. (Note for a later reader, not an action: the `/usage`
+	 * convergence round's own record, `usageInFlightConvergenceNote`, is absent from
+	 * this list - the list's promise is therefore already one record short of true, and
+	 * this fold reports that rather than widening its own diff to fix it.)
+	 */
+	"foldOntoTelemetryOffNote",
+	/*
+	 * Grown by the read-receipt remediation (agent review round 2, MINOR 1), which
+	 * wrote this branch's newest top-level record. It is listed for exactly the
+	 * reason the entry above records: this pass's own fold onto a moved `origin/main`
+	 * had to lay this record back by hand, and the record is the only statement of
+	 * which two trees the receipt's bytes moved - so a resolver who took main's copy
+	 * would drop the claim the token-binding test then reads as main's.
+	 */
+	"readReceiptRestampNote",
+	/*
+	 * The record the entry above's own note reported as MISSING from this list, and
+	 * it is filled in here because the same pass is editing this list anyway: the
+	 * `/usage` convergence round wrote `usageInFlightConvergenceNote`, and until now
+	 * the list's promise was one record short of true - a fold that resolved the
+	 * manifest against a moved main could drop that record with nothing to catch it,
+	 * which is the failure this whole list exists to make loud. Naming it is a
+	 * one-line widening of the guard and changes nothing about any captured frame;
+	 * it is disclosed on the round's remediation comment rather than smuggled in.
+	 */
+	"usageInFlightConvergenceNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

@@ -467,8 +467,9 @@ a plaintext write. `run-sidebar.md` § 13 carries the same coupling.
 
 The original reasoning, kept as the record of why the write path is a dependency:
 
-- The credential dialog (`credential-dialog.tsx`, `CredentialDialogProps:40-52`)
-  is bound to `CREDENTIAL_MANIFEST` and writes the owner secret store
+- The credential dialog (`credential-dialog.tsx`, `CredentialDialogProps:40-52`,
+  removed in local-operator-ui #441 along with the plain-text API credentials
+  section) is bound to `CREDENTIAL_MANIFEST` and writes the owner secret store
   (`sessions.credential`); it is not the config's `env`/`headers` map, and the
   section's own copy already tells the user secrets are "referenced from the
   credential manager".

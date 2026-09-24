@@ -9,11 +9,11 @@
  */
 
 import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
-import type {
-	AuthOperation,
-	ProviderMethod,
-	RadientLoginVerdict,
-} from "@shared/api/local-operator/desktop-api";
+import type { ProviderMethod } from "@shared/api/local-operator/desktop-api";
+import {
+	type RadientLoginVerdict,
+	TUNNEL_LOGIN_PROVIDER,
+} from "@shared/hooks/use-radient-session-issue";
 import type { RadientAccountRead } from "@shared/hooks/use-radient-user-query";
 
 export function providerMethodLabel(
@@ -45,15 +45,6 @@ export function primaryMethod(
 		null
 	);
 }
-
-/**
- * The provider whose sign-in owns this machine's tunnel.
- *
- * Its login is the ONE stored credential this app can get a verdict about
- * (`GET /v1/auth/status`'s `radient_login`, read through the `accounts.list`
- * desktop op), which is what makes the join below possible at all.
- */
-export const RADIENT_PROVIDER_ID = "radient";
 
 /**
  * The refused badge's long form, which a surface renders as its `title`, because
@@ -168,7 +159,7 @@ export function loginState(
 	verdict: RadientLoginVerdict | null | undefined,
 	account: RadientSignInRead,
 ): ProviderLoginState {
-	if (providerId !== RADIENT_PROVIDER_ID) return "working";
+	if (providerId !== TUNNEL_LOGIN_PROVIDER) return "working";
 	if (verdict?.state === "login_required") return "refused";
 	// The provider accepting the sign-in is the one answer that lets the row
 	// speak for itself.
@@ -434,14 +425,4 @@ export function hostingCensusFailureHelperText(error: unknown): string {
  */
 export function providerLoadErrorMessage(error: unknown): string {
 	return backendLoadErrorMessage("Providers could not be loaded.", error);
-}
-
-/** Terminal states after which polling an auth operation must stop. */
-export function isTerminalAuthState(state: AuthOperation["state"]): boolean {
-	return (
-		state === "succeeded" ||
-		state === "failed" ||
-		state === "cancelled" ||
-		state === "expired"
-	);
 }

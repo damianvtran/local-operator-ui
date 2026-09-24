@@ -274,6 +274,40 @@ jobs:
     # 30-50 min, and the bound exists because a codesign hang once sat for ~5h50m
     # (run 33948569170) instead of failing. A wedged step must fail bounded.
     timeout-minutes: 75
+    # NOTARIZE IS BOUND AT THE JOB; THE CREDENTIALS ON THE STEPS THAT NOTARISE.
+    #
+    # `NOTARIZE` decides whether the two notarisation gates run at all, and it is
+    # the one that was lost: the single build step used to carry it and to run both
+    # gates INSIDE itself, so splitting the gates into a step of their own dropped
+    # it. It is bound here, above the steps, where a step added later cannot lose it
+    # by omission - at the job rather than at the workflow as `publish.yml` has it,
+    # because this workflow's `exact-update` job exists to run on a fresh VM with no
+    # Apple credentials at all.
+    #
+    # The three `APPLE_*` credentials are NOT here. They are secrets, and at job
+    # scope they would sit in the environment of all fourteen steps below - `pnpm
+    # install --frozen-lockfile` postinstall scripts and marketplace actions
+    # included - where they buy nothing. At step scope they reach exactly the three
+    # steps that notarise a bundle or an image, which is `publish.yml`'s shape.
+    #
+    # BOTH GATES SKIP QUIETLY when the flag or a credential is absent: one log line,
+    # exit 0 - 'Skipping notarization: NOTARIZE not set to true' - and
+    # `scripts/require-report.sh` cannot tell that from a pass, since its check is
+    # emptiness rather than meaning. What refuses an unnotarised image is the
+    # artifact verification, and in run 35846109424 that was the SAME step as the
+    # skip: the notarisation was still the first lines of the verification step's own
+    # `run:` block then (its API step list carries no notarisation step), so the step
+    # printed `Skipping disk image notarization: NOTARIZE not set to true` at
+    # 10:14:21 and then answered `FAIL dmg-spctl` and `FAIL dmg-stapler` for BOTH
+    # images at 10:18:09 - 3m48s later, one `Process completed with exit code 1` -
+    # `4 of 101 artifact checks failed`, the run red, every app-level check passing
+    # and `upload-artifact` skipped on `total_count: 0`. The realised cost was a red
+    # candidate verification and a wasted two-pass mac build, NOT a shipped image.
+    # The notarisation is a step of its own now, so a skip would land at verification
+    # one step later - and the step below refuses it outright, at the step that
+    # failed to do the job.
+    env:
+      NOTARIZE: 'true'
     # THE ENVIRONMENT NO LONGER GATES ON A HUMAN, and that is deliberate: the
     # operator asked for releases that need no human input, and a required reviewer
     # is exactly that input. What remains is the environment's **branch policy**
@@ -361,10 +395,40 @@ jobs:
           security import "$CERTIFICATE" -k "$CSC_KEYCHAIN" -P "$CSC_KEY_PASSWORD" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign:,notarize: -s -k "$KEYCHAIN_PASSWORD" "$CSC_KEYCHAIN"
       - run: pnpm setup-python
-      - name: Build signed candidate without publishing or version changes
+      # ONE BUILD CANNOT SERVE BOTH MAC ARCHITECTURES, and this workflow has to
+      # build the shape a release builds or its verdict is about a bundle nobody
+      # ships.
+      #
+      # `pnpm dist:mac` is `pnpm run build && electron-builder --mac`, and
+      # `pnpm run build` emits V8 bytecode (electron-vite's bytecode step, run
+      # against the Electron dist in `node_modules/electron/dist`). V8 accepts
+      # cached data only from its own version, flags AND architecture, so the
+      # single pass this job used to run - `pnpm build` then `electron-builder
+      # --mac --arm64 --x64` on an arm64 runner - compiled the runner's bytecode
+      # once and copied it into BOTH bundles. The x64 app then died at every
+      # launch with `Invalid or incompatible cached data (cachedDataRejected)`
+      # while codesign, spctl, stapler and the spawn probe all passed on it.
+      #
+      # The release path (`publish.yml`) was fixed for this; this job kept the
+      # one-pass shape, so `app-bytecode-loadable` failed on the x64 candidate of
+      # EVERY release from the day the check landed (v0.30.15, run 35833917102:
+      # `3 of 101 artifact checks failed`, all three the same x64 `.jsc`) - a
+      # permanently red verification, which is the one state that teaches its
+      # readers to ignore it. Each architecture is therefore built and packaged
+      # in its own pass, with the bytecode compiled against an Electron dist of
+      # THAT arch (`npm_config_arch` is what `node_modules/electron/install.js`
+      # reads to choose the download), exactly as `publish.yml` does.
+      #
+      # The dist is removed between passes rather than left in place:
+      # `ensure-electron.js`'s fast path keys on `dist/version`, so pass two would
+      # otherwise silently reuse pass one's runtime and reintroduce the bug.
+      - name: Build signed candidate (arm64)
         env:
-          NOTARIZE: 'true'
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          # The app bundle this pass builds is notarised by `scripts/notarize.js`
+          # from `afterSign`, so these three are the credential half of what the
+          # job's `NOTARIZE` arms. Bound here rather than at the job so they reach
+          # no other step - see the note above the job's `env`.
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -393,22 +457,116 @@ jobs:
           VITE_MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
           VITE_MICROSOFT_TENANT_ID: ${{ secrets.MICROSOFT_TENANT_ID }}
         run: |
-          pnpm build
-          # The arch flags are pinned here even though `main`'s build.mac.target
+          # The arch flag is pinned here even though `main`'s build.mac.target
           # already resolves to the same `{arm64: [dmg, zip], x64: [dmg, zip]}`:
           # the dispatch names a candidate commit, not necessarily `main`, and the
           # updater exercise needs an archive named for the runner's own arch. On
-          # a tree whose config says `arch: ["universal"]` the explicit flags are
-          # what keep that asset present, so the arch set stays a property of this
+          # a tree whose config says `arch: ["universal"]` the explicit flag is
+          # what keeps that asset present, so the arch set stays a property of this
           # workflow rather than of whichever tree is checked out.
-          pnpm exec electron-builder --mac --arm64 --x64 --publish never -c.forceCodeSigning=true
-          # The three gates below are wrapped in `scripts/require-report.sh` for the
-          # same reason as their twins in `publish.yml`: this block reads an exit
-          # status, so a gate that exited 0 having printed nothing - which is what
-          # reaching a script through an unresolvable path spelling produced - was a
-          # pass. The helper refuses an empty success instead of reading it as one,
-          # and `pnpm --silent` keeps pnpm's own banner out of the stream it measures.
-          bash scripts/require-report.sh "Disk image notarization" pnpm --silent notarize-dmg
+          #
+          # `mac.target` deliberately names no `arch` arrays: a target entry that
+          # pins one wins over this flag in electron-builder's
+          # `computeArchToTargetNamesMap`, which would silently build BOTH
+          # architectures in this pass again. `scripts/mac-build-arch.test.mjs`
+          # drives the real resolver over this step's argv and fails if that
+          # regresses, in either workflow.
+          rm -rf node_modules/electron/dist
+          npm_config_arch=arm64 node ./bin/ensure-electron.js
+          npm_config_arch=arm64 pnpm dist:mac -c.forceCodeSigning=true --arm64
+
+      # `latest-mac.yml` describes BOTH architectures in one file, and
+      # electron-builder rewrites it from scratch at the end of every run listing
+      # only what that run produced. Snapshot the arm64 pass's copy now; the x64
+      # pass's file is merged against it below. Without this pair, splitting the
+      # build would trade the launch brick for a dead update channel on whichever
+      # architecture built first. See scripts/merge-update-feed.mjs.
+      - name: Save the arm64 update feed
+        run: node scripts/merge-update-feed.mjs --save --dist dist --state "$RUNNER_TEMP"
+
+      - name: Build signed candidate (x64)
+        env:
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          # Same credential binding as the arm64 pass above, for the same reason.
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Same four bindings as the arm64 pass above, and the same names: a
+          # step that builds without them dies in `loadConfig` before compiling
+          # anything, and `scripts/check-build-env.mjs` fails the release
+          # contracts for a build step that omits one.
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          VITE_MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
+          VITE_MICROSOFT_TENANT_ID: ${{ secrets.MICROSOFT_TENANT_ID }}
+        run: |
+          # `--x64` and the matching `npm_config_arch` are the whole difference
+          # from the arm64 pass above; see its comment for why this cannot share
+          # a build. `electron-builder` writes into the same `dist/`, and the two
+          # passes emit disjoint filenames
+          # (`${name}-${version}-${arch}.${ext}`), so the arm64 artifacts from
+          # the previous pass are still there when the gates below run over the
+          # directory - which is what lets them assert BOTH architectures.
+          rm -rf node_modules/electron/dist
+          npm_config_arch=x64 node ./bin/ensure-electron.js
+          npm_config_arch=x64 pnpm dist:mac -c.forceCodeSigning=true --x64
+
+      # Put the arm64 entries back beside the x64 ones electron-builder just
+      # wrote, so the candidate's artifact set matches the set a release ships.
+      # This runs BEFORE notarization on purpose: that step rewrites each image's
+      # post-staple sha512 into every feed it finds, and it must find the merged
+      # list. The step fails loudly if nothing merged - a silent no-op here is
+      # invisible.
+      - name: Merge both architectures into the update feed
+        run: bash scripts/require-report.sh "Update feed merge" node scripts/merge-update-feed.mjs --merge --dist dist --state "$RUNNER_TEMP"
+
+      # The gates below are wrapped in `scripts/require-report.sh` for the same
+      # reason as their twins in `publish.yml`: this block reads an exit status,
+      # so a gate that exited 0 having printed nothing - which is what reaching a
+      # script through an unresolvable path spelling produced - was a pass. The
+      # helper refuses an empty success instead of reading it as one, and
+      # `pnpm --silent` keeps pnpm's own banner out of the stream it measures.
+      #
+      # `verify-macos-artifacts` is the gate this workflow failed on for every
+      # release: it walks every app bundle and every image BOTH passes produced,
+      # and `app-bytecode-loadable` is the one check that asks a bundle's own
+      # Electron to load the bytecode inside it.
+      # `notarize-dmg` is the step that has to prove it runs, and the notarisation it
+      # wraps is what did not: in run 35846109424 the skip was the first line of the
+      # verification step's `run:` block and both `dmg-spctl` checks then refused the
+      # images - in that same step, 3m48s later, exit code 1. Two things keep that from
+      # coming back: `scripts/mac-build-arch.test.mjs` asserts this step's EFFECTIVE
+      # env carries the flag and all three credentials, and the step refuses a skip
+      # itself rather than leaving it to the verification one step later.
+      - name: Notarize and staple the disk images
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # Two gates, two questions: `require-report.sh` refuses a SILENT success,
+          # and `require-notarized-dmg.sh` refuses a SKIP - which the wrapper cannot
+          # see, because a skip prints a line and exits 0. The skip is what happened
+          # in run 35846109424, where it was the first line of the verification step's
+          # own `run:` block and the four FAILs followed 3m48s later in that same step;
+          # with the notarisation a step of its own and this pair on it, the failure
+          # lands HERE, at the step that failed to do its job, rather than at the
+          # verification one step later behind a whole wasted two-pass build.
+          #
+          # `pipefail` is load-bearing: GitHub's default shell is `bash -e`, which
+          # reads the LAST status of a pipeline, so without it a failing
+          # `require-report.sh` would be masked by the `tee` beside it.
+          set -o pipefail
+          report="$RUNNER_TEMP/notarize-dmg.log"
+          bash scripts/require-report.sh "Disk image notarization" pnpm --silent notarize-dmg | tee "$report"
+          bash scripts/require-notarized-dmg.sh "$report"
+
+      # `verify-macos-artifacts` is the gate this workflow failed on for every
+      # release before the per-architecture split: it walks every app bundle and
+      # every image BOTH passes produced, and `app-bytecode-loadable` is the one
+      # check that asks a bundle's own Electron to load the bytecode inside it.
+      - name: Verify the signed candidate (both architectures)
+        run: |
           bash scripts/require-report.sh "macOS artifact verification" pnpm --silent verify-macos-artifacts
           bash scripts/require-report.sh "Packaged closure check" node scripts/check-packaged-closure.mjs --dist dist
           git diff --exit-code package.json

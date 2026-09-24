@@ -90,8 +90,8 @@ export const SettingsGroupHeader = ({
 			 * `hover:text-ink-muted`) without putting anything in its place — so
 			 * hovering a 40px header changed nothing at all and the surface's
 			 * primary interaction had cursor-only feedback (design round 1, D1b).
-			 * The ground is the app's own list-row hover (`settings-sidebar`,
-			 * `credential-card`), not a new treatment, and `hover:text-ink` stays
+			 * The ground is the app's own list-row hover (`settings-sidebar`),
+			 * not a new treatment, and `hover:text-ink` stays
 			 * because the primitive would otherwise step a heading DOWN in ink on
 			 * hover.
 			 */

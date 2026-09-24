@@ -445,6 +445,31 @@ export function installDevDriver(): string[] {
 				activeSessionId: sessions.activeSessionId,
 				sessionCount: sessions.sessions.length,
 				/*
+				 * THE ARCHIVE LANE'S OWN FACTS, because a scene cannot read an in-place toast update
+				 * off the DOM (agent review round 2, R2-2).
+				 *
+				 * The lane draws both of its messages under ONE id, so the message that replaces
+				 * another is an UPDATE of the mounted element: the pixels, the text and the element
+				 * itself are identical whether the answer re-asserted the message or the previous
+				 * one simply stayed up. A check that says "the retry re-asserted the refusal"
+				 * therefore needs a fact only the new answer can move, and these are the two the
+				 * store holds: `archiveAttempts` is its write counter - each `setSessionArchived`
+				 * takes the next stamp, which is what makes a second press distinguishable from the
+				 * first - and `archiveFailure` is the refusal it is currently carrying.
+				 *
+				 * Read as a pair with the DOM: the attempt must have ADVANCED across the press and
+				 * the refusal must name the conversation the scene pressed, while the painted toast
+				 * is what proves the lane drew it (and where). Neither half is sufficient alone and
+				 * the driver's checks say so.
+				 */
+				archiveAttempts: sessions.answerSeq,
+				archiveFailure: sessions.archiveFailure
+					? {
+							sessionId: sessions.archiveFailure.sessionId,
+							archived: sessions.archiveFailure.archived,
+						}
+					: null,
+				/*
 				 * The wizard's own dialog carries this attribute
 				 * (`features/onboarding/components/onboarding-dialog.tsx`). Not
 				 * `role="dialog"`: every modal in the app renders that, so the probe would
@@ -573,6 +598,107 @@ export function installDevDriver(): string[] {
 				 * something did not. Empty on every settled answer.
 				 */
 				settlePending: settled.pending,
+			};
+		},
+
+		/**
+		 * Set the chat sidebar's width, the way the divider does.
+		 *
+		 * WHY A VERB RATHER THAN A RESIZED WINDOW. The panel's width is the USER's
+		 * preference, not a function of the window: `ChatLayout` clamps
+		 * `chatSidebarWidth` at 240/360 and every per-row control sheds against a
+		 * container query on the PANEL. So the narrow band cannot be reached by
+		 * making the window small - the panel would keep the width the user chose -
+		 * and the one honest way to photograph it is to write the same preference
+		 * the divider writes.
+		 *
+		 * The value is clamped here as well as at the render boundary, so a scene
+		 * asking for 200 is told what it actually got rather than photographing a
+		 * panel that is not the width its frame claims.
+		 */
+		setSidebarWidth: async (payload) => {
+			const asked = Number((payload as { width?: unknown } | undefined)?.width);
+			if (!Number.isFinite(asked)) {
+				throw new Error("sidebar width must be a number");
+			}
+			const width = Math.min(360, Math.max(240, asked));
+			useUiPreferencesStore.getState().setChatSidebarWidth(width);
+			await nextFrame();
+			return {
+				width: useUiPreferencesStore.getState().chatSidebarWidth,
+				clamped: width !== asked,
+			};
+		},
+
+		/**
+		 * Read one element's painted box, WITHOUT touching it.
+		 *
+		 * WHY A SCENE NEEDS THIS AND `press` CANNOT SERVE. A hover is browser state: it
+		 * is set by the pointer being over an element, not by an event that element is
+		 * handed, so a `group-hover` reveal cannot be produced by dispatching anything
+		 * - and the pointer a scene moves has to be the REAL one, through the driver's
+		 * own input pipeline (CDP `Input.dispatchMouseEvent`), which lives on the other
+		 * side of this bridge. What the driver cannot work out for itself is where the
+		 * element IS: the app's layout is its own, and the driver has no evaluation
+		 * channel by design (see the module note).
+		 *
+		 * So this verb answers the one question that leaves: the box, in CSS pixels,
+		 * with the same hit test `press` reports, and it deliberately does not click,
+		 * focus or scroll anything. A verb that moved the pointer itself would be a
+		 * second way to hover, and the point of the split is that the pointer stays the
+		 * driver's.
+		 */
+		measure: async (payload) => {
+			const request =
+				typeof payload === "string"
+					? { selector: payload }
+					: (payload as { selector: unknown; timeoutMs?: unknown });
+			const selector = requireString(request?.selector, "measure selector");
+			const timeoutMs =
+				typeof request?.timeoutMs === "number" ? request.timeoutMs : 10_000;
+			const started = Date.now();
+			let element: Element | null = null;
+			while (element === null) {
+				element = document.querySelector(selector);
+				if (element !== null) break;
+				if (Date.now() - started > timeoutMs) {
+					throw new Error(
+						`nothing matches ${selector} after ${timeoutMs}ms of waiting`,
+					);
+				}
+				await new Promise((resolve) => setTimeout(resolve, 100));
+			}
+			const rect = element.getBoundingClientRect();
+			const centre = {
+				x: Math.round(rect.left + rect.width / 2),
+				y: Math.round(rect.top + rect.height / 2),
+			};
+			const hit = document.elementFromPoint(centre.x, centre.y);
+			return {
+				selector,
+				target: describeElement(element),
+				centre,
+				rect: {
+					x: Math.round(rect.x),
+					y: Math.round(rect.y),
+					width: Math.round(rect.width),
+					height: Math.round(rect.height),
+				},
+				hitTest: hit !== null && (hit === element || element.contains(hit)),
+				/*
+				 * WHETHER THE ELEMENT HAS THE KEYBOARD, which is a question scenes have to
+				 * be able to ask and no other verb can answer: the focus fixes of UX round 1
+				 * (U3: a refusal must leave the SAFE action holding it, U5/U9: a control that
+				 * unmounts must hand it to its successor) are only claims until something
+				 * reads `document.activeElement`. Additive, so a scene that does not ask is
+				 * unaffected.
+				 */
+				focused: element === document.activeElement,
+				inViewport:
+					rect.top >= 0 &&
+					rect.left >= 0 &&
+					rect.bottom <= window.innerHeight &&
+					rect.right <= window.innerWidth,
 			};
 		},
 

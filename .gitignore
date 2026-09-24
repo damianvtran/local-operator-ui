@@ -48,6 +48,11 @@ coverage/
 
 resources/python
 resources/python_aarch64
+# The staged runtime trees `pnpm setup-python` writes: the interpreter and the
+# uv release, one directory per architecture, all of them build inputs the
+# packaging step copies into `Resources` (see src/shared/bundled-runtime-layout.json).
+resources/uv
+resources/uv_aarch64
 
 *storybook.log
 node_modules
@@ -75,5 +80,14 @@ storybook-static/
 # was committed at 12MB (`scripts/_interrupt-composer.bundle.*`) - invisible to
 # every test, cited by nothing, and a repeat of a build tree a previous review
 # round already filed. Names starting with `_` are the convention for these.
+# A macOS AppleDouble sidecar: metadata about a sibling file, written when the volume
+# cannot store the extended attributes. `scripts/._mark-all-read-control.bundle.mjs`
+# is one such - 340KB beside a bundle that the two patterns above already ignore,
+# untracked rather than ignored, so a `git add -A` in a tree that has just run the
+# desktop suite would commit it (design round 9 filed it twice, once per pass that
+# ran that suite). The pattern is the macOS one rather than a list of the names seen
+# so far, because the pass that produces one has no say in which name it lands on.
+._*
+
 scripts/_*.bundle.mjs
 scripts/_*.bundle.cjs

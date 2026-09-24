@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -54,7 +55,6 @@ const PAGES = [
 const SECTIONS = [
 	{ id: "general", label: "General settings" },
 	{ id: "appearance", label: "Appearance" },
-	{ id: "credentials", label: "API credentials" },
 ];
 
 const ACTIONS = [
@@ -226,7 +226,6 @@ test("an empty query browses, in group order, and leaves the registry out", () =
 		"Clear conversation",
 		"General settings",
 		"Appearance",
-		"API credentials",
 	]);
 	/*
 	 * The registry's keys are searchable but not browsable: seventy rows in the
@@ -420,6 +419,36 @@ test("aliases are how the app's vocabulary meets the user's", () => {
 			"Clear conversation",
 		),
 	);
+});
+
+test("the api-key vocabulary survives the credentials section's removal", () => {
+	/*
+	 * The plain-text credentials section was this app's only owner of the words
+	 * "api key", "keys" and "tokens", and deleting the SECTION deleted its alias
+	 * row with it — so a user typing "api key" got zero matches for the app's own
+	 * API-key surface (design/UX round 1, U3). The vocabulary moved onto the
+	 * Providers row, which is the surface those words now name (its rows read
+	 * "Sign in or API key" and carry an API-key tab). This test is the guard
+	 * that the move happened: it searches the words a user would type and
+	 * requires the Providers section to answer.
+	 *
+	 * The row is built by the SHIPPED builder with the real section list this
+	 * change ships (`providers` in the rail), so the aliases are read from the
+	 * product's own meta table rather than restated here.
+	 */
+	const sections = [
+		{ id: "general", label: "General settings" },
+		{ id: "providers", label: "Providers" },
+	];
+	const provItems = buildSettingsSectionItems(sections);
+	for (const query of ["api key", "api keys", "keys", "tokens"]) {
+		assert.ok(
+			names(searchPalette({ items: provItems, raw: query })).includes(
+				"Providers",
+			),
+			`the palette's "${query}" finds no Providers row, so the api-key vocabulary lost its home with the credentials section`,
+		);
+	}
 });
 
 test("the registry's own spelling of a key finds its row", () => {
@@ -652,4 +681,36 @@ test("a panel is found by what it shows, not only by its name", () => {
 		raw: "credits",
 	});
 	assert.deepEqual(names(outcome), ["Provider usage"]);
+});
+
+test("the palette's join is given the same tombstone view the sidebar's is (agent review round 2, R2-2)", () => {
+	/*
+	 * THE INVARIANT THIS PINS IS THE MODULE'S OWN SENTENCE. `palette-search.ts` says
+	 * the palette is "built from the sidebar's own join (`searchChats`) so the palette
+	 * and the sidebar cannot disagree about which conversations a query matches", and
+	 * the call site broke it in exactly one way: `use-palette-sources.ts` called
+	 * `searchChats(sessions, terms, hits)` - no archive view - while the sidebar passes
+	 * `archiveView`. A hit for a conversation this window had PERMANENTLY DELETED is
+	 * rebuilt by the join into a synthesized row, so the palette offered a clickable
+	 * row that opens onto the deleted conversation's notice. The hits come from the
+	 * same `useChatSearch` cache (same 30 s key), so the two surfaces disagreed for as
+	 * long as that answer lived.
+	 *
+	 * Read as an anchor rather than driven, because the call site is a React hook and
+	 * this repository's harness has no DOM: what can be pinned here without a renderer
+	 * is that the argument is passed at all and that it carries the tombstones - the
+	 * half that was missing. The join's own behaviour with a `forgotten` set is
+	 * asserted in `chat-search.test.mjs`, against the shipped module.
+	 */
+	const source = readFileSync(
+		"src/renderer/src/features/command-palette/use-palette-sources.ts",
+		"utf8",
+	);
+	assert.match(
+		source,
+		/searchChats\(sessions, terms, hits, \{\}, archiveView\)/,
+		"the palette's join must be given the same view the sidebar's is",
+	);
+	assert.match(source, /forgotten: new Set\(Object\.keys\(forgotten\)\)/);
+	assert.match(source, /state\.forgotten\)/);
 });

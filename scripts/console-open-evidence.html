@@ -1,0 +1,41 @@
+<!doctype html>
+<!--
+  Evidence harness: the Console pane's OPEN, one moment per page load.
+
+  What this exists to photograph: the window between pressing the console trigger and
+  having a terminal in the pane. The design round (D1) found no frame in it — the one
+  frame that followed the press was already settled — so the flow's central claim ("the
+  pane does not greet you with an empty state and a New console button") had no visual
+  half at all. Three moments are photographed, one per `?step=`:
+
+    ?step=waiting   pressed, create in flight, never answered  -> a wait, never the greeting
+    ?step=created   create answered, surface in the listing    -> the terminal, caret in it
+    ?step=failed    create refused                             -> the refusal, its reason, a retry
+
+  The pane under the camera is the SHIPPED `ConsolePane`, the shipped store, a real
+  xterm DOM renderer and the shipped themes, in a box the size the app gives it. What is
+  substituted is `window.api.console` — there is no pty behind this page — so the prompt
+  in the `created` frame is bytes replayed through the mirror's own subscribe path, not a
+  shell's output. These frames are about the pane's STATES and their order; whether a
+  program runs is QA's live cell, and `docs/evidence/console-pane-fit/README.md` says so.
+
+  Not part of the app and not part of the test suite: a capture surface, run by hand with
+  the browser tool. See that README for the commands.
+-->
+<html lang="en" data-theme="localOperatorDark">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Console open — the pane in each moment</title>
+	</head>
+	<body>
+		<div id="root"></div>
+		<!--
+		  The measurement strip, outside the photographed pane on purpose: the frame is
+		  the product surface and nothing else, and the numbers a reader needs (which step,
+		  which box, which device ratio) are text. Off-canvas and rendered, so `innerText`
+		  still resolves and no scrollbar enters the box being measured.
+		-->
+		<pre id="probe"></pre>
+		<script type="module" src="./console-open-evidence.tsx"></script>
+	</body>
+</html>

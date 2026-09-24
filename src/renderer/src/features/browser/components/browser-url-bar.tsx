@@ -1,4 +1,10 @@
-import { Badge, Button, Input, Tooltip } from "@shared/components/ui";
+import {
+	Badge,
+	Button,
+	Input,
+	Tooltip,
+	countLabel,
+} from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import {
 	ArrowLeft,
@@ -358,10 +364,11 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 						<Badge
 							variant="attention"
 							shape="pill"
-							className="h-4 min-w-4 justify-center px-1 tabular-nums ring-2 ring-canvas"
+							size="count"
+							className="ring-2 ring-canvas"
 							data-tour-tag="browser-approvals-badge"
 						>
-							{waitingCount}
+							{countLabel(waitingCount)}
 						</Badge>
 					</span>
 				)}

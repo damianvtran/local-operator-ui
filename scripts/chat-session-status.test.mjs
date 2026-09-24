@@ -24,12 +24,12 @@ new Function("module", "exports", "require", result.outputFiles[0].text)(
 );
 const { ChatSessionStatus, renderToStaticMarkup, createElement } =
 	output.exports;
-const render = (code, unseen) =>
+const render = (code, unseen, label = code) =>
 	renderToStaticMarkup(
 		createElement(ChatSessionStatus, {
 			row: {
 				session_id: "fixture",
-				status: { code, label: code },
+				status: { code, label },
 				attention: { unseen },
 			},
 		}),
@@ -117,6 +117,7 @@ for (const [code, icon, ink] of [
 	["approval", "circle-alert", "warning"],
 	["scheduled", "clock", "ink-dim"],
 	["attached", "message-square", "ink-dim"],
+	["delegating", "share-2", "accent"],
 	["idle", "circle", "ink-dim"],
 	["dormant", "pause", "ink-dim"],
 	["unknown", "circle-help", "ink-dim"],
@@ -129,6 +130,46 @@ for (const [code, icon, ink] of [
 		assert.match(after, new RegExp(`text-${ink}`));
 	});
 }
+
+/*
+ * `delegating` is the arm for a parent whose own turn is NOT running while its
+ * subagents are, and the label is the whole of what it says: the backend folds
+ * the counts INTO `status.label` ("2 subagents running · 1 queued") rather than
+ * shipping them as a field of their own, because the count moves on the same
+ * clock as the code and a count read from a slower projection could contradict
+ * the glyph beside it. So the words must be the label VERBATIM, at whatever
+ * count it carries - which is the only thing separating this state from the
+ * unknown-code fallback a build without the arm would draw.
+ */
+test("delegating draws the delegated-work mark and names its counts", () => {
+	const label = "2 subagents running \u00b7 1 queued";
+	const markup = render("delegating", false, label);
+	// Its own glyph, in the accent role, and NOT the unknown-code fallback: a
+	// build that had the backend's code but not this arm would draw HelpCircle.
+	assert.match(markup, /lucide-share-2/);
+	assert.match(markup, /text-accent/);
+	assert.doesNotMatch(markup, /lucide-circle-help|lucide-circle /);
+	// STATIC: `busy` owns the spinner in this slot, and two animated marks would
+	// make two different states read as one.
+	assert.doesNotMatch(markup, /animate-spin/);
+	// The counts ride the label, all the way into the name a screen reader hears,
+	// with no separate field for the row to fall out of step with.
+	assert.match(markup, new RegExp(`sr-only">${label}<`));
+	/*
+	 * AND NO NESTED `title`, which is the half of the label this mark must NOT
+	 * carry. The row's own button owns the tooltip for the whole row, including
+	 * this 16px square (review round 1, MINOR 1, on this very span), and the
+	 * row composes it from `row.status?.label` - so a mark that also carried the
+	 * sentence would win the nested-title rule and shadow the row's, which is
+	 * what makes the count's SECOND surface the row's tooltip and not a copy
+	 * here. Asserted on the new arm because it is the arm whose label is a
+	 * sentence rather than a token, and so the one that would tempt a title.
+	 */
+	assert.doesNotMatch(markup, /title=/);
+	// And the resting ring is NOT what it draws: `delegating` must not be
+	// normalised into `idle`/`recent` by the fallback below.
+	assert.doesNotMatch(markup, /text-ink-dim/);
+});
 
 /*
  * The separation itself, asserted as a RELATION between two rows.

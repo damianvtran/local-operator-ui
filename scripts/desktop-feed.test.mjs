@@ -118,9 +118,10 @@ export const discardPendingEchoes = () => undefined;`,
 		},
 	],
 });
-const { useCanonicalSessionsStore: store, mergeCompletionAttention } = await import(
-	`data:text/javascript;base64,${Buffer.from(storeBundle.outputFiles[0].text).toString("base64")}`
-);
+const { useCanonicalSessionsStore: store, mergeCompletionAttention } =
+	await import(
+		`data:text/javascript;base64,${Buffer.from(storeBundle.outputFiles[0].text).toString("base64")}`
+	);
 
 const SESSION = "123456abcdef";
 const OTHER = "ffffffffffff";
@@ -313,12 +314,78 @@ test("with the capability the feed delivers frames, beats presence, and closes c
 		frames.map((frame) => frame.type),
 		["open", "attention", "catalogue"],
 	);
-	assert.equal(frames[2].payload.revision, 11, "the invalidation carries its revision");
+	assert.equal(
+		frames[2].payload.revision,
+		11,
+		"the invalidation carries its revision",
+	);
 
 	relay.stop();
 	await sleep(TICK);
 	assert.equal(relay.isConnected, false);
 	assert.equal(states.at(-1), false);
+	globalThis.fetch = original;
+});
+
+/*
+ * The `authoring` frame's trip through the relay, which is where its two
+ * properties are decided.
+ *
+ * WHY AN `authoring` FRAME NEEDS ITS OWN CASE when the delivery test above
+ * already covers frames in general: that test's frame types are the ones main
+ * ROUTES on (`notification` goes to the notifier, everything else to the
+ * window), and the authoring frame's whole value rests on being in the second
+ * group untouched. What the consumer above it is written against is delivery
+ * VERBATIM - `payload.revision` is compared against the last value it acted on,
+ * so a normalisation here (folding `payload` into the frame, renumbering `seq`,
+ * dropping `epoch`) would keep the frame flowing and make the dedupe
+ * undecidable, which is a failure that shows up as a list that refetches on
+ * every delivery instead of once per change.
+ *
+ * So the assertions are the whole frame's identity and the receipt cursor
+ * travelling with it, in wire order - `seq` 11 then 12, the two frames the
+ * backend would publish - rather than any reading of the frame's meaning. The
+ * relay is transport and knows none.
+ */
+test("an authoring frame is delivered verbatim, cursor and all", async () => {
+	const original = globalThis.fetch;
+	const source = sseSource();
+	globalThis.fetch = async () => source.response;
+	const frames = [];
+	const relay = new DesktopFeedRelay("http://127.0.0.1:9/", "token", {
+		request: async () => ({
+			status: 200,
+			body: { result: { features: { desktop_feed: 1 } } },
+		}),
+		beatPresence: async () => ({ status: 200, body: null }),
+	});
+	relay.observe((frame) => frames.push(frame));
+	await relay.start();
+	await sleep(TICK);
+
+	const authoringFrame = {
+		epoch: "feed",
+		seq: 12,
+		type: "authoring",
+		payload: { revision: 4 },
+	};
+	source.push(openFrame());
+	source.push(catalogueFrame(11));
+	source.push(authoringFrame);
+	await sleep(TICK);
+
+	assert.deepEqual(
+		frames.map((frame) => frame.type),
+		["open", "catalogue", "authoring"],
+		"the frame is delivered in wire order, behind the catalogue it follows",
+	);
+	// Deep, not a field check: `seq` and `epoch` are the receipt cursor the
+	// renderer's consumers record, and this frame carries them like any other
+	// non-`notification` frame rather than being special-cased.
+	assert.deepEqual(frames[2], authoringFrame);
+
+	relay.stop();
+	await sleep(TICK);
 	globalThis.fetch = original;
 });
 
@@ -495,7 +562,13 @@ test("a frame that omits `supported` inherits it, and an explicit one wins", () 
 	// The catalogue's own shape: same revision, no `supported` key at all. This
 	// is the case that used to delete the flag and disable the read receipt for
 	// the conversation on screen.
+	//
+	// `delete` rather than an `undefined` value, deliberately: the merge's rule is
+	// about the key's ABSENCE, so `{...current, supported: undefined}` would be a
+	// different frame - it answers explicitly - and this case would stop
+	// reproducing the defect it is here for.
 	const withoutFlag = { ...current };
+	// biome-ignore lint/performance/noDelete: the omission of the key IS the case under test
 	delete withoutFlag.supported;
 	assert.equal(
 		mergeCompletionAttention(current, withoutFlag, SESSION).supported,
@@ -504,8 +577,11 @@ test("a frame that omits `supported` inherits it, and an explicit one wins", () 
 	// A producer that answers explicitly is not overruled — including a `false`,
 	// which is the whole reason the field is sent at all.
 	assert.equal(
-		mergeCompletionAttention(current, { ...withoutFlag, supported: false }, SESSION)
-			.supported,
+		mergeCompletionAttention(
+			current,
+			{ ...withoutFlag, supported: false },
+			SESSION,
+		).supported,
 		false,
 	);
 	assert.equal(
@@ -700,7 +776,9 @@ test("the sidebar's 5 s poll is gone, and the feed is what replaced it", () => {
 	);
 	// The disconnected line's pinned sentence, so a re-word shows up here.
 	assert.ok(
-		source.includes("Not connected to the backend — showing the last known state."),
+		source.includes(
+			"Not connected to the backend — showing the last known state.",
+		),
 	);
 	// And the unseen mark is no longer a weight change on the title.
 	assert.ok(

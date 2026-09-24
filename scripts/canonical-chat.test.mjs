@@ -141,7 +141,6 @@ function reset() {
 		drafts: {},
 		sessionByAgent: {},
 		validatingSessionId: null,
-		navigationError: null,
 		error: null,
 	});
 }
@@ -209,6 +208,158 @@ test("authoritative refresh removes absent IDs while newer viewed revision survi
  * is additive, so this asserts the compatibility half as well: a daemon that
  * sends nothing leaves the marker empty and every surface renders as it did.
  */
+test("overlapping catalogue refreshes coalesce and perform one trailing read", async () => {
+	reset();
+	const resolveResponses = [];
+	let firstRequestStarted;
+	let secondRequestStarted;
+	const firstRequest = new Promise((resolve) => {
+		firstRequestStarted = resolve;
+	});
+	const secondRequest = new Promise((resolve) => {
+		secondRequestStarted = resolve;
+	});
+	globalThis.__canonicalRequest = (request) => {
+		calls.push(request);
+		const response = new Promise((resolve) => resolveResponses.push(resolve));
+		if (calls.length === 1) firstRequestStarted();
+		if (calls.length === 2) secondRequestStarted();
+		return response;
+	};
+
+	const first = store.getState().fetchSessions(73);
+	await firstRequest;
+	const burst = [
+		store.getState().fetchSessions(73),
+		store.getState().fetchSessions(73),
+	];
+	assert.equal(calls.length, 1, "a burst shares the active catalogue request");
+	assert.equal(
+		burst.length,
+		2,
+		"both overlapping callers join the same flight",
+	);
+	assert.equal(
+		calls[0].limit,
+		73,
+		"coalescing preserves an explicit page limit",
+	);
+
+	resolveResponses[0]({
+		sessions: [{ id: "stale", name: "stale", mtime: 1 }],
+		truncated: false,
+	});
+	await secondRequest;
+	assert.equal(
+		calls.length,
+		2,
+		"an invalidation during flight starts one trailing read",
+	);
+	assert.equal(
+		calls[1].limit,
+		73,
+		"the trailing read retains the requested page size",
+	);
+	resolveResponses[1]({
+		sessions: [{ id: "fresh", name: "fresh", mtime: 2 }],
+		truncated: true,
+	});
+	await first;
+
+	assert.deepEqual(
+		store.getState().sessions.map((row) => row.session_id),
+		["fresh"],
+		"the stale in-flight page must not replace the trailing answer",
+	);
+	assert.equal(store.getState().truncated, true);
+	assert.equal(store.getState().loading, false);
+	assert.equal(store.getState().error, null);
+});
+
+test("the latest explicit catalogue limit is used by the trailing refresh", async () => {
+	reset();
+	const pending = [];
+	let firstRequestStarted;
+	let trailingStarted;
+	const firstRequest = new Promise((resolve) => {
+		firstRequestStarted = resolve;
+	});
+	const trailingRequest = new Promise((resolve) => {
+		trailingStarted = resolve;
+	});
+	globalThis.__canonicalRequest = (request) => {
+		calls.push(request);
+		const response = new Promise((resolve) => pending.push(resolve));
+		if (calls.length === 1) firstRequestStarted();
+		if (calls.length === 2) trailingStarted();
+		return response;
+	};
+
+	const narrow = store.getState().fetchSessions(31);
+	await firstRequest;
+	const broad = store.getState().fetchSessions(79);
+	assert.deepEqual(
+		calls.map(({ limit }) => limit),
+		[31],
+	);
+	pending[0]({ sessions: [{ id: "stale", name: "stale", mtime: 1 }] });
+	await trailingRequest;
+	assert.deepEqual(
+		calls.map(({ limit }) => limit),
+		[31, 79],
+		"the latest explicit page size applies to the trailing read",
+	);
+	pending[1]({
+		sessions: [{ id: "broad", name: "broad", mtime: 2 }],
+		truncated: true,
+	});
+	await Promise.all([narrow, broad]);
+	assert.deepEqual(
+		store.getState().sessions.map((row) => row.session_id),
+		["broad"],
+	);
+	assert.equal(store.getState().truncated, true);
+});
+
+test("an invalidated catalogue failure is retried without publishing an error", async () => {
+	reset();
+	let rejectFirst;
+	let firstRequestStarted;
+	let trailingStarted;
+	const firstRequest = new Promise((resolve) => {
+		firstRequestStarted = resolve;
+	});
+	const trailingRequest = new Promise((resolve) => {
+		trailingStarted = resolve;
+	});
+	const responses = [];
+	globalThis.__canonicalRequest = (request) => {
+		calls.push(request);
+		if (calls.length === 1) firstRequestStarted();
+		if (calls.length === 1)
+			return new Promise((_, reject) => {
+				rejectFirst = reject;
+			});
+		if (calls.length === 2) trailingStarted();
+		return new Promise((resolve) => responses.push(resolve));
+	};
+
+	const first = store.getState().fetchSessions();
+	await firstRequest;
+	const joined = store.getState().fetchSessions();
+	rejectFirst(new Error("stale read failure"));
+	await trailingRequest;
+	assert.equal(calls.length, 2);
+	assert.equal(store.getState().error, null);
+	responses[0]({ sessions: [{ id: "fresh", name: "fresh", mtime: 2 }] });
+	await Promise.all([first, joined]);
+	assert.equal(store.getState().error, null);
+	assert.deepEqual(
+		store.getState().sessions.map((row) => row.session_id),
+		["fresh"],
+	);
+});
+
 test("the daemon's unread reads are carried, and an absent marker is not an empty store", async () => {
 	reset();
 	globalThis.__canonicalRequest = async () => ({
@@ -2686,39 +2837,27 @@ test("the same 422 without a leading slash keeps the transport's own sentence", 
 	assert.equal(withholdsRetryHint(draft.errorCode), false);
 });
 
-test("latest candidate open wins and a failed open retains outgoing session", async () => {
+test("latest candidate open wins, and an open spends no request of its own", async () => {
 	reset();
-	const resolutions = new Map();
 	globalThis.__canonicalRequest = (request) => {
 		calls.push(request);
-		return new Promise((resolve, reject) =>
-			resolutions.set(request.sessionId, { resolve, reject }),
-		);
+		return Promise.resolve({});
 	};
+	/*
+	 * The view follows the LATEST INTENT, immediately. The guard read (`sessions.get`)
+	 * that each open used to issue is gone from the click path: it was a second facade
+	 * acquire racing the stream for the same bridge locks, and the stream's own
+	 * snapshot or 404 is the validation now (`confirmSessionLive` /
+	 * `confirmSessionMissing`, pinned in `session-switch.test.mjs`).
+	 */
 	const first = store.getState().openSession("222222222222");
 	const last = store.getState().openSession("333333333333");
-	/*
-	 * The view follows the LATEST INTENT, immediately — it does not wait for a
-	 * read to bless it.
-	 *
-	 * This assertion used to be `111111111111`: while two opens were in flight
-	 * the outgoing session stayed on screen, and the panel only mounted once the
-	 * second read answered. That serialisation was the switch's own cost (see
-	 * `scripts/session-switch-latency.mjs`), so the contract is now the other
-	 * way round — and the half that still matters is unchanged: a read that
-	 * FAILS puts the view back, which is what the tail of this test asserts.
-	 */
 	assert.equal(store.getState().activeSessionId, "333333333333");
-	resolutions.get("333333333333").resolve({});
+	assert.equal(store.getState().validatingSessionId, "333333333333");
+	assert.equal(await first, true);
 	assert.equal(await last, true);
-	resolutions.get("222222222222").resolve({});
-	assert.equal(await first, false);
 	assert.equal(store.getState().activeSessionId, "333333333333");
-	const failed = store.getState().openSession("444444444444");
-	resolutions.get("444444444444").reject(new Error("unavailable"));
-	assert.equal(await failed, false);
-	assert.equal(store.getState().activeSessionId, "333333333333");
-	assert.ok(calls.every((request) => request.op === "sessions.get"));
+	assert.deepEqual(calls, []);
 });
 
 test("canonical catalogue requires negotiated version two and paired authorization", () => {
@@ -2891,6 +3030,191 @@ test("a genuinely issued admission still latches, because its outcome is unknown
 		admitChatDraft(key, { ...input, text: "edited" }),
 		/not been confirmed/,
 	);
+});
+
+test("the owner's own refusals are not held either, because neither admitted anything", async () => {
+	// The incident this closes. A send into a session whose owner would not
+	// serve it answered 503 `runtime_busy` (the owner occupied) or 409
+	// `runtime_retiring` (its runtime is leaving), and BOTH were classified
+	// unknowable: the echo stayed, the composer said whether the message reached
+	// the agent "is not knowable", and it offered Restore/Discard over a message
+	// the backend had already said it never took. Neither code was in
+	// `isRefusedBeforeAdmission`, so a refusal that states non-admission in its
+	// own sentence produced the app's most cautious claim.
+	//
+	// Each arm is driven through the shipped store, and the assertion that
+	// matters is the pair the composer reads: the latch (which gates `heldText`,
+	// so it decides whether the text can go back in the box) and the record's own
+	// verdict (`refusedBeforeAdmissionText`), plus the echo.
+	const arms = [
+		{
+			status: 409,
+			code: "runtime_retiring",
+			message:
+				"This session is switching to a newer build; the one it loaded is gone from disk. The message was not admitted - send it again once the new build is up.",
+			withholdsHint: true,
+		},
+		{
+			status: 503,
+			code: "runtime_busy",
+			// A real body carries both, and the wait is honoured below rather than
+			// assumed: the policy is the backend's, the loop is ours.
+			retryAfterMs: 1,
+			message:
+				"This session's owner is busy with another request. Retry in a moment.",
+			withholdsHint: false,
+		},
+	];
+
+	for (const arm of arms) {
+		reset();
+		let refuse = true;
+		globalThis.__canonicalRequest = async (request) => {
+			calls.push(request);
+			if (request.op === "sessions.create")
+				return { session_id: "222222222222", binding: null };
+			if (refuse)
+				throw new DesktopControlError(
+					arm.status,
+					arm.message,
+					undefined,
+					arm.code,
+					arm.retryAfterMs,
+				);
+			return { status: "admitted" };
+		};
+		const key = store
+			.getState()
+			.stageDraft({ kind: "agent", name: "reviewer" });
+		const requestId = store.getState().drafts[key].admissionRequestId;
+		await assert.rejects(admitChatDraft(key, input));
+
+		const draft = store.getState().drafts[key];
+		assert.equal(
+			draft.admissionAttempted,
+			false,
+			`${arm.code} is raised before admission, so it must not pin the payload`,
+		);
+		assert.equal(
+			draft.heldClaimCode,
+			undefined,
+			"nothing is held on this arm, so no claim may be left describing one",
+		);
+		assert.equal(
+			refusedBeforeAdmissionText(draft),
+			input.text,
+			"the text is the composer's again, which is what the alert's own box copy promises",
+		);
+		const retracted = echoes.filter((e) => e.kind === "retract");
+		assert.equal(
+			retracted.length,
+			1,
+			"the echo must go with the latch: a retraction is the same predicate's other consumer",
+		);
+		assert.equal(retracted[0].id, requestId);
+		assert.equal(
+			withholdsRetryHint(arm.code),
+			arm.withholdsHint,
+			`${arm.code}: the hint is offered only where a press is the remedy`,
+		);
+
+		// The remedy, and the reason "nothing was admitted" is the right call: the
+		// same id and the same text go out once the owner will serve them.
+		refuse = false;
+		assert.equal(await admitChatDraft(key, input), "222222222222");
+		const sent = calls.filter((call) => call.op === "sessions.message");
+		assert.equal(
+			sent.at(-1).requestId,
+			requestId,
+			"a re-send that differs in identity could be delivered twice",
+		);
+		assert.equal(sent.at(-1).text, input.text);
+	}
+});
+
+test("an owner refusal whose code names no pre-admission fact is still unknowable", async () => {
+	// The boundary, and the half of the incident that must NOT change: a 503 whose
+	// code is the hop failure (`runtime_unreachable`) may have arrived and settled
+	// with only its ack lost, and a 409 with no code at all is the receipt
+	// conflict whose first attempt may well have been admitted. Both keep the echo
+	// and the held claim, because the app cannot state a fact it does not hold.
+	for (const arm of [
+		{ status: 503, code: "runtime_unreachable" },
+		{ status: 409, code: undefined },
+		{ status: 500, code: "store_unavailable" },
+	]) {
+		reset();
+		globalThis.__canonicalRequest = async (request) => {
+			calls.push(request);
+			if (request.op === "sessions.create")
+				return { session_id: "222222222222", binding: null };
+			throw new DesktopControlError(
+				arm.status,
+				"the session's owner could not be reached",
+				undefined,
+				arm.code,
+			);
+		};
+		const key = store
+			.getState()
+			.stageDraft({ kind: "agent", name: "reviewer" });
+		await assert.rejects(admitChatDraft(key, input));
+		assert.equal(
+			store.getState().drafts[key].admissionAttempted,
+			true,
+			`${arm.code ?? `a codeless ${arm.status}`} establishes nothing about admission`,
+		);
+		assert.equal(echoes.filter((e) => e.kind === "retract").length, 0);
+		assert.equal(
+			refusedBeforeAdmissionText(store.getState().drafts[key]),
+			undefined,
+		);
+	}
+});
+
+test("a busy owner is retried under the same identity before the composer ever sees it", async () => {
+	reset();
+	// The other half of "or is retried": `runtime_busy` is answered by repeating
+	// the SAME request (the backend's admission is at-most-once per id, and the
+	// receipt is keyed on a hash of the whole body), paced by the `retry_after_ms`
+	// the backend sent. This arm succeeds on the third attempt, which is the
+	// ordinary case and the one the operator should never see at all.
+	const waits = [110, 120];
+	let attempt = 0;
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return { session_id: "222222222222", binding: null };
+		if (attempt < waits.length)
+			throw new DesktopControlError(
+				503,
+				"This session's owner is busy with another request. Retry in a moment.",
+				undefined,
+				"runtime_busy",
+				waits[attempt++],
+			);
+		return { status: "admitted" };
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	const started = Date.now();
+	assert.equal(await admitChatDraft(key, input), "222222222222");
+	const sent = calls.filter((call) => call.op === "sessions.message");
+	assert.equal(
+		sent.length,
+		waits.length + 1,
+		"one attempt per refusal, then one that lands",
+	);
+	assert.equal(
+		new Set(sent.map((call) => call.requestId)).size,
+		1,
+		"every repeat carries the id the first attempt used",
+	);
+	assert.ok(
+		Date.now() - started >= waits.reduce((a, b) => a + b, 0) - 20,
+		"the backend's retry_after_ms is waited out rather than ignored",
+	);
+	// And nothing is left over on a send that landed: no claim, no refusal record.
+	assert.equal(store.getState().drafts[key], undefined);
 });
 
 test("the working-directory chip cannot unmount itself by committing an empty path", async () => {
@@ -4026,13 +4350,21 @@ test("the submit path cannot re-decide what a draft is", async () => {
 	// wrapper still delegates, which is what makes the rename safe rather than a
 	// hole: a `planForDraft` that stopped calling `planFor` would take both call
 	// sites out of the planner's reach while this assertion stayed green.
+	//
+	// The window is 4200, not 400 (remediation round 1, Q1). The property this
+	// pins is unchanged — the wrapper still delegates to `planFor(draft, at)` —
+	// but the held-press branch and its comment block now sit between the
+	// `useCallback(` and the call, so the first `planFor(draft, at)` moved past
+	// the old window (measured comment-stripped: 424 chars on the base, 536 on
+	// the head that added the branch). The distance is not the invariant; the
+	// delegation is.
 	const plans = composer.match(/planForDraft\(newMessage, caret\)/g) ?? [];
 	assert.ok(
 		plans.length >= 2,
 		`expected the plan to be consulted from both Enter and the form submit, found ${plans.length} call site(s)`,
 	);
 	assert.ok(
-		/const planForDraft = useCallback\([\s\S]{0,400}?planFor\(draft, at\)/.test(
+		/const planForDraft = useCallback\([\s\S]{0,4200}?planFor\(draft, at\)/.test(
 			composer,
 		),
 		"`planForDraft` no longer delegates to `planFor`, so the two submit entry points consult an exception with no planner behind it",

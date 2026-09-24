@@ -108,7 +108,22 @@ export type DestinationEntry =
 	  } & ArgsBehavior)
 	| ({
 			kind: "direct";
-			action: "clear" | "exit" | "focus-cwd-chip" | "compact";
+			action:
+				| "clear"
+				| "exit"
+				| "focus-cwd-chip"
+				| "compact"
+				/*
+				 * The three conversation-level actions (`sessions.archive`,
+				 * `sessions.unarchive`, `sessions.delete`). Each is a LOCAL act with no UI of
+				 * its own: `archive`/`unarchive` write the store's optimistic op and offer an
+				 * undo, and `request-delete` STAGES a candidate in the store rather than
+				 * deleting anything - the confirmation dialog is the only thing in the app
+				 * that sends `confirmed: true`.
+				 */
+				| "archive"
+				| "unarchive"
+				| "request-delete";
 	  } & ArgsBehavior);
 
 /**
@@ -189,7 +204,32 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 	"sessions.reload": { kind: "picker", component: ReloadPicker },
 	"sessions.resume": { kind: "picker", component: ResumePicker },
 	"sessions.stop": { kind: "picker", component: StopPicker },
-	"session.rename": { kind: "picker", component: RenamePicker },
+	"session.rename": {
+		kind: "picker",
+		component: RenamePicker,
+		/*
+		 * `/rename` takes free text, so its list cannot be a chooser of titles —
+		 * the app does not know what a conversation should be called. It offers the
+		 * ONE thing a user could not guess: the `--refresh` flag, in a static
+		 * spelling list (`slash-argument-rows.ts`'s `TITLE_REFRESH_ROWS`).
+		 *
+		 * `runs: true`, and this is the second half of the operator's report. The
+		 * row's CLICK must perform the refresh rather than autofill the composer
+		 * and wait for Enter, which is what `runs: true` buys: an argument row's
+		 * click runs when its list says `runs` (`message-input.tsx`'s
+		 * `handleSlashPick`), so the flag reaches the dispatcher as the command's
+		 * argument in one gesture. It is NOT the `/theme` case (`runs: false`):
+		 * there a run opens a DIALOG the user still has to commit, while here the
+		 * run IS the outcome — nothing is left to confirm.
+		 *
+		 * The bare and titled forms are UNTOUCHED by this row. Bare `/rename` still
+		 * presents `RenamePicker` as a form (the dispatcher's `PRESENT_DIRECTLY`
+		 * path is keyed on an EMPTY args), and `/rename some title` still sets that
+		 * title. Only a pick of the flag row changes behaviour, because only there
+		 * is there something to run without a name.
+		 */
+		inline: { source: "title-refresh", nameThenMessage: false, runs: true },
+	},
 	"session.fork": { kind: "picker", component: ForkPicker },
 	/*
 	 * `/move`: the one destination that presents by focusing an EXISTING control.
@@ -236,6 +276,24 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 	 * can never mount a picker.
 	 */
 	"session.compact": { kind: "direct", action: "compact" },
+	/*
+	 * The archive family, and why these destinations are `sessions.*` while every
+	 * other session-scoped destination in this table is `session.*`: these three
+	 * identifiers are the FROZEN wire contract's own - they arrive on the backend's
+	 * command catalogue rows, which is the vocabulary this table exists to resolve -
+	 * and renaming them here to match the neighbourhood would be this app disagreeing
+	 * with the daemon about one string. The table's job is to resolve a destination,
+	 * not to tidy it.
+	 *
+	 * All three are `direct`: none of them presents a control of its own. `/archive`
+	 * and `/unarchive` are writes with one line of feedback and an undo offer, and
+	 * `/delete`'s control is the confirmation dialog the pane already owns, which
+	 * staging a candidate opens - a picker here would be a second dialog asking the
+	 * same question in a different place.
+	 */
+	"sessions.archive": { kind: "direct", action: "archive" },
+	"sessions.unarchive": { kind: "direct", action: "unarchive" },
+	"sessions.delete": { kind: "direct", action: "request-delete" },
 	"session.approvals": {
 		kind: "picker",
 		component: ApprovalsPicker,
@@ -301,7 +359,29 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 		route: () => "/settings?section=backend&filter=web-search",
 	},
 	providers: { kind: "navigate", route: () => "/settings?section=providers" },
-	accounts: { kind: "navigate", route: () => "/settings?section=credentials" },
+	/*
+	 * `/accounts` lists stored credentials, and the Providers section is where
+	 * credentials live now: it is the same grid onboarding uses, documented as
+	 * "one place for a provider's sign-in methods, states and stored
+	 * credentials", and the section `/login` and `/logout` already land on.
+	 *
+	 * It pointed at `?section=credentials` until this branch deleted that
+	 * section from `sectionRefs`; `settings-page`'s deep-link effect returns
+	 * early on an unknown key, so `/accounts` stranded the user on `general`.
+	 * The route must name a section key that exists in `sectionRefs`
+	 *. `scripts/settings-section-routes.test.mjs` pins that for every
+	 * `?section=` route in the tree, so a later deletion cannot re-open it.
+	 *
+	 * U4 (design/UX round 1): the landing is a sign-in grid rather than a plain
+	 * credential LIST, so "List stored credentials" — the command's own label,
+	 * published by the backend's slash catalogue and not owned here — sets an
+	 * expectation the destination only partly meets. The route STAYS: the keys
+	 * and the session-store secrets are what that grid's rows and API-key tabs
+	 * are about, and no other section lists them. Re-wording the label is a
+	 * backend change (`local-operator` `slash_commands.py`), deferred rather
+	 * than faked here with a second name for one command.
+	 */
+	accounts: { kind: "navigate", route: () => "/settings?section=providers" },
 	updates: { kind: "navigate", route: () => "/settings?section=updates" },
 	mcp: { kind: "picker", component: McpPicker },
 };

@@ -64,34 +64,59 @@ type Story = StoryObj;
  *
  * The three pane flags are SET rather than assumed, for the reason the run panel's
  * stories set theirs: the preference is persisted into the profile's localStorage,
- * so a story that left the browser pane "open" from an earlier state would
- * photograph the cluster with the browser button hidden - three controls minus one
- * - and every number read off it would be about a different arrangement.
+ * so a story that did not set them would photograph whatever an earlier state left
+ * behind, and every number read off it would be about a different arrangement.
+ *
+ * THE BROWSER PANE'S ARRANGEMENT IS NOW REPRESENTABLE, and one story takes it
+ * (`PaneOpenBadge`). It used to be representable-in-passing rather than impossible:
+ * the header's Globe trigger was unmounted while its pane was open
+ * (`chat-header.tsx`'s old `Boolean(onOpenBrowser) && !isBrowserPaneOpen` gate), so
+ * a story that left the pane open photographed the cluster with the browser button
+ * HIDDEN - three controls minus one - which is why every story pinned the flag
+ * false. Since 2026-09-23 the trigger stays mounted as a toggle (agent review round
+ * 1, F4; the operator's own report: with the pane open the count disappeared with
+ * the trigger), so that arrangement is worth a frame rather than a sentence about
+ * why there is none.
  */
 const Cluster = ({
 	count,
 	details,
 	canvasOpen = false,
+	consoleUnseenCount = 0,
+	consoleUnseenPulsing = false,
+	browserPaneOpen = false,
 }: {
 	count: number;
 	details: ReturnType<typeof deriveRunDetails>;
 	canvasOpen?: boolean;
+	/** The browser pane up. The trigger stays mounted while it is (see this file's own
+	 * note), so this is the arrangement where the cluster has FOUR controls and the
+	 * badge is the only chrome reporting the count. */
+	browserPaneOpen?: boolean;
+	/** The console trigger's own attention dot (design 12.2), on the same principle
+	 * as the run trigger's: a dot rather than a count, because its only job is to say
+	 * there is something before the user has opened the pane. */
+	consoleUnseenCount?: number;
+	consoleUnseenPulsing?: boolean;
 }) => {
 	useEffect(() => {
 		useUiPreferencesStore.setState({
 			isRunPanelOpen: false,
 			isCanvasOpen: canvasOpen,
-			isBrowserPaneOpen: false,
+			isBrowserPaneOpen: browserPaneOpen,
 		});
-	}, [canvasOpen]);
+	}, [canvasOpen, browserPaneOpen]);
 	return (
 		<div className={cn("flex h-[84px] w-[560px] shrink-0 flex-col bg-canvas")}>
 			<ChatHeader
 				agentName="Core"
 				description="Invoices workspace · on this machine"
 				onOpenOptions={() => undefined}
-				onOpenBrowser={() => undefined}
+				onToggleBrowser={() => undefined}
+				onOpenConsole={() => undefined}
 				browserAttentionCount={count}
+				consoleUnseenCount={consoleUnseenCount}
+				consoleUnseenPulsing={consoleUnseenPulsing}
 				runDetails={details}
 			/>
 		</div>
@@ -132,12 +157,64 @@ export const TriggerDot: Story = {
  * the same rule that earns the badge its 12px is the one that refuses it a
  * neighbour that is not rendered.
  */
+/**
+ * The browser pane up with the badge drawn: the operator's own state, and the one
+ * design round 1's D1 measured (the conversation title had no ink at all in it,
+ * because the row's spare width went to the fourth control). The cluster is the
+ * claim here - four controls, the badge among them - and the title's own floor is a
+ * question about a NARROW row rather than this 560px strip, so its frame comes from
+ * the driver scene at the real widths.
+ */
+export const PaneOpenBadge: Story = {
+	render: () => (
+		<Cluster
+			count={1}
+			details={deriveRunDetails(fixtures.idle())}
+			browserPaneOpen={true}
+		/>
+	),
+};
+
 export const CanvasOpenBadge: Story = {
 	render: () => (
 		<Cluster
 			count={1}
 			details={deriveRunDetails(fixtures.idle())}
 			canvasOpen={true}
+		/>
+	),
+};
+
+/**
+ * The console trigger's own attention dot, pulsing: something finished in this
+ * conversation's console and nobody has looked at it (design 12.2).
+ *
+ * A FRAME IS OWED FOR THIS PAIR because the dot and the pane's row mark are two
+ * halves of one rule and only the row mark had one: the design round found the
+ * blip's two story frames byte-identical to `populated` and could not see the header
+ * dot anywhere. This is where the header half is photographed, at the same size and
+ * in the same band as the cluster's other frames.
+ */
+export const ConsoleBlip: Story = {
+	render: () => (
+		<Cluster
+			count={0}
+			details={deriveRunDetails(fixtures.idle())}
+			consoleUnseenCount={1}
+			consoleUnseenPulsing={true}
+		/>
+	),
+};
+
+/** The same dot after its pulse: `inkMuted` rather than `accent`, so an unread mark
+ * that has been waiting does not animate for ever (design 12.2's second state). */
+export const ConsoleBlipResting: Story = {
+	render: () => (
+		<Cluster
+			count={0}
+			details={deriveRunDetails(fixtures.idle())}
+			consoleUnseenCount={1}
+			consoleUnseenPulsing={false}
 		/>
 	),
 };

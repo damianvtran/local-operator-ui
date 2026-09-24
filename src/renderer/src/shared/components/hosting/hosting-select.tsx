@@ -59,10 +59,17 @@ type HostingSelectProps = {
 	/**
 	 * What to say when credentials filtering leaves nothing to choose.
 	 *
-	 * The default sends the reader to Settings, which is right from the chat
-	 * and the agent form and wrong on the Settings page itself - where the
-	 * credentials section is three rows down the same nav. A caller that IS the
-	 * destination names the section instead.
+	 * The default names the door that actually makes a provider usable: the
+	 * Providers section, whose per-provider rows carry the "Sign in or API key"
+	 * tabs. It is right from the chat, the agent form and the Settings page
+	 * alike, so a caller with nothing more specific to say can leave it unset.
+	 *
+	 * It deliberately does NOT name the composer's `/credential` gesture. That
+	 * gesture writes a SESSION secret (`LOP_SECRET_*`, injected into bash), which
+	 * the provider census does not read — its filter is `AuthStore` + env keyed
+	 * on exact provider names — so following it leaves this list byte-identical
+	 * and the reader no closer to a provider. Naming it here would teach a
+	 * gesture that does not do what the sentence promises.
 	 */
 	emptyHelperText?: string;
 
@@ -90,7 +97,7 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 	onSave,
 	isSaving = false,
 	filterByCredentials = true,
-	emptyHelperText = "No hosting providers available. Add credentials in Settings.",
+	emptyHelperText = "No hosting providers available. Sign in to a provider, or add a provider's API key in Settings, under Providers.",
 	allowCustom = true,
 	allowDefault = true,
 }) => {

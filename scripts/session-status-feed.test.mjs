@@ -136,7 +136,8 @@ export const desktopResult = request => globalThis.__statusRequest(request);`,
 							capabilities: `export const desktopFeatureEnabled = () => true;
 export const useDesktopCapabilities = () => ({data: {features: {desktop_feed: true}}});`,
 							"react-hooks": `export function useEffect(effect) { globalThis.__effects.push(effect); return () => {}; }
-export function useState(initial) { return [typeof initial === "function" ? initial() : initial, (value) => { globalThis.__stateSets.push(value); }]; }`,
+export function useRef(initial) { return { current: initial }; }
+export function useState(initial) { let current = typeof initial === "function" ? initial() : initial; return [current, (value) => { current = typeof value === "function" ? value(current) : value; globalThis.__stateSets.push(current); }]; }`,
 						}[args.path],
 						loader: "js",
 						resolveDir: process.cwd(),
@@ -170,6 +171,9 @@ globalThis.__effects = [];
 // catalogue revision is published through one, so a setter that discarded its
 // argument would leave the trigger unassertable.
 globalThis.__stateSets = [];
+globalThis.__feedState = () => {
+	throw new Error("the hook never watched feed state");
+};
 globalThis.__frames = () => {
 	throw new Error("the hook never subscribed");
 };
@@ -569,7 +573,10 @@ test("the hook hands the store the pair, not the frame payload", () => {
 						globalThis.__frames = onFrame;
 						return () => {};
 					},
-					watchState: () => () => {},
+					watchState: (onState) => {
+						globalThis.__feedState = onState;
+						return () => {};
+					},
 				},
 			},
 		},
@@ -592,6 +599,78 @@ test("the hook hands the store the pair, not the frame payload", () => {
 	assert.deepEqual(row().status, { code: "complete", label: "Complete" });
 	assert.equal(row().status_revision, 3);
 	assert.equal(row().status_epoch, EPOCH);
+	/*
+	 * And the same frame for the state the sidebar's newest arm draws, because
+	 * `delegating`'s label is a SENTENCE carrying counts ("2 subagents running ·
+	 * 1 queued") where every other code's is a token - which is exactly the shape
+	 * that tempts a payload with a count field of its own. The assertion above is
+	 * what forbids that: the pair stays a pair at any label, so the count has
+	 * nowhere to live except INSIDE the label, and therefore moves on the code's
+	 * own clock instead of on a slower projection that could contradict the glyph
+	 * beside it.
+	 */
+	globalThis.__frames({
+		epoch: EPOCH,
+		seq: 8,
+		type: "session_status",
+		session_id: SESSION,
+		payload: {
+			code: "delegating",
+			label: "2 subagents running · 1 queued",
+			revision: 4,
+		},
+	});
+	assert.deepEqual(Object.keys(row().status), ["code", "label"]);
+	assert.deepEqual(row().status, {
+		code: "delegating",
+		label: "2 subagents running · 1 queued",
+	});
+	assert.equal(row().status_revision, 4);
+});
+
+/*
+ * The two keys the `delegating` state reports on, at the store's own boundary.
+ *
+ * `desktop-session-contract.ts` declares them on the wire row, and this is the
+ * half a declaration cannot establish: that the client's list path actually
+ * CARRIES them. The store's row is what every reader downstream sees - a count
+ * dropped here is invisible in this repo and silently renders as "this build
+ * does not report" in the mobile daemon, which reads the record rather than the
+ * label.
+ *
+ * `null` is the reading under test as much as `2` is. A queued count of `null`
+ * means the runtime did not answer, and it must not arrive as `0`: the sidebar
+ * and the phone would both then state "no subagents" about a session nobody
+ * could ask.
+ */
+test("the subagent counts ride the list response and keep a null as null", async () => {
+	seeded();
+	const rows = await list([
+		wire({
+			status: { code: "delegating", label: "2 subagents running · 1 queued" },
+			status_revision: 6,
+			status_epoch: EPOCH,
+			subagents_running: 2,
+			subagents_queued: 1,
+		}),
+	]);
+	const reported = rows.find((item) => item.session_id === SESSION);
+	assert.equal(reported.status.code, "delegating");
+	assert.equal(reported.subagents_running, 2);
+	assert.equal(reported.subagents_queued, 1);
+
+	const silent = await list([
+		wire({
+			status: { code: "delegating", label: "2 subagents running" },
+			status_revision: 7,
+			status_epoch: EPOCH,
+			subagents_running: 2,
+			subagents_queued: null,
+		}),
+	]);
+	const unknown = silent.find((item) => item.session_id === SESSION);
+	assert.equal(unknown.subagents_queued, null);
+	assert.notEqual(unknown.subagents_queued, 0);
 });
 
 /*
@@ -610,6 +689,45 @@ test("the hook hands the store the pair, not the frame payload", () => {
  * frame this build does not know must publish nothing at all, which is what makes
  * a newer backend's frame a no-op for an older renderer.
  */
+test("only a previously connected feed reconnect advances authoring recovery", () => {
+	seeded();
+	globalThis.__effects.length = 0;
+	globalThis.__stateSets.length = 0;
+	globalThis.__feedState = () => {
+		throw new Error("the hook never watched feed state");
+	};
+	globalThis.window = {
+		api: {
+			desktop: {
+				feed: {
+					subscribe: () => () => {},
+					watchState: (onState) => {
+						globalThis.__feedState = onState;
+						return () => {};
+					},
+				},
+			},
+		},
+	};
+	const connection = useDesktopFeed();
+	assert.equal(connection.authoringReconnectRevision, 0);
+	for (const effect of globalThis.__effects) effect();
+
+	globalThis.__feedState({ connected: true });
+	assert.deepEqual(globalThis.__stateSets, [true]);
+	globalThis.__stateSets.length = 0;
+
+	// The transport was live, dropped, then came back. A repeated connected
+	// notification from the same open is not another reconnect.
+	globalThis.__feedState({ connected: false });
+	globalThis.__feedState({ connected: true });
+	globalThis.__feedState({ connected: true });
+	assert.deepEqual(globalThis.__stateSets, [false, 1, true, true]);
+	// The initial connection did not publish an authoring recovery generation;
+	// one false-to-true transition after that connection published exactly one,
+	// while the repeated connected state only republishes the live transport state.
+});
+
 test("the catalogue frame publishes the revision the sidebar refetches on", () => {
 	seeded();
 	globalThis.__effects.length = 0;
@@ -625,7 +743,10 @@ test("the catalogue frame publishes the revision the sidebar refetches on", () =
 						globalThis.__frames = onFrame;
 						return () => {};
 					},
-					watchState: () => () => {},
+					watchState: (onState) => {
+						globalThis.__feedState = onState;
+						return () => {};
+					},
 				},
 			},
 		},

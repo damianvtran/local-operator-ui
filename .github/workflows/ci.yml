@@ -333,6 +333,12 @@ jobs:
         run: |
           node scripts/test-validate-release.mjs
           node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs scripts/ci-scope.test.mjs
+          # The per-architecture contract, over EVERY workflow that packages macOS
+          # rather than over the one that was fixed first. `publish.yml` was fixed
+          # for the v0.30.10 brick and `signed-update-candidate.yml` was not, so its
+          # bytecode check failed on the x64 candidate of every release and the only
+          # workflow that verifies a release shipped read as permanently red.
+          node --test scripts/mac-build-arch.test.mjs
           node --test scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/entry-point.test.mjs scripts/require-report.test.mjs
           # The attach path's recovery branches, against a local stub upload endpoint: a
           # stalled attempt retried, a `starter` record repaired, a same-size asset
@@ -589,6 +595,18 @@ jobs:
 
       # macOS only: see the note on this job for why the Linux launch is still
       # excluded after #91 rather than forced green with --no-sandbox.
+      #
+      # Telemetry off: this step LAUNCHES the packed app, which carries the live
+      # PostHog project key in both of its processes, so without the switch every
+      # run of this job is a user in the product's own analytics and a session
+      # replay beside it. The switch is set INSIDE the script
+      # (`withTelemetryOff`, see scripts/telemetry-off.mjs) rather than in the
+      # step's environment, so this step cannot forget it and the pin below cannot
+      # go stale. What that buys is the script setting it, NOT this YAML surviving
+      # any edit: `withTelemetryOff` passes a value the caller set through
+      # untouched, so a `LOCAL_OPERATOR_UI_TELEMETRY: on` added to this step's
+      # `env:` would still be obeyed, exactly as an operator's export is by
+      # design. scripts/telemetry-spawn-sites.test.mjs pins the call.
       - name: Install and run with npx
         if: runner.os == 'macOS'
         run: |

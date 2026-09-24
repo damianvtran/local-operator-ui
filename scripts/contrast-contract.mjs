@@ -854,27 +854,48 @@ const CONTROLS = [
 	{
 		/*
 		 * The numbered badge on the Approvals control (spec §5.1). `warningWash` is
-		 * already this feature's one meaning - "an agent is blocked on you" - and
-		 * `border-control` is the contract's own answer for its edge: `warningBorder`
-		 * measures 2.51-2.98:1 on graded grounds in seven palettes (the sibling row
-		 * above records the measurement).
+		 * already this feature's one meaning - "an agent is blocked on you".
 		 *
-		 * ONE GROUND, and finding that it was two is design round 1's D8: the second
-		 * entry was `surface`, reasoned as "the chat pane header's ground when PR 2 puts
-		 * the control there" - and PR 2 put it on the chat header's `canvas` and on the
-		 * pane header's `sunken`, so the row was measuring the component against a
-		 * ground it is never drawn on, which is the failure mode the row above this one
-		 * explicitly names. Both hosts' badges are drawn on `canvas` (the URL bar row is
-		 * `bg-canvas`, the chat header is the same); the pane's own header carries no
-		 * badge, and if one ever lands there its ground (`sunken`) is a row this file
-		 * would have to grow rather than quietly inherit. Measured this round: `ink` on
-		 * `warningWash` 8.39:1 at worst (tokyoNight), `borderControl` 3.34:1 on `canvas`
-		 * at worst.
+		 * FOUR GROUNDS, and the list grew by MEASUREMENT rather than by argument - twice.
+		 * Design round 1's D8 removed `surface` for being fictional ("the chat pane
+		 * header's ground when PR 2 puts the control there" - the header is `canvas` in
+		 * the shipped tree). The rail put the badge on a real `surface` host (operator
+		 * ask, 2026-09-23), and design round 1's D5 plus this round's code review found
+		 * the other half of the same mistake: the rail's badge sits in the Browser ROW,
+		 * and that row is not always `surface`. It paints `row-selected` when the browser
+		 * route is the current destination - which is the state the operator reported
+		 * from - and `row-hover` under the pointer. A row that names two of a component's
+		 * four grounds is D8's finding read the other way round, so all four are here.
+		 *
+		 * THE EDGE ROLE MOVED BECAUSE OF THOSE TWO ROWS. `borderControl` - the role this
+		 * row asserted until this round - clears 3:1 on `canvas` (3.13 worst) and
+		 * `surface` (3.26) but NOT on the row grounds: 2.77:1 on `row-selected` and
+		 * 2.92:1 on `row-hover`, with twelve of the fifty-nine palettes under the 3:1
+		 * non-text floor. The badge's FILL cannot carry that boundary either (it measures
+		 * 1.00-1.19:1 against any of these grounds), so the edge is the whole boundary and
+		 * it has to clear the floor on every ground the mark can sit on. `ink-muted` is
+		 * the quietest role that does: 6.23 `canvas`, 6.56 `surface`, 5.63 `row-selected`,
+		 * 5.91 `row-hover` at worst across all palettes (`ink` would clear it at 7.16
+		 * worst, and `accent` at 4.24 - the role is `ink-muted` because a boundary that is
+		 * not trying to be read as a message should be the quiet one that passes).
+		 * `badge.tsx`'s `attention` variant carries the same role, so the header and the
+		 * URL bar move with it - one spelling of this mark, which is the rule that
+		 * variant's own docstring states.
+		 *
+		 * MEASURED AT THIS REVISION, all fifty-nine palettes: `ink` on `warningWash`
+		 * 5.73:1 at worst (oneDark - ink against a fill does not depend on the ground,
+		 * which is why this number has no ground beside it); `ink-muted` 5.63:1 at worst
+		 * (nightfox, on `row-selected`, the lowest of the four). Both figures were read
+		 * from `scripts/palette-source.mjs` with this file's own ratio, and the earlier
+		 * statement of them (8.39:1 and 7.88:1) was neither the worst of its pair nor
+		 * reproducible - which is exactly the failure this file exists to refuse. The
+		 * `sunken` form D8 mentions is still not a host: nothing draws this badge on the
+		 * pane's own strip.
 		 */
 		name: "browser approvals badge",
-		on: ["canvas"],
+		on: ["canvas", "surface", "rowSelected", "rowHover"],
 		fill: "warningWash",
-		border: "borderControl",
+		border: "inkMuted",
 		ink: "ink",
 	},
 	{
@@ -1120,6 +1141,50 @@ const CONTROLS = [
 	 * states to one weight - the property D7 was actually about, and one no
 	 * pair-or-triple row can express.
 	 */
+	/*
+	 * The console terminal's own well (design 9.4: the pane's chrome is the app's,
+	 * and the terminal's ground is one of the app's roles).
+	 *
+	 * A ROW OF ITS OWN BECAUSE IT HAS BOTH A FILL AND A BORDER, which is what
+	 * `AGENTS.md` asks for: the terminal's ground is `sunken` - the same ground the
+	 * code editor takes - and `sunken` against the pane's `surface` measures
+	 * 1.00-1.03:1 across the palettes, so the ground step alone is NOT a boundary.
+	 * The mirror is therefore bounded by `border-control`, and this row is what says
+	 * so: the ink the terminal paints sits on a ground that meets the text floor, and
+	 * the box around it has a perceivable edge (worst `borderControl` on `surface` is
+	 * 3.26:1 in `catppuccinMocha`).
+	 *
+	 * WHAT IT CANNOT SEE, in this file's own words: the terminal's 16 ANSI colours
+	 * are the PROGRAM's palette, resolved at paint from the roles
+	 * `terminal-theme.ts` maps them to. This measures the roles; a program's own
+	 * `\x1b[38;2;...m` truecolor passes through untouched and is looked at by a
+	 * human in the design round's frames (§9.3).
+	 */
+	{
+		/*
+		 * THE SELECTION, and it is a row of its own because UX round 3 found it was
+		 * covered by nothing: `selectionBackground` was `accentWash`, which the terminal
+		 * paints on its own `sunken` ground, and that pair measures **1.11:1** — a
+		 * selection a reader cannot see, in the round that wired copy. `accentWash` is a
+		 * hover tint by the contract's own words and not a selection ground; the
+		 * selection is now `accent` with `onAccent` as its ink, so this row asserts both
+		 * halves the finding is about: the fill is perceivable against the terminal's
+		 * ground (the 3:1 boundary floor, through the fill) and the selected text is
+		 * legible on it (the 4.5:1 text floor).
+		 */
+		name: "console terminal selection",
+		on: ["sunken"],
+		fill: "accent",
+		border: "accent",
+		ink: "onAccent",
+	},
+	{
+		name: "console terminal well",
+		on: ["surface"],
+		fill: "sunken",
+		border: "borderControl",
+		ink: "ink",
+	},
 ];
 
 /**
@@ -2218,6 +2283,60 @@ const STRUCTURAL = [
  * behind a green gate.
  */
 const AS_TEXT = ["accent", "success", "warning", "danger", "info"];
+
+/**
+ * The console terminal's colour pairs that no other table states (design 9.3).
+ *
+ * WHY ONLY ONE PAIR IS HERE. §9.3's list is mostly already asserted elsewhere by
+ * accident of the app's own structure: the terminal ground is `sunken`, which is
+ * one of the four `GROUNDS`, so `ink`/`inkMuted`/`inkDim` on it are in the INKS
+ * loop and the four hue roles are in `AS_TEXT` at the stricter 4.5:1 - which is
+ * the point of naming roles rather than inventing a second palette for the
+ * terminal. What is left is the one pair only a terminal has: the character the
+ * block cursor reverses into, i.e. `cursorAccent` (`surface`) sitting ON `cursor`
+ * (`accent`).
+ *
+ * `surface` rather than `onAccent` is the design's mapping (§9.1) and it is
+ * measured rather than assumed: the worst palette is 4.98:1 (`tokyoNight`), so the
+ * role the mapping names clears the text floor without an exception pin.
+ */
+const TERMINAL_PAIRS = [
+	{
+		fg: "surface",
+		on: "accent",
+		floor: FLOOR.text,
+		name: "the console terminal's cursor ink on its own cursor (9.1)",
+	},
+];
+
+/**
+ * The terminal's ANSI slots, as `terminal-theme.ts` maps them.
+ *
+ * HELD HERE FOR THE HONEST GAP, not for a floor: §9.2 states that six chromatic
+ * slots cannot be sourced one-for-one from four gated hue roles, so two pairs are
+ * deliberately the same role. This table is what makes that MEASURED - the run
+ * prints how many distinct colours the sixteen slots resolve to, per palette - and
+ * `scripts/console-theme.test.mjs` pins it to the module itself, so the two cannot
+ * drift into disagreeing about what the terminal shows.
+ */
+const TERMINAL_ANSI = [
+	["black", "inkDim"],
+	["red", "danger"],
+	["green", "success"],
+	["yellow", "warning"],
+	["blue", "info"],
+	["magenta", "danger"],
+	["cyan", "info"],
+	["white", "ink"],
+	["brightBlack", "inkMuted"],
+	["brightRed", "danger"],
+	["brightGreen", "success"],
+	["brightYellow", "warning"],
+	["brightBlue", "info"],
+	["brightMagenta", "danger"],
+	["brightCyan", "info"],
+	["brightWhite", "ink"],
+];
 
 /**
  * Sub-floor pairs accepted with a reason, pinned to their measured ratio.
@@ -3996,6 +4115,15 @@ for (const { id, palette: p } of palettes) {
 		}
 	}
 
+	/*
+	 * The console terminal's own pair (§9.3), after the component triples because
+	 * it is a pair between two ROLES rather than a control's boundary: the block
+	 * cursor's ink on the block cursor.
+	 */
+	for (const row of TERMINAL_PAIRS) {
+		assertPair(id, p, row.fg, row.on, row.floor, row.name);
+	}
+
 	/* Graphic objects against the ground they are drawn on. */
 	for (const g of GRAPHICS) {
 		for (const ground of g.on) {
@@ -5689,6 +5817,29 @@ console.log(
 		)}; ${identityFloorPins.length} palette(s) pinned below it. Tightest \`info\`/\`accent\` (settled read ink vs liveness ink, floor ${LIVENESS_PAIR_FLOOR}) is ${infoAccentPairs[0].d} in ${infoAccentPairs[0].id}, then ${infoAccentPairs
 		.slice(1, 5)
 		.map((e) => `${e.id} ${e.d}`)
+		.join(", ")}.`,
+);
+
+/*
+ * AND DESIGN 9.2's HONEST GAP, MEASURED RATHER THAN PROSE.
+ *
+ * Six chromatic ANSI slots cannot come from four gated hue roles, so the terminal
+ * maps blue and cyan to `info`, magenta to `danger`, and every bright variant to
+ * its base role. That is a decision the design states; this line is what makes it
+ * countable, so a reader can see how many colours a program actually gets on each
+ * palette instead of taking the prose's word for it. A palette where the number
+ * drops is a palette where more of the program's vocabulary collapsed.
+ */
+const ansiDistinct = palettes.map(({ id, palette: p }) => ({
+	id,
+	n: new Set(TERMINAL_ANSI.map(([, role]) => p[role]).filter((v) => isHex(v)))
+		.size,
+}));
+console.log(
+	`Console terminal: ${TERMINAL_ANSI.length} ANSI slots resolve to ${Math.min(...ansiDistinct.map((e) => e.n))}-${Math.max(...ansiDistinct.map((e) => e.n))} distinct colours across ${palettes.length} palettes (design 9.2's stated gap, measured); fewest in ${ansiDistinct
+		.sort((a, b) => a.n - b.n)
+		.slice(0, 3)
+		.map((e) => `${e.id} ${e.n}`)
 		.join(", ")}.`,
 );
 

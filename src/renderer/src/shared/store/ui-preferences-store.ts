@@ -11,6 +11,7 @@ import type {
 } from "@features/chat/sidebar-split";
 import { DEFAULT_THEME } from "@shared/themes";
 import type { ThemeName } from "@shared/themes";
+import { measureCell } from "@shared/themes/terminal-theme";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -156,6 +157,155 @@ type UiPreferencesState = {
 	 * @param scope - This conversation's tabs, or all of them
 	 */
 	setBrowserPaneScope: (scope: BrowserPaneScope) => void;
+
+	/**
+	 * Whether the console pane is open (the FOURTH occupant of the right slot).
+	 *
+	 * Global and persisted, for the reason `isBrowserPaneOpen` states rather than
+	 * beside it: the pane belongs to the window's slot, so it survives a
+	 * conversation switch with its content following the session - and it is
+	 * one-at-a-time with its three siblings through `claimRightSlot`.
+	 */
+	isConsolePaneOpen: boolean;
+
+	/**
+	 * The conversation whose console the user has just asked to open, and which the
+	 * pane has not answered yet. `null` when there is no request.
+	 *
+	 * A CONSUMED-ONCE REQUEST, NOT A PREFERENCE, and it is deliberately excluded
+	 * from persistence below. The console pane opens for four reasons — the user's
+	 * press, a completion banner's click, an agent's `reveal`, and the restored
+	 * preference of an app relaunch — and only the FIRST of them means "I want to run
+	 * a command now". The other three name a surface that already exists (the
+	 * banner), are not the user's gesture at all (the reveal), or are the same pane
+	 * the user left open (the restore, and this is the one that would be a bug:
+	 * creating a surface on restore would put a shell in a conversation on every
+	 * launch). So the request is an EVENT: the pane consumes it and clears it, and a
+	 * launch starts with it null by construction rather than by a guard.
+	 *
+	 * IT NAMES THE CONVERSATION rather than being a boolean, and that closes a hole the
+	 * first cut left (agent review round 1, F-6): the pane is REMOUNTED on a session
+	 * switch, so a request still pending when the user switched would have been answered
+	 * by the NEXT conversation's pane — a shell created in a conversation nobody asked
+	 * about. An answer is only an answer for the conversation that asked.
+	 *
+	 * IT LIVES IN THE STORE rather than in a prop of the pane's parent for the reason
+	 * `consoleActiveSurface` does: the pane is remounted on a session switch, so a flag
+	 * held in the pane would either be forgotten by the remount it was set just
+	 * before, or re-fire on the remount it survived into. Here the pane clears it as
+	 * soon as it has acted, so a remount finds nothing to do.
+	 */
+	consoleOpenIntent: string | null;
+
+	/**
+	 * Ask the pane to take a user's open of the console: create the first surface if
+	 * that conversation has none, or put the caret in the one it shows.
+	 *
+	 * ONE CALLER: the chat header's console trigger, which is offered only where there
+	 * is a conversation to act on. The banner's click and main's `reveal` push
+	 * deliberately do not call it — see `consoleOpenIntent`.
+	 */
+	requestConsoleOpen: (sessionId: string) => void;
+
+	/** The pane has answered the request FOR THIS CONVERSATION, and only that one. Called
+	 * by the pane alone, with the conversation it answered for.
+	 *
+	 * IT TAKES THE CONVERSATION IT ANSWERS, and the guard is the point (agent review round
+	 * 3, the late-answer half of F-6): an unconditional clear would wipe a request the user
+	 * made for a different conversation while the first one was still being answered — the
+	 * pane would have thrown away a request nobody had served. It is the same shape as the
+	 * caret token's `current === applied` acknowledgement one pane over: an answer belongs
+	 * to the request it answers. */
+	clearConsoleOpenIntent: (sessionId: string) => void;
+
+	/**
+	 * Set the console pane open state.
+	 *
+	 * Opening it closes the other three occupants, by the same construction as
+	 * theirs: one slot, one pane, and the exclusion lives in `claimRightSlot` so no
+	 * call site has to remember it.
+	 *
+	 * @param open - Whether the console pane should be open
+	 */
+	setConsolePaneOpen: (open: boolean) => void;
+
+	/**
+	 * The width of the console pane in pixels.
+	 *
+	 * DERIVED FROM A MEASURED CELL rather than chosen, because that is the one
+	 * number this pane's usefulness is a function of: a terminal pane narrower than
+	 * its grid's columns is a terminal that crops. The value is the measured advance
+	 * of the shipped face at the pane's own font step, times the design's
+	 * 100-column default grid, plus the pane's chrome - so the default width IS the
+	 * default grid on every machine, and it moves with the font rather than drifting
+	 * away from it.
+	 *
+	 * The floor a drag stops at is the divider's 480 (`chat-content.tsx`), and the
+	 * grid's own 40-column floor is main's, not the divider's (design 6.1, 8.5).
+	 */
+	consolePanelWidth: number;
+
+	/**
+	 * Set the width of the console pane
+	 * @param width - The new width in pixels
+	 */
+	setConsolePanelWidth: (width: number) => void;
+
+	/**
+	 * Restore the console pane width to its default value
+	 */
+	restoreDefaultConsolePanelWidth: () => void;
+
+	/**
+	 * Which surface the console pane is showing.
+	 *
+	 * THE SLOT'S STATE, NOT THE PANE'S (design 6.1), for the reason
+	 * `browserPaneScope` records: the pane is remounted when the conversation
+	 * changes (`chat-page.tsx`'s `key={identity}`), so a lens held inside it would
+	 * forget which surface the user was reading on every switch while the pane
+	 * itself stayed open. This is the fourth pane's lens, and it is a surface ID
+	 * rather than a scope because a console's surfaces belong to exactly one session
+	 * (design 6.3) - the pane resolves it against the current session and falls back
+	 * to that session's most recent surface when the remembered one is not its own
+	 * (`pickActiveSurface`).
+	 */
+	consoleActiveSurface: string | null;
+
+	/**
+	 * Set which surface the console pane shows
+	 * @param surface - The surface handle, or null for "this session's own choice"
+	 */
+	setConsoleActiveSurface: (surface: string | null) => void;
+
+	/**
+	 * Surfaces that have finished something the user has not looked at yet.
+	 *
+	 * THE BLIP'S MARK, and it is persisted on purpose (design 12.2): an uncleared
+	 * blip is "a mark on recorded history, not on a live process", so it survives a
+	 * session switch AND an app relaunch. Cleared when the pane is displayed on that
+	 * surface and the window is focused - the same visibility predicate the
+	 * notifier's first rung uses, never "could a banner reach them".
+	 *
+	 * THE SESSION IS PART OF THE MARK, and that is what makes the header's dot
+	 * honest: the trigger lives in ONE conversation's header, so a completion in
+	 * another conversation must not light it up. A surface handle is globally unique
+	 * (`con:<n>:<nonce>`), so clearing by surface alone is unambiguous; marking needs
+	 * the session because that is the only thing the header can filter by.
+	 */
+	consoleUnseen: ConsoleUnseenMark[];
+
+	/**
+	 * Mark a surface as having something the user has not seen
+	 * @param sessionId - The conversation the surface belongs to
+	 * @param surface - The surface handle
+	 */
+	markConsoleUnseen: (sessionId: string, surface: string) => void;
+
+	/**
+	 * Clear the mark on a surface, or on every surface in an array
+	 * @param surface - The surface handle, or handles, to clear
+	 */
+	clearConsoleUnseen: (surface: string | string[]) => void;
 
 	/**
 	 * A pending request to open the run pane AT one of its sections.
@@ -433,7 +583,13 @@ export type RunPanelSection = "todos" | "subagents" | "jobs" | "wakes";
 export type BrowserPaneScope = "conversation" | "all";
 
 /**
- * Claiming the right slot for one of the THREE panes that can live in it.
+ * Claiming the right slot for one of the FOUR panes that can live in it.
+ *
+ * The rule, stated once because three of the four panes' docs point at it: the
+ * right slot holds one pane at a time, so opening one closes the others by
+ * construction, and no call site has to remember which ones to clear. The console
+ * is the fourth (design 6.1), and it cost exactly what the third one's arrival
+ * predicted it would: one more name in this union and one more `===` below.
  *
  * The slot holds ONE pane, so every claim is "this side wins and the other two are
  * cleared" - a rule that was written out at each of the three call sites until
@@ -453,14 +609,19 @@ export type BrowserPaneScope = "conversation" | "all";
  * losing side is not something any call site has to remember.
  */
 const claimRightSlot = (
-	pane: "isRunPanelOpen" | "isCanvasOpen" | "isBrowserPaneOpen",
+	pane:
+		| "isRunPanelOpen"
+		| "isCanvasOpen"
+		| "isBrowserPaneOpen"
+		| "isConsolePaneOpen",
 ): Pick<
 	UiPreferencesState,
-	"isRunPanelOpen" | "isCanvasOpen" | "isBrowserPaneOpen"
+	"isRunPanelOpen" | "isCanvasOpen" | "isBrowserPaneOpen" | "isConsolePaneOpen"
 > => ({
 	isRunPanelOpen: pane === "isRunPanelOpen",
 	isCanvasOpen: pane === "isCanvasOpen",
 	isBrowserPaneOpen: pane === "isBrowserPaneOpen",
+	isConsolePaneOpen: pane === "isConsolePaneOpen",
 });
 
 /**
@@ -508,6 +669,116 @@ export const MENTION_RECENTS_LIMIT = 20;
  * `browserPanelWidth` for why a page wants 640 where a roster wants 420. */
 const DEFAULT_BROWSER_PANEL_WIDTH = 640;
 
+/**
+ * The console pane's default width: the design's default grid, measured.
+ *
+ * Design 6.1 fixes the grid at 100x30 and asks the PR to print the px-per-column
+ * it used. This computes the width from the SHIPPED face instead of printing a
+ * number nobody can check, and it is deliberately arithmetic over the same
+ * `measureCell` the pane reports to main: change the font, the font step or the
+ * default grid and this follows, while a literal 843 would silently become "a pane
+ * that crops 3 columns".
+ *
+ * The chrome allowance is the pane's own horizontal padding plus the terminal's
+ * inset - the box the 100 columns have to fit inside - and it is one number rather
+ * than a sum of class names so that a change to either is a change here.
+ *
+ * A STALE PERSISTED VALUE IS NOT A PROBLEM: a width the user dragged is theirs and
+ * is kept; `restoreDefaultConsolePanelWidth` recomputes the default from the face
+ * that is shipping now.
+ */
+const CONSOLE_GRID_COLUMNS = 100;
+/*
+ * THE PANE'S HORIZONTAL GUTTERS, and the round-2 design finding (D12) is why this
+ * is 16 rather than the 24 it was: the allowance was being spent as a right-hand
+ * gutter rather than as chrome, because the terminal painted from the pane's own
+ * edge (`column 0 at x=1` while the header's title sits at x=9 and the strip's pill
+ * at x=8) and the remaining 24 px showed as uniform ground to the right of the last
+ * column. Measured, not inferred: 780 px of grid inside an 804 px pane.
+ *
+ * The decision is INSET rather than bleed - the terminal takes the same two 8 px
+ * gutters the pane's header and its strip already use, so the pane has one gutter at
+ * one width instead of a chrome bar at 8 px sitting over a grid at 0 - and the
+ * allowance is therefore exactly those two gutters. `console-pane.tsx` carries the
+ * matching `px-2` on the terminal's box; if either moves, this moves with it.
+ */
+const CONSOLE_PANE_CHROME_PX = 16;
+const measureConsoleDefaultWidth = (): number =>
+	Math.ceil(CONSOLE_GRID_COLUMNS * measureCell().cellWidth) +
+	CONSOLE_PANE_CHROME_PX;
+/**
+ * The console pane's default width, exported.
+ *
+ * Exported because the slot's own render (`chat-content.tsx`) needs the NUMBER
+ * rather than the write, exactly as the browser pane's 640 is spelled there: an
+ * unset preference has to land on the same width the reset path stores, or a pane
+ * that has never been dragged and one that has been double-clicked would differ.
+ */
+export const DEFAULT_CONSOLE_PANEL_WIDTH = measureConsoleDefaultWidth();
+
+/**
+ * One blip mark: which conversation's console finished something, on which
+ * surface, and when.
+ *
+ * `at` is what separates the mark's two painted states (§12.2): a fresh mark
+ * PULSES in the accent, because something is unread and the accent is earned, and
+ * a mark that has had its pulse rests in `inkMuted` — the canvas button's own dot
+ * colour, which is what "nothing more is happening right now" looks like in this
+ * header. See `CONSOLE_BLIP_PULSE_MS`.
+ *
+ * The session is part of the mark rather than derived from the handle because the
+ * header can only filter by session: a surface handle is globally unique
+ * (`con:<n>:<nonce>`), so clearing by surface alone is unambiguous, while "does
+ * THIS conversation's console have anything unread" is the header's question.
+ */
+export interface ConsoleUnseenMark {
+	sessionId: string;
+	surface: string;
+	/** `Date.now()` at the completion. Persisted with the mark, so a relaunch
+	 * restores a RESTING dot rather than a pulse for something that happened before
+	 * the app started. */
+	at: number;
+}
+
+/**
+ * How long a completion pulses before its dot rests.
+ *
+ * Five seconds is two and a half cycles of the app's own `pulse-visible` step
+ * (2 s), which is long enough to be seen by someone returning to the window and
+ * short enough not to be a permanent animation - the point of the resting state is
+ * that an unread mark must not animate for ever.
+ */
+export const CONSOLE_BLIP_PULSE_MS = 5_000;
+
+/** Whether one surface is carrying an uncleared mark. */
+export const isConsoleUnseen = (
+	marks: readonly ConsoleUnseenMark[],
+	surface: string,
+): boolean => marks.some((mark) => mark.surface === surface);
+
+/** Whether any of these marks is still fresh enough to pulse. */
+export const consoleBlipPulsing = (
+	marks: readonly ConsoleUnseenMark[],
+	now: number = Date.now(),
+): boolean => marks.some((mark) => now - mark.at < CONSOLE_BLIP_PULSE_MS);
+
+/** Whether ONE conversation's console has anything unread, which is the header's
+ * dot (§12.2's "a dot, not a count"). */
+export const consoleUnseenForSession = (
+	marks: readonly ConsoleUnseenMark[],
+	sessionId: string | null,
+): number =>
+	sessionId === null
+		? 0
+		: marks.filter((mark) => mark.sessionId === sessionId).length;
+
+/**
+ * A shared empty array for the blip's initial state, so a store that has never
+ * marked anything does not hand out a new `[]` on every read (which would make
+ * every subscriber re-render on every unrelated commit).
+ */
+const EMPTY_CONSOLE_UNSEEN: ConsoleUnseenMark[] = [];
+
 export const useUiPreferencesStore = create<UiPreferencesState>()(
 	persist(
 		(set) => ({
@@ -533,10 +804,15 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			isCanvasOpen: false,
 			isRunPanelOpen: false,
 			isBrowserPaneOpen: false,
+			isConsolePaneOpen: false,
+			consoleOpenIntent: null,
 			runPanelReveal: null,
 			runPanelWidth: DEFAULT_RUN_PANEL_WIDTH,
 			browserPanelWidth: DEFAULT_BROWSER_PANEL_WIDTH,
 			browserPaneScope: "conversation",
+			consolePanelWidth: DEFAULT_CONSOLE_PANEL_WIDTH,
+			consoleActiveSurface: null,
+			consoleUnseen: EMPTY_CONSOLE_UNSEEN,
 			isCreateAgentDialogOpen: false,
 			mentionRecents: null,
 
@@ -609,6 +885,74 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 						? claimRightSlot("isBrowserPaneOpen")
 						: { isBrowserPaneOpen: false },
 				);
+			},
+
+			setConsolePaneOpen: (open: boolean) => {
+				set(
+					open
+						? claimRightSlot("isConsolePaneOpen")
+						: { isConsolePaneOpen: false },
+				);
+			},
+
+			setConsolePanelWidth: (width: number) => {
+				set({
+					consolePanelWidth: width,
+				});
+			},
+
+			restoreDefaultConsolePanelWidth: () => {
+				set({
+					consolePanelWidth: DEFAULT_CONSOLE_PANEL_WIDTH,
+				});
+			},
+
+			setConsoleActiveSurface: (surface: string | null) => {
+				set({
+					consoleActiveSurface: surface,
+				});
+			},
+
+			requestConsoleOpen: (sessionId: string) => {
+				set({ consoleOpenIntent: sessionId });
+			},
+
+			clearConsoleOpenIntent: (sessionId: string) => {
+				// Guarded so a pane with nothing to answer does not write a new state object
+				// on every pass of its effect — and so a pane answering ITS conversation
+				// cannot clear a request raised for another one in the meantime.
+				set((state) =>
+					state.consoleOpenIntent === sessionId
+						? { consoleOpenIntent: null }
+						: {},
+				);
+			},
+
+			markConsoleUnseen: (sessionId: string, surface: string) => {
+				set((state) =>
+					state.consoleUnseen.some((mark) => mark.surface === surface)
+						? {}
+						: {
+								consoleUnseen: [
+									...state.consoleUnseen,
+									{ sessionId, surface, at: Date.now() },
+								],
+							},
+				);
+			},
+
+			clearConsoleUnseen: (surface: string | string[]) => {
+				const clear = Array.isArray(surface) ? surface : [surface];
+				set((state) => {
+					const next = state.consoleUnseen.filter(
+						(mark) => !clear.includes(mark.surface),
+					);
+					// The identity is kept when nothing was marked, so a pane that clears
+					// on every focus change does not re-render the header for nothing.
+					return next.length === state.consoleUnseen.length
+						? {}
+						: { consoleUnseen: next };
+				});
 			},
 
 			setBrowserPanelWidth: (width: number) => {
@@ -733,11 +1077,42 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			 * asked about. That is the same defect `docs/run-sidebar.md` § 3.5 refuses
 			 * for the reader's open child — "a mode of a pane is not a preference" —
 			 * and a consumed-once request is more transient than a mode, not less.
+			 *
+			 * `consoleOpenIntent` is the second field, excluded for the same reason one
+			 * pane over: it is a request, it is answered within a frame of being made,
+			 * and a launch that restored it would run a shell in a conversation every
+			 * time the app started — which is exactly the difference between the pane
+			 * being restored and the user opening it.
 			 */
-			partialize: (state) => {
-				const { runPanelReveal: _pending, ...persisted } = state;
-				return persisted;
-			},
+			partialize: persistedUiPreferences,
 		},
 	),
 );
+
+/**
+ * The part of the preferences that is written to disk: all of it, minus the two
+ * requests that only mean something inside the run that made them.
+ *
+ * A NAMED FUNCTION RATHER THAN AN INLINE CLOSURE, and the reason is a test that went
+ * red in CI rather than here: the pin over this filter used to reach the closure
+ * through `useUiPreferencesStore.persist.getOptions()`, which is zustand's own API
+ * and is not the same shape on every runtime (`Cannot read properties of undefined
+ * (reading 'getOptions')` on CI's node against this one), so the filter is exported
+ * and the test asserts the shipped function itself instead of a runtime handle on it.
+ *
+ * `runPanelReveal` is a request to open the run pane at a section; `consoleOpenIntent`
+ * names the conversation a request to give a terminal and the keyboard was made for.
+ * Both are consumed by the pane that answers them, so persisting either would outlive the event it describes
+ * — a launch would restore a request nobody made and act on it, which for the console
+ * means running a shell in a conversation every time the app started.
+ */
+export function persistedUiPreferences<
+	T extends { runPanelReveal: unknown; consoleOpenIntent: unknown },
+>(state: T): Omit<T, "runPanelReveal" | "consoleOpenIntent"> {
+	const {
+		runPanelReveal: _pending,
+		consoleOpenIntent: _intent,
+		...persisted
+	} = state;
+	return persisted;
+}

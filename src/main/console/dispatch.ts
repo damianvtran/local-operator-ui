@@ -132,11 +132,18 @@ export async function dispatchConsole(
 					{ surface },
 				);
 			}
-			return host.input(surface, {
-				text,
-				bytes,
-				paste: optionalBoolean(params.paste, "paste"),
-			});
+			// `"agent"`, named rather than defaulted: this whole module is the RPC
+			// dispatch, and the actor is a fact about the path (§13.4's co-pilot cell
+			// reads it to tell a user's surface from one the agent is driving).
+			return host.input(
+				surface,
+				{
+					text,
+					bytes,
+					paste: optionalBoolean(params.paste, "paste"),
+				},
+				"agent",
+			);
 		}
 		case "console_keys": {
 			const surface = requiredSurface(params.surface);
@@ -152,7 +159,7 @@ export async function dispatchConsole(
 					{},
 				);
 			}
-			return host.keys(surface, keys as string[]);
+			return host.keys(surface, keys as string[], "agent");
 		}
 		case "console_resize": {
 			const surface = requiredSurface(params.surface);

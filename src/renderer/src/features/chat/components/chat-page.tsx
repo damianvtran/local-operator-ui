@@ -20,6 +20,7 @@ import { cn } from "@shared/lib/utils";
 import {
 	SEND_UNCONFIRMED_MESSAGE,
 	SESSION_UNVALIDATED_CODE,
+	SESSION_UNVALIDATED_MESSAGE,
 	UNCONFIRMED_SEND_CODE,
 	UNREADABLE_ATTACHMENT_CODE,
 	admitChatDraft,
@@ -204,6 +205,35 @@ async function encodeImageAttachments(attachments: string[], text: string) {
 
 /** Each displayed identity owns its stream and composer. A candidate open is
  * prepared by the store first; changing rows never stops the outgoing runtime. */
+/** The header's second line when nothing true can fill it; see the live arm. */
+const HELD_DESCRIPTION_LINE = "\u00a0";
+
+/** How a send held for the validation window ends; see `send`. */
+type WindowOutcome = "ready" | "failed" | "gone" | "abandoned";
+
+/**
+ * Whether the chat view is still showing `sessionId` - the id this pane would be
+ * handed if it were mounted now. Read through `panelSessionIdOfView`, the one
+ * expression the pane's own key is computed from, so a held send and the pane
+ * cannot disagree about which conversation the user is in.
+ */
+function viewIsOnThisSession(
+	state: ReturnType<typeof useCanonicalSessionsStore.getState>,
+	sessionId: string | undefined,
+): boolean {
+	const draft = state.activeDraftKey
+		? state.drafts[state.activeDraftKey]
+		: undefined;
+	return (
+		Boolean(sessionId) &&
+		panelSessionIdOfView(
+			state.activeDraftKey,
+			draft?.sessionId,
+			state.activeSessionId,
+		) === sessionId
+	);
+}
+
 function SessionPanel({
 	identity,
 	draftKey,
@@ -238,6 +268,15 @@ function SessionPanel({
 	const sendLockRef = useRef<SendLock | null>(null);
 	sendLockRef.current ??= createSendLock();
 	const sendLock = sendLockRef.current;
+	/*
+	 * The stream's latest answer, readable from inside an awaiting `send`, whose
+	 * closure is the render it started in. Written during render on purpose: the
+	 * value is only ever READ by async continuations, never by render.
+	 */
+	const streamRef = useRef(canonical);
+	streamRef.current = canonical;
+	/** Sends held until the validation window answers; see `send`. */
+	const windowWaiters = useRef<Array<(outcome: WindowOutcome) => void>>([]);
 	/* Set when an answer was pressed from the keyboard, so focus can be returned
 	 * once the gate moves. See the effect below `answerWithOption`. */
 	const restoreFocus = useRef(false);
@@ -1095,6 +1134,77 @@ function SessionPanel({
 				setSendError(refusal);
 				return false;
 			}
+			/*
+			 * A SEND PRESSED BEFORE THE STREAM HAS ANSWERED WAITS FOR IT, and then
+			 * goes out (UX round 1, U1).
+			 *
+			 * The composer is usable from the click by design, so on a 2-3 s attach
+			 * the normal path is "type, press Enter, the pane is not live yet". That
+			 * used to be refused with a sentence that then retired silently, leaving
+			 * the user to notice the chat had become ready and press send a second
+			 * time. The press is the user's instruction, so it is held here - the
+			 * text stays in the box and the composer shows its existing in-flight
+			 * state (`admitting`) - until the stream decides:
+			 *
+			 *   - `ready`: THIS panel's stream went live and the first snapshot
+			 *     closed the window; admit as normal.
+			 *   - `abandoned`: the view moved to another conversation first; nothing
+			 *     is sent anywhere, and the draft stays with this conversation.
+			 *   - `failed`: the stream reached `unavailable` (retry budget or the
+			 *     snapshot deadline). The refusal then states the STREAM's own
+			 *     sentence - the same one the transcript shows with its Reconnect -
+			 *     rather than "sending works once it is ready", which told the user
+			 *     to wait on a panel that had already said the connection is lost
+			 *     (design round 1, D3).
+			 *   - `gone`: the stream's 404 tombstoned the conversation; the composer
+			 *     is already read-only under its own notice, so the text just stays.
+			 *
+			 * It cannot hang: the hook bounds every connection by
+			 * `STREAM_SNAPSHOT_DEADLINE_MS`, and an unmount (the user moved on)
+			 * settles the wait as abandoned. The store's own refusal in
+			 * `admitChatDraft` stays as the rule for every other caller.
+			 */
+			/*
+			 * A SEND WHOSE CONVERSATION THE USER HAS ALREADY LEFT GOES NOWHERE
+			 * (agent review round 2, R2-F1). Checked before the window, because by
+			 * the time a press reaches here the switch may already have moved the
+			 * window to the other conversation - and then this pane's session reads
+			 * as not-in-a-window, the hold below is skipped, and the store's own
+			 * refusal cannot catch it either (it refuses only the session the window
+			 * names). Reproduced on the BUILT app with a real Enter and a real click
+			 * on another row, when the message carried a pasted image: the send
+			 * awaits the image decode above, the click lands in that gap, and the
+			 * message went to the conversation just left - 1 POST and 1 journal row
+			 * there, 3 of 3 runs. Without an attachment nothing yields before this
+			 * point, so the press is decided in its own task (0 of 5 runs at 0-5 ms
+			 * gaps). `session-switch-latency.mjs --held-leave` is the committed
+			 * reproduction (press and switch in one task). `false` keeps the text
+			 * with this conversation's draft, the same outcome as `abandoned`.
+			 */
+			if (
+				sessionId &&
+				!viewIsOnThisSession(useCanonicalSessionsStore.getState(), sessionId)
+			)
+				return false;
+			if (
+				sessionId &&
+				isSessionUnvalidated(
+					useCanonicalSessionsStore.getState().validatingSessionId,
+					sessionId,
+				)
+			) {
+				const outcome = await awaitWindow();
+				if (outcome !== "ready") {
+					if (outcome === "failed") {
+						setSendError(
+							streamRef.current.failure?.statement ??
+								SESSION_UNVALIDATED_MESSAGE,
+						);
+						setSendErrorCode(SESSION_UNVALIDATED_CODE);
+					}
+					return false;
+				}
+			}
 			const id = await admitChatDraft(
 				key,
 				{
@@ -1151,9 +1261,17 @@ function SessionPanel({
 			/*
 			 * TWO failures, and the composer acts differently on each.
 			 *
-			 * Refused before admission - 413/422, and every pre-transport refusal
-			 * above: nothing reached the owner, so the text belongs back in the box
-			 * (`false`).
+			 * Refused before admission - 413/422, the read window, and the owner's
+			 * own `runtime_busy`/`runtime_retiring` refusals, plus every
+			 * pre-transport refusal above: nothing reached the owner, so the text
+			 * belongs back in the box (`false`). The owner's two are the ones the
+			 * incident turned into a held draft: a 503 carrying `runtime_busy` and a
+			 * 409 carrying `runtime_retiring` were both read as UNKNOWABLE, so the
+			 * composer claimed it could not tell whether the message landed, over a
+			 * message the backend had already said it never accepted. It is keyed on
+			 * the CODES and not on those statuses because a bare 409 is also the
+			 * receipt-conflict refusal, whose replay may have been admitted the first
+			 * time - the same predicate's note carries the boundary.
 			 *
 			 * Anything else is UNKNOWABLE: the owner may have admitted the command
 			 * before the response was lost, which is why the echo is deliberately
@@ -1438,6 +1556,18 @@ function SessionPanel({
 			? state.sessions.find((row) => row.session_id === sessionId)
 			: undefined,
 	);
+	/*
+	 * The name a conversation this window has DELETED wore when it went.
+	 *
+	 * The pane lands on its existing missing-session state for a deleted
+	 * conversation (see `chat-content.tsx`), and that state still has to name WHICH
+	 * conversation is gone - the row is out of the catalogue by then, so the store's
+	 * tombstone is the only source left, and the alternative is a header reading
+	 * "Untitled chat" over a delete (UX round 1, U1).
+	 */
+	const forgottenTitle = useCanonicalSessionsStore((state) =>
+		sessionId ? state.forgotten[sessionId]?.title : undefined,
+	);
 	const loaded =
 		[canonical.frontend?.active_agent, canonical.frontend?.active_team]
 			.filter(Boolean)
@@ -1456,7 +1586,9 @@ function SessionPanel({
 		draftKey,
 		draftTarget: loadedTarget,
 		liveTitle: canonical.frontend?.conversation_title,
-		catalogueTitle: boundRow?.title,
+		// The row's own name, or - for a conversation this window has deleted - the
+		// name that row wore when it went.
+		catalogueTitle: boundRow?.title ?? forgottenTitle,
 	});
 	const view = !sessionId
 		? { ...canonical, status: "live" as const, error: null }
@@ -1535,39 +1667,112 @@ function SessionPanel({
 			});
 	}, [attachmentResolved, draftIdentity]);
 	/*
-	 * The read window, and the notice that explains it.
+	 * The validation window, and the notice that explains it.
 	 *
-	 * `validatingSessionId` is the one round trip after a switch during which the
+	 * `validatingSessionId` is the stretch after a switch during which the
 	 * target's existence is unconfirmed. The STORE owns the window and refuses a
-	 * send inside it; these two effects are the stream's half of that contract,
-	 * because the store cannot see the stream.
+	 * send inside it; these effects are the stream's half of that contract,
+	 * because the store cannot see the stream - and since the click no longer
+	 * issues a `sessions.get` guard read (see `openSession`), they are the ONLY
+	 * bounds it has.
 	 *
-	 * - `confirmSessionLive` closes the window on a live frame from the session's
-	 *   own stream. That is the EARLIER bound: it opens the gate on the first
-	 *   proof rather than at the read's own end. The read is bounded too -
-	 *   `desktopResult` runs every desktop control under `withDeadline` at the
-	 *   op's own derived deadline (`desktopRequestTimeoutMs` - 25 s for a
-	 *   control, 95 s for a ledger read), so a read that never answers ends in
-	 *   the rollback rather than in a panel that refuses sends forever - but a
-	 *   whole budget of a panel that refuses every send is not a bound a user
-	 *   can use, so the live term is kept for what it adds, not because the
-	 *   alternative is unbounded.
+	 * - `confirmSessionLive` closes it on the stream's first snapshot, which is
+	 *   the frame that paints the messages: the transcript and a composer that
+	 *   sends arrive together, from one frame.
+	 * - `confirmSessionMissing` closes it on the stream's 404, tombstoning the id
+	 *   so the pane lands on the missing-session notice.
+	 * - `windowOpen` is in the deps so a window opened over a stream that is
+	 *   ALREADY live (the active row clicked while a draft is staged: the panel is
+	 *   keyed on the session, so `canonical.status` does not change) is closed in
+	 *   the same commit rather than left open with nothing to close it.
 	 * - the refused send's notice retires on that same observable condition, the
 	 *   way `attachmentResolved` retires its own: a sentence explaining a refusal
 	 *   must not outlive the cause it names.
 	 */
-	useEffect(() => {
-		if (!sessionId || canonical.status !== "live") return;
-		useCanonicalSessionsStore.getState().confirmSessionLive(sessionId);
-	}, [sessionId, canonical.status]);
-	const readWindowOpen = useCanonicalSessionsStore((state) =>
+	const windowOpen = useCanonicalSessionsStore((state) =>
 		isSessionUnvalidated(state.validatingSessionId, sessionId),
 	);
+	// A dependency of the held sends' settle effect below: leaving the
+	// conversation is an answer for them (`abandoned`), and it has to be heard in
+	// the commit that moves the view, not only when the pane unmounts.
+	const viewOnThisSession = useCanonicalSessionsStore((state) =>
+		viewIsOnThisSession(state, sessionId),
+	);
 	useEffect(() => {
-		if (readWindowOpen || sendErrorCode !== SESSION_UNVALIDATED_CODE) return;
+		if (!sessionId || !windowOpen) return;
+		const store = useCanonicalSessionsStore.getState();
+		if (canonical.status === "live") store.confirmSessionLive(sessionId);
+		else if (canonical.missing) store.confirmSessionMissing(sessionId);
+	}, [sessionId, windowOpen, canonical.status, canonical.missing]);
+	/*
+	 * The held sends' side of the window (see `send`): each waiter is settled by
+	 * the first observable answer - the window closing (`ready`, or `gone` when
+	 * it was the 404 that closed it) or the stream giving up while it is still
+	 * open (`failed`). Settled from an effect because that is where the stream's
+	 * status becomes observable here; `awaitWindow` checks the same conditions
+	 * synchronously first, so a waiter added after the answer cannot miss it.
+	 */
+	const settleWindowWaiters = (outcome: WindowOutcome) => {
+		const waiters = windowWaiters.current.splice(0);
+		for (const settle of waiters) settle(outcome);
+	};
+	/*
+	 * `ready` is THIS PANEL'S OWN EVIDENCE, never merely "the window is no longer
+	 * this session's" (agent review round 2, R2-F1). The two read the same while
+	 * the user stays and differ exactly when they leave: `openSession(other)`
+	 * moves `validatingSessionId` to `other`, which the old test read as this
+	 * session being confirmed. On the measured orderings the unmount's
+	 * `abandoned` won that race (`session-switch-latency.mjs --held-leave
+	 * --leave-after=400`: 0 sends before and after this change), so this is the
+	 * rule stated rather than a measured leak - the leak that DID reproduce is
+	 * the one `send` guards before it reaches the window at all.
+	 *
+	 * So the view moving off this session settles the wait as `abandoned`
+	 * without depending on which effect commits first, and `ready` additionally
+	 * needs this panel's stream to be `live`, the frame `confirmSessionLive`
+	 * closed the window on.
+	 */
+	const windowOutcome = (): WindowOutcome | null => {
+		if (streamRef.current.missing) return "gone";
+		if (!viewIsOnThisSession(useCanonicalSessionsStore.getState(), sessionId))
+			return "abandoned";
+		const status = streamRef.current.status;
+		if (status === "unavailable") return "failed";
+		if (
+			isSessionUnvalidated(
+				useCanonicalSessionsStore.getState().validatingSessionId,
+				sessionId,
+			)
+		)
+			return null;
+		return status === "live" ? "ready" : null;
+	};
+	const awaitWindow = () => {
+		const now = windowOutcome();
+		if (now) return Promise.resolve(now);
+		return new Promise<WindowOutcome>((resolve) => {
+			windowWaiters.current.push(resolve);
+		});
+	};
+	// biome-ignore lint/correctness/useExhaustiveDependencies: settles on the stream's answer, read through the ref
+	useEffect(() => {
+		if (windowWaiters.current.length === 0) return;
+		const outcome = windowOutcome();
+		if (outcome) settleWindowWaiters(outcome);
+	}, [windowOpen, viewOnThisSession, canonical.status, canonical.missing]);
+	// A held send whose pane unmounts (the user opened another conversation) is
+	// abandoned rather than delivered into a conversation nobody is looking at.
+	useEffect(() => {
+		const waiters = windowWaiters.current;
+		return () => {
+			for (const settle of waiters.splice(0)) settle("abandoned");
+		};
+	}, []);
+	useEffect(() => {
+		if (windowOpen || sendErrorCode !== SESSION_UNVALIDATED_CODE) return;
 		setSendError(null);
 		setSendErrorCode(undefined);
-	}, [readWindowOpen, sendErrorCode]);
+	}, [windowOpen, sendErrorCode]);
 	/*
 	 * The claim, and whether the user can currently see what it holds.
 	 *
@@ -1897,8 +2102,18 @@ function SessionPanel({
 								 * whole restart - the header on the old directory while the receipt in the
 								 * transcript said the session had moved (UX review U3). `live.cwd` is
 								 * `pending ?? stream`, so the two surfaces cannot disagree by construction.
+								 *
+								 * With no directory known the line is HELD BLANK rather than filled
+								 * with "Canonical chat" (design round 1, D2). That fallback is an
+								 * internal token, and it surfaced exactly where the header matters
+								 * most: a stream that failed before its first snapshot, where
+								 * `identityPending` lets go of the skeleton (a pulse over a failed
+								 * pane would claim a load in progress) and the transcript below is
+								 * already stating the connection loss with its Reconnect. A
+								 * no-break space keeps the `text-body-sm` line box, so the title does
+								 * not jump the 3.8 px the skeleton-to-text swap measured.
 								 */
-								live.cwd || "Canonical chat")
+								live.cwd || HELD_DESCRIPTION_LINE)
 					}
 					descriptionPending={identityPending}
 					onOpenOptions={() => setOptions((value) => !value)}
@@ -2158,17 +2373,6 @@ export function ChatPage() {
 		draftKey ? state.drafts[draftKey] : undefined,
 	);
 	const error = useCanonicalSessionsStore((state) => state.error);
-	/*
-	 * The navigation failure is read here and not from `error`, which is the
-	 * CATALOGUE's health: the catalogue refreshes on its own timer, and
-	 * `fetchSessions` clears that field when it starts, so the rollback's own
-	 * refetch used to erase the switch's failure sentence 4.5-8.1 ms after the
-	 * rollback wrote it. The user's own navigation failing is not the list's
-	 * health, and it is the sentence that must survive long enough to read.
-	 */
-	const navigationError = useCanonicalSessionsStore(
-		(state) => state.navigationError,
-	);
 	const [routeError, setRouteError] = useState<string | null>(null);
 	useEffect(() => {
 		if (!enabled || !routeIdentity) return;
@@ -2254,21 +2458,17 @@ export function ChatPage() {
 			content={
 				<div className={cn("flex h-full min-h-0 flex-col")}>
 					{/*
-					 * ONE sentence, and it is the user's navigation that owns it. The
-					 * catalogue's own failure is rendered where the remedy is (the
-					 * sidebar's `Retry refresh`, which refreshes the LIST); a switch
-					 * that failed has no list to refresh, so it is stated here, above the
-					 * panel it failed to open, and holds until the user navigates again.
-					 * It is deliberately NOT also painted in the sidebar: the same
-					 * sentence in two places under a remedy that fixes neither is what
-					 * made a deep link to a deleted chat read as two different failures.
+					 * ONE sentence above the panel: a legacy route that names no
+					 * conversation, or a store failure the composer does not own. A
+					 * switch no longer has a failure of its own to state here - the
+					 * target pane speaks for its own stream (see `openSession`).
 					 */}
-					{(routeError || navigationError || error) && (
+					{(routeError || error) && (
 						<p
 							role="alert"
 							className={cn("px-4 py-2 text-body-sm text-danger")}
 						>
-							{routeError || navigationError || error}
+							{routeError || error}
 						</p>
 					)}
 					{!enabled ? (

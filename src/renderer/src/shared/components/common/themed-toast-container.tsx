@@ -70,19 +70,37 @@ const TOAST_THEME: CSSProperties = {
  * ThemedToastContainer component
  *
  * A wrapper around sonner's Toaster that applies theme-aware styling and includes a close button.
+ *
+ * `position` and `style` exist for the SECOND container, the chat sidebar's own
+ * lane (`chat-sidebar.tsx`, design D11 of `docs/design/sidebar-row-space.md`): one
+ * toast in this app must not be able to land on the composer's Send control, and
+ * the way that is made structural rather than numeric is to confine the offer to
+ * the panel that performed the action. The global container in `main.tsx` keeps
+ * every other toast where it is - sonner hands a toast to the container whose
+ * `position` matches it, and a toast with no `position` to the first-mounted one -
+ * so the only thing that changes below the bottom-right corner is which element the
+ * sidebar's own container is anchored to.
  */
-// Undefined preserves Sonner's production lifetime. Evidence stories can hold
-// their one real refusal without replaying mutations or altering error cooldowns.
-export const ThemedToastContainer: FC<Pick<ToasterProps, "duration">> = ({
-	duration,
-}) => (
+export const ThemedToastContainer: FC<
+	Pick<ToasterProps, "duration" | "position" | "style">
+> = ({ duration, position = "bottom-right", style }) => (
+	/* `duration` undefined preserves Sonner's production lifetime. Evidence stories
+	   can hold their one real refusal without replaying mutations or altering error
+	   cooldowns. */
 	<Toaster
 		duration={duration}
-		position="bottom-right"
+		position={position}
 		toastOptions={{
 			style: TOAST_THEME,
 			closeButton: true,
 		}}
+		/*
+			LAST, so a caller can override any single value - and it is the only way a
+			lane can set `--width` or `position` at all: sonner writes its own `--width`
+			on the same element, and its stylesheet declares `position: fixed` unlayered,
+			so an inline value is the only thing that beats either.
+		 */
+		style={style}
 	/>
 );
 

@@ -320,6 +320,21 @@ function cases(root) {
 			stderr: /^$/,
 		},
 		{
+			// `publish.yml`'s macOS feed merge, the step that keeps the OTHER
+			// architecture's entries alive across the second `electron-builder` pass.
+			// Driven with a dist that holds no feed: `--merge` must then REFUSE
+			// rather than exit 0 having done nothing, because a silent no-op here
+			// publishes a feed that offers updates to one architecture only — the
+			// exact class of silence this file exists to rule out.
+			script: "merge-update-feed.mjs",
+			args: ["--merge", "--dist", emptyDist, "--state", emptyDist],
+			cwd: plain,
+			env: {},
+			status: 1,
+			stdout: /^$/,
+			stderr: /No macOS update feed was merged/,
+		},
+		{
 			// `ci.yml`'s Runtime Dependencies job. Reads this repository's own manifest
 			// through an absolute path derived from its module URL, so the answer is the
 			// allowlist summary whatever the working directory is.

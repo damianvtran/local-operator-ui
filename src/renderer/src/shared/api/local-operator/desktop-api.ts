@@ -25,8 +25,6 @@ export type {
 	DesktopCapabilities,
 	DesktopProvider,
 	ProviderMethod,
-	RadientLoginState,
-	RadientLoginVerdict,
 } from "../../../../../shared/desktop-contract";
 
 /**
@@ -194,18 +192,29 @@ export class DesktopControlError extends Error {
 	readonly cause?: unknown;
 	/** Vetted backend rejection category, distinct from connectivity status. */
 	readonly code?: string;
+	/**
+	 * How long the backend asked this app to wait before repeating the request,
+	 * when its answer carried `detail.retry_after_ms` (today only the typed
+	 * `runtime_busy` refusal; see `RUNTIME_BUSY_CODE`). Read from the BODY rather
+	 * than the `Retry-After` header because main's relay forwards the body and
+	 * not the headers, and the backend states the two together with the body
+	 * field the more precise of them.
+	 */
+	readonly retryAfterMs?: number;
 
 	constructor(
 		status: number | null,
 		message: string,
 		cause?: unknown,
 		code?: string,
+		retryAfterMs?: number,
 	) {
 		super(message);
 		this.name = "DesktopControlError";
 		this.status = status;
 		this.cause = cause;
 		this.code = code;
+		this.retryAfterMs = retryAfterMs;
 	}
 }
 
@@ -312,7 +321,9 @@ export async function desktopResult<T>(request: DesktopRequest): Promise<T> {
 	const response = await desktopRequest(request);
 	const envelope = response.body as {
 		result?: T;
-		detail?: string | { code?: string; message?: string };
+		detail?:
+			| string
+			| { code?: string; message?: string; retry_after_ms?: number };
 	} | null;
 	if (response.status < 200 || response.status >= 300) {
 		const detail =
@@ -341,6 +352,11 @@ export async function desktopResult<T>(request: DesktopRequest): Promise<T> {
 					? envelope.detail?.code
 					: undefined,
 			),
+			typeof envelope?.detail === "object" &&
+				typeof envelope.detail?.retry_after_ms === "number" &&
+				Number.isFinite(envelope.detail.retry_after_ms)
+				? envelope.detail.retry_after_ms
+				: undefined,
 		);
 	}
 	return envelope?.result as T;

@@ -225,6 +225,28 @@ const EXPECT_OUTGOING = ARGS.includes("--expect-outgoing");
  * conversation still on screen.
  */
 const FAIL_GET = ARGS.includes("--fail-get");
+/*
+ * `--held-leave`: a send pressed inside the open window, then the conversation
+ * left before its stream answers, with the press and the switch in ONE task -
+ * the ordering a send that awaits an image decode also produces (agent review
+ * round 2, R2-F1). The claim is about the WIRE: no `sessions.message` for the
+ * conversation the user left. Pair it with `--stream=2500` so the window is
+ * really open when the press lands; the arm refuses to run without it.
+ */
+const HELD_LEAVE = ARGS.includes("--held-leave");
+/*
+ * `--leave-after=<ms>`: how long the press is HELD before the switch (default 0,
+ * the one-task ordering). A positive value is the other half of R2-F1: a press
+ * genuinely waiting on the window, then the view moving to another conversation,
+ * which the pane must settle as abandoned rather than read as the window closing.
+ */
+const LEAVE_AFTER = Number(flag("leave-after", "0"));
+/*
+ * `--held-stay`: the CONTROL for `--held-leave`, the same press with no switch.
+ * The held send must go out exactly once, into the target, when its stream
+ * answers - so a fix that stops the leak by dropping every held press fails here.
+ */
+const HELD_STAY = ARGS.includes("--held-stay");
 const WIDTH = Number(flag("width", "1280"));
 const HEIGHT = Number(flag("height", "900"));
 
@@ -295,13 +317,18 @@ const RUN = (count) => `(async () => {
 })()`;
 
 /**
- * The rollback, driven in the real renderer.
+ * A switch to a conversation that is gone, driven in the real renderer.
  *
- * The target's guard read fails, so nothing about the happy-path timing
- * applies here; what is read back is what the user is left with - the session
- * they were in, the sentence explaining the failure, and no half-switched
- * panel. `view()` reads the error out of the RENDERED text, because the
- * promise being checked is about the screen and not about the store.
+ * This arm used to watch the guard read's ROLLBACK (the view returned to the
+ * outgoing session under an "Unknown session" banner). The click no longer
+ * spends that read, so there is no rollback to watch: the stream's own 404 is
+ * the signal, and what the user is left with is the target's pane on the
+ * missing-session notice, the id tombstoned out of the catalogue, and the send
+ * window closed. That chain runs through `chat-page`'s stream effect
+ * (`confirmSessionMissing`), which no unit test mounts - so this is the harness
+ * that pins it in a mounted `ChatPage` (agent review round 1, F4/F5).
+ * `view()` reads the notice off the RENDERED page, because the promise being
+ * checked is about the screen and not about the store.
  */
 const FAIL_RUN = `(async () => {
 	const probe = window.__lopSwitch;
@@ -313,17 +340,18 @@ const FAIL_RUN = `(async () => {
 	 * held at some instant between two paints.
 	 */
 	const recorder = probe.record();
-	const run = await probe.switchTo(meta.incoming, "failing");
+	// Not awaited first: \`switchTo\` settles on a painted transcript, which a gone
+	// conversation never has, so awaiting it would read the view at its 20 s
+	// deadline rather than at the notice.
+	const switching = probe.switchTo(meta.incoming, "failing");
 	const started = performance.now();
 	const frame = () =>
 		new Promise((resolve) => requestAnimationFrame(() => resolve()));
-	while (
-		probe.view().activeSessionId !== meta.outgoing &&
-		performance.now() - started < 5000
-	)
+	while (!probe.view().errorShown && performance.now() - started < 5000)
 		await frame();
 	const atRollback = probe.view();
 	const rollbackAt = performance.now();
+	const run = await switching;
 	/*
 	 * WATCH LONGER THAN THE CATALOGUE'S OWN TIMER. sessions.list is polled
 	 * every five seconds, and that poll is what erased the sentence on the
@@ -483,6 +511,49 @@ const PALETTE_RUN = `(async () => {
 		openCalls: probe.openCalls().map(
 			(call) => "@" + call.t + " " + call.id + " from " + call.from,
 		),
+	};
+})()`;
+
+const HELD_LEAVE_RUN = `(async () => {
+	const probe = window.__lopSwitch;
+	const meta = probe.snapshot();
+	const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+	const box = () => document.querySelector('textarea[aria-label="Message"]');
+	await probe.switchTo(meta.outgoing, "held-leave-prep");
+	await sleep(300);
+	const since = probe.bridge.log.requests.length;
+	void probe.switchTo(meta.incoming, "held-leave-open");
+	// Wait for the TARGET pane's composer: the commit sets the window at once,
+	// but the panel is keyed on the session and remounts a render later, so the
+	// textarea on screen right after the click is still the outgoing pane's.
+	const before = box();
+	for (let i = 0; i < 200 && !(box() && box() !== before && probe.view().validating === meta.incoming); i++) await sleep(10);
+	await sleep(100);
+	const validatingAtPress = probe.view().validating;
+	const b = box();
+	Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set.call(b, "held then left");
+	b.dispatchEvent(new Event("input", { bubbles: true }));
+	await sleep(50);
+	// The press and the switch in one task: nothing can run between them.
+	box().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+	if (${LEAVE_AFTER} > 0) await sleep(${LEAVE_AFTER});
+	if (!${HELD_STAY}) void probe.switchTo(meta.outgoing, "held-leave-away");
+	const boxAtLeave = box() ? box().value : null;
+	// Past the target's stream latency, AND until this pane's window has closed
+	// (the snapshot was applied) plus a settle, so a held send has every chance to
+	// go out. Waiting on the window rather than a fixed tail is what keeps the
+	// control from reading a send that is still on its way as one that never went.
+	await sleep(meta.latency.stream);
+	for (let i = 0; i < 300 && probe.view().validating === meta.incoming; i++) await sleep(20);
+	await sleep(1500);
+	const messages = probe.bridge.log.requests.slice(since).filter((r) => r.op === "sessions.message");
+	return {
+		meta: { incoming: meta.incoming, outgoing: meta.outgoing, stream: meta.latency.stream },
+		validatingAtPress,
+		viewAfter: probe.view().activeSessionId,
+		messages: messages.map((r) => r.sessionId),
+		boxAtLeave,
+		ops: probe.bridge.log.requests.slice(since).map((r) => r.op + ":" + (r.sessionId ?? "")),
 	};
 })()`;
 
@@ -1059,9 +1130,27 @@ const shoot = async (cdp, path, state, theme) => {
  * that exist, and the click's own frame is `click → committed`.
  */
 const PHASES = [
+	/*
+	 * `null` - no sample - when no target read settled before paint, which is
+	 * every run on a head whose click spends no `sessions.get`, and a run on the
+	 * older head whose read was still in flight when the transcript painted (the
+	 * page counts those in `getInFlightAtPaint`, printed under the table). It
+	 * used to read the in-flight marker `0` as a settle time and print negative
+	 * medians.
+	 */
 	[
 		"click → sessions.get settled",
 		(r) => (r.getSettledAt === null ? null : r.getSettledAt - r.clickAt),
+	],
+	/*
+	 * When a send would be ADMITTED: the store's validation window for the target
+	 * closed. With the guard read on the click path this was the read's answer
+	 * (or the stream's live frame, whichever came first); without it, the
+	 * stream's snapshot - the frame that paints the messages.
+	 */
+	[
+		"click → composer sends",
+		(r) => (r.sendableAt === null ? null : r.sendableAt - r.clickAt),
 	],
 	[
 		"click → committed",
@@ -1251,18 +1340,24 @@ const main = async () => {
 			),
 		]);
 
+	if ((HELD_LEAVE || HELD_STAY) && !(Number(SCENARIO.stream) >= 1000))
+		throw new Error(
+			"--held-leave needs --stream=<ms, at least 1000>: without it the window closes before the press, and the arm would pass without testing anything",
+		);
 	const { result } = await runWithDeadline(
-		RACE_STAGE
-			? STAGE_RUN
-			: RACE_PALETTE
-				? PALETTE_RUN
-				: RACE_FUZZ
-					? FUZZ_RUN
-					: RACE
-						? RACE_RUN(RACE_WRITE)
-						: FAIL_GET
-							? FAIL_RUN
-							: RUN(SWITCHES),
+		HELD_LEAVE || HELD_STAY
+			? HELD_LEAVE_RUN
+			: RACE_STAGE
+				? STAGE_RUN
+				: RACE_PALETTE
+					? PALETTE_RUN
+					: RACE_FUZZ
+						? FUZZ_RUN
+						: RACE
+							? RACE_RUN(RACE_WRITE)
+							: FAIL_GET
+								? FAIL_RUN
+								: RUN(SWITCHES),
 		FAIL_GET ? 90_000 : 60_000 + SWITCHES * 25_000,
 	);
 	if (!result.value)
@@ -1270,6 +1365,52 @@ const main = async () => {
 			`the page threw instead of returning a run table: ${result.description ?? JSON.stringify(result)}`,
 		);
 
+	if (HELD_LEAVE || HELD_STAY) {
+		const { meta, validatingAtPress, viewAfter, messages, boxAtLeave, ops } =
+			result.value;
+		const verdict = HELD_STAY
+			? {
+					"the press landed inside the target's open window":
+						validatingAtPress === meta.incoming,
+					"the view stayed on the target": viewAfter === meta.incoming,
+					"the held send went out exactly once, into the target":
+						messages.length === 1 && messages[0] === meta.incoming,
+				}
+			: {
+					"the press landed inside the target's open window":
+						validatingAtPress === meta.incoming,
+					"the view left the target": viewAfter === meta.outgoing,
+					"nothing was sent to the conversation the user left":
+						!messages.includes(meta.incoming),
+					"nothing was sent anywhere else either": messages.length === 0,
+				};
+		const passed = Object.values(verdict).every(Boolean);
+		if (AS_JSON)
+			console.log(
+				JSON.stringify(
+					{
+						meta,
+						validatingAtPress,
+						viewAfter,
+						messages,
+						boxAtLeave,
+						ops,
+						verdict,
+					},
+					null,
+					2,
+				),
+			);
+		else {
+			console.log(
+				`${HELD_STAY ? "held-stay" : "held-leave"} (stream ${meta.stream} ms): sessions.message -> [${messages.join(", ")}]`,
+			);
+			for (const [claim, ok] of Object.entries(verdict))
+				console.log(`  ${ok ? "PASS" : "FAIL"}  ${claim}`);
+		}
+		if (!passed) process.exitCode = 1;
+		return;
+	}
 	if (RACE_STAGE) {
 		const { meta, cases, latency, getRequests, openCalls } = result.value;
 		const loads = loadavg().map((value) => Math.round(value * 100) / 100);
@@ -1493,6 +1634,7 @@ const main = async () => {
 	}
 	if (FAIL_GET) {
 		const {
+			meta,
 			before,
 			run,
 			atRollback,
@@ -1516,17 +1658,26 @@ const main = async () => {
 		 * outlive the five-second poll that used to wipe it, and the run waits for
 		 * at least one of those polls (`pollsAfterRollback`) before asking.
 		 */
+		/*
+		 * `atRollback` keeps its name for the JSON's readers, but it is the view at
+		 * the frame the missing-session notice first painted: there is no rollback.
+		 */
 		const verdict = {
 			"the switch committed the target first": run.committedAt !== null,
-			"the view came back to the outgoing session":
-				atRollback.activeSessionId === before.activeSessionId,
-			"the failure sentence was recorded in the store": stats.recorded,
-			"the failure sentence reached a painted frame": stats.shownFrames > 0,
-			"the sentence is stated on exactly one surface": stats.maxSurfaces === 1,
-			"the sentence outlived a catalogue poll":
+			"the view stays on the target, not the outgoing session":
+				atRollback.activeSessionId === meta.incoming,
+			"the stream's 404 closed the window and tombstoned the id":
+				stats.recorded &&
+				atRollback.validating === null &&
+				!atRollback.incomingListed,
+			"the missing-session notice reached a painted frame":
+				stats.shownFrames > 0,
+			"the notice is stated on exactly one surface": stats.maxSurfaces === 1,
+			"the notice outlived a catalogue poll":
 				stats.shownAtEnd && pollsAfterRollback > 0,
-			"the sidebar marks the outgoing session again":
-				atRollback.selectedRow === before.selectedRow,
+			"the click spent no sessions.get on the target": !requests.includes(
+				`sessions.get:${meta.incoming}`,
+			),
 		};
 		const passed = Object.values(verdict).every(Boolean);
 		if (AS_JSON) {
@@ -1548,18 +1699,18 @@ const main = async () => {
 			);
 		} else {
 			console.log(
-				"guard-read failure — the rollback, driven in the real renderer",
+				"gone conversation — the stream's 404, driven in the real renderer",
 			);
 			console.log(`  before:      ${JSON.stringify(before)}`);
-			console.log(`  at rollback: ${JSON.stringify(atRollback)}`);
+			console.log(`  at notice:   ${JSON.stringify(atRollback)}`);
 			console.log(`  6.2 s later: ${JSON.stringify(after)}`);
 			console.log(
-				`  the switch committed at ${run.committedAt === null ? "-" : "yes"} and its read settled at ${run.getSettledAt === null ? "-" : "yes"}, then rolled back`,
+				`  the switch committed: ${run.committedAt === null ? "no" : "yes"}; a sessions.get settled: ${run.getSettledAt === null ? "no (none issued)" : "yes"}`,
 			);
 			console.log(
-				`  frames: ${stats.frames} sampled, ${stats.shownFrames} showing the sentence` +
+				`  frames: ${stats.frames} sampled, ${stats.shownFrames} showing the notice` +
 					` (first ${stats.firstShownAt ?? "-"}, last ${stats.lastShownAt ?? "-"}),` +
-					` ${pollsAfterRollback} catalogue poll(s) after the rollback`,
+					` ${pollsAfterRollback} catalogue poll(s) after the notice`,
 			);
 			console.log(`  transitions: ${JSON.stringify(stats.transitions)}`);
 			console.log(`  requests: ${requests.join(", ")}`);
@@ -1599,6 +1750,8 @@ const main = async () => {
 			? round(numbers(cold, PHASES.at(-1)[1])[0] ?? null)
 			: null,
 		sessionsGetPerSwitch: steady.map((run) => run.targetRequests),
+		sessionsGetInFlightAtPaint: steady.filter((run) => run.getInFlightAtPaint)
+			.length,
 		requestSequence: steady.at(-1)?.requests ?? [],
 		transcripts: runs.map((run) => ({
 			label: run.label,
@@ -1612,9 +1765,7 @@ const main = async () => {
 		console.log(JSON.stringify({ summary, runs }, null, 2));
 	} else {
 		console.log(`switch latency — ${url}`);
-		console.log(
-			`configured owner latencies (ms): ${JSON.stringify(latency)}  ·  step function (sessions.get) included in every switch`,
-		);
+		console.log(`configured owner latencies (ms): ${JSON.stringify(latency)}`);
 		console.log(
 			`load average ${loads.join(" ")} on ${summary.cores} cores  ·  ${summary.samples} timed switches (median), first switch after boot ${summary.firstSwitch} ms`,
 		);
@@ -1629,6 +1780,9 @@ const main = async () => {
 		console.log("");
 		console.log(
 			`sessions.get for the target, per switch: ${summary.sessionsGetPerSwitch.join(", ")}`,
+		);
+		console.log(
+			`sessions.get still in flight when the transcript painted: ${summary.sessionsGetInFlightAtPaint} of ${summary.samples}`,
 		);
 		console.log(
 			`requests issued by the last switch: ${summary.requestSequence.join(", ")}`,
@@ -1650,7 +1804,14 @@ main().then(
 		 * run had finished and written every frame while the process sat there.
 		 */
 		teardown();
-		process.exit(0);
+		/*
+		 * `exitCode`, not a hard 0: every arm reports a failed verdict by setting
+		 * `process.exitCode = 1`, and `process.exit(0)` overwrote it, so a run that
+		 * printed FAIL still exited green - the dead-instrument shape agent review
+		 * round 1 (F4) was about, one level up. Measured: a mutation that drops the
+		 * stream-404 wiring printed FAIL and exited 0 before this.
+		 */
+		process.exit(process.exitCode ?? 0);
 	},
 	(error) => {
 		teardown();

@@ -1,7 +1,9 @@
 import { homedir } from "node:os";
 import { basename, isAbsolute } from "node:path";
 import type { BrowserWindow, NativeImage } from "electron";
+import { defaultShell } from "../shell-path";
 import { ByteLog, type ByteLogSlice } from "./byte-log";
+import { hasTerminalContent } from "./capture";
 import {
 	type ConsoleEmulator,
 	type ConsoleReadMode,
@@ -17,6 +19,7 @@ import type {
 	SurfaceOrigin,
 } from "./protocol";
 import {
+	type ConsoleActor,
 	type ConsoleRegistry,
 	type ConsoleRegistryEntry,
 	redactSurface,
@@ -83,6 +86,34 @@ export const MAX_INPUT_BYTES = 1 << 18;
 export const OUTPUT_COALESCE_MS = 16;
 
 /**
+ * THE LIVE VIEW'S CEILING, in bytes of coalesced-but-undelivered output per surface.
+ *
+ * WHY IT EXISTS (memory-bounding round). `broadcast` pushes every chunk into a per-surface
+ * `pending` array and delivers it on a 16 ms timer. Every other structure on this path is
+ * bounded — the byte log is a ring, the sidecar is staged and flushed, the emulator has a
+ * scrollback — but `pending` had no cap at all, so its size was a function of how far behind
+ * a subscriber had fallen: a renderer that stopped draining, or a main thread blocked long
+ * enough that the coalescing timer could not run, grew it without limit while the pty kept
+ * producing at whatever rate the host allowed.
+ *
+ * WHY THE POLICY IS DROP-OLDEST-RATHER-THAN-PAUSE-THE-PTY. The design's own mitigation for
+ * this risk (§19.1 P3) names backpressure on the pty read side, and pausing the pty is not
+ * available here: `consume` is the pty's only reader, so a paused pty stops the byte log,
+ * the sidecar flush and the emulator too — the RECORD would fall out of step with the pane,
+ * which is the single-authority rule (§10) that the pane is a mirror of main's grid. So the
+ * one thing that may be dropped is the thing that is already a copy: this buffer feeds a
+ * live view, and the durable record is the byte log and its sidecar, which keep receiving
+ * every byte. A drop here costs the pane a frame and a re-attach, never the log of record.
+ *
+ * 1 MiB, against a 16 ms coalescing window: a subscriber that has a megabyte of undelivered
+ * output queued is not going to be saved by the next megabyte, and the newest bytes are what
+ * a viewer needs (the prompt a program just printed, not the scrollback it printed before).
+ * The floor is one chunk, so a single frame larger than the ceiling is still delivered rather
+ * than silently vanishing.
+ */
+export const LIVE_PENDING_MAX_BYTES = 1 << 20;
+
+/**
  * How long a retained surface's newest bytes may sit in memory before they reach
  * disk, and the byte count that forces the write sooner (§7.2/§7.4).
  *
@@ -105,13 +136,6 @@ export const OUTPUT_COALESCE_MS = 16;
  */
 export const PERSIST_FLUSH_MS = 250;
 export const PERSIST_FLUSH_BYTES = 256 * 1024;
-
-/** The shortest a frame may be before it is treated as the blank first frame a
- * hidden window returns. Measured in the compatibility spike: a stale/blank first
- * capture came back 9,866 B against 27,869 B for the settled frame at the same
- * size. The threshold sits well under the small end and well above "empty", so it
- * catches a blank frame without re-capturing a legitimately tiny one. */
-export const MIN_FRAME_BYTES = 2_000;
 
 /** How long to wait before the single retry. The spike's stale frame was the
  * *first* capture of a hidden window; one compositor beat later it was correct. */
@@ -170,6 +194,24 @@ export interface ConsoleHostOptions {
 	/** Persistence, or null when the app has no config root to write into. */
 	history: ConsoleHistory | null;
 	/**
+	 * How to photograph a surface with no displayed pane (§13.2's second and third
+	 * rows): the capture view, which PR B owns.
+	 *
+	 * Injected rather than imported because the capture view is a hidden RENDERER —
+	 * a second process with its own lifecycle, its own one-at-a-time rule and its
+	 * own teardown — and a host that constructed one would make `console_screenshot`
+	 * a different kind of operation from every other method here. A host with no
+	 * capture view answers the honest typed refusal instead, which is what the pane's
+	 * own tests do.
+	 */
+	captureOffscreen?: (request: {
+		surface: string;
+		cols: number;
+		rows: number;
+		theme: string | null;
+		bytes: Uint8Array;
+	}) => Promise<{ png: Buffer; renderer: string; attempts: number }>;
+	/**
 	 * How to start a surface's process.
 	 *
 	 * Injected so this class never imports node-pty: the native load and the
@@ -183,6 +225,23 @@ export interface ConsoleHostOptions {
 	/** Called for each OSC 133 mark (§12.1 rung 2). PR B's blip and notifier are
 	 * its consumers; nothing in this file acts on a mark itself. */
 	onMark?: (surface: string, mark: Osc133Mark) => void;
+	/**
+	 * Called once per surface when its process exits (§12.1 rung 1), which is the
+	 * one completion signal that is always available.
+	 *
+	 * SEPARATE FROM `onChanged`, WHICH ALSO FIRES HERE, and that is the whole
+	 * reason it exists: the app's banner needs the exit's own facts — which
+	 * surface, which session, which code — and a consumer that had to recover them
+	 * by diffing two listings would be a second reader of state this call already
+	 * holds, wrong for exactly one frame in the case where the surface is dropped
+	 * between the two reads. It is delivered after the record is updated and after
+	 * the subscribers have been told, so every reader of the surface sees the same
+	 * exit. */
+	onExit?: (event: {
+		surface: string;
+		sessionId: string;
+		exitCode: number;
+	}) => void;
 	/** Called whenever something a listing or the record reports has changed. */
 	onChanged?: () => void;
 	/**
@@ -215,6 +274,17 @@ export interface SurfaceRuntime {
 	subscribers: Set<ConsoleSubscriber>;
 	/** Output waiting to be coalesced into one frame per subscriber. */
 	pending: Uint8Array[];
+	/** `pending`'s own byte count, maintained as it is appended and trimmed so the
+	 * ceiling is a comparison rather than a sum over the array on every chunk. */
+	pendingBytes: number;
+	/** Bytes dropped from `pending` because a subscriber fell behind. Reported by
+	 * `console_status` beside the log's `truncated`, so a lossy live view is a fact a
+	 * caller can read rather than a frame that quietly never arrived.
+	 *
+	 * MONOTONIC: it accumulates for the life of the surface and is never reset, so a
+	 * reader compares two readings rather than treating a number as "how far behind the
+	 * pane is right now" — a pane that caught up still reports the bytes it missed. */
+	droppedLiveBytes: number;
 	pendingTimer: NodeJS.Timeout | null;
 	/** The armed flush of this surface's retained bytes (§7.2). One timer per
 	 * surface, so a second chunk joins the pending write instead of adding one. */
@@ -389,6 +459,8 @@ export class ConsoleHost {
 			scanner: new Osc133Scanner(),
 			subscribers: new Set(),
 			pending: [],
+			pendingBytes: 0,
+			droppedLiveBytes: 0,
 			pendingTimer: null,
 			persistTimer: null,
 			seq: 0,
@@ -515,6 +587,8 @@ export class ConsoleHost {
 			scanner: new Osc133Scanner(),
 			subscribers: new Set(),
 			pending: [],
+			pendingBytes: 0,
+			droppedLiveBytes: 0,
 			pendingTimer: null,
 			persistTimer: null,
 			seq: 0,
@@ -557,7 +631,30 @@ export class ConsoleHost {
 			last_activity: record.lastActivity,
 			live: record.live,
 			agent_owned: record.origin === "agent",
+			// The co-pilot cell (§13.4): who touched the pty last, which `origin`
+			// deliberately does not answer.
+			last_actor: record.lastActor,
 		};
+	}
+
+	/**
+	 * Record who drove the pty, and push a change ONLY on a transition.
+	 *
+	 * The push is what the pane's listing refetches on, and a push per keystroke
+	 * would be one IPC frame for every character a user types. The mark only has
+	 * two values, so a comparison is the whole of the coalescing it needs.
+	 *
+	 * A REFUSED OR MISSING ACTOR IS THE AGENT PATH, which is the default rather
+	 * than a guess: every caller inside main other than the renderer's own IPC is
+	 * the RPC dispatch, and the renderer's path names `"user"` explicitly.
+	 */
+	private markActor(
+		entry: ConsoleRegistryEntry<SurfaceRuntime>,
+		actor: ConsoleActor,
+	): void {
+		if (entry.record.lastActor === actor) return;
+		entry.record.lastActor = actor;
+		this.options.onChanged?.();
 	}
 
 	/** `console_status`. */
@@ -576,6 +673,14 @@ export class ConsoleHost {
 			rows: entry.record.rows,
 			live: entry.record.live,
 			truncated: runtime?.log.truncated ?? false,
+			// The LIVE VIEW's own loss, which is not the log's `truncated`: the ring
+			// drops history it was told to bound, this drops frames a subscriber could
+			// not take. Two numbers because they answer two different questions, and a
+			// caller reasoning about a pane's fidelity needs this one.
+			//
+			// MONOTONIC for the life of the surface: it accumulates and does not reset,
+			// so two readings compare and neither means "how far behind the pane is now".
+			dropped_live_bytes: runtime?.droppedLiveBytes ?? 0,
 			modes: grid?.modes ?? null,
 			cursor: grid?.cursor ?? null,
 			last_activity: entry.record.lastActivity,
@@ -622,19 +727,16 @@ export class ConsoleHost {
 
 	/**
 	 * `console_screenshot`: the app's own window, cropped to the pane's reported
-	 * rect, photographed with `capturePage` (design 13.2's first row).
-	 *
-	 * WHAT THIS DOES NOT DO, and it is the design's own first cut item (§17.3): the
-	 * offscreen capture view — a hidden renderer replaying the record — is PR B's
-	 * (§17.1), so a surface with no displayed pane is refused with
-	 * `capture_unavailable` rather than answered with a frame that would not be of
-	 * that surface. The `rendered` field is kept so the gap is visible instead of
-	 * implied.
+	 * rect, photographed with `capturePage` (design 13.2's first row); or, when no
+	 * pane is displaying the surface, the capture view's reconstruction from the
+	 * record (the second and third rows), which is what makes the `rendered` field a
+	 * distinction rather than a label nothing produces.
 	 *
 	 * The assert-and-retry is the spike's measured trap and not a hopeful
 	 * `setTimeout`: on a hidden window the FIRST `capturePage` came back blank
 	 * (9,866 B against 27,869 B for the settled frame), and a headless rig — which
-	 * is what every capture in this repo runs in — is exactly that case.
+	 * is what every capture in this repo runs in — is exactly that case. The
+	 * offscreen path repeats the same discipline in its own module.
 	 */
 	async screenshot(surface: string): Promise<Record<string, unknown>> {
 		const entry = this.registry.require(surface);
@@ -642,11 +744,47 @@ export class ConsoleHost {
 		this.refuseWhenSecure(entry);
 		const report = runtime.rect;
 		if (this.displayed !== surface || !report || !report.visible) {
-			throw new ConsoleError(
-				"capture_unavailable",
-				"no pane is displaying this surface, and this app version cannot reconstruct a frame offscreen",
-				{ rendered: null },
-			);
+			/*
+			 * No pane is looking at this surface, so there is nothing to photograph: the
+			 * honest answer is a faithful reconstruction from the record, and the result
+			 * says so (`rendered: "offscreen"`) rather than passing itself off as a
+			 * photograph of a screen.
+			 *
+			 * The BYTES ARE THE RECORD'S OWN retained log, read at the moment of the
+			 * call: the capture view replays them into a fresh terminal, which is the
+			 * design's "replay, not serialize" (§7.3) and the only representation that
+			 * survives a relaunch. What is NOT done here is re-reading a live surface — a
+			 * frame has to be a function of the bytes it declares, or two captures of the
+			 * same surface are not comparable and cannot be evidence.
+			 */
+			const capture = this.options.captureOffscreen;
+			if (!capture) {
+				throw new ConsoleError(
+					"capture_unavailable",
+					"no pane is displaying this surface, and this host has no capture view to reconstruct a frame with",
+					{ rendered: null },
+				);
+			}
+			const grid = runtime.emulator.grid;
+			const frame = await capture({
+				surface,
+				cols: grid.cols,
+				rows: grid.rows,
+				theme: runtime.theme,
+				bytes: runtime.log.read(0).bytes,
+			});
+			return {
+				image_base64: frame.png.toString("base64"),
+				cols: grid.cols,
+				rows: grid.rows,
+				rendered: "offscreen",
+				theme: runtime.theme,
+				live: entry.record.live,
+				// Which renderer painted the reconstruction, reported rather than
+				// assumed: the DOM pin is what makes an offscreen frame possible at all.
+				renderer: frame.renderer,
+				attempts: frame.attempts,
+			};
 		}
 		const window = this.options.window();
 		if (!window || window.isDestroyed()) {
@@ -672,17 +810,47 @@ export class ConsoleHost {
 		};
 	}
 
+	/**
+	 * A displayed frame, retried once, and REFUSED when it has no content twice (Q-2).
+	 *
+	 * There is no byte floor any more, here or on the offscreen path, and the two
+	 * findings are why: the floor was not a guard (QA round 1's Q-2 — a blank 1600x800
+	 * capture is a few kilobytes of one colour, so the cell certifying "a screenshot is
+	 * the app's own window, cropped to the pane's rect" was green on a uniform field
+	 * while the offscreen frame from the same run had 252 colours) AND it refused real
+	 * captures from the other side (QA round 2's Q-7 — a live console that had printed
+	 * less than a screenful was answered as blank). `hasTerminalContent` asks the
+	 * question both findings reduce to, once, for both paths.
+	 *
+	 * A FRAME WITH NO CONTENT IS REFUSED RATHER THAN RETURNED, which is the design's own
+	 * answer for the offscreen path (§13.2's `capture_unavailable`): one flat field is
+	 * not a picture of a terminal, and handing it back would be the class of false
+	 * evidence this contract exists to avoid. A real pane is never flat — the DOM
+	 * renderer paints antialiased text and a cursor — and the empty-terminal case is the
+	 * offscreen path's problem too, so this is not a new ceiling.
+	 */
 	private async captureWithRetry(
 		window: BrowserWindow,
 		rect: ConsoleContentRect,
 	): Promise<Buffer> {
-		// Encoded once per attempt rather than once per check: the discriminator is
-		// the PNG's length, and encoding a frame twice to ask a question about it
-		// would cost more than the capture that produced it.
-		const first = framePng(await window.webContents.capturePage(rect));
-		if (first.length >= MIN_FRAME_BYTES) return first;
-		await delay(FRAME_RETRY_DELAY_MS);
-		return framePng(await window.webContents.capturePage(rect));
+		let bytes = 0;
+		for (let attempt = 1; attempt <= 2; attempt++) {
+			const image = await window.webContents.capturePage(rect);
+			const png = framePng(image);
+			bytes = png.length;
+			if (hasTerminalContent(image.toBitmap())) {
+				return png;
+			}
+			this.options.log(
+				`[console] displayed capture came back blank (${png.length} B, attempt ${attempt})`,
+			);
+			if (attempt === 1) await delay(FRAME_RETRY_DELAY_MS);
+		}
+		throw new ConsoleError(
+			"capture_unavailable",
+			`the displayed capture of this surface produced a blank frame twice (last ${bytes} B)`,
+			{ rendered: "displayed" },
+		);
 	}
 
 	/**
@@ -695,6 +863,7 @@ export class ConsoleHost {
 	async input(
 		surface: string,
 		payload: { text?: string; bytes?: Uint8Array; paste?: boolean },
+		actor: ConsoleActor = "agent",
 	): Promise<Record<string, unknown>> {
 		const entry = this.registry.require(surface);
 		const runtime = this.requireRuntime(entry);
@@ -713,6 +882,14 @@ export class ConsoleHost {
 				{ accepted: 0, limit: MAX_INPUT_BYTES },
 			);
 		}
+		/*
+		 * THE ACTOR IS MARKED WHEN THE BYTES ARE TAKEN, not when they are offered (code
+		 * review round 1, B3). `markActor` used to run before the refusals, so a refused
+		 * write still flipped `last_actor` and pushed a state change for a keystroke that
+		 * never reached the pty — the pane's "who typed this" marker would credit a caller
+		 * for a payload the host rejected.
+		 */
+		this.markActor(entry, actor);
 		const bracketed =
 			payload.paste === true && runtime.emulator.grid.modes.bracketedPaste;
 		const bytes = bracketed ? wrapBracketedPaste(raw) : raw;
@@ -724,6 +901,7 @@ export class ConsoleHost {
 	async keys(
 		surface: string,
 		names: string[],
+		actor: ConsoleActor = "agent",
 	): Promise<Record<string, unknown>> {
 		const entry = this.registry.require(surface);
 		const runtime = this.requireRuntime(entry);
@@ -748,6 +926,9 @@ export class ConsoleHost {
 				{ accepted: [...NAMED_KEYS], key: unknown },
 			);
 		}
+		// Marked here for the same reason `input` is (B3): an unknown key is a refusal,
+		// and a refusal is not an actor's keystroke.
+		this.markActor(entry, actor);
 		const sequences: string[] = [];
 		for (const bytes of encoded) {
 			if (!bytes) continue;
@@ -1047,6 +1228,32 @@ export class ConsoleHost {
 	): void {
 		if (runtime.subscribers.size === 0) return;
 		runtime.pending.push(bytes);
+		runtime.pendingBytes += bytes.length;
+		/*
+		 * THE DROP-OLDEST CEILING (see `LIVE_PENDING_MAX_BYTES`). One chunk is kept even
+		 * when it alone is over the ceiling: a frame that arrives late is still a frame,
+		 * and dropping the only chunk would turn a big paste into a blank pane.
+		 */
+		while (
+			runtime.pendingBytes > LIVE_PENDING_MAX_BYTES &&
+			runtime.pending.length > 1
+		) {
+			// The guard is for the type checker rather than for a case: `length > 1` above
+			// means a chunk is always there to take, and it is never a falsy one (a
+			// zero-length chunk is still an object).
+			const oldest = runtime.pending.shift();
+			if (!oldest) break;
+			runtime.pendingBytes -= oldest.length;
+			runtime.droppedLiveBytes += oldest.length;
+			// Logged on the FIRST drop for a surface and not per chunk: a flood would
+			// otherwise write one line per dropped frame into the same app log a
+			// reader is trying to read.
+			if (runtime.droppedLiveBytes === oldest.length) {
+				this.options.log(
+					`[console] surface ${redactSurface(entry.record.surface)} is behind by more than ${LIVE_PENDING_MAX_BYTES} B; the live view drops its oldest frames (the record keeps every byte)`,
+				);
+			}
+		}
 		if (runtime.pendingTimer) return;
 		// NOT unref'd, for `delay`'s reason: this timer is what delivers a coalesced
 		// frame to subscribers, and an idle loop must not be able to drop it.
@@ -1054,6 +1261,7 @@ export class ConsoleHost {
 			runtime.pendingTimer = null;
 			const pending = runtime.pending;
 			runtime.pending = [];
+			runtime.pendingBytes = 0;
 			if (pending.length === 0) return;
 			const joined = concat(pending);
 			runtime.seq += 1;
@@ -1097,6 +1305,13 @@ export class ConsoleHost {
 			`[console] surface ${redactSurface(surface)} exited ${exitCode}`,
 		);
 		this.options.onChanged?.();
+		// The app's own completion seam, after every other reader has the exit. See
+		// `ConsoleHostOptions.onExit` for why this is not left to `onChanged`.
+		this.options.onExit?.({
+			surface,
+			sessionId: entry.record.sessionId,
+			exitCode,
+		});
 	}
 
 	/** Apply a grid change: clamp, compare, and only then touch the record and the
@@ -1451,16 +1666,14 @@ export function surfaceEnvironment(input: {
 	return env;
 }
 
-/** The shell a surface runs when the caller names no command: the user's own,
- * falling back to zsh (what the spike drove). */
-export function defaultShell(env: NodeJS.ProcessEnv): string {
-	const shell = env.SHELL?.trim();
-	// A shell that is not an absolute path is not a shell this app will exec: the
-	// value comes from the environment, and a relative one would resolve against
-	// whatever directory the app happens to be in.
-	if (shell && isAbsolute(shell)) return shell;
-	return "/bin/zsh";
-}
+/*
+ * `defaultShell` - the shell a surface runs when the caller names no command -
+ * lives in `../shell-path` now, and is re-exported here because it is the same
+ * question the PATH resolution asks: which shell is the user's own. Two answers
+ * to it, one per caller, is the shape that drifts (a relative `$SHELL` is
+ * not-a-shell here and must not be one there either).
+ */
+export { defaultShell };
 
 /** A cwd the caller named, or the user's home. Not the app's own cwd: an app
  * launched from `/` or from a bundle would otherwise open a shell there. */

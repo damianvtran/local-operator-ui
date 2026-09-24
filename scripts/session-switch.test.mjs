@@ -4,28 +4,22 @@ import { test } from "node:test";
 import { build } from "esbuild";
 
 /*
- * The switch's ORDERING, pinned rather than timed.
+ * The switch's ORDERING and its send gate, pinned rather than timed.
  *
  * `scripts/session-switch-latency.mjs` measures how long each phase of a switch
- * takes; this file pins the property that produced the number - that a switch
- * commits the target BEFORE the guard read answers, instead of after it. That
- * is a fact about order, not about duration, and a clock would only add flake
- * to a stronger assertion (the same division `submit-latency.test.mjs` draws
- * between its transport measurements and its structural claims).
+ * takes; this file pins the properties that produced the number:
  *
- * It FAILS on the pre-change store, and that is the point: with the read
- * awaited first, `activeSessionId` still names the outgoing session at the
- * moment of the click, which is exactly the serialisation the latency harness
- * measured as the whole of `click → committed`.
- *
- * What is also pinned here, because "commit optimistically" is only half a
- * design and the other half is what happens when the read says no:
- *
- * - the read is still ISSUED, for the latest intent only;
- * - a failed read puts the view back - session and draft - and says why;
- * - an older read cannot roll back a newer switch (the generation guard);
- * - an older read cannot claim success either, which is what keeps the URL
- *   from being rewritten to a session the user has already left.
+ * - the click commits the target in its own frame, and issues NO request of its
+ *   own. The `sessions.get` guard read it used to spend was a second facade
+ *   acquire on the backend, racing the stream for the same bridge locks, and it
+ *   held the composer shut for 2-20 s behind a busy owner (the desktop load
+ *   diagnosis, D-F3). The stream is the validation now;
+ * - a send addressed to the target is refused until the stream proves the
+ *   session exists (`confirmSessionLive`, on its first snapshot), and a 404 on
+ *   the stream tombstones it instead (`confirmSessionMissing`);
+ * - a proof for one target cannot vouch for, or tombstone, another;
+ * - a send that meets a BUSY owner (`runtime_busy`) is resent, bounded, with the
+ *   same request - and nothing else is.
  */
 
 const values = new Map();
@@ -37,19 +31,19 @@ globalThis.localStorage = {
 
 /** Every request the store made, and the scripted answers. */
 const calls = [];
-/** Set by each test: the answer for one `sessions.get`. */
+/** Set by each test: the answer for one `sessions.message`. */
 let answer = async () => ({});
 
 globalThis.__switchRequest = async (request) => {
 	calls.push(request);
-	if (request.op !== "sessions.get") return {};
+	if (request.op !== "sessions.message") return {};
 	return answer(request);
 };
 
 const bundle = await build({
 	stdin: {
-		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store";',
+		contents: `export * from "./src/renderer/src/shared/store/canonical-sessions-store";
+export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -102,13 +96,13 @@ const {
 	admitChatDraft,
 	draftIdentityFor,
 	SESSION_UNVALIDATED_CODE,
+	DesktopControlError,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
 const OUTGOING = "111111111111";
 const DRAFT = "draft:agent:reviewer";
-const MATERIALISED = "444444444444";
 const TARGET = "222222222222";
 const OTHER = "333333333333";
 
@@ -147,7 +141,7 @@ function reset({ draft = null } = {}) {
 			: {},
 		sessionByAgent: {},
 		validatingSessionId: null,
-		navigationError: null,
+		forgotten: {},
 		error: null,
 	});
 }
@@ -167,230 +161,69 @@ function deferred() {
 	return { promise, release };
 }
 
-test("the switch commits the target before the guard read answers", async () => {
+test("the switch commits in the click's own frame and spends no request on it", async () => {
 	reset();
-	const read = deferred();
-	answer = () => read.promise;
 
 	const pending = store.getState().openSession(TARGET);
 
-	// The click's own frame. The outgoing session is already gone from the view:
-	// this is the whole change, and it is why the assertion is here and not on a
-	// duration.
+	// The click's own frame. The outgoing session is already gone from the view,
+	// and the window is open: nothing has proven the target exists yet.
 	assert.equal(store.getState().activeSessionId, TARGET);
 	assert.equal(store.getState().activeDraftKey, null);
 	assert.equal(store.getState().validatingSessionId, TARGET);
 	assert.equal(store.getState().error, null);
 
-	// The read is still issued - the guard was moved behind the commit, not
-	// deleted - and it is still the thing that decides the result.
-	assert.deepEqual(
-		calls.map((request) => request.op),
-		["sessions.get"],
-	);
-	assert.equal(calls[0].sessionId, TARGET);
-
-	read.release({});
+	/*
+	 * THE WHOLE CHANGE: no `sessions.get`. The panel's own stream is the only
+	 * request a switch makes, and it is the panel's, not the store's. FAILS on
+	 * `fad59ee31`, where this list is `["sessions.get"]`.
+	 */
+	assert.deepEqual(calls, []);
 	assert.equal(await pending, true);
+	assert.deepEqual(calls, []);
 	assert.equal(store.getState().activeSessionId, TARGET);
 });
 
-test("a failed guard read puts the view back where it was, and says why", async () => {
-	reset();
-	answer = async () => {
-		throw new Error("Unknown session.");
-	};
-
-	const ok = await store.getState().openSession(TARGET);
-
-	assert.equal(ok, false);
-	assert.equal(store.getState().activeSessionId, OUTGOING);
-	assert.equal(store.getState().validatingSessionId, null);
-	/*
-	 * The failure goes to `navigationError`, NOT to `error`. `error` is the
-	 * catalogue's health and `fetchSessions` clears it when it starts - which the
-	 * rollback's own refetch does, 4.5-8.1 ms later - so a switch that failed used
-	 * to be silent on every frame (UX round 1, U1).
-	 */
-	assert.equal(store.getState().navigationError, "Unknown session.");
-	assert.equal(store.getState().error, null);
-});
-
-test("a failed read restores the draft the user was in, not just the session", async () => {
-	reset({ draft: "draft:agent:reviewer" });
-	answer = async () => {
-		throw new Error("Unknown session.");
-	};
-
-	const ok = await store.getState().openSession(TARGET);
-
-	assert.equal(ok, false);
-	assert.equal(store.getState().activeDraftKey, "draft:agent:reviewer");
-	assert.equal(store.getState().activeSessionId, null);
-});
-
-/*
- * R1/Q1 - THE ROLLBACK RE-VALIDATES THE DRAFT IT RESTORES.
- *
- * `previous` is captured at the CLICK and the guard read is an arbitrary window,
- * so a send that was in flight on the outgoing draft can land inside it.
- * `finishDraft` then deletes that draft's row and moves `activeSessionId` only
- * while the view is still on that draft - which the commit has just made false -
- * so the row is gone while the snapshot still names it. Writing the snapshot back
- * verbatim put the view on a draft that does not exist: the panel was keyed on
- * the dead key, and a send from it minted a fresh `createRequestId` and opened a
- * SECOND session for a conversation that already had one, with the first now
- * unreachable from the view.
- *
- * This drives the exact interleaving - send in flight, switch, read fails - and
- * FAILS on `a98c2763d`, where `activeDraftKey` came back naming the deleted row.
- */
-test("a failed read does not restore a draft whose row is gone", async () => {
+test("a switch out of a staged draft leaves it, and still spends no request", async () => {
 	reset({ draft: DRAFT });
-	const read = deferred();
-	answer = () => read.promise;
 
-	const pending = store.getState().openSession(TARGET);
-	/*
-	 * The send lands mid-read: the conversation it was admitted under
-	 * materialises as a session and `finishDraft` drops the row. The view is on
-	 * the target by then, so this deliberately does not move `activeSessionId` -
-	 * which is exactly why the rollback cannot read the outcome back out of the
-	 * store later.
-	 */
-	store.getState().finishDraft(DRAFT, MATERIALISED);
-	assert.equal(store.getState().drafts[DRAFT], undefined);
-
-	read.release(Promise.reject(new Error("Unknown session.")));
-	assert.equal(await pending, false);
-
-	/*
-	 * The pointer must not name a row that is gone: every consumer reads
-	 * `activeDraftKey` as "a draft is being composed", and a send from it goes
-	 * through `admitChatDraft` with no `previous` row - a second session for a
-	 * conversation that already has one.
-	 */
+	assert.equal(await store.getState().openSession(TARGET), true);
 	assert.equal(store.getState().activeDraftKey, null);
-	assert.equal(store.getState().activeSessionId, null);
-	assert.equal(store.getState().navigationError, "Unknown session.");
-});
-
-/*
- * The other half of the same rule, and the reason the fix is not "stop
- * restoring": a draft that SURVIVED the read is still the view the user came
- * from, and a rollback that dropped it would move them twice for one failure.
- */
-test("a failed read still restores a draft whose row survived", async () => {
-	reset({ draft: DRAFT });
-	const read = deferred();
-	answer = () => read.promise;
-
-	const pending = store.getState().openSession(TARGET);
-	// The send is still in flight, so the row is where the user left it.
+	assert.equal(store.getState().activeSessionId, TARGET);
+	assert.equal(store.getState().validatingSessionId, TARGET);
+	// The draft row is not deleted by leaving it - it is still in the rail.
 	assert.equal(store.getState().drafts[DRAFT].key, DRAFT);
-
-	read.release(Promise.reject(new Error("Unknown session.")));
-	assert.equal(await pending, false);
-
-	assert.equal(store.getState().activeDraftKey, DRAFT);
-	assert.equal(store.getState().activeSessionId, null);
+	assert.deepEqual(calls, []);
 });
 
-/*
- * The read window's send gate, which `pendingSessionId` used to carry and which
- * commit-first would otherwise have dropped silently: while `sessions.get` has
- * not answered, the target's existence is unverified, and
- * `validatingSessionId` is what says so. It is closed by the answer - on
- * success and on failure.
- */
-test("the read window is published while it lasts and closed by its answer", async () => {
+test("a later switch replaces the window, and an earlier target's proof cannot close it", async () => {
 	reset();
-	const read = deferred();
-	answer = () => read.promise;
-
-	const pending = store.getState().openSession(TARGET);
-	assert.equal(store.getState().validatingSessionId, TARGET);
-
-	read.release({});
-	assert.equal(await pending, true);
-	assert.equal(store.getState().validatingSessionId, null);
-});
-
-test("an older read cannot roll back a newer switch", async () => {
-	reset();
-	const first = deferred();
-	const second = deferred();
-	const reads = [first.promise, second.promise];
-	answer = () => reads.shift();
-
-	const firstSwitch = store.getState().openSession(TARGET);
-	// The second click lands while the first read is still in flight.
-	const secondSwitch = store.getState().openSession(OTHER);
+	await store.getState().openSession(TARGET);
+	await store.getState().openSession(OTHER);
 	assert.equal(store.getState().activeSessionId, OTHER);
+	assert.equal(store.getState().validatingSessionId, OTHER);
 
-	// The first read now fails. It must not drag the view back to the outgoing
-	// session: the user has already asked for something else, and this read is
-	// not the one they are waiting on.
-	first.release({});
-	assert.equal(await firstSwitch, false);
-	assert.equal(store.getState().activeSessionId, OTHER);
-
-	/*
-	 * The second read fails, and IT owns the rollback - to `TARGET`, because
-	 * that is where the view was when the second click was made.
-	 *
-	 * This is the compound case: two consecutive failing reads inside one read's
-	 * flight time, which needs a backend that refuses this session twice over.
-	 * The rule is still "put back what the user was looking at", and after the
-	 * first click that WAS the target - so the assertion is written to say what
-	 * the rule is rather than what a single-failure test would assume. The error
-	 * below is the part that matters: whatever is on screen, the user is told
-	 * the last switch failed.
-	 */
-	second.release(Promise.reject(new Error("Unknown session.")));
-	assert.equal(await secondSwitch, false);
-	assert.equal(store.getState().activeSessionId, TARGET);
-	assert.equal(store.getState().navigationError, "Unknown session.");
-});
-
-test("a superseded read reports false, so the URL is never rewritten back", async () => {
-	reset();
-	const first = deferred();
-	answer = async () => ({});
-
-	const firstSwitch = store.getState().openSession(TARGET);
-	const secondSwitch = store.getState().openSession(OTHER);
-
-	first.release({});
-	// `select` navigates on `true`; a late `true` here would navigate the user
-	// back to the session they have left.
-	assert.equal(await firstSwitch, false);
-	assert.equal(await secondSwitch, true);
+	// The abandoned target's stream lands late - neither proof may vouch for, or
+	// tombstone, the session the user is actually on.
+	store.getState().confirmSessionLive(TARGET);
+	assert.equal(store.getState().validatingSessionId, OTHER);
+	store.getState().confirmSessionMissing(TARGET);
+	assert.equal(store.getState().validatingSessionId, OTHER);
+	assert.equal(store.getState().forgotten[TARGET], undefined);
 	assert.equal(store.getState().activeSessionId, OTHER);
 });
 
 /*
- * THE READ WINDOW'S SEND GATE, DRIVEN AS A SEND.
+ * THE WINDOW'S SEND GATE, DRIVEN AS A SEND.
  *
- * `validatingSessionId` is one round trip of unconfirmed session, and the rule
- * that depends on it - a message may not be ADMITTED against a target nothing
- * has confirmed - used to live only in `ChatPage`'s send callback. Nothing
- * exercised it, so a regression (dropping a term, comparing the wrong id) stayed
- * green through CI, and the refusal itself was silent: the composer kept the
- * text, sent nothing, and said nothing (UX round 2, U8; reviewer N2).
- *
- * Both halves are pinned here against the store that owns them. The refusal is
- * driven through the real admission path and named by its own code, and BOTH
- * bounds that open the window are driven: the read's answer, and a live frame
- * from the session's own stream (`confirmSessionLive`) - the bound that opens
- * the gate on the session's own proof instead of making the user wait out the
- * read's 30 s deadline, which is the only thing left when the read is slow. The
- * message is asserted to have created no echo, because "refused before
- * admission" is the reason the composer puts the text BACK rather than holding
- * a claim (`isRefusedBeforeAdmission`).
- *
- * FAILS on `df7f3fdb9`, where the gate had no store-side existence: the first
- * assertion below gets an admission instead of a refusal.
+ * `validatingSessionId` is the stretch of unconfirmed session between the click
+ * and the stream's first snapshot, and the rule that depends on it - a message
+ * may not be ADMITTED against a target nothing has confirmed - is pinned here
+ * against the store that owns it. The refusal is driven through the real
+ * admission path and named by its own code, and the message is asserted to
+ * have created no latch, because "refused before admission" is the reason the
+ * composer puts the text BACK rather than holding a claim
+ * (`isRefusedBeforeAdmission`).
  */
 const SEND = {
 	text: "Review this",
@@ -402,160 +235,175 @@ const SEND = {
 /** The key `admitChatDraft` is addressed by, from the shipped rule. */
 const SEND_KEY = draftIdentityFor(null, TARGET);
 
-test("a send inside the read window is refused, and the answer opens it", async () => {
+test("a send inside the window is refused, and the stream's snapshot opens it", async () => {
 	reset();
-	const read = deferred();
-	answer = () => read.promise;
-
-	const pending = store.getState().openSession(TARGET);
+	await store.getState().openSession(TARGET);
 	assert.equal(store.getState().validatingSessionId, TARGET);
 
-	// The send, mid-read. Nothing is addressed to the unconfirmed target, and the
-	// refusal carries the code the composer renders and reads back.
 	await assert.rejects(admitChatDraft(SEND_KEY, SEND, TARGET), (error) =>
 		refusedByReadWindow(error),
 	);
-	assert.deepEqual(
-		calls.map((request) => request.op),
-		["sessions.get"],
-	);
+	assert.deepEqual(calls, []);
 	// No claim was latched, so the composer's text is the only copy of the
 	// message: nothing was echoed into a transcript and nothing is being held.
 	assert.equal(store.getState().drafts[SEND_KEY], undefined);
 
-	// The read's own answer is the first bound.
-	read.release({});
-	assert.equal(await pending, true);
-	assert.equal(store.getState().validatingSessionId, null);
-	assert.equal(await admitChatDraft(SEND_KEY, SEND, TARGET), TARGET);
-	assert.deepEqual(
-		calls.map((request) => request.op),
-		["sessions.get", "sessions.message"],
-	);
-});
-
-test("a live frame opens the read window before the read answers", async () => {
-	reset();
-	const read = deferred();
-	answer = () => read.promise;
-
-	const pending = store.getState().openSession(TARGET);
-	/*
-	 * Refused to begin with, so this case names the same failure on the pre-change
-	 * store as the one above rather than an absent method: the gate is what is
-	 * under test here, and the bound is exercised through it.
-	 */
-	await assert.rejects(admitChatDraft(SEND_KEY, SEND, TARGET), (error) =>
-		refusedByReadWindow(error),
-	);
-	/*
-	 * A stale frame cannot vouch for a window it does not belong to - the guard
-	 * that keeps an abandoned target's own snapshot from opening the CURRENT
-	 * session's gate.
-	 */
+	// A stale frame cannot vouch for a window it does not belong to.
 	store.getState().confirmSessionLive(OTHER);
-	assert.equal(store.getState().validatingSessionId, TARGET);
 	await assert.rejects(admitChatDraft(SEND_KEY, SEND, TARGET), (error) =>
 		refusedByReadWindow(error),
 	);
 
-	// The session's own stream is the earlier proof: it opens the gate while the
-	// read is still in flight, which is the state a hung read leaves the panel in
-	// (the `Cancel`/Escape affordance that used to cover it is gone).
+	// The session's own stream is the proof, and it is the frame that paints the
+	// messages: the composer sends from the same commit.
 	store.getState().confirmSessionLive(TARGET);
 	assert.equal(store.getState().validatingSessionId, null);
 	assert.equal(await admitChatDraft(SEND_KEY, SEND, TARGET), TARGET);
 	assert.deepEqual(
 		calls.map((request) => request.op),
-		["sessions.get", "sessions.message"],
+		["sessions.message"],
 	);
+});
 
-	// The read lands afterwards and must not roll anything back: it is a read for
-	// a switch that already succeeded.
-	read.release({});
-	assert.equal(await pending, true);
+test("a 404 on the stream tombstones the target and closes the window, view left on it", async () => {
+	reset();
+	await store.getState().openSession(TARGET);
+
+	/*
+	 * The arm the guard read's not-found used to take, now reached from the
+	 * stream: the view stays where the user aimed, so the pane reaches the one
+	 * missing-session notice (and survives a reload, `forgotten` is persisted)
+	 * rather than rolling back to a conversation they left.
+	 */
+	store.getState().confirmSessionMissing(TARGET);
+	assert.equal(store.getState().validatingSessionId, null);
 	assert.equal(store.getState().activeSessionId, TARGET);
+	assert.notEqual(store.getState().forgotten[TARGET], undefined);
+
+	// Only a window still waiting may be told: a 404 with no window open is the
+	// stream's own `missing` state to render, and rewrites no catalogue.
+	reset();
+	store.getState().confirmSessionMissing(TARGET);
+	assert.equal(store.getState().forgotten[TARGET], undefined);
 });
 
 /*
  * RE-SELECTING THE ROW THE VIEW IS ALREADY ON, which is a click the sidebar
- * accepts: the current row is not disabled and carries no second action.
- *
- * The window's live-frame bound is edge-triggered - `chat-page` reports a frame
- * only when the session or its stream status CHANGES - so a second window opened
- * for a session whose stream has already reported itself had one bound left,
- * the read's, and refused sends for its whole latency with a notice the user
- * could do nothing about. Driven here as the store sees it, because the store is
- * where the window is opened and every caller is protected by where the rule
- * lives rather than by one screen remembering it (reviewer N4).
+ * accepts: the current row is not disabled and carries no second action. The
+ * window's stream bound is edge-triggered in `chat-page`, so a window opened for
+ * a session whose stream already reported itself would have nothing left to
+ * close it - hence the store does not open one for a switch that moves nothing.
  */
-test("re-selecting the row the view is already on does not reopen the read window", async () => {
+test("re-selecting the row the view is already on does not reopen the window", async () => {
 	reset();
-	// An ordinary switch first: the read answers and closes the window it opened.
+	await store.getState().openSession(TARGET);
+	store.getState().confirmSessionLive(TARGET);
+	assert.equal(store.getState().validatingSessionId, null);
+
 	assert.equal(await store.getState().openSession(TARGET), true);
 	assert.equal(store.getState().validatingSessionId, null);
-	calls.length = 0;
-
-	// The re-click. No window, no second read: `true`, because the view, the
-	// draft and the URL are already where the click asked to go.
-	assert.equal(await store.getState().openSession(TARGET), true);
-	assert.equal(store.getState().validatingSessionId, null);
-	assert.deepEqual(calls, []);
-
-	// Which is the point: the next send is ADMITTED rather than refused.
 	assert.equal(await admitChatDraft(SEND_KEY, SEND, TARGET), TARGET);
 	assert.deepEqual(
 		calls.map((request) => request.op),
 		["sessions.message"],
 	);
-
-	// And a re-click inside an open window does not replace it either: the window
-	// that exists keeps its own read and closes on that read's answer.
-	const read = deferred();
-	answer = () => read.promise;
-	const pending = store.getState().openSession(OTHER);
-	assert.equal(store.getState().validatingSessionId, OTHER);
-	assert.equal(await store.getState().openSession(OTHER), true);
-	assert.deepEqual(
-		calls.map((request) => request.op),
-		["sessions.message", "sessions.get"],
-	);
-	read.release({});
-	assert.equal(await pending, true);
-	assert.equal(store.getState().validatingSessionId, null);
-});
-
-/**
- * The same rule does NOT swallow a click that is a real move: a staged draft is
- * a different view of the same session (the sidebar marks the row only when no
- * draft is staged), so clicking that row has to leave the draft.
- */
-test("re-selecting the active session still leaves a staged draft", async () => {
-	reset({ draft: DRAFT });
-	store.setState({ activeSessionId: TARGET });
-	calls.length = 0;
-
-	const pending = store.getState().openSession(TARGET);
-	assert.equal(store.getState().activeDraftKey, null);
-	assert.equal(store.getState().validatingSessionId, TARGET);
-	assert.deepEqual(
-		calls.map((request) => request.op),
-		["sessions.get"],
-	);
-	assert.equal(await pending, true);
-	assert.equal(store.getState().activeSessionId, TARGET);
-	assert.equal(store.getState().validatingSessionId, null);
 });
 
 /*
- * `cancelOpen` is gone, and so is the test that pinned what it did to the
- * commit. The switch has no cancellable phase left: the commit IS the navigation
- * and it lands in the click's own frame, so "cancel" could only mean "go back to
- * the session I came from" - which is what clicking that row does. The pending
- * banner, its Escape handler, the sidebar spinner and the store field behind them
- * were all unreachable once nothing set one; `validatingSessionId` carries the
- * one guarantee that had to survive (see the read-window tests above).
+ * THE BUSY OWNER (backend workstream A's `runtime_busy`): the daemon refuses a
+ * control call in ~3 s when the session's owner is alive and not answering, and
+ * says a resend with the SAME request id is safe. The store absorbs a few of
+ * those itself; it must reuse the request byte for byte (the receipt is keyed on
+ * a hash of the whole body), respect `retry_after_ms`, stop after its bound, and
+ * leave every other failure alone.
  */
+const busy = (retryAfterMs = 1) =>
+	new DesktopControlError(
+		503,
+		"Session owner is unavailable. Reconnect and reconcile before retrying.",
+		undefined,
+		"runtime_busy",
+		retryAfterMs,
+	);
+
+test("a send that meets a busy owner is resent with the same request, and lands", async () => {
+	reset();
+	let attempts = 0;
+	answer = async () => {
+		attempts += 1;
+		if (attempts < 3) throw busy();
+		return {};
+	};
+	assert.equal(await admitChatDraft(SEND_KEY, SEND, TARGET), TARGET);
+	const sent = calls.filter((request) => request.op === "sessions.message");
+	assert.equal(sent.length, 3);
+	for (const request of sent) assert.deepEqual(request, sent[0]);
+	assert.equal(typeof sent[0].requestId, "string");
+	// The draft finished: nothing is held, no error is left on the composer.
+	assert.equal(store.getState().drafts[SEND_KEY], undefined);
+});
+
+test("the busy resend is bounded, and hands the refusal to the composer with the text kept", async () => {
+	reset();
+	answer = async () => {
+		throw busy();
+	};
+	await assert.rejects(
+		admitChatDraft(SEND_KEY, SEND, TARGET),
+		(error) => error.code === "runtime_busy",
+	);
+	// One send and three resends, then the existing retryable path takes over.
+	assert.equal(
+		calls.filter((request) => request.op === "sessions.message").length,
+		4,
+	);
+	const draft = store.getState().drafts[SEND_KEY];
+	assert.equal(draft.pending, false);
+	assert.equal(draft.errorCode, "runtime_busy");
+	assert.equal(draft.submittedText, SEND.text);
+});
+
+test("the busy resend waits the backend's retry_after_ms, capped", async () => {
+	reset();
+	const waits = [];
+	const original = globalThis.setTimeout;
+	globalThis.setTimeout = (fn, ms, ...args) => {
+		waits.push(ms);
+		return original(fn, 0, ...args);
+	};
+	try {
+		let attempts = 0;
+		answer = async () => {
+			attempts += 1;
+			if (attempts === 1) throw busy(2_000);
+			if (attempts === 2) throw busy(60_000);
+			return {};
+		};
+		assert.equal(await admitChatDraft(SEND_KEY, SEND, TARGET), TARGET);
+	} finally {
+		globalThis.setTimeout = original;
+	}
+	assert.deepEqual(waits, [2_000, 5_000]);
+});
+
+test("no other failure is resent", async () => {
+	for (const error of [
+		new DesktopControlError(503, "down", undefined, "runtime_unreachable"),
+		new DesktopControlError(null, "no response"),
+		new DesktopControlError(409, "conflict", undefined, "receipt_conflict"),
+	]) {
+		reset();
+		answer = async () => {
+			throw error;
+		};
+		await assert.rejects(admitChatDraft(SEND_KEY, SEND, TARGET));
+		assert.equal(
+			calls.filter((request) => request.op === "sessions.message").length,
+			1,
+			`${error.code ?? error.status} was resent`,
+		);
+	}
+});
 
 /*
  * The pane's claim, keyed on the READER and on the pane's own statement - never

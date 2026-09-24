@@ -52,7 +52,12 @@ import {
 	startBrowserHost,
 	stopBrowserHost,
 } from "./browser";
+import {
+	CONSENT_ATTENTION_CHANNEL,
+	type ConsentAttentionPayload,
+} from "./browser/consent-click";
 import { createSessionCookieQuitHold } from "./browser/session-cookie-quit-hold";
+import { consoleCaptureUrlFor } from "./console/capture-url";
 import { guardForegroundReceipts, registerDesktopIPC } from "./desktop-ipc";
 import { DesktopNotifier } from "./desktop-notifier";
 import {
@@ -73,6 +78,12 @@ import {
 	rememberPickedDirectory,
 	withRememberedDirectory,
 } from "./picker-directory";
+import { createUserShellPath } from "./shell-path";
+import {
+	describeTelemetryLaunch,
+	resolveTelemetryLaunch,
+	telemetryArgument,
+} from "./telemetry-launch";
 import { UpdateService, holdLaunchForLiveInstall } from "./update-service";
 import { ViewerEndpoint } from "./viewer-endpoint";
 import { ViewerRecordPublisher } from "./viewer-record";
@@ -284,11 +295,38 @@ if (process.platform === "darwin" && app.dock) {
 	}
 }
 
-// Initialize PostHog
-const posthogClient = new PostHog(backendConfig.VITE_PUBLIC_POSTHOG_KEY, {
-	host: backendConfig.VITE_PUBLIC_POSTHOG_HOST,
-	enableExceptionAutocapture: true,
+/*
+ * PostHog, or nothing at all.
+ *
+ * WHY THIS IS A DECISION RATHER THAN A CONSTRUCTOR CALL. A test, harness, QA or
+ * CI run boots this real app, and until this switch existed every one of them
+ * registered as a user and as a session replay in the "Local Operator Usage"
+ * project: the shipped build carries the live project key by default, so a run
+ * that simply omitted the variable still had one, and an explicitly empty one
+ * threw in the constructor at module load (before `app.whenReady()`, surfacing
+ * as an error dialog). `resolveTelemetryLaunch` owns the two ways this becomes
+ * "off" — the launch's switch, and a build with no key — and reads the switch
+ * from `launchEnv`, the environment this process was LAUNCHED with, so a `.env`
+ * in the checkout can neither silence a real user nor speak for a rig.
+ *
+ * `null` rather than a client with a no-op configuration, because the point is
+ * that nothing is constructed: no client, no queue, no flush, and nothing to
+ * shut down (see the `process.on("exit")` handler below, which is the other half
+ * of this decision). An ordinary launch is unaffected: no switch, a key, and
+ * `posthogClient` is the same client it was.
+ */
+const telemetryLaunch = resolveTelemetryLaunch({
+	env: launchEnv,
+	projectKey: backendConfig.VITE_PUBLIC_POSTHOG_KEY,
 });
+const telemetryLine = describeTelemetryLaunch(telemetryLaunch);
+if (telemetryLine) console.log(telemetryLine);
+const posthogClient = telemetryLaunch.enabled
+	? new PostHog(backendConfig.VITE_PUBLIC_POSTHOG_KEY, {
+			host: backendConfig.VITE_PUBLIC_POSTHOG_HOST,
+			enableExceptionAutocapture: true,
+		})
+	: null;
 
 // Create application menu without developer tools in production
 /**
@@ -863,7 +901,18 @@ function createWindow(
 }
 
 // Initialize backend service manager and installer
-const backendService = new BackendServiceManager();
+//
+// The one resolver for the user's own PATH, built HERE because this is the only
+// file that owns both consumers: the backend manager below, and the browser host
+// that starts the console. Handing the same instance to both is what keeps "what
+// is this user's PATH" a single answer in this process - see `./shell-path` for
+// the measurement (a launchd-started app sees `/usr/bin:/bin:/usr/sbin:/sbin`,
+// so neither a console surface nor `execute_bash` could find Homebrew). Started
+// lazily on the first ask, so a run that needs neither starts no shell.
+const userShellPath = createUserShellPath({
+	log: (message) => logger.info(message, LogFileType.BACKEND),
+});
+const backendService = new BackendServiceManager({ userShellPath });
 const backendInstaller = new BackendInstaller();
 
 /**
@@ -1027,6 +1076,24 @@ const devDriverWebPreferences =
 		? { additionalArguments: [devDriverArgument(devDriverArming.outDir)] }
 		: {};
 
+/*
+ * The renderer's half of the telemetry decision, ALWAYS written.
+ *
+ * WHY THIS ONE IS NOT CONDITIONAL, when the dev driver's entry above is. The dev
+ * driver is an opt-in, so its absence can safely mean "off"; telemetry's default
+ * is ON, so if silence also meant "on" then any window created by a path that
+ * forgot to compose this entry would ship the events this switch exists to stop —
+ * and the preload could not tell that case apart from a host that is not an app
+ * window at all. Spelling the decision out on every window makes the renderer's
+ * fail-closed default (`resolveTelemetryEnabled`: an explicit `true` from the
+ * bridge AND a non-blank key in the build it made) safe to hold. The two words
+ * are the whole vocabulary, and they live in `./telemetry-launch`, which the
+ * preload reads back out of its own argv.
+ */
+const telemetryWebPreferences = {
+	additionalArguments: [telemetryArgument(telemetryLaunch.enabled)],
+};
+
 // Radient tokens and OAuth state used to live in an electron-store session
 // file here. The backend AuthStore owns provider credentials now and the
 // desktop bearer is process-scoped, so main keeps no credential store.
@@ -1091,18 +1158,22 @@ function launchArgumentFlags(
 /**
  * Everything this app puts in a renderer process's argv, in one value.
  *
- * WHY IT EXISTS. There are two sources now — the conversation or catalogue a
- * window was created for (`launchArgumentFlags`) and the dev driver's arming
- * entry (`devDriverWebPreferences`) — and both express themselves through the
- * SAME `webPreferences.additionalArguments` slot. Spreading them as two separate
- * entries at the call site does not union them: the second spread overwrites the
- * first's array, so an armed run that also names a session would carry one flag
+ * WHY IT EXISTS. There are three sources now — the conversation or catalogue a
+ * window was created for (`launchArgumentFlags`), the dev driver's arming
+ * entry, and the telemetry decision (`telemetryWebPreferences`, which is on
+ * every window) — and all of them express themselves through the SAME
+ * `webPreferences.additionalArguments` slot. Spreading them as separate entries
+ * at the call site does not union them: a later spread overwrites the earlier
+ * one's array, so an armed run that also names a session would carry one flag
  * and silently drop the other, with a well-formed window either way. This is the
- * one place that decides, so the two can never disagree about who wins.
+ * one place that decides, so the sources can never disagree about who wins.
  *
  * Empty means `{}` and not `additionalArguments: []`, for the reason
  * `launchArgumentFlags` gives: "this launch adds no option at all" has to be
- * true of the object, not merely equivalent to it.
+ * true of the object, not merely equivalent to it. With telemetry always
+ * present that branch is unreachable from the call sites below, and it is kept
+ * deliberately: this function's contract is "compose whatever applies", not
+ * "there is always something".
  */
 function rendererArgumentFlags(
 	initialSession: string | null,
@@ -1112,6 +1183,7 @@ function rendererArgumentFlags(
 		...(launchArgumentFlags(initialSession, openCatalogue)
 			.additionalArguments ?? []),
 		...(devDriverWebPreferences.additionalArguments ?? []),
+		...(telemetryWebPreferences.additionalArguments ?? []),
 	];
 	return flags.length > 0 ? { additionalArguments: flags } : {};
 }
@@ -1821,6 +1893,17 @@ app
 			process.env.ELECTRON_RENDERER_URL ||
 			pathToFileURL(join(__dirname, "../renderer/index.html")).href;
 		/*
+		 * The capture view's own document, derived from the trusted renderer URL rather than
+		 * spelled a second time: in development it is the same dev server with a different
+		 * entry, and in a packaged build it is the sibling of `index.html` in
+		 * `out/renderer`. Deriving it means a dev server on another port, or a moved bundle,
+		 * cannot leave the capture path pointing at a document that is not there — which
+		 * would fail as a blank frame rather than as a missing file. The two shapes and the
+		 * dev one that is easy to get wrong (code review round 1's B1) live, with their
+		 * test, in `console/capture-url.ts`.
+		 */
+		const consoleCaptureUrl = consoleCaptureUrlFor(rendererUrl);
+		/*
 		 * The machine-wide feed's two consumers, and the split between them is the
 		 * design: main takes the notifications (so a completion banners with no
 		 * window at all — the operator's own reported case) and the window takes
@@ -2503,7 +2586,9 @@ app
 			// If local-operator doesn't exist globally and our backend is not installed
 			if (!hasGlobalCommand && !(await backendInstaller.isInstalled())) {
 				// Install backend
-				const installSuccess = await backendInstaller.install();
+				const installSuccess = await backendInstaller.install(
+					windowLaunch.show,
+				);
 				// If installation was cancelled or failed, quit the app
 				if (!installSuccess) {
 					logger.error(
@@ -2601,6 +2686,68 @@ app
 		 * host owns its own teardown (its ``closed`` listener stops it), which is why
 		 * nothing here has to unwind it.
 		 */
+		/**
+		 * Consent attentions parked because the window they were raised for is GONE.
+		 *
+		 * A BANNER OUTLIVES ITS WINDOW and its click still arrives: macOS keeps a raised
+		 * banner in Notification Center, the notifier's `click` listener is a closure on
+		 * an object main still references, and on macOS the app stays alive in the Dock
+		 * after `window.on("closed")` — which is the operator's own reported state ("I
+		 * click it and nothing happens"). Measured on Electron 44.3.0 (UX review round 1,
+		 * U2): with the window destroyed, reading `webContents` throws
+		 * `Object has been destroyed`, so the click threw in main instead of landing
+		 * anywhere. `consentClickHandler` no longer captures the window and hands the
+		 * request here instead.
+		 *
+		 * A WINDOW IS CREATED WITH THE OPERATOR'S OWN PLAN, exactly as a Dock click does
+		 * (see the `activate` handler): a banner click is a person asking for the app, and
+		 * answering it under a `headless` launch plan would put a real request on a screen
+		 * nobody can reach. In a launch that cannot show a window no banner is raised at
+		 * all (`consent-notifier.ts` gates on `show === "focus"`), so this path cannot be
+		 * reached by an unattended run.
+		 *
+		 * THE QUEUE IS BOUNDED and the OLDEST is dropped, for `PARKED_LAUNCH_LIMIT`'s
+		 * reason: an unbounded in-memory queue on a long-lived app is a leak, and the
+		 * newest click is the one a person is most likely still waiting on. Sixteen is the
+		 * approvals queue's own cap, so the bound cannot be reached by a real click pattern
+		 * without the approvals cap having been reached first.
+		 */
+		const parkedConsentAttentions: ConsentAttentionPayload[] = [];
+		const PARKED_CONSENT_LIMIT = 16;
+
+		function parkConsentAttention(payload: ConsentAttentionPayload): void {
+			parkedConsentAttentions.push(payload);
+			while (parkedConsentAttentions.length > PARKED_CONSENT_LIMIT) {
+				parkedConsentAttentions.shift();
+			}
+		}
+
+		/**
+		 * Deliver every parked attention to a window whose RENDERER CAN HEAR IT.
+		 *
+		 * `did-finish-load` and not the creation, for the reason the parked-conversation
+		 * queue states one screen up: a `webContents.send` into a window that has not
+		 * loaded is dropped silently, so a send at creation would turn the reported no-op
+		 * into a rarer one. An entry whose window died before its first paint goes back on
+		 * the queue rather than out with the window.
+		 */
+		function claimParkedConsentAttention(window: BrowserWindow): void {
+			if (parkedConsentAttentions.length === 0) return;
+			const claimed = parkedConsentAttentions.splice(
+				0,
+				parkedConsentAttentions.length,
+			);
+			window.webContents.once("did-finish-load", () => {
+				for (const payload of claimed) {
+					if (window.isDestroyed()) {
+						parkConsentAttention(payload);
+						continue;
+					}
+					window.webContents.send(CONSENT_ATTENTION_CHANNEL, payload);
+				}
+			});
+		}
+
 		function setupMainWindowWithUpdateService(
 			initialSession: string | null = null,
 			openCatalogue = false,
@@ -2671,6 +2818,15 @@ app
 					openSessionInWindow(session, request, { fromPark: true }),
 				parked,
 			);
+
+			/*
+			 * AND THE CLICK THAT COULD NOT BE DELIVERED TO THE WINDOW IT WAS RAISED FOR
+			 * (UX review round 1, U2). Claimed here rather than in the click's own path,
+			 * because the window this creates is created HERE: the click parks the request
+			 * and asks for a window, and the delivery belongs to whatever window exists
+			 * when a renderer can hear it.
+			 */
+			claimParkedConsentAttention(mainWindow);
 
 			// Add before-input-event listener for zoom control
 			if (mainWindow) {
@@ -2833,6 +2989,56 @@ app
 					// the screen, and re-deciding it there would be a second policy beside
 					// `window-mode.ts`.
 					windowShow: windowLaunch.show,
+					// A consent banner's click comes forward through the app's own raise policy,
+					// and this is where its one line goes — the same logger every other raise
+					// reports to, so `trigger=banner-click` is greppable beside them.
+					reportRaise,
+					/*
+					 * AND WHERE IT GOES WHEN THERE IS NO WINDOW TO COME FORWARD IN. The request
+					 * is parked and a window is created under the OPERATOR's plan (a banner click
+					 * is a person asking for the app), and `claimParkedConsentAttention` above
+					 * delivers it once that window's renderer can hear it. Without this, a click
+					 * with no window reported at best — and before this round it threw on a
+					 * destroyed window.
+					 */
+					reopenConsent: (payload: ConsentAttentionPayload) => {
+						parkConsentAttention(payload);
+						/*
+						 * THE APP'S OWN QUESTION ABOUT ITS WINDOW, not a census of every
+						 * window this process has (agent review round 2, U8): the console's
+						 * offscreen capture view is a `BrowserWindow` too, so
+						 * `getAllWindows().length === 0` was false while none of them could
+						 * show a conversation - a banner click then parked its request with
+						 * no window created, which is the no-op this path exists to remove.
+						 * `mainWindow` is what every other decision in this file asks about,
+						 * and `isDestroyed()` is the "still usable" half of the same test
+						 * (line 780's form).
+						 */
+						if (!mainWindow || mainWindow.isDestroyed()) {
+							setupMainWindowWithUpdateService(null, false, {
+								show: OPERATOR_SHOW,
+								trigger: "banner-click",
+							});
+						}
+					},
+					// The console's completion banner is raised through this app's ONE
+					// notifier (design 12.3: a second raiser would duplicate the TTL dedupe,
+					// the window state, the raise policy and the click path). It is still the
+					// notifier that decides whether a banner is delivered: this forwards it.
+					notifier: desktopNotifier,
+					// The console's offscreen capture view (design 13.2/13.3): its own
+					// document, and the preload every renderer in this app gets, which is what
+					// lets main feed the reconstruction to it.
+					consoleCaptureUrl,
+					preloadPath: join(__dirname, "../preload/index.js"),
+					/*
+					 * The console's surfaces are handed the user's own PATH, from the same
+					 * resolver the backend spawn uses (above). Without it a surface inherits
+					 * this app's launchd environment, in which `brew` - and every other tool
+					 * the user installed - does not exist, so the console cannot run the
+					 * tooling the agent is meant to acquire through it.
+					 */
+					userShellPath,
 					log: (message) => logger.info(message, LogFileType.BACKEND),
 				});
 			} catch (error) {
@@ -3335,7 +3541,10 @@ process.on("exit", () => {
 			error,
 		);
 	}
-	posthogClient.shutdown();
+	// Nothing was constructed when telemetry is off, so there is nothing to
+	// flush or close — and a bare `posthogClient.shutdown()` here would be a
+	// TypeError on the exit path of every rig-shaped run.
+	posthogClient?.shutdown();
 });
 
 process.on("uncaughtException", (error) => {

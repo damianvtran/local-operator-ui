@@ -22,6 +22,14 @@ import {
 	resolve,
 } from "node:path";
 
+import {
+	LIPO_ARCH,
+	SEED_STDLIB_MARKER,
+	UV_NAMESPACE,
+	UV_RESOURCE_DIRS,
+	uvBinaryName,
+} from "./bundled-runtime-layout.mjs";
+
 function check(id, target, description, work) {
 	try {
 		return { id, target, description, passed: true, output: work() ?? "" };
@@ -108,13 +116,105 @@ export function privatePythonSeedCheck(appPath, { expectArch = null } = {}) {
 				}
 			}
 			walk(root);
+			// The stdlib marker is DERIVED from the declared Python version
+			// (`bundled-runtime-layout.mjs` expands its `{pyver}` token), so this
+			// existence check moves with a version refresh instead of naming the
+			// previous minor and failing the artifact that is actually right.
 			if (
 				!existsSync(join(root, "bin", "python3")) ||
-				!existsSync(join(root, "lib", "python3.12", "encodings", "__init__.py"))
+				!existsSync(join(root, SEED_STDLIB_MARKER))
 			)
 				throw new Error(
 					"The seed must carry the complete Python runtime, not just its executable",
 				);
+		},
+	);
+}
+
+/**
+ * The bundled `uv` tool, which is what makes a first install fast.
+ *
+ * WHY THE GATE ASSERTS IT AT ALL. `uv` is a third-party binary this repository
+ * ships inside its own code-sealed bundle, and every way it can go wrong is
+ * silent: the `extraResources` copy list drops it (the build succeeds, the
+ * download shrinks by an amount nobody measures, and every user's first install
+ * reverts to pip), the off-architecture tree survives the prune (~20 MB of dead
+ * weight per artifact), or the wrong architecture's binary is the one that stays
+ * - which is the failure that installs on the build machine and cannot run on
+ * the machine the artifact was built for, the class `bundledPythonCheck` covers
+ * one tree over.
+ *
+ * WHAT IT DOES NOT CLAIM. Not that `uv` is signed: that is its publisher's
+ * signature, not ours, and it is what makes the file acceptable to `codesign`
+ * and to notarization at build time (`codesign -dv` and `spctl -a -vv -t install`
+ * on the staged binary are the readings for that, taken by the change that
+ * staged it). Nor that it RUNS: the install scripts execute it and fall back to
+ * pip, and `install-scripts-check.yml` is where that is exercised.
+ *
+ * `expectArch` is the architecture the artifact's own name claims, cross-checked
+ * here against the directory that shipped - `null` for an unpacked `dist` app,
+ * whose own architecture is the only statement there is.
+ */
+export function bundledUvToolCheck(
+	appPath,
+	{ expectArch = null, run = spawnSync } = {},
+) {
+	return check(
+		"app-bundled-uv-tool",
+		appPath,
+		"the bundled uv tool this architecture runs",
+		() => {
+			const parent = join(appPath, "Contents", "Resources", UV_NAMESPACE);
+			let names;
+			try {
+				names = readdirSync(parent).filter((name) =>
+					UV_RESOURCE_DIRS.some((dir) => basename(dir) === name),
+				);
+			} catch {
+				throw new Error(
+					`No Contents/Resources/${UV_NAMESPACE} directory: this bundle ships no uv, so every install falls back to pip`,
+				);
+			}
+			if (names.length !== 1)
+				throw new Error(
+					`Expected one architecture-specific bundled uv under Contents/Resources/${UV_NAMESPACE}, found ${names.length === 0 ? "none" : names.join(", ")}`,
+				);
+			const arch = names[0];
+			if (expectArch != null && arch !== expectArch)
+				throw new Error(
+					`The artifact names ${expectArch} but ships the ${arch} uv; the app inside it runs on the machine it was built on and not on the one it was built for`,
+				);
+			const binary = join(parent, arch, uvBinaryName("darwin"));
+			let stat;
+			try {
+				stat = lstatSync(binary);
+			} catch {
+				throw new Error(
+					`The ${arch} uv directory ships no ${uvBinaryName("darwin")} binary: ${binary} is missing`,
+				);
+			}
+			if (!stat.isFile() || stat.nlink !== 1)
+				throw new Error(
+					`The bundled uv is not a plain file (a link or a special file cannot be executed from a sealed bundle): ${binary}`,
+				);
+			/* The execute bit is a bit of the SIGNED tree, and a ZIP drops modes:
+			 * `after-pack.mjs` restores what a packaging pass loses and this asserts
+			 * the artifact that ships. Without it the tool is present, correct and
+			 * unrunnable. */
+			if ((stat.mode & 0o111) === 0)
+				throw new Error(
+					`The bundled uv carries no execute bit, so no install can run it: ${binary}`,
+				);
+			const lipo = run("/usr/bin/lipo", ["-archs", binary]);
+			const archs = `${lipo.stdout}`.trim().split(/\s+/).filter(Boolean);
+			const expected = LIPO_ARCH[arch];
+			if (lipo.status !== 0 || archs.length === 0)
+				throw new Error(`lipo could not read the bundled uv at ${binary}`);
+			if (archs.length !== 1 || archs[0] !== expected)
+				throw new Error(
+					`The ${arch} uv directory carries a ${archs.join(" + ")} binary, not ${expected}; the app would fail to spawn it or fall back to pip on every install`,
+				);
+			return `Contents/Resources/${UV_NAMESPACE}/${arch}/${uvBinaryName("darwin")} is a single-architecture ${archs[0]} executable`;
 		},
 	);
 }

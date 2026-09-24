@@ -178,7 +178,6 @@ function reset() {
 		drafts: {},
 		sessionByAgent: {},
 		validatingSessionId: null,
-		navigationError: null,
 		error: null,
 	});
 }
