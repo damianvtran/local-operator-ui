@@ -80,25 +80,37 @@ const {
 	SIDEBAR_COLLAPSED_WIDTH,
 	SIDEBAR_DEFAULT_WIDTH,
 	SIDEBAR_DOCK_MIN_PX,
+	CANVAS_PANE_MIN_PX,
+	CANVAS_PANE_MAX_PX,
+	canvasDockWidth,
+	canvasPaneMode,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
 /** The chat column's floor as the element declares it, in pixels. */
 const appliedChatFloor = () => {
+	/*
+	 * The ref and the class attribute of ONE element. The `[\s\S]` window is bounded and
+	 * may not cross a `>` - the element's own tag close - so an attribute added between
+	 * them (the `data-tour-tag` the geometry probe reads, and anything after it) keeps
+	 * matching while a className that has MOVED to a later element does not. That
+	 * distinction is the whole point: the floor must be on the column the capacity is
+	 * measured from, not on some wrapper beside it.
+	 */
 	const column = read(CONTENT).match(
-		/ref=\{chatColumnRef\}\s*\n\s*className="([^"]+)"/,
+		/ref=\{chatColumnRef\}([\s\S]{0,240}?)className="([^"]+)"/,
 	);
 	assert.ok(
-		column,
+		column && !column[1].includes(">"),
 		"the chat column lost its ref+className pair, so nothing declares the floor the right pane's capacity is measured against",
 	);
-	const floor = /min-w-\[(\d+)px\]/.exec(column[1]);
+	const floor = /min-w-\[(\d+)px\]/.exec(column[2]);
 	assert.ok(
 		floor,
-		`the chat column declares no pixel floor (${column[1]}); the capacity is row MINUS this floor, so without it the pane measures against its own content`,
+		`the chat column declares no pixel floor (${column[2]}); the capacity is row MINUS this floor, so without it the pane measures against its own content`,
 	);
-	return { classes: column[1], declared: Number(floor[1]) };
+	return { classes: column[2], declared: Number(floor[1]) };
 };
 
 test("the chat column's floor is declared once, in two spellings that agree", () => {
@@ -122,28 +134,44 @@ test("the chat column's floor is declared once, in two spellings that agree", ()
 	);
 
 	const source = read(CONTENT);
-	const constant = /const CHAT_COLUMN_MIN_PX = (\d+);/.exec(source);
-	assert.ok(
-		constant,
-		"`CHAT_COLUMN_MIN_PX` is gone: the capacity measurement's fallback is a literal now, which is the drift this test exists to stop",
+	/*
+	 * The fallback is the MODULE's constant now rather than a literal, and that is the
+	 * stronger form of the same assertion: `CHAT_COLUMN_MIN_PX = CHAT_PANE_MIN_PX`
+	 * cannot drift from the number §B1's bands are argued from, while a literal 480
+	 * here could. The class above is compared against the module's value in its own
+	 * test, so the two spellings are still pinned to each other - through the one
+	 * source, which is what "declared once" is supposed to mean.
+	 */
+	assert.match(
+		source,
+		/const CHAT_COLUMN_MIN_PX = CHAT_PANE_MIN_PX;/,
+		"`CHAT_COLUMN_MIN_PX` no longer takes its value from `CHAT_PANE_MIN_PX` (`chat-sidebar-layout.ts`): a literal here is the second source this test exists to stop",
 	);
 	assert.equal(
-		Number(constant[1]),
 		declared,
-		`the column declares min-w-[${declared}px] and the fallback constant says ${constant[1]}: the two spellings of one floor have drifted`,
+		CHAT_PANE_MIN_PX,
+		`the column declares min-w-[${declared}px] and §B1's floor is ${CHAT_PANE_MIN_PX}: the two spellings of one floor have drifted`,
 	);
 });
 
-test("§B1's floor is recorded, and the applied floor sits inside it", () => {
+test("§B1's floor is APPLIED, and the test no longer allows otherwise", () => {
 	const { declared } = appliedChatFloor();
 	assert.equal(
 		CHAT_PANE_MIN_PX,
 		480,
 		"§B1's chat-pane minimum is 480; the bands below are argued from this constant, and `chat-sidebar-layout.ts`'s own 880 comment already does the sum with it",
 	);
-	assert.ok(
-		declared > 0 && declared <= CHAT_PANE_MIN_PX,
-		`the applied chat floor (${declared}) is outside (0, §B1's ${CHAT_PANE_MIN_PX}]: at 0 the pane has no floor to measure against, and above the spec's number the layout promises more than §I's yielding order can give back`,
+	/*
+	 * EXACTLY, since §I applied it. The assertion this replaces allowed the applied
+	 * floor to sit anywhere in `(0, 480]` while the tree was still at 220 and the
+	 * layout commit was outstanding - that allowance is what §I spent, and leaving it
+	 * here would let the next commit quietly halve the pane again with the gate green
+	 * (the 2026-09-24 defect exactly: 220 is a legal value under the allowance).
+	 */
+	assert.equal(
+		declared,
+		CHAT_PANE_MIN_PX,
+		`the column declares min-w-[${declared}px] but §B1's floor is ${CHAT_PANE_MIN_PX}: the two spellings of one floor have drifted apart`,
 	);
 });
 
@@ -182,6 +210,65 @@ test("the right pane's capacity is the row minus the column's floor, measured", 
 	);
 });
 
+test("the canvas docks at min(560, available - 480), or overlays below 400 (§I)", () => {
+	assert.equal(CANVAS_PANE_MIN_PX, 400);
+	assert.equal(CANVAS_PANE_MAX_PX, 560);
+	/*
+	 * THE FOUR ROWS THE SCENE IS RUN AT, as arithmetic instead of a frame: the dock
+	 * threshold's row (a 260px sidebar in a 1024 window), the strip's rows at 960 and
+	 * 800, and the app's own default. Two dock and two overlay, which is what makes
+	 * this a test of §I's ORDER rather than of one width.
+	 */
+	const cases = [
+		{
+			row: 1120,
+			dock: 560,
+			mode: "docked",
+			why: "1380 with the sidebar docked: capped at §I's 560",
+		},
+		{
+			row: 764,
+			dock: 284,
+			mode: "overlay",
+			why: "1024 with the sidebar docked: 284 is under the pane's own floor, so it overlays",
+		},
+		{
+			row: 904,
+			dock: 424,
+			mode: "docked",
+			why: "960 with the strip: 424 still fits the pane's floor",
+		},
+		{
+			row: 744,
+			dock: 264,
+			mode: "overlay",
+			why: "800 with the strip: 264 over the chat",
+		},
+	];
+	for (const { row, dock, mode, why } of cases) {
+		assert.equal(canvasDockWidth(row), dock, `${why}: canvasDockWidth(${row})`);
+		assert.equal(canvasPaneMode(row), mode, `${why}: canvasPaneMode(${row})`);
+	}
+	/*
+	 * THE TWO EDGES. Exactly 560 is still docked (the ceiling is a width the pane may
+	 * hold, not one it may not exceed), exactly 400 is still docked (the floor is
+	 * inclusive), and a row narrower than the chat floor itself gives a ZERO dock
+	 * width rather than a negative one - the caller reads the mode, and a negative
+	 * width would render a pane with a divider and no pixels.
+	 */
+	assert.equal(
+		canvasPaneMode(CHAT_PANE_MIN_PX + CANVAS_PANE_MIN_PX + CANVAS_PANE_MAX_PX),
+		"docked",
+	);
+	assert.equal(canvasPaneMode(CHAT_PANE_MIN_PX + CANVAS_PANE_MIN_PX), "docked");
+	assert.equal(
+		canvasPaneMode(CHAT_PANE_MIN_PX + CANVAS_PANE_MIN_PX - 1),
+		"overlay",
+	);
+	assert.equal(canvasDockWidth(400), 0);
+	assert.equal(canvasPaneMode(400), "overlay");
+});
+
 test("the sidebar's bands keep their relations at both floors", () => {
 	assert.equal(SIDEBAR_DOCK_MIN_PX, 1024);
 	assert.equal(SIDEBAR_COLLAPSED_WIDTH, 56);
@@ -202,6 +289,8 @@ test("the layout module owns the bands the shell reads", () => {
 	const layout = read(LAYOUT);
 	for (const name of [
 		"CHAT_PANE_MIN_PX",
+		"CANVAS_PANE_MIN_PX",
+		"CANVAS_PANE_MAX_PX",
 		"CHAT_PANE_WITH_DOCK_MIN_PX",
 		"SIDEBAR_DOCK_MIN_PX",
 		"SIDEBAR_COLLAPSED_WIDTH",

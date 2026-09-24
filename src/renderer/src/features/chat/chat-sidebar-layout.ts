@@ -59,23 +59,82 @@ export const SIDEBAR_SHEET_WIDTH = SIDEBAR_DEFAULT_WIDTH;
 export const SIDEBAR_DOCK_MIN_PX = 1024;
 
 /**
- * The chat pane's own floor, in pixels: the redesign's §B1, and the number the
- * bands below are argued from.
+ * The chat pane's own floor, in pixels: the redesign's §B1, and the first of §I's
+ * three yielding steps.
  *
- * IT IS RECORDED, NOT YET APPLIED, and that distinction is the whole reason it is
- * here rather than in the component that draws the column. The applied floor today
- * is `min-w-[220px]` on the column beside the pane (`chat-content.tsx`), read back
- * from the element by the right pane's capacity arithmetic; §I's plan raises it to
- * this number as the FIRST of three yielding steps (chat floor, then the sidebar to
- * the icon strip, then the canvas overlaying), which is a layout change to the same
- * row and lands as its own commit.
+ * APPLIED on the column itself (`chat-content.tsx`: `w-0 min-w-[480px] flex-1`) and
+ * read back from that element by the right pane's capacity arithmetic, which is the
+ * one place the number is allowed to live twice - the constant here is the fallback
+ * for a computed style that cannot be parsed, and
+ * `scripts/chat-pane-floors.test.mjs` fails if the two drift apart.
  *
- * Naming it now, before that commit, is what lets the arithmetic be checked against
- * the spec instead of a literal: `scripts/chat-pane-floors.test.mjs` asserts this
- * constant, the applied class, and the two sums the band 880 is derived from - so
- * the commit that moves the floor is caught here whether it moves it up or down.
+ * WHY THE FLOOR IS THE MECHANISM rather than a `max-width` on the canvas: 480 is a
+ * promise about the pane the user READS, so it belongs on that column and the row's
+ * other occupants yield against it - first the sidebar (below 1024 it is the 56px
+ * strip, `resolveSidebarLayout`), then the canvas (`canvasPaneMode`). A cap on the
+ * canvas instead would leave the chat column free to be squeezed by anything else
+ * that joined the row.
  */
 export const CHAT_PANE_MIN_PX = 480;
+
+/**
+ * The narrowest a DOCKED canvas may be, in pixels: §I's "if there is still not room
+ * for a 400px pane, the canvas overlays the chat pane instead of docking".
+ *
+ * It is the dock's own contract floor, and it matches the drag divider's `minWidth`
+ * in `chat-content.tsx` for that reason: a pane narrower than this cannot render its
+ * toolbar and a document side by side, so the mode changes rather than the pane
+ * shrinking further.
+ */
+export const CANVAS_PANE_MIN_PX = 400;
+
+/**
+ * The widest the canvas may DOCK at, in pixels: §I's other number, the ceiling on
+ * `min(560, available - 480)`.
+ *
+ * 560 rather than the dock's own 1200 drag ceiling: the draggable range is how wide
+ * the user may make the document pane WHEN THERE IS ROOM, while this is what the
+ * layout offers it by itself. A dock that took its 1200 preference in a 1120px row
+ * would leave the chat column its floor and nothing else, which is the sqeeze §I's
+ * floor exists to forbid.
+ */
+export const CANVAS_PANE_MAX_PX = 560;
+
+/**
+ * The width the canvas docks at, given the row it shares with the chat column.
+ *
+ * `min(560, available - 480)` (§I), and it is a function rather than a constant
+ * because the second term is the one that moves: the row is the work area after the
+ * sidebar has taken its own width, and §B1's 480 is subtracted from it so the chat
+ * column keeps its floor whatever the canvas asks for.
+ *
+ * `Math.max(0, ...)` because the subtraction must not go negative on a window
+ * narrower than the floor itself - the caller's mode decides what to do there
+ * (`canvasPaneMode`), and a negative width would render as a zero-width pane with
+ * its divider still drawn.
+ */
+export function canvasDockWidth(rowWidth: number): number {
+	return Math.max(0, Math.min(CANVAS_PANE_MAX_PX, rowWidth - CHAT_PANE_MIN_PX));
+}
+
+/**
+ * How the canvas occupies the row at this width: docked beside the chat, or over it.
+ *
+ * §I's order of yielding, in one predicate. The sidebar yields first (§B1: below
+ * 1024 it is the 56px strip, which `resolveSidebarLayout` already does), and if the
+ * canvas's own 400px floor still does not fit beside the chat's 480 the canvas
+ * stops docking and **overlays** the pane instead - "full pane width, scrim absent,
+ * its own toolbar at the top row's trailing corner".
+ *
+ * The run panel deliberately has no such mode: §I is explicit that it "is never an
+ * overlay (it is a reading pane, not a document); it obeys the same 480 floor and
+ * closes itself rather than squeezing the chat below it" - which is what
+ * `chat-content.tsx`'s `runPanelResizable` already does against the measured
+ * capacity.
+ */
+export function canvasPaneMode(rowWidth: number): "docked" | "overlay" {
+	return canvasDockWidth(rowWidth) >= CANVAS_PANE_MIN_PX ? "docked" : "overlay";
+}
 
 /**
  * The first window width at which the CHAT PANE can hold its own floor beside a
