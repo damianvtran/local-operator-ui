@@ -371,8 +371,8 @@ const CONTROLS = [
 	{
 		/*
 		 * THE COMPOSER THAT REFUSES INPUT, which is a state rather than a second
-		 * control: `message-input.tsx` paints the composer box `bg-surface` with
-		 * `border-control` and, in this state, its ink `ink-disabled`
+		 * control: `message-input.tsx` paints the composer box `bg-elevated` with no
+		 * edge at rest and, in this state, its ink `ink-disabled`
 		 * (`read-only:text-ink-disabled`, `docs/branding.md` § 6's colour step).
 		 *
 		 * A row of its own because the pairing differs from the row above: the ink
@@ -383,11 +383,17 @@ const CONTROLS = [
 		 * left out instead: green output about a component nobody listed is not
 		 * evidence about that component.
 		 *
-		 * What this asserts is therefore the control's EDGE (fill or border against
-		 * each of the four grounds), which is in scope for every state, plus the
-		 * claim that the ink in use IS the exempt one - `EXEMPT_INK` in the loop
-		 * below. The composer keeps its boundary while it refuses, which is what
-		 * keeps the box visible as a box at exactly the moment its ink goes quiet.
+		 * WHAT IT ASSERTS NOW, since chat redesign §G1 removed the edge: the box's own
+		 * ground on the ground it renders over (`elevated` on `canvas`) and the fact
+		 * that the ink in use IS the exempt one - `EXEMPT_INK` in the loop below.
+		 * The EDGE half is declared away with `edge: false`, and that is a move of the
+		 * claim rather than a deletion: a refused composer spends the same ground step
+		 * an idle one does, and that step is asserted by `PERCEPTIBLE`'s
+		 * `canvas` -> `elevated` row and by the palette ladder's own bounds, plus the
+		 * `STRUCTURAL_CALL_SITES` pin on the class string. Keeping `border-control`
+		 * here would be a row attesting a boundary the component deliberately does not
+		 * draw - the exact class of stale evidence this file exists to prevent - and it
+		 * is what the row said before §G1 moved the box from `surface` to `elevated`.
 		 *
 		 * WHY THE EXEMPT INK IS RIGHT HERE, since a number this low deserves its
 		 * reason written down (design round 1, D2) and this row is where it becomes
@@ -404,11 +410,23 @@ const CONTROLS = [
 		 * holds the way out. A refusal that met 4.5:1 would stop reading as a
 		 * refusal, which is the reason `EXEMPT_INK` exists at all. No colour change
 		 * is implied: the ink is byte-identical to the base's `disabled` state.
+		 *
+		 * WHAT THE REFUSAL NO LONGER HAS, named rather than left to be discovered: an
+		 * edge of its own. It used to keep `border-control` while its ink went quiet,
+		 * which is what the previous version of this comment called "the composer keeps
+		 * its boundary while it refuses". §G1 removed the resting border for every
+		 * state of this box, so what still marks the refusal is the ink step alone -
+		 * and the box's ground step, which the idle composer spends too. That is
+		 * enough to read as a refusal (the ink is 2.5:1 in the median palette and the
+		 * transcript says the sentence in full), and it is recorded here because a
+		 * reviewer comparing this row to the previous one would otherwise read the
+		 * change as evidence lost rather than as the design moving.
 		 */
 		name: "composer (read-only)",
-		on: GROUNDS,
-		fill: "surface",
-		border: "borderControl",
+		on: ["canvas"],
+		fill: "elevated",
+		border: null,
+		edge: false,
 		ink: "inkDisabled",
 	},
 	{
@@ -570,9 +588,10 @@ const CONTROLS = [
 		 * off the characters it sits under. A border here costs 2px per line and
 		 * misaligns every pill that follows it — measured in the frames.
 		 *
-		 * `surface` is the ground the composer box paints (`COMPOSER_BOX`,
-		 * `border-control` on `bg-surface`), and the rows above cover `canvas` for
-		 * the same component wherever it is drawn on a bare page.
+		 * `elevated` is the ground the composer box paints (`COMPOSER_BOX`,
+		 * `bg-elevated` with no resting edge since chat redesign §G1), and the
+		 * `canvas` half covers the same component wherever it is drawn on a bare
+		 * page.
 		 *
 		 * WHICH PAIR MOVES FIRST, named because this is the tightest edge in the table
 		 * and the next palette edit needs to know it without re-deriving the row:
@@ -588,7 +607,7 @@ const CONTROLS = [
 		 * (`docs/design/composer-credential-capture.md` §7.1).
 		 */
 		name: "credential pill",
-		on: ["canvas", "surface"],
+		on: ["canvas", "elevated"],
 		fill: "infoWash",
 		border: "infoBorder",
 		ink: "ink",
@@ -625,7 +644,7 @@ const CONTROLS = [
 	 */
 	{
 		name: "credential pill (unbacked)",
-		on: ["canvas", "surface"],
+		on: ["canvas", "elevated"],
 		fill: "warningWash",
 		border: "warningBorder",
 		ink: "ink",
@@ -1074,8 +1093,9 @@ const CONTROLS = [
 	 * "green output about a component nobody listed" this section warns about,
 	 * one level down.
 	 *
-	 * Only `surface` is asserted, and that is not laziness: the wheel has
-	 * exactly one mount site, inside `COMPOSER_BOX`, which is `bg-surface`.
+	 * Only `elevated` is asserted, and that is not laziness: the wheel has
+	 * exactly one mount site, inside `COMPOSER_BOX`, which is `bg-elevated`
+	 * (chat redesign §G1; `STRUCTURAL_CALL_SITES` pins the class string).
 	 * Listing grounds it never renders on would be asserting a pairing the
 	 * design does not promise.
 	 */
@@ -1090,21 +1110,21 @@ const CONTROLS = [
 	 */
 	{
 		name: "context wheel, calm reading",
-		on: ["surface"],
+		on: ["elevated"],
 		fill: null,
 		border: "info",
 		ink: "inkMuted",
 	},
 	{
 		name: "context wheel, worth noticing",
-		on: ["surface"],
+		on: ["elevated"],
 		fill: null,
 		border: "warning",
 		ink: "inkMuted",
 	},
 	{
 		name: "context wheel, compaction due",
-		on: ["surface"],
+		on: ["elevated"],
 		fill: null,
 		border: "danger",
 		ink: "inkMuted",
@@ -1511,7 +1531,7 @@ const PERCEPTIBLE = [
 		 * skeleton bar). What the chip owes is being SEEN as one object, which is this
 		 * table's own question, so the row states that and nothing else.
 		 *
-		 * THE PAIRING DEPENDS ON THE BOX KEEPING `bg-surface`, which is why
+		 * THE PAIRING DEPENDS ON THE BOX KEEPING `bg-elevated`, which is why
 		 * `STRUCTURAL_CALL_SITES` pins that call site: against `canvas` the same fill
 		 * step collapses to 1.23 in `obsidian`, because `sunken` on `canvas` is the
 		 * weak step the loading bars already document.
@@ -1532,11 +1552,11 @@ const PERCEPTIBLE = [
 		 */
 		name: "mention chip fill step",
 		role: "sunken",
-		on: ["surface"],
+		on: ["elevated"],
 		minDeltaE: 2.0,
 		pairedWith: "warningWash",
 		maxWeightChange: 2.0,
-		against: "surface",
+		against: "elevated",
 	},
 	{
 		/*
@@ -1573,11 +1593,11 @@ const PERCEPTIBLE = [
 		 */
 		name: "mention chip outside-workspace fill step",
 		role: "warningWash",
-		on: ["surface", "sunken"],
+		on: ["elevated", "sunken"],
 		minDeltaE: 2.0,
 		pairedWith: "sunken",
 		maxWeightChange: 2.0,
-		against: "surface",
+		against: "elevated",
 	},
 	{
 		/*
@@ -4152,35 +4172,51 @@ for (const { id, palette: p } of palettes) {
 				);
 			}
 
-			/* The control's edge against the ground behind it: fill OR border. */
-			assertions++;
-			const fillEdge = ratio(fill, ground);
-			const borderEdge = isHex(border) ? ratio(border, ground) : 0;
-			const edge = Math.max(fillEdge, borderEdge);
-			if (edge < FLOOR.nonText) {
-				/*
-				 * This assertion had no pin path, which made it the one floor in this
-				 * file that a shared control's colour could only satisfy by being
-				 * changed where it was measured. `CONTROL_EDGE_PINNED` records the
-				 * case instead, under the same rule as `INK_STEP_PINNED`: the pin is
-				 * consulted only when the edge is still under the floor, and the stale
-				 * check below fails a pin whose palette no longer needs it.
-				 */
-				const pin = CONTROL_EDGE_PINNED.find(
-					(x) =>
-						x.control === c.name &&
-						x.ground === g &&
-						x.theme === id &&
-						Math.abs(x.got - r2(edge)) < 0.01,
-				);
-				if (pin) {
-					controlEdgeSeen.add(
-						controlEdgeKey(pin.control, pin.ground, pin.theme),
+			/*
+			 * The control's edge against the ground behind it: fill OR border.
+			 *
+			 * A row may declare `edge: false` when the component deliberately draws
+			 * NEITHER and its separation is a ground STEP rather than a boundary — the
+			 * composer box since chat redesign §G1. Without the opt-out the floor below
+			 * would demand a border the design removed on purpose, and the only ways to
+			 * satisfy it would be to invent one or to stop listing the state, which is
+			 * the "green output about a component nobody listed" failure this section
+			 * opens with. The step it spends instead is asserted where a step belongs —
+			 * `PERCEPTIBLE`'s ground-step rows, and the palette ladder's own
+			 * `canvas` -> `elevated` bounds — and the call site is pinned in
+			 * `STRUCTURAL_CALL_SITES` ("composer box ground"), so the opt-out removes no
+			 * coverage: it moves the claim to the instrument that can measure it.
+			 */
+			if (c.edge !== false) {
+				assertions++;
+				const fillEdge = ratio(fill, ground);
+				const borderEdge = isHex(border) ? ratio(border, ground) : 0;
+				const edge = Math.max(fillEdge, borderEdge);
+				if (edge < FLOOR.nonText) {
+					/*
+					 * This assertion had no pin path, which made it the one floor in this
+					 * file that a shared control's colour could only satisfy by being
+					 * changed where it was measured. `CONTROL_EDGE_PINNED` records the
+					 * case instead, under the same rule as `INK_STEP_PINNED`: the pin is
+					 * consulted only when the edge is still under the floor, and the stale
+					 * check below fails a pin whose palette no longer needs it.
+					 */
+					const pin = CONTROL_EDGE_PINNED.find(
+						(x) =>
+							x.control === c.name &&
+							x.ground === g &&
+							x.theme === id &&
+							Math.abs(x.got - r2(edge)) < 0.01,
 					);
-				} else {
-					fail(
-						`${id}: ${c.name} on ${g} has no perceivable edge — fill ${fillEdge}:1, border ${borderEdge}:1, need one at ${FLOOR.nonText}:1`,
-					);
+					if (pin) {
+						controlEdgeSeen.add(
+							controlEdgeKey(pin.control, pin.ground, pin.theme),
+						);
+					} else {
+						fail(
+							`${id}: ${c.name} on ${g} has no perceivable edge — fill ${fillEdge}:1, border ${borderEdge}:1, need one at ${FLOOR.nonText}:1`,
+						);
+					}
 				}
 			}
 		}
