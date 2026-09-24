@@ -3084,6 +3084,14 @@ export const STORIES = [
 	   clip's own limit so the row's truncation is the browser's. */
 	["canvas-workspace--goal-history", 1280, 900],
 	["canvas-workspace--goal-history-empty-and-capped", 1280, 900],
+	/* The pane's side of the capability gate (UX round 1, U4): a backend without the
+	   goal lifecycle gets THREE segments and no `Goals` view. An absence is only
+	   evidence beside the four-segment chrome every other canvas frame shoots, and
+	   until QA round 2's Q-1 fixed the story's frame it rendered Storybook's failure
+	   panel, so the row was left out rather than photographing an error. Same size
+	   as `goal-history` because it is the same two-band pair (dock default and the
+	   400px floor). */
+	["canvas-workspace--canvas-without-the-goal-lifecycle", 1280, 900],
 
 	["agent-hub-page--grid", 1280, 900],
 	/*
