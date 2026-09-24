@@ -17,11 +17,7 @@ import { SEND_HELD, type SendOutcome } from "@shared/hooks/use-message-input";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
 import { useWarmSession } from "@shared/hooks/use-warm-session";
 import { cn } from "@shared/lib/utils";
-import {
-	asideTurnIsCarried,
-	previousAsideId,
-	useAsideStore,
-} from "@shared/store/aside-store";
+import { useAsideStore } from "@shared/store/aside-store";
 import {
 	SEND_UNCONFIRMED_MESSAGE,
 	SESSION_UNVALIDATED_CODE,
@@ -51,7 +47,7 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import { pairingHasRemedy } from "../../../../../shared/backend-status";
 import { DESKTOP_MESSAGE_BUDGET_BYTES } from "../../../../../shared/desktop-contract";
-import { asideAskFailure, askAside } from "../aside";
+import { askAside, reportUncarriedAsideRefusal } from "../aside";
 import {
 	type AnswerOutcome,
 	type SendLock,
@@ -1229,40 +1225,14 @@ function SessionPanel({
 					canonical.subscriptionId ?? undefined,
 				);
 				/*
-				 * The turn this ask registered under, read the way `adoptAside` reads its
-				 * continuation prefix: `beginAsk` runs synchronously inside `askAside`,
-				 * before its POST, so the exchange's last turn is this ask by the time the
-				 * call returns.
+				 * A PANEL THE USER CLOSED HAS NO TURN LEFT TO STATE A REFUSAL ON, and the
+				 * question left the screen with it (review round 2, F7). The composer's
+				 * error line is then the only surface that still knows the ask happened,
+				 * so it says what became of it. Called in the same tick `askAside` returned
+				 * in, which is what lets the helper name this ask's own turn; the rule, and
+				 * why the `/btw` command door shares it, is on the helper.
 				 */
-				const askingTurn = previousAsideId(useAsideStore.getState(), sessionId);
-				void ask.catch((error) => {
-					/*
-					 * WHICH SURFACE STATES THE REFUSAL. The panel owns the exchange and states
-					 * the refusal on the turn it is holding (`askAside` writes it there), so
-					 * while that turn exists this call site has nothing to add.
-					 *
-					 * A PANEL THE USER CLOSED HAS NO TURN LEFT TO STATE IT ON: the panel's own
-					 * Escape and close call `closeAside`, whose `detachAside` deletes each turn
-					 * AND its stream entry, so `failAside` refuses an id it no longer holds and
-					 * the refusal lands nowhere - while the question, which was painted on the
-					 * panel, left the screen with it (review round 2, F7: the state where
-					 * "nothing is lost on screen" was false). The text is deliberately not
-					 * restored either (above), so the composer is the only surface that still
-					 * knows the ask happened and it is the one that says what became of it.
-					 *
-					 * Read from the STORE rather than from the click that closed the panel: the
-					 * question is whether the refusal has a surface NOW, and a reopened panel
-					 * (a bare `/btw`, a new empty attachment) holds none of this ask's turns
-					 * either - which the stream entry's own absence answers and the attachment's
-					 * presence does not.
-					 */
-					if (
-						askingTurn &&
-						asideTurnIsCarried(useAsideStore.getState(), askingTurn)
-					)
-						return;
-					setSendError(asideAskFailure(error));
-				});
+				reportUncarriedAsideRefusal(ask, sessionId, setSendError);
 				/*
 				 * NOT AWAITED, so the box is handed back in the press's own commit (F1);
 				 * the promise is nested rather than returned for the same reason (see

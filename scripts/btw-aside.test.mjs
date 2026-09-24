@@ -75,6 +75,7 @@ const bundle = await build({
 				closeAside,
 				openAsidePanel,
 				asideAskFailure,
+				reportUncarriedAsideRefusal,
 				asideAdoptChord,
 				asideAdoptCap,
 				asideAdoptReady,
@@ -201,6 +202,7 @@ const {
 	closeAside,
 	openAsidePanel,
 	asideAskFailure,
+	reportUncarriedAsideRefusal,
 	asideAdoptChord,
 	asideAdoptCap,
 	asideAdoptReady,
@@ -314,6 +316,16 @@ const RE_DISPATCH_ASIDE = /if \(entry\?\.kind === "aside"\)/;
 const RE_DISPATCH_ASK =
 	/askAside\(\s*sessionId,\s*args,\s*canonical\.subscriptionId/;
 const RE_DISPATCH_OPEN = /openAsidePanel\(sessionId\)/;
+/*
+ * Both doors hand a refusal the panel cannot state to the SAME rule (round 3,
+ * F9), and neither swallows one: the command door used to end its ask in an
+ * empty `.catch(() => {})`.
+ */
+const RE_DISPATCH_REPORTS_UNCARRIED =
+	/reportUncarriedAsideRefusal\(ask, sessionId, \(sentence\) =>\s*note\(sentence, true\)/;
+const RE_PAGE_REPORTS_UNCARRIED =
+	/reportUncarriedAsideRefusal\(ask, sessionId, setSendError\)/;
+const RE_SWALLOWED_REFUSAL = /\.catch\(\(\) => \{\}\)/;
 
 const SESSION = "session-aside-1";
 const OTHER_SESSION = "session-aside-2";
@@ -1227,5 +1239,75 @@ test("a refusal has a surface while the panel holds the turn, and none once it d
 	assert.equal(
 		asideAskFailure(new Error("TypeError: fetch failed")),
 		"The aside was not answered.",
+	);
+});
+
+/*
+ * THE ONE-ENTER DOOR STATES A REFUSAL THE CLOSED PANEL CANNOT (round 3, F9).
+ *
+ * `/btw <question>` consumes the whole draft at the press, so Escape on the panel
+ * before the answer takes the question off the screen, and `detachAside` leaves
+ * `failAside` nothing to write the refusal on. The composer door already said so
+ * on its error line; the command door ended in an empty catch and lost both. The
+ * rule now lives in one helper both doors call, and this drives it through the
+ * REAL store and ask: a report while the panel holds the turn would be a second
+ * copy of the panel's sentence, and no report once it does not is the defect.
+ */
+test("a refusal after the panel closed is reported by the door, and only then", async () => {
+	reset();
+	let refuse;
+	// Only the ASK is held open; the close the panel sends is answered at once.
+	handler = (request) =>
+		request.op === "sessions.aside"
+			? new Promise((_, reject) => {
+					refuse = reject;
+				})
+			: Promise.resolve({ data: {} });
+	const reported = [];
+	const closedFirst = askAside(SESSION, "a question");
+	reportUncarriedAsideRefusal(closedFirst, SESSION, (sentence) =>
+		reported.push(sentence),
+	);
+	closeAside(SESSION);
+	refuse(
+		new DesktopControlError(422, "Close an aside or wait for it to expire"),
+	);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	assert.deepEqual(
+		reported,
+		["Close an aside or wait for it to expire"],
+		"the panel was gone, so the door is the only surface left to state it",
+	);
+
+	reset();
+	handler = async () => {
+		throw new DesktopControlError(
+			422,
+			"Close an aside or wait for it to expire",
+		);
+	};
+	const held = [];
+	const heldAsk = askAside(SESSION, "a question");
+	reportUncarriedAsideRefusal(heldAsk, SESSION, (sentence) =>
+		held.push(sentence),
+	);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	assert.deepEqual(held, [], "the panel holds the turn and states it itself");
+	const [stream] = Object.values(useAsideStore.getState().streams);
+	assert.equal(stream.error, "Close an aside or wait for it to expire");
+
+	/*
+	 * And both doors are wired to it. The dispatcher is a hook whose module graph
+	 * cannot be mounted here (this file's header), so its wiring is source-level
+	 * and says so.
+	 */
+	const dispatch = read(
+		"src/renderer/src/features/chat/components/slash-dispatch.ts",
+	);
+	assert.match(dispatch, RE_DISPATCH_REPORTS_UNCARRIED);
+	assert.doesNotMatch(dispatch, RE_SWALLOWED_REFUSAL);
+	assert.match(
+		read("src/renderer/src/features/chat/components/chat-page.tsx"),
+		RE_PAGE_REPORTS_UNCARRIED,
 	);
 });

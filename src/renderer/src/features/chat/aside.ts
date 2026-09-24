@@ -30,6 +30,7 @@ import {
 import { resyncCanonicalSession } from "@shared/hooks/use-canonical-session";
 import {
 	type AsideStream,
+	asideTurnIsCarried,
 	previousAsideId,
 	useAsideStore,
 } from "@shared/store/aside-store";
@@ -43,14 +44,62 @@ type AsideAnswer = {
 /**
  * The sentence a refused ask is stated with, wherever it is stated.
  *
- * ONE COMPOSITION FOR TWO SURFACES. The panel states a refusal on the turn
- * (`failAside`) and the composer states the same one when the panel is gone
- * (see the aside branch in `chat-page.tsx`); two spellings of the same fact
+ * ONE COMPOSITION FOR EVERY SURFACE. The panel states a refusal on the turn
+ * (`failAside`) and the door that asked states the same one when the panel is
+ * gone (`reportUncarriedAsideRefusal`); two spellings of the same fact
  * would read as two different facts, which is why the composition lives here
  * rather than at either call site.
  */
 export function asideAskFailure(error: unknown): string {
 	return userFacingMessage(error, "The aside was not answered.");
+}
+
+/**
+ * State a refused ask on the caller's own surface when the panel no longer holds
+ * the turn it was asked under.
+ *
+ * WHY THIS IS SHARED. Both doors that ask - the composer's Enter
+ * (`chat-page.tsx`) and the one-Enter `/btw <question>` command
+ * (`slash-dispatch.ts`) - hand the box back at the press and do not await the
+ * answer, so both reach the same state: the user closes the panel before the
+ * answer, `detachAside` deletes the turn AND its stream entry, and `failAside`
+ * then has nothing to write the refusal on. The question left the screen with the
+ * panel and the text is deliberately not restored, so the caller is the only
+ * surface that still knows the ask happened. The composer door answered for that
+ * state and the command door swallowed it (review round 3, F9); one rule in one
+ * place is how the two doors stop disagreeing.
+ *
+ * WHICH SURFACE STATES IT. The panel owns the exchange and states the refusal on
+ * the turn it is holding (`askAside` writes it there), so while that turn exists
+ * this reports nothing - a second copy of the panel's sentence would be a second
+ * place for the two to drift. The question is read off the STORE at the moment of
+ * the refusal rather than off the click that closed the panel: a reopened panel
+ * (a bare `/btw`, a new empty attachment) holds none of this ask's turns either,
+ * which the stream entry's absence answers and the attachment's presence does not.
+ *
+ * `report` is the caller's no-surface channel, a parameter because the two doors
+ * have different ones: the composer's error line (`setSendError`) and the
+ * dispatcher's transcript note. The sentence is `asideAskFailure`'s, so all three
+ * surfaces spell a refusal the same way.
+ *
+ * MUST BE CALLED IN THE SAME TICK `askAside` RETURNED IN. The turn is read here
+ * with `previousAsideId`, and that is this ask's own turn only because
+ * `beginAsk` runs synchronously inside `askAside`, before its POST; an `await`
+ * between the two would let a follow-up register first and name ITS turn. It
+ * also handles the rejection, so a caller that has nothing else to do with the
+ * promise leaves no unhandled rejection behind.
+ */
+export function reportUncarriedAsideRefusal(
+	ask: Promise<unknown>,
+	sessionId: string,
+	report: (sentence: string) => void,
+): void {
+	const askingTurn = previousAsideId(useAsideStore.getState(), sessionId);
+	void ask.catch((error) => {
+		if (askingTurn && asideTurnIsCarried(useAsideStore.getState(), askingTurn))
+			return;
+		report(asideAskFailure(error));
+	});
 }
 
 /**
@@ -63,9 +112,14 @@ export function asideAskFailure(error: unknown): string {
  * field name and no code to read. Quoted here because it is the only thing that
  * separates "this owner forbids the field" from every other 422 — see
  * `refusedTheSubscriptionField`. The producer is
- * `local_operator/server/app.py` (`invalid fields`), and a reworded owner would
- * make the retry below stop firing, which costs one failed request and never
- * the answer.
+ * `local_operator/server/app.py` (`invalid fields`). THE BLAST RADIUS OF A
+ * REWORDING IS EVERY ASK, NOT ONE REQUEST: an older owner that still forbids the
+ * field but words its refusal differently no longer matches here, so the retry
+ * never fires, the session is never remembered as fieldless, and every ask to
+ * that owner fails with the refusal stated on the panel and no answer - until the
+ * owner is updated or this sentence follows it. That is why the match is on the
+ * producer's exact string and why the producer is named: a change to one side has
+ * to be made to both.
  */
 const UNKNOWN_FIELDS_REFUSAL = "The request has invalid fields.";
 
@@ -243,8 +297,9 @@ export async function askAside(
 		 * AND their stream entries, so a user who closed the panel before the answer
 		 * arrived leaves `failAside` with nothing to write on and the refusal with no
 		 * surface at all. The caller reads that off the SAME store entry this write
-		 * consults (`asideTurnIsCarried`), and states the refusal on the composer when
-		 * there is nothing left to carry it — see the aside branch in `chat-page.tsx`.
+		 * consults (`asideTurnIsCarried`), and states the refusal on its own surface
+		 * when there is nothing left to carry it — see `reportUncarriedAsideRefusal`,
+		 * which both doors call.
 		 */
 		useAsideStore.getState().failAside(asideId, asideAskFailure(error));
 		throw error;

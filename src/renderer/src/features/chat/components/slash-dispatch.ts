@@ -53,7 +53,11 @@ import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import type { NativeDesktopAction } from "../../../../../shared/desktop-control-contract";
 import type { DesktopCommandReceipt } from "../../../../../shared/desktop-session-contract";
-import { askAside, openAsidePanel } from "../aside";
+import {
+	askAside,
+	openAsidePanel,
+	reportUncarriedAsideRefusal,
+} from "../aside";
 import {
 	ARCHIVE_ALREADY_ARCHIVED_REASON,
 	ARCHIVE_NOT_ARCHIVED_REASON,
@@ -880,7 +884,8 @@ export function useSlashDispatch({
 			 * seconds, and returning the outcome would hold the composer's own clear until
 			 * the model finished — leaving a question in the box that is visibly being
 			 * answered above it. A refusal lands on the panel, which is the surface that
-			 * asked for it (the TUI's own rule for this card).
+			 * asked for it (the TUI's own rule for this card) - or in the transcript when
+			 * the panel was closed first and holds no turn to state it on (below).
 			 *
 			 * A BARE `/btw` opens the panel EMPTY and asks nothing: there is no question
 			 * yet, and the next line typed into the composer becomes the aside's first
@@ -903,11 +908,24 @@ export function useSlashDispatch({
 					 * an id no live subscription owns costs (QA round 1, Q3: no frames, no
 					 * error, the settled answer in one piece).
 					 */
-					void askAside(
+					const ask = askAside(
 						sessionId,
 						args,
 						canonical.subscriptionId ?? undefined,
-					).catch(() => {});
+					);
+					/*
+					 * A REFUSAL THE PANEL CAN NO LONGER STATE IS STATED IN THE TRANSCRIPT
+					 * (review round 3, F9). This door consumed the whole draft at the press,
+					 * so Escape on the panel before the answer takes the question off the
+					 * screen with it and leaves `failAside` nothing to write on; an empty
+					 * handler here then lost both the question and the refusal without a
+					 * word. The dispatcher has no composer error line, so its surface is the
+					 * receipt note every other refused command already uses. Same tick as
+					 * the ask, for the reason on the helper.
+					 */
+					reportUncarriedAsideRefusal(ask, sessionId, (sentence) =>
+						note(sentence, true),
+					);
 				} else {
 					openAsidePanel(sessionId);
 				}

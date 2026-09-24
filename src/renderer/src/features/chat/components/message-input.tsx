@@ -1699,6 +1699,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const retirePayloads = useRef(false);
 		/*
+		 * The COMMIT that makes the retirement effect below look at `retirePayloads`
+		 * again when the box itself has not changed (review round 3, F11). An
+		 * off-record aside empties the box at the press and is answered seconds later,
+		 * so the request is written in a commit where `newMessage` is unchanged - and a
+		 * ref alone never re-runs an effect, which left the consumed credential values
+		 * in memory until the next edit, longer than §9.5 intends. Bumped with every
+		 * request; its value means nothing, only that it moved.
+		 */
+		const [retireRequest, setRetireRequest] = useState(0);
+		/*
 		 * The names the session's store already holds, for the key guard (§8).
 		 *
 		 * Fetched when the capture ARMS and cached, because the desktop contract is
@@ -1910,13 +1920,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * and an Enter inside that window sent a citation no map entry backed any
 			 * more (code review round 1, MINOR-5). `retirePayloads` is the request; the
 			 * effect below performs it in the commit that empties the box, so the two
-			 * cannot be seen apart. A REFUSED send keeps the map, because the
+			 * cannot be seen apart - or, for an answered aside whose box emptied at the
+			 * press, in the commit `setRetireRequest` makes here. A REFUSED send keeps the map, because the
 			 * operator's unsent draft must not lose the value behind a pill they can
 			 * still see. `SEND_HELD` is the same case — the message may be on the owner
 			 * and its own retry lives on the store's claim, so the value has to stay
 			 * until that resolves.
 			 */
 			retirePayloads.current = true;
+			setRetireRequest((request) => request + 1);
 			setDisclosure(null);
 			/*
 			 * And the locked run's record goes with the buffer it was made from: the box a
@@ -2610,7 +2622,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * that honours it, once nothing in the box still cites a payload — so the box
 		 * can never paint a raw marker no map entry backs, and an Enter in that
 		 * window can never send a dangling citation.
+		 *
+		 * `retireRequest` is the second trigger: a request that lands after the box has
+		 * already emptied (an answered aside) is honoured in its own commit instead of
+		 * at the next edit. Firing early is safe by construction, because the cited-
+		 * payload check above still refuses while the box cites anything.
 		 */
+		// biome-ignore lint/correctness/useExhaustiveDependencies: `retireRequest` is a trigger, not a value the body reads - it only makes a request written after the box emptied be seen in its own commit
 		useEffect(() => {
 			if (!retirePayloads.current) return;
 			if (citedPayloads(newMessage, payloadsRef.current.values()).length > 0)
@@ -2618,7 +2636,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			payloadsRef.current.clear();
 			nextIndexRef.current = 1;
 			retirePayloads.current = false;
-		}, [newMessage]);
+		}, [newMessage, retireRequest]);
 
 		/*
 		 * The session's stored names, fetched when the capture ARMS (§7.2).
