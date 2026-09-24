@@ -31,6 +31,18 @@ const sessionId = z.string().regex(/^[a-f0-9]{12}$/);
  * at every hop instead of being assumed from the id's presence.
  */
 export const SUBSCRIPTION_ID_PATTERN = /^[a-f0-9]{32}$/;
+/*
+ * A mesh device id (`d_` + 32 hex today, `network/identity.py device_id_for`) and
+ * a network id (`n_` + 24 hex, `network/store.py new_network_id`).
+ *
+ * PATH-SAFE rather than exact: both are interpolated into route paths, so the
+ * rule that matters here is that neither can carry `/`, `.` or `%` - the
+ * `sessionId` rule's purpose. The exact shapes are the backend's to evolve (a
+ * pool member's id is not a device key's hash), and a renderer that pinned them
+ * would refuse the first new kind the backend learned.
+ */
+const deviceId = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
+const networkId = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
 const requestId = z
 	.string()
 	.regex(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/);
@@ -736,6 +748,14 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			 * archived state, and an unarchive control on a row found by search.
 			 */
 			include_archived: z.boolean().optional(),
+			/*
+			 * Whether conversations OWNED BY A PEER (another device in a network this
+			 * backend belongs to) belong in the answer. Absent means `false`, the same
+			 * compatibility promise `include_archived` makes: the renderer sends it only
+			 * when the backend advertises `features.peers`, so a pre-mesh backend keeps
+			 * receiving the byte-identical request it always did.
+			 */
+			include_peers: z.boolean().optional(),
 		})
 		.strict(),
 	z
@@ -765,6 +785,8 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			 * stale-row failure `chat-search.test.mjs` pins.
 			 */
 			include_archived: z.boolean().optional(),
+			/** As on `sessions.list`: only sent when `features.peers` is advertised. */
+			include_peers: z.boolean().optional(),
 		})
 		.strict(),
 	/*
@@ -827,6 +849,13 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			 * different request for every caller that never asked.
 			 */
 			model: modelSelection.optional(),
+			/*
+			 * The DEVICE to create the conversation on, by device id (`mesh-ui.md`
+			 * §2.6). Omitted means this device, and the body is then byte-identical to
+			 * the pre-mesh one - the `model` field's own rule. Only `/new`'s device
+			 * choice writes it, and only when `features.peers` is advertised.
+			 */
+			peer: deviceId.optional(),
 		})
 		.strict(),
 	/*
@@ -1747,6 +1776,65 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			value: secret,
 		})
 		.strict(),
+	/*
+	 * THE MESH OPS (`features.peers`, `features.session_transfer`). All of them
+	 * reach a peer only THROUGH this app's one backend: the renderer never dials a
+	 * peer, never learns an address to dial, and holds no mesh credential
+	 * (`mesh-ui.md` §2.2) - a UI that could would have to re-implement the relay's
+	 * authorisation model in JavaScript.
+	 *
+	 * `peers.list` and `networks.list` are reads; the other three change state and
+	 * are therefore NOT in `READ_ONLY_OPS`, so a timeout on them gets the cautious
+	 * "may or may not have reached the server" sentence.
+	 */
+	z
+		.object({ op: z.literal("peers.list") })
+		.strict(),
+	z.object({ op: z.literal("networks.list") }).strict(),
+	z
+		.object({
+			/*
+			 * An INVITE, never an "add": admission is two-sided and the joining device
+			 * proves the code itself (`mesh-ui.md` §2.8, decision 4). The backend writes
+			 * the token to a file and answers with its path - the token never crosses
+			 * this IPC.
+			 */
+			op: z.literal("networks.invite"),
+			networkId,
+			role: z.enum(["read", "drive", "admin"]),
+			device: deviceId.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			/*
+			 * `member rm`: revokes the member and ROTATES the network secret, so every
+			 * other device is affected. `confirm` is the network's name as the user
+			 * TYPED it, echoed so the route itself refuses a removal no dialog answered
+			 * (the `sessions.delete` precedent, stronger because the act is wider).
+			 */
+			op: z.literal("networks.member.remove"),
+			networkId,
+			deviceId,
+			confirm: z.string().min(1).max(256),
+		})
+		.strict(),
+	z
+		.object({
+			/*
+			 * Move a conversation to another device (`to` = a device id) or home
+			 * (`to` = "local"). Idempotent by `requestId` like every desktop write that
+			 * admits work. `wait_s` bounds how long the route waits for the source
+			 * runtime to retire before refusing with `in_flight_turn`.
+			 */
+			op: z.literal("sessions.transfer"),
+			sessionId,
+			requestId,
+			to: z.union([deviceId, z.literal("local")]),
+			keep: z.boolean().optional(),
+			wait_s: z.number().min(0).max(300).optional(),
+		})
+		.strict(),
 ]);
 
 export type DesktopRequest = z.infer<typeof desktopRequestSchema>;
@@ -2383,6 +2471,8 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"legacy.schedule.get",
 	"legacy.schedules.list",
 	"mcp.list",
+	"networks.list",
+	"peers.list",
 	"models.catalogue",
 	"profiles.get",
 	"profiles.list",
@@ -3013,10 +3103,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				// Omitted when false, for the reason `sessions.search`'s own query
 				// states: the pre-flag request is what an older backend must keep
-				// seeing, and `false` is the route's default anyway.
+				// seeing, and `false` is the route's default anyway. `include_peers`
+				// follows the same rule.
 				path: `/v1/desktop/sessions?limit=${request.limit ?? 100}${
 					request.include_archived ? "&include_archived=true" : ""
-				}`,
+				}${request.include_peers ? "&include_peers=true" : ""}`,
 				method: "GET",
 			};
 		case "sessions.search": {
@@ -3033,6 +3124,7 @@ export function desktopEndpoint(request: DesktopRequest): {
 			// existed - which is what keeps the control a strict superset of the old
 			// behaviour against a backend that has not learned the flag yet.
 			if (request.include_archived) query.set("include_archived", "true");
+			if (request.include_peers) query.set("include_peers", "true");
 			return {
 				path: `/v1/desktop/sessions/search?${query}`,
 				method: "GET",
@@ -3064,6 +3156,37 @@ export function desktopEndpoint(request: DesktopRequest): {
 					cwd: request.cwd,
 					...(request.target ? { target: request.target } : {}),
 					...(request.model ? { model: request.model } : {}),
+					...(request.peer ? { peer: request.peer } : {}),
+				},
+			};
+		case "peers.list":
+			return { path: "/v1/desktop/peers", method: "GET" };
+		case "networks.list":
+			return { path: "/v1/desktop/networks", method: "GET" };
+		case "networks.invite":
+			return {
+				path: `/v1/desktop/networks/${request.networkId}/invite`,
+				method: "POST",
+				body: {
+					role: request.role,
+					...(request.device ? { device: request.device } : {}),
+				},
+			};
+		case "networks.member.remove":
+			return {
+				path: `/v1/desktop/networks/${request.networkId}/members/${request.deviceId}`,
+				method: "DELETE",
+				body: { confirm: request.confirm },
+			};
+		case "sessions.transfer":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/transfer`,
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					to: request.to,
+					...(request.keep !== undefined ? { keep: request.keep } : {}),
+					...(request.wait_s !== undefined ? { wait_s: request.wait_s } : {}),
 				},
 			};
 		case "sessions.preview":
