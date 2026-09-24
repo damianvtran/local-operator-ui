@@ -260,6 +260,14 @@ export type CanonicalTranscriptProps = {
 	 */
 	conversationId?: string;
 	/**
+	 * Tool call ids whose first label read is still in flight
+	 * (`CanonicalSessionView.labelPending`). Such a row paints its object column
+	 * EMPTY rather than the output stand-in, so the first frame of an open never
+	 * shows a call's result where its command belongs. Optional: surfaces with no
+	 * live stream (stories, the run panel's child reader) have nothing pending.
+	 */
+	labelPending?: ReadonlySet<string>;
+	/**
 	 * Re-arm the session's stream and history read.
 	 *
 	 * Required rather than optional: every caller of this component has a
@@ -667,12 +675,15 @@ const ToolRow = memo(function ToolRow({
 	showAvatar,
 	nameColumn,
 	scope,
+	labelPending = false,
 }: {
 	record: Extract<TranscriptRecord, { kind: "tool" }>;
 	isSmallView: boolean;
 	showAvatar: boolean;
 	nameColumn: number;
 	scope: AttachmentScope | null;
+	/** The row's first label read is in flight: hold the stand-in back. */
+	labelPending?: boolean;
 }) {
 	const running = record.phase !== "done";
 	const composing = record.phase === "composing";
@@ -728,9 +739,16 @@ const ToolRow = memo(function ToolRow({
 	// exists to create, lost — so the OUTPUT's first line stands in. It is a
 	// weaker fact than the arguments (it says what came back rather than what
 	// was asked) and it is deliberately second choice, but it beats a void.
+	//
+	// EXCEPT while the read that will find the arguments is still in flight
+	// (`labelPending`): a joiner's seeded rows all start argument-less, and on
+	// the first frame the stand-in is not a weaker fact but a wrong-looking one
+	// — `bash  … {"text": 200, …` reads as the command that ran. An empty column
+	// for the length of one read is the honest frame; once the read settles the
+	// row either has its arguments or falls back to the stand-in as before.
 	const derived =
 		!composing && isBareToolName(summary, record.toolName)
-			? outputFallbackLine(record.output)
+			? outputFallbackLine(record.output, labelPending)
 			: null;
 	/*
 	 * The TUI's body-selection case 2 (`_build_content`, tool_card.py:1928-1939):
@@ -1215,12 +1233,18 @@ const TranscriptRow = memo(function TranscriptRow({
 	nameColumn,
 	scope,
 	conversationId,
+	labelPending = false,
 }: {
 	row: Row;
 	isSmallView: boolean;
 	nameColumn: number;
 	scope: AttachmentScope | null;
 	conversationId?: string;
+	/**
+	 * A BOOLEAN per row rather than the set: the rows are memoised, and handing
+	 * every row the set would re-render all of them each time one id settles.
+	 */
+	labelPending?: boolean;
 }) {
 	rowRenderCount.current += 1;
 	const { record } = row;
@@ -1255,6 +1279,7 @@ const TranscriptRow = memo(function TranscriptRow({
 					showAvatar={row.showAvatar}
 					nameColumn={nameColumn}
 					scope={scope}
+					labelPending={labelPending}
 				/>
 			);
 			break;
@@ -1340,6 +1365,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	missing = false,
 	attachmentScope,
 	conversationId,
+	labelPending,
 	onReconnect,
 	onAnswer,
 	answering = false,
@@ -2043,6 +2069,10 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 									nameColumn={nameColumn}
 									scope={mediaScope}
 									conversationId={conversationId}
+									labelPending={
+										row.record.kind === "tool" &&
+										labelPending?.has(row.record.toolCallId) === true
+									}
 								/>
 							))}
 						</CanvasPaneProvider>

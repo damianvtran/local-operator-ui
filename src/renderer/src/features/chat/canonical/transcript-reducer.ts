@@ -41,6 +41,7 @@ import {
 import {
 	diffFromDetails,
 	preferDiff,
+	preferDiffCounts,
 } from "../components/trace/tool-row-model";
 
 /**
@@ -682,24 +683,6 @@ function preferExisting(
 	previous: TranscriptImage[],
 ): TranscriptImage[] {
 	return next.length === 0 && previous.length > 0 ? previous : next;
-}
-
-/**
- * The `+N` / `-M` counters a write reported, from its own `details`.
- *
- * Mirrors the TUI's `_diff_counts` (tool_card.py:567-583): a value counts only
- * when it is a positive integer, and anything else — missing, malformed,
- * negative, a boolean — is zero. Zero is not rendered, because `+0` claims that
- * nothing was added while a missing count claims nothing at all, and these are
- * the second kind.
- */
-function diffCounts(details: unknown): { added: number; removed: number } {
-	const source = (details ?? {}) as Record<string, unknown>;
-	const count = (value: unknown) =>
-		typeof value === "number" && Number.isInteger(value) && value > 0
-			? value
-			: 0;
-	return { added: count(source.added), removed: count(source.removed) };
 }
 
 function sameImages(a: TranscriptImage[], b: TranscriptImage[]) {
@@ -1889,7 +1872,12 @@ function durableRecord(
 				`tool:${toolCallId}`,
 				previous?.kind === "tool" ? previous.images : undefined,
 			),
-			...diffCounts(providerPayload.details),
+			// Counts and body share one guard (`preferDiffCounts`): a page row with
+			// no `details` keeps what the row already showed rather than zeroing it.
+			...preferDiffCounts(
+				providerPayload.details,
+				previous?.kind === "tool" ? previous : null,
+			),
 			// The durable half of the diff body, and the same identity rule the
 			// images beside it follow: a replayed page that carries no `details`
 			// must not blank a row the live event already filled in (the live
@@ -2864,7 +2852,11 @@ export function applyEvent(
 					extractImages(result, id, base.images),
 					base.images,
 				),
-				...diffCounts(result.details),
+				// The counters ride the same `details` object as the body below, so
+				// they take the same guard: a seed end whose `details` the budget
+				// stripped keeps the durable counts instead of writing 0/0 over them
+				// (see `preferDiffCounts` for the measured sequence).
+				...preferDiffCounts(result.details, base),
 				// THE live diff path: `tool_execution_end` carries the tool RESULT, so
 				// `result.details.diff` is the producer's own line list. Guarded the
 				// way the images above are, and for the same measured reason — a
@@ -3286,10 +3278,12 @@ export function applyLiveSeed(
  *
  * WHY THE CALLER SIZES ITS PAGE FROM THIS rather than using a constant: the
  * seed retains at most `LIVE_EVENT_END_ROWS_MAX` (100) settled calls, each of
- * which costs about two durable entries (its assistant row and its result), so
- * `reconcileLimit` below turns this list into the smallest tail that reaches
- * every one of them — paying for the ACTUAL gap beats both a fixed deeper page
- * on every join and leaving the rows labelled with nothing but their output.
+ * which costs about three durable entries (its assistant row, its result and the
+ * round's `session_spend.v1` row — measured, see `RECONCILE_ENTRIES_PER_CALL`),
+ * so `reconcileLimit` below turns this list into a tail that usually reaches
+ * every one of them in one request, and the hook's walk pages further back for
+ * the rest — paying for the ACTUAL gap beats both a fixed deeper page on every
+ * join and leaving the rows labelled with nothing but their output.
  *
  * Oldest first, deduplicated, and only ids the seed actually settled: a call
  * still running has its start, which carries its own arguments.
@@ -3359,13 +3353,28 @@ export function labelGapCandidates(
 }
 
 /**
- * Durable entries one settled call occupies: its assistant row and its result.
+ * Durable journal entries to budget per unlabelled call, so the first label
+ * read normally reaches the OLDEST one in a single request.
  *
- * The ratio is the seed's own shape, not an estimate: `_fold_live_event` keeps
- * one end per call and the durable transcript writes the assistant row holding
- * that call's `tool_calls` plus the tool row holding its result.
+ * AN ESTIMATE, MEASURED — not the seed's shape. This used to be 2 and was
+ * described as exact (assistant row + tool row per call), but a real journal
+ * also writes a `custom` `session_spend.v1` row per round, `session_state`
+ * rows, prunes and the odd user/steering row, so the distance from the tail back
+ * to a call's assistant row is not a fixed multiple. Measured read-only over
+ * 1,357 real sessions under `~/.local-operator/sessions` (10,395 simulated joins:
+ * seed = the turn's newest 100 calls, page = the newest 100 entries), the
+ * per-missing-call depth past the page is p50 2.50, p75 2.88, p90 3.03, p95
+ * 3.18, p99 4.23. At 2 one request covered 15.7% of joins; at 3.25 it covers
+ * 96.4%, for a mean limit of 263 entries rather than 200. The rest is closed by
+ * the goal-directed walk in `reconcileTail`, which pages back until every
+ * target is labelled, so this ratio decides how many requests a join costs and
+ * never whether the rows get their labels.
+ *
+ * The session in the report (`70ddfaaf163a`) needs 3.03: its turn repeats
+ * assistant, tool, `session_spend.v1`, and at 2 its first read left 23 of 68
+ * calls without a label.
  */
-export const RECONCILE_ENTRIES_PER_CALL = 2;
+export const RECONCILE_ENTRIES_PER_CALL = 3.25;
 
 /** The tail every reconcile asks for, and the app's ordinary history page. */
 export const RECONCILE_TAIL_ENTRIES = 100;
@@ -3387,10 +3396,96 @@ export const RECONCILE_TAIL_MAX_ENTRIES = 500;
  */
 export function reconcileLimit(missingCalls: number): number {
 	if (missingCalls <= 0) return RECONCILE_TAIL_ENTRIES;
+	// `ceil`: the ratio is fractional and the route takes an integer `limit`.
 	return Math.min(
 		RECONCILE_TAIL_MAX_ENTRIES,
-		RECONCILE_TAIL_ENTRIES + RECONCILE_ENTRIES_PER_CALL * missingCalls,
+		RECONCILE_TAIL_ENTRIES +
+			Math.ceil(RECONCILE_ENTRIES_PER_CALL * missingCalls),
 	);
+}
+
+/**
+ * Which of `targets` a durable page names in an assistant row's `tool_calls`.
+ *
+ * The label walk's stop test: a call is labelled once the row that NAMED it is
+ * in hand, because that is where its arguments live (`applyHistoryPage` copies
+ * them into `argsByCall`). Pure so the hook's walk rule can be tested without a
+ * transport.
+ */
+export function pageLabels(
+	entries: DesktopHistoryPage["entries"],
+	targets: ReadonlySet<string>,
+): string[] {
+	const found: string[] = [];
+	if (targets.size === 0) return found;
+	for (const entry of entries) {
+		const calls = entry.payload?.tool_calls;
+		if (!Array.isArray(calls)) continue;
+		for (const call of calls as Record<string, unknown>[]) {
+			if (call && typeof call.id === "string" && targets.has(call.id))
+				found.push(call.id);
+		}
+	}
+	return found;
+}
+
+/**
+ * Whether the reconcile walk has read far enough to stop.
+ *
+ * TWO conditions, and both are required. The walk used to stop the moment a
+ * fetched page CONNECTED to a painted row, which answers "is anything missing
+ * between the page and the screen" — but the label gap is a different question:
+ * the page has to reach back to the OLDEST unlabelled call's assistant row, and a
+ * tail page connects long before that on any turn with more than a page of
+ * calls. So:
+ *
+ *  - `connected`: some fetched page overlapped the painted rows, or nothing was
+ *    painted (then no page can overlap and one page is the whole coverage);
+ *  - `unlabelled`: how many target calls no fetched page has named yet.
+ *
+ * The walk's other exits — `!has_more` and the `RECONCILE_WALK_MAX_ROWS` bound —
+ * live in the loop, because they are facts about the route, not about the goal.
+ */
+export function reconcileWalkDone(connected: boolean, unlabelled: number) {
+	return connected && unlabelled === 0;
+}
+
+/**
+ * How many label targets are still BEHIND everything read so far.
+ *
+ * `order` is the calls in journal order, oldest first — the seed's own order
+ * (`seedCallsMissingLabels` over the whole seed), which holds the calls a page
+ * already labelled as well as the targets. `found` is every call a durable page
+ * READ FROM THE TAIL has named: the snapshot's own page and each page the walk
+ * fetched. Reading is contiguous back from the tail, so once a call is found,
+ * every target NEWER than it would have been inside what was read if it were
+ * durable at all. Those are calls of the round still running (the round's
+ * assistant row is written when the round closes), so no depth of reading finds
+ * them now and the round-end retry is what labels them. Only targets OLDER than
+ * the oldest found call are worth another page.
+ *
+ * Nothing found means nothing is known about where the targets sit, so all of
+ * them count and the walk runs to the route's own bounds. Without this rule a
+ * join during a round with finished calls would page to the 500-row bound on
+ * every open, hunting rows that do not exist yet.
+ */
+export function labelTargetsBehind(
+	order: readonly string[],
+	targets: ReadonlySet<string>,
+	found: ReadonlySet<string>,
+): number {
+	// A target the seed no longer names was evicted from it by newer calls (a
+	// round-end retry carries ids from an earlier snapshot's seed), so it is
+	// older than everything in `order` and is behind whatever was read.
+	const ordered = new Set(order);
+	let behind = 0;
+	for (const id of targets) if (!ordered.has(id) && !found.has(id)) behind += 1;
+	for (const id of order) {
+		if (found.has(id)) return behind;
+		if (targets.has(id)) behind += 1;
+	}
+	// No call in `order` was found: every target is still unaccounted for.
+	return behind;
 }
 
 /**

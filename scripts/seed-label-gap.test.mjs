@@ -1,0 +1,745 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { test } from "node:test";
+import { build } from "esbuild";
+
+/*
+ * Opening a conversation with a turn in flight: every tool row must end up
+ * showing its COMMAND, and the edit rows their `+N -M`, without the reader
+ * scrolling. Two reported symptoms, one open path, both through the shipped
+ * hook (frames -> flush -> `applyHistoryPage` + `applyLiveSeed` -> the label
+ * read-back):
+ *
+ *   1. A run of `bash  … {"text": 200, "solo_cpu": 0.08…` rows — the output
+ *      stand-in (`outputFallbackLine`) painted where the command belongs,
+ *      because the seed's `tool_execution_end` frames carry no arguments and the
+ *      read-back that should find them stopped short.
+ *   2. An `edit` row with no `+91 -19` whose expansion still held the diff: the
+ *      seed's end re-applied over the durable row with `details: null`.
+ *
+ * THE FIXTURE IS THE REAL SESSION (`scripts/fixtures/seed-label-gap.json`), cut
+ * from a copy of `~/.local-operator/sessions/70ddfaaf163a/transcript.jsonl` —
+ * one turn of assistant / tool / `session_spend.v1` repeating. `derivation` in
+ * the file states every transform. Two moments are carried:
+ *
+ *   - `labels`: the join after journal row 407, 134 calls into the turn. The
+ *     seed is the turn's newest 100 settled calls, bounded by the backend's OWN
+ *     `_bound_live_events_in_place` (run over the journal's results, not
+ *     re-implemented), so 68 of its calls are older than the snapshot's
+ *     100-entry page. With the old rule (2 entries per call, stop on connect)
+ *     the first read of 236 rows left 23 of them labelled only by their output;
+ *   - `counts`: the join after row 471, whose page holds the `edit` of
+ *     `subagent.py` with durable `details = {added: 91, removed: 19, diff}` and
+ *     whose seed end for the same call has `details: null` — the bound strips
+ *     any `details` over a quarter of the 560-char share.
+ *
+ * The backend stub below is the route's own contract (`before_id` exclusive, no
+ * cursor is the tail, `has_more`), serving the fixture's journal truncated at
+ * the moment, and it counts every `sessions.history` request so the cost of
+ * the fix is asserted, not described.
+ */
+
+const fixture = JSON.parse(
+	readFileSync(
+		new URL("./fixtures/seed-label-gap.json", import.meta.url),
+		"utf8",
+	),
+);
+
+// `zustand/middleware` reaches for localStorage at import time.
+const store = new Map();
+globalThis.localStorage = {
+	getItem: (key) => store.get(key) ?? null,
+	setItem: (key, value) => store.set(key, value),
+	removeItem: (key) => store.delete(key),
+};
+
+/* ----------------------------------------------------------------- the clock */
+
+/*
+ * Animation frames and the hidden-window fallback timer are the hook's two
+ * flush triggers. Both are taken over so a flush happens when the test says so
+ * and never on a wall clock: `pump()` drains what `deliver()` scheduled.
+ *
+ * `now` is the one clock the reducer cannot be starved of: the test's arrival
+ * instant is `Date.now()` and it is the time a seeded row must NOT be painted
+ * at, so it is left alone rather than pinned.
+ */
+let rafQueue = [];
+let rafSeq = 0;
+let fallbackSeq = 0;
+globalThis.requestAnimationFrame = (callback) => {
+	rafQueue.push(callback);
+	rafSeq += 1;
+	return rafSeq;
+};
+globalThis.cancelAnimationFrame = () => {};
+globalThis.window = {
+	setTimeout: () => {
+		fallbackSeq += 1;
+		return fallbackSeq;
+	},
+	clearTimeout: () => {},
+};
+
+/* ------------------------------------------------------------- the transport */
+
+const subscriptions = [];
+const requests = [];
+
+globalThis.__seedSubscribe = (args, onEvent) => {
+	const entry = { args, onEvent, disposed: false };
+	subscriptions.push(entry);
+	return () => {
+		entry.disposed = true;
+	};
+};
+globalThis.__seedRequest = async (request) => {
+	requests.push(request);
+	if (request.op === "sessions.history") {
+		/*
+		 * The backend's own reader: no cursor is the TAIL, `before_id` is
+		 * exclusive. Served from the case's durable rows rather than from the
+		 * fixture, because the cases below disagree about what is durable when
+		 * the page was read — which is the point of the last one.
+		 */
+		const rows = globalThis.__seedDurable;
+		if (request.beforeId === undefined) {
+			const start = Math.max(0, rows.length - request.limit);
+			return {
+				entries: rows.slice(start),
+				has_more: start > 0,
+				cursor_missing: false,
+			};
+		}
+		const end = rows.findIndex((entry) => entry.id === request.beforeId);
+		const start = Math.max(0, (end < 0 ? rows.length : end) - request.limit);
+		return {
+			entries: rows.slice(start, end < 0 ? undefined : end),
+			has_more: start > 0,
+			cursor_missing: false,
+		};
+	}
+	return {};
+};
+
+const reactStandIn = `const R = () => globalThis.__reactRuntime;
+export const useState = (...a) => R().useState(...a);
+export const useEffect = (...a) => R().useEffect(...a);
+export const useLayoutEffect = (...a) => R().useLayoutEffect(...a);
+export const useInsertionEffect = () => {};
+export const useRef = (...a) => R().useRef(...a);
+export const useCallback = (...a) => R().useCallback(...a);
+export const useMemo = (...a) => R().useMemo(...a);
+export const useSyncExternalStore = (...a) => R().useSyncExternalStore(...a);
+export const useDebugValue = () => {};
+export const createElement = () => ({});
+export const Fragment = Symbol("fragment");
+export default { useState, useEffect, useLayoutEffect, useInsertionEffect, useRef, useCallback, useMemo, useSyncExternalStore, useDebugValue, createElement, Fragment };`;
+
+const bundle = await build({
+	stdin: {
+		contents: `
+			export { useCanonicalSessionStream } from "./src/renderer/src/shared/hooks/use-canonical-session";
+			export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
+			export { __resetPaintCache } from "./src/renderer/src/shared/store/paint-cache";
+			export { EMPTY_TRANSCRIPT, applyHistoryPage } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
+			export { outputFallbackLine } from "./src/renderer/src/features/chat/components/trace/tool-row-model";
+		`,
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@features": "./src/renderer/src/features",
+	},
+	plugins: [
+		{
+			name: "seed-label-gap-fixture",
+			setup(builder) {
+				builder.onResolve({ filter: /local-operator\/desktop-api$/ }, () => ({
+					path: "transport",
+					namespace: "seed-fixture",
+				}));
+				builder.onLoad({ filter: /.*/, namespace: "seed-fixture" }, () => ({
+					contents: `
+						export class DesktopControlError extends Error {}
+						export class UserFacingError extends Error {};
+						export const userFacingMessage = (error) => String(error?.message ?? error);
+						export const desktopResult = (request) => globalThis.__seedRequest(request);
+						export const subscribeDesktopStream = (args, onEvent) => globalThis.__seedSubscribe(args, onEvent);`,
+					loader: "js",
+					resolveDir: process.cwd(),
+				}));
+				builder.onResolve({ filter: /^react$/ }, () => ({
+					path: "react",
+					namespace: "seed-react",
+				}));
+				builder.onLoad({ filter: /.*/, namespace: "seed-react" }, () => ({
+					contents: reactStandIn,
+					loader: "js",
+				}));
+			},
+		},
+	],
+});
+const hook = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
+const {
+	useCanonicalSessionStream,
+	useCanonicalSessionsStore,
+	__resetPaintCache,
+	outputFallbackLine,
+} = hook;
+
+const SESSION = "70ddfaaf163a";
+
+/* ------------------------------------------- the React stand-in (one cell per call) */
+
+/*
+ * The same cell-based stand-in `reconnect-page-gap.test.mjs` and the composer
+ * cases in `echo-delivery.test.mjs` use: one cell per hook call, a setter that
+ * re-renders, dep-gated effects. It does NOT model React's scheduler, batching
+ * or commit timing - which is why nothing here asserts on a FRAME, only on
+ * transcript state after a stated sequence.
+ */
+function makeRuntime() {
+	const cells = [];
+	let cursor = 0;
+	let effects = [];
+	const runtime = { render: () => null };
+	const rerender = () => {
+		cursor = 0;
+		effects = [];
+		const out = runtime.render();
+		const flushed = effects;
+		effects = [];
+		for (const fn of flushed) fn?.();
+		return out;
+	};
+	runtime.rerender = rerender;
+	const slot = () => {
+		const index = cursor++;
+		if (!cells[index]) cells[index] = {};
+		return cells[index];
+	};
+	const unchanged = (was, next) =>
+		was !== undefined &&
+		next !== undefined &&
+		was.length === next.length &&
+		was.every((value, index) => Object.is(value, next[index]));
+	globalThis.__reactRuntime = {
+		useState: (init) => {
+			const cell = slot();
+			if (!("state" in cell))
+				cell.state = typeof init === "function" ? init() : init;
+			return [
+				cell.state,
+				(value) => {
+					const next = typeof value === "function" ? value(cell.state) : value;
+					if (Object.is(next, cell.state)) return;
+					cell.state = next;
+					rerender();
+				},
+			];
+		},
+		useRef: (init) => {
+			const cell = slot();
+			if (!("ref" in cell)) cell.ref = { current: init };
+			return cell.ref;
+		},
+		useCallback: (fn, deps) => {
+			const cell = slot();
+			if (!cell.fn || !unchanged(cell.deps, deps)) {
+				cell.fn = fn;
+				cell.deps = deps;
+			}
+			return cell.fn;
+		},
+		useMemo: (fn, deps) => {
+			const cell = slot();
+			if (!("value" in cell) || !unchanged(cell.deps, deps)) {
+				cell.value = fn();
+				cell.deps = deps;
+			}
+			return cell.value;
+		},
+		useEffect: (fn, deps) => {
+			const cell = slot();
+			if (unchanged(cell.deps, deps)) return;
+			cell.cleanup?.();
+			cell.deps = deps;
+			effects.push(() => {
+				cell.cleanup = fn();
+			});
+		},
+		useLayoutEffect: (fn, deps) => {
+			const cell = slot();
+			if (unchanged(cell.deps, deps)) return;
+			cell.cleanup?.();
+			cell.deps = deps;
+			effects.push(() => {
+				cell.cleanup = fn();
+			});
+		},
+		useSyncExternalStore: (_subscribe, getSnapshot) => getSnapshot(),
+	};
+	return runtime;
+}
+
+/* ------------------------------------------------------------------- the wire */
+
+const openFrame = (seq, gap) => ({
+	session_id: SESSION,
+	epoch: "bridge-epoch",
+	seq,
+	type: "open",
+	payload: { subscription_id: `sub-${seq}`, gap, watch_ttl_seconds: 45 },
+});
+
+/**
+ * A snapshot of a conversation whose turn has ENDED.
+ *
+ * `streaming` is the wire's own statement about whether a turn is in flight and
+ * it is the field the fix reads, so it is a parameter: the real open this
+ * fixture comes from carried `false` (`refresh_from_session` republishes it
+ * from the live session whenever a viewer attaches), while the mid-turn join
+ * the seed is defined for carries `true`.
+ */
+const snapshotFrame = (seq, { entries, liveEvents, streaming }) => ({
+	session_id: SESSION,
+	epoch: "bridge-epoch",
+	seq,
+	type: "snapshot",
+	payload: {
+		frontend: {
+			state_version: 1,
+			epoch: "owner-epoch",
+			sequence: seq,
+			live_cursor: entries.at(-1)?.id ?? "",
+			snapshot: {
+				epoch: "owner-epoch",
+				sequence: seq,
+				cwd: "/tmp/probe",
+				conversation_title: "Subagent performance",
+				conversation_title_user_set: true,
+				conversation_title_forked: false,
+				goal: "",
+				active_agent: "",
+				active_team: "",
+				selected_model: null,
+				effective_model: null,
+				streaming,
+				generation: 1,
+				pending_gate: null,
+				history_cursor: entries.at(-1)?.id ?? "",
+				live_events: liveEvents,
+				live_tool_started_at: {},
+				queued_steering: [],
+				jobs: [],
+				todos: [],
+				wakes: [],
+				mcp_servers: [],
+				model_catalogue: [],
+				context_tokens: null,
+				context_is_estimate: null,
+				context_window: null,
+				context_breakdown: null,
+				cumulative_parent_cost: null,
+				subagent_cost: null,
+				cost_knowledge: "unknown",
+				last_usage: null,
+				attention: null,
+			},
+		},
+		history: {
+			entries,
+			has_more: true,
+			cursor_missing: false,
+		},
+		cold: false,
+	},
+});
+
+function deliver(frame) {
+	const active = subscriptions.filter((entry) => !entry.disposed).at(-1);
+	assert.ok(active, "no live subscription to deliver to");
+	active.onEvent({ kind: "data", data: JSON.stringify(frame) });
+}
+
+/** Drain every scheduled flush, then let the async reconcile settle. */
+async function pump() {
+	for (let pass = 0; pass < 20 && rafQueue.length > 0; pass++) {
+		const callbacks = rafQueue;
+		rafQueue = [];
+		for (const callback of callbacks) callback();
+		await settle();
+	}
+	await settle();
+}
+
+const settle = async () => {
+	for (let i = 0; i < 4; i++)
+		await new Promise((resolve) => setImmediate(resolve));
+};
+
+/** The durable rows at a moment, and the call ids its seed names in order. */
+function moment(name) {
+	const at = fixture.moments[name];
+	const durable = fixture.journal.slice(0, at.journal_rows);
+	return {
+		durable,
+		page: durable.slice(-100),
+		liveEvents: at.live_events,
+	};
+}
+
+/** Calls the page cannot label: the seed's settled calls no page row names. */
+function unlabelledIn(page, liveEvents) {
+	const named = new Set(
+		page.flatMap((entry) =>
+			(entry.payload.tool_calls ?? []).map((call) => call.id),
+		),
+	);
+	return liveEvents
+		.map((event) => event.tool_call_id)
+		.filter((callId) => !named.has(callId));
+}
+
+async function open({ page, liveEvents, durable, beforePump }) {
+	__resetPaintCache();
+	subscriptions.length = 0;
+	requests.length = 0;
+	rafQueue = [];
+	globalThis.__seedDurable = durable;
+	useCanonicalSessionsStore.setState({
+		activeSessionId: null,
+		drafts: {},
+		sessions: [],
+	});
+	const runtime = makeRuntime();
+	let handle;
+	runtime.render = () => {
+		handle = useCanonicalSessionStream(SESSION, true);
+		return handle;
+	};
+	runtime.rerender();
+	deliver(openFrame(1, false));
+	deliver(snapshotFrame(2, { entries: page, liveEvents, streaming: true }));
+	// The first frame the reader sees, before any read has come back: the
+	// flush has painted the snapshot and fired the read, and nothing else.
+	const callbacks = rafQueue;
+	rafQueue = [];
+	for (const callback of callbacks) callback();
+	beforePump?.(handle);
+	await pump();
+	return { handle: () => handle, runtime };
+}
+
+const historyReads = () =>
+	requests.filter((request) => request.op === "sessions.history");
+
+/** What the object column paints for one tool record, given the view. */
+const objectColumn = (record, pending) =>
+	record.args
+		? "args"
+		: outputFallbackLine(record.output, pending.has(record.toolCallId));
+
+test("every seeded call of a long turn is labelled by the read the open fires", async () => {
+	const { durable, page, liveEvents } = moment("labels");
+	const missing = unlabelledIn(page, liveEvents);
+	assert.equal(
+		missing.length,
+		68,
+		"the fixture still carries the reported gap",
+	);
+
+	const { handle } = await open({ page, liveEvents, durable });
+	const tools = handle().transcript.records.filter(
+		(record) => record.kind === "tool",
+	);
+	const unlabelled = missing.filter((callId) => {
+		const record = tools.find((entry) => entry.toolCallId === callId);
+		return !record?.args;
+	});
+	assert.deepEqual(
+		unlabelled,
+		[],
+		`${unlabelled.length} of ${missing.length} seeded calls still paint their output where the command belongs`,
+	);
+	/*
+	 * The cost, asserted: ONE read, sized to reach the oldest missing call
+	 * (`reconcileLimit(68) = 100 + ceil(3.25 * 68) = 321`; the call needs 307).
+	 */
+	const reads = historyReads();
+	assert.equal(reads.length, 1, "one request labels the whole gap");
+	assert.equal(reads[0].beforeId, undefined, "and it is the journal's tail");
+	assert.equal(reads[0].limit, 321);
+});
+
+/**
+ * The `labels` journal with two `session_spend.v1`-shaped rows after every
+ * assistant row that names a missing call: the same bursts of state rows a real
+ * session writes, dense enough that no per-call ratio sizes the first read right.
+ */
+function padded(durable, missing) {
+	const out = [];
+	for (const entry of durable) {
+		out.push(entry);
+		const named = (entry.payload.tool_calls ?? []).some((call) =>
+			missing.has(call.id),
+		);
+		if (!named) continue;
+		for (let i = 0; i < 2; i++)
+			out.push({
+				id: `${entry.id.slice(0, 28)}pad${i}`,
+				ts: entry.ts,
+				type: "custom",
+				payload: { custom_type: "session_spend.v1", details: {} },
+			});
+	}
+	return out;
+}
+
+test("a first read that falls short keeps walking back until every call is labelled", async () => {
+	/*
+	 * The walk rule on its own. The old walk stopped as soon as a page CONNECTED
+	 * to the painted rows, which a tail read does long before it reaches the
+	 * oldest missing call; the new one keeps paging with `before_id` until that
+	 * call's assistant row is in hand.
+	 */
+	const { durable, page, liveEvents } = moment("labels");
+	const missing = new Set(unlabelledIn(page, liveEvents));
+	const { handle } = await open({
+		page,
+		liveEvents,
+		durable: padded(durable, missing),
+	});
+	const tools = handle().transcript.records.filter(
+		(record) => record.kind === "tool",
+	);
+	const unlabelled = [...missing].filter(
+		(callId) => !tools.find((entry) => entry.toolCallId === callId)?.args,
+	);
+	assert.deepEqual(
+		unlabelled,
+		[],
+		`${unlabelled.length} calls left unlabelled`,
+	);
+	const reads = historyReads();
+	assert.ok(reads.length >= 2, "the first read fell short, so the walk paged");
+	for (const read of reads.slice(1))
+		assert.ok(
+			read.beforeId,
+			"and every further page walks BACK, never re-reads the tail",
+		);
+	const total = reads.reduce((sum, read) => sum + read.limit, 0);
+	assert.ok(total <= 500, `bounded by RECONCILE_WALK_MAX_ROWS (read ${total})`);
+});
+
+test("the first frame holds the stand-in back until the label read settles", async () => {
+	const { durable, page, liveEvents } = moment("labels");
+	const missing = unlabelledIn(page, liveEvents);
+	let firstFrame = null;
+	const { handle } = await open({
+		page,
+		liveEvents,
+		durable,
+		beforePump: (view) => {
+			firstFrame = {
+				pending: view.labelPending ?? new Set(),
+				tools: view.transcript.records.filter(
+					(record) => record.kind === "tool",
+				),
+			};
+		},
+	});
+	assert.ok(firstFrame, "the first frame was observed");
+	for (const callId of missing)
+		assert.ok(
+			firstFrame.pending.has(callId),
+			`${callId} is held on the first frame`,
+		);
+	// No seeded row paints result text in the command column on the first frame.
+	const standIns = firstFrame.tools.filter((record) =>
+		objectColumn(record, firstFrame.pending)?.startsWith("… "),
+	);
+	assert.deepEqual(
+		standIns.map((record) => record.toolCallId),
+		[],
+		"no output stand-in on the first frame",
+	);
+	assert.equal(handle().labelPending.size, 0, "the hold ends with the read");
+});
+
+test("a read that cannot find a call's arguments gives the stand-in back", async () => {
+	/*
+	 * The hold lasts one read, never longer. Serve a journal that no longer holds
+	 * the missing calls' assistant rows, and once the walk has run out those rows
+	 * must show their stand-in exactly as before this change — the hold is not a
+	 * way of hiding a row forever.
+	 */
+	const { durable, page, liveEvents } = moment("labels");
+	const missing = new Set(unlabelledIn(page, liveEvents));
+	const pruned = durable.filter(
+		(entry) =>
+			!(entry.payload.tool_calls ?? []).some((call) => missing.has(call.id)),
+	);
+	const { handle } = await open({ page, liveEvents, durable: pruned });
+	const view = handle();
+	assert.equal(view.labelPending.size, 0, "the hold is released");
+	const tools = view.transcript.records.filter(
+		(record) => record.kind === "tool" && missing.has(record.toolCallId),
+	);
+	assert.ok(
+		tools.length > 0,
+		"the rows are painted from the durable tool rows",
+	);
+	const standIns = tools.filter((record) =>
+		objectColumn(record, view.labelPending)?.startsWith("… "),
+	);
+	assert.ok(
+		standIns.length > 0,
+		"and a row with output falls back to its stand-in",
+	);
+	const reads = historyReads();
+	assert.ok(
+		reads.reduce((sum, read) => sum + read.limit, 0) <= 500,
+		"within the walk's bound",
+	);
+});
+
+test("a round-end retry reads at least as deep as the walk that missed", async () => {
+	/*
+	 * The retry rule. A round end re-asks for the calls still unlabelled, and
+	 * those are the OLDEST of the gap: the newer ones were labelled by the first
+	 * read. It used to be sized `reconcileLimit(remaining)`, which shrinks as the
+	 * gap closes, so it could not reach the calls it was for — on the reported
+	 * session it labelled none. Here the walk's SECOND page fails (and its one
+	 * immediate retry), so the first walk ends part-way; the round-end retry must
+	 * start no shallower than the rows that walk already read, and finish the job.
+	 */
+	const { durable, page, liveEvents } = moment("labels");
+	const missing = new Set(unlabelledIn(page, liveEvents));
+	const journal = padded(durable, missing);
+	let failing = 2;
+	const serve = globalThis.__seedRequest;
+	globalThis.__seedRequest = async (request) => {
+		if (
+			request.op === "sessions.history" &&
+			request.beforeId !== undefined &&
+			failing > 0
+		) {
+			failing -= 1;
+			requests.push(request);
+			throw new Error("history unavailable");
+		}
+		return serve(request);
+	};
+	try {
+		const { handle } = await open({ page, liveEvents, durable: journal });
+		const first = historyReads();
+		const firstDepth = first[0].limit;
+		const tools = () =>
+			handle().transcript.records.filter((record) => record.kind === "tool");
+		const left = [...missing].filter(
+			(callId) => !tools().find((entry) => entry.toolCallId === callId)?.args,
+		);
+		assert.ok(
+			left.length > 0,
+			"the failed page left the oldest calls unlabelled",
+		);
+		requests.length = 0;
+		deliver({
+			session_id: SESSION,
+			epoch: "bridge-epoch",
+			seq: 3,
+			type: "event",
+			payload: { type: "turn_end" },
+		});
+		await pump();
+		const retry = historyReads();
+		assert.ok(retry.length >= 1, "the round end retried");
+		assert.ok(
+			retry[0].limit >= firstDepth,
+			`the retry reads ${retry[0].limit}, not less than the ${firstDepth} rows already read`,
+		);
+		const still = left.filter(
+			(callId) => !tools().find((entry) => entry.toolCallId === callId)?.args,
+		);
+		assert.deepEqual(
+			still,
+			[],
+			`${still.length} calls the retry did not reach`,
+		);
+	} finally {
+		globalThis.__seedRequest = serve;
+	}
+});
+
+test("a stripped seed end keeps the durable +N -M on an edit row", async () => {
+	const { durable, page, liveEvents } = moment("counts");
+	const callId = "toolu_01U3Y21CrbaP1HVMGcKMapJu";
+	const durableRow = page.find(
+		(entry) => entry.payload.tool_call_id === callId,
+	);
+	assert.deepEqual(
+		[
+			durableRow.payload.provider_payload.details.added,
+			durableRow.payload.provider_payload.details.removed,
+		],
+		[91, 19],
+		"the page carries the durable counts",
+	);
+	const seeded = liveEvents.find((event) => event.tool_call_id === callId);
+	assert.equal(seeded.result.details, null, "and the seed's end was stripped");
+
+	const counts = (view) => {
+		const row = view.transcript.records.find(
+			(record) => record.id === `tool:${callId}`,
+		);
+		return { diff: row.diff?.length ?? 0, pill: [row.added, row.removed] };
+	};
+	let firstFrame = null;
+	const { handle, runtime } = await open({
+		page,
+		liveEvents,
+		durable,
+		beforePump: (view) => {
+			firstFrame = counts(view);
+		},
+	});
+	/*
+	 * The FIRST frame is where the reader saw it: the page paints `+91 -19` and
+	 * the seed's end, folded straight after it in the same flush, wrote 0/0 over
+	 * it while `preferDiff` kept the body.
+	 */
+	assert.ok(firstFrame.diff > 0, "the diff body survives (it always did)");
+	assert.deepEqual(
+		firstFrame.pill,
+		[91, 19],
+		"first frame: the counts survive",
+	);
+	assert.deepEqual(
+		counts(handle()).pill,
+		[91, 19],
+		"settled: the counts survive",
+	);
+	/*
+	 * And a LATER snapshot (a reconnect, or clicking back into the conversation)
+	 * whose seed is the same: every call is labelled by now, so it fires no read
+	 * that could repaint the durable row, and the stripped end is the last word.
+	 */
+	deliver(snapshotFrame(4, { entries: page, liveEvents, streaming: true }));
+	await pump();
+	runtime.rerender();
+	assert.deepEqual(
+		counts(handle()).pill,
+		[91, 19],
+		"a re-applied seed does not blank them either",
+	);
+});

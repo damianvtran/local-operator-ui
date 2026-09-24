@@ -569,13 +569,17 @@ test("a seed that arrives with the turn over paints nothing after the last messa
 	);
 
 	/*
-	 * The read the refusal rests on, asserted rather than described: ONE tail
-	 * read (no `before_id`, so it is the end of the journal), sized for exactly
-	 * the calls the page cannot label — `reconcileLimit(67) = 100 + 2 * 67`.
+	 * The read the refusal rests on, asserted rather than described: the first
+	 * read is the journal's tail (no `before_id`), sized for the calls the page
+	 * cannot label — `reconcileLimit(67) = 100 + ceil(3.25 * 67) = 318`. The
+	 * operator's own open logged `limit=234` (the old `2 * 67`), which is how
+	 * this fixture's `older` half was cut; the stub below serves only those 234
+	 * rows, so the walk reaches the start of what it has and stops on
+	 * `has_more: false` rather than on a label.
 	 */
 	const reads = requests.filter((request) => request.op === "sessions.history");
 	assert.equal(reads[0]?.beforeId, undefined, "the read is the journal's tail");
-	assert.equal(reads[0]?.limit, 100 + 2 * unlabelledCalls.length);
+	assert.equal(reads[0]?.limit, 100 + Math.ceil(3.25 * unlabelledCalls.length));
 
 	/*
 	 * And what that read is WORTH, in both directions: a tail read is bounded, so

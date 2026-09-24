@@ -254,9 +254,21 @@ const STAND_IN_MARK = "… ";
  * `null` means the result had nothing to offer and the row should stay empty:
  * "no stand-in exists" is a different claim from "the stand-in is a blank",
  * and the caller renders the two differently (an empty slot against a mark).
+ *
+ * `labelPending` is the row's first label read still being in flight (see
+ * `CanonicalSessionView.labelPending`): the arguments are one `/history` read
+ * away, so the result is held back and the column stays empty for that read.
+ * On the first frame of a mid-turn join nearly every seeded row is in this
+ * state, and a column of result lines (`… {"text": 200, "solo_cpu": 0.08…`)
+ * reads as the commands that ran. Once the read settles the caller passes
+ * `false` and the stand-in returns for the calls that really have no
+ * arguments to find.
  */
-export function outputFallbackLine(output: string | null): string | null {
-	if (!output) return null;
+export function outputFallbackLine(
+	output: string | null,
+	labelPending = false,
+): string | null {
+	if (!output || labelPending) return null;
 	for (const line of output.split("\n")) {
 		const trimmed = line.trim();
 		if (!trimmed) continue;
@@ -590,6 +602,47 @@ export function preferDiff(
 	if (next === null) return previous;
 	if (sameDiff(next, previous)) return previous;
 	return next;
+}
+
+/**
+ * The `+N` / `-M` counters a result reports, under `preferDiff`'s rule.
+ *
+ * The counters and the diff body come from one `details` object, and a frame the
+ * live-event budget stripped carries NEITHER. Only the body used to be guarded,
+ * so a conversation opened mid-turn showed an `edit` row with no counts whose
+ * expansion still held the diff: the snapshot applies its durable page first
+ * (the row gets `details = {added: 91, removed: 19, diff}`), then `applyLiveSeed`
+ * re-applies the seed's `tool_execution_end` for the same call with
+ * `details: null` — `_bound_live_result_in_place` (session/frontend_state.py)
+ * drops `details` once it costs more than a quarter of the row's share, and with
+ * 100 retained ends the share is 560 characters, so the limit is 140 and nearly
+ * every edit in a busy turn loses it. Reading counts out of `null` wrote 0/0 over
+ * the durable counts while `preferDiff` kept the body beside them.
+ *
+ * So: a frame with NO `details` object says nothing about the counts and keeps
+ * `previous`; a frame WITH one is the producer's statement and wins, including a
+ * statement of zero (the same "absent vs stated" split `preferDiff` makes). Kept
+ * here beside `preferDiff` so the two guards on one `details` object are one
+ * rule in one file and cannot drift apart again.
+ *
+ * Counts follow `diffCount` (the TUI's `_diff_counts`): only a positive integer
+ * counts, anything else is zero.
+ */
+export function preferDiffCounts(
+	details: unknown,
+	previous: { added: number; removed: number } | null,
+): { added: number; removed: number } {
+	if (!details || typeof details !== "object") {
+		return {
+			added: previous?.added ?? 0,
+			removed: previous?.removed ?? 0,
+		};
+	}
+	const source = details as Record<string, unknown>;
+	return {
+		added: diffCount(source.added),
+		removed: diffCount(source.removed),
+	};
 }
 
 /**
