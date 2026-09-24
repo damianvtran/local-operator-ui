@@ -1,0 +1,952 @@
+{
+  "label": "head",
+  "scen": "a-counts",
+  "tree": "~/local-operator-ui-worktrees/qa490r3-head-66263",
+  "events": [],
+  "windowMode": "[window-mode] window mode headless: 1380x900, window created and never shown, page throttling off, no Dock tile",
+  "first": {
+    "t": 267,
+    "rows": 56,
+    "standIns": 0,
+    "blank": 26,
+    "readsAnsweredYet": 0,
+    "sample": [
+      {
+        "id": "tool:toolu_01YBpcyjBx573hwwwNVWeZwJ",
+        "name": "bash",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_012M39Y1uq9oY3PmagP1FKUd",
+        "name": "bash",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_014TGCtWm8PFXDecV1fpz9n8",
+        "name": "bash",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01JqcAjwSyFQxRL4Th77FneZ",
+        "name": "bash",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01VjaEyUjXRom7MzNZwQQgSA",
+        "name": "bash",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01KbMDnt2m2FzxyDMkC1Q83k",
+        "name": "bash",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01HN42bybBHuxQQNtgdqRCRy",
+        "name": "bash",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01HrTwpzPy2tSbWqc2oZpxnX",
+        "name": "bash",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01WxavbfHmTZX5fyz97geJ4b",
+        "name": "bash",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01Mhq4hiwkJ79ykkcenehuhF",
+        "name": "bash",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_018UhtvDm7dUcDfoEbTNMyNa",
+        "name": "bash",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01MU5Ag6fyK1jUEpxijkMW7M",
+        "name": "bash",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01VREcSbGfgJuRmC9mxFuMfd",
+        "name": "read",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_017XoYD5bbQNSaDV4ZpqEM5k",
+        "name": "bash",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_012c2FUp64snbsHGB5WpoJax",
+        "name": "bash",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01Xz9LiKf8zaQuLQ2qZjdNwN",
+        "name": "bash",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01JBF4hGc6y5NoGzTqEyBwr6",
+        "name": "bash",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_015cKT2pN2rE1vfiUwZvd88H",
+        "name": "bash",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01P5kbrGcnfJ289gR4ysVk8Q",
+        "name": "bash",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01FXnnm9JcEBN9yewVW3SCva",
+        "name": "bash",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01W3nufHdn2JyZLNr6QiCn6W",
+        "name": "bash",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01JTopYmd4BxCm12rBLdQauL",
+        "name": "bash",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01FfKLXdVgTB46M6dfNxDpKv",
+        "name": "bash",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_013RQP1jggRvTvVukd1ooVPi",
+        "name": "read",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01KkZmyAeUqYAStZbzaoYvwS",
+        "name": "read",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_0115sVd47cd9EeQhSCQQVBRD",
+        "name": "edit",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01U8pmogfTz51LPmm7X3Aztb",
+        "name": "bash",
+        "summary": "olrvzvstsgljjkpoevicempfhetzghhovuoetlzwhhhbinkdopmesbpybgeqnjjltzwjwhpwrjbiuidgnkohaqbudpzyhitytzktbbfcx",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01LitBejhWuGxB7Y8sj3kuiY",
+        "name": "edit",
+        "summary": "jcilqzkdbpvxpyeolusxmbcnoymeizxlnvswitunxichapsdnogrtaxjqciakwwvrrkfcnxbtqalkasvk",
+        "counts": "+19 -1"
+      },
+      {
+        "id": "tool:toolu_012dMwJzP3XvWNyHkF2KaX1f",
+        "name": "bash",
+        "summary": "becllkyfstoxngnrhsprpxersydvmppqyibvtxqilxtmnahjipvjmlkboyhcrjahifcygarvwtbvuodcpxvuzioprsuhbkfuwruqwlanvpbfqreohvgywfesm",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01HUJ75JkSkupEVnCxtD8bir",
+        "name": "bash",
+        "summary": "umptbmwfqzrofaydtojvglwnpztjlbwomupbgodapyqsbnfwswlhjkndaxeblodmzefslkfjthlxatfxxghugiprdmydgrcspltpcpzurmigfwtwsprcncxfa",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01ShGubNPBDBMSYveNkD9okM",
+        "name": "bash",
+        "summary": "umptbmwfqzrofaydtojvglwnpztjlbwomupbgodapyqsbnfwswlhjkndaxeblodmzefslkfjthlxatfxxghugiprdmydgrcspltpcpzurmigfwtwsprcncxfa",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_016RP6iYmPgKQXCFwCWc5Rwc",
+        "name": "bash",
+        "summary": "xzgcenwzlydwprvowgohqvkanfzxxywrqpsajhbkcadlgvnhmtszvusmoqeyegnydsmuflcvvqnmoasxhvdznmsqzgucttqccvptebsujjmvn",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01AbiYa649WyHntM2bMERASZ",
+        "name": "bash",
+        "summary": "xzgcenwzlydwprvowgohqvkanfzxxywrqpsajhbkcadlgvnhmtszvusmoqeyegnydsmuflcvvqnmoasxhvdznmsqzgucttqccvptebsujjmvn",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01K8J175GxtZpWXvmxwj3N8R",
+        "name": "bash",
+        "summary": "hdsryjksywqzpqyesofnjpouljkankuvbylpewmmyststdladjkxqslinogsucaxchfxryisqvthvaaeyptntnrrkpatwyzsbkfaqubektgwzrhdzictlqeoa",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01AYtVtH4MDnenmwnUQK9iYb",
+        "name": "bash",
+        "summary": "jkxskiaihrkjafutkaloxqdbhfhlahaigdxcxujawzbyijewbrwgbfixtnqagsupkjigjkzpaaucpzhtvjzywcgkkjslxjbulbwsrmexfzdxowfpgxupigrfg",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_017XD1uBc8sqqegaq1zhP3y7",
+        "name": "bash",
+        "summary": "krxxnacydonnesqszqcngqyougknlvqpqutivlntyljrvpcedcqegewjbjwkyhhjwgdyetbphlskmzvgbigomwucfsxumvfritktjdrrfjqiahvlndxhdopoo",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01452zQo8uJymbVYds3k85CK",
+        "name": "bash",
+        "summary": "soxskipzstonqfdqhsnrqukiqoywapcausjhzmwifsahxenbtwvdnwtmyivdmxrfefpuectcjxjfywpjzaamsmfzqvhzmlggncnbvyxlscerdgicrdvseglku",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_019iVPR8Cj8pLkCSCiYPZ7hW",
+        "name": "bash",
+        "summary": "spgqzwaloradqdipqffikycppsxbsmjvtdkbbdksmgjssfcxgdkjagbaccugchldnmvwulwevaynjtveqydbbcsfnyzjomkjlidyvpqwrlkqvbyjtyuqlxtpm",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01Me6n8RqX5jdfBCZcsFzWmK",
+        "name": "bash",
+        "summary": "sackdwqqfexnfugquwhyqvesciegxcrwmwyhmxunokbaibrnxknccqhfsgiwmjlhgfsflcrfpwewfhbkiobdlyonxtoesehcipsyaavtqwuztbltjmetblszy",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01LSkCEXRep3r3DZ5ow6EKsj",
+        "name": "bash",
+        "summary": "odjbvcsqcouxrusgkkfeeorrnheopdeswgpnxdfdfnwudukgqirhwcdgkssenwdcxkpbmhxxgolorxtpoyevbzlhmagdjeyrjiuxdpfnovhvonkuvnefddcqy",
+        "counts": ""
+      }
+    ]
+  },
+  "firstShot": {
+    "file": "out/head-a-counts-01-first-frame.png",
+    "target": "tool:toolu_01U3Y21CrbaP1HVMGcKMapJu",
+    "targetRow": {
+      "id": "tool:toolu_01U3Y21CrbaP1HVMGcKMapJu",
+      "name": "edit",
+      "summary": "quiyhmsipkrkxxyauhqpvjptrlrkliycqakvkujnogsvitthuvhpressiunxoklqmlvnocxwxwr",
+      "counts": "+91 -19"
+    },
+    "editRows": [
+      {
+        "id": "tool:toolu_0115sVd47cd9EeQhSCQQVBRD",
+        "counts": "",
+        "summary": ""
+      },
+      {
+        "id": "tool:toolu_01LitBejhWuGxB7Y8sj3kuiY",
+        "counts": "+19 -1",
+        "summary": "jcilqzkdbpvxpyeolusxmbcnoymeizxlnvswitunxichapsdno"
+      },
+      {
+        "id": "tool:toolu_01U3Y21CrbaP1HVMGcKMapJu",
+        "counts": "+91 -19",
+        "summary": "quiyhmsipkrkxxyauhqpvjptrlrkliycqakvkujnogsvitthuv"
+      }
+    ],
+    "answeredYet": 0,
+    "rows": 56,
+    "standIns": 0,
+    "blank": 26
+  },
+  "timeline": [
+    {
+      "t": 118,
+      "rows": 0,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 0,
+      "answered": 0
+    },
+    {
+      "t": 267,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 26,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 677,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 26,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 779,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 26,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 883,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 26,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 987,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 26,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 1098,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 26,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 1201,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 26,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 1304,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 26,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 1410,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 26,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 1514,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 26,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 1616,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 26,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 1717,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 26,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 1820,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 26,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 1924,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 26,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 2027,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 26,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 2129,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 26,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 2233,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 26,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 2335,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 26,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 2443,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 26,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 2548,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 26,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 2651,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 26,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 2756,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 2859,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 2962,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 3070,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 3175,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 3279,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 3382,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 3487,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 3596,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 3698,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 3805,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 3908,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 4013,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 4145,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 4248,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 4351,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 4459,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 4567,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 4674,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 4776,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 4888,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 4992,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 5095,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 5199,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 5302,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 5404,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 5507,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 5611,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 5714,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 5818,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 5922,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 6025,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 6132,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 6236,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 6340,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 6443,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 6552,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 6655,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 6757,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 6859,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 6963,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 7080,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 7182,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 7286,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 7404,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    },
+    {
+      "t": 7508,
+      "rows": 56,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 1
+    }
+  ],
+  "openFrames": [
+    {
+      "k": "chat,0,0,0",
+      "from": 1,
+      "to": 15,
+      "frames": 3
+    },
+    {
+      "k": "1490,0,0,0",
+      "from": 47,
+      "to": 211,
+      "frames": 5
+    },
+    {
+      "k": "1490,56,0,26",
+      "from": 260,
+      "to": 2505,
+      "frames": 271
+    }
+  ],
+  "historyOnOpen": [
+    {
+      "sid": "5eed1abe1490",
+      "at": 223,
+      "limit": 328,
+      "asked": 328,
+      "beforeId": null,
+      "mode": "ok",
+      "answeredAt": 2725,
+      "rows": 328
+    }
+  ],
+  "readsBeforeOpen": 0,
+  "settled": {
+    "rows": 56,
+    "standIns": 0,
+    "blank": 0,
+    "hash": "#/chat/5eed1abe1490",
+    "standInRows": [],
+    "blankRows": []
+  },
+  "settledShot": "out/head-a-counts-02-settled.png",
+  "editRows": [
+    {
+      "id": "tool:toolu_0115sVd47cd9EeQhSCQQVBRD",
+      "name": "edit",
+      "summary": "yodcoohsucjlvbfwbhceihdwhnojwuyshrnbedyocssxkabvnufrhgnfidojkbclhseopbmp",
+      "counts": "+59"
+    },
+    {
+      "id": "tool:toolu_01LitBejhWuGxB7Y8sj3kuiY",
+      "name": "edit",
+      "summary": "jcilqzkdbpvxpyeolusxmbcnoymeizxlnvswitunxichapsdnogrtaxjqciakwwvrrkfcnxbtqalkasv",
+      "counts": "+19 -1"
+    },
+    {
+      "id": "tool:toolu_01U3Y21CrbaP1HVMGcKMapJu",
+      "name": "edit",
+      "summary": "quiyhmsipkrkxxyauhqpvjptrlrkliycqakvkujnogsvitthuvhpressiunxoklqmlvnocxwxwr",
+      "counts": "+91 -19"
+    }
+  ],
+  "revealed": {
+    "rows": 105,
+    "standIns": 0,
+    "blank": 0,
+    "standInRows": [],
+    "readsAfterOpen": 1
+  },
+  "revealedEdits": [
+    {
+      "id": "tool:toolu_01229MggZsVteT5R3TAnKgm8",
+      "summary": "uxlgfhtgvfancwuonqvhzssthtcrvnvmhoxwsptncirlhepxqaqmwkkvykfbvmlflssfwb",
+      "counts": "+272"
+    },
+    {
+      "id": "tool:toolu_0115sVd47cd9EeQhSCQQVBRD",
+      "summary": "yodcoohsucjlvbfwbhceihdwhnojwuyshrnbedyocssxkabvnufrhgnfidojkbclhseopb",
+      "counts": "+59"
+    },
+    {
+      "id": "tool:toolu_01LitBejhWuGxB7Y8sj3kuiY",
+      "summary": "jcilqzkdbpvxpyeolusxmbcnoymeizxlnvswitunxichapsdnogrtaxjqciakwwvrrkfcn",
+      "counts": "+19 -1"
+    },
+    {
+      "id": "tool:toolu_01U3Y21CrbaP1HVMGcKMapJu",
+      "summary": "quiyhmsipkrkxxyauhqpvjptrlrkliycqakvkujnogsvitthuvhpressiunxoklqmlvnoc",
+      "counts": "+91 -19"
+    }
+  ],
+  "unknownRoutes": [
+    "POST /v1/desktop/radient",
+    "GET /v1/agents",
+    "GET /v1/credentials",
+    "GET /v1/desktop/commands",
+    "GET /v1/desktop/sessions/5eed1abe1490/command-entities",
+    "GET /v1/desktop/sessions/5eed1abe1490/mcp"
+  ],
+  "historyAll": [
+    {
+      "sid": "5eed1abe1490",
+      "at": 223,
+      "limit": 328,
+      "asked": 328,
+      "beforeId": null,
+      "mode": "ok",
+      "answeredAt": 2725,
+      "rows": 328
+    },
+    {
+      "sid": "5eed1abe1490",
+      "at": 8225,
+      "limit": 100,
+      "asked": 100,
+      "beforeId": "d0ea8021c4bd48709a46b9a586a9f1de",
+      "mode": "hang"
+    }
+  ]
+}
