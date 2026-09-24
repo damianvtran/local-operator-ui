@@ -1994,6 +1994,19 @@ type CanonicalSessionsState = {
 	 */
 	transfers: Record<string, string>;
 	/**
+	 * The `request_id` of each move this window has STARTED, keyed by `sessionId|to`
+	 * (backend PR #1540's at-most-once journal).
+	 *
+	 * A RETRY MUST REPLAY, NOT START A SECOND MOVE. The route journals the id and
+	 * replays its recorded outcome for a repeat, so re-sending a move that failed -
+	 * or whose answer was lost - with the SAME id is the difference between "where did
+	 * it go?" and a clean answer, and minting a fresh id per press is what let one
+	 * gesture reach the peer's relay twice 3 ms apart (QA round 1, Q3). Held per
+	 * target, so moving the conversation somewhere else is a different move; cleared
+	 * when the move is CONFIRMED, because a later move is then a new one.
+	 */
+	transferRequestIds: Record<string, string>;
+	/**
 	 * The last mesh refusal the sidebar has to say out loud, or null: a peer that
 	 * refused a create (S5), or a move that failed (S7).
 	 *
@@ -2871,6 +2884,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			archiveUndo: null,
 			deleteCandidate: null,
 			transfers: {},
+			transferRequestIds: {},
 			meshNotice: null,
 			clearMeshNotice: () => set({ meshNotice: null }),
 			transferSession: async (sessionId, to, title) => {
@@ -2915,8 +2929,15 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					});
 					return false;
 				}
+				const moveKey = `${sessionId}|${to}`;
+				const requestId =
+					get().transferRequestIds[moveKey] ?? crypto.randomUUID();
 				set((state) => ({
 					transfers: { ...state.transfers, [sessionId]: to },
+					transferRequestIds: {
+						...state.transferRequestIds,
+						[moveKey]: requestId,
+					},
 					meshNotice: null,
 				}));
 				const settle = () =>
@@ -2929,7 +2950,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					const reply = await desktopResult<unknown>({
 						op: "sessions.transfer",
 						sessionId,
-						requestId: crypto.randomUUID(),
+						requestId,
 						to,
 						/*
 						 * The route waits this long for the source runtime to retire
@@ -2977,9 +2998,18 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					set((state) => {
 						const transfers = { ...state.transfers };
 						delete transfers[sessionId];
+						/*
+						 * THE ID IS SPENT: the route answered, so a later move of this
+						 * conversation is a NEW move and must not replay this one's outcome
+						 * (PR #1540's journal). A FAILED or unconfirmed move keeps its id, so
+						 * the user's retry replays rather than sending a second pull.
+						 */
+						const transferRequestIds = { ...state.transferRequestIds };
+						delete transferRequestIds[moveKey];
 						const remote = receipt.locality === "remote";
 						return {
 							transfers,
+							transferRequestIds,
 							sessions: state.sessions.map((row) =>
 								row.session_id === sessionId
 									? {

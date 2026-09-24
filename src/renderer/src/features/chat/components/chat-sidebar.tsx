@@ -3924,6 +3924,12 @@ export function ChatSidebar({
 										 */}
 										<span
 											data-peer-row-name
+											/* THE NAME IS THE ONE CELL THAT CAN BE CUT AT THE CLAMP, so it
+											   carries its own full value (QA round 1, Q10): the full name was
+											   reachable only through the trailing's `title`, the move button's
+											   or the sr-only text, none of which is where a reader looks to
+											   ask "which device is this?". */
+											title={deviceLabel(peer)}
 											className="min-w-[14ch] flex-1 truncate"
 										>
 											{deviceLabel(peer)}

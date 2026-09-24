@@ -307,6 +307,14 @@ const mount = async (rows) => {
 		loading: false,
 		error: null,
 		transfers: {},
+		// The at-most-once journal this round added (Q3): a case that starts a move
+		// must not inherit another case's request id.
+		transferRequestIds: {},
+		// And the pane holds nothing to begin with: from this round a move of the
+		// conversation the pane has OPEN is refused here rather than at the route
+		// (Q4a), so a case that does not set this would test that refusal instead of
+		// the move.
+		activeSessionId: null,
 		meshNotice: null,
 	});
 	const container = document.createElement("div");
@@ -1340,4 +1348,99 @@ test("Q1: two hits for ONE conversation synthesize ONE row", () => {
 	const drawn = twice.rows[0];
 	assert.equal(drawn.session_id, "c7c74407768f");
 	assert.equal(drawn.owner_device, LAPTOP);
+});
+
+test("Q3: a retried move REPLAYS its request id, and a confirmed one spends it", async () => {
+	globalThis.__features = { ...BASE_FEATURES, peers: 1, session_transfer: 1 };
+	const row = plain("a", "Migrate the deploy script", {
+		locality: "remote",
+		owner_device: LAPTOP,
+		owner_device_name: "devon-laptop",
+		reachable: true,
+	});
+	const harness = await mount([row]);
+	try {
+		/*
+		 * THE ROUTE JOURNALS THE ID (backend PR #1540): repeating one replays the
+		 * recorded outcome instead of starting a second move. A fresh uuid per press
+		 * is what let one gesture reach the peer's relay twice 3 ms apart, so a retry
+		 * after a failure must carry the SAME id.
+		 */
+		requests = [];
+		globalThis.__transferError = new DesktopControlError(null, "the app gave up");
+		await act(async () => {
+			await store.getState().transferSession("a", STUDIO, "Migrate the deploy script");
+		});
+		await act(async () => {
+			await store.getState().transferSession("a", STUDIO, "Migrate the deploy script");
+		});
+		const ids = requests
+			.filter((request) => request.op === "sessions.transfer")
+			.map((request) => request.requestId);
+		assert.equal(ids.length, 2, "the retry did not reach the route");
+		assert.equal(ids[0], ids[1], "the retry minted a second request id");
+		// A move to a DIFFERENT device is a different move, and gets its own id.
+		await act(async () => {
+			await store.getState().transferSession("a", LAPTOP, "Migrate the deploy script");
+		});
+		const toLaptop = requests.filter(
+			(request) => request.op === "sessions.transfer" && request.to === LAPTOP,
+		);
+		assert.notEqual(toLaptop.at(-1).requestId, ids[0], "a different target reused the id");
+		// And a CONFIRMED move spends the id: the next move of that conversation is new.
+		globalThis.__transferError = undefined;
+		await act(async () => {
+			await store.getState().transferSession("a", STUDIO, "Migrate the deploy script");
+		});
+		requests = [];
+		await act(async () => {
+			await store.getState().transferSession("a", STUDIO, "Migrate the deploy script");
+		});
+		const afterSuccess = requests.find(
+			(request) => request.op === "sessions.transfer",
+		);
+		assert.ok(afterSuccess, "the move after a success did not reach the route");
+		assert.notEqual(
+			afterSuccess.requestId,
+			ids[0],
+			"a confirmed move replayed its id on the next, different move",
+		);
+	} finally {
+		globalThis.__transferError = undefined;
+		globalThis.__features = { ...BASE_FEATURES };
+		await harness.unmount();
+	}
+});
+
+test("Q10: the peer name cell carries its own full value at the clamp", async () => {
+	globalThis.__features = { ...BASE_FEATURES, peers: 1, session_transfer: 1 };
+	peerAnswer = {
+		peers: [peer(LAPTOP, "damians-mac-studio-in-the-back-office-rack-2")],
+		degraded: [],
+	};
+	/*
+	 * The `Peers` group is collapsed by default - zero pins renders nothing, and its
+	 * rows mount only when it is open - so the case opens it the way the app does,
+	 * through the same disclosure store the framework persists.
+	 */
+	localStorage.setItem(
+		"chat-sidebar-disclosures",
+		JSON.stringify({ previous: true, peers: true }),
+	);
+	const harness = await mount([]);
+	try {
+		const name = harness.container.querySelector("[data-peer-row-name]");
+		assert.ok(name, "no peer row");
+		// The CELL is what truncates, so the cell is what must carry the value: the
+		// trailing's title and the sr-only text are elsewhere on the row (QA round 1,
+		// Q10).
+		assert.equal(
+			name.getAttribute("title"),
+			"damians-mac-studio-in-the-back-office-rack-2",
+		);
+	} finally {
+		localStorage.removeItem("chat-sidebar-disclosures");
+		globalThis.__features = { ...BASE_FEATURES };
+		await harness.unmount();
+	}
 });
