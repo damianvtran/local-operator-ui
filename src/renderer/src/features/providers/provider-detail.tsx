@@ -30,7 +30,10 @@ import { Alert, Badge, Button, Input, Label } from "@shared/components/ui";
  * `GET /v1/auth/status`, so they cannot disagree about one verdict at one
  * instant (see `useRadientAuthStatus`).
  */
-import { useRadientLoginVerdict } from "@shared/hooks/use-radient-session-issue";
+import {
+	radientSessionIssueKey,
+	useRadientLoginVerdict,
+} from "@shared/hooks/use-radient-session-issue";
 /*
  * The MODULE, not the `@shared/hooks` barrel: the barrel carries
  * `use-connectivity-status`, which reads the renderer's config at import time and
@@ -171,10 +174,47 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	 * early returns, so the hook order is the same for every provider.
 	 */
 	const login = useRadientLoginVerdict();
-	/** The app's own answer about whether a Radient sign-in is stored, and whether
+	/**
+	 * The app's own answer about whether a Radient sign-in is stored, and whether
 	 * it could be asked at all (see `loginState`; design round 1's D3 is why the
-	 * chip may not fall back to the credential row when the verdict is absent). */
-	const { accountRead, unavailable } = useRadientUserQuery();
+	 * chip may not fall back to the credential row when the verdict is absent).
+	 *
+	 * `retryOnMount: false` IS THE FIX FOR THE ONE REGRESSION THIS PR CAUSED, and
+	 * it is here rather than in the hook because it is a property of THIS caller:
+	 * the panel REPORTS this read, it does not own it. Round 2 measured what an
+	 * owning observer costs when it lives inside a subtree the read's own loading
+	 * state unmounts (design D7, QA Q-5, one defect from two rigs):
+	 *
+	 *   the account section early-returns its spinner for `isLoading`, which is
+	 *   true again the moment any observer starts a read; the sign-in block it
+	 *   hides contains this panel, so this panel is unmounted by the very read it
+	 *   is watching. React Query re-runs a FAILED, data-less query when a new
+	 *   observer mounts on it (`@tanstack/query-core@5.73.3`
+	 *   `shouldLoadOnMount`, `retryOnMount` default true), so the sequence is:
+	 *   read fails / the section renders its content / this panel mounts / the
+	 *   mount re-commissions the read / the section spins again / this panel is
+	 *   unmounted / repeat. Measured on the real composition (settings section +
+	 *   its sign-in block) in this repo's jsdom harness: 14 account reads in 14 s,
+	 *   the section never leaving the spinner, `status: pending`,
+	 *   `fetchStatus: fetching`, `failureCount: 2` -- the same shape QA read off
+	 *   the live app (54 reads a boot, ~1/s) and design read off its own rig
+	 *   (39 in 30 s on this head against 4 on `origin/main`). With this option the
+	 *   same composition settles in one read and renders the sentence, the chip
+	 *   and the sign-in control.
+	 *
+	 * WHAT WAS RULED OUT, because the leading hypothesis was the other one: the
+	 * hook's options are written inline (`queryKey: radientUserKeys.user()`, an
+	 * inline `retry`), and a fresh options object per render was the suspect. It is
+	 * not the cause. Ten forced re-renders of an errored observer whose `queryKey`
+	 * array and `retry` function are rebuilt every render start ZERO further reads
+	 * (React Query hashes the key by value and only compares options), and hoisting
+	 * `retry` to module scope AND pinning the key to one module-level array leaves
+	 * the loop at exactly 14 reads in 14 s. Only the mount is load-bearing, which
+	 * is why the fix is one option on this call and not a rewrite of the hook.
+	 */
+	const { accountRead, unavailable } = useRadientUserQuery({
+		retryOnMount: false,
+	});
 	/**
 	 * The badge's own words, from the same predicate the grid's cards use, so one
 	 * credential cannot be called two things on one screen.
@@ -211,6 +251,18 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 
 	const refreshProviders = useCallback(() => {
 		void queryClient.invalidateQueries({ queryKey: desktopKeys.providers });
+		/*
+		 * And the VERDICT, whose query is what the chip actually reads (code round
+		 * 2, M3). Without this a sign-in that just succeeded from this panel left
+		 * the grid and this panel saying "Needs re-authentication" until the 60 s
+		 * poll or a window focus -- the user who fixed the fault was told it was
+		 * still broken, on the surface that had just fixed it. Reproduced with this
+		 * PR's harness: refused / press the card / `auth.status` answers `succeeded`
+		 * (verdict `ok`) / back to providers, and the grid still read "Needs
+		 * re-authentication" with the verdict request count unchanged at 1 and
+		 * `{credential_id: 7, state: "login_required"}` still in the cache.
+		 */
+		void queryClient.invalidateQueries({ queryKey: radientSessionIssueKey });
 		onConnected?.();
 	}, [queryClient, onConnected]);
 
