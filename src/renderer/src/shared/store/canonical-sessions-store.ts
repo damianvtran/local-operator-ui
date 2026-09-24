@@ -37,6 +37,7 @@ import {
 	isDesktopRefusalCode,
 } from "../../../../shared/desktop-contract";
 import {
+	type CanonicalFrontendState,
 	type CompletionAttention,
 	type CompletionAttentionAckReceipt,
 	type SessionBinding,
@@ -900,7 +901,41 @@ export const SEND_FAILURE_COPY = {
 	 */
 	lateDeliveryDraft:
 		"Your earlier message was delivered. What's here now hasn't been sent.",
+	/*
+	 * AND THE ARM WHERE THE DELIVERED WORDS ARE STILL IN THE BOX (review round 3,
+	 * D8). The prefix test cannot remove them - the user edited inside them, so no
+	 * boundary between their words and the message's is knowable - and the plain
+	 * sentence above says nothing about the box, so a user whose next Send carries
+	 * the sentence they already sent gets no warning that it will. Their files do
+	 * not travel again (the chips come out by identity), which is exactly why the
+	 * copy has to carry the rest: this is the one duplicate the app cannot prevent,
+	 * so it names it.
+	 */
+	lateDeliveryOverlap:
+		"Your earlier message was delivered. Its words are still in the box, so sending again would repeat them.",
 } as const;
+
+/**
+ * The sentence and register for a press the app cannot take yet, from the one
+ * table: `gateLock` when the run is visibly waiting on a question, `sendLock`
+ * otherwise.
+ *
+ * A function rather than two literals because two callers answer the same press -
+ * the composer, which can see that a flight is open, and the pane, which refuses
+ * one that reaches it anyway - and UX round 3 (U6) is what the drift costs: a
+ * press that produced nothing on screen, which is what makes a user press again
+ * over a box that by then holds both messages.
+ */
+export function pressLockCopy(
+	/*
+	 * The frontend's own field, typed from its own state so a caller cannot hand
+	 * this a truthiness the pane would read differently: both the pane's two
+	 * refusals and the composer's press answer from this one value.
+	 */
+	pendingGate: CanonicalFrontendState["pending_gate"] | undefined,
+): string {
+	return pendingGate ? SEND_FAILURE_COPY.gateLock : SEND_FAILURE_COPY.sendLock;
+}
 
 export const RETRY_LABEL = "Retry";
 export const CLEAR_LABEL = "Clear";
@@ -1409,8 +1444,26 @@ export function migrateHeldClaim(
 	 * never wrote it, because it did not exist. A row that has none, and looks like a
 	 * released claim in every other way, IS one.
 	 */
+	/*
+	 * AND `submittedRendered`, WHICH IS THE MARKER THIS BUILD WRITES WITH THE LATCH
+	 * (review round 3, R2-2). `errorRetry` alone is `undefined` for every row that
+	 * left this build WITHOUT reaching its catch: the pin writes `submittedText` and
+	 * the latch writes `admissionAttempted` together with `submittedRendered` before
+	 * the wire, and a quit before the answer is a row with no `errorRetry` at all.
+	 * Treated as a released claim, it handed the payload back (harmlessly) and then
+	 * cleared `submittedText` - which is what `replay` reads - while keeping the id,
+	 * so the next send went out under an id the owner may already hold a receipt for
+	 * and with a body the credential seam re-derived: the receipt-conflict hazard
+	 * this pin exists to prevent, on the one arm whose whole point is that the app
+	 * cannot tell whether the message was admitted.
+	 *
+	 * `submittedRendered` is absent from the released build (`v0.30.25` never wrote
+	 * it), so the pair below separates the two rows: a released claim has neither
+	 * field, this build's interrupted row carries the rendered pin.
+	 */
 	const releasedClaim =
-		draft.heldClaimCode !== undefined || draft.errorRetry === undefined;
+		draft.heldClaimCode !== undefined ||
+		(draft.errorRetry === undefined && draft.submittedRendered === undefined);
 	if (!releasedClaim) return false;
 	if (!draft.admissionAttempted || draft.submittedText === undefined)
 		return false;
@@ -1456,7 +1509,9 @@ export function migrateHeldClaim(
 		/*
 		 * And the marker that makes the move once-only, whatever the row's shape: a
 		 * pane that mounts twice finds `migratedHeld`, and a row written by THIS build
-		 * fails the `heldClaimCode` test above and never gets here at all.
+		 * - interrupted before its catch ran, so it carries no `errorRetry` - fails the
+		 * `submittedRendered` half of the shape test above and never gets here at all
+		 * (review round 3, R2-2).
 		 */
 		heldClaimCode: undefined,
 	});
@@ -1908,7 +1963,25 @@ export async function admitChatDraft(
 		 * session), `unknown` (it may have, and the app cannot tell) and `gone`
 		 * (the conversation is not there). See `sendFailureClass`.
 		 */
-		const klass = sendFailureClass(error);
+		/*
+		 * ONE FACT, ABOUT THE ID THIS REQUEST ACTUALLY CARRIED (review round 3,
+		 * R2-1). `previous.admissionAttempted` is the PRE-SEND snapshot, and an
+		 * edited payload rotates `admissionRequestId` in this same call - so read on
+		 * its own it can describe an id this attempt no longer uses. Read that way, a
+		 * codeless 409 on a FRESH id took the unknown branch for the sentence while the
+		 * row latched `not_sent`: one failure, two classes, and the sentence "Sending
+		 * it again is safe." offering a Retry that re-posted a body the daemon had just
+		 * refused.
+		 *
+		 * `replay` is the retry rule's OWN answer about the id - a replay reuses the id
+		 * it was first issued with, an edit mints a new one - so the fact below is true
+		 * only for an attempt that went out under an id an earlier attempt had already
+		 * used and left unresolved. That is exactly the receipt conflict the
+		 * codeless-409 split exists to tell from a refusal of this body, and it is the
+		 * value both classifications now read.
+		 */
+		const replayedAttempt = replay && previous?.admissionAttempted === true;
+		const klass = sendFailureClass(error, replayedAttempt);
 		// Gated on the request that actually failed: a create-stage 422 is about
 		// the create fields and must keep its own diagnosis (round 5, R13).
 		const leadingSlash =
@@ -1918,11 +1991,7 @@ export async function admitChatDraft(
 			: sendFailureCode(error);
 		// One call, so the sentence the row keeps and the control it offers cannot
 		// come from two classifications of the same failure.
-		const copy = sendFailureCopy(
-			error,
-			failureCode,
-			previous?.admissionAttempted === true,
-		);
+		const copy = sendFailureCopy(error, failureCode, replayedAttempt);
 		/*
 		 * DID IT LAND AFTER ALL? Only a failure with an UNKNOWN outcome can be
 		 * answered this way, and only when the id the owner would have used is
