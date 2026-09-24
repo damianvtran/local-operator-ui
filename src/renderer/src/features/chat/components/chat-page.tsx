@@ -61,7 +61,11 @@ import {
 	turnStopped,
 } from "../canonical/working-line-model";
 import { catalogueTitleUpdate, resolveChatTitle } from "../chat-title";
-import { caughtFailureNotice, composerNoticeFor } from "../composer-notice";
+import {
+	caughtFailureNotice,
+	composerNoticeFor,
+	lockAnswerOutlived,
+} from "../composer-notice";
 import {
 	type DraftResolution,
 	type DraftSelectionTarget,
@@ -1971,18 +1975,33 @@ function SessionPanel({
 	 */
 	useEffect(() => {
 		/*
-		 * THE GATE'S OWN LOCK IS NOT THIS ONE'S BUSINESS: `answerLockedSend` picks
-		 * `gateLock` when an approval is still waiting, and that notice belongs to the
-		 * QUESTION on screen rather than to the flight, so it retires when the gate does
-		 * (the pane's own read) and not when the row stops being pending.
+		 * THE PREDICATE IS A FUNCTION, so it has a behavioural pin rather than a reading
+		 * of this effect's source (review round 5, n5-2). The three terms are the three
+		 * things that can hold a flight open: the row's `pending`, this pane's own
+		 * `admitting` - which covers the window BEFORE an admission exists, where a press
+		 * answered during image decode used to have its sentence retired in the same
+		 * commit (m5-1) - and the approval gate, whose lock belongs to the question on
+		 * screen rather than to any flight.
 		 */
-		const gatePending = canonical.frontend?.pending_gate != null;
-		if (draft?.pending === true || gatePending || !sendErrorMuted) return;
+		if (
+			!lockAnswerOutlived({
+				rowPending: draft?.pending === true,
+				admitting,
+				gatePending: canonical.frontend?.pending_gate != null,
+				muted: sendErrorMuted,
+			})
+		)
+			return;
 		setSendError(null);
 		setSendErrorCode(undefined);
 		setSendErrorRetry(false);
 		setSendErrorMuted(false);
-	}, [draft?.pending, canonical.frontend?.pending_gate, sendErrorMuted]);
+	}, [
+		draft?.pending,
+		admitting,
+		canonical.frontend?.pending_gate,
+		sendErrorMuted,
+	]);
 	const notice = composerNoticeFor({
 		error: sendError,
 		code: sendErrorCode,

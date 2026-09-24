@@ -69,7 +69,7 @@ globalThis.__canonicalEcho = (event) => {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {useConversationInputStore, mergeReturnedText, mergeReturnedPayload, composerHoldsExactly, rehydrateInputRows} from "./src/renderer/src/shared/store/conversation-input-store"; export {caughtFailureNotice, composerNoticeFor, retryOfferedForFailureCode} from "./src/renderer/src/features/chat/composer-notice"; export {DesktopControlError, UserFacingError} from "@shared/api/local-operator/desktop-api"; export {RUNTIME_BUSY_CODE, RUNTIME_RETIRING_CODE, DESKTOP_DEADLINE_EXCEEDED_CODE} from "./src/shared/desktop-contract";',
+			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {useConversationInputStore, mergeReturnedText, mergeReturnedPayload, composerHoldsExactly, rehydrateInputRows} from "./src/renderer/src/shared/store/conversation-input-store"; export {caughtFailureNotice, composerNoticeFor, lockAnswerOutlived, retryOfferedForFailureCode} from "./src/renderer/src/features/chat/composer-notice"; export {DesktopControlError, UserFacingError} from "@shared/api/local-operator/desktop-api"; export {RUNTIME_BUSY_CODE, RUNTIME_RETIRING_CODE, DESKTOP_DEADLINE_EXCEEDED_CODE} from "./src/shared/desktop-contract";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -133,6 +133,7 @@ const {
 	composerIdentityFor,
 	caughtFailureNotice,
 	composerNoticeFor,
+	lockAnswerOutlived,
 	migrateHeldClaim,
 	retryOfferedForFailureCode,
 	mergeReturnedPayload,
@@ -1516,6 +1517,165 @@ test("the pane renders the store's classification, and not one of its own", asyn
 		true,
 		"the old path offered a Retry over a refusal, which is what the finding measured",
 	);
+});
+
+/*
+ * U17 (review round 5), BOTH ENDINGS, BEHAVIOURALLY.
+ *
+ * Round 4's fix retired the `overlap` sentence with the words it describes - but it
+ * read `row.returned?.text`, and every state that RAISES the note is written with
+ * `returned: undefined` (the hand-back has been resolved by then). So the rule always
+ * saw an empty string and retired the sentence on the FIRST ordinary keystroke, while
+ * the delivered words were still in the box verbatim: the duplicate the sentence exists
+ * to warn about, reached after the warning had already gone. The delivered text now
+ * rides beside the flag, and this pin drives both endings through the store's own
+ * actions - the raise included, so the field cannot quietly stop being written.
+ */
+test("the overlap sentence retires with the delivered words, and not on any keystroke", () => {
+	reset();
+	const store = useConversationInputStore.getState();
+	const delivered = "PS: board report draft about the numbers";
+	const mine = "and this is my new question";
+	/*
+	 * The app's own return path, and then a user edit INSIDE the delivered words - which
+	 * is what makes the boundary unknowable and raises the `overlap` arm rather than the
+	 * `draft-only` one.
+	 */
+	/*
+	 * The row the hand-back leaves: the delivered payload in `returned`, and a box the
+	 * user has since edited INSIDE those words - which is what makes the boundary
+	 * unknowable and raises `overlap` rather than `draft-only`.
+	 */
+	useConversationInputStore.setState({
+		inputByConversation: {
+			[SESSION]: {
+				currentInput: `${delivered.replace("draft", "DRAFT")}\n\n${mine}`,
+				submittedMessages: [],
+				currentHistoryIndex: null,
+				replies: [],
+				attachments: [],
+				returned: { text: delivered, attachments: [], replies: [] },
+			},
+		},
+	});
+	useConversationInputStore.getState().reconcileDelivered(SESSION);
+	const row = () =>
+		useConversationInputStore.getState().inputByConversation[SESSION];
+	assert.equal(
+		row().lateDelivered,
+		"overlap",
+		"the arm this pin is about was never reached",
+	);
+	assert.equal(
+		row().lateDeliveredText,
+		delivered,
+		"the delivered text is not carried beside the note, so the retirement rule has nothing to read",
+	);
+	/*
+	 * ONE ORDINARY KEYSTROKE, with the words still there verbatim: the sentence must stay.
+	 */
+	const typed = `${row().currentInput}!`;
+	useConversationInputStore.getState().setCurrentInput(SESSION, typed);
+	assert.equal(
+		row().lateDelivered,
+		"overlap",
+		"the note retired while the delivered words were still in the box, which is the duplicate it exists to warn about",
+	);
+	assert.ok(
+		typed.includes(delivered.replace("draft", "DRAFT")),
+		"the pin's own box no longer holds the delivered words, so it is not measuring the arm it claims",
+	);
+	/*
+	 * AND WHEN THE USER DELETES THEM, the note goes: it is a statement about a box that
+	 * no longer exists.
+	 */
+	useConversationInputStore.getState().setCurrentInput(SESSION, mine);
+	assert.equal(
+		row().lateDelivered,
+		undefined,
+		"the note outlived the words it describes",
+	);
+});
+
+/*
+ * n5-2 AND m5-1 (review round 5), as one predicate with a behavioural pin.
+ *
+ * The lock answer's retirement was pinned only by a regex on the effect's source, and it
+ * read only the row's `pending` - so a press answered in the window BEFORE an admission
+ * exists (image decode, `awaitWindow`) had its sentence retired in the same commit.
+ * `lockAnswerOutlived` is the whole rule now, so a term that goes missing fails here.
+ */
+test("the lock answer outlives exactly the states that hold a flight open", () => {
+	const flying = {
+		rowPending: false,
+		admitting: false,
+		gatePending: false,
+		muted: true,
+	};
+	assert.equal(
+		lockAnswerOutlived(flying),
+		true,
+		"a muted lock answer with nothing in flight is stale, and the screen is claiming a send that has ended",
+	);
+	assert.equal(
+		lockAnswerOutlived({ ...flying, admitting: true }),
+		false,
+		"the pre-admission window is a flight: the row is not pending yet and the answer must stay",
+	);
+	assert.equal(lockAnswerOutlived({ ...flying, rowPending: true }), false);
+	assert.equal(
+		lockAnswerOutlived({ ...flying, gatePending: true }),
+		false,
+		"the gate's own lock belongs to the question on screen, not to a flight",
+	);
+	assert.equal(
+		lockAnswerOutlived({ ...flying, muted: false }),
+		false,
+		"a real failure's sentence is not the lock's answer, and this rule must not touch it",
+	);
+});
+
+/*
+ * m5-2 (review round 5): the notice belongs to the attempt that produces it.
+ *
+ * The pane renders the row's sentence when the row has one, so a row still carrying an
+ * OLDER failure's sentence showed that one for a throw that writes no row of its own -
+ * measured as an unrelated "not ready" refusal rendering the earlier budget sentence. The
+ * latch clears it, which is how the store says which attempt the sentence is about.
+ */
+test("an admission clears the notice the previous failure left on the row", async () => {
+	reset();
+	const store = useConversationInputStore.getState();
+	store.setCurrentInput(SESSION, input.text);
+	store.beginInFlight(SESSION, {
+		text: input.text,
+		attachments: [],
+		replies: [],
+	});
+	responses.push(
+		new DesktopControlError(
+			409,
+			"this message's text alone fills 1.1 MB of the 1.0 MB limit, leaving no room for its attachments; shorten the text or send the images on their own",
+		),
+	);
+	await assert.rejects(admitChatDraft(key, input, SESSION));
+	assert.ok(
+		draftRow().error,
+		"no failure was recorded, so this pin has nothing to clear",
+	);
+	/*
+	 * The next attempt, read at its latch: the notice is gone before the wire, so a throw
+	 * this attempt never records cannot inherit it.
+	 */
+	responses.push(new DesktopControlError(504, "deadline_exceeded"));
+	const pending = admitChatDraft(key, input, SESSION);
+	await Promise.resolve();
+	assert.equal(
+		draftRow().error,
+		undefined,
+		"the new attempt kept the previous failure's sentence, so a throw with no row of its own would render it",
+	);
+	await assert.rejects(pending);
 });
 
 /* ------------------------------------------------ the released app's claim */

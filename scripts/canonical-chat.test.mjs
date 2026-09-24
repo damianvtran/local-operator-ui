@@ -1774,8 +1774,24 @@ test("the notice is ONE sentence from ONE place, and the composer renders it rat
 	 */
 	assert.match(
 		page,
-		/if \(draft\?\.pending === true \|\| gatePending \|\| !sendErrorMuted\) return;/,
+		/!lockAnswerOutlived\(\{/,
 		"the lock's sentence is latched again, so it can outlive the send it describes",
+	);
+	/*
+	 * AND ITS TERMS ARE THE PANE'S OWN (review round 5, m5-1 and n5-2). `admitting` is the
+	 * window BEFORE an admission exists - where a press answered during image decode had
+	 * its sentence retired in the same commit - and the predicate itself is a pure helper
+	 * so the behaviour is pinned rather than this wiring only.
+	 */
+	assert.match(
+		page,
+		/rowPending: draft\?\.pending === true,/,
+		"the predicate no longer reads the row's own pending flag",
+	);
+	assert.match(
+		page,
+		/admitting,/,
+		"the pre-admission window is not a term any more, so a press answered there loses its sentence",
 	);
 	assert.doesNotMatch(
 		page,
