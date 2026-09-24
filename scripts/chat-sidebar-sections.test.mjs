@@ -18,6 +18,7 @@
  * does that on the built app, and its frames are the claim.
  */
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -199,4 +200,66 @@ test("the dragged size is persisted, and survives the round trip to disk", () =>
 			.chatSidebarListHeight,
 		null,
 	);
+});
+
+/**
+ * THE ONE-SCROLLER CONTRACT, pinned at the source level, and the reason it is read
+ * from the SOURCE rather than driven here.
+ *
+ * The defect this guards against was a CSS rule, not a decision: the sidebar's own
+ * div carried `overflow-x-hidden`, and setting one axis of `overflow` computes the
+ * other from `visible` to `auto` (CSS 2.1 §11.1.1) - so the column became a third
+ * scroller wrapping the two its sections carry, which is exactly what the operator
+ * photographed. No node test in this suite renders CSS, and jsdom computes no
+ * layout at all, so the instrument is the shipped class list on the two elements
+ * that decide it, plus the drill the rig runs: `--scene sidebar-sections`
+ * `checkSidebarScroll` measures `scrollHeight === clientHeight` on the column and the
+ * panel, one scrollable element under a point, and a wheel over either pane leaving
+ * the chrome and the other pane where they were, in both palettes and at short
+ * heights. Read together - this file says the classes are right, the scene says the
+ * browser agrees.
+ */
+test("the sidebar's column cannot scroll, and its panes contain their own overflow", () => {
+	const sidebar = readFileSync(
+		new URL(
+			"../src/renderer/src/shared/components/navigation/sidebar-navigation.tsx",
+			import.meta.url,
+		),
+		"utf8",
+	);
+	const shell = sidebar.match(
+		/data-sidebar-shell=""[\s\S]{0,240}?className="([^"]+)"/,
+	);
+	assert.ok(shell, "the shell's own class list was not found");
+	assert.match(
+		shell[1],
+		/(^|\s)overflow-hidden(\s|$)/,
+		"the column must not scroll at all",
+	);
+	assert.doesNotMatch(
+		shell[1],
+		/overflow-x-hidden|overflow-y-auto|overflow-auto/,
+		"`overflow-x-hidden` computes `overflow-y: auto`, which makes the column a third scroller",
+	);
+
+	const pane = readFileSync(
+		new URL(
+			"../src/renderer/src/features/chat/components/chat-sidebar.tsx",
+			import.meta.url,
+		),
+		"utf8",
+	);
+	/*
+	 * Both region class lists, by the marker each carries: the entity pane's
+	 * `[overflow-anchor:none]` and the list pane's `[scrollbar-gutter:stable]`.
+	 */
+	for (const [marker, label] of [
+		["min-h-0 flex-1 space-y-4 overflow-y-auto", "the agents pane"],
+		["relative space-y-4 overflow-y-auto", "the chats pane"],
+	]) {
+		assert.ok(
+			pane.includes(marker),
+			`${label}'s class list must carry ${marker}`,
+		);
+	}
 });

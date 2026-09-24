@@ -15175,6 +15175,335 @@ async function sceneSidebarSplit(cdp, handle) {
  * both sections have to have rows for "visible sections" to mean anything - an empty
  * catalogue would photograph two headings.
  */
+/**
+ * THE SIDEBAR'S ONE SCROLLER, measured rather than argued.
+ *
+ * WHY THIS EXISTS. The operator caught three scrollbars in one column on the running
+ * app - one on the sidebar's outer edge spanning its whole height, one inside the
+ * Agents section and one inside the chats section - and the cause was a CSS trap
+ * rather than a layout intent: `overflow-x-hidden` on the column's own div computes
+ * `overflow-y: auto` (CSS 2.1 §11.1.1), so the column became a scroller wrapping the
+ * two its sections carry. A wheel event then has no unambiguous target, and the fixed
+ * chrome can be scrolled out from under the pointer.
+ *
+ * WHAT IT REPORTS: the column's own scroll box, every ancestor's, every scroller in
+ * the sidebar subtree by name, the document's, the y of each fixed chrome row, and -
+ * per region - whether a point inside it has exactly one scrollable ancestor. The
+ * assertions are the driver's, so a later edit that re-introduces an outer scroller
+ * fails a check rather than being read off a frame.
+ */
+const sidebarScrollFacts = (cdp) =>
+	cdp.evaluate(`(() => {
+		const box = (el) => { const r = el.getBoundingClientRect(); return { y: Math.round(r.y), h: Math.round(r.height) }; };
+		const scroller = (el) => { const s = getComputedStyle(el); return (s.overflowY === "auto" || s.overflowY === "scroll") && el.scrollHeight > el.clientHeight + 1; };
+		const name = (el) => el.getAttribute("data-sidebar-region") || el.getAttribute("data-sidebar-shell") !== null && "shell" || el.id || el.tagName + "." + String(el.className || "").split(" ").slice(0, 3).join(".").slice(0, 40);
+		const shell = document.querySelector("[data-sidebar-shell]");
+		const nav = document.querySelector('nav[aria-label="Chats"]');
+		const strip = document.querySelector("[data-sidebar-strip]");
+		const root = shell ?? strip ?? null;
+		const inner = [];
+		if (root) {
+			root.querySelectorAll("*").forEach((el) => { if (scroller(el)) inner.push(name(el)); });
+			if (scroller(root)) inner.push(name(root));
+		}
+		const chain = [];
+		for (let el = root; el && el !== document.body; el = el.parentElement) {
+			const s = getComputedStyle(el);
+			chain.push({ tag: el.tagName, oy: s.overflowY, client: el.clientHeight, scroll: el.scrollHeight, scrollable: scroller(el) });
+		}
+		/*
+		 * POINTWISE: how many scrollable elements the point at the centre of each
+		 * region sits inside. One means the wheel has one target; two is the defect
+		 * this check exists for; nought means the pane cannot be scrolled at all.
+		 */
+		const at = (el) => {
+			if (!el) return null;
+			const r = el.getBoundingClientRect();
+			const x = Math.round(r.x + r.width / 2);
+			const y = Math.round(r.y + Math.min(r.height / 2, 80));
+			const under = document.elementsFromPoint(x, y).filter(scroller).map(name);
+			return { x, y, scrollableUnder: under, scrollTop: Math.round(el.scrollTop) };
+		};
+		const scrollTop = (sel) => { const el = document.querySelector(sel); return el === null ? null : Math.round(el.scrollTop); };
+		return {
+			shell: shell ? { oy: getComputedStyle(shell).overflowY, client: shell.clientHeight, scroll: shell.scrollHeight, scrollTop: Math.round(shell.scrollTop) } : null,
+			strip: strip ? { oy: getComputedStyle(strip).overflowY, client: strip.clientHeight, scroll: strip.scrollHeight, scrollTop: Math.round(strip.scrollTop) } : null,
+			nav: nav ? { client: nav.clientHeight, scroll: nav.scrollHeight, oy: getComputedStyle(nav).overflowY, scrollTop: Math.round(nav.scrollTop) } : null,
+			inner,
+			chain,
+			document: { client: document.scrollingElement.clientHeight, scroll: document.scrollingElement.scrollHeight, scrollTop: Math.round(document.scrollingElement.scrollTop) },
+			chrome: {
+				brand: (() => { const n = document.querySelector("[data-brand-mark]"); return n === null ? null : box(n); })(),
+				newChat: (() => { const n = document.querySelector("[data-new-chat-row]"); return n === null ? null : box(n); })(),
+				search: (() => { const n = document.querySelector("[data-command-palette-trigger]"); return n === null ? null : box(n); })(),
+				destinations: (() => { const n = document.querySelector('[data-tour-tag="nav-item-browser"]'); return n === null ? null : box(n); })(),
+			},
+			entities: at(document.querySelector('[data-sidebar-region="entities"]')),
+			chats: at(document.querySelector('[data-sidebar-region="chats"]')),
+			/*
+			 * THE BOX TREE, for the case where an element reports more content than it
+			 * has box: scrollHeight alone says an ancestor overflows, and only the
+			 * children's own heights say WHICH one. Cheap enough to carry always, and
+			 * the note is what a reader needs when a check fails at 3am.
+			 */
+			boxes: (() => {
+				const detail = (el) => {
+					if (el === null) return null;
+					const r = el.getBoundingClientRect();
+					const st = getComputedStyle(el);
+					return {
+						name: name(el),
+						top: Math.round(r.top),
+						h: Math.round(r.height),
+						client: el.clientHeight,
+						scroll: el.scrollHeight,
+						css: st.height + "/" + st.minHeight + "/" + st.maxHeight + "/" + st.flex,
+					};
+				};
+				const nodes = [];
+				if (nav) {
+					nodes.push(detail(nav));
+					for (const child of nav.children) nodes.push(detail(child));
+					const split = nav.querySelector("div[data-sidebar-split]")?.parentElement ?? null;
+					if (split) { nodes.push(detail(split)); for (const child of split.children) nodes.push(detail(child)); }
+				}
+				return nodes;
+			})(),
+			/*
+			 * WHAT LEAKS OUT OF THE PANEL. scrollHeight on an ancestor says SOMETHING
+			 * pokes past it and this says which element: every descendant whose box
+			 * crosses the panel's own bottom edge and which is not clipped by a
+			 * scrollable ancestor in between (those are contained by their scroller and
+			 * are not the leak). The list is short by construction - a leak is a defect -
+			 * so it is printed whole.
+			 */
+			leaks: (() => {
+				if (!nav) return [];
+				const navBox = nav.getBoundingClientRect();
+				const clipped = (el) => {
+					for (let p = el.parentElement; p && p !== nav; p = p.parentElement) {
+						const s = getComputedStyle(p);
+						if (s.overflowY !== "visible") return true;
+					}
+					return false;
+				};
+				const out = [];
+				for (const el of nav.querySelectorAll("*")) {
+					if (out.length > 12) break;
+					const r = el.getBoundingClientRect();
+					if (r.height === 0) continue;
+					if (r.bottom <= navBox.bottom + 1) continue;
+					if (clipped(el)) continue;
+					out.push({ name: name(el), top: Math.round(r.top), bottom: Math.round(r.bottom), h: Math.round(r.height), over: Math.round(r.bottom - navBox.bottom) });
+				}
+				return out;
+			})(),
+		};
+	})()`);
+
+/**
+ * WHICH CHILD OWNS THE PANEL'S OVERFLOW, when the panel reports any.
+ *
+ * A number that is too big says something pokes out; it does not say what. This
+ * hides each of the panel's own children in turn (and, one level down, the
+ * boundary container's) and reports what the panel's scrollHeight does without it,
+ * restoring the DOM between probes - so the answer is a delta rather than a guess,
+ * and the DOM is exactly as it was when the frame is taken.
+ */
+const diagnoseSidebarOverflow = (cdp) =>
+	cdp.evaluate(`(() => {
+		const nav = document.querySelector('nav[aria-label="Chats"]');
+		if (!nav) return null;
+		const describe = (el) => el.tagName + "." + String(el.className || "").split(" ").slice(0, 3).join(".").slice(0, 44);
+		/*
+		 * Follow the drop down the tree: at each level hide each child in turn and
+		 * keep the one whose absence shrinks the PANEL, then descend into it. Three
+		 * levels is enough to reach a region's own scroll box, and the chain is what
+		 * a reader needs - the element that owns the overflow is on it.
+		 */
+		const chain = [];
+		let container = nav;
+		for (let depth = 0; depth < 4; depth += 1) {
+			const target = nav.scrollHeight;
+			let found = null;
+			for (const child of container.children) {
+				const shown = child.style.display;
+				child.style.display = "none";
+				const without = nav.scrollHeight;
+				child.style.display = shown;
+				const drop = target - without;
+				if (drop <= 0) continue;
+				const entry = {
+					depth,
+					name: describe(child),
+					drop,
+					h: Math.round(child.getBoundingClientRect().height),
+					client: child.clientHeight,
+					scroll: child.scrollHeight,
+					overflow: getComputedStyle(child).overflowY,
+					position: getComputedStyle(child).position,
+				};
+				chain.push(entry);
+				if (found === null || drop > found.drop) found = { drop, child };
+			}
+			if (found === null) break;
+			container = found.child;
+		}
+		/*
+		 * AND WHAT WOULD CONTAIN IT. The panes are scroll containers, yet their scrolled
+		 * content still inflates the PANEL's scrollHeight in this Chromium - so this
+		 * measures the panel under each candidate containment rule and restores the DOM
+		 * between probes. The answer decides the fix rather than a theory of the
+		 * browser deciding it.
+		 */
+		const shell = document.querySelector("[data-sidebar-shell]");
+		const panes = [...nav.querySelectorAll('[data-sidebar-region]')];
+		const candidates = [
+			["panes: position relative", () => panes.forEach((el) => { el.style.position = "relative"; })],
+			["panes: contain paint", () => panes.forEach((el) => { el.style.contain = "paint"; })],
+			["panes: overflow hidden", () => panes.forEach((el) => { el.style.overflow = "hidden"; })],
+			["nav: position relative (already)", () => {}],
+			["shell: overflow clip", () => { if (shell) shell.style.overflow = "clip"; }],
+			["shell: contain paint", () => { if (shell) shell.style.contain = "paint"; }],
+		];
+		const probe = [];
+		for (const [label, apply] of candidates) {
+			const before = [nav.scrollHeight, shell ? shell.scrollHeight : null];
+			apply();
+			probe.push({ label, nav: nav.scrollHeight, shell: shell ? shell.scrollHeight : null, before });
+			// Restore: the inline styles this probe wrote are the only ones removed.
+			panes.forEach((el) => { el.style.position = ""; el.style.contain = ""; el.style.overflow = ""; });
+			if (shell) shell.style.overflow = ""; if (shell) shell.style.contain = "";
+		}
+		return { nav: nav.clientHeight + "/" + nav.scrollHeight, chain, probe };
+	})()`);
+
+/** One wheel notch at a point, through CDP's own input pipeline. */
+async function wheelAt(cdp, x, y, deltaY) {
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseWheel",
+		x,
+		y,
+		deltaX: 0,
+		deltaY,
+		buttons: 0,
+	});
+	await wait(260);
+}
+
+/**
+ * The scroll contract for ONE state, asserted: the column never scrolls, the panes
+ * below the boundary are the only scrollers, each point has at most one scrollable
+ * element over it, and a wheel over a pane moves THAT pane and nothing else - never
+ * the chrome, never the other pane, never the column.
+ */
+async function checkSidebarScroll(cdp, state) {
+	const facts = await sidebarScrollFacts(cdp);
+	note(`scroll facts, ${state}`, JSON.stringify(facts));
+	const root = facts.shell ?? facts.strip;
+	const chromeBefore = facts.chrome;
+	check(
+		`${state}: neither the sidebar's container nor its panel scrolls`,
+		root !== null &&
+			root.scroll === root.client &&
+			(facts.nav === null || facts.nav.scroll === facts.nav.client) &&
+			facts.document.scroll === facts.document.client,
+		JSON.stringify({
+			shell: facts.shell,
+			strip: facts.strip,
+			nav: facts.nav,
+			document: facts.document,
+		}),
+	);
+	if (
+		(root !== null && root.scroll !== root.client) ||
+		(facts.nav !== null && facts.nav.scroll !== facts.nav.client)
+	) {
+		note(
+			`overflow diagnosis, ${state}`,
+			JSON.stringify(await diagnoseSidebarOverflow(cdp)),
+		);
+	}
+	check(
+		`${state}: no ancestor of the sidebar is a scroller`,
+		facts.chain.every((el) => !el.scrollable),
+		JSON.stringify(facts.chain.filter((el) => el.scrollable)),
+	);
+	check(
+		`${state}: at most one scrollable element under a point in either pane`,
+		(facts.entities?.scrollableUnder.length ?? 0) <= 1 &&
+			(facts.chats?.scrollableUnder.length ?? 0) <= 1,
+		JSON.stringify({
+			entities: facts.entities?.scrollableUnder,
+			chats: facts.chats?.scrollableUnder,
+		}),
+	);
+
+	/*
+	 * THE WHEEL, over each pane in turn. Where a pane's own content overflows this
+	 * asserts it MOVED and nothing else did; where it fits, it asserts nothing moved
+	 * at all - which is the state the operator's "if a section's content fits, it has
+	 * no scrollbar" asks for.
+	 */
+	for (const [pane, point, selector] of [
+		["chats", facts.chats, SPLIT_CHATS],
+		["entities", facts.entities, SPLIT_ENTITIES],
+	]) {
+		if (point === null) continue;
+		const before = await sidebarScrollFacts(cdp);
+		const beforeTop = await cdp.evaluate(
+			`(() => { const el = document.querySelector(${JSON.stringify(selector)}); return el === null ? null : Math.round(el.scrollTop); })()`,
+		);
+		await wheelAt(cdp, point.x, point.y, 240);
+		const after = await sidebarScrollFacts(cdp);
+		const afterTop = await cdp.evaluate(
+			`(() => { const el = document.querySelector(${JSON.stringify(selector)}); return el === null ? null : Math.round(el.scrollTop); })()`,
+		);
+		const others = [
+			["entities", SPLIT_ENTITIES],
+			["chats", SPLIT_CHATS],
+		].filter(([, sel]) => sel !== selector);
+		const otherTops = [];
+		for (const [otherName, otherSel] of others) {
+			otherTops.push([
+				otherName,
+				await cdp.evaluate(
+					`(() => { const el = document.querySelector(${JSON.stringify(otherSel)}); return el === null ? null : Math.round(el.scrollTop); })()`,
+				),
+			]);
+		}
+		const chromeHeld =
+			JSON.stringify(after.chrome) === JSON.stringify(chromeBefore);
+		check(
+			`${state}: a wheel over the ${pane} pane moves that pane, or nothing when it fits`,
+			(afterTop !== beforeTop && afterTop > beforeTop) ||
+				(afterTop === beforeTop && point.scrollableUnder.length === 0),
+			JSON.stringify({
+				beforeTop,
+				afterTop,
+				scrollableUnder: point.scrollableUnder,
+			}),
+		);
+		check(
+			`${state}: a wheel over the ${pane} pane leaves the chrome and the other pane where they were`,
+			chromeHeld &&
+				after.shell?.scrollTop === 0 &&
+				(after.strip === null || after.strip.scrollTop === 0) &&
+				after.document.scrollTop === 0,
+			JSON.stringify({ chromeHeld, shell: after.shell?.scrollTop, otherTops }),
+		);
+		// Where the pane scrolled, put it back so the next frame is the same state.
+		if (afterTop !== beforeTop) {
+			await cdp.evaluate(
+				`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (el) el.scrollTop = ${beforeTop ?? 0}; return true; })()`,
+			);
+			await wait(120);
+		}
+		await parkPointer(cdp);
+	}
+	return facts;
+}
+
 async function sceneSidebarSections(cdp, handle) {
 	let link = cdp;
 	const seeded = [];
@@ -15305,6 +15634,54 @@ async function sceneSidebarSections(cdp, handle) {
 	);
 	await parkPointer(link);
 	await captureSettled(link, "sections-default-dark");
+	/*
+	 * THE ONE-SCROLLER CONTRACT, on the state the operator photographed: both panes
+	 * overflowing, so both carry a bar - and the column must still carry none.
+	 */
+	await checkSidebarScroll(link, "both sections overflowing (dark)");
+	/*
+	 * AND THE BOUNDARY SURVIVES THE SCROLL. The divider is a sibling of the panes, not
+	 * inside one, so scrolling a pane to its end must leave it where it was and still
+	 * draggable - the half of the operator's rule that is about the handle rather than
+	 * the bars.
+	 */
+	await link.evaluate(
+		`(() => { const el = document.querySelector(${JSON.stringify(SPLIT_CHATS)}); if (el) el.scrollTop = el.scrollHeight; const e2 = document.querySelector(${JSON.stringify(SPLIT_ENTITIES)}); if (e2) e2.scrollTop = e2.scrollHeight; return true; })()`,
+	);
+	await wait(250);
+	const sepScrolled = await splitBox(link, SPLIT_SEPARATOR);
+	const storedScrolled = (await splitPreferences(link)).state
+		?.chatSidebarListHeight;
+	check(
+		"the boundary is still on screen while both panes are scrolled to their ends",
+		sepScrolled !== null &&
+			sepScrolled.top > 0 &&
+			sepScrolled.bottom < WINDOW_HEIGHT &&
+			sepScrolled.height > 0,
+		JSON.stringify(sepScrolled),
+	);
+	const sepPoint = await splitBox(link, SPLIT_SEPARATOR);
+	await movePointer(link, sepPoint.x, sepPoint.y);
+	await dragSplit(link, sepPoint.x, sepPoint.y, -30);
+	await parkPointer(link);
+	const storedAfterScrolledDrag = (await splitPreferences(link)).state
+		?.chatSidebarListHeight;
+	check(
+		"and it still resizes with the panes scrolled",
+		typeof storedAfterScrolledDrag === "number" &&
+			storedAfterScrolledDrag !== storedScrolled,
+		`${storedScrolled} -> ${storedAfterScrolledDrag}`,
+	);
+	await link.evaluate(
+		`(() => { for (const sel of [${JSON.stringify(SPLIT_CHATS)}, ${JSON.stringify(SPLIT_ENTITIES)}]) { const el = document.querySelector(sel); if (el) el.scrollTop = 0; } return true; })()`,
+	);
+	await setSplitPreferences(link, { chatSidebarListHeight: null });
+	await ready(link);
+	await verb(link, "setTheme", "localOperatorLight");
+	await wait(300);
+	await parkPointer(link);
+	await captureSettled(link, "sections-default-light");
+	await checkSidebarScroll(link, "both sections overflowing (light)");
 
 	// --- 2. two drag positions, each written and drawn -------------------
 	const dragTo = async (dy, label) => {
@@ -15407,6 +15784,111 @@ async function sceneSidebarSections(cdp, handle) {
 	await parkPointer(link);
 	await captureSettled(link, "sections-default-light");
 
+	/*
+	 * --- 5b. ONE SECTION EMPTY, and one pane alone ------------------------
+	 *
+	 * Two of the states the operator's rule has to hold in, and neither is the same
+	 * as "both overflowing": a query that matches nothing leaves the chats pane with
+	 * a sentence and no rows (so it must gain NO scrollbar, and a wheel over it must
+	 * move nothing at all), and hiding the agents section leaves one pane in the
+	 * column with the restore row above it.
+	 */
+	await setSplitPreferences(link, { chatSidebarListHeight: null });
+	await ready(link);
+	/*
+	 * The column's search field is drawn only WHILE filtering - typing into the list
+	 * is what opens it (the panel's own `keyDown` turns a printable key into the
+	 * query) - so the query is typed the way a reader types it: focus the list and
+	 * send the keys, rather than reaching for an input that is not on screen yet.
+	 */
+	/*
+	 * `[data-chat-row]`, not `[data-session-row]`: the panel's own handler opens the
+	 * field only for a key whose TARGET carries that attribute, and the row's inner
+	 * control is where a keyboard reader's focus actually sits. Measured: focusing the
+	 * row element itself typed nothing and the field never appeared.
+	 */
+	const focusedRow = await link.evaluate(
+		`(() => { const row = document.querySelector("[data-chat-row]"); if (!row) return false; row.focus(); return document.activeElement === row; })()`,
+	);
+	check(
+		"a row can hold focus for the query",
+		focusedRow === true,
+		String(focusedRow),
+	);
+	for (const letter of "zzzznomatch") {
+		await pressChord(link, {
+			key: letter,
+			code: `Key${letter.toUpperCase()}`,
+			virtualKeyCode: letter.toUpperCase().charCodeAt(0),
+		});
+	}
+	await wait(500);
+	await parkPointer(link);
+	const emptied = await waitForCondition(
+		link,
+		`document.querySelectorAll('[data-sidebar-region="chats"] [data-session-row]').length === 0 && document.querySelector('input[aria-label="Search chats and agents"]') !== null`,
+		10_000,
+	);
+	check(
+		"a query matching nothing leaves the chats pane without rows",
+		emptied.ok,
+		JSON.stringify(emptied.last),
+	);
+	await captureSettled(link, "sections-chats-empty-light");
+	await checkSidebarScroll(link, "the chats pane empty (light)");
+	await verb(link, "setTheme", "localOperatorDark");
+	await wait(300);
+	await captureSettled(link, "sections-chats-empty-dark");
+	await checkSidebarScroll(link, "the chats pane empty (dark)");
+	/*
+	 * And clear it, through the field's own control: a query left on screen would
+	 * make every later state in this scene a filtered one.
+	 */
+	const clear = await splitBox(link, '[aria-label="Clear search"]');
+	if (clear !== null) await pressPointerStationary(link, clear.x, clear.y);
+	await wait(500);
+	await verb(link, "setTheme", "localOperatorLight");
+	await wait(250);
+	await ready(link);
+	/*
+	 * The hidden section's way back is the restore row, and hiding it is a press on
+	 * the boundary's own cluster - reached by focus and Enter rather than by a
+	 * pointer, because the cluster is intent-gated and a press at its coordinates
+	 * would land on whatever is over it.
+	 */
+	const hideAgents = await link.evaluate(
+		`(() => { const el = document.querySelector('[data-sidebar-hide="entities"]'); if (!el) return false; el.focus(); return true; })()`,
+	);
+	if (hideAgents) {
+		await pressChord(link, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		await wait(400);
+		const solo = await waitForCondition(
+			link,
+			`document.querySelector(${JSON.stringify(SPLIT_ENTITIES)}) === null && document.querySelector('[data-sidebar-restore="entities"]') !== null`,
+			10_000,
+		);
+		check(
+			"hiding the agents section leaves the chats pane alone with its way back",
+			solo.ok,
+			JSON.stringify(solo.last),
+		);
+		await parkPointer(link);
+		await captureSettled(link, "sections-agents-hidden-dark");
+		await checkSidebarScroll(link, "one section (dark)");
+		await verb(link, "setTheme", "localOperatorLight");
+		await wait(300);
+		await captureSettled(link, "sections-agents-hidden-light");
+		await checkSidebarScroll(link, "one section (light)");
+		// Back to both, the way the restore row itself does it.
+		const restore = await splitBox(link, '[data-sidebar-restore="entities"]');
+		if (restore !== null) {
+			await pressPointerStationary(link, restore.x, restore.y);
+			await wait(400);
+		}
+		await verb(link, "setTheme", "localOperatorDark");
+		await wait(300);
+	}
+
 	// --- 6. the 56px strip's mark, both palettes --------------------------
 	await setSplitPreferences(link, { isSidebarCollapsed: true });
 	await waitForCondition(
@@ -15419,6 +15901,7 @@ async function sceneSidebarSections(cdp, handle) {
 	await verb(link, "setTheme", "localOperatorDark");
 	await wait(300);
 	await captureSettled(link, "strip-mark-dark");
+	await checkSidebarScroll(link, "the collapsed 56px strip (dark)");
 	await setSplitPreferences(link, { isSidebarCollapsed: false });
 
 	// --- 7. the relaunch: a dragged size SURVIVES a new process -----------
