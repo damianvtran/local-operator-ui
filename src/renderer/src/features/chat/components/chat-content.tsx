@@ -11,6 +11,7 @@ import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { TabPanel } from "@shared/components/ui";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
 import type { SendOutcome } from "@shared/hooks/use-message-input";
+import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import {
@@ -41,6 +42,7 @@ import {
 	workingLineClaimed,
 	workingLineInputFor,
 } from "../canonical/working-line-model";
+import { CHAT_COLUMN_CONTAINER } from "../chat-measure";
 import type {
 	DraftPickerDestination,
 	DraftResolution,
@@ -1035,7 +1037,26 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			>
 				<div
 					ref={chatColumnRef}
-					className="relative h-full w-0 min-w-[220px] flex-1"
+					className={cn(
+						"relative h-full w-0 min-w-[220px] flex-1",
+						/*
+						 * THE COLUMN IS THE QUERY CONTAINER its own contents measure against.
+						 * `chat-measure.ts`'s docstring says this constant belongs on "the element
+						 * that owns the column's width", and this is that element: the `flex-1`
+						 * track, whose width the transcript, the composer band and the conversation
+						 * header all inherit. The transcript and the composer band already declare
+						 * their own `@container/chatcol` for their own children; what was missing is
+						 * an ancestor for the HEADER, which sits outside both and had no container
+						 * to ask - and a header rule that keys off the COLUMN rather than the
+						 * viewport is the whole point (design D3: a pane open at 1380 takes this
+						 * column to 220px while `md:` is still comfortably active).
+						 *
+						 * `container-type: inline-size` contains the INLINE axis only, and this
+						 * element's width is already definite (`w-0` base grown by `flex-1`, floored
+						 * at 220), so the containment cannot change the size it is measured at.
+						 */
+						CHAT_COLUMN_CONTAINER,
+					)}
 				>
 					{/*
 					 * The working surface takes the PAGE ground, `canvas`, not the panel

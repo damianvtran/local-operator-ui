@@ -51,7 +51,19 @@
 	display: none;
 }
 
-/* Keep the expanded brand and toggle outside the system controls' native lane. */
+/*
+ * Keep the expanded brand outside the system controls' native lane.
+ *
+ * macOS only, and the rail header's own `pl-5` is the other-platform value: the
+ * header is 40px (`h-10`) on every platform so its brand shares one content
+ * centre with the sidebar's heading block and the conversation header, and this
+ * rule widens its left padding to the 80px lane the OS circles need.
+ *
+ * The rail's collapse control is NOT in this header on macOS - it is clipped
+ * out of a 220px rail at the lane's end, so it lives in the nav list's first row
+ * instead (`sidebar-navigation.tsx`, design D1). The `[data-titlebar-rail-toggle]`
+ * arm of the rule below covers Windows and Linux, whose toggle does stay here.
+ */
 [data-titlebar-platform="mac"]
 	[data-titlebar-sidebar][data-sidebar-collapsed="false"]
 	[data-titlebar-rail-header] {
@@ -62,11 +74,26 @@
  * The collapsed rail is 48px wide, so the chat-list heading begins under the
  * remaining 32px of the native controls' lane. Offset only that heading: the
  * main chat header is farther right and must keep its normal content padding.
+ *
+ * THE SELECTOR IS COMPOUND AND THAT IS THE WHOLE POINT (design D2).
+ * `data-titlebar-platform` and `data-titlebar-sidebar-collapsed` are BOTH set on
+ * the same element - the shell <div> in `app.tsx`, which carries the platform
+ * attribute and the collapsed state together - so the descendant form this rule
+ * shipped with (`[platform] [collapsed] [heading]`) required a child carrying
+ * the collapsed attribute and could never match anything. It was dead CSS that
+ * read as present. Measured consequence while it was dead: the row's computed
+ * `padding-left` was the `px-1` utility's 4px and the `Chats` label sat at x 60,
+ * directly under the traffic lights' zoom button (x 54.75-68.75).
+ *
+ * 24px, not the `2rem` (32px) it carried, because 24 is what lands the label on
+ * the lane's end line: the row starts at x 56 (the 48px rail plus the list
+ * panel's own 8px inset) and `px-1` adds 4, so 56 + 24 = 80 - the same line the
+ * rail's brand mark starts on when expanded, and 11.5px clear of the zoom
+ * button's drawn circle. The old value would have landed the label at 92.
  */
-[data-titlebar-platform="mac"]
-	[data-titlebar-sidebar-collapsed="true"]
+[data-titlebar-platform="mac"][data-titlebar-sidebar-collapsed="true"]
 	[data-titlebar-chat-heading] {
-	padding-left: 2rem;
+	padding-left: 24px;
 }
 
 /*
