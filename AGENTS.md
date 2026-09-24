@@ -1832,11 +1832,14 @@ entry — flipped only once npm's own record existed; that ordering is what npm'
 `time` entry implies rather than something observed, since the reads carried no
 timestamps. Read them as "the version is there now", never as "the publish worked
 all along", and report an absence as an absence rather than as a failed publish.
-**Give an absence a test before acting on it:** the job's own `+ <pkg>@<version>`
-line and its provenance entry are the proof npm *accepted* the publish, and npm's
-`time` entry is the proof it *records* it — with neither there yet, that is not
-evidence the version is missing, and every cache key reports an absence either way.
-Any fallback wait must be sized against the **worst** lag measured here — 27m06s for
+**Give an absence a test before acting on it, and know which case you are in.** The
+job's own `+ <pkg>@<version>` line and its provenance entry are the proof npm
+*accepted* the publish; npm's `time` entry is the proof it *records* it. A `+` line
+with no `time` entry is the case this paragraph is about — npm has the version and
+has not recorded it yet, there is nothing to repair, and every cache key reports an
+absence meanwhile. `time` present while `versions` still lags is a replication wait.
+And the one shape that is a real miss is **neither signal, with the job finished**.
+For either wait, use the **worst** lag measured here — 27m06s for
 v0.30.24, against 6m54s-8m40s for the five versions before it — because a wait sized
 on the ordinary case would have declared 0.30.24 missing for eighteen minutes while
 npm was still recording it, which is the too-early repair this paragraph exists to
