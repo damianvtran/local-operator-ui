@@ -1016,9 +1016,9 @@ export const readerChild = (
 		startedSecondsAgo: 96,
 		/*
 		 * A STATED INTENT, which is the shape `tool_activity(display, intent)` returns
-		 * when the model said something (`intent.py:327` — the intent wins and the
+		 * when the model said something (`intent.py:310-324` — the intent wins and the
 		 * tool name is dropped), emitted by the relay's `ToolExecutionStartEvent` arm
-		 * (`subagent.py:1288`). Capitalised on purpose: an intent is model-authored
+		 * (`subagent.py:1327`). Capitalised on purpose: an intent is model-authored
 		 * prose, and this fixture must not read like a command line — the fallback
 		 * shape is lowercase (`f"running {display}"`) and is what
 		 * `reader-live-floor` carries, so the pair shows both arms.
