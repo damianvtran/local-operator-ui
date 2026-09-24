@@ -803,10 +803,13 @@ const STAMP_BINDING_NOTES = [
 	/*
 	 * `readReceiptRestampNote` left this list when `fix/seed-label-gap` re-derived
 	 * both stamps on top of it: its pair is history now, the same way
-	 * `usageInFlightRemediationNote`'s became. `seedLabelGapRestampNote` carries
-	 * the binding that fold re-derived.
+	 * `usageInFlightRemediationNote`'s became. `seedLabelGapRestampNote` carried
+	 * the binding that fold re-derived, and it left the list the same way when the
+	 * round-1 remediation below re-derived both stamps on top of IT - its pair is
+	 * written bare in that note now, and `round1LabelGapRestampNote` carries the
+	 * binding this round re-derived.
 	 */
-	"seedLabelGapRestampNote",
+	"round1LabelGapRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
