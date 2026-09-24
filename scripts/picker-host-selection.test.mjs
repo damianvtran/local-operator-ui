@@ -592,6 +592,103 @@ test("the sentence goes when the row it is about is listed again", async () => {
 	view.unmount();
 });
 
+test("a pass that brings the sentence's row back AND drops the held row still names the next one", async () => {
+	/*
+	 * The two things this rule has to reconcile can happen in ONE pass, and the
+	 * row set a re-list answers with makes that ordinary rather than exotic: the
+	 * row the sentence calls missing comes back while the row the highlight is on
+	 * goes away, because what the provider answers is a different SET of rows each
+	 * time. Reached in the confirmation round from both directions (code review
+	 * MINOR-1 = UX U8). The rule retired the sentence on that pass and returned
+	 * before the naming branch could run, so the footer dropped to the plain hint
+	 * on exactly the pass where Enter started sending a row the user never chose -
+	 * the highlight and Enter still agreed, so nothing on screen was false; what
+	 * was lost was the sentence telling the user so.
+	 *
+	 * This is UX's `only-opus55` scene, driven on the real host: steer onto the
+	 * live-only row, let the landing drop it, then let the next answer bring it
+	 * back and take the fallback row away.
+	 */
+	const picked = [];
+	const base = {
+		open: true,
+		onClose: () => {},
+		title: "Model",
+	};
+	const opusFive = {
+		value: "anthropic/claude-opus-5",
+		label: "Claude Opus 5",
+		group: "Signed in",
+		current: true,
+	};
+	const opusFiveFive = {
+		value: "anthropic/claude-opus-5.5",
+		label: "Claude Opus 5.5",
+		group: "Signed in",
+	};
+	const full = [
+		opusFive,
+		opusFiveFive,
+		{
+			value: "anthropic/claude-sonnet-5",
+			label: "Claude Sonnet 5",
+			group: "Signed in",
+		},
+	];
+	const onPick = (value) => {
+		picked.push(value);
+	};
+	const view = mount({ ...base, options: full, onPick });
+	const input = document.querySelector("input");
+
+	key(input, "ArrowDown");
+	assert.equal(
+		labelOf(marked()),
+		"Claude Opus 5.5",
+		"the user steered onto the row only the live listing has",
+	);
+
+	// The landing drops it: the sentence names the replacement (round 2's fix).
+	view.render({
+		...base,
+		options: full.filter((option) => option.value !== opusFiveFive.value),
+		onPick,
+	});
+	assert.equal(
+		footerText(),
+		"The row you were on is gone · Enter picks Claude Opus 5",
+		"the first landing takes the row away and says which row Enter will send",
+	);
+
+	/*
+	 * And now the pass this walk exists for: the row the sentence is about comes
+	 * BACK, and the row the highlight is on - the fallback from the line above -
+	 * is the one that goes.
+	 */
+	view.render({ ...base, options: [opusFiveFive], onPick });
+	assert.equal(
+		labelOf(marked()),
+		"Claude Opus 5.5",
+		"the highlight lands on the only row left",
+	);
+	assert.equal(
+		footerText(),
+		"The row you were on is gone · Enter picks Claude Opus 5.5",
+		"the sentence about the row that came back is replaced, in the same pass, by one about the row that went - retiring it here would leave the loss unannounced",
+	);
+	await act(async () => {
+		input.dispatchEvent(
+			new dom.window.KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+		);
+	});
+	assert.equal(
+		picked.at(-1),
+		opusFiveFive.value,
+		"and Enter sends the row the footer now names",
+	);
+	view.unmount();
+});
+
 test("typing retires the sentence even when the row it names survives", async () => {
 	/*
 	 * Round 3's clearing minor, driven: the sentence's row survives the filter, so
