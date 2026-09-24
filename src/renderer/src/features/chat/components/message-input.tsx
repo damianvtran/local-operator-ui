@@ -38,7 +38,6 @@ import {
 	useConversationInputStore,
 } from "@shared/store/conversation-input-store";
 import { normalizePath } from "@shared/utils/path-utils";
-import { sendUnsettledForSession } from "../canonical/working-line-model";
 import {
 	dismissToast,
 	showErrorToast,
@@ -77,6 +76,7 @@ import type {
 	CanonicalModel,
 } from "../../../../../shared/desktop-session-contract";
 import { composerFocusIsOurs, shouldTabIntoAnswerOptions } from "../ask-answer";
+import { sendUnsettledForSession } from "../canonical/working-line-model";
 import {
 	CAPPED_BLOCK,
 	CHAT_COLUMN_CONTAINER,

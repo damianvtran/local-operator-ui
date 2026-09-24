@@ -830,7 +830,6 @@ export function draftIdentityFor(
 	return draftKey ?? (sessionId ? `send:${sessionId}` : null);
 }
 
-
 /**
  * What React keys the chat panel on, and therefore what makes it remount.
  *

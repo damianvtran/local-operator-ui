@@ -4547,11 +4547,18 @@ test("R2-1: the unsettled-send fact is the STORE's row, live across the New-chat
 
 test("R2-1: the composer derives it from the store, and no longer accepts it as a prop", () => {
 	/*
-	 * The guard. The runtime reading above covers the ROW; the composer's read of
-	 * it is covered client-side by the story plays, which assert the sentence the
-	 * composer prints from a staged row. What this pins is the door the round-1
-	 * defect came through: a prop has an owner, and the owner here was the panel
-	 * the flip replaces.
+	 * THE GUARD, AND IT IS A SOURCE-TEXT CHECK - said here so no reader takes it
+	 * for coverage (agent review round 3, on R2-2's limit). Three regexes over
+	 * comment-stripped source would not notice the value being multiplied away;
+	 * what they notice is the door the round-1 defect came through, a prop owned
+	 * by the panel the flip replaces, being reopened.
+	 *
+	 * Coverage lives elsewhere and is named there: the runtime reading above
+	 * asserts the ROW's whole lifecycle on the real store, and the story plays
+	 * assert the sentence the composer PRINTS on a mount that made no press - the
+	 * client-side half, measured fail-before/pass-after in the round-2 reply
+	 * because a node-side render cannot see a seeded store (zustand v5 answers
+	 * every selector with `getInitialState()` on React's server path).
 	 */
 	const composer = readFileSync(
 		"src/renderer/src/features/chat/components/message-input.tsx",
