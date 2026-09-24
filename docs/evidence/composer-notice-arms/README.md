@@ -65,3 +65,24 @@ It does NOT prove: a packaged build, the Electron IPC hop (the page takes the
 transport's Http path, as the sibling rig documents), screen-reader behaviour, or
 anything about a real send — that is `../composer-timeout-live/`, which drives
 the same composer through a real 20 s deadline.
+
+## Round 3: the frames were re-taken, and the chip is why
+
+Every frame in this set was re-rendered from the same command at this change's
+head, and the difference a reader can see is the chip: the rig used to stage it at
+`/tmp/notes.png`, a PATH a page cannot render - the app reads attachment paths
+through the main process - so each frame carried a broken-image icon that reads as
+a product bug (review round 2, D7). The rig now stages a pasted screenshot
+(`data:` URL), which is the shape this app holds a clipboard image in, so the chip
+that says a file travelled with the message is legible and the notice is surrounded
+by the state it is about rather than by a rendering artefact of the rig.
+
+**The before half was NOT re-taken**, deliberately: it is `origin/main`'s own rig
+run from a detached worktree, and its chip is the old path, so the two halves
+differ in that icon. The difference is the RIG's, not the app's, and it is stated
+here rather than left for a reader to read as a product change; every geometry
+reading, every sentence and both halves' controls are the same pair as before.
+
+The notice's structure, at the width the canvas pane leaves: 55.5px of notice at
+600px of column, one sentence, `Retry` then `Clear`, and the line the user is
+typing not moving at all when a notice appears.
