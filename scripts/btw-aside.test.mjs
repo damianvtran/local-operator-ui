@@ -185,6 +185,8 @@ const composerBundle = await build({
 				recordsSubmittedMessage,
 				isOffRecordAsk,
 				settleOffRecordPayload,
+				composerPlaceholder,
+				COMPOSER_PLACEHOLDER,
 				SEND_HELD,
 			} from "./src/renderer/src/shared/hooks/use-message-input";`,
 		resolveDir: process.cwd(),
@@ -242,6 +244,8 @@ const {
 	recordsSubmittedMessage,
 	isOffRecordAsk,
 	settleOffRecordPayload,
+	composerPlaceholder,
+	COMPOSER_PLACEHOLDER,
 	SEND_HELD,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(composerBundle.outputFiles[0].text).toString("base64")}`
@@ -921,20 +925,66 @@ test("the aside ask leaves the composer without being awaited", () => {
  * THE SENTENCE AND THE PRESS AGREE (round 1, F3). A pending question card and an
  * attached aside can hold at once, and the gate branch is the one that wins in
  * `chat-page.tsx` (an `approval` gate is answered from the composer or not at
- * all). The placeholder is therefore read here as an ORDER: the gate's term must
- * come before the aside's, or the box promises a route the press does not take.
+ * all). The placeholder is therefore asked as an ORDER: the gate's term must win
+ * over the aside's, or the box promises a route the press does not take.
+ *
+ * Asked BY VALUE through `composerPlaceholder`, the one function the box's
+ * placeholder is built from since main's pending-send work (#479) lifted the
+ * chain out of the JSX - this used to compare the two literals' offsets in
+ * `message-input.tsx`, which only proved the order while the chain was inline.
+ * The fold onto that main also placed the aside term against the new
+ * `sendingUnsettled` one, so that position is pinned here too.
  */
 test("the placeholder names the destination the press actually reaches", () => {
-	const composer = read(
-		"src/renderer/src/features/chat/components/message-input.tsx",
+	const idle = {
+		unavailable: false,
+		inputDisabled: false,
+		awaitingAnswer: false,
+		asideAttached: false,
+		sendingUnsettled: false,
+		awaitingReply: false,
+	};
+	assert.equal(
+		COMPOSER_PLACEHOLDER.aside,
+		"Ask off the record — Esc closes the aside",
 	);
-	const gate = composer.indexOf("Answer the question above");
-	const aside = composer.indexOf("Ask off the record — Esc closes the aside");
-	assert.notEqual(gate, -1);
-	assert.notEqual(aside, -1);
-	assert.ok(
-		gate < aside,
+	assert.equal(
+		composerPlaceholder({ ...idle, asideAttached: true }),
+		COMPOSER_PLACEHOLDER.aside,
+	);
+	assert.equal(
+		composerPlaceholder({ ...idle, asideAttached: true, awaitingAnswer: true }),
+		COMPOSER_PLACEHOLDER.answer,
 		"the gate's placeholder term must precede the aside's: while a gate is unanswered the press answers the GATE",
+	);
+	// A box that takes no keystrokes is not invited to take one.
+	assert.equal(
+		composerPlaceholder({ ...idle, asideAttached: true, inputDisabled: true }),
+		COMPOSER_PLACEHOLDER.busy,
+	);
+	assert.equal(
+		composerPlaceholder({ ...idle, asideAttached: true, unavailable: true }),
+		COMPOSER_PLACEHOLDER.unavailable,
+	);
+	/*
+	 * And the attached aside outranks BOTH send-state sentences: the next Enter
+	 * goes off the record whatever the thread is doing, and an aside's own press
+	 * holds `sendInFlight` for its microtask - `Sending your message` there would
+	 * describe a message the conversation never receives.
+	 */
+	assert.equal(
+		composerPlaceholder({
+			...idle,
+			asideAttached: true,
+			sendingUnsettled: true,
+			awaitingReply: true,
+		}),
+		COMPOSER_PLACEHOLDER.aside,
+	);
+	// The wiring: the composer hands the attached panel to the function.
+	assert.match(
+		read("src/renderer/src/features/chat/components/message-input.tsx"),
+		/asideAttached: aside !== null,/,
 	);
 });
 

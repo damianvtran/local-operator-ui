@@ -41,7 +41,7 @@ globalThis.__canonicalEcho = (event) => {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {DesktopControlError} from "@shared/api/local-operator/desktop-api"; export {desktopRequestSchema} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {restoreSubmittedText, restoreSubmittedAttachments, adoptRefusedPayload, refusedSplitNotice, heldClaimCopy, RESTORE_LABEL, STORE_CLAIM_KNOWN_FACT} from "./src/renderer/src/shared/hooks/use-message-input"; export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store";',
+			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {DesktopControlError} from "@shared/api/local-operator/desktop-api"; export {desktopRequestSchema} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {restoreSubmittedText, restoreSubmittedAttachments, adoptRefusedPayload, refusedSplitNotice, heldClaimCopy, RESTORE_LABEL, STORE_CLAIM_KNOWN_FACT} from "./src/renderer/src/shared/hooks/use-message-input";export { sendUnsettledForSession } from "./src/renderer/src/features/chat/canonical/working-line-model"; export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -103,6 +103,7 @@ const {
 	replaceSessionRows,
 	admitChatDraft,
 	draftIdentityFor,
+	sendUnsettledForSession,
 	panelIdentityFor,
 	panelIdentityOfView,
 	buildSendPayload,
@@ -1736,6 +1737,11 @@ test("Restore hands back both halves of the held payload, so the guard admits it
 	// The press, in the composer's own terms: the row is cleared and the held paths
 	// are written back. (The chip objects are the composer's; only the paths are the
 	// payload, which is why the store records paths.)
+	//
+	// The clear is not this test setting up a state the app does not reach: an echo
+	// takes the chip row on its way out (`clearStagedPayload`), so a send of a
+	// message WITH a file arrives at this press with an empty row even on the
+	// still-mounted composer, not only on the remounted one.
 	useConversationInputStore.getState().clearAttachments(session);
 	for (const path of held.submittedAttachments)
 		useConversationInputStore
@@ -4421,5 +4427,163 @@ test("the submit path cannot re-decide what a draft is", async () => {
 	assert.ok(
 		!/SLASH_SUBMISSION/.test(page),
 		"chat-page.tsx has a whole-draft text-shape guard again; that is the second decision QA round 2's Q4 came from",
+	);
+});
+
+/*
+ * R1, ON THE COMPOSER'S OWN SIDE: one payload, one trigger, and no second
+ * clearer left behind.
+ *
+ * `echo-delivery.test.mjs` drives the shipped hook over the shipped store and
+ * pins WHEN the payload leaves and what a refusal owes back. This is the other
+ * half of that claim and it is a different failure: the composer used to clear
+ * the chip row and the staged replies AFTER the send's promise settled, while the
+ * text left at the echo - so the two halves of one payload travelled on two
+ * clocks and the interval between them showed the user's message with its
+ * attachment in the transcript beside the composer's chip for that file.
+ *
+ * Behaviour cannot pin the ABSENCE of a second trigger: a composer that cleared
+ * the row at the echo AND again on settle would pass every case in that file,
+ * because the second clear is a no-op. What it would leave is the handle - the
+ * next edit that moves one of the two calls back, or adds a third, with nothing
+ * on screen to say so. So the submit's own body is read, with comments stripped
+ * first so a sentence explaining the rule cannot satisfy it.
+ *
+ * THE RESTORE PRESS IS DELIBERATELY OUTSIDE THIS WINDOW and is not an exception
+ * to it: it is walked in `echo-delivery`'s R3 case and pinned above in Q-2, it
+ * runs on a press rather than on a settle, and it REPLACES the row it writes -
+ * which is the opposite job from clearing the payload a send is carrying out of
+ * the composer.
+ */
+test("the composer clears no payload half of its own, so the echo is the only trigger", () => {
+	const rendered = readFileSync(
+		"src/renderer/src/features/chat/components/message-input.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	const start = rendered.indexOf("const onSubmit = useMemo(");
+	assert.ok(start > 0, "the composer's submit is not where this test reads it");
+	const end = rendered.indexOf("\n\t\t);", start);
+	assert.ok(end > start, "the composer's submit has no end for this window");
+	const submit = rendered.slice(start, end);
+	assert.ok(
+		submit.includes("storeCitedCredentials"),
+		"the window this test reads is not the submit's own body, so it proves nothing about the submit",
+	);
+	assert.ok(
+		!/clearAttachments\(|clearReplies\(/.test(submit),
+		"the composer clears a payload half of its own again: the chip row and the staged replies must leave with the TEXT, at the echo (`clearStagedPayload`), or the transcript shows the file while the composer still shows its chip",
+	);
+});
+
+/*
+ * R2-1 (agent review round 2) AND ITS EVIDENCE HALF R2-2 - and why this is a test
+ * about the STORE rather than about source text.
+ *
+ * Round 1 wired the composer's unsettled-send sentence to `chat-page`'s
+ * `admitting`, and round 2 found that that is a `useState` declared INSIDE the
+ * panel the New-chat identity flip replaces (`panelIdentityFor`, "THE FLIP IS A
+ * REMOUNT"), so on the arm the operator photographed the replacement panel
+ * reported `false` for the whole send. The test that claimed to cover that arm
+ * regexed source text, and every pattern it matched stayed true while the runtime
+ * value was wrong (R2-2) - so it is replaced here by the runtime reading, taken on
+ * the arm that has no panel: a FRESH read of the store's own row, which is
+ * exactly what a panel mounting mid-send does.
+ *
+ * The composer now derives the fact from that row (`sendUnsettledForSession` over
+ * `draftRowForSession`, the same predicate the pane's `starting` latch reads for
+ * the transcript's line), and this drives the REAL store through a New-chat send:
+ * create -> the flip -> the seam -> the echo -> the held POST -> the receipt.
+ *
+ * WHAT THIS TEST CANNOT SEE, stated so it is not read as wider than it is: it
+ * asserts the ROW, not the composer's drawing of it. The drawing is asserted in
+ * the story plays, which render the real composer CLIENT-side (a browser), which
+ * is also the only place it can be: zustand v5 answers every selector with
+ * `getInitialState()` on React's server path, so a node-side render of a
+ * component that selects from this store observes the INITIAL state whatever is
+ * seeded - measured while writing this, not assumed. The guard below keeps a
+ * regression from walking back in through the prop door.
+ */
+test("R2-1: the unsettled-send fact is the STORE's row, live across the New-chat flip and gone at the receipt", async () => {
+	reset();
+	const sessionId = "222222222222";
+	let release = null;
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return { session_id: sessionId, binding: null };
+		if (request.op === "sessions.message")
+			return new Promise((resolve) => {
+				release = () => resolve({ status: "admitted" });
+			});
+		throw new Error(`unexpected request ${request.op}`);
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	const fact = () =>
+		sendUnsettledForSession(store.getState().drafts, sessionId);
+	assert.equal(
+		fact(),
+		false,
+		"nothing is in flight at the press, so the box must not claim a send",
+	);
+	const send = admitChatDraft(key, { ...input, text: "Review this" });
+	for (let i = 0; i < 200 && release === null; i += 1)
+		await new Promise((resolve) => setTimeout(resolve, 5));
+	assert.notEqual(release, null, "the message POST never left the store");
+	assert.equal(
+		store.getState().drafts[key]?.sessionId,
+		sessionId,
+		"the row the send travels in is the one that learned the session id, so the panel that replaces the sender resolves the SAME row",
+	);
+	assert.equal(
+		draftIdentityFor(key, sessionId),
+		key,
+		"and it resolves it under the key it already holds, which is why a fresh mount finds a live send",
+	);
+	assert.equal(
+		fact(),
+		true,
+		"on the arm the operator photographed: a panel mounting MID-SEND reads the row and sees that the message is still going out",
+	);
+	release();
+	await send;
+	assert.equal(
+		fact(),
+		false,
+		"the receipt deletes the row (`finishDraft`), so the box has nothing left to claim but the owner's answer",
+	);
+});
+
+test("R2-1: the composer derives it from the store, and no longer accepts it as a prop", () => {
+	/*
+	 * THE GUARD, AND IT IS A SOURCE-TEXT CHECK - said here so no reader takes it
+	 * for coverage (agent review round 3, on R2-2's limit). Three regexes over
+	 * comment-stripped source would not notice the value being multiplied away;
+	 * what they notice is the door the round-1 defect came through, a prop owned
+	 * by the panel the flip replaces, being reopened.
+	 *
+	 * Coverage lives elsewhere and is named there: the runtime reading above
+	 * asserts the ROW's whole lifecycle on the real store, and the story plays
+	 * assert the sentence the composer PRINTS on a mount that made no press - the
+	 * client-side half, measured fail-before/pass-after in the round-2 reply
+	 * because a node-side render cannot see a seeded store (zustand v5 answers
+	 * every selector with `getInitialState()` on React's server path).
+	 */
+	const composer = readFileSync(
+		"src/renderer/src/features/chat/components/message-input.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	assert.match(
+		composer,
+		/sendUnsettledForSession\(state\.drafts, conversationId\)/,
+		"the composer must read the fact from the canonical store's rows, which is the source a mid-send mount can see",
+	);
+	assert.ok(
+		!/sendingUnsettled\?: boolean/.test(composer),
+		"the composer must not take the unsettled send as a prop again: that is how it was fed from `chat-page`'s `admitting`, the `useState` of the panel the flip replaces (agent review round 1 MAJOR-1, round 2 R2-1)",
+	);
+	assert.match(
+		composer,
+		/sendingUnsettled: sendUnsettled \|\| sendInFlight/,
+		"and the store's answer must still be OR'd with this composer's own press, which covers the arms where no row exists",
 	);
 });
