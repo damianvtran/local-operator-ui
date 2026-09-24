@@ -14195,10 +14195,7 @@ async function sceneSidebarLazyChats(cdp) {
 	await wait(LAZY_SETTLE_MS);
 	if (LAZY_CASE === "paged") {
 		// Waited for, not sampled: see `waitForSessionCount`.
-		await waitForSessionCount(
-			cdp,
-			LAZY_CATALOGUE_HEAD_PAGE + LAZY_GROUP_PAGE,
-		);
+		await waitForSessionCount(cdp, LAZY_CATALOGUE_HEAD_PAGE + LAZY_GROUP_PAGE);
 	}
 	const opened = await verb(cdp, "state");
 	note("the store's scopes after the expansion", JSON.stringify(opened.scopes));
@@ -14321,8 +14318,7 @@ async function sceneSidebarLazyChats(cdp) {
 		note("frame", JSON.stringify(errorFrame));
 		check(
 			"a refused group read says so and offers its own retry",
-			opened.sessionCount === LAZY_CATALOGUE_HEAD_PAGE &&
-				failed.retry !== null,
+			opened.sessionCount === LAZY_CATALOGUE_HEAD_PAGE && failed.retry !== null,
 			`sessionCount ${opened.sessionCount}, retry ${JSON.stringify(failed.retry)}, sentence ${JSON.stringify(failed.sentence)}`,
 		);
 	} else {
@@ -14412,8 +14408,7 @@ const LAZY_GROUP_FACTS_EXPR = (name) => `(() => {
 	};
 })()`;
 
-const lazyGroupFacts = (cdp, name) =>
-	cdp.evaluate(LAZY_GROUP_FACTS_EXPR(name));
+const lazyGroupFacts = (cdp, name) => cdp.evaluate(LAZY_GROUP_FACTS_EXPR(name));
 
 /**
  * The store's row count, WAITED FOR rather than read once.
@@ -19420,8 +19415,7 @@ async function main() {
 				cdp = await sceneSidebarSplit(cdp, app);
 			else if (SCENE === "canvas-freshness")
 				await sceneCanvasFreshness(cdp, app);
-			else if (SCENE === "sidebar-lazy-chats")
-				await sceneSidebarLazyChats(cdp);
+			else if (SCENE === "sidebar-lazy-chats") await sceneSidebarLazyChats(cdp);
 			else if (SCENE !== "none") throw new Error(`unknown scene "${SCENE}"`);
 			for (const line of cdp.console.slice(-20)) say(`  [renderer] ${line}`);
 		} finally {
