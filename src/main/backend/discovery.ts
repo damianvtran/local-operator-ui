@@ -367,10 +367,21 @@ function recordsHolding(
 	now: number,
 ): ServeRecord[] {
 	if (!address) return [];
+	/*
+	 * BOTH SIDES ARE FOLDED BEFORE THEY ARE COMPARED (review round 1, R1-4).
+	 * `recordAddress` folds the record's host spelling; this folds the one the CALLER
+	 * named, because a caller may name `http://localhost:1111` for the listener its own
+	 * record calls `127.0.0.1` - the CSP and the app's local-host list both accept that
+	 * spelling - and an exact comparison against the raw string answered "no record"
+	 * for it. A caller that already normalised (the spawn gate does, through
+	 * `spawnAddresses`) passes an address this leaves alone, so the fold is idempotent
+	 * rather than a second opinion.
+	 */
+	const wanted = normaliseAddress(address) ?? address;
 	const records: ServeRecord[] = [];
 	for (const entry of files) {
 		if (!entry.record) continue;
-		if (recordAddress(entry.record) !== address) continue;
+		if (recordAddress(entry.record) !== wanted) continue;
 		if (recordPidLiveness(entry.record, now) === "dead") continue;
 		records.push(entry.record);
 	}
@@ -615,8 +626,51 @@ export function classifyRecord(
 
 /** `http://host:port`, with an IPv6 literal bracketed so it is dialable. */
 export function recordAddress(record: ServeRecord): string {
-	const host = record.host.includes(":") ? `[${record.host}]` : record.host;
-	return `http://${host}:${record.port}`;
+	return addressOf("http:", canonicalHost(record.host), record.port);
+}
+
+/**
+ * One host spelling for the loopback names that mean the same listener (review
+ * round 1, R1-4).
+ *
+ * WHY THIS EXISTS. `normaliseAddress` compares a configuration's address against a
+ * record's, and it kept the host as written - so a configuration naming `localhost`
+ * never matched the record its own daemon had written for `127.0.0.1`, the record
+ * gate silently fell through to the occupancy probe for an address this app's own
+ * registry already described, and the app was back to the `[Errno 48]` orphan loop
+ * the record arm exists to prevent. The fold belongs HERE rather than inside that
+ * comparison because the same string is what tags a discovery candidate `configured`
+ * (`discoverDaemons`), and two spellings of one listener must not be two facts about
+ * a machine - `backend-service.ts` already names this hazard ("the record's spelling
+ * of the same listener (`localhost` for `127.0.0.1`, say) is a second place for the
+ * two to disagree").
+ *
+ * `localhost` and `127.0.0.1` are folded together, which is the direction the app's
+ * own records are written in. IPv6 loopback is NOT folded into the IPv4 one - a
+ * daemon bound to `::1` alone is not reachable at `127.0.0.1`, so calling them one
+ * address would be a lie - but its own two spellings are folded: the URL parser
+ * hands `[::1]` back bracketed and normalises the fully expanded form to it, while a
+ * serve record stores the host bare, so both sides meet on `::1`.
+ */
+function canonicalHost(host: string): string {
+	const bare =
+		host.startsWith("[") && host.endsWith("]") ? host.slice(1, -1) : host;
+	const lower = bare.toLowerCase();
+	if (lower === "localhost") return "127.0.0.1";
+	if (lower === "::1" || lower === "0:0:0:0:0:0:0:1") return "::1";
+	return bare;
+}
+
+/**
+ * `scheme//host:port`, with the IPv6 host bracketed as the URL form requires.
+ *
+ * The scheme is a parameter rather than a constant because `recordAddress` is always
+ * a serve record on local `http` while `normaliseAddress` normalises what a
+ * configuration or a probe handed it, and dropping the scheme there would report a
+ * remote `https` daemon as a local `http` one.
+ */
+function addressOf(scheme: string, host: string, port: number): string {
+	return `${scheme}//${host.includes(":") ? `[${host}]` : host}:${port}`;
 }
 
 /**
@@ -1025,18 +1079,23 @@ export async function discoverDaemons(
 	return result;
 }
 
-/** `http://127.0.0.1:1111`, normalised so address comparisons are exact. */
+/**
+ * `http://127.0.0.1:1111`, normalised so address comparisons are exact - the scheme
+ * implied, the port defaulted, the trailing path dropped, and the host folded to one
+ * spelling for one listener (`canonicalHost`).
+ */
 export function normaliseAddress(
 	url: string | null | undefined,
 ): string | null {
 	if (!url) return null;
 	try {
 		const parsed = new URL(url);
-		const host = parsed.hostname.includes(":")
-			? `[${parsed.hostname}]`
-			: parsed.hostname;
 		const port = parsed.port || (parsed.protocol === "https:" ? "443" : "80");
-		return `${parsed.protocol}//${host}:${port}`;
+		return addressOf(
+			parsed.protocol,
+			canonicalHost(parsed.hostname),
+			Number(port),
+		);
 	} catch {
 		return null;
 	}

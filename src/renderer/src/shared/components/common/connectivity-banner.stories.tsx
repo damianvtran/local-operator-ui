@@ -44,6 +44,12 @@ const snapshot = (
 		capabilityStatus: null,
 		unanswered: 0,
 		lastTransportAt: null,
+		/*
+		 * Null unless a story names one: an address substitution is a fact about a
+		 * LAUNCH, and every story but the two that say so is the ordinary case where
+		 * the app is on the address it was configured for.
+		 */
+		addressSubstitution: null,
 		detail:
 			"Connected to the daemon on http://127.0.0.1:7341 (pid 4242, v0.54.47).",
 		updatedAt: Date.now(),
@@ -399,9 +405,18 @@ export const Wedged: Story = {
  * can read describes that address).
  *
  * This is the copy the operator's report asks for: it names the address, the pid
- * when the daemon published one, and the path into the state, and it says what
- * was NOT done about it. The daemon is serving throughout - nothing here may
- * render as "offline".
+ * when the daemon published one, and the path into the state, it says what was NOT
+ * done about it, and - since design round 1 (D3) - it names the act that ends the
+ * holder, which is the whole of what an operator in this state can do. The daemon is
+ * serving throughout - nothing here may render as "offline".
+ *
+ * AND THE `detail` IS THE SHIPPED SENTENCE, not a paraphrase of it (design round 1,
+ * D2). It is the output of `describeSpawnRefusal` in
+ * `src/main/backend/backend-service.ts` for an occupancy record of the shape this
+ * fixture's `pid`/`version`/`installKind` describe, and
+ * `scripts/connectivity-banner-copy.test.mjs` compares the two - so a copy change in
+ * main cannot leave this fixture (and the committed frames shot from it) documenting
+ * a sentence the app no longer sends.
  */
 export const Unattachable: Story = {
 	decorators: [
@@ -417,11 +432,107 @@ export const Unattachable: Story = {
 				desktopAvailable: false,
 				failures: 0,
 				detail:
-					"This app was not given the key to that server, so it did not start a second one. It keeps probing for a server it can open.",
+					"http://127.0.0.1:1111 (pid 42411, uv-tool, v0.55.6) is running a Local Operator daemon this app has no key for. Nothing was started over it. Stop it from the install that owns it with `lop services reclaim 42411` (`lop services status` lists what is running). It keeps probing for a server it can open.",
 			}),
 		),
 	],
 	play: waitForCopy(/It keeps probing for a server it can open/),
+};
+
+/**
+ * BOTH addresses this app may serve on are held - the state the app used to quit in,
+ * and the one design round 1 (D2) found had no frame anywhere in the tree.
+ *
+ * WHY THIS IS THE SHAPE THAT MATTERS rather than a second copy of the one above: with
+ * two holders the class clause was repeated per address, which is what made the band
+ * 106 CSS px against the 68 the one-holder sentence cost, on a band that takes its
+ * height out of the shell. The sentence here states the class ONCE and lists the
+ * addresses it covers (`HOLDER_CLASS` in main), and both holders are of the same kind
+ * because that is the case the shorter sentence exists for - a reader can see, in the
+ * frame, that the claim appears once.
+ *
+ * The `detail` is `describeSpawnRefusal`'s output for two daemon records, pinned by
+ * `scripts/connectivity-banner-copy.test.mjs` for the reason `Unattachable` gives.
+ */
+export const BothAddressesHeld: Story = {
+	decorators: [
+		withBridge(
+			snapshot({
+				state: "wedged",
+				url: null,
+				instanceId: null,
+				pid: null,
+				version: null,
+				prefix: null,
+				installKind: null,
+				desktopAvailable: false,
+				failures: 0,
+				detail:
+					"http://127.0.0.1:1111 (pid 42411, uv-tool, v0.55.6) and http://127.0.0.1:8080 (pid 53501, v0.55.5) are running Local Operator daemons this app has no key for. Nothing was started over them. Stop it from the install that owns it with `lop services reclaim <pid>` (`lop services status` lists what is running). It keeps probing for a server it can open.",
+			}),
+		),
+	],
+	play: waitForCopy(
+		/are running Local Operator daemons this app has no key for/,
+	),
+};
+
+/**
+ * ATTACHED, but on the fallback address: the configured address is held, so the app
+ * started its own daemon on the other address the renderer trusts (design round 1,
+ * D1).
+ *
+ * WHY THIS STATE NEEDS A FRAME AT ALL. Measured by the design round: the "attached on
+ * 8080" and "attached on 1111" frames of the whole surface were BYTE-IDENTICAL
+ * (sha256 f4d4b7b3..., 63,386 bytes each), so an operator serving on the fallback saw
+ * an app that said nothing about it - and nothing rendered the return when the
+ * address freed either. The `holder` clause is main's own (`describeHolders`), pinned
+ * by `scripts/connectivity-banner-copy.test.mjs`; the sentence around it is the copy
+ * table's.
+ */
+export const ServingOnFallback: Story = {
+	decorators: [
+		withBridge(
+			snapshot({
+				url: "http://127.0.0.1:8080",
+				pid: 4242,
+				version: "0.54.47",
+				addressSubstitution: {
+					kind: "substituted",
+					configured: "http://127.0.0.1:1111",
+					serving: "http://127.0.0.1:8080",
+					holder:
+						"http://127.0.0.1:1111 (pid 42411, uv-tool, v0.55.6) is running a Local Operator daemon this app has no key for",
+				},
+			}),
+		),
+	],
+	play: waitForCopy(/not the address this app is configured for/),
+};
+
+/**
+ * The transition OUT of the state above: the configured address freed, and the app is
+ * on it again (design round 1, D1, "make the transition visible").
+ *
+ * It is a state of its own rather than the fallback band simply going away, which is
+ * what silence would make it: the operator who was working on 8080 sees the app say it
+ * is back on the address it was told to use. This is the one band here that is
+ * dismissible, and `serverBannerCopy` is what marks it so.
+ */
+export const ReturnedToConfigured: Story = {
+	decorators: [
+		withBridge(
+			snapshot({
+				url: "http://127.0.0.1:1111",
+				addressSubstitution: {
+					kind: "returned",
+					configured: "http://127.0.0.1:1111",
+					serving: "http://127.0.0.1:8080",
+				},
+			}),
+		),
+	],
+	play: waitForCopy(/the address this app is configured for/),
 };
 
 /**

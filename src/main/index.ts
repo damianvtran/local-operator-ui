@@ -2630,16 +2630,42 @@ app
 				}
 
 				if (!backendStarted) {
-					logger.error(
-						"Failed to start backend after installation, quitting app",
-						LogFileType.INSTALLER,
-					);
-					reportBackendFailure(
-						"Failed to start the Local Operator backend service after installation. Please restart the application.",
-						LogFileType.INSTALLER,
-					);
-					app.quit();
-					return;
+					/*
+					 * THE SAME DISPOSITION AS THE EXISTING-INSTALLATION ARM BELOW, and for
+					 * the same reason (review round 1, R1-1). This site used to quit
+					 * unconditionally, and it is REACHABLE in exactly the state the incident
+					 * was measured in: `checkLocalOperatorExists()` false and
+					 * `backendInstaller.isInstalled()` false is a first launch, or an app whose
+					 * managed venv was invalidated, and with both spawn addresses held
+					 * `startOwned` refuses each address (`backend-service.ts`, the record arm
+					 * and `resolveSpawnTarget`), returns false three times, and this arm took
+					 * the window down with the modal - the twelve-minute incident one arm
+					 * down from where it was fixed. The previous round judged this site
+					 * unreachable on the machine it was measured on; the reachability argument
+					 * above is the answer to that, and it is the reason this is fixed rather
+					 * than ticketed.
+					 *
+					 * Falling THROUGH rather than returning is the point, as below: the early
+					 * `return` on the other arms exists to skip window creation, and skipping
+					 * it here would leave the operator with the same nothing, only quieter.
+					 */
+					if (backendService.isStartBlockedByOccupiedAddress()) {
+						logger.error(
+							"Failed to start backend after installation: every address this app may serve on is held by something it does not own. Continuing without quitting; the status surface names the holder and the app keeps probing.",
+							LogFileType.INSTALLER,
+						);
+					} else {
+						logger.error(
+							"Failed to start backend after installation, quitting app",
+							LogFileType.INSTALLER,
+						);
+						reportBackendFailure(
+							"Failed to start the Local Operator backend service after installation. Please restart the application.",
+							LogFileType.INSTALLER,
+						);
+						app.quit();
+						return;
+					}
 				}
 			} else {
 				// Start our backend service (for existing installations).

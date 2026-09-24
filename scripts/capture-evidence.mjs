@@ -4370,6 +4370,19 @@ export const STORIES = [
 	["common-connectivity-banner--stopped", 1024, 300],
 	["common-connectivity-banner--wedged", 1024, 300],
 	["common-connectivity-banner--unattachable", 1024, 300],
+	/*
+	 * The three states this round ADDED, and each is a finding rather than a state the
+	 * tree happened to lack:
+	 *  - `both-addresses-held` is the two-holder form, which had no frame anywhere in
+	 *    the tree and is the case the class-stated-once sentence exists for (design
+	 *    round 1, D2/D6).
+	 *  - `serving-on-fallback` is the state the design round measured as INVISIBLE: its
+	 *    frame used to be byte-identical to `attached` (design round 1, D1).
+	 *  - `returned-to-configured` is the transition back, which nothing rendered at all.
+	 */
+	["common-connectivity-banner--both-addresses-held", 1024, 300],
+	["common-connectivity-banner--serving-on-fallback", 1024, 300],
+	["common-connectivity-banner--returned-to-configured", 1024, 300],
 	/* The machine-offline claim itself, and the one state the internet banner may
 	   paint: a negative reading that has held across the grace and been confirmed
 	   by a second one. Its companion - the same reading BEFORE the grace, which

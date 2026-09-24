@@ -123,6 +123,40 @@ export const BACKEND_STATUS_EVENT = "backend-status-changed";
  */
 export const BACKEND_RECONNECT_CHANNEL = "backend-reconnect";
 
+/**
+ * Whether this app is serving on the address it was configured for.
+ *
+ * WHY THIS IS IN THE SNAPSHOT AT ALL (design round 1, D1, measured). Serving on the
+ * fallback address was pixel-for-pixel invisible: the "attached on 8080" and
+ * "attached on 1111" frames of the whole app hashed identically, and the only trace
+ * was a Settings value a reader had to already know the expected port to interpret.
+ * The operator's own question in this state - "why is my app on 8080" - had no
+ * in-product answer while they worked, so main publishes the fact and the surface
+ * says it.
+ *
+ * `substituted` is the state in force; `returned` is the TRANSITION out of it and is
+ * kept rather than cleared to null, because the return is otherwise the one thing
+ * about this state an operator never sees. Both arms name both addresses, so a
+ * reader who knows only one of them can still tell which is which.
+ */
+export type AddressSubstitution =
+	| {
+			kind: "substituted";
+			/** The address this app is configured for. */
+			configured: string;
+			/** The address it is serving on instead. */
+			serving: string;
+			/** What held the configured address, worded once in main (`describeHolders`). */
+			holder: string;
+	  }
+	| {
+			kind: "returned";
+			/** The address this app is configured for, and is on again. */
+			configured: string;
+			/** The address it served on until it returned. */
+			serving: string;
+	  };
+
 export interface DaemonStatusSnapshot {
 	state: DaemonConnectionState;
 	/**
@@ -181,6 +215,12 @@ export interface DaemonStatusSnapshot {
 	lastTransportAt: number | null;
 	/** One sentence naming what the app actually observed. */
 	detail: string;
+	/**
+	 * Where this launch is serving, when that is not the address it is configured
+	 * for, or the fact that it has since returned to it. Null on every launch that
+	 * never substituted an address.
+	 */
+	addressSubstitution: AddressSubstitution | null;
 	updatedAt: number;
 }
 
@@ -259,9 +299,22 @@ export function pairingHasRemedy(
 export function serverBannerCopy(
 	snapshot: Pick<
 		DaemonStatusSnapshot,
-		"state" | "reconnecting" | "detail" | "pairing"
+		"state" | "reconnecting" | "detail" | "pairing" | "addressSubstitution"
 	> | null,
-): { title: string; detail: string | null; retry: boolean } | null {
+): {
+	title: string;
+	detail: string | null;
+	retry: boolean;
+	/**
+	 * Whether this notice is the app's own good news rather than a report of
+	 * something wrong with the connection, and may therefore be dismissed.
+	 *
+	 * Only the `returned` arm sets it: a band that announces the app is back on its
+	 * configured address has said everything it exists to say, where every other
+	 * sentence here describes a condition the operator still has.
+	 */
+	dismiss?: boolean;
+} | null {
 	/*
 	 * No snapshot at all: this host has no desktop bridge (Storybook, a plain
 	 * browser dev server), so the renderer probed `/health` itself. That answer is
@@ -273,6 +326,35 @@ export function serverBannerCopy(
 			title: "Not connected to a Local Operator server.",
 			detail: null,
 			retry: true,
+		};
+	}
+	/*
+	 * AN ADDRESS SUBSTITUTION IS A REACHABLE SERVER WITH SOMETHING TO SAY (design
+	 * round 1, D1), so it is answered BEFORE the state switch: the state here is
+	 * `attached`, which the default arm renders as no banner at all - which is
+	 * exactly the invisibility the finding is about. It is asked only while the app
+	 * HAS a connection, because a snapshot that is detached or wedged has a sentence
+	 * of its own about the address the operator configured, and two bands about one
+	 * address is one too many.
+	 */
+	const substitution = snapshot.addressSubstitution ?? null;
+	if (
+		substitution &&
+		snapshot.state !== "detached" &&
+		snapshot.state !== "wedged"
+	) {
+		if (substitution.kind === "substituted") {
+			return {
+				title: `Serving on ${substitution.serving}, not the address this app is configured for (${substitution.configured}).`,
+				detail: `${substitution.holder}. The app uses ${substitution.serving} while that holds; reclaim the holder from the install that owns it with \`lop services reclaim <pid>\`, and the app is back on ${substitution.configured} on its next launch or recovery.`,
+				retry: true,
+			};
+		}
+		return {
+			title: `Back on ${substitution.configured}, the address this app is configured for.`,
+			detail: `It served on ${substitution.serving} while the configured address was held; it is on the address it was told to use again.`,
+			retry: false,
+			dismiss: true,
 		};
 	}
 	const detail = snapshot.detail?.trim() ? snapshot.detail.trim() : null;

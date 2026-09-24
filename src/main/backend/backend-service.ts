@@ -23,7 +23,7 @@ import { type ChildProcess, exec, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { app, dialog as electronDialog } from "electron";
 import type { DaemonStatusSnapshot } from "../../shared/backend-status";
@@ -198,14 +198,73 @@ function portOf(address: string): number | null {
 }
 
 /**
+ * The install's own NAME from its `prefix`, for a holder that published no
+ * `install_kind`.
+ *
+ * WHY NOT THE WHOLE PATH (design round 1, D4). The fallback rendered
+ * `/Users/damian/.local/share/uv/tools/local-operator` - 47 characters of ONE
+ * machine's directory layout - in the middle of a sentence the reader is trying to
+ * scan, and the layout is not the fact: which install put the daemon on the port
+ * is, and its own last segment says that in one word. Nothing at all is preferred
+ * to a bare separator, so a prefix that ends in `/` contributes no fact rather
+ * than an empty one.
+ */
+function installName(prefix: string): string {
+	return prefix ? basename(prefix) : "";
+}
+
+/**
+ * When the holder started, in the READER's own local time and at minute precision.
+ *
+ * WHY NOT THE APP'S `shared/utils/date-utils.ts` HELPERS (design round 1, D4): they
+ * are renderer modules (`date-fns`, `navigator.language`) and this sentence is
+ * composed in main, so the alternatives were a second dialect of the same fact or a
+ * sentence split across two processes - and one composer for every sentence about an
+ * occupant is the property this change exists to keep. What is taken from that module
+ * is its SHAPE (a clock time for today, a date for anything older) and its choice
+ * formatter (the platform's own, so the instant reads in the operator's locale rather
+ * than in UTC). The raw ISO-8601 string with milliseconds it replaces was addressed to
+ * a reader comparing it against their own clock, which is the one thing UTC is not.
+ */
+function describeStartedAt(startedAtMs: number): string {
+	const started = new Date(startedAtMs);
+	if (started.toDateString() === new Date().toDateString()) {
+		return `started ${started.toLocaleTimeString(undefined, {
+			hour: "numeric",
+			minute: "2-digit",
+		})}`;
+	}
+	return `started ${started.toLocaleDateString(undefined, {
+		year: "numeric",
+		month: "short",
+		day: "numeric",
+	})}`;
+}
+
+/**
  * One holder, as the parenthesised machine-voice clause every sentence about it
  * renders - composed HERE and nowhere else, so the log line and the status detail
  * cannot describe one occupant two ways.
  *
- * `install_kind` when the holder published one (`uv-tool`, `pipx`, `pip`, ...),
- * and the install's own `prefix` only when it did not: the prefix is a full path,
- * and a status line that spends forty characters on one machine's directory layout
- * is the kind of sentence design round 1 already asked to shorten.
+ * WHY `describeHolders` AND `describeSpawnRefusal` ARE EXPORTED (design round 1, D2).
+ * The frames committed under `docs/evidence/common-connectivity-banner/` are shot from
+ * story fixtures whose `detail` is a hand-written string, so a copy change here left
+ * the committed frames documenting a sentence that no longer ships - and the next
+ * sweep would re-shoot the stale fixture and agree with itself. The harnesses bundle
+ * these functions (as they already do for `normaliseAddress` and
+ * `addressHolders`) so a fixture can carry the SHIPPED sentence, and
+ * `scripts/connectivity-banner-copy.test.mjs` compares the two, so neither can drift
+ * from the other in silence.
+ *
+ * `install_kind` when the holder published one (`uv-tool`, `pipx`, `pip`, ...), and
+ * otherwise the install's own NAME from its `prefix` (see `installName`).
+ *
+ * THE DESKTOP-READ FACT SPEAKS THE PRODUCT'S EXISTING REGISTER (design round 1,
+ * D5). A 401/403 is this app's credential being refused, which is how the
+ * `unclaimed` state has said it since before this change, and the code stays
+ * because the code is the machine fact; any other non-2xx is a daemon that
+ * ANSWERED with something unusable, which is not a credential refusal and must not
+ * borrow that sentence.
  */
 function describeOccupant(occupant: AddressOccupant): string {
 	const facts: string[] = [];
@@ -216,20 +275,57 @@ function describeOccupant(occupant: AddressOccupant): string {
 				: `pid ${occupant.pid}`,
 		);
 	}
-	const install = occupant.installKind || occupant.prefix;
+	const install = occupant.installKind || installName(occupant.prefix);
 	if (install) facts.push(install);
 	if (occupant.version) facts.push(`v${occupant.version}`);
 	if (occupant.startedAtMs !== null) {
-		facts.push(`started ${new Date(occupant.startedAtMs).toISOString()}`);
+		facts.push(describeStartedAt(occupant.startedAtMs));
 	}
 	if (occupant.desktopReadStatus !== null) {
-		facts.push(`its desktop read answered HTTP ${occupant.desktopReadStatus}`);
+		facts.push(
+			classifyDesktopAnswer(occupant.desktopReadStatus) === "refused"
+				? `refused this app's credential for its desktop plane (HTTP ${occupant.desktopReadStatus})`
+				: `answered this app's desktop read with HTTP ${occupant.desktopReadStatus}`,
+		);
 	}
 	return facts.length > 0 ? ` (${facts.join(", ")})` : "";
 }
 
 /**
- * Every holder the gate found, as one sentence fragment.
+ * How one KIND of holder is named, ONCE per kind rather than once per address.
+ *
+ * WHY (design round 1, D6, measured). With two holders that clause was the bulk of
+ * each holder's text and asserted the same fact twice in one line, and the band -
+ * which is in flow and takes its height out of the shell - grew from the 68 CSS px
+ * the one-holder sentence cost to 106 px. Stating the class once and listing the
+ * addresses it covers makes the SENTENCE scale with holders rather than the CLAIM.
+ *
+ * The register is the one the product already has (design round 1, D5): "this app has
+ * no key for" is the same fact as the `unclaimed` state's "refused this app's
+ * credential", and "listed as still running in this app's own records" says what a
+ * record means to a reader rather than the implementation nouns "serve record" and
+ * "registry".
+ */
+const HOLDER_CLASS = {
+	daemon: {
+		one: "is running a Local Operator daemon this app has no key for",
+		many: "are running Local Operator daemons this app has no key for",
+	},
+	record: {
+		one: "is listed as still running in this app's own records",
+		many: "are listed as still running in this app's own records",
+	},
+} as const;
+
+/** `a`, `a and b`, `a, b and c` - so a list of addresses reads as one. */
+function listAddresses(items: string[]): string {
+	if (items.length === 0) return "";
+	if (items.length === 1) return items[0];
+	return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+
+/**
+ * The address fragment for one holder: its address and the facts about it.
  *
  * Composed from the occupancy records rather than from the probe details, because
  * the operator's question is "what is on my port" and the answer has to name it:
@@ -238,31 +334,104 @@ function describeOccupant(occupant: AddressOccupant): string {
  * produced then named the OCCUPANCY as a category and no holder at all, so the only
  * way to find the daemon that had taken the port was to go and look.
  */
-function describeHolders(refusals: OriginOccupancy[]): string {
-	return refusals
-		.map((occupancy) => {
-			const { occupant } = occupancy;
-			if (occupancy.kind === "record") {
-				return `${occupant.address}${describeOccupant(occupant)} is named by a serve record in this app's own registry, and that process is still running`;
-			}
-			if (occupancy.kind === "daemon") {
-				return `${occupant.address}${describeOccupant(occupant)} is serving as a Local Operator daemon this app was not given the key to`;
-			}
-			return `${occupant.address}${describeOccupant(occupant)} did not answer this app's probe with anything it could use (${occupancy.detail})`;
-		})
-		.join("; ");
+function describeHolder(occupancy: OriginOccupancy): string {
+	return `${occupancy.occupant.address}${describeOccupant(occupancy.occupant)}`;
+}
+
+/**
+ * Every holder the gate found, as one sentence fragment.
+ *
+ * THE UNREADABLE ARM NAMES NO ADDRESS (review round 1, R1-3). The record directory
+ * could not be read, so there is no record to attribute to any address and no
+ * process this app knows of; the sentence that used to be produced here - "<address>
+ * is named by a serve record in this app's own registry, and that process is still
+ * running" - was therefore false in both halves, on the strength of which the
+ * operator was told their port was taken. One fragment however many addresses were
+ * refused, for the reason `HOLDER_CLASS` gives about repeated clauses.
+ */
+export function describeHolders(refusals: OriginOccupancy[]): string {
+	const fragments: string[] = [];
+	for (const kind of ["daemon", "record"] as const) {
+		const group = refusals.filter((occupancy) => occupancy.kind === kind);
+		if (group.length === 0) continue;
+		fragments.push(
+			`${listAddresses(group.map(describeHolder))} ${HOLDER_CLASS[kind][group.length === 1 ? "one" : "many"]}`,
+		);
+	}
+	/*
+	 * A silent occupant keeps its own fragment per address: it is the one claim about
+	 * an address that is about THAT address's own failure, and the cause in the
+	 * parentheses is the whole of what the app observed.
+	 */
+	for (const occupancy of refusals) {
+		if (occupancy.kind !== "silent") continue;
+		fragments.push(
+			`${describeHolder(occupancy)} did not answer this app's probe with anything it could use (${occupancy.detail})`,
+		);
+	}
+	if (refusals.some((occupancy) => occupancy.kind === "unreadable")) {
+		fragments.push(
+			"this app's own records could not be read, so no address it may serve on could be called free",
+		);
+	}
+	return fragments.join("; ");
+}
+
+/**
+ * The act an operator can take about these holders, or the empty string where no
+ * act exists.
+ *
+ * `lop services reclaim <pid>` ends a serve daemon that is alive but not serving
+ * its address - exactly the orphan a fallback spawn's credential rotation can leave
+ * behind, which is why the two changes are meant to be read together. It ships in
+ * the sibling CLI, v0.62.27 (the correction on this round measured it: `lop services
+ * --help` lists `{status,restart,reclaim}`).
+ *
+ * The install phrasing is kept BESIDE the command rather than instead of it: a reader
+ * may know the install that owns the holder and not its pid, and the pid is the one
+ * fact of the two that the command needs. Where there is exactly one holder with a
+ * pid the sentence spends the real pid; several holders get the placeholder, because
+ * naming one of them would point at a daemon the reader may not want ended.
+ */
+function reclaimClause(refusals: OriginOccupancy[]): string {
+	const pids = refusals
+		.map((occupancy) => occupancy.occupant.pid)
+		.filter((pid): pid is number => pid !== null);
+	if (pids.length === 0) return "";
+	const command =
+		pids.length === 1
+			? `lop services reclaim ${pids[0]}`
+			: "lop services reclaim <pid>";
+	return ` Stop it from the install that owns it with \`${command}\` (\`lop services status\` lists what is running).`;
 }
 
 /**
  * The same holders, as the sentence for the case where NOWHERE was free.
  *
+ * THE HOLDER LEADS (design round 1, D7), and the app's own bookkeeping follows as
+ * "Nothing was started over it": the sentence used to open with what the app did not
+ * do, where the operator's question is what is on their port. The app's other details
+ * already lead with the fact being looked for.
+ *
  * The tail is a PROMISE, so it may only name futures this app can reach (review
- * round 1, F-3): "keeps probing" is reachable, and with the fallback budget beside
- * it that promise is now stronger than it was - there is a second address to keep
+ * round 1, F-3): "keeps probing" is reachable, and with the fallback budget beside it
+ * that promise is now stronger than it was - there is a second address to keep
  * probing as well.
  */
-function describeSpawnRefusal(refusals: OriginOccupancy[]): string {
-	return `Nothing was started: ${describeHolders(refusals)}. It keeps probing for a server it can open.`;
+export function describeSpawnRefusal(refusals: OriginOccupancy[]): string {
+	/*
+	 * "Over it" only where there IS an address to speak of: the unreadable arm names
+	 * no address, so "nothing was started over them" would be a pronoun with no noun
+	 * in front of it.
+	 */
+	const named = refusals.filter((occupancy) => occupancy.kind !== "unreadable");
+	const stopped =
+		named.length === 0
+			? "Nothing was started"
+			: named.length === 1
+				? "Nothing was started over it"
+				: "Nothing was started over them";
+	return `${describeHolders(refusals)}. ${stopped}.${reclaimClause(refusals)} It keeps probing for a server it can open.`;
 }
 
 /**
@@ -302,7 +471,7 @@ export const FALLBACK_SPAWN_URL = "http://127.0.0.1:8080";
  * status carries is composed from this record in ONE place (`describeOccupant`),
  * so the log and the banner cannot describe one occupant two ways.
  */
-interface AddressOccupant {
+export interface AddressOccupant {
 	address: string;
 	/** The holder's pid, when it named one or the listening socket did. */
 	pid: number | null;
@@ -349,7 +518,7 @@ interface AddressOccupant {
  * and it is also the shape that used to take the whole app down (see
  * `FALLBACK_SPAWN_URL`).
  */
-type OriginOccupancy =
+export type OriginOccupancy =
 	| { kind: "daemon"; occupant: AddressOccupant; detail: string }
 	| {
 			kind: "silent";
@@ -357,7 +526,17 @@ type OriginOccupancy =
 			occupant: AddressOccupant;
 			detail: string;
 	  }
-	| { kind: "record"; occupant: AddressOccupant; detail: string };
+	| { kind: "record"; occupant: AddressOccupant; detail: string }
+	/*
+	 * The fourth kind, and the only one that is not a claim about an ADDRESS at all
+	 * (review round 1, R1-3): this app's own record directory could not be read, so
+	 * it can call no address free. It is carried as an occupancy rather than as a
+	 * boolean because it travels to the same sentence and must not be worded as a
+	 * holder - the `occupant` it carries names the address that was ASKED about and
+	 * holds no facts, which is what the unreadable fragment in `describeHolders`
+	 * renders instead of a holder clause.
+	 */
+	| { kind: "unreadable"; occupant: AddressOccupant; detail: string };
 
 /** The one kind that does not claim a Local Operator server is present. */
 type SilentOccupancy = Extract<OriginOccupancy, { kind: "silent" }>;
@@ -2293,6 +2472,7 @@ export class BackendServiceManager {
 		 */
 		const { target, refusals } = await this.resolveSpawnTarget();
 		this.spawnRefusals = target ? null : refusals;
+		this.recordAddressSubstitution(target, refusals);
 		if (!target) {
 			this.observeSpawnRefusal(refusals);
 			this.startHealthCheck();
@@ -2303,9 +2483,13 @@ export class BackendServiceManager {
 		if (refusals.length > 0) {
 			/*
 			 * The configured address was held and the app is serving somewhere else.
-			 * This is a SUCCESS, so it raises no banner - but it is not silent either:
-			 * "why is my app on 8080" is the next question the operator asks, and the
-			 * answer is a squatter they have probably forgotten about.
+			 * This is a SUCCESS, and it is a success the operator has to be able to SEE
+			 * (design round 1, D1): it used to raise no banner and no other surface said
+			 * it either, so the "attached on 8080" and "attached on 1111" frames were
+			 * byte-identical and "why is my app on 8080" had no in-product answer. The
+			 * fact now goes into the snapshot (`AddressSubstitution`, recorded above),
+			 * where the connectivity band renders it; this line stays because it is the
+			 * diagnosable record of WHICH holder made the app move, in the daemon log.
 			 */
 			logger.warn(
 				`Starting a managed daemon on ${target.address} instead: ${describeHolders(refusals)}.`,
@@ -3061,8 +3245,11 @@ export class BackendServiceManager {
 	 * where it was told to serve: `backendUrl` rotates to wherever the app ended up,
 	 * while this list is recomputed from the configuration on every attempt. The rest
 	 * are the fallback budget, de-duplicated by `normaliseAddress` so a configuration
-	 * that already names 8080 does not probe one address twice (and does not treat a
-	 * `localhost`/`127.0.0.1` pair as two tries).
+	 * that already names 8080 does not probe one address twice - and the de-dup reads
+	 * through `canonicalHost`, so a configuration naming `localhost` is not probed a
+	 * second time as `127.0.0.1` (review round 1, R1-6: this comment asserted that
+	 * folding before `normaliseAddress` did it, which is how the assertion and the
+	 * comparison could disagree without either looking wrong).
 	 */
 	private spawnAddresses(): string[] {
 		const addresses = [this.configuredUrl, ...this.fallbackSpawnUrls];
@@ -3076,6 +3263,55 @@ export class BackendServiceManager {
 			allowed.push(normalised);
 		}
 		return allowed;
+	}
+
+	/**
+	 * Record where this attempt's daemon is going, relative to the address this app
+	 * is configured for (design round 1, D1).
+	 *
+	 * WHY THE SNAPSHOT AND NOT ONLY THE LOG LINE. Measured on this change: serving on
+	 * the fallback address was pixel-for-pixel invisible - the "attached on 8080" and
+	 * "attached on 1111" frames of the whole surface hashed identically - and the
+	 * operator's own question in that state had no in-product answer while they
+	 * worked. What is recorded here is what the band renders.
+	 *
+	 * A RETURN IS A TRANSITION, not silence: an attempt that lands on the configured
+	 * address AFTER a launch served elsewhere records `returned` rather than being
+	 * cleared to null, because clearing it would make the return the one thing about
+	 * this state an operator never sees. A launch that never substituted anything
+	 * stays null, so the ordinary case still says nothing at all.
+	 *
+	 * No target (every address held) leaves the record UNTOUCHED: the app is not
+	 * serving anywhere, and the refusal has its own sentence about that.
+	 */
+	private recordAddressSubstitution(
+		target: { address: string; port: number } | null,
+		refusals: OriginOccupancy[],
+	): void {
+		if (!target) return;
+		const configured = normaliseAddress(this.configuredUrl);
+		// An unreadable configured URL is not evidence of a substitution, and a record
+		// invented on one would be a claim about an address nobody can name.
+		if (!configured) return;
+		const previous = this.daemonState.getAddressSubstitution();
+		if (target.address === configured) {
+			this.daemonState.setAddressSubstitution(
+				previous?.kind === "substituted"
+					? {
+							kind: "returned",
+							configured: target.address,
+							serving: previous.serving,
+						}
+					: previous,
+			);
+			return;
+		}
+		this.daemonState.setAddressSubstitution({
+			kind: "substituted",
+			configured,
+			serving: target.address,
+			holder: describeHolders(refusals),
+		});
 	}
 
 	/**
@@ -3104,7 +3340,39 @@ export class BackendServiceManager {
 			const port = portOf(address);
 			if (port === null) continue;
 			if (addressHoldsLiveRecord(address)) {
-				const { records } = addressHolders(address);
+				const { unreadable, records } = addressHolders(address);
+				/*
+				 * AN UNREADABLE REGISTRY IS NOT A HOLDER (review round 1, R1-3). The gate is
+				 * deliberately conservative - a directory it cannot read forbids a spawn on
+				 * every address - but the REPORT may not inherit that conservatism: `records`
+				 * is empty here, so the record arm's own sentence ("<address> is listed as
+				 * still running in this app's own records") would name a process this app
+				 * never read about, and the status would say a daemon is running on the
+				 * strength of it. The refusal carries the fact that WAS established, and
+				 * `observeSpawnRefusal` treats it as no holder for the same reason.
+				 *
+				 * The occupant is deliberately factless and is never rendered as a holder:
+				 * `describeHolders` words this arm from the fact above instead, and asking
+				 * `occupantOf` here would spend an `lsof` on a question with no owner.
+				 */
+				if (unreadable) {
+					refusals.push({
+						kind: "unreadable",
+						occupant: {
+							address,
+							pid: null,
+							pidSource: null,
+							version: "",
+							prefix: "",
+							installKind: "",
+							startedAtMs: null,
+							desktopReadStatus: null,
+						},
+						detail:
+							"this app's own records could not be read, so no address it may serve on could be called free",
+					});
+					continue;
+				}
 				const record = records[0] ?? null;
 				// The desktop-read status, when this same sweep observed one: the record
 				// arm refuses on the record alone, and "and it answered this app's read
@@ -3128,7 +3396,12 @@ export class BackendServiceManager {
 						startedAtMs: record ? record.started_at * 1000 : null,
 						desktopReadStatus: observed,
 					},
-					detail: `a serve record in this app's own registry names ${address}`,
+					/*
+					 * Not user-facing: the record arm is rendered by `HOLDER_CLASS.record`, which
+					 * words the fact for a reader. This is the diagnostic beside it, for a log or
+					 * a debugger, so it keeps the module's own nouns.
+					 */
+					detail: `a serve record names ${address} with a pid that is not proven dead`,
 				});
 				continue;
 			}
@@ -3172,28 +3445,34 @@ export class BackendServiceManager {
 	/**
 	 * Publish what the spawn gate saw, in the vocabulary the copy already uses.
 	 *
-	 * Two outcomes reach here and each gets the state that names it: a Local
+	 * Three outcomes reach here and each gets the state that names it: a Local
 	 * Operator daemon this app may not drive is `unattachable` (state `wedged` - a
 	 * server IS running and this app did not attach to it, no banner claiming it is
-	 * offline), and an address that did not answer in time is `unanswered` -
+	 * offline), an address that did not answer in time is `unanswered` -
 	 * `degraded`, usable, no banner, and still counted, because a budget that
-	 * expired is not evidence of absence either way.
+	 * expired is not evidence of absence either way - and a registry this app could
+	 * not read is `no-candidate`, which claims only that this app has no daemon of its
+	 * own (review round 1, R1-3).
 	 */
 	private observeSpawnRefusal(refusals: OriginOccupancy[]): void {
 		const detail = describeSpawnRefusal(refusals);
 		/*
-		 * WHICH OBSERVATION, and the two are not interchangeable. A holder that is a
+		 * WHICH OBSERVATION, and the three are not interchangeable. A holder that is a
 		 * Local Operator daemon (or a record that says one is running) is
 		 * `unattachable` - state `wedged`, "a server is running on this machine and
 		 * this app is not attached to it" - so no surface renders it as offline. Only
 		 * a set of addresses that answered NOTHING usable is `unanswered`, which is
-		 * `degraded`: usable, and a probe's silence rather than an absent server.
+		 * `degraded`: usable, and a probe's silence rather than an absent server. And
+		 * an `unreadable` refusal is neither a holder nor a silence: it is the absence of
+		 * facts about every address, so it falls through to `no-candidate`.
 		 *
 		 * The old copy stayed in one arm because there was only ever one address. With
 		 * a fallback budget there can be both kinds at once, and then the daemon is the
 		 * fact worth a banner: it is the one the operator can act on.
 		 */
-		const holder = refusals.find((occupancy) => occupancy.kind !== "silent");
+		const holder = refusals.find(
+			(occupancy) => occupancy.kind === "daemon" || occupancy.kind === "record",
+		);
 		const silent = refusals.find(
 			(occupancy): occupancy is SilentOccupancy => occupancy.kind === "silent",
 		);

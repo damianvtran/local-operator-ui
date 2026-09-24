@@ -13,8 +13,8 @@ import {
 	symlinkSync,
 	writeFileSync,
 } from "node:fs";
-import { createRequire } from "node:module";
 import { createServer as createHttpServer } from "node:http";
+import { createRequire } from "node:module";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -1452,6 +1452,16 @@ test("a start failure during a shutdown is logged, and raises no modal", async (
 	const m = new Manager();
 	m.shellEnv = { ...env };
 	m.isDisabled = false;
+	/*
+	 * The hand-built managers in this file NAME THEIR OWN ADDRESS (review round 1,
+	 * R1-2): the spawn gate asks `configuredUrl`, and a manager that sets only
+	 * `port`/`backendUrl` resolves whatever the fixture's config module says -
+	 * `http://127.0.0.1:1111` here, which on this machine is the operator's LIVE app.
+	 * That is what made one of these tests' results a property of the box it ran on.
+	 */
+	m.port = await freePort();
+	m.backendUrl = `http://127.0.0.1:${m.port}`;
+	m.configuredUrl = m.backendUrl;
 
 	m.isAppClosing = false;
 	m.reportStartFailure("Backend Error", "the backend did not start");
@@ -1688,8 +1698,12 @@ export function execFileSync() { return "S"; }
 	const m = new Manager();
 	m.shellEnv = { ...env };
 	m.isDisabled = false;
+	// Named, for the reason the manager above states (review round 1, R1-2): this
+	// manager does reach the spawn gate, so a fixture default here is a real port on
+	// whatever machine is running the suite.
 	m.port = await freePort();
 	m.backendUrl = `http://127.0.0.1:${m.port}`;
+	m.configuredUrl = m.backendUrl;
 	m.checkExistingBackend = async () => false;
 	// No PATH console script, so this takes the bundled-venv branch: it needs no
 	// launcher file and still runs the real launch plan.
@@ -1810,6 +1824,27 @@ test("a squatter on the configured address moves the spawn to the fallback addre
 		`http://127.0.0.1:${fallbackPort}`,
 		"the renderer is moved to the address the daemon is actually on",
 	);
+	/*
+	 * AND IT IS VISIBLE (design round 1, D1). The design round measured the "attached
+	 * on the fallback" and "attached on the configured address" frames as
+	 * byte-identical, so an operator serving on the fallback had nothing in the app
+	 * saying so; this is the fact the band renders, and it is asserted here rather than
+	 * only in a story so the wiring and the copy are pinned by the same act of starting
+	 * a daemon on the wrong address.
+	 */
+	const substitution = snapshot.addressSubstitution;
+	assert.equal(
+		substitution?.kind,
+		"substituted",
+		"a launch that serves on another address says which one and why",
+	);
+	assert.equal(substitution.configured, occupied.address);
+	assert.equal(substitution.serving, `http://127.0.0.1:${fallbackPort}`);
+	assert.match(
+		substitution.holder,
+		new RegExp(`pid ${occupied.pid}`),
+		"the holder clause is main's own, so the band and the log cannot disagree",
+	);
 	assert.equal(
 		(await response(occupied.port)).result.instance_id,
 		`squatter-${occupied.port}`,
@@ -1818,6 +1853,68 @@ test("a squatter on the configured address moves the spawn to the fallback addre
 	console.log(
 		`occupied ${occupied.address} (pid ${occupied.pid}) -> spawned on ${snapshot.url} (pid ${m.process.pid}); squatter still answering`,
 	);
+	await m.stop(false);
+});
+
+/*
+ * THE RETURN IS A TRANSITION, NOT SILENCE (design round 1, D1). The design round
+ * found nothing rendering the move back to the configured address once it frees, so a
+ * launch that had served on the fallback saw the band (and the fact) simply vanish.
+ * `recordAddressSubstitution` keeps the last substitution so the next attempt that
+ * lands on the configured address reports `returned` instead.
+ */
+test("a launch that returns to the configured address says so", async () => {
+	const occupied = await squatter(livePid());
+	const fallbackPort = await freePort();
+	const m = await manager();
+	/*
+	 * The address this manager was configured for BEFORE the squatter took it, and one
+	 * nothing ever binds: `manager()` picks it with `freePort()`. Pointing the
+	 * configuration back at it is the state a squatter's exit leaves, without waiting
+	 * on a server close this file does in its own teardown.
+	 */
+	const freed = m.backendUrl;
+	m.configuredUrl = occupied.address;
+	m.fallbackSpawnUrls = [`http://127.0.0.1:${fallbackPort}`];
+
+	assert.equal(await m.start(), true);
+	assert.equal(
+		m.getStatusSnapshot().addressSubstitution?.kind,
+		"substituted",
+		"the first launch is on the fallback address",
+	);
+	/*
+	 * The daemon dies ON ITS OWN, which is the state the app's own recovery tick
+	 * exists for. `stop(false)` could not stand in for it: a terminal stop is
+	 * `isAppClosing` by design (`start()` returns false from then on), so a manager
+	 * that had been stopped could never observe a second launch at all - which is what
+	 * measuring it rather than assuming it found.
+	 */
+	const first = m.process;
+	assert.ok(first, "the fallback spawn produced a child");
+	process.kill(first.pid, "SIGKILL");
+	await once(first, "exit");
+
+	m.configuredUrl = freed;
+	assert.equal(
+		await m.start({ quiet: true }),
+		true,
+		`the configured address is free now: ${m.getStatusSnapshot().detail}`,
+	);
+	const snapshot = m.getStatusSnapshot();
+	assert.equal(snapshot.url, freed);
+	assert.equal(
+		snapshot.addressSubstitution?.kind,
+		"returned",
+		"the move back to the configured address is reported rather than left as silence",
+	);
+	assert.equal(snapshot.addressSubstitution.configured, freed);
+	assert.equal(
+		snapshot.addressSubstitution.serving,
+		`http://127.0.0.1:${fallbackPort}`,
+		"and it names the address the app was serving on until it moved back",
+	);
+	console.log(`returned to ${freed} from http://127.0.0.1:${fallbackPort}`);
 	await m.stop(false);
 });
 
@@ -1856,21 +1953,105 @@ test("both addresses held: nothing is started, both holders are named, no child 
 });
 
 /*
- * THE QUIT SITE ITSELF, over the shipped source. The behaviour above proves the
- * manager can say "an address I do not own is blocking me"; this proves `index.ts`
- * acts on that answer instead of taking the app down, and that every OTHER failed
- * start still reports and quits - a branch narrowed too far is a second, quieter
- * incident.
+ * AN UNREADABLE REGISTRY IS NOT A HOLDER (review round 1, R1-3). `addressHoldsLiveRecord`
+ * is deliberately conservative - a directory it cannot read forbids a spawn on every
+ * address - but the REPORT used to describe that refusal from `records` alone, which is
+ * EMPTY here, and told the operator a serve record named their port and that the process
+ * was still running. Both halves of that sentence are claims the app cannot support: it
+ * read no record and knows of no process.
+ *
+ * The registry this fixture moves is `<scratch>/run/serve`, which is the one the manager
+ * resolves from this process's own environment (see the file's setup), so making it
+ * unreadable is a fact about THIS test's root and no other.
  */
-test("a failed start on an address this app does not own does not quit, and every other one still does", async () => {
+test("an unreadable registry is reported as such, not as a holder", async () => {
+	const registry = join(home, "run", "serve");
+	mkdirSync(registry, { recursive: true });
+	chmodSync(registry, 0o000);
+	const m = await manager();
+	try {
+		assert.equal(
+			await m.start(),
+			false,
+			"a directory this app cannot read forbids a spawn on every address, as it did",
+		);
+		const snapshot = m.getStatusSnapshot();
+		assert.match(
+			snapshot.detail,
+			/records could not be read/,
+			"the report carries the fact that was established",
+		);
+		assert.doesNotMatch(
+			snapshot.detail,
+			/is listed as still running in this app's own records/,
+			"and not the record arm's sentence: there was no record to read",
+		);
+		assert.equal(
+			snapshot.state,
+			"detached",
+			"`wedged` claims a Local Operator server is running, which is the one thing an unreadable registry cannot establish",
+		);
+		console.log(`unreadable registry -> ${snapshot.state}: ${snapshot.detail}`);
+	} finally {
+		// Restored before anything else in this file reads the root: the mode is a
+		// fixture of this one test, not a property of the scratch root.
+		chmodSync(registry, 0o700);
+		await m.stop(false);
+	}
+});
+
+/*
+ * THE QUIT SITES THEMSELVES, over the shipped source, WITH THE REAL ANSWER.
+ *
+ * Two things are being proved. (1) `index.ts` acts on "an address I do not own is
+ * blocking me" instead of taking the app down, and every OTHER failed start still
+ * reports and quits - a branch narrowed too far is a second, quieter incident. (2) The
+ * SAME disposition is taken by the POST-INSTALL arm (review round 1, R1-1), which is
+ * reachable on a first launch (or an app whose managed venv was invalidated) with both
+ * addresses held, and which used to quit for exactly this class.
+ *
+ * WHY THE POSITIVE HALF IS A REAL MANAGER AND NOT A STUB (review round 1, R1-8). The
+ * flag used to be handed to this VM context as a boolean, so the test passed with
+ * `isStartBlockedByOccupiedAddress()` mutated to `return false` - the wiring it claims
+ * to prove was proved by the stub's own value, and only the neighbouring both-held
+ * test caught the mutation. The branch below now reads the flag off the manager that
+ * `resolveSpawnTarget` actually set it on, so a mutation of the flag fails HERE.
+ */
+
+/**
+ * One start branch of `src/main/index.ts`, slice to module, ready for the VM.
+ *
+ * Balanced-brace, so the assertion cannot drift with the block's length, and wrapped
+ * so the `return` the branch uses to skip window creation is legal: esbuild transforms
+ * a bare slice as a module, where a top-level `return` is an error rather than a
+ * mirror of the site being read.
+ */
+async function startBranchCode({
+	marker,
+	branch = marker,
+	backward = false,
+	prefix = "",
+}) {
 	const source = readFileSync("src/main/index.ts", "utf8");
-	const start = source.indexOf(
-		"const backendStarted = await backendService.start({\n\t\t\t\t\treuseDiscovery: true,\n\t\t\t\t});",
+	const at = source.indexOf(marker);
+	assert.ok(at > 0, `the site this test reads is still here: ${marker}`);
+	/*
+	 * FORWARD from the marker by default, and BACKWARD for the one arm whose opener
+	 * appears twice inside the block it belongs to: the post-install arm's
+	 * `if (!backendStarted)` is also the retry loop's own, so that case names the log
+	 * line the arm guards and takes the opening brace at or before it.
+	 */
+	const start = backward ? source.lastIndexOf(branch, at) : at;
+	assert.ok(
+		start >= 0 && start <= at,
+		`the branch this test reads is still here: ${branch}`,
 	);
-	assert.ok(start > 0, "the existing-installation start is where this test expects it");
-	const branchStart = source.indexOf("\n\t\t\t\tif (!backendStarted) {", start);
-	assert.ok(branchStart > start, "the branch this test reads is still present");
-	// Balanced-brace slice, so the assertion cannot drift with the block's length.
+	const branchStart =
+		backward || branch === marker ? start : source.indexOf(branch, start);
+	assert.ok(
+		branchStart >= 0,
+		`the branch this test reads is still here: ${branch}`,
+	);
 	let depth = 0;
 	let end = -1;
 	for (let i = source.indexOf("{", branchStart); i < source.length; i++) {
@@ -1884,32 +2065,53 @@ test("a failed start on an address this app does not own does not quit, and ever
 		}
 	}
 	assert.ok(end > branchStart, "the branch's closing brace was found");
-	const code = (
+	return (
 		await transform(
-			// Wrapped so the `return` the branch uses to skip window creation is legal:
-			// esbuild transforms a bare slice as a module, where a top-level `return`
-			// is an error rather than a mirror of the site being read.
-			`(async () => {\n${source.slice(start, end + 1)}\n})()`,
+			`(async () => {\n${prefix}${source.slice(start, end + 1)}\n})()`,
 			{ loader: "ts" },
 		)
 	).code;
+}
 
-	const run = async (blocked) => {
-		const calls = [];
-		await vm.runInNewContext(code, {
-			backendService: {
-				start: async () => false,
-				isStartBlockedByOccupiedAddress: () => blocked,
-			},
-			logger: { error: (message) => calls.push(["log", String(message)]) },
-			reportBackendFailure: (message) => calls.push(["dialog", message]),
-			app: { quit: () => calls.push(["quit"]) },
-			LogFileType: { BACKEND: "backend" },
-		});
-		return calls;
-	};
+/**
+ * Run one branch against a `backendService`, returning what it did.
+ *
+ * `service` is the REAL manager in the positive half and a stub in the negative one:
+ * the negative half's subject is the OTHER reason a start fails, and a real manager
+ * cannot be made to fail for an unrelated reason without a fixture that lies about
+ * something else.
+ */
+async function runStartBranch(code, service, logTypes) {
+	const calls = [];
+	await vm.runInNewContext(code, {
+		backendService: service,
+		logger: { error: (message) => calls.push(["log", String(message)]) },
+		reportBackendFailure: (message) => calls.push(["dialog", message]),
+		app: { quit: () => calls.push(["quit"]) },
+		LogFileType: logTypes,
+	});
+	return calls;
+}
 
-	const occupied = await run(true);
+test("a failed start on an address this app does not own does not quit, and every other one still does", async () => {
+	const code = await startBranchCode({
+		marker:
+			"const backendStarted = await backendService.start({\n\t\t\t\t\treuseDiscovery: true,\n\t\t\t\t});",
+		branch: "\n\t\t\t\tif (!backendStarted) {",
+	});
+	/*
+	 * The REAL blocked state: two holders this app does not own, one on each address
+	 * it may serve on. This manager is handed to the branch, so the flag the branch
+	 * reads is the one its own spawn gate set - and the copy it published is the same
+	 * snapshot an operator's banner renders.
+	 */
+	const configured = await squatter(livePid());
+	const fallback = await squatter(process.pid);
+	const m = await manager();
+	m.configuredUrl = configured.address;
+	m.fallbackSpawnUrls = [fallback.address];
+
+	const occupied = await runStartBranch(code, m, { BACKEND: "backend" });
 	assert.deepEqual(
 		occupied.filter(([kind]) => kind === "quit"),
 		[],
@@ -1925,11 +2127,88 @@ test("a failed start on an address this app does not own does not quit, and ever
 		/held by something it does not own/,
 		"the log names what happened",
 	);
+	assert.equal(
+		m.isStartBlockedByOccupiedAddress(),
+		true,
+		"and that is the flag the branch read, off the manager that set it (R1-8)",
+	);
+	console.log(
+		`both held -> index.ts kept the app: ${m.getStatusSnapshot().detail}`,
+	);
+	await m.stop(false);
 
-	const other = await run(false);
+	const other = await runStartBranch(
+		code,
+		{
+			start: async () => false,
+			isStartBlockedByOccupiedAddress: () => false,
+		},
+		{ BACKEND: "backend" },
+	);
 	assert.deepEqual(
 		other.map(([kind]) => kind),
 		["log", "dialog", "quit"],
 		"a failed start for any other reason still reports and quits, as it did",
+	);
+});
+
+test("the post-install start does not quit either, on the same answer (review round 1, R1-1)", async () => {
+	/*
+	 * Sliced from the `if (!backendStarted)` branch alone, with `backendStarted` declared
+	 * false in front of it: the installer arm's surrounding loop SPAWNS a backend, and a
+	 * test that runs it would be a test of the fixture rather than of the branch.
+	 */
+	const code = await startBranchCode({
+		marker: "Failed to start backend after installation, quitting app",
+		branch: "if (!backendStarted) {",
+		backward: true,
+		prefix: "let backendStarted = false;\n",
+	});
+	assert.match(
+		code,
+		/after installation, quitting app/,
+		"the slice is the POST-INSTALL arm and not the existing-installation one",
+	);
+
+	const configured = await squatter(livePid());
+	const fallback = await squatter(process.pid);
+	const m = await manager();
+	m.configuredUrl = configured.address;
+	m.fallbackSpawnUrls = [fallback.address];
+	assert.equal(await m.start(), false, "nowhere free to start a daemon");
+
+	const occupied = await runStartBranch(code, m, { INSTALLER: "installer" });
+	assert.deepEqual(
+		occupied.filter(([kind]) => kind === "quit"),
+		[],
+		"a first launch whose addresses are both held must not quit either: it is the same class of failure, one arm down",
+	);
+	assert.deepEqual(
+		occupied.filter(([kind]) => kind === "dialog"),
+		[],
+		"and no modal: the status surface already names the holders",
+	);
+	assert.match(
+		occupied.map(([, message]) => message).join("\n"),
+		/held by something it does not own/,
+		"the log says why the app is staying up",
+	);
+	console.log(
+		`post-install arm, both held -> no quit: ${m.getStatusSnapshot().detail}`,
+	);
+	await m.stop(false);
+
+	const other = await runStartBranch(
+		code,
+		{
+			start: async () => false,
+			isStartBlockedByOccupiedAddress: () => false,
+		},
+		{ INSTALLER: "installer" },
+	);
+	assert.deepEqual(
+		other.map(([kind]) => kind),
+		["log", "dialog", "quit"],
+		"an installed-but-unstartable backend for any other reason still reports and quits",
 	);
 });

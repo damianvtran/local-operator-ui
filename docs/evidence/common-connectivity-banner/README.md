@@ -29,8 +29,13 @@ before the shutter, so a frame cannot be a race between the query resolving and
 the screenshot; `attached` and `degraded` wait for the *absence* of every offline
 sentence instead, because their claim is that no banner renders at all.
 
-1024x300 asked for, 1024x333 returned: the capturer resizes the viewport to the
-content, and the longest banner (two sentences) is what made the difference.
+1024x300 asked for, and the capturer resizes the viewport to the content: the
+bandless states return **1024x333**, a title-plus-one-detail band **1024x401**, the
+two-holder and fallback bands (four detail lines) **1024x440**, and the internet
+band **1024x420**. Those are this tree's capturer on this machine, measured in the
+round-1 remediation pass; every banded frame in this directory is taller than it
+was in the set before that pass, for the reason the "Re-capturing this set" section
+records - the copy-driven heights are the band rows, not the document.
 
 ## The readback
 
@@ -43,7 +48,10 @@ content, and the longest banner (two sentences) is what made the difference.
 | `unclaimed` | the same sentence + "A daemon is running at http://127.0.0.1:1111, but it refused this app's credential for its desktop plane. The daemon is running." | warning |
 | `stopped` | "The Local Operator server stopped. The app keeps looking for one and attaches to it when it appears." + "The daemon's process is gone." | danger |
 | `wedged` | "A Local Operator server is running on this machine and this app is not attached to it." + main's own sentence about the path taken | warning |
-| `unattachable` | the same sentence + main's spawn-gate detail: the path taken (this app was not given the key to that server), that no second daemon was started, and that it keeps probing for one it can open | warning |
+| `unattachable` | the same sentence + main's spawn-gate detail: **the holder first** (address, pid, install, version, and that this app holds no key to it), then that nothing was started over it, then the act that ends it (`lop services reclaim <pid>`), then the promise | warning |
+| `both-addresses-held` | the two-holder form of the same: the class stated **once** ("are running Local Operator daemons this app has no key for") with both addresses listed under it - the state the app used to QUIT in, and the one that had no frame anywhere in the tree before round 1 (D2/D6) | warning |
+| `serving-on-fallback` | "Serving on http://127.0.0.1:8080, not the address this app is configured for (http://127.0.0.1:1111)." + main's holder clause for the configured address and the act that frees it - the state that was **byte-identical to `attached`** before it had a presentation (D1) | warning |
+| `returned-to-configured` | "Back on http://127.0.0.1:1111, the address this app is configured for." + the address it served on until it moved back - the transition OUT of the state above, and the only dismissible band here (D1) | **success** |
 | `no-bridge` | nothing — **no banner renders**: with no desktop bridge the health query has no answer and the hook's own fallback reads the server as online (design round 2, D12) | — |
 | `internet-offline-confirmed` | "You are offline." plus the app's own tail (the configured hosting provider named when main knows one, otherwise "This app's updates require an internet connection.") — and it paints only after the negative reading has persisted across its grace, never on the first unconfirmed sample (`@shared/utils/offline-confirmation`) | warning |
 
@@ -87,10 +95,12 @@ offline, one state over.
 
 ## The identities, measured
 
-Eighteen frames, two palettes, nine stories.
+Twenty-six frames, two palettes, thirteen stories. The hashes below were re-derived
+in the round-1 remediation pass (they are hand-maintained, and every re-capture
+moves them).
 
 - `attached` is byte-identical to `degraded`
-  (`b03d4c15…` dark, `f705c0db…` light). **That identity is the claim**: a missed
+  (`3c316d2f…` dark, `e579fe9a…` light). **That identity is the claim**: a missed
   probe must not produce a banner, and the two frames being one picture is the
   measurement of it.
 - **`no-bridge` shares that identity, and there it is a contradiction rather than
@@ -109,20 +119,34 @@ Eighteen frames, two palettes, nine stories.
   design round, not one this round decides; the frame, the table row and the play
   now agree on what ships.
 - The other stories have their own bytes in both palettes:
-  `identity-failed` `8a143ffa…` / `61759812…`, `no-spawn` `df00bab6…` /
-  `89c6af28…`, `unclaimed` `9638ffdb…` / `eafeb7c3…`, `stopped` `7479dbae…` /
-  `19edc379…`, `wedged` `791cda99…` / `f086b507…`, `unattachable` `e71a3016…` /
-  `a6e0bc0e…`. This list is hand-maintained and every re-capture moves it, so
+  `identity-failed` `6b0c4d21…` / `cefcf052…`, `no-spawn` `9d0b981e…` /
+  `efcdbc7f…`, `unclaimed` `38ee1b31…` / `e1305b1d…`, `stopped` `a7984274…` /
+  `094ab185…`, `wedged` `16fd6076…` / `e71aa082…`, `unattachable` `07eba5bb…` /
+  `8f13c8b1…`, `both-addresses-held` `84c7e093…` / `1fc97c12…`,
+  `serving-on-fallback` `eaa4d5f5…` / `3d977db0…`, `returned-to-configured`
+  `94aa7460…` / `c27e3949…`, `internet-offline-confirmed` `87ae6e95…` /
+  `b22d1565…`. This list is hand-maintained and every re-capture moves it, so
   refresh it in the pass that renews the frames or read the files themselves: two
   of its entries were stale when round 2 measured them (`wedged` and `no-bridge`),
   which is exactly the drift a hand-written list accumulates.
+- `no-bridge` is deliberately NOT re-shot by the round-1 remediation pass, and
+  this is a measurement rather than an omission: on this machine the story's own
+  `/health` fallback now REJECTS (a Storybook origin cannot read the daemon's
+  origin), so `online` is false, `hasConnectivityIssue` is true, and the band
+  paints "Not connected to a Local Operator server." - 1024x386. It does that
+  under the component in this tree AND under the pre-change component from
+  `abbc98e14` (both captured, both 1024x386), so the render moved with the host
+  and not with the copy this pass edited. Re-shooting it would have replaced a
+  record of the decision (a host with no bridge renders NOTHING) with an artifact
+  of this box, which is the trade this directory exists to refuse.
 - `unattachable` was the story whose hashes this readback could not state while its
   copy was being corrected; it no longer is. The pair committed here carries the
-  corrected sentence ("This app was not given the key to that server, so it did
-  not start a second one. It keeps probing for a server it can open."), captured
-  through this directory's own command, and its hashes are in the list above.
-- The two-sentence states are visibly taller than the one-sentence ones, which is
-  the second line being main's detail rather than a different sentence count.
+  sentence this tree ships - produced by `describeSpawnRefusal` and compared
+  against the story fixture by `scripts/connectivity-banner-copy.test.mjs`, so the
+  two cannot drift again (that drift is design round 1's D2).
+- The banded states are visibly taller than the bandless ones, and the difference
+  is the band's own rows (64 for a title plus one detail line, 104 for four), not a
+  different sentence count: the wash rows are what the copy costs.
 - Two consecutive runs of this surface at this head produce all 18 frames byte for
   byte. The rig gained a pointer reset before every navigation while this set was
   being taken (a hover entry was leaving the pointer where it stopped, and a
@@ -146,7 +170,7 @@ listening. Nothing is stubbed in the baseline frame: a Storybook origin cannot
 read `/health` on the daemon's origin (that is the defect stated as a mechanism),
 so main's banner reaches its offline branch on its own, and it says the same
 bytes whether the server is up or gone.
-- **after**: nine frames, six of which render a banner, `attached`, `degraded`
+- **after**: thirteen frames, ten of which render a banner, `attached`, `degraded`
 and `no-bridge` rendering none at all (the last one measured rather than
 intended: D12 above), and no server sentence containing the word "offline"
 anywhere. `wedged` and `unattachable` are the pair that says what the
