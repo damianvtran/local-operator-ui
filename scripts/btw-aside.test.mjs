@@ -424,8 +424,17 @@ const RE_SEND_VERB =
 	/content=\{\s*(?:\/\*[\s\S]*?\*\/\s*)?aside !== null && !awaitingAnswer\s*\?\s*"Ask the aside"\s*:\s*"Send message"\s*\}/;
 const RE_SEND_LABEL =
 	/aria-label=\{\s*aside !== null && !awaitingAnswer\s*\?\s*"Ask the aside"\s*:\s*"Send message"\s*\}/;
+/*
+ * The cap counts the question's MEASURED box and the gap under it (design round 4,
+ * D16). `Q` is a number the panel measures, not an assumption about how many lines a
+ * question - or a quote staged in it - takes, because that is the width's decision.
+ */
 const RE_PANEL_CAP_COUNTS_QUESTION =
-	/var\(--text-body-sm\) \* \$\{ASIDE_QUESTION_LINE_HEIGHT\}/;
+	/\$\{question\} \+ \$\{ASIDE_TURN_GAP_REM\}/;
+const RE_PANEL_CAP_PASSES_THE_MEASUREMENT =
+	/maxHeight: asideExchangeCap\(isSmallView, newestQuestionBox\)/;
+const RE_PANEL_CAP_MEASURES_THE_QUESTION =
+	/const height = node\.getBoundingClientRect\(\)\.height;/;
 const RE_PANEL_SCROLLS_TO_TURN =
 	/const wanted = asideScrollToTurn\(geometry\);\s*region\.scrollTop = wanted;/;
 /*
@@ -2320,22 +2329,71 @@ test("the panel names its chord's verb, describes its blocked control, and annou
 });
 
 /*
- * THE CEILING COUNTS THE QUESTION AND ITS GAP (design round 2, D10).
+ * THE CEILING COUNTS THE QUESTION'S MEASURED BOX AND ITS GAP (design round 2, D10;
+ * design round 4, D16 with UX round 3's U20/Q46).
  *
- * The cap budgeted answer lines only, while the region also holds the question's
- * line box (19.5px at wide) and the 4px gap under it — so an answer of nine complete
- * lines measured `scrollHeight` 225 against `clientHeight` 224 and the exchange grew
- * a full-height scrollbar that scrolled 1px and cut nothing. The two terms are in
- * the expression, and D1's whole-line property is what they protect: the budget left
- * over is still a whole number of the answer's line boxes.
+ * The cap budgeted answer lines only, while the region also holds the question block
+ * and the 4px gap under it - so an answer of nine complete lines measured
+ * `scrollHeight` 225 against `clientHeight` 224 and the exchange grew a full-height
+ * scrollbar that scrolled 1px and cut nothing (D10). R6-4 then counted ONE line box
+ * per staged quote, which is the width's decision rather than the question's, and lost
+ * the property at the width where the quote wraps (D16). The cap now takes the question
+ * node's own measured height, so the budget left over is a whole number of the answer's
+ * line boxes for any question shape - which is what D1 promises and the arithmetic half
+ * of the property is asserted on below.
+ *
+ * THIS IS THE PLUMBING HALF, and it is a pin because the expression cannot be trusted
+ * to mean anything if the number handed to it is not a measurement: both halves of the
+ * retired rule are gone rather than kept beside the new term, and the measurement is
+ * the question paragraph's own box, observed rather than derived («R7-2»: setting the
+ * term to a remembered line count left the suite green before this).
  */
-test("the ceiling counts the question's line and the gap under it", () => {
+test("the ceiling counts the question's measured box and the gap under it", () => {
 	const panel = read(
 		"src/renderer/src/features/chat/components/aside-panel.tsx",
 	);
 	assert.match(panel, RE_PANEL_CAP_COUNTS_QUESTION);
-	assert.match(panel, /const ASIDE_QUESTION_LINE_HEIGHT = 1\.5;/);
 	assert.match(panel, /const ASIDE_TURN_GAP_REM = "0\.25rem";/);
+	assert.match(
+		panel,
+		/const ASIDE_QUESTION_MIN_BOX = `var\(--text-body-sm\) \* \$\{ASIDE_QUESTION_LINE_HEIGHT\}`;/,
+	);
+
+	// The measurement: state the cap reads, a ref for the newest question's own
+	// paragraph, and a `ResizeObserver` that writes the box it lays out at.
+	assert.match(
+		panel,
+		/const \[newestQuestionBox, setNewestQuestionBox\] = useState<number \| null>\(\s*null,?\s*\);/,
+	);
+	assert.match(
+		panel,
+		/const newestQuestionRef = useRef<HTMLParagraphElement>\(null\);/,
+	);
+	assert.match(panel, RE_PANEL_CAP_MEASURES_THE_QUESTION);
+	assert.match(panel, /const observer = new ResizeObserver\(measure\);/);
+	assert.match(panel, /observer\.observe\(node\);/);
+	// The ref is the NEWEST turn's: an older question is not the block the edge is
+	// measured from.
+	assert.match(
+		panel,
+		/ref=\{\s*turn\.asideId === lastTurnId \? newestQuestionRef : undefined\s*\}/,
+	);
+	// And the state, not a line count, is what the cap is called with.
+	assert.match(panel, RE_PANEL_CAP_PASSES_THE_MEASUREMENT);
+
+	/*
+	 * The retired mechanism is GONE, not kept in parallel: a per-quote line count beside a
+	 * measured box is two answers to one question, and the one that is right at one width
+	 * is the one that is wrong at another. Declarations, not mentions - the cap's own note
+	 * names the three the amendment removed, which is how a later reader finds out why the
+	 * expression has one term where it had three.
+	 */
+	assert.doesNotMatch(panel, /newestStagedQuotes/);
+	assert.doesNotMatch(
+		panel,
+		/const ASIDE_QUOTE_PAD_Y_REM|const ASIDE_QUOTE_GAP_REM/,
+	);
+	assert.doesNotMatch(panel, /quoteBlock/);
 });
 
 /*
@@ -2371,9 +2429,13 @@ test("the retirement request is a trigger the effect reads", () => {
  * round 3, D12, which is D1 regressing).
  *
  * D1's whole-row property is arithmetic: the exchange's `max-height` is a whole
- * number of the answer's own line boxes plus the question's line and the 4px under
- * it, so the boundary is the top edge of a row. That only holds while every block
- * boundary INSIDE the answer is a whole number of those boxes too, and
+ * number of the answer's own line boxes plus the question block and the 4px under
+ * it, so the boundary is the top edge of a row. The question block is the one the
+ * panel MEASURES (design round 4, D16); the case this test is built on is a one-line
+ * question, where the measurement and the line box are the same 19.5px, and the
+ * shapes that separate the two are asserted at the end of it. The property itself
+ * only holds while every block boundary INSIDE the answer is a whole number of those
+ * boxes too, and
  * `markdown.css` spaces paragraphs by `0.5rem` — which is not. With a paragraph
  * break in the answer, round 3 measured the edge falling 11.9px into a 16.5px glyph
  * box at wide: a row of letter tops under a complete line, on an answer round 2 had
@@ -2479,13 +2541,16 @@ test("the cap cuts between rows even when the answer has a paragraph break", () 
 	assert.equal(cuts(measuredRow), false);
 
 	/*
-	 * AND WITH A STAGED QUOTE (agent review round 6, R6-4). The quote paints its own
-	 * block above the question (U14), so the answer starts lower; a ceiling that did
-	 * not count it put the edge (247.5 - 51) / 22.4 = 8.77 line boxes below the
-	 * answer's top instead of 10, through a row. This half EVALUATES the panel's own
-	 * `asideExchangeCap` body - the shipped expression, with its constants read from
-	 * the file and its tokens resolved at the root size - rather than restating it, so
-	 * a ceiling that drops or mis-sizes the quote term fails here.
+	 * AND WITH THE QUESTION BLOCK'S OWN MEASURED BOX (design round 4, D16, which
+	 * replaces R6-4's per-quote term; UX round 3's U20/Q46 drove it in the flow).
+	 *
+	 * R6-4 counted ONE line box per staged quote, which is a fact about the RENDERED
+	 * WIDTH rather than about the quote - the same 44-character quote is one line at
+	 * 1380 and two at 800 - so the identity this half asserts held only where that
+	 * assumption happened to be true. It EVALUATES the panel's own `asideExchangeCap`
+	 * body - the shipped expression, with its constants read from the file and its tokens
+	 * resolved at the root size - for every question shape the review named, at both
+	 * widths, and then reproduces design round 4's own figures from the rule it replaced.
 	 */
 	const capSource = panel.match(
 		/const asideExchangeCap = \([^)]*\): string => \{\n([\s\S]*?)\n\};/,
@@ -2496,81 +2561,167 @@ test("the cap cuts between rows even when the answer has a paragraph break", () 
 		assert.ok(found, `${name} is a constant of the panel`);
 		return JSON.parse(found[1]);
 	};
+	/*
+	 * The floor the cap uses before the node is measured is a token EXPRESSION rather than
+	 * a literal, so it is read as the shape it is: one line of the question's own step.
+	 * That is the binding the retired class-to-constant test held for the quote's classes -
+	 * of that term's two halves, the measured box is now a NUMBER the panel observes and
+	 * this floor is the only arithmetic left to bind.
+	 */
+	assert.match(
+		panel,
+		/const ASIDE_QUESTION_MIN_BOX = `var\(--text-body-sm\) \* \$\{ASIDE_QUESTION_LINE_HEIGHT\}`;/,
+	);
+	const ASIDE_QUESTION_MIN_BOX = `var(--text-body-sm) * ${constant("ASIDE_QUESTION_LINE_HEIGHT")}`;
 	const capExpression = new Function(
 		"isSmallView",
-		"stagedQuotes",
+		"questionBox",
 		"asideAnswerType",
 		"ASIDE_ANSWER_LINE_HEIGHT",
 		"ASIDE_EXCHANGE_LINES",
-		"ASIDE_QUESTION_LINE_HEIGHT",
 		"ASIDE_TURN_GAP_REM",
-		"ASIDE_QUOTE_PAD_Y_REM",
-		"ASIDE_QUOTE_GAP_REM",
+		"ASIDE_QUESTION_MIN_BOX",
 		capSource[1],
 	);
 	/** The `calc()` the panel ships, in px, at the tokens `index.css` defines. */
-	const shippedCap = (isSmallView, stagedQuotes) => {
+	const shippedCap = (isSmallView, questionBox) => {
 		const calc = capExpression(
 			isSmallView,
-			stagedQuotes,
+			questionBox,
 			(small) => ({
 				fontSize: small ? "var(--text-body-sm)" : "var(--text-body)",
 			}),
 			constant("ASIDE_ANSWER_LINE_HEIGHT"),
 			constant("ASIDE_EXCHANGE_LINES"),
-			constant("ASIDE_QUESTION_LINE_HEIGHT"),
 			constant("ASIDE_TURN_GAP_REM"),
-			constant("ASIDE_QUOTE_PAD_Y_REM"),
-			constant("ASIDE_QUOTE_GAP_REM"),
+			ASIDE_QUESTION_MIN_BOX,
 		);
 		const arithmetic = calc
 			.replace(/^calc/, "")
 			.replaceAll("var(--text-body-sm)", String(0.8125 * ROOT_PX))
 			.replaceAll("var(--text-body)", String(0.875 * ROOT_PX))
-			.replace(/([\d.]+)rem/g, (_, rem) => String(Number(rem) * ROOT_PX));
+			.replace(/([\d.]+)rem/g, (_, rem) => String(Number(rem) * ROOT_PX))
+			/*
+			 * `Q` arrives as `${questionBox}px` - the measured number, which is the whole point
+			 * of the term - and `px` is the unit this arithmetic is already in.
+			 */
+			.replace(/([\d.]+)px/g, "$1");
 		assert.match(arithmetic, /^[\d.\s+*()]+$/, `the cap resolves: ${calc}`);
 		return new Function(`return ${arithmetic};`)();
 	};
 
 	/*
-	 * The quote term's lengths ARE the quote's classes: `py-0.5` and `mb-1` at the
-	 * tree's `--spacing` step, so a class edit that is not carried to the constants
-	 * (or the reverse) fails here instead of re-opening the cut.
+	 * THE SHAPES, each as the question block's MEASURED height: no quote (D10 and D12's
+	 * plain case), the 44-character quote the R6-4 cases stage as the ONE line box it is
+	 * at 1380 and the TWO it wraps to at 800, two staged quotes, a wrapped quote under a
+	 * three-line question, and the six- and seven-line questions of D16's narrow arm.
 	 */
-	assert.match(styles, /--spacing: 0\.25rem;/);
-	const quoteClass = panel.match(
-		/className="mb-(\d+(?:\.\d+)?) block border-hairline border-l-2 py-(\d+(?:\.\d+)?) pl-2"/,
-	);
-	assert.ok(quoteClass, "the staged quote's block keeps its classes");
+	const quoteBlock = (lines) =>
+		lines * questionLineBox + 2 * 0.125 * ROOT_PX + 0.25 * ROOT_PX;
+	const SHAPES = [
+		{ what: "no quote", box: questionLineBox },
+		{ what: "one quote", box: quoteBlock(1) + questionLineBox },
+		{ what: "a wrapping quote", box: quoteBlock(2) + questionLineBox },
+		{ what: "two quotes", box: 2 * quoteBlock(1) + questionLineBox },
+		{
+			what: "a wrapping quote under a three-line question",
+			box: quoteBlock(2) + 3 * questionLineBox,
+		},
+		{ what: "a six-line question", box: 6 * questionLineBox },
+		{ what: "a seven-line question", box: 7 * questionLineBox },
+	];
+	// The quote block QA's frame measured: a 23.5px rule plus the 4px under it.
+	assert.equal(near(quoteBlock(1), 27.5), true, "the staged quote's block");
+	// D10 and D12's plain case is unchanged: no quote, the same 247.5 edge.
 	assert.equal(
-		`${Number(quoteClass[1]) * 0.25}rem`,
-		constant("ASIDE_QUOTE_GAP_REM"),
-	);
-	assert.equal(
-		`${Number(quoteClass[2]) * 0.25}rem`,
-		constant("ASIDE_QUOTE_PAD_Y_REM"),
-	);
-	assert.match(
-		panel,
-		/maxHeight: asideExchangeCap\(isSmallView, newestStagedQuotes\)/,
+		near(shippedCap(false, questionLineBox), cap),
+		true,
+		"no quote, same cap",
 	);
 
-	// The quote block QA's frame measured: a 23.5px rule plus the 4px under it.
-	const quoteBlock = questionLineBox + 2 * 0.125 * ROOT_PX + 0.25 * ROOT_PX;
-	assert.equal(near(quoteBlock, 27.5), true, "the staged quote's block");
-	// D10 and D12's plain case is unchanged: no quote, the same 247.5 edge.
-	assert.equal(near(shippedCap(false, 0), cap), true, "no quote, same cap");
+	/** Whether an edge at `edge` falls inside the glyphs of a row starting at `rowTop`. */
+	const cutsAt = (edge, rowTop) => {
+		const top = rowTop + glyphLead;
+		return top < edge && top + glyphBox > edge;
+	};
 	for (const isSmallView of [false, true]) {
 		const lineBox = (isSmallView ? 0.8125 : 0.875) * ROOT_PX * 1.6;
-		for (const quotes of [0, 1, 2]) {
-			const answerTop = quotes * quoteBlock + contentTop;
-			const rows = (shippedCap(isSmallView, quotes) - answerTop) / lineBox;
+		const where = isSmallView ? "narrow" : "wide";
+		for (const shape of SHAPES) {
+			const answerTop = shape.box + turnGap;
+			const rows = (shippedCap(isSmallView, shape.box) - answerTop) / lineBox;
 			assert.equal(
 				near(rows, 10),
 				true,
-				`${quotes} quote(s) at ${isSmallView ? "narrow" : "wide"}: the edge is ${rows.toFixed(2)} line boxes below the answer's top, not 10`,
+				`${shape.what} at ${where}: the edge is ${rows.toFixed(2)} line boxes below the answer's top, not 10`,
 			);
+			/*
+			 * AND NO ROW IS CUT: every row's glyphs sit on one side of the edge. The row AFTER
+			 * the last whole one is included on purpose - the cut D16 reports is that row's
+			 * letter tops showing, which an exact `rows` alone would not name - and the glyph
+			 * box is the wide one at both widths, which is the larger of the two and so cannot
+			 * hide a cut at narrow.
+			 */
+			for (let row = 0; row <= 10; row++) {
+				assert.equal(
+					cutsAt(answerTop + 10 * lineBox, answerTop + row * lineBox),
+					false,
+					`${shape.what} at ${where}: row ${row} is cut by the edge`,
+				);
+			}
 		}
+	}
+	/*
+	 * THE COUNTERFACTUAL, on the shapes design round 4 measured: the rule this replaces -
+	 * one question line, one line box per staged quote - put the edge (259 - 70.5) / 20.8 =
+	 * 9.1 line boxes below the answer's top at narrow with a wrapping quote, 5.3 under a
+	 * six-line question and 4.4 under a seven-line one, against the 259px cap the report
+	 * names for the first and 231.5px for the others. Reproducing those figures from the
+	 * same three steps is what makes the matrix a fix rather than a tautology; the loop
+	 * after it is the same three shapes under the shipped rule, at 10.0.
+	 */
+	const legacyCap = (isSmallView, quoteCount) =>
+		(isSmallView ? 0.8125 : 0.875) *
+			ROOT_PX *
+			constant("ASIDE_ANSWER_LINE_HEIGHT") *
+			constant("ASIDE_EXCHANGE_LINES") +
+		questionLineBox * (quoteCount + 1) +
+		quoteCount * quoteBlock(0) +
+		turnGap;
+	const narrowLineBox = 0.8125 * ROOT_PX * 1.6;
+	const wrappingQuote = SHAPES[2].box;
+	const sixLine = SHAPES[5].box;
+	const sevenLine = SHAPES[6].box;
+	assert.equal(
+		near(legacyCap(true, 1), 259),
+		true,
+		"the retired cap, as measured",
+	);
+	assert.equal(near(legacyCap(true, 0), 231.5), true, "and with no quote");
+	assert.equal(
+		near(wrappingQuote + turnGap, 70.5),
+		true,
+		"the answer's top under a wrapping quote, as measured",
+	);
+	assert.equal(
+		near((legacyCap(true, 1) - wrappingQuote - turnGap) / narrowLineBox, 9.1),
+		true,
+		"the retired rule's edge at narrow, which design round 4 reported as 9.1",
+	);
+	assert.equal(
+		near((legacyCap(true, 0) - sixLine - turnGap) / narrowLineBox, 5.3),
+		true,
+	);
+	assert.equal(
+		near((legacyCap(true, 0) - sevenLine - turnGap) / narrowLineBox, 4.4),
+		true,
+	);
+	for (const box of [wrappingQuote, sixLine, sevenLine]) {
+		assert.equal(
+			near((shippedCap(true, box) - box - turnGap) / narrowLineBox, 10),
+			true,
+			"the shipped rule holds the whole-line edge where the retired one did not",
+		);
 	}
 });
 

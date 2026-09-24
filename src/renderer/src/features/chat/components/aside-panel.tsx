@@ -4,7 +4,15 @@ import { Tooltip } from "@shared/components/ui/tooltip";
 import { cn } from "@shared/lib/utils";
 import { type AsideStream, useAsideStore } from "@shared/store/aside-store";
 import { X } from "lucide-react";
-import { type FC, useEffect, useId, useMemo, useRef } from "react";
+import {
+	type FC,
+	useEffect,
+	useId,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import {
 	adoptAside,
 	asideAdoptBlockedReason,
@@ -95,38 +103,24 @@ const ASIDE_EXCHANGE_LINES = 10;
  * `1.5` is the leading `--text-body-sm` carries (`--text-body-sm--line-height` in
  * `styles/index.css`), and the question is painted at that step at both window
  * sizes. `gap-1` is the 4px the turn's own `flex flex-col` puts between the question
- * and its answer.
+ * and its answer. The cap counts the question block as the panel MEASURES it and not
+ * as a multiple of this box (design round 4, D16), so `1.5` now survives only as the
+ * floor `ASIDE_QUESTION_MIN_BOX` states for the pass before that measurement exists.
  */
 const ASIDE_QUESTION_LINE_HEIGHT = 1.5;
 const ASIDE_TURN_GAP_REM = "0.25rem";
 
 /**
- * A STAGED QUOTE's block above the question — the ceiling's third term (agent review
- * round 6, R6-4).
+ * The question block's SMALLEST box: one line of the question's own step.
  *
- * WHY IT IS COUNTED. A question asked with a staged quote paints the quote as its own
- * block (`AsideQuestion`, U14) ABOVE the question's line, so the answer starts that
- * much lower while a ceiling that budgeted only the question line and the gap stayed
- * where it was: with one quote the edge sat (247.5 - 51) / 22.4 = 8.77 of the answer's
- * line boxes below its top rather than 10.0, and a long answer's last visible row was
- * a row of letter tops - D1's symptom, reached through a door D1's arithmetic did not
- * count. QA's frame of a rendered quote measures the block's rule at 23.5px, and the
- * `mb-1` under it makes the 27.5px these terms sum to at both window sizes.
- *
- * THE TERMS ARE THE QUOTE'S OWN CLASSES, restated as lengths: the quote is painted
- * inside the question's `text-body-sm` paragraph, so its one line is the question's
- * own line box (`var(--text-body-sm)` at `ASIDE_QUESTION_LINE_HEIGHT`); `py-0.5` is
- * the padding on each side of it and `mb-1` the margin under it. The class string is
- * a Tailwind literal and cannot be built from these constants, so the two are held
- * together by `btw-aside.test.mjs` instead: moving either without the other fails the
- * test that evaluates this cap rather than silently re-opening the cut.
- *
- * One block per quote, and each is ONE line: a quote or question long enough to wrap
- * adds line boxes this ceiling does not count, which is the exchange outgrowing its
- * ceiling rather than a fixed offset (round 6 measured those cuts at 0.4 to 3.3px).
+ * The cap takes the block's MEASURED box (`asideExchangeCap`, which says why), and this
+ * is what it uses for the one pass that has no measurement yet. A `useLayoutEffect`
+ * measures before the browser's first paint, so a browser never paints that pass; in a
+ * host that lays nothing out it is the smallest a question block can be, where zero
+ * would be a whole line less than the block that is actually there - the cut D1 exists
+ * to remove, entered by construction.
  */
-const ASIDE_QUOTE_PAD_Y_REM = "0.125rem";
-const ASIDE_QUOTE_GAP_REM = "0.25rem";
+const ASIDE_QUESTION_MIN_BOX = `var(--text-body-sm) * ${ASIDE_QUESTION_LINE_HEIGHT}`;
 
 /** The answer's size and leading, from the step it is painted at. */
 const asideAnswerType = (
@@ -160,7 +154,9 @@ const asideAnswerType = (
 const ASIDE_ANSWER_ROW_GRID = "lo-markdown--row-grid";
 
 /**
- * The exchange's cap, DERIVED from the answer's line box rather than chosen.
+ * The exchange's cap: `ASIDE_EXCHANGE_LINES * ASIDE_ANSWER_LINE_HEIGHT *
+ * answerFontSize + Q + G`, where `Q` is the newest question's own measured box and `G`
+ * is the gap under it (`ASIDE_TURN_GAP_REM`).
  *
  * WHY IT IS DERIVED (design round 1, D1). A cap in round pixels lands wherever
  * it lands inside a line, and the one this replaces did exactly that: 240px
@@ -179,31 +175,51 @@ const ASIDE_ANSWER_ROW_GRID = "lo-markdown--row-grid";
  * is an unportaled child of it), so each growable part of the band caps itself —
  * the shape the composer's attachment strip and textarea already use.
  *
- * IT COUNTS THE QUESTION AND ITS GAP TOO (design round 2, D10). The region holds
- * the question and the 4px under it as well as the answer, and a ceiling that
- * budgeted only answer lines therefore overflowed by exactly that much: an answer
- * of nine complete lines measured `scrollHeight` 225 against `clientHeight` 224, so
- * the exchange grew a full-height scrollbar that scrolled 1px and cut nothing — a
- * scrollbar as a rounding artefact. Counting one question line and the gap lands
- * the boundary exactly where D1 needs it: the budget left for the answer is a whole
- * number of its line boxes, so the last visible row is a complete line and no
- * pixel of an eleventh line is shown. The two terms are one line each and stay
- * correct for the state D1 is about (one long answer under its question); a longer
- * exchange exceeds the ceiling many times over and is scrolled deliberately, which
- * is what the region is for.
+ * IT COUNTS THE QUESTION BLOCK AS MEASURED, NOT AS ONE LINE (design round 2's D10 and
+ * agent review round 6's R6-4, both recalled by design round 4's D16 and UX round 3's
+ * U20/Q46). D10 counted ONE question line and R6-4 one line box per staged quote, and
+ * both are assumptions about a box the BROWSER lays out: whether a quote or a question
+ * is one line is decided by the rendered width, not by the question. Measured on the
+ * render: the ordinary 44-character quote the R6-4 cases stage WRAPS to two lines at
+ * 800px, so with one quote the answer's top sat 70.5px down against a 259px cap and the
+ * edge landed at 9.1 line boxes instead of 10.0 - a 0.9px sliver of a row at wide, and
+ * 4.4 at narrow for a 7-line quote (a row of letter tops, 9.7-10.5px of it hidden),
+ * under half of what the ceiling promises.
  *
- * `stagedQuotes` is the NEWEST turn's quote count (R6-4, `ASIDE_QUOTE_PAD_Y_REM`),
- * because the newest turn is the one D11 moves to the region's top, so its question
- * block is the one above the answer the edge is measured from. With no quote the
- * third term is zero and the ceiling is the one D10 and D12 measured.
+ * SO THE CAP TAKES THE QUESTION NODE'S OWN BOX - `Q` above - as the panel MEASURES it
+ * (a `ResizeObserver`, below), and the edge is `ASIDE_EXCHANGE_LINES` of the answer's
+ * own line boxes below the answer's top for ANY question shape at ANY width. No set of
+ * arithmetic terms can promise that, because a term for the wrap would re-derive a
+ * decision the browser has already made: `stagedQuotes`, `ASIDE_QUOTE_PAD_Y_REM` and
+ * `ASIDE_QUOTE_GAP_REM` are gone with the assumption they encoded, and a two-line quote
+ * style, an image chip on the question or a longer quote prefix is now just a taller
+ * `Q`. The node measured is the question PARAGRAPH, which is the turn's own flex item -
+ * so a quote's `mb-1` inside it counts, because a flex item's children cannot collapse
+ * their margins through it. `ASIDE_QUESTION_MIN_BOX` is the floor for the pass before
+ * the node is measured.
+ *
+ * THE MEASUREMENT NEEDS A STABLE WIDTH, AND THE REGION IS WHERE THAT IS PROMISED. A cap
+ * that grows with a box inside the region can grow the box: on a platform whose
+ * scrollbar takes layout width (not macOS), an overflow narrows the content, the
+ * question wraps a line taller, the cap grows by that same line, and the pair can sit
+ * on the boundary toggling. `scrollbar-gutter: stable` on the region reserves that
+ * gutter whether or not the exchange overflows, so the width the question wraps at -
+ * and therefore the fixed point this rule needs - does not depend on the cap.
+ *
+ * WHAT IT DOES NOT REACH (design round 4, D17). The answer's OWN blocks are not on this
+ * grid: `ASIDE_ANSWER_ROW_GRID` puts the renderer's paragraphs on the answer's line box
+ * and nothing spaces the lines inside a list item or a `pre`, so an edge landing inside
+ * one of those cuts it at any cap. That is the class no cap arithmetic reaches, and it
+ * is deliberately left to the follow-up the review named rather than papered over here.
  */
 const asideExchangeCap = (
 	isSmallView: boolean,
-	stagedQuotes: number,
+	questionBox: number | null,
 ): string => {
 	const answer = asideAnswerType(isSmallView);
-	const quoteBlock = `var(--text-body-sm) * ${ASIDE_QUESTION_LINE_HEIGHT} + ${ASIDE_QUOTE_PAD_Y_REM} * 2 + ${ASIDE_QUOTE_GAP_REM}`;
-	return `calc(${answer.fontSize} * ${ASIDE_ANSWER_LINE_HEIGHT} * ${ASIDE_EXCHANGE_LINES} + var(--text-body-sm) * ${ASIDE_QUESTION_LINE_HEIGHT} + ${ASIDE_TURN_GAP_REM} + ${stagedQuotes} * (${quoteBlock}))`;
+	const question =
+		questionBox === null ? ASIDE_QUESTION_MIN_BOX : `${questionBox}px`;
+	return `calc(${answer.fontSize} * ${ASIDE_ANSWER_LINE_HEIGHT} * ${ASIDE_EXCHANGE_LINES} + ${question} + ${ASIDE_TURN_GAP_REM})`;
 };
 
 /**
@@ -352,16 +368,41 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 		lastTurnId ? streams[lastTurnId] : undefined,
 	);
 	/*
-	 * The newest question's staged quotes, which the exchange's ceiling counts (R6-4,
-	 * `asideExchangeCap`). Read by `parseReplies`, the same reader `AsideQuestion`
-	 * paints them with, so the ceiling cannot count a different number of blocks than
-	 * the panel draws.
+	 * THE QUESTION BLOCK'S OWN BOX, MEASURED (design round 4, D16; `asideExchangeCap`).
+	 *
+	 * The cap's `Q` term is the height of the newest turn's question PARAGRAPH as laid
+	 * out, because whether a quote or a question is one line is the browser's decision at
+	 * the width it was given and not a fact about the question: R6-4's per-quote term
+	 * held the identity at one width and lost it at another (the same 44-character quote
+	 * is one line at 1380 and two at 800). Measured with a `ResizeObserver` rather than
+	 * with a line count, so a wrapped quote, a wider quote prefix or an image chip on the
+	 * question is simply a taller box, and the effect's own comparison keeps it to one
+	 * write per actual change - while measuring before the observer is installed is what
+	 * the first paint uses, so no frame is laid out against the floor below.
 	 */
-	const newestQuestion = attachment?.turns.at(-1)?.question ?? "";
-	const newestStagedQuotes = useMemo(
-		() => parseReplies(newestQuestion).replies.length,
-		[newestQuestion],
+	const [newestQuestionBox, setNewestQuestionBox] = useState<number | null>(
+		null,
 	);
+	const newestQuestionRef = useRef<HTMLParagraphElement>(null);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the newest turn's ID re-attaches the observer - the ref moves to the new turn's paragraph with it - and the body reads only the DOM.
+	useLayoutEffect(() => {
+		const node = newestQuestionRef.current;
+		if (!node) {
+			setNewestQuestionBox(null);
+			return;
+		}
+		const measure = () => {
+			const height = node.getBoundingClientRect().height;
+			setNewestQuestionBox((current) =>
+				current === height ? current : height,
+			);
+		};
+		measure();
+		if (typeof ResizeObserver === "undefined") return;
+		const observer = new ResizeObserver(measure);
+		observer.observe(node);
+		return () => observer.disconnect();
+	}, [lastTurnId]);
 	/*
 	 * THE QUESTION MOVES TO THE REGION'S TOP, AND THE MOVE SURVIVES THE ANSWER ARRIVING
 	 * (design round 3, D11, and it is not D6's per-chunk follow).
@@ -581,9 +622,19 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 				// biome-ignore lint/a11y/noNoninteractiveTabindex: the stop IS the remedy - the region scrolls and nothing inside it is focusable.
 				tabIndex={0}
 				aria-label="The aside exchange"
-				className="flex flex-col gap-3 overflow-y-auto"
+				/*
+				 * `scrollbar-gutter: stable` is the measured cap's own constraint, and it is here
+				 * rather than at the cap: the cap grows with a box INSIDE the region, so the width
+				 * the question wraps at must not change when the exchange starts to overflow -
+				 * where the platform's scrollbar takes layout width (not macOS), a gutter that
+				 * appeared with the overflow would re-wrap the question a line taller and grow the
+				 * cap by that same line, leaving the pair to toggle on the boundary. Reserving it
+				 * always makes the measurement the cap is built on independent of the cap.
+				 * See `asideExchangeCap`.
+				 */
+				className="flex flex-col gap-3 overflow-y-auto [scrollbar-gutter:stable]"
 				style={{
-					maxHeight: asideExchangeCap(isSmallView, newestStagedQuotes),
+					maxHeight: asideExchangeCap(isSmallView, newestQuestionBox),
 				}}
 			>
 				{attachment.turns.length === 0 ? (
@@ -602,8 +653,17 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 							 * label is `sr-only` because the ink step already says it to a
 							 * sighted reader: § 7 keeps the hierarchy in the type, not in
 							 * extra chrome.
+							 *
+							 * The ref is the NEWEST turn's only: the cap above the region is a
+							 * promise about the block directly above the answer its edge is
+							 * measured from, and an older turn's paragraph is not that block.
 							 */}
-							<p className="text-body-sm text-ink-muted">
+							<p
+								ref={
+									turn.asideId === lastTurnId ? newestQuestionRef : undefined
+								}
+								className="text-body-sm text-ink-muted"
+							>
 								<AsideQuestion question={turn.question} />
 							</p>
 							<AsideAnswer
