@@ -4114,29 +4114,31 @@ export function ChatSidebar({
 		    reported defect — it was the only entry point and users did not find
 		    it. The named row replaces it rather than joining it. */}
 			{/*
-			 * THE HEADING AND THE FIELD ARE ONE BLOCK (top-bar redesign, 2026-09-23).
-			 * The label had no vertical inset of its own, so it sat against the panel's
-			 * corner - a label floating above a box rather than the header OF one, which
-			 * is the dated read the report names - and it now takes the field's own 8px
-			 * inset (`my-2`). THE PANEL'S OWN `p-2` SITS OUTSIDE THAT, so the label's box
-			 * is 16px from the panel's edge, not 8: two numbers with two owners, and an
-			 * entry that records this should name both.
+			 * THE HEADING IS THE BAND'S ROW (top-bar redesign, 2026-09-23; re-cut in
+			 * review round 5). The label had no vertical inset of its own, so it sat
+			 * against the panel's corner - a label floating above a box rather than the
+			 * header OF one, which is the dated read the report names - and it now takes
+			 * the field's own 8px inset as a BOTTOM margin. THE PANEL'S OWN `p-2` SITS
+			 * OUTSIDE THAT, so the label's box is 16px from the panel's edge, not 8: two
+			 * numbers with two owners, and an entry that records this should name both.
 			 *
-			 * ONE INSET BETWEEN THE LABEL AND ITS FIELD, NOT TWO (design round 1, D5).
-			 * With the inset on both sides the gap between the label's baseline and the
-			 * field's top edge measured 28px - wider than the ~20px from the field down to
-			 * the `Agents` label below it - so the heading read as belonging to the panel's
-			 * corner rather than to the field it names. The FIELD's own top margin is the
-			 * one that goes: the wrapper keeps its `mb-2` bottom, the heading keeps its
-			 * `my-2`, and what is left between them is the single 8px the ramp owes between
-			 * two things in one block. The perceived gap is larger than that margin because
-			 * the label's 10px of ink is centred (`items-center`) in a 32px line box, which
-			 * leaves 11px of it below the baseline: measured on the rendered panel, the
-			 * heading's baseline now sits 19.75px above the field's top edge, against 28px
-			 * with both insets in place - and against the ~20px from the field down to the
-			 * `Agents` label, which is the comparison that matters: the label is one step
-			 * from its field rather than two, and no longer further from it than the field
-			 * is from the list it filters.
+			 * `h-6` + `mb-2` RATHER THAN `my-2 h-8`, and the number that decides it is 20.
+			 * The rail header and the conversation header share one 40px top band whose
+			 * content centre is 20 (see `sidebar-navigation.tsx` and `chat-header.tsx`),
+			 * and the operator's report was precisely that these three rows "all seem to
+			 * be on different lines". At `h-8` with a matching top margin this row's box
+			 * was y 16-48 and its 13px label centred on 32 - twelve pixels below the band
+			 * and half a step adrift of the two things either side of it. So the top
+			 * margin goes and the row is one 4px-ramp step taller than the label's own
+			 * line box: with the panel's 8px inset the row box is y 8-32, the 19.5px line
+			 * box of a 13px label sits at y 10.25-29.75, and its centre is 20.
+			 *
+			 * THE FIELD THAT FOLLOWS BEGINS WHERE THE BAND ENDS, which is the checkable
+			 * form of the same relationship: row bottom 32 + the row's own `mb-2` = 40,
+			 * the band's bottom edge. ONE INSET, still, between the label and its field:
+			 * the FIELD keeps its own top margin at zero (design round 1, D5, which took
+			 * the second of the two insets out so the label could not read as belonging
+			 * to the panel's corner rather than to the field it names).
 			 *
 			 * The ink is NAMED rather than inherited. The panel's own `text-ink` reaches
 			 * this row today, so this changes nothing on screen — it states the role so
@@ -4150,7 +4152,7 @@ export function ChatSidebar({
 			 */}
 			<div
 				data-titlebar-chat-heading=""
-				className={cn("my-2 flex h-8 items-center px-1")}
+				className={cn("mb-2 flex h-6 items-center px-1")}
 			>
 				<h2 className={cn("text-body-sm font-medium text-ink")}>Chats</h2>
 			</div>

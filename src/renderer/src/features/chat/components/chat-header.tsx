@@ -329,7 +329,33 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * draw a hard edge exactly where the fade is meant to be soft, which is the
 			 * "unneeded lines and decoration" the redesign is removing.
 			 */
-			className={cn("flex h-10 shrink-0 items-center gap-2 px-4")}
+			className={cn(
+				"flex h-10 shrink-0 flex-wrap items-center gap-2 px-4",
+				/*
+				 * THE NARROW COLUMN, AND WHY THE BAR WRAPS (design D3).
+				 *
+				 * A 220px conversation column is not exotic - it is what any 1380px window
+				 * gives the moment a pane is opened - and the one-line identity this bar is
+				 * built on did not survive it. Measured on the head before this rule: at
+				 * column 220 the name and the description both measured 0px (the name is not
+				 * truncated there, it is ABSENT) and the cluster ran 8px past the header's own
+				 * content box; at column 300 in an 800x600 window the name measured 24px. The
+				 * flex math is why: the description has no flex base at all, so it contributes
+				 * nothing to shrink and the whole of it lands on the name.
+				 *
+				 * So below 620px of COLUMN - the app's own narrow step, and a container query
+				 * rather than a viewport one for the reason `chat-measure.ts` states - the bar
+				 * takes two 40px rows instead of one. The description is not rendered, the
+				 * identity row stays at 40px in the band so a pane toolbar beside it still
+				 * lines up, and the cluster takes a second 40px row of its own, right-aligned
+				 * against the same 16px inset. Nothing is hidden that a pane needs: the
+				 * cluster's triggers all remain on screen, one row lower.
+				 *
+				 * At the app's practical column floor (240px) the identity row is
+				 * 240 - 32 - 28 - 8 = 172px, which holds a readable name.
+				 */
+				"@max-[620px]/chatcol:h-auto @max-[620px]/chatcol:gap-y-0",
+			)}
 			data-titlebar-drag=""
 			data-tour-tag="chat-header"
 		>
@@ -356,7 +382,18 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * are still centred against the bar rather than dropped to its baseline. */}
 			<div
 				data-titlebar-no-drag=""
-				className={cn("flex min-w-0 flex-1 items-baseline gap-2")}
+				className={cn(
+					"flex min-w-0 flex-1 items-baseline gap-2",
+					/*
+					 * `h-10` only in the two-row form, and `items-center` only there: the
+					 * identity row has to BE the band's 40px when the cluster is not in it,
+					 * which is what keeps a pane's toolbar aligned with this bar; and with
+					 * the description gone there is no second baseline left for
+					 * `items-baseline` to align against, so the name centres in the row it
+					 * now owns alone. Widths, measured after this change, below.
+					 */
+					"@max-[620px]/chatcol:h-10 @max-[620px]/chatcol:items-center",
+				)}
 			>
 				{/* `text-heading`, not `text-title`: branding.md reserves the 20px step
 				 * for section and dialog titles and states that a desktop app has no
@@ -373,22 +410,39 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				 * the type steps themselves - 16px `ink` against 13px `ink-muted`.
 				 *
 				 * The PRIORITY between the two runs is expressed in flex terms rather than
-				 * in prose: the description is `flex-1`, so its base size is zero and the
-				 * name takes the width it needs first, and only then does the name itself
-				 * shrink (`min-w-0 truncate`) rather than pushing the action cluster off the
-				 * bar. */}
+				 * in prose, and it is worth stating exactly what those terms buy (design D3).
+				 * The description is `flex-1` with a ZERO basis, so it has no flex base size:
+				 * it consumes slack and can never be the reason a pixel leaves the name, and
+				 * when the row has no slack at all it is already 0 - that is the description
+				 * yielding first, in the strongest form. The name is the one that then shrinks
+				 * (`min-w-0 truncate`) rather than pushing the action cluster off the bar. The
+				 * `max-w-[45%]` cap is the third part: at 1380 the description was eating 411.5
+				 * of the row's 612px (67%), so even where there IS slack it now takes at most
+				 * 45% and the primary run reads first. What the zero basis could NOT fix is a
+				 * row with no slack at all - that is the two-row rule on the header above, and
+				 * the widths it is measured at are recorded there. */}
 				{descriptionPending ? (
 					/* `bg-elevated` for the same measured reason the transcript
 					 * placeholder takes it: the header's ground is `canvas`, where the
 					 * Skeleton default `sunken` is the system's weakest adjacent pair
 					 * (deltaE00 1.89 in the dark brand palette, 1.25 in obsidian). The
 					 * height matches the `text-body-sm` line it stands in and `shrink-0`
-					 * holds its width, so holding the slot holds the row's height. */
-					<Skeleton className={cn("h-3 w-24 shrink-0 bg-elevated")} />
+					 * holds its width, so holding the slot holds the row's height.
+					 *
+					 * `hidden` in the two-row form for the same reason the text below it
+					 * is: it stands for the description, and a held slot for something
+					 * that is not rendered is a gap, not a placeholder. */
+					<Skeleton
+						className={cn(
+							"h-3 w-24 shrink-0 bg-elevated",
+							"@max-[620px]/chatcol:hidden",
+						)}
+					/>
 				) : (
 					<span
 						className={cn(
-							"min-w-0 flex-1 truncate text-ink-muted text-body-sm",
+							"min-w-0 max-w-[45%] flex-1 truncate text-body-sm text-ink-dim",
+							"@max-[620px]/chatcol:hidden",
 						)}
 						title={description}
 					>
@@ -459,6 +513,17 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 					 * clear of the console's box in both.
 					 */
 					"ml-auto flex items-center gap-2",
+					/*
+					 * THE CLUSTER'S OWN ROW (design D3). At `w-full` its hypothetical size IS
+					 * the row's width, so it cannot share the first line with the identity and
+					 * wraps to the second - which is the whole of how the two-row form is forced,
+					 * rather than waiting for the cluster's own content to stop fitting (that
+					 * would wrap at a column width decided by how many pane triggers happen to be
+					 * on screen, not at the 620px step the bar is designed to). `justify-end`
+					 * keeps its right edge on the same 16px inset it has in the one-row form, and
+					 * `h-10` makes the row the band's height so the wrapped bar is exactly 80.
+					 */
+					"@max-[620px]/chatcol:h-10 @max-[620px]/chatcol:w-full @max-[620px]/chatcol:flex-wrap @max-[620px]/chatcol:justify-end",
 				)}
 			>
 				{/*
