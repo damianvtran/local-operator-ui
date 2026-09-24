@@ -1665,7 +1665,35 @@ test("the empty-chat band keeps one wrapper, so a narrowing column cannot remoun
 		source,
 		/messages\.length === 0 && !isHydrating && !isSmallView \?/,
 	);
-	assert.match(source, /\{showEmptyChatPrompt \? \(/);
+	/*
+	 * The wrapper is unconditional; only what it HOLDS depends on the band. With a
+	 * provider connected the headline renders (design round 1 D5 added the
+	 * `!noProvider` half - the next test pins the other branch).
+	 */
+	assert.match(
+		source,
+		/\{showEmptyChatPrompt && !noProvider \? \(\s*<h2[^>]*>\s*What can I help you with today\?/,
+	);
+});
+
+test("with nothing connected the empty-chat band drops the headline and shows the connect card", () => {
+	const source = code(MESSAGE_INPUT);
+	/*
+	 * D5: a headline inviting a prompt the app cannot run pointed the screen's two
+	 * strongest signals in opposite directions, so with no provider the headline
+	 * is withheld and the connect card takes the chips' slot. Both halves are
+	 * pinned: the headline carries the `!noProvider` guard (above), and the card
+	 * is mounted under the opposite guard, in the same wrapper.
+	 */
+	assert.doesNotMatch(
+		source,
+		/\{showEmptyChatPrompt \? \(\s*<h2/,
+		"the headline renders on the empty band whether or not a provider is connected",
+	);
+	assert.match(
+		source,
+		/\{showEmptyChatPrompt && noProvider && \(\s*<div[^>]*>\s*<ConnectProviderCard \/>/,
+	);
 });
 
 test("the pane consumes the request: leave a reader, scroll the plan in, retire it", () => {

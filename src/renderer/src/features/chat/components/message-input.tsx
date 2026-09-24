@@ -7248,6 +7248,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										!isTranscribing && (
 											<Tooltip content="Send message">
 												<span>
+													{/*
+													 * Spec § 6: with nothing connected (`noProvider`) Send is
+													 * disabled by COLOUR STEP. It used to be enabled and answered
+													 * the press with a backend refusal, which taught the user that
+													 * the app half-works (QA round 1 Q7). Typing stays allowed: the
+													 * box is where the failure is explained. The note sits here,
+													 * not inside `disabled`, so the Button's own attributes stay
+													 * one short block (interrupt-control.test.mjs reads the size
+													 * expression within a fixed window of its aria-label).
+													 */}
 													<Button
 														variant="primary"
 														size={isSmallView ? "icon-sm" : "icon"}
@@ -7256,13 +7266,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 														disabled={
 															isInputDisabled ||
 															isLoading ||
-															/*
-															 * Spec § 6: with nothing connected Send is disabled by
-															 * COLOUR STEP. It used to be enabled and answered the press
-															 * with a backend refusal, which taught the user that the
-															 * app half-works (QA round 1 Q7). Typing stays allowed:
-															 * the box is where the failure is explained.
-															 */
 															noProvider ||
 															(!newMessage.trim() && attachments.length === 0)
 														}
