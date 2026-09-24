@@ -1,0 +1,766 @@
+port8080.lock taken
+rig up: proxy 64803 on 8080 -> daemon 63761 on 54239, stub 54227; 1111 untouched
+== head30 (r3-479) at 11:30:50 ==
+[build] current: assets 2026-09-24T11:30:20.080Z >= sources 2026-09-24T11:28:48.886Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/.local-operator/sessions/a198c9e9adbd/scratchpad/rig2/run-head30/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/qa482-r3-a198c9
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-64980
+  frames        /Users/damian/.local-operator/sessions/a198c9e9adbd/scratchpad/rig2/frames/head30
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-64980/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/qa482-r3-a198c9/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown
+        mode=headless visible=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] 479 session
+        7c32808c4ac7
+[note] seed turns
+        1
+[note] 479 run 1 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 1 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,40,1,1,0,"Ask me for help"],[9,40,1,1,0,"Sending your message"],[18,0,0,0,1,"Sending your message"],[1497,0,0,0,1,"Sending your message"],[1506,0,0,0,1,"Sending your message"]]
+[note] 479 run 1 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[4,40,1,1,0],[14,40,0,0,0],[18,0,0,0,1]]
+[note] 479 run 1 GAP chips-left -> text-left (mutation ms)
+        4
+[PASS] 479 run 1 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[PASS] 479: the empty box says 'Sending your message' while held
+        {"placeholder":"Sending your message"}
+[note] 479 run 2 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 2 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,40,1,1,0,"Ask me for help"],[7,40,1,1,0,"Sending your message"],[17,0,0,0,1,"Sending your message"],[1491,0,0,0,1,"Sending your message"],[1500,0,0,0,1,"Sending your message"]]
+[note] 479 run 2 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[3,40,1,1,0],[11,40,0,0,0],[14,0,0,0,1]]
+[note] 479 run 2 GAP chips-left -> text-left (mutation ms)
+        3
+[PASS] 479 run 2 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 3 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 3 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,40,1,1,0,"Ask me for help"],[10,40,1,1,0,"Sending your message"],[17,0,0,0,1,"Sending your message"],[1493,0,0,0,1,"Sending your message"],[1502,0,0,0,1,"Sending your message"]]
+[note] 479 run 3 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[3,40,1,1,0],[14,40,0,0,0],[16,0,0,0,1]]
+[note] 479 run 3 GAP chips-left -> text-left (mutation ms)
+        2
+[PASS] 479 run 3 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 4 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 4 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,40,1,1,0,"Ask me for help"],[11,40,1,1,0,"Sending your message"],[22,0,0,0,1,"Sending your message"],[1496,0,0,0,1,"Sending your message"],[1506,0,0,0,1,"Sending your message"]]
+[note] 479 run 4 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[3,40,1,1,0],[15,40,0,0,0],[18,0,0,0,1]]
+[note] 479 run 4 GAP chips-left -> text-left (mutation ms)
+        3
+[PASS] 479 run 4 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 5 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 5 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,40,1,1,0,"Ask me for help"],[13,40,1,1,0,"Sending your message"],[21,40,0,0,0,"Sending your message"],[31,0,0,0,1,"Sending your message"],[1497,0,0,0,1,"Sending your message"],[1506,0,0,0,1,"Sending your message"]]
+[note] 479 run 5 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[9,40,1,1,0],[17,40,0,0,0],[26,0,0,0,1]]
+[note] 479 run 5 GAP chips-left -> text-left (mutation ms)
+        9
+[FAIL] 479 run 5 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[[21,40,0,0,0,"Sending your message"]]}
+[note] 479 run 6 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 6 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,40,1,1,0,"Ask me for help"],[8,40,1,1,0,"Sending your message"],[18,0,0,0,1,"Sending your message"],[1493,0,0,0,1,"Sending your message"],[1503,0,0,0,1,"Sending your message"]]
+[note] 479 run 6 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[5,40,1,1,0],[12,40,0,0,0],[16,0,0,0,1]]
+[note] 479 run 6 GAP chips-left -> text-left (mutation ms)
+        4
+[PASS] 479 run 6 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 7 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 7 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,40,1,1,0,"Ask me for help"],[12,40,1,1,0,"Sending your message"],[23,0,0,0,1,"Sending your message"],[1498,0,0,0,1,"Sending your message"],[1504,0,0,0,1,"Sending your message"]]
+[note] 479 run 7 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[2,40,1,1,0],[17,40,0,0,0],[20,0,0,0,1]]
+[note] 479 run 7 GAP chips-left -> text-left (mutation ms)
+        3
+[PASS] 479 run 7 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 8 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 8 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,40,1,1,0,"Ask me for help"],[9,40,1,1,0,"Sending your message"],[16,40,0,0,0,"Sending your message"],[25,0,0,0,1,"Sending your message"],[1499,0,0,0,1,"Sending your message"],[1509,0,0,0,1,"Sending your message"]]
+[note] 479 run 8 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[6,40,1,1,0],[14,40,0,0,0],[21,0,0,0,1]]
+[note] 479 run 8 GAP chips-left -> text-left (mutation ms)
+        7
+[FAIL] 479 run 8 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[[16,40,0,0,0,"Sending your message"]]}
+[note] 479 run 9 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 9 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,40,1,1,0,"Ask me for help"],[12,40,1,1,0,"Sending your message"],[20,40,1,1,0,"Sending your message"],[30,0,0,0,1,"Sending your message"],[1498,0,0,0,1,"Sending your message"],[1505,0,0,0,1,"Sending your message"]]
+[note] 479 run 9 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[9,40,1,1,0],[25,40,0,0,0],[28,0,0,0,1]]
+[note] 479 run 9 GAP chips-left -> text-left (mutation ms)
+        3
+[PASS] 479 run 9 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 10 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 10 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,41,1,1,0,"Ask me for help"],[10,41,1,1,0,"Sending your message"],[19,0,0,0,1,"Sending your message"],[1490,0,0,0,1,"Sending your message"],[1500,0,0,0,1,"Sending your message"]]
+[note] 479 run 10 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[2,41,1,1,0],[15,41,0,0,0],[19,0,0,0,1]]
+[note] 479 run 10 GAP chips-left -> text-left (mutation ms)
+        4
+[PASS] 479 run 10 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 11 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 11 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,41,1,1,0,"Ask me for help"],[22,41,1,1,0,"Sending your message"],[31,0,0,0,1,"Sending your message"],[1494,0,0,0,1,"Sending your message"],[1503,0,0,0,1,"Sending your message"]]
+[note] 479 run 11 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[19,41,1,1,0],[26,41,0,0,0],[30,0,0,0,1]]
+[note] 479 run 11 GAP chips-left -> text-left (mutation ms)
+        4
+[PASS] 479 run 11 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 12 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 12 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,41,1,1,0,"Ask me for help"],[10,41,1,1,0,"Sending your message"],[20,0,0,0,1,"Sending your message"],[1494,0,0,0,1,"Sending your message"],[1502,0,0,0,1,"Sending your message"]]
+[note] 479 run 12 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[2,41,1,1,0],[15,41,0,0,0],[19,0,0,0,1]]
+[note] 479 run 12 GAP chips-left -> text-left (mutation ms)
+        4
+[PASS] 479 run 12 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 13 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 13 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,41,1,1,0,"Ask me for help"],[7,41,1,1,0,"Sending your message"],[17,0,0,0,1,"Sending your message"],[1499,0,0,0,1,"Sending your message"],[1508,0,0,0,1,"Sending your message"]]
+[note] 479 run 13 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[2,41,1,1,0],[12,41,0,0,0],[17,0,0,0,1]]
+[note] 479 run 13 GAP chips-left -> text-left (mutation ms)
+        5
+[PASS] 479 run 13 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 14 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 14 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,41,1,1,0,"Ask me for help"],[7,41,1,1,0,"Sending your message"],[16,0,0,0,1,"Sending your message"],[1499,0,0,0,1,"Sending your message"],[1505,0,0,0,1,"Sending your message"]]
+[note] 479 run 14 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[2,41,1,1,0],[12,41,0,0,0],[16,0,0,0,1]]
+[note] 479 run 14 GAP chips-left -> text-left (mutation ms)
+        4
+[PASS] 479 run 14 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 15 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 15 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,41,1,1,0,"Ask me for help"],[10,41,1,1,0,"Sending your message"],[17,41,0,0,0,"Sending your message"],[24,0,0,0,1,"Sending your message"],[1491,0,0,0,1,"Sending your message"],[1500,0,0,0,1,"Sending your message"]]
+[note] 479 run 15 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[7,41,1,1,0],[15,41,0,0,0],[23,0,0,0,1]]
+[note] 479 run 15 GAP chips-left -> text-left (mutation ms)
+        8
+[FAIL] 479 run 15 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[[17,41,0,0,0,"Sending your message"]]}
+[note] 479 run 16 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 16 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,41,1,1,0,"Ask me for help"],[11,41,1,1,0,"Ask me for help"],[20,41,1,1,0,"Sending your message"],[30,0,0,0,1,"Sending your message"],[1494,0,0,0,1,"Sending your message"],[1502,0,0,0,1,"Sending your message"]]
+[note] 479 run 16 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[14,41,1,1,0],[25,41,0,0,0],[29,0,0,0,1]]
+[note] 479 run 16 GAP chips-left -> text-left (mutation ms)
+        4
+[PASS] 479 run 16 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 17 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 17 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,41,1,1,0,"Ask me for help"],[14,41,1,1,0,"Sending your message"],[27,0,0,0,1,"Sending your message"],[1499,0,0,0,1,"Sending your message"],[1507,0,0,0,1,"Sending your message"]]
+[note] 479 run 17 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[8,41,1,1,0],[20,41,0,0,0],[27,0,0,0,1]]
+[note] 479 run 17 GAP chips-left -> text-left (mutation ms)
+        7
+[PASS] 479 run 17 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 18 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 18 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,41,1,1,0,"Ask me for help"],[9,41,1,1,0,"Sending your message"],[20,0,0,0,1,"Sending your message"],[1495,0,0,0,1,"Sending your message"],[1502,0,0,0,1,"Sending your message"]]
+[note] 479 run 18 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[5,41,1,1,0],[14,41,0,0,0],[18,0,0,0,1]]
+[note] 479 run 18 GAP chips-left -> text-left (mutation ms)
+        4
+[PASS] 479 run 18 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 19 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 19 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,41,1,1,0,"Ask me for help"],[8,41,1,1,0,"Sending your message"],[19,0,0,0,1,"Sending your message"],[1499,0,0,0,1,"Sending your message"],[1507,0,0,0,1,"Sending your message"]]
+[note] 479 run 19 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[2,41,1,1,0],[13,41,0,0,0],[18,0,0,0,1]]
+[note] 479 run 19 GAP chips-left -> text-left (mutation ms)
+        5
+[PASS] 479 run 19 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 20 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 20 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,41,1,1,0,"Ask me for help"],[14,41,1,1,0,"Sending your message"],[25,0,0,0,1,"Sending your message"],[1498,0,0,0,1,"Sending your message"],[1506,0,0,0,1,"Sending your message"]]
+[note] 479 run 20 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[2,41,1,1,0],[19,41,0,0,0],[24,0,0,0,1]]
+[note] 479 run 20 GAP chips-left -> text-left (mutation ms)
+        5
+[PASS] 479 run 20 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 21 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 21 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,41,1,1,0,"Ask me for help"],[9,41,1,1,0,"Sending your message"],[20,0,0,0,1,"Sending your message"],[1493,0,0,0,1,"Sending your message"],[1502,0,0,0,1,"Sending your message"]]
+[note] 479 run 21 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[2,41,1,1,0],[15,41,0,0,0],[19,0,0,0,1]]
+[note] 479 run 21 GAP chips-left -> text-left (mutation ms)
+        4
+[PASS] 479 run 21 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 22 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 22 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,41,1,1,0,"Ask me for help"],[10,41,1,1,0,"Sending your message"],[21,0,0,0,1,"Sending your message"],[1494,0,0,0,1,"Sending your message"],[1502,0,0,0,1,"Sending your message"]]
+[note] 479 run 22 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[2,41,1,1,0],[15,41,0,0,0],[20,0,0,0,1]]
+[note] 479 run 22 GAP chips-left -> text-left (mutation ms)
+        5
+[PASS] 479 run 22 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 23 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 23 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,41,1,1,0,"Ask me for help"],[11,41,1,1,0,"Sending your message"],[27,0,0,0,1,"Sending your message"],[1498,0,0,0,1,"Sending your message"],[1505,0,0,0,1,"Sending your message"]]
+[note] 479 run 23 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[2,41,1,1,0],[18,41,0,0,0],[26,0,0,0,1]]
+[note] 479 run 23 GAP chips-left -> text-left (mutation ms)
+        8
+[PASS] 479 run 23 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 24 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 24 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,41,1,1,0,"Ask me for help"],[6,41,1,1,0,"Sending your message"],[17,0,0,0,1,"Sending your message"],[1490,0,0,0,1,"Sending your message"],[1501,0,0,0,1,"Sending your message"]]
+[note] 479 run 24 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[2,41,1,1,0],[12,41,0,0,0],[16,0,0,0,1]]
+[note] 479 run 24 GAP chips-left -> text-left (mutation ms)
+        4
+[PASS] 479 run 24 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 25 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 25 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,41,1,1,0,"Ask me for help"],[9,41,1,1,0,"Sending your message"],[17,41,0,0,0,"Sending your message"],[25,0,0,0,1,"Sending your message"],[1492,0,0,0,1,"Sending your message"],[1502,0,0,0,1,"Sending your message"]]
+[note] 479 run 25 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[5,41,1,1,0],[14,41,0,0,0],[23,0,0,0,1]]
+[note] 479 run 25 GAP chips-left -> text-left (mutation ms)
+        9
+[FAIL] 479 run 25 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[[17,41,0,0,0,"Sending your message"]]}
+[note] 479 run 26 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 26 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,41,1,1,0,"Ask me for help"],[16,41,1,1,0,"Ask me for help"],[26,41,1,1,0,"Sending your message"],[37,0,0,0,1,"Sending your message"],[1499,0,0,0,1,"Sending your message"],[1507,0,0,0,1,"Sending your message"]]
+[note] 479 run 26 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[22,41,1,1,0],[31,41,0,0,0],[36,0,0,0,1]]
+[note] 479 run 26 GAP chips-left -> text-left (mutation ms)
+        5
+[PASS] 479 run 26 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 27 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 27 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,41,1,1,0,"Ask me for help"],[9,41,1,1,0,"Sending your message"],[20,0,0,0,1,"Sending your message"],[1499,0,0,0,1,"Sending your message"],[1508,0,0,0,1,"Sending your message"]]
+[note] 479 run 27 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[2,41,1,1,0],[14,41,0,0,0],[19,0,0,0,1]]
+[note] 479 run 27 GAP chips-left -> text-left (mutation ms)
+        5
+[PASS] 479 run 27 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 28 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 28 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,41,1,1,0,"Ask me for help"],[14,41,1,1,0,"Sending your message"],[25,0,0,0,1,"Sending your message"],[1497,0,0,0,1,"Sending your message"],[1505,0,0,0,1,"Sending your message"]]
+[note] 479 run 28 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[2,41,1,1,0],[19,41,0,0,0],[24,0,0,0,1]]
+[note] 479 run 28 GAP chips-left -> text-left (mutation ms)
+        5
+[PASS] 479 run 28 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 29 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 29 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,41,1,1,0,"Ask me for help"],[13,41,1,1,0,"Sending your message"],[25,0,0,0,1,"Sending your message"],[1496,0,0,0,1,"Sending your message"],[1506,0,0,0,1,"Sending your message"]]
+[note] 479 run 29 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[4,41,1,1,0],[19,41,0,0,0],[24,0,0,0,1]]
+[note] 479 run 29 GAP chips-left -> text-left (mutation ms)
+        5
+[PASS] 479 run 29 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 30 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 30 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,41,1,1,0,"Ask me for help"],[11,41,1,1,0,"Sending your message"],[23,0,0,0,1,"Sending your message"],[1494,0,0,0,1,"Sending your message"],[1501,0,0,0,1,"Sending your message"]]
+[note] 479 run 30 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[4,41,1,1,0],[16,41,0,0,0],[22,0,0,0,1]]
+[note] 479 run 30 GAP chips-left -> text-left (mutation ms)
+        6
+[PASS] 479 run 30 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+
+---- app log (tail) ----
+[dev-driver] ARMED; frames are written to /Users/damian/.local-operator/sessions/a198c9e9adbd/scratchpad/rig2/frames/head30
+[window-mode] window mode headless: 1380x900, window created and never shown, page throttling off, no Dock tile
+
+DevTools listening on ws://127.0.0.1:54315/devtools/browser/852c86e1-af37-405f-893b-37a70e0171f3
+07:30:52.151 › [window-mode] headless run launched by pid 64980; it quits when that process goes
+[window-mode] headless run launched by pid 64980; it quits when that process goes
+07:30:52.153 › [discovery] record directory /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-64980/config/run/serve (1 record(s))
+07:30:52.200 › [discovery] candidate http://127.0.0.1:8080 pid 63761 v0.62.21 prefix /Users/damian/local-operator-worktrees/qa482-r3-a198c9/.venv (configured URL)
+07:30:52.200 › [discovery] picked http://127.0.0.1:8080 (pid 63761, v0.62.21, configured)
+07:30:52.211 › Attached to daemon http://127.0.0.1:8080 (pid 63761, v0.62.21, editable, record /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-64980/config/run/serve/63761.json)
+07:30:52.212 › Discovered a daemon; the backend manager is configured not to spawn or kill one.
+07:30:52.344 › Update service initialized. Dev mode: true, NPX install: false
+07:30:52.345 › Unpackaged instance: no packaged install state to leave alone.
+07:30:52.345 › Periodic update checks scheduled (every 5 minutes)
+07:30:52.345 › macOS auto-update requires app signing
+07:30:52.345 › [webauthn] Touch ID passkeys are off: unpackaged — an unpackaged run has no signature to carry the entitlement, so there is no group to configure
+07:30:52.354 › [browser] denied a media permission request from (unknown origin)
+07:30:52.354 › [browser] denied a media permission request from (unknown origin)
+07:30:52.354 › [browser] denied a web-app-installation permission request from (unknown origin)
+07:30:52.354 › [browser] denied a geolocation permission request from (unknown origin)
+07:30:52.424 › [shell-path] /bin/zsh reports PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Applications/Ghostty.app/Contents/MacOS
+07:30:52.424 › Shell environment variables loaded successfully. PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Applications/Ghostty.app/Contents/MacOS
+07:30:52.606 › [browser] denied a media permission request from (unknown origin)
+07:30:52.606 › [browser] denied a media permission request from (unknown origin)
+07:30:52.606 › [browser] denied a web-app-installation permission request from (unknown origin)
+07:30:52.606 › [browser] denied a geolocation permission request from (unknown origin)
+07:30:52.642 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
+07:30:52.643 › [browser] host on 127.0.0.1:54339 (proto 1), profile /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-64980/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+07:30:53.098 › [browser] tab 1 navigated to about:blank
+07:30:53.113 › Checking for UI updates...
+07:30:53.114 › Skip checkForUpdates because application is not packed and dev update config is not forced
+07:30:53.516 › Checking for UI updates...
+07:30:53.516 › Skip checkForUpdates because application is not packed and dev update config is not forced
+[window-mode] state: visible=false focused=false focusable=false size=1380x900 content=1380x868
+07:30:55.347 › Checking for updates... (silent mode: true)
+07:30:55.347 › Skip checkForUpdates because application is not packed and dev update config is not forced
+07:30:55.348 › Checking for backend updates... (silent mode: true)
+07:30:55.348 › Skip backend update check in dev mode unless forced
+07:31:07.348 › The pre-split environment at /Users/damian/Library/Application Support/Local Operator/local-operator-venv is built on the interpreter inside /Applications/Local Operator.app; it is left exactly as it is, and this instance does not use it.
+
+[PASS] no process from this run outlived its boot
+
+frames: qa3-head30-479-in-flight.png
+frames directory: /Users/damian/.local-operator/sessions/a198c9e9adbd/scratchpad/rig2/frames/head30
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-64980/app-scene.log
+scratch removed (--clean)
+
+4 CHECK(S) FAILED
+== head30 driver exit: 1 ==
+total 584
+drwxr-xr-x@  3 damian  staff      96 Sep 24 07:31 .
+drwxr-xr-x@ 19 damian  staff     608 Sep 24 07:30 ..
+-rw-r--r--@  1 damian  staff  298523 Sep 24 07:31 qa3-head30-479-in-flight.png
+8080 released before this command returned
+port8080.lock released
+--- proxy counters (/Users/damian/.local-operator/sessions/a198c9e9adbd/scratchpad/rig2/run-head30/proxy-stats.json) ---
+{
+  "oldDaemon": false,
+  "asidePosts": [],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-24T11:30:52.446Z",
+      "subscriptionId": "6cdd8cf0a06c76fb",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/7c32808c4ac7/events?frontend_replace=1",
+      "openedAt": "2026-09-24T11:30:55.635Z",
+      "subscriptionId": "4c6dc1b362804819a1eff1c1f22aac85",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    }
+  ],
+  "asideDeltaFrames": 0,
+  "deltasBySubscription": {},
+  "deltasByAside": {},
+  "refused422": 0,
+  "messagePosts": [
+    {
+      "at": "2026-09-24T11:31:00.735Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "seed turn for quoting",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"a7bdb787-5b1b-49e6-aa61-a80c74cdb1c8\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:31:00.735Z"
+    },
+    {
+      "at": "2026-09-24T11:31:07.367Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 1 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"3f6b427e-da7c-4cae-b7a0-711fa2f3279f\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:31:09.883Z"
+    },
+    {
+      "at": "2026-09-24T11:31:16.477Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 2 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"69ed7a6c-0b81-4f5c-ab3d-78283f23e040\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:31:18.980Z"
+    },
+    {
+      "at": "2026-09-24T11:31:25.638Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 3 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"c7cf2a92-0f30-4972-8852-2c8505cab38e\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:31:28.140Z"
+    },
+    {
+      "at": "2026-09-24T11:31:34.685Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 4 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"4d3fbf81-08a6-40a6-a984-36aac7c87987\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:31:37.187Z"
+    },
+    {
+      "at": "2026-09-24T11:31:44.023Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 5 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"9c099a3b-26b0-4f76-8bab-f75fb2b47a0d\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:31:46.526Z"
+    },
+    {
+      "at": "2026-09-24T11:31:52.986Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 6 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"c27c008c-d8a1-4656-a714-cce983c591c4\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:31:55.488Z"
+    },
+    {
+      "at": "2026-09-24T11:32:01.810Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 7 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"515c51a0-1b7b-4868-8a4c-70e50c44f71f\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:32:04.315Z"
+    },
+    {
+      "at": "2026-09-24T11:32:10.857Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 8 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"72710ce5-eaf5-4a14-9353-bd7fe9863eed\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:32:13.362Z"
+    },
+    {
+      "at": "2026-09-24T11:32:19.929Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 9 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"efb6d61c-9605-4faa-aa83-58f4eb3e0bbd\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:32:22.431Z"
+    },
+    {
+      "at": "2026-09-24T11:32:29.028Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 10 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"6d5bd02a-5bff-4438-8bd1-043d1a5858d1\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:32:31.530Z"
+    },
+    {
+      "at": "2026-09-24T11:32:37.935Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 11 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"60f518f4-aaeb-44ea-a67c-8cc71eb29644\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:32:40.439Z"
+    },
+    {
+      "at": "2026-09-24T11:32:46.914Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 12 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"645d5348-7d6d-4012-8618-45782d1d2521\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:32:49.416Z"
+    },
+    {
+      "at": "2026-09-24T11:32:55.733Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 13 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"f8a1db70-1cef-4cc2-bad9-a2baeee88aa1\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:32:58.236Z"
+    },
+    {
+      "at": "2026-09-24T11:33:04.614Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 14 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"f7c956e6-fc41-4157-8ac3-e9393d19dc97\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:33:07.115Z"
+    },
+    {
+      "at": "2026-09-24T11:33:13.436Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 15 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"c6da90fa-62ce-45fe-a500-cb294d660007\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:33:15.937Z"
+    },
+    {
+      "at": "2026-09-24T11:33:22.201Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 16 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"43fe55be-1510-402e-b28c-9d632139f98d\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:33:24.704Z"
+    },
+    {
+      "at": "2026-09-24T11:33:31.101Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 17 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"c5766a14-fe47-4eb0-ab9f-02500a47db04\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:33:33.604Z"
+    },
+    {
+      "at": "2026-09-24T11:33:39.912Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 18 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"560f7938-5e58-41d3-8581-edc1d4b59c86\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:33:42.413Z"
+    },
+    {
+      "at": "2026-09-24T11:33:48.872Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 19 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"e57f8350-d4a5-4789-a73e-783b1a904efc\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:33:51.374Z"
+    },
+    {
+      "at": "2026-09-24T11:33:57.646Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 20 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"a6d042c9-c99a-4a55-8d55-786af51ce6f6\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:34:00.148Z"
+    },
+    {
+      "at": "2026-09-24T11:34:06.470Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 21 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"04542de5-382b-4ce5-b495-e6c8cfc2911c\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:34:08.972Z"
+    },
+    {
+      "at": "2026-09-24T11:34:15.290Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 22 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"4aca913d-90b1-46f9-ae80-b285cbcb872a\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:34:17.792Z"
+    },
+    {
+      "at": "2026-09-24T11:34:24.240Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 23 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"febb10f0-1486-4ea8-b979-d0a6c7a83cb6\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:34:26.743Z"
+    },
+    {
+      "at": "2026-09-24T11:34:33.058Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 24 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"776c10e9-57a4-4e9d-98cd-15c0c6cb6a1e\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:34:35.559Z"
+    },
+    {
+      "at": "2026-09-24T11:34:41.830Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 25 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"b4078405-e74b-48d2-aa1b-fc0c8d3da29c\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:34:44.332Z"
+    },
+    {
+      "at": "2026-09-24T11:34:50.687Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 26 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"0638af72-de72-4e10-8726-5cf553268916\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:34:53.190Z"
+    },
+    {
+      "at": "2026-09-24T11:34:59.662Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 27 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"3b37b31b-a59b-4500-8bf3-28bd88c7fc75\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:35:02.165Z"
+    },
+    {
+      "at": "2026-09-24T11:35:08.429Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 28 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"50977f9d-9d2c-4a55-8599-a5627ba4ba96\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:35:10.931Z"
+    },
+    {
+      "at": "2026-09-24T11:35:17.212Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 29 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"87456f6f-99fa-4ce9-bd12-03658ed48a00\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:35:19.714Z"
+    },
+    {
+      "at": "2026-09-24T11:35:26.084Z",
+      "url": "/v1/desktop/sessions/7c32808c4ac7/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 30 (quote+file)",
+      "images": 1,
+      "held": 2500,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"fbcb88cc-18d1-4ebb-8d4f-73d9a9333e50\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T11:35:28.586Z"
+    }
+  ]
+}
+--- end counters ---
