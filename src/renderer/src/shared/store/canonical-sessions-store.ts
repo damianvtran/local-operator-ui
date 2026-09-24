@@ -26,6 +26,7 @@ import { useConversationInputStore } from "@shared/store/conversation-input-stor
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
+	DESKTOP_DEADLINE_EXCEEDED_CODE,
 	DESKTOP_REFUSAL_CODE,
 	DESKTOP_REFUSAL_SENTENCE,
 	type DesktopModelSelection,
@@ -739,10 +740,23 @@ export function sendFailureClass(error: unknown): SendFailureClass {
 	return "unknown";
 }
 
-/** The code a caught send failure carries, if it carries one. */
+/**
+ * The code a caught send failure carries, if it carries one.
+ *
+ * The two typed readers first, then the GENERIC one, because a code is not only
+ * raised by this app's own error classes: `unresolved_attachment` arrives as a
+ * plain `Error` with a `code` property, and the send path has always read it that
+ * way. Narrowing this to the typed classes silently dropped that code - and with
+ * it the composer's decision to withhold a Retry it cannot honour - so the
+ * fallback is load-bearing rather than defensive.
+ */
 export function sendFailureCode(error: unknown): string | undefined {
 	if (error instanceof DesktopControlError) return error.code;
 	if (error instanceof UserFacingError) return error.code;
+	if (error && typeof error === "object" && "code" in error) {
+		const code = (error as { code?: unknown }).code;
+		if (typeof code === "string") return code;
+	}
 	return undefined;
 }
 
@@ -809,13 +823,23 @@ export const CLEAR_LABEL = "Clear";
  * replays, and for the three not-sent arms whose own new sentence tells the user
  * to try again.
  */
-export function sendFailureCopy(error: unknown): {
+export function sendFailureCopy(
+	error: unknown,
+	/**
+	 * The code to classify by, when the caller has already reclassified the
+	 * failure. `admitChatDraft` does exactly that for a leading-slash 422 - the
+	 * transport's own code says "invalid fields", this app's says "the slash is
+	 * the problem" - and it is the same code the row records, so the sentence and
+	 * the code a composer branches on can never disagree (see the store's catch).
+	 */
+	codeOverride?: string,
+): {
 	message: string;
 	retry: boolean;
 	code?: string;
 } {
 	const klass = sendFailureClass(error);
-	const code = sendFailureCode(error);
+	const code = codeOverride ?? sendFailureCode(error);
 	const fallback = userFacingMessage(error, SEND_FAILURE_COPY.generic);
 	if (klass === "gone")
 		return { message: SEND_FAILURE_COPY.gone, retry: false, code };
@@ -842,6 +866,35 @@ export function sendFailureCopy(error: unknown): {
 		return { message: SEND_FAILURE_COPY.unreachable, retry: true, code };
 	if (isDesktopRefusalCode(code))
 		return { message: DESKTOP_REFUSAL_SENTENCE[code], retry: false, code };
+	/*
+	 * THE TRANSPORT'S DEADLINE IS THE ARM THE OPERATOR REPORTED, and this is the
+	 * line that answers it. Its sentence (`desktop-contract.ts`, "The app waits up
+	 * to 20 seconds for this request, and it was still running when the app stopped
+	 * waiting. It may or may not have reached the server; check the result before
+	 * repeating it.") is prose about the APP's patience, addressed to nobody: it was
+	 * the long red sentence sitting over an empty composer. The composer says what
+	 * happened to the user's message instead, and the deadline keeps its own wording
+	 * for every other operation that reaches it.
+	 */
+	if (code === DESKTOP_DEADLINE_EXCEEDED_CODE)
+		return {
+			message: SEND_FAILURE_COPY.unconfirmed,
+			retry: !retryWillFail(code),
+			code,
+		};
+	/*
+	 * A CODE WITH NO SENTENCE OF THIS APP'S OWN: the backend named its own reason
+	 * (`store_busy` - "Read state is busy right now. It will catch up on its own."),
+	 * so its sentence is kept. Replacing it with a vaguer one of this app's would
+	 * drop the only fact the user has to act on, and the code is what makes this
+	 * distinguishable from a bare throw, whose text is a leaked exception.
+	 */
+	if (code)
+		return { message: fallback, retry: !retryWillFail(code), code };
+	/*
+	 * And the last arm: a failure with no code at all - a raw throw, or a response
+	 * that never arrived. There is nothing to quote, so the app states what it knows.
+	 */
 	return {
 		message: SEND_FAILURE_COPY.unconfirmed,
 		retry: !retryWillFail(code),
@@ -1421,9 +1474,18 @@ export async function admitChatDraft(
 	 * `payloadMatchesClaim`); a replay re-uses the id, the pinned images and mode,
 	 * and the pinned rendered text.
 	 */
+	/*
+	 * ONE COMPARISON, OVER THE LAST ATTEMPT WHATEVER ITS CLASS. The old gate also
+	 * required `admissionAttempted`, which is the latch for an UNKNOWN outcome - and
+	 * gating on it meant the arms where the backend refused the request outright got a
+	 * fresh request id for an unchanged re-send. That is the case the id exists to
+	 * cover: the owner de-duplicates by it, and a busy owner that had in fact queued
+	 * the command would answer the re-send as a SECOND message. So the payload decides
+	 * (see `payloadMatchesClaim`), not the class: the same message replays under the
+	 * id it was first issued with, and an edited one is a new message with its own.
+	 */
 	const replay =
-		previous?.admissionAttempted === true &&
-		previous.submittedText !== undefined &&
+		previous?.submittedText !== undefined &&
 		payloadMatchesClaim(previous, text, input.attachments);
 	const draft: ChatDraft = previous ?? {
 		key,
@@ -1456,9 +1518,17 @@ export async function admitChatDraft(
 		? (previous?.submittedImages ?? input.images)
 		: input.images;
 	const mode = replay ? (previous?.submittedMode ?? input.mode) : input.mode;
-	const admissionRequestId = replay
-		? (previous?.admissionRequestId ?? crypto.randomUUID())
-		: crypto.randomUUID();
+	/*
+	 * And the id follows the same rule: the last attempt's id when this is the same
+	 * message, a fresh one when it is not. A first send has no previous payload, so it
+	 * keeps the id the draft was staged with (`stageDraft`'s own mint) - that is the id
+	 * the echo is painted under and the one the owner gives the durable row, and
+	 * re-minting it here would key the echo to one UUID and the request to another.
+	 */
+	const admissionRequestId =
+		previous?.submittedText === undefined || replay
+			? (previous?.admissionRequestId ?? crypto.randomUUID())
+			: crypto.randomUUID();
 	store.updateDraft(key, {
 		...draft,
 		/*
@@ -1667,30 +1737,35 @@ export async function admitChatDraft(
 			}
 		}
 		/*
-		 * The claim after a failure. An UNKNOWN outcome keeps it - the request id,
-		 * the pinned images, mode and rendered text are the replay identity a
-		 * Retry re-uses, which is what makes an unchanged retry idempotent. Every
-		 * other class drops it, so the next send is a first attempt under a fresh
-		 * id, which is also what makes an edited resend legal: see the replay rule
-		 * at the top of this function.
+		 * WHAT A FAILURE LEAVES ON THE ROW: the LATCH only for an unknown outcome, and
+		 * the payload basis for every class.
+		 *
+		 * `admissionAttempted` is the fact the PANE reads - `sendUnsettledForSession`
+		 * shows a send as in flight from it, and the pane's reconciliation looks for the
+		 * owner's row under the id it names - so it stays exactly what it says: an
+		 * admission was issued and its outcome is not known. A refusal the backend
+		 * stated is not that, and does not latch.
+		 *
+		 * The payload fields stay because they are the COMPARISON BASIS the retry rule
+		 * reads (`payloadMatchesClaim`), not a claim anybody has to release: the copy the
+		 * user acts on is in the composer, and this row's copy is a fingerprint. Dropping
+		 * them here would make an unchanged re-send a fresh request id, which is the one
+		 * thing the owner's de-duplication needs to not happen.
 		 */
 		store.updateDraft(key, {
 			pending: false,
 			admissionAttempted: klass === "unknown" && attempted,
-			...(klass === "unknown" && attempted
-				? {}
-				: {
-						submittedText: undefined,
-						submittedAttachments: undefined,
-						submittedImages: undefined,
-						submittedMode: undefined,
-						submittedRendered: undefined,
-						admissionRequestId: crypto.randomUUID(),
-					}),
 			errorCode: failureCode,
-			error: leadingSlash
-				? LEADING_SLASH_MESSAGE
-				: userFacingMessage(error, SEND_FAILURE_COPY.generic),
+			/*
+			 * The row's own sentence comes from the SAME table the composer renders,
+			 * with the code this catch reclassified (a leading-slash 422). Recording
+			 * `userFacingMessage` here instead was wrong for every unknown outcome: a
+			 * raw throw or a lost response has no sentence of its own, and the generic
+			 * fallback says "Your message wasn't sent." - a claim about a request the
+			 * app has just said it cannot see. The row is what a remounted composer
+			 * reads, so the notice must survive that remount unchanged.
+			 */
+			error: sendFailureCopy(error, failureCode).message,
 		});
 		/*
 		 * THE ONE RETURN PATH, for all three classes, and it is the point of this

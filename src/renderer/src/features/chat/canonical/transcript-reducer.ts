@@ -3608,9 +3608,14 @@ export function removeLocalRecord(
 }
 
 /**
- * Drop one record by id. Used to retract an echo whose send was refused
- * BEFORE admission — the only case where the message provably does not exist
- * on the owner (see `admitChatDraft`'s `refusedBeforeAdmission`).
+ * Drop one record by id, whoever painted it.
+ *
+ * The send path uses this for a row whose outcome is UNKNOWN, and it is safe there
+ * for the reason `retractLocalEcho` exists beside it: a `local` row is this app's
+ * own echo, so the message it paints is being handed back to the composer, and
+ * leaving the echo would show one message twice. A durable row for the same id is
+ * never removed this way - `retractLocalEcho` reports that case instead, and the
+ * store treats it as delivery.
  */
 export function removeRecord(
 	state: TranscriptState,
