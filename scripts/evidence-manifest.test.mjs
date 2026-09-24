@@ -800,6 +800,10 @@ const STAMP_BINDING_NOTES = [
 	"usageInFlightConvergenceNote",
 	"macNativeComponentsRestampNote",
 	"telemetrySwitchRestampNote",
+	// The seventh: `readReceiptRestampNote` states this file's own pair for the
+	// read-receipt branch, so it is held to that pair rather than read as history -
+	// the distinction `candidateMacArchRestampNote` above is in the list for.
+	"readReceiptRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1096,6 +1100,26 @@ const BRANCH_RECORDS = [
 	 */
 	"foldOntoTelemetryOffNote",
 	/*
+	 * Grown by the read-receipt remediation (agent review round 2, MINOR 1), which
+	 * wrote this branch's newest top-level record. It is listed for exactly the
+	 * reason the entry above records: this pass's own fold onto a moved `origin/main`
+	 * had to lay this record back by hand, and the record is the only statement of
+	 * which two trees the receipt's bytes moved - so a resolver who took main's copy
+	 * would drop the claim the token-binding test then reads as main's.
+	 */
+	"readReceiptRestampNote",
+	/*
+	 * The record the entry above's own note reported as MISSING from this list, and
+	 * it is filled in here because the same pass is editing this list anyway: the
+	 * `/usage` convergence round wrote `usageInFlightConvergenceNote`, and until now
+	 * the list's promise was one record short of true - a fold that resolved the
+	 * manifest against a moved main could drop that record with nothing to catch it,
+	 * which is the failure this whole list exists to make loud. Naming it is a
+	 * one-line widening of the guard and changes nothing about any captured frame;
+	 * it is disclosed on the round's remediation comment rather than smuggled in.
+	 */
+	"usageInFlightConvergenceNote",
+	/*
 	 * Grown by the pass that made the desktop picker list the providers by
 	 * itself, which wrote this branch's newest top-level record. It is listed for
 	 * the reason the list exists: a fold that starts from main's manifest drops
@@ -1104,6 +1128,13 @@ const BRANCH_RECORDS = [
 	 * came back byte-identical.
 	 */
 	"modelPickerLiveListingNote",
+	/*
+	 * And by round 1's remediation of that pass — the pass this fold carries: it re-captured four of
+	 * this surface's frames, withdrew its cross-tree `before-` row for a declared supplementary set
+	 * (so a later sweep cannot rewrite a base-tree claim from this tree), and re-derived the stamps
+	 * the round moved.
+	 */
+	"modelPickerRemediationRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
