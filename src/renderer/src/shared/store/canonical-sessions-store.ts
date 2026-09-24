@@ -1453,35 +1453,34 @@ export async function admitChatDraft(
 	// what the composer says about it.
 	const text = normalizeSendText(input.text);
 	/*
-	 * ONE SEND IN FLIGHT, and only one, per pane: the draft row carries the
-	 * request id, and two concurrent admissions would race on it. Left as the
-	 * store's own silent `null`, because the composer's send lock already reports
-	 * it in words and this arm is the second press inside the same keystroke.
+	 * ONE SEND IN FLIGHT, AND ONE COMPARISON - the two facts this function's exit
+	 * rests on, which is why they are stated together.
+	 *
+	 * ONE SEND IN FLIGHT per pane: the draft row carries the request id, and two
+	 * concurrent admissions would race on it. Left as the store's own silent `null`,
+	 * because the composer's send lock already reports it in words and this arm is
+	 * the second press inside the same keystroke.
 	 *
 	 * WHAT USED TO BE HERE, AND WHY IT IS GONE. A guard compared this payload with
-	 * the claim's and REFUSED any difference - which is what put a paragraph about
-	 * a different message being impossible on the operator's screen, and made a
+	 * the claim's and REFUSED any difference - which is what put a paragraph about a
+	 * different message being impossible on the operator's screen, and made a
 	 * composer the custodian of a message the app was holding. The protection it
-	 * existed for is real, but needs no block: an UNCHANGED resend must be an
+	 * existed for is real and needs no block: an UNCHANGED resend must be an
 	 * idempotent replay under the same request id (the owner de-duplicates by
 	 * `command_id`, and the receipt journal by a hash of the whole body), while a
-	 * CHANGED one is a different message - a new message by definition - and goes
-	 * out under a new id. So what follows is a replay DECISION, not a refusal, and
-	 * nothing the user can type is ever rejected because of what was sent before.
+	 * CHANGED one is a different message - a new message by definition - and goes out
+	 * under a new id. So what follows is a replay DECISION, not a refusal, and nothing
+	 * the user can type is ever rejected because of what was sent before.
 	 *
-	 * Equality is over the normalized text and the attachment paths in order (see
-	 * `payloadMatchesClaim`); a replay re-uses the id, the pinned images and mode,
-	 * and the pinned rendered text.
-	 */
-	/*
-	 * ONE COMPARISON, OVER THE LAST ATTEMPT WHATEVER ITS CLASS. The old gate also
-	 * required `admissionAttempted`, which is the latch for an UNKNOWN outcome - and
-	 * gating on it meant the arms where the backend refused the request outright got a
-	 * fresh request id for an unchanged re-send. That is the case the id exists to
-	 * cover: the owner de-duplicates by it, and a busy owner that had in fact queued
-	 * the command would answer the re-send as a SECOND message. So the payload decides
-	 * (see `payloadMatchesClaim`), not the class: the same message replays under the
-	 * id it was first issued with, and an edited one is a new message with its own.
+	 * AND THE COMPARISON IS OVER THE LAST ATTEMPT WHATEVER ITS CLASS. The old gate
+	 * also required `admissionAttempted`, the latch for an UNKNOWN outcome, which
+	 * meant the arms where the backend refused the request outright got a fresh
+	 * request id for an unchanged re-send. That is the case the id exists to cover:
+	 * the owner de-duplicates by it, and a busy owner that had in fact queued the
+	 * command would answer the re-send as a SECOND message. So the payload decides
+	 * (normalized text and attachment paths, in order - see `payloadMatchesClaim`),
+	 * not the class: the same message replays under the id it was first issued with,
+	 * and an edited one is a new message with its own.
 	 */
 	const replay =
 		previous?.submittedText !== undefined &&
@@ -1491,14 +1490,6 @@ export async function admitChatDraft(
 		createRequestId: crypto.randomUUID(),
 		admissionRequestId: crypto.randomUUID(),
 	};
-	// `mode` MUST be pinned once an admission has been issued, even though it
-	// reads like a delivery instruction rather than payload. The server keys its
-	// receipt on a sha256 of the WHOLE request body, `mode` included
-	// (desktop_receipts.py), and raises ReceiptConflict -> HTTP 409 when a retry
-	// of the same requestId hashes differently. So the lost-response case (turn
-	// admitted, response never arrived, session now streaming, UI recomputes
-	// busy=true) would retry as "steer", 409 forever, and report a failure for a
-	// message that actually landed. Pinning keeps the retry an idempotent replay.
 	/*
 	 * WHAT IS PINNED ON A REPLAY, AND WHY ANY OF IT IS. `mode` reads like a
 	 * delivery instruction rather than payload, and it MUST be pinned once an
