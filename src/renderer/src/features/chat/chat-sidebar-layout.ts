@@ -59,6 +59,22 @@ export const SIDEBAR_SHEET_WIDTH = SIDEBAR_DEFAULT_WIDTH;
 export const SIDEBAR_DOCK_MIN_PX = 1024;
 
 /**
+ * THE CHAT PANE'S OWN FLOOR (§B1, §I), and the number the two bands above are
+ * argued from: 640 + 2x24 = 688 is the column at its gutters, and 480 is the
+ * width at which the 640 column degrades to full-width-minus-24 with prose still
+ * wrapping past 60 characters.
+ *
+ * WHY IT IS NOT A PLAIN `min-width: 480px`: a window narrower than the floor
+ * itself (a phone-sized window, a user dragging the window small) would then be
+ * forced to scroll horizontally, which trades a squeezed column for a broken
+ * frame. `min(480px, 100%)` states the floor as "480, or the pane's own width
+ * when the window cannot give 480" - the guarantee binds wherever the window can
+ * honour it, which is exactly the widths the sidebar's bands are designed for
+ * (strip 56 + 480 = 536 <= 880; docked 260 + 480 = 740 <= 1024).
+ */
+export const CHAT_PANE_MIN_PX = 480;
+
+/**
  * The first window width at which the CHAT PANE can hold its own floor beside a
  * docked sidebar. 880 is the spec's number and it is deliberately NOT the dock's
  * own sum: 260 + 480 = 740 is the pane's floor plus the sidebar's width, and the

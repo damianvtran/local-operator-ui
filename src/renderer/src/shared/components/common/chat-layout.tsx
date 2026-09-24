@@ -1,4 +1,5 @@
 import {
+	CHAT_PANE_MIN_PX,
 	SIDEBAR_COLLAPSED_WIDTH,
 	SIDEBAR_DOCK_MIN_PX,
 	SIDEBAR_MAX_WIDTH,
@@ -282,7 +283,18 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 				 * flex row, where `align-items: stretch` gave it a definite height for free;
 				 * that is the property this wrapper has to reproduce, not replace.
 				 */}
-				<div className="flex h-full min-w-0 grow flex-col overflow-hidden">
+				/* * `min-w-0` PLUS THE PANE'S FLOOR (§I). `min-w-0` is what lets this *
+				column yield to the sidebar instead of pushing the shell past the *
+				window, and it is unconditional: a flex item's automatic minimum is its
+				* content, and the transcript's own content is a scroll region. The
+				floor * then states how far it may yield - `min(480px, 100%)` rather
+				than a flat * 480, so a window narrower than the floor gives the pane
+				its own width * instead of forcing a horizontal scrollbar (see
+				`CHAT_PANE_MIN_PX`). */
+				<div
+					className="flex h-full min-w-0 grow flex-col overflow-hidden"
+					style={{ minWidth: `min(${CHAT_PANE_MIN_PX}px, 100%)` }}
+				>
 					{content}
 				</div>
 			</div>

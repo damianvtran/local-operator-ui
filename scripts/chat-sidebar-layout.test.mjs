@@ -12,6 +12,7 @@
  * the claim is checked. This file says the decision is right.
  */
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -33,6 +34,7 @@ const layoutBundle = await build({
 	write: false,
 });
 const {
+	CHAT_PANE_MIN_PX,
 	CHAT_PANE_WITH_DOCK_MIN_PX,
 	SIDEBAR_COLLAPSED_WIDTH,
 	SIDEBAR_DEFAULT_WIDTH,
@@ -179,4 +181,36 @@ test("the chord is ⌘B / Ctrl+B, and no near miss answers it", () => {
 
 	assert.equal(sidebarToggleCap(true), "⌘B");
 	assert.equal(sidebarToggleCap(false), "Ctrl+B");
+});
+
+test("the chat pane's own floor, and the arithmetic each band is argued from", () => {
+	/*
+	 * §I / §B1: the pane is 480 minimum, and this asserts the floor's VALUE against
+	 * its two arguments rather than restating it - the 640 column plus its 24px
+	 * gutters is 688, and 480 is where that column degrades to full-width-minus-24
+	 * with prose still past 60 characters. The two sidebar bands are checked against
+	 * it in the same test, because a floor that does not fit beside a band is a floor
+	 * that band cannot claim: strip 56 + 480 = 536 <= 880 (the width at which the
+	 * pane can hold its floor beside the strip), docked 260 + 480 = 740 <= 1024.
+	 */
+	assert.equal(CHAT_PANE_MIN_PX, 480);
+	assert.ok(
+		SIDEBAR_COLLAPSED_WIDTH + CHAT_PANE_MIN_PX <= CHAT_PANE_WITH_DOCK_MIN_PX,
+		"the icon strip plus the pane's floor does not fit inside the width the pane is said to hold its floor at",
+	);
+	assert.ok(
+		SIDEBAR_DEFAULT_WIDTH + CHAT_PANE_MIN_PX <= SIDEBAR_DOCK_MIN_PX,
+		"the docked sidebar plus the pane's floor does not fit inside the dock threshold",
+	);
+	/*
+	 * AND THE PANE APPLIES IT AS `min(480px, 100%)`, not as a flat 480: a window
+	 * narrower than the floor itself must give the pane its own width rather than
+	 * force a horizontal scrollbar, which is the frame the flat form breaks and the
+	 * reason the clamp is spelled out here rather than left to the class surface.
+	 */
+	const layout = readFileSync(
+		"src/renderer/src/shared/components/common/chat-layout.tsx",
+		"utf8",
+	);
+	assert.match(layout, /minWidth: `min\(\$\{CHAT_PANE_MIN_PX\}px, 100%\)`/);
 });
