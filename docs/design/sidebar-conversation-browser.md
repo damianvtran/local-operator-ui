@@ -58,6 +58,18 @@ header's Globe mounted so it can toggle and normalise the pane's scope — and i
 deliberately not implemented: the control's focus-return and spacing rules are pinned by
 tests and were not this change's to alter.
 
+**PARTLY ANSWERED ON 2026-09-23, and this note is the pointer rather than a rewrite.**
+The operator reported that with approvals outstanding the rail's Browser item carried
+nothing and the header's badge sometimes was not there at all, so two of the costs
+above are now paid — on the RAIL rather than per row (the app-wide live count, which is
+exactly the capability the first cost says went with the mark; `use-app-wide-approvals.ts`
+and the addendum in `browser-approval-ux.md`), and by keeping the header's Globe mounted
+while the pane is open, with the toggle the last paragraph names as the one-line
+follow-up. What is NOT answered, and is still the reason the `sunken`/scope paragraph
+below stands unedited: no surface normalises the pane's lens on the way in, and none
+reports a conversation's TAB count or loading state outside the browser. The sections
+below still describe the per-row mark as history.
+
 The sections are left as written because they are the record of a decision that was
 taken and then reversed, and this note is what keeps that record from reading as the
 contract. The components (`features/browser/components/browser-conversation-mark.tsx`),

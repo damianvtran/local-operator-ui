@@ -257,9 +257,13 @@ export function isReportableLoadFailure(code: number): boolean {
  *
  * Null for anything that is not a `session:<id>` identity, so an internal request
  * id can never be published as if it named a conversation. See the call site in
- * `chromeState` for why the renderer is given an id at all.
+ * `chromeState` for why the renderer is given an id at all — and, since
+ * `browser/index.ts` publishes the SAME resolution on `browser-consent-attention`
+ * so a banner click can land on the conversation that asked, it is exported rather
+ * than copied: two spellings of "which session is this requester" is how the
+ * badge's conversation and the click's conversation come apart.
  */
-function sessionRequesterOf(requester: string): string | null {
+export function sessionRequesterOf(requester: string): string | null {
 	if (!requester.startsWith("session:")) return null;
 	const id = requester.slice("session:".length);
 	return id || null;
