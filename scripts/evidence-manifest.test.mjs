@@ -780,7 +780,14 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  * than being read as history - the distinction the paragraph above draws.
  */
 const STAMP_BINDING_NOTES = [
-	"shellPathRestampNote",
+	/*
+	 * `shellPathRestampNote` left this list on the PR #467 design-round-2 pass, which
+	 * re-derived both stamps: the pair that note published is now history, written as
+	 * bare SHAs in the note itself, because leaving it here would have held a
+	 * superseded pair to this file as if it were its own - the defect this list
+	 * exists for, and the same treatment `usageAutoCheckRestampNote` and
+	 * `usageInFlightRemediationNote` record below.
+	 */
 	"settingsGateRestampNote",
 	"candidateMacArchRestampNote",
 	"notarizeGateRestampNote",
