@@ -2026,7 +2026,10 @@ test("a refusal that replaces the thinking line re-runs the move toward the ques
 	// answer's length is 0 on both sides - the old trigger's blind spot.
 	store().beginAsk(SESSION, "turn-refused", "a follow-up the model declines");
 	const inFlight = trigger("turn-refused");
-	store().failAside("turn-refused", "The model did not answer your aside in text.");
+	store().failAside(
+		"turn-refused",
+		"The model did not answer your aside in text.",
+	);
 	assert.equal(store().streams["turn-refused"].text.length, 0);
 	assert.notEqual(
 		trigger("turn-refused"),
@@ -2054,8 +2057,18 @@ test("a refusal that replaces the thinking line re-runs the move toward the ques
 	 */
 	assert.equal(trigger("turn-refused"), trigger("turn-refused"));
 	assert.equal(
-		asideScrollTrigger({ text: "abc", streaming: true, settled: false, error: null }),
-		asideScrollTrigger({ text: "abc", streaming: true, settled: false, error: null }),
+		asideScrollTrigger({
+			text: "abc",
+			streaming: true,
+			settled: false,
+			error: null,
+		}),
+		asideScrollTrigger({
+			text: "abc",
+			streaming: true,
+			settled: false,
+			error: null,
+		}),
 	);
 	assert.equal(typeof trigger("turn-refused"), "string");
 });
