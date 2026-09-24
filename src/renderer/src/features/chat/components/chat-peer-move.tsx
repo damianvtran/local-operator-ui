@@ -7,7 +7,7 @@ import {
 	DropdownMenuTrigger,
 } from "@shared/components/ui/dropdown-menu";
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
-import { ArrowRightLeft } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 
 /**
  * How many local conversations the menu lists. The menu is a picker over the
@@ -29,6 +29,16 @@ const MOVE_MENU_LIMIT = 12;
  * The move itself is the store's (`transferSession`): the chosen row stays in
  * place, busy, until the backend answers (S6), and a refusal is the sidebar's
  * `role="alert"` notice in the route's own words (S7).
+ *
+ * WHY THE OVERFLOW GLYPH AND NOT THE PAIRED ARROWS (design round 1, D2). lucide's
+ * `ArrowRightLeft` draws `⇄`, which is the same two-arrow shape the locality mark
+ * uses - so the row read `⇆ devon-laptop ⇄`, one motif mirrored, meaning "this chat
+ * lives elsewhere" on the left and "move a chat here" on the right, and the only
+ * entry point for the gesture looked like decoration. `MoreHorizontal` is this
+ * app's row-action affordance (the same glyph the chat header's menu uses), so the
+ * shape says "actions here" and the locality mark keeps the arrows to itself. The
+ * tooltip and the `aria-label` still spell the gesture out, so the change costs no
+ * discoverability.
  */
 export function MoveChatHere({
 	peerLabel,
@@ -51,7 +61,7 @@ export function MoveChatHere({
 					title={`Move a chat to ${peerLabel}…`}
 					className="shrink-0"
 				>
-					<ArrowRightLeft aria-hidden="true" />
+					<MoreHorizontal aria-hidden="true" />
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end" className="max-w-72">

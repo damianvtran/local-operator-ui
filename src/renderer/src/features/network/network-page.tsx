@@ -204,17 +204,23 @@ const RemoveDialog: FC<{
 					<DialogDescription>
 						The device loses access to this network at once, and the network's
 						secret is rotated, so every other device re-keys. To bring it back
-						it must be invited again. Type the network's name to confirm.
+						it must be invited again.
 					</DialogDescription>
 				</DialogHeader>
 				<div className="space-y-1">
-					<Label htmlFor="network-remove-confirm">Network name</Label>
+					{/* D8: the field used to carry the network's name as its `placeholder`, so
+					    the answer to the challenge sat in the box beside a disabled Remove
+					    button - it read as "the name is filled in, yet the button is off", and
+					    a placeholder that IS the answer defeats the confirmation. The label
+					    names the value instead and the field starts empty. */}
+					<Label htmlFor="network-remove-confirm">
+						Type <span className="font-mono">{networkName}</span> to confirm
+					</Label>
 					<Input
 						id="network-remove-confirm"
 						value={typed}
 						autoComplete="off"
 						spellCheck={false}
-						placeholder={networkName}
 						onChange={(event) => setTyped(event.target.value)}
 					/>
 				</div>
@@ -292,7 +298,7 @@ const InviteDialog: FC<{
 						<p className="text-ink-muted">
 							Copy that file to {device.label} and run{" "}
 							<span className="font-mono">lop network join @&lt;file&gt;</span>{" "}
-							there. {device.label} must redeem it itself - it joins{" "}
+							there. {device.label} must redeem it itself — it joins{" "}
 							{networkName} only after it confirms the code on both devices.
 						</p>
 					</div>
@@ -323,11 +329,11 @@ const InviteDialog: FC<{
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="read">Read - see its chats</SelectItem>
+									<SelectItem value="read">Read: see its chats</SelectItem>
 									<SelectItem value="drive">
-										Drive - see, prompt and stop chats
+										Drive: see, prompt and stop chats
 									</SelectItem>
-									<SelectItem value="admin">Admin - everything</SelectItem>
+									<SelectItem value="admin">Admin: everything</SelectItem>
 								</SelectContent>
 							</Select>
 						</div>

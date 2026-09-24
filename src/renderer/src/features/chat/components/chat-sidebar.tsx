@@ -95,6 +95,7 @@ import {
 	peerReason,
 	peerSections,
 	peerTrailing,
+	peerTrailingTitle,
 } from "../chat-peers";
 import {
 	type ArchiveView,
@@ -122,7 +123,7 @@ import {
 	resolveSidebarSplit,
 } from "../sidebar-split";
 import { MoveChatHere } from "./chat-peer-move";
-import { ChatRemoteMark } from "./chat-remote-mark";
+import { ChatRemoteMark, RemoteGlyph } from "./chat-remote-mark";
 import { ChatRowTitle } from "./chat-row-title";
 
 /*
@@ -1746,6 +1747,17 @@ export function ChatSidebar({
 	const restAll = unpinnedRows(matching, pinsEnabled);
 	const rest = localRows(restAll, peersEnabled);
 	const peerGroups = peerSections(restAll, peerList, peersEnabled);
+	/*
+	 * The chat count per device, taken from the SAME grouping the peer sections count.
+	 * One source for one fact: the `Peers` row used to read `peer.session_count`
+	 * while the peer's heading counted its own rows, so the two could state different
+	 * numbers for one device on one screen (design round 1, D1). A device with no
+	 * cached chats has no section and so no entry here, and `?? 0` is then its honest
+	 * count.
+	 */
+	const chatCounts = new Map(
+		peerGroups.map((group) => [group.deviceId, group.rows.length]),
+	);
 	const draft = activeDraftKey ? drafts[activeDraftKey] : undefined;
 	const bindingName = (row: CanonicalSessionRow) =>
 		row.binding?.team || row.binding?.agent || "";
@@ -3215,6 +3227,13 @@ export function ChatSidebar({
 		count?: number,
 		action?: ReactNode,
 		toggleRef?: Ref<HTMLButtonElement>,
+		/**
+		 * An optional mark drawn between the chevron and the label. It exists so a
+		 * peer's heading can carry the SAME glyph as its rows, drawn by the same
+		 * component (`RemoteGlyph`), instead of the font glyph the heading used to
+		 * spell - one motif, one drawing, one meaning (design round 1, D2).
+		 */
+		leading?: ReactNode,
 	) => (
 		<div
 			className={cn(
@@ -3250,6 +3269,7 @@ export function ChatSidebar({
 				) : (
 					<ChevronRight className="size-3.5" />
 				)}
+				{leading}
 				<span className="min-w-0 flex-1 truncate text-left">{label}</span>
 				{/* A zero badge next to a group that already says it is empty is the
 			    same fact twice; only a non-zero count carries information. */}
@@ -3854,29 +3874,57 @@ export function ChatSidebar({
 											owner={deviceLabel(peer)}
 											reachable={peer.reachable}
 										/>
-										<span className="min-w-0 flex-1 truncate">
+										{/*
+										 * THE NAME HAS A FLOOR AND THE TRAILING YIELDS (design
+										 * round 1, D4). At the 240 px clamp the row's own fixed
+										 * costs are the 16 px mark, the 24 px move control and
+										 * their gaps; the two remaining cells used to settle by
+										 * whoever demanded less, so the name was cut to
+										 * `damians-mac-…` - 12 characters - to keep an age that
+										 * every peer's row carries anyway. The floor is what makes
+										 * the name win and the trailing give way instead; the age
+										 * is still in the trailing's `title` and in the section
+										 * heading's, so nothing is lost, only ranked.
+										 */}
+										<span
+											data-peer-row-name
+											className="min-w-[14ch] flex-1 truncate"
+										>
 											{deviceLabel(peer)}
 										</span>
 										{/* This slot is the row's OWN - nothing else claims it -
 										    so the one statement can carry the state. Warning ink
 										    for unreachable is the design's; the words carry it
 										    too, so the colour is never the only channel.
-										    CAPPED AND TRUNCATING, because both halves of this row
-										    want width and only one may win: measured on the S4
-										    frame, an uncapped `unreachable · last seen 9d ago`
-										    left the device's own name as `studio…`, and a row
+										    CAPPED AT 40% AND NOT 55%: at the clamp the wider cap
+										    cut the device's own name to `studio…`, and a row
 										    that cannot say which device it is has lost more
-										    than a row that cuts its own last-seen off. The
-										    whole sentence is the `title`, so the truncated
-										    half is still reachable. */}
+										    than a row whose last-seen is shortened. The trailing
+										    is short by construction (`unreachable · 9d`, D4)
+										    and the whole sentence is the `title`, so nothing
+										    is unreachable about it. */}
 										<span
-											title={peerTrailing(peer, Date.now() / 1000)}
+											data-peer-row-trailing
+											title={peerTrailingTitle(
+												peer,
+												chatCounts.get(peer.device_id) ?? 0,
+												Date.now() / 1000,
+											)}
 											className={cn(
-												"max-w-[55%] shrink-0 truncate text-right text-meta tabular-nums",
+												// `min-w-0` and no `shrink-0`: this cell is the one
+												// that gives way to the name (D4). What survives the
+												// shrink is the STATE word, because the truncation
+												// eats the age off its tail, and the age is in the
+												// `title`.
+												"min-w-0 max-w-[40%] truncate text-right text-meta tabular-nums",
 												peer.reachable ? "text-ink-dim" : "text-warning",
 											)}
 										>
-											{peerTrailing(peer, Date.now() / 1000)}
+											{peerTrailing(
+												peer,
+												chatCounts.get(peer.device_id) ?? 0,
+												Date.now() / 1000,
+											)}
 										</span>
 										{transferEnabled && peer.reachable && (
 											<MoveChatHere
@@ -4805,53 +4853,58 @@ export function ChatSidebar({
 							rest.filter((row) => !row.active).map((row) => sessionRow(row))}
 					</section>
 					{/*
-					 * ONE SECTION PER PEER, after `Previous chats` (`mesh-ui.md` §2.4), built
-					 * from the existing `heading()` primitive so a peer costs no new widget
-					 * and no new width. Keyed by DEVICE ID; the label is the name. Collapsed
-					 * by default like `Previous chats`. A peer with no rows still has its
-					 * section - its count is the only place the list can say it is quiet -
-					 * but not while a query is narrowing the list, where an empty section is
-					 * noise under a search that did not ask about it.
+					 * ONE SECTION PER PEER THAT HAS CHATS, after `Previous chats`
+					 * (`mesh-ui.md` §2.4), built from the existing `heading()` primitive so a
+					 * peer costs no new widget and no new width. Keyed by DEVICE ID; the label
+					 * is the name. Collapsed by default like `Previous chats`.
+					 *
+					 * The section set is filtered where it is BUILT, not here: a peer with no
+					 * cached chats gets no section at all, because `heading()` draws no badge
+					 * for a count of 0 and the result was an expanded chevron over nothing
+					 * (design round 1, D5). The quiet peer is the `Peers` group's to describe.
 					 *
 					 * `peerGroups` is `[]` with the gate off, so this renders nothing and the
 					 * list is exactly the one it was.
 					 */}
-					{peerGroups
-						.filter((group) => !query.trim() || group.rows.length > 0)
-						.map((group) => {
-							const key = `peer:${group.deviceId}`;
-							const reason = group.reachable
-								? ""
-								: (peerById.get(group.deviceId)?.unreachable_reason ?? "") ||
-									(group.rows[0]?.unreachable_reason ?? "");
-							const title = heading(
-								key,
-								group.heading,
-								false,
-								group.rows.length,
-							);
-							return (
-								<section key={key} data-peer-section={group.deviceId}>
-									{/* The reason is the heading's TOOLTIP, never its label: a
+					{peerGroups.map((group) => {
+						const key = `peer:${group.deviceId}`;
+						const reason = group.reachable
+							? ""
+							: (peerById.get(group.deviceId)?.unreachable_reason ?? "") ||
+								(group.rows[0]?.unreachable_reason ?? "");
+						const title = heading(
+							key,
+							group.heading,
+							false,
+							group.rows.length,
+							undefined,
+							undefined,
+							/* D2: the rows' OWN drawing, so a heading and its rows cannot
+								   drift into two drawings of one motif. */
+							<RemoteGlyph reachable={group.reachable} className="size-3.5" />,
+						);
+						return (
+							<section key={key} data-peer-section={group.deviceId}>
+								{/* The reason is the heading's TOOLTIP, never its label: a
 									    sentence inside a truncating 240 px heading is cut to a
 									    word, and the suffix already says the state. */}
-									{reason ? (
-										<Tooltip content={reason} side="right" align="start">
-											{title}
-										</Tooltip>
-									) : (
-										title
-									)}
-									{/* S6's announcement: the count changes when a move lands, and a
+								{reason ? (
+									<Tooltip content={reason} side="right" align="start">
+										{title}
+									</Tooltip>
+								) : (
+									title
+								)}
+								{/* S6's announcement: the count changes when a move lands, and a
 									    screen reader hears it without the heading being focused. */}
-									<p aria-live="polite" className="sr-only">
-										{`${group.rows.length} ${group.rows.length === 1 ? "chat" : "chats"} on ${group.label}`}
-									</p>
-									{(query || isOpen(key)) &&
-										group.rows.map((row) => sessionRow(row))}
-								</section>
-							);
-						})}
+								<p aria-live="polite" className="sr-only">
+									{`${group.rows.length} ${group.rows.length === 1 ? "chat" : "chats"} on ${group.label}`}
+								</p>
+								{(query || isOpen(key)) &&
+									group.rows.map((row) => sessionRow(row))}
+							</section>
+						);
+					})}
 				</>
 			)}
 			{/* A COLD-START sentence, not an empty-list one: it says the store
@@ -5441,9 +5494,19 @@ export function ChatSidebar({
 						className="flex items-start gap-2 pb-2 text-meta text-warning"
 					>
 						<p className="min-w-0 flex-1">
+							{/*
+							 * THE KIND DECIDES THE SUFFIX. `Nothing changed.` is a claim a refusal
+							 * establishes and a deadline cannot: the route looked at the move and
+							 * said no (S7), while a request that ran out of its budget may have
+							 * moved the conversation already. The unconfirmed state therefore has
+							 * its own sentence, so one branch cannot append a falsehood to
+							 * another's reason (round-1 review, M4).
+							 */}
 							{meshNotice.kind === "refused"
 								? `${ownerLabel({ owner_device: meshNotice.peer }, peerById)} refused: ${meshNotice.reason}`
-								: `Could not move “${meshNotice.title}”: ${meshNotice.reason.replace(TRAILING_PERIOD, "")}. Nothing changed.`}
+								: meshNotice.kind === "move-unconfirmed"
+									? `Could not confirm the move of “${meshNotice.title}”: ${meshNotice.reason}`
+									: `Could not move “${meshNotice.title}”: ${meshNotice.reason.replace(TRAILING_PERIOD, "")}. Nothing changed.`}
 						</p>
 						<button
 							type="button"

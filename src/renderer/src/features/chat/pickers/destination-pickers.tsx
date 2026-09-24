@@ -2101,7 +2101,16 @@ export const NewSessionPicker: FC<PickerContext> = ({
 								<SelectTrigger id="new-session-device">
 									<SelectValue />
 								</SelectTrigger>
-								<SelectContent>
+								{/*
+								 * BOUNDED, because one of these labels carries the backend's
+								 * reason in full: a `SelectContent` sizes to its content, and a
+								 * device that is unreachable with a sentence attached stretched
+								 * the panel past the dialog that owns it. The cap lets the
+								 * reason WRAP instead - the design's own worry ("the inline
+								 * `— unreachable: <reason>` is exactly the kind of string that
+								 * overflows a select").
+								 */}
+								<SelectContent className="max-w-[26rem]">
 									<SelectItem value={THIS_DEVICE}>This device</SelectItem>
 									{peerRows.map((peer) => (
 										<SelectItem

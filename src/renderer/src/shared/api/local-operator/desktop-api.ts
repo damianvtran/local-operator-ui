@@ -13,6 +13,7 @@ import {
 	DESKTOP_REFUSAL_SENTENCE,
 	desktopEndpoint,
 	desktopRefusalCodeForStatus,
+	desktopRequestBoundS,
 	desktopRequestDeadlineMs,
 	isDesktopRefusalCode,
 } from "../../../../../shared/desktop-contract";
@@ -45,9 +46,19 @@ export type {
  */
 const DESKTOP_DEADLINE_MARGIN_MS = 5000;
 
-/** The renderer's own deadline for one op, derived from the transport's. */
-export function desktopRequestTimeoutMs(op: DesktopRequest["op"]): number {
-	return desktopRequestDeadlineMs(op) + DESKTOP_DEADLINE_MARGIN_MS;
+/**
+ * The renderer's own deadline for one op, derived from the transport's.
+ *
+ * `boundS` is the request's own bound where it has one (a move's `wait_s`), for
+ * the reason `desktopRequestDeadlineMs` spells out: this layer must sit ABOVE the
+ * transport's deadline, never below it, or the app's own bound is what the user
+ * reads and its copy cannot name the cause.
+ */
+export function desktopRequestTimeoutMs(
+	op: DesktopRequest["op"],
+	boundS: number | null = null,
+): number {
+	return desktopRequestDeadlineMs(op, boundS) + DESKTOP_DEADLINE_MARGIN_MS;
 }
 
 export async function desktopRequest(
@@ -71,10 +82,7 @@ export async function desktopRequest(
 			// `isLoading` permanently, which is what issue 89 saw as a Settings
 			// spinner that never resolves. Bound it here, once, so every desktop
 			// control fails honestly instead of hanging.
-			return await withDeadline(
-				window.api.desktop.request(request),
-				request.op,
-			);
+			return await withDeadline(window.api.desktop.request(request), request);
 		} catch (cause) {
 			if (cause instanceof DesktopControlError) throw cause;
 			/*
@@ -139,7 +147,7 @@ export async function desktopRequest(
  */
 function withDeadline(
 	pending: Promise<DesktopResponse>,
-	op: DesktopRequest["op"],
+	request: DesktopRequest,
 ): Promise<DesktopResponse> {
 	let timer: ReturnType<typeof setTimeout>;
 	return Promise.race([
@@ -153,7 +161,7 @@ function withDeadline(
 							"Desktop controls could not reach the backend process.",
 						),
 					),
-				desktopRequestTimeoutMs(op),
+				desktopRequestTimeoutMs(request.op, desktopRequestBoundS(request)),
 			);
 		}),
 	]).finally(() => clearTimeout(timer));

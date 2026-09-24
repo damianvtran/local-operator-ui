@@ -26,6 +26,7 @@ import type {
 	NetworkMember,
 	NetworkTopology,
 } from "../../../../shared/desktop-session-contract";
+import { strings, text } from "../../../../shared/mesh-shapes";
 import { deviceLabel } from "../chat/peers-store";
 
 /**
@@ -105,8 +106,20 @@ const PAD = 16;
 const byLabel = (a: { label: string; id: string }, b: typeof a) =>
 	a.label.localeCompare(b.label) || a.id.localeCompare(b.id);
 
+/**
+ * Every read below goes through `text`/`strings` rather than `field.trim()`.
+ *
+ * The app's own path normalises a `/networks` reply before it reaches this file
+ * (`mesh-shapes.ts`), so in the product these calls are a second belt. They exist
+ * because THIS is where the round-1 review's reproduction threw: a member without
+ * a `name` or a `reason` raised `TypeError: Cannot read properties of undefined
+ * (reading 'trim')` while the graph rendered, and the only error boundary above it
+ * is the app root's - one sparse row replaced the whole window with the error
+ * fallback. A pure layout function is called with fixtures by tests and stories
+ * too, so "the boundary validated it" is not a property it can rely on.
+ */
 function networkLabel(network: { network_id: string; name: string }) {
-	return network.name.trim() || `network …${network.network_id.slice(-6)}`;
+	return text(network.name) || `network …${text(network.network_id).slice(-6)}`;
 }
 
 function stateOf(
@@ -139,7 +152,11 @@ export function layoutTopology(topology: NetworkTopology): TopologyLayout {
 	>();
 	const edges: Edge[] = [];
 	for (const network of topology.networks) {
-		for (const member of network.members) {
+		// A member with no id cannot be a node: it would key under `undefined` and
+		// draw a device nobody can name (M3).
+		for (const member of network.members.filter((entry) =>
+			text(entry.device_id),
+		)) {
 			const list = members.get(member.device_id) ?? [];
 			list.push({
 				member,
@@ -163,30 +180,31 @@ export function layoutTopology(topology: NetworkTopology): TopologyLayout {
 			const seen = list
 				.map((entry) => entry.member.last_seen_at)
 				.filter((value): value is number => typeof value === "number");
-			const named = list.find((entry) => entry.member.name.trim());
+			const named = list.find((entry) => text(entry.member.name));
 			return {
 				id,
 				label: deviceLabel({
 					device_id: id,
-					name: named?.member.name ?? "",
+					name: text(named?.member.name),
 				}),
 				state: stateOf(id, topology.self_device_id, suspect, reachable),
 				memberships: list.map((entry) => ({
 					networkId: entry.networkId,
 					networkName: entry.networkName,
-					role: entry.member.role,
-					capabilities: entry.member.capabilities,
+					role: text(entry.member.role),
+					capabilities: strings(entry.member.capabilities),
 					active: entry.member.active,
 				})),
 				reachable,
 				reason: reachable
 					? ""
-					: (list.find((entry) => entry.member.reason.trim())?.member.reason ??
-						""),
+					: text(
+							list.find((entry) => text(entry.member.reason))?.member.reason,
+						),
 				suspect,
 				lastSeenAt: seen.length ? Math.max(...seen) : null,
 				endpoints: [
-					...new Set(list.flatMap((entry) => entry.member.endpoints)),
+					...new Set(list.flatMap((entry) => strings(entry.member.endpoints))),
 				],
 				x: PAD + NODE_WIDTH + COLUMN_GAP,
 				y: 0,

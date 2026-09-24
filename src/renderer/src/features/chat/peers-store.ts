@@ -19,11 +19,12 @@
 
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { useQuery } from "@tanstack/react-query";
-import type {
-	NetworkTopology,
-	PeerList,
-	PeerRow,
-} from "../../../../shared/desktop-session-contract";
+import type { PeerRow } from "../../../../shared/desktop-session-contract";
+import {
+	networkTopology,
+	peerList,
+	text,
+} from "../../../../shared/mesh-shapes";
 
 export const peerKeys = {
 	peers: ["desktop", "mesh", "peers"] as const,
@@ -40,12 +41,20 @@ export const peerKeys = {
  */
 export const PEER_POLL_MS = 30_000;
 
-/** `enabled` is `features.peers`: absent, nothing is asked and nothing mounts. */
+/**
+ * `enabled` is `features.peers`: absent, nothing is asked and nothing mounts.
+ *
+ * THE ANSWER IS NORMALISED, NOT CAST (round-1 agent review, M3; addendum 2, D):
+ * `peerList` dedupes by device id (the relay's `peer_status` answers one entry per
+ * network membership, so a device in two networks arrives twice) and gives every
+ * field the empty answer for its type, so no renderer can throw on a sparse row.
+ */
 export function usePeers(enabled: boolean) {
 	return useQuery({
 		queryKey: peerKeys.peers,
 		enabled,
-		queryFn: () => desktopResult<PeerList>({ op: "peers.list" }),
+		queryFn: async () =>
+			peerList(await desktopResult<unknown>({ op: "peers.list" })),
 		staleTime: 10_000,
 		refetchInterval: enabled ? PEER_POLL_MS : false,
 		retry: false,
@@ -57,7 +66,11 @@ export function useNetworks(enabled: boolean) {
 	return useQuery({
 		queryKey: peerKeys.networks,
 		enabled,
-		queryFn: () => desktopResult<NetworkTopology>({ op: "networks.list" }),
+		// Normalised for the same reason `usePeers` is: `layoutTopology` reads every
+		// member's `name` and `reason`, and a sparse one used to throw inside the
+		// graph's render, i.e. blank the window (M3).
+		queryFn: async () =>
+			networkTopology(await desktopResult<unknown>({ op: "networks.list" })),
 		staleTime: 10_000,
 		refetchInterval: enabled ? PEER_POLL_MS : false,
 		retry: false,
@@ -74,9 +87,15 @@ export function useNetworks(enabled: boolean) {
  * spelled two ways on one screen.
  */
 export function deviceLabel(device: { device_id: string; name: string }) {
-	const name = device.name.trim();
+	/*
+	 * `text` rather than `device.name.trim()`: the label is computed during
+	 * `ChatSidebar`'s render, and a row that reached this function without a name
+	 * used to take the whole window down with it (the reviewer's reproduction, M3).
+	 * One spelling of "absent" for the app, defined in `mesh-shapes.ts`.
+	 */
+	const name = text(device.name);
 	if (name) return name;
-	return `device …${device.device_id.slice(-6)}`;
+	return `device …${text(device.device_id).slice(-6)}`;
 }
 
 export type { PeerRow };

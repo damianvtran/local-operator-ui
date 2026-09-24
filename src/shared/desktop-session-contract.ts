@@ -148,13 +148,18 @@ export type SessionCatalogueRow = {
  * `locality` is a FIELD, never a derivation. The UI must not infer remoteness
  * from an id shape, a title prefix or a cwd (spine §8): the row is the one place
  * it is read, so the mark and the peer section cannot disagree.
+ *
+ * THE WIRE MAY SEND `null` WHERE THIS APP'S OWN ROWS CARRY `""` (addendum 2, B:
+ * `owner_device`/`owner_device_name`/`unreachable_reason` are `string | null`).
+ * Both spell the same absence, so `mesh-shapes.ts` normalises null to `""` as the
+ * reply is read, and everything downstream sees one spelling.
  */
 export type SessionLocalityFields = {
 	locality?: "local" | "remote";
-	/** The owning device's id; `""` when local. The peer section's React key. */
-	owner_device?: string;
-	/** The owning device's human name; `""` when local. The heading's label. */
-	owner_device_name?: string;
+	/** The owning device's id; absent, `""` or `null` when local. */
+	owner_device?: string | null;
+	/** The owning device's human name; absent, `""` or `null` when local. */
+	owner_device_name?: string | null;
 	/**
 	 * `true` for a local row; for a remote row, whether its owner answered THIS
 	 * poll. A cached row of an unreachable peer is still listed - its status is
@@ -168,7 +173,7 @@ export type SessionLocalityFields = {
 	 * own: a second glossary here would drift from the TUI's the first time either
 	 * side learned a new reason.
 	 */
-	unreachable_reason?: string;
+	unreachable_reason?: string | null;
 	/** For a `--keep` copy at this device: when it last pulled (epoch seconds). */
 	last_synced_at?: number | null;
 	placement?: SessionPlacement | null;
@@ -186,35 +191,55 @@ export type SessionOrigin = {
 	source_session_id: string;
 };
 /**
- * One member of a network this device belongs to, as `GET /v1/desktop/peers`
- * reports it (`mesh-ui.md` §2.6).
+ * `GET /v1/desktop/peers`: the mesh's peer catalogue.
  *
- * `device_id` is the IDENTITY and `name` is only the LABEL: two devices may carry
- * the same human name (both laptops called "macbook"), and a section keyed on the
- * label would merge them and then be wrong about both.
+ * ONE ROW PER DEVICE (addendum 2, A). The route reads the relay's `peer_status`,
+ * which answers one entry per (network, member) - so a device in two networks
+ * arrives TWICE, and a renderer that took the array as given drew two peer
+ * sections holding the same conversations (the round-1 review reproduced it).
+ * `mesh-shapes.ts` dedupes by `device_id` as the reply is read, so the invariant
+ * is held here whatever the producer does; a device's sessions are never
+ * duplicated by a second membership.
  */
 export type PeerRow = {
 	device_id: string;
-	/** `""` ⇒ render the id's tail; never invent a name. */
+	/** The label. `""` ⇒ render the id's tail; never invent a name. */
 	name: string;
-	kind: "device" | "pool" | string;
-	/** The transport's vocabulary: provisioning|joining|active|draining|expired. */
-	lifecycle: string;
 	reachable: boolean;
-	/** `null` when unreachable: the row shows `—`, never `0ms`. */
-	rtt_ms: number | null;
-	role: string;
-	session_count: number;
+	/** The BACKEND's gloss of why not, or null when it can reach the device. */
+	unreachable_reason: string | null;
 	last_seen_at: number | null;
-	/** The peer's own words, already glossed by the backend. */
-	unreachable_reason: string;
-	size_class: string;
-	expires_at: number | null;
+	/**
+	 * How many chats this device holds, counted by the backend from the same row
+	 * set the sidebar groups on (addendum 2, A), so a peer's heading and its `Peers`
+	 * row cannot state two numbers for one fact.
+	 *
+	 * THE SIDEBAR DOES NOT READ IT (design round 1, D1). It prints the number of
+	 * rows it has grouped, which is the number its own heading counts - equal to
+	 * this field by contract, and equal to it STRUCTURALLY rather than by
+	 * agreement, which also holds on a paged list where this count may exceed the
+	 * rows the client holds.
+	 */
+	session_count: number;
+	/**
+	 * The peer's measured round trip, or `null` when nothing measured it.
+	 *
+	 * NOTHING RENDERS IT TODAY (design round 1, D1): the transport publishes no
+	 * producer for this field, so every live peer's row used to print `— · 2 chats`
+	 * on every read, indefinitely. The sidebar shows the chat count instead and the
+	 * field is drawn again only when something can measure it.
+	 */
+	rtt_ms: number | null;
 };
 export type PeerList = {
 	peers: PeerRow[];
-	/** The same `degraded` vocabulary the session list uses. */
-	degraded: string[];
+	/**
+	 * THIS device's id, when the backend says which entry it is (addendum 2, A).
+	 * Optional: absent is a missing fact, not a wrong one.
+	 */
+	self_device_id?: string;
+	/** The same `degraded` vocabulary the session list uses, when sent. */
+	degraded?: string[];
 };
 /**
  * One device's membership of ONE network, as `GET /v1/desktop/networks` joins
