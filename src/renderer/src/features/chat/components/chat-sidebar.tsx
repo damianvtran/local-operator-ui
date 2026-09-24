@@ -103,7 +103,7 @@ import {
 	unreadMarkKind,
 } from "../mark-all-read";
 import { newChatShortcutCap } from "../new-chat-shortcut";
-import { readAckClause, readAckNoticeSentence } from "../read-ack-notice";
+import { readAckCopy, readAckNoticeSentence } from "../read-ack-notice";
 import { catalogueGate } from "../sidebar-catalogue-gate";
 import {
 	type SidebarRegionName,
@@ -897,7 +897,7 @@ export function ChatSidebar({
 	 * that is where the rendered result is; THIS is the surface that can draw it,
 	 * because the mark the operator is waiting on is on a row. One record names one
 	 * conversation - a receipt waits on one at a time - and the rows ask it whether
-	 * it is theirs (`readAckClause`, in `../read-ack-notice.ts` with the words).
+	 * it is theirs (`readAckCopy`, in `../read-ack-notice.ts` with the words).
 	 */
 	const readAckNotice = useCanonicalSessionsStore((s) => s.readAckNotice);
 	/**
@@ -915,10 +915,24 @@ export function ChatSidebar({
 			? `${readAckNotice.sessionId}:${readAckNotice.revision}`
 			: null,
 	);
+	/**
+	 * The give-up toast this panel raised, while it is still saying something true.
+	 *
+	 * A toast is a claim about the state it was raised in, and this one is the only
+	 * sentence in the panel that can be falsified by the app itself: the reader
+	 * presses the row the sentence names, the receipt lands on the next tick, the
+	 * mark clears - and the sentence kept telling them to press for the rest of its
+	 * life (UX round 2, U4). The archive lane already made this rule for its own
+	 * lane (`ARCHIVE_UNDO_TOAST_MS` and `dismissToast`: an undo is honest only while
+	 * the state it was taken from holds), so this is that rule applied to the
+	 * receipt's statement.
+	 */
+	const readAckToast = useRef<string | number | null>(null);
 	useEffect(() => {
-		if (!readAckNotice) return;
-		const key = `${readAckNotice.sessionId}:${readAckNotice.revision}`;
-		if (announcedReadAck.current === key) return;
+		const key = readAckNotice
+			? `${readAckNotice.sessionId}:${readAckNotice.revision}`
+			: null;
+		const changed = announcedReadAck.current !== key;
 		announcedReadAck.current = key;
 		/*
 		 * ONE ARM ANNOUNCES ITSELF AND THE OTHER TWO DO NOT. `unsettled` is the state
@@ -927,10 +941,35 @@ export function ChatSidebar({
 		 * in this lane. `pending` is an in-flight cue, and `offscreen` is a remedy
 		 * whose move is to look at the row's own clause: a toast for either would be
 		 * noise where the reader has the fact already, and the lane is shared with the
-		 * archive offers.
+		 * bulk receipt and the archive offers.
 		 */
-		if (readAckNotice.kind !== "unsettled") return;
-		showWarningToast(readAckNoticeSentence(readAckNotice));
+		if (readAckNotice?.kind !== "unsettled") {
+			// The fact the sentence stated has gone (the receipt landed, the loop was
+			// torn down, another kind replaced it), so the sentence goes with it.
+			if (readAckToast.current !== null) {
+				dismissToast(readAckToast.current);
+				readAckToast.current = null;
+			}
+			return;
+		}
+		// The same statement seen again is not a second event; a NEW one replaces the
+		// sentence on screen rather than stacking a second copy of the same fact.
+		if (!changed) return;
+		if (readAckToast.current !== null) dismissToast(readAckToast.current);
+		/*
+		 * THE LANE'S OWN LIFETIME, not sonner's four-second default (design round 1,
+		 * D3). This arm is a sentence plus a remedy the reader has to read before
+		 * acting - the same shape as the archive failure's, which is why it takes that
+		 * lane's number: at the default, a two-line sentence was being read in four
+		 * seconds, and the reader who pressed the row it names spent that time
+		 * watching a fact that had just stopped being true.
+		 */
+		readAckToast.current = showWarningToast(
+			readAckNoticeSentence(readAckNotice),
+			{
+				duration: ARCHIVE_FAILURE_TOAST_MS,
+			},
+		);
 	}, [readAckNotice]);
 	const [query, setQuery] = useState("");
 	const [all, setAll] = useState(false);
@@ -1839,12 +1878,13 @@ export function ChatSidebar({
 		const silent = row.status?.code === "wedged";
 		/**
 		 * WHAT THE RECEIPT IS DOING FOR THIS ROW, if it has anything to say - read once
-		 * for the reason `silent` is: it decides the tooltip's tail, the
+		 * for the reason `silent` is: it decides the flyout's tail, the
 		 * `aria-describedby` below and the sentence that id names, and three copies of
 		 * the question would be three chances for the row to point at a sentence it is
-		 * not rendering.
+		 * not rendering. Both strings come back together (`readAckCopy`), in the two
+		 * registers the two channels need.
 		 */
-		const readAck = readAckClause(readAckNotice, row.session_id);
+		const readAck = readAckCopy(readAckNotice, row.session_id);
 		/*
 		 * THE ROW IS A WRAPPER PLUS A BUTTON, and it keeps that shape now that the per-row
 		 * browser mark is gone (operator ask, 2026-09-18; the reasoning is at
@@ -1928,7 +1968,7 @@ export function ChatSidebar({
 					 * about the mark on it, so it reads as the actionable last word - the slot
 					 * `SILENT_REMEDY` occupies one fact up.
 					 */}
-					{readAck ? ` · ${readAck}` : ""}
+					{readAck ? ` · ${readAck.clause}` : ""}
 				</span>
 			</>
 		);
@@ -2209,7 +2249,7 @@ export function ChatSidebar({
 		 */
 		const readAckRemedy = readAck ? (
 			<span id={readAckClauseId(row.session_id)} className="sr-only">
-				{readAck}
+				{readAck.description}
 			</span>
 		) : null;
 

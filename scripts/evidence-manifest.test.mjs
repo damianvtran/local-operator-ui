@@ -1099,6 +1099,26 @@ const BRANCH_RECORDS = [
 	 * this fold reports that rather than widening its own diff to fix it.)
 	 */
 	"foldOntoTelemetryOffNote",
+	/*
+	 * Grown by the read-receipt remediation (agent review round 2, MINOR 1), which
+	 * wrote this branch's newest top-level record. It is listed for exactly the
+	 * reason the entry above records: this pass's own fold onto a moved `origin/main`
+	 * had to lay this record back by hand, and the record is the only statement of
+	 * which two trees the receipt's bytes moved - so a resolver who took main's copy
+	 * would drop the claim the token-binding test then reads as main's.
+	 */
+	"readReceiptRestampNote",
+	/*
+	 * The record the entry above's own note reported as MISSING from this list, and
+	 * it is filled in here because the same pass is editing this list anyway: the
+	 * `/usage` convergence round wrote `usageInFlightConvergenceNote`, and until now
+	 * the list's promise was one record short of true - a fold that resolved the
+	 * manifest against a moved main could drop that record with nothing to catch it,
+	 * which is the failure this whole list exists to make loud. Naming it is a
+	 * one-line widening of the guard and changes nothing about any captured frame;
+	 * it is disclosed on the round's remediation comment rather than smuggled in.
+	 */
+	"usageInFlightConvergenceNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

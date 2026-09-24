@@ -395,6 +395,11 @@ export function useCompletionView(
 				attempts = 0;
 				busyRetries = 0;
 				nextAttempt = 0;
+				// The warning this budget may earn is that budget's own, so the flag is
+				// reset with the counters it guards - the same rule the press arm keeps
+				// (`ladderWarned`'s own docblock claims it of every reset; agent review
+				// round 2, NIT 1).
+				ladderWarned = false;
 			}
 			if (useCanonicalSessionsStore.getState().activeSessionId !== sessionId)
 				return;
@@ -522,10 +527,12 @@ export function useCompletionView(
 					if (cancelled) return;
 					/*
 					 * CONTENTION GETS ITS OWN PROMPT, BOUNDED BUDGET (see `BUSY_RETRIES`).
-					 * Every other failure - including the 409 that tells this client its
-					 * token was superseded - belongs to the shared ladder, whose flat
-					 * window is what lets a superseded attempt re-read and re-acknowledge
-					 * the token the state now names.
+					 * Every other failure belongs to the shared ladder, whose flat window is what
+					 * holds a refusal that may yet succeed to about one attempt a minute. The 409
+					 * does NOT: it is caught by its own arm below and is terminal for this loop
+					 * (`desktop-session-contract.ts` states the rule, and the arm states why), so
+					 * the ladder never sees it - which this comment claimed it did until QA round
+					 * 2's Q2-1, one sentence above the arm it contradicted.
 					 */
 					if (isStoreBusy(error) && busyRetries < BUSY_RETRIES) {
 						busyRetries += 1;
