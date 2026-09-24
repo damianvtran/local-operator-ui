@@ -2784,7 +2784,15 @@ test("the notice is one sentence above the box, at most Retry and Clear, and not
 		"src/renderer/src/features/chat/components/message-input.tsx",
 		"utf8",
 	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
-	const alertAt = rendered.indexOf('role="alert"');
+	/*
+	 * THE FAILURE ARM OF THE REGION'S ROLE (review round 2, NIT). The region carries
+	 * `role={composerAlert.polite ? "status" : "alert"}`: the late-delivery line is a
+	 * status - the app catching up, announced politely - while a send that did not
+	 * land stays assertive, which is the claim this assertion is about. Reading the
+	 * literal `role="alert"` cannot see either arm, so the expression is what is
+	 * pinned, and the two arms are asserted separately.
+	 */
+	const alertAt = rendered.indexOf('role={composerAlert.polite ? "status" : "alert"}');
 	assert.ok(
 		alertAt > 0,
 		"the composer no longer renders the failed send as an alert, so a send that did not land is not announced",

@@ -6553,24 +6553,31 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										!isTranscribing && (
 											<Tooltip content="Send message">
 												<span>
+													{/*
+													 * AND NOT `isLoading` ANY MORE (review round 2, U6). While a
+													 * send is in flight this control used to be DISABLED, so a
+													 * second press did nothing at all: 3.5 s of DOM sampling found
+													 * no line and no state change, and the affordance that exists to
+													 * answer that press - the pane's send lock, "Your last message
+													 * is still sending." - was unreachable from the one control the
+													 * user would reach for. The refusal is the STORE's
+													 * (`admitChatDraft` returns without admitting while `pending`)
+													 * and the LINE is the pane's, so the press has to be delivered
+													 * to them rather than swallowed here. `isInputDisabled` stays:
+													 * a box that refuses input is a different fact.
+													 *
+													 * The note sits ABOVE the element rather than inside its
+													 * attribute list on purpose: `interrupt-control.test.mjs`
+													 * reads this control's `size` expression out of the 400
+													 * characters before its label, and prose between the two
+													 * pushed that expression out of the window - a pin that
+													 * failed by naming the size rather than the comment.
+													 */}
 													<Button
 														variant="primary"
 														size={isSmallView ? "icon-sm" : "icon"}
 														type="submit"
 														onPointerDown={holdCaretOnRefusedPress}
-														/*
-														 * AND NOT `isLoading` ANY MORE (review round 2, U6). While
-														 * a send is in flight the control used to be DISABLED, so a
-														 * second press did nothing at all: 3.5 s of DOM sampling
-														 * found no line and no state change, and the affordance that
-														 * exists to answer that press - the pane's send lock, "Your
-														 * last message is still sending." - was unreachable from the
-														 * one control the user would reach for. The refusal is the
-														 * STORE's (`admitChatDraft` returns without admitting while
-														 * `pending`) and the LINE is the pane's, so the press has to
-														 * be delivered to them rather than swallowed here. `isInputDisabled`
-														 * stays: a box that refuses input is a different fact.
-														 */
 														disabled={
 															isInputDisabled ||
 															(!newMessage.trim() && attachments.length === 0)
