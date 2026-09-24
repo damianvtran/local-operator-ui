@@ -13,8 +13,10 @@ import { build } from "esbuild";
  * arrives silently, and a parity assertion "against a pinned payload from the
  * backend" is what catching it needs - which the UI repo could not make on its
  * own. The backend PR now ships exactly that payload
- * (`docs/fixtures/mcp-catalog.json` on `feat/sessionless-mcp-catalog`), and this
- * is the assertion it was published for.
+ * (`docs/fixtures/mcp-catalog.json`), and this is the assertion it was published
+ * for. The vendored copy is byte-identical to that head's file apart from the
+ * JSON formatting normalisation noted below - verified by comparing the two
+ * documents, not by trusting the copy.
  *
  * ## What it proves, and what it cannot
  *
@@ -48,7 +50,7 @@ import { build } from "esbuild";
 /** The backend revision and version this copy was taken from. */
 const FIXTURE = "scripts/fixtures/mcp-catalog-0.62.17.json";
 const BACKEND_SOURCE =
-	"damianvtran/local-operator docs/fixtures/mcp-catalog.json at 0.62.17";
+	"damianvtran/local-operator#1511, branch feat/sessionless-mcp-catalog, head 111d8e193 (backend 0.62.17)";
 
 const bundle = await build({
 	stdin: {

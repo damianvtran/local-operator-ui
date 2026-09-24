@@ -651,6 +651,10 @@ const sourceKindFor = (
  * which is why the backend sends a category rather than the exception.
  */
 export const CATALOG_REFUSAL_COPY: Record<string, string> = {
+	invalid_config:
+		"That configuration isn't valid. Check the command or the URL, then try again.",
+	operation_unavailable:
+		"That sign-in or test isn't running any more. Try again.",
 	exists: "An integration with this name already exists. Choose another name.",
 	not_owned:
 		"It's defined in another tool's config, so it can't be changed here. Edit it in that file.",
@@ -665,7 +669,28 @@ export const CATALOG_REFUSAL_COPY: Record<string, string> = {
 	write_failed:
 		"The config file couldn't be written. Check that it isn't read-only.",
 	mcp_starting: "Integrations are still starting. Try again in a moment.",
+	/*
+	 * The backend's own catch-all (`REFUSAL_MESSAGES` in `mcp/desktop.py`), and
+	 * this file's fallback for a code it does not know: the code set is the
+	 * BACKEND's to extend, so a new one must degrade to a true sentence about
+	 * what happened rather than to a crash or to silence. `mcp_control_refused`
+	 * is named explicitly because it is the code the session route has always
+	 * answered with.
+	 */
+	mcp_control_refused: "The server refused it, so nothing was changed.",
 };
+
+/**
+ * What an unrecognised refusal code says.
+ *
+ * Deliberately not the backend's message: that is the text the app may not
+ * quote (a config error can carry a credential), and the code is the fact this
+ * renderer is allowed to know. A code this build has never seen is still a
+ * refusal, so the reader gets the honest generic sentence and the row keeps its
+ * own controls.
+ */
+export const CATALOG_REFUSAL_FALLBACK =
+	"The server refused it, so nothing was changed. Try again.";
 
 /**
  * The sentence a failed control shows.
@@ -680,12 +705,14 @@ export function integrationFailureMessage(
 	cause: unknown,
 	grantRunning: boolean,
 ): string {
-	if (
-		cause instanceof DesktopControlError &&
-		cause.status === 409 &&
-		typeof cause.code === "string" &&
-		cause.code in CATALOG_REFUSAL_COPY
-	)
-		return `${MCP_FAILURE_LEAD[phase]}. ${CATALOG_REFUSAL_COPY[cause.code]}`;
+	if (cause instanceof DesktopControlError && cause.status === 409) {
+		// `mcp_control_refused` is the session route's blanket code and carries
+		// no more detail than an unknown one, so both get the generic sentence.
+		const copy =
+			typeof cause.code === "string" && cause.code in CATALOG_REFUSAL_COPY
+				? CATALOG_REFUSAL_COPY[cause.code]
+				: CATALOG_REFUSAL_FALLBACK;
+		return `${MCP_FAILURE_LEAD[phase]}. ${copy}`;
+	}
 	return mcpFailure(phase, cause, grantRunning).message;
 }

@@ -99,6 +99,8 @@
  *   --integration-args <a|b> (with --scene settings-integrations) that server's
  *                          arguments, PIPE-separated, because the form takes one
  *                          per line
+ *   --integration-url <url> (with --scene settings-integrations) the remote MCP
+ *                          server the scene adds through the form's URL mode
  *   --authoring-expect <refresh|stale>  (with --scene authoring-refresh) which
  *                          claim this run is in: `refresh` against a backend
  *                          whose feed publishes `authoring` frames, `stale`
@@ -360,6 +362,7 @@ const AUTHORING_EXPECT = argValue("--authoring-expect", "refresh");
  */
 const INTEGRATION_COMMAND = argValue("--integration-command", null);
 const INTEGRATION_ARGS = argValue("--integration-args", "");
+const INTEGRATION_URL = argValue("--integration-url", null);
 /**
  * Seed the profile as an EXISTING user before the scene runs.
  *
@@ -12667,7 +12670,8 @@ async function focusField(cdp, selector) {
 }
 
 /**
- * Settings > Integrations with NO chat and NO model: add, test, remove.
+ * Settings > Integrations with NO chat and NO model: add stdio, add remote, test
+ * both, remove both.
  *
  * WHY THIS SCENE EXISTS. The page used to route every read and write through a
  * conversation's session, which booted a runtime - and so needed a model
@@ -12675,23 +12679,37 @@ async function focusField(cdp, selector) {
  * until a model works"). The redesign reads and writes the SESSIONLESS catalog
  * (`GET|POST /v1/desktop/mcp`, capability `mcp_catalog`), and the claim to prove
  * is exactly the one the walk refuted: on a fresh config with no model provider
- * and no session at all, the page adds a local command, tests it, and removes it.
+ * and no session at all, the page adds a local command AND a remote URL, tests
+ * each, and removes each.
+ *
+ * BOTH TRANSPORTS, because they are two different rows on this page and two
+ * different code paths on the backend: a local command's row reports through the
+ * probe that spawns it, and a remote URL's through an HTTP handshake the daemon
+ * makes. A run that only ever added a stdio server would leave the URL half - its
+ * `remote_url` transport, its endpoint, and the `--version`-less handshake - to
+ * the reader's imagination.
  *
  * Every step is asserted on BOTH sides - what the page shows, and what the
- * backend says - because either half alone passes a wrong implementation: a page
- * that rendered an optimistic row over a refused write would satisfy the pixels,
- * and a sessionless route that quietly created a session would satisfy the
- * backend. The last check closes that second door by reading the session list
- * before and after: it must still be empty.
+ * backend's own catalog says - because either half alone passes a wrong
+ * implementation: a page that rendered an optimistic row over a refused write
+ * would satisfy the pixels, and a sessionless route that quietly created a
+ * session would satisfy the backend. The last check closes that second door by
+ * reading the session list before and after: it must still be empty.
  *
- * WHAT IT NEEDS: `--backend <url>` - a daemon this run owns, on a CSP-allowed
- * port (8080/1111), whose config root has NO model provider configured - the
- * renderer built against the same URL, `LOCAL_OPERATOR_DESKTOP_TOKEN` in this
- * script's environment, and `--integration-command`/`--integration-args` naming
- * a stdio MCP server that backend can spawn (the rig uses a tiny python echo
- * server). `--integration-args` is PIPE-separated, because the form takes one
- * argument per line.
+ * WHAT IT NEEDS: `--backend <url>` - a daemon this run owns, whose config root
+ * has NO model provider configured - the renderer built against the same URL,
+ * `LOCAL_OPERATOR_DESKTOP_TOKEN` in this script's environment,
+ * `--integration-command`/`--integration-args` for the stdio server (arguments
+ * PIPE-separated, because the form takes one per line), and `--integration-url`
+ * for the remote one.
+ *
+ * AND A CONFIG ROOT FREE OF INTEGRATIONS. A rig re-used after a run that died
+ * mid-way still lists the rows that run added, so the empty state never appears
+ * and the closing "the catalog is empty again" count includes them. Measured,
+ * not hypothesised: the second run on a dirty rig reported three failures that
+ * were all one leftover row pair, while its own add/test/remove steps passed.
  */
+
 /** One backend read this run owns, unwrapped like the app's own transport does. */
 async function readBackendJson(path) {
 	const response = await fetch(`${BACKEND}${path}`, {
@@ -12713,7 +12731,7 @@ async function readBackendJson(path) {
  * Press something with a REAL pointer sequence, scrolling it into view first.
  *
  * Radix's menu opens on `pointerdown`, so a synthetic `click` on the trigger
- * leaves the menu shut - and the row's trigger can sit below the fold, where a
+ * leaves the menu shut - and a row's trigger can sit below the fold, where a
  * press at its off-screen coordinates would hit nothing and read exactly like a
  * control that does not work. So the element is scrolled to the middle of the
  * viewport, its centre is read from the live layout, and the press is dispatched
@@ -12758,7 +12776,8 @@ async function sceneSettingsIntegrations(cdp) {
 	);
 	if (!BACKEND) return [];
 	const frames = [];
-	const name = `echo-${process.pid}`;
+	const stdioName = `echo-${process.pid}`;
+	const remoteName = `remote-${process.pid}`;
 
 	/* ---- 0. the backend's own starting facts --------------------------- */
 	const caps = await readBackendJson("/v1/capabilities");
@@ -12776,8 +12795,7 @@ async function sceneSettingsIntegrations(cdp) {
 	 * A scene whose subject does not exist in this run STOPS here rather than
 	 * failing eleven more times: every later step is about the catalog route, so
 	 * against a backend without the capability their failures would describe the
-	 * fallback surface instead of the claim under test - and a log that is a wall
-	 * of FAILs for one missing capability is a log nobody reads to the end.
+	 * fallback surface instead of the claim under test.
 	 */
 	if (!hasCatalog) {
 		note(
@@ -12794,7 +12812,7 @@ async function sceneSettingsIntegrations(cdp) {
 	const config = await readBackendJson("/v1/config");
 	const accounts = await readBackendJson("/v1/auth/status");
 	const signedIn = Array.isArray(accounts.body?.accounts)
-		? accounts.body.accounts.filter((a) => a?.signed_in)
+		? accounts.body.accounts.filter((account) => account?.signed_in)
 		: [];
 	note(
 		"model access before the run",
@@ -12805,13 +12823,178 @@ async function sceneSettingsIntegrations(cdp) {
 		!config.body?.default_provider && signedIn.length === 0,
 		`default_provider=${JSON.stringify(config.body?.default_provider ?? null)} signed-in=${signedIn.length}`,
 	);
-	const sessionsBefore = await readBackendJson("/v1/desktop/sessions?limit=50");
 	const countSessions = (read) =>
 		Array.isArray(read.body?.sessions) ? read.body.sessions.length : null;
+	const sessionsBefore = await readBackendJson("/v1/desktop/sessions?limit=50");
 	note(
 		"sessions before",
 		`${countSessions(sessionsBefore)} (status ${sessionsBefore.status})`,
 	);
+
+	/* ---- the page's own controls, read back as text and as the catalog -- */
+	const catalog = () =>
+		readBackendJson("/v1/desktop/mcp").then((read) => ({
+			status: read.status,
+			document: read.body?.data ?? null,
+		}));
+	const rowFor = async (name) => {
+		const { document } = await catalog();
+		return document?.servers?.find((server) => server.name === name) ?? null;
+	};
+	const rowText = (name) =>
+		cdp.evaluate(
+			`(document.querySelector('[data-integration=${JSON.stringify(name)}]')?.innerText || '').replace(/\\s+/g, ' ')`,
+		);
+	const typeInto = async (selector, text) => {
+		await verb(cdp, "press", selector);
+		await focusField(cdp, selector);
+		await cdp.send("Input.insertText", { text });
+	};
+
+	/**
+	 * Fill the add form and submit it, asserting the row arrives on both sides.
+	 *
+	 * `mode` picks which transport the form is in, which is itself a press - the
+	 * two are a radio pair on the real form, so choosing one the way a user does
+	 * is what proves the form's own switch works rather than merely its fields.
+	 */
+	const addThroughForm = async ({ name, mode, frame }) => {
+		await verb(cdp, "press", "button[data-tour-tag='mcp-add-server']");
+		await waitForScene(
+			cdp,
+			`Boolean(document.querySelector('#integration-add-name'))`,
+		);
+		await typeInto("#integration-add-name", name);
+		if (mode === "url") {
+			// The transport pair on the real form, pressed through the hook the
+			// component exposes: the two buttons' WORDING is a design decision
+			// that may change, the axis they choose between may not.
+			const switched = await verb(
+				cdp,
+				"press",
+				"[data-integration-transport='url']",
+			);
+			check(
+				"the add form switched to Remote URL",
+				switched?.hitTest === true,
+				JSON.stringify(switched),
+			);
+			await waitForScene(
+				cdp,
+				`Boolean(document.querySelector('#integration-add-url'))`,
+			);
+			await typeInto("#integration-add-url", INTEGRATION_URL ?? "");
+		} else {
+			await typeInto(
+				"#integration-add-command",
+				INTEGRATION_COMMAND ?? "python3",
+			);
+			if (INTEGRATION_ARGS)
+				await typeInto(
+					"#integration-add-args",
+					INTEGRATION_ARGS.split("|").join("\n"),
+				);
+		}
+		await captureSettled(cdp, frame);
+		await verb(
+			cdp,
+			"press",
+			"form[aria-label='Add integration'] button[type='submit']",
+		);
+		const onPage = await waitForScene(
+			cdp,
+			`Boolean(document.querySelector('[data-integration=${JSON.stringify(name)}]'))`,
+			750,
+		);
+		const row = await rowFor(name);
+		note(`catalog after adding ${name}`, JSON.stringify(row).slice(0, 700));
+		note(`row text for ${name}`, await rowText(name));
+		return { onPage, row };
+	};
+
+	/** Press the row's one action, then wait for the backend's answer. */
+	const testRow = async (name) => {
+		const pressed = await verb(
+			cdp,
+			"press",
+			`[data-integration=${JSON.stringify(name)}] [data-integration-action='test']`,
+		);
+		note(`pressed Test on ${name}`, JSON.stringify(pressed));
+		const moving = await waitForScene(
+			cdp,
+			`/Connecting|Connected/.test(document.querySelector('[data-integration=${JSON.stringify(name)}]')?.innerText || '')`,
+			250,
+		);
+		note(`row while testing ${name}`, `${moving} ${await rowText(name)}`);
+		const settled = await waitForScene(
+			cdp,
+			`/Connected ·|Couldn't start/.test(document.querySelector('[data-integration=${JSON.stringify(name)}]')?.innerText || '')`,
+			2500,
+		);
+		const row = await rowFor(name);
+		note(`catalog after testing ${name}`, JSON.stringify(row).slice(0, 700));
+		note(`row text after testing ${name}`, await rowText(name));
+		return { settled, row };
+	};
+
+	/**
+	 * Remove the row through its overflow, with the confirm the page asks.
+	 *
+	 * The ORDER is the assertion, so each step waits for the state it creates:
+	 * the menu is opened by a real pointer press, the confirm is waited for
+	 * BEFORE it is pressed (a press at a control that is not there yet times out
+	 * and reports a missing element, which says nothing about whether Remove
+	 * asks first), and the row is waited for to disappear on both sides.
+	 *
+	 * If the confirm never appears the function returns with `asked: false` and
+	 * presses nothing, so the failure is the check's to report rather than an
+	 * exception that hides which claim broke.
+	 */
+	const removeRow = async (name, { overflowFrame, confirmFrame } = {}) => {
+		const trigger = await pointerPressSelector(
+			cdp,
+			`[aria-label=${JSON.stringify(`More actions for ${name}`)}]`,
+		);
+		const opened = await waitForScene(
+			cdp,
+			`Boolean(document.querySelector("[data-integration-menu='remove']"))`,
+			250,
+		);
+		if (overflowFrame) await captureSettled(cdp, overflowFrame);
+		const item = await pointerPressSelector(
+			cdp,
+			"[data-integration-menu='remove']",
+		);
+		const asked = await waitForScene(
+			cdp,
+			`document.body.innerText.includes(${JSON.stringify(`Remove ${name}?`)})`,
+			250,
+		);
+		if (confirmFrame) await captureSettled(cdp, confirmFrame);
+		if (!asked)
+			return {
+				trigger,
+				opened,
+				item,
+				asked,
+				gone: false,
+				stillThere: Boolean(await rowFor(name)),
+			};
+		await verb(cdp, "press", "[data-integration-confirm='remove']");
+		const gone = await waitForScene(
+			cdp,
+			`!document.querySelector('[data-integration=${JSON.stringify(name)}]')`,
+			750,
+		);
+		return {
+			trigger,
+			opened,
+			item,
+			asked,
+			gone,
+			stillThere: Boolean(await rowFor(name)),
+		};
+	};
 
 	/* ---- 1. the page, with nothing configured -------------------------- */
 	await verb(cdp, "navigate", "/settings?section=integrations");
@@ -12840,8 +13023,8 @@ async function sceneSettingsIntegrations(cdp) {
 		const rect = node.getBoundingClientRect();
 		return rect.top >= 0 && rect.top < window.innerHeight - 120;
 	})()`;
-	let visible = await waitForScene(cdp, headingInView, 500);
-	if (!visible) {
+	let inView = await waitForScene(cdp, headingInView, 500);
+	if (!inView) {
 		await cdp.evaluate(
 			`(() => {
 				const node = Array.from(document.querySelectorAll("h2")).find(
@@ -12851,11 +13034,11 @@ async function sceneSettingsIntegrations(cdp) {
 			})()`,
 		);
 		await wait(400);
-		visible = await waitForScene(cdp, headingInView, 100);
+		inView = await waitForScene(cdp, headingInView, 100);
 	}
 	check(
 		"the section the deep link names is IN VIEW before the frame is taken",
-		visible === true,
+		inView === true,
 		"the Integrations heading never entered the viewport, so a frame here would photograph another section",
 	);
 	check(
@@ -12865,152 +13048,115 @@ async function sceneSettingsIntegrations(cdp) {
 	);
 	frames.push(await captureSettled(cdp, "integrations-live-01-empty"));
 
-	/* ---- 2. add a local command through the form ----------------------- */
-	await verb(cdp, "press", "button[data-tour-tag='mcp-add-server']");
-	await waitForScene(
-		cdp,
-		`Boolean(document.querySelector('#integration-add-name'))`,
-	);
-	const typeInto = async (selector, text) => {
-		await verb(cdp, "press", selector);
-		await focusField(cdp, selector);
-		await cdp.send("Input.insertText", { text });
-	};
-	await typeInto("#integration-add-name", name);
-	await typeInto("#integration-add-command", INTEGRATION_COMMAND ?? "python3");
-	if (INTEGRATION_ARGS) {
-		await typeInto(
-			"#integration-add-args",
-			INTEGRATION_ARGS.split("|").join("\n"),
-		);
-	}
-	frames.push(await captureSettled(cdp, "integrations-live-02-add-form"));
-	await verb(
-		cdp,
-		"press",
-		"form[aria-label='Add integration'] button[type='submit']",
-	);
-	const added = await waitForScene(
-		cdp,
-		`Boolean(document.querySelector('[data-integration=${JSON.stringify(name)}]'))`,
-		750,
-	);
-	const afterAdd = await readBackendJson("/v1/desktop/mcp");
-	const catalog = (read) => read.body?.data ?? read.body;
-	const addedRow = catalog(afterAdd)?.servers?.find((s) => s.name === name);
-	note(
-		"catalog after add",
-		JSON.stringify(addedRow ?? afterAdd.body).slice(0, 700),
+	/* ---- 2. add a local command, then a remote URL --------------------- */
+	const added = await addThroughForm({
+		name: stdioName,
+		mode: "command",
+		frame: "integrations-live-02-add-stdio",
+	});
+	check(
+		"the local command landed: on the page AND in the backend's own catalog",
+		added.onPage === true && Boolean(added.row),
+		`page=${added.onPage} backend=${Boolean(added.row)}`,
 	);
 	check(
-		"the add landed: the row is on the page AND in the backend's own catalog",
-		added === true && Boolean(addedRow),
-		`page=${added} backend=${Boolean(addedRow)} status=${afterAdd.status}`,
+		"its row is a local command, global, with the command the form was given",
+		added.row?.transport === "local_command" &&
+			added.row?.scope === "global" &&
+			added.row?.endpoint?.command === INTEGRATION_COMMAND,
+		`transport=${added.row?.transport} scope=${added.row?.scope} command=${added.row?.endpoint?.command}`,
 	);
-	check(
-		"the new row is global, because cwd is home and there is no separate project file",
-		addedRow?.scope === "global" &&
-			catalog(afterAdd)?.project_scope_available === false,
-		`scope=${addedRow?.scope} project_scope_available=${catalog(afterAdd)?.project_scope_available}`,
-	);
-	const rowText = async () =>
-		cdp.evaluate(
-			`(document.querySelector('[data-integration=${JSON.stringify(name)}]')?.innerText || '').replace(/\\s+/g, ' ')`,
-		);
-	note("row after add", await rowText());
-	check(
-		"the row reads in plain words rather than the wire's",
-		/Ready|Connected|Connecting/.test(await rowText()) &&
-			!/\b(cold|stdio|auth-required|not_started)\b/.test(await rowText()),
-		`row text = ${JSON.stringify(await rowText())}`,
-	);
-	frames.push(await captureSettled(cdp, "integrations-live-03-added"));
+	frames.push(await captureSettled(cdp, "integrations-live-03-added-stdio"));
 
-	/* ---- 3. test it ---------------------------------------------------- */
-	const pressedTest = await verb(
-		cdp,
-		"press",
-		`[data-integration=${JSON.stringify(name)}] [data-integration-action='test']`,
-	);
-	note("pressed Test", JSON.stringify(pressedTest));
-	const moving = await waitForScene(
-		cdp,
-		`/Connecting|Connected/.test(document.querySelector('[data-integration=${JSON.stringify(name)}]')?.innerText || '')`,
-		250,
-	);
-	note("row while the test ran", `${moving} ${await rowText()}`);
-	const settled = await waitForScene(
-		cdp,
-		`/Connected ·|Couldn't start/.test(document.querySelector('[data-integration=${JSON.stringify(name)}]')?.innerText || '')`,
-		2500,
-	);
-	const afterTest = await readBackendJson("/v1/desktop/mcp");
-	const testedRow = catalog(afterTest)?.servers?.find((s) => s.name === name);
-	note("catalog after test", JSON.stringify(testedRow).slice(0, 700));
-	note("row after test", await rowText());
+	const addedRemote = await addThroughForm({
+		name: remoteName,
+		mode: "url",
+		frame: "integrations-live-04-add-remote",
+	});
 	check(
-		"the test settled on the backend's own answer, with no reload pressed",
-		settled === true &&
-			testedRow?.status === "connected" &&
-			/Connected · 1 tool\b/.test(await rowText()),
-		`page settled=${settled} backend status=${testedRow?.status} tools=${testedRow?.tool_count} row=${JSON.stringify(await rowText())}`,
+		"the remote URL landed: on the page AND in the backend's own catalog",
+		addedRemote.onPage === true && Boolean(addedRemote.row),
+		`page=${addedRemote.onPage} backend=${Boolean(addedRemote.row)}`,
 	);
-	frames.push(await captureSettled(cdp, "integrations-live-04-tested"));
+	check(
+		"its row is a remote URL, global, with the URL the form was given",
+		addedRemote.row?.transport === "remote_url" &&
+			addedRemote.row?.scope === "global" &&
+			addedRemote.row?.endpoint?.url === INTEGRATION_URL,
+		`transport=${addedRemote.row?.transport} scope=${addedRemote.row?.scope} url=${addedRemote.row?.endpoint?.url}`,
+	);
+	frames.push(await captureSettled(cdp, "integrations-live-05-added-remote"));
 
-	/* ---- 4. remove it through the overflow ----------------------------- */
-	const trigger = await pointerPressSelector(
-		cdp,
-		`[aria-label=${JSON.stringify(`More actions for ${name}`)}]`,
-	);
-	note("pressed the overflow trigger", JSON.stringify(trigger));
+	/* ---- 3. test both -------------------------------------------------- */
+	const testedStdio = await testRow(stdioName);
 	check(
-		"the row's overflow menu opened",
-		trigger?.hit === true &&
-			(await waitForScene(
-				cdp,
-				`Boolean(document.querySelector("[data-integration-menu='remove']"))`,
-				250,
-			)) === true,
-		`hit=${trigger?.hit} top=${trigger?.top}`,
+		"the local command's test settled on the backend's own answer, with no reload pressed",
+		testedStdio.settled === true &&
+			testedStdio.row?.status === "connected" &&
+			testedStdio.row?.tool_count === 1 &&
+			testedStdio.row?.status_basis === "probe" &&
+			/Connected · 1 tool\b/.test(await rowText(stdioName)),
+		`page settled=${testedStdio.settled} backend=${testedStdio.row?.status} tools=${testedStdio.row?.tool_count} basis=${testedStdio.row?.status_basis} row=${JSON.stringify(await rowText(stdioName))}`,
 	);
-	frames.push(await captureSettled(cdp, "integrations-live-05-overflow"));
-	const item = await pointerPressSelector(
-		cdp,
-		"[data-integration-menu='remove']",
+	frames.push(await captureSettled(cdp, "integrations-live-06-tested-stdio"));
+
+	const testedRemote = await testRow(remoteName);
+	check(
+		"the remote URL's test settled on the backend's own answer too",
+		testedRemote.settled === true &&
+			testedRemote.row?.status === "connected" &&
+			testedRemote.row?.tool_count === 1 &&
+			/Connected · 1 tool\b/.test(await rowText(remoteName)),
+		`page settled=${testedRemote.settled} backend=${testedRemote.row?.status} tools=${testedRemote.row?.tool_count} row=${JSON.stringify(await rowText(remoteName))}`,
 	);
-	note("pressed its Remove item", JSON.stringify(item));
-	const asked = await waitForScene(
-		cdp,
-		`document.body.innerText.includes(${JSON.stringify(`Remove ${name}?`)})`,
-		250,
+	frames.push(await captureSettled(cdp, "integrations-live-07-tested-remote"));
+	check(
+		"both rows read in plain words, never the wire's",
+		!/\b(cold|stdio|auth-required|not_started|remote_url|local_command)\b/.test(
+			`${await rowText(stdioName)} ${await rowText(remoteName)}`,
+		),
+		`${await rowText(stdioName)} || ${await rowText(remoteName)}`,
 	);
+
+	/* ---- 4. remove both through the overflow --------------------------- */
+	const removedStdio = await removeRow(stdioName, {
+		overflowFrame: "integrations-live-08-overflow",
+		confirmFrame: "integrations-live-09-remove-confirm",
+	});
 	check(
 		"Remove asks before it writes anything",
-		asked === true,
-		`row text = ${JSON.stringify(await rowText())}`,
-	);
-	frames.push(await captureSettled(cdp, "integrations-live-06-remove-confirm"));
-	await verb(cdp, "press", "[data-integration-confirm='remove']");
-	const gone = await waitForScene(
-		cdp,
-		`!document.querySelector('[data-integration=${JSON.stringify(name)}]')`,
-		750,
-	);
-	const afterRemove = await readBackendJson("/v1/desktop/mcp");
-	const stillThere = catalog(afterRemove)?.servers?.some(
-		(s) => s.name === name,
+		removedStdio.asked === true,
+		`trigger hit=${removedStdio.trigger?.hit} menu=${removedStdio.opened} item hit=${removedStdio.item?.hit}`,
 	);
 	check(
-		"the remove landed: gone from the page AND from the backend's catalog",
-		gone === true && stillThere === false,
-		`page gone=${gone} backend still lists it=${stillThere}`,
+		"the local command's remove landed: gone from the page AND from the backend's catalog",
+		removedStdio.gone === true && removedStdio.stillThere === false,
+		`page gone=${removedStdio.gone} backend still lists it=${removedStdio.stillThere}`,
 	);
-	await waitForScene(
-		cdp,
-		`document.body.innerText.includes("No integrations yet")`,
-		250,
+	const removedRemote = await removeRow(remoteName);
+	check(
+		"the remote URL's remove landed the same way",
+		removedRemote.asked === true &&
+			removedRemote.gone === true &&
+			removedRemote.stillThere === false,
+		`asked=${removedRemote.asked} page gone=${removedRemote.gone} backend still lists it=${removedRemote.stillThere}`,
 	);
-	frames.push(await captureSettled(cdp, "integrations-live-07-removed"));
+	const leftBehind = (await catalog()).document?.servers ?? [];
+	check(
+		"the catalog is empty again, so both writes went through the backend",
+		leftBehind.length === 0,
+		`backend still lists=${JSON.stringify(leftBehind.map((server) => server.name))}`,
+	);
+	check(
+		"and the page is back to its empty state",
+		(await waitForScene(
+			cdp,
+			`document.body.innerText.includes("No integrations yet")`,
+			250,
+		)) === true,
+		"the empty state did not return",
+	);
+	frames.push(await captureSettled(cdp, "integrations-live-10-removed"));
 
 	/* ---- 5. and no conversation was ever needed ------------------------ */
 	const sessionsAfter = await readBackendJson("/v1/desktop/sessions?limit=50");
@@ -19288,6 +19434,11 @@ async function main() {
 	if (SCENE === "settings-integrations" && INTEGRATION_COMMAND === null) {
 		throw new Error(
 			"--scene settings-integrations needs --integration-command: the scene adds that command through the form, and a default would add whatever this script guessed rather than the rig's own server",
+		);
+	}
+	if (SCENE === "settings-integrations" && INTEGRATION_URL === null) {
+		throw new Error(
+			"--scene settings-integrations needs --integration-url: the remote half is a different row and a different backend path, and a scene that silently skipped it would look like it ran",
 		);
 	}
 	if (SCENE === "authoring-refresh" && BACKEND === null) {

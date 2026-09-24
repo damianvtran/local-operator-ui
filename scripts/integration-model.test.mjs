@@ -532,9 +532,40 @@ test("a catalog refusal code is worded, never the backend's text", () => {
 		"grant_running",
 		"too_many_operations",
 		"write_failed",
+		"invalid_config",
 		"mcp_starting",
+		"operation_unavailable",
 	])
 		assert.ok(m.CATALOG_REFUSAL_COPY[code], `no copy for ${code}`);
+});
+
+test("a refusal code this build has never seen still gets a true sentence", () => {
+	/*
+	 * The code set belongs to the BACKEND, so a new one must not break the page
+	 * or be silently swallowed: the reader gets the generic refusal, in the
+	 * product's voice, and never the backend's own text (which can quote a
+	 * credential).
+	 */
+	for (const code of ["brand_new_code", undefined]) {
+		const cause = new m.DesktopControlError(
+			409,
+			"raw backend text with a token in it",
+			undefined,
+			code,
+		);
+		const message = m.integrationFailureMessage("test", cause, false);
+		assert.match(message, /^The connection test could not be started\./);
+		assert.doesNotMatch(message, /raw backend text/);
+		assert.match(
+			message,
+			new RegExp(
+				code === undefined
+					? // No code at all is the session route's blanket 409: still generic.
+						"refused it"
+					: m.CATALOG_REFUSAL_FALLBACK.slice(0, 24),
+			),
+		);
+	}
 });
 
 /* ------------------------------------------------------ sign-in */

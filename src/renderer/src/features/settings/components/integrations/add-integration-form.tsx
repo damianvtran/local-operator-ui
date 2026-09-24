@@ -156,6 +156,11 @@ export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 						variant={mode === "command" ? "secondary" : "ghost"}
 						size="sm"
 						aria-pressed={mode === "command"}
+						// A stable handle for the live scene, which drives this pair
+						// the way a user does rather than past it (the wording of
+						// these two is a design decision and may change; the axis
+						// they choose between may not).
+						data-integration-transport="command"
 						onClick={() => setMode("command")}
 					>
 						Local command
@@ -165,6 +170,7 @@ export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 						variant={mode === "url" ? "secondary" : "ghost"}
 						size="sm"
 						aria-pressed={mode === "url"}
+						data-integration-transport="url"
 						onClick={() => setMode("url")}
 					>
 						Remote URL
@@ -247,6 +253,7 @@ export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 							variant={scope === "global" ? "secondary" : "ghost"}
 							size="sm"
 							aria-pressed={scope === "global"}
+							data-integration-scope="global"
 							onClick={() => setScope("global")}
 						>
 							All chats
@@ -256,6 +263,7 @@ export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 							variant={scope === "project" ? "secondary" : "ghost"}
 							size="sm"
 							aria-pressed={scope === "project"}
+							data-integration-scope="project"
 							onClick={() => setScope("project")}
 						>
 							This project
