@@ -35,24 +35,22 @@ const config: StorybookConfig = {
 		};
 		config.plugins = [...(config.plugins ?? []), tailwindcss()];
 		/*
-		 * ONE SONNER. Its store is a module-level singleton, so a build that resolves
-		 * the package twice gives the component that RAISES a toast and the Toaster
-		 * that paints it two different stores - the panel's request reaches the lane
-		 * and nothing appears, which is exactly what the live probe on the story
-		 * reported (`toaster=0`, one warning call, the composed sentence).
+		 * ONE SONNER, and this is the only pin that survived being measured. Its store
+		 * is a module-level singleton, so a build that resolves the package twice gives
+		 * the component that RAISES a toast and the Toaster that paints it two different
+		 * stores.
+		 *
+		 * TWO FURTHER PINS USED TO SIT HERE AND WERE REMOVED (design round 3, D14): the
+		 * round that added them hoped they explained the lane painting nothing, and the
+		 * next round measured what actually stops it - the copies outside the nav sit at
+		 * `op=0` beside a `0x0` `<ol>`, a container with no box - and re-ran with the
+		 * whole `optimizeDeps` block gone for the same numbers. One of the two pins was
+		 * also dead, overwritten by the spread beneath it. What changed that round's
+		 * reading was a rebuild of the vite dep cache, which is not a config fact and is
+		 * not claimed anywhere in this set.
 		 */
 		config.resolve.dedupe = [...(config.resolve?.dedupe ?? []), "sonner"];
-		/*
-		 * AND SONNER IS NOT PRE-BUNDLED EITHER. `dedupe` alone left the profile
-		 * build serving one copy from the dep cache and the source tree's modules
-		 * another: the panel's request landed in a store whose only subscriber is the
-		 * story's own import, while the Toaster rendered from the other store - and
-		 * sonner renders NOTHING when its own list is empty
-		 * (`if (!toasts.length) return null`), which is why the page showed no
-		 * `[data-sonner-toaster]` at all.
-		 */
 		config.optimizeDeps = {
-			include: [...(config.optimizeDeps?.include ?? []), "sonner"],
 			...config.optimizeDeps,
 			exclude: [...(config.optimizeDeps?.exclude ?? []), "sonner"],
 		};
