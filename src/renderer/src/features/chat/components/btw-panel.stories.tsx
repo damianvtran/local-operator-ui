@@ -358,13 +358,29 @@ export const OverflowingFollowUp: Story = {
 					{
 						question: "walk me through the retry ladder end to end",
 						stream: settled(
+							/*
+							 * LONG ENOUGH TO OVERFLOW AT EVERY WIDTH, which is the whole point of
+							 * this frame (design round 2, D6): six one-line paragraphs fit inside the
+							 * ceiling at a 1280px window, so a shorter answer produced a picture of
+							 * the state at NARROW only - the pass where the follow-up was already
+							 * visible would have shown nothing wrong and nothing fixed. Twelve
+							 * paragraphs overflow the ten-line answer budget at both sizes, so the
+							 * frame always shows the region scrolled to the APPENDED turn rather
+							 * than resting on the exchange above it.
+							 */
 							[
 								"A transport failure is retried on the same provider while the budget holds.",
 								"The budget counts consecutive failures against one provider, not attempts.",
 								"An owner 5xx is a transport-shaped failure and spends the budget the same way.",
 								"A 4xx that the owner marks as the request's own fault does not spend it.",
+								"A 429 is the owner's own pacing signal and is held against the budget too.",
 								"Exhausting the budget hands the turn to the next provider in the ladder.",
+								"A provider is skipped entirely when its credentials are missing.",
+								"The ladder stops at the first provider that answers with content.",
+								"A tool call counts as an answer and ends the ladder where it lands.",
 								"The last provider's failure ends the turn with the owner's own sentence.",
+								"Nothing in the ladder is retried after the turn has ended.",
+								"Adopting an aside replays no part of the ladder.",
 							].join("\n\n"),
 						),
 					},
