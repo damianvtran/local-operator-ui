@@ -1918,6 +1918,96 @@ test("a launch that returns to the configured address says so", async () => {
 	await m.stop(false);
 });
 
+/*
+ * A CLAIM ABOUT AN ADDRESS THE APP NEVER REACHED (agent round 2, R2-2).
+ *
+ * The record was written when the gate had chosen a target - before the spawn and
+ * before the readiness loop - and neither failure arm touched it. So a failed start on
+ * the configured address left the DISMISSIBLE "Back on <configured> ... it is on the
+ * address it was told to use again" over a dead backend, and a failed FALLBACK spawn
+ * left "Serving on <fallback> ... The app uses <fallback> while that holds" over one.
+ * Both are impossible now because the claim is derived from the address the app is
+ * attached to, and these two arms measure that instead of arguing it.
+ */
+test("a start that never lands claims no address, on either arm (R2-2)", async () => {
+	const occupied = await squatter(livePid());
+	const fallbackPort = await freePort();
+
+	/* Arm 1: the FALLBACK spawn never answers, so no landing ever happens. */
+	const failedFallback = await manager("unready");
+	failedFallback.configuredUrl = occupied.address;
+	failedFallback.fallbackSpawnUrls = [`http://127.0.0.1:${fallbackPort}`];
+	const rungs = new Set([100, 250, 1000]);
+	const original = globalThis.setTimeout;
+	globalThis.setTimeout = (fn, ms, ...args) =>
+		original(fn, rungs.has(ms) ? 1 : ms, ...args);
+	try {
+		assert.equal(
+			await failedFallback.start(),
+			false,
+			"the fallback daemon never answers its readiness probe",
+		);
+	} finally {
+		globalThis.setTimeout = original;
+	}
+	assert.equal(
+		failedFallback.getStatusSnapshot().addressSubstitution,
+		null,
+		"a start that failed claims no address: this app is serving nowhere",
+	);
+
+	/* Arm 2: a start on the CONFIGURED address, after a launch that served elsewhere. */
+	const m = await manager();
+	const freed = m.backendUrl;
+	m.configuredUrl = occupied.address;
+	m.fallbackSpawnUrls = [`http://127.0.0.1:${fallbackPort}`];
+	assert.equal(await m.start(), true, "the first launch takes the fallback");
+	assert.equal(
+		m.getStatusSnapshot().addressSubstitution?.kind,
+		"substituted",
+		"and says so while it is on that address",
+	);
+	const first = m.process;
+	process.kill(first.pid, "SIGKILL");
+	await once(first, "exit");
+	m.configuredUrl = freed;
+	/*
+	 * The second start FAILS: the fixture launcher exits before it serves. That is the
+	 * arm the old record could not survive - it had already written `returned` for the
+	 * target it was about to try, so the band announced a return over a backend that
+	 * never came up.
+	 */
+	m.shellEnv = { ...m.shellEnv, FIXTURE_MODE: "early" };
+	assert.equal(await m.start({ quiet: true }), false, "the second start fails");
+	const failed = m.getStatusSnapshot();
+	/*
+	 * THE TRANSITION THE APP NEVER MADE. The old record wrote `returned` for the target
+	 * it was ABOUT to try, so this same moment carried `returned` beside a snapshot whose
+	 * own `url` was still the fallback address - the app announcing it was back on the
+	 * configured address while it was not, and while nothing was serving either one. The
+	 * derived claim cannot say that, and this is the assertion that pins it.
+	 */
+	assert.notEqual(
+		failed.addressSubstitution?.kind,
+		"returned",
+		"a failed start does not claim a return the app never made",
+	);
+	if (failed.addressSubstitution?.kind === "substituted") {
+		assert.equal(
+			failed.addressSubstitution.serving,
+			failed.url,
+			"and while the app still reports that address as its own, the claim names it rather than the one that failed",
+		);
+	} else {
+		assert.equal(
+			failed.addressSubstitution,
+			null,
+			"or the app claims no address at all",
+		);
+	}
+	await m.stop(false);
+});
+
 test("both addresses held: nothing is started, both holders are named, no child to quit over", async () => {
 	const configured = await squatter(livePid());
 	const fallback = await squatter(process.pid);

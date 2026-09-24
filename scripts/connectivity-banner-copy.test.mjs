@@ -45,7 +45,7 @@ mkdirSync(join(HOME, "userData"), { recursive: true });
 const bundle = await build({
 	stdin: {
 		contents:
-			'export { serverBannerCopy } from "./src/shared/backend-status.ts"; export { describeHolders, describeSpawnRefusal } from "./src/main/backend/backend-service.ts";',
+			'export { serverBannerCopy } from "./src/shared/backend-status.ts"; export { describeHolders, describeSpawnRefusal, reclaimClause } from "./src/main/backend/backend-service.ts";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -94,10 +94,14 @@ const bundle = await build({
 	],
 });
 
-const { serverBannerCopy, describeHolders, describeSpawnRefusal } =
-	await import(
-		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-	);
+const {
+	serverBannerCopy,
+	describeHolders,
+	describeSpawnRefusal,
+	reclaimClause,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
 
 const stories = readFileSync(
 	"src/renderer/src/shared/components/common/connectivity-banner.stories.tsx",
@@ -159,15 +163,16 @@ const bothHeld = [
 		pid: 53501,
 		version: "0.55.5",
 		installKind: "",
+		/*
+		 * NO `install_kind`, so the install fact is the prefix's LAST SEGMENT - the shape
+		 * design round 2's D4 asked to see in a frame rather than in prose (the band used
+		 * to render the whole 47-character home path).
+		 */
+		prefix: "/Users/you/.local/share/uv/tools/local-operator",
 	}),
 ];
 
-test("the occupied stories carry the sentence main composes, not a paraphrase of it", () => {
-	assert.equal(
-		literal("Unattachable", "detail"),
-		describeSpawnRefusal(oneHolder),
-		"`unattachable` is a STORIES row of capture-evidence: its frame documents this string",
-	);
+test("the two-holder frame carries the prefix-derived install name, and the class once", () => {
 	assert.equal(
 		literal("BothAddressesHeld", "detail"),
 		describeSpawnRefusal(bothHeld),
@@ -179,17 +184,87 @@ test("the occupied stories carry the sentence main composes, not a paraphrase of
 		"the class is stated ONCE for two holders (design round 1, D6)",
 	);
 	assert.match(
+		literal("BothAddressesHeld", "detail"),
+		/\(pid 53501, local-operator, v0\.55\.5\)/,
+		"a holder with no install_kind is named by the prefix's last segment, not the path (design round 2, D4/D11)",
+	);
+	assert.doesNotMatch(
+		literal("BothAddressesHeld", "detail"),
+		/\/Users\//,
+		"and the home path itself is prose the sentence does not spend",
+	);
+	assert.match(
+		literal("BothAddressesHeld", "detail"),
+		/Stop them from the installs that own them/,
+		"the act's verb agrees with the holders: two of them are not `it` (design round 2, D9)",
+	);
+	assert.match(
 		literal("Unattachable", "detail"),
 		/lop services reclaim 42411/,
 		"and the sentence names the act, with the pid it needs (design round 1, D3)",
 	);
+	assert.match(
+		literal("Unattachable", "detail"),
+		/Stop it from the install that owns it with/,
+		"the singular form is kept for a single holder (design round 2, D9)",
+	);
 });
 
-test("the substitution stories carry main's own holder clause", () => {
+/*
+ * THE START FACT IS RENDERED BUT NOT PHOTOGRAPHED (design round 2, D11), and the
+ * reason is in the second assertion: the sentence carries the reader's own locale and
+ * timezone, so a fixture literal with a clock time in it would document the machine
+ * that shot the frame rather than the tree. What can be pinned here is the SHAPE the
+ * design round asked for - a humanised start, never the raw ISO-8601 instant with
+ * milliseconds this replaced - and the README's "What these frames do not prove"
+ * states the gap for the frame half.
+ */
+test("a holder that published a start time renders it in the reader's terms, never as a raw instant", () => {
+	const withStart = describeHolders([
+		daemonRecord({
+			address: "http://127.0.0.1:8080",
+			pid: 53501,
+			version: "0.55.5",
+			installKind: "",
+			prefix: "/Users/you/.local/share/uv/tools/local-operator",
+			startedAtMs: Date.parse("2026-01-05T16:00:00Z"),
+		}),
+	]);
+	assert.match(withStart, /started /, "the start time is rendered at all (D4)");
+	assert.doesNotMatch(
+		withStart,
+		/T\d\d:\d\d:\d\d\.\d{3}Z/,
+		"and never as the raw ISO-8601 UTC instant with milliseconds the finding measured",
+	);
+	assert.doesNotMatch(
+		withStart,
+		/\.\d{3}/,
+		"nor with a millisecond fraction anywhere in it",
+	);
+});
+
+test("the substitution stories carry main's own holder clause AND its own act", () => {
 	assert.equal(
 		literal("ServingOnFallback", "holder"),
 		describeHolders(oneHolder),
 		"the band's holder clause and the log line are one function's output",
+	);
+	/*
+	 * AGENT ROUND 2, R2-4 (and design round 2, D9). THE ACT IS MAIN'S TOO. This band
+	 * used to spell it by hand as `lop services reclaim <pid>` while the `unattachable`
+	 * frame printed the same single holder's REAL pid - so the fallback command an
+	 * operator reads was the one that cannot be run, one frame apart from the one that
+	 * can. The literal has to be the composer's output, pid included.
+	 */
+	assert.equal(
+		literal("ServingOnFallback", "reclaim"),
+		reclaimClause(oneHolder).trim(),
+		"the act in the band is `reclaimClause`'s output, not a second spelling of it",
+	);
+	assert.match(
+		literal("ServingOnFallback", "reclaim"),
+		/lop services reclaim 42411/,
+		"and it spends the pid the holder clause two clauses earlier already named",
 	);
 });
 
@@ -199,6 +274,7 @@ test("the fallback-taken state has a presentation, and the return is reported", 
 		configured: "http://127.0.0.1:1111",
 		serving: "http://127.0.0.1:8080",
 		holder: describeHolders(oneHolder),
+		reclaim: reclaimClause(oneHolder).trim(),
 	};
 	const attached = {
 		state: "attached",
@@ -229,19 +305,69 @@ test("the fallback-taken state has a presentation, and the return is reported", 
 		/127\.0\.0\.1:8080/,
 		"it names where the app is",
 	);
-	assert.match(
+	/*
+	 * ONE ADDRESS IN THE TITLE (design round 2, D12): the configured address was in
+	 * brackets there, spending a second URL in a band that already names three. The
+	 * sentence below is where the reader is told where they end up.
+	 */
+	assert.doesNotMatch(
 		substituted.title,
 		/127\.0\.0\.1:1111/,
-		"and where it was told to be, so a reader who knows only one port can still tell",
+		"the title carries the address the app is on, not both addresses",
+	);
+	assert.match(
+		`${substituted.title} ${substituted.detail}`,
+		/127\.0\.0\.1:1111/,
+		"and the band still names the address the app is configured for",
 	);
 	assert.ok(
 		substituted.detail.includes(swap.holder),
-		"and it carries main's holder clause verbatim rather than a second spelling of it (D5)",
+		"it carries main's holder clause verbatim rather than a second spelling of it (D5)",
+	);
+	assert.ok(
+		substituted.detail.includes(swap.reclaim),
+		"and the act with it, so one composer owns both (R2-4)",
+	);
+	assert.doesNotMatch(
+		substituted.detail,
+		/<pid>/,
+		"the pid is spent where the app knows it (D3, D9)",
 	);
 	assert.notEqual(
 		substituted.dismiss,
 		true,
 		"a condition the operator still has is not dismissible",
+	);
+
+	/*
+	 * AGENT ROUND 2, R2-1a: THE ADOPTED DAEMON. The second launch of this incident
+	 * re-attaches to the daemon the first one left on the fallback address, so no gate
+	 * ran, no address was refused, and there is no holder to name and no act to offer.
+	 * It still has to say which address the app is on.
+	 */
+	const adopted = serverBannerCopy({
+		...attached,
+		addressSubstitution: { ...swap, holder: null, reclaim: null },
+	});
+	assert.ok(
+		adopted,
+		"a launch that adopted a daemon on another address has a presentation too (R2-1)",
+	);
+	assert.match(adopted.title, /127\.0\.0\.1:8080/);
+	assert.doesNotMatch(
+		adopted.detail,
+		/lop services reclaim/,
+		"with no holder there is no act, and none is invented",
+	);
+	assert.doesNotMatch(
+		adopted.detail,
+		/is running a Local Operator daemon this app has no key for/,
+		"and no holder clause either",
+	);
+	assert.match(
+		adopted.detail,
+		/127\.0\.0\.1:1111/,
+		"what it does say is the address it is configured for and will look for again",
 	);
 
 	const returned = serverBannerCopy({
@@ -269,12 +395,43 @@ test("the fallback-taken state has a presentation, and the return is reported", 
 	);
 });
 
+test("the fallback state's own stories carry the arms the copy above renders", () => {
+	/*
+	 * The fixtures behind the two `substituted` frames, checked against the contract's
+	 * own FIELD SET rather than against the copy: a story that omitted `reclaim` would
+	 * render the no-act arm while its name says fallback, and that is exactly the silent
+	 * divergence between the story file and the copy table this suite exists to catch.
+	 */
+	const adopted = storyBody("AttachedElsewhere");
+	assert.match(
+		adopted,
+		/holder:\s*null/,
+		"the adopted-daemon story carries no holder: no gate observed one",
+	);
+	assert.match(
+		adopted,
+		/reclaim:\s*null/,
+		"and no act, because nothing held the configured address as far as this app knows",
+	);
+	assert.match(
+		adopted,
+		/kind:\s*"substituted"/,
+		"and it is the `substituted` arm, not the return",
+	);
+	assert.match(
+		storyBody("ServingOnFallback"),
+		/kind:\s*"substituted"/,
+		"the holder-carrying fallback story is the same arm",
+	);
+});
+
 test("a detached or wedged snapshot keeps its own sentence about the address", () => {
 	const swap = {
 		kind: "substituted",
 		configured: "http://127.0.0.1:1111",
 		serving: "http://127.0.0.1:8080",
 		holder: describeHolders(oneHolder),
+		reclaim: reclaimClause(oneHolder).trim(),
 	};
 	/*
 	 * The substitution is a fact about a launch, and it outlives the attachment - so

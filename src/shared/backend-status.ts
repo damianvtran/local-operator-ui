@@ -146,8 +146,21 @@ export type AddressSubstitution =
 			configured: string;
 			/** The address it is serving on instead. */
 			serving: string;
-			/** What held the configured address, worded once in main (`describeHolders`). */
-			holder: string;
+			/**
+			 * What held the configured address, worded once in main (`describeHolders`),
+			 * or null when this app observed no holder: a launch that ATTACHES to a
+			 * daemon discovered on another address never asks the configured one
+			 * anything, so it has nothing to report about it (agent round 2, R2-1).
+			 */
+			holder: string | null;
+			/**
+			 * The act that frees the configured address, composed once in main
+			 * (`reclaimClause`) and CARRIED here rather than re-spelled by this surface
+			 * (agent round 2, R2-4): the composer spends the holder's real pid, which
+			 * hand-written copy could not, and one act with two spellings a frame apart
+			 * is how the placeholder survived into a band that knew the pid.
+			 */
+			reclaim: string | null;
 	  }
 	| {
 			kind: "returned";
@@ -219,6 +232,16 @@ export interface DaemonStatusSnapshot {
 	 * Where this launch is serving, when that is not the address it is configured
 	 * for, or the fact that it has since returned to it. Null on every launch that
 	 * never substituted an address.
+	 *
+	 * DERIVED FROM THE ADDRESS THE APP IS ACTUALLY USING, never from the last
+	 * decision a gate made (agent round 2, R2-1). Main recomputes it on every
+	 * snapshot out of the address the connection is on, so it cannot claim a state
+	 * the app is not in: a substitution stops being reported the moment the app is
+	 * back on the configured address, a launch that adopted a daemon elsewhere
+	 * reports THAT address even though no gate ran, and a start that failed claims
+	 * nothing because the app is serving nowhere. `holder`/`reclaim` are the one
+	 * thing the derivation cannot recover - history the gate is the only witness to
+	 * - so they are carried beside it and rendered only while it is true.
 	 */
 	addressSubstitution: AddressSubstitution | null;
 	updatedAt: number;
@@ -344,9 +367,24 @@ export function serverBannerCopy(
 		snapshot.state !== "wedged"
 	) {
 		if (substitution.kind === "substituted") {
+			/*
+			 * THE TITLE NAMES THE ADDRESS IT IS ON AND NOTHING ELSE (design round 2,
+			 * D12): the bracketed configured address spent a second URL in a band that
+			 * already names two, and the detail below is where the configured address
+			 * belongs - it is the address the reader is being told they will end up on.
+			 *
+			 * THE HOLDER CLAUSE IS ABSENT, NOT FAKED, WHEN THERE IS NO HOLDER (agent
+			 * round 2, R2-1): the second launch of the incident adopts the daemon on the
+			 * fallback address, so no gate ran and no address was refused. What is left
+			 * is true and actionable - the app is on another address, it did not start
+			 * the daemon it is on, and it reconsiders the configured one on its next
+			 * launch or recovery.
+			 */
 			return {
-				title: `Serving on ${substitution.serving}, not the address this app is configured for (${substitution.configured}).`,
-				detail: `${substitution.holder}. The app uses ${substitution.serving} while that holds; reclaim the holder from the install that owns it with \`lop services reclaim <pid>\`, and the app is back on ${substitution.configured} on its next launch or recovery.`,
+				title: `Serving on ${substitution.serving}, not the address this app is configured for.`,
+				detail: substitution.holder
+					? `${substitution.holder}. The app uses ${substitution.serving} while that holds.${substitution.reclaim ? ` ${substitution.reclaim}` : ""} It is back on ${substitution.configured} on its next launch or recovery.`
+					: `The daemon this app is using was already running, so it did not start one. It looks for ${substitution.configured} again on its next launch or recovery.`,
 				retry: true,
 			};
 		}

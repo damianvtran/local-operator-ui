@@ -26,7 +26,11 @@ import os from "node:os";
 import { basename, dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { app, dialog as electronDialog } from "electron";
-import type { DaemonStatusSnapshot } from "../../shared/backend-status";
+import {
+	type AddressSubstitution,
+	type DaemonStatusSnapshot,
+	isServerReachable,
+} from "../../shared/backend-status";
 import {
 	DAEMON_PAIRED,
 	pairingHasRemedy,
@@ -392,8 +396,16 @@ export function describeHolders(refusals: OriginOccupancy[]): string {
  * fact of the two that the command needs. Where there is exactly one holder with a
  * pid the sentence spends the real pid; several holders get the placeholder, because
  * naming one of them would point at a daemon the reader may not want ended.
+ *
+ * THE VERB AGREES WITH THE HOLDERS (design round 2, D9): with two pids the sentence
+ * says "them from the installs that own them", because "Stop it" beside "are running
+ * Local Operator daemons" reads as one broken sentence rather than as two clauses.
+ *
+ * EXPORTED, with `describeHolders`, so a harness compares a surface's act against
+ * THIS composer rather than re-typing it (design round 1, D2's rule for the sentence,
+ * applied to the clause agent round 2's R2-4 found spelled twice).
  */
-function reclaimClause(refusals: OriginOccupancy[]): string {
+export function reclaimClause(refusals: OriginOccupancy[]): string {
 	const pids = refusals
 		.map((occupancy) => occupancy.occupant.pid)
 		.filter((pid): pid is number => pid !== null);
@@ -402,7 +414,11 @@ function reclaimClause(refusals: OriginOccupancy[]): string {
 		pids.length === 1
 			? `lop services reclaim ${pids[0]}`
 			: "lop services reclaim <pid>";
-	return ` Stop it from the install that owns it with \`${command}\` (\`lop services status\` lists what is running).`;
+	const direct =
+		pids.length === 1
+			? "it from the install that owns it"
+			: "them from the installs that own them";
+	return ` Stop ${direct} with \`${command}\` (\`lop services status\` lists what is running).`;
 }
 
 /**
@@ -687,6 +703,22 @@ export class BackendServiceManager {
 	 */
 	private spawnRefusals: OriginOccupancy[] | null = null;
 	private remoteConfigured = false;
+	/**
+	 * The last address this app served on that was NOT the one it is configured for,
+	 * and the reason the gate gave for moving there.
+	 *
+	 * NEITHER IS THE CLAIM - both are history. The claim itself is derived on every
+	 * snapshot from the address the connection is on (`addressSubstitutionFor`), so a
+	 * reason recorded here can only reach a surface while the app is genuinely on
+	 * that other address (agent round 2, R2-1/R2-2). That is what makes it safe to
+	 * write the reason at the moment the gate makes its decision, which is the only
+	 * moment the holder is observable at all.
+	 */
+	private servedElsewhere: string | null = null;
+	private substitutionReason: {
+		holder: string | null;
+		reclaim: string | null;
+	} = { holder: null, reclaim: null };
 	/** A failed probe or unreadable record is not evidence that spawning is safe. */
 	private discoveryBlocksSpawn = false;
 	/**
@@ -926,7 +958,124 @@ export class BackendServiceManager {
 	 * "I am not allowed" into "it is down".
 	 */
 	getStatusSnapshot(): DaemonStatusSnapshot {
-		return this.daemonState.snapshot();
+		const snapshot = this.daemonState.snapshot();
+		return {
+			...snapshot,
+			addressSubstitution: this.addressSubstitutionFor(snapshot),
+		};
+	}
+
+	/**
+	 * Where this app is serving, relative to the address it is configured for.
+	 *
+	 * THE INVARIANT (agent round 2, R2-1): a snapshot's address claim is a FUNCTION
+	 * OF THE ADDRESS THE APP IS ACTUALLY USING, never of the last decision a gate
+	 * made. The first version of this field was written once by the spawn gate, and
+	 * that produced two wrong answers in opposite directions:
+	 *
+	 *   - a launch that ATTACHES to a daemon discovered on another address (the
+	 *     second launch of the incident - the fallback daemon is still there and the
+	 *     persisted credential still opens it) records nothing, so the app was
+	 *     silently on another address, which is the invisibility D1 exists to remove;
+	 *   - a substitution recorded earlier was never retracted: once recovery attached
+	 *     the app back to the configured address the record still said `serving:
+	 *     <fallback>`, beside a snapshot whose own `url` was the configured address,
+	 *     and its reclaim advice named a pid that may by then be the daemon the
+	 *     operator is using.
+	 *
+	 * It also answers agent round 2's R2-2 for free: the claim is derived from
+	 * `isRunning` and the attached URL, so a start that never landed - a readiness
+	 * timeout, a throw, a stop - reports nothing at all, where a record written at
+	 * intent time announced a return over a dead backend.
+	 *
+	 * `holder`/`reclaim` are the one fact the derivation cannot recover, because the
+	 * gate is the only witness to what held the address; they are kept beside the
+	 * landing (`recordSubstitutionReason`) and reach a surface only through an arm
+	 * that is true. Null holder/reclaim is the honest state for a launch that adopted
+	 * somebody else's daemon: it never asked the configured address anything.
+	 */
+	private addressSubstitutionFor(
+		snapshot: Omit<DaemonStatusSnapshot, "addressSubstitution">,
+	): AddressSubstitution | null {
+		const configured = normaliseAddress(this.configuredUrl);
+		/*
+		 * THE APP'S OWN VOCABULARY, DELIBERATELY NOT `isRunning`: that flag means "the
+		 * child this app spawned is up", and an ADOPTED daemon - the second launch of
+		 * the very incident this presentation exists for - leaves it false while the app
+		 * is attached and serving. `isServerReachable` is the shared contract's own
+		 * answer to "is this app on a server", and it is what a surface already reads, so
+		 * the claim and the surface cannot come to different conclusions about the app.
+		 *
+		 * No URL or an unusable state means this app is serving NOWHERE, which is the
+		 * answer that fixes agent round 2's R2-2: a start that never landed - a readiness
+		 * timeout, a throw, a dead child - claims no address at all.
+		 */
+		if (!configured || !snapshot.url || !isServerReachable(snapshot.state)) {
+			return null;
+		}
+		const serving = normaliseAddress(snapshot.url);
+		if (!serving) return null;
+		if (serving !== configured) {
+			return {
+				kind: "substituted",
+				configured,
+				serving,
+				...this.substitutionReason,
+			};
+		}
+		// On the configured address again, and a substitution is what it came back from.
+		return this.servedElsewhere
+			? { kind: "returned", configured, serving: this.servedElsewhere }
+			: null;
+	}
+
+	/**
+	 * Adopt a validated daemon, and record WHERE the app landed.
+	 *
+	 * Every landing in this class goes through here - the spawn's registration and
+	 * both attach paths - which is what makes the record a property of the app's
+	 * address rather than of one code path (agent round 2, R2-1). `servedElsewhere`
+	 * survives a landing on the configured address on purpose: it is what a return
+	 * has to name.
+	 */
+	private attachDaemon(
+		identity: DaemonIdentity,
+		options: { owned: boolean },
+	): void {
+		this.daemonState.attach(identity, options);
+		const configured = normaliseAddress(this.configuredUrl);
+		const landed = normaliseAddress(identity.url);
+		if (landed && configured && landed !== configured) {
+			this.servedElsewhere = landed;
+		}
+		/*
+		 * A landing clears the reason: it belongs to the address the app was pushed
+		 * off, and this landing may be on a different one (an adopted daemon). The
+		 * spawn path re-records it immediately after registering, where the gate's
+		 * own refusals are in hand.
+		 */
+		this.clearSubstitutionReason();
+	}
+
+	/**
+	 * The reason a fallback was taken, recorded WHERE THE LANDING IS (agent round 2,
+	 * R2-2): the gate decides on a target before the spawn, but nothing about the
+	 * decision is announced until the daemon it started answers, so the reason is
+	 * written here rather than there. A failed start therefore leaves no reason
+	 * behind, and the claim (`addressSubstitutionFor`) is not there to render anyway.
+	 */
+	private recordSubstitutionReason(refusals: OriginOccupancy[]): void {
+		this.substitutionReason =
+			refusals.length > 0
+				? {
+						holder: describeHolders(refusals),
+						reclaim: reclaimClause(refusals).trim() || null,
+					}
+				: { holder: null, reclaim: null };
+	}
+
+	private clearSubstitutionReason(): void {
+		this.substitutionReason = { holder: null, reclaim: null };
 	}
 
 	getStreamRelay(): DesktopStreamRelay {
@@ -2120,7 +2269,7 @@ export class BackendServiceManager {
 			`Attached to daemon ${candidate.address} (pid ${candidate.record.pid}, v${candidate.identity.version}, ${candidate.record.install_kind || "kind unknown"}, record ${candidate.file})${previousUrl !== candidate.address ? ` - backend URL moved from ${previousUrl}` : ""}`,
 			LogFileType.BACKEND,
 		);
-		this.daemonState.attach(
+		this.attachDaemon(
 			{
 				url: candidate.address,
 				instanceId: candidate.identity.instanceId,
@@ -2228,7 +2377,7 @@ export class BackendServiceManager {
 			this.attachedRecord = null;
 			this.isExternalBackend = true;
 			this.startupMode = LocalOperatorStartupMode.EXISTING_SERVER;
-			this.daemonState.attach(
+			this.attachDaemon(
 				{
 					url: this.backendUrl,
 					instanceId: "",
@@ -2472,7 +2621,6 @@ export class BackendServiceManager {
 		 */
 		const { target, refusals } = await this.resolveSpawnTarget();
 		this.spawnRefusals = target ? null : refusals;
-		this.recordAddressSubstitution(target, refusals);
 		if (!target) {
 			this.observeSpawnRefusal(refusals);
 			this.startHealthCheck();
@@ -2611,6 +2759,13 @@ export class BackendServiceManager {
 					// version comes from this registration, and a consumer that
 					// re-reads capabilities on `backendReady` must already see it.
 					await this.registerOwnedDaemon(child);
+					/*
+					 * The REASON the app is on this address is recorded here, with the landing
+					 * (agent round 2, R2-2): the gate picked the target earlier, but nothing
+					 * about that decision is true until the daemon it started answers, and a
+					 * reason recorded at intent time outlived a start that never landed.
+					 */
+					this.recordSubstitutionReason(refusals);
 					this.startHealthCheck();
 					this.notifyBackendReady();
 					return true;
@@ -2718,7 +2873,7 @@ export class BackendServiceManager {
 			);
 			return;
 		}
-		this.daemonState.attach(identity, { owned: true });
+		this.attachDaemon(identity, { owned: true });
 		// Spawned by this app with this app's desktop token, so the plane accepts
 		// it. Never asserted for a daemon this app did not start.
 		this.daemonState.setPairing(DAEMON_PAIRED);
@@ -3275,45 +3430,6 @@ export class BackendServiceManager {
 	 * operator's own question in that state had no in-product answer while they
 	 * worked. What is recorded here is what the band renders.
 	 *
-	 * A RETURN IS A TRANSITION, not silence: an attempt that lands on the configured
-	 * address AFTER a launch served elsewhere records `returned` rather than being
-	 * cleared to null, because clearing it would make the return the one thing about
-	 * this state an operator never sees. A launch that never substituted anything
-	 * stays null, so the ordinary case still says nothing at all.
-	 *
-	 * No target (every address held) leaves the record UNTOUCHED: the app is not
-	 * serving anywhere, and the refusal has its own sentence about that.
-	 */
-	private recordAddressSubstitution(
-		target: { address: string; port: number } | null,
-		refusals: OriginOccupancy[],
-	): void {
-		if (!target) return;
-		const configured = normaliseAddress(this.configuredUrl);
-		// An unreadable configured URL is not evidence of a substitution, and a record
-		// invented on one would be a claim about an address nobody can name.
-		if (!configured) return;
-		const previous = this.daemonState.getAddressSubstitution();
-		if (target.address === configured) {
-			this.daemonState.setAddressSubstitution(
-				previous?.kind === "substituted"
-					? {
-							kind: "returned",
-							configured: target.address,
-							serving: previous.serving,
-						}
-					: previous,
-			);
-			return;
-		}
-		this.daemonState.setAddressSubstitution({
-			kind: "substituted",
-			configured,
-			serving: target.address,
-			holder: describeHolders(refusals),
-		});
-	}
-
 	/**
 	 * The first address this attempt may actually start a daemon on, and what the
 	 * gate found on every address that refused.
