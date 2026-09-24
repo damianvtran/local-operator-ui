@@ -957,7 +957,18 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const canvasDocked =
 			canvasPaneMode(paneRowWidth || Number.MAX_SAFE_INTEGER) === "docked";
 		const canvasWidth = canvasDocked
-			? Math.min(effectiveCanvasPanelWidth, canvasDockWidth(paneRowWidth))
+			? /*
+				 * UNMEASURED IS NOT ZERO. `paneRowWidth` is 0 for the frame before the layout effect
+				 * runs, and `canvasDockWidth(0)` is 0 - which, with the wrapper's
+				 * `transition-[width] duration-base`, drew a zero-width pane and then ANIMATED it to
+				 * its real width. Anyone measuring inside that window reads a layout that is on its
+				 * way somewhere else (the pane's own scene did, and reported 179px against a settled
+				 * 560). The preference is the honest fallback: the pane starts where the user asked
+				 * for it and is corrected by the row's real width in the same commit.
+				 */
+				paneRowWidth > 0
+				? Math.min(effectiveCanvasPanelWidth, canvasDockWidth(paneRowWidth))
+				: effectiveCanvasPanelWidth
 			: /*
 				 * THE OVERLAY'S WIDTH IS THE PANE'S OWN (§I: "full pane width, scrim
 				 * absent"), capped by the row so a preference stored in a wider window cannot

@@ -7094,9 +7094,39 @@ async function sceneFloors(cdp) {
 	const route = await verb(cdp, "state");
 	note("route the run ended on", JSON.stringify(route));
 
-	const metrics = await verb(cdp, "metrics");
-	note("metrics", JSON.stringify(metrics, null, 2));
-	const { row, chatColumn, canvas, canvasMode } = metrics;
+	/*
+	 * THE FRAME FIRST, THEN THE NUMBERS, and the order is the whole reason this scene is
+	 * trustworthy. `captureSettled` commits a frame only when two captures 150ms apart are
+	 * byte-identical, so it is also the scene's proof that the layout has STOPPED MOVING -
+	 * and the canvas's own wrapper carries `transition-[width] duration-base`, which means a
+	 * reading taken before that ends describes a layout that never existed on screen.
+	 * Measured, 2026-09-24: reading first caught chat 942 / canvas 179 at 1380x900 and FAILED
+	 * the pane's 400px floor, while the settled frame shows the 560/560 shape. A false FAIL is
+	 * as bad as a false PASS: it costs a lane a hunt through the code for a defect that is in
+	 * the measurement.
+	 */
+	const mode = paneMounted.last ?? null;
+	const frame = await captureSettled(
+		cdp,
+		`floors-${WINDOW_WIDTH}x${WINDOW_HEIGHT}-${mode ?? "none"}`,
+	);
+	note("frame", JSON.stringify(frame));
+	/*
+	 * The boxes come from the harness's own `measure` verb - the same one the other scenes
+	 * use - rather than from a geometry verb added for this scene: `measure` waits for its
+	 * element, hit-tests the painted centre and reports the rect, and the shell's three boxes
+	 * are named by `data-tour-tag` for exactly this. A second geometry verb beside it would
+	 * be the "second way" this repository treats as a defect.
+	 */
+	const row = (await verb(cdp, "measure", '[data-tour-tag="pane-row"]')).rect;
+	const chatColumn = (
+		await verb(cdp, "measure", '[data-tour-tag="chat-column"]')
+	).rect;
+	const expectCanvas = BACKEND !== null;
+	const canvas = expectCanvas
+		? (await verb(cdp, "measure", '[data-tour-tag="canvas-dock"]')).rect
+		: null;
+	note("boxes", JSON.stringify({ row, chatColumn, canvas, mode }));
 	check(
 		"the row and the chat column are both named in the DOM",
 		Boolean(row) && Boolean(chatColumn),
@@ -7104,18 +7134,16 @@ async function sceneFloors(cdp) {
 	);
 	/*
 	 * §I's canvas half needs a backend on this head, and the run says so instead of
-	 * reporting a green it did not earn: `EXPECT_CANVAS` is true only when the run was
-	 * given `--backend`, and the assertions about the pane's mode are made only then.
-	 * Everything else below - the column's floor, where it starts, whether it stays
-	 * inside the row - is measured in both shapes, because the chat column exists
-	 * either way.
+	 * reporting a green it did not earn: `expectCanvas` is true only when the run was given
+	 * `--backend`, and the assertions about the pane's mode are made only then. Everything
+	 * else below - the column's floor, where it starts, whether it stays inside the row -
+	 * is measured in both shapes, because the chat column exists either way.
 	 */
-	const expectCanvas = BACKEND !== null;
 	if (expectCanvas) {
 		check(
 			"the canvas pane is mounted and says which mode it is in",
-			Boolean(canvas) && (canvasMode === "docked" || canvasMode === "overlay"),
-			`mode=${canvasMode} canvas=${JSON.stringify(canvas)}`,
+			Boolean(canvas) && (mode === "docked" || mode === "overlay"),
+			`mode=${mode} canvas=${JSON.stringify(canvas)}`,
 		);
 	} else {
 		note(
@@ -7138,58 +7166,53 @@ async function sceneFloors(cdp) {
 		);
 		check(
 			"the chat column holds §B1's 480px floor",
-			chatColumn.w >= 480,
-			`chatColumn.w=${chatColumn.w} (min-width computed to ${chatColumn.minWidth})`,
+			chatColumn.width >= 480,
+			`chatColumn.width=${chatColumn.width}: §B1's floor is on the column itself, and the computed min-width is pinned in scripts/chat-pane-floors.test.mjs - this scene reads the box after the layout settled`,
 		);
 		check(
 			"the chat column stays inside the row",
-			chatColumn.x + chatColumn.w <= row.x + row.w + 1,
-			`chatColumn ${chatColumn.x}+${chatColumn.w} against row ${row.x}+${row.w}`,
+			chatColumn.x + chatColumn.width <= row.x + row.width + 1,
+			`chatColumn ${chatColumn.x}+${chatColumn.width} against row ${row.x}+${row.width}`,
 		);
 	}
 
 	if (expectCanvas && row && chatColumn && canvas) {
-		if (canvasMode === "docked") {
+		if (mode === "docked") {
 			check(
 				"a docked canvas is at least its own 400px contract floor",
-				canvas.w >= 400,
-				`canvas.w=${canvas.w} in a row of ${row.w}: below 400 the pane must overlay instead of docking`,
+				canvas.width >= 400,
+				`canvas.width=${canvas.width} in a row of ${row.width}: below 400 the pane must overlay instead of docking`,
 			);
 			check(
 				"a docked canvas is no wider than §I's 560px ceiling",
-				canvas.w <= 560 + 1,
-				`canvas.w=${canvas.w}`,
+				canvas.width <= 560 + 1,
+				`canvas.width=${canvas.width}`,
 			);
 			check(
 				"the two columns tile the row, the divider between them",
-				row.w - (chatColumn.w + canvas.w) >= 0 &&
-					row.w - (chatColumn.w + canvas.w) <= 24,
-				`row ${row.w} = chat ${chatColumn.w} + canvas ${canvas.w} + ${row.w - (chatColumn.w + canvas.w)} unaccounted`,
+				row.width - (chatColumn.width + canvas.width) >= 0 &&
+					row.width - (chatColumn.width + canvas.width) <= 24,
+				`row ${row.width} = chat ${chatColumn.width} + canvas ${canvas.width} + ${row.width - (chatColumn.width + canvas.width)} unaccounted`,
 			);
 		} else {
 			check(
 				"an overlaying canvas covers the chat column's trailing edge",
-				canvas.x < chatColumn.x + chatColumn.w,
-				`canvas.x=${canvas.x} against the column's ${chatColumn.x}+${chatColumn.w}`,
+				canvas.x < chatColumn.x + chatColumn.width,
+				`canvas.x=${canvas.x} against the column's ${chatColumn.x}+${chatColumn.width}`,
 			);
 			check(
 				"an overlaying canvas stays inside the row",
-				canvas.x >= row.x - 1 && canvas.x + canvas.w <= row.x + row.w + 1,
-				`canvas ${canvas.x}+${canvas.w} against row ${row.x}+${row.w}`,
+				canvas.x >= row.x - 1 &&
+					canvas.x + canvas.width <= row.x + row.width + 1,
+				`canvas ${canvas.x}+${canvas.width} against row ${row.x}+${row.width}`,
 			);
 			check(
 				"the chat column keeps its floor behind the overlay",
-				chatColumn.w >= 480,
-				`chatColumn.w=${chatColumn.w} behind a ${canvas.w}px overlay`,
+				chatColumn.width >= 480,
+				`chatColumn.width=${chatColumn.width} behind a ${canvas.width}px overlay`,
 			);
 		}
 	}
-
-	const frame = await captureSettled(
-		cdp,
-		`floors-${WINDOW_WIDTH}x${WINDOW_HEIGHT}-${canvasMode ?? "none"}`,
-	);
-	note("frame", JSON.stringify(frame));
 }
 
 async function sceneStates(cdp) {
