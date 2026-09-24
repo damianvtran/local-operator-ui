@@ -134,7 +134,7 @@ type ConversationInputState = {
 	 * cleared. Drives the muted "Your earlier message was delivered." line, and
 	 * goes on the next edit, send or Clear.
 	 */
-	lateDelivered?: boolean;
+	lateDelivered?: LateDeliveryBox;
 };
 
 /**
@@ -167,6 +167,22 @@ export type ReturnedPayload = {
 	/** See `SentPayload.volatileText`: the text must not reach disk. */
 	volatileText?: boolean;
 };
+
+/**
+ * Which box a late-delivery note sits over, once a handed-back message turned out
+ * to have been delivered after all.
+ *
+ * `draft-only` is the ordinary case and the one the sentence may speak about: the
+ * delivered message has been TAKEN OUT of the box (see `stripDeliveredPayload`),
+ * so what is left is only what the user wrote after pressing Send - "what's here
+ * now hasn't been sent" is then a fact rather than a reassurance.
+ *
+ * `overlap` is the case that cannot be separated: the user edited INSIDE the
+ * delivered words, so which half is theirs is not knowable, and guessing would be
+ * worse than leaving the box alone. The note says only that the earlier message
+ * arrived, which is true either way.
+ */
+export type LateDeliveryBox = "draft-only" | "overlap";
 
 /**
  * One message as the composer held it when it was sent: the box text before any
@@ -254,9 +270,35 @@ function foldReturn(
 	mintId: () => string,
 ): ConversationInputState {
 	const attachments = [...(row.attachments ?? [])];
-	const returnedChips = payload.attachments
-		.filter((path) => !attachments.some((chip) => chip.path === path))
-		.map((path) => ({ id: mintId(), path }));
+	/*
+	 * ONE CHIP PER SENT SLOT, AND THE REFERENCE IS THE CHIP ITSELF (review round 2's
+	 * convergent blocker). This used to build the chips first and then name them by
+	 * looking each payload path up with `chips.find(chip => chip.path === path)`,
+	 * which is a lookup by PATH in a list that may hold the same path twice - the
+	 * paste handler does not de-dupe, so the same screenshot pasted twice is two
+	 * chips with one path. Both slots then named the FIRST chip, the row's own
+	 * untouched payload did not match the record of it (`composerHoldsExactly`
+	 * compares identities), the late-delivery arm was read as "edited", and the box
+	 * kept the words that had just been delivered: the next Enter sent them again as
+	 * a second row. So the mapping is built AS the chips are, positionally, and a
+	 * path the row already holds names THAT chip - once, never twice.
+	 */
+	const returnedChips: Attachment[] = [];
+	const returnedChipIds: string[] = [];
+	const claimed = new Set<string>();
+	for (const path of payload.attachments) {
+		const kept = attachments.find(
+			(chip) => chip.path === path && !claimed.has(chip.id),
+		);
+		if (kept) {
+			claimed.add(kept.id);
+			returnedChipIds.push(kept.id);
+			continue;
+		}
+		const minted = { id: mintId(), path };
+		returnedChips.push(minted);
+		returnedChipIds.push(minted.id);
+	}
 	const replies = [...(row.replies ?? [])];
 	const returnedReplies = payload.replies.filter(
 		(reply) => !replies.some((kept) => kept.id === reply.id),
@@ -295,9 +337,7 @@ function foldReturn(
 		),
 		returned: {
 			text,
-			chipIds: payload.attachments
-				.map((path) => chips.find((chip) => chip.path === path)?.id)
-				.filter((id): id is string => id !== undefined),
+			chipIds: returnedChipIds,
 			replyIds: payload.replies
 				.map((reply) => mergedReplies.find((kept) => kept.id === reply.id)?.id)
 				.filter((id): id is string => id !== undefined),
@@ -544,6 +584,62 @@ type ConversationInputStoreState = {
 	 */
 	dismissLateDelivery: (conversationId: string) => void;
 };
+
+/**
+ * Take the delivered message OUT of a box that is not exactly it.
+ *
+ * THE RULE THE SECONG DUPLICATE SURVIVED ON (review round 2, R2/U1, one defect the
+ * reviewer and the UX round found from two directions). A handed-back message that
+ * turns out to have been delivered leaves the box holding the message that has
+ * just gone - the merge wrote it first - plus whatever the user typed after it.
+ * Keeping both is what made the next press a SECOND row carrying the delivered
+ * words, and the only way to send the user's own line was to send the whole box.
+ * So the delivered text, and the chips and quotes it restored, come back OUT - by
+ * IDENTITY, so a chip the user attached afterwards is untouched - and what is left
+ * is the user's own draft.
+ *
+ * The text is only removable while it is still the block the merge wrote: a user
+ * who edited inside the delivered words has made a new message of them, and
+ * guessing which half is which would be worse than leaving it (see
+ * `LateDeliveryBox`).
+ */
+function stripDeliveredPayload(
+	row: ConversationInputState,
+	returned: ReturnedPayload,
+): { row: ConversationInputState; box: LateDeliveryBox } {
+	const placed = returned.text;
+	const boxed = mergeReturnedText(row.currentInput ?? "", row.pendingText ?? "");
+	let text = boxed;
+	let box: LateDeliveryBox = "overlap";
+	if (placed === "") {
+		box = "draft-only";
+	} else if (boxed === placed) {
+		text = "";
+		box = "draft-only";
+	} else if (boxed.startsWith(`${placed}\n\n`)) {
+		text = boxed.slice(placed.length + 2);
+		box = "draft-only";
+	}
+	const chipIds = new Set(returned.chipIds);
+	const replyIds = new Set(returned.replyIds);
+	return {
+		row: {
+			...row,
+			currentInput: text,
+			pendingText: undefined,
+			attachments: (row.attachments ?? []).filter(
+				(chip) => !chipIds.has(chip.id),
+			),
+			replies: (row.replies ?? []).filter((reply) => !replyIds.has(reply.id)),
+			/*
+			 * The disclosure rides the characters it describes: the characters that
+			 * carried it are the ones being taken out.
+			 */
+			unredactedChars: placed === "" ? (row.unredactedChars ?? 0) : 0,
+		},
+		box,
+	};
+}
 
 /**
  * Maximum number of submitted messages to keep in the log per conversation
@@ -937,6 +1033,12 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 			reconcileDelivered: (conversationId) => {
 				const row = get().inputByConversation[conversationId];
 				if (!row) return;
+				/** Nothing of anybody's on screen: no chips, no quotes, no text. */
+				const empty = (candidate: ConversationInputState) =>
+					(candidate.currentInput ?? "") === "" &&
+					(candidate.attachments ?? []).length === 0 &&
+					(candidate.replies ?? []).length === 0;
+				const hadPayload = row.returned !== undefined || row.inFlight !== undefined;
 				/*
 				 * TWO ARMS, and both are about what is ON SCREEN. A row handed the payload
 				 * back compares against the record of it (`composerHoldsExactly`); a row
@@ -944,39 +1046,69 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 				 * it - is silent when the composer holds nothing of anybody's, which is the
 				 * same "nothing to clear, nothing to say" answer without a payload to
 				 * compare against.
+				 *
+				 * AND A THIRD THAT IS NOW SEPARATED FROM BOTH (review round 2, R2/U1). A
+				 * row that is NOT the delivered payload is not necessarily "edited": it is
+				 * usually the delivered message PLUS the user's own next line, because the
+				 * merge wrote the message first and the user kept typing. Clearing that box
+				 * would take their words away; keeping it whole gave the next press the
+				 * delivered words to send a second time, and the round reproduced exactly
+				 * that (row a9cbe9bf, then c47f3028). So the delivered payload comes OUT -
+				 * see `stripDeliveredPayload` - and the note says which of the two boxes it
+				 * is over, because only one of them can be told "what's here now hasn't
+				 * been sent".
 				 */
 				const exact = row.returned
 					? composerHoldsExactly(row, row.returned)
-					: (row.currentInput ?? "") === "" &&
-						(row.attachments ?? []).length === 0 &&
-						(row.replies ?? []).length === 0;
-				const hadPayload =
-					row.returned !== undefined || row.inFlight !== undefined;
+					: empty(row);
+				const stripped = row.returned
+					? stripDeliveredPayload(row, row.returned)
+					: null;
+				const cleared: ConversationInputState = {
+					...row,
+					currentInput: "",
+					unredactedChars: 0,
+					attachments: [],
+					replies: [],
+					pendingText: undefined,
+					returned: undefined,
+					inFlight: undefined,
+					lateDelivered: undefined,
+					volatilePendingText: undefined,
+					textRevision: (row.textRevision ?? 0) + 1,
+				};
+				const kept: ConversationInputState =
+					stripped && !empty(stripped.row)
+						? {
+								...stripped.row,
+								returned: undefined,
+								inFlight: undefined,
+								// Conservation, not precision: any text still in the box that was
+								// written inside a masked capture keeps the whole row off disk.
+								volatilePendingText:
+									(stripped.row.currentInput ?? "") === ""
+										? undefined
+										: row.volatilePendingText,
+								lateDelivered: stripped.box,
+								// The box itself moved, so the hook has to be told - the same
+								// revision channel every other store-side write uses.
+								textRevision: (row.textRevision ?? 0) + 1,
+							}
+						: {
+								...row,
+								returned: undefined,
+								inFlight: undefined,
+								// Only worth saying when something of that message is still on
+								// screen for the user to wonder about.
+								lateDelivered: hadPayload ? "overlap" : undefined,
+							};
 				set({
 					inputByConversation: {
 						...get().inputByConversation,
-						[conversationId]: exact
-							? {
-									...row,
-									currentInput: "",
-									unredactedChars: 0,
-									attachments: [],
-									replies: [],
-									pendingText: undefined,
-									returned: undefined,
-									inFlight: undefined,
-									lateDelivered: undefined,
-									volatilePendingText: undefined,
-									textRevision: (row.textRevision ?? 0) + 1,
-								}
-							: {
-									...row,
-									returned: undefined,
-									inFlight: undefined,
-									// Only worth saying when something of that message is still
-									// on screen for the user to wonder about.
-									lateDelivered: hadPayload ? true : undefined,
-								},
+						[conversationId]:
+							exact || (stripped !== null && empty(stripped.row))
+								? cleared
+								: kept,
 					},
 				});
 			},

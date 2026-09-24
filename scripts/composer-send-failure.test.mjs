@@ -129,6 +129,7 @@ const module = await import(
 );
 const {
 	admitChatDraft,
+	composerHoldsExactly,
 	composerIdentityFor,
 	composerNoticeFor,
 	migrateHeldClaim,
@@ -998,4 +999,138 @@ test("the hop failure's notice is this app's sentence, not the daemon's prose", 
 			false,
 			`the notice says "${jargon}"`,
 		);
+});
+
+/* ------------------------------------------------- late delivery, and identity */
+
+/*
+ * THE CONVERGENT BLOCKER OF REVIEW ROUND 2, pinned at both of its halves.
+ *
+ * The reviewer (R2) and the UX round (U1) found the same defect from two
+ * directions: after a message that was handed back turned out to have been
+ * delivered, the box kept the words that had just gone, and the next press sent
+ * them again as a SECOND row (reproduced live: a9cbe9bf, then c47f3028).
+ *
+ * The chip half is a lookup by path in a list that may hold the same path twice -
+ * the paste handler does not de-dupe, so the same screenshot pasted twice is two
+ * chips with one path - which made the row's own untouched payload read as EDITED
+ * and sent the late-delivery arm down the "keep the box, say it arrived" branch.
+ */
+
+test("two chips that share a path are two chips, so an untouched box is exact", () => {
+	reset();
+	const store = useConversationInputStore.getState();
+	/*
+	 * The same file twice, exactly as the paste handler leaves it: one path, two
+	 * chips, and a message that cites it twice.
+	 */
+	store.addAttachment(SESSION, { id: "chip-1", path: "/tmp/shot.png" });
+	store.addAttachment(SESSION, { id: "chip-2", path: "/tmp/shot.png" });
+	store.setCurrentInput(SESSION, "look at these");
+	/*
+	 * `beginInFlight` takes the CHIPS (it removes them from the row by identity and
+	 * records their paths), which is the shape the composer's own echo write uses.
+	 */
+	store.beginInFlight(SESSION, {
+		text: "look at these",
+		attachments: [
+			{ id: "chip-1", path: "/tmp/shot.png" },
+			{ id: "chip-2", path: "/tmp/shot.png" },
+		],
+		replies: [],
+	});
+	store.returnInFlight(SESSION, SESSION);
+	const row = useConversationInputStore.getState().inputByConversation[SESSION];
+	assert.ok(row?.returned, "the payload did not come back");
+	assert.equal(row.returned.chipIds.length, 2);
+	assert.equal(
+		new Set(row.returned.chipIds).size,
+		2,
+		"both sent slots named ONE chip, so the row's own untouched payload no longer matches the record of it",
+	);
+	assert.equal(
+		composerHoldsExactly(row, row.returned),
+		true,
+		"an untouched box read as EDITED, which is what handed the late-delivery arm to the branch that keeps the delivered words",
+	);
+});
+
+test("a late delivery takes the delivered message out of the box, not the user's line", () => {
+	reset();
+	const store = useConversationInputStore.getState();
+	/*
+	 * The live flow: Send, then type the next line while it is in flight, then the
+	 * failure hands the payload back and the adoption merges it in front of what the
+	 * user typed (`mergeReturnedText` puts the returned message FIRST).
+	 */
+	store.setCurrentInput(SESSION, "and here is my own next line");
+	store.beginInFlight(SESSION, {
+		text: "the message that went",
+		attachments: [{ id: "chip-1", path: "/tmp/shot.png" }],
+		replies: [],
+	});
+	store.returnInFlight(SESSION, SESSION);
+	const merged = useConversationInputStore
+		.getState()
+		.adoptReturnedText(SESSION);
+	assert.equal(merged, "the message that went\n\nand here is my own next line");
+	// And then the owner's row arrives: it had been delivered after all.
+	useConversationInputStore.getState().reconcileDelivered(SESSION);
+	const row = useConversationInputStore.getState().inputByConversation[SESSION];
+	assert.equal(
+		row.currentInput,
+		"and here is my own next line",
+		"the delivered words are still in the box, where the next press sends them a second time",
+	);
+	assert.deepEqual(
+		row.attachments ?? [],
+		[],
+		"the delivered message's chip is still attached",
+	);
+	assert.equal(
+		row.lateDelivered,
+		"draft-only",
+		"the note must say the box now holds only the user's own draft, so the sentence can say so",
+	);
+	assert.equal(
+		composerNoticeFor({
+			error: null,
+			code: undefined,
+			retry: false,
+			muted: false,
+			rowError: undefined,
+			rowCode: undefined,
+			rowRetry: undefined,
+			lateDelivered: row.lateDelivered,
+		}).message,
+		SEND_FAILURE_COPY.lateDeliveryDraft,
+	);
+});
+
+test("after a late delivery the next send carries only the user's own line", async () => {
+	reset();
+	const store = useConversationInputStore.getState();
+	store.setCurrentInput(SESSION, "my own next line");
+	store.beginInFlight(SESSION, {
+		text: "already delivered",
+		attachments: [],
+		replies: [],
+	});
+	store.returnInFlight(SESSION, SESSION);
+	store.adoptReturnedText(SESSION);
+	useConversationInputStore.getState().reconcileDelivered(SESSION);
+	const boxed =
+		useConversationInputStore.getState().inputByConversation[SESSION]
+			?.currentInput ?? "";
+	assert.equal(boxed, "my own next line");
+	const before = calls.length;
+	responses.push({ ok: true });
+	await admitChatDraft(key, { ...input, text: boxed }, SESSION);
+	const sent = calls.slice(before).filter((r) => r.op === "sessions.message");
+	assert.equal(sent.length, 1);
+	assert.equal(
+		sent[0].text,
+		"my own next line",
+		"the press sent the delivered words again: this is the duplicate the round reproduced",
+	);
 });

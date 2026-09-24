@@ -396,6 +396,58 @@ test("a masked credential capture keeps the box against a store write", async ()
 	);
 });
 
+/*
+ * THE BOX IS WHAT THE DUPLICATE WAS MADE OF (review round 2, R2/U1).
+ *
+ * The store side of this is pinned in `composer-send-failure`; this is the half
+ * that could only be seen in the composer's own text: the delivered words have to
+ * come OUT of the textarea, leaving the line the user typed after them. A
+ * store-level case cannot fail this way - the box's text is React state the store
+ * write reaches through the hook - which is exactly how the round-1 duplicate
+ * stayed invisible.
+ */
+test("a late delivery takes the delivered words out of the box", async () => {
+	resetStore();
+	const { holder } = await mount({
+		conversationId: identity,
+		onSubmit: async () => {},
+	});
+	const store = useConversationInputStore.getState();
+	await act(async () => {
+		holder.handle.setInputValue("the message that went");
+	});
+	await act(async () => {
+		store.beginInFlight(identity, {
+			text: "the message that went",
+			attachments: [{ id: "chip-1", path: "/tmp/shot.png" }],
+			replies: [],
+		});
+		/*
+		 * The user types their next line while the message is in flight, and then the
+		 * failure hands the message back - the merge puts it in front of their words.
+		 */
+		holder.handle.setInputValue("and my own next line");
+		store.returnInFlight(identity, identity);
+	});
+	await act(async () => {});
+	assert.equal(
+		boxText(),
+		"the message that went\n\nand my own next line",
+		"the returned message did not come home in front of the user's own line",
+	);
+
+	// And then the owner's row arrives: it had been delivered after all.
+	await act(async () => {
+		useConversationInputStore.getState().reconcileDelivered(identity);
+	});
+	await act(async () => {});
+	assert.equal(
+		boxText(),
+		"and my own next line",
+		"the box still holds the delivered message, so the next press sends it again",
+	);
+});
+
 /* -------------------------------------------------------------- the press */
 
 test("a second press reaches the pane instead of vanishing", async () => {

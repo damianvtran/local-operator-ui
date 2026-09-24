@@ -10,7 +10,8 @@ import {
 } from "@shared/store/canonical-sessions-store";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
-	mergeReturnedText,
+	type LateDeliveryBox,
+mergeReturnedText,
 	useConversationInputStore,
 } from "@shared/store/conversation-input-store";
 import type { Meta, StoryObj } from "@storybook/react";
@@ -1967,7 +1968,11 @@ const PendingSendHarness = ({
 	 * the still is taken, so a story that shows an edit made after the failure
 	 * writes the edited value here.
 	 */
-	returned?: { text: string; chip?: string; lateDelivered?: boolean };
+	returned?: {
+		text: string;
+		chip?: string;
+		lateDelivered?: LateDeliveryBox;
+	};
 	/**
 	 * The notice, exactly as `chat-page`'s `reportFailure` hands it over -
 	 * `sendFailureCopy`'s answer, not a sentence written here. A story that typed
@@ -2446,7 +2451,7 @@ export const DeliveredLate: Story = {
 			 * which is the one thing this frame must not suggest.
 			 */
 			stageChip={false}
-			returned={{ text: "a line I typed instead", lateDelivered: true }}
+			returned={{ text: "a line I typed instead", lateDelivered: "draft-only" }}
 			sendError={{ message: SEND_FAILURE_COPY.lateDelivery, muted: true }}
 			label="the earlier message turned out to have been delivered: one muted line, the user's own edit untouched, and no control to act on"
 		/>
