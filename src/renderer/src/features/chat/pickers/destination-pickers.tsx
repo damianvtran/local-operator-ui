@@ -562,6 +562,26 @@ function carriedRung(
 		: "";
 }
 
+/**
+ * How often the picker re-asks its providers, WHILE THE DIALOG IS OPEN.
+ *
+ * The number is the backend's own (`local_operator/providers/controller.py`'s
+ * `PICKER_TTL_S` = `15 * 60`), and it is deliberately the same number rather
+ * than a shorter one: that constant is the hard TTL the live read is answered
+ * at, so an interval below it would only re-READ a listing document the backend
+ * is still holding, which is precisely the defect the companion change in
+ * `damianvtran/local-operator` fixes on the route's side. Read from this side it
+ * is the operator-visible half of "the cache must be periodically invalidated":
+ * a model released during a long session appears on the next tick rather than on
+ * the next open.
+ *
+ * The MOUNT is what bounds it. This query only exists inside the dialog, so
+ * closing the picker is what stops the cadence; nothing polls behind a closed
+ * dialog. Each tick costs one local IPC call and, on the backend, one listing at
+ * the picker's own TTL - not a fresh per-provider probe.
+ */
+export const PICKER_CADENCE_MS = 15 * 60_000;
+
 export const ModelPicker: FC<PickerContext> = ({
 	sessionId,
 	canonical,
@@ -569,21 +589,12 @@ export const ModelPicker: FC<PickerContext> = ({
 	note,
 	draft,
 }) => {
-	const [live, setLive] = useState(false);
 	/*
-	 * The model the user last switched to, marked in force before the owner's own
-	 * `frontend.update` frame moves `selected_model` (QA Q2).
-	 *
-	 * The receipt and the frame are two different clocks: QA measured the in-force
-	 * check still on the OLD row 3.7 s after the receipt while the band and the
-	 * result strip already read the new one — and, before UX U7, the header
-	 * sentence with them. It is the same optimistic registration the band's paint
-	 * uses, on the picker's own row and, through `shownSelector` below, in the
-	 * header; it is dropped when the authoritative selector agrees with it (the
-	 * narrower rule the reconciliation effect below states in full, and the reason
-	 * it is not dropped on every disagreement), and a re-open (a fresh mount) reads
-	 * the owner's answer.
+	 * `false` is the shipped registry's own document; the live listing is a
+	 * SEPARATE key (see the promotion beside the query, and why it is the second
+	 * read rather than the first).
 	 */
+	const [live, setLive] = useState(false);
 	const [pickedCurrent, setPickedCurrent] = useState<string | null>(null);
 	/*
 	 * What the last successful switch did to the session's ability to RUN the
@@ -597,7 +608,13 @@ export const ModelPicker: FC<PickerContext> = ({
 	 */
 	const [switchedNeedsSignIn, setSwitchedNeedsSignIn] = useState(false);
 	const catalogue = useQuery({
-		queryKey: ["desktop", "models", live],
+		/*
+		 * The key is the SHARED prefix plus the flag, so a credential change can drop
+		 * both documents with ONE invalidation against `desktopKeys.catalogue`
+		 * (`provider-detail.tsx` on a successful sign-in, `LogoutPicker` on a
+		 * removal) rather than the picker having to remember to ask again.
+		 */
+		queryKey: [...desktopKeys.catalogue, live],
 		queryFn: () =>
 			desktopResult<DesktopModelCatalogue>({ op: "models.catalogue", live }),
 		staleTime: live ? 0 : 60_000,
@@ -606,13 +623,77 @@ export const ModelPicker: FC<PickerContext> = ({
 		 * so without this the list is blanked to the loading spinner for the whole
 		 * fetch, which reads as "the catalogue disappeared" right after the user
 		 * asked for it to be refreshed (latency U4). `keepPreviousData` keeps the
-		 * rows the picker already has painted under the new `isFetching` state.
+		 * rows the picker already has painted under the new `isFetching` state, and
+		 * it is load-bearing a second time now that the live fetch starts by itself:
+		 * the rows the dialog opens on are the ones it keeps on screen.
 		 */
 		placeholderData: keepPreviousData,
+		/*
+		 * The "periodically refetch" half of the operator's report, and the half this
+		 * app owns. For as long as the dialog is open the live listing is re-asked on
+		 * the picker cadence - `PICKER_CADENCE_MS` - so a model published during a
+		 * working session appears without the dialog being closed and reopened.
+		 *
+		 * The BACKEND half of the same behaviour (answering that read at the picker's
+		 * TTL rather than from a document that can be 24 hours old) is a separate
+		 * change in `damianvtran/local-operator`. This half works without it - each
+		 * tick is a real read and the backend's stale-while-revalidate still re-lists
+		 * in the background - but the two together are what makes a tick mean "the
+		 * listing is at most 15 minutes old" rather than "we asked again".
+		 *
+		 * Only the live key polls. The registry answer cannot change while the dialog
+		 * is open, so re-asking it would be cost with no reading behind it.
+		 */
+		refetchInterval: live ? PICKER_CADENCE_MS : false,
 	});
-	// Only a PENDING live fetch says "Refreshing…": the initial (non-live) load is
-	// also `isFetching`, and labelling that "Refreshing…" would describe a fetch
-	// the user never asked for (design D8).
+	/*
+	 * STALE-THEN-UPDATE, which is the desktop half of what the TUI picker already
+	 * does (`local_operator/tui/app.py`: `_populate_model_picker` paints the
+	 * registry, then `_refresh_catalogue` re-lists the providers off the loop).
+	 *
+	 * WHY THE PROMOTION IS AUTOMATIC RATHER THAN A BUTTON PRESS. The initial read
+	 * answers from the SHIPPED REGISTRY - what lop last shipped - so a model the
+	 * provider has released since then is simply not in it, and the operator's
+	 * report is the measured case: Anthropic's own `/v1/models` lists `Opus 5.5`
+	 * while the shipped registry stops at `claude-opus-5`, and the picker could not
+	 * reach it without the user first pressing "Refresh from providers" on the
+	 * chance that it would help. Asking for `/model` IS the ask. The button stays,
+	 * as the manual re-ask (and as the control that says a listing is running).
+	 *
+	 * WHY THE LIVE READ IS THE SECOND ONE RATHER THAN THE FIRST. A live re-list is
+	 * a measured 2.33 s, and opening straight into it would put a centred spinner
+	 * where the rows belong - slower AND less useful, because the model the user is
+	 * most likely to want is usually one the registry already knows.
+	 *
+	 * WHY IT WAITS FOR `isFetched`, and this is measured rather than argued. The
+	 * first version promoted on MOUNT, and it threw the paint away: the key changed
+	 * before the registry read had settled, and `keepPreviousData` can only carry
+	 * data that EXISTS - so the live key came up with no placeholder, `isLoading`
+	 * went true, and the frames photographed a spinner reading `Loading` with
+	 * `Refreshing…` beside it and NO rows. That is the exact state
+	 * stale-then-update exists to avoid, and it is why the gate is the read having
+	 * SETTLED rather than the component having mounted.
+	 *
+	 * `isFetched` rather than `isSuccess`: a registry read the backend REFUSED is
+	 * also a settled answer, and refusing to promote on one would leave a picker
+	 * whose only rows came from a failed read with no live attempt made.
+	 *
+	 * The promotion is monotonic - there is no path back to `live: false` - which
+	 * is what stops the two documents trading places while the user types.
+	 */
+	const catalogueSettled = catalogue.isFetched;
+	useEffect(() => {
+		if (catalogueSettled) setLive(true);
+	}, [catalogueSettled]);
+	/*
+	 * Only a LIVE fetch says "Refreshing…": it is the one that re-lists the
+	 * providers, whichever started it - the automatic promotion above or the
+	 * button. The initial (registry) load is also `isFetching`, and labelling that
+	 * "Refreshing…" would describe a listing the user never asked for (design D8);
+	 * gating on `live` is what keeps that true now that the live fetch is itself
+	 * automatic, and it is why an open dialog briefly reads "Refreshing…" while a
+	 * listing it did start is out.
+	 */
 	const refreshing = live && catalogue.isFetching;
 	const command = useSessionCommand(sessionId);
 	/*
@@ -1065,6 +1146,12 @@ export const ModelPicker: FC<PickerContext> = ({
 							 * was indistinguishable from one that works. It keeps its verb instead
 							 * and re-lists when pressed; the row count under it is what says the
 							 * listing came from the providers.
+							 *
+							 * The picker now promotes itself to the live listing on mount, so the
+							 * settled state is the common one and `setLive(true)` is the
+							 * pre-promotion window alone (a click landed inside the first paint's
+							 * tick). Both paths stay: the button has to re-list whether or not the
+							 * automatic listing has already run.
 							 */
 							onClick={() => {
 								if (live) void catalogue.refetch();
@@ -2768,6 +2855,15 @@ export const LogoutPicker: FC<PickerContext> = ({ onClose, action }) => {
 		setSelected(null);
 		await queryClient.invalidateQueries({ queryKey: desktopKeys.accounts });
 		await queryClient.invalidateQueries({ queryKey: desktopKeys.providers });
+		/*
+		 * The catalogue goes with them: the listing is per-CREDENTIAL as well as
+		 * per-model, so a removed account changes which rows a provider contributes
+		 * (and whether it contributes any at all). The backend drops its cached
+		 * listing documents on the same event (`providers/controller`, the same path
+		 * a sign-in takes); what this drops is the renderer's copy, which no read
+		 * would otherwise revisit until its 24h document expired.
+		 */
+		await queryClient.invalidateQueries({ queryKey: desktopKeys.catalogue });
 	}, [op, selected, confirmed, queryClient]);
 	return (
 		<PickerHost

@@ -1095,6 +1095,15 @@ const BRANCH_RECORDS = [
 	 * this fold reports that rather than widening its own diff to fix it.)
 	 */
 	"foldOntoTelemetryOffNote",
+	/*
+	 * Grown by the pass that made the desktop picker list the providers by
+	 * itself, which wrote this branch's newest top-level record. It is listed for
+	 * the reason the list exists: a fold that starts from main's manifest drops
+	 * it, and with it the only statement of which two trees this pass moved, which
+	 * six frames it added, and which of this surface's frames were re-captured and
+	 * came back byte-identical.
+	 */
+	"modelPickerLiveListingNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
