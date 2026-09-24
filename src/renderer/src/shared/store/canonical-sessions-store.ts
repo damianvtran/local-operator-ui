@@ -665,6 +665,27 @@ export function isStoreWriteRefusal(code: string | undefined): boolean {
 export const ANSWER_NOT_SENT_CODE = "answer_not_sent";
 
 /**
+ * A refused ASIDE whose question is no longer anywhere the composer can see.
+ *
+ * The eighth entry in `withholdsRetryHint` and the first that is not a store
+ * refusal: an aside ask empties the box at the press (the question left for the
+ * panel), the owner refuses it, and the box at that moment holds whatever the user
+ * typed SINCE. The composer's generic hint then appended "Your message is still in
+ * the composer. Send it again." to a sentence about a question that is neither in
+ * the box nor on screen (UX round 1, U4) - advice that is not merely redundant but
+ * false, and which would have the user resend a NEW question to an exchange that
+ * refused the old one.
+ *
+ * It is a code of its own rather than a pre-computed boolean because the composer
+ * asks exactly one question of a code (is the retry the remedy; see
+ * `withholdsRetryHint`), and the answer has to travel with the sentence that
+ * raised it - the same argument `ANSWER_NOT_SENT_CODE` records one round earlier.
+ * The refusing door sets it; the panel does not (a refusal on the panel is stated
+ * on the turn beside its own question, and the sentence there is the owner's).
+ */
+export const ASIDE_NOT_ANSWERED_CODE = "aside_not_answered";
+
+/**
  * Whether a refusal's remedy is anything OTHER than "send it again".
  *
  * The composer's generic retry hint is the alert's "what to do" half, and it is
@@ -703,6 +724,13 @@ export const ANSWER_NOT_SENT_CODE = "answer_not_sent";
  * is in this list rather than in a second one because the composer asks one
  * question of a code (is the retry the remedy), and this is that question's
  * answer, stated by the failure that owns it.
+ *
+ * The NINTH is `ASIDE_NOT_ANSWERED_CODE`, and it is the second term here that is
+ * not a send refusal either — in the same direction as the seventh and for a
+ * sharper reason: an aside ask takes the question out of the box at the press, so
+ * when its refusal lands the box holds whatever the user typed SINCE, and the hint
+ * would point at text the refusal was never about (UX round 1, U4). Its own
+ * statement is on the constant.
  *
  * The eighth is `runtime_retiring`, and it is here for D13's reason rather than
  * U2's: the remedy that owns this refusal is the SENTENCE, which the owner
@@ -747,6 +775,7 @@ export function withholdsRetryHint(code: string | undefined): boolean {
 		code === STORE_OUT_OF_SPACE_CODE ||
 		code === STORE_UNAVAILABLE_CODE ||
 		code === ANSWER_NOT_SENT_CODE ||
+		code === ASIDE_NOT_ANSWERED_CODE ||
 		code === RUNTIME_RETIRING_CODE
 	);
 }

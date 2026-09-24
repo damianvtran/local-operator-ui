@@ -31,6 +31,9 @@ import { resyncCanonicalSession } from "@shared/hooks/use-canonical-session";
 import {
 	type AsideStream,
 	asideTurnIsCarried,
+	lastAnsweredAsideId,
+	lastAsideStream,
+	lastAsideTurn,
 	previousAsideId,
 	useAsideStore,
 } from "@shared/store/aside-store";
@@ -41,8 +44,13 @@ type AsideAnswer = {
 	data: { aside_id: string; text: string; off_record: boolean };
 };
 
-/**
- * The sentence a refused ask is stated with, wherever it is stated.
+/** The quoted question's own whitespace collapse, hoisted for the whole module. */
+const RE_WHITESPACE_RUN = /\s+/g;
+
+/** The sentence break the announced answer is cut at, hoisted for the same reason. */
+const RE_SENTENCE_END = /(?<=[.!?])\s/;
+
+/** The sentence a refused ask is stated with, wherever it is stated.
  *
  * ONE COMPOSITION FOR EVERY SURFACE. The panel states a refusal on the turn
  * (`failAside`) and the door that asked states the same one when the panel is
@@ -52,6 +60,107 @@ type AsideAnswer = {
  */
 export function asideAskFailure(error: unknown): string {
 	return userFacingMessage(error, "The aside was not answered.");
+}
+
+/**
+ * The sentence a refusal is printed with when the ask CONTINUED an exchange.
+ *
+ * A REFUSED CONTINUATION IS THE ONE REFUSAL THE PANEL CANNOT RECOVER FROM BY
+ * ITSELF (UX round 1, U1). The owner drops a refused ask's own entry and refuses a
+ * continuation whose prefix it no longer holds, so the panel's `ask again` is
+ * advice the user cannot act on from where they are - while the way out that does
+ * work, Escape and a fresh `/btw`, is not written anywhere. The clause is appended
+ * only where it is true: a FRESH ask opens a clean entry, so its refusal needs no
+ * escape hatch and printing one would send the user away from a panel that had
+ * already recovered by itself.
+ *
+ * Keyed on the ask having carried a prefix rather than on the refusal's own
+ * sentence, because the sentences are the owner's copy and a client that matched
+ * them would go stale in silence (`UNKNOWN_FIELDS_REFUSAL` records that cost for
+ * one sentence already).
+ */
+export const ASIDE_CONTINUATION_ESCAPE =
+	"Close this aside and start a new one with /btw.";
+
+/**
+ * The sentence the PANEL states a refused ask with.
+ *
+ * The owner's own sentence, which is the only text that says WHY (a tool call off
+ * the record, an empty answer, a store at its bound) - plus the escape clause when
+ * that sentence was a continuation being turned away.
+ */
+export function asidePanelRefusal(error: unknown, continued: boolean): string {
+	const sentence = asideAskFailure(error);
+	return continued ? `${sentence} ${ASIDE_CONTINUATION_ESCAPE}` : sentence;
+}
+
+/**
+ * How much of a question an OFF-PANEL refusal quotes.
+ *
+ * The panel does not need this: it paints the question directly above the alert.
+ * The two off-panel surfaces do, because the panel and its question are gone - and
+ * the `/btw` door consumed the draft at the press, so nothing else on screen names
+ * what failed (design round 2, D8). Sixty characters is the caption shape this
+ * tree already quotes user text in (`archiveOfferedName`), and it fits the widest
+ * sentence in the composer's line at the minimum window.
+ */
+export const ASIDE_QUOTED_QUESTION_CHARS = 60;
+
+/**
+ * The question as an off-panel refusal quotes it: short, and never cut mid-ellipsis.
+ */
+export function asideQuotedQuestion(question: string): string {
+	const trimmed = question.trim().replace(RE_WHITESPACE_RUN, " ");
+	return trimmed.length > ASIDE_QUOTED_QUESTION_CHARS
+		? `\u201c${trimmed.slice(0, ASIDE_QUOTED_QUESTION_CHARS - 1)}\u2026\u201d`
+		: `\u201c${trimmed}\u201d`;
+}
+
+/**
+ * The sentence an OFF-PANEL surface states a refused ask with.
+ *
+ * ONE COMPOSITION FOR BOTH DOORS (UX round 1, U4 with design round 2, D8). The
+ * composer's error line and the `/btw` door's transcript note are the surfaces
+ * that exist because the panel does not, and they were stating the owner's
+ * sentence alone - which names no question, while the sentence themselves end in
+ * `ask again`. One of the two doors had also lost the text the advice referred to
+ * (that door consumed the whole draft at the press), so the pair to be reunited is
+ * exactly the question and what became of it.
+ */
+export function asideOffPanelRefusal(question: string, error: unknown): string {
+	return `Your aside ${asideQuotedQuestion(question)} got no answer: ${asideAskFailure(error)}`;
+}
+
+/**
+ * Why an ask is refused in the APP, before it is sent - or null when it is not.
+ *
+ * A FOLLOW-UP SENT WHILE THE EXCHANGE IS STILL ANSWERING (UX round 1, U2). The
+ * owner marks the entry it is answering `running` and refuses a continuation of it
+ * with 409, so the follow-up that the composer's own liveness invited - the box
+ * stays typable on purpose while an answer streams - emptied the box, painted the
+ * question, and then failed with "no longer available". The press is refused HERE
+ * instead: while the newest answer is still in flight the question stays in the
+ * composer, where it can be sent the moment the answer settles.
+ *
+ * `streaming` is the owner's `running` as this store records it: true from
+ * `beginAsk` until the POST returns (`AsideStream`), which is precisely the window
+ * the owner refuses a continuation in - NOT the window the deltas paint. The
+ * distinction matters, because the text of an answer can be complete on screen
+ * while its POST is still in flight, and the prefix is unusable until the owner
+ * says otherwise.
+ *
+ * A FAILED NEWEST TURN IS NOT BUSY, deliberately: its entry was dropped, so the
+ * next question starts a clean one (U1), and a gate that held the box until the
+ * user closed the panel would be the dead end U1 is about.
+ */
+export const ASIDE_ASK_BUSY =
+	"The aside is still answering \u2014 send the question when it finishes.";
+
+export function asideAskBlockedReason(
+	state: Parameters<typeof lastAsideStream>[0],
+	sessionId: string,
+): string | null {
+	return lastAsideStream(state, sessionId)?.streaming ? ASIDE_ASK_BUSY : null;
 }
 
 /**
@@ -77,13 +186,30 @@ export function asideAskFailure(error: unknown): string {
  * (a bare `/btw`, a new empty attachment) holds none of this ask's turns either,
  * which the stream entry's absence answers and the attachment's presence does not.
  *
+ * THE QUESTION TRAVELS WITH THE SENTENCE (UX round 1, U4; design round 2, D8).
+ * This is the one surface pair left once the panel is gone, and the owner's
+ * sentence neither quotes the question nor can: the `/btw` door consumed the draft
+ * at the press, and the composer's box holds whatever the user typed SINCE, so the
+ * question exists nowhere else by the time this runs. It is composed here, in the
+ * same tick as the ask, for the reason the id is (`lastAsideTurn`).
+ *
  * `report` is the caller's no-surface channel, a parameter because the two doors
  * have different ones: the composer's error line (`setSendError`) and the
- * dispatcher's transcript note. The sentence is `asideAskFailure`'s, so all three
- * surfaces spell a refusal the same way.
+ * dispatcher's transcript note. The sentence is composed by `asideOffPanelRefusal`,
+ * so both surfaces spell a refusal the same way.
+ *
+ * WHAT IT CANNOT DO, AND WHY THAT IS ACCEPTED (review round 4, F13). Both
+ * reporters close over the pane that asked, and a pane is keyed by the session's
+ * identity (`chat-page.tsx`), so a user who closes the panel, switches
+ * conversation and only then has the refusal land sets state on an unmounted pane:
+ * the sentence is composed correctly and goes nowhere. The narrowing is real -
+ * by then the user has dismissed the question and left the conversation, and the
+ * aside's answer is off the record by construction - so the state is accepted
+ * rather than papered over, and stated here so the next reader does not read the
+ * helper's silence as delivery.
  *
  * MUST BE CALLED IN THE SAME TICK `askAside` RETURNED IN. The turn is read here
- * with `previousAsideId`, and that is this ask's own turn only because
+ * with `lastAsideTurn`, and that is this ask's own turn only because
  * `beginAsk` runs synchronously inside `askAside`, before its POST; an `await`
  * between the two would let a follow-up register first and name ITS turn. It
  * also handles the rejection, so a caller that has nothing else to do with the
@@ -94,11 +220,11 @@ export function reportUncarriedAsideRefusal(
 	sessionId: string,
 	report: (sentence: string) => void,
 ): void {
-	const askingTurn = previousAsideId(useAsideStore.getState(), sessionId);
+	const askingTurn = lastAsideTurn(useAsideStore.getState(), sessionId);
 	void ask.catch((error) => {
-		if (askingTurn && asideTurnIsCarried(useAsideStore.getState(), askingTurn))
-			return;
-		report(asideAskFailure(error));
+		const state = useAsideStore.getState();
+		if (askingTurn && asideTurnIsCarried(state, askingTurn.asideId)) return;
+		report(asideOffPanelRefusal(askingTurn?.question ?? "", error));
 	});
 }
 
@@ -239,10 +365,13 @@ export async function askAside(
 	const asideId = uuidv4();
 	const store = useAsideStore.getState();
 	/*
-	 * The prefix is read BEFORE the ask is registered: `beginAsk` appends this
-	 * turn, and a continuation is defined by what the exchange held up to it.
+	 * The prefix is read BEFORE the ask is registered, because `beginAsk` appends
+	 * this turn and a continuation is defined by what the exchange held up to it -
+	 * and it is the last ANSWERED turn rather than the last turn, because a refused
+	 * ask's entry is dropped by the owner and naming it gets every later question in
+	 * that panel the same 409 (UX round 1, U1; see `lastAnsweredAsideId`).
 	 */
-	const continuation = previousAsideId(store, sessionId);
+	const continuation = lastAnsweredAsideId(store, sessionId);
 	store.beginAsk(sessionId, asideId, question);
 	/*
 	 * The ask is ONE operation with ONE registration, whatever the wire takes: the
@@ -301,7 +430,9 @@ export async function askAside(
 		 * when there is nothing left to carry it — see `reportUncarriedAsideRefusal`,
 		 * which both doors call.
 		 */
-		useAsideStore.getState().failAside(asideId, asideAskFailure(error));
+		useAsideStore
+			.getState()
+			.failAside(asideId, asidePanelRefusal(error, continuation !== undefined));
 		throw error;
 	}
 }
@@ -476,6 +607,16 @@ export function asideAdoptReady(
  * derived from the flag the paint itself uses. The is-nothing-to-add case is
  * derived from the same flag: a sentence about the answer's ARRIVAL has no
  * honest form once the text is on screen.
+ *
+ * THE CONVERSATION'S TERM OUTRANKS THE SETTLING ONE (UX round 1, U3), and the
+ * order is the fix rather than a style choice. An aside asked while a turn was
+ * running measured the whole answer on screen within 4s while the exchange stayed
+ * unsettled for 14.7s - the POST is held by the runtime the turn is using - so the
+ * settling sentence sat under a complete answer for as long as the turn ran, and
+ * the reason that was actually true ("this conversation is working", the one the
+ * user can wait out or interrupt) never appeared at all. "A moment" is also the
+ * one promise here that an unbounded wait falsifies. When both hold, the session's
+ * own work is the fact the user can act on, and it is TRUE whenever it is printed.
  */
 export function asideAdoptBlockedReason(
 	stream: AsideStream | undefined,
@@ -487,11 +628,78 @@ export function asideAdoptBlockedReason(
 	if (stream.error !== null) {
 		return "Nothing to add.";
 	}
-	if (stream.streaming) {
-		return "The exchange is still settling — a moment before it can be added.";
-	}
 	if (sessionStreaming) {
 		return "This conversation is working. Adding the aside while it runs would splice a message into a live turn.";
 	}
+	if (stream.streaming) {
+		return "The exchange is still settling — a moment before it can be added.";
+	}
 	return null;
+}
+
+/**
+ * The exchange region's scroll position once a turn has been APPENDED.
+ *
+ * WHY THE QUESTION AND NOT THE BOTTOM (design round 2, D6). A follow-up asked
+ * while the exchange overflows was painted below the region's fold - measured 88px
+ * under it at wide and 687px at narrow - so the ask looked as though it had done
+ * nothing at all: the question, its thinking line and the answer that followed were
+ * all off screen, and the only visible change was the blocked line re-wording
+ * itself. The region is a plain `overflow-y-auto` box with no follow of its own, so
+ * nothing brought the new turn into view.
+ *
+ * ONE SCROLL PER APPENDED TURN, AND NEVER PER CHUNK. It is called from an effect
+ * keyed on the newest turn's id, so it fires once when the question is pinned and
+ * not again as its answer streams: a region pinned to the bottom on every chunk
+ * would fight a user who is reading the part above, which is the one thing the
+ * transcript's own follow has to be careful about too.
+ *
+ * The turn's question is put at the region's TOP rather than minimally into view,
+ * because the question is the top of a block that grows downward: the thinking line
+ * and the first lines of the answer are what the user is waiting to see, and
+ * `nearest` would bring only the question's own line in at the region's bottom
+ * edge. The arithmetic is a pure function so the clamp and the delta are
+ * assertable without a DOM, and the DOM's rectangles are the caller's to read.
+ */
+export function asideScrollToTurn(input: {
+	regionTop: number;
+	turnTop: number;
+	scrollTop: number;
+	scrollHeight: number;
+	clientHeight: number;
+}): number {
+	const ceiling = Math.max(0, input.scrollHeight - input.clientHeight);
+	const wanted = input.scrollTop + (input.turnTop - input.regionTop);
+	return Math.min(ceiling, Math.max(0, wanted));
+}
+
+/**
+ * What the panel's one live region says, as a function of the newest turn.
+ *
+ * THE PHASE IS STILL THE SHAPE (review round 1, F4): a region that mirrored the
+ * answer would announce once per chunk, and a `polite` region is not
+ * interruptible, so the reader would still be hearing an answer's tail long after
+ * it finished.
+ *
+ * THE SETTLED PHASE CARRIES THE ANSWER'S FIRST SENTENCE (UX round 1, U10), and
+ * that is the one addition that costs nothing: the transition to settled is a
+ * single state change, so its text is announced once rather than per chunk, and
+ * the reader otherwise has to leave the composer and navigate into the region to
+ * hear an answer they were told had arrived. It is cut at the first sentence end or
+ * at a bounded length, whichever comes first, because a live region's announcement
+ * is not something a reader can skim.
+ */
+export const ASIDE_ANNOUNCED_CHARS = 140;
+
+export function asideAnnouncement(
+	stream: AsideStream | undefined,
+): string | null {
+	if (!stream) return null;
+	if (stream.error !== null) return "The aside was not answered";
+	if (stream.streaming) return "Asking the aside";
+	const sentence = stream.text.trim().split(RE_SENTENCE_END)[0] ?? "";
+	if (sentence.length === 0) return "The aside answered";
+	return sentence.length > ASIDE_ANNOUNCED_CHARS
+		? `The aside answered: ${sentence.slice(0, ASIDE_ANNOUNCED_CHARS)}\u2026`
+		: `The aside answered: ${sentence}`;
 }

@@ -335,3 +335,45 @@ export const FollowUp: Story = {
 		</Column>
 	),
 };
+
+/**
+ * A follow-up asked under an answer long enough to have exceeded the ceiling.
+ *
+ * WHY THIS STATE NEEDS A FRAME (design round 2, D6). The two stories above hold
+ * answers of two lines, so nothing in this set could show the case the finding is
+ * about: the region is capped and already scrolled, a question is appended BELOW
+ * the fold, and `thinking…` sits under it — so the ask looked as though it had
+ * done nothing at all until the answer arrived out of sight. The rule is that an
+ * appended turn is brought into view once, and a frame is how the two halves of it
+ * are checked without a live transport: this one is the PICTURE (the region
+ * scrolled to the new question rather than resting on the old exchange), while the
+ * effect's arithmetic and its wiring are asserted in `scripts/btw-aside.test.mjs`.
+ */
+export const OverflowingFollowUp: Story = {
+	render: () => (
+		<Column label="follow-up under an overflowing answer: the region is scrolled to the new question, not left on the old exchange">
+			{band({
+				story: "overflowing-follow-up",
+				turns: [
+					{
+						question: "walk me through the retry ladder end to end",
+						stream: settled(
+							[
+								"A transport failure is retried on the same provider while the budget holds.",
+								"The budget counts consecutive failures against one provider, not attempts.",
+								"An owner 5xx is a transport-shaped failure and spends the budget the same way.",
+								"A 4xx that the owner marks as the request's own fault does not spend it.",
+								"Exhausting the budget hands the turn to the next provider in the ladder.",
+								"The last provider's failure ends the turn with the owner's own sentence.",
+							].join("\n\n"),
+						),
+					},
+					{
+						question: "and does a 429 spend it?",
+						stream: thinking(),
+					},
+				],
+			})}
+		</Column>
+	),
+};

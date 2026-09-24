@@ -68,6 +68,9 @@ const bundle = await build({
 				settledAsideStream,
 				failedAsideStream,
 				previousAsideId,
+				lastAsideTurn,
+				lastAsideStream,
+				lastAnsweredAsideId,
 			} from "./src/renderer/src/shared/store/aside-store";
 			export {
 				askAside,
@@ -75,6 +78,14 @@ const bundle = await build({
 				closeAside,
 				openAsidePanel,
 				asideAskFailure,
+				asidePanelRefusal,
+				asideOffPanelRefusal,
+				asideQuotedQuestion,
+				asideAskBlockedReason,
+				asideScrollToTurn,
+				asideAnnouncement,
+				ASIDE_ASK_BUSY,
+				ASIDE_CONTINUATION_ESCAPE,
 				reportUncarriedAsideRefusal,
 				asideAdoptChord,
 				asideAdoptCap,
@@ -197,11 +208,22 @@ const {
 	settledAsideStream,
 	failedAsideStream,
 	previousAsideId,
+	lastAsideTurn,
+	lastAsideStream,
+	lastAnsweredAsideId,
 	askAside,
 	adoptAside,
 	closeAside,
 	openAsidePanel,
 	asideAskFailure,
+	asidePanelRefusal,
+	asideOffPanelRefusal,
+	asideQuotedQuestion,
+	asideAskBlockedReason,
+	asideScrollToTurn,
+	asideAnnouncement,
+	ASIDE_ASK_BUSY,
+	ASIDE_CONTINUATION_ESCAPE,
 	reportUncarriedAsideRefusal,
 	asideAdoptChord,
 	asideAdoptCap,
@@ -323,9 +345,56 @@ const RE_DISPATCH_OPEN = /openAsidePanel\(sessionId\)/;
  */
 const RE_DISPATCH_REPORTS_UNCARRIED =
 	/reportUncarriedAsideRefusal\(ask, sessionId, \(sentence\) =>\s*note\(sentence, true\)/;
+/*
+ * The composer's door reports through its own error line — and since round 4 it
+ * hands the reporter a PAIR of writes rather than the setter itself, because a
+ * refusal about an aside must also carry the code that withholds the composer's
+ * generic "Send it again" (UX round 1, U4). The pin follows the code, not just the
+ * closure, so a revert to the bare setter fails here.
+ */
 const RE_PAGE_REPORTS_UNCARRIED =
-	/reportUncarriedAsideRefusal\(ask, sessionId, setSendError\)/;
+	/reportUncarriedAsideRefusal\(ask, sessionId, \(sentence\) => \{\s*setSendError\(sentence\);\s*setSendErrorCode\(ASIDE_NOT_ANSWERED_CODE\);/;
 const RE_SWALLOWED_REFUSAL = /\.catch\(\(\) => \{\}\)/;
+
+/*
+ * ROUND 4'S OWN WIRING (agent review F12; UX round 1 U1/U2/U4-U7; design round 2
+ * D6-D8/D10). The panel, the composer and the dispatcher are components and hooks
+ * this harness cannot mount (this file's header), so the rules they apply are
+ * asserted by VALUE above and the lines that APPLY them are pinned here — the same
+ * split the file's other wiring pins use, and the reason each pin names the call
+ * it is looking for rather than a bare identifier that a rename would satisfy.
+ */
+const RE_PAGE_ASIDE_BUSY_GATE =
+	/const busy = asideAskBlockedReason\(useAsideStore\.getState\(\), sessionId\);\s*if \(busy\) \{\s*setSendError\(busy\);\s*return false;/;
+const RE_DISPATCH_ASIDE_BUSY_GATE =
+	/const busy = asideAskBlockedReason\(\s*useAsideStore\.getState\(\),\s*sessionId,\s*\);\s*if \(busy\) \{\s*note\(busy, true\);\s*return "retained";/;
+const RE_PAGE_CLEARS_ASIDE_REFUSAL =
+	/clearAsideRefusal: \(\) => \{\s*setSendError\(null\);\s*setSendErrorCode\(undefined\);/;
+const RE_DISPATCH_CLEARS_ASIDE_REFUSAL = /clearAsideRefusal\?\.\(\);/;
+const RE_PANEL_RETURNS_FOCUS = /onReturnFocus\?\.\(\)/g;
+const RE_PANEL_DESCRIBED_BY =
+	/aria-describedby=\{blocked !== null \? blockedId : undefined\}/;
+const RE_PANEL_REASON_ID = /<p id=\{blockedId\}/;
+const RE_SEND_VERB = /aside !== null \? "Ask the aside" : "Send message"/;
+const RE_PANEL_CAP_COUNTS_QUESTION =
+	/var\(--text-body-sm\) \* \$\{ASIDE_QUESTION_LINE_HEIGHT\}/;
+const RE_PANEL_SCROLLS_TO_TURN = /region\.scrollTop = asideScrollToTurn\(\{/;
+const RE_PANEL_SCROLLS_ONCE =
+	/if \(scrolledTurn\.current === lastTurnId\) return;/;
+const RE_PANEL_REGION_FOCUSABLE =
+	/tabIndex=\{0\}\s+aria-label="The aside exchange"/;
+/*
+ * F11's effect trigger, pinned by F12: `retireRequest` is bumped by
+ * `retireAcceptedPayload` and read by the effect's dependency list, and only those
+ * two lines make an aside's answer retire the box's payload in its own commit.
+ * Neither the bump nor the dependency is otherwise observable from here — the
+ * mutation that removes the dependency leaves every other test green (review round
+ * 4, M3) — so the pair is asserted literally, and the OLD dependency list is
+ * asserted absent so a partial revert cannot satisfy both.
+ */
+const RE_RETIRE_REQUEST_BUMP =
+	/setRetireRequest\(\(request\) => request \+ 1\);/;
+const RE_RETIRE_REQUEST_TRIGGER = /\}, \[newMessage, retireRequest\]\);/;
 
 const SESSION = "session-aside-1";
 const OTHER_SESSION = "session-aside-2";
@@ -1275,8 +1344,13 @@ test("a refusal after the panel closed is reported by the door, and only then", 
 	await new Promise((resolve) => setTimeout(resolve, 0));
 	assert.deepEqual(
 		reported,
-		["Close an aside or wait for it to expire"],
-		"the panel was gone, so the door is the only surface left to state it",
+		[
+			asideOffPanelRefusal(
+				"a question",
+				new DesktopControlError(422, "Close an aside or wait for it to expire"),
+			),
+		],
+		"the panel was gone, so the door is the only surface left to state it — and the only one that can still name the question",
 	);
 
 	reset();
@@ -1310,4 +1384,420 @@ test("a refusal after the panel closed is reported by the door, and only then", 
 		read("src/renderer/src/features/chat/components/chat-page.tsx"),
 		RE_PAGE_REPORTS_UNCARRIED,
 	);
+});
+
+/* ------------------------------------------- the panel's failures (round 4) */
+
+/*
+ * A REFUSED ASK MUST NOT POISON THE PANEL IT WAS ASKED IN (UX round 1, U1).
+ *
+ * The owner DROPS the entry of an ask it refused — a question with no answer is
+ * neither continuable nor adoptable — and it refuses a continuation whose prefix it
+ * no longer holds with 409 "This aside is no longer available". The client named
+ * the LAST turn as its prefix, so after one refused question every further question
+ * in that panel 409d without a model request at all, while the refusal's own
+ * sentence told the user to ask again. This drives the real `askAside` against a
+ * transport that refuses one question, and reads the prefix off the request it
+ * records: the last ANSWERED turn's id, or none at all when nothing was answered.
+ */
+test("a follow-up continues from the last ANSWERED turn, and a fresh ask from nothing", async () => {
+	reset();
+	handler = async (request) =>
+		request.text === "refused"
+			? Promise.reject(
+					new DesktopControlError(409, "This aside is no longer available"),
+				)
+			: {
+					data: {
+						aside_id: request.requestId,
+						text: "the answer",
+						off_record: true,
+					},
+				};
+	const first = await askAside(SESSION, "answered");
+	// A fresh ask names no prefix: it opens the exchange rather than continuing it.
+	assert.equal(calls[0].asideId, undefined);
+	await assert.rejects(() => askAside(SESSION, "refused"));
+	/*
+	 * The store holds BOTH turns — the refused question stays on the panel with its
+	 * refusal on it — so the last turn is the refused one, and that is the id the
+	 * pre-fix client handed back.
+	 */
+	const state = () => useAsideStore.getState();
+	assert.equal(previousAsideId(state(), SESSION), calls[1].requestId);
+	assert.equal(lastAnsweredAsideId(state(), SESSION), first);
+	await askAside(SESSION, "after the refusal");
+	assert.equal(
+		calls[2].asideId,
+		first,
+		"the continuation names the last answered turn, which the owner still holds",
+	);
+
+	/*
+	 * AND NOTHING ANSWERED MEANS NOTHING TO CONTINUE: the owner has already dropped
+	 * the refused entry, so a prefix would be naming an id it does not hold. This is
+	 * the arm that makes "ask again" true on the panel the refusal is printed on.
+	 */
+	reset();
+	handler = async () =>
+		Promise.reject(
+			new DesktopControlError(409, "This aside is no longer available"),
+		);
+	await assert.rejects(() => askAside(SESSION, "one"));
+	await assert.rejects(() => askAside(SESSION, "two"));
+	assert.equal(lastAnsweredAsideId(state(), SESSION), undefined);
+	assert.equal(calls[1].asideId, undefined);
+});
+
+/*
+ * A REFUSED CONTINUATION IS THE ONE REFUSAL THE PANEL NEEDS HELP WITH (U1).
+ *
+ * With the prefix rule above, a continuation is refused only when the exchange it
+ * names is genuinely gone, and the owner's own sentence ("ask again") is then advice
+ * that cannot work from that panel. The escape that does work is Escape and a fresh
+ * `/btw`, so it is stated with the refusal — and stated ONLY there, because a fresh
+ * ask opens a clean entry and printing an escape hatch over a panel that had already
+ * recovered by itself would send the user away from it.
+ */
+test("a refused continuation is told the panel's own way out, and a fresh refusal is not", async () => {
+	reset();
+	handler = async (request) =>
+		request.text === "second"
+			? Promise.reject(
+					new DesktopControlError(409, "This aside is no longer available"),
+				)
+			: {
+					data: {
+						aside_id: request.requestId,
+						text: "the answer",
+						off_record: true,
+					},
+				};
+	await askAside(SESSION, "first");
+	await assert.rejects(() => askAside(SESSION, "second"));
+	const continued = useAsideStore.getState().streams[calls[1].requestId];
+	assert.equal(
+		continued.error,
+		`This aside is no longer available ${ASIDE_CONTINUATION_ESCAPE}`,
+	);
+
+	reset();
+	handler = async () =>
+		Promise.reject(
+			new DesktopControlError(409, "This aside is no longer available"),
+		);
+	await assert.rejects(() => askAside(SESSION, "only"));
+	const fresh = useAsideStore.getState().streams[calls[0].requestId];
+	assert.equal(
+		fresh.error,
+		"This aside is no longer available",
+		"a fresh refusal needs no escape hatch: the next ask starts a clean entry",
+	);
+	assert.equal(
+		asidePanelRefusal(new DesktopControlError(409, "gone"), false),
+		"gone",
+	); // The panel keeps the owner's own sentence, and nothing else.
+	assert.equal(
+		asidePanelRefusal(new DesktopControlError(409, "gone"), true),
+		`gone ${ASIDE_CONTINUATION_ESCAPE}`,
+	);
+});
+
+/*
+ * A FOLLOW-UP SENT WHILE THE ANSWER STREAMS IS REFUSED IN THE APP, WITH THE TEXT
+ * KEPT (UX round 1, U2). The composer is typable on purpose while an answer
+ * streams, so this is the path the feature itself invites: the box emptied, the
+ * question was painted, and 800ms later it read "no longer available" — the owner
+ * refuses a continuation of an entry it is still running.
+ *
+ * The rule is a predicate so both doors apply the SAME one, and the two doors'
+ * application of it is asserted from their source (this file's header: neither can
+ * be mounted here). A failure is deliberately NOT busy: its entry was dropped, so
+ * the next question starts a clean one — a gate here would be the dead end U1 is
+ * about.
+ */
+test("an ask is refused in the app while the exchange is still answering", () => {
+	reset();
+	const store = () => useAsideStore.getState();
+	assert.equal(
+		asideAskBlockedReason(store(), SESSION),
+		null,
+		"no exchange: nothing to wait for",
+	);
+	store().beginAsk(SESSION, "turn-1", "asked");
+	assert.equal(asideAskBlockedReason(store(), SESSION), ASIDE_ASK_BUSY);
+	store().settleAside("turn-1", "answered");
+	assert.equal(asideAskBlockedReason(store(), SESSION), null);
+	store().beginAsk(SESSION, "turn-2", "asked again");
+	store().failAside("turn-2", "no answer");
+	assert.equal(
+		asideAskBlockedReason(store(), SESSION),
+		null,
+		"a failed turn is not busy, or the panel would have no way back in",
+	);
+	assert.equal(asideAskBlockedReason(store(), OTHER_SESSION), null);
+
+	const page = read("src/renderer/src/features/chat/components/chat-page.tsx");
+	const dispatch = read(
+		"src/renderer/src/features/chat/components/slash-dispatch.ts",
+	);
+	assert.match(page, RE_PAGE_ASIDE_BUSY_GATE);
+	assert.match(dispatch, RE_DISPATCH_ASIDE_BUSY_GATE);
+	// The text stays with the user: `false` is the composer's refusal-before-
+	// admission, and `retained` is the dispatcher's own word for the same outcome.
+	assert.match(page, /setSendError\(busy\);\s*return false;/);
+	assert.match(dispatch, /note\(busy, true\);\s*return "retained";/);
+});
+
+/*
+ * AN APPENDED TURN IS BROUGHT INTO THE REGION'S VIEW, ONCE (design round 2, D6).
+ *
+ * A follow-up asked while the exchange overflows was painted below the region's
+ * fold — measured 88px under it at wide, 687px at narrow — so the question, its
+ * thinking line and the answer that followed were all invisible and the ask looked
+ * as though it had done nothing. The scroll is one measurement against the region's
+ * own rectangles, so it is a pure function here; the effect that calls it once per
+ * appended turn, and the region's own focusability, are asserted from the panel's
+ * source.
+ */
+test("an appended turn is scrolled into the region's view, once", () => {
+	// A question below the fold, in the shape the finding measured at wide: the
+	// region is at its top and the new question sits 88px under it.
+	assert.equal(
+		asideScrollToTurn({
+			regionTop: 100,
+			turnTop: 572,
+			scrollTop: 0,
+			scrollHeight: 355,
+			clientHeight: 224,
+		}),
+		131,
+		"the region scrolls to its own end, which is all it can reach",
+	);
+	// A question already at the region's top does not move a reader: an append that
+	// lands where the region already is costs nothing.
+	assert.equal(
+		asideScrollToTurn({
+			regionTop: 100,
+			turnTop: 100,
+			scrollTop: 40,
+			scrollHeight: 500,
+			clientHeight: 224,
+		}),
+		40,
+	);
+	// The region's own end is the ceiling, wherever the question sits below it.
+	assert.equal(
+		asideScrollToTurn({
+			regionTop: 100,
+			turnTop: 600,
+			scrollTop: 0,
+			scrollHeight: 355,
+			clientHeight: 224,
+		}),
+		131,
+	);
+	// Nothing to scroll stays at the top rather than going negative.
+	assert.equal(
+		asideScrollToTurn({
+			regionTop: 0,
+			turnTop: 300,
+			scrollTop: 0,
+			scrollHeight: 200,
+			clientHeight: 224,
+		}),
+		0,
+	);
+	// A question ABOVE the fold — the transcript is re-read, the turns repaint —
+	// scrolls up to it rather than only ever downward.
+	assert.equal(
+		asideScrollToTurn({
+			regionTop: 300,
+			turnTop: 200,
+			scrollTop: 120,
+			scrollHeight: 900,
+			clientHeight: 224,
+		}),
+		20,
+	);
+
+	const panel = read(
+		"src/renderer/src/features/chat/components/aside-panel.tsx",
+	);
+	assert.match(panel, RE_PANEL_SCROLLS_TO_TURN);
+	// ONCE: the effect returns early for a turn it has already honoured, which is
+	// what keeps this from becoming a pin-to-bottom on every chunk.
+	assert.match(panel, RE_PANEL_SCROLLS_ONCE);
+	assert.match(panel, RE_PANEL_REGION_FOCUSABLE);
+});
+
+/*
+ * AN OFF-PANEL REFUSAL QUOTES ITS QUESTION, IN ONE SENTENCE FOR BOTH DOORS (UX
+ * round 1, U4 with design round 2, D8).
+ *
+ * The two surfaces that exist because the panel does not were printing the owner's
+ * sentence alone, which names no question — and the sentence itself ends in "ask
+ * again" — while the question had left the screen with the panel (the `/btw` door
+ * consumed the draft at the press). It is one composition so the composer's error
+ * line and the dispatcher's transcript note cannot drift into two accounts of one
+ * refusal, and the composer's own half of U4 rides the same push: without a code of
+ * its own, the alert appended "Your message is still in the composer. Send it
+ * again." to a sentence about a question that is in neither.
+ */
+test("an off-panel refusal quotes the question, and the composer drops the false retry hint", () => {
+	assert.equal(
+		asideOffPanelRefusal(
+			"why is the budget capped?",
+			new DesktopControlError(409, "No answer was produced: ask again."),
+		),
+		"Your aside “why is the budget capped?” got no answer: No answer was produced: ask again.",
+	);
+	// A question long enough to wrap the line is cut, and the quote always closes:
+	// the quote marks and the ellipsis are three glyphs around a 59-character body.
+	const long = asideQuotedQuestion("q".repeat(200));
+	assert.equal(long.length, 62);
+	assert.equal(long.endsWith("…”"), true);
+	// Whitespace is collapsed for the same reason: the sentence is one line.
+	assert.equal(asideQuotedQuestion("  a\n\nquestion  "), "“a question”");
+
+	const page = read("src/renderer/src/features/chat/components/chat-page.tsx");
+	assert.match(page, RE_PAGE_REPORTS_UNCARRIED);
+	const store = read(
+		"src/renderer/src/shared/store/canonical-sessions-store.ts",
+	);
+	assert.match(store, /code === ASIDE_NOT_ANSWERED_CODE \|\|/);
+});
+
+/*
+ * THE COMPOSER'S LINE IS RETIRED BY EITHER DOOR, AND FOCUS COMES BACK WITH THE PANEL
+ * (design round 2, D7; UX round 1, U6).
+ *
+ * D7: the line outlived the aside it described and sat 40px above a fresh panel that
+ * was still thinking, because only a text edit or a thread send cleared it. U6: Add
+ * to conversation, Close and Escape all unmount the control the user was standing
+ * on, so focus fell to `<body>` and the next Tab started from the top of the page —
+ * where Escape from the box already returned to the composer. Both are wiring on
+ * components this harness cannot mount, so both are read from their source.
+ */
+test("a new aside retires the composer's line, and the panel hands focus back", () => {
+	const page = read("src/renderer/src/features/chat/components/chat-page.tsx");
+	const dispatch = read(
+		"src/renderer/src/features/chat/components/slash-dispatch.ts",
+	);
+	const panel = read(
+		"src/renderer/src/features/chat/components/aside-panel.tsx",
+	);
+	assert.match(page, RE_PAGE_CLEARS_ASIDE_REFUSAL);
+	assert.match(dispatch, RE_DISPATCH_CLEARS_ASIDE_REFUSAL);
+	// The panel's own ask retires it too, before the ask leaves.
+	assert.match(page, /setSendError\(null\);\s*setSendErrorCode\(undefined\);/);
+	/*
+	 * AND THE FOCUS RETURNS FROM ALL THREE CONTROLS: the close control, the panel's
+	 * Escape, and the adopt (after it settles, whether it adopted or was refused).
+	 * A count rather than three spellings: the point is that no close path was left
+	 * without the return.
+	 */
+	assert.equal(
+		[...panel.matchAll(RE_PANEL_RETURNS_FOCUS)].length,
+		3,
+		"close, Escape and adopt all hand focus to the composer",
+	);
+	assert.match(
+		read("src/renderer/src/features/chat/components/message-input.tsx"),
+		/onReturnFocus=\{\(\) => textareaRef\.current\?\.focus\(\)\}/,
+	);
+});
+
+/*
+ * THE PANEL'S ACCESSIBLE CUES (UX round 1, U5, U8, U9 and U10).
+ *
+ * U9: the disabled adopt control's reason was a sibling paragraph bound to it by
+ * nothing, so a reader heard "dimmed" with no explanation. U5: with the panel up,
+ * the only routing cue was the placeholder, which is gone on the first keystroke, so
+ * the send control now names the destination it reaches. U8: `⌘+F` means Find
+ * everywhere else in this app, so the cap carries the verb. U10: the live region
+ * announced the phase only, never the answer, so a reader had to leave the composer
+ * and navigate in to hear one.
+ */
+test("the panel names its chord's verb, describes its blocked control, and announces the answer", () => {
+	const panel = read(
+		"src/renderer/src/features/chat/components/aside-panel.tsx",
+	);
+	const input = read(
+		"src/renderer/src/features/chat/components/message-input.tsx",
+	);
+	assert.match(panel, RE_PANEL_DESCRIBED_BY);
+	assert.match(panel, RE_PANEL_REASON_ID);
+	assert.match(input, RE_SEND_VERB);
+	assert.match(panel, /content="Add the aside to the conversation"/);
+
+	// The announcement: one sentence per phase, and the answer ONCE, at settle.
+	assert.equal(asideAnnouncement(undefined), null);
+	assert.equal(asideAnnouncement(beginAsideStream()), "Asking the aside");
+	assert.equal(
+		asideAnnouncement(failedAsideStream(undefined, "no answer")),
+		"The aside was not answered",
+	);
+	assert.equal(
+		asideAnnouncement(
+			settledAsideStream("The budget counts failures. It resets on success."),
+		),
+		"The aside answered: The budget counts failures.",
+	);
+	// A settled answer with no sentence break is bounded rather than read whole.
+	const longAnswer =
+		asideAnnouncement(settledAsideStream("w".repeat(400))) ?? "";
+	assert.equal(longAnswer.length, "The aside answered: ".length + 141);
+	assert.equal(longAnswer.endsWith("…"), true);
+	assert.equal(
+		asideAnnouncement(settledAsideStream("   ")),
+		"The aside answered",
+	);
+});
+
+/*
+ * THE CEILING COUNTS THE QUESTION AND ITS GAP (design round 2, D10).
+ *
+ * The cap budgeted answer lines only, while the region also holds the question's
+ * line box (19.5px at wide) and the 4px gap under it — so an answer of nine complete
+ * lines measured `scrollHeight` 225 against `clientHeight` 224 and the exchange grew
+ * a full-height scrollbar that scrolled 1px and cut nothing. The two terms are in
+ * the expression, and D1's whole-line property is what they protect: the budget left
+ * over is still a whole number of the answer's line boxes.
+ */
+test("the ceiling counts the question's line and the gap under it", () => {
+	const panel = read(
+		"src/renderer/src/features/chat/components/aside-panel.tsx",
+	);
+	assert.match(panel, RE_PANEL_CAP_COUNTS_QUESTION);
+	assert.match(panel, /const ASIDE_QUESTION_LINE_HEIGHT = 1\.5;/);
+	assert.match(panel, /const ASIDE_TURN_GAP_REM = "0\.25rem";/);
+});
+
+/*
+ * AN ASIDE'S ANSWER RETIRES THE BOX'S PAYLOAD IN ITS OWN COMMIT (agent review round
+ * 4, F12 — the regression pin F11 was missing).
+ *
+ * An off-record ask empties the box at the press and is answered seconds later, so
+ * the retirement request is written in a commit where `newMessage` never changes; a
+ * ref alone never re-runs an effect, which is how a consumed credential value stayed
+ * in memory until the next edit. The trigger dependency is what fixes it, and the
+ * reviewer's mutation (dropping it) left every other test in this file green — so
+ * the bump, the dependency and the ABSENCE of the old dependency list are all
+ * asserted here.
+ */
+test("the retirement request is a trigger the effect reads", () => {
+	const input = read(
+		"src/renderer/src/features/chat/components/message-input.tsx",
+	);
+	assert.match(input, RE_RETIRE_REQUEST_BUMP);
+	assert.match(input, RE_RETIRE_REQUEST_TRIGGER);
+	/*
+	 * The bump is counted in the file the effect reads its dependencies from, and the
+	 * pair above is the only mention of the trigger as a dependency — so a partial
+	 * revert (the bump kept, the dependency dropped) cannot satisfy both sides. No
+	 * negative assertion on the OLD list is possible: `}, [newMessage]);` is a
+	 * legitimate dependency list on another effect of this same file.
+	 */
+	assert.equal([...input.matchAll(/newMessage, retireRequest/g)].length, 1);
 });

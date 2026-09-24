@@ -19,6 +19,7 @@ import { useWarmSession } from "@shared/hooks/use-warm-session";
 import { cn } from "@shared/lib/utils";
 import { useAsideStore } from "@shared/store/aside-store";
 import {
+	ASIDE_NOT_ANSWERED_CODE,
 	SEND_UNCONFIRMED_MESSAGE,
 	SESSION_UNVALIDATED_CODE,
 	SESSION_UNVALIDATED_MESSAGE,
@@ -47,7 +48,11 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import { pairingHasRemedy } from "../../../../../shared/backend-status";
 import { DESKTOP_MESSAGE_BUDGET_BYTES } from "../../../../../shared/desktop-contract";
-import { askAside, reportUncarriedAsideRefusal } from "../aside";
+import {
+	asideAskBlockedReason,
+	askAside,
+	reportUncarriedAsideRefusal,
+} from "../aside";
 import {
 	type AnswerOutcome,
 	type SendLock,
@@ -890,6 +895,17 @@ function SessionPanel({
 		 * surfaces.
 		 */
 		moveReady: !draftKey,
+		/*
+		 * The composer's line is retired by the door that starts an aside, whichever
+		 * door that is (design round 2, D7). The `send` branch above retires it itself
+		 * when the composer asks; this is the `/btw` door's half of the same rule, and
+		 * the dispatcher cannot reach the setter on its own. A new attempt makes every
+		 * line on that surface stale, which is the whole scope of the clear.
+		 */
+		clearAsideRefusal: () => {
+			setSendError(null);
+			setSendErrorCode(undefined);
+		},
 
 		/*
 		 * The pane's own selection, handed to the dispatcher only where a pick can
@@ -1202,6 +1218,23 @@ function SessionPanel({
 					return false;
 				}
 				/*
+				 * A FOLLOW-UP WHILE THE EXCHANGE IS STILL ANSWERING IS REFUSED HERE, WHILE THE
+				 * QUESTION IS STILL IN THE BOX (UX round 1, U2). The composer is deliberately
+				 * typable while an answer streams, and the box's placeholder invites the next
+				 * question — so this press used to empty the box, paint the question and then
+				 * fail 800ms later with "This aside is no longer available", because the owner
+				 * refuses a continuation of an entry it is still running. `false` is the
+				 * composer's own refusal-before-admission answer: the text stays where it is,
+				 * and the sentence above says what to wait for. The gate is the same one the
+				 * `/btw` door applies, from one predicate, so the two doors cannot disagree
+				 * about when a question may leave.
+				 */
+				const busy = asideAskBlockedReason(useAsideStore.getState(), sessionId);
+				if (busy) {
+					setSendError(busy);
+					return false;
+				}
+				/*
 				 * THE SUBSCRIPTION TRAVELS WITH THE ASK. The stream is read by every
 				 * attached viewer of this session, so an owner that routes `aside_delta`
 				 * to the subscription that asked — rather than broadcasting it — needs to
@@ -1219,6 +1252,16 @@ function SessionPanel({
 				 * `askAside`'s own `subscriptionId` parameter — this branch is one of the
 				 * two places the id is chosen, and it chooses the only value there is.
 				 */
+				/*
+				 * A NEW ASK RETIRES THE LINE THAT DESCRIBED THE LAST ONE (design round 2,
+				 * D7). The composer's aside refusal sat above a panel that had moved on — a
+				 * fresh `/btw` still thinking, a new question in flight — and read as the
+				 * verdict on THEM. Every line on this surface is about the last attempt, so a
+				 * new attempt retires it; the alternative (matching the sentence to the ask it
+				 * came from) is a bookkeeping the line does not need.
+				 */
+				setSendError(null);
+				setSendErrorCode(undefined);
 				const ask = askAside(
 					sessionId,
 					content,
@@ -1229,10 +1272,20 @@ function SessionPanel({
 				 * question left the screen with it (review round 2, F7). The composer's
 				 * error line is then the only surface that still knows the ask happened,
 				 * so it says what became of it. Called in the same tick `askAside` returned
-				 * in, which is what lets the helper name this ask's own turn; the rule, and
-				 * why the `/btw` command door shares it, is on the helper.
+				 * in, which is what lets the helper name this ask's own turn and its
+				 * question; the rule, and why the `/btw` command door shares it, is on the
+				 * helper.
+				 *
+				 * THE CODE GOES WITH THE SENTENCE, and it is what keeps the false half of the
+				 * error contract off this refusal: the box is empty by now (the press handed
+				 * it back) and whatever the user types next is not the question that failed,
+				 * so `ASIDE_NOT_ANSWERED_CODE` withholds the generic "Your message is still in
+				 * the composer. Send it again." (UX round 1, U4).
 				 */
-				reportUncarriedAsideRefusal(ask, sessionId, setSendError);
+				reportUncarriedAsideRefusal(ask, sessionId, (sentence) => {
+					setSendError(sentence);
+					setSendErrorCode(ASIDE_NOT_ANSWERED_CODE);
+				});
 				/*
 				 * NOT AWAITED, so the box is handed back in the press's own commit (F1);
 				 * the promise is nested rather than returned for the same reason (see

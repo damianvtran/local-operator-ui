@@ -1,14 +1,17 @@
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { Button } from "@shared/components/ui/button";
+import { Tooltip } from "@shared/components/ui/tooltip";
 import { cn } from "@shared/lib/utils";
 import { type AsideStream, useAsideStore } from "@shared/store/aside-store";
 import { X } from "lucide-react";
-import { type FC, useId } from "react";
+import { type FC, useEffect, useId, useRef } from "react";
 import {
 	adoptAside,
 	asideAdoptBlockedReason,
 	asideAdoptCap,
 	asideAdoptReady,
+	asideAnnouncement,
+	asideScrollToTurn,
 	closeAside,
 } from "../aside";
 import { CHAT_MEASURE } from "../chat-measure";
@@ -53,6 +56,19 @@ export type AsidePanelProps = {
 	 */
 	sessionStreaming: boolean;
 	isSmallView?: boolean;
+	/**
+	 * Put the caret back in the composer, after this panel took it away.
+	 *
+	 * WHY THE PANEL CANNOT DO THIS ITSELF (UX round 1, U6). Every control here
+	 * unmounts the panel it sits in — Add to conversation, Close, and Escape from
+	 * either control — so the element the user was standing on leaves the document
+	 * and `document.activeElement` falls to `<body>`. A keyboard or screen-reader
+	 * user then starts their next Tab from the top of the page, whereas Escape from
+	 * the box already returns them to the composer: the same gesture ending in two
+	 * different places, which is what made this a finding rather than a preference.
+	 * The composer owns its own textarea, so the focus call is handed in.
+	 */
+	onReturnFocus?: () => void;
 };
 
 /**
@@ -68,6 +84,18 @@ const ASIDE_ANSWER_LINE_HEIGHT = 1.6;
 
 /** The whole number of the answer's line boxes the exchange shows before it scrolls. */
 const ASIDE_EXCHANGE_LINES = 10;
+
+/**
+ * The QUESTION's own line box, and the gap under it — the ceiling's other two terms
+ * (design round 2, D10).
+ *
+ * `1.5` is the leading `--text-body-sm` carries (`--text-body-sm--line-height` in
+ * `styles/index.css`), and the question is painted at that step at both window
+ * sizes. `gap-1` is the 4px the turn's own `flex flex-col` puts between the question
+ * and its answer.
+ */
+const ASIDE_QUESTION_LINE_HEIGHT = 1.5;
+const ASIDE_TURN_GAP_REM = "0.25rem";
 
 /** The answer's size and leading, from the step it is painted at. */
 const asideAnswerType = (
@@ -96,9 +124,24 @@ const asideAnswerType = (
  * `overflow` of its own: the composer band must carry neither (the slash popup
  * is an unportaled child of it), so each growable part of the band caps itself —
  * the shape the composer's attachment strip and textarea already use.
+ *
+ * IT COUNTS THE QUESTION AND ITS GAP TOO (design round 2, D10). The region holds
+ * the question and the 4px under it as well as the answer, and a ceiling that
+ * budgeted only answer lines therefore overflowed by exactly that much: an answer
+ * of nine complete lines measured `scrollHeight` 225 against `clientHeight` 224, so
+ * the exchange grew a full-height scrollbar that scrolled 1px and cut nothing — a
+ * scrollbar as a rounding artefact. Counting one question line and the gap lands
+ * the boundary exactly where D1 needs it: the budget left for the answer is a whole
+ * number of its line boxes, so the last visible row is a complete line and no
+ * pixel of an eleventh line is shown. The two terms are one line each and stay
+ * correct for the state D1 is about (one long answer under its question); a longer
+ * exchange exceeds the ceiling many times over and is scrolled deliberately, which
+ * is what the region is for.
  */
-const asideExchangeCap = (isSmallView: boolean): string =>
-	`calc(${asideAnswerType(isSmallView).fontSize} * ${ASIDE_ANSWER_LINE_HEIGHT} * ${ASIDE_EXCHANGE_LINES})`;
+const asideExchangeCap = (isSmallView: boolean): string => {
+	const answer = asideAnswerType(isSmallView);
+	return `calc(${answer.fontSize} * ${ASIDE_ANSWER_LINE_HEIGHT} * ${ASIDE_EXCHANGE_LINES} + var(--text-body-sm) * ${ASIDE_QUESTION_LINE_HEIGHT} + ${ASIDE_TURN_GAP_REM})`;
+};
 
 /**
  * One turn's answer, in the state it is in.
@@ -156,12 +199,42 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 	sessionId,
 	sessionStreaming,
 	isSmallView = false,
+	onReturnFocus,
 }) => {
 	const attachment = useAsideStore(
 		(state) => state.attached[sessionId] ?? null,
 	);
 	const streams = useAsideStore((state) => state.streams);
 	const titleId = useId();
+	/** The blocked reason's own id, so the disabled control can name it (U9). */
+	const blockedId = useId();
+	/*
+	 * The two nodes the append-scroll needs, and the turn it last honoured.
+	 *
+	 * The ref on the region and the one on the newest turn are read together, in an
+	 * effect keyed on the newest turn's ID — which is what makes this ONE scroll per
+	 * appended question rather than a follow that re-pins the region on every chunk
+	 * and fights a user reading above (below).
+	 */
+	const exchangeRef = useRef<HTMLDivElement>(null);
+	const newestTurnRef = useRef<HTMLDivElement>(null);
+	const scrolledTurn = useRef<string | null>(null);
+	const lastTurnId = attachment?.turns.at(-1)?.asideId ?? null;
+	useEffect(() => {
+		if (!lastTurnId) return;
+		if (scrolledTurn.current === lastTurnId) return;
+		const region = exchangeRef.current;
+		const turn = newestTurnRef.current;
+		if (!region || !turn) return;
+		scrolledTurn.current = lastTurnId;
+		region.scrollTop = asideScrollToTurn({
+			regionTop: region.getBoundingClientRect().top,
+			turnTop: turn.getBoundingClientRect().top,
+			scrollTop: region.scrollTop,
+			scrollHeight: region.scrollHeight,
+			clientHeight: region.clientHeight,
+		});
+	}, [lastTurnId]);
 	// Absent rather than conditional-in-the-parent at this level too: the panel's
 	// own store subscription is what makes it appear, and a caller that removed it
 	// must remove the attachment (or the panel would paint over the composer).
@@ -185,9 +258,12 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 	 * arrives many times per answer, a `polite` region is not interruptible, and
 	 * the reader would be hearing the answer's tail long after it finished.
 	 *
-	 * SO THE ANNOUNCEMENT IS A FUNCTION OF THE TWO FLAGS AND NEVER OF THE TEXT,
-	 * which is also what keeps it from re-announcing: React re-renders the panel on
-	 * every chunk, and the region's CONTENT does not change until the phase does.
+	 * SO THE ANNOUNCEMENT IS A FUNCTION OF THE PHASE AND NOT OF THE STREAMING TEXT
+	 * (and since UX round 1's U10, of the answer ONCE, at the moment it settles -
+	 * see `asideAnnouncement`, which is where the sentence and its bound live). React
+	 * re-renders the panel on every chunk, and the region's CONTENT changes only on
+	 * the phase edges and once at settle, so the reader hears one phase sentence per
+	 * phase and one answer, never an announcement per chunk.
 	 * `streaming` covers the thinking state and the streaming one together, because
 	 * they are one phase to a listener: nothing had arrived, and text is arriving.
 	 *
@@ -196,14 +272,7 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 	 * nothing yet to wait for — whereas the states below are the ones a reader
 	 * cannot see arrive.
 	 */
-	const announcement =
-		stream === undefined
-			? null
-			: stream.error !== null
-				? "The aside was not answered"
-				: stream.streaming
-					? "Asking the aside"
-					: "The aside answered";
+	const announcement = asideAnnouncement(stream);
 	// `navigator.platform`, derived at the call site exactly as `chat-sidebar.tsx`
 	// and `chat-header.tsx` do it: the cap is a promise about a key, and an
 	// awaited platform would flash the wrong one.
@@ -241,6 +310,14 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 				if (event.key !== "Escape") return;
 				event.preventDefault();
 				closeAside(sessionId);
+				/*
+				 * AND THE CARET GOES BACK TO THE BOX (UX round 1, U6). Escape from the
+				 * composer's own field already leaves focus there; Escape from INSIDE this
+				 * panel takes the pressed control away with the panel, so the alternative
+				 * is `document.activeElement === <body>` and a next Tab from the top of the
+				 * page. The two Escapes now end in the same place.
+				 */
+				onReturnFocus?.();
 			}}
 			className={cn(
 				CHAT_MEASURE,
@@ -278,7 +355,12 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 					size="icon-sm"
 					type="button"
 					aria-label="Close the aside"
-					onClick={() => closeAside(sessionId)}
+					onClick={() => {
+						closeAside(sessionId);
+						// The panel unmounts this control, so focus would fall to `<body>`:
+						// the same U6 return the panel's Escape makes.
+						onReturnFocus?.();
+					}}
 				>
 					<X aria-hidden="true" />
 				</Button>
@@ -303,6 +385,24 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 			 * a whole number of the answer's own line boxes rather than a round height.
 			 */}
 			<div
+				ref={exchangeRef}
+				/*
+				 * FOCUSABLE, AND NAMED (UX round 1, U7). The region is the thing that
+				 * scrolls whenever an exchange outgrows its ceiling, and it was not in the
+				 * Tab walk at all: a keyboard user could not reach the overflow they could
+				 * see, and the arrow and PageUp keys had nowhere to scroll. `tabIndex={0}`
+				 * puts it in the walk; the label is what a reader hears on landing there —
+				 * a named scroller rather than an anonymous box inside the panel's region.
+				 */
+				/*
+				 * THE TAB STOP IS THE FIX (UX round 1, U7): a labelled scroll container with
+				 * no focusable content of its own has to be focusable itself, or a keyboard
+				 * user cannot reach the exchange past the ceiling at all. Same reading as the
+				 * goal body in `composer-status-row.tsx`.
+				 */
+				// biome-ignore lint/a11y/noNoninteractiveTabindex: the stop IS the remedy - the region scrolls and nothing inside it is focusable.
+				tabIndex={0}
+				aria-label="The aside exchange"
 				className="flex flex-col gap-3 overflow-y-auto"
 				style={{ maxHeight: asideExchangeCap(isSmallView) }}
 			>
@@ -312,7 +412,11 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 					</p>
 				) : (
 					attachment.turns.map((turn) => (
-						<div key={turn.asideId} className="flex flex-col gap-1">
+						<div
+							key={turn.asideId}
+							ref={turn.asideId === lastTurnId ? newestTurnRef : undefined}
+							className="flex flex-col gap-1"
+						>
 							{/*
 							 * The question is quieter than the answer on purpose, and the
 							 * label is `sr-only` because the ink step already says it to a
@@ -338,19 +442,37 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 					 * `secondary`, matching the composer's own secondary controls: the
 					 * adopt is a deliberate, occasional act beside a surface the user is
 					 * typing in, not this panel's primary action.
+					 *
+					 * `aria-describedby` POINTS AT THE REASON (UX round 1, U9). The control is
+					 * reachable while it is disabled, and the reason was a sibling paragraph
+					 * associated with it by nothing: a reader landed on it and heard "dimmed"
+					 * with no explanation, which is the same silence the blocked control's own
+					 * doc argues against on screen. The association exists only while the reason
+					 * line does, because an id that resolves to nothing is worse than none.
 					 */}
 					<Button
 						variant="secondary"
 						size="sm"
 						type="button"
 						disabled={!ready}
+						aria-describedby={blocked !== null ? blockedId : undefined}
 						onClick={() => {
-							void adoptAside(sessionId).catch(() => {
-								// The refusal is already on the panel (`adoptAside` writes it
-								// through `setAsideNotice`), and this call site has nothing to add
-								// to it — a second catch that reported anything would be the toast
-								// this design deliberately does not use.
-							});
+							void adoptAside(sessionId)
+								.catch(() => {
+									// The refusal is already on the panel (`adoptAside` writes it
+									// through `setAsideNotice`), and this call site has nothing to add
+									// to it — a second catch that reported anything would be the toast
+									// this design deliberately does not use.
+								})
+								/*
+								 * AFTER THE ADOPT, WHETHER IT SUCCEEDED OR WAS REFUSED (UX round 1,
+								 * U6). A successful adopt detaches the panel, unmounting this control
+								 * and dropping focus to `<body>`; a refused one leaves the panel up with
+								 * its refusal on it, and the composer is where the user can still act.
+								 * Both outcomes leave the caret in the box, which is where Escape from
+								 * the box already leaves it.
+								 */
+								.finally(() => onReturnFocus?.());
 						}}
 					>
 						Add to conversation
@@ -359,8 +481,20 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 					 * The chord, advertised rather than hidden: a keyboard-only user must
 					 * be able to find it, and the cap is the same `KeyboardShortcut` idiom
 					 * the inline editor's footer and the sidebar's New chat row use.
+					 *
+					 * AND NAMED, because `⌘+F` means FIND everywhere else — including this
+					 * app's own canvas editor — while here it adds the exchange (UX round 1,
+					 * U8). The CHORD is kept rather than moved: it is the TUI's own key for
+					 * this gesture (`^f` folds an open aside into the chat, which is where
+					 * `asideAdoptChord` and its comment come from), and one verb with two
+					 * keys across the two hosts is better than two. What was missing was the
+					 * verb, and the label is where a cap can carry it.
 					 */}
-					<KeyboardShortcut shortcut={asideAdoptCap(isMac)} />
+					<Tooltip content="Add the aside to the conversation">
+						<span>
+							<KeyboardShortcut shortcut={asideAdoptCap(isMac)} />
+						</span>
+					</Tooltip>
 				</div>
 				{/*
 				 * The refusals, on the panel rather than in a toast: the TUI's own rule
@@ -369,7 +503,9 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 				 * shape), and the notice is what a failed adopt or close reported.
 				 */}
 				{blocked !== null && (
-					<p className="text-body-sm text-ink-muted">{blocked}</p>
+					<p id={blockedId} className="text-body-sm text-ink-muted">
+						{blocked}
+					</p>
 				)}
 				{attachment.notice !== null && (
 					<p role="alert" className="text-body-sm text-warning">

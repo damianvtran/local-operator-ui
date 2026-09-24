@@ -42,6 +42,7 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+import { useAsideStore } from "@shared/store/aside-store";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
 	PANEL_REQUEST_TTL_MS,
@@ -54,6 +55,7 @@ import { v4 as uuidv4 } from "uuid";
 import type { NativeDesktopAction } from "../../../../../shared/desktop-control-contract";
 import type { DesktopCommandReceipt } from "../../../../../shared/desktop-session-contract";
 import {
+	asideAskBlockedReason,
 	askAside,
 	openAsidePanel,
 	reportUncarriedAsideRefusal,
@@ -130,6 +132,19 @@ type SlashDispatchOptions = {
 	focusCwdChip?: () => void;
 	/** Shares the composer's request latch, receipt and eval-history state. */
 	moveSession: (path: string) => Promise<MoveCommitOutcome>;
+	/**
+	 * Retire the composer's own aside refusal, which is the page's line and no part
+	 * of this dispatcher's state.
+	 *
+	 * When this door starts a new aside - a bare `/btw` attaching a panel, or
+	 * `/btw <question>` asking one - anything the composer's error line still says
+	 * about a PREVIOUS ask is stale, and it sits directly above the new panel (design
+	 * round 2, D7). The line is cleared by the surface that raises it, which is why
+	 * this is a callback rather than a store write: `chat-page.tsx` owns both the
+	 * aside refusal it renders and the ordinary send errors beside it, and only it
+	 * knows that a new attempt retires the last one.
+	 */
+	clearAsideRefusal?: () => void;
 	/**
 	 * Whether a move can be asked for on this pane AT ALL, as the chip decides it.
 	 *
@@ -270,6 +285,7 @@ export function useSlashDispatch({
 	focusCwdChip,
 	moveSession,
 	moveReady,
+	clearAsideRefusal,
 }: SlashDispatchOptions) {
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
@@ -893,7 +909,36 @@ export function useSlashDispatch({
 			 * second command is needed to say so.
 			 */
 			if (entry?.kind === "aside") {
+				/*
+				 * A NEW ASIDE RETIRES THE LINE THAT DESCRIBED THE LAST ONE (design round 2,
+				 * D7). A composer-line refusal outlived a fresh panel and sat directly above
+				 * it — measured 40px from an identical transcript note about a DIFFERENT ask —
+				 * which is D7 in one picture. The page's line is cleared by the page, because
+				 * the surface that raises a sentence is the one that knows its scope, and
+				 * this door never reached `setSendError(null)` at all: only a text edit or a
+				 * thread send cleared it, so a refusal about an aside the user had already
+				 * dismissed stayed on screen while the aside was re-opened.
+				 */
+				clearAsideRefusal?.();
 				if (args) {
+					/*
+					 * A FOLLOW-UP ASKED WHILE THE EXCHANGE IS STILL ANSWERING IS REFUSED HERE, WITH
+					 * THE COMPOSER'S OWN TEXT KEPT (UX round 1, U2). `retained` is that outcome: the
+					 * press did not run, so the draft stays for the user to send when the answer
+					 * settles (see `SlashDispatchOutcome`). Without it this door emptied the box,
+					 * painted the question and then failed 800ms later — the owner refuses a
+					 * continuation of an entry it is still running. The gate is the same predicate
+					 * the composer's own send applies, so the two doors cannot disagree about when
+					 * a question may leave.
+					 */
+					const busy = asideAskBlockedReason(
+						useAsideStore.getState(),
+						sessionId,
+					);
+					if (busy) {
+						note(busy, true);
+						return "retained";
+					}
 					/*
 					 * THE PANE'S SUBSCRIPTION ID TRAVELS WITH THE ASK, on this door too.
 					 * The answer's chunks are published on the session's stream, which every
@@ -1120,6 +1165,12 @@ export function useSlashDispatch({
 			paneReady,
 			moveSession,
 			presentCwdChip,
+			/*
+			 * The page's own error line is a dependency because this door now retires it
+			 * when it starts an aside (design round 2, D7): a `dispatch` closed over a
+			 * stale setter would clear a line the page had since replaced.
+			 */
+			clearAsideRefusal,
 		],
 	);
 

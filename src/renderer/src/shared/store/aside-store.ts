@@ -156,6 +156,64 @@ export function asideTurnIsCarried(
 	return Boolean(state.streams[asideId]);
 }
 
+/**
+ * The LAST turn this session asked, question and id together.
+ *
+ * The pair rather than the id, because two rules now need the same turn and only
+ * one of them needs the id: the continuation prefix is the id, and a refusal
+ * reported off the panel quotes the QUESTION (design round 2, D8), which left the
+ * screen with the panel and cannot be recovered from anywhere else.
+ */
+export function lastAsideTurn(
+	state: Pick<AsideStore, "attached">,
+	sessionId: string,
+): AsideTurn | undefined {
+	return state.attached[sessionId]?.turns.at(-1);
+}
+
+/**
+ * The last turn's stream, which is the state of the exchange's newest answer.
+ *
+ * Read by both doors before they ask, because an ask whose continuation is still
+ * running is refused by the owner and must therefore be refused HERE, while the
+ * question is still in the composer (UX round 1, U2).
+ */
+export function lastAsideStream(
+	state: Pick<AsideStore, "attached" | "streams">,
+	sessionId: string,
+): AsideStream | undefined {
+	const last = lastAsideTurn(state, sessionId);
+	return last ? state.streams[last.asideId] : undefined;
+}
+
+/**
+ * The id of the last ANSWERED turn — the prefix a follow-up continues from.
+ *
+ * WHY NOT THE LAST TURN'S ID (UX round 1, U1). The owner DROPS the entry of an
+ * ask it refused (a question with no answer is neither continuable nor adoptable,
+ * so the readback stays clean), and it refuses a continuation whose prefix it no
+ * longer holds with 409 "This aside is no longer available". Naming the last turn
+ * therefore asked the owner about an entry it had just deleted, and every later
+ * question in that panel failed the same way — with the backend's own sentence
+ * telling the user to ask again, which then could not work.
+ *
+ * The last ANSWERED turn is both the id the owner still holds and the honest
+ * reading of "continue this exchange": a refused question contributed nothing to
+ * it. Absent when nothing in this panel was answered, which is the fresh ask the
+ * owner answers by opening a clean entry.
+ */
+export function lastAnsweredAsideId(
+	state: Pick<AsideStore, "attached" | "streams">,
+	sessionId: string,
+): string | undefined {
+	const turns = state.attached[sessionId]?.turns ?? [];
+	for (let index = turns.length - 1; index >= 0; index -= 1) {
+		const turn = turns[index];
+		if (turn && state.streams[turn.asideId]?.settled) return turn.asideId;
+	}
+	return undefined;
+}
+
 /** The state an ask opens in: in flight, nothing yet, no error. */
 export function beginAsideStream(): AsideStream {
 	return { text: "", streaming: true, settled: false, error: null };
@@ -268,17 +326,22 @@ export const useAsideStore = create<AsideStore>((set) => ({
 }));
 
 /**
- * The id of the LAST turn this session asked, which is what a follow-up hands the
- * backend as its `aside_id` prefix — and the id the composer's next ask streams
- * under.
+ * The id of the LAST turn this session asked, whatever became of it.
  *
- * Read off the store rather than threaded through callers: the continuation rule
- * is "the exchange the panel is showing", and the store is the only place that
- * knows which exchange that is.
+ * It is what a panel-state question is asked about — is the newest answer still
+ * streaming, is there anything to adopt — and NO LONGER what a follow-up hands the
+ * backend as its prefix: a refused ask's entry is dropped by the owner, so the
+ * continuation is `lastAnsweredAsideId` instead (UX round 1, U1). The two are the
+ * same id on every exchange whose last ask was answered, which is why this one
+ * remains the reading for everything that paints the panel.
+ *
+ * Read off the store rather than threaded through callers: the rule is "the
+ * exchange the panel is showing", and the store is the only place that knows which
+ * exchange that is.
  */
 export function previousAsideId(
 	state: Pick<AsideStore, "attached">,
 	sessionId: string,
 ): string | undefined {
-	return state.attached[sessionId]?.turns.at(-1)?.asideId;
+	return lastAsideTurn(state, sessionId)?.asideId;
 }

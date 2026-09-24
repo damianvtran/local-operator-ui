@@ -6230,6 +6230,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						sessionId={asideSessionId}
 						sessionStreaming={asideStreaming}
 						isSmallView={isSmallView}
+						/*
+						 * The panel's own controls take focus with them when they close it, so
+						 * the control that owns the textarea hands it back (UX round 1, U6).
+						 */
+						onReturnFocus={() => textareaRef.current?.focus()}
 					/>
 				)}
 				{/*
@@ -7328,7 +7333,19 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									) : (
 										!isRecording &&
 										!isTranscribing && (
-											<Tooltip content="Send message">
+											<Tooltip
+												content={
+													/*
+													 * THE VERB FOLLOWS THE DESTINATION (UX round 1, U5). While an aside is
+													 * attached this press asks the aside and not the conversation, and the
+													 * control said "Send message" on both — so a screen-reader user got no
+													 * routing cue at all once the placeholder, the only one there was, was
+													 * gone on the first keystroke. The label is the one cue that survives
+													 * typing, because it is attached to the control the press uses.
+													 */
+													aside !== null ? "Ask the aside" : "Send message"
+												}
+											>
 												<span>
 													<Button
 														variant="primary"
@@ -7340,7 +7357,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 															isLoading ||
 															(!newMessage.trim() && attachments.length === 0)
 														}
-														aria-label="Send message"
+														aria-label={
+															aside !== null ? "Ask the aside" : "Send message"
+														}
 													>
 														<Send aria-hidden="true" />
 													</Button>
