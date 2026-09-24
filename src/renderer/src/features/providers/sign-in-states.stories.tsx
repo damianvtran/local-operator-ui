@@ -970,6 +970,14 @@ const OPTS_NO_CATALOGUE: BridgeOptions = {
 		...row,
 		suggested_model: null,
 	})),
+	/*
+	 * AN EXPLICIT EMPTY CATALOGUE. Without it the story seeded nothing, so it rendered
+	 * against whatever the models store held -- which is persisted to localStorage, so
+	 * it photographed the PREVIOUS story's list and came out byte-identical to the
+	 * main path under a name that claims the opposite (review round 3 R3-M2). `[]` is
+	 * truthy, so the bridge seeds `isInitialized: true` with no providers.
+	 */
+	models: [],
 };
 /**
  * Step 2 where this Local Operator can list NOTHING for the provider: the step says

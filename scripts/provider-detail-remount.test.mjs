@@ -33,7 +33,14 @@ import React, { act } from "react";
 // React DOM feature-detects input events at import time, so give it a document
 // before loading it, and promote the window's own constructors: jsdom's window is
 // the DOM, but it is not the global environment the bundled component runs in.
-const bootstrapDOM = new JSDOM("<!doctype html><html><body></body></html>");
+/*
+ * The `url` is what gives this document a localStorage: jsdom withholds the whole
+ * Storage API from an about:blank one, and the models store persists through it, so
+ * a seeded catalogue threw on its first write before any assertion ran.
+ */
+const bootstrapDOM = new JSDOM("<!doctype html><html><body></body></html>", {
+	url: "http://localhost/",
+});
 for (const key of Object.getOwnPropertyNames(bootstrapDOM.window)) {
 	if (key === "window" || key === "self" || key === "globalThis") continue;
 	if (key in globalThis) continue;
@@ -46,6 +53,14 @@ for (const key of Object.getOwnPropertyNames(bootstrapDOM.window)) {
 }
 globalThis.window = bootstrapDOM.window;
 globalThis.document = bootstrapDOM.window.document;
+/*
+ * Node 22 declares a `localStorage` global that is UNDEFINED without
+ * --experimental-webstorage, so the copy loop above skips it -- the key exists in
+ * globalThis -- and zustand's persist middleware then reads an undefined storage.
+ * The document's own is the one the components expect.
+ */
+globalThis.localStorage = bootstrapDOM.window.localStorage;
+globalThis.sessionStorage = bootstrapDOM.window.sessionStorage;
 const { createRoot } = await import("react-dom/client");
 after(() => {
 	bootstrapDOM.window.close();
@@ -79,6 +94,21 @@ const CENSUS = JSON.parse(
 	readFileSync("scripts/fixtures/auth-providers-first-run.json", "utf8"),
 ).providers;
 
+/*
+ * The bridge answers `config.get` with the envelope the BACKEND sends -- and that
+ * shape is the point of a round-3 finding, not a detail: this stub used to return
+ * `{hosting, model}` flat, so the guard that was supposed to skip the UI's own
+ * default write looked at the right key on the wrong object, never matched, and
+ * silently replaced a working default on every later connect (QA round 3 Q3-2, UX
+ * round 3 U11). A stub that flattens the envelope cannot catch that.
+ */
+let configHosting = null;
+/** What a key save replies. `null` is the OLD backend: no `defaults_applied` at all. */
+let keyReply = null;
+/** Every op the panel asked main for, with its payload, so absence is assertable. */
+const ops = [];
+const opsOf = (op) => ops.filter((entry) => entry.op === op);
+
 let currentProvider = "anthropic";
 globalThis.window.api = {
 	desktop: {
@@ -95,7 +125,18 @@ globalThis.window.api = {
 				case "providers.list":
 					return ok({ providers: CENSUS });
 				case "config.get":
-					return ok({ hosting: null, model: null, api_key_present: false });
+					ops.push({ op: "config.get" });
+					return ok({
+						version: 1,
+						metadata: {},
+						values: { hosting: configHosting, model: null },
+					});
+				case "config.update":
+					ops.push({ op: "config.update", value: request.value });
+					return ok({ version: 2, metadata: {}, values: request.value });
+				case "auth.key":
+					ops.push({ op: "auth.key", provider: request.provider });
+					return ok(keyReply);
 				case "auth.start":
 					return ok(snapshot("starting"));
 				case "auth.status":
@@ -136,7 +177,8 @@ const bundle = await build({
 			import { createElement } from "react";
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 			export { ProviderDetail } from "./src/renderer/src/features/providers/provider-detail";
-			export { resetSignInSessions } from "./src/renderer/src/features/providers/sign-in-sessions";
+			export { resetSignInSessions, peekSignInState } from "./src/renderer/src/features/providers/sign-in-sessions";
+			export { useModelsStore } from "./src/renderer/src/shared/store/models-store";
 			export { createElement };
 		`,
 		resolveDir: process.cwd(),
@@ -183,7 +225,47 @@ const {
 	createElement,
 	ProviderDetail,
 	resetSignInSessions,
+	peekSignInState,
+	useModelsStore,
 } = await import(bundlePath.href);
+
+/**
+ * Seed the catalogue the panel reads for its own default write. An empty store is
+ * what a released backend gives until something asks it for a list, and the shapes
+ * here are the store's own: `getHostingProviders` converts through
+ * `model.info.recommended` and the provider's own fields, so a hand-rolled partial
+ * record converts to a provider with no models and quietly asserts nothing.
+ */
+const seedCatalogue = (providerId, models) => {
+	useModelsStore.setState({
+		isInitialized: true,
+		providers: [
+			{
+				id: providerId,
+				name: providerId,
+				description: "",
+				url: "",
+				requiredCredentials: [],
+			},
+		],
+		models: models.map((model) => ({
+			id: model.id,
+			name: model.name,
+			provider: providerId,
+			owned_by: providerId,
+			created: 0,
+			info: {
+				description: "",
+				context_window: 0,
+				max_tokens: 0,
+				recommended: Boolean(model.recommended),
+				input_price: null,
+				output_price: null,
+				supports_images: false,
+			},
+		})),
+	});
+};
 
 const rowFor = (id) => CENSUS.find((row) => row.id === id);
 
@@ -286,7 +368,13 @@ test("a completed sign-in survives the remount the row move causes", async (t) =
 	);
 });
 
-test("a panel reused for ANOTHER provider still starts clean", async (t) => {
+test("the same panel, re-rendered for ANOTHER provider, shows that provider and keeps the first one's receipt", async (t) => {
+	/*
+	 * SAME key on purpose. Re-rendering under a new key mounts a new panel and proves
+	 * nothing about the switch: the round-3 probe did exactly that and the branch it
+	 * was meant to pin could be deleted with both cases still green (review round 3
+	 * R3-m1).
+	 */
 	polls = 0;
 	currentProvider = "anthropic";
 	const mounted = await mount(t);
@@ -298,13 +386,7 @@ test("a panel reused for ANOTHER provider still starts clean", async (t) => {
 		"the success state",
 	);
 
-	/*
-	 * The reset the effect was written for is kept: this is a different provider, so
-	 * the panel must NOT show the previous one's receipt. Deleting the reset entirely
-	 * -- the tempting over-fix -- fails here, which is the point of the case.
-	 */
-	currentProvider = "openai";
-	await mounted.render("openai", "row-3");
+	await mounted.render("openai", "row-1");
 	assert.ok(
 		!mounted.find('[data-sign-in-state="succeeded"]'),
 		"another provider's panel must not inherit a receipt",
@@ -312,5 +394,183 @@ test("a panel reused for ANOTHER provider still starts clean", async (t) => {
 	assert.ok(
 		mounted.find('[data-sign-in-state="idle"]'),
 		"it starts in the idle view",
+	);
+
+	/*
+	 * And the receipt is still THERE, not thrown away: coming back shows it, which is
+	 * what fails if the switch is "fixed" by resetting the session the panel is
+	 * leaving (the round-3 probe's other half: that reset hit Anthropic's session and
+	 * stopped its poll).
+	 */
+	await mounted.render("anthropic", "row-1");
+	assert.ok(
+		mounted.find('[data-sign-in-state="succeeded"]'),
+		"the first provider's own receipt must survive the switch away and back",
+	);
+});
+
+/** Type into the provider's key field, the way a person does. */
+const typeKey = async (root, providerId, value) => {
+	const input = root.find(`#key-${providerId}`);
+	assert.ok(input, `the key field for ${providerId} must be rendered`);
+	const setter = Object.getOwnPropertyDescriptor(
+		window.HTMLInputElement.prototype,
+		"value",
+	).set;
+	await act(async () => {
+		setter.call(input, value);
+		input.dispatchEvent(new window.Event("input", { bubbles: true }));
+	});
+};
+
+/** Save a key and let whatever follows it settle. */
+const saveKey = async (root, providerId) => {
+	await typeKey(root, providerId, "sk-test-not-a-real-key");
+	await clickButton(root, "Save key");
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 100));
+	});
+};
+
+test("a connect the backend ANSWERED writes no default of its own -- including its deliberate null", async (t) => {
+	/*
+	 * TypeSafe is decision-only: the backend replies `defaults_applied: {hosting:
+	 * null, receipt: "Nothing changed…"}` and hosts nothing for chat. Reading a null
+	 * hosting as "the old backend applied nothing" made the UI write `hosting:
+	 * typesafe`, a provider that cannot answer a message (review round 3 R3-M1).
+	 */
+	ops.length = 0;
+	configHosting = null;
+	keyReply = {
+		valid: true,
+		reason: null,
+		defaults_applied: {
+			hosting: null,
+			model: null,
+			model_name: null,
+			receipt: "Nothing changed - pick a chat model with /model first.",
+		},
+	};
+	seedCatalogue("typesafe", [{ id: "typesafe-chat", name: "TypeSafe Chat" }]);
+	const mounted = await mount(t);
+
+	await mounted.render("typesafe", "row-1");
+	await saveKey(mounted, "typesafe");
+
+	assert.equal(
+		opsOf("auth.key").length,
+		1,
+		"the key save must have reached the backend, or this asserts nothing",
+	);
+	assert.deepEqual(
+		opsOf("config.update"),
+		[],
+		"the UI moved a default the backend had just declined to set",
+	);
+});
+
+test("a second provider never moves a default that already works", async (t) => {
+	/*
+	 * QA round 3 Q3-2 and UX round 3 U11: a working `deepseek / deepseek-flash`
+	 * became `typesafe / …` on a later connect, because the guard read `config.get`'s
+	 * result at the wrong level -- `hosting` lives under `values`, and the stub in
+	 * this very file returned it flat, which is why the suite was green.
+	 */
+	ops.length = 0;
+	configHosting = "deepseek";
+	keyReply = null;
+	seedCatalogue("typesafe", [{ id: "typesafe-chat", name: "TypeSafe Chat" }]);
+	const mounted = await mount(t);
+
+	await mounted.render("typesafe", "row-1");
+	await saveKey(mounted, "typesafe");
+
+	assert.equal(
+		opsOf("auth.key").length,
+		1,
+		"the key save must have reached the backend, or this asserts nothing",
+	);
+	assert.deepEqual(
+		opsOf("config.update"),
+		[],
+		"a connect to a second provider replaced the default the user already had",
+	);
+});
+
+test("an old backend's connect leaves a model the Local Operator can see, preferring the suggestion", async (t) => {
+	/*
+	 * The released backend applies nothing and sends no `defaults_applied` at all, so
+	 * an adopted default is the UI's own write -- and it names a model its catalogue
+	 * lists, preferring the backend's `suggested_model` over the listing's first row
+	 * (review round 3 R3-m5). Without a model there is NO write: a hosting with an
+	 * empty model is the pair that failed the user's first message.
+	 */
+	ops.length = 0;
+	configHosting = null;
+	keyReply = null;
+	seedCatalogue("typesafe", [
+		{ id: "typesafe-other", name: "TypeSafe Other" },
+		{ id: "typesafe-chat", name: "TypeSafe Chat" },
+	]);
+	const row = rowFor("typesafe");
+	const saved = row.suggested_model;
+	row.suggested_model = { id: "typesafe-chat", name: "TypeSafe Chat" };
+	try {
+		const mounted = await mount(t);
+		await mounted.render("typesafe", "row-1");
+		await saveKey(mounted, "typesafe");
+	} finally {
+		row.suggested_model = saved;
+	}
+
+	assert.deepEqual(
+		opsOf("config.update").map((entry) => entry.value),
+		[{ hosting: "typesafe", model_name: "typesafe-chat" }],
+		"the adopted default did not take the backend's suggestion",
+	);
+});
+
+test("one panel instance reused for another provider follows the id, and leaves the first provider's flow alone", async (t) => {
+	/*
+	 * Callers key the panel per provider, so this is a guard rather than the common
+	 * path -- and the guard was wrong: re-rendering one instance from `anthropic` to
+	 * `openai` during a running Anthropic flow reset ANTHROPIC's session (stopping its
+	 * poll without cancelling it), cleared OpenAI's saved-key state, and then ran
+	 * OpenAI's Start through Anthropic's flow (review round 3 R3-m1).
+	 */
+	polls = 0;
+	currentProvider = "anthropic";
+	const mounted = await mount(t);
+
+	await mounted.render("anthropic", "panel");
+	await clickButton(mounted, "Continue in browser");
+	await waitFor(
+		() => mounted.find('[data-sign-in-state="waiting"]'),
+		"the Anthropic flow to reach its browser wait",
+	);
+	assert.equal(
+		peekSignInState("anthropic").phase,
+		"active",
+		"the Anthropic flow must be running before the switch",
+	);
+
+	await mounted.render("openai", "panel");
+
+	assert.equal(
+		mounted
+			.find('[data-sign-in-state="idle"]')
+			?.getAttribute("data-sign-in-state"),
+		"idle",
+		"the panel must show the provider it was re-rendered for",
+	);
+	assert.equal(
+		peekSignInState("anthropic").phase,
+		"active",
+		"switching the panel reset the OTHER provider's running flow",
+	);
+	assert.notEqual(
+		peekSignInState("openai").phase,
+		"active",
+		"the new provider inherited the old provider's flow",
 	);
 });

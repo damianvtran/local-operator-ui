@@ -1696,6 +1696,33 @@ test("with nothing connected the empty-chat band drops the headline and shows th
 	);
 });
 
+test("with nothing connected neither the button nor Enter sends", () => {
+	const source = code(MESSAGE_INPUT);
+	/*
+	 * The button was disabled and the KEY was not: measured live, typing with no
+	 * provider connected and pressing Enter created a session and sent the message,
+	 * which the transcript then held waiting for an agent that could never run (QA
+	 * round 2 R2-Q2). All three refusals are pinned here -- the keydown, the hint it
+	 * raises, and the form's own submit -- because removing them wholesale left every
+	 * neighbouring suite green (review round 3 R3-m2).
+	 */
+	assert.match(
+		source,
+		/if \(\s*noProvider &&\s*event\.key === "Enter" &&\s*!event\.shiftKey &&\s*!event\.nativeEvent\.isComposing\s*\) \{\s*event\.preventDefault\(\);/,
+		"Enter is not refused when nothing can answer",
+	);
+	assert.match(
+		source,
+		/setNoProviderHint\(true\);/,
+		"the refusal says why: the placeholder that explained it is gone once the user types (U13)",
+	);
+	assert.match(
+		source,
+		/if \(isInputDisabled\) return;\s*if \(noProvider\) return;/,
+		"the form's submit path still sends when nothing can answer",
+	);
+});
+
 test("the pane consumes the request: leave a reader, scroll the plan in, retire it", () => {
 	const source = code(PANEL);
 	/*

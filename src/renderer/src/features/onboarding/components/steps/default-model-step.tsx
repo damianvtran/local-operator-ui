@@ -27,6 +27,7 @@ import { Spinner } from "@shared/components/common/spinner";
 import { HostingSelect } from "@shared/components/hosting/hosting-select";
 import { ModelSelect } from "@shared/components/hosting/model-select";
 import { Alert, Button } from "@shared/components/ui";
+import { useModels } from "@shared/hooks/use-models";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useModelsStore } from "@shared/store/models-store";
 import type { FC } from "react";
@@ -121,6 +122,25 @@ export const DefaultModelStep: FC<DefaultModelStepProps> = ({
 	 * providers, and where it does not the step says so instead of waiting for a
 	 * pick that cannot happen.
 	 */
+	/*
+	 * The step fetches the catalogue ITSELF. Nothing else does on this path:
+	 * `ModelsInitializer` runs with `autoFetch: false`, and the list is loaded when a
+	 * picker MOUNTS -- so a first visit said the backend could not list models it was
+	 * serving, and a connect that ran before any picker mounted wrote a `hosting` with
+	 * no model beside it (QA round 3 Q3-3, UX round 3 U9).
+	 */
+	const { refreshModels } = useModels();
+	/*
+	 * ONCE, on mount. `refreshModels` is a useCallback whose own identity moves with
+	 * the state its dependencies read, so depending on it re-runs this effect after
+	 * the fetch it just made and loops ("Maximum update depth exceeded", measured by
+	 * rendering this step). One fetch per visit is what this needs: the store keeps
+	 * the result, and the step re-renders from it.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: a fetch on mount; see above
+	useEffect(() => {
+		void refreshModels();
+	}, []);
 	const modelsReady = useModelsStore((state) => state.isInitialized);
 	const storeModels = useModelsStore((state) => state.models);
 	const catalogueProviders = useMemo(() => {

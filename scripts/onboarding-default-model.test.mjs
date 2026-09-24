@@ -40,6 +40,7 @@ const bundle = await build({
 const {
 	planDefaultModelWrite,
 	PICK_A_MODEL,
+	LOADING_MODELS,
 	onboardingFooter,
 	OnboardingStep,
 } = await import(
@@ -51,6 +52,8 @@ const row = (id) => ({ id, name: id, local: false, has_credential: true });
 
 const catalogue = (...providers) => ({ ready: true, providers });
 const EMPTY_CATALOGUE = { ready: false, providers: [] };
+/** A backend that ANSWERED and lists nothing for the provider in question. */
+const NO_MODELS_LISTED = { ready: true, providers: [] };
 
 test("the provider the step DISPLAYS is the one Continue WRITES", () => {
 	/*
@@ -67,15 +70,40 @@ test("the provider the step DISPLAYS is the one Continue WRITES", () => {
 	});
 	assert.equal(plan.shownProvider, "radient");
 	assert.deepEqual(plan.write, { hosting: "radient" });
+	/*
+	 * An UNASKED catalogue is not a missing one. Round 3's Q3-3 was this exact
+	 * conflation: a released backend was told it "can't list DeepSeek models" while it
+	 * was serving seven, because nothing had fetched them yet. Waiting is the truthful
+	 * state, and the no-catalogue sentence is reserved for an answer.
+	 */
+	assert.equal(
+		plan.block,
+		LOADING_MODELS,
+		"an unasked catalogue must read as loading, not as a missing one",
+	);
+	assert.equal(
+		plan.noCatalogue,
+		false,
+		"the step must not claim the backend cannot list models before it has asked",
+	);
+});
+
+test("a catalogue that ANSWERED and lists nothing is what says the models cannot be listed", () => {
+	const plan = planDefaultModelWrite({
+		choice: { kind: "choose", provider: row("radient") },
+		hosting: null,
+		model: null,
+		catalogue: NO_MODELS_LISTED,
+	});
 	assert.equal(
 		plan.block,
 		null,
-		"with no catalogue there is nothing to pick, so there is nothing to wait for",
+		"nothing can be picked, so there is nothing to wait for either",
 	);
 	assert.equal(
 		plan.noCatalogue,
 		true,
-		"and the step has to say that rather than wait for a pick that cannot happen",
+		"and the step says so, which is the frame the evidence set carries",
 	);
 });
 

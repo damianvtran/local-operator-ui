@@ -214,6 +214,22 @@ run(
 		);
 
 		/*
+		 * THE STORE'S OWN FETCH IS ISOLATED, and the reason is a finding rather than
+		 * tidiness: this picker mounts `useModels`, whose auto-fetch runs against the
+		 * configured base URL. In this environment that call can be ANSWERED -- by
+		 * another process holding the port -- with an empty catalogue, which sets
+		 * `providers: []` and `models: []` and wipes the very listing this test
+		 * publishes. The five-second TIME cache this suite was written against masked
+		 * that for exactly as long as the assertion needs; the store-keyed cache the
+		 * review round asked for (R3-m4) does not, which is how the masking surfaced.
+		 * The subject here is the picker following the STORE, so the fetch is a
+		 * recorded no-op and nothing else about the mount changes.
+		 */
+		const realFetch = useModelsStore.getState().fetchModels;
+		useModelsStore.setState({ fetchModels: async () => undefined });
+		t.after(() => useModelsStore.setState({ fetchModels: realFetch }));
+
+		/*
 		 * The catalogue lands, exactly as it does a moment after mount. Nothing is
 		 * remounted and no prop changes: the list has to follow the store, or the field
 		 * stays disabled and Continue stays blocked for the whole first run.

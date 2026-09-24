@@ -57,6 +57,17 @@ export type DefaultModelPlan = {
 /** The reason shown under a disabled Continue on this step. */
 export const PICK_A_MODEL = "Pick a model to continue.";
 
+/**
+ * The reason while the catalogue is still being fetched.
+ *
+ * WHY IT IS NOT THE NO-CATALOGUE SENTENCE: "your Local Operator can't list these
+ * models" is a claim about the BACKEND, and it was made on a released backend that
+ * was serving seven DeepSeek models at the time -- nothing had asked it yet, because
+ * the list is fetched on picker mount and no picker was mounted (QA round 3 Q3-3,
+ * UX round 3 U9). Waiting says what is true while we ask.
+ */
+export const LOADING_MODELS = "Loading the model list…";
+
 export function planDefaultModelWrite(
 	input: DefaultModelPlanInput,
 ): DefaultModelPlan {
@@ -93,8 +104,18 @@ export function planDefaultModelWrite(
 					...(modelToWrite ? { model_name: modelToWrite } : {}),
 				}
 			: null,
-		block: needsModel && catalogueHasModels ? PICK_A_MODEL : null,
-		noCatalogue: needsModel && !catalogueHasModels,
+		block: needsModel
+			? catalogueHasModels
+				? PICK_A_MODEL
+				: catalogue.ready
+					? null
+					: LOADING_MODELS
+			: null,
+		/*
+		 * Only a READY catalogue that lists nothing for this provider can say the
+		 * models are unavailable; before that the honest state is "not asked yet".
+		 */
+		noCatalogue: needsModel && catalogue.ready && !catalogueHasModels,
 		modelToWrite,
 	};
 }

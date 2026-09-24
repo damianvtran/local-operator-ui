@@ -189,9 +189,28 @@ export function useSignInSession(
 	const depsRef = useRef(makeDeps);
 	depsRef.current = makeDeps;
 	const [state, setState] = useState(() => peekSignInState(providerId));
-	const [attachment] = useState(() =>
+	const [attachment, setAttachment] = useState(() =>
 		attachSignInSession(providerId, depsRef.current(), setState),
 	);
+	/*
+	 * THE ATTACHMENT FOLLOWS THE PROVIDER ID, because an attachment made for one id
+	 * is the wrong session for another. Callers today key the panel per provider
+	 * (`provider-grid.tsx` renders `<li key={provider.id}>`), so this is a guard
+	 * rather than the common path -- and it is the guard the round-3 probe needed:
+	 * re-rendering ONE instance from `anthropic` to `openai` with an Anthropic flow
+	 * running reset Anthropic's session, cleared OpenAI's saved-key state, and ran
+	 * OpenAI's Start through Anthropic's flow (review round 3 R3-m1).
+	 */
+	const attachedIdRef = useRef(providerId);
+	useEffect(() => {
+		if (attachedIdRef.current === providerId) return;
+		attachment.detach();
+		const next = attachSignInSession(providerId, depsRef.current(), setState);
+		attachedIdRef.current = providerId;
+		setAttachment(next);
+		setState(next.getState());
+		next.resume();
+	}, [providerId, attachment]);
 
 	useEffect(() => {
 		// The newest closures for this attach, then the state the session already

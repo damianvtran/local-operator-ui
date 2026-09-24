@@ -245,18 +245,24 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 		initialProviderId,
 	);
 	/*
-	 * One press, one navigation, however the press reached us -- see the "Change
-	 * model…" item below for why both a click and a select come through here.
+	 * One press, one navigation. The defer this used to carry (two animation frames)
+	 * was shorter than Radix's focus restore on a quick press, which is why "Change
+	 * model…" worked at 100 ms and did nothing at 0-40 ms: traced live, the
+	 * navigation happened at 36 ms, Radix put focus back on the menu's own trigger at
+	 * 38 ms, and the scroller snapped back at 47 ms (QA round 3 Q3-1, UX round 2
+	 * U2'). The restore is now refused at the menu (see its `onCloseAutoFocus`), so
+	 * the handler can run at once and land the user where they asked to go.
 	 */
-	const modelSettingsPending = useRef(false);
 	const openModelSettings = useCallback(() => {
-		if (modelSettingsPending.current) return;
-		modelSettingsPending.current = true;
+		onChangeModel?.();
+		/*
+		 * And focus follows the view: the trigger is off-screen once the settings
+		 * scroll lands, so leaving focus on it is what made the keyboard path feel
+		 * broken too.
+		 */
 		requestAnimationFrame(() => {
-			requestAnimationFrame(() => {
-				modelSettingsPending.current = false;
-				onChangeModel?.();
-			});
+			const target = document.getElementById("model-settings");
+			target?.focus?.({ preventScroll: true });
 		});
 	}, [onChangeModel]);
 
@@ -526,7 +532,17 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 									<MoreHorizontal aria-hidden="true" />
 								</Button>
 							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end">
+							<DropdownMenuContent
+								align="end"
+								/*
+								 * Radix restores focus to the trigger as the menu closes, and a
+								 * focus() call scrolls its target into view -- cancelling the
+								 * scroll the item below starts, on exactly the quick presses a
+								 * trackpad makes. The restore is skipped; the item's handler
+								 * moves focus where the user is being sent instead.
+								 */
+								onCloseAutoFocus={(event) => event.preventDefault()}
+							>
 								{!isDefault ? (
 									<DropdownMenuItem onSelect={() => void makeDefault(provider)}>
 										Make default

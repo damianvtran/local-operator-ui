@@ -1304,6 +1304,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const [isRecording, setIsRecording] = useState(false);
 		const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
 		const [isTranscribing, setIsTranscribing] = useState(false);
+		/*
+		 * The hint Enter's refusal shows (UX round 3 U13). A countdown, not a toggle,
+		 * so it cannot outlive the moment it explains.
+		 */
+		const [noProviderHint, setNoProviderHint] = useState(false);
+		useEffect(() => {
+			if (!noProviderHint) return undefined;
+			const timer = window.setTimeout(() => setNoProviderHint(false), 5000);
+			return () => window.clearTimeout(timer);
+		}, [noProviderHint]);
 		const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 		const audioChunksRef = useRef<Blob[]>([]);
 		const [platform, setPlatform] = useState("");
@@ -4229,23 +4239,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * status line under it carries the Connect action.
 					 */
 					event.preventDefault();
-					return;
-				}
-				if (
-					noProvider &&
-					event.key === "Enter" &&
-					!event.shiftKey &&
-					!event.nativeEvent.isComposing
-				) {
 					/*
-					 * NOTHING CAN ANSWER, so Enter does not send. The button was already disabled
-					 * and the key was not: measured live, typing with no provider connected and
-					 * pressing Enter issued `sessions.create` and `sessions.message`, and the
-					 * message landed in the transcript waiting for an agent that could never run
-					 * (QA round 2 R2-Q2). Typing stays allowed -- the box is where the failure is
-					 * explained -- and the status line under it carries the Connect action.
+					 * AND IT SAYS SO. The refusal is right and silent, and the placeholder
+					 * that explained it disappears the moment the user types: "Enter did
+					 * nothing" with no reason is the complaint (UX round 3 U13). The line
+					 * clears itself, so it cannot become furniture.
 					 */
-					event.preventDefault();
+					setNoProviderHint(true);
 					return;
 				}
 				if (
@@ -7374,6 +7374,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				{noProvider && !showEmptyChatPrompt ? (
 					<div className={cn("mt-2", CHAT_MEASURE)}>
 						<NoProviderLine />
+					</div>
+				) : null}
+				{noProvider && noProviderHint ? (
+					<div className={cn("mt-2", CHAT_MEASURE)}>
+						<output className="block text-body-sm text-ink-muted">
+							Connect a provider to send.
+						</output>
 					</div>
 				) : null}
 				{showEmptyChatPrompt && noProvider && (

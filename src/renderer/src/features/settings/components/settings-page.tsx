@@ -1120,6 +1120,7 @@ export const SettingsPage: FC = () => {
 							    two things, and `Cpu` is the Model select's own glyph a few
 							    rows below it. One picture, one meaning. */}
 							<SettingsSection
+								id="model-settings"
 								title="Model settings"
 								icon={SlidersHorizontal}
 								description="Configure the default AI model and hosting providers used for generating responses. This will be used for all agents that don't have a specific model or hosting provider configured. You can override these settings for individual agents in the agent settings."

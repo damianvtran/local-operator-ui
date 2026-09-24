@@ -51,7 +51,9 @@ import {
 	TabsTrigger,
 } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { apiConfig } from "@shared/config/api-config";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
+import { useModelsStore } from "@shared/store/models-store";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -454,41 +456,88 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	}, [queryClient, onConnected]);
 
 	/*
-	 * The default this Local Operator writes ITSELF, when the backend did not.
+	 * The default this Local Operator writes ITSELF -- and only in ONE case.
 	 *
-	 * A released backend applies no defaults on a connect (it has no
-	 * `defaults_applied` at all), so the user finished setup with no `hosting`, the
-	 * composer said "Choose a model", and the first message failed with whatever
-	 * stale model the backend's own default names (UX round 2 U1: a DeepSeek key and
-	 * a 404 on `gemini-2.0-flash-001`). The UI can write what it can see: the
-	 * provider that just connected, and the first model this Local Operator can list
-	 * for it. Nothing is written when something is ALREADY configured, so a user who
-	 * has chosen a model never has it moved under them.
+	 * WHY IT EXISTS: a released backend applies no defaults on a connect (it has no
+	 * `defaults_applied` field at all), so setup finished with no `hosting` and the
+	 * first message failed on whatever stale model the backend's own default named
+	 * (UX round 2 U1: a DeepSeek key, a 404 on `gemini-2.0-flash-001`). The UI can
+	 * write what it can see: the provider that just connected and a model its own
+	 * catalogue lists for it.
+	 *
+	 * AND ONLY THEN, because the first cut of this wrote when it should not have:
+	 *
+	 * - `defaults_applied` PRESENT means the backend answered -- an object when it
+	 *   applied something, `null` with a receipt when it deliberately applied nothing
+	 *   (TypeSafe is decision-only: "Nothing changed - pick a chat model with /model
+	 *   first"). Both are the backend's answer, so the only signal to adopt on is the
+	 *   field being ABSENT (review round 3 R3-M1).
+	 * - A `hosting` already in the config is a working choice, and it is not this
+	 *   panel's to move: the first cut read `config.get`'s result at the wrong LEVEL
+	 *   (`hosting` sits under `values`), so that guard never fired and connecting a
+	 *   second provider silently replaced a working default with a pair that could
+	 *   not run (QA round 3 Q3-2, UX round 3 U11).
+	 * - A provider this Local Operator cannot list a model for gets NOTHING written,
+	 *   not even `hosting` on its own.
 	 */
 	const updateConfig = useUpdateConfig();
 	const adoptDefault = useCallback(
-		async (connected: string, appliedHosting?: string | null) => {
-			if (appliedHosting) return;
-			try {
-				const current = await desktopResult<{
-					hosting?: string | null;
-				}>({ op: "config.get" });
-				if (current?.hosting) return;
-				const first = getModelsForHostingProvider(connected)[0];
-				await updateConfig.mutateAsync({
-					hosting: connected,
-					...(first ? { model_name: first.id } : {}),
-				});
-				/*
-				 * The chat's model chip reads a SESSION PREVIEW, not the config, so
-				 * invalidating the config alone left it saying "Choose a model" for
-				 * eight seconds after a connect while `/v1/config` already held the
-				 * model (UX round 2 U10). Both readings are refreshed here.
-				 */
+		async (
+			connected: string,
+			applied: DefaultsApplied | null | undefined,
+			suggestedModelId?: string | null,
+		) => {
+			/*
+			 * The readings are refreshed on EVERY connect, before any early return:
+			 * the chat's model chip reads a SESSION PREVIEW rather than the config, so
+			 * a connect that left the chip saying "Choose a model" for thirty seconds
+			 * (UX round 3 U10) is not repaired by the config invalidation alone.
+			 */
+			const refreshReadings = async () => {
 				await queryClient.invalidateQueries({ queryKey: ["config"] });
 				await queryClient.invalidateQueries({
 					queryKey: ["desktop", "session-preview"],
 				});
+			};
+			try {
+				if (applied !== undefined) {
+					await refreshReadings();
+					return;
+				}
+				const current = await desktopResult<{
+					values?: { hosting?: string | null };
+				}>({ op: "config.get" });
+				await refreshReadings();
+				if (current?.values?.hosting) return;
+				let models = getModelsForHostingProvider(connected);
+				if (models.length === 0) {
+					/*
+					 * ASK BEFORE WRITING. Nothing had loaded the catalogue on the dialog's
+					 * connect path, so a UI default written here named a provider with no
+					 * model beside it -- and the user's first message then failed on the
+					 * backend's own stale model (UX round 3 U1's remaining half). One
+					 * fetch, then the same rule: no model this Local Operator can see, no
+					 * write.
+					 */
+					await useModelsStore.getState().fetchModels(apiConfig.baseUrl, true);
+					models = getModelsForHostingProvider(connected);
+				}
+				if (models.length === 0) return;
+				/*
+				 * The model, in preference order: what the backend suggests for this
+				 * provider, then what the catalogue marks recommended, then the first
+				 * row -- which for an aggregator is whatever the listing happens to
+				 * start with (review round 3 R3-m5).
+				 */
+				const preferred =
+					(suggestedModelId || "").trim() ||
+					models.find((model) => model.recommended)?.id ||
+					models[0].id;
+				await updateConfig.mutateAsync({
+					hosting: connected,
+					model_name: preferred,
+				});
+				await refreshReadings();
 			} catch {
 				/*
 				 * A backend that refuses the write leaves the user where they were,
@@ -531,37 +580,38 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 				onConnectedRef.current();
 				void adoptDefaultRef.current(
 					provider.id,
-					operation.defaults_applied?.hosting ?? null,
+					operation.defaults_applied,
+					provider.suggested_model?.id,
 				);
 			},
 		}),
 	);
 
 	/*
-	 * A panel reused for ANOTHER provider starts clean -- and only then.
+	 * A panel reused for ANOTHER provider starts clean -- and ONLY the panel's own
+	 * state does.
 	 *
-	 * WHY THE REF: this effect runs on every MOUNT, not only when the provider
-	 * changes, and the row this panel is rendered on MOVES into "Connected" the
-	 * moment a credential lands. The remount that follows therefore reset the very
-	 * session `sign-in-sessions.ts` had just kept: the receipt rendered for 39-270 ms
-	 * and vanished, and leaving mid-sign-in came back idle (QA round 2 R2-Q1, UX
-	 * round 2 U3 and U4, both reproduced by deleting only the `reset()` line).
-	 * A first mount has nothing to reset -- the session holds what the panel is
-	 * supposed to show -- so the reset is skipped until an id actually changes.
+	 * The FLOW is not reset here, and that is the point of this comment: the
+	 * round-2 fix made this effect skip its first run, which stopped it wiping the
+	 * receipt the session had just kept, but the branch could not be reached at all
+	 * -- both callers key the panel per provider, and a probe that reused one
+	 * instance found the reset hitting the WRONG provider's session (it reset
+	 * Anthropic's running flow, cleared OpenAI's key outcome, and then ran OpenAI's
+	 * Start through Anthropic's flow: review round 3 R3-m1). The session hook now
+	 * follows the id itself, so what is left for this effect is the state that
+	 * belongs to the panel rather than to a provider: the chosen method, the field,
+	 * and the key outcome shown -- which is re-read from the NEW provider's session.
 	 */
 	const previousProviderId = useRef<string | null>(null);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: provider.id is the reset trigger
 	useEffect(() => {
 		const moved = previousProviderId.current !== null;
 		const changed = previousProviderId.current !== provider.id;
 		previousProviderId.current = provider.id;
 		if (!(moved && changed)) return;
-		flowHandle.reset();
-		clearKeyOutcome(provider.id);
 		setMethodId(null);
 		setKeyValue("");
-		rememberKey({ error: null });
-		setKeySaved(null);
+		setKeyError(peekKeyOutcome(provider.id).error);
+		setKeySaved(peekKeyOutcome(provider.id).saved);
 	}, [provider.id]);
 
 	const chooseMethod = (next: string) => {
@@ -608,7 +658,8 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 			refreshProviders();
 			void adoptDefaultRef.current(
 				provider.id,
-				result?.defaults_applied?.hosting ?? null,
+				result?.defaults_applied,
+				provider.suggested_model?.id,
 			);
 		} catch (error) {
 			// A 422 is the backend refusing THIS key (validation, or a provider
@@ -624,7 +675,14 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		} finally {
 			setKeySaving(false);
 		}
-	}, [method, keyValue, refreshProviders, rememberKey, provider.id]);
+	}, [
+		method,
+		keyValue,
+		refreshProviders,
+		rememberKey,
+		provider.id,
+		provider.suggested_model?.id,
+	]);
 
 	const doneLabel = context === "dialog" ? "Continue" : "Done";
 	const finish = () => {
