@@ -504,13 +504,14 @@ export const RunChildReader = ({
 	 * paging keys dead until the user pressed Tab.
 	 *
 	 * The root carries the focus for the states with no transcript (`loading`,
-	 * `pending`, `gone`, `error`, and an unaddressed child), because the way out
-	 * of a reader that has nothing to paint is the same way out as any other
+	 * `pending`, `gone`, an `error` that painted nothing, and an unaddressed child),
+	 * because the way out of a
+	 * reader that has nothing to paint is the same way out as any other
 	 * (`Escape`/Back), and it hands the focus to the transcript — the element that
 	 * actually pages — the moment one mounts. The effect re-runs when
 	 * `bodyPaintsConversation` flips, so a page that arrives late still takes focus
-	 * **if the reader still has
-	 * it**, and never otherwise: a reader whose operator has moved on to the composer
+	 * **if the reader still has it**,
+	 * and never otherwise: a reader whose operator has moved on to the composer
 	 * leaves their caret alone (round 3, R3-4). It does not re-run on a pulse or a
 	 * refetch that leaves the state alone.
 	 */
@@ -527,18 +528,19 @@ export const RunChildReader = ({
 	 * `error` is the FIFTH member of `ChildTranscriptState` and it is not spelled
 	 * out here because it does not need a branch of its own: the hook KEEPS the
 	 * rows it already had when a read fails rather than blanking the body it has
-	 * (`use-child-transcript.ts`), so a failed read that already painted a page
-	 * has a conversation like any other state's, and one that read nothing falls
-	 * to the `painted.records.length === 0` line below and paints "no conversation
-	 * on record yet". The earlier spelling of this expression
-	 * (`state === "ready" && painted.records.length > 0`) read the first of those
-	 * two as having no conversation, and the foot then painted a second, clipped
-	 * copy of the last message under the conversation that had just made it —
-	 * `previewsClippedResult` disagreeing with the body it is defined against
-	 * (round 2, C8).
+	 * (`use-child-transcript.ts`), so a failed read that already painted a page has
+	 * a conversation like any other state's, and one that read nothing falls through
+	 * to the final `QuietLine` below and paints "no conversation on record yet".
+	 * The earlier spelling of this expression (`state === "ready" &&
+	 * painted.records.length > 0`) read the first of those two as having no
+	 * conversation, and the foot then painted a second, clipped copy of the last
+	 * message under the conversation that had just made it — `previewsClippedResult`
+	 * disagreeing with the body it is defined against (round 2, C8).
 	 *
-	 * The focus effect below reads it as well, and for the same reason: the
-	 * transcript element exists in exactly the states that paint one.
+	 * The focus effect's own dependency below reads it too, for the same reason: the
+	 * transcript element exists in exactly the states that paint one. It is declared
+	 * before that effect rather than beside it because the effect's docstring above
+	 * describes the FOCUS rule, and this is the one condition that rule is about.
 	 */
 	const bodyPaintsConversation =
 		Boolean(row.childSessionId) &&
@@ -551,10 +553,9 @@ export const RunChildReader = ({
 	 * BODY above has no conversation to paint instead.
 	 *
 	 * The states that render a `QuietLine` rather than the transcript are named by
-	 * `bodyPaintsConversation`, one line apart from the markup below, so the two
-	 * cannot disagree about which states those are — there is one expression, read
-	 * twice, rather than a predicate that restates the body's rule in its own
-	 * words. That is what the earlier spelling got wrong: it agreed with the body
+	 * `bodyPaintsConversation` — the same expression the markup below branches on,
+	 * read here rather than restated — so the two cannot disagree about which states
+	 * those are. That is what the earlier spelling got wrong: it agreed with the body
 	 * in every state except `error` with rows retained, where the body paints the
 	 * conversation and the foot said there was none to paint (round 2, C8).
 	 *
