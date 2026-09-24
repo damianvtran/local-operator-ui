@@ -61,6 +61,7 @@ import {
 	turnStopped,
 } from "../canonical/working-line-model";
 import { catalogueTitleUpdate, resolveChatTitle } from "../chat-title";
+import { composerNoticeFor } from "../composer-notice";
 import {
 	type DraftResolution,
 	type DraftSelectionTarget,
@@ -1662,8 +1663,6 @@ function SessionPanel({
 	 * clear, and an always-present Discard would imply the app is retaining
 	 * something it is not.
 	 */
-	const activeError = sendError || draft?.error;
-	const activeErrorCode = sendErrorCode ?? draft?.errorCode;
 	const clearError = () => {
 		setSendError(null);
 		setSendErrorCode(undefined);
@@ -1692,8 +1691,14 @@ function SessionPanel({
 	// agent or team actually bound to the session is.
 	const boundTarget =
 		canonical.frontend?.active_team || canonical.frontend?.active_agent;
+	/*
+	 * The code the composer's notice classifies by - the LOCAL failure's when this
+	 * pane raised one, the row's otherwise - stated once because two readers need it:
+	 * the notice (`composerNoticeFor`) and the unresolved-attachment remedy below.
+	 */
+	const noticeCode = sendErrorCode ?? draft?.errorCode;
 	const attachmentResolved =
-		activeErrorCode === "unresolved_attachment" && Boolean(boundTarget);
+		noticeCode === "unresolved_attachment" && Boolean(boundTarget);
 	useEffect(() => {
 		if (!attachmentResolved) return;
 		setSendError(null);
@@ -1859,6 +1864,18 @@ function SessionPanel({
 	useEffect(() => {
 		if (!unresolvedRequestId || !ownerHasIt || !draftIdentity) return;
 		useConversationInputStore.getState().reconcileDelivered(identity);
+		/*
+		 * AND THE PANE'S OWN NOTICE GOES WITH IT. Reconciliation is the app saying
+		 * "that message arrived", so a "Couldn't confirm your message was sent."
+		 * sentence still hanging over the composer is the app contradicting itself
+		 * one line above the truth - measured in review round 1 (B4) as the notice
+		 * that stayed up after the message was delivered, next to the Retry control
+		 * whose press would then duplicate it.
+		 */
+		setSendError(null);
+		setSendErrorCode(undefined);
+		setSendErrorRetry(false);
+		setSendErrorMuted(false);
 		useCanonicalSessionsStore
 			.getState()
 			.finishDraft(draftIdentity, draft?.sessionId ?? sessionId ?? "");
@@ -1871,27 +1888,47 @@ function SessionPanel({
 		identity,
 	]);
 
-	const composerSendError = activeError
+	/*
+	 * The muted statement that a handed-back message was delivered after all. Read
+	 * from the composer's OWN row rather than carried in local state, because the
+	 * reconciliation that raises it can run while this pane is unmounted (a switch
+	 * away and back, a restart): the row is the only place the fact survives, and
+	 * without a reader here the sentence never rendered at all - which is how the
+	 * live duplicate in review round 1 stayed invisible (B4).
+	 */
+	const lateDelivered = useConversationInputStore(
+		(state) => state.inputByConversation[identity]?.lateDelivered === true,
+	);
+	const notice = composerNoticeFor({
+		error: sendError,
+		code: sendErrorCode,
+		retry: sendErrorRetry,
+		muted: sendErrorMuted,
+		rowError: draft?.error,
+		rowCode: draft?.errorCode,
+		rowRetry: draft?.errorRetry,
+		lateDelivered,
+	});
+	const composerSendError = notice
 		? {
-				message: activeError,
-				code: activeErrorCode,
-				/*
-				 * The two decisions the notice row needs, both taken where the failure
-				 * was classified (`sendFailureCopy`) rather than re-derived here from a
-				 * code: Retry renders only where a press can work, and the register is
-				 * danger for a failure, muted for the two statements that are not
-				 * failures (the send lock, and a message that was delivered late).
-				 * `draft.error` - the row's own copy of a failure that outlived this
-				 * component - carries no such flags, so it takes the conservative pair:
-				 * danger, and Retry offered (the user can always see for themselves).
-				 */
-				retry: sendErrorRetry && draft?.error === undefined,
-				muted: sendErrorMuted,
+				...notice,
 				actions: undefined,
-				// The composer's Send, which is the whole of Retry: pressing it replays
-				// an unchanged payload under its own request id, and sends an edited one
-				// as a new message. See `admitChatDraft`'s replay rule.
-				onRetry: () => input.current?.submitNow(),
+				/*
+				 * The composer's Send, which is the whole of Retry: pressing it replays
+				 * an unchanged payload under its own request id, and sends an edited one
+				 * as a new message. See `admitChatDraft`'s replay rule.
+				 *
+				 * FOCUS COMES BACK TO THE BOX, because the control that was pressed is
+				 * about to unmount: with the press accepted, the notice goes and the
+				 * button that owned the focus goes with it, and the browser hands the
+				 * caret to the document - measured in review round 1 (U5) as the next
+				 * Enter collapsing a sidebar section, because the caret had landed on the
+				 * sidebar's own toggle. Clear did this and Retry did not.
+				 */
+				onRetry: () => {
+					input.current?.submitNow();
+					input.current?.focusInput();
+				},
 				onClear: () => {
 					if (identity)
 						useConversationInputStore.getState().clearComposer(identity);
