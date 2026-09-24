@@ -1284,10 +1284,38 @@ export const SettingsPage: FC = () => {
 							</div>
 						</SettingsSection>
 
+						{/*
+						 * The provider grid is the same component onboarding uses: one
+						 * place for a provider's sign-in methods, states and stored
+						 * credentials. `/provider`, `/login` and `/logout` land here.
+						 */}
+						<SettingsSection
+							title="Model providers"
+							icon={Plug}
+							description="Sign in to the services your agents think with. New chats use your default model."
+							sectionRef={sectionRefs.providers}
+						>
+							<ProviderGrid
+								initialProviderId={providerFromQuery}
+								onChangeModel={() => handleSelectSection("general")}
+							/>
+						</SettingsSection>
+
+						{/*
+						 * MCP management replaced the Google OIDC cards: the section
+						 * negotiates the `mcp` capability itself and reads the active
+						 * canonical session, so it renders unconditionally here.
+						 */}
+						<McpManagementSection
+							sessionId={activeSessionId ?? undefined}
+							sectionRef={sectionRefs.integrations}
+							highlightServer={mcpTarget}
+						/>
+
 						<SettingsSection
 							title="Radient account"
 							titleComponent={<RadientSectionTitle />}
-							description="Manage your Radient account, Radient Pass details, and credits."
+							description="Your Radient account, Radient Pass details and credits. To use Radient models, sign in under Model providers."
 							sectionRef={sectionRefs.radient}
 							dataTourTag="settings-radient-account-section"
 						>
@@ -1314,20 +1342,6 @@ export const SettingsPage: FC = () => {
 							</div>
 						</SettingsSection>
 
-						{/*
-						 * The provider grid is the same component onboarding uses: one
-						 * place for a provider's sign-in methods, states and stored
-						 * credentials. `/provider`, `/login` and `/logout` land here.
-						 */}
-						<SettingsSection
-							title="Providers"
-							icon={Plug}
-							description="Model providers, how you sign in to each, and which are connected."
-							sectionRef={sectionRefs.providers}
-						>
-							<ProviderGrid initialProviderId={providerFromQuery} />
-						</SettingsSection>
-
 						<SettingsSection
 							title="Backend settings"
 							icon={Settings}
@@ -1339,17 +1353,6 @@ export const SettingsPage: FC = () => {
 								initialFilter={settingsSearchFilter}
 							/>
 						</SettingsSection>
-
-						{/*
-						 * MCP management replaced the Google OIDC cards: the section
-						 * negotiates the `mcp` capability itself and reads the active
-						 * canonical session, so it renders unconditionally here.
-						 */}
-						<McpManagementSection
-							sessionId={activeSessionId ?? undefined}
-							sectionRef={sectionRefs.integrations}
-							highlightServer={mcpTarget}
-						/>
 
 						<div ref={sectionRefs.updates}>
 							<AppUpdatesSection />
