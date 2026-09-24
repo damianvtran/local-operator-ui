@@ -1084,7 +1084,11 @@ test("an unknown that names no credential is not a verdict about one", () => {
 	// QA round 1's F2 (a row whose token endpoint is down) still names its
 	// credential, and that one IS the app declining to confirm one.
 	assert.equal(
-		loginState("radient", { credential_id: 7, state: "unknown" }, read("ready")),
+		loginState(
+			"radient",
+			{ credential_id: 7, state: "unknown" },
+			read("ready"),
+		),
 		"unverified",
 	);
 	// And the null-credential shape cannot rescue the absent-verdict arm either:
@@ -1218,7 +1222,10 @@ test("a successful sign-in from the card refreshes the verdict the chip reads", 
 	const signIn = [...container.querySelectorAll("button")].find((candidate) =>
 		/sign in to radient/i.test(candidate.textContent ?? ""),
 	);
-	assert.ok(signIn, `the card did not open its panel: ${text(container).slice(0, 300)}`);
+	assert.ok(
+		signIn,
+		`the card did not open its panel: ${text(container).slice(0, 300)}`,
+	);
 	await act(async () => {
 		signIn.dispatchEvent(
 			new window.MouseEvent("click", { bubbles: true, cancelable: true }),
