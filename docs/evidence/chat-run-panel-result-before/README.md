@@ -78,14 +78,21 @@ theme commits, so they carry the older ground (`localOperatorDark`'s canvas was
 `#17130E`; on this head it is `#22201C`). That is why **the after halves in
 `../chat-run-panel/` are not read from a diff against their committed
 predecessors**, and why a before/after pair taken across that change would
-measure the palette rather than the foot. This set is the same-head pair that
-avoids it: BOTH halves are photographed on `b7bed8d96`, and the only difference
-between them is the file named above.
+measure the palette rather than the foot. This set holds the ground constant in
+**its own** halves: both before frames of a pair are photographed on `b7bed8d96`
+against that head's own fixed component, so within the before half the only
+difference is the file named above. It is NOT a same-head pair any more, and was
+not by the time the table above was written: the **after** halves in
+`../chat-run-panel/` were RE-TAKEN on the folded tree by the round the sibling
+README records, so the left column of that table is this set's frames from
+`b7bed8d96` and the right column is the re-shot ones. What the pair still holds
+constant is the ground, which is why the difference it measures is the component
+rather than a palette that moved under both.
 
 That is also why this set is still the instrument after the round that re-took
 the reader group on the folded tree (see the sibling README): the after halves
 now differ from their committed predecessors by the COMPONENT rather than by the
-ground (all 40 of them, AE 2,481-29,166 px), and this pair holds the ground
-constant and the component as its only variable. So the table above is the
-measurement that separates the foot from the run, and the AE against a committed
-predecessor is not.
+ground (all 40 of them, AE 2,481-29,166 px), and this pair still holds the ground
+constant on both sides, with the component as its only variable. So the table
+above is the measurement that separates the foot from the run, and the AE against
+a committed predecessor is not.
