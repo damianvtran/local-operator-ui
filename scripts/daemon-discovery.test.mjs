@@ -51,6 +51,8 @@ const discovery = await import(
 );
 const {
 	HEALTH_PATH,
+	addressHolders,
+	addressHoldsLiveRecord,
 	classifyRecord,
 	classifyUnreachable,
 	claimDesktopPlane,
@@ -58,6 +60,7 @@ const {
 	configRoot,
 	discoverDaemons,
 	isZombie,
+	listenerPidsOn,
 	normaliseAddress,
 	parseRecord,
 	pidLiveness,
@@ -66,6 +69,7 @@ const {
 	rankCandidates,
 	reapStaleRecords,
 	readDesktopAvailable,
+	readRecordForPid,
 	readServeRecords,
 	serveRunDir,
 	HEARTBEAT_TIMEOUT_MS,
@@ -932,4 +936,92 @@ test("a daemon answering an address no record describes is reported WITH its ide
 	assert.equal(probe.identity?.pid, 42411);
 	assert.equal(probe.identity?.version, "0.55.6");
 	await new Promise((resolve) => daemon.close(resolve));
+});
+
+/*
+ * THE SPAWN GATE'S RECORD ARM IS SCOPED TO AN ADDRESS, NOT TO THE ROOT
+ * (2026-09-23). It used to be "any record in this config root has a non-dead
+ * pid", which forbade the spawn onto the address this app was configured for
+ * because something else in the root had a live record - the app then had no
+ * daemon and no way to get one, and quit. The same predicate now answers for each
+ * address the app may spawn on, so a record for one address cannot veto another.
+ */
+test("blocksSpawn names the configured address, not the record root", async () => {
+	const daemon = await startDaemon({ instanceId: "holder-1", version: "0.61.4" });
+	const file = writeRecord({
+		pid: process.pid,
+		port: daemon.port,
+		instanceId: "holder-1",
+		version: "0.61.4",
+	});
+
+	// A record for a DIFFERENT address, with a live pid, must not stop a spawn on
+	// the address this app is configured for.
+	const elsewhere = await discoverDaemons({
+		env: env(),
+		configuredUrl: "http://127.0.0.1:1",
+		log: silence,
+	});
+	assert.equal(
+		elsewhere.blocksSpawn,
+		false,
+		"a live record for another address is not a reason to refuse this one",
+	);
+
+	// The same root and the same record, asked about the address it NAMES.
+	const same = await discoverDaemons({
+		env: env(),
+		configuredUrl: daemon.address,
+		log: silence,
+	});
+	assert.equal(same.blocksSpawn, true);
+
+	// And the helper the per-address gate uses answers the same question the same
+	// way - one predicate, so discovery's verdict and the gate cannot disagree.
+	assert.equal(addressHoldsLiveRecord(daemon.address, { env: env() }), true);
+	assert.equal(addressHoldsLiveRecord("http://127.0.0.1:1", { env: env() }), false);
+	assert.deepEqual(
+		addressHolders(daemon.address, { env: env() }).records.map((r) => r.pid),
+		[process.pid],
+		"the holder's own record is what the refusal is named from",
+	);
+
+	await daemon.close();
+	rmSync(file, { force: true });
+});
+
+test("a pid read off the listening socket names a holder /health could not", async () => {
+	const listener = createServer(() => {});
+	await new Promise((resolve) => listener.listen(0, "127.0.0.1", resolve));
+	const port = listener.address().port;
+	assert.deepEqual(
+		listenerPidsOn(port),
+		[process.pid],
+		"the kernel's own table is the source when nothing answered",
+	);
+	await new Promise((resolve) => listener.close(resolve));
+	assert.deepEqual(listenerPidsOn(port), [], "a closed port names nobody");
+	// Fails closed rather than throwing: a bad port, or a machine with no `lsof`.
+	assert.deepEqual(listenerPidsOn(0), []);
+	assert.deepEqual(listenerPidsOn(Number.NaN), []);
+});
+
+test("a record is readable by the pid that wrote it, and only by that pid", async () => {
+	const daemon = await startDaemon({ instanceId: "holder-2" });
+	const startedAt = Date.now() / 1000 - 120;
+	const file = writeRecord({
+		pid: process.pid,
+		port: daemon.port,
+		instanceId: "holder-2",
+		version: "0.61.4",
+		startedAt,
+	});
+	const record = readRecordForPid(process.pid, env());
+	assert.equal(record?.instance_id, "holder-2");
+	assert.equal(record?.started_at, startedAt);
+	// Keyed by pid, so a record for another pid is not this pid's answer.
+	assert.equal(readRecordForPid(process.pid + 1, env()), null);
+	assert.equal(readRecordForPid(0, env()), null);
+	await daemon.close();
+	rmSync(file, { force: true });
 });
