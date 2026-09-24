@@ -47,7 +47,7 @@ import { showErrorToast } from "@shared/utils/toast-manager";
 import { useQueryClient } from "@tanstack/react-query";
 import { MoreHorizontal, Search, X } from "lucide-react";
 import type { FC, ReactNode } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	FEATURED_PROVIDER_IDS,
 	GROUP_HEADINGS,
@@ -244,6 +244,22 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 	const [selectedId, setSelectedId] = useState<string | null>(
 		initialProviderId,
 	);
+	/*
+	 * One press, one navigation, however the press reached us -- see the "Change
+	 * model…" item below for why both a click and a select come through here.
+	 */
+	const modelSettingsPending = useRef(false);
+	const openModelSettings = useCallback(() => {
+		if (modelSettingsPending.current) return;
+		modelSettingsPending.current = true;
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				modelSettingsPending.current = false;
+				onChangeModel?.();
+			});
+		});
+	}, [onChangeModel]);
+
 	// A later deep link to a different provider re-selects; the same id is a
 	// no-op so the reader's own collapse is not undone by a re-render.
 	useEffect(() => {
@@ -518,21 +534,20 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 								) : null}
 								{isDefault && onChangeModel ? (
 									<DropdownMenuItem
-										onSelect={() => {
-											/*
-											 * Deferred by two frames on purpose. Radix restores focus
-											 * to the menu's trigger as it closes, and a focus() call
-											 * scrolls its target into view -- which cancelled the
-											 * smooth scroll to the model settings the handler had
-											 * just started, so "Change model…" did nothing by mouse
-											 * or by keyboard while the sidebar's own route to the
-											 * same section worked (UX round 1 U2). Running the
-											 * handler after that restore lets the scroll land.
-											 */
-											requestAnimationFrame(() => {
-												requestAnimationFrame(() => onChangeModel?.());
-											});
-										}}
+										/*
+										 * BOTH events, one press. Radix fires `onSelect` from its own
+										 * key and pointer paths; a quick trackpad tap -- measured at
+										 * under 60 ms, which is what tap-to-click is -- reached
+										 * neither, so "Change model…" did nothing in five of six
+										 * tries while a 100 ms press worked six of six (UX round 2
+										 * U2'). The handler is deferred by two frames either way,
+										 * because Radix restores focus to the menu's trigger as the
+										 * menu closes and a focus() call scrolls its target into
+										 * view, cancelling the smooth scroll this press starts (UX
+										 * round 1 U2). A ref keeps the pair from navigating twice.
+										 */
+										onClick={() => openModelSettings()}
+										onSelect={() => openModelSettings()}
 									>
 										Change model…
 									</DropdownMenuItem>

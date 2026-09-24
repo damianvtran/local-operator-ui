@@ -23,6 +23,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { OnboardingDialog } from "./onboarding-dialog";
 import type { OnboardingPanelWidth } from "./onboarding-dialog";
+import { onboardingFooter } from "./onboarding-footer";
 import { ConnectProviderStep } from "./steps/connect-provider-step";
 import { DefaultModelStep } from "./steps/default-model-step";
 import { ExtrasStep } from "./steps/extras-step";
@@ -214,11 +215,12 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	 * - step 2: Back, then primary "Continue";
 	 * - step 3: Back, then ghost "Skip" and primary "Finish".
 	 */
-	const blocked =
-		currentStep === OnboardingStep.DEFAULT_MODEL && stepBlock !== null;
+	const footer = onboardingFooter(currentStep, stepBlock, continuing);
 	const dialogActions = (
 		<div className="flex w-full flex-col gap-2">
-			{blocked ? <p className="text-ink-dim text-meta">{stepBlock}</p> : null}
+			{footer.reason ? (
+				<p className="text-ink-dim text-meta">{footer.reason}</p>
+			) : null}
 			<div className="flex w-full items-center justify-between gap-3">
 				<div>
 					{isFirst ? (
@@ -242,7 +244,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 							variant="primary"
 							size="lg"
 							onClick={() => void handleNext()}
-							disabled={continuing || blocked}
+							disabled={footer.primaryDisabled}
 						>
 							{isLast ? "Finish" : "Continue"}
 						</Button>

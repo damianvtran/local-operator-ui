@@ -81,6 +81,14 @@ const bundle = await build({
 	// Stylesheets carry no assertion here and Node cannot import them.
 	loader: { ".css": "empty" },
 	jsx: "automatic",
+	/*
+	 * `message-input.tsx` now reaches the connect-provider card and, through it, the
+	 * models store, whose config module reads `import.meta.env` at MODULE LOAD --
+	 * the same failure the plugin below works around for one hook, arriving by a
+	 * second route. An empty object is what a browser build with no VITE_* value
+	 * has, so the module loads exactly as it does in the app.
+	 */
+	define: { "import.meta.env": "{}" },
 	write: false,
 	plugins: [
 		{

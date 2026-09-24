@@ -32,6 +32,7 @@ import { ConnectProviderCard } from "@features/providers/connect-provider-card";
 import { ConnectProviderDialog } from "@features/providers/connect-provider-dialog";
 import { useConnectProviderStore } from "@features/providers/connect-provider-store";
 import { SettingsSection } from "@features/settings/components/settings-section";
+import { useModelsStore } from "@shared/store/models-store";
 import {
 	OnboardingStep,
 	useOnboardingStore,
@@ -106,7 +107,30 @@ type Script =
 	/** Another window started a sign-in: this one ends cancelled, not failed. */
 	| "superseded";
 
+/** A catalogue entry, as the models store holds it after `GET /v1/models`. */
+const modelRow = (provider: string, id: string, name: string) => ({
+	id,
+	provider,
+	info: {
+		id,
+		name,
+		description: `${name} (story fixture)`,
+		context_window: 128000,
+		max_tokens: 8192,
+		supports_prompt_cache: false,
+		recommended: false,
+	},
+});
+
 type BridgeOptions = {
+	/**
+	 * Seed the models store, so the hosting and model pickers have a catalogue.
+	 * WITHOUT this the two selects render empty and a story can photograph a state
+	 * the app only reaches on a backend that publishes no catalogue for the provider
+	 * (review round 2 R2-M3: the step-2 frame showed the empty field under a name
+	 * that claimed the fix).
+	 */
+	models?: { provider: string; id: string; name: string }[];
 	providers?: DesktopProvider[];
 	hosting?: string;
 	model?: string;
@@ -368,8 +392,38 @@ const Bridge = ({
 	const [ready, setReady] = useState(false);
 	useLayoutEffect(() => {
 		const restore = installBridge(options);
+		/*
+		 * The catalogue, seeded before the children mount and dropped on the way out,
+		 * so one story cannot leave a list behind for the next.
+		 */
+		if (options.models) {
+			useModelsStore.setState({
+				isInitialized: true,
+				providers: [
+					...new Set(options.models.map((model) => model.provider)),
+				].map((id) => ({
+					id,
+					name: id,
+					description: `${id} models`,
+					url: `https://${id}.example`,
+					requiredCredentials: [],
+				})),
+				models: options.models.map((model) =>
+					modelRow(model.provider, model.id, model.name),
+				),
+			});
+		}
 		setReady(true);
-		return restore;
+		return () => {
+			if (options.models) {
+				useModelsStore.setState({
+					isInitialized: false,
+					providers: [],
+					models: [],
+				});
+			}
+			restore();
+		};
 	}, [options]);
 	const [opens, setOpens] = useState<string[]>([]);
 	useEffect(() => {
@@ -860,6 +914,16 @@ export const OnboardingStep2Applied: Story = {
 };
 
 const OPTS_PROPOSED: BridgeOptions = { providers: signedIn(["anthropic"]) };
+/** Step 2 on an older backend: nothing applied, the suggestion preselected. */
+export const OnboardingStep2Proposed: Story = {
+	render: () => (
+		<Bridge options={OPTS_PROPOSED}>
+			<div className="h-screen bg-canvas">
+				<OnboardingAt step={OnboardingStep.DEFAULT_MODEL} />
+			</div>
+		</Bridge>
+	),
+};
 /*
  * The CURRENT-user path, not the new-backend one: a released backend sends no
  * `suggested_model` and applies no defaults on sign-in, so the step has nothing
@@ -871,8 +935,26 @@ const OPTS_CHOOSE: BridgeOptions = {
 		...row,
 		suggested_model: null,
 	})),
+	/*
+	 * The catalogue the released backend DOES publish for OpenRouter: this is the
+	 * path the round-1 finding was about, and the one a first-run user takes. The
+	 * model field used to sit empty and disabled behind "No models available for
+	 * selected provider." even with this list loaded, because the list was read
+	 * through a memo that never re-ran (QA round 2 R2-Q3).
+	 */
+	models: [
+		{ provider: "openrouter", id: "auto", name: "Automatic" },
+		{
+			provider: "openrouter",
+			id: "anthropic/claude-opus-5.5",
+			name: "Claude Opus 5.5",
+		},
+	],
 };
-/** Step 2 on a released backend: nothing applied, nothing suggested, pick it. */
+/**
+ * Step 2 on a released backend: nothing applied, nothing suggested, a catalogue to
+ * pick from, and Continue held until a model is chosen.
+ */
 export const OnboardingStep2Choose: Story = {
 	render: () => (
 		<Bridge options={OPTS_CHOOSE}>
@@ -882,10 +964,22 @@ export const OnboardingStep2Choose: Story = {
 		</Bridge>
 	),
 };
-/** Step 2 on an older backend: nothing applied, the suggestion preselected. */
-export const OnboardingStep2Proposed: Story = {
+
+const OPTS_NO_CATALOGUE: BridgeOptions = {
+	providers: signedIn(["openrouter"]).map((row) => ({
+		...row,
+		suggested_model: null,
+	})),
+};
+/**
+ * Step 2 where this Local Operator can list NOTHING for the provider: the step says
+ * so in words and leaves Continue enabled, because waiting for a pick that cannot
+ * happen is a dead end rather than a guard (review round 2 R2-M3's own finding was
+ * that this branch was photographed under the name of the other one).
+ */
+export const OnboardingStep2NoCatalogue: Story = {
 	render: () => (
-		<Bridge options={OPTS_PROPOSED}>
+		<Bridge options={OPTS_NO_CATALOGUE}>
 			<div className="h-screen bg-canvas">
 				<OnboardingAt step={OnboardingStep.DEFAULT_MODEL} />
 			</div>

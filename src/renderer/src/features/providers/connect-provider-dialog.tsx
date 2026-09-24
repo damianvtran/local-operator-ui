@@ -21,12 +21,16 @@ import {
 	DialogTitle,
 } from "@shared/components/ui";
 import type { FC } from "react";
+import { useNavigate } from "react-router-dom";
 import { useConnectProviderStore } from "./connect-provider-store";
 import { ProviderGrid } from "./provider-grid";
 
 export const ConnectProviderDialog: FC = () => {
 	const { open, focusGroup, providerId, closeConnect } =
 		useConnectProviderStore();
+	// The receipt's Change sends the user to the settings section that owns the model
+	// (the same destination Settings' own provider panel uses).
+	const navigate = useNavigate();
 	return (
 		<Dialog
 			open={open}
@@ -54,6 +58,17 @@ export const ConnectProviderDialog: FC = () => {
 						focusGroup={focusGroup}
 						initialProviderId={providerId}
 						onDone={closeConnect}
+						/*
+						 * The receipt's Change. Onboarding step 1 and Settings both pass one;
+						 * this dialog did not, so the path the PR's discoverability item names
+						 * showed a receipt with no way to change it (review round 2 R2-m4).
+						 * General owns the model settings, which is where Settings' own panel
+						 * sends the same press.
+						 */
+						onChangeModel={() => {
+							closeConnect();
+							navigate("/settings");
+						}}
 					/>
 				) : null}
 			</DialogContent>

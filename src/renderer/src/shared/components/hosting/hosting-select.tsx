@@ -302,13 +302,6 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 		);
 	}, [value, hostingOptions, allowDefault, availableHostingProviders.length]);
 
-	/*
-	 * The two store fields the option list is actually read from. `getHostingProviders()`
-	 * is a plain read of the models store, and the store fills AFTER this component
-	 * mounts, so a memo that names neither field never re-runs: the picker rendered
-	 * empty and disabled on first mount with a provider already connected - which is
-	 * the only step-2 path a released backend has (QA round 1 Q3, UX U1).
-	 */
 	// Persist a hosting id and pull the model list that belongs to it. The
 	// refresh is best-effort: a stale model list is recoverable, a lost hosting
 	// selection is not, so its failure must not roll back the save.

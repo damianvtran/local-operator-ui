@@ -22,6 +22,8 @@
  * ATTACHES to it. Three consequences, each the fix for one of those findings:
  *
  * - A re-attach re-reads the session's state, so a receipt survives the row move.
+ * - The key-save outcome lives here too (see `KeyOutcome`), because it failed the
+ *   same way for the same reason.
  * - Detaching PAUSES rather than disposes: polling stops with the panel but the
  *   whole state stays -- a settled receipt AND a settled refusal -- and the next
  *   attach resumes a still-running operation. Only `start()` and `reset()` clear
@@ -35,6 +37,7 @@
 
 import type { AuthOperation } from "@shared/api/local-operator/desktop-api";
 import { useEffect, useRef, useState } from "react";
+import type { SaveKeyResult } from "../../../../shared/desktop-contract";
 import {
 	INITIAL_SIGN_IN_STATE,
 	type SignInDeps,
@@ -60,6 +63,37 @@ type Session = {
 
 const sessions = new Map<string, Session>();
 
+/**
+ * The key-save outcome, kept OUTSIDE the panel for the same reason the flow is.
+ *
+ * `keySaved` and `keyError` were panel `useState`, so a key save's receipt was
+ * destroyed by exactly the remount the browser flow was moved out of the panel
+ * for: measured live on both backends, "…key saved / Saved, but not checked yet"
+ * was on screen at 0.45 s and gone by 0.75 s, because the row moves into
+ * "Connected" the moment the credential lands (QA round 2 R2-Q1, UX round 2 U3).
+ */
+export type KeyOutcome = { saved: SaveKeyResult | null; error: string | null };
+
+const keyOutcomes = new Map<string, KeyOutcome>();
+
+/** What the last save for this provider left behind, empty when there was none. */
+export function peekKeyOutcome(providerId: string): KeyOutcome {
+	return keyOutcomes.get(providerId) ?? { saved: null, error: null };
+}
+
+/** Write through: only the fields named are replaced. */
+export function setKeyOutcome(
+	providerId: string,
+	next: Partial<KeyOutcome>,
+): void {
+	keyOutcomes.set(providerId, { ...peekKeyOutcome(providerId), ...next });
+}
+
+/** Forget it -- a fresh start, or a finished one. */
+export function clearKeyOutcome(providerId: string): void {
+	keyOutcomes.delete(providerId);
+}
+
 /** The state the session for this provider holds right now, idle when new. */
 export function peekSignInState(providerId: string): SignInState {
 	return sessions.get(providerId)?.state ?? INITIAL_SIGN_IN_STATE;
@@ -69,6 +103,7 @@ export function peekSignInState(providerId: string): SignInState {
 export function resetSignInSessions(): void {
 	for (const session of sessions.values()) session.flow.dispose();
 	sessions.clear();
+	keyOutcomes.clear();
 }
 
 export type SignInAttachment = {

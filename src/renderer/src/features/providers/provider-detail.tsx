@@ -15,7 +15,7 @@
  *   (design D4).
  * - A paste box is a FALLBACK unless the flow is the paste. A flow the backend
  *   marks `input_optional` (Anthropic's redirect, which completes on its own)
- *   leads with "Finish signing in in your browser" and keeps the paste behind a
+ *   leads with "Finish signing in with your browser" and keeps the paste behind a
  *   disclosure; only a flow that needs the paste shows the field open (D2).
  * - A device code is display content to copy, shown as the code alone, never
  *   the sentence around it (UX U4).
@@ -38,6 +38,7 @@ import type {
 } from "@shared/api/local-operator/desktop-api";
 import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
 import { Spinner } from "@shared/components/common/spinner";
+import { getModelsForHostingProvider } from "@shared/components/hosting/hosting-model-manifest";
 import {
 	Alert,
 	AlertDescription,
@@ -50,6 +51,7 @@ import {
 	TabsTrigger,
 } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -77,7 +79,12 @@ import {
 	unfinishedMessage,
 } from "./provider-catalog";
 import { primaryMethod } from "./provider-labels";
-import { useSignInSession } from "./sign-in-sessions";
+import {
+	clearKeyOutcome,
+	peekKeyOutcome,
+	setKeyOutcome,
+	useSignInSession,
+} from "./sign-in-sessions";
 
 /**
  * Reachability for a local provider.
@@ -148,15 +155,13 @@ const LocalProviderReachability: FC<{ provider: DesktopProvider }> = ({
 				</p>
 			)}
 			{/*
-			 * The reason only when it says something the line above does not: the
-			 * backend's own failure sentence repeats the address it could not reach,
-			 * which printed the same address twice in two faces (design round 1 D9).
+			 * No second failure line when the probe could not answer: the line above
+			 * already carries the verdict AND the address, so the backend's sentence
+			 * printed the same failure twice (design round 2 D9). The old guard hid it
+			 * only when the detail contained the configured address, which never
+			 * matched -- the configured address carries `/v1` and the sentence does not,
+			 * and the real backend (routes/auth.py's probe) sends no address at all.
 			 */}
-			{result &&
-			!result.reachable &&
-			!(provider.base_url && result.detail.includes(provider.base_url)) ? (
-				<p className="text-ink-dim text-meta">{result.detail}</p>
-			) : null}
 			<Button
 				variant="secondary"
 				size="sm"
@@ -311,9 +316,23 @@ const SignedIn: FC<{
 						: `Signed in to ${brand}`)}
 			</output>
 		</div>
-		{defaults?.receipt ? (
+		{defaults?.receipt || defaults?.model_name ? (
 			<p className="text-body-sm text-ink-muted">
 				{defaults.receipt}
+				{/*
+				 * The model, named -- because the receipt sentence is the BACKEND's, and
+				 * the older of the two shapes sends a default with no sentence at all.
+				 * Skipped when the sentence already carries it, so the line never says
+				 * the same model twice.
+				 */}
+				{defaults.model_name &&
+				!defaults.receipt?.includes(defaults.model_name) ? (
+					<>
+						{defaults.receipt ? " " : ""}
+						Default model:{" "}
+						<span className="text-ink">{defaults.model_name}</span>.
+					</>
+				) : null}
 				{onChangeModel ? (
 					<>
 						{" "}
@@ -369,8 +388,26 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	const [methodId, setMethodId] = useState<string | null>(null);
 	const [keyValue, setKeyValue] = useState("");
 	const [keySaving, setKeySaving] = useState(false);
-	const [keyError, setKeyError] = useState<string | null>(null);
-	const [keySaved, setKeySaved] = useState<SaveKeyResult | null>(null);
+	const [keyError, setKeyError] = useState<string | null>(
+		() => peekKeyOutcome(provider.id).error,
+	);
+	const [keySaved, setKeySaved] = useState<SaveKeyResult | null>(
+		() => peekKeyOutcome(provider.id).saved,
+	);
+	/*
+	 * Every write goes through here as well as through React state, so the panel that
+	 * mounts after the save (the row moves into "Connected", which remounts it) finds
+	 * the receipt instead of an invitation to paste the key again. Same cause, same
+	 * fix as the flow itself: QA round 2 R2-Q1, UX round 2 U3.
+	 */
+	const rememberKey = useCallback(
+		(next: { saved?: SaveKeyResult | null; error?: string | null }) => {
+			if ("saved" in next) setKeySaved(next.saved ?? null);
+			if ("error" in next) setKeyError(next.error ?? null);
+			setKeyOutcome(provider.id, next);
+		},
+		[provider.id],
+	);
 	const [promptValue, setPromptValue] = useState("");
 	const [promptError, setPromptError] = useState<string | null>(null);
 	const brand = brandOf(provider);
@@ -406,17 +443,64 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		void queryClient.invalidateQueries({ queryKey: desktopKeys.catalogue });
 
 		/*
-		 * AND THE CONFIG, which this branch adds to the same handler: a sign-in can
-		 * write the default model, and the composer, the model settings and the
-		 * empty-chat card all read it from there. The two invalidations answer two
-		 * different questions about one event -- what this account can offer, and
-		 * what the app now uses -- so neither replaces the other.
+		 * AND THE CONFIG: a sign-in can write the default model, and the composer,
+		 * the model settings, the empty-chat card and the composer's model chip all
+		 * read it from there. The two invalidations answer two different questions
+		 * about one event -- what this account can offer, and what the app now uses --
+		 * so neither replaces the other.
 		 */
-		// A sign-in can write the default model, which the composer, the model
-		// settings and the empty-chat card all read from the config.
 		void queryClient.invalidateQueries({ queryKey: ["config"] });
 		onConnected?.();
 	}, [queryClient, onConnected]);
+
+	/*
+	 * The default this Local Operator writes ITSELF, when the backend did not.
+	 *
+	 * A released backend applies no defaults on a connect (it has no
+	 * `defaults_applied` at all), so the user finished setup with no `hosting`, the
+	 * composer said "Choose a model", and the first message failed with whatever
+	 * stale model the backend's own default names (UX round 2 U1: a DeepSeek key and
+	 * a 404 on `gemini-2.0-flash-001`). The UI can write what it can see: the
+	 * provider that just connected, and the first model this Local Operator can list
+	 * for it. Nothing is written when something is ALREADY configured, so a user who
+	 * has chosen a model never has it moved under them.
+	 */
+	const updateConfig = useUpdateConfig();
+	const adoptDefault = useCallback(
+		async (connected: string, appliedHosting?: string | null) => {
+			if (appliedHosting) return;
+			try {
+				const current = await desktopResult<{
+					hosting?: string | null;
+				}>({ op: "config.get" });
+				if (current?.hosting) return;
+				const first = getModelsForHostingProvider(connected)[0];
+				await updateConfig.mutateAsync({
+					hosting: connected,
+					...(first ? { model_name: first.id } : {}),
+				});
+				/*
+				 * The chat's model chip reads a SESSION PREVIEW, not the config, so
+				 * invalidating the config alone left it saying "Choose a model" for
+				 * eight seconds after a connect while `/v1/config` already held the
+				 * model (UX round 2 U10). Both readings are refreshed here.
+				 */
+				await queryClient.invalidateQueries({ queryKey: ["config"] });
+				await queryClient.invalidateQueries({
+					queryKey: ["desktop", "session-preview"],
+				});
+			} catch {
+				/*
+				 * A backend that refuses the write leaves the user where they were,
+				 * and the ways out are still on screen: the status line's Connect, the
+				 * empty-chat card and the chip all lead back here.
+				 */
+			}
+		},
+		[queryClient, updateConfig],
+	);
+	const adoptDefaultRef = useRef(adoptDefault);
+	adoptDefaultRef.current = adoptDefault;
 
 	const onConnectedRef = useRef(refreshProviders);
 	onConnectedRef.current = refreshProviders;
@@ -443,23 +527,46 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 			// link opener; it also dedups the same operation and url.
 			open: (id: string, reopen: boolean) => openAuthorization(id, reopen),
 			poll: pollAuthOperation,
-			onSucceeded: () => onConnectedRef.current(),
+			onSucceeded: (operation) => {
+				onConnectedRef.current();
+				void adoptDefaultRef.current(
+					provider.id,
+					operation.defaults_applied?.hosting ?? null,
+				);
+			},
 		}),
 	);
 
-	// A panel reused for another provider starts clean.
+	/*
+	 * A panel reused for ANOTHER provider starts clean -- and only then.
+	 *
+	 * WHY THE REF: this effect runs on every MOUNT, not only when the provider
+	 * changes, and the row this panel is rendered on MOVES into "Connected" the
+	 * moment a credential lands. The remount that follows therefore reset the very
+	 * session `sign-in-sessions.ts` had just kept: the receipt rendered for 39-270 ms
+	 * and vanished, and leaving mid-sign-in came back idle (QA round 2 R2-Q1, UX
+	 * round 2 U3 and U4, both reproduced by deleting only the `reset()` line).
+	 * A first mount has nothing to reset -- the session holds what the panel is
+	 * supposed to show -- so the reset is skipped until an id actually changes.
+	 */
+	const previousProviderId = useRef<string | null>(null);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: provider.id is the reset trigger
 	useEffect(() => {
+		const moved = previousProviderId.current !== null;
+		const changed = previousProviderId.current !== provider.id;
+		previousProviderId.current = provider.id;
+		if (!(moved && changed)) return;
 		flowHandle.reset();
+		clearKeyOutcome(provider.id);
 		setMethodId(null);
 		setKeyValue("");
-		setKeyError(null);
+		rememberKey({ error: null });
 		setKeySaved(null);
 	}, [provider.id]);
 
 	const chooseMethod = (next: string) => {
 		setMethodId(next);
-		setKeyError(null);
+		rememberKey({ error: null });
 		setKeySaved(null);
 		flowHandle.reset();
 	};
@@ -488,7 +595,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	const saveKey = useCallback(async () => {
 		if (!method || !keyValue.trim()) return;
 		setKeySaving(true);
-		setKeyError(null);
+		rememberKey({ error: null });
 		try {
 			const result =
 				(await desktopResult<SaveKeyResult | null>({
@@ -497,25 +604,31 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 					value: keyValue.trim(),
 				})) ?? {};
 			setKeyValue("");
-			setKeySaved(result);
+			rememberKey({ saved: result });
 			refreshProviders();
+			void adoptDefaultRef.current(
+				provider.id,
+				result?.defaults_applied?.hosting ?? null,
+			);
 		} catch (error) {
 			// A 422 is the backend refusing THIS key (validation, or a provider
 			// with no key route), and its sentence belongs under the field.
 			// Anything else is also shown there: the field is what the user
 			// acts on next either way.
-			setKeyError(
-				error instanceof DesktopControlError || error instanceof Error
-					? error.message
-					: "The key could not be saved.",
-			);
+			rememberKey({
+				error:
+					error instanceof DesktopControlError || error instanceof Error
+						? error.message
+						: "The key could not be saved.",
+			});
 		} finally {
 			setKeySaving(false);
 		}
-	}, [method, keyValue, refreshProviders]);
+	}, [method, keyValue, refreshProviders, rememberKey, provider.id]);
 
 	const doneLabel = context === "dialog" ? "Continue" : "Done";
 	const finish = () => {
+		clearKeyOutcome(provider.id);
 		setKeySaved(null);
 		flowHandle.reset();
 		onDone?.();
@@ -611,7 +724,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 						value={keyValue}
 						onChange={(next) => {
 							setKeyValue(next);
-							setKeyError(null);
+							rememberKey({ error: null });
 						}}
 						label={`${brand} API key`}
 						invalid={keyError !== null}
@@ -626,8 +739,8 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 					>
 						{keyError ??
 							(provider.has_credential
-								? "A key is saved. Paste a new one to replace it. Stored encrypted on this computer."
-								: "Stored encrypted on this computer.")}
+								? `A key is saved. Paste a new one to replace it. Stored encrypted on this computer. Billed per use by ${brand}, separately from any plan.`
+								: `Stored encrypted on this computer. Billed per use by ${brand}, separately from any plan.`)}
 					</p>
 					<div>
 						<Button
@@ -843,7 +956,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 					<div className="flex items-center gap-2">
 						<Spinner size="sm" />
 						<output className="text-body text-ink">
-							Finish signing in in your browser
+							Finish signing in with your browser
 						</output>
 					</div>
 					<p className="text-body-sm text-ink-muted">
@@ -880,7 +993,15 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 							Link expires in {minutes} min
 						</p>
 					) : null}
-					{pasteField ? (
+					{/*
+					 * `input_required` is the predicate, NOT `pasteField`: `pasteField` is a
+					 * function and a function is always truthy, so guarding on it put an
+					 * empty "Browser showed a code?" disclosure on every waiting flow --
+					 * Radient, OpenAI's browser flow and Z.AI among them -- and made the
+					 * three waiting frames byte-identical to `panel-optional-paste`
+					 * (review round 2 R2-M2, caught from the committed frames).
+					 */}
+					{operation.input_required ? (
 						<Disclosure
 							summary="Browser showed a code? Paste it here"
 							className="w-full"

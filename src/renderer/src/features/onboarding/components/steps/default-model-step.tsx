@@ -30,7 +30,8 @@ import { Alert, Button } from "@shared/components/ui";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useModelsStore } from "@shared/store/models-store";
 import type { FC } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { planDefaultModelWrite } from "./default-model-plan";
 
 /**
  * The step's content, as a pure function of the choice, so a story (and a
@@ -115,64 +116,61 @@ export const DefaultModelStep: FC<DefaultModelStepProps> = ({
 			? null
 			: chooseDefaultModel(providers.data ?? [], config);
 	/*
-	 * The provider this step SHOWS. On a backend that applies no defaults on
-	 * sign-in -- every released one -- nothing is configured yet, and the provider
-	 * a `choose`/`proposed` choice names is the one the user just connected.
-	 * Displaying it without writing it is what let setup finish with an empty
-	 * `hosting` and a chat that could not run, and it is why the model field below
-	 * said "Select a hosting provider first" under a filled one (code round 1 M2,
-	 * UX U1, QA Q3).
+	 * The catalogue this Local Operator can offer for a provider, from the same
+	 * store the picker below reads: a released backend publishes one for most
+	 * providers, and where it does not the step says so instead of waiting for a
+	 * pick that cannot happen.
 	 */
-	const shownProvider =
-		config.hosting ??
-		(choice && (choice.kind === "choose" || choice.kind === "proposed")
-			? choice.provider.id
-			: "");
-	const chosenModel = config.model ?? "";
-	const suggestedModel = choice?.kind === "proposed" ? choice.model.id : "";
-	const modelToWrite = chosenModel || suggestedModel;
+	const modelsReady = useModelsStore((state) => state.isInitialized);
+	const storeModels = useModelsStore((state) => state.models);
+	const catalogueProviders = useMemo(() => {
+		const ids = new Set<string>();
+		for (const model of storeModels) ids.add(model.provider);
+		return [...ids];
+	}, [storeModels]);
+
 	/*
-	 * Whether the step still owes the user a model, and whether this Local
-	 * Operator can even list one for the provider: a released backend that
-	 * publishes no catalogue for OpenRouter has no rows to offer, and a step that
-	 * waited for a pick that cannot happen would be a dead end rather than a
-	 * guard.
+	 * One decision, in `default-model-plan.ts`: the provider this step SHOWS, what
+	 * Continue WRITES, and whether it may be pressed. It is a pure function so the
+	 * three mutants a review round tried against this exact rule -- never write the
+	 * shown provider, never report the block, finish anyway -- have a test that
+	 * fails (review round 2 R2-M3). A backend that applies no defaults on sign-in
+	 * (every released one) is why the shown provider must be the written one: setup
+	 * finishing with an empty `hosting` is a chat that cannot run (QA Q3, UX U1).
 	 */
+	const plan = useMemo(
+		() =>
+			planDefaultModelWrite({
+				choice,
+				hosting: config.hosting,
+				model: config.model,
+				catalogue: { ready: modelsReady, providers: catalogueProviders },
+			}),
+		[choice, config.hosting, config.model, modelsReady, catalogueProviders],
+	);
+	const { shownProvider, write, block, noCatalogue, modelToWrite } = plan;
 	const shownRow =
 		(providers.data ?? []).find((row) => row.id === shownProvider) ?? null;
-	const modelsReady = useModelsStore((state) => state.isInitialized);
-	const models = useModelsStore((state) => state.models);
-	const catalogueHasModels =
-		modelsReady && models.some((model) => model.provider === shownProvider);
-	const needsModel =
-		!modelToWrite &&
-		(choice?.kind === "choose" ||
-			(choice?.kind === "applied" && !choice.model));
 
 	// Registered from an effect, never during render: the parent holds it in a
 	// ref and runs it when Continue is pressed, so what the step SHOWS is what
 	// Continue WRITES.
 	useEffect(() => {
 		onBeforeContinue?.(
-			shownProvider
+			write
 				? async () => {
-						await updateConfig.mutateAsync({
-							hosting: shownProvider,
-							...(modelToWrite ? { model_name: modelToWrite } : {}),
-						});
+						await updateConfig.mutateAsync(write);
 					}
 				: null,
 		);
 		return () => onBeforeContinue?.(null);
-	}, [onBeforeContinue, shownProvider, modelToWrite, updateConfig.mutateAsync]);
+	}, [onBeforeContinue, write, updateConfig.mutateAsync]);
 
 	useEffect(() => {
 		if (!onBlockReason) return undefined;
-		onBlockReason(
-			needsModel && catalogueHasModels ? "Pick a model to continue." : null,
-		);
+		onBlockReason(block);
 		return () => onBlockReason(null);
-	}, [onBlockReason, needsModel, catalogueHasModels]);
+	}, [onBlockReason, block]);
 
 	if (choice === null) {
 		return (
@@ -196,7 +194,7 @@ export const DefaultModelStep: FC<DefaultModelStepProps> = ({
 				emptyHelperText="No providers are connected yet. Go back a step to connect one."
 			/>
 			<ModelSelect
-				value={chosenModel}
+				value={modelToWrite}
 				/*
 				 * The provider being SHOWN, not the one that happens to be saved:
 				 * on a released backend nothing is saved yet, and an empty id is
@@ -218,7 +216,7 @@ export const DefaultModelStep: FC<DefaultModelStepProps> = ({
 			<p className="text-body text-ink-muted">
 				New chats use this model. Every agent can pick a different one later.
 			</p>
-			{needsModel && !catalogueHasModels ? (
+			{noCatalogue ? (
 				<p className="text-ink-dim text-meta">
 					Your Local Operator can't list{" "}
 					{shownRow ? brandOf(shownRow) : "this provider's"} models yet. Finish

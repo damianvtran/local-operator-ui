@@ -118,7 +118,14 @@ function backend({ startReplies = [], reads = [] } = {}) {
 }
 
 /** A flow wired to the real poller, whose reads go to the scripted backend. */
-function flowFor(scripted) {
+/*
+ * `t`, when given, disposes the flow even if an assertion fails part-way through the
+ * test. WHY: a flow left running keeps its poll timer armed, so a regression prints
+ * its failure and then the FILE HANGS -- confirmed at >40 s by the reviewer, and in
+ * CI a red test that hangs presents as a job timeout, the one result that gets
+ * retried until it looks flaky (review round 2 R2-n3).
+ */
+function flowFor(scripted, t) {
 	const states = [];
 	const succeeded = [];
 	const flow = createSignInFlow({
@@ -128,6 +135,7 @@ function flowFor(scripted) {
 		onChange: (state) => states.push(state),
 		onSucceeded: (operation) => succeeded.push(operation),
 	});
+	t?.after(() => flow.dispose());
 	return { flow, states, succeeded };
 }
 
@@ -234,6 +242,13 @@ test("a 404 from the status read stops the poll and settles as expired", async (
 	const state = flow.getState();
 	assert.equal(state.phase, "settled");
 	assert.equal(state.operation.state, "expired");
+	/*
+	 * AND THE PROVIDER, which the 404's fallback snapshot used to drop: it rebuilt the
+	 * operation from the panel's state, which is empty before the first poll answers,
+	 * so the settled state named "" instead of the flow's own provider (review round
+	 * 1 n2; this pins it, which the mutant that puts the empty string back fails).
+	 */
+	assert.equal(state.operation.provider, "anthropic");
 	const readsAtStop = scripted.calls.read.length;
 	for (let i = 0; i < 5; i++) {
 		t.mock.timers.tick(AUTH_OPERATION_POLL_MS * 2);
@@ -516,13 +531,13 @@ test("a spent deadline is expired whatever the state says; a live one is not", (
  * The rules the first review round added, each one a measured failure.
  * ------------------------------------------------------------------------ */
 
-test("a DEVICE flow is not auto-opened: the code has to be on screen first", async () => {
+test("a DEVICE flow is not auto-opened: the code has to be on screen first", async (t) => {
 	const scripted = backend({
 		startReplies: [
 			op("d1", "waiting", { auth_url: URL_A, user_code: "V84J-2LN0K" }),
 		],
 	});
-	const { flow } = flowFor(scripted);
+	const { flow } = flowFor(scripted, t);
 	await flow.start("openai");
 	await settle();
 	/*
@@ -624,16 +639,32 @@ test("a NEW url for the same operation drops 'opened' first, then opens", async 
 			op("u2", "waiting", { auth_url: URL_B }),
 		],
 	});
-	const { flow, states } = flowFor(scripted);
+	const { flow, states } = flowFor(scripted, t);
 	await flow.start("anthropic");
 	await settle();
 	t.mock.timers.tick(AUTH_OPERATION_POLL_MS + 10);
 	await settle();
+	/*
+	 * The FIRST state that carries the new url, and what it says about `opened`.
+	 * Asserting on "some state in the run" was satisfied by the `starting` snapshot
+	 * before anything had opened at all, so the mutant that never resets `opened`
+	 * survived it (review round 2 R2-m3).
+	 */
+	const carriesNewUrl = states.filter(
+		(state) => state.operation?.auth_url === URL_B,
+	);
+	assert.ok(carriesNewUrl.length > 0, "the poll must report the new url");
+	assert.equal(
+		carriesNewUrl[0].opened,
+		false,
+		"'opened' must be false for the url that has not been opened yet",
+	);
+	assert.equal(carriesNewUrl[0].openFailed, false);
 	assert.ok(
 		states.some(
-			(state) => state.opened === false && state.openFailed === false,
+			(state) => state.opened === true && state.operation?.auth_url === URL_B,
 		),
-		"'opened' must be false for the URL that has not been opened yet",
+		"and then the new page opens, once",
 	);
 	assert.equal(scripted.calls.open.length, 2, "each distinct URL opens once");
 	flow.dispose();

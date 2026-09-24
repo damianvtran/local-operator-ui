@@ -4214,6 +4214,41 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * produces the staged line that arms it.
 				 */
 				if (
+					noProvider &&
+					event.key === "Enter" &&
+					!event.shiftKey &&
+					!event.nativeEvent.isComposing
+				) {
+					/*
+					 * NOTHING CAN ANSWER, so Enter does not send. The button was already
+					 * disabled and the key was not: measured live, typing with no provider
+					 * connected and pressing Enter issued `sessions.create` and
+					 * `sessions.message`, and the message landed in the transcript waiting
+					 * for an agent that could never run (QA round 2 R2-Q2). Typing stays
+					 * allowed -- the box is where the failure is explained -- and the
+					 * status line under it carries the Connect action.
+					 */
+					event.preventDefault();
+					return;
+				}
+				if (
+					noProvider &&
+					event.key === "Enter" &&
+					!event.shiftKey &&
+					!event.nativeEvent.isComposing
+				) {
+					/*
+					 * NOTHING CAN ANSWER, so Enter does not send. The button was already disabled
+					 * and the key was not: measured live, typing with no provider connected and
+					 * pressing Enter issued `sessions.create` and `sessions.message`, and the
+					 * message landed in the transcript waiting for an agent that could never run
+					 * (QA round 2 R2-Q2). Typing stays allowed -- the box is where the failure is
+					 * explained -- and the status line under it carries the Connect action.
+					 */
+					event.preventDefault();
+					return;
+				}
+				if (
 					event.key === "Enter" &&
 					!event.shiftKey &&
 					!event.nativeEvent.isComposing
@@ -4941,6 +4976,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * submits this form.
 			 */
 			if (isInputDisabled) return;
+			// One more way in: nothing connected means no send, whichever control asked.
+			if (noProvider) return;
 			if (!newMessage.trim() && attachments.length === 0) return;
 			/*
 			 * THE CAPTURE IS ASKED FIRST, exactly as the key handler asks it, so the
@@ -5402,8 +5439,17 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				sendError?.heldClaimCode,
 				heldCopyOnScreen === true,
 			);
+			/*
+			 * `noProvider` FIRST, not only the notice text: live, the failure a user
+			 * actually gets with nothing connected is the app's own 20-second timeout
+			 * (the backend's 503 arrives after the IPC deadline at load), so the
+			 * backend's sentence never matched and this action never appeared (UX round
+			 * 2 N3). The condition the action answers is "nothing can answer", which
+			 * this component already knows.
+			 */
 			const providerConnectActions =
-				sendError?.message && NO_PROVIDER_NOTICE.test(sendError.message)
+				noProvider ||
+				(sendError?.message && NO_PROVIDER_NOTICE.test(sendError.message))
 					? [
 							{
 								label: "Connect a provider",
@@ -5491,7 +5537,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				// round 2, D9): "unsent" is a state this app cannot check.
 				discardClearsBox: !boxEmpty,
 			};
-		}, [sendError, newMessage, replies, attachments, heldCopyOnScreen]);
+		}, [
+			noProvider,
+			sendError,
+			newMessage,
+			replies,
+			attachments,
+			heldCopyOnScreen,
+		]);
 
 		/*
 		 * The session issue: the state of this machine's Radient sign-in, and the one

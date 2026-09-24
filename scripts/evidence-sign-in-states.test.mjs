@@ -44,6 +44,38 @@ const hashOf = (state) => {
 	return createHash("sha256").update(readFileSync(file)).digest("hex");
 };
 
+test("launch_url changes no pixel, and the waiting disclosure stays SHUT", () => {
+	/*
+	 * Two claims this set makes, and the only assertions that can make them:
+	 *
+	 * 1. `launch_url` is the backend's loopback alias of the SAME page, so a frame
+	 *    taken with it set must be byte-identical to the one without it. If a panel
+	 *    starts preferring it for the host name, the sentence reads
+	 *    "We opened localhost:54549" and this equality fails (review round 2 R2-m1).
+	 * 2. The waiting screen carries NO disclosure. When the guard was `pasteField ?`
+	 *    and `pasteField` became a function -- always truthy -- every waiting flow grew
+	 *    an empty "Browser showed a code?" control, and all three waiting frames became
+	 *    byte-identical to `panel-optional-paste` (review round 2 R2-M2, which is how
+	 *    the regression was found at all).
+	 */
+	const startReply = hashOf("panel-waiting-url-on-start-reply");
+	assert.equal(
+		hashOf("panel-waiting-launch-url"),
+		startReply,
+		"a launch_url beside auth_url must not change the pixels",
+	);
+	assert.equal(
+		hashOf("panel-waiting-first-click-released-backend"),
+		startReply,
+		"and the released backend's sequence reaches the same screen",
+	);
+	assert.notEqual(
+		startReply,
+		hashOf("panel-optional-paste"),
+		"the waiting screen must not carry the paste disclosure",
+	);
+});
+
 test("every terminal panel state is its own image, and not the waiting one", () => {
 	const hashes = new Map();
 	for (const state of DISTINCT_STATES) hashes.set(state, hashOf(state));

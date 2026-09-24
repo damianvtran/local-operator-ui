@@ -445,7 +445,17 @@ export const STORIES = [
 	 * The same paste body reached with NO url at all, which is the case a released
 	 * backend's Token Plan sign-in hits (QA round 1 Q2).
 	 */
-	["provider-sign-in-onboarding--panel-paste-required-no-url", 1280, 620],
+	[
+		"provider-sign-in-onboarding--panel-paste-required-no-url",
+		1280,
+		620,
+		/*
+		 * The spinner this row exists to catch is a DIFFERENT image from the paste
+		 * body, so a hash comparison alone cannot tell them apart from the other
+		 * states: the attribute is the claim (review round 2 R2-m2).
+		 */
+		{ expectPresent: '[data-sign-in-state="paste-required"]' },
+	],
 	/*
 	 * `launch_url` set beside the provider's own `auth_url`: the sentence must name
 	 * the provider, not the backend's loopback alias (code round 1 M1, UX N2).
@@ -500,6 +510,7 @@ export const STORIES = [
 	 * (code round 1 M2, QA round 1 Q3, UX round 1 U1).
 	 */
 	["provider-sign-in-onboarding--onboarding-step-2-choose", 1280, 900],
+	["provider-sign-in-onboarding--onboarding-step-2-no-catalogue", 1280, 900],
 	["provider-sign-in-onboarding--onboarding-step-3", 1280, 900],
 	["provider-sign-in-onboarding--empty-chat-card", 1280, 620],
 	["provider-sign-in-onboarding--connect-dialog", 1280, 900],
