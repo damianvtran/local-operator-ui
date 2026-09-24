@@ -36,6 +36,13 @@ export const shouldReinitialiseComposer = (
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
+// The chip objects this module writes back when a refusal hands a payload over
+// are minted here rather than carried from the send, exactly as the composer's
+// own restore writes them (`message-input.tsx`'s `addAttachment(conversationId,
+// { id: uuidv4(), path })`): only the PATHS are the payload - the store records
+// paths and the guard compares paths - so an id is an identity for the row, not
+// part of what was sent.
+import { v4 as uuidv4 } from "uuid";
 // The one filename rule, rather than a second copy of it: the sentence this
 // module builds names a file, and every other surface that names one goes
 // through here. A RELATIVE specifier across the same boundary, because the
@@ -46,6 +53,7 @@ import { getFileName } from "../../features/chat/utils/get-file-name";
 import { isStoreWriteRefusal } from "../store/canonical-sessions-store";
 import {
 	type Attachment,
+	type Reply,
 	useConversationInputStore,
 } from "../store/conversation-input-store";
 
@@ -102,10 +110,16 @@ export const restoreSubmittedText = (
  *
  * The rule is `restoreSubmittedText`'s, and it is the same rule for the same
  * reason: only into an EMPTY slot. A composer that already holds chips is
- * holding files the user just picked, and overwriting those is loss - on the
- * named-session arm that is exactly the state (`conversationId` never changes,
- * so the chips were never cleared and there is nothing to restore). Empty answer
- * means "adopt nothing", never "clear what is there".
+ * holding files the user just picked, and overwriting those is loss. Empty
+ * answer means "adopt nothing", never "clear what is there".
+ *
+ * ONE ARM THIS RULE DOES NOT DECIDE, now that the echo takes the row on the way
+ * out (`clearStagedPayload`): a chip the user removes DURING the flight leaves
+ * the row empty as well, so a refusal that lands afterwards puts that chip back.
+ * That is `restoreSubmittedText`'s own trade, made for the same reason - an
+ * emptied slot is indistinguishable from one this app emptied - and it errs in
+ * the recoverable direction: the other way is a file the user believes they are
+ * sending.
  *
  * Exported and pure so the composer's own adoption can be pinned by a test
  * rather than argued from its call site, exactly as the two transitions above
@@ -123,6 +137,241 @@ export const restoreSubmittedAttachments = (
  * effect and an identity that changes per call is a re-run waiting to happen.
  */
 const EMPTY_PATHS: readonly string[] = [];
+
+/**
+ * Put a refused send's staged REPLIES back, on the same rule as its text.
+ *
+ * A staged reply is not decoration: `buildSendPayload` writes it into the
+ * payload's `<reply-to>` prefix, so a reply a restored draft does not re-adopt
+ * is a quote the user believes they are sending and are not - the same silent
+ * partial send `restoreSubmittedAttachments` above exists for, one half over.
+ *
+ * The rule is those two rules', for the same reason: only into an EMPTY slot. A
+ * composer that already holds a staged reply is holding a quote the user just
+ * staged, and `replies` is a list rather than a slot - so "empty" is the whole
+ * list, because appending the refused send's quotes to a quote the user staged
+ * afterwards would prefix a payload with a conversation that was never cited.
+ */
+export const restoreSubmittedReplies = (
+	current: readonly Reply[],
+	submitted: readonly Reply[] | undefined,
+): readonly Reply[] =>
+	current.length === 0 && submitted ? submitted : EMPTY_REPLIES;
+
+/** One instance, for the reason `EMPTY_PATHS` gives above. */
+const EMPTY_REPLIES: readonly Reply[] = [];
+
+/** One instance, for the same reason. */
+const EMPTY_CHIPS: readonly Attachment[] = [];
+
+/**
+ * The two halves of a draft a composer STAGES beside its own text.
+ *
+ * The box holds the words; this holds what travels WITH them - the files
+ * (`conversation-input-store`'s `attachments`) and the quotes (`replies`). One
+ * payload in three registers, which is what makes it wrong for any of them to
+ * leave the composer on a different trigger: `buildSendPayload` turns the
+ * replies into the payload's prefix and the send encodes images from the file
+ * paths, so what is on screen and what is on the wire are the same list. */
+export type StagedPayload = {
+	replies: readonly Reply[];
+	attachments: readonly Attachment[];
+};
+
+/**
+ * The staged halves a conversation is holding RIGHT NOW.
+ *
+ * Read at submit rather than subscribed to, because the question is "what did
+ * THIS send carry" and the answer has to be frozen at the press: a chip the user
+ * attaches while the request is in flight is their next payload, not this one.
+ *
+ * AND THE SNAPSHOT IS WHAT THE CLEAR USES, which is the other half of that
+ * sentence: `clearStagedPayload` removes exactly the ENTRIES in here - by id,
+ * through the store's own removers - so the chips a press froze are the blast
+ * radius of the clear and a file attached during the flight is outside it. The
+ * two halves cannot disagree, because one answer serves both questions.
+ */
+export const stagedPayloadOf = (conversationId: string): StagedPayload => {
+	const row =
+		useConversationInputStore.getState().inputByConversation[conversationId];
+	return {
+		replies: row?.replies ?? EMPTY_REPLIES,
+		attachments: row?.attachments ?? EMPTY_CHIPS,
+	};
+};
+
+/**
+ * ONE PAYLOAD, ONE MOMENT: every half a submit stages leaves the composer HERE.
+ *
+ * The clear itself is trivial. WHY IT IS A FUNCTION AND NOT TWO LINES AT ITS
+ * CALL SITE is the whole of this change. The chip row used to be cleared after
+ * the send's promise SETTLED while the text left at the ECHO
+ * (`onEchoPainted`), so for the entire in-flight window - the image encode plus
+ * the create hop - the transcript showed the user's message with its attachment
+ * while the composer still showed the chip for that attachment. That reads as
+ * one file sent twice, and as a send that half-happened. `clearOnce` now makes
+ * one call that takes both, so no later edit can put the halves back on
+ * different clocks.
+ *
+ * CARRIES, ENTRY BY ENTRY, is the third thing this function is: the removal goes
+ * through the store's own `removeReply`/`removeAttachment` for the ids the press
+ * captured, NOT through `clearReplies`/`clearAttachments`.
+ *
+ * WHY THE ROW IS CLEARED BY IDENTITY WHILE THE TEXT IS CLEARED BY EQUALITY. The
+ * press->echo window is a LIVE window - the box stays typeable on purpose - so
+ * anything the user adds during it belongs to their next message. A whole-row
+ * clear took that too, silently: press with a file staged, attach a second one
+ * while the send is going out, and the echo wiped both (QA round 1, Q-2; UX
+ * round 1, U2 - "my words stayed, my file vanished"). The text half is guarded
+ * the other way (`clearSubmittedText` compares the whole box) because a box has
+ * ONE slot and there is no honest way to delete a prefix from it - the user's
+ * own typed words are not itemised. A row IS itemised, so the exact items are
+ * the honest unit here, and the two rules agree on the thing that matters: a
+ * clear never takes more than the send it belongs to. A chip the user REMOVED
+ * during the flight is simply absent from the row, and removing an absent id is
+ * a no-op.
+ *
+ * CLEARING THE ROW EARLY IS SAFE FOR THE WIRE, and that is not obvious enough to
+ * leave unsaid: the words and the reply prefix are assembled before the request
+ * (`buildSendPayload`), and the images are encoded from the paths the caller
+ * passed (`encodeImageAttachments` reads its ARGUMENT, not this store) - so the
+ * only thing this clear can change is what the composer shows. Both halves are
+ * pinned as tests rather than assumed: `echo-delivery.test.mjs` drives a real
+ * `admitChatDraft` with a mounted transcript, clears the row from inside the
+ * echo's paint callback, and reads what reached the wire; `submit-latency.test.mjs`
+ * carries the structural row for the same claim.
+ */
+export const clearStagedPayload = (
+	conversationId: string,
+	staged: StagedPayload,
+): void => {
+	const store = useConversationInputStore.getState();
+	for (const reply of staged.replies)
+		store.removeReply(conversationId, reply.id);
+	for (const attachment of staged.attachments)
+		store.removeAttachment(conversationId, attachment.id);
+};
+
+/**
+ * Put a refused send's staged halves back, through the same two empty-slot rules
+ * the store's own route uses (`adoptRefusedPayload`).
+ *
+ * NEEDED AS ITS OWN STEP because the echo now takes the row on the way out. A
+ * refusal that lands after the optimistic paint (413 and 422, and every other
+ * refusal thrown once `admissionAttempted` is set) would otherwise leave the
+ * restored text in the box with no chip beside it: a resend carrying the wording
+ * and not the file, silently, which is round 7's R17 one arm over. Deciding both
+ * halves in one call is deliberate for the reason `adoptRefusedPayload` gives - a
+ * draft carrying one half of a refused payload is not distinguishable on screen
+ * from one carrying all of it.
+ *
+ * Neither half is touched when the row already holds the user's own content; see
+ * the two rules above for why, and for the one arm each of them gets wrong.
+ */
+export const restoreStagedPayload = (
+	conversationId: string,
+	staged: StagedPayload,
+): void => {
+	const store = useConversationInputStore.getState();
+	const row = store.inputByConversation[conversationId];
+	const paths = restoreSubmittedAttachments(
+		row?.attachments ?? EMPTY_CHIPS,
+		staged.attachments.map((attachment) => attachment.path),
+	);
+	for (const path of paths)
+		store.addAttachment(conversationId, { id: uuidv4(), path });
+	for (const reply of restoreSubmittedReplies(
+		row?.replies ?? EMPTY_REPLIES,
+		staged.replies,
+	))
+		store.addReply(conversationId, reply);
+};
+
+/**
+ * THE COMPOSER'S FIVE SENTENCES, and which window each one is true in.
+ *
+ * Extracted from the band's JSX because their ORDER is the rule, not the
+ * strings: the chain was inline, so a term added at the wrong end of it looked
+ * exactly like a term added anywhere else. It was: `Sending your message` was
+ * written to say "this send is still going out" and put BELOW `Waiting for the
+ * agent`, and on the path the operator reported the two are true at once - the
+ * store's rung is up once the message request has been ISSUED
+ * (`admissionAttempted`, written before the echo and before the wire), so on a
+ * real send the box said the agent was answering while the request was still
+ * going out (agent review round 1, MAJOR-1; QA Q-1, which executed it and read
+ * `Waiting for the agent`).
+ *
+ * `sendingUnsettled` therefore sits ABOVE `awaitingReply`, and the two are not
+ * "consecutive halves" of one window but of ONE SEND at different moments: while
+ * the press has not settled, the honest sentence is that the message is on its
+ * way out; once it has settled and the agent is answering, that one takes over.
+ * "Further along wins" was the right principle - the earlier term was on the
+ * wrong side of it.
+ *
+ * WHAT FEEDS `sendingUnsettled` IS NOT THIS COMPOSER'S OWN STATE ALONE, and the
+ * second source is the STORE's draft row rather than anything a pane holds.
+ * `sendInFlight` (below) is a `useState` in `useMessageInput`, so the New-chat
+ * identity flip - which REPLACES the panel mid-wait, as the operator's own
+ * screenshot shows - unmounts it with the composer that held it, and the
+ * replacement renders the idle invitation over a send it cannot see (MAJOR-1's
+ * second half). The store's row is the fact that survives: `draftRowForSession`
+ * finds it from the session id alone, `admittedSendFor` decides it is in flight,
+ * and it is the SAME predicate the transcript's working line is built from, so
+ * the box and the line cannot disagree about whether a send is going out. The two
+ * are OR'd: the row is the send both surfaces can see, and the hook's is the press
+ * this composer made before that row exists at all (and on the arms - a legacy
+ * one, a refused-draft one - where it never will).
+ *
+ * It is the row's OWN conversation (`pending` + `admissionAttempted` on a row that
+ * addresses this session), which is the boundary that keeps another
+ * conversation's send from making this composer say this.
+ *
+ * ROUND 2 CORRECTED THIS SOURCE, and the correction is worth stating because the
+ * first attempt looked right: round 1 fed this from `chat-page`'s `admitting`,
+ * which is a `useState` declared inside the panel the flip replaces, so the value
+ * was false on the replacement for the whole send and the sentence was still
+ * unreachable in the window it names (agent review round 2, R2-1). The lesson is
+ * the one this file's own docs keep repeating: a fact of a SEND must not live in
+ * the state of one of its readers.
+ */
+export const COMPOSER_PLACEHOLDER = {
+	unavailable: "This conversation is gone",
+	busy: "Agent is busy",
+	answer: "Answer the question above",
+	sending: "Sending your message",
+	waiting: "Waiting for the agent",
+	idle: "Ask me for help",
+} as const;
+
+/**
+ * The one sentence the box's placeholder slot carries, first match wins.
+ *
+ * The READ of the order: a conversation this machine does not have outranks every
+ * other reading (`isInputDisabled` is true for one, so the gone-state sentence has
+ * to be asked first or a reader of a missing conversation is told `Agent is busy`
+ * about a turn nobody is running - design round 2, D3); then the box's own
+ * refusal; then a gate that is waiting to be answered; then THIS pane's send; then
+ * the agent; then the invitation.
+ */
+export const composerPlaceholder = (state: {
+	/** The conversation is not on this machine. */
+	unavailable: boolean;
+	/** `isLoading && currentJobId` - the box is refused, with its own sentence. */
+	inputDisabled: boolean;
+	/** A pending `ask` gate is waiting for an answer in this pane. */
+	awaitingAnswer: boolean;
+	/** A send this pane issued has not settled. */
+	sendingUnsettled: boolean;
+	/** A send has been issued and the agent has not painted anything yet. */
+	awaitingReply: boolean;
+}): string => {
+	if (state.unavailable) return COMPOSER_PLACEHOLDER.unavailable;
+	if (state.inputDisabled) return COMPOSER_PLACEHOLDER.busy;
+	if (state.awaitingAnswer) return COMPOSER_PLACEHOLDER.answer;
+	if (state.sendingUnsettled) return COMPOSER_PLACEHOLDER.sending;
+	if (state.awaitingReply) return COMPOSER_PLACEHOLDER.waiting;
+	return COMPOSER_PLACEHOLDER.idle;
+};
 
 /** The half of a refused payload a composer's own content kept out of the box. */
 export type RefusedPayloadHalf = "text" | "files";
@@ -601,12 +850,29 @@ export const useMessageInput = ({
 	);
 
 	const submittingRef = useRef(false);
+	/*
+	 * A SEND THIS COMPOSER MADE IS STILL UNACKNOWLEDGED, which is a state the
+	 * composer owes the user a sentence about (the placeholder in
+	 * `message-input.tsx`): the box is emptied at the echo, so between the press
+	 * and the settle the composer can be showing an empty field with no statement
+	 * at all about the message that has just left it.
+	 *
+	 * Owned here as well as read from the store, deliberately: this one is a fact
+	 * about THIS composer's press - true from the press, false once the submit
+	 * settles whichever way it settled, and available on the arms where no store
+	 * row ever exists (a slash command, a gate answer, a legacy send) - while the
+	 * row is the half that survives the identity flip and is fed in beside it
+	 * (`chat-page`'s `admitting` is neither: it is a `useState` of the panel the
+	 * flip replaces, which is what review round 2's R2-1 found).
+	 */
+	const [sendInFlight, setSendInFlight] = useState(false);
 	// Admission, not the keypress, retires a draft. A refused send hands its text
 	// back to the box; an UNCONFIRMED one leaves its text with the claim that
 	// carries the retry, so nothing the user typed is lost either way.
 	const handleSubmit = useCallback(async () => {
 		if (!inputValue.trim() || !conversationId || submittingRef.current) return;
 		submittingRef.current = true;
+		setSendInFlight(true);
 		/*
 		 * THE TEXT LEAVES THE BOX WHEN THE TRANSCRIPT RECEIVES IT, NOT BEFORE.
 		 *
@@ -634,20 +900,43 @@ export const useMessageInput = ({
 		 * state (U3). The `clearOnce()` after the await below is the fallback for
 		 * every send that never echoes at all - a slash command, a gate answer, the
 		 * legacy model path - and it is what a harness holding ONE mounted composer
-		 * observes on the buffered path (round 7, F1). Both triggers clear only the
-		 * text this submit is carrying, once per submit.
+		 * observes on the buffered path (round 7, F1). Both triggers clear once per
+		 * submit, and neither of them clears anything but the payload this submit is
+		 * carrying.
 		 *
 		 * The payload is still captured ONCE and threaded through every consumer
 		 * below. Re-reading `inputValue` after a clear yields "", which would
 		 * submit an empty message and make the store's unchanged-payload guard
 		 * compare every retry against "" and refuse it. One value, one meaning.
+		 *
+		 * THE OTHER HALVES OF THAT PAYLOAD MOVE ON THE SAME TRIGGER, which is the
+		 * second half of this rule and the reason `clearOnce` is where both happen.
+		 * The chip row and the staged quotes used to leave only when the send's
+		 * promise SETTLED, while the text left at the echo - so the whole in-flight
+		 * window showed the user's message with its attachment in the transcript AND
+		 * the chip for that attachment in the composer. One file apparently sent
+		 * twice, on a send that appears to have half-happened. Captured here beside
+		 * the text, so all three registers are recognisably ONE payload, and taken
+		 * by the one call above, so no later edit can put them on two clocks (see
+		 * `clearStagedPayload`).
 		 */
 		const submitted = inputValue;
 		/*
+		 * Frozen at the press, like the text: a chip the user attaches while the
+		 * request is in flight belongs to their NEXT message, and a refusal must not
+		 * hand it back as though it had been sent.
+		 */
+		const staged = conversationId ? stagedPayloadOf(conversationId) : undefined;
+		/*
 		 * One clear per submit, whichever of its two triggers gets there first,
-		 * and only over the text this submit is actually carrying: an echo that
+		 * and only over the payload this submit is actually carrying: an echo that
 		 * lands late - or on a composer that has since been remounted - must not
-		 * clear something the user has typed in the meantime.
+		 * clear something the user has typed or attached in the meantime.
+		 *
+		 * BOTH HALVES LEAVE HERE, in this one call. The text is the box's and the
+		 * chips are the store row's, but they are one payload and they leave on one
+		 * clock - which is the defect this trigger exists for, not two clearers that
+		 * agree today (see `clearStagedPayload`).
 		 */
 		let cleared = false;
 		const clearOnce = () => {
@@ -655,6 +944,7 @@ export const useMessageInput = ({
 			cleared = true;
 			if (initializedRef.current !== conversationId) return;
 			setInputValue((current) => clearSubmittedText(current, submitted));
+			if (conversationId && staged) clearStagedPayload(conversationId, staged);
 		};
 		/*
 		 * The persisted draft is retired as the send settles, not as it starts,
@@ -674,8 +964,22 @@ export const useMessageInput = ({
 				// editing: nothing was admitted, so the composer is where it belongs -
 				// but only into an EMPTY box, since the user may have typed the next
 				// message while this one was in flight and that text is theirs.
-				if (initializedRef.current === conversationId)
+				/*
+				 * AND THE CHIPS COME BACK WITH IT, which is why they are restored inside
+				 * this same gate rather than beside it. The refusal may have arrived
+				 * AFTER the echo (413/422, and everything thrown once admission was
+				 * attempted), and the echo is what took the chip row - so without this
+				 * the box would hold the restored wording beside an empty chip row, and
+				 * the obvious next Enter would send the message without the file. The two
+				 * halves are moved by the same condition on purpose: a restore that can
+				 * put back one and not the other is the class of defect both rules
+				 * above exist for.
+				 */
+				if (initializedRef.current === conversationId) {
 					setInputValue((current) => restoreSubmittedText(current, submitted));
+					if (conversationId && staged)
+						restoreStagedPayload(conversationId, staged);
+				}
 				return;
 			}
 			if (outcome === SEND_HELD) {
@@ -686,11 +990,34 @@ export const useMessageInput = ({
 				 * retry lives on the store's claim (`Restore message`), whose
 				 * resend replays the same request id.
 				 */
+				/*
+				 * THE FILES DO THE OPPOSITE, and that is not a contradiction. The
+				 * unchanged-payload guard compares text AND files AND images, so a claim
+				 * left holding a payload whose chip the echo had already taken would
+				 * refuse the very retry `Restore message` exists to make possible (its
+				 * press hands back the claim's own `submittedAttachments`). The text
+				 * stays out because a copy of it is painted in the transcript; the chip
+				 * comes back because nothing else can reproduce the file - and only into
+				 * an empty row, so a chip the user attached since is untouched.
+				 */
+				if (
+					conversationId &&
+					staged &&
+					initializedRef.current === conversationId
+				)
+					restoreStagedPayload(conversationId, staged);
 				retireDraft();
 				return;
 			}
 		} finally {
 			submittingRef.current = false;
+			/*
+			 * The wait ends with the submit, whichever way it ended. Deliberately not
+			 * with the echo: between the echo and the settle the message IS on screen
+			 * and the send is still unconfirmed, which is the window the composer's
+			 * sentence is about.
+			 */
+			setSendInFlight(false);
 		}
 
 		/*
@@ -812,5 +1139,12 @@ export const useMessageInput = ({
 		handleKeyDown,
 		handleSubmit,
 		textareaRef,
+		/*
+		 * A send this composer made has not settled yet. Exposed because it is
+		 * the composer's own press, and the placeholder that states it is the
+		 * composer's to render (see the state's declaration above for why it is
+		 * not read from the transcript).
+		 */
+		sendInFlight,
 	};
 };
