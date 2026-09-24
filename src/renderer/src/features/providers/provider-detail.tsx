@@ -172,8 +172,18 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	 * left the panel telling the user they were signed in while the sentence
 	 * directly above it said they were not (UX U1). Called before the panel's
 	 * early returns, so the hook order is the same for every provider.
+	 *
+	 * `retryOnMount: false` for the reason the account read below carries it, on
+	 * the other key (QA round 3, Q-8): this panel REPORTS the verdict its host
+	 * (the grid, or the account section's sign-in block) already reads, and with
+	 * the default a panel mounting on a FAILED, data-less verdict re-commissioned
+	 * it. Every card press on a failing `GET /v1/auth/status` became a loop -
+	 * measured at 1,579 requests in 20 s and a grid stuck on "Loading providers" -
+	 * because the grid's hold unmounted this panel for each re-read and its
+	 * remount started the next. See `RadientLoginVerdictOptions` for the
+	 * mechanism, and `useRadientAuthStatus`'s `settling` for the gate's half.
 	 */
-	const login = useRadientLoginVerdict();
+	const login = useRadientLoginVerdict({ retryOnMount: false });
 	/**
 	 * The app's own answer about whether a Radient sign-in is stored, and whether
 	 * it could be asked at all (see `loginState`; design round 1's D3 is why the
