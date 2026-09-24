@@ -92,7 +92,7 @@ scene re-reads the verdict and the census from inside the run and asserts them:
 | --- | --- | --- | --- | --- |
 | `before/` | dead grant, **`origin/main` = `d1402bbaa`** | `login_required`, id 4 | `401 radient_credential_refused` (`grant_invalid`) | `has_credential: true, configured: true` |
 | `after/` | dead grant (same state, this head) | `login_required`, id 4 | same | `has_credential: true, configured: true` |
-| `healthy/` | fresh grant | `ok`, id 4 | `401 radient_upstream_failed` (`credential_unavailable`) | `has_credential: true, configured: true` |
+| `healthy/` | fresh grant | `ok`, id 4 | `502 radient_upstream_failed` (`credential_unavailable`) -- the LESS common of two answers; see below | `has_credential: true, configured: true` |
 | `no-verdict/` | dead grant, route stripped | key absent | `401 radient_credential_refused` | `has_credential: true, configured: true` |
 | `unknown-verdict/` | dead grant, route forced to `unknown` (QA F2) | `unknown`, id 4 | `401 radient_credential_refused` | `has_credential: true, configured: true` |
 | `never-signed-in/` | no row, no tunnel | `unknown`, **`credential_id: null`** | `409 radient_no_credential` | `has_credential: false, configured: false` |
@@ -100,6 +100,26 @@ scene re-reads the verdict and the census from inside the run and asserts them:
 `after/` is the same rig state as `before/`, which is what makes the pair
 comparable -- nothing about the command changes between them. Every directory
 carries BOTH frames (the Radient account section and the grid card).
+
+**`healthy/`'s account read is corrected here (design round 3, D10), and the frame
+is not re-shot.** Round 2 recorded it as `401 radient_upstream_failed
+(credential_unavailable)`, a pair the backend never sends: `_credential_refusal`
+answers `credential_unavailable` as a **502** (`desktop_radient.py`, only
+`grant_invalid` is a 401), and the run's own proxy log shows 502s. The row now
+names what the committed frame caught -- a transient 502 -- and that is also what
+the frame's section sentence says ("could not be read" is the `unavailable`
+class), so the row and the frame agree. What the row did NOT say, and should
+have: on this rig the SAME `state.sh healthy` usually answers `401
+radient_credential_refused` with `upstream_status: 401` instead (design
+reproduced it on both of its runs), because the real Radient API is reachable
+from here and refuses the rig's fake-IdP bearer. That read renders the OTHER
+picture: the refusal sentence ("Radient refused the sign-in this app is holding
+... Signing in again below replaces it.") beside the same green **"Signed in"**
+chip. The chip is right in both, because the verdict is `ok` and this PR lets an
+`ok` verdict speak for the row; `origin/main` renders the same chip there (its
+card hash equals `before/`'s). No re-shoot, because the chip -- the thing this
+set is evidence for -- is identical in both outcomes, and design confirmed its
+own frame of this head is byte-identical to the committed card.
 
 **THE FIRST-RUN WIZARD IS ASSERTED ABSENT** (QA round 2, Q-7, and this is the one
 line the README owed it). `never-signed-in/` is the state with no connected
@@ -123,8 +143,10 @@ run's log as `the first-run wizard {"up":false}`.
   section is SETTLED -- the spinner Q-5 measured is gone, and the reading is the
   same four seconds later. This is the frame D7 asked for.
 - `healthy/`: the section says **"Your Radient account could not be read, so this
-  app cannot show your account details."** (this rig's account read fails upstream
-  -- a real Radient API is not reachable from here) and the chip is green
+  app cannot show your account details."** (this boot's account read was the
+  transient `502 credential_unavailable`; the more common answer on this rig is
+  the upstream-401 refusal described under the table, which prints the refusal
+  sentence instead) and the chip is green
   **"Signed in"**, which is the claim that must survive the new arms: the verdict
   says `ok`, so the chip keeps the credential row's answer. It is also the second
   failure class Q-5 covers -- a read that fails for a reason other than the
@@ -204,9 +226,11 @@ Every frame's hash in one table, so the next round can tell which moved:
 `before/` is `origin/main` = `d1402bbaa` (0.30.23), built in its own worktree. The
 round-2 head was folded onto that main with a merge commit (`ca009d677`) BEFORE
 these frames were taken, so every other directory is the same tree the round's
-fixes ship in. The branch was folded a second time afterwards (`babf80e3c`, onto
+fixes ship in. The branch was folded a second time afterwards (`ac1e1e5c9`, onto
 `origin/main` = `65c325afe`: 0.30.24 plus #448's sidebar agent-opened marker),
-because a head that is DIRTY against a moved main gets no CI at all here.
+because a head that is DIRTY against a moved main gets no CI at all here. Round 3
+folded a third time (`d0d04d5a8`, onto `origin/main` = `6f4f01711`), whose window
+moves only `AGENTS.md`.
 
 NEITHER FOLD CHANGES WHAT THESE FRAMES RENDER, which is the check that matters
 once a frame's `before/` base and its head are a merge apart. Both folds' only
