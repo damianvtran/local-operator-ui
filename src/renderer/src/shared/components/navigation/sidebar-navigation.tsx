@@ -301,26 +301,32 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					 *    inset, so its right edge sits 8px from the rail's own edge. At
 					 *    `-right-2` a 16px badge's right edge landed ON the rail's 1px border -
 					 *    design round 1's D2 measured 0.25px of clearance, which is
-					 *    antialiasing, and the mark read as cut by the panel edge. `-right-1.5`
-					 *    holds it 3px inside, with the border's own pixel still its own.
-					 *  - TOP. `-top-2` lifts the badge's BOX until its bottom edge sits ON the
-					 *    16px glyph's top edge, which is what makes a TWO-DIGIT count safe here:
-					 *    at `-top-1.5` the box ended 4px lower (badge y196-212 against the
-					 *    glyph's y208-224), so a two-digit pill reached further back over the
-					 *    crown - and a cap does NOT buy that width, because `9+` and `13` are the
-					 *    same two characters.
+					 *    antialiasing, and the mark read as cut by the panel edge. The shipped
+					 *    offset is `-right-1`, which holds the ring's outward paint 3px inside
+					 *    the rail's OUTER edge - 2.5px from its 1px border, which keeps its own
+					 *    pixel its own. (`-right-1.5` was the step before the ring arrived,
+					 *    when the badge had no 2px of outward paint to place.)
+					 *  - TOP. `-top-2` lifts the badge's BOX until its bottom edge is just into
+					 *    the 16px glyph's top edge - measured, not asserted: the box is
+					 *    y194-210 against ink that starts at y208.5, so 1.5px of the stroke is
+					 *    under the pill's own border and 46px more under its 2px of outward
+					 *    ring. That is what makes a TWO-DIGIT count safe here: at `-top-1.5` the
+					 *    box ended 4px lower (y196-212), so a two-digit pill reached further back
+					 *    over the crown - and a cap does NOT buy that width, because `9+` and
+					 *    `13` are the same two characters.
 					 *
-					 *    AND THE RING STILL CROSSES THE CROWN, which is the header's own
-					 *    arrangement rather than a shortfall of this one (design review round 2,
-					 *    D6 measured it: a 52px2 band of the stroke, x19.5-29.5 by y208.5-212,
-					 *    is painted over by the mark and its 2px of outward ring). The pill
-					 *    itself stops at the glyph's top; the ring - the separator that keeps
-					 *    the two from reading as one thick blob, exactly as on the header's icon
-					 *    button - is what enters it, and the alternative (lifting the pair until
-					 *    neither touches) is not available in a 32px-pitch list: 16px of badge
-					 *    plus 2px of ring per side cannot fit between two glyphs 16px apart, so
-					 *    something is always crossed and the round-1 choice was to make it the
-					 *    ICON'S OWN CROWN rather than the row above's ink.
+					 *    AND THE RING IS THE BULK OF THAT INTRUSION, which is the header's own
+					 *    arrangement rather than a shortfall of this one (design rounds 2 and 3,
+					 *    D6/D11: 52 of the icon's stroke pixels over a 10x3.5px band, x19.5-29.5
+					 *    by y208.5-212, of which 46 sit under the ring). The ring is the
+					 *    separator that keeps the mark and the glyph from reading as one thick
+					 *    blob, exactly as on the header's icon button, and the alternative
+					 *    (lifting the pair until neither touches) is not available in a
+					 *    32px-pitch list: 16px of badge plus 2px of ring per side cannot fit
+					 *    between two glyphs 16px apart, so something is always crossed and the
+					 *    round-1 choice was to make it the ICON'S OWN CROWN rather than the row
+					 *    above's ink. The band and the counts are measured in
+					 *    `docs/evidence/browser-approval-badges/README.md`'s width table.
 					 *
 					 * THE RING (see the badge's own comment below) is the header's answer to a
 					 * mark that overlaps its icon, and the collapsed rail needs the same thing
