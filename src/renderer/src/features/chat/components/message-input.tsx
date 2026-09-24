@@ -7381,8 +7381,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 													 * routing cue at all once the placeholder, the only one there was, was
 													 * gone on the first keystroke. The label is the one cue that survives
 													 * typing, because it is attached to the control the press uses.
+													 *
+													 * AND THE DESTINATION IS THE GATE'S WHILE ONE IS PENDING (agent review
+													 * round 5, R5-3). A pending `ask` gate is answered by the very same press
+													 * — `chat-page.tsx` resolves it before it looks for an aside — and the
+													 * placeholder already says so ("Answer the question above", which is
+													 * `composerPlaceholder`'s own order: gate, then aside). The control named
+													 * the aside in that state, which is the one thing this control exists not
+													 * to do.
 													 */
-													aside !== null ? "Ask the aside" : "Send message"
+													aside !== null && !awaitingAnswer
+														? "Ask the aside"
+														: "Send message"
 												}
 											>
 												<span>
@@ -7397,7 +7407,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 															(!newMessage.trim() && attachments.length === 0)
 														}
 														aria-label={
-															aside !== null ? "Ask the aside" : "Send message"
+															aside !== null && !awaitingAnswer
+																? "Ask the aside"
+																: "Send message"
 														}
 													>
 														<Send aria-hidden="true" />

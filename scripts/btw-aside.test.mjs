@@ -82,10 +82,14 @@ const bundle = await build({
 				asideOffPanelRefusal,
 				asideQuotedQuestion,
 				asideAskBlockedReason,
+				asideQuestionTopOffset,
 				asideScrollToTurn,
 				asideAnnouncement,
+				asideAnnounceableText,
+				asideModelDeclined,
 				ASIDE_ASK_BUSY,
 				ASIDE_CONTINUATION_ESCAPE,
+				ASIDE_OFF_PANEL_MAX_CHARS,
 				reportUncarriedAsideRefusal,
 				asideAdoptChord,
 				asideAdoptCap,
@@ -107,7 +111,14 @@ const bundle = await build({
 			/* The stub's OWN error class, so the instanceof check in the stub's
 			   userFacingMessage below is the shipped rule and not a second spelling. */
 			export { DesktopControlError } from
-				"@shared/api/local-operator/desktop-api";`,
+				"@shared/api/local-operator/desktop-api";
+			/*
+			   The payload reader the panel renders a question with (U14). The REAL one,
+			   so a question the panel would paint as markup is asserted by the same rule
+			   the transcript renders by rather than by a copy of it.
+			*/
+			export { parseReplies } from
+				"./src/renderer/src/features/chat/utils/reply-utils";`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -222,10 +233,14 @@ const {
 	asideOffPanelRefusal,
 	asideQuotedQuestion,
 	asideAskBlockedReason,
+	asideQuestionTopOffset,
 	asideScrollToTurn,
 	asideAnnouncement,
+	asideAnnounceableText,
+	asideModelDeclined,
 	ASIDE_ASK_BUSY,
 	ASIDE_CONTINUATION_ESCAPE,
+	ASIDE_OFF_PANEL_MAX_CHARS,
 	reportUncarriedAsideRefusal,
 	asideAdoptChord,
 	asideAdoptCap,
@@ -235,6 +250,7 @@ const {
 	resyncCanonicalSession,
 	batchMovesView,
 	DesktopControlError,
+	parseReplies,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -369,9 +385,9 @@ const RE_SWALLOWED_REFUSAL = /\.catch\(\(\) => \{\}\)/;
  * it is looking for rather than a bare identifier that a rename would satisfy.
  */
 const RE_PAGE_ASIDE_BUSY_GATE =
-	/const busy = asideAskBlockedReason\(useAsideStore\.getState\(\), sessionId\);\s*if \(busy\) \{\s*setSendError\(busy\);\s*return false;/;
+	/const busy = asideAskBlockedReason\(useAsideStore\.getState\(\), sessionId\);\s*if \(busy\) \{\s*(?:\/\*[\s\S]*?\*\/\s*)?noteAsideRefusal\(busy\);\s*return false;/;
 const RE_DISPATCH_ASIDE_BUSY_GATE =
-	/const busy = asideAskBlockedReason\(\s*useAsideStore\.getState\(\),\s*sessionId,\s*\);\s*if \(busy\) \{\s*note\(busy, true\);\s*return "retained";/;
+	/const busy = asideAskBlockedReason\(\s*useAsideStore\.getState\(\),\s*sessionId,\s*\);\s*if \(busy\) \{\s*(?:\/\*[\s\S]*?\*\/\s*)?if \(noteAsideRefusal\) noteAsideRefusal\(busy\);\s*else note\(busy, true\);\s*return "retained";/;
 const RE_PAGE_CLEARS_ASIDE_REFUSAL =
 	/clearError = useCallback\(\(\) => \{\s*setSendError\(null\);\s*setSendErrorCode\(undefined\);\s*\}, \[\]\);/;
 const RE_DISPATCH_CLEARS_ASIDE_REFUSAL = /clearAsideRefusal\?\.\(\);/;
@@ -379,12 +395,45 @@ const RE_PANEL_RETURNS_FOCUS = /onReturnFocus\?\.\(\)/g;
 const RE_PANEL_DESCRIBED_BY =
 	/aria-describedby=\{blocked !== null \? blockedId : undefined\}/;
 const RE_PANEL_REASON_ID = /<p id=\{blockedId\}/;
-const RE_SEND_VERB = /aside !== null \? "Ask the aside" : "Send message"/;
+/*
+ * The Send control's verb is stated TWICE — the tooltip's content and the button's
+ * own accessible name — and each gets its own pin (agent review round 5, R5-2: only
+ * the tooltip half was asserted, so the reviewer's M11 mutation — the label reading
+ * "Send message" on both arms — left every suite green).
+ *
+ * Both arms carry the GATE term (R5-3): `chat-page.tsx` resolves a pending `ask`
+ * gate before it looks for an aside, and `composerPlaceholder` already orders the
+ * gate ahead of the aside term, so a label that named the aside while a gate was
+ * pending named a destination the press does not reach.
+ */
+const RE_SEND_VERB =
+	/aside !== null && !awaitingAnswer\s*\?\s*"Ask the aside"\s*:\s*"Send message"/;
+const RE_SEND_LABEL =
+	/aria-label=\{\s*aside !== null && !awaitingAnswer\s*\?\s*"Ask the aside"\s*:\s*"Send message"\s*\}/;
 const RE_PANEL_CAP_COUNTS_QUESTION =
 	/var\(--text-body-sm\) \* \$\{ASIDE_QUESTION_LINE_HEIGHT\}/;
-const RE_PANEL_SCROLLS_TO_TURN = /region\.scrollTop = asideScrollToTurn\(\{/;
+const RE_PANEL_SCROLLS_TO_TURN =
+	/const wanted = asideScrollToTurn\(geometry\);\s*region\.scrollTop = wanted;/;
+/*
+ * The move toward the question's own top is bounded by two early returns, and the
+ * pair is what keeps it from becoming a follow: one for a turn whose target is
+ * settled, one for a region the READER has taken over (their scroll is `> 1` away
+ * from what this effect last wrote). Design round 3's D11 offered this shape as its
+ * option (a) — a fixed target re-applied until it is reached, never past it.
+ */
 const RE_PANEL_SCROLLS_ONCE =
-	/if \(scrolledTurn\.current === lastTurnId\) return;/;
+	/if \(scrollDone\.current === lastTurnId\) return;/;
+const RE_PANEL_SCROLLS_UNTIL_REACHED =
+	/if \(wanted === Math\.max\(0, asideQuestionTopOffset\(geometry\)\)\) \{\s*scrollDone\.current = lastTurnId;/;
+const RE_PANEL_YIELDS_TO_THE_READER =
+	/Math\.abs\(region\.scrollTop - written\.offset\) > 1/;
+/*
+ * The busy line's retirement (U12/D13): the effect is gated on the busy code and
+ * asks the same predicate the gate uses, so the line ends with the state it names —
+ * on the answer settling and on the panel closing alike.
+ */
+const RE_PAGE_RETIRES_THE_BUSY_LINE =
+	/if \(sendErrorCode !== ASIDE_STILL_ANSWERING_CODE\) return;\s*if \(asideBusy\) return;\s*clearError\(\);/;
 const RE_PANEL_REGION_FOCUSABLE =
 	/tabIndex=\{0\}\s+aria-label="The aside exchange"/;
 /*
@@ -1500,14 +1549,23 @@ test("a follow-up continues from the last ANSWERED turn, and a fresh ask from no
 });
 
 /*
- * A REFUSED CONTINUATION IS THE ONE REFUSAL THE PANEL NEEDS HELP WITH (U1).
+ * A REFUSED CONTINUATION IS THE ONE REFUSAL THE PANEL MAY NEED HELP WITH (U1) — AND
+ * ONLY WHEN THE PREFIX IS WHAT WAS REFUSED (UX round 2, U11; round 5, R5-1).
  *
- * With the prefix rule above, a continuation is refused only when the exchange it
- * names is genuinely gone, and the owner's own sentence ("ask again") is then advice
- * that cannot work from that panel. The escape that does work is Escape and a fresh
- * `/btw`, so it is stated with the refusal — and stated ONLY there, because a fresh
- * ask opens a clean entry and printing an escape hatch over a panel that had already
- * recovered by itself would send the user away from it.
+ * With the prefix rule above, a continuation is refused by the owner for two
+ * unrelated reasons. When the exchange it names is genuinely gone — the plain-string
+ * 409, or the 422 exchange bound — the owner's own sentence ("ask again") is advice
+ * that cannot work from that panel, and the escape that does work is Escape and a
+ * fresh `/btw`. When the MODEL declines (409 `aside_unanswered` /
+ * `aside_empty_answer`) the owner pops that ask's own entry and restores the prefix,
+ * so the panel is still continuable and a retry IN PLACE is answered: UX round 2
+ * drove exactly that and got an answer 4.7s later, while following the escape clause
+ * throws away the whole off-the-record exchange, answers included.
+ *
+ * So the clause is appended where it is true, on THREE conditions now: the ask
+ * continued (a fresh one opens a clean entry), and the refusal is not the model's.
+ * The predicate is the code rather than the sentence, because the sentences are the
+ * owner's copy.
  */
 test("a refused continuation is told the panel's own way out, and a fresh refusal is not", async () => {
 	reset();
@@ -1531,6 +1589,61 @@ test("a refused continuation is told the panel's own way out, and a fresh refusa
 		`This aside is no longer available ${ASIDE_CONTINUATION_ESCAPE}`,
 	);
 
+	/*
+	 * THE MODEL-DECLINED ARM, DRIVEN THROUGH THE REAL `askAside` on both codes the
+	 * owner uses — and the clause is ABSENT from both, because the panel it is printed
+	 * on is still usable.
+	 */
+	for (const code of ["aside_unanswered", "aside_empty_answer"]) {
+		reset();
+		const declined = new DesktopControlError(
+			409,
+			"The model did not answer your aside in text. No answer was produced: ask again.",
+			undefined,
+			code,
+		);
+		handler = async (request) =>
+			request.text === "second"
+				? Promise.reject(declined)
+				: {
+						data: {
+							aside_id: request.requestId,
+							text: "the answer",
+							off_record: true,
+						},
+					};
+		await askAside(SESSION, "first");
+		await assert.rejects(() => askAside(SESSION, "second"));
+		const refused = useAsideStore.getState().streams[calls[1].requestId];
+		assert.equal(
+			refused.error,
+			declined.message,
+			`a ${code} refusal keeps the owner's own sentence alone: the panel still continues`,
+		);
+		assert.equal(
+			(refused.error ?? "").includes(ASIDE_CONTINUATION_ESCAPE),
+			false,
+			"the escape clause would send the user away from a working panel",
+		);
+		assert.equal(asideModelDeclined(declined), true);
+	}
+	// The predicate discriminates rather than always answering: the lost prefix carries
+	// no code at all, and neither does a transport failure or this app's own codes.
+	assert.equal(
+		asideModelDeclined(
+			new DesktopControlError(409, "This aside is no longer available"),
+		),
+		false,
+	);
+	assert.equal(asideModelDeclined(new Error("fetch failed")), false);
+	assert.equal(
+		asideModelDeclined(
+			new DesktopControlError(500, "boom", undefined, "aside_not_answered"),
+		),
+		false,
+		"this app's own code is not one of the owner's two",
+	);
+
 	reset();
 	handler = async () =>
 		Promise.reject(
@@ -1551,6 +1664,14 @@ test("a refused continuation is told the panel's own way out, and a fresh refusa
 		asidePanelRefusal(new DesktopControlError(409, "gone"), true),
 		`gone ${ASIDE_CONTINUATION_ESCAPE}`,
 	);
+	assert.equal(
+		asidePanelRefusal(
+			new DesktopControlError(409, "gone", undefined, "aside_unanswered"),
+			true,
+		),
+		"gone",
+		"continued, but the model declined: the exchange is still continuable",
+	);
 });
 
 /*
@@ -1565,6 +1686,21 @@ test("a refused continuation is told the panel's own way out, and a fresh refusa
  * be mounted here). A failure is deliberately NOT busy: its entry was dropped, so
  * the next question starts a clean one — a gate here would be the dead end U1 is
  * about.
+ *
+ * AND THE LINE IT RAISES IS RETIRED WITH THE CONDITION IT NAMES (UX round 2, U12 and
+ * U13; agent review round 5, R5-5; design round 3, D13). Three things were wrong
+ * with the sentence, and they are one fix:
+ *
+ *  - it was followed by the composer's generic "Your message is still in the
+ *    composer. Send it again.", so one line told the user to wait and to press now.
+ *    The code is what withholds that suffix, and it is on the composer's own
+ *    predicate next to the ninth one rather than borrowed from it — this refusal is
+ *    "not yet" where that one is "never".
+ *  - it stayed on screen after the answer had settled: measured still reading "still
+ *    answering" 9.4s later, beside an adopt control that had gone live.
+ *  - the `/btw` door wrote the same momentary condition into the TRANSCRIPT as a red
+ *    receipt, which stayed between unrelated turns. One condition, one surface, one
+ *    lifetime: the composer line, retired when the predicate stops holding.
  */
 test("an ask is refused in the app while the exchange is still answering", () => {
 	reset();
@@ -1587,6 +1723,13 @@ test("an ask is refused in the app while the exchange is still answering", () =>
 	);
 	assert.equal(asideAskBlockedReason(store(), OTHER_SESSION), null);
 
+	// The sentence names the press that does work at the moment it starts working.
+	assert.equal(
+		ASIDE_ASK_BUSY,
+		"The aside is still answering. Press Enter again once the answer is in.",
+	);
+	assert.equal(ASIDE_ASK_BUSY.includes("\u2014"), false);
+
 	const page = read("src/renderer/src/features/chat/components/chat-page.tsx");
 	const dispatch = read(
 		"src/renderer/src/features/chat/components/slash-dispatch.ts",
@@ -1595,22 +1738,55 @@ test("an ask is refused in the app while the exchange is still answering", () =>
 	assert.match(dispatch, RE_DISPATCH_ASIDE_BUSY_GATE);
 	// The text stays with the user: `false` is the composer's refusal-before-
 	// admission, and `retained` is the dispatcher's own word for the same outcome.
-	assert.match(page, /setSendError\(busy\);\s*return false;/);
-	assert.match(dispatch, /note\(busy, true\);\s*return "retained";/);
+	assert.match(page, /noteAsideRefusal\(busy\);\s*return false;/);
+	assert.match(dispatch, /return "retained";/);
+	/*
+	 * NEITHER DOOR WRITES THIS ONE TO THE TRANSCRIPT ANY MORE (U13). The composer door
+	 * never did; the `/btw` door did, and the only surviving `note(busy, true)` is the
+	 * fallback for a caller with no composer line to state it on.
+	 */
+	assert.equal([...dispatch.matchAll(/note\(busy, true\)/g)].length, 1);
+	assert.match(dispatch, /if \(noteAsideRefusal\) noteAsideRefusal\(busy\);/);
+
+	/*
+	 * THE CODE, AND ITS CONSEQUENCE. `withholdsRetryHint` is what removes the false
+	 * suffix, and the page's retire effect is what removes the stale line — the two
+	 * halves of the fix, each pinned where it lives.
+	 */
+	const sessions = read(
+		"src/renderer/src/shared/store/canonical-sessions-store.ts",
+	);
+	assert.match(
+		sessions,
+		/export const ASIDE_STILL_ANSWERING_CODE = "aside_still_answering";/,
+	);
+	assert.match(sessions, /code === ASIDE_STILL_ANSWERING_CODE \|\|/);
+	assert.match(page, RE_PAGE_RETIRES_THE_BUSY_LINE);
+	assert.match(page, /noteAsideRefusal,/);
+	assert.match(dispatch, /noteAsideRefusal\?: \(sentence: string\) => void;/);
 });
 
 /*
- * AN APPENDED TURN IS BROUGHT INTO THE REGION'S VIEW, ONCE (design round 2, D6).
+ * AN APPENDED TURN IS BROUGHT INTO THE REGION'S VIEW — AND STAYS THERE ONCE THE
+ * ANSWER CAN FINALLY PUT IT AT THE TOP (design round 2, D6; round 3, D11).
  *
- * A follow-up asked while the exchange overflows was painted below the region's
+ * D6: a follow-up asked while the exchange overflows was painted below the region's
  * fold — measured 88px under it at wide, 687px at narrow — so the question, its
  * thinking line and the answer that followed were all invisible and the ask looked
- * as though it had done nothing. The scroll is one measurement against the region's
- * own rectangles, so it is a pure function here; the effect that calls it once per
- * appended turn, and the region's own focusability, are asserted from the panel's
- * source.
+ * as though it had done nothing.
+ *
+ * D11: the clamp landed the new turn at the region's BOTTOM, because at that moment
+ * the turn is only its question and its thinking line (43px of the 248px region at
+ * wide). The answer then streamed downward out of view — 43 of 300px visible for the
+ * whole stream at wide, 62 of 883px at narrow, the user scrolling nothing while the
+ * thumb shrank — so the target D6 chose is re-applied on content growth until the
+ * region can actually reach it, and stops there.
+ *
+ * The scroll is one measurement against the region's own rectangles, so it is a pure
+ * function here; the effect that calls it, the two conditions that end the move, and
+ * the region's own focusability are asserted from the panel's source.
  */
-test("an appended turn is scrolled into the region's view, once", () => {
+test("an appended turn is scrolled into the region's view, and on to the question's own top", () => {
 	// A question below the fold, in the shape the finding measured at wide: the
 	// region is at its top and the new question sits 88px under it.
 	assert.equal(
@@ -1671,13 +1847,65 @@ test("an appended turn is scrolled into the region's view, once", () => {
 		20,
 	);
 
+	/*
+	 * THE D11 SEQUENCE, in the numbers the finding measured at wide: a 248px region,
+	 * a question whose CONTENT offset is 312.3 (205.3 below the region's top once the
+	 * region has scrolled to its 107px end), and three moment samples of one stream.
+	 *
+	 * `turnTop` is written against `scrollTop` for exactly the reason the helper under
+	 * test exists: the two rectangles report where the question is on SCREEN, and the
+	 * target is where it is in the content, so a sample at any region position asks
+	 * for the same 312.3.
+	 */
+	const wide = (scrollHeight, scrollTop = 0) => ({
+		regionTop: 100,
+		turnTop: 412.3 - scrollTop,
+		scrollTop,
+		scrollHeight,
+		clientHeight: 248,
+	});
+	// The target is the QUESTION, and it does not move as the answer arrives: this is
+	// what makes re-applying it a move toward a fixed place rather than a follow.
+	assert.equal(asideQuestionTopOffset(wide(355)), 312.3);
+	assert.equal(asideQuestionTopOffset(wide(900)), 312.3);
+	assert.equal(
+		asideQuestionTopOffset(wide(900, 107)),
+		312.3,
+		"the target is read from content, so the region's own position does not shift it",
+	);
+	// AT THE APPEND the region cannot get there: 355 − 248 = 107, so the question
+	// still sits 205.3px down — the clamp, which is D11's starting point.
+	assert.equal(asideScrollToTurn(wide(355)), 107);
+	assert.equal(
+		asideScrollToTurn(wide(355)) ===
+			Math.max(0, asideQuestionTopOffset(wide(355))),
+		false,
+		"the clamp bit, so the target is not reached and the effect must run again",
+	);
+	// MID-STREAM the ceiling has grown past the question's offset: this is the moment
+	// the one-shot D6 scroll stopped short of.
+	assert.equal(asideScrollToTurn(wide(500)), 252);
+	assert.equal(asideScrollToTurn(wide(900)), 312.3);
+	assert.equal(
+		asideScrollToTurn(wide(900)) ===
+			Math.max(0, asideQuestionTopOffset(wide(900))),
+		true,
+		"reached: the question is at the region's top, so the move ends",
+	);
+
 	const panel = read(
 		"src/renderer/src/features/chat/components/aside-panel.tsx",
 	);
 	assert.match(panel, RE_PANEL_SCROLLS_TO_TURN);
-	// ONCE: the effect returns early for a turn it has already honoured, which is
-	// what keeps this from becoming a pin-to-bottom on every chunk.
+	// ENDED FOR A TURN WHOSE TARGET IS SETTLED — the property that keeps this from
+	// running on every chunk of every turn forever.
 	assert.match(panel, RE_PANEL_SCROLLS_ONCE);
+	// AND ENDED BY THE READER, which is what makes the re-application a move toward a
+	// target rather than a pin to content.
+	assert.match(panel, RE_PANEL_SCROLLS_UNTIL_REACHED);
+	assert.match(panel, RE_PANEL_YIELDS_TO_THE_READER);
+	// The per-chunk trigger, so the move survives the answer arriving at all.
+	assert.match(panel, /\}, \[lastTurnId, newestAnswerLength\]\);/);
 	assert.match(panel, RE_PANEL_REGION_FOCUSABLE);
 });
 
@@ -1768,6 +1996,18 @@ test("a new aside retires the composer's line, and the panel hands focus back", 
  * everywhere else in this app, so the cap carries the verb. U10: the live region
  * announced the phase only, never the answer, so a reader had to leave the composer
  * and navigate in to hear one.
+ *
+ * THREE FOLLOW-UPS THE ROUND-5 STREAMS MEASURED, all pinned here because they are
+ * one surface's cues and nothing else observes them:
+ *
+ *  - R5-2: the routing cue is stated TWICE — the tooltip's content and the button's
+ *    accessible name — and only the tooltip was asserted, so the reviewer's mutation
+ *    (the label reading "Send message" on both arms) left every suite green.
+ *  - R5-3: the destination is the GATE's while one is pending. `chat-page.tsx`
+ *    resolves a pending `ask` gate before it looks for an aside, and
+ *    `composerPlaceholder` already orders the gate ahead of the aside term, so a
+ *    control naming the aside there named somewhere the press does not reach.
+ *  - U15/D15: the settle announcement reads the answer's markup aloud.
  */
 test("the panel names its chord's verb, describes its blocked control, and announces the answer", () => {
 	const panel = read(
@@ -1778,7 +2018,10 @@ test("the panel names its chord's verb, describes its blocked control, and annou
 	);
 	assert.match(panel, RE_PANEL_DESCRIBED_BY);
 	assert.match(panel, RE_PANEL_REASON_ID);
+	// BOTH halves of the verb, each on its own (R5-2), and both carrying the gate
+	// term (R5-3).
 	assert.match(input, RE_SEND_VERB);
+	assert.match(input, RE_SEND_LABEL);
 	assert.match(panel, /content="Add the aside to the conversation"/);
 
 	// The announcement: one sentence per phase, and the answer ONCE, at settle.
@@ -1802,6 +2045,42 @@ test("the panel names its chord's verb, describes its blocked control, and annou
 	assert.equal(
 		asideAnnouncement(settledAsideStream("   ")),
 		"The aside answered",
+	);
+
+	/*
+	 * U15/D15: the announcement is PROSE, not the markup it was cut from. The panel
+	 * paints this text through `MarkdownRenderer`, so the reader never sees the
+	 * markers and must not hear them either.
+	 */
+	assert.equal(
+		asideAnnouncement(
+			settledAsideStream(
+				"Transport failures and owner **5xx** responses, per provider, within a moving window.",
+			),
+		),
+		"The aside answered: Transport failures and owner 5xx responses, per provider, within a moving window.",
+	);
+	assert.equal(
+		asideAnnouncement(
+			settledAsideStream(
+				"Read `docs/desktop-controls.md` and __try__ it. Then continue.",
+			),
+		),
+		"The aside answered: Read docs/desktop-controls.md and try it.",
+	);
+	assert.equal(
+		asideAnnouncement(
+			settledAsideStream(
+				"See [the runbook](https://example.com/x) first. More text.",
+			),
+		),
+		"The aside answered: See the runbook first.",
+	);
+	// The strip only consumes a MATCHING PAIR, which is what keeps an identifier the
+	// reader was going to hear correctly intact.
+	assert.equal(
+		asideAnnounceableText("a_b_c and a * b and 2 * 3"),
+		"a_b_c and a * b and 2 * 3",
 	);
 });
 
@@ -1850,4 +2129,237 @@ test("the retirement request is a trigger the effect reads", () => {
 	 * legitimate dependency list on another effect of this same file.
 	 */
 	assert.equal([...input.matchAll(/newMessage, retireRequest/g)].length, 1);
+});
+
+/*
+ * THE CAP CUTS BETWEEN ROWS, PARAGRAPH BREAK OR NOT (design round 1, D1; design
+ * round 3, D12, which is D1 regressing).
+ *
+ * D1's whole-row property is arithmetic: the exchange's `max-height` is a whole
+ * number of the answer's own line boxes plus the question's line and the 4px under
+ * it, so the boundary is the top edge of a row. That only holds while every block
+ * boundary INSIDE the answer is a whole number of those boxes too, and
+ * `markdown.css` spaces paragraphs by `0.5rem` — which is not. With a paragraph
+ * break in the answer, round 3 measured the edge falling 11.9px into a 16.5px glyph
+ * box at wide: a row of letter tops under a complete line, on an answer round 2 had
+ * measured at 0 cut rows, so round 2's 0 was that answer's luck rather than the fix
+ * holding.
+ *
+ * The numbers below are the ones both rounds derived from the tree, so this is the
+ * same arithmetic the panel ships rather than a second derivation of it: `--text-body`
+ * at 0.875rem gives a 22.4px answer line box, `--text-body-sm` at 0.8125rem with its
+ * 1.5 leading gives a 19.5px question line, `gap-1` is the 4px between them, and the
+ * answer's glyph box inside its line box is 16.5px with 2.5px of leading above it.
+ */
+test("the cap cuts between rows even when the answer has a paragraph break", () => {
+	const panel = read(
+		"src/renderer/src/features/chat/components/aside-panel.tsx",
+	);
+	const css = read("src/renderer/src/features/chat/components/markdown.css");
+	const styles = read("src/renderer/src/styles/index.css");
+
+	// The terms, from the tree rather than from this file.
+	assert.match(panel, /const ASIDE_EXCHANGE_LINES = 10;/);
+	assert.match(panel, /const ASIDE_ANSWER_LINE_HEIGHT = 1\.6;/);
+	assert.match(styles, /--text-body: 0\.875rem;/);
+	assert.match(styles, /--text-body-sm: 0\.8125rem;/);
+	assert.match(styles, /--text-body-sm--line-height: 1\.5;/);
+	assert.match(panel, /const ASIDE_TURN_GAP_REM = "0\.25rem";/);
+
+	const ROOT_PX = 16;
+	const answerLineBox = 0.875 * ROOT_PX * 1.6;
+	const questionLineBox = 0.8125 * ROOT_PX * 1.5;
+	const turnGap = 0.25 * ROOT_PX;
+	const cap = questionLineBox + turnGap + 10 * answerLineBox;
+	const contentTop = questionLineBox + turnGap;
+	const glyphBox = 16.5;
+	const glyphLead = 2.5;
+	const near = (a, b) => Math.abs(a - b) < 0.05;
+	assert.equal(near(answerLineBox, 22.4), true, "the answer's line box");
+	assert.equal(near(cap, 247.5), true, "the cap the panel derives");
+
+	// D1's own property, stated: the budget left for the ANSWER is a whole number of
+	// its line boxes, so the cap is exactly a row boundary from the content's top.
+	assert.equal(near((cap - contentTop) / answerLineBox, 10), true);
+	assert.equal(
+		Number.isInteger(Math.round((cap - contentTop) / answerLineBox)),
+		true,
+	);
+
+	/** Whether the cap's edge falls inside the glyphs of a row starting here. */
+	const cuts = (lineBoxTop) => {
+		const top = lineBoxTop + glyphLead;
+		return top < cap && top + glyphBox > cap;
+	};
+
+	/* The rule the aside now states, and the one it replaced. */
+	assert.match(css, /\.lo-markdown p \{\s*margin: 0\.5rem 0;\s*\}/);
+	assert.match(
+		css,
+		/\.lo-markdown--row-grid p \{\s*margin: calc\(1em \* var\(--md-line-height, 1\.6\)\) 0;\s*\}/,
+	);
+	assert.match(panel, /const ASIDE_ANSWER_ROW_GRID = "lo-markdown--row-grid";/);
+	assert.match(panel, /className=\{ASIDE_ANSWER_ROW_GRID\}/);
+
+	/*
+	 * THE RISING ROW, at every paragraph length. One line box of gap keeps the second
+	 * paragraph on the same grid from the content's top, so no row can straddle the
+	 * edge — which is the property, and it is not a property of one lucky answer.
+	 */
+	const gridGap = answerLineBox;
+	for (let rows = 1; rows <= 20; rows++) {
+		const secondParagraphTop = contentTop + rows * answerLineBox + gridGap;
+		/*
+		 * Stated as the ROW INDEX rather than as `% lineBox === 0`: these are floats, and
+		 * `112 % 22.400000000000002` is 22.399999999999999 in this language, so the
+		 * remainder form would fail on a correct grid roughly every time.
+		 */
+		assert.equal(
+			near((secondParagraphTop - contentTop) / answerLineBox, rows + 1),
+			true,
+			`a ${rows}-row first paragraph leaves the next one on the grid`,
+		);
+		assert.equal(
+			cuts(secondParagraphTop),
+			false,
+			`a ${rows}-row first paragraph cannot put a row across the edge`,
+		);
+	}
+
+	/*
+	 * AND THE COUNTERFACTUAL, on the very answer round 3 measured: a nine-row first
+	 * paragraph and the old `0.5rem` gap put the next row's glyphs at 235.6-252.1,
+	 * across a 247.5 edge — 11.9px into a 16.5px glyph box, which is the reported
+	 * figure. This is what makes the loop above a fix rather than a tautology.
+	 */
+	const measuredRow = contentTop + 9 * answerLineBox;
+	const oldGap = 0.5 * ROOT_PX;
+	assert.equal(near(measuredRow + oldGap + glyphLead, 235.6), true);
+	assert.equal(near(cap - (measuredRow + oldGap + glyphLead), 11.9), true);
+	assert.equal(cuts(measuredRow + oldGap), true);
+	// The paragraph the retired gap cut, named in the finding.
+	assert.equal(near(measuredRow + oldGap + glyphLead + glyphBox, 252.1), true);
+	// The row immediately ABOVE the edge is complete either way: the defect is the
+	// cut row, not the number of rows shown.
+	assert.equal(cuts(measuredRow), false);
+});
+
+/*
+ * AN OFF-PANEL REFUSAL FITS THE LINE THAT SHOWS IT (design round 3, D14).
+ *
+ * The composer's alert caps at six rows of `leading-5` (120px) and scrolls the
+ * excess, and with the owner's whole sentence for a model refusal the composed
+ * sentence ran to seven rows at the app's minimum window — the part that went out of
+ * sight being `ask again`, so the operator read a refusal and no way out of it. The
+ * panel has no cap and keeps the owner's sentence; the two off-panel surfaces do, and
+ * the short form exists for exactly one arm because exactly one arm is long.
+ */
+test("an off-panel refusal keeps its remedy inside the line that shows it", () => {
+	const declined = new DesktopControlError(
+		409,
+		"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.",
+		undefined,
+		"aside_unanswered",
+	);
+	const question =
+		"walk me through the retry ladder end to end, from the first 5xx to the last provider";
+	assert.equal(
+		question.length > 60,
+		true,
+		"long enough for the quote to be cut",
+	);
+
+	const short = asideOffPanelRefusal(question, declined);
+	assert.equal(short.length <= ASIDE_OFF_PANEL_MAX_CHARS, true, short);
+	assert.equal(
+		short.endsWith("Ask again."),
+		true,
+		"the remedy survives the cut",
+	);
+	assert.equal(short.includes("either a tool call"), false);
+	assert.equal(short.includes("<reply-to>"), false);
+	// The remedy is the SAME PANEL, which is what asking again in place does (U11's
+	// own driven measurement) — not the `/btw` door, which would be U11's defect.
+	assert.equal(short.includes("/btw"), false);
+
+	/*
+	 * THE OTHER ARMS KEEP THE OWNER'S SENTENCE VERBATIM, and they fit: the two the
+	 * owner writes for a lost prefix and a refused field are a fraction of the budget,
+	 * which is why the short form is keyed on the model refusals rather than applied
+	 * to every cause.
+	 */
+	const lostPrefix = asideOffPanelRefusal(
+		question,
+		new DesktopControlError(409, "This aside is no longer available"),
+	);
+	assert.equal(
+		lostPrefix.endsWith("This aside is no longer available"),
+		true,
+		"a lost prefix is still the owner's own sentence",
+	);
+	assert.equal(lostPrefix.length <= ASIDE_OFF_PANEL_MAX_CHARS, true);
+	assert.equal(asideModelDeclined(declined), true);
+});
+
+/*
+ * THE ADOPT REASON'S ORDER IS U3's RULE, AND IT IS PINNED HERE (agent review round
+ * 5, R5-4).
+ *
+ * U3: the wait was derived from `settled` where the paint uses `streaming`, so "a
+ * moment" sat under a complete answer. The fix is that the conversation's own work
+ * outranks the settling term — and the reviewer's mutation (moving it back) left
+ * `btw-aside` at 42/42, because nothing asserted the two terms TOGETHER.
+ */
+test("the conversation's work outranks the settling term in the adopt reason", () => {
+	const both = asideAdoptBlockedReason(beginAsideStream(), true);
+	assert.equal(typeof both, "string");
+	assert.equal(
+		both.includes("would splice a message into a live turn"),
+		true,
+		"the conversation's sentence is the one a streaming aside prints",
+	);
+	assert.equal(
+		both.includes("still settling"),
+		false,
+		"and the settling sentence is not printed beside it",
+	);
+	// The settling term is not lost, only ranked: on its own it is what an idle
+	// session shows under a streaming exchange.
+	const settling = asideAdoptBlockedReason(beginAsideStream(), false);
+	assert.equal(settling.includes("still settling"), true);
+});
+
+/*
+ * THE PANEL PAINTS THE QUESTION THE USER SENT, NOT THE PAYLOAD IT TRAVELLED IN (UX
+ * round 2, U14).
+ *
+ * An aside ask carries the string `buildSendPayload` assembles, so a question asked
+ * with a staged quote reaches the panel as the quote's markup followed by the typed
+ * words — and the panel painted that verbatim, `<reply-to>` and all, while the
+ * transcript renders the identical string as a quote block (QA round 3, observation
+ * 3, first exercised here). The panel now renders it through `parseReplies`, the one
+ * reader of that format, shared with the transcript and the legacy paper path.
+ */
+test("the panel renders a staged quote instead of the payload's markup", () => {
+	const payload =
+		"<reply-to>within a moving window</reply-to>\nTOOLCALL2 SLOW: refused with a quote staged";
+	const { replies, remainingContent } = parseReplies(payload);
+	assert.equal(replies.length, 1);
+	assert.equal(replies[0].text, "within a moving window");
+	assert.equal(remainingContent, "TOOLCALL2 SLOW: refused with a quote staged");
+
+	const panel = read(
+		"src/renderer/src/features/chat/components/aside-panel.tsx",
+	);
+	assert.match(
+		panel,
+		/import \{ parseReplies \} from "\.\.\/utils\/reply-utils";/,
+	);
+	assert.match(panel, /\(\) => parseReplies\(question\)/);
+	// The quote keeps the transcript's own shape, and the typed words are the
+	// question — so the two surfaces cannot describe one payload two ways.
+	assert.match(panel, /border-hairline border-l-2 py-0\.5 pl-2/);
+	assert.match(panel, /\{remainingContent\}/);
+	// The question reaches the renderer through the reader, not as a string.
+	assert.match(panel, /<AsideQuestion question=\{turn\.question\} \/>/);
 });

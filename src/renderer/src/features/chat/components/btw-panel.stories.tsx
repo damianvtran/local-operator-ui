@@ -393,3 +393,99 @@ export const OverflowingFollowUp: Story = {
 		</Column>
 	),
 };
+
+/**
+ * The answer at rest against the ceiling, WITH A PARAGRAPH BREAK IN IT.
+ *
+ * WHY THIS STATE NEEDS A FRAME (design round 1, D1; round 3, D12). The ceiling is a
+ * whole number of the answer's own line boxes, so the last visible row is a complete
+ * line — and that promise is only true while every block boundary inside the answer
+ * is a whole number of those boxes too. `markdown.css` spaced paragraphs by `0.5rem`,
+ * which is not, so with a paragraph break the edge fell 11.9px into a 16.5px glyph
+ * box: "Two consequences are worth knowing…" showed as a row of letter tops under a
+ * complete line. The answer here is a run of short paragraphs, which is the shape
+ * that reads that defect at any window width — the boundary between two of them
+ * necessarily lands near the edge, whichever two it is — and the frame is the half a
+ * reader can check; the arithmetic (cap ÷ the answer's own line box, whole number)
+ * and the rule that keeps it are asserted in `scripts/btw-aside.test.mjs`.
+ */
+export const ParagraphBreakAtTheCap: Story = {
+	render: () => (
+		<Column label="a settled answer with paragraph breaks, resting against the ceiling: every visible row is a complete line">
+			{band({
+				story: "paragraph-break-at-the-cap",
+				turns: [
+					{
+						question: "what went wrong with the budget?",
+						stream: settled(
+							[
+								"Two consequences are worth knowing about the ceiling.",
+								"A paragraph gap that is not a whole line box moves every row under it off the grid.",
+								"The cap then falls inside the glyphs of whichever row crosses it.",
+								"Reading that as a rendering accident is the point: it looks like a clipped box.",
+								"A whole line box of gap keeps every row on the grid the cap cuts on.",
+								"Lists, headings and code blocks are the parts this arithmetic does not reach.",
+								"Those are another round's problem, and a fade is the device they would need.",
+							].join("\n\n"),
+						),
+					},
+				],
+			})}
+		</Column>
+	),
+};
+
+/**
+ * The follow-up with an answer long enough that D11's symptom was reachable at all.
+ *
+ * WHY THIS STATE NEEDS A FRAME (design round 3, D11). `OverflowingFollowUp` above
+ * shows the appended turn at the region's BOTTOM, which is where the one-shot scroll
+ * put it — and that is the state the finding is about, because the turn is only its
+ * question at that moment. The answer then streams downward out of view (measured 43
+ * of 300px visible at wide, 62 of 883px at narrow), which needs a frame with an
+ * answer long enough to fill more than the region: the appended turn's question sits
+ * at the region's top and the answer's opening lines are what the reader sees.
+ */
+export const LongFollowUpInView: Story = {
+	render: () => (
+		<Column label="a long follow-up answer: the question is at the region's top and the answer's first lines are in view">
+			{band({
+				story: "long-follow-up-in-view",
+				turns: [
+					{
+						question: "walk me through the retry ladder end to end",
+						stream: settled(
+							[
+								"A transport failure is retried on the same provider while the budget holds.",
+								"The budget counts consecutive failures against one provider, not attempts.",
+								"An owner 5xx is a transport-shaped failure and spends the budget the same way.",
+								"A 4xx that the owner marks as the request's own fault does not spend it.",
+								"A 429 is the owner's own pacing signal and is held against the budget too.",
+								"Exhausting the budget hands the turn to the next provider in the ladder.",
+								"A provider is skipped entirely when its credentials are missing.",
+								"The ladder stops at the first provider that answers with content.",
+								"A tool call counts as an answer and ends the ladder where it lands.",
+								"The last provider's failure ends the turn with the owner's own sentence.",
+								"Nothing in the ladder is retried after the turn has ended.",
+								"Adopting an aside replays no part of the ladder.",
+							].join("\n\n"),
+						),
+					},
+					{
+						question: "so what does a 429 spend?",
+						stream: streaming(
+							[
+								"A 429 spends the budget exactly as a 5xx does, because the budget counts failures rather than faults.",
+								"The distinction the ladder cares about is whether the REQUEST was at fault, and pacing is not the request's fault.",
+								"That is why the owner marks a 429 as transport-shaped on the wire even though it is a client-visible status.",
+								"A provider that answers 429 repeatedly therefore loses the turn to the next provider in the ladder.",
+								"The retry-after hint is honoured first, so a short wait does not spend anything at all.",
+								"Only a retry that actually goes out and comes back a failure is counted against the provider.",
+							].join("\n\n"),
+						),
+					},
+				],
+			})}
+		</Column>
+	),
+};

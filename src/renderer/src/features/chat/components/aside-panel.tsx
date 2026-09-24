@@ -4,13 +4,14 @@ import { Tooltip } from "@shared/components/ui/tooltip";
 import { cn } from "@shared/lib/utils";
 import { type AsideStream, useAsideStore } from "@shared/store/aside-store";
 import { X } from "lucide-react";
-import { type FC, useEffect, useId, useRef } from "react";
+import { type FC, useEffect, useId, useMemo, useRef } from "react";
 import {
 	adoptAside,
 	asideAdoptBlockedReason,
 	asideAdoptCap,
 	asideAdoptReady,
 	asideAnnouncement,
+	asideQuestionTopOffset,
 	asideScrollToTurn,
 	closeAside,
 } from "../aside";
@@ -44,6 +45,7 @@ import { CHAT_MEASURE } from "../chat-measure";
  * agree with it about which aside is open.
  */
 import { MarkdownRenderer } from "../components/markdown-renderer";
+import { parseReplies } from "../utils/reply-utils";
 
 export type AsidePanelProps = {
 	/** The session whose aside this is; the store is keyed by session. */
@@ -106,6 +108,29 @@ const asideAnswerType = (
 });
 
 /**
+ * The class that keeps the answer's BLOCK SPACING on the line grid the cap cuts on.
+ *
+ * WHY A PARAGRAPH BREAK USED TO BREAK THE WHOLE-ROW PROPERTY (design round 3, D12,
+ * a regression of round 1's D1). `markdown.css` spaces paragraphs by `0.5rem`, which
+ * is not a multiple of the answer's line box - so with a paragraph break in the
+ * answer the cap's edge fell INSIDE a row and the last visible line was a row of
+ * letter tops: measured 11.9px into a 16.5px glyph box at wide, on an answer round
+ * 2 had measured at 0 cut rows. Round 2's 0 was that answer's luck rather than the
+ * fix holding, exactly as D12 says. Round 1's arithmetic is only true while every
+ * block boundary is a whole number of line boxes, so the aside states the gap as one
+ * line box and the property holds at any number of paragraphs.
+ *
+ * `calc(1em * var(--md-line-height, 1.6))` rather than a length: the line box is
+ * the answer's own font size times the leading `MarkdownRenderer` is painting it
+ * with, so the two steps this panel uses (14px at 1.6 and 13px at 1.6) both get
+ * their own exact box, and a caller that moves the leading moves the gap with it
+ * instead of silently breaking the cut. The rule itself lives in `markdown.css`,
+ * where the rest of this renderer's descendant rules are - the same reason that file
+ * exists rather than forty `[&_p]:...` variants.
+ */
+const ASIDE_ANSWER_ROW_GRID = "lo-markdown--row-grid";
+
+/**
  * The exchange's cap, DERIVED from the answer's line box rather than chosen.
  *
  * WHY IT IS DERIVED (design round 1, D1). A cap in round pixels lands wherever
@@ -144,6 +169,49 @@ const asideExchangeCap = (isSmallView: boolean): string => {
 };
 
 /**
+ * One turn's QUESTION, as the user actually sent it.
+ *
+ * THE PAYLOAD IS A WIRE FORMAT, NOT PROSE (UX round 2, U14). An aside ask carries
+ * the same payload `buildSendPayload` assembles at the send boundary, so a question
+ * asked with a staged quote reaches this panel as the quoted turn's markup followed
+ * by the typed words - and the panel painted that string verbatim, tags and all,
+ * while the transcript renders the very same string as a quote block (QA round 3,
+ * observation 3, which is where it was first exercised). `parseReplies` is the one
+ * reader of that format (`reply-utils.ts`, already shared by the canonical transcript
+ * and the legacy `message-paper` path), so the panel renders it by that rule rather
+ * than by a scan of its own that could disagree with the message the user is reading
+ * beside it.
+ *
+ * The quote takes the transcript's own shape for a quote - the left rule and the
+ * quieter step `reply-preview.tsx` uses inside the composer - so a question replying
+ * to something reads as the same object on both surfaces; the typed words are the
+ * question itself and keep the panel's own question step.
+ *
+ * Memoized because `parseReplies` mints an id per quote, and this panel re-renders on
+ * every chunk of the answer below it.
+ */
+const AsideQuestion: FC<{ question: string }> = ({ question }) => {
+	const { replies, remainingContent } = useMemo(
+		() => parseReplies(question),
+		[question],
+	);
+	return (
+		<>
+			<span className="sr-only">Question: </span>
+			{replies.map((reply) => (
+				<span
+					key={reply.id}
+					className="mb-1 block border-hairline border-l-2 py-0.5 pl-2"
+				>
+					{reply.text}
+				</span>
+			))}
+			{remainingContent}
+		</>
+	);
+};
+
+/**
  * One turn's answer, in the state it is in.
  *
  * `text` is painted through `MarkdownRenderer` at the transcript's own steps, so
@@ -165,6 +233,7 @@ const AsideAnswer: FC<{
 					content={stream.text}
 					styleProps={asideAnswerType(isSmallView)}
 					linkify={stream.settled}
+					className={ASIDE_ANSWER_ROW_GRID}
 				/>
 			)}
 			{/*
@@ -218,23 +287,81 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 	 */
 	const exchangeRef = useRef<HTMLDivElement>(null);
 	const newestTurnRef = useRef<HTMLDivElement>(null);
-	const scrolledTurn = useRef<string | null>(null);
+	/**
+	 * Where this effect last put the region, and whether the turn's target is settled.
+	 *
+	 * The offset is the one READ BACK after the write rather than the one asked for,
+	 * because a browser is free to round or clamp a `scrollTop` assignment, and the
+	 * comparison below is asking whether the position is still OURS - a reader's
+	 * scroll and the device's own rounding have to be separable.
+	 */
+	const scrollWritten = useRef<{ turnId: string; offset: number } | null>(null);
+	const scrollDone = useRef<string | null>(null);
 	const lastTurnId = attachment?.turns.at(-1)?.asideId ?? null;
+	/*
+	 * The newest turn's own length, as the effect's OTHER trigger.
+	 *
+	 * The target below is only reachable once the answer has grown enough for the
+	 * region to be able to scroll that far, so the effect has to re-run as the answer
+	 * arrives - and this is the value that says it has, without subscribing to the
+	 * whole stream object (which is replaced on every chunk and would re-render the
+	 * panel for its own sake). It is a number, so an idle re-render cannot re-run the
+	 * effect at all.
+	 */
+	const newestAnswerLength = lastTurnId
+		? (streams[lastTurnId]?.text.length ?? 0)
+		: 0;
+	/*
+	 * THE QUESTION MOVES TO THE REGION'S TOP, AND THE MOVE SURVIVES THE ANSWER ARRIVING
+	 * (design round 3, D11, and it is not D6's per-chunk follow).
+	 *
+	 * D6 fixed the ask that looked like nothing had happened by scrolling the new turn
+	 * into view, and the clamp landed it at the region's BOTTOM - because at that
+	 * moment the turn is only its question and its thinking line (43px of the 248px
+	 * region at wide). The answer then streamed downward out of sight: measured 43 of
+	 * 300px visible for the whole stream at wide and 62 of 883px at narrow. So the
+	 * effect keeps asking for the SAME target - the question at the top - until the
+	 * clamp stops biting, and then stops for good.
+	 *
+	 * What makes that not a follow: the target is fixed, so this never chases content
+	 * downward and never passes the question; and the reader wins at any moment, which
+	 * is the `> 1` test - one pixel of drift is the device's rounding, more than that
+	 * is a scroll, and a scroll ends this turn's move permanently.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the newest answer's length is the effect's TRIGGER and not a value it reads -- the target is reachable only once the answer has grown enough, and the movement itself is read from the DOM. See the block above.
 	useEffect(() => {
 		if (!lastTurnId) return;
-		if (scrolledTurn.current === lastTurnId) return;
+		if (scrollDone.current === lastTurnId) return;
 		const region = exchangeRef.current;
 		const turn = newestTurnRef.current;
 		if (!region || !turn) return;
-		scrolledTurn.current = lastTurnId;
-		region.scrollTop = asideScrollToTurn({
+		const written = scrollWritten.current;
+		if (
+			written !== null &&
+			written.turnId === lastTurnId &&
+			Math.abs(region.scrollTop - written.offset) > 1
+		) {
+			scrollDone.current = lastTurnId;
+			return;
+		}
+		const geometry = {
 			regionTop: region.getBoundingClientRect().top,
 			turnTop: turn.getBoundingClientRect().top,
 			scrollTop: region.scrollTop,
 			scrollHeight: region.scrollHeight,
 			clientHeight: region.clientHeight,
-		});
-	}, [lastTurnId]);
+		};
+		const wanted = asideScrollToTurn(geometry);
+		region.scrollTop = wanted;
+		scrollWritten.current = { turnId: lastTurnId, offset: region.scrollTop };
+		/*
+		 * Reached when the region's own ceiling was not what limited the move - the one
+		 * condition under which the question is really at the top of the region.
+		 */
+		if (wanted === Math.max(0, asideQuestionTopOffset(geometry))) {
+			scrollDone.current = lastTurnId;
+		}
+	}, [lastTurnId, newestAnswerLength]);
 	// Absent rather than conditional-in-the-parent at this level too: the panel's
 	// own store subscription is what makes it appear, and a caller that removed it
 	// must remove the attachment (or the panel would paint over the composer).
@@ -424,8 +551,7 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 							 * extra chrome.
 							 */}
 							<p className="text-body-sm text-ink-muted">
-								<span className="sr-only">Question: </span>
-								{turn.question}
+								<AsideQuestion question={turn.question} />
 							</p>
 							<AsideAnswer
 								stream={streams[turn.asideId]}

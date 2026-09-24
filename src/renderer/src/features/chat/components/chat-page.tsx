@@ -20,6 +20,7 @@ import { cn } from "@shared/lib/utils";
 import { useAsideStore } from "@shared/store/aside-store";
 import {
 	ASIDE_NOT_ANSWERED_CODE,
+	ASIDE_STILL_ANSWERING_CODE,
 	SEND_UNCONFIRMED_MESSAGE,
 	SESSION_UNVALIDATED_CODE,
 	SESSION_UNVALIDATED_MESSAGE,
@@ -876,6 +877,60 @@ function SessionPanel({
 		setSendErrorCode(undefined);
 	}, []);
 
+	/*
+	 * Whether the box is refusing an aside follow-up RIGHT NOW, as the one predicate
+	 * both doors apply reads it.
+	 *
+	 * A BOOLEAN SUBSCRIPTION RATHER THAN THE STORE OBJECT, because both things this
+	 * page does with it are edge-shaped: the line is raised with the refusal's own
+	 * code, and it is retired the moment this flips false - which is the same moment
+	 * the adopt control goes live beside the panel (UX round 2, U12; agent review
+	 * round 5, R5-5; design round 3, D13). Every other error line on this surface is
+	 * retired by the user's own next act; this one describes a state the app can see
+	 * end, so it ends with it.
+	 *
+	 * The comparison rather than the value keeps the subscription's result a
+	 * primitive, so a store write that does not move the gate cannot re-render this
+	 * page: `asideAskBlockedReason` returns a SENTENCE, and a fresh one per call.
+	 */
+	const asideBusy = useAsideStore((state) =>
+		sessionId ? asideAskBlockedReason(state, sessionId) !== null : false,
+	);
+
+	/*
+	 * Raise the busy sentence, minted here so the `/btw` door can reach the same line.
+	 *
+	 * The sentence is the APP's refusal rather than the owner's, and it is stated on
+	 * ONE line for both doors: this page owns the composer's error line, and the
+	 * dispatcher owns none of it - the door used to write a permanent red TRANSCRIPT
+	 * receipt for a state that lasts exactly as long as one answer, which is a record
+	 * of something that is about to stop being true (UX round 2, U13).
+	 */
+	const noteAsideRefusal = useCallback((sentence: string) => {
+		setSendError(sentence);
+		setSendErrorCode(ASIDE_STILL_ANSWERING_CODE);
+	}, []);
+
+	/*
+	 * THE BUSY LINE IS RETIRED WITH THE MOMENT IT DESCRIBES.
+	 *
+	 * It used to stay for the rest of the read dwell - measured: still reading "still
+	 * answering" 9.4s after the answer had settled, with the now-live adopt control
+	 * beside it, and cleared only by the next keystroke (UX round 2, U12; design round
+	 * 3, D13). The condition is the predicate itself, so the line cannot outlive the
+	 * state it names on either exit: the answer settles, or the panel closes and takes
+	 * the turn with it.
+	 *
+	 * GATED ON THE CODE, because this surface carries every one of the composer's
+	 * refusals and only this one is tied to a state the app can watch end. A store
+	 * refusal beside it is the user's to clear, and `clearError` is not scoped.
+	 */
+	useEffect(() => {
+		if (sendErrorCode !== ASIDE_STILL_ANSWERING_CODE) return;
+		if (asideBusy) return;
+		clearError();
+	}, [asideBusy, clearError, sendErrorCode]);
+
 	const {
 		dispatch,
 		dispatchFromControl,
@@ -920,6 +975,13 @@ function SessionPanel({
 		 * line on that surface stale, which is the whole scope of the clear.
 		 */
 		clearAsideRefusal: clearError,
+
+		/*
+		 * The `/btw` door's half of the same line (UX round 2, U13). It has no composer
+		 * error line of its own, so the page mints the sentence: one state, one surface,
+		 * whatever door refused the press.
+		 */
+		noteAsideRefusal,
 
 		/*
 		 * The pane's own selection, handed to the dispatcher only where a pick can
@@ -1245,7 +1307,14 @@ function SessionPanel({
 				 */
 				const busy = asideAskBlockedReason(useAsideStore.getState(), sessionId);
 				if (busy) {
-					setSendError(busy);
+					/*
+					 * THE CODE GOES WITH THE SENTENCE, and it is what keeps the composer's
+					 * generic retry suffix off a line whose whole subject is that the retry is
+					 * not available yet (UX round 2, U12; agent review round 5, R5-5). The box
+					 * still holds the question, so the suffix was otherwise TRUE of the box
+					 * and false of the situation, and it arrived directly under "wait".
+					 */
+					noteAsideRefusal(busy);
 					return false;
 				}
 				/*

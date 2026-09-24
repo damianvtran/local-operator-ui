@@ -146,6 +146,23 @@ type SlashDispatchOptions = {
 	 */
 	clearAsideRefusal?: () => void;
 	/**
+	 * State the composer's own ASIDE BUSY sentence, on the composer's own line.
+	 *
+	 * The one refusal this door has that is not a RECORD (UX round 2, U13). A
+	 * follow-up asked while the exchange is still answering is refused here with the
+	 * draft retained, exactly as the composer door refuses it - but this door's
+	 * surface was the transcript, so the same momentary condition was written as a red
+	 * receipt that stayed between unrelated turns long after it had stopped being
+	 * true, while the other door stated it on a line that retires with the state.
+	 * One condition, one lifetime, one surface: the page owns the line, so the page
+	 * writes it (the same argument `clearAsideRefusal` above records).
+	 *
+	 * Absent means the caller has no composer line to state it on, and only then does
+	 * this door fall back to the receipt - which is the honest surface for a caller
+	 * with nothing else, and why the fallback stays.
+	 */
+	noteAsideRefusal?: (sentence: string) => void;
+	/**
 	 * Whether a move can be asked for on this pane AT ALL, as the chip decides it.
 	 *
 	 * `sessionMoveEnabled` answers a question about the BACKEND; the chip's gate is
@@ -286,6 +303,7 @@ export function useSlashDispatch({
 	moveSession,
 	moveReady,
 	clearAsideRefusal,
+	noteAsideRefusal,
 }: SlashDispatchOptions) {
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
@@ -936,7 +954,15 @@ export function useSlashDispatch({
 						sessionId,
 					);
 					if (busy) {
-						note(busy, true);
+						/*
+						 * THE SENTENCE GOES ON THE COMPOSER'S LINE, NOT INTO THE TRANSCRIPT (UX
+						 * round 2, U13). "Wait a moment" is not a record: it stopped being true
+						 * the instant the answer landed, and it sat in the transcript for the rest
+						 * of the session - measured between two unrelated turns. The other door
+						 * says the same condition on a line that the page retires with the state.
+						 */
+						if (noteAsideRefusal) noteAsideRefusal(busy);
+						else note(busy, true);
 						return "retained";
 					}
 					/*
@@ -1171,6 +1197,12 @@ export function useSlashDispatch({
 			 * stale setter would clear a line the page had since replaced.
 			 */
 			clearAsideRefusal,
+			/*
+			 * And its writer, for U13's reason (UX round 2): the busy sentence is stated on
+			 * that same line, so a `dispatch` closed over a stale writer would put it
+			 * somewhere the page is no longer reading.
+			 */
+			noteAsideRefusal,
 		],
 	);
 

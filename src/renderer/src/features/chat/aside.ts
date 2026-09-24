@@ -63,35 +63,79 @@ export function asideAskFailure(error: unknown): string {
 }
 
 /**
- * The sentence a refusal is printed with when the ask CONTINUED an exchange.
+ * The two refusal codes the owner uses when the MODEL declines inside an exchange
+ * the owner still holds.
+ *
+ * The wire's codes, not this app's: `aside_unanswered` covers a bare tool call (or
+ * nothing at all) on the corrected retry, and `aside_empty_answer` subclasses it
+ * for a settled answer carrying no text. They are spelled here rather than imported
+ * because the owner owns them; `ASIDE_NOT_ANSWERED_CODE` in the store is this app's
+ * own code for its own composer line and answers a different question.
+ */
+const ASIDE_MODEL_REFUSAL_CODES = new Set([
+	"aside_unanswered",
+	"aside_empty_answer",
+]);
+
+/**
+ * Whether a refusal is the MODEL declining inside an exchange the owner still holds.
+ *
+ * THE DISTINCTION IS STRUCTURE, NOT PROSE. A prefix the owner no longer holds is
+ * refused with a plain string and NO code (`This aside is no longer available`), and
+ * a model refusal carries one of the two codes above on `DesktopControlError.code`,
+ * so the two are separable without reading either sentence - which matters because
+ * the sentences are the owner's copy and a client that matched them would go stale
+ * in silence (`UNKNOWN_FIELDS_REFUSAL` records that cost for one sentence already).
+ * A refusal with no code at all, a transport failure included, is NOT a model
+ * refusal: nothing about it says the exchange is unusable.
+ */
+export function asideModelDeclined(error: unknown): boolean {
+	return (
+		error instanceof DesktopControlError &&
+		error.code !== undefined &&
+		ASIDE_MODEL_REFUSAL_CODES.has(error.code)
+	);
+}
+
+/**
+ * The sentence a refusal is printed with when the ask CONTINUED an exchange the
+ * owner will no longer continue.
  *
  * A REFUSED CONTINUATION IS THE ONE REFUSAL THE PANEL CANNOT RECOVER FROM BY
- * ITSELF (UX round 1, U1). The owner drops a refused ask's own entry and refuses a
- * continuation whose prefix it no longer holds, so the panel's `ask again` is
- * advice the user cannot act on from where they are - while the way out that does
- * work, Escape and a fresh `/btw`, is not written anywhere. The clause is appended
- * only where it is true: a FRESH ask opens a clean entry, so its refusal needs no
- * escape hatch and printing one would send the user away from a panel that had
- * already recovered by itself.
+ * ITSELF (UX round 1, U1). The owner refuses a continuation whose prefix it no
+ * longer holds, so the panel's `ask again` is advice the user cannot act on from
+ * where they are - while the way out that does work, Escape and a fresh `/btw`, is
+ * not written anywhere. The clause is appended only where it is true: a FRESH ask
+ * opens a clean entry, so its refusal needs no escape hatch and printing one would
+ * send the user away from a panel that had already recovered by itself.
  *
- * Keyed on the ask having carried a prefix rather than on the refusal's own
- * sentence, because the sentences are the owner's copy and a client that matched
- * them would go stale in silence (`UNKNOWN_FIELDS_REFUSAL` records that cost for
- * one sentence already).
+ * AND NOT TO EVERY REFUSED CONTINUATION EITHER (UX round 2, U11; agent review round
+ * 5, R5-1). The owner turns a continuation away for two unrelated reasons and only
+ * one of them costs the prefix. When the MODEL declines - a tool call off the
+ * record, an empty answer - the owner pops that ask's own entry and restores the
+ * prefix, so the panel is still continuable and the next question asked in it is
+ * answered (driven: a retry in place came back answered 4.7s later). Printing this
+ * clause there was the round-1 defect inverted - a sentence that sounds final and is
+ * not true of the panel the user is looking at - and it was destructive as well as
+ * false: it arrived directly after the owner's own `ask again`, and following it
+ * discards the whole off-the-record exchange, answers included, which nothing
+ * brings back. Hence {@link asideModelDeclined} among the terms.
  */
 export const ASIDE_CONTINUATION_ESCAPE =
-	"Close this aside and start a new one with /btw.";
+	"This aside can't continue. Press Esc, then start a new one with /btw.";
 
 /**
  * The sentence the PANEL states a refused ask with.
  *
  * The owner's own sentence, which is the only text that says WHY (a tool call off
  * the record, an empty answer, a store at its bound) - plus the escape clause when
- * that sentence was a continuation being turned away.
+ * that sentence was a continuation the owner can no longer continue.
  */
 export function asidePanelRefusal(error: unknown, continued: boolean): string {
 	const sentence = asideAskFailure(error);
-	return continued ? `${sentence} ${ASIDE_CONTINUATION_ESCAPE}` : sentence;
+	return continued && !asideModelDeclined(error)
+		? `${sentence} ${ASIDE_CONTINUATION_ESCAPE}`
+		: sentence;
 }
 
 /**
@@ -128,7 +172,54 @@ export function asideQuotedQuestion(question: string): string {
  * exactly the question and what became of it.
  */
 export function asideOffPanelRefusal(question: string, error: unknown): string {
-	return `Your aside ${asideQuotedQuestion(question)} got no answer: ${asideAskFailure(error)}`;
+	return `Your aside ${asideQuotedQuestion(question)} got no answer: ${asideOffPanelCause(error)}`;
+}
+
+/**
+ * How long an OFF-PANEL refusal may be, in characters.
+ *
+ * WHY THERE IS A BUDGET AT ALL (design round 3, D14). The composer's error line
+ * caps itself at `CAPPED_BLOCK` - six whole rows of `leading-5`, i.e. 120px - and
+ * scrolls whatever exceeds it, so a longer sentence puts its own tail out of sight.
+ * With the owner's sentence for a model refusal and a 60-character question, the
+ * composed sentence measured seven rows at the app's minimum window and the half
+ * that was cut was `ask again`: the operator read a refusal and no way out of it,
+ * which is the same class of loss the composer's own remedy controls were moved out
+ * of that window to fix (UX round 1, U3).
+ *
+ * THE NUMBER IS DERIVED RATHER THAN CHOSEN. The cap is 120px at 20px leading, so six
+ * rows; the composer's narrowest track is 236-252px, and 13px text in this app's
+ * body face fits about 34 characters of it per row - 6 x 34 = 204, of which 200
+ * leaves the rounding a margin. It is a CHARACTER budget because this module has no
+ * font and no DOM (this file's header), so the constraint has to be arithmetic on
+ * the string. A second cap on the row count, rather than a longer sentence, is also
+ * what the panel does NOT need: the panel has no cap and states the owner's whole
+ * sentence.
+ */
+export const ASIDE_OFF_PANEL_MAX_CHARS = 200;
+
+/**
+ * The cause as an OFF-PANEL surface states it.
+ *
+ * The owner's own sentence wherever it fits, because it is the only text that says
+ * WHY. The one arm that does not fit is the model refusal, whose sentence enumerates
+ * its three causes and runs to 156 characters on its own; every other refusal this
+ * path sees is short (`This aside is no longer available` is 32, the field refusal
+ * 32), so the short form is keyed on {@link asideModelDeclined} and nothing else.
+ *
+ * THE SHORT FORM KEEPS THE ACT AND THE REMEDY AND DROPS THE ENUMERATION. The act
+ * the owner names in that sentence is that the model did not answer in text, and the
+ * remedy is to ask again; what it adds is a list of the ways that happens, which the
+ * PANEL still states in the owner's own words on the surface with no cap. The remedy
+ * is ours here and it is deliberately NOT `with /btw`: for this arm asking again in
+ * the SAME panel is what works (U11's own driven measurement - the retry in place
+ * came back answered 4.7s later), so a short form that sent the user to a new aside
+ * would be U11's defect with fewer words.
+ */
+function asideOffPanelCause(error: unknown): string {
+	return asideModelDeclined(error)
+		? "The model didn't reply in text. Ask again."
+		: asideAskFailure(error);
 }
 
 /**
@@ -152,9 +243,18 @@ export function asideOffPanelRefusal(question: string, error: unknown): string {
  * A FAILED NEWEST TURN IS NOT BUSY, deliberately: its entry was dropped, so the
  * next question starts a clean one (U1), and a gate that held the box until the
  * user closed the panel would be the dead end U1 is about.
+ *
+ * THE SENTENCE CARRIES THE MOMENT, SO THE RETRY IS NOT WITHHELD BEYOND IT (UX round
+ * 2, U12; agent review round 5, R5-5; design round 3, D13). It used to end at "send
+ * the question when it finishes", which says WHEN without saying HOW, and the
+ * composer's own generic retry suffix then appended "Send it again" directly under
+ * it - one line telling the user to wait and to press now. The press is a press of
+ * Enter on the text the box is still holding, so the sentence names it, and the
+ * composer withholds its suffix through `ASIDE_STILL_ANSWERING_CODE` while this line
+ * is up.
  */
 export const ASIDE_ASK_BUSY =
-	"The aside is still answering \u2014 send the question when it finishes.";
+	"The aside is still answering. Press Enter again once the answer is in.";
 
 export function asideAskBlockedReason(
 	state: Parameters<typeof lastAsideStream>[0],
@@ -638,6 +738,25 @@ export function asideAdoptBlockedReason(
 }
 
 /**
+ * Where the newest question sits in the region's CONTENT, before any clamp.
+ *
+ * Its own function because the caller needs it SEPARATELY from the scroll it asks
+ * for: the target the region is moving toward is this offset, and the clamp below
+ * is the only thing that can stop it getting there. `regionTop` and `turnTop` are
+ * the two rectangles' viewport tops, so their difference is where the question sits
+ * inside the region's own scroll box whatever the region's current position is -
+ * which is why the caller can re-ask for the same target as the answer grows and
+ * get the same number back (design round 3, D11).
+ */
+export function asideQuestionTopOffset(input: {
+	regionTop: number;
+	turnTop: number;
+	scrollTop: number;
+}): number {
+	return input.scrollTop + (input.turnTop - input.regionTop);
+}
+
+/**
  * The exchange region's scroll position once a turn has been APPENDED.
  *
  * WHY THE QUESTION AND NOT THE BOTTOM (design round 2, D6). A follow-up asked
@@ -648,11 +767,16 @@ export function asideAdoptBlockedReason(
  * itself. The region is a plain `overflow-y-auto` box with no follow of its own, so
  * nothing brought the new turn into view.
  *
- * ONE SCROLL PER APPENDED TURN, AND NEVER PER CHUNK. It is called from an effect
- * keyed on the newest turn's id, so it fires once when the question is pinned and
- * not again as its answer streams: a region pinned to the bottom on every chunk
- * would fight a user who is reading the part above, which is the one thing the
- * transcript's own follow has to be careful about too.
+ * ONE SCROLL PER APPENDED TURN, AND NEVER PER CHUNK... which is a rule about
+ * FOLLOWING, not about a target that has not been reached yet (design round 3,
+ * D11). The turn is only as tall as its question and its thinking line at the
+ * moment this is called, so the clamp lands it at the region's BOTTOM - measured
+ * y=205 of 248 at wide, 170 of 232 at narrow - and the answer then streams downward
+ * out of view: 43 of 300px visible at wide, 62 of 883px at narrow, for the whole
+ * stream. The caller therefore re-applies this toward the SAME target until the
+ * clamp stops biting or the user scrolls, and stops there. That is not a
+ * pin-to-bottom: it never follows content down, it never passes the question, and a
+ * reader who scrolls takes the region over for good.
  *
  * The turn's question is put at the region's TOP rather than minimally into view,
  * because the question is the top of a block that grows downward: the thinking line
@@ -669,8 +793,7 @@ export function asideScrollToTurn(input: {
 	clientHeight: number;
 }): number {
 	const ceiling = Math.max(0, input.scrollHeight - input.clientHeight);
-	const wanted = input.scrollTop + (input.turnTop - input.regionTop);
-	return Math.min(ceiling, Math.max(0, wanted));
+	return Math.min(ceiling, Math.max(0, asideQuestionTopOffset(input)));
 }
 
 /**
@@ -688,8 +811,53 @@ export function asideScrollToTurn(input: {
  * hear an answer they were told had arrived. It is cut at the first sentence end or
  * at a bounded length, whichever comes first, because a live region's announcement
  * is not something a reader can skim.
+ *
+ * THE ANSWER IS ANNOUNCED AS PROSE, NOT AS ITS MARKUP (UX round 2, U15; design
+ * round 3, D15). The cut used to be taken from the raw stream, so an answer whose
+ * first sentence was `Transport failures and owner **5xx** responses, per provider,
+ * within a moving window.` was announced with the asterisks spoken aloud: a reader
+ * heard punctuation the sighted reader never sees, because the panel renders that
+ * text through `MarkdownRenderer` and the emphasis markers are consumed by it. The
+ * markers are therefore stripped here, from the text that goes into the cut rather
+ * than from the whole answer - the announcement is the only consumer and the
+ * streaming text is not this function's to edit.
  */
 export const ASIDE_ANNOUNCED_CHARS = 140;
+
+/**
+ * Inline markdown as the RENDERER consumes it, so an announcement speaks words.
+ *
+ * EVERY RULE REQUIRES A DELIMITER THAT IS TIGHT AGAINST ITS CONTENT (`(?=\S)` at the
+ * open, `\S` at the close), which is CommonMark's own flanking rule in the part that
+ * matters here and is what keeps this from DELETING words rather than markers. A
+ * looser `\*([^*]+)\*` reads `a * b and 2 * 3` as one emphasis span and announces
+ * `a  b and 2  3` — the parser would have rendered that asterisk literally, so the
+ * reader is told a sentence the sighted reader never saw, which is a worse defect
+ * than the one being fixed. For the same reason the underscore rules carry a
+ * boundary test: CommonMark does not open emphasis mid-word, so `a_b_c` is an
+ * identifier and not `a<em>b</em>c`.
+ *
+ * The two-character markers are listed before the one-character ones, and the rules
+ * run in this order, so `**strong**` is consumed whole rather than as an empty
+ * emphasis pair.
+ */
+const MARKDOWN_INLINE_RULES: ReadonlyArray<[RegExp, string]> = [
+	[/!?\[([^\]]*)\]\([^)]*\)/g, "$1"],
+	[/`(?=\S)([^`]*?\S)`/g, "$1"],
+	[/\*\*(?=\S)([\s\S]*?\S)\*\*/g, "$1"],
+	[/__(?=\S)([\s\S]*?\S)__/g, "$1"],
+	[/~~(?=\S)([^~]*?\S)~~/g, "$1"],
+	[/\*(?=\S)([^*]*?\S)\*/g, "$1"],
+	[/(?<![A-Za-z0-9_])_(?=\S)([^_]*?\S)_(?!\w)/g, "$1"],
+];
+
+/** The visible words of an inline-markdown span, for a live region to say. */
+export function asideAnnounceableText(text: string): string {
+	return MARKDOWN_INLINE_RULES.reduce(
+		(spoken, [pattern, replacement]) => spoken.replace(pattern, replacement),
+		text,
+	);
+}
 
 export function asideAnnouncement(
 	stream: AsideStream | undefined,
@@ -697,7 +865,8 @@ export function asideAnnouncement(
 	if (!stream) return null;
 	if (stream.error !== null) return "The aside was not answered";
 	if (stream.streaming) return "Asking the aside";
-	const sentence = stream.text.trim().split(RE_SENTENCE_END)[0] ?? "";
+	const sentence =
+		asideAnnounceableText(stream.text.trim()).split(RE_SENTENCE_END)[0] ?? "";
 	if (sentence.length === 0) return "The aside answered";
 	return sentence.length > ASIDE_ANNOUNCED_CHARS
 		? `The aside answered: ${sentence.slice(0, ASIDE_ANNOUNCED_CHARS)}\u2026`
