@@ -211,6 +211,79 @@ test("the two-holder frame carries the prefix-derived install name, and the clas
 });
 
 /*
+ * ONE COUNT FOR TWO AGREEMENTS (agent round 3, R3-2), and no markdown delimiters in a
+ * plain-text surface (design round 3, D18).
+ *
+ * The act's verb used to follow the number of PIDS while the class clause beside it
+ * followed the number of HOLDERS, so two holders that published one pid between them
+ * produced "are running Local Operator daemons" beside "Stop it ... reclaim 42411" -
+ * pointing at a daemon the reader may not want ended, and disagreeing with this file's
+ * own rule that several holders get the placeholder. The delimiters are the other half:
+ * `AlertDescription` renders these sentences as plain text, so the backticks were live
+ * glyphs around the one command the operator is meant to run.
+ */
+test("the act agrees with the holder count, not with the number of pids", () => {
+	const twoHoldersOnePid = [
+		daemonRecord(),
+		daemonRecord({
+			address: "http://127.0.0.1:8080",
+			pid: null,
+			pidSource: null,
+			version: "0.55.5",
+		}),
+	];
+	const sentence = describeSpawnRefusal(twoHoldersOnePid);
+	assert.match(
+		sentence,
+		/are running Local Operator daemons this app has no key for/,
+		"the class clause is plural for two holders",
+	);
+	assert.match(
+		sentence,
+		/Stop them from the installs that own them with lop services reclaim <pid>/,
+		"and the act agrees with it: plural verb, and the placeholder rather than one holder's pid",
+	);
+	assert.doesNotMatch(
+		sentence,
+		/Stop it from the install that owns it/,
+		"the mismatch this case exists for",
+	);
+	assert.equal(
+		reclaimClause(twoHoldersOnePid).trim(),
+		describeSpawnRefusal(twoHoldersOnePid).match(/Stop them[^.]*\./)?.[0],
+		"the band's clause and the refusal sentence are one composer's output",
+	);
+	/*
+	 * The delimiter check is over EVERY sentence a surface renders, not one of them: a
+	 * backtick is invisible in the source and live on the screen, which is how it survived
+	 * two rounds of copy review.
+	 */
+	for (const [label, text] of [
+		["one holder", describeSpawnRefusal(oneHolder)],
+		["two holders", describeSpawnRefusal(bothHeld)],
+		["two holders, one pid", sentence],
+		["a holder's clause", describeHolders(oneHolder)],
+	]) {
+		assert.doesNotMatch(
+			text,
+			/`/,
+			`${label}: a plain-text surface renders no markdown delimiters (design round 3, D18)`,
+		);
+	}
+	for (const [label, text] of [
+		["unattachable", literal("Unattachable", "detail")],
+		["both-addresses-held", literal("BothAddressesHeld", "detail")],
+		["serving-on-fallback", literal("ServingOnFallback", "reclaim")],
+	]) {
+		assert.doesNotMatch(
+			text,
+			/`/,
+			`the ${label} band's copy carries no backticks either`,
+		);
+	}
+});
+
+/*
  * THE START FACT IS RENDERED BUT NOT PHOTOGRAPHED (design round 2, D11), and the
  * reason is in the second assertion: the sentence carries the reader's own locale and
  * timezone, so a fixture literal with a clock time in it would document the machine

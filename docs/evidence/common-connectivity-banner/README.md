@@ -34,7 +34,9 @@ bandless states return **1024x333**, a title-plus-one-detail band **1024x401**, 
 refusal bands (a title and one wrapped two-line detail) **1024x421**, the two-holder
 and fallback bands **1024x440**, and the internet band **1024x420**. Those are this
 tree's capturer on this machine, re-measured in the round-2 remediation pass, which
-re-shot every frame in this directory in one run; the copy-driven heights are the
+re-shot every frame in this directory in one PASS - which is two capturer runs, the
+second of them under the baseline swap the "Re-taking the set" recipe spells out;
+the copy-driven heights are the
 band rows, not the document.
 
 ## The readback
@@ -109,9 +111,9 @@ they were re-derived in that pass in the same run that wrote the files.
 - The other stories have their own bytes in both palettes:
   `identity-failed` `ca1ede73…` / `015e45f4…`, `no-spawn` `29c8d2dc…` /
   `d151c933…`, `unclaimed` `ca84aa0d…` / `ffef8975…`, `stopped` `0bcb0c4a…` /
-  `60add571…`, `wedged` `647010a3…` / `5b731db7…`, `unattachable` `fa4642c0…` /
-  `864494c4…`, `both-addresses-held` `91499c29…` / `8e78b998…`,
-  `serving-on-fallback` `c04313f9…` / `bf6b1d29…`, `attached-elsewhere`
+  `60add571…`, `wedged` `647010a3…` / `5b731db7…`, `unattachable` `a08616b1…` /
+  `c437c566…`, `both-addresses-held` `e8d6cfe2…` / `1ac6cb27…`,
+  `serving-on-fallback` `cb32792b…` / `bcadaf69…`, `attached-elsewhere`
   `9431d646…` / `9266449a…`, `returned-to-configured` `a6056e54…` /
   `c6c62c32…`, `internet-offline-confirmed` `4b95ec86…` / `a02d9437…`.
 - `unattachable` was the story whose hashes this readback could not state while its
@@ -119,6 +121,13 @@ they were re-derived in that pass in the same run that wrote the files.
   sentence this tree ships - produced by `describeSpawnRefusal` and compared
   against the story fixture by `scripts/connectivity-banner-copy.test.mjs`, so the
   two cannot drift again (that drift is design round 1's D2).
+- **The command is printed as PLAIN TEXT, with no backticks** (design round 3, D18). The
+  composer used to write markdown delimiters around it (`\`lop services reclaim 42411\``)
+  for a code span that does not exist: `AlertDescription` renders these sentences as
+  plain text, so the operator saw a live grave accent in the same face as the prose -
+  around the one sentence this change exists to make legible. The delimiters are gone and
+  the three act-bearing bands are re-shot; `scripts/connectivity-banner-copy.test.mjs`
+  asserts no shipped sentence carries one.
 - The banded states are visibly taller than the bandless ones, and the difference
   is the band's own rows (64 for a title plus one detail line, 104 for four), not a
   different sentence count: the wash rows are what the copy costs.
@@ -141,38 +150,29 @@ they were re-derived in that pass in the same run that wrote the files.
   Operator server."). Whether a browser-hosted app should announce the absent bridge at
   all is still design round 1's D12 product question, and the fixture no longer answers
   it by accident.
-- The other stories have their own bytes in both palettes:
-  `identity-failed` `6b0c4d21…` / `cefcf052…`, `no-spawn` `9d0b981e…` /
-  `efcdbc7f…`, `unclaimed` `38ee1b31…` / `e1305b1d…`, `stopped` `a7984274…` /
-  `094ab185…`, `wedged` `16fd6076…` / `e71aa082…`, `unattachable` `07eba5bb…` /
-  `8f13c8b1…`, `both-addresses-held` `84c7e093…` / `1fc97c12…`,
-  `serving-on-fallback` `eaa4d5f5…` / `3d977db0…`, `returned-to-configured`
-  `94aa7460…` / `c27e3949…`, `internet-offline-confirmed` `87ae6e95…` /
-  `b22d1565…`. This list is hand-maintained and every re-capture moves it, so
-  refresh it in the pass that renews the frames or read the files themselves: two
-  of its entries were stale when round 2 measured them (`wedged` and `no-bridge`),
-  which is exactly the drift a hand-written list accumulates.
-- `no-bridge` is deliberately NOT re-shot by the round-1 remediation pass, and
-  this is a measurement rather than an omission: on this machine the story's own
-  `/health` fallback now REJECTS (a Storybook origin cannot read the daemon's
-  origin), so `online` is false, `hasConnectivityIssue` is true, and the band
-  - The `Dismiss` control on `returned-to-configured` is component state, not main's: a
-  reload re-presents the notice (design round 2, D13). It is re-armed when the notice it
-  dismissed is replaced by another one, which is agent round 2's R2-3 - before that, a
-  second substitution-and-return in one session was silent.
+- The other stories have their own bytes in both palettes - the list is above, and it is
+  the ONLY one: the round-1 list that used to sit here (in sha256, from the pass before
+  this one) was deleted in round 3 rather than relabelled, because three of its entries
+  named bytes that are on no file in this tree and it omitted the states this pass moved
+  and added (design round 3, D14). One table, with every value verified against the
+  committed frames, is the whole of what this section needs.
 
 ## The pair, and what it measures
 
 `docs/evidence/common-connectivity-banner-baseline/` holds the before half: the same
 viewport, the same page ground and the same FIXTURE as the `wedged` frame beside it,
 with main's own `ConnectivityBanner` and main's own copy table in place and nothing else
-changed. It was re-shot in the round-2 remediation pass, on this tree, in the same run as
-the set above (design round 2, D8a).
+changed. It was re-shot in the round-2 remediation pass, on this tree, in ONE PASS with the
+set above - two runs under one swap, which is what puts both halves on one canvas
+(design round 2, D8a).
 
 **What the pair used to claim, and why it could not stand.** The committed before half
 was photographed on a detached worktree of `origin/main` at `93f57894a`, which this
 README called "main's head, the branch's merge target". It was neither: `93f57894a` is
-2026-09-14, **2,827 commits behind** `origin/main` (`cb9d97b79`), and what this branch
+2026-09-14, **2,827 commits behind THE BRANCH'S MERGE TARGET** `cb9d97b79` (`origin/main`
+has moved on since - its head was `deb1422f5` when round 3 measured this - so the count is
+stated against what this branch actually merged, which is what `ef21c7118`'s second
+parent is), and what this branch
 actually merged was `ea8498aaf` (via `c019d1ecc`) and then `cb9d97b79` itself (via
 `ef21c7118`). Its sentence - *"The server is offline. The interface will not function
 properly until the server is back online."* - exists in **neither** tree today: the copy
@@ -195,6 +195,11 @@ above and `scripts/connectivity-banner-copy.test.mjs` pin to the composers thems
 
 ## What these frames do not prove
 
+- **Not `Dismiss` surviving a reload** (design round 2, D13). The control on
+  `returned-to-configured` is component state, not main's: reloading the window
+  re-presents the notice, and nothing in the snapshot records that it was dismissed. It is
+  re-armed when the notice it dismissed is replaced by another one, which is agent round
+  2's R2-3 - before that, a second substitution-and-return in one session was silent.
 - **Not the click on Retry.** Round 1's D3 was that the control was inert. It now
   calls `backend.reconnect()` over IPC, which asks main to re-discover *now*;
   a still cannot show a press, the push that follows it, or the state it lands on.
@@ -220,7 +225,8 @@ above and `scripts/connectivity-banner-copy.test.mjs` pin to the composers thems
   (`common-connectivity-banner-baseline`), re-shot in the round-2 pass on THIS tree with
   main's own `ConnectivityBanner` and main's own copy table swapped in, so both halves
   share one ground (design round 2, D8a; the previous half came from a worktree of
-  `93f57894a`, 2,827 commits behind the merge target, and showed a sentence that exists
+  `93f57894a`, 2,827 commits behind the branch's merge target `cb9d97b79`, and showed a
+  sentence that exists
   in neither tree today). The manifest carries its recipe - including the one scratch
   story file it needs, which is written, used and deleted rather than committed - so it
   can be re-derived rather than taken on trust.
