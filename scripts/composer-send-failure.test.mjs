@@ -25,9 +25,24 @@ import { build } from "esbuild";
  *     have been delivered after all.
  */
 const values = new Map();
+/*
+ * THE QUOTA IS PART OF THE FIXTURE, not a convenience: a browser's `localStorage`
+ * is roughly 5 MB per origin and throws `QuotaExceededError` past it, and that
+ * throw is what turned a large pasted screenshot into "Something went wrong" on
+ * every reload (review round 1, B5/Q-6). A stub that accepts anything cannot see
+ * the defect, so this one behaves like the store does.
+ */
+const LOCAL_STORAGE_QUOTA = 5 * 1024 * 1024;
 globalThis.localStorage = {
 	getItem: (key) => values.get(key) ?? null,
-	setItem: (key, value) => values.set(key, value),
+	setItem: (key, value) => {
+		if (typeof value === "string" && value.length > LOCAL_STORAGE_QUOTA) {
+			const error = new Error("QuotaExceededError");
+			error.name = "QuotaExceededError";
+			throw error;
+		}
+		values.set(key, value);
+	},
 	removeItem: (key) => values.delete(key),
 };
 const calls = [];
@@ -54,7 +69,7 @@ globalThis.__canonicalEcho = (event) => {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {useConversationInputStore, mergeReturnedText, mergeReturnedPayload, composerHoldsExactly, rehydrateInputRows} from "./src/renderer/src/shared/store/conversation-input-store"; export {DesktopControlError, UserFacingError} from "@shared/api/local-operator/desktop-api"; export {RUNTIME_BUSY_CODE, RUNTIME_RETIRING_CODE} from "./src/shared/desktop-contract";',
+			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {useConversationInputStore, mergeReturnedText, mergeReturnedPayload, composerHoldsExactly, rehydrateInputRows} from "./src/renderer/src/shared/store/conversation-input-store"; export {composerNoticeFor, retryOfferedForFailureCode} from "./src/renderer/src/features/chat/composer-notice"; export {DesktopControlError, UserFacingError} from "@shared/api/local-operator/desktop-api"; export {RUNTIME_BUSY_CODE, RUNTIME_RETIRING_CODE, DESKTOP_DEADLINE_EXCEEDED_CODE} from "./src/shared/desktop-contract";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -115,6 +130,9 @@ const module = await import(
 const {
 	admitChatDraft,
 	composerIdentityFor,
+	composerNoticeFor,
+	migrateHeldClaim,
+	retryOfferedForFailureCode,
 	mergeReturnedPayload,
 	mergeReturnedText,
 	rehydrateInputRows,
@@ -132,6 +150,7 @@ const {
 	SESSION_UNVALIDATED_CODE,
 	STORE_OUT_OF_SPACE_CODE,
 	UNREADABLE_ATTACHMENT_CODE,
+	DESKTOP_DEADLINE_EXCEEDED_CODE,
 } = module;
 
 const SESSION = "111111111111";
@@ -268,7 +287,20 @@ test("the copy table is one place, and none of it speaks the app's own vocabular
 	// The four arms this change writes, verbatim.
 	assert.equal(
 		sendFailureCopy(new DesktopControlError(504, "deadline")).message,
-		"Couldn't confirm your message was sent.",
+		"Couldn't confirm your message was sent. Sending it again is safe.",
+	);
+	/*
+	 * AND THE SECOND CLAUSE IS THE POINT OF THE SENTENCE (UX round 1, U7). The
+	 * timeout arm used to say only what the app could not establish, which left the
+	 * one safe action - press Retry - unstated. The claim is asserted as a property
+	 * rather than as prose: the unknown arm's sentence tells the user a resend is
+	 * safe, and no other arm claims the same thing about a message that provably did
+	 * not leave.
+	 */
+	assert.match(
+		sendFailureCopy(new DesktopControlError(504, "deadline")).message,
+		/sending it again is safe/i,
+		"the unknown-outcome notice no longer says that a resend is safe",
 	);
 	assert.equal(
 		sendFailureCopy(
@@ -540,5 +572,361 @@ test("a restart returns an interrupted send to its composer", () => {
 	assert.deepEqual(
 		rows["111111111111"].attachments.map((chip) => chip.path),
 		["/tmp/late.png"],
+	);
+});
+
+/* ---------------------------------------------------------------------------
+ * REVIEW ROUND 1 (the live findings, which are store findings underneath)
+ * ------------------------------------------------------------------------- */
+
+/*
+ * B1. THE MIGRATION IS NOT ALLOWED TO FIRE ON THIS BUILD'S OWN ROW.
+ *
+ * Every clause below is a consequence the reviewers measured on the previous head,
+ * all of them from one cause: the migration's gate was the SHAPE of a failure
+ * (`submittedText` present, `admissionAttempted`, not pending), which is exactly
+ * the shape this build writes when an outcome is unknown. So the pane's effect -
+ * which runs on every draft change - moved the payload a second time, cleared the
+ * replay identity, and left the row unable to say what its request id means.
+ */
+test("a failure this build recorded is never migrated as the released app's claim", async () => {
+	reset();
+	let renders = 0;
+	const beforeAdmission = async () => `rendered-${++renders}`;
+	responses.push(new DesktopControlError(504, "deadline_exceeded"));
+	await assert.rejects(
+		admitChatDraft(key, input, SESSION, undefined, beforeAdmission),
+	);
+	const first = draftRow();
+	const requestId = first.admissionRequestId;
+	const firstBody = calls.filter((r) => r.op === "sessions.message").at(-1).text;
+	assert.equal(renders, 1);
+
+	/*
+	 * The pane's own effect, run the way the pane runs it: on the row this send
+	 * just wrote.
+	 */
+	assert.equal(
+		migrateHeldClaim(key, first),
+		false,
+		"the migration fired on a row this build wrote, so it handed the message back twice and wiped the replay identity",
+	);
+	assert.equal(
+		draftRow().submittedText,
+		first.submittedText,
+		"the replay identity must survive the pane's migration effect",
+	);
+	assert.equal(
+		composerRow(composerIdentityFor(key, SESSION))?.pendingText,
+		undefined,
+		"the payload was handed back a second time",
+	);
+
+	/*
+	 * 1. An UNCHANGED retry is the same request, body included - which is what the
+	 *    owner's receipt journal de-duplicates on (a same-id request whose body
+	 *    hashes differently is refused as a conflict, and the app then reports an
+	 *    unknown outcome for ever).
+	 */
+	const before = calls.length;
+	responses.push({ ok: true });
+	await admitChatDraft(key, input, SESSION, undefined, beforeAdmission);
+	const replay = calls.slice(before).filter((r) => r.op === "sessions.message");
+	assert.equal(replay.length, 1);
+	assert.equal(replay[0].requestId, requestId, "the request id is the one that was issued");
+	assert.equal(
+		replay[0].text,
+		firstBody,
+		"the retry went out with a RE-RENDERED body under the first attempt's id, which the owner refuses as a conflict",
+	);
+	assert.equal(renders, 1, "a replay does not re-render the text");
+
+	/*
+	 * 2. And the row is gone: a delivered send retires it, so a THIRD press cannot
+	 *    reuse the id for something new.
+	 */
+	assert.equal(draftRow(), undefined);
+});
+
+test("after an unknown outcome, a different message is a new request id", async () => {
+	reset();
+	responses.push(new DesktopControlError(504, "deadline_exceeded"));
+	await assert.rejects(admitChatDraft(key, input, SESSION));
+	const failed = draftRow().admissionRequestId;
+	// The pane's migration effect, on the row this build just wrote.
+	migrateHeldClaim(key, draftRow());
+
+	const before = calls.length;
+	responses.push({ ok: true });
+	await admitChatDraft(key, { ...input, text: "A different message" }, SESSION);
+	const sent = calls.slice(before).filter((r) => r.op === "sessions.message");
+	assert.equal(sent.length, 1);
+	assert.equal(sent[0].text, "A different message");
+	assert.notEqual(
+		sent[0].requestId,
+		failed,
+		"a DIFFERENT message went out under the failed message's id, which the owner refuses as a conflict - and if the first one landed, the conflict was then misread as a delivery and the new message was dropped with no notice at all",
+	);
+});
+
+test("a row the released app left behind comes home once, with this app's sentence", () => {
+	reset();
+	/*
+	 * The released app's own row, as its persistence wrote it: its claim marker, its
+	 * payload, and the transport's 20-second sentence in `error` - the sentence the
+	 * composer must not show (it describes a request the app stopped waiting for, and
+	 * it is not this app's copy).
+	 */
+	const legacy = {
+		key,
+		createRequestId: "create-legacy",
+		admissionRequestId: "admission-legacy",
+		sessionId: SESSION,
+		pending: false,
+		admissionAttempted: true,
+		submittedText: "kept outside the composer",
+		submittedAttachments: [],
+		heldClaimCode: "send_unconfirmed",
+		error: "The app waits up to 20 seconds for this request, and it was still running when the app stopped waiting.",
+	};
+	useCanonicalSessionsStore.setState({ drafts: { [key]: legacy } });
+	assert.equal(migrateHeldClaim(key, legacy), true, "the released app's row is the one it is for");
+	const row = composerRow(composerIdentityFor(key, SESSION));
+	assert.equal(row?.pendingText, "kept outside the composer");
+	assert.equal(draftRow().heldClaimCode, undefined, "the claim marker goes with the claim");
+	assert.equal(draftRow().submittedText, undefined);
+	assert.equal(
+		draftRow().error,
+		SEND_FAILURE_COPY.unconfirmed,
+		"the released app's 20-second sentence is still on screen",
+	);
+	assert.equal(draftRow().errorRetry, true, "and the press that answers it is offered");
+	assert.equal(migrateHeldClaim(key, draftRow()), false, "the move happens once");
+});
+
+/*
+ * B5/Q-6. THE IMAGE BYTES ARE PERSISTED ONCE.
+ *
+ * The returned record kept the same paths the row keeps, so a pasted screenshot -
+ * a `data:` URL, megabytes of base64 - went into `localStorage` twice: once as a
+ * chip and once as the record of it. Past the quota the write threw, the row was
+ * left half-written, and every reload showed the app's crash page. The test drives
+ * the real persist write (`partialize` through the store's own storage) with the
+ * quota the browser has.
+ */
+test("a returned payload does not duplicate the image bytes, so a large one still persists", () => {
+	reset();
+	const identity = composerIdentityFor(key, SESSION);
+	const image = `data:image/png;base64,${"A".repeat(3 * 1024 * 1024)}`;
+	const store = useConversationInputStore.getState();
+	store.setCurrentInput(identity, "with a screenshot");
+	store.addAttachment(identity, { id: "chip-1", path: image });
+	/*
+	 * Through the wire and back: the echo takes the payload out of the composer
+	 * (`beginInFlight`), and the failure hands it back (`returnInFlight`).
+	 */
+	store.beginInFlight(identity, {
+		text: "with a screenshot",
+		// The chips as the composer held them: `beginInFlight` records their PATHS in
+		// the in-flight payload, which is what the return path hands back.
+		attachments: [{ id: "chip-1", path: image }],
+		replies: [],
+	});
+	store.returnInFlight(identity, identity);
+
+	const row = composerRow(identity);
+	assert.deepEqual(
+		row?.attachments.map((chip) => chip.path),
+		[image],
+		"the chip is back in the composer",
+	);
+	assert.equal(row?.pendingText, "with a screenshot");
+	assert.equal(
+		JSON.stringify(row?.returned).includes("data:image/png"),
+		false,
+		"the returned record carries the bytes as well as the chip",
+	);
+	/*
+	 * And the persistence the app performs after that write: one copy of the bytes,
+	 * under a quota that a second copy would breach.
+	 */
+	const persisted = values.get("conversation-input-store") ?? "";
+	assert.ok(persisted.length > 0, "the row was persisted at all");
+	assert.equal(
+		persisted.split("data:image/png").length - 1,
+		1,
+		"the image bytes were persisted more than once, which is the throw that left the store unreadable and the app on its crash page",
+	);
+	assert.ok(persisted.length <= LOCAL_STORAGE_QUOTA);
+	// And a reload of exactly that persisted state is a row the app can use.
+	const rehydrated = rehydrateInputRows(JSON.parse(persisted).state.inputByConversation);
+	assert.deepEqual(
+		rehydrated[identity].attachments.map((chip) => chip.path),
+		[image],
+	);
+});
+
+/*
+ * m1. A CREDENTIAL IS NEVER WRITTEN, on any of the three paths its text can be on.
+ *
+ * The masked capture's own text can BE the secret the user is mid-way through
+ * entering, and the return path copied it into `pendingText` and into the returned
+ * record with no volatile flag - so a failure during a capture wrote the secret to
+ * disk, where `partialize`'s single gate (the in-flight record) never reached it.
+ */
+test("a payload typed inside a masked capture never reaches disk when it comes back", () => {
+	reset();
+	const identity = composerIdentityFor(key, SESSION);
+	const store = useConversationInputStore.getState();
+	store.beginInFlight(identity, {
+		text: "LOP_SECRET_ABCDEFGH",
+		attachments: [],
+		replies: [],
+		volatileText: true,
+	});
+	store.returnInFlight(identity, identity);
+	const persisted = values.get("conversation-input-store") ?? "";
+	assert.equal(
+		persisted.includes("LOP_SECRET_ABCDEFGH"),
+		false,
+		"a credential the user was still entering reached localStorage",
+	);
+	// In memory it is still theirs: the box gets the text back.
+	assert.equal(composerRow(identity)?.pendingText, "LOP_SECRET_ABCDEFGH");
+});
+
+/*
+ * M4/m5. THE CREDENTIAL SEAM RUNS WHEN NOTHING WAS EVER RENDERED.
+ *
+ * A conversation's first message stages a draft, and `sessions.create` answers
+ * with the id the seam needs. When the CREATE hop fails there is no session, so the
+ * seam never ran and nothing was pinned; reading the pin alone then sent the raw
+ * composer text on the retry - credential markers to the model verbatim, and the
+ * credential never stored into the session the retry had just created.
+ */
+test("a replay whose first attempt never rendered runs the credential seam", async () => {
+	reset();
+	const draftKey = "draft:33333333-3333-3333-3333-333333333333";
+	let renders = 0;
+	const beforeAdmission = async () => `stored: ${++renders}`;
+	stageComposer(draftKey, { text: "[Credential #1, 19 chars]" });
+	responses.push(new DesktopControlError(503, "create refused"));
+	await assert.rejects(
+		admitChatDraft(draftKey, input, undefined, undefined, beforeAdmission),
+	);
+	assert.equal(renders, 0, "the seam had no session to render into");
+
+	const before = calls.length;
+	responses.push({ session_id: SESSION });
+	responses.push({ ok: true });
+	await admitChatDraft(draftKey, input, undefined, undefined, beforeAdmission);
+	assert.equal(
+		renders,
+		1,
+		"the retry skipped the seam, so the credential was never stored and its marker went to the model",
+	);
+	const sent = calls.slice(before).filter((r) => r.op === "sessions.message");
+	assert.equal(sent[0].text, "stored: 1");
+	assert.equal(sent[0].text.includes("[Credential #1"), false);
+});
+
+/* ------------------------------------------------------------------- notice */
+
+/*
+ * B3/B4. THE NOTICE IS THE OUTCOME CLASS'S, AND IT IS DECIDED IN ONE PLACE.
+ *
+ * The pane used to gate Retry on "is there an error on screen" (`draft.error ===
+ * undefined`), which is true for every failure the store records - so Retry was
+ * hidden on the arms it exists for and offered on the late-delivery arm, where
+ * pressing it duplicates the message. The rule now lives in `composerNoticeFor`,
+ * over plain inputs, so it can be read here rather than only in the pane's JSX.
+ */
+test("the notice offers Retry where a press works, and never over a delivery", () => {
+	// The unknown outcome, as the ROW records it: a sentence, and no code the app
+	// can classify (the failure was a lost response, not a refusal).
+	const unknown = composerNoticeFor({
+		error: null,
+		code: undefined,
+		retry: false,
+		muted: false,
+		rowError: SEND_FAILURE_COPY.unconfirmed,
+		rowCode: undefined,
+		rowRetry: true,
+		lateDelivered: false,
+	});
+	assert.equal(unknown?.message, SEND_FAILURE_COPY.unconfirmed);
+	assert.equal(unknown?.retry, true, "Retry must be offered on the arm a replay answers");
+	assert.equal(unknown?.muted, false);
+
+	/*
+	 * A refusal that states the message was not admitted keeps the press out - and
+	 * the row's own recorded decision is what is read, not a re-derivation.
+	 */
+	const refused = composerNoticeFor({
+		error: null,
+		code: undefined,
+		retry: false,
+		muted: false,
+		rowError: "This message is too large to send. Remove an image or split it.",
+		rowCode: undefined,
+		rowRetry: false,
+		lateDelivered: false,
+	});
+	assert.equal(refused?.retry, false);
+
+	/*
+	 * A row written before the decision was recorded falls back to its code, and the
+	 * fallback is the same union `sendFailureCopy` offers a press for.
+	 */
+	for (const code of [
+		DESKTOP_DEADLINE_EXCEEDED_CODE,
+		"transport.failed",
+		"runtime_unreachable",
+		RUNTIME_BUSY_CODE,
+		RUNTIME_RETIRING_CODE,
+		SESSION_UNVALIDATED_CODE,
+	])
+		assert.equal(retryOfferedForFailureCode(code), true, code);
+	for (const code of [
+		LEADING_SLASH_CODE,
+		UNREADABLE_ATTACHMENT_CODE,
+		STORE_OUT_OF_SPACE_CODE,
+		"pairing.no-credential",
+	])
+		assert.equal(retryOfferedForFailureCode(code), false, code);
+	assert.equal(retryOfferedForFailureCode(undefined), true, "an outcome nothing could name is pressable");
+
+	/*
+	 * THE LATE DELIVERY WINS OVER ANY FAILURE TEXT STILL ON THE ROW, which is the
+	 * state the previous head rendered as a "Couldn't confirm" sentence next to a
+	 * Retry whose press would write a second user row (B4).
+	 */
+	const delivered = composerNoticeFor({
+		error: null,
+		code: undefined,
+		retry: true,
+		muted: false,
+		rowError: SEND_FAILURE_COPY.unconfirmed,
+		rowCode: undefined,
+		rowRetry: true,
+		lateDelivered: true,
+	});
+	assert.equal(delivered?.message, SEND_FAILURE_COPY.lateDelivery);
+	assert.equal(delivered?.muted, true);
+	assert.equal(delivered?.retry, undefined, "nothing to press over a message that arrived");
+
+	// And nothing at all on a row with no failure.
+	assert.equal(
+		composerNoticeFor({
+			error: null,
+			code: undefined,
+			retry: false,
+			muted: false,
+			rowError: undefined,
+			rowCode: undefined,
+			rowRetry: undefined,
+			lateDelivered: false,
+		}),
+		undefined,
 	);
 });
