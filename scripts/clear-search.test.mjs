@@ -151,18 +151,36 @@ test("the icon is decorative and the query never runs under the control", () => 
 	);
 });
 
-test("Escape keeps clearing and blurring, unchanged", () => {
+test("Escape clears the field and hands focus to the list, and comes back from it", () => {
 	const keyDown = sidebar.slice(
 		sidebar.indexOf("const keyDown = ("),
 		sidebar.indexOf("const rows = ["),
 	);
-	// The new control is an addition, not a replacement: Escape is still the
-	// keyboard user's way out of the field, blur included, and the list's own
-	// Escape branch (which restores focus to the field) still follows it.
+	/*
+	 * THE CONTRACT CHANGED, and this is the change rather than a relaxation of
+	 * the guard. Escape in the field used to clear and BLUR, which parked
+	 * `document.activeElement` on `<body>`: the key that emptied the field also
+	 * dropped the user's place, so the next Tab started from the top of the
+	 * document and the list below was unreachable without a pointer. The
+	 * sidebar's search now takes the command palette's own model - ↓ into the
+	 * results, Escape clears and returns focus to the list - and the field keeps
+	 * its clear-half: the query is still emptied on the same press, so nothing
+	 * about what the control DOES was lost, only where the caret lands.
+	 */
 	assert.match(
 		keyDown,
-		/target\.tagName === "INPUT"\) \{\s*if \(event\.key === "Escape"\) \{\s*setQuery\(""\);\s*target\.blur\(\);/,
-		"the input's Escape branch must still clear the query and blur the field",
+		/target\.tagName === "INPUT"\) \{[\s\S]*?event\.key === "Escape"\) \{\s*setQuery\(""\);/,
+		"the input's Escape branch must still clear the query",
+	);
+	assert.match(
+		keyDown,
+		/event\.key === "ArrowDown"\)[\s\S]*?querySelector<HTMLElement>\(\s*"\[data-chat-row\]"\s*\)/,
+		"↓ must enter the list from the field (the palette's model)",
+	);
+	assert.match(
+		keyDown,
+		/if \(first\) first\.focus\(\);/,
+		"the cleared field hands focus to the list rather than blurring to `body`",
 	);
 	assert.match(
 		keyDown,

@@ -24,6 +24,7 @@ import {
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
 
 import { BackendCompatibilityBanner } from "@shared/components/common/backend-compatibility-banner";
+import { ChatLayout } from "@shared/components/common/chat-layout";
 import { ConnectivityBanner } from "@shared/components/common/connectivity-banner";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
 import { LowCreditsDialog } from "@shared/components/common/low-credits-dialog";
@@ -553,34 +554,37 @@ const App: FC = () => {
 						onAgentCreated={handleAgentCreated}
 					/>
 
-					<SidebarNavigation />
-
-					<main className="flex grow flex-col overflow-hidden">
-						<Suspense
-							fallback={
-								<div className="flex grow items-center justify-center">
-									<Spinner size="lg" label="Loading page" />
-								</div>
-							}
-						>
-							<Routes>
-								<Route path="/" element={<Navigate to="/chat" replace />} />
-								<Route path="/chat" element={<ChatPage />} />
-								<Route path="/chat/:agentId" element={<ChatPage />} />
-								<Route path="/agents" element={<AgentsPage />} />
-								<Route path="/agents/:agentId" element={<AgentsPage />} />
-								<Route path="/settings" element={<SettingsPage />} />
-								<Route path="/agent-hub" element={<AgentHubPage />} />
-								<Route
-									path="/agent-hub/:agentId"
-									element={<AgentDetailsPage />}
-								/>
-								<Route path="/schedules" element={<SchedulesPage />} />
-								<Route path="/browser" element={<BrowserPage />} />
-								<Route path="*" element={<Navigate to="/chat" replace />} />
-							</Routes>
-						</Suspense>
-					</main>
+					<ChatLayout
+						sidebar={<SidebarNavigation />}
+						content={
+							<main className="flex grow flex-col overflow-hidden">
+								<Suspense
+									fallback={
+										<div className="flex grow items-center justify-center">
+											<Spinner size="lg" label="Loading page" />
+										</div>
+									}
+								>
+									<Routes>
+										<Route path="/" element={<Navigate to="/chat" replace />} />
+										<Route path="/chat" element={<ChatPage />} />
+										<Route path="/chat/:agentId" element={<ChatPage />} />
+										<Route path="/agents" element={<AgentsPage />} />
+										<Route path="/agents/:agentId" element={<AgentsPage />} />
+										<Route path="/settings" element={<SettingsPage />} />
+										<Route path="/agent-hub" element={<AgentHubPage />} />
+										<Route
+											path="/agent-hub/:agentId"
+											element={<AgentDetailsPage />}
+										/>
+										<Route path="/schedules" element={<SchedulesPage />} />
+										<Route path="/browser" element={<BrowserPage />} />
+										<Route path="*" element={<Navigate to="/chat" replace />} />
+									</Routes>
+								</Suspense>
+							</main>
+						}
+					/>
 				</div>
 			</div>
 		</OnboardingProvider>
