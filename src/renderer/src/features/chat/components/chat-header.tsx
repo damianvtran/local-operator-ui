@@ -12,14 +12,17 @@ import {
 	Tooltip,
 	countLabel,
 } from "@shared/components/ui";
+import { useHomeDirectory } from "@shared/hooks";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { formatDirectory } from "@shared/utils/path-utils";
 import {
 	Archive,
 	ArchiveRestore,
 	Bot,
 	FileText,
 	Globe,
+	Info,
 	MoreHorizontal,
 	SquareTerminal,
 	Trash2,
@@ -213,6 +216,20 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	const badgeText = countLabel(browserAttentionCount, 9);
 	const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
 	const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
+	/*
+	 * The run panel's setter, read here for the OVERFLOW MENU rather than for the
+	 * cluster's own trigger (`RunDetailsTrigger` owns that button and its
+	 * focus-return). The menu is the row's escape hatch at the widths where the
+	 * cluster sheds the trigger, and both paths write the same store field, so they
+	 * cannot disagree about whether the pane is up.
+	 */
+	const setRunPanelOpen = useUiPreferencesStore((s) => s.setRunPanelOpen);
+	/*
+	 * The account's home directory, for the quiet path in the title row. Shared with
+	 * the composer's directory chip (`useHomeDirectory`), so one IPC round trip
+	 * answers both and the two surfaces cannot abbreviate the same path differently.
+	 */
+	const homeDirectory = useHomeDirectory();
 	// Read here rather than passed in: the pane is a property of the window's right
 	// slot, so the control that opens it and the slot that renders it have to answer
 	// from ONE field — the same reason the canvas button reads `isCanvasOpen` itself.
@@ -323,43 +340,47 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	return (
 		<div
 			/*
-			 * 56px and `shrink-0`, matching the bar band its peers occupy: 52px
-			 * command palette, 48px nav rail header, 40px canvas header. The old
-			 * `h-21` declared 84px - 1.6x the largest peer - and, without `shrink-0`,
-			 * never drew it: the column's flex deficit came out of this box, so it
-			 * rendered 46.5px at one window size and 61.4px at another. A height that
-			 * moves with composer content cannot be designed against, which is why
-			 * the geometry is pinned before anything here is styled.
+			 * ONE ROW, 40px, and no rule under it.
 			 *
-			 * 56 rather than 52: this bar carries two lines (16px name over 13px
-			 * description, about 41px of text), where the command palette carries
-			 * one. It is the smallest step on the 4px ramp that holds both without
-			 * crowding them.
+			 * IT WAS 56px WITH TWO LINES (`text-heading` name over a `text-body-sm`
+			 * description). Three things end here:
 			 *
-			 * `border-control`, not `hairline`, for the bottom rule. This line is
-			 * what says the title block is chrome and the transcript below it is
-			 * content - branding.md's own test for a structural boundary is
-			 * whether removing it loses information, and here it does. As
-			 * `hairline` it measured 1.32:1 against the sidebar's own header rule
-			 * 8px away at 4.18:1: two rules at the top of one window drawn 3.2x
-			 * apart, with the chat one the faint one. It matters more in a
-			 * packaged build than these frames suggest, because the Chat/Raw tab
-			 * row beneath it is `isDevelopmentMode()`-gated - in production this
-			 * rule sits directly against the transcript's first row and is the
-			 * only thing separating them.
+			 *  - THE SECOND LINE. The description slot carried the working directory as a
+			 *    RAW ABSOLUTE PATH (`/Users/damian/.local-operator/sessions/…`), truncated
+			 *    from the right, so the segment that identifies the directory was the part
+			 *    that got cut - while the composer's chip three inches below abbreviated the
+			 *    same path to `~/.local…` (D7). It is now one row with the title, `~`-formed
+			 *    by the chip's own rule (`formatDirectory`), and the raw value stays in the
+			 *    tooltip so nothing becomes un-recoverable.
+			 *  - THE 16px STEP. `text-heading` on the conversation's name made the bar's
+			 *    loudest text the name of the thing the reader is already inside; the title
+			 *    is `text-body` (14) now, one step above the rows it heads, which is what the
+			 *    reference products do.
+			 *  - THE BOUNDARY. `border-control border-b` drew a 1px line the transcript was
+			 *    cut off against, with no fade (D6). The separation is the transcript's own
+			 *    top edge dissolving instead - a 24px mask, in `styles/index.css`, keyed on
+			 *    `data-lo-canonical-transcript` - and a boundary that is a fade does not also
+			 *    need a rule.
+			 *
+			 * 40 is the app's existing toolbar step (`h-10`: every pane toolbar, the
+			 * sidebar's brand row, the chrome lane's neighbour), and it is what lets the
+			 * sidebar's brand row and this row share one line once the macOS lane is
+			 * shell-level. The row is a DRAG REGION and every control in it opts out
+			 * (`data-titlebar-no-drag` on the cluster and on the archived pair), which is
+			 * the vocabulary `styles/index.css` gates on `data-titlebar-platform`.
+			 *
+			 * `@container/chathdr` is the row's own width, which is what the title's
+			 * floor needs to ask about. It is NOT the viewport: this header narrows
+			 * when a right-slot pane opens, and the pane is exactly the state where an
+			 * unfloored title disappeared (design round 1, D1 - measured: the title's
+			 * box held no ink at all while the pane was up, because `flex-1 min-w-0`
+			 * lets it yield before any control does).
 			 */
 			className={cn(
-				/*
-				 * `@container/chathdr` is the row's own width, which is what the title's
-				 * floor needs to ask about. It is NOT the viewport: this header narrows
-				 * when a right-slot pane opens, and the pane is exactly the state where an
-				 * unfloored title disappeared (design round 1, D1 - measured: the title's
-				 * box held no ink at all while the pane was up, because `flex-1 min-w-0`
-				 * lets it yield before any control does).
-				 */
-				"@container/chathdr flex h-14 shrink-0 items-center gap-3 border-control border-b px-4",
+				"@container/chathdr flex h-10 shrink-0 items-center gap-3 px-4",
 			)}
 			data-tour-tag="chat-header"
+			data-titlebar-drag=""
 		>
 			{/* No `size-*` override: the Avatar primitive's own 32px is the app's
 			 * control size, and the 40px override made the same agent wear two
@@ -406,27 +427,60 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * rather than the mechanism. */}
 			<div
 				className={cn(
-					"flex min-w-0 flex-1 flex-col @[13.5rem]/chathdr:min-w-10",
+					"flex min-w-0 flex-1 items-center gap-2 @[13.5rem]/chathdr:min-w-10",
 				)}
 			>
-				{/* `text-heading`, not `text-title`: branding.md reserves the 20px step
-				 * for section and dialog titles and states that a desktop app has no
-				 * hero. 20px over 13px also skipped two ramp steps in one bar. */}
-				<h2 className={cn("truncate text-heading text-ink")}>{agentName}</h2>
+				{/* `text-body` (14), not `text-heading` (16) and not `text-title` (20):
+				 * branding.md reserves the 20px step for section and dialog titles and states
+				 * that a desktop app has no hero, and on the name of the conversation the
+				 * reader is already inside the 16px step made the bar's loudest text the
+				 * thing they were looking at anyway. 14 is one step above the rows the bar
+				 * heads, which is what the reference products use. */}
+				<h2
+					className={cn(
+						"min-w-0 shrink truncate font-medium text-body text-ink",
+					)}
+				>
+					{agentName}
+				</h2>
+				{/*
+				 * THE QUIET PATH, and the `~` form is the point of it.
+				 *
+				 * This slot used to be the second line of a 56px bar and printed `description`
+				 * RAW - for a live conversation that is the absolute working directory, so
+				 * the row read `/Users/damian/.local-operator/sessions/d81d04d3…` truncated
+				 * from the right, i.e. with the one segment that identifies the directory cut
+				 * off, while the composer's chip abbreviated the same value to `~/.local…`
+				 * (D7). It goes through the chip's own rule now (`formatDirectory`, hoisted to
+				 * `shared/utils/path-utils.ts` so there is one implementation and two
+				 * surfaces), which is safe because that rule returns anything that is not a
+				 * path unchanged - and this slot is not only a path: it holds the draft's
+				 * sentence and a starting run's target name too.
+				 *
+				 * `shrink-[2]` YIELDS BEFORE THE TITLE. Both strings truncate, and which one
+				 * gives first is the whole ordering question in a 40px row: the title is what
+				 * the reader came for, and the directory is a fact they can also read in the
+				 * composer's chip one line below. So the path takes the larger shrink factor
+				 * and disappears into its ellipsis first.
+				 *
+				 * THE TOOLTIP KEEPS THE RAW VALUE, so the fully-resolved path is one hover
+				 * away and nothing about the shortening is lossy.
+				 */}
 				{descriptionPending ? (
 					/* `bg-elevated` for the same measured reason the transcript
-					 * placeholder takes it: the header's ground is `canvas`, where the
-					 * Skeleton default `sunken` is the system's weakest adjacent pair
-					 * (deltaE00 1.89 in the dark brand palette, 1.25 in obsidian). The
-					 * height matches the `text-body-sm` line it stands in, so holding
-					 * the slot holds the row's height too. */
-					<Skeleton className={cn("h-3 w-24 bg-elevated")} />
+					 * placeholder takes it: the header's ground is `canvas`, where the Skeleton
+					 * default `sunken` is the system's weakest adjacent pair (deltaE00 1.89 in the
+					 * dark brand palette, 1.25 in obsidian). The height matches the `text-mono-sm`
+					 * line it stands in, so holding the slot holds the row's height too. */
+					<Skeleton className={cn("h-3 w-24 shrink-0 bg-elevated")} />
 				) : (
 					<span
-						className={cn("truncate text-ink-muted text-body-sm")}
+						className={cn(
+							"min-w-0 shrink-[2] truncate text-ink-dim text-mono-sm",
+						)}
 						title={description}
 					>
-						{description}
+						{formatDirectory(description, homeDirectory)}
 					</span>
 				)}
 			</div>
@@ -451,6 +505,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * hiding it with the pane is how the count disappeared.
 			 */}
 			<div
+				data-titlebar-no-drag=""
 				className={cn(
 					"ml-auto flex items-center",
 					/*
@@ -552,7 +607,12 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				 * that never knew about archiving. A trigger whose only item is disabled is
 				 * a menu that advertises a feature the backend does not have.
 				 */}
-				{(archiveEnabled || deleteEnabled) && (
+				{(archiveEnabled ||
+					deleteEnabled ||
+					runDetails ||
+					onToggleBrowser ||
+					onOpenConsole ||
+					onOpenOptions) && (
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Button
@@ -614,6 +674,59 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								>
 									<Trash2 aria-hidden="true" />
 									<span>Delete conversation…</span>
+								</DropdownMenuItem>
+							)}
+							{/*
+							 * THE RIGHT-SLOT ACTIONS, SO NOTHING IS UNREACHABLE AT 800.
+							 *
+							 * The cluster beside this menu SHEDS its controls as the row
+							 * narrows - the run trigger first, then the canvas button, then
+							 * the console - because a header with the right pane up is 220px
+							 * wide at the app's own 800px window minimum and cannot hold four
+							 * icon buttons, a title and a path. What the shed must not do is
+							 * make an action disappear: this menu holds EVERY one of the four
+							 * in EVERY state, which is what makes the row's overflow truthful
+							 * rather than merely tidy. The items are not duplicates of the
+							 * buttons - a duplicate would be a second way to do what the row
+							 * already does; these are the same door for the widths where the
+							 * row cannot carry a button for it.
+							 *
+							 * They open through the SAME store fields the buttons write
+							 * (`claimRightSlot` clears the other panes), so the two paths
+							 * cannot disagree about which pane is up. The labels state the
+							 * ACTION in the pane's own direction: a toggle that said only
+							 * "Browser" would make a screen reader ask what pressing it does.
+							 */}
+							{(runDetails ||
+								onToggleBrowser ||
+								onOpenConsole ||
+								onOpenOptions) && <DropdownMenuSeparator />}
+							{runDetails && (
+								<DropdownMenuItem onSelect={() => setRunPanelOpen(true)}>
+									<Info aria-hidden="true" />
+									<span>Run details</span>
+								</DropdownMenuItem>
+							)}
+							{onToggleBrowser && (
+								<DropdownMenuItem onSelect={() => onToggleBrowser()}>
+									<Globe aria-hidden="true" />
+									<span>
+										{isBrowserPaneOpen ? "Close browser" : "Open browser"}
+									</span>
+								</DropdownMenuItem>
+							)}
+							{onOpenConsole && (
+								<DropdownMenuItem onSelect={() => onOpenConsole()}>
+									<SquareTerminal aria-hidden="true" />
+									<span>
+										{isConsolePaneOpen ? "Close console" : "Open console"}
+									</span>
+								</DropdownMenuItem>
+							)}
+							{onOpenOptions && (
+								<DropdownMenuItem onSelect={() => onOpenOptions()}>
+									<FileText aria-hidden="true" />
+									<span>{isCanvasOpen ? "Close canvas" : "Open canvas"}</span>
 								</DropdownMenuItem>
 							)}
 						</DropdownMenuContent>

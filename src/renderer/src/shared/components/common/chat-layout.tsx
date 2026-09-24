@@ -176,77 +176,111 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	 */
 	if (layout.mode === "overlay") {
 		return (
-			<div className="relative flex min-h-0 flex-1 overflow-hidden">
-				{content}
-				<Sheet
-					open
-					onOpenChange={(open) => {
-						if (!open) setSheetRequested(false);
-					}}
-				>
-					<SheetContent
-						side="left"
-						data-sidebar-sheet=""
-						/*
-						 * `w-[260px] max-w-none` overrides the primitive's own left-edge width
-						 * (`w-3/4 max-w-sm`): 3/4 of an 880px window is 660 and `max-w-sm` is 384,
-						 * so neither number is the sheet this column wants, and both would make the
-						 * overlay wider than the dock it replaces. `cn` merges, so this wins.
-						 */
-						className={cn("w-[260px] max-w-none gap-0 border-hairline p-0")}
-						aria-describedby={undefined}
+			<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+				{/*
+				 * THE macOS LANE, and it is SHELL-LEVEL rather than the sidebar's own.
+				 *
+				 * Electron leaves the native traffic lights over the renderer once the
+				 * title bar is hidden (`src/main/titlebar-options.ts`), so the renderer has
+				 * to keep their 32px clear. Reserving it ONCE, above BOTH columns, is what
+				 * lets the sidebar's brand row and the conversation title be the same row:
+				 * with the lane scoped to one column, that column's first row starts 32px
+				 * lower than the other's and the two only agree by accident. The lane is
+				 * also the window's drag handle - every control in either first row opts
+				 * back out with `data-titlebar-no-drag`.
+				 *
+				 * It is `display: none` outside the mac gate (the rule is in
+				 * `styles/index.css`, keyed on `data-titlebar-platform`), so Windows and
+				 * Linux keep their native frame and lose nothing to it. Its height is
+				 * `--chrome-strip-h`: 8 above the lights' 16px hit frame plus one 8px step,
+				 * which is the number `titlebar-options.ts` measures from the OS rather than
+				 * choosing.
+				 */}
+				<div
+					data-titlebar-lane=""
+					data-titlebar-drag=""
+					className="h-8 shrink-0"
+				/>
+				<div className="flex min-h-0 flex-1 overflow-hidden">
+					<Sheet
+						open
+						onOpenChange={(open) => {
+							if (!open) setSheetRequested(false);
+						}}
 					>
-						{/*
-						 * The sheet needs a name, and the sidebar's own `<nav>` is already
-						 * labelled inside it - so the title is the sheet's, `sr-only` rather
-						 * than drawn, because a visible "Sidebar" heading above a brand row
-						 * that already says who the app is would be a third name for one
-						 * thing.
-						 */}
-						<SheetTitle className="sr-only">Chats and destinations</SheetTitle>
-						<SidebarFrameContext.Provider
-							value={{
-								expanded: true,
-								onCollapse: () => setSheetRequested(false),
-							}}
+						<SheetContent
+							side="left"
+							data-sidebar-sheet=""
+							/*
+							 * `w-[260px] max-w-none` overrides the primitive's own left-edge width
+							 * (`w-3/4 max-w-sm`): 3/4 of an 880px window is 660 and `max-w-sm` is 384,
+							 * so neither number is the sheet this column wants, and both would make the
+							 * overlay wider than the dock it replaces. `cn` merges, so this wins.
+							 */
+							className={cn("w-[260px] max-w-none gap-0 border-hairline p-0")}
+							aria-describedby={undefined}
 						>
-							{sidebar}
-						</SidebarFrameContext.Provider>
-					</SheetContent>
-				</Sheet>
+							{/*
+							 * The sheet needs a name, and the sidebar's own `<nav>` is already
+							 * labelled inside it - so the title is the sheet's, `sr-only` rather
+							 * than drawn, because a visible "Sidebar" heading above a brand row
+							 * that already says who the app is would be a third name for one
+							 * thing.
+							 */}
+							<SheetTitle className="sr-only">
+								Chats and destinations
+							</SheetTitle>
+							<SidebarFrameContext.Provider
+								value={{
+									expanded: true,
+									onCollapse: () => setSheetRequested(false),
+								}}
+							>
+								{sidebar}
+							</SidebarFrameContext.Provider>
+						</SheetContent>
+					</Sheet>
+				</div>
 			</div>
 		);
 	}
 
 	return (
-		<div className="flex min-h-0 flex-1 overflow-hidden">
+		<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
 			<div
-				className="h-full shrink-0"
-				style={{
-					width:
-						layout.mode === "docked" ? layout.width : SIDEBAR_COLLAPSED_WIDTH,
-				}}
-			>
-				<SidebarFrameContext.Provider
-					value={{
-						expanded: !layout.collapsed,
-						onCollapse: toggleSidebar,
+				data-titlebar-lane=""
+				data-titlebar-drag=""
+				className="h-8 shrink-0"
+			/>
+			<div className="flex min-h-0 flex-1 overflow-hidden">
+				<div
+					className="h-full shrink-0"
+					style={{
+						width:
+							layout.mode === "docked" ? layout.width : SIDEBAR_COLLAPSED_WIDTH,
 					}}
 				>
-					{sidebar}
-				</SidebarFrameContext.Provider>
+					<SidebarFrameContext.Provider
+						value={{
+							expanded: !layout.collapsed,
+							onCollapse: toggleSidebar,
+						}}
+					>
+						{sidebar}
+					</SidebarFrameContext.Provider>
+				</div>
+				{layout.resizable && (
+					<ResizableDivider
+						sidebarWidth={layout.width}
+						onSidebarWidthChange={setSidebarWidth}
+						minWidth={SIDEBAR_MIN_WIDTH}
+						maxWidth={SIDEBAR_MAX_WIDTH}
+						onDoubleClick={restoreDefaultSidebarWidth}
+						label={`Resize the sidebar (${sidebarToggleCap(isMacPlatform())})`}
+					/>
+				)}
+				<div className="h-full min-w-0 grow overflow-hidden">{content}</div>
 			</div>
-			{layout.resizable && (
-				<ResizableDivider
-					sidebarWidth={layout.width}
-					onSidebarWidthChange={setSidebarWidth}
-					minWidth={SIDEBAR_MIN_WIDTH}
-					maxWidth={SIDEBAR_MAX_WIDTH}
-					onDoubleClick={restoreDefaultSidebarWidth}
-					label={`Resize the sidebar (${sidebarToggleCap(isMacPlatform())})`}
-				/>
-			)}
-			<div className="h-full min-w-0 grow overflow-hidden">{content}</div>
 		</div>
 	);
 };
