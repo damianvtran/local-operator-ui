@@ -233,7 +233,10 @@ const sidebar = readFileSync(
  * `app.tsx`'s, so this file reads both files for the same pair of facts.
  */
 const nav = readFileSync(
-	join(ROOT, "src/renderer/src/shared/components/navigation/sidebar-navigation.tsx"),
+	join(
+		ROOT,
+		"src/renderer/src/shared/components/navigation/sidebar-navigation.tsx",
+	),
 	"utf8",
 );
 const canvas = readFileSync(
@@ -333,7 +336,7 @@ ${listener}`,
 });
 
 test("the New chat row prints the cap from the same module the binding reads", () => {
-	const at = nav.indexOf('primaryRow(\n\t\tMessageSquarePlus,');
+	const at = nav.indexOf("primaryRow(\n\t\tMessageSquarePlus,");
 	assert.ok(at > 0, "the New chat row's call site is what anchors this pin");
 	const call = nav.slice(at, nav.indexOf("\n\t);", at));
 	assert.ok(
@@ -353,7 +356,7 @@ test("the New chat row prints the cap from the same module the binding reads", (
 		"the cap is held in the trailing column by the label's own flex, where the rows beside it hold theirs",
 	);
 	assert.ok(
-		nav.includes("newChatShortcutCap(isMac).replace(\"+\", \"\")"),
+		nav.includes('newChatShortcutCap(isMac).replace("+", "")'),
 		"the accessible name spells the chord as one chord too, or the row announces `+` the row does not draw",
 	);
 });

@@ -511,22 +511,29 @@ const answerRecord = (id, over = {}) => ({
 });
 
 /*
- * The transcript paints THREE carriers' stamps and the assertions below ask which
- * of them is present, and where: a user turn's (`data-stamp="turn"`, under its
- * bubble), an agent answer's (`data-stamp="answer"`, under it against the rail),
- * and a tool call's (`data-stamp="tool"`, at the foot of the disclosure the
- * reader opened). They render the same text on purpose - one fact, one spelling -
- * so counting `<time>` elements cannot tell them apart, which is what the
- * attribute is for.
+ * ONE STAMP PER TURN, and the redesign moved WHERE it is painted.
  *
- * THE ATTRIBUTE USED TO CARRY TWO VALUES, one of them shared. `"footer"` named
- * the transcript's footer line, which is REMOVED (the operator's report of
- * 2026-09-17), and the tool call borrowed `"turn"` from the user turn - so a
- * count could not say which of the two a `<time>` came from. `"answer"` was
- * added the same day, with the report that the agent's responses carried no time.
- * The assertions that counted footers now assert their absence, and they assert it
- * as a count over the whole container: `allStamps` is the unqualified count those
- * absence assertions rest on.
+ * §D1 (the turn's own vocabulary: "nothing but space and treatment ... no
+ * per-message timestamp") and §E3 (the turn-foot line) put the turn's single
+ * stamp at the end of the foot line of the answer that closes the turn, in the
+ * same row as `Worked for 12s · 8 actions · 1 failed`. The carriers this file was
+ * written against are gone:
+ *
+ *   - `data-stamp="turn"`, under the user's bubble: REMOVED (design round 1's
+ *     D7 measured six stamps in one 1380 viewport - one under every user block
+ *     and one under every answer - as a third of the thread's vertical run, and
+ *     the foot states the same instant once per turn);
+ *   - `data-stamp="tool"`, at the foot of an open tool disclosure: REMOVED by the
+ *     aggregation tier (§E2: the fold's summary and the turn's foot carry the
+ *     facts a run of calls has, and a per-call clock inside an expansion was a
+ *     third statement of one instant);
+ *   - `data-stamp="answer"` survives, and it is now the ONLY carrier: the stamp
+ *     the foot line draws for the turn it closes.
+ *
+ * The assertions below still ask per carrier, because a count alone cannot say
+ * which regression added or removed a `<time>`; the two removed carriers are
+ * asserted as ABSENT wherever they used to be counted, with the reason beside
+ * each one. `allStamps` is the unqualified count those absence assertions rest on.
  */
 const stamps = (container, kind) => [
 	...container.querySelectorAll(`time[data-stamp="${kind}"]`),
@@ -534,6 +541,31 @@ const stamps = (container, kind) => [
 
 /** Every stamp on the page, whichever carrier it names. */
 const allStamps = (container) => [...container.querySelectorAll("time")];
+
+/**
+ * WHAT "UNDER THE ANSWER, ON THE AGENT RAIL" MEANS NOW (§E3).
+ *
+ * The stamp is no longer the answer row's direct child with a sibling content
+ * box beside it: it is the last element of the turn's FOOT line, in the same row
+ * as `Worked for 12s · 8 actions · 1 failed`. So the two facts the old assertions
+ * carried are asked of the record box instead, which is where they still hold and
+ * is the box a reader's eye actually measures:
+ *
+ *   - the stamp is not inside the answer's words (`.lo-markdown`), so a selection
+ *     drag cannot sweep a clock into a quote;
+ *   - it comes AFTER the content box in document order, i.e. under the message and
+ *     not above it.
+ */
+const footPlacement = (stamp) => {
+	const recordBox = stamp.closest("[data-record-id]");
+	const markdown = recordBox?.querySelector(".lo-markdown") ?? null;
+	return {
+		recordBox,
+		inWords: stamp.closest(".lo-markdown") !== null,
+		afterContent:
+			markdown !== null && (markdown.compareDocumentPosition(stamp) & 4) === 4, // DOCUMENT_POSITION_FOLLOWING
+	};
+};
 
 const mount = (records, over = {}) => {
 	const container = document.createElement("div");
@@ -573,85 +605,47 @@ const mount = (records, over = {}) => {
 	};
 };
 
-test("a user turn carries one stamp, under the bubble and outside it", async () => {
+test("a user turn carries no stamp of its own", async () => {
+	/*
+	 * §D1's own sentence, as an assertion: the user's block is `time`-less, and the
+	 * turn's one stamp belongs to the foot line of the answer that closes it (§E3).
+	 * Design round 1's D7 is where this was measured - one stamp under every user
+	 * block in a 1380 viewport - and the placement facts the old assertions carried
+	 * (outside the bubble, not part of what a quote of the turn sweeps) are the
+	 * foot's properties now, asserted in the closing answer's own test below.
+	 */
 	const { container, unmount } = mount([userRecord("user:1")]);
-	const turns = stamps(container, "turn");
-	assert.equal(turns.length, 1, "exactly one stamp per user turn");
+	assert.equal(
+		stamps(container, "turn").length,
+		0,
+		"the user block states no time of its own (design round 1, D7)",
+	);
 	assert.equal(
 		allStamps(container).length,
-		1,
-		"and nothing else on the page states a time: the footer is gone",
+		0,
+		"and a turn with no answer yet has no foot to carry one: liveness is the working line's job (§ 7)",
 	);
-	const [stamp] = turns;
-	assert.equal(stamp.getAttribute("datetime"), new Date(TS).toISOString());
-
-	/*
-	 * Placement, as far as a layout-less DOM can state it: the stamp is a
-	 * sibling of the bubble's row, it comes AFTER it in document order, and it
-	 * is not inside the bubble's own card. The last one is the fact the design
-	 * needs - a stamp inside the bubble would be a line of the message, and
-	 * would travel with a quote.
-	 *
-	 * KEYED ON THE CARD, NOT ON A MEASURE CLASS. These two assertions read
-	 * `.lo-measured` until 2026-09-16, when that class was retired: the user
-	 * bubble no longer opts its prose into a 62ch reading measure, because the
-	 * measure is the card's own width now (the operator report of that date;
-	 * `markdown.css`'s measure comment carries it and the numbers). A selector
-	 * for a class nothing applies names no box, so the same two facts are asked
-	 * of `.rounded-frame` - which is what the user bubble actually is - and the
-	 * assistant side renders no card at all, which is what keeps the negative
-	 * assertion in the test below meaningful.
-	 */
-	const column = stamp.parentElement;
-	const bubbleRow = stamp.previousElementSibling;
-	assert.ok(bubbleRow, "the stamp follows the bubble's own row");
 	assert.ok(
-		bubbleRow.querySelector(".rounded-frame"),
-		"the bubble's card is the box in the row above the stamp",
-	);
-	assert.equal(
-		container.querySelector(".rounded-frame").contains(stamp),
-		false,
-		"the stamp is not part of the message's words",
-	);
-	assert.equal(
-		column.lastElementChild,
-		stamp,
-		"the stamp is the last thing in the turn",
-	);
-	assert.match(
-		column.className,
-		/items-end/,
-		"the column right-aligns the stamp against the bubble's own edge",
-	);
-
-	/*
-	 * And the turn's own text is untouched by it: the stamp's text is not part
-	 * of what a quote of this turn carries.
-	 */
-	assert.equal(
-		bubbleRow.textContent.includes(plain(stamp.textContent)),
-		false,
-		"the friendly stamp text is not inside the bubble",
+		container.querySelector(".rounded-frame"),
+		"the bubble is what the turn is, and it carries no clock",
 	);
 	unmount();
 });
 
-test("a collapsed tool row has no stamp at all, and one appears when it is opened", async () => {
+test("a tool row states no time, closed or open", async () => {
 	/*
-	 * The operator's constraint is that the ledger stays quiet: a run of calls
-	 * is a run of lines, and the stamp belongs to the expansion. So the strong
-	 * form of the assertion is at rest - ZERO `time` elements on the page while
-	 * the row is closed - and then exactly one once the reader clicks.
+	 * §E2's aggregation tier and §E3's foot line carry a run of calls' facts, so a
+	 * per-call stamp inside the disclosure was a third statement of one instant -
+	 * and the operator's own constraint was that the ledger stays quiet: a run of
+	 * calls is a run of lines. The strong form of the assertion is therefore on
+	 * BOTH states: zero `time` elements while the row is closed, and still zero
+	 * with the reader's own disclosure open.
 	 */
 	const record = toolRecord("tool:1", {
 		args: { command: "pnpm test:desktop" },
 		output: "tests 40\npass 40\n",
 	});
 	const { container, unmount } = mount([record]);
-	// The foot of the transcript states no time of its own any more. That line is
-	// what the operator had removed (a stamp under the working line during a live
-	// turn), and its absence is what these assertions ask for now.
 	assert.equal(
 		allStamps(container).length,
 		0,
@@ -666,49 +660,15 @@ test("a collapsed tool row has no stamp at all, and one appears when it is opene
 
 	const pane = container.querySelector("[data-detail-section]");
 	assert.ok(pane, "the expansion is open");
-	const toolStamps = stamps(container, "tool");
-	assert.equal(toolStamps.length, 1, "the expanded row carries one stamp");
-	const [stamp] = toolStamps;
-	assert.equal(stamp.getAttribute("datetime"), new Date(TS).toISOString());
-	/*
-	 * OUTSIDE the scrolling pane, which is the placement claim the pane's own
-	 * two `overflow-auto` sections make load-bearing: the remainder report under
-	 * each section is the last line true at rest, and a stamp inside either
-	 * scroller is off screen at rest on a long payload.
-	 */
 	assert.equal(
-		stamp.closest("[data-detail-section]"),
-		null,
-		"the stamp is below the pane, not inside a scrolling section",
+		stamps(container, "tool").length,
+		0,
+		"and opening it adds none (§E2 removed the per-call clock)",
 	);
-	assert.equal(
-		pane.contains(stamp),
-		false,
-		"the pane does not contain the stamp",
-	);
-	/*
-	 * AND IT IS THE ONLY STAMP ON THE PAGE, which is the half of the old footer's
-	 * rule that survives its removal. The footer used to state when the last thing
-	 * in the conversation happened; while this row was closed it was the only time
-	 * on screen, and now that it is open the row's own stamp states that instant a
-	 * few pixels above it. Both the duplicate and the line it was on are gone, so
-	 * the claim is now about the whole container rather than about a footer.
-	 */
 	assert.equal(
 		allStamps(container).length,
-		1,
-		"the opened row's own stamp is the only time on the page",
-	);
-	/*
-	 * AND THE THIRD VERB IS PINNED HERE (review round 1, R4): `Ran` was the one
-	 * carrier no assertion named, which is awkward given that truthfulness per
-	 * carrier is the reason the prop is a three-value union rather than a boolean.
-	 * `Answered` and `Sent` are asserted in their own tests; this is the call.
-	 */
-	assert.match(
-		stamp.getAttribute("aria-label"),
-		/^Ran /,
-		"a call that ran is named as one rather than as a turn that was sent",
+		0,
+		"so a lone call states no time anywhere, open or closed",
 	);
 	unmount();
 });
@@ -725,68 +685,64 @@ test("a tool row with nothing to disclose stays a line, stamp and all", async ()
 	unmount();
 });
 
-test("the transcript paints no stamp of its own, on any last row", async () => {
+test("the only stamps a transcript paints are its turns' own feet", async () => {
 	/*
-	 * THE FOOTER IS REMOVED, and what replaces it is an absence on every shape of
-	 * last row rather than a gate on some of them. The operator asked for the time
-	 * "only beside user messages and in tool traces when expanded" (2026-09-17): a
-	 * transcript that ends on a settled row nobody opened, or on a system notice,
-	 * states no time at its foot.
+	 * WHAT THIS PINS, in the redesign's vocabulary: a `<time>` on the page belongs
+	 * to a turn's foot, and a turn paints a foot only when an ANSWER closes it
+	 * (§E3 - the foot is `Worked for … · N actions`, which is a fact about work
+	 * that finished). So the four shapes of last row below say, in order: an
+	 * answer's foot even though the transcript ends on a later user turn; an
+	 * answer's foot when the answer IS the last row; nothing at all when the turn
+	 * ends on a closed ledger row or on a statement, because those rows own no
+	 * foot and the transcript states no time on their behalf.
 	 *
-	 * THE COUNTS BELOW ARE PER CARRIER rather than a bare total, because the
-	 * transcript now paints three of them (`turn`, `answer`, `tool`) and a total
-	 * alone could not say which one a regression added. What is asserted is that
-	 * every `<time>` on the page belongs to a row that owns one - so the shape of
-	 * the claim survives the answer's stamp landing where the footer used to be.
+	 * THE COUNTS ARE PER CARRIER rather than a bare total, because a count alone
+	 * could not say WHICH carrier a regression added: `turn` and `tool` are
+	 * asserted absent throughout, and `allStamps` is what makes "nothing else on
+	 * the page" checkable.
 	 */
 	const settled = answerRecord("answer:1", { ts: TS + 60_000 });
 
-	// Ends on a USER turn: that turn's stamp is under its bubble. This was the case
-	// the footer's gate was written for, and the absence is now unconditional
-	// rather than a suppression.
+	// Ends on a USER turn: the answer above it still closes the turn it belongs to,
+	// so its foot is painted and the trailing user block has none.
 	const endsOnUser = mount([
 		{ ...settled, ts: TS },
 		userRecord("user:1", { ts: TS + 60_000 }),
 	]);
-	assert.equal(stamps(endsOnUser.container, "turn").length, 1);
+	assert.equal(stamps(endsOnUser.container, "turn").length, 0);
 	assert.equal(stamps(endsOnUser.container, "answer").length, 1);
 	assert.equal(
 		allStamps(endsOnUser.container).length,
-		2,
-		"the turn's and the answer's own, and nothing else",
+		1,
+		"the closing turn's foot alone: nothing is painted beneath the last user block",
 	);
 	endsOnUser.unmount();
 
-	// Ends on an ANSWER. This is the row the removed footer used to state the time
-	// for, and it now has a stamp of its OWN where the footer stood - which is why
-	// the claim is about ownership rather than about an empty foot: the answer
-	// carries a time because it is the answer, not because the transcript does.
+	// Ends on an ANSWER, which is the row whose foot carries the turn's stamp.
 	const endsOnAnswer = mount([userRecord("user:1"), settled]);
 	assert.equal(
 		stamps(endsOnAnswer.container, "answer").length,
 		1,
-		"the answer's own stamp, in the footer's old position and under its own name",
+		"the closing answer's own foot stamp",
 	);
 	assert.equal(stamps(endsOnAnswer.container, "tool").length, 0);
-	assert.equal(allStamps(endsOnAnswer.container).length, 2);
+	assert.equal(allStamps(endsOnAnswer.container).length, 1);
 	endsOnAnswer.unmount();
 
-	// Ends on a CLOSED ledger row: the row paints nothing, and the transcript no
-	// longer states the time on its behalf - the trade this removal makes,
-	// recorded in `turn-timestamp.tsx`'s own header rather than hidden here.
+	// Ends on a CLOSED ledger row: the row paints nothing, and the turn has no foot
+	// because no answer closed it.
 	const endsOnRow = mount([
 		userRecord("user:1"),
 		toolRecord("tool:1", { args: { command: "pnpm build" }, output: "built" }),
 	]);
 	assert.equal(
 		allStamps(endsOnRow.container).length,
-		1,
-		"the user turn's alone: a settled row nobody opened states no time",
+		0,
+		"a settled row nobody opened, in a turn that never handed over an answer, states no time",
 	);
 	endsOnRow.unmount();
 
-	// Ends on a NOTICE, which never carried a stamp of its own and used to inherit
-	// one from the footer line underneath it.
+	// Ends on a NOTICE, which never carried a stamp of its own.
 	const endsOnNotice = mount([
 		userRecord("user:1"),
 		{
@@ -799,70 +755,70 @@ test("the transcript paints no stamp of its own, on any last row", async () => {
 	]);
 	assert.equal(
 		allStamps(endsOnNotice.container).length,
-		1,
+		0,
 		"a trailing notice states no time at the foot",
 	);
 	endsOnNotice.unmount();
 });
 
-test("a settled answer carries one stamp, under it on the agent rail", async () => {
+test("a settled answer's turn carries one stamp, on the foot line", async () => {
 	/*
-	 * The operator's second report of 2026-09-17: "the agent responses (just the
-	 * final responses, not the in-progress tool intent/response) don't have a time
-	 * displayed on them". So a settled answer paints exactly one stamp, and it is a
-	 * SIBLING of the answer's own content box rather than a line inside it -
-	 * `turnRef` is what the quote toolkit reads, so a stamp inside it would be
-	 * swept into a quote - and the box it is a sibling in is the agent rail's own
-	 * (`pl-10`), which is the left edge the answer's prose already starts at.
+	 * ONE stamp per turn, at the foot of the answer that closes it (§E3, design
+	 * round 1's D7/D8): the foot line states `Worked for 12s · 8 actions` and the
+	 * clock at its trailing edge dates the turn. The user's block carries none, so
+	 * a turn of prose and an answer is exactly one `<time>` on the page.
 	 *
-	 * That is the structural half of "under the message, left-aligned". The pixels
-	 * are the frames' claim, because jsdom has no layout engine.
+	 * The placement facts the old assertions carried - not inside the answer's
+	 * words, and after the content rather than above it - are asked through
+	 * `footPlacement`, which is where they hold now that the stamp is the foot's
+	 * last element rather than a sibling of the content box.
 	 */
 	const { container, unmount } = mount([
 		userRecord("user:1"),
 		answerRecord("answer:1", { ts: TS + 60_000 }),
 	]);
-	assert.equal(stamps(container, "turn").length, 1, "the user turn's own");
+	assert.equal(
+		stamps(container, "turn").length,
+		0,
+		"the user's block carries none (D7)",
+	);
 	assert.equal(
 		stamps(container, "answer").length,
 		1,
-		"exactly one for the answer",
+		"exactly one for the turn, on the foot line",
+	);
+	assert.equal(
+		allStamps(container).length,
+		1,
+		"and the turn states its time once, not twice",
 	);
 	const [stamp] = stamps(container, "answer");
 	assert.equal(
 		stamp.getAttribute("datetime"),
 		new Date(TS + 60_000).toISOString(),
 	);
+	const placed = footPlacement(stamp);
 	assert.equal(
-		stamp.closest(".lo-markdown"),
-		null,
+		placed.inWords,
+		false,
 		"the stamp is not inside the answer's words",
 	);
-	const content = stamp.parentElement.previousElementSibling;
-	assert.ok(
-		content?.querySelector(".lo-markdown"),
-		"and it follows the content box it captions, as its sibling",
+	assert.equal(
+		placed.afterContent,
+		true,
+		"and it follows the content box it captions",
 	);
 	assert.equal(
-		content.contains(stamp),
-		false,
-		"so the caption is outside the box a selection has to lie inside to quote",
-	);
-	assert.match(
-		stamp.parentElement.parentElement.className,
-		/pl-10/,
-		"in the agent rail's own box, which is the left edge the prose starts at",
+		placed.recordBox?.getAttribute("data-record-id"),
+		"answer:1",
+		"on the row that closes the turn, rather than on the narration before it",
 	);
 	/*
-	 * AND THE NAME IS TRUTHFUL PER CARRIER. `Sent` was hardcoded while every stamp
-	 * was a turn's own; an answer the agent wrote was not sent by anyone. The three
-	 * verbs are asserted together so a fourth carrier added without one fails here.
+	 * AND THE NAME IS TRUTHFUL: the foot's stamp is the answer's, so it says
+	 * `Answered` rather than `Sent` - the user block it used to describe is not
+	 * where it is drawn any more.
 	 */
 	assert.match(stamp.getAttribute("aria-label"), /^Answered /);
-	assert.match(
-		stamps(container, "turn")[0].getAttribute("aria-label"),
-		/^Sent /,
-	);
 	unmount();
 });
 
@@ -893,8 +849,8 @@ test("an answer that is still arriving carries none", async () => {
 	);
 	assert.equal(
 		allStamps(container).length,
-		1,
-		"the user turn's stamp alone: liveness is the working line's job (§ 7)",
+		0,
+		"and nothing else does either: liveness is the working line's job (§ 7), and the user's block carries no stamp (D7)",
 	);
 	unmount();
 });
@@ -939,8 +895,8 @@ test("a turn paints exactly one stamp, on the answer it closes with", async () =
 	);
 	assert.deepEqual(
 		allStamps(container).map((time) => time.getAttribute("data-stamp")),
-		["turn", "answer"],
-		"in the order of the rows they caption",
+		["answer"],
+		"one carrier, on the row that closes the turn",
 	);
 	unmount();
 });
@@ -988,8 +944,8 @@ test("a turn still working carries no caption, on any of its settled rows", asyn
 		);
 		assert.deepEqual(
 			allStamps(container).map((time) => time.getAttribute("data-stamp")),
-			["turn"],
-			"the user turn's own stamp is untouched by any of this",
+			[],
+			"and the user's block carries none either (D7): the turn states no time until it hands one over",
 		);
 		unmount();
 	}
@@ -1113,8 +1069,8 @@ test("a statement after the answer does not take the answer's caption away", asy
 		);
 		assert.equal(
 			allStamps(container).length,
-			2,
-			"the user turn's caption and the answer's, and no third one for the statement",
+			1,
+			"the turn's one stamp, on the foot line, and no second one for the statement",
 		);
 		unmount();
 	}
@@ -1165,12 +1121,13 @@ test("a multi-paragraph answer in one record still carries exactly one stamp", a
 		1,
 		"one caption for the record, not one per paragraph",
 	);
-	assert.ok(
-		captions[0].parentElement.previousElementSibling?.querySelector(
-			".lo-markdown",
-		),
+	const placed = footPlacement(captions[0]);
+	assert.equal(
+		placed.afterContent,
+		true,
 		"and it sits under the whole content box rather than under a paragraph in it",
 	);
+	assert.equal(placed.inWords, false, "outside the prose it captions");
 	unmount();
 });
 
@@ -1199,10 +1156,10 @@ test("the answer's caption sits under the content in its other shapes too", asyn
 		]);
 		const found = stamps(container, "answer");
 		assert.equal(found.length, 1, `${name} paints exactly one caption`);
-		assert.ok(
-			found[0].parentElement.previousElementSibling?.querySelector(
-				".lo-markdown",
-			),
+		const placed = footPlacement(found[0]);
+		assert.equal(
+			placed.afterContent,
+			true,
 			`and ${name}'s caption is still under its content box`,
 		);
 		unmount();
@@ -1255,58 +1212,73 @@ test("a transcript ending on the working line paints no stamp beneath it", async
 	 * beneath the thinking indicator. A count alone would also pass with the stamp
 	 * moved under the line, which is the reported bug.
 	 */
-	assert.equal(allStamps(container).length, 1);
-	const [only] = stamps(container, "turn");
-	assert.ok(only, "the user turn's own stamp is still painted");
-	assert.notEqual(
-		line.compareDocumentPosition(only) & Node.DOCUMENT_POSITION_PRECEDING,
+	assert.equal(
+		allStamps(container).length,
 		0,
-		"and it sits ABOVE the working line: no stamp under the thinking indicator",
+		"and the turn paints none at all while it is still working: the foot line is a settled turn's",
 	);
 	unmount();
 });
 
-test("the two captions are separate carriers rather than one repeated", async () => {
+test("the turn's one stamp is the closing answer's, and the displaced carriers are gone", async () => {
 	/*
-	 * The stamp used to be a fact about ONE thing - a user turn - and an open tool
-	 * call borrowed its name. The answer's caption makes three carriers, and this
-	 * is the test that they stay distinguishable: the same `<time>`, the same text,
-	 * and a `data-stamp` that says which row it belongs to, so a page can be asked
-	 * "did the answer get one?" and "did the turn get one?" separately.
+	 * THE CONTRACT THIS REPLACES, stated so the deletion is legible: the stamp used
+	 * to be a fact about ONE thing (a user turn), and an open tool call borrowed its
+	 * name; the answer's caption made a third carrier, and this test pinned that the
+	 * three stayed distinguishable by `data-stamp`.
 	 *
-	 * The placement is asserted with it, because a carrier's name is only useful if
-	 * the stamp is where that carrier's reader looks: the turn's is inside a
-	 * right-justified row (the bubble's edge), the answer's inside the agent rail.
+	 * There is one carrier now (§D1, §E3), so what is worth pinning is the shape of
+	 * the absence as well as the presence: a turn+answer paints exactly one `<time>`
+	 * and it is the answer's, and a transcript of ONLY a user turn or ONLY a tool
+	 * row paints none at all - the two places the removed carriers used to be.
 	 */
 	const { container, unmount } = mount([
 		userRecord("user:1"),
 		answerRecord("assistant:1", { ts: TS + 1000 }),
 	]);
-	const turns = stamps(container, "turn");
-	const answers = stamps(container, "answer");
-	assert.equal(turns.length, 1, "one for the user turn");
-	assert.equal(answers.length, 1, "one for the answer, and counted separately");
-	assert.ok(
-		// The card, not `.lo-measured`: that class was retired on 2026-09-16 (the
-		// note in the placement test above records why).
-		turns[0].parentElement.parentElement.querySelector(".rounded-frame"),
-		"the turn's sits in the row that carries the bubble",
+	assert.equal(
+		stamps(container, "turn").length,
+		0,
+		"the user block carries none",
+	);
+	assert.equal(stamps(container, "tool").length, 0);
+	assert.equal(
+		stamps(container, "answer").length,
+		1,
+		"the closing answer's foot does",
 	);
 	assert.equal(
-		answers[0].parentElement.closest(".rounded-frame"),
+		stamps(container, "answer")[0].closest(".rounded-frame"),
 		null,
-		"and the answer's is not attached to a card: an answer renders none",
+		"and it is not attached to a card: an answer renders none",
 	);
 	unmount();
+
+	const userOnly = mount([userRecord("user:1")]);
+	assert.equal(
+		allStamps(userOnly.container).length,
+		0,
+		"a user turn alone states no time",
+	);
+	userOnly.unmount();
+
+	const callOnly = mount([toolRecord("tool:1")]);
+	assert.equal(
+		allStamps(callOnly.container).length,
+		0,
+		"and neither does a ledger row in a turn that handed over no answer",
+	);
+	callOnly.unmount();
 });
 
-test("the only stamps on the page are the ones inside the disclosures a reader opened", async () => {
+test("opening and closing disclosures never changes how many clocks are on the page", async () => {
 	/*
-	 * The removed footer used to be the third thing this test pinned, and its
-	 * absence is now the same fact stated a different way: the page carries exactly
-	 * as many stamps as there are OPEN disclosures, and never a fourth element at
-	 * the foot. The four states below are still the matrix that says the count
-	 * tracks the reader's own clicks rather than anything keyed to the last row.
+	 * The removed per-call carrier had a property worth keeping as an ABSENCE: the
+	 * count used to track the reader's own clicks, so a regression could put a clock
+	 * inside an expansion and show up here as a number that moved. The page's count
+	 * is the turns' feet now, and the four states below - one row open, both open,
+	 * the earlier one closed, both closed - are the matrix that says the reader's
+	 * clicks cannot move it.
 	 */
 	const first = toolRecord("tool:first", {
 		args: { command: "pnpm test:desktop" },
@@ -1322,54 +1294,34 @@ test("the only stamps on the page are the ones inside the disclosures a reader o
 	];
 	assert.equal(triggers().length, 2, "both rows offer their disclosure");
 
-	// The order the frames can show.
-	await act(async () => {
-		triggers()[1].click();
-	});
-	assert.equal(
-		allStamps(container).length,
-		1,
-		"the row the reader opened paints its stamp",
-	);
-
-	// The order that broke the old gate: an EARLIER row, with the last one open.
-	await act(async () => {
-		triggers()[0].click();
-	});
-	assert.equal(
-		allStamps(container).length,
-		2,
-		"both open rows paint a stamp, and still nothing else does",
-	);
-
-	// Closing the earlier row takes one stamp with it and no others.
-	await act(async () => {
-		triggers()[0].click();
-	});
-	assert.equal(allStamps(container).length, 1);
-
-	// And with the last row closed the page is quiet: the foot no longer states
-	// the time on its behalf, which is the trade this removal makes.
-	await act(async () => {
-		triggers()[1].click();
-	});
-	assert.equal(
-		allStamps(container).length,
-		0,
-		"a settled transcript carries no stamp at all",
-	);
+	for (const [state, click] of [
+		["the last row opened", () => triggers()[1].click()],
+		["both rows opened", () => triggers()[0].click()],
+		["the earlier row closed again", () => triggers()[0].click()],
+		["both rows closed again", () => triggers()[1].click()],
+	]) {
+		await act(async () => {
+			click();
+		});
+		assert.equal(
+			allStamps(container).length,
+			0,
+			`${state}: a run of calls states no time, in a turn that handed over no answer`,
+		);
+	}
 	unmount();
 });
 
-test("a new record OBJECT for an open row keeps its stamp", async () => {
+test("a new record OBJECT for an open row keeps its expansion", async () => {
 	/*
 	 * The route QA reached the round-2 defect by, from the app's own reducer rather
 	 * than from a click: `buildRows`/`upsert` mint a NEW record object whenever a
 	 * call changes (a `tool_execution_end`, a full resync), which was a new prop
-	 * identity for the row AND a new inline callback for it. The reporting that fed
-	 * the footer's gate is gone, but the thing the row must keep doing is the same:
-	 * a re-render of an open row is not a closure, so its stamp stays on screen
-	 * (QA round 2, Q2-1; review round 3, R3-1).
+	 * identity for the row AND a new inline callback for it. The stamp this used to
+	 * be measured by is no longer painted by the row (§E2), so the same defect is
+	 * asked of the expansion itself: a re-render of an open row is not a closure,
+	 * and a whole-transcript resync is not one either (QA round 2, Q2-1; review
+	 * round 3, R3-1).
 	 */
 	const first = toolRecord("tool:first", {
 		args: { command: "pnpm test:desktop" },
@@ -1380,32 +1332,30 @@ test("a new record OBJECT for an open row keeps its stamp", async () => {
 		output: "built\n",
 	});
 	const { container, rerender, unmount } = mount([first, last]);
+	const openDetail = () => container.querySelector("[data-detail-section]");
 	await act(async () => {
 		[...container.querySelectorAll("button[aria-expanded]")][1].click();
 	});
-	assert.equal(
-		allStamps(container).length,
-		1,
-		"the row is still open, so it still paints its stamp",
-	);
+	assert.ok(openDetail(), "the row the reader opened is open");
 
 	// The call changes: a new record object for the same id, still open.
 	rerender([
 		first,
 		{ ...last, output: "built\n\ndone in 1.2s", durationS: 1.2 },
 	]);
-	assert.equal(
-		allStamps(container).length,
-		1,
-		"and a new record object does not close it",
-	);
+	assert.ok(openDetail(), "and a new record object does not close it");
 
 	// And a whole-transcript resync, which re-mints every record object at once.
 	rerender([
 		{ ...first },
 		{ ...last, output: "built\n\ndone in 1.2s", durationS: 1.2 },
 	]);
-	assert.equal(allStamps(container).length, 1, "nor does a resync");
+	assert.ok(openDetail(), "nor does a resync");
+	assert.equal(
+		allStamps(container).length,
+		0,
+		"and none of it painted a clock the turn did not own",
+	);
 	unmount();
 });
 
