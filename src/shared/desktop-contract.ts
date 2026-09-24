@@ -2800,6 +2800,52 @@ export type ProviderMethod = {
 	kind: "api_key" | "browser" | "device";
 	requires_secret_input: boolean;
 	paste_fallback: boolean;
+	/**
+	 * The model this method would make the default on a machine with none, as
+	 * the backend's one suggestion map states it. Optional because backends
+	 * before the suggested-defaults change do not send it; absent and `null`
+	 * both mean "no suggestion to show", and nothing is derived in its place.
+	 */
+	suggested_model?: SuggestedModel | null;
+};
+
+/** A backend-owned model suggestion: the id to write and the name to show. */
+export type SuggestedModel = { id: string; name: string };
+
+/**
+ * What a successful sign-in or key save did to the default model.
+ *
+ * The backend decides and writes it (`plan_login_defaults`, the same planner
+ * the terminal uses), and the renderer only renders the `receipt` sentence and
+ * offers "Change": re-deriving the decision here would be a second planner that
+ * can disagree with the one that actually wrote the config.
+ *
+ * - `hosting`/`model` set: this is what was written.
+ * - `hosting` null with a `receipt`: nothing was written, only explained.
+ * - the whole field `null`: an existing working default was left alone.
+ */
+export type DefaultsApplied = {
+	hosting: string | null;
+	/** The model ID. */
+	model: string | null;
+	/** The model's display name, e.g. "Claude Opus 5.5". */
+	model_name: string | null;
+	/** One user-facing sentence describing what happened. */
+	receipt: string;
+};
+
+/**
+ * The result of `auth.key` (PUT /v1/auth/providers/{id}/key).
+ *
+ * Every field is optional: a backend before key validation answers `{}`. A
+ * REJECTED key never arrives here -- it is a 422 whose `detail` names the
+ * reason, and nothing is stored. `valid: null` is "saved, but not checked",
+ * with `reason` saying why.
+ */
+export type SaveKeyResult = {
+	valid?: boolean | null;
+	reason?: string | null;
+	defaults_applied?: DefaultsApplied | null;
 };
 export type DesktopProvider = {
 	id: string;
@@ -2816,6 +2862,8 @@ export type DesktopProvider = {
 	has_credential: boolean;
 	stored_credentials: number;
 	base_url: string | null;
+	/** See `ProviderMethod.suggested_model`; optional for older backends. */
+	suggested_model?: SuggestedModel | null;
 };
 export type AuthOperation = {
 	id: string;
@@ -2834,6 +2882,25 @@ export type AuthOperation = {
 	input_required: boolean;
 	prompt_id: string | null;
 	expires_in: number;
+	/*
+	 * The fields below are additive (backend suggested-defaults change) and are
+	 * optional because an older backend omits them. Every reader falls back to
+	 * what the older snapshot already carried: `instructions` for the device
+	 * code, `auth_url` for the page, and "paste only when asked" for the input.
+	 */
+	/** What the sign-in changed about the default model; only on `succeeded`. */
+	defaults_applied?: DefaultsApplied | null;
+	/** A device flow's one-time code, as its own field. */
+	user_code?: string | null;
+	/** The page a device code is entered on, when it differs from `auth_url`. */
+	launch_url?: string | null;
+	/**
+	 * True when the paste box is only a FALLBACK: the flow completes on its own
+	 * when the browser redirects back, and the box exists for the case where it
+	 * cannot (Anthropic). False/absent with `input_required` means the paste is
+	 * the flow itself.
+	 */
+	input_optional?: boolean;
 };
 export type BackendSetting = {
 	key: string;
