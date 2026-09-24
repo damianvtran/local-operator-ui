@@ -297,6 +297,22 @@ export function searchChats(
 			 * that inverts it, and both read this field.
 			 */
 			archived,
+			/*
+			 * A PEER'S hit keeps its locality: a synthesized row that dropped these
+			 * would be filed under `Previous chats` as a local conversation and lose
+			 * its remote mark - the one annotation the search list has (`mesh-ui.md`
+			 * §2.3). Copied only when the hit carries them, so a pre-mesh hit builds
+			 * the row it always did.
+			 */
+			...(hit.locality === undefined
+				? {}
+				: {
+						locality: hit.locality,
+						owner_device: hit.owner_device ?? "",
+						owner_device_name: hit.owner_device_name ?? "",
+						reachable: hit.reachable ?? true,
+						unreachable_reason: hit.unreachable_reason ?? "",
+					}),
 		};
 		if (hit.body_match) conversationMatches.add(hit.id);
 		admitted.push({ row, rank: hit.rank });

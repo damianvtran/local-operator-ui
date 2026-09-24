@@ -58,13 +58,30 @@ export const CHAT_SEARCH_DEBOUNCE_MS = 150;
  * text alone would serve the answer that carries the archived hits to a panel
  * whose control says they are hidden - rows that then survive their own removal.
  */
-export function chatSearchKey(query: string, includeArchived = false) {
-	return ["desktop", "sessions", "search", query, includeArchived] as const;
+export function chatSearchKey(
+	query: string,
+	includeArchived = false,
+	includePeers = false,
+) {
+	// `includePeers` joins the key only when it is true, so the key - and so the
+	// cache - of every pre-mesh search is exactly the one it always was.
+	return includePeers
+		? ([
+				"desktop",
+				"sessions",
+				"search",
+				query,
+				includeArchived,
+				"peers",
+			] as const)
+		: (["desktop", "sessions", "search", query, includeArchived] as const);
 }
 export function useChatSearch(
 	query: string,
 	enabled: boolean,
 	includeArchived = false,
+	/** `features.peers` as the caller read it: a peer's conversations are searched too. */
+	includePeers = false,
 ) {
 	// The DEBOUNCED query is what is asked for and what keys the cache; the raw
 	// box value stays with the caller so the list can still narrow on a local
@@ -86,7 +103,7 @@ export function useChatSearch(
 	 */
 	const refused = searchQueryExceedsLimit(asked);
 	const result = useQuery({
-		queryKey: chatSearchKey(asked, includeArchived),
+		queryKey: chatSearchKey(asked, includeArchived, includePeers),
 		enabled: enabled && asked.length > 0 && !refused,
 		queryFn: async () => {
 			/*
@@ -112,6 +129,7 @@ export function useChatSearch(
 				 * backend that has not learned the flag keeps answering it.
 				 */
 				...(includeArchived ? { include_archived: true } : {}),
+				...(includePeers ? { include_peers: true } : {}),
 			});
 			useCanonicalSessionsStore
 				.getState()
