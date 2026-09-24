@@ -645,7 +645,11 @@ test("a refused create hands the payload to the composer, and claims no replay i
 		typeof draft.error === "string" && draft.error.length > 0,
 		"a remount still has copy for the notice from the store's own record",
 	);
-	assert.notEqual(draft.pending, true, "settled: the notice's actions may appear");
+	assert.notEqual(
+		draft.pending,
+		true,
+		"settled: the notice's actions may appear",
+	);
 });
 
 test("an issued admission pins the payload for replay, and a discard always frees it", async () => {
@@ -686,7 +690,9 @@ test("an issued admission pins the payload for replay, and a discard always free
 	);
 	// Re-arm, because that send landed and retired the row.
 	failNext = true;
-	const reKey = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	const reKey = store
+		.getState()
+		.stageDraft({ kind: "agent", name: "reviewer" });
 	await assert.rejects(admitChatDraft(reKey, input), /provider unavailable/);
 	const armed = store.getState().drafts[reKey];
 	/*
@@ -706,7 +712,9 @@ test("an issued admission pins the payload for replay, and a discard always free
 		.slice(wireMid)
 		.filter((call) => call.op === "sessions.message")
 		.at(-1);
-	assert.deepEqual(withFile.images, [{ data_b64: "x", mime_type: "image/png" }]);
+	assert.deepEqual(withFile.images, [
+		{ data_b64: "x", mime_type: "image/png" },
+	]);
 	assert.notEqual(withFile.requestId, armed.admissionRequestId);
 	/*
 	 * An IMAGE-only difference with the same text and paths is NOT a new message, and
@@ -1283,7 +1291,9 @@ test("a reply-prefixed retry is an idempotent replay, and an edited one is a new
 	);
 	const draft = store.getState().drafts[key];
 	const held = draft.submittedText;
-	const firstWire = calls.filter((call) => call.op === "sessions.message").at(-1);
+	const firstWire = calls
+		.filter((call) => call.op === "sessions.message")
+		.at(-1);
 	assert.equal(
 		held,
 		`<reply-to>the failing line<\/reply-to>\n${box}`,
@@ -1316,7 +1326,9 @@ test("a reply-prefixed retry is an idempotent replay, and an edited one is a new
 	await assert.rejects(
 		admitChatDraft(key, { ...input, text: held }, "222222222222"),
 	);
-	const replay = calls.slice(before).filter((call) => call.op === "sessions.message");
+	const replay = calls
+		.slice(before)
+		.filter((call) => call.op === "sessions.message");
 	assert.equal(replay.length, 1, "the retry reaches the wire");
 	assert.deepEqual(
 		replay[0],
@@ -1334,7 +1346,11 @@ test("a reply-prefixed retry is an idempotent replay, and an edited one is a new
 	const edited = calls
 		.slice(editedBefore)
 		.filter((call) => call.op === "sessions.message");
-	assert.equal(edited.length, 1, "an edited reply-prefixed payload is admitted");
+	assert.equal(
+		edited.length,
+		1,
+		"an edited reply-prefixed payload is admitted",
+	);
 	assert.equal(edited[0].text, editedText);
 	assert.notEqual(
 		edited[0].requestId,
@@ -1603,9 +1619,8 @@ test("a failed store is refused with its own code, and the retry hint it cannot 
 		// Retry is WITHHELD for both arms, because the notice's own remedy is on the
 		// message in the box rather than on a press that meets the same full disk.
 		assert.equal(
-			sendFailureCopy(
-				new DesktopControlError(status, message, undefined, code),
-			).retry,
+			sendFailureCopy(new DesktopControlError(status, message, undefined, code))
+				.retry,
 			false,
 		);
 	}
@@ -1677,7 +1692,11 @@ test("the notice is ONE sentence from ONE place, and the composer renders it rat
 		SEND_FAILURE_COPY.unconfirmed,
 		"a failure the app cannot classify says what the app knows: it could not confirm the send",
 	);
-	assert.equal(unknown.retry, true, "and Retry is offered, because an unchanged retry replays");
+	assert.equal(
+		unknown.retry,
+		true,
+		"and Retry is offered, because an unchanged retry replays",
+	);
 	/*
 	 * The transport's own 20-second deadline sentence is NOT what the composer
 	 * shows: it is prose about a request the app stopped waiting for, and the
@@ -1742,8 +1761,16 @@ test("the notice is ONE sentence from ONE place, and the composer renders it rat
 		/\{RETRY_LABEL\}/,
 		"the retry control is no longer labelled from the shared constant, so the sentence and the control can drift apart",
 	);
-	assert.match(composer, /\{CLEAR_LABEL\}/, "and the clear control is not either");
-	for (const word of ["Restore message", "Stop holding it", "still being held"]) {
+	assert.match(
+		composer,
+		/\{CLEAR_LABEL\}/,
+		"and the clear control is not either",
+	);
+	for (const word of [
+		"Restore message",
+		"Stop holding it",
+		"still being held",
+	]) {
 		assert.ok(
 			!composerCode.includes(word),
 			`the composer still renders "${word}", which is the vocabulary the operator reported`,
@@ -1792,12 +1819,7 @@ test("a store refusal hands the payload back, and the remedy its sentence names 
 	globalThis.__canonicalRequest = async (request) => {
 		calls.push(request);
 		return Promise.reject(
-			new DesktopControlError(
-				507,
-				stored,
-				undefined,
-				STORE_OUT_OF_SPACE_CODE,
-			),
+			new DesktopControlError(507, stored, undefined, STORE_OUT_OF_SPACE_CODE),
 		);
 	};
 	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
@@ -1827,7 +1849,8 @@ test("a store refusal hands the payload back, and the remedy its sentence names 
 	 * only thing that can put the payload back. Without this the case would pass on a
 	 * row that never moved.
 	 */
-	const staged = useConversationInputStore.getState().inputByConversation[pressed];
+	const staged =
+		useConversationInputStore.getState().inputByConversation[pressed];
 	useConversationInputStore.getState().beginInFlight(
 		pressed,
 		{
@@ -1880,7 +1903,11 @@ test("a store refusal hands the payload back, and the remedy its sentence names 
 		return {};
 	};
 	const before = calls.length;
-	const id = await admitChatDraft(key, { ...input, text, attachments: [] }, session);
+	const id = await admitChatDraft(
+		key,
+		{ ...input, text, attachments: [] },
+		session,
+	);
 	assert.equal(id, session, "the remedy's press is admitted");
 	const sent = calls
 		.slice(before)
@@ -1943,7 +1970,8 @@ test("a failed send's file comes back with its text, and the next Send carries b
 	useConversationInputStore
 		.getState()
 		.addAttachment(identity, { id: "chip-a", path: file });
-	const staged = useConversationInputStore.getState().inputByConversation[identity];
+	const staged =
+		useConversationInputStore.getState().inputByConversation[identity];
 	useConversationInputStore.getState().beginInFlight(
 		identity,
 		{
@@ -1979,7 +2007,8 @@ test("a failed send's file comes back with its text, and the next Send carries b
 
 	// The press's file is back in the composer's own row, and it never left the
 	// text: both halves arrive together, through one store write.
-	const restored = useConversationInputStore.getState().inputByConversation[identity];
+	const restored =
+		useConversationInputStore.getState().inputByConversation[identity];
 	assert.equal(restored?.pendingText, text, "the text is back");
 	assert.deepEqual(
 		(restored?.attachments ?? []).map((chip) => chip.path),
@@ -2001,7 +2030,11 @@ test("a failed send's file comes back with its text, and the next Send carries b
 	);
 	assert.deepEqual(chips, [file], "the composer's row is what the press reads");
 	const before = calls.length;
-	await admitChatDraft(key, { ...input, text, attachments: chips, images: encoded }, session);
+	await admitChatDraft(
+		key,
+		{ ...input, text, attachments: chips, images: encoded },
+		session,
+	);
 	const sent = calls
 		.slice(before)
 		.filter((call) => call.op === "sessions.message")
@@ -2068,7 +2101,12 @@ test("one rule decides what the same message means, and the composer keeps no se
 		"src/renderer/src/features/chat/components/message-input.tsx",
 		"utf8",
 	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
-	for (const gone of ["heldAttachments", "heldText", "heldClaimCode", "boxAttachments"]) {
+	for (const gone of [
+		"heldAttachments",
+		"heldText",
+		"heldClaimCode",
+		"boxAttachments",
+	]) {
 		assert.ok(
 			!composer.includes(gone),
 			`the composer still builds ${gone}, so a second opinion about "the same message" is back`,
@@ -2153,11 +2191,9 @@ test("a leading-slash refusal on the created-session arm hands the payload to th
 			},
 		},
 	});
-	useConversationInputStore.getState().beginInFlight(
-		pressed,
-		{ text, attachments: [], replies: [] },
-		true,
-	);
+	useConversationInputStore
+		.getState()
+		.beginInFlight(pressed, { text, attachments: [], replies: [] }, true);
 	await assert.rejects(admitChatDraft(key, { ...input, text }), (error) => {
 		assert.ok(error instanceof DesktopControlError);
 		assert.equal(error.code, LEADING_SLASH_CODE);
@@ -2192,7 +2228,11 @@ test("a leading-slash refusal on the created-session arm hands the payload to th
 		"the identity the send minted is not the one the composer pressed under - this is the arm the case is about",
 	);
 	const row = useConversationInputStore.getState().inputByConversation[minted];
-	assert.equal(row?.pendingText, text, "the text is in the composer that will render it");
+	assert.equal(
+		row?.pendingText,
+		text,
+		"the text is in the composer that will render it",
+	);
 	assert.equal(
 		useConversationInputStore.getState().inputByConversation[pressed],
 		undefined,
@@ -2329,7 +2369,8 @@ test("a restored draft still carries an attachment, not just the text", async ()
 			},
 		},
 	});
-	const staged = useConversationInputStore.getState().inputByConversation[pressed];
+	const staged =
+		useConversationInputStore.getState().inputByConversation[pressed];
 	useConversationInputStore.getState().beginInFlight(
 		pressed,
 		{
@@ -2480,7 +2521,9 @@ test("a return puts both halves back in every composer state, and withholds noth
 				),
 			);
 		};
-		const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+		const key = store
+			.getState()
+			.stageDraft({ kind: "agent", name: "reviewer" });
 		const session = "666666666666";
 		// The composer's own row as the user left it, plus the send's payload, which
 		// the echo takes on the way out (the state the failure lands in).
@@ -2551,7 +2594,8 @@ test("a return puts both halves back in every composer state, and withholds noth
 		.beginInFlight(identity, { text, attachments: [], replies: [] }, true);
 	useConversationInputStore.getState().returnInFlight(identity, identity);
 	useConversationInputStore.getState().returnInFlight(identity, identity);
-	const once = useConversationInputStore.getState().inputByConversation[identity];
+	const once =
+		useConversationInputStore.getState().inputByConversation[identity];
 	assert.equal(once?.pendingText, text);
 });
 
@@ -2577,7 +2621,9 @@ test("the box takes a returned message once, merged, and never inside a credenti
 		"src/renderer/src/shared/hooks/use-message-input.ts",
 		"utf8",
 	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
-	const start = hook.indexOf("const merged = adoptReturnedText(conversationId);");
+	const start = hook.indexOf(
+		"const merged = adoptReturnedText(conversationId);",
+	);
 	assert.ok(
 		start > 0,
 		"the box no longer takes the returned text through the store's own merge, so the two can disagree about where the returned message goes",
@@ -2675,10 +2721,7 @@ test("the notice is one sentence above the box, at most Retry and Clear, and not
 		region.includes("{RETRY_LABEL}") && region.includes("{CLEAR_LABEL}"),
 		"the notice no longer offers the two labelled actions, so the remedy is somewhere else than the sentence",
 	);
-	const notice = rendered.slice(
-		alertAt,
-		rendered.indexOf("</p>", alertAt),
-	);
+	const notice = rendered.slice(alertAt, rendered.indexOf("</p>", alertAt));
 	assert.ok(
 		!notice.includes("CAPPED_BLOCK") &&
 			!notice.includes("max-h-") &&
