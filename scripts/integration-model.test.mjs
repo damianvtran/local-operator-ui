@@ -1450,7 +1450,10 @@ test("a keyless write derives a PER-SERVER reference (U15)", () => {
 		"ACME_NEW_X_API_KEY",
 		"the integration's name leads, so two services cannot collide",
 	);
-	assert.equal(m.keylessReference("acme-new", "Authorization"), "ACME_NEW_AUTHORIZATION");
+	assert.equal(
+		m.keylessReference("acme-new", "Authorization"),
+		"ACME_NEW_AUTHORIZATION",
+	);
 	/*
 	 * The defect itself, stated as a test: the same header on two servers must
 	 * NOT produce one id.
@@ -1459,9 +1462,18 @@ test("a keyless write derives a PER-SERVER reference (U15)", () => {
 		m.keylessReference("acme-key", "X-Api-Key"),
 		m.keylessReference("acme-new", "X-Api-Key"),
 	);
-	assert.equal(m.keylessReference("acme-new", "x-api-key"), "ACME_NEW_X_API_KEY");
-	assert.equal(m.keylessReference("acme-new", "  X Api Key  "), "ACME_NEW_X_API_KEY");
-	assert.equal(m.keylessReference("7-token", "Authorization"), "K_7_TOKEN_AUTHORIZATION");
+	assert.equal(
+		m.keylessReference("acme-new", "x-api-key"),
+		"ACME_NEW_X_API_KEY",
+	);
+	assert.equal(
+		m.keylessReference("acme-new", "  X Api Key  "),
+		"ACME_NEW_X_API_KEY",
+	);
+	assert.equal(
+		m.keylessReference("7-token", "Authorization"),
+		"K_7_TOKEN_AUTHORIZATION",
+	);
 	// Nothing to name yet: the field is empty, so the Save button stays disabled.
 	assert.equal(m.keylessReference("", ""), "");
 	assert.equal(m.keylessReference("acme-new", "  "), "");
@@ -1470,8 +1482,14 @@ test("a keyless write derives a PER-SERVER reference (U15)", () => {
 	 * with gets a prefix, and one that normalises cleanly (leading separators
 	 * stripped) needs none.
 	 */
-	assert.equal(m.keylessReference("-bad-", "Authorization"), "BAD_AUTHORIZATION");
-	assert.equal(m.keylessReference("7-token", "x-api-key"), "K_7_TOKEN_X_API_KEY");
+	assert.equal(
+		m.keylessReference("-bad-", "Authorization"),
+		"BAD_AUTHORIZATION",
+	);
+	assert.equal(
+		m.keylessReference("7-token", "x-api-key"),
+		"K_7_TOKEN_X_API_KEY",
+	);
 	for (const [name, header] of [
 		["acme-new", "Authorization"],
 		["acme-new", "x-api-key"],
@@ -1497,7 +1515,11 @@ test("a keyless write derives a PER-SERVER reference (U15)", () => {
 	 */
 	const long = m.keylessReference(`${"s".repeat(120)}one`, "X-Api-Key");
 	const longer = m.keylessReference(`${"s".repeat(120)}two`, "X-Api-Key");
-	assert.notEqual(long, longer, "a truncated reference still tells the servers apart");
+	assert.notEqual(
+		long,
+		longer,
+		"a truncated reference still tells the servers apart",
+	);
 	assert.equal(
 		long,
 		m.keylessReference(`${"s".repeat(120)}one`, "X-Api-Key"),
@@ -2039,7 +2061,11 @@ test("cancelling a FIRST sign-in leaves the row needing one (U14 residual)", () 
 	);
 
 	// The attempt the user started, then cancelled.
-	const cancelled = op("linear-two", { id: "b".repeat(32), status: "cancelled", created_at: 2 });
+	const cancelled = op("linear-two", {
+		id: "b".repeat(32),
+		status: "cancelled",
+		created_at: 2,
+	});
 	const after = {
 		...needs,
 		status: "not_started",
@@ -2337,11 +2363,10 @@ test("a credentials refusal names the control the dialog actually draws (n-3)", 
 	assert.match(conflict, new RegExp(m.replaceControlLabel(1)));
 	assert.doesNotMatch(conflict, /Replace saved values/);
 	assert.match(
-		m.credentialsRefusalMessage(
-			"replace_confirmation_required",
-			[],
-			{ A: "1", B: "2" },
-		),
+		m.credentialsRefusalMessage("replace_confirmation_required", [], {
+			A: "1",
+			B: "2",
+		}),
 		new RegExp(m.replaceControlLabel(2)),
 		"the plural label is named when the dialog draws that one",
 	);
@@ -2369,7 +2394,9 @@ test("a row's reason drops a status code, which explains nothing (n4)", () => {
 	 * whose action already says what to do (Add key).
 	 */
 	assert.equal(
-		m.publicRowReason("acme-new rejected our credentials (401) - set its API key or headers"),
+		m.publicRowReason(
+			"acme-new rejected our credentials (401) - set its API key or headers",
+		),
 		"acme-new rejected our credentials - set its API key or headers",
 	);
 	// A number that is part of a longer token is not a status code.
@@ -2431,7 +2458,8 @@ test("the dialogs and the row list keep the geometry and the rules the walk meas
 		"src/renderer/src/features/settings/components/integrations/add-integration-form.tsx",
 		"utf8",
 	);
-	const stable = [...addForm.matchAll(/onMouseDown=\{keepGeometryStable\}/g)].length;
+	const stable = [...addForm.matchAll(/onMouseDown=\{keepGeometryStable\}/g)]
+		.length;
 	assert.equal(
 		stable,
 		2,
@@ -2522,7 +2550,11 @@ test("the dialogs and the row list keep the geometry and the rules the walk meas
 			hook.indexOf("const catalogQuery = useQuery"),
 		"the poll helper is declared before the first query that calls it",
 	);
-	const polls = [...hook.matchAll(/refetchInterval: \(query\) =>\s*\n?\s*pollIntervalFor\(/g)].length;
+	const polls = [
+		...hook.matchAll(
+			/refetchInterval: \(query\) =>\s*\n?\s*pollIntervalFor\(/g,
+		),
+	].length;
 	assert.equal(
 		polls,
 		2,
