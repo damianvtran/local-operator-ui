@@ -353,7 +353,7 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 	const scrollDone = useRef<string | null>(null);
 	const lastTurnId = attachment?.turns.at(-1)?.asideId ?? null;
 	/*
-	 * The newest turn's growth, as the effect's OTHER trigger.
+	 * The newest turn's growth FROM THE STORE, as the effect's first trigger.
 	 *
 	 * The target below is only reachable once the turn has grown enough for the
 	 * region to be able to scroll that far, so the effect has to re-run as the turn
@@ -363,38 +363,65 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 	 * a refusal replaces the thinking line without adding a character of answer (QA
 	 * round 4, Q33; `asideScrollTrigger`). It is a string, so an idle re-render cannot
 	 * re-run the effect at all.
+	 *
+	 * IT IS ONLY HALF THE TRIGGER, WHICH IS WHAT R7-3 CAUGHT: it answers every STORE
+	 * change that can grow the box, and a box can also grow with the store untouched -
+	 * a mermaid SVG rendering into a settled answer, KaTeX's lazily loaded stylesheet
+	 * arriving. Measured in the flow (UX round 3's U21): the region held 43px, then
+	 * 625px once the diagram was in, with `scrollTop` still 0 the whole time, so the
+	 * newest answer was left cut at the edge with no sign it had grown. The other half
+	 * is the turn's own MEASURED box (`newestTurnBox`, below), which is the growth
+	 * itself rather than a proxy for it.
 	 */
 	const newestTurnGrowth = asideScrollTrigger(
 		lastTurnId ? streams[lastTurnId] : undefined,
 	);
 	/*
-	 * THE QUESTION BLOCK'S OWN BOX, MEASURED (design round 4, D16; `asideExchangeCap`).
+	 * THE NEWEST TURN'S BOXES, MEASURED (design round 4's D16 for the cap; agent review
+	 * round 7's R7-3 for the move).
 	 *
-	 * The cap's `Q` term is the height of the newest turn's question PARAGRAPH as laid
-	 * out, because whether a quote or a question is one line is the browser's decision at
-	 * the width it was given and not a fact about the question: R6-4's per-quote term
-	 * held the identity at one width and lost it at another (the same 44-character quote
-	 * is one line at 1380 and two at 800). Measured with a `ResizeObserver` rather than
-	 * with a line count, so a wrapped quote, a wider quote prefix or an image chip on the
-	 * question is simply a taller box, and the effect's own comparison keeps it to one
-	 * write per actual change - while measuring before the observer is installed is what
-	 * the first paint uses, so no frame is laid out against the floor below.
+	 * `newestQuestionBox` is the cap's `Q` term: the height of the newest turn's question
+	 * PARAGRAPH as laid out, because whether a quote or a question is one line is the
+	 * browser's decision at the width it was given and not a fact about the question -
+	 * R6-4's per-quote term held the identity at one width and lost it at another (the
+	 * same 44-character quote is one line at 1380 and two at 800).
+	 *
+	 * `newestTurnBox` is the move's other trigger: THE BOX ITSELF, so a change that
+	 * arrives with nothing on the wire behind it still re-runs the move. The store's own
+	 * trigger cannot see one (`asideScrollTrigger`), and it is not hypothetical - UX round
+	 * 3's U21 measured a mermaid diagram landing 3s after the answer settled and growing
+	 * the turn 43px to 625px with the region's `scrollTop` still 0, so the newest answer
+	 * was left cut with no sign it had grown.
+	 *
+	 * ONE PASS READS BOTH and one `ResizeObserver` watches the turn, because the question
+	 * is inside it: a question that grows a line grows the box it is in. The comparison in
+	 * each write is what makes these values safe as effect dependencies - the same number
+	 * for the same box never re-runs the move - and measuring before the observer is
+	 * installed is what the first paint uses, so no frame is laid out against the floor
+	 * `ASIDE_QUESTION_MIN_BOX` states.
 	 */
+	const [newestTurnBox, setNewestTurnBox] = useState<number | null>(null);
 	const [newestQuestionBox, setNewestQuestionBox] = useState<number | null>(
 		null,
 	);
 	const newestQuestionRef = useRef<HTMLParagraphElement>(null);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: the newest turn's ID re-attaches the observer - the ref moves to the new turn's paragraph with it - and the body reads only the DOM.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the newest turn's ID re-attaches the observers - both refs move to the new turn's boxes with it - and the body reads only the DOM.
 	useLayoutEffect(() => {
-		const node = newestQuestionRef.current;
+		const node = newestTurnRef.current;
 		if (!node) {
+			setNewestTurnBox(null);
 			setNewestQuestionBox(null);
 			return;
 		}
 		const measure = () => {
-			const height = node.getBoundingClientRect().height;
+			const box = node.getBoundingClientRect().height;
+			const question = newestQuestionRef.current;
+			const questionBox = question
+				? question.getBoundingClientRect().height
+				: null;
+			setNewestTurnBox((current) => (current === box ? current : box));
 			setNewestQuestionBox((current) =>
-				current === height ? current : height,
+				current === questionBox ? current : questionBox,
 			);
 		};
 		measure();
@@ -420,7 +447,7 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 	 * is the `> 1` test - one pixel of drift is the device's rounding, more than that
 	 * is a scroll, and a scroll ends this turn's move permanently.
 	 */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: the newest turn's growth is the effect's TRIGGER and not a value it reads -- the target is reachable only once the turn has grown enough, and the movement itself is read from the DOM. See the block above.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the newest turn's growth and its measured box are the effect's TRIGGERS and not values it reads -- the target is reachable only once the turn has grown enough, and the movement itself is read from the DOM. See the two blocks above.
 	useEffect(() => {
 		if (!lastTurnId) return;
 		if (scrollDone.current === lastTurnId) return;
@@ -453,7 +480,7 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 		if (wanted === Math.max(0, asideQuestionTopOffset(geometry))) {
 			scrollDone.current = lastTurnId;
 		}
-	}, [lastTurnId, newestTurnGrowth]);
+	}, [lastTurnId, newestTurnGrowth, newestTurnBox]);
 	// Absent rather than conditional-in-the-parent at this level too: the panel's
 	// own store subscription is what makes it appear, and a caller that removed it
 	// must remove the attachment (or the panel would paint over the composer).

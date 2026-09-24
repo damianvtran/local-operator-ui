@@ -938,8 +938,16 @@ export function asideScrollToTurn(input: {
 }
 
 /**
- * What re-runs the panel's move toward the newest question: every change that can
- * grow the newest turn's box, as ONE primitive.
+ * What re-runs the panel's move toward the newest question, for the changes a STORE
+ * can see: every one that can grow the newest turn's box, as ONE primitive.
+ *
+ * NOT EVERY CHANGE THAT CAN GROW THE BOX, and saying so is the point of agent review
+ * round 7's R7-3. A box can grow with nothing on the wire behind it - a mermaid SVG
+ * rendering into an already-settled answer, KaTeX's lazily loaded stylesheet arriving -
+ * and this function reads a stream, so it cannot see one. The panel's move therefore
+ * takes a SECOND trigger beside this one: the newest turn's own measured box, observed
+ * rather than proxied. Measured in the flow (UX round 3's U21): the region held 43px,
+ * then 625px once the diagram was in, with `scrollTop` still 0 the whole time.
  *
  * WHY THE ANSWER'S LENGTH WAS NOT ENOUGH (QA round 4, Q33). The move re-runs as the
  * turn grows, because its target only becomes reachable once the region can scroll

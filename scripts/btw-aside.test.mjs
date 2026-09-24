@@ -436,7 +436,7 @@ const RE_PANEL_CAP_COUNTS_QUESTION =
 const RE_PANEL_CAP_PASSES_THE_MEASUREMENT =
 	/maxHeight: asideExchangeCap\(isSmallView, newestQuestionBox\)/;
 const RE_PANEL_CAP_MEASURES_THE_QUESTION =
-	/const height = node\.getBoundingClientRect\(\)\.height;/;
+	/const questionBox = question\s*\?\s*question\.getBoundingClientRect\(\)\.height\s*:\s*null;/;
 const RE_PANEL_SCROLLS_TO_TURN =
 	/const wanted = asideScrollToTurn\(geometry\);\s*region\.scrollTop = wanted;/;
 /*
@@ -2151,7 +2151,31 @@ test("an appended turn is scrolled into the region's view, and on to the questio
 	// The per-chunk trigger, so the move survives the answer arriving at all - and
 	// the refusal that REPLACES the thinking line with no answer at all (Q33).
 	assert.match(panel, RE_PANEL_SCROLL_TRIGGER);
-	assert.match(panel, /\}, \[lastTurnId, newestTurnGrowth\]\);/);
+	/*
+	 * AND THE TURN'S OWN MEASURED BOX IS THE OTHER ONE (agent review round 7, R7-3,
+	 * which UX round 3's U21 then measured in the flow). The store's trigger is
+	 * `phase:length`, so it cannot see a box that grew with the store untouched - the
+	 * diagram UX drove: the region held 43px, then 625px once the mermaid SVG was in at
+	 * 2975ms, with `scrollTop` still 0 and its maximum grown to 377px, leaving the newest
+	 * answer cut at the edge with no sign it had grown. The property R7-3 asked for is
+	 * that the trigger covers growth rather than the answer's length and phase, and the
+	 * pair below is it: the box is measured from the DOM and then named as a dependency.
+	 * A partial revert - the measurement kept and the dependency dropped - cannot satisfy
+	 * both halves.
+	 */
+	assert.match(
+		panel,
+		/const \[newestTurnBox, setNewestTurnBox\] = useState<number \| null>\(\s*null,?\s*\);/,
+	);
+	assert.match(panel, /const box = node\.getBoundingClientRect\(\)\.height;/);
+	assert.match(panel, /observer\.observe\(node\);/);
+	// The observed node is the newest TURN's box, which is what holds the answer the
+	// diagram lands in - not the question, which is only one of its children.
+	assert.match(
+		panel,
+		/\{\s*turn\.asideId === lastTurnId \? newestTurnRef : undefined\s*\}/,
+	);
+	assert.match(panel, /\}, \[lastTurnId, newestTurnGrowth, newestTurnBox\]\);/);
 	assert.match(panel, RE_PANEL_REGION_FOCUSABLE);
 });
 
