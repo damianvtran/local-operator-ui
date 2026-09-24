@@ -419,46 +419,101 @@ export const useMessageInput = ({
 	}, [storedDraft, hydrated, conversationId, inputValue]);
 
 	/*
-	 * THE FAILED MESSAGE COMES BACK HERE.
+	 * THE STORE IS THE AUTHOR OF THE BOX'S TEXT, AND THIS IS THE ONLY CHANNEL THAT
+	 * SAYS SO.
 	 *
-	 * A send that did not settle either queues its text on this row (`pendingText`,
-	 * written by the store's return path) or, on the New-chat flip, leaves it in the
-	 * row the flip replaced - both of which `adoptReturnedText` resolves into one
-	 * merged value. The merge is against the text the store holds rather than the
-	 * box above, deliberately: outside a capture the two are the same text, and
-	 * inside one the store's copy is the one that was never overwritten by mask
-	 * cells.
+	 * Two writers, one value. This hook holds the text being TYPED INTO (its own
+	 * state, which is what makes a keystroke cheap); the row holds the text the app
+	 * owns - what the return path hands back, what the migration moves, what `Clear`
+	 * empties and what the delivery reconciliation clears. Before this, a store
+	 * write reached the box only through `pendingText`, adopted on mount and on
+	 * arrival, so everything else the store did to the text was invisible: Clear
+	 * emptied the row and left the words on screen (they then glued onto the next
+	 * message and went out as one bubble), a late delivery's silent clear emptied
+	 * the row and left the words, and the returned payload of a send that failed
+	 * while this composer was remounted could not correct an already-mounted box.
+	 * All four are the same defect: the store had no way to say "I wrote the box"
+	 * (review round 1, B2/M1/Q-1/U3).
 	 *
-	 * Three guards, each for a different failure. `initializedRef` means this
-	 * composer has taken charge of this conversation (a mount for another
-	 * conversation must not adopt this one's payload). `draftHeld` is the masked
-	 * capture: adopting text into a box the capture owns would put a returned
-	 * message inside a credential it is not part of - the capture's own write at
-	 * its end then merges over it, which is the same reason the keystroke path
-	 * declines while it is open. And the effect re-runs on the row, so a return that
-	 * arrives while the user is typing lands as soon as this composer can take it
-	 * rather than being dropped.
+	 * `textRevision` is that sentence, and a counter rather than a value because a
+	 * value cannot carry it: a keystroke writes the same string back, and a masked
+	 * capture deliberately does not write at all.
+	 *
+	 * The MOUNT's first read is not a write: the initialiser above has already
+	 * seeded the box from this same row, and re-setting it would move the caret to
+	 * the end of a draft the user has just started editing. What IS handled on the
+	 * first read is a payload waiting to be adopted (`pendingText`), because the row
+	 * keeps the returned text there rather than in `currentInput` while the merge
+	 * waits for a composer that can take it.
 	 */
 	const pendingReturn = useConversationInputStore((s) =>
 		conversationId
 			? s.inputByConversation[conversationId]?.pendingText
 			: undefined,
 	);
+	const textRevision = useConversationInputStore((s) =>
+		conversationId
+			? s.inputByConversation[conversationId]?.textRevision
+			: undefined,
+	);
+	const storeText = useConversationInputStore((s) =>
+		conversationId
+			? s.inputByConversation[conversationId]?.currentInput
+			: undefined,
+	);
+	const seenTextRevision = useRef<number | undefined>(undefined);
 	useEffect(() => {
 		if (!hydrated || !conversationId) return;
-		if (pendingReturn === undefined) return;
-		if (initializedRef.current !== conversationId) return;
-		if (draftHeld) return;
-		const merged = adoptReturnedText(conversationId);
-		if (merged === null) return;
-		lastPushedRef.current = merged;
 		/*
-		 * No caret move: the composer's own caret effect owns that, and the box
-		 * ends where the merged text does, which is where the user's next keystroke
-		 * continues from (their own sentence follows the returned one).
+		 * A composer that has not taken charge of this conversation must not adopt
+		 * another one's payload; `initializedRef` is the same gate the initialiser
+		 * uses.
 		 */
-		setInputValue(merged);
-	}, [pendingReturn, hydrated, conversationId, draftHeld, adoptReturnedText]);
+		if (initializedRef.current !== conversationId) return;
+		const first = seenTextRevision.current === undefined;
+		seenTextRevision.current = textRevision;
+		/*
+		 * THE RETURNED MESSAGE COMES HOME FIRST, on the mount read as well as on a
+		 * later one: the row keeps returned text OUT of `currentInput` until a
+		 * composer can take it (`pendingText`), so the initialiser above cannot have
+		 * seeded it and this is the only thing that ever puts it in the box.
+		 */
+		if (pendingReturn !== undefined) {
+			/*
+			 * The masked capture keeps the box: adopting into it would put a returned
+			 * message inside a secret the user is composing. The capture's own write at
+			 * its end is what puts the merged value back.
+			 */
+			if (draftHeld) return;
+			const merged = adoptReturnedText(conversationId);
+			if (merged === null) return;
+			lastPushedRef.current = merged;
+			setInputValue(merged);
+			return;
+		}
+		/*
+		 * Everything ELSE the store wrote is mirrored verbatim - an emptied box above
+		 * all - and only when the revision says the store is the author of the change.
+		 * The mount's own read is not a change: the initialiser has already seeded the
+		 * box from this same row, and re-setting it would move the caret to the end of
+		 * a draft the user has just started editing.
+		 */
+		if (first || textRevision === undefined) return;
+		if (draftHeld) return;
+		const boxed = storeText ?? "";
+		if (boxed === inputValue) return;
+		lastPushedRef.current = boxed;
+		setInputValue(boxed);
+	}, [
+		textRevision,
+		storeText,
+		pendingReturn,
+		hydrated,
+		conversationId,
+		draftHeld,
+		inputValue,
+		adoptReturnedText,
+	]);
 
 	// Handle input change: always reset history navigation and update draft
 	const handleChange = useCallback(
@@ -506,9 +561,31 @@ export const useMessageInput = ({
 	// back to the box; an UNCONFIRMED one leaves its text with the claim that
 	// carries the retry, so nothing the user typed is lost either way.
 	const handleSubmit = useCallback(async () => {
-		if (!inputValue.trim() || !conversationId || submittingRef.current) return;
+		if (!inputValue.trim() || !conversationId) return;
+		/*
+		 * A SECOND PRESS IS REPORTED, NOT SWALLOWED.
+		 *
+		 * This guard used to `return` and say nothing, so a user who pressed Enter
+		 * again while their last message was still going out got no acknowledgement at
+		 * all - indistinguishable from a dead key, and the one place the composer's own
+		 * "still sending" sentence was supposed to appear (review round 1, U6: the line
+		 * never showed on a second press, because the press never reached the sentence).
+		 *
+		 * The press is therefore handed on like any other, and the PANE's send lock
+		 * answers it: that lock is the single gate on "a send is already out", it is
+		 * where the sentence lives, and its refusal returns `false` - which this
+		 * function reads as "the payload stays in the box", exactly as it does for every
+		 * other refusal. If the lock no longer holds the send (the microtask between the
+		 * pane's own `finally` and this one) the press is admitted as a normal send
+		 * instead, which is why this is a delegation rather than a second path.
+		 *
+		 * `submittingRef` still guards THIS hook's own re-entry, and the send-in-flight
+		 * flag still describes the real send: the second call does not take ownership of
+		 * either.
+		 */
+		const alreadySubmitting = submittingRef.current;
 		submittingRef.current = true;
-		setSendInFlight(true);
+		if (!alreadySubmitting) setSendInFlight(true);
 		/*
 		 * THE TEXT LEAVES THE BOX WHEN THE TRANSCRIPT RECEIVES IT, NOT BEFORE.
 		 *
@@ -649,14 +726,22 @@ export const useMessageInput = ({
 				return;
 			}
 		} finally {
-			submittingRef.current = false;
 			/*
-			 * The wait ends with the submit, whichever way it ended. Deliberately not
-			 * with the echo: between the echo and the settle the message IS on screen
-			 * and the send is still unconfirmed, which is the window the composer's
-			 * sentence is about.
+			 * Only the call that owns the send clears its state: a delegated second
+			 * press settles the moment the pane refuses it, and clearing here would take
+			 * the wait down while the first send is still going out - which is the fact
+			 * the sentence it just raised is about.
 			 */
-			setSendInFlight(false);
+			if (!alreadySubmitting) {
+				submittingRef.current = false;
+				/*
+				 * The wait ends with the submit, whichever way it ended. Deliberately not
+				 * with the echo: between the echo and the settle the message IS on screen
+				 * and the send is still unconfirmed, which is the window the composer's
+				 * sentence is about.
+				 */
+				setSendInFlight(false);
+			}
 		}
 
 		/*
