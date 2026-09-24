@@ -1812,30 +1812,6 @@ function SessionPanel({
 		setSendErrorCode(undefined);
 	}, [windowOpen, sendErrorCode]);
 	/*
-	 * The claim, and whether the user can currently see what it holds.
-	 *
-	 * `admissionAttempted` with a `submittedText` means the store will refuse
-	 * any send whose payload differs, and it survives clearing the textarea -
-	 * deliberately, because a keystroke is not evidence about a request that may
-	 * be executing on the owner. What it must not do is survive INVISIBLY: a
-	 * user who selected-all-deleted saw nothing retained, typed something else,
-	 * and was refused by a healthy backend with no link back to what they did.
-	 *
-	 * So the claim travels to the composer whenever it is held, error or no
-	 * error. Whether it needs SAYING is the composer's call, not this one's: the
-	 * answer depends on the live textarea value, which lives there. When the box
-	 * already holds the exact payload the message is on screen, an unchanged
-	 * retry is one keypress, and a notice would be noise.
-	 */
-	//
-	// `!draft.pending` is load-bearing, not defensive. `admissionAttempted` is set
-	// BEFORE the awaited request, so it is true for the whole in-flight window (up
-	// to the op's derived request deadline). Without this the notice and its abandon control
-	// were live over a send whose outcome was still unknown, and abandoning there
-	// deleted the row that the settling request then patched - reintroducing the
-	// invisible-claim dead end one layer down. A request that may be executing is
-	// not something to offer an escape from; the escapes appear once it settles.
-	/*
 	 * A MESSAGE THE PREVIOUS RELEASE HELD OUTSIDE THE COMPOSER COMES HOME.
 	 *
 	 * Run from the pane rather than from hydration, and once per row: the released
