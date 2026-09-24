@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|none>
+ *   --scene <states|new-chat|first-send|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|none>
  *                          which built-in scene to run (default: states)
  *   --gate-state <label>   (with --scene settings-gate) what this run's backend
  *                          state is called in the frames and the log, so two
@@ -7127,6 +7127,133 @@ async function sceneFirstSend(cdp) {
 	 * mock provider (a configured user, which is the state the claim is about).
 	 */
 	return [emptyFrame, sentFrame, settledFrame];
+}
+
+/**
+ * The DOCKED question card (§F1), on a real paused turn.
+ *
+ * WHAT PARKS THE TURN. The mock provider cannot ask a question with options, but
+ * `[bash:N]` makes it call the real `bash` tool, and under the default
+ * `tool_approval_mode: ask` the backend parks an APPROVAL gate on that call - a
+ * genuine `pending_gate` the owner is blocked on, which the pane docks the same
+ * way it docks an `ask`. The options, their hover and their keys are driven in
+ * the Storybook story (`Chat/Ask options`), because no backend here can hold an
+ * `ask` with options; this scene is the real-app half.
+ *
+ * WHAT IT ASSERTS. The card mounts above the composer (its bottom edge at or
+ * above the composer's top, within the dock's 8px gap), not inside the
+ * transcript's scroller; `Escape` - sent through `Input.dispatchKeyEvent`, so it
+ * reaches the app's own handlers - collapses it to the pill, returns focus to the
+ * composer and does NOT stop the turn (the gate is still pending); `Show` brings
+ * it back.
+ */
+async function sceneQuestionDock(cdp) {
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	const composerSelector = '[data-tour-tag="chat-input-textarea"]';
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+	await verb(cdp, "navigate", "/chat");
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${composerSelector}'))`,
+		30_000,
+	);
+	await clickAt(cdp, `${composerSelector} textarea`);
+	await cdp.send("Input.insertText", { text: "[bash:45] run the check" });
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	const docked = await waitForCondition(
+		cdp,
+		`(() => { const d = document.querySelector('[data-lo-question-dock="expanded"]'); return d ? d.textContent.slice(0, 160) : null; })()`,
+		60_000,
+	);
+	check(
+		"a real paused turn docks its question card",
+		docked.ok,
+		`after ${docked.waitedMs}ms: ${JSON.stringify(docked.last)}`,
+	);
+	const size = `${WINDOW_WIDTH}x${WINDOW_HEIGHT}`;
+	// Frame labels are lowercase-only (the capture verb refuses anything else).
+	const theme = (THEME ?? "localOperatorDark")
+		.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
+		.replace(/^-/, "");
+	const dockedFrame = await captureSettled(
+		cdp,
+		`question-dock-${size}-${theme}-docked`,
+	);
+	const boxes = await cdp.evaluate(`(() => {
+		const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height), bottom: Math.round(b.bottom) }; };
+		const card = document.querySelector('[data-lo-question-dock] section');
+		return {
+			card: r(card),
+			composer: r(document.querySelector('${composerSelector}')),
+			inScroller: Boolean(card && card.closest('[data-lo-canonical-transcript]')),
+		};
+	})()`);
+	note("docked boxes", JSON.stringify(boxes));
+	check(
+		"the card sits directly above the composer, outside the transcript",
+		boxes.card &&
+			boxes.composer &&
+			!boxes.inScroller &&
+			boxes.card.bottom <= boxes.composer.y &&
+			boxes.composer.y - boxes.card.bottom <= 16 &&
+			boxes.card.x === boxes.composer.x &&
+			boxes.card.w === boxes.composer.w,
+		JSON.stringify(boxes),
+	);
+
+	/*
+	 * Escape, from INSIDE the card: focus is put on the card's first focusable by
+	 * a trusted pointer press on its question text, then Escape goes through CDP's
+	 * key pipeline.
+	 */
+	await clickAt(cdp, '[data-lo-question-dock="expanded"] section');
+	await pressChord(cdp, { key: "Escape", code: "Escape", virtualKeyCode: 27 });
+	const collapsed = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-lo-question-dock="collapsed"]'))`,
+		5_000,
+	);
+	await wait(400);
+	const afterEsc = await cdp.evaluate(`(() => ({
+		focus: document.activeElement ? (document.activeElement.getAttribute('aria-label') || document.activeElement.tagName) : null,
+		stop: Boolean(document.querySelector('button[aria-keyshortcuts="Escape"]')),
+	}))()`);
+	check(
+		"Escape collapses the card to the pill and hands focus to the composer",
+		collapsed.ok && afterEsc.focus === "Message",
+		JSON.stringify({ collapsed: collapsed.ok, ...afterEsc }),
+	);
+	const pillFrame = await captureSettled(
+		cdp,
+		`question-dock-${size}-${theme}-pill`,
+	);
+	const stillPending = await cdp.evaluate(
+		`Boolean(document.querySelector('[data-lo-question-dock]'))`,
+	);
+	check(
+		"Escape did not stop the turn: the question is still pending",
+		stillPending === true,
+		`dock present after Escape: ${stillPending}`,
+	);
+	await clickAt(cdp, `button[aria-label="Show the agent's question"]`);
+	const shown = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-lo-question-dock="expanded"]'))`,
+		5_000,
+	);
+	check("Show brings the card back", shown.ok, JSON.stringify(shown));
+	const reshownFrame = await captureSettled(
+		cdp,
+		`question-dock-${size}-${theme}-reshown`,
+	);
+	return [dockedFrame, pillFrame, reshownFrame];
 }
 
 /**
@@ -19352,6 +19479,11 @@ async function main() {
 			"--scene pins-scroll needs --backend: a panel with no catalogue has no row to pin",
 		);
 	}
+	if (SCENE === "question-dock" && BACKEND === null) {
+		throw new Error(
+			"--scene question-dock needs --backend: the card docks on a gate a live owner parks, and a run with none has no turn to pause",
+		);
+	}
 	if (SCENE === "first-send" && BACKEND === null) {
 		throw new Error(
 			"--scene first-send needs --backend: with no backend the chat route draws its refusal surface and no composer mounts, so there is nothing to send from",
@@ -19511,6 +19643,7 @@ async function main() {
 			 * widths it is written about.
 			 */ else if (SCENE === "floors") await sceneFloors(cdp);
 			else if (SCENE === "first-send") await sceneFirstSend(cdp);
+			else if (SCENE === "question-dock") await sceneQuestionDock(cdp);
 			else if (SCENE === "radient-issue") await sceneRadientIssue(cdp);
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);
 			else if (SCENE === "authoring-refresh") await sceneAuthoringRefresh(cdp);
