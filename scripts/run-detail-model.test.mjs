@@ -982,8 +982,8 @@ test("a batch states a count, and the count is the label", () => {
 test("a running child with nothing to report says the relay's own default", () => {
 	// `thinking` is the wire's word for a model call in flight with nothing
 	// streamed (`ACTIVITY_THINKING`), and the relay's own arms mint it when a
-	// batch empties (`subagent.py:1295`) - `batch_activity` has no word of its own
-	// for that and names this constant as the caller's answer (`intent.py:337-340`).
+	// batch empties (`subagent.py:1334`) - `batch_activity` has no word of its own
+	// for that and names this constant as the caller's answer (`intent.py:335-336`).
 	const row = childRow({});
 	assert.equal(row.status, "running");
 	assert.equal(row.activity, null);
@@ -1006,7 +1006,7 @@ test("prose actually streaming is the responding phase", () => {
 test("a label change inside a batch keeps the phase the line is in", () => {
 	// The phase is keyed to the PHASE and a batch sheds its calls one at a time.
 	// Every label below is a different phrase, and every one of them is emitted
-	// with a tool call still running (`subagent.py:1288-1345`, the only arms that
+	// with a tool call still running (`subagent.py:1325-1334`, the only arms that
 	// emit the named constants being the ones that do NOT call
 	// `tool_activity`/`batch_activity`) - so none of them may move the phase.
 	// That classification, not the label, is what makes this safe.
@@ -1051,7 +1051,7 @@ test("the child's line carries no clock, because the wire has no anchor", () => 
 	 * component's mount would report the age of the READER - the shipped
 	 * `reader-live` frame printed `0s` beside a header reading `1m36s` for the
 	 * same child (review R1 / design D1). The TUI resolved the identical shape the
-	 * same way and calls the alternative the defect (`tui/app.py:40746-40760`).
+	 * same way and calls the alternative the defect (`tui/app.py:41670-41678`).
 	 *
 	 * Asserted over EVERY running shape rather than one, because the failure this
 	 * guards against is a single arm regaining a number.
@@ -1115,49 +1115,16 @@ test("only a running child gets a line", () => {
 	}
 });
 
-test("a running child with an EMPTY page still paints no line, and that is pinned", () => {
-	/*
-	 * The gap this pins rather than fixes (review round 1, R3 / QA Q-1): a
-	 * RUNNING child whose page is still empty - `pending`, `gone`, `loading`, or
-	 * `ready` with no rows - is answered by a `QuietLine`, so `CanonicalTranscript`
-	 * is never mounted and the foot line never reaches the DOM, while the row is
-	 * running and the relay has already sent its progress string. The TUI reaches
-	 * a tail notice before its own empty-page arms (`subagent_view.py:2849-2857`).
-	 *
-	 * Deferred rather than fixed here because it is a COMPOSITION decision - a
-	 * second line above an absence sentence whose copy `§ 10.1` owns - and not a
-	 * detail of this row; the reason is recorded in `docs/run-sidebar.md` `§ 5.8`
-	 * and on the PR.
-	 *
-	 * A source pin rather than a rendered one: the branch ORDER is what decides
-	 * this, and the only DOM harness for the pane lives in
-	 * `run-panel-navigation.test.mjs`, whose docstring is scoped to `§ 5.5`.
-	 * WHEN THE FOLLOW-UP LANDS, THIS ASSERTION IS THE THING TO CHANGE - which is
-	 * the whole point of writing it down.
-	 */
-	const reader = readFileSync(
-		join(
-			ROOT,
-			"src/renderer/src/features/chat/components/run-details/run-child-reader.tsx",
-		),
-		"utf8",
-	);
-	// Each absence arm still owes its own copy (`§ 10.1`), which is what the foot
-	// line would be composed ABOVE rather than replacing.
-	for (const copy of [
-		"This subagent's row carries no session id",
-		"This subagent has no transcript on disk yet.",
-		"This subagent's session directory is no longer on disk.",
-		"This subagent has no conversation on record yet.",
-	]) {
-		assert.ok(reader.includes(copy), `the absence arm for "${copy}" is gone`);
-	}
-	// Every absence arm answers with a `QuietLine`...
-	assert.equal((reader.match(/<QuietLine>/g) ?? []).length, 5);
-	// ...and the working line reaches exactly one element, the transcript that
-	// none of those arms mounts.
-	assert.equal((reader.match(/workingLine=\{workingLine\}/g) ?? []).length, 1);
-});
+/*
+ * The reader's absence arms are pinned by a RENDERED test now:
+ * `scripts/child-reader-foot-react.test.mjs` renders the reader over `pending`,
+ * `gone` and empty-`ready` pages and asserts that no working line is painted,
+ * with a control that the same row DOES paint one over a page carrying rows.
+ * A source pin stood here and round 2's R2-4 mutated the component in the
+ * follow-up's exact shape without it failing - none of the strings it counted
+ * changes when a line is added - so the pin moved to the DOM and the counts it
+ * used to make went with it.
+ */
 
 /* ------------------------------------------------------------------ */
 /* The to-do row budget                                                */

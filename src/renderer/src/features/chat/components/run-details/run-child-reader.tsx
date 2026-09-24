@@ -569,8 +569,9 @@ export const RunChildReader = ({
 			 * so never receive `workingLine`). The activity string is on the row
 			 * already; what is missing is a composition decision about a line ABOVE
 			 * an absence sentence whose copy `§ 10.1` owns. `docs/run-sidebar.md`
-			 * `§ 5.8` records it, and a test pins the current behaviour so it cannot
-			 * change unnoticed.
+			 * `§ 5.8` records it, and `scripts/child-reader-foot-react.test.mjs` renders
+			 * these arms and pins that no line is painted, so the follow-up that adds one
+			 * cannot land unnoticed.
 			 */}
 			<div
 				className={cn("flex min-h-0 flex-1 flex-col overflow-hidden bg-canvas")}

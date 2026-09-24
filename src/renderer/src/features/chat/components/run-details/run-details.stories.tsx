@@ -1426,16 +1426,18 @@ export const ReaderLive: Story = {
 };
 
 /**
- * The foot at the pane's 320px floor, carrying the LONGEST label a live child's
- * line can be handed (design round 1, D3).
+ * The foot at the pane's 320px floor, carrying the longest label a live child's
+ * line can be MINTED with (design round 1, D3).
  *
  * `running mcp__linear_create_issue` is the shape `tool_activity` falls back to
  * when the model stated no intent — the tool name as CALLED, which the relay has
  * no display layer to shorten (`intent.py:310-327`) and which `§ 5.8` records as
- * the one divergence from the parent's own foot. It is also the widest value this
- * row can receive, and at the floor the pane leaves the label roughly 41
- * characters, so this is the frame in which the label has to truncate INSIDE the
- * row rather than wrapping or pushing the clock's reserved slot off the rail.
+ * the one divergence from the parent's own foot. At the floor the label box
+ * leaves ≈179 px ≈ 24 characters, so this is the frame in which the label has to
+ * truncate INSIDE the row rather than wrapping or pushing the clock's reserved
+ * slot off the rail. The row's other arm — a model-authored INTENT — is unbounded
+ * and can exceed the default pane's ≈38-40 characters, and no frame carries that
+ * case; it is a known gap rather than a claim (round 2, D2-1).
  *
  * Read with `reader-live`: the same child, the same page, one arm of the relay's
  * vocabulary apart — a stated intent there, the named-tool fallback here.

@@ -378,11 +378,12 @@ export type SubagentRow = {
  * row for the batch arm to count. Neither is the child's real activity, and that
  * is on the wire: this row's own `activity` is `latest_details.progress`, fed by
  * the child relay's `report_progress` into `job.latest_details = {"progress":
- * details}` (`harness/jobs.py:1291-1299`), and the reader already receives the
+ * details}` (`harness/jobs.py:1341`), and the reader already receives the
  * row.
  *
  * THE VOCABULARY IS THE PARENT WORKING LINE'S OWN, by the relay's own design
- * (`harness/subagent.py`'s `_make_relay` docstring, `:1207-1246`): the model's
+ * (`harness/subagent.py`'s `_make_relay`, defined `:1244`, docstring `:1254-1284`):
+ * the model's
  * stated intent while a tool runs, `running N tools` for a batch, `responding`
  * while prose is actually streaming, `thinking` for a model call in flight with
  * nothing streamed yet — "a reader watching both surfaces at once should not
@@ -391,13 +392,17 @@ export type SubagentRow = {
  * `tool_activity` and `batch_activity` (`:298-340`), which is also the set the
  * parent's own derivation reconstructs from its live records.
  *
- * THE PHASE IS A CLASSIFICATION, NOT A GUESS, and what it buys is a stable
- * phase across a moving label. `working-line.tsx`'s contract (points 2 and 3)
- * restarts the clock when the PHASE changes and never when the label alone does,
- * because a batch sheds its calls one by one and re-derives its label each time.
+ * THE PHASE IS A CLASSIFICATION, NOT A GUESS, and what it buys HERE is a stable
+ * phase across a moving label. `working-line.tsx`'s contract (points 2 and 3) is
+ * phase-keyed — it restarts the clock when the PHASE changes and never when the
+ * label alone does — and that contract is the PARENT row's: this row withholds
+ * its clock (below), so what the classification buys here is the phase itself,
+ * the identity a viewer, a test and a later anchor read. It is what keeps a
+ * batch that sheds its calls one by one from re-classifying the line as its
+ * label narrows to a survivor.
  * The relay calls `tool_activity`/`batch_activity` from exactly three places —
  * the `ToolExecutionStartEvent` and `ToolExecutionEndEvent` arms and the
- * empty-batch fallback (`subagent.py:1288-1345`) — and the arms that emit the two
+ * empty-batch fallback (`subagent.py:1325-1334`) — and the arms that emit the two
  * named constants are the ones that do NOT call them. So every progress string
  * that is neither exactly `thinking` nor exactly `responding` was emitted while
  * at least one tool call was running, and the mapping is closed over the
@@ -430,8 +435,8 @@ export type SubagentRow = {
  * any of whose cards was adopted mid-execution: "the phase changes when the
  * viewer arrives, not when the tool started, so the number would count from the
  * switch while naming a tool that may be half an hour old"
- * (`tui/app.py:40746-40760`), and "a clock started from the wrong zero is worse
- * than no clock" (`tui/widgets/transcript.py:3275-3295`) — which is also where
+ * (`tui/app.py:41670-41678`), and "a clock started from the wrong zero is worse
+ * than no clock" (`tui/widgets/transcript.py:3361-3380`) — which is also where
  * every child row inside `subagent_view` is named in the population that has no
  * timestamp "at any price", so the number is "withheld rather than invented".
  * Recording an anchor instead is not available here: there is nothing on the wire
@@ -448,10 +453,10 @@ export type SubagentRow = {
  * WHY `activity || "thinking"`. `thinking` is the relay's own word for a child
  * with nothing to report yet, and the relay is where it is minted: the
  * `ToolExecutionEndEvent` arm answers `ACTIVITY_THINKING` the moment the batch
- * empties (`subagent.py:1295`), and the two message arms do the same for a model
- * call with nothing streamed (`:1304`, `:1325`) — because `batch_activity` has
+ * empties (`subagent.py:1334`), and the two message arms do the same for a model
+ * call with nothing streamed (`:1343`, `:1364`) — because `batch_activity` has
  * no word of its own for "nothing is running" and says so, naming this very
- * constant as the caller's answer (`intent.py:337-340`). So this is the wire's
+ * constant as the caller's answer (`intent.py:335-336`). So this is the wire's
  * default, not a fallback the renderer invented. The classification below reads the RESOLVED label rather
  * than the raw field, which is the same statement made once: an absent field and
  * the word `thinking` are one state, and a phase keyed to the raw field would
