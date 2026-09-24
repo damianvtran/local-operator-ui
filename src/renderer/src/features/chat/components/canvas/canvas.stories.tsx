@@ -2454,12 +2454,25 @@ export const GoalHistoryEmptyAndCapped: Story = {
  * canvas story shoots.
  */
 export const CanvasWithoutTheGoalLifecycle: Story = {
+	/*
+	 * `documents={[]}` is `NothingOpen`'s frame, and it is load-bearing (QA round 2,
+	 * Q-1): without it the default `DOCUMENTS` open as tabs and the editor mounts, whose
+	 * selection controls read `config.get` — an op this file's fetch stub answers with
+	 * an empty envelope, so the story crashed on `values.hosting` and the gate had no
+	 * frame. The subject here is the switcher's segment count, not an open document.
+	 */
 	render: () => (
 		<div className="flex flex-col gap-4">
-			<CanvasFrame view="documents" activeId={null} goalCapable={false} />
 			<CanvasFrame
 				view="documents"
 				activeId={null}
+				documents={[]}
+				goalCapable={false}
+			/>
+			<CanvasFrame
+				view="documents"
+				activeId={null}
+				documents={[]}
 				width={400}
 				goalCapable={false}
 			/>
