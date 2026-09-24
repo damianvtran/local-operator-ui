@@ -199,8 +199,21 @@ async function mount(options) {
 const boxText = () => mounted.container.querySelector("textarea").value;
 const identity = "22222222-2222-2222-2222-222222222222";
 
-/** A clean store for each case: the rows AND the bytes they were persisted as. */
+/**
+ * A clean store for each case: the rows AND the bytes they were persisted as.
+ *
+ * The storage is RE-PINNED here rather than only at setup, because another suite in
+ * the same worker process assigns `globalThis.localStorage` at its own module scope
+ * - and a case whose outcome depends on which file ran first is not a regression
+ * test (measured: the `Clear` case passed against the previous head when it shared
+ * a worker with the store suite, and failed when it did not).
+ */
 function resetStore() {
+	Object.defineProperty(globalThis, "localStorage", {
+		configurable: true,
+		writable: true,
+		value: localStorageStub,
+	});
 	storage.clear();
 	useConversationInputStore.setState({ inputByConversation: {} });
 }

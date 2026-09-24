@@ -2500,10 +2500,15 @@ export const STORIES = [
 	["chat-message-input--failed-merged", 1024, 480],
 	["chat-message-input--delivered-late", 1024, 420],
 	["chat-message-input--send-lock", 1024, 420],
-	/* And the copy rule itself, on the same measure: a story whose play reads the
-	   table, so a frame set cannot be captured on a tree where the composer's
-	   notice has stopped coming from `sendFailureCopy`. */
-	["chat-message-input--notice-copy-is-the-app-copy", 1024, 300],
+	/*
+	 * AND THE COPY RULE ITSELF IS A TEST, NOT A FRAME (review round 1, D5). This
+	 * row photographed an IDLE composer with no notice at all - the story's render
+	 * passes no `sendError`, and its `play` is what reads the table - so twelve
+	 * frames existed whose subject was the empty state the operator's report is
+	 * about, which reads as a failed capture. The story keeps its `play` (it is the
+	 * assertion that the composer's copy comes from `sendFailureCopy`) and stops
+	 * being swept.
+	 */
 	/* The interrupt's own states, on the same 1024 measure as the rows above.
 	   The third is the only one that SPEAKS: a stopped turn with nothing left
 	   under it renders nothing at all, so the control's presence and its absence

@@ -16,7 +16,10 @@ import {
 import type { Meta, StoryObj } from "@storybook/react";
 import { screen, userEvent, within } from "@storybook/test";
 import { type ReactNode, useEffect, useState } from "react";
-import { DESKTOP_DEADLINE_EXCEEDED_CODE } from "../../../../../../src/shared/desktop-contract";
+import {
+	DESKTOP_DEADLINE_EXCEEDED_CODE,
+	DESKTOP_REQUEST_TOO_LARGE_DETAIL,
+} from "../../../../../../src/shared/desktop-contract";
 import type { CanonicalFrontendState } from "../../../../../../src/shared/desktop-session-contract";
 import { interruptNotice, interruptUnavailableNotice } from "../interrupt-turn";
 import type { Message } from "../types/message";
@@ -2367,14 +2370,21 @@ export const FailedNotSent: Story = {
 	},
 };
 
-/** The too-large arm, at its own sentence: Clear only, because a press repeats it. */
+/**
+ * The too-large arm, at the app's OWN sentence: Clear only, because a press
+ * repeats it.
+ *
+ * THE SENTENCE COMES FROM THE CODE THAT WRITES IT (design round 1, D3). This
+ * story used to hand the 413 a sentence of its own invention - a shorter one with
+ * unformatted numbers - so its frames showed copy the app cannot produce. The
+ * transport's message-tier backstop is what a refused body actually reads, and it
+ * is imported rather than retyped for the same reason the rest of this set takes
+ * its notice from `sendFailureCopy`.
+ */
 export const FailedTooLarge: Story = {
 	render: () => {
 		const copy = copyFor(
-			new DesktopControlError(
-				413,
-				"This message is 240000 characters, more than the 200000 the request can carry. Split it across two messages.",
-			),
+			new DesktopControlError(413, DESKTOP_REQUEST_TOO_LARGE_DETAIL),
 		);
 		return (
 			<PendingSendHarness
@@ -2429,6 +2439,13 @@ export const DeliveredLate: Story = {
 	render: () => (
 		<PendingSendHarness
 			row="none"
+			/*
+			 * NO CHIP (design round 1, D4). This state is the user's OWN edited draft
+			 * over a message that already went - nothing of that message is in the box,
+			 * and a chip staged here reads as "the file is still waiting to be sent",
+			 * which is the one thing this frame must not suggest.
+			 */
+			stageChip={false}
 			returned={{ text: "a line I typed instead", lateDelivered: true }}
 			sendError={{ message: SEND_FAILURE_COPY.lateDelivery, muted: true }}
 			label="the earlier message turned out to have been delivered: one muted line, the user's own edit untouched, and no control to act on"

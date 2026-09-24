@@ -70,11 +70,71 @@ const VIEWPORT = { width: 1440, height: 817 };
  */
 const ONLY = flag("only");
 
+/**
+ * The states, at every width.
+ *
+ * WHAT WIDENED IN REVIEW ROUND 1, AND WHY. The rig was written for one arm - the
+ * unknown-outcome sentence over a returned draft - and the round's findings were
+ * about the OTHER arms: the design round found the two "too large" frames showing
+ * a sentence the app never produces (D3), the delivered frame keeping a chip that
+ * suggests the file went (D4), and the copy sweep photographing an idle composer
+ * with no notice at all (D5). The set now renders every arm the copy table
+ * produces, from the same shipped composer, at the same three widths - so "each
+ * arm is one sentence and at most the two controls the table allows" is a claim
+ * this rig reads off the DOM for every row of the table rather than for one.
+ */
 const CASES = [
-	{ column: 892, states: ["idle", "notice", "muted"] },
-	{ column: 472, states: ["idle", "notice", "muted"] },
-	{ column: 172, states: ["idle", "notice", "muted"] },
+	{
+		column: 892,
+		states: [
+			"idle",
+			"notice",
+			"unreachable",
+			"too-large",
+			"too-long",
+			"gone",
+			"muted",
+			"edited-idle",
+			"delivered",
+		],
+	},
+	{
+		column: 472,
+		states: [
+			"idle",
+			"notice",
+			"unreachable",
+			"too-large",
+			"too-long",
+			"gone",
+			"muted",
+			"edited-idle",
+			"delivered",
+		],
+	},
+	{
+		column: 172,
+		states: [
+			"idle",
+			"notice",
+			"unreachable",
+			"too-large",
+			"too-long",
+			"gone",
+			"muted",
+			"edited-idle",
+			"delivered",
+		],
+	},
 ];
+
+/**
+ * The two states that render NO notice: the baselines the others are compared
+ * against. `edited-idle` is the baseline for the late-confirmation arm, because it
+ * holds a different draft (the user's edit) - so comparing it against `idle` would
+ * measure the draft rather than the notice.
+ */
+const BASELINE_STATES = new Set(["idle", "edited-idle"]);
 
 /*
  * WHICH STATE EACH NOTICE IS COMPARED AGAINST, and why a comparison is possible
@@ -84,7 +144,42 @@ const CASES = [
  * notice to be a statement about the notice rather than about the draft. `idle`
  * is that baseline, and it stages the same returned text and the same chip.
  */
-const BORDER_BASELINE = { notice: "idle", muted: "idle" };
+const BORDER_BASELINE = {
+	notice: "idle",
+	unreachable: "idle",
+	"too-large": "idle",
+	"too-long": "idle",
+	gone: "idle",
+	muted: "idle",
+	delivered: "edited-idle",
+};
+
+/**
+ * WHAT EACH ARM MUST OFFER, and it is the table's own column rather than a
+ * preference: `retry` is true only where pressing it can work (the unknown
+ * outcomes, whose replay the owner de-duplicates) and false everywhere the
+ * message cannot leave as it stands or the conversation is gone.
+ */
+const ARM_CONTROLS = {
+	notice: { register: "danger", controls: ["Retry", "Clear"] },
+	unreachable: { register: "danger", controls: ["Retry", "Clear"] },
+	"too-large": { register: "danger", controls: ["Clear"] },
+	"too-long": { register: "danger", controls: ["Clear"] },
+	gone: { register: "danger", controls: ["Clear"] },
+	muted: { register: "muted", controls: [] },
+	delivered: { register: "muted", controls: [] },
+};
+
+/** A phrase each arm's sentence must carry, so a frame is the copy it claims. */
+const ARM_PHRASE = {
+	notice: "couldn't confirm",
+	unreachable: "couldn't reach local operator",
+	"too-large": "too large",
+	"too-long": "characters",
+	gone: "no longer exists",
+	muted: "still sending",
+	delivered: "delivered",
+};
 
 const THEME = flag("theme") ?? "localOperatorDark";
 
@@ -179,6 +274,20 @@ const PROBE = `(() => {
 		noticeParagraphs: paragraphs,
 		noticeControls: notice
 			? [...notice.querySelectorAll("button")].map((b) => b.textContent.trim())
+			: [],
+		/*
+		 * The weight each control is drawn at. The design round's D2 is a claim
+		 * about the two controls being hard to tell apart (the two ink roles they
+		 * used measure 1.05-1.11 apart in five of the twelve themes), and the fix is
+		 * a WEIGHT difference rather than a second colour rule - so the measurement
+		 * is the computed font weight, which is the same in every theme by
+		 * construction and is what a reviewer can check here.
+		 */
+		noticeControlWeights: notice
+			? [...notice.querySelectorAll("button")].map((b) => ({
+					label: b.textContent.trim(),
+					weight: getComputedStyle(b).fontWeight,
+				}))
 			: [],
 		noticeRegister: notice
 			? notice.querySelector(".text-danger")
@@ -342,18 +451,63 @@ const assertions = (measurement, idle, column) => {
 		fail(
 			`the notice renders ${measurement.noticeParagraphs} sentence blocks; the table gives one, and a second block is the paragraph the operator reported`,
 		);
-	if (measurement.state === "muted" && measurement.noticeControls.length > 0)
-		fail(
-			`the muted notice offers ${measurement.noticeControls.length} control(s) (${measurement.noticeControls.join(", ")}); both muted arms are statements of fact with no action to take`,
+	/*
+	 * THE CONTROLS, arm by arm, from the table's own column (`ARM_CONTROLS`). This
+	 * replaced "at most two" and "none if muted" with the set each arm must offer:
+	 * the round's B3 was that Retry was missing on the arms it exists for and
+	 * present on the one where it duplicates, so an assertion that only counts
+	 * controls cannot fail the way that defect did.
+	 */
+	const expected = ARM_CONTROLS[measurement.state];
+	if (expected) {
+		const actual = measurement.noticeControls;
+		if (actual.join("+") !== expected.controls.join("+"))
+			fail(
+				`the notice offers ${JSON.stringify(actual)} where this arm's row of the table gives ${JSON.stringify(expected.controls)}`,
+			);
+		if (measurement.noticeRegister !== expected.register)
+			fail(
+				`the notice is drawn as ${measurement.noticeRegister} where this arm is ${expected.register}`,
+			);
+		/*
+		 * And the sentence is the arm's own: a phrase from the copy table, on the
+		 * rendered text. The exact strings are pinned by the unit suite
+		 * (`composer-send-failure.test.mjs`); what this adds is that the frame
+		 * shows the sentence the arm is named for.
+		 */
+		const phrase = ARM_PHRASE[measurement.state];
+		if (phrase && !(measurement.noticeText ?? "").toLowerCase().includes(phrase))
+			fail(
+				`the notice's own words do not carry "${phrase}": ${JSON.stringify(measurement.noticeText)}`,
+			);
+		/*
+		 * D2: where an arm offers both controls, Retry is the weightier of the two -
+		 * a weight difference and not a second ink rule, because the two ink roles
+		 * the controls used are 1.05-1.11 apart in five of the twelve themes.
+		 */
+		const weights = Object.fromEntries(
+			measurement.noticeControlWeights.map((c) => [c.label, Number(c.weight)]),
 		);
-	if (measurement.state !== "muted" && measurement.noticeControls.length > 2)
-		fail(
-			`the notice offers ${measurement.noticeControls.length} controls (${measurement.noticeControls.join(", ")}); the table allows at most Retry and Clear`,
-		);
-	if (measurement.state === "muted" && measurement.noticeRegister !== "muted")
-		fail(
-			`the muted notice is drawn as ${measurement.noticeRegister}, so a statement of fact reads as something to repair`,
-		);
+		if (
+			expected.controls.length === 2 &&
+			!(weights.Retry > weights.Clear)
+		)
+			fail(
+				`Retry (${weights.Retry}) is not weightier than Clear (${weights.Clear}), so the primary of the two is not distinguishable in a theme whose two ink roles are close`,
+			);
+	}
+	/*
+	 * And no jargon, on ANY arm: the words the operator's screen carried are the
+	 * app's own vocabulary for machinery the user does not have (the `held` /
+	 * `admission` / `owner` family), and the copy table's test asserts them absent
+	 * from the strings while this asserts them absent from the PIXELS.
+	 */
+	for (const jargon of ["held", "admission", "owner", "request id"]) {
+		if ((measurement.noticeText ?? "").toLowerCase().includes(jargon))
+			fail(
+				`the notice says "${jargon}", which is the app's word for its own machinery: ${JSON.stringify(measurement.noticeText)}`,
+			);
+	}
 	if (measurement.state === "notice" && measurement.noticeRegister !== "danger")
 		fail(
 			`the failure notice is drawn as ${measurement.noticeRegister}, so a message the app could not confirm is the least visible line on the screen`,
@@ -437,7 +591,7 @@ const main = async () => {
 					expression: `(() => {
 						if (document.fonts.status !== "loaded") return false;
 						if (!document.querySelector("textarea")) return false;
-						if (${JSON.stringify(state)} !== "idle" && !document.querySelector('[role="alert"]')) return false;
+						if (!${JSON.stringify(["idle", "edited-idle"])}.includes(${JSON.stringify(state)}) && !document.querySelector('[role="alert"]')) return false;
 						const column = document.querySelector("[data-lo-geometry-column]");
 						return !!column && column.getBoundingClientRect().width > 0;
 					})()`,
@@ -471,11 +625,33 @@ const main = async () => {
 					`${column}px/${state}: never became measurable — ${JSON.stringify(diagnostic.value)}${cdp.log.length > 0 ? `\npage log:\n  ${cdp.log.slice(-6).join("\n  ")}` : ""}`,
 				);
 			}
-			await cdp.send("Runtime.evaluate", {
-				awaitPromise: true,
-				expression:
-					"new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))",
-			});
+			/*
+			 * SETTLED MEANS A STABLE BOX, not two animation frames.
+			 *
+			 * The draft's line COUNT decides the textarea's height, and the box is
+			 * bottom-anchored, so a wrap that changes after the first paint moves the
+			 * very line this rig measures. Measured once: the late-confirmation frame
+			 * at 172px differed from its own baseline by one wrapped line (29px) on one
+			 * run and not the next, which is a flake in the instrument rather than a
+			 * finding about the composer. The gate below reads the height until two
+			 * consecutive readings agree, so what is measured is a laid-out page.
+			 */
+			let settled = null;
+			for (let i = 0; i < 20; i++) {
+				await cdp.send("Runtime.evaluate", {
+					awaitPromise: true,
+					expression:
+						"new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))",
+				});
+				const { result: frame } = await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression:
+						'(() => { const t = document.querySelector("textarea"); return t ? Math.round(t.getBoundingClientRect().height * 10) / 10 : null; })()',
+				});
+				if (frame.value !== null && frame.value === settled) break;
+				settled = frame.value;
+				await sleep(200);
+			}
 			const { result } = await cdp.send("Runtime.evaluate", {
 				returnByValue: true,
 				expression: PROBE,
@@ -498,7 +674,7 @@ const main = async () => {
 		 * composer's own border is compared against, and nothing else. Its
 		 * numbers are still printed, because the border is a comparison.
 		 */
-		if (measurement.state === "idle") continue;
+		if (BASELINE_STATES.has(measurement.state)) continue;
 		const baseline = BORDER_BASELINE[measurement.state]
 			? measurements.find(
 					(m) =>
@@ -530,10 +706,25 @@ const main = async () => {
 				(candidate) =>
 					candidate.column === m.column && candidate.state === "idle",
 			);
+			/*
+			 * Against the ARM'S OWN baseline, not always `idle`: the late-confirmation
+			 * frame holds a different draft, so a delta against `idle` reports the
+			 * DRAFT's own line count as though the notice had moved the box (measured:
+			 * a correctly-behaving frame printed 29). The assertions always compared
+			 * the right pair; this is the printed column agreeing with them.
+			 */
+			const baselineState =
+				BORDER_BASELINE[m.state] ?? (BASELINE_STATES.has(m.state) ? null : "idle");
+			const baseline = baselineState
+				? measurements.find(
+						(candidate) =>
+							candidate.column === m.column && candidate.state === baselineState,
+					)
+				: null;
 			const delta =
-				idle && m.textarea && idle.textarea
-					? Math.round((m.textarea.top - idle.textarea.top) * 10) / 10
-					: null;
+				baseline?.textarea && m.textarea
+					? Math.round((m.textarea.top - baseline.textarea.top) * 10) / 10
+					: 0;
 			console.log(
 				[
 					String(m.column).padStart(6),
@@ -543,9 +734,18 @@ const main = async () => {
 						: "-"
 					).padEnd(23),
 					String(m.noticeParagraphs).padEnd(10),
-					(m.noticeControls.length ? m.noticeControls.join("+") : "-").padEnd(
-						17,
-					),
+					(m.noticeControls.length
+						? m.noticeControls
+								.map(
+									(label) =>
+										`${label}@${
+											m.noticeControlWeights.find((c) => c.label === label)
+												?.weight ?? "?"
+										}`,
+								)
+								.join("+")
+						: "-"
+					).padEnd(24),
 					String(m.noticeRegister).padEnd(9),
 					String(m.chips).padEnd(6),
 					String(m.boxTop).padEnd(8),
