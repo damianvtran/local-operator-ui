@@ -27,6 +27,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
 	DESKTOP_DEADLINE_EXCEEDED_CODE,
+	DESKTOP_LOST_SIGHT_CODE,
 	DESKTOP_REFUSAL_CODE,
 	DESKTOP_REFUSAL_SENTENCE,
 	type DesktopModelSelection,
@@ -920,6 +921,20 @@ export function sendFailureCopy(
 			retry: !retryWillFail(code),
 			code,
 		};
+	/*
+	 * THE DAEMON'S OWN HOP FAILURE IS AN UNKNOWN OUTCOME, AND THE TABLE SAYS SO
+	 * (review round 1, M8/U4/Q-3). `runtime_unreachable` is the daemon reporting
+	 * that it could not establish whether the request reached the owner - the
+	 * contract's own words for it, and why it is not a refusal - which is the
+	 * unknown class exactly. Relaying its body instead put the machinery on screen:
+	 * "Session owner is unavailable. Reconnect and reconcile before retrying." is
+	 * two sentences, names the owner and a reconcile the user cannot run, and is the
+	 * kind of sentence the table exists to replace. The press is offered because a
+	 * same-id resend is safe (`retryWillFail` is false for it), which is what the
+	 * sentence's second clause promises.
+	 */
+	if (code === DESKTOP_LOST_SIGHT_CODE.runtimeUnreachable)
+		return { message: SEND_FAILURE_COPY.unconfirmed, retry: true, code };
 	/*
 	 * A CODE WITH NO SENTENCE OF THIS APP'S OWN: the backend named its own reason
 	 * (`store_busy` - "Read state is busy right now. It will catch up on its own."),

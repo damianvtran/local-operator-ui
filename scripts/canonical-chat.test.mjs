@@ -3445,16 +3445,24 @@ test("a failure that establishes nothing about admission is still unknowable - a
 		// And the copy says what the app knows, rather than the transport's prose about
 		// its own patience or a claim that the message was not sent.
 		/*
-		 * And the copy: a failure that CARRIES a code keeps the backend's own sentence
-		 * (the hop failure explains itself, and nothing this app writes is closer to the
-		 * fact), while a failure with no code at all - the receipt conflict's shape - gets
-		 * this app's own, because there is nothing to quote.
+		 * And the copy, which is the TABLE's for both arms now (review round 1,
+		 * M8/U4/Q-3). This case used to require the backend's own sentence whenever the
+		 * failure carried a code - "the session's owner could not be reached" - and for
+		 * the hop failure that meant the composer relaying the daemon's prose ("Session
+		 * owner is unavailable. Reconnect and reconcile before retrying.") about
+		 * machinery the user has no handle on. `runtime_unreachable` is the daemon
+		 * saying it established nothing about whether the request arrived, so its arm is
+		 * the unknown outcome, and the unknown outcome's sentence is the app's own.
+		 *
+		 * A codeless failure is the same arm for the same reason, and the distinction
+		 * the old assertion was reaching for is kept where it still holds: a code that
+		 * NAMES A FACT THIS APP CAN ACT ON (a store that could not write, a budget, an
+		 * unreadable file) still keeps the backend's sentence, because that sentence is
+		 * the fact - see the store-refusal half of this file.
 		 */
 		assert.equal(
 			store.getState().drafts[key].error,
-			arm.code
-				? "the session's owner could not be reached"
-				: SEND_FAILURE_COPY.unconfirmed,
+			SEND_FAILURE_COPY.unconfirmed,
 		);
 	}
 
