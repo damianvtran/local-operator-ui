@@ -2310,6 +2310,16 @@ export const STORIES = [
 	["chat-composer-status-row--goal-actions-revealed", 1000, 460],
 	["chat-composer-status-row--goal-actions-floor", 300, 620],
 	["chat-composer-status-row--goal-done-floor", 300, 620],
+	/*
+	 * THE DISCLOSURE'S OWN TOOLTIP AT THE FLOOR (design review round 2, D4). Every goal
+	 * row above that paints a tooltip paints the DISMISS's, so the panel that carries the
+	 * whole `goalLabel` had never been measured — while the control beside it has been
+	 * clamped to four lines since `TOOLTIP_CLAMP` was written. Its bands are at rest and
+	 * with the goal trigger focused, which is the state that opens the panel (this rig
+	 * has no hover verb, and a hovered frame carries no tooltip by design). 300 wide for
+	 * the floor band's own reason: the band is the width plus the box's 48px of `p-6`.
+	 */
+	["chat-composer-status-row--goal-tooltip-floor", 300, 620],
 	["chat-composer-status-row--goal-capability-off", 1000, 520],
 	/* The activity mark with motion reduced, which is the OTHER half of the paint
 	   the mark's own animation cannot prove: `styles/index.css` CAPS durations at
@@ -2758,6 +2768,23 @@ export const STORIES = [
 	   frames can be differenced to answer "can the user tell them apart?".
 	   `narrow` is 560 because that is where the toolbar's persist checkbox and
 	   refresh button stop fitting on one line. */
+	/* `/goal`: the goal dialog's copy and its two gates (design review round 2, the sweep
+	   workstream's D1). The change rewrote the settled sentence, the `Judge` row's gate,
+	   the `stalled` line and the struck settled readout, and none of the four had a frame
+	   anywhere - which is what made that finding MAJOR rather than a nit: the amended
+	   sentence is also LONGER than the one round 1 read, in a panel nobody had measured.
+	   The 300-character goal is this set's own long fixture, so the settled band measures
+	   the wrap the finding is about.
+
+	   FOUR ROWS, ONE PER STATE: settled, stalled, a capable backend with no goal (the
+	   absence the `Judge` row's gate produces), and a legacy backend (no judge row, no
+	   `Mark done`, so `/goal done` can never reach a build that stores the literal word
+	   as the goal). The viewport is the dialog plus scrim at the shipped window scale,
+	   the same shape `/model`'s rows use. */
+	["chat-goalpicker--goal-picker-settled", 900, 900],
+	["chat-goalpicker--goal-picker-stalled", 900, 800],
+	["chat-goalpicker--goal-picker-no-goal", 900, 760],
+	["chat-goalpicker--goal-picker-legacy-backend", 900, 760],
 	["chat-model-picker--populated", 900, 760],
 	["chat-model-picker--hovered", 900, 760],
 	["chat-model-picker--keyboard-highlight", 900, 760],

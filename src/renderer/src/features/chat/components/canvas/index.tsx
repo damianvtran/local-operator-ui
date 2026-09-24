@@ -180,6 +180,24 @@ type CanvasProps = {
 	 * on the strength of a snapshot nobody has read.
 	 */
 	goalCapable?: boolean;
+
+	/**
+	 * Whether the session carries a goal AT ALL — set and in flight, or settled —
+	 * `goalPresent(frontend)` off the same canonical snapshot as the three above.
+	 *
+	 * IT DECIDES THE EMPTY STATE'S DESCRIPTION, NOT WHETHER THE VIEW EXISTS (design
+	 * review round 2, D2). The view's own gate is `goalCapable`; this is the other
+	 * fact the same pane has to tell apart — *nothing has settled yet* is not *no goal
+	 * was ever set* — and only that one is answered by inviting the user to set one.
+	 * Passed as one boolean derived once by this pane's owner for the same reason
+	 * `goalCapable` is: a second reading of `frontend.goal` in here is a second answer
+	 * that can disagree with the chip's.
+	 *
+	 * Defaults to `false` — the no-goal reading — because that is the copy this pane
+	 * already shipped and a caller that has not read a snapshot must not be handed a
+	 * claim about one.
+	 */
+	goalPresent?: boolean;
 };
 
 /**
@@ -383,6 +401,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 	goalHistory = EMPTY_GOAL_HISTORY,
 	goalHistoryTruncated = false,
 	goalCapable = false,
+	goalPresent = false,
 }) => {
 	const [isCreateFileDialogOpen, setCreateFileDialogOpen] = useState(false);
 	const [isCreatingFile, setIsCreatingFile] = useState(false);
@@ -868,6 +887,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 				<CanvasGoalsViewer
 					entries={goalHistory}
 					truncated={goalHistoryTruncated}
+					goalPresent={goalPresent}
 				/>
 			)}
 			{/* Placeholder if no conversation context for files or variables view */}

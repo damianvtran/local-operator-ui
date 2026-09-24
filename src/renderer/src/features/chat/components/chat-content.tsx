@@ -33,6 +33,7 @@ import {
 	type CanonicalFrontendState,
 	type CanonicalModel,
 	goalCapability,
+	goalPresent,
 } from "../../../../../shared/desktop-session-contract";
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
 import { canonicalTranscriptSpeaks } from "../canonical/transcript-pane";
@@ -1522,6 +1523,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * does not offer would have read.
 								 */
 								goalCapable={goalCapability(canonical?.view.frontend)}
+								/*
+								 * The empty state's description is gated on whether a goal EXISTS at all,
+								 * not on whether one has settled (design review round 2, D2): read off the
+								 * same snapshot as the capability above, so the pane cannot tell a user to
+								 * set a goal the chip two panes over is already showing.
+								 */
+								goalPresent={goalPresent(canonical?.view.frontend)}
 								goalHistory={canonical?.view.frontend?.goal_history}
 								goalHistoryTruncated={
 									canonical?.view.frontend?.goal_history_truncated === true

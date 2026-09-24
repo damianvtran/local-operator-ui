@@ -37,7 +37,22 @@ export const CanvasGoalsViewer: FC<{
 	 * independently rather than one standing in for the other.
 	 */
 	truncated: boolean;
-}> = ({ entries, truncated }) => {
+	/**
+	 * Whether the session has a goal AT ALL (`goalPresent(frontend)`), which is what
+	 * decides the empty state's description.
+	 *
+	 * WHY IT IS NOT `entries.length === 0` ALONE (design review round 2, D2). This
+	 * pane's empty branch fires whenever nothing has SETTLED — including a goal that
+	 * is set and in flight, which is the first state a user reaches after
+	 * `/goal <text>`. The rendered pair was *"No goals completed yet"* over *"No goal
+	 * set — /goal <text> to set one."* while the composer's own chip (`Goal: <text>`)
+	 * sat in the same viewport two panes over: one screen stating both. The title is
+	 * true in both cases and is unchanged; the INVITATION is true only when there is
+	 * no goal, so it is gated on the presence rule the chip and the picker's `Judge`
+	 * row already share rather than on the row count this pane happens to hold.
+	 */
+	goalPresent: boolean;
+}> = ({ entries, truncated, goalPresent }) => {
 	if (entries.length === 0 && !truncated) {
 		/*
 		 * THE PANE'S OWN EMPTY STATE, imported rather than restated (design review round
@@ -57,7 +72,18 @@ export const CanvasGoalsViewer: FC<{
 		return (
 			<EmptyState
 				title="No goals completed yet"
-				description="No goal set — /goal <text> to set one. Finished goals are kept here."
+				description={
+					goalPresent
+						? /*
+							 * A goal IS set and has not settled, so the invitation to set one would be
+							 * false and would contradict the chip beside it (D2). The sentence states the
+							 * pane's own condition instead — why this view is empty when a goal exists —
+							 * and it is the same second-half fact the invitation carried, so the two
+							 * strings share their shape rather than inventing a register for the new one.
+							 */
+							"Goals appear here once they are finished."
+						: "No goal set — /goal <text> to set one. Finished goals are kept here."
+				}
 			/>
 		);
 	}
@@ -79,7 +105,18 @@ export const CanvasGoalsViewer: FC<{
 						"min-w-0 flex-1 truncate text-right text-meta text-ink-dim",
 					)}
 				>
-					{entries.length === 1 ? "1 goal" : `${entries.length} goals`}
+					{/*
+					 * THE COUNT SAYS WHICH COUNT IT IS WHEN THE LIST IS CAPPED (design review round
+					 * 2, D6). In this state the notice beneath says entries were dropped, and `2
+					 * goals` read first is the session's total only by accident — it is the number
+					 * of ROWS. ` shown` is the word the segment's own accessible name already uses
+					 * (`Goals view, 2 goals shown — this list is capped`), so the two agree.
+					 */}
+					{truncated
+						? `${entries.length === 1 ? "1 goal" : `${entries.length} goals`} shown`
+						: entries.length === 1
+							? "1 goal"
+							: `${entries.length} goals`}
 				</span>
 			</div>
 			{/*

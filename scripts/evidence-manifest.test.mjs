@@ -1132,6 +1132,17 @@ const BRANCH_RECORDS = [
 	 * goal frames were taken, on which tree, and what D1 measured before and after.
 	 */
 	"goalDoneFramePassNote",
+	/*
+	 * And its design-round-2 pass (both round-2 streams in one batch, plus the
+	 * non-gating rows agent-review round 3 and QA round 3 raised on the same head),
+	 * which is the only statement of what that batch changed in `src/`, why the tag's
+	 * step is one pixel wider than the row's, which five directories the new frames
+	 * are, and which surfaces were deliberately NOT photographed. Listed for the
+	 * reason every entry above is: a fold that starts from main's manifest drops it
+	 * without a word, and with it the count the `countsMean` paragraph beside it
+	 * explains.
+	 */
+	"goalDesignRoundTwoNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

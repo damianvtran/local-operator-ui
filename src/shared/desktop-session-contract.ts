@@ -821,6 +821,28 @@ export type CanonicalFrontendState = {
 export const goalCapability = (
 	frontend: CanonicalFrontendState | null | undefined,
 ): boolean => typeof frontend?.goal_status === "string";
+/**
+ * Whether this snapshot carries a goal AT ALL — set and in flight, or already
+ * settled.
+ *
+ * THE ONE PRESENCE RULE the surfaces that speak about "a goal" share (design
+ * review round 2, D2). The wire's `goal` is a REQUIRED string whose empty value
+ * means no goal, and a whitespace-only goal is none — the rule the composer chip
+ * already gates on (`frontend?.goal?.trim()` in `composer-status-row.tsx`) and
+ * that the `/goal` picker's `Judge` row reuses for the same reason (`hasGoal`).
+ * It is exported so the canvas pane's empty state can ask THIS question instead
+ * of the one it was asking — *has anything SETTLED* — which told a user with a
+ * goal in flight "No goal set — /goal <text> to set one." while the composer
+ * chip two panes away displayed that goal, in one screen.
+ *
+ * DISTINCT FROM `goalCapability` ON PURPOSE: capability is "does this backend
+ * publish the lifecycle at all", presence is "is there a goal on it". A new
+ * backend with no goal is capable and carries none; a backend that predates the
+ * fields is neither capable nor, on any surface here, able to have one.
+ */
+export const goalPresent = (
+	frontend: CanonicalFrontendState | null | undefined,
+): boolean => (frontend?.goal ?? "").trim().length > 0;
 export type CanonicalFrontendSync = {
 	state_version: number;
 	epoch: string;

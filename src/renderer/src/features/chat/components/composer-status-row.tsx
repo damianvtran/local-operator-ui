@@ -678,6 +678,39 @@ const NARROW_HIDDEN = "@max-[240px]/chatcol:hidden";
 const DISMISS_WORD = NARROW_HIDDEN;
 
 /**
+ * The settled chip's TAG, yielded one step WIDER than the row's copy step: at the
+ * stacked band INCLUDING its own edge.
+ *
+ * WHY IT IS NOT `NARROW_HIDDEN`. The step above is `width < 240px`, and the row's
+ * ARRANGEMENT at 240 is already the stacked one — `goal-done-floor`'s own `RowFacts`
+ * print a 54px row there against 32px at 900 — so the one width the design's copy
+ * rule NAMES is the one width the rule has not fired at. That made the value's
+ * readable width NON-MONOTONIC across the step: `text 39/1956` at 240 against
+ * `67/1956` at the 172px floor, the WIDER band identifying the goal by fewer
+ * characters than the narrower one (design review round 2, D11; UX round 2, U1).
+ *
+ * WHY THE TAG YIELDS FIRST, and why this is not the row's step widened for
+ * everything. The dismiss's word and the loop's figure each keep a second home at
+ * every width — their own accessible names (`NARROW_HIDDEN`'s docblock). The tag
+ * does not: the dismiss is `opacity-0` at rest, so the strike and this word are the
+ * whole of what the settled chip says, and a crossed-out value with no word is also
+ * the shape of *cancelled*. Measured on this head with the tag withheld at 240, the
+ * value's box grows by the tag's 47px — `text 39/1956` to `85/1956` — so 240
+ * identifies the goal at least as well as the floor does (`67/1956`), and the floor is
+ * untouched.
+ *
+ * Spelled `@max-[241px]` because Tailwind v4's `@max-*` is EXCLUSIVE: `@max-[240px]`
+ * compiles to `width < 240px`, so the inclusive step the design names is one pixel
+ * past it (`width < 241px`). `NARROW_HIDDEN` keeps its own `< 240px` boundary rather
+ * than being re-spelled as this one: they are two rules with two subjects — an
+ * affordance's word, which has an accessible-name home, against the only state tell
+ * a still paints — and collapsing them would move the dismiss's own measured
+ * boundary (`docs/composer-status-tabs.md` § 12.5, `docs/evidence/composer-status-clear/`)
+ * for a finding that is about the tag.
+ */
+const GOAL_TAG_NARROW = "@max-[241px]/chatcol:hidden";
+
+/**
  * The row's first-chip rule, owned by the ROW.
  *
  * Whichever chip renders first cancels its own 6px padding, so the thing that
@@ -1929,6 +1962,15 @@ export const ComposerStatusRow = ({
 						)}
 						triggerLabel={goalLabel}
 						triggerTooltip={goalLabel}
+						/*
+						 * THE DISCLOSURE'S OWN TOOLTIP CARRIES THE WHOLE GOAL, so it takes the same
+						 * measure as the dismiss beside it (design review round 2, D4). `goalLabel`
+						 * is `Expand the session goal — <the goal>` — the 1956px fixture in these
+						 * frames — and `TooltipContent`'s own `max-w-64` at `text-meta` renders that
+						 * as ~8 lines drawn over the composer, where the control beside it is capped
+						 * at four. Same constant, so the pair cannot drift.
+						 */
+						tooltipClassName={cn(TOOLTIP_CLAMP)}
 						onOpenChange={setGoalOpen}
 						/*
 						 * THE DISMISS, on the trigger's own LINE and inside the primitive's root
@@ -2151,21 +2193,21 @@ export const ComposerStatusRow = ({
 									 * with the value it sits beside. The value yields its ink
 									 * (`line-through text-ink-dim`); the tag keeps its word upright and readable,
 									 * which is the to-do row's own rule for a crossed-out row.
-									 */
-									/*
-									 * AND IT YIELDS STRICTLY BELOW THE STACKED BAND (design review round
-									 * 1, D1), which is the cut this comment's parent pre-authorised once a
-									 * frame measured it. `GoalDoneFloor` did: at the 172px floor the value
-									 * kept 20px of its 1956px beside the tag — one letter — so the settled
-									 * chip showed WHICH goal was settled almost nowhere. Below 240px the
-									 * state is still carried three ways that cost no width: the strike and
-									 * `ink-dim` on the value, the dismiss's `CircleCheck` (D6), and the
-									 * accessible name (`goalStateWord` → `— done, <goal>`).
+									 *
+									 * AND IT YIELDS AT THE STACKED BAND, ITS EDGE INCLUDED (design review round
+									 * 1, D1, then round 2's D11 — `GOAL_TAG_NARROW`), which is the cut this
+									 * comment's parent pre-authorised once a frame measured it. `GoalDoneFloor`
+									 * did: at the 172px floor the value kept 20px of its 1956px beside the tag —
+									 * one letter — so the settled chip showed WHICH goal was settled almost
+									 * nowhere. At every width the tag is withheld the state is still carried
+									 * three ways that cost no width: the strike and `ink-dim` on the value, the
+									 * dismiss's `CircleCheck` (D6), and the accessible name (`goalStateWord` →
+									 * `— done, <goal>`).
 									 */
 									<span
 										className={cn(
 											"shrink-0 text-meta text-ink-dim",
-											NARROW_HIDDEN,
+											GOAL_TAG_NARROW,
 										)}
 									>
 										{GOAL_DONE_TAG}

@@ -820,6 +820,13 @@ const CanvasFrame = ({
 	 * backend that HAS settled goals and carried none of them.
 	 */
 	goalCapable = true,
+	/*
+	 * WHETHER A GOAL EXISTS AT ALL, which is what the pane's EMPTY state's description is
+	 * gated on (design review round 2, D2). Defaults to `true` because a story here is a
+	 * session with a goal unless it says otherwise — the fixture's own `goal` — and the
+	 * one story that needs the no-goal reading passes `false`.
+	 */
+	goalPresent = true,
 }: {
 	view: "documents" | "files" | "variables" | "goals";
 	/**
@@ -867,6 +874,8 @@ const CanvasFrame = ({
 	 * A CAPABILITY, NOT A LIST SIZE — see the note on the default below.
 	 */
 	goalCapable?: boolean;
+	/** See the destructured default above (design review round 2, D2). */
+	goalPresent?: boolean;
 	/** `SplitFrame`'s fixed band height, for a story that stacks two frames. */
 	bandHeight?: number;
 	/**
@@ -932,6 +941,7 @@ const CanvasFrame = ({
 					goalHistory={goalHistory}
 					goalHistoryTruncated={goalHistoryTruncated}
 					goalCapable={goalCapable}
+					goalPresent={goalPresent}
 					onChangeActiveDocument={() => {}}
 					onClose={() => {}}
 					onCloseDocument={() => {}}
@@ -2450,14 +2460,18 @@ export const GoalHistory: Story = {
 };
 
 /**
- * An empty history, and — separately — a CAPPED one.
+ * An empty history, a history with a goal in flight, and — separately — a CAPPED one.
  *
- * THE TWO MUST NOT BE PHOTOGRAPHED AS ONE. Empty says `No goals completed yet` and
- * names the next action; capped says that older settled goals are not carried here.
- * A frame that showed only the first would be evidence for the state that is not
- * the risk: a capped list that renders as a complete one is the silent
- * under-reporting the truncation flag exists to prevent, and it is the state a
- * reviewer has to be able to see.
+ * THE THREE MUST NOT BE PHOTOGRAPHED AS ONE, and the middle band is design review round
+ * 2's D2 as a frame. `goalHistory` empty means NOTHING HAS SETTLED, which is two
+ * different states: no goal was ever set, and a goal is set and still running. The pane
+ * used to render the first state's copy for both — *"No goal set — /goal <text> to set
+ * one."* — for a user whose goal was displayed by the composer's own chip in the same
+ * viewport, so the pair states something contradictory in one screen. The two bands
+ * differ by `goalPresent` alone, which is the whole of the fix: same entries, same
+ * chrome, two descriptions. Capped says that older settled goals are not carried here —
+ * the state that is not the risk, because a capped list that renders as a complete one
+ * is the silent under-reporting the truncation flag exists to prevent.
  */
 export const GoalHistoryEmptyAndCapped: Story = {
 	render: () => (
@@ -2466,6 +2480,14 @@ export const GoalHistoryEmptyAndCapped: Story = {
 				view="goals"
 				activeId={null}
 				goalHistory={[]}
+				goalPresent={false}
+				bandHeight={GOAL_BAND_HEIGHT}
+			/>
+			<CanvasFrame
+				view="goals"
+				activeId={null}
+				goalHistory={[]}
+				goalPresent={true}
 				bandHeight={GOAL_BAND_HEIGHT}
 			/>
 			<CanvasFrame
