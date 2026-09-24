@@ -9,7 +9,6 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
-import { ChatLayout } from "@shared/components/common/chat-layout";
 import { useCanonicalSessionStream } from "@shared/hooks/use-canonical-session";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
@@ -92,7 +91,6 @@ import {
 	messageBudgetRefusal,
 } from "../utils/message-budget";
 import { ChatContent } from "./chat-content";
-import { ChatSidebar } from "./chat-sidebar";
 import type { DirectoryWritePath } from "./directory-indicator";
 import {
 	type MessageInputHandle,
@@ -2428,16 +2426,16 @@ export function ChatPage() {
 		setRouteError(null);
 		navigate("/chat");
 	};
-	const select = (id: string) => {
-		/*
-		 * The sidebar's finger on the switch. The rule - why the URL is written with
-		 * the commit rather than behind the guard read, and why all three entrances
-		 * share it - is in `openConversation`; all this one owns is its own screen
-		 * state (the navigation sentence belongs to the route the user is leaving).
-		 */
-		setRouteError(null);
-		void openConversation(navigate, id);
-	};
+	/*
+	 * THERE IS NO `select` HERE ANY MORE, and its absence is the change rather than
+	 * an omission: the sidebar's rows used to call back into this route so that the
+	 * route could clear its own sentence before switching. The one sidebar is
+	 * mounted above the routes now (`app.tsx` -> `chat-layout.tsx` ->
+	 * `sidebar-navigation.tsx`), so a row calls `openConversation` itself - the same
+	 * function the command palette and the `/chat` rebind use - and the clearing it
+	 * used to do is the route's own effect: it fires on the draft key and on the
+	 * route identity, and a switch moves both.
+	 */
 	// Keyed on the SESSION once one exists, so admitting a draft does not unmount
 	// the panel mid-send. The rule and its reasoning live in `panelIdentityFor`;
 	// `panelSessionIdOfView` is the id this pane reads, extracted so a surface
@@ -2447,102 +2445,86 @@ export function ChatPage() {
 	const id = panelSessionIdOfView(draftKey, draft?.sessionId, active);
 	const identity = panelIdentityFor(draftKey, id);
 	return (
-		<ChatLayout
-			sidebar={
-				<ChatSidebar
-					selectedConversation={active ?? undefined}
-					onSelectConversation={select}
-					onStageDraft={stage}
-				/>
-			}
-			content={
-				<div className={cn("flex h-full min-h-0 flex-col")}>
-					{/*
-					 * ONE sentence above the panel: a legacy route that names no
-					 * conversation, or a store failure the composer does not own. A
-					 * switch no longer has a failure of its own to state here - the
-					 * target pane speaks for its own stream (see `openSession`).
-					 */}
-					{(routeError || error) && (
-						<p
-							role="alert"
-							className={cn("px-4 py-2 text-body-sm text-danger")}
-						>
-							{routeError || error}
-						</p>
+		<div className={cn("flex h-full min-h-0 flex-col")}>
+			{/*
+			 * ONE sentence above the panel: a legacy route that names no
+			 * conversation, or a store failure the composer does not own. A
+			 * switch no longer has a failure of its own to state here - the
+			 * target pane speaks for its own stream (see `openSession`).
+			 */}
+			{(routeError || error) && (
+				<p role="alert" className={cn("px-4 py-2 text-body-sm text-danger")}>
+					{routeError || error}
+				</p>
+			)}
+			{!enabled ? (
+				/*
+				 * A PANE-level state, presented as one: centred in the column, the shape the
+				 * route's own Suspense fallback already uses, and - the reason it is not a
+				 * bare `p-6` against the top edge - clear of the full-bleed bands.
+				 *
+				 * Both bands are `fixed` at the top of the window, so while one shows it
+				 * covers the first ~30px of EVERY surface. Measured on the withdrawn frame
+				 * (`docs/evidence/daemon-attach-live-app/after-gate-withdrawn.png`), this
+				 * sentence's line box was laid out at y=24 with the pane empty below it, so
+				 * the pane read as a single flat colour beside a sidebar that kept its
+				 * rows: the node existed, was 880x70 and `checkVisibility()` was true, and
+				 * the reader could not see it. Centring it in the pane also stops the
+				 * sentence from being the pane's first 30 pixels, whatever the band does
+				 * (design round 1, D2).
+				 */
+				<div
+					className={cn(
+						"flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-2 p-6",
+						"text-body text-ink-muted",
 					)}
-					{!enabled ? (
-						/*
-						 * A PANE-level state, presented as one: centred in the column, the shape the
-						 * route's own Suspense fallback already uses, and - the reason it is not a
-						 * bare `p-6` against the top edge - clear of the full-bleed bands.
-						 *
-						 * Both bands are `fixed` at the top of the window, so while one shows it
-						 * covers the first ~30px of EVERY surface. Measured on the withdrawn frame
-						 * (`docs/evidence/daemon-attach-live-app/after-gate-withdrawn.png`), this
-						 * sentence's line box was laid out at y=24 with the pane empty below it, so
-						 * the pane read as a single flat colour beside a sidebar that kept its
-						 * rows: the node existed, was 880x70 and `checkVisibility()` was true, and
-						 * the reader could not see it. Centring it in the pane also stops the
-						 * sentence from being the pane's first 30 pixels, whatever the band does
-						 * (design round 1, D2).
-						 */
-						<div
-							className={cn(
-								"flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-2 p-6",
-								"text-body text-ink-muted",
-							)}
+				>
+					<p className={cn("text-center")}>
+						{capabilities.isLoading
+							? "Connecting to the backend…"
+							: capabilities.error
+								? userFacingMessage(
+										capabilities.error,
+										"The Local Operator server did not answer as expected.",
+									)
+								: (pairingSentence ??
+									"Update the backend to use canonical chats. Your existing histories are unchanged.")}
+					</p>
+					{offerRetry && (
+						<button
+							type="button"
+							className={cn("underline")}
+							onClick={() => void paneRetry()}
 						>
-							<p className={cn("text-center")}>
-								{capabilities.isLoading
-									? "Connecting to the backend…"
-									: capabilities.error
-										? userFacingMessage(
-												capabilities.error,
-												"The Local Operator server did not answer as expected.",
-											)
-										: (pairingSentence ??
-											"Update the backend to use canonical chats. Your existing histories are unchanged.")}
-							</p>
-							{offerRetry && (
-								<button
-									type="button"
-									className={cn("underline")}
-									onClick={() => void paneRetry()}
-								>
-									Retry
-								</button>
-							)}
-						</div>
-					) : identity ? (
-						<div className={cn("min-h-0 flex-1")}>
-							<SessionPanel
-								key={identity}
-								identity={identity}
-								draftKey={draftKey}
-								sessionId={id}
-							/>
-						</div>
-					) : (
-						<div className={cn("p-6")}>
-							<h1 className={cn("text-title")}>Start a chat</h1>
-							<p className={cn("mt-2 text-body text-ink-muted")}>
-								Choose an agent or team, or start a new chat. Nothing starts
-								until you send.
-							</p>
-							<button
-								type="button"
-								className={cn(
-									"mt-4 rounded-md border border-control px-3 py-2",
-								)}
-								onClick={() => stage(undefined, true)}
-							>
-								New chat
-							</button>
-						</div>
+							Retry
+						</button>
 					)}
 				</div>
-			}
-		/>
+			) : identity ? (
+				<div className={cn("min-h-0 flex-1")}>
+					<SessionPanel
+						key={identity}
+						identity={identity}
+						draftKey={draftKey}
+						sessionId={id}
+					/>
+				</div>
+			) : (
+				<div className={cn("p-6")}>
+					<h1 className={cn("text-title")}>Start a chat</h1>
+					<p className={cn("mt-2 text-body text-ink-muted")}>
+						Choose an agent or team, or start a new chat. Nothing starts until
+						you send.
+					</p>
+					<button
+						type="button"
+						className={cn("mt-4 rounded-md border border-control px-3 py-2")}
+						onClick={() => stage(undefined, true)}
+					>
+						New chat
+					</button>
+				</div>
+			)}
+		</div>
 	);
 }

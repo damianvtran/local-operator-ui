@@ -3043,9 +3043,34 @@ export function ChatSidebar({
 	const keyDown = (event: KeyboardEvent<HTMLElement>) => {
 		const target = event.target as HTMLElement;
 		if (target.tagName === "INPUT") {
+			/*
+			 * ↓ ENTERS THE RESULTS, which is the command palette's own model applied
+			 * to the one other list in this column (U15). Without it the field was a
+			 * trap for a keyboard user: the list below it was reachable only by Tab,
+			 * and the field's own notice said nothing about how to get there.
+			 */
+			if (event.key === "ArrowDown") {
+				const first =
+					event.currentTarget.querySelector<HTMLElement>("[data-chat-row]");
+				if (first) {
+					event.preventDefault();
+					first.focus();
+				}
+				return;
+			}
 			if (event.key === "Escape") {
 				setQuery("");
-				target.blur();
+				/*
+				 * THE CLEARED FIELD HANDS FOCUS TO THE LIST rather than blurring. Blurring
+				 * parked `document.activeElement` on `<body>`, so the key that emptied the
+				 * field also dropped the user's place - the next Tab started from the top of
+				 * the document and the arrow walk below was unreachable without a pointer
+				 * (U5's "focus lost to `body`", read on this control).
+				 */
+				const first =
+					event.currentTarget.querySelector<HTMLElement>("[data-chat-row]");
+				if (first) first.focus();
+				else target.blur();
 			}
 			return;
 		}
@@ -4380,6 +4405,15 @@ export function ChatSidebar({
 					// attribute has to drop out in exactly the states the button is
 					// disabled, or a keyboard user strands here.
 					data-chat-row={ready || undefined}
+					/*
+					 * THE TOUR'S CHAT ANCHOR, and it is this row because the rail's `Chat`
+					 * destination is gone: the one sidebar's body IS the chat list, so the
+					 * onboarding step that clicks its way back to a conversation needs a
+					 * control that lands on `/chat`, and this row is the one that does -
+					 * it stages an untargeted draft and navigates, exactly as the rail row
+					 * did. The user-visible position of this row is unchanged.
+					 */
+					data-tour-tag="nav-item-chat"
 					className={cn(
 						rowStyle,
 						"mb-1 w-full disabled:text-ink-disabled disabled:hover:bg-transparent",
@@ -4992,14 +5026,17 @@ export function ChatSidebar({
 			 * every one. Sharing it is what makes the panel's hover read as one surface.
 			 */}
 			<TooltipProvider>
-				{/* The header once carried a 16px `Plus` for the same action the "New
-		    chat" row below now names in words. Two controls firing one action at
-		    two sizes in one panel reads as an accident, and the small one was the
-		    reported defect — it was the only entry point and users did not find
-		    it. The named row replaces it rather than joining it. */}
-				<div className="flex h-8 items-center px-1">
-					<h2 className="text-body-sm font-medium">Chats</h2>
-				</div>
+				{/*
+				 * THE `Chats` HEADING IS GONE, and it went with the panel heading rather
+				 * than with a redesign of the panel. The sidebar's sections name themselves
+				 * now (`RUNNING`, `TODAY`, `THIS WEEK`, `OLDER`, and `PINNED` when the
+				 * capability is on), and a heading over the column named the same thing the
+				 * first section label below it names - 32px of chrome spent saying "these
+				 * are chats" to a reader who has just clicked one. The panel's own entry
+				 * points went with it: the header once carried a 16px `Plus` for the action
+				 * the `New chat` row below names in words, which is the defect the row was
+				 * introduced to fix.
+				 */}
 				{/* The field carries its own clear control rather than relying on
 		    Escape, which also blurs: a pointer user who wants to widen the filter
 		    back out had to select the text and delete it, and there was nothing on

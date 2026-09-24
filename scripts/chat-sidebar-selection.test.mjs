@@ -1252,18 +1252,24 @@ const ROW_STATE_GROUNDS = [
 		 * why this one entry resolves a `cn(...)` rather than a literal: the rail's
 		 * class list is built from `expanded` and the two width constants.
 		 */
-		what: "the app rail (the surface that is not the row's own)",
+		what: "the one sidebar (the surface that is not the row's own)",
 		rowFile: APP_RAIL,
-		expression: () => expressionAfter(APP_RAIL, "data-tour-tag={item.tourTag}"),
-		stubs: { expanded: true, item: { isActive: true }, rowCurrent },
+		/*
+		 * THE ROW MOVED, and the anchor moved with it. It used to be the
+		 * destination's own `<button>`; since the rail and the chat list were merged
+		 * into one column the row is the `<li>` that holds it, because `Agents`
+		 * carries a disclosure button BESIDE the destination's own press - and a
+		 * button inside a button is invalid HTML no browser delivers a press to. The
+		 * state is therefore painted on the box both controls sit in, which is the
+		 * only element that can carry it for the pair.
+		 */
+		expression: () => expressionBefore(APP_RAIL, "rowState,"),
+		stubs: { expanded: true, rowState: rowCurrent },
 		ground: () =>
-			merged(
+			literalClassAt(
 				APP_RAIL,
-				expressionBefore(APP_RAIL, "group flex shrink-0 flex-col"),
-				{
-					expanded: true,
-					RAIL_WIDTH: { expanded: "w-[220px]", collapsed: "w-12" },
-				},
+				"flex h-10 shrink-0 items-center gap-1 pr-2 pl-4",
+				"before",
 			),
 		groundFile: APP_RAIL,
 	},

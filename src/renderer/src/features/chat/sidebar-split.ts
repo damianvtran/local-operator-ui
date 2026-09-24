@@ -79,7 +79,19 @@ export const SIDEBAR_AUTO_MAX_FRACTION = 0.45;
  */
 export const SIDEBAR_MAX_STORED_PX = 4_000;
 
-export const DEFAULT_SIDEBAR_REGIONS: SidebarRegions = "both";
+/**
+ * The regions a column that has never been touched draws.
+ *
+ * IT WAS "both", and the change is the one-sidebar merge rather than a taste
+ * call: with the rail gone, this column is the app's whole left side, so an
+ * agents tree drawn above the chat list pushes the chats below the fold - which
+ * is the defect the merge exists to remove (measured on the baseline: the list
+ * started below the fold's midpoint and held ~8 rows at 900px). The `Agents`
+ * destination's own disclosure is what opens it, it writes this same value, and
+ * the list's restore row still names the region when it is hidden - so the
+ * agents list is one press away and no state is unreachable.
+ */
+export const DEFAULT_SIDEBAR_REGIONS: SidebarRegions = "chats";
 export const DEFAULT_SIDEBAR_ORDER: SidebarOrder = "entities-first";
 
 /** Which single region a restore row is offering to bring back. */
