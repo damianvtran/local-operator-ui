@@ -1,5 +1,6 @@
 /**
- * The chat sidebar's New chat row, and the border the operator asked it to lose.
+ * The sidebar's two PRIMARY rows - `New chat` and `Search` - and the boundary
+ * the operator asked the first of them to lose.
  *
  *     node --test scripts/new-chat-row.test.mjs
  *
@@ -7,37 +8,39 @@
  * local-operator-ui, remove the border around new chat and have it be the same
  * alignment, etc. as the all chats above it so that it looks more consistent
  * and in line". The row wore `border-control`, and because the app is
- * `box-sizing: border-box` that edge sat INSIDE the row's own `h-8` box: the
- * icon and label started 1px further right than the All chats row's directly
- * above. Removing the class is the whole change, which is exactly why it needs
- * a guard — a one-token deletion is also a one-token re-addition, and the
- * affordance that was removed is the kind a later reader would helpfully put
- * back ("this row is a control, it should have an outline").
+ * `box-sizing: border-box` that edge sat INSIDE the row's own box: the icon and
+ * label started 1px further right than its neighbour's. Removing the class is
+ * the whole fix, which is exactly why it needs a guard - a one-token deletion is
+ * also a one-token re-addition.
+ *
+ * WHAT MOVED, AND WHY THIS FILE MOVED WITH IT. The row used to live in the chat
+ * list's own header, under a search field, a disclosure and an `All chats` row.
+ * The chat redesign (§C1) makes `New chat` and `Search` the two primary rows at
+ * the TOP of the one sidebar, above the destinations, and `All chats` is gone
+ * (the list is sectioned by RUNNING / TODAY / THIS WEEK / OLDER instead). So the
+ * row's home is `sidebar-navigation.tsx` and the row it has to stay identical to
+ * is `Search` beside it - both take one shared `DESTINATION_ROW`, which is where
+ * the box they are aligned on lives now.
  *
  * HOW THIS FILE ASSERTS, AND WHAT THAT COSTS. The sidebar cannot be rendered in
- * isolation — it reads the router, the canonical-sessions store and the desktop
+ * isolation - it reads the router, the canonical-sessions store and the desktop
  * capability hooks, and this repository's desktop suite is `node:test` over
- * `scripts/*.test.mjs` with no DOM harness — so the property is pinned as
- * SOURCE TEXT over the row's own `className` expression, the idiom
+ * `scripts/*.test.mjs` with no DOM harness - so the property is pinned as
+ * SOURCE TEXT over the rows' own `className` expressions, the idiom
  * `contrast-contract.mjs`'s `STRUCTURAL_CALL_SITES` and `clear-search.test.mjs`
  * already use. The pin is scoped to the extracted button rather than the whole
  * file, so a `border-control` on a NEIGHBOURING row cannot satisfy it.
  *
- * Comments are stripped out of the slice before it is matched, and that is not
- * tidiness — an earlier revision of this file claimed the scoping made comments
- * harmless, which was false: the slice runs from `className={cn(` to the first
- * `)}`, and `cn()`'s argument list is exactly where a reader writes the note
- * explaining the row (`// Marked current on the same terms as an entity row…`)
- * or, worse, `// no border-control here, see above` — which satisfied the pin
- * while the attribute was absent and broke it once it was present. The strip is
- * the fix for that; the cut itself must stay wide enough to keep `rowStyle` in
- * view, because pinning the reference is half of what this file is for.
+ * Comments are stripped out of the slice before it is matched: the slice runs
+ * from `className={cn(` to the first `)}`, and `cn()`'s argument list is exactly
+ * where a reader writes the note explaining the row - including
+ * `// no border-control here, see above`, which would satisfy the pin while the
+ * attribute was absent and break it once it was present.
  *
  * What this file does NOT prove: that anything is VISIBLE, or that the two rows
  * really land on the same left inset. That is a fact about the box the class
- * produces, and it is measured from the live DOM in
- * `docs/evidence/new-chat-row/README.md` (icon left inset 5px before, 4px
- * after, against 4px on the All chats row).
+ * produces, and it is measured from the live DOM in the rig's own geometry
+ * assertions (the `l-sidebar` states) rather than from source.
  */
 
 import assert from "node:assert/strict";
@@ -46,47 +49,64 @@ import { join } from "node:path";
 import { test } from "node:test";
 
 const ROOT = process.cwd();
-const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
-const source = readFileSync(join(ROOT, SIDEBAR), "utf8");
+const NAV =
+	"src/renderer/src/shared/components/navigation/sidebar-navigation.tsx";
+const source = readFileSync(join(ROOT, NAV), "utf8");
 
-/** The 4px-on-the-ramp inset `rowStyle` supplies, and the box it sits in. */
-const ROW_HEIGHT = /\bh-8\b/;
-const ROW_INSET = /\bpx-1\b/;
-const ROW_GAP = /\bgap-1\b/;
+/** The 8px-on-the-ramp inset `DESTINATION_ROW` supplies, and the box it sits in. */
+const ROW_HEIGHT = /\bh-\[30px\]/;
+const ROW_INSET = /\bpx-2\b/;
+const ROW_GAP = /\bgap-2\b/;
 
 /**
  * A horizontal inset, a height or a gap a row declares of its OWN.
  *
- * This is the second entry to the regression class this file exists to catch,
- * and the one an absence check cannot see: `pl-1.5`, `px-2`, `gap-2` or `h-9`
- * added to the New chat row alone move it off the All chats column while
- * `rowStyle` stays untouched and no border role appears. The row has to take
- * those three from `rowStyle` — that is what "the same alignment" means in the
- * source — so any one of them in the row's own literals is the defect.
+ * The relationship this exists for is stated where it is used; the token list
+ * is deliberately all four axes, because a row moves off its neighbour's column
+ * for a height reason exactly as easily as for a padding one.
  */
 const ROW_BOX_OVERRIDE =
 	/\b(?:p|px|py|pl|pr|pt|pb|h|gap|min-h|space-x)-[^\s"']+/;
 
-/**
- * How a row may legitimately differ from the All chats row: a vertical step and
- * the disabled pair. Anything else is a difference between two rows this file
- * claims are the same shape.
+/*
+ * How the two primary rows may legitimately differ: the label they carry, the
+ * cap they print, the chord-wired attribute they are anchored by, and the
+ * current/disabled vocabulary `New chat` alone can reach (Search is never the
+ * current view and is never disabled, so it declares neither).
  */
-const ROW_SPECIFIC_TOKENS = [
+const NEW_CHAT_ONLY_TOKENS = [
 	"disabled:hover:bg-transparent",
 	"disabled:text-ink-disabled",
-	"mb-1",
 ];
 
 /**
- * Strip `//` and comment-block comments, outside string literals.
+ * The row's current-draft predicate, which `aria-current` has to agree with.
  *
- * Written as a scanner rather than two `replace()` passes because the slice can
- * legitimately contain a `//` inside a quoted string (a URL in a comment is the
- * usual way this bites), and a regular expression cannot tell that from the
- * start of a comment.
+ * It is `untargetedDraft` now - an untargeted draft is the one this row stages,
+ * and a draft WITH a target belongs to its agent's row - and it is declared once
+ * above both rows so a second spelling is a failing test rather than a quiet
+ * divergence.
  */
-const stripComments = (text) => {
+const CURRENT_DRAFT_PREDICATE = /current: untargetedDraft/;
+
+const ARIA_CURRENT_PAGE =
+	/aria-current=\{props\.current \? "page" : undefined\}/;
+
+/** The `className={cn(...)}` expression of the row a label is rendered by. */
+const classExpressionFor = (label) => {
+	const labelAt = source.indexOf(`"${label}"`);
+	assert.notEqual(
+		labelAt,
+		-1,
+		`no row renders the label ${JSON.stringify(label)}`,
+	);
+	const lineAt = source.lastIndexOf("\n", labelAt);
+	const call = source.slice(lineAt, source.indexOf("\n", labelAt));
+	return stripComments(call);
+};
+
+/** Comments out of a slice, so prose about a rule cannot satisfy it. */
+function stripComments(text) {
 	let out = "";
 	let quote = null;
 	for (let i = 0; i < text.length; ) {
@@ -124,11 +144,11 @@ const stripComments = (text) => {
 		i += 1;
 	}
 	return out;
-};
+}
 
-/** The literal class strings a row's expression passes, comments removed. */
-const classLiterals = (classes) =>
-	[...stripComments(classes).matchAll(/"([^"\\]*(?:\\.[^"\\]*)*)"/g)]
+/** The class tokens a row's own literals pass, comments removed. */
+const classLiterals = (text) =>
+	[...stripComments(text).matchAll(/"([^"\\]*(?:\\.[^"\\]*)*)"/g)]
 		.map((match) => match[1])
 		.join(" ");
 
@@ -138,89 +158,60 @@ const WHITESPACE = /\s+/;
 /** A border ROLE token, so a future `border-b` divider reads as its own decision. */
 const BORDER_ROLE = /\bborder(-|\b)/;
 
-/** The 1-step margin that separates the row from the split below it. */
-const MB_1 = /\bmb-1\b/;
+/*
+ * `DESTINATION_ROW`, the shared box both primary rows take - and now also the
+ * four destination rows below them, which is why the alignment is stated on the
+ * constant rather than on any one row.
+ */
+const destinationRow = (() => {
+	const start = source.indexOf("const DESTINATION_ROW =");
+	return source.slice(start, source.indexOf(";", start));
+})();
 
 /**
- * The row's current-draft predicate, which `aria-current` has to agree with.
- *
- * Re-pointed from `"bg-accent-wash"` to `rowCurrent` when the sidebar's
- * current-row ground moved off the wash: on this `bg-surface` panel the wash is
- * ΔE00 1.05 from the ground in tokyoNight, so the state it marked was invisible.
- * The PREDICATE is what this regex is for and it is unchanged — the ground it
- * paints is now the shared one, pinned in `chat-sidebar-selection.test.mjs`.
+ * The two primary rows' own class expressions, read through the helper that
+ * renders them: `primaryRow` receives the tokens as ARGUMENTS rather than as
+ * inline literals, so the pin is on the call sites plus the helper's own
+ * `cn(...)` body - which is the one place a border could come back.
  */
-const CURRENT_DRAFT_PREDICATE =
-	/Boolean\(activeDraftKey\)\s*&&\s*!draft\?\.target\s*&&\s*rowCurrent/;
-
-const ARIA_CURRENT_PAGE = /aria-current=\{[\s\S]*?"page"[\s\S]*?\}/;
-
-/** The `className={cn(...)}` expression of one row, by its visible label. */
-const classExpressionFor = (label) => {
-	const labelAt = source.indexOf(`>${label}</span>`);
-	assert.notEqual(
-		labelAt,
-		-1,
-		`no row renders the label ${JSON.stringify(label)}`,
-	);
-	const buttonAt = source.lastIndexOf("<button", labelAt);
-	assert.notEqual(
-		buttonAt,
-		-1,
-		`no <button> opens before ${JSON.stringify(label)}`,
-	);
-	const button = source.slice(buttonAt, source.indexOf("</button>", labelAt));
-	const start = button.indexOf("className={cn(");
-	assert.notEqual(start, -1, `${label} has no cn() class expression`);
-	const end = button.indexOf(")}", start);
-	// Comments are stripped so a `border-control` MENTIONED between `cn()`'s
-	// arguments cannot satisfy the boundary pin or break it; see the header.
-	return stripComments(button.slice(start + "className={cn(".length, end));
-};
-
-/**
- * `rowStyle`, the shared inset both rows take. Pinned because the alignment is
- * a consequence of it: the fix removed the border, not the padding, so a change
- * here would move BOTH rows and the measurement in the evidence set would stop
- * describing what the source does.
- */
-const rowStyle = (() => {
-	const start = source.indexOf("const rowStyle =");
-	const end = source.indexOf(";", start);
+const primaryRowBody = (() => {
+	const start = source.indexOf("const primaryRow = (");
+	const end = source.indexOf("\tconst newChatRow =", start);
+	assert.notEqual(start, -1, "the primary-row helper is the anchor here");
+	assert.notEqual(end, -1, "the primary-row helper's body is not delimited");
 	return source.slice(start, end);
 })();
 
-test("the New chat row declares no boundary of its own", () => {
-	const classes = classExpressionFor("New chat");
-	// The mutation this catches: `border border-control` back in the string,
-	// which is the 1px inset the operator asked to be rid of. Matched as a role
-	// token rather than the bare word, so a future `border-b` divider on the row
-	// is reported as its own decision instead of passing silently.
+test("the primary-row helper declares no boundary of its own", () => {
+	/*
+	 * The mutation this catches: `border border-control` back in the shared class
+	 * string, which is the 1px inset the operator asked to be rid of. Matched as a
+	 * role token rather than the bare word, so a future `border-b` divider on the
+	 * rows is reported as its own decision instead of passing silently.
+	 */
+	const classes = classLiterals(primaryRowBody);
 	assert.ok(
 		!BORDER_ROLE.test(classes),
-		`the New chat row carries a border role again, so it no longer sits on the same inset as All chats:\n${classes}`,
+		`the primary rows carry a border role again, so they no longer sit on the destinations' inset:\n${primaryRowBody}`,
 	);
 	assert.ok(
-		classes.includes("rowStyle"),
-		"the row must keep taking rowStyle, which is where its h-8 box and px-1 inset live",
+		primaryRowBody.includes("DESTINATION_ROW"),
+		"the rows must keep taking DESTINATION_ROW, which is where their box and inset live",
 	);
 });
 
-test("the All chats row above it declares none either, so the pair is consistent", () => {
-	const classes = classExpressionFor("All chats");
+test("DESTINATION_ROW still carries the box the rows are aligned on", () => {
 	assert.ok(
-		!BORDER_ROLE.test(classes),
-		`the All chats row grew a border, so the New chat row can no longer match it:\n${classes}`,
+		ROW_HEIGHT.test(destinationRow) &&
+			ROW_INSET.test(destinationRow) &&
+			ROW_GAP.test(destinationRow),
+		`DESTINATION_ROW no longer declares the 30px box, the px-2 inset and the gap-2 the alignment is measured against:\n${destinationRow}`,
 	);
-	assert.ok(classes.includes("rowStyle"));
-});
-
-test("rowStyle still carries the box the two rows are aligned on", () => {
+	// And no boundary of its own: the destinations already drew this row without
+	// one, so a border here would be a new line on six rows at once.
 	assert.ok(
-		ROW_HEIGHT.test(rowStyle) &&
-			ROW_INSET.test(rowStyle) &&
-			ROW_GAP.test(rowStyle),
-		`rowStyle no longer declares the h-8 box, the px-1 inset and the gap-1 the alignment is measured against:\n${rowStyle}`,
+		!BORDER_ROLE.test(destinationRow),
+		`DESTINATION_ROW grew a boundary, which every destination and both primary rows now wear:\n${destinationRow}`,
 	);
 });
 
@@ -229,86 +220,104 @@ test("rowStyle still carries the box the two rows are aligned on", () => {
  *
  * The pin above is an absence check on `border-control`, and the regression it
  * exists for has a second entry that stays invisible to it: an inset added to
- * the New chat row ALONE. `pl-1.5`, `px-2`, `gap-2` or `h-9` in the row's own
- * class literals moves it off the All chats column with `rowStyle` untouched
- * and no border role anywhere - every test above stays green while the two rows
- * stop lining up (review finding M2). So the property is stated directly: the
- * row brings no horizontal inset, no gap and no height of its own, and what it
- * shares with the All chats row is the `rowStyle` reference itself, which is
- * the only place those three live.
+ * ONE of the two primary rows. So the property is stated directly, and it is now
+ * structural rather than comparative: BOTH rows are rendered by the one helper,
+ * and neither call site passes a class string of its own - so the two are the
+ * same element twice by construction, and there is no "the pair drifted" state
+ * left to test for.
  */
-test("the New chat row declares no box of its own, so it takes rowStyle's", () => {
-	const classes = classExpressionFor("New chat");
-	assert.ok(
-		classes.includes("rowStyle"),
-		"the row must keep taking rowStyle, which is where its h-8 box, px-1 inset and gap-1 live",
-	);
-	const literals = classLiterals(classes);
-	const override = literals.match(ROW_BOX_OVERRIDE);
+test("both primary rows come from the one helper, with no class of their own", () => {
+	for (const label of ["New chat", "Search"]) {
+		const at = source.indexOf(
+			`primaryRow(\n\t\t${label === "Search" ? "Search" : "MessageSquarePlus"}`,
+		);
+		assert.notEqual(at, -1, `no primaryRow call renders ${label}`);
+		// The call ends at the `\t);` that closes its argument list, not at the
+		// first `});` in the file - the props object closes with `},` and the
+		// helper's own JSX is further down, so a loose anchor sweeps in other rows.
+		const call = source.slice(at, source.indexOf("\n\t);", at));
+		assert.ok(
+			!call.includes("className"),
+			`${label} declares a class of its own, so the two rows can drift apart:\n${call}`,
+		);
+		assert.equal(
+			classLiterals(call).match(ROW_BOX_OVERRIDE),
+			null,
+			`${label} passes a box override, so it no longer takes DESTINATION_ROW's box:\n${call}`,
+		);
+	}
+	// And the helper is the ONLY place the shared box is named, once.
 	assert.equal(
-		override,
-		null,
-		`the New chat row declares ${JSON.stringify(override?.[0])} of its own, so it no longer takes rowStyle's px-1/h-8/gap-1 exactly as the All chats row does:\n${classes}`,
+		(primaryRowBody.match(/DESTINATION_ROW/g) ?? []).length,
+		1,
+		"the helper names the shared box more than once, which is two rows by another name",
 	);
-});
-
-test("the two rows differ only by the vertical step and the disabled pair", () => {
-	const tokens = (label) =>
-		classLiterals(classExpressionFor(label)).split(WHITESPACE).filter(Boolean);
-	const newChat = new Set(tokens("New chat"));
-	const allChats = new Set(tokens("All chats"));
-	/*
-	 * BOTH directions, because each is a way to break an alignment this file
-	 * cannot measure from source alone. An inset added to the All chats row
-	 * moves it off the New chat column exactly as one added here does, and a
-	 * token New chat LOSES (`w-full`, say) never reaches the extras below - a
-	 * one-directional comparison reads a row that dropped a class as a row that
-	 * agreed. Stating the relationship as an equality is what makes either side
-	 * of the pair observable.
-	 */
-	assert.deepEqual(
-		tokens("New chat")
-			.filter((token) => !allChats.has(token))
-			.sort(),
-		[...ROW_SPECIFIC_TOKENS].sort(),
-		"the New chat row added or lost a class the All chats row does not carry, so the pair is no longer the same row with a margin",
-	);
-	assert.deepEqual(
-		tokens("All chats")
-			.filter((token) => !newChat.has(token))
-			.sort(),
-		[],
-		"the All chats row carries a class the New chat row does not, so an inset added to the row ABOVE moves it off the alignment this branch establishes just as one added below would",
+	assert.equal(
+		(primaryRowBody.match(/disabled:/g) ?? []).length,
+		2,
+		"the disabled vocabulary is one predicate pair on the shared string, not a second rule",
 	);
 });
 
 test("the row keeps every affordance that marks it as the action", () => {
-	const classes = classExpressionFor("New chat");
-	assert.ok(
-		MB_1.test(classes),
-		"the margin below the row is what separates it from the Active/Previous split",
-	);
+	const classes = classLiterals(primaryRowBody);
 	assert.ok(
 		classes.includes("disabled:text-ink-disabled") &&
 			classes.includes("disabled:hover:bg-transparent"),
 		`the disabled rules are part of the row's class expression and must survive the border removal:\n${classes}`,
 	);
 	assert.ok(
-		CURRENT_DRAFT_PREDICATE.test(classes),
-		`the current-draft wash must stay on the same predicate as the row's aria-current:\n${classes}`,
+		CURRENT_DRAFT_PREDICATE.test(source),
+		"the row's aria-current must read the one current-draft predicate",
+	);
+	assert.ok(
+		ARIA_CURRENT_PAGE.test(primaryRowBody),
+		"the row's `aria-current` is what says it is the staged chat, not its ground alone",
+	);
+	assert.ok(
+		primaryRowBody.includes("props.current\n\t\t\t\t\t\t? rowCurrent"),
+		"the current row must take the shared rowCurrent ground, not a second spelling",
 	);
 
-	const labelAt = source.indexOf(">New chat</span>");
-	const buttonAt = source.lastIndexOf("<button", labelAt);
-	const button = source.slice(buttonAt, source.indexOf("</button>", labelAt));
+	// The icon distinguishes the action from the label-ish rows around it:
+	// `Plus` would mean "open a creation form", which is not what this does.
 	assert.ok(
-		button.includes("<MessageSquarePlus"),
-		'the icon is what distinguishes this row from the label-ish rows around it; `Plus` would mean "open a creation form"',
+		source.includes("primaryRow(\n\t\tMessageSquarePlus,"),
+		"the New chat row lost its icon, so it now reads as a destination",
 	);
+	/*
+	 * THE GATE, and it is the same bit `app.tsx`'s ⌘N binding reads: staging a
+	 * draft needs the session catalogue, and a row that staged one against an
+	 * absent catalogue would be the row claiming a capability the app has just
+	 * said it does not have.
+	 */
+	assert.match(
+		source,
+		/disabled: !catalogueReady/,
+		"the row is no longer disabled on the catalogue gate the chord reads",
+	);
+	assert.match(
+		source,
+		/desktopFeatureEnabled\(\s*capabilities\.data,\s*"session_catalogue",\s*2,?\s*\)/,
+		"the gate must be the capability bit itself, with its version, not a copy of the rule",
+	);
+});
+
+test("the row prints the cap the chord is, from the one module that spells it", () => {
+	const at = source.indexOf("primaryRow(\n\t\tMessageSquarePlus,");
+	assert.notEqual(at, -1, "the New chat row's call site is the anchor");
+	const call = stripComments(source.slice(at, source.indexOf("\n\t);", at)));
 	assert.ok(
-		button.includes("data-chat-row={ready || undefined}"),
-		"the row is a stop in the keyboard ring only while ready, and a disabled button refuses .focus()",
+		call.includes("newChatShortcutCap(isMac)"),
+		`the row must render the cap from the shipped helper:\n${call}`,
 	);
-	assert.ok(button.includes("disabled={!ready}"));
-	assert.ok(ARIA_CURRENT_PAGE.test(button));
+	/*
+	 * And it is passed JOINED (`⌘K`, not `⌘ + K`): §C1's rows print the chord as
+	 * caps with no separator, which is the design round's N1.
+	 */
+	assert.match(
+		primaryRowBody,
+		/<KeyboardShortcut shortcut=\{caps\} joined \/>/,
+		"the rows lost their joined caps, so the chord reads as three marks again",
+	);
 });

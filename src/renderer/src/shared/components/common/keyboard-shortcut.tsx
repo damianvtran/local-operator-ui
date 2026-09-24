@@ -90,6 +90,15 @@ import type { ElementType, FC } from "react";
 
 type KeyboardShortcutProps = {
 	shortcut: string;
+	/**
+	 * Draw the chord's caps side by side with no `+` between them: `⌘K`, the
+	 * spelling the sidebar's primary rows print (chat redesign §C1; design round
+	 * 1, N1 - `⌘ + K` with a spaced plus read as three marks where every reference
+	 * prints one chord). The `+` in `shortcut` is still the separator the caps are
+	 * split on, so the string callers pass - and the modules that spell it, and
+	 * the tests that pin those modules - do not change.
+	 */
+	joined?: boolean;
 };
 
 /**
@@ -137,7 +146,10 @@ const keyIconMap: Record<string, ElementType> = {
 	"↵": CornerDownLeft,
 };
 
-export const KeyboardShortcut: FC<KeyboardShortcutProps> = ({ shortcut }) => {
+export const KeyboardShortcut: FC<KeyboardShortcutProps> = ({
+	shortcut,
+	joined = false,
+}) => {
 	const keys = shortcut.split("+").map((key) => key.trim());
 
 	return (
@@ -147,7 +159,7 @@ export const KeyboardShortcut: FC<KeyboardShortcutProps> = ({ shortcut }) => {
 				return (
 					// biome-ignore lint/suspicious/noArrayIndexKey: the same key legitimately repeats in one shortcut ("Meta+Meta" exists in bindings), so position is part of the identity; the shortcut string is a stable prop, never reordered in place.
 					<Fragment key={`${key}-${index}`}>
-						{index > 0 && (
+						{index > 0 && !joined && (
 							/* The joiner between two caps, and not a cap: punctuation carries the
 							   caps' own ink (`ink-dim`) and not the sentence's, so a chord does
 							   not read as three marks joined by a louder one. */

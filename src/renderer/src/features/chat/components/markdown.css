@@ -70,7 +70,7 @@
  * The accepted cost: multi-word inline code loses its extent delimiter. Here
  * inline code is overwhelmingly single tokens, so the trade is worth it.
  *
- * `pre` keeps its ground and border - a code block has left the flow.
+ * `pre` keeps its ground - a code block has left the flow.
  */
 .lo-markdown code {
 	font-family: var(--font-mono);
@@ -80,10 +80,13 @@
 	word-break: break-word;
 }
 
+/* §E5: fenced code is the detail block's treatment - `sunken`, radius 10, and
+   NO border (chat redesign, design round 1, D9: the hairline measured as a
+   2px-wide ring on both palettes, and §B3's complete border list does not name
+   it; the `sunken` step alone separates the block). */
 .lo-markdown pre {
 	background-color: var(--lo-sunken);
-	border: 1px solid var(--lo-hairline);
-	border-radius: var(--radius-sm);
+	border-radius: var(--radius-md);
 	padding: 0.75rem;
 	margin: 0.75rem 0;
 	max-width: 100%;
@@ -92,8 +95,8 @@
 	font-size: var(--text-mono);
 }
 
-/* The <pre> already carries the ground and the boundary; a second one on the
-   nested <code> paints a box inside a box.
+/* The <pre> already carries the ground; a second one on the nested <code>
+   paints a box inside a box.
 
    Both font sizes used to be `0.875em`, and they multiplied: react-markdown
    emits `<pre><code>` for a fenced block, so the most-read machine text in

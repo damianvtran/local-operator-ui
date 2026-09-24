@@ -10,12 +10,17 @@ import { ChatSidebar } from "@features/chat/components/chat-sidebar";
  * which is the shape `chat-sidebar-selection.test.mjs` reads for.
  */
 import { rowCurrent } from "@features/chat/components/chat-sidebar";
+import { newChatShortcutCap } from "@features/chat/new-chat-shortcut";
 import { openConversation } from "@features/chat/open-conversation";
 import { hideRegion, regionVisibility } from "@features/chat/sidebar-split";
 import {
 	paletteShortcutCaps,
 	paletteShortcutLabel,
 } from "@features/command-palette/palette-shortcut";
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
 import { useSidebarFrame } from "@shared/components/common/chat-layout";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
@@ -33,9 +38,11 @@ import {
 	ChevronLeft,
 	ChevronRight,
 	Globe,
+	MessageSquarePlus,
 	Search,
 	Settings,
 	Store,
+	X,
 } from "lucide-react";
 import type { FC, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
@@ -120,10 +127,16 @@ const DESTINATION_ROW =
 export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	const navigate = useNavigate();
 	const currentView = useCurrentView();
-	const { expanded, onCollapse } = useSidebarFrame();
+	const { expanded, mode, onCollapse } = useSidebarFrame();
 	const openCommandPalette = useUiPreferencesStore(
 		(state) => state.openCommandPalette,
 	);
+	/*
+	 * The catalogue capability, the gate the New chat row is disabled on - the
+	 * same bit `app.tsx`'s ⌘N binding reads, so the row and the chord refuse in
+	 * exactly the same states.
+	 */
+	const capabilities = useDesktopCapabilities();
 	/*
 	 * The agents tree's disclosure, and it writes the SAME preference the list
 	 * reads for its own two regions rather than a second flag beside it: the list
@@ -341,112 +354,198 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			</li>
 		);
 
-	const toggleLabel = expanded ? "Collapse sidebar" : "Expand sidebar";
+	/*
+	 * THE ONE TOGGLE, and its glyph follows WHERE the sidebar is drawn (design
+	 * round 1, D3). Docked, it collapses to the strip: `‹`. In the sheet it
+	 * closes the sheet: `×`, because the sheet is a layer that goes away rather
+	 * than a column that narrows. In the strip it expands: `›` (the dock at
+	 * >=1024, the sheet below - the shell decides which, `chat-layout.tsx`). The
+	 * sheet used to draw the docked `‹` beside the dialog primitive's own `×`,
+	 * one over the other in a single focus-ringed box.
+	 */
+	const toggleLabel =
+		mode === "overlay"
+			? "Close sidebar"
+			: expanded
+				? "Collapse sidebar"
+				: "Expand sidebar";
+	const ToggleGlyph =
+		mode === "overlay" ? X : expanded ? ChevronLeft : ChevronRight;
 	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+	const catalogueReady = desktopFeatureEnabled(
+		capabilities.data,
+		"session_catalogue",
+		2,
+	);
+	const activeDraftKey = useCanonicalSessionsStore(
+		(state) => state.activeDraftKey,
+	);
+	const drafts = useCanonicalSessionsStore((state) => state.drafts);
+	/*
+	 * An untargeted draft is the one THIS row stages, so it is the row marked
+	 * current while one is up - the same terms the list's old `New chat` row
+	 * used. A draft with a target belongs to its agent's row.
+	 */
+	const untargetedDraft =
+		Boolean(activeDraftKey) &&
+		!(activeDraftKey ? drafts[activeDraftKey] : undefined)?.target;
+	const stageNewChat = () => {
+		useCanonicalSessionsStore.getState().stageDraft(undefined, true);
+		navigate("/chat");
+	};
 
 	/*
-	 * THE PRIMARY ACTION, and the one row of it: Search.
+	 * THE PRIMARY ACTIONS, two 30px rows at the top of the column (§C1.2; design
+	 * round 1, D1): `New chat ⌘N`, then `Search ⌘K`.
 	 *
-	 * Search was at the foot of the old rail, beside the account, because the
-	 * list above it was DESTINATIONS and every row in it lit up with
-	 * `aria-current` - and Search is not a place. That argument still holds,
-	 * which is why it is not in the destinations group below; what changed is
-	 * that the column now has a group for CONTROLS at its top, where the
-	 * reference products put theirs, so the palette's door is one press from the
-	 * column's first row instead of its last.
+	 * New chat moved HERE from the list's own header, where it sat under a second
+	 * search field, a disclosure and an `All chats` row - the placement the design
+	 * round named as the biggest reason the shell read as two panels welded
+	 * together. Search stays the command palette's door: the one visible search in
+	 * the column. The list's own filter is type-to-filter now (`chat-sidebar.tsx`),
+	 * so there is no second search control at rest.
 	 *
-	 * NEW CHAT IS NOT DUPLICATED HERE. The spec's primary-actions group names two
-	 * rows, and the second one already exists one row below this group: the
-	 * list's own `New chat` row, whose exact class expression is pinned by
-	 * `scripts/new-chat-row.test.mjs` against the `All chats` row directly above
-	 * it and whose placement under those two rows is an arbitrated design
-	 * decision (D1 of `docs/design/sidebar-row-space.md`). A second copy in this
-	 * group would put two New chat rows in one 260px column, a hundred pixels
-	 * apart, and taking the list's away is a change inside that region's measured
-	 * header - which is the list's own commit, not this layout one. What this
-	 * commit owes it is the tour's anchor: the row carries
-	 * `data-tour-tag="nav-item-chat"` now (see `chat-sidebar.tsx`), so the
-	 * onboarding step that clicks its way back to chat still finds a control.
+	 * THE CHORD IS WRITTEN ON THE ROW, as caps with no separator between them
+	 * (N1: `⌘K`, not `⌘ + K`) - the app's `KeyboardShortcut` spells a chord as
+	 * `+`-joined caps and prints the `+`, so the rows pass the caps as one string
+	 * and split nothing. The accessible name carries the chord in words.
 	 *
-	 * ## Why a visible chord
-	 *
-	 * The gesture is what makes this surface fast, and a user who never learns it
-	 * uses the palette once. The chord is written on the row (the app's key cap,
-	 * the same one the palette's own footer prints) rather than in a tooltip, so
-	 * the column teaches Cmd+K without being asked. The cap is FILL-LESS by its
-	 * own construction (`keyboard-shortcut.tsx`, `CAP` - no fill, no border), so
-	 * it needs no ground of its own and reads the same here as in the palette.
-	 *
-	 * The macOS spelling rides a real platform check rather than a guess: off
-	 * macOS the same row reads Ctrl+K.
+	 * DISABLED ON THE CATALOGUE GATE, the same bit `app.tsx`'s ⌘N reads: staging a
+	 * draft needs the session catalogue, and a row that staged one against an
+	 * absent catalogue would be the shortcut claiming a capability the app has
+	 * just said it does not have.
 	 */
+	const newChatLabel = `New chat (${newChatShortcutCap(isMac).replace("+", "")})`;
 	const searchLabel = `Search (${paletteShortcutLabel(isMac)})`;
-
-	const searchRow = expanded ? (
-		<button
-			type="button"
-			data-command-palette-trigger=""
-			onClick={openCommandPalette}
-			aria-label={searchLabel}
-			className={cn(
-				DESTINATION_ROW,
-				"text-ink-muted hover:bg-row-hover hover:text-ink",
-			)}
-		>
-			<Search size={16} aria-hidden="true" className="shrink-0" />
-			<span className="truncate">Search</span>
-			{/*
-			 * Decorative: the accessible name above already carries the chord, so the
-			 * caps are hidden from a screen reader rather than announced beside it.
-			 */}
-			<span aria-hidden="true" className="ml-auto">
-				<KeyboardShortcut shortcut={paletteShortcutCaps(isMac)} />
-			</span>
-		</button>
-	) : (
-		<Tooltip content={searchLabel} side="right">
+	const primaryRow = (
+		icon: LucideIcon,
+		label: string,
+		caps: string,
+		props: {
+			onClick: () => void;
+			ariaLabel: string;
+			current?: boolean;
+			disabled?: boolean;
+			attrs?: Record<string, string>;
+		},
+	) => {
+		const Icon = icon;
+		return (
 			<button
 				type="button"
-				data-command-palette-trigger=""
-				onClick={openCommandPalette}
-				aria-label={searchLabel}
+				{...props.attrs}
+				onClick={props.onClick}
+				disabled={props.disabled}
+				aria-label={props.ariaLabel}
+				aria-current={props.current ? "page" : undefined}
 				className={cn(
-					"flex size-8 items-center justify-center rounded-sm text-ink-muted",
-					"transition-colors duration-fast ease-out-quart",
-					"hover:bg-row-hover hover:text-ink",
+					DESTINATION_ROW,
+					props.current
+						? rowCurrent
+						: "text-ink-muted hover:bg-row-hover hover:text-ink",
+					"disabled:text-ink-disabled disabled:hover:bg-transparent",
 				)}
 			>
-				<Search size={16} aria-hidden="true" />
+				<Icon size={16} aria-hidden="true" className="shrink-0" />
+				<span className="truncate">{label}</span>
+				{/*
+				 * Decorative: the accessible name above already carries the chord, so the
+				 * caps are hidden from a screen reader rather than announced beside it.
+				 */}
+				<span aria-hidden="true" className="ml-auto">
+					<KeyboardShortcut shortcut={caps} joined />
+				</span>
 			</button>
-		</Tooltip>
+		);
+	};
+	const newChatRow = primaryRow(
+		MessageSquarePlus,
+		"New chat",
+		newChatShortcutCap(isMac),
+		{
+			onClick: stageNewChat,
+			ariaLabel: newChatLabel,
+			current: untargetedDraft,
+			disabled: !catalogueReady,
+			/*
+			 * THE TOUR'S CHAT ANCHOR: the one sidebar's body IS the chat list, so the
+			 * onboarding step that clicks its way back to a conversation needs a control
+			 * that lands on `/chat`, and this row is the one that does.
+			 */
+			attrs: { "data-tour-tag": "nav-item-chat", "data-new-chat-row": "" },
+		},
+	);
+	const searchRowExpanded = primaryRow(
+		Search,
+		"Search",
+		paletteShortcutCaps(isMac),
+		{
+			onClick: openCommandPalette,
+			ariaLabel: searchLabel,
+			attrs: { "data-command-palette-trigger": "" },
+		},
 	);
 
 	/*
-	 * The collapse control lives in the brand row, revealed when the column is
-	 * pointed at or contains focus.
+	 * A strip control: 32px, one glyph, the name in a tooltip and in
+	 * `aria-label`. The strip's first group is expand + New chat + Search (§J2/§C3,
+	 * design round 1, D11): with only the destinations in it, New chat was
+	 * reachable from a narrow window by ⌘N alone.
+	 */
+	const stripButton = (
+		icon: LucideIcon,
+		label: string,
+		props: {
+			onClick: () => void;
+			disabled?: boolean;
+			attrs?: Record<string, string | boolean>;
+		},
+	) => {
+		const Icon = icon;
+		return (
+			<Tooltip content={label} side="right">
+				<button
+					type="button"
+					{...props.attrs}
+					onClick={props.onClick}
+					disabled={props.disabled}
+					aria-label={label}
+					className={cn(
+						"flex size-8 items-center justify-center rounded-sm text-ink-muted",
+						"transition-colors duration-fast ease-out-quart",
+						"hover:bg-row-hover hover:text-ink",
+						"disabled:text-ink-disabled disabled:hover:bg-transparent",
+					)}
+				>
+					<Icon size={16} aria-hidden="true" />
+				</button>
+			</Tooltip>
+		);
+	};
+
+	/*
+	 * The collapse/close control in the brand row, revealed when the column is
+	 * pointed at or contains focus - Linear, Notion and Slack all put it in the
+	 * header and reveal it on hover. In the SHEET it is always drawn: it is the
+	 * sheet's one visible close, and a close that appears only on hover in a layer
+	 * the user just opened is a close they have to hunt for.
 	 *
-	 * It used to have a full-width row of its own at the foot of the rail, above
-	 * a hairline drawn only so the chevron would not read as a sixth destination
-	 * - about 40px of permanent chrome and one border, to hold a control that is
-	 * used a few times a week. Linear, Notion and Slack all put it in the header
-	 * and all reveal it on hover; collapsed, it takes the logo's place, because a
-	 * 56px strip has room for exactly one thing.
-	 *
-	 * `pointer-events-none` gates the mouse only. Focus is unaffected by it, so
-	 * the button keeps its place in the tab order and reveals itself with
-	 * `group-focus-within` when a keyboard reaches it.
+	 * `pointer-events-none` gates the mouse only; focus is unaffected, so the
+	 * button keeps its place in the tab order and reveals itself with
+	 * `group-focus-within/sidebar` when a keyboard reaches it.
 	 *
 	 * `aria-keyshortcuts` names the chord the shell answers (`chat-layout.tsx`):
-	 * this control and that handler are the two halves of one gesture, and the
-	 * cap is built from the same `sidebarToggleCap` the shell's divider label
-	 * prints.
+	 * this control and that handler are the two halves of one gesture.
 	 */
 	const collapseToggle = (
 		<div
 			className={cn(
-				"pointer-events-none opacity-0 transition-opacity duration-fast ease-out-quart",
-				"group-hover:pointer-events-auto group-hover:opacity-100",
-				"group-focus-within:pointer-events-auto group-focus-within:opacity-100",
+				mode !== "overlay" &&
+					cn(
+						"pointer-events-none opacity-0 transition-opacity duration-fast ease-out-quart",
+						"group-hover/sidebar:pointer-events-auto group-hover/sidebar:opacity-100",
+						"group-focus-within/sidebar:pointer-events-auto group-focus-within/sidebar:opacity-100",
+					),
 			)}
 		>
 			<Tooltip content={toggleLabel} side="right">
@@ -455,14 +554,10 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					size="icon-sm"
 					onClick={onCollapse}
 					aria-label={toggleLabel}
-					aria-expanded={expanded}
+					aria-expanded={mode === "overlay" ? undefined : expanded}
 					aria-keyshortcuts={sidebarToggleCap(isMac)}
 				>
-					{expanded ? (
-						<ChevronLeft aria-hidden="true" />
-					) : (
-						<ChevronRight aria-hidden="true" />
-					)}
+					<ToggleGlyph aria-hidden="true" />
 				</Button>
 			</Tooltip>
 		</div>
@@ -504,30 +599,47 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		 * on each side and a 28px hit target fits.
 		 *
 		 * THE LIST IS NOT DRAWN HERE. A 56px column cannot show a conversation
-		 * title, and a strip that scrolled would be a list nobody could read. The
-		 * strip is the destinations plus the two ways back to the rest of it: the
-		 * expand control in the brand slot, and the shell's own ⌘B.
+		 * title. The strip is: the brand, then the first group - expand, New chat,
+		 * Search (§J2; design round 1, D11: it used to hold no New chat and no
+		 * visible expand, so a narrow window reached New chat by ⌘N alone) - then
+		 * the destinations, then the foot.
 		 */
 		return (
 			<div
 				data-sidebar-strip=""
-				className={cn(
-					"group flex h-full min-h-0 flex-col items-center bg-surface py-2",
-				)}
+				className="group/sidebar flex h-full min-h-0 flex-col items-center bg-surface"
 			>
-				<div className="relative flex size-8 items-center justify-center">
-					<div className="transition-opacity duration-fast ease-out-quart group-hover:opacity-0 group-focus-within:opacity-0">
-						<CollapsibleAppLogo expanded={false} />
-					</div>
-					<div className="absolute inset-0 flex items-center justify-center">
-						{collapseToggle}
-					</div>
+				<div className="flex h-10 shrink-0 items-center justify-center">
+					<CollapsibleAppLogo expanded={false} />
 				</div>
-				<ul className="mt-2 flex flex-col items-center gap-1">
-					<li>{searchRow}</li>
+				<ul className="flex flex-col items-center gap-1">
+					<li>
+						{stripButton(ChevronRight, toggleLabel, {
+							onClick: onCollapse,
+							attrs: {
+								"aria-expanded": false,
+								"aria-keyshortcuts": sidebarToggleCap(isMac),
+							},
+						})}
+					</li>
+					<li>
+						{stripButton(MessageSquarePlus, newChatLabel, {
+							onClick: stageNewChat,
+							disabled: !catalogueReady,
+							attrs: { "data-tour-tag": "nav-item-chat" },
+						})}
+					</li>
+					<li>
+						{stripButton(Search, searchLabel, {
+							onClick: openCommandPalette,
+							attrs: { "data-command-palette-trigger": "" },
+						})}
+					</li>
+				</ul>
+				<ul className="mt-4 flex flex-col items-center gap-1">
 					{navItems.map(renderNavRow)}
 				</ul>
-				<div className="mt-auto flex flex-col items-center gap-1">
+				<div className="mt-auto flex flex-col items-center gap-1 pb-2">
 					{settingsGear}
 					<UserProfileSidebar expanded={false} />
 				</div>
@@ -535,45 +647,57 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		);
 	}
 
+	/*
+	 * `group/sidebar`, NAMED, and that is a fix rather than a style. Tailwind's
+	 * bare `group-hover:` matches ANY hovered ancestor `.group`, and since the
+	 * merge this column is an ancestor of every conversation row, whose own
+	 * `group` reveals its Pin and Archive acts - so an unnamed group here revealed
+	 * the acts on EVERY row whenever the pointer was anywhere in the sidebar.
+	 */
 	return (
-		<div className="group flex h-full min-h-0 flex-col overflow-x-hidden bg-surface">
+		<div className="group/sidebar flex h-full min-h-0 flex-col overflow-x-hidden bg-surface">
 			{/*
 			 * The brand row, 40px, square with the top row beside it.
 			 *
 			 * 40 is the app's existing toolbar step (the chat header, every pane
 			 * toolbar, this row) and it is what puts the brand and the conversation
 			 * title on ONE line once the chrome lane is shell-level. `pl-4`: the
-			 * list's 8px inset plus a row's 8px padding puts every row's mark 16px
-			 * from this column's edge, and the logo starts on that same line or the
-			 * column reads as two that nearly agree.
+			 * column's 8px inset plus a row's 8px padding puts every row's mark 16px
+			 * from this column's edge, and the logo starts on that same line.
 			 */}
 			<div className="flex h-10 shrink-0 items-center gap-1 pr-2 pl-4">
 				<CollapsibleAppLogo expanded />
 				<span className="ml-auto">{collapseToggle}</span>
 			</div>
 
+			{/*
+			 * §C1.2 then §C1.3: the two primary rows 8px apart, then the destinations
+			 * group. `pb-2` is the group's bottom step; the body below adds the rest of
+			 * §B6's 16px between the destinations and the list's first label.
+			 */}
 			<div className="flex shrink-0 flex-col gap-2 px-2 pb-2">
-				{searchRow}
+				<div className="flex flex-col gap-0.5">
+					{newChatRow}
+					{searchRowExpanded}
+				</div>
 				{/*
 				 * THE DESTINATIONS GROUP, four 30px rows: the same routes in the same
-				 * order the old rail carried, minus Chat (which is the list itself, one
-				 * group below) and minus Settings (which the foot owns).
+				 * order the old rail carried, minus Chat (which is the list itself) and
+				 * minus Settings (which the foot owns).
 				 */}
 				<ul className="flex flex-col gap-0.5">{navItems.map(renderNavRow)}</ul>
 			</div>
 
 			{/*
-			 * THE BODY. `mt-3` is the 16px section tier the spec asks for between the
-			 * destinations and the list's first label, less the group's own 8px of
-			 * bottom padding - the separation is space, not a rule.
+			 * THE BODY: the one chat list, one scroll region. `mt-2` completes the 16px
+			 * section tier with the group's own `pb-2` - the separation is space, not a
+			 * rule.
 			 */}
-			<div className="mt-3 flex min-h-0 flex-1 flex-col">{listBody}</div>
+			<div className="mt-2 flex min-h-0 flex-1 flex-col">{listBody}</div>
 
 			{/*
 			 * THE FOOT, 40px: the account row, whose own menu carries Settings and
 			 * Sign out, and the gear that goes straight to Settings.
-			 * `justify-between` rather than `ml-auto` on the gear so the two stay
-			 * apart when the column is dragged to its 220px floor.
 			 */}
 			<div className="flex h-10 shrink-0 items-center justify-between gap-1 px-2">
 				<UserProfileSidebar expanded />

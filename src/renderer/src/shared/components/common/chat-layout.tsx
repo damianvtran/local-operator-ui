@@ -1,5 +1,6 @@
 import {
 	SIDEBAR_COLLAPSED_WIDTH,
+	SIDEBAR_DOCK_MIN_PX,
 	SIDEBAR_MAX_WIDTH,
 	SIDEBAR_MIN_WIDTH,
 	type SidebarLayout,
@@ -82,7 +83,17 @@ const SIDEBAR_SHEET_SCOPE = "data-sidebar-sheet";
 type SidebarFrame = {
 	/** Whether the full sidebar is drawn (docked, or the sheet's contents). */
 	expanded: boolean;
-	/** The one control that closes the sidebar: the store's toggle, or the sheet. */
+	/**
+	 * WHERE it is drawn, because the one toggle's glyph depends on it (design
+	 * round 1, D3): a docked column collapses (`‹`), a sheet closes (`×`), and a
+	 * strip expands (`›`). Deriving the glyph from `expanded` alone is what drew
+	 * the docked chevron inside the sheet beside the primitive's own close.
+	 */
+	mode: "docked" | "strip" | "overlay";
+	/**
+	 * The one control that changes the sidebar's shape: collapse the dock, close
+	 * the sheet, or - from the strip - expand (the dock at >=1024, the sheet below).
+	 */
 	onCollapse: () => void;
 };
 
@@ -157,7 +168,7 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 			// A foreign overlay - a dialog, a menu, a listbox - owns its own keys.
 			if (!ownSheet && pressLandsOnOverlay(event.target)) return;
 			event.preventDefault();
-			if (viewportWidth >= 1024) toggleSidebar();
+			if (viewportWidth >= SIDEBAR_DOCK_MIN_PX) toggleSidebar();
 			else setSheetRequested((open) => !open);
 		},
 		[toggleSidebar, viewportWidth],
@@ -169,104 +180,72 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	}, [onToggle]);
 
 	/*
-	 * The strip IS the sidebar below the dock width, and in overlay mode it is
-	 * the sheet's contents at their own width - one render of the sidebar either
-	 * way, so the list is never mounted twice and the rig's
-	 * `[data-sidebar-region="chats"]` still finds exactly one region.
+	 * ONE TREE FOR ALL THREE MODES, and that is the fix for a measured bug rather
+	 * than tidiness (design round 1, D2). The overlay used to be its own `return`,
+	 * which rendered the sheet and NOTHING ELSE: no strip and no `content` - so
+	 * opening the list below 1024 unmounted the conversation, and the frame right
+	 * of the 260px sheet was one flat colour (std-dev 0.0 over 800x900 device px,
+	 * with header, transcript and composer all measuring `null`). A sheet is a
+	 * layer OVER the pane (§B1/§C1): the strip and the conversation stay mounted
+	 * exactly as they were, and the sheet is drawn on top of them, dimmed by the
+	 * scrim, with the pane itself as the outside press that closes it.
+	 *
+	 * THE LANE TAKES EACH COLUMN'S OWN GROUND (D10). It was one window-wide strip
+	 * on `canvas`, so over the sidebar's `surface` it read as a notch the sidebar
+	 * hung from. It is still ONE element spanning both columns - that is what keeps
+	 * the brand row and the conversation title on one line - but it paints the
+	 * sidebar's width in `surface` and the rest in `canvas` with a hard-stop
+	 * gradient, so each column's ground runs to y0 the way Codex and Cursor 3 draw
+	 * theirs. The stop is the column's own width, which is why it is a style.
 	 */
-	if (layout.mode === "overlay") {
-		return (
-			<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-				{/*
-				 * THE macOS LANE, and it is SHELL-LEVEL rather than the sidebar's own.
-				 *
-				 * Electron leaves the native traffic lights over the renderer once the
-				 * title bar is hidden (`src/main/titlebar-options.ts`), so the renderer has
-				 * to keep their 32px clear. Reserving it ONCE, above BOTH columns, is what
-				 * lets the sidebar's brand row and the conversation title be the same row:
-				 * with the lane scoped to one column, that column's first row starts 32px
-				 * lower than the other's and the two only agree by accident. The lane is
-				 * also the window's drag handle - every control in either first row opts
-				 * back out with `data-titlebar-no-drag`.
-				 *
-				 * It is `display: none` outside the mac gate (the rule is in
-				 * `styles/index.css`, keyed on `data-titlebar-platform`), so Windows and
-				 * Linux keep their native frame and lose nothing to it. Its height is
-				 * `--chrome-strip-h`: 8 above the lights' 16px hit frame plus one 8px step,
-				 * which is the number `titlebar-options.ts` measures from the OS rather than
-				 * choosing.
-				 */}
-				<div
-					data-titlebar-lane=""
-					data-titlebar-drag=""
-					className="h-8 shrink-0"
-				/>
-				<div className="flex min-h-0 flex-1 overflow-hidden">
-					<Sheet
-						open
-						onOpenChange={(open) => {
-							if (!open) setSheetRequested(false);
-						}}
-					>
-						<SheetContent
-							side="left"
-							data-sidebar-sheet=""
-							/*
-							 * `w-[260px] max-w-none` overrides the primitive's own left-edge width
-							 * (`w-3/4 max-w-sm`): 3/4 of an 880px window is 660 and `max-w-sm` is 384,
-							 * so neither number is the sheet this column wants, and both would make the
-							 * overlay wider than the dock it replaces. `cn` merges, so this wins.
-							 */
-							className={cn("w-[260px] max-w-none gap-0 border-hairline p-0")}
-							aria-describedby={undefined}
-						>
-							{/*
-							 * The sheet needs a name, and the sidebar's own `<nav>` is already
-							 * labelled inside it - so the title is the sheet's, `sr-only` rather
-							 * than drawn, because a visible "Sidebar" heading above a brand row
-							 * that already says who the app is would be a third name for one
-							 * thing.
-							 */}
-							<SheetTitle className="sr-only">
-								Chats and destinations
-							</SheetTitle>
-							<SidebarFrameContext.Provider
-								value={{
-									expanded: true,
-									onCollapse: () => setSheetRequested(false),
-								}}
-							>
-								{sidebar}
-							</SidebarFrameContext.Provider>
-						</SheetContent>
-					</Sheet>
-				</div>
-			</div>
-		);
-	}
-
+	const columnWidth =
+		layout.mode === "docked" ? layout.width : SIDEBAR_COLLAPSED_WIDTH;
 	return (
 		<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+			{/*
+			 * THE macOS LANE, and it is SHELL-LEVEL rather than the sidebar's own.
+			 *
+			 * Electron leaves the native traffic lights over the renderer once the
+			 * title bar is hidden (`src/main/titlebar-options.ts`), so the renderer has
+			 * to keep their 32px clear. Reserving it ONCE, above BOTH columns, is what
+			 * lets the sidebar's brand row and the conversation title be the same row:
+			 * with the lane scoped to one column, that column's first row starts 32px
+			 * lower than the other's and the two only agree by accident. The lane is
+			 * also the window's drag handle - every control in either first row opts
+			 * back out with `data-titlebar-no-drag`.
+			 *
+			 * It is `display: none` outside the mac gate (the rule is in
+			 * `styles/index.css`, keyed on `data-titlebar-platform`), so Windows and
+			 * Linux keep their native frame and lose nothing to it.
+			 */}
 			<div
 				data-titlebar-lane=""
 				data-titlebar-drag=""
 				className="h-8 shrink-0"
+				style={{
+					background: `linear-gradient(to right, var(--lo-surface) ${columnWidth}px, var(--lo-canvas) ${columnWidth}px)`,
+				}}
 			/>
 			<div className="flex min-h-0 flex-1 overflow-hidden">
-				<div
-					className="h-full shrink-0"
-					style={{
-						width:
-							layout.mode === "docked" ? layout.width : SIDEBAR_COLLAPSED_WIDTH,
-					}}
-				>
+				<div className="h-full shrink-0" style={{ width: columnWidth }}>
 					<SidebarFrameContext.Provider
 						value={{
-							expanded: !layout.collapsed,
-							onCollapse: toggleSidebar,
+							expanded: layout.mode === "docked",
+							mode: layout.mode === "docked" ? "docked" : "strip",
+							onCollapse:
+								viewportWidth >= SIDEBAR_DOCK_MIN_PX
+									? toggleSidebar
+									: () => setSheetRequested(true),
 						}}
 					>
-						{sidebar}
+						{/*
+						 * While the sheet is up the sheet holds the ONE render of the sidebar,
+						 * and this column keeps the strip's ground in its place. Nothing here
+						 * needs to be taken out of the tab order by hand: the sheet is a Radix
+						 * modal, which already hides everything outside it from assistive tech
+						 * and traps focus inside it.
+						 */}
+						{layout.sheetOpen ? <SidebarStripOnly /> : sidebar}
 					</SidebarFrameContext.Provider>
 				</div>
 				{layout.resizable && (
@@ -301,9 +280,78 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 					{content}
 				</div>
 			</div>
+			<Sheet
+				open={layout.sheetOpen}
+				onOpenChange={(open) => {
+					if (!open) setSheetRequested(false);
+				}}
+			>
+				<SheetContent
+					side="left"
+					data-sidebar-sheet=""
+					/*
+					 * The sidebar draws its own `×` (the one control that closes it, D3), so
+					 * the primitive's corner close is off: two close glyphs in one 40px corner
+					 * were the `‹`-over-`×` the design round photographed.
+					 */
+					showClose={false}
+					/*
+					 * `w-[260px] max-w-none` overrides the primitive's own left-edge width
+					 * (`w-3/4 max-w-sm`): 3/4 of an 880px window is 660 and `max-w-sm` is 384,
+					 * so neither number is the sheet this column wants, and both would make the
+					 * overlay wider than the dock it replaces. `bg-surface` because the sheet
+					 * IS the sidebar, on the sidebar's own ground, not a dialog on `elevated`.
+					 */
+					className={cn(
+						"w-[260px] max-w-none gap-0 border-0 bg-surface p-0",
+						/*
+						 * The lane's height on macOS, so the sheet's brand row sits on the
+						 * line the docked one does and the traffic lights keep their clear
+						 * band. Read from the platform here rather than from the CSS gate:
+						 * the sheet is PORTALED to `<body>`, outside the element that
+						 * carries `data-titlebar-platform`, so the attribute rule cannot
+						 * reach it.
+						 */
+						isMacPlatform() && "pt-[var(--chrome-strip-h)]",
+					)}
+					aria-describedby={undefined}
+				>
+					{/*
+					 * The sheet needs a name, and the sidebar's own `<nav>` is already
+					 * labelled inside it - so the title is the sheet's, `sr-only` rather
+					 * than drawn, because a visible "Sidebar" heading above a brand row
+					 * that already says who the app is would be a third name for one
+					 * thing.
+					 */}
+					<SheetTitle className="sr-only">Chats and destinations</SheetTitle>
+					<SidebarFrameContext.Provider
+						value={{
+							expanded: true,
+							mode: "overlay",
+							onCollapse: () => setSheetRequested(false),
+						}}
+					>
+						{sidebar}
+					</SidebarFrameContext.Provider>
+				</SheetContent>
+			</Sheet>
 		</div>
 	);
 };
+
+/**
+ * The strip, drawn BEHIND an open sheet.
+ *
+ * The sheet renders the one full sidebar, and the list inside it must be the
+ * only mounted copy (the rig and the driver find `[data-sidebar-region="chats"]`
+ * as exactly one region, and the list owns stores and timers a second mount
+ * would duplicate). So while the sheet is up the column keeps a quiet 56px
+ * ground in its place: the strip's own width and colour, with nothing in it
+ * that could take a press or a focus the scrim above it would hide anyway.
+ */
+const SidebarStripOnly: FC = () => (
+	<div aria-hidden="true" className="h-full bg-surface" />
+);
 
 /**
  * Whether this is macOS, for the one caption the divider prints.

@@ -87,6 +87,63 @@ export const formatDirectory = (
 };
 
 /**
+ * A path shortened IN THE MIDDLE to at most `max` characters:
+ * `~/.local-operator/sessions/d81d/scratchpad/chat-redesign/workspace/app`
+ * becomes `~/.local-operator/…/workspace/app`.
+ *
+ * WHY THE MIDDLE (chat redesign §B4/§C2, design round 1, D6). The chat header's
+ * path is a quiet chip beside the conversation's title, and the two ends are
+ * the informative ones: the head says where it is rooted (`~`, a drive, the
+ * first directory under home) and the tail says WHICH directory it is. CSS can
+ * only ellipsise one end - the header used to cut the head with `dir="rtl"`,
+ * which kept the tail but lost every sign of where the path was rooted, and at
+ * a narrow width it still took the title's room to show 300px of path. This
+ * gives the chip a bounded length, so the title keeps its words.
+ *
+ * Whole segments are kept from the END until the budget runs out, and the head
+ * keeps its first segment (after a leading `~` or `/`, so `~/code` rather than
+ * a bare `~`). A last segment that alone overruns the budget is cut from its
+ * own start, which is the one case where the head is dropped entirely.
+ *
+ * @param path - The display form (already `~`-abbreviated by `formatDirectory`)
+ * @param max - The character budget, ellipsis included
+ */
+export const middleTruncatePath = (path: string, max: number): string => {
+	if (path.length <= max) return path;
+	const parts = path.split("/");
+	const last = parts[parts.length - 1] ?? "";
+	if (last.length + 1 >= max) return `…${last.slice(-(max - 1))}`;
+	// The head: `~/first` or `/first`, the first real segment and its root.
+	const rooted = parts[0] === "~" || parts[0] === "";
+	const headParts = rooted ? parts.slice(0, 2) : parts.slice(0, 1);
+	const rest = parts.slice(headParts.length);
+	/** The longest run of whole trailing segments that fits beside `head`. */
+	const tailFor = (head: string): string[] => {
+		const room = max - head.length - (head ? 3 : 2); // "/…/" or "…/"
+		let tail: string[] = [];
+		for (let i = rest.length - 1; i >= 0; i -= 1) {
+			const next = [rest[i], ...tail];
+			if (next.join("/").length > room) break;
+			tail = next;
+		}
+		return tail;
+	};
+	const join = (head: string, tail: string[]) =>
+		head ? `${head}/…/${tail.join("/")}` : `…/${tail.join("/")}`;
+	// The full head first; if it leaves no room for even the last segment, keep
+	// only the root (`~`, or nothing for a relative path).
+	const fullHead = headParts.join("/");
+	const tail = tailFor(fullHead);
+	if (tail.length > 0) {
+		if (tail.length === rest.length) return path;
+		return join(fullHead, tail);
+	}
+	const root = rooted ? parts[0] : "";
+	const rootTail = tailFor(root);
+	return join(root, rootTail.length > 0 ? rootTail : [last]);
+};
+
+/**
  * Determines if a path includes a specific segment
  * Handles platform-specific path separators
  *

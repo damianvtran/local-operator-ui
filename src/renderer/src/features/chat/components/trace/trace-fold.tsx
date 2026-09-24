@@ -63,6 +63,15 @@ export type TraceFoldProps = {
 	 * a settled one is reference material.
 	 */
 	openByDefault: boolean;
+	/** The fold's own margin: the gap tier its first row arrived with (D8). */
+	className?: string;
+	/**
+	 * The record ids the fold holds. Stamped on the wrapper (`data-fold-ids`)
+	 * because a collapsed fold UNMOUNTS its rows, so the turn foot's `1 failed`
+	 * jump cannot find the failed row by its `data-record-id` until the fold
+	 * that holds it is opened - this is how it finds that fold.
+	 */
+	recordIds: readonly string[];
 	children: ReactNode;
 };
 
@@ -72,57 +81,78 @@ export const TraceFold = ({
 	failedCount,
 	durationS,
 	openByDefault,
+	className,
+	recordIds,
 	children,
 }: TraceFoldProps) => (
-	<Disclosure
-		/*
-		 * The summary is the aggregate line, so the chevron is what carries "there are
-		 * rows in here" — the count alone would read as a statement of fact rather
-		 * than as a control.
-		 */
-		defaultOpen={openByDefault}
-		rowClassName={ROW_HEIGHT}
-		triggerClassName={cn("-mx-2 rounded-sm px-2", "hover:bg-row-hover")}
-		summary={
-			<span className={cn("flex min-w-0 flex-1 items-center gap-2")}>
-				{/*
-				 * Sans, because this is a SENTENCE about the turn rather than an
-				 * identifier (§B4): the counts are words. The object's monospace column
-				 * belongs to the individual rows inside the fold.
-				 */}
-				<span
-					className={cn("min-w-0 truncate text-body-sm text-ink-muted")}
-					title={`${actionCount} actions`}
-				>
-					{summary}
-				</span>
-				{/*
-				 * The failure count is the fold's only loud ink, and it is the reader's
-				 * only way into the failure without opening the run by hand — which is
-				 * why §E3's foot line carries the same number as a control. It names what
-				 * it counts (`1 failed`), because a bare red number states that something
-				 * went wrong without saying what did.
-				 */}
-				{failedCount > 0 && (
-					<span className={cn("shrink-0 font-medium text-danger text-meta")}>
-						{failedCount} failed
-					</span>
-				)}
-				{/* The run's own clock, at the trailing edge: the same column the rows
-				    inside the fold keep their durations in, so the summary reads as the
-				    sum of what it hides. */}
-				{durationS !== null && (
+	<div className={className} data-fold-ids={recordIds.join(" ")}>
+		<Disclosure
+			/*
+			 * The summary is the aggregate line, so the chevron is what carries "there are
+			 * rows in here" — the count alone would read as a statement of fact rather
+			 * than as a control.
+			 */
+			defaultOpen={openByDefault}
+			rowClassName={ROW_HEIGHT}
+			triggerClassName={cn("-mx-2 rounded-sm px-2", "hover:bg-row-hover")}
+			summary={
+				<span className={cn("flex min-w-0 flex-1 items-center gap-2")}>
+					{/*
+					 * Sans, because this is a SENTENCE about the turn rather than an
+					 * identifier (§B4): the counts are words. The object's monospace column
+					 * belongs to the individual rows inside the fold.
+					 */}
 					<span
-						className={cn(
-							"ml-auto shrink-0 font-mono text-ink-dim text-mono-sm tabular-nums",
-						)}
+						className={cn("min-w-0 truncate text-body-sm text-ink-muted")}
+						title={`${actionCount} actions`}
 					>
-						{formatDuration(durationS)}
+						{summary}
 					</span>
-				)}
-			</span>
-		}
-	>
-		{children}
-	</Disclosure>
+					{/*
+					 * The failure count is the fold's only loud ink, and it is the reader's
+					 * only way into the failure without opening the run by hand — which is
+					 * why §E3's foot line carries the same number as a control. It names what
+					 * it counts (`1 failed`), because a bare red number states that something
+					 * went wrong without saying what did.
+					 */}
+					{failedCount > 0 && (
+						<>
+							{/*
+							 * The `·` the foot line uses between its facts (D8: without it the
+							 * summary read as one run-on phrase, `7 actions 1 failed 15s`), in
+							 * the summary's own quiet ink so only the count is loud.
+							 */}
+							<span aria-hidden={true} className={cn("text-ink-dim text-meta")}>
+								·
+							</span>
+							<span
+								className={cn("shrink-0 font-medium text-danger text-meta")}
+							>
+								{failedCount} failed
+							</span>
+						</>
+					)}
+					{/* The run's own clock, as the sentence's last fact (`8 actions · 1
+				    failed · 15s`), matching the foot line's register - a clock pinned to
+				    the far edge left a gap the eye read as a second, unrelated column. */}
+					{durationS !== null && (
+						<>
+							<span aria-hidden={true} className={cn("text-ink-dim text-meta")}>
+								·
+							</span>
+							<span
+								className={cn(
+									"shrink-0 font-mono text-ink-dim text-mono-sm tabular-nums",
+								)}
+							>
+								{formatDuration(durationS)}
+							</span>
+						</>
+					)}
+				</span>
+			}
+		>
+			{children}
+		</Disclosure>
+	</div>
 );

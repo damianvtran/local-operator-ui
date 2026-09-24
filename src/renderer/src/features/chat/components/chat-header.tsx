@@ -1,6 +1,4 @@
 import {
-	Avatar,
-	AvatarFallback,
 	Badge,
 	Button,
 	DropdownMenu,
@@ -15,11 +13,10 @@ import {
 import { useHomeDirectory } from "@shared/hooks";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { formatDirectory } from "@shared/utils/path-utils";
+import { formatDirectory, middleTruncatePath } from "@shared/utils/path-utils";
 import {
 	Archive,
 	ArchiveRestore,
-	Bot,
 	FileText,
 	Globe,
 	Info,
@@ -184,6 +181,14 @@ type ChatHeaderProps = {
 	deleteEnabled?: boolean;
 	onRequestDelete?: () => void;
 };
+
+/**
+ * The path chip's character budget. 40 characters of 12px Geist Mono is about
+ * 290px: enough for `~/…/workspace/local-operator-ui`-sized paths whole, and
+ * little enough that at 1024 with the sidebar docked the title keeps its line
+ * (the D6 frames: a 330px path beside a truncated title).
+ */
+const PATH_CHIP_CHARS = 40;
 
 export const ChatHeader: FC<ChatHeaderProps> = ({
 	agentName = "Local Operator",
@@ -382,17 +387,11 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			data-tour-tag="chat-header"
 			data-titlebar-drag=""
 		>
-			{/* No `size-*` override: the Avatar primitive's own 32px is the app's
-			 * control size, and the 40px override made the same agent wear two
-			 * different faces on one screen against the transcript's 28px marker.
-			 * The glyph is sized by class rather than lucide's numeric `size` prop
-			 * so a `size-*` sweep can see it; 16px is the ramp's default step and
-			 * what a 32px circle carries. */}
-			<Avatar>
-				<AvatarFallback>
-					<Bot className={cn("size-4")} aria-hidden={true} />
-				</AvatarFallback>
-			</Avatar>
+			{/*
+			 * NO LEADING GLYPH (§C2; design round 1, D6). A robot in a filled 32px tile
+			 * led this row, which brought the deleted transcript avatar back into the
+			 * header; the row starts with the conversation's title.
+			 */}
 			{/* `flex-1` as well as `min-w-0`: the block was min-w-0 inside a row
 			 * whose only other content is an `ml-auto` action, so it yielded before
 			 * the empty space did - the description clipped mid-sentence at 760px
@@ -425,9 +424,23 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * button, then the console - so on the widths a person can reach the floor is
 			 * almost always applied; the gated-off case is the last resort beneath them
 			 * rather than the mechanism. */}
+			{/*
+			 * THE TITLE OUTRANKS THE PATH, BY CONSTRUCTION (design round 1, D6).
+			 *
+			 * The two used to share one flex line and both shrink, so at 1024 the row
+			 * read `Explain the transcript w…` beside 330px of path - the quiet chip
+			 * winning the contest with the primary text. Flex shrink factors cannot fix
+			 * that: a weighted shrink still leaks a fraction of a pixel to the title,
+			 * and a fraction is enough for the ellipsis. So this box WRAPS and clips to
+			 * one line: the title is on line one at its natural width (it truncates
+			 * only when it alone is wider than the row), and the path chip - bounded to
+			 * `PATH_CHIP_CHARS` by `middleTruncatePath` - sits beside it when it fits
+			 * WHOLE and wraps onto the clipped second line when it does not. The path
+			 * is dropped before the title loses a word, and it never renders cut.
+			 */}
 			<div
 				className={cn(
-					"flex min-w-0 flex-1 items-center gap-2 @[13.5rem]/chathdr:min-w-10",
+					"flex h-5 min-w-0 flex-1 flex-wrap items-baseline gap-x-2 overflow-hidden @[13.5rem]/chathdr:min-w-10",
 				)}
 			>
 				{/* `text-body` (14), not `text-heading` (16) and not `text-title` (20):
@@ -438,7 +451,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				 * heads, which is what the reference products use. */}
 				<h2
 					className={cn(
-						"min-w-0 shrink truncate font-medium text-body text-ink",
+						"min-w-0 max-w-full truncate font-medium text-body text-ink",
 					)}
 				>
 					{agentName}
@@ -475,30 +488,27 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 					<Skeleton className={cn("h-3 w-24 shrink-0 bg-elevated")} />
 				) : (
 					<span
-						dir="rtl"
+						data-header-path=""
 						className={cn(
-							"min-w-0 shrink-[2] truncate text-ink-dim text-mono-sm",
+							// `font-mono` as well as the step: `text-mono-sm` is a SIZE, and
+							// without the family the chip rendered in the sans face (D6).
+							"shrink-0 whitespace-nowrap font-mono text-ink-dim text-mono-sm",
 						)}
 						title={description}
 					>
 						{/*
-						 * TRUNCATED FROM THE LEFT, SO THE TAIL SURVIVES - the app's own
-						 * spelling for a path, copied rather than invented
-						 * (`browser-file-transfer-row.tsx` renders a quarantine directory the
-						 * same way, for the same reason: the tail is the part that identifies
-						 * it). `truncate` alone ellipsises the END, which is what D7 is about -
-						 * the row read `/Users/damian/.local-operator/sessions/d81d04d3...`
-						 * with the one segment that says WHICH directory cut off.
-						 *
-						 * THE `bdi` IS NOT DECORATION. `dir="rtl"` on the outer span is only
-						 * where the overflow is measured and the ellipsis is drawn; the path
-						 * itself has to stay an LTR run, or the bidi algorithm reorders the
-						 * segments and their separators - `/a/b/c` in an RTL paragraph reads
-						 * `c/b/a`, and a leading `~/` moves to the visual end. The inner `bdi`
-						 * is what holds each segment in place while the outer element decides
-						 * which end gives.
+						 * MIDDLE-TRUNCATED, so both informative ends survive: the head says
+						 * where the path is rooted and the tail says which directory it is
+						 * (§B4). It replaced a `dir="rtl"` left-cut, which kept the tail but
+						 * lost the root, and had no bound, so it took the title's room.
+						 * `formatDirectory` returns anything that is not a path unchanged, and
+						 * so does `middleTruncatePath` for a short string - this slot also
+						 * holds a draft's sentence and a starting run's target name.
 						 */}
-						<bdi dir="ltr">{formatDirectory(description, homeDirectory)}</bdi>
+						{middleTruncatePath(
+							formatDirectory(description, homeDirectory),
+							PATH_CHIP_CHARS,
+						)}
 					</span>
 				)}
 			</div>

@@ -111,7 +111,12 @@ const NEST_STEP_PX = 8;
  * `max-h-[${n}px]` template is simply not one of them. The number lives here so
  * there is one place to read it, and in `SECTION_MAX` so the two cannot drift.
  */
-const SECTION_MAX = "max-h-[320px]";
+/*
+ * `min(320px, 40vh)` (design round 1, open question d): 320 at 900 and 768
+ * tall, 240 at 600. At 800x600 the transcript is 360px, and a flat 320 would
+ * let one open detail fill 89% of the scroller and push its own row off-screen.
+ */
+const SECTION_MAX = "max-h-[min(320px,40vh)]";
 
 /**
  * The section cap, for a caller that renders its own section in this idiom.
@@ -327,7 +332,11 @@ export const ToolDetail: FC<ToolDetailProps> = ({ args, output, isError }) => {
 	return (
 		<div
 			className={cn(
-				"w-full rounded-sm border border-hairline bg-sunken p-3 font-mono text-mono-sm",
+				// §E5: `sunken`, radius 10, NO border (design round 1, D9). The
+				// `sunken` step already separates the block from the page; a hairline
+				// on top of it is one of the drawn lines §B3's complete border list
+				// does not include.
+				"w-full rounded-md bg-sunken p-3 font-mono text-mono-sm",
 			)}
 		>
 			{input.length > 0 && (

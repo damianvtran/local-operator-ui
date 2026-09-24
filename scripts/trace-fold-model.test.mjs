@@ -76,18 +76,28 @@ test("three or more consecutive actions fold; two do not", () => {
 		[opening("t0"), row("t1"), row("t2"), row("t3")],
 		options,
 	);
+	/*
+	 * THE TURN'S OPENING ACTION IS IN THE RUN (design round 1, D8). It used to be
+	 * left outside, so the transcript drew a standalone `read` above `7 actions`
+	 * while the turn's foot said `8 actions`: two counts for one turn.
+	 */
 	assert.deepEqual(
 		three.map((group) => group.kind),
-		["row", "run"],
-		"three actions fold into one summary line",
+		["run"],
+		"the opening action and the three after it fold into one summary line",
 	);
-	assert.equal(three[1].rows.length, 3);
-	assert.equal(three[1].id, "t1", "the fold is keyed by its FIRST row");
+	assert.equal(three[0].rows.length, 4, "the fold holds the whole run");
+	assert.equal(three[0].id, "t0", "the fold is keyed by its FIRST row");
+	assert.equal(
+		three[0].gap,
+		"turn",
+		"the fold carries the gap its first row arrived with",
+	);
 
-	const two = foldRuns([opening("t0"), row("t1"), row("t2")], options);
+	const two = foldRuns([opening("t0"), row("t1")], options);
 	assert.deepEqual(
 		two.map((group) => group.kind),
-		["row", "row", "row"],
+		["row", "row"],
 		"two actions are two rows: a summary line for two hides more than it says",
 	);
 });
@@ -129,7 +139,7 @@ test("the fold is a view, never a reorder", () => {
 	);
 	assert.deepEqual(
 		groups.filter((group) => group.kind === "run").map((group) => group.id),
-		["t1", "t5"],
+		["t0", "u1"],
 		"a new turn opens a new run rather than joining the one above it",
 	);
 });
@@ -163,9 +173,10 @@ test("a receipt, a statement or an unknown row breaks a run", () => {
 	const groups = foldRuns(rows, options);
 	assert.deepEqual(
 		groups.map((group) => group.kind),
-		["row", "row", "row", "row", "row", "row"],
-		"neither side of the break reaches three, so nothing folds",
+		["run", "row", "row", "row"],
+		"the three actions before the receipt fold; the receipt and the two after it do not",
 	);
+	assert.equal(groups[1].row.record.id, "r1", "the receipt is its own row");
 });
 
 /* ------------------------------ the copy -------------------------------- */

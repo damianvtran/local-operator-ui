@@ -16,21 +16,21 @@
  *
  * Layout, left to right:
  *
- *   [glyph] [name, shared column] [summary, flexes] [+N] [-M] [outcome] [dur]
+ *   [glyph] [verb] [object, flexes] [+N] [-M] [outcome] [dur]
  *
- * - The NAME column is shared across every visible row and sized by the longest
- *   name on screen between an 8ch floor and a 24ch ceiling (`toolNameColumn`),
- *   so names stack into one edge and every summary starts on one rail. It is
- *   `ch` rather than `px` because the column holds monospace identifiers and
- *   `ch` is that font's own unit — the width then tracks the type scale instead
- *   of drifting away from it at another zoom.
+ * - The VERB is §E1's (`Ran`, `Read`, `Searched the web`), in sans at its own
+ *   width, and the object follows it 8px later, so the row reads as a sentence.
+ *   It replaced a SHARED NAME COLUMN holding the tool's wire name (the TUI's
+ *   8-24ch `TOOL_NAME_COL`), which put snake_case identifiers in the sans face
+ *   and left a hole after every short name (chat redesign, design round 1, D5).
+ *   The rail the eye scans down is the glyph column, which is still aligned.
  * - The DURATION slot is fixed at 5ch, right-aligned, so the outcome glyph
  *   lands on the same x whether a call took `0.4s` or `12.3s`. That single
  *   column of ticks down the left of the durations is most of what makes the
  *   ledger scannable, and it is why the slot is reserved even when a replayed
  *   row has no duration to put in it.
  * - The SHED order under pressure is the TUI's: diff counters go first, then
- *   the summary truncates, and the name column shrinks last. "How a write went
+ *   the object truncates, and the verb never does. "How a write went
  *   is core, how much it wrote is meta" — so the outcome column always
  *   survives. Here the first two rungs are `min-w-0` plus `truncate` on the
  *   summary and a container query that drops the counters on a narrow row,
@@ -55,13 +55,13 @@ import { cn } from "@shared/lib/utils";
 import { type ReactNode, useEffect, useState } from "react";
 import { InterruptedGlyph, toolIcon } from "./tool-glyphs";
 import {
-	TOOL_NAME_COL_MIN,
 	type ToolCategory,
 	displayName,
 	formatDuration,
 	formatSettledDuration,
 	isBareToolName,
 	toolCategory,
+	toolVerb,
 } from "./tool-row-model";
 
 export type ToolRowOutcome =
@@ -213,11 +213,6 @@ export type ToolRowProps = {
 	added?: number;
 	/** Lines removed, when the call reported a diff. Zero renders nothing. */
 	removed?: number;
-	/**
-	 * The shared name-column width in characters, owned by the LIST because it
-	 * is a property of what is on screen rather than of one row.
-	 */
-	nameColumn?: number;
 	/** Detail behind the row's disclosure. Absent makes the row static. */
 	details?: ReactNode;
 	/** Open the disclosure initially (stories and measurement surfaces). */
@@ -593,7 +588,6 @@ export const ToolRow = ({
 	startedAt = null,
 	added = 0,
 	removed = 0,
-	nameColumn = TOOL_NAME_COL_MIN,
 	details,
 	defaultOpen = false,
 	className,
@@ -607,12 +601,23 @@ export const ToolRow = ({
 	const failed = outcome === "error";
 	const Icon = toolIcon(toolName);
 	const name = displayName(toolName);
+	/*
+	 * §E1's verb (design round 1, D5): `Ran`, `Read`, `Searched the web` - the
+	 * wire name is the GLYPH's job now. A tool the verb table does not know keeps
+	 * its display name at the head of the object, so an MCP call still says
+	 * which call it was.
+	 */
+	const verb = toolVerb(toolName);
+	const verbText = running ? verb.running : verb.settled;
 	// The one expression the summary cell both prints and titles, so the tooltip
 	// cannot drift from the text it stands for — including the dropped-stutter
 	// fallback below.
-	const summaryText = isBareToolName(summary, toolName)
+	const bareSummary = isBareToolName(summary, toolName)
 		? (summaryFallback ?? "")
 		: summary;
+	const summaryText = toolVerb(toolName).named
+		? bareSummary
+		: [displayName(toolName), bareSummary].filter(Boolean).join(" ");
 
 	const row = (
 		<span className={cn("flex min-w-0 flex-1 items-center gap-2")}>
@@ -633,36 +638,29 @@ export const ToolRow = ({
 			>
 				<Icon />
 			</span>
+			{/*
+			 * THE VERB, AT ITS OWN WIDTH, AND THE OBJECT RIGHT AFTER IT (design round
+			 * 1, D5). This was a fixed column shared by every visible row
+			 * (`calc(${nameColumn}ch + 0.25rem)`, the TUI's 8-24ch name column) holding
+			 * the tool's wire name, so `read` left a hole before its path and the row
+			 * never read as a sentence. The rail the eye scans is the GLYPH column,
+			 * which stays aligned; the verb and the object are one phrase, 8px apart
+			 * (`gap-2`, the row's own step), which is how Cursor 3 and Codex set it.
+			 *
+			 * `shrink-0` so the object is the half that truncates: a verb is at most
+			 * three short words, and it is the half that says what happened.
+			 */}
 			<span
+				data-trace-verb=""
 				className={cn(
-					// §E1's row is `[glyph] [SANS verb] [MONO object] [duration]`: the verb
-					// is a word, so it takes the sans ramp at `text-body-sm`/13, and the
-					// monospace column belongs to the OBJECT - the path, the command, the
-					// URL, the identifier - which is the part a reader compares.
-					"shrink-0 truncate text-body-sm",
-					// A 4px minimum gutter before the summary rail, so a name that
-					// fills its column does not come within the row's own gap of the
-					// summary. The column grows to the longest visible name, so at the
-					// ceiling the two would otherwise sit 8px apart.
-					//
-					// It is ADDED to the measured width below rather than taken out of
-					// it: as padding inside `${nameColumn}ch` it stole 4px from the
-					// text box and truncated the very name the column was sized for
-					// (`web_fetch` rendered as `web_fet…`).
-					"pr-1",
+					// §E1: the verb is a word, so it takes the sans ramp at
+					// `text-body-sm`/13; the monospace belongs to the OBJECT.
+					"shrink-0 whitespace-nowrap text-body-sm",
 					nameInk(outcome),
 				)}
-				// The shared column is a per-list measurement, so it cannot be a
-				// static class: Tailwind compiles the utilities it can see in the
-				// source, and `w-[${n}ch]` is not one of them.
-				//
-				// `calc` so the gutter above is added to the column rather than
-				// carved out of it: `nameColumn` is the width the NAME needs, and
-				// the 4px is separation from the summary beside it.
-				style={{ width: `calc(${nameColumn}ch + 0.25rem)` }}
 				title={name}
 			>
-				{name}
+				{verbText}
 			</span>
 			<span
 				className={cn(
