@@ -4333,12 +4333,26 @@ test("the chip's done tag carries its own size step", () => {
 		/<span class="[^"]*line-through[^"]*"[^>]*>— done/,
 	);
 	/*
-	 * Design review round 1's D1, measured by `GoalDoneFloor`: at the 172px floor the
-	 * tag left the value 20px of 1956px, so the tag is the piece that yields strictly
-	 * below the stacked band — the same constant the dismiss's word uses.
+	 * Design review round 1's D1 AND ROUND 2's D11, measured by `GoalDoneFloor`: at the
+	 * 172px floor the tag left the value 20px of 1956px, so the tag is the piece that
+	 * yields at the stacked band — AND AT THAT BAND'S OWN EDGE, one pixel wider than the
+	 * shared step, because the row's own frame prints a 54px (stacked) row at exactly 240
+	 * while `@max-[240px]` (`NARROW_HIDDEN`, the dismiss's word and the loop's figure) has
+	 * not fired there: reading 39/1956 at 240 against 67/1956 at the floor made the
+	 * value's readable width NON-MONOTONIC in the column's width, the wider band
+	 * identifying the goal by fewer characters than the narrower one. So the tag carries
+	 * its OWN constant (`GOAL_TAG_NARROW`) rather than sharing the dismiss's, and the
+	 * reason is the tag's: it is the only state tell a still paints at the floor (the
+	 * `Dismiss` is `opacity-0` at rest), while the word beside it keeps an accessible-name
+	 * home at every width.
 	 */
 	assert.match(
 		markup,
+		/<span class="[^"]*@max-\[241px\]\/chatcol:hidden[^"]*"[^>]*>— done<\/span>/,
+	);
+	assert.doesNotMatch(
+		markup,
 		/<span class="[^"]*@max-\[240px\]\/chatcol:hidden[^"]*"[^>]*>— done<\/span>/,
+		"the tag keeps the stacked band's own edge: at exactly 240 the shared step has not fired",
 	);
 });
