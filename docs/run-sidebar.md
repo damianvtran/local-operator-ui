@@ -9,12 +9,21 @@ surface the old design does not contain in any form.
 **Which ref every citation was read from**, because a line number without a
 ref is a claim nobody can check. UI citations are this worktree's tree at
 `78e694777` (`chore(release): bump version to 0.19.2`, the branch base). Python
-citations are `~/local-operator` at **`origin/main`** (`430bd0fa6`), re-resolved
-against that ref with `git show origin/main:<path>` after the first read — the
-root checkout is five commits ahead of `origin/main` on a feature branch, and a
-working-tree line number would have been off by tens to hundreds of lines per
-file. Check any of them with
+citations are `~/local-operator` at **`origin/main`**, re-resolved against that
+ref with `git show origin/main:<path>` after the first read — the root checkout
+sits on a feature branch and carries staged work of its own, so a working-tree
+line number is not a claim about `origin/main` at all. Check any of them with
 `git -C ~/local-operator show origin/main:<path> | sed -n '<line>p'`.
+
+`origin/main` MOVES, so this document names the ref each section was read at
+rather than pretending to one. The citations outside § 5.8 are read at
+**`430bd0fa6`** — where this document was written, and where they still resolve
+(`Binding("p", "subagent_parent", …)` at `app.py:2885`, `"mcp": 1` at
+`capabilities.py:53`). § 5.8's child-reader citations were added later, when
+backend `origin/main` had moved, and are read at **`6bd703e51`**; reading them at
+the older ref is what round 2's R2-1 found the first cut had not done, and the
+numbers below are the ones that ref carries. A number is only ever as good as the
+ref it names.
 
 **One exception to that policy, and it is labelled wherever it appears.** The UI
 half of this design is in flight on `feat/session-sidebar-panel` in this
@@ -945,13 +954,151 @@ it holds.
 | event | rendering |
 |---|---|
 | child emits a progress beat | nothing structural; the pulse triggers a tail refetch |
-| child settles (success) | one final refetch, the result is the page's own last row and the foot stays quiet (§ 5.1), the header's status icon and elapsed settle, the elapsed timer stops |
+| child settles (success) | one final refetch, the result is the page's own last row and the foot stays quiet (§ 5.1), the foot's working line is withdrawn (§ 5.8), the header's status icon and elapsed settle, the elapsed timer stops |
 | child fails | final refetch, the foot prints the exception as far as the wire carries it (`JOB_ERROR_WIRE_CHARS`, 2_000 characters — the one string with no second copy anywhere), in machine voice, and states that bound when the value carries the wire's clip marker; header icon takes `danger`, the dot rule in § 3.4 no longer applies (the row is on screen) |
-| child is cancelled / interrupted / paused / swept (`gone`) | the header's state word changes; the body stops following; where the conversation cannot be read at all, the foot states the wire's clipped result as a preview, labelled from the wire's own clip marker (§ 5.1) |
+| child is cancelled / interrupted / paused / swept (`gone`) | the header's state word changes; the body stops following; the foot's working line is withdrawn (§ 5.8, the gate is `running`); where the conversation cannot be read at all, the foot states the wire's clipped result as a preview, labelled from the wire's own clip marker (§ 5.1) |
 | child was cancelled while PARKED, before its runner was entered | no preview and no result, whatever the wire carries: `result_text` is `harness/jobs.py`'s own state stamp (`CANCELLED_BEFORE_START`, written when `started_at is None`), so it is spent as the header's STATE WORD — the slot the TUI uses for it (`subagent_view.py:3371-3391`) — and the foot is empty but for the read-only line (§ 5.1) |
 | child never wrote a transcript | the body shows one quiet line naming that fact (`pending`: the child's directory exists and `transcript.jsonl` does not) and the reader retries on the next pulse |
 | the child's session directory is missing | the body shows the final "session directory is no longer on disk" line (`gone`). **This is what `gone` means**: the route derives both absences from the FILESYSTEM (`desktop_sessions.child_transcript`), and only a missing DIRECTORY is final — a transcript file that has been moved aside, pruned or never written leaves the same two facts on disk as a child that never appended, so the route answers `pending` and this line is not reachable through it (round 1, Q10). The copy states the filesystem, not the child's history. |
 | entry cursor vanished mid-read (compaction) | re-read the tail, dedupe by id |
+
+### 5.8 The working line at the foot
+
+The page's foot carries the child's CURRENT activity, the way the parent
+conversation's foot does: one line, the parent transcript's `WorkingLine`, which
+is the TUI's tail row (`subagent_view.py:_tail_entry`, `:2823-2868`) ported. The
+failure it answers is the one that row's own docstring records — a child's last
+block is often settled prose, the model pausing between tool calls, so without it
+the bottom of a LIVE page is indistinguishable from a finished one.
+
+**The fact is the wire's, not the page's, and that is why it is an input rather
+than a derivation.** `SubagentRow.activity` is `latest_details.progress`, fed by
+the child relay's `report_progress` (`harness/jobs.py:1341`). It cannot be
+recovered from the child's records: the reader reduces a DURABLE page, and every
+durable tool row lands on `phase: "done"` (the tool arm of `durableRecord`,
+`transcript-reducer.ts:1867`). Over those records the parent's own derivation
+paints NOTHING for the props this reader passes — it answers `null`
+(`working-line-model.ts:520`) — and the one change that would make it speak,
+reading them as a claimed `waiting` pane, could only ever say `thinking`. So the
+reader derives the line from the row it already holds
+(`deriveChildWorkingLine`, `run-detail-model.ts`) and hands it to
+`CanonicalTranscript` as its `workingLine` prop — the one live-session concept the
+reader supplies rather than switches off.
+
+**`waiting`/`starting` were the wrong channel for it**, which is worth stating
+because they look like the obvious fit: `waiting` makes the derivation read THIS
+pane's records (for the reader, the child's durable rows, which carry no running
+tool, so the only thing it could then say is `thinking` while claiming a phase it
+cannot know), and `starting` names a send this app admitted — the admitted-send
+rung belongs to the pane that issued the send, and a child reader can never be
+that pane.
+
+**The vocabulary is the parent line's, by the relay's own design**
+(`harness/subagent.py`'s `_make_relay`, defined `:1244`, docstring `:1254-1284`):
+the model's
+stated intent while a tool runs, `running N tools` for a batch, `responding`
+while prose is actually streaming, `thinking` for a model call in flight with
+nothing streamed yet — "a reader watching both surfaces at once should not have
+to learn two vocabularies for one state". An empty activity is therefore
+`thinking`, which is the relay's own word for it (`intent.py:298-340`), not a
+fallback the renderer invented.
+
+**The phase is a classification, and it is what keeps a moved label off the
+phase.** A batch sheds its calls one at a time and re-derives its label each
+time; `working-line.tsx` treats a PHASE change as the phase edge and a label
+change alone as nothing. The relay calls `tool_activity`/`batch_activity` from
+exactly three places — the `ToolExecutionStartEvent` and `ToolExecutionEndEvent`
+arms and the empty-batch fallback (`subagent.py:1325-1334`) — and the arms that
+emit the two named constants are the ones that do NOT call them, so every
+progress string that is neither of those words was emitted with a tool call still
+running. `thinking` -> `thinking`, `responding` -> `responding`, anything else ->
+`running`: closed over the vocabulary the relay can produce. One ambiguity is
+tolerated and recorded rather than hidden — a model-authored INTENT that is
+exactly one of the two reserved words misfiles the PHASE, never the label.
+
+**The line carries NO clock, and that is the one field that is neither the
+wire's nor the classification's.** The wire has no anchor for a child's phase:
+`latest_details` is a bare string (`harness/jobs.py:1341`), and
+`startSeconds` is the child's LAUNCH clock, not the phase's. A number seeded from
+the component's mount would therefore report the age of the READER — the first
+capture printed `0s` beside a header reading `1m36s` for the same child, and
+closing and reopening the pane re-based it again (review round 1, R1; design
+round 1, D1). So the derivation returns `clock: false`, which makes
+`WorkingLine` withhold the number and run no interval while keeping the slot
+RESERVED, so nothing on the row moves:
+
+- **the TUI, the row this ports, resolved the identical shape and records the
+alternative as the defect** — `set_activity(clock=False)` for a `running` phase
+any of whose cards was adopted mid-execution: "the phase changes when the viewer
+arrives, not when the tool started, so the number would count from the switch
+while naming a tool that may be half an hour old" (`tui/app.py:41670-41678`),
+and "a clock started from the wrong zero is worse than no clock"
+(`tui/widgets/transcript.py:3361-3380`, which also names every child row inside
+`subagent_view` in the population whose timestamp does not exist "at any
+price").
+- **recording an anchor instead is not available**, which is why withholding is
+the answer rather than the reviewer's other option: there is nothing on the wire
+to record.
+- **the pane is not left dead**: the reader's HEADER keeps the child's own
+elapsed label ticking at 1 Hz from the child's launch clock (§ 5.3's
+`useChildRowClock`) — the honest duration for that surface, which no
+reader-arrival zero can fake.
+- **under `prefers-reduced-motion`** the spinner holds its frame as always, so
+the row becomes a static statement (the activity word alone). Accepted: that word
+is the fact the row exists to carry.
+
+**Only a `running` child gets a line, and that is a deliberate departure from
+the TUI.** `_tail_entry` paints its row for a queued child too; here the gate is
+`status === "running"`, because the relay emits nothing before a child's first
+event and "thinking" over a child that has not started is a claim the wire never
+made. The header already carries that child's own word instead (§ 5.2's
+`stateWord`), which is the honest statement of a queued or paused page.
+
+**The label is passed through untouched**, and one divergence is recorded rather
+than repaired: the relay has no display layer, so it hands `tool_activity` the
+tool name as called (`intent.py:310-327`) and a child's label reads `running
+mcp__linear_create_issue` where the parent's reads `running create_issue`. The
+roster row above the reader prints the identical wire string
+(`run-detail-row-parts.tsx:140-146`, the row body `run-detail-subagents.tsx`
+renders), so the child's own surfaces keep saying one thing; a second spelling
+here would be the app answering the same question twice. Both arms of that
+vocabulary are pictured: `reader-live` carries a STATED INTENT (model-authored
+prose, which the relay passes through verbatim when it has one) and
+`reader-live-floor` carries the named-tool fallback, at the pane's 320px floor
+where the label has to truncate inside the row. Two measurements, because the
+first cut of this sentence mixed the two widths it was comparing (round 2,
+D2-1/D2-3): at the 320px floor the label box is ≈179 px ≈ **24 characters**, of
+which the row's reserved 6ch slot plus its `gap-2` spends ≈49 px ≈ **7** — the
+reservation is PERMANENT on this surface, since the derivation returns
+`clock: false` for every arm, and releasing it would bring the name back to ≈30
+characters (`mcp__linear_create_issu…`) while still not fitting the
+32-character fallback. The wide pane leaves ≈38-40 characters, so a
+model-authored INTENT can exceed it; no frame carries that case, which is a
+known gap (round 2, D2-1) rather than a claim. `reader-live-floor`'s fallback is
+the longest string the row can be MINTED with, not the longest it can be handed.
+
+**A RUNNING child whose page is still empty paints no line, and that gap is
+recorded here rather than closed in this change.** The body's absence arms
+(`pending`, `gone`, `loading`, and `ready` with no rows) answer with a
+`QuietLine` and never mount `CanonicalTranscript`, so the foot line cannot reach
+them — while the row is running and the relay has already sent its string. The
+TUI reaches a tail notice before its own empty-page arms
+(`subagent_view.py:2849-2857`). It is deferred because it is a COMPOSITION
+decision — a second line above an absence sentence whose copy § 10.1 owns — and
+not a detail of this row. `scripts/child-reader-foot-react.test.mjs` pins the current
+behaviour in the DOM — it RENDERS the reader over each absence page and asserts
+that no working line is painted, with a control that the same row DOES paint one
+over a page carrying rows — so the follow-up that adds the line cannot land
+without that assertion going red (round 2, R2-4: the earlier source-shaped pin,
+which counted `<QuietLine>`s, survived exactly that mutation, which is why the
+pin is rendered now).
+
+The frames are the four answers, in `docs/evidence/chat-run-panel/`:
+`reader-live` (a stated intent), `reader-no-activity` (`thinking`),
+`reader-live-floor` (the named-tool fallback at the pane's floor, truncating),
+and `reader-settled` / `reader-failed` (no line — the settle withdraws it and
+the outcome block owns the foot). All four carry no clock, which is the rule
+above made visible.
 
 ---
 
