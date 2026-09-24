@@ -84,8 +84,10 @@ import {
  * buttons.
  *
  * WHICH LINE they occupy is a container query on `@container/chatcol`, not a
- * viewport breakpoint: above 750px of column (`CHAT_MEASURE`'s own threshold)
- * the cluster is inline and pushed right by its `ml-auto`; below it the cluster
+ * viewport breakpoint: above 750px of column (`CHAT_ROW_INLINE_PX`, the
+ * composer row's own threshold - NOT the measure's, which is 688 since the
+ * reading measure narrowed to 640) the cluster is inline and pushed right by
+ * its `ml-auto`; below it the cluster
  * takes the row's first line in full and the controls keep the second, which is
  * the shape these readings had when they had a row of their own. So the narrow
  * case continues rather than being replaced, and no reading needs a compact
@@ -720,8 +722,10 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 				 * rather than a compacted spelling. A draft, a live session and a
 				 * restored one all take this rule; only the contents vary (R15).
 				 *
-				 * 750 is `CHAT_MEASURE`'s own number, so the app has one "wide column"
-				 * threshold rather than two that agree by accident, and it is keyed on
+				 * 750 is `CHAT_ROW_INLINE_PX` - the composer ROW's own measurement, as the
+				 * number in `chat-measure.ts` states - so the app has one "wide column"
+				 * threshold for the composer band rather than two that agree by accident,
+				 * and it is keyed on
 				 * `@container/chatcol` rather than the viewport: with the canvas open at
 				 * a 1380px window the column is at its 220px floor while `md:` is still
 				 * comfortably active (see `chat-measure.ts`).

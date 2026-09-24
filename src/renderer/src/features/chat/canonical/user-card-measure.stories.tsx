@@ -33,9 +33,11 @@
  *
  * THE THRESHOLD, stated correctly because the first draft got it wrong: the
  * 62ch cap bound whenever the card's content box exceeded 546.738px, which is a
- * column above roughly 806px - NOT `CHAT_MEASURE`'s own 750px breakpoint, which
- * governs whether the column takes a percentage or the full width and is a
- * different quantity. 1024 is comfortably above the 806 at which the cap binds,
+ * column above roughly 806px - NOT the composer row's own 750px threshold
+ * (`CHAT_ROW_INLINE_PX`), which governs whether the composer's readings share
+ * the control row, nor `CHAT_MEASURE`'s own 688px breakpoint, which governs
+ * whether the column takes a percentage or the full width: three different
+ * quantities. 1024 is comfortably above the 806 at which the cap binds,
  * which is what makes these frames able to show the defect at all.
  *
  * LINE LENGTH, in the two different quantities the repo now keeps apart: the

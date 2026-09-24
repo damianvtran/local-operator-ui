@@ -191,7 +191,8 @@ const RECENT_PATH_TRUNCATES_AT = 42;
  * TWO thresholds, and they are two different questions. 620px is where the
  * composer can afford the LABEL (`CHIP_LABEL`); 900px is where it can afford
  * this column. That second number is not a guess: the readings cluster sits
- * inline from 750px and its own comment measures the slack at exactly 750 as
+ * inline from 750px (`CHAT_ROW_INLINE_PX`) and its own comment measures the
+ * slack at exactly 750 as
  * 56px for the model reading, so the wider column is held back until the row
  * clearly has more room than the label alone needed - where the design round
  * that asked for it was measuring, and where these frames are swept. Below
