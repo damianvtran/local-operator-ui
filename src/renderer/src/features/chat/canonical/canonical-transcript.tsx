@@ -93,12 +93,14 @@ import { hasDetail } from "../components/trace/tool-detail-model";
 import { ToolRow as ToolLedgerRow } from "../components/trace/tool-row";
 import {
 	formatBytes,
+	formatDuration,
 	isBareToolName,
 	isDiffBodyRow,
 	outputFallbackLine,
 	summaryFromArgs,
 	toolNameColumn,
 } from "../components/trace/tool-row-model";
+import { TraceFold } from "../components/trace/trace-fold";
 import { WorkingLine } from "../components/trace/working-line";
 import { MISSING_SESSION_NOTICE_ID } from "../missing-session-notice";
 import { CanvasPaneProvider } from "../utils/canvas-pane";
@@ -108,6 +110,7 @@ import { LinkToolkit } from "./link-toolkit";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
 import { isQuotable } from "./quote-model";
 import { QuoteToolkit } from "./quote-toolkit";
+import { type TurnFoot, foldRuns, turnFeet } from "./trace-fold-model";
 import {
 	type CanonicalTranscriptStatus,
 	canonicalTranscriptSpeaks,
@@ -143,6 +146,20 @@ import { deriveWorkingLine, workingLineInputFor } from "./working-line-model";
  * `markdown.css`'s measure comment carries the report and the numbers, and the
  * rule that also keeps a cap off the agent's answer.
  */
+
+/**
+ * Whether the user has asked the OS for less motion.
+ *
+ * The failure jump (§E3) scrolls, and it is the app's only scroll animation in
+ * this surface: §B7's 240ms is a CEILING rather than a target, and a preference
+ * set at the OS level is the one signal that outranks it. Read per call rather
+ * than cached, because the preference can change while the app is open and this
+ * is one `matchMedia` on a press.
+ */
+const prefersReducedMotion = (): boolean =>
+	typeof window !== "undefined" &&
+	typeof window.matchMedia === "function" &&
+	window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const WINDOW = 60;
 const WINDOW_STEP = 60;
@@ -357,11 +374,19 @@ const UserRow = memo(function UserRow({
 	const [expanded, setExpanded] = useState(false);
 	const [clamped, setClamped] = useState(false);
 	const bodyRef = useRef<HTMLDivElement>(null);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: `remainingContent` is a
-	// re-measure TRIGGER, not a value this body reads. A turn whose text changes under
-	// the same row id - a streamed answer, a re-render with new prose - has to be asked
-	// again whether it now overflows, and dropping the dependency would strand the
-	// affordance on the first measurement of the row's life.
+	/*
+	 * The suppression below is one line rather than a block because biome attaches
+	 * an ignore to the NEXT line: a multi-line one leaves the rule unreported and
+	 * active, which is how this arrived as a red lint run with the reason already
+	 * written above it.
+	 *
+	 * `remainingContent` is a re-measure TRIGGER, not a value this body reads. A
+	 * turn whose text changes under the same row id - a streamed answer, a re-render
+	 * with new prose - has to be asked again whether it now overflows, and dropping
+	 * the dependency would strand the affordance on the first measurement of the
+	 * row's life.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `remainingContent` re-measures the clamp; see above
 	useLayoutEffect(() => {
 		if (expanded) return;
 		const el = bodyRef.current;
@@ -536,11 +561,14 @@ const AssistantRow = memo(function AssistantRow({
 	record,
 	isSmallView,
 	closesTurn,
+	foot = null,
 	conversationId,
 }: {
 	record: Extract<TranscriptRecord, { kind: "assistant" }>;
 	isSmallView: boolean;
 	closesTurn: boolean;
+	/** §E3's foot line data, on the row that closes the turn. */
+	foot?: TurnFoot | null;
 	conversationId?: string;
 }) {
 	const turnRef = useRef<HTMLDivElement>(null);
@@ -692,13 +720,76 @@ const AssistantRow = memo(function AssistantRow({
 			 * is where that is checked; see `docs/evidence/chat-tool-rows/README.md`).
 			 */}
 			{closesTurn && (
-				<div className={cn("mt-1")}>
-					{/* The turn's OWN stamp, kept (D3), and gated by `closesTurn` to the
-					    turn's last block rather than to every settled answer: D9 removes a
-					    stamp per MESSAGE and per TOOL GROUP, not the turn's one line. The
-					    redesign's next commit folds the actions onto this line; the stamp
-					    itself is already where §D3 puts it. */}
-					<TurnTimestamp timestamp={record.ts} scope="answer" />
+				/*
+				 * THE TURN-FOOT LINE (§E3), and the one line D9 leaves behind.
+				 *
+				 * `Worked for 1m 12s · 8 actions · 1 failed`, at the turn's own left edge,
+				 * with the stamp at the far end. It REPLACES the per-message and
+				 * per-tool-group stamps the transcript used to carry: D9 found those were
+				 * about a third of a long thread's vertical run, and they said nothing the
+				 * foot does not say once.
+				 *
+				 * THE FAILURE COUNT IS A CONTROL (U14, Cursor 3's `3 Files Edited -
+				 * Review`): it opens the first failed row and scrolls to it, which is the
+				 * only route from "something failed" to the thing that failed without
+				 * reading the run. It resolves its row INSIDE the transcript it is drawn in
+				 * (`closest`, not a document-wide query) so a canvas pane rendering the
+				 * same record cannot be the one that opens, and it opens that row's
+				 * disclosure BEFORE scrolling - the detail is what the reader came for, and
+				 * landing on a closed row would make the jump a second click.
+				 */
+				<div className={cn("mt-1 flex items-center gap-2 text-meta")}>
+					{foot && foot.actions > 0 && (
+						<>
+							<span className={cn("text-ink-dim")}>
+								{foot.durationS !== null
+									? `Worked for ${formatDuration(foot.durationS)}`
+									: "Worked"}
+							</span>
+							<span aria-hidden={true} className={cn("text-ink-dim")}>
+								·
+							</span>
+							<span className={cn("text-ink-dim")}>
+								{foot.actions === 1 ? "1 action" : `${foot.actions} actions`}
+							</span>
+							{foot.failed > 0 && (
+								<>
+									<span aria-hidden={true} className={cn("text-ink-dim")}>
+										·
+									</span>
+									<button
+										type="button"
+										onClick={(event) => {
+											const failedId = foot.firstFailedId;
+											if (!failedId) return;
+											const root =
+												event.currentTarget.closest(
+													"[data-lo-transcript-content]",
+												) ?? document;
+											const target = root.querySelector(
+												`[data-record-id="${failedId}"]`,
+											);
+											if (!(target instanceof HTMLElement)) return;
+											const trigger = target.querySelector(
+												'button[aria-expanded="false"]',
+											);
+											if (trigger instanceof HTMLElement) trigger.click();
+											target.scrollIntoView({
+												block: "center",
+												behavior: prefersReducedMotion() ? "auto" : "smooth",
+											});
+										}}
+										className={cn("font-medium text-danger hover:underline")}
+									>
+										{foot.failed === 1 ? "1 failed" : `${foot.failed} failed`}
+									</button>
+								</>
+							)}
+						</>
+					)}
+					<span className={cn("ml-auto")}>
+						<TurnTimestamp timestamp={record.ts} scope="answer" />
+					</span>
 				</div>
 			)}
 		</MessageContainer>
@@ -1212,12 +1303,15 @@ const TranscriptRow = memo(function TranscriptRow({
 	nameColumn,
 	scope,
 	conversationId,
+	foot = null,
 }: {
 	row: Row;
 	isSmallView: boolean;
 	nameColumn: number;
 	scope: AttachmentScope | null;
 	conversationId?: string;
+	/** The turn's own foot line, on the row that closes it (§E3). */
+	foot?: TurnFoot | null;
 }) {
 	rowRenderCount.current += 1;
 	const { record } = row;
@@ -1239,6 +1333,7 @@ const TranscriptRow = memo(function TranscriptRow({
 					record={record}
 					isSmallView={isSmallView}
 					closesTurn={row.closesTurn}
+					foot={foot}
 					conversationId={conversationId}
 				/>
 			);
@@ -1411,6 +1506,55 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		[rows, total, windowSize],
 	);
 	const hidden = total - visible.length;
+	/*
+	 * §E2's aggregation tier, and §E3's foot lines, computed over the SAME visible
+	 * rows the list renders. Both are pure (`trace-fold-model.ts`) because both are
+	 * arithmetic over the row list that a test can ask about without rendering a
+	 * transcript: which runs fold, what a fold says, and what a turn's foot reports.
+	 *
+	 * `isFoldable` is the tool ledger alone: `peer` and `wake` rows are RECEIPTS, not
+	 * actions (§E2 folds "actions"), and a receipt hidden inside a summary of work
+	 * would be a message the reader never saw.
+	 */
+	const rowGroups = useMemo(() => {
+		/*
+		 * The newest turn is the one after the last user row: a run in an OLDER turn
+		 * must not open itself because a LATER turn happens to be running.
+		 */
+		let lastUserIndex = -1;
+		for (let index = 0; index < visible.length; index += 1) {
+			if (visible[index].record.kind === "user") lastUserIndex = index;
+		}
+		const groups = foldRuns(visible, {
+			nameOf: (row) => ledgerName(row.record),
+			failedOf: (row) =>
+				row.record.kind === "tool" && row.record.isError === true,
+			durationOf: (row) =>
+				row.record.kind === "tool" ? row.record.durationS : null,
+			isFoldable: (row) => row.record.kind === "tool",
+		});
+		const firstIndexOf = new Map<string, number>();
+		visible.forEach((row, index) => firstIndexOf.set(row.record.id, index));
+		return groups.map((group) =>
+			group.kind === "run"
+				? {
+						...group,
+						isNewestTurn: (firstIndexOf.get(group.id) ?? 0) > lastUserIndex,
+					}
+				: group,
+		);
+	}, [visible]);
+	const feet = useMemo(
+		() =>
+			turnFeet(visible, {
+				failedOf: (row) =>
+					row.record.kind === "tool" && row.record.isError === true,
+				durationOf: (row) =>
+					row.record.kind === "tool" ? row.record.durationS : null,
+				isAction: (row) => row.record.kind === "tool",
+			}),
+		[visible],
+	);
 
 	/*
 	 * An empty transcript must not claim the column's free space - UNLESS the
@@ -2032,16 +2176,53 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						 * they had and nothing about their tree changes shape.
 						 */
 						<CanvasPaneProvider conversationId={conversationId}>
-							{visible.map((row) => (
-								<TranscriptRow
-									key={row.record.id}
-									row={row}
-									isSmallView={isSmallView}
-									nameColumn={nameColumn}
-									scope={mediaScope}
-									conversationId={conversationId}
-								/>
-							))}
+							{/*
+							 * THE ROWS, WITH §E2's AGGREGATION TIER APPLIED.
+							 *
+							 * `foldRuns` decides which consecutive actions become one summary
+							 * line, and it never reorders them: the fold is keyed by its FIRST
+							 * row, so it cannot claim a place ahead of the action that opens it,
+							 * and the rows inside it are the same `TranscriptRow`s with the same
+							 * ids in the same DOM - which is what keeps every `data-record-id`
+							 * lookup (the failure jump among them) working the same whether a
+							 * run happens to be folded or not.
+							 */}
+							{rowGroups.map((group) =>
+								group.kind === "run" ? (
+									<TraceFold
+										key={group.id}
+										summary={group.summary}
+										actionCount={group.rows.length}
+										failedCount={group.failedCount}
+										durationS={group.durationS}
+										/* Expanded while the newest turn is IN FLIGHT, collapsed to
+										   the summary once it settles (§E2). */
+										openByDefault={working !== null && group.isNewestTurn}
+									>
+										{group.rows.map((row) => (
+											<TranscriptRow
+												key={row.record.id}
+												row={row}
+												isSmallView={isSmallView}
+												nameColumn={nameColumn}
+												scope={mediaScope}
+												conversationId={conversationId}
+												foot={feet.get(row.record.id) ?? null}
+											/>
+										))}
+									</TraceFold>
+								) : (
+									<TranscriptRow
+										key={group.row.record.id}
+										row={group.row}
+										isSmallView={isSmallView}
+										nameColumn={nameColumn}
+										scope={mediaScope}
+										conversationId={conversationId}
+										foot={feet.get(group.row.record.id) ?? null}
+									/>
+								),
+							)}
 						</CanvasPaneProvider>
 					)}
 
