@@ -1,0 +1,122 @@
+✔ every seeded call of a long turn is labelled by the read the open fires (20.70725ms)
+✔ a first read that falls short keeps walking back until every call is labelled (5.138791ms)
+✔ the first frame holds the stand-in back until the label read settles (7.574292ms)
+✔ a read that cannot find a call's arguments gives the stand-in back (4.136708ms)
+✔ a round-end retry reads at least as deep as the walk that missed (60.052166ms)
+✔ a stripped seed end keeps the durable +N -M on an edit row (18.975625ms)
+✖ a join whose targets cannot be durable yet stops at the turn boundary (3.000834ms)
+✖ a call nothing can label does not walk to the bound or raise the retry depth (69.448208ms)
+✖ returning to a conversation does not re-blank rows already painted (19.026292ms)
+✖ a read that never answers releases the hold at its own cap (22.520458ms)
+✖ a route answering with short pages cannot make the walk unbounded (166.500125ms)
+✖ a page that begins on a result labels the call whose start is one row older (1.997208ms)
+✔ the fixture carries structure and no free text (241.805167ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 7
+ℹ fail 6
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 883.726791
+
+✖ failing tests:
+
+test at scripts/seed-label-gap.test.mjs:879:1
+✖ a join whose targets cannot be durable yet stops at the turn boundary (3.000834ms)
+  AssertionError [ERR_ASSERTION]: the turn boundary ends the walk after one page
+  
+  2 !== 1
+  
+      at TestContext.<anonymous> (file://<path>)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/seed-label-gap.test.mjs:916:1
+✖ a call nothing can label does not walk to the bound or raise the retry depth (69.448208ms)
+  AssertionError [ERR_ASSERTION]: the retry is sized by what is missing (107), not by the rows the last walk read (407)
+  
+  407 !== 107
+  
+      at TestContext.<anonymous> (file://<path>)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 407,
+    expected: 107,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/seed-label-gap.test.mjs:961:1
+✖ returning to a conversation does not re-blank rows already painted (19.026292ms)
+  AssertionError [ERR_ASSERTION]: rows this window already painted are not held empty again
+  
+  68 !== 0
+  
+      at TestContext.<anonymous> (file://<path>)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 68,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/seed-label-gap.test.mjs:1006:1
+✖ a read that never answers releases the hold at its own cap (22.520458ms)
+  AssertionError [ERR_ASSERTION]: the cap releases the hold, so the stand-in can speak
+  
+  68 !== 0
+  
+      at TestContext.<anonymous> (file://<path>)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 68,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/seed-label-gap.test.mjs:1056:1
+✖ a route answering with short pages cannot make the walk unbounded (166.500125ms)
+  AssertionError [ERR_ASSERTION]: the walk made 407 requests against a one-row page, over the cap
+      at TestContext.<anonymous> (file://<path>)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at scripts/seed-label-gap.test.mjs:1101:1
+✖ a page that begins on a result labels the call whose start is one row older (1.997208ms)
+  AssertionError [ERR_ASSERTION]: the walk paid one page for the orphan's start
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (file://<path>)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

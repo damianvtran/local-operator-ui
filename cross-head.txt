@@ -1,0 +1,21 @@
+✔ every seeded call of a long turn is labelled by the read the open fires (15.996166ms)
+✔ a first read that falls short keeps walking back until every call is labelled (10.38175ms)
+✔ the first frame holds the stand-in back until the label read settles (9.877125ms)
+✔ a read that cannot find a call's arguments gives the stand-in back (13.204375ms)
+✔ a round-end retry reads at least as deep as the walk that missed (12.195792ms)
+✔ a stripped seed end keeps the durable +N -M on an edit row (15.0055ms)
+✔ a join whose targets cannot be durable yet stops at the turn boundary (3.528209ms)
+✔ a call nothing can label does not walk to the bound or raise the retry depth (9.827708ms)
+✔ returning to a conversation does not re-blank rows already painted (6.742209ms)
+✔ a read that never answers releases the hold at its own cap (1.461209ms)
+✔ a route answering with short pages cannot make the walk unbounded (2.894709ms)
+✔ a page that begins on a result labels the call whose start is one row older (7.823667ms)
+✔ the fixture carries structure and no free text (163.622ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 609.014292

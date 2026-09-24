@@ -1,0 +1,272 @@
+✖ every seeded call of a long turn is labelled by the read the open fires (27.880791ms)
+✖ a first read that falls short keeps walking back until every call is labelled (18.609917ms)
+✖ the first frame holds the stand-in back until the label read settles (17.324083ms)
+✖ a read that cannot find a call's arguments gives the stand-in back (17.173875ms)
+✖ a round-end retry reads at least as deep as the walk that missed (41.369417ms)
+✖ a stripped seed end keeps the durable +N -M on an edit row (8.879875ms)
+✖ a join whose targets cannot be durable yet stops at the turn boundary (2.115417ms)
+✖ a call nothing can label does not walk to the bound or raise the retry depth (5.440917ms)
+✖ returning to a conversation does not re-blank rows already painted (3.753459ms)
+✖ a read that never answers releases the hold at its own cap (4.662209ms)
+✖ a route answering with short pages cannot make the walk unbounded (51.369667ms)
+✖ a page that begins on a result labels the call whose start is one row older (1.489084ms)
+✔ the fixture carries structure and no free text (95.829583ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 1
+ℹ fail 12
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 816.786167
+
+✖ failing tests:
+
+test at scripts/seed-label-gap.test.mjs:513:1
+✖ every seeded call of a long turn is labelled by the read the open fires (27.880791ms)
+  AssertionError [ERR_ASSERTION]: 23 of 68 seeded calls still paint their output where the command belongs
+  + actual - expected
+  
+  + [
+  +   'toolu_01S1iRGAQvut3z1g2dZVjNaL',
+  +   'toolu_01GuR2qtXhh8TjT39835gA5J',
+  +   'toolu_018LTa5axbZYrBee4yxxWtrL',
+  +   'toolu_01QBxAqVbwhD72itX9JAnRtW',
+  +   'toolu_014oP3SaKeoxZDPJQBmfzhVb',
+  +   'toolu_01SkscBtRQrobVwWcBn4RkN1',
+  +   'toolu_01EtSnTmLxdUBVFTPSWg9QHE',
+  +   'toolu_01DL8pgD7XinsQtY3E428u3p',
+  +   'toolu_016KpHjB3xYYgsoatLRkQ5B9',
+  +   'toolu_01RXYtTWQEN85xZc2ZHxx3TF',
+  +   'toolu_01Xftes3u3nmDy1Gm4REnYR2',
+  +   'toolu_01TAkqTphJAkj9CGaGQzocVW',
+  +   'toolu_01Mn792Hr5LTaKXz27QcKYfc',
+  +   'toolu_017Kvq7C3SamaNcbsogJmCxV',
+  +   'toolu_01XsFfRh9opR3gbxnoRwf8Jt',
+  +   'toolu_01Us4SvrVZqJLmcywMYDD2P5',
+  +   'toolu_012ucfHz5gqhr5MwcC1zFLJF',
+  +   'toolu_01AgJ64mUWWYmwnMqiwaxujm',
+  +   'toolu_013RpbLH4uh4jXAuTUqyoe4c',
+  +   'toolu_01SJDytmyMCRTPzSvLJj2pSa',
+  +   'toolu_01229MggZsVteT5R3TAnKgm8',
+  +   'toolu_01NsUTY41awsPzFr8mmXxGYa',
+  +   'toolu_01HcfjikmGkkRFosapNeqq1z'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file://<path>)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'toolu_01S1iRGAQvut3z1g2dZVjNaL', 'toolu_01GuR2qtXhh8TjT39835gA5J', 'toolu_018LTa5axbZYrBee4yxxWtrL', 'toolu_01QBxAqVbwhD72itX9JAnRtW', 'toolu_014oP3SaKeoxZDPJQBmfzhVb', 'toolu_01SkscBtRQrobVwWcBn4RkN1', 'toolu_01EtSnTmLxdUBVFTPSWg9QHE', 'toolu_01DL8pgD7XinsQtY3E428u3p', 'toolu_016KpHjB3xYYgsoatLRkQ5B9', 'toolu_01RXYtTWQEN85xZc2ZHxx3TF', 'toolu_01Xftes3u3nmDy1Gm4REnYR2', 'toolu_01TAkqTphJAkj9CGaGQzocVW', 'toolu_01Mn792Hr5LTaKXz27QcKYfc', 'toolu_017Kvq7C3SamaNcbsogJmCxV', 'toolu_01XsFfRh9opR3gbxnoRwf8Jt', 'toolu_01Us4SvrVZqJLmcywMYDD2P5', 'toolu_012ucfHz5gqhr5MwcC1zFLJF', 'toolu_01AgJ64mUWWYmwnMqiwaxujm', 'toolu_013RpbLH4uh4jXAuTUqyoe4c', 'toolu_01SJDytmyMCRTPzSvLJj2pSa', 'toolu_01229MggZsVteT5R3TAnKgm8', 'toolu_01NsUTY41awsPzFr8mmXxGYa', 'toolu_01HcfjikmGkkRFosapNeqq1z' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/seed-label-gap.test.mjs:569:1
+✖ a first read that falls short keeps walking back until every call is labelled (18.609917ms)
+  AssertionError [ERR_ASSERTION]: 41 calls left unlabelled
+  + actual - expected
+  
+  + [
+  +   'toolu_01S1iRGAQvut3z1g2dZVjNaL',
+  +   'toolu_01GuR2qtXhh8TjT39835gA5J',
+  +   'toolu_018LTa5axbZYrBee4yxxWtrL',
+  +   'toolu_01QBxAqVbwhD72itX9JAnRtW',
+  +   'toolu_014oP3SaKeoxZDPJQBmfzhVb',
+  +   'toolu_01SkscBtRQrobVwWcBn4RkN1',
+  +   'toolu_01EtSnTmLxdUBVFTPSWg9QHE',
+  +   'toolu_01DL8pgD7XinsQtY3E428u3p',
+  +   'toolu_016KpHjB3xYYgsoatLRkQ5B9',
+  +   'toolu_01RXYtTWQEN85xZc2ZHxx3TF',
+  +   'toolu_01Xftes3u3nmDy1Gm4REnYR2',
+  +   'toolu_01TAkqTphJAkj9CGaGQzocVW',
+  +   'toolu_01Mn792Hr5LTaKXz27QcKYfc',
+  +   'toolu_017Kvq7C3SamaNcbsogJmCxV',
+  +   'toolu_01XsFfRh9opR3gbxnoRwf8Jt',
+  +   'toolu_01Us4SvrVZqJLmcywMYDD2P5',
+  +   'toolu_012ucfHz5gqhr5MwcC1zFLJF',
+  +   'toolu_01AgJ64mUWWYmwnMqiwaxujm',
+  +   'toolu_013RpbLH4uh4jXAuTUqyoe4c',
+  +   'toolu_01SJDytmyMCRTPzSvLJj2pSa',
+  +   'toolu_01229MggZsVteT5R3TAnKgm8',
+  +   'toolu_01NsUTY41awsPzFr8mmXxGYa',
+  +   'toolu_01HcfjikmGkkRFosapNeqq1z',
+  +   'toolu_016Ki4RjsSjVvhiDFDgzNbYy',
+  +   'toolu_014BnSCJJfdYmRus8ytnv3wN',
+  +   'toolu_01EuBQc57puW6JKYKotvvKGt',
+  +   'toolu_01NpydBcfxbneNUnFtM6rvrx',
+  +   'toolu_011oJ3nhJw2rEB1JVa2jUnnv',
+  +   'toolu_018cEKmofu2Uhu4kziYSmPXL',
+  +   'toolu_01XmvxHCfe1ua9XhtEdDvUV6',
+  +   'toolu_012heztKzUBeAWZrNpo6UjCv',
+  +   'toolu_018ooRg9kaMosgLJWmZ13LWK',
+  +   'toolu_01LmEQjtKtCj753xWdAaH7Vd',
+  +   'toolu_01Sz8fe2p1Pc5e6GSDYVYDBA',
+  +   'toolu_01EvaQsPDcVnJ2MB29NCDWV1',
+  +   'toolu_01YBKigpPxwHjGosQ96Qq5h9',
+  +   'toolu_014wHxHRrW977UaGZj5f6u7b',
+  +   'toolu_01UMAosTeztHJ7vzTCHGoHZa',
+  +   'toolu_01HhEidBZXsVTSEBtYrtxzsZ',
+  +   'toolu_01Ey4h4TUXL5wLFTCrDhJdvd',
+  +   'toolu_01ErYcAekDwio6qZnfmNXdkV'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file://<path>)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [
+      'toolu_01S1iRGAQvut3z1g2dZVjNaL', 'toolu_01GuR2qtXhh8TjT39835gA5J',
+      'toolu_018LTa5axbZYrBee4yxxWtrL', 'toolu_01QBxAqVbwhD72itX9JAnRtW',
+      'toolu_014oP3SaKeoxZDPJQBmfzhVb', 'toolu_01SkscBtRQrobVwWcBn4RkN1',
+      'toolu_01EtSnTmLxdUBVFTPSWg9QHE', 'toolu_01DL8pgD7XinsQtY3E428u3p',
+      'toolu_016KpHjB3xYYgsoatLRkQ5B9', 'toolu_01RXYtTWQEN85xZc2ZHxx3TF',
+      'toolu_01Xftes3u3nmDy1Gm4REnYR2', 'toolu_01TAkqTphJAkj9CGaGQzocVW',
+      'toolu_01Mn792Hr5LTaKXz27QcKYfc', 'toolu_017Kvq7C3SamaNcbsogJmCxV',
+      'toolu_01XsFfRh9opR3gbxnoRwf8Jt', 'toolu_01Us4SvrVZqJLmcywMYDD2P5',
+      'toolu_012ucfHz5gqhr5MwcC1zFLJF', 'toolu_01AgJ64mUWWYmwnMqiwaxujm',
+      'toolu_013RpbLH4uh4jXAuTUqyoe4c', 'toolu_01SJDytmyMCRTPzSvLJj2pSa',
+      'toolu_01229MggZsVteT5R3TAnKgm8', 'toolu_01NsUTY41awsPzFr8mmXxGYa',
+      'toolu_01HcfjikmGkkRFosapNeqq1z', 'toolu_016Ki4RjsSjVvhiDFDgzNbYy',
+      'toolu_014BnSCJJfdYmRus8ytnv3wN', 'toolu_01EuBQc57puW6JKYKotvvKGt',
+      'toolu_01NpydBcfxbneNUnFtM6rvrx', 'toolu_011oJ3nhJw2rEB1JVa2jUnnv',
+      'toolu_018cEKmofu2Uhu4kziYSmPXL', 'toolu_01XmvxHCfe1ua9XhtEdDvUV6',
+      'toolu_012heztKzUBeAWZrNpo6UjCv', 'toolu_018ooRg9kaMosgLJWmZ13LWK',
+      'toolu_01LmEQjtKtCj753xWdAaH7Vd', 'toolu_01Sz8fe2p1Pc5e6GSDYVYDBA',
+      'toolu_01EvaQsPDcVnJ2MB29NCDWV1', 'toolu_01YBKigpPxwHjGosQ96Qq5h9',
+      'toolu_014wHxHRrW977UaGZj5f6u7b', 'toolu_01UMAosTeztHJ7vzTCHGoHZa',
+      'toolu_01HhEidBZXsVTSEBtYrtxzsZ', 'toolu_01Ey4h4TUXL5wLFTCrDhJdvd',
+      'toolu_01ErYcAekDwio6qZnfmNXdkV'
+    ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/seed-label-gap.test.mjs:605:1
+✖ the first frame holds the stand-in back until the label read settles (17.324083ms)
+  AssertionError [ERR_ASSERTION]: toolu_01S1iRGAQvut3z1g2dZVjNaL is held on the first frame
+      at TestContext.<anonymous> (file://<path>)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at scripts/seed-label-gap.test.mjs:640:1
+✖ a read that cannot find a call's arguments gives the stand-in back (17.173875ms)
+  TypeError: Cannot read properties of undefined (reading 'size')
+      at TestContext.<anonymous> (file://<path>)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+
+test at scripts/seed-label-gap.test.mjs:677:1
+✖ a round-end retry reads at least as deep as the walk that missed (41.369417ms)
+  AssertionError [ERR_ASSERTION]: the retry reads 182, not less than the 236 rows already read
+      at TestContext.<anonymous> (file://<path>)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at scripts/seed-label-gap.test.mjs:745:1
+✖ a stripped seed end keeps the durable +N -M on an edit row (8.879875ms)
+  AssertionError [ERR_ASSERTION]: first frame: the counts survive
+  + actual - expected
+  
+    [
+  +   0,
+  +   0
+  -   91,
+  -   19
+    ]
+  
+      at TestContext.<anonymous> (file://<path>)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 0, 0 ],
+    expected: [ 91, 19 ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/seed-label-gap.test.mjs:879:1
+✖ a join whose targets cannot be durable yet stops at the turn boundary (2.115417ms)
+  TypeError: Cannot read properties of undefined (reading 'size')
+      at TestContext.<anonymous> (file://<path>)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+
+test at scripts/seed-label-gap.test.mjs:916:1
+✖ a call nothing can label does not walk to the bound or raise the retry depth (5.440917ms)
+  TypeError: Cannot read properties of undefined (reading 'size')
+      at TestContext.<anonymous> (file://<path>)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+
+test at scripts/seed-label-gap.test.mjs:961:1
+✖ returning to a conversation does not re-blank rows already painted (3.753459ms)
+  TypeError: Cannot read properties of undefined (reading 'size')
+      at beforePump (file://<path>)
+      at open (file://<path>)
+      at TestContext.<anonymous> (file://<path>)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+
+test at scripts/seed-label-gap.test.mjs:1006:1
+✖ a read that never answers releases the hold at its own cap (4.662209ms)
+  TypeError: Cannot read properties of undefined (reading 'size')
+      at TestContext.<anonymous> (file://<path>)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+
+test at scripts/seed-label-gap.test.mjs:1056:1
+✖ a route answering with short pages cannot make the walk unbounded (51.369667ms)
+  AssertionError [ERR_ASSERTION]: the walk made 308 requests against a one-row page, over the cap
+      at TestContext.<anonymous> (file://<path>)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at scripts/seed-label-gap.test.mjs:1101:1
+✖ a page that begins on a result labels the call whose start is one row older (1.489084ms)
+  AssertionError [ERR_ASSERTION]: the walk paid one page for the orphan's start
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (file://<path>)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
