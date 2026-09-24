@@ -223,9 +223,48 @@ test("a conversation that cannot be read keeps a BOUNDED, honestly-labelled prev
 	assert.match(html, PREVIEW_NOTE);
 });
 
+test("a failed read that kept its rows paints the conversation, not a copy of it", () => {
+	/*
+	 * `error` is the fifth `ChildTranscriptState`, and the one the HOOK sets when a
+	 * READ fails (`use-child-transcript.ts`'s catch) — not one the route can answer
+	 * with, which is why it is built here by substituting the state rather than by
+	 * asking `childPage` for it. The hook keeps the rows it had already painted
+	 * rather than blanking the body it has, so this state carries a conversation
+	 * and a failure at once.
+	 *
+	 * The body and the foot read ONE expression for exactly this state. While the
+	 * foot restated the body's rule in its own words (`state === "ready" &&
+	 * painted.records.length > 0`), this state painted the conversation AND the
+	 * row's clipped result under it, under a line saying the conversation was not
+	 * available — the takeover this change removed, reproduced in the one state a
+	 * restatement could miss (round 2, C8).
+	 */
+	const html = renderReader({
+		job: SETTLED,
+		page: { ...fixtures.childPage(), state: "error" },
+	});
+	assert.match(html, CONVERSATION_LINE, "the rows the hook kept are painted");
+	assert.equal(
+		html.includes("Four of the 412"),
+		false,
+		"and the row's result is not copied again under them",
+	);
+	assert.equal(RESULT_LABEL.test(html), false);
+	assert.equal(RESULT_PREVIEW_LABEL.test(html), false);
+	assert.equal(
+		ABSENCE_LINE.test(html),
+		false,
+		"nor a line denying a conversation that is on screen",
+	);
+	// The foot's own sentence is unconditional, and still closes the pane.
+	assert.match(html, READ_ONLY_FOOTER);
+});
+
 test("the unreadable states are exactly the ones that preview, and loading is not one", () => {
 	// `pending` and `gone` are absences; a reader with no child id has no page
-	// to fetch; and `ready` with nothing painted has none to show.
+	// to fetch; a `ready` page with nothing painted has none to show; and a FAILED
+	// read that painted nothing is in the same position, which is the half of the
+	// `error` state that keeps the wire's copy (`§ 5.1`, round 2 C8).
 	for (const [name, options] of [
 		[
 			"pending",
@@ -237,6 +276,13 @@ test("the unreadable states are exactly the ones that preview, and loading is no
 			{
 				job: SETTLED,
 				page: { ...fixtures.childPage(), entries: [] },
+			},
+		],
+		[
+			"error with no rows",
+			{
+				job: SETTLED,
+				page: { ...fixtures.childPage(), state: "error", entries: [] },
 			},
 		],
 		[
@@ -265,7 +311,8 @@ test("the unreadable states are exactly the ones that preview, and loading is no
 				 * state rather than by asking `childPage` for it: the fixture's own
 				 * signature is deliberately the three states the ROUTE can answer, and
 				 * `loading` is the renderer's before-the-answer state rather than one
-				 * of them.
+				 * of them. `error` above is built the same way, and for the same
+				 * reason: it is the hook's own state, not the route's.
 				 */
 				page: { ...fixtures.childPage(), state: "loading" },
 			}),
@@ -380,7 +427,7 @@ test("a child cancelled before it started is a STATE, not a result preview", () 
 	 * was never entered (`harness/jobs.py:204`, `:1166-1167`), so this row's
 	 * `result_text` is a state word and not an outcome. Read as a result it was
 	 * the pane's worst four lines: the body's absence line, a `Result preview`
-	 * label over the stamp, and a claim that a 25-character value had been
+	 * label over the stamp, and a claim that a 27-character value had been
 	 * shortened -- repeating the absence it sat under.
 	 */
 	const html = renderReader({

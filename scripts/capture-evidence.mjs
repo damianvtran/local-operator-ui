@@ -1375,6 +1375,14 @@ export const STORIES = [
 	   and D4). */
 	["chat-run-panel--reader-cancelled-before-start", 1280, 900],
 	["chat-run-panel--reader-result-preview-floor", 800, 700],
+	/* The preview's THIRD branch, and the one whose evidence was markup only until
+	   round 2: a value the wire left WHOLE (under its bound, no clip marker) over a
+	   page with no conversation, where the label drops to `Result` and the
+	   shortening sentence is not printed at all. Design round 2's D2 and QA round
+	   2's Q2 both asked for these pixels, because a frame-only reviewer could see
+	   the two cut-value states and neither of the two ways the honesty rule can
+	   invert. */
+	["chat-run-panel--reader-result-whole", 1280, 900],
 	/* The two EXITS from a reader, which are the one kind of state this set can
 	   photograph and a keyboard walk could not: the press moves the TREE.
 	   `back-to-roster` is where the defect was and is the after half of the pair

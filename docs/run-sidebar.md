@@ -600,7 +600,7 @@ is drawn:
   the header — the slot the TUI spends it in (`subagent_view.py:3371-3391`) —
   with the model recognising the constant rather than sniffing the text. Read as
   a result it produced the pane's worst four lines: the body's absence line, a
-  `Result preview` label over a 25-character state stamp, and a claim that it had
+  `Result preview` label over a 27-character state stamp, and a claim that it had
   been shortened. No foot block is painted for that state at all (round 1,
   C2/D1).
   `branding.md` § 7's hierarchy points the same way: the answer is prose at
@@ -617,13 +617,21 @@ is drawn:
   transcript state, in machine voice and at `max-h-40 overflow-auto` — unchanged,
   including for a page that would not open at all, which is where the exception
   is most needed. Where the conversation cannot be read AT ALL — no `session_id`,
-  `pending`, `gone`, or `ready` with nothing painted (a FAILED read lands on that
-  last branch too: `error` is the fifth `ChildTranscriptState` and it paints the
-  same quiet line as an empty `ready`) — the wire's `result_text` is likewise the
-  only copy left, so it stays as a **bounded preview**: `max-h-40 overflow-auto`,
+  `pending`, `gone`, or a page that painted no rows at all (a `ready` file with
+  nothing in it, or a read that failed before it ever painted one) — the wire's
+  `result_text` is likewise the only copy left, so it stays as a **bounded
+  preview**: `max-h-40 overflow-auto`,
   prose rather than machine voice (the clipping is the app's, not something the
   child said), and one quiet line stating that the conversation the fuller copy
-  is in is not on this page. **Its label and that line are both gated on the
+  is in is not on this page. **A FAILED read belongs to that list only when it has
+  nothing in hand:** `error` is the fifth `ChildTranscriptState`, and the hook
+  KEEPS the rows it already painted rather than blanking the body it has
+  (`use-child-transcript.ts`), so a failed read with a page on screen paints the
+  conversation like any other state and the foot paints nothing there. Which
+  states those are is decided in ONE place — the reader's own
+  `bodyPaintsConversation`, which guards the transcript branch and defines the
+  foot's predicate — rather than in two predicates that could drift apart
+  (round 2, C8). **Its label and that line are both gated on the
   wire's own clip marker** (`frontend_state.py` appends `…` where it cut): a
   value that arrived whole is announced as `Result` with the absence sentence
   alone, and only a marked one is called `Result preview` — "This is a shortened

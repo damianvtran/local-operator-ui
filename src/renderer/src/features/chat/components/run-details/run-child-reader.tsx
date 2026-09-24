@@ -65,7 +65,7 @@
  * value carries that marker — the label drops to a plain `Result` when the value
  * is the whole one — and the failure block states the bound when its own value
  * was cut. Before this, the shortening line was printed for every state the
- * predicate admits, including one where `result_text` is a 25-character STATE
+ * predicate admits, including one where `result_text` is a 27-character STATE
  * stamp rather than an outcome: see `CANCELLED_BEFORE_START`, which the model
  * spends as the row's state word instead of as a result.
  *
@@ -259,7 +259,7 @@ const FailureText = ({ text }: { text: string }) => (
  * `Result preview` exactly when the value carries that marker and as a plain
  * `Result` when it is the whole value. A block that called every one of them a
  * "preview" would claim shortening over values the wire left whole — which is
- * what it did, in one state, over a 25-character state stamp — and one that
+ * what it did, in one state, over a 27-character state stamp — and one that
  * called them all "Result" would claim a child's whole answer from a prefix of
  * it. Under the value sits the other half of the honesty: the conversation the
  * full text is in is not on this page, which is why the block is here at all.
@@ -507,43 +507,77 @@ export const RunChildReader = ({
 	 * `pending`, `gone`, `error`, and an unaddressed child), because the way out
 	 * of a reader that has nothing to paint is the same way out as any other
 	 * (`Escape`/Back), and it hands the focus to the transcript — the element that
-	 * actually pages — the moment one mounts. The effect re-runs when `hasTranscript`
-	 * flips, so a page that arrives late still takes focus **if the reader still has
+	 * actually pages — the moment one mounts. The effect re-runs when
+	 * `bodyPaintsConversation` flips, so a page that arrives late still takes focus
+	 * **if the reader still has
 	 * it**, and never otherwise: a reader whose operator has moved on to the composer
 	 * leaves their caret alone (round 3, R3-4). It does not re-run on a pulse or a
 	 * refetch that leaves the state alone.
 	 */
-	const hasTranscript = state === "ready" && painted.records.length > 0;
+	/*
+	 * Whether the BODY below paints the child's CONVERSATION.
+	 *
+	 * This is the body's own branch condition and not a second opinion about it:
+	 * the chain in the markup takes its first four branches on `childSessionId`,
+	 * `pending`, `gone` and `loading`, and the branch that renders the transcript
+	 * is guarded by THIS boolean, so which states have a conversation is a fact
+	 * stated once. The foot's own predicate below is derived from it for the same
+	 * reason.
+	 *
+	 * `error` is the FIFTH member of `ChildTranscriptState` and it is not spelled
+	 * out here because it does not need a branch of its own: the hook KEEPS the
+	 * rows it already had when a read fails rather than blanking the body it has
+	 * (`use-child-transcript.ts`), so a failed read that already painted a page
+	 * has a conversation like any other state's, and one that read nothing falls
+	 * to the `painted.records.length === 0` line below and paints "no conversation
+	 * on record yet". The earlier spelling of this expression
+	 * (`state === "ready" && painted.records.length > 0`) read the first of those
+	 * two as having no conversation, and the foot then painted a second, clipped
+	 * copy of the last message under the conversation that had just made it —
+	 * `previewsClippedResult` disagreeing with the body it is defined against
+	 * (round 2, C8).
+	 *
+	 * The focus effect below reads it as well, and for the same reason: the
+	 * transcript element exists in exactly the states that paint one.
+	 */
+	const bodyPaintsConversation =
+		Boolean(row.childSessionId) &&
+		state !== "pending" &&
+		state !== "gone" &&
+		state !== "loading" &&
+		painted.records.length > 0;
 	/*
 	 * Whether the foot may paint the clipped preview at all: i.e. whether the
 	 * BODY above has no conversation to paint instead.
 	 *
 	 * The states that render a `QuietLine` rather than the transcript are named by
-	 * this expression, one line apart from the markup below, so the two cannot
-	 * disagree about which states those are. The FIFTH member of
-	 * `ChildTranscriptState` — `error` — is one of them and is not spelled out
-	 * here, because it reaches the same line by the other route: a FAILED read and
-	 * a `ready` page with no records both fall through to
-	 * `painted.records.length === 0` and paint "This subagent has no conversation
-	 * on record yet", so a failed read has no conversation to prefer either and
-	 * the wire's copy is the only text left. Recorded here because a reader
-	 * checking this predicate against `ChildTranscriptState`'s five members would
-	 * otherwise have to find that branch to see where `error` lands.
+	 * `bodyPaintsConversation`, one line apart from the markup below, so the two
+	 * cannot disagree about which states those are — there is one expression, read
+	 * twice, rather than a predicate that restates the body's rule in its own
+	 * words. That is what the earlier spelling got wrong: it agreed with the body
+	 * in every state except `error` with rows retained, where the body paints the
+	 * conversation and the foot said there was none to paint (round 2, C8).
 	 *
-	 * `loading` is deliberately NOT one of them, although `hasTranscript` is false
-	 * there: a page in flight is a conversation that is expected momentarily, and a
-	 * preview that appeared and then vanished under itself would be a flicker
-	 * around the foot of a pane that is already about to fill in. `pending` and
-	 * `loading` are the pair the distinction is for, and they are one predicate
-	 * apart.
+	 * `!row.childSessionId` is stated on its own because that absence is permanent
+	 * rather than a page in flight: a row the wire never gave a session id cannot
+	 * be waited out, and the `loading` the hook reports for it is not the flicker
+	 * the exception below is about.
+	 *
+	 * `loading` is deliberately NOT one of the states that preview, although
+	 * `bodyPaintsConversation` is false there: a page in flight is a conversation
+	 * that is expected momentarily, and a preview that appeared and then vanished
+	 * under itself would be a flicker around the foot of a pane that is already
+	 * about to fill in. `pending` and `loading` are the pair the distinction is
+	 * for, and they are one predicate apart.
 	 */
 	const previewsClippedResult =
-		!row.childSessionId || (!hasTranscript && state !== "loading");
+		!row.childSessionId || (!bodyPaintsConversation && state !== "loading");
 	useEffect(() => {
 		/*
 		 * Which element holds focus for THIS state: the transcript when one is painted,
-		 * the reader's root otherwise. `hasTranscript` is a dependency rather than only
-		 * a body read because a page ARRIVING is the transition this effect is about.
+		 * the reader's root otherwise. `bodyPaintsConversation` is a dependency rather
+		 * than only a body read because a page ARRIVING is the transition this effect
+		 * is about.
 		 *
 		 * The move happens only while the reader still holds the focus it took, which
 		 * is what makes it idempotent per open AND harmless when a page arrives late
@@ -552,10 +586,12 @@ export const RunChildReader = ({
 		 * on `<body>`) — those are the cases where the focus is the reader's to move.
 		 * Anything else means the operator has put it somewhere since, and the common
 		 * case is the composer: the previous, unconditional version fired on every
-		 * `hasTranscript` transition, so a slow child's first rows pulled the caret
-		 * out of a half-typed message.
+		 * `bodyPaintsConversation` transition, so a slow child's first rows pulled the
+		 * caret out of a half-typed message.
 		 */
-		const target = hasTranscript ? containerRef.current : readerRef.current;
+		const target = bodyPaintsConversation
+			? containerRef.current
+			: readerRef.current;
 		if (!target) return;
 		const active = document.activeElement;
 		const mine =
@@ -565,7 +601,7 @@ export const RunChildReader = ({
 			active === containerRef.current;
 		if (!mine || active === target) return;
 		target.focus();
-	}, [hasTranscript]);
+	}, [bodyPaintsConversation]);
 
 	// An unopenable child hands the pane back to the roster, once.
 	const reported = useRef(false);
@@ -713,16 +749,7 @@ export const RunChildReader = ({
 					</QuietLine>
 				) : state === "loading" ? (
 					<QuietLine>Loading this subagent's conversation…</QuietLine>
-				) : painted.records.length === 0 ? (
-					/*
-					 * `ready` with no rows: the file exists and holds nothing this
-					 * renderer paints. One line, no skeleton — a state a reader can
-					 * read rather than an animation they have to wait out.
-					 */
-					<QuietLine>
-						This subagent has no conversation on record yet.
-					</QuietLine>
-				) : (
+				) : bodyPaintsConversation ? (
 					<CanonicalTranscript
 						frontend={null}
 						transcript={painted}
@@ -758,13 +785,13 @@ export const RunChildReader = ({
 						status="live"
 						failure={null}
 						/*
-						 * The reader's question, answered by this reader's own state: the
-						 * branch that renders this transcript is the `ready` one (the
-						 * empty states above are `QuietLine`s), so the child's page HAS
-						 * been read and nothing is still owed. The hold cannot fire here
-						 * anyway - it needs zero records and this branch is reached only
-						 * with rows - and `false` is what the reader's own state says
-						 * rather than a value chosen to keep the predicate quiet.
+						 * The reader's question, answered by this reader's own state: this
+						 * branch is reached only where `bodyPaintsConversation` holds, so the
+						 * child's page HAS been read and rows were painted (`ready`, or a
+						 * failed read that kept the rows it had) and nothing is still owed.
+						 * The hold cannot fire anyway — it needs zero records and this branch
+						 * is reached only with rows — and `false` is what the reader's own
+						 * state says rather than a value chosen to keep the predicate quiet.
 						 */
 						awaitingHydration={false}
 						/*
@@ -781,6 +808,18 @@ export const RunChildReader = ({
 						onReconnect={() => {}}
 						attachmentScope={attachmentScope}
 					/>
+				) : (
+					/*
+					 * A page with no rows this renderer paints: the file exists and holds
+					 * nothing, or the read failed before it ever painted one. One line, no
+					 * skeleton — a state a reader can read rather than an animation they
+					 * have to wait out. This is the other half of `bodyPaintsConversation`,
+					 * the branch that decides whether the transcript is painted at all
+					 * (round 2, C8).
+					 */
+					<QuietLine>
+						This subagent has no conversation on record yet.
+					</QuietLine>
 				)}
 				{/*
 				 * The failure, at the foot and UNGATED on what the body painted: the

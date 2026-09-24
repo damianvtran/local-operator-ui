@@ -1061,7 +1061,7 @@ const deriveChild = (
 	 * OUT of `resultText`, so the reader cannot paint it as an outcome in any
 	 * state — the pane's own body line is where the missing conversation is
 	 * stated, and a second copy under a result label would be that fact twice
-	 * plus a shortening claim over a 25-character value the wire never clipped.
+	 * plus a shortening claim over a 27-character value the wire never clipped.
 	 */
 	const cancelledBeforeStart = fullResultText === CANCELLED_BEFORE_START;
 	const launchPrompts = toWireStringMap(job.launch_prompts);
