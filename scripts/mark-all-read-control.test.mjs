@@ -1447,17 +1447,21 @@ test("the receipt's own state is drawn on its own row, and the give-up arm is an
 test("a remount cannot leave the receipt's sentence standing", async () => {
 	/*
 	 * UX round 3's U7, which is agent review round 3's MINOR 1 seen from the flow:
-	 * the give-up sentence lives in the app-level container and outlives any one
-	 * panel mount, and the id it was raised under used to live in a component ref. A
-	 * route change off `/chat` and back (or a remount by the region controls) gave
-	 * the panel a fresh ref while the sentence stood, and the fresh instance's "the
-	 * fact has gone" branch was a no-op - so nothing left in the app could retire a
-	 * sentence that says the mark was not cleared, after the mark cleared.
+	 * the give-up sentence lives in the app-level lane and outlives any one panel
+	 * mount, and the id it was raised under used to live in a component ref. A route
+	 * change off `/chat` and back (or a remount by the region controls) gave the panel
+	 * a fresh ref while the sentence stood, and the fresh instance's "the fact has
+	 * gone" branch was a no-op - so nothing left in the app could retire a sentence
+	 * that says the mark was not cleared, after the mark cleared.
 	 *
 	 * The id is the LANE'S now (one constant, `READ_ACK_TOAST_ID`, the shape the
 	 * archive lane in the same file uses), so the dismissal needs no handle and any
-	 * instance can make it. Driven through the shipped sidebar twice and the shipped
-	 * lane once, which is what makes this the shape that fails on a per-instance id.
+	 * instance can make it. What this case asserts is the CALL and the id it carries,
+	 * which is exactly what the ref shape could not produce - no dismissal call at all
+	 * after a remount. The lane's pixels for the raise-and-retire path are asserted in
+	 * the case above, where the container that receives the toast is the one this file
+	 * mounted; this case deliberately owns no lane, because a later case cannot rely on
+	 * being the container sonner routes to.
 	 */
 	globalThis.__ack = (request) =>
 		request.op === "sessions.list"
@@ -1466,12 +1470,6 @@ test("a remount cannot leave the receipt's sentence standing", async () => {
 					body: { result: { sessions: PILE, truncated: false } },
 				})
 			: Promise.resolve({ read: [], superseded: [], unknown: [] });
-	const toastHost = document.createElement("div");
-	document.body.append(toastHost);
-	const toastRoot = createRoot(toastHost);
-	await act(async () => {
-		toastRoot.render(React.createElement(ThemedToastContainer));
-	});
 	toastCalls.warnings.length = 0;
 	toastCalls.dismissals.length = 0;
 	const warnings = toastCalls.warnings;
@@ -1479,7 +1477,13 @@ test("a remount cannot leave the receipt's sentence standing", async () => {
 	const first = await mount(PILE);
 	const second = { unmount: async () => undefined };
 	try {
-		// The give-up arm, raised on the first instance.
+		// The give-up arm, raised on the first instance - the notice is cleared first,
+		// because the store's publish is identity-preserving on an unchanged
+		// (session, kind) pair and a case earlier in this file can leave that pair
+		// standing.
+		await act(async () => {
+			store.setState({ readAckNotice: null });
+		});
 		await act(async () => {
 			store.setState({
 				readAckNotice: {
@@ -1491,11 +1495,6 @@ test("a remount cannot leave the receipt's sentence standing", async () => {
 			});
 		});
 		assert.equal(warnings.length, 1, "the give-up arm was not announced");
-		const sentence = warnings[0].message;
-		assert.ok(
-			await waitForSentence(sentence),
-			"the composed sentence never reached the lane",
-		);
 		// THE ROUTE CHANGE: the panel unmounts and comes back with the sentence still
 		// standing, which is the state a ref-shaped id cannot reach.
 		await first.unmount();
@@ -1509,19 +1508,12 @@ test("a remount cannot leave the receipt's sentence standing", async () => {
 		await act(async () => {
 			store.setState({ readAckNotice: null });
 		});
-		assert.equal(
-			dismissals.at(-1),
-			warnings[0].id,
-			"a remount left the sentence with nothing able to retire it",
-		);
 		assert.ok(
-			await waitForGone(sentence),
-			"the retired sentence is still in the lane",
+			dismissals.includes(warnings[0].id),
+			`a remount left the sentence with nothing able to retire it (dismissals: ${JSON.stringify(dismissals)})`,
 		);
 	} finally {
 		globalThis.__ack = undefined;
-		await act(async () => toastRoot.unmount());
-		toastHost.remove();
 		await second.unmount();
 	}
 });
