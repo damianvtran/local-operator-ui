@@ -300,6 +300,13 @@ let loginAnswer = "refused";
 let accountAnswer = "ready";
 let holdVerdict = false;
 /**
+ * Whether `GET /v1/auth/status` FAILS (a 500), which is QA round 3's Q-8 state
+ * and Q-6's case K: the verdict read errors and holds no data, which is the one
+ * state in which React Query re-runs a query on an observer's mount and puts it
+ * back to `status: "pending"` for every re-attempt.
+ */
+let verdictFails = false;
+/**
  * Whether the capability answer advertises `tunnel`. The verdict read is the
  * composer callout's own query and is gated on that key, so a runtime without it
  * is the absent-verdict floor reached by a different road: no read at all.
@@ -344,6 +351,7 @@ beforeEach(() => {
 	accountAnswer = "ready";
 	census = [RADIENT_ROW, OPENAI_ROW];
 	holdVerdict = false;
+	verdictFails = false;
 	tunnelCapability = true;
 	verdictRequests = 0;
 	accountRequests = 0;
@@ -351,6 +359,14 @@ beforeEach(() => {
 	authStarts = 0;
 	releaseVerdict = () => {};
 });
+
+/** The verdict route's answer for the case's current settings. */
+function verdictResponse() {
+	if (verdictFails) {
+		return { status: 500, body: { detail: "Internal Server Error" } };
+	}
+	return { status: 200, body: LOGIN_ANSWERS[loginAnswer] };
+}
 
 globalThis.window.api = {
 	desktop: {
@@ -369,12 +385,13 @@ globalThis.window.api = {
 					// The released value is a whole desktop response, not just the result:
 					// the hook unwraps this envelope, so a half-shaped answer would be a
 					// transport error rather than the verdict under test.
+					// Decided at RELEASE, not at the request, so a case can hold a read
+					// and then let it fail.
 					return await new Promise((resolve) => {
-						releaseVerdict = () =>
-							resolve({ status: 200, body: LOGIN_ANSWERS[loginAnswer] });
+						releaseVerdict = () => resolve(verdictResponse());
 					});
 				}
-				return { status: 200, body: LOGIN_ANSWERS[loginAnswer] };
+				return verdictResponse();
 			}
 			if (request?.control?.operation === "account") {
 				accountRequests += 1;
@@ -458,6 +475,8 @@ const createElement = React.createElement;
 const REFUSED_DETAIL = /no longer accepts the sign-in stored on this machine/;
 const UNVERIFIED_DETAIL =
 	/could not confirm the sign-in stored on this machine/;
+/** The control an opened provider panel carries, and the closed grid does not. */
+const BACK_TO_PROVIDERS = /back to providers/i;
 const REFUSED_DETAIL_ATTRIBUTE =
 	/title="Radient no longer accepts the sign-in stored on this machine"/;
 
@@ -1354,3 +1373,194 @@ async function renderGridWith({ accountAnswer: answer }) {
 	accountAnswer = answer;
 	return renderGrid();
 }
+
+/* ---- Q-8: a FAILED verdict read, and the two surfaces that used to loop on it -- */
+
+/**
+ * Press the first button whose label the matcher accepts, failing with the frame
+ * when there is none: a missing control is the finding, not a harness error.
+ */
+async function pressButton(container, matcher) {
+	const button = [...container.querySelectorAll("button")].find((candidate) =>
+		matcher(candidate.textContent ?? ""),
+	);
+	assert.ok(button, `no control matched: ${text(container).slice(0, 300)}`);
+	await act(async () => {
+		button.dispatchEvent(
+			new window.MouseEvent("click", { bubbles: true, cancelable: true }),
+		);
+	});
+}
+
+/** Whether the grid is showing an opened provider's panel. */
+const panelOpen = (container) =>
+	[...container.querySelectorAll("button")].some((candidate) =>
+		BACK_TO_PROVIDERS.test(candidate.textContent ?? ""),
+	);
+
+/**
+ * Sample the surface for `ms`, recording every frame that was on the loading gate
+ * and every frame that had lost the panel. A LOOP, not a single read, is the
+ * thing asserted against: the pre-fix grid alternated between the panel and the
+ * gate every attempt, so any one sample could land on either.
+ */
+async function watch(container, ms, { expectPanel }) {
+	const started = Date.now();
+	let gated = 0;
+	let panelLost = 0;
+	let samples = 0;
+	while (Date.now() - started < ms) {
+		await flush();
+		samples += 1;
+		const rendered = text(container);
+		if (rendered.includes("Loading providers")) gated += 1;
+		if (expectPanel && !panelOpen(container)) panelLost += 1;
+	}
+	return { gated, panelLost, samples };
+}
+
+/**
+ * Q-8 (QA round 3): with `GET /v1/auth/status` failing, pressing ANY card left
+ * the grid on "Loading providers" for good and never opened the panel, at ~70
+ * requests a second (QA: 1,579 in 20 s from the Radient card, 1,459 from
+ * OpenAI's; `origin/main` 0 and the panel opens).
+ *
+ * The mechanism, two halves: the panel mounted the verdict read with React
+ * Query's default `retryOnMount`, which re-runs a FAILED, data-less query when an
+ * observer mounts; and the grid held its list on `isPending`, which a data-less
+ * query re-enters for every attempt. So the press mounted the panel, the mount
+ * re-asked, the gate unmounted the panel, the read failed, the panel remounted.
+ *
+ * THE BOUND: the press may cost ZERO further verdict reads. The grid already
+ * owns the read and has recorded its failure; the panel only reports it. The
+ * window is two seconds, which the pre-fix loop fills with dozens of reads here.
+ */
+for (const [card, matcher] of [
+	["Radient", (label) => label.startsWith("Radient")],
+	["OpenAI", (label) => label.startsWith("OpenAI")],
+]) {
+	test(`a failing verdict route does not stop the ${card} card from opening`, async () => {
+		verdictFails = true;
+		accountAnswer = "ready";
+		const { container, queryClient } = await renderGrid();
+		assert.equal(
+			queryClient.getQueryState(radientSessionIssueKey)?.status,
+			"error",
+		);
+		const before = verdictRequests;
+		await pressButton(container, matcher);
+		const seen = await watch(container, 2000, { expectPanel: true });
+		const reads = verdictRequests - before;
+		assert.equal(
+			reads,
+			0,
+			`the press re-commissioned the failed verdict read ${reads} times in 2 s - the loop`,
+		);
+		assert.equal(
+			seen.gated,
+			0,
+			`${seen.gated} of ${seen.samples} frames after the press were "Loading providers"`,
+		);
+		assert.equal(
+			seen.panelLost,
+			0,
+			`${seen.panelLost} of ${seen.samples} frames after the press had no panel: ${text(container).slice(0, 200)}`,
+		);
+	});
+}
+
+/**
+ * The gate's own half of Q-8, asserted where it is reachable without a panel:
+ * once the verdict read has ANSWERED - here, by failing - a later attempt at it
+ * (the 60 s poll, a window focus, `refreshProviders`' invalidation) must not put
+ * the card list, or an open panel, back behind "Loading providers". A data-less
+ * query is `pending` again for every attempt, which is what the old
+ * `isPending` hold read. The FIRST read still holds the list (D6, asserted
+ * above), and a first read that fails releases it.
+ *
+ * The re-attempt is HELD open so the frame under it can be sampled; releasing it
+ * lets it fail again, and the list must still be there after.
+ */
+test("a failed verdict read never puts the card list back behind its loading gate", async () => {
+	accountAnswer = "ready";
+	// The first read, held and then FAILED: the hold releases on a failure too.
+	verdictFails = true;
+	holdVerdict = true;
+	const queryClient = client();
+	globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+	const container = document.createElement("div");
+	document.body.append(container);
+	const root = createRoot(container);
+	mounted.push({ root, queryClient });
+	await act(async () => {
+		root.render(
+			createElement(
+				QueryClientProvider,
+				{ client: queryClient },
+				createElement(ProviderGrid, {}),
+			),
+		);
+	});
+	await flush();
+	assert.ok(text(container).includes("Loading providers"), text(container));
+	holdVerdict = false;
+	releaseVerdict();
+	await awaitReads(container, queryClient);
+	assert.equal(
+		queryClient.getQueryState(radientSessionIssueKey)?.status,
+		"error",
+	);
+	assert.ok(
+		!text(container).includes("Loading providers"),
+		`a failed first read left the list on its gate: ${text(container)}`,
+	);
+
+	const reattempt = async (label, expectPanel) => {
+		holdVerdict = true;
+		const before = verdictRequests;
+		await act(async () => {
+			void queryClient.invalidateQueries({ queryKey: radientSessionIssueKey });
+		});
+		const deadline = Date.now() + 5000;
+		while (verdictRequests === before && Date.now() < deadline) await flush();
+		assert.ok(
+			verdictRequests > before,
+			`${label}: the re-attempt was never made`,
+		);
+		const held = await watch(container, 300, { expectPanel });
+		assert.equal(
+			held.gated,
+			0,
+			`${label}: ${held.gated} of ${held.samples} frames under a re-read of a failed verdict were "Loading providers"`,
+		);
+		assert.equal(
+			held.panelLost,
+			0,
+			`${label}: the re-read unmounted the open panel`,
+		);
+		holdVerdict = false;
+		releaseVerdict();
+		const after = await watch(container, 300, { expectPanel });
+		assert.equal(
+			after.gated,
+			0,
+			`${label}: gated after the re-read failed again`,
+		);
+		assert.equal(
+			after.panelLost,
+			0,
+			`${label}: the panel was lost after the re-read`,
+		);
+	};
+
+	// With the card list on screen.
+	await reattempt("card list", false);
+	assert.ok(text(container).includes("OpenAI"), text(container));
+	// And with a panel open, which is the composition the loop lived in.
+	await pressButton(container, (label) => label.startsWith("Radient"));
+	assert.ok(
+		panelOpen(container),
+		`the card did not open: ${text(container).slice(0, 200)}`,
+	);
+	await reattempt("open panel", true);
+});
