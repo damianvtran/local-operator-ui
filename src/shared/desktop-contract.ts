@@ -2423,6 +2423,10 @@ export function desktopRequestBoundS(request: {
 	wait_s?: number;
 	/** The peer a create was addressed to, when one was (QA round 1, Q4b). */
 	peer?: string | null;
+	/** The move's destination: a device id, or `"local"` for a recall. */
+	to?: string | null;
+	/** Whether the move keeps a copy behind (the route's `keep` term). */
+	keep?: boolean;
 }): number | null {
 	if (request.op === "sessions.create") {
 		/*
@@ -2437,10 +2441,50 @@ export function desktopRequestBoundS(request: {
 		return request.peer ? DESKTOP_PEER_CREATE_BOUND_S : null;
 	}
 	if (request.op !== "sessions.transfer") return null;
+	/*
+	 * A RECALL IS NOT A MOVE, and deriving its bound from `wait_s` is the mistake
+	 * this helper exists to prevent. `to: "local"` is bounded by the DESTINATION's own
+	 * retire-and-record deadline (about 90 s) plus the copy, which is a different
+	 * shape from the peer route's `wait_s + 30` - so it takes a standing ceiling that
+	 * deliberately EXCEEDS that, and its outcome is always reported as unconfirmed
+	 * ("check where it is"), never as a precise refusal. The number is a ceiling, not
+	 * a measurement: the backend lane derived the recall's shape from code, and a
+	 * figure quoted as measured would be a claim nobody made.
+	 */
+	if (request.to === "local") return DESKTOP_RECALL_BOUND_S;
 	const wait = request.wait_s;
 	if (typeof wait !== "number" || !Number.isFinite(wait)) return null;
-	return Math.min(Math.max(wait, 0), 300);
+	const bounded = Math.min(Math.max(wait, 0), 300);
+	/*
+	 * THE ROUTE'S OWN BOUND, BY SHAPE (backend PR #1540 and its review): a move that
+	 * keeps nothing behind is `wait_s + 30`, and one that KEEPS a copy is
+	 * `wait_s + 300` - 255 s more, which is exactly the kind of gap a client that
+	 * ignores `keep` falls through. Returned here so the deadline below is derived
+	 * from ONE place and the three shapes cannot drift apart.
+	 */
+	return (
+		bounded +
+		(request.keep === true
+			? DESKTOP_KEEP_MOVE_OVERHEAD_S
+			: DESKTOP_MOVE_OVERHEAD_S)
+	);
 }
+
+/** The peer route's own overhead above `wait_s` for a move that keeps no copy. */
+export const DESKTOP_MOVE_OVERHEAD_S = 30;
+
+/** The same for a move that KEEPS a copy on the source (the route's `keep` term). */
+export const DESKTOP_KEEP_MOVE_OVERHEAD_S = 300;
+
+/**
+ * The ceiling a RECALL is given, as a ceiling rather than a derived bound.
+ *
+ * The destination device retires its own runtime and records the conversation
+ * before answering, which the backend lane measured at about 90 s; this sits above
+ * that plus the copy. Its outcome is always "unconfirmed - check where it is",
+ * because a number nobody measured must not be spent on a precise claim.
+ */
+export const DESKTOP_RECALL_BOUND_S = 180;
 
 /**
  * What a create asked to run on a peer is given before this app gives up.
