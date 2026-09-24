@@ -328,7 +328,10 @@ const A_PROVIDER = [
 		id: "openai",
 		name: "OpenAI",
 		search_aliases: [],
-		methods: [{ kind: "api_key" }],
+		// `auth_methods` is the contract's field name (`DesktopProvider`); this
+		// fixture spelled it `methods`, which the old grid never read on the
+		// frames this file renders and the grouped list now does.
+		auth_methods: [{ kind: "api_key" }],
 		local: false,
 		credential_optional: false,
 		has_credential: false,

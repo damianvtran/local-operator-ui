@@ -281,11 +281,18 @@ test("the signed-in census renders no cue anywhere", () => {
 	const html = render(census({ has_credential: true, configured: true }));
 	assert.doesNotMatch(html, /Recommended/);
 	assert.doesNotMatch(html, /Nothing to paste/);
+	/*
+	 * A signed-in row now leads the page in the "Connected" block (design audit
+	 * D3: Radient "Signed in" was card 15 of 18, below the fold). So it renders
+	 * BEFORE the rows still to add -- and it is no longer a row to add at all.
+	 */
+	assert.match(html, />Connected</);
 	assert.equal(
-		html.indexOf('data-provider-id="openai"') <
-			html.indexOf('data-provider-id="radient"'),
+		html.indexOf('data-provider-id="radient"') <
+			html.indexOf('data-provider-id="openai"'),
 		true,
 	);
+	assert.equal(html.split('data-provider-id="radient"').length - 1, 1);
 });
 
 test("only the provider step takes the grid measure, and both measures are clamped", () => {
