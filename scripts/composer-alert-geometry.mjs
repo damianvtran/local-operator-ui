@@ -476,7 +476,10 @@ const assertions = (measurement, idle, column) => {
 		 * shows the sentence the arm is named for.
 		 */
 		const phrase = ARM_PHRASE[measurement.state];
-		if (phrase && !(measurement.noticeText ?? "").toLowerCase().includes(phrase))
+		if (
+			phrase &&
+			!(measurement.noticeText ?? "").toLowerCase().includes(phrase)
+		)
 			fail(
 				`the notice's own words do not carry "${phrase}": ${JSON.stringify(measurement.noticeText)}`,
 			);
@@ -488,10 +491,7 @@ const assertions = (measurement, idle, column) => {
 		const weights = Object.fromEntries(
 			measurement.noticeControlWeights.map((c) => [c.label, Number(c.weight)]),
 		);
-		if (
-			expected.controls.length === 2 &&
-			!(weights.Retry > weights.Clear)
-		)
+		if (expected.controls.length === 2 && !(weights.Retry > weights.Clear))
 			fail(
 				`Retry (${weights.Retry}) is not weightier than Clear (${weights.Clear}), so the primary of the two is not distinguishable in a theme whose two ink roles are close`,
 			);
@@ -714,11 +714,13 @@ const main = async () => {
 			 * the right pair; this is the printed column agreeing with them.
 			 */
 			const baselineState =
-				BORDER_BASELINE[m.state] ?? (BASELINE_STATES.has(m.state) ? null : "idle");
+				BORDER_BASELINE[m.state] ??
+				(BASELINE_STATES.has(m.state) ? null : "idle");
 			const baseline = baselineState
 				? measurements.find(
 						(candidate) =>
-							candidate.column === m.column && candidate.state === baselineState,
+							candidate.column === m.column &&
+							candidate.state === baselineState,
 					)
 				: null;
 			const delta =

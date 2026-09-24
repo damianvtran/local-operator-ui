@@ -45,6 +45,10 @@
  * here that could drift from it.
  */
 
+import {
+	DESKTOP_MESSAGE_MAX_CHARS,
+	DESKTOP_REQUEST_TOO_LARGE_DETAIL,
+} from "@contract/desktop-contract";
 import { CssBaseline } from "@mui/material";
 import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
 import {
@@ -64,10 +68,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
-import {
-	DESKTOP_MESSAGE_MAX_CHARS,
-	DESKTOP_REQUEST_TOO_LARGE_DETAIL,
-} from "@contract/desktop-contract";
 import "./composer-alert-geometry.css";
 
 const params = new URLSearchParams(window.location.search);
