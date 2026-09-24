@@ -359,6 +359,80 @@ export function pickerBodyKind(state: {
 }
 
 /**
+ * Where the highlight goes when the option list changes (UX U1/U2).
+ *
+ * THE TWO CASES THIS HAS TO TELL APART, and the reason it is a function rather
+ * than three lines inside an effect: the list changes when the USER narrows it
+ * (a keystroke, their own act) and when the DATA moves under them (the
+ * automatic provider listing landing, or the 15-minute cadence tick, with no
+ * input at all). The old rule could not: with no query typed it re-placed the
+ * highlight on the current model whenever the option list changed identity, so
+ * the automatic listing pulled the keyboard's row back to row 0 about 2.3 s
+ * after the dialog opened — measured with the footer re-naming Enter's target —
+ * and again on every tick for as long as the dialog stayed open. A list of
+ * 1450 models is scanned with the keyboard, and a selection that moves by
+ * itself is not a selection.
+ *
+ * So the highlight is held by the ROW'S `value` and not by its index: a row that
+ * is still listed keeps the highlight wherever the list moved it to. A row that
+ * is GONE falls back to the dialog's own placement (the current model when
+ * nothing is typed, the clamped index otherwise) — and when the user is the one
+ * who had steered it (`steered`) and the change was not their own typing
+ * (`queryChanged` is false), the landing is NAMED through `retargeted`, because
+ * Enter would otherwise act on a row the user never chose, with nothing on
+ * screen saying so (UX U2).
+ */
+export function pickerPlacement(state: {
+	options: PickerOption[];
+	/** The row the highlight is on, by `value`; `null` before it is placed. */
+	held: string | null;
+	/** Its index in the list as last rendered. */
+	active: number;
+	query: string;
+	/** The user's own search changed since the last placement. */
+	queryChanged: boolean;
+	/** The highlight is the user's (they moved it, or clicked a row). */
+	steered: boolean;
+}): {
+	index: number;
+	held: string | null;
+	retargeted: string | null;
+	steered: boolean;
+} {
+	const { options, held, active, query, queryChanged, steered } = state;
+	if (options.length === 0) {
+		return { index: 0, held: null, retargeted: null, steered: false };
+	}
+	const heldIndex =
+		held === null ? -1 : options.findIndex((option) => option.value === held);
+	if (heldIndex >= 0) {
+		return { index: heldIndex, held, retargeted: null, steered };
+	}
+	const clamped = Math.max(0, Math.min(active, options.length - 1));
+	const currentIndex = query
+		? -1
+		: options.findIndex((option) => option.current);
+	const index = currentIndex >= 0 ? currentIndex : clamped;
+	const landed = options[index];
+	if (queryChanged) {
+		// The user asked for a narrower set: this is the dialog's own placement,
+		// and nothing about it needs saying.
+		return {
+			index,
+			held: landed?.value ?? null,
+			retargeted: null,
+			steered: false,
+		};
+	}
+	return {
+		index,
+		held: landed?.value ?? null,
+		retargeted: steered ? (landed?.label ?? null) : null,
+		steered,
+	};
+}
+
+/**
  * The footer's left slot.
  *
  * The arrow/Enter hint is advertised only when there IS something to move
@@ -381,9 +455,22 @@ export function pickerFooterHint(state: {
 	activeLabel?: string | null;
 	/** What an in-flight operation is doing, in the user's terms. */
 	busyText?: string;
+	/**
+	 * The row Enter now picks because the row under the highlight is gone.
+	 *
+	 * UX U2: the row set can change under the user — the automatic listing does it
+	 * by design — and the old clamp moved the highlight to whatever now occupied
+	 * the slot, so Enter could act on a model the user never chose with nothing on
+	 * screen saying so. While this is set, the footer states the change instead of
+	 * advertising the arrows; the arrows still work, and the ordinary hint returns
+	 * the moment the user moves the highlight again.
+	 */
+	retargetedLabel?: string | null;
 }): string {
 	if (state.busy) return state.busyText ?? "Applying the change…";
 	if (state.hasList && state.rowCount > 0) {
+		if (state.retargetedLabel)
+			return `The row you were on is gone · Enter picks ${state.retargetedLabel}`;
 		return state.activeLabel
 			? `Arrows move · Enter picks ${state.activeLabel} · Esc closes`
 			: "Arrows move, Enter picks, Esc closes";
@@ -623,6 +710,31 @@ export const PickerHost: FC<PickerHostProps> = ({
 	// `aria-activedescendant` names. Moved by the arrow keys only — see
 	// `hovered` for why the pointer does not steer it.
 	const [active, setActive] = useState(0);
+	/*
+	 * Which ROW the highlight is on, held by identity beside the index above, and
+	 * whether that row is the USER's (UX U1/U2).
+	 *
+	 * WHY AN INDEX IS NOT ENOUGH. The picker's list is not static any more: the
+	 * automatic provider listing lands ~2.3 s after open and re-lists again on the
+	 * 15-minute cadence, so `filtered` changes identity repeatedly while the user
+	 * is reading. The old placement rule could not tell a change the USER caused
+	 * (typing, which narrows the list) from one they did not (a listing arriving),
+	 * so the arriving rows pulled the keyboard back to the current model: measured
+	 * on this change's own harness, highlight on row 3 with the footer reading
+	 * `Enter picks Anthropic: Claude Haiku 4.5`, then back to row 0 and
+	 * `Enter picks Claude Opus 5` when the listing landed — and again on every
+	 * cadence tick, for as long as the dialog stays open.
+	 *
+	 * `activeValueRef` is the row's `value` as last placed, `steeredRef` says that
+	 * placement was the user's own input, and `retargeted` names the row Enter now
+	 * picks when the user's row VANISHES from the list under it (U2) — a selection
+	 * is a model, not a slot, so that case has to be said out loud rather than
+	 * silently re-pointing Enter at whatever moved into the slot.
+	 */
+	const activeValueRef = useRef<string | null>(null);
+	const steeredRef = useRef(false);
+	const placedQueryRef = useRef<string | null>(null);
+	const [retargeted, setRetargeted] = useState<string | null>(null);
 	// The pointer's position and the picked row's mark, one reducer (see
 	// `pickerListReducer`): both are the LIST's interaction state, they expire on
 	// different edges, and keeping them together is what makes "the pointer left"
@@ -771,6 +883,12 @@ export const PickerHost: FC<PickerHostProps> = ({
 		if (!open) return;
 		setQuery("");
 		setActive(0);
+		// The placement the fresh open owns, not the user's: the highlight goes back
+		// to the current model and nothing about the last dialog's row is carried.
+		activeValueRef.current = null;
+		steeredRef.current = false;
+		placedQueryRef.current = null;
+		setRetargeted(null);
 		dispatch({ type: "reset" });
 	}, [open]);
 	// The picked row's mark is held until the operation SETTLES, not until the
@@ -779,18 +897,35 @@ export const PickerHost: FC<PickerHostProps> = ({
 	useEffect(() => {
 		if (!busy) dispatch({ type: "settle" });
 	}, [busy]);
-	// Start on the current row so Enter alone confirms "no change"; clamp
-	// rather than reset when the filter shortens the list.
+	/*
+	 * THE HIGHLIGHT, RE-PLACED WHENEVER THE OPTION LIST MOVES. The decision itself
+	 * is `pickerPlacement` above (UX U1/U2) — it is a function rather than an
+	 * inline rule so that the cases that made this change necessary are pinned by
+	 * tests instead of by a rendered frame (`scripts/picker-feedback.test.mjs`).
+	 * This effect only reads and writes the three facts the rule needs: the row
+	 * the user is on, whether that row is theirs, and the search the placement was
+	 * last made for.
+	 *
+	 * `active` is a dependency so the clamp reads the live index; every branch is
+	 * idempotent when it re-runs (a held row resolves to the index already in
+	 * `active`), so an arrow keypress cannot be undone by the effect it triggers.
+	 */
 	useEffect(() => {
-		setActive((current) => {
-			if (filtered.length === 0) return 0;
-			if (query) return Math.min(current, filtered.length - 1);
-			const currentIndex = filtered.findIndex((option) => option.current);
-			return currentIndex >= 0
-				? currentIndex
-				: Math.min(current, filtered.length - 1);
+		const queryChanged = placedQueryRef.current !== query;
+		placedQueryRef.current = query;
+		const placed = pickerPlacement({
+			options: filtered,
+			held: activeValueRef.current,
+			active,
+			query,
+			queryChanged,
+			steered: steeredRef.current,
 		});
-	}, [filtered, query]);
+		activeValueRef.current = placed.held;
+		steeredRef.current = placed.steered;
+		setActive(placed.index);
+		setRetargeted(placed.retargeted);
+	}, [filtered, query, active]);
 	/*
 	 * A query change scrolls the list back to its top (UX U6).
 	 *
@@ -851,6 +986,9 @@ export const PickerHost: FC<PickerHostProps> = ({
 		 * Hover still does NOT steer it (design D2): only an action moves the
 		 * selection, and the pointer's own action is the click.
 		 */
+		activeValueRef.current = option.value;
+		steeredRef.current = true;
+		setRetargeted(null);
 		setActive(index);
 		void pickRef.current(option);
 	}, []);
@@ -866,12 +1004,20 @@ export const PickerHost: FC<PickerHostProps> = ({
 			if (event.nativeEvent.isComposing) return;
 			if (event.key === "ArrowDown" && filtered.length > 0) {
 				event.preventDefault();
-				setActive((current) => (current + 1) % filtered.length);
+				// The highlight is the user's from here on (UX U1): a listing that
+				// arrives while they are moving through the rows must not take it.
+				const next = (active + 1) % filtered.length;
+				activeValueRef.current = filtered[next]?.value ?? null;
+				steeredRef.current = true;
+				setRetargeted(null);
+				setActive(next);
 			} else if (event.key === "ArrowUp" && filtered.length > 0) {
 				event.preventDefault();
-				setActive(
-					(current) => (current - 1 + filtered.length) % filtered.length,
-				);
+				const next = (active - 1 + filtered.length) % filtered.length;
+				activeValueRef.current = filtered[next]?.value ?? null;
+				steeredRef.current = true;
+				setRetargeted(null);
+				setActive(next);
 			} else if (event.key === "Enter") {
 				event.preventDefault();
 				if (hasList && filtered.length > 0 && onPick) {
@@ -1240,6 +1386,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 									rowCount: filtered.length,
 									activeLabel,
 									busyText,
+									retargetedLabel: retargeted,
 								})}
 							</span>
 						) : (
@@ -1249,6 +1396,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 								rowCount: filtered.length,
 								activeLabel,
 								busyText,
+								retargetedLabel: retargeted,
 							})
 						)}
 					</span>

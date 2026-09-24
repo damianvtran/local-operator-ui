@@ -46,6 +46,9 @@
  *     `opus` typed, one row set from the shipped registry alone and one with the
  *     row the PROVIDER lists that the registry does not hold. The pair is the
  *     operator's report, and the second half reaches it with no click.
+ *   - `LiveListingFailed` — that automatic listing failing: the failure is a
+ *     NOTE ABOVE rows that are still there, not a wall of error text where the
+ *     list was (review round 1, R1-1 / UX U3).
  *   - `PersistChecked` — the checkbox that changes what the pick DOES, with the
  *     label that states the consequence.
  *   - `Empty` / `PartialError` — a query that matches nothing, and a catalogue
@@ -1036,9 +1039,15 @@ export const RefreshPending: Story = {
  * one row answers the query, and the model their provider publishes is simply
  * not there. The play asserts the ABSENCE — which is the only half of a before
  * frame that can be asserted — and it is written to hold on both trees, so the
- * frame is the same state before and after the change: on the released build
+ * ROW SET is the same state before and after the change: on the released build
  * nothing has asked the providers (there was no automatic listing), and on this
  * branch the listing is out and has not answered yet.
+ *
+ * THE FRAME is not the same picture, and a reader comparing the two stills
+ * should know it before reading the difference as a regression: on the released
+ * build the refresh control sits settled at `Refresh from providers`, while on
+ * this branch it is disabled and says the listing is in flight — which is the
+ * whole of what the change did, stated in one control (review round 1, nit 2).
  */
 export const RegistryOnlyOpus: Story = {
 	render: () => (
@@ -1076,7 +1085,8 @@ export const RegistryOnlyOpus: Story = {
  * click: `catalogueCalls().live` is the request count that paid for it, and the
  * play asserts it reached two reads without a click being dispatched anywhere.
  * The second read is the live one because the picker paints the registry first
- * and promotes itself on mount — the same stale-then-update the TUI picker does.
+ * and promotes itself once the registry read settles — the same
+ * stale-then-update the TUI picker does.
  */
 export const ProviderListingOpus: Story = {
 	render: () => (
@@ -1109,12 +1119,60 @@ export const ProviderListingOpus: Story = {
 			SLOW,
 		);
 		/*
-		 * Stated as a floor rather than an equality on purpose: the number this
-		 * frame's caption quotes is measured at capture time, and a react-query
-		 * window-focus refetch in a browser the harness does not own would make an
-		 * equality an assertion about Storybook rather than about the picker.
+		 * An EXACT equality, which is the assertion's own intent: the two reads are
+		 * one per key and there is no third, so a change that re-listed on a render,
+		 * on a hover or on a focus event would fail here rather than pass quietly.
+		 * (An earlier revision of this play carried a paragraph arguing for a floor
+		 * while the code beside it asserted equality; review round 1, R1-2 - the
+		 * comment lost, because the count is the claim the frame makes.)
 		 */
 		expect(catalogueCalls()).toEqual({ total: 2, live: 1 });
+	},
+};
+
+/**
+ * The automatic listing FAILS, and the rows the dialog opened on stay.
+ *
+ * The state review round 1 filed as R1-1 (UX U3 is the same defect from the
+ * user's side), and the reason it became a defect in this change: the live read
+ * used to run only when the user pressed the button, so a failure replaced rows
+ * the user had asked to refresh; now it runs on its own, and a failure that
+ * erased the list would be a read nobody asked for destroying rows they already
+ * had. `keepPreviousData` cannot carry those rows here - a query that settles as
+ * `error` has no data of its own - so the picker draws the REGISTRY document
+ * under the failure and the failure becomes a note above the rows.
+ *
+ * The play asserts both halves: the note names the failure in the user's terms,
+ * and the row the registry answered with is still on screen. A play that only
+ * checked the note would pass on a frame with the note and no list, which is the
+ * defect rather than the fix.
+ */
+export const LiveListingFailed: Story = {
+	render: () => (
+		<Frame
+			bridge={catalogueOnly(registryCatalogue(), () =>
+				Promise.resolve(refuse(500, "Provider listing is unavailable.")),
+			)}
+		/>
+	),
+	play: async () => {
+		await typeQuerySlowly("opus");
+		await waitFor(
+			() =>
+				expect(screen.getByText(/The provider listing failed/)).toBeTruthy(),
+			SLOW,
+		);
+		await waitFor(
+			() => expect(screen.getAllByRole("option").length).toBe(1),
+			SLOW,
+		);
+		expect(screen.getByRole("option").textContent).toContain("Claude Opus 5");
+		/*
+		 * And the developer-facing sentence is NOT the body: it travels in the
+		 * notice's own detail (the tooltip), which is where a message about a
+		 * transport belongs when the user has rows to work with.
+		 */
+		expect(screen.queryByText(/Provider listing is unavailable\./)).toBeNull();
 	},
 };
 
