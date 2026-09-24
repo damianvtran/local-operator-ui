@@ -1355,6 +1355,34 @@ export const STORIES = [
 	/* A lineage of depth 3 with the pane at its 320px floor: the width the
 	   breadcrumb's cap has to survive (round 2's open residual risk). */
 	["chat-run-panel--reader-deep-floor", 800, 700],
+	/* The result, in the two states the reader can be in when it is on the wire:
+	   `reader-result-inline` paints it where the conversation is on disk (the
+	   page's own last row, with a foot that says nothing), and
+	   `reader-result-preview` paints the bounded, honestly-labelled preview the
+	   reader keeps for the states that have no conversation at all. Taken as a
+	   pair because the defect they settle was one block growing over the pane:
+	   the same long result once WITH something to push against and once without. */
+	["chat-run-panel--reader-result-inline", 1280, 900],
+	["chat-run-panel--reader-result-preview", 1280, 900],
+	/* The two states round 1's reviews could not photograph, both of them about
+	   what the foot must NOT paint. `reader-cancelled-before-start` is the parked
+	   cancel whose `result_text` is the runtime's own state stamp — the state the
+	   preview used to claim as a shortened result, now carried as the row's state
+	   word with an empty foot, and a frame is the only evidence for an absence.
+	   `reader-result-preview-floor` is the preview at the pane's declared 320px
+	   floor, where the honesty line wraps and the box shows about two lines; 800x700
+	   for the same reason the three floor frames above use it (design round 1, D3
+	   and D4). */
+	["chat-run-panel--reader-cancelled-before-start", 1280, 900],
+	["chat-run-panel--reader-result-preview-floor", 800, 700],
+	/* The preview's THIRD branch, and the one whose evidence was markup only until
+	   round 2: a value the wire left WHOLE (under its bound, no clip marker) over a
+	   page with no conversation, where the label drops to `Result` and the
+	   shortening sentence is not printed at all. Design round 2's D2 and QA round
+	   2's Q2 both asked for these pixels, because a frame-only reviewer could see
+	   the two cut-value states and neither of the two ways the honesty rule can
+	   invert. */
+	["chat-run-panel--reader-result-whole", 1280, 900],
 	/* The two EXITS from a reader, which are the one kind of state this set can
 	   photograph and a keyboard walk could not: the press moves the TREE.
 	   `back-to-roster` is where the defect was and is the after half of the pair
