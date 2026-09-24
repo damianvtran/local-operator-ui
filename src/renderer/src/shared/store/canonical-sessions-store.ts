@@ -1103,8 +1103,18 @@ export function isRefusedBeforeAdmission(error: unknown): boolean {
 	 * (`SEND_HELD`). A second copy of that judgement at the call site is how the
 	 * two come to disagree about one refusal.
 	 */
+	/*
+	 * And the two refusals that come from THIS side of the wire as
+	 * `UserFacingError`s: the read window, which the store raises before the
+	 * draft is touched, and a store-write refusal the app itself synthesised. A
+	 * store write that did not happen is the same fact whichever class carries
+	 * it, so it is read by the same predicate rather than by a second one.
+	 */
 	return (
-		error instanceof UserFacingError && error.code === SESSION_UNVALIDATED_CODE
+		error instanceof UserFacingError &&
+		(error.code === SESSION_UNVALIDATED_CODE ||
+			error.code === UNREADABLE_ATTACHMENT_CODE ||
+			isStoreWriteRefusal(error.code))
 	);
 }
 
@@ -1584,12 +1594,12 @@ export async function admitChatDraft(
 		 */
 		echoPendingUser(
 			id,
-			draft.admissionRequestId,
+			admissionRequestId,
 			rendered,
 			images.map((image, index) => ({
 				// Same id shape `extractImages` gives the owner's row, so the
 				// coalesced record keeps its image keys across the swap.
-				id: `${draft.admissionRequestId}:${index}`,
+				id: `${admissionRequestId}:${index}`,
 				data: image.data_b64,
 				attachment: null,
 				mimeType: image.mime_type,
@@ -1600,7 +1610,7 @@ export async function admitChatDraft(
 		await messageWithBusyResend({
 			op: "sessions.message",
 			sessionId: id,
-			requestId: draft.admissionRequestId,
+			requestId: admissionRequestId,
 			text: rendered,
 			images: images.length ? images : undefined,
 			mode,
@@ -1651,9 +1661,9 @@ export async function admitChatDraft(
 		let delivered = false;
 		if (id && attempted) {
 			if (klass === "unknown") {
-				delivered = retractLocalEcho(id, draft.admissionRequestId) === "owner";
+				delivered = retractLocalEcho(id, admissionRequestId) === "owner";
 			} else {
-				retractPendingUser(id, draft.admissionRequestId);
+				retractPendingUser(id, admissionRequestId);
 			}
 		}
 		/*
