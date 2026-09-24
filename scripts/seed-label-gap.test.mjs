@@ -876,6 +876,19 @@ const endFrame = (callId, output, at = 2_000) => ({
 /** A call id no page can ever name: the shape a replay of a pruned turn leaves. */
 const UNPRESENT = "toolu_01SYNTHETICNOTINJOURNAL000";
 
+/**
+ * The fixture's own tail-page orphan: the call whose RESULT is the oldest row of
+ * the `labels` moment's first 104-row page, its assistant row being one row older
+ * (journal index 302) and so outside that page (R6a's shape).
+ */
+const ORPHAN_ON_TAIL_PAGE = "toolu_01JqcAjwSyFQxRL4Th77FneZ";
+
+/**
+ * A call the earlier turn named, at journal index 98 of the `labels` moment — one
+ * turn beyond the first two pages, so a walk that means to label it has to reach it.
+ */
+const EARLIER_TURN_CALL = "toolu_01SDbpziaz9MBtxwosfMLe2d";
+
 test("a join whose targets cannot be durable yet stops at the turn boundary", async () => {
 	/*
 	 * ROUND 1, R1, ON THE SHAPE THAT CASE ACTUALLY BUILDS — which round 2's N3 was
@@ -1300,15 +1313,21 @@ test("a one-turn journal bounds the walk by the oldest unlabelled call's own sta
 	);
 });
 
-test("a one-turn journal's unlabelable call alone still costs one page", async () => {
+test("a page that opens on a result takes the one extra page its assistant row needs", async () => {
 	/*
-	 * QA's `f-noargs` shape, which is the shape round 2 measured as 4 requests /
-	 * 419 rows on the round-1 head: the seed carries ONLY the call nothing can
-	 * label, so `labelTargetsBehind` has no anchor at all and the only floor the
-	 * old walk had was the turn boundary at index 3 (`origin/main` reads one page
-	 * because it stops on connect). Its own instant — the call started a moment
-	 * before the tail — puts the row it needs inside the first page, so the walk
-	 * stops there.
+	 * ROUND 3, R6a, on QA's `f-noargs` shape — the seed carries ONLY the call
+	 * nothing can label, so `labelTargetsBehind` has no anchor and `reconcileLimit(1)`
+	 * sizes the first page at 104 rows. That page's OLDEST row is a tool RESULT
+	 * (`ORPHAN_ON_TAIL_PAGE`) whose assistant row is the row immediately older, i.e.
+	 * outside the page: `pageOrphanResults` turns it into a target and its own
+	 * result row's `ts` becomes the instant that stands in for its start
+	 * (`pageOrphanResultInstants`), so the floor does not stop on it and the walk
+	 * reads the page holding the pair.
+	 *
+	 * Without that instant the floor fired here on the unlabelable call's own recent
+	 * start and the walk stopped after one page, painting the orphan with its output
+	 * — Q4's defect, one row away from the page that fixes it. Round 2's head made 1
+	 * read; `f1ef98c4c` made 2 and labelled it, which is the behaviour restored.
 	 */
 	const { durable, page, liveEvents } = moment("labels");
 	const at = Math.max(...liveEvents.map((event) => event.started_at_epoch));
@@ -1318,13 +1337,72 @@ test("a one-turn journal's unlabelable call alone still costs one page", async (
 		durable,
 	});
 	const reads = historyReads();
-	assert.equal(reads.length, 1, `one page (read ${reads.length})`);
+	assert.equal(
+		reads.length,
+		2,
+		`two pages, not the journal (read ${reads.length})`,
+	);
 	assert.equal(
 		reads[0].limit,
 		reconcileLimit(1),
-		"sized by the goal, exactly as it was before this change",
+		"the first is sized by the goal, exactly as it was before this change",
 	);
-	assert.equal(handle().labelPending.size, 0, "and the hold ends with it");
+	const tools = handle().transcript.records.filter(
+		(record) => record.kind === "tool",
+	);
+	assert.ok(
+		tools.some(
+			(record) => record.toolCallId === ORPHAN_ON_TAIL_PAGE && record.args,
+		),
+		"the orphan on the page's edge is labelled rather than left with its output",
+	);
+	assert.ok(
+		!tools.some((record) => record.toolCallId === UNPRESENT && record.args),
+		"and the call nothing names still gets no label, as it must not",
+	);
+	assert.equal(handle().labelPending.size, 0, "with the hold released");
+});
+
+test("a startless target refuses the floor, so the walk reaches its row", async () => {
+	/*
+	 * ROUND 3, R6b. Every `tool_call_compose` target is startless BY TYPE — the frame
+	 * has no clock field — and it is how a call that never ran, or whose dictation is
+	 * complete, is announced. Skipping such a target let a co-target's own instant set
+	 * the floor alone, so a settled call from the CURRENT turn ended the walk above an
+	 * earlier turn's compose call: the reviewer's probe went from `f1ef98c4c`'s 3 reads
+	 * / 321 rows and labelled to 1 read / 107 rows and unlabelled. The floor now
+	 * refuses outright when any behind target states no instant, which leaves the walk
+	 * its other exits — and here that means the pages down to the assistant row that
+	 * names it (`EARLIER_TURN_CALL`, journal index 98).
+	 */
+	const { durable, page, liveEvents } = moment("labels");
+	const compose = {
+		type: "tool_call_compose",
+		tool_call_id: EARLIER_TURN_CALL,
+		tool_name: "bash",
+		not_run_reason: "the turn ended before this call ran",
+	};
+	const at = Math.max(...liveEvents.map((event) => event.started_at_epoch));
+	const { handle } = await open({
+		page,
+		liveEvents: [compose, endFrame(UNPRESENT, "no page names this", at)],
+		durable,
+	});
+	const reads = historyReads();
+	assert.ok(
+		reads.length >= 3,
+		`the walk reaches the earlier turn rather than the floor (read ${reads.length})`,
+	);
+	const tools = handle().transcript.records.filter(
+		(record) => record.kind === "tool",
+	);
+	assert.ok(
+		tools.some(
+			(record) => record.toolCallId === EARLIER_TURN_CALL && record.args,
+		),
+		"and the compose call is labelled by the page that names it",
+	);
+	assert.equal(handle().labelPending.size, 0, "with the hold released");
 });
 
 test("the start floor reads exactly as deep as the instant it is given", async () => {

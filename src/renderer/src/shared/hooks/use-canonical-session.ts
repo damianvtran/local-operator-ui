@@ -46,6 +46,7 @@ import {
 	markLiveRecordsTruncated,
 	pageLabels,
 	pageOpensTurn,
+	pageOrphanResultInstants,
 	pageOrphanResults,
 	pagePassedOldestStart,
 	reconcileLimit,
@@ -1398,6 +1399,21 @@ export function useCanonicalSessionStream(
 			 */
 			const behindIds = (): string[] =>
 				[...labels.targets].filter((callId) => !found.has(callId));
+			/**
+			 * The orphans still unfound, with the instant their own result row was
+			 * journaled: the floor's second input (R6a). An orphan whose instant the
+			 * page did not state contributes nothing, which leaves the floor to the
+			 * seed's targets.
+			 */
+			const behindOrphanInstants = (): Map<string, number> => {
+				const behind = new Map<string, number>();
+				for (const id of orphans) {
+					if (found.has(id)) continue;
+					const at = orphanStarts.get(id);
+					if (at !== undefined) behind.set(id, at);
+				}
+				return behind;
+			};
 			/*
 			 * Calls a page showed the RESULT of without ever showing the row that
 			 * named them, and which no other page has named since (`pageOrphanResults`,
@@ -1413,6 +1429,8 @@ export function useCanonicalSessionStream(
 			const known = new Set(labels.every);
 			for (const id of found) known.add(id);
 			const orphans = new Set<string>();
+			/** Call id -> the epoch ms its own result row was journaled (R6a). */
+			const orphanStarts = new Map<string, number>();
 			let orphanGrace = 1;
 			// The first read is sized to FINISH the job in one request where it can
 			// (`reconcileLimit`), and never smaller than the deepest first read this
@@ -1548,10 +1566,22 @@ export function useCanonicalSessionStream(
 				 */
 				if (pageOpensTurn(page.entries)) reachedTurnStart = true;
 				if (labelling) {
-					for (const id of pageOrphanResults(page.entries, known)) {
+					const pageOrphans = pageOrphanResults(page.entries, known);
+					for (const id of pageOrphans) {
 						orphans.add(id);
 						known.add(id);
 					}
+					/*
+					 * The orphan's assistant row is the row just above its result, so the
+					 * result's own `ts` is the instant that stands in for its start — see
+					 * `pageOrphanResultInstants` for why that is the floor that lets the
+					 * walk take the ONE extra page finding it (round 3, R6a).
+					 */
+					for (const [id, at] of pageOrphanResultInstants(
+						page.entries,
+						pageOrphans,
+					))
+						orphanStarts.set(id, at);
 					for (const id of [...orphans]) if (found.has(id)) orphans.delete(id);
 					// One page of courtesy for a result whose start is a row or two
 					// older; past it the call has no start to find here.
@@ -1615,7 +1645,12 @@ export function useCanonicalSessionStream(
 				 */
 				if (
 					labelling &&
-					(pagePassedOldestStart(page.entries, behindIds(), labels.starts) ||
+					(pagePassedOldestStart(
+						page.entries,
+						behindIds(),
+						labels.starts,
+						behindOrphanInstants(),
+					) ||
 						reachedTurnStart)
 				)
 					return false;

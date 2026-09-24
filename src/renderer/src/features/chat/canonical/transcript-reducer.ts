@@ -3302,15 +3302,26 @@ export function applyLiveSeed(
 /**
  * When each call the seed settled first RAN, in epoch ms, by call id.
  *
- * THE WALK'S ONE HONEST FLOOR, and the reason it exists: a call's assistant row —
- * where its arguments live — is journaled at or within a second of that call's
- * own start, so a page whose OLDEST row predates the oldest unlabelled target's
- * start instant cannot contain that call's row, whatever else the journal holds.
- * That is a fact about one call rather than about the turn it sits in, which is
- * what the turn-boundary rule (`pageOpensTurn`) is: on a journal that is ONE long
- * turn there is no boundary row to meet, and a call nothing can label then cost
- * the whole journal on every open (round 2, QA Q1 / reviewer R1: 4 requests and
- * 409 rows where `origin/main` reads one page).
+ * THE WALK'S ONE HONEST FLOOR, and the reason it exists: a page whose OLDEST row
+ * predates an unlabelled call's own start cannot still be missing that call's
+ * assistant row — where its arguments live — whatever else the journal holds. That
+ * is a fact about one call rather than about the turn it sits in, which is what
+ * the turn-boundary rule (`pageOpensTurn`) is: on a journal that is ONE long turn
+ * there is no boundary row to meet, and a call nothing can label then cost the
+ * whole journal on every open (round 2, QA Q1 / reviewer R1: 4 requests and 409
+ * rows where `origin/main` reads one page).
+ *
+ * WHY THE DIRECTION WORKS, corrected by round 3's R9. A tool's assistant row and
+ * its result row are written TOGETHER, at the end of the round they belong to:
+ * over 417,999 real pairs the result's `ts` minus the assistant's is a median of
+ * 13.1 µs apart — 17.2 µs across the 25,707 calls that ran longer than a minute —
+ * and NEVER negative. So an assistant row sits at or after its call's own start,
+ * however long the call ran, which is the one direction this floor needs: a page
+ * older than the start by more than the slack has already passed the row. (The
+ * earlier comment here said the row was written "at or within a second of" the
+ * start, which reads as if the row could come first.) The residual 1.369 s worst
+ * case in the paragraph below is the derivation's own slop — `duration_s` measured
+ * from a clock a hair later than the row's write — not the writer's ordering.
  *
  * MEASURED, NOT ASSUMED. Over 418,566 real assistant/result pairs across 3,000
  * journals in `~/.local-operator/sessions` (the assistant row's `ts` minus the
@@ -3345,24 +3356,74 @@ export function seedCallStarts(
 /**
  * How much earlier than a call's own start an assistant row may be journaled.
  *
- * Five seconds against a measured worst case of 1.37 s over 109,732 real pairs
- * (see `seedCallStarts`). Generous on purpose: a wrongly early stop costs the
- * page a row's label and nothing else, while a wrongly late one pays the journal.
+ * Five seconds against a measured worst case of 1.369 s over 418,566 real pairs
+ * (see `seedCallStarts`, which states the sample and the direction). Generous on
+ * purpose: a wrongly early stop costs the page a row's label and nothing else,
+ * while a wrongly late one pays the journal.
  */
 export const RECONCILE_START_SLACK_MS = 5_000;
 
 /**
- * Whether a fetched page has read past every unlabelled target's own start.
+ * When each orphan's own result row was journaled, in epoch ms, by call id.
  *
- * `starts` is `seedCallStarts` for the calls the walk is still looking for, and
- * `entries` is the page it just read, whose OLDEST row is what answers. A target
- * with no stated instant is skipped — a legacy producer that stamps none leaves
- * the walk its other exits rather than a floor invented for it.
+ * THE FLOOR'S SECOND KIND OF INSTANT, and the shape round 3's R6a measured. An
+ * orphan is a call nothing ever named, found because a page's boundary fell between
+ * an assistant row and its own result (`pageOrphanResults`) — so its assistant row
+ * is the row immediately ABOVE that result, and the result's own `ts` is the
+ * instant that stands in for the call's start: the page that holds the result row
+ * holds the assistant row with it, and a page whose oldest row predates the result
+ * by more than the slack cannot be that page.
+ *
+ * Without it the floor ended the walk a page early on that shape: the seed's own
+ * targets were labelled by page one, the in-flight call's recent start set the
+ * floor, and the orphan — whose assistant row was one row behind the page — stayed
+ * painted with its output, which is Q4's defect. `f1ef98c4c` made 2 reads and
+ * labelled it; the round-3 head made 1 and did not.
+ *
+ * A `ts` the row does not state is left out rather than defaulted: an orphan with
+ * no instant leaves the floor to the walk's other exits.
+ */
+export function pageOrphanResultInstants(
+	entries: DesktopHistoryPage["entries"],
+	orphans: Iterable<string>,
+): Map<string, number> {
+	const wanted = new Set(orphans);
+	const instants = new Map<string, number>();
+	if (wanted.size === 0) return instants;
+	for (const entry of entries) {
+		if (entry.payload?.role !== "tool") continue;
+		const callId = entry.payload.tool_call_id;
+		if (typeof callId !== "string" || !wanted.has(callId)) continue;
+		const ts = entry.ts;
+		if (typeof ts !== "number" || !Number.isFinite(ts)) continue;
+		instants.set(callId, Math.round(ts * 1000));
+	}
+	return instants;
+}
+
+/**
+ * Whether a fetched page has read past every call still behind it.
+ *
+ * `starts` is `seedCallStarts` for the calls the walk is still looking for,
+ * `orphanInstants` is `pageOrphanResultInstants` for the orphans it is still
+ * chasing, and `entries` is the page it just read, whose OLDEST row is what
+ * answers.
+ *
+ * A TARGET WITH NO STATED INSTANT REFUSES THE FLOOR OUTRIGHT (round 3, R6b), which
+ * is the opposite of what this did first. Skipping such a target let a co-target's
+ * instant set the floor alone and end the walk before it: every `tool_call_compose`
+ * target is startless BY TYPE (the frame has no clock field — a call that never
+ * ran, or whose dictation is complete), so a settled call from the current round
+ * was enough to stop the walk while a blocked or not-run call from an earlier one
+ * sat unlabelled behind it (measured: 1 read and unlabelled against `f1ef98c4c`'s
+ * 3 reads and labelled). A target that states no instant states no floor either,
+ * and the walk keeps its other exits.
  */
 export function pagePassedOldestStart(
 	entries: DesktopHistoryPage["entries"],
 	targets: Iterable<string>,
 	starts: ReadonlyMap<string, number>,
+	orphanInstants: ReadonlyMap<string, number> = new Map(),
 ): boolean {
 	const oldestSeconds = entries[0]?.ts;
 	if (typeof oldestSeconds !== "number" || !Number.isFinite(oldestSeconds))
@@ -3370,7 +3431,11 @@ export function pagePassedOldestStart(
 	let floor: number | null = null;
 	for (const callId of targets) {
 		const at = starts.get(callId);
-		if (at === undefined) continue;
+		// See the doc: no instant on any target means no floor at all.
+		if (at === undefined) return false;
+		if (floor === null || at < floor) floor = at;
+	}
+	for (const at of orphanInstants.values()) {
 		if (floor === null || at < floor) floor = at;
 	}
 	if (floor === null) return false;
