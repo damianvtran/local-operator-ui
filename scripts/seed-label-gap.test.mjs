@@ -1601,10 +1601,11 @@ test("a settled call whose end frame states no clock still refuses the floor", a
 	 * ROUND 6, R16. Round 5's rule let only a compose that STATES a verdict refuse the
 	 * floor, so a settled `tool_execution_end` carrying no `started_at_epoch` — an older
 	 * producer, or a viewer that joined after the call began — was skipped: the floor
-	 * stayed on, the walk stopped after two pages, and that row kept its output stand-in.
-	 * It did run, a page holds its assistant row, and the reviewer's swap of R6(b)'s
-	 * compose for one of these measured 3 pages and labelled on the round-5 head's
-	 * predecessor against 2 and unlabelled here.
+	 * stayed on, the walk stopped after two pages, and the call kept no label. It did
+	 * run, a page holds its assistant row, and the reviewer's swap of R6(b)'s compose for
+	 * one of these measured 3 pages and labelled on `f1ef98c4c` against 2 and unlabelled
+	 * on `7b5ee49d` (round 7, R19: the 3-read figure belongs to the head BEFORE round 5's
+	 * regression, not to it).
 	 *
 	 * The rule is now the other way round: every startless target refuses the floor but
 	 * a compose still waiting at a gate, which no page can label anyway.
@@ -1636,4 +1637,104 @@ test("a settled call whose end frame states no clock still refuses the floor", a
 		"and the earlier turn`s row is labelled rather than left with its output",
 	);
 	assert.equal(handle().labelPending.size, 0, "with the hold released");
+});
+
+/*
+ * The frames the two R18 cases are built from: a compose for a named call, with or
+ * without the verdict that says it never ran, and a settled end for the call the
+ * transcript's pages have named (`EARLIER_TURN_CALL`, journal index 98).
+ */
+const composeFor = (callId, reason) => ({
+	type: "tool_call_compose",
+	tool_call_id: callId,
+	tool_name: "bash",
+	dictation_complete: true,
+	...(reason ? { not_run_reason: reason } : {}),
+});
+
+test("a second pass retracts an exemption an earlier seed announced", async () => {
+	/*
+	 * ROUND 7, R18. The waiting set is per CONVERSATION and outlives the seed that
+	 * filled it, so an id added on one pass stayed exempt from the floor on every
+	 * later one: the reviewer reproduced this in the shipped hook, where R6(b)'s
+	 * verdict-compose shape on a second pass reads 2 pages / 217 rows and leaves the
+	 * call unlabelled, against 3 / 324 labelled with fresh bookkeeping. The stale
+	 * exemption is what the floor was reading, not the seed in front of it.
+	 *
+	 * Pass one announces the call as WAITING — a compose with no reason, which is the
+	 * only startless kind that may not refuse the floor. Pass two names the same id
+	 * with a verdict, and that statement has to be able to TAKE THE EXEMPTION BACK.
+	 */
+	const { durable, page, liveEvents } = moment("labels");
+	const at = Math.max(...liveEvents.map((event) => event.started_at_epoch));
+	const settled = endFrame(UNPRESENT, "no page names this", at);
+	await open({
+		page,
+		liveEvents: [composeFor(EARLIER_TURN_CALL), settled],
+		durable,
+	});
+	const { handle } = await open({
+		page,
+		liveEvents: [
+			composeFor(EARLIER_TURN_CALL, "the turn ended before this call ran"),
+			settled,
+		],
+		durable,
+		keepGapBookkeeping: true,
+	});
+	const reads = historyReads();
+	assert.equal(reads.length, 3, `three pages (read ${reads.length})`);
+	assert.equal(
+		reads.reduce((total, read) => total + read.limit, 0),
+		324,
+		"107 + 110 + 107, the walk a fresh exemption reads",
+	);
+	const tools = handle().transcript.records.filter(
+		(record) => record.kind === "tool",
+	);
+	assert.ok(
+		tools.some(
+			(record) => record.toolCallId === EARLIER_TURN_CALL && record.args,
+		),
+		"and the call is labelled on the pass that states its verdict",
+	);
+});
+
+test("one seed naming a call both waiting and settled does not exempt it", async () => {
+	/*
+	 * ROUND 7, R18, the same predicate error with no staleness at all: one seed can
+	 * carry both frames for one id — a settled end whose producer states no clock, and
+	 * a compose with no reason — and the exemption won, because it was the only
+	 * statement about the call the set ever heard. The ordering in the seeding block is
+	 * the fix: the add runs first and the retraction after it, so a call named both
+	 * ways ends up NOT exempt and the floor keeps the walk going to the page that
+	 * labels it.
+	 */
+	const { durable, page, liveEvents } = moment("labels");
+	const at = Math.max(...liveEvents.map((event) => event.started_at_epoch));
+	const { handle } = await open({
+		page,
+		liveEvents: [
+			endFrameWithoutStart(EARLIER_TURN_CALL, "a settled call with no clock"),
+			composeFor(EARLIER_TURN_CALL),
+			endFrame(UNPRESENT, "no page names this", at),
+		],
+		durable,
+	});
+	const reads = historyReads();
+	assert.equal(reads.length, 3, `three pages (read ${reads.length})`);
+	assert.equal(
+		reads.reduce((total, read) => total + read.limit, 0),
+		324,
+		"107 + 110 + 107",
+	);
+	const tools = handle().transcript.records.filter(
+		(record) => record.kind === "tool",
+	);
+	assert.ok(
+		tools.some(
+			(record) => record.toolCallId === EARLIER_TURN_CALL && record.args,
+		),
+		"and the call the seed names both ways is labelled",
+	);
 });

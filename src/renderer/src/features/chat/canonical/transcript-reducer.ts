@@ -3368,9 +3368,12 @@ export function seedCallStarts(
  * round 5's rule let only a compose that STATES a verdict block it, so a settled
  * `tool_execution_end` carrying no clock — what a producer older than v0.57.0
  * sends, or a viewer that joined after the call started sees — was skipped. That
- * call DID run and a page can label it, and leaving the floor on cost it its label
- * (measured: 2 reads and the output stand-in where the round-5 head made 3 and
- * labelled it).
+ * call DID run and a page can label it, and leaving the floor on cost it its label.
+ * The cost is stated the way it was measured, because the two heads are easy to
+ * swap: `7b5ee49d` (round 5) reads 2 pages / 217 rows and leaves the call
+ * unlabelled, while ITS predecessor `f1ef98c4c` reads 3 / 324 and labels it — the
+ * 3-read figure belongs to the head BEFORE the regression, not to the one that
+ * introduced it (round 7, R19).
  */
 export function seedWaitingComposes(
 	liveEvents: readonly Record<string, unknown>[] | null | undefined,
@@ -3713,6 +3716,46 @@ export function pageOrphanResults(
  */
 export function reconcileWalkDone(connected: boolean, unlabelled: number) {
 	return connected && unlabelled === 0;
+}
+
+/**
+ * The calls a seed names as STARTED, SETTLED or a stated verdict: the ids that
+ * RETRACT an earlier announcement that the call was still waiting.
+ *
+ * The waiting set is per conversation and outlives the seed that filled it
+ * (round 1, QA Q1), so it can only be right if every later statement about a
+ * call updates it. Without this the set grew monotonically: a second pass of the
+ * same conversation — or a seed that names one id twice — left a call exempt from
+ * the floor that had since started and settled, so the walk stopped at the floor
+ * and the call kept no label (round 7, R18, measured 2 reads of 217 rows where
+ * the same shape reads 3 of 324 and labels it when the exemption is fresh).
+ *
+ * "Started" is `tool_execution_start`, "settled" is the one frame with no clock
+ * (`settlesACall`), and a compose carrying a `not_run_reason` is the stated
+ * verdict — the three ways a runtime says the call is no longer at a gate.
+ */
+export function seedSettledCalls(
+	liveEvents: readonly Record<string, unknown>[] | null | undefined,
+): Set<string> {
+	const settled = new Set<string>();
+	for (const event of liveEvents ?? []) {
+		if (!event) continue;
+		const frame = event as LiveEvent;
+		const reason = frame.not_run_reason;
+		const stated =
+			frame.type === "tool_call_compose" &&
+			typeof reason === "string" &&
+			reason.trim().length > 0;
+		if (
+			frame.type !== "tool_execution_start" &&
+			!settlesACall(frame) &&
+			!stated
+		)
+			continue;
+		const callId = String(frame.tool_call_id ?? "");
+		if (callId) settled.add(callId);
+	}
+	return settled;
 }
 
 /**

@@ -55,6 +55,7 @@ import {
 	removeRecord,
 	seedCallStarts,
 	seedCallsMissingLabels,
+	seedSettledCalls,
 	seedWaitingComposes,
 } from "@features/chat/canonical/transcript-reducer";
 import { tailCarriesOutcome } from "@features/chat/components/compact-receipt";
@@ -1861,6 +1862,17 @@ export function useCanonicalSessionStream(
 				}
 				for (const callId of seedWaitingComposes(seedEvents))
 					labelGapRef.current.waiting.add(callId);
+				/*
+				 * A seed that names the same call as started, settled or a stated
+				 * verdict RETRACTS the earlier announcement that it was waiting — the
+				 * set outlives the seed that filled it, so a later statement has to be
+				 * able to take an exemption back, or a call that has since run stays
+				 * exempt from the floor and loses the label a page would have given it
+				 * (round 7, R18). The delete comes after the add on purpose: one seed
+				 * naming a call both ways must end up NOT exempt.
+				 */
+				for (const callId of seedSettledCalls(seedEvents))
+					labelGapRef.current.waiting.delete(callId);
 				while (labelGapRef.current.waiting.size > LABEL_GAP_MAX_WAITING) {
 					const oldest = labelGapRef.current.waiting.values().next().value;
 					if (oldest === undefined) break;
