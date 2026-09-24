@@ -94,6 +94,7 @@
  */
 
 import { Button } from "@shared/components/ui";
+import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
 import { cn } from "@shared/lib/utils";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -104,6 +105,7 @@ import {
 	applyHistoryPage,
 } from "../../canonical/transcript-reducer";
 import type { AttachmentScope } from "../../canonical/use-attachment-url";
+import { ScrollToBottomButton } from "../scroll-to-bottom-button";
 import { ChildSubagents } from "./run-child-subagents";
 import type { SubagentRow } from "./run-detail-model";
 import {
@@ -514,6 +516,36 @@ export const RunChildReader = ({
 	const workingLine = deriveChildWorkingLine(row);
 
 	/*
+	 * The follow-the-tail affordance, against THIS pane's own scroller.
+	 *
+	 * The parent's transcript gets this from the chat page, which owns the
+	 * scroller's ref and mounts the control in its composer band
+	 * (`chat-page.tsx` -> `message-input.tsx`). The reader owns a scroller of its
+	 * own and has no composer, so nothing was ever registered here and the pane
+	 * had no way to tell a reader who had drifted up that there was anything
+	 * below — the operator's third report on the parent/child difference.
+	 *
+	 * The hook is the SAME one, over the reader's own ref and the reader's own
+	 * row count, so the control's condition (scrollable AND more than 50px from
+	 * the origin) cannot be answered two ways on two surfaces. `hasNewActivity`
+	 * is deliberately NOT passed: the parent never passes it either — no caller
+	 * of `message-input.tsx` or `chat-content.tsx` does — so the reader ports the
+	 * behaviour the operator actually has rather than reviving a label the parent
+	 * does not show.
+	 *
+	 * `transcript.records.length` is the `contentKey` for the same reason the chat
+	 * page uses its own record count: a child HOP remounts this reader entirely
+	 * (`run-panel.tsx` keys it by the row), and a page that grows re-checks the
+	 * control's condition, which is what makes it appear while the reader is
+	 * scrolled up and new rows are arriving.
+	 */
+	const { isFarFromBottom, scrollToBottom } = useScrollToBottom(
+		50,
+		containerRef,
+		transcript.records.length,
+	);
+
+	/*
 	 * The header's clock (`§ 5.1`, `§ 5.3`; round 1, Q3).
 	 *
 	 * `frontend.update` is published only when the runtime has a field delta to
@@ -759,7 +791,16 @@ export const RunChildReader = ({
 			 * cannot land unnoticed.
 			 */}
 			<div
-				className={cn("flex min-h-0 flex-1 flex-col overflow-hidden bg-canvas")}
+				className={cn(
+					/*
+					 * `relative` because this div is the positioning context for the
+					 * follow-the-tail control below: the control must not scroll with the
+					 * conversation, and the transcript's own scroller cannot host it (an
+					 * absolutely positioned child of a scroller moves with the content it is
+					 * meant to lead you back to).
+					 */
+					"relative flex min-h-0 flex-1 flex-col overflow-hidden bg-canvas",
+				)}
 			>
 				{!row.childSessionId ? (
 					/*
@@ -907,6 +948,36 @@ export const RunChildReader = ({
 						</span>
 						<ResultPreview text={row.resultText} />
 					</div>
+				)}
+				{/*
+				 * The follow-the-tail control, at the foot of the conversation and in the
+				 * reader's OWN column.
+				 *
+				 * WHERE IT BELONGS, and why not somewhere else. The parent mounts this in the
+				 * composer band, which is another column under the transcript; the reader has
+				 * no composer, so the band it has is the one the pane already draws under the
+				 * conversation — the conversation's own bottom edge. `bottomDistance` is
+				 * therefore small rather than the parent's 160px, which exists to clear a
+				 * composer this pane does not have: 16px is the transcript's own `p-4`, so
+				 * the control sits on the same inset the rows do. The control is `absolute
+				 * inset-x-0` and `pointer-events-none` while hidden
+				 * (`scroll-to-bottom-button.tsx`), so it occupies no layout and cannot be hit
+				 * when it is not showing.
+				 *
+				 * GATED ON THE CONVERSATION'S OWN BRANCH, and that gate is load-bearing
+				 * rather than tidiness: the two outcome blocks this pane draws under the
+				 * conversation are `shrink-0` and own the pane's foot when they are present,
+				 * and a floating control over a failure's exception text would be a control
+				 * over the one thing on this surface a reader must be able to read. A child
+				 * with no painted conversation has no scroller to lead back to, so in both
+				 * cases the control has nothing to do.
+				 */}
+				{bodyPaintsConversation && !row.errorText && (
+					<ScrollToBottomButton
+						visible={isFarFromBottom}
+						onClick={scrollToBottom}
+						bottomDistance={16}
+					/>
 				)}
 			</div>
 			{/*
