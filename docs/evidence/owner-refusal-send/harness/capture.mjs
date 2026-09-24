@@ -155,6 +155,23 @@ const ARMS = [
 		why: "typed while in flight, then the owner admits it: the box keeps only the typed line and the next send carries only that",
 	},
 	/*
+	 * THE PRESS THAT LANDS INSIDE THE FLIGHT (UX round 3, U6). The first send is held
+	 * by the owner, the user types their next line, and they press Send while the
+	 * request is still out. Before the fix the press reached an ENABLED control and
+	 * answered nothing at all - no line on screen, no second attempt - which is what
+	 * makes a user press again over a box that by then holds both messages. The arm
+	 * asserts the DOM the user is looking at, and the owner's own log for the other
+	 * half of the claim: the press admitted nothing, so nothing went out twice.
+	 */
+	{
+		name: "press-during-flight",
+		refusals: 0,
+		holdMs: 21_000,
+		expectRefusal: true,
+		custom: "press-during-flight",
+		why: "a press while the first send is still out: the composer answers it in words, and no second attempt reaches the owner",
+	},
+	/*
 	 * AND TWO FAILED ROUNDS (UX round 2, U9): the composer's text accumulated across
 	 * consecutive failures and came back after a reload as one run-together blob. The
 	 * question the frame answers is what the box holds once, after the second round and
@@ -394,6 +411,48 @@ const runCustom = async (
 			`${arm.name}: the composer never came back after the reload, so this frame would photograph the wrong screen`,
 		);
 	};
+
+	if (arm.custom === "press-during-flight") {
+		/*
+		 * AND THE FLIGHT SETTLES: the owner admits the first message after its hold, the
+		 * app reconciles, and the transcript must hold it exactly once - the side effect
+		 * every duplicate in this round was measured as. The press above added no second
+		 * request, which the owner's own log is the record of.
+		 */
+		await waitForOwnerToAdmit();
+		await sleep(5000);
+		const settled = await evaluate(PROBE);
+		await shoot("after-flight-settled");
+		process.stdout.write(
+			`  ${arm.name} settled: ${JSON.stringify({ userRows: settled.transcriptUserRows, box: (settled.boxValue ?? "").slice(0, 60), alert: (settled.alertProse ?? "").slice(0, 160) })}\n`,
+		);
+		/*
+		 * The claim this arm owns is the count of REQUESTS, not the transcript's own
+		 * timing: the press added none, so one message went out once. The transcript
+		 * reading is printed rather than asserted, because the row's arrival here rides
+		 * the live stream after a hold this rig ends with a kill.
+		 */
+		/*
+		 * DISTINCT IDS, not attempts: the app's own ladder repeats a request the owner
+		 * has not answered yet, and those repeats are supposed to be there - they carry
+		 * the SAME request id, which is what makes the owner's receipt a de-duplication.
+		 * A second id is a second message, and ruling that out is what this arm exists for.
+		 */
+		const ids = new Set(
+			(
+				readFileSync(logPath, "utf8").match(/request_id=([0-9a-f-]+)/g) ?? []
+			).map((line) => line.slice("request_id=".length)),
+		);
+		if (ids.size !== 1)
+			throw new Error(
+				`${arm.name}: ${ids.size} request ids reached the owner for one message and one refused press (${[...ids].join(", ")})`,
+			);
+		/*
+		 * `afterReload` under its own name because that is the field the readings summary
+		 * and this set's page read for every custom arm; here it is the settled state.
+		 */
+		return { afterReload: settled };
+	}
 
 	if (arm.custom === "late-typed") {
 		const typed = `${await boxValue()}\n\n${FOLLOW_UP}`;
@@ -884,6 +943,97 @@ const main = async () => {
 			send.click();
 			return true;
 		})()`);
+		/*
+		 * THE PRESS INSIDE THE FLIGHT (UX round 3, U6), and it has to happen HERE rather
+		 * than in `runCustom`: the app's own 20 s control budget ends the flight for the
+		 * app whether or not the owner has answered, so a press taken after the settle
+		 * wait is a press against a failure notice rather than against a send that is
+		 * still out. The user types their next line - which is what makes the control
+		 * live at all, the flight having emptied the box at the echo - and presses Send
+		 * while the request is pending. What must happen is a sentence on screen and
+		 * NOTHING on the wire; before the fix it was nothing on screen and, on a live
+		 * control, no way for the user to tell the press from a broken key.
+		 */
+		if (arm.custom === "press-during-flight") {
+			/*
+			 * WAIT FOR THE FLIGHT'S OWN CLEAR FIRST. The echo empties the box when the
+			 * admission is issued and that lands asynchronously against this phase, so
+			 * typing too early is typing into a box the echo is about to clear - which
+			 * leaves the control disabled and measures nothing (measured: a run where the
+			 * clear arrived after this rig's own keystroke reported `disabled: true` on an
+			 * empty box). The press below is the round's press only once the box holds the
+			 * user's line and the control is live.
+			 */
+			for (let attempt = 0; attempt < 40; attempt++) {
+				const boxed = await evaluate(
+					`(() => { const a = document.querySelector('textarea[aria-label="Message"]'); return a ? a.value : null; })()`,
+				);
+				if (boxed === "") break;
+				await sleep(250);
+			}
+			await evaluate(`(() => {
+				const area = document.querySelector('textarea[aria-label="Message"]');
+				const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
+				setter.call(area, ${JSON.stringify(FOLLOW_UP)});
+				area.dispatchEvent(new Event("input", { bubbles: true }));
+				return area.value;
+			})()`);
+			await sleep(700);
+			const control = await evaluate(`(() => {
+				const send = document.querySelector('button[aria-label="Send message"]');
+				return send ? { disabled: send.disabled } : null;
+			})()`);
+			const attemptsBefore = (
+				readFileSync(logPath, "utf8").match(/request_id=/g) ?? []
+			).length;
+			await evaluate(`(() => {
+				const send = document.querySelector('button[aria-label="Send message"]');
+				if (!send) throw new Error("no send control");
+				send.click();
+				return true;
+			})()`);
+			await sleep(1500);
+			const pressed = await evaluate(PROBE);
+			await shoot("after-press-in-flight");
+			process.stdout.write(
+				`  ${arm.name}: control=${JSON.stringify(control)} box=${JSON.stringify((pressed.boxValue ?? "").slice(0, 60))} alert=${JSON.stringify((pressed.alertProse ?? "").slice(0, 200))}\n`,
+			);
+			if (control?.disabled)
+				throw new Error(
+					`${arm.name}: the control is disabled during the flight, so this arm is not measuring the press the round measured`,
+				);
+			/*
+			 * THE ASSERTION IS THE DOM THE USER IS LOOKING AT, not a predicate in the
+			 * source: the composer's own sentence, in the region the notice renders in.
+			 */
+			if (
+				!(pressed.alertProse ?? "").includes(
+					"Your last message is still sending",
+				)
+			)
+				throw new Error(
+					`${arm.name}: the press was answered by NOTHING on screen - no notice line anywhere (alert prose: ${JSON.stringify((pressed.alertProse ?? "").slice(0, 240))}; body: ${JSON.stringify((pressed.bodyText ?? "").slice(0, 240))})`,
+				);
+			if ((pressed.boxValue ?? "") !== FOLLOW_UP)
+				throw new Error(
+					`${arm.name}: the press changed the box - a refused press must leave the user's line alone (box: ${JSON.stringify(pressed.boxValue)})`,
+				);
+			const attemptsDuring = (
+				readFileSync(logPath, "utf8").match(/request_id=/g) ?? []
+			).length;
+			if (attemptsDuring !== attemptsBefore)
+				throw new Error(
+					`${arm.name}: the press reached the owner as a second attempt (${attemptsBefore} -> ${attemptsDuring}), so the sentence on screen describes something that was sent`,
+				);
+			if (
+				!(await evaluate(
+					`Boolean(document.querySelector('textarea[aria-label="Message"]'))`,
+				))
+			)
+				throw new Error(
+					`${arm.name}: the composer went away during the flight`,
+				);
+		}
 		// POLLED as well, on the two shapes a send can settle into: a refusal's alert,
 		// or the composer emptying under a painted echo. A fixed wait photographs
 		// whichever of them the host happened to reach first.
@@ -998,8 +1148,14 @@ const main = async () => {
 				arm: a.name,
 				firstAlert: (a.first?.alertProse ?? "").slice(0, 130),
 				firstBox: a.first?.boxValue,
-				secondBox: a.second.boxValue,
-				secondAlert: a.second.regionPresent,
+				/*
+				 * Optional, because a CUSTOM arm continues before the remedy press: it has
+				 * no `second` reading, and a summary that threw on one would report a rig
+				 * defect as a failed arm (measured: this line masked the exit code of an
+				 * arm whose own assertions had passed).
+				 */
+				secondBox: a.second?.boxValue ?? null,
+				secondAlert: a.second?.regionPresent ?? null,
 			})),
 			null,
 			1,
