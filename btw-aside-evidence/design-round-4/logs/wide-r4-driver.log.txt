@@ -1,0 +1,161 @@
+[build] current: assets 2026-09-24T21:58:32.999Z >= sources 2026-09-24T21:08:03.022Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8177
+  serve records 1 linked from /Users/damian/.local-operator/sessions/fb8ab2e2a45f/scratchpad/d4/rig/run-wide-r4/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/design482-r4-fa711c
+  scratch       /Users/damian/.local-operator/sessions/fb8ab2e2a45f/scratchpad/d4/rig/tmp/lo-renderer-driver-24930
+  frames        /Users/damian/.local-operator/sessions/fb8ab2e2a45f/scratchpad/d4/rig/frames/wide-r4
+  app cwd       /Users/damian/.local-operator/sessions/fb8ab2e2a45f/scratchpad/d4/rig/tmp/lo-renderer-driver-24930/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8177   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/design482-r4-fa711c/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8177","backend":"http://127.0.0.1:8177"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8177)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown
+        mode=headless visible=false focused=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] R4 session
+        063840d3ac4e
+[PASS] Q24 (iii) fresh ask declined (409 aside_unanswered): the backend's sentence ALONE — no 'Ask again here', no 'can't continue', no old escape clause
+        {"alerts":["The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again."],"wire":{"status":409,"continues":null,"response":"{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"}}
+[note] Q33 refusal vs the region's clip at frame 01
+        {"alerts":1,"scrollTop":0,"maxScroll":0,"clientHeight":63,"alertTopInRegion":23.5,"alertBottomInRegion":62.5,"hiddenBelowPx":0,"alertRows":2,"rowsFullyVisible":2,"visibleText":null}
+[note] frame
+        {"label":"qa4-wide-r4-01-q24-fresh-declined-sentence-alone","mode":"settled","width":2760,"height":1736}
+[note] Q33 refusal vs the region's clip after the settled capture 01
+        {"alerts":1,"scrollTop":0,"maxScroll":0,"clientHeight":63,"alertTopInRegion":23.5,"alertBottomInRegion":62.5,"hiddenBelowPx":0,"alertRows":2,"rowsFullyVisible":2,"visibleText":null}
+[PASS] Q24b (iii) fresh ask, 409 aside_empty_answer: the backend's sentence alone
+        {"alerts":["The model answered your aside with no text at all, so the exchange has no answer to keep. Ask again."],"wire":{"status":409,"response":"{\"detail\":{\"code\":\"aside_empty_answer\",\"message\":\"The model answered your aside with no text at all, so the exchange has no answer to keep. Ask again.\"}}"}}
+[PASS] Q25 (i) aside_unanswered (tool call twice) on a CONTINUATION: backend sentence + 'Ask again here to keep this exchange, or press Esc to close the aside and discard it.'
+        {"alert":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again. Ask again here to keep this exchange, or press Esc to close the aside and discard it.","wire":{"status":409,"continues":"7fc2ee0e-962a-42ad-93b1-40371bed64bb","answeredId":"7fc2ee0e-962a-42ad-93b1-40371bed64bb","response":"{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or noth"}}
+[PASS] Q25 (i) aside_unanswered (a call then silence) on a CONTINUATION: backend sentence + 'Ask again here to keep this exchange, or press Esc to close the aside and discard it.'
+        {"alert":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again. Ask again here to keep this exchange, or press Esc to close the aside and discard it.","wire":{"status":409,"continues":"7fc2ee0e-962a-42ad-93b1-40371bed64bb","answeredId":"7fc2ee0e-962a-42ad-93b1-40371bed64bb","response":"{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or noth"}}
+[PASS] Q25 (i) aside_empty_answer on a CONTINUATION: backend sentence + 'Ask again here to keep this exchange, or press Esc to close the aside and discard it.'
+        {"alert":"The model answered your aside with no text at all, so the exchange has no answer to keep. Ask again. Ask again here to keep this exchange, or press Esc to close the aside and discard it.","wire":{"status":409,"continues":"7fc2ee0e-962a-42ad-93b1-40371bed64bb","answeredId":"7fc2ee0e-962a-42ad-93b1-40371bed64bb","response":"{\"detail\":{\"code\":\"aside_empty_answer\",\"message\":\"The model answered your aside with no text at all, so the exchange has no answer to keep. Ask again.\"}}"}}
+[note] Q33 refusal vs the region's clip at frame 02
+        {"alerts":3,"scrollTop":164,"maxScroll":164,"clientHeight":248,"alertTopInRegion":208.8,"alertBottomInRegion":247.8,"hiddenBelowPx":0,"alertRows":2,"rowsFullyVisible":2,"visibleText":null}
+[note] frame
+        {"label":"qa4-wide-r4-02-q25-declined-follow-ups-both-options","mode":"settled","width":2760,"height":1736}
+[note] Q33 refusal vs the region's clip after the settled capture 02
+        {"alerts":3,"scrollTop":164,"maxScroll":164,"clientHeight":248,"alertTopInRegion":208.8,"alertBottomInRegion":247.8,"hiddenBelowPx":0,"alertRows":2,"rowsFullyVisible":2,"visibleText":null}
+[PASS] Q25c asking again IN THE SAME PANEL is ANSWERED (200) and continues the last ANSWERED turn
+        {"wire":{"status":200,"continues":"7fc2ee0e-962a-42ad-93b1-40371bed64bb","answeredId":"7fc2ee0e-962a-42ad-93b1-40371bed64bb"}}
+[PASS] Q25d 'to keep this exchange' is TRUE: the owner's new entry holds the first answered Q/A as its prefix (4 turns, complete, adoptable); the panel still shows the first answer
+        {"owner":{"status":200,"detail":null,"turns":4,"firstTurnHead":"[{\"type\":\"text\",\"text\":\"q25 first question, answered\"}]","complete":true,"adoptable":true},"tailsOnPanel":2}
+[note] frame
+        {"label":"qa4-wide-r4-03-q25-asked-again-answered-exchange-kept","mode":"settled","width":2760,"height":1736}
+[PASS] Q26 Esc on an answered exchange: panel gone, ONE DELETE of the newest entry (200), the owner now answers 404 for it, NOTHING adopted (history unchanged, no adopt POST)
+        {"ops":[{"m":"DELETE","kind":"close","status":200}],"newestAfterEsc":{"status":404,"detail":"This aside is no longer available","turns":null,"firstTurnHead":null,"complete":null,"adoptable":null},"firstEntryAfterEsc":{"status":200,"detail":null,"turns":2,"firstTurnHead":"[{\"type\":\"text\",\"text\":\"q25 first question, answered\"}]","complete":true,"adoptable":false},"history":[18,18]}
+[PASS] Q26b re-opening with /btw does NOT bring the exchange back: the empty panel, no earlier question
+        {"panel":"Asideoff the record — nothing here joins the conversationType a question in the composer below — the answer lands here.Add to conversation⌘+FNothing to add yet."}
+[note] frame
+        {"label":"qa4-wide-r4-04-q26-after-esc-reopened-empty","mode":"settled","width":2760,"height":1736}
+[note] Q27 out-of-band DELETE of the answered entry (the owner evicting/expiring it)
+        {"status":200,"body":"{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"2d846987-7df9-4947-b895-358df97b984d\",\"status\":\"closed\"},\"replayed\":false}}"}
+[PASS] Q27 (ii) refused continuation (409 'This aside is no longer available'): sentence + the can't-continue clause naming Esc's cost; differs from (i) and offers NO 'Ask again here'
+        {"alert":"This aside is no longer available This aside can't continue. Press Esc to close it, which discards this exchange, then start a new one with /btw.","wire":{"status":409,"continues":"2d846987-7df9-4947-b895-358df97b984d","response":"{\"detail\":\"This aside is no longer available\"}"}}
+[note] Q33 refusal vs the region's clip at frame 05
+        {"alerts":1,"scrollTop":15,"maxScroll":15,"clientHeight":248,"alertTopInRegion":208.8,"alertBottomInRegion":247.8,"hiddenBelowPx":0,"alertRows":2,"rowsFullyVisible":2,"visibleText":null}
+[note] frame
+        {"label":"qa4-wide-r4-05-q27-continuation-refused-cant-continue","mode":"settled","width":2760,"height":1736}
+[note] Q33 refusal vs the region's clip after the settled capture 05
+        {"alerts":1,"scrollTop":15,"maxScroll":15,"clientHeight":248,"alertTopInRegion":208.8,"alertBottomInRegion":247.8,"hiddenBelowPx":0,"alertRows":2,"rowsFullyVisible":2,"visibleText":null}
+[PASS] Q27b the copy is honest: a retry in the same panel is refused the same way (409, same dead prefix) — so not offering one is correct
+        {"wire":{"status":409,"continues":"2d846987-7df9-4947-b895-358df97b984d"},"lastAlert":"This aside is no longer available This aside can't continue. Press Esc to close it, which discards this exchange, then start a new one with /btw."}
+[PASS] Q27c the way out the copy names works: Esc, then /btw <q> is a fresh ask, answered 200
+        {"status":200,"continues":null}
+[PASS] Q28 FIRST ⌘+F on an adoptable exchange: NO adopt request on the wire, history unchanged, panel still up, the confirm on the panel's notice line
+        {"adoptPosts":0,"history":[20,20],"alerts":["Press ⌘+F again to add the aside to the conversation. Once added, it stays there."],"key":{"prevented":true,"target":"textarea[Message]"},"adoptLive":{"text":"Add to conversation","label":null,"disabled":false}}
+[note] frame
+        {"label":"qa4-wide-r4-06-q28-first-cmdf-confirm-only","mode":"settled","width":2760,"height":1736}
+[PASS] Q28b SECOND ⌘+F on the same newest turn adopts: ONE adopt POST (200), the panel closes, the exchange enters the durable history and is painted in the transcript
+        {"adopt":[{"url":"…/asides/c55eb2c3-1824-49cd-8b8e-2a3e4cf6bb06/adopt","status":200}],"history":[20,22],"historyStatus":200,"historyKeys":["status","message","result"],"questionInHistory":true,"key":{"prevented":true,"target":"textarea[Message]"}}
+[note] frame
+        {"label":"qa4-wide-r4-07-q28-second-cmdf-adopted","mode":"settled","width":2760,"height":1736}
+[PASS] Q28c an arm does not carry over to a NEW turn: after a follow-up, the next ⌘+F only confirms again (no adopt POST, panel up)
+        {"confirmAfterFirst":["Press ⌘+F again to add the aside to the conversation. Once added, it stays there."],"noticeAfterFollowUpAsk":[],"alertsAfterPress":["Press ⌘+F again to add the aside to the conversation. Once added, it stays there."],"adoptPosts":0}
+[PASS] Q28d re-opened EMPTY panel: ⌘+F does nothing (no confirm, no adopt POST, not swallowed)
+        {"alerts":[],"key":{"prevented":false,"target":"textarea[Message]"}}
+[PASS] Q28e a different aside after re-opening: its first ⌘+F only confirms (the earlier arm did not carry over)
+        {"alerts":["Press ⌘+F again to add the aside to the conversation. Once added, it stays there."],"adoptPosts":0}
+[note] frame
+        {"label":"qa4-wide-r4-08-q28e-reopened-first-press-confirms-only","mode":"settled","width":2760,"height":1736}
+[PASS] Q28f after Esc with an arm pending and a re-open, one ⌘+F still cannot adopt
+        {"alerts":["Press ⌘+F again to add the aside to the conversation. Once added, it stays there."],"adoptPosts":0}
+[note] Q28g ⌘+F routing
+        {"composerFirstPress":{"prevented":true,"target":"textarea[Message]"},"composerSecondPress":{"prevented":true,"target":"textarea[Message]"},"emptyPanel":{"prevented":false,"target":"textarea[Message]"},"focusOnExchangeRegion":{"prevented":false,"target":"div[The aside exchange]"},"regionPressAdopted":false,"regionPressPanelUp":true,"noAsideComposer":{"prevented":false,"target":"textarea[Message]"},"visibleSearchLikeUi":["Search chats and agents"]}
+[PASS] Q28g ⌘+F is swallowed (preventDefault) ONLY on the composer with an adoptable aside; with the focus elsewhere, or no aside, it falls through and nothing opens
+        {"k1":{"prevented":true,"target":"textarea[Message]"},"k2":{"prevented":true,"target":"textarea[Message]"},"kEmpty":{"prevented":false,"target":"textarea[Message]"},"kRegion":{"prevented":false,"target":"div[The aside exchange]"},"kNoAside":{"prevented":false,"target":"textarea[Message]"}}
+[note] Q29 geometry after the long first answer
+        {"width":798,"scrollTop":0,"clientHeight":248,"scrollHeight":740,"maxScroll":492,"cap":"247.5px","turns":1,"turnOffset":0,"questionTopInRegion":0,"questionText":"Question: LONGANSWER: q29 first, a long answer","questionHasMarkup":false,"questionQuoteBlocks":0,"answerFontSize":"14px","answerLineHeight":22.4,"answerTopInRegion":23.5,"firstAnswerRowInRegion":[26,42.5],"answerStartVisible":true,"rowsBetweenAnswerTopAndEdge":10,"paragraphs":6,"paragraphGapPx":22.4,"mdClass":"lo-markdown lo-markdown--row-grid","rows":27,"fullyVisibleRows":9,"crossing":[]}
+[note] Q29 samples [scrollTop, turnOffset, questionTopInRegion, maxScroll] (first 12 / last 4)
+        [[[547,752.3,205.3,547],[547,752.3,205.3,547],[547,752.3,205.3,547],[547,752.3,205.3,547],[547,752.3,205.3,547],[547,752.3,205.3,547],[547,752.3,205.3,547],[547,752.3,205.3,547],[547,752.3,205.3,547],[547,752.3,205.3,547],[547,752.3,205.3,547],[547,752.3,205.3,547]],[[752.5,752.3,-0.2,1245],[752.5,752.3,-0.2,1245],[752.5,752.3,-0.2,1245],[752.5,752.3,-0.2,1245]]]
+[PASS] Q29 D11 settled: the follow-up's QUESTION is at the region's top (scrollTop == its offset ±1) and the START of its answer is in view
+        {"scrollTop":752.5,"turnOffset":752.3,"questionTopInRegion":-0.2,"firstAnswerRowInRegion":[25.8,42.3],"clientHeight":248,"scrollHeight":1493}
+[PASS] Q29b D11 movement: scrollTop only ever moved TOWARD the target (monotone) and never past the question
+        {"samples":99,"distinctTops":5,"monotone":true,"neverPast":true}
+[note] frame
+        {"label":"qa4-wide-r4-09-q29-d11-long-follow-up-question-at-top","mode":"settled","width":2760,"height":1736}
+[note] Q29c the reader scrolled
+        {"from":1347,"to":1107,"method":"mouseWheel"}
+[PASS] Q29c D11 respects the reader: after a user scroll mid-stream, the region stays where they put it for the rest of the stream
+        {"userAt":1107,"method":"mouseWheel","distinctAfter":[1107],"final":1107,"samples":48}
+[note] frame
+        {"label":"qa4-wide-r4-10-q29c-d11-reader-scrolled-stays","mode":"settled","width":2760,"height":1736}
+[PASS] Q29d a short follow-up under a long answer: clamped at maxScroll with its question and the start of its answer in view
+        {"scrollTop":2197,"maxScroll":2197,"turnOffset":2256.8,"questionTopInRegion":59.8,"firstAnswerRowInRegion":[85.8,102.3]}
+[note] frame
+        {"label":"qa4-wide-r4-11-q29d-d11-short-follow-up","mode":"settled","width":2760,"height":1736}
+[note] frame
+        {"label":"qa4-wide-r4-12-q30-d12-paragraph-break-at-cap","mode":"settled","width":2760,"height":1736}
+[note] Q30 D12 sweep (k = sentences in the first paragraph)
+        [{"k":1,"width":798,"fontSize":"14px","lineHeight":22.4,"gap":22.4,"paragraphs":3,"rowsToEdge":10,"fullyVisibleRows":8,"rows":9,"crossing":[],"clientHeight":248,"answerTop":23.5,"mdClass":"lo-markdown lo-markdown--row-grid"},{"k":2,"width":798,"fontSize":"14px","lineHeight":22.4,"gap":22.4,"paragraphs":3,"rowsToEdge":10,"fullyVisibleRows":8,"rows":10,"crossing":[],"clientHeight":248,"answerTop":23.5,"mdClass":"lo-markdown lo-markdown--row-grid"},{"k":3,"width":798,"fontSize":"14px","lineHeight":22.4,"gap":22.4,"paragraphs":3,"rowsToEdge":10,"fullyVisibleRows":8,"rows":10,"crossing":[],"clientHeight":248,"answerTop":23.5,"mdClass":"lo-markdown lo-markdown--row-grid"},{"k":4,"width":798,"fontSize":"14px","lineHeight":22.4,"gap":22.4,"paragraphs":3,"rowsToEdge":10,"fullyVisibleRows":8,"rows":11,"crossing":[],"clientHeight":248,"answerTop":23.5,"mdClass":"lo-markdown lo-markdown--row-grid"},{"k":5,"width":798,"fontSize":"14px","lineHeight":22.4,"gap":22.4,"paragraphs":3,"rowsToEdge":10,"fullyVisibleRows":8,"rows":11,"crossing":[],"clientHeight":248,"answerTop":23.5,"mdClass":"lo-markdown lo-markdown--row-grid"},{"k":6,"width":798,"fontSize":"14px","lineHeight":22.4,"gap":22.4,"paragraphs":3,"rowsToEdge":10,"fullyVisibleRows":8,"rows":12,"crossing":[],"clientHeight":248,"answerTop":23.5,"mdClass":"lo-markdown lo-markdown--row-grid"},{"k":7,"width":798,"fontSize":"14px","lineHeight":22.4,"gap":22.4,"paragraphs":3,"rowsToEdge":10,"fullyVisibleRows":8,"rows":12,"crossing":[],"clientHeight":248,"answerTop":23.5,"mdClass":"lo-markdown lo-markdown--row-grid"},{"k":8,"width":798,"fontSize":"14px","lineHeight":22.4,"gap":22.4,"paragraphs":3,"rowsToEdge":10,"fullyVisibleRows":9,"rows":13,"crossing":[],"clientHeight":248,"answerTop":23.5,"mdClass":"lo-markdown lo-markdown--row-grid"},{"k":9,"width":798,"fontSize":"14px","lineHeight":22.4,"gap":22.4,"paragraphs":3,"rowsToEdge":10,"fullyVisibleRows":9,"rows":13,"crossing":[],"clientHeight":248,"answerTop":23.5,"mdClass":"lo-markdown lo-markdown--row-grid"}]
+[PASS] Q30 D12: with a paragraph break inside the cap, NO row is cut at the region's edge for any first-paragraph length swept
+        [{"k":1,"crossing":[],"fullyVisibleRows":8},{"k":2,"crossing":[],"fullyVisibleRows":8},{"k":3,"crossing":[],"fullyVisibleRows":8},{"k":4,"crossing":[],"fullyVisibleRows":8},{"k":5,"crossing":[],"fullyVisibleRows":8},{"k":6,"crossing":[],"fullyVisibleRows":8},{"k":7,"crossing":[],"fullyVisibleRows":8},{"k":8,"crossing":[],"fullyVisibleRows":9},{"k":9,"crossing":[],"fullyVisibleRows":9}]
+[PASS] Q30b D12 arithmetic: the edge sits exactly 10.0 answer line boxes below the answer's top, and the paragraph gap equals one line box
+        [{"k":1,"rowsToEdge":10,"gap":22.4,"lineHeight":22.4},{"k":2,"rowsToEdge":10,"gap":22.4,"lineHeight":22.4},{"k":3,"rowsToEdge":10,"gap":22.4,"lineHeight":22.4},{"k":4,"rowsToEdge":10,"gap":22.4,"lineHeight":22.4},{"k":5,"rowsToEdge":10,"gap":22.4,"lineHeight":22.4},{"k":6,"rowsToEdge":10,"gap":22.4,"lineHeight":22.4},{"k":7,"rowsToEdge":10,"gap":22.4,"lineHeight":22.4},{"k":8,"rowsToEdge":10,"gap":22.4,"lineHeight":22.4},{"k":9,"rowsToEdge":10,"gap":22.4,"lineHeight":22.4}]
+[PASS] Q30c D12 x D11: a follow-up with a paragraph break, scrolled by D11 — no row cut at the edge
+        {"scrollTop":200.5,"maxScroll":267,"questionTopInRegion":-0.2,"rowsToEdge":10,"crossing":[]}
+[PASS] Q31 U12/U13 both doors mid-answer: the busy sentence on the COMPOSER line (not the transcript), no 'send it again' hint appended, text kept, nothing sent
+        {"comp":{"value":"q31 composer door mid-answer","band":["The aside is still answering. Press Enter again once the answer is in."]},"slash":{"value":"/btw q31 slash door mid-answer","band":["The aside is still answering. Press Enter again once the answer is in."]},"inTranscript":0}
+[note] frame
+        {"label":"qa4-wide-r4-13-q31-busy-line-on-composer","mode":"raw","width":2760,"height":1736}
+[PASS] Q31b the busy line retires the moment the answer settles; U15 the announcement has no markdown markers
+        {"band":[],"announce":"The aside answered: Transport failures and owner 5xx responses, per provider, inside a moving window."}
+[PASS] Q31c D14 off-panel short form: 'Your aside "…" got no answer: The model didn't reply in text. Ask again.' under 200 chars
+        {"line":"Your aside “TOOLCALL2: q31c refused after Esc” got no answer: The model didn't reply in text. Ask again.","length":104}
+[note] frame
+        {"label":"qa4-wide-r4-14-q31c-d14-off-panel-short-form","mode":"raw","width":2760,"height":1736}
+[PASS] Q31d U14: the wire carries <reply-to>, the panel's question paints a quote block and NO markup
+        {"staged":{"selected":"selected","pressed":true},"wire":"<reply-to>Transport failures and owner</reply-to>\nq31d asked with a quote staged","panelQuestion":"Question: Transport failures and ownerq31d asked with a quote staged","quoteBlocks":1}
+[note] frame
+        {"label":"qa4-wide-r4-15-q31d-u14-quote-rendered","mode":"settled","width":2760,"height":1736}
+[PASS] Q32 every aside POST named a subscription this pane opened, and every aside_delta went to exactly that subscription
+        {"asidePosts":33,"postSubs":["d9025d4cf9df451eb3ba54ecd8ee97b3","43a1442a68244e0db4c2a984a3441dc5"],"deltaSubs":["d9025d4cf9df451eb3ba54ecd8ee97b3","43a1442a68244e0db4c2a984a3441dc5"],"asideDeltaFrames":180,"streamsOpened":3,"statuses":{"200":25,"409":8}}
+[PASS] every capture wrote a PNG of the requested size
+  [renderer] [attention] 063840d3ac4e receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
+    at xEe (file:///Users/damian/local-operator-ui-worktrees/design482-r4-fa711c/out/renderer/assets/index-DEWyvtlB.js:812:94627)
+    at async _t (file:///Users/damian/local-operator-ui-worktrees/design482-r4-fa711c/out/renderer/assets/index-DEWyvtlB.js:812:95762)
+[PASS] no process from this run outlived its boot
+
+frames: qa4-wide-r4-01-q24-fresh-declined-sentence-alone.png, qa4-wide-r4-02-q25-declined-follow-ups-both-options.png, qa4-wide-r4-03-q25-asked-again-answered-exchange-kept.png, qa4-wide-r4-04-q26-after-esc-reopened-empty.png, qa4-wide-r4-05-q27-continuation-refused-cant-continue.png, qa4-wide-r4-06-q28-first-cmdf-confirm-only.png, qa4-wide-r4-07-q28-second-cmdf-adopted.png, qa4-wide-r4-08-q28e-reopened-first-press-confirms-only.png, qa4-wide-r4-09-q29-d11-long-follow-up-question-at-top.png, qa4-wide-r4-10-q29c-d11-reader-scrolled-stays.png, qa4-wide-r4-11-q29d-d11-short-follow-up.png, qa4-wide-r4-12-q30-d12-paragraph-break-at-cap.png, qa4-wide-r4-13-q31-busy-line-on-composer.png, qa4-wide-r4-14-q31c-d14-off-panel-short-form.png, qa4-wide-r4-15-q31d-u14-quote-rendered.png
+frames directory: /Users/damian/.local-operator/sessions/fb8ab2e2a45f/scratchpad/d4/rig/frames/wide-r4
+app log: /Users/damian/.local-operator/sessions/fb8ab2e2a45f/scratchpad/d4/rig/tmp/lo-renderer-driver-24930/app-scene.log
+scratch removed (--clean)
+
+ALL CHECKS PASSED

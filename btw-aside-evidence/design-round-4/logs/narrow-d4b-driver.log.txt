@@ -1,0 +1,174 @@
+[build] current: assets 2026-09-24T21:58:32.999Z >= sources 2026-09-24T21:08:03.022Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8177
+  serve records 1 linked from /Users/damian/.local-operator/sessions/fb8ab2e2a45f/scratchpad/d4/rig/run-narrow-d4b/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/design482-r4-fa711c
+  scratch       /Users/damian/.local-operator/sessions/fb8ab2e2a45f/scratchpad/d4/rig/tmp/lo-renderer-driver-1831
+  frames        /Users/damian/.local-operator/sessions/fb8ab2e2a45f/scratchpad/d4/rig/frames/narrow-d4b
+  app cwd       /Users/damian/.local-operator/sessions/fb8ab2e2a45f/scratchpad/d4/rig/tmp/lo-renderer-driver-1831/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8177   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/design482-r4-fa711c/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8177","backend":"http://127.0.0.1:8177"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8177)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown
+        mode=headless visible=false focused=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] d4 session
+        347ca4f625d7
+[note] d4 cap wrapquote k1
+        {"case":"wrapquote","k":1,"stagedQuotes":1,"wireQuotes":1,"quoteBlocks":1,"quoteLines":[7],"questionLines":4,"capPx":259,"clientHeight":259,"answerTop":168,"lineHeight":20.8,"rowsToEdge":4.4,"cut":[{"tag":"p","hiddenPx":9.7,"visiblePx":5.3,"text":"Sentence 1 of this paragraph runs about this"}],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-11.1},"paragraphGap":20.8,"scrollTop":0,"maxScroll":512}
+[note] frame
+        {"label":"d4-narrow-d4b-c-wrapquote-k1","mode":"settled","width":1600,"height":1736}
+[note] C-wrapquote-k1 geometry
+        {"panel":{"top":317.7,"height":375.3,"bottom":693,"width":252},"cap":"259px","capPx":259,"transition":"all / 0s","clientHeight":259,"scrollHeight":771,"maxScroll":512,"scrollTop":0,"regionTop":389,"turns":1,"questionQuoteBlocks":1,"quoteHeights":[140.5],"quoteLines":[7],"questionLines":4,"questionTopInRegion":0,"questionHeightIfRegion":164,"lastTurnTopInRegion":0,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":168,"rowPitch":20.8,"rowsToEdge":4.4,"rows":27,"fullyVisibleRows":3,"rowCrossingClipCount":1,"crossing":[{"tag":"p","text":"Sentence 1 of this paragraph runs about this","rowH":15,"visiblePx":5.3,"hiddenPx":9.7,"visibleFraction":0.4,"topInRegion":253.7,"blockTopInRegion":230.4,"blockBottomInRegion":480,"blockBoxH":249.6}],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-11.1},"blockCounts":{"p":3},"paragraphGap":20.8,"mdClass":"lo-markdown lo-markdown--row-grid","transcriptTop":-1594.7,"bandTop":315.7}
+[note] d4 cap wrapquote k5
+        {"case":"wrapquote","k":5,"stagedQuotes":1,"wireQuotes":1,"quoteBlocks":1,"quoteLines":[7],"questionLines":4,"capPx":259,"clientHeight":259,"answerTop":168,"lineHeight":20.8,"rowsToEdge":4.4,"cut":[{"tag":"p","hiddenPx":9.7,"visiblePx":5.3,"text":"Sentence 1 of this paragraph runs about this"}],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-11.1},"paragraphGap":20.8,"scrollTop":0,"maxScroll":678}
+[note] d4 cap wrapquote k9
+        {"case":"wrapquote","k":9,"stagedQuotes":1,"wireQuotes":1,"quoteBlocks":1,"quoteLines":[7],"questionLines":4,"capPx":259,"clientHeight":259,"answerTop":168,"lineHeight":20.8,"rowsToEdge":4.4,"cut":[{"tag":"p","hiddenPx":9.7,"visiblePx":5.3,"text":"Sentence 1 of this paragraph runs about this"}],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-11.1},"paragraphGap":20.8,"scrollTop":0,"maxScroll":845}
+[note] d4 cap wrapq k1
+        {"case":"wrapq","k":1,"stagedQuotes":0,"wireQuotes":0,"quoteBlocks":0,"quoteLines":[],"questionLines":8,"capPx":231.5,"clientHeight":232,"answerTop":121,"lineHeight":20.8,"rowsToEdge":5.3,"cut":[{"tag":"p","hiddenPx":10.5,"visiblePx":4.5,"text":"Sentence 1 of this paragraph runs about this"}],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-10.3},"paragraphGap":20.8,"scrollTop":0,"maxScroll":492}
+[note] frame
+        {"label":"d4-narrow-d4b-c-wrapq-k1","mode":"settled","width":1600,"height":1736}
+[note] C-wrapq-k1 geometry
+        {"panel":{"top":345.2,"height":347.8,"bottom":693,"width":252},"cap":"231.5px","capPx":231.5,"transition":"all / 0s","clientHeight":232,"scrollHeight":724,"maxScroll":492,"scrollTop":0,"regionTop":416.5,"turns":1,"questionQuoteBlocks":0,"quoteHeights":[],"quoteLines":[],"questionLines":8,"questionTopInRegion":0,"questionHeightIfRegion":117,"lastTurnTopInRegion":0,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":121,"rowPitch":20.8,"rowsToEdge":5.3,"rows":27,"fullyVisibleRows":4,"rowCrossingClipCount":1,"crossing":[{"tag":"p","text":"Sentence 1 of this paragraph runs about this","rowH":15,"visiblePx":4.5,"hiddenPx":10.5,"visibleFraction":0.3,"topInRegion":227.5,"blockTopInRegion":183.4,"blockBottomInRegion":433,"blockBoxH":249.6}],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-10.3},"blockCounts":{"p":3},"paragraphGap":20.8,"mdClass":"lo-markdown lo-markdown--row-grid","transcriptTop":-1567.2,"bandTop":343.2}
+[note] d4 cap wrapq k5
+        {"case":"wrapq","k":5,"stagedQuotes":0,"wireQuotes":0,"quoteBlocks":0,"quoteLines":[],"questionLines":8,"capPx":231.5,"clientHeight":232,"answerTop":121,"lineHeight":20.8,"rowsToEdge":5.3,"cut":[{"tag":"p","hiddenPx":10.5,"visiblePx":4.5,"text":"Sentence 1 of this paragraph runs about this"}],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-10.3},"paragraphGap":20.8,"scrollTop":0,"maxScroll":658}
+[note] d4 cap wrapq k9
+        {"case":"wrapq","k":9,"stagedQuotes":0,"wireQuotes":0,"quoteBlocks":0,"quoteLines":[],"questionLines":8,"capPx":231.5,"clientHeight":232,"answerTop":121,"lineHeight":20.8,"rowsToEdge":5.3,"cut":[{"tag":"p","hiddenPx":10.5,"visiblePx":4.5,"text":"Sentence 1 of this paragraph runs about this"}],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-10.3},"paragraphGap":20.8,"scrollTop":0,"maxScroll":825}
+[note] d4 block l2
+        {"panel":{"top":345.2,"height":347.8,"bottom":693,"width":252},"cap":"231.5px","capPx":231.5,"transition":"all / 0s","clientHeight":232,"scrollHeight":845,"maxScroll":613,"scrollTop":0,"regionTop":416.5,"turns":1,"questionQuoteBlocks":0,"quoteHeights":[],"quoteLines":[],"questionLines":3,"questionTopInRegion":0,"questionHeightIfRegion":19.5,"lastTurnTopInRegion":0,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":23.5,"rowPitch":20.8,"rowsToEdge":10,"rows":34,"fullyVisibleRows":8,"rowCrossingClipCount":0,"crossing":[],"lastWholeRow":{"tag":"li","text":"list item 2 of the block that reaches the ed","bottomVsClip":0.2},"blockCounts":{"p":3,"li":14},"paragraphGap":20.8,"mdClass":"lo-markdown lo-markdown--row-grid","transcriptTop":-1567.2,"bandTop":343.2}
+[note] frame
+        {"label":"d4-narrow-d4b-d-edge-l2","mode":"settled","width":1600,"height":1736}
+[note] d4 block l3
+        {"panel":{"top":345.2,"height":347.8,"bottom":693,"width":252},"cap":"231.5px","capPx":231.5,"transition":"all / 0s","clientHeight":232,"scrollHeight":907,"maxScroll":675,"scrollTop":0,"regionTop":416.5,"turns":1,"questionQuoteBlocks":0,"quoteHeights":[],"quoteLines":[],"questionLines":3,"questionTopInRegion":0,"questionHeightIfRegion":19.5,"lastTurnTopInRegion":0,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":23.5,"rowPitch":20.8,"rowsToEdge":10,"rows":36,"fullyVisibleRows":7,"rowCrossingClipCount":0,"crossing":[],"lastWholeRow":{"tag":"li","text":"list item 1 of the block that reaches the ed","bottomVsClip":-3.8},"blockCounts":{"p":4,"li":14},"paragraphGap":20.8,"mdClass":"lo-markdown lo-markdown--row-grid","transcriptTop":-1567.2,"bandTop":343.2}
+[note] frame
+        {"label":"d4-narrow-d4b-d-edge-l3","mode":"settled","width":1600,"height":1736}
+[note] d4 block l6
+        {"panel":{"top":345.2,"height":347.8,"bottom":693,"width":252},"cap":"231.5px","capPx":231.5,"transition":"all / 0s","clientHeight":232,"scrollHeight":1095,"maxScroll":863,"scrollTop":0,"regionTop":416.5,"turns":1,"questionQuoteBlocks":0,"quoteHeights":[],"quoteLines":[],"questionLines":3,"questionTopInRegion":0,"questionHeightIfRegion":19.5,"lastTurnTopInRegion":0,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":23.5,"rowPitch":20.8,"rowsToEdge":10,"rows":42,"fullyVisibleRows":7,"rowCrossingClipCount":0,"crossing":[],"lastWholeRow":{"tag":"p","text":"Filler row 4, one short sentence that fits a","bottomVsClip":-3.8},"blockCounts":{"p":7,"li":14},"paragraphGap":20.8,"mdClass":"lo-markdown lo-markdown--row-grid","transcriptTop":-1567.2,"bandTop":343.2}
+[note] frame
+        {"label":"d4-narrow-d4b-d-edge-l6","mode":"settled","width":1600,"height":1736}
+[note] d4 block h2
+        {"panel":{"top":345.2,"height":347.8,"bottom":693,"width":252},"cap":"231.5px","capPx":231.5,"transition":"all / 0s","clientHeight":232,"scrollHeight":985,"maxScroll":753,"scrollTop":0,"regionTop":416.5,"turns":1,"questionQuoteBlocks":0,"quoteHeights":[],"quoteLines":[],"questionLines":3,"questionTopInRegion":0,"questionHeightIfRegion":19.5,"lastTurnTopInRegion":0,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":23.5,"rowPitch":20.8,"rowsToEdge":10,"rows":31,"fullyVisibleRows":7,"rowCrossingClipCount":0,"crossing":[],"lastWholeRow":{"tag":"p","text":"Filler row 50, one short sentence that fits ","bottomVsClip":-0.6},"blockCounts":{"p":14,"h2":2},"paragraphGap":20.8,"mdClass":"lo-markdown lo-markdown--row-grid","transcriptTop":-1567.2,"bandTop":343.2}
+[note] frame
+        {"label":"d4-narrow-d4b-d-edge-h2","mode":"settled","width":1600,"height":1736}
+[note] d4 block h4
+        {"panel":{"top":345.2,"height":347.8,"bottom":693,"width":252},"cap":"231.5px","capPx":231.5,"transition":"all / 0s","clientHeight":232,"scrollHeight":1110,"maxScroll":878,"scrollTop":0,"regionTop":416.5,"turns":1,"questionQuoteBlocks":0,"quoteHeights":[],"quoteLines":[],"questionLines":3,"questionTopInRegion":0,"questionHeightIfRegion":19.5,"lastTurnTopInRegion":0,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":23.5,"rowPitch":20.8,"rowsToEdge":10,"rows":35,"fullyVisibleRows":7,"rowCrossingClipCount":0,"crossing":[],"lastWholeRow":{"tag":"p","text":"Filler row 4, one short sentence that fits a","bottomVsClip":-3.8},"blockCounts":{"p":16,"h2":2},"paragraphGap":20.8,"mdClass":"lo-markdown lo-markdown--row-grid","transcriptTop":-1567.2,"bandTop":343.2}
+[note] frame
+        {"label":"d4-narrow-d4b-d-edge-h4","mode":"settled","width":1600,"height":1736}
+[note] d4 block h5
+        {"panel":{"top":345.2,"height":347.8,"bottom":693,"width":252},"cap":"231.5px","capPx":231.5,"transition":"all / 0s","clientHeight":232,"scrollHeight":1172,"maxScroll":940,"scrollTop":0,"regionTop":416.5,"turns":1,"questionQuoteBlocks":0,"quoteHeights":[],"quoteLines":[],"questionLines":3,"questionTopInRegion":0,"questionHeightIfRegion":19.5,"lastTurnTopInRegion":0,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":23.5,"rowPitch":20.8,"rowsToEdge":10,"rows":37,"fullyVisibleRows":7,"rowCrossingClipCount":0,"crossing":[],"lastWholeRow":{"tag":"p","text":"Filler row 4, one short sentence that fits a","bottomVsClip":-3.8},"blockCounts":{"p":17,"h2":2},"paragraphGap":20.8,"mdClass":"lo-markdown lo-markdown--row-grid","transcriptTop":-1567.2,"bandTop":343.2}
+[note] frame
+        {"label":"d4-narrow-d4b-d-edge-h5","mode":"settled","width":1600,"height":1736}
+[note] d4 block c2
+        {"panel":{"top":345.2,"height":347.8,"bottom":693,"width":252},"cap":"231.5px","capPx":231.5,"transition":"all / 0s","clientHeight":232,"scrollHeight":736,"maxScroll":504,"scrollTop":0,"regionTop":416.5,"turns":1,"questionQuoteBlocks":0,"quoteHeights":[],"quoteLines":[],"questionLines":3,"questionTopInRegion":0,"questionHeightIfRegion":19.5,"lastTurnTopInRegion":0,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":23.5,"rowPitch":20.8,"rowsToEdge":10,"rows":30,"fullyVisibleRows":7,"rowCrossingClipCount":1,"crossing":[{"tag":"pre:pre","text":"const handler0 = (req, res) => run(req, res)","rowH":17,"visiblePx":6.8,"hiddenPx":10.2,"visibleFraction":0.4,"topInRegion":225.2,"blockTopInRegion":148.3,"blockBottomInRegion":673.4,"blockBoxH":525.1}],"lastWholeRow":{"tag":"pre:pre","text":"const handler0 = (req, res) => run(req, res)","bottomVsClip":-10.6},"blockCounts":{"p":3,"pre:pre":1},"paragraphGap":20.8,"mdClass":"lo-markdown lo-markdown--row-grid","transcriptTop":-1567.2,"bandTop":343.2}
+[note] frame
+        {"label":"d4-narrow-d4b-d-edge-c2","mode":"settled","width":1600,"height":1736}
+[note] d4 block c4
+        {"panel":{"top":345.2,"height":347.8,"bottom":693,"width":252},"cap":"231.5px","capPx":231.5,"transition":"all / 0s","clientHeight":232,"scrollHeight":861,"maxScroll":629,"scrollTop":0,"regionTop":416.5,"turns":1,"questionQuoteBlocks":0,"quoteHeights":[],"quoteLines":[],"questionLines":3,"questionTopInRegion":0,"questionHeightIfRegion":19.5,"lastTurnTopInRegion":0,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":23.5,"rowPitch":20.8,"rowsToEdge":10,"rows":34,"fullyVisibleRows":7,"rowCrossingClipCount":0,"crossing":[],"lastWholeRow":{"tag":"p","text":"Filler row 4, one short sentence that fits a","bottomVsClip":-3.8},"blockCounts":{"p":5,"pre:pre":1},"paragraphGap":20.8,"mdClass":"lo-markdown lo-markdown--row-grid","transcriptTop":-1567.2,"bandTop":343.2}
+[note] frame
+        {"label":"d4-narrow-d4b-d-edge-c4","mode":"settled","width":1600,"height":1736}
+[note] d4 block c5
+        {"panel":{"top":345.2,"height":347.8,"bottom":693,"width":252},"cap":"231.5px","capPx":231.5,"transition":"all / 0s","clientHeight":232,"scrollHeight":923,"maxScroll":691,"scrollTop":0,"regionTop":416.5,"turns":1,"questionQuoteBlocks":0,"quoteHeights":[],"quoteLines":[],"questionLines":3,"questionTopInRegion":0,"questionHeightIfRegion":19.5,"lastTurnTopInRegion":0,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":23.5,"rowPitch":20.8,"rowsToEdge":10,"rows":36,"fullyVisibleRows":7,"rowCrossingClipCount":0,"crossing":[],"lastWholeRow":{"tag":"p","text":"Filler row 4, one short sentence that fits a","bottomVsClip":-3.8},"blockCounts":{"p":6,"pre:pre":1},"paragraphGap":20.8,"mdClass":"lo-markdown lo-markdown--row-grid","transcriptTop":-1567.2,"bandTop":343.2}
+[note] frame
+        {"label":"d4-narrow-d4b-d-edge-c5","mode":"settled","width":1600,"height":1736}
+[note] frame
+        {"label":"d4-narrow-d4b-e-01-long-answer-at-rest","mode":"settled","width":1600,"height":1736}
+[note] frame
+        {"label":"d4-narrow-d4b-e-02-followup-just-asked","mode":"raw","width":1600,"height":1736}
+[note] frame
+        {"label":"d4-narrow-d4b-e-03-followup-midstream","mode":"raw","width":1600,"height":1736}
+[note] E follow-up samples [ms, scrollTop, scrollHeight, turns, capPx]
+        [[19,1861,2093,2,231.5],[2379,2029,2261,2,231.5],[2708,2030.5,2448,2,231.5],[3051,2030.5,2656,2,231.5],[3327,2030.5,2864,2,231.5],[3578,2030.5,3051,2,231.5],[3922,2030.5,3280,2,231.5],[4171,2030.5,3488,2,231.5],[4505,2030.5,3654,2,231.5],[4837,2030.5,3883,2,231.5],[5109,2030.5,4049,2,231.5]]
+[note] E follow-up geometry
+        {"panel":{"top":345.2,"height":347.8,"bottom":693,"width":252},"cap":"231.5px","capPx":231.5,"transition":"all / 0s","clientHeight":232,"scrollHeight":4049,"maxScroll":3817,"scrollTop":2030.5,"regionTop":416.5,"turns":2,"questionQuoteBlocks":0,"quoteHeights":[],"quoteLines":[],"questionLines":4,"questionTopInRegion":0.2,"questionHeightIfRegion":39,"lastTurnTopInRegion":0.2,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":43.2,"rowPitch":20.8,"rowsToEdge":9.1,"rows":90,"fullyVisibleRows":9,"rowCrossingClipCount":0,"crossing":[],"lastWholeRow":{"tag":"p","text":"The retry budget is a per-provider allowance","bottomVsClip":-4.9},"blockCounts":{"p":6},"paragraphGap":20.8,"mdClass":"lo-markdown lo-markdown--row-grid","transcriptTop":-1567.2,"bandTop":343.2}
+[PASS] E D11: the follow-up's question is at the region's top and its first answer row is in view
+        {"questionTopInRegion":0.2,"answerTopInRegion":43.2,"clientHeight":232,"scrollTop":2030.5,"maxScroll":3817,"turns":2}
+[note] frame
+        {"label":"d4-narrow-d4b-e-04-followup-settled","mode":"settled","width":1600,"height":1736}
+[note] frame
+        {"label":"d4-narrow-d4b-f-01-before-the-quoted-turn","mode":"settled","width":1600,"height":1736}
+[note] frame
+        {"label":"d4-narrow-d4b-f-02-at-the-press","mode":"raw","width":1600,"height":1736}
+[note] frame
+        {"label":"d4-narrow-d4b-f-03-after-the-quoted-turn","mode":"settled","width":1600,"height":1736}
+[note] F jump staged
+        {"selected":"selected","pressed":true}
+[note] F jump before
+        {"panelTop":366,"panelH":327,"panelBottom":693,"capPx":231.5,"regionH":211,"scrollTop":0,"scrollHeight":211,"turns":1,"transcriptTop":-1546.4,"bandTop":364,"panelText":"Asideoff the record — nothing here joins the conversationThe aside answered: Sentence 1 of"}
+[note] F jump pre-press
+        {"panelTop":385,"panelH":327,"panelBottom":712,"capPx":231.5,"regionH":211,"scrollTop":0,"scrollHeight":211,"turns":1,"transcriptTop":-1527.4,"bandTop":383,"panelText":"Asideoff the record — nothing here joins the conversationThe aside answered: Sentence 1 of"}
+[note] F jump samples [ms, capPx, panelTop, panelH, regionH, scrollTop, scrollHeight, turns]
+        [[12,231.5,302.2,390.8,232,34,266,2],[2489,231.5,302.2,390.8,232,139,371,2]]
+[note] F jump after
+        {"panelTop":345.2,"panelH":347.8,"panelBottom":693,"capPx":231.5,"regionH":232,"scrollTop":139,"scrollHeight":371,"turns":2,"transcriptTop":-1567.2,"bandTop":343.2,"panelText":"Asideoff the record — nothing here joins the conversationThe aside answered: Sentence 1 of"}
+[FAIL] F the ceiling steps by the quote block and the panel's top is what moves
+        {"beforeCap":231.5,"afterCap":231.5,"beforeTop":366,"afterTop":345.2,"beforeH":327,"afterH":347.8,"beforeRegion":211,"afterRegion":232}
+[note] d4 cap table
+        [{"case":"wrapquote","k":1,"stagedQuotes":1,"wireQuotes":1,"quoteBlocks":1,"quoteLines":[7],"questionLines":4,"capPx":259,"clientHeight":259,"answerTop":168,"lineHeight":20.8,"rowsToEdge":4.4,"cut":[{"tag":"p","hiddenPx":9.7,"visiblePx":5.3,"text":"Sentence 1 of this paragraph runs about this"}],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-11.1},"paragraphGap":20.8,"scrollTop":0,"maxScroll":512},{"case":"wrapquote","k":5,"stagedQuotes":1,"wireQuotes":1,"quoteBlocks":1,"quoteLines":[7],"questionLines":4,"capPx":259,"clientHeight":259,"answerTop":168,"lineHeight":20.8,"rowsToEdge":4.4,"cut":[{"tag":"p","hiddenPx":9.7,"visiblePx":5.3,"text":"Sentence 1 of this paragraph runs about this"}],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-11.1},"paragraphGap":20.8,"scrollTop":0,"maxScroll":678},{"case":"wrapquote","k":9,"stagedQuotes":1,"wireQuotes":1,"quoteBlocks":1,"quoteLines":[7],"questionLines":4,"capPx":259,"clientHeight":259,"answerTop":168,"lineHeight":20.8,"rowsToEdge":4.4,"cut":[{"tag":"p","hiddenPx":9.7,"visiblePx":5.3,"text":"Sentence 1 of this paragraph runs about this"}],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-11.1},"paragraphGap":20.8,"scrollTop":0,"maxScroll":845},{"case":"wrapq","k":1,"stagedQuotes":0,"wireQuotes":0,"quoteBlocks":0,"quoteLines":[],"questionLines":8,"capPx":231.5,"clientHeight":232,"answerTop":121,"lineHeight":20.8,"rowsToEdge":5.3,"cut":[{"tag":"p","hiddenPx":10.5,"visiblePx":4.5,"text":"Sentence 1 of this paragraph runs about this"}],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-10.3},"paragraphGap":20.8,"scrollTop":0,"maxScroll":492},{"case":"wrapq","k":5,"stagedQuotes":0,"wireQuotes":0,"quoteBlocks":0,"quoteLines":[],"questionLines":8,"capPx":231.5,"clientHeight":232,"answerTop":121,"lineHeight":20.8,"rowsToEdge":5.3,"cut":[{"tag":"p","hiddenPx":10.5,"visiblePx":4.5,"text":"Sentence 1 of this paragraph runs about this"}],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-10.3},"paragraphGap":20.8,"scrollTop":0,"maxScroll":658},{"case":"wrapq","k":9,"stagedQuotes":0,"wireQuotes":0,"quoteBlocks":0,"quoteLines":[],"questionLines":8,"capPx":231.5,"clientHeight":232,"answerTop":121,"lineHeight":20.8,"rowsToEdge":5.3,"cut":[{"tag":"p","hiddenPx":10.5,"visiblePx":4.5,"text":"Sentence 1 of this paragraph runs about this"}],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-10.3},"paragraphGap":20.8,"scrollTop":0,"maxScroll":825},{"case":"l2","k":0,"capPx":231.5,"clientHeight":232,"answerTop":23.5,"rowsToEdge":10,"blockCounts":{"p":3,"li":14},"cut":[],"lastWholeRow":{"tag":"li","text":"list item 2 of the block that reaches the ed","bottomVsClip":0.2},"scrollTop":0,"maxScroll":613},{"case":"l3","k":0,"capPx":231.5,"clientHeight":232,"answerTop":23.5,"rowsToEdge":10,"blockCounts":{"p":4,"li":14},"cut":[],"lastWholeRow":{"tag":"li","text":"list item 1 of the block that reaches the ed","bottomVsClip":-3.8},"scrollTop":0,"maxScroll":675},{"case":"l6","k":0,"capPx":231.5,"clientHeight":232,"answerTop":23.5,"rowsToEdge":10,"blockCounts":{"p":7,"li":14},"cut":[],"lastWholeRow":{"tag":"p","text":"Filler row 4, one short sentence that fits a","bottomVsClip":-3.8},"scrollTop":0,"maxScroll":863},{"case":"h2","k":0,"capPx":231.5,"clientHeight":232,"answerTop":23.5,"rowsToEdge":10,"blockCounts":{"p":14,"h2":2},"cut":[],"lastWholeRow":{"tag":"p","text":"Filler row 50, one short sentence that fits ","bottomVsClip":-0.6},"scrollTop":0,"maxScroll":753},{"case":"h4","k":0,"capPx":231.5,"clientHeight":232,"answerTop":23.5,"rowsToEdge":10,"blockCounts":{"p":16,"h2":2},"cut":[],"lastWholeRow":{"tag":"p","text":"Filler row 4, one short sentence that fits a","bottomVsClip":-3.8},"scrollTop":0,"maxScroll":878},{"case":"h5","k":0,"capPx":231.5,"clientHeight":232,"answerTop":23.5,"rowsToEdge":10,"blockCounts":{"p":17,"h2":2},"cut":[],"lastWholeRow":{"tag":"p","text":"Filler row 4, one short sentence that fits a","bottomVsClip":-3.8},"scrollTop":0,"maxScroll":940},{"case":"c2","k":0,"capPx":231.5,"clientHeight":232,"answerTop":23.5,"rowsToEdge":10,"blockCounts":{"p":3,"pre:pre":1},"cut":[{"tag":"pre:pre","hiddenPx":10.2,"visiblePx":6.8,"text":"const handler0 = (req, res) => run(req, res)","blockTopInRegion":148.3,"blockBottomInRegion":673.4,"blockBoxH":525.1}],"lastWholeRow":{"tag":"pre:pre","text":"const handler0 = (req, res) => run(req, res)","bottomVsClip":-10.6},"scrollTop":0,"maxScroll":504},{"case":"c4","k":0,"capPx":231.5,"clientHeight":232,"answerTop":23.5,"rowsToEdge":10,"blockCounts":{"p":5,"pre:pre":1},"cut":[],"lastWholeRow":{"tag":"p","text":"Filler row 4, one short sentence that fits a","bottomVsClip":-3.8},"scrollTop":0,"maxScroll":629},{"case":"c5","k":0,"capPx":231.5,"clientHeight":232,"answerTop":23.5,"rowsToEdge":10,"blockCounts":{"p":6,"pre:pre":1},"cut":[],"lastWholeRow":{"tag":"p","text":"Filler row 4, one short sentence that fits a","bottomVsClip":-3.8},"scrollTop":0,"maxScroll":691}]
+[PASS] every capture wrote a PNG of the requested size
+
+---- app log (tail) ----
+18:23:59.939 › [browser] denied a media permission request from (unknown origin)
+18:23:59.939 › [browser] denied a web-app-installation permission request from (unknown origin)
+18:23:59.939 › [browser] denied a geolocation permission request from (unknown origin)
+18:23:59.962 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
+18:23:59.963 › [browser] host on 127.0.0.1:56901 (proto 1), profile /Users/damian/.local-operator/sessions/fb8ab2e2a45f/scratchpad/d4/rig/tmp/lo-renderer-driver-1831/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+18:24:50.473 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:24:51.258 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:24:56.767 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:24:57.338 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:25:02.188 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:25:02.734 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:25:08.494 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:25:08.707 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:25:13.821 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:25:14.040 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:25:18.947 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:25:19.190 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:25:24.567 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:25:24.805 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:25:29.569 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:25:29.781 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:25:33.521 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:25:33.732 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:25:37.803 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:25:38.010 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:25:41.645 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:25:41.932 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:25:45.918 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:25:46.129 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:25:50.260 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:25:50.470 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:25:54.500 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:25:54.708 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:25:58.966 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:25:59.190 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:26:03.480 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:26:33.678 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:26:38.392 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:26:38.923 › [about-panel] suppressed by window mode headless: a headless run raises no window
+
+[PASS] no process from this run outlived its boot
+
+frames: d4-narrow-d4b-c-wrapq-k1.png, d4-narrow-d4b-c-wrapquote-k1.png, d4-narrow-d4b-d-edge-c2.png, d4-narrow-d4b-d-edge-c4.png, d4-narrow-d4b-d-edge-c5.png, d4-narrow-d4b-d-edge-h2.png, d4-narrow-d4b-d-edge-h4.png, d4-narrow-d4b-d-edge-h5.png, d4-narrow-d4b-d-edge-l2.png, d4-narrow-d4b-d-edge-l3.png, d4-narrow-d4b-d-edge-l6.png, d4-narrow-d4b-e-01-long-answer-at-rest.png, d4-narrow-d4b-e-02-followup-just-asked.png, d4-narrow-d4b-e-03-followup-midstream.png, d4-narrow-d4b-e-04-followup-settled.png, d4-narrow-d4b-f-01-before-the-quoted-turn.png, d4-narrow-d4b-f-02-at-the-press.png, d4-narrow-d4b-f-03-after-the-quoted-turn.png
+frames directory: /Users/damian/.local-operator/sessions/fb8ab2e2a45f/scratchpad/d4/rig/frames/narrow-d4b
+app log: /Users/damian/.local-operator/sessions/fb8ab2e2a45f/scratchpad/d4/rig/tmp/lo-renderer-driver-1831/app-scene.log
+scratch removed (--clean)
+
+1 CHECK(S) FAILED
