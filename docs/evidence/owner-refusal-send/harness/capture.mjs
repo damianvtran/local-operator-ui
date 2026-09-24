@@ -164,6 +164,29 @@ const ARMS = [
 	 * half of the claim: the press admitted nothing, so nothing went out twice.
 	 */
 	{
+		name: "press-during-flight-settles",
+		refusals: 0,
+		holdMs: 8_000,
+		expectRefusal: false,
+		custom: "press-during-flight",
+		why: "a press inside a flight that SUCCEEDS: the line is answered during it, and gone once the message is in the transcript",
+	},
+	{
+		name: "press-twice-no-stall",
+		refusals: 0,
+		holdMs: 900,
+		expectRefusal: false,
+		custom: "press-twice-no-stall",
+		why: "a press inside an ordinary slow send, then the user's next line: two rows, not one glued row, and no line left behind",
+	},
+	{
+		name: "budget-409",
+		refusals: 1,
+		expectRefusal: true,
+		custom: "budget-409",
+		why: "the daemon's own codeless budget refusal: one sentence and Clear only, the same before and after a remount",
+	},
+	{
 		name: "press-during-flight",
 		refusals: 0,
 		holdMs: 21_000,
@@ -411,6 +434,47 @@ const runCustom = async (
 			`${arm.name}: the composer never came back after the reload, so this frame would photograph the wrong screen`,
 		);
 	};
+
+	/*
+	 * THE TWO ARMS WHOSE WORK IS DONE BEFORE THIS FUNCTION RUNS. Both press INSIDE the
+	 * flight, and this function is reached after the rig's own settle wait - so their
+	 * assertions have already run against the live DOM by the time control arrives
+	 * here, and an arm that pressed a flight that is now over has nothing left to say.
+	 */
+	if (
+		arm.custom === "press-during-flight-settles" ||
+		arm.custom === "press-twice-no-stall"
+	)
+		return {};
+
+	if (arm.custom === "budget-409") {
+		/*
+		 * M1'S OWN ARM: one failure, one sentence, and the SAME one after a remount.
+		 * The pane used to classify this failure itself from the pre-send row while the
+		 * store's row said something else, so the screen and the row disagreed until a
+		 * remount flipped the screen to the row's answer.
+		 */
+		const before = await evaluate(PROBE);
+		await shoot("refused");
+		process.stdout.write(
+			`  ${arm.name}: alert=${JSON.stringify((before.alertProse ?? "").slice(0, 200))} box=${JSON.stringify((before.boxValue ?? "").slice(0, 60))} controls=${JSON.stringify(before.controlLabels ?? [])}\n`,
+		);
+		await reload();
+		const afterReload = await evaluate(PROBE);
+		await shoot("after-reload");
+		process.stdout.write(
+			`  ${arm.name} after reload: alert=${JSON.stringify((afterReload.alertProse ?? "").slice(0, 200))} controls=${JSON.stringify(afterReload.controlLabels ?? [])}\n`,
+		);
+		if ((before.alertProse ?? "") !== (afterReload.alertProse ?? ""))
+			throw new Error(
+				`${arm.name}: one failure rendered two ways - before the remount ${JSON.stringify((before.alertProse ?? "").slice(0, 160))}, after ${JSON.stringify((afterReload.alertProse ?? "").slice(0, 160))}`,
+			);
+		if (/Sending it again is safe/.test(before.alertProse ?? ""))
+			throw new Error(
+				`${arm.name}: the unknown-outcome sentence rendered over a refusal the daemon stated (${JSON.stringify((before.alertProse ?? "").slice(0, 200))})`,
+			);
+		return { afterReload };
+	}
 
 	if (arm.custom === "press-during-flight") {
 		/*
@@ -954,7 +1018,11 @@ const main = async () => {
 		 * NOTHING on the wire; before the fix it was nothing on screen and, on a live
 		 * control, no way for the user to tell the press from a broken key.
 		 */
-		if (arm.custom === "press-during-flight") {
+		if (
+			arm.custom === "press-during-flight" ||
+			arm.custom === "press-during-flight-settles" ||
+			arm.custom === "press-twice-no-stall"
+		) {
 			/*
 			 * WAIT FOR THE FLIGHT'S OWN CLEAR FIRST. The echo empties the box when the
 			 * admission is issued and that lands asynchronously against this phase, so
@@ -1034,6 +1102,92 @@ const main = async () => {
 					`${arm.name}: the composer went away during the flight`,
 				);
 		}
+
+		/*
+		 * THE FLIGHT'S OWN ENDING, WHICH IS WHAT THESE TWO ARMS ARE FOR (review round
+		 * 4's M2 = QA's Q4-1 = the designer's D11 = UX's U16). The committed 21 s arm
+		 * always ends in the app's own deadline, so it can only ever see the FAILURE
+		 * settle, where the store's sentence replaces the line. These two hold INSIDE
+		 * the budget, so the message is delivered - and the line must go with it,
+		 * because it is a claim about a send that is no longer out.
+		 */
+		if (
+			arm.custom === "press-during-flight-settles" ||
+			arm.custom === "press-twice-no-stall"
+		) {
+			for (let attempt = 0; attempt < 40; attempt++) {
+				if (/-> 200 admitted/.test(readFileSync(logPath, "utf8"))) break;
+				await sleep(1000);
+			}
+			await sleep(6000);
+			const settled = await evaluate(PROBE);
+			await shoot("after-flight-settled");
+			process.stdout.write(
+				`  ${arm.name} settled: ${JSON.stringify({ userRows: settled.transcriptUserRows, box: (settled.boxValue ?? "").slice(0, 60), alert: (settled.alertProse ?? "").slice(0, 160) })}\n`,
+			);
+			if ((settled.alertProse ?? "").includes("still sending"))
+				throw new Error(
+					`${arm.name}: "Your last message is still sending." is still on screen after the message was delivered (${JSON.stringify(settled.alertProse)}) - the screen claims a send that has already landed`,
+				);
+			if (settled.transcriptUserRows !== 1)
+				throw new Error(
+					`${arm.name}: the transcript holds ${settled.transcriptUserRows} user rows for one delivered message`,
+				);
+			/*
+			 * AND THE FOLLOW-UP IS ITS OWN ROW (UX's U16: `g03a quick follow-upg03b
+			 * first` was ONE glued row). The box was cleared only so the rig's own settle
+			 * detector could see the flight land, so the line goes back in and pressing
+			 * Send must land a second row carrying it alone.
+			 */
+			if (arm.custom === "press-twice-no-stall") {
+				await evaluate(`(() => {
+						const area = document.querySelector('textarea[aria-label="Message"]');
+						const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
+						setter.call(area, ${JSON.stringify(FOLLOW_UP)});
+						area.dispatchEvent(new Event("input", { bubbles: true }));
+						return area.value;
+					})()`);
+				await sleep(600);
+				await evaluate(`(() => {
+					const send = document.querySelector('button[aria-label="Send message"]');
+					if (!send) throw new Error("no send control");
+					send.click();
+					return true;
+				})()`);
+				await sleep(3000);
+				const after = await evaluate(PROBE);
+				await shoot("after-next-send");
+				process.stdout.write(
+					`  ${arm.name} after next send: ${JSON.stringify({ rows: after.transcriptRowTexts, userRows: after.transcriptUserRows, box: after.boxValue })}\n`,
+				);
+				if (after.transcriptUserRows !== 2)
+					throw new Error(
+						`${arm.name}: the follow-up did not become its own row (${after.transcriptUserRows} user rows: ${JSON.stringify(after.transcriptRowTexts)})`,
+					);
+				for (const row of after.transcriptRowTexts ?? [])
+					if (
+						row.includes(FOLLOW_UP.slice(0, 24)) &&
+						/Please re-run the failing case/.test(row)
+					)
+						throw new Error(
+							`${arm.name}: one row carries BOTH messages - the glued row UX measured (${JSON.stringify(row)})`,
+						);
+			}
+		}
+		/*
+		 * AND THE BOX GOES BACK EMPTY, because the rig's own settle detector reads the
+		 * composer: a flight that succeeds empties it under the echo and this phase has
+		 * just put the user's next line in it. Nothing is lost - the line is typed where
+		 * it is the arm's subject - and without this the detector waits for a state this
+		 * arm has already changed.
+		 */
+		await evaluate(`(() => {
+				const area = document.querySelector('textarea[aria-label="Message"]');
+				const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
+				setter.call(area, "");
+				area.dispatchEvent(new Event("input", { bubbles: true }));
+				return area.value;
+			})()`);
 		// POLLED as well, on the two shapes a send can settle into: a refusal's alert,
 		// or the composer emptying under a painted echo. A fixed wait photographs
 		// whichever of them the host happened to reach first.
