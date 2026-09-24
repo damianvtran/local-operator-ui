@@ -455,9 +455,14 @@ and 225 in the scrolled story, and `0` after the composer's own box is narrowed
 
 ## The pending send: six states, three at the full width and three at the compact rung
 
-Three states of ONE press - `pending-send`, `pending-send-payload`,
-`pending-send-chip-row` - each also captured at this set's compact rung
-(`-small-view`, a 440px column), added with the fix for the operator's report of
+Three states of one SEND, taken at three different moments - and only two of them
+are a press by this composer. `pending-send-chip-row` is a file staged with
+nothing in flight; `pending-send-payload` is the press BEFORE the echo, so the
+payload is still in the box; `pending-send` is the INHERITED send the New-chat
+flip leaves behind - a live row for the conversation, no press of this composer's
+own, and no chip, because the echo has already carried the payload into the
+transcript. Each is also captured at this set's compact rung (`-small-view`, a
+440px column). They were added with the fix for the operator's report of
 2026-09-23: on pressing Send there is a window - the image encode plus the create
 hop - in which the transcript already shows the user's message with its
 attachment while the composer has cleared its text and still shows the chip for
@@ -469,9 +474,11 @@ The cause was two triggers for one payload: the words left at the echo
 SETTLED. Both now leave in ONE call (`use-message-input`'s `clearOnce`, which
 calls `clearStagedPayload`), each entry removed by IDENTITY so a file attached
 during that window survives it, and the composer says the message is still going
-out while the send has not settled (`sendingUnsettled` - the pane's own window,
-OR'd with this composer's `sendInFlight`) as the new placeholder
-`Sending your message`.
+out while the send has not settled, as the new placeholder `Sending your
+message`. The fact behind it is the STORE's own row for the conversation
+(`sendUnsettledForSession` over `draftRowForSession`: `pending` +
+`admissionAttempted`), read by the composer itself and OR'd with its own
+`sendInFlight` - see round 2's section below for why it is not a prop.
 
 ### Round 1's remediation: what the reviews changed in these frames
 
@@ -495,7 +502,8 @@ themselves, so both are corrected here rather than argued with:
   closed for the whole window, so those frames were one beat early - payload at
   the press, chrome from before it. The harness now passes the live props for
   every state: `isLoading` on the two in-flight ones, `awaitingReply` on
-  `pending-send`, `sendingUnsettled` on both.
+  `pending-send` (staged in the canonical store's row, which is where the
+  composer reads it - the prop this list used to name does not exist).
 - **The compact rung had no frame** (design round 1, D3), though this set carries
   one for its neighbours (`credential-masked-small-view`, the pill pair) - and
   round 1's R6 discussion was exactly the case where a frame, not arithmetic,
@@ -507,22 +515,73 @@ themselves, so both are corrected here rather than argued with:
   re-taken on this tree in the same pass, so every frame in this section is one
   generation.
 
+### Round 2's remediation: the source of the sentence, and the frames it changed
+
+Round 2 (`### Agent review — round 2`, R2-1) found the round-1 wiring did not
+survive the flip: the sentence was fed from `chat-page.tsx`'s `admitting`, a
+`useState` declared inside the panel the identity flip REPLACES, so the panel that
+replaced it reported false for the whole send and the box fell through to
+`Waiting for the agent` - the sentence unreachable in the window it names. The
+source is now the STORE's row for the conversation
+(`sendUnsettledForSession` over `draftRowForSession`), read by the composer
+itself; the `sendingUnsettled` prop is gone, which is why this README no longer
+names it.
+
+Two consequences for this section's frames, both of them corrections rather than
+additions:
+
+- **`pending-send` is no longer a press.** It is the INHERITED send: a live row
+  for the conversation with no press of this composer's own. That is the flip
+  arm's state, and it is the only state that can tell the two sources apart - with
+  a press of its own the composer is covered by `sendInFlight` either way, which
+  is exactly how the first revision's frame came to assert a state the live app
+  is never in. The play asserts the sentence on that mount, with nothing typed.
+- **`pending-send-payload` and `pending-send-chip-row` keep their chips**, because
+  they still hold the payload; only the inherited-send state has lost it to the
+  echo. The harness now stages the store row per state (`none` / `pre-seam` /
+  `in-flight`) instead of passing a prop, so a story renders the state the app
+  would be in rather than one the harness posed.
+
+### Round 3's remediation: the set's palettes, measured
+
+Round 3 (`### Design review — round 3`, D1c) measured the set against each
+theme's own ground with `sharp` and found 37 frames on an older generation: the
+ten composer-line directories re-shot in seven palettes were still pre-lift in
+`localOperatorLight` (`#F6F1E7` against the shipped `#F2EDE3`) and `sage`, and the
+seventeen `credential-*` directories painted tokyoNight at `#1E1F28` against the
+shipped `#292A35` - a 13-unit difference, the largest in the set. All 37 were
+re-shot in one narrowed run, and the frames that were flagged a second time are
+byte-identical to the fresh capture: the remaining spread in `obsidian`, `monokai`
+and `neon` is four units and belongs to the stories, not to a generation (a
+re-shoot that changes no bytes is the proof, and it is the measurement this
+section records rather than a claim that the set is uniform).
+
 THE ARM THESE FRAMES MODEL (design round 1, D5): the EXISTING-SESSION arm - one
 composer with a stable `conversationId`, which is the only arm a story can hold
 still. The New-chat identity flip REPLACES the panel mid-wait (`panelIdentityFor`
-moves the mount key from `draft:<uuid>` to the session id), so no story can
-photograph the composer that inherits the send; what covers that arm is where the
-sentence comes FROM - the pane's own unsettled window rather than the sending
-composer's `useState` - and `canonical-chat.test.mjs` pins that wiring.
+moves the mount key from `draft:<uuid>` to the session id). What makes that arm
+safe is not the arm but the SOURCE: the sentence is derived from the store's row
+for the conversation, which every mount reads, rather than from any state of the
+composer or the pane being replaced. `pending-send` is the frame of that state
+(a live row, no press), its play asserts the sentence on a mount that made no
+press, and `canonical-chat.test.mjs` drives the row's whole lifecycle on the real
+store. Round 2's R2-1 is the difference: the round-1 wiring fed the sentence from
+the pane's `useState`, which the flip resets.
 
 The frames were produced by the repository's own rig:
 
 ```
 pnpm storybook --port 6123 --no-open
+# The six states this section owns, plus the neighbours they are read against.
 node scripts/capture-evidence.mjs http://127.0.0.1:6123 \
-  --dirs=idle,awaiting-reply,pending-send,pending-send-payload,pending-send-chip-row,pending-send-small-view,pending-send-payload-small-view,pending-send-chip-row-small-view \
-  --allow-backend --theme-settle-ms=120000
+  --dirs=pending-send,pending-send-payload,pending-send-chip-row,pending-send-small-view,pending-send-payload-small-view,pending-send-chip-row-small-view,idle,awaiting-reply,stop-control-while-streaming \
+  --allow-backend --theme-settle-ms=2000
 ```
+
+`--dirs` with `--themes` narrows a run to those palettes in those directories and
+APPENDS, which is how the later rounds' re-shoots were done: round 2's pass over
+seven palettes in nineteen directories, and round 3's over the four stale
+families it measured (below).
 
 `--theme-settle-ms` is not optional on this box: at the load these passes ran
 under (110-140), the first cold `iframe.html` load does not finish the module
