@@ -605,7 +605,26 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * the acts on EVERY row whenever the pointer was anywhere in the sidebar.
 	 */
 	return (
-		<div className="group/sidebar flex h-full min-h-0 flex-col overflow-x-hidden bg-surface">
+		/*
+		 * `overflow-hidden`, NOT `overflow-x-hidden`, and the difference is a
+		 * scrollbar the operator caught in a screenshot: setting ONE axis of
+		 * `overflow` turns the other axis from `visible` into `auto` (CSS 2.1
+		 * §11.1.1), so `overflow-x-hidden` alone made THIS div a vertical scroller -
+		 * a third scrollbar on the column, wrapping the two the sections below the
+		 * boundary carry, with a wheel event having no unambiguous target and the
+		 * brand row, `New chat` and the destinations able to be scrolled away from
+		 * under the pointer. The column never scrolls: the two panes below the
+		 * boundary each scroll themselves, and anything that would not fit here is
+		 * clipped rather than scrolled.
+		 *
+		 * `data-sidebar-shell` is the handle the driver's `sidebar-sections` scene
+		 * measures this contract on (`scrollHeight === clientHeight`, and a wheel
+		 * over either pane leaving the chrome where it was).
+		 */
+		<div
+			data-sidebar-shell=""
+			className="group/sidebar flex h-full min-h-0 flex-col overflow-hidden bg-surface"
+		>
 			{/*
 			 * The brand row, 40px, square with the top row beside it.
 			 *
