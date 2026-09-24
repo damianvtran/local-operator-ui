@@ -1104,7 +1104,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							mcpServers={mcpServers}
 							listOnScreen={listOnScreen}
 							readerChildId={readerChildId}
-							onOpenBrowser={() => setBrowserPaneOpen(true)}
+							/* THE ONE PLACE A USER'S BROWSER TOGGLE IS DECLARED, the same shape as the
+							   console's below: the header owns the badge and the button, the pane's slot
+							   is the window's, and this is the one field both answer from. */
+							onToggleBrowser={() => setBrowserPaneOpen(!isBrowserPaneOpen)}
 							browserAttentionCount={browserAttentionCount}
 							archiveEnabled={archiveEnabled}
 							archived={archived}

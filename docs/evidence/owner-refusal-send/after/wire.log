@@ -1,0 +1,13 @@
+retiring:
+2026-09-23T22:20:47.673Z POST /v1/desktop/sessions/abc123def456/messages attempt=1 request_id=7a4657c5-a09f-401d-80ce-429877fa9bc3 -> 409 runtime_retiring (string detail, no code)
+busy-exhausted:
+2026-09-23T22:20:57.440Z POST /v1/desktop/sessions/abc123def456/messages attempt=1 request_id=7a4657c5-a09f-401d-80ce-429877fa9bc3 -> 503 runtime_busy
+2026-09-23T22:20:59.454Z POST /v1/desktop/sessions/abc123def456/messages attempt=2 request_id=7a4657c5-a09f-401d-80ce-429877fa9bc3 -> 503 runtime_busy
+2026-09-23T22:21:01.461Z POST /v1/desktop/sessions/abc123def456/messages attempt=3 request_id=7a4657c5-a09f-401d-80ce-429877fa9bc3 -> 503 runtime_busy
+2026-09-23T22:21:03.475Z POST /v1/desktop/sessions/abc123def456/messages attempt=4 request_id=7a4657c5-a09f-401d-80ce-429877fa9bc3 -> 503 runtime_busy
+2026-09-23T22:21:05.380Z POST /v1/desktop/sessions/abc123def456/messages attempt=5 request_id=7a4657c5-a09f-401d-80ce-429877fa9bc3 -> 200 admitted
+busy-internal:
+2026-09-23T22:21:12.313Z POST /v1/desktop/sessions/abc123def456/messages attempt=1 request_id=9ca6641b-6248-4808-a1ca-e0a9c25953e8 -> 503 runtime_busy
+2026-09-23T22:21:14.325Z POST /v1/desktop/sessions/abc123def456/messages attempt=2 request_id=9ca6641b-6248-4808-a1ca-e0a9c25953e8 -> 503 runtime_busy
+unreachable:
+2026-09-23T22:21:20.575Z POST /v1/desktop/sessions/abc123def456/messages attempt=1 request_id=9ca6641b-6248-4808-a1ca-e0a9c25953e8 -> 503 runtime_unreachable

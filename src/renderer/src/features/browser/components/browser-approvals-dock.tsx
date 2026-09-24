@@ -309,11 +309,7 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 									>
 										{/* The ordinal the tray's chip and the tab's `Waiting n` chip
 										    both carry (§5.2) — the same number, from the same model. */}
-										<Badge
-											variant="attention"
-											shape="pill"
-											className="h-4 min-w-4 justify-center px-1 tabular-nums"
-										>
+										<Badge variant="attention" shape="pill" size="count">
 											{row.ordinal}
 										</Badge>
 										{/* THE AUTHORITY KEEPS ITS WIDTH and the requester takes what is left

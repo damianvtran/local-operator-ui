@@ -3038,6 +3038,191 @@ test("a genuinely issued admission still latches, because its outcome is unknown
 	);
 });
 
+test("the owner's own refusals are not held either, because neither admitted anything", async () => {
+	// The incident this closes. A send into a session whose owner would not
+	// serve it answered 503 `runtime_busy` (the owner occupied) or 409
+	// `runtime_retiring` (its runtime is leaving), and BOTH were classified
+	// unknowable: the echo stayed, the composer said whether the message reached
+	// the agent "is not knowable", and it offered Restore/Discard over a message
+	// the backend had already said it never took. Neither code was in
+	// `isRefusedBeforeAdmission`, so a refusal that states non-admission in its
+	// own sentence produced the app's most cautious claim.
+	//
+	// Each arm is driven through the shipped store, and the assertion that
+	// matters is the pair the composer reads: the latch (which gates `heldText`,
+	// so it decides whether the text can go back in the box) and the record's own
+	// verdict (`refusedBeforeAdmissionText`), plus the echo.
+	const arms = [
+		{
+			status: 409,
+			code: "runtime_retiring",
+			message:
+				"This session is switching to a newer build; the one it loaded is gone from disk. The message was not admitted - send it again once the new build is up.",
+			withholdsHint: true,
+		},
+		{
+			status: 503,
+			code: "runtime_busy",
+			// A real body carries both, and the wait is honoured below rather than
+			// assumed: the policy is the backend's, the loop is ours.
+			retryAfterMs: 1,
+			message:
+				"This session's owner is busy with another request. Retry in a moment.",
+			withholdsHint: false,
+		},
+	];
+
+	for (const arm of arms) {
+		reset();
+		let refuse = true;
+		globalThis.__canonicalRequest = async (request) => {
+			calls.push(request);
+			if (request.op === "sessions.create")
+				return { session_id: "222222222222", binding: null };
+			if (refuse)
+				throw new DesktopControlError(
+					arm.status,
+					arm.message,
+					undefined,
+					arm.code,
+					arm.retryAfterMs,
+				);
+			return { status: "admitted" };
+		};
+		const key = store
+			.getState()
+			.stageDraft({ kind: "agent", name: "reviewer" });
+		const requestId = store.getState().drafts[key].admissionRequestId;
+		await assert.rejects(admitChatDraft(key, input));
+
+		const draft = store.getState().drafts[key];
+		assert.equal(
+			draft.admissionAttempted,
+			false,
+			`${arm.code} is raised before admission, so it must not pin the payload`,
+		);
+		assert.equal(
+			draft.heldClaimCode,
+			undefined,
+			"nothing is held on this arm, so no claim may be left describing one",
+		);
+		assert.equal(
+			refusedBeforeAdmissionText(draft),
+			input.text,
+			"the text is the composer's again, which is what the alert's own box copy promises",
+		);
+		const retracted = echoes.filter((e) => e.kind === "retract");
+		assert.equal(
+			retracted.length,
+			1,
+			"the echo must go with the latch: a retraction is the same predicate's other consumer",
+		);
+		assert.equal(retracted[0].id, requestId);
+		assert.equal(
+			withholdsRetryHint(arm.code),
+			arm.withholdsHint,
+			`${arm.code}: the hint is offered only where a press is the remedy`,
+		);
+
+		// The remedy, and the reason "nothing was admitted" is the right call: the
+		// same id and the same text go out once the owner will serve them.
+		refuse = false;
+		assert.equal(await admitChatDraft(key, input), "222222222222");
+		const sent = calls.filter((call) => call.op === "sessions.message");
+		assert.equal(
+			sent.at(-1).requestId,
+			requestId,
+			"a re-send that differs in identity could be delivered twice",
+		);
+		assert.equal(sent.at(-1).text, input.text);
+	}
+});
+
+test("an owner refusal whose code names no pre-admission fact is still unknowable", async () => {
+	// The boundary, and the half of the incident that must NOT change: a 503 whose
+	// code is the hop failure (`runtime_unreachable`) may have arrived and settled
+	// with only its ack lost, and a 409 with no code at all is the receipt
+	// conflict whose first attempt may well have been admitted. Both keep the echo
+	// and the held claim, because the app cannot state a fact it does not hold.
+	for (const arm of [
+		{ status: 503, code: "runtime_unreachable" },
+		{ status: 409, code: undefined },
+		{ status: 500, code: "store_unavailable" },
+	]) {
+		reset();
+		globalThis.__canonicalRequest = async (request) => {
+			calls.push(request);
+			if (request.op === "sessions.create")
+				return { session_id: "222222222222", binding: null };
+			throw new DesktopControlError(
+				arm.status,
+				"the session's owner could not be reached",
+				undefined,
+				arm.code,
+			);
+		};
+		const key = store
+			.getState()
+			.stageDraft({ kind: "agent", name: "reviewer" });
+		await assert.rejects(admitChatDraft(key, input));
+		assert.equal(
+			store.getState().drafts[key].admissionAttempted,
+			true,
+			`${arm.code ?? `a codeless ${arm.status}`} establishes nothing about admission`,
+		);
+		assert.equal(echoes.filter((e) => e.kind === "retract").length, 0);
+		assert.equal(
+			refusedBeforeAdmissionText(store.getState().drafts[key]),
+			undefined,
+		);
+	}
+});
+
+test("a busy owner is retried under the same identity before the composer ever sees it", async () => {
+	reset();
+	// The other half of "or is retried": `runtime_busy` is answered by repeating
+	// the SAME request (the backend's admission is at-most-once per id, and the
+	// receipt is keyed on a hash of the whole body), paced by the `retry_after_ms`
+	// the backend sent. This arm succeeds on the third attempt, which is the
+	// ordinary case and the one the operator should never see at all.
+	const waits = [110, 120];
+	let attempt = 0;
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return { session_id: "222222222222", binding: null };
+		if (attempt < waits.length)
+			throw new DesktopControlError(
+				503,
+				"This session's owner is busy with another request. Retry in a moment.",
+				undefined,
+				"runtime_busy",
+				waits[attempt++],
+			);
+		return { status: "admitted" };
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	const started = Date.now();
+	assert.equal(await admitChatDraft(key, input), "222222222222");
+	const sent = calls.filter((call) => call.op === "sessions.message");
+	assert.equal(
+		sent.length,
+		waits.length + 1,
+		"one attempt per refusal, then one that lands",
+	);
+	assert.equal(
+		new Set(sent.map((call) => call.requestId)).size,
+		1,
+		"every repeat carries the id the first attempt used",
+	);
+	assert.ok(
+		Date.now() - started >= waits.reduce((a, b) => a + b, 0) - 20,
+		"the backend's retry_after_ms is waited out rather than ignored",
+	);
+	// And nothing is left over on a send that landed: no claim, no refusal record.
+	assert.equal(store.getState().drafts[key], undefined);
+});
+
 test("the working-directory chip cannot unmount itself by committing an empty path", async () => {
 	// U1 / M1, the round-1 blocker: the chip was the ONLY writer of `state.cwd`
 	// once the full-width bar was deleted, and the composer mounted it behind
