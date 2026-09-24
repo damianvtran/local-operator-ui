@@ -152,6 +152,34 @@ const CHILD_STATE_WORD = {
 } as const satisfies Record<Exclude<ChildStatus, "unknown">, string>;
 
 /**
+ * The runtime's own stamp for a job cancelled BEFORE its runner was entered.
+ *
+ * `harness/jobs.py`'s `CANCELLED_BEFORE_START`, written by `cancel()` at
+ * `:1166-1167` when `started_at is None`, and it rides `result_text` — but it
+ * is NOT a result. It is a state word the manager stamps on the row so the one
+ * fact the cancellation destroys (that the child never ran, and so burned
+ * nothing) survives on every settled surface. The TUI spends it as the page
+ * title's state word rather than as an outcome body (`subagent_view.py:3371-3391`),
+ * and it matches the constant rather than sniffing the text, because `cancel`
+ * is its only writer.
+ *
+ * The desktop's slot for it is the row's own `stateWord`, the same field the
+ * TUI spends it in, and this model keeps that recognition in ONE place: the row
+ * carries it as its state word and does NOT carry it as `resultText`, which is
+ * what stops the reader's foot painting a status stamp under a result label.
+ * The alternative — leaving it in `resultText` and re-matching the constant in
+ * the reader — is two recognitions of one fact, free to disagree.
+ *
+ * EXPORTED because the fixtures and the reader's own test have to SPELL it: this
+ * renderer cannot import the runtime's constant the way the TUI does
+ * (`harness/jobs.CANCELLED_BEFORE_START`), so the literal lives here once and
+ * every desktop caller reads it from this module. A story that hand-wrote the
+ * sentence would be a second spelling free to drift from the one the model
+ * matches.
+ */
+export const CANCELLED_BEFORE_START = "cancelled before it started";
+
+/**
  * The rank the overflow slice evicts by (`subagent_panel._EVICTION_RANK:256-262`).
  *
  * Running and queued share the top rank — a child behind the capacity gate is
@@ -279,19 +307,42 @@ export type SubagentRow = {
 	 * `error_text`, the WHOLE thing, on a failed child.
 	 *
 	 * `errorLine` stays the ROSTER's field — a list row's summary is one line
-	 * (`§4.1`) — and this is the reader's, whose outcome block prints the
+	 * (`§4.1`) — and this is the reader's, whose failure block prints the
 	 * exception verbatim (`§5.1`). Two fields rather than one because the two
 	 * surfaces want different amounts of the same string, and a row that carried
 	 * only the full text would make the roster's shed rule a formatting decision
 	 * inside a list row.
+	 *
+	 * It is the ONE outcome the child's conversation does not also hold: the
+	 * runtime's wire bound for it exists precisely because `error_text` is
+	 * `str(exc)` from the parent's runner and is in no child transcript
+	 * (`frontend_state.py`'s comment on `JOB_ERROR_WIRE_CHARS`), so the reader
+	 * cannot prefer the page to it the way it now prefers the page to
+	 * `resultText`.
+	 *
+	 * CARRIED AS FAR AS THE WIRE CARRIES IT, which is the same 2_000 characters
+	 * `resultText` gets and not a larger allowance: the field is the wire's, and
+	 * its docstring's old word for the bound ("generous") described its
+	 * RATIONALE rather than its size. The reader prints what arrives and says so
+	 * when the value carries the wire's clip marker (`run-child-reader.tsx`),
+	 * because an exception is the only copy of why a child failed.
 	 */
 	errorText: string | null;
 	/**
-	 * `result_text`, whole, on a settled child.
+	 * `result_text`, as far as the wire carries it, on a settled child.
 	 *
-	 * The reader's outcome block renders this instead of reading the child's
-	 * transcript for it (`§5.1`): the roster row already carries the outcome, and
-	 * the TUI makes the same choice for the same reason.
+	 * AS FAR AS THE WIRE CARRIES IT, and that is the whole reason this field is
+	 * now a PREVIEW rather than the reader's answer: the runtime truncates it at
+	 * `JOB_RESULT_WIRE_CHARS = 2_000` (`frontend_state.py:143-164`, cut mid-word)
+	 * because both free-text fields live verbatim in the CHILD's own transcript,
+	 * which the reader pages in. The child's last durable row therefore states the
+	 * result the reader shows, and this field is read only for the states where no
+	 * conversation can be painted at all (`run-child-reader.tsx`).
+	 *
+	 * `null` for a child cancelled before its runner was entered, whose
+	 * `result_text` is the manager's own STATE stamp rather than an outcome: that
+	 * value is spent as this row's `stateWord` instead (see
+	 * `CANCELLED_BEFORE_START`), so no reader can paint it as a result.
 	 */
 	resultText: string | null;
 	/**
@@ -357,6 +408,11 @@ export type SubagentRow = {
 	 * fabricated rendering of machine text is a claim nobody can check — and it
 	 * is what makes `unknown` falsifiable in the panel instead of being a
 	 * second, vaguer vocabulary for the same fact.
+	 *
+	 * The parked cancel is the third case and it follows the same rule: the
+	 * runtime publishes `cancelled before it started` as that row's own stamp, so
+	 * the row says it rather than the fold's generic `cancelled`
+	 * (`CANCELLED_BEFORE_START`).
 	 */
 	stateWord: string;
 };
@@ -1143,6 +1199,15 @@ const deriveChild = (
 	const errorText = oneLine(firstLine(wireText(job.error_text)));
 	const fullErrorText = wireText(job.error_text).trim();
 	const fullResultText = wireText(job.result_text).trim();
+	/*
+	 * A parked cancel's stamp is a STATE, not a result (see the constant).
+	 * It is read off `result_text` here, moved to the state word below, and kept
+	 * OUT of `resultText`, so the reader cannot paint it as an outcome in any
+	 * state — the pane's own body line is where the missing conversation is
+	 * stated, and a second copy under a result label would be that fact twice
+	 * plus a shortening claim over a 27-character value the wire never clipped.
+	 */
+	const cancelledBeforeStart = fullResultText === CANCELLED_BEFORE_START;
 	const launchPrompts = toWireStringMap(job.launch_prompts);
 	const launchMessageId = wireText(job.launch_message_id);
 	const rawPrompt = wireText(job.prompt).trim();
@@ -1155,9 +1220,13 @@ const deriveChild = (
 		// The band's word for a state this model knows; the wire's own word for one
 		// it does not (`SubagentRow.stateWord`) — sanitised, and refused when the
 		// sanitised text is itself a state the fold recognises
-		// (`unrecognisedStateWord`).
-		stateWord:
-			status === "unknown"
+		// (`unrecognisedStateWord`). The parked cancel is the one exception, and it
+		// is ahead of both branches: the stamp IS the state word the runtime
+		// publishes for that state, so spending the fold's generic `cancelled`
+		// would say strictly less than the wire does (`CANCELLED_BEFORE_START`).
+		stateWord: cancelledBeforeStart
+			? CANCELLED_BEFORE_START
+			: status === "unknown"
 				? unrecognisedStateWord(rawStatus)
 				: CHILD_STATE_WORD[status],
 		elapsedLabel: clockLabel(clock, nowSeconds),
@@ -1174,13 +1243,13 @@ const deriveChild = (
 		// `§8`: the first line of `error_text` is a failure's one-line summary —
 		// the row is the summary, the child's page is the detail.
 		errorLine: status === "failed" && errorText ? errorText : null,
-		// The failure's WHOLE text and the settled run's whole result: the reader's
-		// outcome block prints either verbatim (`§5.1`), which is why these are not
-		// derived from `errorLine`. `error_text` is NOT gated on the folded status:
-		// a runtime whose word this renderer does not recognise still failed, and
-		// the reader must be able to show why.
+		// The failure's WHOLE text and the settled run's wire-clipped result: the
+		// reader prints either verbatim (`§5.1`), which is why these are not derived
+		// from `errorLine`. `error_text` is NOT gated on the folded status: a runtime
+		// whose word this renderer does not recognise still failed, and the reader
+		// must be able to show why.
 		errorText: fullErrorText || null,
-		resultText: fullResultText || null,
+		resultText: cancelledBeforeStart ? null : fullResultText || null,
 		childSessionId: wireText(job.session_id) || null,
 		parentJobId: wireText(job.parent_job_id) || null,
 		// Filled in by `deriveRunDetails`, which is the layer that can see the

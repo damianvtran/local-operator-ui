@@ -31,8 +31,46 @@
  * - `status` is a static `"live"`, `error` is `null`. The reader's own state is
  *   the absence lines below, not the stream's connection status.
  *
+ * **The result is the child's LAST MESSAGE, and this page paints it as nothing
+ * else.** The foot used to carry its own `Result` block built from
+ * `SubagentRow.resultText`, and that was wrong twice over. It is a LOSSY
+ * duplicate: the runtime clips the wire's `result_text` (`frontend_state.py`'s
+ * `JOB_RESULT_WIRE_CHARS = 2_000`, `:143-164`) while the child's own final
+ * assistant row holds the same text verbatim, so the roster copy could only ever
+ * be a prefix of the page's own last row. And it was unbounded, so a long result
+ * grew a `shrink-0` sibling until the conversation — the one `flex-1` child of
+ * an `overflow-hidden` column — was squeezed to no height at all, which is the
+ * defect this header records. The TUI, which is the surface § 5 ports, never
+ * painted one either: its child page keeps the settled `result_text` for exactly
+ * one fact, a job cancelled while parked (`subagent_view.py:1808-1812`), and a
+ * result reaches a reader there as the child's own last transcript row.
+ *
+ * Removing it also puts this page back inside `branding.md` § 7's hierarchy: the
+ * answer is prose at reading weight, and the foot holds quiet statements rather
+ * than a second card repeating the answer under the conversation that just made
+ * it.
+ *
+ * The clipped copy is NOT gone everywhere, because there is one case where it is
+ * the only copy left: a page this reader cannot open at all — a child with no
+ * `session_id`, `pending`, `gone`, or `ready` with nothing painted (a FAILED
+ * read lands on that last branch too, `use-child-transcript.ts`'s `error` and
+ * an empty `ready` being the same absence here). Those states keep a BOUNDED
+ * preview (`ResultPreview`), and the failure block stays unconditionally,
+ * because `error_text` is `str(exc)` from the parent's runner and is in no child
+ * transcript at all.
+ *
+ * **Both foot blocks say what the wire did to the value, and neither says more
+ * than that.** The wire clips a job's free text and MARKS the cut
+ * (`WIRE_CLIP_MARKER`), so the preview claims to be shortened only when the
+ * value carries that marker — the label drops to a plain `Result` when the value
+ * is the whole one — and the failure block states the bound when its own value
+ * was cut. Before this, the shortening line was printed for every state the
+ * predicate admits, including one where `result_text` is a 27-character STATE
+ * stamp rather than an outcome: see `CANCELLED_BEFORE_START`, which the model
+ * spends as the row's state word instead of as a result.
+ *
  * **The working line is the one live fact this reader DOES paint.** It is the
- * single exception to the paragraph above, and it is worth the exception because
+ * exception the foot rules above leave room for, and it is worth the exception because
  * it answers the only question a reader has while looking at a child's page that
  * is still moving: what is it doing? Without it the bottom of a live child's
  * conversation is indistinguishable from a finished one — the child's last block
@@ -166,41 +204,117 @@ export type RunChildReaderProps = {
 };
 
 /**
- * The outcome block's copy, from the roster row rather than the transcript
- * (`§5.1`): the row already carries the child's terminal text, and reading it
- * out of a paged window would be a second, weaker source for the same fact.
+ * The marker the runtime's wire clip leaves on a value it shortened.
+ *
+ * `frontend_state._bound_job_text_in_place` clips `result_text`, `prompt` and
+ * `error_text` to the tighter of the field's own bound (`JOB_RESULT_WIRE_CHARS`
+ * and `JOB_ERROR_WIRE_CHARS` are both 2_000) and this row's share of the frame's
+ * text budget, and it MARKS the cut: `value[:limit] + "…"`. A value that ends in
+ * the ellipsis was shortened; one that does not is the whole value the runtime
+ * recorded.
+ *
+ * Read off the VALUE rather than off its length, and that is the point: the
+ * share bound can be well under 2_000, so a short marked value is still a
+ * clipped one — `length >= 2_000` would call it whole. The marker is the wire's
+ * own disclosure, so the pane repeats the wire instead of guessing at it. The
+ * residual the marker cannot close is a value that genuinely ends in an
+ * ellipsis and was never clipped, which no renderer can tell from a clipped one
+ * without a companion flag on the wire.
  */
-const OutcomeBlock = ({ row }: { row: SubagentRow }) => {
-	if (row.errorText) {
-		return (
-			/*
-			 * MACHINE VOICE, verbatim, and never paraphrased: an exception's own
-			 * words are the only version of it a reader can act on, and a
-			 * summarised exception is a claim nobody can check (`run-detail-subagents.tsx`
-			 * makes the same argument for the roster's one-line summary).
-			 */
-			<pre
-				className={cn(
-					"mt-1 max-h-40 overflow-auto rounded-md border border-danger-border bg-danger-wash px-2 py-1.5 font-mono text-mono-sm whitespace-pre-wrap break-words text-ink",
-				)}
-			>
-				{row.errorText}
-			</pre>
-		);
-	}
-	if (row.resultText) {
-		return (
-			<p
-				className={cn(
-					"mt-1 rounded-md border border-hairline bg-surface px-2 py-1.5 text-body-sm whitespace-pre-wrap break-words text-ink",
-				)}
-			>
-				{row.resultText}
+const WIRE_CLIP_MARKER = "…";
+/** Whether the WIRE shortened this value — see `WIRE_CLIP_MARKER`. */
+const clippedByWire = (text: string): boolean =>
+	text.endsWith(WIRE_CLIP_MARKER);
+
+/**
+ * A failure's own words — the one outcome the child's conversation does NOT
+ * carry, and the reason this block outlived the result block beside it.
+ *
+ * `error_text` is `str(exc)` from the PARENT's runner, so no child transcript
+ * holds it (`frontend_state.py` keeps it at the same 2_000-character wire bound
+ * `result_text` gets, and for the opposite reason: the result has a second copy
+ * on the child's page, so clipping it is safe, while the exception has none). It
+ * is therefore UNGATED on the transcript state: a page this reader could not
+ * open at all is the case where the exception is most needed.
+ *
+ * MACHINE VOICE, verbatim, and never paraphrased: an exception's own words are
+ * the only version of it a reader can act on, and a summarised exception is a
+ * claim nobody can check (`run-detail-subagents.tsx` makes the same argument for
+ * the roster's one-line summary). Bounded (`max-h-40 overflow-auto`) because it
+ * is a sibling of the conversation rather than its content, and an unbounded
+ * sibling displaces the only `flex-1` child of this `overflow-hidden` column —
+ * the shape the result block was removed for.
+ *
+ * VERBATIM AS THE WIRE CARRIES IT, which is what the one line under the block
+ * states: the field is clipped at the wire like every other free-text field, so
+ * a value carrying `WIRE_CLIP_MARKER` says where the bound is rather than
+ * letting a cut exception read as the whole of one. The line is worth its space
+ * here and not on the preview, because this is the only copy of why a child
+ * failed — there is nothing a reader can go and read instead.
+ */
+const FailureText = ({ text }: { text: string }) => (
+	<>
+		<pre
+			className={cn(
+				"mt-1 max-h-40 overflow-auto rounded-md border border-danger-border bg-danger-wash px-2 py-1.5 font-mono text-mono-sm whitespace-pre-wrap break-words text-ink",
+			)}
+		>
+			{text}
+		</pre>
+		{clippedByWire(text) && (
+			<p className={cn("mt-1 text-meta text-ink-muted")}>
+				Shortened at the wire. The runtime records at most the first 2,000
+				characters of an error.
 			</p>
-		);
-	}
-	return null;
-};
+		)}
+	</>
+);
+
+/**
+ * The clipped result, for the states that have no conversation to read instead.
+ *
+ * This is the ONE survivor of the block the header docstring removes, and it is
+ * honest about what the wire did to the value it paints. `result_text` is
+ * truncated at the wire (`JOB_RESULT_WIRE_CHARS`, `frontend_state.py:143-164`,
+ * cut mid-word) and the cut is marked, so this block announces itself as a
+ * `Result preview` exactly when the value carries that marker and as a plain
+ * `Result` when it is the whole value. A block that called every one of them a
+ * "preview" would claim shortening over values the wire left whole — which is
+ * what it did, in one state, over a 27-character state stamp — and one that
+ * called them all "Result" would claim a child's whole answer from a prefix of
+ * it. Under the value sits the other half of the honesty: the conversation the
+ * full text is in is not on this page, which is why the block is here at all.
+ *
+ * BOUNDED like the failure block, and that is a requirement rather than a
+ * preference: every state that renders this one renders it INSTEAD of a
+ * conversation, so an unbounded preview would be the takeover the change
+ * removed, in the states with the least to look at. `max-h-40 overflow-auto`
+ * makes it scroll rather than push, and `text-body-sm` keeps it prose rather than
+ * machine voice — the clipping is the app's, not something the child said.
+ *
+ * The label and the line under it are both decided by `clippedByWire`, so a
+ * whole value is announced as the result rather than as a shortened copy of
+ * one: the wire's marker is the only evidence either claim has, and a state that
+ * reaches this block without it gets neither. The reason the block is here at
+ * all — the conversation it belongs to is not on this page — is stated either
+ * way, because that is a fact about the PANE and no clip can change it.
+ */
+const ResultPreview = ({ text }: { text: string }) => (
+	<div className={cn("mt-1 flex flex-col gap-1")}>
+		<p
+			className={cn(
+				"max-h-40 overflow-auto rounded-md border border-hairline bg-surface px-2 py-1.5 text-body-sm whitespace-pre-wrap break-words text-ink",
+			)}
+		>
+			{text}
+		</p>
+		<p className={cn("text-meta text-ink-muted")}>
+			{clippedByWire(text)
+				? "This is a shortened copy. This subagent's conversation is not available here."
+				: "This subagent's conversation is not available here."}
+		</p>
+	</div>
+);
 
 /**
  * The brief: the child's authored instruction, folded, with the hidden line
@@ -284,11 +398,20 @@ const BriefBlock = ({ row }: { row: SubagentRow }) => {
  * Quiet by construction — `text-meta`, `ink-muted`, no ground — because it is
  * not an alert and not a status; a `danger` or accented footer would put a
  * statement about the SURFACE above the agent's own output in § 7's hierarchy.
+ *
+ * It names the PAGE rather than the conversation, and that is the one word this
+ * sentence has ever needed care over: the foot is painted in every state,
+ * including the ones whose body says the conversation is gone, was never
+ * addressable, or has nothing painted yet (`previewsClippedResult`). Calling
+ * those "the subagent's conversation" told a reader twice that there was nothing
+ * to read and then named the missing thing as the thing on screen. "Page" is
+ * true in all of them — this pane — and it keeps § 5.6's job, which is about
+ * what the surface does NOT do rather than about what it holds.
  */
 const ReadOnlyFooter = () => (
 	<div className={cn("shrink-0 border-hairline border-t px-3 py-2")}>
 		<p className={cn("text-meta text-ink-muted")}>
-			Read-only — this is the subagent's conversation, not a way to steer it.
+			Read-only — this is the subagent's page, not a way to steer it.
 		</p>
 	</div>
 );
@@ -420,21 +543,81 @@ export const RunChildReader = ({
 	 * paging keys dead until the user pressed Tab.
 	 *
 	 * The root carries the focus for the states with no transcript (`loading`,
-	 * `pending`, `gone`, `error`, and an unaddressed child), because the way out
-	 * of a reader that has nothing to paint is the same way out as any other
+	 * `pending`, `gone`, an `error` that painted nothing, and an unaddressed child),
+	 * because the way out of a
+	 * reader that has nothing to paint is the same way out as any other
 	 * (`Escape`/Back), and it hands the focus to the transcript — the element that
-	 * actually pages — the moment one mounts. The effect re-runs when `hasTranscript`
-	 * flips, so a page that arrives late still takes focus **if the reader still has
-	 * it**, and never otherwise: a reader whose operator has moved on to the composer
+	 * actually pages — the moment one mounts. The effect re-runs when
+	 * `bodyPaintsConversation` flips, so a page that arrives late still takes focus
+	 * **if the reader still has it**,
+	 * and never otherwise: a reader whose operator has moved on to the composer
 	 * leaves their caret alone (round 3, R3-4). It does not re-run on a pulse or a
 	 * refetch that leaves the state alone.
 	 */
-	const hasTranscript = state === "ready" && painted.records.length > 0;
+	/*
+	 * Whether the BODY below paints the child's CONVERSATION.
+	 *
+	 * This is the body's own branch condition and not a second opinion about it:
+	 * the chain in the markup takes its first four branches on `childSessionId`,
+	 * `pending`, `gone` and `loading`, and the branch that renders the transcript
+	 * is guarded by THIS boolean, so which states have a conversation is a fact
+	 * stated once. The foot's own predicate below is derived from it for the same
+	 * reason.
+	 *
+	 * `error` is the FIFTH member of `ChildTranscriptState` and it is not spelled
+	 * out here because it does not need a branch of its own: the hook KEEPS the
+	 * rows it already had when a read fails rather than blanking the body it has
+	 * (`use-child-transcript.ts`), so a failed read that already painted a page has
+	 * a conversation like any other state's, and one that read nothing falls through
+	 * to the final `QuietLine` below and paints "no conversation on record yet".
+	 * The earlier spelling of this expression (`state === "ready" &&
+	 * painted.records.length > 0`) read the first of those two as having no
+	 * conversation, and the foot then painted a second, clipped copy of the last
+	 * message under the conversation that had just made it — `previewsClippedResult`
+	 * disagreeing with the body it is defined against (round 2, C8).
+	 *
+	 * The focus effect's own dependency below reads it too, for the same reason: the
+	 * transcript element exists in exactly the states that paint one. It is declared
+	 * before that effect rather than beside it because the effect's docstring above
+	 * describes the FOCUS rule, and this is the one condition that rule is about.
+	 */
+	const bodyPaintsConversation =
+		Boolean(row.childSessionId) &&
+		state !== "pending" &&
+		state !== "gone" &&
+		state !== "loading" &&
+		painted.records.length > 0;
+	/*
+	 * Whether the foot may paint the clipped preview at all: i.e. whether the
+	 * BODY above has no conversation to paint instead.
+	 *
+	 * The states that render a `QuietLine` rather than the transcript are named by
+	 * `bodyPaintsConversation` — the same expression the markup below branches on,
+	 * read here rather than restated — so the two cannot disagree about which states
+	 * those are. That is what the earlier spelling got wrong: it agreed with the body
+	 * in every state except `error` with rows retained, where the body paints the
+	 * conversation and the foot said there was none to paint (round 2, C8).
+	 *
+	 * `!row.childSessionId` is stated on its own because that absence is permanent
+	 * rather than a page in flight: a row the wire never gave a session id cannot
+	 * be waited out, and the `loading` the hook reports for it is not the flicker
+	 * the exception below is about.
+	 *
+	 * `loading` is deliberately NOT one of the states that preview, although
+	 * `bodyPaintsConversation` is false there: a page in flight is a conversation
+	 * that is expected momentarily, and a preview that appeared and then vanished
+	 * under itself would be a flicker around the foot of a pane that is already
+	 * about to fill in. `pending` and `loading` are the pair the distinction is
+	 * for, and they are one predicate apart.
+	 */
+	const previewsClippedResult =
+		!row.childSessionId || (!bodyPaintsConversation && state !== "loading");
 	useEffect(() => {
 		/*
 		 * Which element holds focus for THIS state: the transcript when one is painted,
-		 * the reader's root otherwise. `hasTranscript` is a dependency rather than only
-		 * a body read because a page ARRIVING is the transition this effect is about.
+		 * the reader's root otherwise. `bodyPaintsConversation` is a dependency rather
+		 * than only a body read because a page ARRIVING is the transition this effect
+		 * is about.
 		 *
 		 * The move happens only while the reader still holds the focus it took, which
 		 * is what makes it idempotent per open AND harmless when a page arrives late
@@ -443,10 +626,12 @@ export const RunChildReader = ({
 		 * on `<body>`) — those are the cases where the focus is the reader's to move.
 		 * Anything else means the operator has put it somewhere since, and the common
 		 * case is the composer: the previous, unconditional version fired on every
-		 * `hasTranscript` transition, so a slow child's first rows pulled the caret
-		 * out of a half-typed message.
+		 * `bodyPaintsConversation` transition, so a slow child's first rows pulled the
+		 * caret out of a half-typed message.
 		 */
-		const target = hasTranscript ? containerRef.current : readerRef.current;
+		const target = bodyPaintsConversation
+			? containerRef.current
+			: readerRef.current;
 		if (!target) return;
 		const active = document.activeElement;
 		const mine =
@@ -456,7 +641,7 @@ export const RunChildReader = ({
 			active === containerRef.current;
 		if (!mine || active === target) return;
 		target.focus();
-	}, [hasTranscript]);
+	}, [bodyPaintsConversation]);
 
 	// An unopenable child hands the pane back to the roster, once.
 	const reported = useRef(false);
@@ -615,16 +800,7 @@ export const RunChildReader = ({
 					</QuietLine>
 				) : state === "loading" ? (
 					<QuietLine>Loading this subagent's conversation…</QuietLine>
-				) : painted.records.length === 0 ? (
-					/*
-					 * `ready` with no rows: the file exists and holds nothing this
-					 * renderer paints. One line, no skeleton — a state a reader can
-					 * read rather than an animation they have to wait out.
-					 */
-					<QuietLine>
-						This subagent has no conversation on record yet.
-					</QuietLine>
-				) : (
+				) : bodyPaintsConversation ? (
 					<CanonicalTranscript
 						frontend={null}
 						transcript={painted}
@@ -669,13 +845,13 @@ export const RunChildReader = ({
 						status="live"
 						failure={null}
 						/*
-						 * The reader's question, answered by this reader's own state: the
-						 * branch that renders this transcript is the `ready` one (the
-						 * empty states above are `QuietLine`s), so the child's page HAS
-						 * been read and nothing is still owed. The hold cannot fire here
-						 * anyway - it needs zero records and this branch is reached only
-						 * with rows - and `false` is what the reader's own state says
-						 * rather than a value chosen to keep the predicate quiet.
+						 * The reader's question, answered by this reader's own state: this
+						 * branch is reached only where `bodyPaintsConversation` holds, so the
+						 * child's page HAS been read and rows were painted (`ready`, or a
+						 * failed read that kept the rows it had) and nothing is still owed.
+						 * The hold cannot fire anyway — it needs zero records and this branch
+						 * is reached only with rows — and `false` is what the reader's own
+						 * state says rather than a value chosen to keep the predicate quiet.
 						 */
 						awaitingHydration={false}
 						/*
@@ -684,28 +860,52 @@ export const RunChildReader = ({
 						 * and `useChildTranscript` exposes no reconnect of its own. The
 						 * prop is required by `CanonicalTranscript` so the live chat
 						 * surface can never paint a notice without its action; this
-						 * reader paints no notice (`failure` is null and its own
-						 * unavailable states are rendered by the page's foot), so the
-						 * handler is unreachable rather than an inert control.
+						 * reader paints no notice at all (`failure` is null, and its
+						 * unavailable states are the body's own quiet lines rather than
+						 * a notice), so the handler is unreachable rather than an inert
+						 * control.
 						 */
 						onReconnect={() => {}}
 						attachmentScope={attachmentScope}
 					/>
+				) : (
+					/*
+					 * A page with no rows this renderer paints: the file exists and holds
+					 * nothing, or the read failed before it ever painted one. One line, no
+					 * skeleton — a state a reader can read rather than an animation they
+					 * have to wait out. This is the other half of `bodyPaintsConversation`,
+					 * the branch that decides whether the transcript is painted at all
+					 * (round 2, C8).
+					 */
+					<QuietLine>
+						This subagent has no conversation on record yet.
+					</QuietLine>
 				)}
 				{/*
-				 * The outcome, at the foot of the page, from the ROSTER ROW (§5.1) —
-				 * the TUI's roster-carries-the-outcome rule applied in the page. It
-				 * needs no new wire data and no read of the transcript's tail, and it
-				 * is where a reader looks for "how did this end" without scrolling a
-				 * conversation to its last row. It renders only once the child has
-				 * settled, which is why it cannot be the only thing in the foot slot.
+				 * The failure, at the foot and UNGATED on what the body painted: the
+				 * exception is the parent's, not the child's, so no transcript holds
+				 * it and there is nothing to prefer it to (`FailureText`).
 				 */}
-				{(row.errorText || row.resultText) && (
+				{row.errorText && (
+					<div className={cn("shrink-0 border-hairline border-t px-3 py-2")}>
+						<span className={cn("text-meta text-ink-muted")}>Failed</span>
+						<FailureText text={row.errorText} />
+					</div>
+				)}
+				{/*
+				 * The clipped result, and ONLY where the body painted no conversation
+				 * (`previewsClippedResult`) — otherwise the page's own last message IS
+				 * the result and this block would be a lossy second copy of it under
+				 * the conversation that just made it (the header docstring). The
+				 * failure wins the slot when both are on the wire, which is the
+				 * precedence the single outcome block had before this change.
+				 */}
+				{!row.errorText && previewsClippedResult && row.resultText && (
 					<div className={cn("shrink-0 border-hairline border-t px-3 py-2")}>
 						<span className={cn("text-meta text-ink-muted")}>
-							{row.errorText ? "Failed" : "Result"}
+							{clippedByWire(row.resultText) ? "Result preview" : "Result"}
 						</span>
-						<OutcomeBlock row={row} />
+						<ResultPreview text={row.resultText} />
 					</div>
 				)}
 			</div>
