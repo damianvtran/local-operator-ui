@@ -344,7 +344,7 @@ export function searchChats(
  * all), else the row's own state (`· Not sent yet` — a chat that never carried a
  * message), else WHO OPENED IT (`· agent-opened` — a workstream an agent opened),
  * else the binding. Whatever is not drawn stays reachable through the row's
- * `title`, the nested list, and the chat itself.
+ * flyout, the nested list, and the chat itself.
  *
  * WHY THE AGENT-OPENED FACT OUTRANKS THE BINDING, and why it sits below
  * `not_sent` rather than beside it. Both statements answer "who", so the more
