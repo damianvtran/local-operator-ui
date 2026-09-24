@@ -1750,6 +1750,80 @@ export function ChatSidebar({
 	const bindingName = (row: CanonicalSessionRow) =>
 		row.binding?.team || row.binding?.agent || "";
 	/*
+	 * Who opened a conversation, when an AGENT did rather than the operator.
+	 *
+	 * Read from the PRESENCE of `opened_by`, never from the members inside it: the
+	 * wire documents that a requesting side may be entirely unknown while the fact
+	 * that an agent opened the row is certain (`SessionOpenedBy` in
+	 * `desktop-session-contract.ts`), and the marker exists for exactly that fact —
+	 * on 2026-09-18 an agent-opened session sat in this list indistinguishable from
+	 * a chat the operator had opened himself.
+	 *
+	 * Three callers of one fact, and the SPLIT between them is the design round 1
+	 * remediation (D1, D2):
+	 *
+	 *   - `agentOpenedRow` is the presence test the rule takes, because presence is
+	 *     the fact (`SessionOpenedBy` may hold three nulls).
+	 *   - the ROW draws the constant `· agent-opened`, so the fact survives the
+	 *     panel's narrow widths intact and cannot grow with an agent name that
+	 *     accepts 64 characters.
+	 *   - `openedBySentence` names the agent, and feeds the two channels where a
+	 *     name costs no pixels: the row's flyout (`rowTooltip`) and the row's
+	 *     screen-reader name.
+	 *
+	 * WHY THE NAME LEFT THE PIXELS, and it is measured rather than preferred. At
+	 * the panel's default 280px the row is 263px wide, and the named form
+	 * (`· opened by coder`) occupied 117px of it — its whole 45% cap, which was the
+	 * binding slot's and was measured for a 45px string. That left the title 77px
+	 * of its 228px: the marker drew wider than the label beside it and the
+	 * conversation's own name, the thing the row exists to show, was a stub. The
+	 * NAME is the only variable part and the only part a constant can drop, so the
+	 * drawn form drops it.
+	 *
+	 * WHAT THAT TRADES AWAY, named rather than implied: the agent's name is no
+	 * longer in the row's pixels. It is one dwell away in the row's flyout, it is in the
+	 * accessible name, and in the panel's `Agents` section it is on the entity row
+	 * the conversation is filed under. The pixel channel keeps the half it is the
+	 * only channel for — "this is not one of your own chats", the whole of the
+	 * 2026-09-18 incident — and states it identically whether the backend named a
+	 * requester or knew none of the three members.
+	 *
+	 * The label is deliberately not drawn either: it is a conversation NAME
+	 * ("Harden lop secret against agent credential leaks"), it is arbitrarily long,
+	 * and the trailing slot is the one place on this row where a long string costs
+	 * the title its width.
+	 *
+	 * `.trim()` wherever a member is read, because an empty agent name is a name the
+	 * backend could not resolve rather than an identity: `opened by ` with nothing
+	 * after it would be the claim with its answer missing. The wire's `session` is
+	 * not rendered — an opaque id names nothing a reader of this row can act on —
+	 * and stays typed for whichever surface can use it.
+	 */
+	const agentOpenedRow = (row: CanonicalSessionRow) => row.opened_by != null;
+	const openedBySentence = (row: CanonicalSessionRow) => {
+		const agent = row.opened_by?.agent?.trim();
+		return `opened by ${agent || "an agent"}`;
+	};
+	const openedByNote = (row: CanonicalSessionRow) => {
+		if (!row.opened_by) return "";
+		const label = row.opened_by.label?.trim();
+		return `, ${openedBySentence(row)}${label ? ` in “${label}”` : ""}`;
+	};
+	/*
+	 * The binding clause, and the ONE case it is dropped: when the attribution in
+	 * the same sentence names the same agent, `… (coder): Recent, opened by coder in
+	 * “…”` reads as a stutter on exactly the row the marker was added for (review
+	 * round 1's n3, and the design round's NIT). Nothing is lost by dropping it —
+	 * the clause that follows still carries the name — so the flyout stays at least
+	 * as wide as the pixels, which is the property the row's own comment claims.
+	 */
+	const bindingClause = (row: CanonicalSessionRow) => {
+		const name = bindingName(row);
+		if (!name) return "";
+		if (row.opened_by?.agent?.trim() === name) return "";
+		return ` (${name})`;
+	};
+	/*
 	 * The two states the box can be in while it has no answer, and why they are
 	 * states rather than silence.
 	 *
@@ -1900,6 +1974,7 @@ export function ChatSidebar({
 			unstarted: unstarted.has(row.session_id),
 			nested,
 			binding: bindingName(row),
+			agentOpened: agentOpenedRow(row),
 		});
 		const pinned = row.pinned === true;
 		/** Where this row is being moved to right now, or undefined (S6). */
@@ -1992,6 +2067,14 @@ export function ChatSidebar({
 		 * the full title on its own line (untruncated and free to wrap inside the
 		 * primitive's `max-w-64`), the binding, then the row's status label and its tail
 		 * flags - `, not sent yet`, `, unread`, `, archived` - and the silent remedy.
+		 * An agent-opened row adds its attribution (`openedByNote`: `, opened by coder
+		 * in "…"`) to the status line; on a row whose trailing slot could not draw the
+		 * marker (the search mark, `· Not sent yet`) this is the only pointer channel
+		 * that states it, which keeps the flyout at least as wide as the row. The row
+		 * DRAWS only the constant `· agent-opened`, so this is where the requesting
+		 * agent's NAME and the requesting conversation's name live, and the binding
+		 * beside the title is dropped when the attribution names the same agent
+		 * (`bindingClause`, the stutter review round 1's n3 found).
 		 * The `sr-only` sentence the row already renders stays where it is: that is the
 		 * keyboard and screen-reader channel (the `aria-describedby` on the button) and
 		 * it does not move into a tooltip.
@@ -2005,7 +2088,7 @@ export function ChatSidebar({
 			<>
 				<span className="block">
 					{row.title || "Untitled chat"}
-					{bindingName(row) ? ` (${bindingName(row)})` : ""}
+					{bindingClause(row)}
 				</span>
 				<span className="block">
 					{row.status?.label ??
@@ -2013,6 +2096,7 @@ export function ChatSidebar({
 							? "found by search, beyond the chats listed here"
 							: "Recent")}
 					{silent ? ` · ${SILENT_REMEDY}` : ""}
+					{openedByNote(row)}
 					{unstarted.has(row.session_id) ? ", not sent yet" : ""}
 					{unreadMarkKind(row) !== null ? ", unread" : ""}
 					{archived ? ", archived" : ""}
@@ -2220,9 +2304,11 @@ export function ChatSidebar({
 			    rather than negotiated by the flex algorithm, no floor is needed
 			    because at most one statement can ever be drawn, and TWO elements
 			    truncate — the title, and the binding slot inside its own 45% cap,
-			    which is that cap doing the work a floor used to. The two literal
-			    statements below cannot truncate anything: they are fixed strings
-			    with no width to run out of. */}
+			    which is that cap doing the work a floor used to. The three literal
+			    statements below (`· agent-opened`, `· Not sent yet`, `· in
+			    conversation`) cannot truncate anything: they are fixed strings with
+			    no width to run out of, which is why the agent-opened marker was made
+			    one of them (design round 1, D1). */}
 				{/*
 				 * THE TITLE, and both of its boxes live in `chat-row-title.tsx`: the clip box
 				 * the row's flex layout sizes (`[data-session-title]`, the anchor the driver's
@@ -2240,6 +2326,39 @@ export function ChatSidebar({
 			    has something more important to say (the paragraph above) says that
 			    instead. The row's flyout carries the binding in every case, so the
 			    accessible description is never narrower than the pixels. */}
+				{trailing === "agent_opened" && (
+					/* WHO OPENED IT, drawn on the row an agent opened: the fact that the row is
+					   not one of the operator's own chats, which is the whole of the
+					   2026-09-18 incident (a parallel workstream sat here looking like a chat
+					   he had opened himself). It outranks the binding beside it — both answer
+					   "who", and this one is the more surprising; see `rowTrailingStatement`
+					   for why that ordering is the one a reader would pick, and for where that
+					   reasoning stops on a team-bound row.
+
+					   A LITERAL, and that is the design round 1 remediation (D1) rather than a
+					   simplification: the named form drew ~117px, the whole of a 45% cap the
+					   binding slot had measured for a 45px string, which took the title to
+					   77px of its 228px at the panel's default width. A constant form joins
+					   `· Not sent yet` and `· in conversation` in the row's family of fixed
+					   statements, which cannot truncate, cannot grow with an agent name that
+					   accepts 64 characters, and therefore say the same thing at the
+					   panel's 240px floor as at its 360px ceiling (`openedBySentence` carries
+					   the name on the two channels where it costs no pixels).
+
+					   The visible words are `aria-hidden` and the sentence is carried by the
+					   `sr-only` span after them — the arrangement the "· in conversation"
+					   mark beside it already uses — so a screen reader hears ", opened by
+					   coder" once, with the name, and never the separator (n1). */
+					<>
+						<span
+							aria-hidden="true"
+							className="ml-1 shrink-0 whitespace-nowrap text-meta text-ink-muted"
+						>
+							· agent-opened
+						</span>
+						<span className="sr-only">, {openedBySentence(row)}</span>
+					</>
+				)}
 				{trailing === "binding" && (
 					/* Bounded, unlike the two literals below. `bindingName` is a
 					   user-authored agent or team name and the agent-name field

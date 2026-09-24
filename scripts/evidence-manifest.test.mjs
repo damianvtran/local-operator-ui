@@ -781,24 +781,23 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  */
 const STAMP_BINDING_NOTES = [
 	/*
-	 * EVERY NOTE THAT USED TO BE LISTED HERE LEFT IT IN THE SAME PASS, and that is
-	 * not a deletion of the guard - it is the guard doing what it was written for.
-	 * `shellPathRestampNote`, `settingsGateRestampNote`, `candidateMacArchRestampNote`,
-	 * `notarizeGateRestampNote`, `usageInFlightConvergenceNote`,
-	 * `macNativeComponentsRestampNote`, `telemetrySwitchRestampNote` and
-	 * `readReceiptRestampNote` each quoted the pair the mesh-desktop pass then
-	 * superseded (`srcTree` 081a8032a3326712657086cd3b38f83a567b8ded /
-	 * `scriptsTree` 529f37986cd4a48e186f16d292cb0c8bf2aa74d2), so under this list's
-	 * own convention - a backticked token here is ALWAYS the value the file ships -
-	 * keeping them would have held a superseded pair to this file as if it were its
-	 * own: the exact defect the list exists to catch, in the direction it does not
-	 * usually fail. Their hashes are written as bare SHAs in the notes themselves,
-	 * which is the convention `usageAutoCheckRestampNote` and
-	 * `usageInFlightRemediationNote` left by first.
+	 * EVERY NOTE THAT USED TO BE LISTED HERE LEFT IT IN THE SAME PASS, and that is the
+	 * guard working rather than being removed. `shellPathRestampNote`,
+	 * `settingsGateRestampNote`, `candidateMacArchRestampNote`, `notarizeGateRestampNote`,
+	 * `usageInFlightConvergenceNote`, `macNativeComponentsRestampNote`,
+	 * `telemetrySwitchRestampNote` and `readReceiptRestampNote` each quoted the pair the
+	 * mesh-desktop pass superseded - srcTree 80c7170077ab5ddbbd80f4d62dd9c8bbf6eb079e /
+	 * scriptsTree d8d1fecf1ac90acbdbe4d398d2e2dc30b7a05f8a, which is what `origin/main`
+	 * shipped when this branch folded onto it - and under this list's own convention a
+	 * backticked token here is ALWAYS the value the file ships. Keeping them would have
+	 * held a superseded pair to this file as if it were its own: the defect the list
+	 * exists to catch, in the direction it does not usually fail. Their hashes are written
+	 * as bare SHAs in the notes themselves, which is the convention
+	 * `usageAutoCheckRestampNote` and `usageInFlightRemediationNote` left by first.
 	 */
-	// The ninth, and the one that re-derived the pair: it states this file's own
-	// trees for the mesh-desktop pass, so it is held to them rather than read as
-	// history - the distinction `candidateMacArchRestampNote` was listed for.
+	// The ninth, and the one that re-derived the pair: it states this file's own trees for
+	// the mesh-desktop pass, so it is held to them rather than read as history - the
+	// distinction `candidateMacArchRestampNote` was listed for.
 	"meshDesktopRestampNote",
 ];
 
@@ -1125,6 +1124,12 @@ const BRANCH_RECORDS = [
 	 * delta moved and that no frame in the sweep was re-taken.
 	 */
 	"meshDesktopRestampNote",
+	/*
+	 * Main's newest record, carried by the fold rather than inherited by accident: it
+	 * landed on `origin/main` after this branch was cut, and a resolver who took either
+	 * side wholesale would have dropped it or this pass's own.
+	 */
+	"agentOpenedRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
