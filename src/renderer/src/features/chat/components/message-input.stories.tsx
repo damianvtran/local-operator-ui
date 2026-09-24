@@ -1,5 +1,9 @@
-import type { SendOutcome } from "@shared/hooks/use-message-input";
+import {
+	COMPOSER_PLACEHOLDER,
+	type SendOutcome,
+} from "@shared/hooks/use-message-input";
 import { cn } from "@shared/lib/utils";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { screen, userEvent, within } from "@storybook/test";
@@ -342,7 +346,16 @@ export const AwaitingReply: Story = {
 	render: () => (
 		<Frame label="awaiting reply (a send is admitted, nothing painted yet)">
 			<MessageInput
-				isLoading={false}
+				/*
+				 * The LIVE value: a send is admitted and nothing is painted yet, which is
+				 * `admitting || starting` on the canonical path - `starting` is up for the
+				 * whole wait. Design round 2's D2b found this story and
+				 * `StopControlWhileStreaming` passing `false` where the pane passes
+				 * `true`, a chrome difference (a Send drawn enabled where the app draws
+				 * it closed) rather than a placeholder one, and the two conventions are
+				 * now one.
+				 */
+				isLoading={true}
 				messages={NONEMPTY}
 				conversationId="story"
 				awaitingReply={true}
@@ -567,7 +580,12 @@ export const StopControlWhileStreaming: Story = {
 		<Frame label="streaming, with session_interrupt negotiated: the control is offered">
 			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
 				<MessageInput
-					isLoading={false}
+					/*
+					 * `isLoading` is the pane's own `admitting || starting` - true for the
+					 * whole wait, which is what a streaming turn is - so this frame carries
+					 * it (design round 2, D2b).
+					 */
+					isLoading={true}
 					messages={NONEMPTY}
 					conversationId="story"
 					/*
@@ -1815,21 +1833,24 @@ export const CredentialMaskedSmallView: Story = {
  * entry removed by IDENTITY so a file attached during the window survives it,
  * and the composer says the send is going out for as long as it has not settled.
  *
- * THE PROPS ARE THE POINT. `MessageInput` has no DOM harness in this
- * repository, so a story is the instrument - which means the props have to be
- * the ones the live pane passes, or the frame is a state the app cannot be in.
- * From `chat-content.tsx`, the live values are
- * `isLoading = admitting || starting`, `awaitingReply` (the pane's working-line
- * claim, up from the moment the request is ISSUED) and `sendingUnsettled =
- * admitting` (up from the press, down in that send's `finally`). Each story
- * below states its own column of that table:
+ * THE STATE IS STAGED WHERE THE APP STAGES IT, and that is the second thing this
+ * section is about. The two props a story still passes are the two the pane
+ * passes: `isLoading = admitting || starting` and `awaitingReply` (the pane's
+ * working-line claim, up from the moment the request is ISSUED). Whether a send
+ * for this conversation is still going out is NOT passed at all - the composer
+ * reads that from the STORE's own row (`sendUnsettledForSession`), so the harness
+ * stages a draft row (`PendingSendRow`) and the play asserts the sentence the
+ * composer derives from it. Review round 2's R2-1 is why: round 1 handed this in
+ * as a prop fed by the panel the New-chat flip replaces, so on that arm it was
+ * false, and a story that passes a prop cannot show that. Each story below states
+ * its own column of the table:
  *
  *  - `PendingSendChipRow`: a file staged and nothing typed - the chip row's own
- *    geometry, which no committed frame of this surface held. Nothing is in
- *    flight: all four are false. Its play measures the row against the field and
- *    against every ancestor that could clip it.
- *  - `PendingSendPayload`: the press BEFORE the echo. `admitting` is true (the
- *    send is being issued), the store's rung is not written yet, so
+ *    geometry, which no committed frame of this surface held. No send is out, so
+ *    the row is `none`. Its play measures the row against the field and against
+ *    every ancestor that could clip it.
+ *  - `PendingSendPayload`: the press BEFORE the echo. The store has the request
+ *    PENDING but has not written `admissionAttempted` yet (`pre-seam`), so
  *    `awaitingReply` is false - and the Send control is DISABLED, which is the
  *    thing the first revision of this frame got wrong (design round 1, D2: it
  *    photographed the pre-press chrome, an enabled Send the app never shows).
@@ -1837,16 +1858,19 @@ export const CredentialMaskedSmallView: Story = {
  *    is the app's own value in this window, and omitting it is what made the
  *    sentence look reachable when the chain put it below that term (agent review
  *    round 1, MAJOR-1; QA Q-1 read `Waiting for the agent` from exactly this
- *    state). With `sendingUnsettled` true beside it, the box says the message is
- *    still on its way out.
+ *    state). The row is `in-flight`, so the composer says the message is still on
+ *    its way out - and its play asserts that string, which is what fails if the
+ *    read ever goes back to a prop or to per-panel state.
  *
  * THE ARM THESE FRAMES MODEL (design round 1, D5): the EXISTING-SESSION arm - one
  * composer with a stable `conversationId`, which is the only arm a story can
  * hold. The New-chat arm replaces the panel mid-wait (`panelIdentityFor` moves
  * the mount key from `draft:<uuid>` to the session id), so no story can
  * photograph the composer that inherits the send; what covers that arm is the
- * SOURCE of the flag - the pane's own unsettled window, not this composer's
- * `useState` - and `canonical-chat.test.mjs` pins the wiring that carries it.
+ * SOURCE of the flag - the STORE's row for the conversation, which every mount
+ * reads, rather than any `useState` of the panel being replaced (agent review
+ * round 2, R2-1, which is what round 1's `admitting` source got wrong) - and
+ * `canonical-chat.test.mjs` drives that arm on the real store.
  *
  * THE COMPACT RUNG IS CARRIED FOR ALL THREE (`-small-view`, a 440px column),
  * because this set carries it for its neighbours and round 1's R6 argument was
@@ -1862,8 +1886,13 @@ const PENDING_CHIP_NAME = "notes.md";
 /** The words the press types, before the echo takes them. */
 const PENDING_MESSAGE = "look at this screenshot";
 
-/** The composer's own sentence for a send that has not settled. */
-const PENDING_PLACEHOLDER = "Sending your message";
+/**
+ * The composer's own sentence for a send that has not settled, read from the
+ * rule itself rather than written a second time: a literal here would be a second
+ * source of truth for an exported string, and the play below asserts on it
+ * (agent review round 2, R2-5).
+ */
+const PENDING_PLACEHOLDER = COMPOSER_PLACEHOLDER.sending;
 
 /**
  * One composer with the chip row staged the way an attach stages it: through the
@@ -1871,37 +1900,85 @@ const PENDING_PLACEHOLDER = "Sending your message";
  * in an effect, because that store is what an attach writes and a prop could not
  * stage a row the component does not own.
  */
+/**
+ * WHICH SEND THE STORY IS IN, as the canonical store's own row.
+ *
+ * A story cannot pose this with a prop any more, and that is the point (agent
+ * review round 2, R2-1): the composer derives the fact from the store itself, so
+ * the harness stages it where the app stages it - a draft row for this
+ * conversation, `pending` from the press and `admissionAttempted` from the seam.
+ * "pre-seam" is the press before the store has recorded that the request was
+ * issued; "in-flight" is the window the new sentence is for; "none" is every
+ * state with no send out at all.
+ */
+type PendingSendRow = "none" | "pre-seam" | "in-flight";
+
+/** The conversation these states belong to, and the key its row travels under. */
+const PENDING_SESSION = "story";
+
 const PendingSendHarness = ({
 	label,
 	isSmallView = false,
 	isLoading = false,
 	awaitingReply = false,
-	sendingUnsettled = false,
+	row = "none",
+	stageChip = true,
 	onSendMessage,
 }: {
 	label: string;
 	isSmallView?: boolean;
 	isLoading?: boolean;
 	awaitingReply?: boolean;
-	sendingUnsettled?: boolean;
+	row?: PendingSendRow;
+	stageChip?: boolean;
 	onSendMessage?: React.ComponentProps<typeof MessageInput>["onSendMessage"];
 }) => {
 	useEffect(() => {
 		const store = useConversationInputStore.getState();
-		store.clearAttachments("story");
-		store.addAttachment("story", {
-			id: "pending-chip",
-			path: PENDING_CHIP_PATH,
+		store.clearAttachments(PENDING_SESSION);
+		/*
+		 * The chip is staged for the states that still HOLD the payload. The
+		 * inherited-send state does not: its echo has already landed, which is what
+		 * took the file out of the row and into the transcript, so staging one there
+		 * would be a payload the app cannot be showing.
+		 */
+		if (stageChip)
+			store.addAttachment(PENDING_SESSION, {
+				id: "pending-chip",
+				path: PENDING_CHIP_PATH,
+			});
+		/*
+		 * The send, staged in the CANONICAL store because that is where the composer
+		 * reads it. `send:<id>` is the shape a send inside an existing conversation
+		 * travels under (`draftIdentityFor`), and the row is cleared on unmount so one
+		 * story cannot leak a send into the next.
+		 */
+		useCanonicalSessionsStore.setState({
+			drafts:
+				row === "none"
+					? {}
+					: {
+							[`send:${PENDING_SESSION}`]: {
+								key: `send:${PENDING_SESSION}`,
+								createRequestId: "story-create",
+								admissionRequestId: "story-admit",
+								pending: true,
+								admissionAttempted: row === "in-flight",
+								submittedText: PENDING_MESSAGE,
+							},
+						},
 		});
+		return () => {
+			useCanonicalSessionsStore.setState({ drafts: {} });
+		};
 	}, []);
 	const composer = (
 		<MessageInput
 			isLoading={isLoading}
 			awaitingReply={awaitingReply}
-			sendingUnsettled={sendingUnsettled}
 			isSmallView={isSmallView || undefined}
 			messages={NONEMPTY}
-			conversationId="story"
+			conversationId={PENDING_SESSION}
 			onSendMessage={onSendMessage ?? (async () => true)}
 		/>
 	);
@@ -2014,19 +2091,23 @@ const pressAndHoldBeforeEcho = async (canvasElement: HTMLElement) => {
 };
 
 /**
- * The echo has landed: `onSendMessage` paints it exactly as `admitChatDraft`
- * does and then never settles, which holds the in-flight window open for the
- * shutter.
+ * THE INHERITED SEND: a composer with a live row for its conversation and NO press
+ * of its own.
  *
- * The assertions are the fix where it happens: the field is empty AND the chip
- * row is empty in the same breath, and the placeholder is the composer's own
- * sentence - which is only reachable because it now outranks `awaitingReply`,
- * a prop this story passes exactly as the pane does. A regression in that order
- * fails this play rather than photographing the wrong state.
+ * This is the state the New-chat flip leaves behind - the panel that painted the
+ * echo is gone and the one now mounted holds the same unsettled send - and it is
+ * the state the operator's screenshot shows. It is also the ONLY state that can
+ * tell the two sources apart: with a press of its own the composer is covered by
+ * `sendInFlight`, so a story that presses cannot see the difference, which is
+ * exactly how round 1's frames came to assert a state the app is never in
+ * (agent review round 1, MAJOR-1; round 2, R2-1).
+ *
+ * So the play presses NOTHING and asserts the sentence the composer derives from
+ * the store row alone. Revert the composer's read to a per-mount flag and this
+ * throws on `Waiting for the agent`; leave it store-derived and it passes.
  */
-const pressAndAssertEchoLanded = async (canvasElement: HTMLElement) => {
-	const box = await typeIntoComposer(canvasElement, PENDING_MESSAGE);
-	await userEvent.type(box, "{Enter}");
+const assertInheritedSend = async (canvasElement: HTMLElement) => {
+	const box = composerField(canvasElement);
 	await screen.findByPlaceholderText(PENDING_PLACEHOLDER);
 	if (composerValue(box).length > 0)
 		throw new Error("the echo did not take the message out of the field");
@@ -2068,7 +2149,7 @@ export const PendingSendPayload: Story = {
 	render: () => (
 		<PendingSendHarness
 			isLoading={true}
-			sendingUnsettled={true}
+			row="pre-seam"
 			label="pressed, echo not yet painted: the whole payload is still the composer's, and Send is closed because the pane is still issuing it"
 			onSendMessage={() => new Promise<SendOutcome>(() => {})}
 		/>
@@ -2086,7 +2167,7 @@ export const PendingSendPayloadSmallView: Story = {
 		<PendingSendHarness
 			isSmallView={true}
 			isLoading={true}
-			sendingUnsettled={true}
+			row="pre-seam"
 			label="compact rung: pressed, echo not yet painted, the payload still the composer's"
 			onSendMessage={() => new Promise<SendOutcome>(() => {})}
 		/>
@@ -2108,17 +2189,14 @@ export const PendingSend: Story = {
 		<PendingSendHarness
 			isLoading={true}
 			awaitingReply={true}
-			sendingUnsettled={true}
-			label="the echo has landed: the payload is gone from the composer, and the send is still going out"
-			onSendMessage={(_content, _attachments, onEchoPainted) => {
-				onEchoPainted?.();
-				return new Promise<SendOutcome>(() => {});
-			}}
+			row="in-flight"
+			stageChip={false}
+			label="an inherited send: the payload is gone from the composer, a live row is not this composer's press, and the send is still going out"
 		/>
 	),
 	play: async ({ canvasElement }) => {
 		if (!holdAndReset(canvasElement)) return;
-		await pressAndAssertEchoLanded(canvasElement);
+		await assertInheritedSend(canvasElement);
 		releaseShutter();
 	},
 };
@@ -2130,17 +2208,14 @@ export const PendingSendSmallView: Story = {
 			isSmallView={true}
 			isLoading={true}
 			awaitingReply={true}
-			sendingUnsettled={true}
-			label="compact rung: the echo has landed and the send is still going out"
-			onSendMessage={(_content, _attachments, onEchoPainted) => {
-				onEchoPainted?.();
-				return new Promise<SendOutcome>(() => {});
-			}}
+			row="in-flight"
+			stageChip={false}
+			label="compact rung: an inherited send - a live row, and no press of this composer's own"
 		/>
 	),
 	play: async ({ canvasElement }) => {
 		if (!holdAndReset(canvasElement)) return;
-		await pressAndAssertEchoLanded(canvasElement);
+		await assertInheritedSend(canvasElement);
 		releaseShutter();
 	},
 };
