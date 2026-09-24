@@ -23,6 +23,7 @@ const bundle = await build({
 			'export { catalogControlBody, sessionControlBody, catalogCwdFor, newestRosterRow, sessionCwdFromSnapshot, rememberCatalogCwd, rememberedCatalogCwd, CATALOG_CWD_STORAGE_KEY } from "./src/renderer/src/features/settings/components/integrations/use-integrations";' +
 			'export { signInProgress } from "./src/renderer/src/features/settings/components/integrations/integration-sign-in-dialog";' +
 			'export { keylessReference, keyDialogSave, KEYLESS_VALUE_KEY } from "./src/renderer/src/features/settings/components/integrations/integration-key-dialog";' +
+			'export { forgetCatalogCwd, cwdAfterRefusal, catalogQueryErrorIsInvalidCwd, CATALOG_CWD_STORAGE_KEY as CWD_KEY } from "./src/renderer/src/features/settings/components/integrations/use-integrations";' +
 			'export { isSignedOut, isFailedSignOut } from "./src/renderer/src/features/settings/components/integrations/integration-model";' +
 			'export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";' +
 			'export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
@@ -996,7 +997,10 @@ test("a server with no OAuth takes a key, under either name (U3)", () => {
 			.label,
 		"Add key",
 	);
-	// A row with no key route at all is not promised one it cannot have.
+	// A row with no key route at all is not promised one it cannot have - and
+	// that gate is exactly U11's open finding: the actions list is the BACKEND's
+	// knowledge, which only exists after a Test has failed. Deferred, not
+	// disputed; the deferral note on PR #491 carries the reconciliation.
 	assert.equal(m.needsKeyFor(signInOnly, failed, m.NO_MEMORY), false);
 });
 
@@ -1384,5 +1388,178 @@ test("the expired-check memory is for a STORED basis, never a live one (R2-3)", 
 		m.integrationGroupOf(live, [], memories),
 		"connected",
 		"a disconnected live row is not in Connected",
+	);
+});
+
+test("the key route leads, and it is offered even when the backend is silent (R2-6, U11)", () => {
+	/*
+	 * R2-6: deleting the "Add key leads over Sign in" branch left every test
+	 * green, which is how a fix regresses silently. A row that offers both must
+	 * lead with the key - a browser grant cannot fill a key.
+	 */
+	const both = row("acme-api", {
+		status: "needs_sign_in",
+		status_basis: "stored",
+		auth: { kind: "api_key", signed_in: false, secret_refs: [] },
+		actions: ["test", "sign_in", "add_key", "remove"],
+	});
+	/*
+	 * Reaching this branch takes the page's OWN evidence, because the backend
+	 * listed a sign-in too: the sign-in it offered is the path that just failed
+	 * for want of an authorization server, and the memory of that failure is
+	 * what has to outrank it.
+	 */
+	const memories = m.advanceMemories(
+		undefined,
+		{
+			servers: [both],
+			operations: [
+				op("acme-api", {
+					status: "failed",
+					message:
+						"No OAuth authorization server was discovered for this server; check its URL and your network, or add its key instead.",
+				}),
+			],
+		},
+		1_000,
+	);
+	assert.equal(m.needsKeyFor(both, [], memories["acme-api"]), true);
+	assert.equal(m.primaryAction(both, [], memories).label, "Add key");
+	assert.equal(m.primaryAction(both, [], memories).kind, "set_key");
+
+	/*
+	 * U11's case, pinned as it stands rather than as it should be: an untested
+	 * key-only server whose actions list carries no key verb still gets Sign in,
+	 * because `needsKeyFor` reads the backend's list. This assertion is the
+	 * deferral made visible - the day U11 is implemented, it must be updated in
+	 * the same commit, which is the point of writing it down here.
+	 */
+	const silent = row("acme-api", {
+		status: "needs_sign_in",
+		status_basis: "stored",
+		auth: { kind: "api_key", signed_in: false, secret_refs: [] },
+		actions: ["test", "sign_in", "remove"],
+	});
+	assert.equal(m.needsKeyFor(silent, [], m.NO_MEMORY), false, "today's gate");
+	assert.equal(m.primaryAction(silent, [], undefined).label, "Sign in");
+	// And a row with no key evidence at all still gets its Sign in too.
+	const oauth = row("linear", {
+		status: "needs_sign_in",
+		status_basis: "stored",
+		auth: { kind: "oauth", signed_in: false, secret_refs: [] },
+		actions: ["test", "sign_in", "remove"],
+	});
+	assert.equal(m.primaryAction(oauth, [], undefined).label, "Sign in");
+});
+
+test("the expired-check reading survives a reload (U10, R2-7)", () => {
+	/*
+	 * The UX round's evidence: after an app reload the row went back to "Ready |
+	 * Test" in Available and the whole Connected group vanished, because the
+	 * memory lived only in the hook's ref. With NO memories at all - which is
+	 * what a reload leaves - the reading now comes from the row's own
+	 * `status_observed_at`, the same fact the memory stood in for.
+	 */
+	const now = 1_000_000;
+	const expired = row("notion", {
+		status: "not_started",
+		status_basis: "stored",
+		status_observed_at: now - 6 * 60 * 1000,
+		tool_count: 12,
+		tool_count_basis: "last_seen",
+	});
+	const status = m.integrationStatus(expired, [], undefined, now);
+	assert.equal(status.label, "Worked 6 min ago · 12 tools");
+	assert.equal(status.tone, "success");
+	assert.equal(
+		m.integrationGroupOf(expired, [], undefined),
+		"connected",
+		"and it is still where the user last saw it",
+	);
+
+	/*
+	 * The memory still wins when it is fresher: a live probe observed while the
+	 * page was open is a better reading than the stored one.
+	 */
+	const justNow = m.advanceMemories(
+		undefined,
+		{
+			servers: [row("notion", { status: "connected", status_basis: "probe", tool_count: 12 })],
+			operations: [],
+		},
+		now,
+	);
+	assert.match(
+		m.integrationStatus(expired, [], justNow, now).label,
+		/^Worked just now|^Worked 0/,
+	);
+});
+
+test("a refused folder is dropped, forgotten, and recognised by code (R2-4)", () => {
+	/*
+	 * `invalid_cwd` used to dead-end the page: an error screen, no rows, and a
+	 * Retry that repeated the refusal. The folder is now dropped so the query
+	 * re-keys to the global catalog, and it is forgotten so the next reload does
+	 * not resolve back to it.
+	 */
+	assert.equal(
+		m.cwdAfterRefusal("/home/u/gone", "/home/u/gone"),
+		null,
+		"the refused folder is not asked for again",
+	);
+	assert.equal(m.cwdAfterRefusal("/home/u/here", "/home/u/gone"), "/home/u/here");
+	assert.equal(m.cwdAfterRefusal(null, "/home/u/gone"), null);
+	assert.equal(m.cwdAfterRefusal("/home/u/here", null), "/home/u/here");
+
+	// Recognised from the CODE, never from a message the backend may reword.
+	assert.equal(m.catalogQueryErrorIsInvalidCwd({ code: "invalid_cwd" }), true);
+	assert.equal(m.catalogQueryErrorIsInvalidCwd(new Error("invalid_cwd")), false);
+	assert.equal(m.catalogQueryErrorIsInvalidCwd(null), false);
+
+	// And the store is actually cleaned, not just ignored.
+	const table = {
+		[m.CWD_KEY]: JSON.stringify({ s1: "/home/u/gone", s2: "/home/u/here" }),
+	};
+	const storage = {
+		getItem: (key) => table[key] ?? null,
+		setItem: (key, value) => {
+			table[key] = value;
+		},
+	};
+	m.forgetCatalogCwd("s1", storage);
+	const left = JSON.parse(table[m.CWD_KEY]);
+	assert.equal("s1" in left, false, "the refused folder is forgotten");
+	assert.equal(left.s2, "/home/u/here", "and only that conversation's entry goes");
+
+	// A store that throws is not a failed render, here either.
+	m.forgetCatalogCwd("s2", {
+		getItem: () => {
+			throw new Error("no store");
+		},
+		setItem: () => {},
+	});
+});
+
+test("a refusal from the live route refreshes the list before it is reported (R2-5)", () => {
+	/*
+	 * The row's own sentence says the list was refreshed, and that refresh used
+	 * to happen only on the success path: a refused connect or disconnect left
+	 * the page on a document the backend had just contradicted. Deleting the
+	 * invalidation from the catch left every test green, so this reads the
+	 * shipped source for the catch itself.
+	 */
+	const source = readFileSync(
+		"src/renderer/src/features/settings/components/integrations/use-integrations.ts",
+		"utf8",
+	);
+	const live = source.slice(
+		source.indexOf("const liveControl = useCallback("),
+		source.indexOf("const storeKeys = useCallback("),
+	);
+	assert.match(live, /catch \(cause\)/, "the live route catches its refusals");
+	assert.match(
+		live,
+		/catch \(cause\)[\s\S]*?invalidateQueries\(\{ queryKey: catalogKey \}\)[\s\S]*?throw cause;/,
+		"and refreshes BEFORE it rethrows, so the sentence is true when printed",
 	);
 });

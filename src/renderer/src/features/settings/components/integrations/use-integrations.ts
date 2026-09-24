@@ -156,6 +156,62 @@ export function rememberCatalogCwd(
 	}
 }
 
+/**
+ * Forget a conversation's remembered folder.
+ *
+ * Called when the backend refuses the folder itself (`invalid_cwd`): the
+ * directory was deleted or renamed under the app, so the remembered path is not
+ * a fact any more, and leaving it in place would re-ask with it on the next
+ * reload and dead-end the page again (R2-4).
+ */
+export function forgetCatalogCwd(
+	sessionId: string | undefined,
+	storage: CwdStorage | null = typeof localStorage === "undefined"
+		? null
+		: localStorage,
+): void {
+	if (!sessionId || !storage) return;
+	try {
+		const raw = storage.getItem(CATALOG_CWD_STORAGE_KEY);
+		if (!raw) return;
+		const table = JSON.parse(raw) as Record<string, string>;
+		if (!(sessionId in table)) return;
+		const next = { ...table };
+		delete next[sessionId];
+		storage.setItem(CATALOG_CWD_STORAGE_KEY, JSON.stringify(next));
+	} catch {
+		// Same rule as the writer: a store that fails is not a failed render.
+	}
+}
+
+/**
+ * Whether a query error is the backend refusing the FOLDER.
+ *
+ * Read by code, not by message: `invalid_cwd` is a contract value, and matching
+ * a sentence would break the moment the backend reworded its own text (R2-4).
+ */
+export const catalogQueryErrorIsInvalidCwd = (error: unknown): boolean =>
+	Boolean(
+		error &&
+			typeof error === "object" &&
+			"code" in error &&
+			(error as { code?: unknown }).code === "invalid_cwd",
+	);
+
+/**
+ * The folder to ask with, given one the backend has refused.
+ *
+ * A refused folder is DROPPED rather than retried: `invalid_cwd` says the path
+ * does not exist, so every ask with it repeats the refusal, and the page a user
+ * then sees is one error screen, no rows, and a Retry that cannot work. Dropped,
+ * the query re-keys to the folderless (global) catalog - the most useful thing
+ * that is still true (R2-4).
+ */
+export const cwdAfterRefusal = (
+	resolved: string | null,
+	refused: string | null,
+): string | null => (refused !== null && resolved === refused ? null : resolved);
+
 export function rememberedCatalogCwd(
 	sessionId: string | undefined,
 	storage: CwdStorage | null = typeof localStorage === "undefined"
@@ -266,6 +322,8 @@ export type UseIntegrations = {
 	document: IntegrationDocument | undefined;
 	isLoading: boolean;
 	isError: boolean;
+	/** True while the chat's folder is one the backend refused (`invalid_cwd`). */
+	folderUnavailable: boolean;
 	refetch: () => void;
 	/**
 	 * Run a control. Resolves to the id of the operation it started (a sign-in or
@@ -307,6 +365,12 @@ export function useIntegrations({
 	);
 	const sessionEnabled = desktopFeatureEnabled(capabilities.data, "mcp");
 	const route = catalogEnabled ? "catalog" : sessionEnabled ? "session" : null;
+	/*
+	 * A folder the backend refused with `invalid_cwd`. Kept for the mount rather
+	 * than persisted, because it is a fact about the DIRECTORY: what survives a
+	 * reload is the forgetting below (R2-4).
+	 */
+	const [refusedCwd, setRefusedCwd] = useState<string | null>(null);
 	const queryClient = useQueryClient();
 
 	const roster = useCanonicalSessionsStore((state) => state.sessions);
@@ -365,7 +429,8 @@ export function useIntegrations({
 		(snapshotCwdQuery.isFetched
 			? catalogCwdFor(rememberedCatalogCwd(activeSessionId))
 			: null);
-	const cwd = route === "catalog" ? resolvedCwd : null;
+	const liveCwd = cwdAfterRefusal(resolvedCwd, refusedCwd);
+	const cwd = route === "catalog" ? liveCwd : null;
 	const overlay = route === "catalog" ? (activeSessionId ?? null) : null;
 	const catalogKey = mcpCatalogKeys.catalog(cwd, overlay);
 
@@ -388,6 +453,19 @@ export function useIntegrations({
 		staleTime: 10_000,
 		refetchInterval: (query) => integrationsPollInterval(query.state.data),
 	});
+
+	/*
+	 * The refusal itself: note that this folder is gone and forget it, so the
+	 * next reload cannot resolve back to it. `cwd` is null while this is true, so
+	 * the query above has re-keyed to the global catalog by then and the page
+	 * paints rows instead of an error (R2-4).
+	 */
+	const refusedFolder = catalogQueryErrorIsInvalidCwd(catalogQuery.error);
+	useEffect(() => {
+		if (!refusedFolder || !resolvedCwd || refusedCwd === resolvedCwd) return;
+		setRefusedCwd(resolvedCwd);
+		forgetCatalogCwd(activeSessionId);
+	}, [refusedFolder, resolvedCwd, refusedCwd, activeSessionId]);
 
 	/*
 	 * The session route's document, under `mcp-list.ts`'s own key and fetch so the
@@ -502,15 +580,28 @@ export function useIntegrations({
 					request.action === "disconnect" ||
 					request.action === "reload")
 			) {
-				await desktopResult({
-					op: "mcp.control",
-					sessionId: overlay,
-					control: {
-						action: request.action,
-						name: request.name,
-						...(request.action === "disconnect" ? { confirmed: true } : {}),
-					},
-				});
+				try {
+					await desktopResult({
+						op: "mcp.control",
+						sessionId: overlay,
+						control: {
+							action: request.action,
+							name: request.name,
+							...(request.action === "disconnect" ? { confirmed: true } : {}),
+						},
+					});
+				} catch (cause) {
+					/*
+					 * EVERY refusal, not only the 409s `control` recognises: the row's
+					 * sentence says the list was refreshed, and the refresh used to
+					 * happen only on the success path, so a refused connect or
+					 * disconnect left the page on a document the backend had just
+					 * contradicted (R2-5). Before the throw, so the sentence is true by
+					 * the time it is printed.
+					 */
+					void queryClient.invalidateQueries({ queryKey: catalogKey });
+					throw cause;
+				}
 				await queryClient.invalidateQueries({ queryKey: catalogKey });
 				return null;
 			}
@@ -623,6 +714,12 @@ export function useIntegrations({
 			(route === "session" &&
 				(readSessionId ? sessionQuery.isLoading : rosterLoading)),
 		isError: activeQuery.isError,
+		/*
+		 * "Only global integrations are shown" has to be sayable: a user whose
+		 * chat folder was deleted must be told why the project rows are missing,
+		 * rather than left to conclude the page is broken (R2-4).
+		 */
+		folderUnavailable: refusedCwd !== null,
 		refetch,
 		control: liveControl,
 		storeKeys,

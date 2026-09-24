@@ -617,6 +617,21 @@ export const McpManagementSection: FC<{
 						<Spinner size="lg" label="Loading integrations" />
 					</div>
 				) : null}
+				{/*
+				 * A folder the backend refused with `invalid_cwd`: the page keeps
+				 * working on the global catalog rather than dead-ending, and says
+				 * so - a user whose chat folder was deleted must be told why the
+				 * project rows are missing instead of concluding the page is
+				 * broken (R2-4).
+				 */}
+				{integrations.folderUnavailable ? (
+					<Alert variant="warning">
+						<span>
+							This chat's folder no longer exists, so only global
+							integrations are shown.
+						</span>
+					</Alert>
+				) : null}
 				{integrations.isError ? (
 					<Alert variant="warning">
 						<div className="flex items-center justify-between gap-3">

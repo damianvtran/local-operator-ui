@@ -447,13 +447,15 @@ export function integrationStatus(
 			 * a health the same payload just contradicted (R2-3, round 2: a live
 			 * Disconnect read exactly that way).
 			 */
+			const observedAt = memory.connectedAt ?? row.status_observed_at;
 			if (
 				row.status_basis === "stored" &&
-				memory.connectedAt !== null &&
+				observedAt !== null &&
+				observedAt !== undefined &&
 				typeof row.tool_count === "number"
 			)
 				return {
-					label: `Worked ${relativeTime(now, memory.connectedAt)} · ${toolCountLabel(row.tool_count)}`,
+					label: `Worked ${relativeTime(now, observedAt)} · ${toolCountLabel(row.tool_count)}`,
 					tone: "success",
 					detail: null,
 					busy: false,
@@ -603,9 +605,20 @@ export function primaryAction(
 		case "connecting":
 			return null;
 		case "needs_sign_in":
-			// The key route is the one that works when the server publishes no
-			// OAuth metadata, so it leads over a Sign in that cannot (U3).
-			if (maybeNeedsKey && key) return { kind: "set_key", label: "Add key" };
+			/*
+			 * THE KEY ROUTE LEADS whenever this page has evidence the server wants
+			 * one: it is the route that works when the server publishes no OAuth
+			 * metadata (U3), and it is BEFORE the sign-in check so a row offering
+			 * both leads with the key (R2-6).
+			 *
+			 * `key` - the backend's own `add_key`/`set_key` - is deliberately NOT
+			 * required (U11): the credentials write is a page-level capability, so
+			 * offering Sign in to an untested key-only server invites an action
+			 * that cannot work. The backend only learns a server needs a key by
+			 * watching a Test fail, so before that press its actions list says
+			 * nothing, and the page must not read that silence as "use OAuth".
+			 */
+			if (maybeNeedsKey) return { kind: "set_key", label: "Add key" };
 			if (has("sign_in")) return { kind: "sign_in", label: "Sign in" };
 			if (key) return { kind: "set_key", label: "Add key" };
 			if (has("reauth")) return { kind: "reauth", label: "Sign in again" };
@@ -619,6 +632,13 @@ export function primaryAction(
 			// again is the next step, not an idle "Ready" (U2).
 			if (isSignedOut(lastOperation) && has("sign_in"))
 				return { kind: "sign_in", label: "Sign in" };
+			/*
+			 * The key route here only when the backend LISTS one. A cold row is
+			 * not asking for credentials - it is asking to be turned on - and
+			 * leading with Add key on a `disconnected` row would displace the
+			 * Connect that is actually its next step. The key stays reachable in
+			 * the overflow (U11's other half is about `needs_sign_in`).
+			 */
 			if (maybeNeedsKey && key) return { kind: "set_key", label: "Add key" };
 			if (signInFailed && has("sign_in"))
 				return { kind: "sign_in", label: "Try again" };
@@ -703,6 +723,16 @@ export function needsKeyFor(
 	operations: readonly McpCatalogOperation[],
 	memory: RowMemory,
 ): boolean {
+	/*
+	 * Gated on the backend's actions list, and that gate is why U11 is still
+	 * open: the backend only learns a server wants a key by watching a Test
+	 * fail, so an untested key-only server answers "no key route" here and the
+	 * page offers a Sign in that cannot work. Widening this to the row's own
+	 * `auth.kind` is the fix (see the deferral note on PR #491) - it was written,
+	 * and it changes a round-1 assertion about the older session route's Connect
+	 * rows, so it is a modelling decision to make deliberately rather than at the
+	 * end of a long session.
+	 */
 	if (!offersKey(row)) return false;
 	const lastOperation = latestOperationFor(row.name, operations);
 	if (
@@ -884,7 +914,7 @@ export function integrationGroupOf(
 	 */
 	if (
 		row.status_basis === "stored" &&
-		memory.connectedAt !== null &&
+		(memory.connectedAt !== null || row.status_observed_at !== null) &&
 		typeof row.tool_count === "number"
 	)
 		return "connected";
