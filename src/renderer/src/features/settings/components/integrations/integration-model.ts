@@ -320,10 +320,15 @@ export function integrationStatus(
 	 * failed. Both are the backend's own records, not this page's guess.
 	 */
 	const lastOperation = latestOperationFor(row.name, operations);
-	const signedOut =
-		lastOperation?.action === "logout" &&
-		lastOperation.status !== "running" &&
-		row.status !== "connected";
+	/*
+	 * Through the shared predicates, never re-spelled here: this line used to be
+	 * its own copy of the rule (`status !== "running"`), so fixing `isSignedOut`
+	 * for R2-2 would have left the WORDS still saying "Signed out" on a sign-out
+	 * that never happened.
+	 */
+	const signedOut = isSignedOut(lastOperation) && row.status !== "connected";
+	const failedSignOut =
+		isFailedSignOut(lastOperation) && row.status !== "connected";
 	const lastSignInFailed =
 		(lastOperation?.action === "login" || lastOperation?.action === "reauth") &&
 		lastOperation.status === "failed";
@@ -386,6 +391,21 @@ export function integrationStatus(
 					busy: false,
 				};
 			/*
+			 * A sign-out that failed or was cancelled is the user's own last act
+			 * on the row, and the one thing it did NOT do is take the credential
+			 * away. Its own sentence, and the reason it gives if the backend sent
+			 * one (R2-2).
+			 */
+			if (failedSignOut)
+				return {
+					label: "Sign-out didn't finish",
+					tone: "warning",
+					detail:
+						publicRowReason(lastOperation?.message) ??
+						"The sign-in is still saved.",
+					busy: false,
+				};
+			/*
 			 * A sign-in that failed for want of OAuth metadata leaves the row as
 			 * the backend's `not_started`, but the user's next step is a key -
 			 * and nobody discovers that by pressing Sign in again (U3).
@@ -417,7 +437,21 @@ export function integrationStatus(
 			 * stands behind - and it must not outrank a sign-out, which is
 			 * handled above.
 			 */
-			if (memory.connectedAt !== null && typeof row.tool_count === "number")
+			/*
+			 * `stored` ONLY. The memory exists for the case where the backend's
+			 * own probe result has aged out, so it can restore a reading the
+			 * STATUS still stands behind. A LIVE runtime saying `not_started` is
+			 * the opposite situation: the chat is telling us the server is not
+			 * connected right now, and answering that with "Worked 3 min ago -
+			 * 12 tools" in a success tone, under Connected, is the app reporting
+			 * a health the same payload just contradicted (R2-3, round 2: a live
+			 * Disconnect read exactly that way).
+			 */
+			if (
+				row.status_basis === "stored" &&
+				memory.connectedAt !== null &&
+				typeof row.tool_count === "number"
+			)
 				return {
 					label: `Worked ${relativeTime(now, memory.connectedAt)} · ${toolCountLabel(row.tool_count)}`,
 					tone: "success",
@@ -627,12 +661,28 @@ export function primaryAction(
 export const isSignInAction = (operation: McpCatalogOperation): boolean =>
 	operation.action === "login" || operation.action === "reauth";
 
-/** Whether an operation is a completed sign-out. */
+/**
+ * Whether an operation is a sign-out the backend COMPLETED.
+ *
+ * `complete` ONLY. A failed or cancelled sign-out leaves the browser grant
+ * exactly where it was, so a row that said "Signed out" on one would be telling
+ * the user their account was gone while the credential it never revoked still
+ * worked - and it would hide the Sign in they still need (R2-2, round 2).
+ */
 export const isSignedOut = (operation: McpCatalogOperation | null): boolean =>
 	Boolean(
 		operation &&
 			operation.action === "logout" &&
-			operation.status !== "running",
+			operation.status === "complete",
+	);
+
+/** Whether an operation is a sign-out that did NOT complete. */
+export const isFailedSignOut = (operation: McpCatalogOperation | null): boolean =>
+	Boolean(
+		operation &&
+			operation.action === "logout" &&
+			operation.status !== "running" &&
+			operation.status !== "complete",
 	);
 
 /**
@@ -824,9 +874,19 @@ export function integrationGroupOf(
 	)
 		return "attention";
 	if (row.status === "connected") return "connected";
-	// A check that expired keeps its last RESULT and its group (U1): the row
-	// worked recently and moves only when something actually changed.
-	if (memory.connectedAt !== null && typeof row.tool_count === "number")
+	/*
+	 * A check that expired keeps its last RESULT and its group (U1): the row
+	 * worked recently and moves only when something actually changed - and only
+	 * when the backend's own status still stands behind that reading. A LIVE
+	 * runtime reporting `not_started` is not an expired check; it is the chat
+	 * saying this server is off, and the group has to follow the payload
+	 * (R2-3, round 2: a live Disconnect sat in Connected).
+	 */
+	if (
+		row.status_basis === "stored" &&
+		memory.connectedAt !== null &&
+		typeof row.tool_count === "number"
+	)
 		return "connected";
 	if (running && running.action !== "test") return "attention";
 	return "ready";

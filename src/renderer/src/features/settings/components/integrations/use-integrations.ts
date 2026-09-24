@@ -542,7 +542,18 @@ export function useIntegrations({
 						message:
 							result.code === "replace_confirmation_required"
 								? "A saved value already exists for this key. Tick “Replace saved values” to overwrite it."
-								: `Not saved: ${(result.failed_ids.length ? result.failed_ids : Object.keys(values)).join(", ")}. The encrypted store may be locked.`,
+								: result.code === "invalid_target"
+									? /*
+										 * `add_key`'s own refusal (backend #1511), and it is
+										 * nothing to do with the store: the header cannot
+										 * carry the key - the transport owns it, it is
+										 * already set on the server, or the name is not a
+										 * header. NOTHING WAS WRITTEN, and saying so is the
+										 * difference between a user fixing the header and
+										 * a user hunting a lock that is not locked (R2-1).
+										 */
+										"That header can't carry this key. It may already be set on the server, or belong to the transport - try a different header name. Nothing was saved."
+									: `Not saved: ${(result.failed_ids.length ? result.failed_ids : Object.keys(values)).join(", ")}. The encrypted store may be locked.`,
 					};
 				/*
 				 * A saved key is only worth something once the server accepts it, so

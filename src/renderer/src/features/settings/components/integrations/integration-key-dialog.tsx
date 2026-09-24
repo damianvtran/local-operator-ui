@@ -53,6 +53,60 @@ export type IntegrationKeyDialogProps = {
 };
 
 /**
+ * What the dialog hands `onSave` when Save is pressed.
+ *
+ * WHY THIS IS A FUNCTION AND NOT AN INLINE EXPRESSION. The header is the third
+ * argument, and a dropped argument here is invisible: the dialog closes, the
+ * backend takes its `set_key` path, refuses with `invalid_target`, and the page
+ * blames the store. That is exactly what shipped in round 1 - the call site read
+ * `onSave(values, replace && canReplace ? names : [])` while the parameter was
+ * added downstream - so the buttons' arguments now come from one place a test
+ * can call (R2-1, round 2).
+ */
+/**
+ * The field key the keyless mode's secret is typed into.
+ *
+ * A FIXED sentinel rather than the derived `${ID}`, because the id follows the
+ * header as the user types it: binding the field to the derived name meant
+ * editing the header after typing the key left the secret under the old id and
+ * the Save button disabled with no way to see why. Real references are upper
+ * case, so this can never collide with one.
+ */
+export const KEYLESS_VALUE_KEY = "key";
+
+export function keyDialogSave(input: {
+	keyless: boolean;
+	freeName: string;
+	names: string[];
+	values: Record<string, string>;
+	replace: boolean;
+	canReplace: boolean;
+}): {
+	values: Record<string, string>;
+	confirmedReplace: string[];
+	header: string | undefined;
+} {
+	const { keyless, freeName, names, values, replace, canReplace } = input;
+	if (keyless) {
+		const reference = keylessReference(freeName);
+		return {
+			// Exactly one id, which is what the backend's `add_key` path requires
+			// beside a `header`.
+			values: { [reference]: (values[KEYLESS_VALUE_KEY] ?? "").trim() },
+			confirmedReplace: replace && canReplace ? [reference] : [],
+			header: freeName.trim(),
+		};
+	}
+	return {
+		values: Object.fromEntries(
+			names.map((key) => [key, (values[key] ?? "").trim()]),
+		),
+		confirmedReplace: replace && canReplace ? names : [],
+		header: undefined,
+	};
+}
+
+/**
  * The `${ID}` a keyless write binds its header to.
  *
  * The backend wants exactly one id in `values` and writes
@@ -91,10 +145,11 @@ export const IntegrationKeyDialog: FC<IntegrationKeyDialogProps> = ({
 	 */
 	const [freeName, setFreeName] = useState("");
 	const names = keyless ? [keylessReference(freeName)] : [...keyNames];
+	/** The fields that hold secrets: the sentinel in keyless mode, the ids otherwise. */
+	const fieldKeys = keyless ? [KEYLESS_VALUE_KEY] : names;
 	const filled =
 		(keyless ? keylessReference(freeName).length > 0 : true) &&
-		keyNames.every((key) => (values[key] ?? "").trim()) &&
-		names.every((key) => (values[key] ?? "").trim());
+		fieldKeys.every((key) => (values[key] ?? "").trim());
 	const canReplace = names.some((key) => savedKeys.includes(key));
 
 	return (
@@ -103,7 +158,7 @@ export const IntegrationKeyDialog: FC<IntegrationKeyDialogProps> = ({
 			onClose={onClose}
 			maxWidth="xs"
 			title={
-				keyNames.length === 1
+				keyless || keyNames.length === 1
 					? `Add the key for ${name}`
 					: `Add keys for ${name}`
 			}
@@ -112,7 +167,17 @@ export const IntegrationKeyDialog: FC<IntegrationKeyDialogProps> = ({
 					<SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
 					<PrimaryButton
 						disabled={!filled || saving}
-						onClick={() => onSave(values, replace && canReplace ? names : [])}
+						onClick={() => {
+							const payload = keyDialogSave({
+								keyless,
+								freeName,
+								names,
+								values,
+								replace,
+								canReplace,
+							});
+							onSave(payload.values, payload.confirmedReplace, payload.header);
+						}}
 					>
 						{saving ? "Saving…" : "Save and test"}
 					</PrimaryButton>
@@ -142,12 +207,12 @@ export const IntegrationKeyDialog: FC<IntegrationKeyDialogProps> = ({
 						</p>
 					</div>
 				) : null}
-				{names
+				{fieldKeys
 					.filter((key) => keyless !== true || key.trim().length > 0)
 					.map((key) => (
 						<div key={key} className="flex flex-col gap-1.5">
 							<Label htmlFor={`integration-key-${key}`} className="font-mono">
-								{key}
+								{keyless ? "Key" : key}
 							</Label>
 							<Input
 								id={`integration-key-${key}`}

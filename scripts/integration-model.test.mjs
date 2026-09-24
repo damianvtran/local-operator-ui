@@ -22,7 +22,8 @@ const bundle = await build({
 			'export * from "./src/renderer/src/features/settings/components/integrations/integration-model";' +
 			'export { catalogControlBody, sessionControlBody, catalogCwdFor, newestRosterRow, sessionCwdFromSnapshot, rememberCatalogCwd, rememberedCatalogCwd, CATALOG_CWD_STORAGE_KEY } from "./src/renderer/src/features/settings/components/integrations/use-integrations";' +
 			'export { signInProgress } from "./src/renderer/src/features/settings/components/integrations/integration-sign-in-dialog";' +
-			'export { keylessReference } from "./src/renderer/src/features/settings/components/integrations/integration-key-dialog";' +
+			'export { keylessReference, keyDialogSave, KEYLESS_VALUE_KEY } from "./src/renderer/src/features/settings/components/integrations/integration-key-dialog";' +
+			'export { isSignedOut, isFailedSignOut } from "./src/renderer/src/features/settings/components/integrations/integration-model";' +
 			'export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";' +
 			'export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
 		resolveDir: process.cwd(),
@@ -1239,4 +1240,149 @@ test("a keyless credential write carries the header to the right endpoint", () =
 	// Without it the request is the set_key write it always was.
 	const plain = m.desktopEndpoint({ ...request, header: undefined });
 	assert.equal("header" in plain.body, false);
+});
+
+test("the key dialog hands onSave the HEADER, not just the values (R2-1)", () => {
+	/*
+	 * Round 2's blocker. The dialog's Save used to call
+	 * `onSave(values, replace && canReplace ? names : [])` while the header
+	 * parameter had been added downstream, so a keyless write went to the
+	 * backend as a plain `set_key`, was refused with `invalid_target`, and the
+	 * page blamed the encrypted store. Nothing caught it: the test called
+	 * `desktopEndpoint` directly and could not see the call site at all.
+	 *
+	 * These are the ACTUAL arguments the button hands over, through the same
+	 * function the button calls.
+	 */
+	const keyless = m.keyDialogSave({
+		keyless: true,
+		freeName: "X-Api-Key",
+		names: ["X_API_KEY"],
+		values: { [m.KEYLESS_VALUE_KEY]: "  s3cret  " },
+		replace: false,
+		canReplace: false,
+	});
+	assert.equal(keyless.header, "X-Api-Key", "the header travels with the write");
+	assert.deepEqual(
+		Object.keys(keyless.values),
+		["X_API_KEY"],
+		"exactly one id, which is what `add_key` requires beside a header",
+	);
+	assert.equal(keyless.values.X_API_KEY, "s3cret", "trimmed, and the value is the secret");
+	assert.deepEqual(keyless.confirmedReplace, []);
+
+	// The referenceful mode is the `set_key` write it always was: no header.
+	const referenced = m.keyDialogSave({
+		keyless: false,
+		freeName: "",
+		names: ["PGPASSWORD", "PGUSER"],
+		values: { PGPASSWORD: "p", PGUSER: "u" },
+		replace: true,
+		canReplace: true,
+	});
+	assert.equal(referenced.header, undefined, "no header where the config names the key");
+	assert.deepEqual(referenced.confirmedReplace, ["PGPASSWORD", "PGUSER"]);
+	assert.deepEqual(referenced.values, { PGPASSWORD: "p", PGUSER: "u" });
+
+	/*
+	 * And the button has no second path: the SHIPPED module hands the payload's
+	 * three fields to `onSave` and never reconstructs them. Reverting the call
+	 * site to the two-argument form - the defect - fails here.
+	 */
+	const source = readFileSync(
+		"src/renderer/src/features/settings/components/integrations/integration-key-dialog.tsx",
+		"utf8",
+	);
+	assert.match(
+		source,
+		/onSave\(payload\.values, payload\.confirmedReplace, payload\.header\)/,
+		"the Save button passes the tested payload through, header included",
+	);
+	// The other hop, which the round-1 comment claimed without evidence.
+	const section = readFileSync(
+		"src/renderer/src/features/settings/components/mcp-management-section.tsx",
+		"utf8",
+	);
+	assert.match(
+		section,
+		/storeKeys\(dialog\.name, values, confirmedReplace, header\)/,
+		"the section forwards the header into the credentials write",
+	);
+});
+
+test("only a COMPLETE sign-out is a sign-out, and a failed one says so (R2-2)", () => {
+	/*
+	 * Round 2: a failed or cancelled sign-out read "Signed out" with no Sign in,
+	 * while the credential was still stored - the page telling the user their
+	 * account was gone and hiding the button they needed.
+	 */
+	const complete = op("notion", { action: "logout", status: "complete" });
+	const failed = op("notion", { action: "logout", status: "failed" });
+	const cancelled = op("notion", { action: "logout", status: "cancelled" });
+	assert.equal(m.isSignedOut(complete), true);
+	assert.equal(m.isSignedOut(failed), false, "a failed sign-out kept the credential");
+	assert.equal(m.isSignedOut(cancelled), false);
+	assert.equal(m.isFailedSignOut(failed), true);
+	assert.equal(m.isFailedSignOut(complete), false, "a completed one is not a failure");
+	assert.equal(m.isFailedSignOut(op("notion", { status: "running" })), false);
+
+	const base = row("notion", { status: "not_started", status_basis: "stored" });
+	assert.equal(
+		m.integrationStatus(base, [complete], undefined, 1_000).label,
+		"Signed out",
+	);
+	const after = m.integrationStatus(base, [failed], undefined, 1_000);
+	assert.equal(after.label, "Sign-out didn't finish");
+	assert.equal(after.tone, "warning");
+});
+
+test("the expired-check memory is for a STORED basis, never a live one (R2-3)", () => {
+	/*
+	 * Round 2: after a live Disconnect the row read "Worked 3 min ago - 12 tools"
+	 * under Connected in a success tone, because the memory branch ran before the
+	 * live `not_started` branch. A live runtime saying `not_started` is the
+	 * opposite claim, and the payload is entitled to be believed.
+	 */
+	const connected = row("notion", {
+		status: "connected",
+		status_basis: "probe",
+		status_observed_at: 1_000,
+		tool_count: 12,
+		tool_count_basis: "probe",
+	});
+	const at = 1_000_000;
+	const memories = m.advanceMemories(
+		undefined,
+		{ servers: [connected], operations: [] },
+		at,
+	);
+
+	// The stored basis, which is what the memory exists for: the reading holds.
+	const stored = {
+		...connected,
+		status: "not_started",
+		status_basis: "stored",
+		status_observed_at: null,
+		tool_count: 12,
+		tool_count_basis: "last_seen",
+	};
+	const kept = m.integrationStatus(stored, [], memories, at + 60_000);
+	assert.match(kept.label, /^Worked /, "a stored basis keeps its last result");
+
+	// The LIVE basis, which is a chat telling us it is not connected right now.
+	const live = {
+		...connected,
+		status: "not_started",
+		status_basis: "live",
+		status_observed_at: null,
+	};
+	const now = m.integrationStatus(live, [], memories, at + 60_000);
+	assert.equal(now.label, "Not connected");
+	assert.notEqual(now.tone, "success", "no success tone for a row the chat says is off");
+	assert.equal(m.integrationGroupOf(connected, [], memories), "connected");
+	assert.notEqual(
+		m.integrationGroupOf(live, [], memories),
+		"connected",
+		"a disconnected live row is not in Connected",
+	);
 });
