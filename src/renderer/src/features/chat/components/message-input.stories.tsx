@@ -47,11 +47,18 @@ import "./story-electron-shim";
  *   where it is answered, so the box names that instead of inviting a message
  *   that Enter would refuse.
  *
- * `isLoading` is passed `false` throughout and that is deliberate: on the
- * canonical path `currentJobId` is null, so the composer's own `Agent is busy`
- * branch is unreachable there and every wait state is expressed through the
- * placeholders above. Passing `true` here would photograph a branch the
- * canonical pane cannot be in.
+ * `isLoading` IS THE PANE'S OWN EXPRESSION, `admitting || starting`, and it is
+ * `true` only where the pane's is: `AwaitingReply` is a send that has been
+ * admitted with nothing painted yet, so `starting` is up and the control is
+ * drawn closed, while a STREAMING turn has `starting` already cleared by the
+ * owner's first content (`chat-page.tsx`, the answered half of the latch) - so
+ * `StopControlWhileStreaming` passes `false`, which is what the pane passes
+ * there. Everywhere else it is `false` because no send is out at all. Design
+ * round 3, D2c, corrected the two stories that had this the wrong way round.
+ *
+ * The composer's own `Agent is busy` branch stays unreachable through all of it:
+ * on the canonical path `currentJobId` is null, so no state here can photograph
+ * it, and each wait is expressed through the placeholders above.
  */
 /*
  * The desktop bridge is installed by `./story-electron-shim`, imported above:
@@ -581,11 +588,14 @@ export const StopControlWhileStreaming: Story = {
 			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
 				<MessageInput
 					/*
-					 * `isLoading` is the pane's own `admitting || starting` - true for the
-					 * whole wait, which is what a streaming turn is - so this frame carries
-					 * it (design round 2, D2b).
+					 * `isLoading` is the pane's own `admitting || starting`, and while the
+					 * owner is STREAMING both are false: `starting` is cleared by the first
+					 * content it paints (`chat-page.tsx`, `ownerAnswered`). Round 2 read
+					 * this story as a wait and passed `true`; round 3's D2c is that the
+					 * pane's value here is `false`, and a frame is supposed to carry the
+					 * pane's value.
 					 */
-					isLoading={true}
+					isLoading={false}
 					messages={NONEMPTY}
 					conversationId="story"
 					/*
@@ -1971,7 +1981,13 @@ const PendingSendHarness = ({
 		return () => {
 			useCanonicalSessionsStore.setState({ drafts: {} });
 		};
-	}, []);
+		/*
+		 * The deps are the two props the effect READS, which is why this is not an
+		 * empty list: the row it stages is the state under test, so a story that
+		 * changed `row` while mounted has to re-stage it (agent review round 3,
+		 * BLOCKER 1 - biome's `useExhaustiveDependencies` is right about this one).
+		 */
+	}, [row, stageChip]);
 	const composer = (
 		<MessageInput
 			isLoading={isLoading}
