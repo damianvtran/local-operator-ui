@@ -4332,4 +4332,13 @@ test("the chip's done tag carries its own size step", () => {
 		markup,
 		/<span class="[^"]*line-through[^"]*"[^>]*>— done/,
 	);
+	/*
+	 * Design review round 1's D1, measured by `GoalDoneFloor`: at the 172px floor the
+	 * tag left the value 20px of 1956px, so the tag is the piece that yields strictly
+	 * below the stacked band — the same constant the dismiss's word uses.
+	 */
+	assert.match(
+		markup,
+		/<span class="[^"]*@max-\[240px\]\/chatcol:hidden[^"]*"[^>]*>— done<\/span>/,
+	);
 });

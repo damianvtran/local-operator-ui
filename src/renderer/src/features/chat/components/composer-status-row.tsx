@@ -2149,7 +2149,22 @@ export const ComposerStatusRow = ({
 									 * (`line-through text-ink-dim`); the tag keeps its word upright and readable,
 									 * which is the to-do row's own rule for a crossed-out row.
 									 */
-									<span className={cn("shrink-0 text-meta text-ink-dim")}>
+									/*
+									 * AND IT YIELDS STRICTLY BELOW THE STACKED BAND (design review round
+									 * 1, D1), which is the cut this comment's parent pre-authorised once a
+									 * frame measured it. `GoalDoneFloor` did: at the 172px floor the value
+									 * kept 20px of its 1956px beside the tag — one letter — so the settled
+									 * chip showed WHICH goal was settled almost nowhere. Below 240px the
+									 * state is still carried three ways that cost no width: the strike and
+									 * `ink-dim` on the value, the dismiss's `CircleCheck` (D6), and the
+									 * accessible name (`goalStateWord` → `— done, <goal>`).
+									 */
+									<span
+										className={cn(
+											"shrink-0 text-meta text-ink-dim",
+											NARROW_HIDDEN,
+										)}
+									>
 										{GOAL_DONE_TAG}
 									</span>
 								)}
