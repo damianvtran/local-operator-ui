@@ -26,7 +26,11 @@ import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { cn } from "@shared/lib/utils";
 import {
+	CATALOGUE_GROUP_PAGE,
+	CATALOGUE_HEAD_PAGE,
 	type CanonicalSessionRow,
+	LEGACY_CATALOGUE_PAGE,
+	catalogueScopeKey,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -62,6 +66,7 @@ import {
 	type ReactNode,
 	type PointerEvent as ReactPointerEvent,
 	type Ref,
+	useCallback,
 	useEffect,
 	useLayoutEffect,
 	useMemo,
@@ -105,6 +110,13 @@ import {
 import { newChatShortcutCap } from "../new-chat-shortcut";
 import { readAckCopy, readAckNoticeSentence } from "../read-ack-notice";
 import { catalogueGate } from "../sidebar-catalogue-gate";
+import {
+	catalogueTailView,
+	groupBadgeCount,
+	groupChatsView,
+	scopeCensusTotal,
+	tailExtendDue,
+} from "../sidebar-scope-paging";
 import {
 	type SidebarRegionName,
 	hideRegion,
@@ -823,6 +835,37 @@ export function ChatSidebar({
 	 * advertise nothing.
 	 */
 	const pinsEnabled = desktopFeatureEnabled(capabilities.data, "session_pins");
+	/*
+	 * Whether this backend can SCOPE, PAGE and COUNT the catalogue
+	 * (`session_catalogue_page` - the request's `scope_kind`/`scope_name`/`cursor`/
+	 * `with_counts`, the answer's `next_cursor`/`counts`).
+	 *
+	 * FALSE IS TODAY, EXACTLY, AND THAT IS THE POINT OF A SEPARATE KEY. Every group
+	 * below expands client-side over the rows the panel holds, the badge counts
+	 * those rows, and the panel makes the one unscoped `limit=500` read it has
+	 * always made - so an older daemon renders byte-identically to the app that
+	 * never heard of paging, and the withdrawn pair is comparable rather than merely
+	 * similar. Gate the PAGE SIZE and every paging call on this one boolean at the
+	 * call site rather than reading it inside each decision, so "is this backend
+	 * pageable" has one answer in this component.
+	 */
+	const pageable = desktopFeatureEnabled(
+		capabilities.data,
+		"session_catalogue_page",
+	);
+	/*
+	 * The paged catalogue's own state, subscribed HERE rather than in the group
+	 * renderer because a subscription is a hook and the group is a plain function
+	 * called from the render body - the same reason `sessions` above is a hook.
+	 */
+	const catalogueScopes = useCanonicalSessionsStore((s) => s.scopes);
+	const catalogueHead = useCanonicalSessionsStore((s) => s.head);
+	const catalogueCounts = useCanonicalSessionsStore((s) => s.counts);
+	const fetchScopePage = useCanonicalSessionsStore((s) => s.fetchScopePage);
+	const clearCatalogueScope = useCanonicalSessionsStore((s) => s.clearScope);
+	const fetchCatalogueTail = useCanonicalSessionsStore(
+		(s) => s.fetchCatalogueTail,
+	);
 	const pinFailure = useCanonicalSessionsStore((s) => s.pinFailure);
 	/*
 	 * The client's own pin state for conversations this panel's page does not carry
@@ -1215,6 +1258,20 @@ export function ChatSidebar({
 		return false;
 	};
 	const isOpen = (key: string, initial = false) => expanded[key] ?? initial;
+	/*
+	 * Whether the ENTITY groups are drawn from their own scoped pages.
+	 *
+	 * FALSE WHILE A QUERY IS IN FORCE, for the same reason the command palette
+	 * reads the whole catalogue: a search is a question about the STORE, and its
+	 * answer (`sessions.search`) is already store-wide. A group drawn under a query
+	 * therefore reads the search answer - which is what `children` filters - and
+	 * there is nothing for a scope page to add to it. Letting a query through here
+	 * would also make typing fetch every group the query forces open, which is the
+	 * fetch storm this change exists to remove. The whole paging machinery below is
+	 * gated on this one boolean rather than on `pageable` at each call site, so
+	 * "searching" cannot be honoured in one place and forgotten in another.
+	 */
+	const groupPaging = pageable && query.trim().length === 0;
 	const toggle = (key: string, initial = false) =>
 		setExpanded((current) => ({
 			...current,
@@ -1400,10 +1457,34 @@ export function ChatSidebar({
 	useEffect(() => {
 		localStorage.setItem("chat-sidebar-disclosures", JSON.stringify(expanded));
 	}, [expanded]);
+	/*
+	 * THE HEAD REFRESH, and the ONE place this panel's page size is decided.
+	 *
+	 * ONE PLACE, because the page size and the census flag are the same decision: a
+	 * daemon that cannot page is asked for the whole catalogue in one unscoped
+	 * `limit=500` read - the request this app has always made - and a daemon that
+	 * can page is asked for 50 rows and the census. Two call sites deciding that
+	 * separately is how one of them would keep asking for 500 against a paged
+	 * backend, and the amplification this change exists to remove would survive in
+	 * exactly one of the four triggers, which is the hardest kind to notice.
+	 *
+	 * A `useCallback` rather than a bare function so the effect below can depend on
+	 * it without re-running on every render: `fetchSessions` is a store action and
+	 * `pageable` is a capability answer, so this identity changes only when the
+	 * answer does.
+	 */
+	const refreshCatalogue = useCallback(
+		() =>
+			fetchSessions(
+				pageable ? CATALOGUE_HEAD_PAGE : LEGACY_CATALOGUE_PAGE,
+				pageable,
+			),
+		[fetchSessions, pageable],
+	);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: catalogueRevision is a trigger, not a read
 	useEffect(() => {
 		if (!ready) return;
-		void fetchSessions();
+		void refreshCatalogue();
 		if (!feed.available) {
 			/*
 			 * No feed: an older backend, or a browser-dev renderer with no relay.
@@ -1412,7 +1493,7 @@ export function ChatSidebar({
 			 * identical rather than merely similar.
 			 */
 			const timer = window.setInterval(() => {
-				if (document.visibilityState === "visible") void fetchSessions();
+				if (document.visibilityState === "visible") void refreshCatalogue();
 			}, LEGACY_CATALOGUE_POLL_MS);
 			return () => window.clearInterval(timer);
 		}
@@ -1424,14 +1505,17 @@ export function ChatSidebar({
 		 *   `document.visibilityState` was itself a hole — a background window stops
 		 *   polling and so stops noticing — and since the event is the mechanism
 		 *   here, this only has to be drift insurance. Making it visibility-gated
-		 *   would reintroduce the same hole for a smaller gain.
+		 *   would reintroduce the same hole for a smaller gain. It asks for the HEAD
+		 *   PAGE ONLY and never for the rows the client already holds: a poll that
+		 *   re-read every loaded page is the multi-second read this change removes,
+		 *   and a loaded group is deliberately not re-fetched by it either.
 		 * - a refetch on window focus, which is the one moment a stale catalogue is
 		 *   about to be looked at.
 		 */
 		const timer = window.setInterval(() => {
-			void fetchSessions();
+			void refreshCatalogue();
 		}, CATALOGUE_SAFETY_POLL_MS);
-		const onFocus = () => void fetchSessions();
+		const onFocus = () => void refreshCatalogue();
 		window.addEventListener("focus", onFocus);
 		return () => {
 			window.clearInterval(timer);
@@ -1442,7 +1526,60 @@ export function ChatSidebar({
 		// safety timer restarted from the event rather than from a clock. It is
 		// deliberately not READ in the body: the revision's only job is to be the
 		// trigger, which is what the suppression on the hook itself covers.
-	}, [ready, fetchSessions, feed.available, feed.catalogueRevision]);
+	}, [ready, refreshCatalogue, feed.available, feed.catalogueRevision]);
+	/*
+	 * A GROUP'S OWN READ, on the expansion that asks for it.
+	 *
+	 * ONE FETCH PER OPEN GROUP, issued when its row is expanded and not before:
+	 * "pinned and active first, a team's or an agent's chats fetched when its
+	 * collapsed row is EXPANDED" is the whole point of the change, because a group
+	 * is the only thing on this panel that can name 434 conversations the head page
+	 * does not carry.
+	 *
+	 * THE TWO TRANSITIONS DO TWO THINGS. Opening fetches from the scope's first
+	 * page when there is no page in hand. Closing DISCARDS what was loaded, so the
+	 * next expansion is a fresh read from the scope's top - which is also the
+	 * design's own remedy for the cursor's accepted imperfection (a row whose tier
+	 * moved between two page reads can be skipped in that expansion, and
+	 * re-expanding is what recovers it).
+	 *
+	 * IT READS `expanded` AND NOT `isOpen`, and the difference is load-bearing: a
+	 * QUERY forces every group the search touches open (`open = query || isOpen`),
+	 * so an effect keyed on the drawn state would issue one scope read per group a
+	 * keystroke happens to match. `expanded` holds only the disclosures the reader
+	 * opened by hand, which is the intent this fetches on.
+	 */
+	useEffect(() => {
+		if (!ready || !groupPaging) return;
+		for (const [key, open] of Object.entries(expanded)) {
+			const kind = key.startsWith("team:")
+				? "team"
+				: key.startsWith("agent:")
+					? "agent"
+					: null;
+			if (kind === null) continue;
+			/*
+			 * `slice`, never `split(":")`: a display name is whatever the operator
+			 * called the team, and `team:op:dev` is a legal one - splitting would read
+			 * the scope's name as `op` and fetch a team that does not exist.
+			 */
+			const name = key.slice(kind.length + 1);
+			if (name.length === 0) continue;
+			if (open) {
+				if (catalogueScopes[key] === undefined)
+					void fetchScopePage(kind, name, null);
+				continue;
+			}
+			if (catalogueScopes[key] !== undefined) clearCatalogueScope(kind, name);
+		}
+	}, [
+		expanded,
+		ready,
+		groupPaging,
+		catalogueScopes,
+		fetchScopePage,
+		clearCatalogueScope,
+	]);
 	// Search is the backend's (`sessions.search`, negotiated as `session_search`),
 	// not a filter over titles: a conversation is remembered by what was SAID in
 	// it, and the sidebar only holds titles. The backend's answer is used only
@@ -1676,6 +1813,137 @@ export function ChatSidebar({
 			kind === "team"
 				? row.binding?.team === name
 				: !row.binding?.team && row.binding?.agent === name,
+		);
+	/*
+	 * The rows ONE GROUP draws, on the paged path.
+	 *
+	 * THE ORDER IS THE SCOPE'S, and it cannot be re-derived: the wire carries no
+	 * rank, so a group ordered by filtering `matching` would be ordered by whatever
+	 * order the head's page and the group's pages happen to have concatenated in -
+	 * and the group's own first page is by definition NOT the head's rows for that
+	 * binding. `scopes[key].ids` is the server's order for this scope, which is the
+	 * only ordering authority there is (`chat-sections.ts` states the same rule for
+	 * the sections).
+	 *
+	 * The rows are looked up in `matching` rather than in `sessions`, so the search
+	 * narrowing, the archive partition and the tombstone rules all still apply to a
+	 * group exactly as they do to a section: the id list decides ORDER and
+	 * MEMBERSHIP, and the panel's one filtered list decides what may be DRAWN.
+	 *
+	 * `groupPaging === false` returns `children`, so an older daemon's group - and
+	 * any group under a query - is the filter of the one list the panel holds:
+	 * today's render, unchanged.
+	 */
+	const scopeRows = (kind: ChatTarget["kind"], name: string) => {
+		if (!groupPaging) return children(kind, name);
+		const ids = catalogueScopes[catalogueScopeKey(kind, name)]?.ids;
+		if (ids === undefined) return [];
+		const byId = new Map(matching.map((row) => [row.session_id, row]));
+		const rows: CanonicalSessionRow[] = [];
+		for (const id of ids) {
+			const row = byId.get(id);
+			if (row !== undefined) rows.push(row);
+		}
+		return rows;
+	};
+	/*
+	 * WHERE THE CHAT REGION'S TAIL BELONGS, and why it is not always there.
+	 *
+	 * The tail extends the UNSCOPED head, whose rows are partitioned by `active`
+	 * into `Active chats` and `Previous chats`. So the rows it fetches arrive in
+	 * BOTH sections, and the affordance lives at the end of the chronological list:
+	 * the flat `All chats` list, or under an EXPANDED `Previous chats`.
+	 *
+	 * THE GATE IS NOT COSMETIC. `Previous chats` is a collapsed disclosure by
+	 * default, deliberately - an operator who wants the top of the catalogue must
+	 * not be shown the tail of it, and a commit-time extension that ran with the
+	 * section closed would page the ENTIRE catalogue 50 rows at a time, since a
+	 * short region is exactly the case the extension treats as "at the bottom".
+	 */
+	const tailVisible = groupPaging && (all || isOpen("previous"));
+	/*
+	 * THE EXTENSION ITSELF, measured from the region's own geometry.
+	 *
+	 * The measurement rather than an `IntersectionObserver`, because the file
+	 * already measures geometry in this region's `onScroll` handler and a second
+	 * mechanism would be a second source of truth for one question. `tailExtendDue`
+	 * carries the decision and its reasons; this only supplies the numbers.
+	 *
+	 * A REGION THAT IS NOT MOUNTED IS NOT MEASURED, and is not treated as "at the
+	 * bottom": the commit effect below asks again once it exists.
+	 */
+	const extendCatalogueTail = useCallback(() => {
+		if (!tailVisible) return;
+		const box = listPanelRef.current;
+		if (box === null) return;
+		if (
+			!tailExtendDue({
+				pageable: tailVisible,
+				nextCursor: catalogueHead.nextCursor,
+				loading: catalogueHead.loading,
+				error: catalogueHead.error,
+				scrollTop: box.scrollTop,
+				clientHeight: box.clientHeight,
+				scrollHeight: box.scrollHeight,
+			})
+		)
+			return;
+		void fetchCatalogueTail();
+	}, [tailVisible, catalogueHead, fetchCatalogueTail]);
+	/*
+	 * THE SAME QUESTION ON COMMIT, not only on a scroll.
+	 *
+	 * A region whose content is not taller than its box emits no scroll event at
+	 * all, so the scroll handler alone would leave the rows past the head page
+	 * unreachable on a tall window - the case `tailExtendDue`'s own comment names.
+	 * Asked here, the tail fills until the list overflows and the reader's scrolling
+	 * takes over. It converges for the same reason: one page at a time, and the end
+	 * of the catalogue is a cursor of null.
+	 *
+	 * `sessions.length` is a dependency rather than `catalogueHead` alone, because
+	 * an extension can add rows whose count the cursor's own answer does not
+	 * change - a page whose last row is the catalogue's last row returns no cursor
+	 * AND rows, and the region then has to be re-measured.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `sessions.length` is a trigger, not a read — the effect re-measures the region after rows render, which is what the tail fills against.
+	useLayoutEffect(() => {
+		extendCatalogueTail();
+	}, [extendCatalogueTail, sessions.length]);
+	/*
+	 * The tail's drawn state (`catalogueTailView` carries the rules): nothing while
+	 * the extension is silently on its way, the wait register while a page is in
+	 * flight, and one sentence plus a retry when a page did not arrive.
+	 *
+	 * THERE IS NO STEADY-STATE BUTTON, deliberately: the extension is driven by the
+	 * region's own scroll position, and a control at the bottom of the list would be
+	 * replaced mid-press by the rows its own press fetched. The exception is the
+	 * FAILED page, where nothing would ask again on its own.
+	 */
+	const tailState = catalogueTailView({
+		pageable: tailVisible,
+		nextCursor: tailVisible ? catalogueHead.nextCursor : null,
+		loading: catalogueHead.loading,
+		error: catalogueHead.error,
+	});
+	const catalogueTail =
+		tailState.kind === "none" ? null : (
+			<p
+				className="py-1 text-meta text-ink-dim"
+				aria-live={tailState.kind === "loading" ? "polite" : undefined}
+			>
+				{tailState.kind === "loading"
+					? "Loading more chats…"
+					: tailState.sentence}{" "}
+				{tailState.kind === "error" && (
+					<button
+						type="button"
+						className="underline hover:text-ink"
+						onClick={() => void fetchCatalogueTail()}
+					>
+						Retry
+					</button>
+				)}
+			</p>
 		);
 	/*
 	 * The pinned partition, applied to the FILTERED list and to nothing else: the
@@ -2902,9 +3170,29 @@ export function ChatSidebar({
 		);
 	};
 	const entity = (kind: ChatTarget["kind"], name: string) => {
-		const rows = children(kind, name);
-		const key = `${kind}:${name}`;
+		const rows = scopeRows(kind, name);
+		const key = catalogueScopeKey(kind, name);
 		const open = Boolean(query) || isOpen(key);
+		/*
+		 * THE GROUP'S BADGE AND ITS SENTENCES, both from the module rather than from a
+		 * condition here (`sidebar-scope-paging.ts` carries the rules and their
+		 * reasons). The badge reads the CENSUS when the daemon sent one, so a group
+		 * holding 434 conversations stops advertising the 283 a page happened to
+		 * carry; the view is what makes "No chats yet" unreachable while the census
+		 * says otherwise, which is the operator's own screenshot.
+		 */
+		const badge = groupBadgeCount({
+			pageable: groupPaging,
+			total: groupPaging ? scopeCensusTotal(catalogueCounts, kind, name) : null,
+			held: rows.length,
+			searching: Boolean(query.trim()),
+		});
+		const view = groupChatsView({
+			pageable: groupPaging,
+			scope: catalogueScopes[key],
+			held: rows.length,
+			total: groupPaging ? scopeCensusTotal(catalogueCounts, kind, name) : null,
+		});
 		if (
 			query &&
 			!name.toLocaleLowerCase().includes(query.toLocaleLowerCase()) &&
@@ -3004,7 +3292,7 @@ export function ChatSidebar({
 					    of it, which moved the glyph across 14px between rows and made
 					    the reveal jitter as the pointer ran down the list. */}
 						<span className="min-w-4 shrink-0 text-right text-meta tabular-nums text-ink-dim">
-							{rows.length || ""}
+							{badge || ""}
 						</span>
 					</button>
 					<button
@@ -3027,9 +3315,103 @@ export function ChatSidebar({
 				{open && (
 					<div>
 						{rows.map((row) => sessionRow(row, true))}
-						{!rows.length && (
-							<p className="py-1 pl-7 text-meta text-ink-dim">No chats yet</p>
+						{/*
+						 * THE GROUP'S OWN SENTENCE.
+						 *
+						 * It is drawn from `view.sentence` and never chosen here, because the
+						 * sentence and the condition that selects it are ONE claim: the whole
+						 * defect this closes was a group with 434 chats drawing "No chats yet"
+						 * because the only question asked was whether the page it happened to
+						 * hold was empty. See `sidebar-scope-paging.ts` for the precedence and
+						 * for the invariant that can never render that sentence.
+						 *
+						 * `aria-live="polite"` on the loading register only: the panel already
+						 * announces `Loading agents…` that way, and a reader who expanded a group
+						 * is owed the fact that something is on its way. The other sentences are
+						 * answers rather than transitions, and an answer that appears as the
+						 * reader arrives is already where they are looking.
+						 */}
+						{view.state !== "rows" && view.sentence !== null && (
+							<p
+								className="py-1 pl-7 text-meta text-ink-dim"
+								aria-live={view.state === "loading" ? "polite" : undefined}
+							>
+								{view.sentence}
+								{/*
+								 * THE RETRY IS A SIBLING OF THE SENTENCE, not part of its text, so it
+								 * is a control rather than a word the reader has to read and then aim
+								 * at. It re-reads the group's FIRST page, which is the only thing a
+								 * failed first page can be retried as.
+								 */}
+								{view.retry && (
+									<>
+										{" "}
+										<button
+											type="button"
+											className="underline hover:text-ink"
+											onClick={() => void fetchScopePage(kind, name, null)}
+										>
+											Retry
+										</button>
+									</>
+								)}
+							</p>
 						)}
+						{/*
+						 * THE GROUP'S TAIL, and why it is an EXPLICIT row rather than a
+						 * sentinel (ruling 2 / design §5.4). The entity region is shared by every
+						 * expanded group, so a sentinel near the fold would fire for whichever
+						 * groups happen to sit there - the load would become a function of scroll
+						 * position rather than of intent, and several groups would extend at once,
+						 * which is the amplification this change exists to remove, reintroduced
+						 * inside one container. An explicit row is deterministic and is the
+						 * operator's own stated fallback ("load them a page at a time").
+						 *
+						 * Its three states are the extension's whole life: the press, the wait,
+						 * and the refusal. The refusal KEEPS the rows above it - they are not a
+						 * claim the failure retracts - and offers the press again, which is the
+						 * only remedy for a page that did not arrive.
+						 */}
+						{view.state === "rows" &&
+							(catalogueScopes[key]?.loading ? (
+								<p
+									className="py-1 pl-7 text-meta text-ink-dim"
+									aria-live="polite"
+								>
+									Loading more…
+								</p>
+							) : view.retry ? (
+								<p className="py-1 pl-7 text-meta text-ink-dim">
+									{view.sentence}{" "}
+									<button
+										type="button"
+										className="underline hover:text-ink"
+										onClick={() =>
+											void fetchScopePage(
+												kind,
+												name,
+												catalogueScopes[key]?.nextCursor ?? null,
+											)
+										}
+									>
+										Retry
+									</button>
+								</p>
+							) : view.more ? (
+								<button
+									type="button"
+									className="block w-full py-1 pl-7 text-left text-meta text-ink-dim underline hover:text-ink"
+									onClick={() =>
+										void fetchScopePage(
+											kind,
+											name,
+											catalogueScopes[key]?.nextCursor ?? null,
+										)
+									}
+								>
+									{`Show ${CATALOGUE_GROUP_PAGE} more`}
+								</button>
+							) : null)}
 					</div>
 				)}
 			</div>
@@ -4324,7 +4706,18 @@ export function ChatSidebar({
 		<div
 			key="chats"
 			ref={listPanelRef}
-			onScroll={() => refreshFocusedInside(listPanelRef.current, listSlotRef)}
+			onScroll={() => {
+				refreshFocusedInside(listPanelRef.current, listSlotRef);
+				/*
+				 * THE TAIL EXTENDS FROM THIS SAME HANDLER, rather than from a second
+				 * listener or an `IntersectionObserver`: the geometry it needs is the
+				 * geometry this handler already reads, and a second mechanism would be a
+				 * second source of truth for "am I at the bottom". `extendCatalogueTail`
+				 * is a no-op unless the tail is visible, a page is not already in flight
+				 * and the cursor has not run out.
+				 */
+				extendCatalogueTail();
+			}}
 			id={CHAT_REGION_ID}
 			data-sidebar-region="chats"
 			style={
@@ -4574,7 +4967,10 @@ export function ChatSidebar({
 				</section>
 			)}
 			{all ? (
-				<section>{rest.map((row) => sessionRow(row))}</section>
+				<section>
+					{rest.map((row) => sessionRow(row))}
+					{catalogueTail}
+				</section>
 			) : (
 				<>
 					<section>
@@ -4615,9 +5011,22 @@ export function ChatSidebar({
 							 * and "Nothing running right now."` beside it would be a claim
 							 * the panel itself contradicts. The rows are `rest`'s, so the
 							 * section still holds none of the pinned ones.
+							 *
+							 * AND IT NEEDS A SETTLED HEAD ANSWER (design §5.5). The sentence is a
+							 * claim about the MACHINE, and it used to be reachable while the
+							 * catalogue was still loading or while the page on screen stopped
+							 * short of the running chats - the same false negative as "No chats
+							 * yet", one register louder. So on the paged path it waits for an
+							 * answer to have landed (`catalogueHead.at > 0`) and for no read to
+							 * be in flight, and draws the loading register until then. The
+							 * withdrawn path (`groupPaging` false) is today's, unchanged.
 							 */
 							(matching.some((row) => row.active) ? (
 								rest.filter((row) => row.active).map((row) => sessionRow(row))
+							) : groupPaging && (loading || catalogueHead.at === 0) ? (
+								<p className="px-2 text-meta text-ink-dim" aria-live="polite">
+									Loading chats…
+								</p>
 							) : (
 								<p className="px-2 text-meta text-ink-dim">
 									{livenessUnread
@@ -4635,6 +5044,16 @@ export function ChatSidebar({
 						)}
 						{(query || isOpen("previous")) &&
 							rest.filter((row) => !row.active).map((row) => sessionRow(row))}
+						{/*
+						 * THE TAIL LIVES AT THE END OF THE CHRONOLOGICAL LIST IT EXTENDS.
+						 * The head's rows are partitioned by `active` into the two sections
+						 * above, so an extension adds rows to BOTH of them and its affordance
+						 * belongs under the one that is the tail of the catalogue. It is drawn
+						 * only while this section is open (`tailVisible`), because a
+						 * collapsed disclosure is exactly where a "fill until it scrolls"
+						 * extension would page the whole catalogue unasked.
+						 */}
+						{catalogueTail}
 					</section>
 				</>
 			)}
@@ -4645,12 +5064,30 @@ export function ChatSidebar({
 		    rendered as a row of its own (review round 2, R13 — this gate
 		    asked only about `sessions`, and a query was the other half of
 		    the claim). */}
-			{!sessions.length && !matching.length && !loading && !query.trim() && (
-				<p className="text-meta text-ink-muted">
-					No chats yet. Choose an agent, team or New chat.
-				</p>
-			)}
-			{truncated && (
+			{!sessions.length &&
+				!matching.length &&
+				!loading &&
+				!query.trim() &&
+				// AND THE CENSUS, where one arrived (design §5.5): a cold-start
+				// sentence must not appear beside a store the daemon has just counted.
+				// A head page that stopped short of the rows leaves `sessions` empty
+				// while `counts.total` is 757, and the sentence would then tell the
+				// reader their store holds no chats at all - the same false statement
+				// as the group's, one register wider.
+				(catalogueCounts === null || catalogueCounts.total === 0) && (
+					<p className="text-meta text-ink-muted">
+						No chats yet. Choose an agent, team or New chat.
+					</p>
+				)}
+			{/*
+			 * The truncation sentence is the WITHDRAWN path's, and only its: it states
+			 * a 500-row cap that a paged client does not have, and on the paged path
+			 * the tail's own state says what is true instead (`catalogueTail`, drawn
+			 * above, which reports an extension's wait and its failure). Keeping it on
+			 * both paths would tell a reader of a 50-row head page about a 500-row cap
+			 * that is not the reason their list stops.
+			 */}
+			{truncated && !groupPaging && (
 				<p className="text-meta text-ink-muted">
 					Showing up to 500 chats. Older chats remain available in the terminal.
 				</p>
@@ -5331,7 +5768,7 @@ export function ChatSidebar({
 							type="button"
 							className="mt-1 underline"
 							onClick={() => {
-								void fetchSessions();
+								void refreshCatalogue();
 								void profiles.refetch();
 								void teams.refetch();
 							}}
