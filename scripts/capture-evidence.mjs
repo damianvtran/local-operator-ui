@@ -400,6 +400,58 @@ export const STORIES = [
 	 * surfaces were committed with (1308 / 1409 / 3327), so the frames keep the
 	 * full transcript and a re-capture is a fair comparison again.
 	 */
+	/*
+	 * THE PROVIDER SIGN-IN, PROVIDERS PAGE, ONBOARDING AND DISCOVERABILITY SET.
+	 *
+	 * Every state here is one a reader can reach by id, and each was rendered and
+	 * looked at before it was listed. `providers-router-backend` is the released
+	 * backend's sequence (the sign-in url arrives on the first POLL rather than on
+	 * the start reply) and `current-backend` is the newer one (url on the reply);
+	 * they are two rows because the defect this set exists for was backend-shape
+	 * dependent, and a frame of only one shape cannot show that both work.
+	 *
+	 * The story's bridge is scripted and its `openAuthorization` RECORDS instead
+	 * of opening a browser, so these frames are publishable by construction --
+	 * except `settings-launch-error` and `providers-list-error`, which render the
+	 * load-failure branches the same bridge refuses to answer for.
+	 */
+	["provider-sign-in-onboarding--providers-first-run", 1280, 1100],
+	["provider-sign-in-onboarding--providers-connected", 1280, 1100],
+	["provider-sign-in-onboarding--providers-connected-menu", 1280, 1100],
+	["provider-sign-in-onboarding--panel-idle", 1280, 620],
+	[
+		"provider-sign-in-onboarding--panel-waiting-legacy-backend",
+		1280,
+		620,
+		{ dir: "panel-waiting-first-click-released-backend" },
+	],
+	[
+		"provider-sign-in-onboarding--panel-waiting-current-backend",
+		1280,
+		620,
+		{ dir: "panel-waiting-url-on-start-reply" },
+	],
+	["provider-sign-in-onboarding--panel-device-code", 1280, 620],
+	["provider-sign-in-onboarding--panel-optional-paste", 1280, 620],
+	["provider-sign-in-onboarding--panel-optional-paste-open", 1280, 780],
+	["provider-sign-in-onboarding--panel-paste-required", 1280, 620],
+	["provider-sign-in-onboarding--panel-succeeded-with-default", 1280, 620],
+	["provider-sign-in-onboarding--panel-expired", 1280, 620],
+	["provider-sign-in-onboarding--panel-gone-404", 1280, 620],
+	["provider-sign-in-onboarding--panel-failed", 1280, 620],
+	["provider-sign-in-onboarding--panel-api-key", 1280, 620],
+	["provider-sign-in-onboarding--panel-invalid-key", 1280, 660],
+	["provider-sign-in-onboarding--panel-key-saved", 1280, 620],
+	["provider-sign-in-onboarding--panel-key-saved-unchecked", 1280, 660],
+	["provider-sign-in-onboarding--panel-local", 1280, 620],
+	["provider-sign-in-onboarding--onboarding-step-1", 1280, 900],
+	["provider-sign-in-onboarding--onboarding-step-1-connected", 1280, 900],
+	["provider-sign-in-onboarding--onboarding-step-2-applied", 1280, 900],
+	["provider-sign-in-onboarding--onboarding-step-2-proposed", 1280, 900],
+	["provider-sign-in-onboarding--onboarding-step-3", 1280, 900],
+	["provider-sign-in-onboarding--empty-chat-card", 1280, 620],
+	["provider-sign-in-onboarding--connect-dialog", 1280, 900],
+
 	["chat-trace--conversation", 1280, 1308],
 	["chat-trace--conversation-with-reasoning", 1280, 1409],
 	["chat-trace--conversation-reasoning-open", 1280, 3327],

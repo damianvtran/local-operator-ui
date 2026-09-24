@@ -343,7 +343,15 @@ const SettingsFrame = ({ children }: { children: ReactNode }) => (
 );
 
 const meta: Meta = {
-	title: "Providers/Sign-in states",
+	/*
+	 * The title is also the EVIDENCE DIRECTORY: `capture-evidence.mjs` writes a
+	 * set's frames to `docs/evidence/<title kebab>/<state>/<theme>.webp`, so this
+	 * title is what puts them under `docs/evidence/provider-sign-in-onboarding/`
+	 * (hyphenated `sign-in`, nothing else kebabifies to this directory). Renaming
+	 * the title moves the frames, which is the one thing to know before touching
+	 * this line.
+	 */
+	title: "Provider sign-in onboarding",
 	parameters: { layout: "fullscreen" },
 };
 export default meta;
