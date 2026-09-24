@@ -59,11 +59,16 @@
  *
  * 24px, not the `2rem` (32px) it carried, because 24 is what puts the label on
  * the 80px line: the row starts at x 56 (the 48px rail plus the list panel's own
- * 8px inset) and `px-1` adds 4, so 56 + 24 = 80. That line is derived from the OS
- * controls rather than from anything in the app's own composition - the zoom
- * button's hit frame ends at x 70 and 80 is one 8px step past it - and it is also
- * the line the banner's own copy uses when a banner occupies the top of the
- * window (the rule above). It clears the button's drawn circle by 11.25px and its
+ * 8px inset) and `px-1` adds 4 - 56 + 28 = 84 - except that this compound rule
+ * REPLACES that utility rather than adding to it, so the computed `padding-left`
+ * is 24 and the label lands on 80. (Review R7-7: the sentence used to read
+ * "56 + 24 = 80" beside "`px-1` adds 4", which computes 84 for a reader following
+ * it; the measured computed value is 24px, not 28.)
+ *
+ * That line is derived from the OS controls rather than from anything in the
+ * app's own composition - the zoom button's hit frame ends at x 70 and 80 is one
+ * 8px step past it - and it is also the line the banner's own copy uses when a
+ * banner occupies the top of the window (the rule above). It clears the button's drawn circle by 11.25px and its
  * hit frame by 10px. The old value would have landed the label at 92.
  *
  * (Revision 2: this is the ONE place the rail's 80px survives. The brand row no
@@ -74,6 +79,53 @@
 [data-titlebar-platform="mac"][data-titlebar-sidebar-collapsed="true"]
 	[data-titlebar-chat-heading] {
 	padding-left: 24px;
+}
+
+/*
+ * COLLAPSED, THE RAIL'S RIGHT HAIRLINE STARTS BELOW THE OS CONTROLS (design round
+ * 4, D1 - the operator's own report: "when collapsed it looks weird, since the
+ * three dots overlap the line").
+ *
+ * The OS controls are wider than the collapsed rail and the line was the only
+ * thing in their band. Measured from a `screencapture -l` window capture, which
+ * is the only instrument that can see OS chrome at all: their DRAWN circles span
+ * x 10-68 and their OS hit frames x 8-70, against a 48px rail whose 1px right
+ * hairline sits at x 47-48 and ran from the window's top edge to its bottom. So
+ * the third circle is entirely beyond the line, the second circle's hit frame
+ * ends ON it, and the line bisects the group. Both columns being the same
+ * `surface` (measured rgb(42,39,34) on both sides) is what makes this reachable
+ * with one rule and no repaint: there is no ground change for the circles to sit
+ * across, only the line.
+ *
+ * SO THE LINE BEGINS WHERE THE RAIL'S OWN CONTENT DOES. 32px is the lane's own
+ * height - their 8px + 16px + 8px hit frames - so in the collapsed state, and
+ * only there, the 1px boundary is drawn from y 32 down instead of from y 0. The
+ * circles then sit on one unbroken surface, and nothing else moves: the rail's
+ * content box widens by the 1px the border was occupying (measured: the disc's
+ * lit columns are 12-35 in both states, so nothing visibly shifts), `Chats`
+ * keeps its x 80 line, and the EXPANDED state is untouched because the selector
+ * requires the collapsed attribute.
+ *
+ * `background-size: 1px` is a CSS pixel, exactly like the `border-right: 1px` it
+ * replaces, so the line is 2 device px at dpr 2 in both states.
+ *
+ * The rejected alternative, with its number: widening the rail until the
+ * controls fit inside it needs a client width of >= 70 (their hit frames end at
+ * x 70) - `w-18` (72) against today's `w-12` (48), i.e. 24px of conversation
+ * width in every collapsed view, plus a moved disc, plus a second rule deleted.
+ * Correct, and a different product decision than "the line stops beneath them".
+ */
+[data-titlebar-platform="mac"][data-titlebar-sidebar-collapsed="true"]
+	[data-titlebar-sidebar] {
+	border-right-width: 0;
+	background-image: linear-gradient(
+		to bottom,
+		transparent 0 32px,
+		var(--color-hairline) 32px
+	);
+	background-repeat: no-repeat;
+	background-position: right top;
+	background-size: 1px 100%;
 }
 
 /*

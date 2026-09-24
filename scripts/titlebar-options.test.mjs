@@ -17,6 +17,13 @@ const NO_DRAG_RULE = /-webkit-app-region:\s*no-drag;/;
  * (the `px-1` utility alone) and the `Chats` label sat at x 60, underneath the
  * traffic lights' zoom button (x 54.75-68.75). The two attribute selectors are
  * therefore written COMPOUND and the dead form is asserted absent below.
+ *
+ * THE ASSERTION READS THE DECLARATIONS, NOT THE FILE TEXT (review R7-1). A rule's
+ * own doc comment may spell the dead form out in full while explaining why it is
+ * dead, and asserting over the raw file would then fail for a documentation
+ * reason - a guard that fires on prose is as wrong as one a comment satisfies.
+ * `index.css` is therefore stripped of its comments before the pattern runs, so
+ * what it tests is what the browser would parse.
  */
 const COLLAPSED_CHAT_HEADING_SAFE_AREA =
 	/\[data-titlebar-platform="mac"\]\[data-titlebar-sidebar-collapsed="true"\]\s+\[data-titlebar-chat-heading\]\s*\{\s*padding-left:\s*24px;/;
@@ -30,11 +37,30 @@ const DEAD_DESCENDANT_PLATFORM_SELECTOR =
  * the OS circles back over the brand and the control's arithmetic back over 219.
  * Asserted as a source ORDER rather than as a count, because a second lane
  * somewhere further down the rail would satisfy a count and change nothing.
+ *
+ * IT MATCHES THE MARKUP SPELLING, NOT THE BARE TOKEN, and that is the whole
+ * difference between a guard and a sentence (review R7-1). The bare
+ * `data-titlebar-lane` occurs FIRST inside the rail's own doc comment (line 357,
+ * "is the LANE above this row (`data-titlebar-lane`, 32px)"), so a lazy match
+ * from that token to the `data-titlebar-rail-header` markup 107 lines later was
+ * satisfied by COMMENT -> MARKUP and stayed true with the lane element deleted
+ * and with the lane element moved to the end of the file. Both mutations were
+ * reproduced against a byte copy of this file's own source, which is what makes
+ * the `=""` form the fix: the attribute as the JSX writes it occurs exactly once
+ * each, so the pin can only be satisfied by the two elements' real order.
  */
 const LANE_BEFORE_RAIL_HEADER =
-	/data-titlebar-lane[\s\S]*?data-titlebar-rail-header/;
+	/data-titlebar-lane=""[\s\S]*?data-titlebar-rail-header=""/;
 const BANNER_BACKGROUND_RULE =
 	/\[data-titlebar-platform="mac"\]\s+\[data-titlebar-banner\]\s*\{[\s\S]*?background-image:\s*linear-gradient\(\s*to right,\s*var\(--color-canvas\)\s+0\s+80px,\s*transparent\s+80px\s*\);[\s\S]*?padding-left:\s*80px;/;
+/*
+ * A CSS comment is prose: it is not parsed, so it can neither satisfy nor trip an
+ * assertion about what the stylesheet DOES. The dead-selector pin below asserts on
+ * the stripped text for that reason (review R7-1) - the same reading a browser
+ * takes of the file.
+ */
+const stripCssComments = (text) => text.replace(/\/\*[\s\S]*?\*\//g, "");
+
 const CHAT_HEADER_SAFE_AREA_SELECTOR = '[data-tour-tag="chat-header"]';
 const GLOBAL_DRAG_RULE =
 	/(?:^|\n)\s*(?:html|body|#app|main)\s*\{[^}]*-webkit-app-region:\s*drag/m;
@@ -61,10 +87,13 @@ const { titlebarOptions } = await import(
  *
  * The renderer gives them their own 32px lane (`data-titlebar-lane` in
  * `sidebar-navigation.tsx`), and that lane's height comes FROM their frame: 8px
- * above their 16px hit frames (y 8), 8px below = 32, centre 16 - against the drawn
- * circles' centre of 15.75 at this default. Nothing else on the strip is aligned
- * to the lights, which is why no offset is passed. `trafficLightPosition` is a
- * macOS-only option, so its absence on every other platform is asserted too.
+ * above their 16px hit frames (y 8), 8px below = 32, centre 16 - and the drawn
+ * circles measure that same centre at this default (a `screencapture -l` window
+ * capture reads them spanning y 9.00-23.00, Ø 14.00, centre 16.00; an earlier
+ * round's "Ø 13.5, centre 15.75" came from a spec figure). Nothing else on the
+ * strip is aligned to the lights, which is why no offset is passed.
+ * `trafficLightPosition` is a macOS-only option, so its absence on every other
+ * platform is asserted too.
  */
 test("macOS hides the titlebar while retaining native traffic lights", () => {
 	assert.deepEqual(titlebarOptions("darwin"), { titleBarStyle: "hidden" });
@@ -158,7 +187,7 @@ test("macOS drag and safe areas are limited to existing empty shell headers", ()
 	assert.match(css, NO_DRAG_RULE);
 	assert.match(css, COLLAPSED_CHAT_HEADING_SAFE_AREA);
 	assert.ok(
-		!DEAD_DESCENDANT_PLATFORM_SELECTOR.test(css),
+		!DEAD_DESCENDANT_PLATFORM_SELECTOR.test(stripCssComments(css)),
 		"the collapsed-rail compensation must key on ONE element carrying both attributes: a descendant combinator between them matches nothing",
 	);
 	assert.match(css, BANNER_BACKGROUND_RULE);
@@ -168,6 +197,15 @@ test("macOS drag and safe areas are limited to existing empty shell headers", ()
 	assert.ok(rail.includes("data-titlebar-rail-header"));
 	assert.match(rail, LANE_BEFORE_RAIL_HEADER);
 	assert.ok(!rail.includes("data-titlebar-collapsed-toggle-row"));
+	/*
+	 * The same standard, applied to the two hooks this round deleted for having no
+	 * consumer left (`data-titlebar-brand` and `data-titlebar-rail-toggle` were
+	 * selected only by the two rules the collapsed-state revision removed). The
+	 * `=""` spelling is deliberate for the same reason the lane pin uses it: this
+	 * file's own comments name both hooks while explaining why they went.
+	 */
+	assert.ok(!rail.includes('data-titlebar-brand=""'));
+	assert.ok(!rail.includes('data-titlebar-rail-toggle=""'));
 	assert.ok(rail.includes("aria-expanded={expanded}"));
 	assert.ok(rail.includes("aria-label={toggleLabel}"));
 	assert.ok(rail.includes('<Tooltip content={toggleLabel} side="right">'));

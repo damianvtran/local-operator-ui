@@ -409,6 +409,16 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 
 	return (
 		<nav
+			/*
+			 * `data-titlebar-sidebar` is selected by exactly one rule, and it is the
+			 * one the OS circles owe (design round 4, D1): collapsed, the rail's
+			 * right hairline is started below the controls' own lane in
+			 * `styles/index.css`, because the third circle's hit frame ends at x 70
+			 * against a 48px rail whose hairline sits at x 47-48 and the line ran
+			 * from the window's top edge straight through their band. It is the only
+			 * hook on this element that anything selects; the brand and the toggle
+			 * hooks that used to sit beside it were deleted with their consumers.
+			 */
 			data-titlebar-sidebar=""
 			data-sidebar-collapsed={isSidebarCollapsed ? "true" : "false"}
 			className={cn(
@@ -428,15 +438,26 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			 * 8px below = 32, centre 16. Nothing else lives in it - the brand is below it,
 			 * on the rail's own gutter.
 			 *
-			 * The lane is why the lights keep the platform default: their drawn circles
-			 * centre on 15.75 against this lane's 16, which is the half-pixel a 2x display
-			 * addresses. Nothing shares a centre with them, so nothing asks them to move
-			 * (`src/main/titlebar-options.ts` states that side of it).
+			 * The lane is why the lights keep the platform default: the lane's centre is
+			 * 16 and the drawn circles centre on 16 too. That reading is a
+			 * `screencapture -l` window capture (their span y 9.00-23.00, i.e. Ø 14.00),
+			 * which is the only instrument that can see OS chrome - a renderer frame
+			 * cannot, and the pixel scan cannot resolve a circle either, so the 15.75
+			 * earlier rounds quoted off a Ø 13.5 spec figure is half-pixel precision
+			 * this measurement does not support. Nothing shares a centre with them, so
+			 * nothing asks them to move (`src/main/titlebar-options.ts` states that
+			 * side of it).
 			 *
 			 * `data-titlebar-drag` because it is empty header surface and must stay a
 			 * window drag handle; rendered in BOTH rail states, because the masthead is
-			 * 32 + 40 = 72 expanded and collapsed alike, and it is that 72 that puts the
-			 * rail's first nav row on the sidebar's list at 80.
+			 * 32 + 40 = 72 expanded and collapsed alike.
+			 *
+			 * THAT 72 IS A macOS ALIGNMENT, not a universal one (review R7-9): the lane
+			 * is `isMac &&`, so on Windows and Linux the masthead is the brand row's 40
+			 * alone and the rail's first nav row starts at 48 while the sidebar's list
+			 * starts at 80 - a real 32px offset that the base has too (56 against 96), so
+			 * the two columns are closer here than they were, but a reader must not take
+			 * the shared 80 as a property of every platform.
 			 */}
 			{isMac && (
 				<div
@@ -452,8 +473,9 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			 * 40 is the app's toolbar step - the 24px mark leaves 8px above and below in
 			 * it, the same air the 28px avatar and every pane toolbar take in their own
 			 * 40px rows - and it is what makes the masthead total 72 (lane 32 + row 40)
-			 * equal to the sidebar's heading block's own 72, so the rail's first nav row
-			 * and the sidebar's list start together on 80.
+			 * equal to the sidebar's heading block's own 72, so on macOS the rail's first
+			 * nav row and the sidebar's list start together on 80 (see the lane's note
+			 * for what those two columns do where the lane is not rendered).
 			 *
 			 * `pl-5` is the gutter the composition rests on: the list's 8px inset plus a
 			 * row's 12px padding puts every nav mark 20px from the rail's edge, and the
@@ -481,24 +503,20 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				 */}
 				{expanded ? (
 					<>
-						<div data-titlebar-brand="" data-titlebar-no-drag="">
+						<div data-titlebar-no-drag="">
 							<CollapsibleAppLogo expanded />
 						</div>
-						<div data-titlebar-rail-toggle="" data-titlebar-no-drag="">
-							{collapseToggle}
-						</div>
+						<div data-titlebar-no-drag="">{collapseToggle}</div>
 					</>
 				) : (
 					<div className="relative flex size-8 items-center justify-center">
 						<div
-							data-titlebar-brand=""
 							data-titlebar-no-drag=""
 							className="transition-opacity duration-fast ease-out-quart group-hover:opacity-0 group-focus-within:opacity-0"
 						>
 							<CollapsibleAppLogo expanded={false} />
 						</div>
 						<div
-							data-titlebar-rail-toggle=""
 							data-titlebar-no-drag=""
 							className="absolute inset-0 flex items-center justify-center"
 						>

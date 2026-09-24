@@ -11,8 +11,10 @@ import {
 	Skeleton,
 	Tooltip,
 } from "@shared/components/ui";
+import { useHomeDirectory } from "@shared/hooks";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { formatDirectory } from "@shared/utils/path-utils";
 import {
 	Archive,
 	ArchiveRestore,
@@ -191,6 +193,14 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	consoleUnseenCount = 0,
 	consoleUnseenPulsing = false,
 }) => {
+	/*
+	 * The account's home directory, for the identity row's `~` form. It is the
+	 * same process-wide value the composer's directory chip renders through the
+	 * same rule (`useHomeDirectory`), so the two surfaces three inches apart
+	 * spell one fact one way; null (no bridge, or the answer not back yet) leaves
+	 * the path in full rather than blanking it.
+	 */
+	const homeDirectory = useHomeDirectory();
 	/*
 	 * What the badge SHOWS, which is not always what it counts (design round 1, D5):
 	 * a badge fixed to a 16px icon cannot grow past its own corner, so from the
@@ -415,12 +425,28 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				 * it consumes slack and can never be the reason a pixel leaves the name, and
 				 * when the row has no slack at all it is already 0 - that is the description
 				 * yielding first, in the strongest form. The name is the one that then shrinks
-				 * (`min-w-0 truncate`) rather than pushing the action cluster off the bar. The
-				 * `max-w-[45%]` cap is the third part: at 1380 the description was eating 411.5
-				 * of the row's 612px (67%), so even where there IS slack it now takes at most
-				 * 45% and the primary run reads first. What the zero basis could NOT fix is a
-				 * row with no slack at all - that is the two-row rule on the header above, and
-				 * the widths it is measured at are recorded there. */}
+				 * (`min-w-0 truncate`) rather than pushing the action cluster off the bar. What
+				 * the zero basis could NOT fix is a row with no slack at all - that is the
+				 * two-row rule on the header above, and the widths it is measured at are
+				 * recorded there.
+				 *
+				 * NO WIDTH CAP, AND THE CAP IS WHY IT IS GONE (design round 4 D4, UX U1).
+				 * `max-w-[45%]` was here to stop the secondary run reading louder than the
+				 * primary one, and it bought that by being the row's empty space: this run is
+				 * the row's ONLY `flex-grow` member, so a binding cap does not limit the path,
+				 * it withholds slack the run would otherwise take, and the withheld pixels
+				 * appear as a hole to its right. Measured on this row (conversation column
+				 * 880px, identity block 612px, `Release checklist for 0.62` as the name): cap
+				 * 275.40px, hole 136.12px, i.e. 22% of the row empty while the path was cut
+				 * mid-string - and the cut is a CONSTANT, so every path of 44 characters or
+				 * more rendered 42-43 of them: a 65-character worktree path and a
+				 * 96-character path inside it showed the same 43 characters, and a session
+				 * id's 12 distinguishing characters were cut at 3. The name is unaffected
+				 * either way - it is a zero-basis `flex-1` and measured unchanged in all 40
+				 * cells of the pair's matrix - so the trade the cap made was the row's own
+				 * empty space against the only token that says which checkout or session this
+				 * is. The secondary run filling that slack is the D4 proportion, and it is
+				 * the lesser cost: 13px `ink-dim` beside a 16px `ink` name. */}
 				{descriptionPending ? (
 					/* `bg-elevated` for the same measured reason the transcript
 					 * placeholder takes it: the header's ground is `canvas`, where the
@@ -439,14 +465,27 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 						)}
 					/>
 				) : (
+					/* The `~` form, through the composer chip's own rule
+					 * (`formatDirectory`, hoisted to `path-utils.ts` so there is one
+					 * implementation and not two): the first 12 characters of the
+					 * absolute path (`/Users/<account>`) are identical on every
+					 * conversation this machine holds, and `~` is 12 characters shorter
+					 * for every path measured - exactly the margin that decides whether
+					 * the segment identifying the directory survives the row. The
+					 * TOOLTIP stays on the raw absolute path, so the fully-resolved
+					 * value is still one hover away and nothing becomes un-recoverable.
+					 * The slot is not only a path - it also holds the draft's sentence
+					 * and a run's target name - and `formatDirectory` returns anything
+					 * that is not a path unchanged, which is why this is safe to apply
+					 * to the whole run. */
 					<span
 						className={cn(
-							"min-w-0 max-w-[45%] flex-1 truncate text-body-sm text-ink-dim",
+							"min-w-0 flex-1 truncate text-body-sm text-ink-dim",
 							"@max-[620px]/chatcol:hidden",
 						)}
 						title={description}
 					>
-						{description}
+						{formatDirectory(description, homeDirectory)}
 					</span>
 				)}
 			</div>
@@ -514,14 +553,26 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 					 */
 					"ml-auto flex items-center gap-2",
 					/*
-					 * THE CLUSTER'S OWN ROW (design D3). At `w-full` its hypothetical size IS
-					 * the row's width, so it cannot share the first line with the identity and
-					 * wraps to the second - which is the whole of how the two-row form is forced,
-					 * rather than waiting for the cluster's own content to stop fitting (that
-					 * would wrap at a column width decided by how many pane triggers happen to be
-					 * on screen, not at the 620px step the bar is designed to). `justify-end`
-					 * keeps its right edge on the same 16px inset it has in the one-row form, and
-					 * `h-10` makes the row the band's height so the wrapped bar is exactly 80.
+					 * THE CLUSTER'S OWN ROW (design D3). At `w-full` the cluster ASKS for the
+					 * whole line, which is how the two-row form is forced at the 620px step
+					 * rather than at whatever width the cluster's own content stops fitting -
+					 * that would move the break with the number of pane triggers on screen.
+					 *
+					 * WHAT DECIDES THE BREAK IS THE 8px COLUMN `gap-2`, and that is worth
+					 * naming because it is the one term here that nothing pins (review R7-8,
+					 * measured in the engine with these class strings and the head's own
+					 * stylesheet, at a 500px column): with the shipped classes the bar is 80,
+					 * the identity 468x40 with the description `display:none`, and the cluster
+					 * on row 2; with the column gap zeroed the bar collapses to 40 with the
+					 * identity 0 wide, the NAME 0 wide and the cluster on row 1 - the D3 defect
+					 * exactly as it was, because the identity's `flex-1` is a zero basis and the
+					 * line's hypothetical sum without the gap is exactly 100%, which fits. The
+					 * bar's own `gap-y-0` on the narrow variant is the ROW axis and deliberately
+					 * leaves the column gap standing; a future `gap-0` in that variant would
+					 * silently restore the invisible name with every test still green.
+					 * `justify-end` keeps the cluster's right edge on the same 16px inset it has
+					 * in the one-row form, and `h-10` makes the row the band's height so the
+					 * wrapped bar is exactly 80.
 					 */
 					"@max-[620px]/chatcol:h-10 @max-[620px]/chatcol:w-full @max-[620px]/chatcol:flex-wrap @max-[620px]/chatcol:justify-end",
 				)}
