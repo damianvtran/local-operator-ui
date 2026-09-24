@@ -1103,6 +1103,11 @@ const BRANCH_RECORDS = [
 	 */
 	"goalDoneRestampNote",
 	"goalDoneFoldRestampNote",
+	/*
+	 * And its frame pass (remediation round 2), which is the only statement of how the
+	 * goal frames were taken, on which tree, and what D1 measured before and after.
+	 */
+	"goalDoneFramePassNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
