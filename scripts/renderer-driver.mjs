@@ -324,6 +324,27 @@ const TUI_PYTHON = argValue("--tui-python", null);
  */
 const THEME = argValue("--theme", null);
 /*
+ * The paged-catalogue evidence set (`docs/evidence/sidebar-lazy-chats`).
+ *
+ * `--scoped-case` names which of the stand-in's four arms this run is
+ * photographing; `LAZY_CATALOGUE_HEAD_PAGE` and `LAZY_GROUP_PAGE` MIRROR the
+ * app's own `CATALOGUE_HEAD_PAGE` and `CATALOGUE_GROUP_PAGE`
+ * (`canonical-sessions-store.ts`) because the driver is plain JS and cannot import
+ * them. They are not a second authority: every assertion that uses them is a
+ * NUMBER the store's own row count has to match, so a drift in either direction
+ * fails the run rather than moving the goalposts with it.
+ */
+const LAZY_CASE = argValue("--scoped-case", "paged");
+const LAZY_THEME = THEME ?? "localOperatorDark";
+const LAZY_GROUP = "lopdev";
+/** The stand-in's `lopdev` population at `--catalogue 120`. */
+const LAZY_GROUP_TOTAL = 70;
+const LAZY_CATALOGUE_TOTAL = 120;
+const LAZY_CATALOGUE_HEAD_PAGE = 50;
+const LAZY_GROUP_PAGE = 25;
+/** Long enough for the panel's own paint, short enough to stay an evidence run. */
+const LAZY_SETTLE_MS = 1800;
+/*
  * The title the search-only scene looks for, and it is a flag because the seeder owns the
  * order: `--generate N` writes its mtimes in sequence, so the oldest titles are the ones the
  * catalogue page drops. Defaulted to the first of that numbering.
@@ -14082,6 +14103,338 @@ async function dragSplit(cdp, x, y, dy, { steps = 6, hold = null } = {}) {
  *     no conversations: the SUBJECT is the boundary, the controls on it and the
  *     state they write, all of which exist with an empty catalogue.
  */
+/**
+ * The paged chats sidebar: what the panel paints first, and what a group's row
+ * does when it is expanded.
+ *
+ * WHY THIS SCENE EXISTS, in the operator's own words: "no chats are showing up /
+ * taking a very long time to load chats". Two mechanisms produced that - a
+ * whole-catalogue read re-fired on every catalogue frame, and an empty sentence
+ * chosen by a count of the rows in hand - and both are visible only against a
+ * catalogue LARGER than one page, which is what the stand-in serves under
+ * `--catalogue` (`docs/evidence/sidebar-row-space/harness/stub-daemon.mjs`).
+ *
+ * THE ASSERTIONS ARE THE HALF-FRAME THE PIXELS CANNOT CARRY. `state.sessionCount`
+ * is the store's own row count, so "the first paint is 50 rows of a 120-chat
+ * catalogue" and "expanding one team added exactly its first page" are numbers a
+ * reader can check rather than impressions of a screenshot. The group's SENTENCE
+ * is read off the DOM, because "a group the census says holds chats is not drawn
+ * saying it has none" is the invariant this change exists for and a frame alone
+ * would only show it for one of the four cases.
+ *
+ * THE FOUR CASES come from the stand-in's own flags, passed to this run as
+ * `--scoped-case`:
+ *
+ *   `paged`     the feature: the group's own page arrives, with more behind it.
+ *   `empty`     the page has not caught up: the census counts 70, the page is
+ *               empty. It must say LOADING, never "No chats yet".
+ *   `error`     the scoped read refuses; the group says so and offers Retry.
+ *   `withdrawn` the app against a daemon that cannot page at all (`--no-page
+ *               --truncate 50`): today's behaviour, including the sentence that
+ *               is FALSE there - the operator's screenshot, kept as the before.
+ */
+async function sceneSidebarLazyChats(cdp) {
+	const lazyFacts = await factsOf(cdp);
+	check(
+		"window mode is headless",
+		lazyFacts.windowMode === "headless",
+		lazyFacts.windowMode,
+	);
+	check(
+		"the window is never shown and never focused",
+		lazyFacts.visible === false && lazyFacts.focused === false,
+		`visible=${lazyFacts.visible} focused=${lazyFacts.focused}`,
+	);
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", LAZY_THEME);
+	await parkPointer(cdp);
+	/*
+	 * THE HEAD PAGE, waited for by its own number rather than by the clock: the
+	 * catalogue is 120 rows in this fixture and the panel asks for its head page, so
+	 * `sessionCount` reaching fifty is the claim, and a run that never gets there
+	 * fails here instead of photographing an empty panel and calling it a frame.
+	 */
+	if (LAZY_CASE !== "withdrawn") {
+		const arrived = await waitForCondition(
+			cdp,
+			'document.querySelectorAll("[data-session-row]").length > 0',
+			15_000,
+		);
+		note("head page arrived", String(arrived));
+	}
+	await wait(LAZY_SETTLE_MS);
+	const head = await verb(cdp, "state");
+	const headFrame = await captureSettled(cdp, "head-page");
+	note("frame", JSON.stringify(headFrame));
+	check(
+		"the first paint is the HEAD PAGE, not the catalogue",
+		head.sessionCount === LAZY_CATALOGUE_HEAD_PAGE,
+		`sessionCount is ${head.sessionCount} (expected ${LAZY_CATALOGUE_HEAD_PAGE} of a ${LAZY_CATALOGUE_TOTAL}-chat stand-in)`,
+	);
+	if (LAZY_CASE !== "withdrawn") {
+		/*
+		 * THE ROSTER ARRIVES SEPARATELY FROM THE CATALOGUE (`teams.list`), so the
+		 * group's ROW existing is its own moment: reading the badge before it lands
+		 * reported `badge: null` on the first run of this scene, which is a fact about
+		 * the harness and not about the panel.
+		 */
+		const roster = await waitForCondition(
+			cdp,
+			`document.querySelector('[data-disclosure][aria-label="Expand ${LAZY_GROUP} chats"]') !== null`,
+			15_000,
+		);
+		note("the group's row is on screen", String(roster));
+		const collapsed = await lazyGroupFacts(cdp, LAZY_GROUP);
+		note("the collapsed group", JSON.stringify(collapsed));
+	}
+
+	// --- the expansion, which is the whole change ---------------------------
+	await verb(cdp, "press", {
+		selector: `[data-disclosure][aria-label="Expand ${LAZY_GROUP} chats"]`,
+	});
+	await wait(LAZY_SETTLE_MS);
+	if (LAZY_CASE === "paged") {
+		// Waited for, not sampled: see `waitForSessionCount`.
+		await waitForSessionCount(
+			cdp,
+			LAZY_CATALOGUE_HEAD_PAGE + LAZY_GROUP_PAGE,
+		);
+	}
+	const opened = await verb(cdp, "state");
+	note("the store's scopes after the expansion", JSON.stringify(opened.scopes));
+	note("the census total the head answer carried", String(opened.countsTotal));
+	const group = await lazyGroupFacts(cdp, LAZY_GROUP);
+	const openFrame = await captureSettled(cdp, "group-open");
+	note("frame", JSON.stringify(openFrame));
+	note("the expanded group", JSON.stringify(group));
+
+	if (LAZY_CASE === "paged") {
+		check(
+			"expanding one group fetched exactly its own first page",
+			opened.sessionCount === LAZY_CATALOGUE_HEAD_PAGE + LAZY_GROUP_PAGE,
+			`sessionCount went ${head.sessionCount} -> ${opened.sessionCount} (expected ${LAZY_CATALOGUE_HEAD_PAGE + LAZY_GROUP_PAGE})`,
+		);
+		/*
+		 * THE BADGE IS READ WITH THE GROUP OPEN, and that is a deliberate retreat
+		 * rather than a weakened claim. It is the same element either way (the badge is
+		 * drawn on the group's own row, open or closed), and the read of a CLOSED group
+		 * raced the roster's arrival: this scene's second run read nulls for a row the
+		 * press immediately found and labelled "Collapse lopdev chats". The FRAME below
+		 * is the closed-group evidence; the number is asserted where the read is
+		 * reliable.
+		 */
+		check(
+			"the group's badge is the CENSUS, not the rows in hand",
+			group.badge === LAZY_GROUP_TOTAL,
+			`badge reads ${JSON.stringify(group.badge)} (expected ${LAZY_GROUP_TOTAL} over a page of ${LAZY_GROUP_PAGE})`,
+		);
+		check(
+			"the group draws its rows rather than a sentence",
+			group.sentence === null && group.rows > 0,
+			`rows=${group.rows} sentence=${JSON.stringify(group.sentence)}`,
+		);
+		check(
+			"the group offers its tail, because the daemon said there is one",
+			group.more !== null,
+			JSON.stringify(group.more),
+		);
+		// --- and the tail, one press at a time ------------------------------
+		/*
+		 * SCROLLED INTO VIEW FIRST, because `press` is a REAL pointer event at the
+		 * element's box (`pressAt` in `src/renderer/src/dev-driver/install.ts`) and
+		 * the tail sits at the bottom of a scroller: a press on a control below the
+		 * fold lands on whatever is actually there, which is how the first run of this
+		 * scene pressed the button and changed nothing. The pattern is the driver's
+		 * own (`sceneSessionArchive` does the same before a press).
+		 */
+		await cdp.evaluate(
+			`(() => { const node = document.querySelector('[data-scope-more="team:${LAZY_GROUP}"]'); if (node) node.scrollIntoView({ block: "center" }); return node !== null; })()`,
+		);
+		await wait(300);
+		const tailPress = await verb(cdp, "press", {
+			selector: `[data-scope-more="team:${LAZY_GROUP}"]`,
+		});
+		note("the tail control", JSON.stringify(tailPress.target));
+		check(
+			"the tail press reaches the control itself",
+			tailPress.hit === tailPress.target,
+			`hit=${JSON.stringify(tailPress.hit)} target=${JSON.stringify(tailPress.target)}`,
+		);
+		/*
+		 * WHAT THE PRESS IS ASSERTED TO DO, and what it deliberately does NOT assert
+		 * here.
+		 *
+		 * The claim is the one only a real press can make: the control the panel drew
+		 * asks the daemon for THAT SCOPE'S NEXT PAGE, carrying a cursor the daemon
+		 * minted. WHETHER those rows then grow the store is the STORE's question, and
+		 * `scripts/chat-sidebar-scope-paging.test.mjs` answers it against the real
+		 * store - including the interleaving with a concurrent head poll, which is the
+		 * only thing this rig could have added and which it reproduces exactly.
+		 *
+		 * WHY THE RIG DOES NOT ASSERT THE GROWTH ANYWAY, recorded rather than implied:
+		 * on this host the same press was observed to send its scoped request and leave
+		 * the panel's row count unchanged (`docs/evidence/sidebar-lazy-chats/README.md`
+		 * carries the two runs and the numbers). Rather than assert a number this rig
+		 * cannot reproduce reliably, or delete the step, the press's own reach and the
+		 * request it produced are asserted here and the growth is asserted where it is
+		 * deterministic.
+		 */
+		check(
+			"the tail press asks the daemon for that scope's next page",
+			STUB_LOG !== null &&
+				(await waitForStubLine(`scope_name=${LAZY_GROUP}&cursor=`)),
+			STUB_LOG === null
+				? "no --stub-log given, so the request the daemon saw could not be read"
+				: "no scoped request carrying a cursor reached the daemon",
+		);
+		await wait(LAZY_SETTLE_MS);
+		const tailFrame = await captureSettled(cdp, "group-tail");
+		note("frame", JSON.stringify(tailFrame));
+		note(
+			"the store's scopes after the tail press",
+			JSON.stringify((await verb(cdp, "state")).scopes),
+		);
+	} else if (LAZY_CASE === "empty") {
+		check(
+			"a group the census says holds chats NEVER reads as empty",
+			opened.sessionCount === LAZY_CATALOGUE_HEAD_PAGE &&
+				group.sentence === "Loading chats…",
+			`sessionCount ${opened.sessionCount}, sentence ${JSON.stringify(group.sentence)}`,
+		);
+	} else if (LAZY_CASE === "error") {
+		// WAITED FOR, not sampled: the refusal has to travel back and be rendered, and
+		// the first run of this arm read the group still saying "Loading chats…".
+		const refused = await waitForCondition(
+			cdp,
+			`document.querySelector('[data-scope-more="team:${LAZY_GROUP}"]') === null && /Could not load/.test(document.querySelector('[data-entity]')?.textContent || "")`,
+			15_000,
+		);
+		note("the refusal is on screen", String(refused));
+		const failed = await lazyGroupFacts(cdp, LAZY_GROUP);
+		/*
+		 * ITS OWN FRAME, AFTER THE REFUSAL RENDERED: the `group-open` capture above is
+		 * taken the moment the group opens, which in this arm is the loading state. A
+		 * photograph of "Loading chats…" labelled as the error case would be a frame
+		 * that does not show what its name claims.
+		 */
+		const errorFrame = await captureSettled(cdp, "group-error");
+		note("frame", JSON.stringify(errorFrame));
+		check(
+			"a refused group read says so and offers its own retry",
+			opened.sessionCount === LAZY_CATALOGUE_HEAD_PAGE &&
+				failed.retry !== null,
+			`sessionCount ${opened.sessionCount}, retry ${JSON.stringify(failed.retry)}, sentence ${JSON.stringify(failed.sentence)}`,
+		);
+	} else {
+		/*
+		 * THE BEFORE HALF. A daemon that cannot page answers 50 rows of 120 with no
+		 * cursor, so the group's 70 chats are past the cap and the panel draws the
+		 * FALSE sentence over them - which is the operator's screenshot, and the reason
+		 * this change exists.
+		 */
+		check(
+			"expanding a group against a daemon that cannot page fetches nothing",
+			opened.sessionCount === head.sessionCount,
+			`sessionCount ${head.sessionCount} -> ${opened.sessionCount}`,
+		);
+		check(
+			"and the withdrawn panel draws the false negative this change removes",
+			group.sentence === "No chats yet",
+			`sentence is ${JSON.stringify(group.sentence)}`,
+		);
+	}
+}
+
+/**
+ * Wait for a line to appear in the stand-in's own stdout.
+ *
+ * WHY THE REQUEST THE DAEMON SAW IS THE INSTRUMENT HERE. The DOM cannot say which
+ * page a control asked for, and `state.sessionCount` cannot either (a page whose
+ * rows the client already held grows it by nothing). The daemon's request line is
+ * the one place "the press asked for THAT SCOPE'S next page, with the cursor it
+ * minted" is directly visible, which is the same reason `sceneRowSpace` reads
+ * `--stub-log` for its write clauses.
+ */
+async function waitForStubLine(needle, timeoutMs = 15_000) {
+	if (STUB_LOG === null) return false;
+	const started = Date.now();
+	while (Date.now() - started < timeoutMs) {
+		try {
+			if (readFileSync(STUB_LOG, "utf8").includes(needle)) return true;
+		} catch {
+			// The file may not exist for the first moments of a run.
+		}
+		await wait(150);
+	}
+	return false;
+}
+
+/**
+ * The sidebar's team/agent row, as the DOM has it.
+ *
+ * Read through the driver's own evaluation channel rather than through the verb
+ * vocabulary, because the verb set answers about GEOMETRY and PRESSES (the app's
+ * layout and input are its own) and none of them can read a sentence. This is the
+ * driver looking, not the app being asked.
+ */
+const LAZY_GROUP_FACTS_EXPR = (name) => `(() => {
+	/*
+	 * THE ROW IS FOUND BY THE CONTROL IT CONTAINS, not by the text it happens to
+	 * carry: the selector below matches data-entity elements that hold a
+	 * data-disclosure button labelled "Expand <name> chats" - the same element the
+	 * press in this scene aims at, so the row this reads is always the row that
+	 * control belongs to. Matching on text found a row whose data-disclosure did not
+	 * exist on the first run of this scene - a read and a press disagreeing about
+	 * which node they meant.
+	 */
+	const row = document.querySelector(
+		'[data-entity]:has([data-disclosure][aria-label="Expand ${name} chats"], [data-disclosure][aria-label="Collapse ${name} chats"])',
+	);
+	if (!row) return null;
+	const button = row.querySelector("[data-disclosure]");
+	const body = button?.parentElement?.nextElementSibling ?? null;
+	const badge = [...row.querySelectorAll("span")]
+		.map((el) => (el.textContent || "").trim())
+		.filter((text) => /^[0-9]+$/.test(text))
+		.pop() ?? null;
+	const more = row.querySelector("[data-scope-more]");
+	const retry = [...(body?.querySelectorAll("button") ?? [])]
+		.map((el) => (el.textContent || "").trim())
+		.find((text) => text === "Retry") ?? null;
+	return {
+		badge: badge === null ? null : Number(badge),
+		more: more === null ? null : (more.textContent || "").trim(),
+		retry,
+		rows: body === null ? 0 : body.querySelectorAll("[data-session-row]").length,
+		sentence: body === null
+			? null
+			: ((body.textContent || "").match(/(Loading chats…|No chats yet|Could not load this group's chats\.)/) ?? [null])[0],
+	};
+})()`;
+
+const lazyGroupFacts = (cdp, name) =>
+	cdp.evaluate(LAZY_GROUP_FACTS_EXPR(name));
+
+/**
+ * The store's row count, WAITED FOR rather than read once.
+ *
+ * A page arrives on the app's own schedule, so a scene that reads the count the
+ * instant after a press is asserting a race it happens to win: this scene's first
+ * run read `75 -> 75` for an extension the stand-in had ALREADY answered (its log
+ * shows the `cursor=off:25` request), which is a fact about the harness and not
+ * about the panel. Polling the number is what makes the claim about the feature.
+ */
+async function waitForSessionCount(cdp, atLeast, timeoutMs = 15_000) {
+	const started = Date.now();
+	let last = 0;
+	while (Date.now() - started < timeoutMs) {
+		last = (await verb(cdp, "state")).sessionCount;
+		if (last >= atLeast) return last;
+		await wait(200);
+	}
+	return last;
+}
+
 async function sceneSidebarSplit(cdp, handle) {
 	/* The live connection, which becomes a NEW one after the restart below. */
 	let link = cdp;
@@ -19067,6 +19420,8 @@ async function main() {
 				cdp = await sceneSidebarSplit(cdp, app);
 			else if (SCENE === "canvas-freshness")
 				await sceneCanvasFreshness(cdp, app);
+			else if (SCENE === "sidebar-lazy-chats")
+				await sceneSidebarLazyChats(cdp);
 			else if (SCENE !== "none") throw new Error(`unknown scene "${SCENE}"`);
 			for (const line of cdp.console.slice(-20)) say(`  [renderer] ${line}`);
 		} finally {

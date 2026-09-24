@@ -3400,6 +3400,13 @@ export function ChatSidebar({
 							) : view.more ? (
 								<button
 									type="button"
+									/*
+									 * A DRIVER ANCHOR, on the convention `data-chat-section` and
+									 * `data-session-delete` already follow: the label is a copy string, so a
+									 * scene that reached this control by its text would be asserting a copy
+									 * edit, and the tail's own press is what the evidence frame has to make.
+									 */
+									data-scope-more={key}
 									className="block w-full py-1 pl-7 text-left text-meta text-ink-dim underline hover:text-ink"
 									onClick={() =>
 										void fetchScopePage(

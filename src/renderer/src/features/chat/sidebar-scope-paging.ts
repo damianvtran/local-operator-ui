@@ -135,6 +135,25 @@ export function groupChatsView(args: {
 		};
 	}
 	if (scope.ids.length === 0) {
+		/*
+		 * THE ERROR IS ASKED FIRST, and the order is the rule rather than the shape of
+		 * the code (evidence rig `sidebar-lazy-chats`, `--scoped-case error`). A
+		 * failure of this group's read is a FACT about the request; "the page has not
+		 * caught up with the store" is a guess drawn from a census that arrived at a
+		 * different moment. Asked the other way round, a group whose read had PERMANENTLY
+		 * failed read "Loading chats…" for ever - the sentence a reader waits on rather
+		 * than acts on, and the census rule ("never say empty while the store says the
+		 * group holds chats") had quietly become "never say anything else either".
+		 */
+		if (scope.error !== null) {
+			return {
+				state: "error",
+				sentence: scope.error,
+				retry: true,
+				more: false,
+				forbidden: false,
+			};
+		}
 		if (forbidden) {
 			/*
 			 * The census says this group holds conversations and this page returned
@@ -147,15 +166,6 @@ export function groupChatsView(args: {
 				retry: false,
 				more: false,
 				forbidden: true,
-			};
-		}
-		if (scope.error !== null) {
-			return {
-				state: "error",
-				sentence: scope.error,
-				retry: true,
-				more: false,
-				forbidden: false,
 			};
 		}
 		return {
