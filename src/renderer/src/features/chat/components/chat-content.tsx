@@ -7,6 +7,7 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import type { AgentDetails } from "@shared/api/local-operator/types";
+import { BackendCompatibilityBanner } from "@shared/components/common/backend-compatibility-banner";
 import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { TabPanel } from "@shared/components/ui";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
@@ -50,6 +51,7 @@ import { documentsForCanvas } from "./canvas/document-buffers";
 import { tabFollowingClose } from "./canvas/tab-selection";
 import { ChatHeader } from "./chat-header";
 import { ChatOptionsSidebar } from "./chat-options-sidebar";
+import { ChatStatusStrip } from "./chat-status-strip";
 import {
 	CHAT_TAB_IDS,
 	CHAT_TAB_PANEL_IDS,
@@ -1158,6 +1160,32 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							consoleUnseenCount={consoleUnseenMarks.length}
 							consoleUnseenPulsing={consoleUnseenPulsing}
 						/>
+						{/*
+						 * THE STATUS STRIP AND THE COMPATIBILITY BAND, IN THE PANE (§F2, D3).
+						 *
+						 * Both used to mount in the SHELL ROOT, above the window: the bands sat
+						 * over the sidebar rail and under the traffic lights, spanning chrome
+						 * that belongs to the app rather than to this conversation, and the
+						 * same screen could state one connection fact twice. §F2's contract is
+						 * that the strip lives INSIDE the conversation pane, under the top
+						 * row, at most two lines, never spanning the sidebar.
+						 *
+						 * THE UPDATE FLOW KEEPS ITS OWN SURFACE, and this is the decision §F2
+						 * leaves open rather than a quiet drop. `BackendCompatibilityBanner`
+						 * owns a different fact - this backend's version, a pairing this app
+						 * cannot make, and the UPDATE action that fixes it - and none of the
+						 * four connection states in the strip has an update remedy. Folding it
+						 * into the strip would either give the strip two root causes at once
+						 * (the thing D3 is about) or lose the update control entirely. It is
+						 * moved here instead: same component, same copy, same actions, now
+						 * inside the pane beside the strip, so the pane owns every message
+						 * about this conversation's backend and the window chrome owns none.
+						 *
+						 * The strip renders first, so a connection fault (which can stop a send)
+						 * is above a setup fact (which cannot).
+						 */}
+						<ChatStatusStrip />
+						<BackendCompatibilityBanner />
 						{/*
 						 * The one delete confirmation, rendered here because this component owns
 						 * the conversation it asks about (`title`) and the run details whose

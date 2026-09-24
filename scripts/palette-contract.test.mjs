@@ -216,7 +216,7 @@ test("the palette owns the screen over the app's full-bleed bands", () => {
 	);
 });
 
-test("the bands are in flow, and the region keeps the window minus their height", () => {
+test("no status surface sits above the window, and the pane owns the ones there are", () => {
 	/*
 	 * THE ACCEPTANCE POINT NO OTHER GATE WATCHES. With no band up the region is the
 	 * WHOLE window, and it is the whole window because both bands `return null`
@@ -263,14 +263,29 @@ test("the bands are in flow, and the region keeps the window minus their height"
 		/className="relative flex h-screen flex-col overflow-hidden"/,
 		"the shell root must be a COLUMN, or the bands and the region share a row",
 	);
-	const order = [
-		"<ConnectivityBanner />",
-		"<BackendCompatibilityBanner />",
-		'className="flex min-h-0 flex-1 overflow-hidden"',
-	].map((needle) => app.indexOf(needle));
+	/*
+	 * AND THE SHELL ROOT CARRIES NEITHER SURFACE ANY MORE (chat redesign §F2,
+	 * design round 1 D3). The bands used to be the shell's first children and this
+	 * file pinned that order; §F2's contract is the opposite - a status message
+	 * belongs INSIDE the conversation pane, under its top row, so it can never
+	 * span the sidebar or sit above the window controls - and the order pin is
+	 * therefore replaced rather than deleted: the root must mount NEITHER band, and
+	 * the pane must mount the strip.
+	 */
+	for (const gone of ["<ConnectivityBanner", "<BackendCompatibilityBanner />"])
+		assert.ok(
+			!withoutComments(app).includes(gone),
+			`the shell root still mounts ${gone}: §F2 puts every status surface inside the conversation pane`,
+		);
+	const pane = withoutComments(
+		read("src/renderer/src/features/chat/components/chat-content.tsx"),
+	);
+	const strip = pane.indexOf("<ChatStatusStrip />");
+	const compatibility = pane.indexOf("<BackendCompatibilityBanner />");
+	const header = pane.indexOf("<ChatHeader");
 	assert.ok(
-		order.every((at) => at > -1) && order[0] < order[1] && order[1] < order[2],
-		`the two bands must be the shell root's FIRST children, above the region (offsets ${order.join(", ")})`,
+		header > -1 && strip > header && compatibility > strip,
+		`the pane must mount the strip under its top row, with the compatibility band after it (header ${header}, strip ${strip}, compatibility ${compatibility})`,
 	);
 });
 

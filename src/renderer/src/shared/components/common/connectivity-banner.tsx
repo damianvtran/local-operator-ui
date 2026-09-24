@@ -16,6 +16,24 @@ import { serverBannerCopy } from "../../../../../shared/backend-status";
 /**
  * Props for the ConnectivityBanner component
  */
+/*
+ * SUPERSEDED AND NO LONGER MOUNTED (chat redesign §F2, design round 1 D3).
+ *
+ * The app mounted this band in the SHELL ROOT, above the window and over the
+ * sidebar rail, and `BackendCompatibilityBanner` beside it - two surfaces stating
+ * one lost-daemon fact at the top of the screen with a Retry each. `ChatStatusStrip`
+ * (`features/chat/components/chat-status-strip.tsx`) is that surface now: ONE
+ * strip inside the conversation pane, one message per root cause, one Retry over
+ * the same `window.api.backend.reconnect()` this file calls.
+ *
+ * THE FILE IS KEPT, deliberately, and this note is here so a reader does not have
+ * to discover it is unreferenced: its story (`common-connectivity-banner`) is
+ * what `docs/evidence/common-connectivity-banner/` and the 66 manifest rows that
+ * name those frames record, and deleting the component would leave a committed
+ * evidence set whose provenance no longer exists. Retiring it - the component,
+ * its stories and those manifest rows, together - is its own change, and it is
+ * listed as not-done in the redesign's PR rather than done quietly here.
+ */
 type ConnectivityBannerProps = {
 	/** Whether to automatically check connectivity on mount */
 	autoCheck?: boolean;
