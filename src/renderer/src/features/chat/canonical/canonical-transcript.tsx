@@ -1844,6 +1844,15 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					// Reserving the gutter on both edges restores a symmetric content
 					// box: measured in the running app, the centre delta goes 4px -> 0.
 					// `stable` alone would reserve only the right edge and keep it.
+					//
+					// The mask that dissolves the top edge under the chat header is NOT a
+					// class here: it is a scroll-driven animation with a `@supports`
+					// fallback, which no utility can express, so it lives in
+					// `styles/index.css` keyed on `data-lo-canonical-transcript` - the
+					// attribute the transcript's own container already carries. A mask
+					// changes neither the box's size nor its layout, so the scroll
+					// region, the reserved gutter and the bottom anchor autoscroll reads
+					// are all as they were.
 					"relative flex w-full flex-col-reverse [scrollbar-gutter:stable_both-edges] will-change-[scroll-position] [overflow-anchor:auto] [transform:translateZ(0)]",
 					collapsed
 						? "h-0 grow-0 overflow-hidden p-0"

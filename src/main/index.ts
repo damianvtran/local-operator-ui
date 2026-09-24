@@ -84,6 +84,7 @@ import {
 	resolveTelemetryLaunch,
 	telemetryArgument,
 } from "./telemetry-launch";
+import { titlebarOptions } from "./titlebar-options";
 import { UpdateService, holdLaunchForLiveInstall } from "./update-service";
 import { ViewerEndpoint } from "./viewer-endpoint";
 import { ViewerRecordPublisher } from "./viewer-record";
@@ -624,6 +625,15 @@ function createWindow(
 	 */
 	// Create the browser window.
 	const mainWindow = new BrowserWindow({
+		/*
+		 * The frame, per platform, from a pure function so the matrix is exercised on
+		 * any host (`scripts/titlebar-options.test.mjs`). macOS hides its title bar
+		 * and keeps the native traffic lights, which is why the renderer reserves their
+		 * 32px lane at the top of the shell (`chat-layout.tsx`) - the lane exists
+		 * because this line does, and shipping one without the other is either 32px of
+		 * blank space under a native title bar or lights drawn over the app's own row.
+		 */
+		...titlebarOptions(process.platform),
 		width: windowLaunch.width,
 		height: windowLaunch.height,
 		// The layout is verified down to 800x600 and not below: the app rail,

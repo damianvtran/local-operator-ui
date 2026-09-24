@@ -3,6 +3,220 @@
 @import "./themes.generated.css";
 
 /*
+ * ============================================================================
+ * WINDOW CHROME
+ * ============================================================================
+ *
+ * On macOS the app hides Electron's native title bar and keeps its traffic
+ * lights, which Electron draws OVER the renderer with their own OS hit targets
+ * (`src/main/titlebar-options.ts`). The renderer therefore has to leave those
+ * controls alone, reserve their lane at the top of the shell, and mark only
+ * empty surfaces draggable - interactive descendants opt back out so clicks
+ * still land.
+ *
+ * EVERY RULE HERE IS GATED ON `data-titlebar-platform`, which `app.tsx` sets on
+ * the shell from one `navigator.platform` read. Outside macOS none of it
+ * applies: Windows and Linux keep their native frame and lose no space to a lane
+ * for controls the OS is not drawing over the app.
+ */
+[data-titlebar-platform="mac"] {
+	/*
+	 * 8 above the lights' 16px hit frame, 16 for it, one 8px step below: 32. The
+	 * number is derived from the OS frame rather than chosen, and the derivation is
+	 * on `titlebar-options.ts` beside the `screencapture -l` reading it comes from.
+	 */
+	--chrome-strip-h: 32px;
+}
+
+[data-titlebar-platform="mac"] [data-titlebar-drag] {
+	-webkit-app-region: drag;
+}
+
+[data-titlebar-platform="mac"]
+	[data-titlebar-drag]
+	:is(
+		button,
+		a,
+		input,
+		textarea,
+		select,
+		[role="button"],
+		[role="menuitem"],
+		[contenteditable="true"],
+		[data-titlebar-no-drag]
+	) {
+	-webkit-app-region: no-drag;
+}
+
+/*
+ * THE LANE IS INVISIBLE OFF macOS, and it has to be invisible rather than
+ * unrendered: `chat-layout.tsx` renders it once for every platform so the drag
+ * vocabulary, the inset and the two first rows' alignment are all decided in one
+ * place. Off macOS the native frame already carries the controls, and a lane
+ * there would be 32px of nothing between the title bar and the app's own rows.
+ *
+ * It is `display: none` rather than `height: 0` so it is out of the flow
+ * entirely: a zero-height drag region still swallows a press along the window's
+ * top edge on Windows, where the OS frame is what owns it.
+ */
+[data-titlebar-lane] {
+	display: none;
+}
+
+[data-titlebar-platform="mac"] [data-titlebar-lane] {
+	display: block;
+	height: var(--chrome-strip-h);
+}
+
+/*
+ * THE TRANSCRIPT DISSOLVES AS IT APPROACHES THE CHAT HEADER.
+ *
+ * WHY A MASK RATHER THAN AN OVERLAY. The header's bottom rule is gone, so
+ * nothing draws a line between the bar and the rows: the separation is the
+ * transcript's own top edge fading out. A gradient overlay element would paint
+ * OVER the content - a row scrolled to the top would sit beneath it, dimmed but
+ * present, which is a scrim rather than a dissolve, and one more thing that has
+ * to be kept above the right stacking context. `mask-image` fades the content
+ * itself. The same idiom is already in the tree (`canvas-tabs.tsx`,
+ * `picker-host.tsx`).
+ *
+ * SCROLL-DRIVEN, WITH A STATIC FALLBACK. The fade should exist only while there
+ * is content scrolled under the bar, and clear completely when the oldest row
+ * is at rest against the top edge - a permanent top fade would dim the first row
+ * of every short conversation for no reason. A scroll timeline gives exactly
+ * that, and Chromium is what Electron ships, so the guarded half is the real one
+ * and it is the UNSUPPORTED path that needs naming.
+ *
+ * WHY THE LENGTH IS A REGISTERED PROPERTY AND NOT TWO GRADIENTS. Measured in
+ * the app's own engine (a private headless Chrome, at Electron 44's Blink
+ * version): a keyframe pair interpolating the gradient's first stop from `black`
+ * to `transparent` does NOT interpolate - it flips discretely at 50% of the
+ * range, so the fade would POP in at 12px of scroll instead of ramping.
+ * Animating the middle stop's position between two gradients is discrete for the
+ * same reason (that is `mask-image` to `mask-image`, which the engine does not
+ * blend). Animating a registered `<length>` that the gradient reads measures
+ * linear at every pixel of the range, which is what makes the fade track the
+ * scroll at all, so the length is the animated thing and the gradient is static.
+ *
+ * WHAT THIS DELIBERATELY DOES NOT DO. The bottom edge is untouched: the composer
+ * band is a separate element, and the transcript's own bottom anchor is
+ * load-bearing for autoscroll. The element keeps `role="log"`, its
+ * `scrollbar-gutter` and its `flex-col-reverse`, and a mask changes neither the
+ * box's size nor its layout, so the reserved gutter stays reserved and the
+ * centring that gutter exists to fix is unaffected. The mask does apply to the
+ * element's whole painted output, scrollbar included - at full fade the top 24px
+ * of the scrollbar's own track softens with the content, which is the same
+ * treatment `canvas-tabs.tsx` gives its edge and is not a clipped or shortened
+ * scrollbar - and it applies to the FLOATING CONTROLS too: the quote and link
+ * toolkits are painted inside this container (`use-floating-control.ts` clamps
+ * them to this element's box), so a toolbar the clamp places in the top 24px is
+ * dissolved with the row behind it. That is reachable (a highlight whose first
+ * line sits 40-64px below the pane's top gets its 32px toolbar clamped to the
+ * pane's top edge) and it is recorded here rather than fixed here: the floor
+ * that would prevent it has to move the control in the states where this fade is
+ * 0px - a transcript that does not overflow, and the oldest end - and the fade's
+ * value is a paint-time quantity no layout hook can read. The fix that would be
+ * exact is to place the control outside the masked element, which is a change to
+ * the quote anchor's coordinate space and belongs in its own change.
+ *
+ * REDUCED MOTION: checked, and deliberately unchanged. This is a scroll-LINKED
+ * paint, not a timed animation - the mask's value IS the scroll position - so
+ * the duration cap has nothing to cap, and suppressing it would freeze the fade
+ * at whatever offset the reader happened to be at. It never plays on its own and
+ * never leaves an element on a `from` keyframe, which is the failure the cap
+ * exists to prevent. A masked header that clears on scroll can read as motion to
+ * some readers, which is why the ramp is 24px of a scroll the reader is already
+ * driving rather than anything of its own.
+ */
+@property --lo-transcript-top-fade {
+	syntax: "<length>";
+	inherits: false;
+	initial-value: 0px;
+}
+
+[data-lo-canonical-transcript] {
+	--lo-transcript-top-fade: 0px;
+	/*
+	 * Two stops at one position is a hard edge at 0px, i.e. no fade at all. That is
+	 * the value this element carries whenever the animation does not apply - a
+	 * transcript that does not overflow has an INACTIVE timeline, so no keyframe is
+	 * ever sampled and a conversation shorter than the pane is never dimmed at any
+	 * offset - and it is the value the ramp arrives at at the oldest end.
+	 */
+	mask-image: linear-gradient(
+		to bottom,
+		transparent 0,
+		black var(--lo-transcript-top-fade),
+		black 100%
+	);
+}
+
+@supports (animation-timeline: scroll()) {
+	[data-lo-canonical-transcript] {
+		animation-name: transcript-top-fade;
+		animation-timing-function: linear;
+		animation-fill-mode: both;
+		/*
+		 * `self`: the mask is on the scroll container itself, so the timeline has to
+		 * come from that element's own scrollport. `linear` because the fade should
+		 * be a function of scroll distance and nothing else.
+		 *
+		 * THE RAMP IS ANCHORED AT THE OLDEST END, AND THAT IS THE WHOLE GEOMETRY.
+		 * This container is `flex-col-reverse`, so 0% of the timeline is the NEWEST
+		 * row at rest and 100% is the oldest end - `use-scroll-paging.ts` reads the
+		 * same origin when it computes `distanceFromTopPx`. The content scrolled
+		 * under the bar is therefore MAXIMAL at 0% and zero only at 100%, which is
+		 * why the ramp belongs to the last 24px and not to the first: with the range
+		 * off the tail the backwards fill holds 24px at rest and all the way up, and
+		 * the animation is spent on the only stretch where there is nothing left to
+		 * dissolve. Measured in this app's own engine (Electron 44.3.0, this
+		 * stylesheet's own text, a 1300px-scrollable transcript in a 300px pane):
+		 * 24px at every offset from rest through 480px up - the resting tail is the
+		 * state the operator's report is about and it is fully faded - and
+		 * 24/12/6/0px at 48/12/6/0px above the oldest end, i.e. exactly
+		 * `clamp(distance above the fold, 0, 24)`, with 0px at every offset of a
+		 * transcript that does not overflow. Anchoring the ramp at the TAIL instead
+		 * (`animation-range: 0 24px`) was measured on the same page and is the defect
+		 * this replaces: 0px at rest, so a resting conversation cuts its top row
+		 * under a rule-less bar. Anchoring it at the near end of the travel
+		 * (`0 calc(100% - 24px)`, 24px -> 0px) was measured too and does not hold the
+		 * fade while content remains above the fold - 23.6px at 24px from rest and
+		 * 15px halfway up, so a row cut at the top of a half-scrolled conversation
+		 * would be faded to two thirds.
+		 */
+		animation-timeline: scroll(self);
+		animation-range: calc(100% - 24px) 100%;
+	}
+
+	@keyframes transcript-top-fade {
+		from {
+			--lo-transcript-top-fade: 24px;
+		}
+		to {
+			--lo-transcript-top-fade: 0px;
+		}
+	}
+}
+
+/*
+ * The path for an engine with no scroll timeline: the same 24px fade, always on.
+ * It is a separate branch rather than a second unconditional rule so the choice
+ * is made by what the engine supports rather than by source order, and it is the
+ * safe direction - a fade that is always there rather than a hard cut that is
+ * never softened.
+ */
+@supports not (animation-timeline: scroll()) {
+	[data-lo-canonical-transcript] {
+		mask-image: linear-gradient(
+			to bottom,
+			transparent 0,
+			black 24px,
+			black 100%
+		);
+	}
+}
+
+/*
  * The single token source for everything already ported to Tailwind.
  *
  * Colour comes in as `var(--lo-*)`, defined per theme in themes.generated.css

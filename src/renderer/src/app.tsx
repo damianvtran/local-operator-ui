@@ -102,6 +102,7 @@ const App: FC = () => {
 	const {
 		isCommandPaletteOpen,
 		isCreateAgentDialogOpen,
+		isSidebarCollapsed,
 		closeCreateAgentDialog,
 	} = useUiPreferencesStore();
 
@@ -457,7 +458,24 @@ const App: FC = () => {
 			 * labels stay 1x1 and rendered afterwards, so screen readers still
 			 * announce them; nothing is hidden, it is merely contained.
 			 */}
-			<div className="relative flex h-screen flex-col overflow-hidden">
+			<div
+				className="relative flex h-screen flex-col overflow-hidden"
+				/*
+				 * THE CHROME GATES, and they are ATTRIBUTES rather than a second
+				 * `navigator.platform` read in each component: `styles/index.css` keys the
+				 * drag/no-drag vocabulary, the macOS lane and the collapsed-width rules on
+				 * these two, so one renderer-local fact decides all of them and a component
+				 * that changes platform between them is not expressible. The macOS lane
+				 * exists because `src/main/titlebar-options.ts` hides the title bar on
+				 * darwin and leaves the native traffic lights over the renderer
+				 * (`--window-chrome`-independent); on every other platform the native frame
+				 * is still there and both gates are inert.
+				 */
+				data-titlebar-platform={
+					navigator.platform.toUpperCase().indexOf("MAC") >= 0 ? "mac" : "other"
+				}
+				data-titlebar-sidebar-collapsed={isSidebarCollapsed ? "true" : "false"}
+			>
 				{/*
 				 * THE TWO FULL-BLEED BANDS ARE THE SHELL'S FIRST CHILDREN, and this
 				 * container is a COLUMN for exactly that reason (D9).
