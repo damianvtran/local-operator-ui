@@ -3923,15 +3923,31 @@ test("the lifecycle's derived strings, one per state", () => {
 		goalStalledNote("judge could not decide"),
 		"goal stalled: judge could not decide — send a message to continue",
 	);
+	/*
+	 * THE CAP'S SENTENCE IS THE BACKEND'S `STALLED_CAP_NOTICE`, byte for byte (QA round 2,
+	 * Q-2): `goal stalled: {STALLED_CAP_REASON} — send a message to continue`. The count
+	 * comes from the reason, so a moved budget moves the sentence with it.
+	 */
 	assert.equal(
 		goalStalledNote("stopped after 12 continuations"),
-		"goal stalled: reached the continuation limit — send a message to continue",
+		"goal stalled: stopped after 12 continuations — send a message to continue",
 	);
 	assert.equal(
 		goalStalledNote("stopped after 40 continuations"),
-		"goal stalled: reached the continuation limit — send a message to continue",
+		"goal stalled: stopped after 40 continuations — send a message to continue",
 		"the cap's sentence follows the bound, not the number it was written against",
 	);
+	// The cap's shape with no readable count still names the bound, and never echoes
+	// the unparsed middle into the transcript.
+	for (const uncounted of [
+		"stopped after twelve continuations",
+		"stopped after  continuations",
+	]) {
+		assert.equal(
+			goalStalledNote(uncounted),
+			"goal stalled: reached the continuation limit — send a message to continue",
+		);
+	}
 	/*
 	 * ANY OTHER REASON IS ANNOUNCED AND NOT ATTRIBUTED — including the empty one, which is
 	 * what a stalled frame with no reason at all reads as. The alternative (falling back to
@@ -4227,7 +4243,7 @@ test("the judge stalling is said ONCE, through the composer's note channel", asy
 		assert.deepEqual(
 			notes.slice(1),
 			[
-				"goal stalled: reached the continuation limit — send a message to continue",
+				"goal stalled: stopped after 12 continuations — send a message to continue",
 			],
 			"the continuation cap is not reported as a failed judgement",
 		);

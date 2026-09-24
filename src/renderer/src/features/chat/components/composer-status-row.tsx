@@ -277,10 +277,17 @@ const GOAL_DONE_TAG = "— done";
  * simply ran out of auto-continuations are two different next moves, so one sentence
  * for both would be a claim the record does not support.
  *
- * The two sentences are the design's § 6 copy table, verbatim, and they are now
- * BUILDERS of the wire's reason rather than a constant: the field was added to
- * `CanonicalGoalJudge` for exactly this, so the sentence follows the cause instead of
- * the cause being rounded to the sentence. The tail is the picker's shipped
+ * The two sentences are BUILDERS of the wire's reason rather than a constant: the
+ * field was added to `CanonicalGoalJudge` for exactly this, so the sentence follows
+ * the cause instead of the cause being rounded to the sentence.
+ *
+ * THE CAP'S SENTENCE IS THE BACKEND'S, BYTE FOR BYTE (QA round 2, Q-2). The backend
+ * writes `STALLED_CAP_NOTICE` = `goal stalled: {STALLED_CAP_REASON} — send a message
+ * to continue` into the transcript itself, and the reason string is the wire contract
+ * both hosts read, so the desktop states the SAME sentence rather than a paraphrase
+ * (`reached the continuation limit`) that made one stall read two ways depending on
+ * which surface said it. The count is taken from the reason, not from a constant
+ * here, so a moved budget moves both hosts' sentences together. The tail is the picker's shipped
  * `stalled — send a message to continue` clause (`destination-pickers.tsx`), so the
  * row and the dialog say the same thing in the same words, and it is true of both
  * bounds: the breaker re-judges at the next turn end and the cap's streak is
@@ -296,8 +303,15 @@ const GOAL_DONE_TAG = "— done";
  */
 const GOAL_STALLED_BREAKER_NOTE =
 	"goal stalled: judge could not decide — send a message to continue";
-const GOAL_STALLED_CAP_NOTE =
+/*
+ * Only for a reason that has the cap's head and tail but no readable count between
+ * them — a shape the backend does not publish today (QA round 2, Q-3). It still
+ * names the right bound, and it does not echo an unparsed middle into the transcript.
+ */
+const GOAL_STALLED_CAP_FALLBACK_NOTE =
 	"goal stalled: reached the continuation limit — send a message to continue";
+const goalStalledCapNote = (count: string): string =>
+	`goal stalled: stopped after ${count} continuations — send a message to continue`;
 const GOAL_STALLED_UNKNOWN_NOTE =
 	"goal stalled: auto-continuation stopped — send a message to continue";
 
@@ -339,7 +353,15 @@ export const goalStalledNote = (reason: string | undefined): string => {
 		named.startsWith(STALLED_CAP_REASON_HEAD) &&
 		named.endsWith(STALLED_CAP_REASON_TAIL)
 	) {
-		return GOAL_STALLED_CAP_NOTE;
+		const count = named.slice(
+			STALLED_CAP_REASON_HEAD.length,
+			named.length - STALLED_CAP_REASON_TAIL.length,
+		);
+		// Digits only: the backend's budget is an int, and anything else is not a count
+		// this build may print as one.
+		return /^\d+$/.test(count)
+			? goalStalledCapNote(count)
+			: GOAL_STALLED_CAP_FALLBACK_NOTE;
 	}
 	return GOAL_STALLED_UNKNOWN_NOTE;
 };
@@ -1053,7 +1075,7 @@ export type ComposerStatusRowProps = {
 	 *
 	 * THE ROW WRITES ONE NOTE and it is why this prop exists: the judge deciding to
 	 * STOP driving a goal is a transition the user cannot see happen (see
-	 * `GOAL_STALLED_NOTE`), and the transcript is where an outcome is read. The channel
+	 * `goalStalledNote`), and the transcript is where an outcome is read. The channel
 	 * is the composer's, not a second one grown here — `MessageInput` supplies its
 	 * `onSlashNote`, whose own rule is that the dispatcher owns that surface and a
 	 * component reaching for a note of its own would be a second route to it.
