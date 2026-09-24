@@ -1,0 +1,520 @@
+
+/* ===================================================================== *
+ *        UX ROUND 1 (independent) — how the /btw aside FEELS to use
+ *
+ * Driver-only, uncommitted. Appended to scripts/renderer-driver.mjs in the
+ * reviewer's own worktree after the QA round's helpers (readQaBand & co).
+ * It walks the eight flows the UX brief names with REAL key events
+ * (Input.dispatchKeyEvent / insertText / mouse presses) and reads, at every
+ * step, document.activeElement, the placeholder, the panel, the live region,
+ * and where any sentence the user is meant to see actually landed.
+ * ===================================================================== */
+
+/** Everything a user could perceive about the band at one instant. */
+function uxRead(cdp) {
+	return cdp.evaluate(`(() => {
+		const flat = (el) => (el ? el.textContent.replace(/\\s+/g, " ").trim() : null);
+		const field = document.querySelector('textarea[aria-label="Message"]');
+		const panel = document.querySelector("[data-lo-aside-panel]");
+		const send = document.querySelector('button[aria-label="Send message"]');
+		const a = document.activeElement;
+		const region = panel
+			? Array.from(panel.querySelectorAll("div")).find((n) => n.style && n.style.maxHeight !== "")
+			: null;
+		const lastTurn = region ? region.lastElementChild : null;
+		const clip = region ? region.getBoundingClientRect() : null;
+		const lt = lastTurn ? lastTurn.getBoundingClientRect() : null;
+		const adopt = panel
+			? Array.from(panel.querySelectorAll("button")).find((b) => b.textContent.trim().startsWith("Add to conversation"))
+			: null;
+		return {
+			placeholder: field ? field.placeholder : null,
+			fieldValue: field ? field.value : null,
+			readOnly: field ? field.readOnly : null,
+			active: a
+				? a.tagName.toLowerCase() +
+					(a.getAttribute("aria-label") ? "[" + a.getAttribute("aria-label") + "]" : "") +
+					(a.tagName === "BUTTON" ? "{" + a.textContent.replace(/\\s+/g, " ").trim().slice(0, 30) + "}" : "")
+				: null,
+			activeIsField: a === field,
+			activeIsBody: a === document.body,
+			panel: panel !== null,
+			panelText: flat(panel),
+			panelAnnounce: panel ? flat(panel.querySelector("output")) : null,
+			panelAlert: panel ? flat(panel.querySelector('[role="alert"]')) : null,
+			adopt: adopt
+				? {
+						disabled: adopt.disabled,
+						describedBy: adopt.getAttribute("aria-describedby"),
+						title: adopt.getAttribute("title"),
+					}
+				: null,
+			send: send ? { disabled: send.disabled, label: send.getAttribute("aria-label") } : null,
+			region: region
+				? {
+						scrollTop: Math.round(region.scrollTop),
+						scrollHeight: region.scrollHeight,
+						clientHeight: region.clientHeight,
+						turns: region.children.length,
+						lastTurnTopVisible: lt ? lt.top >= clip.top - 1 && lt.top <= clip.bottom : null,
+						lastTurnBottomVisible: lt ? lt.bottom <= clip.bottom + 1 : null,
+						lastTurnTop: lt ? Math.round(lt.top - clip.top) : null,
+					}
+				: null,
+			transcript: flat(document.querySelector("[data-lo-transcript-content]")),
+			transcriptBusy:
+				document.querySelector("[data-lo-canonical-transcript] [data-lo-streaming]") !== null ||
+				document.querySelector("[data-lo-canonical-transcript] [data-lo-working-line]") !== null,
+			stop: document.querySelector('button[aria-label="Stop agent"]') !== null,
+		};
+	})()`);
+}
+
+/** Where on screen a sentence landed (panel, composer band outside the panel, transcript, toast, elsewhere). */
+function uxWhere(cdp, needle) {
+	return cdp.evaluate(`(() => {
+		const needle = ${JSON.stringify(needle)};
+		const out = [];
+		const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+		let n = walk.nextNode();
+		while (n) {
+			if (n.nodeValue && n.nodeValue.includes(needle)) {
+				const el = n.parentElement;
+				const zone = el.closest("[data-lo-aside-panel]")
+					? "panel"
+					: el.closest("[data-lo-transcript-content]")
+						? "transcript"
+						: el.closest("[data-sonner-toast]")
+							? "toast"
+							: el.closest("[data-lo-composer-band]")
+								? "composer-band"
+								: "elsewhere";
+				const roleEl = el.closest("[role]");
+				const live = el.closest("[aria-live]");
+				const r = el.getBoundingClientRect();
+				out.push({
+					zone,
+					tag: el.tagName.toLowerCase(),
+					role: roleEl ? roleEl.getAttribute("role") : null,
+					live: live ? live.getAttribute("aria-live") : null,
+					visible: r.width > 0 && r.height > 0,
+					text: el.textContent.replace(/\\s+/g, " ").trim().slice(0, 240),
+				});
+			}
+			n = walk.nextNode();
+		}
+		return out;
+	})()`);
+}
+
+/** The Tab walk from the composer, `steps` presses in one direction. */
+async function uxTabWalk(cdp, steps, shift) {
+	const seen = [];
+	for (let i = 0; i < steps; i++) {
+		await pressChord(cdp, {
+			key: "Tab",
+			code: "Tab",
+			virtualKeyCode: 9,
+			modifiers: shift ? MODIFIER.shift : 0,
+		});
+		await wait(120);
+		seen.push((await uxRead(cdp)).active);
+	}
+	return seen;
+}
+
+async function sceneBtwUx(cdp) {
+	const FIELD = 'textarea[aria-label="Message"]';
+	const TAIL = "wrong, not the provider";
+	const REFUSAL = "The model did not answer your aside";
+	const log = (label, value) => note(label, JSON.stringify(value));
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown",
+		facts.windowMode === "headless" && facts.visible === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	const { sessionId } = await qaOpenSession(cdp);
+	const PREFIX = RUN_LABEL ? `ux-${RUN_LABEL}` : "ux";
+	const take = async (label) => {
+		const frame = await capture(cdp, `${PREFIX}-${label}`);
+		note("frame", JSON.stringify({ label: frame.label, ...frame.pixels }));
+	};
+	const enter = () => pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	const esc = () => pressChord(cdp, { key: "Escape", code: "Escape", virtualKeyCode: 27 });
+	const cmdF = () =>
+		pressChord(cdp, { key: "f", code: "KeyF", virtualKeyCode: 70, modifiers: MODIFIER.meta });
+	const type = async (text) => {
+		await cdp.send("Input.insertText", { text });
+		await wait(200);
+	};
+	const clearBox = async () => {
+		await clickAt(cdp, FIELD);
+		await pressChord(cdp, {
+			key: "a", code: "KeyA", virtualKeyCode: 65, modifiers: MODIFIER.meta, commands: ["selectAll"],
+		});
+		await pressChord(cdp, {
+			key: "Backspace", code: "Backspace", virtualKeyCode: 8, commands: ["deleteBackward"],
+		});
+		await wait(150);
+	};
+	const until = async (pred, ms = 15000) => {
+		const t0 = Date.now();
+		let r = await uxRead(cdp);
+		while (!pred(r) && Date.now() - t0 < ms) {
+			await wait(100);
+			r = await uxRead(cdp);
+		}
+		return { ...r, waitedMs: Date.now() - t0 };
+	};
+	const settledAnswer = (r) => (r.panelText ?? "").includes(TAIL) && r.adopt && r.adopt.disabled === false;
+
+	const rest = await uxRead(cdp);
+	log("0 at rest", { placeholder: rest.placeholder, active: rest.active });
+
+	// ---- DISCOVERY: what the slash popup offers for /bt ------------------------
+	await clickAt(cdp, FIELD);
+	await type("/bt");
+	await wait(400);
+	const popup = await cdp.evaluate(`(() => {
+		const lb = document.querySelector('[role="listbox"][aria-label="Slash commands"]');
+		return lb ? lb.textContent.replace(/\\s+/g, " ").trim().slice(0, 400) : null;
+	})()`);
+	log("D popup for '/bt'", popup);
+	await take("00-slash-popup-bt");
+	await clearBox();
+	await esc();
+	await wait(200);
+
+	// ---- FLOW 1: bare /btw -> type -> Enter -> stream -> follow-up -> adopt ----
+	await clickAt(cdp, FIELD);
+	await type("/btw");
+	await enter();
+	const empty = await until((r) => r.panel);
+	log("1a bare /btw", {
+		panel: empty.panel, placeholder: empty.placeholder, active: empty.active,
+		fieldValue: empty.fieldValue, panelText: empty.panelText, announce: empty.panelAnnounce,
+		adopt: empty.adopt, send: empty.send, waitedMs: empty.waitedMs,
+	});
+	check("1a bare /btw opens the panel with the caret still in the composer", empty.panel && empty.activeIsField && empty.fieldValue === "", JSON.stringify(empty));
+	await wait(600);
+	await take("01-bare-btw-empty");
+
+	const Q1 = "what does the retry budget actually cap?";
+	await type(Q1);
+	const typedQ1 = await uxRead(cdp);
+	log("1b question typed into the box while the panel is up", {
+		placeholderVisible: typedQ1.fieldValue === "", send: typedQ1.send, active: typedQ1.active,
+	});
+	await take("02-typed-question-before-enter");
+	await enter();
+	const t1 = Date.now();
+	const thinking = await until((r) => (r.panelText ?? "").includes(Q1), 5000);
+	log("1c right after Enter", {
+		ms: Date.now() - t1, fieldValue: thinking.fieldValue, active: thinking.active,
+		announce: thinking.panelAnnounce, thinking: (thinking.panelText ?? "").includes("thinking…"),
+		adopt: thinking.adopt, panelText: thinking.panelText,
+	});
+	await take("03-thinking");
+	const firstChunk = await until((r) => (r.panelText ?? "").includes("Transport failures"), 15000);
+	log("1d first visible chunk", { msSinceEnter: Date.now() - t1, announce: firstChunk.panelAnnounce });
+	await take("04-midstream");
+	const s1 = await until(settledAnswer, 20000);
+	log("1e first answer settled", { waitedMs: s1.waitedMs, announce: s1.panelAnnounce, adopt: s1.adopt, active: s1.active });
+	await take("05-first-settled");
+	const Q2EARLY = "is it per provider or global?";
+	await clickAt(cdp, FIELD);
+	await type(Q2EARLY);
+	await enter();
+	await wait(400);
+	const f2 = await uxRead(cdp);
+	log("1f follow-up asked after settle", { fieldValue: f2.fieldValue, announce: f2.panelAnnounce, region: f2.region, adopt: f2.adopt });
+	const bothSettled = await until(
+		(r) => settledAnswer(r) && (r.panelText ?? "").split(TAIL).length - 1 >= 2, 30000,
+	);
+	log("1g after both answers settle", {
+		waitedMs: bothSettled.waitedMs, turns: bothSettled.region, adopt: bothSettled.adopt,
+		announce: bothSettled.panelAnnounce, alert: bothSettled.panelAlert,
+		tailCount: (bothSettled.panelText ?? "").split(TAIL).length - 1,
+	});
+	await take("06-two-turns-settled");
+	// ⌘+F adopt
+	await clickAt(cdp, FIELD);
+	const transcriptBefore = (await uxRead(cdp)).transcript ?? "";
+	const tAdopt = Date.now();
+	await cmdF();
+	const adopted = await until((r) => !r.panel, 8000);
+	const landed = await until((r) => (r.transcript ?? "").includes(Q1), 20000);
+	log("1h ⌘+F adopt", {
+		panelGoneMs: adopted.waitedMs, active: adopted.active, placeholder: adopted.placeholder,
+		transcriptGainedQ1: (landed.transcript ?? "").includes(Q1) && !transcriptBefore.includes(Q1),
+		transcriptGainedQ2: (landed.transcript ?? "").includes(Q2EARLY),
+		msToTranscript: Date.now() - tAdopt, where: await uxWhere(cdp, Q1),
+		anyToast: await uxWhere(cdp, "added"),
+	});
+	await take("07-after-cmdf-adopt");
+
+	// click adopt: one-line door
+	const Q3 = "one-line door: what is a 4xx worth?";
+	await clickAt(cdp, FIELD);
+	await type(`/btw ${Q3}`);
+	await enter();
+	const oneLine = await until((r) => (r.panelText ?? "").includes(Q3), 5000);
+	log("2a /btw <question> in one line", {
+		waitedMs: oneLine.waitedMs, fieldValue: oneLine.fieldValue, active: oneLine.active,
+		placeholder: oneLine.placeholder, announce: oneLine.panelAnnounce,
+	});
+	await take("08-one-line-door-thinking");
+	const s3 = await until(settledAnswer, 20000);
+	const adoptBtn = await qaAdoptControl(cdp);
+	await qaPressPoint(cdp, adoptBtn);
+	const clicked = await until((r) => !r.panel, 8000);
+	await wait(1500);
+	const afterClick = await uxRead(cdp);
+	log("1i click adopt", {
+		settledMs: s3.waitedMs, panelGone: !clicked.panel, activeAfter: afterClick.active,
+		activeIsBody: afterClick.activeIsBody, transcriptHasQ3: (afterClick.transcript ?? "").includes(Q3),
+	});
+	await type("typed right after the click adopt");
+	const typedAfterClick = await uxRead(cdp);
+	log("1j typing straight after a click-adopt reaches", { fieldValue: typedAfterClick.fieldValue, active: typedAfterClick.active });
+	await take("09-after-click-adopt");
+	await clearBox();
+
+	// ---- FLOW 1x: a follow-up sent while the answer is STILL streaming --------
+	await clickAt(cdp, FIELD);
+	const QA = "mid-stream follow-up base question";
+	await type(`/btw ${QA}`);
+	await enter();
+	await until((r) => (r.panelText ?? "").includes("Transport failures"), 15000);
+	const QB = "follow-up pressed before the first answer ends";
+	await type(QB);
+	await enter();
+	await wait(800);
+	const x1 = await uxRead(cdp);
+	log("1x-a follow-up Enter while the first answer streams", {
+		fieldValue: x1.fieldValue, alert: x1.panelAlert, announce: x1.panelAnnounce, adopt: x1.adopt,
+		panelText: x1.panelText,
+	});
+	await take("18-followup-midstream-refused");
+	const x2 = await until((r) => (r.panelText ?? "").includes(TAIL), 15000);
+	log("1x-b after the FIRST answer finishes", {
+		alert: x2.panelAlert, announce: x2.panelAnnounce, adopt: x2.adopt, panelText: x2.panelText,
+	});
+	await take("19-first-answer-done-but-panel-failed");
+	const QC = "trying again in the same panel";
+	await clickAt(cdp, FIELD);
+	await type(QC);
+	await enter();
+	const x3 = await until((r) => (r.panelText ?? "").split(TAIL).length - 1 >= 2 || ((r.panelText ?? "").includes(QC) && r.panelAlert !== null && !(r.panelText ?? "").endsWith("thinking…")), 25000);
+	await wait(1500);
+	const x3b = await uxRead(cdp);
+	log("1x-c asking again in the same panel after that refusal", {
+		waitedMs: x3.waitedMs, alert: x3b.panelAlert, announce: x3b.panelAnnounce, adopt: x3b.adopt,
+		answeredAgain: (x3b.panelText ?? "").split(TAIL).length - 1 >= 2, panelText: x3b.panelText,
+	});
+	await take("20-retry-in-same-panel");
+	await esc();
+	await wait(300);
+	await clearBox();
+
+	// ---- FLOW 3: normal-message routing cues while the panel is up -----------
+	await clickAt(cdp, FIELD);
+	await type("/btw");
+	await enter();
+	await until((r) => r.panel);
+	const MSG = "please run the tests in the workspace";
+	await type(MSG);
+	const mode = await uxRead(cdp);
+	log("3a a thread-shaped message typed with the panel up", {
+		placeholder: mode.placeholder, placeholderShowing: mode.fieldValue === "",
+		send: mode.send, panelText: mode.panelText,
+	});
+	await take("10-thread-message-typed-panel-up");
+	await enter();
+	await wait(1500);
+	const routed = await uxRead(cdp);
+	log("3b where the Enter took it", {
+		inPanel: (routed.panelText ?? "").includes(MSG), inTranscript: (routed.transcript ?? "").includes(MSG),
+		fieldValue: routed.fieldValue,
+	});
+	await until((r) => settledAnswer(r), 20000);
+
+	// ---- FLOW 8: keyboard walk and the SR shape of a settled panel -----------
+	await clickAt(cdp, FIELD);
+	const back = await uxTabWalk(cdp, 4, true);
+	await clickAt(cdp, FIELD);
+	const fwd = await uxTabWalk(cdp, 4, false);
+	log("8a Shift+Tab walk from the composer", back);
+	log("8b Tab walk from the composer", fwd);
+	const ax = await cdp.send("Accessibility.getFullAXTree", {}).catch(() => null);
+	const axNodes = (ax?.result?.nodes ?? ax?.nodes ?? []).filter(
+		(n) => ["region", "status", "alert", "log"].includes(n.role?.value) || /Aside|aside/.test(n.name?.value ?? ""),
+	).map((n) => ({ role: n.role?.value, name: n.name?.value }));
+	log("8c AX nodes naming the aside", axNodes.slice(0, 20));
+	// focus INTO the panel (its close button) then Esc: where does focus go?
+	await clickAt(cdp, 'button[aria-label="Close the aside"]').catch(() => null);
+	const closedByX = await until((r) => !r.panel, 3000);
+	log("8d close control pressed with the pointer", {
+		panelGone: !closedByX.panel, active: closedByX.active, activeIsBody: closedByX.activeIsBody,
+		fieldValue: closedByX.fieldValue,
+	});
+	await type("x");
+	const typedAfterX = await uxRead(cdp);
+	log("8e a key typed right after closing with the X reaches", { fieldValue: typedAfterX.fieldValue, active: typedAfterX.active });
+	await clearBox();
+	// keyboard into the panel and Esc from inside it
+	await clickAt(cdp, FIELD);
+	await type("/btw");
+	await enter();
+	await until((r) => r.panel);
+	await clickAt(cdp, FIELD);
+	const toClose = await uxTabWalk(cdp, 1, true);
+	await esc();
+	await wait(300);
+	const escInside = await uxRead(cdp);
+	log("8f Esc from focus inside the panel", { focusedBefore: toClose, panelGone: !escInside.panel, active: escInside.active, activeIsBody: escInside.activeIsBody });
+
+	// ---- FLOW 4: Esc mid-stream and after settle; draft and focus survive -----
+	await clickAt(cdp, FIELD);
+	const Q4 = "mid-stream escape question";
+	await type(`/btw ${Q4}`);
+	await enter();
+	await until((r) => (r.panelText ?? "").includes(Q4));
+	await wait(2300); // into the stream
+	const DRAFT = "a draft I am still writing";
+	await type(DRAFT);
+	const beforeEsc = await uxRead(cdp);
+	await esc();
+	await wait(300);
+	const escMid = await uxRead(cdp);
+	log("4a Esc mid-stream with a draft in the box", {
+		wasStreaming: !(beforeEsc.panelText ?? "").includes(TAIL), panelGone: !escMid.panel,
+		fieldValue: escMid.fieldValue, active: escMid.active, placeholder: escMid.placeholder,
+		stop: escMid.stop, transcriptBusy: escMid.transcriptBusy,
+	});
+	await take("11-after-esc-midstream");
+	await wait(6000);
+	const lateAnswer = await uxWhere(cdp, TAIL);
+	log("4b does the abandoned answer surface anywhere later", lateAnswer.filter((w) => w.zone !== "transcript"));
+	await clearBox();
+	await clickAt(cdp, FIELD);
+	await type("/btw settled escape question");
+	await enter();
+	await until(settledAnswer, 20000);
+	await type("draft after settle");
+	await esc();
+	await wait(300);
+	const escSettled = await uxRead(cdp);
+	log("4c Esc after settle", { panelGone: !escSettled.panel, fieldValue: escSettled.fieldValue, active: escSettled.active });
+	await clearBox();
+
+	// ---- FLOW 5: a refused ask and the recovery path --------------------------
+	await clickAt(cdp, FIELD);
+	await type("/btw TOOLCALL2: keep calling tools");
+	await enter();
+	const refused = await until((r) => r.panelAlert !== null, 25000);
+	log("5a refused ask on the panel", {
+		waitedMs: refused.waitedMs, alert: refused.panelAlert, announce: refused.panelAnnounce,
+		adopt: refused.adopt, panelText: refused.panelText, active: refused.active,
+		fieldValue: refused.fieldValue, where: await uxWhere(cdp, REFUSAL),
+	});
+	await take("12-refused-on-panel");
+	const RETRY = "a plain question after the refusal";
+	await type(RETRY);
+	await enter();
+	const recovered = await until((r) => settledAnswer(r) && (r.panelText ?? "").includes(RETRY), 25000);
+	log("5b recovery: asking again in the same panel", {
+		waitedMs: recovered.waitedMs, alertStill: recovered.panelAlert, announce: recovered.panelAnnounce,
+		adopt: recovered.adopt, refusalStillVisible: (recovered.panelText ?? "").includes(REFUSAL),
+		panelText: recovered.panelText,
+	});
+	await take("13-recovered-after-refusal");
+	await esc();
+	await wait(300);
+
+	// ---- FLOW 6: close the panel, THEN the ask is refused (F9) ----------------
+	// (a) the one-line slash door
+	await clickAt(cdp, FIELD);
+	await type("/btw TOOLCALL2: slash door closed early");
+	await enter();
+	await until((r) => r.panel);
+	await wait(300);
+	await esc();
+	const t6 = Date.now();
+	let slashNote = [];
+	for (let i = 0; i < 250 && slashNote.length === 0; i++) {
+		await wait(100);
+		slashNote = await uxWhere(cdp, REFUSAL);
+	}
+	log("6a slash door: panel closed, then refused", { msAfterEsc: Date.now() - t6, where: slashNote, questionVisibleAnywhere: await uxWhere(cdp, "slash door closed early") });
+	await take("14-closed-then-refused-slash-door");
+	// (b) the composer door
+	await clickAt(cdp, FIELD);
+	await type("/btw");
+	await enter();
+	await until((r) => r.panel);
+	await type("TOOLCALL2: composer door closed early");
+	await enter();
+	await wait(300);
+	await esc();
+	const t6b = Date.now();
+	let composerNote = [];
+	for (let i = 0; i < 250; i++) {
+		await wait(100);
+		composerNote = (await uxWhere(cdp, REFUSAL)).filter((w) => w.zone !== "transcript");
+		if (composerNote.length > 0) break;
+	}
+	const afterComposerRefusal = await uxRead(cdp);
+	log("6b composer door: panel closed, then refused", {
+		msAfterEsc: Date.now() - t6b, where: composerNote, fieldValue: afterComposerRefusal.fieldValue,
+		questionVisibleAnywhere: await uxWhere(cdp, "composer door closed early"),
+	});
+	await take("15-closed-then-refused-composer-door");
+	await type("next thought");
+	await wait(400);
+	log("6c does the composer error line survive typing", {
+		where: (await uxWhere(cdp, REFUSAL)).filter((w) => w.zone !== "transcript"),
+	});
+	await clearBox();
+	await wait(300);
+
+	// ---- FLOW 7: adopt attempted while the conversation is working -----------
+	await clickAt(cdp, FIELD);
+	await type("SLOWTURN: take your time answering this one");
+	await enter();
+	const working = await until((r) => r.transcriptBusy || r.stop, 15000);
+	log("7a the conversation is working", { busy: working.transcriptBusy, stop: working.stop, placeholder: working.placeholder, readOnly: working.readOnly });
+	const Q7 = "an aside while the agent works";
+	await clickAt(cdp, FIELD);
+	await type(`/btw ${Q7}`);
+	await enter();
+	const while7 = await until((r) => (r.panelText ?? "").includes(TAIL) || r.panelAlert !== null, 25000);
+	log("7b aside answered while the turn runs", {
+		waitedMs: while7.waitedMs, adopt: while7.adopt, panelText: while7.panelText,
+		stillBusy: while7.transcriptBusy || while7.stop, placeholder: while7.placeholder,
+	});
+	await take("16-adopt-blocked-conversation-working");
+	await clickAt(cdp, FIELD);
+	await cmdF();
+	await wait(500);
+	const chordBlocked = await uxRead(cdp);
+	const btn7 = await qaAdoptControl(cdp);
+	if (btn7) await qaPressPoint(cdp, btn7);
+	await wait(500);
+	const pressBlocked = await uxRead(cdp);
+	log("7c ⌘+F and a press while working", {
+		panelStill: chordBlocked.panel && pressBlocked.panel, activeAfterPress: pressBlocked.active,
+		fieldValue: pressBlocked.fieldValue,
+	});
+	const freed = await until((r) => r.adopt && r.adopt.disabled === false, 60000);
+	log("7d once the turn ends, the adopt control goes live by itself", {
+		waitedMs: freed.waitedMs, adopt: freed.adopt, busy: freed.transcriptBusy, panelText: freed.panelText,
+	});
+	await take("17-adopt-live-after-turn");
+	await clickAt(cdp, FIELD);
+	await cmdF();
+	const adopted7 = await until((r) => (r.transcript ?? "").includes(Q7), 15000);
+	log("7e adopt after the turn ended", { panel: adopted7.panel, transcriptHasQ7: (adopted7.transcript ?? "").includes(Q7) });
+	note("UX scene", "finished");
+}
