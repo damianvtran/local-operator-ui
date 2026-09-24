@@ -980,7 +980,12 @@ test("the notice offers Retry where a press works, and never over a delivery", (
 		rowRetry: true,
 		lateDelivered: true,
 	});
-	assert.equal(delivered?.message, SEND_FAILURE_COPY.lateDelivery);
+	/*
+	 * The `overlap` arm names the box as well (review round 3, D8): the delivered
+	 * words are still in there, so a Send would repeat the sentence the user has
+	 * already sent, and only the copy can say so.
+	 */
+	assert.equal(delivered?.message, SEND_FAILURE_COPY.lateDeliveryOverlap);
 	assert.equal(delivered?.muted, true);
 	assert.equal(
 		delivered?.retry,
@@ -1339,6 +1344,98 @@ test("a codeless 409 after an unresolved attempt stays an unknown outcome", asyn
 		draftRow().errorRetry,
 		true,
 		"a receipt conflict is not a refusal of this body: the attempt it conflicts with is the one whose fate is unknown",
+	);
+});
+
+/*
+ * R2-1, THE OTHER HALF OF THE CODELESS-409 SPLIT (review round 3).
+ *
+ * The fact that tells a receipt conflict from a refusal of the body is about the
+ * id the attempt ACTUALLY CARRIES. `previous.admissionAttempted` is the pre-send
+ * snapshot, and an edited payload rotates the id in the same call - so read on its
+ * own it described an id this attempt no longer uses, and one failure got two
+ * classes: the row latched `not_sent` while the sentence claimed an unknown
+ * outcome and offered a Retry that re-posted a refused body.
+ */
+test("a codeless 409 on a FRESH id after an unresolved attempt is a refusal, and the row agrees with the sentence", async () => {
+	reset();
+	const store = useConversationInputStore.getState();
+	store.setCurrentInput(SESSION, input.text);
+	store.beginInFlight(SESSION, {
+		text: input.text,
+		attachments: [],
+		replies: [],
+	});
+	responses.push(new DesktopControlError(504, "deadline_exceeded"));
+	await assert.rejects(admitChatDraft(key, input, SESSION));
+	const firstId = draftRow().admissionRequestId;
+	assert.equal(draftRow().admissionAttempted, true);
+	/*
+	 * The user edits the returned message and presses again: the payload no longer
+	 * matches the claim, so this is a new message under a new id - and an earlier
+	 * attempt left unresolved under the OLD id says nothing about an id the
+	 * journal has never seen.
+	 */
+	const edited = { ...input, text: "Review this, and the diff too" };
+	responses.push(
+		new DesktopControlError(
+			409,
+			"this message's text alone fills 1.1 MB of the 1.0 MB limit, leaving no room for its attachments; shorten the text or send the images on their own",
+		),
+	);
+	await assert.rejects(admitChatDraft(key, edited, SESSION));
+	const row = draftRow();
+	assert.notEqual(
+		row.admissionRequestId,
+		firstId,
+		"an edited payload went out under the id the earlier attempt had used",
+	);
+	assert.equal(
+		row.admissionAttempted,
+		false,
+		"a refusal the daemon stated is not an attempt whose outcome is unknown",
+	);
+	assert.equal(
+		row.errorRetry,
+		false,
+		"the press was offered over a body the daemon had just refused",
+	);
+	assert.doesNotMatch(
+		row.error,
+		/Sending it again is safe/,
+		"the unknown-outcome sentence rendered over a refusal, which is one failure classified twice",
+	);
+});
+
+/*
+ * R2-2 (review round 3). `errorRetry === undefined` is true of every row this
+ * build leaves WITHOUT reaching its catch - the pin and the latch are written
+ * before the wire, and a quit before the answer writes no `errorRetry` - so the
+ * shape gate accepted this build's own row as the released app's claim: it handed
+ * the payload back and cleared `submittedText`, which is what `replay` reads,
+ * while keeping the id. The next send then went out under an id the owner may
+ * already hold a receipt for, with a body the credential seam re-derived.
+ */
+test("a row this build left at the latch is not migrated as the released app's claim", () => {
+	reset();
+	const row = {
+		key,
+		createRequestId: "create-1",
+		admissionRequestId: "admit-1",
+		admissionAttempted: true,
+		submittedText: input.text,
+		// Written with the latch, and absent from the released build entirely.
+		submittedRendered: input.text,
+	};
+	assert.equal(
+		migrateHeldClaim(key, row),
+		false,
+		"this build's own interrupted row was treated as the released app's claim",
+	);
+	assert.equal(
+		row.submittedText,
+		input.text,
+		"the replay pin was cleared while the id stayed, so the next send would carry a re-derived body under an id the owner may hold",
 	);
 });
 
