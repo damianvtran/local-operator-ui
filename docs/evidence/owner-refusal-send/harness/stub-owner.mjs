@@ -169,6 +169,42 @@ const ARMS = {
 		status: 200,
 		code: "held 21s, then admitted",
 	},
+	/*
+	 * THE FLIGHT THAT SUCCEEDS (design round 4, D11; QA's Q4-1; UX's U16). An 8 s hold
+	 * is inside the app's own 20 s budget, so the message is ADMITTED while the user's
+	 * mid-flight press has already been answered - which is the arm the committed 21 s
+	 * hold can never reach, and the arm where "Your last message is still sending."
+	 * used to stay on screen after the message was in the transcript.
+	 */
+	"press-during-flight-settles": {
+		refusals: 0,
+		holdMs: 8_000,
+		status: 200,
+		code: "held 8s, then admitted",
+	},
+	/*
+	 * AND THE SAME PRESS ON AN ORDINARY SEND (UX's U16): a 900 ms hold is short enough
+	 * to be an ordinary slow send and long enough for a second press to land inside
+	 * the flight, which is the shape that turned a follow-up into one glued row.
+	 */
+	"press-twice-no-stall": {
+		refusals: 0,
+		holdMs: 5_000,
+		status: 200,
+		code: "held 5s, then admitted",
+	},
+	/*
+	 * THE DAEMON'S OWN BUDGET REFUSAL, codeless on purpose (`raise HTTPException(409,
+	 * str(error))`): the arm review round 4's M1 was filed on, and the one a remount
+	 * must render identically. Nothing is in `CODED`, so the body is a plain string.
+	 */
+	"budget-409": {
+		refusals: 1,
+		status: 409,
+		code: "codeless 409: the sender-side budget ladder",
+		sentence:
+			"this message's text alone fills 1.1 MB of the 1.0 MB limit, leaving no room for its attachments; shorten the text or send the images on their own",
+	},
 	"late-same-path": {
 		refusals: 0,
 		holdMs: 21_000,
