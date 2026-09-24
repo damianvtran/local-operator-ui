@@ -12834,10 +12834,17 @@ async function sceneSettingsIntegrations(cdp) {
 	 */
 	const startCatalog = await readBackendJson("/v1/desktop/mcp");
 	const startServers = startCatalog.body?.data?.servers ?? [];
+	const startSessions = await readBackendJson("/v1/desktop/sessions?limit=50");
+	// Inline rather than through the scene's `countSessions`, which is declared
+	// further down: this guard runs before it and a helper that is not yet
+	// initialised is a TDZ error, not a reading.
+	const startSessionCount = Array.isArray(startSessions.body?.sessions)
+		? startSessions.body.sessions.length
+		: null;
 	check(
-		"this rig's config starts with NO servers, so an empty list means empty",
-		startServers.length === 0,
-		`the rig already lists ${JSON.stringify(startServers.map((server) => server.name))} - use a fresh rig, or clear its mcp.json`,
+		"this rig starts EMPTY: no servers and no conversations",
+		startServers.length === 0 && startSessionCount === 0,
+		`the rig already lists servers ${JSON.stringify(startServers.map((server) => server.name))} and ${startSessionCount} conversation(s) - use a fresh rig, or clear its mcp.json and its sessions/`,
 	);
 
 	const caps = await readBackendJson("/v1/capabilities");
@@ -13276,10 +13283,16 @@ async function sceneSettingsIntegrations(cdp) {
 
 	/* ---- 5. and no conversation was ever needed ------------------------ */
 	const sessionsAfter = await readBackendJson("/v1/desktop/sessions?limit=50");
+	/*
+	 * THE PROPERTY, not the accident: what this half must prove is that setting
+	 * up, testing and removing servers created NO conversation - so the count is
+	 * compared, and the "the rig had none to begin with" half is the start guard
+	 * above. Requiring the absolute count to be zero here made a rig that still
+	 * held a previous run's chat fail a check whose subject it was not.
+	 */
 	check(
 		"none of it created a conversation, which is what made this reachable at all",
-		countSessions(sessionsAfter) === countSessions(sessionsBefore) &&
-			countSessions(sessionsAfter) === 0,
+		countSessions(sessionsAfter) === countSessions(sessionsBefore),
 		`before=${countSessions(sessionsBefore)} after=${countSessions(sessionsAfter)}`,
 	);
 	const errors0 = cdp.console.filter((line) => /error/i.test(line)).slice(-10);
