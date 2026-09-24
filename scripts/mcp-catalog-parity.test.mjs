@@ -50,7 +50,7 @@ import { build } from "esbuild";
 /** The backend revision and version this copy was taken from. */
 const FIXTURE = "scripts/fixtures/mcp-catalog-0.62.17.json";
 const BACKEND_SOURCE =
-	"damianvtran/local-operator#1511, branch feat/sessionless-mcp-catalog, head e2ac4b95e (backend 0.62.17). The fixture is byte-identical to the one at aa927158a - the round-3 remediation changed the write path and the eligibility rule, not the payload - so this is a re-check against the new head rather than a re-vendor";
+	"damianvtran/local-operator#1511, branch feat/sessionless-mcp-catalog, head e2ac4b95e (backend 0.62.17). The fixture is byte-identical to the one at aa927158a - the round-3 remediation changed the write path and the eligibility rule, not the payload - so this is a re-check against the new head rather than a re-vendor. RE-CHECKED AGAIN AT THIS BRANCH'S ROUND-3 PUSH (2026-09-24): #1511's head is then 0d1a1370e, and its own docs/fixtures/mcp-catalog.json is byte-identical between e2ac4b95e and 0d1a1370e (an empty diff, not an eyeball), so this copy still stands and no re-vendor is owed. The backend was still being remediated while this branch was being answered, so the reading is a moment's and the next push should take it again";
 
 const bundle = await build({
 	stdin: {
@@ -226,9 +226,21 @@ test("each pinned row derives its OWN words, with no wire word surviving", () =>
 	// An api_key row with a missing reference asks for the key, not for a sign-in.
 	assert.equal(view("postgres-prod").label, "Needs a key");
 	assert.equal(view("postgres-prod").tone, "warning");
-	// Ready, with the last count the tool cache saw, and never "Connected".
-	assert.equal(view("filesystem").label, "Ready");
-	assert.equal(view("filesystem").tone, "neutral");
+	/*
+	 * THE PINNED PAYLOAD'S ONE IDLE `stored` ROW, and it is the case Q1 turned
+	 * on: `filesystem` carries a `last_seen` count, so the page says what that
+	 * count supports - it worked, and no time is claimed because the backend
+	 * publishes none - instead of decaying to the idle word. This assertion runs
+	 * on a row the backend ACTUALLY SENDS, which is the correction the QA round
+	 * asked for: the round-2 test proved the reload path on a `stored` row with a
+	 * `status_observed_at` the backend never sets, and passed for that reason.
+	 */
+	assert.equal(view("filesystem").label, "Worked earlier · 5 tools");
+	assert.equal(view("filesystem").tone, "success");
+	// A row with NO count has no such evidence, so it stays idle - "Ready" is
+	// then the honest word rather than a claim about work it may never have done.
+	assert.equal(view("borrowed-github").label, "Ready");
+	assert.equal(view("borrowed-github").tone, "neutral");
 	// A failure says what went wrong, in the backend's own sanitized words.
 	assert.equal(view("acme-broken").label, "Couldn't start");
 	assert.equal(view("acme-broken").tone, "danger");
@@ -301,8 +313,10 @@ test("the payload's rows group and read their scope/source correctly", () => {
 			// `linear` is mid-sign-in, and it STAYS in the group the user left it
 			// in rather than jumping the moment it was pressed.
 			["attention", ["linear", "postgres-prod", "acme-api", "acme-broken"]],
-			["connected", ["github"]],
-			["ready", ["filesystem", "borrowed-github"]],
+			// `filesystem` sits with the row it shares a reading with: both say
+			// they worked, one with a count the backend still stands behind.
+			["connected", ["github", "filesystem"]],
+			["ready", ["borrowed-github"]],
 		],
 	);
 	// This payload has a separate project file, so scope is worth a word.

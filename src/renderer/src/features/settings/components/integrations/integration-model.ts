@@ -274,9 +274,29 @@ export const pruneOperation = (
  * which is a row the page knows nothing about (U10/Q1).
  */
 export const workedReadingOf = (
-	row: Pick<IntegrationRow, "status_basis" | "tool_count" | "tool_count_basis">,
+	row: Pick<
+		IntegrationRow,
+		"status" | "status_basis" | "tool_count" | "tool_count_basis"
+	>,
 	memory: RowMemory,
 ): boolean =>
+	/*
+	 * `not_started` ONLY, and this predicate is the ONE place that decides
+	 * whether a row may claim it worked.
+	 *
+	 * Why the status is part of it: "Worked …" answers an IDLE row whose check
+	 * expired. Every other status has its own words - `needs_sign_in`, `error`,
+	 * `connecting`, or one this build does not know - and answering those with a
+	 * success-tone reading contradicts the payload the same read carried. That is
+	 * not hypothetical: gating on `stored` alone filed an unreadable status
+	 * (`status: signed_out`) under Connected while its own label said "Status
+	 * unavailable", which the parity set caught (the shipped payload's stored
+	 * rows are the ones this predicate must now be measured on).
+	 *
+	 * Both callers - the status's words and the group it belongs to - read THIS,
+	 * so the two can no longer disagree about the same row.
+	 */
+	row.status === "not_started" &&
 	typeof row.tool_count === "number" &&
 	(memory.connectedAt !== null ||
 		(row.status_basis === "stored" && row.tool_count_basis === "last_seen"));

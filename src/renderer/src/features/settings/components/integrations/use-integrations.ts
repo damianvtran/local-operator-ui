@@ -661,7 +661,6 @@ export function useIntegrations({
 		setSettleUntil(0);
 	}, [document, settleUntil]);
 
-
 	/*
 	 * The memories are advanced INSIDE the memo rather than in an effect,
 	 * because the group a running operation pins must be known to the very
