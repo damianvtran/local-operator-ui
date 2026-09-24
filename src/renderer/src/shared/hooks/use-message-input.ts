@@ -451,17 +451,24 @@ export const useMessageInput = ({
 			? s.inputByConversation[conversationId]?.pendingText
 			: undefined,
 	);
+	/*
+	 * Read as a NUMBER, with the row's own absence of one meaning zero: a row no store
+	 * write has touched yet and a row whose writer has not been written are the same
+	 * thing here, and `undefined` cannot serve as the "not primed" marker below
+	 * without making the FIRST real store write look like the mount read.
+	 */
 	const textRevision = useConversationInputStore((s) =>
 		conversationId
-			? s.inputByConversation[conversationId]?.textRevision
-			: undefined,
+			? (s.inputByConversation[conversationId]?.textRevision ?? 0)
+			: 0,
 	);
 	const storeText = useConversationInputStore((s) =>
 		conversationId
 			? s.inputByConversation[conversationId]?.currentInput
 			: undefined,
 	);
-	const seenTextRevision = useRef<number | undefined>(undefined);
+	/** `null` until the mount read has been taken: see the effect below. */
+	const seenTextRevision = useRef<number | null>(null);
 	useEffect(() => {
 		if (!hydrated || !conversationId) return;
 		/*
@@ -470,8 +477,9 @@ export const useMessageInput = ({
 		 * uses.
 		 */
 		if (initializedRef.current !== conversationId) return;
-		const first = seenTextRevision.current === undefined;
+		const previousRevision = seenTextRevision.current;
 		seenTextRevision.current = textRevision;
+		const first = previousRevision === null;
 		/*
 		 * THE RETURNED MESSAGE COMES HOME FIRST, on the mount read as well as on a
 		 * later one: the row keeps returned text OUT of `currentInput` until a
@@ -498,7 +506,7 @@ export const useMessageInput = ({
 		 * box from this same row, and re-setting it would move the caret to the end of
 		 * a draft the user has just started editing.
 		 */
-		if (first || textRevision === undefined) return;
+		if (first || textRevision === previousRevision) return;
 		if (draftHeld) return;
 		const boxed = storeText ?? "";
 		if (boxed === inputValue) return;
