@@ -1,0 +1,189 @@
+1:  3db71ef70 ! 1:  c650272cf feat(chat): mark the sidebar row an agent opened
+    @@ src/renderer/src/features/chat/components/chat-sidebar.tsx: export function Chat
+      		const pinned = row.pinned === true;
+      		/** The row's own name, used by the archive control's accessible name and tooltip
+     @@ src/renderer/src/features/chat/components/chat-sidebar.tsx: export function ChatSidebar({
+    - 				   (`unreadMarkKind`). It used to be keyed on bare `unseen`, which made a
+    - 				   busy or gated row's tooltip claim a mark its own spinner and gate were
+    - 				   nowhere drawing — the reported defect, in the channel a reader reaches
+    --				   by hovering, and the row that most needs the tooltip to be true. */
+    --				title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${silent ? ` · ${SILENT_REMEDY}` : ""}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${unreadMarkKind(row) !== null ? ", unread" : ""}${archived ? ", archived" : ""}`}
+    -+				   by hovering, and the row that most needs the tooltip to be true. The
+    -+				   agent-opened fact is the newest of those clauses and follows the same
+    -+				   rule: on a row whose trailing slot DRAWS "· opened by coder" the
+    -+				   tooltip repeats it and adds the requesting conversation's own name,
+    -+				   and on a row whose slot could not draw it (the search mark, `· Not
+    -+				   sent yet`) the tooltip is the only place it appears at all — which is
+    -+				   what keeps the accessible description at least as wide as the row. */
+    -+				title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${silent ? ` · ${SILENT_REMEDY}` : ""}${openedByNote(row)}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${unreadMarkKind(row) !== null ? ", unread" : ""}${archived ? ", archived" : ""}`}
+    - 				/*
+    - 				 * THE REMEDY'S OTHER CHANNEL (UX round 1, U2). `title` above is the pointer's;
+    - 				 * this is the keyboard's, and it is the one a person using the `sr-only` name
+    + 		 * the full title on its own line (untruncated and free to wrap inside the
+    + 		 * primitive's `max-w-64`), the binding, then the row's status label and its tail
+    + 		 * flags - `, not sent yet`, `, unread`, `, archived` - and the silent remedy.
+    ++		 * An agent-opened row adds its attribution (`openedByNote`: `, opened by coder
+    ++		 * in "…"`) to the status line; on a row whose trailing slot could not draw the
+    ++		 * marker (the search mark, `· Not sent yet`) this is the only pointer channel
+    ++		 * that states it, which keeps the flyout at least as wide as the row.
+    + 		 * The `sr-only` sentence the row already renders stays where it is: that is the
+    + 		 * keyboard and screen-reader channel (the `aria-describedby` on the button) and
+    + 		 * it does not move into a tooltip.
+    +@@ src/renderer/src/features/chat/components/chat-sidebar.tsx: export function ChatSidebar({
+    + 							? "found by search, beyond the chats listed here"
+    + 							: "Recent")}
+    + 					{silent ? ` · ${SILENT_REMEDY}` : ""}
+    ++					{openedByNote(row)}
+    + 					{unstarted.has(row.session_id) ? ", not sent yet" : ""}
+    + 					{unreadMarkKind(row) !== null ? ", unread" : ""}
+    + 					{archived ? ", archived" : ""}
+     @@ src/renderer/src/features/chat/components/chat-sidebar.tsx: export function ChatSidebar({
+      			    Read that docstring before changing anything here.
+      			    What matters at this call site: the number of statements is capped
+    @@ src/renderer/src/features/chat/components/chat-sidebar.tsx: export function Chat
+     +			    cap, which is that cap doing the work a floor used to. The two
+     +			    literal statements below cannot truncate anything: they are fixed
+     +			    strings with no width to run out of. */}
+    - 				<span
+    - 					/*
+    - 					 * The title's own anchor, inert outside a driver run: the reserved slot's
+    + 				{/*
+    + 				 * THE TITLE, and both of its boxes live in `chat-row-title.tsx`: the clip box
+    + 				 * the row's flex layout sizes (`[data-session-title]`, the anchor the driver's
+     @@ src/renderer/src/features/chat/components/chat-sidebar.tsx: export function ChatSidebar({
+      			    has something more important to say (the paragraph above) says that
+    - 			    instead. The row's `title` carries the binding in every case, so the
+    + 			    instead. The row's flyout carries the binding in every case, so the
+      			    accessible description is never narrower than the pixels. */}
+     +				{trailing === "agent_opened" && (
+     +					/* WHO OPENED IT, drawn on the row an agent opened: the fact that the row is
+    @@ src/renderer/src/shared/store/canonical-sessions-store.ts: import {
+      } from "../../../../shared/desktop-session-contract";
+      import type { LaunchTarget } from "../../../../shared/open-session";
+     @@ src/renderer/src/shared/store/canonical-sessions-store.ts: export type CanonicalSessionRow = {
+    - 	status_revision?: number;
+    - 	status_epoch?: string;
+    + 	subagents_running?: number | null;
+    + 	subagents_queued?: number | null;
+      	binding?: SessionBinding;
+     +	/**
+     +	 * Who opened this conversation, when an agent rather than the operator did.
+    @@ src/renderer/src/shared/store/canonical-sessions-store.ts: export type Canonical
+     
+      ## src/shared/desktop-session-contract.ts ##
+     @@ src/shared/desktop-session-contract.ts: export type CanonicalSessionId = string;
+    -  * active/previous partition and order; clients must not infer them from read state. */
+    +  * unknown rather than to normalise it into a state it does understand. */
+      export type SessionCatalogueStatus = { code: string; label: string };
+      export type SessionBinding = { agent: string | null; team: string | null };
+     +/**
+2:  af7984052 < -:  --------- chore(evidence): re-derive the manifest stamps for the agent-opened row
+3:  c8e06663a ! 2:  903cff215 fix(chat): draw a fixed agent-opened marker that survives the panel's narrow widths
+    @@ src/renderer/src/features/chat/chat-search.ts: export function searchChats(
+     - * through the row's `title`.
+     + * opened himself. Only one of the two can be drawn on that row, and in the COMMON
+     + * case the binding is the half a reader can infer, so the binding is what yields;
+    -+ * it stays reachable through the row's `title`.
+    ++ * it stays reachable through the row's flyout.
+     + *
+     + * WHERE THAT REASONING STOPS, stated because review round 1 (m1) caught the
+     + * confident version of it: it holds when the binding names the SAME AGENT the
+     + * marker does. `bindingName` prefers the TEAM, and the marker only ever knows
+     + * `opened_by.agent`, so a workstream bound to a team loses the team from the row's
+     + * own pixels when the marker is drawn (`…(Minerva): Recent, opened by coder` in
+    -+ * the tooltip, `· agent-opened` on screen) and the `title` is then the only
+    ++ * the flyout, `· agent-opened` on screen) and the flyout is then the only
+     + * channel carrying it. The fact still outranks the binding there — a team name is
+     + * a subtler thing to lose than "this is not one of your chats" is to withhold —
+     + * but the yield is a real loss on that pair rather than a free one.
+    @@ src/renderer/src/features/chat/components/chat-sidebar.tsx: export function Chat
+     +	 *     panel's narrow widths intact and cannot grow with an agent name that
+     +	 *     accepts 64 characters.
+     +	 *   - `openedBySentence` names the agent, and feeds the two channels where a
+    -+	 *     name costs no pixels: the `title` tooltip and the row's screen-reader
+    -+	 *     name.
+    ++	 *     name costs no pixels: the row's flyout (`rowTooltip`) and the row's
+    ++	 *     screen-reader name.
+     +	 *
+     +	 * WHY THE NAME LEFT THE PIXELS, and it is measured rather than preferred. At
+     +	 * the panel's default 280px the row is 263px wide, and the named form
+    @@ src/renderer/src/features/chat/components/chat-sidebar.tsx: export function Chat
+     +	 * drawn form drops it.
+     +	 *
+     +	 * WHAT THAT TRADES AWAY, named rather than implied: the agent's name is no
+    -+	 * longer in the row's pixels. It is one hover away in `title`, it is in the
+    ++	 * longer in the row's pixels. It is one dwell away in the row's flyout, it is in the
+     +	 * accessible name, and in the panel's `Agents` section it is on the entity row
+     +	 * the conversation is filed under. The pixel channel keeps the half it is the
+     +	 * only channel for — "this is not one of your own chats", the whole of the
+    @@ src/renderer/src/features/chat/components/chat-sidebar.tsx: export function Chat
+     +	 * the same sentence names the same agent, `… (coder): Recent, opened by coder in
+     +	 * “…”` reads as a stutter on exactly the row the marker was added for (review
+     +	 * round 1's n3, and the design round's NIT). Nothing is lost by dropping it —
+    -+	 * the clause that follows still carries the name — so the tooltip stays at least
+    ++	 * the clause that follows still carries the name — so the flyout stays at least
+     +	 * as wide as the pixels, which is the property the row's own comment claims.
+     +	 */
+     +	const bindingClause = (row: CanonicalSessionRow) => {
+    @@ src/renderer/src/features/chat/components/chat-sidebar.tsx: export function Chat
+      		const pinned = row.pinned === true;
+      		/** The row's own name, used by the archive control's accessible name and tooltip
+     @@ src/renderer/src/features/chat/components/chat-sidebar.tsx: export function ChatSidebar({
+    - 				   nowhere drawing — the reported defect, in the channel a reader reaches
+    - 				   by hovering, and the row that most needs the tooltip to be true. The
+    - 				   agent-opened fact is the newest of those clauses and follows the same
+    --				   rule: on a row whose trailing slot DRAWS "· opened by coder" the
+    --				   tooltip repeats it and adds the requesting conversation's own name,
+    --				   and on a row whose slot could not draw it (the search mark, `· Not
+    --				   sent yet`) the tooltip is the only place it appears at all — which is
+    --				   what keeps the accessible description at least as wide as the row. */
+    --				title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${silent ? ` · ${SILENT_REMEDY}` : ""}${openedByNote(row)}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${unreadMarkKind(row) !== null ? ", unread" : ""}${archived ? ", archived" : ""}`}
+    -+				   rule: the row DRAWS the constant `· agent-opened`, so this sentence is
+    -+				   where the requesting agent's NAME and the requesting conversation's own
+    -+				   name both live, and on a row whose slot could not draw the marker at all
+    -+				   (the search mark, `· Not sent yet`) it is the only place the fact appears
+    -+				   — which is what keeps the accessible description at least as wide as the
+    -+				   row. Its binding clause is dropped when the attribution beside it names
+    -+				   the same agent (`bindingClause`), which is the stutter n3 found. */
+    -+				title={`${row.title || "Untitled chat"}${bindingClause(row)}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${silent ? ` · ${SILENT_REMEDY}` : ""}${openedByNote(row)}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${unreadMarkKind(row) !== null ? ", unread" : ""}${archived ? ", archived" : ""}`}
+    - 				/*
+    - 				 * THE REMEDY'S OTHER CHANNEL (UX round 1, U2). `title` above is the pointer's;
+    - 				 * this is the keyboard's, and it is the one a person using the `sr-only` name
+    + 		 * An agent-opened row adds its attribution (`openedByNote`: `, opened by coder
+    + 		 * in "…"`) to the status line; on a row whose trailing slot could not draw the
+    + 		 * marker (the search mark, `· Not sent yet`) this is the only pointer channel
+    +-		 * that states it, which keeps the flyout at least as wide as the row.
+    ++		 * that states it, which keeps the flyout at least as wide as the row. The row
+    ++		 * DRAWS only the constant `· agent-opened`, so this is where the requesting
+    ++		 * agent's NAME and the requesting conversation's name live, and the binding
+    ++		 * beside the title is dropped when the attribution names the same agent
+    ++		 * (`bindingClause`, the stutter review round 1's n3 found).
+    + 		 * The `sr-only` sentence the row already renders stays where it is: that is the
+    + 		 * keyboard and screen-reader channel (the `aria-describedby` on the button) and
+    + 		 * it does not move into a tooltip.
+    +@@ src/renderer/src/features/chat/components/chat-sidebar.tsx: export function ChatSidebar({
+    + 			<>
+    + 				<span className="block">
+    + 					{row.title || "Untitled chat"}
+    +-					{bindingName(row) ? ` (${bindingName(row)})` : ""}
+    ++					{bindingClause(row)}
+    + 				</span>
+    + 				<span className="block">
+    + 					{row.status?.label ??
+     @@ src/renderer/src/features/chat/components/chat-sidebar.tsx: export function ChatSidebar({
+      			    Read that docstring before changing anything here.
+      			    What matters at this call site: the number of statements is capped
+    @@ src/renderer/src/features/chat/components/chat-sidebar.tsx: export function Chat
+     +			    conversation`) cannot truncate anything: they are fixed strings with
+     +			    no width to run out of, which is why the agent-opened marker was made
+     +			    one of them (design round 1, D1). */}
+    - 				<span
+    - 					/*
+    - 					 * The title's own anchor, inert outside a driver run: the reserved slot's
+    + 				{/*
+    + 				 * THE TITLE, and both of its boxes live in `chat-row-title.tsx`: the clip box
+    + 				 * the row's flex layout sizes (`[data-session-title]`, the anchor the driver's
+     @@ src/renderer/src/features/chat/components/chat-sidebar.tsx: export function ChatSidebar({
+      					   2026-09-18 incident (a parallel workstream sat here looking like a chat
+      					   he had opened himself). It outranks the binding beside it — both answer
+-:  --------- > 3:  9ea5a391e chore(evidence): re-derive the manifest stamps for the agent-opened row

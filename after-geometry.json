@@ -1,0 +1,1478 @@
+[
+  {
+    "file": "after-agent-opened-named-240-localOperatorDark.png",
+    "story": "agent-opened-named",
+    "width": 240,
+    "theme": "localOperatorDark",
+    "query": "",
+    "sidebar": 216,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· agent-opened",
+        "spoken": "RecentRetry ladder for superseded tokens, opened by coder",
+        "row": 216,
+        "titleBox": 69,
+        "titleText": 214,
+        "trailingBox": 87,
+        "trailingText": 87,
+        "rowOverflow": false
+      },
+      {
+        "nested": true,
+        "name": "Release notes for 0.30.10",
+        "trailing": "",
+        "spoken": "RecentRelease notes for 0.30.10",
+        "row": 216,
+        "titleBox": 164,
+        "titleText": 164,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· agent-opened",
+        "spoken": "RecentRetry ladder for superseded tokens, opened by coder",
+        "row": 224,
+        "titleBox": 101,
+        "titleText": 214,
+        "trailingBox": 87,
+        "trailingText": 87,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Release notes for 0.30.10",
+        "trailing": "· coder",
+        "spoken": "RecentRelease notes for 0.30.10· coder",
+        "row": 224,
+        "titleBox": 148,
+        "titleText": 153,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 224,
+        "titleBox": 196,
+        "titleText": 196,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ],
+    "flyout": {
+      "file": "after-agent-opened-named-240-localOperatorDark-flyout.png",
+      "text": "Retry ladder for superseded tokensRecent, opened by coder in “Harden lop secret against agent credential leaks”"
+    }
+  },
+  {
+    "file": "after-agent-opened-named-280-localOperatorDark.png",
+    "story": "agent-opened-named",
+    "width": 280,
+    "theme": "localOperatorDark",
+    "query": "",
+    "sidebar": 256,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· agent-opened",
+        "spoken": "RecentRetry ladder for superseded tokens, opened by coder",
+        "row": 256,
+        "titleBox": 109,
+        "titleText": 214,
+        "trailingBox": 87,
+        "trailingText": 87,
+        "rowOverflow": false
+      },
+      {
+        "nested": true,
+        "name": "Release notes for 0.30.10",
+        "trailing": "",
+        "spoken": "RecentRelease notes for 0.30.10",
+        "row": 256,
+        "titleBox": 204,
+        "titleText": 204,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· agent-opened",
+        "spoken": "RecentRetry ladder for superseded tokens, opened by coder",
+        "row": 264,
+        "titleBox": 141,
+        "titleText": 214,
+        "trailingBox": 87,
+        "trailingText": 87,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Release notes for 0.30.10",
+        "trailing": "· coder",
+        "spoken": "RecentRelease notes for 0.30.10· coder",
+        "row": 264,
+        "titleBox": 188,
+        "titleText": 188,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 264,
+        "titleBox": 236,
+        "titleText": 236,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ],
+    "flyout": {
+      "file": "after-agent-opened-named-280-localOperatorDark-flyout.png",
+      "text": "Retry ladder for superseded tokensRecent, opened by coder in “Harden lop secret against agent credential leaks”"
+    }
+  },
+  {
+    "file": "after-agent-opened-named-360-localOperatorDark.png",
+    "story": "agent-opened-named",
+    "width": 360,
+    "theme": "localOperatorDark",
+    "query": "",
+    "sidebar": 336,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· agent-opened",
+        "spoken": "RecentRetry ladder for superseded tokens, opened by coder",
+        "row": 336,
+        "titleBox": 189,
+        "titleText": 214,
+        "trailingBox": 87,
+        "trailingText": 87,
+        "rowOverflow": false
+      },
+      {
+        "nested": true,
+        "name": "Release notes for 0.30.10",
+        "trailing": "",
+        "spoken": "RecentRelease notes for 0.30.10",
+        "row": 336,
+        "titleBox": 284,
+        "titleText": 284,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· agent-opened",
+        "spoken": "RecentRetry ladder for superseded tokens, opened by coder",
+        "row": 344,
+        "titleBox": 221,
+        "titleText": 221,
+        "trailingBox": 87,
+        "trailingText": 87,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Release notes for 0.30.10",
+        "trailing": "· coder",
+        "spoken": "RecentRelease notes for 0.30.10· coder",
+        "row": 344,
+        "titleBox": 268,
+        "titleText": 268,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 344,
+        "titleBox": 316,
+        "titleText": 316,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ],
+    "flyout": {
+      "file": "after-agent-opened-named-360-localOperatorDark-flyout.png",
+      "text": "Retry ladder for superseded tokensRecent, opened by coder in “Harden lop secret against agent credential leaks”"
+    }
+  },
+  {
+    "file": "after-agent-opened-named-240-localOperatorLight.png",
+    "story": "agent-opened-named",
+    "width": 240,
+    "theme": "localOperatorLight",
+    "query": "",
+    "sidebar": 216,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· agent-opened",
+        "spoken": "RecentRetry ladder for superseded tokens, opened by coder",
+        "row": 216,
+        "titleBox": 69,
+        "titleText": 214,
+        "trailingBox": 87,
+        "trailingText": 87,
+        "rowOverflow": false
+      },
+      {
+        "nested": true,
+        "name": "Release notes for 0.30.10",
+        "trailing": "",
+        "spoken": "RecentRelease notes for 0.30.10",
+        "row": 216,
+        "titleBox": 164,
+        "titleText": 164,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· agent-opened",
+        "spoken": "RecentRetry ladder for superseded tokens, opened by coder",
+        "row": 224,
+        "titleBox": 101,
+        "titleText": 214,
+        "trailingBox": 87,
+        "trailingText": 87,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Release notes for 0.30.10",
+        "trailing": "· coder",
+        "spoken": "RecentRelease notes for 0.30.10· coder",
+        "row": 224,
+        "titleBox": 148,
+        "titleText": 153,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 224,
+        "titleBox": 196,
+        "titleText": 196,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ],
+    "flyout": {
+      "file": "after-agent-opened-named-240-localOperatorLight-flyout.png",
+      "text": "Retry ladder for superseded tokensRecent, opened by coder in “Harden lop secret against agent credential leaks”"
+    }
+  },
+  {
+    "file": "after-agent-opened-named-280-localOperatorLight.png",
+    "story": "agent-opened-named",
+    "width": 280,
+    "theme": "localOperatorLight",
+    "query": "",
+    "sidebar": 256,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· agent-opened",
+        "spoken": "RecentRetry ladder for superseded tokens, opened by coder",
+        "row": 256,
+        "titleBox": 109,
+        "titleText": 214,
+        "trailingBox": 87,
+        "trailingText": 87,
+        "rowOverflow": false
+      },
+      {
+        "nested": true,
+        "name": "Release notes for 0.30.10",
+        "trailing": "",
+        "spoken": "RecentRelease notes for 0.30.10",
+        "row": 256,
+        "titleBox": 204,
+        "titleText": 204,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· agent-opened",
+        "spoken": "RecentRetry ladder for superseded tokens, opened by coder",
+        "row": 264,
+        "titleBox": 141,
+        "titleText": 214,
+        "trailingBox": 87,
+        "trailingText": 87,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Release notes for 0.30.10",
+        "trailing": "· coder",
+        "spoken": "RecentRelease notes for 0.30.10· coder",
+        "row": 264,
+        "titleBox": 188,
+        "titleText": 188,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 264,
+        "titleBox": 236,
+        "titleText": 236,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ],
+    "flyout": {
+      "file": "after-agent-opened-named-280-localOperatorLight-flyout.png",
+      "text": "Retry ladder for superseded tokensRecent, opened by coder in “Harden lop secret against agent credential leaks”"
+    }
+  },
+  {
+    "file": "after-agent-opened-named-360-localOperatorLight.png",
+    "story": "agent-opened-named",
+    "width": 360,
+    "theme": "localOperatorLight",
+    "query": "",
+    "sidebar": 336,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· agent-opened",
+        "spoken": "RecentRetry ladder for superseded tokens, opened by coder",
+        "row": 336,
+        "titleBox": 189,
+        "titleText": 214,
+        "trailingBox": 87,
+        "trailingText": 87,
+        "rowOverflow": false
+      },
+      {
+        "nested": true,
+        "name": "Release notes for 0.30.10",
+        "trailing": "",
+        "spoken": "RecentRelease notes for 0.30.10",
+        "row": 336,
+        "titleBox": 284,
+        "titleText": 284,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· agent-opened",
+        "spoken": "RecentRetry ladder for superseded tokens, opened by coder",
+        "row": 344,
+        "titleBox": 221,
+        "titleText": 221,
+        "trailingBox": 87,
+        "trailingText": 87,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Release notes for 0.30.10",
+        "trailing": "· coder",
+        "spoken": "RecentRelease notes for 0.30.10· coder",
+        "row": 344,
+        "titleBox": 268,
+        "titleText": 268,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 344,
+        "titleBox": 316,
+        "titleText": 316,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ],
+    "flyout": {
+      "file": "after-agent-opened-named-360-localOperatorLight-flyout.png",
+      "text": "Retry ladder for superseded tokensRecent, opened by coder in “Harden lop secret against agent credential leaks”"
+    }
+  },
+  {
+    "file": "after-agent-opened-unnamed-240-localOperatorDark.png",
+    "story": "agent-opened-unnamed",
+    "width": 240,
+    "theme": "localOperatorDark",
+    "query": "",
+    "sidebar": 216,
+    "rows": [
+      {
+        "nested": false,
+        "name": "Scratch: bench the pinned interpreter",
+        "trailing": "· agent-opened",
+        "spoken": "RecentScratch: bench the pinned interpreter, opened by an agent",
+        "row": 224,
+        "titleBox": 101,
+        "titleText": 227,
+        "trailingBox": 87,
+        "trailingText": 87,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 224,
+        "titleBox": 196,
+        "titleText": 196,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ],
+    "flyout": {
+      "file": "after-agent-opened-unnamed-240-localOperatorDark-flyout.png",
+      "text": "Scratch: bench the pinned interpreterRecent, opened by an agent"
+    }
+  },
+  {
+    "file": "after-agent-opened-unnamed-280-localOperatorDark.png",
+    "story": "agent-opened-unnamed",
+    "width": 280,
+    "theme": "localOperatorDark",
+    "query": "",
+    "sidebar": 256,
+    "rows": [
+      {
+        "nested": false,
+        "name": "Scratch: bench the pinned interpreter",
+        "trailing": "· agent-opened",
+        "spoken": "RecentScratch: bench the pinned interpreter, opened by an agent",
+        "row": 264,
+        "titleBox": 141,
+        "titleText": 227,
+        "trailingBox": 87,
+        "trailingText": 87,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 264,
+        "titleBox": 236,
+        "titleText": 236,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ],
+    "flyout": {
+      "file": "after-agent-opened-unnamed-280-localOperatorDark-flyout.png",
+      "text": "Scratch: bench the pinned interpreterRecent, opened by an agent"
+    }
+  },
+  {
+    "file": "after-agent-opened-unnamed-360-localOperatorDark.png",
+    "story": "agent-opened-unnamed",
+    "width": 360,
+    "theme": "localOperatorDark",
+    "query": "",
+    "sidebar": 336,
+    "rows": [
+      {
+        "nested": false,
+        "name": "Scratch: bench the pinned interpreter",
+        "trailing": "· agent-opened",
+        "spoken": "RecentScratch: bench the pinned interpreter, opened by an agent",
+        "row": 344,
+        "titleBox": 221,
+        "titleText": 227,
+        "trailingBox": 87,
+        "trailingText": 87,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 344,
+        "titleBox": 316,
+        "titleText": 316,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ],
+    "flyout": {
+      "file": "after-agent-opened-unnamed-360-localOperatorDark-flyout.png",
+      "text": "Scratch: bench the pinned interpreterRecent, opened by an agent"
+    }
+  },
+  {
+    "file": "after-agent-opened-unnamed-240-localOperatorLight.png",
+    "story": "agent-opened-unnamed",
+    "width": 240,
+    "theme": "localOperatorLight",
+    "query": "",
+    "sidebar": 216,
+    "rows": [
+      {
+        "nested": false,
+        "name": "Scratch: bench the pinned interpreter",
+        "trailing": "· agent-opened",
+        "spoken": "RecentScratch: bench the pinned interpreter, opened by an agent",
+        "row": 224,
+        "titleBox": 101,
+        "titleText": 227,
+        "trailingBox": 87,
+        "trailingText": 87,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 224,
+        "titleBox": 196,
+        "titleText": 196,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ],
+    "flyout": {
+      "file": "after-agent-opened-unnamed-240-localOperatorLight-flyout.png",
+      "text": "Scratch: bench the pinned interpreterRecent, opened by an agent"
+    }
+  },
+  {
+    "file": "after-agent-opened-unnamed-280-localOperatorLight.png",
+    "story": "agent-opened-unnamed",
+    "width": 280,
+    "theme": "localOperatorLight",
+    "query": "",
+    "sidebar": 256,
+    "rows": [
+      {
+        "nested": false,
+        "name": "Scratch: bench the pinned interpreter",
+        "trailing": "· agent-opened",
+        "spoken": "RecentScratch: bench the pinned interpreter, opened by an agent",
+        "row": 264,
+        "titleBox": 141,
+        "titleText": 227,
+        "trailingBox": 87,
+        "trailingText": 87,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 264,
+        "titleBox": 236,
+        "titleText": 236,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ],
+    "flyout": {
+      "file": "after-agent-opened-unnamed-280-localOperatorLight-flyout.png",
+      "text": "Scratch: bench the pinned interpreterRecent, opened by an agent"
+    }
+  },
+  {
+    "file": "after-agent-opened-unnamed-360-localOperatorLight.png",
+    "story": "agent-opened-unnamed",
+    "width": 360,
+    "theme": "localOperatorLight",
+    "query": "",
+    "sidebar": 336,
+    "rows": [
+      {
+        "nested": false,
+        "name": "Scratch: bench the pinned interpreter",
+        "trailing": "· agent-opened",
+        "spoken": "RecentScratch: bench the pinned interpreter, opened by an agent",
+        "row": 344,
+        "titleBox": 221,
+        "titleText": 227,
+        "trailingBox": 87,
+        "trailingText": 87,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 344,
+        "titleBox": 316,
+        "titleText": 316,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ],
+    "flyout": {
+      "file": "after-agent-opened-unnamed-360-localOperatorLight-flyout.png",
+      "text": "Scratch: bench the pinned interpreterRecent, opened by an agent"
+    }
+  },
+  {
+    "file": "after-agent-opened-and-search-marked-240-localOperatorDark.png",
+    "story": "agent-opened-and-search-marked",
+    "width": 240,
+    "theme": "localOperatorDark",
+    "query": "credential",
+    "sidebar": 216,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Credential handling notes",
+        "trailing": "",
+        "spoken": "RecentCredential handling notes",
+        "row": 216,
+        "titleBox": 164,
+        "titleText": 164,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": true,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· in conversation",
+        "spoken": "RecentRetry ladder for superseded tokens, matched in conversation",
+        "row": 216,
+        "titleBox": 63,
+        "titleText": 214,
+        "trailingBox": 93,
+        "trailingText": 93,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Credential handling notes",
+        "trailing": "· coder",
+        "spoken": "RecentCredential handling notes· coder",
+        "row": 224,
+        "titleBox": 148,
+        "titleText": 155,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· in conversation",
+        "spoken": "RecentRetry ladder for superseded tokens, matched in conversation",
+        "row": 224,
+        "titleBox": 95,
+        "titleText": 214,
+        "trailingBox": 93,
+        "trailingText": 93,
+        "rowOverflow": false
+      }
+    ],
+    "flyout": {
+      "file": "after-agent-opened-and-search-marked-240-localOperatorDark-flyout.png",
+      "text": "Retry ladder for superseded tokensRecent, opened by coder in “Harden lop secret against agent credential leaks”"
+    }
+  },
+  {
+    "file": "after-agent-opened-and-search-marked-280-localOperatorDark.png",
+    "story": "agent-opened-and-search-marked",
+    "width": 280,
+    "theme": "localOperatorDark",
+    "query": "credential",
+    "sidebar": 256,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Credential handling notes",
+        "trailing": "",
+        "spoken": "RecentCredential handling notes",
+        "row": 256,
+        "titleBox": 204,
+        "titleText": 204,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": true,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· in conversation",
+        "spoken": "RecentRetry ladder for superseded tokens, matched in conversation",
+        "row": 256,
+        "titleBox": 103,
+        "titleText": 214,
+        "trailingBox": 93,
+        "trailingText": 93,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Credential handling notes",
+        "trailing": "· coder",
+        "spoken": "RecentCredential handling notes· coder",
+        "row": 264,
+        "titleBox": 188,
+        "titleText": 188,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· in conversation",
+        "spoken": "RecentRetry ladder for superseded tokens, matched in conversation",
+        "row": 264,
+        "titleBox": 135,
+        "titleText": 214,
+        "trailingBox": 93,
+        "trailingText": 93,
+        "rowOverflow": false
+      }
+    ],
+    "flyout": {
+      "file": "after-agent-opened-and-search-marked-280-localOperatorDark-flyout.png",
+      "text": "Retry ladder for superseded tokensRecent, opened by coder in “Harden lop secret against agent credential leaks”"
+    }
+  },
+  {
+    "file": "after-agent-opened-and-search-marked-360-localOperatorDark.png",
+    "story": "agent-opened-and-search-marked",
+    "width": 360,
+    "theme": "localOperatorDark",
+    "query": "credential",
+    "sidebar": 336,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Credential handling notes",
+        "trailing": "",
+        "spoken": "RecentCredential handling notes",
+        "row": 336,
+        "titleBox": 284,
+        "titleText": 284,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": true,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· in conversation",
+        "spoken": "RecentRetry ladder for superseded tokens, matched in conversation",
+        "row": 336,
+        "titleBox": 183,
+        "titleText": 214,
+        "trailingBox": 93,
+        "trailingText": 93,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Credential handling notes",
+        "trailing": "· coder",
+        "spoken": "RecentCredential handling notes· coder",
+        "row": 344,
+        "titleBox": 268,
+        "titleText": 268,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· in conversation",
+        "spoken": "RecentRetry ladder for superseded tokens, matched in conversation",
+        "row": 344,
+        "titleBox": 215,
+        "titleText": 215,
+        "trailingBox": 93,
+        "trailingText": 93,
+        "rowOverflow": false
+      }
+    ],
+    "flyout": {
+      "file": "after-agent-opened-and-search-marked-360-localOperatorDark-flyout.png",
+      "text": "Retry ladder for superseded tokensRecent, opened by coder in “Harden lop secret against agent credential leaks”"
+    }
+  },
+  {
+    "file": "after-agent-opened-and-search-marked-240-localOperatorLight.png",
+    "story": "agent-opened-and-search-marked",
+    "width": 240,
+    "theme": "localOperatorLight",
+    "query": "credential",
+    "sidebar": 216,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Credential handling notes",
+        "trailing": "",
+        "spoken": "RecentCredential handling notes",
+        "row": 216,
+        "titleBox": 164,
+        "titleText": 164,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": true,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· in conversation",
+        "spoken": "RecentRetry ladder for superseded tokens, matched in conversation",
+        "row": 216,
+        "titleBox": 63,
+        "titleText": 214,
+        "trailingBox": 93,
+        "trailingText": 93,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Credential handling notes",
+        "trailing": "· coder",
+        "spoken": "RecentCredential handling notes· coder",
+        "row": 224,
+        "titleBox": 148,
+        "titleText": 155,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· in conversation",
+        "spoken": "RecentRetry ladder for superseded tokens, matched in conversation",
+        "row": 224,
+        "titleBox": 95,
+        "titleText": 214,
+        "trailingBox": 93,
+        "trailingText": 93,
+        "rowOverflow": false
+      }
+    ],
+    "flyout": {
+      "file": "after-agent-opened-and-search-marked-240-localOperatorLight-flyout.png",
+      "text": "Retry ladder for superseded tokensRecent, opened by coder in “Harden lop secret against agent credential leaks”"
+    }
+  },
+  {
+    "file": "after-agent-opened-and-search-marked-280-localOperatorLight.png",
+    "story": "agent-opened-and-search-marked",
+    "width": 280,
+    "theme": "localOperatorLight",
+    "query": "credential",
+    "sidebar": 256,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Credential handling notes",
+        "trailing": "",
+        "spoken": "RecentCredential handling notes",
+        "row": 256,
+        "titleBox": 204,
+        "titleText": 204,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": true,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· in conversation",
+        "spoken": "RecentRetry ladder for superseded tokens, matched in conversation",
+        "row": 256,
+        "titleBox": 103,
+        "titleText": 214,
+        "trailingBox": 93,
+        "trailingText": 93,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Credential handling notes",
+        "trailing": "· coder",
+        "spoken": "RecentCredential handling notes· coder",
+        "row": 264,
+        "titleBox": 188,
+        "titleText": 188,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· in conversation",
+        "spoken": "RecentRetry ladder for superseded tokens, matched in conversation",
+        "row": 264,
+        "titleBox": 135,
+        "titleText": 214,
+        "trailingBox": 93,
+        "trailingText": 93,
+        "rowOverflow": false
+      }
+    ],
+    "flyout": {
+      "file": "after-agent-opened-and-search-marked-280-localOperatorLight-flyout.png",
+      "text": "Retry ladder for superseded tokensRecent, opened by coder in “Harden lop secret against agent credential leaks”"
+    }
+  },
+  {
+    "file": "after-agent-opened-and-search-marked-360-localOperatorLight.png",
+    "story": "agent-opened-and-search-marked",
+    "width": 360,
+    "theme": "localOperatorLight",
+    "query": "credential",
+    "sidebar": 336,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Credential handling notes",
+        "trailing": "",
+        "spoken": "RecentCredential handling notes",
+        "row": 336,
+        "titleBox": 284,
+        "titleText": 284,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": true,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· in conversation",
+        "spoken": "RecentRetry ladder for superseded tokens, matched in conversation",
+        "row": 336,
+        "titleBox": 183,
+        "titleText": 214,
+        "trailingBox": 93,
+        "trailingText": 93,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Credential handling notes",
+        "trailing": "· coder",
+        "spoken": "RecentCredential handling notes· coder",
+        "row": 344,
+        "titleBox": 268,
+        "titleText": 268,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· in conversation",
+        "spoken": "RecentRetry ladder for superseded tokens, matched in conversation",
+        "row": 344,
+        "titleBox": 215,
+        "titleText": 215,
+        "trailingBox": 93,
+        "trailingText": 93,
+        "rowOverflow": false
+      }
+    ],
+    "flyout": {
+      "file": "after-agent-opened-and-search-marked-360-localOperatorLight-flyout.png",
+      "text": "Retry ladder for superseded tokensRecent, opened by coder in “Harden lop secret against agent credential leaks”"
+    }
+  },
+  {
+    "file": "after-agent-opened-not-sent-240-localOperatorDark.png",
+    "story": "agent-opened-not-sent",
+    "width": 240,
+    "theme": "localOperatorDark",
+    "query": "",
+    "sidebar": 216,
+    "rows": [
+      {
+        "nested": false,
+        "name": "Scratch: bench the pinned interpreter",
+        "trailing": "· Not sent yet",
+        "spoken": "RecentScratch: bench the pinned interpreter· Not sent yet",
+        "row": 224,
+        "titleBox": 112,
+        "titleText": 227,
+        "trailingBox": 76,
+        "trailingText": 76,
+        "rowOverflow": false
+      }
+    ],
+    "flyout": {
+      "file": "after-agent-opened-not-sent-240-localOperatorDark-flyout.png",
+      "text": "Scratch: bench the pinned interpreterRecent, opened by coder in “Harden lop secret against agent credential leaks”, not sent yet"
+    }
+  },
+  {
+    "file": "after-agent-opened-not-sent-280-localOperatorDark.png",
+    "story": "agent-opened-not-sent",
+    "width": 280,
+    "theme": "localOperatorDark",
+    "query": "",
+    "sidebar": 256,
+    "rows": [
+      {
+        "nested": false,
+        "name": "Scratch: bench the pinned interpreter",
+        "trailing": "· Not sent yet",
+        "spoken": "RecentScratch: bench the pinned interpreter· Not sent yet",
+        "row": 264,
+        "titleBox": 152,
+        "titleText": 227,
+        "trailingBox": 76,
+        "trailingText": 76,
+        "rowOverflow": false
+      }
+    ],
+    "flyout": {
+      "file": "after-agent-opened-not-sent-280-localOperatorDark-flyout.png",
+      "text": "Scratch: bench the pinned interpreterRecent, opened by coder in “Harden lop secret against agent credential leaks”, not sent yet"
+    }
+  },
+  {
+    "file": "after-agent-opened-not-sent-360-localOperatorDark.png",
+    "story": "agent-opened-not-sent",
+    "width": 360,
+    "theme": "localOperatorDark",
+    "query": "",
+    "sidebar": 336,
+    "rows": [
+      {
+        "nested": false,
+        "name": "Scratch: bench the pinned interpreter",
+        "trailing": "· Not sent yet",
+        "spoken": "RecentScratch: bench the pinned interpreter· Not sent yet",
+        "row": 344,
+        "titleBox": 232,
+        "titleText": 232,
+        "trailingBox": 76,
+        "trailingText": 76,
+        "rowOverflow": false
+      }
+    ],
+    "flyout": {
+      "file": "after-agent-opened-not-sent-360-localOperatorDark-flyout.png",
+      "text": "Scratch: bench the pinned interpreterRecent, opened by coder in “Harden lop secret against agent credential leaks”, not sent yet"
+    }
+  },
+  {
+    "file": "after-agent-opened-not-sent-240-localOperatorLight.png",
+    "story": "agent-opened-not-sent",
+    "width": 240,
+    "theme": "localOperatorLight",
+    "query": "",
+    "sidebar": 216,
+    "rows": [
+      {
+        "nested": false,
+        "name": "Scratch: bench the pinned interpreter",
+        "trailing": "· Not sent yet",
+        "spoken": "RecentScratch: bench the pinned interpreter· Not sent yet",
+        "row": 224,
+        "titleBox": 112,
+        "titleText": 227,
+        "trailingBox": 76,
+        "trailingText": 76,
+        "rowOverflow": false
+      }
+    ],
+    "flyout": {
+      "file": "after-agent-opened-not-sent-240-localOperatorLight-flyout.png",
+      "text": "Scratch: bench the pinned interpreterRecent, opened by coder in “Harden lop secret against agent credential leaks”, not sent yet"
+    }
+  },
+  {
+    "file": "after-agent-opened-not-sent-280-localOperatorLight.png",
+    "story": "agent-opened-not-sent",
+    "width": 280,
+    "theme": "localOperatorLight",
+    "query": "",
+    "sidebar": 256,
+    "rows": [
+      {
+        "nested": false,
+        "name": "Scratch: bench the pinned interpreter",
+        "trailing": "· Not sent yet",
+        "spoken": "RecentScratch: bench the pinned interpreter· Not sent yet",
+        "row": 264,
+        "titleBox": 152,
+        "titleText": 227,
+        "trailingBox": 76,
+        "trailingText": 76,
+        "rowOverflow": false
+      }
+    ],
+    "flyout": {
+      "file": "after-agent-opened-not-sent-280-localOperatorLight-flyout.png",
+      "text": "Scratch: bench the pinned interpreterRecent, opened by coder in “Harden lop secret against agent credential leaks”, not sent yet"
+    }
+  },
+  {
+    "file": "after-agent-opened-not-sent-360-localOperatorLight.png",
+    "story": "agent-opened-not-sent",
+    "width": 360,
+    "theme": "localOperatorLight",
+    "query": "",
+    "sidebar": 336,
+    "rows": [
+      {
+        "nested": false,
+        "name": "Scratch: bench the pinned interpreter",
+        "trailing": "· Not sent yet",
+        "spoken": "RecentScratch: bench the pinned interpreter· Not sent yet",
+        "row": 344,
+        "titleBox": 232,
+        "titleText": 232,
+        "trailingBox": 76,
+        "trailingText": 76,
+        "rowOverflow": false
+      }
+    ],
+    "flyout": {
+      "file": "after-agent-opened-not-sent-360-localOperatorLight-flyout.png",
+      "text": "Scratch: bench the pinned interpreterRecent, opened by coder in “Harden lop secret against agent credential leaks”, not sent yet"
+    }
+  },
+  {
+    "file": "after-not-agent-opened-240-localOperatorDark.png",
+    "story": "not-agent-opened",
+    "width": 240,
+    "theme": "localOperatorDark",
+    "query": "",
+    "sidebar": 216,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Release notes for 0.30.10",
+        "trailing": "",
+        "spoken": "RecentRelease notes for 0.30.10",
+        "row": 216,
+        "titleBox": 164,
+        "titleText": 164,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Release notes for 0.30.10",
+        "trailing": "· coder",
+        "spoken": "RecentRelease notes for 0.30.10· coder",
+        "row": 224,
+        "titleBox": 148,
+        "titleText": 153,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 224,
+        "titleBox": 196,
+        "titleText": 196,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ]
+  },
+  {
+    "file": "after-not-agent-opened-280-localOperatorDark.png",
+    "story": "not-agent-opened",
+    "width": 280,
+    "theme": "localOperatorDark",
+    "query": "",
+    "sidebar": 256,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Release notes for 0.30.10",
+        "trailing": "",
+        "spoken": "RecentRelease notes for 0.30.10",
+        "row": 256,
+        "titleBox": 204,
+        "titleText": 204,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Release notes for 0.30.10",
+        "trailing": "· coder",
+        "spoken": "RecentRelease notes for 0.30.10· coder",
+        "row": 264,
+        "titleBox": 188,
+        "titleText": 188,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 264,
+        "titleBox": 236,
+        "titleText": 236,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ]
+  },
+  {
+    "file": "after-not-agent-opened-360-localOperatorDark.png",
+    "story": "not-agent-opened",
+    "width": 360,
+    "theme": "localOperatorDark",
+    "query": "",
+    "sidebar": 336,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Release notes for 0.30.10",
+        "trailing": "",
+        "spoken": "RecentRelease notes for 0.30.10",
+        "row": 336,
+        "titleBox": 284,
+        "titleText": 284,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Release notes for 0.30.10",
+        "trailing": "· coder",
+        "spoken": "RecentRelease notes for 0.30.10· coder",
+        "row": 344,
+        "titleBox": 268,
+        "titleText": 268,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 344,
+        "titleBox": 316,
+        "titleText": 316,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ]
+  },
+  {
+    "file": "after-not-agent-opened-240-localOperatorLight.png",
+    "story": "not-agent-opened",
+    "width": 240,
+    "theme": "localOperatorLight",
+    "query": "",
+    "sidebar": 216,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Release notes for 0.30.10",
+        "trailing": "",
+        "spoken": "RecentRelease notes for 0.30.10",
+        "row": 216,
+        "titleBox": 164,
+        "titleText": 164,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Release notes for 0.30.10",
+        "trailing": "· coder",
+        "spoken": "RecentRelease notes for 0.30.10· coder",
+        "row": 224,
+        "titleBox": 148,
+        "titleText": 153,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 224,
+        "titleBox": 196,
+        "titleText": 196,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ]
+  },
+  {
+    "file": "after-not-agent-opened-280-localOperatorLight.png",
+    "story": "not-agent-opened",
+    "width": 280,
+    "theme": "localOperatorLight",
+    "query": "",
+    "sidebar": 256,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Release notes for 0.30.10",
+        "trailing": "",
+        "spoken": "RecentRelease notes for 0.30.10",
+        "row": 256,
+        "titleBox": 204,
+        "titleText": 204,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Release notes for 0.30.10",
+        "trailing": "· coder",
+        "spoken": "RecentRelease notes for 0.30.10· coder",
+        "row": 264,
+        "titleBox": 188,
+        "titleText": 188,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 264,
+        "titleBox": 236,
+        "titleText": 236,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ]
+  },
+  {
+    "file": "after-not-agent-opened-360-localOperatorLight.png",
+    "story": "not-agent-opened",
+    "width": 360,
+    "theme": "localOperatorLight",
+    "query": "",
+    "sidebar": 336,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Release notes for 0.30.10",
+        "trailing": "",
+        "spoken": "RecentRelease notes for 0.30.10",
+        "row": 336,
+        "titleBox": 284,
+        "titleText": 284,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Release notes for 0.30.10",
+        "trailing": "· coder",
+        "spoken": "RecentRelease notes for 0.30.10· coder",
+        "row": 344,
+        "titleBox": 268,
+        "titleText": 268,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 344,
+        "titleBox": 316,
+        "titleText": 316,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ]
+  }
+]

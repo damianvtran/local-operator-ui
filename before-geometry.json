@@ -1,0 +1,902 @@
+[
+  {
+    "file": "before-not-agent-opened-240-localOperatorDark.png",
+    "story": "not-agent-opened",
+    "width": 240,
+    "theme": "localOperatorDark",
+    "query": "",
+    "sidebar": 216,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Release notes for 0.30.10",
+        "trailing": "",
+        "spoken": "RecentRelease notes for 0.30.10",
+        "row": 216,
+        "titleBox": 164,
+        "titleText": 164,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Release notes for 0.30.10",
+        "trailing": "· coder",
+        "spoken": "RecentRelease notes for 0.30.10· coder",
+        "row": 224,
+        "titleBox": 148,
+        "titleText": 153,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 224,
+        "titleBox": 196,
+        "titleText": 196,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ]
+  },
+  {
+    "file": "before-not-agent-opened-280-localOperatorDark.png",
+    "story": "not-agent-opened",
+    "width": 280,
+    "theme": "localOperatorDark",
+    "query": "",
+    "sidebar": 256,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Release notes for 0.30.10",
+        "trailing": "",
+        "spoken": "RecentRelease notes for 0.30.10",
+        "row": 256,
+        "titleBox": 204,
+        "titleText": 204,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Release notes for 0.30.10",
+        "trailing": "· coder",
+        "spoken": "RecentRelease notes for 0.30.10· coder",
+        "row": 264,
+        "titleBox": 188,
+        "titleText": 188,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 264,
+        "titleBox": 236,
+        "titleText": 236,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ]
+  },
+  {
+    "file": "before-not-agent-opened-360-localOperatorDark.png",
+    "story": "not-agent-opened",
+    "width": 360,
+    "theme": "localOperatorDark",
+    "query": "",
+    "sidebar": 336,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Release notes for 0.30.10",
+        "trailing": "",
+        "spoken": "RecentRelease notes for 0.30.10",
+        "row": 336,
+        "titleBox": 284,
+        "titleText": 284,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Release notes for 0.30.10",
+        "trailing": "· coder",
+        "spoken": "RecentRelease notes for 0.30.10· coder",
+        "row": 344,
+        "titleBox": 268,
+        "titleText": 268,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 344,
+        "titleBox": 316,
+        "titleText": 316,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ]
+  },
+  {
+    "file": "before-not-agent-opened-240-localOperatorLight.png",
+    "story": "not-agent-opened",
+    "width": 240,
+    "theme": "localOperatorLight",
+    "query": "",
+    "sidebar": 216,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Release notes for 0.30.10",
+        "trailing": "",
+        "spoken": "RecentRelease notes for 0.30.10",
+        "row": 216,
+        "titleBox": 164,
+        "titleText": 164,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Release notes for 0.30.10",
+        "trailing": "· coder",
+        "spoken": "RecentRelease notes for 0.30.10· coder",
+        "row": 224,
+        "titleBox": 148,
+        "titleText": 153,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 224,
+        "titleBox": 196,
+        "titleText": 196,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ]
+  },
+  {
+    "file": "before-not-agent-opened-280-localOperatorLight.png",
+    "story": "not-agent-opened",
+    "width": 280,
+    "theme": "localOperatorLight",
+    "query": "",
+    "sidebar": 256,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Release notes for 0.30.10",
+        "trailing": "",
+        "spoken": "RecentRelease notes for 0.30.10",
+        "row": 256,
+        "titleBox": 204,
+        "titleText": 204,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Release notes for 0.30.10",
+        "trailing": "· coder",
+        "spoken": "RecentRelease notes for 0.30.10· coder",
+        "row": 264,
+        "titleBox": 188,
+        "titleText": 188,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 264,
+        "titleBox": 236,
+        "titleText": 236,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ]
+  },
+  {
+    "file": "before-not-agent-opened-360-localOperatorLight.png",
+    "story": "not-agent-opened",
+    "width": 360,
+    "theme": "localOperatorLight",
+    "query": "",
+    "sidebar": 336,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Release notes for 0.30.10",
+        "trailing": "",
+        "spoken": "RecentRelease notes for 0.30.10",
+        "row": 336,
+        "titleBox": 284,
+        "titleText": 284,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Release notes for 0.30.10",
+        "trailing": "· coder",
+        "spoken": "RecentRelease notes for 0.30.10· coder",
+        "row": 344,
+        "titleBox": 268,
+        "titleText": 268,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 344,
+        "titleBox": 316,
+        "titleText": 316,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ]
+  },
+  {
+    "file": "before-agent-opened-named-240-localOperatorDark.png",
+    "story": "agent-opened-named",
+    "width": 240,
+    "theme": "localOperatorDark",
+    "query": "",
+    "sidebar": 216,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "",
+        "spoken": "RecentRetry ladder for superseded tokens",
+        "row": 216,
+        "titleBox": 164,
+        "titleText": 214,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": true,
+        "name": "Release notes for 0.30.10",
+        "trailing": "",
+        "spoken": "RecentRelease notes for 0.30.10",
+        "row": 216,
+        "titleBox": 164,
+        "titleText": 164,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· coder",
+        "spoken": "RecentRetry ladder for superseded tokens· coder",
+        "row": 224,
+        "titleBox": 148,
+        "titleText": 214,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Release notes for 0.30.10",
+        "trailing": "· coder",
+        "spoken": "RecentRelease notes for 0.30.10· coder",
+        "row": 224,
+        "titleBox": 148,
+        "titleText": 153,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 224,
+        "titleBox": 196,
+        "titleText": 196,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ]
+  },
+  {
+    "file": "before-agent-opened-named-280-localOperatorDark.png",
+    "story": "agent-opened-named",
+    "width": 280,
+    "theme": "localOperatorDark",
+    "query": "",
+    "sidebar": 256,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "",
+        "spoken": "RecentRetry ladder for superseded tokens",
+        "row": 256,
+        "titleBox": 204,
+        "titleText": 214,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": true,
+        "name": "Release notes for 0.30.10",
+        "trailing": "",
+        "spoken": "RecentRelease notes for 0.30.10",
+        "row": 256,
+        "titleBox": 204,
+        "titleText": 204,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· coder",
+        "spoken": "RecentRetry ladder for superseded tokens· coder",
+        "row": 264,
+        "titleBox": 188,
+        "titleText": 214,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Release notes for 0.30.10",
+        "trailing": "· coder",
+        "spoken": "RecentRelease notes for 0.30.10· coder",
+        "row": 264,
+        "titleBox": 188,
+        "titleText": 188,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 264,
+        "titleBox": 236,
+        "titleText": 236,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ]
+  },
+  {
+    "file": "before-agent-opened-named-360-localOperatorDark.png",
+    "story": "agent-opened-named",
+    "width": 360,
+    "theme": "localOperatorDark",
+    "query": "",
+    "sidebar": 336,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "",
+        "spoken": "RecentRetry ladder for superseded tokens",
+        "row": 336,
+        "titleBox": 284,
+        "titleText": 284,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": true,
+        "name": "Release notes for 0.30.10",
+        "trailing": "",
+        "spoken": "RecentRelease notes for 0.30.10",
+        "row": 336,
+        "titleBox": 284,
+        "titleText": 284,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· coder",
+        "spoken": "RecentRetry ladder for superseded tokens· coder",
+        "row": 344,
+        "titleBox": 268,
+        "titleText": 268,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Release notes for 0.30.10",
+        "trailing": "· coder",
+        "spoken": "RecentRelease notes for 0.30.10· coder",
+        "row": 344,
+        "titleBox": 268,
+        "titleText": 268,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 344,
+        "titleBox": 316,
+        "titleText": 316,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ]
+  },
+  {
+    "file": "before-agent-opened-named-240-localOperatorLight.png",
+    "story": "agent-opened-named",
+    "width": 240,
+    "theme": "localOperatorLight",
+    "query": "",
+    "sidebar": 216,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "",
+        "spoken": "RecentRetry ladder for superseded tokens",
+        "row": 216,
+        "titleBox": 164,
+        "titleText": 214,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": true,
+        "name": "Release notes for 0.30.10",
+        "trailing": "",
+        "spoken": "RecentRelease notes for 0.30.10",
+        "row": 216,
+        "titleBox": 164,
+        "titleText": 164,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· coder",
+        "spoken": "RecentRetry ladder for superseded tokens· coder",
+        "row": 224,
+        "titleBox": 148,
+        "titleText": 214,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Release notes for 0.30.10",
+        "trailing": "· coder",
+        "spoken": "RecentRelease notes for 0.30.10· coder",
+        "row": 224,
+        "titleBox": 148,
+        "titleText": 153,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 224,
+        "titleBox": 196,
+        "titleText": 196,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ]
+  },
+  {
+    "file": "before-agent-opened-named-280-localOperatorLight.png",
+    "story": "agent-opened-named",
+    "width": 280,
+    "theme": "localOperatorLight",
+    "query": "",
+    "sidebar": 256,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "",
+        "spoken": "RecentRetry ladder for superseded tokens",
+        "row": 256,
+        "titleBox": 204,
+        "titleText": 214,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": true,
+        "name": "Release notes for 0.30.10",
+        "trailing": "",
+        "spoken": "RecentRelease notes for 0.30.10",
+        "row": 256,
+        "titleBox": 204,
+        "titleText": 204,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· coder",
+        "spoken": "RecentRetry ladder for superseded tokens· coder",
+        "row": 264,
+        "titleBox": 188,
+        "titleText": 214,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Release notes for 0.30.10",
+        "trailing": "· coder",
+        "spoken": "RecentRelease notes for 0.30.10· coder",
+        "row": 264,
+        "titleBox": 188,
+        "titleText": 188,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 264,
+        "titleBox": 236,
+        "titleText": 236,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ]
+  },
+  {
+    "file": "before-agent-opened-named-360-localOperatorLight.png",
+    "story": "agent-opened-named",
+    "width": 360,
+    "theme": "localOperatorLight",
+    "query": "",
+    "sidebar": 336,
+    "rows": [
+      {
+        "nested": true,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "",
+        "spoken": "RecentRetry ladder for superseded tokens",
+        "row": 336,
+        "titleBox": 284,
+        "titleText": 284,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": true,
+        "name": "Release notes for 0.30.10",
+        "trailing": "",
+        "spoken": "RecentRelease notes for 0.30.10",
+        "row": 336,
+        "titleBox": 284,
+        "titleText": 284,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Retry ladder for superseded tokens",
+        "trailing": "· coder",
+        "spoken": "RecentRetry ladder for superseded tokens· coder",
+        "row": 344,
+        "titleBox": 268,
+        "titleText": 268,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Release notes for 0.30.10",
+        "trailing": "· coder",
+        "spoken": "RecentRelease notes for 0.30.10· coder",
+        "row": 344,
+        "titleBox": 268,
+        "titleText": 268,
+        "trailingBox": 40,
+        "trailingText": 40,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 344,
+        "titleBox": 316,
+        "titleText": 316,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ]
+  },
+  {
+    "file": "before-agent-opened-unnamed-240-localOperatorDark.png",
+    "story": "agent-opened-unnamed",
+    "width": 240,
+    "theme": "localOperatorDark",
+    "query": "",
+    "sidebar": 216,
+    "rows": [
+      {
+        "nested": false,
+        "name": "Scratch: bench the pinned interpreter",
+        "trailing": "",
+        "spoken": "RecentScratch: bench the pinned interpreter",
+        "row": 224,
+        "titleBox": 196,
+        "titleText": 227,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 224,
+        "titleBox": 196,
+        "titleText": 196,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ]
+  },
+  {
+    "file": "before-agent-opened-unnamed-280-localOperatorDark.png",
+    "story": "agent-opened-unnamed",
+    "width": 280,
+    "theme": "localOperatorDark",
+    "query": "",
+    "sidebar": 256,
+    "rows": [
+      {
+        "nested": false,
+        "name": "Scratch: bench the pinned interpreter",
+        "trailing": "",
+        "spoken": "RecentScratch: bench the pinned interpreter",
+        "row": 264,
+        "titleBox": 236,
+        "titleText": 236,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 264,
+        "titleBox": 236,
+        "titleText": 236,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ]
+  },
+  {
+    "file": "before-agent-opened-unnamed-360-localOperatorDark.png",
+    "story": "agent-opened-unnamed",
+    "width": 360,
+    "theme": "localOperatorDark",
+    "query": "",
+    "sidebar": 336,
+    "rows": [
+      {
+        "nested": false,
+        "name": "Scratch: bench the pinned interpreter",
+        "trailing": "",
+        "spoken": "RecentScratch: bench the pinned interpreter",
+        "row": 344,
+        "titleBox": 316,
+        "titleText": 316,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 344,
+        "titleBox": 316,
+        "titleText": 316,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ]
+  },
+  {
+    "file": "before-agent-opened-unnamed-240-localOperatorLight.png",
+    "story": "agent-opened-unnamed",
+    "width": 240,
+    "theme": "localOperatorLight",
+    "query": "",
+    "sidebar": 216,
+    "rows": [
+      {
+        "nested": false,
+        "name": "Scratch: bench the pinned interpreter",
+        "trailing": "",
+        "spoken": "RecentScratch: bench the pinned interpreter",
+        "row": 224,
+        "titleBox": 196,
+        "titleText": 227,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 224,
+        "titleBox": 196,
+        "titleText": 196,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ]
+  },
+  {
+    "file": "before-agent-opened-unnamed-280-localOperatorLight.png",
+    "story": "agent-opened-unnamed",
+    "width": 280,
+    "theme": "localOperatorLight",
+    "query": "",
+    "sidebar": 256,
+    "rows": [
+      {
+        "nested": false,
+        "name": "Scratch: bench the pinned interpreter",
+        "trailing": "",
+        "spoken": "RecentScratch: bench the pinned interpreter",
+        "row": 264,
+        "titleBox": 236,
+        "titleText": 236,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 264,
+        "titleBox": 236,
+        "titleText": 236,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ]
+  },
+  {
+    "file": "before-agent-opened-unnamed-360-localOperatorLight.png",
+    "story": "agent-opened-unnamed",
+    "width": 360,
+    "theme": "localOperatorLight",
+    "query": "",
+    "sidebar": 336,
+    "rows": [
+      {
+        "nested": false,
+        "name": "Scratch: bench the pinned interpreter",
+        "trailing": "",
+        "spoken": "RecentScratch: bench the pinned interpreter",
+        "row": 344,
+        "titleBox": 316,
+        "titleText": 316,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      },
+      {
+        "nested": false,
+        "name": "Tidy the migration fixtures",
+        "trailing": "",
+        "spoken": "RecentTidy the migration fixtures",
+        "row": 344,
+        "titleBox": 316,
+        "titleText": 316,
+        "trailingBox": 0,
+        "trailingText": 0,
+        "rowOverflow": false
+      }
+    ]
+  }
+]

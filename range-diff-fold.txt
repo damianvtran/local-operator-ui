@@ -1,0 +1,82 @@
+1:  3db71ef70 ! 1:  c650272cf feat(chat): mark the sidebar row an agent opened
+    @@ src/renderer/src/features/chat/components/chat-sidebar.tsx: export function Chat
+      		const pinned = row.pinned === true;
+      		/** The row's own name, used by the archive control's accessible name and tooltip
+     @@ src/renderer/src/features/chat/components/chat-sidebar.tsx: export function ChatSidebar({
+    - 				   (`unreadMarkKind`). It used to be keyed on bare `unseen`, which made a
+    - 				   busy or gated row's tooltip claim a mark its own spinner and gate were
+    - 				   nowhere drawing — the reported defect, in the channel a reader reaches
+    --				   by hovering, and the row that most needs the tooltip to be true. */
+    --				title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${silent ? ` · ${SILENT_REMEDY}` : ""}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${unreadMarkKind(row) !== null ? ", unread" : ""}${archived ? ", archived" : ""}`}
+    -+				   by hovering, and the row that most needs the tooltip to be true. The
+    -+				   agent-opened fact is the newest of those clauses and follows the same
+    -+				   rule: on a row whose trailing slot DRAWS "· opened by coder" the
+    -+				   tooltip repeats it and adds the requesting conversation's own name,
+    -+				   and on a row whose slot could not draw it (the search mark, `· Not
+    -+				   sent yet`) the tooltip is the only place it appears at all — which is
+    -+				   what keeps the accessible description at least as wide as the row. */
+    -+				title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? (synthesized.has(row.session_id) ? "found by search, beyond the chats listed here" : "Recent")}${silent ? ` · ${SILENT_REMEDY}` : ""}${openedByNote(row)}${unstarted.has(row.session_id) ? ", not sent yet" : ""}${unreadMarkKind(row) !== null ? ", unread" : ""}${archived ? ", archived" : ""}`}
+    - 				/*
+    - 				 * THE REMEDY'S OTHER CHANNEL (UX round 1, U2). `title` above is the pointer's;
+    - 				 * this is the keyboard's, and it is the one a person using the `sr-only` name
+    + 		 * the full title on its own line (untruncated and free to wrap inside the
+    + 		 * primitive's `max-w-64`), the binding, then the row's status label and its tail
+    + 		 * flags - `, not sent yet`, `, unread`, `, archived` - and the silent remedy.
+    ++		 * An agent-opened row adds its attribution (`openedByNote`: `, opened by coder
+    ++		 * in "…"`) to the status line; on a row whose trailing slot could not draw the
+    ++		 * marker (the search mark, `· Not sent yet`) this is the only pointer channel
+    ++		 * that states it, which keeps the flyout at least as wide as the row.
+    + 		 * The `sr-only` sentence the row already renders stays where it is: that is the
+    + 		 * keyboard and screen-reader channel (the `aria-describedby` on the button) and
+    + 		 * it does not move into a tooltip.
+    +@@ src/renderer/src/features/chat/components/chat-sidebar.tsx: export function ChatSidebar({
+    + 							? "found by search, beyond the chats listed here"
+    + 							: "Recent")}
+    + 					{silent ? ` · ${SILENT_REMEDY}` : ""}
+    ++					{openedByNote(row)}
+    + 					{unstarted.has(row.session_id) ? ", not sent yet" : ""}
+    + 					{unreadMarkKind(row) !== null ? ", unread" : ""}
+    + 					{archived ? ", archived" : ""}
+     @@ src/renderer/src/features/chat/components/chat-sidebar.tsx: export function ChatSidebar({
+      			    Read that docstring before changing anything here.
+      			    What matters at this call site: the number of statements is capped
+    @@ src/renderer/src/features/chat/components/chat-sidebar.tsx: export function Chat
+     +			    cap, which is that cap doing the work a floor used to. The two
+     +			    literal statements below cannot truncate anything: they are fixed
+     +			    strings with no width to run out of. */}
+    - 				<span
+    - 					/*
+    - 					 * The title's own anchor, inert outside a driver run: the reserved slot's
+    + 				{/*
+    + 				 * THE TITLE, and both of its boxes live in `chat-row-title.tsx`: the clip box
+    + 				 * the row's flex layout sizes (`[data-session-title]`, the anchor the driver's
+     @@ src/renderer/src/features/chat/components/chat-sidebar.tsx: export function ChatSidebar({
+      			    has something more important to say (the paragraph above) says that
+    - 			    instead. The row's `title` carries the binding in every case, so the
+    + 			    instead. The row's flyout carries the binding in every case, so the
+      			    accessible description is never narrower than the pixels. */}
+     +				{trailing === "agent_opened" && (
+     +					/* WHO OPENED IT, drawn on the row an agent opened: the fact that the row is
+    @@ src/renderer/src/shared/store/canonical-sessions-store.ts: import {
+      } from "../../../../shared/desktop-session-contract";
+      import type { LaunchTarget } from "../../../../shared/open-session";
+     @@ src/renderer/src/shared/store/canonical-sessions-store.ts: export type CanonicalSessionRow = {
+    - 	status_revision?: number;
+    - 	status_epoch?: string;
+    + 	subagents_running?: number | null;
+    + 	subagents_queued?: number | null;
+      	binding?: SessionBinding;
+     +	/**
+     +	 * Who opened this conversation, when an agent rather than the operator did.
+    @@ src/renderer/src/shared/store/canonical-sessions-store.ts: export type Canonical
+     
+      ## src/shared/desktop-session-contract.ts ##
+     @@ src/shared/desktop-session-contract.ts: export type CanonicalSessionId = string;
+    -  * active/previous partition and order; clients must not infer them from read state. */
+    +  * unknown rather than to normalise it into a state it does understand. */
+      export type SessionCatalogueStatus = { code: string; label: string };
+      export type SessionBinding = { agent: string | null; team: string | null };
+     +/**
+2:  af7984052 < -:  --------- chore(evidence): re-derive the manifest stamps for the agent-opened row
+-:  --------- > 2:  903cff215 fix(chat): draw a fixed agent-opened marker that survives the panel's narrow widths
+-:  --------- > 3:  9ea5a391e chore(evidence): re-derive the manifest stamps for the agent-opened row
