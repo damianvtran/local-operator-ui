@@ -805,6 +805,12 @@ test("the adopt chord confirms on its first press and adopts on its second", () 
 	useAsideStore.getState().setAsideNotice(SESSION, asideAdoptConfirm(true));
 	useAsideStore.getState().beginAsk(SESSION, "t2", "next");
 	assert.equal(useAsideStore.getState().attached[SESSION].notice, null);
+	// And a conversation turn starting withdraws the confirm and the arm, and only
+	// the notice the chord raised (R6-5): the second press would fall through there.
+	assert.match(
+		input,
+		/useEffect\(\(\) => \{\s*if \(!asideStreaming \|\| adoptArmedTurn\.current === null\) return;\s*adoptArmedTurn\.current = null;[\s\S]{0,200}?notice === asideAdoptConfirm\(IS_MAC\)\)\s*store\.setAsideNotice\(sessionForAside, null\);\s*\}, \[asideStreaming, asideSessionId\]\);/,
+	);
 });
 
 test("the adopt gate needs a settled answer and an idle session", () => {

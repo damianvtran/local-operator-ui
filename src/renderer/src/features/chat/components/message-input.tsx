@@ -1300,6 +1300,26 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * shown for; the panel's `beginAsk`/`attachAside` clear the notice it raised.
 		 */
 		const adoptArmedTurn = useRef<string | null>(null);
+		/*
+		 * THE CONFIRM IS WITHDRAWN WHEN A CONVERSATION TURN STARTS (agent review round
+		 * 6, R6-5). Adopt needs an idle session (`asideAdoptReady`), so once a turn
+		 * runs the second press falls through - yet the notice went on saying "Press
+		 * ⌘+F again…" beside the panel's own line saying the conversation is working.
+		 * Both the arm and the notice go, so the next press after the turn asks again
+		 * rather than adopting on a confirm shown before the context changed.
+		 *
+		 * Only the notice this composer raised is cleared: the same line carries the
+		 * owner's adopt refusals, which are the user's to read, not this effect's to
+		 * retire.
+		 */
+		useEffect(() => {
+			if (!asideStreaming || adoptArmedTurn.current === null) return;
+			adoptArmedTurn.current = null;
+			const store = useAsideStore.getState();
+			const sessionForAside = asideSessionId ?? "";
+			if (store.attached[sessionForAside]?.notice === asideAdoptConfirm(IS_MAC))
+				store.setAsideNotice(sessionForAside, null);
+		}, [asideStreaming, asideSessionId]);
 		const removeReply = useConversationInputStore((state) => state.removeReply);
 		const clearReplies = useConversationInputStore(
 			(state) => state.clearReplies,
