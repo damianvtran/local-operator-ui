@@ -28,6 +28,8 @@ import {
 	type CompletionAttentionAckReceipt,
 	type SessionBinding,
 	type SessionCatalogueStatus,
+	type SessionLocalityFields,
+	type SessionTransferReceipt,
 	mergeCompletionAttention,
 } from "../../../../shared/desktop-session-contract";
 import type { LaunchTarget } from "../../../../shared/open-session";
@@ -98,7 +100,14 @@ export type CanonicalSessionRow = {
 	subagents_queued?: number | null;
 	binding?: SessionBinding;
 	[key: string]: unknown;
-};
+	/*
+	 * The mesh's locality fields (`locality`, `owner_device*`, `reachable`, ...),
+	 * declared rather than left to the index signature for the reason `pinned` is:
+	 * the sidebar's partition and the remote mark read them, and an `unknown` read
+	 * is where a missing `locality` quietly becomes "remote". They arrive through
+	 * `fetchSessions`'s `...rest` untouched; this store derives nothing from them.
+	 */
+} & SessionLocalityFields;
 type BackendSessionRow = Omit<CanonicalSessionRow, "session_id"> & {
 	id: string;
 	name: string;
@@ -1932,6 +1941,40 @@ type CanonicalSessionsState = {
 	 */
 	deleteCandidate: string | null;
 	/**
+	 * Conversations being MOVED to another device right now, by session id, with
+	 * the destination (`"local"` or a device id).
+	 *
+	 * Drives S6 (`mesh-ui.md` §2.5): the row stays IN PLACE, busy and dimmed, for
+	 * the lifetime of the transfer request. It is not an optimistic re-file - the
+	 * row changes section exactly once, on success, in the same update that writes
+	 * its new `locality`; a row that jumped before the move landed and back on
+	 * failure would be two lies in a row.
+	 */
+	transfers: Record<string, string>;
+	/**
+	 * The last mesh refusal the sidebar has to say out loud, or null: a peer that
+	 * refused a create (S5), or a move that failed (S7).
+	 *
+	 * Carries the device ID and the backend's own words, never a composed label:
+	 * the sidebar spells the device through the peer catalogue, so a notice and
+	 * the heading under it cannot name one device two ways.
+	 */
+	meshNotice:
+		| { kind: "refused"; peer: string; reason: string }
+		| { kind: "move-failed"; title: string; reason: string }
+		| null;
+	clearMeshNotice: () => void;
+	/**
+	 * Move one conversation to a peer (`to` = device id) or home (`"local"`).
+	 * Resolves `true` when the backend confirmed the move; a refusal is recorded
+	 * as `meshNotice` in the route's own words and resolves `false`.
+	 */
+	transferSession: (
+		sessionId: string,
+		to: string,
+		title: string,
+	) => Promise<boolean>;
+	/**
 	 * Archive or unarchive one conversation: the optimistic write, its currency
 	 * stamp, and the revert-and-report path when the backend refuses.
 	 *
@@ -1961,6 +2004,11 @@ type CanonicalSessionsState = {
 		requestId?: string,
 		/** The draft's own model pick, when it has one; omitted otherwise. */
 		model?: DesktopModelSelection | null,
+		/**
+		 * The mesh device to create the conversation on (`/new`'s device choice);
+		 * omitted means this device and leaves the wire body byte-identical.
+		 */
+		peer?: string,
 	) => Promise<string | null>;
 	setActiveSession: (sessionId: string | null) => void;
 	/**
@@ -2588,6 +2636,21 @@ let sessionRefresh: {
 	promise: Promise<unknown>;
 } | null = null;
 
+/**
+ * Whether the backend advertises `features.peers`, as the sidebar last read it.
+ *
+ * MODULE STATE rather than a store field or an argument, because `fetchSessions`
+ * has eight callers across the app (the palette, the chat page, settings, the
+ * browser hand-over) and only the sidebar reads capabilities. Threading the flag
+ * through all of them would put a mesh parameter on surfaces that have no opinion
+ * about it; defaulting to `false` means any fetch that runs before the sidebar
+ * has read the capability sends the pre-mesh request - the harmless direction,
+ * since the next read after the sidebar mounts carries the peers.
+ */
+let peerCatalogueAdvertised = false;
+export function setPeerCatalogueAdvertised(advertised: boolean): void {
+	peerCatalogueAdvertised = advertised;
+}
 function coalesceSessionCatalogueRequest<T>(
 	limit: number,
 	request: (limit: number) => Promise<T>,
@@ -2740,6 +2803,77 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			archiveFailure: null,
 			archiveUndo: null,
 			deleteCandidate: null,
+			transfers: {},
+			meshNotice: null,
+			clearMeshNotice: () => set({ meshNotice: null }),
+			transferSession: async (sessionId, to, title) => {
+				set((state) => ({
+					transfers: { ...state.transfers, [sessionId]: to },
+					meshNotice: null,
+				}));
+				const settle = () =>
+					set((state) => {
+						const transfers = { ...state.transfers };
+						delete transfers[sessionId];
+						return { transfers };
+					});
+				try {
+					const receipt = await desktopResult<SessionTransferReceipt>({
+						op: "sessions.transfer",
+						sessionId,
+						requestId: crypto.randomUUID(),
+						to,
+					});
+					/*
+					 * ONE update: the busy flag comes off and the row's new locality goes
+					 * on together, so no frame shows the row un-dimmed in its OLD section
+					 * before it moves. The name is left to the peer catalogue (the heading
+					 * is keyed by device id), and the next list read settles the rest.
+					 */
+					set((state) => {
+						const transfers = { ...state.transfers };
+						delete transfers[sessionId];
+						const remote = receipt.locality === "remote";
+						return {
+							transfers,
+							sessions: state.sessions.map((row) =>
+								row.session_id === sessionId
+									? {
+											...row,
+											locality: receipt.locality,
+											owner_device: remote ? receipt.owner_device : "",
+											owner_device_name: remote
+												? row.owner_device === receipt.owner_device
+													? (row.owner_device_name ?? "")
+													: ""
+												: "",
+											reachable: true,
+											unreachable_reason: "",
+										}
+									: row,
+							),
+						};
+					});
+					void get().fetchSessions();
+					return true;
+				} catch (error) {
+					/*
+					 * S7: the row un-dims IN PLACE and the notice carries the route's own
+					 * `message` (a 409 names `fenced`/`in_flight_turn`/`unreachable`/
+					 * `occupied` in words), never a paraphrase - the backend knows why, and
+					 * nothing changed on either device.
+					 */
+					settle();
+					set({
+						meshNotice: {
+							kind: "move-failed",
+							title,
+							reason: storeErrorMessage(error, "the device did not answer"),
+						},
+					});
+					return false;
+				}
+			},
 			error: null,
 			cwd: "~",
 			setCwd: (cwd) => set({ cwd }),
@@ -2795,6 +2929,12 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								 * entirely - fails the two bullets above.
 								 */
 								include_archived: true,
+								/*
+								 * A peer's conversations, only when the backend advertised
+								 * `features.peers` (see `setPeerCatalogueAdvertised`). Omitted
+								 * otherwise, so a pre-mesh backend sees the request it always saw.
+								 */
+								...(peerCatalogueAdvertised ? { include_peers: true } : {}),
 							}),
 					);
 					if (generation !== refreshGeneration) return;
@@ -3276,6 +3416,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				target,
 				requestId = crypto.randomUUID(),
 				model?: DesktopModelSelection | null,
+				peer?: string,
 			) => {
 				try {
 					const result = await desktopResult<{
@@ -3293,14 +3434,46 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						 * caller that never used it.
 						 */
 						...(model ? { model } : {}),
+						...(peer ? { peer } : {}),
 					});
 					get().upsertSession({
 						session_id: result.session_id,
 						cwd,
 						binding: result.binding,
+						/*
+						 * A conversation born on a peer is filed under that peer from its
+						 * first frame: without `locality` here the optimistic row would be
+						 * drawn in `Active chats` as a local one until the next list read
+						 * moved it - a section jump the user did not cause. The heading's
+						 * label comes from the peer catalogue by device id, so the name is
+						 * not needed here.
+						 */
+						...(peer
+							? {
+									locality: "remote" as const,
+									owner_device: peer,
+									reachable: true,
+									unreachable_reason: "",
+								}
+							: {}),
 					});
 					return result.session_id;
 				} catch (error) {
+					/*
+					 * A PEER that refused is S5 (`mesh-ui.md` §2.5): the rows are unchanged
+					 * and the sidebar says which device refused, in its own words. It is not
+					 * the catalogue's `error`, which would read as "chats could not load".
+					 */
+					if (peer) {
+						set({
+							meshNotice: {
+								kind: "refused",
+								peer,
+								reason: storeErrorMessage(error, "it did not answer"),
+							},
+						});
+						throw error;
+					}
 					// Same rule as `fetchSessions` above: the app states the refusal's own
 					// consequence rather than repeating the server's words (UX round 2, U1).
 					set({
