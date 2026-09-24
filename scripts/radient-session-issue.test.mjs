@@ -210,6 +210,14 @@ async function mount(world = {}) {
 						});
 					case "accounts.list": {
 						if (state.hold) await state.hold;
+						/*
+						 * The route itself FAILING (a 500), QA round 3's Q-8 state: the
+						 * read errors with no data, which is the one state in which React
+						 * Query re-runs a query when an observer mounts on it.
+						 */
+						if (state.verdict === "failed") {
+							return envelope(500, { detail: "Internal Server Error" });
+						}
 						if (state.verdict === "refused") {
 							/*
 							 * A desktop-PLANE refusal: a bare string with no
@@ -312,10 +320,20 @@ async function mount(world = {}) {
 	}
 
 	let root;
+	/** Bumped to REMOUNT the probe, which is how a host re-creates the callout. */
+	let generation = 0;
 	await act(async () => {
 		root = createRoot(container);
 		root.render(h(QueryClientProvider, { client }, h(Probe)));
 	});
+	const remount = async () => {
+		generation += 1;
+		await act(async () => {
+			root.render(
+				h(QueryClientProvider, { client }, h(Probe, { key: generation })),
+			);
+		});
+	};
 
 	const text = () => container.textContent ?? "";
 	/**
@@ -446,6 +464,7 @@ async function mount(world = {}) {
 		refresh,
 		query,
 		press,
+		remount,
 		close,
 	};
 }
@@ -509,6 +528,49 @@ test("a verdict read that FAILED is not evidence the login is dead", async () =>
 	);
 	assert.equal(surface.latest().issue.kind, "hidden");
 	assert.equal(surface.text(), "");
+	await surface.close();
+});
+
+/**
+ * Q-8 (QA round 3) found a failed verdict read looping at ~70 requests a second
+ * in Settings, and this surface reads the same key, so it is checked rather than
+ * assumed. The callout OWNS the read and keeps React Query's default
+ * `retryOnMount` on purpose: it lives as long as the composer, and a host that
+ * re-creates it (a session switch, a band change) is exactly when a failed read
+ * should be asked again. What made Settings loop was a HOST that unmounted its
+ * observer on every attempt; this host does not gate on the read at all (a failed
+ * read is `hidden`), so each remount costs ONE read and an idle callout costs
+ * none. Both halves are the bound asserted here.
+ */
+test("a failing verdict route costs one read per mount of the callout, and none while idle", async () => {
+	const surface = await mount({ verdict: "failed" });
+	await surface.verdictApplied();
+	assert.equal(surface.query()?.status, "error");
+	assert.equal(surface.latest().issue.kind, "hidden");
+	const settled = surface.reads("accounts.list");
+	assert.equal(settled, 1, "the first mount made more than one read");
+	await act(async () => sleep(1500));
+	assert.equal(
+		surface.reads("accounts.list"),
+		settled,
+		"an idle callout re-read a failed verdict - it is looping",
+	);
+	for (let remounts = 1; remounts <= 3; remounts++) {
+		await surface.remount();
+		await surface.waitFor(
+			() => surface.reads("accounts.list") === settled + remounts,
+			`remount ${remounts}'s one re-read`,
+		);
+		await surface.verdictApplied();
+		await act(async () => sleep(300));
+		assert.equal(
+			surface.reads("accounts.list"),
+			settled + remounts,
+			`remount ${remounts} cost more than one read`,
+		);
+		assert.equal(surface.latest().issue.kind, "hidden");
+		assert.equal(surface.text(), "");
+	}
 	await surface.close();
 });
 
