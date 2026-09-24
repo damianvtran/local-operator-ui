@@ -423,63 +423,6 @@ export function installDevDriver(): string[] {
 			userAgent: navigator.userAgent,
 		}),
 
-		/**
-		 * THE SHELL'S BOXES, for the geometry a scene has to assert and no other verb
-		 * can reach.
-		 *
-		 * WHY IT EXISTS: `state` and `hello` answer in the app's own terms - route,
-		 * theme, which pane is open, how big the viewport is - and none of them can say
-		 * WHERE A COLUMN IS. A commit on 2026-09-24 halved the chat column and pushed it
-		 * to the right-hand third of the window (`x 260 w 1120` became `x 900 w 480`) and
-		 * every scene still passed, because the boxes moved were not ones anything read;
-		 * the capture meter had the same blind spot (it asserted the header, the
-		 * transcript, the composer and the reading measure) and reported 44 states PASS.
-		 * §I's rules are statements about exactly those boxes: the chat pane's floor, the
-		 * canvas's `min(560, available - 480)`, and the mode it falls back to when the
-		 * row cannot give it 400.
-		 *
-		 * Read-only, and deliberately so: it measures the elements the layout names by
-		 * `data-tour-tag` rather than reaching into the React tree or the stores, so what
-		 * a scene sees is what a person would measure on the same frame. A selector that
-		 * matches nothing answers `null` instead of throwing - "the pane is not mounted"
-		 * is one of the facts a scene has to be able to distinguish from "the pane is in
-		 * the wrong place".
-		 *
-		 * `canvasMode` is the pane's own `data-canvas-mode` attribute, so the mode is read
-		 * rather than inferred from a width: §I's two shapes (docked beside the chat,
-		 * overlaying it) are what a scene asserts, and a mode reverse-engineered from a
-		 * number is one a check gets subtly wrong.
-		 */
-		metrics: () => {
-			const box = (selector: string) => {
-				const element = document.querySelector(selector);
-				if (!(element instanceof HTMLElement)) return null;
-				const rect = element.getBoundingClientRect();
-				return {
-					x: Math.round(rect.x),
-					y: Math.round(rect.y),
-					w: Math.round(rect.width),
-					h: Math.round(rect.height),
-					minWidth: Math.round(
-						Number.parseFloat(getComputedStyle(element).minWidth) || 0,
-					),
-				};
-			};
-			const canvas = document.querySelector('[data-tour-tag="canvas-dock"]');
-			return {
-				viewport: { width: window.innerWidth, height: window.innerHeight },
-				row: box('[data-tour-tag="pane-row"]'),
-				chatColumn: box('[data-tour-tag="chat-column"]'),
-				composer: box('[data-tour-tag="chat-input-textarea"]'),
-				canvas: box('[data-tour-tag="canvas-dock"]'),
-				canvasMode:
-					canvas instanceof HTMLElement
-						? canvas.getAttribute("data-canvas-mode")
-						: null,
-				runPanel: box('[data-tour-tag="run-panel-dock"]'),
-			};
-		},
-
 		/** The state the verbs write into, so a scene can report what it changed. */
 		state: () => {
 			const preferences = useUiPreferencesStore.getState();
