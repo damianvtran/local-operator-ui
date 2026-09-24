@@ -1011,6 +1011,22 @@ export function buildPanelItems(
  * ones need the "in conversation" marker — the palette shows the same rows the
  * sidebar would, which is the point of reusing the backend search rather than
  * inventing a second one here.
+ *
+ * WHAT IT DOES NOT CARRY, stated here because the sidebar's row learned it this
+ * round and a reader of this function is one line from the field (review round 1,
+ * m3): the sidebar draws the ATTRIBUTION of a conversation an agent opened
+ * (`opened_by`, `· agent-opened`), and this row draws the binding instead — so the
+ * same conversation reads as the operator's own in the palette, which is the
+ * indistinguishability the sidebar's marker exists to remove. It is DELIBERATE and
+ * bounded rather than overlooked: this row has ONE secondary slot (`hint`), the
+ * search mark already arbitrates for it below (`use-palette-sources.ts`'s
+ * `hint: marked ? …`), and choosing between "why is this row on screen" and "who
+ * opened it" is exactly the tradeoff the sidebar settles with a precedence rule
+ * and its own width measurements. The palette's row would need that same decision
+ * made against its own slot, as its own change on the surface the incident did not
+ * name — recorded on the pull request that added the sidebar marker as deferred,
+ * not left silent. The field is in hand here (`CanonicalSessionRow`), so the work
+ * is a precedence choice rather than a wire change.
  */
 export function buildChatItem(row: {
 	session_id: string;
