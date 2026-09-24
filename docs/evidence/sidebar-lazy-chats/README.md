@@ -23,8 +23,8 @@ and no badge before; 50 rows held, a `70` badge and the group's own page after.
 | frame | what it shows |
 |---|---|
 | `after/head-page.png` | The first paint: **50** rows of the 120-chat stand-in (`All chats 50`), the pinned row and the running row drawn, and every entity row already carrying its census badge (`lopdev 70`, `minervadev 20`, `reviewer 8`, `qa-tester 7`). The daemon's log shows the request that produced it: `limit=50&include_archived=true&with_counts=true`. |
-| `after/group-open.png` | `lopdev` expanded: its **own** page (Chat 050 … Chat 074), the badge still reading 70 — the census, not the 25 rows in hand — and `Show 25 more` under them. The store's row count went 50 → 75, i.e. exactly that group's first page and nothing else. The daemon's log shows `limit=25&scope_kind=team&scope_name=lopdev`. |
-| `after/group-tail.png` | The same list after the tail control was pressed: the frame is taken after the press, and the daemon's log shows the scoped request carrying the cursor it minted (`scope_name=lopdev&cursor=off:25`). **See "What this rig did not prove" below.** |
+| `after/group-open.png` | `lopdev` expanded: its **own** page (Chat 050 … Chat 074) and nothing else — the store's row count went 50 → 75, i.e. exactly that group's first page. The badge still reads 70 (the census, not the 25 rows in hand) and `Show 25 more` sits under them. The daemon's log shows `limit=25&scope_kind=team&scope_name=lopdev -> 200 rows=25 next=off:25`. |
+| `after/group-tail.png` | The same list after the tail control was pressed: the second page is appended BELOW the first (the group draws through Chat 077), `All chats` reads **100**, and the group's cursor has advanced to `off:50` rather than resetting. The daemon's log carries both halves of the exchange: `…scope_name=lopdev -> 200 rows=25 next=off:25`, then `…&cursor=off%3A25 -> 200 rows=25 next=off:50`. The numbers behind the frame are in *The tail press* below. |
 | `before-withdrawn/group-open.png` | The BEFORE half, and the operator's screenshot: `lopdev` expanded reads **"No chats yet"** while the same store holds 70 of that group's conversations, `All chats 50`, and the panel says `Showing up to 500 chats. Older chats remain available in the terminal.` The group's badge is absent because on this path there is no census to draw one from. |
 | `before-withdrawn/head-page.png` | The same withdrawn panel at first paint. |
 | `census-waiting/group-open.png` | A group whose page has NOT caught up with the store: the daemon counts 70 (`--scope-empty` answers scoped reads with no rows), so the badge reads 70 and the body says **"Loading chats…"**. Under the old rule this state and true emptiness both drew "No chats yet"; the two sentences are now different because the two states are. |
@@ -71,26 +71,50 @@ one group adds exactly its own page) and the three sentences (`Loading chats…`
 `--stub-log` clauses read the requests the daemon actually received, because the
 DOM cannot say which page a control asked for.
 
-## What this rig did not prove, and where it is proved instead
+## The tail press: what it is now proven to do, and by what
 
-**The tail press's rows did not grow the store in this rig, on either run, and the
-scene does not claim they did.** The evidence is: the press reached the control
-(`data-scope-more` hit test equal to the target), the daemon's log shows the scoped
-request carrying the cursor it minted, and
-`{"team:lopdev":{"ids":25,"nextCursor":"off:25"}}` after the press — the same state
-as before it. `group-tail.png` is therefore a frame of the panel AFTER the press,
-and the only thing it proves on its own is that the control is drawn and reachable.
+`after/group-tail.png` is the frame AFTER the tail control was pressed, and the
+claim is now asserted rather than described. The scene presses
+`[data-scope-more="team:lopdev"]`, then **polls the store's own scope every 100 ms
+for up to 10 s** and fails loudly on timeout with the state it last saw and the
+daemon's lines for that scope. On this tree the wait returns, and the numbers are:
 
-The extension's own behaviour — appending one page, keeping what is on screen,
-stopping at exhaustion, and surviving a head poll that lands mid-flight — is
-asserted against the real store in
-`scripts/chat-sidebar-scope-paging.test.mjs` ("Show more appends…" and "a head
-answer landing mid-extension does not discard the extension"), which passes. The
-rig's own runs are recorded in the pull request and were reported to the
-delegating manager as an unresolved discrepancy rather than papered over: the
-store's path is green under the interleaving a live app produces, and the rig's
-observation of a request with no growth is not explained by anything this set
-could reproduce deterministically.
+| what | before the press | after it |
+|---|---|---|
+| the scope's ids | 25 | **50** |
+| the scope's cursor | `off:25` | **`off:50`** (the page after it, not the end) |
+| the store's rows (`state.sessionCount`) | 75 | **100** — `All chats 100` in the frame |
+| the daemon's own log | `…scope_name=lopdev -> 200 rows=25 next=off:25` | `…&cursor=off%3A25 -> 200 rows=25 next=off:50` |
+
+The frame shows the appended rows (the group now draws through Chat 077) beneath
+the first page's, and the cursor advancing rather than being reset is what the
+merged-scope state above asserts.
+
+**Why the assert is a bounded poll and not a read-back, recorded because the first
+version of this scene got it wrong.** `state.sessionCount` is a PROXY: a page whose
+rows the client already holds grows it by nothing, so a merged answer and a dropped
+one are indistinguishable through it. The scope's own `ids`/`nextCursor` are the
+claim itself, and a single sample cannot separate "merged" from "not merged yet" —
+which is precisely the reading this set reported for several runs.
+
+**And the discrepancy itself is withdrawn: it was this harness, not the app.** The
+stand-in computed a page offset with `cursor.slice(3)` against a four-character
+prefix (`off:`), so `"off:25".slice(3)` was `":25"`, `Number(":25")` was `NaN`, and
+`NaN || 0` served **page one again** for every cursor the app sent. The app did the
+correct thing with a repeated page — it collapsed the ids it already held, which is
+exactly what its merge is specified to do across a cursor walk (design §2.2) — and
+the panel showed no growth. `rows=` on the daemon's log line is what made the
+answer visible (`rows=25 next=off:25` for BOTH pages); the offset is now read from
+the prefix's own length, and the walk is verified end to end:
+
+```
+cursor=none    rows 25  first p050  last p074  next off:25
+cursor=off:25  rows 25  first p075  last p099  next off:50
+cursor=off:50  rows 20  first p100  last p119  next null      (the group's 70, exhausted)
+```
+
+The strict assertion is what caught it: with the old lenient version this set would
+have shipped a README explaining an app defect that did not exist.
 
 ## Provenance
 

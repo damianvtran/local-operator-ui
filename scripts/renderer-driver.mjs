@@ -14258,39 +14258,39 @@ async function sceneSidebarLazyChats(cdp) {
 			`hit=${JSON.stringify(tailPress.hit)} target=${JSON.stringify(tailPress.target)}`,
 		);
 		/*
-		 * WHAT THE PRESS IS ASSERTED TO DO, and what it deliberately does NOT assert
-		 * here.
+		 * THE EXTENSION IS WAITED FOR, BOUNDED, ON THE SCOPE'S OWN STATE.
 		 *
-		 * The claim is the one only a real press can make: the control the panel drew
-		 * asks the daemon for THAT SCOPE'S NEXT PAGE, carrying a cursor the daemon
-		 * minted. WHETHER those rows then grow the store is the STORE's question, and
-		 * `scripts/chat-sidebar-scope-paging.test.mjs` answers it against the real
-		 * store - including the interleaving with a concurrent head poll, which is the
-		 * only thing this rig could have added and which it reproduces exactly.
-		 *
-		 * WHY THE RIG DOES NOT ASSERT THE GROWTH ANYWAY, recorded rather than implied:
-		 * on this host the same press was observed to send its scoped request and leave
-		 * the panel's row count unchanged (`docs/evidence/sidebar-lazy-chats/README.md`
-		 * carries the two runs and the numbers). Rather than assert a number this rig
-		 * cannot reproduce reliably, or delete the step, the press's own reach and the
-		 * request it produced are asserted here and the growth is asserted where it is
-		 * deterministic.
+		 * What the press is asserted to do: ask the daemon for THAT SCOPE'S next page,
+		 * and MERGE the answer - the scope's ids grow by exactly one page and its
+		 * cursor advances to the page after it. The merge half is the part a single
+		 * sample cannot see (an unmerged answer and a merged one look identical in the
+		 * same instant), so this polls the store's own scope every 100 ms and FAILS
+		 * LOUDLY on timeout with the state it last saw and the daemon's own lines for
+		 * the scope - which is the evidence that separates "the request never left"
+		 * from "it left, was answered, and the answer did not reach the store".
 		 */
-		check(
-			"the tail press asks the daemon for that scope's next page",
-			STUB_LOG !== null &&
-				(await waitForStubLine(`scope_name=${LAZY_GROUP}&cursor=`)),
-			STUB_LOG === null
-				? "no --stub-log given, so the request the daemon saw could not be read"
-				: "no scoped request carrying a cursor reached the daemon",
-		);
+		const scopeKey = `team:${LAZY_GROUP}`;
+		const grew = await waitForScopeIds(cdp, scopeKey, LAZY_GROUP_PAGE * 2);
+		const observed = JSON.stringify(grew.scope);
+		if (grew.timedOut) {
+			const lines = stubLinesForScope(STUB_LOG, LAZY_GROUP);
+			check(
+				"the tail page is merged into the scope",
+				false,
+				`the scope did not reach ${LAZY_GROUP_PAGE * 2} ids within 10 s. Last read: ${observed}. The daemon logged for this scope:\n${lines.length > 0 ? lines.join("\n") : "(nothing)"}`,
+			);
+		} else {
+			check(
+				"the tail page is merged into the scope, and the cursor advances past it",
+				grew.scope.ids === LAZY_GROUP_PAGE * 2 &&
+					grew.scope.nextCursor === `off:${LAZY_GROUP_PAGE * 2}`,
+				`scope is ${observed}, expected ${LAZY_GROUP_PAGE * 2} ids and cursor off:${LAZY_GROUP_PAGE * 2}`,
+			);
+		}
 		await wait(LAZY_SETTLE_MS);
 		const tailFrame = await captureSettled(cdp, "group-tail");
 		note("frame", JSON.stringify(tailFrame));
-		note(
-			"the store's scopes after the tail press",
-			JSON.stringify((await verb(cdp, "state")).scopes),
-		);
+		note("the scope after the tail press", observed);
 	} else if (LAZY_CASE === "empty") {
 		check(
 			"a group the census says holds chats NEVER reads as empty",
@@ -14419,6 +14419,49 @@ const lazyGroupFacts = (cdp, name) => cdp.evaluate(LAZY_GROUP_FACTS_EXPR(name));
  * shows the `cursor=off:25` request), which is a fact about the harness and not
  * about the panel. Polling the number is what makes the claim about the feature.
  */
+/**
+ * The scope's own state, WAITED FOR rather than sampled.
+ *
+ * WHY THIS REPLACED A READ-BACK AND A ROW COUNT. `state.sessionCount` is a PROXY
+ * for "the extension landed" and a bad one: a page whose rows the client already
+ * holds grows it by nothing, so a passing extension and a dropped answer are
+ * indistinguishable through it. The scope's own `ids` and `nextCursor` are the
+ * claim itself. And the read has to be BOUNDED POLLING, not a read after a fixed
+ * sleep: the two are indistinguishable in a single sample, which is exactly how
+ * this step reported a discrepancy for a whole session's worth of runs.
+ */
+async function waitForScopeIds(cdp, key, atLeast, timeoutMs = 10_000) {
+	const started = Date.now();
+	let scope = (await verb(cdp, "state")).scopes[key] ?? null;
+	while (Date.now() - started < timeoutMs) {
+		if (scope !== null && scope.ids >= atLeast)
+			return { scope, timedOut: false };
+		await wait(100);
+		scope = (await verb(cdp, "state")).scopes[key] ?? null;
+	}
+	return { scope, timedOut: true };
+}
+
+/**
+ * The daemon's own lines for one scope, as the failure message's evidence.
+ *
+ * A timeout is not a verdict on its own: the two remaining explanations are "the
+ * request never left" and "it left, was answered, and the answer did not reach
+ * the store". The `rows=` the stand-in now logs with each answer is what tells
+ * them apart, so the failure carries those lines rather than an assertion.
+ */
+function stubLinesForScope(path, name) {
+	if (STUB_LOG === null) return [];
+	try {
+		return readFileSync(STUB_LOG, "utf8")
+			.split("\n")
+			.filter((line) => line.includes(`scope_name=${name}`))
+			.slice(-4);
+	} catch {
+		return [];
+	}
+}
+
 async function waitForSessionCount(cdp, atLeast, timeoutMs = 15_000) {
 	const started = Date.now();
 	let last = 0;
