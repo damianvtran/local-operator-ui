@@ -811,6 +811,15 @@ const STAMP_BINDING_NOTES = [
 	 * is owed the two values it does bind and the reason no still was owed.
 	 */
 	"modelCatalogueFocusRestampNote",
+	/*
+	 * And `childReaderScrollControlRestampNote`, on the same terms as the two
+	 * above: it states this file's own pair for the child reader's
+	 * scroll-to-bottom control. The change it records re-stamped both trees and
+	 * re-pointed every note in this list, because a re-stamp moves the pair they
+	 * all bind, and it rewrote no frame of the sweep - so a reader is owed the
+	 * two values it does bind and the reason no still was owed.
+	 */
+	"childReaderScrollControlRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
