@@ -625,8 +625,7 @@ export async function askAside(
  */
 export async function adoptAside(sessionId: string): Promise<void> {
 	const store = useAsideStore.getState();
-	const asideId =
-		lastAnsweredAsideId(store, sessionId) ?? previousAsideId(store, sessionId);
+	const asideId = previousAsideId(store, sessionId);
 	if (!asideId) return;
 	try {
 		await desktopResult({
