@@ -20,7 +20,7 @@
 
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
-import { chatStatusDisplay } from "../chat-status";
+import { chatStatusDisplay, chatStatusKey } from "../chat-status";
 import { ChatStatusStripView } from "./chat-status-strip";
 
 const PANE = ({ children }: { children: React.ReactNode }) => (
@@ -124,12 +124,23 @@ export const RetryOutcome: Story = {
  */
 export const Dismissed: Story = {
 	render: () => {
-		const [dismissed, setDismissed] = useState<string | null>(null);
 		const display = chatStatusDisplay({
 			connectivityIssue: "server_offline",
 			server: { state: "detached", detail: null, pairing: null },
 			internetOffline: false,
 		});
+		/*
+		 * THE STORY STARTS DISMISSED, keyed on the state's own key rather than on a
+		 * hand-written string: an earlier revision started with `null` and therefore
+		 * photographed the EXPANDED strip a second time - a frame whose name claims a
+		 * state it does not show, which is the same class of defect as a frame
+		 * stamped with a tree it was not built from (design round 1, D4). `Show`
+		 * re-expands it, because the pill's contract is that the strip is one press
+		 * away.
+		 */
+		const [dismissed, setDismissed] = useState<string | null>(
+			chatStatusKey(display),
+		);
 		return (
 			<PANE>
 				<ChatStatusStripView
