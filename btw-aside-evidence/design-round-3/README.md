@@ -22,12 +22,12 @@ D8's quoted off-panel copy, D10's ceiling, U6's focus return, U9's `aria-describ
   `Input.dispatchKeyEvent` / `insertText` / mouse presses, and every number was read from the app's own DOM.
 * **Isolation:** `env -i` with a scratch `HOME` and `LOCAL_OPERATOR_CONFIG_DIR`, no `CMUX_*`/`LOP_*`, and
   `GIT_CONFIG_SYSTEM=/dev/null`. Every pid was reaped by exact pid.
-* **Passes** (each scored 17 PASS / 0 FAIL, `logs/driver-*.log`):
+* **Passes** (each scored 17 PASS / 0 FAIL, `logs/driver-*.log.txt`):
   * `r3-wd-*`: wide, 1380x868 CSS @ dpr 2, `localOperatorDark`
   * `r3-nd-*`: narrow, 800x868 (clamped), dark
   * `r3-wl-*`: wide, `localOperatorLight`
 
-  An earlier wide dark pass (`logs/driver-wd-pass1.log`, frames not published) ran the scene without step 03c.
+  An earlier wide dark pass (`logs/driver-wd-pass1.log.txt`, frames not published) ran the scene without step 03c.
   Its D10/D6 numbers match the published wide pass. It is also the source of the **user-scrolled-up** reading
   (188 -> 128, then 128 for 4.3 s while `scrollHeight` grew 436 -> 648). In the published passes the stop condition of
   step 03 matched the earlier answers, so that step exited after one sample and its "later" value is not evidence.
