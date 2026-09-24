@@ -599,7 +599,9 @@ test("a failure this build recorded is never migrated as the released app's clai
 	);
 	const first = draftRow();
 	const requestId = first.admissionRequestId;
-	const firstBody = calls.filter((r) => r.op === "sessions.message").at(-1).text;
+	const firstBody = calls
+		.filter((r) => r.op === "sessions.message")
+		.at(-1).text;
 	assert.equal(renders, 1);
 
 	/*
@@ -633,7 +635,11 @@ test("a failure this build recorded is never migrated as the released app's clai
 	await admitChatDraft(key, input, SESSION, undefined, beforeAdmission);
 	const replay = calls.slice(before).filter((r) => r.op === "sessions.message");
 	assert.equal(replay.length, 1);
-	assert.equal(replay[0].requestId, requestId, "the request id is the one that was issued");
+	assert.equal(
+		replay[0].requestId,
+		requestId,
+		"the request id is the one that was issued",
+	);
 	assert.equal(
 		replay[0].text,
 		firstBody,
@@ -687,21 +693,38 @@ test("a row the released app left behind comes home once, with this app's senten
 		submittedText: "kept outside the composer",
 		submittedAttachments: [],
 		heldClaimCode: "send_unconfirmed",
-		error: "The app waits up to 20 seconds for this request, and it was still running when the app stopped waiting.",
+		error:
+			"The app waits up to 20 seconds for this request, and it was still running when the app stopped waiting.",
 	};
 	useCanonicalSessionsStore.setState({ drafts: { [key]: legacy } });
-	assert.equal(migrateHeldClaim(key, legacy), true, "the released app's row is the one it is for");
+	assert.equal(
+		migrateHeldClaim(key, legacy),
+		true,
+		"the released app's row is the one it is for",
+	);
 	const row = composerRow(composerIdentityFor(key, SESSION));
 	assert.equal(row?.pendingText, "kept outside the composer");
-	assert.equal(draftRow().heldClaimCode, undefined, "the claim marker goes with the claim");
+	assert.equal(
+		draftRow().heldClaimCode,
+		undefined,
+		"the claim marker goes with the claim",
+	);
 	assert.equal(draftRow().submittedText, undefined);
 	assert.equal(
 		draftRow().error,
 		SEND_FAILURE_COPY.unconfirmed,
 		"the released app's 20-second sentence is still on screen",
 	);
-	assert.equal(draftRow().errorRetry, true, "and the press that answers it is offered");
-	assert.equal(migrateHeldClaim(key, draftRow()), false, "the move happens once");
+	assert.equal(
+		draftRow().errorRetry,
+		true,
+		"and the press that answers it is offered",
+	);
+	assert.equal(
+		migrateHeldClaim(key, draftRow()),
+		false,
+		"the move happens once",
+	);
 });
 
 /*
@@ -759,7 +782,9 @@ test("a returned payload does not duplicate the image bytes, so a large one stil
 	);
 	assert.ok(persisted.length <= LOCAL_STORAGE_QUOTA);
 	// And a reload of exactly that persisted state is a row the app can use.
-	const rehydrated = rehydrateInputRows(JSON.parse(persisted).state.inputByConversation);
+	const rehydrated = rehydrateInputRows(
+		JSON.parse(persisted).state.inputByConversation,
+	);
 	assert.deepEqual(
 		rehydrated[identity].attachments.map((chip) => chip.path),
 		[image],
@@ -855,7 +880,11 @@ test("the notice offers Retry where a press works, and never over a delivery", (
 		lateDelivered: false,
 	});
 	assert.equal(unknown?.message, SEND_FAILURE_COPY.unconfirmed);
-	assert.equal(unknown?.retry, true, "Retry must be offered on the arm a replay answers");
+	assert.equal(
+		unknown?.retry,
+		true,
+		"Retry must be offered on the arm a replay answers",
+	);
 	assert.equal(unknown?.muted, false);
 
 	/*
@@ -894,7 +923,11 @@ test("the notice offers Retry where a press works, and never over a delivery", (
 		"pairing.no-credential",
 	])
 		assert.equal(retryOfferedForFailureCode(code), false, code);
-	assert.equal(retryOfferedForFailureCode(undefined), true, "an outcome nothing could name is pressable");
+	assert.equal(
+		retryOfferedForFailureCode(undefined),
+		true,
+		"an outcome nothing could name is pressable",
+	);
 
 	/*
 	 * THE LATE DELIVERY WINS OVER ANY FAILURE TEXT STILL ON THE ROW, which is the
@@ -913,7 +946,11 @@ test("the notice offers Retry where a press works, and never over a delivery", (
 	});
 	assert.equal(delivered?.message, SEND_FAILURE_COPY.lateDelivery);
 	assert.equal(delivered?.muted, true);
-	assert.equal(delivered?.retry, undefined, "nothing to press over a message that arrived");
+	assert.equal(
+		delivered?.retry,
+		undefined,
+		"nothing to press over a message that arrived",
+	);
 
 	// And nothing at all on a row with no failure.
 	assert.equal(
@@ -929,4 +966,36 @@ test("the notice offers Retry where a press works, and never over a delivery", (
 		}),
 		undefined,
 	);
+});
+
+/*
+ * M8/U4/Q-3. THE DAEMON'S HOP FAILURE SPEAKS THE TABLE'S LANGUAGE.
+ *
+ * `runtime_unreachable` is the daemon saying it could not establish whether the
+ * request reached the owner, so its arm is the unknown outcome. Relaying its own
+ * body instead put "Session owner is unavailable. Reconnect and reconcile before
+ * retrying." on the composer: two sentences, two pieces of the app's own
+ * vocabulary, and an instruction the user cannot carry out (review round 1, M8).
+ */
+test("the hop failure's notice is this app's sentence, not the daemon's prose", () => {
+	const copy = sendFailureCopy(
+		new DesktopControlError(
+			503,
+			"Session owner is unavailable. Reconnect and reconcile before retrying.",
+			undefined,
+			"runtime_unreachable",
+		),
+	);
+	assert.equal(
+		copy.message,
+		SEND_FAILURE_COPY.unconfirmed,
+		"the composer relays the daemon's hop-failure prose again",
+	);
+	assert.equal(copy.retry, true, "and the press it promises is offered");
+	for (const jargon of ["session owner", "reconcile"])
+		assert.equal(
+			copy.message.toLowerCase().includes(jargon),
+			false,
+			`the notice says "${jargon}"`,
+		);
 });
