@@ -780,30 +780,26 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  * than being read as history - the distinction the paragraph above draws.
  */
 const STAMP_BINDING_NOTES = [
-	"shellPathRestampNote",
-	"settingsGateRestampNote",
-	"candidateMacArchRestampNote",
-	"notarizeGateRestampNote",
 	/*
-	 * `usageAutoCheckRestampNote` left this list when the remediation below
-	 * re-derived both stamps: its pair is now history, written as bare SHAs in the
-	 * note itself, because leaving it here would have held a fold's values to this
-	 * file as if they were its own — the defect the list exists for.
+	 * EVERY NOTE THAT USED TO BE LISTED HERE LEFT IT IN THE SAME PASS, and that is
+	 * not a deletion of the guard - it is the guard doing what it was written for.
+	 * `shellPathRestampNote`, `settingsGateRestampNote`, `candidateMacArchRestampNote`,
+	 * `notarizeGateRestampNote`, `usageInFlightConvergenceNote`,
+	 * `macNativeComponentsRestampNote`, `telemetrySwitchRestampNote` and
+	 * `readReceiptRestampNote` each quoted the pair the mesh-desktop pass then
+	 * superseded (`srcTree` 081a8032a3326712657086cd3b38f83a567b8ded /
+	 * `scriptsTree` 529f37986cd4a48e186f16d292cb0c8bf2aa74d2), so under this list's
+	 * own convention - a backticked token here is ALWAYS the value the file ships -
+	 * keeping them would have held a superseded pair to this file as if it were its
+	 * own: the exact defect the list exists to catch, in the direction it does not
+	 * usually fail. Their hashes are written as bare SHAs in the notes themselves,
+	 * which is the convention `usageAutoCheckRestampNote` and
+	 * `usageInFlightRemediationNote` left by first.
 	 */
-	/*
-	 * `usageInFlightRemediationNote` left this list when the convergence round
-	 * below re-derived both stamps on top of it: its pair is now history, written
-	 * as bare SHAs in the note itself, because leaving it here would have held a
-	 * superseded pair to this file as if it were its own. `usageInFlightConvergenceNote`
-	 * carries the binding the round it records re-derived.
-	 */
-	"usageInFlightConvergenceNote",
-	"macNativeComponentsRestampNote",
-	"telemetrySwitchRestampNote",
-	// The seventh: `readReceiptRestampNote` states this file's own pair for the
-	// read-receipt branch, so it is held to that pair rather than read as history -
-	// the distinction `candidateMacArchRestampNote` above is in the list for.
-	"readReceiptRestampNote",
+	// The ninth, and the one that re-derived the pair: it states this file's own
+	// trees for the mesh-desktop pass, so it is held to them rather than read as
+	// history - the distinction `candidateMacArchRestampNote` was listed for.
+	"meshDesktopRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1119,6 +1115,16 @@ const BRANCH_RECORDS = [
 	 * it is disclosed on the round's remediation comment rather than smuggled in.
 	 */
 	"usageInFlightConvergenceNote",
+	/*
+	 * Grown by the mesh-desktop pass, this branch's newest top-level record and the
+	 * one that re-derived both stamps after a change that moves BOTH trees the file
+	 * binds: five renderer modules and four shared contract files under `src/`, and a
+	 * new test file plus three re-pointed sidebar anchors under `scripts/`. It is
+	 * listed for the reason the list exists - a fold that started from main's
+	 * manifest would drop it, and with it the only statement of which two trees this
+	 * delta moved and that no frame in the sweep was re-taken.
+	 */
+	"meshDesktopRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
