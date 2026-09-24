@@ -747,7 +747,11 @@ test("a group whose read failed says so, even while the census says it holds cha
 	});
 	assert.equal(view.state, "error");
 	assert.equal(view.sentence, "The stub was asked to refuse scoped reads.");
-	assert.equal(view.retry, true, "a failure the reader can act on offers the act");
+	assert.equal(
+		view.retry,
+		true,
+		"a failure the reader can act on offers the act",
+	);
 });
 
 test("an expanded group with rows offers its tail only when the daemon said so", () => {
@@ -1030,7 +1034,7 @@ test("a tombstone survives a scope answer that does not carry its id", async () 
 
 test("a scope request leaves the archived set out, and the head request asks for it", async () => {
 	reset();
-	answer = async (request) => ({ sessions: [], truncated: false });
+	answer = async () => ({ sessions: [], truncated: false });
 	await store.getState().fetchSessions(CATALOGUE_HEAD_PAGE, true);
 	await store.getState().fetchScopePage("team", "lopdev");
 	assert.equal(
@@ -1063,16 +1067,15 @@ test("a head answer landing mid-extension does not discard the extension", async
 
 	const first = store.getState().fetchScopePage("team", "lopdev", null);
 	await settle();
-	parked
-		.filter((entry) => entry.request.scope_kind === "team")
-		.forEach((entry) =>
-			entry.resolve({
-				sessions: [wire("t1")],
-				truncated: true,
-				next_cursor: "off:1",
-				cursor_missing: false,
-			}),
-		);
+	for (const entry of parked) {
+		if (entry.request.scope_kind !== "team") continue;
+		entry.resolve({
+			sessions: [wire("t1")],
+			truncated: true,
+			next_cursor: "off:1",
+			cursor_missing: false,
+		});
+	}
 	await first;
 	assert.deepEqual(scopeOf("team", "lopdev").ids, ["t1"]);
 
@@ -1080,30 +1083,26 @@ test("a head answer landing mid-extension does not discard the extension", async
 	await settle();
 	const head = store.getState().fetchSessions(50, true);
 	await settle();
-	parked
-		.filter(
-			(entry) =>
-				entry.request.scope_kind === undefined && entry.request.limit === 50,
-		)
-		.forEach((entry) =>
-			entry.resolve({
-				sessions: [wire("h1")],
-				truncated: true,
-				next_cursor: "off:1",
-				counts: { total: 9, active: 0, unbound: 8, scopes: [] },
-			}),
-		);
+	for (const entry of parked) {
+		if (entry.request.scope_kind !== undefined) continue;
+		if (entry.request.limit !== 50) continue;
+		entry.resolve({
+			sessions: [wire("h1")],
+			truncated: true,
+			next_cursor: "off:1",
+			counts: { total: 9, active: 0, unbound: 8, scopes: [] },
+		});
+	}
 	await head;
-	parked
-		.filter((entry) => entry.request.cursor === "off:1")
-		.forEach((entry) =>
-			entry.resolve({
-				sessions: [wire("t2"), wire("t3")],
-				truncated: false,
-				next_cursor: null,
-				cursor_missing: false,
-			}),
-		);
+	for (const entry of parked) {
+		if (entry.request.cursor !== "off:1") continue;
+		entry.resolve({
+			sessions: [wire("t2"), wire("t3")],
+			truncated: false,
+			next_cursor: null,
+			cursor_missing: false,
+		});
+	}
 	await extension;
 	assert.deepEqual(
 		scopeOf("team", "lopdev").ids.slice().sort(),
