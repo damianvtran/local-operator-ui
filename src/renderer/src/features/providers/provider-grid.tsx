@@ -84,12 +84,34 @@ const RECOMMENDED_REASON = "One browser sign-in. Nothing to paste.";
  *
  * The credential test is the whole reason this is a function rather than an id
  * comparison, and it is `providerReadiness`'s own answer rather than a second
- * reading of its three flags: the cue stops exactly where the badge changes its
- * mind. That matters on both surfaces this grid renders on -- "Recommended" over
+ * reading of its three flags: the cue stops where the CENSUS says a credential is
+ * held. That matters on both surfaces this grid renders on -- "Recommended" over
  * a credential the reader already holds, above a sentence promising a sign-in
  * they have already done, argues for a decision they have made (UX round 1, U3;
  * code round 1, R1-6). The promoted row is neither local nor credential-free, so
  * for it the two groups that matter here are "Ready to use" and "Needs sign-in".
+ *
+ * WHY A REFUSED OR UNCONFIRMED SIGN-IN DOES NOT MOVE THE PIN (design round 2,
+ * D8), since the badge on that same card now says "Needs re-authentication" and
+ * this comment used to promise the cue "stops exactly where the badge changes its
+ * mind". The recommendation is an ARGUMENT FOR A CHOICE NOT YET MADE: position,
+ * the `Recommended` cue and the reason line ("One browser sign-in. Nothing to
+ * paste.") are all addressed to a reader who has not picked a provider. A row
+ * whose sign-in Radient refuses -- or whose verdict the app cannot confirm -- is a
+ * choice the reader HAS made and which is now broken, and what such a reader
+ * needs is the remedy, which the composer callout names in words and this card's
+ * own badge already shouts. Promoting it would instead move a broken row above
+ * the working providers they are now scanning for, and re-print the sign-in
+ * argument for the sign-in that just failed. So the pin deliberately reads the
+ * census alone, and the badge is where the verdict speaks: two questions, two
+ * answers, and the docblock now says which is which rather than promising the
+ * cue tracks the badge.
+ *
+ * The census is also the honest input for the OTHER states here. A refused row
+ * keeps `has_credential: true` and a never-signed-in row has none, so the two are
+ * already different inputs -- the pin needs no verdict to tell them apart, and a
+ * grid that moved the refused row would move it for a reading (`login_required`)
+ * that says nothing about whether the reader wants a different provider.
  */
 export function recommendedProvider(
 	rows: DesktopProvider[],

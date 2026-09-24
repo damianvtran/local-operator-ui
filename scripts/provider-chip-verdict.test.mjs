@@ -48,6 +48,7 @@ const bundle = await build({
 		contents: `
 			export { ProviderGrid } from "./src/renderer/src/features/providers/provider-grid";
 			export { ProviderDetail } from "./src/renderer/src/features/providers/provider-detail";
+			export { RadientAccountSection } from "./src/renderer/src/features/settings/components/radient-account-section";
 			export {
 				loginState,
 				providerReadiness,
@@ -203,6 +204,21 @@ const LOGIN_ANSWERS = {
 			radient_login: { credential_id: 7, state: "unknown" },
 		},
 	},
+	/*
+	 * The OTHER `unknown`, and the one every `unknown` fixture here used to miss
+	 * (code round 2, M2): `credential_id: null` is the payload
+	 * `tunnels/report.py::local_payload` returns whenever NO TUNNEL IS CONFIGURED
+	 * (`config.load()` raises with no `config.json`), which is a healthy, signed-in
+	 * user who has never made one. It names no credential, so it is not a verdict
+	 * about any stored sign-in -- only an `unknown` that names one (the field
+	 * above, QA round 1's F2) is the app declining to confirm a credential.
+	 */
+	"unknown-no-credential": {
+		result: {
+			accounts: [],
+			radient_login: { credential_id: null, state: "unknown" },
+		},
+	},
 	absent: { result: { accounts: [] } },
 };
 
@@ -217,6 +233,25 @@ const LOGIN_ANSWERS = {
  * sent to a sign-in it does not need.
  */
 const ACCOUNT_ANSWERS = {
+	/*
+	 * The typed refusal the backend answers a dead grant with (`401
+	 * radient_credential_refused`, `_credential_refusal`/`REASON_GRANT_INVALID`,
+	 * backend `28ad4dae3`). It is a DIFFERENT class from `signed-out`: this one
+	 * says Radient refused the credential this app holds. Round 1's rigs ran
+	 * backend `bd53de08`, which predates that commit and classifies the same dead
+	 * grant as `signed-out` -- which is why the state this PR exists for was never
+	 * photographed with the sentence it actually renders (QA round 2, Q-6).
+	 */
+	refused: {
+		status: 401,
+		body: {
+			detail: {
+				code: "radient_credential_refused",
+				message: "Radient refused the credential this app holds",
+				details: { reason: "grant_invalid" },
+			},
+		},
+	},
 	"signed-out": {
 		status: 409,
 		body: { detail: "Sign in to Radient to access your account" },
@@ -273,6 +308,21 @@ let tunnelCapability = true;
 /** How many times the bridge was asked for the verdict route, per case. */
 let verdictRequests = 0;
 /**
+ * How many times the bridge was asked for the ACCOUNT read, per case.
+ *
+ * A COUNT rather than a spy, because the defect Q-5 reports is a rate: the
+ * section's re-read loop is invisible in the rendered text at the instant you
+ * look (it renders the content for ~500 ms between two spinners) and unmissable
+ * in the number of reads one boot costs.
+ */
+let accountRequests = 0;
+/**
+ * The states `auth.status` serves, oldest first; the last one repeats. Empty
+ * means the sign-in cases are not being exercised and the op is a 503.
+ */
+let authPollStates = [];
+let authStarts = 0;
+/**
  * The census the bridge serves, mutable so the never-signed-in machine -- no row
  * at all -- can be rendered beside the incident's own state.
  */
@@ -296,6 +346,9 @@ beforeEach(() => {
 	holdVerdict = false;
 	tunnelCapability = true;
 	verdictRequests = 0;
+	accountRequests = 0;
+	authPollStates = [];
+	authStarts = 0;
 	releaseVerdict = () => {};
 });
 
@@ -324,7 +377,36 @@ globalThis.window.api = {
 				return { status: 200, body: LOGIN_ANSWERS[loginAnswer] };
 			}
 			if (request?.control?.operation === "account") {
+				accountRequests += 1;
 				return ACCOUNT_ANSWERS[accountAnswer];
+			}
+			/*
+			 * The sign-in flow, for the case that has to prove a successful sign-in
+			 * refreshes the verdict the chip reads (code round 2, M3). `auth.start`
+			 * opens an operation; the poll reports `succeeded` and -- as the real
+			 * backend would, having just accepted a fresh credential -- the verdict
+			 * route starts answering `ok`.
+			 */
+			if (request?.op === "auth.start") {
+				authStarts += 1;
+				return {
+					status: 200,
+					body: {
+						result: {
+							id: `op-${authStarts}`,
+							state: "pending",
+							auth_url: "https://example.invalid/radient/sign-in",
+						},
+					},
+				};
+			}
+			if (request?.op === "auth.status") {
+				const state = authPollStates.shift() ?? authPollStates.at(-1);
+				if (state === undefined) {
+					return { status: 503, body: { detail: "no auth operation here" } };
+				}
+				if (state === "succeeded") loginAnswer = "ok";
+				return { status: 200, body: { result: { id: request.id, state } } };
 			}
 			if (request?.op === "capabilities") {
 				// Both reads the chip joins are gated on this answer: the account read
@@ -335,20 +417,26 @@ globalThis.window.api = {
 						result: {
 							desktop_available: true,
 							features: tunnelCapability
-								? { radient: 1, tunnel: 1 }
-								: { radient: 1 },
+								? { auth: 1, radient: 1, tunnel: 1 }
+								: { auth: 1, radient: 1 },
 						},
 					},
 				};
 			}
 			return { status: 503, body: { detail: "not part of this test" } };
 		},
+		/*
+		 * Main opens the operation's URL. Nothing here has a browser to open it in,
+		 * and the panel's own path is what the sign-in case is after.
+		 */
+		openAuthorization: async () => {},
 	},
 };
 
 const {
 	ProviderDetail,
 	ProviderGrid,
+	RadientAccountSection,
 	QueryClient,
 	QueryClientProvider,
 	createRoot,
@@ -966,3 +1054,296 @@ test("the detail panel's badge is keyed on the verdict, not on the credential ro
 	const healthyText = text(healthy.container);
 	assert.equal(occurrences(healthyText, "Signed in"), 1, healthyText);
 });
+
+/* ---- round 2: the two `unknown` shapes, the refused fallback, and the ---- */
+/* ---- account section that stopped settling -------------------------------- */
+
+/**
+ * M2: the backend's OTHER `unknown` names no credential, so it is no verdict.
+ *
+ * `tunnels/report.py::local_payload` answers `{credential_id: null, state:
+ * "unknown"}` whenever no tunnel is configured, which is a signed-in, healthy
+ * user who has never made one. Read as a verdict it told that user "Needs sign-in"
+ * on a working login -- the incident inverted, and invisible to this file before
+ * this case because every `unknown` fixture here named `credential_id: 7`.
+ */
+test("an unknown that names no credential is not a verdict about one", () => {
+	/** An enabled account read, which is the only one that can narrow. */
+	const read = (accountRead) => ({ accountRead, unavailable: false });
+	// The payload with no tunnel configured, on a healthy read: the store answers,
+	// exactly as it does when the field is absent entirely.
+	assert.equal(
+		loginState(
+			"radient",
+			{ credential_id: null, state: "unknown" },
+			read("ready"),
+		),
+		"working",
+	);
+	assert.equal(loginState("radient", undefined, read("ready")), "working");
+	// QA round 1's F2 (a row whose token endpoint is down) still names its
+	// credential, and that one IS the app declining to confirm one.
+	assert.equal(
+		loginState("radient", { credential_id: 7, state: "unknown" }, read("ready")),
+		"unverified",
+	);
+	// And the null-credential shape cannot rescue the absent-verdict arm either:
+	// an account read that says no sign-in is stored still narrows on its own.
+	assert.equal(
+		loginState(
+			"radient",
+			{ credential_id: null, state: "unknown" },
+			read("signed-out"),
+		),
+		"unverified",
+	);
+});
+
+/** M2, on the rendered grid: a healthy user is not sent to a sign-in. */
+test("a signed-in machine that never made a tunnel is not told to sign in", async () => {
+	loginAnswer = "unknown-no-credential";
+	accountAnswer = "ready";
+	const { container } = await renderGrid();
+	const body = text(container);
+	assert.equal(occurrences(body, "Signed in"), 1, body);
+	// The other card is the never-configured one, which is what "Needs sign-in"
+	// belongs to here: the reading is that RADIENT is not among them.
+	assert.equal(occurrences(body, "Needs sign-in"), 1, body);
+	assert.doesNotMatch(container.innerHTML, UNVERIFIED_DETAIL);
+});
+
+/**
+ * Q-6: the fallback's `refused` arm, which round 1 left out.
+ *
+ * A verdict that is absent or unreadable AND an account read that says Radient
+ * REFUSED this app's credential is the incident's own state on `v0.61.0`/`v0.61.1`
+ * (they classify the refusal without shipping the verdict -- measured at both
+ * tags), and on any runtime whose `/v1/auth/status` read fails. It rendered the
+ * pre-fix green "Signed in" for a dead grant, because the fallback narrowed on
+ * `signed-out` alone.
+ */
+test("the fallback refuses a claim when the account read says the sign-in was refused", async () => {
+	loginAnswer = "absent";
+	accountAnswer = "refused";
+	const { container } = await renderGrid();
+	const body = text(container);
+	assert.equal(occurrences(body, "Signed in"), 0, body);
+	assert.equal(occurrences(body, "Needs re-authentication"), 1, body);
+	assert.match(container.innerHTML, REFUSED_DETAIL_ATTRIBUTE);
+
+	// The arm this must NOT swallow: `unavailable` is what a healthy machine's
+	// read fails as, and the store's own answer stands there (the floor the PR
+	// body states). Asserted here so the two classes cannot be collapsed by a
+	// later edit that widens the condition above.
+	const unavailable = await renderGridWith({ accountAnswer: "unavailable" });
+	const unavailableBody = text(unavailable.container);
+	assert.equal(occurrences(unavailableBody, "Signed in"), 1, unavailableBody);
+	assert.equal(occurrences(unavailableBody, "Needs re-authentication"), 0);
+});
+
+/** M4 (QA's case D): a refused verdict on a machine with no stored sign-in. */
+test("a refused verdict with no stored sign-in owes no sentence about one", async () => {
+	loginAnswer = "refused";
+	accountAnswer = "ready";
+	// The census row QA's case D carried: the credential was removed, so
+	// `has_credential` and `configured` are both false while the verdict still
+	// names a credential (`report.py:226`: a `None` row returns `dead`).
+	const noRow = { ...RADIENT_ROW, has_credential: false, configured: false };
+	census = [noRow, OPENAI_ROW];
+	const { container } = await renderGrid();
+	const body = text(container);
+	// The label stays -- it is the verdict's own word for one condition (D5) --
+	// and the long form, which names a sign-in stored on this machine, is gone.
+	assert.equal(occurrences(body, "Needs re-authentication"), 1, body);
+	assert.doesNotMatch(container.innerHTML, REFUSED_DETAIL_ATTRIBUTE);
+	assert.equal(
+		providerReadiness(
+			noRow,
+			loginState(
+				"radient",
+				{ credential_id: 1, state: "login_required" },
+				{ accountRead: "ready", unavailable: false },
+			),
+		).detail,
+		undefined,
+	);
+	// The contrast that keeps this from being "drop the long form everywhere":
+	// a row that DOES count a credential still carries it.
+	assert.equal(
+		providerReadiness(
+			RADIENT_ROW,
+			loginState(
+				"radient",
+				{ credential_id: 1, state: "login_required" },
+				{ accountRead: "ready", unavailable: false },
+			),
+		).detail,
+		"Radient no longer accepts the sign-in stored on this machine",
+	);
+});
+
+/**
+ * M3: a sign-in started from the Radient card refreshes the verdict the chip reads.
+ *
+ * The chip's badge is keyed on the verdict query, and `refreshProviders` -- the
+ * callback the card runs the moment a sign-in succeeds -- refreshed only the
+ * provider census. So the user who had just repaired the fault was told it was
+ * still broken: the grid kept reading "Needs re-authentication" until the 60 s
+ * poll or a window focus. Driven the way the reviewer reproduced it (refused /
+ * open the card / sign in / `auth.status` answers `succeeded` / back to
+ * providers), and asserted on the REQUEST COUNT as well as the words, because a
+ * badge that flipped for some other reason would not prove the verdict was re-asked.
+ */
+test("a successful sign-in from the card refreshes the verdict the chip reads", async () => {
+	loginAnswer = "refused";
+	accountAnswer = "ready";
+	authPollStates = ["succeeded"];
+	const { container } = await renderGrid();
+	assert.equal(occurrences(text(container), "Needs re-authentication"), 1);
+	const before = verdictRequests;
+
+	const press = (matcher) => {
+		const button = [...container.querySelectorAll("button")].find((candidate) =>
+			matcher(candidate.textContent ?? ""),
+		);
+		assert.ok(button, `no control matched: ${text(container).slice(0, 300)}`);
+		return act(async () => {
+			button.dispatchEvent(
+				new window.MouseEvent("click", { bubbles: true, cancelable: true }),
+			);
+		});
+	};
+
+	await press((label) => label.startsWith("Radient"));
+	const signIn = [...container.querySelectorAll("button")].find((candidate) =>
+		/sign in to radient/i.test(candidate.textContent ?? ""),
+	);
+	assert.ok(signIn, `the card did not open its panel: ${text(container).slice(0, 300)}`);
+	await act(async () => {
+		signIn.dispatchEvent(
+			new window.MouseEvent("click", { bubbles: true, cancelable: true }),
+		);
+	});
+	// The poll's first tick is immediate, and the bridge flips the verdict to
+	// `ok` when it reports `succeeded` -- which is what the real backend does
+	// having just accepted a fresh credential.
+	const deadline = Date.now() + 5000;
+	while (Date.now() < deadline && verdictRequests <= before) {
+		await flush();
+	}
+	assert.ok(
+		verdictRequests > before,
+		"the verdict was never re-read, so the chip could only change by luck",
+	);
+	await press((label) => /back to providers/i.test(label));
+	const body = text(container);
+	assert.equal(occurrences(body, "Signed in"), 1, body);
+	assert.equal(occurrences(body, "Needs re-authentication"), 0, body);
+});
+
+/* ---- D7/Q-5: the account section's own read, and the loop it was in -------- */
+
+/**
+ * The settings section, mounted with its own sign-in block.
+ *
+ * This is the composition the regression lives in -- the section renders
+ * `RadientAuthButtons`, which renders `ProviderDetail` -- so the case mounts the
+ * section rather than the panel, and the thing it watches is the section's own
+ * readiness rather than either surface's words.
+ */
+async function renderSection() {
+	const queryClient = client();
+	const { container, root } = await mountUntil(
+		createElement(
+			QueryClientProvider,
+			{ client: queryClient },
+			createElement(RadientAccountSection, {}),
+		),
+		(node) => !node.textContent.includes("Loading account"),
+		"the account section to leave its spinner",
+	);
+	return { container, root, queryClient };
+}
+
+/**
+ * D7/Q-5: the section settles on a refused read, and renders what it owes.
+ *
+ * WHAT WENT WRONG, so the assertions read as the defect rather than as taste.
+ * The section early-returns its spinner for `isLoading` -- true again the moment
+ * any observer starts a read -- and the sign-in block it hides contains
+ * `ProviderDetail`, which this PR taught to observe this same read. React Query
+ * re-runs a failed, data-less query when a new observer mounts on it
+ * (`retryOnMount` defaults true), so the read re-commissioned itself every time
+ * the panel remounted: measured on this composition, 14 reads in 14 s with the
+ * section never leaving the spinner, `status: pending`, `fetchStatus: fetching`
+ * -- the shape QA read off the live app (54 reads a boot) and design read off its
+ * own rig (39 in 30 s against 4 on `main`).
+ *
+ * The two half-assertions are the two halves of the finding: the section SETTLES
+ * (and stays settled through a hold window, which is what a one-shot wait would
+ * miss), and the chip and the sign-in control -- both of which live inside the
+ * branch the spinner was replacing -- RENDER.
+ */
+test("the account section settles on a refused read, with its chip and its sign-in control", async () => {
+	loginAnswer = "refused";
+	accountAnswer = "refused";
+	const { container, queryClient } = await renderSection();
+	/*
+	 * The section renders the content for ~500 ms between two spinners, so a wait
+	 * for the sentence alone would pass on the loop as well. What settles a loop
+	 * is the READ COUNT, and what stays still is the frame: hold the case for
+	 * three seconds (about three loop iterations at the measured rate) and assert
+	 * both.
+	 */
+	const settledAt = await (async () => {
+		const started = Date.now();
+		while (Date.now() - started < 5000) {
+			await flush();
+			if (text(container).includes("refused the sign-in this app is holding")) {
+				return Date.now() - started;
+			}
+		}
+		throw new Error(
+			`the section never rendered its refusal sentence: "${text(container)}"`,
+		);
+	})();
+	const readsAtSettle = accountRequests;
+	await new Promise((resolve) => setTimeout(resolve, 3000));
+	await flush();
+	const body = text(container);
+	const readsAfterHold = accountRequests;
+	assert.ok(
+		readsAfterHold <= readsAtSettle + 1,
+		`the section re-read the account ${readsAfterHold - readsAtSettle} times while idle (${readsAtSettle} reads to settle) - it is looping`,
+	);
+	assert.ok(
+		readsAfterHold <= 3,
+		`one boot cost ${readsAfterHold} account reads, which is the re-read loop, not a retry chain`,
+	);
+	// The two things Q-5's second half is about, both inside the branch the
+	// spinner was standing in for.
+	assert.equal(
+		occurrences(body, "Loading your Radient account details"),
+		0,
+		body,
+	);
+	assert.equal(occurrences(body, "Needs re-authentication"), 1, body);
+	assert.match(container.innerHTML, REFUSED_DETAIL_ATTRIBUTE);
+	assert.ok(
+		/sign in/i.test(body),
+		`the section rendered no sign-in control: ${body}`,
+	);
+	// And the read really is the app's own refused one, not an empty cache: the
+	// section's sentence is the class' own sentence (`accountRead === "refused"`).
+	assert.equal(
+		queryClient.getQueryState(radientUserKeys.user())?.status,
+		"error",
+	);
+	assert.ok(settledAt < 5000);
+});
+
+/** The grid with one answer overridden, for a case that needs both halves. */
+async function renderGridWith({ accountAnswer: answer }) {
+	accountAnswer = answer;
+	return renderGrid();
+}

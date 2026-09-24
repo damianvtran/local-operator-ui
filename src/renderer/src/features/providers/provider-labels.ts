@@ -127,11 +127,37 @@ export type ProviderLoginState = "working" | "refused" | "unverified";
  * WORKING login is the `ok` arm above it: a healthy machine answers `ok`, and
  * the design round's `r4` is that state photographed.
  *
+ * AND AN `unknown` THAT NAMES NO CREDENTIAL IS NO VERDICT AT ALL (code round 2,
+ * M2). The backend answers `{credential_id: null, state: "unknown"}` whenever no
+ * tunnel is configured (`tunnels/report.py::local_payload`; `config.load()`
+ * raises with no `config.json`), which is a signed-in, healthy user who has
+ * never made a tunnel -- reproduced by the reviewer on backend `v0.62.18` as
+ * `login: {'credential_id': None, 'state': 'unknown'} configured: False`. Read as
+ * a verdict, that arm told a working sign-in "Needs sign-in" with a tooltip
+ * about a sign-in this app could not confirm, which is the incident inverted:
+ * the misdirection this whole function exists to remove, in the other direction.
+ * A verdict that names no credential is not a claim about one, so it falls
+ * through to the account-read arm below, exactly as an absent field does. The
+ * `unknown` that DOES name a credential keeps `unverified` -- see the arm itself.
+ *
  * A `null`, ABSENT or unreadable verdict with neither of those contradictions
  * keeps the store's own answer, and that is the one case where the chip is still
  * the pre-change claim: it is a runtime below `v0.61.2` whose account read could
  * not be taken either, the PR body states that floor, and the release notes must
  * not imply more than it ships.
+ *
+ * THE FALLBACK ARM IS BOTH ACCOUNT-READ CLASSES A ROW CAN CONTRADICT, NOT ONE
+ * (QA round 2, Q-6). `signed-out` is the class that says no sign-in is stored;
+ * `refused` is the class that says Radient refused the one this app holds. Both
+ * are answers about the same credential the row counts, both come from this
+ * app's own read of the same backend, and leaving `refused` out left the chip
+ * rendering the pre-fix green claim on the one machine whose account read names
+ * the fault -- reachable on `v0.61.0`/`v0.61.1`, which ship the refused
+ * classification without shipping the verdict (measured at both tags), and on any
+ * runtime whose `/v1/auth/status` read fails, where the composer callout goes
+ * silent and the chip is the only surface still speaking. `unavailable` keeps the
+ * store's answer, because a healthy machine's read fails that way and sending it
+ * to a sign-in it does not need is the same misdirection in the other direction.
  *
  * WHAT THE ABSENT-VERDICT ARM COSTS, stated rather than hidden: its second input
  * is a query like any other, so on a runtime below `v0.61.2` the chip is the
@@ -166,14 +192,21 @@ export function loginState(
 	if (verdict?.state === "ok") return "working";
 	/*
 	 * An answered `unknown`: the app asked and declined to confirm. No claim
-	 * either way -- see the docblock.
+	 * either way -- see the docblock. Gated on the credential it names, because
+	 * the backend's other `unknown` (`credential_id: null`, no tunnel configured)
+	 * is not a verdict about any sign-in and belongs on the fallback arm below.
 	 */
-	if (verdict?.state === "unknown") return "unverified";
+	if (verdict?.state === "unknown" && verdict.credential_id !== null) {
+		return "unverified";
+	}
 	/*
 	 * And the runtime that has no verdict to answer with at all: the row may not
 	 * be read as a working sign-in while this app's own account read says no
-	 * sign-in is stored.
+	 * sign-in is stored, or says Radient refused the one it holds.
 	 */
+	if (!account.unavailable && account.accountRead === "refused") {
+		return "refused";
+	}
 	if (!account.unavailable && account.accountRead === "signed-out") {
 		return "unverified";
 	}
@@ -246,9 +279,29 @@ export function providerReadiness(
 	 * filter read, and the remedy IS a sign-in.
 	 */
 	if (signIn === "refused") {
+		/*
+		 * The long form names the state the VERDICT reported, and the sentence it
+		 * carries names a sign-in stored on this machine. So it is owed only when
+		 * the census counts a credential -- the rule the `unverified` branch below
+		 * already applies, and for the same reason (code round 2, M4): QA's case D
+		 * is a `login_required` verdict on a machine whose census says
+		 * `has_credential: false, configured: false` (a removed row), and the
+		 * tooltip there told the reader Radient no longer accepts a sign-in this
+		 * machine does not have. The LABEL stays: it is the verdict's own words for
+		 * one condition (D5), and routing this arm to the never-configured answer
+		 * instead would render two different verdicts -- `login_required` and
+		 * `unknown` -- as the same card, which is the collapse D1 had to pull apart.
+		 */
+		if (provider.has_credential || provider.configured) {
+			return {
+				label: "Needs re-authentication",
+				detail: REFUSED_DETAIL,
+				tone: "attention",
+				group: "Needs sign-in",
+			};
+		}
 		return {
 			label: "Needs re-authentication",
-			detail: REFUSED_DETAIL,
 			tone: "attention",
 			group: "Needs sign-in",
 		};
