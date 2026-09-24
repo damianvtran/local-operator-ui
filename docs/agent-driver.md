@@ -272,7 +272,7 @@ bridge; the verbs are registered by the renderer's install module.
 | `call("navigate", path)` | Navigates the hash router and waits for the route |
 | `call("setTheme", name)` | The settings picker's own action, waiting out the 120ms `transition-colors` it starts so a frame taken after it is the settled palette rather than a blend of the two |
 | `call("press", selector)` | Waits for the element, hit-tests its painted centre, dispatches a pointer sequence, returns what was hit |
-| `call("openCanvasDocument", { path })` | Puts a local file in the canvas, on the pane the app is showing: the read step the Files grid's tile click performs (`probeFiles` for the mtime and size, `READ_ENCODING`/`viewerFor` for whether the viewer reads its own bytes, `readFile` for the text kinds, `canvasDocumentForPath` for the document), then `addFileAndSelect`. It also stages a draft, because a run with no backend cannot open the New chat gate and without a pane identity there is no conversation for the document to belong to |
+| `call("openCanvasDocument", { path })` | Puts a local file in the canvas, on the pane the app is showing: the read step the Files grid's tile click performs (`probeFiles` for the mtime and size, `READ_ENCODING`/`viewerFor` for whether the viewer reads its own bytes, `readFile` for the text kinds, `canvasDocumentForPath` for the document), then `addFileAndSelect`. It also stages a draft, because a run with no backend cannot open the New chat gate and without a pane identity there is no conversation for the document to belong to. **That staging is not enough with no backend, measured 2026-09-24:** the chat route draws its refusal surface when no backend answers, so neither the pane row (`[data-tour-tag="pane-row"]`) nor the chat column mounts and the canvas never does - a scene that measures the chat pane's geometry needs `--backend` (see the `floors` scene below) |
 | `call("queries")` | Every query the app is holding, as the screen's own gate reads it: key, `status`, `fetchStatus`, the derived `isLoading`, the error's own sentence, `dataUpdatedAt`, `failureCount` and the observer count — keys and the error's sentence, never data. The full-page spinner is the same pixels whichever query holds it, so this is the reading that says WHICH one was holding a route |
 | `call("queryFetches", { arm: true })` | Arms the fetch trap: `Query.prototype.fetch` is patched so every fetch the app starts is recorded with the stack of whoever started it, and arming fetches a key of its own through the patched path and reports `validated` only if that fetch lands in the log. A page-side wrapper over `window.api` cannot do this — `window.api` is a `contextBridge` object and ignores property assignment silently, which is how an earlier version of the settings-gate scene printed `0 reads from 0 caller(s)` beside an `armed true` note |
 | `call("queryFetches", { key })` | The recorded fetch call sites, deduplicated by stack, with counts and the span each covered (`key` filters by key substring; the probe's own key is excluded and counted as `probeRecords`) |
@@ -318,6 +318,16 @@ rule:
   six-step wizard is a modal over the window. It asserts both halves of the
   claim: that the chord moves the app to `/chat` and stages a fresh draft, and
   that with no catalogue answering the press changes nothing at all.
+- **`floors`** — §I's pane floors, measured rather than argued: the chat column's
+  480px floor, the canvas docking at `min(560, available - 480)`, and the overlay it
+  falls back to where the row cannot give the pane its own 400px floor. It is run at
+  the widths that straddle both bands (`--window-size 1380x900`, `1024x673`,
+  `960x673`, `800x600`), and it **requires `--backend`**: the chat pane does not mount
+  without one (see `openCanvasDocument` above), so the scene names the gap in a note
+  instead of passing on a reading it could not take. It captures the frame BEFORE it
+  reads the boxes, because the canvas's wrapper carries `transition-[width]` and a
+  reading taken mid-transition describes a layout that was never on screen - measured:
+  chat 942 / canvas 179 at 1380 in one run against the settled 560/560 the frame shows.
 
 - **`canvas-freshness`** — the canvas document kept current with the file on
   disk. The scene writes the file ITSELF, from outside the app, which is the only
@@ -368,6 +378,16 @@ rule:
   "offline": the isolation is the operator's state — profile, config dir, log
   directory, backend URL — and the app is free to reach whatever else it
   reaches.
+
+- **Abandoned scratch trees are reaped at the start of every run.** `--clean` is
+  opt-out, so a tree survives whenever its run does not ask for it - and always when a
+  run is killed or crashes. Measured on the operator's machine, 2026-09-24: **244**
+  `lo-renderer-driver-*` trees in the shared temp directory, 2-4 MB each, ~700 MB, with
+  free space down to ~3 GiB and builds in a neighbouring session failing on it. A run
+  now sweeps trees whose pid is gone **and** which are older than 30 minutes, never
+  touching one a live pid owns and never touching an unparseable name, and prints what
+  it removed. The age is the second guard on purpose: pid numbers are reused, and this
+  fleet runs ~25 sessions at once where two driver runs overlapping is ordinary.
 
 ## What it can prove
 
