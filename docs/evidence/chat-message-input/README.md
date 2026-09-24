@@ -542,19 +542,73 @@ additions:
   `in-flight`) instead of passing a prop, so a story renders the state the app
   would be in rather than one the harness posed.
 
-### Round 3's remediation: the set's palettes, measured
+### Round 3's remediation: the set's palettes, measured - and the count corrected
 
 Round 3 (`### Design review — round 3`, D1c) measured the set against each
-theme's own ground with `sharp` and found 37 frames on an older generation: the
-ten composer-line directories re-shot in seven palettes were still pre-lift in
+theme's own ground with `sharp` and found frames on an older generation: the
+composer-line directories re-shot in seven palettes were still pre-lift in
 `localOperatorLight` (`#F6F1E7` against the shipped `#F2EDE3`) and `sage`, and the
-seventeen `credential-*` directories painted tokyoNight at `#1E1F28` against the
-shipped `#292A35` - a 13-unit difference, the largest in the set. All 37 were
-re-shot in one narrowed run, and the frames that were flagged a second time are
-byte-identical to the fresh capture: the remaining spread in `obsidian`, `monokai`
-and `neon` is four units and belongs to the stories, not to a generation (a
-re-shoot that changes no bytes is the proof, and it is the measurement this
-section records rather than a claim that the set is uniform).
+`credential-*` directories painted tokyoNight at `#1E1F28` against the shipped
+`#292A35` - 13 units, the largest difference in the set. All were re-shot in one
+narrowed run.
+
+**The count in this section's first version was wrong, and round 4 corrected it
+against the delta itself: that commit moved 49 frames, not 37.** Per palette:
+tokyoNight 17, `localOperatorLight` 11, `obsidian` 12, `sage` 3, `dracula` 2,
+`iceberg` 2, `monokai` 2. The 37 enumerated ten composer-line directories x
+{`localOperatorLight`, `sage`} plus seventeen `credential-*` directories x
+{tokyoNight}, which leaves the twelve `obsidian` frames in the `credential-*`
+directories unnamed, reads `sage` as ten directories when it moved in three, and
+cannot cover `dracula`/`iceberg`/`monokai`, which moved in `pending-send` and
+`stop-control-while-streaming`. The same commit message also gave the wrong cause
+for the stop-control family - the prop it named is visually inert in that story,
+seven of its twelve palettes are byte-identical across the delta, and what moved
+in the other five is a colour-level generation difference in the composer's
+control area and the caption band. Round 4's method replaces the whole approach,
+so the correction lives in that section and in the manifest's note; commit
+messages are not rewritten here.
+
+**What that instrument certifies, and what it cannot:** it reads the frame's
+canvas pixel, so it certifies the canvas. In five palettes each of `pending-send`
+and `stop-control-while-streaming` the canvas was already within a unit of the
+reference before the re-shoot and what moved was the caption band and the
+composer's control area - pixels this reading is blind to by construction. So the
+claim this section stands behind is the canvas's, not the whole frame's.
+
+The frames that were flagged a second time are byte-identical to a fresh capture,
+which is how the residue was settled: `obsidian` 22, `monokai` 2, `neon` 3,
+`localOperatorDark` 1, each up to four units by this instrument (an independent
+modal-ring census reads `obsidian` at two, so the magnitude is instrument-
+dependent while the list is not), and they belong to the stories rather than to a
+generation - a re-shoot that changes no bytes is the proof.
+
+### Round 4's remediation: enumerated by content, not by colour
+
+Three rounds of sweeps had all enumerated by ground colour, which cannot see a
+stale caption, and round 4's three streams each caught that class again
+(`### Agent review — round 4` R4-1, `### Design review — round 4` D2d,
+`### QA report — round 4` Q-1) - the compact-rung state still shipping the
+caption this PR replaced, in five palettes whose full-width twins the round-3 pass
+had already fixed. The method changed with it: one FULL-SET fresh capture over
+every directory and every palette of this set (36 x 12 = 432 frames, one
+invocation, `--only=chat-message-input--`), byte-diffed against the committed
+files, and then classified by the difference's own scale rather than by where the
+frame stands in a colour space.
+
+218 of the 432 differed. Fifteen of them are content-bearing - `credential-escaped`
+in ten palettes (the sentence `- Enter is held: clear the box to release your
+words` against the retired `- Enter will expose them`) and `pending-send-small-view`
+in five (an inherited send, against the withdrawn "the echo has landed"), which are
+re-shot here and confirmed at the pixels. The other 203 differ only below the
+threshold that matters: at most 57 units on isolated anti-aliased pixels, or a
+whole-frame shift of at most 27 units, with no repaint anywhere in the frame - the
+rasterization class, left as committed and recorded rather than re-shot, QA's four
+`obsidian` frames included. One content-sized class was examined and deliberately
+left: `credential-pill-cleared`'s twelve frames repaint thousands of pixels, but the
+content is the story's own nondeterminism (the credential token id changes per run,
+and the removal toast is present in some runs and not others), so a fresh capture of
+them would ship frames no second run reproduces. The manifest's round-4 note carries
+the numbers per family.
 
 THE ARM THESE FRAMES MODEL (design round 1, D5): the EXISTING-SESSION arm - one
 composer with a stable `conversationId`, which is the only arm a story can hold
