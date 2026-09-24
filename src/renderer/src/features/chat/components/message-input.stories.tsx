@@ -11,7 +11,7 @@ import {
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
 	type LateDeliveryBox,
-mergeReturnedText,
+	mergeReturnedText,
 	useConversationInputStore,
 } from "@shared/store/conversation-input-store";
 import type { Meta, StoryObj } from "@storybook/react";
