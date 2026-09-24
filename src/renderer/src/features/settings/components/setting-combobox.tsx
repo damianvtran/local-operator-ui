@@ -179,8 +179,14 @@ export const SettingCombobox: FC<SettingComboboxProps> = ({
 		providerNames,
 	]);
 
-	const listing = catalogueListing(catalogue.data, catalogue, (error) =>
-		backendLoadErrorMessage("Could not list models.", error),
+	const listing = catalogueListing(
+		catalogue.data,
+		catalogue,
+		(error) => backendLoadErrorMessage("Could not list models.", error),
+		// This field draws the catalogue's own document and nothing else (`live: false`
+		// always, and no registry fallback), so a note over rows it DID draw is never
+		// a claim about the shipped registry's rows.
+		false,
 	);
 
 	/*

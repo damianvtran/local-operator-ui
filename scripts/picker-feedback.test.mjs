@@ -125,11 +125,11 @@ const { modelPickerMatchKey, matchModelPickerOptions } = await bundleInto(
 `,
 );
 
-const { catalogueListing, failedProviders, PROVIDER_LISTING_FAILED } =
+const { catalogueListing, failedProviders, providerListingNotice } =
 	await bundleInto(
 		"catalogue-listing",
 		`
-	export { catalogueListing, failedProviders, PROVIDER_LISTING_FAILED } from "./src/renderer/src/features/chat/pickers/model-catalogue-listing";
+	export { catalogueListing, failedProviders, providerListingNotice } from "./src/renderer/src/features/chat/pickers/model-catalogue-listing";
 `,
 	);
 
@@ -466,8 +466,8 @@ test("a re-list that moves every row leaves the highlight on the user's row", ()
 	);
 	assert.equal(
 		placed.retargeted,
-		null,
-		"nothing went missing, so nothing is said",
+		undefined,
+		"nothing went missing, so this pass has nothing to say - and `undefined` rather than `null` is the whole of round 2's U2 fix: `null` CLEARS the sentence, and the pass that re-places the highlight on the survivor runs one render after the pass that named it, so clearing there is how a correct rule shipped a message no user ever saw",
 	);
 	assert.equal(placed.steered, true, "and the row is still the user's");
 });
@@ -510,7 +510,25 @@ test("a row that vanishes under the user's highlight is named, not silently repl
 		queryChanged: false,
 		steered: false,
 	});
-	assert.equal(untouched.retargeted, null);
+	assert.equal(
+		untouched.retargeted,
+		undefined,
+		"a row the user never steered is not a retarget, and a landing that moves the component's own placement says nothing either way",
+	);
+
+	/*
+	 * And the third state's OTHER edge: typing is the user's own act and IS the
+	 * case that clears it, because the list they asked for needs no explanation.
+	 */
+	const typedAway = pickerPlacement({
+		options: rows,
+		held: "claude-opus-5.5",
+		active: 2,
+		query: "claude",
+		queryChanged: true,
+		steered: true,
+	});
+	assert.equal(typedAway.retargeted, null);
 });
 
 test("typing is the user's own act, so it re-places without a message", () => {
@@ -581,6 +599,9 @@ test("a partial listing failure keeps the list and only adds a note", () => {
 		},
 		{ isError: false, error: null },
 		String,
+		// The drawn document is the registry's: a partial failure leaves every row
+		// in place, and the picker drew what the live query answered with.
+		false,
 	);
 	assert.equal(
 		partial.loadError,
@@ -606,6 +627,7 @@ test("a partial listing failure keeps the list and only adds a note", () => {
 		{ ...rows, source: "initial", errors: {}, credentials_known: true },
 		{ isError: false, error: null },
 		String,
+		false,
 	);
 	assert.deepEqual(clean, {
 		loadError: null,
@@ -620,6 +642,7 @@ test("a partial listing failure keeps the list and only adds a note", () => {
 			error: new Error("the transport refused it"),
 		},
 		(error) => (error instanceof Error ? error.message : String(error)),
+		true,
 	);
 	assert.match(total.loadError ?? "", /transport refused/);
 	assert.equal(total.notice, null);
@@ -659,22 +682,60 @@ test("a failed read with rows in hand is a note, not a wall of error text", () =
 		},
 		failed,
 		stringify,
+		// This document is the shipped registry's: the live read had no data of its
+		// own, which is the state the clause below is true in (round 2, R2-1).
+		true,
 	);
 	assert.equal(
 		withRows.loadError,
 		null,
 		"rows in hand are what the user reads, whatever the read did",
 	);
-	assert.equal(withRows.notice, PROVIDER_LISTING_FAILED);
+	assert.equal(withRows.notice, providerListingNotice(true));
+	assert.equal(
+		withRows.notice,
+		"The provider listing failed. The rows below are the shipped models; Refresh\u00a0from\u00a0providers tries again.",
+		"and the sentence the user reads is pinned here, `\u00a0` and all",
+	);
 	assert.match(
 		withRows.notice ?? "",
-		/Refresh from providers/,
-		"the note names something the user can DO, not only what went wrong (UX U3)",
+		/Refresh\u00a0from\u00a0providers/,
+		"the quoted phrase is one UNBREAKABLE token, so the control's own label cannot wrap across a line at the note's line length (design D6): the round-1 note broke between `from` and `providers`",
 	);
 	assert.equal(
 		withRows.noticeDetail,
 		"the transport refused it",
 		"the failure's own sentence travels in the note's detail, beside the note",
+	);
+
+	/*
+	 * And the state the first version got WRONG (round 2, code review R2-1): a
+	 * SAME-KEY refetch failure keeps react-query's previous `data`, so the document
+	 * the picker draws is the provider's own listing. Saying "the rows below are
+	 * the shipped models" over provider rows is a claim the user can check by
+	 * looking at the selectors they came to search.
+	 */
+	const liveRows = catalogueListing(
+		{
+			models: [{ provider: "anthropic", model_id: "claude-opus-5-5" }],
+			source: "live",
+			errors: {},
+			credentials_known: true,
+		},
+		failed,
+		stringify,
+		false,
+	);
+	assert.equal(liveRows.notice, providerListingNotice(false));
+	assert.match(
+		liveRows.notice ?? "",
+		/the last listing that answered/,
+		"a failed refetch says what the rows ARE - the previous answer - instead of claiming they are the registry's",
+	);
+	assert.doesNotMatch(
+		liveRows.notice ?? "",
+		/the shipped models/,
+		"and the false clause is gone from the sentence rather than softened",
 	);
 
 	/*
@@ -684,7 +745,7 @@ test("a failed read with rows in hand is a note, not a wall of error text", () =
 	 * list — the note is drawn above the body, so with no rows it would say nothing
 	 * at all.
 	 */
-	const nothing = catalogueListing(undefined, failed, stringify);
+	const nothing = catalogueListing(undefined, failed, stringify, true);
 	assert.equal(nothing.notice, null);
 	assert.match(nothing.loadError ?? "", /transport refused/);
 
@@ -692,6 +753,7 @@ test("a failed read with rows in hand is a note, not a wall of error text", () =
 		{ models: [], source: "initial", errors: {}, credentials_known: true },
 		failed,
 		stringify,
+		true,
 	);
 	assert.equal(emptyRows.notice, null);
 	assert.match(emptyRows.loadError ?? "", /transport refused/);
