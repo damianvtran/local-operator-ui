@@ -804,6 +804,12 @@ const STAMP_BINDING_NOTES = [
 	// read-receipt branch, so it is held to that pair rather than read as history -
 	// the distinction `candidateMacArchRestampNote` above is in the list for.
 	"readReceiptRestampNote",
+	/*
+	 * The eighth: `chatSidebarSectionsRestampNote` states this file's own pair for
+	 * the operator-feedback round on the sidebar's sections and the brand mark, so
+	 * it is held to them rather than read as history.
+	 */
+	"chatSidebarSectionsRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
