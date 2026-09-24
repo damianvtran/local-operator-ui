@@ -800,14 +800,25 @@ const STAMP_BINDING_NOTES = [
 	"usageInFlightConvergenceNote",
 	"macNativeComponentsRestampNote",
 	"telemetrySwitchRestampNote",
+	// The seventh: `readReceiptRestampNote` states this file's own pair for the
+	// read-receipt branch, so it is held to that pair rather than read as history -
+	// the distinction `candidateMacArchRestampNote` above is in the list for.
+	"readReceiptRestampNote",
 	/*
-	 * `readReceiptRestampNote` left this list when `fix/seed-label-gap` re-derived
-	 * both stamps on top of it: its pair is history now, the same way
-	 * `usageInFlightRemediationNote`'s became. `seedLabelGapRestampNote` carried
-	 * the binding that fold re-derived, and it left the list the same way when the
-	 * round-1 remediation below re-derived both stamps on top of IT - its pair is
-	 * written bare in that note now, and `round1LabelGapRestampNote` carries the
-	 * binding this round re-derived.
+	 * The eighth: `modelCatalogueFocusRestampNote` states this file's own pair for
+	 * the picker's catalogue-focus branch, and it exists BECAUSE the list is not
+	 * optional reading - the change it re-stamps for rewrote no frame, so a reader
+	 * is owed the two values it does bind and the reason no still was owed.
+	 */
+	"modelCatalogueFocusRestampNote",
+	/*
+	 * The ninth, this branch's: `round1LabelGapRestampNote` states the pair the
+	 * round-2 fold re-derived, and the re-stamp below re-derives it again — so it is
+	 * held to the shipped pair rather than read as history, which is the same
+	 * distinction `readReceiptRestampNote` above is in the list for. This fold does
+	 * NOT retire the notes it re-derives on top of: the re-stamp rewrites every
+	 * note's backticked claims to the shipped pair, which is what makes the list
+	 * and the notes agree whichever branch last moved.
 	 */
 	"round1LabelGapRestampNote",
 ];
