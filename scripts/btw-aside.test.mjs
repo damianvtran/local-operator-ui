@@ -2406,6 +2406,101 @@ test("the cap cuts between rows even when the answer has a paragraph break", () 
 	// The row immediately ABOVE the edge is complete either way: the defect is the
 	// cut row, not the number of rows shown.
 	assert.equal(cuts(measuredRow), false);
+
+	/*
+	 * AND WITH A STAGED QUOTE (agent review round 6, R6-4). The quote paints its own
+	 * block above the question (U14), so the answer starts lower; a ceiling that did
+	 * not count it put the edge (247.5 - 51) / 22.4 = 8.77 line boxes below the
+	 * answer's top instead of 10, through a row. This half EVALUATES the panel's own
+	 * `asideExchangeCap` body - the shipped expression, with its constants read from
+	 * the file and its tokens resolved at the root size - rather than restating it, so
+	 * a ceiling that drops or mis-sizes the quote term fails here.
+	 */
+	const capSource = panel.match(
+		/const asideExchangeCap = \([^)]*\): string => \{\n([\s\S]*?)\n\};/,
+	);
+	assert.ok(capSource, "the cap is the arrow function this test evaluates");
+	const constant = (name) => {
+		const found = panel.match(new RegExp(`const ${name} = ([^;]+);`));
+		assert.ok(found, `${name} is a constant of the panel`);
+		return JSON.parse(found[1]);
+	};
+	const capExpression = new Function(
+		"isSmallView",
+		"stagedQuotes",
+		"asideAnswerType",
+		"ASIDE_ANSWER_LINE_HEIGHT",
+		"ASIDE_EXCHANGE_LINES",
+		"ASIDE_QUESTION_LINE_HEIGHT",
+		"ASIDE_TURN_GAP_REM",
+		"ASIDE_QUOTE_PAD_Y_REM",
+		"ASIDE_QUOTE_GAP_REM",
+		capSource[1],
+	);
+	/** The `calc()` the panel ships, in px, at the tokens `index.css` defines. */
+	const shippedCap = (isSmallView, stagedQuotes) => {
+		const calc = capExpression(
+			isSmallView,
+			stagedQuotes,
+			(small) => ({
+				fontSize: small ? "var(--text-body-sm)" : "var(--text-body)",
+			}),
+			constant("ASIDE_ANSWER_LINE_HEIGHT"),
+			constant("ASIDE_EXCHANGE_LINES"),
+			constant("ASIDE_QUESTION_LINE_HEIGHT"),
+			constant("ASIDE_TURN_GAP_REM"),
+			constant("ASIDE_QUOTE_PAD_Y_REM"),
+			constant("ASIDE_QUOTE_GAP_REM"),
+		);
+		const arithmetic = calc
+			.replace(/^calc/, "")
+			.replaceAll("var(--text-body-sm)", String(0.8125 * ROOT_PX))
+			.replaceAll("var(--text-body)", String(0.875 * ROOT_PX))
+			.replace(/([\d.]+)rem/g, (_, rem) => String(Number(rem) * ROOT_PX));
+		assert.match(arithmetic, /^[\d.\s+*()]+$/, `the cap resolves: ${calc}`);
+		return new Function(`return ${arithmetic};`)();
+	};
+
+	/*
+	 * The quote term's lengths ARE the quote's classes: `py-0.5` and `mb-1` at the
+	 * tree's `--spacing` step, so a class edit that is not carried to the constants
+	 * (or the reverse) fails here instead of re-opening the cut.
+	 */
+	assert.match(styles, /--spacing: 0\.25rem;/);
+	const quoteClass = panel.match(
+		/className="mb-(\d+(?:\.\d+)?) block border-hairline border-l-2 py-(\d+(?:\.\d+)?) pl-2"/,
+	);
+	assert.ok(quoteClass, "the staged quote's block keeps its classes");
+	assert.equal(
+		`${Number(quoteClass[1]) * 0.25}rem`,
+		constant("ASIDE_QUOTE_GAP_REM"),
+	);
+	assert.equal(
+		`${Number(quoteClass[2]) * 0.25}rem`,
+		constant("ASIDE_QUOTE_PAD_Y_REM"),
+	);
+	assert.match(
+		panel,
+		/maxHeight: asideExchangeCap\(isSmallView, newestStagedQuotes\)/,
+	);
+
+	// The quote block QA's frame measured: a 23.5px rule plus the 4px under it.
+	const quoteBlock = questionLineBox + 2 * 0.125 * ROOT_PX + 0.25 * ROOT_PX;
+	assert.equal(near(quoteBlock, 27.5), true, "the staged quote's block");
+	// D10 and D12's plain case is unchanged: no quote, the same 247.5 edge.
+	assert.equal(near(shippedCap(false, 0), cap), true, "no quote, same cap");
+	for (const isSmallView of [false, true]) {
+		const lineBox = (isSmallView ? 0.8125 : 0.875) * ROOT_PX * 1.6;
+		for (const quotes of [0, 1, 2]) {
+			const answerTop = quotes * quoteBlock + contentTop;
+			const rows = (shippedCap(isSmallView, quotes) - answerTop) / lineBox;
+			assert.equal(
+				near(rows, 10),
+				true,
+				`${quotes} quote(s) at ${isSmallView ? "narrow" : "wide"}: the edge is ${rows.toFixed(2)} line boxes below the answer's top, not 10`,
+			);
+		}
+	}
 });
 
 /*

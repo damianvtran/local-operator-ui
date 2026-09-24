@@ -100,6 +100,34 @@ const ASIDE_EXCHANGE_LINES = 10;
 const ASIDE_QUESTION_LINE_HEIGHT = 1.5;
 const ASIDE_TURN_GAP_REM = "0.25rem";
 
+/**
+ * A STAGED QUOTE's block above the question — the ceiling's third term (agent review
+ * round 6, R6-4).
+ *
+ * WHY IT IS COUNTED. A question asked with a staged quote paints the quote as its own
+ * block (`AsideQuestion`, U14) ABOVE the question's line, so the answer starts that
+ * much lower while a ceiling that budgeted only the question line and the gap stayed
+ * where it was: with one quote the edge sat (247.5 - 51) / 22.4 = 8.77 of the answer's
+ * line boxes below its top rather than 10.0, and a long answer's last visible row was
+ * a row of letter tops - D1's symptom, reached through a door D1's arithmetic did not
+ * count. QA's frame of a rendered quote measures the block's rule at 23.5px, and the
+ * `mb-1` under it makes the 27.5px these terms sum to at both window sizes.
+ *
+ * THE TERMS ARE THE QUOTE'S OWN CLASSES, restated as lengths: the quote is painted
+ * inside the question's `text-body-sm` paragraph, so its one line is the question's
+ * own line box (`var(--text-body-sm)` at `ASIDE_QUESTION_LINE_HEIGHT`); `py-0.5` is
+ * the padding on each side of it and `mb-1` the margin under it. The class string is
+ * a Tailwind literal and cannot be built from these constants, so the two are held
+ * together by `btw-aside.test.mjs` instead: moving either without the other fails the
+ * test that evaluates this cap rather than silently re-opening the cut.
+ *
+ * One block per quote, and each is ONE line: a quote or question long enough to wrap
+ * adds line boxes this ceiling does not count, which is the exchange outgrowing its
+ * ceiling rather than a fixed offset (round 6 measured those cuts at 0.4 to 3.3px).
+ */
+const ASIDE_QUOTE_PAD_Y_REM = "0.125rem";
+const ASIDE_QUOTE_GAP_REM = "0.25rem";
+
 /** The answer's size and leading, from the step it is painted at. */
 const asideAnswerType = (
 	isSmallView: boolean,
@@ -163,10 +191,19 @@ const ASIDE_ANSWER_ROW_GRID = "lo-markdown--row-grid";
  * correct for the state D1 is about (one long answer under its question); a longer
  * exchange exceeds the ceiling many times over and is scrolled deliberately, which
  * is what the region is for.
+ *
+ * `stagedQuotes` is the NEWEST turn's quote count (R6-4, `ASIDE_QUOTE_PAD_Y_REM`),
+ * because the newest turn is the one D11 moves to the region's top, so its question
+ * block is the one above the answer the edge is measured from. With no quote the
+ * third term is zero and the ceiling is the one D10 and D12 measured.
  */
-const asideExchangeCap = (isSmallView: boolean): string => {
+const asideExchangeCap = (
+	isSmallView: boolean,
+	stagedQuotes: number,
+): string => {
 	const answer = asideAnswerType(isSmallView);
-	return `calc(${answer.fontSize} * ${ASIDE_ANSWER_LINE_HEIGHT} * ${ASIDE_EXCHANGE_LINES} + var(--text-body-sm) * ${ASIDE_QUESTION_LINE_HEIGHT} + ${ASIDE_TURN_GAP_REM})`;
+	const quoteBlock = `var(--text-body-sm) * ${ASIDE_QUESTION_LINE_HEIGHT} + ${ASIDE_QUOTE_PAD_Y_REM} * 2 + ${ASIDE_QUOTE_GAP_REM}`;
+	return `calc(${answer.fontSize} * ${ASIDE_ANSWER_LINE_HEIGHT} * ${ASIDE_EXCHANGE_LINES} + var(--text-body-sm) * ${ASIDE_QUESTION_LINE_HEIGHT} + ${ASIDE_TURN_GAP_REM} + ${stagedQuotes} * (${quoteBlock}))`;
 };
 
 /**
@@ -313,6 +350,17 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 	 */
 	const newestTurnGrowth = asideScrollTrigger(
 		lastTurnId ? streams[lastTurnId] : undefined,
+	);
+	/*
+	 * The newest question's staged quotes, which the exchange's ceiling counts (R6-4,
+	 * `asideExchangeCap`). Read by `parseReplies`, the same reader `AsideQuestion`
+	 * paints them with, so the ceiling cannot count a different number of blocks than
+	 * the panel draws.
+	 */
+	const newestQuestion = attachment?.turns.at(-1)?.question ?? "";
+	const newestStagedQuotes = useMemo(
+		() => parseReplies(newestQuestion).replies.length,
+		[newestQuestion],
 	);
 	/*
 	 * THE QUESTION MOVES TO THE REGION'S TOP, AND THE MOVE SURVIVES THE ANSWER ARRIVING
@@ -534,7 +582,9 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 				tabIndex={0}
 				aria-label="The aside exchange"
 				className="flex flex-col gap-3 overflow-y-auto"
-				style={{ maxHeight: asideExchangeCap(isSmallView) }}
+				style={{
+					maxHeight: asideExchangeCap(isSmallView, newestStagedQuotes),
+				}}
 			>
 				{attachment.turns.length === 0 ? (
 					<p className="text-body-sm text-ink-muted">
