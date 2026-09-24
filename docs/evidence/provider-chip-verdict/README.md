@@ -202,8 +202,16 @@ Every frame's hash in one table, so the next round can tell which moved:
 ## The heads this set sits on
 
 `before/` is `origin/main` = `d1402bbaa` (0.30.23), built in its own worktree. The
-round-2 head was folded onto that main with a merge commit (`ca009d677`) before
+round-2 head was folded onto that main with a merge commit (`ca009d677`) BEFORE
 these frames were taken, so every other directory is the same tree the round's
-fixes ship in. The fold changed nothing these frames render: the merge's only
-conflict was `docs/evidence/manifest.json`, and no `src/` or `scripts/` file
-conflicted.
+fixes ship in. The branch was folded a second time afterwards (`babf80e3c`, onto
+`origin/main` = `65c325afe`: 0.30.24 plus #448's sidebar agent-opened marker),
+because a head that is DIRTY against a moved main gets no CI at all here.
+
+NEITHER FOLD CHANGES WHAT THESE FRAMES RENDER, which is the check that matters
+once a frame's `before/` base and its head are a merge apart. Both folds' only
+conflict was `docs/evidence/manifest.json`; no `src/` or `scripts/` file
+conflicted in either, and the second fold's window moves `chat-search.ts`,
+`chat-sidebar.tsx`, `palette-search.ts`, `canonical-sessions-store.ts` and
+`desktop-session-contract.ts` -- none of them the providers feature, the Radient
+hooks or the settings sections photographed here.
