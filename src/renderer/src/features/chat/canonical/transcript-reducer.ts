@@ -3312,14 +3312,15 @@ export function applyLiveSeed(
  * the whole journal on every open (round 2, QA Q1 / reviewer R1: 4 requests and
  * 409 rows where `origin/main` reads one page).
  *
- * MEASURED, NOT ASSUMED. Over 109,732 real assistant/result pairs in
- * `~/.local-operator/sessions` (the assistant row's `ts` minus the call's own
- * `started_at_epoch`), the assistant row is never more than 1.37 s EARLIER than
- * the start it belongs to; the median is 0.69 s LATER, because a row is written
- * as its round is recorded rather than when the tool begins. `RECONCILE_START_SLACK_MS`
- * is five seconds against that 1.37 s, and being wrong costs one page (the row
- * falls back to its stand-in, exactly as it does on `origin/main`) rather than a
- * wrong label.
+ * MEASURED, NOT ASSUMED. Over 418,566 real assistant/result pairs across 3,000
+ * journals in `~/.local-operator/sessions` (the assistant row's `ts` minus the
+ * call's own start, `ts - provider_payload.duration_s`), the assistant row is
+ * never more than 1.369 s EARLIER than the start it belongs to and only ONE pair
+ * in the whole set is below -1 s; the median is 0.541 s LATER, because a row is
+ * written as its round is recorded rather than when the tool begins.
+ * `RECONCILE_START_SLACK_MS` is five seconds against that 1.369 s, and being
+ * wrong costs one page (the row falls back to its stand-in, exactly as it does on
+ * `origin/main`) rather than a wrong label.
  *
  * The unit conversion is the shared `epochMsFromSeconds` — the same helper the
  * frame's own `started_at_epoch` reader uses — so the two sides cannot disagree
