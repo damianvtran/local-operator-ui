@@ -586,6 +586,102 @@ test("the adapter wires the decisions the tests above pin", () => {
 	assert.match(picker, /pickedCurrent/);
 });
 
+test("the picker lists the providers by itself, on the backend's cadence", () => {
+	/*
+	 * The operator's report: after signing in to Anthropic, a model their own
+	 * `/v1/models` answers with — `Opus 5.5`, where the shipped registry stops at
+	 * `claude-opus-5` — was not in the picker, and appeared only if the user
+	 * pressed "Refresh from providers" on the chance that it would help.
+	 *
+	 * WIRING, pinned as source text, which is this file's discipline for the parts
+	 * a bundle cannot reach: `destination-pickers.tsx` imports MUI, so the module
+	 * is read rather than executed. What is asserted here is the four decisions the
+	 * behaviour is made of, each of which can be reverted on its own:
+	 *
+	 *   1. the promotion to the live listing is AUTOMATIC (a mount effect), and it
+	 *      starts from the registry's own document - `useState(false)` then a
+	 *      promotion, never `useState(true)`, because the 2.33 s live re-list has
+	 *      to run behind rows rather than in front of a spinner;
+	 *   2. the query key is the SHARED prefix (`desktopKeys.catalogue`) plus the
+	 *      flag, which is what makes one invalidation at a credential change drop
+	 *      both documents;
+	 *   3. the cadence is the backend's own number, not a second one;
+	 *   4. the "Refreshing…" label stays gated on `live`, so the registry paint is
+	 *      not labelled as a listing the user asked for (design D8).
+	 */
+	const picker = source("features/chat/pickers/destination-pickers.tsx");
+
+	assert.match(
+		picker,
+		/const \[live, setLive\] = useState\(false\)/,
+		"the picker still OPENS on the registry document: promoting the query's initial state to `live` would put the spinner where the rows belong",
+	);
+	assert.match(
+		picker,
+		/const catalogueSettled = catalogue\.isFetched;[\s\S]{0,120}?useEffect\(\(\) => \{\s*if \(catalogueSettled\) setLive\(true\);\s*\}, \[catalogueSettled\]\)/,
+		"the live listing starts on its own, and it starts AFTER the registry read settles - promoting on mount replaced the painted rows with a spinner, because `keepPreviousData` can only carry data that already exists",
+	);
+	assert.match(
+		picker,
+		/queryKey: \[\.\.\.desktopKeys\.catalogue, live\]/,
+		"one key prefix, so `invalidateQueries({queryKey: desktopKeys.catalogue})` drops the registry document and the live one together",
+	);
+	assert.match(
+		picker,
+		/export const PICKER_CADENCE_MS = 15 \* 60_000;/,
+		"the cadence is the backend's `PICKER_TTL_S`, written once",
+	);
+	assert.match(
+		picker,
+		/refetchInterval: live \? PICKER_CADENCE_MS : false/,
+		"only the live key polls: the registry answer cannot change while the dialog is open",
+	);
+	assert.match(
+		picker,
+		// The gate, not the word: a live fetch is the only one that may claim to be
+		// refreshing, and it stays so now that the fetch is automatic.
+		/const refreshing = live && catalogue\.isFetching;/,
+		"only a live fetch may say 'Refreshing…' (design D8)",
+	);
+});
+
+test("a credential change drops the catalogue the renderer is holding", () => {
+	/*
+	 * The other half of the report, and the half the BACKEND cannot do: the route
+	 * already drops its cached listing documents when a credential changes
+	 * (`local_operator/providers/controller._invalidate_cached_listing`, and the
+	 * shell `login` path beside it), so a re-ask after a sign-in is answered
+	 * freshly. What was missing was the renderer ever asking again - its copy of
+	 * the catalogue sat in the react-query store with a 60 s stale time and a 24h
+	 * document behind it, and nothing about the sign-in reached it.
+	 *
+	 * Both points are asserted, and the KEY is asserted through the shared binding
+	 * rather than as a literal: an invalidation that spells the key itself still
+	 * passes a literal check while missing the picker's entry, which is the silent
+	 * failure this pair exists to catch.
+	 */
+	const hooks = source("shared/api/local-operator/desktop-hooks.ts");
+	assert.match(
+		hooks,
+		/catalogue: \["desktop", "models"\] as const/,
+		"the catalogue key is registered once, as the prefix both picker keys sit under",
+	);
+
+	const detail = source("features/providers/provider-detail.tsx");
+	assert.match(
+		detail,
+		/invalidateQueries\(\{ queryKey: desktopKeys\.providers \}\);[\s\S]{0,1200}?invalidateQueries\(\{ queryKey: desktopKeys\.catalogue \}\)/,
+		"a successful sign-in drops the catalogue as well as the provider list",
+	);
+
+	const picker = source("features/chat/pickers/destination-pickers.tsx");
+	assert.match(
+		picker,
+		/invalidateQueries\(\{ queryKey: desktopKeys\.accounts \}\);[\s\S]{0,1200}?invalidateQueries\(\{ queryKey: desktopKeys\.catalogue \}\)/,
+		"removing an account drops the catalogue too, for the same reason",
+	);
+});
+
 test("one binding answers which model the session is on", () => {
 	/*
 	 * UX U7. The ✓ and the header sentence read two different fields, so the

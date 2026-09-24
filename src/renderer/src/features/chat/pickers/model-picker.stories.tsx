@@ -42,6 +42,10 @@
  *   - `Result` — the command answered; the strip is up and the indicator moved.
  *   - `RefreshPending` — `Refresh from providers` clicked: the button says
  *     `Refreshing…` and the rows it already had stay painted.
+ *   - `RegistryOnlyOpus` / `ProviderListingOpus` — the same state twice: open,
+ *     `opus` typed, one row set from the shipped registry alone and one with the
+ *     row the PROVIDER lists that the registry does not hold. The pair is the
+ *     operator's report, and the second half reaches it with no click.
  *   - `PersistChecked` — the checkbox that changes what the pick DOES, with the
  *     label that states the consequence.
  *   - `Empty` / `PartialError` — a query that matches nothing, and a catalogue
@@ -168,21 +172,37 @@ const installBridge = (
 					request: (r: BridgeRequest) => Promise<DesktopResponse | undefined>;
 				};
 			};
-			__pickerCatalogueCalls?: { total: number };
+			__pickerCatalogueCalls?: { total: number; live: number };
 			__pickerSettingsWrites?: { key: string; value: unknown }[];
 		};
 		const api = page.api ?? {};
 		page.api = api;
+		/*
+		 * Reset here, at install time, so a frame's count is ITS OWN.
+		 *
+		 * The field lives on `window`, which Storybook does not re-create between
+		 * stories, so a counter that was only ever incremented accumulated every
+		 * story's reads into the next one's number - and the numbers this file now
+		 * quotes ("the picker asked twice, with no click") have to be about the
+		 * frame they are printed under.
+		 */
+		page.__pickerCatalogueCalls = { total: 0, live: 0 };
 		const frameBridge = next;
 		api.desktop = {
 			request: async (request: BridgeRequest) => {
 				// Counted so a frame can state HOW MANY times the catalogue was asked
 				// for: react-query refetches on window focus by default, and a
 				// refetch re-derives the option list — which is worth knowing when a
-				// captured row position does not survive the wait.
-				const seen = page.__pickerCatalogueCalls ?? { total: 0 };
+				// captured row position does not survive the wait. The `live` half is
+				// counted separately because the picker now starts the provider
+				// listing BY ITSELF, so "how many catalogue reads happened with no
+				// click" is a reading a frame has to be able to back with a number.
+				const seen = page.__pickerCatalogueCalls ?? { total: 0, live: 0 };
 				page.__pickerCatalogueCalls = seen;
-				if (request.op === "models.catalogue") seen.total += 1;
+				if (request.op === "models.catalogue") {
+					seen.total += 1;
+					if (request.live) seen.live += 1;
+				}
 				if (request.op === "settings.edit") {
 					const writes = page.__pickerSettingsWrites ?? [];
 					page.__pickerSettingsWrites = writes;
@@ -406,6 +426,27 @@ const catalogue = (
 });
 
 /**
+ * The operator's report, as the difference between two listings.
+ *
+ * One question — *which Opus models are there?* — has to be answerable from two
+ * row sets, and the pair below is that difference and nothing else. The shipped
+ * registry stops at `claude-opus-5` (it holds what the last lop build shipped),
+ * while Anthropic's own listing also carries `Claude Opus 5.5`; the report is
+ * that the second set existed and the picker could not reach it without a click.
+ *
+ * The two rows removed from `REGISTRY_ROWS` are the only difference, so a frame
+ * showing the extra row is evidence about the LISTING rather than about a
+ * longer fixture.
+ */
+const REGISTRY_ROWS = CATALOGUE.filter(
+	(single) => !/opus-5[.-]5/.test(single.model_id),
+);
+const registryCatalogue = (): DesktopModelCatalogue =>
+	catalogue({ models: REGISTRY_ROWS });
+const liveCatalogue = (): DesktopModelCatalogue =>
+	catalogue({ models: CATALOGUE, source: "live" });
+
+/**
  * The owner's `/model` receipt, worded as the operator's screenshot shows it.
  * `tone` on the picker is derived from `style`/`kind` by `toResult`.
  */
@@ -467,7 +508,18 @@ const Frame: FC<FrameProps> = ({
 	return isEffort ? <EffortPicker {...ctx} /> : <ModelPicker {...ctx} />;
 };
 
-/** A bridge that answers the catalogue and refuses everything else. */
+/**
+ * A bridge that answers the catalogue and refuses everything else.
+ *
+ * The LIVE half answers with `data` by default, and that default is the change
+ * the picker made: it now starts the provider listing by itself on open, so a
+ * bridge that HELD the live answer pending would leave every story below
+ * photographing a listing that is still in flight and a button reading
+ * `Refreshing…`. A story that wants that state asks for it explicitly
+ * (`RegistryOnlyOpus`, `RefreshPending`), which is also what keeps the two
+ * frames of the opus pair a difference between listings rather than between
+ * timings.
+ */
 const catalogueOnly =
 	(data: DesktopModelCatalogue, onLive?: () => Promise<DesktopResponse>) =>
 	(request: BridgeRequest): Promise<DesktopResponse | undefined> => {
@@ -475,14 +527,50 @@ const catalogueOnly =
 		if (request.op !== "models.catalogue") {
 			return Promise.resolve(refuse(400, `unexpected ${request.op}`));
 		}
-		if (request.live) return onLive ? onLive() : pending();
+		if (request.live) return onLive ? onLive() : Promise.resolve(ok(data));
 		return Promise.resolve(ok(data));
 	};
+
+/**
+ * A live answer that settles ONCE and is then held pending.
+ *
+ * The picker's own listing now runs on mount, so a story whose subject is a
+ * MANUAL refresh in flight has to let that first read finish: the automatic
+ * call answers, the one the button started never does. Without this the two are
+ * the same frame and the story photographs the automatic listing under a
+ * caption about the button.
+ */
+const liveOnce = (data: DesktopModelCatalogue) => {
+	let calls = 0;
+	return () =>
+		++calls === 1 ? Promise.resolve(ok(data)) : pending<DesktopResponse>();
+};
 
 /** Type into the search box the way a user does (the input holds focus). */
 const typeQuery = async (text: string) => {
 	await screen.findAllByRole("option");
 	const input = screen.getByRole("combobox");
+	await userEvent.click(input);
+	await userEvent.keyboard(text);
+};
+
+/**
+ * A wait long enough to survive the machine these two stories are captured on.
+ *
+ * The default is one second, which is a correct budget for a play a developer
+ * runs on an idle laptop and is NOT one for `scripts/capture-evidence.mjs`,
+ * which drives this file over CDP on a host running a fleet: the opus pair's
+ * first capture died on its second theme with `Unable to find role="option"`
+ * because the story had not finished preparing inside a second. The frames are
+ * the evidence, so a wait that only fits an idle machine is a flake in the
+ * evidence rather than a finding about the picker. The assertions themselves are
+ * unchanged - only how long they are willing to wait for the state they claim.
+ */
+const SLOW = { timeout: 30_000 };
+
+/** `typeQuery` with that budget, for the two frames whose waits are the point. */
+const typeQuerySlowly = async (text: string) => {
+	const input = await screen.findByRole("combobox", undefined, SLOW);
 	await userEvent.click(input);
 	await userEvent.keyboard(text);
 };
@@ -501,6 +589,22 @@ const typeQuery = async (text: string) => {
  * looks like evidence and is not.
  */
 const rowFor = (name: RegExp) => screen.findByRole("option", { name });
+
+/**
+ * The catalogue reads this frame has seen, and how many of them asked the
+ * PROVIDERS (`live: true`).
+ *
+ * The pair is the reading a frame about the automatic listing has to be able to
+ * state: `live` above zero with no click anywhere in the play is what "it lists
+ * the providers without being asked" means as a number, and `total` is how many
+ * reads paid for it.
+ */
+const catalogueCalls = (): { total: number; live: number } => {
+	const page = window as unknown as {
+		__pickerCatalogueCalls?: { total: number; live: number };
+	};
+	return page.__pickerCatalogueCalls ?? { total: 0, live: 0 };
+};
 
 /** The option the list currently marks active, or null when none does. */
 const activeLabel = (): string | null => {
@@ -892,8 +996,19 @@ export const Result: Story = {
  * catalogue disappeared".
  */
 export const RefreshPending: Story = {
-	render: () => <Frame bridge={catalogueOnly(catalogue(), () => pending())} />,
+	render: () => (
+		<Frame bridge={catalogueOnly(catalogue(), liveOnce(catalogue()))} />
+	),
 	play: async () => {
+		/*
+		 * The picker starts its own provider listing on mount, so the button the
+		 * user presses is the SECOND live read, and the first has to settle before
+		 * there is a button to press at all. `liveOnce` is that split: the
+		 * automatic read answers, the clicked one is held pending.
+		 */
+		await waitFor(() =>
+			expect(screen.getAllByRole("option").length).toBeGreaterThan(0),
+		);
 		await userEvent.click(
 			await screen.findByRole("button", { name: "Refresh from providers" }),
 		);
@@ -909,6 +1024,97 @@ export const RefreshPending: Story = {
 		await waitFor(() =>
 			expect(screen.getAllByRole("option").length).toBeGreaterThan(0),
 		);
+		expect(catalogueCalls().live).toBe(2);
+	},
+};
+
+/**
+ * The registry's own answer to `opus`, with the provider listing STILL OUT.
+ *
+ * This is the `before` half of the pair below and the state the operator's
+ * report was photographed in: the shipped registry stops at `claude-opus-5`, so
+ * one row answers the query, and the model their provider publishes is simply
+ * not there. The play asserts the ABSENCE — which is the only half of a before
+ * frame that can be asserted — and it is written to hold on both trees, so the
+ * frame is the same state before and after the change: on the released build
+ * nothing has asked the providers (there was no automatic listing), and on this
+ * branch the listing is out and has not answered yet.
+ */
+export const RegistryOnlyOpus: Story = {
+	render: () => (
+		<Frame bridge={catalogueOnly(registryCatalogue(), () => pending())} />
+	),
+	play: async () => {
+		await typeQuerySlowly("opus");
+		await waitFor(
+			() => expect(screen.getAllByRole("option").length).toBe(1),
+			SLOW,
+		);
+		/*
+		 * The assertion is the ABSENCE, which is the only half of a before frame that
+		 * can be asserted, plus the one row that is there. It is read off the row's
+		 * text rather than off its accessible name: the name carries the price and
+		 * window detail beside the label, so an anchored `/Claude Opus 5$/` would
+		 * fail on a row that is present.
+		 */
+		const rows = screen
+			.getAllByRole("option")
+			.map((option) => option.textContent ?? "");
+		expect(rows).toHaveLength(1);
+		expect(rows[0]).toContain("Claude Opus 5");
+		expect(screen.queryByRole("option", { name: /Opus 5\.5/ })).toBeNull();
+	},
+};
+
+/**
+ * The same query, the same keystrokes, and the provider's listing arrives on its
+ * own — the `after` half of the pair.
+ *
+ * Nothing is clicked. The play types `opus` exactly as the before half does and
+ * then waits for a row that is in Anthropic's listing and NOT in the registry
+ * (`Claude Opus 5.5`), so the frame proves the automatic listing rather than the
+ * click: `catalogueCalls().live` is the request count that paid for it, and the
+ * play asserts it reached two reads without a click being dispatched anywhere.
+ * The second read is the live one because the picker paints the registry first
+ * and promotes itself on mount — the same stale-then-update the TUI picker does.
+ */
+export const ProviderListingOpus: Story = {
+	render: () => (
+		<Frame
+			bridge={catalogueOnly(registryCatalogue(), () =>
+				Promise.resolve(ok(liveCatalogue())),
+			)}
+		/>
+	),
+	play: async () => {
+		await typeQuerySlowly("opus");
+		/*
+		 * The arrival itself: a row that is in Anthropic's listing and NOT in the
+		 * registry, with nothing clicked. The ORDER of the two paints - registry
+		 * rows first, live rows replacing them - is not asserted here, because the
+		 * stub answers the live read immediately and the in-between state lasts a
+		 * microtask; it is asserted by the sibling frame, `after-registry-only-opus`,
+		 * where the live answer is withheld and the frame is the registry paint with
+		 * the listing out.
+		 */
+		await waitFor(
+			() =>
+				expect(
+					screen.getByRole("option", { name: /Claude Opus 5\.5/ }),
+				).toBeTruthy(),
+			SLOW,
+		);
+		await waitFor(
+			() => expect(screen.getAllByRole("option").length).toBe(3),
+			SLOW,
+		);
+		/*
+		 * Stated as a floor rather than an equality on purpose: the number this
+		 * frame's caption quotes is measured at capture time, and a react-query
+		 * window-focus refetch in a browser the harness does not own would make an
+		 * equality an assertion about Storybook rather than about the picker.
+		 */
+		expect(catalogueCalls()).toEqual({ total: 2, live: 1 });
 	},
 };
 

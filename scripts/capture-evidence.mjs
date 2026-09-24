@@ -2641,6 +2641,44 @@ export const STORIES = [
 	["chat-model-picker--empty", 900, 560],
 	["chat-model-picker--partial-error", 900, 560],
 	["chat-model-picker--narrow", 560, 820],
+	/*
+	   THE OPUS PAIR, and why it is three entries rather than two.
+
+	   The operator's report is a difference between two LISTINGS under one
+	   state of the dialog - open, `opus` typed - and the state is the same
+	   before and after the change, so the pair has to be shot from two TREES:
+	   `before-` is `origin/main`'s own picker (no automatic listing at all),
+	   and the two `after-` frames are this branch's. `after-registry-only-opus`
+	   is the in-flight half - the rows the dialog opens on, with the automatic
+	   listing out - and `after-provider-listing-opus` is the settled one, with
+	   the row the provider lists and the registry does not (`Claude Opus 5.5`, 
+	   absent from a registry that stops at `claude-opus-5`). All three are 620
+	   tall: the row sets are one to three rows, and a 760 frame of a one-row
+	   list is mostly ground, which is what `check-evidence`'s uniformity ceiling
+	   refuses (the same reason `refresh-pending` and `partial-error` are short).
+
+	   `dir` rather than the story leaf, because ONE story serves two of the
+	   three (the registry-only state before and after the change is one story
+	   photographed twice), and `--dirs=` is what lets each be captured on its
+	   own tree. */
+	[
+		"chat-model-picker--registry-only-opus",
+		900,
+		620,
+		{ dir: "before-registry-only-opus" },
+	],
+	[
+		"chat-model-picker--registry-only-opus",
+		900,
+		620,
+		{ dir: "after-registry-only-opus" },
+	],
+	[
+		"chat-model-picker--provider-listing-opus",
+		900,
+		620,
+		{ dir: "after-provider-listing-opus" },
+	],
 	/* The explicit current-model machine-default action and its refused write. */
 	["chat-model-picker--set-current-as-default", 900, 820],
 	["chat-model-picker--set-current-as-default-refused", 900, 820],

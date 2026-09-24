@@ -36,6 +36,7 @@ import {
 } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
+	desktopKeys,
 	useDesktopCapabilities,
 	useDesktopProviders,
 } from "@shared/api/local-operator/desktop-hooks";
@@ -121,9 +122,9 @@ export const SettingCombobox: FC<SettingComboboxProps> = ({
 	 * session that has already opened the picker and the settings page share one
 	 * cache entry instead of fetching the catalogue twice. `live: false` always:
 	 * a live re-list is a measured 2.33 s, and this field is a boot preference
-	 * rather than a listing. The key is spelled here rather than added to
-	 * `desktopKeys`, because a second spelling of one key is the defect class
-	 * this repository has already paid for.
+	 * rather than a listing. The prefix is `desktopKeys.catalogue` — the same
+	 * binding the picker builds its two keys from — and only the trailing flag is
+	 * written here, because a `live` flag is not a key this reader owns.
 	 */
 	const modelsEnabled =
 		kind !== "provider" &&
@@ -135,7 +136,7 @@ export const SettingCombobox: FC<SettingComboboxProps> = ({
 	 */
 	const [pickedName, setPickedName] = useState<string | undefined>(undefined);
 	const catalogue = useQuery({
-		queryKey: ["desktop", "models", false],
+		queryKey: [...desktopKeys.catalogue, false],
 		queryFn: () =>
 			desktopResult<DesktopModelCatalogue>({
 				op: "models.catalogue",
