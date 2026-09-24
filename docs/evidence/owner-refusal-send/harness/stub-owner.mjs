@@ -157,6 +157,18 @@ const ARMS = {
 		status: 200,
 		code: "held 21s, then admitted",
 	},
+	/*
+	 * AND THE PRESS INSIDE THE FLIGHT (UX round 3, U6): the same hold and admission
+	 * as `timeout-admitted`, because the arm is about what the COMPOSER does with a
+	 * press that arrives while that hold is running - the press must be answered on
+	 * screen and must not become a second request.
+	 */
+	"press-during-flight": {
+		refusals: 0,
+		holdMs: 21_000,
+		status: 200,
+		code: "held 21s, then admitted",
+	},
 	"late-same-path": {
 		refusals: 0,
 		holdMs: 21_000,
@@ -202,7 +214,7 @@ const streams = new Set();
  * is exactly what the app reads as proof the message landed.
  */
 const publishAdmitted = (message) => {
-	let seq = 1;
+	const seq = 1;
 	const frame = {
 		session_id: "abc123def456",
 		epoch: "owner-refusal-rig",
@@ -313,20 +325,20 @@ createServer(async (req, res) => {
 				JSON.stringify(
 					CODED.has(ARM)
 						? {
-							detail: {
-								code: arm.code,
-								message: arm.sentence,
-								...(arm.retryAfterMs
-									? {
-											// The captured body sets this on the busy arm only,
-											// and it means "the same request may be resent" - it
-											// is NOT a statement that anything was admitted.
-											retryable: true,
-											retry_after_ms: arm.retryAfterMs,
-										}
-									: {}),
-							},
-						}
+								detail: {
+									code: arm.code,
+									message: arm.sentence,
+									...(arm.retryAfterMs
+										? {
+												// The captured body sets this on the busy arm only,
+												// and it means "the same request may be resent" - it
+												// is NOT a statement that anything was admitted.
+												retryable: true,
+												retry_after_ms: arm.retryAfterMs,
+											}
+										: {}),
+								},
+							}
 						: { detail: arm.sentence },
 				),
 			);
