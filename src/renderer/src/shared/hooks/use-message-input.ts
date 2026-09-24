@@ -334,13 +334,25 @@ export const restoreStagedPayload = (
  * the one this file's own docs keep repeating: a fact of a SEND must not live in
  * the state of one of its readers.
  */
+/*
+ * THE BOX'S ONE SENTENCE PER STATE (chat redesign §G1/§G3).
+ *
+ * Two of these are new copy and one is deleted, and the deletion is the point:
+ * `Waiting for the agent` was the running-turn sentence, and it was the app
+ * narrating a fact the transcript's own working line states three inches above -
+ * while saying nothing about the two things a reader actually needs there, that
+ * typing steers the running turn and that Esc stops it. §G3 replaces it with the
+ * sentence that teaches both, and the affordance line in `idle` does the same job
+ * for the two grammars the box accepts (`@` and `/`), which nothing on screen
+ * mentioned before.
+ */
 export const COMPOSER_PLACEHOLDER = {
 	unavailable: "This conversation is gone",
 	busy: "Agent is busy",
-	answer: "Answer the question above",
+	answer: "Type your own answer…",
 	sending: "Sending your message",
-	waiting: "Waiting for the agent",
-	idle: "Ask me for help",
+	waiting: "Steer the agent. Enter sends now · Esc stops",
+	idle: "Ask anything. @ adds files, / runs commands",
 } as const;
 
 /**

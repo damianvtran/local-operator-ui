@@ -1781,11 +1781,26 @@ const STRUCTURAL_CALL_SITES = [
 		 * file: this pin closes the half a later edit could move - repainting the box
 		 * `canvas` collapses the same fill step to 1.23 ΔE00 in `obsidian`, below the
 		 * row's floor, and the row cannot see the box at all.
+		 *
+		 * THE EDGE IS GONE AND THE GROUND MOVED ONE STEP UP (chat redesign §G1,
+		 * design round 1 D12). The box used to be `border border-control bg-surface`,
+		 * and on the dark brand palette `control` is the accent's own green - so the
+		 * composer wore a resting accent ring and was the brightest thing on a screen
+		 * whose subject is the transcript. §G1 spends the accent on READY (the send
+		 * control's fill) and on FOCUS (the ring the box paints for its textarea), and
+		 * separates the panel from its column with the lightness step the system
+		 * already has: `elevated` over `canvas`, the pair every menu, popover and
+		 * dialog in the app uses.
+		 *
+		 * The step is FLOORED HERE as well as useful, which is why this row is not
+		 * merely a rename: `elevated` against `canvas` is asserted by the palette rows
+		 * below at the 1.23 ΔE00 the note above names as the floor's own failure case,
+		 * and the mention chip's fill is now measured against `elevated`.
 		 */
 		what: "composer box ground",
 		file: "src/renderer/src/features/chat/components/message-input.tsx",
-		must: "border border-control bg-surface",
-		why: "the mention chip's fill step is measured against `surface`; `sunken` against `canvas` is 1.23 ΔE00 in obsidian, so the box's ground is half of that assertion and no palette row can see it",
+		must: '"mx-auto flex w-full flex-col bg-elevated"',
+		why: "the mention chip's fill step is measured against the box's own ground and the box's separation from the column is that ground step, not an edge: repainting it `canvas` merges the composer into the transcript and takes the chip's step below its floor in obsidian, and neither is visible in any single file",
 	},
 	{
 		what: "chat working surface ground",
