@@ -1756,6 +1756,52 @@ test("the notice is ONE sentence from ONE place, and the composer renders it rat
 	 * positive that got a bare JSX comment rendered inside an alert once already.
 	 */
 	const composerCode = composer.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	/*
+	 * THE PANE, WHICH NOTHING ELSE IN THIS FILE CAN RENDER. `MessageInput` needs a
+	 * message list, a dispatcher and the canonical store, so the pane's notice is
+	 * pinned at the source it is built from - the same instrument this file already
+	 * uses for the row it cannot mount. Three claims, each with a review-round-1
+	 * finding behind it:
+	 *
+	 *  1. the notice comes from ONE derivation over plain inputs
+	 *     (`composerNoticeFor`), so the branch between "a failure this pane caught",
+	 *     "a failure the row kept" and "a message that arrived after all" is tested
+	 *     as a rule rather than read out of JSX (B3/B4, 16);
+	 *  2. the control is the OUTCOME CLASS's, never "is there an error on screen" -
+	 *     which is true for every failure this store records, so Retry was hidden on
+	 *     exactly the arms it exists for (B3);
+	 *  3. the muted late-delivery line has a READER. It had none outside the story,
+	 *     so the sentence never rendered and the live duplicate it exists to prevent
+	 *     stayed invisible (B4).
+	 */
+	assert.match(
+		page,
+		/composerNoticeFor\(\{/,
+		"the pane no longer builds its notice from the one derivation, so a second place can decide what the notice says",
+	);
+	assert.doesNotMatch(
+		page,
+		/draft\?\.error === undefined/,
+		"the pane gates Retry on whether an error exists, which is true for every failure the store records",
+	);
+	assert.match(
+		page,
+		/inputByConversation\[identity\]\?\.lateDelivered/,
+		"the pane never reads the late-delivery note, so the muted sentence has no reader in the app",
+	);
+	const sessionHook = readFileSync(
+		"src/renderer/src/shared/hooks/use-canonical-session.ts",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	assert.equal(
+		(sessionHook.match(/setView\(/g) ?? []).length,
+		1,
+		"the view is written through more than one route, so a mutation can land in React's state without the ref the echo registry reads - which is how the delivered-after-all answer came to depend on when React ran the update (M3)",
+	);
+	assert.ok(
+		(sessionHook.match(/commitView\(/g) ?? []).length > 10,
+		"the view's mutations no longer go through the single writer",
+	);
 	assert.match(
 		composer,
 		/\{RETRY_LABEL\}/,
@@ -1782,7 +1828,6 @@ test("the notice is ONE sentence from ONE place, and the composer renders it rat
 		"utf8",
 	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
 	for (const dead of [
-		"heldClaimCode",
 		"SEND_HELD",
 		"UNCONFIRMED_SEND_CODE",
 		"releaseClaim",
@@ -1793,6 +1838,25 @@ test("the notice is ONE sentence from ONE place, and the composer renders it rat
 			`the store still declares ${dead}, which is a claim the composer no longer has`,
 		);
 	}
+	/*
+	 * `heldClaimCode` is the ONE name from that list that survives, and it survives
+	 * as the OPPOSITE of a claim: it is the released app's own marker, and the
+	 * migration keys on it so that it can never fire on a row THIS build wrote -
+	 * which was review round 1's blocker B1 (the migration ran on every fresh
+	 * failure, wiped the replay identity, and handed the payload back twice). So the
+	 * pin is no longer "the name is absent" but "the name is only ever a legacy
+	 * read": three occurrences, one per legitimate role, and the guard among them.
+	 */
+	assert.equal(
+		(storeSource.match(/heldClaimCode/g) ?? []).length,
+		3,
+		"`heldClaimCode` has grown a fourth use, so something is writing or reading a claim again rather than reading the released app's marker once",
+	);
+	assert.match(
+		storeSource,
+		/if \(draft\.heldClaimCode === undefined\) return false;/,
+		"the migration no longer requires the released app's marker, so it can fire on a row this build wrote",
+	);
 });
 
 /*
@@ -2630,7 +2694,7 @@ test("the box takes a returned message once, merged, and never inside a credenti
 	);
 	const adoption = hook.slice(Math.max(0, start - 1200), start + 400);
 	assert.ok(
-		adoption.includes("if (pendingReturn === undefined) return;"),
+		adoption.includes("if (pendingReturn !== undefined) {"),
 		"the adoption no longer waits for a returned payload, so a box that enters another conversation is filled from a stale row",
 	);
 	assert.ok(
