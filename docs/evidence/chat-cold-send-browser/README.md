@@ -9,7 +9,20 @@ No capture-evidence/CDP/Playwright/Puppeteer driver was used in this pass.
 **One frame has been re-shot since, and this is the only exception to the above.**
 `admission-timeout/` was re-taken by PR #278's round-4 remediation, because it
 was the set's only picture of the held-message card and it showed the copy that
-PR retired. It was shot through the app's own failure path instead of the
+PR retired.
+
+**AND IT IS NOT "THE OPERATOR'S EXACT SCREEN", WHICH IS WHAT IT WAS PAIRED AS.**
+The failed-send remediation (PR #495, review round 1's m4) read this frame as the
+operator's own report and set Storybook stills beside it; it is a 2026-09-14
+capture of the held screen from an earlier build, its red text differs from the
+sentence the operator quoted, and its controls read `Restore message` /
+`Discard message`. What the operator's screen actually was - the timeout arm with
+the twenty-second sentence, the held paragraph and those two links over an empty
+composer - is described in the report and photographed in that PR's own sets
+(`docs/evidence/composer-timeout-live/` for the replacement, and
+`docs/evidence/composer-notice-arms/` for the before half, taken by one
+instrument at `origin/main` and at the fix). This frame remains a true picture of
+the held card on the build it was taken from. It was shot through the app's own failure path instead of the
 browser tool: the worktree's own build launched headless as a real Electron app,
 an isolated `local-operator serve` behind a tap that holds the first
 session-`/messages` POST past the app's own 20 s control budget, captured by the
