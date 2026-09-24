@@ -1730,20 +1730,52 @@ test("the notice is ONE sentence from ONE place, and the composer renders it rat
 		"utf8",
 	);
 	/*
-	 * AND THE FACT THE CODELESS 409 IS SPLIT BY (review round 2, Q2-1). The pane had
-	 * to start passing it too: the row and the pane classify the SAME failure, and a
-	 * door that answered differently from the row would offer a press the row has
-	 * already decided against.
+	 * AND THE PANE RENDERS THE CLASSIFICATION THE STORE ALREADY MADE (review round 4,
+	 * M1). The pane used to classify the failure a SECOND time, from the only fact it
+	 * had - the PRE-SEND row's `admissionAttempted`, which an edited payload has just
+	 * invalidated by rotating the request id. On that arm the screen showed the
+	 * unknown-outcome sentence with a Retry over a body the daemon had refused, while
+	 * the row the store wrote said not-sent and no press, and a remount flipped the
+	 * same failure to the daemon's sentence. One failure, two renderings, only the
+	 * screen wrong.
+	 *
+	 * The wiring below is what makes them one answer. It is asserted at the source
+	 * because the pane's notice is React state on a component this suite does not
+	 * mount, and the behaviour is exercised where it CAN be - the row-level pin in
+	 * `composer-send-failure.test.mjs` drives the arm and asserts what the pane's own
+	 * helper renders from it.
 	 */
 	assert.match(
 		page,
-		/const copy = sendFailureCopy\(error, undefined, priorAttemptUnresolved\);/,
-		"the composer's notice no longer comes from the one classifier, so a door can carry its own copy again",
+		/reportCaughtFailure\(key, error\)/,
+		"the pane's catch no longer reports the store's classification",
 	);
 	assert.match(
 		page,
-		/setSendError\(copy\.message\)/,
+		/rowError: row\?\.error,/,
+		"the pane's notice no longer comes from the row the store wrote, so the screen can disagree with it again",
+	);
+	assert.match(
+		page,
+		/const caughtFailureCopy = \(error: unknown\) =>\s*sendFailureCopy\(error, undefined, false\);/,
+		"the pane's fallback classifier is no longer fact-less, so it can re-introduce the pre-send fact the store stopped using",
+	);
+	assert.match(
+		page,
+		/setSendError\(notice\?\.message \?\? null\)/,
 		"the classified sentence is no longer what the notice renders",
+	);
+	/*
+	 * AND THE LOCK'S ANSWER GOES WHEN THE FLIGHT DOES (review round 4, M2 = Q4-1 =
+	 * D11 = U16). It is derived from the row's own `pending`, which the store clears on
+	 * every ending, rather than latched with nothing to retire it - which is how a
+	 * success left "Your last message is still sending." under a transcript that
+	 * already held the message.
+	 */
+	assert.match(
+		page,
+		/if \(draft\?\.pending === true \|\| gatePending \|\| !sendErrorMuted\) return;/,
+		"the lock's sentence is latched again, so it can outlive the send it describes",
 	);
 	assert.doesNotMatch(
 		page,

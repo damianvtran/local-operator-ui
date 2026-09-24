@@ -100,6 +100,38 @@ export function composerNoticeFor(input: {
  * a pairing state, a slash-prefixed draft, a payload too large - is a press that
  * would meet the same refusal, so it is not offered.
  */
+/**
+ * The notice the PANE shows for a failure IT caught, and the reason it is a function
+ * (review round 4, M1).
+ *
+ * The pane used to classify the failure itself, with the only fact it had - the
+ * PRE-SEND row's `admissionAttempted`. That is the off-by-one the round named: an
+ * edited payload rotates the request id in the same call the store admits it, so the
+ * fact described an id the attempt no longer carried, and the screen showed
+ * "Couldn't confirm your message was sent. Sending it again is safe." with a Retry
+ * over a body the daemon had just refused - while the row the store wrote said
+ * not-sent with Clear only, and a remount flipped the same failure to the daemon's
+ * sentence. One failure, two renderings, and only the screen was wrong.
+ *
+ * So the classification is the STORE's, taken from the row it wrote; `fallback` is
+ * used only when there is no row at all (a throw before a draft existed), and it is
+ * deliberately fact-less rather than guessed.
+ */
+export function caughtFailureNotice(input: {
+	rowError: string | undefined;
+	rowCode: string | undefined;
+	rowRetry: boolean | undefined;
+	fallback: () => ComposerSendError | undefined;
+}): ComposerSendError | undefined {
+	if (input.rowError === undefined) return input.fallback();
+	return {
+		message: input.rowError,
+		code: input.rowCode,
+		retry: input.rowRetry ?? retryOfferedForFailureCode(input.rowCode),
+		muted: false,
+	};
+}
+
 export function retryOfferedForFailureCode(code: string | undefined): boolean {
 	if (code === undefined) return true;
 	return RETRYABLE_FAILURE_CODES.has(code);
