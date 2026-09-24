@@ -1508,11 +1508,11 @@ It makes the violation loud; it does not make it impossible. This repository's
 `main` configures **no required status checks** — so no red check is mechanically
 fatal — but that is not "nothing is required": the same `Main Protection` ruleset
 carries a `pull_request` rule with `required_approving_review_count: 1` (*Who may
-merge: two tiers*). Measured 2026-09-24 on the v0.30.24 bump PR #492: a plain
-`gh pr merge` was refused with `is not mergeable: the base branch policy prohibits
-the merge`, and it completed only through the ruleset's bypass actor with
-`--admin`, disclosed on the PR. Read a refusal for what it is — **a `--squash` or
-`--merge` refusal is the missing approval, not the merge method and not CI**;
+merge: two tiers*). Measured 2026-09-24 on the v0.30.24 bump PR #492: a merge
+without `--admin` was refused with `is not mergeable: the base branch policy
+prohibits the merge`, and it completed only through the ruleset's bypass actor with
+`--admin`, disclosed on the PR. Read a refusal for what it is — **a refusal naming
+the base branch policy is the missing approval, not the merge method and not CI**;
 `allowed_merge_methods` on that rule is `[merge, squash, rebase]`, so the method
 was never the obstacle. `--admin` is the sanctioned completion for the owner's own
 reviewed PR, never a route around a red guard. Treat a failing
@@ -1828,9 +1828,16 @@ different cache key shows only what some replica holds *now*, and it returns 404
 just as willingly while the origin has nothing, which is why the two discriminating
 reads here — a cache-buster on the tarball URL, and the
 `Accept: application/vnd.npm.install-v1+json` packument, which is its own cache
-entry — flipped only once npm's own record existed. Read them as "the version is
-there now", never as "the publish worked all along", and report an absence as an
-absence rather than as a failed publish.
+entry — and that flip is consistent with npm's own record appearing when it says it
+did (the reads themselves carried no timestamps, so treat the ordering as what
+npm's clock implies rather than as observed). Read them as "the version is there
+now", never as "the publish worked all along", and report an absence as an absence
+rather than as a failed publish. **Give an absence a test before acting on it:**
+npm's own `time` entry is the discriminator — if it lists the version, the publish
+landed and there is nothing to repair; if it does not, wait past the ordinary lag
+measured here (6m54s-8m40s across five versions, against 27m06s for the one above)
+before treating the version as missing at all, because every cache key reports an
+absence whether the version is genuinely missing or merely not yet recorded.
 
 **A `workflow_dispatch` repair cannot publish to npm, and that is by design.** The
 npm steps are gated on the event rather than on the tag — `Ensure npm supports
