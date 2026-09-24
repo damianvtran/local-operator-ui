@@ -2247,6 +2247,33 @@ test("a refusal that replaces the thinking line re-runs the move toward the ques
 			error: null,
 		}),
 	);
+	/*
+	 * AND THE LENGTH TERM IS LIVE, IN THE SAME PHASE (agent review round 7, R7-1).
+	 *
+	 * The trigger is `phase:length`, and the finding is that DROPPING the length left the
+	 * suite green: every case above changes the phase as well, so nothing here separated
+	 * the two terms and half the trigger could have been deleted with no test to say so.
+	 * The move re-running as a chunk grows the answer inside one phase is the trigger's
+	 * original purpose (the one D6's per-chunk follow and D11's target both rest on), so
+	 * this asserts the term on its own: a longer answer at the same phase is a change, and
+	 * the same answer twice is not.
+	 */
+	const growingAnswer = (text) => ({
+		text,
+		streaming: true,
+		settled: false,
+		error: null,
+	});
+	assert.notEqual(
+		asideScrollTrigger(growingAnswer("a")),
+		asideScrollTrigger(growingAnswer("ab")),
+		"a longer answer in the same phase is a change the move has to hear",
+	);
+	assert.equal(
+		asideScrollTrigger(growingAnswer("ab")),
+		asideScrollTrigger(growingAnswer("ab")),
+		"and the same answer is not a change at all",
+	);
 	assert.equal(typeof trigger("turn-refused"), "string");
 });
 
