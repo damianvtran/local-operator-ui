@@ -80,7 +80,13 @@ export const questionKeyOf = (gate: {
  */
 export const questionDockHint = (gate: PendingDesktopGate): string => {
 	if (gate.kind === "approval")
-		return "Reply yes or no below, or press Escape to stop the turn.";
+		/*
+		 * Escape means two things on this screen and the hint says which is which:
+		 * inside the card it hides the card; in the message box it is still the
+		 * turn's interrupt (`use-interrupt-on-escape.ts`), which is the only way to
+		 * decline an approval without typing.
+		 */
+		return "Reply yes or no below, or press Escape in the message box to stop the turn.";
 	const prefix =
 		gate.question_total > 1
 			? `Question ${gate.question_index + 1} of ${gate.question_total}. `
@@ -165,6 +171,12 @@ export const QuestionDock = ({
 			<section
 				ref={cardRef}
 				aria-label="Question from the agent"
+				/*
+				 * Focusable by pointer (`-1`, not in the Tab order): a press anywhere on
+				 * the card makes it the focus scope, so Escape reaches the handler
+				 * below even on an approval, which has no option to focus.
+				 */
+				tabIndex={-1}
 				onKeyDown={(event) => {
 					if (event.key !== "Escape" || event.defaultPrevented) return;
 					if (event.nativeEvent.isComposing) return;
@@ -172,7 +184,7 @@ export const QuestionDock = ({
 					setCollapsedKey(key);
 					focusComposer();
 				}}
-				className="flex flex-col gap-2 rounded-lg border border-accent bg-elevated p-4"
+				className="flex flex-col gap-2 rounded-lg border border-accent bg-elevated p-4 outline-none"
 			>
 				<div className="flex items-center gap-2">
 					<MessageCircleQuestion

@@ -1262,7 +1262,7 @@ test("the hint names only keys that work", () => {
 	);
 	assert.equal(
 		questionDockHint(gate({ kind: "approval", options: [] })),
-		"Reply yes or no below, or press Escape to stop the turn.",
+		"Reply yes or no below, or press Escape in the message box to stop the turn.",
 	);
 	// Twelve options: the digits stop at nine, because the tenth has no key.
 	const twelve = Array.from({ length: 12 }, (_, i) => ({
