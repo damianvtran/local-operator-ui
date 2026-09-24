@@ -140,6 +140,11 @@ export const ASIDE_CONTINUATION_ESCAPE =
  * about that cost lets the user pay it by accident, so the panel states both roads:
  * asking here keeps the exchange, closing discards it.
  *
+ * IT OPENS WITH THE REMEDY THE OWNER'S SENTENCE NO LONGER ENDS WITH (UX round 3,
+ * U18): this clause is appended to that sentence with its trailing `ask again.`
+ * trimmed (see `RE_OWNER_TRAILING_REMEDY`), so the verb here is the only statement of
+ * it and the clause cannot be shortened without taking the remedy off the panel.
+ *
  * Only on a CONTINUATION: a fresh ask that the model declined has no answered turn
  * above it, so Esc there costs nothing and the owner's own sentence is enough (U1's
  * rule that a clause is printed only where it is true).
@@ -148,18 +153,40 @@ export const ASIDE_DECLINED_OPTIONS =
 	"Ask again here to keep this exchange, or press Esc to close the aside and discard it.";
 
 /**
+ * The remedy the owner's declined sentence ENDS with, which this panel then repeats.
+ *
+ * WHY IT IS TRIMMED (UX round 3, U18). Composed, the refusal read `... No answer was
+ * produced: ask again. Ask again here to keep this exchange, or press Esc to close the
+ * aside and discard it.` - the remedy stated twice in a row, so the one thing a stuck
+ * user needs to hear (that asking works HERE, and what Esc costs) sat behind a stutter,
+ * and at narrow the refusal is seven rows of red text in a 232px region.
+ *
+ * The sentence is the OWNER's copy and this panel does not rewrite it; it drops the
+ * duplication's trailing half only where its own clause states the remedy, which is the
+ * shape `asideOffPanelRefusal` takes for the same sentence when it keeps the act and
+ * drops the enumeration.
+ *
+ * IF THE OWNER REWORDS IT NOTHING BREAKS: the trim matches nothing, the sentence keeps
+ * its own ending, and the clause is appended unchanged - back to the reading U18
+ * reports rather than to something new, so the failure mode is the one this fixes and
+ * not a new one.
+ */
+const RE_OWNER_TRAILING_REMEDY = /\s+[Aa]sk again\.$/;
+
+/**
  * The sentence the PANEL states a refused ask with.
  *
  * The owner's own sentence, which is the only text that says WHY (a tool call off
  * the record, an empty answer, a store at its bound) - plus the escape clause when
- * that sentence was a continuation the owner can no longer continue.
+ * that sentence was a continuation the owner can no longer continue, or the two-way
+ * clause when the model declined inside one it still can.
  */
 export function asidePanelRefusal(error: unknown, continued: boolean): string {
 	const sentence = asideAskFailure(error);
 	if (!continued) return sentence;
-	return asideModelDeclined(error)
-		? `${sentence} ${ASIDE_DECLINED_OPTIONS}`
-		: `${sentence} ${ASIDE_CONTINUATION_ESCAPE}`;
+	if (!asideModelDeclined(error))
+		return `${sentence} ${ASIDE_CONTINUATION_ESCAPE}`;
+	return `${sentence.replace(RE_OWNER_TRAILING_REMEDY, "")} ${ASIDE_DECLINED_OPTIONS}`;
 }
 
 /**

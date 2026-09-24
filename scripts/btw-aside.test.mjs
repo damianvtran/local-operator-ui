@@ -1829,12 +1829,27 @@ test("a refused continuation is told the panel's own way out, and a fresh refusa
 		 * The owner's sentence, then BOTH real options and what each costs (the
 		 * operator's ruling on U11): asking here keeps the exchange, and Esc - the
 		 * key a user reaches for when a panel looks stuck - discards it.
+		 *
+		 * AND THE REMEDY IS STATED ONCE (UX round 3, U18). The owner's sentence ends
+		 * in `ask again.` and the clause opened by saying it again, so the reading was
+		 * `No answer was produced: ask again. Ask again here to keep this exchange, or
+		 * press Esc...` - the remedy the user needs behind a stutter, seven rows of red
+		 * text at narrow. The trailing half of the duplication is dropped where the
+		 * clause states the remedy, and the count below is the property rather than the
+		 * string: it fails on the stutter coming back, from either half.
 		 */
 		assert.equal(
 			refused.error,
-			`${declined.message} ${ASIDE_DECLINED_OPTIONS}`,
+			`${declined.message.replace(/\s+ask again\.$/, "")} ${ASIDE_DECLINED_OPTIONS}`,
 			`a ${code} refusal keeps the owner's sentence and states both roads: the panel still continues`,
 		);
+		assert.equal(
+			(refused.error?.match(/ask again/gi) ?? []).length,
+			1,
+			"the remedy is stated once, and the clause is what states it",
+		);
+		assert.match(refused.error, /^The model did not answer your aside in text/);
+		assert.match(refused.error, /No answer was produced: Ask again here/);
 		assert.match(refused.error, /Ask again here to keep this exchange/);
 		assert.match(refused.error, /press Esc to close the aside and discard it/);
 		assert.equal(
