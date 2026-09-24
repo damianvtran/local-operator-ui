@@ -803,10 +803,16 @@ const CHAT_URL_BUILDERS = {
 		count: 1,
 		why: "the palette's chat-panel entry (a URL-first `path` target, navigated by the palette's own `path` case)",
 	},
-	"src/renderer/src/features/onboarding/components/onboarding-modal.tsx": {
-		count: 1,
-		why: "the onboarding flow's landing URL",
-	},
+	/*
+	 * `onboarding/components/onboarding-modal.tsx` left this table with the
+	 * create-agent step it landed on: its `/chat/${createdAgentId}` was the ONLY
+	 * interpolated chat URL in the file, and setup no longer creates an agent to
+	 * name one. What remains there is a literal `navigate("/chat")` - the same
+	 * landing Finish, Skip and Escape share - which builds no URL and so is not
+	 * this scan's subject. An interpolated chat URL returning to that file fails
+	 * here as an APPEARANCE, which is the point of keeping the entry out rather
+	 * than relaxing the count.
+	 */
 	"src/renderer/src/features/schedules/components/schedules-page.tsx": {
 		count: 1,
 		why: "the Schedules row's own `Open conversation`, which is also the cancel toast's path back to the conversation the confirm just promised stays",
