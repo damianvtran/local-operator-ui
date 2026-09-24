@@ -3,7 +3,15 @@
 // docs/desktop-controls.md before implementing replay or notifications.
 export type CanonicalSessionId = string;
 /** Returned by session_catalogue version 2. The backend owns status precedence,
- * active/previous partition and order; clients must not infer them from read state. */
+ * active/previous partition and order; clients must not infer them from read state.
+ *
+ * `code` stays a plain `string` rather than a union of the codes this build knows,
+ * and that is the contract rather than a shortcut: the vocabulary belongs to the
+ * backend, which reaches a client as soon as the runtime is upgraded and without
+ * any change here, so a union would turn every runtime that learns a new state
+ * (`delegating` is the newest) into a compile error in a renderer that was never
+ * asked to care. A client's job with a code it does not recognise is to show it as
+ * unknown rather than to normalise it into a state it does understand. */
 export type SessionCatalogueStatus = { code: string; label: string };
 export type SessionBinding = { agent: string | null; team: string | null };
 export type SessionCatalogueRow = {
@@ -33,6 +41,26 @@ export type SessionCatalogueRow = {
 	 * terminal and a pin made here are the same pin.
 	 */
 	pinned: boolean;
+	/**
+	 * Whether this conversation is ARCHIVED, as the backend's own store holds it.
+	 *
+	 * ALWAYS PRESENT, both values, on EVERY row, for the reason the pin flag
+	 * carries on its sibling: `replaceSessionRows` -> `mergeRow` in
+	 * `canonical-sessions-store.ts` is `{...current, ...incoming}` under the rule
+	 * "an absent key is not a claim", so a backend that omitted `archived` on a
+	 * live row would leave this client's optimistic `true` immortal - the row would
+	 * stay out of `Active chats` after an unarchive made somewhere else (the
+	 * terminal, another window), with nothing on screen to press to fix it.
+	 *
+	 * The list route's own `include_archived` decides whether archived rows are in
+	 * the ANSWER at all, and it defaults to `false` so a client that predates this
+	 * field keeps the list it had. This app asks for them (`include_archived: true`,
+	 * see `fetchSessions`): it partitions them out of every default list itself,
+	 * which is what lets it both know the state of a conversation it has open and
+	 * offer unarchive from the row that found it. A backend that answered the flag
+	 * by omitting archived rows could do neither.
+	 */
+	archived: boolean;
 	status: SessionCatalogueStatus;
 	binding: SessionBinding;
 	attention?: CompletionAttention;
@@ -49,6 +77,25 @@ export type SessionCatalogueRow = {
 	 */
 	status_revision?: number;
 	status_epoch?: string;
+	/**
+	 * How many subagents this session owns that are RUNNING, and how many are
+	 * waiting for capacity, as the record behind the row reports them.
+	 *
+	 * Declared here rather than only reached through the store's index signature
+	 * so the two readings are typed where they are the same fact the row's
+	 * `status` already carries: the backend folds them into `status.label` and
+	 * the app draws no second copy of them, so this is honest typing of a wire
+	 * key, not new plumbing.
+	 *
+	 * `null` means "this build does not report" - a runtime older than the
+	 * fields, or one that cannot see them - and is deliberately NOT `0`: a
+	 * session this client could not ask about must never be shown as one with
+	 * no subagents, so every reader fails toward "unknown". Optional as well as
+	 * nullable because the fields are absent on a backend that has never sent
+	 * them, and absent and `null` are the same answer to the same question.
+	 */
+	subagents_running?: number | null;
+	subagents_queued?: number | null;
 };
 /**
  * One hit from `sessions.search`, returned by the `session_search` capability
@@ -95,6 +142,17 @@ export type SessionSearchHit = {
 	 * that silently does nothing is worse than none (review round 1, m1).
 	 */
 	pinned?: boolean;
+	/**
+	 * Whether the hit is archived, ALWAYS present, both values.
+	 *
+	 * Unlike the pin's flag on this shape there is no "we did not ask" case to
+	 * express: a search is asked WITH `include_archived` (default `false`), so an
+	 * archived conversation is either absent from the answer or present with
+	 * `archived: true` - and the client's synthesis of a row from a hit needs the
+	 * value, because a conversation archived in the terminal is exactly the kind
+	 * that is not on this client's catalogue page.
+	 */
+	archived: boolean;
 };
 /**
  * The search answer. `query` is ECHOED rather than assumed: keystrokes are
@@ -159,16 +217,53 @@ export type CompletionAttentionAckReceipt = {
  * in `scripts/completion-view-ack.test.mjs`: a change here fails a test that
  * names the backend's value.
  *
- * Nothing in the renderer FORKS on this code, and that is deliberate rather than
- * an omission: `use-completion-view.ts` sends every rejection -- this 409
- * included -- to the one shared retry ladder, so a superseded token costs its
- * attempt like any other failure and the re-arm comes from the projection naming
- * a NEW token, not from a special case here. It is kept because it is part of
- * the canonical wire shape documented for clients in `docs/DESKTOP_API.md`, and
- * a client that does need to tell the refusal apart must not have to spell the
- * string itself.
+ * THE RENDERER FORKS ON THIS CODE, and the fork is what makes a stale token
+ * resolvable at all (agent review round 1, M1). `use-completion-view.ts` treats
+ * this refusal as TERMINAL for the loop it interrupted, instead of spending the
+ * shared ladder on it: the ladder exists to ride out a failure, while this is the
+ * backend stating that the completion this attempt named is no longer the current
+ * one - so a retry of the same token cannot succeed however many turns it gets,
+ * and the state that supersedes it is the FEED's to deliver, not this call's. The
+ * loop's next life takes its token from the merge of both channels (the stream and
+ * the row the feed writes), which is the re-read; the anchor hit test is still the
+ * definition of "shown", so a token is never acknowledged blind.
  */
 export const SUPERSEDED_COMPLETION_TOKEN_CODE = "superseded_completion_token";
+
+/**
+ * The backend's machine code for "the store could not take the write because
+ * another writer holds its lock": the ONE refusal of a read receipt whose remedy
+ * is the attempt itself.
+ *
+ * The string is the BACKEND's (`STORE_BUSY` in
+ * `local_operator/session/store_failures.py`, answered as
+ * `503 {"code": "store_busy", "message": ...}` by `_store_refusal` in
+ * `local_operator/server/routes/desktop_sessions.py`), copied here for the same
+ * reason the superseded token above is: the renderer cannot import Python, and a
+ * client that has to spell the backend's own string is a client that loses the
+ * classification the day the backend renames it. `scripts/completion-view-ack.test.mjs`
+ * pins both literals against the documented wire values.
+ *
+ * UNLIKE THAT ONE, THE RENDERER FORKS ON THIS CODE. `use-completion-view.ts`
+ * retries a contention refusal on its own prompt, bounded budget while every
+ * other failure takes the shared ladder (`runtime_busy` is the same shape one
+ * op over, `RUNTIME_BUSY_CODE` in `desktop-contract.ts`). Why the fork exists:
+ * contention clears by itself in the same second-scale window the send path
+ * already absorbs (`BUSY_RESENDS`), and the operator's own log shows the cost of
+ * not telling it apart - three refusals of `/seen`, ONE attempt each, minutes
+ * apart, with the completion's mark still on the row (2026-09-23, the reported
+ * defect). Treating it as a generic failure instead means either hammering a
+ * store that cannot recover or giving up on one that can.
+ *
+ * WHERE IT ARRIVES, precisely, because the body is what a client can key on:
+ * that route's refusal carries `code` and `message` and NO `retry_after_ms`
+ * today (verified in `_store_refusal`, 2026-09-23), while the transport reads
+ * `detail.retry_after_ms` into `DesktopControlError.retryAfterMs` where a
+ * backend does send it. The receipt's busy budget therefore reads that field and
+ * falls back to its own default, so a future backend can steer the wait without
+ * a client change.
+ */
+export const STORE_BUSY_CODE = "store_busy";
 
 /**
  * Whether an acknowledgement may be taken as marking this conversation READ.
@@ -711,6 +806,18 @@ export type DesktopSnapshot = {
 	frontend: CanonicalFrontendSync;
 	history: DesktopHistoryPage;
 	cold: boolean;
+	/**
+	 * WHICH cold (`no-runtime`, `owner-silent`, ...), and whether an
+	 * authenticated dial is retained and still syncing. Both are additive on the
+	 * backend (local-operator 93542f91, v0.56.6), so an older daemon sends
+	 * neither and they are optional here. The renderer reads `cold_reason` for
+	 * one thing only: its PRESENCE proves the frame came from a backend whose
+	 * history page is the journal's tail (see `pageIsJournalTail` in
+	 * `use-canonical-session`). No surface paints either token; the pane's
+	 * existing states already say everything the user can act on.
+	 */
+	cold_reason?: string | null;
+	attaching?: boolean;
 };
 type Receipt<T extends string, P> = {
 	session_id: CanonicalSessionId;
@@ -792,8 +899,8 @@ export type DesktopSessionFrame =
  *
  * - A feed frame is not scoped to one session. `session_id` is present only on
  *   the types that concern one conversation (`attention`, `notification`), and
- *   absent on `catalogue`, `heartbeat` and `gap` — so the session frame's
- *   `Receipt` (which requires it) cannot describe them.
+ *   absent on `catalogue`, `authoring`, `heartbeat` and `gap` — so the session
+ *   frame's `Receipt` (which requires it) cannot describe them.
  * - `open` carries no `gap` flag: there is no replay to gap on. A feed
  *   subscription takes a BASELINE and announces nothing that predates it,
  *   because the notification edge's whole value is timeliness. The feed's
@@ -822,6 +929,17 @@ export type DesktopFeedFrame =
 				lease_seconds: number;
 				watch_ttl_seconds: number;
 				catalogue_revision: number;
+				/**
+				 * The authoring catalogue's revision when this subscription took its
+				 * baseline.
+				 *
+				 * A sibling of `catalogue_revision` rather than part of it: the two lists
+				 * are published by different writers on different clocks, and a reader
+				 * seeded from one of them must not be seeded from the other. Additive and
+				 * required-on-this-version, exactly as `catalogue_revision` is - a backend
+				 * that predates the `authoring` frame does not publish the frame either.
+				 */
+				authoring_revision: number;
 			};
 	  }
 	| {
@@ -871,6 +989,35 @@ export type DesktopFeedFrame =
 			epoch: string;
 			seq: number;
 			type: "catalogue";
+			payload: { revision: number };
+	  }
+	/**
+	 * The AUTHORING catalogue changed: a reusable profile or team was created,
+	 * edited or deleted.
+	 *
+	 * Its own frame rather than a second meaning on `catalogue`, because the two
+	 * carry different subjects and share nothing but the envelope. `catalogue` is
+	 * the SESSIONS list, and the frame replaces the 5 s `sessions.list` poll that
+	 * list runs. The authoring lists (`profiles.list`/`teams.list`) have NO poll to
+	 * replace: `staleTime: 10_000` is a freshness window refetched on mount and on
+	 * window focus, not a cadence. So this frame is the ONLY event-driven refresh
+	 * those two lists will ever have, and without it a team an AGENT created on the
+	 * backend - no click in this window, nothing to invalidate a cache - stays
+	 * invisible until the operator switches tab or reloads, which is the reported
+	 * defect. An agent authoring a profile is precisely the case the renderer
+	 * cannot observe for itself.
+	 *
+	 * A LEVEL, not a notification, like `session_status`: it is idempotent, it
+	 * carries a revision and no content (the renderer's consumers invalidate their
+	 * own keys; a list the renderer does not hold is not dragged onto the wire),
+	 * and it never enters `DesktopNotifier` - main routes only `notification`
+	 * frames there. A duplicate delivery of the same revision is a no-op at the
+	 * consumer, because what is compared is the revision rather than the arrival.
+	 */
+	| {
+			epoch: string;
+			seq: number;
+			type: "authoring";
 			payload: { revision: number };
 	  }
 	| { epoch: string; seq: number; type: "heartbeat"; payload: { ts: number } }

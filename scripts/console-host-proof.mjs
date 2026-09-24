@@ -26,6 +26,14 @@
  *   - the app's backend manager is disabled: this run is about a console, and a pip
  *     install in a scratch HOME has a quit path of its own.
  *
+ * PRECONDITION, STATED BECAUSE A RUN THAT HIDES IT IS A DEAD INSTRUMENT (QA round 4's Q-10):
+ * the pane cells — the console trigger, the mounted pane, and the displayed capture — need the
+ * app PAIRED with a backend, because the chat route renders no conversation header without one.
+ * Pairing a backend is outside this rig's reach (the API base is baked into the bundle, and the
+ * daemon that answers it is the operator's own), so a run without one does not fail and does
+ * not pretend: those cells are reported as BLOCKED with this reason, every other cell still
+ * runs, and the run EXITS NON-ZERO with the counts it actually reached.
+ *
  * Usage:
  *   node scripts/console-host-proof.mjs [--keep] [--out <dir>]
  *   node scripts/console-host-proof.mjs --packaged "/Applications/Local Operator.app"
@@ -57,6 +65,7 @@ import { join } from "node:path";
 // SHIM's, and signalling it stops the shim while the app keeps running.
 import electronPath from "electron";
 import { withNotificationsOff } from "./notifications-off.mjs";
+import { withTelemetryOff } from "./telemetry-off.mjs";
 
 const argv = process.argv.slice(2);
 const KEEP = argv.includes("--keep");
@@ -73,10 +82,97 @@ function argValue(flag) {
 /** The surface-handle grammar, and the two shapes this rig parses out of other
  * tools' output. Module scope: each is compiled once rather than per call, which is
  * the rule the repo's own lint enforces everywhere else. */
+/*
+ * The one `file:` page on the debugging port that is NOT the app's window.
+ *
+ * THE CAPTURE VIEW IS A SECOND RENDERER (design 13.2/13.3): a hidden `BrowserWindow`
+ * that replays a record to be photographed, created lazily by the first
+ * `console_screenshot` with no pane displaying the surface. It is therefore also a
+ * `type: "page"` target on the debugging port, and it appears BEFORE the app's own
+ * window in the list — so a rig that picked the first `file:` page silently drove the
+ * capture view instead. That is not a harmless wrong address: the capture view is
+ * deliberately not an authorized console client, and the app refuses its IPC with
+ * "This window cannot use the console" — which is what this rig reported, at the cell
+ * that opens the pane AFTER the first screenshot, until this filter existed.
+ *
+ * THE MATCH IS POSITIVE AND NAMES THE APP'S OWN DOCUMENT rather than excluding the
+ * capture view by name: the rig wants the window that serves the app, and a page that
+ * is neither is not one this rig has any business driving. The port also carries the
+ * browser host's tab views as `about:blank` pages, and a negative list would have to
+ * grow every time another renderer joins the app.
+ */
+/*
+ * THE APP'S OWN DOCUMENT, matched on the URL's PATHNAME rather than on the whole
+ * string — and the difference is the blocker QA round 1 measured (Q-1).
+ *
+ * The app's router is a `HashRouter` (`src/renderer/src/main.tsx`), so a MOUNTED app
+ * is at `file:///…/renderer/index.html#/chat`. The anchored `/\/index\.html$/` this
+ * replaced never matched that, and it matched only the case where the renderer had
+ * NOT mounted (no hash yet) — which is precisely the mis-built artifact of that
+ * round. The rig therefore worked against a blank window and failed against a real
+ * one: `no renderer target on the debugging port` at 9.6 s, twice, on every
+ * correctly built tree.
+ *
+ * The capture view is excluded BY NAME for the same reason it has to be: it is also
+ * a `file:` URL ending in `.html`, and (being a renderer) it can appear on the same
+ * port, so a matcher that accepted it would let the rig drive a reconstruction
+ * nobody is looking at instead of the app's window.
+ */
+const APP_DOCUMENT = (url) => {
+	try {
+		const path = new URL(url).pathname;
+		return path.endsWith("/index.html") && !path.includes("console-capture");
+	} catch {
+		// A target whose URL will not parse (an `about:blank` between navigations) is
+		// not the app's document.
+		return false;
+	}
+};
 const SURFACE_HANDLE = /^con:\d+:[A-Za-z0-9_-]+$/;
 const PLIST_EXECUTABLE =
 	/<key>CFBundleExecutable<\/key>\s*<string>([^<]+)<\/string>/;
 const PS_LINE = /^\s*(\d+)\s+(.*)$/;
+
+/*
+ * HOW LONG THE RIG WAITS FOR THE APP, in one number.
+ *
+ * The default stays where the rig put it, because a bound is a claim about the app
+ * and loosening it for everyone would hide a slow boot. But the app's boot is not
+ * only the app's: this repo is worked through ~20 concurrent worktrees, and a fleet
+ * at load 200+ stretches a 10-second boot past a minute — measured here, on this
+ * machine, where the console host was ready 65 s after launch and the rig's own 60 s
+ * bound had already fired. `--wait-ms <ms>` (or `--wait-ms=<ms>`, or
+ * `LOCAL_OPERATOR_UI_PROOF_WAIT_MS`) raises it for one run, which is the difference
+ * between "the app is broken" and "the fleet is busy"; nothing else about the run
+ * changes.
+ */
+const WAIT_MS = (() => {
+	/*
+	 * BOTH SPELLINGS, because the two are indistinguishable to a reader and only one
+	 * of them works: this rig's own `argValue` takes the SPACE-separated form, while
+	 * the repo's other rigs (`capture-evidence.mjs`) take `--flag=<value>`. A run that
+	 * wrote `--wait-ms=300000` therefore silently got the default and failed with a
+	 * message about a state file — which is exactly what happened while writing this.
+	 * `--wait-ms=missing` is refused too: a flag whose value is absent must not read
+	 * as "use the default".
+	 */
+	const equals = argv.find((entry) => entry.startsWith("--wait-ms="));
+	const raw =
+		(equals === undefined ? undefined : equals.slice("--wait-ms=".length)) ||
+		argValue("--wait-ms") ||
+		process.env.LOCAL_OPERATOR_UI_PROOF_WAIT_MS;
+	if (raw === undefined) return null;
+	const value = Number(raw);
+	if (!Number.isFinite(value) || value <= 0) {
+		throw new Error(
+			`--wait-ms / LOCAL_OPERATOR_UI_PROOF_WAIT_MS must be a positive whole number of milliseconds, got ${JSON.stringify(raw)}`,
+		);
+	}
+	return value;
+})();
+/** The bound for one wait: the caller's own, or this run's override, or the rig's
+ * own default. Named so every wait site reads the same way. */
+const bounded = (own, fallback) => WAIT_MS ?? own ?? fallback;
 
 const SCRATCH = join(
 	tmpdir(),
@@ -88,10 +184,21 @@ const USER_DATA = join(SCRATCH, "userdata");
 const LOG_DIR = join(SCRATCH, "logs");
 const OUT_DIR = argValue("--out") ?? join(SCRATCH, "out");
 const HISTORY_DIR = join(CONFIG_DIR, "run", "ui-console", "history");
-const SESSION = "proof-session";
+/*
+ * A CANONICAL SESSION ID, twelve lowercase hex characters, because the app's own parser
+ * validates the shape before it will honour it (`src/shared/open-session.ts`'s
+ * `SESSION_ID`) and treats anything else as ABSENT. The first version of this rig used a
+ * readable name, which is why the pane could not be mounted: `--open-session=proof-session`
+ * validated to nothing, the window opened on the catalogue, and the run's own diagnostic
+ * showed `activeSessionId: null` with no `console-pane` element in the DOM (Q-5).
+ */
+const SESSION = "abcdef012345";
 
 const transcript = [];
 let failures = 0;
+/** How many cells were ASKED, so a run that stopped early cannot report a total it never
+ * reached (Q-10: 27 of 45 cells never ran and the summary could not say so). */
+let checks = 0;
 let app = null;
 let DEVTOOLS_PORT = 0;
 
@@ -107,7 +214,27 @@ function say(line) {
 	console.log(line);
 }
 
+/**
+ * A CELL THAT COULD NOT RUN, which is neither a pass nor a failure.
+ *
+ * WHY IT EXISTS (QA round 4's Q-10): this rig reported "45 PASS / 0 FAIL" on a machine whose
+ * daemon happened to be running, and QA's clean-state run of the same command gave 17 PASS,
+ * 1 FAIL and a crash — 27 cells never ran, and the run's own summary could not say so. A
+ * precondition that is silently assumed is the shape this repository's AGENTS.md names: a
+ * dead instrument returns a reading, not an error. So a blocked cell is COUNTED, PRINTED and
+ * makes the run exit non-zero, and the summary names the precondition rather than the number
+ * of cells that happened to be reachable.
+ */
+const blockedCells = [];
+function blocked(label, reason, detail) {
+	blockedCells.push({ label, reason });
+	transcript.push(
+		`\n## BLOCKED — ${label}\n\n${reason}\n\n\`\`\`\n${JSON.stringify(detail, null, 2)}\n\`\`\`\n`,
+	);
+}
+
 function check(label, ok, detail) {
+	checks += 1;
 	if (!ok) failures += 1;
 	record(
 		`${ok ? "PASS" : "FAIL"} — ${label}`,
@@ -325,7 +452,7 @@ function pickDevtoolsPort() {
 	return 9400 + (process.pid % 400);
 }
 
-async function freeDevtoolsPort(timeoutMs = 10_000) {
+async function freeDevtoolsPort(timeoutMs = bounded(null, 10_000)) {
 	const started = Date.now();
 	for (let port = pickDevtoolsPort(); ; port += 1) {
 		try {
@@ -349,6 +476,14 @@ async function launchApp(appPath = ".") {
 		LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
 		VITE_DISABLE_BACKEND_MANAGER: "true",
 	});
+	/*
+	 * `withTelemetryOff`: this rig boots the built app and, with `--packaged`, an
+	 * electron-builder bundle of it - two launches, both carrying the live PostHog
+	 * project key that the renderer's build inlined. A console run recorded in the
+	 * product's own analytics is a user who does not exist. See
+	 * `telemetry-off.mjs`.
+	 */
+	withTelemetryOff(env);
 	// Every inherited cmux/lop variable is REMOVED rather than overwritten: this
 	// process is driven by a session that has them set, and the pty inherits this
 	// environment — an inherited `CMUX_WORKSPACE_ID` has already renamed the
@@ -374,6 +509,16 @@ async function launchApp(appPath = ".") {
 			// seconds — so "windowless" is not the same claim as "does not take focus"
 			// and the rig states its mode rather than relying on the shape rule.
 			"--window-mode=headless",
+			/*
+			 * THE CONVERSATION THIS WINDOW EXISTS TO SHOW, through the app's own launch
+			 * intent rather than a seeded store (Q-5). This is the same argument a
+			 * click-produced window carries (`--open-session=<id>`, `src/shared/open-session.ts`)
+			 * and it is what makes the pane mountable at all on a host with no backend to
+			 * serve a conversation list: the store's hydration honours the launch intent
+			 * over the persisted id, so the first render is already the conversation whose
+			 * console this rig photographs.
+			 */
+			`--open-session=${SESSION}`,
 		],
 		{ env, cwd: ROOT, stdio: ["ignore", "pipe", "pipe"], detached: true },
 	);
@@ -466,6 +611,29 @@ function reapConsoleHostProof() {
 }
 
 /**
+ * The app tree's RSS in bytes, summed over its process GROUP.
+ *
+ * Electron's tree is main plus a renderer, a GPU process and utilities, and the question a
+ * memory ceiling asks is about the tree rather than about one of its members. `null` when the
+ * tree is gone or `ps` cannot answer, so a missing reading is a missing reading and never a
+ * zero that would pass a ceiling.
+ */
+function appTreeRssBytes(appPid) {
+	let out = "";
+	try {
+		out = execFileSync("ps", ["-ax", "-o", "pgid=,rss="], { encoding: "utf8" });
+	} catch {
+		return null;
+	}
+	let total = 0;
+	for (const line of out.split("\n")) {
+		const [pgid, rss] = line.trim().split(/\s+/);
+		if (Number(pgid) === appPid) total += Number(rss) * 1024;
+	}
+	return total > 0 ? total : null;
+}
+
+/**
  * Everything the app has written that this harness can read: its stdout/stderr, and
  * any log file under the redirected log directory.
  *
@@ -507,7 +675,7 @@ function stateFilePath() {
 	return join(CONFIG_DIR, "run", "ui-browser", "host.json");
 }
 
-async function waitForState(timeoutMs = 60_000) {
+async function waitForState(timeoutMs = bounded(null, 60_000)) {
 	const started = Date.now();
 	while (Date.now() - started < timeoutMs) {
 		if (existsSync(stateFilePath())) {
@@ -585,12 +753,20 @@ async function readUntil(state, surface, needle, timeoutMs = 20_000) {
  * the record — so the trap is named here, where the next author would reach for it.
  */
 
-async function rendererEvaluate(expression) {
+/**
+ * One CDP command against the APP's own document, on the app's own debugging port.
+ *
+ * Two entry points rather than two implementations: `rendererCall` speaks the protocol,
+ * and `rendererEvaluate` is the `Runtime.evaluate` case of it. The second was the only
+ * one this rig needed until Q-5, which has to seed the app's persisted store and RELOAD
+ * the renderer to mount the pane in a conversation — `Page.*` commands, same plumbing.
+ */
+async function withRendererSession(work) {
 	const list = await (
 		await fetch(`http://127.0.0.1:${DEVTOOLS_PORT}/json/list`)
 	).json();
 	const page = list.find(
-		(target) => target.type === "page" && target.url.startsWith("file:"),
+		(target) => target.type === "page" && APP_DOCUMENT(target.url),
 	);
 	if (!page) throw new Error("no renderer target on the debugging port");
 	const socket = new WebSocket(page.webSocketDebuggerUrl);
@@ -598,31 +774,246 @@ async function rendererEvaluate(expression) {
 		socket.addEventListener("open", resolve, { once: true });
 		socket.addEventListener("error", reject, { once: true });
 	});
-	const message = await new Promise((resolve, reject) => {
-		socket.addEventListener("message", (event) => {
-			const incoming = JSON.parse(event.data);
-			if (incoming.id === 1) resolve(incoming);
+	let nextId = 1;
+	const call = async (method, params = {}) => {
+		const id = nextId++;
+		const message = await new Promise((resolve, reject) => {
+			const onMessage = (event) => {
+				const incoming = JSON.parse(event.data);
+				if (incoming.id !== id) return;
+				socket.removeEventListener("message", onMessage);
+				resolve(incoming);
+			};
+			socket.addEventListener("message", onMessage);
+			socket.addEventListener("error", reject, { once: true });
+			socket.send(JSON.stringify({ id, method, params }));
 		});
-		socket.addEventListener("error", reject, { once: true });
-		socket.send(
-			JSON.stringify({
-				id: 1,
-				method: "Runtime.evaluate",
-				params: { expression, awaitPromise: true, returnByValue: true },
-			}),
-		);
+		if (message.error) {
+			throw new Error(`CDP ${method}: ${message.error.message}`);
+		}
+		return message.result;
+	};
+	try {
+		return await work(call);
+	} finally {
+		socket.close();
+	}
+}
+
+async function rendererCall(method, params = {}) {
+	return withRendererSession((call) => call(method, params));
+}
+
+/**
+ * SEVERAL CALLS ON ONE SESSION, which is not a convenience: CDP's
+ * `Page.addScriptToEvaluateOnNewDocument` lives as long as the CONNECTION that registered
+ * it, so a helper that opened a socket per call registered the pane-mounting seed and then
+ * dropped it before the reload could use it — measured, and the run that found it reported
+ * `trigger: false, pane: false` on a `#/chat` route, i.e. the app had booted with no
+ * conversation at all. One session for the sequence is what makes the seed survive to the
+ * document it is for.
+ */
+async function rendererCalls(calls) {
+	return withRendererSession(async (call) => {
+		const results = [];
+		for (const { method, params } of calls) {
+			results.push(await call(method, params));
+		}
+		return results;
 	});
-	socket.close();
-	if (message.error) throw new Error(`CDP: ${message.error.message}`);
-	if (message.result?.exceptionDetails) {
+}
+
+async function rendererEvaluate(expression) {
+	const result = await rendererCall("Runtime.evaluate", {
+		expression,
+		awaitPromise: true,
+		returnByValue: true,
+	});
+	if (result?.exceptionDetails) {
 		throw new Error(
-			message.result.exceptionDetails.exception?.description ??
-				message.result.exceptionDetails.text ??
+			result.exceptionDetails.exception?.description ??
+				result.exceptionDetails.text ??
 				"the renderer threw",
 		);
 	}
-	return message.result?.result?.value;
+	return result?.result?.value;
 }
+
+/**
+ * The pane and its terminal, once both are on screen — or `null` at the bound.
+ *
+ * Returns the boxes rather than a boolean because the box is what the capture cell below
+ * asserts against: the frame is cropped to the pane's own reported rect, so the picture's
+ * size has to be the terminal's size, and a cell that only knew "the pane exists" would
+ * have no way to tell the pane from the window's top-left corner (which is exactly what it
+ * certified before Q-5).
+ */
+async function waitForConsolePane(timeoutMs = bounded(null, 60_000)) {
+	const started = Date.now();
+	for (;;) {
+		const boxes = await rendererEvaluate(
+			`(() => {
+				const pane = document.querySelector('[data-tour-tag="console-pane"]');
+				const mirror = document.querySelector('[data-tour-tag="console-mirror"]');
+				if (!pane || !mirror) return null;
+				const a = pane.getBoundingClientRect();
+				const b = mirror.getBoundingClientRect();
+				if (b.width < 1 || b.height < 1) return null;
+				return {
+					pane: { x: a.x, y: a.y, width: a.width, height: a.height },
+					mirror: { x: b.x, y: b.y, width: b.width, height: b.height },
+				};
+			})()`,
+		).catch(() => null);
+		if (boxes) return boxes;
+		if (Date.now() - started > timeoutMs) {
+			/*
+			 * A BOUND THAT REPORTS WHAT IT SAW rather than `null`: "the pane is not
+			 * mounted" is not actionable on its own, and the four facts below say which
+			 * half is missing — the route (a hash), the pane, the terminal, or the app.
+			 */
+			return await rendererEvaluate(
+				`(() => ({
+					failed: true,
+					hash: location.hash,
+					app: document.getElementById('app')?.childElementCount ?? 0,
+					trigger: Boolean(document.querySelector('[data-tour-tag="console-pane-trigger"]')),
+					pane: Boolean(document.querySelector('[data-tour-tag="console-pane"]')),
+					mirror: Boolean(document.querySelector('[data-tour-tag="console-mirror"]')),
+					slot: Boolean(document.querySelector('[data-tour-tag="console-pane-slot"]')),
+					viaDomClick: window.__consoleProofDomClick ?? null,
+					openedByPress: null,
+					tourTags: [...document.querySelectorAll('[data-tour-tag]')]
+						.map((el) => el.getAttribute('data-tour-tag'))
+						.slice(0, 40),
+					stored: (window.localStorage.getItem('canonical-sessions-storage') || '').slice(0, 200),
+					main: (document.querySelector('main')?.innerText || '').slice(0, 200),
+				}))()`,
+			).catch((error) => ({ failed: true, diagnostic: String(error) }));
+		}
+		await sleep(250);
+	}
+}
+
+/** The console trigger's centre, or `null` while the app has not painted it. */
+const TRIGGER_BOX = `(() => {
+	const el = document.querySelector('[data-tour-tag="console-pane-trigger"]');
+	if (!el) return null;
+	const box = el.getBoundingClientRect();
+	if (box.width < 1 || box.height < 1) return null;
+	return { x: box.x + box.width / 2, y: box.y + box.height / 2, box: { x: box.x, y: box.y, width: box.width, height: box.height } };
+})()`;
+
+/**
+ * Give the app a conversation of its OWN, then WAIT for its console trigger (Q-10).
+ *
+ * Two things this replaced, and QA round 3 measured both. The rig used to rely on whatever
+ * conversation happened to be in the profile — a run in isolation found an empty session
+ * store, the "not paired" banner and no trigger, and the three Q-5 cells failed with it, so
+ * the rig's claim was only reproducible when some other state was present. And it read the
+ * trigger exactly ONCE, which turns any slow paint into a failed cell.
+ *
+ * So: the app's own persisted `canonical-sessions-storage` is seeded with the conversation
+ * this rig's console belongs to (the same way a returning profile carries one), the renderer
+ * reloads, and the trigger is POLLED for. The seed is registered on the SAME CDP session that
+ * performs the reload, because `Page.addScriptToEvaluateOnNewDocument` lives only as long as
+ * the connection that registered it — a per-call helper dropped it before the reload could
+ * use it, which is a mistake this file has now made once and states.
+ *
+ * Returns the trigger's box, or the failure diagnostic when the bound expires.
+ */
+async function mountConversation(timeoutMs) {
+	return withRendererSession(async (call) => {
+		const evaluate = async (expression) => {
+			const result = await call("Runtime.evaluate", {
+				expression,
+				awaitPromise: true,
+				returnByValue: true,
+			});
+			if (result?.exceptionDetails) return null;
+			return result?.result?.value;
+		};
+		await call("Page.enable", {});
+		await call("Page.addScriptToEvaluateOnNewDocument", {
+			source: `try { window.localStorage.setItem("canonical-sessions-storage", ${JSON.stringify(
+				JSON.stringify({
+					state: { activeSessionId: SESSION, activeDraftKey: null },
+					version: 0,
+				}),
+			)}); } catch (error) {}`,
+		});
+		await call("Page.reload", { ignoreCache: false });
+		const started = Date.now();
+		for (;;) {
+			const box = await evaluate(TRIGGER_BOX).catch(() => null);
+			if (box) return box;
+			if (Date.now() - started > timeoutMs) {
+				return await evaluate(
+					`(() => ({
+						failed: true,
+						hash: location.hash,
+						app: document.getElementById('app')?.childElementCount ?? 0,
+						trigger: Boolean(document.querySelector('[data-tour-tag="console-pane-trigger"]')),
+						stored: (window.localStorage.getItem('canonical-sessions-storage') || '').slice(0, 200),
+						main: (document.querySelector('main')?.innerText || '').slice(0, 200),
+					}))()`,
+				).catch((error) => ({ failed: true, diagnostic: String(error) }));
+			}
+			await sleep(250);
+		}
+	});
+}
+
+/**
+ * A REAL PRESS at a page coordinate, through Chromium's own input pipeline.
+ *
+ * `Input.dispatchMouseEvent` rather than a synthetic `element.click()`: the pane's trigger
+ * is a React control, and a dispatched DOM event is not the same fact as a press the
+ * compositor routes — the UX round's own walk was rebuilt on this distinction. Both
+ * halves of the click go on one session, because a press without its release leaves the
+ * button stuck down for the rest of the run.
+ */
+async function clickAt(x, y) {
+	await rendererCalls([
+		{
+			method: "Input.dispatchMouseEvent",
+			params: { type: "mouseMoved", x, y, button: "none", buttons: 0 },
+		},
+		{
+			// `buttons: 1` IS the one that makes the press land. Measured: without it the
+			// compositor delivered a press the page never saw, and the pane did not open —
+			// while the element's own `click()` did, which is how the two questions were told
+			// apart. `clickCount` and `button` are not enough on their own.
+			method: "Input.dispatchMouseEvent",
+			params: {
+				type: "mousePressed",
+				x,
+				y,
+				button: "left",
+				buttons: 1,
+				clickCount: 1,
+			},
+		},
+		{
+			method: "Input.dispatchMouseEvent",
+			params: {
+				type: "mouseReleased",
+				x,
+				y,
+				button: "left",
+				buttons: 0,
+				clickCount: 1,
+			},
+		},
+	]);
+}
+
+/** A PNG's own pixel size, read off its IHDR — the picture's dimensions rather than a
+ * number the rig was handed. */
+const pngSize = (png) => ({
+	width: png.readUInt32BE(16),
+	height: png.readUInt32BE(20),
+});
 
 /**
  * What the WindowServer says is frontmost, right now.
@@ -666,12 +1057,31 @@ function startFocusWatch(pid) {
 /** Wait until the renderer's preload has exposed the console namespace: the state
  * file appears before the window's first paint, so everything the renderer does has
  * to wait for it. */
-async function waitForRenderer(timeoutMs = 60_000) {
+async function waitForRenderer(timeoutMs = bounded(null, 60_000)) {
 	const started = Date.now();
 	for (;;) {
-		const ready = await rendererEvaluate(
-			"typeof window.api?.console?.state === 'function' ? 'ready' : 'waiting'",
-		);
+		let ready = "waiting";
+		try {
+			ready = await rendererEvaluate(
+				"typeof window.api?.console?.state === 'function' ? 'ready' : 'waiting'",
+			);
+		} catch (error) {
+			/*
+			 * A WINDOW THAT IS NOT ON THE PORT YET IS WHAT THIS LOOP IS FOR (Q-1).
+			 *
+			 * The state file appears before the window's first paint, so the ordinary
+			 * case one boot in is a target that has not been created — and this used to
+			 * throw straight out of the wait, aborting the whole run at 9.6 s with
+			 * "no renderer target on the debugging port", which reads like a broken app
+			 * and is actually a renderer one poll away. Only that error is tolerated:
+			 * anything else (a CDP failure, a throw inside the renderer) is a real
+			 * fault and still surfaces immediately rather than being retried into a
+			 * timeout.
+			 */
+			if (!/no renderer target/.test(String(error?.message ?? error))) {
+				throw error;
+			}
+		}
 		if (ready === "ready") return;
 		if (Date.now() - started > timeoutMs) {
 			throw new Error("the renderer never exposed window.api.console");
@@ -1011,70 +1421,423 @@ async function main() {
 		JSON.parse(windowState).focused === false,
 		windowState,
 	);
-	await rendererEvaluate(
-		`window.api.console.openPane(${JSON.stringify(surface)})`,
-	);
-	const reported = await rendererEvaluate(
-		`window.api.console.setContentRect(${JSON.stringify(surface)}, ${JSON.stringify(
-			{
-				contentRect: { x: 20, y: 20, width: 800, height: 400 },
-				cellWidth: 8.425,
-				cellHeight: 16,
-				visible: true,
-				theme: "proof",
-			},
-		)})`,
-	);
-	check(
-		"the renderer reports a rect and main decides the grid from it",
-		reported?.displayed_surface === surface,
-		reported?.surfaces?.find((entry) => entry.surface === surface) ?? reported,
-	);
-	const shot = await rpcOk(state, "console_screenshot", { surface });
-	const png = Buffer.from(shot.image_base64, "base64");
-	const framePath = join(
-		OUT_DIR,
-		`console-${surface.replace(/[^A-Za-z0-9_-]/g, "_")}.png`,
-	);
-	writeFileSync(framePath, png);
-	record("capture geometry", {
-		rendered: shot.rendered,
-		cols: shot.cols,
-		rows: shot.rows,
-		theme: shot.theme,
-		live: shot.live,
-		bytes: png.length,
-		sha256: createHash("sha256").update(png).digest("hex"),
-		file: framePath,
-	});
-	check(
-		"a screenshot is the app's own window, cropped to the pane's rect (design 13.2)",
-		shot.rendered === "displayed" &&
-			shot.cols === 94 &&
-			shot.rows === 25 &&
-			png.length > 2000,
-		{
+	/*
+	 * MOUNT THE PANE, AND LET IT REPORT ITS OWN RECT (Q-5 / D17).
+	 *
+	 * What this replaced, and why it was a false claim rather than a weak one: the rig
+	 * fabricated a rect (`{20, 20, 800, 400}`) and handed it to `console_set_content_rect`,
+	 * so main cropped FAITHFULLY to a box the pane was not in. The committed
+	 * `displayed-capture.png` was the window's top-left quadrant — the sidebar, "Chats",
+	 * "Start a chat" — with no pane in it, certified as "a screenshot is the app's own
+	 * window, cropped to the pane's rect". The artifact was honest about the rect and
+	 * untrue about the pane, which is the one thing this cell exists to establish.
+	 *
+	 * So the pane is mounted for real, the way a returning user's profile mounts it: the
+	 * app's OWN persisted `canonical-sessions-storage` is seeded with an open conversation
+	 * (this host has no isolated backend to serve one, and nothing about the pane, the
+	 * terminal or the capture is stubbed by the seed), the renderer reloads, and the pane
+	 * is opened through its renderer bridge. From here on the rect main crops to is the one
+	 * the PANE reported from its own `ResizeObserver` — this rig never calls
+	 * `setContentRect` — and the cell below asserts the PICTURE's size against the
+	 * terminal's own box, which is what tells the pane apart from the window's corner.
+	 */
+	await waitForRenderer();
+	/*
+	 * THE PANE IS OPENED BY PRESSING ITS TRIGGER, which is the affordance a person uses and
+	 * the only thing that mounts the pane: the renderer bridge's `openPane` reports WHICH
+	 * surface a pane already shows (it is `host.setDisplayed`, main's half), so a rig that
+	 * called it and then photographed the window would be photographing a pane that was
+	 * never mounted — which is precisely the hole Q-5 found in the old cell.
+	 *
+	 * The conversation is this rig's OWN (Q-10, `mountConversation`) and the trigger is waited
+	 * for rather than sampled once, so a run from a clean profile is the same run as one in a
+	 * profile that happens to carry a conversation.
+	 */
+	// A FLOOR OF 30 s REGARDLESS OF `--wait-ms`: this wait is a boot plus a navigation
+	// rather than a poll of something already up, and a small `--wait-ms` (QA's 20 s, which
+	// found this) would otherwise starve the one step that depends on the app having painted.
+	/*
+	 * THE PRECONDITION IS NAMED, NOT ASSUMED (QA round 4's Q-10).
+	 *
+	 * This rig's pane cells need a conversation on the chat route, and the chat route renders
+	 * one only when the app is PAIRED with a backend — measured: with no pairing the body
+	 * carries "This app is not paired with the running Local Operator server", the route is
+	 * `#/chat` with an empty session store, and no trigger ever appears; with a pairing it
+	 * appears in 1,250 ms. The rig's first version therefore reported 45 PASS / 0 FAIL on a
+	 * machine whose daemon happened to be up, and QA's clean-state run of the same command
+	 * got 17 PASS, 1 FAIL and a crash — 27 cells never ran.
+	 *
+	 * PAIRING A BACKEND IS OUTSIDE THIS RIG'S REACH, and that is a judgement rather than a
+	 * shrug: the app's API base is baked into the bundle it is built with, the daemon that
+	 * answers it is the operator's own, and a rig that stood up a stub and pointed the app at
+	 * it would be photographing an app no user runs. So the honest end state is this one: the
+	 * cells that need the pane are BLOCKED BY NAME, every other cell still runs, the summary
+	 * counts what actually ran, and the run exits non-zero — a partial pass can no longer be
+	 * reported as a pass.
+	 */
+	const mounted = await mountConversation(Math.max(30_000, WAIT_MS ?? 0));
+	const paneAvailable = mounted !== null && mounted.failed !== true;
+	let boxes = null;
+	let shot = null;
+	let dpr = 1;
+	if (!paneAvailable) {
+		blocked(
+			"the pane cells (the trigger, the mounted pane, and the displayed capture)",
+			"a PAIRED backend. The chat route renders no conversation header without one, so the pane cannot be mounted and this rig cannot photograph it; every other cell in this run does not need it and has run.",
+			mounted,
+		);
+	}
+	if (paneAvailable) {
+		check(
+			"the console trigger is on screen in a conversation's header (Q-5, Q-10)",
+			true,
+			mounted,
+		);
+		/*
+		 * A page that has STOPPED MOVING before the press, which is the UX round's own
+		 * measured step: the trigger is found while the conversation is still settling, and
+		 * a press aimed at the box from one frame earlier lands on whatever moved into that
+		 * place. Two identical reads a beat apart is the cheap test that the box is stable.
+		 */
+		let previous = JSON.stringify(mounted.box);
+		for (let i = 0; i < 12; i++) {
+			await sleep(250);
+			const now = await rendererEvaluate(
+				`(() => { const el = document.querySelector('[data-tour-tag="console-pane-trigger"]'); if (!el) return null; const b = el.getBoundingClientRect(); return JSON.stringify({ x: b.x, y: b.y, width: b.width, height: b.height }); })()`,
+			);
+			if (now === previous) break;
+			previous = now;
+		}
+		/*
+		 * The pointer probe is guarded, because the box can vanish between the wait and the
+		 * read — and a `null` there used to throw out of `elementFromPoint` and take the rest
+		 * of the run with it, which is how QA's clean-state run lost 27 cells (Q-10).
+		 */
+		const under = await rendererEvaluate(
+			`(() => {
+				const el = document.elementFromPoint(${mounted.x}, ${mounted.y});
+				return el ? { tag: el.tagName, tag_: el.getAttribute('data-tour-tag'), closest: Boolean(el.closest('[data-tour-tag="console-pane-trigger"]')) } : null;
+			})()`,
+		).catch(() => null);
+		record("what is under the pointer at the trigger's centre", {
+			under,
+			triggerAt: mounted,
+		});
+		await clickAt(mounted.x, mounted.y);
+		boxes = await waitForConsolePane();
+		/** Whether the compositor's own press opened the pane, or the fallback below did. */
+		const openedByPress = !(boxes === null || boxes.failed === true);
+		if (!openedByPress) {
+			/*
+			 * THE PRESS DOES NOT ALWAYS REACH THE PAGE, and in a window that is never shown it
+			 * does not: measured, with the pointer verifiably over a settled button. So the pane
+			 * is opened with the element's own `click()` — the same handler, reached a way the
+			 * compositor does not have to deliver — and WHICH PATH RAN is recorded rather than
+			 * implied. (This fallback was lost for one run when the pane section was
+			 * restructured for Q-10, which is what a `pressTook` record is for: the run that
+			 * lost it failed loudly instead of quietly photographing a window.)
+			 */
+			await rendererEvaluate(
+				`(() => { const el = document.querySelector('[data-tour-tag="console-pane-trigger"]'); window.__consoleProofDomClick = el ? 'clicked' : 'no-trigger'; if (el) el.click(); })()`,
+			);
+			boxes = await waitForConsolePane(Math.max(15_000, WAIT_MS ?? 0));
+		}
+		record("how the pane was opened", { pressTook: openedByPress });
+		check(
+			"the pane is mounted on a conversation and its terminal is on screen (Q-5)",
+			boxes !== null && boxes.failed !== true,
+			boxes,
+		);
+		/*
+		 * THE THEME IS READ FROM THE APP, not typed here, and that is the fix for a measured
+		 * defect: this rig reported `theme: "proof"`, a name no palette answers, so the
+		 * capture view wrote `data-theme="proof"`, resolved no role variables at all, and the
+		 * offscreen frame came back as xterm's own `#000000`/`#ffffff` with zero
+		 * role-coloured pixels. The rig was reporting a theme the app was not wearing, and the
+		 * pane's whole claim is that it follows the app's palette.
+		 */
+		const themeName = await rendererEvaluate(
+			"document.documentElement.dataset.theme || ''",
+		);
+		check(
+			"the app is wearing a named theme (the capture view is fed its name)",
+			typeof themeName === "string" && themeName.length > 0,
+			themeName,
+		);
+		/*
+		 * A beat for the pane's report to reach main before the screenshot: the report is a
+		 * `ResizeObserver` callback, so it lands on a frame of its own rather than
+		 * synchronously with the mount. Bounded, and the assertion that follows is what
+		 * catches a report that never arrived — the frame would come back at the pane's
+		 * previous size.
+		 */
+		await sleep(500);
+		shot = await rpcOk(state, "console_screenshot", { surface });
+		const png = Buffer.from(shot.image_base64, "base64");
+		const framePath = join(
+			OUT_DIR,
+			`console-${surface.replace(/[^A-Za-z0-9_-]/g, "_")}.png`,
+		);
+		writeFileSync(framePath, png);
+		const size = pngSize(png);
+		/*
+		 * THE FRAME IS IN PHYSICAL PIXELS AND THE DOM BOX IS IN CSS ONES, which is the
+		 * measurement this cell needed and the first version of it got wrong: the frame came
+		 * back 1286x1404 against a 659x779.5 box, i.e. exactly the window's device pixel ratio
+		 * of 2. `capturePage` returns the photograph at the compositor's scale, so the
+		 * comparison is `mirror * dpr`.
+		 */
+		dpr = await rendererEvaluate("window.devicePixelRatio || 1");
+		record("capture geometry", {
 			rendered: shot.rendered,
 			cols: shot.cols,
 			rows: shot.rows,
+			theme: shot.theme,
+			live: shot.live,
 			bytes: png.length,
+			frame: size,
+			pane: boxes?.pane ?? null,
+			mirror: boxes?.mirror ?? null,
+			dpr,
+			sha256: createHash("sha256").update(png).digest("hex"),
+			file: framePath,
+		});
+		check(
+			"a screenshot is the app's own window, cropped to the PANE's rect (design 13.2, Q-5)",
+			shot.rendered === "displayed" &&
+				boxes !== null &&
+				boxes.failed !== true &&
+				// The crop is integer-floored and clipped to the window's content bounds
+				// (`cropToWindow`), so the tolerance is the rounding, not a slack.
+				Math.abs(size.width - boxes.mirror.width * dpr) <= 2 &&
+				Math.abs(size.height - boxes.mirror.height * dpr) <= 2 &&
+				shot.cols > 0 &&
+				shot.rows > 0,
+			{
+				rendered: shot.rendered,
+				cols: shot.cols,
+				rows: shot.rows,
+				frame: size,
+				mirror: boxes?.mirror ?? null,
+				dpr,
+				bytes: png.length,
+			},
+		);
+	}
+
+	/*
+	 * With no pane on it, the frame is a RECONSTRUCTION from the record rather than a
+	 * photograph (design 13.2's second row): the capture view replays this surface's
+	 * bytes into a fresh terminal in a renderer nobody can see, photographs it with
+	 * the DOM renderer pinned, and answers `rendered: "offscreen"` so a consumer can
+	 * tell that difference rather than having to trust it.
+	 *
+	 * THE THREE MEASURED TRAPS ARE ASSERTED HERE, in the live app rather than in a
+	 * unit test: the frame is not blank (the design's own 9,866 B stale frame against
+	 * a 27,869 B settled one is what the floor discriminates), the renderer is the
+	 * DOM one rather than a WebGL canvas whose pixels cannot be read back, and the
+	 * grid is the record's. The retry is the capture view's own (§13.3); a run that
+	 * needed one says so in its log line, which the rig reads for the `attempt` count.
+	 */
+	await rendererEvaluate("window.api.console.closePane()");
+	const offscreen = await rpcOk(state, "console_screenshot", { surface });
+	const offscreenPng = Buffer.from(offscreen.image_base64, "base64");
+	const offscreenPath = join(
+		OUT_DIR,
+		`console-${surface.replace(/[^A-Za-z0-9_-]/g, "_")}-offscreen.png`,
+	);
+	writeFileSync(offscreenPath, offscreenPng);
+	record("offscreen capture", {
+		rendered: offscreen.rendered,
+		renderer: offscreen.renderer,
+		attempts: offscreen.attempts,
+		cols: offscreen.cols,
+		rows: offscreen.rows,
+		bytes: offscreenPng.length,
+		sha256: createHash("sha256").update(offscreenPng).digest("hex"),
+		file: offscreenPath,
+	});
+	check(
+		"a capture with no displayed pane is a DOM-rendered reconstruction from the record",
+		offscreen.rendered === "offscreen" &&
+			offscreen.renderer === "dom" &&
+			/*
+			 * THE RECONSTRUCTION IS AT THE RECORD'S GRID, which is what §13.2 claims, and it
+			 * is asserted against the grid the DISPLAYED frame reported rather than against a
+			 * number typed here: the old cell pinned 94x25, the size the rig's own synthetic
+			 * rect produced, so it was asserting the rig's arithmetic rather than the app's.
+			 * The pane now measures its own box, and both frames must agree about the grid
+			 * they are pictures of.
+			 */
+			/*
+			 * THE RECONSTRUCTION IS AT THE RECORD'S GRID, and when the pane could not be
+			 * mounted (Q-10's precondition) there is no displayed frame to compare it
+			 * against: the comparison is the record's own grid, stated as such rather than
+			 * skipped silently.
+			 */
+			offscreen.cols > 0 &&
+			offscreen.rows > 0 &&
+			(shot === null ||
+				(offscreen.cols === shot.cols && offscreen.rows === shot.rows)) &&
+			offscreenPng.length > 2000,
+		{
+			rendered: offscreen.rendered,
+			renderer: offscreen.renderer,
+			attempts: offscreen.attempts,
+			cols: offscreen.cols,
+			rows: offscreen.rows,
+			displayedGrid: shot ? { cols: shot.cols, rows: shot.rows } : null,
+			bytes: offscreenPng.length,
 		},
 	);
 
-	// With no pane on it, the frame is refused with the typed gap rather than answered
-	// with a photograph of something else. The offscreen capture view is PR B's.
-	await rendererEvaluate("window.api.console.closePane()");
-	const noPane = await rpc(state, "console_screenshot", { surface });
+	/*
+	 * A FEED IS A FUNCTION OF ONE RECORD (Q-11), and this is the cell an agent's own
+	 * evidence depends on: `console_screenshot` is how an agent looks at a TUI, so a frame
+	 * that is a union of two surfaces — or the previous surface's content — is worse than
+	 * no evidence at all.
+	 *
+	 * What the offscreen path did before this round: it fed `nonce: attempt` (`1` on the
+	 * first attempt of every request), the page keyed the mirror on that number, so a second
+	 * request never remounted it and the new bytes were written into the old terminal. QA
+	 * measured the result — a 1-line surface captured after an 8-line one came back as both
+	 * (212 rows = 192 + 20), a repeat capture appended again (232), and three different
+	 * surfaces, one of them with an empty record, returned BYTE-IDENTICAL frames.
+	 *
+	 * Three surfaces, four captures: DIFFERENT records give different frames, the SAME
+	 * record gives the SAME frame, and an empty record is its own frame rather than a copy
+	 * of somebody else's.
+	 */
+	const surfaceWith = async (marker) => {
+		const created = await rpcOk(state, "console_create", {
+			session_id: SESSION,
+			command: "/bin/sh",
+			args: ["-c", marker ? `printf '${marker}\n'` : "sleep 0.3"],
+			cols: 100,
+			rows: 30,
+			reveal: "none",
+		});
+		const surfaceId = created.surface;
+		if (marker) await readUntil(state, surfaceId, marker, 20_000);
+		else await sleep(600);
+		return surfaceId;
+	};
+	const offscreenSha = async (surfaceId) => {
+		const captured = await rpcOk(state, "console_screenshot", {
+			surface: surfaceId,
+		});
+		const bytes = Buffer.from(captured.image_base64, "base64");
+		return {
+			sha: createHash("sha256").update(bytes).digest("hex"),
+			bytes: bytes.length,
+			rendered: captured.rendered,
+			attempts: captured.attempts,
+		};
+	};
+	const alphaSurface = await surfaceWith(`Q11-ALPHA-${process.pid}`);
+	const betaSurface = await surfaceWith(`Q11-BETA-${process.pid}`);
+	const emptySurface = await surfaceWith("");
+	const alpha1 = await offscreenSha(alphaSurface);
+	const beta = await offscreenSha(betaSurface);
+	const alpha2 = await offscreenSha(alphaSurface);
+	const empty = await offscreenSha(emptySurface);
+	record("four captures across three surfaces (Q-11)", {
+		alpha1,
+		beta,
+		alpha2,
+		empty,
+	});
 	check(
-		"a capture with no displayed pane is refused, and says which gap it is",
-		noPane.json?.error?.code === "capture_unavailable" &&
-			// The code is KEPT rather than renamed to something an older peer knows
-			// (§10.6's taxonomy has no honest value for "no pane is displaying this
-			// surface"): saying "unsupported_method" would tell the model the app is
-			// older than it is. PR C adds the document row and the tool's enum and
-			// copy in the same window.
-			typeof noPane.json?.error?.message === "string",
-		noPane.json,
+		"two surfaces with different records give different frames (Q-11)",
+		alpha1.sha !== beta.sha &&
+			alpha1.rendered === "offscreen" &&
+			beta.rendered === "offscreen",
+		{ alpha1, beta },
+	);
+	check(
+		"the SAME record captured twice gives the SAME frame (Q-11)",
+		alpha2.sha === alpha1.sha && alpha2.bytes === alpha1.bytes,
+		{ alpha1, alpha2 },
+	);
+	check(
+		"an empty record is its own frame, not another surface's (Q-11)",
+		empty.sha !== alpha1.sha && empty.sha !== beta.sha,
+		{ empty, alphaBytes: alpha1.bytes, betaBytes: beta.bytes },
+	);
+	// Released before the next cell asks for a surface of its own: a session may run eight at
+	// once (§6.3), and a rig that never closes what it opened meets that ceiling instead of its
+	// own assertions — which is exactly how the large-record cell first failed.
+	for (const spent of [alphaSurface, betaSurface, emptySurface]) {
+		await rpcOk(state, "console_close", { surface: spent }).catch(() => {});
+	}
+
+	/*
+	 * A LARGE RECORD, CAPTURED FIVE TIMES (QA round 4's Q-13).
+	 *
+	 * The blank-frame verdict used to be a TIMING proxy — "two animation frames after the write
+	 * was called" — so a big record could be refused for a reason that had nothing to do with
+	 * its content: measured by QA, 3.9-8 MB records came back blank on 1 of 5, 2 of 5 and 1 of 5
+	 * back-to-back captures of the SAME surface. The settle is now xterm's own `write`
+	 * callback, i.e. the parse rather than a frame count, and this cell is the measurement that
+	 * would have caught the old behaviour: five captures of one surface, every one of them the
+	 * same frame, none refused.
+	 */
+	/*
+	 * THE ONE DELIBERATE LARGE-RECORD CELL, and its stimulus is a named byte count rather
+	 * than a pipeline that runs until something stops it (memory-bounding round). 4 MB
+	 * travels through `head | tr | fold | tail` — every stage streams, so the pipeline's own
+	 * memory is constant — and the RECORD it leaves is 400 lines of 100 columns (~40 KB),
+	 * which is what the capture is a frame of. A routine cell is capped at a few hundred KB;
+	 * this one is the exception and says so.
+	 */
+	const BIG_RECORD_PIPE_BYTES = 4_000_000;
+	const bigRecord = await rpcOk(state, "console_create", {
+		session_id: SESSION,
+		command: "/bin/sh",
+		args: [
+			"-c",
+			`head -c ${BIG_RECORD_PIPE_BYTES} /dev/zero | tr '\\0' 'x' | fold -w 100 | tail -n 400`,
+		],
+		cols: 100,
+		rows: 30,
+		reveal: "none",
+	});
+	await readUntil(state, bigRecord.surface, "xxxxxxxxxx", 30_000);
+	const bigShots = [];
+	for (let i = 0; i < 5; i++) {
+		try {
+			bigShots.push(await offscreenSha(bigRecord.surface));
+		} catch (error) {
+			bigShots.push({ refused: String(error?.message ?? error).slice(0, 120) });
+		}
+	}
+	/*
+	 * AND THE GENERATOR IS REAPED BEFORE THE NEXT CELL, which is not tidiness: the flood cell
+	 * below measures main's responsiveness, and a pty still pushing four megabytes through a
+	 * pipeline is CPU the measurement would be paying for. Measured, once: the first version of
+	 * this cell left it running and the flood cell's median moved from 4 ms to 116 ms against a
+	 * 100 ms ceiling.
+	 */
+	for (let i = 0; i < 80; i++) {
+		// `console_status` is per-SURFACE, and a surface that has been reaped answers with an
+		// error rather than a listing — which is the same answer as `live: false` here.
+		const entry = await rpcOk(state, "console_status", {
+			surface: bigRecord.surface,
+		}).catch(() => null);
+		if (!entry || entry.live === false) break;
+		await sleep(250);
+	}
+	await rpcOk(state, "console_close", { surface: bigRecord.surface }).catch(
+		() => {},
+	);
+	record("five captures of one large record (Q-13)", bigShots);
+	const bigShas = new Set(bigShots.map((shot) => shot.sha ?? shot.refused));
+	check(
+		"a large record is captured five times, none refused, all five the same frame (Q-13)",
+		bigShots.every(
+			(shot) => shot.rendered === "offscreen" && shot.bytes > 2000,
+		) && bigShas.size === 1,
+		bigShots,
 	);
 
 	// ---- the grid broadcast (§8.2 step 2(c)) -------------------------------
@@ -1344,10 +2107,50 @@ async function main() {
 	 * chmods per pty chunk plus a staged sidecar rewrite — measured independently at
 	 * ~6-7 ms per 8 KiB chunk on the thread that draws the app's windows.
 	 */
+	/*
+	 * THE STIMULUS IS SIZED TO THE DEADLINE, NOT THE OTHER WAY AROUND (review round 3, B4).
+	 *
+	 * 8 MiB, because a pty is a slow pipe and the reviewer measured this one: 4 MiB ≈ 5.5 s
+	 * and 8 MiB ≈ 11 s through the pty on this host (linear — 32 MiB took 43.4 s and was
+	 * what made the previous revision fail a cell that requires the producer to EXIT). 8 MiB
+	 * is still a genuine burst — ~2.6 M chunks of output under retention — with ~2.7x
+	 * headroom under the deadline below, and the app's per-chunk work can only make it
+	 * slower. Not re-measured this round: measuring it needs the app launched, which this
+	 * round's rules put out of bounds; QA's bounded live run is where the number is confirmed.
+	 */
+	const FLOOD_BYTES = 8 * 1024 * 1024;
+	/**
+	 * The deadline for a stimulus that has ALREADY been told how big it is: the loop below
+	 * ends on the producer's exit, and this is the bound that keeps a WEDGED SURFACE from
+	 * holding the cell open — not the thing that decides the volume. It is sized above the
+	 * stimulus's own measured cost (8 MiB ≈ 11 s) so a loaded host cannot turn the deadline
+	 * into the reason a cell fails.
+	 */
+	const FLOOD_DEADLINE_MS = 30_000;
+	/**
+	 * How far the app TREE's RSS may rise above ITS OWN BASELINE during the flood — GROWTH,
+	 * NOT AN ABSOLUTE. That distinction is the whole reason this number is small: this app's
+	 * tree is **845 MiB at boot and 1.19-1.24 GiB in later runs** (QA round 8, measured on
+	 * this branch), so a reader who took 256 MiB for a ceiling would write a cell that aborts
+	 * on arrival. What is asserted is `rssPeak < rssBefore + FLOOD_RSS_CEILING_BYTES`, sampled
+	 * per responsiveness sample by process GROUP, because Electron's tree — main, renderer,
+	 * GPU, utilities — is where a pane's frames actually land.
+	 *
+	 * 256 MiB of growth is generous against what a bounded console costs — a 1 MiB live
+	 * coalescing buffer, a 4 MiB log ring, a 5,000-line scrollback — and it is the guard that
+	 * makes a future uncapped buffer fail this cell instead of the operator's machine. The
+	 * measured growth across QA's three runs was +0 / +60 / +109 MB.
+	 */
+	const FLOOD_RSS_CEILING_BYTES = 256 * 1024 * 1024;
 	const floodSurface = await rpcOk(state, "console_create", {
 		session_id: SESSION,
 		command: "/bin/sh",
-		args: ["-c", "yes"],
+		// A FIXED BYTE COUNT, NOT AN OPEN-ENDED `yes` (memory-bounding round). `yes` writes
+		// as fast as the pty accepts, so the old cell's volume was whatever the host allowed
+		// inside its wall-clock window — an unbounded producer inside a test instrument.
+		// `head -c` makes the stimulus a number this file states; `yes` takes SIGPIPE when
+		// `head` exits, so nothing outlives the count.
+		args: ["-c", `yes | head -c ${FLOOD_BYTES}`],
 		cols: 100,
 		rows: 30,
 		retain: true,
@@ -1357,40 +2160,165 @@ async function main() {
 		await rpcOk(state, "console_status", { surface: floodSurface.surface });
 		return Date.now() - startedAt;
 	};
+	/*
+	 * A SUBSCRIBER IS ATTACHED FOR THE FLOOD (review round 3, B5). Without one `broadcast`
+	 * returns before it touches `pending`, so the ceiling this round added is never
+	 * consulted and the cell would be evidence for nothing about it. The subscription goes
+	 * through the app's OWN renderer and the pane's own preload API — the same call the pane
+	 * makes — so what runs is the shipped path rather than a test-only door.
+	 *
+	 * WHAT THIS CELL DOES AND DOES NOT PROVE, stated because the honest scope is narrower
+	 * than "the ceiling is covered". It proves the live path is the one under load (frames
+	 * are being coalesced and delivered to a real subscriber through the whole flood), that
+	 * main answers every status call while it happens, and that the app tree stays under its
+	 * RSS ceiling. It does NOT prove the drop path fires: a loop that keeps taking turns
+	 * flushes `pending` every 16 ms, so at this rate the array never reaches 1 MiB, and the
+	 * reviewer's own probe measured exactly that (largest frame 22,668 B, 2.2 % of the
+	 * ceiling). The drop itself is pinned deterministically in `console-host.test.mjs`, which
+	 * drives a 2.5 MiB backlog past the ceiling from a subscriber that never drains.
+	 */
+	const floodSubscription = await rendererEvaluate(
+		`window.api.console.subscribe(${JSON.stringify(floodSurface.surface)}, 0)`,
+	);
 	const baseline = [];
 	for (let index = 0; index < 10; index += 1) baseline.push(await sample());
+	const rssBefore = appTreeRssBytes(app.child.pid);
+	let rssPeak = rssBefore;
 	const samples = [];
-	const floodStartedAt = Date.now();
-	while (Date.now() - floodStartedAt < 30_000) {
-		samples.push(await sample());
-		await sleep(200);
+	let flooded = null;
+	try {
+		const floodStartedAt = Date.now();
+		for (;;) {
+			samples.push(await sample());
+			const rss = appTreeRssBytes(app.child.pid);
+			if (rss !== null && (rssPeak === null || rss > rssPeak)) rssPeak = rss;
+			flooded = await rpcOk(state, "console_status", {
+				surface: floodSurface.surface,
+			});
+			// THE STIMULUS ENDS THE SAMPLE, not the clock: `head -c` has taken its byte
+			// count and the shell exits, so the cell cannot outlive what it started.
+			if (flooded.running !== true) break;
+			if (Date.now() - floodStartedAt >= FLOOD_DEADLINE_MS) break;
+			await sleep(200);
+		}
+	} finally {
+		/*
+		 * THE PRODUCER IS REAPED ON EVERY PATH (memory-bounding round), not on the happy
+		 * one. This cell is the loudest thing in the rig, and the path that leaves a `yes`
+		 * running — an assertion throwing mid-flood — is how one test becomes a machine
+		 * event. `console_close` with `kill: true` is main's own reap of the pty's process
+		 * GROUP, by the pid only main holds: the pty's child is a child of the app, so the
+		 * rig has no ppid for it and the surface is the handle it does have.
+		 */
+		try {
+			await rendererEvaluate(
+				`window.api.console.unsubscribe(${JSON.stringify(floodSurface.surface)})`,
+			);
+		} catch {
+			/* the renderer is gone; its subscription went with it */
+		}
+		try {
+			await rpcOk(state, "console_close", {
+				surface: floodSurface.surface,
+				kill: true,
+			});
+		} catch {
+			/* the surface is already gone */
+		}
 	}
-	const flooded = await rpcOk(state, "console_status", {
-		surface: floodSurface.surface,
-	});
 	const sorted = [...samples].sort((a, b) => a - b);
 	const median = sorted[Math.floor(sorted.length / 2)];
+	const p95 = sorted[Math.floor(sorted.length * 0.95)] ?? null;
 	const worst = sorted.at(-1) ?? null;
+
+	/*
+	 * WHAT THIS CELL ASSERTS, AND WHY IT NO LONGER ASSERTS A SINGLE MAXIMUM.
+	 *
+	 * QA round 1 (Q-3) measured this cell failing at 2,618 ms against a 2,500 ms bound
+	 * while the console was answering perfectly: median 5 ms, p95 158 ms, n=67 — and
+	 * two later runs on the same head measured 328 ms and 56 ms. A single wall-clock
+	 * MAXIMUM on a host carrying ~20 sibling worktrees samples the machine's
+	 * scheduler, not main's loop, which is the flake `AGENTS.md`'s timing section
+	 * describes and why it says to prefer a structural fact and, where a number is
+	 * unavoidable, not to sit it on a wall clock.
+	 *
+	 * SO THE ASSERTION IS STRUCTURAL FIRST: the flood ran its full window and main
+	 * answered EVERY sample it was asked for. A starved loop does not answer slowly,
+	 * it stops answering — an unanswered call is the shape this failure would take,
+	 * and `rpcOk` throwing is what makes "every sample answered" a fact rather than an
+	 * implication.
+	 *
+	 * THEN A DISTRIBUTION, NOT A MAXIMUM. The regression this probe exists for is a
+	 * per-chunk synchronous write (`appendFileSync` + `statSync` + a staged sidecar
+	 * rewrite — measured at ~6-7 ms per 8 KiB of pty output on the thread that draws
+	 * the window), and that cost is paid on MOST chunks: it moves the median and the
+	 * p95 rather than expressing itself as one outlier. The ceilings are calibrated
+	 * from the numbers above with an order of magnitude of headroom — median < 100 ms
+	 * against a measured 5 ms, p95 < 500 ms against a measured 158 ms — rather than a
+	 * widening of the old 2,500 ms maximum, which would have kept sampling the host.
+	 *
+	 * WHY NOT A CPU-TIME BOUND. The property under test is RESPONSIVENESS — whether
+	 * the loop can still serve a call — and CPU time cannot see it: a loop blocked in
+	 * a synchronous write spends CPU, a loop the OS has not scheduled spends none, and
+	 * the two are indistinguishable through `time.thread_time`-style accounting while
+	 * only a served round trip separates them. The maximum is still REPORTED, so a
+	 * reader sees the outlier and can judge it rather than having it hidden.
+	 */
+	const FLOOD_MEDIAN_CEILING_MS = 100;
+	const FLOOD_P95_CEILING_MS = 500;
 	check(
-		"a 30 s `yes` flood with retention ON leaves main answering (§19.1 P3)",
-		flooded.running === true && worst !== null && worst < 2_500,
+		`a ${FLOOD_BYTES / (1024 * 1024)} MiB flood with retention ON leaves main answering (§19.1 P3)`,
+		flooded?.running === false &&
+			flooded?.exit_code === 0 &&
+			samples.length > 0 &&
+			median !== undefined &&
+			median < FLOOD_MEDIAN_CEILING_MS &&
+			p95 !== null &&
+			p95 < FLOOD_P95_CEILING_MS,
 		{
 			baselineMs: { max: Math.max(...baseline), median: baseline[0] },
 			floodMs: {
-				count: samples.length,
+				answered: samples.length,
 				median,
-				p95: sorted[Math.floor(sorted.length * 0.95)] ?? null,
+				p95,
 				max: worst,
 			},
-			truncated: flooded.truncated,
-			exit_epoch: flooded.exit_epoch,
+			ceilings: { median: FLOOD_MEDIAN_CEILING_MS, p95: FLOOD_P95_CEILING_MS },
+			truncated: flooded?.truncated,
+			exit_epoch: flooded?.exit_epoch,
+			bytes: FLOOD_BYTES,
+			producerExitCode: flooded?.exit_code,
+			subscriberAttached: floodSubscription?.surface ?? null,
+			replayBytesAtSubscribe: floodSubscription?.replay_base64?.length ?? null,
 			surface: floodSurface.surface,
 		},
 	);
-	await rpcOk(state, "console_close", {
-		surface: floodSurface.surface,
-		kill: true,
-	});
+	/*
+	 * THE MEMORY GUARD (memory-bounding round). A flood is the cell most likely to find an
+	 * uncapped buffer, and this is the assertion that turns "we bounded it" into a fact a
+	 * future change has to keep: the app tree's RSS, sampled beside every responsiveness
+	 * sample, may not rise past its own baseline by more than the ceiling above.
+	 */
+	check(
+		"the flood never grew the app tree past its RSS ceiling",
+		rssBefore !== null &&
+			rssPeak !== null &&
+			rssPeak < rssBefore + FLOOD_RSS_CEILING_BYTES,
+		{
+			rssBeforeBytes: rssBefore,
+			rssPeakBytes: rssPeak,
+			ceilingBytes: FLOOD_RSS_CEILING_BYTES,
+			growthBytes:
+				rssBefore !== null && rssPeak !== null ? rssPeak - rssBefore : null,
+		},
+	);
+	/*
+	 * NO SECOND CLOSE HERE. The flood cell's own `finally` already reaped this surface, and
+	 * closing it again answered `surface_unavailable` from a call that has no tolerance for
+	 * one — which ended `main()` and took the caps and pane cells after it with it (QA round
+	 * 8: three runs, three aborts at the old close on this line). A surface has one owner of
+	 * its lifetime and it is the block that created it.
+	 */
 
 	// ---- the caps -----------------------------------------------------------
 	// Up to the cap rather than eight more: the session already holds the surfaces
@@ -1502,7 +2430,14 @@ function finish() {
 			: "# Console host end-to-end proof",
 		"",
 		`Scratch: \`${SCRATCH}\``,
-		`Result: ${failures === 0 ? "every check passed" : `${failures} check(s) FAILED`}`,
+		`Result: ${failures === 0 ? (blockedCells.length === 0 ? "every check passed" : `${checks} of ${checks} check(s) passed`) : `${failures} of ${checks} check(s) FAILED`}${blockedCells.length > 0 ? `, ${blockedCells.length} BLOCKED` : ""}`,
+		...(blockedCells.length > 0
+			? [
+					"",
+					`BLOCKED: ${blockedCells.length} cell(s) did not run, and this run is NOT a pass:`,
+					...blockedCells.map((entry) => `  - ${entry.label}: ${entry.reason}`),
+				]
+			: []),
 		`Reaped stray spawn-helper processes: ${reaped}`,
 		"",
 		transcript.join("\n"),
@@ -1511,7 +2446,7 @@ function finish() {
 	writeFileSync(join(OUT_DIR, "proof.md"), summary);
 	say(`\ntranscript: ${join(OUT_DIR, "proof.md")}`);
 	say(`frames: ${OUT_DIR}`);
-	if (failures > 0) process.exitCode = 1;
+	if (failures > 0 || blockedCells.length > 0) process.exitCode = 1;
 }
 
 main()

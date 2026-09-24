@@ -1,6 +1,12 @@
 import { join } from "node:path";
 import type { BrowserWindow } from "electron";
 import { localOperatorConfigDir } from "../browser/state-file";
+import { type UserShellPath, withUserShellPath } from "../shell-path";
+import { ConsoleCaptureView } from "./capture";
+import {
+	type ConsoleCompletionNotifier,
+	consoleCompletionHooks,
+} from "./completion";
 import { dispatchConsole, isConsoleDispatchMethod } from "./dispatch";
 import { ConsoleHistory } from "./history";
 import {
@@ -80,6 +86,27 @@ export const CONSOLE_DEFAULTED_OPTIONS = [
 	"restoreHistory",
 	/** Defaults to the real pty; every test injects a fake. */
 	"spawn",
+	/*
+	 * The user's login-shell PATH (see `../shell-path`). Absent means the surfaces
+	 * are handed the app's own environment, which is what a rig that asserts the
+	 * RPC path wants and what every run got before this option existed.
+	 */
+	"userShellPath",
+	/*
+	 * The three fields this branch added, each optional for its own reason:
+	 *
+	 *  - `notifier` is the app's ONE notifier (design 12.3). Absent means the
+	 *    completions are still watched and still pushed; nothing raises a banner, which
+	 *    is exactly what a rig that asserts the RPC path wants.
+	 *  - `consoleCaptureUrl` and `preloadPath` are the offscreen capture view's
+	 *    document and bridge (design 13.2/13.3). Absent means no capture view, and
+	 *    `console_screenshot` answers the typed `capture_unavailable` refusal rather
+	 *    than a blank frame — a real condition, not a wiring bug, because the capture
+	 *    path is one this host is allowed not to have.
+	 */
+	"notifier",
+	"consoleCaptureUrl",
+	"preloadPath",
 ] as const;
 
 /** Which required options a caller left out, by name. */
@@ -98,6 +125,15 @@ export interface StartConsoleHostOptions {
 	appVersion: string;
 	log: (message: string) => void;
 	now?: () => number;
+	/**
+	 * The user's own login-shell PATH, resolved once for the whole app
+	 * (`../shell-path`), so a surface behaves like the user's terminal rather than
+	 * like the launchd-started app: a surface must be able to run the tools the
+	 * user can run, and `brew` is the case that made this necessary.
+	 *
+	 * The SAME instance the backend is given: one resolution, two consumers.
+	 */
+	userShellPath?: UserShellPath;
 	/** The config root the history lives under, defaulting to the same root the
 	 * discovery record uses. */
 	configDir?: string;
@@ -107,6 +143,25 @@ export interface StartConsoleHostOptions {
 	restoreHistory?: boolean;
 	/** The pty seam, injectable for tests. */
 	spawn?: (options: SpawnOptions) => PtyHandle;
+	/**
+	 * The app's notifier, for the completion banner (design 12.3).
+	 *
+	 * Injected rather than imported so this module keeps no dependency on the
+	 * notification stack, and optional because a rig that asserts the RPC path has no
+	 * business constructing a notifier to do it.
+	 */
+	notifier?: ConsoleCompletionNotifier;
+	/**
+	 * The console's offscreen capture document and the preload it needs (design
+	 * 13.2/13.3). Both come from the app because only the app knows where its own
+	 * bundle lives: this module is handed URLs, never paths it guesses.
+	 *
+	 * Absent means no capture view, and `console_screenshot` on a surface with no
+	 * displayed pane answers the typed `capture_unavailable` refusal rather than a
+	 * blank frame.
+	 */
+	consoleCaptureUrl?: string;
+	preloadPath?: string;
 }
 
 /** What the app learns about the console when it starts. */
@@ -179,15 +234,36 @@ export async function startConsoleHost(
 		);
 	}
 	const { log } = options;
+	/*
+	 * THE NAMESPACE EXISTS EVEN WHEN THE HOST DOES NOT.
+	 *
+	 * A console that is off is a state a user meets, and the renderer's only way to
+	 * ask about it is this namespace — so leaving it unregistered turned "this run
+	 * has the console switched off" into Electron's `No handler registered for
+	 * 'console-state'`, displayed as the machine line of a sentence about updating
+	 * the app. Registering it with no host and the refusal's own reason is what
+	 * lets the pane say the true thing (§15), and it costs one handler that answers
+	 * a fixed projection.
+	 */
+	const registerRefusal = (reason: string, detail: string): void => {
+		registerConsoleIpc({
+			window: () => options.window,
+			expectedUrl: options.expectedUrl,
+			host: () => null,
+			unavailable: { reason, detail },
+			log,
+		});
+	};
 	if (!consoleHostEnabled()) {
 		log(
 			`[console] disabled by ${CONSOLE_HOST_ENV}; no surfaces will be created and the record carries console: false`,
 		);
+		registerRefusal("disabled", `${CONSOLE_HOST_ENV} is off`);
 		return {
 			ok: false,
 			reason: "disabled",
 			detail: `${CONSOLE_HOST_ENV} is off`,
-			stop: async () => {},
+			stop: async () => unregisterConsoleIpc(),
 		};
 	}
 
@@ -197,11 +273,12 @@ export async function startConsoleHost(
 		// answer to a native module that will not load is that the capability is
 		// absent and the reason is visible, never that the app is broken.
 		log(`[console] node-pty is unavailable: ${load.reason}`);
+		registerRefusal("pty_unavailable", load.reason);
 		return {
 			ok: false,
 			reason: "pty_unavailable",
 			detail: load.reason,
-			stop: async () => {},
+			stop: async () => unregisterConsoleIpc(),
 		};
 	}
 
@@ -219,11 +296,54 @@ export async function startConsoleHost(
 		join(configDir, "run", "ui-console", "history"),
 	);
 	const registry = new ConsoleRegistry<SurfaceRuntime>();
+	/*
+	 * The completion seam (design 12): the state-change push the renderer refetches
+	 * on, and the banner when nobody is looking at the surface. Both are the host's
+	 * own callbacks rather than a poll, because the host knows the moment each
+	 * happens.
+	 *
+	 * `host` is read through a thunk: these options are handed to the constructor
+	 * that produces it.
+	 */
+	let hostRef: ConsoleHost | null = null;
+	const completion = consoleCompletionHooks({
+		host: () => hostRef,
+		registry,
+		notifier: () => options.notifier ?? null,
+		log,
+		now: options.now,
+	});
+	/*
+	 * The offscreen capture view (design 13.2's second and third rows). Built here
+	 * because this is the one place that knows the app's own URLs, and left null
+	 * when the app handed none — in which case `console_screenshot` on a surface
+	 * with no displayed pane answers the typed refusal rather than a blank frame.
+	 */
+	const capture =
+		options.consoleCaptureUrl && options.preloadPath
+			? new ConsoleCaptureView({
+					url: options.consoleCaptureUrl,
+					preload: options.preloadPath,
+					log,
+				})
+			: null;
 	const host = new ConsoleHost(registry, {
 		window: () => options.window,
 		log,
 		history,
 		now: options.now,
+		// Resolved BEFORE the host exists, so no surface can be created against the
+		// launch environment and then start behaving like the user's terminal later:
+		// a surface's PATH is decided here, once, and every surface this host makes
+		// carries the same one. Bounded by the resolver's own timeout (it never
+		// rejects and answers null when the shell cannot speak), and no part of the
+		// app's own startup waits on it: the browser host is attached to the window
+		// without being awaited, so the cost of a slow rc here is this host coming
+		// online later, not the app failing to come up.
+		env: await withUserShellPath(process.env, options.userShellPath),
+		captureOffscreen: capture
+			? (request) => capture.capture(request)
+			: undefined,
 		spawn:
 			options.spawn ??
 			((spawnOptions: SpawnOptions) =>
@@ -235,9 +355,19 @@ export async function startConsoleHost(
 						`[console] restored the exec bit on ${report.path ?? "spawn-helper"}`,
 					);
 				})),
+		/*
+		 * ONE PUSHER, and it is A's. `broadcastConsoleState` was already the app's
+		 * single "the projection moved" signal when this branch arrived; the
+		 * completion seam below therefore does NOT push a second copy of the same
+		 * frame. It only raises a banner, which is the half a push cannot express —
+		 * and the host calls `onChanged` for a mark and an exit too, so the renderer
+		 * still refetches on both (see `ConsoleHostOptions.onExit`).
+		 */
 		onChanged: () => {
 			broadcastConsoleState(options.window);
 		},
+		onMark: completion.onMark,
+		onExit: completion.onExit,
 		onReveal: (request) => {
 			// The renderer's half of `reveal` (design 10.4): whether the session an
 			// agent named is the one on screen is a question only the renderer can
@@ -276,6 +406,10 @@ export async function startConsoleHost(
 		);
 	}
 
+	// Set once the host exists: the completion hooks look the host up lazily, so
+	// everything after this point can read the surface a mark or an exit names.
+	hostRef = host;
+
 	registerConsoleIpc({
 		window: () => options.window,
 		expectedUrl: options.expectedUrl,
@@ -303,6 +437,10 @@ export async function startConsoleHost(
 		},
 		stop: async () => {
 			unregisterConsoleIpc();
+			// The capture view is a renderer process of its own (design 13.3), so it is
+			// released explicitly on quit rather than left to the app's teardown: an
+			// idle timer that outlives the host would keep it alive past the window.
+			capture?.dispose();
 			host.dispose();
 			log("[console] host stopped");
 		},

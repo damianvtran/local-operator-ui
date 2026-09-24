@@ -1,12 +1,20 @@
 import { BrowserPane } from "@features/browser/components/browser-pane";
 import { useConversationApprovals } from "@features/browser/hooks/use-conversation-approvals";
+import { ConsolePane } from "@features/console/components/console-pane";
+import { useConsoleBlipPulse } from "@features/console/hooks/use-console-attention";
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { TabPanel } from "@shared/components/ui";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
 import type { SendOutcome } from "@shared/hooks/use-message-input";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import {
+	DEFAULT_CONSOLE_PANEL_WIDTH,
 	DEFAULT_RUN_PANEL_WIDTH,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
@@ -49,6 +57,7 @@ import {
 	ChatTabs,
 } from "./chat-tabs";
 import { DEFAULT_MESSAGE_SUGGESTIONS } from "./composer-suggestions";
+import { DeleteConversationDialog } from "./delete-conversation-dialog";
 import type { DirectoryWritePath } from "./directory-indicator";
 import {
 	type ComposerSendError,
@@ -359,6 +368,14 @@ const EMPTY_PULSES: Readonly<Record<string, number>> = {};
  */
 const canonicalSpeaking = (
 	canonical?: ChatContentProps["canonical"],
+	/*
+	 * Whether the pane's conversation is one THIS WINDOW no longer has - the state
+	 * a confirmed delete puts it in before any read can answer, which the band has
+	 * the same business in as the transport states above (a greeting offered over a
+	 * conversation the user just deleted is the same mistake the cached and
+	 * vanished cases were).
+	 */
+	gone = false,
 ): boolean =>
 	Boolean(
 		canonical &&
@@ -370,7 +387,7 @@ const canonicalSpeaking = (
 				// must not have the greeting offered over it. The rest of the pane's view
 				// is not this predicate's question, so it is not handed over.
 				stale: canonical.view.stale,
-				missing: canonical.view.missing,
+				missing: canonical.view.missing || gone,
 			}),
 	);
 
@@ -473,6 +490,108 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const [isSmallView, setIsSmallView] = useState(false);
 		const chatContainerRef = useRef<HTMLDivElement>(null);
 		const canvasContainerRef = useRef<HTMLDivElement>(null);
+		/*
+		 * The conversation's own archive state, and the two capabilities that decide
+		 * whether any of it is offered at all.
+		 *
+		 * Read HERE - the component that renders both the header and the dialog -
+		 * rather than inside either of them, for the reason the header takes
+		 * `fileCount` as a prop: the header is rendered by stories with fixtures and by
+		 * the legacy path with nothing, and the store read has exactly one honest
+		 * answer per session. `sessionId` is undefined on a draft, and a draft has no
+		 * conversation to archive or delete, so every one of these is inert there.
+		 */
+		const capabilities = useDesktopCapabilities();
+		const archiveEnabled = desktopFeatureEnabled(
+			capabilities.data,
+			"session_archive",
+		);
+		const deleteEnabled = desktopFeatureEnabled(
+			capabilities.data,
+			"session_delete",
+		);
+		const archived = useCanonicalSessionsStore((state) =>
+			sessionId
+				? (state.archiveFacts[sessionId]?.archived ??
+						state.sessions.find((row) => row.session_id === sessionId)
+							?.archived) === true
+				: false,
+		);
+		/*
+		 * THE CONVERSATION THIS WINDOW HAS DELETED, read here rather than waited for
+		 * from the wire.
+		 *
+		 * The pane's missing-session state used to arrive only as a 404 on the
+		 * conversation's own stream, and a delete this window performed does not wait
+		 * for one: the store knows (`forgotten`), and the pane therefore landed on an
+		 * empty draft bound to an id that no longer exists - the header over `Untitled
+		 * chat`, an enabled composer accepting a message that can only fail, and no
+		 * statement anywhere that the conversation was deleted (UX round 1, U1). The
+		 * state it lands on now is the ONE that already exists for this
+		 * (`MISSING_SESSION_NOTICE_ID`), not a second one.
+		 */
+		const sessionGone = useCanonicalSessionsStore((state) =>
+			sessionId ? state.forgotten[sessionId] !== undefined : false,
+		);
+		/*
+		 * AND A CONVERSATION THE CATALOGUE CARRIES AGAIN IS NOT GONE, whatever an
+		 * earlier read said (QA round 3, Q12).
+		 *
+		 * `canonical.view.missing` is a TRANSPORT state: it is raised by a 404 on this
+		 * conversation's own stream and nothing on the wire takes it back - a resurrected
+		 * conversation is not re-announced on the stream the 404 killed, because that
+		 * stream is gone. So after a tombstone self-heals (the row comes back, which
+		 * `forgotten` and the row's own presence both say) the pane the reader is
+		 * ALREADY on kept drawing "This conversation is no longer on this machine" for
+		 * as long as they stayed - QA measured it holding for 16s of samples and across
+		 * a click on the row the route already names, and only the route change or a
+		 * cold start cleared it.
+		 *
+		 * The catalogue's membership is this client's freshest claim about whether the
+		 * conversation EXISTS, and it is the claim the row itself is drawn from: a row
+		 * on screen beside a notice saying it is not on this machine is the app
+		 * contradicting itself. Read here rather than folded into the view, because the
+		 * view is about the TRANSPORT and this is about membership.
+		 */
+		const listedNow = useCanonicalSessionsStore((state) =>
+			sessionId
+				? state.sessions.some((row) => row.session_id === sessionId)
+				: false,
+		);
+		/*
+		 * TWO PREDICATES, BECAUSE THE TWO CONSUMERS WANT DIFFERENT ONES (agent review
+		 * round 4, R4-2). The notice is about EXISTENCE and takes the catalogue's
+		 * membership with it. The composer's refusal is about the STREAM: it exists to
+		 * refuse a message that can only 404, so it keeps `view.missing` - the transport
+		 * state - and the tombstone, and must not be cleared by a catalogue page that
+		 * still lists an id whose own stream has 404'd.
+		 */
+		const gone =
+			sessionGone || (canonical?.view.missing === true && !listedNow);
+		const conversationUnavailable =
+			sessionGone || canonical?.view.missing === true;
+		const setSessionArchived = useCanonicalSessionsStore(
+			(state) => state.setSessionArchived,
+		);
+		/*
+		 * The header's archive press, in the same register as the other two routes
+		 * (UX round 1, U2): the pane's menu item, the row's control and a typed
+		 * `/archive` are ONE act. The pane stays open either way - archiving hides, it
+		 * does not close - and the Undo all three offer is raised by the STORE, in the
+		 * update that settles the write (design round 8, D27): raising it here instead
+		 * put the accepted departure and the band that answers it in two commits, and the
+		 * commit between them is where the list's extent dips below the reader's position.
+		 */
+		const archiveFromHeader = useCallback(
+			async (next: boolean) => {
+				if (!sessionId) return;
+				await setSessionArchived(sessionId, next, agentName);
+			},
+			[sessionId, agentName, setSessionArchived],
+		);
+		const requestSessionDelete = useCanonicalSessionsStore(
+			(state) => state.requestSessionDelete,
+		);
 
 		useEffect(() => {
 			if (!chatContainerRef.current) {
@@ -633,6 +752,55 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		// rather than on whichever pane's number happens to be first.
 		const effectiveBrowserPanelWidth =
 			browserPanelWidth === 0 ? 640 : browserPanelWidth;
+
+		/*
+		 * The console pane: the FOURTH occupant of the same slot (design 6.1), read
+		 * here for the reason the browser pane's block above states — the header's
+		 * trigger and the pane must answer "is it up" from ONE field, or the trigger
+		 * and what is on screen can disagree.
+		 *
+		 * The zero-fallback is that same shape and a different number on purpose: the
+		 * console's default is DERIVED from the measured advance of the shipped mono
+		 * face times the design's 100-column grid (see `DEFAULT_CONSOLE_PANEL_WIDTH`), so
+		 * an unset preference lands the pane on the grid the design names rather than on
+		 * whichever sibling's number happens to be first.
+		 */
+		const isConsolePaneOpen = useUiPreferencesStore((s) => s.isConsolePaneOpen);
+		const setConsolePaneOpen = useUiPreferencesStore(
+			(s) => s.setConsolePaneOpen,
+		);
+		const requestConsoleOpen = useUiPreferencesStore(
+			(s) => s.requestConsoleOpen,
+		);
+		const consolePanelWidth = useUiPreferencesStore((s) => s.consolePanelWidth);
+		const setConsolePanelWidth = useUiPreferencesStore(
+			(s) => s.setConsolePanelWidth,
+		);
+		const restoreDefaultConsolePanelWidth = useUiPreferencesStore(
+			(s) => s.restoreDefaultConsolePanelWidth,
+		);
+		const effectiveConsolePanelWidth =
+			consolePanelWidth === 0 ? DEFAULT_CONSOLE_PANEL_WIDTH : consolePanelWidth;
+
+		/*
+		 * How much THIS conversation's console has finished unseen, for the header's
+		 * blip (design 12.2). Filtered by session because the trigger is in one
+		 * conversation's header: a completion in another conversation's console must not
+		 * light this one up.
+		 *
+		 * Read here rather than inside `ChatHeader` for the reason `browserAttentionCount`
+		 * is: the marks are window state scoped to a conversation, and this component is
+		 * where the conversation's identity lives.
+		 */
+		const consoleUnseenAll = useUiPreferencesStore((s) => s.consoleUnseen);
+		const consoleUnseenMarks = useMemo(
+			() =>
+				sessionId === null
+					? []
+					: consoleUnseenAll.filter((mark) => mark.sessionId === sessionId),
+			[consoleUnseenAll, sessionId],
+		);
+		const consoleUnseenPulsing = useConsoleBlipPulse(consoleUnseenMarks);
 
 		/*
 		 * How many approvals THIS conversation's agent is waiting on, for the header
@@ -919,6 +1087,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						className="flex h-full min-h-0 grow flex-col overflow-hidden rounded-none bg-canvas"
 					>
 						{/* Chat header */}
+						{/*
+						 * The conversation's own actions, offered only where they can act: a draft
+						 * (`sessionId` undefined) has no conversation to archive and no route to
+						 * delete with, so the menu and the pill are absent rather than disabled.
+						 * `onSetArchived` is the same desired-state write the row's control makes,
+						 * so the header and the row cannot drift about what a press means.
+						 */}
 						<ChatHeader
 							agentName={agentName}
 							description={description}
@@ -929,9 +1104,73 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							mcpServers={mcpServers}
 							listOnScreen={listOnScreen}
 							readerChildId={readerChildId}
-							onOpenBrowser={() => setBrowserPaneOpen(true)}
+							/* THE ONE PLACE A USER'S BROWSER TOGGLE IS DECLARED, the same shape as the
+							   console's below: the header owns the badge and the button, the pane's slot
+							   is the window's, and this is the one field both answer from. */
+							onToggleBrowser={() => setBrowserPaneOpen(!isBrowserPaneOpen)}
 							browserAttentionCount={browserAttentionCount}
+							archiveEnabled={archiveEnabled}
+							archived={archived}
+							onSetArchived={
+								sessionId ? (next) => void archiveFromHeader(next) : undefined
+							}
+							deleteEnabled={deleteEnabled}
+							onRequestDelete={
+								sessionId ? () => requestSessionDelete(sessionId) : undefined
+							}
+							onOpenConsole={
+								sessionId
+									? () => {
+											/*
+											 * THE ONE PLACE A USER'S OPEN IS DECLARED, and the two facts are
+											 * separate on purpose: claiming the slot is what shows the pane,
+											 * and the request is what tells the pane this open came from the
+											 * user — so it should run a first surface if the conversation has
+											 * none and put the caret in the terminal either way (the store's
+											 * `consoleOpenIntent` states the four ways this pane opens and why
+											 * only this one means "I am about to type").
+											 *
+											 * THE REQUEST NAMES THIS CONVERSATION, because the pane is remounted
+											 * on a session switch: a request still pending when the user switched
+											 * would otherwise be answered by the next conversation's pane, which
+											 * would run a shell nobody asked for there (agent review round 1, F-6).
+											 *
+											 * NEITHER IS DONE FOR THE OTHER TWO PATHS: a completion banner's
+											 * click and main's `reveal` push both claim this slot from
+											 * `app.tsx`, both already name a surface that exists, and the
+											 * reveal is not the user's gesture at all — an agent's surface
+											 * must not take the keyboard.
+											 */
+											setConsolePaneOpen(true);
+											requestConsoleOpen(sessionId);
+										}
+									: /*
+										 * OMITTED ON A DRAFT, as the archive and delete controls beside it are
+										 * (`sessionId ? … : undefined`), and by the same house rule: the pane's
+										 * only answer to a draft is "A console needs a conversation", so the
+										 * trigger would be an offer the app cannot honour — a control that
+										 * cannot act is not shown (design round 1, U3). The pane itself still
+										 * opens on a draft from the restored preference, and its close control
+										 * is there for that case.
+										 */
+										undefined
+							}
+							consoleUnseenCount={consoleUnseenMarks.length}
+							consoleUnseenPulsing={consoleUnseenPulsing}
 						/>
+						{/*
+						 * The one delete confirmation, rendered here because this component owns
+						 * the conversation it asks about (`title`) and the run details whose
+						 * children the copy has to mention. It renders nothing at all while no
+						 * candidate is staged in the store, and BOTH callers - the header's menu
+						 * and a typed `/delete` - reach it by staging one.
+						 */}
+						{deleteEnabled && (
+							<DeleteConversationDialog
+								title={agentName}
+								hasSubagentRuns={(runDetails?.lineage.length ?? 0) > 0}
+							/>
+						)}
 						{/* Chat Options Sidebar */}
 						{!canonical && (
 							<ChatOptionsSidebar
@@ -1004,7 +1243,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										// the conversation rather than the owner's, or the
 										// conversation may not be on this machine at all.
 										stale={canonical.view.stale}
-										missing={canonical.view.missing}
+										missing={gone}
 									/>,
 								)
 							: asTabPanel(
@@ -1047,7 +1286,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 												starting: canonical.starting === true,
 												startingAfterId: canonical.startingAfterId ?? null,
 												gate: canonical.view.frontend?.pending_gate ?? null,
-												unavailable: canonicalSpeaking(canonical),
+												unavailable: canonicalSpeaking(canonical, gone),
 												records: canonical.view.transcript.records,
 											}),
 										),
@@ -1071,7 +1310,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											 * reconnect) rather than answering anybody.
 											 */
 											canonical.view.transcript.records.length > 0 ||
-											canonicalSpeaking(canonical) ||
+											canonicalSpeaking(canonical, gone) ||
 											canonical.starting
 											? CANONICAL_NONEMPTY
 											: messages.length > 0
@@ -1147,7 +1386,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								// accepting a message that can only 404. The pane above
 								// carries the sentence and the way out (M6); this only
 								// refuses the keystroke.
-								unavailable={Boolean(canonical?.view.missing)}
+								unavailable={conversationUnavailable}
 								currentJobId={canonical ? null : currentJobId}
 								onCancelJob={onCancelJob}
 								canonicalStop={
@@ -1409,6 +1648,42 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							<BrowserPane
 								sessionId={sessionId ?? null}
 								onClose={() => setBrowserPaneOpen(false)}
+							/>
+						</div>
+					</>
+				)}
+				{/*
+				 * The console: the FOURTH occupant of this slot (§6.1), mutually exclusive
+				 * with the other three by construction (`claimRightSlot`), and built from
+				 * the same three pieces the browser pane reuses — the divider, the wrapper
+				 * with the `border-l` seam, and a root element — because those mechanics
+				 * belong to the slot rather than to any occupant.
+				 *
+				 * THE DIVIDER'S FLOOR IS 480, the browser pane's own (§6.1 asks for it by
+				 * that number): a terminal pane narrower than its grid rows start wrapping
+				 * into a soup, and the surface's 40-column floor is MAIN's, not this drag's
+				 * (§8.5) — the pane crops horizontally rather than shrinking the grid below
+				 * what a program can use.
+				 */}
+				{isConsolePaneOpen && (
+					<>
+						<ResizableDivider
+							sidebarWidth={effectiveConsolePanelWidth}
+							onSidebarWidthChange={setConsolePanelWidth}
+							minWidth={480}
+							maxWidth={1200}
+							side="left"
+							onDoubleClick={restoreDefaultConsolePanelWidth}
+							label="Resize console"
+						/>
+						<div
+							style={{ width: effectiveConsolePanelWidth }}
+							className="relative h-full overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart"
+							data-tour-tag="console-pane-slot"
+						>
+							<ConsolePane
+								sessionId={sessionId ?? null}
+								onClose={() => setConsolePaneOpen(false)}
 							/>
 						</div>
 					</>

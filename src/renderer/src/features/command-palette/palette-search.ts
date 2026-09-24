@@ -75,7 +75,6 @@ export type PaletteIconName =
 	| "integrations"
 	| "providers"
 	| "backend"
-	| "credentials"
 	| "updates"
 	| "plus"
 	| "new-chat"
@@ -148,8 +147,11 @@ export type PaletteItem = {
 	/**
 	 * Words a user might type instead of the name. This is where the palette's
 	 * "semantic" half lives: the app's own vocabulary is terse ("Appearance",
-	 * "API credentials") and people search with the words they use for the
-	 * thing ("dark mode", "api key").
+	 * "Backend settings") and people search with the words they use for the
+	 * thing ("dark mode", "api key", "temperature"). Removing a surface must not
+	 * remove its vocabulary: when the plain-text credentials section went, its
+	 * "api key"/"keys"/"tokens" aliases moved onto the Providers row that now
+	 * owns that door, rather than being deleted with the section.
 	 */
 	keywords?: string[];
 	/** Lower-weight haystack: help text, previews, descriptions. */
@@ -798,6 +800,14 @@ const SETTINGS_META: Record<
 	},
 	providers: {
 		icon: "providers",
+		/*
+		 * The API-key vocabulary lives HERE now that the plain-text credentials
+		 * section is gone (its palette row was this app's only owner of "api key",
+		 * "keys", "tokens"). Deleting the SECTION was deliberate; deleting the
+		 * SYNONYM SET was collateral — the Providers grid's own rows read "Sign in or
+		 * API key" and carry an API-key tab, so it is the surface those words name.
+		 * Users search the words they use, not the words the app renamed a surface to.
+		 */
 		keywords: [
 			"models",
 			"llm",
@@ -807,6 +817,11 @@ const SETTINGS_META: Record<
 			"ollama",
 			"model provider",
 			"api provider",
+			"api key",
+			"api keys",
+			"keys",
+			"tokens",
+			"credentials",
 		],
 	},
 	backend: {
@@ -819,10 +834,6 @@ const SETTINGS_META: Record<
 			"web search",
 			"temperature",
 		],
-	},
-	credentials: {
-		icon: "credentials",
-		keywords: ["api key", "api keys", "keys", "tokens", "secrets", "env"],
 	},
 	updates: {
 		icon: "updates",

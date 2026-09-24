@@ -14,11 +14,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { retryDesktopQuery } from "./backend-error";
 import { desktopResult } from "./desktop-api";
-import type {
-	DesktopCapabilities,
-	DesktopProvider,
-	RadientLoginVerdict,
-} from "./desktop-api";
+import type { DesktopCapabilities, DesktopProvider } from "./desktop-api";
 
 export const desktopKeys = {
 	capabilities: ["desktop", "capabilities"] as const,
@@ -39,58 +35,7 @@ export const desktopKeys = {
 	 */
 	credentials: (sessionId: string) =>
 		["desktop", "credentials", sessionId] as const,
-	/**
-	 * The Radient login verdict on `GET /v1/auth/status` (`accounts.list`).
-	 *
-	 * Its own entry rather than `accounts`, because the payload a reader parses
-	 * out of the route is not the one the logout picker reads from the same
-	 * route, and two queries sharing one key fight over one cache slot. Nested
-	 * UNDER `accounts` so that the invalidations which already refresh the
-	 * stored-account list after a sign-out refresh this verdict too, by prefix.
-	 */
-	radientLogin: ["desktop", "auth", "accounts", "login"] as const,
 };
-
-/**
- * How often the login verdict is re-read while the window is in the foreground.
- *
- * A minute, because the condition changes on human timescales (a sign-in, a
- * revoked grant, a console edit) and this read is one local control with no
- * upstream leg: `GET /v1/auth/status` decides the verdict from this device's own
- * credential store and deliberately does not call the provider. Deliberately
- * NOT `refetchIntervalInBackground`: a user who is not looking does not need a
- * re-read, and coming back to the window refetches on focus anyway.
- */
-export const RADIENT_LOGIN_POLL_MS = 60_000;
-
-/**
- * The verdict on this machine's Radient sign-in, or `null` when nothing is
- * known about it.
- *
- * `null` is the honest answer for all three ways this can come back with nothing
- * to say -- a read that failed, a payload with no `radient_login` (every backend
- * that predates the route), and a `state` of `unknown` is left to the caller's
- * own predicate. Every caller treats it as "keep the credential store's own
- * answer" (`loginRefused`), which is why there is no capability gate here: the
- * `tunnel` feature key would fail closed into exactly that same branch, and
- * gating would be a second way of saying one thing.
- */
-export function useRadientLoginVerdict() {
-	return useQuery({
-		queryKey: desktopKeys.radientLogin,
-		queryFn: () =>
-			desktopResult<{ radient_login?: RadientLoginVerdict | null }>({
-				op: "accounts.list",
-			}).then((result) => result.radient_login ?? null),
-		staleTime: RADIENT_LOGIN_POLL_MS,
-		refetchInterval: RADIENT_LOGIN_POLL_MS,
-		refetchOnWindowFocus: true,
-		// A refusal here is a state to render rather than a transient to hammer,
-		// and a read that failed has already told the caller nothing about the
-		// login -- which renders as the store's own answer either way.
-		retry: false,
-	});
-}
 
 /**
  * How often this app re-asks what the backend can do, WHILE THE PLANE IS OPEN.
@@ -369,6 +314,31 @@ export type DesktopFeature =
 	 */
 	| "references"
 	/**
+	 * This machine's remote-access state and the verdict on the Radient login
+	 * that owns it: `GET /v1/desktop/tunnel`, plus `radient_login` and
+	 * `tunnel_remedy` on `GET /v1/auth/status`.
+	 *
+	 * ITS OWN key rather than a bump of `auth` or `radient`, on the rule
+	 * `references` states above and for a sharper version of it: the two keys it
+	 * sits beside gate surfaces that ALREADY WORK, and this one gates one narrow
+	 * thing - whether the app may tell a user that their stored Radient sign-in
+	 * is no longer accepted, and whether it may offer the sign-in that fixes it.
+	 * The account section must keep its current wording against a backend that
+	 * cannot answer, because a surface that reads an ABSENT verdict as "the login
+	 * is fine" is the silent-health lie the whole change exists to remove - and
+	 * one that reads it as "the login is dead" sends an offline machine to a
+	 * sign-in it does not need. Both halves of that pair are why the gate is
+	 * `enabled`-shaped and fails closed in `useRadientSessionIssue` rather than
+	 * defaulting either way.
+	 *
+	 * WHAT HAS TO HAPPEN FOR THE SURFACE TO APPEAR: the harness advertises
+	 * `"tunnel": 1` in `local_operator/server/routes/capabilities.py`, which is
+	 * what PR #1342 (`fix/tunnel-login-resilience`, merged as `50635770`) does.
+	 * Named here where a reader will meet it, exactly as `references` names its
+	 * own counterpart on the other side of this contract.
+	 */
+	| "tunnel"
+	/**
 	 * `attention.seen`: marking MANY completions read in one gesture
 	 * (`POST /v1/desktop/attention/seen`), which the sidebar's "Mark all as read"
 	 * control rides.
@@ -382,7 +352,41 @@ export type DesktopFeature =
 	 * by a request that failed is a mark the user believes is gone while it is
 	 * still there.
 	 */
-	| "completion_ack_bulk";
+	| "completion_ack_bulk"
+	/**
+	 * Archived conversations: the `archived` flag on every catalogue row and search
+	 * hit, `include_archived` on both reads, and the `sessions.archive` write
+	 * (`POST /v1/desktop/sessions/{id}/archive`).
+	 *
+	 * Its OWN key rather than a bump of `session_catalogue`, on the rule
+	 * `session_search` states above: the catalogue surface is the WHOLE chats list,
+	 * which renders perfectly well against a backend whose archive store does not
+	 * exist, so gating the list on a newer catalogue version would hide a working
+	 * surface behind an update it does not need. A backend that predates archiving
+	 * advertises neither the key nor the row field, and the sidebar then mounts no
+	 * control, marks nothing and partitions nothing - see `visibleRows` in
+	 * `features/chat/chat-archived`, which is the ONE place that decision is
+	 * written down. Absent means the panel mounts no control, marks no row and
+	 * partitions nothing: every row it draws is a row an enabled panel also draws,
+	 * with the same classes, and the only difference is the archived set - an
+	 * ENABLED panel hides those, and this one cannot (see the withdrawn pair in
+	 * `docs/evidence/session-archive/README.md`, which measures a 690x60 band around
+	 * a live row as byte-identical and the panel's row COUNT as one apart).
+	 */
+	| "session_archive"
+	/**
+	 * Permanent deletion of one conversation (`DELETE /v1/desktop/sessions/{id}`).
+	 *
+	 * SEPARATE from `session_archive`, and the separation is the point rather than
+	 * bookkeeping: the two have different blast radii (one is recoverable, one is
+	 * not) and a backend can legitimately host the archive store without offering a
+	 * delete route. A shared key would mean an archive rollout that ships a delete
+	 * control against a route the daemon does not have - a danger dialog whose
+	 * confirm button 404s, which is worse than no dialog at all. Absent here means
+	 * no delete affordance is drawn anywhere, from the header menu or from a typed
+	 * `/delete`.
+	 */
+	| "session_delete";
 
 /**
  * WHY a negotiated feature surface may not be offered.

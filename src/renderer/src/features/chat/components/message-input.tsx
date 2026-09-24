@@ -20,6 +20,7 @@ import {
 	refusedSplitNotice,
 	useMessageInput,
 } from "@shared/hooks/use-message-input";
+import { useRadientSessionIssue } from "@shared/hooks/use-radient-session-issue";
 import {
 	SpeechToTextPriority,
 	useSpeechToTextManager,
@@ -117,6 +118,7 @@ import {
 	type Capture,
 	type CredentialFate,
 	type CredentialPayload,
+	HELD_TAKEN_BY,
 	IDLE_CAPTURE,
 	MASK_CELL,
 	type UnredactedDisclosure,
@@ -197,6 +199,10 @@ import { CredentialChipLayer } from "./credential-chip-layer";
 import { CredentialOverlay, composerTextBox } from "./credential-overlay";
 
 import { useAtResolution } from "../hooks/use-at-resolution";
+import {
+	activeModelForDefault,
+	writeModelDefaultSettings,
+} from "../pickers/model-default-settings";
 /*
  * The `@` mention layer: the tokenizer, the list over the field, and the chip
  * layer that draws behind the field's own glyphs. Three modules rather than one
@@ -217,9 +223,11 @@ import {
 	type DirectoryWritePath,
 } from "./directory-indicator";
 import { MeasuredSuggestionStack } from "./measured-suggestion-stack";
+import { RadientSessionIssueCallout } from "./radient-session-issue";
 import { ReplyPreview } from "./reply-preview";
 import type { RunDetails } from "./run-details";
 import { ScrollToBottomButton } from "./scroll-to-bottom-button";
+import { shouldRunArgumentAction } from "./slash-argument-rows";
 import {
 	type CompletionRow,
 	SlashSuggestionsPopup,
@@ -1403,6 +1411,30 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * `MeasuredSuggestionStack` does not re-measure for unchanged content.
 		 */
 		const heldSample = useRef<readonly string[] | null>(null);
+		/*
+		 * The last held-press sentence RAISED, AND THE RECORD IT WAS RAISED FOR, so a
+		 * repeated Enter on an unchanged held box does not append the same transcript
+		 * line again (remediation round 1, U4). A ref rather than state: this decides
+		 * whether to say something, never what the frame draws, and a change that
+		 * re-rendered the composer here would be the re-render for its own sake.
+		 *
+		 * KEYED TO THE RECORD, NOT TO THE SENTENCE (agent review round 2, R6). The
+		 * dedupe used to hold the bare string and be reset imperatively when the
+		 * record was pruned — and that prune lives in `applyCapture`, which the
+		 * notice's OWN remedy never runs: clearing the box with the keyboard goes
+		 * through the textarea `onChange` → `applyDomEdit` route, which clears
+		 * `cancelledToken.current` (its effect is keyed on the buffer) but never this
+		 * ref. So the operator followed the app's named way out, re-armed the
+		 * identical shape, and the second hold was SILENT — the box kept, nothing
+		 * dispatched, no sentence. Folding the record into the key removes the
+		 * imperative reset altogether: a fresh cancel writes a NEW `CancelledToken`
+		 * object, so identity alone says this is a new hold that owes its own words,
+		 * on every route that can retire the old one — the keystroke path included.
+		 */
+		const lastHeldNotice = useRef<{
+			token: CancelledToken;
+			notice: string;
+		} | null>(null);
 		const suggestions = useMemo(() => {
 			if (!initialSuggestions || initialSuggestions.length === 0) return [];
 			/*
@@ -2046,6 +2078,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				team: sessionStatus?.frontend?.active_team,
 				agent: sessionStatus?.frontend?.active_agent,
 			},
+			activeModel: activeModelForDefault(
+				sessionStatus?.frontend?.effective_model ??
+					sessionStatus?.frontend?.selected_model,
+			),
 		});
 
 		/*
@@ -3038,38 +3074,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			[recordWord],
 		);
 		/**
-		 * The plan this draft's COMMAND-LOCKED word would run, or `null`.
-		 *
-		 * ONE QUESTION, ASKED OF THE PLANNER, for the three places that need it — the
-		 * exception below, the notice that says what the next Enter does, and the receipt
-		 * and undo a locked run owes — because the three must never disagree and a second
-		 * reading of "is this locked" is exactly how they would.
-		 *
-		 * WHAT SELECTS IT IS THE RECORD'S OWN COUNT — not the disclosure, and not "every
-		 * locked draft" (review round 4: this docblock stated the superseded form of the
-		 * rule). The disclosure was round 2's correction, and it closed the door QA round 2
-		 * measured: `unredactedOverBuffer` is a whole-buffer equality that ANY keystroke
-		 * clears, while `holdsCancelledToken` (which selects the exception) matches the
-		 * cancelled token's TEXT at its old offset and the record's text is the WORD plus its
-		 * space, never the secret — so one keystroke after the Escape the exception was handed
-		 * a box it sent, measured on the real app and byte-identical on `main`. Requiring the
-		 * planner for every locked draft then closed that door and cost the operator's own
-		 * sentence on the shape where a cancelled token was written after (§5 makes those
-		 * words theirs — round 3, MINOR 1). The callers now ask this only where the cancel
-		 * RECORDED that it put characters back (`cancelledToken.current.restored > 0`, at the
-		 * exception below): the record carries the distinction the disclosure could not, and
-		 * a span that restored nothing has no secret to keep. Its answer is still taken only
-		 * when that answer IS a locked run.
-		 */
-		const lockedRunOf = useCallback(
-			(draft: string, at: number) => {
-				const planned = planFor(draft, at);
-				if (planned.kind !== "whole" && planned.kind !== "splice") return null;
-				return planned.locked === true ? planned : null;
-			},
-			[planFor],
-		);
-		/**
 		 * Whether THIS DRAFT still holds the characters the cancel put back.
 		 *
 		 * The record's own reach (UX round 6, U24; code review round 6, MINOR 1). The
@@ -3108,17 +3112,50 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			const pasted = pastedRun.current;
 			return pasted !== null && standsAsToken(draft, pasted.run);
 		}, []);
+		/**
+		 * Whether THIS draft is one whose press is HELD — nothing runs, nothing
+		 * sends, the box is kept, one notice names the way out.
+		 *
+		 * ONE PREDICATE, TWO READERS (agent review round 2, R5). `planForDraft`
+		 * answers `{kind:"held"}` on exactly this shape, and the composer line must
+		 * not claim the hold on any other: the line said so on `unredactedChars !=
+		 * null`, and that disclosure OUTLIVES the record. On the reload /
+		 * conversation-switch shape the disclosure and the buffer persist while
+		 * `cancelledToken.current` (a ref) dies, so the old test passed where the
+		 * press runs no hold at all — Enter DISPATCHED `/credential <secret>` and ate
+		 * the trailing words as its argument, the very defect this change closes,
+		 * under a sentence promising the opposite. Both readers ask this now, so the
+		 * claim and the press cannot drift.
+		 *
+		 * The two facts are the press's own: `holdsCancelledToken` is the exact span
+		 * `gestureFor` reads (the draft still carries the box's cancelled token where
+		 * it was put back), and `restored > 0` is the branch's own condition — an
+		 * empty span restores nothing, so its words are prose and its press sends.
+		 * CARET-INDEPENDENT by construction, which is what lets the render path read
+		 * it: `gestureFor` takes the draft alone, and no part of the held answer
+		 * depends on where the cursor sits. A `useCallback` with NO dependency, like
+		 * `gestureFor` its sibling: it reads refs only, so its identity is stable and
+		 * `planForDraft` can list it without re-creating on every render.
+		 */
+		const holdsHeldPress = useCallback((draft: string): boolean => {
+			const token = cancelledToken.current;
+			return (
+				token !== null &&
+				token.restored > 0 &&
+				holdsCancelledToken(draft, token)
+			);
+		}, []);
 		const planForDraft = useCallback(
 			(draft: string, at: number): SlashSubmissionPlan => {
 				const gesture = gestureFor(draft);
-				if (gesture === "send") {
+				if (gesture === "send" && holdsHeldPress(draft)) {
 					/*
 					 * §5's EXCEPTION, AND THE ONE DRAFT IT MAY NOT SEND.
 					 *
 					 * `send` here means "what you see is what gets sent" — the box cancelled this
 					 * token and the visible text is the operator's own prose (QA round 1 Q2; UX
 					 * round 2 U9). That reading cannot hold for a COMMAND-LOCKED word carrying a
-					 * tail, whose tail is a secret: measured on a live conversation, type
+					 * tail, whose tail is a secret: [redacted] on a live conversation, type
 					 * `/credential `, type the secret behind the mask, press Escape — which THIS APP
 					 * offers in its own notice — and the press put `/credential <the secret>` into
 					 * the conversation, on the remediation's first head and on `main` alike (UX
@@ -3139,22 +3176,35 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * known. An EMPTY span puts nothing back, so the words written after it are the
 					 * operator's own (§5) and the composer sends them as prose — and where the draft
 					 * OPENS with the token, the leading-slash policy refuses that send outright and
-					 * the words stay in the box with nothing sent (UX round 4, U16 measured both, and
+					 * the words stay in the box with nothing sent (UX round 4, U16 [redacted] both, and
 					 * corrected this: the earlier claim here that the shape re-sends the sentence was
 					 * wrong — it is refused, and the gain over the previous head is that the words are
 					 * KEPT rather than consumed). A span that HELD characters puts a secret back, and
-					 * no later keystroke can make that untrue. Yielding is
-					 * still the planner's answer (`lockedRunOf`), not a second question asked here, and
-					 * every other draft keeps the exception's `send` to the letter — the bare-token
-					 * cancel included: a bare `/credential` carries no tail, so the planner answers
-					 * `send` too and nothing here changes.
+					 * no later keystroke can make that untrue — but the run is no longer DISPATCHED
+					 * here; the press is HELD, which is what `holdsHeldPress` asks and the composer
+					 * line now reads too (agent review round 2, R5 — the two used to ask different
+					 * questions, and the line's was the survivor-less disclosure).
 					 */
-					if ((cancelledToken.current?.restored ?? 0) > 0) {
-						const locked = lockedRunOf(draft, at);
-						if (locked !== null) return locked;
-					}
-					return { kind: "send" };
+					/*
+					 * A HELD PRESS, NOT A DISPATCHED ONE (operator requirement).
+					 *
+					 * The dispatch route below used to run here and it answered Q-1 — the restored
+					 * secret was never SENT to the model — but at the operator's own cost: the words
+					 * they typed after the cancelled token became the command's ARGUMENT, the run
+					 * consumed them, and the receipt said so. The operator's requirement outranks
+					 * that route. Both of the plan's old answers are wrong at this state:
+					 * dispatching consumes their words, and `send` puts the restored secret into a
+					 * message record. So the press is HELD: nothing runs, nothing sends, the box is
+					 * kept, and one notice names the way out. The Q-1 security invariant is met by
+					 * the hold rather than by the dispatch.
+					 */
+					return {
+						kind: "held",
+						notice:
+							"These characters are still the credentials you cancelled — clear the box to release your words and send your sentence.",
+					};
 				}
+				if (gesture === "send") return { kind: "send" };
 				const plan =
 					gesture === "pick" ? planFor(draft, at, "pick") : planFor(draft, at);
 				if (gesture !== "pick" || plan.kind !== "send") return plan;
@@ -3184,7 +3234,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				if (index < 0) return plan;
 				return planFor(draft, index + word.length, "pick");
 			},
-			[gestureFor, lockedRunOf, planFor, recordWord],
+			/*
+			 * No dependency on a locked-run helper: the held press replaced the dispatch
+			 * route that read one, and the helper itself is gone with it (remediation
+			 * round 1, R4 — this comment used to claim it was "still used elsewhere",
+			 * which stopped being true when the call site at the composer line moved to
+			 * the held sentinel).
+			 */
+			[gestureFor, holdsHeldPress, planFor, recordWord],
 		);
 		/*
 		 * The composer's syntax highlight, and the ONE gate that decides whether the
@@ -3292,6 +3349,39 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * guard rather than becoming a refusal that restores the draft (round 1 NIT-3).
 				 */
 				const runSlashCommand = onSlashCommand;
+				if (plan.kind === "held") {
+					/*
+					 * A HELD PRESS (operator requirement). This plan is asked of the composer
+					 * when the box still carries an Esc-cancelled credential token whose
+					 * characters were restored: the operator's own words after the token must not
+					 * become the command's argument, and the restored secret must not go to the
+					 * model. So the plan's answer is "do nothing, keep the box, and say the way
+					 * out". The notice is raised BEFORE the dispatcher guard below, deliberately:
+					 * the hold is a property of the composer's own state, not of whether a
+					 * dispatcher is wired, so a harness that mounts the composer alone still gets
+					 * the one sentence rather than a silently dead Enter.
+					 *
+					 * AND THE SENTENCE IS RAISED ONCE PER HOLD (remediation round 1, U4). The box
+					 * is byte-identical after the press, so nothing else about the frame changes:
+					 * four presses on a held box would otherwise append four identical transcript
+					 * lines, and the hold is one standing state rather than one event per press.
+					 * The guard lives HERE and not in the host's `note` for exactly that reason -
+					 * every other note is a fresh outcome with something new to say, and only this
+					 * branch repeats a sentence that is already the whole answer. A ref, not state:
+					 * re-raising the line must not itself re-render the composer, and any state
+					 * change (a keystroke, a clear) re-plans the draft and starts a new hold.
+					 */
+					const held = cancelledToken.current;
+					if (
+						held !== null &&
+						(lastHeldNotice.current?.token !== held ||
+							lastHeldNotice.current?.notice !== plan.notice)
+					) {
+						lastHeldNotice.current = { token: held, notice: plan.notice };
+						onSlashNote?.(plan.notice);
+					}
+					return;
+				}
 				if (!runSlashCommand) return;
 				if (plan.kind === "list-open") {
 					// The roster owns the next Enter — but only while it can give a row.
@@ -3498,8 +3588,47 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const isBusy = Boolean(isLoading && currentJobId);
 		const isInputDisabled = unavailable || isBusy;
 
+		const handleSlashAction = useCallback(
+			async (row: Extract<CompletionRow, { kind: "action" }>["row"]) => {
+				const model = activeModelForDefault(row.model);
+				if (
+					isInputDisabled ||
+					!shouldRunArgumentAction(row, true) ||
+					row.id !== "model-default" ||
+					!model
+				)
+					return;
+				/*
+				 * A session command cannot write machine configuration: the active owner
+				 * may be remote. Use the same validated local settings path as the model
+				 * picker's explicit action, and keep failures visible in the composer.
+				 */
+				slash.close();
+				try {
+					await writeModelDefaultSettings(model, (key, value) =>
+						desktopResult({ op: "settings.edit", key, value }),
+					);
+					setNewMessage("");
+					onSlashNote?.(
+						`Default for new sessions: ${model.provider}/${model.model_id}`,
+					);
+				} catch (error) {
+					onSlashNote?.(
+						`The default was not saved: ${
+							error instanceof Error ? error.message : "the backend refused it"
+						}`,
+					);
+				}
+			},
+			[isInputDisabled, slash.close, setNewMessage, onSlashNote],
+		);
+
 		const handleSlashPick = useCallback(
 			async (row: CompletionRow, disposition: { run: boolean }) => {
+				if (row.kind === "action") {
+					if (disposition.run) await handleSlashAction(row.row);
+					return;
+				}
 				/*
 				 * THE REFUSAL COVERS THE POPUP'S CLICK TOO (review round 1, MAJOR 2).
 				 * A pick does not type into the box - it writes the completion into it
@@ -3700,6 +3829,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				// dependency array is what keeps that guard reading the CURRENT state
 				// rather than the state of the render that first built the callback.
 				isInputDisabled,
+				handleSlashAction,
 			],
 		);
 		/*
@@ -5024,15 +5154,20 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							? unredactedNotice(
 									unredactedChars,
 									/*
-									 * AND WHAT THE NEXT ENTER WILL DO WITH THEM. Where this draft holds a
-									 * command-locked run the press takes the restored characters as the
-									 * command's argument and sends nothing, so "Enter will expose them" is
-									 * false in the safe direction — the app's most trust-sensitive sentence
-									 * telling the user that the harmless press is the dangerous one (UX round
-									 * 2, U7). The word comes from the SAME planner call the press will use
-									 * (`lockedRunOf`), so the promise and the press cannot disagree.
+									 * WHAT THE NEXT ENTER WILL DO WITH THEM, and the sentinel is passed ONLY where
+									 * the press really is held (agent review round 2, R5). The hold is a fact
+									 * about the RECORD, not about the disclosure: `unredactedChars !== null`
+									 * survives a reload / conversation switch while `cancelledToken` (a ref)
+									 * dies with it, so gating on the disclosure alone painted "Enter is held:
+									 * clear the box to release your words" over a box whose Enter DISPATCHES
+									 * `/credential <secret>` and eats the trailing words as its argument — the
+									 * defect this change exists to close, under a sentence promising the
+									 * opposite. `holdsHeldPress` is the same predicate the press asks, so the
+									 * claim and the press cannot drift; where it is false the plain
+									 * `unredactedNotice(n)` sentence stands, which is what a restored draft with
+									 * no live record actually does — expose the characters.
 									 */
-									lockedRunOf(newMessage, caret)?.command.name,
+									holdsHeldPress(newMessage) ? HELD_TAKEN_BY : undefined,
 								)
 							: null,
 					/*
@@ -5281,6 +5416,23 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		}, [sendError, newMessage, replies, attachments, heldCopyOnScreen]);
 
 		/*
+		 * The session issue: the state of this machine's Radient sign-in, and the one
+		 * action that starts it again when it is dead.
+		 *
+		 * Read HERE rather than in the transcript because the composer band is the
+		 * session's own surface: every other standing fact about a session - its goal,
+		 * the size of its plan, a held message, an interrupted turn - is stated in this
+		 * band too, and the operator's report was that they had to go looking for this
+		 * one at all.
+		 *
+		 * It renders NOTHING in the healthy case, which is the common one, and nothing
+		 * for a backend that cannot answer the verdict either (see the hook's own
+		 * capability gate), so a healthy machine and an older server both draw the
+		 * composer exactly as they did before.
+		 */
+		const radientIssue = useRadientSessionIssue();
+
+		/*
 		 * No `iconSize` here. Every glyph below sits inside a `Button`, and the
 		 * button variants carry `[&_svg]:size-4` / `size-3.5`, which override an
 		 * SVG's own width and height - so a `size` prop on these icons states an
@@ -5309,6 +5461,93 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			// The unredact is the one state where the next Enter discloses a
 			// secret, so it takes the warning role rather than muted ink.
 			unredactedChars !== null ? "text-warning" : "text-ink-muted",
+		);
+
+		/*
+		 * THE SESSION ISSUE, THE GAP BETWEEN IT AND THE BOX, AND THE ANNOUNCEMENT.
+		 *
+		 * IT IS AN `<output>` - the band's own element for an asynchronous line,
+		 * which is what the sentence above the box uses too - and that is the fix
+		 * for UX round 1's U2. The block ARRIVES on its own: the credential dies
+		 * out of band, the 60 s poll finds it, and the callout appears while the
+		 * operator is mid-sentence. That is news, and none of it was announced - a
+		 * screen-reader user got nothing until they happened to tab into it.
+		 * `output` carries the status role implicitly, which is also why this is an
+		 * element rather than a `role="status"` attribute on a `div` (the lint
+		 * rule the a11y set carries wants the element). `hidden` while there is no
+		 * issue keeps the healthy band reserving no height and the region out of the
+		 * accessibility tree, exactly as the sentence above it does. The `alert` role
+		 * stays wrong here for the primitive's own reason: it is reserved for a
+		 * callout rendered IN RESPONSE to an action, which is the composer's
+		 * send-error alert.
+		 *
+		 * WHAT IS VERIFIED HERE AND WHAT IS NOT (agent review round 2, NIT-1; UX
+		 * round 2, N7). Verified: the element, its implicit role, and the fact that
+		 * the same node persists while the callout is up, so a poll that changes
+		 * `needs sign-in` into `signing-in` is a content change in a standing region
+		 * rather than a second mount. NOT verified: that any assistive stack SPEAKS
+		 * the arrival. No screen reader is in the loop for this repository, and the
+		 * arrival is the one case a live region is least reliable in - the region is
+		 * `display: none` while healthy and the callout mounts inside it, so a
+		 * stack that only watches an already-present region sees nothing. A
+		 * permanently-present clipped region (`sr-only` rather than `hidden`) is the
+		 * alternative shape; it was not taken here because it would reserve a
+		 * clipped line in the healthy band for an announcement this round cannot
+		 * measure either way. Recorded as unverified rather than claimed.
+		 *
+		 * THE GAP IS THE WRAPPER'S (design round 1, D1). Every other block above the
+		 * composer leaves its own bottom step for that gap (`px-4 pb-2` / `px-2
+		 * pb-1`, the status row's and the alert's own lists) - and the bordered
+		 * callout, which imported the alert's PADDING but not its gap, therefore sat
+		 * 0.5-1.0px above the composer's border at every width. Its ground is 1.02:1
+		 * from the box's, so there was no lightness step to read the edge by either.
+		 *
+		 * The collision is what makes it more than untidy: the composer carries a 2px
+		 * `outline-offset-2` ring whenever a draft is staged - i.e. in the DEFAULT
+		 * state - so the ring's 4px of extent was painted INSIDE the callout's
+		 * ground, drawing a green rule along its bottom edge and over its border at
+		 * the rounded corners; the callout's border read as part of the composer's
+		 * focus decoration. `branding.md` §5 gives the gap to the CONTAINER, which is
+		 * why it is here and not an `mb-*` on the callout.
+		 *
+		 * `pb-2` AT BOTH WIDTHS, deliberately unlike its siblings. `pb-1` is 4px and
+		 * the ring's extent is exactly 4px, so the compacted step that saves vertical
+		 * space in the small view would put the ring's outer edge back on the
+		 * callout's border. 8px is the band's own wide step, the minimum that clears
+		 * the ring with room to read the two edges as two, and the callout is the one
+		 * block up here that must not compact it.
+		 *
+		 * Defined once and rendered TWICE: above the box, and - on the centring band
+		 * only - mirrored below the group, so the group grows by the same height on
+		 * both sides and the arrival does not move the box. See the mirror's own
+		 * comment for why that is confined to this band, and for the width at which
+		 * the device runs out of room to work.
+		 */
+		const radientIssueBlock = (
+			<output
+				className={cn(
+					CHAT_MEASURE,
+					"block pb-2",
+					radientIssue.issue.kind === "hidden" && "hidden",
+				)}
+			>
+				<RadientSessionIssueCallout
+					issue={radientIssue.issue}
+					onSignIn={radientIssue.start}
+					onCancel={radientIssue.cancel}
+					onDismiss={radientIssue.dismiss}
+					isSmallView={isSmallView}
+					/*
+					 * Every control in this block is REPLACED by its own press (the action by
+					 * Cancel, Dismiss by the action, and a completed sign-in by nothing at
+					 * all), so the focused control is unmounted under the user and Chromium
+					 * drops focus to `<body>` - 35 Tab stops from the control that replaced
+					 * it. The block hands it back HERE for the status row's reason: this is
+					 * where the composer's own ref lives (`UX round 2, U7`).
+					 */
+					onFocusComposer={() => textareaRef.current?.focus()}
+				/>
+			</output>
 		);
 
 		const inputContent = (
@@ -5349,6 +5588,19 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						onFocusComposer={() => textareaRef.current?.focus()}
 					/>
 				</ErrorBoundary>
+				{/*
+				 * The session issue, between the persistent status row and the transient
+				 * send-error alert: ambient context sits outboard of the alert that points
+				 * at the box, which is the rule that put the row above it
+				 * (`docs/composer-status-tabs.md` § 2.1, amended with this block).
+				 *
+				 * It is NOT inside the box, for the alert's own reason: the box is one
+				 * control with one focus ring, and this block carries prose and two
+				 * controls. Its own gap to that ring is the wrapper's, above
+				 * `inputContent` - the ring is why it is 8px and not the siblings'
+				 * compacted 4px (design round 1, D1).
+				 */}
+				{radientIssueBlock}
 				{(abandonNotice ||
 					refusedNotice ||
 					(!sendError && heldNotice) ||
@@ -5877,7 +6129,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * composer band did (round 2, R1). Keep every bound between here
 					 * and the band on the popup's SIBLINGS, never on its ancestors.
 					 */}
-					<SlashSuggestionsPopup state={slash} onPick={handleSlashPick} />
+					<SlashSuggestionsPopup
+						state={slash}
+						onPick={handleSlashPick}
+						onActionPick={handleSlashAction}
+					/>
 					{/*
 					 * MOUNTED AFTER THE SLASH POPUP, and that order is the whole of the
 					 * "which list owns this caret" answer: the two grammars can both be live
@@ -7032,6 +7288,65 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					>
 						{credentialNotice}
 					</output>
+				) : null}
+				{/*
+				 * THE SESSION ISSUE'S OWN MIRROR, for the arrival the operator does not
+				 * ask for (UX round 1's U5, same device as the sentence above).
+				 *
+				 * The credential dies out of band and the 60 s poll finds it, so the
+				 * callout appears while the operator is halfway through a sentence.
+				 * MEASURED on this band: the field's top moved 402 -> 468, 66px, under
+				 * the cursor - the callout's own height, halved, which is exactly what
+				 * an insertion above a CENTRED group does. Mirroring it below the group
+				 * makes the group grow by the same height on both sides, so everything
+				 * between the two copies - the box, the status row, the tip row and the
+				 * chips - stays where it was and the text the operator is typing does
+				 * not move at all.
+				 *
+				 * CONFINED TO THIS BAND, for the reason the sentence above gives: on a
+				 * populated pane the band is bottom-anchored, so a mirrored block under
+				 * the box would grow the band downward and push the typed line UP by the
+				 * block's full height. There the callout takes transcript height
+				 * instead, which is the honest move.
+				 *
+				 * WHERE IT RUNS OUT OF ROOM, AND WHY THAT IS LEFT ALONE (UX round 2's U6,
+				 * QA round 2's Q-1 - both measured at the app's 800x600 floor). The
+				 * device's premise is SLACK: cancelling a centring shift means growing the
+				 * group on both sides, and the copy spends the block's own height to buy
+				 * that. At 1380x868 and 1024x668 the band has the room and nothing moves
+				 * (402.25 in both states, measured in ONE run by the design round - a
+				 * two-run comparison cannot see it, because the empty band is
+				 * bottom-anchored until the snapshot settles). At 800x568 the block is
+				 * 210px, the group needs 560px inside a 512px band, and the band grows
+				 * past the window rather than centring: the field lands 27-33.5px lower
+				 * (both rounds read `285` raised; they differ on the idle reading,
+				 * `258` and `251.5`) and the mirror's own overflow is what falls below the
+				 * fold. Suppressing the mirror when there is no slack would need this band
+				 * to measure itself against the group plus the copy - a feedback loop the
+				 * band does not currently run - and getting it wrong hides the mirror at
+				 * widths where it works, which is the worse failure. So the residue is
+				 * stated rather than removed: at the floor width an arrival moves the box
+				 * by roughly half the block, and everywhere wider it does not move.
+				 *
+				 * It is the SAME element, not a reconstruction, so the two heights match
+				 * by construction at any width and in any state - and it is `invisible`
+				 * (which also takes its two controls out of the tab order) and
+				 * `aria-hidden`, so neither the copy nor the buttons are announced or
+				 * painted twice. The attribute on the visible block is what a driver
+				 * scene reads, and `querySelector` keeps naming the first match in
+				 * document order - the visible one above the box. Nothing extra guards
+				 * the healthy case here: the block itself carries `hidden` when there is
+				 * no issue, so the mirror of a healthy band is a `display: none` copy of
+				 * a `display: none` block and reserves nothing.
+				 */}
+				{bandCentred ? (
+					<div
+						aria-hidden="true"
+						data-lo-radient-issue-mirror=""
+						className={cn("invisible")}
+					>
+						{radientIssueBlock}
+					</div>
 				) : null}
 			</form>
 		);

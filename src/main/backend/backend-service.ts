@@ -27,7 +27,11 @@ import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { app, dialog as electronDialog } from "electron";
 import type { DaemonStatusSnapshot } from "../../shared/backend-status";
-import { DAEMON_PAIRED, relayNeedsRebuild } from "../../shared/backend-status";
+import {
+	DAEMON_PAIRED,
+	pairingHasRemedy,
+	relayNeedsRebuild,
+} from "../../shared/backend-status";
 import type {
 	DesktopFeedState,
 	DesktopResponse,
@@ -56,6 +60,7 @@ import {
 	requestDesktopOutcome,
 } from "../desktop-transport";
 import { withPythonBytecodeCache } from "../python-bytecode-cache";
+import { type UserShellPath, withUserShellPath } from "../shell-path";
 import {
 	readInstallIdentity,
 	resolveGlobalConsoleScript,
@@ -126,10 +131,45 @@ const SHUTDOWN_TIMEOUT_DEFAULTS = {
 export const OWNED_STOP_WORST_MS =
 	SHUTDOWN_TIMEOUT_DEFAULTS.normal + SHUTDOWN_TIMEOUT_DEFAULTS.force;
 
-/** How long the readiness loop waits between attempts. Exported for the same
+/** The LONGEST the readiness loop waits between attempts. Exported for the same
  * reason as the bounds above: the quit path's failsafe adds it up rather than
- * naming a number. */
+ * naming a number, and every rung of `readinessPollDelayMs` is at most this. */
 export const READINESS_POLL_INTERVAL_MS = 1_000;
+
+/** How long an owned serve gets to answer `/health` before the start fails,
+ * counted as the sum of the waits BETWEEN attempts - exactly what the old
+ * `30 attempts x 1 s` loop counted (it never added the probes' own time
+ * either), so the bound is the one it always was. It is a sum of scheduled
+ * waits rather than a wall clock so the loop stays a pure function of its
+ * schedule: `owned-serve-lifecycle.test.mjs` shortens those waits to drive a
+ * start that never becomes ready, and a wall-clock bound would make that test
+ * sit out the whole 30 s. */
+export const READINESS_BUDGET_MS = 30_000;
+
+/**
+ * The wait before the next readiness attempt, by how long the start has
+ * waited so far.
+ *
+ * WHY NOT A FLAT SECOND. Measured on this repo's rig (`health_ready.py`: a real
+ * `local-operator serve` under an isolated root, `/health` sampled every 25 ms,
+ * six boots at load 105-118): the daemon answers 1.53-2.23 s after spawn, and a
+ * 1 s poll reported it at 2.0-3.0 s - 310-772 ms after it was ready, a median of
+ * ~420 ms of launch spent waiting on this timer rather than on the daemon.
+ * Readiness lands inside the first few seconds, so that is where the poll is
+ * fast: 100 ms rungs report the same boots 4-72 ms late.
+ *
+ * WHY IT STILL BACKS OFF. A daemon that is not up by 5 s is on a slow path
+ * (first-run install, a cold disk, a loaded machine), and each attempt against
+ * it is a fetch plus a log line. So the rung widens to 250 ms, and past 10 s
+ * returns to the flat 1 s it always was. A refused socket - the common answer
+ * while the child is still importing - costs a sub-millisecond failed connect,
+ * so the fast rungs are not load on the machine they are waiting for.
+ */
+export function readinessPollDelayMs(elapsedMs: number): number {
+	if (elapsedMs < 5_000) return 100;
+	if (elapsedMs < 10_000) return 250;
+	return READINESS_POLL_INTERVAL_MS;
+}
 
 /**
  * Where the app keeps the bearer for the daemon it spawns, inside its userData
@@ -219,6 +259,18 @@ interface OwnedServe {
 	/** Escalation timers, held so this generation's exit cancels them; a timer
 	 * that outlives its generation is how a replacement used to get killed. */
 	timers: Set<NodeJS.Timeout>;
+}
+
+/**
+ * What the manager may be handed from outside.
+ *
+ * One option, because it is the one thing the app owns and this class must not
+ * decide for itself: the login-shell PATH shared with the console host.
+ */
+export interface BackendServiceManagerOptions {
+	/** The app's ONE login-shell PATH resolver (`../shell-path`). Absent - a test or
+	 * a rig - leaves the spawn environment's PATH as the launch environment's. */
+	userShellPath?: UserShellPath;
 }
 
 /**
@@ -312,6 +364,16 @@ export class BackendServiceManager {
 	private statusObserver: ((snapshot: DaemonStatusSnapshot) => void) | null =
 		null;
 	private shellEnv: Record<string, string | undefined> = {};
+	/**
+	 * The user's own login-shell PATH, resolved once for the whole app.
+	 *
+	 * Handed in by `src/main/index.ts` rather than constructed here, for one
+	 * reason: the console host is given the SAME instance, so "what is this user's
+	 * PATH" has one answer in this process instead of one per consumer. Absent -
+	 * every test and rig that builds a manager directly - means this instance keeps
+	 * the launch environment's PATH, which is exactly what it did before.
+	 */
+	private readonly userShellPath?: UserShellPath;
 	// External/dev backends may be explicitly paired through main's environment.
 	// Managed starts always rotate this; it is never exposed by preload or logs.
 	/**
@@ -700,8 +762,13 @@ export class BackendServiceManager {
 
 	/**
 	 * Constructor
+	 *
+	 * @param options.userShellPath the app's one login-shell PATH resolver (see
+	 * `../shell-path`). Optional so a manager built without the app - a test, a rig
+	 * - behaves exactly as it did before this option existed.
 	 */
-	constructor() {
+	constructor(options: BackendServiceManagerOptions = {}) {
+		this.userShellPath = options.userShellPath;
 		// Extract port from API URL
 		try {
 			const apiUrl = new URL(backendConfig.VITE_LOCAL_OPERATOR_API_URL);
@@ -798,12 +865,6 @@ export class BackendServiceManager {
 				);
 			}
 
-			// Log the PATH environment variable to verify it's loaded correctly
-			logger.info(
-				`Shell environment variables loaded successfully. PATH: ${this.shellEnv.PATH || this.shellEnv.Path || "(not set)"}`,
-				LogFileType.BACKEND,
-			);
-
 			// Half of a deliberate belt-and-braces pair (the other half is
 			// `backendSpawnEnv()`, which every spawn calls): this line corrects a
 			// value the platform loaders above can inject from the operator's shell
@@ -813,6 +874,25 @@ export class BackendServiceManager {
 			// `backendSpawnEnv()` for the ordering hole and why the guarantee lives
 			// there.
 			this.shellEnv = withPythonBytecodeCache(this.shellEnv, this.appDataPath);
+
+			// And the PATH, last of all, from the user's OWN login shell. After the
+			// platform loaders on purpose: they merge the rc files' `env` dump, PATH
+			// included, and on macOS that dump is the wrong answer - it reads the first
+			// of `~/.zshrc`/`~/.bash_profile` through `/bin/bash` and misses
+			// `~/.zprofile`, which is where Homebrew's `shellenv` lives on Apple
+			// silicon. Resolving it here means one mechanism answers "what is this
+			// user's PATH" for both this manager and the console host, rather than the
+			// two the app used to have.
+			await this.settleUserShellPath();
+
+			// The PATH is logged AFTER both folds, not before them: this line is the
+			// record of the PATH the backend is actually given, and printed first it
+			// reported a value the spawn never saw - which is how the missing Homebrew
+			// directory was read off this log in the first place.
+			logger.info(
+				`Shell environment variables loaded successfully. PATH: ${this.shellEnv.PATH || this.shellEnv.Path || "(not set)"}`,
+				LogFileType.BACKEND,
+			);
 		} catch (error) {
 			logger.error(
 				"Error loading shell environment variables:",
@@ -820,6 +900,25 @@ export class BackendServiceManager {
 				error,
 			);
 		}
+	}
+
+	/**
+	 * Fold the user's login-shell PATH into `shellEnv`, when the app handed one in.
+	 *
+	 * Awaited at BOTH of its call sites, unlike the other enrichments the spawn
+	 * environment carries, because unlike them this one IS the value being fixed: a
+	 * fire-and-forget resolution is the defect it exists to remove, and the first
+	 * spawn would keep the launchd PATH on exactly the machines whose rc is slowest.
+	 * `resolve()` is memoized, so the second caller - and the console host, which
+	 * holds the same resolver - is answered from the first shell's result rather
+	 * than starting one.
+	 *
+	 * A no-op without a resolver: a manager a test or rig builds directly keeps the
+	 * launch environment's PATH exactly as it did before.
+	 */
+	private async settleUserShellPath(): Promise<void> {
+		if (!this.userShellPath) return;
+		this.shellEnv = await withUserShellPath(this.shellEnv, this.userShellPath);
 	}
 
 	/**
@@ -834,6 +933,14 @@ export class BackendServiceManager {
 	 * exact pre-fix configuration, on the machines whose rc is slowest. Applying
 	 * it here makes the guarantee structural instead of ordering-dependent, so
 	 * no spawn path can miss it.
+	 *
+	 * PATH is the one term of that race this method no longer has to carry: its
+	 * resolver is awaited before the first spawn (`settleUserShellPath`), so a slow
+	 * rc delays the start rather than quietly leaving the launchd PATH in place.
+	 * The prefix and the kill switch stay here all the same, because the seed they
+	 * are read from is `process.env` itself - an exported `PYTHONPYCACHEPREFIX`
+	 * inside the bundle, or a `.env` folded over the launch - and no shell
+	 * resolution of PATH has anything to say about either.
 	 *
 	 * These spawns are the ones whose `python` is the interpreter we ship:
 	 * CPython writes `__pycache__/*.pyc` beside the sources it imports, those
@@ -1983,6 +2090,16 @@ export class BackendServiceManager {
 				packaged: app.isPackaged,
 			});
 			const globalInstall = await this.checkLocalOperatorExists();
+			/*
+			 * Before the spawn environment is built, not after: this is the ordering
+			 * guarantee the PATH needs, and the reason it is not left to
+			 * `loadShellEnvironment()` (started un-awaited from the constructor) or to
+			 * `backendSpawnEnv()` (which has no async step to hook). A resolver answers
+			 * from its first shell, so an already-started resolution costs a microtask
+			 * here, and a resolution that is still running delays this start by at most
+			 * its own bound instead of spawning with the PATH the app was launched with.
+			 */
+			await this.settleUserShellPath();
 			const env = this.backendSpawnEnv();
 			/*
 			 * The interpreter to own, as CLAIMS rather than one path.
@@ -2055,11 +2172,12 @@ export class BackendServiceManager {
 				});
 			}
 
-			// Wait for backend to be healthy
-			let attempts = 0;
-			const maxAttempts = 30; // 30 seconds timeout
+			// Wait for backend to be healthy, polling fast while readiness is
+			// likely and backing off after (see `readinessPollDelayMs`), inside the
+			// same 30 s bound the flat 30 x 1 s loop gave.
+			let readinessWaitedMs = 0;
 
-			while (attempts < maxAttempts) {
+			while (readinessWaitedMs < READINESS_BUDGET_MS) {
 				const healthy = await this.checkHealth();
 				if (epoch !== this.startEpoch || generation.exited || generation.stop)
 					break;
@@ -2074,11 +2192,9 @@ export class BackendServiceManager {
 					return true;
 				}
 
-				// Wait 1 second before next attempt
-				await new Promise((resolve) =>
-					setTimeout(resolve, READINESS_POLL_INTERVAL_MS),
-				);
-				attempts++;
+				const delay = readinessPollDelayMs(readinessWaitedMs);
+				readinessWaitedMs += delay;
+				await new Promise((resolve) => setTimeout(resolve, delay));
 			}
 
 			await this.stopGeneration(generation, false);
@@ -2976,7 +3092,12 @@ export class BackendServiceManager {
 	 * daemon that might have been mid-restart, busy with someone else's turn, or
 	 * serving another app - and, for an external daemon, adopted it as "ours" and
 	 * started a second one. Neither is possible here: `degraded` never starts
-	 * anything, and only `detached` reaches {@link recoverFromDetachment}.
+	 * anything, and {@link recoverFromDetachment} is reached only from the facts
+	 * the state machine has already established - a `detached`/`wedged`
+	 * connection, a pid its liveness probe read as gone (EVIDENCE, not a sample),
+	 * and, since the 2026-09-21 change below, a pairing record that says the
+	 * pairing is broken with a cause a sweep could repair, even while the
+	 * connection still reads `attached`.
 	 */
 	private async checkBackendHealth(): Promise<void> {
 		if (this.isAppClosing) return;
@@ -3012,6 +3133,11 @@ export class BackendServiceManager {
 			// (and then be reaped), or may be replaced by a daemon the operator
 			// starts, and all three are found by looking, not by spawning.
 			await this.recoverFromDetachment();
+			// This `return` was a no-op where the call above was already the last
+			// statement of the method; it is LOAD-BEARING now that the
+			// broken-pairing block below follows. Remove it and a detached/wedged
+			// tick would run BOTH recoveries - this one and the pairing one - in a
+			// single tick.
 			return;
 		}
 
@@ -3030,6 +3156,63 @@ export class BackendServiceManager {
 				`Backend detached: ${this.daemonState.snapshot().detail}`,
 				LogFileType.BACKEND,
 			);
+			await this.recoverFromDetachment();
+			return;
+		}
+		/*
+		 * RE-DISCOVERY MUST BE REACHABLE WHEN MAIN ALREADY KNOWS THE PAIRING IS
+		 * BROKEN, even while the connection still reads `attached` (design § 6.2).
+		 *
+		 * WHY the STATE is the wrong gate here, and the pairing record the right one.
+		 * They answer different questions: a process can be answering this address -
+		 * so the connection is `attached` and every probe ANSWERS - while it is no
+		 * longer the process this app holds a credential for. That is exactly a `lop`
+		 * build swap of an ADOPTED daemon: the reload republishes the record under a
+		 * new `instance_id`, the probe answers `identity-mismatch` (an ANSWER, not a
+		 * miss), one `contradicted` observation is folded per tick - and then this
+		 * app's OWN admitted reads (the renderer's presence beat, a session list) run
+		 * `recordTransportSuccess()`, which zeroes the count and revives `degraded` ->
+		 * `attached`. The three CONSECUTIVE contradictions the state machine needs for
+		 * `detached` are never reached, so `recoverFromDetachment` - the only path
+		 * that re-discovers and re-pairs - was never entered, and the "server was
+		 * replaced" band stood until the app was restarted. Measured on the operator's
+		 * machine 2026-09-21: adopted daemon pid 1276 reloaded v0.61.18 -> v0.62.0 in
+		 * place at ~20:08, the band sat until the manual Retry at 21:20:31, and the
+		 * log held no "Backend detached:" line in that window at all.
+		 *
+		 * WHY THIS IS SAFE, and which guards make it so. `recoverFromDetachment`
+		 * re-probes first and then re-discovers, and the two facts that keep that to
+		 * a RE-DISCOVERY rather than a replacement are its OWN guards, named here
+		 * rather than assumed: (1) the owned-child guard - `this.process` live
+		 * (`exitCode === null && signalCode == null`) returns before
+		 * `discoverAndAttach()` and therefore before any spawn - and (2)
+		 * `isExternalBackend`, set on every adoption path, which returns before
+		 * `start({ quiet: true })` for a daemon this app is attached to but did not
+		 * spawn. So the operator's reported shape cannot be spawned over, and the
+		 * hazard the owned-child guard prevents - a discovery that answers `false`
+		 * and falls through to `start()` - is untouched.
+		 *
+		 * THE RESIDUAL, named so the paragraph above is not read as a guarantee the
+		 * code does not make: an app holding NO identity at all (it never attached)
+		 * with a remedy-bearing cause reaches NEITHER guard - `this.process` is null
+		 * and `isExternalBackend` is false - so that one shape can reach
+		 * `start({ quiet: true })`, gated only by `startOwned`'s own occupancy probe
+		 * against the configured origin. It is not a spawn over a live process: a
+		 * port a daemon is already answering makes that probe decline, and a stale
+		 * record's own aging path is what retires the record.
+		 *
+		 * WHY `pairingHasRemedy` and not `!available`. A cause with no remedy this app
+		 * may offer (`governed-elsewhere`: a second claim is refused by contract;
+		 * `pre-handshake`: the claim route does not exist) would make every tick run a
+		 * sweep that can only fail, so it is excluded here the same way the banner
+		 * withholds its Retry for it. Recovery is paced by the reattach backoff for a
+		 * broken-with-remedy pairing whether or not an identity is held
+		 * (`pairingBreaksPacing`), so a pairing that cannot yet be repaired retries
+		 * on that cadence rather than on every tick - while the FIRST attempt still
+		 * runs on the tick the break is first seen, which is what this block is for.
+		 */
+		const pairing = this.daemonState.snapshot().pairing;
+		if (!pairing.available && pairingHasRemedy(pairing.cause)) {
 			await this.recoverFromDetachment();
 		}
 	}
@@ -3055,6 +3238,37 @@ export class BackendServiceManager {
 	}
 
 	/**
+	 * Whether a broken pairing main knows about is one a sweep could repair, and
+	 * is therefore a subject for the reattach backoff.
+	 *
+	 * WHY the pacing needs this second clause at all. The identity gate above is
+	 * `expectedInstanceId() !== null`, and the pairing record can be broken while
+	 * NO identity is held: `attachIfUsable`'s wrong-key arm (and its refused arm)
+	 * records the cause and returns WITHOUT attaching, so the old gate has nothing
+	 * to pace against. That state IS reachable in production, because
+	 * `checkExistingBackend()` drives that pass and a later `start()` calls
+	 * `discoverAndAttach()` again before it spawns, so the loop can be armed with
+	 * the app `connecting` and a cause already recorded. Without this clause such
+	 * a pairing would re-probe, sweep discovery and re-claim on every 10 s tick.
+	 *
+	 * THE EXCLUSION: `unpaired` is the control flow's own initial value - "the
+	 * cause is not yet established" (design § 2, S5) - and not an observation that
+	 * a pairing broke. It is what `attachIfUsable` records while the app is
+	 * `connecting` and has not attached yet, which is a FIRST RUN rather than a
+	 * break, so a first run with no daemon at all stays unpaced; every cause a
+	 * pass actually observed is paced.
+	 */
+	private pairingBreaksPacing(): boolean {
+		const pairing = this.daemonState.snapshot().pairing;
+		return (
+			!pairing.available &&
+			pairing.cause !== null &&
+			pairing.cause !== "unpaired" &&
+			pairingHasRemedy(pairing.cause)
+		);
+	}
+
+	/**
 	 * Recover from a lost daemon - by RE-DISCOVERING, and only then by starting
 	 * one.
 	 *
@@ -3068,10 +3282,20 @@ export class BackendServiceManager {
 		if (this.isAppClosing || this.isAutoUpdating || this.recoveryInFlight)
 			return;
 		// Backoff applies to a daemon we HAD (re-attaching to a specific daemon
-		// on a specific address is the case worth pacing). With no daemon at all,
-		// a tick is one directory read plus a couple of loopback probes, and
-		// discovering one the operator starts a minute later is the entire point.
-		if (this.daemonState.expectedInstanceId() !== null) {
+		// on a specific address is the case worth pacing), and to a pairing main
+		// already knows is broken with a cause a sweep could repair even when no
+		// identity is held (`pairingBreaksPacing`) - the wrong-key `successor`
+		// shape, where the record names a process that is gone and the pairing can
+		// only be repaired once that record ages out, would otherwise be a full
+		// sweep every 10 s tick. With no daemon at all AND no cause yet
+		// established, a tick is one directory read plus a couple of loopback
+		// probes, and discovering one the operator starts a minute later is the
+		// entire point. The FIRST attempt is immediate either way: `nextRecoveryAt`
+		// starts at 0 and is advanced only by a real attempt, below.
+		if (
+			this.daemonState.expectedInstanceId() !== null ||
+			this.pairingBreaksPacing()
+		) {
 			const now = Date.now();
 			if (now < this.nextRecoveryAt) return;
 			// Advance only on a real attempt, not each skipped timer tick.

@@ -143,24 +143,28 @@ The build configuration is defined in the `build` section of `package.json`. You
 - `directories.output`: Output directory for distributables
 - `mac`, `win`, `linux`: Platform-specific configurations
 
-### macOS: one artifact set per architecture, and one bundled interpreter
+### macOS: one artifact set per architecture, and one copy of each bundled runtime tree
 
 `mac.target` builds a `dmg` and a `zip` for `arm64` and `x64` separately, so
 `artifactName` (`${name}-${version}-${arch}.${ext}`) produces
 `local-operator-ui-<version>-arm64.dmg`, `-x64.dmg`, `-arm64.zip` and
 `-x64.zip`. There is no universal image: a universal `.app` carries two copies
-of the Electron framework and both bundled interpreters, so half of every
+of the Electron framework and both bundled runtime trees, so half of every
 download is code the user's machine cannot run.
 
 `extraResources` is not architecture-aware and copies both interpreters into
 every build, as inert data under `Contents/Resources/python-runtime-seed/<arch>`
-(`arm64`/`x64`) rather than under the old `python`/`python_aarch64` names. Two
-steps in `scripts/after-pack.mjs` - which `package.json` names as the single
-`afterPack` hook, and which is where anyone who followed an older revision of
-this paragraph to `prune-python-resource.mjs` should look now - run there:
+(`arm64`/`x64`) rather than under the old `python`/`python_aarch64` names - and
+both `uv` releases, under `Contents/Resources/uv/<arch>`. Two steps in
+`scripts/after-pack.mjs` - which `package.json` names as the single `afterPack`
+hook, and which is where anyone who followed an older revision of this paragraph
+to `prune-python-resource.mjs` should look now - run there:
 
-1. `scripts/prune-python-resource.mjs` deletes the tree the app cannot run, by
-the same mapping `backend-installer.ts` resolves at runtime.
+1. `scripts/prune-bundled-resources.mjs` deletes every tree the app cannot run -
+the interpreter seed and the `uv` - by the same mapping `backend-installer.ts`
+resolves at runtime. One step for both, because two steps that walk the same
+bundle and delete the other architecture's tree drift, and the drift shows up as
+a larger download nobody measures.
 2. The hook refuses a bundle that still carries a legacy resource name, even a
 dangling one. The seed is never executed from the `.app`, but an incumbent
 install's venv still names `Contents/Resources/python[_aarch64]/bin` in its
@@ -169,18 +173,101 @@ the window between an update's swap and the app's first instruction.
 
 Both have to run before signing: removing a file from a code-sealed `.app` is a
 violation no update-time heal can repair. `pnpm verify-macos-artifacts` fails
-the release if a delivered bundle does not carry exactly the seed its
+the release if a delivered bundle does not carry exactly the runtime its
 architecture needs, or carries a legacy alias beside it.
 
+**Every Mach-O the bundle contains must carry that bundle's own architecture.**
+macOS 26 Tahoe was the last macOS for Intel-based Macs, macOS 27 is
+Apple-silicon-only, and from macOS 28 Apple removes Rosetta for apps entirely:
+Apple's page for the transition says the user "might be notified that support is
+ending for Intel-based apps, and that the app or a component used by the app will
+not work with a future release of macOS (macOS 28)", and that "Starting with
+macOS 28, the next major macOS release, Rosetta functionality will be available
+only for certain older, unmaintained games that rely on Intel-based frameworks"
+(<https://support.apple.com/en-us/102527>, published 2026-09-21). The dialog an
+operator reported on a macOS 27 host words the same thing as "This version of
+\"Local Operator\" includes a component that will not open in macOS 28, the next
+major release" — the reporter's wording, not the page's, which carries no such
+sentence. Either way a component that carries ONLY a foreign architecture is not
+merely extra download weight, it is a component that cannot open there. The
+pre-#138 builds are the historical case: universal artifacts copied BOTH bundled
+interpreters in, so half of every 94 MB interpreter tree was unrunnable on either
+machine. `app-native-components` (`nativeComponentsCheck` in
+`scripts/verify-macos-artifacts.mjs`) is the check that holds the whole bundle to
+that rule: it reads the bundle's own architecture from the Electron Framework,
+requires it to be exactly one, and then requires EVERY Mach-O under the bundle -
+dylibs and `.node` bundles as much as executables, since the notice names
+components rather than executables - to carry that architecture among its slices.
+A universal component (arm64 + x86_64) passes, a foreign-only one fails, and a
+component whose header cannot be read fails too, because "we could not ask" is
+not "it is native". "Every Mach-O" means every spelling of one, fat included:
+the shared `machOMagics` list in `src/shared/bundled-runtime-layout.json` carries
+both the 32-bit and the 64-bit fat magics (`cafebabe`/`cafebabf` and their
+byte-swapped `CIGAM` twins), so a component written either way is recognised by
+the walk and read by the slice reader rather than skipped - a shape outside the
+list would be a component the sweep neither counted nor judged. The per-tree
+checks above (`bundledPythonCheck`, `privatePythonSeedCheck`,
+`bundledUvToolCheck`) each hold one NAMED thing to an architecture; this is the
+sweep that catches the component under a name nobody enumerated.
+
+**What `uv` is doing in the bundle.** The install scripts create the backend venv
+and install `local-operator` into it, and that install is the dominant cost of a
+first run. Measured on this host (three cold runs each, same interpreter and
+dependency set): pip's package phase is 33.0-40.7 s plus a 2.3-2.8 s
+`pip install --upgrade pip` the uv path does not pay, against uv's 12.8-16.1 s -
+**2.5-2.8x on those pairs** (2.7-3.0x counting the skipped upgrade), saving
+20-25 s. QA's independent pair on a quieter box was 22.8 s against 33.9 s, so the
+ratio to quote is **1.5-2.8x across two operators** (1.8-3.0x with the
+self-upgrade). End to end through the shipped script: uv 31-34.5 s against pip
+37.5-79.0 s across four operators. Warm, which is what a retry or a repair pays:
+pip 15.9-33.8 s against uv 0.65-1.57 s. The seconds are this box's; the ratio is
+link- and load-dependent.
+
+The `uv` binary ships as a sealed resource, pinned to an exact release and staged
+by `pnpm setup-python` from its publisher's signed and notarized build; the app
+hands its path down as `LOCAL_OPERATOR_UV_BIN` (`src/main/backend/uv-tool.ts`)
+and the scripts fall back to the pip path exactly as they ran before when it is
+absent or unrunnable. **macOS only**, because that is where it is staged and
+tested: `build.win` and `build.linux` name no uv at all, since a macOS Mach-O in
+one of those artifacts is dead weight with a misleading name.
+
+**The mode is repaired at runtime, not only at build time.** A ZIP drops modes and
+`codesign`'s seal does not cover them, so a uv that arrived by update can be
+present, correctly signed and unrunnable - and the install script's `[ -x ]`
+probe would then take the pip path with one WARNING, silently turning the feature
+off. `ensureUvToolExecutable` (`src/main/backend/uv-tool.ts`) reads the mode and
+`chmod`s it back before handing the path down, the same shape the console's own
+bundled executable is repaired with (`ensureSpawnHelperExecutable`). It is executed from
+the bundle rather than copied out, unlike the interpreter: the interpreter's
+copy-out exists because a venv built on an in-bundle interpreter *records* that
+path and then resolves its stdlib inside the code-sealed `.app`, and uv has no
+such coupling - it is stateless, invoked with argv, and exits before the app is
+usable.
+
+**Execute bits under the seed: the executables must carry one, libraries need
+not.** Upstream ships loadable libraries at 0644 (`lib/itcl4.3.8/*`,
+`lib/thread3.0.6/*`, Tcl/Tk 9.0 in the `20260901` build) and at 0755
+(`lib/libpython3.12.dylib`), and it ships Python SOURCE files at 0755 as well. The
+gate asserts both directions it can assert functionally: no file that is not a
+Mach-O may carry an execute bit (the prune clears those), every Mach-O whose
+`filetype` is `MH_EXECUTE` must carry one, and `bin/python3` - the file a managed
+runtime's venv runs - must be one of them. It does NOT require the count of bits
+to equal the count of Mach-O files, which is what it did until the interpreter
+refresh moved Tcl/Tk to 9.0: `dlopen` mmaps a library rather than exec'ing it, so
+a 0644 dylib is correct, and a count rule that demanded otherwise would have been
+satisfied only by chmod'ing files the app never runs.
+
 **One definition of that layout.** The names above are spelled nowhere else.
-`src/shared/bundled-python-layout.json` holds the seed namespace, both
-architectures, the checkout spellings and the retired names; the app imports it
-(`managed-python.ts`, `update-install.ts`) and the scripts read it through
-`scripts/bundled-python-layout.mjs`. That is not tidiness - the previous six
-spellings drifted apart in exactly one place (the heal's predicate kept the
-retired names while the release gate was updated), which made every bytecode
-violation on a bundle this branch builds unhealable by construction while the
-gate that shares its job was green.
+`src/shared/bundled-runtime-layout.json` holds the seed namespace, both
+architectures, the checkout spellings and the retired names, the Python version
+and build date (the `{pyver}` token every version-bearing path derives from), and
+the pinned `uv` release with its namespace and per-platform binary names; the app
+imports it (`managed-python.ts`, `update-install.ts`, `uv-tool.ts`) and the
+scripts read it through `scripts/bundled-runtime-layout.mjs`. That is not
+tidiness - the previous six spellings drifted apart in exactly one place (the
+heal's predicate kept the retired names while the release gate was updated),
+which made every bytecode violation on a bundle this branch builds unhealable by
+construction while the gate that shares its job was green.
 
 ### What the app does with the seed at runtime
 

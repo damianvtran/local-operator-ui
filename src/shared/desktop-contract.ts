@@ -722,6 +722,20 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 		.object({
 			op: z.literal("sessions.list"),
 			limit: z.number().int().min(1).max(500).optional(),
+			/*
+			 * Whether ARCHIVED conversations belong in the answer.
+			 *
+			 * ABSENT MEANS `false`, and that default is a compatibility promise rather
+			 * than a preference: a client that predates archiving sends no such field
+			 * and must keep the list it always had rather than acquiring rows it has no
+			 * way to mark, filter or restore. This app sends `true` and partitions the
+			 * archived rows out of every default list itself (see `fetchSessions` in the
+			 * canonical sessions store and `visibleRows` in `features/chat/chat-archived`),
+			 * which is what lets ONE fetch serve both the hidden list and the two
+			 * questions a list that hides them cannot answer: the open conversation's own
+			 * archived state, and an unarchive control on a row found by search.
+			 */
+			include_archived: z.boolean().optional(),
 		})
 		.strict(),
 	z
@@ -740,6 +754,64 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			// answer it would have to discard.
 			q: z.string().min(1).max(SESSION_SEARCH_MAX_CHARS),
 			limit: z.number().int().min(1).max(500).optional(),
+			/*
+			 * Whether the SCAN admits archived conversations, absent meaning `false`
+			 * (the same compatibility promise `sessions.list` states).
+			 *
+			 * The sidebar's "Include archived" control is the only writer, and the flag is
+			 * in the query's cache key on this side because the two answers to one query
+			 * are different questions: without that, toggling the control off would serve
+			 * the answer that carries the archived hits and the rows would linger - the
+			 * stale-row failure `chat-search.test.mjs` pins.
+			 */
+			include_archived: z.boolean().optional(),
+		})
+		.strict(),
+	/*
+	 * Archive or unarchive ONE conversation: `POST /v1/desktop/sessions/{id}/archive`.
+	 *
+	 * DESIRED STATE ON THE WIRE (`archived: true|false`), never a bare toggle, for
+	 * the reason the pin op states beside its own field: over HTTP a toggle is not
+	 * idempotent, and a request retried after a dropped response would flip the
+	 * conversation back. Idempotent by construction here rather than by a receipt:
+	 * re-archiving an archived conversation writes what is already there, so the op
+	 * carries no `requestId` (the same at-most-once trade `sessions.warm` makes for
+	 * a call that already is).
+	 *
+	 * Archiving is RECOVERABLE and therefore never confirmed: it hides the
+	 * conversation from the default lists and from search, and unarchiving restores
+	 * it. Deliberately NOT a `MESSAGE_OPS` member (see `desktopRequestByteBudget`):
+	 * a boolean and a 12-char id are not prose.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.archive"),
+			sessionId,
+			archived: z.boolean(),
+		})
+		.strict(),
+	/*
+	 * Delete ONE conversation PERMANENTLY: `DELETE /v1/desktop/sessions/{id}`.
+	 *
+	 * `confirmed: true` is required and is not a receipt: it is the wire's own echo
+	 * of the user's answer to a danger dialog, so a caller that has not asked cannot
+	 * express this request at all (a missing field is a 422 here, by name, rather
+	 * than a delete nobody confirmed). The route refuses the delete of a session
+	 * that is LIVE with a 409 and a sentence naming the guard - the one refusal this
+	 * surface renders inside the dialog that asked, which is why the op needs no
+	 * failure vocabulary of its own.
+	 *
+	 * It removes exactly the addressed conversation and NOT its subagent children;
+	 * a surface that has children to mention says so in its own copy rather than
+	 * implying a wider blast radius. No `requestId`: the delete is not retried by
+	 * this client, and a retry of a delete cannot be owed an answer - the second
+	 * call's honest answer is 404 and the outcome the user asked for either way.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.delete"),
+			sessionId,
+			confirmed: z.literal(true),
 		})
 		.strict(),
 	z
@@ -1760,6 +1832,74 @@ export const DESKTOP_LOST_SIGHT_CODE = {
 } as const;
 
 /**
+ * The daemon's FAST verdict on a control call aimed at a live owner that is not
+ * answering its attach socket: `503 {"detail": {"code": "runtime_busy",
+ * "message": ..., "retryable": true, "retry_after_ms": 2000}}` plus
+ * `Retry-After: 2`, within ~3 s rather than the 15 s the control bind used to
+ * wait before `runtime_unreachable` (backend workstream A of the load work;
+ * `docs/DESKTOP_API.md` on that backend).
+ *
+ * WHY IT IS NOT A LOST-SIGHT CODE. `runtime_unreachable` says nothing was
+ * established about whether the request arrived; this one is the daemon saying
+ * it refused BEFORE handing anything to the owner, and that a resend with the
+ * SAME `request_id` is safe - admission is at most once per id, so a resend can
+ * never double-deliver. That makes it the one 503 the app may repeat on its own
+ * (`admitChatDraft`'s bounded resend). A warm that gets it is dropped silently,
+ * like every other warm failure (`use-warm-session`).
+ *
+ * Reads never answer it: they serve the cold facade with `cold_reason:
+ * "owner-silent"` and `attaching: true` instead, so nothing on the read path
+ * has to know this code.
+ */
+export const RUNTIME_BUSY_CODE = "runtime_busy";
+
+/**
+ * The session OWNER's refusal while its runtime is leaving - a build handover,
+ * a signalled stop, a `/move`.
+ *
+ * NOT YET ON THE WIRE, AND KEPT ANYWAY. This constant names the code the backend
+ * half of the change will put on that refusal (design of record section 6 B2);
+ * today the desktop ladder does not send it. Captured from the real ladder rather
+ * than read off a literal (`docs/evidence/owner-refusal-send/harness/capture-bodies.py`,
+ * backend `origin/main` = `5bc34c90`): `RuntimeRetiring` is a `ValueError`
+ * (`session/errors.py`) and the ladder's coded `except (ReceiptConflict, ValueError)`
+ * arm covers only the attachment, profile-registry, superseded-token and
+ * deletion-refused errors, so this one falls to `raise HTTPException(409, str(error))`
+ * and arrives as `409 {"detail": "This session is switching to a newer build; the one
+ * it loaded is gone from disk. The message was not admitted - send it again once the
+ * new build is up."}` - a STRING, with no `code` for the renderer to read. So this
+ * branch's retiring term is inert until that backend change ships: the refusal an
+ * operator meets today still lands in the held state, and its own sentence is the
+ * only thing on screen that says the message was not admitted. The app's answer to
+ * the CODED shape is pinned in `scripts/canonical-chat.test.mjs` so the day the code
+ * arrives the behaviour is already asserted; the frames ship the uncoded body,
+ * because that is what a real owner answers with.
+ *
+ * WHY IT BELONGS WITH `runtime_busy` ANYWAY. Once coded, the fact is the same
+ * kind: the refusal is raised from the latched departure BEFORE the message is
+ * admitted, and its sentence says so in as many words. A send that meets it
+ * provably does not exist on the owner, so the composer owes the text back rather
+ * than a held claim whose whole content is that the outcome cannot be known.
+ *
+ * WHY THE CODE AND NEVER THE STATUS. A bare `409` establishes nothing about
+ * admission: the receipt-conflict ladder, the attachment ladder and the profile
+ * registry all answer one, and the conflicting-receipt case is a refusal of a
+ * replay whose FIRST attempt may well have been admitted. `isRefusedBeforeAdmission`
+ * therefore reads this field and not `status === 409`.
+ *
+ * WHY NOT A `retryable` FLAG either way. It is not a statement about admission in
+ * EITHER direction, so it cannot be a safe positive or a safe negative: the
+ * `runtime_busy` body the app does trust carries `"retryable": true` while
+ * establishing that nothing was admitted (measured above), and the ladder's other,
+ * admitting refusals set it to mean "a retry may help" (`SubagentChildUnavailable`
+ * is the measured example). Keying on it would hand a payload back to the composer
+ * for a message that may be on the owner - the one direction this classification
+ * must never take. The code is the fact; a body's `retry_after_ms` is pacing, and it
+ * is read where the backend sends it (`messageWithBusyResend`).
+ */
+export const RUNTIME_RETIRING_CODE = "runtime_retiring";
+
+/**
  * The sentences a refusal composes into, one per code.
  *
  * NO sentence here names an update, and none tells the user to change what the
@@ -2575,7 +2715,19 @@ export type DesktopAPI = {
 		sessionId: string;
 	}) => Promise<DesktopResponse>;
 	/** Notification click -> open this conversation. Never answers a gate. */
-	onOpenConversation?: (callback: (sessionId: string) => void) => () => void;
+	/**
+	 * A notification click, with the conversation it names and - when the banner was
+	 * about a console surface - the surface to select once the conversation is on
+	 * screen (design 12.3).
+	 *
+	 * The second argument is OPTIONAL on purpose: it is additive on a payload that
+	 * already carries an explicit `null` for the catalogue case, so a renderer that
+	 * ignores it opens the conversation exactly as it did before, and a sender that
+	 * predates it simply never passes one.
+	 */
+	onOpenConversation?: (
+		callback: (sessionId: string, surface?: string) => void,
+	) => () => void;
 	/** `/exit`: close this window. Detach-only; the backend keeps sessions
 	 * running. Main applies the normal unsaved-state guard. Electron only. */
 	closeWindow?: () => Promise<void>;
@@ -2665,34 +2817,6 @@ export type DesktopProvider = {
 	stored_credentials: number;
 	base_url: string | null;
 };
-/**
- * The verdict on the Radient sign-in this machine's tunnel belongs to.
- *
- * WHY IT IS ON THE WIRE AT ALL. `configured` and `has_credential` above are
- * facts about the CREDENTIAL STORE, and a grant the identity provider has
- * revoked keeps both: the row stays, its access token can still be inside its
- * expiry, and `disabled_cause` is never written because nothing in the sign-in
- * path sets it. So a census row asserted a working sign-in for a login that was
- * dead, and two surfaces on one screen disagreed about it (the chat composer
- * said "needs re-authentication" while Settings rendered both "not currently
- * signed in" and a green "Signed in" chip). This is the one fact that
- * separates the two, and it is decided from this device's own store rather than
- * from a cloud read, because when the login is dead the cloud read is exactly
- * what cannot answer.
- */
-export type RadientLoginState = "ok" | "login_required" | "unknown";
-
-export type RadientLoginVerdict = {
-	/** The credential row the tunnel's login resolves to, or none. */
-	credential_id: number | null;
-	/**
-	 * `login_required` is a refusal; `unknown` is a check that could not RUN
-	 * (an offline machine, a refresh that did not finish) and is NOT a verdict
-	 * about the login - see `loginRefused` in `provider-labels.ts`.
-	 */
-	state: RadientLoginState;
-};
-
 export type AuthOperation = {
 	id: string;
 	provider: string;
@@ -2887,7 +3011,12 @@ export function desktopEndpoint(request: DesktopRequest): {
 			};
 		case "sessions.list":
 			return {
-				path: `/v1/desktop/sessions?limit=${request.limit ?? 100}`,
+				// Omitted when false, for the reason `sessions.search`'s own query
+				// states: the pre-flag request is what an older backend must keep
+				// seeing, and `false` is the route's default anyway.
+				path: `/v1/desktop/sessions?limit=${request.limit ?? 100}${
+					request.include_archived ? "&include_archived=true" : ""
+				}`,
 				method: "GET",
 			};
 		case "sessions.search": {
@@ -2898,11 +3027,34 @@ export function desktopEndpoint(request: DesktopRequest): {
 				q: request.q,
 				limit: String(request.limit ?? SESSION_SEARCH_DEFAULT_LIMIT),
 			});
+			// Omitted when false rather than sent as `include_archived=false`: the
+			// default IS false on the route, so the request this app sends for the
+			// ordinary case stays byte-identical to the one it sent before the flag
+			// existed - which is what keeps the control a strict superset of the old
+			// behaviour against a backend that has not learned the flag yet.
+			if (request.include_archived) query.set("include_archived", "true");
 			return {
 				path: `/v1/desktop/sessions/search?${query}`,
 				method: "GET",
 			};
 		}
+		case "sessions.archive":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/archive`,
+				method: "POST",
+				// The desired state, never a toggle: see the op's own comment for why a
+				// retried toggle is the bug this shape exists to make impossible.
+				body: { archived: request.archived },
+			};
+		case "sessions.delete":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}`,
+				method: "DELETE",
+				// The user's own confirmation, echoed on the wire: the route requires
+				// it, so this op cannot be reached without a dialog having been
+				// answered (see the op's comment).
+				body: { confirmed: true },
+			};
 		case "sessions.create":
 			return {
 				path: "/v1/desktop/sessions",

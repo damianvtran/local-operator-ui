@@ -48,46 +48,16 @@ if (-not (Test-Path $AppDataDir)) {
 Start-Transcript -Path $LogFile -Append
 Write-Output "$(Get-Date): Starting Local Operator backend installation..."
 
-$BinDir = "$AppDataDir\\bin"
-$FFmpegBin = "$BinDir\\ffmpeg.exe"
-
-Write-Output "Ensuring bin directory exists: $BinDir"
-if (-not (Test-Path $BinDir)) {
-    New-Item -ItemType Directory -Path $BinDir -Force | Out-Null
-}
-
-# Check if FFmpeg is already installed
-if (Test-Path $FFmpegBin) {
-    Write-Output "FFmpeg already installed at $FFmpegBin. Skipping download."
-} else {
-    Write-Output "FFmpeg not found. Attempting to download and install FFmpeg..."
-
-    $FFmpegDownloadUrl = ""
-    
-    # Determine architecture and set appropriate download URL
-    if ($env:PROCESSOR_ARCHITECTURE -eq "AMD64" -or $env:PROCESSOR_ARCHITEW6432 -eq "AMD64") {
-        $FFmpegDownloadUrl = "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.0/ffmpeg-win32-x64"
-    } else {
-        Write-Error "Unsupported CPU architecture for FFmpeg download: $env:PROCESSOR_ARCHITECTURE"
-        exit 1
-    }
-
-    Write-Output "Downloading FFmpeg from: $FFmpegDownloadUrl"
-    try {
-        Invoke-WebRequest -Uri $FFmpegDownloadUrl -OutFile $FFmpegBin -ErrorAction Stop
-        Write-Output "FFmpeg downloaded successfully to $FFmpegBin"
-        
-        # Verify FFmpeg is accessible after download
-        if (-not (Test-Path $FFmpegBin)) {
-            Write-Error "FFmpeg binary not found at $FFmpegBin after download."
-            exit 1
-        }
-    } catch {
-        Write-Error "Failed to download FFmpeg: $($_.Exception.Message)"
-        exit 1
-    }
-}
-Write-Output "FFmpeg installation complete. FFmpeg binary is at: $FFmpegBin"
+# Nothing is fetched here but the package itself and Python's own toolchain.
+#
+# This script used to download a third-party FFmpeg binary from a GitHub release
+# into `$AppDataDir\bin`. Nothing in the app or in `local-operator` ever executed
+# it. Tooling a task actually needs is acquired later, on demand, through the
+# app's Console with the user's approval; this script's job is the environment
+# below and nothing else. (pyenv-win's source archive below is the one remaining
+# third-party fetch, and it is a source archive the Windows install cannot do
+# without - see `scripts/install-scripts-network.test.mjs`, which keeps that list
+# down to the fetches each platform genuinely needs.)
 
 # Function to check if a command exists
 function Test-CommandExists {
@@ -116,8 +86,44 @@ if (-not (Test-Path $PyenvDir)) {
     
     # Download and extract pyenv-win
     $PyenvZip = "$TempDir\\pyenv-win.zip"
-    Invoke-WebRequest -Uri "https://github.com/pyenv-win/pyenv-win/archive/master.zip" -OutFile $PyenvZip
-    Expand-Archive -Path $PyenvZip -DestinationPath $TempDir
+    # Bounded, and the bound FAILS LOUDLY. An unbounded request here holds a
+    # first-run install open behind the progress bar forever on a black-hole
+    # network; and without -ErrorAction Stop a fired -TimeoutSec is a
+    # NON-TERMINATING error, so the script would walk straight into
+    # Expand-Archive with an absent or partial zip and report an archive error
+    # instead of "the download timed out". The partial file is removed in the
+    # failure branch so a later run cannot expand what this one failed to fetch
+    # (the next run clears $TempDir before it downloads at all, which is the
+    # `if (Test-Path $TempDir) { Remove-Item ... }` above - named rather than
+    # cited by line, because a line number in a script that keeps changing is
+    # what a stale citation is made of).
+    # 120 seconds is a payload bound rather than the 30-second stall bound the PyPI
+    # probes use: this downloads a source archive instead of answering an API
+    # call, so it only has to stop an indefinite hang.
+    #
+    # WHICH BOUND `-TimeoutSec` ACTUALLY IS DEPENDS ON THE POWERSHELL, and that is
+    # a trap worth naming because the two paths differ here. The app spawns this
+    # script with `powershell.exe` (Windows PowerShell 5.1, see
+    # backend-installer.ts), where -TimeoutSec is the REQUEST's timeout - 120
+    # seconds to complete the transfer. On PowerShell 7.4+ it was renamed to
+    # -OperationTimeoutSeconds and -TimeoutSec survives only as an ALIAS of
+    # -ConnectionTimeoutSeconds, i.e. a connect bound, so on a 7.x host (the CI
+    # runner is one) a mirror that accepts and then stalls is not ended by this.
+    # Do not "fix" that by adding the 7.x spelling: 5.1 does not know
+    # -OperationTimeoutSeconds, and an unknown parameter is a binding error which
+    # the catch below turns into `exit 1` on every install. The version-agnostic
+    # answer is a bound on the transfer itself (a BITS job or a size/rate check),
+    # which is a larger change than this one and is recorded rather than made.
+    try {
+        Invoke-WebRequest -Uri "https://github.com/pyenv-win/pyenv-win/archive/master.zip" -OutFile $PyenvZip -TimeoutSec 120 -ErrorAction Stop
+    } catch {
+        Remove-Item -Path $PyenvZip -Force -ErrorAction SilentlyContinue
+        Write-Error "Failed to download pyenv-win from https://github.com/pyenv-win/pyenv-win/archive/master.zip within 120 seconds: $($_.Exception.Message)"
+        exit 1
+    }
+    # -ErrorAction Stop for the same reason as the download: a truncated archive
+    # must fail here rather than half-copy into $PyenvDir.
+    Expand-Archive -Path $PyenvZip -DestinationPath $TempDir -ErrorAction Stop
     
     # Create .pyenv directory
     New-Item -ItemType Directory -Path $PyenvDir -Force | Out-Null
@@ -195,6 +201,7 @@ if ($LASTEXITCODE -ne 0) {
 
 # Create virtual environment if it doesn't exist
 if (-not (Test-Path $VenvPath)) {
+    Write-Output "|LO1:environment"
     Write-Output "Creating virtual environment at $VenvPath..."
     
     # Ensure the directory exists
@@ -226,16 +233,113 @@ if (-not (Test-Path "$VenvPath\\Scripts\\Activate.ps1")) {
     exit 1
 }
 
+# --- The package install: uv when there is one, pip otherwise ------------------
+#
+# Same shape as the macOS and Linux scripts, and for the same reasons: uv resolves
+# and fetches in parallel - measured on macOS, cold cache, three runs each, same
+# interpreter: uv's package install is 12.8-16.1 s against pip's 33.0-40.7 s,
+# plus the 2.3-2.8 s pip self-upgrade this path skips, so 1.5-2.8x across two
+# operators rather than the "14.8 s against 128.9 s" quoted here before that
+# reading was withdrawn (`docs/BUILD.md` has the full set). The pip path below is
+# unchanged and runs whenever uv is absent or cannot do the job, and pip STAYS in the venv
+# because the app's backend-update path runs `pip install --upgrade
+# local-operator` inside this same environment - which is also why the venv is
+# still created with `python -m venv` rather than `uv venv`.
+#
+# Nothing here searches PATH for a uv: an installed uv is a version and a
+# configuration nobody in this repository chose. `LOCAL_OPERATOR_UV_BIN` is the
+# app's own answer (`src/main/backend/uv-tool.ts`).
+$UvBin = $env:LOCAL_OPERATOR_UV_BIN
+$UvCacheDir = "$AppDataDir\uv-cache"
+
+function Test-UvUsable {
+    if (-not $UvBin) { return $false }
+    if (-not (Test-Path $UvBin)) { return $false }
+    try {
+        & $UvBin --version | Out-Null
+        return ($LASTEXITCODE -eq 0)
+    } catch {
+        return $false
+    }
+}
+
+# Drop every UV_* variable the launching environment carried, then set the three
+# settings this install depends on. Measured on uv 0.12.17: a user-level
+# `uv.toml` naming an unreachable index is obeyed by `uv pip install` and ignored
+# with `UV_NO_CONFIG=1`; an ambient `UV_INDEX_URL` changes where packages come
+# from, while `PIP_INDEX_URL` does not affect uv at all. A name list would drift
+# the day uv adds a variable - the namespace cannot.
+#
+# The names are MATERIALISED first (`@(...)` over a property projection):
+# removing entries of a collection that is still being enumerated is the shape
+# that throws `Collection was modified`.
+$uvAmbientNames = @(
+    Get-ChildItem env: |
+        Where-Object { $_.Name -like 'UV_*' } |
+        Select-Object -ExpandProperty Name
+)
+foreach ($uvAmbientName in $uvAmbientNames) {
+    Remove-Item "env:$uvAmbientName" -ErrorAction SilentlyContinue
+}
+
+# UV_NO_CONFIG: never read `pyproject.toml`/`uv.toml`, wherever they are.
+# UV_PYTHON_DOWNLOADS=never: this install uses the interpreter it was handed and
+# never fetches another.
+# UV_CACHE_DIR: under the app's own support directory rather than the user's
+# shared uv cache.
+$env:UV_NO_CONFIG = "1"
+$env:UV_PYTHON_DOWNLOADS = "never"
+$env:UV_CACHE_DIR = $UvCacheDir
+
 # Activate virtual environment and install local-operator
+# --- Progress markers -------------------------------------------------------
+# One whole line per phase, read by the app and shown in the setup window. The
+# app matches the ENTIRE line (`|LO1:<phase>`, see src/shared/install-progress.ts)
+# and never a substring, so a marker has to stand alone: do not wrap it in
+# other text, do not re-indent it into a longer sentence, and do not emit one
+# for work this script does not actually do. A missing marker leaves the window
+# on its previous step, which is the honest failure; a marker a log line also
+# happens to produce is a wrong step presented as a measurement.
+#
+# WHY THE SCRIPT AND NOT ONLY THE APP: the install below is minutes of work on a
+# cold machine, and the app cannot see inside the venv it is about to create -
+# this is the only process that knows when the environment exists and when the
+# download starts.
+Write-Output "|LO1:components"
 Write-Output "Installing local-operator in virtual environment..."
 # Use PowerShell to run the activation script
 & "$VenvPath\\Scripts\\Activate.ps1"
-& python -m pip install --upgrade pip
-& python -m pip install --upgrade local-operator
 
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "Failed to install packages in virtual environment"
-    exit 1
+$UvInstalled = $false
+if (Test-UvUsable) {
+    Write-Output "Installing local-operator with uv..."
+    # No `pip install --upgrade pip` on this path: uv does not use pip.
+    & $UvBin pip install --python "$VenvPath\Scripts\python.exe" --upgrade local-operator
+    if ($LASTEXITCODE -eq 0) {
+        $UvInstalled = $true
+        Write-Output "local-operator installation with uv successful"
+    } else {
+        # The exit code is printed for the same reason as on macOS and Linux: the
+        # fallback is deliberately forgiving, so this line is the only evidence
+        # that a bundled uv is present and failing for every user (QA Q2).
+        Write-Output "WARNING: the bundled uv is present but its install failed (exit $LASTEXITCODE); retrying with pip, which is what this script used before uv was bundled."
+    }
+} else {
+    if ($UvBin) {
+        Write-Output "Bundled uv at $UvBin could not be run on this machine; installing with pip."
+    } else {
+        Write-Output "Bundled uv not available (LOCAL_OPERATOR_UV_BIN unset); installing with pip."
+    }
+}
+
+if (-not $UvInstalled) {
+    & python -m pip install --upgrade pip
+    & python -m pip install --upgrade local-operator
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Failed to install packages in virtual environment"
+        exit 1
+    }
 }
 
 # Verify installation

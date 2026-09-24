@@ -9,16 +9,23 @@ import {
 	webContents,
 } from "electron";
 import { startConsoleHost } from "../console";
+import type { ConsoleCompletionNotifier } from "../console/completion";
 import { isConsoleDispatchMethod } from "../console/dispatch";
 import { ConsoleError } from "../console/errors";
+import type { UserShellPath } from "../shell-path";
 import {
 	WebauthnChooser,
 	type WebauthnRequestSource,
 	attachWebauthnChooser,
 	installWebauthn,
 } from "../webauthn";
+import type { RaiseReport } from "../window-raise";
 import { ApprovalStore } from "./approvals";
 import { CdpPool } from "./cdp";
+import {
+	type ConsentAttentionPayload,
+	consentClickHandler,
+} from "./consent-click";
 import { ConsentNotifier } from "./consent-notifier";
 import { DownloadArmer } from "./downloads";
 import type { DriveableView } from "./electron-types";
@@ -108,6 +115,51 @@ export interface StartBrowserHostOptions {
 	 * consent banner when nobody is at the screen (design 11.4).
 	 */
 	windowShow: "focus" | "inactive" | "never";
+	/**
+	 * Where a raise reports its one line, so a consent banner's click is
+	 * attributable the way every other raise is.
+	 *
+	 * OPTIONAL, and it is the app's own logger that supplies it: the raise itself is
+	 * `window-raise.ts`'s decision, and this module's only part in it is to say that
+	 * the OPERATOR asked — which is what the `banner-click` trigger records.
+	 */
+	reportRaise?: RaiseReport;
+	/**
+	 * Where a consent click goes when the window it was raised for is GONE.
+	 *
+	 * A banner outlives its window (macOS keeps it in Notification Center) and the
+	 * click then arrives with nothing to deliver to — the operator's own reported
+	 * state, since the app stays alive in the Dock. Window creation is the app's
+	 * business, so this module does not make one: it hands the request up, exactly as
+	 * `window-raise.ts` owns the raise and `desktop-notifier.ts` owns the completion
+	 * banner's recreate path. Absent, the click reports the no-window line and
+	 * returns — the behaviour the app had before the guard, minus the throw.
+	 */
+	reopenConsent?: (payload: ConsentAttentionPayload) => void;
+	/**
+	 * The app's notifier, forwarded verbatim to the console host so a console
+	 * surface's completion can be raised as a banner (design 12.3). The console rides
+	 * this endpoint (design 10.1) but NOT this notifier's opinions: the notifier owns
+	 * the delivery gate, the claim and the click, and this module only hands it over.
+	 */
+	notifier?: ConsoleCompletionNotifier;
+	/**
+	 * The console's offscreen capture document and the preload it needs (design
+	 * 13.2/13.3). Both come from the app because only the app knows where its own
+	 * bundle lives: the console host is handed URLs, never paths it guesses.
+	 *
+	 * Absent means no capture view, which the host reports as the typed
+	 * `capture_unavailable` refusal rather than as a blank frame.
+	 */
+	consoleCaptureUrl?: string;
+	preloadPath?: string;
+	/**
+	 * The user's own login-shell PATH (`../shell-path`), forwarded to the console
+	 * host so a surface behaves like the user's terminal. The app builds ONE of
+	 * these and hands it here and to the backend, so the two consumers cannot
+	 * answer "what is this user's PATH" differently.
+	 */
+	userShellPath?: UserShellPath;
 	log: (message: string) => void;
 }
 
@@ -411,19 +463,31 @@ export async function startBrowserHost(
 	 * own header states the rule). Not per pending ENTRY: with a real queue, a busy
 	 * minute of arrivals would otherwise raise one banner per request. Declared here
 	 * because the approvals store's change hook raises it, and `windowShow` is the
-	 * ONLY permission it needs — this module never decides whether a window comes
-	 * forward (design 11.4).
+	 * plan the CLICK comes forward under — this module still never decides whether a
+	 * window comes forward (design 11.4), it hands the plan to `window-raise.ts`.
 	 */
 	const consentNotifier = new ConsentNotifier({
 		show: options.windowShow,
-		// A banner click NAVIGATES A ROUTE AND NOTHING ELSE. It must not raise the
-		// window: "never steal focus" is the rule for every browser this project
-		// starts (design 11.4), and `window-raise.ts` stays the only module that
-		// decides whether a window comes forward.
-		onAttention: (entryId) =>
-			options.window.webContents.send("browser-consent-attention", {
-				entryId,
-			}),
+		/*
+		 * The click's own rule lives in `consentClickHandler` (see it: the delivered
+		 * payload, the order, and the raise are all asserted there), and this is the
+		 * wiring that gives it the real window and the real plan. `windowShow` is the
+		 * plan the click comes forward under — this module still never decides whether a
+		 * window comes forward (design 11.4), it hands the plan to `window-raise.ts`.
+		 */
+		onAttention: consentClickHandler({
+			/*
+			 * THE WINDOW IS ASKED FOR, NOT CAPTURED, and the difference is the U2 fix:
+			 * this host is stopped the moment its window closes (`src/main/index.ts`'s
+			 * `closed` hook), but a banner already raised is still in Notification
+			 * Center and its click still lands here. A captured window would be a
+			 * destroyed one by then, and reading it throws.
+			 */
+			window: () => options.window,
+			show: options.windowShow,
+			report: options.reportRaise,
+			reopen: options.reopenConsent,
+		}),
 		log,
 	});
 
@@ -592,6 +656,19 @@ export async function startBrowserHost(
 		window: options.window,
 		expectedUrl: options.expectedUrl,
 		appVersion: options.appVersion,
+		notifier: options.notifier,
+		/*
+		 * The capture view's document and preload, forwarded rather than re-derived:
+		 * only the app knows where its own bundle lives, and a console host that
+		 * guessed would answer a screenshot with a blank frame rather than with its
+		 * own typed refusal. WITHOUT THESE TWO the host builds no capture view at all,
+		 * which the live proof rig caught as `capture_unavailable` on a surface with
+		 * no displayed pane — the exact shape of a seam that is wired in tests and
+		 * forgotten in the one call site that matters.
+		 */
+		consoleCaptureUrl: options.consoleCaptureUrl,
+		preloadPath: options.preloadPath,
+		userShellPath: options.userShellPath,
 		log,
 	});
 

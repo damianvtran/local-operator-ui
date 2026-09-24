@@ -1,8 +1,8 @@
 /**
  * The renderer's end of the machine-wide desktop feed.
  *
- * Three jobs, and every one of them is about REPLACING A TIMER rather than
- * adding one:
+ * Four jobs, and the first three have the same shape: each one REPLACES A TIMER
+ * rather than adding one.
  *
  * 1. **The unseen mark arrives on the event.** Each `attention` frame is merged
  *    into its catalogue row through the store's revision-guarded merge, so the
@@ -19,6 +19,14 @@
  *    instead of waiting up to the safety poll for a whole catalogue read. The
  *    frame is applied IN PLACE and leaves one value for two writers to disagree
  *    about, which is what the guard in the store's list merge settles.
+ * 4. **The authoring lists refresh on an invalidation that replaces NOTHING.**
+ *    `profiles.list`/`teams.list` have no poll to replace - `staleTime: 10_000`
+ *    is a freshness window refetched on mount and on window focus, not a
+ *    cadence - so the `authoring` frame is the only event-driven refresh those
+ *    two lists will ever have. It exists because the writer is usually an AGENT:
+ *    a team or profile created over there happens with no click in this window
+ *    and nothing for the renderer to invalidate a cache from, which is the
+ *    reported defect this frame removes.
  *
  * CAPABILITY-GATED BOTH WAYS, and the gate is deliberately about what this app
  * can DO, not only what the backend advertises: `features.desktop_feed` absent
@@ -38,7 +46,7 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DesktopFeedFrame } from "../../../../shared/desktop-session-contract";
 
 export type DesktopFeedConnection = {
@@ -52,6 +60,21 @@ export type DesktopFeedConnection = {
 	 * invalidation.
 	 */
 	catalogueRevision: number | null;
+	/**
+	 * The backend's AUTHORING revision as of the last `authoring` frame, or null
+	 * before the first one.
+	 *
+	 * Null is also the answer an older backend gives forever, which is what keeps
+	 * this capability-free: a consumer guards on `null` and a frame that never
+	 * arrives changes nothing. Consumed by the authoring queries themselves rather
+	 * than by the sidebar - see the fourth job above.
+	 */
+	authoringRevision: number | null;
+	/**
+	 * Advances only when an already-established feed reconnects. The first open
+	 * is not an invalidation: mount already fetched the current authoring lists.
+	 */
+	authoringReconnectRevision: number;
 };
 
 export function useDesktopFeed(): DesktopFeedConnection {
@@ -63,21 +86,43 @@ export function useDesktopFeed(): DesktopFeedConnection {
 	const [catalogueRevision, setCatalogueRevision] = useState<number | null>(
 		null,
 	);
+	const [authoringRevision, setAuthoringRevision] = useState<number | null>(
+		null,
+	);
+	const [authoringReconnectRevision, setAuthoringReconnectRevision] =
+		useState(0);
+	// The feed's `open` snapshot is intentionally not enough to detect a missed
+	// authoring change: a no-subscriber baseline can retain the same revision.
+	// Track transport history instead, and only publish recovery after we have
+	// observed a successful connection followed by a later successful connection.
+	const wasConnected = useRef(false);
+	const hasConnected = useRef(false);
 
 	useEffect(() => {
 		if (!available || !native) {
 			// The gate closing must also clear the state it published: a backend
 			// that loses the capability (a downgrade under a running app) must not
 			// leave the sidebar rendering a connection it no longer has.
+			wasConnected.current = false;
 			setConnected(false);
 			return;
 		}
 		const applyAttention = useCanonicalSessionsStore.getState().applyAttention;
 		const applySessionStatus =
 			useCanonicalSessionsStore.getState().applySessionStatus;
-		const offState = native.watchState((state) =>
-			setConnected(state.connected),
-		);
+		const offState = native.watchState(({ connected: nextConnected }) => {
+			if (nextConnected) {
+				if (hasConnected.current && !wasConnected.current) {
+					// A reconnect starts from a backend baseline rather than replaying
+					// changes during the outage. Invalidate once even when its revision
+					// did not advance because there were no feed subscribers.
+					setAuthoringReconnectRevision((revision) => revision + 1);
+				}
+				hasConnected.current = true;
+			}
+			wasConnected.current = nextConnected;
+			setConnected(nextConnected);
+		});
 		const offFrames = native.subscribe((frame: DesktopFeedFrame) => {
 			if (frame.type === "attention") {
 				applyAttention(frame.session_id, frame.payload);
@@ -111,13 +156,27 @@ export function useDesktopFeed(): DesktopFeedConnection {
 			}
 			if (frame.type === "catalogue") {
 				setCatalogueRevision(frame.payload.revision);
+				return;
 			}
-			// `open`, `heartbeat` and `gap` carry transport state and nothing the
-			// renderer renders: the snapshot IS the first catalogue revision, and a
-			// reconnect is main's watchdog's job. Ignored deliberately rather than
-			// routed into a state store nothing reads — and a type this build does not
-			// know (a newer backend's frame) is ignored by the same missing branch,
-			// which is what makes the addition of one a no-op for older renderers.
+			/*
+			 * The authoring revision is EXPOSED, not acted on, for the same reason the
+			 * catalogue revision is: this hook is the transport, and what a revision
+			 * invalidates belongs to whoever owns the query keys. Here that is the
+			 * profile hooks themselves rather than the sidebar, because the sidebar is
+			 * route-scoped and `/agents` is the page these lists live on.
+			 *
+			 * Handed the revision verbatim, in the same branch shape as `catalogue`
+			 * above: a frame this build does not know falls through both.
+			 */
+			if (frame.type === "authoring") {
+				setAuthoringRevision(frame.payload.revision);
+			}
+			// `open`, `heartbeat` and `gap` carry no renderable authoring data. The
+			// first `open` deliberately causes no invalidation because query mounts
+			// already fetch; recovery after a previously connected transport drops is
+			// published through `watchState` above, where a baseline with an unchanged
+			// revision cannot hide the outage. Unknown frame types remain a no-op for
+			// older renderers.
 		});
 		return () => {
 			offFrames();
@@ -125,5 +184,11 @@ export function useDesktopFeed(): DesktopFeedConnection {
 		};
 	}, [available, native]);
 
-	return { available, connected: available && connected, catalogueRevision };
+	return {
+		available,
+		connected: available && connected,
+		catalogueRevision,
+		authoringRevision,
+		authoringReconnectRevision,
+	};
 }

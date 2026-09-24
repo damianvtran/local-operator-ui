@@ -3,13 +3,29 @@ import {
 	AvatarFallback,
 	Badge,
 	Button,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
 	Skeleton,
 	Tooltip,
+	countLabel,
 } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { Bot, FileText, Globe } from "lucide-react";
+import {
+	Archive,
+	ArchiveRestore,
+	Bot,
+	FileText,
+	Globe,
+	MoreHorizontal,
+	SquareTerminal,
+	Trash2,
+} from "lucide-react";
 import { type FC, useEffect, useRef } from "react";
+import { archiveControlLabel } from "../chat-archived";
 import type { McpServerRow, RunDetails } from "./run-details";
 import { RunDetailsTrigger } from "./run-details";
 
@@ -85,14 +101,49 @@ type ChatHeaderProps = {
 	 * The same shape as `onOpenOptions` above, and for the same reason: the canvas
 	 * button is rendered from whether a host offered the action, so the header never
 	 * has to know which routes or environments have a canvas — or, here, a browser.
-	 * It hides while the pane is open, exactly as the canvas button does, because the
-	 * pane carries its own close and a trigger for a pane that is already up is a
-	 * no-op with a tooltip. The run trigger beside it stays visible as a toggle, and
-	 * that difference is deliberate: the canvas and the browser are surfaces you
-	 * summon and dismiss, where the run details are a pane you flip in and out of
-	 * while reading (`docs/run-sidebar.md` § 3.4).
+	 *
+	 * IT DOES NOT HIDE WHILE ITS PANE IS OPEN, and that is the fix for the operator's
+	 * report (2026-09-23). The badge on this control is the only chrome that reports
+	 * THIS conversation's waiting approvals, so a trigger that unmounted with the pane
+	 * took the count off screen with it — the repo's own live evidence reads
+	 * `badge: null` beside three live requests (`docs/evidence/browser-pane-live/`,
+	 * where the pane is open), and "the badge is sometimes missing when a request IS
+	 * outstanding" is that state. Its two neighbours still hide, and the difference is
+	 * what each control CARRIES: the canvas and console buttons hold a mark that says
+	 * "there is something in there", which the open pane already says, while this one
+	 * holds a COUNT the pane does not put in the header. So it is a real toggle rather
+	 * than the "no-op with a tooltip" the old rule hid — that objection was about a
+	 * control that re-OPENED a pane already on screen, and this one closes it.
+	 *
+	 * It reads `isBrowserPaneOpen` for the same reason the canvas button reads
+	 * `isCanvasOpen`: the pane is a property of the window's right slot, so the control
+	 * that opens it and the slot that renders it have to answer from ONE field.
 	 */
-	onOpenBrowser?: () => void;
+	onToggleBrowser?: () => void;
+	/**
+	 * Opens the conversation's console pane, or absent when this header has none.
+	 *
+	 * The fourth occupant of the same slot and the same shape as `onToggleBrowser`:
+	 * the header renders the trigger from whether a host offered the action, hides it
+	 * while the pane is up (the pane carries its own close), and never decides itself
+	 * which pane is showing.
+	 */
+	onOpenConsole?: () => void;
+	/**
+	 * How many completions THIS conversation's console has produced that the user has
+	 * not looked at (design 12.2), and whether any of them is still fresh enough to
+	 * pulse.
+	 *
+	 * A COUNT IS PASSED AND A DOT IS DRAWN, which is the one place this trigger
+	 * agrees with the canvas button rather than the browser one: "here the only job is
+	 * to say 'there is something' before the user has opened it". The count is not
+	 * rendered — it is what the tooltip and the `aria-label` read, which is where an
+	 * exact number belongs for a control this size.
+	 */
+	consoleUnseenCount?: number;
+	/** Whether those marks are still pulsing, i.e. whether the dot is `accent` or has
+	 * come to rest in `inkMuted` (design 12.2's two states). */
+	consoleUnseenPulsing?: boolean;
 	/**
 	 * How many approvals THIS conversation is waiting on, for the trigger's badge.
 	 *
@@ -102,6 +153,33 @@ type ChatHeaderProps = {
 	 * the number is the whole information the badge carries (spec 5.1, 7.3).
 	 */
 	browserAttentionCount?: number;
+	/**
+	 * Whether THIS conversation is archived, as the pane knows it, and whether the
+	 * backend can hold archived conversations at all.
+	 *
+	 * `archived` is a plain boolean rather than a lookup here for the reason the
+	 * header takes `fileCount`: the pane owns the canonical stream and the session
+	 * store, and this component is rendered by stories with fixtures and by the
+	 * legacy path with nothing. `archiveEnabled` is the capability, passed down
+	 * rather than re-read, so the pill and the sidebar's control cannot gate on two
+	 * different answers.
+	 */
+	archived?: boolean;
+	archiveEnabled?: boolean;
+	/**
+	 * The session's own actions: archive/unarchive it, and delete it permanently.
+	 *
+	 * Absent when the host cannot offer them (no capability, or a pane with no
+	 * session), which is what keeps the menu out of the DOM entirely rather than
+	 * rendering a set of items that do nothing - the same fail-closed rule the
+	 * archive slot in the sidebar follows.
+	 *
+	 * `onRequestDelete` OPENS a confirmation and deletes nothing: the wire requires
+	 * a confirmed delete, so this component's job ends at asking.
+	 */
+	onSetArchived?: (archived: boolean) => void;
+	deleteEnabled?: boolean;
+	onRequestDelete?: () => void;
 };
 
 export const ChatHeader: FC<ChatHeaderProps> = ({
@@ -114,8 +192,16 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	mcpServers = [],
 	listOnScreen = false,
 	readerChildId = null,
-	onOpenBrowser,
+	onToggleBrowser,
 	browserAttentionCount = 0,
+	archived = false,
+	archiveEnabled = false,
+	onSetArchived,
+	deleteEnabled = false,
+	onRequestDelete,
+	onOpenConsole,
+	consoleUnseenCount = 0,
+	consoleUnseenPulsing = false,
 }) => {
 	/*
 	 * What the badge SHOWS, which is not always what it counts (design round 1, D5):
@@ -124,14 +210,15 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	 * exact number. Only the glyph is capped - a user who needs the count reads it,
 	 * and a user who needs to know it is a lot sees that too.
 	 */
-	const badgeText =
-		browserAttentionCount > 9 ? "9+" : String(browserAttentionCount);
+	const badgeText = countLabel(browserAttentionCount, 9);
 	const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
 	const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
 	// Read here rather than passed in: the pane is a property of the window's right
 	// slot, so the control that opens it and the slot that renders it have to answer
 	// from ONE field — the same reason the canvas button reads `isCanvasOpen` itself.
 	const isBrowserPaneOpen = useUiPreferencesStore((s) => s.isBrowserPaneOpen);
+	// The console's own field, read for the same reason and from the same place.
+	const isConsolePaneOpen = useUiPreferencesStore((s) => s.isConsolePaneOpen);
 
 	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 	const shortcut = isMac ? "⌘+Shift+C" : "Ctrl+Shift+C";
@@ -151,16 +238,23 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	 * stacks with whatever container it is dropped into, which is exactly the
 	 * silent-mis-spacing failure that rule exists to prevent.
 	 *
-	 * Each fact is about a CHILD rather than about the badge alone, and the two pane
-	 * halves are why: while the browser pane is open the browser button is unmounted,
-	 * so there is no badge on screen and no room to reserve, however many approvals
-	 * are waiting; and while the canvas is open the canvas button is unmounted, so the
-	 * badge has no neighbour's box to land in and the room would be spent on a control
-	 * that is not rendered.
+	 * Each fact is about a CHILD rather than about the badge alone, and the canvas
+	 * half is why: while the canvas is open the canvas button is unmounted, so the
+	 * badge has no neighbour's box to land in and the room would be spent on a
+	 * control that is not rendered. (THE BROWSER HALF OF THIS PARAGRAPH IS HISTORY:
+	 * the browser button used to unmount with its pane, which is the state the
+	 * operator reported as a missing badge - see `onToggleBrowser`. It stays mounted
+	 * now, so the room its badge earned is never paid for nothing.)
 	 */
-	const browserButtonShown = Boolean(onOpenBrowser) && !isBrowserPaneOpen;
-	const browserBadgeDrawn = browserButtonShown && browserAttentionCount > 0;
+	const browserButtonShown = Boolean(onToggleBrowser);
+	/* THE BADGE IS DRAWN WHENEVER THIS CONVERSATION IS WAITING ON SOMETHING. It used
+	 * to be gated on the button's own visibility (`browserButtonShown &&
+	 * browserAttentionCount > 0`), which was inert only while the button never hid
+	 * with its pane. With the trigger staying mounted that gate would be the second
+	 * way to lose the count, so it is gone rather than left as a remainder. */
+	const browserBadgeDrawn = browserAttentionCount > 0;
 	const canvasButtonShown = Boolean(onOpenOptions) && !isCanvasOpen;
+	const consoleButtonShown = Boolean(onOpenConsole) && !isConsolePaneOpen;
 
 	/*
 	 * Closing the canvas put focus back on `<body>`, which is the top of the
@@ -207,6 +301,25 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 		browserPaneWasOpen.current = isBrowserPaneOpen;
 	}, [isBrowserPaneOpen]);
 
+	/*
+	 * And the same again for the console, which is the fourth occupant of the same
+	 * slot (design 6.1) and would otherwise be the second one to drop a keyboard
+	 * user at the top of the document's tab order - the exact defect UX round 1 (U2)
+	 * found on the browser trigger. Same guard: only when focus was actually lost,
+	 * and never on first mount.
+	 */
+	const consoleButtonRef = useRef<HTMLButtonElement | null>(null);
+	const consolePaneWasOpen = useRef(isConsolePaneOpen);
+	useEffect(() => {
+		if (
+			consolePaneWasOpen.current &&
+			!isConsolePaneOpen &&
+			document.activeElement === document.body
+		)
+			consoleButtonRef.current?.focus();
+		consolePaneWasOpen.current = isConsolePaneOpen;
+	}, [isConsolePaneOpen]);
+
 	return (
 		<div
 			/*
@@ -236,7 +349,15 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * only thing separating them.
 			 */
 			className={cn(
-				"flex h-14 shrink-0 items-center gap-3 border-control border-b px-4",
+				/*
+				 * `@container/chathdr` is the row's own width, which is what the title's
+				 * floor needs to ask about. It is NOT the viewport: this header narrows
+				 * when a right-slot pane opens, and the pane is exactly the state where an
+				 * unfloored title disappeared (design round 1, D1 - measured: the title's
+				 * box held no ink at all while the pane was up, because `flex-1 min-w-0`
+				 * lets it yield before any control does).
+				 */
+				"@container/chathdr flex h-14 shrink-0 items-center gap-3 border-control border-b px-4",
 			)}
 			data-tour-tag="chat-header"
 		>
@@ -256,7 +377,38 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * the empty space did - the description clipped mid-sentence at 760px
 			 * while 220px of bar sat unused to its right. Growing first means the
 			 * text truncates only once there is genuinely no room left. */}
-			<div className={cn("flex min-w-0 flex-1 flex-col")}>
+			{/* THE FLOOR IS THE POINT, AND IT IS CONDITIONAL ON THE ROOM THAT PAYS FOR IT
+			 * (design round 1, D1; agent review round 2, Q-1).
+			 *
+			 * `flex-1 min-w-0` grows into spare room but yields ALL of it, so one more
+			 * control in the cluster could take the conversation's name off the bar
+			 * entirely - which is what the browser trigger's own fix did, on the pane-open
+			 * screen the operator reported from. `min-w-10` (40px, two or three characters
+			 * and the ellipsis) is the floor the NARROWEST real row can pay, measured
+			 * rather than picked: with the browser pane up at 1380px the header is 240px
+			 * wide, its fixed parts (avatar 32, two 12px gaps, the `...` menu, the trigger,
+			 * the console, px-4) come to 200, and what is left for the title is 40.
+			 *
+			 * AND THE ROW'S OVERFLOW IS VISIBLE, so the floor has to be one the row can pay
+			 * for: QA's round-2 Q-1 measured the pane-open header at a 900px window with the
+			 * controls not yielding - the last one ended 4px past the row and painted UNDER
+			 * the pane, invisible and unpressable, rather than being clipped. What fixes
+			 * that is the SHED ORDER below, and the gate here is its insurance rather than
+			 * its mechanism: at the app's own minimum window (`WINDOW_MIN_WIDTH = 800`)
+			 * the pane-open header measures 220px, its remaining fixed parts 164 and the
+			 * floor 40, which fits with 16px to spare - so at every width a person can
+			 * reach the floor is applied, and the gate only stops it from being the thing
+			 * that breaks a row nothing else is left to shed
+			 * (`@[13.5rem]` = 216px, beneath every width a person can reach) and the title
+			 * yields freely below that. The controls shed FIRST - the run trigger, then the canvas
+			 * button, then the console - so on the widths a person can reach the floor is
+			 * almost always applied; the gated-off case is the last resort beneath them
+			 * rather than the mechanism. */}
+			<div
+				className={cn(
+					"flex min-w-0 flex-1 flex-col @[13.5rem]/chathdr:min-w-10",
+				)}
+			>
 				{/* `text-heading`, not `text-title`: branding.md reserves the 20px step
 				 * for section and dialog titles and states that a desktop app has no
 				 * hero. 20px over 13px also skipped two ramp steps in one bar. */}
@@ -278,7 +430,6 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 					</span>
 				)}
 			</div>
-
 			{/*
 			 * The header's action cluster: the run-panel trigger, the browser pane's trigger,
 			 * then the canvas button, as one group at the end of the bar. The cluster carries
@@ -289,11 +440,15 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * THESE ARE THE RIGHT PANE'S THREE CHOICES, and they are mutually exclusive in
 			 * the STORE rather than here: each setter clears the other two
 			 * (`claimRightSlot`), so this cluster never has to know which pane is up. The
-			 * canvas and browser buttons keep their own hide-when-open rule
-			 * (`onOpenOptions && !isCanvasOpen`, `onOpenBrowser && !isBrowserPaneOpen`),
-			 * because a button that re-opens the pane already on screen is a no-op with a
-			 * tooltip; the run trigger stays, because it is a TOGGLE with an `aria-pressed`
-			 * ground and that is exactly what makes the swap reversible.
+			 * canvas and browser buttons keep their own render gates
+			 * (`onOpenOptions && !isCanvasOpen`, `onToggleBrowser`), because a button that
+			 * re-opens the pane already on screen is a no-op with a tooltip; the run trigger
+			 * and the browser trigger stay, because each is a TOGGLE whose own ground or
+			 * badge says which way it goes, and that is exactly what makes the swap
+			 * reversible. THE BROWSER TRIGGER'S OWN STAY is the operator's fix (2026-09-23),
+			 * and the asymmetry with the canvas button is deliberate rather than an
+			 * oversight: its badge is a count this header is the only chrome to carry, and
+			 * hiding it with the pane is how the count disappeared.
 			 */}
 			<div
 				className={cn(
@@ -335,6 +490,135 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 					browserBadgeDrawn && canvasButtonShown ? "gap-3" : "gap-2",
 				)}
 			>
+				{/*
+				 * THE ARCHIVED STATE, and its restore control, as a PAIR.
+				 *
+				 * The state is a `Badge shape="pill"` and the action is a ghost icon
+				 * button beside it - two elements rather than one pill-shaped button, and
+				 * the contract is what decides it: `badge.tsx` states that a badge is not a
+				 * control ("if it can be clicked or dismissed it is a button or a chip"),
+				 * and `branding.md` § 598 reserves `rounded-full` for avatars, status dots
+				 * and pill badges, so a Button cannot be the pill. The pair is also the
+				 * arrangement the badge idiom already uses in this cluster: a count badge on
+				 * a control states the fact, and the control is what acts.
+				 *
+				 * Archiving the OPEN conversation leaves it open and merely adds this
+				 * ("archive hides from lists; it does not close"), which is why the marker
+				 * lives in the header at all rather than being implied by the row having
+				 * left the sidebar.
+				 *
+				 * The action's own name states the ACTION and the badge states the STATE,
+				 * the rule the pin control is written under: a control whose name is a state
+				 * makes a screen reader ask what pressing it would do.
+				 */}
+				{archiveEnabled && archived && (
+					<>
+						<Badge
+							shape="pill"
+							data-session-archived-pill
+							title="This conversation is archived. It is hidden from your chats until you restore it."
+						>
+							<Archive aria-hidden="true" />
+							Archived
+						</Badge>
+						{onSetArchived && (
+							<Button
+								variant="ghost"
+								size="icon"
+								onClick={() => onSetArchived(false)}
+								aria-label={archiveControlLabel(agentName, true)}
+								title={archiveControlLabel(agentName, true)}
+							>
+								<ArchiveRestore aria-hidden="true" />
+							</Button>
+						)}
+					</>
+				)}
+				{/*
+				 * THE CONVERSATION'S OWN MENU: the one surface that acts on the session as
+				 * a whole rather than on what is inside it.
+				 *
+				 * It exists because the alternative the brief names - the chat options
+				 * sheet (`chat-options-sidebar.tsx`, which hosts the existing destructive
+				 * "Clear conversation") - is UNREACHABLE on the canonical path this header
+				 * is the top of: `chat-content.tsx` renders that sheet only for `!canonical`
+				 * and `chat-page.tsx` passes `isOptionsSidebarOpen={false}` unconditionally,
+				 * so a delete control there would be dead UI. The header is the session's
+				 * options surface in the shipped app, and `DropdownMenu` is this
+				 * repository's established shape for a small set of row-level actions.
+				 *
+				 * FAIL-CLOSED AND WHOLE: with neither capability this renders nothing at
+				 * all - no trigger, no reserved box - so the withdrawn header is the header
+				 * that never knew about archiving. A trigger whose only item is disabled is
+				 * a menu that advertises a feature the backend does not have.
+				 */}
+				{(archiveEnabled || deleteEnabled) && (
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button
+								variant="ghost"
+								size="icon"
+								/*
+								 * The hook the delete dialog hands focus back to (UX round 1, U9): the menu
+								 * ITEM that opened the dialog is unmounted with the menu, so the trigger is
+								 * the successor control of the same act — the one a keyboard reader returns
+								 * to - and a name only this file could spell is not a hook a dialog should
+								 * reach for.
+								 */
+								data-conversation-actions
+								aria-label="Conversation actions"
+							>
+								<MoreHorizontal aria-hidden="true" />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end" className="min-w-45">
+							{archiveEnabled && (
+								<DropdownMenuItem
+									/*
+									 * The anchor a driver scene presses to archive from the header: the item's
+									 * own label is a sentence that flips with the state, and a scene that
+									 * selected it by text would break on a copy edit that changed nothing else.
+									 */
+									data-session-archive-action
+									onSelect={() => onSetArchived?.(!archived)}
+									disabled={!onSetArchived}
+								>
+									{archived ? (
+										<ArchiveRestore aria-hidden="true" />
+									) : (
+										<Archive aria-hidden="true" />
+									)}
+									<span>
+										{archived ? "Restore conversation" : "Archive conversation"}
+									</span>
+								</DropdownMenuItem>
+							)}
+							{archiveEnabled && deleteEnabled && <DropdownMenuSeparator />}
+							{deleteEnabled && (
+								<DropdownMenuItem
+									/*
+									 * The anchor a driver scene presses to ASK for the delete: the
+									 * item's own label is a sentence, and a scene that selected it by
+									 * text would break on a copy edit that changed nothing else.
+									 */
+									data-session-delete
+									/*
+									 * `text-danger`, the ink the app paints a destructive row in (the
+									 * command palette's own destructive items use it). The action does
+									 * NOT delete: it opens the confirmation, because the wire requires a
+									 * confirmed delete and a menu pick is not a confirmation.
+									 */
+									className="text-danger"
+									onSelect={() => onRequestDelete?.()}
+									disabled={!onRequestDelete}
+								>
+									<Trash2 aria-hidden="true" />
+									<span>Delete conversation…</span>
+								</DropdownMenuItem>
+							)}
+						</DropdownMenuContent>
+					</DropdownMenu>
+				)}
 				<RunDetailsTrigger
 					details={runDetails}
 					mcpServers={mcpServers}
@@ -344,13 +628,18 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				{/* The conversation's browser, third in the cluster. `ghost`/`icon` like its
 				    neighbours, and it carries the count when this conversation has a request
 				    outstanding — see `browserAttentionCount` for why a count here and a dot on
-				    the canvas button. */}
+				    the canvas button. It TOGGLES and stays mounted while its pane is open:
+				    `onToggleBrowser` is where that rule and its reason live. */}
 				{browserButtonShown && (
 					<Tooltip
 						content={
-							browserAttentionCount > 0
-								? `Open browser — ${browserAttentionCount} ${browserAttentionCount === 1 ? "approval" : "approvals"} waiting`
-								: "Open browser"
+							isBrowserPaneOpen
+								? browserAttentionCount > 0
+									? `Close browser — ${browserAttentionCount} ${browserAttentionCount === 1 ? "approval" : "approvals"} waiting`
+									: "Close browser"
+								: browserAttentionCount > 0
+									? `Open browser — ${browserAttentionCount} ${browserAttentionCount === 1 ? "approval" : "approvals"} waiting`
+									: "Open browser"
 						}
 						side="top"
 					>
@@ -358,12 +647,20 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							ref={browserButtonRef}
 							variant="ghost"
 							size="icon"
-							onClick={onOpenBrowser}
+							onClick={onToggleBrowser}
+							/* The count rides the NAME in both directions, so a screen reader hears
+							   the number whether the pane is open or closed (spec 5.1) — and the verb
+							   matches what the press does, which is the whole change. */
 							aria-label={
-								browserAttentionCount > 0
-									? `Open browser, ${browserAttentionCount} waiting`
-									: "Open browser"
+								isBrowserPaneOpen
+									? browserAttentionCount > 0
+										? `Close browser, ${browserAttentionCount} waiting`
+										: "Close browser"
+									: browserAttentionCount > 0
+										? `Open browser, ${browserAttentionCount} waiting`
+										: "Open browser"
 							}
+							aria-expanded={isBrowserPaneOpen}
 							data-tour-tag="browser-pane-trigger"
 							/*
 							 * `relative` for the badge only; the SPACING that makes room for it is the
@@ -412,14 +709,90 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 									<Badge
 										variant="attention"
 										shape="pill"
-										className={cn(
-											"h-4 min-w-4 justify-center px-1 tabular-nums ring-2 ring-canvas",
-										)}
+										size="count"
+										className="ring-2 ring-canvas"
 										data-tour-tag="browser-pane-badge"
 									>
 										{badgeText}
 									</Badge>
 								</span>
+							)}
+						</Button>
+					</Tooltip>
+				)}
+				{/*
+				 * The conversation's console, the fourth pane in the cluster (design
+				 * 6.1). `ghost`/`icon` like its neighbours, and it hides while the pane
+				 * is up for the same reason the browser button does — the pane carries its
+				 * own close, and a trigger for a pane already on screen is a no-op with a
+				 * tooltip.
+				 *
+				 * THE BLIP IS A DOT, NOT A COUNT (§12.2), and its two colours are the
+				 * whole of what it says: `accent` while the completion is fresh, because
+				 * something IS unread and the accent is earned (the canvas button's
+				 * `ink-muted` dot is the opposite case), and the resting `ink-muted` step
+				 * once the pulse has had its moment, so an unread mark never becomes a
+				 * permanent animation.
+				 *
+				 * `SquareTerminal` RATHER THAN `Terminal`, and the distinction is
+				 * load-bearing at 16px: `bash`'s bare `Terminal` is the shell the agent
+				 * ran, and this is the app's own framed surface (§6.1, §14.4). Two
+				 * terminals told apart at a glance in one 56px bar is the whole
+				 * requirement.
+				 */}
+				{consoleButtonShown && (
+					<Tooltip
+						content={
+							consoleUnseenCount > 0
+								? `Open console — ${consoleUnseenCount} finished since you looked`
+								: "Open console"
+						}
+						side="top"
+					>
+						<Button
+							ref={consoleButtonRef}
+							variant="ghost"
+							size="icon"
+							onClick={onOpenConsole}
+							aria-label={
+								consoleUnseenCount > 0
+									? `Open console, ${consoleUnseenCount} finished since you looked`
+									: "Open console"
+							}
+							data-tour-tag="console-pane-trigger"
+							/* THE THIRD CONTROL THE ROW SHEDS, BELOW THE CANVAS (agent review
+							 * round 2, Q-1). At 220px - the pane-open header at a 900px window -
+							 * the row cannot hold the menu, both pane triggers and a title, and
+							 * the console is the younger of the two pane doors: the browser's
+							 * trigger carries the attention badge and is what the operator
+							 * reported about, so it does not yield. Hiding this one costs
+							 * reachability of the console ONLY while the row is that narrow, and
+							 * the pane it opens is still named in the transcript's own rows.
+							 *
+							 * 17.5rem (280px) is the middle rung of the ladder the canvas's own
+							 * comment states: a control here costs 32px plus `gap-3` (12), so the
+							 * measured step is 44px, and this threshold is one 40px rung below the
+							 * canvas's. The query is read against the header's CONTENT box - its
+							 * `px-4` sits outside the container's inline size - which is why the
+							 * window that photographs this band is 1460 and not 1420. The widths
+							 * each rung was measured at are in ONE place, the width table in
+							 * `docs/evidence/browser-approval-badges/README.md`; this comment
+							 * states the rule rather than restating numbers a gap change would
+							 * invalidate. */
+							className={cn("relative hidden @[17.5rem]/chathdr:inline-flex")}
+						>
+							<SquareTerminal aria-hidden={true} />
+							{consoleUnseenCount > 0 && (
+								<span
+									aria-hidden="true"
+									className={cn(
+										"absolute top-1 right-1 size-1.5 rounded-full",
+										consoleUnseenPulsing
+											? "bg-accent animate-pulse-visible"
+											: "bg-ink-muted",
+									)}
+									data-tour-tag="console-pane-blip"
+								/>
 							)}
 						</Button>
 					</Tooltip>
@@ -446,7 +819,34 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 									: `Open canvas (${shortcut})`
 							}
 							data-tour-tag="open-canvas-button"
-							className={cn("relative")}
+							/* THE SECOND CONTROL TO YIELD, and the order it yields in is the
+							 * row's (agent review round 2, Q-1; design round 2, D8).
+							 *
+							 * The canvas is the one of the cluster's controls the app can lose
+							 * without losing a capability: it is also reachable from the
+							 * transcript's own file tiles and the `shortcut` this control
+							 * prints. `hidden`/`inline-flex` rather than a second render gate
+							 * because the question is the ROW's width, not the pane's state -
+							 * `chat-header-cluster`'s stories pin the same arrangement at a wide
+							 * viewport, where nothing sheds.
+							 *
+							 * THE RULE: a control in this cluster costs 32px plus the gap beside
+							 * it, and the gap that resolves while the badge and the canvas are
+							 * drawn is `gap-3` - measured on the frames at 1600 as 44px per step
+							 * (cluster 164 = 4x32 + 3x12, and every box gap reads 12: `...`
+							 * 780..812, globe 824..856, console 868..900, canvas 912..944). The
+							 * class below is one step of that ladder (320 = the console's 280 +
+							 * 40), which is 4px tighter than the measured 44: the difference is
+							 * taken out of the TITLE's fragment, never out of the row, and the
+							 * margin above where a control strictly fits is what keeps that
+							 * fragment readable rather than the two-character floor. The
+							 * measurements themselves live in ONE place - the width table in
+							 * `docs/evidence/browser-approval-badges/README.md` - so a change to
+							 * the gap cannot leave a number stale here: this comment states the
+							 * rule and points at that table. (The comment it replaces carried a
+							 * 15rem rule beside a 23rem class - design round 2's D8 - and a 96px
+							 * floor beside a 40px one, F10.) */
+							className={cn("relative hidden @[20rem]/chathdr:inline-flex")}
 						>
 							<FileText aria-hidden={true} />
 							{/*

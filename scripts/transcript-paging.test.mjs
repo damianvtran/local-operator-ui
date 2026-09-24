@@ -44,6 +44,7 @@ const {
 	TRAVEL_MIN_PX,
 	VELOCITY_TTL_MS,
 	anchorDrift,
+	anchorDriftForCurrentInput,
 	decide,
 	initialPagingState,
 	isExhausted,
@@ -568,6 +569,28 @@ test("the anchor correction is a no-op while the extent is stable", () => {
 		0,
 	);
 	assert.equal(anchorDrift(before, null), 0);
+});
+
+test("reader input skips stale anchor correction while layout-only growth is corrected", () => {
+	const held = { id: "reader-row", viewportOffset: 59, extent: 10_808 };
+	const staleAfter = { ...held, viewportOffset: -1_483, extent: 17_532 };
+	const grownAfter = { ...held, viewportOffset: 83, extent: 17_532 };
+
+	// A correction based on a pre-input sample would undo the reader's scroll.
+	// The production decision returns no write once newer input owns the view.
+	assert.equal(anchorDriftForCurrentInput(held, staleAfter, 12, 13), null);
+
+	// With no new input, revealed content above the anchor remains correctable.
+	assert.equal(anchorDriftForCurrentInput(held, grownAfter, 12, 12), 24);
+	assert.equal(
+		anchorDriftForCurrentInput(
+			held,
+			{ ...grownAfter, viewportOffset: held.viewportOffset + 0.25 },
+			12,
+			12,
+		),
+		0,
+	);
 });
 
 test("a session change discards latch, demand and chain budgets", () => {

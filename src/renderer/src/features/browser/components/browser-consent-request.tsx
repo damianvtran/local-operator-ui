@@ -124,13 +124,39 @@ export function requesterLabel(
 ): string {
 	if (!requesterSessionId) return "An agent";
 	const name = sessionDisplayName(requesterSessionId, sessions);
-	if (options?.short) return name;
+	/*
+	 * A SESSION THE APP CANNOT NAME IS NAMED IN ITS OWN WORDS, not with its id (UX
+	 * review round 1, U5). This used to read `The agent in conversation <id>` with the
+	 * id interpolated - and the case that reaches it is not an edge: a request raised
+	 * by a SUBAGENT carries the child's own session id, which is a valid requester and
+	 * not a conversation this app lists, so the user choosing whether to let an agent
+	 * reach a site was reading developer vocabulary where the attribution line should
+	 * be. `An agent from another session` says what is actually known: it asked, it is
+	 * not a conversation on screen, and the card still names the origin being asked
+	 * about - which is the thing the decision is about.
+	 */
+	/*
+	 * LISTED BUT UNNAMED IS A THIRD STATE, and it is the app's own word for it (agent
+	 * review round 2, U7; `chat-sidebar.tsx` labels exactly this row `Untitled chat`).
+	 * The session id is a durable identity, so a conversation that exists and has not
+	 * been titled yet is a conversation - calling it "another session" told the operator
+	 * that an agent they can see in their sidebar was a stranger. The id remains the
+	 * fallback ONLY for a session the catalogue does not hold (a subagent's own id, a
+	 * `call:` requester), which is the case where "another session" is the honest phrase.
+	 */
+	const listed = sessions.some((row) => row.session_id === requesterSessionId);
+	const named = name !== requesterSessionId;
+	if (options?.short) {
+		if (named) return name;
+		return listed ? "Untitled chat" : "Another session";
+	}
 	// The long form distinguishes a conversation the user NAMED from one they have
-	// not, which is the whole instruction the card is giving. `name` alone cannot:
-	// it is a title in one case and an id in the other, so the test is whether the
+	// not, which is the whole instruction the card is giving. `name` alone cannot: it
+	// is a title in one case and a fallback in the other, so the test is whether the
 	// rule fell back rather than whether a title exists.
-	if (name !== requesterSessionId) return `The agent in '${name}'`;
-	return `The agent in conversation ${requesterSessionId}`;
+	if (named) return `The agent in '${name}'`;
+	if (listed) return "The agent in 'Untitled chat'";
+	return "An agent from another session";
 }
 
 export const BrowserConsentRequest: FC<BrowserConsentRequestProps> = ({

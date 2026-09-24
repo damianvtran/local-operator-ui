@@ -52,7 +52,7 @@ const bundle = await build({
 				loginState,
 				providerReadiness,
 			} from "./src/renderer/src/features/providers/provider-labels";
-			export { desktopKeys } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";
+			export { radientSessionIssueKey } from "./src/renderer/src/shared/hooks/use-radient-session-issue";
 			export { radientUserKeys } from "./src/renderer/src/shared/hooks/use-radient-user-query";
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 			export { createRoot } from "react-dom/client";
@@ -265,6 +265,14 @@ let loginAnswer = "refused";
 let accountAnswer = "ready";
 let holdVerdict = false;
 /**
+ * Whether the capability answer advertises `tunnel`. The verdict read is the
+ * composer callout's own query and is gated on that key, so a runtime without it
+ * is the absent-verdict floor reached by a different road: no read at all.
+ */
+let tunnelCapability = true;
+/** How many times the bridge was asked for the verdict route, per case. */
+let verdictRequests = 0;
+/**
  * The census the bridge serves, mutable so the never-signed-in machine -- no row
  * at all -- can be rendered beside the incident's own state.
  */
@@ -286,6 +294,8 @@ beforeEach(() => {
 	accountAnswer = "ready";
 	census = [RADIENT_ROW, OPENAI_ROW];
 	holdVerdict = false;
+	tunnelCapability = true;
+	verdictRequests = 0;
 	releaseVerdict = () => {};
 });
 
@@ -299,6 +309,7 @@ globalThis.window.api = {
 				};
 			}
 			if (request?.op === "accounts.list") {
+				verdictRequests += 1;
 				if (holdVerdict) {
 					// The state D6 is about: the census has answered and the verdict has
 					// not, which is when the card list used to paint "Signed in".
@@ -316,12 +327,17 @@ globalThis.window.api = {
 				return ACCOUNT_ANSWERS[accountAnswer];
 			}
 			if (request?.op === "capabilities") {
-				// The account read is gated on this key, so without an answer here the
-				// second input `loginState` reads would never arrive.
+				// Both reads the chip joins are gated on this answer: the account read
+				// on `radient`, and the verdict (the callout's shared query) on `tunnel`.
 				return {
 					status: 200,
 					body: {
-						result: { desktop_available: true, features: { radient: 1 } },
+						result: {
+							desktop_available: true,
+							features: tunnelCapability
+								? { radient: 1, tunnel: 1 }
+								: { radient: 1 },
+						},
 					},
 				};
 			}
@@ -336,7 +352,7 @@ const {
 	QueryClient,
 	QueryClientProvider,
 	createRoot,
-	desktopKeys,
+	radientSessionIssueKey,
 	loginState,
 	providerReadiness,
 	radientUserKeys,
@@ -501,15 +517,22 @@ async function renderDetail() {
 async function awaitReads(container, queryClient) {
 	const deadline = Date.now() + 5000;
 	for (;;) {
-		const verdict = queryClient.getQueryState(desktopKeys.radientLogin);
+		const verdict = queryClient.getQueryState(radientSessionIssueKey);
 		const account = queryClient.getQueryState(radientUserKeys.user());
 		const settled = (state) => state && state.status !== "pending";
+		/*
+		 * A runtime without `tunnel` never issues the verdict read: the query is
+		 * disabled, and a disabled query stays `pending` for good. That is an
+		 * answer ("nothing known"), not a read still out, so the wait is for the
+		 * account read alone there.
+		 */
+		const verdictSettled = !tunnelCapability || settled(verdict);
 		/*
 		 * SETTLED rather than successful: the account read has cases here that are
 		 * meant to fail (`unavailable`), and a case that waited for `success` would
 		 * report its own timeout instead of the frame it is about.
 		 */
-		if (settled(verdict) && settled(account)) {
+		if (verdictSettled && settled(account)) {
 			await flush();
 			return;
 		}
@@ -803,6 +826,50 @@ test("an absent verdict with an unreachable account read keeps the store's answe
 			`an account read of ${account} must not narrow the chip: ${rendered}`,
 		);
 	}
+});
+
+/**
+ * The fold onto #416: the verdict is now the composer callout's own query, gated
+ * on the `tunnel` capability. A runtime that does not advertise it is below the
+ * field's first release, so it is the absent-verdict floor -- and the chip's
+ * fallback must still hold there, and the grid must not wait forever on a read
+ * that is never issued.
+ */
+test("without the tunnel capability the verdict is never read, and the fallback still holds", async () => {
+	tunnelCapability = false;
+	loginAnswer = "refused";
+	accountAnswer = "signed-out";
+	const narrowed = await renderGrid();
+	const narrowedText = text(narrowed.container);
+	assert.equal(verdictRequests, 0, "a gated read was issued anyway");
+	assert.equal(occurrences(narrowedText, "Signed in"), 0, narrowedText);
+	assert.equal(occurrences(narrowedText, "Needs sign-in"), 2, narrowedText);
+	assert.equal(
+		occurrences(narrowedText, "Needs re-authentication"),
+		0,
+		`a verdict the runtime was never asked for cannot refuse: ${narrowedText}`,
+	);
+
+	accountAnswer = "unavailable";
+	const floor = await renderGrid();
+	const floorText = text(floor.container);
+	assert.equal(occurrences(floorText, "Signed in"), 1, floorText);
+});
+
+/**
+ * The same cache entry, read by both surfaces: the chip and the composer callout
+ * cannot disagree about one verdict, because there is one.
+ */
+test("the chip's verdict is the callout's cache entry", async () => {
+	loginAnswer = "refused";
+	accountAnswer = "ready";
+	const { container, queryClient } = await renderGrid();
+	assert.equal(occurrences(text(container), "Needs re-authentication"), 1);
+	assert.equal(
+		queryClient.getQueryData(radientSessionIssueKey)?.radient_login?.state,
+		"login_required",
+	);
+	assert.equal(verdictRequests, 1);
 });
 
 /**

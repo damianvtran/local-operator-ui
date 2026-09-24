@@ -26,7 +26,11 @@ const bundle = await build({
 			'export * from "./src/renderer/src/features/chat/components/slash-contract";',
 			/* The matcher and the row shaper, because the no-match state below is
 			   DERIVED the way the component derives it rather than asserted. */
-			'export { argumentRows } from "./src/renderer/src/features/chat/components/slash-argument-rows";',
+			'export { argumentRows, modelDefaultActionRow, shouldRunArgumentAction } from "./src/renderer/src/features/chat/components/slash-argument-rows";',
+			/* Dissolved by the same idea, one list over: the `/rename` flag vocabulary and
+			   its two shape tests, so the data-loss cases below are the SHIPPED rule.
+			   `slashRunAllowed`/`slashKeyIntent` come off the contract export above. */
+			'export { FLAG_LIST_SOURCES, FLAG_VOCABULARY, flagTokenDraws, flagTokenSelects, showsUnmatchedList, titleRefreshRows } from "./src/renderer/src/features/chat/components/slash-argument-rows";',
 			'export { matchChoices } from "./src/renderer/src/features/chat/components/slash-rank";',
 			/* The arming route's own write, so the pick case below asserts the line a
 			   pick STAGES and not only the fact that it arms. */
@@ -48,6 +52,8 @@ const bundle = await build({
 });
 const {
 	activeRowRuns,
+	modelDefaultActionRow,
+	shouldRunArgumentAction,
 	argumentEmptyCopy,
 	argumentRows,
 	armedOnlyVocabulary,
@@ -58,6 +64,10 @@ const {
 	clickFooter,
 	enterFooter,
 	extensionFor,
+	FLAG_LIST_SOURCES,
+	FLAG_VOCABULARY,
+	flagTokenDraws,
+	flagTokenSelects,
 	matchChoices,
 	lockedCommandNote,
 	lockedRunUndoCap,
@@ -71,11 +81,15 @@ const {
 	reassembledNote,
 	rowId,
 	rowTakesDraft,
+	showsUnmatchedList,
 	sharedCommandPrefix,
 	slashArgumentContext,
+	slashDestructive,
 	slashKeyIntent,
+	slashRunAllowed,
 	stagedNote,
 	stagedPromiseVerb,
+	titleRefreshRows,
 	stagedSentence,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -117,7 +131,15 @@ const REGISTRY = readFileSync(
  * destination: what the helper must accept is any kind the table declares.
  */
 const KIND = /kind: "([\w-]+)"/;
-const INLINE_SOURCE = /source: "(\w+)"/;
+/*
+ * `[\w-]+` for the same reason `KIND` is hyphen-tolerant: `title-refresh` is a
+ * source id with a hyphen in it, and a class that stopped at the hyphen read
+ * `undefined` for `/rename` — which this helper reports as "declares no inline
+ * list", i.e. as a defect in the table rather than in the reader. A source id is
+ * a kebab-case word by the family's own convention (`sessions.archive`,
+ * `machine-panel`), so the hyphen belongs in the class.
+ */
+const INLINE_SOURCE = /source: "([\w-]+)"/;
 const NAME_THEN_MESSAGE = /nameThenMessage: (true|false)/;
 const RUNS = /runs: (true|false)/;
 
@@ -558,6 +580,78 @@ test("Escape closes and latches the phase", () => {
 	assert.deepEqual(route({ key: "Escape" }), { kind: "close" });
 });
 
+test("model default is one direct Enter/click action, never model completion", async () => {
+	const action = modelDefaultActionRow(
+		"default",
+		{ provider: "openrouter", model_id: "openai/gpt-5" },
+		true,
+		true,
+	);
+	const row = { kind: "action", row: action };
+	assert.equal(shouldRunArgumentAction(action, true), true);
+	assert.equal(shouldRunArgumentAction(action, false), false);
+	const writes = [];
+	const applyAction = async (row, run) => {
+		if (!shouldRunArgumentAction(row, run)) return;
+		writes.push(["hosting", row.model.provider]);
+		writes.push(["model_name", row.model.model_id]);
+	};
+	await applyAction(action, true);
+	await applyAction(action, false);
+	await applyAction({ ...action, disabled: true }, true);
+	assert.deepEqual(writes, [
+		["hosting", "openrouter"],
+		["model_name", "openai/gpt-5"],
+	]);
+	assert.equal(
+		clickFooter({
+			phase: "argument",
+			command: "model",
+			label: "",
+			nameThenMessage: false,
+			runs: true,
+			value: "",
+			arms: false,
+			takesDraft: false,
+			hoists: false,
+			paneHasSession: true,
+			actionClickText: action.clickText,
+			matched: true,
+		}),
+		action.clickText,
+	);
+	const state = {
+		open: true,
+		composing: false,
+		key: "Enter",
+		active: 0,
+		matches: [row],
+		argumentCommand: "model",
+		argumentQuery: "default",
+		runs: true,
+		nameThenMessage: false,
+	};
+	assert.deepEqual(slashKeyIntent(state), {
+		kind: "apply",
+		index: 0,
+		run: true,
+	});
+	assert.deepEqual(slashKeyIntent({ ...state, key: "Tab" }), {
+		kind: "apply",
+		index: 0,
+		run: false,
+	});
+	assert.equal(rowId(row), "act-model-default");
+	assert.equal(
+		argumentRows(
+			"model",
+			[{ value: "openrouter/openai/gpt-5", name: "GPT-5" }],
+			{ provider: "openrouter", model_id: "openai/gpt-5" },
+		).length,
+		1,
+	);
+});
+
 test("an explicit arrow choice survives the same list and only the same list", () => {
 	// Round 1 R1: the latch was one-way, so one arrow press made every later
 	// Enter run the highlighted row, including a fuzzy survivor the user never
@@ -939,6 +1033,27 @@ test("the click footer says what a click will do, in each state", () => {
 		"Click chooses this name.",
 	);
 	assert.equal(clickFooter(base), "Click runs /model openai/gpt-5.");
+	assert.equal(clickFooter({ ...base, value: "" }), "Click runs /model.");
+	assert.equal(
+		clickFooter({
+			...base,
+			actionClickText: "Click does the same.",
+		}),
+		"Click does the same.",
+	);
+	assert.equal(
+		clickFooter({
+			...base,
+			command: null,
+			value: "",
+			actionClickText: undefined,
+		}),
+		"Click runs the command.",
+	);
+	assert.equal(
+		clickFooter({ ...base, value: "--refresh", command: "rename" }),
+		"Click runs /rename --refresh.",
+	);
 	assert.equal(
 		clickFooter({ ...base, runs: false }),
 		"Click completes this value.",
@@ -1201,6 +1316,15 @@ test("a list-bearing command completes and never runs", () => {
 		["session.approvals", "approvals"],
 		// `/theme`: an inline list whose apply path is a dialog (`runs: false`).
 		["appearance", "theme"],
+		/*
+		 * `/rename`: the row is `/rename`'s flag list, and its argument pick DOES run
+		 * (`runs: true`) — see the click-runs case below. What is asserted HERE is the
+		 * other half: a pick of the COMMAND row only completes the word and opens the
+		 * list, because the list IS the gesture that has to open. Without that,
+		 * clicking `/rename` in the command list would fire a bare `rename` and clear
+		 * the box instead of offering the flag row.
+		 */
+		["session.rename", "title-refresh"],
 	]) {
 		assert.equal(registryEntry(id)?.inline?.source, source, id);
 		assert.equal(pickRuns(id), false, id);
@@ -1211,6 +1335,143 @@ test("a list-bearing command completes and never runs", () => {
 		assert.equal(registryEntry(id)?.inline?.nameThenMessage, true, id);
 		assert.equal(pickRuns(id), false, id);
 	}
+});
+
+/*
+ * THE OPERATOR'S SECOND DEFECT, both halves of it, asserted end to end.
+ *
+ * A CLICK on the `--refresh` row must PERFORM the refresh rather than autofill
+ * the composer and wait for Enter. The chain is three links and each is read off
+ * the real code rather than restated: the registry says the list runs
+ * (`runs: true`), the row shaper produces the `--refresh` row, and the PLANNER —
+ * the same `planSlashSubmission` a submit goes through — turns the completed
+ * draft into `rename --refresh`, which is the command the dispatcher posts.
+ *
+ * The draft is built by `completionFor`, the pick's own write, so the assertion
+ * is over the line a real click produces rather than a hand-built string (the
+ * same discipline review F7 demanded for the arming seam).
+ */
+test("a click on the /rename flag row runs the refresh in one gesture", () => {
+	const entry = registryEntry("session.rename");
+	assert.equal(entry?.kind, "picker");
+	// The list declares the run: this is what `handleSlashPick`'s
+	// `slash.inline?.runs` arm reads for an ARGUMENT row.
+	assert.equal(entry?.inline?.runs, true, "the flag row must run on a click");
+	assert.equal(
+		entry?.inline?.nameThenMessage,
+		false,
+		"no trailing space: the value is the whole argument, not a name to type after",
+	);
+	const [row] = argumentRows(entry.inline.source, [], null);
+	assert.equal(row.value, "--refresh");
+	/*
+	 * The pick's write, then the planner's answer — the two halves of the seam.
+	 * `completionFor` replaces the ARGUMENT span only, leaving the command word
+	 * intact (an argument row never rewrites the word), and the gesture is `pick`,
+	 * which is what the composer passes for a popup pick.
+	 */
+	const names = new Set(["rename", "title"]);
+	for (const [typed, expected] of [
+		// Typed the dashes, the bare word, or nothing at all: one completed draft.
+		["/rename ", "--refresh"],
+		["/rename -", "--refresh"],
+		["/rename --", "--refresh"],
+		["/rename r", "--refresh"],
+		["/rename ref", "--refresh"],
+		["/rename refresh", "--refresh"],
+	]) {
+		const written = completionFor(
+			typed,
+			typed.length,
+			{ kind: "argument", row },
+			names,
+			["rename", "title"],
+			false,
+		);
+		assert.ok(written, `a pick in ${JSON.stringify(typed)} produces a write`);
+		assert.equal(written.text, `/rename ${expected}`);
+		const plan = planSlashSubmission({
+			draft: written.text,
+			caret: written.caret,
+			gesture: "pick",
+			commandNames: names,
+			promptCommands: new Set(),
+			armedOnlyCommands: new Set(),
+			valueArgumentCommands: new Set(["rename"]),
+			nameListCommands: new Set(),
+			argumentCommands: new Set(["rename"]),
+			prefixingCommands: new Set(),
+			argumentShapes: new Map([
+				["rename", { name: "rename", shape: "any", words: [] }],
+			]),
+			commandLockedWords: new Set(),
+			enabled: true,
+		});
+		// A whole-draft command: the box empties and the dispatcher posts it. This
+		// is the `rename --refresh` the backend's `parse_title_arg` reads as a
+		// REFRESH, so the click performs it with no second gesture.
+		assert.deepEqual(
+			plan,
+			{ kind: "whole", command: { name: "rename", args: "--refresh" } },
+			`the click in ${JSON.stringify(typed)} dispatches the refresh`,
+		);
+	}
+});
+
+test("the /rename no-regression paths are untouched by the flag row", () => {
+	/*
+	 * Bare `/rename` still opens the naming form and `/rename <title>` still sets
+	 * the title. Both travel the SAME planner as the click above and must keep
+	 * answering with the args the backend already reads that way:
+	 * `parse_title_arg("")` → the presentation, and `parse_title_arg("my title")`
+	 * → a literal title. The flag row changes behaviour only where there is
+	 * something to run without a name, which is exactly these two staying put.
+	 */
+	const names = new Set(["rename", "title"]);
+	const plan = (draft) =>
+		planSlashSubmission({
+			draft,
+			caret: draft.length,
+			gesture: "typed",
+			commandNames: names,
+			promptCommands: new Set(),
+			armedOnlyCommands: new Set(),
+			valueArgumentCommands: new Set(["rename"]),
+			nameListCommands: new Set(),
+			argumentCommands: new Set(["rename"]),
+			prefixingCommands: new Set(),
+			argumentShapes: new Map([
+				["rename", { name: "rename", shape: "any", words: [] }],
+			]),
+			commandLockedWords: new Set(),
+			enabled: true,
+		});
+	// Bare, with and without the trailing space: the presentation form.
+	assert.deepEqual(plan("/rename"), {
+		kind: "whole",
+		command: { name: "rename", args: "" },
+	});
+	assert.deepEqual(plan("/rename "), {
+		kind: "whole",
+		command: { name: "rename", args: "" },
+	});
+	// The alias is the same command.
+	assert.deepEqual(plan("/title"), {
+		kind: "whole",
+		command: { name: "title", args: "" },
+	});
+	// A title is passed through as written, flag-shaped or not.
+	assert.deepEqual(plan("/rename my title"), {
+		kind: "whole",
+		command: { name: "rename", args: "my title" },
+	});
+	// The bare refresh WORD is the backend's other refresh spelling, and it is
+	// passed through as typed — the row writes the flag, so the planner does not
+	// rewrite a word the user typed themselves.
+	assert.deepEqual(plan("/rename refresh"), {
+		kind: "whole",
+		command: { name: "rename", args: "refresh" },
+	});
 });
 
 test("the three protected destinations are protected by id, not by kind", () => {
@@ -2045,4 +2306,388 @@ test("the locked run's sentence says what happened and what it can give back", (
 		lockedCommandNote("credential", { dialog: true, undo: true }, true),
 		lockedCommandNote("credential", { dialog: true, undo: true }, true),
 	);
+});
+
+/*
+ * `/delete` is destructive IN THIS HOST, and the word arm is where that is
+ * written down.
+ *
+ * The registry cannot say it for a bare command: the `alert` flag belongs to an
+ * ARGUMENT row (`{value, alert}`), so a command with no arguments has no other
+ * channel - and `/delete` has no arguments, exactly as `/logout` has none. What
+ * the two words have in common is the property this function is about: pressing
+ * Enter on them destroys something the user cannot get back (a stored credential;
+ * a transcript).
+ *
+ * WHY IT IS WORTH A TEST rather than a comment: the same call decides the ink the
+ * palette paints the row in (`commandRowContent` asks it) and whether an
+ * unambiguous Enter is allowed to RUN it (`slashRunAllowed`'s `destructive`
+ * input). Two surfaces, one word list, and a word quietly dropped from it would
+ * show as a command that looks ordinary and then runs.
+ */
+test("a bare destructive word is destructive in this host, and an ordinary one is not", () => {
+	// The command word, case-insensitively, with no argument row to consult.
+	assert.equal(slashDestructive("delete", undefined), true);
+	assert.equal(slashDestructive("DELETE", undefined), true);
+	assert.equal(slashDestructive("logout", undefined), true);
+	// Everything else is not: `/archive` removes a conversation from the default
+	// lists and restores it in one press, and painting it in the danger role would
+	// teach the user to read the role as decoration.
+	assert.equal(slashDestructive("archive", undefined), false);
+	assert.equal(slashDestructive("unarchive", undefined), false);
+	assert.equal(slashDestructive("model", undefined), false);
+	assert.equal(slashDestructive(null, undefined), false);
+	// The argument-row arm is unchanged: a row that paints its own destructive
+	// detail still routes through it.
+	assert.equal(slashDestructive("model", true), true);
+});
+
+/*
+ * ---- the `/rename` flag list, and the data-loss case the first cut shipped ----
+ *
+ * ROUND 1 FOUND THE SAME BLOCKER ON FOUR INDEPENDENT ROUNDS (agent review R1-3,
+ * QA Q-1, design D1, UX U1): the list drew over any token the subsequence matcher
+ * could reach `--refresh` with, and Enter's single-survivor arm then RAN the
+ * refresh. The QA pass measured it on the built app — `/rename fresh`, `ref`,
+ * `refr`, `re`, `es`, `resh`, `refreh` and `r` all posted `{"command":"rename",
+ * "args":"--refresh"}` where the base tree set that literal title — so a one-word
+ * name that merely shares letters with `refresh` was converted into a provider
+ * call that also released the user's own name.
+ *
+ * THESE CASES FAIL ON THE BASE TREE, which is the property that makes them the
+ * guard for the fix rather than a description of it: every `flagTokenSelects` /
+ * `flagTokenDraws` / `selectsFlag` symbol they read does not exist there, so the
+ * file stops at resolution. The agent review's own correction is why they are on
+ * THESE functions and not on `isUnambiguous` alone — replayed against the base
+ * module, `isUnambiguous('refresh','--refresh',1,…)` is already TRUE via the
+ * single-survivor arm, so an assertion on the gate alone would have held on both
+ * trees and pinned nothing.
+ */
+test("a flag token ACTS only when the backend's own parser would act on it", () => {
+	// The full spellings the backend honours (`naming.TITLE_REFRESH_WORDS` and
+	// `TITLE_REFRESH_FLAGS`), case-folded the way `parse_title_arg` compares.
+	for (const spelling of [
+		"refresh",
+		"update",
+		"retitle",
+		"--refresh",
+		"--auto",
+		"--update",
+		"--retitle",
+	])
+		assert.equal(
+			flagTokenSelects("title-refresh", spelling),
+			true,
+			`${spelling} is a refresh the backend honours`,
+		);
+	// A PREFIX is not the flag: these must COMPLETE, not run. `ref` and `r` are
+	// the spellings the operator asked to be SUGGESTED, and being suggested is the
+	// whole of what they are owed — running on them is the two-Enter path.
+	for (const partial of ["r", "re", "ref", "refr", "-", "--", "-r", "--ref"])
+		assert.equal(
+			flagTokenSelects("title-refresh", partial),
+			false,
+			`${partial} is a prefix, so Enter completes it`,
+		);
+	// THE DATA-LOSS CASES, named so a regression is legible: each of these is a
+	// plausible one-word TITLE that the matcher reaches `--refresh` from.
+	for (const title of [
+		"fresh",
+		"-fresh",
+		"re",
+		"es",
+		"resh",
+		"refreh",
+		"-re",
+		"-f",
+	])
+		assert.equal(
+			flagTokenSelects("title-refresh", title),
+			false,
+			`${title} is a title, not the flag`,
+		);
+	// A flag with prose after it is a title (`parse_title_arg` splits on the first
+	// whitespace), and a bare `--` is the option terminator — also a title.
+	for (const withProse of [
+		"- Q3 review",
+		"-- draft",
+		"refresh the title",
+		"quarterly review",
+	])
+		assert.equal(
+			flagTokenSelects("title-refresh", withProse),
+			false,
+			`${withProse} is a title`,
+		);
+	// The empty argument is the FORM's state, not a flag.
+	assert.equal(flagTokenSelects("title-refresh", ""), false);
+	assert.equal(flagTokenSelects("title-refresh", "   "), false);
+	// A catalogue source has no flag vocabulary at all, so the arm never fires.
+	assert.equal(flagTokenSelects("model", "refresh"), false);
+	assert.equal(flagTokenSelects(undefined, "refresh"), false);
+});
+
+test("a flag token DRAWS on a prefix, so the row is found but a title is not", () => {
+	// Every spelling the operator reported must still SUGGEST the row.
+	for (const typed of ["-", "--", "r", "re", "ref", "refr", "refresh"])
+		assert.equal(
+			flagTokenDraws("title-refresh", typed),
+			true,
+			`typing ${typed} must offer the row`,
+		);
+	// ... including the dashed partials the operator types on the way. Each is a
+	// PREFIX of one of the dashed spellings, which is the whole draw rule.
+	for (const typed of ["--r", "--re", "--ref", "--u", "--up", "--a", "--au"])
+		assert.equal(flagTokenDraws("title-refresh", typed), true, typed);
+	// A TITLE-SHAPED token draws NOTHING. This is the case the first cut shipped:
+	// `-fresh` is one token with no whitespace and a SUBSEQUENCE of `--refresh`, so
+	// the matcher reached it and the row drew over the user's title.
+	for (const title of [
+		"-fresh",
+		"fresh",
+		"es",
+		"resh",
+		"-re",
+		"-f",
+		"zzz",
+		"x",
+	])
+		assert.equal(
+			flagTokenDraws("title-refresh", title),
+			false,
+			`${title} must not draw the flag row`,
+		);
+	// The whitespace boundary, which is what keeps a real title out of the list.
+	for (const title of ["quarterly review", "- Q3 review", "-- draft"])
+		assert.equal(flagTokenDraws("title-refresh", title), false, title);
+	// The empty argument draws nothing, which is what keeps `/rename `s FORM
+	// reachable: a list drawn there would complete the word to `--refresh`.
+	assert.equal(flagTokenDraws("title-refresh", ""), false);
+	assert.equal(flagTokenDraws("title-refresh", "  "), false);
+	// Catalogue sources keep their own behaviour exactly.
+	assert.equal(flagTokenDraws("model", "ref"), false);
+	assert.equal(flagTokenDraws(undefined, "ref"), false);
+});
+
+test("the run gate refuses a flag row until the token names the flag", () => {
+	const gate = (query, chosenByHand = false) =>
+		slashRunAllowed({
+			argumentQuery: query,
+			value: "--refresh",
+			total: 1,
+			destructive: false,
+			chosenByHand,
+			selectsFlag: (q) => flagTokenSelects("title-refresh", q),
+		});
+	// The full spelling runs, by keyboard or by pointer.
+	assert.equal(gate("refresh"), true);
+	assert.equal(gate("--refresh"), true);
+	assert.equal(gate("REFRESH"), true);
+	assert.equal(gate("--auto"), true);
+	// A partial completes and waits for the second Enter...
+	for (const partial of ["r", "ref", "-", "--"])
+		assert.equal(gate(partial), false, partial);
+	// ... AND AN ARROW KEY DOES NOT BUY THE RUN, which is the one place this gate
+	// deviates from every other one in the module and is deliberate: `chosenByHand`
+	// means "this is the row I mean", and for a flag row the row is one act whose
+	// spellings are the whole list — the arrow cannot say the ACT was meant. The
+	// completion it gets instead puts the flag in the buffer in full.
+	assert.equal(gate("ref", true), false);
+	assert.equal(gate("refresh", true), true);
+	// The data-loss titles, through the gate, which is the shape QA measured.
+	for (const title of ["fresh", "-fresh", "re", "es", "resh", "refreh"])
+		assert.equal(gate(title), false, title);
+	// WITHOUT the flag binding the gate is the matcher's, so the catalogue lists
+	// are untouched: this is the assertion that keeps the new arm scoped.
+	assert.equal(
+		slashRunAllowed({
+			argumentQuery: "refresh",
+			value: "--refresh",
+			total: 1,
+			destructive: false,
+			chosenByHand: false,
+		}),
+		true,
+		"a list without the flag binding keeps its single-survivor behaviour",
+	);
+});
+
+test("the router hands a flag list its whole-token arm, and completes on a partial", () => {
+	const flagRow = { kind: "argument", row: titleRefreshRows()[0] };
+	const intent = (query, key = "Enter", chosenByHand = false) =>
+		slashKeyIntent({
+			key,
+			composing: false,
+			open: true,
+			active: 0,
+			matches: [flagRow],
+			argumentQuery: query,
+			commandQuery: "",
+			argumentCommand: "rename",
+			nameThenMessage: false,
+			runs: true,
+			chosenByHand,
+			selectsFlag: (q) => flagTokenSelects("title-refresh", q),
+		});
+	// The full spelling runs on one Enter.
+	assert.deepEqual(intent("refresh"), { kind: "apply", index: 0, run: true });
+	// A partial completes — NOT runs — which is the fix, stated at the router.
+	for (const partial of ["r", "ref", "-", "--"])
+		assert.deepEqual(
+			intent(partial),
+			{ kind: "apply", index: 0, run: false },
+			partial,
+		);
+	// ... and a title-shaped token is refused the run even though it matched.
+	for (const title of ["fresh", "-fresh", "re"])
+		assert.deepEqual(
+			intent(title),
+			{ kind: "apply", index: 0, run: false },
+			title,
+		);
+	// Tab never runs, whatever the spelling.
+	assert.deepEqual(intent("refresh", "Tab"), {
+		kind: "apply",
+		index: 0,
+		run: false,
+	});
+});
+
+test("a flag list's rows are fresh objects, so a caller cannot mutate the table", () => {
+	// R1-6: `[...TITLE_REFRESH_ROWS]` shares the row OBJECTS, so an argument-list
+	// edit of the shape the model/effort lists do would write through to the module
+	// constant and every later render would see it.
+	const first = titleRefreshRows();
+	first[0].current = true;
+	first[0].aliases?.push("mutated");
+	const second = titleRefreshRows();
+	assert.equal(second[0].current, undefined, "the table's row is untouched");
+	assert.deepEqual(second[0].aliases, [
+		"refresh",
+		"update",
+		"retitle",
+		"--update",
+		"--retitle",
+	]);
+	// ... and it is a COPY rather than the constant itself.
+	assert.notEqual(first, second);
+});
+
+test("only the flag list draws unmatched, and only it carries a vocabulary", () => {
+	// R1-5: the two source sets had no direct test — only the end-to-end driver
+	// covered the rule that keeps `/rename `s form reachable.
+	assert.equal(flagTokenSelects("title-refresh", "refresh"), true);
+	for (const source of [
+		"model",
+		"effort",
+		"approvals",
+		"team",
+		"agent",
+		"theme",
+	])
+		assert.equal(FLAG_LIST_SOURCES.has(source), false, source);
+	assert.equal(FLAG_LIST_SOURCES.has("title-refresh"), true);
+	// A source in FLAG_LIST_SOURCES must have a vocabulary, or its rows would be
+	// permanently un-runnable: the two sets are read together and must agree.
+	for (const source of FLAG_LIST_SOURCES)
+		assert.ok(
+			Object.hasOwn(FLAG_VOCABULARY, source),
+			`${source} draws unmatched but has no flag vocabulary`,
+		);
+	// The draw rule is the flag lists' alone.
+	assert.equal(showsUnmatchedList("title-refresh"), false);
+	for (const source of [
+		"model",
+		"effort",
+		"approvals",
+		"team",
+		"agent",
+		"theme",
+	])
+		assert.equal(showsUnmatchedList(source), true, source);
+	assert.equal(showsUnmatchedList(undefined), true);
+});
+
+test("the synonyms FIND the row without widening it (U3)", () => {
+	/*
+	 * Round 1's U3: the backend honours `update`/`retitle` and their flag forms,
+	 * and the first cut left a user who knows one of those words unable to find the
+	 * row at all. The fix is ALIASES rather than rows — the visible list still
+	 * offers ONE choice — so the assertion is two-sided: every honoured bare word
+	 * reaches the row, and the row still DISPLAYS (and writes) `--refresh`.
+	 */
+	const rows = titleRefreshRows();
+	for (const typed of ["refresh", "update", "retitle"])
+		assert.equal(
+			matchChoices(typed, rows).length,
+			1,
+			`typing ${typed} must find the flag row`,
+		);
+	// A partial of a synonym finds it too, on the same fuzzy habit as every other
+	// list: `upd` is a subsequence of `--update`.
+	for (const typed of ["upd", "ret", "up"])
+		assert.equal(
+			matchChoices(typed, rows).length,
+			1,
+			`typing ${typed} must find the flag row`,
+		);
+	// ... and the DISPLAYED name is never the alias that matched, which is what
+	// keeps the list teaching one spelling.
+	for (const typed of ["refresh", "update", "retitle", "upd", "ret"]) {
+		const [match] = matchChoices(typed, rows);
+		assert.equal(match.name, "--refresh", `displayed for ${typed}`);
+		assert.equal(match.choice.value, "--refresh", `written for ${typed}`);
+	}
+	// `--auto` is the one honoured spelling with no bare twin, so it is NOT an
+	// alias: it cannot be found by typing a word a user already knows, which is the
+	// asymmetry the row's own comment argues for.
+	assert.equal(
+		matchChoices("auto", rows).length,
+		0,
+		"a bare `auto` is not a spelling anyone teaches, so the row must not answer it",
+	);
+	// The vocabulary still HONOURS it, though — so a user who types the flag is
+	// obeyed rather than having `--auto` stored as a title.
+	assert.equal(flagTokenSelects("title-refresh", "--auto"), true);
+});
+
+test("the pre-flight refresh line is keyed on the POSTED argument (U2/D3)", () => {
+	/*
+	 * The notice itself lives in `slash-dispatch.ts` (a hook, unbundleable here),
+	 * so what is pinned is the PREDICATE it reads — which is the half that can be
+	 * wrong: a line keyed on the row, the list, or the literal `--refresh` would
+	 * miss every other honoured spelling a user can type straight in
+	 * (`/rename refresh`, `/rename --auto`, `/rename update`, ...), and each of
+	 * those spends the same provider call and releases the same `user_set`.
+	 */
+	for (const posted of [
+		"--refresh",
+		"refresh",
+		"--auto",
+		"update",
+		"retitle",
+		"--update",
+		"--retitle",
+		"REFRESH",
+	])
+		assert.equal(
+			flagTokenSelects("title-refresh", posted),
+			true,
+			`/${posted} spends a refresh and must say so before it does`,
+		);
+	// A TITLE never gets the line: it sets a name, costs nothing, and is
+	// reversible by renaming again.
+	for (const posted of [
+		"quarterly review",
+		"fresh",
+		"-fresh",
+		"ref",
+		"",
+		"my title",
+	])
+		assert.equal(
+			flagTokenSelects("title-refresh", posted),
+			false,
+			`"${posted}" is a title, so nothing is spent`,
+		);
 });

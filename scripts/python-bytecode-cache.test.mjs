@@ -13,7 +13,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { after, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
@@ -39,6 +39,7 @@ import {
  * Bundled from the shipped TypeScript in memory, the same way the update and
  * renderer contract tests do, so this is a test of the code that ships.
  */
+
 const bundle = await build({
 	stdin: {
 		contents: 'export * from "./src/main/python-bytecode-cache";',
@@ -447,20 +448,48 @@ async function loadMainProcess() {
 					once: () => app,
 					quit: () => {},
 					relaunch: () => {},
-					exit: () => {},
+					/* Recorded: "the app left" is the answer the close handler owes a parked
+					   run, and there is no other way to see it from here. */
+					exit: (code) => { globalThis.__loExitCode = code; },
 					isReady: () => true,
 					commandLine: { appendSwitch: () => {} },
 					setAsDefaultProtocolClient: () => true,
 					requestSingleInstanceLock: () => true,
 					releaseSingleInstanceLock: () => {},
 				};
-				export const ipcMain = { handle: () => {}, on: () => {}, once: () => {}, removeHandler: () => {}, removeAllListeners: () => {} };
+				/*
+				 * RECORDED, not ignored (review R2-1). The setup window's Retry and its
+				 * Cancel are ipcMain.on handlers, and a harness that swallows them can
+				 * only assert that the channels exist - which is how a Retry that did
+				 * nothing shipped twice, through two remediation rounds, while every test
+				 * passed. Recording is inert for every other case: nothing here invokes a
+				 * handler.
+				 */
+				export const ipcMain = {
+					handle: () => {},
+					on: (channel, handler) => { (globalThis.__loIpcHandlers ??= {})[channel] = handler; },
+					once: () => {},
+					removeHandler: () => {},
+					removeAllListeners: () => {},
+				};
 				export class BrowserWindow {
 					constructor() {
-						this.webContents = { send: () => {}, isDestroyed: () => false, on: () => {}, once: () => {}, setWindowOpenHandler: () => {} };
+						/*
+						 * The window's own listeners and everything it is sent are recorded:
+						 * the failure state, the Retry's answer and the close handler are all
+						 * observable only through this surface, and the two review rounds that
+						 * found them broken did it by reading source.
+						 */
+						this.handlers = {};
+						this.webContents = {
+							send: (channel, payload) => { (globalThis.__loSent ??= []).push({ channel, payload }); },
+							isDestroyed: () => false,
+							on: () => {}, once: () => {}, setWindowOpenHandler: () => {},
+						};
+						(globalThis.__loWindows ??= []).push(this);
 					}
 					isDestroyed() { return false; }
-					on() { return this; }
+					on(event, handler) { (this.handlers[event] ??= []).push(handler); return this; }
 					once() { return this; }
 					loadURL() {}
 					loadFile() {}
@@ -473,7 +502,14 @@ async function loadMainProcess() {
 					static getAllWindows() { return []; }
 					static getFocusedWindow() { return null; }
 				}
-				export const dialog = { showMessageBox: async () => ({ response: 0 }), showOpenDialog: async () => ({ canceled: true, filePaths: [] }), showErrorBox: () => {} };
+				export const dialog = {
+					showMessageBox: async (options) => {
+						(globalThis.__loDialogs ??= []).push(options);
+						return { response: globalThis.__loDialogResponse ?? 0 };
+					},
+					showOpenDialog: async () => ({ canceled: true, filePaths: [] }),
+					showErrorBox: (title, content) => { (globalThis.__loErrorBoxes ??= []).push({ title, content }); },
+				};
 				export const shell = { openExternal: async () => {}, openPath: async () => {} };
 				export const nativeTheme = { shouldUseDarkColors: false, on: () => {} };
 				export const screen = { getPrimaryDisplay: () => ({ id: 1, size: { width: 100, height: 100 } }), getAllDisplays: () => [], on: () => {} };
@@ -507,7 +543,6 @@ async function loadMainProcess() {
 				import { EventEmitter } from "node:events";
 				const __loReal = __loRecorderRequire(import.meta.url)("node:child_process");
 				export const spawn = (cmd, args, options) => {
-					globalThis.__loSpawns.push({ cmd, args, options });
 					const child = new EventEmitter();
 					child.pid = 4242;
 					child.exitCode = null;
@@ -516,6 +551,9 @@ async function loadMainProcess() {
 					child.stderr = new EventEmitter();
 					child.kill = (signal) => { child.signalCode = signal; queueMicrotask(() => child.emit("exit", null, signal)); return true; };
 					child.unref = () => {};
+					/* The child is handed back with the call, so a case can drive the flow
+					   the app actually has: a real exit code, real stderr. */
+					globalThis.__loSpawns.push({ cmd, args, options, child });
 					return child;
 				};
 				export const exec = __loReal.exec;
@@ -680,10 +718,11 @@ function venvAssignment(trace, path) {
  *
  * The script's default is an executable fact, not a string: running it is what
  * shows which directory a standalone run actually writes bytecode to. Nothing
- * of the operator's machine is touched - `HOME` is a temp directory, the FFmpeg
- * the script would otherwise download is pre-placed so no network is used, and
- * the interpreter is a stub that fails at the venv probe, which the script only
- * reaches after the default has been applied.
+ * of the operator's machine is touched - `HOME` is a temp directory, the install
+ * script fetches nothing of its own any more (the FFmpeg download this rig used
+ * to pre-place a file against is gone), and the interpreter is a stub that fails
+ * at the venv probe, which the script only reaches after the default has been
+ * applied.
  */
 function runMacosInstallScript(scriptText, extraEnv) {
 	const home = mkdtempSync(join(tmpdir(), "lo-install-script-home-"));
@@ -696,11 +735,6 @@ function runMacosInstallScript(scriptText, extraEnv) {
 		"Application Support",
 		"Local Operator",
 	);
-	mkdirSync(join(appDataDir, "bin"), { recursive: true });
-	const ffmpeg = join(appDataDir, "bin", "ffmpeg");
-	writeFileSync(ffmpeg, "#!/bin/bash\nexit 0\n");
-	chmodSync(ffmpeg, 0o755);
-
 	const pythonStub = join(home, "python3-stub");
 	writeFileSync(
 		pythonStub,
@@ -2213,6 +2247,14 @@ const SPAWN_SITES = [
 	// for being unlisted rather than hiding behind a file-level exemption.
 
 	runsCommand(
+		"src/main/shell-path.ts",
+		"spawn",
+		1,
+		/shell,\s*\[\.\.\.args\]/,
+		"the user's own login shell (`defaultShell(env)`, run as `-l -i -c`) asked to print `$PATH` between sentinels, so a console surface and the backend see the environment the user's terminal has. It runs no interpreter of ours: the command is `command printf` over `$PATH`, the startup files it sources are the user's own, and no guarded environment applies or is wanted here - the child is deliberately handed the launch environment, because the whole point is to read what THAT environment's shell would produce",
+	),
+
+	runsCommand(
 		"src/main/update-install.ts",
 		"execFileSync",
 		1,
@@ -3213,4 +3255,442 @@ test("the macOS installer no longer claims to have chosen a Python directory", a
 	// The refusal it does make is untouched: the caller must say which interpreter.
 	assert.equal(run.status, 1);
 	assert.match(run.stderr, /Pass an external prepared Python executable/);
+});
+
+/**
+ * ---------------------------------------------------------------------------
+ * The setup window's decision machine.
+ *
+ * WHY THESE LIVE IN THIS FILE: it owns the only harness that builds the shipped
+ * main-process graph in memory with a stubbed Electron, and two review rounds
+ * found the Retry dead twice - by reading source, correctly, because no test
+ * could reach an `ipcMain.on` handler. Recording those handlers, the window's
+ * own payloads and its close listeners is the difference between "the channel
+ * is wired" and "the button works".
+ * ---------------------------------------------------------------------------
+ */
+
+/** Run `body` with `process.platform` reporting another platform. */
+async function onPlatform(platform, body) {
+	const original = process.platform;
+	Object.defineProperty(process, "platform", {
+		value: platform,
+		configurable: true,
+	});
+	try {
+		return await body();
+	} finally {
+		Object.defineProperty(process, "platform", {
+			value: original,
+			configurable: true,
+		});
+	}
+}
+
+async function waitFor(predicate, what, timeoutMs = 8000) {
+	const deadline = Date.now() + timeoutMs;
+	while (Date.now() < deadline) {
+		const value = predicate();
+		if (value) return value;
+		await new Promise((resolve) => setTimeout(resolve, 10));
+	}
+	throw new Error(`waited ${timeoutMs}ms for ${what}`);
+}
+/** A fresh fixture for one installer flow: no windows, no payloads, no spawns. */
+function resetInstallerFixture(dialogResponse = 0) {
+	globalThis.__loSpawns.length = 0;
+	globalThis.__loSent = [];
+	globalThis.__loIpcHandlers = {};
+	globalThis.__loWindows = [];
+	globalThis.__loDialogs = [];
+	globalThis.__loErrorBoxes = [];
+	globalThis.__loExitCode = undefined;
+	globalThis.__loDialogResponse = dialogResponse;
+}
+
+test("a failure parks on a decision the window's Retry actually answers", async () => {
+	/*
+	 * THE DEFECT THIS EXISTS FOR (review R2-1, UX U2, two rounds). `install()`
+	 * cleared `failureOnScreen` a microtask before it armed the wait, so the
+	 * handler's guard read `false` on every real click: the button was live, wired
+	 * and inert, with no log line, while `cancel-installation` beside it worked.
+	 * Nothing in the tree could see it, because the handler was unreachable from a
+	 * test - which is why this one drives the click rather than asserting the
+	 * channel exists.
+	 *
+	 * The platform is faked because this host is macOS and the non-darwin arm is
+	 * the whole path there (R2-3 rides along in the same flow: the second attempt
+	 * succeeds, and a platform with no smoke probe must still reach `installed`).
+	 */
+	const { BackendInstaller } = await loadMainProcess();
+	await onPlatform("linux", async () => {
+		resetInstallerFixture();
+		const installer = new BackendInstaller();
+		installer.pythonPath = join(PATHS.home, "external-python");
+		const finished = installer.install("never");
+
+		const first = await waitForSpawn();
+		// The script's own milestones, as the pipe delivers them: the phase the
+		// failure names has to come from what the script said, not from a default.
+		first.child.stdout.emit("data", "|LO1:environment\n|LO1:components\n");
+		first.child.stderr.emit(
+			"data",
+			"ERROR: Failed to install local-operator package. Exit code: 1\n",
+		);
+		first.child.emit("exit", 1);
+
+		const failure = await waitFor(
+			() =>
+				globalThis.__loSent.find(({ payload }) => payload.kind === "failed"),
+			"the window to be told what failed",
+		);
+		assert.equal(
+			failure.payload.failure.phase,
+			"components",
+			"on a platform whose last step is the package install, that is the phase that failed",
+		);
+		assert.equal(
+			installer.failureOnScreen,
+			true,
+			"the failure is on screen and unanswered, which is what the Retry reads",
+		);
+
+		const retry = globalThis.__loIpcHandlers["retry-installation"];
+		assert.equal(
+			typeof retry,
+			"function",
+			"the window's Retry is not registered on the channel the preload sends",
+		);
+		globalThis.__loSent.length = 0;
+		globalThis.__loSpawns.length = 0;
+		retry();
+
+		assert.equal(
+			installer.failureOnScreen,
+			false,
+			"the click is the answer the flag was waiting for",
+		);
+		const cleared = globalThis.__loSent.at(-1);
+		assert.equal(
+			cleared?.payload.kind,
+			"phase",
+			"the panel must be told to drop the failure in the same tick as the click",
+		);
+		assert.equal(
+			cleared?.payload.phase,
+			"components",
+			"and it re-states the phase, so nothing is invented on the way back",
+		);
+
+		const second = await waitForSpawn();
+		/*
+		 * The success path's own check, satisfied the way a real install satisfies
+		 * it: the run verifies the venv's entry point before it settles, and a
+		 * fixture that skips the executable would take the failure branch here and
+		 * park again (which is what this test did until it was written out).
+		 */
+		const entry = join(installer.venvPath, "bin", "local-operator");
+		mkdirSync(dirname(entry), { recursive: true });
+		writeFileSync(entry, "#!/bin/sh\n");
+		second.child.emit("exit", 0);
+
+		assert.equal(
+			await finished,
+			true,
+			"the successful retry resolves install(), so startup continues",
+		);
+		assert.ok(
+			globalThis.__loSent.some(({ payload }) => payload.kind === "installed"),
+			"a finished install reaches its terminal state on a platform with no smoke probe",
+		);
+		/*
+		 * The log line the two reviews went looking for is not asserted here, and the
+		 * reason is worth recording: electron-log's file transport is asynchronous and
+		 * this harness never flushes it, so a line the app definitely wrote can be
+		 * absent from the file for a whole run - which is exactly why two rounds had to
+		 * read source to answer "did that click do anything". The answer is asserted
+		 * where it is observable instead: the hold is answered, the panel is told to
+		 * drop the failure, a second attempt really starts, and `install()` resolves.
+		 */
+	});
+});
+
+test("closing the window with a failure unanswered exits instead of parking the app", async () => {
+	/*
+	 * Review R2-2: both branches of the close handler were keyed on state that is
+	 * false at that moment, so the window closed, the listeners came off with it,
+	 * and `install()` stayed parked on a resolver nothing could reach - the process
+	 * alive, windowless and unusable until it was force-quit. The hold is the state
+	 * that is true there, so the hold is what the handler asks.
+	 */
+	const { BackendInstaller } = await loadMainProcess();
+	await onPlatform("linux", async () => {
+		resetInstallerFixture();
+		const installer = new BackendInstaller();
+		installer.pythonPath = join(PATHS.home, "external-python");
+		void installer.install("never");
+
+		const first = await waitForSpawn();
+		first.child.stdout.emit("data", "|LO1:environment\n");
+		first.child.stderr.emit("data", "ERROR: pip failed\n");
+		first.child.emit("exit", 1);
+		await waitFor(
+			() =>
+				globalThis.__loSent.find(({ payload }) => payload.kind === "failed"),
+			"the failure to reach the window",
+		);
+
+		const window = globalThis.__loWindows.at(-1);
+		const closeHandler = window?.handlers.close?.at(-1);
+		assert.equal(
+			typeof closeHandler,
+			"function",
+			"the setup window no longer listens for its own close",
+		);
+		// Not a real Event: this asserts which branch the handler takes, and the
+		// window it would tear down is the fixture's.
+		const event = { preventDefault: () => {} };
+		closeHandler(event);
+		assert.equal(
+			globalThis.__loExitCode,
+			0,
+			"a window closed with the failure unanswered leaves the app rather than parking it",
+		);
+	});
+});
+
+test("closing the window mid-run asks the same question Cancel does", async () => {
+	/*
+	 * Design D16: the Cancel button asked before stopping the install and the close
+	 * box - the easier one to hit in a non-resizable window with a title bar - did
+	 * not. Both stop setup now, so both ask; and a declined confirmation has to
+	 * leave the run exactly where it was, which is what `preventDefault` is for.
+	 */
+	const { BackendInstaller } = await loadMainProcess();
+	await onPlatform("linux", async () => {
+		resetInstallerFixture(0); // "Keep setting up"
+		const installer = new BackendInstaller();
+		installer.pythonPath = join(PATHS.home, "external-python");
+		void installer.install("never");
+		await waitForSpawn();
+
+		const window = globalThis.__loWindows.at(-1);
+		const closeHandler = window?.handlers.close?.at(-1);
+		let prevented = false;
+		closeHandler({
+			preventDefault: () => {
+				prevented = true;
+			},
+		});
+		assert.equal(
+			prevented,
+			true,
+			"a close during a run is a request, not a teardown",
+		);
+		const question = globalThis.__loDialogs.at(-1);
+		assert.ok(
+			question,
+			"the close has to ask before it stops a running install",
+		);
+		assert.equal(
+			question.buttons?.[1],
+			"Quit without setup",
+			"and it asks the question Cancel asks",
+		);
+		assert.equal(
+			globalThis.__loExitCode,
+			undefined,
+			"declining the question leaves the install running",
+		);
+	});
+});
+
+test("the click is authorised by the hold, not by the report flag", async () => {
+	/*
+	 * Review R3-3: the mutation matrix showed the round-2 guard alone stayed green
+	 * against the case above, because in every reachable state the two flags agree -
+	 * so nothing pinned the guard itself. This case makes them disagree on purpose:
+	 * the report flag is cleared by hand, standing in for any other writer of it
+	 * (`installEnvironment` clears it at the start of every attempt, `settleInstalled`
+	 * at the end, and round 1's `install()` cleared it before the park), and the click
+	 * must still start the second attempt. A guard reading that flag goes red here.
+	 */
+	const { BackendInstaller } = await loadMainProcess();
+	await onPlatform("linux", async () => {
+		resetInstallerFixture();
+		const installer = new BackendInstaller();
+		installer.pythonPath = join(PATHS.home, "external-python");
+		const finished = installer.install("never");
+
+		const first = await waitForSpawn();
+		first.child.stdout.emit("data", "|LO1:environment\n|LO1:components\n");
+		first.child.emit("exit", 1);
+		await waitFor(
+			() =>
+				globalThis.__loSent.find(({ payload }) => payload.kind === "failed"),
+			"the failure to reach the window",
+		);
+		assert.equal(installer.decisionPending, true);
+		installer.failureOnScreen = false;
+
+		globalThis.__loSpawns.length = 0;
+		globalThis.__loIpcHandlers["retry-installation"]();
+		const second = await waitForSpawn();
+		assert.ok(second, "the retry must start on the hold's word alone");
+		second.child.emit("exit", 0);
+		const entry = join(installer.venvPath, "bin", "local-operator");
+		mkdirSync(dirname(entry), { recursive: true });
+		writeFileSync(entry, "#!/bin/sh\n");
+		await finished;
+	});
+});
+
+test("a retry runs the same attempt the first run does", async () => {
+	/*
+	 * Review R3-1/R3-2 and UX U17, measured through the shipped graph: a retry used
+	 * to be a second copy of the attempt path, entered from `retryFromWindow` while
+	 * `install()` stayed parked - so `runActive` was false for its whole duration
+	 * (Cancel stopped killing the child, the close box stopped asking) and the
+	 * terminal hold never ran on the one success path a user reaches by clicking
+	 * Retry. This drives a retry and asserts the three things the fold restores:
+	 * Cancel kills during it, the close asks during it, and the finished state is
+	 * held afterwards.
+	 */
+	const { BackendInstaller } = await loadMainProcess();
+	await onPlatform("linux", async () => {
+		resetInstallerFixture();
+		const installer = new BackendInstaller();
+		installer.pythonPath = join(PATHS.home, "external-python");
+		const finished = installer.install("never");
+
+		const first = await waitForSpawn();
+		first.child.stdout.emit("data", "|LO1:environment\n");
+		first.child.emit("exit", 1);
+		await waitFor(
+			() =>
+				globalThis.__loSent.find(({ payload }) => payload.kind === "failed"),
+			"the failure to reach the window",
+		);
+		globalThis.__loSpawns.length = 0;
+		globalThis.__loIpcHandlers["retry-installation"]();
+		const retry = await waitForSpawn();
+		assert.equal(
+			installer.runActive,
+			true,
+			"the retry's attempt is a run in flight, which is what Cancel and the close read",
+		);
+
+		// The close box, mid-retry: it must ask, the way it does during a first run.
+		const window = globalThis.__loWindows.at(-1);
+		let prevented = false;
+		window.handlers.close.at(-1)({
+			preventDefault: () => {
+				prevented = true;
+			},
+		});
+		assert.equal(
+			prevented,
+			true,
+			"a close during a retry is a request, not a teardown",
+		);
+		assert.equal(
+			globalThis.__loDialogs.at(-1)?.buttons?.[1],
+			"Quit without setup",
+			"and it asks the question Cancel asks",
+		);
+
+		// Cancel, mid-retry: the child is killed, which is what the dialog promises.
+		const kills = [];
+		const realKill = process.kill;
+		process.kill = (pid, signal) => {
+			kills.push([pid, signal]);
+			return true;
+		};
+		try {
+			globalThis.__loDialogResponse = 1; // "Quit without setup"
+			await globalThis.__loIpcHandlers["cancel-installation"]();
+		} finally {
+			process.kill = realKill;
+		}
+		assert.deepEqual(
+			kills,
+			[[-retry.child.pid, "SIGTERM"]],
+			"Cancel during a retry must kill the attempt's process group",
+		);
+		assert.equal(installer.attemptCancelled, true);
+		assert.equal(
+			globalThis.__loExitCode,
+			1,
+			"and the app leaves, as it promised",
+		);
+	});
+});
+
+test("a successful retry holds its finished state and does not ask to quit over it", async () => {
+	/*
+	 * UX U17 (the state is painted on both success paths) and U18 (the close during
+	 * the hold must not raise "Quitting now stops it" over a panel that says "Setup
+	 * complete."). The hold is asserted as a lower bound on elapsed time, which is
+	 * the only observable this harness has for it.
+	 */
+	const { BackendInstaller } = await loadMainProcess();
+	await onPlatform("linux", async () => {
+		resetInstallerFixture();
+		const installer = new BackendInstaller();
+		installer.pythonPath = join(PATHS.home, "external-python");
+		const finished = installer.install("never");
+
+		const first = await waitForSpawn();
+		first.child.stdout.emit("data", "|LO1:components\n");
+		first.child.emit("exit", 1);
+		await waitFor(
+			() =>
+				globalThis.__loSent.find(({ payload }) => payload.kind === "failed"),
+			"the failure to reach the window",
+		);
+		globalThis.__loSpawns.length = 0;
+		globalThis.__loIpcHandlers["retry-installation"]();
+		const retry = await waitForSpawn();
+		const entry = join(installer.venvPath, "bin", "local-operator");
+		mkdirSync(dirname(entry), { recursive: true });
+		writeFileSync(entry, "#!/bin/sh\n");
+		const exitedAt = Date.now();
+		retry.child.emit("exit", 0);
+
+		await waitFor(
+			() =>
+				globalThis.__loSent.find(({ payload }) => payload.kind === "installed"),
+			"the finished state to reach the window on the retry's own path",
+		);
+		/*
+		 * Two dialogs by now and no more: the consent prompt and the non-darwin
+		 * "Setup Complete" acknowledgement. The point of the count is the next
+		 * assertion - that the close adds nothing to it.
+		 */
+		const dialogsBefore = globalThis.__loDialogs.length;
+		assert.equal(dialogsBefore, 2);
+		let prevented = false;
+		globalThis.__loWindows.at(-1).handlers.close.at(-1)({
+			preventDefault: () => {
+				prevented = true;
+			},
+		});
+		assert.equal(
+			prevented,
+			false,
+			"a close over the finished state stops nothing",
+		);
+		assert.equal(
+			globalThis.__loDialogs.length,
+			dialogsBefore,
+			"and it must not ask to quit over a run that has already succeeded",
+		);
+		assert.equal(globalThis.__loExitCode, undefined);
+
+		assert.equal(await finished, true);
+		assert.ok(
+			Date.now() - exitedAt >= 1400,
+			`the finished state must be held on the retry path too (held ${Date.now() - exitedAt}ms)`,
+		);
+	});
 });

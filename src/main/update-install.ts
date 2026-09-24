@@ -20,7 +20,7 @@ import {
 	join,
 	relative,
 } from "node:path";
-import BUNDLED_PYTHON_LAYOUT from "../shared/bundled-python-layout.json";
+import BUNDLED_RUNTIME_LAYOUT from "../shared/bundled-runtime-layout.json";
 import MACOS_ENTITLEMENT_POLICY from "../shared/macos-entitlement-policy.json";
 import { installerIsAlive } from "./update-shipit";
 
@@ -516,14 +516,14 @@ function canonicalPath(path: string): string {
  * list was updated with it, and this predicate stayed behind - so on a bundle
  * this branch builds, every `.pyc` violation was unhealable by construction and
  * the user got the reinstall refusal for a file the heal exists to delete
- * (review R10 / QA Q2). Both sides now read `bundled-python-layout.json`, so the
+ * (review R10 / QA Q2). Both sides now read `bundled-runtime-layout.json`, so the
  * two lists cannot diverge again, and the legacy names stay in it because a
  * bundle being *replaced* may still be the old layout.
  */
 const BUNDLED_PYTHON_DIRS = [
-	...BUNDLED_PYTHON_LAYOUT.legacyResourceNames,
-	...BUNDLED_PYTHON_LAYOUT.architectures.map(
-		(arch) => `${BUNDLED_PYTHON_LAYOUT.seedNamespace}/${arch}`,
+	...BUNDLED_RUNTIME_LAYOUT.legacyResourceNames,
+	...BUNDLED_RUNTIME_LAYOUT.architectures.map(
+		(arch) => `${BUNDLED_RUNTIME_LAYOUT.python.seedNamespace}/${arch}`,
 	),
 ];
 

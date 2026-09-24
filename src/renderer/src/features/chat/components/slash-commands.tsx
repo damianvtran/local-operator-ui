@@ -40,6 +40,7 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import { cn } from "@shared/lib/utils";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { themes } from "@shared/themes";
 import { useQuery } from "@tanstack/react-query";
@@ -52,6 +53,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { archiveDestinationApplies } from "../chat-archived";
 import { useEntities } from "../pickers/destination-pickers";
 import {
 	DESTINATIONS,
@@ -60,9 +62,17 @@ import {
 	inlineArgumentFor,
 } from "../pickers/picker-registry";
 import {
+	type ArgumentActionRow,
 	type ArgumentRow,
 	type ArgumentSource,
+	FLAG_LIST_SOURCES,
 	argumentRows,
+	flagTokenDraws,
+	flagTokenSelects,
+	isRendererLocalSource,
+	modelDefaultActionRow,
+	shouldRunArgumentAction,
+	showsUnmatchedList,
 } from "./slash-argument-rows";
 import {
 	activeRowRuns,
@@ -162,7 +172,8 @@ export type CompletionRow =
 	 * cannot describe something Enter will not do.
 	 */
 	| { kind: "command"; command: SlashCommandMeta; label: string }
-	| { kind: "argument"; row: ArgumentRow };
+	| { kind: "argument"; row: ArgumentRow }
+	| { kind: "action"; row: ArgumentActionRow };
 
 /**
  * The registry row a typed word names, primary or alias.
@@ -328,9 +339,11 @@ export type SlashCompletionState = {
  * The entity-backed sources reuse the picker dialogs' own `useEntities` query —
  * same key, same path mapper — so the composer and the dialog cannot end up
  * showing different rungs for the same command (the round-1 U3 rule the
- * session-status strip's effort chip already follows). `/theme` is the one
- * renderer-local source: it reads the same `@shared/themes` table its dialog
- * reads, so there is no second theme vocabulary.
+ * session-status strip's effort chip already follows). The renderer-local
+ * sources (`RENDERER_LOCAL_SOURCES`) ask the backend for nothing: `/theme` reads
+ * the same `@shared/themes` table its dialog reads, and `title-refresh` is a
+ * fixed spelling list. Both are answered from a local read and reported as
+ * loaded, because "nothing to ask" must not render as "not reported yet".
  */
 function useArgumentRows(
 	source: ArgumentSource | undefined,
@@ -341,13 +354,14 @@ function useArgumentRows(
 ): SlashArgumentListState {
 	const themeName = useUiPreferencesStore((state) => state.themeName);
 	// Hooks cannot be called conditionally, so the entity query always runs and
-	// is merely DISABLED for the renderer-local source.
-	const entitySource = source && source !== "theme" ? source : "model";
+	// is merely DISABLED for a renderer-local source.
+	const local = isRendererLocalSource(source);
+	const entitySource = source && !local ? source : "model";
 	const entities = useEntities(
 		sessionId ?? "",
 		entitySource,
 		undefined,
-		enabled && Boolean(source) && source !== "theme" && Boolean(sessionId),
+		enabled && Boolean(source) && !local && Boolean(sessionId),
 	);
 	const localThemes = useMemo(
 		() =>
@@ -389,6 +403,21 @@ function useArgumentRows(
 				needsSession: false,
 			};
 		}
+		if (source === "title-refresh") {
+			/*
+			 * No entities and no `current`: this source's rows are a fixed vocabulary
+			 * (`TITLE_REFRESH_ROWS`), so there is nothing to load and nothing that
+			 * could be selected. `loading: false` is load-bearing — the empty state
+			 * prints "Loading…" ahead of every other cause, so a list that is not
+			 * waiting on anything must not say it is.
+			 */
+			return {
+				rows: argumentRows("title-refresh", [], null),
+				loading: false,
+				error: null,
+				needsSession: false,
+			};
+		}
 		if (!sessionId) {
 			// No session, no entity source. Called out rather than rendered as an
 			// empty list, because "not reported yet" would be a lie about a
@@ -421,6 +450,8 @@ export type SlashCompletionArgs = {
 	sessionId?: string;
 	/** The session's active profile, for the roster lists' current marker. */
 	activeProfile?: { team?: unknown; agent?: unknown };
+	/** The active session model, used only to describe `/model default`. */
+	activeModel?: { provider?: unknown; model_id?: unknown } | null;
 	/**
 	 * Whether the pane this composer sits on can address a SESSION — the
 	 * dispatcher's own question, passed down from the page that builds it.
@@ -438,10 +469,32 @@ export function useSlashCompletion({
 	selectionStart,
 	sessionId,
 	activeProfile,
+	activeModel,
 	paneHasSession = false,
 }: SlashCompletionArgs): SlashCompletionState {
 	const capabilities = useDesktopCapabilities();
 	const enabled = desktopFeatureEnabled(capabilities.data, "commands");
+	/*
+	 * Whether this backend can archive at all, and what THIS conversation's archive
+	 * state is - the two inputs `archiveDestinationApplies` needs when the command
+	 * rows are built below.
+	 *
+	 * Read here rather than passed in as a flag because the two rows it filters are
+	 * the palette's own: the composer knows the draft, the store knows the
+	 * conversation, and this hook already reaches for the capability for `enabled`.
+	 * `undefined` (no row for this id) is a real answer and means UNKNOWN - see the
+	 * rule for why `/archive` survives it and `/unarchive` does not.
+	 */
+	const archiveEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"session_archive",
+	);
+	const openArchived = useCanonicalSessionsStore((state) =>
+		sessionId
+			? (state.archiveFacts[sessionId]?.archived ??
+				state.sessions.find((row) => row.session_id === sessionId)?.archived)
+			: undefined,
+	);
 	const listId = useId();
 	const query = useQuery({
 		queryKey: desktopKeys.commands,
@@ -641,11 +694,30 @@ export function useSlashCompletion({
 		 * the matcher cannot answer `/` or `/m` differently (round 1 R3).
 		 */
 		const ranked = commandSuggestions(commandContext.query, registry);
-		return ranked.map(
-			({ name, command }) =>
-				({ kind: "command", command, label: name }) as CompletionRow,
-		);
-	}, [commandContext, registry]);
+		/*
+		 * THE ARCHIVE PAIR IS FILTERED ON THE OPEN CONVERSATION'S OWN STATE, and this
+		 * is the only place a catalogue row is filtered at all. The catalogue is
+		 * STATIC - the backend advertises `/archive` and `/unarchive` for every
+		 * conversation because it does not know which one this pane has open - so
+		 * offering both would show a pair of opposites for one state, one of which
+		 * does nothing. `archiveDestinationApplies` is the one rule (state plus
+		 * capability); a typed word the filter hides still reaches the dispatcher and
+		 * is refused WITH A REASON there, which is why this filter is a preference
+		 * about what to offer rather than the enforcement point.
+		 */
+		return ranked
+			.filter(({ command }) =>
+				archiveDestinationApplies(
+					command.destination,
+					openArchived,
+					archiveEnabled,
+				),
+			)
+			.map(
+				({ name, command }) =>
+					({ kind: "command", command, label: name }) as CompletionRow,
+			);
+	}, [commandContext, registry, openArchived, archiveEnabled]);
 
 	const argumentList = useArgumentRows(
 		inline?.source,
@@ -655,16 +727,34 @@ export function useSlashCompletion({
 		enabled,
 	);
 
-	const argumentMatches = useMemo(
-		() =>
-			inline && argumentContext
-				? matchChoices(argumentContext.value, argumentList.rows).map(
-						({ choice }) =>
-							({ kind: "argument", row: choice }) as CompletionRow,
-					)
-				: [],
-		[inline, argumentContext, argumentList.rows],
-	);
+	const argumentMatches = useMemo(() => {
+		if (!inline || !argumentContext) return [];
+		/*
+		 * `default` is a direct machine-setting operation, not a model catalogue
+		 * entry. It replaces the catalogue matches so fuzzy survivors can never
+		 * take index zero and switch the model when the user intended the action.
+		 */
+		if (inline.source === "model") {
+			const action = modelDefaultActionRow(
+				argumentContext.value,
+				activeModel,
+				argumentContext.value === "default" &&
+					argumentContext.end === inputValue.length,
+				paneHasSession,
+			);
+			if (action) return [{ kind: "action" as const, row: action }];
+		}
+		return matchChoices(argumentContext.value, argumentList.rows).map(
+			({ choice }) => ({ kind: "argument" as const, row: choice }),
+		);
+	}, [
+		inline,
+		argumentContext,
+		argumentList.rows,
+		activeModel,
+		inputValue,
+		paneHasSession,
+	]);
 
 	/*
 	 * The caret's phase, from the ONE function that defines it, so the two lists
@@ -703,9 +793,42 @@ export function useSlashCompletion({
 				? "command"
 				: null;
 
-	const matches = phase === "argument" ? argumentMatches : commandMatches;
-	const eligible = enabled && phase !== null;
-	const visible = eligible && (matches.length > 0 || phase === "argument");
+	/*
+	 * A FLAG list draws on its OWN shape rule, not on the matcher's reach.
+	 *
+	 * `purePhase === "argument"` is true the moment the word-terminating space is
+	 * typed, and for a catalogue source that is exactly right: the empty argument
+	 * OPENS the list because "show me everything" is a sensible thing to ask of a
+	 * set of things, and an unmatched query still shows the honest empty sentence.
+	 * A flag list has one row, so a list drawn without the user having named a flag
+	 * is a list that has already chosen — and Enter's single-survivor arm would then
+	 * complete `/rename ` to `--refresh`, making the naming FORM (the bare
+	 * command's presentation) unreachable by the gesture that opens it. Measured on
+	 * the real component before this rule existed.
+	 *
+	 * WHAT `flagTokenDraws` ADDS OVER THE FIRST VERSION, and why it is not merely
+	 * `matches.length`: the empty query must draw nothing (the FORM case above), and
+	 * a WHITESPACE-CONTAINING argument must draw nothing (a TITLE —
+	 * `/rename quarterly review` names the conversation, and nothing may be drawn
+	 * over the sentence). Those two were the first version's whole guard, and they
+	 * were not enough: `-fresh` is one token with no space and is a SUBSEQUENCE of
+	 * `--refresh`, so the matcher reached it, the row drew, and Enter ran a refresh
+	 * over the user's typed title. The draw rule is therefore a PREFIX test against
+	 * the source's own vocabulary — the spellings the row exists to be found by —
+	 * so a title-shaped token cannot draw the row at all, whoever's mistake reaches
+	 * it. Every other source keeps its behaviour exactly.
+	 */
+	const flagDraw = flagTokenDraws(inline?.source, argumentContext?.value ?? "");
+	const phaseWithFlagList =
+		phase === "argument" && !showsUnmatchedList(inline?.source) && !flagDraw
+			? null
+			: phase;
+
+	const matches: CompletionRow[] =
+		phaseWithFlagList === "argument" ? argumentMatches : commandMatches;
+	const eligible = enabled && phaseWithFlagList !== null;
+	const visible =
+		eligible && (matches.length > 0 || phaseWithFlagList === "argument");
 
 	const [state, setState] = useState({ open: false, active: 0 });
 	const [chosenByHand, setChosenByHand] = useState(false);
@@ -728,13 +851,13 @@ export function useSlashCompletion({
 	 * that stays inside one phase does not (`_sync_picker_if_phase_changed`).
 	 */
 	const queryText =
-		phase === "argument"
+		phaseWithFlagList === "argument"
 			? (argumentContext?.value ?? "")
 			: (commandContext?.query ?? "");
 	const phaseKey =
-		phase === null
+		phaseWithFlagList === null
 			? null
-			: phase === "argument"
+			: phaseWithFlagList === "argument"
 				? `argument:${argumentContext?.tokenStart ?? -1}:${queryText}`
 				: `command:${commandContext?.start ?? -1}:${queryText}`;
 	const lastPhaseKey = useRef<string | null>(null);
@@ -798,7 +921,7 @@ export function useSlashCompletion({
 	}, []);
 
 	return {
-		phase,
+		phase: phaseWithFlagList,
 		open: state.open && visible,
 		active: state.active,
 		matches,
@@ -845,6 +968,7 @@ export function useSlashCompletion({
 type SlashSuggestionsPopupProps = {
 	state: SlashCompletionState;
 	onPick: (row: CompletionRow, disposition: { run: boolean }) => void;
+	onActionPick?: (row: ArgumentActionRow) => void;
 };
 
 /** Detail-column visibility threshold, in the popup's own width.
@@ -860,6 +984,7 @@ const NUMBERS_MIN = "@min-[24rem]/slash:inline";
 export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 	state,
 	onPick,
+	onActionPick,
 }) => {
 	const listId = state.listId;
 	const activeRef = useRef<HTMLLIElement | null>(null);
@@ -878,6 +1003,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 	const argument = state.phase === "argument";
 	const activeRow = state.matches[state.active];
 	const activeArgument = activeRow?.kind === "argument" ? activeRow.row : null;
+	const activeAction = activeRow?.kind === "action" ? activeRow.row : null;
 	const activeCommand = activeRow?.kind === "command" ? activeRow : null;
 	/*
 	 * The footer names what Enter does in the state the user is looking at. The
@@ -923,86 +1049,107 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 				: undefined,
 		inlineRuns: state.inline?.runs ?? false,
 	});
-	const footer = enterFooter({
-		phase: argument ? "argument" : "command",
-		command: state.argumentCommand,
-		label: activeCommand?.label ?? "",
-		nameThenMessage: state.inline?.nameThenMessage ?? false,
-		runs: pickRuns,
-		/*
-		 * Whether this row's completion OPENS a list, asked of the registry table the
-		 * composer itself reads (`inlineArgumentFor`) rather than of a second list of
-		 * command names. It separates the two `runs: false` command states the copy
-		 * has to word differently (UX round 1, U4): `/model` completes and opens its
-		 * list, `/clear` completes and is run by the NEXT Enter.
-		 */
-		opensList: Boolean(
-			activeCommand && inlineArgumentFor(activeCommand.command.destination),
-		),
-		value: activeArgument?.value ?? "",
-		matched: Boolean(activeRow),
-		/*
-		 * The arming's own two inputs, read off the row's ROUTE (`pickArmsCommand`)
-		 * and off the draft (`state.hoists`) rather than written as a command name:
-		 * this line described "Enter completes the command." for the one row whose
-		 * Enter hoists and stages, and it stayed green because the test that pinned
-		 * it never asked the pick what it does (review F2 / QA Q5).
-		 */
-		arms:
-			activeRow?.kind === "command"
-				? pickArmsCommand(activeRow, state.armedOnlyCommands)
-				: false,
-		// The row's own `consumes_prompt`: the free-text rows reassemble on a pick
-		// instead of running, which is what their two lines have to say (UX U2/U3).
-		takesDraft:
-			activeRow?.kind === "command" ? activeRow.command.consumes_prompt : false,
-		// The armed row's destination, so the promise this line makes about the
-		// next Enter is the note's own sentence rather than a second one (design D4).
-		destination: activeDestination,
-		/*
-		 * The pane clause, folded with the destination exactly as the staged note
-		 * folds it (`message-input.tsx`): the dispatcher refuses a destination that
-		 * needs a conversation, and a MACHINE panel (`/info`, `/usage`, `/analytics`)
-		 * does not — it runs on a sessionless pane. Passing the raw bit here left the
-		 * footer the only surface still promising "this pane needs an open
-		 * conversation" for a command that then runs, which is the disagreement § 3.1
-		 * centralised the predicate to prevent; it was unreachable only because no
-		 * machine panel currently declares a staging route (code review round 1, m3).
-		 * The predicate is the table's, so this line and the dispatcher cannot
-		 * disagree.
-		 */
-		paneHasSession: destinationNeedsSession(activeDestination)
-			? state.paneHasSession
-			: true,
-		hoists: state.hoists,
-		unambiguous: activeArgument
-			? slashRunAllowed({
-					argumentQuery: state.argumentQuery,
-					value: activeArgument.value,
-					total: state.matches.length,
-					destructive: slashDestructive(
-						state.argumentCommand,
-						activeArgument.alert,
-					),
-					chosenByHand: state.chosenByHand,
-				})
-			: activeCommand
-				? commandChoiceUnambiguous({
-						query: state.commandQuery,
-						label: activeCommand.label,
-						total: state.matches.length,
-						chosenByHand: state.chosenByHand,
-					})
-				: false,
-		/*
-		 * The ambiguous line's two inputs: the word typed and the prefix the
-		 * candidates share. The SAME `sharedCommandPrefix` the router extends to, so
-		 * the copy cannot claim a growth the key will not make (it is a no-op when
-		 * the word is already the prefix, and when the candidates share nothing).
-		 */
-		query: state.commandQuery,
-		prefix: sharedCommandPrefix(commandLabels(state.matches)),
-	});
+	const footer = activeAction
+		? {
+				text: activeAction.disabled
+					? "A current model is needed to set a default."
+					: "Enter sets the current model as the default for new sessions.",
+				key: activeAction.disabled ? null : "Enter",
+			}
+		: enterFooter({
+				phase: argument ? "argument" : "command",
+				command: state.argumentCommand,
+				label: activeCommand?.label ?? "",
+				nameThenMessage: state.inline?.nameThenMessage ?? false,
+				runs: pickRuns,
+				/*
+				 * Whether this row's completion OPENS a list, asked of the registry table the
+				 * composer itself reads (`inlineArgumentFor`) rather than of a second list of
+				 * command names. It separates the two `runs: false` command states the copy
+				 * has to word differently (UX round 1, U4): `/model` completes and opens its
+				 * list, `/clear` completes and is run by the NEXT Enter.
+				 */
+				opensList: Boolean(
+					activeCommand && inlineArgumentFor(activeCommand.command.destination),
+				),
+				value: activeArgument?.value ?? "",
+				matched: Boolean(activeRow),
+				/*
+				 * The arming's own two inputs, read off the row's ROUTE (`pickArmsCommand`)
+				 * and off the draft (`state.hoists`) rather than written as a command name:
+				 * this line described "Enter completes the command." for the one row whose
+				 * Enter hoists and stages, and it stayed green because the test that pinned
+				 * it never asked the pick what it does (review F2 / QA Q5).
+				 */
+				arms:
+					activeRow?.kind === "command"
+						? pickArmsCommand(activeRow, state.armedOnlyCommands)
+						: false,
+				// The row's own `consumes_prompt`: the free-text rows reassemble on a pick
+				// instead of running, which is what their two lines have to say (UX U2/U3).
+				takesDraft:
+					activeRow?.kind === "command"
+						? activeRow.command.consumes_prompt
+						: false,
+				// The armed row's destination, so the promise this line makes about the
+				// next Enter is the note's own sentence rather than a second one (design D4).
+				destination: activeDestination,
+				/*
+				 * The pane clause, folded with the destination exactly as the staged note
+				 * folds it (`message-input.tsx`): the dispatcher refuses a destination that
+				 * needs a conversation, and a MACHINE panel (`/info`, `/usage`, `/analytics`)
+				 * does not — it runs on a sessionless pane. Passing the raw bit here left the
+				 * footer the only surface still promising "this pane needs an open
+				 * conversation" for a command that then runs, which is the disagreement § 3.1
+				 * centralised the predicate to prevent; it was unreachable only because no
+				 * machine panel currently declares a staging route (code review round 1, m3).
+				 * The predicate is the table's, so this line and the dispatcher cannot
+				 * disagree.
+				 */
+				paneHasSession: destinationNeedsSession(activeDestination)
+					? state.paneHasSession
+					: true,
+				hoists: state.hoists,
+				unambiguous: activeArgument
+					? slashRunAllowed({
+							argumentQuery: state.argumentQuery,
+							value: activeArgument.value,
+							total: state.matches.length,
+							destructive: slashDestructive(
+								state.argumentCommand,
+								activeArgument.alert,
+							),
+							chosenByHand: state.chosenByHand,
+							/*
+							 * A FLAG list's row acts on a whole-token vocabulary test rather than on
+							 * the matcher's reach (`slashRunAllowed`'s `selectsFlag`). `undefined`
+							 * for every catalogue list, which is what keeps `/model`, `/theme` and
+							 * the rest byte-identical.
+							 */
+							selectsFlag: FLAG_LIST_SOURCES.has(
+								state.inline?.source as ArgumentSource,
+							)
+								? (query: string) =>
+										flagTokenSelects(state.inline?.source, query)
+								: undefined,
+						})
+					: activeCommand
+						? commandChoiceUnambiguous({
+								query: state.commandQuery,
+								label: activeCommand.label,
+								total: state.matches.length,
+								chosenByHand: state.chosenByHand,
+							})
+						: false,
+				/*
+				 * The ambiguous line's two inputs: the word typed and the prefix the
+				 * candidates share. The SAME `sharedCommandPrefix` the router extends to, so
+				 * the copy cannot claim a growth the key will not make (it is a no-op when
+				 * the word is already the prefix, and when the candidates share nothing).
+				 */
+				query: state.commandQuery,
+				prefix: sharedCommandPrefix(commandLabels(state.matches)),
+			});
 	const click = clickFooter({
 		phase: argument ? "argument" : "command",
 		command: state.argumentCommand,
@@ -1019,6 +1166,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 		takesDraft:
 			activeRow?.kind === "command" ? activeRow.command.consumes_prompt : false,
 		hoists: state.hoists,
+		actionClickText: activeAction?.clickText,
 		value: activeArgument?.value ?? "",
 		matched: Boolean(activeRow),
 	});
@@ -1079,6 +1227,9 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 								// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox option cannot be a native <option>.
 								role="option"
 								aria-selected={index === state.active}
+								aria-disabled={
+									row.kind === "action" ? row.row.disabled : undefined
+								}
 								aria-current={
 									row.kind === "argument" && row.row.current
 										? "true"
@@ -1113,13 +1264,22 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 									// A click names one exact row with a pointer, which is not the
 									// guess the keyboard's ambiguity gate protects against — so a
 									// pointer pick of a runnable row runs it (`editor.py:8040`).
+									if (row.kind === "action") {
+										if (shouldRunArgumentAction(row.row, true)) {
+											if (onActionPick) onActionPick(row.row);
+											else onPick(row, { run: true });
+										}
+										return;
+									}
 									onPick(row, { run: true });
 								}}
 								onMouseEnter={() => state.setActiveHover(index)}
 							>
 								{row.kind === "command"
 									? commandRowContent(row)
-									: argumentRowContent(row)}
+									: row.kind === "action"
+										? actionRowContent(row.row)
+										: argumentRowContent(row)}
 							</li>
 						))}
 					</ul>
@@ -1133,7 +1293,9 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 				 * ABSENT whenever there is no row to act on (an empty argument list).
 				 */
 				<div className="border-t border-hairline px-3 py-1 text-meta text-ink-dim">
-					{footer ? <p>{footer}</p> : null}
+					{footer ? (
+						<p>{typeof footer === "string" ? footer : footer.text}</p>
+					) : null}
 					{click ? <p>{click}</p> : null}
 				</div>
 			)}
@@ -1143,9 +1305,25 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 
 function commandRowContent(row: Extract<CompletionRow, { kind: "command" }>) {
 	const { command, label } = row;
+	/*
+	 * THE DANGER ROLE ON THE COMMAND'S OWN WORD, which is the ink `/delete` is
+	 * marked with in this host: a bare command row carries no argument row and
+	 * therefore no `alert`, so `slashDestructive`'s command-word arm (the arm that
+	 * already makes `/logout`'s pick deliberate) is also what paints it. Asked once
+	 * here so the palette and the run gate cannot disagree about which words are
+	 * destructive - the same reason the function exists at all.
+	 */
+	const destructive = slashDestructive(command.name, undefined);
 	return (
 		<>
-			<span className="shrink-0 font-mono text-body-sm text-ink">/{label}</span>
+			<span
+				className={cn(
+					"shrink-0 font-mono text-body-sm",
+					destructive ? "text-danger" : "text-ink",
+				)}
+			>
+				/{label}
+			</span>
 			{command.aliases.length > 0 && (
 				<span className="shrink-0 text-meta text-ink-dim">
 					{command.aliases
@@ -1162,6 +1340,22 @@ function commandRowContent(row: Extract<CompletionRow, { kind: "command" }>) {
 					{command.arguments === "required" ? "needs a value" : "value?"}
 				</span>
 			)}
+		</>
+	);
+}
+
+function actionRowContent(row: ArgumentActionRow) {
+	return (
+		<>
+			<span
+				className={cn("shrink-0 font-medium", row.disabled && "text-ink-muted")}
+			>
+				{row.name}
+			</span>
+			<span className="min-w-0 flex-1 truncate text-ink-muted">
+				{row.description}
+			</span>
+			<span className="shrink-0 text-meta text-ink-dim">Action</span>
 		</>
 	);
 }
@@ -1268,6 +1462,15 @@ export function handleSlashKeyDown(
 		nameThenMessage: state.inline?.nameThenMessage ?? false,
 		runs: state.inline?.runs ?? false,
 		chosenByHand: state.chosenByHand,
+		/*
+		 * The flag list's own whole-token test, bound to the ACTIVE list's source, so
+		 * the keyboard's run decision is the same question the footer answers and the
+		 * same one the click path asks (`handleSlashPick`). `undefined` for every
+		 * catalogue list.
+		 */
+		selectsFlag: FLAG_LIST_SOURCES.has(state.inline?.source as ArgumentSource)
+			? (query: string) => flagTokenSelects(state.inline?.source, query)
+			: undefined,
 	});
 	switch (intent.kind) {
 		case "move":

@@ -2,6 +2,7 @@ import type { FC } from "react";
 import { Suspense, lazy, useEffect } from "react";
 import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 
+import { useConsentAttentionLifetime } from "@features/browser/hooks/use-consent-attention-lifetime";
 // ChatPage is the boot route (/ redirects to /chat), so it stays statically
 // imported: lazy-loading it would put a Suspense fallback on first paint.
 import { ChatPage } from "@features/chat/components/chat-page";
@@ -9,13 +10,17 @@ import { shouldStartNewChat } from "@features/chat/new-chat-shortcut";
 import { PanelOutlet } from "@features/chat/pickers/panel-outlet";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
 import { useCommandPaletteShortcut } from "@features/command-palette/use-command-palette-shortcut";
+import { useConsoleAttention } from "@features/console/hooks/use-console-attention";
 import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
-import { noteConsentAttention } from "@shared/browser-consent-attention";
+import {
+	consentClickTarget,
+	noteConsentAttention,
+} from "@shared/browser-consent-attention";
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
 
 import { BackendCompatibilityBanner } from "@shared/components/common/backend-compatibility-banner";
@@ -28,7 +33,10 @@ import { UpdateNotification } from "@shared/components/common/update-notificatio
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { useCheckFirstTimeUser } from "@shared/hooks/use-check-first-time-user";
 import { useLowCreditsDialog } from "@shared/hooks/use-low-credits-dialog";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	panelSessionIdOfView,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 
 // The other five routes are split out so a cold start neither downloads nor
@@ -160,6 +168,14 @@ const App: FC = () => {
 	 */
 	useCommandPaletteShortcut();
 
+	/*
+	 * The console's blip, watched where the WINDOW is (design 12.2). R14's whole case
+	 * is a command finishing while the pane is closed, and the pane is unmounted then
+	 * - so the watcher cannot live inside it. It writes one thing: the marks the
+	 * header's dot and the pane's rows paint.
+	 */
+	useConsoleAttention();
+
 	// A notification click names a canonical conversation; opening it is the
 	// whole effect. Any pending gate stays pending until an explicit in-app
 	// answer, so a stray click can never approve anything.
@@ -174,9 +190,44 @@ const App: FC = () => {
 	const setActiveSession = useCanonicalSessionsStore(
 		(state) => state.setActiveSession,
 	);
+
+	/*
+	 * The conversation the app is DISPLAYING, which is not the same question as
+	 * "which session is active" while a draft is staged: `stageDraft` leaves
+	 * `activeSessionId` at the session the reader came from, so a reviewer that
+	 * read only that field would answer with the old id on both sides of a draft
+	 * and an agent's `reveal: "session"` would claim a pane over a draft.
+	 * `panelSessionIdOfView` is the app's own answer to this question and is read
+	 * here rather than re-derived (design §10.4's "the pane opens only if the app
+	 * is displaying that session").
+	 */
+	const displayedSessionId = useCanonicalSessionsStore((state) => {
+		const draft = state.activeDraftKey
+			? state.drafts[state.activeDraftKey]
+			: undefined;
+		return panelSessionIdOfView(
+			state.activeDraftKey,
+			draft?.sessionId,
+			state.activeSessionId,
+		);
+	});
+	/* The console pane's slot claim, for a banner click that names a surface (design
+	 * 12.3): the click lands the conversation AND the pane that shows it. */
+	const setConsolePaneOpen = useUiPreferencesStore(
+		(state) => state.setConsolePaneOpen,
+	);
+	/* The browser pane's slot claim, the same shape as the console's above and for the
+	 * same reason: a consent banner's click lands the conversation that asked AND the
+	 * pane whose tray shows the request. */
+	const setBrowserPaneOpen = useUiPreferencesStore(
+		(state) => state.setBrowserPaneOpen,
+	);
+	const setConsoleActiveSurface = useUiPreferencesStore(
+		(state) => state.setConsoleActiveSurface,
+	);
 	useEffect(() => {
 		const unsubscribe = window.api?.desktop?.onOpenConversation?.(
-			(sessionId) => {
+			(sessionId, surface) => {
 				/*
 				 * The START of the latency trace the design asks to report rather than
 				 * to describe: the sibling mark is at the first painted transcript row
@@ -195,11 +246,66 @@ const App: FC = () => {
 				// exactly this, so a digest click lands where all the burst's
 				// conversations are listed rather than on one arbitrary member.
 				setActiveSession(sessionId);
+				//
+				// A CONSOLE BANNER'S CLICK ALSO NAMES ITS SURFACE (design 12.3). Claiming the
+				// slot for the console pane and selecting that surface is what makes the
+				// click land on the terminal that finished rather than on the conversation
+				// with whichever pane the user left open. A surface that no longer exists
+				// (the app restarted) selects the pane anyway: `pickActiveSurface` falls back
+				// to the session's own most recent surface, which for a retained one is its
+				// recorded history with the "ended" state - an honest landing rather than a
+				// no-op (§7.3).
+				if (surface !== undefined && sessionId !== null) {
+					setConsoleActiveSurface(surface);
+					setConsolePaneOpen(true);
+				}
 				navigate("/chat");
 			},
 		);
 		return () => unsubscribe?.();
-	}, [navigate, setActiveSession]);
+	}, [navigate, setActiveSession, setConsolePaneOpen, setConsoleActiveSurface]);
+
+	/*
+	 * AN AGENT'S `reveal`, handled in the shell because the shell is what knows
+	 * which conversation is on screen (design §10.4).
+	 *
+	 * The push exists in main and had no client: `console_create {reveal:"session"}`
+	 * answered `{revealed:true}` and the pane stayed closed, which is a lie the
+	 * caller cannot see through. Two modes, and the difference is the whole of
+	 * §10.4's focus-intent allowlist:
+	 *
+	 *   - `"session"` claims the pane ONLY when that session is the one being
+	 *     displayed, so an agent cannot yank the user's viewport to another
+	 *     conversation. It does not navigate, and that is the point of the mode.
+	 *   - `"open"` was downgraded by main to `"none"` unless the app's window was
+	 *     already focused — main owns that half because focus is a fact only it can
+	 *     read — so what arrives here is an open request the app may honour. It
+	 *     selects the conversation it names, for the same reason the banner's click
+	 *     does: a pane claimed for a conversation the user is not looking at would
+	 *     be a claim they cannot see.
+	 *
+	 * NEITHER MODE RAISES A WINDOW: `show`/`showInactive`/`focus` live in
+	 * `window-raise.ts` alone, and the focus rule was already applied in main.
+	 */
+	useEffect(() => {
+		const unsubscribe = window.api?.console?.onReveal?.((payload) => {
+			if (payload.mode === "none") return;
+			if (
+				payload.mode === "session" &&
+				payload.session_id !== displayedSessionId
+			)
+				return;
+			if (payload.mode === "open") setActiveSession(payload.session_id);
+			setConsoleActiveSurface(payload.surface);
+			setConsolePaneOpen(true);
+		});
+		return () => unsubscribe?.();
+	}, [
+		displayedSessionId,
+		setActiveSession,
+		setConsolePaneOpen,
+		setConsoleActiveSurface,
+	]);
 
 	// A consent banner's click, handled where the ROUTES are.
 	//
@@ -207,19 +313,50 @@ const App: FC = () => {
 	// click has to reach them wherever they are — and the browser surface's own
 	// subscriber is unmounted on every other route, which is precisely the case the
 	// banner exists for (review round 1, R8). The shell therefore owns the two halves
-	// that only the shell can do: remember which request was named, and bring the
-	// browser route forward.
+	// that only the shell can do: remember which request was named, and land the user
+	// on it.
 	//
-	// IT MUST NOT RAISE THE WINDOW. Navigating a route is renderer work; no window is
+	// WHERE IT LANDS is `consentClickTarget`'s rule and not this effect's (see that
+	// function: the asking conversation when it is one the app can show, the browser
+	// route otherwise), so the shell does the two things only it can — remember which
+	// request was named, and navigate.
+	//
+	// The pane and not just the conversation: the named request has to be VISIBLE
+	// when the window comes up, and the pane's tray is the surface that shows it
+	// (`browser-surface.tsx` selects the named entry). `setActiveSession` is the same
+	// one call the notification path makes, for the same reason: the store's own paint
+	// cache and the stream's snapshot answer the questions a validating round trip
+	// would, and a conversation that turns out not to exist lands on the transcript's
+	// named state.
+	//
+	// THE RAISE IS NOT THIS EFFECT'S. Navigating a route is renderer work; no window is
 	// shown, focused or activated here, and `src/main/window-raise.ts` stays the only
-	// module that decides whether a window comes forward (design 11.4).
+	// module that decides whether a window comes forward (design 11.4). The raise THIS
+	// click makes happens in main, where the click actually arrives (`consent-click.ts`,
+	// trigger `banner-click`), so this half is only ever "remember which request was
+	// named, and land on it" — the change that made the click come forward at all did
+	// not put a window call in the renderer.
+	useConsentAttentionLifetime();
+
 	useEffect(() => {
 		const unsubscribe = window.api?.browser?.onConsentAttention?.((payload) => {
+			// Read through `getState()` rather than a selector: this listener must not be
+			// re-registered every time the session list changes.
+			const target = consentClickTarget(
+				payload.requesterSessionId,
+				useCanonicalSessionsStore.getState().sessions,
+			);
 			noteConsentAttention(payload.entryId);
-			navigate("/browser");
+			if (target.kind === "browser") {
+				navigate("/browser");
+				return;
+			}
+			setActiveSession(target.sessionId);
+			setBrowserPaneOpen(true);
+			navigate("/chat");
 		});
 		return () => unsubscribe?.();
-	}, [navigate]);
+	}, [navigate, setActiveSession, setBrowserPaneOpen]);
 
 	/*
 	 * `⌘N` / `Ctrl+N` starts a new chat, from wherever the user is — the other

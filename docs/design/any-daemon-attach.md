@@ -112,7 +112,7 @@ Each item was read, not recalled.
    daemon *this app spawned* — built from either the resolved global install
    (`checkLocalOperatorExists`, `:1119`) or the app's own venv
    (`backend-installer.ts:364-395` writes and runs a generated install script;
-   `src/main/backend/scripts/macos-install-script.sh:238` is the line that decides
+   `src/main/backend/scripts/macos-install-script.sh:213` is the line that decides
    what lands in it: `python -m pip install --upgrade --verbose local-operator`,
    **unpinned**, so an old app install can hold a build from any past release).
    No daemon the app *adopts* can be in that set: pairing through the claim route

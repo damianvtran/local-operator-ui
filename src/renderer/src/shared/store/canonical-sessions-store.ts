@@ -17,7 +17,12 @@ import {
 } from "@shared/hooks/use-canonical-session";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { DesktopModelSelection } from "../../../../shared/desktop-contract";
+import {
+	type DesktopModelSelection,
+	type DesktopRequest,
+	RUNTIME_BUSY_CODE,
+	RUNTIME_RETIRING_CODE,
+} from "../../../../shared/desktop-contract";
 import {
 	type CompletionAttention,
 	type CompletionAttentionAckReceipt,
@@ -50,6 +55,18 @@ export type CanonicalSessionRow = {
 	 * terminal, or another window.
 	 */
 	pinned?: boolean;
+	/**
+	 * The backend's ARCHIVE state for this conversation, as the catalogue row
+	 * carried it. Declared explicitly beside `active`/`status` because this row
+	 * type's index signature would otherwise type every read of it `unknown` at the
+	 * one place that writes it optimistically (`setSessionArchived`).
+	 *
+	 * The wire row's `archived` is ALWAYS present (`SessionCatalogueRow` in
+	 * `desktop-session-contract.ts` says why that matters here): the merge below is
+	 * `{...current, ...incoming}`, so an omitted key would leave this app's
+	 * optimistic `true` immortal after an unarchive made somewhere else.
+	 */
+	archived?: boolean;
 	status?: SessionCatalogueStatus;
 	/**
 	 * The feed's stamp for `status`, as the catalogue row carried it.
@@ -63,6 +80,22 @@ export type CanonicalSessionRow = {
 	 */
 	status_revision?: number;
 	status_epoch?: string;
+	/**
+	 * How many subagents this session owns that are RUNNING, and how many are
+	 * waiting for capacity, as the catalogue row carried them.
+	 *
+	 * Declared here as well as on the wire row (`SessionCatalogueRow` in
+	 * `desktop-session-contract.ts`, whose comment carries the `null` semantics)
+	 * for the reason `pinned`/`archived`/`status_revision` above are: this row type
+	 * has an index signature, so without a declaration here every read of these two
+	 * keys is `unknown` and the next reader casts - and `row.subagents_queued === 0`
+	 * over `unknown` is exactly where a `null` {"does not report"} becomes a `0`
+	 * {"none"}. The renderer draws no count of its own: the numbers reach the user
+	 * inside `status.label` (see `chat-session-status.tsx`), and this declaration
+	 * exists so the keys are typed wherever someone does read them.
+	 */
+	subagents_running?: number | null;
+	subagents_queued?: number | null;
 	binding?: SessionBinding;
 	[key: string]: unknown;
 };
@@ -118,6 +151,150 @@ export type PinFailure = {
 	 * The conversation's title as the row carried it when the user pressed, so the
 	 * sentence names the row they pressed rather than one a later catalogue read
 	 * has retitled or dropped.
+	 */
+	title: string;
+	/**
+	 * The backend's own sentence for the refusal, EMPTY when the failure was not
+	 * one either this transport or the backend authored - a runtime exception's
+	 * `message` is a stack-trace fragment, and putting it on screen states the
+	 * failure in the language of the crash (`userFacingMessage` says the same
+	 * thing for the same reason). Empty means the store's own sentence is the
+	 * whole truth about what happened.
+	 */
+	detail: string;
+};
+/**
+ * What this client knows about one conversation's archive state, and when.
+ *
+ * See `archiveFacts` on the state for why the stamp exists; this is the shape it
+ * is stored in. Deliberately narrower than the pin's own fact: a pin has to
+ * describe a conversation the page cannot carry, because pinning moves a row
+ * OUT of the flat list into a section of its own and the row must still be
+ * drawn. Archiving moves a row nowhere - the archived row is simply not drawn by
+ * default - so a fact here needs no `title`/`updated_at` to reconstruct a row
+ * from, and the one surface that must report the state without a row (the open
+ * conversation's header pill) reads the boolean.
+ */
+export type ArchiveFact = {
+	archived: boolean;
+	/** The request sequence this write took, which orders it against every read. */
+	at: number;
+	/**
+	 * Whether the write this fact was written by has been ANSWERED. False between the
+	 * press and the daemon's sentence, and that window is what the offer's retirement
+	 * rule has to respect.
+	 *
+	 * WHY A FIELD RATHER THAN A SECOND RECORD: it is the same lifecycle. The press writes
+	 * the fact (optimistic, unanswered), the answer settles it (accepted) or deletes it
+	 * (refused), and a read newer than both keeps the fact exactly as it stands - so the
+	 * flag travels with the value it belongs to and cannot drift from it. A reader that
+	 * needs to know whether the client is still WAITING asks this, and the one that does is
+	 * `archive-undo.ts`'s retirement subscription.
+	 *
+	 * WHAT IT IS FOR, measured on the control beside the one U3 was about (agent review
+	 * round 2, R2-1): the retirement rule reads this fact first, so an OPTIMISTIC fact makes
+	 * the rule say "the conversation no longer holds the state the offer was taken from"
+	 * before anything has been refused. The offer is therefore retired at the press, the
+	 * lane is dismissed - and a refusal arriving in its place is raised on the id that was
+	 * just dismissed, which sonner destroys inside its own unmount window. Undo, the
+	 * header's own restore control and `/unarchive` all write this route, so the gate belongs
+	 * to the fact rather than to any one caller.
+	 */
+	answered: boolean;
+};
+/**
+ * The undo offer a successful archive stands, and what pressing Undo would take
+ * back.
+ *
+ * A plain record rather than a callback: every surface offers the same act -
+ * unarchive THIS conversation - so the press is the panel's own call to the same
+ * store action (`setSessionArchived(id, false, title)`), and the offer does not
+ * have to carry a closure from whichever surface happened to make it. That is what
+ * lets the offer be retired from outside the component that drew it.
+ */
+export type ArchiveUndoOffer = {
+	sessionId: string;
+	/** The name to quote, when the surface that offered it had one. */
+	title?: string;
+	/** The state the offer was taken from: what the press would take back. */
+	archived: boolean;
+	/**
+	 * The write stamp this offer was raised under, so the LANE can tell it apart from a
+	 * refusal by CURRENCY rather than by kind (agent review round 3, R3-1 = UX round 3, U7).
+	 * Without it the lane preferred the refusal unconditionally, and because `archiveFailure`
+	 * is only cleared for its own conversation, one refused archive meant every later
+	 * successful archive's offer was never drawn.
+	 */
+	at: number;
+};
+
+/**
+ * A conversation THIS WINDOW must not draw, and when it learned so.
+ *
+ * TWO WRITERS, ONE RULE. The first is a delete this window performed: dropping the
+ * row from `sessions` is not enough to delete anything, because every read this
+ * store issues REPLACES membership from its own answer, so a catalogue page whose
+ * request started before the delete - and there is nearly always one, because the
+ * page is read on mount, on focus, on visibility, on every catalogue revision and
+ * by the 30 s safety poll - lands afterwards and puts the row straight back,
+ * drawing a conversation the user permanently removed, clickable and re-deletable.
+ * The second is the conversation's own STREAM answering not-found while the view
+ * was still validating a switch onto it (`confirmSessionMissing`, which replaced
+ * `openSession`'s guard read): the conversation is gone, and a pane that rolled back to a "Start a chat"
+ * landing - or, after a reload, to a fresh draft bound to a dead id - explains
+ * nothing about why (QA round 1, Q1). Both writers mean the same thing to every
+ * reader: this id may not be drawn, it may not hydrate a transcript, and its pane
+ * lands on the missing-session notice.
+ *
+ * THE STAMP IS THE ARCHIVE FACT'S OWN CURRENCY (`answerSeq`, taken at the WRITE,
+ * compared against the sequence a read took when its REQUEST STARTED), and it is
+ * what orders the record against every read in flight.
+ *
+ * A TOMBSTONE IS SETTLED BY A RESURRECTION, NOT BY A PAGE (agent review round 2,
+ * R2-1). It used to be settled by any page that outranked it and did not carry the
+ * id - which said nothing about the search answers still live, so a cached answer
+ * asked before the delete drew the row again, deterministically, with no race. It
+ * now goes only when a page that outranks it CARRIES the id back (something
+ * recreated the conversation). A page that outranks it and does not carry the id
+ * is what the tombstone predicted and changes nothing.
+ *
+ * A SEARCH ANSWER NEVER SETTLES IT, for the same reason: search answers are cached
+ * per query for 30 s (`session-search.ts`), so one already in hand can name the id
+ * long after the delete. Every join filters against this record (`searchChats`,
+ * `ArchiveView.forgotten`), in the sidebar and in the command palette alike.
+ *
+ * The title is kept only so a surface that has to NAME the conversation after the
+ * row is gone can still do so - the pane's header is the one that needs it, and
+ * "Untitled chat" over a conversation the user just deleted names nothing. The
+ * not-found writer has no title to give: it never read one.
+ */
+export type ForgottenFact = {
+	/** The request sequence the delete took, which orders it against every read. */
+	at: number;
+	/** The conversation's name as the row held it, for a surface that must name it. */
+	title?: string;
+};
+/**
+ * An archive press the backend did not accept, and what to say about it.
+ *
+ * Carries the INTENT rather than the row, so a retry re-sends the same desired
+ * state the user asked for and nothing else: a retry that re-read the row would
+ * send whatever the catalogue says NOW, which is the value the failed press
+ * failed to change.
+ */
+export type ArchiveFailure = {
+	sessionId: string;
+	/**
+	 * The write stamp the refusal was raised under (see `ArchiveUndoOffer.at`): the lane draws
+	 * whichever of its two messages is NEWER, and this is what says which that is.
+	 */
+	at: number;
+	/** The desired state that was refused, not the state on screen. */
+	archived: boolean;
+	/**
+	 * The conversation's title as the row carried it at the press, so the sentence
+	 * names the row the user pressed rather than one a later catalogue read has
+	 * retitled or dropped.
 	 */
 	title: string;
 	/**
@@ -239,9 +416,9 @@ export const SEND_UNCONFIRMED_MESSAGE =
 /**
  * The read window's refusal, as a category.
  *
- * A send addressed to a session whose guard read (`sessions.get`) has not
- * answered is refused by the store, because commit-first puts the view on that
- * session one round trip before anything has confirmed it still exists. Like
+ * A send addressed to a session whose own stream has not yet delivered its
+ * snapshot is refused by the store, because the commit puts the view on that
+ * session before anything has confirmed it still exists. Like
  * `UNCONFIRMED_SEND_CODE`, this is a code rather than a string comparison on
  * the copy: the sentence below is expected to be reworded, and matching prose
  * would silently stop matching.
@@ -269,11 +446,16 @@ export const SESSION_UNVALIDATED_CODE = "session_unvalidated";
  * sent), what it means (this chat is not ready for messages yet), and what to
  * do. The "what to do" half is the sentence itself rather than the composer's
  * generic "Your message is still in the composer. Send it again.", which is
- * suppressed for this code (see above): a retry is refused by the read window
- * for as long as the window lasts, and this sentence cannot outlive it, so
- * instructing a retry would name the one action that cannot succeed yet. What is
- * true is that the send works once the wait ends - the read's own answer, the
- * session's live frame, or the read's own deadline.
+ * suppressed for this code (see above).
+ *
+ * WHO STILL READS IT, since the click stopped issuing a guard read (agent review
+ * round 2, R2-3). The chat pane no longer refuses a press inside the window: it
+ * HOLDS it until the conversation's stream answers (`chat-page`'s `send`). So
+ * this sentence is reached from two places only: `admitChatDraft`'s own refusal,
+ * for any caller that does not hold (the store keeps the rule for every door),
+ * and the pane's fallback when its stream gave up but carried no statement of
+ * its own - the stream's own lost-connection sentence is preferred there, so
+ * the composer and the transcript cannot disagree (design round 1, D3).
  */
 export const SESSION_UNVALIDATED_MESSAGE =
 	"This chat is not ready for messages yet, so the message was not sent. Sending works once it is ready.";
@@ -522,6 +704,24 @@ export const ANSWER_NOT_SENT_CODE = "answer_not_sent";
  * question of a code (is the retry the remedy), and this is that question's
  * answer, stated by the failure that owns it.
  *
+ * The eighth is `runtime_retiring`, and it is here for D13's reason rather than
+ * U2's: the remedy that owns this refusal is the SENTENCE, which the owner
+ * composes with its own condition attached — "The message was not admitted —
+ * send it again once the new build is up." The composer's unqualified "Send it
+ * again" directly under that clause names a press the drain refuses again, so it
+ * is the weaker of two instructions about one act. Withholding it costs nothing
+ * the operator needs: the text itself is back in the box (a provably-unadmitted
+ * refusal does not latch — see `isRefusedBeforeAdmission`), and the sentence that
+ * replaced the hint says when to press. INERT TODAY, like the term it reads:
+ * that refusal arrives as a plain string `detail` with no `code`, so nothing
+ * reaches this predicate until the backend half lands (`RUNTIME_RETIRING_CODE`
+ * carries the capture), and today's frame for that arm is the held state.
+ * The sibling `runtime_busy` is NOT on this
+ * list, and the difference is the same order of reasoning: its own sentence names
+ * no such condition, the app has already spent its internal repeats by the time
+ * the composer sees it, and a press then is exactly the remedy the owner asked
+ * for.
+ *
  * The guard's own code is the one with a history of being left out, and where the
  * hint is not merely redundant but self-contradicting: the operator's own remedy on
  * 2026-09-17 - drop the image that pushed the write over the threshold - lands
@@ -546,7 +746,8 @@ export function withholdsRetryHint(code: string | undefined): boolean {
 		code === UNCONFIRMED_SEND_CODE ||
 		code === STORE_OUT_OF_SPACE_CODE ||
 		code === STORE_UNAVAILABLE_CODE ||
-		code === ANSWER_NOT_SENT_CODE
+		code === ANSWER_NOT_SENT_CODE ||
+		code === RUNTIME_RETIRING_CODE
 	);
 }
 
@@ -725,27 +926,71 @@ export function panelIdentityOfView(
  * transcript (`true`). A second copy of this predicate is how the two consumers
  * come to disagree about one failure.
  *
- * 413 and 422 are raised before the prompt reaches the session (the reasoning is
- * spelled out on the un-latch below), so the message provably does not exist on
- * the owner. The read window's refusal is the third case and the same kind of
- * fact: it is raised before the draft is even touched, so nothing reached the
- * owner either. Every other failure is unknowable.
+ * FOUR FAMILIES, and each is a refusal raised before the prompt can reach the
+ * session, so the message provably does not exist on the owner.
+ *
+ * 1. 413 and 422, which are ours and are raised before `fetch` is even called
+ *    (the reasoning is spelled out on the un-latch below).
+ * 2. The read window's refusal, raised before the draft is touched.
+ * 3. A `runtime_busy` 503 - the owner telling a control call to come back. The
+ *    app already repeats that request under its own id (`messageWithBusyResend`),
+ *    so this arm decides only what a send looks like once those repeats are
+ *    spent, and the answer the owner gave is still "I did not take it".
+ * 4. A `runtime_retiring` 409 - the owner is leaving (a build handover, a
+ *    signalled stop, a `/move`) and refuses the turn as it latches. The
+ *    sentence the far side composes for it says "The message was not admitted".
+ *    INERT TODAY: that refusal arrives as a plain string `detail` with no
+ *    `code`, so this term cannot fire until the backend half lands (see
+ *    `RUNTIME_RETIRING_CODE` for the capture). It is kept because the answer is
+ *    already right for the day the code arrives, and because dropping it would
+ *    make that day a silent regression.
+ *
+ * WHAT MUST STAY ON THE OTHER SIDE, because the defect this class fixes has a
+ * mirror image that is worse: treated as unknowable, a provably-unadmitted
+ * refusal makes the app claim it cannot tell whether the message landed - and
+ * treated as admitted-nothing, a genuinely-unknown outcome makes a message the
+ * agent may be answering vanish and invites a duplicate send. So a bare 409
+ * (receipt conflict, an attachment ladder arm), a bare 503, a `runtime_unreachable`
+ * (the hop failure whose ack may have been the only thing lost), a transport
+ * failure and the unchanged-payload guard all stay UNKNOWABLE, and are keyed on
+ * the codes above rather than on a status or a `retryable` flag that other
+ * refusals share.
  */
 export function isRefusedBeforeAdmission(error: unknown): boolean {
-	return (
-		(error instanceof DesktopControlError &&
-			(error.status === 413 || error.status === 422)) ||
+	if (error instanceof DesktopControlError) {
 		/*
-		 * The read window's own refusal belongs in this answer, not beside it. It
-		 * is raised before anything is written to the draft and before the
-		 * transport is reached, so "nothing reached the owner" is exactly as true
-		 * of it as of a 413 - and the composer reads this one predicate to decide
-		 * whether the text goes back in the box (`false`) or stays out because the
-		 * outcome is unknowable (`SEND_HELD`). A second copy of that judgement at
-		 * the call site is how the two come to disagree about one refusal.
+		 * Ours, before `fetch`: 413 is the byte-budget guard in
+		 * `src/main/desktop-transport.ts` and 422 is the `safeParse` ahead of it, so
+		 * neither has a response to have been ambiguous about. 422 is also
+		 * reachable from the backend (an unknown command, a malformed body) and
+		 * still belongs here: a validation refusal is decided before the prompt is
+		 * admitted, so no work started either way.
 		 */
-		(error instanceof UserFacingError &&
-			error.code === SESSION_UNVALIDATED_CODE)
+		if (error.status === 413 || error.status === 422) return true;
+		/*
+		 * The two codes the OWNER answers with, per the note above. Read as codes and
+		 * not as a status or a flag: the same status carries refusals whose admission
+		 * is genuinely unknown (a conflicting receipt's 409), and `retryable` is not a
+		 * statement about admission in EITHER direction - the `runtime_busy` body the
+		 * app does act on carries `retryable: true` while establishing that nothing was
+		 * admitted, so it is neither a safe positive nor a safe negative
+		 * (`RUNTIME_RETIRING_CODE` carries the captured bodies).
+		 */
+		return (
+			error.code === RUNTIME_BUSY_CODE || error.code === RUNTIME_RETIRING_CODE
+		);
+	}
+	/*
+	 * The read window's own refusal belongs in this answer, not beside it. It is
+	 * raised before anything is written to the draft and before the transport is
+	 * reached, so "nothing reached the owner" is exactly as true of it as of a
+	 * 413 - and the composer reads this one predicate to decide whether the text
+	 * goes back in the box (`false`) or stays out because the outcome is unknowable
+	 * (`SEND_HELD`). A second copy of that judgement at the call site is how the
+	 * two come to disagree about one refusal.
+	 */
+	return (
+		error instanceof UserFacingError && error.code === SESSION_UNVALIDATED_CODE
 	);
 }
 
@@ -858,7 +1103,7 @@ export function refusedBeforeAdmissionAttachments(
 }
 
 /**
- * Whether a send addressed to `sessionId` is inside the guard read's window.
+ * Whether a send addressed to `sessionId` is inside the validation window.
  *
  * Extracted and exported for the same reason `draftIdentityFor` and
  * `panelIdentityFor` are: a rule that only exists inside one component is a rule
@@ -877,6 +1122,67 @@ export function isSessionUnvalidated(
 	sessionId: string | null | undefined,
 ): boolean {
 	return Boolean(sessionId) && validatingSessionId === sessionId;
+}
+
+/**
+ * How many times a send that met a BUSY owner is repeated before the refusal is
+ * handed to the composer, and the longest single wait between two attempts.
+ *
+ * `runtime_busy` (see `RUNTIME_BUSY_CODE`) is the daemon refusing a control call
+ * in ~3 s because the session's owner is alive and not answering - mid-turn in a
+ * long synchronous step, typically - and saying a resend with the same
+ * `request_id` is safe. A short-lived busy owner is the common case, so the app
+ * absorbs a few of those itself instead of showing the user a failure for
+ * something that clears on its own: three resends at the backend's own
+ * `retry_after_ms` (2 s today) is about 15 s of patience end to end, the same
+ * order as the 15 s the old control bind spent waiting before it gave up, and
+ * each attempt answers fast, so the whole loop never approaches the renderer's
+ * own 20 s per-request deadline. Past that the refusal reaches the composer, which
+ * hands the text BACK to the box rather than holding it against the transcript:
+ * each attempt failed before admission, so the code is one of
+ * `isRefusedBeforeAdmission`'s and the send does not latch. Holding it would
+ * describe the operator's own message as one whose fate cannot be known, which is
+ * the one thing this owner has just said it is not.
+ *
+ * The cap on one wait is there because the hint comes off the wire: a backend
+ * that asked for a minute must not park a send that long with nothing on screen
+ * but the pending echo.
+ */
+const BUSY_RESENDS = 3;
+const BUSY_RESEND_MAX_WAIT_MS = 5_000;
+const BUSY_RESEND_DEFAULT_WAIT_MS = 2_000;
+
+/**
+ * `sessions.message`, repeated on `runtime_busy` with the SAME request.
+ *
+ * The request object is reused whole - same `requestId`, same text, images and
+ * `mode` - because the backend's receipt is keyed on a hash of the whole body
+ * (`desktop_receipts.py`): a resend that differed in any field would be a 409,
+ * and one with a fresh id could deliver twice. Every other failure is thrown on
+ * the first attempt, untouched, so the classification in `admitChatDraft`'s
+ * catch sees exactly what it saw before this existed.
+ */
+async function messageWithBusyResend(
+	request: Extract<DesktopRequest, { op: "sessions.message" }>,
+): Promise<void> {
+	for (let attempt = 0; ; attempt++) {
+		try {
+			await desktopResult(request);
+			return;
+		} catch (error) {
+			if (
+				attempt >= BUSY_RESENDS ||
+				!(error instanceof DesktopControlError) ||
+				error.code !== RUNTIME_BUSY_CODE
+			)
+				throw error;
+			const wait = Math.min(
+				Math.max(0, error.retryAfterMs ?? BUSY_RESEND_DEFAULT_WAIT_MS),
+				BUSY_RESEND_MAX_WAIT_MS,
+			);
+			await new Promise((resolve) => setTimeout(resolve, wait));
+		}
+	}
 }
 
 /** Create and admission are intentionally separate receipts. A response lost
@@ -926,16 +1232,16 @@ export async function admitChatDraft(
 ): Promise<string | null> {
 	const store = useCanonicalSessionsStore.getState();
 	/*
-	 * THE READ WINDOW'S GATE, and it lives here rather than at the call site
-	 * because "a message may not be admitted against a session nothing has
+	 * THE VALIDATION WINDOW'S GATE, and it lives here rather than at the call
+	 * site because "a message may not be admitted against a session nothing has
 	 * confirmed yet" is a property of admission, not of one screen's send button.
 	 *
-	 * Commit-first (see `openSession`) puts the view on the target one round trip
-	 * before `sessions.get` has said whether it still exists, and
-	 * `validatingSessionId` is that window. A message admitted inside it would be
-	 * addressed to a session that may be gone - so it is refused here, before the
-	 * draft is latched and before the transport is reached, which is also what
-	 * makes the refusal a `false` at the composer rather than a held claim (see
+	 * The commit puts the view on the target before its stream has said whether
+	 * it still exists, and `validatingSessionId` is that window (closed by the
+	 * stream's first snapshot). A message admitted inside it would be addressed
+	 * to a session that may be gone - so it is refused here, before the draft is
+	 * latched and before the transport is reached, which is also what makes the
+	 * refusal a `false` at the composer rather than a held claim (see
 	 * `isRefusedBeforeAdmission`).
 	 *
 	 * `UserFacingError` rather than a bare `null`, deliberately. `null` is this
@@ -1135,7 +1441,7 @@ export async function admitChatDraft(
 			onEchoPainted,
 		);
 		inFlight = "sessions.message";
-		await desktopResult({
+		await messageWithBusyResend({
 			op: "sessions.message",
 			sessionId: id,
 			requestId: draft.admissionRequestId,
@@ -1158,7 +1464,11 @@ export async function admitChatDraft(
 		 * un-latch drift apart, and they must not: they are answers to the same
 		 * question. 413 and 422 are raised before the prompt reaches the session
 		 * (the reasoning is spelled out on the un-latch below), so the message
-		 * provably does not exist on the owner and the echo must go.
+		 * provably does not exist on the owner and the echo must go. So are the
+		 * owner's own refusals - 503 `runtime_busy` on today's wire, and 409
+		 * `runtime_retiring` once the backend relays its code - which is why the
+		 * incident's held draft was an echo kept over a message the backend had already
+		 * said it never took.
 		 *
 		 * Every OTHER failure keeps the echo painted, which looks wrong and is
 		 * not: the outcome is unknowable, the owner may have admitted the command
@@ -1234,6 +1544,32 @@ export async function admitChatDraft(
 			// of that identity check - so the one action that would make the message
 			// fit, removing a screenshot, was the one action forbidden. The only way
 			// out was discarding the message.
+			//
+			// AND THE SAME TRAP WAS REACHED BY TWO REFUSALS THAT ARE NOT OURS. The
+			// owner refuses a turn it will not serve - 503 `runtime_busy` when it is
+			// occupied, 409 `runtime_retiring` while its runtime is leaving - and
+			// both are raised BEFORE the prompt is admitted, so both are this same
+			// kind of fact. Neither was in the predicate, so a send that met one was
+			// latched and held: the composer said its fate was unknowable, the
+			// operator was offered "Restore message" for a message the backend had
+			// already said it never took, and the app's own repeats for `runtime_busy`
+			// (above) had already been spent by the time they saw it. Read as CODES
+			// and never as those statuses or a `retryable` flag: a bare 409 is also
+			// the receipt-conflict refusal, whose first attempt may have been admitted,
+			// and `retryable` is not a statement about admission either way - the
+			// `runtime_busy` body itself carries `retryable: true` while establishing
+			// that nothing was admitted (the capture is on `RUNTIME_RETIRING_CODE`).
+			// Of the two codes this change adds, `runtime_busy` is live on today's
+			// wire and `runtime_retiring` is not: that refusal arrives as a plain
+			// string detail with no code, so its term here is inert until the backend
+			// half lands - see `RUNTIME_RETIRING_CODE`.
+			// `isRefusedBeforeAdmission` carries the full boundary.
+			//
+			// THE LATCH IS WHAT MAKES THE DIFFERENCE VISIBLE, which is why this is
+			// the line the two codes had to join: it is the flag the composer gates
+			// `heldText` on, so while it is set the text cannot go back in the box
+			// and every resend must be byte-identical. Clearing it is what hands the
+			// operator their own message back.
 			...(refusedBeforeAdmission
 				? // Nothing is held on this arm (the flag's own contract above says so), so the
 					// claim's verdict goes with the claim. Left behind, it would describe a
@@ -1271,6 +1607,80 @@ export async function admitChatDraft(
 			: error;
 	}
 }
+/**
+ * One press of a conversation, as the read receipt's re-arm reads it.
+ *
+ * A RECORD OF THE PRESS, not a flag that a receipt is wanted: the reader has to
+ * answer two questions with it - WHICH conversation the operator just opened,
+ * and WHETHER it is a press it has already honoured - and a boolean answers
+ * neither (`readAckRearm` on the state states the whole rule).
+ */
+export type ReadAckRearm = { sessionId: string; revision: number };
+
+/**
+ * What the read receipt is doing, as the ROW can draw it.
+ *
+ * Three states rather than two because the reader has to be able to tell two of
+ * them apart, and the reason the receipt exists is that they were the same
+ * screen: `pending` is the app retrying now (a contention budget, the ladder's
+ * flat window), `offscreen` is the one state a press cannot repair (the
+ * completion's result is not on screen, and the anchor hit test - the
+ * definition of shown - refuses until it is), and `unsettled` is the ladder's
+ * own ceiling, where the app is no longer retrying promptly. `unsettled` and
+ * `pending` are the pair an operator could not distinguish before: both kept the
+ * mark and said nothing, one of them while retrying twice a second and the other
+ * once a minute (UX round 1, U1).
+ */
+export type ReadAckNoticeKind = "pending" | "offscreen" | "unsettled";
+
+/**
+ * The read receipt's own observable state for one conversation.
+ *
+ * THE RECEIPT'S SECOND JOB. This row's mark is drawn from the backend's state,
+ * and until this change the only trace of an acknowledgement that had NOT landed
+ * was a `console.warn` - a developer channel - so a receipt the store had
+ * refused twice a second and one it had given up retrying looked identical to a
+ * row nobody had ever clicked (the operator's own report, and UX round 1's U1:
+ * the mark simply stayed). This is the fact the panel draws instead.
+ *
+ * WHY ONE RECORD AND NOT A MAP. `useCompletionView` runs one loop per open
+ * conversation, so there is one conversation a receipt can be waiting on at a
+ * time; a second loop replaces the first's statement exactly as a second press
+ * replaces the first's stamp (`readAckRearm` above is one record for the same
+ * reason). A row that is not this conversation's renders nothing from it.
+ *
+ * THE LIFETIME IS THE LOOP'S, and the loop clears it on every path out -
+ * settled, superseded, dependency change, unmount - because the statement is
+ * "the app is trying for this completion" and it stops being true when the
+ * attempt no longer exists. This is deliberately the opposite of
+ * `readAckRearm`'s "not a timer" rule rather than an exception to it: that rule
+ * keeps a GESTURE from being invented, and this record never claims one - it
+ * reports what the app did next, which is why the toast (the reader-facing arm)
+ * is fired once per budget instead of once per render, and why nothing here is
+ * persisted either (`partialize` names its keys).
+ */
+export type ReadAckNotice = {
+	sessionId: string;
+	kind: ReadAckNoticeKind;
+	/**
+	 * Advances on every CHANGE of the pair above, so a reader can tell a new
+	 * statement from the same statement seen again - the role `revision` plays for
+	 * the press. The panel's toast is keyed on it, which is what keeps the give-up
+	 * arm to one announcement per budget rather than one per render.
+	 */
+	revision: number;
+	/**
+	 * The refusal, for `unsettled` only, exactly as the transport raised it - a
+	 * FACT rather than a sentence: the panel CLASSIFIES it and composes this app's
+	 * own sentence for the class at the one call site that says sentences
+	 * (`features/chat/read-ack-notice.ts`) - the only place here that turns a
+	 * desktop failure into words, and the only one that knows a store refusal from a
+	 * refusal the store never saw. Absent for the two states that are not about a
+	 * refusal.
+	 */
+	reason?: unknown;
+};
+
 type CanonicalSessionsState = {
 	sessions: CanonicalSessionRow[];
 	activeSessionId: string | null;
@@ -1278,60 +1688,37 @@ type CanonicalSessionsState = {
 	drafts: Record<string, ChatDraft>;
 	sessionByAgent: Record<string, string>;
 	/**
-	 * The session whose guard read (`sessions.get`) has not answered yet.
+	 * The session the view has moved onto that its own stream has not yet
+	 * confirmed exists.
 	 *
-	 * This is the one job the removed `pendingSessionId` still had that the view
-	 * needs: it is what refuses a send addressed to a session the app has NOT yet
-	 * confirmed exists. The read window used to be gated that way, and commit-first
-	 * moved the read behind the commit without moving the target's validation, so
-	 * the guarantee has to survive the reordering.
+	 * A send addressed to it is refused (`SESSION_UNVALIDATED_MESSAGE`, the
+	 * composer keeps the text) rather than issued at a session that may be gone.
+	 * The window used to be closed by a `sessions.get` guard read issued at the
+	 * click; that read is gone from the click path (see `openSession`), because
+	 * it was a second facade acquire racing the stream for the same bridge
+	 * locks and it held the composer shut for 2-20 s behind a busy owner.
 	 *
-	 * TWO CLOSING BOUNDS, and both are the store's to keep. The read's own answer
-	 * is the first (see `openSession`), and a read that never answers still closes
-	 * the window: every desktop control runs under `withDeadline` at its op's own
-	 * derived budget (`desktopRequestTimeoutMs`; see `desktop-api`), and that
-	 * rejection
-	 * takes the same rollback path as any other failed read. The second bound is a
-	 * live frame from the session's own stream - proof it exists - and
-	 * `confirmSessionLive` is how the panel reports it. It is kept because it is
-	 * the EARLIER bound: on a read that is merely slow it opens the gate on the
-	 * session's own proof instead of at the deadline, which is the wait the
-	 * deleted pending banner used to give an escape from (UX round 2, U8).
+	 * ITS BOUNDS NOW. The stream's first `snapshot` frame closes it -
+	 * `confirmSessionLive`, reported by `chat-page` - and that is the same frame
+	 * that paints the messages, so the transcript and a working composer arrive
+	 * in one commit. A 404 on the subscription ends it the other way
+	 * (`confirmSessionMissing`): the id is tombstoned and the pane lands on the
+	 * missing-session notice, whose composer refuses on `conversationUnavailable`. Any other terminal stream failure
+	 * leaves it open, which is right: the pane states `unavailable` and its Retry,
+	 * and a send at a conversation nothing has proven reachable should not be
+	 * issued. Switching away (`openSession`, `stageDraft`, `setActiveSession`)
+	 * clears or replaces it.
 	 *
 	 * A window is opened only for a switch that MOVES the view: `openSession`
 	 * returns early when the target is already active and no draft is staged. The
 	 * one shape that escapes it - the active row clicked while a draft IS staged,
 	 * a real move because it leaves the draft - opens a window on a session the
-	 * panel is already showing, and there the live-frame bound cannot fire: the
-	 * panel is keyed on the session once its draft learns the id
-	 * (`panelIdentityFor`), so the stream effect's `[sessionId, canonical.status]`
-	 * deps are unchanged across that click and a frame that already arrived is
-	 * never re-reported. That window is bounded by the read alone - its answer, or
-	 * its own `withDeadline` budget when it never answers.
-	 *
-	 * No banner, spinner or Escape handler sits on this path any more: re-basing
-	 * the old "Opening chat…/Cancel" chrome on this field would paint that banner
-	 * over a panel that has already switched - the wait it named is the panel's
-	 * own hydration now - and the sidebar row's selected state is the
-	 * acknowledgement. What this field DOES own on screen is the bounded sentence
-	 * a refused send shows in the composer's own alert row (see
-	 * `SESSION_UNVALIDATED_MESSAGE`), which lives exactly as long as the window
-	 * does.
+	 * panel is already showing, where the stream effect's `[sessionId,
+	 * canonical.status]` deps do not change; `chat-page` therefore also reports
+	 * a stream that is ALREADY live when the window opens (its effect reads this
+	 * field too), so that shape is closed in the same commit.
 	 */
 	validatingSessionId: string | null;
-	/**
-	 * A failure of the user's own NAVIGATION, held apart from `error`, which is the
-	 * CATALOGUE's health.
-	 *
-	 * While both were one field the rollback's failure sentence was invisible: a
-	 * failed switch rolls `activeSessionId` back, which re-fires the page's
-	 * `fetchSessions` effect, and `fetchSessions` clears `error` when it starts
-	 * (`:553`). Measured, the sentence was written and erased 4.5-8.1 ms later, and
-	 * 0 of ~1,100 sampled frames contained it - so the switch's own safety net
-	 * reported a failure to nobody. A five-second poll may clear the catalogue's
-	 * health; only the user can clear this, by navigating again.
-	 */
-	navigationError: string | null;
 	/**
 	 * A pin press that did not survive, held until the user presses again.
 	 *
@@ -1433,11 +1820,140 @@ type CanonicalSessionsState = {
 	 * exactly as it did before it existed.
 	 */
 	statusUnavailable: string[];
+	/**
+	 * One counter, shared by every read this store issues, that orders answers
+	 * against writes (see `archiveFacts`).
+	 *
+	 * A MONOTONIC STAMP RATHER THAN A CLOCK, for the reason `refreshGeneration`
+	 * above is a stamp: a clock is comparable across two writers only if they share
+	 * one, and the press and the request are already in one process, so a counter
+	 * says exactly what is needed - "this read was asked about after that write" -
+	 * with no skew to reason about.
+	 */
 	loading: boolean;
 	truncated: boolean;
 	error: string | null;
 	cwd: string;
 	setCwd: (cwd: string) => void;
+	/**
+	 * What THIS CLIENT knows about one conversation's archive state, and WHEN it
+	 * learned it, keyed by session id.
+	 *
+	 * A fact exists because the write is OPTIMISTIC: the row leaves the list the
+	 * moment the user presses, and every read that follows - a search answer served
+	 * from the cache, a catalogue page whose request started before the press - was
+	 * asked before the backend held the new state. The `at` stamp is the currency
+	 * that orders them: an answer that SPEAKS about the id (`applySearchAnswer`, or
+	 * a newer page) supersedes a fact older than the answer's own request, while a
+	 * fact written after that request survives it. Without the stamp the fact would
+	 * outrank every later answer, so an unarchive made in the terminal would leave
+	 * the conversation hidden here forever - the two-way claim this work exists for.
+	 *
+	 * The stamp is taken when the REQUEST STARTS, never when its answer lands:
+	 * comparing arrival times would let an answer that predates a press supersede
+	 * it, which is the same defect on a shorter clock.
+	 */
+	archiveFacts: Record<string, ArchiveFact>;
+	/**
+	 * The conversations THIS WINDOW must not draw, keyed by session id (see
+	 * `ForgottenFact`): the ones it permanently deleted, and the ones a read proved
+	 * are gone. Written by `forgetSession` (from the delete) and by
+	 * `confirmSessionMissing` when a switch's own stream answers not-found.
+	 *
+	 * Read by three surfaces, all of them for the same reason - a delete must not be
+	 * undone by an answer that predates it: the catalogue page filters its rows
+	 * through it, the search joins (the sidebar's and the palette's) drop the hits
+	 * that name a forgotten id (a cached answer can outlive the delete by its 30 s
+	 * `staleTime`), and the pane reads it to land on the existing missing-session
+	 * notice instead of a writable draft bound to an id that is gone.
+	 *
+	 * SETTLED BY A RESURRECTION AND NOTHING ELSE: a page that outranks the record and
+	 * carries the id back (agent review round 2, R2-1).
+	 */
+	forgotten: Record<string, ForgottenFact>;
+	/**
+	 * The last archive press the backend did not accept, or null.
+	 *
+	 * Rendered in the panel's own register - at the panel's root, in the notices cluster
+	 * above its regions - rather than in a toast
+	 * (the pin's own refusal went the same way): the sentence belongs where the
+	 * control is, and the control is on the row the user just pressed.
+	 */
+	archiveFailure: ArchiveFailure | null;
+	/**
+	 * The undo offer a successful archive stands, or null.
+	 *
+	 * IN THE STORE, AND RENDERED IN THE PANEL, rather than in a toast, and the
+	 * reason is measurable rather than aesthetic (design round 2, D12). The offer is
+	 * a box with the word Undo in it, and the toast lane puts it over the composer:
+	 * measured in both palettes, the toast occupied x 1001..1360.5, y 789..842.5
+	 * while the Send control sits at x 1307..1339, y 803..835 - the offer's own
+	 * Undo box lands exactly where Send was, for the offer's whole life (up to
+	 * 15 s). Two constraints cannot both be met by a toast: an offer must NEVER
+	 * overlap the composer's interactive controls, and it must sit on the surface
+	 * that performed the action - and the archive is performed from the sidebar
+	 * (a row's control, the header's menu, a typed command), never from the
+	 * composer. A sidebar register satisfies both by construction: it is inside the
+	 * panel, so it cannot reach the composer, and it is drawn above both regions - the
+	 * one place every assembly mode renders.
+	 *
+	 * The RETIREMENT RULE is unchanged and lives with the offer
+	 * (`features/chat/archive-undo.ts`): the offer stands while the conversation
+	 * still holds the state the offer was taken from, and it is retired the moment
+	 * this client knows it does not.
+	 */
+	archiveUndo: ArchiveUndoOffer | null;
+	/**
+	 * Record - or clear - the undo offer a successful archive stands.
+	 *
+	 * The offer's own module owns WHEN it is retired; this is only the write.
+	 */
+	setArchiveUndo: (offer: ArchiveUndoOffer | null) => void;
+	/**
+	 * Clear the refusal once its message's turn in the panel's lane is over.
+	 *
+	 * THE WRITE ONLY, matching `setArchiveUndo` above rather than adding a third policy: the
+	 * panel owns the drawing decision (which message is the newest word, and so when an older
+	 * one has been superseded), and U10 is what happens when the VALUE outlives its message -
+	 * the refusal was re-printed every time a newer message retired, because the clock cleared
+	 * the drawing and not the value. Nothing else reads this field: what reverts the row is the
+	 * fact `setSessionArchived` already recorded, and what announces it is the control's own
+	 * flip, so clearing the sentence takes no affordance with it.
+	 */
+	clearArchiveFailure: () => void;
+	/**
+	 * The conversation a danger dialog is asking about, or null.
+	 *
+	 * In the STORE rather than in the component that draws the dialog, because two
+	 * surfaces ask the same question and must reach ONE dialog: the header's session
+	 * menu, and a typed `/delete` (which is dispatched from the composer, a
+	 * different subtree). A second dialog would be a second confirmation flow to
+	 * keep in step with the first.
+	 */
+	deleteCandidate: string | null;
+	/**
+	 * Archive or unarchive one conversation: the optimistic write, its currency
+	 * stamp, and the revert-and-report path when the backend refuses.
+	 *
+	 * `title` is only what a failure SENTENCE needs to name the row the user
+	 * pressed, since a conversation this client does not list has no row to read a
+	 * title off.
+	 */
+	setSessionArchived: (
+		sessionId: string,
+		archived: boolean,
+		title?: string,
+	) => Promise<boolean>;
+	/**
+	 * Delete ONE conversation, permanently. Never optimistic: the row is dropped
+	 * only after the backend confirms, and the drop is recorded as a TOMBSTONE
+	 * (`forgotten`) rather than as a plain removal from the array, because an answer
+	 * whose request started before the delete would otherwise restore the row.
+	 */
+	deleteSession: (
+		sessionId: string,
+	) => Promise<{ ok: true } | { ok: false; detail: string; guarded: boolean }>;
+	requestSessionDelete: (sessionId: string | null) => void;
 	fetchSessions: (limit?: number) => Promise<void>;
 	createSession: (
 		cwd: string,
@@ -1448,16 +1964,104 @@ type CanonicalSessionsState = {
 	) => Promise<string | null>;
 	setActiveSession: (sessionId: string | null) => void;
 	/**
-	 * Close the read window because proof of the session's existence arrived.
+	 * Close the validation window because the session's own stream proved it
+	 * exists (its `snapshot` landed).
 	 *
-	 * See `validatingSessionId` for why this is the window's second bound: the
-	 * read's answer closes it too, and a read that never answers is closed by its
-	 * own deadline, but on a slow read the frame is what keeps the refusal to
-	 * the stream's latency instead of the deadline. Guarded on the id, so a
-	 * snapshot belonging to an abandoned target cannot vouch for the session the
-	 * user is actually on.
+	 * The window's only positive bound now - see `validatingSessionId`. Guarded
+	 * on the id, so a snapshot belonging to an abandoned target cannot vouch for
+	 * the session the user is actually on.
 	 */
 	confirmSessionLive: (sessionId: string | null) => void;
+	/**
+	 * The validation window's NEGATIVE bound: the session's own stream answered
+	 * 404, so the conversation is gone. Tombstones it (`forgetSession`) and closes
+	 * the window, leaving the view on the target so the missing-session notice
+	 * explains it - the arm `openSession`'s guard read used to take on its own
+	 * not-found. Guarded on the window's id for the same reason as
+	 * `confirmSessionLive`: only a switch still waiting on its proof may be told
+	 * the answer, so a 404 on some later reconnect is left to the stream's own
+	 * `missing` state rather than rewriting the catalogue.
+	 */
+	confirmSessionMissing: (sessionId: string | null) => void;
+	/**
+	 * The operator's own gesture: "I am looking at this conversation now".
+	 *
+	 * WHY IT IS A GESTURE AND NOT A TIMER. Nothing about a mount, a focus change
+	 * or the passage of time says a person is reading a result, and the receipt
+	 * `useCompletionView` sends is a claim that they are - so the only thing that
+	 * can re-arm a receipt the retry ladder had pushed out is an act with the
+	 * operator behind it. Every call to `openSession` stamps it, which is exactly
+	 * the act the reported defect is about: "click into it = mark it read".
+	 *
+	 * WHICH OPENS STAMP IT, named rather than implied (agent review round 1, N2;
+	 * UX review round 1, N1). A press is the common case and not the only one: the
+	 * sidebar's row selection, the palette's selection and a scheduled row's "open
+	 * in chat" all reach `openSession`, and so does the route-to-store reconcile
+	 * behind a deep link, a Back, or any external `/chat/<id>` write
+	 * (`chat-page.tsx`'s route effect, `open-conversation.ts`,
+	 * `schedules-page.tsx`). Saying so here rather than leaving the narrower claim
+	 * in place is the honest form of the rule, because what makes all of them
+	 * admissible is what the stamp CANNOT do: it releases a deferral and resets a
+	 * budget, and it touches no attempt gate - readiness, selection, focus and the
+	 * rendered-anchor hit test are all still asked at attempt time. It cannot
+	 * receipt a result nobody was shown, and every one of those paths IS this app
+	 * showing the operator that conversation.
+	 *
+	 * ONE RECORD, not a log, for the reason `pinFailure` is one: there is one row
+	 * under the pointer, and a second press replaces the first rather than
+	 * queueing behind it. The `revision` is what makes two presses of the SAME row
+	 * two events rather than one truthy value.
+	 *
+	 * Deliberately NOT persisted (`partialize` names its keys): a press that
+	 * happened before a reload was honoured by the process that saw it, and a
+	 * restored stamp would be a gesture this window never witnessed.
+	 */
+	readAckRearm: ReadAckRearm | null;
+	/**
+	 * Stamp one press of a conversation for the read receipt's re-arm.
+	 *
+	 * Called by `openSession` on EVERY open, including the open of the row the view
+	 * is already on (the field above names the callers, since a press is not the
+	 * only one). That re-open is a no-op for the switch itself (see the action's own
+	 * comment) and the one shape the reported defect turns on: the operator's remedy
+	 * for a mark that did not clear is to click the row again, and an acknowledgement
+	 * whose retry had been pushed out by the shared ladder is what that click has to
+	 * release.
+	 */
+	rearmReadAck: (sessionId: string) => void;
+	/**
+	 * What the read receipt is doing for one conversation, or nothing.
+	 *
+	 * Written by `useCompletionView` while it has a loop for that conversation, and
+	 * read by the sidebar's rows - the surface the mark is on. See `ReadAckNotice`
+	 * for the states, the lifetime rule and why there is exactly one record.
+	 */
+	readAckNotice: ReadAckNotice | null;
+	/**
+	 * Publish the receipt's own state for one conversation.
+	 *
+	 * IDENTITY-PRESERVING on an unchanged `(sessionId, kind)` pair, because the
+	 * caller is a 500 ms poll: a notice that is published on every tick would
+	 * re-render every row of the panel twice a second, and an operator who has left
+	 * the receipt deferred wants exactly nothing to happen. A CHANGED pair (a new
+	 * kind, or another conversation) advances `revision`, which is what a reader
+	 * compares to tell a new statement from the same one seen again - the role
+	 * `rearmReadAck`'s own revision plays for the press.
+	 */
+	publishReadAckNotice: (
+		sessionId: string,
+		kind: ReadAckNoticeKind,
+		reason?: unknown,
+	) => void;
+	/**
+	 * Withdraw the receipt's state for one conversation, if it is that one's.
+	 *
+	 * Guarded on the id rather than clearing unconditionally, because the writer is
+	 * a loop that outlives renders and can be torn down after the view has moved
+	 * on: an unconditional clear would let the receipt of an abandoned conversation
+	 * delete the statement of the one the operator is looking at now.
+	 */
+	clearReadAckNotice: (sessionId: string) => void;
 	/**
 	 * Merge one machine-wide `attention` frame into its row.
 	 *
@@ -1743,6 +2347,23 @@ const mergeAttentionInto = (
 };
 
 /**
+ * The receipt's re-arm stamp, advanced by one press of a conversation.
+ *
+ * A COUNTER rather than a timestamp, for the same reason `answerSeq` is one: the
+ * reader asks "is this a press I have NOT already honoured?", and `Date.now()`
+ * answers only when two presses land in different milliseconds - which two
+ * clicks of the same row, or a click and the route effect behind it, do not
+ * promise. A revision that only ever moves forward answers it exactly.
+ */
+const rearmedReadAck = (
+	current: ReadAckRearm | null,
+	sessionId: string,
+): ReadAckRearm => ({
+	sessionId,
+	revision: (current?.revision ?? 0) + 1,
+});
+
+/**
  * The stamp the merged row carries, as a PAIR or not at all.
  *
  * `status_epoch` names the process and `status_revision` is that process's counter
@@ -1828,6 +2449,116 @@ function heldStatusOver(
 		status_epoch: current?.status_epoch,
 	};
 }
+/**
+ * The stamped records a read newer than `floor` still owns.
+ *
+ * Used for the ARCHIVE facts (`archiveFacts`), where it is the whole rule: this app
+ * asks the list route for the archived rows too (`include_archived: true`), so a
+ * page speaks about the archived set as a whole and a fact older than its request
+ * is settled by it - absence from that page means "unarchived or gone" rather than
+ * "not mentioned".
+ *
+ * It is deliberately NOT the rule for the delete tombstones any more, and the
+ * reason is the same one `archiveFacts` does not have: the archive is a value the
+ * page always speaks about, while a tombstone is an id the page can only speak
+ * about by CARRYING it. A page that outranks a tombstone and does not carry the id
+ * is exactly what the tombstone predicts, so it settles nothing (agent review round
+ * 2, R2-1 - settling it there let a cached search answer put the deleted
+ * conversation back). The tombstones are settled at the call site, by a
+ * resurrection: a page that outranks the record AND carries the id.
+ *
+ * Returns the SAME object when nothing is dropped, so a page that settles nothing
+ * does not re-render every row it carried.
+ */
+function factsNewerThan<T extends { at: number }>(
+	facts: Record<string, T>,
+	floor: number,
+): Record<string, T> {
+	const kept: Record<string, T> = {};
+	let dropped = false;
+	for (const [id, fact] of Object.entries(facts)) {
+		if (fact.at < floor) {
+			dropped = true;
+			continue;
+		}
+		kept[id] = fact;
+	}
+	return dropped ? kept : facts;
+}
+
+/**
+ * The state a delete leaves behind: the row is gone, anything this client
+ * remembered about it is gone, and a TOMBSTONE is left in its place.
+ *
+ * The archive fact goes with the row because both describe a conversation the
+ * backend no longer holds - a surviving fact would resurrect the row's state on
+ * the next answer that mentioned the id (a search hit, say), which is the one
+ * thing the frozen contract says a delete must not do.
+ *
+ * The tombstone is what makes the delete STICK against the reads in flight
+ * (`ForgottenFact`): absence from the array is not a claim, because the next page
+ * replaces membership wholesale.
+ *
+ * `activeSessionId` IS DELIBERATELY LEFT ALONE. Deleting the conversation you
+ * have open must land the pane on its EXISTING missing-session state rather than
+ * on a blank one, and that state is reached by the pane asking about an id the
+ * daemon no longer has - which is why the tombstone is also what the pane reads
+ * to know the answer before the wire gives it (`chat-content.tsx`). Clearing the
+ * selection here instead would replace it with a pane that explains nothing,
+ * which is the second missing-session state this change is told not to invent.
+ */
+function forgetSession<T extends SessionForgetState>(
+	state: T,
+	sessionId: string,
+): Partial<T> {
+	const facts = { ...state.archiveFacts };
+	delete facts[sessionId];
+	/*
+	 * Stamped like a press, AND ADVANCING THE COUNTER, which is one decision rather
+	 * than two: a write takes the sequence the next request will take, so a page
+	 * asked for afterwards carries a greater value and OUTRANKS the tombstone, while
+	 * a page asked for before it cannot. Outranking is not settling: under the rule
+	 * this record's own docstring states (design round 2, R2-1) a page settles a
+	 * tombstone only by CARRYING the id back, so what the advance buys is the
+	 * RESURRECTION arm - a page that really does bring the conversation back is
+	 * newer than the delete only if the delete advanced past it.
+	 *
+	 * THIS PARAGRAPH USED TO SAY the advance existed so the tombstone would not
+	 * "outlive the very answer that proves the conversation is gone", citing three
+	 * suite failures. That was the pre-R2-1 rule, and it is the opposite of what
+	 * this code now wants: a tombstone that outlives a page which does not carry the
+	 * id is exactly the protection a cached search answer needs (agent review round
+	 * 3, R3-1). Stamping without advancing still leaves the next read at the same
+	 * value (`fact.at < floor` is false), which is why the advance stays.
+	 */
+	const at = state.answerSeq + 1;
+	return {
+		sessions: state.sessions.filter((row) => row.session_id !== sessionId),
+		archiveFacts: facts,
+		answerSeq: at,
+		forgotten: {
+			...state.forgotten,
+			[sessionId]: {
+				at,
+				title:
+					state.sessions.find((row) => row.session_id === sessionId)?.title ??
+					undefined,
+			},
+		},
+		deleteCandidate:
+			state.deleteCandidate === sessionId ? null : state.deleteCandidate,
+	} as Partial<T>;
+}
+
+type SessionForgetState = {
+	sessions: CanonicalSessionRow[];
+	archiveFacts: Record<string, ArchiveFact>;
+	forgotten: Record<string, ForgottenFact>;
+	/** The stamp counter the tombstone's `at` is taken from (see `answerSeq`). */
+	answerSeq: number;
+	deleteCandidate: string | null;
+};
+
 /** Full list responses replace membership; a disappeared row is not immortal.
  * Stream updates use upsert separately and never imply a complete inventory. */
 export function replaceSessionRows(
@@ -1844,8 +2575,59 @@ export function replaceSessionRows(
 		).values(),
 	];
 }
-let navigationGeneration = 0;
 let refreshGeneration = 0;
+/*
+ * Mount, transition, poll and focus triggers can overlap while every caller reads
+ * the same catalogue. Serialize those reads to preserve the store's global
+ * generation ordering. Calls in flight invalidate that answer and collapse into
+ * one trailing read using the most recently requested page limit.
+ */
+let sessionRefresh: {
+	limit: number;
+	invalidated: boolean;
+	promise: Promise<unknown>;
+} | null = null;
+
+function coalesceSessionCatalogueRequest<T>(
+	limit: number,
+	request: (limit: number) => Promise<T>,
+): Promise<T> {
+	const active = sessionRefresh;
+	if (active) {
+		active.invalidated = true;
+		active.limit = limit;
+		return active.promise as Promise<T>;
+	}
+
+	const flight = {
+		limit,
+		invalidated: false,
+		promise: null as unknown as Promise<T>,
+	};
+	sessionRefresh = flight;
+	flight.promise = (async () => {
+		try {
+			while (true) {
+				flight.invalidated = false;
+				let answer: T;
+				try {
+					answer = await request(flight.limit);
+				} catch (error) {
+					if (flight.invalidated) continue;
+					throw error;
+				}
+				if (flight.invalidated) continue;
+				// Clear synchronously with the final validity check so an invalidation
+				// cannot land after the loop decides to stop and go unserved.
+				if (sessionRefresh === flight) sessionRefresh = null;
+				return answer;
+			}
+		} finally {
+			if (sessionRefresh === flight) sessionRefresh = null;
+		}
+	})();
+	return flight.promise;
+}
 
 /**
  * What main asked THIS window to open, resolved through the shared reader.
@@ -1940,36 +2722,81 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			drafts: {},
 			sessionByAgent: {},
 			validatingSessionId: null,
-			navigationError: null,
 			pinFailure: null,
 			pinFacts: {},
 			answerSeq: 0,
+			// Null rather than a stamp at zero: no press has been made in this window,
+			// and the receipt's re-arm reads "no press" as exactly that.
+			readAckRearm: null,
+			// Null rather than a kind at zero, for the same reason: no loop has said
+			// anything about a receipt in this window, and the rows read absence as
+			// "nothing to say" rather than as a state they should draw.
+			readAckNotice: null,
 			loading: false,
 			truncated: false,
 			statusUnavailable: [],
+			archiveFacts: {},
+			forgotten: {},
+			archiveFailure: null,
+			archiveUndo: null,
+			deleteCandidate: null,
 			error: null,
 			cwd: "~",
 			setCwd: (cwd) => set({ cwd }),
 			fetchSessions: async (limit = 500) => {
 				const generation = ++refreshGeneration;
 				/*
-				 * The page is an answer too, so it carries the same currency: taken when the
-				 * REQUEST starts, so a page already in flight across a press cannot supersede
-				 * that press (`PinFact`).
+				 * The page is an answer too, so it carries the same currency for BOTH
+				 * writers: taken when the REQUEST starts, so a page already in flight
+				 * across a press cannot supersede that press - the pin's (`PinFact`) or
+				 * the archive's (`archiveFacts`).
 				 */
 				const answerAt = get().answerSeq + 1;
 				set({ answerSeq: answerAt });
 				set({ loading: true, error: null });
 				try {
-					const result = await desktopResult<{
-						sessions: BackendSessionRow[];
-						truncated?: boolean;
-						/**
-						 * The reads the daemon could not answer, additive and optional. A
-						 * daemon that sends nothing here is one that answered all of them.
-						 */
-						degraded?: string[];
-					}>({ op: "sessions.list", limit });
+					const result = await coalesceSessionCatalogueRequest(
+						limit,
+						(pageLimit) =>
+							desktopResult<{
+								sessions: BackendSessionRow[];
+								truncated?: boolean;
+								/**
+								 * The reads the daemon could not answer, additive and optional. A
+								 * daemon that sends nothing here is one that answered all of them.
+								 */
+								degraded?: string[];
+							}>({
+								op: "sessions.list",
+								limit: pageLimit,
+								/*
+								 * THE ARCHIVED ROWS ARE ASKED FOR AND THEN HIDDEN HERE, rather than left
+								 * out by the route. The default `false` is a promise to clients that
+								 * predate archiving - they must keep the list they had, and this app
+								 * asks for them, so it must be the one to decide what is drawn:
+								 *
+								 *   - `visibleRows` partitions them out of EVERY default list, so the
+								 *     surface is the one the brief asks for (Active, Previous and the
+								 *     flat list all exclude them);
+								 *   - the open conversation's own state is known after a reload even
+								 *     when the conversation was archived elsewhere (from the terminal, or
+								 *     from another window) - without this, a restored archived session
+								 *     would look ordinary and offer no unarchive at all, which is
+								 *     precisely the "archived with no way back" trap the design record
+								 *     names in Claude desktop's behaviour;
+								 *   - and a row found by the "Include archived" search can be restored
+								 *     from its own control even when the hit's own page never carried it.
+								 *
+								 * The cost this carries, stated rather than discovered: archived rows
+								 * compete for the page's 500-row cap like any other row, so a store with
+								 * more than 500 conversations where most are archived can push live rows
+								 * off the page. The route cannot answer both questions at once today,
+								 * and the alternative - hiding the archived set from this client
+								 * entirely - fails the two bullets above.
+								 */
+								include_archived: true,
+							}),
+					);
 					if (generation !== refreshGeneration) return;
 					const rows = result.sessions.map(({ id, name, mtime, ...rest }) => ({
 						...rest,
@@ -1984,16 +2811,11 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						 *
 						 * It used to keep the facts for conversations the page could not
 						 * carry, because on a paged client that was the only way a pin made
-						 * here stayed visible for a conversation past the page: the page was
-						 * silent about them, so silence had to mean "still pinned". The list
+						 * here stayed visible for a conversation past the page. The list
 						 * route now APPENDS every pinned conversation below the newest
-						 * `limit` rows (the sibling backend increment, `feat/desktop-session-pins`),
-						 * so the page speaks for the pinned set as a whole - and under that
-						 * contract silence means the opposite: a conversation is absent from
-						 * a newer page because it is unpinned or gone. Keeping the fact then
-						 * RESURRECTS it: a conversation whose directory has been deleted
-						 * would go on drawing a row from this client's memory while the
-						 * backend answers 200 without it (UX round 5, U15's follow-up).
+						 * `limit` rows, so the page speaks for the pinned set as a whole -
+						 * and under that contract silence means the opposite: a conversation
+						 * is absent from a newer page because it is unpinned or gone.
 						 *
 						 * Constraint this carries: it assumes a daemon that appends off-page
 						 * pinned rows. A daemon without that increment would hide an off-page
@@ -2006,6 +2828,48 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							delete facts[id];
 						}
 						/*
+						 * AND THE TOMBSTONES ARE SETTLED BY A RESURRECTION, NEVER BY A PAGE THAT
+						 * MERELY FAILS TO CARRY THE ID (agent review round 2, R2-1).
+						 *
+						 * A page asked for after a delete answers complete membership, so it used
+						 * to settle every tombstone it did not carry. That is the same "absence is
+						 * not a claim" mistake this file keeps having to undo, one door over: the
+						 * page settling the tombstone says nothing about the SEARCH ANSWERS that
+						 * are still live, and one of them can be asked BEFORE the delete and
+						 * answered after it (`session-search.ts` caches per query for 30 s, and the
+						 * store takes no more than four page triggers). With the tombstone gone
+						 * the join drew a permanently deleted conversation again - deterministically,
+						 * with no race: search the row, delete it, let any page land, and the cached
+						 * answer still names the id.
+						 *
+						 * So the tombstone goes only when the read that outranks it carries the id
+						 * BACK. That is a resurrection - something recreated the conversation, so
+						 * this window's record of its absence is stale and false - and it is the
+						 * one read that really does speak about the id. A page that outranks the
+						 * tombstone and does NOT carry the id changes nothing, because it is
+						 * already what the tombstone says; keeping it is what holds the join and
+						 * the pane steady against every answer already in flight.
+						 *
+						 * The rows are filtered through the SETTLED record, which is the arm that
+						 * stops a page asked for BEFORE the delete (it carries the id, it just
+						 * carries a stale membership) re-adding the row.
+						 */
+						const carried = new Set(rows.map((row) => row.session_id));
+						let revived = false;
+						const forgotten: Record<string, ForgottenFact> = {
+							...state.forgotten,
+						};
+						for (const [id, fact] of Object.entries(forgotten)) {
+							if (fact.at < answerAt && carried.has(id)) {
+								delete forgotten[id];
+								revived = true;
+							}
+						}
+						const tombstones = revived ? forgotten : state.forgotten;
+						const page = rows.filter(
+							(row) => tombstones[row.session_id] === undefined,
+						);
+						/*
 						 * AND THE ROWS, not only the facts (review round 4, M1; QA Qr4-1).
 						 * `replaceSessionRows` rebuilds membership and values from the page
 						 * alone, so a page whose request STARTED before a press would hand the
@@ -2017,9 +2881,11 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						 * until a page requested AFTER the write arrives to settle it.
 						 */
 						const protectedRows = state.sessions.filter(
-							(row) => (state.pinFacts[row.session_id]?.at ?? -1) >= answerAt,
+							(row) =>
+								tombstones[row.session_id] === undefined &&
+								(state.pinFacts[row.session_id]?.at ?? -1) >= answerAt,
 						);
-						let next = replaceSessionRows(state.sessions, rows);
+						let next = replaceSessionRows(state.sessions, page);
 						for (const held of protectedRows) {
 							const fact = state.pinFacts[held.session_id];
 							const at = next.findIndex(
@@ -2028,9 +2894,28 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							if (at === -1) next = [...next, { ...held, pinned: fact.pinned }];
 							else next[at] = { ...next[at], pinned: fact.pinned };
 						}
+						/*
+						 * AND THE ARCHIVE'S OWN SETTLING, on the same page and the same stamp,
+						 * but a DIFFERENT rule about silence: this app asks the list route for
+						 * the archived rows (`include_archived: true`), so the page speaks about
+						 * the archived set as a whole and absence means "unarchived or gone"
+						 * rather than "not mentioned" (`factsNewerThan`).
+						 *
+						 * THE PAGE NO LONGER WRITES THE FACT'S VALUE ONTO THE ROWS (design round 8,
+						 * D27). It used to, to stop a page asked for before a press regressing the
+						 * row the reader just archived - and with the two row-facing readers taking
+						 * the ANSWERED view (`chat-archived.ts`'s `answeredArchiveRows` for membership,
+						 * the sidebar's `archiveFactValues` for the row's drawn value), that
+						 * protection is structural: a surviving fact outranks the page in both readers
+						 * whatever the rows carry. What stays here is the CURRENCY, which is what
+						 * settles a fact older than the request it answers.
+						 */
+						const archiveFactSet = factsNewerThan(state.archiveFacts, answerAt);
 						return {
 							sessions: next,
 							pinFacts: facts,
+							archiveFacts: archiveFactSet,
+							forgotten: tombstones,
 							loading: false,
 							truncated: result.truncated === true,
 							/*
@@ -2062,6 +2947,330 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						});
 				}
 			},
+			setArchiveUndo: (offer) => {
+				set({ archiveUndo: offer });
+			},
+			clearArchiveFailure: () => {
+				set({ archiveFailure: null });
+			},
+			setSessionArchived: async (sessionId, archived, title) => {
+				/*
+				 * STAMPED, AND A PRESS CHANGES THE INTENT RATHER THAN THE LIST (design round 8, D27).
+				 * The fact is still written optimistically - it is what tells every reader where this
+				 * conversation is GOING - but the press no longer patches `sessions`, and that patch was
+				 * what removed the row. THE ROW CARRIES THE ANSWERED STATE, THE FACT CARRIES THE
+				 * INTENDED ONE: the two row-facing readers take only answered facts (the list's one
+				 * filter and the row's own drawn value, both through `chat-archived.ts`'s answered
+				 * view), so a press may change what a conversation is about to be without changing
+				 * what the list holds.
+				 *
+				 * WHY THAT IS THE FIX RATHER THAN A TIDIER SHAPE, at QA round 4's own numbers: the row's
+				 * departure shortens the list's content by its own height while the box is still the
+				 * band-0 one, so `scrollHeight - clientHeight` goes NEGATIVE, the browser clamps the
+				 * reader's `scrollTop` to the new extent, and nothing gives it back when the row
+				 * returns - the `8.5 -> 0` QA measured. The same dip exists on the SUCCESS path
+				 * (`224.5` of content against a `248` box) whenever the departure and the band that
+				 * answers it land in different commits, which is why the offer below is raised in the
+				 * same update as the fact's settlement. Taking the departure out of the press takes the
+				 * dip out of the state, which is arithmetic rather than a race a write could lose.
+				 *
+				 * THE PRESS'S ACKNOWLEDGEMENT IS WHAT THIS COSTS, stated rather than implied: the row the
+				 * reader pressed stays drawn for the round trip - 2-4 ms on this app's own daemon, and
+				 * the whole in-flight window on a stalled one, where the press reads as inert until the
+				 * card lands. Design D28 records the register that should pay it (the row's own control,
+				 * which the reader is already on); it is not invented here.
+				 *
+				 * THE ASSUMPTION THE STAMP RESTS ON IS OWED TO QA, and this is where it is
+				 * written down rather than assumed silently. A press takes the sequence the
+				 * NEXT request will take, so every reader that starts after it carries a
+				 * stamp greater than the fact's and settles it (`factsNewerThan`). That is
+				 * sound only if a read WHOSE REQUEST STARTED AFTER THIS PRESS observes the
+				 * write - i.e. if the daemon applies `POST .../archive` before it answers a
+				 * read issued afterwards. Over two connections and more than one worker that
+				 * is the route's business, not this client's: if it does not hold, an answer
+				 * can say `archived: false`, the fact is settled, and the row reappears
+				 * until the next page. QA settles what the sibling route guarantees; the
+				 * client's half (stamp, membership, refusal register) is what is exercised here.
+				 */
+				const at = get().answerSeq + 1;
+				/*
+				 * THE FACT THIS PRESS REPLACES, kept so a refusal can put it back (see the catch arm). With
+				 * membership and the row's drawn value both read from the fact, the fact IS the client's
+				 * knowledge - so deleting the press's own write without restoring what it stood for would
+				 * leave a conversation the daemon holds archived reading as live (`row.archived` is the wire's
+				 * value, and the wire's last word was the page BEFORE the accepted archive). Measured on this
+				 * walk's refused-undo step: the row came back into a list that excludes archived rows.
+				 */
+				const previousFact = get().archiveFacts[sessionId] ?? null;
+				const rowTitle =
+					title ??
+					get().sessions.find((row) => row.session_id === sessionId)?.title;
+				set((state) => ({
+					answerSeq: at,
+					archiveFacts: {
+						...state.archiveFacts,
+						/* UNANSWERED until the write's own sentence arrives (`ArchiveFact.answered`). */
+						[sessionId]: { archived, at, answered: false },
+					},
+				}));
+				/*
+				 * A PRESS DOES NOT RETIRE THE REFUSAL ABOUT ITS OWN CONVERSATION, and this is a
+				 * correction rather than a detail: the version that shipped cleared it here, and
+				 * the clear is what took the RETRY's own answer off the screen.
+				 *
+				 * The lane has ONE stable id for both of its messages (`ARCHIVE_TOAST_ID` in
+				 * `chat-sidebar.tsx`), so a refusal that follows a dismissal of that id within
+				 * sonner's own unmount window is merged into the entry that is being removed and
+				 * destroyed with it - measured against the installed sonner 2.0.3 in jsdom
+				 * (2026-09-21): created on the dismissed id, the toast is painted at +50ms and
+				 * gone by +600ms, while the same create 600ms later mounts normally. A fast
+				 * daemon answers the retry in 2-4ms, which is squarely inside that window, so the
+				 * clearing above left "Retry" doing nothing at all: the message was dismissed and
+				 * the refusal that replaced it never mounted (UX report round 1, U3).
+				 *
+				 * WHAT RETIRES IT INSTEAD, in this order: a refusal that lands replaces the one on
+				 * screen through the SAME id (sonner updates the mounted toast in place, which is
+				 * what one-message-at-a-time means here); an accepted archive supersedes it with
+				 * the offer (`offerArchiveUndo` in `archive-undo.ts`); an accepted unarchive has no
+				 * successor and clears it below; and any other press leaves it alone, because the
+				 * sentence describes the last answer to a press on that conversation rather than a
+				 * state the newer press has already settled.
+				 */
+				try {
+					await desktopResult<{ session_id: string; archived: boolean }>({
+						op: "sessions.archive",
+						sessionId,
+						archived,
+					});
+					/*
+					 * AND THE WRITE IS ANSWERED: the fact is settled, which is what retires the offer
+					 * that press raised (`ArchiveFact.answered`), and the refusal it was written over is
+					 * cleared in the same update - the two halves cannot be separated without leaving a
+					 * window in which the offer is retired and the refusal it replaced is still the
+					 * store's newest word about that conversation.
+					 *
+					 * AND THE OFFER IS RAISED HERE TOO, IN THIS SAME UPDATE (design round 8, D27's second
+					 * clause). It used to be raised a microtask later by whichever caller pressed - the
+					 * row's `.then`, the header's, `/archive`'s - i.e. in a SECOND React commit, and the
+					 * commit between them is the one that measures `224.5` of content against a `248` box:
+					 * the departure on the success path took the extent negative, the browser clamped the
+					 * reader, and the band arrived too late to give the position back. Raised with the
+					 * settlement, the departure and its band are one commit, and their arithmetic runs the
+					 * other way (`band - rowHeight = 58 - 32 = +26px` of headroom), so the reader's place
+					 * is reachable on every accepted press. The guard is `archived === true`, which is
+					 * also what keeps the unarchive path offerless: the row comes back into the list,
+					 * which is its own visible trace (UX round 1, U2).
+					 *
+					 * AND THE REFUSAL THIS CONVERSATION'S OWN LAST PRESS LEFT IS RETIRED IN THE SAME
+					 * UPDATE, for an archive as well as for an unarchive: the lane holds one message under
+					 * one id, so raising the offer is what takes the refusal off the screen, and clearing it
+					 * in a second update would leave a window in which the store holds neither message and
+					 * the panel dismisses the lane - the create-then-destroy mechanism UX round 1, U3 is
+					 * about. `archive-undo.ts` raised the offer and cleared the refusal together for exactly
+					 * this reason; both are here now, and the offer's own retirement watch stays with its
+					 * module (`useArchiveUndoRetirement`).
+					 *
+					 * Currency, like the refusal arm below: only the newest press for this conversation
+					 * may settle it. An older press's acceptance is an answer about a state the newer
+					 * press has already replaced.
+					 */
+					set((state) => {
+						const fact = state.archiveFacts[sessionId];
+						const superseded = fact?.at !== at;
+						return {
+							archiveFacts: superseded
+								? state.archiveFacts
+								: {
+										...state.archiveFacts,
+										[sessionId]: { archived, at, answered: true },
+									},
+							/*
+							 * AN ACCEPTED ARCHIVE STANDS THE OFFER, an accepted unarchive clears it (it has no
+							 * successor action) - and a SUPERSEDED settlement touches the lane not at all,
+							 * because the newer press owns both the fact and the message about it.
+							 */
+							archiveUndo: superseded
+								? state.archiveUndo
+								: archived
+									? {
+											sessionId,
+											/* `rowTitle` is the row's own title, which the wire may answer as null. */
+											title: rowTitle ?? undefined,
+											archived: true,
+											at,
+										}
+									: null,
+							archiveFailure:
+								state.archiveFailure?.sessionId === sessionId
+									? null
+									: state.archiveFailure,
+						};
+					});
+					return true;
+				} catch (error) {
+					set((state) => {
+						/*
+						 * A REFUSED PRESS IS REVERTED ONLY IF IT IS STILL THE NEWEST WRITE for
+						 * this conversation. A second press made while the first was in flight
+						 * owns the row now, and reverting on the older one's failure would undo
+						 * the newer press - the failure of a request the user has already moved
+						 * on from is not a statement about what is on screen.
+						 *
+						 * THE REVERT IS THE FACT, AND RESTORING IT IS THE WHOLE OF IT (design round 8, D27): the
+						 * press patched neither `sessions` nor any other row state, so a refused write puts back
+						 * the fact it REPLACED - or, when there was none, leaves none. Both row-facing readers
+						 * then read what they read before the press, which is the same observable claim the version
+						 * that patched the row made. Deleting the fact instead would be a revert to the WIRE's
+						 * value, and the wire's last word about this conversation predates the accepted write the
+						 * fact was standing for: measured on the walk's refused-undo step, the row came back into
+						 * a list that excludes archived rows because the client forgot it had archived it.
+						 *
+						 * What used to be guarded, and still is, is the REPORT: this guard returned the state
+						 * untouched once, which dropped the refusal with it - so a write that really was refused
+						 * was answered on screen only when no catalogue answer had settled the fact first. Measured
+						 * against the real store (the fixture shape `scripts/session-archive-delete.test.mjs` uses,
+						 * 2026-09-21): press, then a page whose request STARTS after the press answers before the
+						 * write's rejection, and `archiveFailure` stays `null` - the press silently does nothing,
+						 * the one outcome the refusal exists to prevent. The panel's list read is a 5s poll and
+						 * every catalogue frame, so that ordering is ordinary rather than exotic.
+						 *
+						 * The message is a fact about the press (the write was refused) while the fact's own
+						 * restoration is a fact about the intent, and the two have different owners: the sentence
+						 * belongs to the last press that was actually answered, and a superseded press owns
+						 * neither.
+						 */
+						const superseded = state.archiveFacts[sessionId]?.at !== at;
+						const facts = { ...state.archiveFacts };
+						if (!superseded) {
+							/*
+							 * AND WHAT GOES BACK IS AN ANSWERED FACT OR NOTHING (agent review round 5, R5-2).
+							 *
+							 * Restoring `previousFact` verbatim put back an UNANSWERED intent whenever the press
+							 * being refused had displaced one that was still in flight - and the two row-facing
+							 * readers skip unanswered facts, so the restore wrote a fact that could not be read at
+							 * all. Reproduced on this suite's own fixture with two presses before either answer:
+							 * press 1 (archive) is displaced by press 2 (unarchive), press 1's acceptance arrives
+							 * first and bails as superseded, and press 2's refusal then restored
+							 * `{archived:true, at:2, answered:false}`, leaving the client with no readable
+							 * knowledge of an archive the daemon had just ACCEPTED.
+							 *
+							 * THE RULE: a refusal puts back the fact it replaced only when that fact had been
+							 * ANSWERED. An unanswered fact is a press's INTENT, and this client cannot vouch for an
+							 * intent whose own answer may already have been discarded by the currency rule beside
+							 * this one - so it removes its own write instead.
+							 */
+							if (previousFact?.answered === true) {
+								facts[sessionId] = previousFact;
+							} else {
+								delete facts[sessionId];
+								/*
+								 * AND THE CLIENT ASKS RATHER THAN KEEPING NEITHER: with that intent gone this window
+								 * knows nothing about the conversation's archive state while the daemon does, so the
+								 * page is read again. Without it the row reads the wire's stale value until the 5s
+								 * poll - the whole of the window in which a reader would act on it. A press with no
+								 * fact behind it has nothing to re-learn, so only a displaced intent asks.
+								 */
+								if (previousFact !== null) void get().fetchSessions();
+							}
+						}
+						return {
+							archiveFacts: superseded ? state.archiveFacts : facts,
+							/*
+							 * THE REFUSAL TAKES ITS OWN STAMP, AND THE COUNTER MOVES WITH IT. Both lane messages
+							 * used to be stamped from the SAME counter (the refusal took `state.answerSeq` as it
+							 * stood), so a refusal landing in the answer that re-raised an offer TIED with it -
+							 * and a tie is exactly the state the lane's rule now resolves in the refusal's favour
+							 * (see the drawn-message rule and its comment in `chat-sidebar.tsx`). Advancing the
+							 * counter here makes a refusal that lands LAST strictly newer, which is what its own
+							 * sentence says it is: the last press the daemon actually answered.
+							 */
+							answerSeq: state.answerSeq + 1,
+							archiveFailure: {
+								sessionId,
+								/*
+								 * THE STAMP IS THE CURRENCY THE LANE READS (agent review round 3, R3-1). Taken from
+								 * `answerSeq` at the landing: a later successful archive's offer carries a higher
+								 * one, which is what lets the lane draw the newer message instead of preferring
+								 * the refusal forever.
+								 */
+								at: state.answerSeq + 1,
+								archived,
+								title: rowTitle || "Untitled chat",
+								/*
+								 * The backend's own sentence when there is one. A transport failure
+								 * that reached nothing keeps an empty detail and the sentence around
+								 * it states the fact: the row did not move.
+								 */
+								detail:
+									error instanceof DesktopControlError && error.message
+										? error.message
+										: "",
+							},
+						};
+					});
+					return false;
+				}
+			},
+			deleteSession: async (sessionId) => {
+				try {
+					await desktopResult<{ session_id: string; deleted: boolean }>({
+						op: "sessions.delete",
+						sessionId,
+						/* The user's own answer to the danger dialog, on the wire. */
+						confirmed: true,
+					});
+					set((state) => forgetSession(state, sessionId));
+					return { ok: true };
+				} catch (error) {
+					const status =
+						error instanceof DesktopControlError ? error.status : null;
+					const code =
+						error instanceof DesktopControlError ? (error.code ?? null) : null;
+					/*
+					 * A 404 IS THE OUTCOME THE USER ASKED FOR, and it is not reported as a
+					 * failure: the route answers it for an id this daemon does not have, so the
+					 * conversation the user asked to remove is not there to remove. The row is
+					 * dropped for the same reason a confirmed delete drops it - otherwise the
+					 * panel would keep drawing a conversation the backend has just denied
+					 * holding, and the next page would take it away anyway.
+					 */
+					if (status === 404) {
+						set((state) => forgetSession(state, sessionId));
+						return { ok: true };
+					}
+					/*
+					 * THE TOKEN, NOT THE STATUS (agent review round 4, R4-3). 409 is one arm of
+					 * the route's ladder for FOUR guards - a live session, an armed wake, unread
+					 * mail, and a guard whose store could not be read - and the backend's own
+					 * docstring says the split is deliberate: the code "names the condition (a
+					 * client keys on it)" while the SENTENCE names the specific remedy. That arm
+					 * is shared with unrelated refusals (`AttachmentUnavailable`,
+					 * `ProfileRegistryUnavailable`, the generic `HTTPException(409, ...)`), so
+					 * keying on the status would claim a delete guard for any of them;
+					 * `DesktopControlError.code` carries `detail.code` and `session_delete_refused`
+					 * is the daemon's own token for exactly this condition.
+					 *
+					 * So this field is named for the condition the client can see (a guard
+					 * refused) rather than for a cause it cannot infer, which is what QA round 3's
+					 * Q11 measured: a wake refusal used to be reported as `live` and drawn with
+					 * advice about stopping a session.
+					 *
+					 * The backend's sentence is the one that names the guard - quoted rather than
+					 * paraphrased here, because a client that re-words a guard it does not own
+					 * drifts from the route the moment the route changes. Every other failure
+					 * keeps whatever sentence the transport or the daemon authored.
+					 */
+					return {
+						ok: false,
+						guarded: code === "session_delete_refused",
+						detail:
+							error instanceof DesktopControlError && error.message
+								? error.message
+								: "The conversation could not be deleted.",
+					};
+				}
+			},
+			requestSessionDelete: (sessionId) => set({ deleteCandidate: sessionId }),
 			createSession: async (
 				cwd,
 				target,
@@ -2104,12 +3313,10 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				}
 			},
 			setActiveSession: (activeSessionId) => {
-				++navigationGeneration;
 				set({
 					activeSessionId,
 					activeDraftKey: null,
 					validatingSessionId: null,
-					navigationError: null,
 				});
 			},
 			/*
@@ -2121,6 +3328,43 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			confirmSessionLive: (sessionId) => {
 				if (sessionId && get().validatingSessionId === sessionId)
 					set({ validatingSessionId: null });
+			},
+			confirmSessionMissing: (sessionId) => {
+				if (!sessionId || get().validatingSessionId !== sessionId) return;
+				set({
+					validatingSessionId: null,
+					...forgetSession(get(), sessionId),
+				});
+			},
+			rearmReadAck: (sessionId) => {
+				set((state) => ({
+					readAckRearm: rearmedReadAck(state.readAckRearm, sessionId),
+				}));
+			},
+			publishReadAckNotice: (sessionId, kind, reason) => {
+				set((state) => {
+					const notice = state.readAckNotice;
+					// Identity, not equality: the writer is a 500 ms poll, and a state that
+					// re-renders every row twice a second for a statement that has not
+					// changed is the cost this guard exists to avoid (see the action's doc).
+					if (notice?.sessionId === sessionId && notice.kind === kind)
+						return state;
+					return {
+						readAckNotice: {
+							sessionId,
+							kind,
+							revision: (notice?.revision ?? 0) + 1,
+							reason,
+						},
+					};
+				});
+			},
+			clearReadAckNotice: (sessionId) => {
+				set((state) =>
+					state.readAckNotice?.sessionId === sessionId
+						? { readAckNotice: null }
+						: state,
+				);
 			},
 			applyAttention: (sessionId, attention) => {
 				set((state) => {
@@ -2268,171 +3512,78 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				 * staged draft is a different view of the same session (the sidebar does
 				 * not mark the row while one is staged), so a click that leaves it is a
 				 * real move and still runs the whole switch.
+				 *
+				 * THE PRESS STILL STAMPS THE RECEIPT'S RE-ARM on both arms, which is the one
+				 * thing this action does that is NOT a no-op when the target is already
+				 * active. The press is the operator's own statement that they are looking
+				 * at this conversation now, and the acknowledgement of its completed result
+				 * is what that statement has to release: a retry the shared ladder had
+				 * pushed out (a `store_busy` refusal it did not classify, today) left the
+				 * row's mark standing over a result the operator was looking at, and their
+				 * only remedy - clicking the row again - was read as "nothing happened"
+				 * (the reported defect). `readAckRearm` states why it is one record and not
+				 * a log; `useCompletionView` is the only reader.
 				 */
-				if (get().activeSessionId === sessionId && !get().activeDraftKey)
+				if (get().activeSessionId === sessionId && !get().activeDraftKey) {
+					get().rearmReadAck(sessionId);
 					return true;
-				const generation = ++navigationGeneration;
+				}
 				/*
-				 * COMMIT FIRST, VALIDATE BEHIND THE COMMIT.
+				 * COMMIT, AND LET THE CONVERSATION'S OWN STREAM VALIDATE IT.
 				 *
-				 * This used to await the `sessions.get` guard read before touching
-				 * `activeSessionId`, which put a whole IPC-plus-HTTP round trip on the
-				 * critical path of every switch: the panel only mounted - and the
-				 * transcript subscription only opened - AFTER the read came back, and
-				 * until then the user kept looking at the conversation they were
-				 * leaving with an "Opening chat…" banner over it. Measured on
-				 * `scripts/session-switch-latency.mjs`, that serialisation is the whole
-				 * of `click → committed` (0.1 ms of it is the store write; the rest is
-				 * the read), and the hydration that follows is unchanged either way.
+				 * This used to await a `sessions.get` guard read behind the commit, and
+				 * that read was the gate on sending: `validatingSessionId` stayed set
+				 * until it answered. It was a SECOND full facade acquire on the backend
+				 * for every click (`GET /v1/desktop/sessions/{id}`), racing the stream's
+				 * own acquire for the same bridge locks - 30-60 ms on a healthy owner,
+				 * 4 s behind a silent one, and 17-20 s behind a control call in flight,
+				 * where it hit the renderer's own deadline (the desktop load diagnosis,
+				 * D-F3). The stream answers the same question with nothing extra: its
+				 * first `snapshot` frame proves the session exists (`confirmSessionLive`,
+				 * reported by `chat-page`), and a 404 on the subscription proves it does
+				 * not (`use-canonical-session`'s `missing` arm, which the pane already
+				 * renders as the one missing-session notice).
 				 *
-				 * So the intent is committed now and the read that used to gate it
-				 * becomes what it always was for the user - a check whose result is
-				 * never rendered. What it still owns is the FAILURE path, and that is
-				 * the reason it cannot simply be deleted: `sessions.get` is the only
-				 * thing that tells us the target exists. A read that fails puts the view
-				 * back exactly where it was - previous session AND previous draft - so a
-				 * switch to a session that is gone ends as an error with the outgoing
-				 * conversation still on screen, never as a chat index that does not
-				 * open.
+				 * What that changes, stated because each was a property of the old read:
 				 *
-				 * What is deliberately NOT dropped:
+				 * - THE WINDOW stays. A send addressed to a session nothing has confirmed
+				 *   is still refused with `SESSION_UNVALIDATED_MESSAGE`; the window is
+				 *   now closed by the snapshot, which is the frame that paints the
+				 *   messages, so "messages on screen" and "the composer sends" land in
+				 *   the same commit rather than one round trip apart.
+				 * - A GONE TARGET still tombstones, from the stream instead of the read: a
+				 *   404 on the subscription raises `view.missing`, and `chat-page` reports
+				 *   it through `confirmSessionMissing`, which is the old not-found arm
+				 *   verbatim (`forgetSession`, window closed, view left on the target).
+				 *   A deep link to a deleted conversation still lands on the notice.
+				 * - THERE IS NO ROLLBACK. A transient failure used to put the view back
+				 *   on the outgoing conversation with a sentence; now the target pane
+				 *   states it itself - the stream's own `reconnecting`/`unavailable`
+				 *   notice with its Retry - which is the conversation the user asked
+				 *   for, rather than the one they left. `navigationError` had no other
+				 *   writer, so it goes with it.
+				 * - The return value is `true`: the switch stands the moment it is made,
+				 *   and nothing later can disprove it into a URL restore. It stays a
+				 *   Promise so the three entrances (`open-conversation.ts`, the schedules
+				 *   page and the route effect) keep their shape.
 				 *
-				 * - The generation guard, in both directions. A second click bumps
-				 *   `navigationGeneration`, so a slow first read neither clears the
-				 *   newer switch's state nor rolls it back when it fails.
-				 * - The pending BANNER is gone, and with it the three sites that could no
-				 *   longer render once this path stopped setting a pending id: the
-				 *   "Opening chat…/Cancel" row over the panel, its Escape handler and the
-				 *   sidebar row's spinner. Holding that banner would paint "Opening chat…"
-				 *   over a panel that has already switched, beside the panel's own
-				 *   hydration placeholder that says the same thing honestly; the sidebar
-				 *   row's own selected state is the immediate acknowledgement, and it is a
-				 *   property of the commit rather than of a timer.
-				 *
-				 * - What the pending id ALSO did is kept, under its real name. It gated a
-				 *   send for the duration of the read, and commit-first moved the read
-				 *   behind the commit rather than removing it, so `validatingSessionId`
-				 *   carries that half: while the target's existence is unverified a send
-				 *   addressed to it is refused (the composer keeps the text) instead of
-				 *   being issued at a session that may be gone. Nothing paints it, so no
-				 *   unreachable affordance comes back with it.
-				 *
-				 * The composer is enabled during HYDRATION, exactly as it already was:
-				 * clearing the pending flag at the commit used to happen one round trip
-				 * BEFORE the transcript arrived, so that window is not new, it just starts
-				 * earlier. The READ window is the one that was gated, and that gate is the
-				 * `validatingSessionId` refusal rather than a disabled composer, because
-				 * the panel has already told the user they are in the target and the two
-				 * can only disagree for one round trip.
+				 * The generation counter (`navigationGeneration`) goes with the read:
+				 * its only reader was this action's own "is my read still current?"
+				 * check, and with no read in flight there is nothing for a newer
+				 * navigation to supersede. Latest-wins is now the plain `set` below.
 				 */
-				const previous = {
-					activeSessionId: get().activeSessionId,
-					activeDraftKey: get().activeDraftKey,
-				};
 				set({
 					activeSessionId: sessionId,
 					activeDraftKey: null,
 					validatingSessionId: sessionId,
-					navigationError: null,
 					error: null,
 				});
-				try {
-					await desktopResult({ op: "sessions.get", sessionId });
-					/*
-					 * A newer intent owns the view by the time this read answers, so this
-					 * call reports `false`.
-					 *
-					 * The return value is what a caller acts on. `select` writes the URL at
-					 * the click and uses a `false` from HERE to put it back where the store
-					 * rolled back to; the command palette and `rebind` still navigate on a
-					 * `true`. Reporting `true` for a superseded read would navigate the user
-					 * to the session they have already left, and reporting `false` for a
-					 * successful one would put the address bar back behind the view. The
-					 * commit above was latest-wins by construction - an older read cannot
-					 * re-commit an older target - so this is the same rule read outwards,
-					 * not a second one.
-					 */
-					if (generation !== navigationGeneration) return false;
-					// The read answered for THIS intent, so the target is no longer
-					// unverified - and only this intent may clear the flag: a late success
-					// must not vouch for a newer target nobody has read yet.
-					if (get().validatingSessionId === sessionId)
-						set({ validatingSessionId: null });
-					return true;
-				} catch (error) {
-					// Only the latest intent may roll back: a user who has already
-					// clicked elsewhere is not waiting on this read, and undoing their
-					// switch would be a worse lie than the one this path exists to
-					// avoid.
-					if (generation === navigationGeneration)
-						set({
-							/*
-							 * RE-VALIDATE THE SNAPSHOT AGAINST THE STORE IT IS WRITTEN INTO.
-							 *
-							 * `previous` was captured at the click and the guard read is an
-							 * arbitrary window, so anything the user did inside it has already
-							 * happened by the time this runs. The one thing that can happen to
-							 * the OUTGOING draft is that it FINISHES: a send in flight when the
-							 * row was clicked lands, `finishDraft` deletes the row and moves
-							 * `activeSessionId` only while the view is still on that draft -
-							 * which the commit above has just made false. Restoring the key
-							 * verbatim then leaves the view on a draft row that no longer
-							 * exists (`drafts[key]` undefined, the panel keyed on a dead draft),
-							 * and a send from it mints a FRESH `createRequestId` (`:281-285`)
-							 * and opens a SECOND session for a conversation that already has
-							 * one - with the first now unreachable from the view. The identical
-							 * interleaving on the pre-change store ended coherently, so that is
-							 * a regression this path introduced rather than an inherited quirk.
-							 *
-							 * So the snapshot is a candidate, not an instruction: the draft half
-							 * is restored only if its row survived. The SESSION half is restored
-							 * unconditionally, because the read only ever disproved the TARGET -
-							 * nothing happened to where the user came from.
-							 *
-							 * The alternative fix - bumping `navigationGeneration` in
-							 * `finishDraft`/`discardDraft` so a stale rollback cannot win - is
-							 * wrong for every caller of this guard, not merely this one. That
-							 * counter means "a newer navigation owns the view", and it is ALSO
-							 * what tells a caller the switch was superseded - the `false` that
-							 * `select` answers by putting the URL back where the store is. A send
-							 * landing mid-read would therefore make a successful switch report
-							 * `false` and hand that caller a restore it does not owe; and on
-							 * failure it would skip this rollback entirely, leaving the user on a
-							 * target the read has just proved is gone. Re-validating the write is the
-							 * fix that is correct for every caller.
-							 *
-							 * Deliberately NOT done: rebinding to whatever session the finished
-							 * draft materialised. That id is passed to `finishDraft` and dropped
-							 * with the row, so reading it here would need a second channel from
-							 * `finishDraft` back into navigation - a field whose only writer is
-							 * this rare interleaving. The fallback is coherent instead: with no
-							 * draft and no previous session the page renders its "Start a chat"
-							 * landing, and the session the send created is in the catalogue the
-							 * sidebar is already re-reading.
-							 */
-							activeSessionId: previous.activeSessionId,
-							activeDraftKey:
-								previous.activeDraftKey !== null &&
-								get().drafts[previous.activeDraftKey] !== undefined
-									? previous.activeDraftKey
-									: null,
-							validatingSessionId: null,
-							/*
-							 * The third catch in this file, and the last one holding the
-							 * transport's raw message: a refused desktop read greeted the
-							 * user with the server's own sentence about itself (review round
-							 * 3). Same seam as the other two.
-							 */
-							navigationError: storeErrorMessage(
-								error,
-								"Chat could not open. Retry.",
-							),
-						});
-					return false;
-				}
+				// The same stamp as the no-op arm above, for the same reason: this press is
+				// the operator's statement that they are looking at this conversation now.
+				get().rearmReadAck(sessionId);
+				return true;
 			},
 			stageDraft: (target, fresh = false) => {
-				++navigationGeneration;
 				const key =
 					!fresh && target
 						? `draft:${target.kind}:${target.name}`
@@ -2441,7 +3592,6 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				set((state) => ({
 					activeDraftKey: key,
 					validatingSessionId: null,
-					navigationError: null,
 					error: null,
 					drafts: {
 						...state.drafts,
@@ -2656,7 +3806,27 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					 * press writes the answer's own value onto the row as well.
 					 */
 					let rows: typeof state.sessions | null = null;
+					/*
+					 * THE ARCHIVE FACTS, settled by the same answer under the same rule about
+					 * silence: only the ids this answer SPEAKS about, because a search answers
+					 * a question about one query and an id it does not mention is not evidence
+					 * of anything - unlike the catalogue page, which asked for the archived set
+					 * and can settle it whole (see the settle block in `fetchSessions`).
+					 */
+					let archiveFacts: Record<string, ArchiveFact> | null = null;
 					for (const hit of hits) {
+						/*
+						 * THE ARCHIVE HALF FIRST, and OUTSIDE the pin's own guard below. A hit
+						 * that describes no pin still SPEAKS about the conversation - it names an
+						 * id, which is the whole of what the archive rule needs - so gating both
+						 * halves on `pinned` would leave an archived fact alive through every
+						 * answer that happened not to describe a pin.
+						 */
+						const archivedFact = state.archiveFacts[hit.id];
+						if (archivedFact !== undefined && archivedFact.at < seq) {
+							archiveFacts = archiveFacts ?? { ...state.archiveFacts };
+							delete archiveFacts[hit.id];
+						}
 						if (typeof hit.pinned !== "boolean") continue;
 						const fact = state.pinFacts[hit.id];
 						if (fact !== undefined && fact.at >= seq) continue;
@@ -2675,10 +3845,12 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							}
 						}
 					}
-					if (facts === null && rows === null) return {};
+					if (facts === null && rows === null && archiveFacts === null)
+						return {};
 					return {
 						...(facts === null ? {} : { pinFacts: facts }),
 						...(rows === null ? {} : { sessions: rows }),
+						...(archiveFacts === null ? {} : { archiveFacts }),
 					};
 				}),
 			setSessionPin: async (sessionId, pinned, seed) => {
@@ -2863,6 +4035,34 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				activeSessionId: state.activeSessionId,
 				activeDraftKey: state.activeDraftKey,
 				cwd: state.cwd,
+				/*
+				 * THE TOMBSTONES GO WITH IT, SO THE UI'S OWN GONE-STATE SURVIVES A
+				 * RELOAD (QA round 2's Q1, second half).
+				 *
+				 * A daemon that keeps answering 200 for a conversation it has just been
+				 * told to delete - which is what QA measured, and what the round sent to
+				 * the backend - leaves the client nothing to read the deletion from after
+				 * a reload: the stream opens, the transcript hydrates, and the pane
+				 * offers a writable composer over a conversation the user removed. What
+				 * THIS window did, it knows, and that is a durable fact about its own act
+				 * rather than a claim about the store: persisting it is what lets the pane
+				 * land on the missing-session notice on the first paint after a reload.
+				 *
+				 * `at` IS DELIBERATELY NOT PERSISTED, and 0 is the correct value for a
+				 * restored one: the stamp orders a tombstone against reads that were in
+				 * flight INSIDE one process, and a reload has none. Written as 0, any page
+				 * the fresh process asks for outranks the record, so the resurrection rule
+				 * still revives a conversation the store really does carry again - a
+				 * restored tombstone self-heals on the first page that lists the id, while
+				 * a page that omits it leaves the id hidden, which is the same rule the
+				 * live process applies one second earlier.
+				 */
+				forgotten: Object.fromEntries(
+					Object.entries(state.forgotten).map(([id, fact]) => [
+						id,
+						{ at: 0, title: fact.title },
+					]),
+				),
 				drafts: Object.fromEntries(
 					Object.entries(state.drafts).map(([key, draft]) => [
 						key,

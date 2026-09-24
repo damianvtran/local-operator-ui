@@ -173,6 +173,8 @@ const {
 	INTERPRETER_RESOLUTION_WORST_MS,
 	OWNED_STOP_WORST_MS,
 	READINESS_POLL_INTERVAL_MS,
+	READINESS_BUDGET_MS,
+	readinessPollDelayMs,
 } = bundle;
 BackendServiceManager.prototype.loadShellEnvironment = async () => {};
 const managers = [];
@@ -350,16 +352,44 @@ test("startup timeout and early exit clean actual children without claiming runn
 	assert.equal(early.process, null);
 	const m = await manager("unready");
 	// Keep real requests and children, but accelerate only the readiness polling
-	// sleep in this module; signal grace is separately exercised above.
+	// sleeps in this module (every rung `readinessPollDelayMs` can return);
+	// signal grace is separately exercised above.
+	const rungs = new Set([100, 250, 1000]);
 	const original = globalThis.setTimeout;
 	globalThis.setTimeout = (fn, ms, ...args) =>
-		original(fn, ms === 1000 ? 5 : ms, ...args);
+		original(fn, rungs.has(ms) ? 1 : ms, ...args);
 	try {
 		assert.equal(await m.start(), false);
 		assert.equal(m.process, null);
 	} finally {
 		globalThis.setTimeout = original;
 	}
+});
+
+test("readiness polls fast while a start is young, then backs off to the flat second", () => {
+	/*
+	 * Measured (see `readinessPollDelayMs`): an owned serve answers 1.5-2.2 s after
+	 * spawn, and a flat 1 s poll reported it 310-772 ms late. The rungs are pinned
+	 * here, and so is the invariant the quit failsafe depends on: no wait exceeds
+	 * `READINESS_POLL_INTERVAL_MS`, the term it adds up.
+	 */
+	assert.equal(readinessPollDelayMs(0), 100);
+	assert.equal(readinessPollDelayMs(4_999), 100);
+	assert.equal(readinessPollDelayMs(5_000), 250);
+	assert.equal(readinessPollDelayMs(9_999), 250);
+	assert.equal(readinessPollDelayMs(10_000), READINESS_POLL_INTERVAL_MS);
+	let waited = 0;
+	let attempts = 1;
+	while (waited < READINESS_BUDGET_MS) {
+		const delay = readinessPollDelayMs(waited);
+		assert.ok(delay <= READINESS_POLL_INTERVAL_MS);
+		waited += delay;
+		attempts += 1;
+	}
+	/* Same 30 s envelope as the old 30 x 1 s loop; more attempts inside it. */
+	assert.equal(READINESS_BUDGET_MS, 30_000);
+	assert.equal(waited, 30_000);
+	assert.equal(attempts, 91);
 });
 
 test("concurrent restarts share cleanup and replacement; final quit wins", async () => {
@@ -508,6 +538,151 @@ test("opaque launcher rejected; cli:main entrypoint works without __main__", asy
 	writeFileSync(opaque, '#!/bin/sh\nexec python3 -m local_operator "$@"\n');
 	assert.throws(() => consoleInterpreter(opaque), /Cannot safely own/);
 	assert.equal(consoleInterpreter(join(home, "bin", "local-operator")), python);
+
+	/*
+	 * THE /bin/sh EXEC TRICK, IN THE THREE SPELLINGS REAL WRITERS EMIT.
+	 *
+	 * A shebang cannot carry an interpreter path with a space, and pipx's
+	 * default macOS home — `~/Library/Application Support/pipx/venvs` — always
+	 * has one, so distlib's `_build_shebang` (pip 26.2.1 vendors distlib 0.4.2)
+	 * falls back to a two-line /bin/sh preamble that sh execs and Python reads
+	 * as a string literal. The shebang test alone rejected every one of them:
+	 * the app quit at startup with "Cannot safely own this backend launcher"
+	 * against the install it had itself resolved and classified as pipx
+	 * (measured on a real v0.30.10 install; the same venv through a space-free
+	 * symlink shebang passed).
+	 *
+	 * EACH LINE BELOW IS COPIED FROM A LAUNCHER A REAL WRITER EMITTED, quoting
+	 * included — the three differ in exactly that quoting, which is why one
+	 * chosen spelling was not enough:
+	 *   - SINGLE-quoted: `pipx install` into a PIPX_HOME with a space;
+	 *   - DOUBLE-quoted: `python3 -m venv '<path with a space>'` on this host
+	 *     (distlib's `enquote_executable` wraps a spaced path in double quotes);
+	 *   - BARE: `python3 -m venv <space-free path over the cap>` — distlib flips
+	 *     to the trick when `len(executable) + len(post_interp) + 3 > 512` on
+	 *     darwin, measured here as a plain shebang at a 500-character
+	 *     interpreter path and the trick at a 510-character one.
+	 */
+	const trickPython = join(home, "App Support", "pipx", "bin", "python");
+	const longPython = join(
+		home,
+		...Array.from({ length: 12 }, (_, i) => `${"v".repeat(40)}${i}`),
+		"bin",
+		"python3.14",
+	);
+	assert.ok(
+		longPython.length + 3 > 512,
+		"the bare spelling must be over darwin's cap, or it is not the spelling it claims",
+	);
+	for (const [name, execLine, interpreter] of [
+		["single", `'''exec' '${trickPython}' "$0" "$@"`, trickPython],
+		["double", `'''exec' "${trickPython}" "$0" "$@"`, trickPython],
+		["bare", `'''exec' ${longPython} "$0" "$@"`, longPython],
+	]) {
+		const shim = join(home, `pipx-shim-${name}`);
+		writeFileSync(
+			shim,
+			`#!/bin/sh\n${execLine}\n' '''\n# -*- coding: utf-8 -*-\nimport sys\nfrom local_operator.cli import main\nif __name__ == "__main__":\n    sys.exit(main())\n`,
+		);
+		assert.equal(consoleInterpreter(shim), interpreter, `${name}-quoted shim`);
+	}
+
+	// The trick's interpreter must still LOOK like an interpreter…
+	const ruby = join(home, "pipx-shim-ruby");
+	writeFileSync(
+		ruby,
+		"#!/bin/sh\n'''exec' '/usr/bin/ruby' \"$0\" \"$@\"\n' '''\nfrom local_operator.cli import main\n",
+	);
+	assert.throws(() => consoleInterpreter(ruby), /Cannot safely own/);
+
+	// …the file must still import THIS app's entrypoint…
+	const foreign = join(home, "pipx-shim-foreign");
+	writeFileSync(
+		foreign,
+		`#!/bin/sh\n'''exec' '${trickPython}' "$0" "$@"\n' '''\nfrom something_else.cli import main\n`,
+	);
+	assert.throws(() => consoleInterpreter(foreign), /Cannot safely own/);
+
+	// …and only distlib's exact two-line preamble is the trick: an sh wrapper
+	// that merely execs a python somewhere in its body stays opaque, even when
+	// a commented-out entrypoint import appears later in the file.
+	const lookalike = join(home, "pipx-shim-lookalike");
+	writeFileSync(
+		lookalike,
+		`#!/bin/sh\nexec '${trickPython}' "$0" "$@"\n# from local_operator.cli import main\n`,
+	);
+	assert.throws(() => consoleInterpreter(lookalike), /Cannot safely own/);
+
+	/*
+	 * PIPX'S OWN `-E`, ON A SPACE-FREE HOME. The third launcher pipx ships, and
+	 * the one neither arm accepted: pipx's
+	 * `_add_ignore_environment_to_python_shebang` appends ` -E` whenever the
+	 * first line already names a space-free python (and skips Windows), so a
+	 * space-free PIPX_HOME — the norm outside macOS, and reachable on macOS by
+	 * setting PIPX_HOME — gets a plain shebang carrying that flag rather than
+	 * the trick above. QA proved the app quit at startup on both base and head
+	 * for exactly this file, through the app's own resolver
+	 * (`resolveGlobalConsoleScript({PATH: <pipx bin>})` -> the pipx symlink ->
+	 * here).
+	 *
+	 * The line below is pipx 1.17.5's own output, read back from the launcher
+	 * `pipx install` wrote with a space-free PIPX_HOME.
+	 */
+	const ignoreEnvPython = join(
+		home,
+		"pipx-flat",
+		"venvs",
+		"local-operator",
+		"bin",
+		"python",
+	);
+	const ignoreEnvShim = join(home, "pipx-shim-ignore-env");
+	writeFileSync(
+		ignoreEnvShim,
+		`#!${ignoreEnvPython} -E\n# -*- coding: utf-8 -*-\nimport sys\nfrom local_operator.cli import main\nif __name__ == "__main__":\n    sys.exit(main())\n`,
+	);
+	// The interpreter path is resolved from the line; the flag is pipx's own and
+	// is NOT returned, because the caller spawns this interpreter directly with
+	// its own `-c` payload rather than through the script's shebang.
+	assert.equal(consoleInterpreter(ignoreEnvShim), ignoreEnvPython);
+
+	// ONLY that one flag, and only when it is the whole of what follows the
+	// path. Every one of these is a launcher this arm must keep refusing, so it
+	// cannot decay into "tolerate whatever trails the interpreter".
+	for (const [name, shebang] of [
+		["interpreter-arg", `#!${ignoreEnvPython} -X utf8`],
+		["inline-code", `#!${ignoreEnvPython} -c`],
+		["long-flag", `#!${ignoreEnvPython} --flag`],
+		["two-flags", `#!${ignoreEnvPython} -E -E`],
+		["flag-and-arg", `#!${ignoreEnvPython} -E --flag`],
+		["trailing-space", `#!${ignoreEnvPython} -E `],
+		["bare-name", "#!python3 -E"],
+		["relative", "#!./python -E"],
+		["not-a-python", "#!pipx-launcher -E"],
+	]) {
+		const shim = join(home, `pipx-shim-refused-${name}`);
+		writeFileSync(shim, `${shebang}\nfrom local_operator.cli import main\n`);
+		assert.throws(
+			() => consoleInterpreter(shim),
+			/Cannot safely own/,
+			`${name} must stay refused`,
+		);
+	}
+
+	// A foreign interpreter and a foreign entrypoint are still refused WITH the
+	// flag present, exactly as they are without it.
+	const flaggedRuby = join(home, "pipx-shim-ignore-env-ruby");
+	writeFileSync(
+		flaggedRuby,
+		"#!/usr/bin/ruby -E\nfrom local_operator.cli import main\n",
+	);
+	assert.throws(() => consoleInterpreter(flaggedRuby), /Cannot safely own/);
+	const flaggedForeign = join(home, "pipx-shim-ignore-env-foreign");
+	writeFileSync(
+		flaggedForeign,
+		`#!${ignoreEnvPython} -E\nfrom something_else.cli import main\n`,
+	);
+	assert.throws(() => consoleInterpreter(flaggedForeign), /Cannot safely own/);
 	// The fixture intentionally has no __main__.py; every real HTTP test above
 	// exercised the same console entrypoint used by the shipped launcher.
 });

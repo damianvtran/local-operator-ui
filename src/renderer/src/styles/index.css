@@ -218,9 +218,96 @@
 	 * shadow is only for objects that leave the flow.
 	 */
 	--shadow-overlay: var(--lo-overlay-shadow);
+
+	/* ---- the installer window's two animations ----------------------------
+	 * The first screen a new user sees, and the only place in the app that
+	 * animates on mount. Both follow ONE rule that the rest of this file states in
+	 * two places already: the RESTING state is the `to` keyframe, so a document
+	 * that never paints - or a user whose `prefers-reduced-motion` lands the
+	 * animation on its final frame via the cap below - sees the finished state
+	 * rather than an element stuck at `from`.
+	 *
+	 * `enter` is a fade and a 4px rise, at the contract's entrance duration (the
+	 * longest step, 240ms, because something entering the screen is the one thing
+	 * that earns it). It animates `transform` and `opacity` only: a fade alone
+	 * would look like the window repainting, and neither property can move a
+	 * sibling.
+	 *
+	 * `sweep` is the indeterminate progress segment. It travels a segment across
+	 * the track rather than sizing or fading one, so the bar reads as "work is
+	 * happening" without stating a fraction - and at its final keyframe the
+	 * segment sits at the left edge, which is a quiet determinate-looking bar.
+	 * The static width and the animation are split across the query below: read
+	 * that rule before moving either half back in.
+	 */
+	--animate-install-enter: install-enter var(--duration-slow) ease-out-quart
+		both;
+
+	@keyframes install-enter {
+		from {
+			opacity: 0;
+			transform: translateY(4px);
+		}
+		to {
+			opacity: 1;
+			transform: none;
+		}
+	}
+
+	@keyframes install-sweep {
+		/*
+		 * Off-track at BOTH ends, so the segment enters and leaves rather than staging
+		 * at a plausible fraction: 0% -> 100% spends its first visible moment flush at
+		 * the track's left edge, which is where a determinate fill sits (design D9).
+		 */
+		from {
+			margin-left: -35%;
+		}
+		to {
+			margin-left: 100%;
+		}
+	}
 }
 
 @layer base {
+	/*
+	 * The installer's indeterminate progress segment. THE WIDTH IS OUTSIDE THE
+	 * QUERY AND ONLY THE ANIMATION IS INSIDE IT (design D4, review R1-8).
+	 *
+	 * Declining an animation is not the same as declining the STATE. This element
+	 * gets no width from the panel in the states that use it, so a reduced-motion
+	 * user who saw only the `animation` declined got a 0%-wide fill on a `sunken`
+	 * track - measured #1d1b19 on #22201c, 1.06:1, deltaE 2.07 - which is the empty
+	 * bar the paragraph below says an indeterminate state must never look like, held
+	 * for the whole pre-marker window. A static 35% segment says work is happening
+	 * without claiming how much.
+	 *
+	 * WHY A PLAIN CLASS RATHER THAN A TAILWIND UTILITY: there is no utility for
+	 * "this element's width follows a keyframe", and the panel sets a real width for
+	 * every state that has one (0%, 25%, 50%, 100%).
+	 */
+	.lo-install-sweep {
+		width: 35% !important;
+		/*
+		 * Mid-track when it is not moving. Parked at the left edge, a static segment is
+		 * indistinguishable from a determinate fill that has stopped there - measured
+		 * at 34.5% of the track in a still, exactly where a 35% determinate fill sits
+		 * (design D9).
+		 */
+		margin-left: 33%;
+	}
+
+	/*
+	 * And the motion, where the document has not asked for less of it. This is not
+	 * the global reduced-motion cap doing its work by accident: the cap truncates an
+	 * animation to 0.01ms, which would land this keyframe on `margin-left: 100%` - a
+	 * 35%-wide segment pushed off the end of its track, which is empty again.
+	 */
+	@media (prefers-reduced-motion: no-preference) {
+		.lo-install-sweep {
+			animation: install-sweep 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+		}
+	}
 	/*
 	 * The zero-specificity half of the focus ring: shape only.
 	 *
@@ -509,4 +596,195 @@ html .Mui-focusVisible {
  */
 .slash-run-bold {
 	-webkit-text-stroke: 0.5px currentColor;
+}
+
+/*
+ * THE PANEL'S TOAST LANE: one toast, in the sidebar's own column, and nowhere else.
+ *
+ * The chat sidebar mounts its own sonner container (`chat-sidebar.tsx`, design D11 of
+ * `docs/design/sidebar-row-space.md`) so that an archive offer is confined to the
+ * column that performed the archive. That confinement is what makes design round 2's
+ * D12 constraint - "never over the composer's Send control" - a property of the layout
+ * rather than a numeric offset, and it is the half a viewport-corner toast cannot have.
+ *
+ * WHAT SONNER 2.0.3 ACTUALLY DOES, because the spec's own note about it ("sonner routes
+ * a toast to the Toaster whose `position` matches it, and a toast with no `position`
+ * still goes to the first-mounted one") is not what the shipped library does, and the
+ * two rules below exist because of the difference. Mounted in jsdom against the
+ * installed 2.0.3, with one container declaring `bottom-right` and a second declaring
+ * `bottom-left`, then one offer published with `position: "bottom-left"` and one
+ * unpositioned error toast, the reading was:
+ *
+ *   positioned offer: 2 toast elements - one in the panel's container, one in the
+ *                     global one, whose <ol data-x-position="left"> it also drew;
+ *   + unpositioned:   4 toast elements - the error toast drawn in BOTH containers too.
+ *
+ * The reason is in the library's filter: each mounted container keeps a copy of every
+ * toast and renders one `<ol>` per position ANY of them carries (its own first), and
+ * `!toast.position && index === 0 || toast.position === position` is true of the first
+ * `<ol>` of EVERY container - not of the first container. So neither "the offer landing
+ * twice" nor "every other toast appearing in the panel" is avoidable by a `position`
+ * argument, and the app states the policy it wants here instead.
+ *
+ * THE POLICY: the panel's lane carries the panel's own archive toasts and nothing else,
+ * and those toasts are drawn only there. Both rules key on the marker class those two
+ * toasts carry (`ARCHIVE_TOAST_CLASS` in `chat-sidebar.tsx`) and on the panel, which
+ * `nav[aria-label="Chats"]` names - the same hook this app's tests and the driver use.
+ * Specificity, not `!important`: sonner injects its stylesheet at runtime, so it is
+ * last in the document and wins every tie.
+ *
+ * WHAT THE INVARIANT COSTS, stated rather than left to be discovered: the offer is
+ * drawn nowhere while the panel is unmounted, because the first rule is unconditional.
+ * That state is unreachable today - an archive is performed from this panel's rows, from
+ * the conversation header's menu, or by the `/archive` slash command, and the last two
+ * exist only on the chat route, which mounts the panel. If a future surface archives
+ * from outside it, this is the rule that has to change.
+ */
+[data-sonner-toaster] [data-sonner-toast].lo-archive-toast {
+	display: none;
+}
+nav[aria-label="Chats"]
+	[data-sonner-toaster]
+	[data-sonner-toast].lo-archive-toast {
+	/* Sonner's own `display` for a styled toast: it is a flex row whose parts
+	   (icon, title, action, close) are laid out by that rule. */
+	display: flex;
+}
+nav[aria-label="Chats"]
+	[data-sonner-toaster]
+	[data-sonner-toast]:not(.lo-archive-toast) {
+	display: none;
+}
+
+/*
+ * THE OFFER'S CARD IS ONE LINE, AND ONLY ITS NAME MAY BE TRUNCATED.
+ *
+ * WHY THE CARD IS ONE LINE: the offer reads `<name> archived.` and at the 280 panel the
+ * card has 216px of content box, so a 45-character title wrapped to three lines INSIDE its
+ * own quotation (`“Migration` / `checklist”` / `archived.`) - a sentence broken in the
+ * middle of the name it quotes - and the card stood 80px tall over 216 of the 256px of the
+ * very row it had just archived (design round 1, D3; UX U5, which measured 134px for the
+ * longer title). One line is the shape the row itself uses for a clipped title, and the
+ * full name is one dwell away in the row's own flyout.
+ *
+ * WHY THE TRUNCATION IS NOT DECLARED HERE (agent review round 2, R2-3). This rule used to
+ * put `nowrap` + ellipsis on the whole `[data-title]`, which truncated the SENTENCE - and a
+ * truncated string loses its TAIL, which for `“<title>” archived.` is the verb: the
+ * operator's own 55-character title rendered as `“Quarterly retention sweep and the
+ * transc…`, i.e. a card that no longer said what had happened. The offer is now TWO elements
+ * built by the panel (`chat-sidebar.tsx`: the name in its own `truncate` box, the verb as a
+ * fixed tail outside it), so what gives when the name is long is the name and the verb is
+ * never the part that gets cut. Tailwind's own `truncate` lives at the call site with the
+ * copy it belongs to; the only thing the lane's stylesheet has to do is let the flex chain
+ * shrink at all.
+ *
+ * `min-width: 0` ON THE CONTENT is load-bearing and not tidiness. The card is a flex row
+ * (`[data-styled="true"]`) whose items are the icon, this content box and the action, and
+ * a flex item's automatic minimum size is its min-content width - which, with a
+ * non-wrapping name inside, is the whole name. Without the zero, the content box would
+ * refuse to shrink, the fixed `--width` would be overrun and the Undo would be pushed out
+ * of the card. With it, the name is the only thing that gives.
+ *
+ * THE REFUSAL IS DELIBERATELY NOT INCLUDED: it carries the daemon's own sentence about
+ * why the write was refused, and truncating that would hide the reason the reader is
+ * being asked to retry. Its height is the price of showing it whole, and it is stated as
+ * a trade in spec § 10 with the measurement: 216x170 over eight lines at the 280 panel, which
+ * is the DEFAULT title; the operator's own 55-character title is the long case and measured
+ * 216x206 over nine, which is what the figure here used to quote as if it were the default
+ * (design round 3, D8).
+ */
+nav[aria-label="Chats"]
+	[data-sonner-toaster]
+	[data-sonner-toast].lo-archive-toast[data-type="info"]
+	[data-content] {
+	min-width: 0;
+}
+
+/*
+ * THE OFFER SPENDS NO WIDTH ON CHROME, AND THE LANE IS THE WIDTH IT GETS (design round 3, D7).
+ *
+ * The card was drawing the type's own 16px icon plus its two margins inside a 216px box, and
+ * the name it quotes is the only part that gives: measured, the operator's own title elided to
+ * about five characters (`“Migra… archived.`). The icon carries nothing here - the sentence
+ * already reads `<name> archived.` and the action beside it is the affordance - so it is hidden
+ * and the box widens to the lane's own 248px, which is what the lane draws at the 280 panel.
+ *
+ * THE CARD TAKES NO PRESS A READER AIMED AT A ROW, AND IT NO LONGER COVERS ONE (UX round 3, U8;
+ * design round 4, D14). The lane is a BAND at the panel column's bottom - height 0 at rest,
+ * `card + 8` while a message stands, the list giving up exactly that - so there is no row under
+ * the card to aim at, which is what made U8 necessary: as an overlay the card's box covered up
+ * to three rows, and a press inside it that missed the buttons landed on the card and stopped.
+ * The rules below therefore buy only what they still can: THE TWO THINGS THAT ARE CONTROLS - the
+ * action and the close - take their presses back explicitly and keep their own hit areas, while
+ * THE WHEEL IS CARRIED BY THE BAND'S OWN HANDLER rather than by a rule here. QA round 3's Q-5
+ * measured this block's old claim - that a wheel over the card "reaches the list behind it rather
+ * than scrolling a card that cannot scroll" - as false once D14 put the card BESIDE the list
+ * rather than over it: 0 -> 0 with the pointer inside the card, 0 -> 40.5 with it over a row. The
+ * gesture is now forwarded by `[data-archive-toast-band]`'s `onWheel` (to the CARD when the card
+ * itself overflows - the short-panel refusal, which a `pointer-events: none` card cannot be
+ * driven to scroll by a wheel - and to the list otherwise), so the promise is kept by behaviour
+ * rather than by a sentence. THEIR REAL SUBJECT - Q-1, Q-2, D11, four streams on the offset a covered control
+ * would need - is retired by the geometry rather than by a rule, and the designer's ruling is
+ * why: the acts column is the row's last 52px and the card is 8px wider than the row, so no
+ * offset clears it, and a control under a card cannot be aimed at whatever the card does with
+ * presses.
+ *
+ * THE WIDTH IS CAPPED BY THE LANE IT IS DRAWN IN (design round 3, D10). `248px` was a literal
+ * taken from the lane's width at the 280 panel; the lane is `min(264px, 100% - 32px)` of the
+ * panel, so at the 240 clamp minimum it is 208 and a 248px card was 40px wider than its own
+ * lane and about 32px past the sidebar's right edge, with nothing clipping it. At 240 it was
+ * 176 before this lane took the icon's width out. `min(248px, 100%)` is the same card wherever
+ * the lane is wide enough and never wider than the lane.
+ *
+ * AND THE PRESS RULES ARE BOUND TO THE CLASS, NOT THE TYPE (D11, U9, R4-1). They were scoped
+ * `[data-type="info"]`, which is sonner's stamp of `toast.info` - while the REFUSAL is raised
+ * by `showWarningToast` -> `toast.warning`, so `data-type="warning"`, and it matched none of
+ * these rules: it kept `pointer-events: auto` and sat as a dead zone over the three to four
+ * rows it covers until it retired, which is the very behaviour U8 removed for the offer. Both
+ * types carry `.lo-archive-toast`, so the press rules name that. THE TWO RULES THAT STAY
+ * OFFER-ONLY ARE DELIBERATE: hiding `[data-icon]` and letting `[data-content]` shrink are the
+ * offer's own trade - its sentence is `<name> archived.` and the name is the part that gives -
+ * while the refusal carries the daemon's sentence about why the write was refused, with a
+ * warning icon that says what kind of message this is. Truncating that would hide the reason
+ * the reader is being asked to retry, and § 10 states that price with its measurement.
+ */
+
+nav[aria-label="Chats"]
+	[data-sonner-toaster]
+	[data-sonner-toast].lo-archive-toast {
+	--width: min(248px, 100%);
+	pointer-events: none;
+	/*
+	 * THE CARD SCROLLS INSIDE THE BAND'S CEILING (design round 4, D14). The band clips at
+	 * `calc(100% - 56px)`, so a message taller than that - a refusal with a long daemon
+	 * sentence at a short panel, the one shape the offer cannot have - is read by scrolling
+	 * the card rather than by clipping the reason the reader is being asked to retry. `100%`
+	 * resolves against the band, which is the card's containing block.
+	 *
+	 * `overflow-x: hidden` IS WHAT KEEPS A SCROLLBAR OFF A TOAST (QA round 3, D19). CSS computes
+	 * the other axis to `auto` as soon as one axis is not `visible`, so `overflow-y: auto` alone
+	 * gave the card a HORIZONTAL scroll container too - and its content is about a pixel wider
+	 * than its box (the close button's own out-of-box transform), so every card drew a ~9px strip
+	 * of scrollbar along its bottom in its own border colour. That strip is new with this lane and
+	 * is in every frame since; one axis scrolls here, and it is the vertical one.
+	 */
+	max-height: 100%;
+	overflow-x: hidden;
+	overflow-y: auto;
+}
+nav[aria-label="Chats"]
+	[data-sonner-toaster]
+	[data-sonner-toast].lo-archive-toast[data-type="info"]
+	[data-icon] {
+	display: none;
+}
+nav[aria-label="Chats"]
+	[data-sonner-toaster]
+	[data-sonner-toast].lo-archive-toast
+	[data-button],
+nav[aria-label="Chats"]
+	[data-sonner-toaster]
+	[data-sonner-toast].lo-archive-toast
+	[data-close-button] {
+	pointer-events: auto;
 }

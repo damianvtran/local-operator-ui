@@ -62,6 +62,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import sharp from "sharp";
 import { withNotificationsOff } from "./notifications-off.mjs";
+import { withTelemetryOff } from "./telemetry-off.mjs";
 
 const ROOT = process.cwd();
 /**
@@ -241,6 +242,11 @@ async function launchApp() {
 	 * run. Headless window mode silences the APP's own banner and cannot silence
 	 * the backend's, which is why the switch has to be in the environment this
 	 * child is handed. See `notifications-off.mjs`.
+	 *
+	 * `withTelemetryOff` for the other side of the same rule: this rig boots the
+	 * real app, whose build carries the live PostHog project key, while the
+	 * renderer's configuration is inlined at build time and so cannot be switched
+	 * off from the scratch tree. See `telemetry-off.mjs`.
 	 */
 	const env = withNotificationsOff({
 		...process.env,
@@ -252,6 +258,7 @@ async function launchApp() {
 		LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
 		VITE_DISABLE_BACKEND_MANAGER: "true",
 	});
+	withTelemetryOff(env);
 	for (const key of Object.keys(env)) {
 		if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete env[key];
 	}
@@ -2563,7 +2570,7 @@ async function main() {
 				JSON.stringify(trayDom.chips) === JSON.stringify(["1", "2"]) &&
 				JSON.stringify(trayDom.selected) === JSON.stringify(["1"]) &&
 				trayDom.chipNames[1] ===
-					"Request 2 from The agent in conversation other: queued-second.example" &&
+					"Request 2 from An agent from another session: queued-second.example" &&
 				trayDom.card.includes("queued-first.example"),
 			JSON.stringify(
 				{

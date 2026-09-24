@@ -396,9 +396,40 @@ jobs:
       #      entitlement, osx-sign embeds the profile in the main bundle only, and
       #      a helper or ShipIt carrying the group gets no profile and is refused
       #      — which is exactly how this incident took the relaunch leg down.
-      - name: Build macOS app
+      # ONE BUILD CANNOT SERVE BOTH MAC ARCHITECTURES, because `pnpm run build`
+      # emits V8 bytecode and V8 bytecode is per-architecture.
+      #
+      # `pnpm dist:mac` is `pnpm run build && electron-builder --mac`, and
+      # `mac.target` lists arm64 AND x64. So the bytecode step ran ONCE, on this
+      # arm64 runner, against `node_modules/electron/dist` — whose arch follows the
+      # HOST unless told otherwise — and electron-builder then copied that single
+      # `out/main/index.jsc` into both bundles. Verified on the shipped v0.30.10
+      # assets: the `.jsc` inside the x64 DMG is byte-identical to the one inside
+      # the arm64 DMG (sha256 23a37ddc…), so the x64 app carried arm64 bytecode.
+      #
+      # V8 refuses that at load: `bytecode-loader.cjs` throws `Invalid or
+      # incompatible cached data (cachedDataRejected)` from `Module._extensions
+      # [".jsc"]` before `out/main/index.js` line 3 finishes its require, which
+      # reaches the user as Electron's "A JavaScript error occurred in the main
+      # process" dialog on EVERY launch. The x64 bundle has never opened — it is
+      # the same failure mode as issue #88, moved from the npm tarball to the DMG.
+      #
+      # So each architecture is built and packaged in its own pass, with the
+      # bytecode compiled against an Electron dist of THAT arch. `npm_config_arch`
+      # is what `node_modules/electron/install.js` reads to choose the download,
+      # and `ensure-electron.js`'s fast path keys on `dist/version`, so the dist is
+      # removed between passes to force the correct one to be fetched — otherwise
+      # pass two would silently reuse pass one's binary and reintroduce the bug.
+      #
+      # Cost: one extra Electron download and one extra `electron-vite build`
+      # (~4 min) inside a 60 min budget. Signing and notarization are unchanged;
+      # they already ran per bundle.
+      - name: Build macOS app (arm64)
         # pnpm forwards a literal -- to electron-builder; the config must precede it.
-        run: pnpm dist:mac -c.forceCodeSigning=true
+        run: |
+          rm -rf node_modules/electron/dist
+          npm_config_arch=arm64 node ./bin/ensure-electron.js
+          npm_config_arch=arm64 pnpm dist:mac -c.forceCodeSigning=true --arm64
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
@@ -409,6 +440,47 @@ jobs:
           VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           VITE_MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
           VITE_MICROSOFT_TENANT_ID: ${{ secrets.MICROSOFT_TENANT_ID }}
+
+      # `latest-mac.yml` describes BOTH architectures in one file, and
+      # electron-builder rewrites it from scratch each run listing only what that
+      # run produced. Snapshot the arm64 pass's copy now; the x64 pass's file is
+      # merged against it below. Without this pair, splitting the build would
+      # trade the launch brick for a dead update channel on whichever
+      # architecture built first. See scripts/merge-update-feed.mjs.
+      - name: Save the arm64 update feed
+        run: node scripts/merge-update-feed.mjs --save --dist dist --state "$RUNNER_TEMP"
+
+      # The x64 pass. `--x64` and the matching `npm_config_arch` are the whole
+      # difference; see the arm64 step above for why this cannot share a build.
+      #
+      # `electron-builder` writes into the same `dist/`, and the two passes emit
+      # disjoint filenames (`${name}-${version}-${arch}.${ext}`), so the arm64
+      # artefacts from the previous step are still there when the gates below run
+      # over the directory — which is what lets them assert BOTH architectures.
+      - name: Build macOS app (x64)
+        run: |
+          rm -rf node_modules/electron/dist
+          npm_config_arch=x64 node ./bin/ensure-electron.js
+          npm_config_arch=x64 pnpm dist:mac -c.forceCodeSigning=true --x64
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          VITE_MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
+          VITE_MICROSOFT_TENANT_ID: ${{ secrets.MICROSOFT_TENANT_ID }}
+
+      # Put the arm64 entries back beside the x64 ones electron-builder just
+      # wrote, so the published feed offers an update to BOTH architectures. This
+      # runs BEFORE notarization on purpose: that step rewrites each image's
+      # post-staple sha512 into every feed it finds, and it must find the merged
+      # list. The step fails loudly if nothing merged — a silent no-op here is
+      # invisible until users stop being offered updates.
+      - name: Merge both architectures into the update feed
+        run: bash scripts/require-report.sh "Update feed merge" node scripts/merge-update-feed.mjs --merge --dist dist --state "$RUNNER_TEMP"
 
       # The packaged app is the only artefact whose contents no other gate looks
       # at: `check-runtime-deps.mjs` guards what may be declared, and this guards
@@ -440,7 +512,17 @@ jobs:
         # behalf of a script that printed nothing — measured against an empty module
         # in the script's place: a bare `pnpm notarize-dmg` passed, `pnpm --silent`
         # and a direct `node` invocation both refused it.
-        run: bash scripts/require-report.sh "Disk image notarization" pnpm --silent notarize-dmg
+        #
+        # The second gate is the candidate workflow's too, for the same reason: both
+        # wrappers refuse a silent success, and NEITHER can see a SKIP, because a
+        # skip is a single line and exit 0 (`scripts/notarize-artifacts.mjs` skips on
+        # a missing flag, a missing credential or an empty `dist`). `pipefail` keeps
+        # the wrapper's own status alive through the `tee` that feeds it.
+        run: |
+          set -o pipefail
+          report="$RUNNER_TEMP/notarize-dmg.log"
+          bash scripts/require-report.sh "Disk image notarization" pnpm --silent notarize-dmg | tee "$report"
+          bash scripts/require-notarized-dmg.sh "$report"
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
