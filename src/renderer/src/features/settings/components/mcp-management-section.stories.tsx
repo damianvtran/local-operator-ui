@@ -385,6 +385,25 @@ export const ErrorWithReason: Story = {
 	},
 };
 
+/**
+ * A status this build does not recognise. The backend's `status` vocabulary is
+ * the backend's to extend, and falling through to "Ready" would be this app
+ * claiming a row is fine on the strength of not knowing the word - so the row
+ * says the status could not be read, offers the one control that can answer it,
+ * and is NOT filed under Needs attention.
+ */
+export const UnknownStatus: Story = {
+	render: () => {
+		installBridge({
+			catalog: catalog([
+				{ ...READY_ECHO, status: "signed_out" as McpCatalogRow["status"] },
+				CONNECTED_NOTION,
+			]),
+		});
+		return <Ground />;
+	},
+};
+
 /** A test running: spinner in place of the dot, "Connecting…", no action to press twice. */
 export const Connecting: Story = {
 	render: () => {
