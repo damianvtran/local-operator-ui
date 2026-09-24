@@ -7,7 +7,7 @@
  * `applyHistoryPage` into a FRESH `TranscriptState`, and painted by the parent's
  * own `CanonicalTranscript` — because the durable-row → record mapping already
  * drops exactly the bookkeeping a child's transcript is full of
- * (`SILENT_CUSTOM_TYPES`, `transcript-reducer.ts:502-509`) and the point of the
+ * (`SILENT_CUSTOM_TYPES`, `transcript-reducer.ts:895`) and the point of the
  * port is that the child's conversation reads like the parent's. A second
  * grammar for the same durable rows is the two rails `branding.md` § 7 forbids.
  *
@@ -69,6 +69,26 @@
  * stamp rather than an outcome: see `CANCELLED_BEFORE_START`, which the model
  * spends as the row's state word instead of as a result.
  *
+ * **The working line is the one live fact this reader DOES paint.** It is the
+ * exception the foot rules above leave room for, and it is worth the exception because
+ * it answers the only question a reader has while looking at a child's page that
+ * is still moving: what is it doing? Without it the bottom of a live child's
+ * conversation is indistinguishable from a finished one — the child's last block
+ * is often settled prose, the model pausing between tool calls — which is the
+ * same failure the TUI's tail row exists for (`subagent_view.py`, `_tail_entry`).
+ *
+ * It is handed to `CanonicalTranscript` as its `workingLine` prop rather than
+ * DERIVED by it, because a child's activity is not recoverable from the page the
+ * reader fetches: the durable tool rows all reduce to `phase: "done"`
+ * (`transcript-reducer.ts:1867`), so the parent's derivation over them paints
+ * nothing for the props this reader passes, and the one change that would make it
+ * speak — claiming a `waiting` pane — could only ever say `thinking`. The fact is
+ * on the wire, though — `SubagentRow.activity` is the child relay's
+ * `report_progress` string — so the reader derives the line from the row it
+ * already holds (`deriveChildWorkingLine`, `run-detail-model.ts`) and the parent
+ * component paints it. See that function for the vocabulary, the phase
+ * classification, the withheld clock and the queued gate.
+ *
  * No second stream subscription exists anywhere in here: the child's page is a
  * file behind a GET.
  */
@@ -88,6 +108,7 @@ import { ChildSubagents } from "./run-child-subagents";
 import type { SubagentRow } from "./run-detail-model";
 import {
 	briefIsInTranscript,
+	deriveChildWorkingLine,
 	foldBrief,
 	reconcileLaunchTurns,
 } from "./run-detail-model";
@@ -475,6 +496,24 @@ export const RunChildReader = ({
 	}, [row.launchPrompts, transcript]);
 
 	/*
+	 * The foot of the page: what this child is doing, as the wire last said it.
+	 * Derived rather than read raw so the one rule — which children get a line, and
+	 * which phase it is in — stays in the model beside the row it reads
+	 * (`deriveChildWorkingLine`, whose docstring carries the vocabulary, the
+	 * withheld clock, and the one deliberate departure from the TUI's queued
+	 * child).
+	 *
+	 * Derived on every render rather than memoised, and that is deliberate: it is a
+	 * ternary over two fields of a row the pane re-derives at 1 Hz anyway, and the
+	 * component it feeds is inert to a fresh object — `WorkingLine` keys its phase
+	 * off the PHASE STRING (`working-line.tsx`) and holds its spinner frame in
+	 * state, so the same phase with the same activity paints the same frame
+	 * whatever the object's identity. A memo here would buy a re-render of one row
+	 * and cost an exhaustive-deps exemption.
+	 */
+	const workingLine = deriveChildWorkingLine(row);
+
+	/*
 	 * The header's clock (`§ 5.1`, `§ 5.3`; round 1, Q3).
 	 *
 	 * `frontend.update` is published only when the runtime has a field delta to
@@ -707,6 +746,17 @@ export const RunChildReader = ({
 			 * main transcript's ground, so the child's conversation resolves against
 			 * the same plane the parent's does — the "reads like the parent
 			 * transcript" requirement is partly a GROUND requirement (§ 7).
+			 *
+			 * KNOWN GAP, DELIBERATELY DEFERRED (review round 1, R3 / QA Q-1): a
+			 * RUNNING child whose page is still empty — `pending`, `gone`, `loading`,
+			 * or `ready` with no rows — paints no foot line, because these arms
+			 * answer with a `QuietLine` and never reach `CanonicalTranscript` (and
+			 * so never receive `workingLine`). The activity string is on the row
+			 * already; what is missing is a composition decision about a line ABOVE
+			 * an absence sentence whose copy `§ 10.1` owns. `docs/run-sidebar.md`
+			 * `§ 5.8` records it, and `scripts/child-reader-foot-react.test.mjs` renders
+			 * these arms and pins that no line is painted, so the follow-up that adds one
+			 * cannot land unnoticed.
 			 */}
 			<div
 				className={cn("flex min-h-0 flex-1 flex-col overflow-hidden bg-canvas")}
@@ -763,6 +813,15 @@ export const RunChildReader = ({
 						 * send, and a child reader can never be that pane.
 						 */
 						starting={false}
+						/*
+						 * The foot: what the child is doing, from the roster row rather than from
+						 * `painted.records`. Passing it is the whole change - omitted, the parent
+						 * derives from the records it was given, and a child's durable rows reduce
+						 * to `phase: "done"` (`transcript-reducer.ts:1867`), so the derivation
+						 * paints nothing here; its phase is `null` for a pane that claims no send.
+						 * `null` - a settled child, or a queued one - paints nothing.
+						 */
+						workingLine={workingLine}
 						loadingOlder={loadingOlder}
 						onLoadOlder={loadOlder}
 						containerRef={containerRef}

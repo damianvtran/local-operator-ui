@@ -135,7 +135,11 @@ import {
 import type { AttachmentScope } from "./use-attachment-url";
 import { useLinkSubject } from "./use-link-subject";
 import { useScrollPaging } from "./use-scroll-paging";
-import { deriveWorkingLine, workingLineInputFor } from "./working-line-model";
+import {
+	type WorkingLineState,
+	deriveWorkingLine,
+	workingLineInputFor,
+} from "./working-line-model";
 
 /*
  * The user bubble takes no measure class any more.
@@ -176,6 +180,36 @@ export type CanonicalTranscriptProps = {
 	 * different (and wrong) rule.
 	 */
 	startingAfterId?: string | null;
+	/**
+	 * The working line to paint, for a surface whose line does NOT come from this
+	 * pane's own live session — today the run panel's child reader.
+	 *
+	 * OMITTED is every existing caller, and it must stay bit-for-bit what it was:
+	 * the line is derived from this pane. A VALUE paints that line instead, and
+	 * `null` paints none.
+	 *
+	 * WHY THE CHILD READER NEEDS IT (`working-line-model.ts` cannot answer for a
+	 * child). A child's activity IS on the wire, but not in the reader's records:
+	 * the reader renders the child's DURABLE page, and `transcript-reducer.ts`
+	 * reduces every durable tool row to `phase: "done"` — the tool arm of
+	 * `durableRecord` (`:1867`, declared `:1661`) — so for the props this reader
+	 * passes (neither `waiting` nor `starting`) `deriveWorkingLine` over those
+	 * records paints NOTHING and returns `null` (`working-line-model.ts:600`). The
+	 * relay's progress string is the only place the child's own fact exists, so the
+	 * reader hands the line in from the roster row it already holds
+	 * (`deriveChildWorkingLine`, `run-detail-model.ts`).
+	 *
+	 * WHY `waiting`/`starting` WERE THE WRONG CHANNEL. `waiting` makes the
+	 * derivation read THIS pane's records — for the reader those are the child's
+	 * durable rows, which carry no running tool, so the one thing it could then say
+	 * is `thinking` (the batch arm has nothing to count) while claiming a phase it
+	 * cannot know. `starting` names a send THIS app admitted, and the admitted-send
+	 * rung belongs to the pane that issued the send: a child reader can never be
+	 * that pane (see its own comment). Neither prop can carry a fact that arrived on
+	 * the wire about somebody else's conversation, which is why this is a third
+	 * input rather than a re-reading of the two that are already here.
+	 */
+	workingLine?: WorkingLineState | null;
 	loadingOlder: boolean;
 	/**
 	 * Fetch the next durable page. Resolving `false` rather than rejecting is
@@ -1329,6 +1363,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	waiting,
 	starting,
 	startingAfterId,
+	workingLine,
 	loadingOlder,
 	onLoadOlder,
 	containerRef,
@@ -1654,7 +1689,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	// own admitted send rather than from a frame) lives in
 	// `working-line-model.ts`; this is only the memo that keeps it off the
 	// per-token path.
-	const working = useMemo(
+	const paneWorking = useMemo(
 		() =>
 			// One input builder for this claim's two readers - this rung and the
 			// composer's hint - so the two cannot be handed different facts
@@ -1724,6 +1759,16 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			transcript.records,
 		],
 	);
+
+	/*
+	 * What this view PAINTS: the pane's own line, unless a caller handed one in.
+	 * `undefined` is "no override" and `null` is "paint none", so the test is
+	 * against `undefined` rather than against truthiness — the child reader is the
+	 * one caller that supplies either, and it is the one case the derivation above
+	 * cannot answer (see the prop's docstring). No memo: this is a choice between
+	 * two values that are already computed, and only `paneWorking` costs anything.
+	 */
+	const working = workingLine === undefined ? paneWorking : workingLine;
 
 	return (
 		/*
