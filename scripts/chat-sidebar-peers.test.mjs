@@ -193,6 +193,8 @@ const bundle = await build({
 			' export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";' +
 			' export * as peers from "./src/renderer/src/features/chat/chat-peers";' +
 			' export { layoutTopology } from "./src/renderer/src/features/network/topology-layout";' +
+			// The search's own partition, for the duplicate-hit case (QA round 1, Q1).
+			' export { searchChats } from "./src/renderer/src/features/chat/chat-search";' +
 			' export { desktopEndpoint, desktopRequestSchema, desktopRequestBoundS, desktopRequestDeadlineMs } from "./src/shared/desktop-contract";' +
 			// The boundary the mesh answers are read through, and the error class the
 			// store distinguishes a refusal from a deadline by (M3/M4).
@@ -246,6 +248,7 @@ const {
 	useCanonicalSessionsStore: store,
 	peers,
 	layoutTopology,
+	searchChats,
 	desktopEndpoint,
 	desktopRequestSchema,
 	desktopRequestBoundS,
@@ -757,15 +760,22 @@ test("the Peers row's trailing statement: the grouped count when live, state and
 		peers.peerTrailingTitle(peer(LAPTOP, "x", { reachable: false }), 0, now),
 		"unreachable · last seen 4m ago",
 	);
+	/*
+	 * D19: and no dash HERE either. Round 1 moved the em dash off the row and into
+	 * this sentence on the argument that a hover is where a measurement is read in
+	 * context - but there is no measurement and there will not be one, so every hover
+	 * on every peer, forever, advertised a feature the product does not have. The
+	 * clause returns with the producer; until then the number in the field reaches no
+	 * surface at all.
+	 */
 	assert.equal(
 		peers.peerTrailingTitle(peer(LAPTOP, "x"), 2, now),
-		"2 chats on x — latency not reported",
-		"the dash lives in the title, where the count is read in context (D1)",
+		"2 chats on x",
 	);
 	assert.equal(
 		peers.peerTrailingTitle(peer(LAPTOP, "x", { rtt_ms: 24 }), 2, now),
-		"2 chats on x — 24ms",
-		"a real measurement renders in the same cell",
+		"2 chats on x",
+		"a number in a field nothing produces does not reach the title",
 	);
 });
 
@@ -1055,14 +1065,39 @@ test("M4: the move's budget follows its own wait, and no other op's does", () =>
 	);
 	assert.equal(desktopRequestBoundS({ op: "sessions.transfer" }), null);
 	assert.equal(desktopRequestBoundS({ op: "sessions.list" }), null);
-	// 30 s of waiting plus the route's own margin, which must exceed the wait it
-	// asked for - a budget BELOW `wait_s` is the defect this test exists for.
-	assert.equal(desktopRequestDeadlineMs("sessions.transfer", 30), 45_000);
-	assert.equal(desktopRequestDeadlineMs("sessions.transfer", 300), 315_000);
+	/*
+	 * 30 s of waiting plus the route's own margin, which must exceed the wait it
+	 * asked for - a budget BELOW `wait_s` is the defect this test exists for. The
+	 * margin is 45 s, not the 15 s round 1 chose: the route's overhead ABOVE
+	 * `wait_s` was measured at ~30 s against a real peer (`wait_s: 0` answered after
+	 * 30.5 s, `wait_s: 30` after 60.3 s), so a 15 s margin made THIS layer the one
+	 * that gave up first and the route's precise answer never reached the reader
+	 * (QA round 1, Q4a).
+	 */
+	assert.equal(desktopRequestDeadlineMs("sessions.transfer", 30), 75_000);
+	assert.equal(desktopRequestDeadlineMs("sessions.transfer", 300), 345_000);
 	// An op without a bound keeps the standing budgets.
 	assert.equal(desktopRequestDeadlineMs("sessions.transfer"), 20_000);
 	assert.equal(desktopRequestDeadlineMs("sessions.list"), 20_000);
 	assert.equal(desktopRequestDeadlineMs("usage.get"), 90_000);
+	/*
+	 * Q4b: a create ON A PEER is not a control call. The route's own budget is
+	 * `create_on_peer`'s 120 s and it measured 15.9 s and 22.1 s on loopback, so the
+	 * generic 20 s made this app the layer that gave up - and the sidebar then filed
+	 * the timeout as "the peer refused". A LOCAL create keeps the standing budget:
+	 * there is no second device in it.
+	 */
+	assert.equal(
+		desktopRequestBoundS({ op: "sessions.create", peer: "d_abc" }),
+		120,
+	);
+	assert.equal(desktopRequestBoundS({ op: "sessions.create" }), null);
+	assert.equal(
+		desktopRequestBoundS({ op: "sessions.create", peer: null }),
+		null,
+	);
+	assert.equal(desktopRequestDeadlineMs("sessions.create", 120), 165_000);
+	assert.equal(desktopRequestDeadlineMs("sessions.create", null), 20_000);
 });
 
 test("M4: a timed-out move says the outcome is UNKNOWN, and a refusal says nothing changed", async () => {
@@ -1093,7 +1128,7 @@ test("M4: a timed-out move says the outcome is UNKNOWN, and a refusal says nothi
 			'[data-mesh-notice="move-unconfirmed"]',
 		);
 		assert.ok(timedOut, "the unconfirmed move has no notice of its own");
-		assert.match(timedOut.textContent, /may have happened/);
+		assert.match(timedOut.textContent, /may already be there/);
 		/*
 		 * THE ASSERTION THIS TEST EXISTS FOR: the old copy appended "Nothing
 		 * changed." to every failure, and a deadline cannot establish that - the
@@ -1105,7 +1140,12 @@ test("M4: a timed-out move says the outcome is UNKNOWN, and a refusal says nothi
 			/Nothing changed/,
 			"a timed-out move claims nothing changed",
 		);
-		assert.match(timedOut.textContent, /check the other device/);
+		/*
+		 * AND IT NAMES THE DEVICE RATHER THAN "the other device" (design round 2,
+		 * D16): the store knows the target's id and the sidebar knows its label, and
+		 * "the other device" is ambiguous the moment a user has two peers.
+		 */
+		assert.match(timedOut.textContent, /check that device first/);
 
 		// A refusal IS an answer: the route looked and said no.
 		globalThis.__transferError = new DesktopControlError(
@@ -1134,4 +1174,170 @@ test("M4: a timed-out move says the outcome is UNKNOWN, and a refusal says nothi
 		globalThis.__features = { ...BASE_FEATURES };
 		await harness.unmount();
 	}
+});
+
+test("Q3: one move per conversation at a time - a second press reaches no route", async () => {
+	globalThis.__features = { ...BASE_FEATURES, peers: 1, session_transfer: 1 };
+	const row = plain("a", "Migrate the deploy script", {
+		locality: "remote",
+		owner_device: LAPTOP,
+		owner_device_name: "devon-laptop",
+		reachable: true,
+	});
+	const harness = await mount([row]);
+	try {
+		/*
+		 * IN FLIGHT, as the first press leaves it. Every press used to mint a FRESH
+		 * `request_id`, which is the key the route's at-most-once guard uses, so a
+		 * second press on a conversation already moving was not recognisable as the
+		 * same move: the peer's relay logged two pulls 3 ms apart for one gesture, and
+		 * one menu entry (the conversation being moved) stayed enabled while it was
+		 * running (QA round 1, Q3).
+		 */
+		store.setState({ transfers: { a: STUDIO } });
+		requests = [];
+		let settled;
+		await act(async () => {
+			settled = await store
+				.getState()
+				.transferSession("a", STUDIO, "Migrate the deploy script");
+		});
+		assert.equal(settled, false, "a second move was started");
+		assert.equal(
+			requests.filter((request) => request.op === "sessions.transfer").length,
+			0,
+			"a second press reached the route",
+		);
+		assert.equal(
+			store.getState().transfers.a,
+			STUDIO,
+			"the guard cancelled the move already running",
+		);
+	} finally {
+		globalThis.__features = { ...BASE_FEATURES };
+		await harness.unmount();
+	}
+});
+
+test("Q4a: moving the conversation this pane has OPEN says why, and sends nothing", async () => {
+	globalThis.__features = { ...BASE_FEATURES, peers: 1, session_transfer: 1 };
+	const row = plain("a", "Migrate the deploy script", {
+		locality: "remote",
+		owner_device: LAPTOP,
+		owner_device_name: "devon-laptop",
+		reachable: true,
+	});
+	const harness = await mount([row]);
+	try {
+		/*
+		 * THE BLOCKER IS THE DESKTOP'S OWN VIEW. The source runtime refuses a move
+		 * while ANY other viewer is attached - the app's own pane counts - and that
+		 * refusal reaches the peer's log rather than the caller, so the app waited out
+		 * its deadline and then told the user the outcome was unconfirmed. Measured:
+		 * nine futile attempts with the conversation on screen, and the same move in
+		 * 2.1 s once the pane was on another chat (QA round 1, Q4a).
+		 */
+		store.setState({ activeSessionId: "a" });
+		requests = [];
+		let settled;
+		await act(async () => {
+			settled = await store
+				.getState()
+				.transferSession("a", STUDIO, "Migrate the deploy script");
+		});
+		assert.equal(settled, false);
+		assert.equal(
+			requests.filter((request) => request.op === "sessions.transfer").length,
+			0,
+			"a move the backend cannot accept was still sent",
+		);
+		const blocked = harness.container.querySelector(
+			'[data-mesh-notice="move-blocked"]',
+		);
+		assert.ok(blocked, "nothing told the user why the move did not start");
+		assert.match(blocked.textContent, /open here/);
+		assert.match(blocked.textContent, /Switch to another chat/);
+		// Nothing was sent, so "Nothing changed" is a true claim here - unlike a
+		// deadline, which may have applied the move (round-1 review, M4).
+		assert.match(blocked.textContent, /Nothing changed/);
+	} finally {
+		globalThis.__features = { ...BASE_FEATURES };
+		await harness.unmount();
+	}
+});
+
+test("Q6: a phase's progress is a RATIO, and the receipt carries the move's own id", () => {
+	const receipt = mesh.transferReceipt({
+		locality: "remote",
+		owner_device: LAPTOP,
+		source_retired: true,
+		phases: [{ phase: "copy", peer: LAPTOP, progress: 0.75 }],
+		new_session_id: "b2c3d4e5f6a7",
+		mode: "move",
+	});
+	assert.ok(receipt);
+	// `count()` floored this to 0, so a bar driven by it sat empty through the move.
+	assert.equal(receipt.phases[0].progress, 0.75);
+	assert.equal(receipt.new_session_id, "b2c3d4e5f6a7");
+	assert.equal(receipt.mode, "move");
+	// Out of range is clamped rather than painted past the end of its track.
+	assert.equal(
+		mesh.transferReceipt({
+			locality: "local",
+			phases: [{ phase: "copy", progress: 9 }],
+		}).phases[0].progress,
+		1,
+	);
+	assert.equal(
+		mesh.transferReceipt({
+			locality: "local",
+			phases: [{ phase: "copy", progress: "half" }],
+		}).phases[0].progress,
+		0,
+	);
+	// A receipt without the new id does not invent one.
+	assert.equal(
+		mesh.transferReceipt({ locality: "local", owner_device: "" })
+			.new_session_id,
+		undefined,
+	);
+});
+
+test("Q1: two hits for ONE conversation synthesize ONE row", () => {
+	/*
+	 * A DEVICE IN TWO NETWORKS DOUBLES EVERY ROW IT OWNS. The producer answers one
+	 * row per (network, member), and the renderer's list and count survived it -
+	 * they key by session id - while the SEARCH did not: `seen` held only the rows the
+	 * client was already showing, so two hits for one conversation both synthesized
+	 * and the peer's section listed the same chat twice (QA round 1, Q1). The
+	 * backend's own dedupe is #1348's; this is the half that belongs here, and it
+	 * holds for any producer that repeats a row.
+	 */
+	const hit = {
+		id: "c7c74407768f",
+		name: "qa498-remote-one",
+		mtime: 1_789_400_000,
+		rank: 0,
+		body_match: false,
+		archived: false,
+		pinned: false,
+		preview: "",
+		locality: "remote",
+		owner_device: LAPTOP,
+		owner_device_name: "devon-laptop",
+		reachable: true,
+	};
+	const once = searchChats([], "qa498", [hit]);
+	const twice = searchChats([], "qa498", [hit, { ...hit }]);
+	assert.equal(once.rows.length, 1, "one hit drew nothing");
+	assert.equal(
+		twice.rows.length,
+		once.rows.length,
+		"the second hit drew a second row",
+	);
+	assert.equal(twice.synthesized.size, 1);
+	// And the row it drew is the remote one it claims to be, not a local ghost.
+	const drawn = twice.rows[0];
+	assert.equal(drawn.session_id, "c7c74407768f");
+	assert.equal(drawn.owner_device, LAPTOP);
 });

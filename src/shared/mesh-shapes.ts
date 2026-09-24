@@ -74,6 +74,19 @@ export function count(value: unknown): number {
 	return Math.max(0, Math.floor(value));
 }
 
+/**
+ * A 0..1 ratio, or `0`.
+ *
+ * NOT `count`: a transfer phase reports `progress: 0.75`, and the whole-number
+ * coercion turned it into `0` - a bar that would sit empty through an entire move
+ * (QA round 1, Q6). Out-of-range and non-finite answers are clamped to the ends
+ * rather than passed through, because this value drives a rendered width.
+ */
+export function ratio(value: unknown): number {
+	if (typeof value !== "number" || !Number.isFinite(value)) return 0;
+	return Math.min(1, Math.max(0, value));
+}
+
 export function flag(value: unknown, fallback: boolean): boolean {
 	return typeof value === "boolean" ? value : fallback;
 }
@@ -212,12 +225,19 @@ export function transferReceipt(value: unknown): SessionTransferReceipt | null {
 		locality,
 		owner_device: text(raw.owner_device),
 		source_retired: flag(raw.source_retired, false),
+		...(text(raw.new_session_id)
+			? { new_session_id: text(raw.new_session_id) }
+			: {}),
+		...(text(raw.mode) ? { mode: text(raw.mode) } : {}),
 		...(Array.isArray(raw.phases)
 			? {
 					phases: records(raw.phases).map((phase) => ({
 						phase: text(phase.phase),
 						peer: text(phase.peer),
-						progress: count(phase.progress),
+						// A RATIO, not a count (QA round 1, Q6): `count()` is a whole-number
+						// coercion, so a wire `progress: 0.75` became `0` and a bar driven by
+						// it would sit empty through the whole move.
+						progress: ratio(phase.progress),
 					})),
 				}
 			: {}),

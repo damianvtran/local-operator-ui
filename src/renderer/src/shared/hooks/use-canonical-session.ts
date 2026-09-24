@@ -158,6 +158,19 @@ export type CanonicalSessionView = {
 	 * reaches it, because it deliberately spends no validating round trip.
 	 */
 	missing: boolean;
+	/**
+	 * The BACKEND'S own sentence, when it refused this conversation because it
+	 * lives on another device (409 `session_is_remote`), or `null`.
+	 *
+	 * A THIRD ANSWER, not a flavour of `missing`. The plane refuses the stream for
+	 * a remote session with a sentence that names the device and both ways in
+	 * ("move it home with `lop sessions move … --to local`, or pilot it from the
+	 * terminal"), and this renderer used to throw that away and tell the reader the
+	 * conversation "was deleted" - a false statement about their own live work that
+	 * also removed the row (QA round 1, Q2). Terminal, like `missing`: retrying
+	 * asks the same question.
+	 */
+	remoteBlocked: string | null;
 	/** The painted conversation, durable and live, oldest first. */
 	transcript: TranscriptState;
 	/** Older durable rows are being fetched. */
@@ -875,6 +888,7 @@ export function useCanonicalSessionStream(
 			// owner's current state — so it says so until the snapshot lands.
 			stale: seed?.stale ?? false,
 			missing: false,
+			remoteBlocked: null,
 			loadingOlder: false,
 			// No child has been heard from yet: the snapshot that follows seeds the
 			// counter from its own `live_events`.
@@ -1699,6 +1713,30 @@ export function useCanonicalSessionStream(
 						 * is what reaches it, because it deliberately spends no validating
 						 * round trip on the latency path (M6).
 						 */
+						/*
+						 * A REMOTE SESSION IS NOT A DELETED ONE (QA round 1, Q2).
+						 * The plane answers 409 with `code: session_is_remote` for a
+						 * conversation that lives on another device, and the sentence
+						 * that comes with it names the device and the two ways in. It
+						 * is a TERMINAL answer, like a 404 - retrying asks the same
+						 * question of the same relay - so it never reaches the retry
+						 * budget, and it must not raise `missing`, which is what
+						 * tombstones the row and paints "It was deleted".
+						 */
+						if (event.kind === "error" && event.code === "session_is_remote") {
+							if (sessionId) dropPaint(sessionId);
+							setView((current) => ({
+								...current,
+								subscriptionId: null,
+								status: "unavailable",
+								missing: false,
+								remoteBlocked:
+									event.detail ??
+									"This conversation lives on another device. Move it home, or drive it from the terminal.",
+								failure: null,
+							}));
+							return;
+						}
 						if (event.kind === "error" && event.status === 404) {
 							// Its paint goes with it: a later click on the same id would
 							// otherwise paint rows for a transcript that no longer exists,
@@ -1709,6 +1747,9 @@ export function useCanonicalSessionStream(
 								subscriptionId: null,
 								status: "unavailable",
 								missing: true,
+								// The two answers are exclusive: a 404 says this machine
+								// does not have it, which supersedes "it is on a peer".
+								remoteBlocked: null,
 								failure: null,
 							}));
 							return;

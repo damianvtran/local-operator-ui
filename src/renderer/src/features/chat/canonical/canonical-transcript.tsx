@@ -266,6 +266,16 @@ export type CanonicalTranscriptProps = {
 	 * spent to learn it.
 	 */
 	missing?: boolean;
+	/**
+	 * The BACKEND'S sentence when it refused this conversation because it lives on
+	 * another device (409 `session_is_remote`), else `null` (QA round 1, Q2).
+	 *
+	 * Rendered INSTEAD of the missing-session notice, and with the backend's words
+	 * intact: the plane's sentence names the device and both ways in, and this pane
+	 * has no way to compose either. The two are exclusive - `missing` says this
+	 * machine does not have the conversation, this says a peer does.
+	 */
+	remoteBlocked?: string | null;
 
 	/**
 	 * Which conversation's rows this is, for attachment resolution — defaulting
@@ -1373,6 +1383,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	awaitingHydration,
 	stale = false,
 	missing = false,
+	remoteBlocked = null,
 	attachmentScope,
 	conversationId,
 	onReconnect,
@@ -1965,7 +1976,33 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					 * most palettes) was measured against the pane's `canvas` and replaced
 					 * with `elevated` there.
 					 */}
-					{missing ? (
+					{remoteBlocked ? (
+						/*
+						 * A THIRD STATE, and its own words (QA round 1, Q2). The plane refuses a
+						 * remote conversation with 409 `session_is_remote` and a sentence that names
+						 * the device and both ways in; this pane renders THAT sentence, because the
+						 * device name is the peer's and this renderer cannot compose it. Before
+						 * this arm the refusal fell into `missing`, so a live remote conversation
+						 * was reported as "no longer on this machine. It was deleted" and the row
+						 * was tombstoned with it. Nothing here says deleted, and nothing clears the
+						 * selection for the reader: the conversation is fine, it is somewhere else.
+						 */
+						<div
+							data-lo-session-remote
+							className={cn(
+								"mb-4 flex flex-col gap-2",
+								!isSmallView && AGENT_GUTTER,
+							)}
+						>
+							<p
+								id={MISSING_SESSION_NOTICE_ID}
+								className="text-body-sm text-ink"
+							>
+								This conversation is on another device.
+							</p>
+							<p className="text-ink-dim text-meta">{remoteBlocked}</p>
+						</div>
+					) : missing ? (
 						/*
 						 * The named state for a conversation this machine does not have,
 						 * and its way out. It replaces the whole status block rather than

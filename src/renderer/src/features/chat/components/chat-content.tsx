@@ -568,8 +568,16 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 */
 		const gone =
 			sessionGone || (canonical?.view.missing === true && !listedNow);
+		/*
+		 * A conversation on ANOTHER DEVICE refuses input for the same reason and
+		 * says so with the backend's own sentence (QA round 1, Q2): a send can only
+		 * fail, so the box takes nothing, and its `aria-describedby` points at the
+		 * pane's remote notice rather than the deleted one.
+		 */
 		const conversationUnavailable =
-			sessionGone || canonical?.view.missing === true;
+			sessionGone ||
+			canonical?.view.missing === true ||
+			canonical?.view.remoteBlocked != null;
 		const setSessionArchived = useCanonicalSessionsStore(
 			(state) => state.setSessionArchived,
 		);
@@ -1244,6 +1252,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										// conversation may not be on this machine at all.
 										stale={canonical.view.stale}
 										missing={gone}
+										/*
+										 * The third answer, and the reason this pane no longer
+										 * says "It was deleted" about a conversation that is
+										 * live on a peer (QA round 1, Q2).
+										 */
+										remoteBlocked={canonical.view.remoteBlocked}
 									/>,
 								)
 							: asTabPanel(

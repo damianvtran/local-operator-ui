@@ -43,6 +43,21 @@ const STUDIO = "d_7e11a2b3c4d5e6f708192a3b4c5d6e7f";
 const RADIENT = "d_31aa0b1c2d3e4f5a6b7c8d9e0f1a2b3c";
 const NOW = 1_789_400_240;
 
+/**
+ * A timestamp that is REALLY `seconds` ago when the story renders.
+ *
+ * THE FIXTURE'S CLOCK MUST AGREE WITH THE WINDOW'S (design round 2, D4). S4 pinned
+ * `last_seen_at: NOW - 4 * 60` - "4 minutes ago" in the fixture's own words - while
+ * `peerTrailing` read `Date.now()`: the frame showed `unreachable · 9d` the day it
+ * was captured, one day more the next, and from a 3-character age the 40%-capped
+ * cell showed `unreachable · 1…` - a wrong number, which is worse than no age. A
+ * frozen `Date.now` was the alternative and is worse: this module shares a page
+ * with every other story, and a global clock override would move THEIR relative
+ * times too. So the fixture is anchored to the live clock instead, and the age it
+ * claims is the age the reader sees.
+ */
+const agoSeconds = (seconds: number) => Math.floor(Date.now() / 1000) - seconds;
+
 type WireRow = Record<string, unknown> & { id: string; name: string };
 
 /** A catalogue row in the backend's wire names. `mesh` false = a pre-mesh row. */
@@ -429,7 +444,7 @@ export const S4PeerUnreachable: Story = {
 			features: MESH,
 			...severalPeers({
 				reachable: false,
-				last_seen_at: NOW - 4 * 60,
+				last_seen_at: agoSeconds(4 * 60),
 				unreachable_reason: "no address of it answered",
 			}),
 		});
@@ -455,8 +470,56 @@ export const S4PeerUnreachable: Story = {
 			throw new Error(
 				`the trailing is truncated at 280px: "${trailing.textContent}"`,
 			);
+		/*
+		 * AND THE AGE IS THE FIXTURE'S OWN. `4 minutes ago` is what this fixture says,
+		 * so `4m` is what the cell must show - the defect was a fixture that aged a
+		 * day per day while the assertion above stayed green (D4).
+		 */
+		if (!trailing.textContent?.includes("unreachable · 4m"))
+			throw new Error(`the trailing reads "${trailing.textContent}"`);
 		// The unreachable peer's own section: the state this story is named for.
 		await scrollTo(`[data-peer-section="${STUDIO}"]`);
+	},
+};
+
+/**
+ * S4b - a peer gone for TEN DAYS: the age has three characters, which is ordinary
+ * (`10d`, `12h`, `45m`) and which the 40%-capped cell cut to `1…` - a wrong number.
+ * At the default width the whole age must fit (design round 2, D4); at 240px the
+ * WORD stays whole and the age is what gives way (D20, LONG_PEER_NAME_NARROW).
+ */
+export const S4bPeerGoneTenDays: Story = {
+	render: () => {
+		bridge({
+			features: MESH,
+			...severalPeers({
+				reachable: false,
+				last_seen_at: agoSeconds(10 * 86_400),
+				unreachable_reason: "no address of it answered",
+			}),
+		});
+		openSections([LAPTOP, STUDIO]);
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(() =>
+			Boolean(
+				document
+					.querySelector(`[data-peer-row="${STUDIO}"] [data-peer-row-trailing]`)
+					?.textContent?.includes("unreachable · 10d"),
+			),
+		);
+		const trailing = document.querySelector<HTMLElement>(
+			`[data-peer-row="${STUDIO}"] [data-peer-row-trailing]`,
+		);
+		if (!trailing) throw new Error("no trailing cell for the aged peer");
+		if (!trailing.textContent?.includes("unreachable · 10d"))
+			throw new Error(`the trailing reads "${trailing.textContent}"`);
+		if (trailing.scrollWidth > trailing.clientWidth + 1)
+			throw new Error(
+				`the ten-day age is truncated at 280px: "${trailing.textContent}"`,
+			);
+		await scrollTo("[data-peers-group]");
 	},
 };
 
@@ -547,7 +610,7 @@ export const LongPeerNameNarrow: Story = {
 				peer(LAPTOP, long, {
 					session_count: 1,
 					reachable: false,
-					last_seen_at: NOW - 3 * 3600,
+					last_seen_at: agoSeconds(3 * 3600),
 					unreachable_reason: "no address of it answered",
 				}),
 			],
@@ -570,6 +633,26 @@ export const LongPeerNameNarrow: Story = {
 		if (name.clientWidth < 88)
 			throw new Error(
 				`the device name is cut to ${name.clientWidth}px (D4 wants ~14 characters)`,
+			);
+		/*
+		 * AND NOTHING IS CUT AT ALL (design round 2, D20). The two hard floors in this
+		 * row - the mark and the name's 14ch - plus the state word and the row's own
+		 * gaps come to 209px of the 207 a 215px row has, which is why the tail used to
+		 * cut `unreachable` itself to `unreachable…`-minus-two-pixels and the round-1
+		 * frame showed `unreacha…`. The peers row's gap is 2px rather than 4px for
+		 * exactly those four pixels, so at the clamp the state AND its age are whole.
+		 */
+		const trailing = document.querySelector<HTMLElement>(
+			`[data-peer-row="${LAPTOP}"] [data-peer-row-trailing]`,
+		);
+		if (!trailing) throw new Error("no peer row trailing cell");
+		if (!trailing.textContent?.startsWith("unreachable"))
+			throw new Error(
+				`the trailing lost its state at the clamp: "${trailing.textContent}"`,
+			);
+		if (trailing.scrollWidth > trailing.clientWidth + 1)
+			throw new Error(
+				`the trailing is cut to ${trailing.clientWidth}px at the clamp: "${trailing.textContent}"`,
 			);
 		const frame = document.querySelector<HTMLElement>("[data-sidebar-frame]");
 		if (!frame) throw new Error("no sidebar frame");
@@ -653,6 +736,25 @@ export const S9PeersReadFails: Story = {
 		 */
 		if (document.querySelector("[data-peers-group]"))
 			throw new Error("the Peers group renders with no catalogue data");
+		/*
+		 * AND IT IS NOT SILENT (design round 2, D17): the group was the only entry
+		 * point for moving a conversation, so its absence needs one quiet line and a
+		 * retry - `role="alert"` and danger ink are for failures the user must act on
+		 * immediately, and a read that failed is not one.
+		 */
+		await waitFor(() =>
+			Boolean(document.querySelector("[data-peers-group-unavailable]")),
+		);
+		const unavailable = document.querySelector<HTMLElement>(
+			"[data-peers-group-unavailable]",
+		);
+		if (!unavailable) throw new Error("the peers read failed silently");
+		if (!unavailable.textContent?.includes("Peers unavailable"))
+			throw new Error(`the line reads "${unavailable.textContent}"`);
+		if (!unavailable.querySelector("button"))
+			throw new Error("the degradation has no retry");
+		if (document.querySelector('[role="alert"] [data-peers-group-unavailable]'))
+			throw new Error("the degradation announced itself as an alert");
 		await scrollTo(`[data-peer-section="${LAPTOP}"]`);
 	},
 };

@@ -205,6 +205,58 @@ export const DeviceInTwoNetworks: Story = {
 	},
 };
 
+/**
+ * A device that was REMOVED from both networks: the card offers NO invite, and says
+ * why in its own words rather than in the member-everywhere sentence.
+ *
+ * A BURNED ID IS NEVER ADMITTED AGAIN (QA round 1, Q5): `canInvite` and this dialog
+ * used to test `member.active`, so a REVOKED membership counted as "not a member"
+ * and the card offered `Add to network…` - an invite whose redemption is refused on
+ * the other device (`device_id_conflict: a burned id is never admitted again,
+ * however the invite is minted`). The rule is now "any membership row blocks",
+ * which is a fact about the id rather than about its state, and the two reasons a
+ * card can have nothing to offer are spelled differently.
+ */
+export const RevokedMemberNoInvite: Story = {
+	args: {
+		...base,
+		openDeviceId: EC2,
+		state: {
+			kind: "ready",
+			topology: {
+				networks: [
+					{
+						...HOME,
+						members: [
+							...HOME.members,
+							// A REVOKED row: the network still lists the device, which is
+							// exactly why the card must not offer to add it again.
+							member(EC2, "build-box-ec2", { active: false }),
+						],
+					},
+					{
+						...WORK,
+						members: [
+							...WORK.members.filter((row) => row.device_id !== EC2),
+							member(EC2, "build-box-ec2", { active: false }),
+						],
+					},
+				],
+				self_device_id: SELF,
+			},
+		},
+	},
+	play: async () => {
+		await screen.findByText(
+			"A device removed from its networks needs a new identity before it can be invited again",
+		);
+		if (screen.queryByText("Add to network…"))
+			throw new Error(
+				"the card offers an invite a burned device id cannot redeem",
+			);
+	},
+};
+
 /** studio-mini unreachable: warning stripe, the backend's reason in words. */
 export const Unreachable: Story = {
 	args: {

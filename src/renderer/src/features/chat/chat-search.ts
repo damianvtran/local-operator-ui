@@ -267,6 +267,17 @@ export function searchChats(
 		if (archived && !archive.include) continue;
 		synthesized.add(hit.id);
 		/*
+		 * AND INTO `seen`, so two HITS FOR ONE CONVERSATION cannot both synthesize
+		 * (QA round 1, Q1). The loop's guard reads `seen`, which until here held only
+		 * the rows the client was already showing: the backend answers one row per
+		 * (network, member), so a device in two networks returned the same session id
+		 * twice and a search hit that was not in the held page drew the conversation
+		 * TWICE under one peer - while the list and the count, which key by id,
+		 * survived. The backend's own dedupe is #1348's; this is the half that belongs
+		 * to the renderer, and it holds for any producer that repeats a row.
+		 */
+		seen.add(hit.id);
+		/*
 		 * The client's own fact first, the hit's own second, and NOTHING when
 		 * neither exists.
 		 *

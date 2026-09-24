@@ -40,9 +40,17 @@ import { NewSessionPicker, type PickerContext } from "./destination-pickers";
 
 const noop = () => {};
 
-/** The two devices the catalogue lists, one of them out of reach. */
+/** The three devices the catalogue lists, two of them out of reach. */
 const LAPTOP = "d_9c02f1e4a7b3c6d5e8f9a0b1c2d3e4f5";
 const STUDIO = "d_7e11a2b3c4d5e6f708192a3b4c5d6e7f";
+/**
+ * A device whose name is longer than any control in this dialog (design round 2,
+ * D14 asked for exactly this case): what a TRIGGER does with a 46-character label
+ * is a different question from what the panel does with it, and only a frame of the
+ * chosen state answers it.
+ */
+const RACK = "d_5b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e";
+const RACK_NAME = "damians-mac-studio-in-the-back-office-rack-2";
 
 /**
  * A reason a relay can really send, at a length that tests the row: the plan's own
@@ -74,6 +82,7 @@ const PEERS: PeerList = {
 			reachable: false,
 			unreachable_reason: LONG_REASON,
 		}),
+		peer(RACK, RACK_NAME),
 	],
 	degraded: [],
 };
@@ -236,9 +245,42 @@ export const PeerChosen: Story = {
 		await userEvent.click(
 			await screen.findByRole("option", { name: "devon-laptop" }),
 		);
-		await screen.findByText("Must exist on devon-laptop.");
+		/*
+		 * THE DIRECTORY FIELD IS GONE, AND ITS REPLACEMENT SAYS WHERE IT RUNS (QA
+		 * round 1, Q9). It used to read `Must exist on devon-laptop.` over a value the
+		 * route never forwards for a peer - a promise the backend does not keep, over a
+		 * path the conversation does not use.
+		 */
+		await screen.findByText("Starts in devon-laptop's home folder.");
+		if (document.querySelector("#new-session-cwd"))
+			throw new Error("the directory field is still mounted for a peer");
 		if (trigger.textContent?.trim() !== "devon-laptop")
 			throw new Error(`the trigger reads "${trigger.textContent?.trim()}"`);
+	},
+};
+
+/**
+ * A LONG device name CHOSEN: the trigger's own truncation, which round 1 asked for
+ * and no frame showed (design round 2, D14). The name is 46 characters and this
+ * control is the width of the form, so the assertion is that it does not push the
+ * dialog past its own edge and that the name it shows begins, rather than ends, the
+ * string it was given.
+ */
+export const PeerChosenLongName: Story = {
+	render: () => <Frame peersEnabled />,
+	play: async () => {
+		const trigger = await waitFor(() => {
+			const node = document.querySelector<HTMLElement>("#new-session-device");
+			if (!node) throw new Error("no device trigger yet");
+			return node;
+		});
+		await userEvent.click(trigger);
+		await userEvent.click(
+			await screen.findByRole("option", { name: RACK_NAME }),
+		);
+		await screen.findByText(`Starts in ${RACK_NAME}'s home folder.`);
+		if (trigger.scrollWidth > trigger.clientWidth + 1)
+			throw new Error("the trigger overflows with a long device name");
 	},
 };
 

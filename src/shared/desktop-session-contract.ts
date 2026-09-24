@@ -298,6 +298,16 @@ export type SessionTransferReceipt = {
 	locality: "local" | "remote";
 	owner_device: string;
 	source_retired: boolean;
+	/**
+	 * The id the conversation has AFTER the move, when the route renamed it.
+	 *
+	 * Carried because a move need not keep the id, and a renderer that assumed it
+	 * did would leave the reader looking at a row that no longer exists (QA round 1,
+	 * Q6: the field was on the wire and dropped by this app's normaliser).
+	 */
+	new_session_id?: string;
+	/** How the move was performed, when the route said (`move`/`copy`/`fork`). */
+	mode?: string;
 };
 /**
  * One hit from `sessions.search`, returned by the `session_search` capability

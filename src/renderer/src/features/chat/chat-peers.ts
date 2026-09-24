@@ -209,6 +209,26 @@ export function shortAge(seconds: number): string {
  */
 export function peerTrailing(
 	peer: PeerRow,
+	chatCount: number,
+	nowSeconds: number,
+): string {
+	const { state, detail } = peerTrailingParts(peer, chatCount, nowSeconds);
+	return detail ? `${state} · ${detail}` : state;
+}
+
+/**
+ * The same statement, SPLIT so the cell can yield the right half (design round 2,
+ * D4/D20).
+ *
+ * The row has three cells and a 240-360px budget: the state glyph, the device's
+ * name (floor 14ch), and this. Truncating the JOINED string cut the state word
+ * itself at the clamp (`unreacha…`) - the one cell the reader cannot do without,
+ * since it is the only place the row says a device is unreachable. Rendered as
+ * two spans, the word is `shrink-0` and the age gives way instead, which is the
+ * order the designer asked for: keep the word whole, drop the age first.
+ */
+export function peerTrailingParts(
+	peer: PeerRow,
 	/**
 	 * The chat count, from the rows THIS SIDEBAR grouped - the same number the
 	 * peer's section heading shows. Not `peer.session_count`: two counts for one
@@ -216,23 +236,30 @@ export function peerTrailing(
 	 */
 	chatCount: number,
 	nowSeconds: number,
-): string {
+): { state: string; detail: string | null } {
 	if (!peer.reachable) {
 		// SHORT, because this slot competes with the device's own name for a 240-360px
 		// row: measured in the S4 frame, the long form left the name as `studio…` at
 		// the clamp and cut the one fact that differs between peers (`last see…`) at
 		// the default width. The full sentence is `peerTrailingTitle`'s, i.e. the row's
 		// `title` (design round 1, D4).
-		return peer.last_seen_at === null
-			? "unreachable · never seen"
-			: `unreachable · ${compactAge(nowSeconds - peer.last_seen_at)}`;
+		return {
+			state: "unreachable",
+			detail:
+				peer.last_seen_at === null
+					? "never seen"
+					: compactAge(nowSeconds - peer.last_seen_at),
+		};
 	}
 	// NO LATENCY CLAUSE. The transport publishes no RTT producer, so the shipped
 	// product would render `— · 2 chats` on every live peer, indefinitely: an em
 	// dash in every row says nothing, and the frames that showed `24ms` were
 	// evidence of a UI that cannot exist (design round 1, D1). The field stays in
 	// the wire type; it is rendered again when something measures it.
-	return `${chatCount} ${chatCount === 1 ? "chat" : "chats"}`;
+	return {
+		state: `${chatCount} ${chatCount === 1 ? "chat" : "chats"}`,
+		detail: null,
+	};
 }
 
 /**
@@ -261,17 +288,12 @@ export function peerTrailingTitle(
 	}
 	const chats = `${chatCount} ${chatCount === 1 ? "chat" : "chats"}`;
 	/*
-	 * THE LATENCY'S HOME, AND WHY IT IS HERE RATHER THAN IN THE ROW. `rtt_ms` is
-	 * `null` on every peer by contract: the transport measures a dial only inside
-	 * its own probe (addendum 3), so publishing a number would mean the backend
-	 * dialling every peer on a 30 s poll to fill one field. Design round 1 (D1)
-	 * settled what that means for the ROW - `— · 2 chats` on every live peer is an
-	 * em dash that can never fill, so the row shows the count alone. The dash is not
-	 * deleted as a convention, it is moved to where a measurement is read in
-	 * context: the row's `title`, which says the count AND that nothing measured the
-	 * round trip. When a producer exists, the number lands in the same cell.
+	 * AND NO LATENCY CLAUSE HERE EITHER (design round 2, D19). Round 1 moved the em
+	 * dash off the row and into this sentence, on the argument that a hover is where
+	 * a measurement is read in context - but there is no measurement and there will
+	 * not be one: `rtt_ms` is `null` on every peer by contract, so every hover on
+	 * every peer, forever, advertised a feature that does not exist. The clause
+	 * comes back with the producer.
 	 */
-	const latency =
-		peer.rtt_ms === null ? " — latency not reported" : ` — ${peer.rtt_ms}ms`;
-	return `${chats} on ${deviceLabel(peer)}${latency}`;
+	return `${chats} on ${deviceLabel(peer)}`;
 }
