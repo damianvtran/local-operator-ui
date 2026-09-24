@@ -8022,4 +8022,3 @@ if (isEntryPoint(import.meta.url)) {
 		teardown();
 	}
 }
-
