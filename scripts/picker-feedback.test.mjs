@@ -1051,6 +1051,149 @@ test("the picker lists the providers by itself, on the backend's cadence", () =>
 	);
 });
 
+/*
+ * A window focus is not an ask, executed rather than pinned.
+ *
+ * The operator's report — "it asks too often and gets itself rate limited" — is
+ * sharpest on this ONE key, because `staleTime: 0` on the live document means an
+ * inherited `refetchOnWindowFocus: true` turns every alt-tab back into a real
+ * provider listing request per signed-in provider. So the policy is asserted
+ * twice, and the two halves answer different questions:
+ *
+ *   - the WIRING (which options the query ships) as source text, this file's
+ *     discipline for destination-pickers.tsx: it imports MUI, so the module is
+ *     read rather than executed and its inline query object cannot be imported;
+ *   - the BEHAVIOUR (does that policy actually stop the read) by running the
+ *     shipped pair through a real query cache and a real focus event. The
+ *     harness can express this honestly because query-core's own focus channel
+ *     is `focusManager`, and `QueryClient.mount()` — what `QueryClientProvider`
+ *     does on mount — is what wires it to the cache. No DOM event is dispatched
+ *     and no timer is raced: the same code path the app runs.
+ *
+ * What it does NOT prove: that the picker's renderer-level component uses the
+ * spread in the position pinned below (that is the source half), and anything
+ * about the SIDEBAR's own session-catalogue focus refetch
+ * (`chat-sidebar.tsx`), which is a different read and a deliberate one — a local
+ * sessions list whose comment says focus "is the one moment a stale catalogue is
+ * about to be looked at". This change does not touch it.
+ */
+test("a focus change does not re-list the live catalogue the picker is showing", async () => {
+	const picker = source("features/chat/pickers/destination-pickers.tsx");
+	/*
+	 * The catalogue query's own object, from its key to its interval. Sliced
+	 * rather than searched file-wide, because `SNAPSHOT_READ_OPTIONS` is spread by
+	 * three other reads — a file-wide `includes` would pass on any of them.
+	 */
+	const query = picker.slice(
+		picker.indexOf("const catalogue = useQuery({"),
+		picker.indexOf("refetchInterval: live ? PICKER_CADENCE_MS : false,"),
+	);
+	assert.ok(
+		query.length > 0,
+		"the catalogue query is still one object literal",
+	);
+	assert.ok(
+		query.includes("...SNAPSHOT_READ_OPTIONS"),
+		"the live catalogue read opts out of the app's focus refetch through the shared policy object, not through a second copy of the rule",
+	);
+	assert.ok(
+		query.includes("refetchOnReconnect: false"),
+		"and states the reconnect half beside it, so a change to the app default cannot re-arm a provider re-list on this key by accident",
+	);
+	assert.match(
+		query,
+		/staleTime: live \? 0 : 60_000/,
+		"the live key stays immediately stale on purpose: the user's own ask (the refresh control, which calls `refetch`) has to read NOW, which is exactly why the unasked focus read had to be switched off",
+	);
+
+	const { defaultQueryOptions, SNAPSHOT_READ_OPTIONS } = await bundleInto(
+		"query-client-policy",
+		`export { defaultQueryOptions, SNAPSHOT_READ_OPTIONS } from "./src/renderer/src/shared/api/query-client";`,
+	);
+	assert.equal(SNAPSHOT_READ_OPTIONS.refetchOnWindowFocus, false);
+	assert.equal(
+		defaultQueryOptions.queries.refetchOnWindowFocus,
+		true,
+		"the app default this opts out of; if it ever flips, the control below stops being a control",
+	);
+	assert.equal(defaultQueryOptions.queries.refetchOnReconnect, false);
+
+	const { QueryClient, QueryObserver, focusManager } = await import(
+		"@tanstack/react-query"
+	);
+
+	/**
+	 * One open of a catalogue-shaped read, then a real blur-and-focus cycle.
+	 *
+	 * `staleTime: 0` and `mount()` are the picker's key and the provider's own
+	 * behaviour respectively; everything else comes from the shipped defaults, so
+	 * the only variable between the two calls below is the option under test.
+	 */
+	const readsAcrossAFocusCycle = async (label, options) => {
+		let reads = 0;
+		const client = new QueryClient({ defaultOptions: defaultQueryOptions });
+		client.mount();
+		const observer = new QueryObserver(client, {
+			queryKey: ["focus-cycle", label],
+			staleTime: 0,
+			...options,
+			queryFn: async () => {
+				reads += 1;
+				return { rows: reads };
+			},
+		});
+		const unsubscribe = observer.subscribe(() => {});
+		/* Waits for the read in flight to finish, rather than for a clock. */
+		const settled = async () => {
+			for (let waited = 0; waited < 2_000; waited += 5) {
+				const result = observer.getCurrentResult();
+				if (!result.isFetching && result.status !== "pending") return;
+				await new Promise((resolve) => setTimeout(resolve, 5));
+			}
+			throw new Error("the catalogue read never settled");
+		};
+		await settled();
+		assert.equal(reads, 1, "one open is one read");
+		focusManager.setFocused(false);
+		await new Promise((resolve) => setTimeout(resolve, 5));
+		focusManager.setFocused(true);
+		// The focus event's read, when the policy allows one, has started by now;
+		// `settled` waits for it to finish before the count is read.
+		await new Promise((resolve) => setTimeout(resolve, 5));
+		await settled();
+		unsubscribe();
+		/*
+		 * `clear()` and `unmount()` before returning, as `panel-read-policy.test.mjs`
+		 * does: the app defaults carry `gcTime: 10 min`, and a cache holding a
+		 * finished query keeps a collection timer armed that outlives this FILE and
+		 * hangs the runner rather than the test. `unmount` is the other half — the
+		 * focus subscription `mount()` installed.
+		 */
+		client.clear();
+		client.unmount();
+		return reads;
+	};
+
+	/*
+	 * The CONTROL first, so a negative reading below cannot be a harness that
+	 * cannot express a focus read at all: the shipped defaults alone DO re-read,
+	 * which is the behaviour the picker was living with.
+	 */
+	assert.equal(
+		await readsAcrossAFocusCycle("inherited", {}),
+		2,
+		"the app's inherited policy re-lists on a focus change — this is the read the fix removes, and if it ever reads 1 the assertion below proves nothing",
+	);
+	assert.equal(
+		await readsAcrossAFocusCycle("picker", {
+			...SNAPSHOT_READ_OPTIONS,
+			refetchOnReconnect: false,
+		}),
+		1,
+		"with the picker's policy a blur-and-focus cycle issues no catalogue read at all, so no provider is re-asked because the user alt-tabbed back",
+	);
+});
+
 test("a credential change drops the catalogue the renderer is holding", () => {
 	/*
 	 * The other half of the report, and the half the BACKEND cannot do: the route

@@ -19,6 +19,7 @@ import {
 	desktopKeys,
 	useDesktopProviders,
 } from "@shared/api/local-operator/desktop-hooks";
+import { SNAPSHOT_READ_OPTIONS } from "@shared/api/query-client";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
@@ -618,6 +619,26 @@ export const ModelPicker: FC<PickerContext> = ({
 		queryFn: () =>
 			desktopResult<DesktopModelCatalogue>({ op: "models.catalogue", live }),
 		staleTime: live ? 0 : 60_000,
+		/*
+		 * FOCUS IS NOT AN ASK, and on this key it is the sharpest form of that rule.
+		 * `staleTime: 0` above means the live document is stale the moment it lands,
+		 * so under the inherited `refetchOnWindowFocus: true` EVERY focus while the
+		 * dialog is open re-lists every provider the user has signed in to: a real
+		 * round trip per provider, against that provider's own rate limit. Alt-tabbing
+		 * out and back is how a user amplifies their own rate limiting, which is the
+		 * reported complaint. The asks are the refresh control (which calls `refetch`
+		 * and so still reads immediately) and the cadence below; a window that came
+		 * back is neither. The option is stated HERE rather than inherited precisely
+		 * because this key is the one that is always stale — see
+		 * `SNAPSHOT_READ_OPTIONS`, the app's single statement of the focus half.
+		 *
+		 * `refetchOnReconnect` is already silent app-wide and is named beside it
+		 * rather than left to the global, so a change to that default cannot re-arm a
+		 * provider re-list on this key by accident — the same reason `/usage` names
+		 * its own `retry: 0` instead of inheriting it.
+		 */
+		...SNAPSHOT_READ_OPTIONS,
+		refetchOnReconnect: false,
 		/*
 		 * A live re-list costs a measured 2.33 s, and `live` is a new query key —
 		 * so without this the list is blanked to the loading spinner for the whole

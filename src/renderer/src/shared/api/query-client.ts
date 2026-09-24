@@ -50,7 +50,7 @@ export const defaultQueryOptions: DefaultOptions = {
 };
 
 /**
- * What a panel that reads an expensive snapshot adds to the defaults above.
+ * What a read that is a snapshot the user opened adds to the defaults above.
  *
  * `refetchOnWindowFocus: false` is the whole entry, and it is a fix rather than
  * a preference. The app default is `true`, which for these reads means a full
@@ -59,10 +59,15 @@ export const defaultQueryOptions: DefaultOptions = {
  * this was set: with a panel showing a failed read, a second `analytics.get`
  * left the app while the first was still running on the daemon.
  *
- * It lives here, beside the default it overrides, because more than one panel
+ * It lives here, beside the default it overrides, because more than one read
  * needs it and a second copy of the rule is how the two drift: the four
- * catalogue panels (`panel-queries.ts`) and the `/usage` view both read a
- * snapshot the user opened, and neither is refreshed by a focus change.
+ * catalogue panels (`panel-queries.ts`), the `/usage` view and the `/model`
+ * picker's live catalogue read (`features/chat/pickers/destination-pickers.tsx`)
+ * all read a snapshot the user opened, and none of them is refreshed by a focus
+ * change. The picker's is the sharpest case of the three: its live key carries
+ * `staleTime: 0`, so without this an inherited focus refetch is not a stale
+ * snapshot re-read — it is a fresh provider round trip per signed-in provider,
+ * which is a request the user never asked for against a provider's rate limit.
  *
  * `retry` is deliberately NOT part of this object. It is a per-read decision
  * with a per-read reason — `panel-queries.ts` accepts one retry for an ordinary
