@@ -2865,7 +2865,7 @@ test("a tool's category is the TUI's own map, looked up case-insensitively", () 
 	}
 });
 
-test("the glyph and the name take ONE ink, and it is the category's", () => {
+test("the glyph takes identity ink, the name takes state ink, and they agree on state", () => {
 	// [tool name, outcome, the ink both spans must carry]. The first five are the
 	// categories; the rest are liveness outranking identity, which is the rule
 	// that must not be lost now that identity has colour again.
@@ -2910,6 +2910,24 @@ test("the glyph and the name take ONE ink, and it is the category's", () => {
 		["task", "interrupted", "text-accent-alt"],
 	];
 
+	/*
+	 * THE NAME'S INK IS THE ROW'S STATE AND NOTHING ELSE (§E1, D8).
+	 *
+	 * The pair used to share one expression, on the rule that identity and state
+	 * must not be painted differently inside one row. D8 is the counter-example
+	 * that rule could not survive: a settled `read` row drew its VERB in `info`,
+	 * so the loudest ink on a settled ledger was the tool's name - the part of the
+	 * row that says the least - while the result beside it was grey. The glyph
+	 * keeps identity (its SHAPE is what carries the tool anyway), the verb is
+	 * quiet, and the two still agree wherever the row has something to say about
+	 * what is HAPPENING: a running row is accent in both spans, a failed one
+	 * `danger` in both. That is the part of the old rule that was load-bearing.
+	 */
+	const stateOnly = {
+		running: "text-accent",
+		error: "text-danger",
+		"not-run": "text-danger",
+	};
 	for (const [toolName, outcome, expected] of CASES) {
 		const markup = renderRow(toolName, outcome);
 		const { glyph, name } = glyphAndName(markup);
@@ -2920,12 +2938,27 @@ test("the glyph and the name take ONE ink, and it is the category's", () => {
 			[expected],
 			`${toolName}/${outcome}: the tool glyph's ink — got ${glyphInk.join(" ")} on ${glyph}`,
 		);
+		const expectedName = stateOnly[outcome] ?? "text-ink-muted";
 		assert.deepEqual(
 			nameInk,
-			glyphInk,
-			`${toolName}/${outcome}: the name and the glyph disagree — glyph ${glyphInk.join(" ")} against name ${nameInk.join(" ")}`,
+			[expectedName],
+			`${toolName}/${outcome}: the name reads state only — got ${nameInk.join(" ")} where ${expectedName} was expected`,
 		);
+		if (stateOnly[outcome]) {
+			assert.deepEqual(
+				nameInk,
+				glyphInk,
+				`${toolName}/${outcome}: state must read the same on both spans — glyph ${glyphInk.join(" ")} against name ${nameInk.join(" ")}`,
+			);
+		}
 	}
+	// And the case D8 is about, stated as itself: a settled read row's VERB is not
+	// the category ink its glyph carries.
+	const readRow = glyphAndName(renderRow("read", "success"));
+	assert.ok(
+		!inkOf(readRow.name).includes("text-info"),
+		"a settled read row must not draw its verb in the category ink (D8)",
+	);
 
 	// The command SUMMARY stays uncoloured, which is the operator's own wording
 	// from the report that started all of this ("the tool call preview does not
@@ -2987,10 +3020,34 @@ test("the category-to-ink map is written once, and no second one shadows it", ()
 	// span, both naming the same function, so a future edit cannot colour one and
 	// leave the other. Matched with the call's own trailing comma, because the
 	// doc comments above name the expression too and prose is not a call site.
-	const calls = source.match(/rowInk\(outcome, toolName\),/g) ?? [];
+	// ONE expression per span, and they are different expressions now: the glyph
+	// derives identity-from-state, the name derives state alone. Both are named
+	// functions called at exactly one site, so a future edit cannot colour one span
+	// inline and leave the other behind — which is what this matched before the two
+	// inks separated.
+	const glyphCalls = source.match(/rowInk\(outcome, toolName\),/g) ?? [];
 	assert.equal(
-		calls.length,
-		2,
-		`the glyph and the name read one expression each — got ${calls.length}`,
+		glyphCalls.length,
+		1,
+		`the glyph reads the one identity/state expression — got ${glyphCalls.length}`,
 	);
+	const nameCalls = source.match(/nameInk\(outcome\),/g) ?? [];
+	assert.equal(
+		nameCalls.length,
+		1,
+		`the name reads the one state expression — got ${nameCalls.length}`,
+	);
+	// The state-only function must not reach for the category map: that is the
+	// whole point of it, and a token appearing inside its body would restore D8's
+	// defect through a second call path.
+	const nameInkBody = source.slice(
+		source.indexOf("const nameInk"),
+		source.indexOf("const DiffCounters"),
+	);
+	for (const token of ["CATEGORY_INK", "text-info", "text-accent-alt"]) {
+		assert.ok(
+			!nameInkBody.includes(token),
+			`the state-only ink must not consult ${token}`,
+		);
+	}
 });
