@@ -135,8 +135,20 @@ const EDITED_TEXT = normalizeSendText(
 	"and here is the follow-up I typed after it",
 );
 
-/** The file the failed send carried, which comes back with the text. */
-const RETURNED_CHIP = "/tmp/notes.png";
+/**
+ * The file the failed send carried, which comes back with the text.
+ *
+ * A PASTED SCREENSHOT, because that is the shape the app itself holds: a chip from
+ * an attachment dialog is a path, and a PAGE CANNOT RENDER A PATH - the app reads
+ * those through the main process - so every frame in this set carried a
+ * broken-image icon, which reads as a product bug rather than as the missing file
+ * of a rig (review round 2, D7). Pasted images are `data:` URLs in this app
+ * (`attachments-preview.tsx` renders one directly and gives it no name), so this is
+ * a real state with real bytes, and the chip that says "a file travelled with this
+ * message" is the thing these frames are about.
+ */
+const RETURNED_CHIP =
+	"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAFklEQVR42mOomneDJMQwqmFUw/DVAABRifAQzOsD1gAAAABJRU5ErkJggg==";
 
 /**
  * The two budget sentences, from the code that writes them.

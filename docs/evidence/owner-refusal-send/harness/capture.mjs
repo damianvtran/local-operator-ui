@@ -34,7 +34,13 @@
  */
 
 import { spawn } from "node:child_process";
-import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	mkdirSync,
+	readFileSync,
+	readdirSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { connect } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -46,9 +52,13 @@ import { withMockKeychain } from "../../../../scripts/chrome-keychain.mjs";
 const ROOT = resolve(import.meta.dirname, "../../../..");
 const HARNESS = import.meta.dirname;
 const OUT = process.argv[2];
-const TREE = (process.argv.find((a) => a.startsWith("--tree=")) ?? "--tree=after").split("=")[1];
+const TREE = (
+	process.argv.find((a) => a.startsWith("--tree=")) ?? "--tree=after"
+).split("=")[1];
 /** `--only=<arm>` runs one arm, for the inner loop while this rig is being built. */
-const ONLY = (process.argv.find((a) => a.startsWith("--only=")) ?? "--only=").split("=")[1];
+const ONLY = (
+	process.argv.find((a) => a.startsWith("--only=")) ?? "--only="
+).split("=")[1];
 if (!OUT) {
 	process.stderr.write("usage: capture.mjs <out-dir> [--tree=after|before]\n");
 	process.exit(2);
@@ -66,6 +76,14 @@ const ORIGIN = `http://localhost:${APP_PORT}`;
    renders in these states, and a short stand-in would hide a cap. */
 const MESSAGE =
 	"Please re-run the failing case with the trace enabled and paste the last twenty lines here.";
+/*
+ * THE LINE THE USER TYPES WHILE THE SEND IS STILL IN FLIGHT (review round 2). The
+ * duplicate arrived through Send rather than Retry precisely because this is an
+ * ordinary thing to do: the message is out, the box is empty, and the next line
+ * goes in before the first one settles.
+ */
+const FOLLOW_UP =
+	"and here is my own next line, typed while that one was still on its way";
 
 /**
  * The arms, and what each one is for. `refusals` is the number of message
@@ -119,6 +137,36 @@ const ARMS = [
 		expectRefusal: true,
 		why: "the transport deadline over a live, slow owner: the message is kept and one sentence offers the retry the receipt de-duplicates",
 	},
+	/*
+	 * THE DUPLICATE ARM (review round 2, R2/U1), and the reason the owner has to
+	 * admit the message AFTER the deadline: that is what makes the app reconcile. The
+	 * user types their next line while the first is in flight, so the returned message
+	 * lands in the box IN FRONT of their words - and the app then learns the first one
+	 * was delivered. The box must end up holding ONLY the typed line, and pressing
+	 * Send must put only that line on the wire: everything else is the a9cbe9bf /
+	 * c47f3028 pair.
+	 */
+	{
+		name: "late-typed",
+		refusals: 0,
+		holdMs: 21_000,
+		expectRefusal: true,
+		custom: "late-typed",
+		why: "typed while in flight, then the owner admits it: the box keeps only the typed line and the next send carries only that",
+	},
+	/*
+	 * AND TWO FAILED ROUNDS (UX round 2, U9): the composer's text accumulated across
+	 * consecutive failures and came back after a reload as one run-together blob. The
+	 * question the frame answers is what the box holds once, after the second round and
+	 * a reload.
+	 */
+	{
+		name: "rounds-two",
+		refusals: 2,
+		expectRefusal: true,
+		custom: "rounds-two",
+		why: "two rounds that both fail, then a reload: the message is in the box once, not accumulated",
+	},
 ];
 
 /** Same minimal CDP client as `scripts/capture-evidence.mjs`. */
@@ -139,7 +187,9 @@ class Cdp {
 	send(method, params = {}) {
 		const id = ++this.next;
 		this.ws.send(JSON.stringify({ id, method, params }));
-		return new Promise((resolve, reject) => this.pending.set(id, { resolve, reject }));
+		return new Promise((resolve, reject) =>
+			this.pending.set(id, { resolve, reject }),
+		);
 	}
 }
 
@@ -233,6 +283,13 @@ const PROBE = `(() => {
 		   speaker" and "no user row is painted" are different facts, and the second
 		   is the one the frames are about - a page with no rows at all answers 0,
 		   which is exactly what a retracted echo leaves behind. */
+		/* The rows' own words, so a frame can show WHICH message is in the
+		   transcript rather than only how many: the duplicate is a second row
+		   carrying the first one's text, which a count alone cannot tell from a
+		   legitimate second message. */
+		transcriptRowTexts: transcriptRows.map((row) =>
+			(row.textContent || "").replace(/\s+/g, " ").trim().slice(0, 160),
+		),
 		transcriptRows: transcriptRows.length,
 		transcriptUserRows:
 			transcriptRows.length === 0
@@ -247,13 +304,226 @@ const PROBE = `(() => {
 	};
 })()`;
 
+/*
+ * THE TWO ARMS WHOSE SHAPE IS A SEQUENCE RATHER THAN ONE PRESS, and they are the
+ * arms that reproduce what round 2 found: a send that is still in flight while the
+ * user types their next line, and two rounds that both fail.
+ *
+ * `late-typed` is the duplicate. The first message is held past the app's own
+ * deadline, which puts it back in the box; the user's line was typed while it was
+ * out, so the returned message lands IN FRONT of it. The owner then ADMITS the
+ * message, and the app learns that from the owner's own row - which is why this
+ * rig's owner serves the admitted message as durable history (`stub-owner.mjs`):
+ * a stub whose history is empty can never make the reconciliation run, and the
+ * duplicate it prevents stays as invisible in a rig as it was on the screen. The
+ * reload is how the row is read: the app opens the conversation again, reads its
+ * history, and the reconciliation fires on the mounted composer.
+ *
+ * `rounds-two` is the accumulation (U9): two failures and a reload, and the box
+ * must hold the message ONCE.
+ */
+const runCustom = async (
+	arm,
+	{ evaluate, shoot, logPath, first, waitForSendSettled },
+) => {
+	const boxValue = () =>
+		evaluate(`(() => {
+			const area = document.querySelector('textarea[aria-label="Message"]');
+			return area ? area.value : null;
+		})()`);
+	const typeInto = (text) =>
+		evaluate(`(() => {
+			const area = document.querySelector('textarea[aria-label="Message"]');
+			const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
+			setter.call(area, ${JSON.stringify(text)});
+			area.dispatchEvent(new Event("input", { bubbles: true }));
+			return area.value;
+		})()`);
+	const pressSend = () =>
+		evaluate(`(() => {
+			const send = document.querySelector('button[aria-label="Send message"]');
+			if (!send) throw new Error("no send control");
+			send.click();
+			return true;
+		})()`);
+	/*
+	 * COUNTED rather than sliced from a byte offset: the wait is for ONE MORE
+	 * admission than there was when the typing started, which cannot be fooled by a
+	 * log that grew, was rewritten, or holds the same sentence from an earlier arm.
+	 */
+	const admissions = () =>
+		(readFileSync(logPath, "utf8").match(/-> 200 admitted/g) ?? []).length;
+	const waitForOwnerToAdmit = async () => {
+		/*
+		 * ONE admission in THIS ARM'S OWN log, and no target arithmetic: the log is
+		 * `wireDir/<arm>.log`, one file per arm, and by the time this runs the hold may
+		 * already have expired - the typing and the frame happen while the request is
+		 * still pending, but the settle wait that precedes them can outlast the 21 s
+		 * hold, so "one more than before" is a target the arm has already passed.
+		 */
+		for (let attempt = 0; attempt < 60; attempt++) {
+			if (admissions() >= 1) return;
+			await sleep(1000);
+		}
+		throw new Error(
+			`${arm.name}: the owner never admitted the message (log:\n${readFileSync(logPath, "utf8")})`,
+		);
+	};
+	/*
+	 * THE RELOAD IS THE HISTORY READ. The owner's row is served by the stub's history
+	 * page, and the pane reads that page when it mounts - so a fresh mount is what
+	 * makes the reconciliation run, exactly as it does for a user who quits and comes
+	 * back to a message that had been sent.
+	 */
+	const reload = async () => {
+		await evaluate(`(() => { location.reload(); return true; })()`);
+		for (let attempt = 0; attempt < 240; attempt++) {
+			if (
+				await evaluate(
+					`Boolean(document.querySelector('textarea[aria-label="Message"]'))`,
+				)
+			) {
+				// One more beat for the pane's reconciliation effect, which runs on the
+				// commit after the transcript's own row lands.
+				await sleep(4000);
+				return;
+			}
+			await sleep(1000);
+		}
+		throw new Error(
+			`${arm.name}: the composer never came back after the reload, so this frame would photograph the wrong screen`,
+		);
+	};
+
+	if (arm.custom === "late-typed") {
+		const typed = `${await boxValue()}\n\n${FOLLOW_UP}`;
+		await typeInto(typed);
+		await sleep(600);
+		await shoot("typed-in-flight");
+		await waitForOwnerToAdmit();
+		/*
+		 * FIRST the LIVE path: the owner publishes the row on the session stream, so
+		 * the app reconciles with the pane mounted - which is the flow the round
+		 * reproduced (a9cbe9bf, then c47f3028). The reload that follows is the second
+		 * route to the same fact, the history page a returning reader gets.
+		 */
+		await sleep(6000);
+		const live = await evaluate(PROBE);
+		process.stdout.write(
+			`  ${arm.name} live: ${JSON.stringify({
+				rows: live.transcriptRowTexts,
+				userRows: live.transcriptUserRows,
+				box: live.boxValue,
+				alert: (live.alertProse ?? "").slice(0, 160),
+			})}\n`,
+		);
+		await shoot("after-late-delivery-live");
+		await reload();
+		const afterReload = await evaluate(PROBE);
+		process.stdout.write(
+			`  ${arm.name} after reload: ${JSON.stringify({
+				rows: afterReload.transcriptRowTexts,
+				userRows: afterReload.transcriptUserRows,
+				box: afterReload.boxValue,
+				alert: (afterReload.alertProse ?? "").slice(0, 160),
+			})}\n`,
+		);
+		await shoot("after-late-delivery");
+		/*
+		 * THE DUPLICATE'S OWN ASSERTION, and the reason this arm exists: the delivered
+		 * words are OUT of the box, the user's line is what is left, the note says so,
+		 * and the transcript holds the message exactly once.
+		 */
+		if (afterReload.boxValue !== FOLLOW_UP)
+			throw new Error(
+				`${arm.name}: the box after the late delivery is ${JSON.stringify(afterReload.boxValue)} - it must hold ONLY the typed line, or the next press sends the delivered words a second time (probe: ${JSON.stringify({ rows: afterReload.transcriptRowTexts, userRows: afterReload.transcriptUserRows, alert: (afterReload.alertProse ?? "").slice(0, 200), body: (afterReload.bodyText ?? "").slice(0, 300) })}; owner log:\n${readFileSync(logPath, "utf8")})`,
+			);
+		if (afterReload.transcriptUserRows !== 1)
+			throw new Error(
+				`${arm.name}: the transcript holds ${afterReload.transcriptUserRows} user rows for one delivered message (${JSON.stringify(afterReload.transcriptRowTexts)})`,
+			);
+		const prose = `${afterReload.alertProse ?? ""} ${afterReload.bodyText ?? ""}`;
+		if (!prose.includes("Your earlier message was delivered"))
+			throw new Error(
+				`${arm.name}: the muted late-delivery line never rendered (prose: ${JSON.stringify(prose.slice(0, 240))})`,
+			);
+		if (!prose.includes("What's here now hasn't been sent"))
+			throw new Error(
+				`${arm.name}: the note does not say that what is in the box has not been sent, so the user cannot tell their line from the message that went (prose: ${JSON.stringify(prose.slice(0, 240))})`,
+			);
+		// And the press that follows carries the typed line ALONE.
+		const beforeSecond = readFileSync(logPath, "utf8");
+		await pressSend();
+		await waitForSendSettled(evaluate, logPath, arm, "second", "sent");
+		await sleep(1500);
+		const afterSecond = await evaluate(PROBE);
+		await shoot("after-next-send");
+		const attempts = [
+			...readFileSync(logPath, "utf8").matchAll(/request_id=([0-9a-f-]+)/g),
+		].map((m) => m[1]);
+		const bodies = [
+			...readFileSync(logPath, "utf8").matchAll(/text=(.*?)(?: ->|$)/gm),
+		].map((m) => m[1]);
+		if (attempts.length !== 2)
+			throw new Error(
+				`${arm.name}: expected two attempts at the owner (one delivered, one the user's own line), saw ${attempts.length}`,
+			);
+		if (bodies.length >= 2) {
+			const second = bodies.at(-1);
+			if (!second.includes("my own next line"))
+				throw new Error(
+					`${arm.name}: the second message is not the user's typed line (${JSON.stringify(second)})`,
+				);
+			if (second.includes("Please re-run the failing case"))
+				throw new Error(
+					`${arm.name}: THE DUPLICATE - the second message carries the delivered words too (${JSON.stringify(second)})`,
+				);
+		}
+		const delivered = (afterSecond.transcriptRowTexts ?? []).filter((text) =>
+			text.includes("Please re-run the failing case"),
+		);
+		return {
+			typed,
+			live,
+			afterReload,
+			afterSecond,
+			requestIds: attempts,
+			bodies,
+			deliveredRows: delivered.length,
+			secondWire: beforeSecond.length ? "recorded" : "recorded",
+		};
+	}
+
+	if (arm.custom === "rounds-two") {
+		const firstBox = await boxValue();
+		await pressSend();
+		await sleep(6000);
+		const secondBox = await boxValue();
+		await reload();
+		const afterReload = await evaluate(PROBE);
+		await shoot("after-reload");
+		const occurrences = (afterReload.boxValue ?? "").split(MESSAGE).length - 1;
+		if (afterReload.boxValue !== MESSAGE)
+			throw new Error(
+				`${arm.name}: the box after two failed rounds and a reload is ${JSON.stringify(afterReload.boxValue)} (${occurrences} copies of the message) - it must hold the message exactly once`,
+			);
+		return { firstBox, secondBox, afterReload, occurrences };
+	}
+
+	throw new Error(`${arm.name}: unknown custom arm`);
+};
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const children = [];
 const reap = () => {
 	for (const child of children.splice(0)) killGroup(child);
 };
 const launch = (command, args, options = {}) => {
-	const child = spawn(command, args, { detached: true, stdio: "ignore", ...options });
+	const child = spawn(command, args, {
+		detached: true,
+		stdio: "ignore",
+		...options,
+	});
 	children.push(child);
 	return child;
 };
@@ -395,9 +665,7 @@ const waitForSendSettled = async (evaluate, wirePath, arm, which, expects) => {
 		// on an arm whose FIRST one is refused (that is the operator's remedy, and the
 		// frame exists to show it lands).
 		const settled =
-			expects === "refusal"
-				? state.alert
-				: state.box === "" && state.onScreen;
+			expects === "refusal" ? state.alert : state.box === "" && state.onScreen;
 		if (settled) {
 			// One more commit: a refusal's retraction and the composer's restore of the
 			// text are state updates that land after the alert's first paint.
@@ -418,16 +686,25 @@ const main = async () => {
 	/* The app's own browser dev server: the shipped renderer over the shipped
 	   `/__desktop` transport. It holds no arm of its own - the arm lives in the
 	   owner it proxies to - so it starts once and stays up for every arm. */
-	launch(process.execPath, [join(ROOT, "node_modules/vite/bin/vite.js"), "--config", join(HARNESS, "app.vite.mjs")], {
-		cwd: ROOT,
-		env: {
-			...process.env,
-			LOCAL_OPERATOR_DESKTOP_BACKEND_URL: `http://127.0.0.1:${OWNER_PORT}`,
-			LOCAL_OPERATOR_DESKTOP_TOKEN: "owner-refusal-stub",
-			OWNER_REFUSAL_APP_PORT: String(APP_PORT),
+	launch(
+		process.execPath,
+		[
+			join(ROOT, "node_modules/vite/bin/vite.js"),
+			"--config",
+			join(HARNESS, "app.vite.mjs"),
+		],
+		{
+			cwd: ROOT,
+			env: {
+				...process.env,
+				LOCAL_OPERATOR_DESKTOP_BACKEND_URL: `http://127.0.0.1:${OWNER_PORT}`,
+				LOCAL_OPERATOR_DESKTOP_TOKEN: "owner-refusal-stub",
+				OWNER_REFUSAL_APP_PORT: String(APP_PORT),
+			},
 		},
-	});
-	if (!(await waitForHttp(`${ORIGIN}/`, 90_000))) throw new Error("the app dev server never came up");
+	);
+	if (!(await waitForHttp(`${ORIGIN}/`, 90_000)))
+		throw new Error("the app dev server never came up");
 
 	const dataDir = join(tmpdir(), `lo-owner-refusal-${process.pid}`);
 	mkdirSync(dataDir, { recursive: true });
@@ -474,7 +751,12 @@ const main = async () => {
 				OWNER_REFUSAL_LOG: logPath,
 			},
 		});
-		if (!(await waitForHttp(`http://127.0.0.1:${OWNER_PORT}/v1/capabilities`, 30_000)))
+		if (
+			!(await waitForHttp(
+				`http://127.0.0.1:${OWNER_PORT}/v1/capabilities`,
+				30_000,
+			))
+		)
 			throw new Error(`the scripted owner did not start for arm ${arm.name}`);
 
 		// A fresh page per arm: the composer is per-conversation state, and one
@@ -488,7 +770,9 @@ const main = async () => {
 			// written.
 			if (await portOpen("127.0.0.1", CDP_PORT)) {
 				try {
-					const list = await (await fetch(`http://127.0.0.1:${CDP_PORT}/json/list`)).json();
+					const list = await (
+						await fetch(`http://127.0.0.1:${CDP_PORT}/json/list`)
+					).json();
 					target = list.find((t) => t.type === "page");
 				} catch {
 					/* chrome listening but not answering yet */
@@ -519,7 +803,9 @@ const main = async () => {
 				returnByValue: true,
 			});
 			if (exceptionDetails)
-				throw new Error(exceptionDetails.exception?.description ?? "eval failed");
+				throw new Error(
+					exceptionDetails.exception?.description ?? "eval failed",
+				);
 			return result.value;
 		};
 		const shoot = async (name) => {
@@ -527,7 +813,10 @@ const main = async () => {
 				format: "webp",
 				quality: 100,
 			});
-			writeFileSync(join(OUT, `${arm.name}-${name}.webp`), Buffer.from(data, "base64"));
+			writeFileSync(
+				join(OUT, `${arm.name}-${name}.webp`),
+				Buffer.from(data, "base64"),
+			);
 			process.stdout.write(`  captured ${arm.name}-${name}.webp\n`);
 		};
 
@@ -566,7 +855,10 @@ const main = async () => {
 				format: "webp",
 				quality: 100,
 			});
-			writeFileSync(join(OUT, `${arm.name}-no-composer.webp`), Buffer.from(data, "base64"));
+			writeFileSync(
+				join(OUT, `${arm.name}-no-composer.webp`),
+				Buffer.from(data, "base64"),
+			);
 			throw new Error(
 				`arm ${arm.name}: the composer never mounted, so this frame would photograph nothing (page: ${JSON.stringify(await evaluate(PROBE))})`,
 			);
@@ -613,6 +905,22 @@ const main = async () => {
 			`[...document.querySelectorAll('[role="alert"] button')].map((b) => b.textContent.trim())`,
 		);
 		await shoot("after-first-send");
+
+		if (arm.custom) {
+			const custom = await runCustom(arm, {
+				evaluate,
+				shoot,
+				logPath,
+				first,
+				waitForSendSettled,
+			});
+			readings.arms.push({ ...arm, first, ...custom });
+			wireLog.push(`${arm.name}:\n${readFileSync(logPath, "utf8").trim()}`);
+			killGroup(owner);
+			owner = null;
+			process.stdout.write(`arm ${arm.name}: ${arm.why}\n`);
+			continue;
+		}
 
 		if (arm.expectRefusal) {
 			if (!first.regionPresent || !(first.alertProse ?? "").trim())
@@ -679,15 +987,24 @@ const main = async () => {
 		process.stdout.write(`arm ${arm.name}: ${arm.why}\n`);
 	}
 
-	writeFileSync(join(OUT, "readings.json"), `${JSON.stringify(readings, null, 1)}\n`);
+	writeFileSync(
+		join(OUT, "readings.json"),
+		`${JSON.stringify(readings, null, 1)}\n`,
+	);
 	writeFileSync(join(OUT, "wire.log"), `${wireLog.join("\n")}\n`);
-	process.stdout.write(`${JSON.stringify(readings.arms.map((a) => ({
-		arm: a.name,
-		firstAlert: (a.first.alertProse ?? "").slice(0, 130),
-		firstBox: a.first.boxValue,
-		secondBox: a.second.boxValue,
-		secondAlert: a.second.regionPresent,
-	})), null, 1)}\n`);
+	process.stdout.write(
+		`${JSON.stringify(
+			readings.arms.map((a) => ({
+				arm: a.name,
+				firstAlert: (a.first?.alertProse ?? "").slice(0, 130),
+				firstBox: a.first?.boxValue,
+				secondBox: a.second.boxValue,
+				secondAlert: a.second.regionPresent,
+			})),
+			null,
+			1,
+		)}\n`,
+	);
 };
 
 /** `--only` narrows the run for the inner loop while a rig is being built. */

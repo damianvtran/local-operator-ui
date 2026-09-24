@@ -800,3 +800,39 @@ notice on a REAL failed send, end to end. The states here are the component in
 the state the app puts it in; the transport's real deadline firing against a
 stopped backend, the request that was and was not admitted, and the owner's
 durable row count after a Retry are the live matrix in this change's PR.
+
+## Round 3 (the composer-send-failure change): which frames are current, and which are not
+
+This set's `failed-*`, `delivered-late` and `send-lock` frames were captured
+BEFORE this change's copy pass, and three of them show sentences the app no longer
+produces:
+
+| directory | what is stale about it |
+| --- | --- |
+| `failed-unknown` | was shot before the unknown-outcome sentence gained "Sending it again is safe." |
+| `failed-merged` | same sentence, same omission |
+| `failed-not-sent` | the 413 is this set's old SHORT stand-in; the app's own sentence (`DESKTOP_REQUEST_TOO_LARGE_DETAIL`) is about twice as long |
+
+The stories themselves are current - both `FailedNotSent` and `FailedTooLarge` now
+take their sentence from the app's own constant (`message-input.stories.tsx`), so
+the next capture of them cannot drift - and the affected states are also rendered
+by this change's own rig (`docs/evidence/composer-notice-arms/`), which captures
+the shipped composer with a real pasted-image chip.
+
+The re-shoot of these three sets was attempted from this worktree with the
+repository's own sweep and could not run:
+
+```
+node scripts/capture-evidence.mjs --only=chat-message-input--failed- --allow-backend
+Error: unknown story id(s): chat-message-input--failed-unknown,
+chat-message-input--failed-not-sent, chat-message-input--failed-too-large,
+chat-message-input--failed-merged. Check http://localhost:6017/index.json for the
+real ids.
+```
+
+`--allow-backend` is the sanctioned partial-run flag (a backend answers on the
+default port on this machine all session), and the ids come from the sweep's own
+story table, so the failure is in this set's Storybook index rather than in the
+filter. Until that is resolved these frames are left in place, labelled here for
+what they are, rather than deleted: a reader can see which sentence is old and why,
+which a missing directory would not say.

@@ -67,6 +67,9 @@ export function composerNoticeFor(input: {
 					? SEND_FAILURE_COPY.lateDeliveryDraft
 					: SEND_FAILURE_COPY.lateDelivery,
 			muted: true,
+			// Announce, do not interrupt: nothing failed, nothing needs repairing, and
+			// the reader may be listening to the message that has just been delivered.
+			polite: true,
 		};
 	if (input.error)
 		return {

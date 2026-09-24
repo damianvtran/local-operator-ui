@@ -86,7 +86,16 @@ const SENTENCE = {
 
 /** Whether the arm's body is the coded one. Only `busy` and `unreachable` are
  * today: a retiring refusal arrives as a plain string `detail`. */
-const CODED = new Set(["busy-exhausted", "busy-internal", "unreachable"]);
+const CODED = new Set([
+	"busy-exhausted",
+	"busy-internal",
+	"unreachable",
+	// The two-round arm's refusal carries a code, which is the class whose outcome
+	// the app cannot establish - so the payload is handed back and the round's
+	// question (what the composer holds after two of them, and after a reload) is
+	// reachable.
+	"rounds-two",
+]);
 
 const ARMS = {
 	retiring: {
@@ -132,11 +141,86 @@ const ARMS = {
 		status: 200,
 		code: "held 21s, then admitted",
 	},
+	/*
+	 * THE LATE-DELIVERY ARMS (review round 2). Same hold as `timeout-admitted`, and
+	 * the difference that matters is what the OWNER's side does afterwards: the
+	 * admitted message becomes a durable row in the history this stub serves, which
+	 * is the only thing that makes the app's reconciliation run. Round 1 and the UX
+	 * round both found the duplicate on an arm where the answer arrived after the
+	 * deadline - `late-typed` types the next line while the send is in flight, and
+	 * `late-same-path` sends the SAME file twice, which is the two chips one path the
+	 * identity lookup used to confuse.
+	 */
+	"late-typed": {
+		refusals: 0,
+		holdMs: 21_000,
+		status: 200,
+		code: "held 21s, then admitted",
+	},
+	"late-same-path": {
+		refusals: 0,
+		holdMs: 21_000,
+		status: 200,
+		code: "held 21s, then admitted",
+	},
+	/*
+	 * AND TWO FAILED ROUNDS for the accumulation the UX round measured (U9): the
+	 * app is told nothing twice, the payload comes home twice, and what the composer
+	 * holds after a reload is the question.
+	 */
+	"rounds-two": {
+		refusals: 2,
+		status: 503,
+		code: "transport.failed",
+		sentence:
+			"The connection to the runtime dropped before the message could be acknowledged.",
+	},
 };
 
 const arm = ARMS[ARM];
 if (!arm) throw new Error(`unknown arm ${ARM}`);
 let messages = 0;
+/*
+ * THE ADMITTED MESSAGES, as durable history. The app's reconciliation is triggered
+ * by the OWNER's row appearing - live, replayed, or in the history page on the next
+ * open - so a stub that answers an empty history can never make it run, and the
+ * duplicate it exists to prevent stays invisible in the rig as much as it did on
+ * screen. Keyed by the `request_id` the app sent, which is the id the transcript
+ * indexes the row under (`appendPendingUser`).
+ */
+const admitted = [];
+/** The open session streams, one per subscribed panel. */
+const streams = new Set();
+
+/**
+ * Publish an admitted message the way the owner does: one `message_start` frame,
+ * in the producer's own envelope (`{session_id, epoch, seq, type: "event", payload}`,
+ * the shape `scripts/reconnect-page-gap.test.mjs` pins as the wire's own).
+ *
+ * The id is the app's request id, because that is the key the transcript coalesces
+ * the optimistic echo with the durable row under - and a durable row under that id
+ * is exactly what the app reads as proof the message landed.
+ */
+const publishAdmitted = (message) => {
+	let seq = 1;
+	const frame = {
+		session_id: "abc123def456",
+		epoch: "owner-refusal-rig",
+		seq,
+		type: "event",
+		payload: {
+			type: "message_start",
+			message: {
+				id: message.id,
+				role: "user",
+				content: [{ type: "text", text: message.text }],
+				tool_calls: [],
+			},
+		},
+	};
+	for (const stream of streams)
+		stream.write(`data: ${JSON.stringify(frame)}\n\n`);
+};
 
 const CAPABILITIES = {
 	desktop_available: true,
@@ -172,6 +256,17 @@ createServer(async (req, res) => {
 		res.writeHead(status, { "Content-Type": "application/json" });
 		res.end(JSON.stringify(value));
 	};
+	/*
+	 * EVERY ROUTE, LOGGED, because the late-delivery arms depend on a request the
+	 * message route never sees: the app learns about an admitted message by reading
+	 * its HISTORY, and a rig whose log only records the message POSTs cannot tell
+	 * "the app never asked" from "the app asked and the answer was empty".
+	 */
+	if (path !== "/v1/events")
+		appendFileSync(
+			LOG,
+			`${new Date().toISOString()} ${req.method} ${path}${payload?.op ? ` op=${payload.op}` : ""}\n`,
+		);
 
 	if (path === "/v1/desktop/sessions" && req.method === "POST") {
 		// A twelve-character LOWER-CASE HEX id, because that is what the closed
@@ -192,13 +287,13 @@ createServer(async (req, res) => {
 		if (arm.holdMs && messages === 1) {
 			appendFileSync(
 				LOG,
-				`${new Date().toISOString()} POST ${path} attempt=1 request_id=${payload?.request_id} -> held ${arm.holdMs}ms (the app's own deadline is reached while this is pending)\n`,
+				`${new Date().toISOString()} POST ${path} attempt=1 request_id=${payload?.request_id} text=${JSON.stringify(String(payload?.text ?? "").slice(0, 200))} -> held ${arm.holdMs}ms (the app's own deadline is reached while this is pending)\n`,
 			);
 			await sleep(arm.holdMs);
 		}
 		appendFileSync(
 			LOG,
-			`${new Date().toISOString()} POST ${path} attempt=${messages} request_id=${payload?.request_id} -> ${
+			`${new Date().toISOString()} POST ${path} attempt=${messages} request_id=${payload?.request_id} text=${JSON.stringify(String(payload?.text ?? "").slice(0, 200))} -> ${
 				refused ? `${arm.status} ${arm.code}` : "200 admitted"
 			}\n`,
 		);
@@ -237,6 +332,13 @@ createServer(async (req, res) => {
 			);
 			return;
 		}
+		const landed = {
+			id: String(payload?.request_id ?? ""),
+			ts: Date.now(),
+			text: String(payload?.text ?? ""),
+		};
+		admitted.push(landed);
+		publishAdmitted(landed);
 		json(200, {
 			result: {
 				status: "admitted",
@@ -264,8 +366,18 @@ createServer(async (req, res) => {
 			Connection: "keep-alive",
 		});
 		const beat = setInterval(() => res.write(": keep-alive\n\n"), 5_000);
+		/*
+		 * THE OPEN STREAM, so an admitted message can be reported on the wire the app
+		 * actually reads its transcript from. The app's reconciliation is triggered by
+		 * the OWNER's own row appearing - live, on a reconnect, or in the history page
+		 * - and a stub whose stream and history are both empty can never make it run,
+		 * which would leave the duplicate these arms exist to reproduce invisible in
+		 * the rig as much as it was on the screen.
+		 */
+		streams.add(res);
 		req.on("close", () => {
 			clearInterval(beat);
+			streams.delete(res);
 			res.end();
 		});
 		return;
@@ -302,7 +414,36 @@ createServer(async (req, res) => {
 		return;
 	}
 	if (path === "/v1/desktop/sessions" || path.endsWith("/history")) {
-		json(200, { result: { sessions: [], records: [], total: 0 } });
+		json(200, {
+			result: {
+				sessions: [],
+				records: [],
+				total: 0,
+				/*
+				 * A durable USER row per admitted message, in the shape the reducer
+				 * reads: `type: "message"` with `payload.role === "user"` and the text
+				 * on `payload.content`, keyed by the request id.
+				 */
+				entries: admitted.map((message) => ({
+					id: message.id,
+					ts: message.ts,
+					type: "message",
+					/*
+					 * The content BLOCKS, not a string: the reducer reads
+					 * `payload.content` as an array of blocks (`messageText` joins the text
+					 * blocks), and a row whose text comes back empty is a row the transcript
+					 * cannot name - which would make this rig's history read look like an
+					 * answer while painting nothing.
+					 */
+					payload: {
+						role: "user",
+						content: [{ type: "text", text: message.text }],
+					},
+				})),
+				has_more: false,
+				cursor_missing: false,
+			},
+		});
 		return;
 	}
 	json(200, { result: {} });
