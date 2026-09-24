@@ -73,8 +73,9 @@ and relaying `subagent_progress`. That half is
 
 ## The readings
 
-Both arms, `localOperatorDark`, 900x900, one run of the rig per arm; the two
-themes agree step for step. `top` is `scrollTop`, `fromTail` is `|scrollTop|`
+Both arms, `localOperatorDark`, 900x900, one run of the rig per arm; the light
+run agrees with it in every column below (the two runs' request counts differ by
+a tick, which is timing rather than geometry). `top` is `scrollTop`, `fromTail` is `|scrollTop|`
 this scroller's distance from its bottom edge (it is `column-reverse`, so the
 origin is the tail), `cut` is how many pixels of the NEWEST row fall below the
 viewport's bottom edge, and `btn` is the control's presence.
@@ -101,7 +102,7 @@ Read three ways:
   three consecutive arrivals: `scrollTop` does not move and not one pixel of the
   newest row falls below the fold. **This is a property of the shipped head and
   it holds** — the change below does not touch it, and the before arm measures
-  the same numbers.
+  the same geometry, differing only in what the control is doing.
 - **A reader who scrolled up is not yanked.** `B0`–`B2`: the anchored row
   (`entry-assistant-19`) keeps its viewport offset to within 0.6px while the
   extent grows by 518px under it, and the newest row is 558.6–1072.6px below the
@@ -113,9 +114,9 @@ Read three ways:
   content shifts under a stationary offset — the `anchor` column shows the
   topmost visible row changing — but the arrival is on screen, which is the
   question.
-- **A settled child is quiet.** `D0` → `D1`: the route's read count is unchanged
-  across six seconds (50 → 50 before, 51 → 51 after), so no timer is left
-  running on a child that has stopped.
+- **A settled child is quiet.** `D0` → `D1`, the dark run: the route's read count
+  is unchanged across six seconds (51 → 51 in the before arm, 52 → 52 in the
+  after arm), so no timer is left running on a child that has stopped.
 
 ### The affordance, which is what the arms differ by
 
