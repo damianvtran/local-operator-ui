@@ -722,6 +722,21 @@ const CONTROLS = [
 		ink: "ink",
 	},
 	{
+		/*
+		 * The DOCKED question card (§F1, `trace/question-dock.tsx`): an `elevated`
+		 * card on the pane's own ground whose ONE boundary is its 1px `accent`
+		 * border - the accent's single spend on the card. Listed because it is a new
+		 * component with its own fill and border: `elevated` against `canvas` is a
+		 * lightness step and not a boundary, so the accent edge has to clear 3:1 on
+		 * its own, and the question's `ink` has to clear the text floor on the card.
+		 */
+		name: "question dock card",
+		on: ["canvas"],
+		fill: "elevated",
+		border: "accent",
+		ink: "ink",
+	},
+	{
 		/* Hover is a colour step, so the stepped fill is its own triple: the
 		   label has to clear the text floor on the ground hover moves it to,
 		   not merely on the resting one. */
@@ -1364,6 +1379,28 @@ const GRAPHICS = [
  * same element at different times.
  */
 const PERCEPTIBLE = [
+	{
+		/*
+		 * An option ROW inside the docked question card (§F1), under the pointer or
+		 * holding the roving selection. The row draws no edge - the card's accent
+		 * border bounds the set - so its state is a GROUND STEP on the card's
+		 * `elevated`, and what it owes is being seen.
+		 *
+		 * `sunken`, not `row-hover`, and the reason is measured: `row-hover` is the
+		 * list-row state tuned against `canvas`/`surface`, and against `elevated` it is
+		 * ΔE00 0.00 on arcade and under 2.0 on four palettes - a hover nobody can see
+		 * on exactly the card the agent is blocked on. `elevated` -> `sunken` is the
+		 * step the browser tab strip already uses (the row below), ΔE00 6.07 at worst
+		 * (iceberg). The label is `ink`, asserted at 7:1 on `sunken` by the ink loop.
+		 */
+		name: "question dock option row hover fill",
+		role: "sunken",
+		on: ["elevated"],
+		minDeltaE: 5.0,
+		pairedWith: "elevated",
+		maxWeightChange: 2.0,
+		against: "elevated",
+	},
 	{
 		/*
 		 * THE HOVER STEP ON A BROWSER TAB, and why it is HERE rather than in
