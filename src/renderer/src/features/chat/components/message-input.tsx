@@ -31,12 +31,14 @@ import {
 	buildSendPayload,
 	withholdsRetryHint,
 } from "@shared/store/canonical-sessions-store";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
 	type Attachment,
 	type Reply,
 	useConversationInputStore,
 } from "@shared/store/conversation-input-store";
 import { normalizePath } from "@shared/utils/path-utils";
+import { sendUnsettledForSession } from "../canonical/working-line-model";
 import {
 	dismissToast,
 	showErrorToast,
@@ -451,37 +453,6 @@ type MessageInputProps = {
 	 * the disabled Send control, and this prop adds no second gate).
 	 */
 	awaitingReply?: boolean;
-	/**
-	 * A send THIS PANE issued has not settled yet: the request is still going out.
-	 *
-	 * The window between the press and the send's own return, which is the one the
-	 * operator reported as having nothing to say - the box has been emptied by the
-	 * echo, the transcript shows the message, and the field's slot showed the
-	 * invitation to start something else while this one was still on its way.
-	 *
-	 * ITS OWN PROP, AND NOT `isLoading`, because the two windows are not the same
-	 * length and the composer has to tell them apart: `isLoading` is
-	 * `admitting || starting` (`chat-content`), and `starting` - `awaitingReply` -
-	 * is up from the moment the request is ISSUED until the owner paints, so it is
-	 * already true in the window this sentence is for. Reading `isLoading` would
-	 * therefore say "the agent is answering" for a send that has not gone out yet
-	 * (agent review round 1, MAJOR-1).
-	 *
-	 * THE CALLER'S SOURCE IS THE PANE's OWN SEND (`chat-page`'s `admitting`),
-	 * passed down, rather than this composer's own `sendInFlight`. The two are
-	 * OR'd below, and the reason is the New-chat identity flip: it REPLACES the
-	 * panel mid-wait, and `sendInFlight` is a `useState` in `useMessageInput`, so
-	 * the replacement would render an empty box under the idle invitation for a
-	 * send it cannot see. The pane's flag outlives the flip and belongs to the
-	 * conversation the pane is showing, which is also the boundary that keeps a
-	 * DIFFERENT conversation's send from making this composer say it.
-	 *
-	 * Changes the PLACEHOLDER only, and it outranks `awaitingReply`: while the
-	 * press has not settled the honest sentence is that the message is on its way
-	 * out, and the agent's own sentence takes over once it has settled. No send is
-	 * gated by it.
-	 */
-	sendingUnsettled?: boolean;
 	/**
 	 * A question is pending and the composer is where it is answered.
 	 *
@@ -1217,7 +1188,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			isLoading,
 			awaitingReply = false,
 			awaitingAnswer = false,
-			sendingUnsettled = false,
 			heldCopyOnScreen,
 			conversationId,
 			messages,
@@ -2034,6 +2004,35 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			],
 		);
 
+		/*
+		 * IS A SEND FOR THIS CONVERSATION STILL GOING OUT?
+		 *
+		 * The window the operator reported as having nothing to say: the box has been
+		 * emptied by the echo, the transcript already shows the message, and the
+		 * field's slot showed the invitation to start something else while this one
+		 * was still on its way.
+		 *
+		 * READ FROM THE STORE'S ROW rather than from a prop or from this composer's
+		 * own state, which is what review round 2's R2-1 established the hard way.
+		 * `sendInFlight` (below) is a `useState` of THIS component, and `chat-page`'s
+		 * `admitting` - what round 1 wired this from - is a `useState` of the panel the
+		 * New-chat identity flip REPLACES (`panelIdentityFor`, "THE FLIP IS A
+		 * REMOUNT"), so on the arm the operator photographed both were false and the
+		 * box fell through to `Waiting for the agent`. A row is not state of the keyed
+		 * subtree: `sendUnsettledForSession` finds it by session id alone, and it is
+		 * the SAME predicate the pane reads through its `starting` latch for the
+		 * transcript's working line, so the box and the line cannot disagree about
+		 * whether a send is going out. A different conversation is a different row,
+		 * which is the boundary that keeps its send from reaching this composer.
+		 *
+		 * OR'd with `sendInFlight` at the placeholder call: the hook's flag covers the
+		 * press this composer made before that row exists at all (and on the arms - a
+		 * slash command, a gate answer, a legacy send - where it never will), and the
+		 * row covers the panel that replaces this one.
+		 */
+		const sendUnsettled = useCanonicalSessionsStore((state) =>
+			sendUnsettledForSession(state.drafts, conversationId),
+		);
 		const {
 			inputValue: newMessage,
 			setInputValue: setNewMessage,
@@ -6405,15 +6404,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 											 * sits where it does), so the chain cannot be reordered into a state the
 											 * app cannot be in and then photographed as one.
 											 *
-											 * The two facts this call is built from, both read from the live pane:
-											 * `sendInFlight` is this composer's own unsettled press, and
-											 * `sendingUnsettled` is the pane's (`chat-page`'s `admitting`), which is
-											 * what survives the New-chat identity flip. They are OR'd because they
-											 * are the two halves of one fact at two scopes, and the sentence is
-											 * earned by the SCENARIO rather than by the box: while a send from this
-											 * conversation is going out, the empty box says so, and `Waiting for the
-											 * agent` takes over once it has settled. See `composerPlaceholder` for
-											 * why that outranks `awaitingReply` and what it must never claim.
+											 * The two facts this call is built from: `sendInFlight` is this composer's own
+											 * unsettled press, and `sendingUnsettled` is the STORE's row for this
+											 * conversation (`sendUnsettledForSession` -> `admittedSendFor`), which is what
+											 * survives the New-chat identity flip - a flag held by the panel being replaced
+											 * cannot, which is what review round 2's R2-1 found in the round-1 wiring. They
+											 * are OR'd because they are the two halves of one fact at two scopes, and the
+											 * sentence is earned by the SCENARIO rather than by the box: while a send from
+											 * this conversation is going out, the empty box says so, and `Waiting for the
+											 * agent` takes over once it has settled. See `composerPlaceholder` for why that
+											 * outranks `awaitingReply` and what it must never claim.
 											 *
 											 * WORDING AND INDICATOR. Sentence case, no ellipsis, no spinner, in the
 											 * composer's existing idiom - every state this box has ever had is one
@@ -6433,7 +6433,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												unavailable,
 												inputDisabled: isInputDisabled,
 												awaitingAnswer,
-												sendingUnsettled: sendingUnsettled || sendInFlight,
+												sendingUnsettled: sendUnsettled || sendInFlight,
 												awaitingReply,
 											})
 										}

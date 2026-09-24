@@ -41,7 +41,7 @@ globalThis.__canonicalEcho = (event) => {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {DesktopControlError} from "@shared/api/local-operator/desktop-api"; export {desktopRequestSchema} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {restoreSubmittedText, restoreSubmittedAttachments, adoptRefusedPayload, refusedSplitNotice, heldClaimCopy, RESTORE_LABEL, STORE_CLAIM_KNOWN_FACT} from "./src/renderer/src/shared/hooks/use-message-input"; export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store";',
+			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {DesktopControlError} from "@shared/api/local-operator/desktop-api"; export {desktopRequestSchema} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {restoreSubmittedText, restoreSubmittedAttachments, adoptRefusedPayload, refusedSplitNotice, heldClaimCopy, RESTORE_LABEL, STORE_CLAIM_KNOWN_FACT} from "./src/renderer/src/shared/hooks/use-message-input";export { sendUnsettledForSession } from "./src/renderer/src/features/chat/canonical/working-line-model"; export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -103,6 +103,7 @@ const {
 	replaceSessionRows,
 	admitChatDraft,
 	draftIdentityFor,
+	sendUnsettledForSession,
 	panelIdentityFor,
 	panelIdentityOfView,
 	buildSendPayload,
@@ -4282,67 +4283,107 @@ test("the composer clears no payload half of its own, so the echo is the only tr
 });
 
 /*
- * MAJOR-1's OTHER HALF: which state earns the sentence, and why it has to be the
- * pane's rather than this composer's.
+ * R2-1 (agent review round 2) AND ITS EVIDENCE HALF R2-2 - and why this is a test
+ * about the STORE rather than about source text.
  *
- * The rule that decides the string is pinned in `echo-delivery.test.mjs`, asked
- * with the app's own prop values. What cannot be reached from there is the WIRING
- * - and the wiring is the finding: the operator's own screenshot is the New-chat
- * path, where `panelIdentityFor` moves the mount key from `draft:<uuid>` to the
- * session id and REPLACES the panel mid-send. `sendInFlight` is a `useState` in
- * `useMessageInput`, so it dies with the composer that set it; a sentence fed
- * only by it would be silent on exactly the arm the operator photographed.
+ * Round 1 wired the composer's unsettled-send sentence to `chat-page`'s
+ * `admitting`, and round 2 found that that is a `useState` declared INSIDE the
+ * panel the New-chat identity flip replaces (`panelIdentityFor`, "THE FLIP IS A
+ * REMOUNT"), so on the arm the operator photographed the replacement panel
+ * reported `false` for the whole send. The test that claimed to cover that arm
+ * regexed source text, and every pattern it matched stayed true while the runtime
+ * value was wrong (R2-2) - so it is replaced here by the runtime reading, taken on
+ * the arm that has no panel: a FRESH read of the store's own row, which is
+ * exactly what a panel mounting mid-send does.
  *
- * So the flag is the PAGE's (`chat-page`'s `admitting`), passed down to the
- * composer and OR'd with the composer's own press. The three facts this test
- * holds are the ones that make that safe:
+ * The composer now derives the fact from that row (`sendUnsettledForSession` over
+ * `draftRowForSession`, the same predicate the pane's `starting` latch reads for
+ * the transcript's line), and this drives the REAL store through a New-chat send:
+ * create -> the flip -> the seam -> the echo -> the held POST -> the receipt.
  *
- *  - the window it names is the SEND's, not the request's: `setAdmitting(true)`
- *    before the try and `setAdmitting(false)` in that send's `finally`, which is
- *    why it can mean "unsettled" where `starting`/`awaitingReply` (up from the
- *    moment the request is issued) cannot distinguish the two halves;
- *  - it reaches the composer as its own prop, read from `canonical.admitting`
- *    rather than folded into `isLoading` (which is `admitting || starting`);
- *  - and the composer spends it through the rule, beside its own `sendInFlight`,
- *    so the two scopes of one fact are OR'd in one place.
- *
- * The boundary is structural rather than asserted here: `admitting` lives on the
- * ChatPage, and a ChatPage is one conversation's pane, so a send in another
- * conversation is another page's flag.
+ * WHAT THIS TEST CANNOT SEE, stated so it is not read as wider than it is: it
+ * asserts the ROW, not the composer's drawing of it. The drawing is asserted in
+ * the story plays, which render the real composer CLIENT-side (a browser), which
+ * is also the only place it can be: zustand v5 answers every selector with
+ * `getInitialState()` on React's server path, so a node-side render of a
+ * component that selects from this store observes the INITIAL state whatever is
+ * seeded - measured while writing this, not assumed. The guard below keeps a
+ * regression from walking back in through the prop door.
  */
-test("the unsettled-send sentence is fed by the pane, so the panel that inherits a send can say it", () => {
-	const code = (file) =>
-		readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
-	const content = code(
-		"src/renderer/src/features/chat/components/chat-content.tsx",
+test("R2-1: the unsettled-send fact is the STORE's row, live across the New-chat flip and gone at the receipt", async () => {
+	reset();
+	const sessionId = "222222222222";
+	let release = null;
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return { session_id: sessionId, binding: null };
+		if (request.op === "sessions.message")
+			return new Promise((resolve) => {
+				release = () => resolve({ status: "admitted" });
+			});
+		throw new Error(`unexpected request ${request.op}`);
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	const fact = () =>
+		sendUnsettledForSession(store.getState().drafts, sessionId);
+	assert.equal(
+		fact(),
+		false,
+		"nothing is in flight at the press, so the box must not claim a send",
 	);
-	assert.match(
-		content,
-		/sendingUnsettled=\{Boolean\(canonical\?\.admitting\)\}/,
-		"the composer must be handed the pane's own in-flight window; folded into `isLoading` it cannot be told from `starting`, which is up before the request has gone out",
+	const send = admitChatDraft(key, { ...input, text: "Review this" });
+	for (let i = 0; i < 200 && release === null; i += 1)
+		await new Promise((resolve) => setTimeout(resolve, 5));
+	assert.notEqual(release, null, "the message POST never left the store");
+	assert.equal(
+		store.getState().drafts[key]?.sessionId,
+		sessionId,
+		"the row the send travels in is the one that learned the session id, so the panel that replaces the sender resolves the SAME row",
 	);
-	const page = code("src/renderer/src/features/chat/components/chat-page.tsx");
-	assert.match(
-		page,
-		/setAdmitting\(true\)/,
-		"the pane opens the window when the send starts",
+	assert.equal(
+		draftIdentityFor(key, sessionId),
+		key,
+		"and it resolves it under the key it already holds, which is why a fresh mount finds a live send",
 	);
-	assert.match(
-		page,
-		/finally\s*\{[\s\S]{0,300}?setAdmitting\(false\)/,
-		"and closes it in the send's `finally`: a flag cleared anywhere earlier would be 'issued', not 'unsettled', and would shadow the sentence with the agent's",
+	assert.equal(
+		fact(),
+		true,
+		"on the arm the operator photographed: a panel mounting MID-SEND reads the row and sees that the message is still going out",
 	);
-	const composer = code(
+	release();
+	await send;
+	assert.equal(
+		fact(),
+		false,
+		"the receipt deletes the row (`finishDraft`), so the box has nothing left to claim but the owner's answer",
+	);
+});
+
+test("R2-1: the composer derives it from the store, and no longer accepts it as a prop", () => {
+	/*
+	 * The guard. The runtime reading above covers the ROW; the composer's read of
+	 * it is covered client-side by the story plays, which assert the sentence the
+	 * composer prints from a staged row. What this pins is the door the round-1
+	 * defect came through: a prop has an owner, and the owner here was the panel
+	 * the flip replaces.
+	 */
+	const composer = readFileSync(
 		"src/renderer/src/features/chat/components/message-input.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	assert.match(
+		composer,
+		/sendUnsettledForSession\(state\.drafts, conversationId\)/,
+		"the composer must read the fact from the canonical store's rows, which is the source a mid-send mount can see",
+	);
+	assert.ok(
+		!/sendingUnsettled\?: boolean/.test(composer),
+		"the composer must not take the unsettled send as a prop again: that is how it was fed from `chat-page`'s `admitting`, the `useState` of the panel the flip replaces (agent review round 1 MAJOR-1, round 2 R2-1)",
 	);
 	assert.match(
 		composer,
-		/sendingUnsettled: sendingUnsettled \|\| sendInFlight/,
-		"the pane's flag and this composer's own press are the two scopes of one fact and must meet in the placeholder call",
-	);
-	assert.match(
-		composer,
-		/composerPlaceholder\(\{/,
-		"the sentence must come from the rule: an inline chain is how the term ended up below the one that shadows it",
+		/sendingUnsettled: sendUnsettled \|\| sendInFlight/,
+		"and the store's answer must still be OR'd with this composer's own press, which covers the arms where no row exists",
 	);
 });

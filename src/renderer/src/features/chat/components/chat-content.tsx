@@ -1261,20 +1261,15 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										: isLoading
 								}
 								/*
-								 * THE PANE'S OWN IN-FLIGHT WINDOW, passed BESIDE `isLoading` because the
-								 * two are not the same window and the composer has to tell them apart:
-								 * `isLoading` is `admitting || starting`, and `starting` is up from the
-								 * moment the request is ISSUED, so through it alone the composer cannot
-								 * separate "still going out" from "out and being answered". This one is
-								 * `admitting` alone - set for the whole of one send and cleared in that
-								 * send's `finally` (`chat-page`) - and it is read from the PANE rather
-								 * than from the composer's own state on purpose: the New-chat identity
-								 * flip replaces the panel mid-wait, so the replacement has to be able to
-								 * see the send it inherited, and the pane is the thing that owns it
-								 * (agent review round 1, MAJOR-1). A different conversation is a
-								 * different pane, so its send cannot reach this flag.
+								 * `isLoading` IS THE ONLY SEND FACT THIS COMPONENT PASSES. Whether a
+								 * send for this conversation is still going out is NOT threaded from
+								 * here: the composer derives it from the STORE's own row
+								 * (`sendUnsettledForSession`), and review round 2's R2-1 is why. This
+								 * component is mounted BY the panel the New-chat identity flip
+								 * replaces, so a value it had to hand down would be as absent on the
+								 * replacement as the panel's own state was - while the row is state of
+								 * the conversation and every mount reads it.
 								 */
-								sendingUnsettled={Boolean(canonical?.admitting)}
 								/*
 								 * Derived from the same expression the transcript's own line is, so
 								 * the two surfaces cannot disagree about whether work is being

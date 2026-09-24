@@ -308,17 +308,31 @@ export const restoreStagedPayload = (
  * "Further along wins" was the right principle - the earlier term was on the
  * wrong side of it.
  *
- * WHAT FEEDS `sendingUnsettled` is deliberately NOT this composer's own state
- * alone. `sendInFlight` is a `useState` in `useMessageInput`, so the New-chat
+ * WHAT FEEDS `sendingUnsettled` IS NOT THIS COMPOSER'S OWN STATE ALONE, and the
+ * second source is the STORE's draft row rather than anything a pane holds.
+ * `sendInFlight` (below) is a `useState` in `useMessageInput`, so the New-chat
  * identity flip - which REPLACES the panel mid-wait, as the operator's own
  * screenshot shows - unmounts it with the composer that held it, and the
  * replacement renders the idle invitation over a send it cannot see (MAJOR-1's
- * second half). The pane knows instead: `chat-page`'s `admitting` is set for the
- * whole of one send and cleared in that send's `finally`, it outlives the flip,
- * and it belongs to the CONVERSATION the pane is showing rather than to whatever
- * is mounted inside it - so another conversation's send cannot make this
- * composer say this. The two are OR'd: the page's window is the one that spans
- * the flip, and the hook's is the sub-tick before the page has entered `send`.
+ * second half). The store's row is the fact that survives: `draftRowForSession`
+ * finds it from the session id alone, `admittedSendFor` decides it is in flight,
+ * and it is the SAME predicate the transcript's working line is built from, so
+ * the box and the line cannot disagree about whether a send is going out. The two
+ * are OR'd: the row is the send both surfaces can see, and the hook's is the press
+ * this composer made before that row exists at all (and on the arms - a legacy
+ * one, a refused-draft one - where it never will).
+ *
+ * It is the row's OWN conversation (`pending` + `admissionAttempted` on a row that
+ * addresses this session), which is the boundary that keeps another
+ * conversation's send from making this composer say this.
+ *
+ * ROUND 2 CORRECTED THIS SOURCE, and the correction is worth stating because the
+ * first attempt looked right: round 1 fed this from `chat-page`'s `admitting`,
+ * which is a `useState` declared inside the panel the flip replaces, so the value
+ * was false on the replacement for the whole send and the sentence was still
+ * unreachable in the window it names (agent review round 2, R2-1). The lesson is
+ * the one this file's own docs keep repeating: a fact of a SEND must not live in
+ * the state of one of its readers.
  */
 export const COMPOSER_PLACEHOLDER = {
 	unavailable: "This conversation is gone",
@@ -843,13 +857,13 @@ export const useMessageInput = ({
 	 * and the settle the composer can be showing an empty field with no statement
 	 * at all about the message that has just left it.
 	 *
-	 * Owned here rather than read from the transcript's `admitting`, deliberately:
-	 * this is a fact about THIS composer's press, so a panel that mounts later
-	 * cannot inherit a wait it never began, and the composer does not have to
-	 * learn about the transcript to talk about its own payload. True from the
-	 * press, false once the submit settles whichever way it settled - `admitting`
-	 * is not the bound because it is the transcript's, and an echo nobody painted
-	 * (a slash command, a gate answer) never reaches the transcript at all.
+	 * Owned here as well as read from the store, deliberately: this one is a fact
+	 * about THIS composer's press - true from the press, false once the submit
+	 * settles whichever way it settled, and available on the arms where no store
+	 * row ever exists (a slash command, a gate answer, a legacy send) - while the
+	 * row is the half that survives the identity flip and is fed in beside it
+	 * (`chat-page`'s `admitting` is neither: it is a `useState` of the panel the
+	 * flip replaces, which is what review round 2's R2-1 found).
 	 */
 	const [sendInFlight, setSendInFlight] = useState(false);
 	// Admission, not the keypress, retires a draft. A refused send hands its text

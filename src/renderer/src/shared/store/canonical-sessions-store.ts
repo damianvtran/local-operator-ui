@@ -811,6 +811,49 @@ export function draftIdentityFor(
 }
 
 /**
+ * The draft row a CONVERSATION's send is travelling in, or undefined.
+ *
+ * WHY A LOOKUP BY SESSION AND NOT BY KEY. A row is normally found by
+ * `draftIdentityFor(draftKey, sessionId)`, and `draftKey` is a fact of the PANE
+ * that issued the send - but the pane is not the only reader that needs the row,
+ * and on the New-chat path it is not even the same COMPONENT: the identity flip
+ * unmounts the composer that pressed Enter while its send is still going out
+ * (`panelIdentityFor` says why), so every reader that asks afterwards holds the
+ * session id and no draft key. Review round 2, R2-1 is that gap: a fact of the
+ * send read from state of the replaced panel is a fact the replacement panel
+ * cannot see.
+ *
+ * Both shapes the row can be in are read, in the order `discardDraft` reads them
+ * for the same reason: a send staged from "New chat" LEARNS its session id
+ * mid-send (`updateDraft(key, { sessionId })`, before the message POST), so the
+ * row carries it; a send made from an existing conversation is keyed
+ * `send:<sessionId>` and the id is in the key, never written to the row.
+ *
+ * A lookup rather than a predicate, so the question "is this send still going
+ * out" has ONE definition: the caller hands this row to `admittedSendFor`
+ * (`working-line-model.ts`), which is the same rule the transcript's working line
+ * is built from. Two copies of that predicate is how a box and a transcript come
+ * to disagree about whether work is in flight.
+ */
+export function draftRowForSession(
+	drafts: Record<string, ChatDraft>,
+	sessionId: string | null | undefined,
+): ChatDraft | undefined {
+	if (!sessionId) return undefined;
+	const rows = Object.values(drafts).filter(
+		(row) => row.sessionId === sessionId || row.key === `send:${sessionId}`,
+	);
+	/*
+	 * A row that is IN FLIGHT wins when both shapes address one session: the
+	 * caller is asking about a send, and a settling row and a starting one can
+	 * overlap for a frame (the receipt and the next press are not ordered against
+	 * each other). `rows[0]` is then the fallback that keeps this a lookup rather
+	 * than a second predicate.
+	 */
+	return rows.find((row) => row.pending) ?? rows[0];
+}
+
+/**
  * What React keys the chat panel on, and therefore what makes it remount.
  *
  * The precedence is `id ?? draftKey` and NOT the reverse, because the two name

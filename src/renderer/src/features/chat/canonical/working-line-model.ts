@@ -54,6 +54,10 @@
  */
 
 import { epochMsFromSeconds } from "../../../../../shared/desktop-session-contract";
+import {
+	type ChatDraft,
+	draftRowForSession,
+} from "../../../shared/store/canonical-sessions-store";
 import { displayName } from "../components/trace/tool-row-model";
 import type { TranscriptRecord } from "./transcript-reducer";
 import { paintsSomething } from "./transcript-rows";
@@ -172,6 +176,33 @@ export function admittedSendFor(
 	if (!draft.admissionRequestId) return null;
 	return { requestId: draft.admissionRequestId };
 }
+
+/**
+ * Is a send for this CONVERSATION still going out? The composer's own window.
+ *
+ * THE SOURCE IS THE STORE'S DRAFT ROW, and that is load-bearing rather than
+ * tidy: `draftRowForSession` finds it from the session id alone, so a panel that
+ * mounts MID-SEND can see it. The New-chat identity flip unmounts the panel the
+ * Enter was pressed in (`panelIdentityFor`, "THE FLIP IS A REMOUNT") and the
+ * replacement mounts with no history of that press, so any flag held in the
+ * replaced panel's state is false there for the whole send. Review round 1's
+ * MAJOR-1 put the sentence below `awaitingReply`; review round 2's R2-1 found the
+ * source had the same lifetime problem one level down, because the flag the
+ * sentence was fed from was the page's own `useState`.
+ *
+ * ONE FACT, TWO SURFACES. The transcript's working line reads `admittedSendFor`
+ * through the pane's `starting` LATCH, and this reads the same predicate with no
+ * latch - which is exactly the difference between the two sentences the box can
+ * say. While this is true the request has not been confirmed yet, so the box says
+ * the message is going out; the receipt empties the row (`finishDraft` deletes
+ * it), the latch keeps the transcript's line up across that gap, and the box has
+ * nothing left to claim but the owner's answer (`Waiting for the agent`).
+ */
+export const sendUnsettledForSession = (
+	drafts: Record<string, ChatDraft>,
+	sessionId: string | undefined,
+): boolean =>
+	admittedSendFor(sessionId, draftRowForSession(drafts, sessionId)) !== null;
 
 /**
  * Whether the owner has ANSWERED a send that was admitted under `afterId`.
