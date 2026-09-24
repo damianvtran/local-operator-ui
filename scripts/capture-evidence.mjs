@@ -2494,12 +2494,18 @@ export const STORIES = [
 	   row above them) and 480 for `failed-merged`, whose field holds two
 	   paragraphs. Cropping any of these at 300 would cut the very row the frame
 	   exists to show. */
-	["chat-message-input--failed-unknown", 1024, 420],
-	["chat-message-input--failed-not-sent", 1024, 420],
-	["chat-message-input--failed-too-large", 1024, 420],
-	["chat-message-input--failed-merged", 1024, 480],
-	["chat-message-input--delivered-late", 1024, 420],
-	["chat-message-input--send-lock", 1024, 420],
+	/*
+	 * AND THE SIX FAILED-SEND ROWS ARE GONE, the same way the copy row above left
+	 * (review round 2, D6). Their committed frames showed copy the app no longer
+	 * produces - a 413 about half the app's length, and the unknown-outcome sentence
+	 * without its "Sending it again is safe." clause - and their SET could not be
+	 * re-swept here (a backend answers on the default port all session, and this
+	 * machine's Storybook index refuses these ids even for a `--allow-backend`
+	 * partial run). Rather than keep frames that disagree with the app about the same
+	 * state, the states are covered where they are rendered from the SHIPPED composer
+	 * with the app's own copy imported: `docs/evidence/composer-notice-arms/`. The
+	 * stories themselves stay, as tests.
+	 */
 	/*
 	 * AND THE COPY RULE ITSELF IS A TEST, NOT A FRAME (review round 1, D5). This
 	 * row photographed an IDLE composer with no notice at all - the story's render

@@ -168,7 +168,11 @@ const TOO_LONG = messageBudgetRefusal(
 
 const STATES: Record<
 	string,
-	{ sendError: ComposerSendError | undefined; draft?: string }
+	{
+		sendError: ComposerSendError | undefined;
+		draft?: string;
+		noReturnedChip?: boolean;
+	}
 > = {
 	idle: { sendError: undefined },
 	notice: {
@@ -218,8 +222,16 @@ const STATES: Record<
 	 */
 	"edited-idle": { sendError: undefined, draft: EDITED_TEXT },
 	delivered: {
-		sendError: { message: SEND_FAILURE_COPY.lateDelivery, muted: true },
+		/*
+		 * THE SENTENCE THAT NAMES THE BOX (review round 2, D4 + the strip in
+		 * `conversation-input-store`). A late delivery now takes the delivered message
+		 * OUT of the composer, so what is under the note is only what the user typed
+		 * after it - which is what the `draft-only` sentence says - and the delivered
+		 * file went with the message.
+		 */
+		sendError: { message: SEND_FAILURE_COPY.lateDeliveryDraft, muted: true },
 		draft: EDITED_TEXT,
+		noReturnedChip: true,
 	},
 };
 
@@ -240,10 +252,18 @@ if (!state) throw new Error(`unknown state \`${STATE}\``);
  * which moves the very border this page measures.
  */
 useConversationInputStore.setState({ inputByConversation: {} });
-useConversationInputStore.getState().addAttachment(CONVERSATION, {
-	id: "returned-chip",
-	path: RETURNED_CHIP,
-});
+/*
+ * AND NONE ON THE DELIVERED ARM. The chip was staged for EVERY state, so the one
+ * frame whose whole claim is "the delivered message came out of the box" carried
+ * the delivered message's file (design round 2, D4: the frame said "rendered with
+ * none" and showed the chip). The app strips those chips by identity now, so the
+ * state the arm photographs is a box with the user's own words and no file.
+ */
+if (state.noReturnedChip !== true)
+	useConversationInputStore.getState().addAttachment(CONVERSATION, {
+		id: "returned-chip",
+		path: RETURNED_CHIP,
+	});
 useConversationInputStore
 	.getState()
 	.setCurrentInput(CONVERSATION, state.draft ?? RETURNED_TEXT);
