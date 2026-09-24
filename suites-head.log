@@ -1,0 +1,22 @@
+# QA round 6 — PR 490 suites and static counts
+
+host: arm64 27.0 | load at run: 164.16 176.64 181.14
+node: v26.5.0 | pnpm: 10.30.3 | electron: 44.3.0
+commits: head 486351dbdda783284080917f4e57915b81bf2118 prev 7b5ee49d96268d717e2c67bc6742e87492f0d780
+
+== node --test scripts/seed-label-gap.test.mjs
+ℹ tests 21
+ℹ pass 21
+ℹ fail 0
+== node --test scripts/evidence-manifest.test.mjs
+ℹ tests 36
+ℹ pass 36
+ℹ fail 0
+== node --test scripts/transcript-reducer.test.mjs
+ℹ tests 80
+ℹ pass 80
+ℹ fail 0
+== node --test scripts/tool-row.test.mjs
+ℹ tests 67
+ℹ pass 67
+ℹ fail 0
