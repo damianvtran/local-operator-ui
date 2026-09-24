@@ -812,6 +812,13 @@ const STAMP_BINDING_NOTES = [
 	// read-receipt branch, so it is held to that pair rather than read as history -
 	// the distinction `candidateMacArchRestampNote` above is in the list for.
 	"readReceiptRestampNote",
+	/*
+	 * The eighth: `modelCatalogueFocusRestampNote` states this file's own pair for
+	 * the picker's catalogue-focus branch, and it exists BECAUSE the list is not
+	 * optional reading - the change it re-stamps for rewrote no frame, so a reader
+	 * is owed the two values it does bind and the reason no still was owed.
+	 */
+	"modelCatalogueFocusRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
