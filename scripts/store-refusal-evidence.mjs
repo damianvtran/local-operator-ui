@@ -943,7 +943,51 @@ const assertions = (probe, expected) => {
 	return failures;
 };
 
+/*
+ * NOT PORTED TO THE POST-CLAIM MODEL, AND LOUD ABOUT IT RATHER THAN SILENT.
+ *
+ * This rig's subject was the composer's screen for a store refusal WHILE THE
+ * PAYLOAD WAS HELD OUTSIDE THE COMPOSER: three states per arm (`restored`, the
+ * empty-box `held`, and the `altered` remedy that drove a real second send into
+ * the unchanged-payload guard), and per-arm expectations about what the held line
+ * said, which control it named, and which predicate chose its register.
+ *
+ * None of those states exist any more. A failure returns the message to the
+ * composer, there is no held line and no guard, and two of the three states are
+ * simply gone - which is why the PAGE is ported (`store-refusal-evidence.tsx`
+ * renders the post-change states) while this file's EXPECTATION TABLE is not yet:
+ * every entry below still carries `withholds`, `claimStoreWrite`, `namesControl`,
+ * `unknowable` and held-era `controlLabels`, and a run would assert the model this
+ * change removed. Reporting that is the honest instrument state; silently
+ * asserting the old model, or quietly deleting the arms, would be a rig that
+ * agrees with itself.
+ *
+ * PORTING IT is a bounded job with a clear shape: one entry per arm, expectation
+ * = the sentence `sendFailureCopy` produces for that code, `retryWillFail(code)`
+ * for the control set, and the box holding the payload (or empty, on `cleared`).
+ * The frames it produces are the store-failure COPY ladder's own evidence, whose
+ * backend half is the sibling PR's subject - see this branch's PR for the
+ * deferral and the reason it is not in this change.
+ */
+const NOT_PORTED =
+	"store-refusal-evidence: this rig's expectation table still describes the held " +
+	"claim (three states per arm, `withholds`, `claimStoreWrite`, `namesControl`) " +
+	"and the model it asserted no longer exists; the page is ported, the table is " +
+	"not. See this branch's PR, `not addressed`. Run " +
+	"`scripts/composer-alert-geometry.mjs` for this change's own geometry, and the " +
+	"story frames under `docs/evidence/chat-message-input/failed-*` for its screens.";
+
+/*
+ * A function rather than a bare `throw` at the top of `main`, so the rest of the
+ * file stays reachable for the port that follows: an unreachable body is what a
+ * linter refuses and what a reader skips.
+ */
+const requirePorted = () => {
+	throw new Error(NOT_PORTED);
+};
+
 const main = async () => {
+	requirePorted();
 	await startVite();
 	const cdp = await startChrome();
 

@@ -2473,6 +2473,37 @@ export const STORIES = [
 	["chat-message-input--pending-send-chip-row-small-view", 440, 400],
 	["chat-message-input--pending-send-payload-small-view", 440, 400],
 	["chat-message-input--pending-send-small-view", 440, 300],
+	/* THE NOTICE A FAILED SEND LEAVES - the six states the operator's own screen
+	   was one of. Their frames answer the report directly: the message and its
+	   file are IN the composer, and the sentence beside them is one line with at
+	   most Retry and Clear, rather than the transport's twenty-second paragraph
+	   over an empty box with two links under it.
+
+	   Six rather than one, because each is a different DECISION and the frames
+	   differ only in which one is on screen: `failed-unknown` is the timeout the
+	   operator photographed (Retry and Clear), `failed-not-sent` is a refusal
+	   decided before the wire, `failed-too-large` is the arm whose remedy is a
+	   SPLIT rather than a press (Clear only), `failed-merged` is the same failure
+	   arriving after the user typed while it was in flight - the returned message
+	   first and their own sentence kept underneath it - `delivered-late` is the
+	   muted statement that the earlier message arrived after all (the box's edit
+	   untouched, nothing to press), and `send-lock` is the muted fact that a
+	   message is still on its way out, with no controls at all.
+
+	   420 tall for the chip-carrying arms (a 100px tile, the field, and the notice
+	   row above them) and 480 for `failed-merged`, whose field holds two
+	   paragraphs. Cropping any of these at 300 would cut the very row the frame
+	   exists to show. */
+	["chat-message-input--failed-unknown", 1024, 420],
+	["chat-message-input--failed-not-sent", 1024, 420],
+	["chat-message-input--failed-too-large", 1024, 420],
+	["chat-message-input--failed-merged", 1024, 480],
+	["chat-message-input--delivered-late", 1024, 420],
+	["chat-message-input--send-lock", 1024, 420],
+	/* And the copy rule itself, on the same measure: a story whose play reads the
+	   table, so a frame set cannot be captured on a tree where the composer's
+	   notice has stopped coming from `sendFailureCopy`. */
+	["chat-message-input--notice-copy-is-the-app-copy", 1024, 300],
 	/* The interrupt's own states, on the same 1024 measure as the rows above.
 	   The third is the only one that SPEAKS: a stopped turn with nothing left
 	   under it renders nothing at all, so the control's presence and its absence

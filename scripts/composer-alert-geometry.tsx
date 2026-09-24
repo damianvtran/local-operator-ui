@@ -1,27 +1,36 @@
 /**
- * Rendered-geometry harness: the composer's alert region at a chosen column
- * width.
+ * Rendered-geometry harness: the composer's notice at a chosen column width.
  *
- * See `composer-alert-geometry.html` for why this page exists rather than a
- * story or a live-app capture. What it mounts is the SHIPPED `MessageInput`,
- * with the app's own stylesheet, palette and font faces, in one of three
- * states, at the column width the driver names:
+ * See `composer-alert-geometry.html` for why this page exists rather than a story
+ * or a live-app capture. What it mounts is the SHIPPED `MessageInput`, with the
+ * app's own stylesheet, palette and font faces, in one of three states, at the
+ * column width the driver names:
  *
- *   - `idle`       no failure at all: the baseline the composer's top border is
- *                  measured against, since the region's cap exists to keep that
- *                  border and the send control on screen.
- *   - `unreadable` the unreadable-attachment refusal alone, which is the
- *                  one-sentence state the cap was originally written for.
- *   - `split`      that same refusal with a SPLIT ADOPTION under it: the refused
- *                  text comes back into the box while the chip row already holds
- *                  the user's own file, so the muted split notice renders too.
- *                  That is the two-sentence state this delta added and the one
- *                  D12 is about.
+ *   - `idle`   the draft a failed send leaves - the message and its files back in
+ *              the composer - with NO notice at all. It is the baseline every
+ *              other state is compared against, and it holds the SAME draft, so
+ *              the only thing that differs between it and the states below is the
+ *              notice.
+ *   - `notice` that same draft under the unknown-outcome notice ("Couldn't
+ *              confirm your message was sent."), which is the sentence the
+ *              operator photographed and the one with the most controls (Retry
+ *              and Clear).
+ *   - `muted`  that same draft under the muted send-lock notice, which is a
+ *              statement of fact with no controls at all.
+ *
+ * WHAT CHANGED HERE, AND WHY THE OLD STATES ARE GONE. This page used to render
+ * the held-claim screen: a refusal plus the "split adoption" where the refused
+ * text and files came back into `heldText`/`heldAttachments` props, under an
+ * alert region capped at 7.5rem that scrolled internally. The payload is no
+ * longer held anywhere, so the props are gone and the draft now arrives the way
+ * the app delivers it - written into the composer's own store row by the return
+ * path, which is where the box reads its text and its chips. The cap is gone with
+ * it, and the claim this page measures changed with the design: not "what
+ * survives the cap" but "does the notice move the line the user is typing".
  *
  * `isSmallView` is not passed in by the driver. This page runs the app's own
  * rule - a ResizeObserver on the column, `contentRect.width < 550`, copied from
- * `chat-content.tsx` - so the compaction the app applies at a narrow column
- * (the region's `px-2 pb-1`, the composer's tighter padding and gaps) is a
+ * `chat-content.tsx` - so the compaction the app applies at a narrow column is a
  * function of the measured column rather than a second copy of the threshold
  * here that could drift from it.
  */
@@ -33,8 +42,10 @@ import {
 	MessageInput,
 } from "@renderer/features/chat/components/message-input";
 import type { Message } from "@renderer/features/chat/types/message";
-import { unreadableAttachmentRefusal } from "@renderer/features/chat/utils/attachment-read";
-import { UNREADABLE_ATTACHMENT_CODE } from "@shared/store/canonical-sessions-store";
+import {
+	SEND_FAILURE_COPY,
+	normalizeSendText,
+} from "@shared/store/canonical-sessions-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { DEFAULT_THEME, applyThemeToDocument, getTheme } from "@shared/themes";
 import type { ThemeName } from "@shared/themes";
@@ -46,7 +57,7 @@ import "./composer-alert-geometry.css";
 
 const params = new URLSearchParams(window.location.search);
 const COLUMN = Number(params.get("w") ?? 172);
-const STATE = params.get("state") ?? "split";
+const STATE = params.get("state") ?? "notice";
 const THEME = (params.get("theme") ?? DEFAULT_THEME) as ThemeName;
 
 applyThemeToDocument(THEME);
@@ -87,79 +98,59 @@ const NONEMPTY: Message[] = [
 const CONVERSATION = "composer-alert-geometry";
 
 /**
- * The refused payload's own text: what the adoption writes back into the box.
+ * The failed send's own payload: what the return path puts back in the composer.
  *
- * ONE LINE deliberately. The box's own height moves with the draft it holds -
- * a two-line draft makes the textarea taller, which lifts the composer's top
- * border - and the invariant D12's fix must not disturb is about the ALERT's
- * contribution: the composer's border stays where it is however much the region
- * above it holds, because the region is capped and the band is bottom-anchored.
- * A multi-line draft here would confound the two, and the captured frames of
- * the real app show the restored draft at one line anyway.
+ * ONE LINE deliberately. The box's own height moves with the draft it holds - a
+ * two-line draft makes the textarea taller - and the invariant this page exists
+ * to measure is about the NOTICE's contribution, so the draft is identical in all
+ * three states and therefore cannot confound the comparison. A multi-line draft
+ * would move the box's top on its own, which is the composer behaving correctly
+ * and has nothing to do with the notice.
  */
-const REFUSED_TEXT = "/usage - a refused message whose text came back";
+const RETURNED_TEXT = normalizeSendText(
+	"look at this screenshot - the message a failed send put back",
+);
 
-/** The files the refused send carried. Under `split`, NONE of them come back. */
-const REFUSED_FILES = ["/tmp/notes.png", "/tmp/screenshot.png"];
+/** The file the failed send carried, which comes back with the text. */
+const RETURNED_CHIP = "/tmp/notes.png";
 
-/** The file the user had already attached themselves, which keeps the chip row. */
-const OWN_CHIP = "/tmp/mine.txt";
-
-const unreadableMessage = (): string | undefined =>
-	unreadableAttachmentRefusal(["/tmp/uxr5-missing.png"]) ?? undefined;
-
-const STATES: Record<
-	string,
-	{
-		sendError: ComposerSendError | undefined;
-	}
-> = {
+const STATES: Record<string, { sendError: ComposerSendError | undefined }> = {
 	idle: { sendError: undefined },
-	unreadable: {
+	notice: {
 		sendError: {
-			message: unreadableMessage(),
-			// What the refusal's own code withholds in the app
-			// (`withholdsRetryHint`, which the composer reads off this code): the
-			// retry is refused for the same reason until the chip is replaced or
-			// removed.
-			code: UNREADABLE_ATTACHMENT_CODE,
+			message: SEND_FAILURE_COPY.unconfirmed,
+			retry: true,
+			onRetry: () => {},
+			onClear: () => {},
 		},
 	},
-	split: {
-		sendError: {
-			message: unreadableMessage(),
-			code: UNREADABLE_ATTACHMENT_CODE,
-			refusedText: REFUSED_TEXT,
-			refusedAttachments: REFUSED_FILES,
-		},
-	},
+	muted: { sendError: { message: SEND_FAILURE_COPY.sendLock, muted: true } },
 };
 
 const state = STATES[STATE];
 if (!state) throw new Error(`unknown state \`${STATE}\``);
 
 /*
- * A KNOWN chip row, every load.
+ * The draft, in the composer's OWN store, for every state.
  *
- * The store persists through `localStorage`, and every case in one driver run
- * shares an origin: without the reset, the chip seeded for the previous case is
- * still in the row when the next one loads, so the state this harness claims to
- * render - a row holding ONE file of the user's own - is true only for the first
- * case of a run, and the row's extra tile also makes the composer taller, which
- * moves the very border the border assertion measures.
+ * Written here rather than handed to the component, because the row is what the
+ * box renders and what the next send carries: this is the store a failed send
+ * writes through (`returnInFlight`), so a page that staged the draft any other
+ * way would be measuring a composer the app cannot produce.
+ *
+ * `localStorage` is cleared first: the store persists, and every case in one
+ * driver run shares this origin, so without the reset the previous case's chip
+ * would still be in the row - and the row's extra tile makes the composer taller,
+ * which moves the very border this page measures.
  */
 useConversationInputStore.setState({ inputByConversation: {} });
-
-/*
- * The chip the user attached themselves, seeded BEFORE the first render so the
- * adoption's own effect sees the row it has to work around. Seeded through the
- * store's shipped action rather than by handing the composer a list, because
- * the row is what the adoption reads and what the next send carries.
- */
-if (STATE === "split")
-	useConversationInputStore
-		.getState()
-		.addAttachment(CONVERSATION, { id: "harness-chip", path: OWN_CHIP });
+useConversationInputStore.getState().addAttachment(CONVERSATION, {
+	id: "returned-chip",
+	path: RETURNED_CHIP,
+});
+useConversationInputStore
+	.getState()
+	.setCurrentInput(CONVERSATION, RETURNED_TEXT);
 
 const client = new QueryClient({
 	defaultOptions: { queries: { retry: false } },
@@ -209,9 +200,10 @@ createRoot(document.getElementById("root") as HTMLElement).render(
 		<CssBaseline />
 		<QueryClientProvider client={client}>
 			<MemoryRouter>
-				{/* Bottom-anchored, like the app's own band: the alert sits above the
-				    composer, so the region grows UPWARD into the transcript and the
-				    composer's top border does not move as it fills. */}
+				{/* Bottom-anchored, like the app's own band: the notice sits above the
+				    box, so the notice grows UPWARD into the transcript and the line the
+				    user is typing does not move as it appears. That is the claim this
+				    page exists to put a number on. */}
 				<div
 					style={{ height: "100vh", display: "flex", flexDirection: "column" }}
 					className="justify-end bg-canvas"
