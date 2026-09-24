@@ -38,8 +38,14 @@ const bundle = await build({
 });
 
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`;
-const { FOLD_MIN_ACTIONS, actionClass, foldRuns, foldSummary, runDuration, turnFeet } =
-	await import(moduleUrl);
+const {
+	FOLD_MIN_ACTIONS,
+	actionClass,
+	foldRuns,
+	foldSummary,
+	runDuration,
+	turnFeet,
+} = await import(moduleUrl);
 
 /** A row the model can read: an id, a kind, a gap tier and the closure flag. */
 const row = (id, gap = "trace", extra = {}) => ({
@@ -112,7 +118,9 @@ test("the fold is a view, never a reorder", () => {
 	];
 	const groups = foldRuns(rows, options);
 	const flattened = groups.flatMap((group) =>
-		group.kind === "run" ? group.rows.map((r) => r.record.id) : [group.row.record.id],
+		group.kind === "run"
+			? group.rows.map((r) => r.record.id)
+			: [group.row.record.id],
 	);
 	assert.deepEqual(
 		flattened,
@@ -138,9 +146,20 @@ test("a receipt, a statement or an unknown row breaks a run", () => {
 		failedOf: () => false,
 		isFoldable: (r) => r.record.kind === "tool",
 	};
-	const rows = [opening("t0"), row("t1"), row("t2"), row("r1"), row("t3"), row("t4")];
+	const rows = [
+		opening("t0"),
+		row("t1"),
+		row("t2"),
+		row("r1"),
+		row("t3"),
+		row("t4"),
+	];
 	// `r1` is not a tool, so it is not foldable and it splits the run in two.
-	rows[3] = { record: { id: "r1", kind: "peer" }, gap: "trace", closesTurn: false };
+	rows[3] = {
+		record: { id: "r1", kind: "peer" },
+		gap: "trace",
+		closesTurn: false,
+	};
 	const groups = foldRuns(rows, options);
 	assert.deepEqual(
 		groups.map((group) => group.kind),
@@ -152,15 +171,26 @@ test("a receipt, a statement or an unknown row breaks a run", () => {
 /* ------------------------------ the copy -------------------------------- */
 
 test("the summary is generated from the counts by class", () => {
-	const files = (n) => Array.from({ length: n }, () => ({ name: "read", failed: false }));
-	const searches = (n) => Array.from({ length: n }, () => ({ name: "web_fetch", failed: false }));
-	const commands = (n) => Array.from({ length: n }, () => ({ name: "bash", failed: false }));
-	const edits = (n) => Array.from({ length: n }, () => ({ name: "write", failed: false }));
+	const files = (n) =>
+		Array.from({ length: n }, () => ({ name: "read", failed: false }));
+	const searches = (n) =>
+		Array.from({ length: n }, () => ({ name: "web_fetch", failed: false }));
+	const commands = (n) =>
+		Array.from({ length: n }, () => ({ name: "bash", failed: false }));
+	const edits = (n) =>
+		Array.from({ length: n }, () => ({ name: "write", failed: false }));
 	const web = (n) =>
-		Array.from({ length: n }, () => ({ name: "search_the_web", failed: false }));
+		Array.from({ length: n }, () => ({
+			name: "search_the_web",
+			failed: false,
+		}));
 
 	assert.equal(foldSummary(files(4)), "Explored 4 files");
-	assert.equal(foldSummary(files(1)), "Explored 1 file", "singular, not `1 files`");
+	assert.equal(
+		foldSummary(files(1)),
+		"Explored 1 file",
+		"singular, not `1 files`",
+	);
 	assert.equal(foldSummary(searches(1)), "1 search");
 	assert.equal(foldSummary(searches(3)), "3 searches");
 	assert.equal(foldSummary(commands(8)), "Ran 8 commands");
@@ -174,7 +204,10 @@ test("the summary is generated from the counts by class", () => {
 	);
 	// Three classes have no honest sentence, and neither has an action the table
 	// cannot classify: both report the only true thing left.
-	assert.equal(foldSummary([...files(1), ...commands(1), ...edits(1)]), "3 actions");
+	assert.equal(
+		foldSummary([...files(1), ...commands(1), ...edits(1)]),
+		"3 actions",
+	);
 	assert.equal(
 		foldSummary([
 			{ name: "mcp__linear_create_issue", failed: false },
@@ -246,7 +279,8 @@ test("a turn's foot counts its own actions, and names its first failure", () => 
 	];
 	const feet = turnFeet(rows, {
 		failedOf: () => false,
-		durationOf: (r) => (r.record.id === "t1" ? 72 : r.record.id === "t2" ? 12 : null),
+		durationOf: (r) =>
+			r.record.id === "t1" ? 72 : r.record.id === "t2" ? 12 : null,
 		isAction: (r) => r.record.kind === "tool",
 	});
 	assert.deepEqual(
