@@ -518,7 +518,9 @@ test("a spent deadline is expired whatever the state says; a live one is not", (
 
 test("a DEVICE flow is not auto-opened: the code has to be on screen first", async () => {
 	const scripted = backend({
-		startReplies: [op("d1", "waiting", { auth_url: URL_A, user_code: "V84J-2LN0K" })],
+		startReplies: [
+			op("d1", "waiting", { auth_url: URL_A, user_code: "V84J-2LN0K" }),
+		],
 	});
 	const { flow } = flowFor(scripted);
 	await flow.start("openai");
@@ -528,7 +530,11 @@ test("a DEVICE flow is not auto-opened: the code has to be on screen first", asy
 	 * an automatic open put them in front of it with nothing to type - and the
 	 * primary press that copies the code opened a SECOND tab (QA Q4, UX U7).
 	 */
-	assert.deepEqual(scripted.calls.open, [], "no automatic open for a device flow");
+	assert.deepEqual(
+		scripted.calls.open,
+		[],
+		"no automatic open for a device flow",
+	);
 	// The press that copies the code is what opens it, exactly once.
 	await flow.reopen();
 	await settle();
@@ -580,7 +586,6 @@ test("a start superseded during its own cancel never reaches the backend (m2)", 
 		reads: [op("s1", "waiting", { auth_url: URL_A })],
 	});
 	const states = [];
-	let flow;
 	const cancelSeen = [];
 	scripted.deps.cancel = async (id) => {
 		cancelSeen.push(id);
@@ -589,7 +594,9 @@ test("a start superseded during its own cancel never reaches the backend (m2)", 
 		if (cancelSeen.length === 1) flow.reset();
 		return {};
 	};
-	flow = createSignInFlow({
+	// Declared after the cancel stub that calls `flow.reset()`: that closure only
+	// runs once `start()` is under way, by which point `flow` is initialised.
+	const flow = createSignInFlow({
 		...scripted.deps,
 		poll: (id, onUpdate, options) =>
 			pollAuthOperation(id, onUpdate, { ...options, read: scripted.deps.read }),
@@ -612,7 +619,10 @@ test("a NEW url for the same operation drops 'opened' first, then opens", async 
 	const URL_B = "https://claude.ai/oauth/authorize?state=b";
 	const scripted = backend({
 		startReplies: [op("u1", "starting")],
-		reads: [op("u1", "waiting", { auth_url: URL_A }), op("u2", "waiting", { auth_url: URL_B })],
+		reads: [
+			op("u1", "waiting", { auth_url: URL_A }),
+			op("u2", "waiting", { auth_url: URL_B }),
+		],
 	});
 	const { flow, states } = flowFor(scripted);
 	await flow.start("anthropic");
@@ -620,7 +630,9 @@ test("a NEW url for the same operation drops 'opened' first, then opens", async 
 	t.mock.timers.tick(AUTH_OPERATION_POLL_MS + 10);
 	await settle();
 	assert.ok(
-		states.some((state) => state.opened === false && state.openFailed === false),
+		states.some(
+			(state) => state.opened === false && state.openFailed === false,
+		),
 		"'opened' must be false for the URL that has not been opened yet",
 	);
 	assert.equal(scripted.calls.open.length, 2, "each distinct URL opens once");

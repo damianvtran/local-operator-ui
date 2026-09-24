@@ -445,11 +445,7 @@ export const STORIES = [
 	 * The same paste body reached with NO url at all, which is the case a released
 	 * backend's Token Plan sign-in hits (QA round 1 Q2).
 	 */
-	[
-		"provider-sign-in-onboarding--panel-paste-required-no-url",
-		1280,
-		620,
-	],
+	["provider-sign-in-onboarding--panel-paste-required-no-url", 1280, 620],
 	/*
 	 * `launch_url` set beside the provider's own `auth_url`: the sentence must name
 	 * the provider, not the backend's loopback alias (code round 1 M1, UX N2).

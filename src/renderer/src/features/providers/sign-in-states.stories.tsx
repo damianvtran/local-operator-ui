@@ -261,11 +261,11 @@ const installBridge = (options: BridgeOptions) => {
 						);
 			case "gone":
 				return {
-							status: 404,
-							body: {
-								detail: "This sign-in is no longer available. Start again.",
-							},
-						};
+					status: 404,
+					body: {
+						detail: "This sign-in is no longer available. Start again.",
+					},
+				};
 			default:
 				return ok(waiting);
 		}
@@ -555,6 +555,7 @@ const panelStory = (
  */
 const CONTINUE_IN_BROWSER = /Continue in browser/;
 const PASTE_DISCLOSURE = /Browser showed a code/;
+const GET_SIGN_IN_CODE = /Get a sign-in code/;
 
 const clickContinue = async () => {
 	await userEvent.click(
@@ -646,7 +647,7 @@ export const PanelPasteRequiredNoUrl = panelStory(
 	/Sign in: QwenCloud/,
 	async () => {
 		await userEvent.click(
-			await screen.findByRole("button", { name: /Get a sign-in code/ }),
+			await screen.findByRole("button", { name: GET_SIGN_IN_CODE }),
 		);
 		await wait(2200);
 	},

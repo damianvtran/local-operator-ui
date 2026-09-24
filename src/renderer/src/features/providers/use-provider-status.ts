@@ -18,7 +18,6 @@
  */
 
 import { retryDesktopQuery } from "@shared/api/local-operator/backend-error";
-import type { DesktopProvider } from "../../../../shared/desktop-contract";
 import { ConfigApi } from "@shared/api/local-operator/config-api";
 import {
 	desktopFeatureEnabled,
@@ -28,6 +27,7 @@ import {
 import type { ConfigResponse } from "@shared/api/local-operator/types";
 import { hasConnectedProvider } from "@shared/hooks/first-time-user";
 import { useQuery } from "@tanstack/react-query";
+import type { DesktopProvider } from "../../../../shared/desktop-contract";
 
 /** `use-config.ts`'s key, restated because importing it pulls the env loader. */
 export const CONFIG_QUERY_KEY = ["config"];

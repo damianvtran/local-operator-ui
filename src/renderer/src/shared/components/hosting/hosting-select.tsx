@@ -140,6 +140,7 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 	);
 	const censusFailed = censusEnabled && censusState.status === "failed";
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `modelsReady` and `hostedProviders` are triggers, not values the body reads - `getHostingProviders()` reads the models store directly, and the store fills after mount, so these two fields are what make the list re-derive (see the note on the `useModels()` read above).
 	const availableHostingProviders = useMemo(() => {
 		const all = getHostingProviders();
 		if (!filterByCredentials) return all;

@@ -70,7 +70,11 @@ test("a configured default whose credential is GONE still asks for a provider", 
 	 * rule the chat said nothing at all and the send failed.
 	 */
 	assert.deepEqual(
-		providerStatusFrom({ ...base, hosting: "anthropic", rows: [row("anthropic")] }),
+		providerStatusFrom({
+			...base,
+			hosting: "anthropic",
+			rows: [row("anthropic")],
+		}),
 		{ isKnown: true, needsProvider: true },
 	);
 });
@@ -119,16 +123,21 @@ test("a connected provider needs no default to count", () => {
 test("while either read is pending - or the census is unsupported - it is unknown", () => {
 	// Nagging a user whose setup this app could not read is the worse failure.
 	assert.equal(
-		providerStatusFrom({ ...base, configLoading: true, rows: [row("anthropic")] })
+		providerStatusFrom({
+			...base,
+			configLoading: true,
+			rows: [row("anthropic")],
+		}).needsProvider,
+		false,
+	);
+	assert.equal(
+		providerStatusFrom({ ...base, censusLoaded: false, rows: [] })
 			.needsProvider,
 		false,
 	);
 	assert.equal(
-		providerStatusFrom({ ...base, censusLoaded: false, rows: [] }).needsProvider,
-		false,
-	);
-	assert.equal(
-		providerStatusFrom({ ...base, censusEnabled: false, rows: [] }).needsProvider,
+		providerStatusFrom({ ...base, censusEnabled: false, rows: [] })
+			.needsProvider,
 		false,
 	);
 	assert.equal(

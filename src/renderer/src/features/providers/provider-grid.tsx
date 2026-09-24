@@ -286,6 +286,7 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 	 * follows the row rather than the row staying put, which keeps "Connected" one
 	 * block. `nearest` is deliberate: a row already on screen does not move.
 	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `connected.length` is the trigger, not a value the body reads - the selected row changes list (and position) when its credential lands while `selectedId` stays the same, so without it the effect never re-runs for the move this scroll exists to follow.
 	useEffect(() => {
 		if (selectedId === null) return;
 		rowButtons.current.get(selectedId)?.closest("li")?.scrollIntoView({
@@ -429,7 +430,10 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 						 * dialog (design round 1 D2). The "Recommended" label stays.
 						 */
 						variant={
-							isRecommended && !open && selectedId === null && connected.length === 0
+							isRecommended &&
+							!open &&
+							selectedId === null &&
+							connected.length === 0
 								? "primary"
 								: "secondary"
 						}

@@ -33,8 +33,8 @@
  * use: at most one session per provider id.
  */
 
-import { useEffect, useRef, useState } from "react";
 import type { AuthOperation } from "@shared/api/local-operator/desktop-api";
+import { useEffect, useRef, useState } from "react";
 import {
 	INITIAL_SIGN_IN_STATE,
 	type SignInDeps,

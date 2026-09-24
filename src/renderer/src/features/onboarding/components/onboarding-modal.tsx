@@ -201,7 +201,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			default:
 				return null;
 		}
-	}, [currentStep, setCurrentStep, registerBeforeContinue]);
+	}, [currentStep, setCurrentStep, registerBeforeContinue, registerStepBlock]);
 
 	const isFirst = currentStep === OnboardingStep.CONNECT_PROVIDER;
 	const isLast = currentStep === OnboardingStep.EXTRAS;
@@ -214,41 +214,40 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	 * - step 2: Back, then primary "Continue";
 	 * - step 3: Back, then ghost "Skip" and primary "Finish".
 	 */
-	const blocked = currentStep === OnboardingStep.DEFAULT_MODEL && stepBlock !== null;
+	const blocked =
+		currentStep === OnboardingStep.DEFAULT_MODEL && stepBlock !== null;
 	const dialogActions = (
 		<div className="flex w-full flex-col gap-2">
-			{blocked ? (
-				<p className="text-ink-dim text-meta">{stepBlock}</p>
-			) : null}
+			{blocked ? <p className="text-ink-dim text-meta">{stepBlock}</p> : null}
 			<div className="flex w-full items-center justify-between gap-3">
-			<div>
-				{isFirst ? (
-					<Button variant="ghost" size="lg" onClick={finish}>
-						Skip for now
-					</Button>
-				) : (
-					<Button variant="secondary" size="lg" onClick={handleBack}>
-						Back
-					</Button>
-				)}
-			</div>
-			<div className="flex items-center gap-3">
-				{isLast ? (
-					<Button variant="ghost" size="lg" onClick={finish}>
-						Skip
-					</Button>
-				) : null}
-				{!isFirst || connected ? (
-					<Button
-						variant="primary"
-						size="lg"
-						onClick={() => void handleNext()}
-						disabled={continuing || blocked}
-					>
-						{isLast ? "Finish" : "Continue"}
-					</Button>
-				) : null}
-			</div>
+				<div>
+					{isFirst ? (
+						<Button variant="ghost" size="lg" onClick={finish}>
+							Skip for now
+						</Button>
+					) : (
+						<Button variant="secondary" size="lg" onClick={handleBack}>
+							Back
+						</Button>
+					)}
+				</div>
+				<div className="flex items-center gap-3">
+					{isLast ? (
+						<Button variant="ghost" size="lg" onClick={finish}>
+							Skip
+						</Button>
+					) : null}
+					{!isFirst || connected ? (
+						<Button
+							variant="primary"
+							size="lg"
+							onClick={() => void handleNext()}
+							disabled={continuing || blocked}
+						>
+							{isLast ? "Finish" : "Continue"}
+						</Button>
+					) : null}
+				</div>
 			</div>
 		</div>
 	);

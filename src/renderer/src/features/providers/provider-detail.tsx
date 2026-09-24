@@ -306,7 +306,9 @@ const SignedIn: FC<{
 			/>
 			<output className="text-heading text-ink">
 				{headline ??
-					(verb === "Connected" ? `${brand} connected` : `Signed in to ${brand}`)}
+					(verb === "Connected"
+						? `${brand} connected`
+						: `Signed in to ${brand}`)}
 			</output>
 		</div>
 		{defaults?.receipt ? (
@@ -428,19 +430,22 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	 * Q1, UX U3). Attaching instead also resumes an operation that is still
 	 * running when the panel comes back (UX U4).
 	 */
-	const { flow: flowHandle, state: flow } = useSignInSession(provider.id, () => ({
-		start: (id: string) =>
-			desktopResult<AuthOperation>({ op: "auth.start", provider: id }),
-		read: (id: string) =>
-			desktopResult<AuthOperation>({ op: "auth.status", id }),
-		cancel: (id: string) => desktopResult({ op: "auth.cancel", id }),
-		// Main opens the operation's CURRENT url and never takes one from the
-		// renderer, so a compromised render path cannot turn this into a general
-		// link opener; it also dedups the same operation and url.
-		open: (id: string, reopen: boolean) => openAuthorization(id, reopen),
-		poll: pollAuthOperation,
-		onSucceeded: () => onConnectedRef.current(),
-	}));
+	const { flow: flowHandle, state: flow } = useSignInSession(
+		provider.id,
+		() => ({
+			start: (id: string) =>
+				desktopResult<AuthOperation>({ op: "auth.start", provider: id }),
+			read: (id: string) =>
+				desktopResult<AuthOperation>({ op: "auth.status", id }),
+			cancel: (id: string) => desktopResult({ op: "auth.cancel", id }),
+			// Main opens the operation's CURRENT url and never takes one from the
+			// renderer, so a compromised render path cannot turn this into a general
+			// link opener; it also dedups the same operation and url.
+			open: (id: string, reopen: boolean) => openAuthorization(id, reopen),
+			poll: pollAuthOperation,
+			onSucceeded: () => onConnectedRef.current(),
+		}),
+	);
 
 	// A panel reused for another provider starts clean.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: provider.id is the reset trigger
@@ -755,46 +760,46 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		);
 	} else if (flow.phase === "active" && operation) {
 		/*
-	 * Built once, placed by whichever state owns it: the paste-required panel
-	 * makes its Continue the PRIMARY action (the field is the only way forward
-	 * there, design round 1 D10) while the waiting panel's disclosure keeps it
-	 * secondary, because the browser is still the flow in that state.
-	 */
-	const pasteField = (primary: boolean) =>
-		operation.input_required ? (
-			<div className="flex flex-col gap-2">
-				<Label htmlFor={`prompt-${operation.id}`}>
-					{host ? `Code from ${host}` : "Code from the sign-in page"}
-				</Label>
-				<div className="flex items-start gap-2">
-					<div className="flex-1">
-						<SecretInput
-							id={`prompt-${operation.id}`}
-							value={promptValue}
-							onChange={(next) => {
-								setPromptValue(next);
-								setPromptError(null);
-							}}
-							label="Sign-in code"
-							invalid={promptError !== null}
-						/>
+		 * Built once, placed by whichever state owns it: the paste-required panel
+		 * makes its Continue the PRIMARY action (the field is the only way forward
+		 * there, design round 1 D10) while the waiting panel's disclosure keeps it
+		 * secondary, because the browser is still the flow in that state.
+		 */
+		const pasteField = (primary: boolean) =>
+			operation.input_required ? (
+				<div className="flex flex-col gap-2">
+					<Label htmlFor={`prompt-${operation.id}`}>
+						{host ? `Code from ${host}` : "Code from the sign-in page"}
+					</Label>
+					<div className="flex items-start gap-2">
+						<div className="flex-1">
+							<SecretInput
+								id={`prompt-${operation.id}`}
+								value={promptValue}
+								onChange={(next) => {
+									setPromptValue(next);
+									setPromptError(null);
+								}}
+								label="Sign-in code"
+								invalid={promptError !== null}
+							/>
+						</div>
+						<Button
+							variant={primary ? "primary" : "secondary"}
+							size="md"
+							disabled={!promptValue}
+							onClick={() => void submitPrompt()}
+						>
+							Continue
+						</Button>
 					</div>
-					<Button
-						variant={primary ? "primary" : "secondary"}
-						size="md"
-						disabled={!promptValue}
-						onClick={() => void submitPrompt()}
-					>
-						Continue
-					</Button>
+					{promptError ? (
+						<p className="text-danger text-meta" role="alert">
+							{promptError}
+						</p>
+					) : null}
 				</div>
-				{promptError ? (
-					<p className="text-danger text-meta" role="alert">
-						{promptError}
-					</p>
-				) : null}
-			</div>
-		) : null;
+			) : null;
 
 		if (operation.input_required && !pasteIsFallback) {
 			// The paste IS the flow: the field is the headline, open.

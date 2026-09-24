@@ -27,8 +27,8 @@ import { Spinner } from "@shared/components/common/spinner";
 import { HostingSelect } from "@shared/components/hosting/hosting-select";
 import { ModelSelect } from "@shared/components/hosting/model-select";
 import { Alert, Button } from "@shared/components/ui";
-import { useModelsStore } from "@shared/store/models-store";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
+import { useModelsStore } from "@shared/store/models-store";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 
@@ -221,8 +221,8 @@ export const DefaultModelStep: FC<DefaultModelStepProps> = ({
 			{needsModel && !catalogueHasModels ? (
 				<p className="text-ink-dim text-meta">
 					Your Local Operator can't list{" "}
-					{shownRow ? brandOf(shownRow) : "this provider's"} models
-					yet. Finish setup and pick one in Settings once it can.
+					{shownRow ? brandOf(shownRow) : "this provider's"} models yet. Finish
+					setup and pick one in Settings once it can.
 				</p>
 			) : null}
 			{editing || choice.kind === "choose" ? (

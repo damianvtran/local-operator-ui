@@ -19,9 +19,9 @@
  */
 
 import assert from "node:assert/strict";
-import { test } from "node:test";
 import { createHash } from "node:crypto";
-import { readFileSync, existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { test } from "node:test";
 
 const SET = "docs/evidence/provider-sign-in-onboarding";
 
@@ -67,7 +67,8 @@ test("every terminal panel state is its own image, and not the waiting one", () 
 	for (const [a, hashA] of hashes) {
 		for (const [b, hashB] of hashes) {
 			if (a >= b) continue;
-			if (a.startsWith("panel-waiting") && b.startsWith("panel-waiting")) continue;
+			if (a.startsWith("panel-waiting") && b.startsWith("panel-waiting"))
+				continue;
 			assert.notEqual(
 				hashA,
 				hashB,
