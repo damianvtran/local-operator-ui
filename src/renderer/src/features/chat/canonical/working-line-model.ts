@@ -54,6 +54,7 @@
  */
 
 import { epochMsFromSeconds } from "../../../../../shared/desktop-session-contract";
+import type { ChatDraft } from "../../../shared/store/canonical-sessions-store";
 import { displayName } from "../components/trace/tool-row-model";
 import type { TranscriptRecord } from "./transcript-reducer";
 import { paintsSomething } from "./transcript-rows";
@@ -172,6 +173,85 @@ export function admittedSendFor(
 	if (!draft.admissionRequestId) return null;
 	return { requestId: draft.admissionRequestId };
 }
+
+/**
+ * The draft row a CONVERSATION's send is travelling in, or undefined.
+ *
+ * WHY IT LIVES HERE, AND WITH A TYPE-ONLY IMPORT OF THE STORE. It is a rule about
+ * the store's row SHAPES, but the module that consumes it is this one, and a
+ * runtime import of the store would drag the desktop API and the echo seam into
+ * every bundle that reads the transcript's rows - three suites that bundle this
+ * model failed to build when it did (measured: `tool-row`, `tool-compose-lifecycle`
+ * and `working-line-clock`, each "Could not resolve @shared/api/local-operator/desktop-api"
+ * from `canonical-sessions-store.ts`). `ChatDraft` below is a TYPE, so nothing of
+ * the store reaches a bundle through here.
+ *
+ * WHY A LOOKUP BY SESSION AND NOT BY KEY. A row is normally found by
+ * `draftIdentityFor(draftKey, sessionId)`, and `draftKey` is a fact of the PANE
+ * that issued the send - but the pane is not the only reader that needs the row,
+ * and on the New-chat path it is not even the same COMPONENT: the identity flip
+ * unmounts the composer that pressed Enter while its send is still going out
+ * (`panelIdentityFor` says why), so every reader that asks afterwards holds the
+ * session id and no draft key. Review round 2, R2-1 is that gap: a fact of the
+ * send read from state of the replaced panel is a fact the replacement panel
+ * cannot see.
+ *
+ * Both shapes the row can be in are read, in the order `discardDraft` reads them
+ * for the same reason: a send staged from "New chat" LEARNS its session id
+ * mid-send (`updateDraft(key, { sessionId })`, before the message POST), so the
+ * row carries it; a send made from an existing conversation is keyed
+ * `send:<sessionId>` and the id is in the key, never written to the row.
+ *
+ * A lookup rather than a predicate, so the question "is this send still going
+ * out" has ONE definition: the caller hands this row to `admittedSendFor`
+ * (`working-line-model.ts`), which is the same rule the transcript's working line
+ * is built from. Two copies of that predicate is how a box and a transcript come
+ * to disagree about whether work is in flight.
+ */
+export function draftRowForSession(
+	drafts: Record<string, ChatDraft>,
+	sessionId: string | null | undefined,
+): ChatDraft | undefined {
+	if (!sessionId) return undefined;
+	const rows = Object.values(drafts).filter(
+		(row) => row.sessionId === sessionId || row.key === `send:${sessionId}`,
+	);
+	/*
+	 * A row that is IN FLIGHT wins when both shapes address one session: the
+	 * caller is asking about a send, and a settling row and a starting one can
+	 * overlap for a frame (the receipt and the next press are not ordered against
+	 * each other). `rows[0]` is then the fallback that keeps this a lookup rather
+	 * than a second predicate.
+	 */
+	return rows.find((row) => row.pending) ?? rows[0];
+}
+
+/**
+ * Is a send for this CONVERSATION still going out? The composer's own window.
+ *
+ * THE SOURCE IS THE STORE'S DRAFT ROW, and that is load-bearing rather than
+ * tidy: `draftRowForSession` finds it from the session id alone, so a panel that
+ * mounts MID-SEND can see it. The New-chat identity flip unmounts the panel the
+ * Enter was pressed in (`panelIdentityFor`, "THE FLIP IS A REMOUNT") and the
+ * replacement mounts with no history of that press, so any flag held in the
+ * replaced panel's state is false there for the whole send. Review round 1's
+ * MAJOR-1 put the sentence below `awaitingReply`; review round 2's R2-1 found the
+ * source had the same lifetime problem one level down, because the flag the
+ * sentence was fed from was the page's own `useState`.
+ *
+ * ONE FACT, TWO SURFACES. The transcript's working line reads `admittedSendFor`
+ * through the pane's `starting` LATCH, and this reads the same predicate with no
+ * latch - which is exactly the difference between the two sentences the box can
+ * say. While this is true the request has not been confirmed yet, so the box says
+ * the message is going out; the receipt empties the row (`finishDraft` deletes
+ * it), the latch keeps the transcript's line up across that gap, and the box has
+ * nothing left to claim but the owner's answer (`Waiting for the agent`).
+ */
+export const sendUnsettledForSession = (
+	drafts: Record<string, ChatDraft>,
+	sessionId: string | undefined,
+): boolean =>
+	admittedSendFor(sessionId, draftRowForSession(drafts, sessionId)) !== null;
 
 /**
  * Whether the owner has ANSWERED a send that was admitted under `afterId`.

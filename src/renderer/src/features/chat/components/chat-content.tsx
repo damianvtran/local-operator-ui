@@ -1265,6 +1265,16 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										: isLoading
 								}
 								/*
+								 * `isLoading` IS THE ONLY SEND FACT THIS COMPONENT PASSES. Whether a
+								 * send for this conversation is still going out is NOT threaded from
+								 * here: the composer derives it from the STORE's own row
+								 * (`sendUnsettledForSession`), and review round 2's R2-1 is why. This
+								 * component is mounted BY the panel the New-chat identity flip
+								 * replaces, so a value it had to hand down would be as absent on the
+								 * replacement as the panel's own state was - while the row is state of
+								 * the conversation and every mount reads it.
+								 */
+								/*
 								 * Derived from the same expression the transcript's own line is, so
 								 * the two surfaces cannot disagree about whether work is being
 								 * claimed: a pending question and a dead transport both retire

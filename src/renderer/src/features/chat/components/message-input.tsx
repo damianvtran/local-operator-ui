@@ -16,6 +16,7 @@ import {
 	SEND_HELD,
 	type SendOutcome,
 	adoptRefusedPayload,
+	composerPlaceholder,
 	heldClaimCopy,
 	refusedSplitNotice,
 	useMessageInput,
@@ -30,6 +31,7 @@ import {
 	buildSendPayload,
 	withholdsRetryHint,
 } from "@shared/store/canonical-sessions-store";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
 	type Attachment,
 	type Reply,
@@ -74,6 +76,7 @@ import type {
 	CanonicalModel,
 } from "../../../../../shared/desktop-session-contract";
 import { composerFocusIsOurs, shouldTabIntoAnswerOptions } from "../ask-answer";
+import { sendUnsettledForSession } from "../canonical/working-line-model";
 import {
 	CAPPED_BLOCK,
 	CHAT_COLUMN_CONTAINER,
@@ -1976,19 +1979,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * review round 2, MINOR 1).
 				 */
 				lockedRun.current = null;
-				if (conversationId) {
-					clearReplies(conversationId);
-					clearAttachments(conversationId);
-				}
+				/*
+				 * THE CHIP ROW IS NOT CLEARED HERE ANY MORE, and that is the fix rather
+				 * than an omission. It used to be cleared on this line - i.e. once the
+				 * send had settled - while the text left the box at the echo, so the
+				 * whole in-flight window showed the transcript's copy of the message
+				 * with its attachment beside the composer's chip for the same file. The
+				 * two halves now leave together, in `use-message-input`'s `clearOnce`,
+				 * which is the one trigger both of them share (`clearStagedPayload`).
+				 */
 				return accepted;
 			},
 			[
 				onSendMessage,
 				attachments,
 				replies,
-				conversationId,
-				clearReplies,
-				clearAttachments,
 				storeCitedCredentials,
 				// The seam's own decision reads it: with a session there is nothing to
 				// defer, so only a new-chat pane hands the host a callback.
@@ -1999,12 +2004,42 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			],
 		);
 
+		/*
+		 * IS A SEND FOR THIS CONVERSATION STILL GOING OUT?
+		 *
+		 * The window the operator reported as having nothing to say: the box has been
+		 * emptied by the echo, the transcript already shows the message, and the
+		 * field's slot showed the invitation to start something else while this one
+		 * was still on its way.
+		 *
+		 * READ FROM THE STORE'S ROW rather than from a prop or from this composer's
+		 * own state, which is what review round 2's R2-1 established the hard way.
+		 * `sendInFlight` (below) is a `useState` of THIS component, and `chat-page`'s
+		 * `admitting` - what round 1 wired this from - is a `useState` of the panel the
+		 * New-chat identity flip REPLACES (`panelIdentityFor`, "THE FLIP IS A
+		 * REMOUNT"), so on the arm the operator photographed both were false and the
+		 * box fell through to `Waiting for the agent`. A row is not state of the keyed
+		 * subtree: `sendUnsettledForSession` finds it by session id alone, and it is
+		 * the SAME predicate the pane reads through its `starting` latch for the
+		 * transcript's working line, so the box and the line cannot disagree about
+		 * whether a send is going out. A different conversation is a different row,
+		 * which is the boundary that keeps its send from reaching this composer.
+		 *
+		 * OR'd with `sendInFlight` at the placeholder call: the hook's flag covers the
+		 * press this composer made before that row exists at all (and on the arms - a
+		 * slash command, a gate answer, a legacy send - where it never will), and the
+		 * row covers the panel that replaces this one.
+		 */
+		const sendUnsettled = useCanonicalSessionsStore((state) =>
+			sendUnsettledForSession(state.drafts, conversationId),
+		);
 		const {
 			inputValue: newMessage,
 			setInputValue: setNewMessage,
 			handleKeyDown,
 			handleSubmit: submitMessage,
 			textareaRef,
+			sendInFlight,
 		} = useMessageInput({
 			conversationId,
 			onSubmit,
@@ -6373,24 +6408,43 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										)}
 										placeholder={
 											/*
-											 * The gone-state sentence is checked FIRST, ahead of the busy one, and
-											 * that order is the whole point: `isInputDisabled` is true for a missing
-											 * conversation too, so a reader of a conversation this machine does not have
-											 * would be told "Agent is busy" about a turn nobody is running (design
-											 * round 2, D3). The remaining terms are the U8 pair, unchanged.
+											 * THE ONE SENTENCE THE BOX CARRIES, and the ORDER is the rule rather than
+											 * the strings: `composerPlaceholder` holds it (with the reason each term
+											 * sits where it does), so the chain cannot be reordered into a state the
+											 * app cannot be in and then photographed as one.
+											 *
+											 * The two facts this call is built from: `sendInFlight` is this composer's own
+											 * unsettled press, and `sendingUnsettled` is the STORE's row for this
+											 * conversation (`sendUnsettledForSession` -> `admittedSendFor`), which is what
+											 * survives the New-chat identity flip - a flag held by the panel being replaced
+											 * cannot, which is what review round 2's R2-1 found in the round-1 wiring. They
+											 * are OR'd because they are the two halves of one fact at two scopes, and the
+											 * sentence is earned by the SCENARIO rather than by the box: while a send from
+											 * this conversation is going out, the empty box says so, and `Waiting for the
+											 * agent` takes over once it has settled. See `composerPlaceholder` for why that
+											 * outranks `awaitingReply` and what it must never claim.
+											 *
+											 * WORDING AND INDICATOR. Sentence case, no ellipsis, no spinner, in the
+											 * composer's existing idiom - every state this box has ever had is one
+											 * of these strings and nothing else (design rounds 2 and 3). The
+											 * transcript already carries the turn's single liveness element while
+											 * this is true (branding section 7's working line, fed by the page's
+											 * `admitting`), so a second visible indicator here would be a second
+											 * liveness statement about one turn - and the new state ADDS no
+											 * layout: `pending-send` is geometrically `idle` with one word
+											 * changed, measured in the committed pair. What does move, in a send
+											 * carrying an attachment, is the band losing the chip row when the
+											 * echo paints (253px -> 125px at 1024 in the same pair): that is the
+											 * payload leaving, not an indicator arriving, and the field and the
+											 * control row hold their position through it (design round 1, D4).
 											 */
-											unavailable
-												? "This conversation is gone"
-												: isInputDisabled
-													? "Agent is busy"
-													: awaitingAnswer
-														? // Names the thing the box is now for, without restating
-															// the question card or the waiting line (§ 7 keeps one
-															// liveness statement per turn, and the card owns it).
-															"Answer the question above"
-														: awaitingReply
-															? "Waiting for the agent"
-															: "Ask me for help"
+											composerPlaceholder({
+												unavailable,
+												inputDisabled: isInputDisabled,
+												awaitingAnswer,
+												sendingUnsettled: sendUnsettled || sendInFlight,
+												awaitingReply,
+											})
 										}
 										value={newMessage}
 										/*
