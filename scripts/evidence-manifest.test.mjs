@@ -780,21 +780,15 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  * than being read as history - the distinction the paragraph above draws.
  */
 const STAMP_BINDING_NOTES = [
-	"shellPathRestampNote",
 	"roundThreeNoticeRestampNote",
 	/*
-	 * FIVE NOTES LEFT THIS LIST AT REVIEW ROUND 3, and the reason is the one the
-	 * comments in this block have recorded for every earlier departure:
-	 * `usageInFlightConvergenceNote`, `macNativeComponentsRestampNote`,
-	 * `telemetrySwitchRestampNote`, `readReceiptRestampNote` and
-	 * `composerNoticeRemediationNote` each record a capture or a fold that re-stamped
-	 * this file WITHOUT re-capturing the sets behind it, so the pair they quote is
-	 * history. Round 3 re-derived both trees again (the composer-alert rig was re-run
-	 * for the notice-arms frames), and holding those five to the new values would have
-	 * made each of them certify a binding it was never about. `shellPathRestampNote`
-	 * stays because round 3 updated its quoted pair to the shipped one, and round 3's
-	 * own note joins it: a note that says "these are the values this file ships" is
-	 * exactly what this list is for.
+	 * AND `shellPathRestampNote` LEFT THIS LIST AT REVIEW ROUND 3 as well, for the
+	 * reason every departure here has recorded: its own text says it was "held to"
+	 * the pair round 3 has just replaced, and a note that quotes a pair the file no
+	 * longer ships is history rather than a binding. What stays in this list is the
+	 * newest claim about what the file ships - which is the claim a reviewer reads to
+	 * check the frames against the tree - and it is updated with the stamps whenever
+	 * the trees move, exactly as this list exists to force.
 	 */
 ];
 
