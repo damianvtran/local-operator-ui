@@ -103,9 +103,10 @@ test("the shell carries the gate, and the lane is the first thing under it", () 
 	/*
 	 * ORDER, not a count: the lane has to be ABOVE the columns, because that is what
 	 * makes the sidebar's brand row and the conversation title share one line (a
-	 * lane between them, or below them, is 32px of misalignment). Both `return`
-	 * branches carry one - the docked column and the overlay - so the assertion is
-	 * that the lane precedes the row wrapper in each.
+	 * lane between them, or below them, is 32px of misalignment). The shell renders
+	 * ONE tree for all three sidebar modes now (docked, strip, and the sheet over
+	 * the pane - design round 1, D2), so there is exactly one lane and it precedes
+	 * the row wrapper.
 	 */
 	const lane = shell.indexOf('data-titlebar-lane=""');
 	assert.notEqual(lane, -1, "the shell renders no macOS lane");
@@ -119,7 +120,7 @@ test("the shell carries the gate, and the lane is the first thing under it", () 
 	);
 	assert.equal(
 		shell.split('data-titlebar-lane=""').length - 1,
-		2,
-		"both shell branches (docked and overlay) reserve the lane",
+		1,
+		"one shell tree, one lane - a second branch is how the overlay once dropped the pane",
 	);
 });

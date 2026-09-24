@@ -50,14 +50,13 @@ const {
 	formatSettledDuration,
 	isDiffBodyTool,
 	isDiffBodyRow,
-	TOOL_NAME_COL_MIN,
 	preferDiff,
 	outputFallbackLine,
 	requestDesktopMedia,
 	stripDiffHeader,
 	summaryFromArgs,
 	toolCategory,
-	toolNameColumn,
+	toolVerb,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -178,13 +177,31 @@ test("a diff counter is a positive integer or it is unknown", () => {
 	assert.equal(diffCount(1.5), 0);
 });
 
-test("the name column grows to the longest visible name, within its bounds", () => {
-	// A transcript of short names does not pay for a tool it never called.
-	assert.equal(toolNameColumn(["bash", "read"]), 8);
-	assert.equal(toolNameColumn([]), 8);
-	assert.equal(toolNameColumn(["list_variables"]), 14);
-	// And a pathological name cannot push the summary off the row.
-	assert.equal(toolNameColumn(["a".repeat(60)]), 24);
+test("a row opens with a verb in the user's terms, never the wire name (D5)", () => {
+	/*
+	 * §E1's row is a sentence: `Ran pnpm vitest`, `Read src/chat.tsx`. The first
+	 * column used to print `bash`, `read`, `web_search` - an identifier in the
+	 * sans face - in a fixed-width column that left a hole after a short name.
+	 */
+	assert.deepEqual(toolVerb("bash"), {
+		settled: "Ran",
+		running: "Running",
+		named: true,
+	});
+	assert.equal(toolVerb("read").settled, "Read");
+	assert.equal(toolVerb("edit").settled, "Edited");
+	assert.equal(toolVerb("write").settled, "Wrote");
+	assert.equal(toolVerb("web_search").settled, "Searched the web");
+	assert.equal(toolVerb("web_fetch").settled, "Fetched");
+	// The name is model-controlled; a provider echoing `Bash` keeps the verb.
+	assert.equal(toolVerb("Bash").settled, "Ran");
+	// A tool the table does not know takes a generic verb and says so, so the
+	// row keeps the tool's own name at the head of its object.
+	assert.deepEqual(toolVerb("mcp__linear_create_issue"), {
+		settled: "Called",
+		running: "Calling",
+		named: false,
+	});
 });
 
 /* ------------------------------------------------------- the media relay */
@@ -2742,7 +2759,6 @@ const renderRow = (toolName, outcome, over = {}) =>
 			summary: `${toolName} arg`,
 			outcome,
 			durationS: outcome === "running" ? null : 0.4,
-			nameColumn: TOOL_NAME_COL_MIN,
 			...over,
 		}),
 	);

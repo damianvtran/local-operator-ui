@@ -402,26 +402,6 @@ const CURRENT = [
 		ground: true,
 	},
 	{
-		what: "the All chats filter",
-		file: SIDEBAR,
-		expression: () => expressionBefore(SIDEBAR, ">All chats</span>"),
-		stubs: { revealArmed: true, rowStyle, rowCurrent, all: true },
-		ground: true,
-	},
-	{
-		what: "the New chat row",
-		file: SIDEBAR,
-		expression: () => expressionBefore(SIDEBAR, ">New chat</span>"),
-		stubs: {
-			revealArmed: true,
-			rowStyle,
-			rowCurrent,
-			activeDraftKey: "draft-key",
-			draft: undefined,
-		},
-		ground: true,
-	},
-	{
 		what: "the entity row's wrapper",
 		file: SIDEBAR,
 		expression: () => expressionAfter(SIDEBAR, "data-entity>"),
@@ -857,8 +837,11 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// expression has to resolve it. The bulk read receipt carries no reset of
 				// its own: it is the shared `Button` primitive now, whose disabled styling
 				// lives in that component, and its in-flight state is `aria-disabled`
-				// rather than `disabled` — so it never paints as a disabled control.
-				"hover:bg-transparent": 1,
+				// THE `disabled:hover:bg-transparent` LITERAL IS NOT HERE ANY MORE: the
+				// panel holds no disabled row since `New chat` moved to the rail's own
+				// primary rows (§C1, design round 1, D1), and the only other disabled
+				// control in the list is the mark-all-read receipt, which keeps its ring
+				// stop and refuses the click rather than painting as disabled.
 			},
 		],
 		[

@@ -518,11 +518,17 @@ const mount = async (rows) => {
 		container,
 		/** The control, by the hook the driver and the frames use too. */
 		control: () => walkTo("mark-all-read"),
-		/** The Active chats disclosure — the row above the control in the ring. */
-		activeToggle: () =>
-			[...document.querySelectorAll("[data-chat-row]")].find((row) =>
-				row.textContent?.trim().startsWith("Active chats"),
-			),
+		/**
+		 * The section's LABEL row — the element above the control in the panel.
+		 *
+		 * It is not a disclosure any more (§C1; design round 1, D1/U22: a heading a
+		 * press can collapse is the accident the operator reported), so it is not a
+		 * `[data-chat-row]` stop and it cannot be focused. What is left of the old
+		 * pair is the control's place in the ring, which is what the test below
+		 * asserts against the rows themselves.
+		 */
+		sectionLabelRow: () =>
+			document.querySelector("[data-chat-section] > div") ?? null,
 		/** The ring itself, in the order `keyDown` walks it. */
 		ring: () => [...document.querySelectorAll("[data-chat-row]")],
 		/** ArrowDown/ArrowUp as the panel's own handler takes them. */
@@ -568,30 +574,34 @@ const PILE = [
 	},
 ];
 
-test("the control is a stop in the ↑/↓ walk, between the section and its first row", async () => {
+test("the control is a stop in the ↑/↓ walk, before the section's first row", async () => {
+	/*
+	 * THE CONTRACT CHANGED WITH THE SECTION HEADERS. The control used to sit one
+	 * stop after its section's disclosure, because the disclosure was a row. The
+	 * headers are labels now (U22), so the control is the FIRST stop in the ring
+	 * and ArrowDown from it lands on the first conversation row — the same
+	 * guarantee (a keyboard reader reaches the control and leaves it in one press
+	 * each way) against the same boundary.
+	 */
 	const harness = await mount(PILE);
 	try {
-		const toggle = harness.activeToggle();
-		assert.ok(toggle, "the Active chats disclosure is not in the ring");
+		assert.ok(harness.sectionLabelRow(), "the section label is missing");
 		const ring = harness.ring();
-		const at = (element) => ring.indexOf(element);
 		assert.equal(
-			at(harness.control()),
-			at(toggle) + 1,
-			"the control is not the stop immediately after its own section's toggle",
+			ring.indexOf(harness.control()),
+			0,
+			"the control is not the first stop in the ring, ahead of every conversation",
+		);
+		assert.ok(
+			ring.length > 1,
+			"the ring holds no conversation row, so the walk below proves nothing",
 		);
 		// And ArrowDown really moves there rather than only the DOM order saying so.
-		toggle.focus();
+		harness.control().focus();
 		await harness.press("ArrowDown");
 		assert.equal(
 			document.activeElement,
-			harness.control(),
-			"ArrowDown from the toggle did not land on the control",
-		);
-		await harness.press("ArrowDown");
-		assert.equal(
-			document.activeElement,
-			ring[at(harness.control()) + 1],
+			ring[1],
 			"ArrowDown from the control did not reach the first conversation row",
 		);
 	} finally {
@@ -674,12 +684,13 @@ test("the control keeps focus and its ring stop for the whole request", async ()
 	}
 });
 
-test("clearing the last mark hands focus to the section, not to <body>", async () => {
+test("clearing the last mark hands focus to the list, not to <body>", async () => {
 	/*
 	 * The other half of U2: when the count reaches zero the control unmounts, and a
 	 * focused element that unmounts drops focus to `<body>` — the next Tab then
-	 * restarts at the search field, outside the list. The reader who just cleared
-	 * the pile is handed to the section's own disclosure instead.
+	 * restarts at the top of the document, outside the list. The reader who just
+	 * cleared the pile is handed to the list's first row instead, which is the stop
+	 * the control sat in front of.
 	 */
 	const harness = await mount(PILE);
 	try {
@@ -692,7 +703,8 @@ test("clearing the last mark hands focus to the section, not to <body>", async (
 			superseded: [],
 			unknown: [],
 		});
-		assert.ok(harness.activeToggle(), "the section toggle is missing");
+		const firstRow = harness.ring()[1];
+		assert.ok(firstRow, "the list's first conversation row is missing");
 		const control = harness.control();
 		control.focus();
 		await harness.click(control);
@@ -705,8 +717,8 @@ test("clearing the last mark hands focus to the section, not to <body>", async (
 		);
 		assert.equal(
 			document.activeElement,
-			harness.activeToggle(),
-			"focus did not land on the section's own disclosure",
+			firstRow,
+			"focus did not land on the list's first row",
 		);
 		assert.notEqual(
 			document.activeElement,

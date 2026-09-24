@@ -52,6 +52,12 @@ export type FoldGroup =
 			 * run grows.
 			 */
 			id: string;
+			/**
+			 * The gap tier of the run's FIRST row, which is the fold's own margin:
+			 * when the run opens a turn this is the turn's 32px, and the first row
+			 * inside the fold is drawn at the trace tier instead of carrying it.
+			 */
+			gap: Row["gap"];
 			rows: Row[];
 			actions: FoldableAction[];
 			summary: string;
@@ -187,6 +193,7 @@ export function foldRuns(
 			groups.push({
 				kind: "run",
 				id: run[0].record.id,
+				gap: run[0].gap,
 				rows: run,
 				actions,
 				summary: foldSummary(actions),
@@ -200,8 +207,21 @@ export function foldRuns(
 	};
 
 	for (const row of rows) {
+		/*
+		 * A ROW THAT OPENS A TURN STARTS A NEW RUN, and it is IN that run (design
+		 * round 1, D8). It used to be excluded - the run began at the turn's SECOND
+		 * action - because the opening row carries the turn's 32px gap and a
+		 * margin that size inside a fold's content would open a hole under the
+		 * summary line. The cost was a standalone `read` row above `7 actions`
+		 * while the turn's foot said `8 actions`: two counts for one turn. The gap
+		 * now belongs to the GROUP (`gap` below), which the transcript paints on the
+		 * fold's own wrapper, and the row inside the fold is drawn at the trace
+		 * tier - so the fold holds the whole consecutive run (§E2) and its count is
+		 * the foot's.
+		 */
 		const opensTurn = row.gap === "turn" || row.gap === "first";
-		if (options.isFoldable(row) && !opensTurn) {
+		if (opensTurn) flush();
+		if (options.isFoldable(row)) {
 			run.push(row);
 			continue;
 		}

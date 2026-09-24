@@ -98,7 +98,6 @@ import {
 	isDiffBodyRow,
 	outputFallbackLine,
 	summaryFromArgs,
-	toolNameColumn,
 } from "../components/trace/tool-row-model";
 import { TraceFold } from "../components/trace/trace-fold";
 import { WorkingLine } from "../components/trace/working-line";
@@ -545,13 +544,14 @@ const UserRow = memo(function UserRow({
 					)}
 				</div>
 				{/*
-				 * One stamp per turn, always visible (the operator's request). The
-				 * record's own `ts` is the moment the message was sent, which the
-				 * reducer sets from the owner's frame rather than from paint time -
-				 * § 7's "rows are placed by the time they carry, never by the moment
-				 * the reader happened to see them".
+				 * NO STAMP UNDER THE USER'S BLOCK (§D1; design round 1, D7). The turn's
+				 * one stamp is on its foot line (§E3), at the end of the agent's answer,
+				 * where it dates the exchange rather than one side of it: six stamp lines
+				 * in one 1380 viewport - one under every user block and one under every
+				 * answer - were a third of the rhythm problem the round measured. The
+				 * moment the message was sent is still in the record (`record.ts`), and
+				 * the foot's stamp is read from the reducer's frame time the same way.
 				 */}
-				<TurnTimestamp timestamp={record.ts} scope="turn" />
 			</div>
 		</MessageContainer>
 	);
@@ -766,17 +766,45 @@ const AssistantRow = memo(function AssistantRow({
 												event.currentTarget.closest(
 													"[data-lo-transcript-content]",
 												) ?? document;
-											const target = root.querySelector(
-												`[data-record-id="${failedId}"]`,
+											/*
+											 * Open the fold that holds the failed row first: a
+											 * collapsed fold has unmounted its rows, so the row is not
+											 * in the DOM to be found until its fold is open (U14's
+											 * jump, into the §E2 fold). The fold's own trigger is the
+											 * first `aria-expanded` button inside its wrapper.
+											 */
+											const fold = [
+												...root.querySelectorAll<HTMLElement>(
+													"[data-fold-ids]",
+												),
+											].find((node) =>
+												(node.dataset.foldIds ?? "")
+													.split(" ")
+													.includes(failedId),
 											);
-											if (!(target instanceof HTMLElement)) return;
-											const trigger = target.querySelector(
+											const foldTrigger = fold?.querySelector(
 												'button[aria-expanded="false"]',
 											);
-											if (trigger instanceof HTMLElement) trigger.click();
-											target.scrollIntoView({
-												block: "center",
-												behavior: prefersReducedMotion() ? "auto" : "smooth",
+											if (foldTrigger instanceof HTMLElement)
+												foldTrigger.click();
+											/*
+											 * One frame later, once React has committed the opened
+											 * fold's rows: then the failed row exists, its own detail
+											 * opens, and it is scrolled to the centre.
+											 */
+											window.requestAnimationFrame(() => {
+												const target = root.querySelector(
+													`[data-record-id="${failedId}"]`,
+												);
+												if (!(target instanceof HTMLElement)) return;
+												const trigger = target.querySelector(
+													'button[aria-expanded="false"]',
+												);
+												if (trigger instanceof HTMLElement) trigger.click();
+												target.scrollIntoView({
+													block: "center",
+													behavior: prefersReducedMotion() ? "auto" : "smooth",
+												});
 											});
 										}}
 										className={cn("font-medium text-danger hover:underline")}
@@ -818,12 +846,10 @@ const AssistantRow = memo(function AssistantRow({
 const ToolRow = memo(function ToolRow({
 	record,
 	isSmallView,
-	nameColumn,
 	scope,
 }: {
 	record: Extract<TranscriptRecord, { kind: "tool" }>;
 	isSmallView: boolean;
-	nameColumn: number;
 	scope: AttachmentScope | null;
 }) {
 	const running = record.phase !== "done";
@@ -922,7 +948,9 @@ const ToolRow = memo(function ToolRow({
 		 */
 		<div
 			className={cn(
-				"w-full rounded-sm border border-hairline bg-sunken p-3 font-mono text-mono-sm",
+				// The detail block's own treatment (§E5, D9): `sunken`, radius 10,
+				// no border.
+				"w-full rounded-md bg-sunken p-3 font-mono text-mono-sm",
 			)}
 			data-detail-section="not-run"
 		>
@@ -995,7 +1023,6 @@ const ToolRow = memo(function ToolRow({
 				startedAt={record.startedAt}
 				added={record.added}
 				removed={record.removed}
-				nameColumn={nameColumn}
 				details={details}
 				media={media}
 			/>
@@ -1167,11 +1194,9 @@ const NoticeRow = memo(function NoticeRow({
 const PeerRow = memo(function PeerRow({
 	record,
 	isSmallView,
-	nameColumn,
 }: {
 	record: Extract<TranscriptRecord, { kind: "peer" }>;
 	isSmallView: boolean;
-	nameColumn: number;
 }) {
 	const detail = peerHasDetail(record.sender, record.body);
 	if (!detail) {
@@ -1182,7 +1207,6 @@ const PeerRow = memo(function PeerRow({
 					summary={peerSummary(record.sender, record.body)}
 					outcome="receipt"
 					durationS={null}
-					nameColumn={nameColumn}
 				/>
 			</MessageContainer>
 		);
@@ -1194,7 +1218,6 @@ const PeerRow = memo(function PeerRow({
 				summary={peerSummary(record.sender, record.body)}
 				outcome="receipt"
 				durationS={null}
-				nameColumn={nameColumn}
 				details={
 					// `px-3` puts this body on the SAME text rail as the pane above it:
 					// a tool expansion's border sits on the glyph rail and its text is
@@ -1260,11 +1283,9 @@ const PeerRow = memo(function PeerRow({
 const WakeRow = memo(function WakeRow({
 	record,
 	isSmallView,
-	nameColumn,
 }: {
 	record: Extract<TranscriptRecord, { kind: "wake" }>;
 	isSmallView: boolean;
-	nameColumn: number;
 }) {
 	const prompt = wakePromptBody(record.text);
 	return (
@@ -1274,7 +1295,6 @@ const WakeRow = memo(function WakeRow({
 				summary={wakeReceiptHeadline(record.text)}
 				outcome="receipt"
 				durationS={null}
-				nameColumn={nameColumn}
 				details={
 					prompt ? (
 						// `px-3`: the same content rail as every other expanded body in the
@@ -1297,17 +1317,36 @@ const WakeRow = memo(function WakeRow({
 /** Development row-render counter; read by the perf readout below. */
 const rowRenderCount = { current: 0 };
 
+/**
+ * A fold's first row, redrawn at the trace tier: the fold wrapper carries the
+ * gap the row arrived with (D8), so the row inside must not carry it twice.
+ *
+ * CACHED PER ROW OBJECT, because `TranscriptRow` is memoised on its `row` prop
+ * and `buildRows` hands back the SAME row object for an untouched record - a
+ * fresh `{...row}` on every render would re-render every fold's first row on
+ * every streamed token, which is the per-delta cost `buildRows`' reuse exists
+ * to remove. A `WeakMap` lets the copy die with the row it was made from.
+ */
+const traceTierRows = new WeakMap<Row, Row>();
+const atTraceTier = (row: Row): Row => {
+	if (row.gap === "trace") return row;
+	let copy = traceTierRows.get(row);
+	if (!copy) {
+		copy = { ...row, gap: "trace" };
+		traceTierRows.set(row, copy);
+	}
+	return copy;
+};
+
 const TranscriptRow = memo(function TranscriptRow({
 	row,
 	isSmallView,
-	nameColumn,
 	scope,
 	conversationId,
 	foot = null,
 }: {
 	row: Row;
 	isSmallView: boolean;
-	nameColumn: number;
 	scope: AttachmentScope | null;
 	conversationId?: string;
 	/** The turn's own foot line, on the row that closes it (§E3). */
@@ -1340,31 +1379,14 @@ const TranscriptRow = memo(function TranscriptRow({
 			break;
 		case "tool":
 			body = (
-				<ToolRow
-					record={record}
-					isSmallView={isSmallView}
-					nameColumn={nameColumn}
-					scope={scope}
-				/>
+				<ToolRow record={record} isSmallView={isSmallView} scope={scope} />
 			);
 			break;
 		case "peer":
-			body = (
-				<PeerRow
-					record={record}
-					isSmallView={isSmallView}
-					nameColumn={nameColumn}
-				/>
-			);
+			body = <PeerRow record={record} isSmallView={isSmallView} />;
 			break;
 		case "wake":
-			body = (
-				<WakeRow
-					record={record}
-					isSmallView={isSmallView}
-					nameColumn={nameColumn}
-				/>
-			);
+			body = <WakeRow record={record} isSmallView={isSmallView} />;
 			break;
 		default:
 			body = <NoticeRow record={record} isSmallView={isSmallView} />;
@@ -1767,24 +1789,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		}, 1000);
 		return () => window.clearInterval(timer);
 	}, [visible.length]);
-
-	// The shared name column: sized to the longest ledger name ON SCREEN, between
-	// the TUI's 8ch floor and 24ch ceiling. Derived from the visible window
-	// rather than the whole transcript, so scrolling to a run of `bash` rows
-	// does not keep paying for an `mcp__…` name a thousand rows back.
-	//
-	// A receipt row (`peer`, `wake`) is part of that measurement, not exempt from
-	// it: it sits on the same spine as the calls around it, and a name left out
-	// of the set would shift every other row's summary rail when it scrolled into
-	// view. `ledgerName` is the one place that decides which records have a name
-	// column at all.
-	const nameColumn = useMemo(
-		() =>
-			toolNameColumn(
-				visible.map((row) => ledgerName(row.record)).filter(Boolean),
-			),
-		[visible],
-	);
 
 	// What the working line says, and which phase it is timing. The derivation
 	// (and its copy contract, including the one branch this app drives from its
@@ -2191,6 +2195,13 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 								group.kind === "run" ? (
 									<TraceFold
 										key={group.id}
+										/*
+										 * The fold carries its first row's gap (a turn's 32px when
+										 * the run opens the turn), and every row inside it sits at
+										 * the trace tier - the fold holds the WHOLE run, D8.
+										 */
+										className={GAP[group.gap][isSmallView ? 1 : 0]}
+										recordIds={group.rows.map((row) => row.record.id)}
 										summary={group.summary}
 										actionCount={group.rows.length}
 										failedCount={group.failedCount}
@@ -2199,12 +2210,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 										   the summary once it settles (§E2). */
 										openByDefault={working !== null && group.isNewestTurn}
 									>
-										{group.rows.map((row) => (
+										{group.rows.map((row, index) => (
 											<TranscriptRow
 												key={row.record.id}
-												row={row}
+												row={index === 0 ? atTraceTier(row) : row}
 												isSmallView={isSmallView}
-												nameColumn={nameColumn}
 												scope={mediaScope}
 												conversationId={conversationId}
 												foot={feet.get(row.record.id) ?? null}
@@ -2216,7 +2226,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 										key={group.row.record.id}
 										row={group.row}
 										isSmallView={isSmallView}
-										nameColumn={nameColumn}
 										scope={mediaScope}
 										conversationId={conversationId}
 										foot={feet.get(group.row.record.id) ?? null}

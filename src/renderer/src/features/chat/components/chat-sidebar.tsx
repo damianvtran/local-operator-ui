@@ -12,7 +12,6 @@ import {
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
 import { useChatSearch } from "@shared/api/local-operator/session-search";
-import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import {
 	HOVER_INTENT_MS,
 	ResizableDivider,
@@ -45,7 +44,6 @@ import {
 	ChevronDown,
 	ChevronRight,
 	ChevronUp,
-	List,
 	LoaderCircle,
 	MessageSquarePlus,
 	MoreHorizontal,
@@ -87,6 +85,14 @@ import {
 	visibleRows,
 } from "../chat-archived";
 import {
+	CHAT_LIST_SECTIONS,
+	CHAT_LIST_SECTION_LABEL,
+	isRunningRow,
+	relativeTime,
+	relativeTimeSentence,
+	sectionRows,
+} from "../chat-list-sections";
+import {
 	type ArchiveView,
 	chatCountAnnouncement,
 	hitsAnswerQuery,
@@ -102,7 +108,6 @@ import {
 	markAllReadReceipt,
 	unreadMarkKind,
 } from "../mark-all-read";
-import { newChatShortcutCap } from "../new-chat-shortcut";
 import { readAckCopy, readAckNoticeSentence } from "../read-ack-notice";
 import { catalogueGate } from "../sidebar-catalogue-gate";
 import {
@@ -860,14 +865,6 @@ export function ChatSidebar({
 			pairingCause,
 		),
 	});
-	/*
-	 * The platform, read once for the New chat row's caps, and read SYNCHRONOUSLY
-	 * on purpose: it is the same `navigator.platform` read `chat-header.tsx` and
-	 * `sidebar-navigation.tsx` make, and the boolean it produces is what the cap
-	 * helper takes (`newChatShortcutCap`, aligned with the palette's
-	 * `paletteShortcutCaps` rather than taking the platform string itself).
-	 */
-	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 	const profiles = useProfiles(
 		ready && desktopFeatureEnabled(capabilities.data, "profile_catalogue"),
 	);
@@ -971,7 +968,29 @@ export function ChatSidebar({
 		});
 	}, [readAckNotice]);
 	const [query, setQuery] = useState("");
-	const [all, setAll] = useState(false);
+	/*
+	 * THE LIST FILTER IS NOT A SECOND SEARCH AT REST (design round 1, D1). The
+	 * sidebar's one visible search is the `Search ⌘K` row above (the palette), and
+	 * a bordered `Search chats and agents` field under it was the second search the
+	 * round photographed. The filter is KEPT - it is the only surface that can
+	 * widen to archived conversations (`Include archived`), so removing it would
+	 * strand every archived chat outside the app - but it is drawn only while it
+	 * is in use: typing while the list has focus opens it with that character, and
+	 * Escape on an empty field closes it again. Type-to-filter is the idiom a
+	 * Finder column and a VS Code tree already teach.
+	 */
+	const [filterOpen, setFilterOpen] = useState(false);
+	const filterShown = filterOpen || query.length > 0;
+	/*
+	 * The clock the relative times are read against, ticking once a minute: the
+	 * column's finest unit is a minute (`4m`), so a faster tick repaints nothing,
+	 * and a slower one lets `now` sit on a row for two minutes.
+	 */
+	const [listNow, setListNow] = useState(() => Date.now());
+	useEffect(() => {
+		const timer = window.setInterval(() => setListNow(Date.now()), 60_000);
+		return () => window.clearInterval(timer);
+	}, []);
 	const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
 		try {
 			return JSON.parse(
@@ -1296,13 +1315,19 @@ export function ChatSidebar({
 	 * focus then would steal the cursor from wherever they actually are. `<body>`
 	 * is the signature of the unmount-drop and of nothing else here.
 	 */
-	const activeHeadingRef = useRef<HTMLButtonElement | null>(null);
 	const controlWasShown = useRef(markAllReadShown);
 	useEffect(() => {
 		if (controlWasShown.current && !markAllReadShown) {
 			const active = document.activeElement;
 			if (active === null || active === document.body) {
-				activeHeadingRef.current?.focus();
+				/*
+				 * The list's first row, which is where the control sat in the ring: the
+				 * section labels are not controls any more (§C1, U22), so the row the
+				 * control preceded is the adjacent stop.
+				 */
+				listPanelRef.current
+					?.querySelector<HTMLElement>("[data-chat-row]")
+					?.focus();
 			}
 		}
 		controlWasShown.current = markAllReadShown;
@@ -1693,6 +1718,14 @@ export function ChatSidebar({
 	 */
 	const pinned = pinnedRows(matching, pinsEnabled);
 	const rest = unpinnedRows(matching, pinsEnabled);
+	/*
+	 * §C1's sections over the unpinned rows (`chat-list-sections.ts` carries the
+	 * rules), and the first one that has rows - the header the bulk read receipt
+	 * sits on.
+	 */
+	const sectioned = sectionRows(rest, listNow);
+	const firstSection =
+		CHAT_LIST_SECTIONS.find((key) => sectioned[key].length > 0) ?? null;
 	const draft = activeDraftKey ? drafts[activeDraftKey] : undefined;
 	const bindingName = (row: CanonicalSessionRow) =>
 		row.binding?.team || row.binding?.agent || "";
@@ -2179,6 +2212,34 @@ export function ChatSidebar({
 							· in conversation
 						</span>
 						<span className="sr-only">, matched in conversation</span>
+					</>
+				)}
+				{/*
+				 * THE RELATIVE TIME (§C1): right-aligned `text-mono-sm` in `ink-dim`, the
+				 * row's last element. It is NOT one of `rowTrailingStatement`'s
+				 * statements - that slot is for why a row is on screen, and this is a
+				 * fact every resting row carries - so it sits after it and never
+				 * competes for it. A RUNNING row prints none (its time is "now", which
+				 * the spinner already says), and it gives way to the per-row acts under
+				 * the pointer (`group-hover:hidden`) so revealing Pin/Archive costs the
+				 * title nothing.
+				 *
+				 * The visible `2h` is `aria-hidden` and the sentence (`2 hours ago`) is
+				 * read after the title, so the row's name stays `state — title` with the
+				 * time as its tail (U21).
+				 */}
+				{!isRunningRow(row) && relativeTime(row, listNow) && (
+					<>
+						<span
+							aria-hidden="true"
+							data-session-time
+							className="ml-auto shrink-0 pl-2 font-mono text-ink-dim text-mono-sm tabular-nums group-focus-within:hidden group-hover:hidden"
+						>
+							{relativeTime(row, listNow)}
+						</span>
+						<span className="sr-only">
+							, {relativeTimeSentence(row, listNow)}
+						</span>
 					</>
 				)}
 			</button>
@@ -3040,6 +3101,31 @@ export function ChatSidebar({
 			{action}
 		</div>
 	);
+	/*
+	 * A SECTION LABEL of the one list (§C1): `RUNNING`, `TODAY`, `THIS WEEK`,
+	 * `OLDER`, and `PINNED` when the capability is on.
+	 *
+	 * TEXT, NOT A CONTROL, and that is the U22 fix rather than a simplification:
+	 * the old headings were disclosure buttons, so a click meant for a row a few
+	 * pixels lower collapsed the section under it. A label is `text-meta` at 500 in
+	 * `ink-dim`, set in capitals by CSS (the source keeps sentence case, so a screen
+	 * reader says "This week" rather than spelling it), and it is not in the arrow
+	 * ring. `action` is the one header control the list carries - `Mark all N read`
+	 * - as a sibling, never nested.
+	 *
+	 * 24px tall with 8px above it: §B6's "8px between a section's rows and its next
+	 * label (24px label block)". The FIRST label drops the 8px (`first:mt-0` on the
+	 * section), so the list's top edge is the destinations' 16px step and nothing
+	 * more.
+	 */
+	const sectionLabel = (label: string, action?: ReactNode) => (
+		<div className="flex h-6 items-center gap-1 px-2">
+			<h3 className="min-w-0 flex-1 truncate font-medium text-ink-dim text-meta uppercase tracking-wide">
+				{label}
+			</h3>
+			{action}
+		</div>
+	);
 	const keyDown = (event: KeyboardEvent<HTMLElement>) => {
 		const target = event.target as HTMLElement;
 		if (target.tagName === "INPUT") {
@@ -3060,6 +3146,7 @@ export function ChatSidebar({
 			}
 			if (event.key === "Escape") {
 				setQuery("");
+				setFilterOpen(false);
 				/*
 				 * THE CLEARED FIELD HANDS FOCUS TO THE LIST rather than blurring. Blurring
 				 * parked `document.activeElement` on `<body>`, so the key that emptied the
@@ -3074,11 +3161,32 @@ export function ChatSidebar({
 			}
 			return;
 		}
+		/*
+		 * TYPE-TO-FILTER. A printable key pressed while a row has focus opens the
+		 * list's filter with that character in it - the field is not drawn at rest
+		 * (design round 1, D1: it was the second search control), so typing is how
+		 * a keyboard reader reaches it. A modified key is somebody's chord, not a
+		 * character, and passes through untouched.
+		 */
+		if (
+			event.key.length === 1 &&
+			event.key !== " " &&
+			!event.metaKey &&
+			!event.ctrlKey &&
+			!event.altKey &&
+			target.hasAttribute("data-chat-row")
+		) {
+			event.preventDefault();
+			setFilterOpen(true);
+			setQuery((current) => current + event.key);
+			window.requestAnimationFrame(() => searchRef.current?.focus());
+			return;
+		}
 		// Arrow navigation was a one-way trip: nothing returned focus to the
 		// search field, so a keyboard user who entered the list was stranded there.
 		if (event.key === "Escape") {
 			event.preventDefault();
-			searchRef.current?.focus();
+			if (filterShown) searchRef.current?.focus();
 			return;
 		}
 		const rows = [
@@ -3411,9 +3519,14 @@ export function ChatSidebar({
 	 * boundary's whole resting appearance.
 	 */
 	const entityHasRuleAbove = bothVisible && split.order === "chats-first";
-	const listHasRuleAbove = bothVisible
-		? split.order === "entities-first"
-		: restoreAtTop;
+	/*
+	 * No rule over the list while it is alone: the entities' way back is the
+	 * `Agents` destination's own disclosure now (`sidebar-navigation.tsx`), so the
+	 * `Show agents and teams` row this rule used to sit under is not drawn (see
+	 * `restoreRow`), and a hairline over the list's first label would be the
+	 * drawn line §B3 removes from the sidebar.
+	 */
+	const listHasRuleAbove = bothVisible && split.order === "entities-first";
 
 	const entityRegion = (
 		/*
@@ -4329,230 +4442,67 @@ export function ChatSidebar({
 				listHasRuleAbove ? "border-t border-hairline pt-2" : "",
 			)}
 		>
-			<section>
-				<button
-					type="button"
-					data-chat-row
-					/* The driver's way into the list (see `chat-session-row`): the
-					   sections above it are entity lists, and this is the control that
-					   widens the list to every conversation. */
-					data-tour-tag="chat-all-chats"
-					className={cn(rowStyle, "w-full", all && rowCurrent)}
-					aria-pressed={all}
-					onClick={() => setAll((value) => !value)}
-				>
-					<List className="size-4" />
-					<span className="flex-1 text-left">All chats</span>
-					{/* The three global counts read as one set, so this must honour
-				    the active filter exactly as Active/Previous do. A zero badge
-				    beside the "No chats yet" sentence just repeats it. */}
-					{matching.length > 0 && countBadge(matching.length)}
-				</button>
-				{/* Sits inside the All chats section so it holds the same place
-			    — under the toggle, above whatever the toggle reveals — in
-			    both the flat list and the Active/Previous split. Deliberately
-			    a plain `rowStyle` row and not a `heading()`: a chevron would
-			    promise something to expand. Disabled tracks `ready` because
-			    staging a draft needs the session catalogue that gate covers.
-
-			    THE ROW CARRIES NO BOUNDARY, and that is a decision rather than
-			    an omission. It used to wear `border-control` as this system's
-			    "outline control" idiom, which reads as a control at rest — but
-			    that edge was also the one thing that stepped the row out of
-			    line with the All chats row directly above it. The app is
-			    `box-sizing: border-box`, so a 1px border sits INSIDE the row's
-			    own `h-8` box and pushes the icon and the label in by 1px on
-			    each side, and no other row in this block has a boundary at all.
-			    The operator asked for the two rows to line up and for the BORDER
-			    to go - "the pill" is this file's description of what the border
-			    produced, not the operator's words. Removing the edge is what does
-			    both, and the measurement is in docs/evidence/new-chat-row (the
-			    icon's left inset goes from 5px, the border plus `rowStyle`'s
-			    `px-1`, to 4px).
-
-			    What still marks the row as the ACTION here is everything the
-			    rows around it do NOT have: the `MessageSquarePlus` glyph
-			    rather than `Plus`, which means "open a creation form" twice
-			    over in this panel (Create agent, Create team) while this
-			    stages a chat, and which matches the glyph the entity rows
-			    reveal for the same outcome; the `mb-1` margin that separates
-			    it from the Active/Previous split below; `rowStyle`'s
-			    `hover:bg-row-hover` colour step; and the `rowCurrent`
-			    ground (recessed from the panel, and hover-proof) while
-			    an untargeted draft is staged.
-
-			    `border-control` is therefore RETIRED on this row by the
-			    operator's own instruction, not merely unused: re-adding it puts
-			    the row back 1px out of alignment with the row above, so it is
-			    not a free tidy-up for a later reader. */}
-				<button
-					type="button"
-					// REACHABLE now, and this is the state that makes it live: a gate that
-					// withdraws without an error leaves `showList` true (the last-known
-					// rows stay mounted) while `ready` is false, so this row renders
-					// disabled and refuses to stage a draft against an absent catalogue.
-					// Before the withdrawn case was handled, the only way here was a
-					// capability error, and react-query keeps the last good `data`
-					// across a failed refetch (`retry: false`, no reset) - so `ready`
-					// stayed true there and this was defensive rather than reachable.
-					//
-					// Kept and now load-bearing, because the pairing is what makes
-					// decoupling `showList` from `ready` safe: staging a draft needs the
-					// session catalogue, so a not-ready render must disable rather than
-					// stage against nothing. Only a focusable row is a stop in the arrow
-					// ring - `keyDown` moves by calling `.focus()` on the next
-					// `[data-chat-row]` and a disabled button silently refuses it - so the
-					// attribute has to drop out in exactly the states the button is
-					// disabled, or a keyboard user strands here.
-					data-chat-row={ready || undefined}
-					/*
-					 * THE TOUR'S CHAT ANCHOR, and it is this row because the rail's `Chat`
-					 * destination is gone: the one sidebar's body IS the chat list, so the
-					 * onboarding step that clicks its way back to a conversation needs a
-					 * control that lands on `/chat`, and this row is the one that does -
-					 * it stages an untargeted draft and navigates, exactly as the rail row
-					 * did. The user-visible position of this row is unchanged.
-					 */
-					data-tour-tag="nav-item-chat"
-					className={cn(
-						rowStyle,
-						"mb-1 w-full disabled:text-ink-disabled disabled:hover:bg-transparent",
-						// Marked current on the same terms as an entity row: an
-						// untargeted draft is the one THIS row stages. A draft
-						// carrying a target belongs to its entity row, which is
-						// already highlighting itself, and two rows claiming the
-						// same draft would misreport where the user is.
-						Boolean(activeDraftKey) && !draft?.target && rowCurrent,
-					)}
-					aria-current={activeDraftKey && !draft?.target ? "page" : undefined}
-					disabled={!ready}
-					onClick={() => onStageDraft(undefined, true)}
-				>
-					<MessageSquarePlus className="size-4" />
-					<span className="flex-1 text-left">New chat</span>
-					{/*
-					 * The chord this row is the visible half of, as caps — the same
-					 * `KeyboardShortcut` the inline editor's footer prints, so the two
-					 * spellings of "a shortcut" in this app cannot diverge.
-					 *
-					 * It is the TRAILING element, where the All chats row above carries
-					 * its count: both rows end in the column that says what the row will
-					 * give you, and the label's own `flex-1` is what holds it there.
-					 *
-					 * NOTHING IS PASSED WHILE THE ROW IS CURRENT, and that is the point
-					 * rather than an omission: a cap has no fill and no edge of its own
-					 * (`keyboard-shortcut.tsx` carries the measurement that retired the
-					 * `bg-sunken` fill), so the marks it used to need on this one row —
-					 * the `capEdge` outline, which existed because the cap and the row
-					 * were both `sunken` — have nothing left to separate. The row's own
-					 * `rowCurrent` ground carries the state on the ROW's box, not on the
-					 * caps, and the chord is drawn the same way
-					 * on every ground it lands on, which is what makes it one idiom rather
-					 * than one idiom plus an exception.
-					 *
-					 * Platform: `isMac` above, derived from `navigator.platform` the way
-					 * `chat-header.tsx` and `sidebar-navigation.tsx` derive it, and passed to
-					 * `newChatShortcutCap` as a boolean - the shape the palette's own caps
-					 * use. The read is synchronous (the capability hook's answer is async,
-					 * and a row that painted `⌘N` before it arrived would flash the wrong cap
-					 * on Windows), and the cap is asserted in
-					 * `scripts/new-chat-shortcut.test.mjs` for both spellings.
-					 *
-					 * No `aria-keyshortcuts`: the caps ARE the accessible name's tail
-					 * (`KeyboardShortcut` renders `kbd` for exactly that reason), so the
-					 * attribute would announce the same chord twice.
-					 */}
-					<KeyboardShortcut shortcut={newChatShortcutCap(isMac)} />
-				</button>
-			</section>
 			{/*
-			 * The `All chats` and `New chat` rows first, then Pinned chats.
+			 * ONE LIST, SECTIONED BY WHAT A READER ASKS OF IT (§C1; design round 1, D1).
 			 *
-			 * THIS PLACEMENT IS THE DESIGN ROUND'S (D1, arbitrated), and the reason is
-			 * that those two rows are NAVIGATION rather than chats: navigation names
-			 * the list, so it precedes the sections that fill it. Above them, the
-			 * section sat over the control that names the list it belongs to.
+			 * It was four list concepts: an `All chats` toggle that flattened the list, a
+			 * `New chat` row wedged under it, then `Active chats` and `Previous chats` -
+			 * the catalogue's own `active` partition, which in the AFTER frames held ten
+			 * rows with completion ticks and drew the one chat that was actually RUNNING
+			 * as its last row. Now: `Pinned` (when the capability is on), then RUNNING,
+			 * TODAY, THIS WEEK and OLDER. The partition and the times are
+			 * `chat-list-sections.ts`'s, where a test can reach them; the order inside
+			 * each section is still the catalogue's (bucketing is `filter`, never `sort`).
 			 *
-			 * It sits directly above the `Active chats` heading in the split view and
-			 * directly above the flat list in `All chats` mode - the same place on
-			 * both, which is what keeps pins from vanishing for anyone using the flat
-			 * list (there is no `Active chats` anchor there to sit above at all).
-			 *
-			 * ZERO PINS RENDERS NOTHING - no heading, no empty section - which is the
-			 * TUI's own rule (an empty section contributes no header).
+			 * THE LABELS ARE NOT CONTROLS (U22: "clicking a header collapses the list by
+			 * accident"). A label is 12px `ink-dim` text at 500 and nothing happens when
+			 * it is pressed; the one action a header carries is `Mark all N read`, on
+			 * the first section that has rows.
 			 */}
 			{pinned.length > 0 && (
 				<section>
-					{heading("pinned", "Pinned chats", true, pinned.length)}
-					{(query || isOpen("pinned", true)) &&
-						pinned.map((row) => sessionRow(row))}
+					{sectionLabel("Pinned")}
+					{pinned.map((row) => sessionRow(row))}
 				</section>
 			)}
-			{all ? (
-				<section>{rest.map((row) => sessionRow(row))}</section>
-			) : (
-				<>
-					<section>
-						{heading(
-							"active",
-							"Active chats",
-							true,
+			{CHAT_LIST_SECTIONS.map((key) => {
+				const rows = sectioned[key];
+				if (key === "running" && rows.length === 0 && livenessUnread) {
+					/*
+					 * The one empty section that still says something: the daemon could not
+					 * read which chats are running, so an absent RUNNING section would be a
+					 * claim that nothing is - the D2 rule `canonical-chat.test.mjs` pins.
+					 */
+					return (
+						<section key={key}>
+							{sectionLabel(CHAT_LIST_SECTION_LABEL[key])}
+							<p className="px-2 text-meta text-ink-dim">
+								{livenessUnread
+									? "The daemon could not read which chats are running, so this list may be incomplete."
+									: "Nothing running right now."}
+							</p>
+						</section>
+					);
+				}
+				// An empty section contributes no label: the TUI's own rule, and the one
+				// `Pinned` already follows.
+				if (rows.length === 0) return null;
+				return (
+					<section key={key} data-chat-section={key}>
+						{sectionLabel(
+							CHAT_LIST_SECTION_LABEL[key],
 							/*
-							 * The count is the section's own rows: `rest` is `matching` minus the pinned
-							 * ones, and a pinned chat that is running is drawn in the section ABOVE
-							 * this one, so counting `matching` here would put a number beside a group
-							 * that does not hold that many rows. With no pin store `rest` IS
-							 * `matching`, so this is main's own count in the state main ships.
+							 * The bulk read receipt sits on the FIRST section that has rows - the
+							 * one the eye lands on - while the set it clears is the STORE's, so
+							 * the count its label names is the same fact wherever it is drawn.
+							 * One gesture, one control, never on a row.
 							 */
-							rest.filter((row) => row.active).length,
-							/*
-							 * The bulk read receipt sits with the group the operator
-							 * pointed at — the one whose rows carry the completion
-							 * checkmarks — while the set it clears is the STORE's, so
-							 * the visible column of marks and the count its label names
-							 * are the same fact. It is deliberately not duplicated
-							 * beside "Previous chats": one gesture, one control. The
-							 * flat "All chats" view has none — recorded on the pull
-							 * request as deferred rather than papered over, because a
-							 * second control site is a second design decision.
-							 */
-							markAllReadControl,
-							/*
-							 * The disclosure the reader is handed when clearing the last
-							 * mark unmounts the control under their cursor.
-							 */
-							activeHeadingRef,
+							key === firstSection ? markAllReadControl : undefined,
 						)}
-						{(query || isOpen("active", true)) &&
-							/*
-							 * The empty sentence reads the WHOLE filtered set, not `rest`:
-							 * a running chat that is pinned is drawn in the section above,
-							 * and "Nothing running right now."` beside it would be a claim
-							 * the panel itself contradicts. The rows are `rest`'s, so the
-							 * section still holds none of the pinned ones.
-							 */
-							(matching.some((row) => row.active) ? (
-								rest.filter((row) => row.active).map((row) => sessionRow(row))
-							) : (
-								<p className="px-2 text-meta text-ink-dim">
-									{livenessUnread
-										? "The daemon could not read which chats are running, so this list may be incomplete."
-										: "Nothing running right now."}
-								</p>
-							))}
+						{rows.map((row) => sessionRow(row))}
 					</section>
-					<section>
-						{heading(
-							"previous",
-							"Previous chats",
-							false,
-							rest.filter((row) => !row.active).length,
-						)}
-						{(query || isOpen("previous")) &&
-							rest.filter((row) => !row.active).map((row) => sessionRow(row))}
-					</section>
-				</>
-			)}
+				);
+			})}
 			{/* A COLD-START sentence, not an empty-list one: it says the store
 		    holds no chats at all, so it must not appear beside rows. The
 		    catalogue being empty while `matching` is not is reachable now
@@ -4942,66 +4892,73 @@ export function ChatSidebar({
 	 * works, and a `MessageSquarePlus` here would make the collapsed state two
 	 * controls instead of one.
 	 */
-	const restoreRow = split.restore ? (
-		<button
-			type="button"
-			data-sidebar-restore={split.restore}
-			/*
-			 * THE VISIBLE LABEL IS THE ACTION, and it has to be, because the row sits
-			 * under the panel's own `<h2>` reading "Chats": a row that says "Chats"
-			 * two rows below a heading that says "Chats" leaves the reader to work out
-			 * which one is missing, and in form it is a twin of the panel's group
-			 * headings rather than a control (design round 1, D3). The count stays, so
-			 * the collapsed state still says how many chats there are; the accessible
-			 * name carries it in words for the same reason.
-			 */
-			aria-label={
-				split.restore === "chats" && matching.length > 0
-					? `${showLabel(split.restore)}, ${matching.length} chats`
-					: showLabel(split.restore)
-			}
-			/*
-			 * The `⌘N` clause is the one hint this row carries, and it exists because
-			 * collapsing the chats list removes the app's only visible way to start a
-			 * conversation: `New chat` lives in the region that is gone, and the
-			 * operator's own constraint - no new controls on this row - rules out
-			 * putting one back (design round 1, D7). A title is not chrome, and it
-			 * names the keyboard path for a sighted user who is looking at the way
-			 * back. The entities row carries no such clause: its own region is the one
-			 * holding `New chat` whenever this row renders.
-			 */
-			title={
-				split.restore === "chats"
-					? "Show the chats list - ⌘N starts a new chat"
-					: undefined
-			}
-			className={cn(rowStyle, "h-7 shrink-0 text-ink-muted")}
-			onClick={() => setChatSidebarRegions("both")}
-		>
-			{/*
-			 * The chevron points where the region will come back: downward for a
-			 * row at the top of the column, upward for one at the bottom, which
-			 * is the same direction the region itself expands in.
-			 */}
-			{restoreAtTop ? (
-				<ChevronDown className="size-3.5" aria-hidden="true" />
-			) : (
-				<ChevronUp className="size-3.5" aria-hidden="true" />
-			)}
-			<span className="min-w-0 flex-1 truncate text-left">
-				{showLabel(split.restore)}
-			</span>
-			{/*
-			 * The list region's own count, from the same predicate its `All
-			 * chats` row uses, so the collapsed state tells the truth about how
-			 * many chats there are instead of hiding the panel's main signal.
-			 * The entity region has no count today, so its row carries none.
-			 */}
-			{split.restore === "chats" &&
-				matching.length > 0 &&
-				countBadge(matching.length)}
-		</button>
-	) : null;
+	/*
+	 * ONLY FOR THE HIDDEN CHATS LIST. The hidden ENTITIES' way back is the
+	 * `Agents` destination row's disclosure chevron one group above (§C1.3), and
+	 * this row repeating it - `Show agents and teams`, over a hairline, above the
+	 * list - was one of the four list concepts the design round counted (D1).
+	 */
+	const restoreRow =
+		split.restore === "chats" ? (
+			<button
+				type="button"
+				data-sidebar-restore={split.restore}
+				/*
+				 * THE VISIBLE LABEL IS THE ACTION, and it has to be, because the row sits
+				 * under the panel's own `<h2>` reading "Chats": a row that says "Chats"
+				 * two rows below a heading that says "Chats" leaves the reader to work out
+				 * which one is missing, and in form it is a twin of the panel's group
+				 * headings rather than a control (design round 1, D3). The count stays, so
+				 * the collapsed state still says how many chats there are; the accessible
+				 * name carries it in words for the same reason.
+				 */
+				aria-label={
+					split.restore === "chats" && matching.length > 0
+						? `${showLabel(split.restore)}, ${matching.length} chats`
+						: showLabel(split.restore)
+				}
+				/*
+				 * The `⌘N` clause is the one hint this row carries, and it exists because
+				 * collapsing the chats list removes the app's only visible way to start a
+				 * conversation: `New chat` lives in the region that is gone, and the
+				 * operator's own constraint - no new controls on this row - rules out
+				 * putting one back (design round 1, D7). A title is not chrome, and it
+				 * names the keyboard path for a sighted user who is looking at the way
+				 * back. The entities row carries no such clause: its own region is the one
+				 * holding `New chat` whenever this row renders.
+				 */
+				title={
+					split.restore === "chats"
+						? "Show the chats list - ⌘N starts a new chat"
+						: undefined
+				}
+				className={cn(rowStyle, "h-7 shrink-0 text-ink-muted")}
+				onClick={() => setChatSidebarRegions("both")}
+			>
+				{/*
+				 * The chevron points where the region will come back: downward for a
+				 * row at the top of the column, upward for one at the bottom, which
+				 * is the same direction the region itself expands in.
+				 */}
+				{restoreAtTop ? (
+					<ChevronDown className="size-3.5" aria-hidden="true" />
+				) : (
+					<ChevronUp className="size-3.5" aria-hidden="true" />
+				)}
+				<span className="min-w-0 flex-1 truncate text-left">
+					{showLabel(split.restore)}
+				</span>
+				{/*
+				 * The list region's own count, from the same predicate its `All
+				 * chats` row uses, so the collapsed state tells the truth about how
+				 * many chats there are instead of hiding the panel's main signal.
+				 * The entity region has no count today, so its row carries none.
+				 */}
+				{split.restore === "chats" &&
+					matching.length > 0 &&
+					countBadge(matching.length)}
+			</button>
+		) : null;
 	return (
 		<nav
 			ref={navRef}
@@ -5043,14 +5000,25 @@ export function ChatSidebar({
 		    screen saying the field could be emptied at all. `pr-9` keeps the query
 		    clear of the control — the same reserved-column idiom the settings
 		    search uses on the left for its leading glyph. */}
-				<div className="relative my-2">
+				{/*
+				 * DRAWN ONLY WHILE FILTERING (see `filterOpen`): the column's one search at
+				 * rest is the palette's `Search ⌘K` row, and this field is the list's own
+				 * narrowing, opened by typing into the list. On the column's ground, not in
+				 * an outlined box (§B3: the sidebar is separated by ground alone) - the
+				 * field reads as a field by its caret and its placeholder, and its focus
+				 * ring is the one boundary it draws.
+				 */}
+				<div className={cn("relative mb-2", !filterShown && "hidden")}>
 					<input
 						ref={searchRef}
 						aria-label="Search chats and agents"
-						placeholder="Search chats and agents"
-						className="h-8 w-full rounded-md border border-control bg-surface pr-9 pl-2 text-body-sm"
+						placeholder="Filter chats and agents"
+						className="h-8 w-full rounded-md bg-row-hover pr-9 pl-2 text-body-sm"
 						value={query}
 						onChange={(event) => setQuery(event.target.value)}
+						onBlur={() => {
+							if (!query) setFilterOpen(false);
+						}}
 					/>
 					{/* Rendered only while a filter is applied: a clear control beside an
 			    empty field is a control that does nothing.
