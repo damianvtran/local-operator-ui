@@ -256,13 +256,13 @@ const STAND_IN_MARK = "… ";
  * and the caller renders the two differently (an empty slot against a mark).
  *
  * `labelPending` is the row's first label read still being in flight (see
- * `CanonicalSessionView.labelPending`): the arguments are one `/history` read
- * away, so the result is held back and the column stays empty for that read.
- * On the first frame of a mid-turn join nearly every seeded row is in this
- * state, and a column of result lines (`… {"text": 200, "solo_cpu": 0.08…`)
- * reads as the commands that ran. Once the read settles the caller passes
- * `false` and the stand-in returns for the calls that really have no
- * arguments to find.
+ * `CanonicalSessionView.labelPending`): the arguments are a `/history` read
+ * away, so the result is held back and the column stays empty while that first
+ * request is outstanding — never longer than `LABEL_HOLD_MAX_MS`. On the first
+ * frame of a mid-turn join nearly every seeded row is in this state, and a
+ * column of result lines (`… {"text": 200, "solo_cpu": 0.08…`) reads as the
+ * commands that ran. Once the read settles the caller passes `false` and the
+ * stand-in returns for the calls that really have no arguments to find.
  */
 export function outputFallbackLine(
 	output: string | null,

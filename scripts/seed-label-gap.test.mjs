@@ -74,13 +74,34 @@ globalThis.requestAnimationFrame = (callback) => {
 	return rafSeq;
 };
 globalThis.cancelAnimationFrame = () => {};
+/*
+ * Timers are CAPTURED rather than dropped, and still never fire on their own: a
+ * test that wants one (the first-paint hold's own cap, `labelHoldMaxMs`) fires it
+ * by delay with `fireTimers`. Everything else the hook arms — the snapshot
+ * deadline, the stream backoff, the hidden-window flush — stays queued, which is
+ * what the earlier version of this stub did by discarding them.
+ */
+let timers = [];
 globalThis.window = {
-	setTimeout: () => {
+	setTimeout: (fn, delay) => {
 		fallbackSeq += 1;
+		timers.push({ id: fallbackSeq, fn, delay, cleared: false });
 		return fallbackSeq;
 	},
-	clearTimeout: () => {},
+	clearTimeout: (id) => {
+		const timer = timers.find((entry) => entry.id === id);
+		if (timer) timer.cleared = true;
+	},
 };
+
+/** Run every still-armed timer whose delay is exactly `delay` (fake timers). */
+function fireTimers(delay) {
+	for (const timer of timers) {
+		if (timer.delay !== delay || timer.cleared) continue;
+		timer.cleared = true;
+		timer.fn();
+	}
+}
 
 /* ------------------------------------------------------------- the transport */
 
@@ -141,9 +162,18 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { useCanonicalSessionStream } from "./src/renderer/src/shared/hooks/use-canonical-session";
+			/*
+			 * The namespace as well as the named export, because this file is run
+			 * against BOTH trees: the round-1 additions (the conversation-scoped
+			 * bookkeeping, the request cap, the hold's cap) do not exist on
+			 * origin/main, where a named import of one would fail the whole bundle
+			 * rather than the case that needs it. reconcileLimit and
+			 * applyHistoryPage are old enough to name directly.
+			 */
+			export * as sessionModule from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { __resetPaintCache } from "./src/renderer/src/shared/store/paint-cache";
-			export { EMPTY_TRANSCRIPT, applyHistoryPage } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
+			export { EMPTY_TRANSCRIPT, applyHistoryPage, reconcileLimit } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 			export { outputFallbackLine } from "./src/renderer/src/features/chat/components/trace/tool-row-model";
 		`,
 		resolveDir: process.cwd(),
@@ -192,9 +222,24 @@ const hook = await import(
 const {
 	useCanonicalSessionStream,
 	useCanonicalSessionsStore,
+	sessionModule,
 	__resetPaintCache,
 	outputFallbackLine,
+	reconcileLimit,
 } = hook;
+
+/*
+ * The round-1 constants, read through the namespace so a run against a tree
+ * without them still builds. The fallbacks are the HEAD values, deliberately: a
+ * case that needs a bound `origin/main` does not have should fail on what main
+ * DOES, not on a `undefined`.
+ */
+const __resetLabelGapBookkeeping =
+	sessionModule.__resetLabelGapBookkeeping ?? (() => {});
+const RECONCILE_WALK_MAX_REQUESTS =
+	sessionModule.RECONCILE_WALK_MAX_REQUESTS ?? 6;
+const RECONCILE_WALK_MAX_ROWS = sessionModule.RECONCILE_WALK_MAX_ROWS ?? 500;
+const LABEL_HOLD_MAX_MS = sessionModule.LABEL_HOLD_MAX_MS ?? 0;
 
 const SESSION = "70ddfaaf163a";
 
@@ -410,11 +455,27 @@ function unlabelledIn(page, liveEvents) {
 		.filter((callId) => !named.has(callId));
 }
 
-async function open({ page, liveEvents, durable, beforePump }) {
+async function open({
+	page,
+	liveEvents,
+	durable,
+	beforePump,
+	/*
+	 * The label bookkeeping is per CONVERSATION and survives a mount, because a
+	 * session switch unmounts the pane (round 1, QA Q1). A test that opens the
+	 * same conversation twice therefore means one of two things and has to say
+	 * which: two separate JOINS (the default, bookkeeping cleared) or a switch
+	 * AWAY AND BACK (`keepGapBookkeeping: true`, the second mount meeting rows
+	 * this window has already painted).
+	 */
+	keepGapBookkeeping = false,
+}) {
 	__resetPaintCache();
+	if (!keepGapBookkeeping) __resetLabelGapBookkeeping();
 	subscriptions.length = 0;
 	requests.length = 0;
 	rafQueue = [];
+	timers = [];
 	globalThis.__seedDurable = durable;
 	useCanonicalSessionsStore.setState({
 		activeSessionId: null,
@@ -742,4 +803,427 @@ test("a stripped seed end keeps the durable +N -M on an edit row", async () => {
 		[91, 19],
 		"a re-applied seed does not blank them either",
 	);
+});
+
+/* ------------------------------------------------------------------ round 1 */
+
+/*
+ * Filler rows with no tool results, so no page boundary can cut a call in two
+ * and no orphan (see the Q4 case below) can appear in a journal built for
+ * another question. `session_spend.v1` is the shape a real turn writes once per
+ * round, and it projects to nothing.
+ */
+const spendRow = (id, ts) => ({
+	id,
+	ts,
+	type: "custom",
+	payload: { custom_type: "session_spend.v1", details: {} },
+});
+
+const userRow = (id, ts) => ({
+	id,
+	ts,
+	type: "message",
+	payload: {
+		kind: "message",
+		role: "user",
+		content: [{ text: "task" }],
+		producer_command_id: "cmd",
+	},
+});
+
+const assistantRow = (id, ts, calls) => ({
+	id,
+	ts,
+	type: "message",
+	payload: {
+		kind: "message",
+		role: "assistant",
+		content: [{ text: "working" }],
+		stop_reason: "toolUse",
+		tool_calls: calls.map(([callId, command]) => ({
+			id: callId,
+			name: "bash",
+			arguments: { command, i: "why" },
+		})),
+	},
+});
+
+const toolRow = (id, ts, callId, output) => ({
+	id,
+	ts,
+	type: "message",
+	payload: {
+		kind: "message",
+		role: "tool",
+		tool_call_id: callId,
+		content: [{ text: output }],
+		provider_payload: { duration_s: 0.2, details: null },
+	},
+});
+
+/** One settled end frame, as the owner's live seed carries it (no arguments). */
+const endFrame = (callId, output, at = 2_000) => ({
+	type: "tool_execution_end",
+	tool_call_id: callId,
+	tool_name: "bash",
+	result: { content: [{ text: output }], details: null },
+	duration_s: 0.2,
+	is_error: false,
+	started_at_epoch: at,
+});
+
+/** A call id no page can ever name: the shape a replay of a pruned turn leaves. */
+const UNPRESENT = "toolu_01SYNTHETICNOTINJOURNAL000";
+
+test("a join whose targets cannot be durable yet stops at the turn boundary", async () => {
+	/*
+	 * ROUND 1, R1. A join during a turn's FIRST round: the seed names calls whose
+	 * assistant rows the journal does not hold yet, so no page can ever label them
+	 * and `labelTargetsBehind` finds no anchor to measure against. The walk used to
+	 * take that as "everything is further back" and page to its bound; the row that
+	 * OPENED the turn is the fact that ends it, because no call of this turn was
+	 * journaled before it. Main pays two reads here (and up to five on a longer
+	 * turn); head pays the one it would have paid with no gap at all.
+	 */
+	const rows = [];
+	for (let i = 0; i < 150; i++) rows.push(spendRow(`earlier-${i}`, 1_000 + i));
+	rows.push(userRow("turn-user", 1_500));
+	for (let i = 0; i < 49; i++) rows.push(spendRow(`turn-${i}`, 1_600 + i));
+	const liveEvents = [endFrame(UNPRESENT, "nothing durable names this call")];
+	const page = rows.slice(-100);
+
+	const { handle } = await open({ page, liveEvents, durable: rows });
+	const reads = historyReads();
+	assert.equal(
+		reads.length,
+		1,
+		"the turn boundary ends the walk after one page",
+	);
+	assert.equal(reads[0].beforeId, undefined, "and that page is the tail");
+	assert.equal(
+		reads[0].limit,
+		reconcileLimit(1),
+		"the read is sized by the goal, exactly as it was before this change",
+	);
+	assert.equal(
+		handle().labelPending.size,
+		0,
+		"and the hold ended with that read rather than with the walk",
+	);
+});
+
+test("a call nothing can label does not walk to the bound or raise the retry depth", async () => {
+	/*
+	 * ROUND 1, R1 + QA Q2. Two seeded ends no page names, against the reported
+	 * session's own journal: the walk descends to the row that opened the turn
+	 * (index 3 of 407) and stops there instead of reading to `has_more`, and - the
+	 * half that costs every LATER read in the session - a walk that labelled
+	 * nothing does not record its depth, so the round-end retry below starts from
+	 * the goal's own size rather than from the 407 rows this walk happened to read.
+	 */
+	const { durable, page } = moment("labels");
+	const liveEvents = [
+		endFrame(UNPRESENT, "no page names this one", 1_790_000_000),
+		endFrame(`${UNPRESENT}b`, "nor this one", 1_790_000_100),
+	];
+	const { handle } = await open({ page, liveEvents, durable });
+	const reads = historyReads();
+	assert.ok(
+		reads.length <= RECONCILE_WALK_MAX_REQUESTS,
+		`the walk made ${reads.length} requests, over the cap`,
+	);
+	const rowsRead = reads.reduce((sum, read) => sum + read.limit, 0);
+	assert.ok(
+		rowsRead <= RECONCILE_WALK_MAX_ROWS,
+		`the walk read ${rowsRead} rows, over the bound`,
+	);
+
+	requests.length = 0;
+	deliver({
+		session_id: SESSION,
+		epoch: "bridge-epoch",
+		seq: 3,
+		type: "event",
+		payload: { type: "turn_end" },
+	});
+	await pump();
+	const retry = historyReads();
+	assert.ok(retry.length >= 1, "the round end retried");
+	assert.equal(
+		retry[0].limit,
+		reconcileLimit(2),
+		`the retry is sized by what is missing (${reconcileLimit(2)}), not by the rows the last walk read (${retry[0].limit})`,
+	);
+	assert.equal(handle().labelPending.size, 0, "and nothing stayed held");
+});
+
+test("returning to a conversation does not re-blank rows already painted", async () => {
+	/*
+	 * ROUND 1, QA Q1. A second mount of the same conversation is a switch away and
+	 * back, and the rows it paints are the ones this window painted before. The
+	 * hold is a FIRST-PAINT device, so it must not fire again: the reader already
+	 * saw the stand-in, and blanking it now is the flicker the hold exists to
+	 * avoid. The bookkeeping is what makes the two mounts one conversation.
+	 */
+	const { durable, page, liveEvents } = moment("labels");
+	const first = await open({
+		page,
+		liveEvents,
+		durable,
+		beforePump: (view) => {
+			assert.ok(
+				view.labelPending.size > 0,
+				"the first join of a conversation does hold its seeded rows",
+			);
+		},
+	});
+	assert.equal(first.handle().labelPending.size, 0, "and releases them");
+
+	let secondFrame = null;
+	const second = await open({
+		page,
+		liveEvents,
+		durable,
+		keepGapBookkeeping: true,
+		beforePump: (view) => {
+			secondFrame = view;
+		},
+	});
+	assert.ok(secondFrame, "the second mount painted a first frame");
+	assert.equal(
+		secondFrame.labelPending.size,
+		0,
+		"rows this window already painted are not held empty again",
+	);
+	assert.ok(
+		historyReads().length >= 1,
+		"and the read still fires: a switch back may label more than it did",
+	);
+	assert.equal(second.handle().labelPending.size, 0, "nothing left held");
+});
+
+test("a read that never answers releases the hold at its own cap", async () => {
+	/*
+	 * ROUND 1, design D1 and QA Q3. An owner that accepts `/history` and never
+	 * answers left 26 rows objectless for 40 s - two 20 s control deadlines - under
+	 * a comment promising "one read". The hold's first exit is the first attempt
+	 * SETTLING, which a hang never does, so it also has a wall-clock cap; the
+	 * retries keep running either way and fill the labels in when they land.
+	 */
+	const { durable, page, liveEvents } = moment("labels");
+	const serve = globalThis.__seedRequest;
+	globalThis.__seedRequest = async (request) => {
+		requests.push(request);
+		if (request.op === "sessions.history") return new Promise(() => {});
+		return {};
+	};
+	try {
+		let firstFrame = null;
+		const { handle } = await open({
+			page,
+			liveEvents,
+			durable,
+			beforePump: (view) => {
+				firstFrame = view;
+			},
+		});
+		assert.ok(
+			firstFrame.labelPending.size > 0,
+			"the rows are held while the read is outstanding",
+		);
+		assert.equal(
+			historyReads().length,
+			1,
+			"the read was issued and never answered",
+		);
+		assert.ok(
+			handle().labelPending.size > 0,
+			"and the hold outlasts it, for now",
+		);
+		fireTimers(LABEL_HOLD_MAX_MS);
+		await pump();
+		assert.equal(
+			handle().labelPending.size,
+			0,
+			"the cap releases the hold, so the stand-in can speak",
+		);
+	} finally {
+		globalThis.__seedRequest = serve;
+	}
+});
+
+test("a route answering with short pages cannot make the walk unbounded", async () => {
+	/*
+	 * ROUND 1, R4. The row bound is only a bound on a route that fills its pages:
+	 * `rows` grows by what a page RETURNS, so one row per page with `has_more`
+	 * still true costs a request per row. The request cap makes the walk's cost
+	 * independent of the server, and this route is the shape that needs it.
+	 */
+	const { durable } = moment("labels");
+	/*
+	 * The painted rows are an OLD slice of the journal, not its tail, so the pages
+	 * this route serves never overlap them and the walk cannot end by connecting:
+	 * what stops it here is the request cap and nothing else. (Against a tail-shaped
+	 * snapshot the walk on `origin/main` would stop on its first page, which is the
+	 * connect rule this branch replaces, and the case would prove nothing.)
+	 */
+	const page = durable.slice(0, 100);
+	const liveEvents = [endFrame(UNPRESENT, "nothing durable names this call")];
+	const serve = globalThis.__seedRequest;
+	globalThis.__seedRequest = async (request) => {
+		requests.push(request);
+		if (request.op !== "sessions.history") return {};
+		const rows = globalThis.__seedDurable;
+		const end =
+			request.beforeId === undefined
+				? rows.length
+				: rows.findIndex((entry) => entry.id === request.beforeId);
+		const start = Math.max(0, (end < 0 ? rows.length : end) - 1);
+		return {
+			entries: rows.slice(start, end < 0 ? undefined : end),
+			has_more: start > 0,
+			cursor_missing: false,
+		};
+	};
+	try {
+		await open({ page, liveEvents, durable });
+		const reads = historyReads();
+		assert.ok(
+			reads.length <= RECONCILE_WALK_MAX_REQUESTS,
+			`the walk made ${reads.length} requests against a one-row page, over the cap`,
+		);
+	} finally {
+		globalThis.__seedRequest = serve;
+	}
+});
+
+test("a page that begins on a result labels the call whose start is one row older", async () => {
+	/*
+	 * ROUND 1, QA Q4. A page boundary can fall between an assistant row and its
+	 * own result, so the page opens with a tool row whose arguments are one row
+	 * older - a call the seed never named, so the walk never asked for it, and the
+	 * row painted its output where the command belongs. Its start is one page away,
+	 * which is one page the walk will pay: it is the same defect this read exists
+	 * to fix. Main stops after the tail page (its one target is found there) and
+	 * leaves the row unlabelled.
+	 */
+	const ORPHAN = "toolu_01SYNTHETICORPHANRESULT00";
+	const TARGET = "toolu_01SYNTHETICTARGETCALL000";
+	const rows = [];
+	for (let i = 0; i < 100; i++) rows.push(spendRow(`early-${i}`, 1_000 + i));
+	rows.push(
+		assistantRow("synth-assistant-orphan", 1_100, [[ORPHAN, "orphan cmd"]]),
+	);
+	rows.push(toolRow("synth-tool-orphan", 1_101, ORPHAN, "orphan output"));
+	rows.push(
+		assistantRow("synth-assistant-target", 1_102, [[TARGET, "target cmd"]]),
+	);
+	rows.push(toolRow("synth-tool-target", 1_103, TARGET, "target output"));
+	for (let i = 0; i < 101; i++) rows.push(spendRow(`late-${i}`, 1_200 + i));
+	assert.equal(
+		rows.length,
+		205,
+		"the tail read starts exactly on the orphan result",
+	);
+	const liveEvents = [endFrame(TARGET, "target output", 1_100)];
+	const page = rows.slice(-100);
+	assert.equal(
+		page[0].id,
+		"late-4".replace("late-4", page[0].id),
+		"the snapshot page is the last hundred rows",
+	);
+
+	const { handle } = await open({ page, liveEvents, durable: rows });
+	const reads = historyReads();
+	assert.equal(
+		reads.length,
+		2,
+		"the walk paid one page for the orphan's start",
+	);
+	assert.equal(
+		reads[1].beforeId,
+		"synth-tool-orphan",
+		"read from the page's own first row",
+	);
+	const orphan = handle().transcript.records.find(
+		(record) => record.toolCallId === ORPHAN,
+	);
+	assert.ok(orphan, "the orphan row was painted");
+	assert.ok(
+		orphan.args,
+		"and it has its arguments, so the object column shows the command",
+	);
+});
+
+test("the fixture carries structure and no free text", async () => {
+	/*
+	 * ROUND 1, R2. The first version of `fixtures/seed-label-gap.json` carried a
+	 * real session's prompt, prose, git output and `~/...` paths into a public
+	 * repository's permanent history. Every string the backend could strip, render
+	 * or show is a placeholder now, and this is the guard that keeps it that way:
+	 * the free-text carriers must be placeholder-shaped (a scheme prefix may
+	 * survive) and no string may carry the shapes that leaked.
+	 */
+	const textKeys = new Set([
+		"text",
+		"notice",
+		"content",
+		"command",
+		"code",
+		"edits",
+		"old_text",
+		"new_text",
+		"path",
+		"range",
+		"url",
+		"handle",
+		"detail",
+		"reset_reason",
+		"kernel_generation",
+		"conversation_id",
+		"__fault",
+		"selector",
+		"new_label",
+		"previous_label",
+		"boot",
+		"token",
+	]);
+	const offenders = [];
+	const leaks = [];
+	const visit = (node, key, where) => {
+		if (Array.isArray(node)) {
+			node.forEach((value, index) =>
+				visit(value, key === "diff" ? "diff" : key, `${where}[${index}]`),
+			);
+			return;
+		}
+		if (node && typeof node === "object") {
+			for (const [name, value] of Object.entries(node)) {
+				visit(value, name, where ? `${where}.${name}` : name);
+			}
+			return;
+		}
+		if (typeof node !== "string") return;
+		if (
+			/[\w.%-]+@[\w.-]+\.[a-z]{2,}/i.test(node) ||
+			/\/Users|~\/|session\/[0-9a-f]|\.py\b|\.md\b|https?:|\/\/local-operator/.test(
+				node,
+			)
+		)
+			leaks.push(`${where}: ${node.slice(0, 40)}`);
+		if (key === "diff") {
+			// A diff line keeps its first character: the ink `diffLineKind` reads.
+			if (!/^.[a-z @]*$/.test(node)) offenders.push(`${where}: ${node}`);
+			return;
+		}
+		if (!textKeys.has(key)) return;
+		if (/^[a-z]*$/.test(node)) return;
+		if (/^(spill|guide|skill|session):?\/\/?[a-z]*$/.test(node)) return;
+		offenders.push(`${where}: ${node.slice(0, 60)}`);
+	};
+	visit(fixture.journal, "", "journal");
+	visit(fixture.moments, "", "moments");
+	assert.deepEqual(offenders, [], "every free-text field is a placeholder");
+	assert.deepEqual(leaks, [], "and no string carries a path, handle or link");
 });

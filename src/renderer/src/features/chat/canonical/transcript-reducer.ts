@@ -3430,6 +3430,74 @@ export function pageLabels(
 }
 
 /**
+ * Whether a fetched page holds the row that OPENED the turn the seed is of.
+ *
+ * THE ABSOLUTE FLOOR OF A LABEL WALK, and the exit a walk that cannot win needs.
+ * Every call a mid-turn snapshot's seed names belongs to the turn that is in
+ * flight, so its assistant row — where its arguments live — was journaled at or
+ * after that turn's opening user row. Reading past the opening row therefore
+ * proves the rest of the walk is looking for rows the journal does not hold, and
+ * the walk descends to the row/request bound for nothing: round 1's R1 measured
+ * a join during a turn's first round paging to the 500-row bound (four reads,
+ * 416 rows) where main read one page. This is the condition that stops it.
+ *
+ * WHY A `user` ROW IS THE TURN'S OWN START, measured rather than assumed: over
+ * 400 real transcripts under `~/.local-operator/sessions` (914 user rows), 0 of
+ * them sit in the middle of a call's life — no row with `role: "user"` has a
+ * tool result after it whose assistant row is before it. A steer or a harness
+ * notice lands between rounds, never inside one, so the FIRST user row met
+ * walking back from the tail is the turn's opening row. A journal that never
+ * grew one (a pruned head) simply never satisfies this, and the walk keeps its
+ * other exits.
+ */
+export function pageOpensTurn(entries: DesktopHistoryPage["entries"]): boolean {
+	for (const entry of entries) if (entry.payload?.role === "user") return true;
+	return false;
+}
+
+/**
+ * Calls a page holds the RESULT of while no assistant row in that same page
+ * names them.
+ *
+ * A CALL THE SEED NEVER NAMED, and the row QA round 1 called out (Q4): a page's
+ * boundary can fall between an assistant row and its own result, so the page
+ * begins with a tool row whose arguments are one row older than the page — and
+ * because nothing in the seed names that call it was never a walk target, so the
+ * row painted its output where the command belongs. That is the very defect this
+ * read exists to fix, one row away from being fixed, and it is worth one page:
+ * the walk turns such a call into a target and its assistant row is read next.
+ *
+ * `known` is every call id the caller can already account for — the seed's own
+ * calls (`every`), everything a fetched page has named (`found`) and the orphans
+ * already collected — so an ordinary page, whose tool rows all have their
+ * assistant rows beside them, produces nothing here.
+ */
+export function pageOrphanResults(
+	entries: DesktopHistoryPage["entries"],
+	known: ReadonlySet<string>,
+): string[] {
+	const named = new Set(known);
+	for (const entry of entries) {
+		const calls = entry.payload?.tool_calls;
+		if (!Array.isArray(calls)) continue;
+		for (const call of calls as Record<string, unknown>[]) {
+			if (call && typeof call.id === "string") named.add(call.id);
+		}
+	}
+	const orphans: string[] = [];
+	const seen = new Set<string>();
+	for (const entry of entries) {
+		if (entry.payload?.role !== "tool") continue;
+		const callId = entry.payload.tool_call_id;
+		if (typeof callId !== "string" || named.has(callId) || seen.has(callId))
+			continue;
+		seen.add(callId);
+		orphans.push(callId);
+	}
+	return orphans;
+}
+
+/**
  * Whether the reconcile walk has read far enough to stop.
  *
  * TWO conditions, and both are required. The walk used to stop the moment a
@@ -3443,8 +3511,10 @@ export function pageLabels(
  *    painted (then no page can overlap and one page is the whole coverage);
  *  - `unlabelled`: how many target calls no fetched page has named yet.
  *
- * The walk's other exits — `!has_more` and the `RECONCILE_WALK_MAX_ROWS` bound —
- * live in the loop, because they are facts about the route, not about the goal.
+ * The walk's other exits live in the loop, because they are facts about the
+ * route or about the turn rather than about the goal: `!has_more`, the
+ * `RECONCILE_WALK_MAX_ROWS` and `RECONCILE_WALK_MAX_REQUESTS` bounds, and
+ * `pageOpensTurn` — the row past which no seeded call can have its assistant row.
  */
 export function reconcileWalkDone(connected: boolean, unlabelled: number) {
 	return connected && unlabelled === 0;
@@ -3465,9 +3535,10 @@ export function reconcileWalkDone(connected: boolean, unlabelled: number) {
  * the oldest found call are worth another page.
  *
  * Nothing found means nothing is known about where the targets sit, so all of
- * them count and the walk runs to the route's own bounds. Without this rule a
- * join during a round with finished calls would page to the 500-row bound on
- * every open, hunting rows that do not exist yet.
+ * them count and the walk keeps reading — but only as far as the row that opened
+ * the turn (`pageOpensTurn`) or the route's own bounds, never past them. Without
+ * this rule a join during a round with finished calls would page to the 500-row
+ * bound on every open, hunting rows that do not exist yet (round 1, R1).
  */
 export function labelTargetsBehind(
 	order: readonly string[],

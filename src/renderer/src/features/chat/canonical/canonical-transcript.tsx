@@ -263,8 +263,10 @@ export type CanonicalTranscriptProps = {
 	 * Tool call ids whose first label read is still in flight
 	 * (`CanonicalSessionView.labelPending`). Such a row paints its object column
 	 * EMPTY rather than the output stand-in, so the first frame of an open never
-	 * shows a call's result where its command belongs. Optional: surfaces with no
-	 * live stream (stories, the run panel's child reader) have nothing pending.
+	 * shows a call's result where its command belongs. The hold ends with the
+	 * first request's answer, or after `LABEL_HOLD_MAX_MS` when none comes.
+	 * Optional: surfaces with no live stream (stories, the run panel's child
+	 * reader) have nothing pending.
 	 */
 	labelPending?: ReadonlySet<string>;
 	/**
@@ -744,8 +746,10 @@ const ToolRow = memo(function ToolRow({
 	// (`labelPending`): a joiner's seeded rows all start argument-less, and on
 	// the first frame the stand-in is not a weaker fact but a wrong-looking one
 	// — `bash  … {"text": 200, …` reads as the command that ran. An empty column
-	// for the length of one read is the honest frame; once the read settles the
-	// row either has its arguments or falls back to the stand-in as before.
+	// is the honest frame while that read is genuinely outstanding — it ends with
+	// the first request's answer or after `LABEL_HOLD_MAX_MS`, whichever comes
+	// first — and then the row either has its arguments or falls back to the
+	// stand-in as before.
 	const derived =
 		!composing && isBareToolName(summary, record.toolName)
 			? outputFallbackLine(record.output, labelPending)

@@ -228,7 +228,7 @@ export default { useState, useEffect, useLayoutEffect, useInsertionEffect, useRe
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { useCanonicalSessionStream } from "./src/renderer/src/shared/hooks/use-canonical-session";
+			export { useCanonicalSessionStream, __resetLabelGapBookkeeping } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { __resetPaintCache } from "./src/renderer/src/shared/store/paint-cache";
 			export { EMPTY_TRANSCRIPT, applyHistoryPage } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
@@ -279,6 +279,7 @@ const hook = await import(
 const {
 	useCanonicalSessionStream,
 	useCanonicalSessionsStore,
+	__resetLabelGapBookkeeping,
 	__resetPaintCache,
 	EMPTY_TRANSCRIPT,
 	applyHistoryPage,
@@ -486,6 +487,13 @@ const ids = (transcript) => transcript.records.map((record) => record.id);
  */
 async function open({ entries, liveEvents, streaming, durable = entries }) {
 	__resetPaintCache();
+	/*
+	 * The label gap's bookkeeping is per CONVERSATION and outlives a mount, the
+	 * same way the paint cache does (round 1, QA Q1: a switch away and back must
+	 * not re-blank rows this window already painted). The cases below are separate
+	 * JOINS of one conversation, not switches back to it, so each says so here.
+	 */
+	__resetLabelGapBookkeeping();
 	subscriptions.length = 0;
 	requests.length = 0;
 	rafQueue = [];
