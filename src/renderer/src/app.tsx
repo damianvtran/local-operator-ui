@@ -67,6 +67,16 @@ const BrowserPage = lazy(() =>
 		default: m.BrowserPage,
 	})),
 );
+/*
+ * The Networks tab (`mesh-ui.md` §2.8). Lazy like every other page, and routed
+ * only when the backend advertises `features.peers` (see the route below): a
+ * user without a network never loads its chunk.
+ */
+const NetworkPage = lazy(() =>
+	import("@features/network/network-page").then((m) => ({
+		default: m.NetworkPage,
+	})),
+);
 const SettingsPage = lazy(() =>
 	import("@features/settings/components/settings-page").then((m) => ({
 		default: m.SettingsPage,
@@ -151,6 +161,7 @@ const App: FC = () => {
 		"session_catalogue",
 		2,
 	);
+	const peersEnabled = desktopFeatureEnabled(capabilities.data, "peers");
 
 	const handleAgentCreated = (agentId: string) => {
 		navigate(`/chat/${agentId}`);
@@ -577,6 +588,13 @@ const App: FC = () => {
 								/>
 								<Route path="/schedules" element={<SchedulesPage />} />
 								<Route path="/browser" element={<BrowserPage />} />
+								{/* Mounted only with `features.peers`: without it `/network`
+								    falls through to the catch-all like any unknown path,
+								    rather than rendering a tab for a feature the backend
+								    does not have. */}
+								{peersEnabled && (
+									<Route path="/network" element={<NetworkPage />} />
+								)}
 								<Route path="*" element={<Navigate to="/chat" replace />} />
 							</Routes>
 						</Suspense>
