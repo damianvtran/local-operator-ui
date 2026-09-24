@@ -2792,7 +2792,9 @@ test("the notice is one sentence above the box, at most Retry and Clear, and not
 	 * literal `role="alert"` cannot see either arm, so the expression is what is
 	 * pinned, and the two arms are asserted separately.
 	 */
-	const alertAt = rendered.indexOf('role={composerAlert.polite ? "status" : "alert"}');
+	const alertAt = rendered.indexOf(
+		'role={composerAlert.polite ? "status" : "alert"}',
+	);
 	assert.ok(
 		alertAt > 0,
 		"the composer no longer renders the failed send as an alert, so a send that did not land is not announced",
