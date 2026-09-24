@@ -1807,6 +1807,23 @@ test("a refusal from the live route refreshes the list before it is reported (R2
 		/catch \(cause\)[\s\S]*?invalidateQueries\(\{ queryKey: catalogKey \}\)[\s\S]*?throw cause;/,
 		"and refreshes BEFORE it rethrows, so the sentence is true when printed",
 	);
+	/*
+	 * And the OTHER route's catch, which is the one the reviewer's mutation
+	 * (M1) survived on: the catalog `control()` re-reads on a 409 before it
+	 * rethrows. It is a source assertion for the same reason as the one above -
+	 * this suite bundles the module's pure exports, not the hook, so a
+	 * QueryClient spy is not available here and the source is what pins the
+	 * ORDER that makes the row's sentence true.
+	 */
+	const catalog = source.slice(
+		source.indexOf("const control = useCallback("),
+		source.indexOf("const storeKeys = useCallback("),
+	);
+	assert.match(
+		catalog,
+		/cause instanceof DesktopControlError && cause\.status === 409[\s\S]*?invalidateQueries\(\{ queryKey: catalogKey \}\)[\s\S]*?throw cause;/,
+		"the catalog route refreshes on a 409 before it rethrows too",
+	);
 });
 
 test("the key route is offered only where the backend lists it (round-3 eligibility)", () => {
