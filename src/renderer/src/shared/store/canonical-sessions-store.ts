@@ -808,7 +808,8 @@ export const SEND_FAILURE_COPY = {
 	 * de-duplicates it - so the sentence says so rather than leaving the safest
 	 * action unstated.
 	 */
-	unconfirmed: "Couldn't confirm your message was sent. Sending it again is safe.",
+	unconfirmed:
+		"Couldn't confirm your message was sent. Sending it again is safe.",
 	/** Unknown, and the specific fact is that nothing answered. */
 	unreachable:
 		"Couldn't reach Local Operator. Your message may not have been sent.",

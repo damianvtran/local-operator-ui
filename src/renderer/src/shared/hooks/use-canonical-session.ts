@@ -468,7 +468,7 @@ const RECONCILE_WALK_MAX_ROWS = RECONCILE_TAIL_MAX_ENTRIES;
  *
  * The seam exists because the STORE paints the echo (it is the only place that
  * knows the session id and the admission request id at the same moment, and it
- * must do so before its first `await`), while this hook owns `setView`. A
+ * must do so before its first `await`), while this hook owns `commitView`. A
  * direct import the other way would make the store depend on React state.
  */
 const echoTargets = new Map<
@@ -2004,7 +2004,7 @@ export function useCanonicalSessionStream(
 			clearSnapshotTimer();
 			pending.current = [];
 		};
-	}, [sessionId, enabled]);
+	}, [commitView, sessionId, enabled]);
 
 	// A different session is a different transcript; the reconnect cursor is
 	// per-session too, so both reset together.
@@ -2152,7 +2152,7 @@ export function useCanonicalSessionStream(
 		} finally {
 			loadingOlderRef.current = false;
 		}
-	}, [sessionId]);
+	}, [commitView, sessionId]);
 
 	const refreshingTailRef = useRef(false);
 	/*
@@ -2211,7 +2211,7 @@ export function useCanonicalSessionStream(
 				refreshingTailRef.current = false;
 			}
 		},
-		[sessionId],
+		[commitView, sessionId],
 	);
 
 	// Registered for as long as this session is on screen, so the store's echo
@@ -2236,14 +2236,14 @@ export function useCanonicalSessionStream(
 		 * lands and this is the first moment a transcript can receive it.
 		 */
 		return __registerEchoTarget(sessionId, apply);
-	}, [sessionId]);
+	}, [commitView, sessionId]);
 
 	const clearView = useCallback(() => {
 		commitView((current) => ({
 			...current,
 			transcript: clearTranscript(current.transcript),
 		}));
-	}, []);
+	}, [commitView]);
 
 	const retry = useCallback(() => {
 		retryRef.current?.();
@@ -2256,12 +2256,15 @@ export function useCanonicalSessionStream(
 				transcript: appendLocalNote(current.transcript, text, level),
 			}));
 		},
-		[],
+		[commitView],
 	);
 
-	const paintPendingModel = useCallback((model: CanonicalModel) => {
-		commitView((current) => ({ ...current, pendingModel: model }));
-	}, []);
+	const paintPendingModel = useCallback(
+		(model: CanonicalModel) => {
+			commitView((current) => ({ ...current, pendingModel: model }));
+		},
+		[commitView],
+	);
 
 	const clearPendingModel = useCallback(() => {
 		commitView((current) =>
@@ -2269,7 +2272,7 @@ export function useCanonicalSessionStream(
 				? current
 				: { ...current, pendingModel: null },
 		);
-	}, []);
+	}, [commitView]);
 
 	/*
 	 * Reconcile the paint against the authoritative frames.
@@ -2303,7 +2306,7 @@ export function useCanonicalSessionStream(
 		) {
 			commitView((current) => ({ ...current, pendingModel: null }));
 		}
-	}, [view.frontend, view.pendingModel]);
+	}, [commitView, view.frontend, view.pendingModel]);
 
 	// The bounded backstop for a confirmation that never arrives; see the constant.
 	useEffect(() => {
@@ -2313,7 +2316,7 @@ export function useCanonicalSessionStream(
 			PENDING_MODEL_TIMEOUT_MS,
 		);
 		return () => window.clearTimeout(timer);
-	}, [view.pendingModel]);
+	}, [commitView, view.pendingModel]);
 
 	return useMemo(
 		() => ({
