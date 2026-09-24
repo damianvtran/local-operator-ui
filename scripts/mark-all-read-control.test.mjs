@@ -76,6 +76,39 @@ for (const key of Object.getOwnPropertyNames(DOM.window)) {
 globalThis.window = DOM.window;
 globalThis.document = DOM.window.document;
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+/*
+ * THE FRAME LOOP THIS HARNESS OWNS, AND WHY IT QUEUES RATHER THAN RUNS.
+ *
+ * `toast.dismiss` does not remove a toast by itself: sonner's observer notifies its
+ * subscribers from a `requestAnimationFrame`, and jsdom without `pretendToBeVisual`
+ * has no frame at all - the globals promotion above assigns `undefined`, so the
+ * receipt's own retirement threw `ReferenceError: requestAnimationFrame is not
+ * defined` from inside a commit phase. jsdom's VISUAL frame is deliberately not
+ * used: it is a real loop, and floating-ui's `autoUpdate` keeps one running for as
+ * long as a tooltip trigger is mounted, which leaves the process holding a pending
+ * frame so `node:test` never exits. The callbacks are QUEUED and a test asks for a
+ * frame (`frame()`, inside `settleFrames`), which is `composer-tabs.test.mjs`'s own
+ * answer to the same two facts.
+ */
+const queuedFrames = [];
+globalThis.requestAnimationFrame = (callback) => {
+	queuedFrames.push(callback);
+	return queuedFrames.length;
+};
+globalThis.cancelAnimationFrame = () => {};
+const frame = () => {
+	for (const callback of queuedFrames.splice(0)) callback(0);
+};
+/**
+ * One frame, three times over: the two state hops a dismissal takes - the store's
+ * notify and the Toaster's render - plus the removal mark itself.
+ */
+const settleFrames = async () => {
+	for (let round = 0; round < 3; round += 1) {
+		await act(async () => {});
+		await act(async () => frame());
+	}
+};
 // jsdom implements no layout, so no scrolling: the panel's own effects would
 // throw on the first render otherwise.
 DOM.window.Element.prototype.scrollIntoView = () => {};
@@ -290,6 +323,17 @@ const bundle = await build({
 			' export { ThemedToastContainer } from "./src/renderer/src/shared/components/common/themed-toast-container";' +
 			' export { realDesktopResult, DESKTOP_FOREGROUND_REQUIRED_CODE, DESKTOP_FOREGROUND_REQUIRED_MESSAGE } from "@shared/api/local-operator/desktop-api";' +
 			/*
+			 * THE WORDS THEMSELVES, from the module that owns them, the REFUSAL CLASS the
+			 * receipt's sentence is keyed on, and SONNER's own `toast` object: the
+			 * receipt's announcement is asserted where it is COMPOSED and where it is
+			 * REQUESTED, not only where it is painted (QA round 2's Q2-2 - sonner's paint
+			 * in jsdom is asynchronous, so a case that reads it straight after the publish
+			 * passes on ordering rather than on the fact).
+			 */
+			' export { readAckNoticeSentence, READ_ACK_NOTICE_CLAUSE, READ_ACK_NOTICE_DESCRIPTION } from "./src/renderer/src/features/chat/read-ack-notice";' +
+			' export { DesktopControlError } from "@shared/api/local-operator/desktop-api";' +
+			' export { toast as sonnerToast } from "sonner";' +
+			/*
 			 * The query client, EXPORTED FROM THIS BUNDLE rather than imported by the
 			 * harness on the side: the provider the harness renders has to be the same
 			 * module instance as the one the sidebar's own tree reads, or React sees a
@@ -352,12 +396,77 @@ const {
 	useCanonicalSessionsStore: store,
 	ThemedToastContainer,
 	realDesktopResult,
+	readAckNoticeSentence,
+	READ_ACK_NOTICE_DESCRIPTION,
+	DesktopControlError,
+	sonnerToast,
 	DESKTOP_FOREGROUND_REQUIRED_CODE,
 	DESKTOP_FOREGROUND_REQUIRED_MESSAGE,
 	QueryClient,
 	QueryClientProvider,
 } = await import(bundlePath.href);
 const { createRoot } = await import("react-dom/client");
+
+/*
+ * WHAT THE LANE WAS ASKED TO SAY, rather than what it has finished painting.
+ *
+ * Sonner paints through its own portal on its own schedule - in this jsdom harness
+ * a message read immediately after the publish was absent in three runs of four -
+ * so a case that only reads the DOM is asserting a race it happens to win. These
+ * record the CALLS the panel makes on the shipped `toast` object (a monkey patch on
+ * the object the app's own `showWarningToast`/`dismissToast` hold, which is the
+ * same module instance this bundle resolved), and the cases assert BOTH halves: the
+ * call, synchronously, and the paint, by waiting for the sentence to arrive or
+ * leave. QA round 2, Q2-2 named exactly this shape.
+ */
+const toastCalls = { warnings: [], dismissals: [] };
+const originalWarning = sonnerToast.warning;
+const originalDismiss = sonnerToast.dismiss;
+sonnerToast.warning = (message, options) => {
+	const id = originalWarning.call(sonnerToast, message, options);
+	toastCalls.warnings.push({ id, message, options });
+	return id;
+};
+sonnerToast.dismiss = (id) => {
+	toastCalls.dismissals.push(id);
+	return originalDismiss.call(sonnerToast, id);
+};
+
+/**
+ * Wait until a sentence is in the lane, bounded by the EVENT and not by a sleep.
+ *
+ * The bound is generous because the host this runs on carries a fleet: what it may
+ * not be is a fixed sleep, which would pass on a quiet machine and fail on a busy
+ * one - the shape QA round 1's Q1 recorded against `flyoutLines`. A toast that has
+ * been retired is still IN the document with `data-removed="true"` until sonner's
+ * exit animation ends, and jsdom runs no animations, so the lane is read as the
+ * toasts that are still LIVE - `composer-tabs.test.mjs`'s own rule for the same
+ * channel.
+ */
+const liveToasts = () =>
+	[...document.querySelectorAll("[data-sonner-toast]")].filter(
+		(node) => node.getAttribute("data-removed") !== "true",
+	);
+const laneText = () =>
+	liveToasts()
+		.map((node) => node.textContent ?? "")
+		.join(" ");
+const waitForSentence = async (message) => {
+	for (let attempt = 0; attempt < 20; attempt += 1) {
+		if (laneText().includes(message)) return true;
+		await settleFrames();
+	}
+	return false;
+};
+
+/** The same wait, for a sentence that has been retired and must leave the lane. */
+const waitForGone = async (message) => {
+	for (let attempt = 0; attempt < 20; attempt += 1) {
+		if (!laneText().includes(message)) return true;
+		await settleFrames();
+	}
+	return false;
+};
 
 /**
  * The row's FLYOUT, read from the mounted row - the pointer channel, since the
@@ -883,7 +992,7 @@ test("a not-answering row's remedy is reachable by focus, and only on that row",
 		// itself still carries it where a pointer lands.
 		assert.match(
 			(await flyoutLines(silent))?.at(-1) ?? "",
-			/· \/stop if it stays silent$/,
+			/· \/stop if it stays silent\.$/,
 		);
 		// The keyboard channel: the row POINTS at the sentence, which is what
 		// makes it announced on focus when the name is read.
@@ -894,7 +1003,7 @@ test("a not-answering row's remedy is reachable by focus, and only on that row",
 			clause,
 			`aria-describedby names "${id}", which rendered nothing — a description that resolves to nothing is worse than none`,
 		);
-		assert.equal(clause.textContent, "/stop if it stays silent");
+		assert.equal(clause.textContent, "/stop if it stays silent.");
 		assert.ok(
 			clause.textContent && !clause.textContent.includes("·"),
 			"the description kept the tooltip's separator, which is read aloud as punctuation",
@@ -926,5 +1035,485 @@ test("a not-answering row's remedy is reachable by focus, and only on that row",
 	} finally {
 		globalThis.__ack = undefined;
 		await harness.unmount();
+	}
+});
+
+test("the give-up sentence is this app's own, keyed on the class of refusal", () => {
+	/*
+	 * DESIGN ROUND 1's D1 (UX round 2's U3 reached the same defect from the code
+	 * path), asserted at the composer rather than in a frame - this is the half a
+	 * frame cannot check, because a frame shows one arm and this is the rule all of
+	 * them follow.
+	 *
+	 * The sentence used to open with the refusal painted verbatim through
+	 * `userFacingMessage`, and the refusal is the store ladder's copy, written for
+	 * whichever caller the store serves: the contention arm ends "Try again in a
+	 * moment", and the full-volume arm is an instruction about a volume (the receipt
+	 * route composes its own, `receipts_refusal` in the sibling's
+	 * `desktop_sessions.py`) beside this app's own instruction. Rendered: two
+	 * instructions per toast, up to 248 characters and six lines.
+	 *
+	 * WHAT REPLACES IT SAYS WHICH CLASS OF REFUSAL THE APP MET, and the classes are
+	 * the transport's - not the prose's (agent review round 3, MAJOR 1). The
+	 * refusals below are the BACKEND's own recorded literals for the store arms
+	 * (`scripts/store-refusal-copy.mjs` pins the send path's, which is the same
+	 * classifier the receipt route keys on) and the app's OWN sentences for the two
+	 * arms where no store was reached: a dead preload bridge and a backend that has
+	 * no `sessions.seen` both raise a `DesktopControlError` of the same shape, and
+	 * filing either as a store refusal made this panel state a cause it never met.
+	 */
+	const sentence = (reason) =>
+		readAckNoticeSentence({
+			sessionId: SESSION,
+			kind: "unsettled",
+			revision: 1,
+			reason,
+		});
+	const busy = sentence(
+		new DesktopControlError(
+			503,
+			"Read state is busy right now, so nothing was written. Try again in a moment.",
+			undefined,
+			"store_busy",
+		),
+	);
+	const outOfSpace = sentence(
+		new DesktopControlError(
+			507,
+			"This computer is out of disk space, so nothing was written. Free some space on the volume holding /Users/example/Library/Application Support/local-operator, then try again.",
+			undefined,
+			"store_out_of_space",
+		),
+	);
+	const unavailable = sentence(
+		new DesktopControlError(
+			500,
+			"The session store could not be read or written.",
+			undefined,
+			"store_unavailable",
+		),
+	);
+	// THE TRANSPORT'S OWN REFUSALS, with no store code and no store reached. Both
+	// shapes are the app's own copy, taken from the sites that raise them
+	// (`desktop-api.ts`): the IPC/fetch/deadline arm carries no status, and an
+	// incompatible backend carries one.
+	const unreachable = sentence(
+		new DesktopControlError(
+			null,
+			"Desktop controls could not reach the backend process.",
+		),
+	);
+	const incompatible = sentence(
+		new DesktopControlError(
+			400,
+			"Desktop controls need a compatible backend connection.",
+		),
+	);
+	// The hook's own arm: a 200 whose body did not settle the completion reaches
+	// `unresolved` with a reason no transport produced.
+	const unreported = sentence(
+		new Error("answer did not settle the rendered completion"),
+	);
+	assert.equal(
+		busy,
+		"The read state is busy, so the unread mark was not cleared. Click the chat to try again.",
+	);
+	assert.equal(
+		outOfSpace,
+		"The read state could not be written, so the unread mark was not cleared. Click the chat to try again.",
+	);
+	assert.equal(unavailable, outOfSpace);
+	assert.equal(
+		unreachable,
+		"Desktop controls could not reach the backend process. The unread mark was not cleared. Click the chat to try again.",
+	);
+	assert.equal(
+		incompatible,
+		"Desktop controls need a compatible backend connection. The unread mark was not cleared. Click the chat to try again.",
+	);
+	assert.equal(
+		unreported,
+		"The unread mark was not cleared. Click the chat to try again.",
+	);
+	/*
+	 * THE RULE MAJOR 1 FILED: a refusal the store never saw may not be drawn as the
+	 * store refusing. This is the assertion that fails on the classification that
+	 * gated `refused` on "not `store_busy`" - the transport raises both of these by
+	 * construction, and a stalled backend or an old one ends in that toast with the
+	 * unread completion's mark still on the row.
+	 */
+	for (const one of [unreachable, incompatible]) {
+		assert.doesNotMatch(
+			one,
+			/read state could not be written/i,
+			`a refusal the store never saw was drawn as the store refusing: ${one}`,
+		);
+	}
+	/*
+	 * And the properties every arm shares: ONE instruction, the state named once,
+	 * and not one word of the store ladder's copy - which is what the store arms and
+	 * the unreported arm must also be free of, including the word "backend", since
+	 * none of them can see one.
+	 */
+	for (const one of [busy, outOfSpace, unreported]) {
+		assert.equal(
+			(one.match(/try again/gi) ?? []).length,
+			1,
+			`more than one instruction in: ${one}`,
+		);
+		assert.match(one, /unread mark was not cleared\./);
+		assert.doesNotMatch(
+			one,
+			/It will catch up on its own|Try again in a moment|send it again|disk space|the message|backend|Free some space/i,
+			`the refusal's own words were re-emitted: ${one}`,
+		);
+	}
+	for (const one of [unreachable, incompatible]) {
+		assert.equal(
+			(one.match(/try again/gi) ?? []).length,
+			1,
+			`more than one instruction in: ${one}`,
+		);
+		assert.match(one, /unread mark was not cleared\./);
+		assert.doesNotMatch(
+			one,
+			/read state|Free some space|disk space|the message/i,
+			`a store's words reached a refusal the store never saw: ${one}`,
+		);
+	}
+});
+test("the receipt's own state is drawn on its own row, and the give-up arm is announced once", async () => {
+	/*
+	 * UX round 1's U1 and U2, on the PANEL's half of the fix. The loop that knows
+	 * what the receipt is doing lives in the transcript
+	 * (`useCompletionView`, asserted in `scripts/completion-view-ack.test.mjs`);
+	 * what this case drives is where the operator meets it - the row's flyout
+	 * clause, the `sr-only` sentence its `aria-describedby` names (the keyboard
+	 * channel, and the one the receipt's copy did not have at all), and the single
+	 * announcement the give-up arm makes in the panel's own toast lane.
+	 *
+	 * Read through the SHIPPED row and the SHIPPED toast container: the states are
+	 * staged the way the loop stages them (`readAckNotice` is one record on the
+	 * store), so what is asserted is the rendering the app ships for them.
+	 */
+	globalThis.__ack = (request) =>
+		request.op === "sessions.list"
+			? Promise.resolve({
+					status: 200,
+					body: { result: { sessions: PILE, truncated: false } },
+				})
+			: Promise.resolve({ read: [], superseded: [], unknown: [] });
+	const harness = await mount(PILE);
+	const toastHost = document.createElement("div");
+	document.body.append(toastHost);
+	const toastRoot = createRoot(toastHost);
+	await act(async () => {
+		toastRoot.render(React.createElement(ThemedToastContainer));
+	});
+	/*
+	 * THIS CASE'S OWN CALLS, cleared so the earlier cases' toasts cannot be counted
+	 * here: the recorder is module-level because the patch is on the shipped `toast`
+	 * object, and every case in this file that raises one clears it first.
+	 */
+	toastCalls.warnings.length = 0;
+	toastCalls.dismissals.length = 0;
+	const warnings = toastCalls.warnings;
+	const dismissals = toastCalls.dismissals;
+	/** The state the loop publishes, staged exactly as it publishes it. */
+	const publish = async (kind, revision, reason) => {
+		await act(async () => {
+			store.setState({
+				readAckNotice: { sessionId: SESSION, kind, revision, reason },
+			});
+		});
+	};
+	try {
+		/**
+		 * The row's flyout lines for the CURRENT state.
+		 *
+		 * `flyoutLines` sleeps a fixed 40 ms and reads the first `[role="tooltip"]` in
+		 * the document, which on a busy host is the previous row's tooltip - the flake
+		 * QA round 1 recorded against it, and the reason this case reads one row three
+		 * times with the flyout CLOSED in between (the primitive keeps any other open
+		 * tooltip's content mounted while it opens a new one, so a second read without
+		 * this would compare the previous state's sentence). It waits for the event
+		 * rather than for the clock: the tooltip whose own text names the row.
+		 */
+		const receiptFlyout = async (button, title) => {
+			button.dispatchEvent(
+				new DOM.window.FocusEvent("focusout", { bubbles: true }),
+			);
+			await new Promise((resolve) => setTimeout(resolve, 60));
+			for (let attempt = 0; attempt < 40; attempt += 1) {
+				button.dispatchEvent(
+					new DOM.window.FocusEvent("focusin", { bubbles: true }),
+				);
+				await new Promise((resolve) => setTimeout(resolve, 50));
+				const tip = [...document.querySelectorAll('[role="tooltip"]')].find(
+					(element) => element.textContent?.includes(title),
+				);
+				if (tip) {
+					return [...tip.children].map(
+						(line) => line.textContent?.trim() ?? "",
+					);
+				}
+			}
+			return null;
+		};
+
+		const row = harness
+			.ring()
+			.find((element) =>
+				element.textContent?.includes("Reconcile the supplier ledger"),
+			);
+		const other = harness
+			.ring()
+			.find((element) =>
+				element.textContent?.includes("Quarterly revenue model"),
+			);
+		assert.ok(row && other, "the rows did not render");
+
+		// IN FLIGHT: the mark stays and the clause says the receipt is being tried.
+		await publish("pending", 1);
+		assert.match(
+			(await receiptFlyout(row, "Reconcile the supplier ledger"))?.at(-1) ?? "",
+			/marking read$/,
+			"the in-flight cue is not on the row",
+		);
+		// The other conversation is told nothing at all: no clause on its flyout,
+		// and nothing for its description to name.
+		assert.equal(
+			other.getAttribute("aria-describedby"),
+			null,
+			"another conversation was handed this receipt's clause",
+		);
+		assert.equal(
+			warnings.length,
+			0,
+			"an in-flight receipt was announced as a failure",
+		);
+
+		// THE PRESS THAT CANNOT SUCCEED: the reason, and the move that works.
+		await publish("offscreen", 2);
+		assert.match(
+			(await receiptFlyout(row, "Reconcile the supplier ledger"))?.at(-1) ?? "",
+			/· scroll to the result to mark this chat read$/,
+			"the off-screen refusal is not named on the row",
+		);
+		const id = row.getAttribute("aria-describedby");
+		assert.ok(id, "the row points at no receipt clause");
+		const clause = document.getElementById(id);
+		assert.ok(
+			clause,
+			`aria-describedby names "${id}", which rendered nothing - a description that resolves to nothing is worse than none`,
+		);
+		assert.equal(
+			clause.textContent,
+			"Scroll to the result to mark this chat read.",
+		);
+		assert.ok(
+			row.parentElement?.querySelector(`#${id}`),
+			"the clause is not rendered outside the row, so it is collected into its name",
+		);
+
+		/*
+		 * THE GIVE-UP ARM.
+		 *
+		 * The row's clause is the REMEDY ALONE (design round 1, D2). The state is on
+		 * the same line four words earlier - the mark glyph and the `, unread` tail
+		 * are both drawn from `unreadMarkKind` - so a clause spelling "not marked
+		 * read" beside it is the same fact twice, and `SILENT_REMEDY`, the clause
+		 * this one is shaped after, carries the remedy and nothing else.
+		 *
+		 * The description is a SENTENCE OF ITS OWN (D4): `aria-describedby` may name
+		 * two elements and the browser joins them with a single space, so the clause
+		 * form read as one utterance when a wedged row's remedy came first.
+		 */
+		await publish("unsettled", 3, new Error("the store refused"));
+		assert.match(
+			(await receiptFlyout(row, "Reconcile the supplier ledger"))?.at(-1) ?? "",
+			/· click the chat to try again$/,
+			"the deferred state is not named on the row",
+		);
+		assert.doesNotMatch(
+			(await receiptFlyout(row, "Reconcile the supplier ledger"))?.at(-1) ?? "",
+			/not marked read/,
+			"the clause restates the row's own `, unread` flag instead of naming the remedy",
+		);
+		const deferredId = row.getAttribute("aria-describedby");
+		assert.ok(deferredId, "the row points at no receipt clause");
+		assert.equal(
+			document.getElementById(deferredId)?.textContent,
+			"Not marked read. Click the chat to try again.",
+			"the description is not a sentence of its own, so a composed description runs on",
+		);
+		for (const description of Object.values(READ_ACK_NOTICE_DESCRIPTION)) {
+			assert.match(
+				description,
+				/^[A-Z].*\.$/,
+				`a description that is not a sentence: ${description}`,
+			);
+		}
+
+		/*
+		 * THE ANNOUNCEMENT, ASSERTED WHERE IT IS REQUESTED (QA round 2, Q2-2: sonner's
+		 * jsdom paint is asynchronous, so reading the lane immediately after the
+		 * publish passes on ordering rather than on the fact).
+		 *
+		 * One warning call, carrying the sentence this app COMPOSED for the state -
+		 * read back off the module rather than spelled out here, so a rewording cannot
+		 * leave the case asserting yesterday's words - and carrying this lane's own
+		 * lifetime rather than sonner's four-second default (design round 1, D3: the
+		 * longest sentence in the panel had the shortest life of anything in its lane,
+		 * while the archive offers one control away already arm eight and ten seconds
+		 * for exactly this shape).
+		 */
+		assert.equal(
+			warnings.length,
+			1,
+			"the give-up arm was not announced exactly once",
+		);
+		assert.equal(
+			warnings[0].message,
+			readAckNoticeSentence({
+				sessionId: SESSION,
+				kind: "unsettled",
+				revision: 3,
+				reason: new Error("the store refused"),
+			}),
+			"the announcement is not the sentence this app composes for an unreported refusal",
+		);
+		assert.equal(
+			warnings[0].options?.duration,
+			10_000,
+			"the give-up announcement did not take the lane's own lifetime",
+		);
+		// AND IT PAINTS: the half that goes through sonner, read by waiting for the
+		// sentence rather than by reading straight after the publish.
+		assert.ok(
+			await waitForSentence(warnings[0].message),
+			"the composed sentence never reached the lane",
+		);
+		// The same statement seen again - a re-render, or the loop's next tick - is
+		// not a second event.
+		await act(async () => {
+			store.setState({ sessions: [...store.getState().sessions] });
+		});
+		assert.equal(
+			warnings.length,
+			1,
+			"the same receipt statement was announced twice",
+		);
+
+		/*
+		 * AND THE SENTENCE GOES WHEN THE FACT DOES (UX round 2, U4).
+		 *
+		 * The reader presses the row this sentence names; the receipt lands on the next
+		 * tick; `clearNotice` retires the row's clause and the mark clears - and the
+		 * announcement, which said the mark was NOT cleared, went on saying it. The
+		 * retirement is asserted at the call (the id the warning returned) AND in the
+		 * lane, because those are two different failures: a sentence dismissed but
+		 * never painted, and one painted but never dismissed.
+		 */
+		await act(async () => {
+			store.setState({ readAckNotice: null });
+		});
+		// The lane's id, and it is the LAST dismissal: the effect dismisses this
+		// id on every pass that finds no standing sentence, because the id is the
+		// lane's rather than this instance's and dismissing an id nothing is using
+		// is a no-op (round 3's MINOR 1 is the shape that made that necessary).
+		assert.equal(
+			dismissals.at(-1),
+			warnings[0].id,
+			"the give-up announcement was not retired when the receipt landed",
+		);
+		assert.ok(
+			await waitForGone(warnings[0].message),
+			"the retired sentence is still in the lane",
+		);
+		assert.equal(
+			row.getAttribute("aria-describedby"),
+			null,
+			"the row still describes a receipt that has landed",
+		);
+	} finally {
+		globalThis.__ack = undefined;
+		await act(async () => toastRoot.unmount());
+		toastHost.remove();
+		await harness.unmount();
+	}
+});
+
+test("a remount cannot leave the receipt's sentence standing", async () => {
+	/*
+	 * UX round 3's U7, which is agent review round 3's MINOR 1 seen from the flow:
+	 * the give-up sentence lives in the app-level lane and outlives any one panel
+	 * mount, and the id it was raised under used to live in a component ref. A route
+	 * change off `/chat` and back (or a remount by the region controls) gave the panel
+	 * a fresh ref while the sentence stood, and the fresh instance's "the fact has
+	 * gone" branch was a no-op - so nothing left in the app could retire a sentence
+	 * that says the mark was not cleared, after the mark cleared.
+	 *
+	 * The id is the LANE'S now (one constant, `READ_ACK_TOAST_ID`, the shape the
+	 * archive lane in the same file uses), so the dismissal needs no handle and any
+	 * instance can make it. What this case asserts is the CALL and the id it carries,
+	 * which is exactly what the ref shape could not produce - no dismissal call at all
+	 * after a remount. The lane's pixels for the raise-and-retire path are asserted in
+	 * the case above, where the container that receives the toast is the one this file
+	 * mounted; this case deliberately owns no lane, because a later case cannot rely on
+	 * being the container sonner routes to.
+	 */
+	globalThis.__ack = (request) =>
+		request.op === "sessions.list"
+			? Promise.resolve({
+					status: 200,
+					body: { result: { sessions: PILE, truncated: false } },
+				})
+			: Promise.resolve({ read: [], superseded: [], unknown: [] });
+	toastCalls.warnings.length = 0;
+	toastCalls.dismissals.length = 0;
+	const warnings = toastCalls.warnings;
+	const dismissals = toastCalls.dismissals;
+	const first = await mount(PILE);
+	const second = { unmount: async () => undefined };
+	try {
+		// The give-up arm, raised on the first instance - the notice is cleared first,
+		// because the store's publish is identity-preserving on an unchanged
+		// (session, kind) pair and a case earlier in this file can leave that pair
+		// standing.
+		await act(async () => {
+			store.setState({ readAckNotice: null });
+		});
+		await act(async () => {
+			store.setState({
+				readAckNotice: {
+					sessionId: SESSION,
+					kind: "unsettled",
+					revision: 1,
+					reason: new Error("the store refused"),
+				},
+			});
+		});
+		assert.equal(warnings.length, 1, "the give-up arm was not announced");
+		// THE ROUTE CHANGE: the panel unmounts and comes back with the sentence still
+		// standing, which is the state a ref-shaped id cannot reach.
+		await first.unmount();
+		second.unmount = (await mount(PILE)).unmount;
+		assert.equal(
+			warnings.length,
+			1,
+			"the remount re-announced a sentence the reader has already been given",
+		);
+		// And the receipt lands while the SECOND instance is the mounted one.
+		await act(async () => {
+			store.setState({ readAckNotice: null });
+		});
+		assert.ok(
+			dismissals.includes(warnings[0].id),
+			`a remount left the sentence with nothing able to retire it (dismissals: ${JSON.stringify(dismissals)})`,
+		);
+	} finally {
+		globalThis.__ack = undefined;
+		await second.unmount();
 	}
 });
