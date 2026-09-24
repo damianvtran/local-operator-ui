@@ -1867,16 +1867,20 @@ test("the notice is ONE sentence from ONE place, and the composer renders it rat
 		"`heldClaimCode` has grown another use, so something is writing or reading a claim again rather than reading the released app's marker once",
 	);
 	/*
-	 * AND THE GATE IS STILL A GATE (review round 2, R3 rewrote it). It no longer
-	 * waits for the marker's mere presence - the released app's own rows can carry no
-	 * code at all, and refusing those left the message stranded in `submittedText` -
-	 * but it still refuses every row THIS build wrote, which is what the second
-	 * term is: `errorRetry` is a field this build writes on each failure it records
-	 * and the released app never wrote, so its absence is the released row's shape.
+	 * AND THE GATE IS STILL A GATE (review round 2, R3 rewrote it; review round 3,
+	 * R2-2 added the second term). It no longer waits for the marker's mere
+	 * presence - the released app's own rows can carry no code at all, and refusing
+	 * those left the message stranded in `submittedText` - but it still refuses
+	 * every row THIS build wrote, and it takes BOTH fields this build writes to do
+	 * it: `errorRetry`, which every recorded failure carries, and `submittedRendered`,
+	 * which the latch writes with `admissionAttempted` BEFORE the wire. `errorRetry`
+	 * alone is `undefined` for a row this build left by being killed between those
+	 * two points, and treating that row as the released app's cleared the replay pin
+	 * while keeping the id.
 	 */
 	assert.match(
 		storeSource,
-		/draft\.heldClaimCode !== undefined \|\| draft\.errorRetry === undefined/,
+		/draft\.heldClaimCode !== undefined \|\|\s*\(draft\.errorRetry === undefined && draft\.submittedRendered === undefined\)/,
 		"the migration no longer distinguishes the released app's rows from this build's, so it can fire on a row this build wrote",
 	);
 });
