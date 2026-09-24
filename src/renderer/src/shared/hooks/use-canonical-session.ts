@@ -945,6 +945,40 @@ export function useCanonicalSessionStream(
 			hydrated: false,
 		};
 	});
+
+	/*
+	 * THE ONE WRITER OF THE VIEW, and it lands the new value on a ref BEFORE React
+	 * sees anything.
+	 *
+	 * WHY THIS EXISTS AT ALL (review round 1, M3): the echo registry ANSWERS A
+	 * QUESTION about the transcript - `retractLocalEcho` reports whether the row
+	 * under an admission request id is still this app's own echo or the owner's -
+	 * and that answer decides whether a failed payload is handed back to the
+	 * composer or treated as delivered. The answer was read from inside the update,
+	 * so REACT'S SCHEDULING decided it: an update already queued in the same batch
+	 * (which is exactly the case that matters, the owner's row arriving as the
+	 * failure resolves) meant the updater had not run when the registry asked, the
+	 * answer fell back to "queued", and a delivered message was handed back to the
+	 * composer as a draft - the duplicate QA measured. Computing against the ref and
+	 * then committing the VALUE makes every read of the view synchronous and every
+	 * mutation exactly-once, without making React render any differently.
+	 *
+	 * Every mutation in this hook goes through here. A bare `commitView(` beside it
+	 * would be a write the ref cannot see, i.e. the defect back again.
+	 */
+	const viewRef = useRef(view);
+	const commitView = useCallback(
+		(
+			update: (current: CanonicalSessionView) => CanonicalSessionView,
+		): CanonicalSessionView => {
+			const next = update(viewRef.current);
+			if (next === viewRef.current) return next;
+			viewRef.current = next;
+			setView(next);
+			return next;
+		},
+		[],
+	);
 	/*
 	 * Which session the transcript IN `view` belongs to, so the reset effect
 	 * below can tell another session's rows from this one's own seeded echo.
@@ -1157,7 +1191,7 @@ export function useCanonicalSessionStream(
 					// unreachable, and saying so with a way back is the only honest state
 					// left. `hydrated` stays false, so the composer may not claim the
 					// conversation is empty either.
-					setView((state) => ({
+					commitView((state) => ({
 						...state,
 						status: "unavailable",
 						failure: HISTORY_UNREADABLE,
@@ -1169,7 +1203,7 @@ export function useCanonicalSessionStream(
 				rows += page.entries.length;
 				// Merged even when it is the page we already have: durable rows win
 				// by id, so a repeat is free and a partial one is completed.
-				setView((state) => ({
+				commitView((state) => ({
 					...state,
 					// A page that RESOLVED is the proof hydration was waiting for,
 					// applied-or-empty alike: the backend answered with this session's
@@ -1349,7 +1383,7 @@ export function useCanonicalSessionStream(
 			}
 			performance.mark("lop:transcript:flush:start");
 
-			setView((current) => {
+			commitView((current) => {
 				let next = { ...current };
 				// Replay collects until the snapshot lands; applying an old delta
 				// over newer snapshot text is exactly the bug this ordering exists
@@ -1703,7 +1737,7 @@ export function useCanonicalSessionStream(
 				// again six more times would turn one 20 s wait into minutes. The
 				// user's Reconnect (`reopen`) re-arms everything.
 				closeStream();
-				setView((current) => ({
+				commitView((current) => ({
 					...current,
 					subscriptionId: null,
 					status: "unavailable",
@@ -1755,7 +1789,7 @@ export function useCanonicalSessionStream(
 							// otherwise paint rows for a transcript that no longer exists,
 							// with nothing to tell the reader they are fiction.
 							if (sessionId) dropPaint(sessionId);
-							setView((current) => ({
+							commitView((current) => ({
 								...current,
 								subscriptionId: null,
 								status: "unavailable",
@@ -1772,9 +1806,9 @@ export function useCanonicalSessionStream(
 						// it makes the lease keep posting a subscription id the backend no
 						// longer holds (the 422 the operator's log shows), so it is dropped
 						// here and re-established by the next `open` frame.
-						setView((current) => ({ ...current, subscriptionId: null }));
+						commitView((current) => ({ ...current, subscriptionId: null }));
 						if (attempt >= STREAM_MAX_ATTEMPTS) {
-							setView((current) => ({
+							commitView((current) => ({
 								...current,
 								status: "unavailable",
 								// The transport's detail is machine register and differs per
@@ -1812,7 +1846,7 @@ export function useCanonicalSessionStream(
 								afterSeq: receipt.seq,
 							};
 						}
-						setView((current) =>
+						commitView((current) =>
 							current.status === "unavailable" && attempt > 1
 								? current
 								: { ...current, status: "reconnecting", failure: null },
@@ -1929,7 +1963,7 @@ export function useCanonicalSessionStream(
 				window.clearTimeout(reconcileTimer);
 				reconcileTimer = 0;
 			}
-			setView((current) => ({
+			commitView((current) => ({
 				...current,
 				failure: null,
 				status:
@@ -1997,7 +2031,7 @@ export function useCanonicalSessionStream(
 		// this hook, and the cleanup effect below is the only moment that always
 		// happens.
 		const seed = sessionId ? readPaint(sessionId) : null;
-		setView((current) => ({
+		commitView((current) => ({
 			...current,
 			frontend: null,
 			// A different session's unconfirmed paint describes the model of a
@@ -2065,9 +2099,6 @@ export function useCanonicalSessionStream(
 		};
 	}, [sessionId]);
 
-	// Latest view for callbacks that must not re-create per render.
-	const viewRef = useRef(view);
-	viewRef.current = view;
 	// The conversation currently on screen, read at resolution time rather than
 	// closed over, so an in-flight page can tell whether it is still wanted.
 	const sessionRef = useRef(sessionId);
@@ -2086,7 +2117,7 @@ export function useCanonicalSessionStream(
 		// to precede a click in the sidebar.
 		const requested = sessionId;
 		loadingOlderRef.current = true;
-		setView((current) => ({ ...current, loadingOlder: true }));
+		commitView((current) => ({ ...current, loadingOlder: true }));
 		try {
 			const page = await desktopResult<DesktopHistoryPage>({
 				op: "sessions.history",
@@ -2104,10 +2135,10 @@ export function useCanonicalSessionStream(
 				// spinner with no request in flight and no way to clear it short of
 				// a reload — and because the affordance renders disabled in that
 				// state, the reader could not even retry.
-				setView((current) => ({ ...current, loadingOlder: false }));
+				commitView((current) => ({ ...current, loadingOlder: false }));
 				return false;
 			}
-			setView((current) => ({
+			commitView((current) => ({
 				...current,
 				loadingOlder: false,
 				transcript: applyHistoryPage(current.transcript, page),
@@ -2116,7 +2147,7 @@ export function useCanonicalSessionStream(
 		} catch {
 			// The rows already painted are still correct; the affordance simply
 			// stays available for another try.
-			setView((current) => ({ ...current, loadingOlder: false }));
+			commitView((current) => ({ ...current, loadingOlder: false }));
 			return false;
 		} finally {
 			loadingOlderRef.current = false;
@@ -2153,7 +2184,7 @@ export function useCanonicalSessionStream(
 				 * is the durable tail, i.e. exactly the rows `/clear` removed.
 				 */
 				if (viewRef.current.transcript.viewEpoch !== epoch) return false;
-				setView((current) => ({
+				commitView((current) => ({
 					...current,
 					/*
 					 * `keepPaging`: this is a TAIL read, so its `has_more` describes the
@@ -2190,7 +2221,7 @@ export function useCanonicalSessionStream(
 	useEffect(() => {
 		if (!sessionId) return;
 		const apply = (mutate: (state: TranscriptState) => TranscriptState) => {
-			setView((current) => {
+			commitView((current) => {
 				const transcript = mutate(current.transcript);
 				return transcript === current.transcript
 					? current
@@ -2208,7 +2239,7 @@ export function useCanonicalSessionStream(
 	}, [sessionId]);
 
 	const clearView = useCallback(() => {
-		setView((current) => ({
+		commitView((current) => ({
 			...current,
 			transcript: clearTranscript(current.transcript),
 		}));
@@ -2220,7 +2251,7 @@ export function useCanonicalSessionStream(
 
 	const addNote = useCallback(
 		(text: string, level: "info" | "warning" | "error" = "info") => {
-			setView((current) => ({
+			commitView((current) => ({
 				...current,
 				transcript: appendLocalNote(current.transcript, text, level),
 			}));
@@ -2229,11 +2260,11 @@ export function useCanonicalSessionStream(
 	);
 
 	const paintPendingModel = useCallback((model: CanonicalModel) => {
-		setView((current) => ({ ...current, pendingModel: model }));
+		commitView((current) => ({ ...current, pendingModel: model }));
 	}, []);
 
 	const clearPendingModel = useCallback(() => {
-		setView((current) =>
+		commitView((current) =>
 			current.pendingModel === null
 				? current
 				: { ...current, pendingModel: null },
@@ -2270,7 +2301,7 @@ export function useCanonicalSessionStream(
 			modelSelector(frontend?.selected_model) === painted ||
 			modelSelector(frontend?.effective_model) === painted
 		) {
-			setView((current) => ({ ...current, pendingModel: null }));
+			commitView((current) => ({ ...current, pendingModel: null }));
 		}
 	}, [view.frontend, view.pendingModel]);
 
@@ -2278,7 +2309,7 @@ export function useCanonicalSessionStream(
 	useEffect(() => {
 		if (!view.pendingModel) return;
 		const timer = window.setTimeout(
-			() => setView((current) => ({ ...current, pendingModel: null })),
+			() => commitView((current) => ({ ...current, pendingModel: null })),
 			PENDING_MODEL_TIMEOUT_MS,
 		);
 		return () => window.clearTimeout(timer);
