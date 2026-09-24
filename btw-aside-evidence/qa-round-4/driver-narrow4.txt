@@ -1,0 +1,1048 @@
+port8080.lock taken
+rig up: proxy 81840 on 8080 -> daemon 73387 on 57596, stub 57417; 1111 untouched
+== narrow4 (btw-r4) at 17:43:35 ==
+[build] current: assets 2026-09-24T15:29:36.427Z >= sources 2026-09-24T15:23:30.945Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/.local-operator/sessions/6002191cc624/scratchpad/rig4/run-narrow4/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/qa482-r4-a2df5f
+  scratch       /Users/damian/.local-operator/sessions/6002191cc624/scratchpad/rig4/tmp/lo-renderer-driver-82871
+  frames        /Users/damian/.local-operator/sessions/6002191cc624/scratchpad/rig4/frames/narrow4
+  app cwd       /Users/damian/.local-operator/sessions/6002191cc624/scratchpad/rig4/tmp/lo-renderer-driver-82871/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/qa482-r4-a2df5f/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown
+        mode=headless visible=false focused=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] R4 session
+        4e3413e67cda
+[PASS] Q24 (iii) fresh ask declined (409 aside_unanswered): the backend's sentence ALONE — no 'Ask again here', no 'can't continue', no old escape clause
+        {"alerts":["The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again."],"wire":{"status":409,"continues":null,"response":"{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"}}
+[note] Q33 refusal vs the region's clip at frame 01
+        {"alerts":1,"scrollTop":0,"maxScroll":0,"clientHeight":121,"alertTopInRegion":23.5,"alertBottomInRegion":121,"hiddenBelowPx":0,"alertRows":5,"rowsFullyVisible":5,"visibleText":null}
+[note] frame
+        {"label":"qa4-narrow4-01-q24-fresh-declined-sentence-alone","mode":"settled","width":1600,"height":1736}
+[note] Q33 refusal vs the region's clip after the settled capture 01
+        {"alerts":1,"scrollTop":0,"maxScroll":0,"clientHeight":121,"alertTopInRegion":23.5,"alertBottomInRegion":121,"hiddenBelowPx":0,"alertRows":5,"rowsFullyVisible":5,"visibleText":null}
+[PASS] Q24b (iii) fresh ask, 409 aside_empty_answer: the backend's sentence alone
+        {"alerts":["The model answered your aside with no text at all, so the exchange has no answer to keep. Ask again."],"wire":{"status":409,"response":"{\"detail\":{\"code\":\"aside_empty_answer\",\"message\":\"The model answered your aside with no text at all, so the exchange has no answer to keep. Ask again.\"}}"}}
+[PASS] Q25 (i) aside_unanswered (tool call twice) on a CONTINUATION: backend sentence + 'Ask again here to keep this exchange, or press Esc to close the aside and discard it.'
+        {"alert":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again. Ask again here to keep this exchange, or press Esc to close the aside and discard it.","wire":{"status":409,"continues":"b4d5bb7c-6c78-4c29-a0ae-31a620efd60a","answeredId":"b4d5bb7c-6c78-4c29-a0ae-31a620efd60a","response":"{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or noth"}}
+[PASS] Q25 (i) aside_unanswered (a call then silence) on a CONTINUATION: backend sentence + 'Ask again here to keep this exchange, or press Esc to close the aside and discard it.'
+        {"alert":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again. Ask again here to keep this exchange, or press Esc to close the aside and discard it.","wire":{"status":409,"continues":"b4d5bb7c-6c78-4c29-a0ae-31a620efd60a","answeredId":"b4d5bb7c-6c78-4c29-a0ae-31a620efd60a","response":"{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or noth"}}
+[PASS] Q25 (i) aside_empty_answer on a CONTINUATION: backend sentence + 'Ask again here to keep this exchange, or press Esc to close the aside and discard it.'
+        {"alert":"The model answered your aside with no text at all, so the exchange has no answer to keep. Ask again. Ask again here to keep this exchange, or press Esc to close the aside and discard it.","wire":{"status":409,"continues":"b4d5bb7c-6c78-4c29-a0ae-31a620efd60a","answeredId":"b4d5bb7c-6c78-4c29-a0ae-31a620efd60a","response":"{\"detail\":{\"code\":\"aside_empty_answer\",\"message\":\"The model answered your aside with no text at all, so the exchange has no answer to keep. Ask again.\"}}"}}
+[note] Q33 refusal vs the region's clip at frame 02
+        {"alerts":3,"scrollTop":507,"maxScroll":585,"clientHeight":232,"alertTopInRegion":212.1,"alertBottomInRegion":309.6,"hiddenBelowPx":77.6,"alertRows":5,"rowsFullyVisible":1,"visibleText":null}
+[note] frame
+        {"label":"qa4-narrow4-02-q25-declined-follow-ups-both-options","mode":"settled","width":1600,"height":1736}
+[note] Q33 refusal vs the region's clip after the settled capture 02
+        {"alerts":3,"scrollTop":507,"maxScroll":585,"clientHeight":232,"alertTopInRegion":212.1,"alertBottomInRegion":309.6,"hiddenBelowPx":77.6,"alertRows":5,"rowsFullyVisible":1,"visibleText":null}
+[PASS] Q25c asking again IN THE SAME PANEL is ANSWERED (200) and continues the last ANSWERED turn
+        {"wire":{"status":200,"continues":"b4d5bb7c-6c78-4c29-a0ae-31a620efd60a","answeredId":"b4d5bb7c-6c78-4c29-a0ae-31a620efd60a"}}
+[PASS] Q25d 'to keep this exchange' is TRUE: the owner's new entry holds the first answered Q/A as its prefix (4 turns, complete, adoptable); the panel still shows the first answer
+        {"owner":{"status":200,"detail":null,"turns":4,"firstTurnHead":"[{\"type\":\"text\",\"text\":\"q25 first question, answered\"}]","complete":true,"adoptable":true},"tailsOnPanel":2}
+[note] frame
+        {"label":"qa4-narrow4-03-q25-asked-again-answered-exchange-kept","mode":"settled","width":1600,"height":1736}
+[PASS] Q26 Esc on an answered exchange: panel gone, ONE DELETE of the newest entry (200), the owner now answers 404 for it, NOTHING adopted (history unchanged, no adopt POST)
+        {"ops":[{"m":"DELETE","kind":"close","status":200}],"newestAfterEsc":{"status":404,"detail":"This aside is no longer available","turns":null,"firstTurnHead":null,"complete":null,"adoptable":null},"firstEntryAfterEsc":{"status":200,"detail":null,"turns":2,"firstTurnHead":"[{\"type\":\"text\",\"text\":\"q25 first question, answered\"}]","complete":true,"adoptable":false},"history":[18,18]}
+[PASS] Q26b re-opening with /btw does NOT bring the exchange back: the empty panel, no earlier question
+        {"panel":"Asideoff the record — nothing here joins the conversationType a question in the composer below — the answer lands here.Add to conversation⌘+FNothing to add yet."}
+[note] frame
+        {"label":"qa4-narrow4-04-q26-after-esc-reopened-empty","mode":"settled","width":1600,"height":1736}
+[note] Q27 out-of-band DELETE of the answered entry (the owner evicting/expiring it)
+        {"status":200,"body":"{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"c5353bf0-7acc-4d83-af20-ce8667090c28\",\"status\":\"closed\"},\"replayed\":false}}"}
+[PASS] Q27 (ii) refused continuation (409 'This aside is no longer available'): sentence + the can't-continue clause naming Esc's cost; differs from (i) and offers NO 'Ask again here'
+        {"alert":"This aside is no longer available This aside can't continue. Press Esc to close it, which discards this exchange, then start a new one with /btw.","wire":{"status":409,"continues":"c5353bf0-7acc-4d83-af20-ce8667090c28","response":"{\"detail\":\"This aside is no longer available\"}"}}
+[note] Q33 refusal vs the region's clip at frame 05
+        {"alerts":1,"scrollTop":124,"maxScroll":202,"clientHeight":232,"alertTopInRegion":212.1,"alertBottomInRegion":309.6,"hiddenBelowPx":77.6,"alertRows":5,"rowsFullyVisible":1,"visibleText":null}
+[note] frame
+        {"label":"qa4-narrow4-05-q27-continuation-refused-cant-continue","mode":"settled","width":1600,"height":1736}
+[note] Q33 refusal vs the region's clip after the settled capture 05
+        {"alerts":1,"scrollTop":124,"maxScroll":202,"clientHeight":232,"alertTopInRegion":212.1,"alertBottomInRegion":309.6,"hiddenBelowPx":77.6,"alertRows":5,"rowsFullyVisible":1,"visibleText":null}
+[PASS] Q27b the copy is honest: a retry in the same panel is refused the same way (409, same dead prefix) — so not offering one is correct
+        {"wire":{"status":409,"continues":"c5353bf0-7acc-4d83-af20-ce8667090c28"},"lastAlert":"This aside is no longer available This aside can't continue. Press Esc to close it, which discards this exchange, then start a new one with /btw."}
+[PASS] Q27c the way out the copy names works: Esc, then /btw <q> is a fresh ask, answered 200
+        {"status":200,"continues":null}
+[PASS] Q28 FIRST ⌘+F on an adoptable exchange: NO adopt request on the wire, history unchanged, panel still up, the confirm on the panel's notice line
+        {"adoptPosts":0,"history":[20,20],"alerts":["Press ⌘+F again to add the aside to the conversation. Once added, it stays there."],"key":{"prevented":true,"target":"textarea[Message]"},"adoptLive":{"text":"Add to conversation","label":null,"disabled":false}}
+[note] frame
+        {"label":"qa4-narrow4-06-q28-first-cmdf-confirm-only","mode":"settled","width":1600,"height":1736}
+[PASS] Q28b SECOND ⌘+F on the same newest turn adopts: ONE adopt POST (200), the panel closes, the exchange enters the durable history and is painted in the transcript
+        {"adopt":[{"url":"…/asides/ae6f7a07-9804-4965-8e05-4b6283675fe4/adopt","status":200}],"history":[20,22],"historyStatus":200,"historyKeys":["status","message","result"],"questionInHistory":true,"key":{"prevented":true,"target":"textarea[Message]"}}
+[note] frame
+        {"label":"qa4-narrow4-07-q28-second-cmdf-adopted","mode":"settled","width":1600,"height":1736}
+[PASS] Q28c an arm does not carry over to a NEW turn: after a follow-up, the next ⌘+F only confirms again (no adopt POST, panel up)
+        {"confirmAfterFirst":["Press ⌘+F again to add the aside to the conversation. Once added, it stays there."],"noticeAfterFollowUpAsk":[],"alertsAfterPress":["Press ⌘+F again to add the aside to the conversation. Once added, it stays there."],"adoptPosts":0}
+[PASS] Q28d re-opened EMPTY panel: ⌘+F does nothing (no confirm, no adopt POST, not swallowed)
+        {"alerts":[],"key":{"prevented":false,"target":"textarea[Message]"}}
+[PASS] Q28e a different aside after re-opening: its first ⌘+F only confirms (the earlier arm did not carry over)
+        {"alerts":["Press ⌘+F again to add the aside to the conversation. Once added, it stays there."],"adoptPosts":0}
+[note] frame
+        {"label":"qa4-narrow4-08-q28e-reopened-first-press-confirms-only","mode":"settled","width":1600,"height":1736}
+[PASS] Q28f after Esc with an arm pending and a re-open, one ⌘+F still cannot adopt
+        {"alerts":["Press ⌘+F again to add the aside to the conversation. Once added, it stays there."],"adoptPosts":0}
+[note] Q28g ⌘+F routing
+        {"composerFirstPress":{"prevented":true,"target":"textarea[Message]"},"composerSecondPress":{"prevented":true,"target":"textarea[Message]"},"emptyPanel":{"prevented":false,"target":"textarea[Message]"},"focusOnExchangeRegion":{"prevented":false,"target":"div[The aside exchange]"},"regionPressAdopted":false,"regionPressPanelUp":true,"noAsideComposer":{"prevented":false,"target":"textarea[Message]"},"visibleSearchLikeUi":["Search chats and agents"]}
+[PASS] Q28g ⌘+F is swallowed (preventDefault) ONLY on the composer with an adoptable aside; with the focus elsewhere, or no aside, it falls through and nothing opens
+        {"k1":{"prevented":true,"target":"textarea[Message]"},"k2":{"prevented":true,"target":"textarea[Message]"},"kEmpty":{"prevented":false,"target":"textarea[Message]"},"kRegion":{"prevented":false,"target":"div[The aside exchange]"},"kNoAside":{"prevented":false,"target":"textarea[Message]"}}
+[note] Q29 geometry after the long first answer
+        {"width":234,"scrollTop":0,"clientHeight":232,"scrollHeight":2019,"maxScroll":1787,"cap":"231.5px","turns":1,"turnOffset":0,"questionTopInRegion":0,"questionText":"Question: LONGANSWER: q29 first, a long answer","questionHasMarkup":false,"questionQuoteBlocks":0,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":43,"firstAnswerRowInRegion":[45.5,60.5],"answerStartVisible":true,"rowsBetweenAnswerTopAndEdge":9.1,"paragraphs":6,"paragraphGapPx":20.8,"mdClass":"lo-markdown lo-markdown--row-grid","rows":90,"fullyVisibleRows":9,"crossing":[]}
+[note] Q29 samples [scrollTop, turnOffset, questionTopInRegion, maxScroll] (first 12 / last 4)
+        [[[1861,2030.7,169.7,1861],[1861,2030.7,169.7,1861],[1861,2030.7,169.7,1861],[1861,2030.7,169.7,1861],[1861,2030.7,169.7,1861],[1861,2030.7,169.7,1861],[1861,2030.7,169.7,1861],[1861,2030.7,169.7,1861],[1861,2030.7,169.7,1861],[1861,2030.7,169.7,1861],[1861,2030.7,169.7,1861],[1861,2030.7,169.7,1861]],[[2030.5,2030.7,0.2,3817],[2030.5,2030.7,0.2,3817],[2030.5,2030.7,0.2,3817],[2030.5,2030.7,0.2,3817]]]
+[PASS] Q29 D11 settled: the follow-up's QUESTION is at the region's top (scrollTop == its offset ±1) and the START of its answer is in view
+        {"scrollTop":2030.5,"turnOffset":2030.7,"questionTopInRegion":0.2,"firstAnswerRowInRegion":[45.7,60.7],"clientHeight":232,"scrollHeight":4049}
+[PASS] Q29b D11 movement: scrollTop only ever moved TOWARD the target (monotone) and never past the question
+        {"samples":92,"distinctTops":3,"monotone":true,"neverPast":true}
+[note] frame
+        {"label":"qa4-narrow4-09-q29-d11-long-follow-up-question-at-top","mode":"settled","width":1600,"height":1736}
+[note] Q29c the reader scrolled
+        {"from":4060,"to":3820,"method":"mouseWheel"}
+[PASS] Q29c D11 respects the reader: after a user scroll mid-stream, the region stays where they put it for the rest of the stream
+        {"userAt":3820,"method":"mouseWheel","distinctAfter":[3820],"final":3820,"samples":46}
+[note] frame
+        {"label":"qa4-narrow4-10-q29c-d11-reader-scrolled-stays","mode":"settled","width":1600,"height":1736}
+[PASS] Q29d a short follow-up under a long answer: clamped at maxScroll with its question and the start of its answer in view
+        {"scrollTop":6092,"maxScroll":6161,"turnOffset":6092.1,"questionTopInRegion":0.1,"firstAnswerRowInRegion":[45.6,60.6]}
+[note] frame
+        {"label":"qa4-narrow4-11-q29d-d11-short-follow-up","mode":"settled","width":1600,"height":1736}
+[note] frame
+        {"label":"qa4-narrow4-12-q30-d12-paragraph-break-at-cap","mode":"settled","width":1600,"height":1736}
+[note] Q30 D12 sweep (k = sentences in the first paragraph)
+        [{"k":1,"width":234,"fontSize":"13px","lineHeight":20.8,"gap":20.8,"paragraphs":3,"rowsToEdge":10,"fullyVisibleRows":9,"rows":27,"crossing":[],"clientHeight":232,"answerTop":23.5,"mdClass":"lo-markdown lo-markdown--row-grid"},{"k":2,"width":234,"fontSize":"13px","lineHeight":20.8,"gap":20.8,"paragraphs":3,"rowsToEdge":10,"fullyVisibleRows":9,"rows":29,"crossing":[],"clientHeight":232,"answerTop":23.5,"mdClass":"lo-markdown lo-markdown--row-grid"},{"k":3,"width":234,"fontSize":"13px","lineHeight":20.8,"gap":20.8,"paragraphs":3,"rowsToEdge":10,"fullyVisibleRows":9,"rows":31,"crossing":[],"clientHeight":232,"answerTop":23.5,"mdClass":"lo-markdown lo-markdown--row-grid"},{"k":4,"width":234,"fontSize":"13px","lineHeight":20.8,"gap":20.8,"paragraphs":3,"rowsToEdge":10,"fullyVisibleRows":9,"rows":33,"crossing":[],"clientHeight":232,"answerTop":23.5,"mdClass":"lo-markdown lo-markdown--row-grid"},{"k":5,"width":234,"fontSize":"13px","lineHeight":20.8,"gap":20.8,"paragraphs":3,"rowsToEdge":10,"fullyVisibleRows":10,"rows":35,"crossing":[],"clientHeight":232,"answerTop":23.5,"mdClass":"lo-markdown lo-markdown--row-grid"},{"k":6,"width":234,"fontSize":"13px","lineHeight":20.8,"gap":20.8,"paragraphs":3,"rowsToEdge":10,"fullyVisibleRows":10,"rows":37,"crossing":[],"clientHeight":232,"answerTop":23.5,"mdClass":"lo-markdown lo-markdown--row-grid"},{"k":7,"width":234,"fontSize":"13px","lineHeight":20.8,"gap":20.8,"paragraphs":3,"rowsToEdge":10,"fullyVisibleRows":10,"rows":39,"crossing":[],"clientHeight":232,"answerTop":23.5,"mdClass":"lo-markdown lo-markdown--row-grid"},{"k":8,"width":234,"fontSize":"13px","lineHeight":20.8,"gap":20.8,"paragraphs":3,"rowsToEdge":10,"fullyVisibleRows":10,"rows":41,"crossing":[],"clientHeight":232,"answerTop":23.5,"mdClass":"lo-markdown lo-markdown--row-grid"},{"k":9,"width":234,"fontSize":"13px","lineHeight":20.8,"gap":20.8,"paragraphs":3,"rowsToEdge":10,"fullyVisibleRows":10,"rows":43,"crossing":[],"clientHeight":232,"answerTop":23.5,"mdClass":"lo-markdown lo-markdown--row-grid"}]
+[PASS] Q30 D12: with a paragraph break inside the cap, NO row is cut at the region's edge for any first-paragraph length swept
+        [{"k":1,"crossing":[],"fullyVisibleRows":9},{"k":2,"crossing":[],"fullyVisibleRows":9},{"k":3,"crossing":[],"fullyVisibleRows":9},{"k":4,"crossing":[],"fullyVisibleRows":9},{"k":5,"crossing":[],"fullyVisibleRows":10},{"k":6,"crossing":[],"fullyVisibleRows":10},{"k":7,"crossing":[],"fullyVisibleRows":10},{"k":8,"crossing":[],"fullyVisibleRows":10},{"k":9,"crossing":[],"fullyVisibleRows":10}]
+[PASS] Q30b D12 arithmetic: the edge sits exactly 10.0 answer line boxes below the answer's top, and the paragraph gap equals one line box
+        [{"k":1,"rowsToEdge":10,"gap":20.8,"lineHeight":20.8},{"k":2,"rowsToEdge":10,"gap":20.8,"lineHeight":20.8},{"k":3,"rowsToEdge":10,"gap":20.8,"lineHeight":20.8},{"k":4,"rowsToEdge":10,"gap":20.8,"lineHeight":20.8},{"k":5,"rowsToEdge":10,"gap":20.8,"lineHeight":20.8},{"k":6,"rowsToEdge":10,"gap":20.8,"lineHeight":20.8},{"k":7,"rowsToEdge":10,"gap":20.8,"lineHeight":20.8},{"k":8,"rowsToEdge":10,"gap":20.8,"lineHeight":20.8},{"k":9,"rowsToEdge":10,"gap":20.8,"lineHeight":20.8}]
+[PASS] Q30c D12 x D11: a follow-up with a paragraph break, scrolled by D11 — no row cut at the edge
+        {"scrollTop":293,"maxScroll":874,"questionTopInRegion":0.1,"rowsToEdge":9.1,"crossing":[]}
+[PASS] Q31 U12/U13 both doors mid-answer: the busy sentence on the COMPOSER line (not the transcript), no 'send it again' hint appended, text kept, nothing sent
+        {"comp":{"value":"q31 composer door mid-answer","band":["The aside is still answering. Press Enter again once the answer is in."]},"slash":{"value":"/btw q31 slash door mid-answer","band":["The aside is still answering. Press Enter again once the answer is in."]},"inTranscript":0}
+[note] frame
+        {"label":"qa4-narrow4-13-q31-busy-line-on-composer","mode":"raw","width":1600,"height":1736}
+[PASS] Q31b the busy line retires the moment the answer settles; U15 the announcement has no markdown markers
+        {"band":[],"announce":"The aside answered: Transport failures and owner 5xx responses, per provider, inside a moving window."}
+[PASS] Q31c D14 off-panel short form: 'Your aside "…" got no answer: The model didn't reply in text. Ask again.' under 200 chars
+        {"line":"Your aside “TOOLCALL2: q31c refused after Esc” got no answer: The model didn't reply in text. Ask again.","length":104}
+[note] frame
+        {"label":"qa4-narrow4-14-q31c-d14-off-panel-short-form","mode":"raw","width":1600,"height":1736}
+[PASS] Q31d U14: the wire carries <reply-to>, the panel's question paints a quote block and NO markup
+        {"staged":{"selected":"selected","pressed":true},"wire":"<reply-to>Transport failures and owner</reply-to>\nq31d asked with a quote staged","panelQuestion":"Question: Transport failures and ownerq31d asked with a quote staged","quoteBlocks":1}
+[note] frame
+        {"label":"qa4-narrow4-15-q31d-u14-quote-rendered","mode":"settled","width":1600,"height":1736}
+[PASS] Q32 every aside POST named a subscription this pane opened, and every aside_delta went to exactly that subscription
+        {"asidePosts":33,"postSubs":["a5d88619ef4940e99cbee3695a973d6a","2bb3782e183f494daa3b2b1478ae22b5"],"deltaSubs":["a5d88619ef4940e99cbee3695a973d6a","2bb3782e183f494daa3b2b1478ae22b5"],"asideDeltaFrames":180,"streamsOpened":3,"statuses":{"200":25,"409":8}}
+[PASS] every capture wrote a PNG of the requested size
+  [renderer] [attention] 4e3413e67cda receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
+    at yEe (file:///Users/damian/local-operator-ui-worktrees/qa482-r4-a2df5f/out/renderer/assets/index-Cy-kSzSb.js:812:94627)
+    at async _t (file:///Users/damian/local-operator-ui-worktrees/qa482-r4-a2df5f/out/renderer/assets/index-Cy-kSzSb.js:812:95762)
+[PASS] no process from this run outlived its boot
+
+frames: qa4-narrow4-01-q24-fresh-declined-sentence-alone.png, qa4-narrow4-02-q25-declined-follow-ups-both-options.png, qa4-narrow4-03-q25-asked-again-answered-exchange-kept.png, qa4-narrow4-04-q26-after-esc-reopened-empty.png, qa4-narrow4-05-q27-continuation-refused-cant-continue.png, qa4-narrow4-06-q28-first-cmdf-confirm-only.png, qa4-narrow4-07-q28-second-cmdf-adopted.png, qa4-narrow4-08-q28e-reopened-first-press-confirms-only.png, qa4-narrow4-09-q29-d11-long-follow-up-question-at-top.png, qa4-narrow4-10-q29c-d11-reader-scrolled-stays.png, qa4-narrow4-11-q29d-d11-short-follow-up.png, qa4-narrow4-12-q30-d12-paragraph-break-at-cap.png, qa4-narrow4-13-q31-busy-line-on-composer.png, qa4-narrow4-14-q31c-d14-off-panel-short-form.png, qa4-narrow4-15-q31d-u14-quote-rendered.png
+frames directory: /Users/damian/.local-operator/sessions/6002191cc624/scratchpad/rig4/frames/narrow4
+app log: /Users/damian/.local-operator/sessions/6002191cc624/scratchpad/rig4/tmp/lo-renderer-driver-82871/app-scene.log
+scratch removed (--clean)
+
+ALL CHECKS PASSED
+== narrow4 driver exit: 0 ==
+total 8720
+drwxr-xr-x@ 17 damian  staff     544 Sep 24 13:47 .
+drwxr-xr-x@ 12 damian  staff     384 Sep 24 13:42 ..
+-rw-r--r--@  1 damian  staff  284973 Sep 24 13:44 qa4-narrow4-01-q24-fresh-declined-sentence-alone.png
+-rw-r--r--@  1 damian  staff  304865 Sep 24 13:44 qa4-narrow4-02-q25-declined-follow-ups-both-options.png
+-rw-r--r--@  1 damian  staff  292628 Sep 24 13:45 qa4-narrow4-03-q25-asked-again-answered-exchange-kept.png
+-rw-r--r--@  1 damian  staff  270446 Sep 24 13:45 qa4-narrow4-04-q26-after-esc-reopened-empty.png
+-rw-r--r--@  1 damian  staff  287490 Sep 24 13:45 qa4-narrow4-05-q27-continuation-refused-cant-continue.png
+-rw-r--r--@  1 damian  staff  294361 Sep 24 13:45 qa4-narrow4-06-q28-first-cmdf-confirm-only.png
+-rw-r--r--@  1 damian  staff  285146 Sep 24 13:45 qa4-narrow4-07-q28-second-cmdf-adopted.png
+-rw-r--r--@  1 damian  staff  295361 Sep 24 13:45 qa4-narrow4-08-q28e-reopened-first-press-confirms-only.png
+-rw-r--r--@  1 damian  staff  317415 Sep 24 13:46 qa4-narrow4-09-q29-d11-long-follow-up-question-at-top.png
+-rw-r--r--@  1 damian  staff  306714 Sep 24 13:46 qa4-narrow4-10-q29c-d11-reader-scrolled-stays.png
+-rw-r--r--@  1 damian  staff  291400 Sep 24 13:46 qa4-narrow4-11-q29d-d11-short-follow-up.png
+-rw-r--r--@  1 damian  staff  305598 Sep 24 13:46 qa4-narrow4-12-q30-d12-paragraph-break-at-cap.png
+-rw-r--r--@  1 damian  staff  301675 Sep 24 13:47 qa4-narrow4-13-q31-busy-line-on-composer.png
+-rw-r--r--@  1 damian  staff  296316 Sep 24 13:47 qa4-narrow4-14-q31c-d14-off-panel-short-form.png
+-rw-r--r--@  1 damian  staff  294967 Sep 24 13:47 qa4-narrow4-15-q31d-u14-quote-rendered.png
+8080 released before this command returned
+port8080.lock released
+--- proxy counters (/Users/damian/.local-operator/sessions/6002191cc624/scratchpad/rig4/run-narrow4/proxy-stats.json) ---
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-24T17:44:20.290Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "e5a59529-a0ef-49c5-b7f5-08f8358b4e99",
+      "continues": null,
+      "questionHead": "TOOLCALL2: q24 fresh ask declined",
+      "text": "TOOLCALL2: q24 fresh ask declined",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "a5d88619ef4940e99cbee3695a973d6a",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-24T17:44:29.658Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "ef2e45f1-be62-46b2-a4f7-a0f4e2a382f5",
+      "continues": null,
+      "questionHead": "EMPTYANS: q24b fresh ask empty",
+      "text": "EMPTYANS: q24b fresh ask empty",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "a5d88619ef4940e99cbee3695a973d6a",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_empty_answer\",\"message\":\"The model answered your aside with no text at all, so the exchange has no answer to keep. Ask again.\"}}"
+    },
+    {
+      "at": "2026-09-24T17:44:33.184Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "b4d5bb7c-6c78-4c29-a0ae-31a620efd60a",
+      "continues": null,
+      "questionHead": "q25 first question, answered",
+      "text": "q25 first question, answered",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "a5d88619ef4940e99cbee3695a973d6a",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"b4d5bb7c-6c78-4c29-a0ae-31a620efd60a\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:44:38.584Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "4844766f-b3a2-4947-a01b-524010359374",
+      "continues": "b4d5bb7c-6c78-4c29-a0ae-31a620efd60a",
+      "questionHead": "TOOLCALL2: q25 follow-up, tool call twice",
+      "text": "TOOLCALL2: q25 follow-up, tool call twice",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "a5d88619ef4940e99cbee3695a973d6a",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-24T17:44:44.775Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "05fa7ee0-8d3e-433e-b424-6911ca77e1d0",
+      "continues": "b4d5bb7c-6c78-4c29-a0ae-31a620efd60a",
+      "questionHead": "TOOLSILENT: q25 follow-up, call then silence",
+      "text": "TOOLSILENT: q25 follow-up, call then silence",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "a5d88619ef4940e99cbee3695a973d6a",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-24T17:44:51.114Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "7fce2e64-9d62-4fd0-9383-9c79cc839312",
+      "continues": "b4d5bb7c-6c78-4c29-a0ae-31a620efd60a",
+      "questionHead": "EMPTYANS: q25 follow-up, empty answer",
+      "text": "EMPTYANS: q25 follow-up, empty answer",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "a5d88619ef4940e99cbee3695a973d6a",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_empty_answer\",\"message\":\"The model answered your aside with no text at all, so the exchange has no answer to keep. Ask again.\"}}"
+    },
+    {
+      "at": "2026-09-24T17:44:54.946Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "cdc89e4e-f65a-4cc9-a0ba-f00c91ef8f61",
+      "continues": "b4d5bb7c-6c78-4c29-a0ae-31a620efd60a",
+      "questionHead": "q25 asked again in the same panel after the declines",
+      "text": "q25 asked again in the same panel after the declines",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "a5d88619ef4940e99cbee3695a973d6a",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"cdc89e4e-f65a-4cc9-a0ba-f00c91ef8f61\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:45:03.060Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "c5353bf0-7acc-4d83-af20-ce8667090c28",
+      "continues": null,
+      "questionHead": "q27 first question, answered",
+      "text": "q27 first question, answered",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "a5d88619ef4940e99cbee3695a973d6a",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"c5353bf0-7acc-4d83-af20-ce8667090c28\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:45:08.969Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "b73c6bc5-0169-4f0e-9a10-11952ccb0bab",
+      "continues": "c5353bf0-7acc-4d83-af20-ce8667090c28",
+      "questionHead": "q27 follow-up after the owner lost the prefix",
+      "text": "q27 follow-up after the owner lost the prefix",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "a5d88619ef4940e99cbee3695a973d6a",
+      "status": 409,
+      "response": "{\"detail\":\"This aside is no longer available\"}"
+    },
+    {
+      "at": "2026-09-24T17:45:10.465Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "d444229c-82e5-440f-b6f3-0ab0416c6d02",
+      "continues": "c5353bf0-7acc-4d83-af20-ce8667090c28",
+      "questionHead": "q27 retry that the copy says cannot work",
+      "text": "q27 retry that the copy says cannot work",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "a5d88619ef4940e99cbee3695a973d6a",
+      "status": 409,
+      "response": "{\"detail\":\"This aside is no longer available\"}"
+    },
+    {
+      "at": "2026-09-24T17:45:10.824Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "ae6f7a07-9804-4965-8e05-4b6283675fe4",
+      "continues": null,
+      "questionHead": "q27 a new aside after Esc",
+      "text": "q27 a new aside after Esc",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "a5d88619ef4940e99cbee3695a973d6a",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"ae6f7a07-9804-4965-8e05-4b6283675fe4\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:45:29.502Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "c4a44d33-eee0-4e52-aea5-cdee647764ce",
+      "continues": null,
+      "questionHead": "q28c first turn",
+      "text": "q28c first turn",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2bb3782e183f494daa3b2b1478ae22b5",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"c4a44d33-eee0-4e52-aea5-cdee647764ce\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:45:37.038Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "da0cfb27-86fc-4ddd-93d6-8e1b40410101",
+      "continues": "c4a44d33-eee0-4e52-aea5-cdee647764ce",
+      "questionHead": "q28c follow-up appended after the arm",
+      "text": "q28c follow-up appended after the arm",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2bb3782e183f494daa3b2b1478ae22b5",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"da0cfb27-86fc-4ddd-93d6-8e1b40410101\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:45:45.339Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "4c846a10-fdc9-4dc9-adff-ca2a28cca711",
+      "continues": null,
+      "questionHead": "q28e first turn of a different aside",
+      "text": "q28e first turn of a different aside",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2bb3782e183f494daa3b2b1478ae22b5",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"4c846a10-fdc9-4dc9-adff-ca2a28cca711\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:45:52.231Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "fb782eb7-4e39-48f5-b5cc-a95ae9fd8de2",
+      "continues": null,
+      "questionHead": "q28f re-opened after an armed Esc",
+      "text": "q28f re-opened after an armed Esc",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2bb3782e183f494daa3b2b1478ae22b5",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"fb782eb7-4e39-48f5-b5cc-a95ae9fd8de2\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:45:59.727Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "844bfd0e-d958-4bb6-8b0c-2209ab3c9e55",
+      "continues": null,
+      "questionHead": "LONGANSWER: q29 first, a long answer",
+      "text": "LONGANSWER: q29 first, a long answer",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2bb3782e183f494daa3b2b1478ae22b5",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"844bfd0e-d958-4bb6-8b0c-2209ab3c9e55\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    },
+    {
+      "at": "2026-09-24T17:46:05.515Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "7cd454ee-a6b0-43f3-b692-c0d45ea48404",
+      "continues": "844bfd0e-d958-4bb6-8b0c-2209ab3c9e55",
+      "questionHead": "LONGANSWER: q29 long follow-up under a long answer",
+      "text": "LONGANSWER: q29 long follow-up under a long answer",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2bb3782e183f494daa3b2b1478ae22b5",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"7cd454ee-a6b0-43f3-b692-c0d45ea48404\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    },
+    {
+      "at": "2026-09-24T17:46:12.351Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "d60b43f8-ed70-4c6b-ad3c-40136cd79474",
+      "continues": "7cd454ee-a6b0-43f3-b692-c0d45ea48404",
+      "questionHead": "LONGANSWER: q29c the reader scrolls away mid-stream",
+      "text": "LONGANSWER: q29c the reader scrolls away mid-stream",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2bb3782e183f494daa3b2b1478ae22b5",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"d60b43f8-ed70-4c6b-ad3c-40136cd79474\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    },
+    {
+      "at": "2026-09-24T17:46:18.899Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "c2daa085-e2e8-4632-8f55-83b49265296b",
+      "continues": "d60b43f8-ed70-4c6b-ad3c-40136cd79474",
+      "questionHead": "q29d short follow-up under a long answer",
+      "text": "q29d short follow-up under a long answer",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2bb3782e183f494daa3b2b1478ae22b5",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"c2daa085-e2e8-4632-8f55-83b49265296b\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:46:26.532Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "6d43b871-455d-4a3f-85ad-9806b1a58e71",
+      "continues": null,
+      "questionHead": "PARAGRID1: q30 sweep",
+      "text": "PARAGRID1: q30 sweep",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2bb3782e183f494daa3b2b1478ae22b5",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"6d43b871-455d-4a3f-85ad-9806b1a58e71\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragrap"
+    },
+    {
+      "at": "2026-09-24T17:46:31.720Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "a1d91e43-d980-4cf7-9e8b-bf156d42d034",
+      "continues": null,
+      "questionHead": "PARAGRID2: q30 sweep",
+      "text": "PARAGRID2: q30 sweep",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2bb3782e183f494daa3b2b1478ae22b5",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"a1d91e43-d980-4cf7-9e8b-bf156d42d034\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph r"
+    },
+    {
+      "at": "2026-09-24T17:46:36.423Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "fa37e7ab-6744-4a01-a036-7697947d261b",
+      "continues": null,
+      "questionHead": "PARAGRID3: q30 sweep",
+      "text": "PARAGRID3: q30 sweep",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2bb3782e183f494daa3b2b1478ae22b5",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"fa37e7ab-6744-4a01-a036-7697947d261b\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph r"
+    },
+    {
+      "at": "2026-09-24T17:46:40.766Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "7c099f50-dd85-4f47-a5cd-90bfa30773cb",
+      "continues": null,
+      "questionHead": "PARAGRID4: q30 sweep",
+      "text": "PARAGRID4: q30 sweep",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2bb3782e183f494daa3b2b1478ae22b5",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"7c099f50-dd85-4f47-a5cd-90bfa30773cb\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph r"
+    },
+    {
+      "at": "2026-09-24T17:46:46.446Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "332acac3-ae69-4321-96f0-ac4e67c4d07a",
+      "continues": null,
+      "questionHead": "PARAGRID5: q30 sweep",
+      "text": "PARAGRID5: q30 sweep",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2bb3782e183f494daa3b2b1478ae22b5",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"332acac3-ae69-4321-96f0-ac4e67c4d07a\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph r"
+    },
+    {
+      "at": "2026-09-24T17:46:50.976Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "39ddcbdc-af90-436e-8143-a71f3adf783c",
+      "continues": null,
+      "questionHead": "PARAGRID6: q30 sweep",
+      "text": "PARAGRID6: q30 sweep",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2bb3782e183f494daa3b2b1478ae22b5",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"39ddcbdc-af90-436e-8143-a71f3adf783c\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph r"
+    },
+    {
+      "at": "2026-09-24T17:46:57.169Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "f5062cd1-3ede-4810-bf91-006eb8ca8ca9",
+      "continues": null,
+      "questionHead": "PARAGRID7: q30 sweep",
+      "text": "PARAGRID7: q30 sweep",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2bb3782e183f494daa3b2b1478ae22b5",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"f5062cd1-3ede-4810-bf91-006eb8ca8ca9\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose. Sentence 7 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph r"
+    },
+    {
+      "at": "2026-09-24T17:47:02.277Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "45f085db-7d43-41bb-8cdb-79a246d92a5e",
+      "continues": null,
+      "questionHead": "PARAGRID8: q30 sweep",
+      "text": "PARAGRID8: q30 sweep",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2bb3782e183f494daa3b2b1478ae22b5",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"45f085db-7d43-41bb-8cdb-79a246d92a5e\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose. Sentence 7 of this paragraph runs about this long, on purpose. Sentence 8 of this paragraph runs"
+    },
+    {
+      "at": "2026-09-24T17:47:08.235Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "c678c1b8-6940-4837-8466-21a46b35a598",
+      "continues": null,
+      "questionHead": "PARAGRID9: q30 sweep",
+      "text": "PARAGRID9: q30 sweep",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2bb3782e183f494daa3b2b1478ae22b5",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"c678c1b8-6940-4837-8466-21a46b35a598\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose. Sentence 7 of this paragraph runs about this long, on purpose. Sentence 8 of this paragraph runs"
+    },
+    {
+      "at": "2026-09-24T17:47:14.943Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "be8de7dc-69c5-4549-9432-df4d7738b413",
+      "continues": null,
+      "questionHead": "q30c first, a short answer",
+      "text": "q30c first, a short answer",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2bb3782e183f494daa3b2b1478ae22b5",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"be8de7dc-69c5-4549-9432-df4d7738b413\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:47:21.176Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "c4acee3c-adb4-4c55-88df-cca7f6196e8a",
+      "continues": "be8de7dc-69c5-4549-9432-df4d7738b413",
+      "questionHead": "PARAGRID5: q30c follow-up under D11",
+      "text": "PARAGRID5: q30c follow-up under D11",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2bb3782e183f494daa3b2b1478ae22b5",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"c4acee3c-adb4-4c55-88df-cca7f6196e8a\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph r"
+    },
+    {
+      "at": "2026-09-24T17:47:27.678Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "9af19d97-edee-4d7d-a324-81fa2cc79eb3",
+      "continues": null,
+      "questionHead": "q31 first, answer streams",
+      "text": "q31 first, answer streams",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2bb3782e183f494daa3b2b1478ae22b5",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"9af19d97-edee-4d7d-a324-81fa2cc79eb3\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:47:36.037Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "23aefd09-8c21-49cd-bbbb-e5b5fc2fe7ca",
+      "continues": null,
+      "questionHead": "TOOLCALL2: q31c refused after Esc",
+      "text": "TOOLCALL2: q31c refused after Esc",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2bb3782e183f494daa3b2b1478ae22b5",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-24T17:47:46.081Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides",
+      "asideId": "49815c28-7d09-4e08-a4b1-c3176536515a",
+      "continues": null,
+      "questionHead": "<reply-to>Transport failures and owner</reply-to>\nq31d asked",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nq31d asked with a quote staged",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2bb3782e183f494daa3b2b1478ae22b5",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"49815c28-7d09-4e08-a4b1-c3176536515a\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-24T17:43:42.907Z",
+      "subscriptionId": "25070db55b35b517",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/4e3413e67cda/events?frontend_replace=1",
+      "openedAt": "2026-09-24T17:43:51.556Z",
+      "subscriptionId": "a5d88619ef4940e99cbee3695a973d6a",
+      "asideDeltas": 32,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    },
+    {
+      "url": "/v1/desktop/sessions/4e3413e67cda/events?frontend_replace=1",
+      "openedAt": "2026-09-24T17:45:17.010Z",
+      "subscriptionId": "2bb3782e183f494daa3b2b1478ae22b5",
+      "asideDeltas": 148,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        220,
+        220,
+        220,
+        170,
+        220,
+        220,
+        220,
+        220,
+        13,
+        220,
+        220,
+        220,
+        220,
+        76,
+        220,
+        220,
+        220,
+        220,
+        139,
+        220,
+        220,
+        220,
+        220,
+        202,
+        220,
+        220,
+        220,
+        220,
+        220,
+        45,
+        220,
+        220,
+        220,
+        220,
+        220,
+        108,
+        220,
+        220,
+        220,
+        220,
+        220,
+        171,
+        220,
+        220,
+        220,
+        220,
+        220,
+        220,
+        14,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        220,
+        220,
+        220,
+        220,
+        202,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    }
+  ],
+  "asideDeltaFrames": 180,
+  "deltasBySubscription": {
+    "a5d88619ef4940e99cbee3695a973d6a": 32,
+    "2bb3782e183f494daa3b2b1478ae22b5": 148
+  },
+  "deltasByAside": {
+    "b4d5bb7c-6c78-4c29-a0ae-31a620efd60a": 8,
+    "cdc89e4e-f65a-4cc9-a0ba-f00c91ef8f61": 8,
+    "c5353bf0-7acc-4d83-af20-ce8667090c28": 8,
+    "ae6f7a07-9804-4965-8e05-4b6283675fe4": 8,
+    "c4a44d33-eee0-4e52-aea5-cdee647764ce": 8,
+    "da0cfb27-86fc-4ddd-93d6-8e1b40410101": 8,
+    "4c846a10-fdc9-4dc9-adff-ca2a28cca711": 8,
+    "fb782eb7-4e39-48f5-b5cc-a95ae9fd8de2": 8,
+    "844bfd0e-d958-4bb6-8b0c-2209ab3c9e55": 10,
+    "7cd454ee-a6b0-43f3-b692-c0d45ea48404": 10,
+    "d60b43f8-ed70-4c6b-ad3c-40136cd79474": 10,
+    "c2daa085-e2e8-4632-8f55-83b49265296b": 8,
+    "6d43b871-455d-4a3f-85ad-9806b1a58e71": 4,
+    "a1d91e43-d980-4cf7-9e8b-bf156d42d034": 5,
+    "fa37e7ab-6744-4a01-a036-7697947d261b": 5,
+    "7c099f50-dd85-4f47-a5cd-90bfa30773cb": 5,
+    "332acac3-ae69-4321-96f0-ac4e67c4d07a": 5,
+    "39ddcbdc-af90-436e-8143-a71f3adf783c": 6,
+    "f5062cd1-3ede-4810-bf91-006eb8ca8ca9": 6,
+    "45f085db-7d43-41bb-8cdb-79a246d92a5e": 6,
+    "c678c1b8-6940-4837-8466-21a46b35a598": 7,
+    "be8de7dc-69c5-4549-9432-df4d7738b413": 8,
+    "c4acee3c-adb4-4c55-88df-cca7f6196e8a": 5,
+    "9af19d97-edee-4d7d-a324-81fa2cc79eb3": 8,
+    "49815c28-7d09-4e08-a4b1-c3176536515a": 8
+  },
+  "refused422": 0,
+  "messagePosts": [
+    {
+      "at": "2026-09-24T17:44:08.073Z",
+      "url": "/v1/desktop/sessions/4e3413e67cda/messages",
+      "kind": "message",
+      "text": "seed turn for the round-4 scene",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"74344fa1-51e8-4bd8-b6da-56bae1c9015d\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-24T17:44:08.074Z"
+    }
+  ],
+  "asideOps": [
+    {
+      "at": "2026-09-24T17:44:29.348Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides/e5a59529-a0ef-49c5-b7f5-08f8358b4e99",
+      "kind": "close",
+      "probe": false,
+      "status": 404,
+      "response": "{\"detail\":\"This aside is no longer available\"}"
+    },
+    {
+      "at": "2026-09-24T17:44:32.719Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides/ef2e45f1-be62-46b2-a4f7-a0f4e2a382f5",
+      "kind": "close",
+      "probe": false,
+      "status": 404,
+      "response": "{\"detail\":\"This aside is no longer available\"}"
+    },
+    {
+      "at": "2026-09-24T17:45:01.102Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides/cdc89e4e-f65a-4cc9-a0ba-f00c91ef8f61",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"cdc89e4e-f65a-4cc9-a0ba-f00c91ef8f61\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:45:08.555Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides/c5353bf0-7acc-4d83-af20-ce8667090c28",
+      "kind": "close",
+      "probe": true,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"c5353bf0-7acc-4d83-af20-ce8667090c28\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:45:10.599Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides/d444229c-82e5-440f-b6f3-0ab0416c6d02",
+      "kind": "close",
+      "probe": false,
+      "status": 404,
+      "response": "{\"detail\":\"This aside is no longer available\"}"
+    },
+    {
+      "at": "2026-09-24T17:45:16.988Z",
+      "method": "POST",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides/ae6f7a07-9804-4965-8e05-4b6283675fe4/adopt",
+      "kind": "adopt",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"ae6f7a07-9804-4965-8e05-4b6283675fe4\",\"status\":\"adopted\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:45:44.125Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides/da0cfb27-86fc-4ddd-93d6-8e1b40410101",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"da0cfb27-86fc-4ddd-93d6-8e1b40410101\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:45:52.004Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides/4c846a10-fdc9-4dc9-adff-ca2a28cca711",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"4c846a10-fdc9-4dc9-adff-ca2a28cca711\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:45:58.973Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides/fb782eb7-4e39-48f5-b5cc-a95ae9fd8de2",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"fb782eb7-4e39-48f5-b5cc-a95ae9fd8de2\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:46:26.233Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides/c2daa085-e2e8-4632-8f55-83b49265296b",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"c2daa085-e2e8-4632-8f55-83b49265296b\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:46:31.492Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides/6d43b871-455d-4a3f-85ad-9806b1a58e71",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"6d43b871-455d-4a3f-85ad-9806b1a58e71\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:46:36.154Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides/a1d91e43-d980-4cf7-9e8b-bf156d42d034",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"a1d91e43-d980-4cf7-9e8b-bf156d42d034\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:46:40.536Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides/fa37e7ab-6744-4a01-a036-7697947d261b",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"fa37e7ab-6744-4a01-a036-7697947d261b\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:46:46.144Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides/7c099f50-dd85-4f47-a5cd-90bfa30773cb",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"7c099f50-dd85-4f47-a5cd-90bfa30773cb\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:46:50.628Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides/332acac3-ae69-4321-96f0-ac4e67c4d07a",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"332acac3-ae69-4321-96f0-ac4e67c4d07a\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:46:56.937Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides/39ddcbdc-af90-436e-8143-a71f3adf783c",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"39ddcbdc-af90-436e-8143-a71f3adf783c\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:47:01.906Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides/f5062cd1-3ede-4810-bf91-006eb8ca8ca9",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"f5062cd1-3ede-4810-bf91-006eb8ca8ca9\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:47:07.657Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides/45f085db-7d43-41bb-8cdb-79a246d92a5e",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"45f085db-7d43-41bb-8cdb-79a246d92a5e\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:47:14.654Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides/c678c1b8-6940-4837-8466-21a46b35a598",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"c678c1b8-6940-4837-8466-21a46b35a598\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:47:27.406Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides/c4acee3c-adb4-4c55-88df-cca7f6196e8a",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"c4acee3c-adb4-4c55-88df-cca7f6196e8a\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:47:34.383Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides/9af19d97-edee-4d7d-a324-81fa2cc79eb3",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"9af19d97-edee-4d7d-a324-81fa2cc79eb3\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-24T17:47:36.524Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides/23aefd09-8c21-49cd-bbbb-e5b5fc2fe7ca",
+      "kind": "close",
+      "probe": false,
+      "status": 409,
+      "response": "{\"detail\":\"Wait for the aside to finish before closing it\"}"
+    },
+    {
+      "at": "2026-09-24T17:47:52.256Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/4e3413e67cda/asides/49815c28-7d09-4e08-a4b1-c3176536515a",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"49815c28-7d09-4e08-a4b1-c3176536515a\",\"status\":\"closed\"},\"replayed\":false}}"
+    }
+  ]
+}
+--- end counters ---
