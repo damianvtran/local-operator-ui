@@ -74,22 +74,30 @@ import {
 	PROBE_TIMEOUT_MS,
 	type ProbeObservation,
 } from "./daemon-status";
-import type { DiscoveredDaemon, ServeRecord } from "./discovery";
+import type {
+	DiscoveredDaemon,
+	HealthIdentity,
+	ServeRecord,
+} from "./discovery";
 import {
 	HEALTH_PATH,
 	OWNED_RECORD_WINDOW_MS,
 	OWNED_REGISTRATION_WINDOW_MS,
 	type UnreachableCause,
 	type WedgedRecord,
+	addressHolders,
+	addressHoldsLiveRecord,
 	claimDesktopPlane,
 	classifyUnreachable,
 	discoverDaemons,
+	listenerPidsOn,
 	normaliseAddress,
 	parseRecord,
 	pidLiveness,
 	probeIdentity,
 	probeUnidentified,
 	readIdentity,
+	readRecordForPid,
 	reapStaleRecords,
 	recordAddress,
 	serveRunDir,
@@ -179,16 +187,167 @@ export function readinessPollDelayMs(elapsedMs: number): number {
  */
 const DESKTOP_TOKEN_FILENAME = "desktop-token";
 
+/** The port one of this app's own addresses names, or null when it names none. */
+function portOf(address: string): number | null {
+	try {
+		const parsed = Number.parseInt(new URL(address).port, 10);
+		return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+	} catch {
+		return null;
+	}
+}
+
 /**
- * What the spawn gate found at the address this app is configured for.
+ * One holder, as the parenthesised machine-voice clause every sentence about it
+ * renders - composed HERE and nowhere else, so the log line and the status detail
+ * cannot describe one occupant two ways.
+ *
+ * `install_kind` when the holder published one (`uv-tool`, `pipx`, `pip`, ...),
+ * and the install's own `prefix` only when it did not: the prefix is a full path,
+ * and a status line that spends forty characters on one machine's directory layout
+ * is the kind of sentence design round 1 already asked to shorten.
+ */
+function describeOccupant(occupant: AddressOccupant): string {
+	const facts: string[] = [];
+	if (occupant.pid !== null) {
+		facts.push(
+			occupant.pidSource === "listener"
+				? `pid ${occupant.pid} read off the listening socket`
+				: `pid ${occupant.pid}`,
+		);
+	}
+	const install = occupant.installKind || occupant.prefix;
+	if (install) facts.push(install);
+	if (occupant.version) facts.push(`v${occupant.version}`);
+	if (occupant.startedAtMs !== null) {
+		facts.push(`started ${new Date(occupant.startedAtMs).toISOString()}`);
+	}
+	return facts.length > 0 ? ` (${facts.join(", ")})` : "";
+}
+
+/**
+ * Every holder the gate found, as one sentence fragment.
+ *
+ * Composed from the occupancy records rather than from the probe details, because
+ * the operator's question is "what is on my port" and the answer has to name it:
+ * address, pid, install, and when the holder started where a record on this machine
+ * knows. Verified against the app's own run of 2026-09-23: the sentence the app
+ * produced then named the OCCUPANCY as a category and no holder at all, so the only
+ * way to find the daemon that had taken the port was to go and look.
+ */
+function describeHolders(refusals: OriginOccupancy[]): string {
+	return refusals
+		.map((occupancy) => {
+			const { occupant } = occupancy;
+			if (occupancy.kind === "record") {
+				return `${occupant.address}${describeOccupant(occupant)} is named by a serve record in this app's own registry, and that process is still running`;
+			}
+			if (occupancy.kind === "daemon") {
+				return `${occupant.address}${describeOccupant(occupant)} is serving as a Local Operator daemon this app was not given the key to`;
+			}
+			return `${occupant.address}${describeOccupant(occupant)} did not answer this app's probe with anything it could use (${occupancy.detail})`;
+		})
+		.join("; ");
+}
+
+/**
+ * The same holders, as the sentence for the case where NOWHERE was free.
+ *
+ * The tail is a PROMISE, so it may only name futures this app can reach (review
+ * round 1, F-3): "keeps probing" is reachable, and with the fallback budget beside
+ * it that promise is now stronger than it was - there is a second address to keep
+ * probing as well.
+ */
+function describeSpawnRefusal(refusals: OriginOccupancy[]): string {
+	return `Nothing was started: ${describeHolders(refusals)}. It keeps probing for a server it can open.`;
+}
+
+/**
+ * The SECOND address this app may spawn its managed daemon on, and the last one
+ * it may: after the address it is configured for, this is the whole of the
+ * fallback budget.
+ *
+ * WHY THERE IS A BUDGET AT ALL RATHER THAN A FREE PORT. The renderer talks to
+ * the backend DIRECTLY - the API clients in `src/renderer/src/shared/api/local-operator/`
+ * fetch, stream and read against a mutable base URL, and main only moves that URL -
+ * and the renderer's content-security policy pins `connect-src` to exactly two
+ * local origins (`src/renderer/index.html`). A daemon on any other port is
+ * answering a document that is not allowed to dial it, so a spawn there would
+ * produce a backend the app cannot use. `scripts/backend-spawn-address.test.mjs`
+ * fails if this constant and that policy ever stop agreeing.
+ *
+ * WHY A FALLBACK EXISTS (2026-09-23, measured). The configured address was held
+ * by a DIFFERENT local-operator install's stray `lop serve`. The app refused it
+ * by identity - correct - and refused to spawn its own over it - also correct,
+ * because the token is minted before the spawn and minting over an occupied
+ * address overwrites that daemon's credential. It then QUIT, and the operator had
+ * no app for twelve minutes while a backend they did not own held their port.
+ * The two addresses the renderer already trusts are therefore what the app
+ * serves on, and the configured one stays the first choice.
+ */
+export const FALLBACK_SPAWN_URL = "http://127.0.0.1:8080";
+
+/**
+ * What is holding one address, as the spawn gate can prove it.
+ *
+ * WHY THIS IS A RECORD RATHER THAN A SENTENCE. The gate used to keep a pid and a
+ * version and throw the rest of the answer away, so an operator whose app would
+ * not start could not be told WHAT was in the way - and the question they ask
+ * first ("what is on my port") had to be answered by reading the process table by
+ * hand. Every field here is either a fact the probe already returned or one
+ * read-only lookup (`listenerPidsOn`, `readRecordForPid`), and the sentence the
+ * status carries is composed from this record in ONE place (`describeOccupant`),
+ * so the log and the banner cannot describe one occupant two ways.
+ */
+interface AddressOccupant {
+	address: string;
+	/** The holder's pid, when it named one or the listening socket did. */
+	pid: number | null;
+	/**
+	 * Which of those two sources the pid came from, or null when neither had one.
+	 *
+	 * Not decoration: the occupant's own answer is proof of who holds the address,
+	 * while a pid read off the listening socket is a fact about the kernel's table
+	 * that the occupant has not confirmed, and the copy says which it is.
+	 */
+	pidSource: "answer" | "listener" | null;
+	version: string;
+	prefix: string;
+	installKind: string;
+	/**
+	 * `started_at` from a serve record in this app's own root whose pid matches the
+	 * holder, in epoch ms, or null when no record names it. The interesting case is
+	 * a daemon of this app's own from an earlier run: it is what turns "something
+	 * is on your port" into "a daemon that started at 14:02 is still on it".
+	 */
+	startedAtMs: number | null;
+}
+
+/**
+ * What the spawn gate found at ONE address this app may spawn on.
  *
  * `null` (no occupancy) is deliberately absent from this union: the gate's
  * caller tests for it, so "provably free" cannot be mistaken for a variant
  * somebody forgot to handle.
+ *
+ * `record` is the third kind, and it is a different fact from the other two: no
+ * probe answered this address, but a serve record in this app's own registry
+ * names it with a pid that is not dead. That is why no daemon was started there,
+ * and it is also the shape that used to take the whole app down (see
+ * `FALLBACK_SPAWN_URL`).
  */
 type OriginOccupancy =
-	| { kind: "daemon"; pid: number | null; version: string; detail: string }
-	| { kind: "silent"; cause: UnreachableCause; detail: string };
+	| { kind: "daemon"; occupant: AddressOccupant; detail: string }
+	| {
+			kind: "silent";
+			cause: UnreachableCause;
+			occupant: AddressOccupant;
+			detail: string;
+	  }
+	| { kind: "record"; occupant: AddressOccupant; detail: string };
+
+/** The one kind that does not claim a Local Operator server is present. */
+type SilentOccupancy = Extract<OriginOccupancy, { kind: "silent" }>;
 
 const execPromise = promisify(exec);
 
@@ -271,6 +430,12 @@ export interface BackendServiceManagerOptions {
 	/** The app's ONE login-shell PATH resolver (`../shell-path`). Absent - a test or
 	 * a rig - leaves the spawn environment's PATH as the launch environment's. */
 	userShellPath?: UserShellPath;
+	/**
+	 * The addresses this app may spawn a managed daemon on AFTER the configured one,
+	 * best first. Absent - a test or a rig - is `[FALLBACK_SPAWN_URL]`, which is the
+	 * shipped budget: the second and last origin the renderer's policy trusts.
+	 */
+	fallbackSpawnUrls?: string[];
 }
 
 /**
@@ -299,6 +464,36 @@ export class BackendServiceManager {
 		LocalOperatorStartupMode.NOT_STARTED;
 	private port: number;
 	private backendUrl: string;
+	/**
+	 * The address this app is CONFIGURED to serve on, which never rotates.
+	 *
+	 * `backendUrl` is where the app is TALKING - a daemon discovery adopted, or the
+	 * fallback address after a fallback spawn - so a spawn gate keyed on it would
+	 * ask "may I start a daemon here" about whatever the app happens to be attached
+	 * to, which is somebody else's daemon. The config address is a separate fact and
+	 * it is the one the gate needs.
+	 */
+	private configuredUrl: string;
+	/**
+	 * The addresses this app may spawn a managed daemon on after the configured one,
+	 * best first (`FALLBACK_SPAWN_URL` by default).
+	 *
+	 * A field rather than a bare constant so a rig can exercise the fallback on a
+	 * port the kernel picked, which is the same reason `DiscoverOptions.fetchImpl`
+	 * is injectable: proving this path must not require binding a fixed port on a
+	 * machine somebody else is using.
+	 */
+	private fallbackSpawnUrls: string[];
+	/**
+	 * What stopped the last spawn attempt, when what stopped it was an address this
+	 * app may spawn on being held by something IT DOES NOT OWN. Null when nothing
+	 * did.
+	 *
+	 * Read by `index.ts` through `isStartBlockedByOccupiedAddress()`: a false return
+	 * from `start()` is the one place the app used to quit, and the whole point of
+	 * this field is that this class of failure is not a reason to take the app down.
+	 */
+	private spawnRefusals: OriginOccupancy[] | null = null;
 	private remoteConfigured = false;
 	/** A failed probe or unreadable record is not evidence that spawning is safe. */
 	private discoveryBlocksSpawn = false;
@@ -769,6 +964,7 @@ export class BackendServiceManager {
 	 */
 	constructor(options: BackendServiceManagerOptions = {}) {
 		this.userShellPath = options.userShellPath;
+		this.fallbackSpawnUrls = options.fallbackSpawnUrls ?? [FALLBACK_SPAWN_URL];
 		// Extract port from API URL
 		try {
 			const apiUrl = new URL(backendConfig.VITE_LOCAL_OPERATOR_API_URL);
@@ -800,6 +996,10 @@ export class BackendServiceManager {
 				error,
 			);
 		}
+		// AFTER the try, so both arms leave it set: the configured address is the
+		// parsed one where there is one, and the default the fallback arm just
+		// established where there is not - one assignment, two ways in.
+		this.configuredUrl = this.backendUrl;
 
 		// The app-managed venv for THIS instance - a packaged install and an
 		// unpackaged one must not share it, or the dev instance's backend imports its
@@ -1984,11 +2184,7 @@ export class BackendServiceManager {
 		}
 		if (epoch !== this.startEpoch || this.isAppClosing) return false;
 
-		if (
-			!this.managerMaySpawn ||
-			this.remoteConfigured ||
-			this.discoveryBlocksSpawn
-		) {
+		if (!this.managerMaySpawn || this.remoteConfigured) {
 			/*
 			 * `VITE_DISABLE_BACKEND_MANAGER=true` means "do not spawn or kill a
 			 * daemon", NOT "assume one exists". Discovery found nothing, so there
@@ -2005,9 +2201,7 @@ export class BackendServiceManager {
 			 * is a config file that is not the one in play.
 			 */
 			const noSpawnReason = this.managerMaySpawn
-				? this.remoteConfigured
-					? `the configured target (${this.backendUrl}) is remote`
-					: "a local daemon may still be running and could not be attached"
+				? `the configured target (${this.backendUrl}) is remote`
 				: "VITE_DISABLE_BACKEND_MANAGER=true";
 			logger.info(
 				`No daemon discovered, and this app is configured not to spawn one (${noSpawnReason}).`,
@@ -2066,11 +2260,44 @@ export class BackendServiceManager {
 		 * Retried on the next recovery tick, so a port that frees up is spawned onto
 		 * without an app restart.
 		 */
-		const occupancy = await this.configuredOriginOccupancy();
-		if (occupancy) {
-			this.observeOriginOccupancy(occupancy);
+		/*
+		 * WHERE THIS ATTEMPT MAY SPAWN, and what happens when NOWHERE is free.
+		 *
+		 * The configured address is the first and ordinary choice; the fallback
+		 * budget (`FALLBACK_SPAWN_URL`) is what keeps a daemon this app does not own
+		 * from taking the app down with it. Everything below the resolution is
+		 * unchanged: the winner is assigned to `port`/`backendUrl`, so the spawn, the
+		 * readiness loop, the registration, the identity and the renderer's own base
+		 * URL all follow one address - which is what makes the fallback a choice of
+		 * address rather than a second code path.
+		 *
+		 * `discoveryBlocksSpawn` is no longer read HERE, deliberately. It is discovery's
+		 * verdict scoped to the configured address, and this decision needs the same
+		 * question answered per address, freshly: a stale root-wide verdict was exactly
+		 * what forbade the spawn onto an address nothing was using (see
+		 * `addressHoldsLiveRecord`). The field keeps its reporting role in
+		 * `observeNoCandidate`.
+		 */
+		const { target, refusals } = await this.resolveSpawnTarget();
+		this.spawnRefusals = target ? null : refusals;
+		if (!target) {
+			this.observeSpawnRefusal(refusals);
 			this.startHealthCheck();
 			return false;
+		}
+		this.port = target.port;
+		this.backendUrl = target.address;
+		if (refusals.length > 0) {
+			/*
+			 * The configured address was held and the app is serving somewhere else.
+			 * This is a SUCCESS, so it raises no banner - but it is not silent either:
+			 * "why is my app on 8080" is the next question the operator asks, and the
+			 * answer is a squatter they have probably forgotten about.
+			 */
+			logger.warn(
+				`Starting a managed daemon on ${target.address} instead: ${describeHolders(refusals)}.`,
+				LogFileType.BACKEND,
+			);
 		}
 
 		// No external backend, start our own. The token is minted and persisted
@@ -2706,16 +2933,17 @@ export class BackendServiceManager {
 	 * F-2), and it returns a `silent` occupancy below rather than a licence to
 	 * spawn.
 	 */
-	private async configuredOriginOccupancy(): Promise<OriginOccupancy | null> {
-		const probe = await probeUnidentified(this.backendUrl, {
+	private async configuredOriginOccupancy(
+		address: string,
+	): Promise<OriginOccupancy | null> {
+		const probe = await probeUnidentified(address, {
 			timeoutMs: PROBE_TIMEOUT_MS,
 		});
 		switch (probe.reason) {
 			case "identity-mismatch":
 				return {
 					kind: "daemon",
-					pid: probe.identity?.pid ?? null,
-					version: probe.identity?.version ?? "",
+					occupant: this.occupantOf(address, probe.identity ?? null),
 					detail: probe.detail,
 				};
 			/*
@@ -2735,11 +2963,12 @@ export class BackendServiceManager {
 				return {
 					kind: "silent",
 					cause: "other",
+					occupant: this.occupantOf(address, null),
 					detail: probe.detail,
 				};
 			case "not-a-daemon":
 				logger.info(
-					`${this.backendUrl}${HEALTH_PATH} answered and is not a Local Operator daemon (${probe.detail}); starting a daemon anyway, as this app always has.`,
+					`${address}${HEALTH_PATH} answered and is not a Local Operator daemon (${probe.detail}); starting a daemon anyway, as this app always has.`,
 					LogFileType.BACKEND,
 				);
 				return null;
@@ -2749,6 +2978,7 @@ export class BackendServiceManager {
 					: {
 							kind: "silent",
 							cause: probe.cause ?? "other",
+							occupant: this.occupantOf(address, null),
 							detail: probe.detail,
 						};
 			default:
@@ -2756,9 +2986,145 @@ export class BackendServiceManager {
 				return {
 					kind: "silent",
 					cause: "other",
+					occupant: this.occupantOf(address, null),
 					detail: probe.detail,
 				};
 		}
+	}
+
+	/**
+	 * One address's holder, from the facts already in hand.
+	 *
+	 * WHERE EACH FACT COMES FROM, because the copy has to be able to say it. The
+	 * occupant's own `/health` is asked first and is the only source that proves who
+	 * holds the address; when it did not answer with an identity - a timeout, a
+	 * non-200, a body with no `instance_id` - the LISTENING SOCKET is asked instead
+	 * (`listenerPidsOn`), and `pidSource` carries which of the two produced the pid
+	 * so the sentence reports a kernel fact as a kernel fact.
+	 *
+	 * The record lookup goes the other way round: it is keyed by the pid, so it adds
+	 * `started_at` and the published install to whichever source named the holder.
+	 * A holder that ALSO has a record in this app's own root is usually one of this
+	 * app's own daemons from an earlier run, and that is worth saying out loud.
+	 */
+	private occupantOf(
+		address: string,
+		identity: HealthIdentity | null,
+	): AddressOccupant {
+		let pid =
+			identity && Number.isInteger(identity.pid) && identity.pid > 0
+				? identity.pid
+				: null;
+		let pidSource: AddressOccupant["pidSource"] =
+			pid === null ? null : "answer";
+		if (pid === null) {
+			const port = portOf(address);
+			const [found] = port === null ? [] : listenerPidsOn(port);
+			if (found !== undefined) {
+				pid = found;
+				pidSource = "listener";
+			}
+		}
+		const record = pid === null ? null : readRecordForPid(pid);
+		return {
+			address,
+			pid,
+			pidSource,
+			version: identity?.version || record?.version || "",
+			prefix: identity?.prefix || record?.prefix || "",
+			installKind: identity?.installKind || record?.install_kind || "",
+			startedAtMs: record ? record.started_at * 1000 : null,
+		};
+	}
+
+	/**
+	 * The addresses this app may spawn a managed daemon on, best first.
+	 *
+	 * The configured address leads, so a fallback spawn does not make the app forget
+	 * where it was told to serve: `backendUrl` rotates to wherever the app ended up,
+	 * while this list is recomputed from the configuration on every attempt. The rest
+	 * are the fallback budget, de-duplicated by `normaliseAddress` so a configuration
+	 * that already names 8080 does not probe one address twice (and does not treat a
+	 * `localhost`/`127.0.0.1` pair as two tries).
+	 */
+	private spawnAddresses(): string[] {
+		const addresses = [this.configuredUrl, ...this.fallbackSpawnUrls];
+		const seen = new Set<string>();
+		const allowed: string[] = [];
+		for (const address of addresses) {
+			const normalised = normaliseAddress(address);
+			if (!normalised || seen.has(normalised)) continue;
+			if (portOf(normalised) === null) continue;
+			seen.add(normalised);
+			allowed.push(normalised);
+		}
+		return allowed;
+	}
+
+	/**
+	 * The first address this attempt may actually start a daemon on, and what the
+	 * gate found on every address that refused.
+	 *
+	 * TWO GATES PER ADDRESS, and each answers a different question. The record gate
+	 * (`addressHoldsLiveRecord`) is "does this app's own registry say a process holds
+	 * this address": its subject is a pid, and it needs no network. The occupancy
+	 * probe is "would a child of mine be able to bind this address", asked of the
+	 * address itself - and it exists precisely because the two came apart on the
+	 * operator's machine, where discovery had no record to work with, the app spawned
+	 * onto a port a daemon was already serving, and the child died on `[Errno 48]`
+	 * every ~10 s (see the comment at the call site).
+	 *
+	 * ORDER MATTERS and it is the record gate first: a live record for the address
+	 * means the address is held by something whose pid we can already name, and
+	 * probing it would only add an answer to a question already answered.
+	 */
+	private async resolveSpawnTarget(): Promise<{
+		target: { address: string; port: number } | null;
+		refusals: OriginOccupancy[];
+	}> {
+		const refusals: OriginOccupancy[] = [];
+		for (const address of this.spawnAddresses()) {
+			const port = portOf(address);
+			if (port === null) continue;
+			if (addressHoldsLiveRecord(address)) {
+				const { records } = addressHolders(address);
+				const record = records[0] ?? null;
+				refusals.push({
+					kind: "record",
+					occupant: {
+						address,
+						pid: record?.pid ?? null,
+						// The record is this app's own file about its own child, so the pid
+						// is this app's own answer rather than a socket's.
+						pidSource: record ? "answer" : null,
+						version: record?.version ?? "",
+						prefix: record?.prefix ?? "",
+						installKind: record?.install_kind ?? "",
+						startedAtMs: record ? record.started_at * 1000 : null,
+					},
+					detail: `a serve record in this app's own registry names ${address}`,
+				});
+				continue;
+			}
+			const occupancy = await this.configuredOriginOccupancy(address);
+			if (!occupancy) return { target: { address, port }, refusals };
+			refusals.push(occupancy);
+		}
+		return { target: null, refusals };
+	}
+
+	/**
+	 * Whether the last spawn attempt declined because an address this app may serve
+	 * on is held by something it does not own, so the app has nowhere of its own to
+	 * start a daemon.
+	 *
+	 * THIS IS THE ONE THING `index.ts` NEEDS FROM THIS CLASS, and it is the whole of
+	 * the incident it answers: a `false` from `start()` used to mean "quit", and this
+	 * class of false means the opposite - the app is fine, its address is taken, and
+	 * waiting is what recovers it.
+	 */
+	isStartBlockedByOccupiedAddress(): boolean {
+		return this.spawnRefusals !== null;
 	}
 
 	/**
@@ -2771,32 +3137,30 @@ export class BackendServiceManager {
 	 * `degraded`, usable, no banner, and still counted, because a budget that
 	 * expired is not evidence of absence either way.
 	 */
-	private observeOriginOccupancy(occupancy: OriginOccupancy): void {
-		const daemonLine = occupancy.kind === "daemon";
-		const what = daemonLine
-			? "This app was not given the key to that server, so it did not start a second one"
-			: `${this.backendUrl} answered without proving it is a Local Operator daemon, so this app did not start one there`;
+	private observeSpawnRefusal(refusals: OriginOccupancy[]): void {
+		const detail = describeSpawnRefusal(refusals);
 		/*
-		 * The sentence, and what it may and may not spend words on (design round 1,
-		 * D7). It used to be ~470 characters that restated its own title twice,
-		 * narrated what a program WOULD do ("a new daemon there would fail to bind
-		 * while that answer stands") rather than what happened, and named the serve
-		 * record twice - once as the cause and once as the condition for attaching.
-		 * § 8 asks for the event and the app's own next step, in the operator's
-		 * words: one path, one action, and the identifiers set apart as machine
-		 * voice rather than wrapped in prose (the identity line is the banner's; see
-		 * the note on what this string deliberately no longer carries).
+		 * WHICH OBSERVATION, and the two are not interchangeable. A holder that is a
+		 * Local Operator daemon (or a record that says one is running) is
+		 * `unattachable` - state `wedged`, "a server is running on this machine and
+		 * this app is not attached to it" - so no surface renders it as offline. Only
+		 * a set of addresses that answered NOTHING usable is `unanswered`, which is
+		 * `degraded`: usable, and a probe's silence rather than an absent server.
 		 *
-		 * The tail is a PROMISE, so it may only name futures this app can actually
-		 * reach (review round 1, F-3). What IS reachable is "keeps probing" and "does
-		 * not start a second one here" - and the attach half is not this window's to
-		 * produce, which is why the sentence no longer offers it.
+		 * The old copy stayed in one arm because there was only ever one address. With
+		 * a fallback budget there can be both kinds at once, and then the daemon is the
+		 * fact worth a banner: it is the one the operator can act on.
 		 */
-		const detail = `${what}. It keeps probing for a server it can open.`;
+		const holder = refusals.find((occupancy) => occupancy.kind !== "silent");
+		const silent = refusals.find(
+			(occupancy): occupancy is SilentOccupancy => occupancy.kind === "silent",
+		);
 		this.daemonState.observe(
-			occupancy.kind === "silent"
-				? { kind: "unanswered", cause: occupancy.cause, detail }
-				: { kind: "unattachable", detail },
+			holder
+				? { kind: "unattachable", detail }
+				: silent
+					? { kind: "unanswered", cause: silent.cause, detail }
+					: { kind: "no-candidate", detail },
 		);
 		logger.info(`Not spawning a daemon: ${detail}`, LogFileType.BACKEND);
 		this.notifyStatus();
@@ -3426,11 +3790,21 @@ export class BackendServiceManager {
 			)
 				return;
 			if (await this.discoverAndAttach()) return;
+			/*
+			 * `discoveryBlocksSpawn` is deliberately NOT a term here (2026-09-23). It is
+			 * discovery's verdict scoped to the configured address, and refusing on it
+			 * vetoed the recovery spawn on the FALLBACK address in exactly the incident
+			 * this change exists for: a live record naming the configured address, which
+			 * this app may not attach to, was enough to stop the app ever getting a
+			 * daemon of its own. The term is subsumed by `startOwned`'s own resolution,
+			 * which asks that question per address and refuses each held one - so a
+			 * spawn over a live daemon remains impossible, without one address's record
+			 * silencing every other address.
+			 */
 			if (
 				!this.managerMaySpawn ||
 				this.remoteConfigured ||
-				this.isExternalBackend ||
-				this.discoveryBlocksSpawn
+				this.isExternalBackend
 			)
 				return;
 			await this.start({ quiet: true });
