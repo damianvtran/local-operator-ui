@@ -21,8 +21,10 @@
  */
 
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { MarkdownRenderer } from "../markdown-renderer";
+import { formatDuration } from "./tool-row-model";
 import { TraceGlyph } from "./trace-rail";
 
 export type AgentReasoningProps = {
@@ -30,11 +32,26 @@ export type AgentReasoningProps = {
 	label?: string;
 	/** The reasoning text. Empty or absent renders nothing. */
 	content?: string;
+	/**
+	 * How long the thinking took, when the record carries one.
+	 *
+	 * §E4's whole point for a COLLAPSED line: `Thought for 12s` says something on
+	 * its own, while a bare `Thought` says only that there was some. A live turn has
+	 * no duration yet and passes nothing, which is the spec's `Thinking…` state.
+	 *
+	 * No call site supplies one today: the canonical record's `thinking` field
+	 * carries the text and no clock, so the "for Ns" half is only reachable once a
+	 * record reports one. Named on the PR rather than faked with a re-render timer,
+	 * which would report the time the row has been MOUNTED as the time the agent
+	 * thought.
+	 */
+	durationS?: number | null;
 };
 
 export const AgentReasoning = ({
 	label = "Reasoning",
 	content,
+	durationS = null,
 }: AgentReasoningProps) => {
 	const showAgentReasoning = useUiPreferencesStore(
 		(state) => state.showAgentReasoning,
@@ -53,7 +70,18 @@ export const AgentReasoning = ({
 					 * 14px body strut so this row is the same height as the action
 					 * rows beside it, the inner one carries the type step. */}
 					<span className="truncate">
-						<span className="text-ink-dim text-meta">{label}</span>
+						{/*
+						 * `text-body-sm`/13 rather than the `text-meta` step this carried:
+						 * §E4 makes the reasoning line one of the transcript's ROWS, and a
+						 * row's label is 13px (the ledger's own verbs moved off 12px in
+						 * §E1 for the same reason). The ink stays `ink-dim` - this is the
+						 * quietest tier of the hierarchy and it sits above every action.
+						 */}
+						<span className="text-ink-dim text-body-sm">
+							{durationS !== null
+								? `${label} for ${formatDuration(durationS)}`
+								: label}
+						</span>
 					</span>
 				</span>
 			}
@@ -72,14 +100,28 @@ export const AgentReasoning = ({
 			 * this rail uses; the fifth tier of the hierarchy should not be the
 			 * loudest thing a click can reveal.
 			 */}
-			<MarkdownRenderer
-				content={content}
-				className="[--md-ink:var(--lo-ink-muted)]"
-				styleProps={{
-					fontSize: "var(--text-body-sm)",
-					lineHeight: "var(--text-body-sm--line-height)",
-				}}
-			/>
+			{/*
+			 * THE EXPANDED BODY TAKES `sunken` AT RADIUS 10 (§E4), where it used to be
+			 * unboxed on the transcript's own ground.
+			 *
+			 * It was already muted at `text-body-sm`, which fixed the register - a
+			 * private thought must not paint at the answer's own weight - but it left the
+			 * body on the same ground as the prose above it, so opening the line produced
+			 * a third voice on the page rather than a panel inside the row. `sunken` is
+			 * the app's fourth ground and the one §E5 gives every machine payload;
+			 * reasoning is the same kind of thing (the agent's own working, expanded on
+			 * demand by the reader), two steps up the same hierarchy.
+			 */}
+			<div className={cn("rounded-md bg-sunken p-3")}>
+				<MarkdownRenderer
+					content={content}
+					className="[--md-ink:var(--lo-ink-muted)]"
+					styleProps={{
+						fontSize: "var(--text-body-sm)",
+						lineHeight: "var(--text-body-sm--line-height)",
+					}}
+				/>
+			</div>
 		</Disclosure>
 	);
 };

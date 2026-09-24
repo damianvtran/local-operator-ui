@@ -98,7 +98,10 @@ const NEST_STEP_PX = 8;
  *
  * A shared ceiling rather than two tuned ones, because the two halves of a call
  * are the same kind of thing and a reader should not have to learn two budgets.
- * 240px is ~13 argument lines at `text-mono-sm`'s 17.4px line box plus the
+ *
+ * 320px, which is §E5's own number. It was 240px before this commit, argued from
+ * the panes it replaced: ~13 argument lines at `text-mono-sm`'s 17.4px line box
+ * plus the
  * block's 4px row gap: taller than any ordinary call's arguments (the panes this
  * replaced measured 129-223px for their whole content), short enough that a
  * `write` carrying a whole file cannot push the result's label off the screen.
@@ -108,7 +111,7 @@ const NEST_STEP_PX = 8;
  * `max-h-[${n}px]` template is simply not one of them. The number lives here so
  * there is one place to read it, and in `SECTION_MAX` so the two cannot drift.
  */
-const SECTION_MAX = "max-h-[240px]";
+const SECTION_MAX = "max-h-[320px]";
 
 /**
  * The section cap, for a caller that renders its own section in this idiom.
