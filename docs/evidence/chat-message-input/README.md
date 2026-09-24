@@ -736,3 +736,67 @@ than measured in a browser; it is a pre-existing, hover-only affordance of a
 heavily reviewed component, so it is recorded for its own change rather than
 folded into this one (design round 1 confirmed the two class values and recorded
 the same).
+
+## The failed-send notice: the six states a failed send can leave
+
+Eighty-four frames, added by the change that stopped holding a failed message
+outside the composer: seven stories at 1024 wide, each in all twelve palettes.
+They are the answer to the operator's own report of the screen this replaced,
+which is committed a few directories over -
+[`../chat-cold-send-browser/admission-timeout/localOperatorDark.webp`](../chat-cold-send-browser/admission-timeout/localOperatorDark.webp)
+shows the live app's old model in one frame: an EMPTY composer, the transport's
+twenty-second sentence in red, a grey paragraph ("A message is still being held,
+so a different message cannot be sent yet...") and `Restore message` /
+`Discard message` under it.
+
+| State | What the frame is for |
+| --- | --- |
+| `failed-unknown` | The timeout the operator photographed: the message and its file back in the composer, one sentence, `Retry` and `Clear`. |
+| `failed-not-sent` | The same shape for a refusal decided before the wire (a 413): the whole message is still the composer's. |
+| `failed-too-large` | The arm whose remedy is a SPLIT rather than a press, so the notice offers `Clear` only. |
+| `failed-merged` | The same failure arriving after the user typed while it was in flight: the returned message first, their own sentence kept under it. |
+| `delivered-late` | The muted "Your earlier message was delivered." - the box's edit untouched, and no control at all. |
+| `send-lock` | The muted "Your last message is still sending.", with the user's next message still in the box and nothing to press. |
+| `notice-copy-is-the-app-copy` | The copy rule itself: a story whose play reads `sendFailureCopy`, so a frame set cannot be captured on a tree where the notice stopped coming from the table. |
+
+The sentences are never written in the story. Each takes its notice from
+`sendFailureCopy`, fed the failure the app would have caught, and each play
+asserts what the frame exists to show - the message is in the box, the notice is
+ONE sentence, and it speaks none of the old vocabulary ("held", "admission",
+"Restore message"). Written by the repository's own sweep, from the tree that
+commits them:
+
+```
+npx storybook dev -p 6018 --host 127.0.0.1 --no-open --disable-telemetry
+node scripts/capture-evidence.mjs --only=chat-message-input--failed \
+  --allow-backend http://127.0.0.1:6018
+```
+
+(and one narrowed run each for `--delivered-late`, `--send-lock` and
+`--notice-copy`, which share no prefix). `scripts/capture-evidence.mjs` registers
+the seven ids and their heights - 420 for the chip-carrying arms, 480 for
+`failed-merged`, whose field holds two paragraphs - because a crop at 300 would
+cut the row each frame is about.
+
+The geometry the stills imply, measured rather than asserted from the pictures by
+`scripts/composer-alert-geometry.mjs` (all assertions passing):
+
+| column | state | notice | sentences | controls | box top | move | send bottom/window |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 892 | idle | - | 0 | - | 561 | 0.0px | 784/817 |
+| 892 | notice | 505.5..561 (h55.5) | 1 | Retry+Clear | 561 | 0.0px | 784/817 |
+| 892 | muted | 533.5..561 (h27.5) | 1 | - | 561 | 0.0px | 784/817 |
+| 472 | notice | 555.5..607 (h51.5) | 1 | Retry+Clear | 607 | 0.0px | 804/817 |
+| 172 | notice | 429..539 (h110) | 1 | Retry+Clear | 539 | 0.0px | 804/817 |
+
+The move is the claim: with the same draft, a notice appearing does not move the
+line the user is typing at any width, because the band is bottom-anchored and the
+notice grows upward into the transcript. The old model's own numbers are in the
+sibling `store-refusal` rig's history - 388px of content in a 120px window, with
+the remedy controls below the fold.
+
+What these frames CANNOT show, and what is handed to QA rather than implied: the
+notice on a REAL failed send, end to end. The states here are the component in
+the state the app puts it in; the transport's real deadline firing against a
+stopped backend, the request that was and was not admitted, and the owner's
+durable row count after a Retry are the live matrix in this change's PR.
