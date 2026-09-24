@@ -1671,10 +1671,12 @@ export type ReadAckNotice = {
 	revision: number;
 	/**
 	 * The refusal, for `unsettled` only, exactly as the transport raised it - a
-	 * FACT rather than a sentence: the panel renders it through its own translator
-	 * at the one call site that says sentences (`features/chat/read-ack-notice.ts`),
-	 * which is where every other desktop failure in this app is turned into words.
-	 * Absent for the two states that are not about a refusal.
+	 * FACT rather than a sentence: the panel CLASSIFIES it and composes this app's
+	 * own sentence for the class at the one call site that says sentences
+	 * (`features/chat/read-ack-notice.ts`) - the only place here that turns a
+	 * desktop failure into words, and the only one that knows a store refusal from a
+	 * refusal the store never saw. Absent for the two states that are not about a
+	 * refusal.
 	 */
 	reason?: unknown;
 };

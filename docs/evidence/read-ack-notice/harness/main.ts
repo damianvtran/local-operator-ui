@@ -52,6 +52,7 @@ const config: StorybookConfig = {
 		 * `[data-sonner-toaster]` at all.
 		 */
 		config.optimizeDeps = {
+			include: [...(config.optimizeDeps?.include ?? []), "sonner"],
 			...config.optimizeDeps,
 			exclude: [...(config.optimizeDeps?.exclude ?? []), "sonner"],
 		};

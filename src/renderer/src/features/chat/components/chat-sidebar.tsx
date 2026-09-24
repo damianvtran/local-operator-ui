@@ -203,6 +203,22 @@ const MARK_ALL_READ_LABEL_SHED = "@max-[253px]/chatheading:sr-only";
  */
 const ARCHIVE_TOAST_ID = "archive";
 /**
+ * The receipt announcement's own lane id, and it is STABLE ON PURPOSE.
+ *
+ * A toast is a claim about the state it was raised in, and this one is the only
+ * sentence in the panel the app itself can falsify: the reader presses the row it
+ * names, the receipt lands on the next tick, the mark clears - and the sentence kept
+ * telling them to press for the rest of its life (UX round 2, U4). The archive lane
+ * above already made that rule AND the shape that keeps it true across a remount: ONE
+ * id any instance can dismiss. A per-instance handle cannot keep it - the id lived in
+ * a ref, so a route change off `/chat` and back re-mounted the panel with a fresh ref
+ * while the sentence stood in the app-level container, and nothing left in the app
+ * could retire it (agent review round 3, MINOR 1; UX round 3, U7). With one id the
+ * dismissing branch needs no handle at all, and a new budget's sentence REPLACES the
+ * standing one instead of stacking a second copy of the same fact.
+ */
+const READ_ACK_TOAST_ID = "read-ack";
+/**
  * THE LANE'S OWN `position`, and it is NOT what keeps this message out of the other
  * container - the comment here used to claim the opposite, and R-4 of agent review
  * round 1 refuted it against the installed sonner 2.0.3. What the library does with
@@ -621,7 +637,7 @@ const INCLUDE_ARCHIVED_ID = "chat-search-include-archived";
  * name, where a leading " · " would be read as a separator that is already
  * implied.
  */
-const SILENT_REMEDY = "/stop if it stays silent";
+const SILENT_REMEDY = "/stop if it stays silent.";
 
 /**
  * The id of a row's remedy sentence, WHEN that row renders one.
@@ -915,19 +931,6 @@ export function ChatSidebar({
 			? `${readAckNotice.sessionId}:${readAckNotice.revision}`
 			: null,
 	);
-	/**
-	 * The give-up toast this panel raised, while it is still saying something true.
-	 *
-	 * A toast is a claim about the state it was raised in, and this one is the only
-	 * sentence in the panel that can be falsified by the app itself: the reader
-	 * presses the row the sentence names, the receipt lands on the next tick, the
-	 * mark clears - and the sentence kept telling them to press for the rest of its
-	 * life (UX round 2, U4). The archive lane already made this rule for its own
-	 * lane (`ARCHIVE_UNDO_TOAST_MS` and `dismissToast`: an undo is honest only while
-	 * the state it was taken from holds), so this is that rule applied to the
-	 * receipt's statement.
-	 */
-	const readAckToast = useRef<string | number | null>(null);
 	useEffect(() => {
 		const key = readAckNotice
 			? `${readAckNotice.sessionId}:${readAckNotice.revision}`
@@ -945,17 +948,15 @@ export function ChatSidebar({
 		 */
 		if (readAckNotice?.kind !== "unsettled") {
 			// The fact the sentence stated has gone (the receipt landed, the loop was
-			// torn down, another kind replaced it), so the sentence goes with it.
-			if (readAckToast.current !== null) {
-				dismissToast(readAckToast.current);
-				readAckToast.current = null;
-			}
+			// torn down, another kind replaced it), so the sentence goes with it. By the
+			// LANE'S id rather than a handle: this instance may not be the one that
+			// raised it, and dismissing an id nothing is using is a no-op either way.
+			dismissToast(READ_ACK_TOAST_ID);
 			return;
 		}
 		// The same statement seen again is not a second event; a NEW one replaces the
 		// sentence on screen rather than stacking a second copy of the same fact.
 		if (!changed) return;
-		if (readAckToast.current !== null) dismissToast(readAckToast.current);
 		/*
 		 * THE LANE'S OWN LIFETIME, not sonner's four-second default (design round 1,
 		 * D3). This arm is a sentence plus a remedy the reader has to read before
@@ -964,12 +965,10 @@ export function ChatSidebar({
 		 * seconds, and the reader who pressed the row it names spent that time
 		 * watching a fact that had just stopped being true.
 		 */
-		readAckToast.current = showWarningToast(
-			readAckNoticeSentence(readAckNotice),
-			{
-				duration: ARCHIVE_FAILURE_TOAST_MS,
-			},
-		);
+		showWarningToast(readAckNoticeSentence(readAckNotice), {
+			id: READ_ACK_TOAST_ID,
+			duration: ARCHIVE_FAILURE_TOAST_MS,
+		});
 	}, [readAckNotice]);
 	const [query, setQuery] = useState("");
 	const [all, setAll] = useState(false);

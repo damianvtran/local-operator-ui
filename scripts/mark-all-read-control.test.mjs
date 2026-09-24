@@ -992,7 +992,7 @@ test("a not-answering row's remedy is reachable by focus, and only on that row",
 		// itself still carries it where a pointer lands.
 		assert.match(
 			(await flyoutLines(silent))?.at(-1) ?? "",
-			/· \/stop if it stays silent$/,
+			/· \/stop if it stays silent\.$/,
 		);
 		// The keyboard channel: the row POINTS at the sentence, which is what
 		// makes it announced on focus when the name is read.
@@ -1003,7 +1003,7 @@ test("a not-answering row's remedy is reachable by focus, and only on that row",
 			clause,
 			`aria-describedby names "${id}", which rendered nothing — a description that resolves to nothing is worse than none`,
 		);
-		assert.equal(clause.textContent, "/stop if it stays silent");
+		assert.equal(clause.textContent, "/stop if it stays silent.");
 		assert.ok(
 			clause.textContent && !clause.textContent.includes("·"),
 			"the description kept the tooltip's separator, which is read aloud as punctuation",
@@ -1046,20 +1046,21 @@ test("the give-up sentence is this app's own, keyed on the class of refusal", ()
 	 * them follow.
 	 *
 	 * The sentence used to open with the refusal painted verbatim through
-	 * `userFacingMessage`, and the refusal is the STORE LADDER's copy, written for
-	 * the composer: the contention arm ends "Try again in a moment" (a second retry
-	 * instruction, beside the app's own), the 507 arm instructs the reader about
-	 * "the message" they were sending (a read receipt has no message), and the arm
-	 * where the backend ANSWERED 200 and merely did not settle the completion got
-	 * "The backend did not answer" - a sentence that sends the reader looking for an
-	 * outage that is not there. Rendered: two instructions per toast, up to 248
-	 * characters and six lines.
+	 * `userFacingMessage`, and the refusal is the store ladder's copy, written for
+	 * whichever caller the store serves: the contention arm ends "Try again in a
+	 * moment", and the full-volume arm is an instruction about a volume (the receipt
+	 * route composes its own, `receipts_refusal` in the sibling's
+	 * `desktop_sessions.py`) beside this app's own instruction. Rendered: two
+	 * instructions per toast, up to 248 characters and six lines.
 	 *
-	 * What replaces it says which class of refusal the app met and nothing more. The
-	 * refusals below are the BACKEND's own recorded literals
-	 * (`scripts/store-refusal-copy.mjs` pins them against the sibling's
-	 * `store_failures.py`), so what is checked is the real wire copy rather than a
-	 * stand-in that happens to be short.
+	 * WHAT REPLACES IT SAYS WHICH CLASS OF REFUSAL THE APP MET, and the classes are
+	 * the transport's - not the prose's (agent review round 3, MAJOR 1). The
+	 * refusals below are the BACKEND's own recorded literals for the store arms
+	 * (`scripts/store-refusal-copy.mjs` pins the send path's, which is the same
+	 * classifier the receipt route keys on) and the app's OWN sentences for the two
+	 * arms where no store was reached: a dead preload bridge and a backend that has
+	 * no `sessions.seen` both raise a `DesktopControlError` of the same shape, and
+	 * filing either as a store refusal made this panel state a cause it never met.
 	 */
 	const sentence = (reason) =>
 		readAckNoticeSentence({
@@ -1071,7 +1072,7 @@ test("the give-up sentence is this app's own, keyed on the class of refusal", ()
 	const busy = sentence(
 		new DesktopControlError(
 			503,
-			"Read state is busy right now. It will catch up on its own.",
+			"Read state is busy right now, so nothing was written. Try again in a moment.",
 			undefined,
 			"store_busy",
 		),
@@ -1079,7 +1080,7 @@ test("the give-up sentence is this app's own, keyed on the class of refusal", ()
 	const outOfSpace = sentence(
 		new DesktopControlError(
 			507,
-			"This computer is out of disk space, so the message could not be written.",
+			"This computer is out of disk space, so nothing was written. Free some space on the volume holding /Users/example/Library/Application Support/local-operator, then try again.",
 			undefined,
 			"store_out_of_space",
 		),
@@ -1092,6 +1093,22 @@ test("the give-up sentence is this app's own, keyed on the class of refusal", ()
 			"store_unavailable",
 		),
 	);
+	// THE TRANSPORT'S OWN REFUSALS, with no store code and no store reached. Both
+	// shapes are the app's own copy, taken from the sites that raise them
+	// (`desktop-api.ts`): the IPC/fetch/deadline arm carries no status, and an
+	// incompatible backend carries one.
+	const unreachable = sentence(
+		new DesktopControlError(
+			null,
+			"Desktop controls could not reach the backend process.",
+		),
+	);
+	const incompatible = sentence(
+		new DesktopControlError(
+			400,
+			"Desktop controls need a compatible backend connection.",
+		),
+	);
 	// The hook's own arm: a 200 whose body did not settle the completion reaches
 	// `unresolved` with a reason no transport produced.
 	const unreported = sentence(
@@ -1099,21 +1116,44 @@ test("the give-up sentence is this app's own, keyed on the class of refusal", ()
 	);
 	assert.equal(
 		busy,
-		"The store is busy, so the unread mark was not cleared. Click the chat to try again.",
+		"The read state is busy, so the unread mark was not cleared. Click the chat to try again.",
 	);
 	assert.equal(
 		outOfSpace,
-		"The store could not be written, so the unread mark was not cleared. Click the chat to try again.",
+		"The read state could not be written, so the unread mark was not cleared. Click the chat to try again.",
 	);
 	assert.equal(unavailable, outOfSpace);
+	assert.equal(
+		unreachable,
+		"Desktop controls could not reach the backend process. The unread mark was not cleared. Click the chat to try again.",
+	);
+	assert.equal(
+		incompatible,
+		"Desktop controls need a compatible backend connection. The unread mark was not cleared. Click the chat to try again.",
+	);
 	assert.equal(
 		unreported,
 		"The unread mark was not cleared. Click the chat to try again.",
 	);
 	/*
-	 * And the properties the three share, which are the finding: ONE instruction per
-	 * sentence, the app's; the state named once; and not one word of the route's own
-	 * copy or of the composer's nouns.
+	 * THE RULE MAJOR 1 FILED: a refusal the store never saw may not be drawn as the
+	 * store refusing. This is the assertion that fails on the classification that
+	 * gated `refused` on "not `store_busy`" - the transport raises both of these by
+	 * construction, and a stalled backend or an old one ends in that toast with the
+	 * unread completion's mark still on the row.
+	 */
+	for (const one of [unreachable, incompatible]) {
+		assert.doesNotMatch(
+			one,
+			/read state could not be written/i,
+			`a refusal the store never saw was drawn as the store refusing: ${one}`,
+		);
+	}
+	/*
+	 * And the properties every arm shares: ONE instruction, the state named once,
+	 * and not one word of the store ladder's copy - which is what the store arms and
+	 * the unreported arm must also be free of, including the word "backend", since
+	 * none of them can see one.
 	 */
 	for (const one of [busy, outOfSpace, unreported]) {
 		assert.equal(
@@ -1124,12 +1164,24 @@ test("the give-up sentence is this app's own, keyed on the class of refusal", ()
 		assert.match(one, /unread mark was not cleared\./);
 		assert.doesNotMatch(
 			one,
-			/It will catch up on its own|Try again in a moment|send it again|disk space|the message|backend/i,
+			/It will catch up on its own|Try again in a moment|send it again|disk space|the message|backend|Free some space/i,
 			`the refusal's own words were re-emitted: ${one}`,
 		);
 	}
+	for (const one of [unreachable, incompatible]) {
+		assert.equal(
+			(one.match(/try again/gi) ?? []).length,
+			1,
+			`more than one instruction in: ${one}`,
+		);
+		assert.match(one, /unread mark was not cleared\./);
+		assert.doesNotMatch(
+			one,
+			/read state|Free some space|disk space|the message/i,
+			`a store's words reached a refusal the store never saw: ${one}`,
+		);
+	}
 });
-
 test("the receipt's own state is drawn on its own row, and the give-up arm is announced once", async () => {
 	/*
 	 * UX round 1's U1 and U2, on the PANEL's half of the fix. The loop that knows
@@ -1366,9 +1418,13 @@ test("the receipt's own state is drawn on its own row, and the give-up arm is an
 		await act(async () => {
 			store.setState({ readAckNotice: null });
 		});
-		assert.deepEqual(
-			dismissals,
-			[warnings[0].id],
+		// The lane's id, and it is the LAST dismissal: the effect dismisses this
+		// id on every pass that finds no standing sentence, because the id is the
+		// lane's rather than this instance's and dismissing an id nothing is using
+		// is a no-op (round 3's MINOR 1 is the shape that made that necessary).
+		assert.equal(
+			dismissals.at(-1),
+			warnings[0].id,
 			"the give-up announcement was not retired when the receipt landed",
 		);
 		assert.ok(
@@ -1385,5 +1441,87 @@ test("the receipt's own state is drawn on its own row, and the give-up arm is an
 		await act(async () => toastRoot.unmount());
 		toastHost.remove();
 		await harness.unmount();
+	}
+});
+
+test("a remount cannot leave the receipt's sentence standing", async () => {
+	/*
+	 * UX round 3's U7, which is agent review round 3's MINOR 1 seen from the flow:
+	 * the give-up sentence lives in the app-level container and outlives any one
+	 * panel mount, and the id it was raised under used to live in a component ref. A
+	 * route change off `/chat` and back (or a remount by the region controls) gave
+	 * the panel a fresh ref while the sentence stood, and the fresh instance's "the
+	 * fact has gone" branch was a no-op - so nothing left in the app could retire a
+	 * sentence that says the mark was not cleared, after the mark cleared.
+	 *
+	 * The id is the LANE'S now (one constant, `READ_ACK_TOAST_ID`, the shape the
+	 * archive lane in the same file uses), so the dismissal needs no handle and any
+	 * instance can make it. Driven through the shipped sidebar twice and the shipped
+	 * lane once, which is what makes this the shape that fails on a per-instance id.
+	 */
+	globalThis.__ack = (request) =>
+		request.op === "sessions.list"
+			? Promise.resolve({
+					status: 200,
+					body: { result: { sessions: PILE, truncated: false } },
+				})
+			: Promise.resolve({ read: [], superseded: [], unknown: [] });
+	const toastHost = document.createElement("div");
+	document.body.append(toastHost);
+	const toastRoot = createRoot(toastHost);
+	await act(async () => {
+		toastRoot.render(React.createElement(ThemedToastContainer));
+	});
+	toastCalls.warnings.length = 0;
+	toastCalls.dismissals.length = 0;
+	const warnings = toastCalls.warnings;
+	const dismissals = toastCalls.dismissals;
+	const first = await mount(PILE);
+	const second = { unmount: async () => undefined };
+	try {
+		// The give-up arm, raised on the first instance.
+		await act(async () => {
+			store.setState({
+				readAckNotice: {
+					sessionId: SESSION,
+					kind: "unsettled",
+					revision: 1,
+					reason: new Error("the store refused"),
+				},
+			});
+		});
+		assert.equal(warnings.length, 1, "the give-up arm was not announced");
+		const sentence = warnings[0].message;
+		assert.ok(
+			await waitForSentence(sentence),
+			"the composed sentence never reached the lane",
+		);
+		// THE ROUTE CHANGE: the panel unmounts and comes back with the sentence still
+		// standing, which is the state a ref-shaped id cannot reach.
+		await first.unmount();
+		second.unmount = (await mount(PILE)).unmount;
+		assert.equal(
+			warnings.length,
+			1,
+			"the remount re-announced a sentence the reader has already been given",
+		);
+		// And the receipt lands while the SECOND instance is the mounted one.
+		await act(async () => {
+			store.setState({ readAckNotice: null });
+		});
+		assert.equal(
+			dismissals.at(-1),
+			warnings[0].id,
+			"a remount left the sentence with nothing able to retire it",
+		);
+		assert.ok(
+			await waitForGone(sentence),
+			"the retired sentence is still in the lane",
+		);
+	} finally {
+		globalThis.__ack = undefined;
+		await act(async () => toastRoot.unmount());
+		toastHost.remove();
+		await second.unmount();
 	}
 });
