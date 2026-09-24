@@ -1505,9 +1505,19 @@ scope*). Do not read those two green checks as a matrix: the review round on the
 one-line diff is the rest of the assurance.
 
 It makes the violation loud; it does not make it impossible. This repository's
-`main` configures **no required status checks**, so an `--admin` merge lands over
-a red guard. Treat a failing `version-bump-guard` as a stop signal rather than an
-obstacle to route around: the job is the reviewer's missing memory, not a lock.
+`main` configures **no required status checks** — so no red check is mechanically
+fatal — but that is not "nothing is required": the same `Main Protection` ruleset
+carries a `pull_request` rule with `required_approving_review_count: 1` (*Who may
+merge: two tiers*). Measured 2026-09-24 on the v0.30.24 bump PR #492: a plain
+`gh pr merge` was refused with `is not mergeable: the base branch policy prohibits
+the merge`, and it completed only through the ruleset's bypass actor with
+`--admin`, disclosed on the PR. Read a refusal for what it is — **a `--squash` or
+`--merge` refusal is the missing approval, not the merge method and not CI**;
+`allowed_merge_methods` on that rule is `[merge, squash, rebase]`, so the method
+was never the obstacle. `--admin` is the sanctioned completion for the owner's own
+reviewed PR, never a route around a red guard. Treat a failing
+`version-bump-guard` as a stop signal rather than an obstacle to route around: the
+job is the reviewer's missing memory, not a lock.
 
 The guard fails the **mirror-image** case too: a PR titled
 `chore(release): bump version to X.Y.Z` whose diff does not change the version.
@@ -1797,38 +1807,47 @@ and that refusal is load-bearing: a repair must not move `latest` onto an old ta
 It is also not gated on the writeup, because an old Release's body is whatever it
 shipped with.
 
-**A negative npm read right after a publish is not evidence until it has been
-re-read through a distinct cache key.** Measured 2026-09-24 releasing v0.30.24,
-~20 minutes *after* the `Build and Publish to NPM` job reported success — its own
-output carrying `+ local-operator-ui@0.30.24` and a provenance statement in the
-sigstore transparency log — `registry.npmjs.org` still answered
-`dist-tags.latest: 0.30.23`, with no `0.30.24` in `versions`, **404** on
-`/local-operator-ui/0.30.24` and **404** on the tarball
+**A negative npm read after a publish is not evidence that the publish failed.**
+Measured 2026-09-24 releasing v0.30.24, ~20 minutes *after* the `Build and Publish
+to NPM` job reported success — its own output carrying `+ local-operator-ui@0.30.24`
+and a provenance statement in the sigstore transparency log —
+`registry.npmjs.org` still answered `dist-tags.latest: 0.30.23` with no `0.30.24` in
+`versions`, **404** on `/local-operator-ui/0.30.24` and **404** on the tarball
 `/-/local-operator-ui-0.30.24.tgz`, while v0.30.23 read **200** on those same
-endpoints and two independent mirrors agreed with the stale reading. It is a cached
-negative: Cloudflare fronts the registry (`cf-cache-status: HIT`, `age: 131`,
-`max-age: 300`), and the packument, the version document and the tarball URL were
-all served from a stale replica for over 20 minutes. What discriminates is a
-**different cache key, not a second opinion**: the tarball with a cache-buster
-(`…-0.30.24.tgz?cb=<epoch>`) returned **200**, and the packument requested as
-`Accept: application/vnd.npm.install-v1+json` — its own cache entry — showed the
-version present *and* `latest` already moved, within seconds of the reads that had
-denied it. A mirror fallback is stale in exactly the same way, so the fallback and
-the original can agree on the wrong answer: vary the key before believing a
-negative, and cite the cache-busted read when the conclusion is "published".
+endpoints and two mirrors agreed with the stale reading. The cause was the
+registry's own record rather than the cache in front of it: `npm view
+local-operator-ui time` dates `0.30.24` at **08:41:48Z**, 27m06s after the Release
+event, against 6m54s-8m40s for the five versions before it (0.30.23 `05:41:16` on a
+`05:32:36` Release, 0.30.22 `04:16:22` on `04:08:41`, 0.30.21 `00:35:02` on
+`00:28:08`, 0.30.20 `22:01:58` on `21:54:14`, 0.30.19 `18:34:20` on `18:26:15`).
+The edge was relaying that state, not inventing it: the packument answered
+`cf-cache-status: HIT` with `age: 131` under `cache-control: public, max-age=300`,
+so the copy the edge served had been fetched from npm 131 seconds earlier — fresh by
+cache standards and stale in content. So **timestamp the read and vary the key**: a
+different cache key shows only what some replica holds *now*, and it returns 404
+just as willingly while the origin has nothing, which is why the two discriminating
+reads here — a cache-buster on the tarball URL, and the
+`Accept: application/vnd.npm.install-v1+json` packument, which is its own cache
+entry — flipped only once npm's own record existed. Read them as "the version is
+there now", never as "the publish worked all along", and report an absence as an
+absence rather than as a failed publish.
 
-**Which is why that is worth a paragraph rather than a shrug: a `workflow_dispatch`
-repair cannot heal a genuinely missing npm artifact.** The npm steps are gated on
-the event, not on the tag — `Ensure npm supports trusted publishing`, `Install
-dependencies`, `Pack and assert the tarball ships no V8 bytecode` and `Publish to
-npm` all carry `if: github.event_name != 'workflow_dispatch'` (the last two also
+**A `workflow_dispatch` repair cannot publish to npm, and that is by design.** The
+npm steps are gated on the event rather than on the tag — `Ensure npm supports
+trusted publishing`, `Install dependencies`, `Pack and assert the tarball ships no
+V8 bytecode` and `Publish to npm` all carry
+`if: github.event_name != 'workflow_dispatch'` (the last two also
 `&& steps.check_version.outputs.published == 'false'`) — because a repair exists to
 re-attach assets for an older tag whose npm version is already published, so npm is
 the one channel it must skip. `Check if version already published` refuses out loud
-on that path: `Manual repair requires the matching npm version to already exist;
-refusing publish.` A real npm absence therefore needs a Release event on the tag, or
-a hand-run `npm publish` from it — and an owner who read the cache as fact and
-dispatched a repair would get a green run that did nothing about npm at all.
+on that path, and the refusal is an `exit 1`: `Manual repair requires the matching
+npm version to already exist; refusing publish.` So a genuinely missing npm artifact
+turns a repair run **red** at that step rather than being fixed quietly by it —
+which is the honest outcome and the wrong tool either way. The tool for it is a
+re-run of the release run for that tag, because a hand-published artifact would have
+to reproduce what the job does: the pack step asserts the tarball ships no V8
+bytecode and `npm publish <tarball>` publishes exactly those bytes, where a bare
+`npm publish` rebuilds and ships an artifact nothing asserted.
 
 **Attaching an asset is repairable by re-running the job, and the rule that makes
 that true is about the asset, not about its name.** `scripts/upload-release.mjs`
