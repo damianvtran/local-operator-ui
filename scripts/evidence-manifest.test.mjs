@@ -780,22 +780,37 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  * than being read as history - the distinction the paragraph above draws.
  */
 const STAMP_BINDING_NOTES = [
+	"shellPathRestampNote",
+	"settingsGateRestampNote",
+	"candidateMacArchRestampNote",
+	"notarizeGateRestampNote",
 	/*
-	 * AND THIS LIST NAMES MAIN'S NOTE NOW, not the branch's (review round 3's
-	 * remediation folded onto a moved `origin/main` and took its manifest with it, so
-	 * the file's newest binding claim is main's own). The rule is unchanged: the note
-	 * keeps the pair the file ships, re-spelled on every fold.
+	 * `usageAutoCheckRestampNote` left this list when the remediation below
+	 * re-derived both stamps: its pair is now history, written as bare SHAs in the
+	 * note itself, because leaving it here would have held a fold's values to this
+	 * file as if they were its own — the defect the list exists for.
 	 */
-	"childWorkingLineFoldRestampNote",
 	/*
-	 * AND `shellPathRestampNote` LEFT THIS LIST AT REVIEW ROUND 3 as well, for the
-	 * reason every departure here has recorded: its own text says it was "held to"
-	 * the pair round 3 has just replaced, and a note that quotes a pair the file no
-	 * longer ships is history rather than a binding. What stays in this list is the
-	 * newest claim about what the file ships - which is the claim a reviewer reads to
-	 * check the frames against the tree - and it is updated with the stamps whenever
-	 * the trees move, exactly as this list exists to force.
+	 * `usageInFlightRemediationNote` left this list when the convergence round
+	 * below re-derived both stamps on top of it: its pair is now history, written
+	 * as bare SHAs in the note itself, because leaving it here would have held a
+	 * superseded pair to this file as if it were its own. `usageInFlightConvergenceNote`
+	 * carries the binding the round it records re-derived.
 	 */
+	"usageInFlightConvergenceNote",
+	"macNativeComponentsRestampNote",
+	"telemetrySwitchRestampNote",
+	// The seventh: `readReceiptRestampNote` states this file's own pair for the
+	// read-receipt branch, so it is held to that pair rather than read as history -
+	// the distinction `candidateMacArchRestampNote` above is in the list for.
+	"readReceiptRestampNote",
+	/*
+	 * The eighth: `modelCatalogueFocusRestampNote` states this file's own pair for
+	 * the picker's catalogue-focus branch, and it exists BECAUSE the list is not
+	 * optional reading - the change it re-stamps for rewrote no frame, so a reader
+	 * is owed the two values it does bind and the reason no still was owed.
+	 */
+	"modelCatalogueFocusRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
