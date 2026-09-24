@@ -5,7 +5,7 @@
  *   node seed-label-rig.mjs --tree <worktree> --label <before|after> --moment <labels|counts> --out <dir>
  *
  * Boots the BUILT app of <tree> headless (never shown), against a stub backend on
- * a scratch port that serves conversation 70ddfaaf163a as the runtime would to a
+ * a scratch port that serves conversation <session> as the runtime would to a
  * viewer joining mid-turn: an `open` + `snapshot` SSE frame whose page is the
  * journal's newest 100 entries and whose `live_events` seed is the fixture's
  * (bounded by the backend's own `_bound_live_events_in_place`), and a
@@ -34,7 +34,7 @@ const OUT = arg("--out");
 const PORT = Number(arg("--port", "46377"));
 const DEBUG_PORT = PORT + 1;
 const HISTORY_DELAY_MS = Number(arg("--delay", "1500"));
-const SESSION = "70ddfaaf163a";
+const SESSION = "<session>";
 const THEME = arg("--theme", "localOperatorDark");
 const SIZE = arg("--size", "1380x900");
 /*
