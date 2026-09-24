@@ -66,6 +66,8 @@ const bundle = await build({
 			'export { DESKTOP_LOST_SIGHT_CODE } from "./src/shared/desktop-contract";',
 			'export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";',
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
+			'export { QuestionDock, questionDockHint } from "./src/renderer/src/features/chat/components/trace/question-dock";',
+			'export { askOptionKeyIntent } from "./src/renderer/src/features/chat/components/trace/ask-options";',
 			'export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -102,6 +104,9 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 const { createElement } = await import("react");
 const { renderToStaticMarkup } = await import("react-dom/server");
 const {
+	QuestionDock,
+	questionDockHint,
+	askOptionKeyIntent,
 	AskOptions,
 	resolveNumericAnswer,
 	answerValue,
@@ -688,14 +693,15 @@ test("the card prints no ordinal a user could not type against", () => {
 	assert.equal(buttons.length, 12);
 	const textOf = (button) =>
 		visibleText(button).join("").replace(/\s+/g, " ").trim();
-	// 1-9 keep the ordinal, because typing one resolves to that label.
-	assert.match(textOf(buttons[8]), /^9\./);
+	// 1-9 keep the keycap, because typing one answers that option (§F1 draws the
+	// keycap without the list's trailing dot).
+	assert.match(textOf(buttons[8]), /^9\s?Option 9/);
 	// 10-12 do not, because `resolveNumericAnswer` is 1-9 and the terminal's
 	// shortcut has no tenth rung: a numeral there is a key that cannot be pressed,
 	// which is the class of lie this card exists to stop telling (UX round 2,
 	// U11). The rows stay pressable.
 	for (const index of [9, 10, 11]) {
-		assert.doesNotMatch(textOf(buttons[index]), /^1[0-2]\./);
+		assert.doesNotMatch(textOf(buttons[index]), /^1[0-2]/);
 	}
 });
 
@@ -1172,105 +1178,158 @@ test("a secret ask renders no options at all", () => {
 	assert.equal(render({ options: [] }), null);
 });
 
-test("the production transcript renders options as real controls", () => {
-	// The regression this whole change is about: the gate used to paint an
-	// inert `<ul>`. Rendered from the SHIPPED `CanonicalTranscript` so the
-	// assertion is about what ships, not about a component in isolation.
+test("the transcript no longer draws the question: it is docked (§F1)", () => {
+	/*
+	 * The card used to be the transcript's last item, and a long turn put it
+	 * off-screen (U14). It is docked above the composer now, so the SHIPPED
+	 * transcript given a pending gate must draw none of it - a second copy there
+	 * would be the same question twice, one of them unreachable.
+	 */
 	const markup = renderToStaticMarkup(
 		createElement(CanonicalTranscript, {
 			transcript: EMPTY_TRANSCRIPT,
-			gate: gate({ recommended: 0, question_index: 0, question_total: 2 }),
+			gate: gate({ recommended: 0 }),
 			waiting: false,
 			loadingOlder: false,
 			onLoadOlder: async () => true,
 			containerRef: { current: null },
 			isSmallView: false,
 			status: "live",
-			// Required by this branch's hold work, and `false` for these fixtures: no page
-			// is owed, so the pane paints no placeholder - whose `<output>` would
-			// otherwise sit in every state this file asserts about the answer card.
 			awaitingHydration: false,
 			error: null,
+		}),
+	);
+	assert.ok(!markup.includes('aria-label="Answer options"'));
+	assert.ok(!markup.includes("Popup is not open"));
+	/*
+	 * And the pane mounts the dock, at the composer, on the live gate: pinned on
+	 * the call site because `chat-content.tsx` is not reachable from this bundle.
+	 */
+	const pane = readFileSync(
+		"src/renderer/src/features/chat/components/chat-content.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\//g, "");
+	assert.match(
+		pane,
+		/<QuestionDock[\s\S]{0,400}gate=\{canonical\.view\.frontend\.pending_gate\}/,
+	);
+	assert.ok(
+		pane.indexOf("<QuestionDock") <
+			pane.indexOf("<MessageInput", pane.indexOf("<QuestionDock")) &&
+			pane.indexOf("<MessageInput", pane.indexOf("<QuestionDock")) -
+				pane.indexOf("<QuestionDock") <
+				1500,
+		"the dock renders before the composer, so it sits at the composer's top edge",
+	);
+});
+
+test("the docked card renders options as real controls", () => {
+	const markup = renderToStaticMarkup(
+		createElement(QuestionDock, {
+			gate: gate({ recommended: 0, question_index: 0, question_total: 2 }),
 			onAnswer: () => {},
 		}),
 	);
-	// A `fieldset` rather than `role="group"`: the semantic element carries the
-	// grouping, so this asserts the element and its label, not an ARIA role
-	// restating it.
 	assert.ok(markup.includes("<fieldset"), "the options are a labelled group");
 	assert.ok(markup.includes('aria-label="Answer options"'));
+	assert.ok(markup.includes('aria-label="Question from the agent"'));
 	assert.ok(markup.includes("Popup is not open"), "every option label paints");
 	assert.ok(markup.includes("Recommended"), "the recommended option is marked");
-	// The multi-question prefix survives, and the hint names the affordances
-	// while keeping the free-text path honest. The digits are named because they
-	// work and nothing else says so: the card draws `1.` `2.` `3.` and typing one
-	// resolves to that label (UX round 1, U6). "type ... and send", not "press",
-	// because a digit on its own does nothing — it is typed into the composer and
-	// only sending resolves it (UX round 2, U10).
-	assert.ok(markup.includes("Question 1 of 2."));
-	assert.ok(
-		markup.includes(
-			"Choose an option, type 1-9 and send, or type your own answer below.",
-		),
-	);
-	// The idles eyebrow, and no "sending" claim while nothing is in flight.
-	assert.ok(markup.includes("Waiting for your answer"));
+	// §F1: the accent is the card's border, and only there.
+	assert.match(markup, /<section[^>]*class="[^"]*border-accent/);
+	assert.ok(markup.includes("The agent is asking"));
 	assert.ok(!markup.includes("Sending your answer"));
-	// The old dead list must be gone: no `<li>` carrying an option.
+	assert.ok(markup.includes("Question 1 of 2."));
 	assert.ok(
 		!/<li[^>]*>[^<]*Popup is not open/.test(markup),
 		"options must not render as inert list items",
 	);
 });
 
+test("the hint names only keys that work", () => {
+	assert.equal(
+		questionDockHint(gate()),
+		"Up/Down choose · Enter or 1-3 answers · Esc hides · or type your own answer below",
+	);
+	assert.equal(
+		questionDockHint(gate({ question_index: 1, question_total: 3 })),
+		"Question 2 of 3. Up/Down choose · Enter or 1-3 answers · Esc hides · or type your own answer below",
+	);
+	// A secret ask has no options: the composer is the only answer path.
+	assert.equal(
+		questionDockHint(gate({ options: [], secret: true })),
+		"Type your answer below.",
+	);
+	assert.equal(
+		questionDockHint(gate({ kind: "approval", options: [] })),
+		"Reply yes or no below, or press Escape to stop the turn.",
+	);
+	// Twelve options: the digits stop at nine, because the tenth has no key.
+	const twelve = Array.from({ length: 12 }, (_, i) => ({
+		label: `Option ${String(i + 1)}`,
+	}));
+	assert.match(
+		questionDockHint(gate({ options: twelve })),
+		/Enter or 1-9 answers/,
+	);
+});
+
+test("the option keys: arrows rove, digits answer, and nothing else is claimed", () => {
+	const key = (k, over = {}) => ({
+		key: k,
+		altKey: false,
+		ctrlKey: false,
+		metaKey: false,
+		shiftKey: false,
+		...over,
+	});
+	const intent = (k, focused, count = 3, busy = false, over = {}) =>
+		askOptionKeyIntent(key(k, over), focused, count, busy);
+	// Down from the fieldset lands on the first row; it wraps at the ends.
+	assert.deepEqual(intent("ArrowDown", -1), { kind: "move", index: 0 });
+	assert.deepEqual(intent("ArrowDown", 0), { kind: "move", index: 1 });
+	assert.deepEqual(intent("ArrowDown", 2), { kind: "move", index: 0 });
+	assert.deepEqual(intent("ArrowUp", 0), { kind: "move", index: 2 });
+	assert.deepEqual(intent("ArrowUp", 2), { kind: "move", index: 1 });
+	// A digit answers that option directly; one past the count is not the card's.
+	assert.deepEqual(intent("2", 0), { kind: "answer", index: 1 });
+	assert.equal(intent("4", 0), null);
+	assert.equal(intent("0", 0), null);
+	// Enter is the focused button's own activation, so the card does not claim it
+	// (claiming it would answer twice); Escape is the dock's.
+	assert.equal(intent("Enter", 1), null);
+	assert.equal(intent("Escape", 1), null);
+	// Chords belong to the app, and nothing is claimed while an answer is in flight.
+	assert.equal(intent("1", 0, 3, false, { metaKey: true }), null);
+	assert.equal(intent("ArrowDown", 0, 3, false, { altKey: true }), null);
+	assert.equal(intent("ArrowDown", 0, 3, true), null);
+	assert.equal(intent("1", 0, 3, true), null);
+});
+
 test("an answer in flight says so, and the card holds itself after a press", () => {
-	// D3/U2: on a slow round trip the card was frozen for seconds with nothing
-	// on it changing but a colour step the user never saw move. The eyebrow is
-	// the sentence that says the press landed.
-	const base = {
-		transcript: EMPTY_TRANSCRIPT,
-		gate: gate({ recommended: 0 }),
-		waiting: false,
-		loadingOlder: false,
-		onLoadOlder: async () => true,
-		containerRef: { current: null },
-		isSmallView: false,
-		status: "live",
-		// Required by this branch's hold work, and `false` for these fixtures: no page
-		// is owed, so the pane paints no placeholder - whose `<output>` would otherwise
-		// sit in every state this file asserts about the answer card.
-		awaitingHydration: false,
-		error: null,
-		onAnswer: () => {},
-	};
+	const base = { gate: gate({ recommended: 0 }), onAnswer: () => {} };
 	const sending = renderToStaticMarkup(
-		createElement(CanonicalTranscript, {
+		createElement(QuestionDock, {
 			...base,
 			answering: true,
 			answer: { sending: true, refused: null },
 		}),
 	);
 	assert.ok(sending.includes("Sending your answer…"));
-	assert.ok(!sending.includes("Waiting for your answer"));
+	assert.ok(!sending.includes("The agent is asking"));
 
-	// The hold after a press: options disabled, no second press, no sending
-	// claim (the answer landed, the next stream frame has not arrived), and the
-	// refusal itself is absent because this one was accepted.
 	const held = renderToStaticMarkup(
-		createElement(CanonicalTranscript, {
+		createElement(QuestionDock, {
 			...base,
 			answer: { sending: false, refused: null },
 		}),
 	);
 	assert.ok(held.includes("disabled"), "the card holds its options disabled");
-	assert.ok(held.includes("Waiting for your answer"));
+	assert.ok(held.includes("The agent is asking"));
 	assert.ok(!held.includes("<output"));
 
-	// A refusal lands on the card the press was made on, outcome first (QA
-	// round 1, Q3; UX round 1, U4), and the card stays held so it cannot be
-	// repeated.
 	const refused = renderToStaticMarkup(
-		createElement(CanonicalTranscript, {
+		createElement(QuestionDock, {
 			...base,
 			answer: {
 				sending: false,

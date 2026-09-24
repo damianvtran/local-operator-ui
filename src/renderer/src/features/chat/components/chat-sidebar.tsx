@@ -5329,22 +5329,39 @@ export function ChatSidebar({
 						</>
 					)}
 				</div>
-				{(error || profiles.error || teams.error) && (
-					<div role="alert" className="pt-2 text-meta text-danger">
-						<p>{error || profiles.error?.message || teams.error?.message}</p>
-						<button
-							type="button"
-							className="mt-1 underline"
-							onClick={() => {
-								void fetchSessions();
-								void profiles.refetch();
-								void teams.refetch();
-							}}
-						>
-							Retry refresh
-						</button>
-					</div>
-				)}
+				{/*
+				 * THE FOOT LINE STANDS DOWN WHILE THE SERVER IS UNREACHABLE (§F2).
+				 *
+				 * A lost server used to be stated twice on one screen: the pane's status
+				 * strip ("Can't reach the Local Operator server" + Retry) and this foot's
+				 * red alert ("did not answer this request" + Retry refresh) - two root
+				 * causes, two Retries, one fact, which is the contradiction §F2 exists to
+				 * end. The strip is the one voice for connection state, so while the
+				 * health probe says the server is not reachable this line says nothing.
+				 *
+				 * It is KEPT for the other case, and demoted: a reachable server that
+				 * refused or failed this list's own read is a fact about the LIST, which
+				 * the strip does not state, and the refresh is its only remedy. It is a
+				 * caption now - `ink-muted`, no `role="alert"` - per branding § 9's one
+				 * register for the status slot; the strip owns the one live alert.
+				 */}
+				{(error || profiles.error || teams.error) &&
+					serverHealth?.online !== false && (
+						<div className="pt-2 text-meta text-ink-muted">
+							<p>{error || profiles.error?.message || teams.error?.message}</p>
+							<button
+								type="button"
+								className="mt-1 underline"
+								onClick={() => {
+									void fetchSessions();
+									void profiles.refetch();
+									void teams.refetch();
+								}}
+							>
+								Retry refresh
+							</button>
+						</div>
+					)}
 			</TooltipProvider>
 			{/*
 			 * THE SIDEBAR'S OWN TOAST LANE, and `position: absolute` inline is the whole

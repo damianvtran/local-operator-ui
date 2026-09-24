@@ -4,7 +4,9 @@
  * Paints `TranscriptRecord`s from the canonical session stream by the
  * docs/branding.md § 7 hierarchy, most prominent first:
  *
- *   1. the pending gate (a question for the user) — `AgentQuestion`, last;
+ *   1. the pending gate (a question for the user) — DOCKED above the composer
+ *      by `QuestionDock` (§F1), not drawn here; the gate is read only by the
+ *      working line;
  *   2. assistant prose at reading weight, no paper;
  *   3. one dense ledger row per tool action (`ToolRow`), running state on the
  *      row itself, never a spinner beside it — the one animated indicator is
@@ -72,12 +74,7 @@ import { MarkdownRenderer } from "../components/markdown-renderer";
 import { MessageContainer } from "../components/message-item/message-container";
 import { TurnTimestamp } from "../components/message-item/turn-timestamp";
 import { ReplyPreview } from "../components/reply-preview";
-import {
-	AgentQuestion,
-	AskOptions,
-	DiffBlock,
-	TraceLine,
-} from "../components/trace";
+import { DiffBlock, TraceLine } from "../components/trace";
 import {
 	peerHasDetail,
 	peerIdentityLine,
@@ -314,36 +311,6 @@ export type CanonicalTranscriptProps = {
 	 * this surface is being fixed to stop showing.
 	 */
 	onReconnect: () => void;
-	/**
-	 * Submit `label` as the answer to the pending `ask` gate.
-	 *
-	 * Optional because the transcript renders in surfaces that have no answer
-	 * path at all (stories, and any caller without a live session). Absent, the
-	 * options still render but do nothing — so the callers that CAN answer are
-	 * the only ones that offer it, and the component never fakes a send.
-	 */
-	onAnswer?: (label: string) => void;
-	/**
-	 * An answer is already in flight, from a click or from the composer.
-	 *
-	 * Shared with the composer's own in-flight flag rather than tracked locally:
-	 * a second source of truth here is how a click and a typed send end up both
-	 * believing they are the only answer.
-	 */
-	answering?: boolean;
-	/**
-	 * This panel's own record of the gate it is showing, from the press onwards.
-	 *
-	 * `null` means nothing has been pressed here and the card is live. Once an
-	 * answer has been attempted the card holds itself disabled until the gate
-	 * itself changes (`request_id` or `question_index`), because the renderer's
-	 * `pending_gate` is only cleared by the next stream frame — so between the
-	 * owner accepting the answer and that frame arriving, a live card would let a
-	 * second press post a second answer to a one-shot question (code review round
-	 * 1, R-MINOR). `sending` also drives the callout's eyebrow, and `refused`
-	 * carries the sentence when the owner would not take the answer.
-	 */
-	answer?: { sending: boolean; refused: string | null } | null;
 };
 
 // ---------------------------------------------------------------- rows
@@ -1486,9 +1453,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	attachmentScope,
 	conversationId,
 	onReconnect,
-	onAnswer,
-	answering = false,
-	answer = null,
 }) => {
 	// A crash-recovered outcome has no durable row of its own, so it is
 	// synthesized here rather than in the stream reducer: this is the layer that
@@ -2296,111 +2260,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						</div>
 					)}
 
-					{/* Tier 1: the pending gate is always last while it is actionable. */}
-					{gate && (
-						<div className={GAP.item[isSmallView ? 1 : 0]}>
-							<AgentQuestion
-								/*
-								 * The eyebrow says what is happening, and the options are disabled
-								 * for both halves of that: an answer on its way, and an answer this
-								 * gate already took (the hold). Binding the eyebrow to only the
-								 * second half of the options' own condition left the committed
-								 * in-flight story frame reading "Waiting for your answer" over a
-								 * card whose every option was disabled — two bindings, two
-								 * claims, one frame (design round 2, D7). The product switches
-								 * correctly on the live surface (UX round 2, U2, six samples over
-								 * a held window); the story drove `answering` and disagreed with
-								 * itself.
-								 */
-								busy={answering || Boolean(answer?.sending)}
-								content={
-									gate.detail
-										? `**${gate.title}**\n\n${gate.detail}`
-										: gate.title
-								}
-							/>
-							{gate.kind === "ask" && (
-								<AskOptions
-									options={gate.options}
-									recommended={gate.recommended}
-									requestId={gate.request_id}
-									// One answer in flight at a time, and the card holds itself
-									// disabled after a press until the gate itself moves: `admitting`
-									// is the composer's shared flag, and `answer` is this panel's own
-									// record that it already answered this gate.
-									busy={answering || answer !== null}
-									onAnswer={(label) => onAnswer?.(label)}
-								/>
-							)}
-							<p className="mt-2 text-ink-dim text-meta">
-								{gate.kind === "approval"
-									? /*
-										 * BOTH exits, because a parked card has two and used to
-										 * name one (UX round 1, U2). Escape aborts the WHOLE
-										 * turn - measured: the card clears, the turn ends
-										 * `aborted`, the transcript keeps no denial - so the
-										 * sentence promises the turn's stop exactly as the
-										 * composer's Stop control does. On a paired backend that
-										 * predates the control Escape does nothing, and the
-										 * composer says so while the turn runs; the card stays
-										 * unconditional rather than reading the capability a
-										 * second time, which is a copy decision the UX round can
-										 * revisit if the skew window ever outlives the fix.
-										 */
-										"Reply yes or no in the composer, or press Escape to stop the turn."
-									: /*
-										 * The hint names the new affordance first and keeps the
-										 * free-text path honest, because both are real: the
-										 * options are never guaranteed exhaustive (the terminal
-										 * card carries an explicit free-text row for exactly this
-										 * reason), and a `secret` ask renders no options at all,
-										 * where the composer is the only answer path.
-										 *
-										 * The digits are named because they work and nothing said
-										 * so: the card draws `1.` `2.` `3.` and typing one resolves
-										 * to that label, which is a shortcut a reader of the card
-										 * cannot otherwise discover. The TUI teaches its own
-										 * digits in a footer legend; this is the same sentence in
-										 * the one line this card has (UX round 1, U6).
-										 */
-										[
-											gate.question_total > 1
-												? `Question ${gate.question_index + 1} of ${gate.question_total}.`
-												: null,
-											/*
-											 * "type 1-9 and send", not "press 1-9": a digit on its own does
-											 * nothing. It is typed into the composer and only sending resolves
-											 * it, so the hint describes the two presses the shortcut actually
-											 * takes (UX round 2, U10).
-											 */
-											gate.options.length > 0
-												? "Choose an option, type 1-9 and send, or type your own answer below."
-												: "Type your answer below.",
-										]
-											.filter(Boolean)
-											.join(" ")}
-							</p>
-							{/*
-							 * A refused answer, on the card the press was made on.
-							 *
-							 * The round-1 finding was that a rejected press reported itself in
-							 * the composer's alert, in backend vocabulary ("this question is no
-							 * longer pending"), after the card it referred to had gone; and that
-							 * a second press repeated it because the card was still enabled
-							 * (QA round 1, Q3; UX round 1, U4). The sentence is outcome-first
-							 * and the card stays held, so there is nothing to press twice.
-							 *
-							 * `output`, not a `p` with `role="status"`: the element carries that
-							 * role implicitly, so the announcement survives without an ARIA
-							 * attribute restating what the tag already says.
-							 */}
-							{answer?.refused && (
-								<output className="mt-2 block text-body-sm text-danger">
-									{answer.refused}
-								</output>
-							)}
-						</div>
-					)}
+					{/*
+					 * NO GATE HERE. The pending question used to render as this list's
+					 * last item; it is DOCKED above the composer now (chat redesign §F1,
+					 * `trace/question-dock.tsx`), because an inline card is off-screen on a
+					 * long turn and the question is the one thing the agent is blocked on.
+					 * `gate` is still read above, by the working line: a pending question
+					 * outranks the wait line, and that decision is the pane's.
+					 */}
 
 					{/* No empty state here. The composer already owns it: it renders
 				    "What can I help you with today?" with the suggestion grid on

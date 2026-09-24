@@ -12,6 +12,13 @@ import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { TabPanel } from "@shared/components/ui";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
 import type { SendOutcome } from "@shared/hooks/use-message-input";
+/*
+ * The mode-dependent classes on the canvas's wrapper below are the first
+ * conditional class list in this file: every other one is a literal. `cn` rather
+ * than a duplicated literal prefix, because the two modes share seven of their
+ * eight classes and a copy is what drifts when one of them changes.
+ */
+import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import {
@@ -20,18 +27,6 @@ import {
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
-/*
- * The mode-dependent classes on the canvas's wrapper below are the first
- * conditional class list in this file: every other one is a literal. `cn` rather
- * than a duplicated literal prefix, because the two modes share seven of their
- * eight classes and a copy is what drifts when one of them changes.
- */
-import { cn } from "@shared/lib/utils";
-import {
-	canvasDockWidth,
-	canvasPaneMode,
-	CHAT_PANE_MIN_PX,
-} from "../chat-sidebar-layout";
 import React, {
 	type FC,
 	type ReactNode,
@@ -53,6 +48,16 @@ import {
 	workingLineClaimed,
 	workingLineInputFor,
 } from "../canonical/working-line-model";
+import {
+	CHAT_COLUMN_CONTAINER,
+	CHAT_COLUMN_INSET,
+	CHAT_MEASURE,
+} from "../chat-measure";
+import {
+	CHAT_PANE_MIN_PX,
+	canvasDockWidth,
+	canvasPaneMode,
+} from "../chat-sidebar-layout";
 import type {
 	DraftPickerDestination,
 	DraftResolution,
@@ -83,6 +88,7 @@ import { type McpServerRow, type RunDetails, RunPanel } from "./run-details";
 import type { McpRemedyControls } from "./run-details/use-mcp-remedy";
 import type { SlashDispatchOutcome } from "./slash-dispatch";
 import type { SlashCommandInvocation } from "./slash-submit";
+import { QuestionDock } from "./trace/question-dock";
 
 /**
  * Props for the ChatContent component
@@ -1347,14 +1353,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										 */
 										conversationId={conversationId}
 										onReconnect={canonical.view.retry}
-										onAnswer={canonical.onAnswer}
-										// The composer's own in-flight flag, reused: one
-										// answer per question, whichever surface starts it.
-										answering={Boolean(canonical.admitting)}
-										// This panel's own record of the gate it pressed, so the
-										// card holds itself disabled after an answer instead of
-										// coming back live against a gate the owner already took.
-										answer={canonical.answer ?? null}
 										// The two states a notification click paints before the
 										// owner answers: the rows may be this window's memory of
 										// the conversation rather than the owner's, or the
@@ -1368,6 +1366,36 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 									/* Raw information tab - only accessible in development mode */
 									<RawInfoView content={rawInfoContent} />,
 								)}
+						{/*
+						 * THE AGENT'S QUESTION, DOCKED at the composer's top edge (§F1).
+						 * Outside the transcript's scroller on purpose: a card at the end of
+						 * a long turn is off-screen, and the question is the one thing the
+						 * agent is blocked on. It sits on the composer band's own inset and
+						 * measure, so its edges are the composer's edges.
+						 */}
+						{canonical?.view.frontend?.pending_gate && (
+							<div
+								className={cn(
+									CHAT_COLUMN_CONTAINER,
+									CHAT_COLUMN_INSET,
+									"w-full shrink-0 pt-2",
+								)}
+							>
+								<QuestionDock
+									key={canonical.view.frontend.pending_gate.request_id}
+									className={CHAT_MEASURE}
+									gate={canonical.view.frontend.pending_gate}
+									onAnswer={canonical.onAnswer}
+									// The composer's own in-flight flag, reused: one answer per
+									// question, whichever surface starts it.
+									answering={Boolean(canonical.admitting)}
+									// This panel's own record of the gate it pressed, so the card
+									// holds itself disabled after an answer instead of coming back
+									// live against a gate the owner already took.
+									answer={canonical.answer ?? null}
+								/>
+							</div>
+						)}
 						{/* Message input */}
 						{(canonical || !(isLoadingMessages && messages.length === 0)) && (
 							<MessageInput
