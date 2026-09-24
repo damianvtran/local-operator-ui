@@ -725,6 +725,31 @@ test("a group the census says holds chats never reads as empty", () => {
 	assert.equal(empty.forbidden, false);
 });
 
+/*
+ * A FAILED READ OUTRANKS THE CENSUS'S "NOT CAUGHT UP" GUESS, and the order is the
+ * rule rather than the shape of the code: this was found by the evidence rig
+ * (`sidebar-lazy-chats`, `--scoped-case error`) rendering "Loading chats…" for a
+ * group whose read had permanently failed - a sentence a reader waits on rather
+ * than acts on, with no Retry anywhere on the row.
+ */
+test("a group whose read failed says so, even while the census says it holds chats", () => {
+	const view = groupChatsView({
+		pageable: true,
+		scope: {
+			ids: [],
+			nextCursor: null,
+			loading: false,
+			error: "The stub was asked to refuse scoped reads.",
+			at: 1,
+		},
+		held: 0,
+		total: 70,
+	});
+	assert.equal(view.state, "error");
+	assert.equal(view.sentence, "The stub was asked to refuse scoped reads.");
+	assert.equal(view.retry, true, "a failure the reader can act on offers the act");
+});
+
 test("an expanded group with rows offers its tail only when the daemon said so", () => {
 	const partial = groupChatsView({
 		pageable: true,
@@ -1017,5 +1042,77 @@ test("a scope request leaves the archived set out, and the head request asks for
 		calls[1].include_archived,
 		false,
 		"a scope page's archived rows would be bytes the group rendering throws away, and they must not reach a fact-settling read",
+	);
+});
+
+/*
+ * THE EXTENSION AGAINST A CONCURRENT HEAD POLL.
+ *
+ * A live app polls the head every 30 s AND on every `catalogue` feed frame, so an
+ * extension is very likely to have a head answer land between its request and its
+ * answer. This pins that the extension still lands: the trace below is the shape
+ * the evidence rig produced (`sidebar-lazy-chats`, `--scoped-case paged`) when the
+ * tail press grew the store by nothing.
+ */
+test("a head answer landing mid-extension does not discard the extension", async () => {
+	reset();
+	const parked = [];
+	answer = (request) =>
+		new Promise((resolve) => parked.push({ request, resolve }));
+	const settle = () => new Promise((done) => setTimeout(done, 0));
+
+	const first = store.getState().fetchScopePage("team", "lopdev", null);
+	await settle();
+	parked
+		.filter((entry) => entry.request.scope_kind === "team")
+		.forEach((entry) =>
+			entry.resolve({
+				sessions: [wire("t1")],
+				truncated: true,
+				next_cursor: "off:1",
+				cursor_missing: false,
+			}),
+		);
+	await first;
+	assert.deepEqual(scopeOf("team", "lopdev").ids, ["t1"]);
+
+	const extension = store.getState().fetchScopePage("team", "lopdev", "off:1");
+	await settle();
+	const head = store.getState().fetchSessions(50, true);
+	await settle();
+	parked
+		.filter(
+			(entry) =>
+				entry.request.scope_kind === undefined && entry.request.limit === 50,
+		)
+		.forEach((entry) =>
+			entry.resolve({
+				sessions: [wire("h1")],
+				truncated: true,
+				next_cursor: "off:1",
+				counts: { total: 9, active: 0, unbound: 8, scopes: [] },
+			}),
+		);
+	await head;
+	parked
+		.filter((entry) => entry.request.cursor === "off:1")
+		.forEach((entry) =>
+			entry.resolve({
+				sessions: [wire("t2"), wire("t3")],
+				truncated: false,
+				next_cursor: null,
+				cursor_missing: false,
+			}),
+		);
+	await extension;
+	assert.deepEqual(
+		scopeOf("team", "lopdev").ids.slice().sort(),
+		["t1", "t2", "t3"],
+		"the extension's rows are the scope's, whatever landed in between",
+	);
+	assert.deepEqual(
+		ids().slice().sort(),
+		["h1", "t1", "t2", "t3"],
+		"and they are in the one row store beside the head answer's",
 	);
 });
