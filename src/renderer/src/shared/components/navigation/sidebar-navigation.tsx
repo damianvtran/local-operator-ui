@@ -351,32 +351,34 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	);
 
 	/*
-	 * WHERE THE CONTROL LIVES, AND WHY IT MOVED (design D1).
+	 * WHERE THE CONTROL LIVES, AND WHY IT STAYS IN THIS ROW (design D1, revision 2).
 	 *
-	 * macOS keeps its native traffic lights in this corner even with Electron's
-	 * titlebar hidden, so the rail reserves an 80px lane for them (`styles/
-	 * index.css`). What is left of the 220px rail is 131px of content box after
-	 * the lane and the 8px inset - and the brand lockup alone is 131.9px. With a
-	 * 28px toggle beside it the row needs 80 + 131.9 + 28 + 8 = 247.9px, so the
-	 * control was laid out at x 211.9-239.9 against the rail's own
-	 * `overflow-x-hidden`, i.e. clipped out of the frame entirely - and because
-	 * this button is the only caller of `toggleSidebar`, the rail could not be
-	 * collapsed with a pointer at all.
+	 * On macOS the OS traffic lights sit over this corner, and what makes them safe
+	 * is the LANE above this row (`data-titlebar-lane`, 32px) - not a left padding on
+	 * the row itself. That distinction is the whole of revision 2. While this row
+	 * paid an 80px left padding for the lights its content box was 131px, and the
+	 * arithmetic was 80 + 131.9 (lockup) + 28 (control) + 8 (right inset) = 247.9px
+	 * against a 220px rail: the control was laid out at x 211.9-239.9 with 8.1px of
+	 * its 28px box (2.1px of its 16px glyph) inside the rail's `overflow-x-hidden`.
 	 *
-	 * So on macOS it leaves the header - in BOTH states, so the control has one
-	 * mac rule rather than two - and takes the nav list's first row, which the
-	 * collapsed rail was already giving it. Expanded, that row is `h-8 w-full
-	 * justify-end` inside the list's own `p-2`, which lands the 28px button at
-	 * x 184-212: within 1px of where the header's toggle was meant to sit. On
-	 * Windows and Linux, whose chrome is native and whose header has the room
-	 * (20 + 131.9 + 28 + 8 = 187.9 <= 219), it stays in the header.
+	 * THAT IS A VISIBILITY AND TARGET-SIZE DEFECT, NOT A FUNCTIONAL ABSENCE, and an
+	 * earlier version of this comment overstated it as "the rail could not be
+	 * collapsed with a pointer at all". Corrected, measured on the branch's built
+	 * tree: the drawn sliver IS hit-testable - `elementFromPoint` at y 24 returns the
+	 * toggle at x 215 and the rail itself at x 226, and a real press at x 215 does
+	 * collapse the rail 220 -> 48. What a reader got was a frame with no visible
+	 * control and 8px of sliver to aim at. (A DOM `element.click()` succeeds
+	 * regardless of the clipping, which is why no driver test could see any of it.)
+	 *
+	 * With the lane carrying the lights, the row is the 40px brand row plus the 20px
+	 * gutter: 20 + 131.9 + 28 + 8 = 187.9 <= 219 (the rail's CLIENT width - 220 minus
+	 * its 1px right hairline), so the control lives here on every platform and has
+	 * one rule rather than a mac special case. It lands at x 183-211, fully inside
+	 * the rail, on the brand row's own centre line.
 	 *
 	 * `pointer-events-none` gates the mouse only. Focus remains in the tab order,
 	 * and `group-focus-within` reveals the button before its visible focus outline
 	 * is painted for keyboard users.
-	 *
-	 * The row it lands in must NOT carry `data-titlebar-drag`: it is a control row
-	 * in the middle of the rail, not empty header surface.
 	 */
 
 	const collapseToggle = (
@@ -420,19 +422,46 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			)}
 		>
 			{/*
-			 * A 40px header - `h-10`, the height the conversation header and every pane
-			 * toolbar beside it use - so the rail's brand shares ONE content centre
-			 * (20) with the sidebar's heading block and the conversation header. It was
-			 * `h-12`, whose centre is 24: a rail header four pixels below the bar it sits
-			 * beside is the "all on different lines" the operator reported, and the 8px
-			 * between it and the traffic lights (centre 15.75) is the logo reading as
-			 * displaced.
+			 * THE macOS TRAFFIC-LIGHT LANE (revision 2). 32px of empty rail above the
+			 * brand row, and the only place the OS circles are accounted for anywhere in
+			 * the renderer: 8px above their own hit frames (y 8), the 16px frame itself,
+			 * 8px below = 32, centre 16. Nothing else lives in it - the brand is below it,
+			 * on the rail's own gutter.
 			 *
-			 * `px-5` is not arbitrary: the list's 8px inset plus a row's 12px padding puts
-			 * every nav mark 20px from the rail's edge, and the logo has to start on that
-			 * same line or the rail reads as two columns that nearly agree. On macOS the
-			 * unlayered rule in `styles/index.css` widens the padding to the 80px
-			 * traffic-light lane.
+			 * The lane is why the lights keep the platform default: their drawn circles
+			 * centre on 15.75 against this lane's 16, which is the half-pixel a 2x display
+			 * addresses. Nothing shares a centre with them, so nothing asks them to move
+			 * (`src/main/titlebar-options.ts` states that side of it).
+			 *
+			 * `data-titlebar-drag` because it is empty header surface and must stay a
+			 * window drag handle; rendered in BOTH rail states, because the masthead is
+			 * 32 + 40 = 72 expanded and collapsed alike, and it is that 72 that puts the
+			 * rail's first nav row on the sidebar's list at 80.
+			 */}
+			{isMac && (
+				<div
+					data-titlebar-lane=""
+					data-titlebar-drag=""
+					className="h-8 shrink-0"
+				/>
+			)}
+			{/*
+			 * THE BRAND ROW: 40px (`h-10`) on every platform, on the rail's own left
+			 * gutter.
+			 *
+			 * 40 is the app's toolbar step - the 24px mark leaves 8px above and below in
+			 * it, the same air the 28px avatar and every pane toolbar take in their own
+			 * 40px rows - and it is what makes the masthead total 72 (lane 32 + row 40)
+			 * equal to the sidebar's heading block's own 72, so the rail's first nav row
+			 * and the sidebar's list start together on 80.
+			 *
+			 * `pl-5` is the gutter the composition rests on: the list's 8px inset plus a
+			 * row's 12px padding puts every nav mark 20px from the rail's edge, and the
+			 * logo mark starts on that same line - `Chat`, `My agents` and every
+			 * destination under it included. The mark used to start at x 80, the end of
+			 * the lane this row no longer pays, and a lockup running 80 -> 211.9 in a
+			 * 219px rail reads as right-anchored from either end; that is the placement
+			 * the operator asked to change. No 80px reservation survives in this row.
 			 */}
 			<div
 				data-titlebar-rail-header=""
@@ -443,21 +472,21 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				)}
 			>
 				{/*
-				 * macOS keeps the system traffic lights in this hidden-titlebar corner,
-				 * so its brand hides while collapsed and its toggle moves to a
-				 * route-independent row below (see `collapseToggle`). Windows and Linux
-				 * retain the existing mark/control cross-fade.
+				 * The control lives in this row on EVERY platform now (see
+				 * `collapseToggle`), so the old mac special case is gone: expanded it sits
+				 * after the lockup, and collapsed the mark and the control cross-fade inside
+				 * the row's own `size-8` box - the markup the Windows/Linux path already
+				 * rendered, used on macOS too. The mark stays visible while collapsed, which
+				 * the lane is what made possible.
 				 */}
 				{expanded ? (
 					<>
 						<div data-titlebar-brand="" data-titlebar-no-drag="">
 							<CollapsibleAppLogo expanded />
 						</div>
-						{!isMac && (
-							<div data-titlebar-rail-toggle="" data-titlebar-no-drag="">
-								{collapseToggle}
-							</div>
-						)}
+						<div data-titlebar-rail-toggle="" data-titlebar-no-drag="">
+							{collapseToggle}
+						</div>
 					</>
 				) : (
 					<div className="relative flex size-8 items-center justify-center">
@@ -468,40 +497,18 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						>
 							<CollapsibleAppLogo expanded={false} />
 						</div>
-						{!isMac && (
-							<div
-								data-titlebar-rail-toggle=""
-								data-titlebar-no-drag=""
-								className="absolute inset-0 flex items-center justify-center"
-							>
-								{collapseToggle}
-							</div>
-						)}
+						<div
+							data-titlebar-rail-toggle=""
+							data-titlebar-no-drag=""
+							className="absolute inset-0 flex items-center justify-center"
+						>
+							{collapseToggle}
+						</div>
 					</div>
 				)}
 			</div>
 
-			<ul className="flex flex-col gap-1 p-2">
-				{/*
-				 * macOS ONLY, and in BOTH states: this row is where the rail's collapse
-				 * control lives on that platform (design D1 - see `collapseToggle` for the
-				 * arithmetic that put it here). `justify-end` expanded, so the button keeps
-				 * the right-hand position the header intended; `justify-center` collapsed,
-				 * where a 48px rail has nothing to be right-aligned against.
-				 */}
-				{isMac && (
-					<li
-						data-titlebar-collapsed-toggle-row=""
-						className={cn(
-							"flex h-8 w-full items-center",
-							expanded ? "justify-end" : "justify-center",
-						)}
-					>
-						{collapseToggle}
-					</li>
-				)}
-				{navItems.map(renderNavItem)}
-			</ul>
+			<ul className="flex flex-col gap-1 p-2">{navItems.map(renderNavItem)}</ul>
 
 			{/* `mt-auto` rather than `justify-between` on the nav: the account row is
 			    the only thing at the foot now, and space is what separates it from the

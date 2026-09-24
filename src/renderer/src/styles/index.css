@@ -42,34 +42,6 @@
 	padding-left: 80px;
 }
 
-[data-titlebar-platform="mac"]
-	[data-titlebar-sidebar][data-sidebar-collapsed="true"]
-	[data-titlebar-brand],
-[data-titlebar-platform="mac"]
-	[data-titlebar-sidebar][data-sidebar-collapsed="true"]
-	[data-titlebar-rail-toggle] {
-	display: none;
-}
-
-/*
- * Keep the expanded brand outside the system controls' native lane.
- *
- * macOS only, and the rail header's own `pl-5` is the other-platform value: the
- * header is 40px (`h-10`) on every platform so its brand shares one content
- * centre with the sidebar's heading block and the conversation header, and this
- * rule widens its left padding to the 80px lane the OS circles need.
- *
- * The rail's collapse control is NOT in this header on macOS - it is clipped
- * out of a 220px rail at the lane's end, so it lives in the nav list's first row
- * instead (`sidebar-navigation.tsx`, design D1). The `[data-titlebar-rail-toggle]`
- * arm of the rule below covers Windows and Linux, whose toggle does stay here.
- */
-[data-titlebar-platform="mac"]
-	[data-titlebar-sidebar][data-sidebar-collapsed="false"]
-	[data-titlebar-rail-header] {
-	padding-left: 80px;
-}
-
 /*
  * The collapsed rail is 48px wide, so the chat-list heading begins under the
  * remaining 32px of the native controls' lane. Offset only that heading: the
@@ -85,11 +57,19 @@
  * `padding-left` was the `px-1` utility's 4px and the `Chats` label sat at x 60,
  * directly under the traffic lights' zoom button (x 54.75-68.75).
  *
- * 24px, not the `2rem` (32px) it carried, because 24 is what lands the label on
- * the lane's end line: the row starts at x 56 (the 48px rail plus the list
- * panel's own 8px inset) and `px-1` adds 4, so 56 + 24 = 80 - the same line the
- * rail's brand mark starts on when expanded, and 11.5px clear of the zoom
- * button's drawn circle. The old value would have landed the label at 92.
+ * 24px, not the `2rem` (32px) it carried, because 24 is what puts the label on
+ * the 80px line: the row starts at x 56 (the 48px rail plus the list panel's own
+ * 8px inset) and `px-1` adds 4, so 56 + 24 = 80. That line is derived from the OS
+ * controls rather than from anything in the app's own composition - the zoom
+ * button's hit frame ends at x 70 and 80 is one 8px step past it - and it is also
+ * the line the banner's own copy uses when a banner occupies the top of the
+ * window (the rule above). It clears the button's drawn circle by 11.25px and its
+ * hit frame by 10px. The old value would have landed the label at 92.
+ *
+ * (Revision 2: this is the ONE place the rail's 80px survives. The brand row no
+ * longer reserves anything for the controls - the 32px lane above it does - so
+ * the label's x 80 and the banner's `padding-left` are now the only two things on
+ * that line, and they agree by construction.)
  */
 [data-titlebar-platform="mac"][data-titlebar-sidebar-collapsed="true"]
 	[data-titlebar-chat-heading] {

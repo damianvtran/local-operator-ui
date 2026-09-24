@@ -22,6 +22,17 @@ const COLLAPSED_CHAT_HEADING_SAFE_AREA =
 	/\[data-titlebar-platform="mac"\]\[data-titlebar-sidebar-collapsed="true"\]\s+\[data-titlebar-chat-heading\]\s*\{\s*padding-left:\s*24px;/;
 const DEAD_DESCENDANT_PLATFORM_SELECTOR =
 	/\[data-titlebar-platform="mac"\]\s+\[data-titlebar-sidebar-collapsed="true"\]/;
+/*
+ * The macOS traffic-light lane, and the one thing about it a source pin can see:
+ * it must be the rail's FIRST child. The lane is the whole reason the brand row
+ * below it pays no left reservation and the collapse control fits in that row
+ * (revision 2), so a lane rendered after the header - or not at all - would put
+ * the OS circles back over the brand and the control's arithmetic back over 219.
+ * Asserted as a source ORDER rather than as a count, because a second lane
+ * somewhere further down the rail would satisfy a count and change nothing.
+ */
+const LANE_BEFORE_RAIL_HEADER =
+	/data-titlebar-lane[\s\S]*?data-titlebar-rail-header/;
 const BANNER_BACKGROUND_RULE =
 	/\[data-titlebar-platform="mac"\]\s+\[data-titlebar-banner\]\s*\{[\s\S]*?background-image:\s*linear-gradient\(\s*to right,\s*var\(--color-canvas\)\s+0\s+80px,\s*transparent\s+80px\s*\);[\s\S]*?padding-left:\s*80px;/;
 const CHAT_HEADER_SAFE_AREA_SELECTOR = '[data-tour-tag="chat-header"]';
@@ -43,26 +54,25 @@ const { titlebarOptions } = await import(
 );
 
 /*
- * 13 is the drawn circle's top-left, which puts the lights' centre on 19.75
- * against the shell's 40px band (content centre 20). The value is pinned here
- * rather than described because it is the half of the fix a renderer frame
- * cannot show: `Page.captureScreenshot` photographs the renderer only, so no
- * in-app frame contains the OS circles, and this assertion is what stops the
- * band and the lane drifting apart again unnoticed.
+ * macOS hides the titlebar and leaves the OS controls exactly where the platform
+ * puts them. The derivation is pinned here rather than described, because it is
+ * the one item in this redesign no renderer frame can show: `Page.captureScreenshot`
+ * photographs the renderer only, so no in-app frame contains the traffic lights.
+ *
+ * The renderer gives them their own 32px lane (`data-titlebar-lane` in
+ * `sidebar-navigation.tsx`), and that lane's height comes FROM their frame: 8px
+ * above their 16px hit frames (y 8), 8px below = 32, centre 16 - against the drawn
+ * circles' centre of 15.75 at this default. Nothing else on the strip is aligned
+ * to the lights, which is why no offset is passed. `trafficLightPosition` is a
+ * macOS-only option, so its absence on every other platform is asserted too.
  */
-test("macOS hides the titlebar, retains native traffic lights, and seats them on the 40px band", () => {
-	assert.deepEqual(titlebarOptions("darwin"), {
-		titleBarStyle: "hidden",
-		trafficLightPosition: { x: 9, y: 13 },
-	});
+test("macOS hides the titlebar while retaining native traffic lights", () => {
+	assert.deepEqual(titlebarOptions("darwin"), { titleBarStyle: "hidden" });
 });
 
 test("Windows, Linux, and other platforms keep their existing native titlebar", () => {
 	for (const platform of ["win32", "linux", "freebsd", "openbsd"]) {
 		assert.deepEqual(titlebarOptions(platform), {});
-		// Named separately from the deep-equal above: `trafficLightPosition` is a
-		// macOS-only option, so a non-darwin platform carrying one would be a
-		// native-chrome change dressed as a no-op.
 		assert.ok(!("trafficLightPosition" in titlebarOptions(platform)), platform);
 	}
 });
@@ -156,7 +166,8 @@ test("macOS drag and safe areas are limited to existing empty shell headers", ()
 	assert.ok(chatHeader.includes('data-tour-tag="chat-header"'));
 	assert.ok(shell.includes("data-titlebar-platform="));
 	assert.ok(rail.includes("data-titlebar-rail-header"));
-	assert.ok(rail.includes("data-titlebar-collapsed-toggle-row"));
+	assert.match(rail, LANE_BEFORE_RAIL_HEADER);
+	assert.ok(!rail.includes("data-titlebar-collapsed-toggle-row"));
 	assert.ok(rail.includes("aria-expanded={expanded}"));
 	assert.ok(rail.includes("aria-label={toggleLabel}"));
 	assert.ok(rail.includes('<Tooltip content={toggleLabel} side="right">'));
