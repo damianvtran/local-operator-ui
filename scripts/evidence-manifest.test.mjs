@@ -800,10 +800,13 @@ const STAMP_BINDING_NOTES = [
 	"usageInFlightConvergenceNote",
 	"macNativeComponentsRestampNote",
 	"telemetrySwitchRestampNote",
-	// The seventh: `readReceiptRestampNote` states this file's own pair for the
-	// read-receipt branch, so it is held to that pair rather than read as history -
-	// the distinction `candidateMacArchRestampNote` above is in the list for.
-	"readReceiptRestampNote",
+	/*
+	 * `readReceiptRestampNote` left this list when `fix/seed-label-gap` re-derived
+	 * both stamps on top of it: its pair is history now, the same way
+	 * `usageInFlightRemediationNote`'s became. `seedLabelGapRestampNote` carries
+	 * the binding that fold re-derived.
+	 */
+	"seedLabelGapRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
