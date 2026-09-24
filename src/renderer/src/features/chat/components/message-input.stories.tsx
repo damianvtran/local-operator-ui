@@ -1,3 +1,4 @@
+import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import {
 	COMPOSER_PLACEHOLDER,
 	type SendOutcome,
@@ -12,11 +13,10 @@ import {
 	mergeReturnedText,
 	useConversationInputStore,
 } from "@shared/store/conversation-input-store";
-import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
-import { DESKTOP_DEADLINE_EXCEEDED_CODE } from "../../../../../../src/shared/desktop-contract";
 import type { Meta, StoryObj } from "@storybook/react";
 import { screen, userEvent, within } from "@storybook/test";
 import { type ReactNode, useEffect, useState } from "react";
+import { DESKTOP_DEADLINE_EXCEEDED_CODE } from "../../../../../../src/shared/desktop-contract";
 import type { CanonicalFrontendState } from "../../../../../../src/shared/desktop-session-contract";
 import { interruptNotice, interruptUnavailableNotice } from "../interrupt-turn";
 import type { Message } from "../types/message";
@@ -2285,7 +2285,6 @@ export const PendingSendSmallView: Story = {
 	},
 };
 
-
 /*
  * ============ THE NOTICE A FAILED SEND LEAVES, one still per arm ============
  *
@@ -2483,16 +2482,24 @@ const assertNoticeKeepsThePayload = async (
 ) => {
 	const box = composerField(canvasElement);
 	if (composerValue(box).length === 0)
-		throw new Error("the failed message is not in the composer, which is the whole point of the frame");
+		throw new Error(
+			"the failed message is not in the composer, which is the whole point of the frame",
+		);
 	const alert = canvasElement.querySelector('[role="alert"]');
 	if (!alert)
-		throw new Error("the failure is not announced: the notice row is missing from the composer");
+		throw new Error(
+			"the failure is not announced: the notice row is missing from the composer",
+		);
 	const paragraphs = alert.querySelectorAll("p");
 	if (paragraphs.length > 1)
 		throw new Error(
 			`the notice is a paragraph rather than a sentence: ${paragraphs.length} blocks under the alert`,
 		);
-	if (/still being held|is being kept|cannot be sent yet/i.test(alert.textContent ?? ""))
+	if (
+		/still being held|is being kept|cannot be sent yet/i.test(
+			alert.textContent ?? "",
+		)
+	)
 		throw new Error(
 			`the notice speaks the app's own vocabulary again: ${alert.textContent}`,
 		);
@@ -2508,7 +2515,9 @@ const assertNoticeKeepsThePayload = async (
 const assertMutedNoticeAlone = async (canvasElement: HTMLElement) => {
 	const alert = canvasElement.querySelector('[role="alert"]');
 	if (!alert)
-		throw new Error("the send lock is not announced: the notice row is missing");
+		throw new Error(
+			"the send lock is not announced: the notice row is missing",
+		);
 	const text = alert.textContent ?? "";
 	if (!/still sending/i.test(text))
 		throw new Error(`the send lock no longer states the fact: ${text}`);
@@ -2526,7 +2535,12 @@ const assertMutedNoticeAlone = async (canvasElement: HTMLElement) => {
 
 /** The two rules above, driven against the table the app itself reads. */
 export const NoticeCopyIsTheAppCopy: Story = {
-	render: () => <PendingSendHarness row="none" label="the notice's copy, from the one table" />,
+	render: () => (
+		<PendingSendHarness
+			row="none"
+			label="the notice's copy, from the one table"
+		/>
+	),
 	play: async ({ canvasElement }) => {
 		if (!holdAndReset(canvasElement)) return;
 		const unknown = copyFor(new Error("network down"));
