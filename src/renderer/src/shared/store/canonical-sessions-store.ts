@@ -372,11 +372,40 @@ export type ChatDraft = {
 	 */
 	submittedRendered?: string;
 	/**
+	 * Whether the notice's `Retry` is honest for `error`, as the classifier decided
+	 * it (`sendFailureCopy`), recorded here because the ROW outlives the component
+	 * that raised the notice.
+	 *
+	 * WHY THE ROW HAS TO CARRY IT. A later mount reads `error` (a sentence) and
+	 * `errorCode` and has no Error in hand, so the pane used to answer the same
+	 * question from "is there an error on screen" - which is true for every
+	 * failure this store records, so `Retry` was hidden on exactly the arms it
+	 * exists for (the unknown outcome, where the same id replays) and offered on
+	 * the late-delivery arm, where pressing it duplicates the message. One
+	 * decision, taken where the failure was classified, read by whoever renders.
+	 */
+	errorRetry?: boolean;
+	/**
 	 * Set once a message the PREVIOUS release held outside the composer has been
 	 * moved back into it (`migrateHeldClaim`), so the move happens once however
 	 * many times a pane mounts over the row.
 	 */
 	migratedHeld?: boolean;
+	/**
+	 * THE RELEASED APP'S OWN CLAIM MARKER, and the only field that identifies a row
+	 * that app left behind.
+	 *
+	 * Nothing in this build writes it. It is read exactly once, by
+	 * `migrateHeldClaim`, to answer "was this row written by the app that held a
+	 * failed message OUTSIDE the composer?" - because the fields a legacy held row
+	 * shares with this build's own failure rows (`submittedText`,
+	 * `admissionAttempted`, a not-pending row) are the same fields, and keying the
+	 * migration on those alone made it fire on every fresh failure, wipe the replay
+	 * identity and hand the same message back twice. A row this build wrote carries
+	 * no `heldClaimCode`, so it can never be treated as legacy - which is the
+	 * property the migration needs and the one the old gate did not have.
+	 */
+	heldClaimCode?: string;
 	/**
 	 * True only once an admission request has actually been ISSUED, i.e. its
 	 * outcome is genuinely unknown to us. This is what the unchanged-payload
@@ -770,8 +799,16 @@ export function sendFailureCode(error: unknown): string | undefined {
  * no "request". The user's mental model is a message that did or did not leave.
  */
 export const SEND_FAILURE_COPY = {
-	/** Unknown outcome, the default arm. */
-	unconfirmed: "Couldn't confirm your message was sent.",
+	/**
+	 * Unknown outcome, the default arm.
+	 *
+	 * TWO CLAUSES, and the second is the UX round's finding (U7): the timeout arm
+	 * told the user what the app could not establish and left them to guess whether
+	 * a press was safe. It is - the same request id replays, and the owner's receipt
+	 * de-duplicates it - so the sentence says so rather than leaving the safest
+	 * action unstated.
+	 */
+	unconfirmed: "Couldn't confirm your message was sent. Sending it again is safe.",
 	/** Unknown, and the specific fact is that nothing answered. */
 	unreachable:
 		"Couldn't reach Local Operator. Your message may not have been sent.",
@@ -1242,6 +1279,25 @@ export function migrateHeldClaim(
 	draft: ChatDraft | undefined,
 ): boolean {
 	if (!draft || draft.migratedHeld || draft.pending) return false;
+	/*
+	 * THE ROW MUST BE THE RELEASED APP'S, and this is the guard whose absence was a
+	 * blocker (review round 1's B1). Everything else this migration used to test -
+	 * `submittedText` present, `admissionAttempted`, not pending - is true of a
+	 * FAILURE THIS BUILD JUST RECORDED, so the effect that runs it on every draft
+	 * change fired on its own fresh rows: it handed the payload back a second time
+	 * (doubling the text after a New-chat flip, and writing to an identity the
+	 * composer does not read), then cleared `submittedText`/`submittedAttachments` -
+	 * the replay identity - so the next Retry went out under the old request id with
+	 * a DIFFERENT body (the receipt journal refuses that as a 409, and the app then
+	 * reports an unknown outcome for ever), an edited message reused the old id, and
+	 * a legacy row's payload could arrive twice.
+	 *
+	 * `heldClaimCode` is the released app's own claim marker and this build never
+	 * writes it (see the field), which makes the test "was this row left behind by
+	 * the app that held the message outside the composer" rather than "does this row
+	 * look like a failure".
+	 */
+	if (draft.heldClaimCode === undefined) return false;
 	if (!draft.admissionAttempted || draft.submittedText === undefined)
 		return false;
 	const identity = composerIdentityFor(key, draft.sessionId);
@@ -1259,6 +1315,24 @@ export function migrateHeldClaim(
 		migratedHeld: true,
 		submittedText: undefined,
 		submittedAttachments: undefined,
+		/*
+		 * THE LEGACY SENTENCE GOES WITH THE CLAIM IT DESCRIBED. The released app
+		 * wrote the transport's deadline prose ("The app waits up to 20 seconds for
+		 * this request...") into `error`, and leaving it there put a sentence this
+		 * app no longer produces over the returned draft - review round 1's U7/Q-7
+		 * found it on the first migrated row. The payload is in the composer and its
+		 * outcome is unknown, so the row states the table's sentence for that class
+		 * and offers the press that answers it.
+		 */
+		error: SEND_FAILURE_COPY.unconfirmed,
+		errorCode: undefined,
+		errorRetry: true,
+		/*
+		 * And the marker that makes the move once-only, whatever the row's shape: a
+		 * pane that mounts twice finds `migratedHeld`, and a row written by THIS build
+		 * fails the `heldClaimCode` test above and never gets here at all.
+		 */
+		heldClaimCode: undefined,
 	});
 	return true;
 }
@@ -1611,11 +1685,24 @@ export async function admitChatDraft(
 		 * - and the values it would substitute are already inside the message the
 		 * owner has (or has not) admitted.
 		 */
-		const rendered = replay
-			? (previous?.submittedRendered ?? text)
-			: beforeAdmission
-				? ((await beforeAdmission(id)) ?? text)
-				: text;
+		/*
+		 * THE SEAM RUNS WHENEVER NOTHING HAS BEEN RENDERED YET, replay or not.
+		 *
+		 * The pin exists so a REPLAY is byte-identical to the body the owner's
+		 * receipt is keyed on - and a row created before the create hop answered has
+		 * no pin, because the seam had no session to substitute into. Reading the pin
+		 * alone sent the raw composer text on that retry: the credential markers went
+		 * to the model verbatim ("[Credential #1, 19 chars]") and the credential was
+		 * never stored into the session that the retry had just created - review round
+		 * 1's M4/m5. So the pin is used when there is one, and the seam runs when
+		 * there is not: nothing was rendered, so there is no body to keep identical.
+		 */
+		const rendered =
+			replay && previous?.submittedRendered !== undefined
+				? previous.submittedRendered
+				: beforeAdmission
+					? ((await beforeAdmission(id)) ?? text)
+					: text;
 		attempted = true;
 		/*
 		 * The rendered text is pinned in the same update that latches the attempt,
@@ -1703,6 +1790,9 @@ export async function admitChatDraft(
 		const failureCode = leadingSlash
 			? LEADING_SLASH_CODE
 			: sendFailureCode(error);
+		// One call, so the sentence the row keeps and the control it offers cannot
+		// come from two classifications of the same failure.
+		const copy = sendFailureCopy(error, failureCode);
 		/*
 		 * DID IT LAND AFTER ALL? Only a failure with an UNKNOWN outcome can be
 		 * answered this way, and only when the id the owner would have used is
@@ -1755,7 +1845,12 @@ export async function admitChatDraft(
 			 * app has just said it cannot see. The row is what a remounted composer
 			 * reads, so the notice must survive that remount unchanged.
 			 */
-			error: sendFailureCopy(error, failureCode).message,
+			error: copy.message,
+			/*
+			 * And the control the sentence goes with, decided by the same call: see
+			 * `errorRetry` for why the row carries it rather than the pane deriving it.
+			 */
+			errorRetry: copy.retry,
 		});
 		/*
 		 * THE ONE RETURN PATH, for all three classes, and it is the point of this
