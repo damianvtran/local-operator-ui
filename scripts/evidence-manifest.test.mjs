@@ -1120,6 +1120,22 @@ const BRANCH_RECORDS = [
 	 */
 	"usageInFlightConvergenceNote",
 	/*
+	 * Grown by the pass that made the desktop picker list the providers by
+	 * itself, which wrote this branch's newest top-level record. It is listed for
+	 * the reason the list exists: a fold that starts from main's manifest drops
+	 * it, and with it the only statement of which two trees this pass moved, which
+	 * six frames it added, and which of this surface's frames were re-captured and
+	 * came back byte-identical.
+	 */
+	"modelPickerLiveListingNote",
+	/*
+	 * And by round 1's remediation of that pass — the pass this fold carries: it re-captured four of
+	 * this surface's frames, withdrew its cross-tree `before-` row for a declared supplementary set
+	 * (so a later sweep cannot rewrite a base-tree claim from this tree), and re-derived the stamps
+	 * the round moved.
+	 */
+	"modelPickerRemediationRestampNote",
+	/*
 	 * Grown by the `/btw` aside panel pass, whose re-stamp is this branch's newest
 	 * top-level record. It is listed for the reason the list exists, and this
 	 * branch is a second instance of the case the entry above names: the fold onto
