@@ -1,0 +1,168 @@
+[build] current: assets 2026-09-24T21:58:32.999Z >= sources 2026-09-24T21:08:03.022Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8177
+  serve records 1 linked from /Users/damian/.local-operator/sessions/fb8ab2e2a45f/scratchpad/d4/rig/run-narrow-d4/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/design482-r4-fa711c
+  scratch       /Users/damian/.local-operator/sessions/fb8ab2e2a45f/scratchpad/d4/rig/tmp/lo-renderer-driver-3694
+  frames        /Users/damian/.local-operator/sessions/fb8ab2e2a45f/scratchpad/d4/rig/frames/narrow-d4
+  app cwd       /Users/damian/.local-operator/sessions/fb8ab2e2a45f/scratchpad/d4/rig/tmp/lo-renderer-driver-3694/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8177   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/design482-r4-fa711c/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8177","backend":"http://127.0.0.1:8177"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8177)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown
+        mode=headless visible=false focused=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] d4 session
+        34e39f591ac1
+[note] d4 cap para k1
+        {"case":"para","k":1,"stagedQuotes":0,"wireQuotes":0,"quoteBlocks":0,"quoteLines":[],"questionLines":3,"capPx":231.5,"clientHeight":232,"answerTop":23.5,"lineHeight":20.8,"rowsToEdge":10,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.8},"paragraphGap":20.8,"scrollTop":0,"maxScroll":395}
+[note] d4 cap para k3
+        {"case":"para","k":3,"stagedQuotes":0,"wireQuotes":0,"quoteBlocks":0,"quoteLines":[],"questionLines":3,"capPx":231.5,"clientHeight":232,"answerTop":23.5,"lineHeight":20.8,"rowsToEdge":10,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.8},"paragraphGap":20.8,"scrollTop":0,"maxScroll":478}
+[note] d4 cap para k5
+        {"case":"para","k":5,"stagedQuotes":0,"wireQuotes":0,"quoteBlocks":0,"quoteLines":[],"questionLines":3,"capPx":231.5,"clientHeight":232,"answerTop":23.5,"lineHeight":20.8,"rowsToEdge":10,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.8},"paragraphGap":20.8,"scrollTop":0,"maxScroll":561}
+[note] frame
+        {"label":"d4-narrow-d4-a-paragraph-break-k5","mode":"settled","width":1600,"height":1736}
+[note] A-paragraph-break-k5 geometry
+        {"panel":{"top":345.2,"height":347.8,"bottom":693,"width":252},"cap":"231.5px","capPx":231.5,"transition":"all / 0s","clientHeight":232,"scrollHeight":793,"maxScroll":561,"scrollTop":0,"regionTop":416.5,"turns":1,"questionQuoteBlocks":0,"quoteHeights":[],"quoteLines":[],"questionLines":3,"questionTopInRegion":0,"questionHeightIfRegion":19.5,"lastTurnTopInRegion":0,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":23.5,"rowPitch":20.8,"rowsToEdge":10,"rows":35,"fullyVisibleRows":10,"rowCrossingClipCount":0,"crossing":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.8},"blockCounts":{"p":3},"paragraphGap":20.8,"mdClass":"lo-markdown lo-markdown--row-grid","transcriptTop":-1567.2,"bandTop":343.2}
+[note] d4 cap para k7
+        {"case":"para","k":7,"stagedQuotes":0,"wireQuotes":0,"quoteBlocks":0,"quoteLines":[],"questionLines":3,"capPx":231.5,"clientHeight":232,"answerTop":23.5,"lineHeight":20.8,"rowsToEdge":10,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.8},"paragraphGap":20.8,"scrollTop":0,"maxScroll":644}
+[note] d4 cap para k9
+        {"case":"para","k":9,"stagedQuotes":0,"wireQuotes":0,"quoteBlocks":0,"quoteLines":[],"questionLines":3,"capPx":231.5,"clientHeight":232,"answerTop":23.5,"lineHeight":20.8,"rowsToEdge":10,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.8},"paragraphGap":20.8,"scrollTop":0,"maxScroll":727}
+[note] d4 cap one k1
+        {"case":"one","k":1,"stagedQuotes":1,"wireQuotes":1,"quoteBlocks":1,"quoteLines":[2],"questionLines":4,"capPx":259,"clientHeight":259,"answerTop":70.5,"lineHeight":20.8,"rowsToEdge":9.1,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-4.6},"paragraphGap":20.8,"scrollTop":0,"maxScroll":415}
+[note] d4 cap one k5
+        {"case":"one","k":5,"stagedQuotes":1,"wireQuotes":1,"quoteBlocks":1,"quoteLines":[2],"questionLines":4,"capPx":259,"clientHeight":259,"answerTop":70.5,"lineHeight":20.8,"rowsToEdge":9.1,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-4.6},"paragraphGap":20.8,"scrollTop":0,"maxScroll":581}
+[note] frame
+        {"label":"d4-narrow-d4-b-one-quote-k5","mode":"settled","width":1600,"height":1736}
+[note] B-one-quote-k5 geometry
+        {"panel":{"top":317.7,"height":375.3,"bottom":693,"width":252},"cap":"259px","capPx":259,"transition":"all / 0s","clientHeight":259,"scrollHeight":840,"maxScroll":581,"scrollTop":0,"regionTop":389,"turns":1,"questionQuoteBlocks":1,"quoteHeights":[43],"quoteLines":[2],"questionLines":4,"questionTopInRegion":0,"questionHeightIfRegion":66.5,"lastTurnTopInRegion":0,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":70.5,"rowPitch":20.8,"rowsToEdge":9.1,"rows":35,"fullyVisibleRows":9,"rowCrossingClipCount":0,"crossing":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-4.6},"blockCounts":{"p":3},"paragraphGap":20.8,"mdClass":"lo-markdown lo-markdown--row-grid","transcriptTop":-1594.7,"bandTop":315.7}
+[note] d4 cap one k9
+        {"case":"one","k":9,"stagedQuotes":1,"wireQuotes":1,"quoteBlocks":1,"quoteLines":[2],"questionLines":4,"capPx":259,"clientHeight":259,"answerTop":70.5,"lineHeight":20.8,"rowsToEdge":9.1,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-4.6},"paragraphGap":20.8,"scrollTop":0,"maxScroll":747}
+[note] d4 cap two k1
+        {"case":"two","k":1,"stagedQuotes":2,"wireQuotes":2,"quoteBlocks":2,"quoteLines":[2,1],"questionLines":5,"capPx":286.5,"clientHeight":287,"answerTop":98,"lineHeight":20.8,"rowsToEdge":9.1,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-5.1},"paragraphGap":20.8,"scrollTop":0,"maxScroll":414}
+[note] d4 cap two k5
+        {"case":"two","k":5,"stagedQuotes":2,"wireQuotes":2,"quoteBlocks":2,"quoteLines":[2,1],"questionLines":5,"capPx":286.5,"clientHeight":287,"answerTop":98,"lineHeight":20.8,"rowsToEdge":9.1,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-5.1},"paragraphGap":20.8,"scrollTop":0,"maxScroll":580}
+[note] frame
+        {"label":"d4-narrow-d4-b-two-quote-k5","mode":"settled","width":1600,"height":1736}
+[note] B-two-quote-k5 geometry
+        {"panel":{"top":290.2,"height":402.8,"bottom":693,"width":252},"cap":"286.5px","capPx":286.5,"transition":"all / 0s","clientHeight":287,"scrollHeight":867,"maxScroll":580,"scrollTop":0,"regionTop":361.5,"turns":1,"questionQuoteBlocks":2,"quoteHeights":[43,23.5],"quoteLines":[2,1],"questionLines":5,"questionTopInRegion":0,"questionHeightIfRegion":94,"lastTurnTopInRegion":0,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":98,"rowPitch":20.8,"rowsToEdge":9.1,"rows":35,"fullyVisibleRows":9,"rowCrossingClipCount":0,"crossing":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-5.1},"blockCounts":{"p":3},"paragraphGap":20.8,"mdClass":"lo-markdown lo-markdown--row-grid","transcriptTop":-1622.2,"bandTop":288.2}
+[note] d4 cap two k9
+        {"case":"two","k":9,"stagedQuotes":2,"wireQuotes":2,"quoteBlocks":2,"quoteLines":[2,1],"questionLines":5,"capPx":286.5,"clientHeight":287,"answerTop":98,"lineHeight":20.8,"rowsToEdge":9.1,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-5.1},"paragraphGap":20.8,"scrollTop":0,"maxScroll":747}
+[note] d4 block list
+        {"panel":{"top":345.2,"height":347.8,"bottom":693,"width":252},"cap":"231.5px","capPx":231.5,"transition":"all / 0s","clientHeight":232,"scrollHeight":970,"maxScroll":738,"scrollTop":0,"regionTop":416.5,"turns":1,"questionQuoteBlocks":0,"quoteHeights":[],"quoteLines":[],"questionLines":3,"questionTopInRegion":0,"questionHeightIfRegion":19.5,"lastTurnTopInRegion":0,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":23.5,"rowPitch":20.8,"rowsToEdge":10,"rows":38,"fullyVisibleRows":7,"rowCrossingClipCount":0,"crossing":[],"lastWholeRow":{"tag":"p","text":"Filler row 4, one short sentence that fits a","bottomVsClip":-3.8},"blockCounts":{"p":5,"li":14},"paragraphGap":20.8,"mdClass":"lo-markdown lo-markdown--row-grid","transcriptTop":-1567.2,"bandTop":343.2}
+[note] frame
+        {"label":"d4-narrow-d4-d-edge-list","mode":"settled","width":1600,"height":1736}
+[note] d4 block heading
+        {"panel":{"top":345.2,"height":347.8,"bottom":693,"width":252},"cap":"231.5px","capPx":231.5,"transition":"all / 0s","clientHeight":232,"scrollHeight":1047,"maxScroll":815,"scrollTop":0,"regionTop":416.5,"turns":1,"questionQuoteBlocks":0,"quoteHeights":[],"quoteLines":[],"questionLines":3,"questionTopInRegion":0,"questionHeightIfRegion":19.5,"lastTurnTopInRegion":0,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":23.5,"rowPitch":20.8,"rowsToEdge":10,"rows":33,"fullyVisibleRows":7,"rowCrossingClipCount":0,"crossing":[],"lastWholeRow":{"tag":"h2","text":"A heading whose box the edge can land inside","bottomVsClip":-0.8},"blockCounts":{"p":15,"h2":2},"paragraphGap":20.8,"mdClass":"lo-markdown lo-markdown--row-grid","transcriptTop":-1567.2,"bandTop":343.2}
+[note] frame
+        {"label":"d4-narrow-d4-d-edge-heading","mode":"settled","width":1600,"height":1736}
+[note] d4 block code
+        {"panel":{"top":345.2,"height":347.8,"bottom":693,"width":252},"cap":"231.5px","capPx":231.5,"transition":"all / 0s","clientHeight":232,"scrollHeight":798,"maxScroll":566,"scrollTop":0,"regionTop":416.5,"turns":1,"questionQuoteBlocks":0,"quoteHeights":[],"quoteLines":[],"questionLines":3,"questionTopInRegion":0,"questionHeightIfRegion":19.5,"lastTurnTopInRegion":0,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":23.5,"rowPitch":20.8,"rowsToEdge":10,"rows":32,"fullyVisibleRows":6,"rowCrossingClipCount":1,"crossing":[{"tag":"pre:pre","text":"const handler0 = (req, res) => run(req, res)","rowH":17,"visiblePx":6.8,"hiddenPx":10.2,"visibleFraction":0.4,"topInRegion":225.2,"blockTopInRegion":210.7,"blockBottomInRegion":735.8,"blockBoxH":525.1}],"lastWholeRow":{"tag":"p","text":"Filler row 3, one short sentence that fits a","bottomVsClip":-45.4},"blockCounts":{"p":4,"pre:pre":1},"paragraphGap":20.8,"mdClass":"lo-markdown lo-markdown--row-grid","transcriptTop":-1567.2,"bandTop":343.2}
+[note] frame
+        {"label":"d4-narrow-d4-d-edge-code","mode":"settled","width":1600,"height":1736}
+[note] d4 block blockquote
+        {"panel":{"top":345.2,"height":347.8,"bottom":693,"width":252},"cap":"231.5px","capPx":231.5,"transition":"all / 0s","clientHeight":232,"scrollHeight":662,"maxScroll":430,"scrollTop":0,"regionTop":416.5,"turns":1,"questionQuoteBlocks":0,"quoteHeights":[],"quoteLines":[],"questionLines":4,"questionTopInRegion":0,"questionHeightIfRegion":39,"lastTurnTopInRegion":0,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":43,"rowPitch":20.8,"rowsToEdge":9.1,"rows":20,"fullyVisibleRows":6,"rowCrossingClipCount":0,"crossing":[],"lastWholeRow":{"tag":"p","text":"Filler row 3, one short sentence that fits a","bottomVsClip":-25.9},"blockCounts":{"p":10,"blockquote":1},"paragraphGap":20.8,"mdClass":"lo-markdown lo-markdown--row-grid","transcriptTop":-1567.2,"bandTop":343.2}
+[note] frame
+        {"label":"d4-narrow-d4-d-edge-blockquote","mode":"settled","width":1600,"height":1736}
+[note] frame
+        {"label":"d4-narrow-d4-e-01-long-answer-at-rest","mode":"settled","width":1600,"height":1736}
+[note] frame
+        {"label":"d4-narrow-d4-e-02-followup-just-asked","mode":"raw","width":1600,"height":1736}
+[note] frame
+        {"label":"d4-narrow-d4-e-03-followup-midstream","mode":"raw","width":1600,"height":1736}
+[note] E follow-up samples [ms, scrollTop, scrollHeight, turns, capPx]
+        [[12,null,null,null,null]]
+[note] E follow-up geometry
+        null
+[FAIL] E D11: the follow-up's question is at the region's top and its first answer row is in view
+        {}
+[note] frame
+        {"label":"d4-narrow-d4-e-04-followup-settled","mode":"settled","width":1600,"height":1736}
+[note] frame
+        {"label":"d4-narrow-d4-f-01-before-the-quoted-turn","mode":"settled","width":1600,"height":1736}
+[note] frame
+        {"label":"d4-narrow-d4-f-02-at-the-press","mode":"raw","width":1600,"height":1736}
+[note] frame
+        {"label":"d4-narrow-d4-f-03-after-the-quoted-turn","mode":"settled","width":1600,"height":1736}
+[note] F jump staged
+        {"selected":"selected","pressed":true}
+[note] F jump before
+        {"panelTop":null,"panelH":null,"panelBottom":null,"capPx":null,"regionH":null,"scrollTop":null,"scrollHeight":null,"turns":null,"transcriptTop":-5256,"bandTop":718,"panelText":null}
+[note] F jump pre-press
+        {"panelTop":null,"panelH":null,"panelBottom":null,"capPx":null,"regionH":null,"scrollTop":null,"scrollHeight":null,"turns":null,"transcriptTop":-5256,"bandTop":718,"panelText":null}
+[note] F jump samples [ms, capPx, panelTop, panelH, regionH, scrollTop, scrollHeight, turns]
+        [[37,null,null,null,null,null,null,null]]
+[note] F jump after
+        {"panelTop":null,"panelH":null,"panelBottom":null,"capPx":null,"regionH":null,"scrollTop":null,"scrollHeight":null,"turns":null,"transcriptTop":-5501.9,"bandTop":718,"panelText":null}
+[FAIL] F the ceiling steps by the quote block and the panel's top is what moves
+        {"beforeCap":null,"afterCap":null,"beforeTop":null,"afterTop":null,"beforeH":null,"afterH":null,"beforeRegion":null,"afterRegion":null}
+[note] d4 cap table
+        [{"case":"para","k":1,"stagedQuotes":0,"wireQuotes":0,"quoteBlocks":0,"quoteLines":[],"questionLines":3,"capPx":231.5,"clientHeight":232,"answerTop":23.5,"lineHeight":20.8,"rowsToEdge":10,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.8},"paragraphGap":20.8,"scrollTop":0,"maxScroll":395},{"case":"para","k":3,"stagedQuotes":0,"wireQuotes":0,"quoteBlocks":0,"quoteLines":[],"questionLines":3,"capPx":231.5,"clientHeight":232,"answerTop":23.5,"lineHeight":20.8,"rowsToEdge":10,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.8},"paragraphGap":20.8,"scrollTop":0,"maxScroll":478},{"case":"para","k":5,"stagedQuotes":0,"wireQuotes":0,"quoteBlocks":0,"quoteLines":[],"questionLines":3,"capPx":231.5,"clientHeight":232,"answerTop":23.5,"lineHeight":20.8,"rowsToEdge":10,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.8},"paragraphGap":20.8,"scrollTop":0,"maxScroll":561},{"case":"para","k":7,"stagedQuotes":0,"wireQuotes":0,"quoteBlocks":0,"quoteLines":[],"questionLines":3,"capPx":231.5,"clientHeight":232,"answerTop":23.5,"lineHeight":20.8,"rowsToEdge":10,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.8},"paragraphGap":20.8,"scrollTop":0,"maxScroll":644},{"case":"para","k":9,"stagedQuotes":0,"wireQuotes":0,"quoteBlocks":0,"quoteLines":[],"questionLines":3,"capPx":231.5,"clientHeight":232,"answerTop":23.5,"lineHeight":20.8,"rowsToEdge":10,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.8},"paragraphGap":20.8,"scrollTop":0,"maxScroll":727},{"case":"one","k":1,"stagedQuotes":1,"wireQuotes":1,"quoteBlocks":1,"quoteLines":[2],"questionLines":4,"capPx":259,"clientHeight":259,"answerTop":70.5,"lineHeight":20.8,"rowsToEdge":9.1,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-4.6},"paragraphGap":20.8,"scrollTop":0,"maxScroll":415},{"case":"one","k":5,"stagedQuotes":1,"wireQuotes":1,"quoteBlocks":1,"quoteLines":[2],"questionLines":4,"capPx":259,"clientHeight":259,"answerTop":70.5,"lineHeight":20.8,"rowsToEdge":9.1,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-4.6},"paragraphGap":20.8,"scrollTop":0,"maxScroll":581},{"case":"one","k":9,"stagedQuotes":1,"wireQuotes":1,"quoteBlocks":1,"quoteLines":[2],"questionLines":4,"capPx":259,"clientHeight":259,"answerTop":70.5,"lineHeight":20.8,"rowsToEdge":9.1,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-4.6},"paragraphGap":20.8,"scrollTop":0,"maxScroll":747},{"case":"two","k":1,"stagedQuotes":2,"wireQuotes":2,"quoteBlocks":2,"quoteLines":[2,1],"questionLines":5,"capPx":286.5,"clientHeight":287,"answerTop":98,"lineHeight":20.8,"rowsToEdge":9.1,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-5.1},"paragraphGap":20.8,"scrollTop":0,"maxScroll":414},{"case":"two","k":5,"stagedQuotes":2,"wireQuotes":2,"quoteBlocks":2,"quoteLines":[2,1],"questionLines":5,"capPx":286.5,"clientHeight":287,"answerTop":98,"lineHeight":20.8,"rowsToEdge":9.1,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-5.1},"paragraphGap":20.8,"scrollTop":0,"maxScroll":580},{"case":"two","k":9,"stagedQuotes":2,"wireQuotes":2,"quoteBlocks":2,"quoteLines":[2,1],"questionLines":5,"capPx":286.5,"clientHeight":287,"answerTop":98,"lineHeight":20.8,"rowsToEdge":9.1,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-5.1},"paragraphGap":20.8,"scrollTop":0,"maxScroll":747},{"case":"list","k":0,"capPx":231.5,"clientHeight":232,"answerTop":23.5,"rowsToEdge":10,"blockCounts":{"p":5,"li":14},"cut":[],"lastWholeRow":{"tag":"p","text":"Filler row 4, one short sentence that fits a","bottomVsClip":-3.8},"scrollTop":0,"maxScroll":738},{"case":"heading","k":0,"capPx":231.5,"clientHeight":232,"answerTop":23.5,"rowsToEdge":10,"blockCounts":{"p":15,"h2":2},"cut":[],"lastWholeRow":{"tag":"h2","text":"A heading whose box the edge can land inside","bottomVsClip":-0.8},"scrollTop":0,"maxScroll":815},{"case":"code","k":0,"capPx":231.5,"clientHeight":232,"answerTop":23.5,"rowsToEdge":10,"blockCounts":{"p":4,"pre:pre":1},"cut":[{"tag":"pre:pre","hiddenPx":10.2,"visiblePx":6.8,"text":"const handler0 = (req, res) => run(req, res)","blockTopInRegion":210.7,"blockBottomInRegion":735.8,"blockBoxH":525.1}],"lastWholeRow":{"tag":"p","text":"Filler row 3, one short sentence that fits a","bottomVsClip":-45.4},"scrollTop":0,"maxScroll":566},{"case":"blockquote","k":0,"capPx":231.5,"clientHeight":232,"answerTop":43,"rowsToEdge":9.1,"blockCounts":{"p":10,"blockquote":1},"cut":[],"lastWholeRow":{"tag":"p","text":"Filler row 3, one short sentence that fits a","bottomVsClip":-25.9},"scrollTop":0,"maxScroll":430}]
+[PASS] every capture wrote a PNG of the requested size
+
+---- app log (tail) ----
+18:06:18.216 › [browser] denied a web-app-installation permission request from (unknown origin)
+18:06:18.218 › [browser] denied a geolocation permission request from (unknown origin)
+18:06:18.242 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
+18:06:18.243 › [browser] host on 127.0.0.1:59100 (proto 1), profile /Users/damian/.local-operator/sessions/fb8ab2e2a45f/scratchpad/d4/rig/tmp/lo-renderer-driver-3694/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+18:07:02.068 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:07:02.280 › [about-panel] suppressed by window mode headless: a headless run raises no window
+sandbox_extension_issue_file failed for /Users/damian/local-operator-ui-worktrees/design482-r4-fa711c/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/Resources: 1 (Operation not permitted)
+18:07:07.262 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:07:07.473 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:07:12.106 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:07:12.315 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:07:17.377 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:07:17.586 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:07:22.554 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:07:22.792 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:07:28.134 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:07:28.673 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:07:33.030 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:07:33.556 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:07:38.634 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:07:39.157 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:07:44.298 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:07:45.138 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:07:49.392 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:07:50.240 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:07:55.827 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:07:56.699 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:08:02.560 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:08:02.777 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:08:06.881 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:08:07.091 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:08:11.167 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:08:11.377 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:08:15.008 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:08:15.222 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:08:18.915 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:09:25.605 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:09:33.166 › [about-panel] suppressed by window mode headless: a headless run raises no window
+18:09:33.696 › [about-panel] suppressed by window mode headless: a headless run raises no window
+
+[PASS] no process from this run outlived its boot
+
+frames: d4-narrow-d4-a-paragraph-break-k5.png, d4-narrow-d4-b-one-quote-k5.png, d4-narrow-d4-b-two-quote-k5.png, d4-narrow-d4-d-edge-blockquote.png, d4-narrow-d4-d-edge-code.png, d4-narrow-d4-d-edge-heading.png, d4-narrow-d4-d-edge-list.png, d4-narrow-d4-e-01-long-answer-at-rest.png, d4-narrow-d4-e-02-followup-just-asked.png, d4-narrow-d4-e-03-followup-midstream.png, d4-narrow-d4-e-04-followup-settled.png, d4-narrow-d4-f-01-before-the-quoted-turn.png, d4-narrow-d4-f-02-at-the-press.png, d4-narrow-d4-f-03-after-the-quoted-turn.png
+frames directory: /Users/damian/.local-operator/sessions/fb8ab2e2a45f/scratchpad/d4/rig/frames/narrow-d4
+app log: /Users/damian/.local-operator/sessions/fb8ab2e2a45f/scratchpad/d4/rig/tmp/lo-renderer-driver-3694/app-scene.log
+scratch removed (--clean)
+
+2 CHECK(S) FAILED
