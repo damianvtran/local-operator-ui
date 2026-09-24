@@ -1557,13 +1557,49 @@ export const ReaderResultPreview: Story = {
 };
 
 /**
+ * The third branch of the preview's own rule: a value the WIRE LEFT WHOLE.
+ *
+ * The two frames beside this one are about a value the wire CUT. This is the one
+ * where it did not: the child's session directory is gone, so the foot still
+ * carries the wire's copy — there is nothing else to read — but the label drops
+ * to a plain `Result` and the shortening sentence is NOT printed, because the
+ * runtime's clip marks what it cuts and this value carries no mark. It is the
+ * branch where the honesty rule could silently invert (a `Result preview` over a
+ * whole value, or a `Result` over a prefix), so until this frame existed its only
+ * evidence was the markup test's — design round 2's D2 and QA round 2's Q2, both
+ * of which asked for exactly this pair of pixels.
+ */
+export const ReaderResultWhole: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails({
+				nowMs: fixtures.FIXTURE_NOW_MS,
+				jobs: [
+					fixtures.readerChild({
+						status: "done",
+						settledSecondsAgo: 12,
+						progress: undefined,
+						result: fixtures.WHOLE_RESULT,
+					}),
+				],
+				todos: [],
+			})}
+			openPanel={true}
+			readerChildId="job-reader"
+			previewPage={fixtures.childPage({ state: "gone" })}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
  * The one state the preview must NOT be painted in: a child cancelled while
  * PARKED, whose `result_text` is the runtime's state stamp rather than an
  * outcome.
  *
  * `harness/jobs.py`'s `cancel()` stamps `CANCELLED_BEFORE_START` on a job whose
  * runner was never entered (`:1166-1167`, gated on `started_at is None`), so the
- * row's `result_text` is 25 characters of state and not a page of output. Read
+ * row's `result_text` is 27 characters of state and not a page of output. Read
  * as a result it produced the worst four lines in the pane: the body's own
  * absence line, then a `Result preview` label over the stamp, then a claim that
  * the copy had been SHORTENED — over a value the wire's 2_000-character bound

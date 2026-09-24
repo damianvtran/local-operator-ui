@@ -1176,6 +1176,23 @@ export const LONG_RESULT = RESULT_PARAGRAPHS.join("\n\n");
 export const CLIPPED_RESULT = `${LONG_RESULT.slice(0, 2_000)}…`;
 
 /**
+ * A result the wire left WHOLE: under `JOB_RESULT_WIRE_CHARS` (2_000), with no
+ * marker on it — which is the only state in which a renderer may call a value
+ * whole.
+ *
+ * The two values above are about what the clip does; this one is about the half
+ * of the same rule that is easiest to get backwards, and `run-child-reader.tsx`
+ * is explicit that length is not the discriminator: a value the runtime never
+ * truncated must NOT be announced as a shortened copy, and the reader keeps the
+ * two apart by the wire's own marker rather than by counting characters. It is a
+ * self-contained answer on purpose — a prefix of `LONG_RESULT` would read to a
+ * person as a cut paragraph, which is the ambiguity the component already
+ * discloses and the one thing a frame for this branch must not add to.
+ */
+export const WHOLE_RESULT =
+	"Four of the 412 March invoices are unpaid: INV-2031, INV-2044, INV-2077 and INV-2069, $18,420 against $1,204,880 invoiced for the month. The two oldest carry no reminder email; the export's status column disagrees with the ledger on INV-2077, which I have left alone rather than correcting in either direction. Reissue INV-2031 and INV-2044, and check the February application on INV-2077 before anything is sent.";
+
+/**
  * A child's transcript page, as the reader's route answers one (`§ 10.1`).
  *
  * The story set needs these because a fixture cannot prove the PULSE, but it can
