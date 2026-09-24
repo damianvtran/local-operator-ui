@@ -3,7 +3,7 @@
  * Measure and photograph the child reader's scroll behaviour.
  *
  *     node scripts/child-reader-scroll-evidence.mjs [--arm=before|after]
- *         [--themes=localOperatorDark,localOperatorWhite] [--out=<dir>]
+ *         [--themes=localOperatorDark,localOperatorLight] [--out=<dir>]
  *         [--port=5197] [--json=<file>] [--frames]
  *
  * WHY THIS IS A SCRIPT AND NOT A TEST. The claim is about a scroll container

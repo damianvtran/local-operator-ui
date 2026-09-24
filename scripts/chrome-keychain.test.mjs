@@ -380,6 +380,12 @@ const CHROME_LAUNCH_SITES = [
 		1,
 		"photographs the row states from a BUILT Storybook of two trees - the branch and `origin/main` - so the before/after pair is two real builds rather than a proposal render",
 	),
+	guarded(
+		"scripts/child-reader-scroll-evidence.mjs",
+		"spawn",
+		1,
+		"measures the run pane's child reader over time - where the viewport sits after an arrival, whether the newest row is on screen, and what its follow-the-tail control is doing - and photographs those states while the scripted child streams; its second spawn is the vite server that serves the page",
+	),
 ];
 
 const key = (row) => `${row.file}#${row.name}#${row.index}`;
