@@ -27,7 +27,10 @@ D8's quoted off-panel copy, D10's ceiling, U6's focus return, U9's `aria-describ
   * `r3-nd-*`: narrow, 800x868 (clamped), dark
   * `r3-wl-*`: wide, `localOperatorLight`
 
-  An earlier wide pass with the same scene minus two steps is not published. Its D10/D6 numbers were identical.
+  An earlier wide dark pass (`logs/driver-wd-pass1.log`, frames not published) ran the scene without step 03c.
+  Its D10/D6 numbers match the published wide pass. It is also the source of the **user-scrolled-up** reading
+  (188 -> 128, then 128 for 4.3 s while `scrollHeight` grew 436 -> 648). In the published passes the stop condition of
+  step 03 matched the earlier answers, so that step exited after one sample and its "later" value is not evidence.
 
 The rig markers in the questions (`NLINES9`, `LONGSLOW`, `SLOW TOOLCALL2`, `SLOWTURN`) are what the stub reads. They are not product copy.
 
