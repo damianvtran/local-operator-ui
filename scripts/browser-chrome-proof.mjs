@@ -2570,7 +2570,7 @@ async function main() {
 				JSON.stringify(trayDom.chips) === JSON.stringify(["1", "2"]) &&
 				JSON.stringify(trayDom.selected) === JSON.stringify(["1"]) &&
 				trayDom.chipNames[1] ===
-					"Request 2 from The agent in conversation other: queued-second.example" &&
+					"Request 2 from An agent from another session: queued-second.example" &&
 				trayDom.card.includes("queued-first.example"),
 			JSON.stringify(
 				{

@@ -52,6 +52,10 @@ import {
 	startBrowserHost,
 	stopBrowserHost,
 } from "./browser";
+import {
+	CONSENT_ATTENTION_CHANNEL,
+	type ConsentAttentionPayload,
+} from "./browser/consent-click";
 import { createSessionCookieQuitHold } from "./browser/session-cookie-quit-hold";
 import { consoleCaptureUrlFor } from "./console/capture-url";
 import { guardForegroundReceipts, registerDesktopIPC } from "./desktop-ipc";
@@ -2682,6 +2686,68 @@ app
 		 * host owns its own teardown (its ``closed`` listener stops it), which is why
 		 * nothing here has to unwind it.
 		 */
+		/**
+		 * Consent attentions parked because the window they were raised for is GONE.
+		 *
+		 * A BANNER OUTLIVES ITS WINDOW and its click still arrives: macOS keeps a raised
+		 * banner in Notification Center, the notifier's `click` listener is a closure on
+		 * an object main still references, and on macOS the app stays alive in the Dock
+		 * after `window.on("closed")` — which is the operator's own reported state ("I
+		 * click it and nothing happens"). Measured on Electron 44.3.0 (UX review round 1,
+		 * U2): with the window destroyed, reading `webContents` throws
+		 * `Object has been destroyed`, so the click threw in main instead of landing
+		 * anywhere. `consentClickHandler` no longer captures the window and hands the
+		 * request here instead.
+		 *
+		 * A WINDOW IS CREATED WITH THE OPERATOR'S OWN PLAN, exactly as a Dock click does
+		 * (see the `activate` handler): a banner click is a person asking for the app, and
+		 * answering it under a `headless` launch plan would put a real request on a screen
+		 * nobody can reach. In a launch that cannot show a window no banner is raised at
+		 * all (`consent-notifier.ts` gates on `show === "focus"`), so this path cannot be
+		 * reached by an unattended run.
+		 *
+		 * THE QUEUE IS BOUNDED and the OLDEST is dropped, for `PARKED_LAUNCH_LIMIT`'s
+		 * reason: an unbounded in-memory queue on a long-lived app is a leak, and the
+		 * newest click is the one a person is most likely still waiting on. Sixteen is the
+		 * approvals queue's own cap, so the bound cannot be reached by a real click pattern
+		 * without the approvals cap having been reached first.
+		 */
+		const parkedConsentAttentions: ConsentAttentionPayload[] = [];
+		const PARKED_CONSENT_LIMIT = 16;
+
+		function parkConsentAttention(payload: ConsentAttentionPayload): void {
+			parkedConsentAttentions.push(payload);
+			while (parkedConsentAttentions.length > PARKED_CONSENT_LIMIT) {
+				parkedConsentAttentions.shift();
+			}
+		}
+
+		/**
+		 * Deliver every parked attention to a window whose RENDERER CAN HEAR IT.
+		 *
+		 * `did-finish-load` and not the creation, for the reason the parked-conversation
+		 * queue states one screen up: a `webContents.send` into a window that has not
+		 * loaded is dropped silently, so a send at creation would turn the reported no-op
+		 * into a rarer one. An entry whose window died before its first paint goes back on
+		 * the queue rather than out with the window.
+		 */
+		function claimParkedConsentAttention(window: BrowserWindow): void {
+			if (parkedConsentAttentions.length === 0) return;
+			const claimed = parkedConsentAttentions.splice(
+				0,
+				parkedConsentAttentions.length,
+			);
+			window.webContents.once("did-finish-load", () => {
+				for (const payload of claimed) {
+					if (window.isDestroyed()) {
+						parkConsentAttention(payload);
+						continue;
+					}
+					window.webContents.send(CONSENT_ATTENTION_CHANNEL, payload);
+				}
+			});
+		}
+
 		function setupMainWindowWithUpdateService(
 			initialSession: string | null = null,
 			openCatalogue = false,
@@ -2752,6 +2818,15 @@ app
 					openSessionInWindow(session, request, { fromPark: true }),
 				parked,
 			);
+
+			/*
+			 * AND THE CLICK THAT COULD NOT BE DELIVERED TO THE WINDOW IT WAS RAISED FOR
+			 * (UX review round 1, U2). Claimed here rather than in the click's own path,
+			 * because the window this creates is created HERE: the click parks the request
+			 * and asks for a window, and the delivery belongs to whatever window exists
+			 * when a renderer can hear it.
+			 */
+			claimParkedConsentAttention(mainWindow);
 
 			// Add before-input-event listener for zoom control
 			if (mainWindow) {
@@ -2914,6 +2989,38 @@ app
 					// the screen, and re-deciding it there would be a second policy beside
 					// `window-mode.ts`.
 					windowShow: windowLaunch.show,
+					// A consent banner's click comes forward through the app's own raise policy,
+					// and this is where its one line goes — the same logger every other raise
+					// reports to, so `trigger=banner-click` is greppable beside them.
+					reportRaise,
+					/*
+					 * AND WHERE IT GOES WHEN THERE IS NO WINDOW TO COME FORWARD IN. The request
+					 * is parked and a window is created under the OPERATOR's plan (a banner click
+					 * is a person asking for the app), and `claimParkedConsentAttention` above
+					 * delivers it once that window's renderer can hear it. Without this, a click
+					 * with no window reported at best — and before this round it threw on a
+					 * destroyed window.
+					 */
+					reopenConsent: (payload: ConsentAttentionPayload) => {
+						parkConsentAttention(payload);
+						/*
+						 * THE APP'S OWN QUESTION ABOUT ITS WINDOW, not a census of every
+						 * window this process has (agent review round 2, U8): the console's
+						 * offscreen capture view is a `BrowserWindow` too, so
+						 * `getAllWindows().length === 0` was false while none of them could
+						 * show a conversation - a banner click then parked its request with
+						 * no window created, which is the no-op this path exists to remove.
+						 * `mainWindow` is what every other decision in this file asks about,
+						 * and `isDestroyed()` is the "still usable" half of the same test
+						 * (line 780's form).
+						 */
+						if (!mainWindow || mainWindow.isDestroyed()) {
+							setupMainWindowWithUpdateService(null, false, {
+								show: OPERATOR_SHOW,
+								trigger: "banner-click",
+							});
+						}
+					},
 					// The console's completion banner is raised through this app's ONE
 					// notifier (design 12.3: a second raiser would duplicate the TTL dedupe,
 					// the window state, the raise policy and the click path). It is still the
