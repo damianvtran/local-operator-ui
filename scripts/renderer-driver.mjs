@@ -394,6 +394,92 @@ const DRIVER_STAYED_OFF = /stayed off/;
 
 const SCRATCH_TAG = `lo-renderer-driver-${process.pid}`;
 const SCRATCH = join(tmpdir(), SCRATCH_TAG);
+
+/**
+ * How old an ABANDONED scratch tree has to be before this run reaps it.
+ *
+ * Deliberately far longer than any scene lasts (the longest measured run is minutes),
+ * because the age is the second of two guards and the cheap one has to be the pid: a
+ * tree that is dead by pid but younger than this is left alone, so a run that is merely
+ * between its own `mkdir` and its pid being observable - or one whose pid number has
+ * been reused by something unrelated - cannot be swept out from under it.
+ */
+const REAP_AFTER_MS = 30 * 60 * 1000;
+
+/** Whether a pid exists. `EPERM` means it exists and belongs to somebody else. */
+function pidIsAlive(pid) {
+	try {
+		process.kill(pid, 0);
+		return true;
+	} catch (error) {
+		return error?.code === "EPERM";
+	}
+}
+
+/**
+ * Reap the scratch trees previous runs left in the shared temp directory.
+ *
+ * WHY THE DRIVER DOES THIS AND NOT SOMETHING ELSE. `--clean` is opt-out, so a run that
+ * does not pass it keeps its tree by design (the frames and the app log live there); a
+ * run that is killed, or that crashes, keeps one without having chosen to. Measured on
+ * this machine on 2026-09-24: **244** `lo-renderer-driver-*` trees, 2-4 MB each, roughly
+ * 700 MB of the shared temp directory, with free space down to ~3 GiB and builds in
+ * neighbouring sessions failing on it. The driver is what made them, so the driver is
+ * what clears them - and it does it at START, before it adds one more.
+ *
+ * A LIVE PID IS NEVER TOUCHED, and neither is a young tree. That is the whole safety
+ * argument, and both halves are needed: this fleet runs ~25 sessions at once, where two
+ * driver runs overlapping is ordinary (so a name-only sweep would delete a peer's live
+ * tree mid-scene), and a dead pid number can be reused (so liveness alone, checked once,
+ * is not enough of a guard without the age).
+ *
+ * Unparseable names are left alone as well: `lo-renderer-driver-<pid>` is what this
+ * script makes, and a directory that merely looks like one is not this script's to
+ * delete.
+ *
+ * It reports what it removed - names, as a count and in full - for the reason this
+ * harness prints every path it redirects: a tool that tidies silently cannot be told
+ * apart from one that deletes the wrong thing.
+ */
+function reapAbandonedScratchTrees(root = tmpdir()) {
+	const removed = [];
+	let seen = 0;
+	let live = 0;
+	let young = 0;
+	for (const name of readdirSync(root)) {
+		if (!name.startsWith("lo-renderer-driver-") || name === SCRATCH_TAG)
+			continue;
+		const pid = Number(name.slice("lo-renderer-driver-".length));
+		if (!Number.isInteger(pid) || pid <= 0) continue;
+		seen++;
+		if (pidIsAlive(pid)) {
+			live++;
+			continue;
+		}
+		const path = join(root, name);
+		let stats = null;
+		try {
+			stats = statSync(path);
+		} catch {
+			// Gone between the listing and the stat: nothing to do, and not an error.
+			continue;
+		}
+		if (Date.now() - stats.mtimeMs < REAP_AFTER_MS) {
+			young++;
+			continue;
+		}
+		try {
+			rmSync(path, { recursive: true, force: true });
+			removed.push(name);
+		} catch {
+			// A tree that refuses to go (a permission quirk, a file still being written)
+			// is left for the next run rather than failing this one: the sweep is hygiene,
+			// not a precondition.
+		}
+	}
+	return { seen, live, young, removed };
+}
+
 const HOME_DIR = join(SCRATCH, "home");
 const CONFIG_DIR = join(SCRATCH, "config");
 const USER_DATA = join(SCRATCH, "userdata");
@@ -18949,6 +19035,18 @@ async function assertBuildIsCurrent() {
 
 async function main() {
 	await assertBuildIsCurrent();
+	/*
+	 * Hygiene first, before this run adds a tree of its own. See
+	 * `reapAbandonedScratchTrees` for the two guards and the measurement that put this
+	 * here (~700 MB of abandoned trees on a machine where builds were failing for want
+	 * of space).
+	 */
+	const reaped = reapAbandonedScratchTrees();
+	if (reaped.seen > 0)
+		note(
+			"abandoned scratch trees",
+			`${reaped.seen} seen, ${reaped.live} owned by a live pid (kept), ${reaped.young} younger than ${Math.round(REAP_AFTER_MS / 60000)}m (kept), ${reaped.removed.length} removed${reaped.removed.length ? `: ${reaped.removed.join(", ")}` : ""}`,
+		);
 	mkdirSync(HOME_DIR, { recursive: true });
 	mkdirSync(CONFIG_DIR, { recursive: true });
 	mkdirSync(APP_CWD, { recursive: true });
