@@ -778,14 +778,32 @@ const api = {
 				ipcRenderer.removeListener("browser-consent-changed", handler);
 			};
 		},
-		/** A consent banner was clicked. Navigation only — it never raises the
-		 * window, because `window-raise.ts` is the only module that may. */
+		/** A consent banner was clicked. The renderer decides where to land; the
+		 * WINDOW is raised in main, by the wiring that owns the click, because
+		 * `window-raise.ts` is the only module that may raise one. */
 		onConsentAttention: (
-			callback: (payload: { entryId: string }) => void,
+			callback: (payload: {
+				entryId: string;
+				/** The conversation whose agent asked, or null for a request no
+				 * conversation owns (see `sessionRequesterOf`). */
+				requesterSessionId: string | null;
+			}) => void,
 		): (() => void) => {
-			const handler = (_event: unknown, payload: { entryId?: unknown }) => {
+			const handler = (
+				_event: unknown,
+				payload: { entryId?: unknown; requesterSessionId?: unknown },
+			) => {
 				if (typeof payload?.entryId === "string") {
-					callback({ entryId: payload.entryId });
+					callback({
+						entryId: payload.entryId,
+						// Validated rather than trusted: `undefined` from an older main is
+						// the same fact as `null` — no conversation owns the request — and
+						// the renderer's fallback is the browser route either way.
+						requesterSessionId:
+							typeof payload.requesterSessionId === "string"
+								? payload.requesterSessionId
+								: null,
+					});
 				}
 			};
 			ipcRenderer.on("browser-consent-attention", handler);
