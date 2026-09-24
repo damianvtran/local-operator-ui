@@ -153,6 +153,7 @@ export function useState(initial) { let current = typeof initial === "function" 
 				builder.onLoad({ filter: /.*/, namespace: "echo-fixture" }, () => ({
 					contents: `export const echoPendingUser = () => undefined;
 export const retractPendingUser = () => undefined;
+export const retractLocalEcho = () => "retracted";
 export const discardPendingEchoes = () => undefined;`,
 					loader: "js",
 					resolveDir: process.cwd(),

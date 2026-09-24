@@ -46,6 +46,15 @@ const bundle = await build({
 export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";`,
 		resolveDir: process.cwd(),
 	},
+	/*
+	 * The renderer's aliases are tsconfig paths, not node resolutions. The send
+	 * store now imports the composer's own store at runtime (the one return path
+	 * for a failed payload), so a fixture that bundles it has to resolve this.
+	 */
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@features": "./src/renderer/src/features",
+	},
 	bundle: true,
 	format: "esm",
 	platform: "node",
@@ -82,6 +91,7 @@ export const desktopResult = request => globalThis.__switchRequest(request);`,
 				builder.onLoad({ filter: /.*/, namespace: "echo-fixture" }, () => ({
 					contents: `export const echoPendingUser = () => {};
 export const retractPendingUser = () => {};
+export const retractLocalEcho = () => "retracted";
 export const discardPendingEchoes = () => {};`,
 					loader: "js",
 					resolveDir: process.cwd(),
@@ -360,7 +370,16 @@ test("the busy resend is bounded, and hands the refusal to the composer with the
 	const draft = store.getState().drafts[SEND_KEY];
 	assert.equal(draft.pending, false);
 	assert.equal(draft.errorCode, "runtime_busy");
-	assert.equal(draft.submittedText, SEND.text);
+	/*
+	 * NOTHING IS HELD FOR A REFUSAL LIKE THIS, and that is the change: a busy
+	 * owner says in its own code that it did not take the message, so the payload
+	 * goes back to the composer (the store's one return path; the composer's side
+	 * of it is pinned in `composer-send-failure.test.mjs`) and the claim is
+	 * dropped. Keeping `submittedText` here would leave a message the app was told
+	 * was never admitted looking like one whose fate it cannot establish.
+	 */
+	assert.equal(draft.submittedText, undefined);
+	assert.equal(draft.admissionAttempted, false);
 });
 
 test("the busy resend waits the backend's retry_after_ms, capped", async () => {
