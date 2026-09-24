@@ -261,6 +261,12 @@ test("the list the panel draws is the page minus the archived rows, and the sear
 	 * ONE filter, before anything reads the list: the flat list, both sections, the
 	 * agent and team groups and the local half of the search all read this array.
 	 *
+	 * THE MESH PARTITION COMES AFTER IT (not instead of it): `restAll` is this
+	 * archived-filtered array, the flat list draws ALL of it, and the two sections
+	 * draw its local rows. So the archive filter is still the only one that decides
+	 * which rows exist here, and a peer's conversation is never reduced to an
+	 * archived one by a second, narrower read.
+	 *
 	 * AND IT IS FED THE ANSWERED VIEW (design round 8, D27): `visibleRows` reads a row's own
 	 * `archived` flag, so the array it is handed is the one whose flags are the DAEMON's - a
 	 * fact still in flight must not be able to take a row out of a list, because the list's
@@ -274,9 +280,12 @@ test("the list the panel draws is the page minus the archived rows, and the sear
 	// The request itself carries the widening, and the join is given the client's own
 	// facts plus the delete tombstones, so a press on a row rebuilt from a cached hit
 	// can be inverted and a deleted conversation cannot be drawn from one.
+	// The FOURTH argument is the mesh's: only a backend advertising `features.peers`
+	// asks the search to admit a peer's conversations, and the flag is in the cache
+	// key, so the two answers to one query cannot be served for each other.
 	assert.match(
 		source,
-		/useChatSearch\(query, ready && searchSupported, widened\)/,
+		/useChatSearch\(\s*query,\s*ready && searchSupported,\s*widened,\s*peersEnabled,\s*\)/,
 	);
 	assert.match(source, /forgotten: new Set\(Object\.keys\(forgottenFacts\)\)/);
 	assert.match(

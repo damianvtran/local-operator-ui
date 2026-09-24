@@ -205,8 +205,20 @@ test("a pinned row stays in its agent's group, because groups are the other axis
 	);
 	assert.match(
 		source,
-		/const rest = unpinnedRows\(matching, pinsEnabled\);/,
+		/const restAll = unpinnedRows\(matching, pinsEnabled\);/,
 		"and every section below it draws the complement",
+	);
+	/*
+	 * The MESH's step, asserted as an ORDER rather than as a second partition: the
+	 * locality filter reads the complement (`restAll`), so the two axes compose -
+	 * pinning decides which half a row is in, and locality decides which of the two
+	 * section lists below draws it. A `localRows` fed `matching` instead would put a
+	 * pinned peer's row back into the Pinned section's complement.
+	 */
+	assert.match(
+		source,
+		/const rest = localRows\(restAll, peersEnabled\);/,
+		"the sections draw the complement's LOCAL rows",
 	);
 });
 

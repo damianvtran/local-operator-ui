@@ -297,7 +297,14 @@ const merged = (file, expression, stubs) => {
 	 * than in each caller. A caller needing the other branch passes `pinned: false`, and the
 	 * spread below lets it win.
 	 */
-	const withDefaults = { pinned: true, ...stubs };
+	/*
+	 * `moving` joins the defaults for the reason `pinned` did: the conversation
+	 * button's class expression now carries a term for the mesh's in-flight move
+	 * (`moving !== undefined && "text-ink-dim"`), and this helper's contract is
+	 * that every predicate resolves. `undefined` is the row that is NOT moving,
+	 * which is the state these sites photograph.
+	 */
+	const withDefaults = { pinned: true, moving: undefined, ...stubs };
 	const names = Object.keys(withDefaults);
 	// biome-ignore lint/security/noGlobalEval: the evaluated text is this repository's own source, read two assertions above, and the sandbox is a `new Function` over stub predicates.
 	const call = new Function("cn", ...names, `return cn(${expression});`);
