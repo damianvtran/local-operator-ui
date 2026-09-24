@@ -6910,6 +6910,202 @@ async function sceneRowSpace(cdp) {
 	return [...frames, ...offerFrames];
 }
 
+/**
+ * §I's pane floors, measured at whatever `--window-size` the run was started with.
+ *
+ * WHY THIS IS A SCENE OF ITS OWN, and why it needs no backend. §I is a set of
+ * statements about BOXES: the chat pane keeps a 480px floor; the canvas docks at
+ * `min(560, available - 480)`; where that leaves less than the canvas's own 400px
+ * floor the canvas stops docking and overlays the chat instead; the sidebar yields
+ * to the 56px strip first. Nothing in that list is about data, so the run does not
+ * need one - and the driver's own isolate (`openCanvasDocument` stages a draft,
+ * because a run with no backend cannot open the New chat gate) is exactly what makes
+ * a canvas dockable without a session.
+ *
+ * THE ONE THING IT CANNOT SAY, stated rather than implied: at a size where the
+ * 640-wide column cannot fit, the transcript's own reading measure is a container
+ * query the tree already handles, and the frames this scene writes are of a DRAFT
+ * pane with no messages. Whether the prose reflows at 480 is not asserted here; it is
+ * what the capture set's `b-qa`/`g-long` frames are for.
+ *
+ * A reader should run it at the four widths §I is written about:
+ *
+ *     --scene floors --window-size 1380x900   # docked: row 1120, canvas at its 560 cap
+ *     --scene floors --window-size 1024x673   # the sidebar's dock threshold: dock 284 < 400 -> overlay
+ *     --scene floors --window-size 960x673    # strip: row 904, dock 424 -> docked
+ *     --scene floors --window-size 800x600    # strip: row 744, dock 264 -> overlay
+ *
+ * The four are the two bands of `resolveSidebarLayout` crossed with the two canvas
+ * modes, and the assertions below are written about the RULES rather than about the
+ * sizes so the same scene is honest at any width a reviewer passes.
+ */
+async function sceneFloors(cdp) {
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless",
+		facts.windowMode === "headless",
+		facts.windowMode,
+	);
+	check(
+		"the window is never shown",
+		facts.visible === false,
+		`visible=${facts.visible} focused=${facts.focused} minimized=${facts.minimized}`,
+	);
+	check(
+		"the window never has focus",
+		facts.focused === false,
+		`focused=${facts.focused}`,
+	);
+	check(
+		"the requested window size is the size that exists",
+		facts.windowSize.width === WINDOW_WIDTH &&
+			facts.windowSize.height === WINDOW_HEIGHT,
+		`${JSON.stringify(facts.windowSize)} for a requested ${WINDOW_SIZE}`,
+	);
+
+	/*
+	 * A document of this scene's own, under the run's scratch root (never a path in
+	 * the repository): the pane needs a document to be mounted, and the file is
+	 * deleted with the scratch tree the harness reaps.
+	 */
+	const dir = join(SCRATCH, "floors");
+	mkdirSync(dir, { recursive: true });
+	const document_ = join(dir, "floors.md");
+	writeFileSync(
+		document_,
+		"# Pane floors\n\nThe canvas's own document, so the pane has something to dock.\n",
+	);
+
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", "localOperatorDark");
+	const opened = await verb(cdp, "openCanvasDocument", { path: document_ });
+	check(
+		"a document is in the canvas, so the pane is mounted at all",
+		Boolean(opened) && typeof opened === "object",
+		`openCanvasDocument answered ${JSON.stringify(opened).slice(0, 160)}`,
+	);
+	/*
+	 * THE PANE IS NOT THERE WITHOUT A BACKEND, AND THAT IS MEASURED RATHER THAN
+	 * ASSUMED. `docs/agent-driver.md` says `openCanvasDocument` "also stages a draft,
+	 * because a run with no backend cannot open the New chat gate and without a pane
+	 * identity there is no conversation for the document to belong to" - but on this
+	 * head the chat route renders the refusal surface instead of a draft pane when no
+	 * backend answers (`floors-1380x900-none.png`, kept with the run), so the canvas's
+	 * mount condition is never reached and no canvas box exists to measure. The wait
+	 * below is what distinguishes that from a React flush the scene read too early:
+	 * the window is generous and the answer is recorded either way.
+	 */
+	const paneMounted = await waitForCondition(
+		cdp,
+		"(() => { const el = document.querySelector('[data-tour-tag=\"canvas-dock\"]'); return el ? el.getAttribute('data-canvas-mode') : null; })()",
+		15_000,
+	);
+	note(
+		"canvas pane",
+		JSON.stringify({ mounted: paneMounted.ok, mode: paneMounted.last }),
+	);
+	const route = await verb(cdp, "state");
+	note("route the run ended on", JSON.stringify(route));
+
+	const metrics = await verb(cdp, "metrics");
+	note("metrics", JSON.stringify(metrics, null, 2));
+	const { row, chatColumn, canvas, canvasMode } = metrics;
+	check(
+		"the row and the chat column are both named in the DOM",
+		Boolean(row) && Boolean(chatColumn),
+		`row=${JSON.stringify(row)} chatColumn=${JSON.stringify(chatColumn)}`,
+	);
+	/*
+	 * §I's canvas half needs a backend on this head, and the run says so instead of
+	 * reporting a green it did not earn: `EXPECT_CANVAS` is true only when the run was
+	 * given `--backend`, and the assertions about the pane's mode are made only then.
+	 * Everything else below - the column's floor, where it starts, whether it stays
+	 * inside the row - is measured in both shapes, because the chat column exists
+	 * either way.
+	 */
+	const expectCanvas = BACKEND !== null;
+	if (expectCanvas) {
+		check(
+			"the canvas pane is mounted and says which mode it is in",
+			Boolean(canvas) && (canvasMode === "docked" || canvasMode === "overlay"),
+			`mode=${canvasMode} canvas=${JSON.stringify(canvas)}`,
+		);
+	} else {
+		note(
+			"the canvas half of §I is NOT measured in this run",
+			`no --backend: the run reached ${route?.route ?? "?"} and the chat route drew its refusal surface, so the canvas never mounts (measured, not assumed - see the frame). The chat column's own floor and placement below ARE measured; the pane's dock/overlay rules need a run with --backend or the capture rig.`,
+		);
+	}
+
+	if (row && chatColumn) {
+		/*
+		 * THE INVARIANTS THE 2026-09-24 DEFECT BROKE, asserted here as well as in the
+		 * capture meter because this run needs no backend, no seeded session and no
+		 * full capture set: the column starts in the shell's own left region (the
+		 * sidebar is 0, 56 or 260 of those pixels) and it holds §B1's floor.
+		 */
+		check(
+			"the chat column starts in the shell's left region",
+			chatColumn.x <= 320,
+			`chatColumn.x=${chatColumn.x}: the sidebar occupies 0/56/260, so a column further right means the pane did not take the row`,
+		);
+		check(
+			"the chat column holds §B1's 480px floor",
+			chatColumn.w >= 480,
+			`chatColumn.w=${chatColumn.w} (min-width computed to ${chatColumn.minWidth})`,
+		);
+		check(
+			"the chat column stays inside the row",
+			chatColumn.x + chatColumn.w <= row.x + row.w + 1,
+			`chatColumn ${chatColumn.x}+${chatColumn.w} against row ${row.x}+${row.w}`,
+		);
+	}
+
+	if (expectCanvas && row && chatColumn && canvas) {
+		if (canvasMode === "docked") {
+			check(
+				"a docked canvas is at least its own 400px contract floor",
+				canvas.w >= 400,
+				`canvas.w=${canvas.w} in a row of ${row.w}: below 400 the pane must overlay instead of docking`,
+			);
+			check(
+				"a docked canvas is no wider than §I's 560px ceiling",
+				canvas.w <= 560 + 1,
+				`canvas.w=${canvas.w}`,
+			);
+			check(
+				"the two columns tile the row, the divider between them",
+				row.w - (chatColumn.w + canvas.w) >= 0 &&
+					row.w - (chatColumn.w + canvas.w) <= 24,
+				`row ${row.w} = chat ${chatColumn.w} + canvas ${canvas.w} + ${row.w - (chatColumn.w + canvas.w)} unaccounted`,
+			);
+		} else {
+			check(
+				"an overlaying canvas covers the chat column's trailing edge",
+				canvas.x < chatColumn.x + chatColumn.w,
+				`canvas.x=${canvas.x} against the column's ${chatColumn.x}+${chatColumn.w}`,
+			);
+			check(
+				"an overlaying canvas stays inside the row",
+				canvas.x >= row.x - 1 && canvas.x + canvas.w <= row.x + row.w + 1,
+				`canvas ${canvas.x}+${canvas.w} against row ${row.x}+${row.w}`,
+			);
+			check(
+				"the chat column keeps its floor behind the overlay",
+				chatColumn.w >= 480,
+				`chatColumn.w=${chatColumn.w} behind a ${canvas.w}px overlay`,
+			);
+		}
+	}
+
+	const frame = await captureSettled(
+		cdp,
+		`floors-${WINDOW_WIDTH}x${WINDOW_HEIGHT}-${canvasMode ?? "none"}`,
+	);
+	note("frame", JSON.stringify(frame));
+}
+
 async function sceneStates(cdp) {
 	const hello = await verb(cdp, "hello");
 	note("hello", JSON.stringify(hello, null, 2));
@@ -19050,6 +19246,11 @@ async function main() {
 			if (SCENE === "session-archive") await sceneSessionArchive(cdp);
 			else if (SCENE === "row-space") await sceneRowSpace(cdp);
 			else if (SCENE === "states") await sceneStates(cdp);
+			/*
+			 * §I's pane floors (the chat column's 480, the canvas's dock cap and its
+			 * overlay mode). No backend is needed: see the scene's own note for the four
+			 * widths it is written about.
+			 */ else if (SCENE === "floors") await sceneFloors(cdp);
 			else if (SCENE === "radient-issue") await sceneRadientIssue(cdp);
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);
 			else if (SCENE === "authoring-refresh") await sceneAuthoringRefresh(cdp);

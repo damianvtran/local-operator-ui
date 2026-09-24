@@ -20,6 +20,18 @@ import {
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
+/*
+ * The mode-dependent classes on the canvas's wrapper below are the first
+ * conditional class list in this file: every other one is a literal. `cn` rather
+ * than a duplicated literal prefix, because the two modes share seven of their
+ * eight classes and a copy is what drifts when one of them changes.
+ */
+import { cn } from "@shared/lib/utils";
+import {
+	canvasDockWidth,
+	canvasPaneMode,
+	CHAT_PANE_MIN_PX,
+} from "../chat-sidebar-layout";
 import React, {
 	type FC,
 	type ReactNode,
@@ -427,14 +439,21 @@ const RUN_PANEL_MAX_PX = 640;
 /**
  * The chat column's own floor, in pixels, as a fallback for the measured one.
  *
- * The column declares it as `min-w-[220px]` on the element beside the pane, and
- * the measurement below reads it back from that element's computed style rather
- * than trusting this number — the floor is what tells the pane's own divider how
- * much room the ROW can give it, and a constant here that drifted from the class
- * would silently re-open the divergence the divider fix closes. This is the
- * fallback for a computed style that cannot be parsed, not a second source.
+ * The column declares it as `min-w-[480px]` on the element beside the pane (§B1's
+ * chat-pane minimum, and the first of §I's three yielding steps), and the
+ * measurement below reads it back from that element's computed style rather than
+ * trusting this number — the floor is what tells the pane's own divider how much
+ * room the ROW can give it, and a constant here that drifted from the class would
+ * silently re-open the divergence the divider fix closes. This is the fallback for a
+ * computed style that cannot be parsed, not a second source.
+ *
+ * IT WAS 220 UNTIL §I, and the difference is visible: at 220 the canvas could dock
+ * in a row that left the transcript 320px wide, which is the window width the
+ * redesign's audit measured the pane at. `chat-sidebar-layout.ts`'s own 880 comment
+ * has done the arithmetic with 480 since the spec was written; this is the commit
+ * that makes the class agree with it.
  */
-const CHAT_COLUMN_MIN_PX = 220;
+const CHAT_COLUMN_MIN_PX = CHAT_PANE_MIN_PX;
 
 export const ChatContent: FC<ChatContentProps> = React.memo(
 	({
@@ -903,6 +922,53 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			return () => observer.disconnect();
 		}, [isRunPanelOpen]);
 		/*
+		 * THE ROW'S OWN WIDTH, which the canvas's mode is decided from (§I).
+		 *
+		 * Measured rather than computed from `window.innerWidth`: the row is the work area
+		 * AFTER the sidebar has taken its width, and the sidebar is 0, 56 or 260 of those
+		 * pixels depending on the band (`resolveSidebarLayout`) - so a window-width
+		 * calculation here would re-derive a decision another module already owns, and
+		 * would be wrong in exactly the two bands §I's order of yielding is about. The
+		 * same idiom as the run panel's capacity above, for the same reason.
+		 *
+		 * It is measured whether or not the canvas is open: a resize while the pane is
+		 * closed has to be accounted for by the time it opens, and the observer is one
+		 * element.
+		 */
+		const [paneRowWidth, setPaneRowWidth] = useState(0);
+		useLayoutEffect(() => {
+			const row = runPanelRowRef.current;
+			if (!row) return;
+			const measure = () => setPaneRowWidth(row.getBoundingClientRect().width);
+			measure();
+			const observer = new ResizeObserver(measure);
+			observer.observe(row);
+			return () => observer.disconnect();
+		}, []);
+		/*
+		 * §I's two canvas rules, from that one measured number and the user's own
+		 * preference: the pane DOCKED is `min(560, available - 480)`, and where that
+		 * leaves less than the pane's own 400px floor it stops docking and overlays the
+		 * chat instead. `paneRowWidth` is 0 for one frame before the first layout effect
+		 * runs, and the docked branch is the honest reading of "not measured yet": it
+		 * draws the pane at the width it already had rather than flashing a full-pane
+		 * overlay for a frame.
+		 */
+		const canvasDocked =
+			canvasPaneMode(paneRowWidth || Number.MAX_SAFE_INTEGER) === "docked";
+		const canvasWidth = canvasDocked
+			? Math.min(effectiveCanvasPanelWidth, canvasDockWidth(paneRowWidth))
+			: /*
+				 * THE OVERLAY'S WIDTH IS THE PANE'S OWN (§I: "full pane width, scrim
+				 * absent"), capped by the row so a preference stored in a wider window cannot
+				 * push it past the pane it covers. Not the row's leftover: the point of the
+				 * mode is that the chat column's floor stops deciding the canvas's width.
+				 */
+				Math.min(
+					effectiveCanvasPanelWidth,
+					paneRowWidth || effectiveCanvasPanelWidth,
+				);
+		/*
 		 * THE DIVIDER'S CONTRACT, in one place: what the separator announces and
 		 * accepts is what the pane renders.
 		 *
@@ -1032,11 +1098,23 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			 */
 			<div
 				ref={runPanelRowRef}
+				/*
+				 * THE THREE BOXES §I IS WRITTEN ABOUT, addressable by name rather than by a
+				 * scan: this row, the chat column inside it, and whichever pane occupies the
+				 * slot beside it. The capture meter found the chat column by walking every
+				 * element and matching its classes, which is how it missed the commit that
+				 * HALVED the column and moved it to the right-hand third of the window (`x 900
+				 * w 480`) while all of its other assertions passed; a named element is what the
+				 * driver's `metrics` verb and that meter both read, and what a later rename
+				 * cannot silently invalidate.
+				 */
+				data-tour-tag="pane-row"
 				className="relative flex h-full w-full flex-row overflow-hidden"
 			>
 				<div
 					ref={chatColumnRef}
-					className="relative h-full w-0 min-w-[220px] flex-1"
+					data-tour-tag="chat-column"
+					className="relative h-full w-0 min-w-[480px] flex-1"
 				>
 					{/*
 					 * The working surface takes the PAGE ground, `canvas`, not the panel
@@ -1482,36 +1560,73 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 
 				{isCanvasOpen && (
 					<>
-						<ResizableDivider
-							sidebarWidth={effectiveCanvasPanelWidth}
-							onSidebarWidthChange={setCanvasPanelWidth}
-							minWidth={400}
-							maxWidth={1200}
-							side="left"
-							onDoubleClick={restoreDefaultCanvasPanelWidth}
-							label="Resize canvas"
-						/>
+						{/*
+						 * THE DIVIDER EXISTS ONLY WHILE THE CANVAS DOCKS (§I). In the overlay mode
+						 * there is nothing drawing a flow boundary to drag: the pane is over the chat
+						 * at a width its own preference decides, so a separator here would be a control
+						 * for a layout that is not on screen.
+						 */}
+						{canvasDocked && (
+							<ResizableDivider
+								sidebarWidth={canvasWidth}
+								onSidebarWidthChange={setCanvasPanelWidth}
+								minWidth={400}
+								maxWidth={1200}
+								side="left"
+								onDoubleClick={restoreDefaultCanvasPanelWidth}
+								label="Resize canvas"
+							/>
+						)}
 						<div
 							ref={canvasContainerRef}
 							/* Named for the geometry probe: the dock's measured width at
 							 * the default 1380x900 window is the U1 regression check. */
 							data-tour-tag="canvas-dock"
+							/*
+							 * THE MODE AS A FACT ON THE ELEMENT, rather than something a reader has to
+							 * infer from a width. §I's two shapes - docked beside the chat, or over it
+							 * once the row cannot give it 400 - are what the driver scene and the capture
+							 * meter assert against, and a mode reverse-engineered from a number is a mode
+							 * a test gets subtly wrong.
+							 */
+							data-canvas-mode={canvasDocked ? "docked" : "overlay"}
 							style={{
-								width: effectiveCanvasPanelWidth,
+								/*
+								 * §I's width for the mode: docked it is `min(560, available - 480)`,
+								 * capped by the user's own preference; overlaying it is that preference,
+								 * capped by the pane it covers.
+								 */
+								width: canvasWidth,
 							}}
 							/*
 							 * No `minWidth`. A floor pinned at the dock's preferred width is what
 							 * made the grid's fourth column unreachable at the app's own default
-							 * window: the chat column has a 220px floor of its own, so
-							 * 220 + 800 could not fit in an 880px row, the row's `overflow-hidden`
-							 * clipped the rest, and no scroll container in between could reach it
-							 * (measured at 1380x900: the dock ran to x=1520 in a 1380 window and 8 of
-							 * 32 tiles had their right edge past it). With the floor gone, flex
-							 * shrinks the dock into the space that is actually available and the
-							 * grid reflows to the width it really has — which is the same rule the
+							 * window: the chat column has a floor of its own (§B1's 480 since §I; 220
+							 * before it), so 220 + 800 could not fit in an 880px row, the row's
+							 * `overflow-hidden` clipped the rest, and no scroll container in between
+							 * could reach it (measured at 1380x900: the dock ran to x=1520 in a 1380
+							 * window and 8 of 32 tiles had their right edge past it). With the floor
+							 * gone, flex shrinks the dock into the space that is actually available and
+							 * the grid reflows to the width it really has — which is the same rule the
 							 * grid's own `auto-fill` tracks already follow.
+							 *
+							 * THE FLOOR THAT REPLACED IT IS ON THE OTHER COLUMN, deliberately: the
+							 * chat column carries `min-w-[480px]` and the pane's width is derived from
+							 * it (`canvasDockWidth`), so the promise is kept on the pane the reader is
+							 * promised rather than by capping one of the things that may join the row.
 							 */
-							className="relative h-full shrink overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart"
+							className={cn(
+								"relative h-full overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart",
+								/*
+								 * Docked: a flex item that shrinks. Overlay: lifted out of the flow at
+								 * the row's trailing edge, ABOVE the chat column (`z-20`), with the chat
+								 * still painted behind it and no scrim - §I's "full pane width, scrim
+								 * absent". The row is the positioning context (`relative` above), which
+								 * is also what keeps the pane aligned with the chat column's trailing
+								 * edge rather than the window's.
+								 */
+								canvasDocked ? "shrink" : "absolute inset-y-0 right-0 z-20",
+							)}
 						>
 							<Canvas
 								activeDocumentId={selectedTabId}
@@ -1578,6 +1693,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						/>
 						<div
 							ref={runPanelRef}
+							data-tour-tag="run-panel-dock"
 							style={{
 								/*
 								 * The preference is the `width`, and there is NO floor: `minWidth: 0`
