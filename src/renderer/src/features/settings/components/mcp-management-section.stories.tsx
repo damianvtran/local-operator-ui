@@ -1,27 +1,26 @@
 /**
- * The Integrations section, in the states a `/mcp` deep link and a first visit
- * can put it in.
+ * Settings > Integrations, in every state the redesign has to get right.
  *
- * Why this file exists: every state in it is one the operator's own report was
- * about, and none of them is reachable by hand in a frame — `/mcp reauth hubspot`
- * needs a composer type, `?mcp=nosuchserver` needs a URL, and "no conversation is
- * open" needs the roster to be empty at mount. A story drives the PRODUCTION
- * section (not a story-shaped imitation) with the one thing a browser cannot have:
- * `window.api.desktop.request`, the preload bridge `desktop-api.desktopRequest`
- * prefers. Everything else is real — the real section, its real query, its real
- * search box, its real empty states, and the store's real `fetchSessions`.
+ * Every story drives the PRODUCTION section - its real hook, query, grouping,
+ * rows, overflow, dialogs and add form - with the one thing a browser cannot
+ * have: `window.api.desktop.request`, the preload bridge `desktopRequest`
+ * prefers. The bridge answers the ops the section issues and refuses anything
+ * else by name, so a story that starts issuing a new op fails loudly.
  *
- * What the frames are about, and their limit. They are evidence about the
- * RENDERER: the payloads are fixtures shaped like `GET
- * /v1/desktop/sessions/{id}/mcp` and `sessions.list`, so `status` words and
- * scopes are the wire's, but the servers are not the operator's own. The section
- * reads the session-scoped route; whether the real backend serves those payloads
- * is QA's job against a real app, not a frame's.
+ * Two families:
  *
- * The `?mcp=` states are passed through the component's own prop (`highlightServer`
- * is the RAW argument, exactly as `settings-page.tsx` hands it over from
- * `?mcp=`), so `DeepLinkHit` really does run the resolution rule — the story does
- * not pre-resolve the name it wants to see.
+ * - CATALOG stories serve `features.mcp_catalog: 1` and a catalog document in
+ *   the backend contract's own field names (architect doc § 5, as amended by the
+ *   backend coder's deltas). Nothing in them has a conversation: that is the
+ *   point of the sessionless route.
+ * - The `DeepLink*`, `Filtered*`, `NoSessionFallback` and `NoSessionsAtAll`
+ *   stories keep their ids (`scripts/capture-evidence.mjs` names them); the
+ *   last two serve ONLY `features.mcp` so they photograph the fallback route an
+ *   older backend still gets.
+ *
+ * What the frames are about, and their limit: they are evidence about the
+ * RENDERER. Whether the real backend serves these documents is QA's job against
+ * a real app.
  */
 
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
@@ -29,57 +28,79 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { screen, userEvent } from "@storybook/test";
 import { useEffect } from "react";
 import type { DesktopResponse } from "../../../../../shared/desktop-contract";
-import type { DesktopMcpState } from "../../../../../shared/desktop-control-contract";
+import type {
+	DesktopMcpState,
+	McpCatalog,
+	McpCatalogOperation,
+	McpCatalogRow,
+} from "../../../../../shared/desktop-control-contract";
 import { McpManagementSection } from "./mcp-management-section";
 
 /* --------------------------------------------------------------- bridge */
 
-type BridgeRequest = { op: string };
-
-/** One roster row, in `sessions.list`'s own field names (`id`/`name`/`mtime`). */
+type BridgeRequest = { op: string; control?: { action?: string } };
 type RosterRow = { id: string; name: string; mtime: number };
 
-/**
- * The desktop transport, stubbed.
- *
- * `desktopRequest` prefers `window.api.desktop.request` and falls back to
- * `fetch("/__desktop")`, which Storybook's dev server does not serve — so without
- * this every frame would photograph a transport error instead of the section.
- * It answers the three operations this surface issues and refuses anything else
- * by name, so a story that starts issuing a fourth read fails loudly rather than
- * hanging on a promise nothing resolves.
- */
 let bridge: ((request: BridgeRequest) => Promise<DesktopResponse>) | null =
 	null;
 
+const ok = <T,>(result: T): DesktopResponse => ({
+	status: 200,
+	body: { result },
+});
+
+/**
+ * A request that never answers, for the loading-and-in-flight frames: a
+ * promise nothing resolves keeps the section in exactly the state a slow
+ * backend would.
+ */
+const never = () => new Promise<DesktopResponse>(() => undefined);
+
 const installBridge = (handlers: {
-	servers: DesktopMcpState["servers"];
+	catalog?: McpCatalog;
+	/** What a catalog POST answers with; defaults to the same document. */
+	onControl?: (request: BridgeRequest) => Promise<DesktopResponse>;
+	/** Serve the older session route instead of the catalog. */
+	session?: DesktopMcpState;
 	roster?: RosterRow[];
+	loading?: boolean;
 }) => {
-	const { servers, roster = [] } = handlers;
-	const ok = <T,>(result: T): DesktopResponse => ({
-		status: 200,
-		body: { result },
-	});
+	const { session, roster = [] } = handlers;
+	/*
+	 * STATEFUL, like the backend: a POST's answer becomes what the next GET
+	 * returns. The section polls while an operation runs, so a bridge that kept
+	 * answering the original document would overwrite the POST's answer two
+	 * seconds later and photograph a state no backend produces.
+	 */
+	let current = handlers.catalog;
+	const catalog = handlers.catalog;
+	const remember = (response: DesktopResponse): DesktopResponse => {
+		const data = (response.body as { result?: { data?: McpCatalog } } | null)
+			?.result?.data;
+		if (response.status === 200 && data && Array.isArray(data.servers)) {
+			const { operation: _started, ...document } = data;
+			current = document;
+		}
+		return response;
+	};
 	bridge = async (request) => {
 		switch (request.op) {
 			case "capabilities":
 				return ok({
-					// The value the shipped backend advertises
-					// (`server/routes/capabilities.py:18`); this surface reads only
-					// `desktop_available` and `features.mcp`.
 					desktop_contract: 1,
 					desktop_available: true,
 					desktop_auth: "bearer",
-					features: { mcp: 1 },
+					features: catalog ? { mcp: 1, mcp_catalog: 1 } : { mcp: 1 },
 				});
+			case "mcp.catalog":
+				if (handlers.loading) return never();
+				return ok({ data: current, replayed: false });
+			case "mcp.catalog.control":
+				if (handlers.onControl)
+					return remember(await handlers.onControl(request));
+				return ok({ data: { ...current, operation: null }, replayed: false });
 			case "mcp.list":
-				// Lifecycle routes wrap their result as `{data, replayed?}` — the
-				// envelope `mcp-list.ts` is the only module allowed to unwrap.
-				return ok({
-					data: { servers, operations: [] } satisfies DesktopMcpState,
-					replayed: false,
-				});
+				return ok({ data: session, replayed: false });
 			case "sessions.list":
 				return ok({ sessions: roster, truncated: false });
 			default:
@@ -98,9 +119,7 @@ if (typeof window !== "undefined") {
 	page.api = api;
 	api.desktop = {
 		request: (request: BridgeRequest) => {
-			if (!bridge) {
-				throw new Error("no bridge installed for this story");
-			}
+			if (!bridge) throw new Error("no bridge installed for this story");
 			return bridge(request);
 		},
 	};
@@ -108,84 +127,157 @@ if (typeof window !== "undefined") {
 
 /* --------------------------------------------------------------- fixtures */
 
-/**
- * The payload's own field names (`owned_scope`, `transport`), because the section
- * reads the wire's words: a fixture that renamed them would photograph a state
- * the real backend cannot produce.
- *
- * `hubspot` is the deep link's target and `slack` is the server whose transport
- * cannot do OAuth — the two names this section's copy distinguishes.
- */
-const SERVERS: DesktopMcpState["servers"] = [
-	{
-		name: "cloudflare",
-		source: "~/.local-operator/mcp.json",
+const HOME = "/Users/alex";
+const GLOBAL_FILE = `${HOME}/.local-operator/mcp.json`;
+
+/** One catalog row with sensible defaults, overridden per state. */
+const row = (
+	name: string,
+	overrides: Partial<McpCatalogRow> = {},
+): McpCatalogRow => ({
+	id: name,
+	name,
+	scope: "global",
+	project_path: null,
+	source: {
+		kind: "local-operator",
+		path: GLOBAL_FILE,
+		editable: true,
 		owned_scope: "global",
-		status: "connected",
-		transport: "http",
-		tool_count: 9,
 	},
-	{
-		name: "gitlab",
-		source: "~/.codex/config.toml",
+	transport: "remote_url",
+	endpoint: {
+		command: null,
+		url: `https://${name}.example.com/mcp`,
+		endpoint_redacted: false,
+	},
+	status: "not_started",
+	status_reason: null,
+	status_observed_at: null,
+	status_basis: "stored",
+	auth: { kind: "none", signed_in: null, secret_refs: [] },
+	tool_count: null,
+	tool_count_basis: null,
+	actions: ["test", "remove"],
+	...overrides,
+});
+
+const CONNECTED_NOTION = row("notion", {
+	status: "connected",
+	status_basis: "probe",
+	status_observed_at: 1_760_000_000,
+	auth: { kind: "oauth", signed_in: true, secret_refs: [] },
+	tool_count: 12,
+	tool_count_basis: "probe",
+	actions: ["test", "reauth", "sign_out", "remove"],
+});
+
+const NEEDS_SIGN_IN_LINEAR = row("linear", {
+	status: "needs_sign_in",
+	auth: { kind: "oauth", signed_in: false, secret_refs: [] },
+	actions: ["test", "sign_in", "remove"],
+});
+
+const NEEDS_KEY_BRAVE = row("brave-search", {
+	transport: "local_command",
+	endpoint: { command: "npx", url: null, endpoint_redacted: false },
+	status: "needs_sign_in",
+	auth: {
+		kind: "api_key",
+		signed_in: false,
+		secret_refs: [{ id: "BRAVE_API_KEY", state: "missing" }],
+	},
+	actions: ["test", "set_key", "remove"],
+});
+
+const ERROR_FILESYSTEM = row("filesystem", {
+	transport: "local_command",
+	endpoint: { command: "npx", url: null, endpoint_redacted: false },
+	status: "error",
+	status_basis: "probe",
+	status_observed_at: 1_760_000_000,
+	status_reason:
+		"The command exited before it started: npx: command not found.",
+	actions: ["test", "remove"],
+});
+
+const READY_ECHO = row("echo", {
+	transport: "local_command",
+	endpoint: { command: "python3", url: null, endpoint_redacted: false },
+	tool_count: 1,
+	tool_count_basis: "last_seen",
+	actions: ["test", "remove"],
+});
+
+const IMPORTED_GITLAB = row("gitlab", {
+	source: {
+		kind: "codex",
+		path: `${HOME}/.codex/config.toml`,
+		editable: false,
 		owned_scope: null,
-		status: "connected",
-		transport: "http",
-		tool_count: 23,
 	},
-	{
-		name: "hubspot",
-		source: "~/.local-operator/mcp.json",
-		owned_scope: "global",
-		status: "auth-required",
-		transport: "http",
-	},
-	{
-		name: "notion",
-		source: ".mcp.json",
+	actions: ["test"],
+});
+
+const PROJECT_POSTGRES = row("postgres", {
+	scope: "project",
+	project_path: `${HOME}/code/billing`,
+	transport: "local_command",
+	endpoint: { command: "uvx", url: null, endpoint_redacted: false },
+	source: {
+		kind: "local-operator",
+		path: `${HOME}/code/billing/.local-operator/mcp.json`,
+		editable: true,
 		owned_scope: "project",
-		status: "connected",
-		transport: "http",
-		tool_count: 24,
 	},
-	{
-		name: "slack",
-		source: "~/.local-operator/mcp.json",
-		owned_scope: "global",
-		status: "disconnected",
-		transport: "http",
-	},
-];
+});
 
-const ROSTER: RosterRow[] = [
-	{ id: "a1b2c3d4e5f6", name: "Invoice reconciliation", mtime: 1_760_000_000 },
-	{ id: "0f0e0d0c0b0a", name: "RFP drafting", mtime: 1_759_000_000 },
-];
+const catalog = (
+	servers: McpCatalogRow[],
+	overrides: Partial<McpCatalog> = {},
+): McpCatalog => ({
+	cwd: HOME,
+	project_scope_available: false,
+	global_path: GLOBAL_FILE,
+	project_path: null,
+	status_source: "config",
+	session_id: null,
+	servers,
+	operations: [],
+	...overrides,
+});
 
-/**
- * A stable empty roster, so the ground's effect does not re-run on a fresh array.
- *
- * Not a tidiness point: `setState` with a new array identity on every render would
- * re-render the section once per commit for as long as the story was mounted.
- */
-const NO_ROSTER: RosterRow[] = [];
+const MIXED = catalog([
+	CONNECTED_NOTION,
+	READY_ECHO,
+	NEEDS_SIGN_IN_LINEAR,
+	IMPORTED_GITLAB,
+	ERROR_FILESYSTEM,
+]);
+
+const op = (
+	name: string,
+	overrides: Partial<McpCatalogOperation> = {},
+): McpCatalogOperation => ({
+	id: "a".repeat(32),
+	name,
+	action: "login",
+	status: "running",
+	created_at: 1_760_000_100,
+	credential_removed: false,
+	browser_opened: null,
+	authorization_url: null,
+	message: null,
+	...overrides,
+});
 
 /* --------------------------------------------------------------- ground */
 
-/**
- * The section, on the page ground it is drawn on.
- *
- * The store is set rather than mocked because the section's own borrow (`D5`)
- * reads it, and the mounted copy is what makes the "no conversation" frame a real
- * one: `activeSessionId` is null, the roster starts empty, and the section calls
- * the store's own `fetchSessions` exactly as it does in the app.
- */
 const Ground = ({
 	highlight,
-	active = "a1b2c3d4e5f6",
+	active = null,
 	roster = NO_ROSTER,
 }: {
-	/** The RAW `?mcp=` argument, as `settings-page.tsx` passes it. */
 	highlight?: string;
 	active?: string | null;
 	roster?: RosterRow[];
@@ -214,31 +306,11 @@ const Ground = ({
 	);
 };
 
-/**
- * Install the bridge a story needs and mount the ground.
- *
- * Called from each story's `render`, which runs for the story being previewed and
- * not for its siblings: `servedRoster` is what `sessions.list` ANSWERS with, which
- * is a different fact from `roster`, the state the store starts in. The two differ
- * in exactly one frame — `NoSessionFallback` starts empty and is answered with a
- * roster, which is the borrow D5 exists for.
- */
-const mount = ({
-	servers = SERVERS,
-	active = "a1b2c3d4e5f6",
-	roster = NO_ROSTER,
-	servedRoster = ROSTER,
-	highlight,
-}: {
-	servers?: DesktopMcpState["servers"];
-	active?: string | null;
-	roster?: RosterRow[];
-	servedRoster?: RosterRow[];
-	highlight?: string;
-} = {}) => {
-	installBridge({ servers, roster: servedRoster });
-	return <Ground highlight={highlight} active={active} roster={roster} />;
-};
+const NO_ROSTER: RosterRow[] = [];
+const ROSTER: RosterRow[] = [
+	{ id: "a1b2c3d4e5f6", name: "Invoice reconciliation", mtime: 1_760_000_000 },
+	{ id: "0f0e0d0c0b0a", name: "RFP drafting", mtime: 1_759_000_000 },
+];
 
 const meta: Meta = {
 	title: "Settings/Integrations",
@@ -249,130 +321,469 @@ export default meta;
 type Story = StoryObj;
 
 /* ------------------------------------------------------------------ */
+/* The catalog route: no conversation needed                           */
+/* ------------------------------------------------------------------ */
+
+/** Nothing configured: the empty state, with its one call to action. */
+export const Empty: Story = {
+	render: () => {
+		installBridge({ catalog: catalog([]) });
+		return <Ground />;
+	},
+};
+
+/** The list still loading: the section's own spinner, no rows guessed at. */
+export const Loading: Story = {
+	render: () => {
+		installBridge({ catalog: catalog([]), loading: true });
+		return <Ground />;
+	},
+};
+
+/**
+ * Every group at once: needs attention (sign-in, error with its reason),
+ * connected (with a proper "12 tools"), ready (with "1 tool last time"), and a
+ * row imported from Codex CLI.
+ */
+export const MixedStates: Story = {
+	render: () => {
+		installBridge({ catalog: MIXED });
+		return <Ground />;
+	},
+};
+
+/** A remote server that needs a browser sign-in, and a local one that needs a key. */
+export const NeedsSignIn: Story = {
+	render: () => {
+		installBridge({
+			catalog: catalog([
+				NEEDS_SIGN_IN_LINEAR,
+				NEEDS_KEY_BRAVE,
+				CONNECTED_NOTION,
+			]),
+		});
+		return <Ground />;
+	},
+};
+
+/** A server that could not start, with the backend's own reason under it. */
+export const ErrorWithReason: Story = {
+	render: () => {
+		installBridge({
+			catalog: catalog([
+				ERROR_FILESYSTEM,
+				row("sentry", {
+					status: "error",
+					status_basis: "probe",
+					status_reason: null,
+					actions: ["test", "remove"],
+				}),
+				READY_ECHO,
+			]),
+		});
+		return <Ground />;
+	},
+};
+
+/** A test running: spinner in place of the dot, "Connecting…", no action to press twice. */
+export const Connecting: Story = {
+	render: () => {
+		installBridge({
+			catalog: catalog(
+				[
+					{ ...READY_ECHO, status: "connecting", status_basis: "probe" },
+					CONNECTED_NOTION,
+				],
+				{ operations: [op("echo", { action: "test" })] },
+			),
+		});
+		return <Ground />;
+	},
+};
+
+/** The overflow menu open on a connected row: the secondary actions, Remove last. */
+export const OverflowOpen: Story = {
+	render: () => {
+		installBridge({ catalog: MIXED });
+		return <Ground />;
+	},
+	play: async () => {
+		const trigger = await screen.findByLabelText("More actions for notion");
+		await userEvent.click(trigger);
+		await screen.findByRole("menuitem", { name: "Remove" });
+	},
+};
+
+/** An imported row's overflow: Remove is present but disabled, and says where. */
+export const OverflowImported: Story = {
+	render: () => {
+		installBridge({ catalog: MIXED });
+		return <Ground />;
+	},
+	play: async () => {
+		const trigger = await screen.findByLabelText("More actions for gitlab");
+		await userEvent.click(trigger);
+		await screen.findByText("Remove in Codex CLI");
+	},
+};
+
+/** Remove asks inline before it writes anything. */
+export const RemoveConfirm: Story = {
+	render: () => {
+		installBridge({ catalog: MIXED });
+		return <Ground />;
+	},
+	play: async () => {
+		await userEvent.click(
+			await screen.findByLabelText("More actions for echo"),
+		);
+		await userEvent.click(
+			await screen.findByRole("menuitem", { name: "Remove" }),
+		);
+		await screen.findByText("Remove echo?");
+	},
+};
+
+/** A project cwd: scope becomes worth saying, and project rows say so. */
+export const ProjectScope: Story = {
+	render: () => {
+		installBridge({
+			catalog: catalog([PROJECT_POSTGRES, CONNECTED_NOTION, READY_ECHO], {
+				cwd: `${HOME}/code/billing`,
+				project_scope_available: true,
+				project_path: `${HOME}/code/billing/.local-operator/mcp.json`,
+			}),
+		});
+		return <Ground />;
+	},
+};
+
+/** The add form, empty. */
+export const AddForm: Story = {
+	render: () => {
+		installBridge({ catalog: MIXED });
+		return <Ground />;
+	},
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Add integration" }),
+		);
+		await screen.findByLabelText("Name");
+	},
+};
+
+/**
+ * The add form after a submit with a bad name and two URLs pasted together -
+ * the shape the backend accepted on the walk (N3).
+ */
+export const AddFormValidation: Story = {
+	render: () => {
+		installBridge({ catalog: MIXED });
+		return <Ground />;
+	},
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Add integration" }),
+		);
+		await userEvent.type(await screen.findByLabelText("Name"), "my server");
+		await userEvent.click(screen.getByRole("button", { name: "Remote URL" }));
+		await userEvent.type(
+			screen.getByLabelText("URL"),
+			"https://a.example.com/mcphttps://b.example.com/mcp",
+		);
+		const submits = screen.getAllByRole("button", { name: "Add integration" });
+		await userEvent.click(submits[submits.length - 1]);
+		await screen.findByText(/two URLs pasted together/);
+	},
+};
+
+/** The add form refused by the backend with a bounded code, worded. */
+export const AddFormRefused: Story = {
+	render: () => {
+		installBridge({
+			catalog: MIXED,
+			onControl: async () => ({
+				status: 409,
+				body: { detail: { code: "write_failed", message: "write failed" } },
+			}),
+		});
+		return <Ground />;
+	},
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Add integration" }),
+		);
+		await userEvent.type(await screen.findByLabelText("Name"), "weather");
+		await userEvent.type(screen.getByLabelText("Command"), "uvx");
+		const submits = screen.getAllByRole("button", { name: "Add integration" });
+		await userEvent.click(submits[submits.length - 1]);
+		await screen.findByText(/couldn't be written/);
+	},
+};
+
+/** The sign-in dialog before the press: what WILL happen, nothing claimed yet. */
+export const SignInReady: Story = {
+	render: () => {
+		installBridge({
+			catalog: catalog([NEEDS_SIGN_IN_LINEAR, CONNECTED_NOTION]),
+		});
+		return <Ground />;
+	},
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Sign in" }),
+		);
+		await screen.findByText(/opens your browser/);
+	},
+};
+
+/**
+ * Signing in, with the backend reporting the browser opened: the row says
+ * "Signing in…" and the dialog says the browser opened - only because the
+ * operation says so.
+ */
+export const SigningIn: Story = {
+	render: () => {
+		const running = op("linear", { browser_opened: true });
+		installBridge({
+			catalog: catalog([NEEDS_SIGN_IN_LINEAR, CONNECTED_NOTION]),
+			onControl: async () =>
+				ok({
+					data: {
+						...catalog([NEEDS_SIGN_IN_LINEAR, CONNECTED_NOTION], {
+							operations: [running],
+						}),
+						operation: running,
+					},
+					replayed: false,
+				}),
+		});
+		return <Ground />;
+	},
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Sign in" }),
+		);
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Continue in browser" }),
+		);
+		await screen.findByText(/Your browser opened/);
+	},
+};
+
+/** The launcher could not open a browser: the link, to open by hand. */
+export const SignInNoBrowser: Story = {
+	render: () => {
+		const running = op("linear", {
+			browser_opened: false,
+			authorization_url:
+				"https://linear.example.com/oauth/authorize?client_id=local-operator",
+		});
+		installBridge({
+			catalog: catalog([NEEDS_SIGN_IN_LINEAR]),
+			onControl: async () =>
+				ok({
+					data: {
+						...catalog([NEEDS_SIGN_IN_LINEAR], { operations: [running] }),
+						operation: running,
+					},
+					replayed: false,
+				}),
+		});
+		return <Ground />;
+	},
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Sign in" }),
+		);
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Continue in browser" }),
+		);
+		await screen.findByText(/didn't open/);
+	},
+};
+
+/** A sign-in that failed, with the backend's sanitized reason. */
+export const SignInFailed: Story = {
+	render: () => {
+		const failed = op("linear", {
+			status: "failed",
+			message: "The server rejected the redirect address.",
+		});
+		installBridge({
+			catalog: catalog([NEEDS_SIGN_IN_LINEAR]),
+			onControl: async () =>
+				ok({
+					data: {
+						...catalog([NEEDS_SIGN_IN_LINEAR], { operations: [failed] }),
+						operation: failed,
+					},
+					replayed: false,
+				}),
+		});
+		return <Ground />;
+	},
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Sign in" }),
+		);
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Continue in browser" }),
+		);
+		await screen.findByText(/Sign-in didn't finish/);
+	},
+};
+
+/** The key dialog for a server whose config references a secret. */
+export const AddKey: Story = {
+	render: () => {
+		installBridge({ catalog: catalog([NEEDS_KEY_BRAVE, CONNECTED_NOTION]) });
+		return <Ground />;
+	},
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Add key" }),
+		);
+		await screen.findByLabelText("BRAVE_API_KEY");
+	},
+};
+
+/* ------------------------------------------------------------------ */
 /* Discovery: the deep link                                            */
 /* ------------------------------------------------------------------ */
 
-/** `/mcp hubspot` — the named server is revealed and identified. */
+/** `/mcp linear` - the named row is revealed with the row-selected ground. */
 export const DeepLinkHit: Story = {
-	render: () => mount({ highlight: "hubspot" }),
+	render: () => {
+		installBridge({ catalog: MIXED });
+		return <Ground highlight="linear" />;
+	},
 };
 
-/**
- * `/mcp reauth hubspot` — the operator's own remedy line.
- *
- * The whole argument arrives as one string and the section resolves it against the
- * loaded list (the last whitespace token that is a configured server name), which
- * is why this frame and `DeepLinkHit` land on the same row. The renderer holds no
- * copy of the backend's subcommand vocabulary.
- */
+/** `/mcp reauth linear` resolves to the same row: the verb is not a server. */
 export const DeepLinkVerbHit: Story = {
-	render: () => mount({ highlight: "reauth hubspot" }),
+	render: () => {
+		installBridge({ catalog: MIXED });
+		return <Ground highlight="reauth linear" />;
+	},
 };
 
-/**
- * The residual the resolution rule cannot fix, stated rather than hidden.
- *
- * A server may be NAMED like a verb, and no verb list may exist in this renderer:
- * with a server called `login` configured, `/mcp login hubspo` (a typo) matches
- * `login` — the last token that IS configured wins — and would reveal an unrelated
- * row in silence (code review round 1, finding 4). So a match the last token does
- * not explain says which server it resolved to, and the frame carries that line
- * beside the revealed row.
- */
+/** A server named like a verb: the resolution says which row it landed on. */
 export const DeepLinkVerbShadowed: Story = {
-	render: () =>
-		mount({
-			highlight: "login hubspo",
-			servers: [
-				...SERVERS,
-				{
-					name: "login",
-					source: "~/.local-operator/mcp.json",
-					owned_scope: "global",
+	render: () => {
+		installBridge({
+			catalog: catalog([
+				...MIXED.servers,
+				row("login", {
 					status: "connected",
-					transport: "http",
 					tool_count: 4,
-				},
-			],
-		}),
+					tool_count_basis: "probe",
+				}),
+			]),
+		});
+		return <Ground highlight="login linea" />;
+	},
 };
 
-/**
- * An argument that names nothing: stated, with the list intact below it.
- *
- * This is the state the old effect reached with a silent `return` — no scroll, no
- * colour step, no message — which is what the operator reported as "it brings me
- * over to the settings but there's no hubspot listed there".
- */
+/** An argument that names nothing: stated, with the list intact below it. */
 export const DeepLinkMiss: Story = {
-	render: () => mount({ highlight: "reauth hubspotx" }),
-};
-
-/* ------------------------------------------------------------------ */
-/* No active conversation (D5)                                          */
-/* ------------------------------------------------------------------ */
-
-/**
- * No conversation open: the section borrows the newest roster row and says which.
- *
- * The sentence names the conversation on purpose — the statuses below are that
- * conversation's runtime's and `disconnect` is per-session — while the CREDENTIAL
- * is not: `~/.local-operator/auth.db` is shared, so a grant in one conversation
- * heals every other one. The roster is fetched through the store's own
- * `fetchSessions`, which is why this frame waits for the borrow.
- */
-export const NoSessionFallback: Story = {
-	render: () => mount({ active: null, roster: NO_ROSTER }),
-	play: async () => {
-		await screen.findByText(/your most recent conversation/);
+	render: () => {
+		installBridge({ catalog: MIXED });
+		return <Ground highlight="reauth linearx" />;
 	},
 };
 
-/**
- * No conversation at all — the one case the old dead-end line is still true in.
- *
- * The bridge ANSWERS `sessions.list` with an empty roster here, so the section's
- * borrow finds nothing and the line stands. That is the difference from
- * `NoSessionFallback`, and it is a fact about the machine rather than about the
- * page's willingness to help.
- */
-export const NoSessionsAtAll: Story = {
-	render: () =>
-		mount({ active: null, roster: NO_ROSTER, servedRoster: NO_ROSTER }),
-};
-
 /* ------------------------------------------------------------------ */
-/* The section's own search (D4)                                        */
+/* Search, from six rows up                                             */
 /* ------------------------------------------------------------------ */
 
-/** The filter narrowed the list, with the type still in the box. */
+const SEVEN = catalog([...MIXED.servers, NEEDS_KEY_BRAVE, row("sentry")]);
+
 export const Filtered: Story = {
-	render: () => mount(),
+	render: () => {
+		installBridge({ catalog: SEVEN });
+		return <Ground />;
+	},
 	play: async () => {
-		const input = await screen.findByLabelText("Search MCP servers");
-		await userEvent.type(input, "not");
+		await userEvent.type(
+			await screen.findByLabelText("Search integrations"),
+			"n",
+		);
 	},
 };
 
-/**
- * A filter that matches nothing: the provider grid's own empty-state pair.
- *
- * Deliberately a different line from `DeepLinkMiss`: this one is about a filter
- * the reader typed, that one is about a name a command asked for.
- */
 export const FilteredEmpty: Story = {
-	render: () => mount(),
+	render: () => {
+		installBridge({ catalog: SEVEN });
+		return <Ground />;
+	},
 	play: async () => {
-		const input = await screen.findByLabelText("Search MCP servers");
-		await userEvent.type(input, "zzz");
+		await userEvent.type(
+			await screen.findByLabelText("Search integrations"),
+			"zzz",
+		);
 	},
 };
 
+/** The catalog's empty state, under the id the evidence table already names. */
+export const NoServers: Story = Empty;
+
 /* ------------------------------------------------------------------ */
-/* Nothing configured                                                   */
+/* An older backend: the session route, rendered through the same rows  */
 /* ------------------------------------------------------------------ */
 
-/** No servers configured, which is absence rather than an error. */
-export const NoServers: Story = {
-	render: () => mount({ servers: [] }),
+const LEGACY: DesktopMcpState = {
+	servers: [
+		{
+			name: "cloudflare",
+			source: GLOBAL_FILE,
+			owned_scope: "global",
+			status: "connected",
+			transport: "http",
+			tool_count: 9,
+		},
+		{
+			name: "hubspot",
+			source: GLOBAL_FILE,
+			owned_scope: "global",
+			status: "auth-required",
+			transport: "http",
+		},
+		{
+			name: "echo",
+			source: GLOBAL_FILE,
+			owned_scope: "global",
+			status: "cold",
+			transport: "stdio",
+			transport_oauth_supported: false,
+		},
+		{
+			name: "gitlab",
+			source: `${HOME}/.codex/config.toml`,
+			owned_scope: null,
+			status: "cold",
+			transport: "http",
+		},
+	],
+	operations: [],
+	cold: true,
+};
+
+/** No catalog capability and no chat open: the newest chat is borrowed, and said. */
+export const NoSessionFallback: Story = {
+	render: () => {
+		installBridge({ session: LEGACY, roster: ROSTER });
+		return <Ground />;
+	},
+	play: async () => {
+		await screen.findByText(/your most recent chat/);
+	},
+};
+
+/** No catalog capability and no chat at all: the one step an update removes. */
+export const NoSessionsAtAll: Story = {
+	render: () => {
+		installBridge({ session: LEGACY, roster: NO_ROSTER });
+		return <Ground />;
+	},
 };

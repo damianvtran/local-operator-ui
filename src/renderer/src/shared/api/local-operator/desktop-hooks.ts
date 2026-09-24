@@ -199,6 +199,14 @@ export type DesktopFeature =
 	| "mcp"
 	| "mcp_auth"
 	/**
+	 * The sessionless MCP catalog (`GET|POST /v1/desktop/mcp`,
+	 * `mcp.catalog*` ops). Its own key rather than a bump of `mcp`: the session
+	 * route is a working surface on every backend that has it, and Settings >
+	 * Integrations falls back to it when this key is absent rather than telling
+	 * the user to update for a page that still works.
+	 */
+	| "mcp_catalog"
+	/**
 	 * The run panel's child reader (`docs/run-sidebar.md` § 10.3).
 	 *
 	 * The reader is the ONE part of that panel that needs a route older backends

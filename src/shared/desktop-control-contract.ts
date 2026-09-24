@@ -135,6 +135,119 @@ export type DesktopMcpState = {
 	operations: DesktopMcpOperation[];
 	cold?: boolean;
 };
+/**
+ * One grant/probe operation on the SESSIONLESS catalog route.
+ *
+ * The session route's shape plus three optional fields the sign-in dialog reads
+ * to stay truthful. They are optional because the backend PR that introduces
+ * the catalog may ship without them, and the dialog's copy has a branch for
+ * each absence rather than a guess: without `browser_opened` it never claims a
+ * browser opened (UX walk N2), and without a failure `message` it says the
+ * server gave no reason rather than printing a bare "Sign-in failed." (N4).
+ */
+export type McpCatalogOperation = Omit<
+	DesktopMcpOperation,
+	"action" | "message"
+> & {
+	action: "login" | "logout" | "reauth" | "test";
+	/** `true` once the backend's browser launcher reported success. */
+	browser_opened?: boolean | null;
+	/** The URL the user can open by hand when the launcher could not. */
+	authorization_url?: string | null;
+	/** Sanitized failure reason, present only on a `failed` operation. */
+	message?: string | null;
+};
+
+/**
+ * One row of the sessionless MCP catalog (`GET /v1/desktop/mcp`).
+ *
+ * Hand-written from the backend decision doc's contract (architect, § 5) and
+ * pinned by the backend's JSON fixture once that lands. Every derivation - the
+ * status precedence, which actions are allowed, which scope a row applies in -
+ * is the BACKEND's, so this renderer decides nothing a row does not already say:
+ * a control is drawn only when `actions` names it, which is what removes the
+ * dead-end "Sign in" on a local command with no secret references (U6).
+ */
+export type McpCatalogRow = {
+	id: string;
+	name: string;
+	scope: "global" | "project";
+	/** The project DIRECTORY when `scope === "project"`, else null. */
+	project_path: string | null;
+	source: {
+		kind:
+			| "local-operator"
+			| "project-mcp-json"
+			| "claude-code"
+			| "cursor"
+			| "vscode"
+			| "codex";
+		path: string;
+		editable: boolean;
+		owned_scope: "global" | "project" | null;
+	};
+	transport: "local_command" | "remote_url";
+	endpoint: {
+		command: string | null;
+		url: string | null;
+		endpoint_redacted: boolean;
+	};
+	status:
+		| "connected"
+		| "needs_sign_in"
+		| "not_started"
+		| "connecting"
+		| "error";
+	/** Sanitized, one line; set for `error` and for `needs_sign_in` when known. */
+	status_reason: string | null;
+	status_observed_at: number | null;
+	status_basis: "live" | "probe" | "stored";
+	auth: {
+		kind: "none" | "oauth" | "api_key" | "unknown";
+		signed_in: boolean | null;
+		secret_refs: {
+			id: string;
+			state: "encrypted" | "missing" | "unavailable";
+		}[];
+	};
+	tool_count: number | null;
+	tool_count_basis: "live" | "probe" | "last_seen" | null;
+	actions: (
+		| "test"
+		| "sign_in"
+		| "set_key"
+		| "reauth"
+		| "sign_out"
+		| "remove"
+		| "connect"
+		| "disconnect"
+	)[];
+};
+
+/** The whole catalog document, as both the GET and a mutating POST answer it. */
+export type McpCatalog = {
+	cwd: string;
+	/** False when the cwd's project file IS the global file (cwd = `~`). */
+	project_scope_available: boolean;
+	global_path: string;
+	/** The project mcp.json FILE, null when there is no separate project file. */
+	project_path: string | null;
+	status_source: "config" | "live";
+	session_id: string | null;
+	servers: McpCatalogRow[];
+	operations: McpCatalogOperation[];
+	/** On a POST answer only: the operation that request started or named. */
+	operation?: McpCatalogOperation | null;
+};
+
+/** `POST /v1/desktop/mcp/credentials`: what was saved, and the doc after it. */
+export type McpCatalogCredentialsResult = {
+	name: string;
+	saved_ids: string[];
+	failed_ids: string[];
+	code: string | null;
+	catalog: McpCatalog;
+};
 export type DesktopControlResult<T = Record<string, unknown>> = {
 	data: T;
 	replayed?: boolean;
