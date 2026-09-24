@@ -73,8 +73,15 @@ import { build } from "esbuild";
  */
 const RE_ANSWERED_A_REQUEST = /answered a request/;
 const RE_PROBE_EVIDENCE = /(no answer to probe|probe \d+ of \d+)/;
+/*
+ * The sentence an UNIDENTIFIED occupant gets. The old form named the daemon it
+ * could not identify ("answered without proving it is a Local Operator daemon");
+ * the copy now states what the app OBSERVED, with the probe's own account in
+ * parentheses, and never claims a Local Operator daemon it cannot name. The
+ * assertion's subject is unchanged - state the fact, do not invent a daemon.
+ */
 const RE_ANSWERED_WITHOUT_PROVING_I =
-	/answered without proving it is a Local Operator daemon/;
+	/did not answer this app's probe with anything it could use/;
 const RE_CONFIG = /^\.\/config$/;
 const RE_CONNECTED_TO_THE_DAEMON = /Connected to the daemon/;
 const RE_ELECTRON = /^electron$/;
@@ -86,8 +93,14 @@ const RE_LOGGER = /^\.\/logger$/;
 const RE_PROCESS_IS_GONE = /process is gone/;
 const RE_REFUSES_THIS_APP = /refused this app's credential/;
 const RE_503 = /503/;
+/*
+ * The sentence for a daemon this app holds no key to. The old form was a whole
+ * clause about what the app did NOT do; the copy now names the holder (address,
+ * pid, install, version) and the missing key. The assertion's subject is
+ * unchanged - the copy names the PATH into the state, not a generic failure.
+ */
 const RE_THIS_APP_WAS_NOT_GIVEN_THE =
-	/This app was not given the key to that server, so it did not start a second one/;
+	/is serving as a Local Operator daemon this app was not given the key to/;
 const RE_VITE_DISABLE_BACKEND_MANAG = /VITE_DISABLE_BACKEND_MANAGER/;
 
 /*
@@ -667,8 +680,31 @@ test("a daemon answering 503 is not a credential refusal, and is not spawned ove
 		instanceId: "instance-unreadable-store",
 		sessionsStatus: 503,
 	});
+	/*
+	 * THE CONFIGURED ADDRESS IS NAMED HERE, as every other case in this file names
+	 * it. These two were reading whatever the case above left in the global, so
+	 * which address the gate asked about depended on the order the file ran in -
+	 * and when the case above had disposed its daemon, the address they asked about
+	 * was a CLOSED port, which is the one answer that proves it free. Measured while
+	 * changing the gate: `started` came back TRUE and a real backend was started on
+	 * a stale port. Nothing about the subject changes; the case simply says which
+	 * address it is about.
+	 */
+	globalThis.__testConfiguredUrl = scene.address;
 	const manager = new BackendServiceManager();
 	managers.add(manager);
+	/*
+	 * THE FALLBACK BUDGET IS EMPTIED FOR THIS CASE, and the reason is its
+	 * subject: this test is about the OCCUPANT gate, while the shipped default
+	 * (`FALLBACK_SPAWN_URL`, the second origin the renderer's policy trusts)
+	 * would have the manager start a daemon somewhere else - which, in a rig,
+	 * means whatever `local-operator` PATH resolves, on a fixed port. These two
+	 * facts are not in tension: the app refuses to spawn ON the occupant either
+	 * way, and the fallback itself is proved over the real spawn path in
+	 * `scripts/owned-serve-lifecycle.test.mjs`, against a fake install and a
+	 * port the kernel picked.
+	 */
+	manager.fallbackSpawnUrls = [];
 	try {
 		const started = await manager.start({ quiet: true });
 		assert.equal(
@@ -716,6 +752,18 @@ test("a daemon answering the configured origin is never spawned over (EADDRINUSE
 	globalThis.__testConfiguredUrl = scene.address;
 	const manager = new BackendServiceManager();
 	managers.add(manager);
+	/*
+	 * THE FALLBACK BUDGET IS EMPTIED FOR THIS CASE, and the reason is its
+	 * subject: this test is about the OCCUPANT gate, while the shipped default
+	 * (`FALLBACK_SPAWN_URL`, the second origin the renderer's policy trusts)
+	 * would have the manager start a daemon somewhere else - which, in a rig,
+	 * means whatever `local-operator` PATH resolves, on a fixed port. These two
+	 * facts are not in tension: the app refuses to spawn ON the occupant either
+	 * way, and the fallback itself is proved over the real spawn path in
+	 * `scripts/owned-serve-lifecycle.test.mjs`, against a fake install and a
+	 * port the kernel picked.
+	 */
+	manager.fallbackSpawnUrls = [];
 	try {
 		const started = await manager.start({ quiet: true });
 		assert.equal(
@@ -778,6 +826,17 @@ test("an address that answers a status other than 200 is OCCUPIED, not free (F-2
 		publishRecord: false,
 		healthStatus: 503,
 	});
+	/*
+	 * THE CONFIGURED ADDRESS IS NAMED HERE, as every other case in this file names
+	 * it. These two were reading whatever the case above left in the global, so
+	 * which address the gate asked about depended on the order the file ran in -
+	 * and when the case above had disposed its daemon, the address they asked about
+	 * was a CLOSED port, which is the one answer that proves it free. Measured while
+	 * changing the gate: `started` came back TRUE and a real backend was started on
+	 * a stale port. Nothing about the subject changes; the case simply says which
+	 * address it is about.
+	 */
+	globalThis.__testConfiguredUrl = scene.address;
 	globalThis.__testConfiguredUrl = scene.address;
 	const manager = new BackendServiceManager();
 	managers.add(manager);
