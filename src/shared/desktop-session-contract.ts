@@ -217,16 +217,53 @@ export type CompletionAttentionAckReceipt = {
  * in `scripts/completion-view-ack.test.mjs`: a change here fails a test that
  * names the backend's value.
  *
- * Nothing in the renderer FORKS on this code, and that is deliberate rather than
- * an omission: `use-completion-view.ts` sends every rejection -- this 409
- * included -- to the one shared retry ladder, so a superseded token costs its
- * attempt like any other failure and the re-arm comes from the projection naming
- * a NEW token, not from a special case here. It is kept because it is part of
- * the canonical wire shape documented for clients in `docs/DESKTOP_API.md`, and
- * a client that does need to tell the refusal apart must not have to spell the
- * string itself.
+ * THE RENDERER FORKS ON THIS CODE, and the fork is what makes a stale token
+ * resolvable at all (agent review round 1, M1). `use-completion-view.ts` treats
+ * this refusal as TERMINAL for the loop it interrupted, instead of spending the
+ * shared ladder on it: the ladder exists to ride out a failure, while this is the
+ * backend stating that the completion this attempt named is no longer the current
+ * one - so a retry of the same token cannot succeed however many turns it gets,
+ * and the state that supersedes it is the FEED's to deliver, not this call's. The
+ * loop's next life takes its token from the merge of both channels (the stream and
+ * the row the feed writes), which is the re-read; the anchor hit test is still the
+ * definition of "shown", so a token is never acknowledged blind.
  */
 export const SUPERSEDED_COMPLETION_TOKEN_CODE = "superseded_completion_token";
+
+/**
+ * The backend's machine code for "the store could not take the write because
+ * another writer holds its lock": the ONE refusal of a read receipt whose remedy
+ * is the attempt itself.
+ *
+ * The string is the BACKEND's (`STORE_BUSY` in
+ * `local_operator/session/store_failures.py`, answered as
+ * `503 {"code": "store_busy", "message": ...}` by `_store_refusal` in
+ * `local_operator/server/routes/desktop_sessions.py`), copied here for the same
+ * reason the superseded token above is: the renderer cannot import Python, and a
+ * client that has to spell the backend's own string is a client that loses the
+ * classification the day the backend renames it. `scripts/completion-view-ack.test.mjs`
+ * pins both literals against the documented wire values.
+ *
+ * UNLIKE THAT ONE, THE RENDERER FORKS ON THIS CODE. `use-completion-view.ts`
+ * retries a contention refusal on its own prompt, bounded budget while every
+ * other failure takes the shared ladder (`runtime_busy` is the same shape one
+ * op over, `RUNTIME_BUSY_CODE` in `desktop-contract.ts`). Why the fork exists:
+ * contention clears by itself in the same second-scale window the send path
+ * already absorbs (`BUSY_RESENDS`), and the operator's own log shows the cost of
+ * not telling it apart - three refusals of `/seen`, ONE attempt each, minutes
+ * apart, with the completion's mark still on the row (2026-09-23, the reported
+ * defect). Treating it as a generic failure instead means either hammering a
+ * store that cannot recover or giving up on one that can.
+ *
+ * WHERE IT ARRIVES, precisely, because the body is what a client can key on:
+ * that route's refusal carries `code` and `message` and NO `retry_after_ms`
+ * today (verified in `_store_refusal`, 2026-09-23), while the transport reads
+ * `detail.retry_after_ms` into `DesktopControlError.retryAfterMs` where a
+ * backend does send it. The receipt's busy budget therefore reads that field and
+ * falls back to its own default, so a future backend can steer the wait without
+ * a client change.
+ */
+export const STORE_BUSY_CODE = "store_busy";
 
 /**
  * Whether an acknowledgement may be taken as marking this conversation READ.
