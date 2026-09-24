@@ -341,7 +341,11 @@ const route = (method, pathname, query, body) => {
 				cursor_missing: false,
 				scope: { kind, name },
 				...(PAGED
-					? { counts: censusOf(served.filter((row) => include || !row.archived)) }
+					? {
+							counts: censusOf(
+								served.filter((row) => include || !row.archived),
+							),
+						}
 					: {}),
 			});
 		}
@@ -372,7 +376,17 @@ const route = (method, pathname, query, body) => {
 		 * it as opaque; an unrecognisable one is answered with the FIRST page and
 		 * `cursor_missing`, which is the route's own rule for a token it cannot use.
 		 */
-		const offset = cursor === null ? 0 : Number(cursor.slice(3)) || 0;
+		/*
+		 * WHERE THE OFFSET LIVES IN THE CURSOR, read from the prefix rather than from a
+		 * hand-counted index. `off:` is FOUR characters, so `slice(3)` leaves the colon,
+		 * `Number(":25")` is NaN, `NaN || 0` is 0 - and this stand-in then answered page
+		 * two with PAGE ONE, for as long as the rig's tail-press assertion was reporting
+		 * the panel as broken. The app was right and had already collapsed the repeated
+		 * ids, which is what its merge is specified to do.
+		 */
+		const CURSOR_PREFIX = "off:";
+		const offset =
+			cursor === null ? 0 : Number(cursor.slice(CURSOR_PREFIX.length)) || 0;
 		const page = rows.slice(offset, offset + limit);
 		const more = offset + page.length < rows.length;
 		return ok({
@@ -381,10 +395,15 @@ const route = (method, pathname, query, body) => {
 			...(PAGED
 				? {
 						next_cursor: more ? `off:${offset + page.length}` : null,
-						cursor_missing: cursor !== null && !cursor.startsWith("off:"),
+						cursor_missing:
+							cursor !== null && !cursor.startsWith(CURSOR_PREFIX),
 						...(kind ? { scope: { kind, name } } : {}),
 						...(query.get("with_counts") === "true"
-							? { counts: censusOf(served.filter((r) => include || !r.archived)) }
+							? {
+									counts: censusOf(
+										served.filter((r) => include || !r.archived),
+									),
+								}
 							: {}),
 					}
 				: {}),
@@ -567,15 +586,22 @@ const pagedCatalogue = () => {
 	// and two agents. ONE is running, so `Active chats` has a row rather than a
 	// sentence; ONE is pinned, so the pinned section is photographed too.
 	for (let i = 0; i < 15; i += 1) {
-		add(index, { agent: null, team: null }, {
-			...(i === 0 ? { active: true, live_state: "busy" } : {}),
-			...(i === 1 ? { pinned: true } : {}),
-		});
+		add(
+			index,
+			{ agent: null, team: null },
+			{
+				...(i === 0 ? { active: true, live_state: "busy" } : {}),
+				...(i === 1 ? { pinned: true } : {}),
+			},
+		);
 		index += 1;
 	}
-	for (let i = 0; i < 20; i += 1) add(index++, { agent: null, team: "minervadev" });
-	for (let i = 0; i < 8; i += 1) add(index++, { agent: "reviewer", team: null });
-	for (let i = 0; i < 7; i += 1) add(index++, { agent: "qa-tester", team: null });
+	for (let i = 0; i < 20; i += 1)
+		add(index++, { agent: null, team: "minervadev" });
+	for (let i = 0; i < 8; i += 1)
+		add(index++, { agent: "reviewer", team: null });
+	for (let i = 0; i < 7; i += 1)
+		add(index++, { agent: "qa-tester", team: null });
 	// The 70 the page cannot carry: past every one of the fifty above.
 	for (let i = 0; i < 70; i += 1) add(index++, { agent: null, team: "lopdev" });
 	return rows;
@@ -640,7 +666,17 @@ const server = createServer((request, response) => {
 			body,
 		);
 		process.stderr.write(
-			`stub ${request.method} ${url.pathname}${url.search} -> ${answer.status}\n`,
+			/*
+			 * THE ANSWER IS LOGGED WITH THE ROWS IT CARRIED, not only the request: "the
+			 * app asked for page two" and "the daemon answered page two with twenty-five
+			 * rows" are different facts, and a reader debugging a panel that did not grow
+			 * needs the second one in the same line as the first.
+			 */
+			`stub ${request.method} ${url.pathname}${url.search} -> ${answer.status}${
+				Array.isArray(answer.body?.result?.sessions)
+					? ` rows=${answer.body.result.sessions.length} next=${answer.body.result.next_cursor ?? "-"}`
+					: ""
+			}\n`,
 		);
 		response.writeHead(answer.status, { "content-type": "application/json" });
 		response.end(JSON.stringify(answer.body));
