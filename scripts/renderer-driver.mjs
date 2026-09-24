@@ -15178,7 +15178,14 @@ async function sceneSidebarSplit(cdp, handle) {
 async function sceneSidebarSections(cdp, handle) {
 	let link = cdp;
 	const seeded = [];
-	for (let index = 0; index < 8; index += 1) {
+	/*
+	 * Twenty rather than a handful: the auto rule is a CAP over the list's content,
+	 * so a list shorter than the cap draws only its own height and the frame cannot
+	 * show the share the cap grants. Twenty rows overflow the cap at both window
+	 * sizes this scene is run at (336 at 1380x900), which is what makes the drawn
+	 * box the cap rather than the content.
+	 */
+	for (let index = 0; index < 20; index += 1) {
 		seeded.push((await createBackendSession()).status);
 	}
 	const authored = [
@@ -15229,6 +15236,10 @@ async function sceneSidebarSections(cdp, handle) {
 				// the box the sections share, and the nav's content box (\`p-2\` = 16).
 				capacity: (() => { const e = document.querySelector(${JSON.stringify(SPLIT_ENTITIES)}); const c = document.querySelector(${JSON.stringify(SPLIT_CHATS)}); return e && c ? Math.round(e.getBoundingClientRect().height + c.getBoundingClientRect().height) : null; })(),
 				panel: (() => { const n = document.querySelector('nav[aria-label="Chats"]'); return n ? n.clientHeight - 16 : null; })(),
+				// The cap the auto rule computed, read from the region's own inline
+				// max-height rather than recomputed here - so the check compares the
+				// DRAWN box with the number the shipped module handed the render.
+				listMax: (() => { const c = document.querySelector(${JSON.stringify(SPLIT_CHATS)}); if (!c) return null; const v = getComputedStyle(c).maxHeight; return v && v.endsWith("px") ? Math.round(Number.parseFloat(v)) : null; })(),
 			};
 		})()`);
 
@@ -15246,6 +15257,23 @@ async function sceneSidebarSections(cdp, handle) {
 		"regions as stored before any press",
 		String(stored0.state?.chatSidebarRegions),
 	);
+	/*
+	 * BOTH SECTIONS HAVE ROWS BEFORE THE FRAME IS TAKEN, and that is a wait rather
+	 * than a nicety: the auto rule is a CAP over the list's own content, so a list
+	 * read that has not landed yet drew ~97px of one row in a run where the frame
+	 * is supposed to show two populated sections - and the check below, written
+	 * against the drawn boxes, failed on the RACE rather than on the layout.
+	 */
+	const populated = await waitForCondition(
+		link,
+		`document.querySelectorAll("[data-session-row]").length >= 14 && document.querySelectorAll("[data-entity]").length >= 2`,
+		20_000,
+	);
+	check(
+		"both sections carry rows before the first frame",
+		populated.ok,
+		JSON.stringify(populated.last),
+	);
 	const rest = await geometry(link);
 	note("default geometry", JSON.stringify(rest));
 	check(
@@ -15253,12 +15281,27 @@ async function sceneSidebarSections(cdp, handle) {
 		rest.agentsChevron === false,
 		String(rest.agentsChevron),
 	);
+	/*
+	 * THE AUTO RULE'S OWN CONTRACT, rather than a comparison of two drawn boxes: the
+	 * chats are CAPPED at the panel's own share with the section above keeping its
+	 * floor, and a list long enough to reach the cap draws at it. A short list draws
+	 * its content, which is the rule working rather than a layout that changed - the
+	 * distinction the race above cost a run to learn.
+	 */
+	const cap = rest.listMax;
 	check(
-		"the chats take the larger share at rest",
+		"the chats draw at the auto cap, which is larger than the section above",
 		rest.chats !== null &&
-			rest.entities !== null &&
-			rest.chats.h > rest.entities.h,
-		JSON.stringify(rest),
+			cap !== null &&
+			Math.abs(rest.chats.h - cap) <= 2 &&
+			cap > rest.capacity - cap &&
+			rest.capacity - rest.separator.max === 72,
+		JSON.stringify({
+			chats: rest.chats?.h,
+			cap,
+			agents: rest.entities?.h,
+			agentsFloor: rest.capacity - rest.separator.max,
+		}),
 	);
 	await parkPointer(link);
 	await captureSettled(link, "sections-default-dark");
