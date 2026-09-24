@@ -48,10 +48,10 @@ import {
 	pageOpensTurn,
 	pageOrphanResults,
 	pagePassedOldestStart,
-	seedCallStarts,
 	reconcileLimit,
 	reconcileWalkDone,
 	removeRecord,
+	seedCallStarts,
 	seedCallsMissingLabels,
 } from "@features/chat/canonical/transcript-reducer";
 import { tailCarriesOutcome } from "@features/chat/components/compact-receipt";
