@@ -45,8 +45,28 @@ import {
  * width to be judged at. Layout only — the ground and the type come from the
  * preview frame.
  */
-const SplitFrame = ({ children }: { children: ReactNode }) => (
-	<div className="flex h-screen">{children}</div>
+const SplitFrame = ({
+	children,
+	height,
+}: {
+	children: ReactNode;
+	/**
+	 * A FIXED band height, for the stories that stack two frames. `h-screen` is one
+	 * viewport, and the evidence rig resizes the viewport to the content before its
+	 * shutter - so two stacked `h-screen` bands measure two screens, the viewport
+	 * grows to that, `100vh` grows with it, and the frame shows the FIRST band
+	 * alone. That is how the goal stories' second bands (the capped list, the 400px
+	 * floor) were missing from their first capture. Omitted, the band is one
+	 * screen, as before.
+	 */
+	height?: number;
+}) => (
+	<div
+		className={height === undefined ? "flex h-screen" : "flex"}
+		style={height === undefined ? undefined : { height }}
+	>
+		{children}
+	</div>
 );
 
 /* ------------------------------------------------------------------ */
@@ -791,6 +811,7 @@ const CanvasFrame = ({
 	sessionId = STORY_SESSION_ID,
 	goalHistory = [],
 	goalHistoryTruncated = false,
+	bandHeight,
 	/*
 	 * DEFAULTS TO TRUE: this is the backend the frame stands for — the app as it ships,
 	 * with the fourth segment present. The `false` state is the one a frame seeds
@@ -846,6 +867,8 @@ const CanvasFrame = ({
 	 * A CAPABILITY, NOT A LIST SIZE — see the note on the default below.
 	 */
 	goalCapable?: boolean;
+	/** `SplitFrame`'s fixed band height, for a story that stacks two frames. */
+	bandHeight?: number;
 	/**
 	 * The completeness state of the Files scan, for the stories that exist to show
 	 * what the panel head says while it is paging, when it stops short, and when it
@@ -892,7 +915,7 @@ const CanvasFrame = ({
 	}, [view, activeId, mentionedFiles, documents]);
 
 	return (
-		<SplitFrame>
+		<SplitFrame height={bandHeight}>
 			<ChatColumnMock />
 			<div
 				style={{ width, minWidth: width }}
@@ -2388,6 +2411,15 @@ const GOAL_HISTORY: CanonicalGoalHistoryEntry[] = [
 ];
 
 /**
+ * The goal stories' band height. Each of them stacks TWO frames (the dock default
+ * beside its 400px floor, or the empty list beside the capped one), and a band of
+ * one screen lets the second fall out of the captured frame (see `SplitFrame`'s
+ * `height`). Fixed at the rig's own 900 row height, so each band is the frame a
+ * single-band canvas story shoots.
+ */
+const GOAL_BAND_HEIGHT = 900;
+
+/**
  * The Goals view as the pane draws it, at the dock's default width and at its
  * 400px floor.
  *
@@ -2400,8 +2432,14 @@ const GOAL_HISTORY: CanonicalGoalHistoryEntry[] = [
 export const GoalHistory: Story = {
 	render: () => (
 		<div className="flex flex-col gap-4">
-			<CanvasFrame view="goals" activeId={null} goalHistory={GOAL_HISTORY} />
 			<CanvasFrame
+				view="goals"
+				activeId={null}
+				goalHistory={GOAL_HISTORY}
+				bandHeight={GOAL_BAND_HEIGHT}
+			/>
+			<CanvasFrame
+				bandHeight={GOAL_BAND_HEIGHT}
 				view="goals"
 				activeId={null}
 				width={400}
@@ -2424,8 +2462,14 @@ export const GoalHistory: Story = {
 export const GoalHistoryEmptyAndCapped: Story = {
 	render: () => (
 		<div className="flex flex-col gap-4">
-			<CanvasFrame view="goals" activeId={null} goalHistory={[]} />
 			<CanvasFrame
+				view="goals"
+				activeId={null}
+				goalHistory={[]}
+				bandHeight={GOAL_BAND_HEIGHT}
+			/>
+			<CanvasFrame
+				bandHeight={GOAL_BAND_HEIGHT}
 				view="goals"
 				activeId={null}
 				goalHistory={GOAL_HISTORY.slice(0, 2)}
@@ -2464,12 +2508,14 @@ export const CanvasWithoutTheGoalLifecycle: Story = {
 	render: () => (
 		<div className="flex flex-col gap-4">
 			<CanvasFrame
+				bandHeight={GOAL_BAND_HEIGHT}
 				view="documents"
 				activeId={null}
 				documents={[]}
 				goalCapable={false}
 			/>
 			<CanvasFrame
+				bandHeight={GOAL_BAND_HEIGHT}
 				view="documents"
 				activeId={null}
 				documents={[]}
