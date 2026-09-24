@@ -479,7 +479,7 @@ const Readout: FC<{ rows?: number; tooltips?: boolean }> = ({
 	 * only state in which the container has a viewport to hold or to drag - makes
 	 * the caption taller than the app, and `capture-evidence.mjs` grows the frame to
 	 * the content: the taller the caption, the taller the frame, the taller the
-	 * `max-h-[45%]` panel inside it, and the SMALLER the overflow the story exists
+	 * `max-h-[60%]` panel inside it, and the SMALLER the overflow the story exists
 	 * to produce. Bounding the caption is what stops that column deciding, for the
 	 * frame, how much of the list is off screen.
 	 *

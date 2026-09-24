@@ -12,7 +12,6 @@ import { ChatSidebar } from "@features/chat/components/chat-sidebar";
 import { rowCurrent } from "@features/chat/components/chat-sidebar";
 import { newChatShortcutCap } from "@features/chat/new-chat-shortcut";
 import { openConversation } from "@features/chat/open-conversation";
-import { hideRegion, regionVisibility } from "@features/chat/sidebar-split";
 import {
 	paletteShortcutCaps,
 	paletteShortcutLabel,
@@ -60,10 +59,12 @@ import { useNavigate } from "react-router-dom";
  * What this is: ONE column of 260px, mounted once in `app.tsx` inside
  * `chat-layout.tsx`, holding - top to bottom - the brand row, the primary
  * action, the destinations, the chat list as its body, and the account at the
- * foot. The list is the body rather than a second column, so the agents tree
- * that used to sit above it has moved behind the `Agents` destination's own
- * disclosure (collapsed by default, and the state it writes is the one the list
- * itself reads), and a 56px icon strip is what the column collapses to.
+ * foot. The body is `chat-sidebar.tsx`'s two SECTIONS - Agents + Teams above,
+ * the chats list below - with the draggable, persisted boundary between them
+ * (`sidebar-split.ts`), both drawn by default: the operator's call on the
+ * preview was that both sections stay visible and relatively sizable, with the
+ * navigation links in this same column. A 56px icon strip is what the column
+ * collapses to.
  *
  * WHY THE DESTINATIONS STAY IN THIS FILE while the list moved in beside them:
  * the list's own component (`chat-sidebar.tsx`) reads the router, the
@@ -137,19 +138,6 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * exactly the same states.
 	 */
 	const capabilities = useDesktopCapabilities();
-	/*
-	 * The agents tree's disclosure, and it writes the SAME preference the list
-	 * reads for its own two regions rather than a second flag beside it: the list
-	 * renders the entities region when this says so and a restore row when it
-	 * does not, so one stored value drives both and the two cannot disagree. The
-	 * default is "chats" - the disclosure starts closed - which is what stops the
-	 * agents tree from pushing the chat list below the fold.
-	 */
-	const regions = useUiPreferencesStore((state) => state.chatSidebarRegions);
-	const setRegions = useUiPreferencesStore(
-		(state) => state.setChatSidebarRegions,
-	);
-	const entitiesOpen = regionVisibility(regions).entityVisible;
 	/*
 	 * The open conversation, SUBSCRIBED rather than read once: the list marks the
 	 * row the user is in, and a `getState()` read during render would freeze that
@@ -233,7 +221,6 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		 * doing nothing.
 		 */
 		const attention = item.attention ?? 0;
-		const disclosure = item.path === "/agents";
 		/*
 		 * THE NAME CARRIES THE NUMBER (operator ask, 2026-09-23): a badge is a visual
 		 * convenience over a fact the control has to STATE, and a screen reader that
@@ -244,15 +231,6 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		 */
 		const attentionLabel =
 			attention > 0 ? `${item.label}, ${attention} waiting` : item.label;
-		/*
-		 * THE ROW IS TWO CONTROLS, not one, and that is why the state is painted on
-		 * the `<li>` rather than on the button. `Agents` navigates AND discloses, and
-		 * a button inside a button is invalid HTML that no browser will deliver a
-		 * press to - so the destination is one button and the chevron is a second,
-		 * side by side in a box that carries the row's hover and current ground for
-		 * both. A single button that did both would leave the user's press ambiguous
-		 * between two different outcomes, only one of which they can undo.
-		 */
 		const rowState = item.isActive
 			? rowCurrent
 			: "text-ink-muted hover:bg-row-hover hover:text-ink";
@@ -305,34 +283,6 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						</span>
 					)}
 				</button>
-				{disclosure && expanded && (
-					<button
-						type="button"
-						onClick={() =>
-							setRegions(
-								entitiesOpen ? hideRegion(regions, "entities") : "both",
-							)
-						}
-						aria-expanded={entitiesOpen}
-						aria-label={
-							entitiesOpen ? "Hide the agent list" : "Show the agent list"
-						}
-						className={cn(
-							"mr-1 flex size-6 shrink-0 items-center justify-center rounded-sm text-ink-dim",
-							"transition-colors duration-fast ease-out-quart",
-							"hover:bg-row-hover hover:text-ink",
-						)}
-					>
-						<ChevronRight
-							size={14}
-							aria-hidden="true"
-							className={cn(
-								"transition-transform duration-fast ease-out-quart",
-								entitiesOpen && "rotate-90",
-							)}
-						/>
-					</button>
-				)}
 			</li>
 		);
 	};
