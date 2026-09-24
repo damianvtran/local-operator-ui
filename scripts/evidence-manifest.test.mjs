@@ -779,39 +779,30 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  * AND quotes both stamps as this file's own values, so it is held to them rather
  * than being read as history - the distinction the paragraph above draws.
  */
-const STAMP_BINDING_NOTES = [
-	/*
-	 * `shellPathRestampNote` left this list on the PR #467 design-round-2 pass, which
-	 * re-derived both stamps: the pair that note published is now history, written as
-	 * bare SHAs in the note itself, because leaving it here would have held a
-	 * superseded pair to this file as if it were its own - the defect this list
-	 * exists for, and the same treatment `usageAutoCheckRestampNote` and
-	 * `usageInFlightRemediationNote` record below.
-	 */
-	"settingsGateRestampNote",
-	"candidateMacArchRestampNote",
-	"notarizeGateRestampNote",
-	/*
-	 * `usageAutoCheckRestampNote` left this list when the remediation below
-	 * re-derived both stamps: its pair is now history, written as bare SHAs in the
-	 * note itself, because leaving it here would have held a fold's values to this
-	 * file as if they were its own — the defect the list exists for.
-	 */
-	/*
-	 * `usageInFlightRemediationNote` left this list when the convergence round
-	 * below re-derived both stamps on top of it: its pair is now history, written
-	 * as bare SHAs in the note itself, because leaving it here would have held a
-	 * superseded pair to this file as if it were its own. `usageInFlightConvergenceNote`
-	 * carries the binding the round it records re-derived.
-	 */
-	"usageInFlightConvergenceNote",
-	"macNativeComponentsRestampNote",
-	"telemetrySwitchRestampNote",
-	// The seventh: `readReceiptRestampNote` states this file's own pair for the
-	// read-receipt branch, so it is held to that pair rather than read as history -
-	// the distinction `candidateMacArchRestampNote` above is in the list for.
-	"readReceiptRestampNote",
-];
+/*
+ * The notes whose prose claims THIS FILE'S OWN pair, checked below against the
+ * values the manifest actually ships.
+ *
+ * IT HELD EIGHT OF MAIN'S RE-STAMP NOTES UNTIL THE PR #467 DESIGN-ROUND-2 PASS,
+ * which re-derived both stamps and therefore had to decide, per note, which of the
+ * two sanctioned answers its prose had earned. A note that speaks for this file's
+ * CURRENT binding is RE-POINTED - `settingsGateRestampNote` states the convention
+ * the backticked form follows, and `readReceiptRestampNote` states it for its own
+ * pair - and a note whose prose describes what ITS OWN fold or pass moved is
+ * written as history with the value BARE, which is what takes it out of this list.
+ * The second answer is what `usageAutoCheckRestampNote` and
+ * `usageInFlightRemediationNote` already recorded, and it is the one
+ * `shellPathRestampNote`, `settingsGateRestampNote`, `candidateMacArchRestampNote`,
+ * `notarizeGateRestampNote`, `usageInFlightConvergenceNote`,
+ * `macNativeComponentsRestampNote`, `telemetrySwitchRestampNote` and
+ * `readReceiptRestampNote` each take: every one of them describes a delta of its own
+ * branch, and re-pointing their tokens would have made a sentence about that delta
+ * read as a statement about this one's.
+ *
+ * This branch's own record carries the pair now, and it is the entry a later
+ * re-stamp pass has to re-point (or replace with its own).
+ */
+const STAMP_BINDING_NOTES = ["goalDesignRoundTwoNote"];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
 	const manifest = JSON.parse(
