@@ -20,25 +20,36 @@ this set is the proof of both:
 
 ## What produced these frames
 
+Every frame here was RE-SHOT on the fold onto `origin/main` (the merge commit `33ee9d68b`, onto
+`0cd1202e1`): #436 reworked the provider grid, so every earlier
+frame was a picture of a grid that no longer ships.
+
 ```
-pnpm build            # with VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:18080
+pnpm build            # with VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:8080
                       # and VITE_DISABLE_BACKEND_MANAGER=true; the rest of the
-                      # variables come from a copy of the repository's own .env
-                      # (gitignored), minus the PostHog key, with the client
-                      # secret left exactly where check-build-env allows it
-node ~/workspace/chipverdict-rig/chip-driver.mjs --scene chipverdict \
-  --backend http://127.0.0.1:18080 --backend-records <rig>/records \
+                      # variables are sourced from the primary checkout's own
+                      # .env (gitignored) by the shell, minus the PostHog key
+node scripts/_chip-driver.mjs --scene chipverdict \
+  --backend http://127.0.0.1:8080 --backend-records <rig>/records \
   --seed-onboarding-complete --window-size 1380x900 --clean --out <dir>
 ```
 
-The rig itself (`~/workspace/chipverdict-rig`, runbook in its README) is the UX
-round's own: a fake IdP whose refresh is refused, an isolated backend on 11319, a
-blanking proxy in front of it, `HOME`/`LOCAL_OPERATOR_CONFIG_DIR` inside the
-rig's own `iso/`, a scratch `--user-data-dir`, and a `headless` launch asserted in
-every run that produced a frame. **Its proxy moved to 18080 for this round**: a
-foreign `lop serve` on 8080 made the first attempt drive an app against somebody
-else's service, which the run's own "the app holds a connection to this run's
-backend" check caught.
+`_chip-driver.mjs` is written into the tree under test for one run and deleted
+after it: it is that tree's OWN `scripts/renderer-driver.mjs` plus one scene
+(`chipverdict`: navigate to `/settings`, press the `Radient account` nav row,
+read that section, then scroll the grid to the Radient card), so it carries the
+current driver's window-mode, telemetry-off and mock-keychain guards rather than
+a stale copy's. The scene's badge reading knows the `attention` tone and the
+`Needs re-authentication` label.
+
+The rig is the UX round's own (`~/workspace/chipverdict-rig`, runbook in its
+README): a fake IdP whose refresh is refused, an isolated backend on 11319 at the
+backend's `bd53de08`, a blanking proxy on 8080 (the one port besides the
+operator's 1111 that the renderer's CSP admits), `HOME`/`LOCAL_OPERATOR_CONFIG_DIR`
+inside the rig's own `iso/`, every `CMUX_*`/`LOP_*` variable unset, a scratch
+`--user-data-dir`, and a `headless` launch asserted in every run. Every run also
+asserted that the app held a connection to the rig's backend and NONE to the
+operator's own on 1111, and that no process outlived its boot.
 
 Each state is one `flip.py` write through the product's own `AuthStore`, plus one
 proxy flag file (`strip.flag` answers `/v1/auth/status` with no `radient_login` at
@@ -51,11 +62,17 @@ all; `unknown.flag` answers `state: "unknown"`), then one driver run:
 | `no-verdict/` | dead grant, route stripped | key absent | `has_credential: true, configured: true` |
 | `unknown-verdict/` | dead grant, route forced to `unknown` (QA F2) | `unknown` | `has_credential: true, configured: true` |
 | `never-signed-in/` | no row, no tunnel | `unknown` | `has_credential: false, configured: false` |
-| `before/` | dead grant, **`origin/main` = `8d758d238`** | `login_required` | `has_credential: true, configured: true` |
+| `before/` | dead grant, **`origin/main` = `74c7daea6`** (0.30.22) | `login_required` | `has_credential: true, configured: true` |
 
-`before/` is the base tree and is unchanged from the first round; everything else
-is this head. `after/` is the same rig state as `before/`, which is what makes
-the pair comparable -- nothing about the command changes between them.
+`after/` is the same rig state as `before/`, which is what makes the pair
+comparable -- nothing about the command changes between them. Every directory now
+carries BOTH frames (the Radient account section and the grid card).
+
+The frames were taken while `origin/main` was `74c7daea6`; it moved to `0cd1202e1`
+(0.30.23 and #484's chat read receipts) before the push, and the fold was redone
+onto that. `git diff 74c7daea6 0cd1202e1` touches none of the providers feature,
+`use-radient-session-issue.ts`, `use-radient-user-query.ts` or the settings
+sections these frames render, so every frame is still a picture of this head.
 
 ## What the frames show
 
@@ -73,9 +90,11 @@ the pair comparable -- nothing about the command changes between them.
   sign-in when this app's own account read says none is stored.
 - `unknown-verdict/`: **"Needs sign-in"**, neutral (QA round 1's F2: the row is
   there and the token endpoint cannot be reached).
-- `never-signed-in/`: **"Needs sign-in"**, neutral -- and the pair with `after/`
-  is the point: the refused machine is no longer the same picture as the machine
-  that never signed in.
+- `never-signed-in/`: **"Needs sign-in"**, neutral, on the grid card (which #436
+  now pins first under its "Recommended" cue, because the row needs a sign-in),
+  and NO chip at all in the account section, which renders one only for a stored
+  row -- and the pair with `after/` is the point: the refused machine is no longer
+  the same picture as the machine that never signed in.
 
 ## The floor this set does NOT claim
 
@@ -91,21 +110,17 @@ the contradicted row only) are asserted in `scripts/provider-chip-verdict.test.m
 
 ## The fold this head sits on
 
-The branch was folded onto `origin/main` = `03ef5f480` after the reviews, and the
-frames above were taken on the pre-fold head. That is stated rather than implied:
-`git range-diff 8d758d238..3c91c7b5f 03ef5f480..HEAD` shows this branch's three
-commits unchanged (`=`, `!`, `=`), the `!` being the manifest restamp itself, and
-`git diff 3c91c7b5f HEAD -- src/renderer/src/features/providers
-src/shared/api/local-operator/desktop-hooks.ts src/shared/api/local-operator/desktop-api.ts
-src/shared/desktop-contract.ts src/renderer/src/shared/hooks/use-radient-user-query.ts
-docs/evidence/provider-chip-verdict` is EMPTY -- every input the frames render is
-byte-identical, and upstream's two moved files are main-process daemon attach
-(`src/main/backend/backend-service.ts`, `daemon-status.ts`). The stamps in
-`docs/evidence/manifest.json` are re-derived for this head, as its guard requires.
+The branch was folded onto `origin/main` = `0cd1202e1` by a merge commit
+(`33ee9d68b`), and that fold changed where the verdict comes from: #416 had
+landed its own read of `GET /v1/auth/status` for the composer's callout, so this
+branch's duplicate type, query key and hook were removed and the chip now reads
+`useRadientLoginVerdict()` from `use-radient-session-issue.ts` -- the callout's
+own cache entry, behind #416's `tunnel` capability gate. The rig's backend
+advertises `tunnel`, so every frame here went through that shared read; the
+no-capability floor is asserted in `scripts/provider-chip-verdict.test.mjs`.
 
-**One later commit inside this round** moved the verdict's pending gate BELOW the
-census's error branch (`provider-grid.tsx`), because a verdict read that never
-answers must not be able to hide the census's diagnosis and its Retry -- the
-neighbour suite `scripts/backend-error-surfaces.test.mjs` caught exactly that.
-That changes only the pending and error frames; every frame here is a settled
-state, so none of them is affected, and the ordering is asserted by that suite.
+The verdict's pending gate sits BELOW the census's error branch
+(`provider-grid.tsx`), because a verdict read that never answers must not be able
+to hide the census's diagnosis and its Retry. That changes only pending and
+error frames; every frame here is a settled state, and the ordering is asserted
+by `scripts/backend-error-surfaces.test.mjs`.
