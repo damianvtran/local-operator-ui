@@ -15,6 +15,7 @@ export {
 	busiestClause,
 	childClause,
 	childStateLabel,
+	deriveChildWorkingLine,
 	deriveMcpServers,
 	deriveRunDetails,
 	deriveWakes,
