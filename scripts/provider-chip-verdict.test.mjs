@@ -38,7 +38,7 @@
 
 import assert from "node:assert/strict";
 import { unlink, writeFile } from "node:fs/promises";
-import { after, beforeEach, test } from "node:test";
+import { afterEach, beforeEach, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
@@ -348,6 +348,16 @@ let releaseVerdict = () => {};
 let holdAccount = false;
 /** Releases the held account read, called from the case that held it. */
 let releaseAccount = () => {};
+/**
+ * How many account reads the bridge is HOLDING in this case.
+ *
+ * `releaseAccount` is one slot, so a second held read replaces the first and the
+ * case then releases a read that is not its own (review round 5, R5-1: a grid
+ * left mounted by an earlier case started that second read, and the case's own
+ * read was never answered). The cases that hold assert this is exactly 1 before
+ * they release, so a leak fails as a leak rather than as the frame it starved.
+ */
+let heldAccountReads = 0;
 
 /**
  * Every case starts from the incident's own state, and from a bridge that is not
@@ -372,6 +382,7 @@ beforeEach(() => {
 	releaseVerdict = () => {};
 	holdAccount = false;
 	releaseAccount = () => {};
+	heldAccountReads = 0;
 	censusFails = false;
 });
 
@@ -414,6 +425,7 @@ globalThis.window.api = {
 			if (request?.control?.operation === "account") {
 				accountRequests += 1;
 				if (holdAccount) {
+					heldAccountReads += 1;
 					return await new Promise((resolve) => {
 						releaseAccount = () => resolve(ACCOUNT_ANSWERS[accountAnswer]);
 					});
@@ -539,26 +551,45 @@ function client() {
 	});
 }
 
+/** Every surface the CURRENT case mounted; drained when the case ends. */
 const mounted = [];
 
 /**
- * Release every timer this file created, so the suite does not sit on them.
+ * Take down every surface the case mounted before the next case starts: unmount
+ * its root, clear its client, and drop its container.
  *
- * Unmounting is not enough on its own here, and the measurement is the reason
- * this hook exists: with four mounted cases and their observers gone, this file
+ * PER CASE, NOT ONCE AT THE END (review round 5, R5-1). This used to be a
+ * file-level `after`, so a grid a case did not unmount itself stayed LIVE to the
+ * end of the file, with its observers, its account-read retries and its
+ * verdict `refetchInterval`. Its reads then landed inside a later case's held
+ * window, on the module-global bridge counters and the single `releaseAccount`
+ * slot: measured by the reviewer in ~5 of 20 whole-file runs, the D12 release
+ * case held TWO account reads (its own and a leftover's) and released the
+ * leftover's, and the Q-8 press cases charged leftover verdict reads to the
+ * press -- a failure that read as the Q-8 loop coming back when nothing had.
+ *
+ * Unmounting alone is not enough either: with every observer gone this file
  * still sat for a full minute after its last assertion -- the verdict read's own
- * `refetchInterval`, which the hook sets and this file must not restate. Clearing
- * the clients destroys the queries that scheduled it, and `duration_ms` falls to
- * the tests' own cost.
+ * `refetchInterval`, which the hook sets and this file must not restate.
+ * Clearing the client destroys the queries (and any pending retry) that would
+ * schedule another read. An unmount a case already did is a no-op here.
  */
-after(async () => {
-	for (const { root, queryClient } of mounted) {
-		await act(async () => {
-			root.unmount();
-		});
-		queryClient.clear();
-	}
+afterEach(async () => {
+	for (const surface of mounted.splice(0)) await teardown(surface);
 });
+
+/**
+ * Unmount one surface and clear its client. Also called INSIDE a case for a
+ * scaffold grid whose reads must not reach the case's own window
+ * (`forgetAccountFailure`).
+ */
+async function teardown({ root, queryClient, container }) {
+	await act(async () => {
+		root.unmount();
+	});
+	queryClient.clear();
+	container.remove();
+}
 
 /**
  * Mount a component and wait until its own DOM says something.
@@ -574,7 +605,7 @@ async function mountUntil(element, predicate, what, timeoutMs = 5000) {
 	const container = document.createElement("div");
 	document.body.append(container);
 	const root = createRoot(container);
-	mounted.push({ root, queryClient: element.props.client });
+	mounted.push({ root, queryClient: element.props.client, container });
 	await act(async () => {
 		root.render(element);
 	});
@@ -776,6 +807,19 @@ test("loginState refuses a claim on the refusal, and on the absent-verdict contr
 });
 
 /**
+ * Every class `RadientAccountRead` names, so the contract table below can prove
+ * it covers each of them rather than the ones someone remembered.
+ */
+const ACCOUNT_CLASSES = [
+	"checking",
+	"ready",
+	"signed-out",
+	"refused",
+	"unavailable",
+	"unknown",
+];
+
+/**
  * The PAINT contract, over the shipped module (design round 4, D12): which
  * combinations of the two reads withhold the Radient claim (`null`) and which
  * release it. Every row names the state it is; the ones marked D12 and D6 are the
@@ -825,6 +869,19 @@ test("loginClaim withholds the claim until a read that can support it has answer
 			read("signed-out"),
 			null,
 		],
+		// D6's class too: `unknown` keeps the store's green answer on the fallback
+		// arm, and the verdict can still overrule it.
+		["D6: first read out, account unknown", pending, read("unknown"), null],
+		/*
+		 * A read this app cannot ask is no answer, whatever class it reports -- not
+		 * even `refused`: only an ASKED read's refusal may speak before the verdict.
+		 */
+		...ACCOUNT_CLASSES.map((accountRead) => [
+			`first read out, account read cannot be asked (${accountRead})`,
+			pending,
+			read(accountRead, true),
+			null,
+		]),
 		// The verdict answered without a claim: failed, absent, disabled, null-credential unknown.
 		["D12: verdict failed, account in flight", failed, read("checking"), null],
 		["verdict failed, account ready", failed, read("ready"), "working"],
@@ -836,11 +893,29 @@ test("loginClaim withholds the claim until a read that can support it has answer
 			"working",
 		],
 		[
-			"verdict failed, account read cannot be asked",
+			"verdict failed, account signed-out -- the fallback narrows",
 			failed,
-			read("signed-out", true),
+			read("signed-out"),
+			"unverified",
+		],
+		[
+			"verdict failed, account unknown (an answer the arm keeps)",
+			failed,
+			read("unknown"),
 			"working",
 		],
+		/*
+		 * The pre-verdict floor the PR body states: a read this app cannot ask is
+		 * neither waited for (`checking` is only withheld while ENABLED) nor allowed
+		 * to narrow (`signed-out`/`refused` there are the disabled query's own
+		 * classification, not a reading).
+		 */
+		...ACCOUNT_CLASSES.map((accountRead) => [
+			`verdict failed, account read cannot be asked (${accountRead})`,
+			failed,
+			read(accountRead, true),
+			"working",
+		]),
 		[
 			"D12: null-credential unknown, account in flight",
 			verdict("unknown", null),
@@ -864,6 +939,57 @@ test("loginClaim withholds the claim until a read that can support it has answer
 	];
 	for (const [what, login, account, expected] of rows) {
 		assert.equal(loginClaim("radient", login, account), expected, what);
+	}
+	/*
+	 * The two halves the contract states per account input -- the verdict's first
+	 * read out, and a verdict answered without a claim -- must each have a row for
+	 * EVERY class of the account read, asked and unaskable. Review round 5 (R5-2)
+	 * found this table a subset of its contract: three mutants of stated rows
+	 * passed the whole file. Checked here so a row cannot be dropped silently.
+	 */
+	for (const [half, login] of [
+		["first read out", pending],
+		["verdict failed", failed],
+	]) {
+		for (const accountRead of ACCOUNT_CLASSES) {
+			for (const unavailable of [false, true]) {
+				assert.ok(
+					rows.some(
+						([, l, a]) =>
+							l === login &&
+							a.accountRead === accountRead &&
+							a.unavailable === unavailable,
+					),
+					`no row states ${half} x ${accountRead} (unavailable: ${unavailable})`,
+				);
+			}
+		}
+	}
+	const everyAccount = ACCOUNT_CLASSES.flatMap((accountRead) => [
+		read(accountRead),
+		read(accountRead, true),
+	]);
+	for (const account of everyAccount) {
+		const which = `${account.accountRead} (unavailable: ${account.unavailable})`;
+		// The `unknown` that names no credential is not a verdict about one: it is
+		// the failed half, input for input.
+		assert.equal(
+			loginClaim("radient", verdict("unknown", null), account),
+			loginClaim("radient", failed, account),
+			`null-credential unknown, account ${which}`,
+		);
+		// A verdict WITH a claim is that claim, whatever the account read is doing.
+		for (const [state, claim] of [
+			["login_required", "refused"],
+			["ok", "working"],
+			["unknown", "unverified"],
+		]) {
+			assert.equal(
+				loginClaim("radient", verdict(state), account),
+				claim,
+				`${state}, account ${which}`,
+			);
+		}
 	}
 	// Only the Radient row reads either input; nothing else is ever withheld.
 	assert.equal(loginClaim("openai", pending, read("checking")), "working");
@@ -1132,7 +1258,8 @@ async function mountGridRaw() {
 	const container = document.createElement("div");
 	document.body.append(container);
 	const root = createRoot(container);
-	mounted.push({ root, queryClient });
+	const entry = { root, queryClient, container };
+	mounted.push(entry);
 	await act(async () => {
 		root.render(
 			createElement(
@@ -1142,7 +1269,7 @@ async function mountGridRaw() {
 			),
 		);
 	});
-	return { container, queryClient, root };
+	return { container, queryClient, root, entry };
 }
 
 /**
@@ -1166,6 +1293,14 @@ async function chipSequence(container, done, timeoutMs = 5000) {
 		await flush();
 	}
 }
+
+/**
+ * What a second held account read means, said where it fails: another client
+ * is live inside this case's window, so the release below would answer ITS read
+ * and not this case's (R5-1).
+ */
+const HELD_READ_LEAK =
+	"the bridge is holding more than this case's own account read: a surface from another case is still live, so releasing would answer the wrong read";
 
 /** Flush until the verdict read has FAILED, which is D12's starting state. */
 async function awaitVerdictError(queryClient) {
@@ -1191,16 +1326,17 @@ async function forgetAccountFailure() {
 	const saved = { loginAnswer, accountAnswer };
 	loginAnswer = "ok";
 	accountAnswer = "ready";
-	const { root } = await mountGridRaw();
+	const scaffold = await mountGridRaw();
 	const deadline = Date.now() + 5000;
 	while (accountRequests === 0 || holdAccount) {
 		if (Date.now() > deadline) throw new Error("no account read to clear with");
 		await flush();
 	}
 	await flush();
-	await act(async () => {
-		root.unmount();
-	});
+	// Cleared, not just unmounted: the case holds its account read next, and no
+	// read of this scaffold's may land in that window (R5-1).
+	mounted.splice(mounted.indexOf(scaffold.entry), 1);
+	await teardown(scaffold.entry);
 	({ loginAnswer, accountAnswer } = saved);
 	verdictRequests = 0;
 	accountRequests = 0;
@@ -1296,6 +1432,7 @@ test("a failed verdict read does not paint a claim while the account read is out
 		"pending",
 		"the account read answered early, so this case sampled nothing",
 	);
+	assert.equal(heldAccountReads, 1, HELD_READ_LEAK);
 	holdAccount = false;
 	releaseAccount();
 	const sequence = await chipSequence(
@@ -1329,6 +1466,7 @@ test("on a failed verdict, the claim appears once the account read answers", asy
 		assert.equal(occurrences(opened, "Signed in"), 0, opened);
 		assert.equal(occurrences(opened, "Needs re-authentication"), 0, opened);
 	}
+	assert.equal(heldAccountReads, 1, HELD_READ_LEAK);
 	holdAccount = false;
 	releaseAccount();
 	const deadline = Date.now() + 5000;
@@ -1822,6 +1960,32 @@ async function watch(container, ms, { expectPanel }) {
 }
 
 /**
+ * Count the verdict fetches THIS client starts, from its own query cache.
+ *
+ * WHY NOT THE BRIDGE COUNTER (review round 5, R5-1). `verdictRequests` counts
+ * every request that reaches the one stubbed bridge, from any client alive in
+ * the process; when a grid from an earlier case was still mounted, its reads
+ * were charged to the press and the case reported the Q-8 loop that had not
+ * come back. A `fetch` action on this client's own verdict query is a read this
+ * client commissioned and nothing else. (`retry: false` on that query, so one
+ * fetch is one request.)
+ */
+function ownVerdictFetches(queryClient) {
+	const counted = { count: 0 };
+	const key = JSON.stringify(radientSessionIssueKey);
+	counted.stop = queryClient.getQueryCache().subscribe((event) => {
+		if (
+			event.type === "updated" &&
+			event.action.type === "fetch" &&
+			JSON.stringify(event.query.queryKey) === key
+		) {
+			counted.count += 1;
+		}
+	});
+	return counted;
+}
+
+/**
  * Q-8 (QA round 3): with `GET /v1/auth/status` failing, pressing ANY card left
  * the grid on "Loading providers" for good and never opened the panel, at ~70
  * requests a second (QA: 1,579 in 20 s from the Radient card, 1,459 from
@@ -1850,9 +2014,19 @@ for (const [card, matcher] of [
 			"error",
 		);
 		const before = verdictRequests;
+		const own = ownVerdictFetches(queryClient);
 		await pressButton(container, matcher);
 		const seen = await watch(container, 2000, { expectPanel: true });
-		const reads = verdictRequests - before;
+		own.stop();
+		const reads = own.count;
+		const stray = verdictRequests - before - reads;
+		// Asserted first, and in its own words: a read the bridge saw that this
+		// case's client did not start is a leaked surface, not the press (R5-1).
+		assert.equal(
+			stray,
+			0,
+			`${stray} verdict read(s) inside the press window came from ANOTHER client - a surface outlived its case; this is not the Q-8 loop`,
+		);
 		assert.equal(
 			reads,
 			0,
@@ -1893,7 +2067,7 @@ test("a failed verdict read never puts the card list back behind its loading gat
 	const container = document.createElement("div");
 	document.body.append(container);
 	const root = createRoot(container);
-	mounted.push({ root, queryClient });
+	mounted.push({ root, queryClient, container });
 	await act(async () => {
 		root.render(
 			createElement(
