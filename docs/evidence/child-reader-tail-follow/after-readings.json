@@ -1,10 +1,12 @@
 {
   "arm": "after",
-  "head": "b1a83f94b379dc4f62139a1fbd751a18d9ba63ec",
+  "armModule": "src/renderer/src/features/chat/components/run-details/run-child-reader.tsx",
+  "expectDigest": "a08da51c23492e08370455d33cb09cf5",
+  "head": "820660f3d1534d3bc7a42dedcc2d93ecc145bd85",
   "modules": [
     {
       "path": "src/renderer/src/features/chat/components/run-details/run-child-reader.tsx",
-      "md5": "d0df22798aef8e2fad2a649776641b3c"
+      "md5": "a08da51c23492e08370455d33cb09cf5"
     },
     {
       "path": "src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
@@ -30,474 +32,306 @@
   "steps": [
     {
       "step": "0 seeded",
+      "theme": "localOperatorDark",
       "expected": "the pane is scrollable and opened at the tail",
       "scrollTop": 0,
       "fromBottom": 0,
       "extent": 5328,
-      "client": 728,
+      "client": 680,
       "canScroll": true,
       "paintedRows": 60,
-      "anchorId": "tool:call-018",
-      "anchorOffset": 7.265625,
+      "anchorId": "entry-assistant-18-reply",
+      "anchorOffset": -12.734375,
       "newestId": "entry-assistant-20-reply",
       "newestCutPx": 0,
       "newestVisible": true,
-      "visibleRows": 8,
+      "visibleRows": 7,
       "bottomId": "entry-assistant-20-reply",
       "button": {
         "visible": false,
         "hitTestable": false,
-        "label": "Scroll to bottom"
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
       },
       "reads": 29
     },
     {
       "step": "A0 at the tail",
+      "theme": "localOperatorDark",
       "expected": "scrollTop 0, the newest row on screen",
       "scrollTop": 0,
       "fromBottom": 0,
       "extent": 5328,
-      "client": 728,
+      "client": 680,
       "canScroll": true,
       "paintedRows": 60,
-      "anchorId": "tool:call-018",
-      "anchorOffset": 7.265625,
+      "anchorId": "entry-assistant-18-reply",
+      "anchorOffset": -12.734375,
       "newestId": "entry-assistant-20-reply",
       "newestCutPx": 0,
       "newestVisible": true,
-      "visibleRows": 8,
+      "visibleRows": 7,
       "bottomId": "entry-assistant-20-reply",
       "button": {
         "visible": false,
         "hitTestable": false,
-        "label": "Scroll to bottom"
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
       },
       "reads": 29
     },
     {
       "step": "A1 after a batch",
+      "theme": "localOperatorDark",
       "expected": "scrollTop stays 0 and the newest row is on screen",
       "scrollTop": 0,
       "fromBottom": 0,
       "extent": 5351,
-      "client": 728,
+      "client": 680,
       "canScroll": true,
       "paintedRows": 60,
-      "anchorId": "tool:call-019",
-      "anchorOffset": -15.125,
+      "anchorId": "entry-assistant-19-reply",
+      "anchorOffset": -35.125,
       "newestId": "entry-assistant-21-reply",
       "newestCutPx": 0,
       "newestVisible": true,
-      "visibleRows": 8,
+      "visibleRows": 7,
       "bottomId": "entry-assistant-21-reply",
       "button": {
         "visible": false,
         "hitTestable": false,
-        "label": "Scroll to bottom"
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
       },
-      "reads": 32
-    },
-    {
-      "step": "A2 after a batch",
-      "expected": "scrollTop stays 0 and the newest row is on screen",
-      "scrollTop": 0,
-      "fromBottom": 0,
-      "extent": 5328,
-      "client": 728,
-      "canScroll": true,
-      "paintedRows": 60,
-      "anchorId": "tool:call-020",
-      "anchorOffset": -15.125,
-      "newestId": "entry-assistant-22-reply",
-      "newestCutPx": 0,
-      "newestVisible": true,
-      "visibleRows": 8,
-      "bottomId": "entry-assistant-22-reply",
-      "button": {
-        "visible": false,
-        "hitTestable": false,
-        "label": "Scroll to bottom"
+      "band": {
+        "height": 48
       },
-      "reads": 34
-    },
-    {
-      "step": "A3 after a batch",
-      "expected": "scrollTop stays 0 and the newest row is on screen",
-      "scrollTop": 0,
-      "fromBottom": 0,
-      "extent": 5328,
-      "client": 728,
-      "canScroll": true,
-      "paintedRows": 60,
-      "anchorId": "tool:call-021",
-      "anchorOffset": 7.265625,
-      "newestId": "entry-assistant-23-reply",
-      "newestCutPx": 0,
-      "newestVisible": true,
-      "visibleRows": 8,
-      "bottomId": "entry-assistant-23-reply",
-      "button": {
-        "visible": false,
-        "hitTestable": false,
-        "label": "Scroll to bottom"
-      },
-      "reads": 37
-    },
-    {
-      "step": "B0 scrolled up",
-      "expected": "a reading position above the tail (fromBottom > 0)",
-      "scrollTop": -600,
-      "fromBottom": 600,
-      "extent": 5328,
-      "client": 728,
-      "canScroll": true,
-      "paintedRows": 60,
-      "anchorId": "entry-assistant-19",
-      "anchorOffset": -26.109375,
-      "newestId": "entry-assistant-23-reply",
-      "newestCutPx": 558.609375,
-      "newestVisible": false,
-      "visibleRows": 9,
-      "bottomId": "entry-assistant-21-reply",
-      "button": {
-        "visible": true,
-        "hitTestable": true,
-        "label": "Scroll to bottom"
-      },
-      "reads": 38
-    },
-    {
-      "step": "B1 after a batch",
-      "expected": "the viewport does not move (anchor entry-assistant-19 holds its offset)",
-      "scrollTop": -868,
-      "fromBottom": 868,
-      "extent": 5351,
-      "client": 728,
-      "canScroll": true,
-      "paintedRows": 60,
-      "anchorId": "entry-assistant-19",
-      "anchorOffset": -26.015625,
-      "newestId": "entry-assistant-24-reply",
-      "newestCutPx": 826.609375,
-      "newestVisible": false,
-      "visibleRows": 9,
-      "bottomId": "entry-assistant-21-reply",
-      "button": {
-        "visible": true,
-        "hitTestable": true,
-        "label": "Scroll to bottom"
-      },
-      "reads": 41
-    },
-    {
-      "step": "B2 after a batch",
-      "expected": "the viewport does not move (anchor entry-assistant-19 holds its offset)",
-      "scrollTop": -1114,
-      "fromBottom": 1114,
-      "extent": 5328,
-      "client": 728,
-      "canScroll": true,
-      "paintedRows": 60,
-      "anchorId": "entry-assistant-19",
-      "anchorOffset": -25.53125,
-      "newestId": "entry-assistant-25-reply",
-      "newestCutPx": 1072.609375,
-      "newestVisible": false,
-      "visibleRows": 9,
-      "bottomId": "entry-assistant-21-reply",
-      "button": {
-        "visible": true,
-        "hitTestable": true,
-        "label": "Scroll to bottom"
-      },
-      "reads": 43
-    },
-    {
-      "step": "C0 scrolled up",
-      "expected": "the scroll-to-bottom control is present and hit-testable",
-      "scrollTop": -1114,
-      "fromBottom": 1114,
-      "extent": 5328,
-      "client": 728,
-      "canScroll": true,
-      "paintedRows": 60,
-      "anchorId": "entry-assistant-19",
-      "anchorOffset": -25.53125,
-      "newestId": "entry-assistant-25-reply",
-      "newestCutPx": 1072.609375,
-      "newestVisible": false,
-      "visibleRows": 9,
-      "bottomId": "entry-assistant-21-reply",
-      "button": {
-        "visible": true,
-        "hitTestable": true,
-        "label": "Scroll to bottom"
-      },
-      "reads": 44
-    },
-    {
-      "step": "C1 back at the tail",
-      "expected": "the control is hidden at the tail",
-      "scrollTop": 0,
-      "fromBottom": 0,
-      "extent": 5328,
-      "client": 728,
-      "canScroll": true,
-      "paintedRows": 60,
-      "anchorId": "tool:call-023",
-      "anchorOffset": -15.125,
-      "newestId": "entry-assistant-25-reply",
-      "newestCutPx": 0,
-      "newestVisible": true,
-      "visibleRows": 8,
-      "bottomId": "entry-assistant-25-reply",
-      "button": {
-        "visible": false,
-        "hitTestable": false,
-        "label": "Scroll to bottom"
-      },
-      "reads": 44
-    },
-    {
-      "scrollTop": -3,
-      "fromBottom": 3,
-      "extent": 5328,
-      "client": 728,
-      "canScroll": true,
-      "paintedRows": 60,
-      "anchorId": "tool:call-023",
-      "anchorOffset": -12.125,
-      "newestId": "entry-assistant-25-reply",
-      "newestCutPx": 0,
-      "newestVisible": true,
-      "visibleRows": 8,
-      "bottomId": "entry-assistant-25-reply",
-      "button": {
-        "visible": false,
-        "hitTestable": false,
-        "label": "Scroll to bottom"
-      },
-      "step": "E0 3px off the tail",
-      "expected": "placed and read in the same frame, inside TAIL_EPS_PX"
-    },
-    {
-      "step": "E1 after a batch",
-      "expected": "the arrival lands on screen and the reader stays inside TAIL_EPS_PX",
-      "scrollTop": -3,
-      "fromBottom": 3,
-      "extent": 5328,
-      "client": 728,
-      "canScroll": true,
-      "paintedRows": 60,
-      "anchorId": "entry-assistant-24",
-      "anchorOffset": -109.6875,
-      "newestId": "entry-assistant-26-reply",
-      "newestCutPx": 0,
-      "newestVisible": true,
-      "visibleRows": 9,
-      "bottomId": "entry-assistant-26-reply",
-      "button": {
-        "visible": false,
-        "hitTestable": false,
-        "label": "Scroll to bottom"
-      },
-      "reads": 48
-    },
-    {
-      "step": "E2 after a second batch",
-      "expected": "and again: the drift does not accumulate",
-      "scrollTop": -3,
-      "fromBottom": 3,
-      "extent": 5351,
-      "client": 728,
-      "canScroll": true,
-      "paintedRows": 60,
-      "anchorId": "tool:call-025",
-      "anchorOffset": -12.125,
-      "newestId": "entry-assistant-27-reply",
-      "newestCutPx": 0,
-      "newestVisible": true,
-      "visibleRows": 8,
-      "bottomId": "entry-assistant-27-reply",
-      "button": {
-        "visible": false,
-        "hitTestable": false,
-        "label": "Scroll to bottom"
-      },
-      "reads": 51
-    },
-    {
-      "step": "D0 settled",
-      "expected": "no cadence is left: the read count stops moving",
-      "scrollTop": -3,
-      "fromBottom": 3,
-      "extent": 5351,
-      "client": 728,
-      "canScroll": true,
-      "paintedRows": 60,
-      "anchorId": "tool:call-025",
-      "anchorOffset": -12.125,
-      "newestId": "entry-assistant-27-reply",
-      "newestCutPx": 0,
-      "newestVisible": true,
-      "visibleRows": 8,
-      "bottomId": "entry-assistant-27-reply",
-      "button": {
-        "visible": false,
-        "hitTestable": false,
-        "label": "Scroll to bottom"
-      },
-      "reads": 52
-    },
-    {
-      "step": "D1 six seconds later",
-      "expected": "the read count is unchanged (no 5s safety-net poll)",
-      "scrollTop": -3,
-      "fromBottom": 3,
-      "extent": 5351,
-      "client": 728,
-      "canScroll": true,
-      "paintedRows": 60,
-      "anchorId": "tool:call-025",
-      "anchorOffset": -12.125,
-      "newestId": "entry-assistant-27-reply",
-      "newestCutPx": 0,
-      "newestVisible": true,
-      "visibleRows": 8,
-      "bottomId": "entry-assistant-27-reply",
-      "button": {
-        "visible": false,
-        "hitTestable": false,
-        "label": "Scroll to bottom"
-      },
-      "reads": 52
-    },
-    {
-      "step": "0 seeded",
-      "expected": "the pane is scrollable and opened at the tail",
-      "scrollTop": 0,
-      "fromBottom": 0,
-      "extent": 5328,
-      "client": 728,
-      "canScroll": true,
-      "paintedRows": 60,
-      "anchorId": "tool:call-018",
-      "anchorOffset": 7.265625,
-      "newestId": "entry-assistant-20-reply",
-      "newestCutPx": 0,
-      "newestVisible": true,
-      "visibleRows": 8,
-      "bottomId": "entry-assistant-20-reply",
-      "button": {
-        "visible": false,
-        "hitTestable": false,
-        "label": "Scroll to bottom"
-      },
-      "reads": 29
-    },
-    {
-      "step": "A0 at the tail",
-      "expected": "scrollTop 0, the newest row on screen",
-      "scrollTop": 0,
-      "fromBottom": 0,
-      "extent": 5328,
-      "client": 728,
-      "canScroll": true,
-      "paintedRows": 60,
-      "anchorId": "tool:call-018",
-      "anchorOffset": 7.265625,
-      "newestId": "entry-assistant-20-reply",
-      "newestCutPx": 0,
-      "newestVisible": true,
-      "visibleRows": 8,
-      "bottomId": "entry-assistant-20-reply",
-      "button": {
-        "visible": false,
-        "hitTestable": false,
-        "label": "Scroll to bottom"
-      },
-      "reads": 29
-    },
-    {
-      "step": "A1 after a batch",
-      "expected": "scrollTop stays 0 and the newest row is on screen",
-      "scrollTop": 0,
-      "fromBottom": 0,
-      "extent": 5351,
-      "client": 728,
-      "canScroll": true,
-      "paintedRows": 60,
-      "anchorId": "tool:call-019",
-      "anchorOffset": -15.125,
-      "newestId": "entry-assistant-21-reply",
-      "newestCutPx": 0,
-      "newestVisible": true,
-      "visibleRows": 8,
-      "bottomId": "entry-assistant-21-reply",
-      "button": {
-        "visible": false,
-        "hitTestable": false,
-        "label": "Scroll to bottom"
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
       },
       "reads": 31
     },
     {
       "step": "A2 after a batch",
+      "theme": "localOperatorDark",
       "expected": "scrollTop stays 0 and the newest row is on screen",
       "scrollTop": 0,
       "fromBottom": 0,
       "extent": 5328,
-      "client": 728,
+      "client": 680,
       "canScroll": true,
       "paintedRows": 60,
-      "anchorId": "tool:call-020",
-      "anchorOffset": -15.125,
+      "anchorId": "entry-assistant-20-reply",
+      "anchorOffset": -35.125,
       "newestId": "entry-assistant-22-reply",
       "newestCutPx": 0,
       "newestVisible": true,
-      "visibleRows": 8,
+      "visibleRows": 7,
       "bottomId": "entry-assistant-22-reply",
       "button": {
         "visible": false,
         "hitTestable": false,
-        "label": "Scroll to bottom"
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
       },
       "reads": 34
     },
     {
       "step": "A3 after a batch",
+      "theme": "localOperatorDark",
       "expected": "scrollTop stays 0 and the newest row is on screen",
       "scrollTop": 0,
       "fromBottom": 0,
       "extent": 5328,
-      "client": 728,
+      "client": 680,
       "canScroll": true,
       "paintedRows": 60,
-      "anchorId": "tool:call-021",
-      "anchorOffset": 7.265625,
+      "anchorId": "entry-assistant-21-reply",
+      "anchorOffset": -12.734375,
       "newestId": "entry-assistant-23-reply",
       "newestCutPx": 0,
       "newestVisible": true,
-      "visibleRows": 8,
+      "visibleRows": 7,
       "bottomId": "entry-assistant-23-reply",
       "button": {
         "visible": false,
         "hitTestable": false,
-        "label": "Scroll to bottom"
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
       },
       "reads": 37
     },
     {
       "step": "B0 scrolled up",
+      "theme": "localOperatorDark",
       "expected": "a reading position above the tail (fromBottom > 0)",
       "scrollTop": -600,
       "fromBottom": 600,
       "extent": 5328,
-      "client": 728,
+      "client": 680,
       "canScroll": true,
       "paintedRows": 60,
       "anchorId": "entry-assistant-19",
-      "anchorOffset": -26.109375,
+      "anchorOffset": -74.109375,
       "newestId": "entry-assistant-23-reply",
       "newestCutPx": 558.609375,
       "newestVisible": false,
@@ -506,21 +340,56 @@
       "button": {
         "visible": true,
         "hitTestable": true,
-        "label": "Scroll to bottom"
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "button"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
       },
       "reads": 37
     },
     {
       "step": "B1 after a batch",
+      "theme": "localOperatorDark",
       "expected": "the viewport does not move (anchor entry-assistant-19 holds its offset)",
       "scrollTop": -868,
       "fromBottom": 868,
       "extent": 5351,
-      "client": 728,
+      "client": 680,
       "canScroll": true,
       "paintedRows": 60,
       "anchorId": "entry-assistant-19",
-      "anchorOffset": -26.015625,
+      "anchorOffset": -74.015625,
       "newestId": "entry-assistant-24-reply",
       "newestCutPx": 826.609375,
       "newestVisible": false,
@@ -529,21 +398,56 @@
       "button": {
         "visible": true,
         "hitTestable": true,
-        "label": "Scroll to bottom"
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "button"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
       },
       "reads": 40
     },
     {
       "step": "B2 after a batch",
+      "theme": "localOperatorDark",
       "expected": "the viewport does not move (anchor entry-assistant-19 holds its offset)",
       "scrollTop": -1114,
       "fromBottom": 1114,
       "extent": 5328,
-      "client": 728,
+      "client": 680,
       "canScroll": true,
       "paintedRows": 60,
       "anchorId": "entry-assistant-19",
-      "anchorOffset": -25.53125,
+      "anchorOffset": -73.53125,
       "newestId": "entry-assistant-25-reply",
       "newestCutPx": 1072.609375,
       "newestVisible": false,
@@ -552,21 +456,56 @@
       "button": {
         "visible": true,
         "hitTestable": true,
-        "label": "Scroll to bottom"
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "button"
       },
-      "reads": 43
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 42
     },
     {
       "step": "C0 scrolled up",
+      "theme": "localOperatorDark",
       "expected": "the scroll-to-bottom control is present and hit-testable",
       "scrollTop": -1114,
       "fromBottom": 1114,
       "extent": 5328,
-      "client": 728,
+      "client": 680,
       "canScroll": true,
       "paintedRows": 60,
       "anchorId": "entry-assistant-19",
-      "anchorOffset": -25.53125,
+      "anchorOffset": -73.53125,
       "newestId": "entry-assistant-25-reply",
       "newestCutPx": 1072.609375,
       "newestVisible": false,
@@ -575,146 +514,2039 @@
       "button": {
         "visible": true,
         "hitTestable": true,
-        "label": "Scroll to bottom"
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "button"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
       },
       "reads": 43
     },
     {
       "step": "C1 back at the tail",
+      "theme": "localOperatorDark",
       "expected": "the control is hidden at the tail",
       "scrollTop": 0,
       "fromBottom": 0,
       "extent": 5328,
-      "client": 728,
+      "client": 680,
       "canScroll": true,
       "paintedRows": 60,
-      "anchorId": "tool:call-023",
-      "anchorOffset": -15.125,
+      "anchorId": "entry-assistant-23-reply",
+      "anchorOffset": -35.125,
       "newestId": "entry-assistant-25-reply",
       "newestCutPx": 0,
       "newestVisible": true,
-      "visibleRows": 8,
+      "visibleRows": 7,
       "bottomId": "entry-assistant-25-reply",
       "button": {
         "visible": false,
         "hitTestable": false,
-        "label": "Scroll to bottom"
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
       },
-      "reads": 44
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 43
     },
     {
       "scrollTop": -3,
       "fromBottom": 3,
       "extent": 5328,
-      "client": 728,
+      "client": 680,
       "canScroll": true,
       "paintedRows": 60,
-      "anchorId": "tool:call-023",
-      "anchorOffset": -12.125,
+      "anchorId": "entry-assistant-23-reply",
+      "anchorOffset": -32.125,
       "newestId": "entry-assistant-25-reply",
       "newestCutPx": 0,
       "newestVisible": true,
-      "visibleRows": 8,
+      "visibleRows": 7,
       "bottomId": "entry-assistant-25-reply",
       "button": {
         "visible": false,
         "hitTestable": false,
-        "label": "Scroll to bottom"
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
       },
       "step": "E0 3px off the tail",
+      "theme": "localOperatorDark",
+      "reads": 43,
       "expected": "placed and read in the same frame, inside TAIL_EPS_PX"
     },
     {
       "step": "E1 after a batch",
+      "theme": "localOperatorDark",
       "expected": "the arrival lands on screen and the reader stays inside TAIL_EPS_PX",
       "scrollTop": -3,
       "fromBottom": 3,
       "extent": 5328,
-      "client": 728,
+      "client": 680,
       "canScroll": true,
       "paintedRows": 60,
-      "anchorId": "entry-assistant-24",
-      "anchorOffset": -109.6875,
+      "anchorId": "entry-assistant-24-reply",
+      "anchorOffset": -9.734375,
       "newestId": "entry-assistant-26-reply",
       "newestCutPx": 0,
       "newestVisible": true,
-      "visibleRows": 9,
+      "visibleRows": 7,
       "bottomId": "entry-assistant-26-reply",
       "button": {
         "visible": false,
         "hitTestable": false,
-        "label": "Scroll to bottom"
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
       },
-      "reads": 47
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 46
     },
     {
       "step": "E2 after a second batch",
+      "theme": "localOperatorDark",
       "expected": "and again: the drift does not accumulate",
       "scrollTop": -3,
       "fromBottom": 3,
       "extent": 5351,
-      "client": 728,
+      "client": 680,
       "canScroll": true,
       "paintedRows": 60,
-      "anchorId": "tool:call-025",
-      "anchorOffset": -12.125,
+      "anchorId": "entry-assistant-25-reply",
+      "anchorOffset": -32.125,
       "newestId": "entry-assistant-27-reply",
       "newestCutPx": 0,
       "newestVisible": true,
-      "visibleRows": 8,
+      "visibleRows": 7,
       "bottomId": "entry-assistant-27-reply",
       "button": {
         "visible": false,
         "hitTestable": false,
-        "label": "Scroll to bottom"
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
       },
-      "reads": 50
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 48
     },
     {
       "step": "D0 settled",
+      "theme": "localOperatorDark",
       "expected": "no cadence is left: the read count stops moving",
       "scrollTop": -3,
       "fromBottom": 3,
       "extent": 5351,
-      "client": 728,
+      "client": 680,
       "canScroll": true,
       "paintedRows": 60,
-      "anchorId": "tool:call-025",
-      "anchorOffset": -12.125,
+      "anchorId": "entry-assistant-25-reply",
+      "anchorOffset": -32.125,
       "newestId": "entry-assistant-27-reply",
       "newestCutPx": 0,
       "newestVisible": true,
-      "visibleRows": 8,
+      "visibleRows": 7,
       "bottomId": "entry-assistant-27-reply",
       "button": {
         "visible": false,
         "hitTestable": false,
-        "label": "Scroll to bottom"
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
       },
-      "reads": 51
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 50
     },
     {
       "step": "D1 six seconds later",
+      "theme": "localOperatorDark",
       "expected": "the read count is unchanged (no 5s safety-net poll)",
       "scrollTop": -3,
       "fromBottom": 3,
       "extent": 5351,
-      "client": 728,
+      "client": 680,
       "canScroll": true,
       "paintedRows": 60,
-      "anchorId": "tool:call-025",
-      "anchorOffset": -12.125,
+      "anchorId": "entry-assistant-25-reply",
+      "anchorOffset": -32.125,
       "newestId": "entry-assistant-27-reply",
       "newestCutPx": 0,
       "newestVisible": true,
-      "visibleRows": 8,
+      "visibleRows": 7,
       "bottomId": "entry-assistant-27-reply",
       "button": {
         "visible": false,
         "hitTestable": false,
-        "label": "Scroll to bottom"
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
       },
-      "reads": 51
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 50
+    },
+    {
+      "step": "F0 40px off the tail",
+      "theme": "localOperatorDark",
+      "expected": "inside the band the paging policy calls not-following, so the control is offered",
+      "scrollTop": -40,
+      "fromBottom": 40,
+      "extent": 5351,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-25-reply",
+      "anchorOffset": 4.875,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 7,
+      "bottomId": "entry-assistant-27-reply",
+      "button": {
+        "visible": true,
+        "hitTestable": true,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "button"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 50
+    },
+    {
+      "step": "F1 after a batch",
+      "theme": "localOperatorDark",
+      "expected": "the arrival moves the tail away AND the way back is on screen",
+      "scrollTop": -40,
+      "fromBottom": 40,
+      "extent": 5351,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-25-reply",
+      "anchorOffset": 4.875,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 7,
+      "bottomId": "entry-assistant-27-reply",
+      "button": {
+        "visible": true,
+        "hitTestable": true,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "button"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 50
+    },
+    {
+      "step": "G0 the control appearing",
+      "theme": "localOperatorDark",
+      "expected": "the control is present at its full size while its opacity settles",
+      "scrollTop": -600,
+      "fromBottom": 600,
+      "extent": 5351,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-023",
+      "anchorOffset": 1.0625,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 558.609375,
+      "newestVisible": false,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-25-reply",
+      "button": {
+        "visible": true,
+        "hitTestable": true,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "button"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 50
+    },
+    {
+      "step": "G1 hover",
+      "theme": "localOperatorDark",
+      "expected": "a real pointer over the control",
+      "scrollTop": -600,
+      "fromBottom": 600,
+      "extent": 5351,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-023",
+      "anchorOffset": 1.0625,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 558.609375,
+      "newestVisible": false,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-25-reply",
+      "button": {
+        "visible": true,
+        "hitTestable": true,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": true,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "button"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 50
+    },
+    {
+      "scrollTop": -147,
+      "fromBottom": 147,
+      "extent": 5351,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-25",
+      "anchorOffset": -13.6875,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 105.609375,
+      "newestVisible": true,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-27-reply",
+      "button": {
+        "visible": true,
+        "hitTestable": true,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": true,
+        "hovered": true,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "button"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "step": "G2 focus (21 tabs)",
+      "theme": "localOperatorDark",
+      "reads": 50,
+      "tabOrderIndex": 0,
+      "tabOrderLength": 22,
+      "expected": "keyboard focus lands on the control, and it sits with the pane's own controls rather than after the conversation"
+    },
+    {
+      "step": "G3 after the press",
+      "theme": "localOperatorDark",
+      "expected": "the reader is at the tail and the control is hidden again",
+      "scrollTop": 0,
+      "fromBottom": 0,
+      "extent": 5351,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-25-reply",
+      "anchorOffset": -35.125,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 7,
+      "bottomId": "entry-assistant-27-reply",
+      "button": {
+        "visible": false,
+        "hitTestable": false,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": true,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 50
+    },
+    {
+      "step": "H0 a failed child, scrolled up",
+      "theme": "localOperatorDark",
+      "expected": "no control and no band: the exception text owns the foot",
+      "scrollTop": -635,
+      "fromBottom": 635,
+      "extent": 5325,
+      "client": 619,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-023",
+      "anchorOffset": 0.59375,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 619,
+      "newestVisible": false,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-25-reply",
+      "button": null,
+      "band": null,
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 691.75
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 50
+    },
+    {
+      "step": "H1 a child with no session id",
+      "theme": "localOperatorDark",
+      "expected": "no control and no band: there is no scroller to lead back to",
+      "reads": 50
+    },
+    {
+      "step": "0 seeded",
+      "theme": "localOperatorLight",
+      "expected": "the pane is scrollable and opened at the tail",
+      "scrollTop": 0,
+      "fromBottom": 0,
+      "extent": 5328,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-18-reply",
+      "anchorOffset": -12.734375,
+      "newestId": "entry-assistant-20-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 7,
+      "bottomId": "entry-assistant-20-reply",
+      "button": {
+        "visible": false,
+        "hitTestable": false,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 27
+    },
+    {
+      "step": "A0 at the tail",
+      "theme": "localOperatorLight",
+      "expected": "scrollTop 0, the newest row on screen",
+      "scrollTop": 0,
+      "fromBottom": 0,
+      "extent": 5328,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-18-reply",
+      "anchorOffset": -12.734375,
+      "newestId": "entry-assistant-20-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 7,
+      "bottomId": "entry-assistant-20-reply",
+      "button": {
+        "visible": false,
+        "hitTestable": false,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 28
+    },
+    {
+      "step": "A1 after a batch",
+      "theme": "localOperatorLight",
+      "expected": "scrollTop stays 0 and the newest row is on screen",
+      "scrollTop": 0,
+      "fromBottom": 0,
+      "extent": 5351,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-19-reply",
+      "anchorOffset": -35.125,
+      "newestId": "entry-assistant-21-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 7,
+      "bottomId": "entry-assistant-21-reply",
+      "button": {
+        "visible": false,
+        "hitTestable": false,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 30
+    },
+    {
+      "step": "A2 after a batch",
+      "theme": "localOperatorLight",
+      "expected": "scrollTop stays 0 and the newest row is on screen",
+      "scrollTop": 0,
+      "fromBottom": 0,
+      "extent": 5328,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-20-reply",
+      "anchorOffset": -35.125,
+      "newestId": "entry-assistant-22-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 7,
+      "bottomId": "entry-assistant-22-reply",
+      "button": {
+        "visible": false,
+        "hitTestable": false,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 33
+    },
+    {
+      "step": "A3 after a batch",
+      "theme": "localOperatorLight",
+      "expected": "scrollTop stays 0 and the newest row is on screen",
+      "scrollTop": 0,
+      "fromBottom": 0,
+      "extent": 5328,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-21-reply",
+      "anchorOffset": -12.734375,
+      "newestId": "entry-assistant-23-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 7,
+      "bottomId": "entry-assistant-23-reply",
+      "button": {
+        "visible": false,
+        "hitTestable": false,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 36
+    },
+    {
+      "step": "B0 scrolled up",
+      "theme": "localOperatorLight",
+      "expected": "a reading position above the tail (fromBottom > 0)",
+      "scrollTop": -600,
+      "fromBottom": 600,
+      "extent": 5328,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-19",
+      "anchorOffset": -74.109375,
+      "newestId": "entry-assistant-23-reply",
+      "newestCutPx": 558.609375,
+      "newestVisible": false,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-21-reply",
+      "button": {
+        "visible": true,
+        "hitTestable": true,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "button"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 36
+    },
+    {
+      "step": "B1 after a batch",
+      "theme": "localOperatorLight",
+      "expected": "the viewport does not move (anchor entry-assistant-19 holds its offset)",
+      "scrollTop": -868,
+      "fromBottom": 868,
+      "extent": 5351,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-19",
+      "anchorOffset": -74.015625,
+      "newestId": "entry-assistant-24-reply",
+      "newestCutPx": 826.609375,
+      "newestVisible": false,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-21-reply",
+      "button": {
+        "visible": true,
+        "hitTestable": true,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "button"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 39
+    },
+    {
+      "step": "B2 after a batch",
+      "theme": "localOperatorLight",
+      "expected": "the viewport does not move (anchor entry-assistant-19 holds its offset)",
+      "scrollTop": -1114,
+      "fromBottom": 1114,
+      "extent": 5328,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-19",
+      "anchorOffset": -73.53125,
+      "newestId": "entry-assistant-25-reply",
+      "newestCutPx": 1072.609375,
+      "newestVisible": false,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-21-reply",
+      "button": {
+        "visible": true,
+        "hitTestable": true,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "button"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 41
+    },
+    {
+      "step": "C0 scrolled up",
+      "theme": "localOperatorLight",
+      "expected": "the scroll-to-bottom control is present and hit-testable",
+      "scrollTop": -1114,
+      "fromBottom": 1114,
+      "extent": 5328,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-19",
+      "anchorOffset": -73.53125,
+      "newestId": "entry-assistant-25-reply",
+      "newestCutPx": 1072.609375,
+      "newestVisible": false,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-21-reply",
+      "button": {
+        "visible": true,
+        "hitTestable": true,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "button"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 42
+    },
+    {
+      "step": "C1 back at the tail",
+      "theme": "localOperatorLight",
+      "expected": "the control is hidden at the tail",
+      "scrollTop": 0,
+      "fromBottom": 0,
+      "extent": 5328,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-23-reply",
+      "anchorOffset": -35.125,
+      "newestId": "entry-assistant-25-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 7,
+      "bottomId": "entry-assistant-25-reply",
+      "button": {
+        "visible": false,
+        "hitTestable": false,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 42
+    },
+    {
+      "scrollTop": -3,
+      "fromBottom": 3,
+      "extent": 5328,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-23-reply",
+      "anchorOffset": -32.125,
+      "newestId": "entry-assistant-25-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 7,
+      "bottomId": "entry-assistant-25-reply",
+      "button": {
+        "visible": false,
+        "hitTestable": false,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "step": "E0 3px off the tail",
+      "theme": "localOperatorLight",
+      "reads": 42,
+      "expected": "placed and read in the same frame, inside TAIL_EPS_PX"
+    },
+    {
+      "step": "E1 after a batch",
+      "theme": "localOperatorLight",
+      "expected": "the arrival lands on screen and the reader stays inside TAIL_EPS_PX",
+      "scrollTop": -3,
+      "fromBottom": 3,
+      "extent": 5328,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-24-reply",
+      "anchorOffset": -9.734375,
+      "newestId": "entry-assistant-26-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 7,
+      "bottomId": "entry-assistant-26-reply",
+      "button": {
+        "visible": false,
+        "hitTestable": false,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 45
+    },
+    {
+      "step": "E2 after a second batch",
+      "theme": "localOperatorLight",
+      "expected": "and again: the drift does not accumulate",
+      "scrollTop": -3,
+      "fromBottom": 3,
+      "extent": 5351,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-25-reply",
+      "anchorOffset": -32.125,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 7,
+      "bottomId": "entry-assistant-27-reply",
+      "button": {
+        "visible": false,
+        "hitTestable": false,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 47
+    },
+    {
+      "step": "D0 settled",
+      "theme": "localOperatorLight",
+      "expected": "no cadence is left: the read count stops moving",
+      "scrollTop": -3,
+      "fromBottom": 3,
+      "extent": 5351,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-25-reply",
+      "anchorOffset": -32.125,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 7,
+      "bottomId": "entry-assistant-27-reply",
+      "button": {
+        "visible": false,
+        "hitTestable": false,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 48
+    },
+    {
+      "step": "D1 six seconds later",
+      "theme": "localOperatorLight",
+      "expected": "the read count is unchanged (no 5s safety-net poll)",
+      "scrollTop": -3,
+      "fromBottom": 3,
+      "extent": 5351,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-25-reply",
+      "anchorOffset": -32.125,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 7,
+      "bottomId": "entry-assistant-27-reply",
+      "button": {
+        "visible": false,
+        "hitTestable": false,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 48
+    },
+    {
+      "step": "F0 40px off the tail",
+      "theme": "localOperatorLight",
+      "expected": "inside the band the paging policy calls not-following, so the control is offered",
+      "scrollTop": -40,
+      "fromBottom": 40,
+      "extent": 5351,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-25-reply",
+      "anchorOffset": 4.875,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 7,
+      "bottomId": "entry-assistant-27-reply",
+      "button": {
+        "visible": true,
+        "hitTestable": true,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "button"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 48
+    },
+    {
+      "step": "F1 after a batch",
+      "theme": "localOperatorLight",
+      "expected": "the arrival moves the tail away AND the way back is on screen",
+      "scrollTop": -40,
+      "fromBottom": 40,
+      "extent": 5351,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-25-reply",
+      "anchorOffset": 4.875,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 7,
+      "bottomId": "entry-assistant-27-reply",
+      "button": {
+        "visible": true,
+        "hitTestable": true,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "button"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 48
+    },
+    {
+      "step": "G0 the control appearing",
+      "theme": "localOperatorLight",
+      "expected": "the control is present at its full size while its opacity settles",
+      "scrollTop": -600,
+      "fromBottom": 600,
+      "extent": 5351,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-023",
+      "anchorOffset": 1.0625,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 558.609375,
+      "newestVisible": false,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-25-reply",
+      "button": {
+        "visible": true,
+        "hitTestable": true,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "button"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 48
+    },
+    {
+      "step": "G1 hover",
+      "theme": "localOperatorLight",
+      "expected": "a real pointer over the control",
+      "scrollTop": -600,
+      "fromBottom": 600,
+      "extent": 5351,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-023",
+      "anchorOffset": 1.0625,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 558.609375,
+      "newestVisible": false,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-25-reply",
+      "button": {
+        "visible": true,
+        "hitTestable": true,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": true,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "button"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 48
+    },
+    {
+      "scrollTop": -147,
+      "fromBottom": 147,
+      "extent": 5351,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-25",
+      "anchorOffset": -13.6875,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 105.609375,
+      "newestVisible": true,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-27-reply",
+      "button": {
+        "visible": true,
+        "hitTestable": true,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": true,
+        "hovered": true,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "button"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "step": "G2 focus (22 tabs)",
+      "theme": "localOperatorLight",
+      "reads": 48,
+      "tabOrderIndex": 0,
+      "tabOrderLength": 22,
+      "expected": "keyboard focus lands on the control, and it sits with the pane's own controls rather than after the conversation"
+    },
+    {
+      "step": "G3 after the press",
+      "theme": "localOperatorLight",
+      "expected": "the reader is at the tail and the control is hidden again",
+      "scrollTop": 0,
+      "fromBottom": 0,
+      "extent": 5351,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-25-reply",
+      "anchorOffset": -35.125,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 7,
+      "bottomId": "entry-assistant-27-reply",
+      "button": {
+        "visible": false,
+        "hitTestable": false,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": true,
+        "hovered": false,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
+      },
+      "band": {
+        "height": 48
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 48
+    },
+    {
+      "step": "H0 a failed child, scrolled up",
+      "theme": "localOperatorLight",
+      "expected": "no control and no band: the exception text owns the foot",
+      "scrollTop": -635,
+      "fromBottom": 635,
+      "extent": 5325,
+      "client": 619,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-023",
+      "anchorOffset": 0.59375,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 619,
+      "newestVisible": false,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-25-reply",
+      "button": null,
+      "band": null,
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 691.75
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 48
+    },
+    {
+      "step": "H1 a child with no session id",
+      "theme": "localOperatorLight",
+      "expected": "no control and no band: there is no scroller to lead back to",
+      "reads": 48
     }
   ]
 }

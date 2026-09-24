@@ -100,6 +100,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DesktopChildTranscriptPage } from "../../../../../../shared/desktop-session-contract";
 import { CanonicalTranscript } from "../../canonical/canonical-transcript";
+import { TAIL_EPS_PX } from "../../canonical/scroll-paging";
 import {
 	EMPTY_TRANSCRIPT,
 	applyHistoryPage,
@@ -526,12 +527,29 @@ export const RunChildReader = ({
 	 * below — the operator's third report on the parent/child difference.
 	 *
 	 * The hook is the SAME one, over the reader's own ref and the reader's own
-	 * row count, so the control's condition (scrollable AND more than 50px from
-	 * the origin) cannot be answered two ways on two surfaces. `hasNewActivity`
-	 * is deliberately NOT passed: the parent never passes it either — no caller
-	 * of `message-input.tsx` or `chat-content.tsx` does — so the reader ports the
-	 * behaviour the operator actually has rather than reviving a label the parent
-	 * does not show.
+	 * row count, so the control's condition (scrollable AND more than a threshold
+	 * from the origin) cannot be answered two ways on two surfaces.
+	 * `hasNewActivity` is deliberately NOT passed: the parent never passes it
+	 * either — no caller of `message-input.tsx` or `chat-content.tsx` does — so the
+	 * reader ports the behaviour the operator actually has rather than reviving a
+	 * label the parent does not show. The design note's `§6.2` asks for that signal
+	 * derived from the reader's own arrivals; the parent's mount is the premise it
+	 * rests on and the parent's mount does not derive it, so the premise is what
+	 * needs amending rather than the port, and the new-content register is recorded
+	 * as deferred on the pull request instead of half-ported here (UX U2; review
+	 * R1-3 and design D5 both landed on the same reduction).
+	 *
+	 * THE THRESHOLD IS `TAIL_EPS_PX`, not the parent's 50, and that is a fix for a
+	 * measured gap rather than a preference (UX U3): between 24px and 50px from the
+	 * tail the paging policy already says this reader is NOT following the tail
+	 * (`followingTail: fromTail <= TAIL_EPS_PX`, `use-scroll-paging.ts`) while the
+	 * control was still hidden — so the band in which a reader is being left behind
+	 * was exactly the band in which nothing offered the way back. Measured on the
+	 * pre-remediation head: a reader 40px off the tail took an arrival that left the
+	 * newest row 264px below the fold with the control hidden. One constant, so the
+	 * two conditions cannot drift apart again; the parent's 50 is left alone,
+	 * because the parent's band is a composer and its divergence is its own
+	 * (recorded as a follow-up on the pull request rather than changed here).
 	 *
 	 * `transcript.records.length` is the `contentKey` for the same reason the chat
 	 * page uses its own record count: a child HOP remounts this reader entirely
@@ -540,7 +558,7 @@ export const RunChildReader = ({
 	 * scrolled up and new rows are arriving.
 	 */
 	const { isFarFromBottom, scrollToBottom } = useScrollToBottom(
-		50,
+		TAIL_EPS_PX,
 		containerRef,
 		transcript.records.length,
 	);
@@ -802,6 +820,36 @@ export const RunChildReader = ({
 					"relative flex min-h-0 flex-1 flex-col overflow-hidden bg-canvas",
 				)}
 			>
+				{/*
+				 * The follow-the-tail control, at the foot of the pane and in the reader's
+				 * OWN column.
+				 *
+				 * WHERE IT BELONGS. The parent mounts this in the composer band, another
+				 * column under the transcript; the reader has no composer, so the band it has
+				 * is the one its own layout draws at the foot of the conversation — the strip
+				 * reserved by the `h-12` spacer at the end of this body, which is why
+				 * `bottomDistance` is 8px rather than the parent's 160px (that value exists to
+				 * clear a composer this pane does not have) and rather than the 16px the first
+				 * cut used (which put the chip on the rows' own text — QA Q1, UX U1).
+				 *
+				 * FIRST IN THE DOM, LAST ON SCREEN, on purpose (UX U4). `absolute` takes it
+				 * out of flow, so its DOM position costs nothing visually, and putting it here
+				 * keeps the pane's own controls together for a keyboard user: rendered after
+				 * the conversation it was the last tabbable in the pane AND in the app, reached
+				 * only after tabbing through every row of a streaming child. The screen
+				 * position is unchanged — the spacer at the foot is what gives it a home.
+				 *
+				 * The control is `pointer-events-none` while hidden
+				 * (`scroll-to-bottom-button.tsx`), so it cannot be hit when it is not showing,
+				 * and the band below it carries no text either way.
+				 */}
+				{bodyPaintsConversation && !row.errorText && (
+					<ScrollToBottomButton
+						visible={isFarFromBottom}
+						onClick={scrollToBottom}
+						bottomDistance={8}
+					/>
+				)}
 				{!row.childSessionId ? (
 					/*
 					 * The one row the ROSTER cannot stop you reaching: a child with no
@@ -950,33 +998,43 @@ export const RunChildReader = ({
 					</div>
 				)}
 				{/*
-				 * The follow-the-tail control, at the foot of the conversation and in the
-				 * reader's OWN column.
+				 * The control's band: the pane's own foot, reserved so the control can float
+				 * in it WITHOUT covering a row.
 				 *
-				 * WHERE IT BELONGS, and why not somewhere else. The parent mounts this in the
-				 * composer band, which is another column under the transcript; the reader has
-				 * no composer, so the band it has is the one the pane already draws under the
-				 * conversation — the conversation's own bottom edge. `bottomDistance` is
-				 * therefore small rather than the parent's 160px, which exists to clear a
-				 * composer this pane does not have: 16px is the transcript's own `p-4`, so
-				 * the control sits on the same inset the rows do. The control is `absolute
-				 * inset-x-0` and `pointer-events-none` while hidden
-				 * (`scroll-to-bottom-button.tsx`), so it occupies no layout and cannot be hit
-				 * when it is not showing.
+				 * WHY A RESERVED BAND, with the numbers. The control is a 2rem chip; the
+				 * parent mounts it over its composer band, which carries no transcript text.
+				 * This pane has no composer, so the first cut put the chip 16px above the
+				 * conversation's own bottom edge — the transcript's `p-4` — and that inset is
+				 * where the rows' TEXT is: measured on the pre-remediation head, the chip's
+				 * rect `(1055,818)`–`(1087,850)` intersected the row at the fold by its full
+				 * 32px (QA Q1, UX U1). The band is 48px — 8px of air, the 32px chip, 8px of
+				 * air — reserved in the body's own flex column, so the chip has somewhere to
+				 * live that the conversation does not paint into.
+				 *
+				 * RESERVED STATICALLY rather than only while the control shows, and that is
+				 * the reason for the shape: a band that appeared WITH the control would move
+				 * the reader's own text by its height at the exact moment they are reading —
+				 * the motion this pane's rig exists to prove is absent across arrivals. The
+				 * condition is a LAYOUT condition (`bodyPaintsConversation` and no failure),
+				 * so the band never changes size while the reader scrolls; only the control's
+				 * opacity does. The honest cost is 48px of inset above the read-only statement
+				 * in every painted state, against a control that can no longer land on a word.
 				 *
 				 * GATED ON THE CONVERSATION'S OWN BRANCH, and that gate is load-bearing
-				 * rather than tidiness: the two outcome blocks this pane draws under the
-				 * conversation are `shrink-0` and own the pane's foot when they are present,
-				 * and a floating control over a failure's exception text would be a control
-				 * over the one thing on this surface a reader must be able to read. A child
-				 * with no painted conversation has no scroller to lead back to, so in both
-				 * cases the control has nothing to do.
+				 * rather than tidiness: the outcome blocks this pane draws under the
+				 * conversation are `shrink-0` and own the pane's foot when they are present.
+				 * A child with no painted conversation has no scroller to lead back to. And a
+				 * child whose EXCEPTION is painted gets no control at all, even when its
+				 * conversation is long and scrollable: the band sits under the failure text, so
+				 * a control there would sit over the one thing on this surface a reader must be
+				 * able to read (QA Q2 — the trade stated rather than inherited; the wheel still
+				 * gets the reader up, and `docs/run-sidebar.md` `§5.6` now carries the rule).
 				 */}
 				{bodyPaintsConversation && !row.errorText && (
-					<ScrollToBottomButton
-						visible={isFarFromBottom}
-						onClick={scrollToBottom}
-						bottomDistance={16}
+					<div
+						data-lo-child-chip-band=""
+						className={cn("h-12 shrink-0")}
+						aria-hidden="true"
 					/>
 				)}
 			</div>

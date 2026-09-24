@@ -1,6 +1,8 @@
 {
   "arm": "before",
-  "head": "b1a83f94b379dc4f62139a1fbd751a18d9ba63ec",
+  "armModule": "src/renderer/src/features/chat/components/run-details/run-child-reader.tsx",
+  "expectDigest": "8c68061ca3ab3ba680c40b1fc17f0795",
+  "head": "e92b176897b2016453b02e491c5a725343b27b70",
   "modules": [
     {
       "path": "src/renderer/src/features/chat/components/run-details/run-child-reader.tsx",
@@ -30,6 +32,7 @@
   "steps": [
     {
       "step": "0 seeded",
+      "theme": "localOperatorDark",
       "expected": "the pane is scrollable and opened at the tail",
       "scrollTop": 0,
       "fromBottom": 0,
@@ -45,10 +48,12 @@
       "visibleRows": 8,
       "bottomId": "entry-assistant-20-reply",
       "button": null,
-      "reads": 29
+      "band": null,
+      "reads": 27
     },
     {
       "step": "A0 at the tail",
+      "theme": "localOperatorDark",
       "expected": "scrollTop 0, the newest row on screen",
       "scrollTop": 0,
       "fromBottom": 0,
@@ -64,10 +69,12 @@
       "visibleRows": 8,
       "bottomId": "entry-assistant-20-reply",
       "button": null,
-      "reads": 29
+      "band": null,
+      "reads": 28
     },
     {
       "step": "A1 after a batch",
+      "theme": "localOperatorDark",
       "expected": "scrollTop stays 0 and the newest row is on screen",
       "scrollTop": 0,
       "fromBottom": 0,
@@ -83,10 +90,12 @@
       "visibleRows": 8,
       "bottomId": "entry-assistant-21-reply",
       "button": null,
-      "reads": 32
+      "band": null,
+      "reads": 30
     },
     {
       "step": "A2 after a batch",
+      "theme": "localOperatorDark",
       "expected": "scrollTop stays 0 and the newest row is on screen",
       "scrollTop": 0,
       "fromBottom": 0,
@@ -102,10 +111,12 @@
       "visibleRows": 8,
       "bottomId": "entry-assistant-22-reply",
       "button": null,
-      "reads": 34
+      "band": null,
+      "reads": 33
     },
     {
       "step": "A3 after a batch",
+      "theme": "localOperatorDark",
       "expected": "scrollTop stays 0 and the newest row is on screen",
       "scrollTop": 0,
       "fromBottom": 0,
@@ -121,10 +132,12 @@
       "visibleRows": 8,
       "bottomId": "entry-assistant-23-reply",
       "button": null,
-      "reads": 37
+      "band": null,
+      "reads": 36
     },
     {
       "step": "B0 scrolled up",
+      "theme": "localOperatorDark",
       "expected": "a reading position above the tail (fromBottom > 0)",
       "scrollTop": -600,
       "fromBottom": 600,
@@ -140,10 +153,12 @@
       "visibleRows": 9,
       "bottomId": "entry-assistant-21-reply",
       "button": null,
-      "reads": 37
+      "band": null,
+      "reads": 36
     },
     {
       "step": "B1 after a batch",
+      "theme": "localOperatorDark",
       "expected": "the viewport does not move (anchor entry-assistant-19 holds its offset)",
       "scrollTop": -868,
       "fromBottom": 868,
@@ -159,10 +174,12 @@
       "visibleRows": 9,
       "bottomId": "entry-assistant-21-reply",
       "button": null,
-      "reads": 40
+      "band": null,
+      "reads": 39
     },
     {
       "step": "B2 after a batch",
+      "theme": "localOperatorDark",
       "expected": "the viewport does not move (anchor entry-assistant-19 holds its offset)",
       "scrollTop": -1114,
       "fromBottom": 1114,
@@ -178,10 +195,12 @@
       "visibleRows": 9,
       "bottomId": "entry-assistant-21-reply",
       "button": null,
-      "reads": 43
+      "band": null,
+      "reads": 42
     },
     {
       "step": "C0 scrolled up",
+      "theme": "localOperatorDark",
       "expected": "the scroll-to-bottom control is present and hit-testable",
       "scrollTop": -1114,
       "fromBottom": 1114,
@@ -197,10 +216,12 @@
       "visibleRows": 9,
       "bottomId": "entry-assistant-21-reply",
       "button": null,
-      "reads": 44
+      "band": null,
+      "reads": 42
     },
     {
       "step": "C1 back at the tail",
+      "theme": "localOperatorDark",
       "expected": "the control is hidden at the tail",
       "scrollTop": 0,
       "fromBottom": 0,
@@ -216,7 +237,8 @@
       "visibleRows": 8,
       "bottomId": "entry-assistant-25-reply",
       "button": null,
-      "reads": 44
+      "band": null,
+      "reads": 42
     },
     {
       "scrollTop": -3,
@@ -233,11 +255,15 @@
       "visibleRows": 8,
       "bottomId": "entry-assistant-25-reply",
       "button": null,
+      "band": null,
       "step": "E0 3px off the tail",
+      "theme": "localOperatorDark",
+      "reads": 42,
       "expected": "placed and read in the same frame, inside TAIL_EPS_PX"
     },
     {
       "step": "E1 after a batch",
+      "theme": "localOperatorDark",
       "expected": "the arrival lands on screen and the reader stays inside TAIL_EPS_PX",
       "scrollTop": -3,
       "fromBottom": 3,
@@ -253,10 +279,12 @@
       "visibleRows": 9,
       "bottomId": "entry-assistant-26-reply",
       "button": null,
-      "reads": 47
+      "band": null,
+      "reads": 45
     },
     {
       "step": "E2 after a second batch",
+      "theme": "localOperatorDark",
       "expected": "and again: the drift does not accumulate",
       "scrollTop": -3,
       "fromBottom": 3,
@@ -272,10 +300,12 @@
       "visibleRows": 8,
       "bottomId": "entry-assistant-27-reply",
       "button": null,
-      "reads": 50
+      "band": null,
+      "reads": 48
     },
     {
       "step": "D0 settled",
+      "theme": "localOperatorDark",
       "expected": "no cadence is left: the read count stops moving",
       "scrollTop": -3,
       "fromBottom": 3,
@@ -291,10 +321,12 @@
       "visibleRows": 8,
       "bottomId": "entry-assistant-27-reply",
       "button": null,
-      "reads": 51
+      "band": null,
+      "reads": 49
     },
     {
       "step": "D1 six seconds later",
+      "theme": "localOperatorDark",
       "expected": "the read count is unchanged (no 5s safety-net poll)",
       "scrollTop": -3,
       "fromBottom": 3,
@@ -310,10 +342,102 @@
       "visibleRows": 8,
       "bottomId": "entry-assistant-27-reply",
       "button": null,
-      "reads": 51
+      "band": null,
+      "reads": 49
+    },
+    {
+      "step": "F0 40px off the tail",
+      "theme": "localOperatorDark",
+      "expected": "inside the band the paging policy calls not-following, so the control is offered",
+      "scrollTop": -40,
+      "fromBottom": 40,
+      "extent": 5351,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-25",
+      "anchorOffset": -72.6875,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-27-reply",
+      "button": null,
+      "band": null,
+      "reads": 49
+    },
+    {
+      "step": "F1 after a batch",
+      "theme": "localOperatorDark",
+      "expected": "the arrival moves the tail away AND the way back is on screen",
+      "scrollTop": -40,
+      "fromBottom": 40,
+      "extent": 5351,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-25",
+      "anchorOffset": -72.6875,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-27-reply",
+      "button": null,
+      "band": null,
+      "reads": 49
+    },
+    {
+      "step": "G0 the control appearing",
+      "theme": "localOperatorDark",
+      "expected": "the control is present at its full size while its opacity settles",
+      "scrollTop": -600,
+      "fromBottom": 600,
+      "extent": 5351,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-23",
+      "anchorOffset": -48.5,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 558.609375,
+      "newestVisible": false,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-25-reply",
+      "button": null,
+      "band": null,
+      "reads": 49
+    },
+    {
+      "step": "H0 a failed child, scrolled up",
+      "theme": "localOperatorDark",
+      "expected": "no control and no band: the exception text owns the foot",
+      "scrollTop": -1284,
+      "fromBottom": 1284,
+      "extent": 5325,
+      "client": 619,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-20-reply",
+      "anchorOffset": -103.734375,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 1268,
+      "newestVisible": false,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-23",
+      "button": null,
+      "band": null,
+      "reads": 49
+    },
+    {
+      "step": "H1 a child with no session id",
+      "theme": "localOperatorDark",
+      "expected": "no control and no band: there is no scroller to lead back to",
+      "reads": 49
     },
     {
       "step": "0 seeded",
+      "theme": "localOperatorLight",
       "expected": "the pane is scrollable and opened at the tail",
       "scrollTop": 0,
       "fromBottom": 0,
@@ -329,10 +453,12 @@
       "visibleRows": 8,
       "bottomId": "entry-assistant-20-reply",
       "button": null,
+      "band": null,
       "reads": 29
     },
     {
       "step": "A0 at the tail",
+      "theme": "localOperatorLight",
       "expected": "scrollTop 0, the newest row on screen",
       "scrollTop": 0,
       "fromBottom": 0,
@@ -348,10 +474,12 @@
       "visibleRows": 8,
       "bottomId": "entry-assistant-20-reply",
       "button": null,
+      "band": null,
       "reads": 29
     },
     {
       "step": "A1 after a batch",
+      "theme": "localOperatorLight",
       "expected": "scrollTop stays 0 and the newest row is on screen",
       "scrollTop": 0,
       "fromBottom": 0,
@@ -367,10 +495,12 @@
       "visibleRows": 8,
       "bottomId": "entry-assistant-21-reply",
       "button": null,
+      "band": null,
       "reads": 31
     },
     {
       "step": "A2 after a batch",
+      "theme": "localOperatorLight",
       "expected": "scrollTop stays 0 and the newest row is on screen",
       "scrollTop": 0,
       "fromBottom": 0,
@@ -386,10 +516,12 @@
       "visibleRows": 8,
       "bottomId": "entry-assistant-22-reply",
       "button": null,
+      "band": null,
       "reads": 34
     },
     {
       "step": "A3 after a batch",
+      "theme": "localOperatorLight",
       "expected": "scrollTop stays 0 and the newest row is on screen",
       "scrollTop": 0,
       "fromBottom": 0,
@@ -405,10 +537,12 @@
       "visibleRows": 8,
       "bottomId": "entry-assistant-23-reply",
       "button": null,
+      "band": null,
       "reads": 37
     },
     {
       "step": "B0 scrolled up",
+      "theme": "localOperatorLight",
       "expected": "a reading position above the tail (fromBottom > 0)",
       "scrollTop": -600,
       "fromBottom": 600,
@@ -424,10 +558,12 @@
       "visibleRows": 9,
       "bottomId": "entry-assistant-21-reply",
       "button": null,
+      "band": null,
       "reads": 37
     },
     {
       "step": "B1 after a batch",
+      "theme": "localOperatorLight",
       "expected": "the viewport does not move (anchor entry-assistant-19 holds its offset)",
       "scrollTop": -868,
       "fromBottom": 868,
@@ -443,10 +579,12 @@
       "visibleRows": 9,
       "bottomId": "entry-assistant-21-reply",
       "button": null,
+      "band": null,
       "reads": 40
     },
     {
       "step": "B2 after a batch",
+      "theme": "localOperatorLight",
       "expected": "the viewport does not move (anchor entry-assistant-19 holds its offset)",
       "scrollTop": -1114,
       "fromBottom": 1114,
@@ -462,10 +600,12 @@
       "visibleRows": 9,
       "bottomId": "entry-assistant-21-reply",
       "button": null,
-      "reads": 43
+      "band": null,
+      "reads": 42
     },
     {
       "step": "C0 scrolled up",
+      "theme": "localOperatorLight",
       "expected": "the scroll-to-bottom control is present and hit-testable",
       "scrollTop": -1114,
       "fromBottom": 1114,
@@ -481,10 +621,12 @@
       "visibleRows": 9,
       "bottomId": "entry-assistant-21-reply",
       "button": null,
+      "band": null,
       "reads": 43
     },
     {
       "step": "C1 back at the tail",
+      "theme": "localOperatorLight",
       "expected": "the control is hidden at the tail",
       "scrollTop": 0,
       "fromBottom": 0,
@@ -500,6 +642,7 @@
       "visibleRows": 8,
       "bottomId": "entry-assistant-25-reply",
       "button": null,
+      "band": null,
       "reads": 43
     },
     {
@@ -517,11 +660,15 @@
       "visibleRows": 8,
       "bottomId": "entry-assistant-25-reply",
       "button": null,
+      "band": null,
       "step": "E0 3px off the tail",
+      "theme": "localOperatorLight",
+      "reads": 43,
       "expected": "placed and read in the same frame, inside TAIL_EPS_PX"
     },
     {
       "step": "E1 after a batch",
+      "theme": "localOperatorLight",
       "expected": "the arrival lands on screen and the reader stays inside TAIL_EPS_PX",
       "scrollTop": -3,
       "fromBottom": 3,
@@ -537,10 +684,12 @@
       "visibleRows": 9,
       "bottomId": "entry-assistant-26-reply",
       "button": null,
+      "band": null,
       "reads": 46
     },
     {
       "step": "E2 after a second batch",
+      "theme": "localOperatorLight",
       "expected": "and again: the drift does not accumulate",
       "scrollTop": -3,
       "fromBottom": 3,
@@ -556,10 +705,12 @@
       "visibleRows": 8,
       "bottomId": "entry-assistant-27-reply",
       "button": null,
+      "band": null,
       "reads": 49
     },
     {
       "step": "D0 settled",
+      "theme": "localOperatorLight",
       "expected": "no cadence is left: the read count stops moving",
       "scrollTop": -3,
       "fromBottom": 3,
@@ -575,10 +726,12 @@
       "visibleRows": 8,
       "bottomId": "entry-assistant-27-reply",
       "button": null,
+      "band": null,
       "reads": 50
     },
     {
       "step": "D1 six seconds later",
+      "theme": "localOperatorLight",
       "expected": "the read count is unchanged (no 5s safety-net poll)",
       "scrollTop": -3,
       "fromBottom": 3,
@@ -594,6 +747,97 @@
       "visibleRows": 8,
       "bottomId": "entry-assistant-27-reply",
       "button": null,
+      "band": null,
+      "reads": 50
+    },
+    {
+      "step": "F0 40px off the tail",
+      "theme": "localOperatorLight",
+      "expected": "inside the band the paging policy calls not-following, so the control is offered",
+      "scrollTop": -40,
+      "fromBottom": 40,
+      "extent": 5351,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-25",
+      "anchorOffset": -72.6875,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-27-reply",
+      "button": null,
+      "band": null,
+      "reads": 50
+    },
+    {
+      "step": "F1 after a batch",
+      "theme": "localOperatorLight",
+      "expected": "the arrival moves the tail away AND the way back is on screen",
+      "scrollTop": -40,
+      "fromBottom": 40,
+      "extent": 5351,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-25",
+      "anchorOffset": -72.6875,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-27-reply",
+      "button": null,
+      "band": null,
+      "reads": 50
+    },
+    {
+      "step": "G0 the control appearing",
+      "theme": "localOperatorLight",
+      "expected": "the control is present at its full size while its opacity settles",
+      "scrollTop": -600,
+      "fromBottom": 600,
+      "extent": 5351,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-23",
+      "anchorOffset": -48.5,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 558.609375,
+      "newestVisible": false,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-25-reply",
+      "button": null,
+      "band": null,
+      "reads": 50
+    },
+    {
+      "step": "H0 a failed child, scrolled up",
+      "theme": "localOperatorLight",
+      "expected": "no control and no band: the exception text owns the foot",
+      "scrollTop": -1284,
+      "fromBottom": 1284,
+      "extent": 5325,
+      "client": 619,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-20-reply",
+      "anchorOffset": -103.734375,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 1268,
+      "newestVisible": false,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-23",
+      "button": null,
+      "band": null,
+      "reads": 50
+    },
+    {
+      "step": "H1 a child with no session id",
+      "theme": "localOperatorLight",
+      "expected": "no control and no band: there is no scroller to lead back to",
       "reads": 50
     }
   ]

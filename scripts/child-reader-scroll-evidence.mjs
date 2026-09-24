@@ -48,6 +48,7 @@ import {
 	rmSync,
 	writeFileSync,
 } from "node:fs";
+import { createConnection } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { assertFramePaints } from "./check-evidence.mjs";
@@ -74,6 +75,25 @@ const OUT = flag(
 );
 const JSON_OUT = flag("json", null);
 const WANT_FRAMES = ARGS.includes("--frames");
+/*
+ * The module digest this arm's own bytes must have (see `ARM_MODULE`), and the
+ * step groups to run.
+ *
+ * `--expect-digest` exists because a LABEL IS NOT EVIDENCE. The first version of
+ * this rig validated the arm against nothing: run it with `--arm=before` on a
+ * branch where the change is committed and it happily reported the AFTER bytes
+ * under `arm before`, exit 0 (review round 1, R1-1 — the reviewer followed the
+ * shipped recipe and got exactly that). `scripts/child-reader-scroll-evidence-arms.mjs`
+ * is what performs the swap; this is what refuses to mislabel it.
+ *
+ * `--only` exists for the palette sweep, which needs one state across twelve
+ * palettes rather than fifteen states across two.
+ */
+const EXPECT_DIGEST = flag("expect-digest", null);
+const ONLY = flag("only", null)
+	?.split(",")
+	.map((part) => part.trim())
+	.filter((part) => part.length > 0);
 /** Batches of the scripted child to place before the first reading. */
 const SEED = Number(flag("seed", "21"));
 /*
@@ -87,6 +107,15 @@ const SEED = Number(flag("seed", "21"));
  * paging rig. This is the same record by the same means, printed rather than
  * enforced because swapping the files is the operator's step here.
  */
+/*
+ * The module the two arms differ in. The before arm is this file taken back to
+ * the base revision, so its digest is what says which arm a report came from;
+ * the other three are listed to PROVE they did not move (they are the scroll
+ * machinery this branch does not touch).
+ */
+const ARM_MODULE =
+	"src/renderer/src/features/chat/components/run-details/run-child-reader.tsx";
+
 const MODULES = [
 	"src/renderer/src/features/chat/components/run-details/run-child-reader.tsx",
 	"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
@@ -131,6 +160,9 @@ async function launchChrome(profile) {
 			"--window-size=900,900",
 			"about:blank",
 		]),
+		// Its own group as well: Chrome's own children (the renderer, the GPU
+		// process) are the ones a killed wrapper leaves behind.
+		{ detached: true },
 	);
 	const port = await new Promise((resolvePort, reject) => {
 		chrome.stderr.on("data", (chunk) => {
@@ -175,9 +207,40 @@ async function launchChrome(profile) {
  */
 const STEPS = [];
 
+/**
+ * Whether nothing is listening on the port yet.
+ *
+ * THE HAZARD THIS CLOSES is not tidiness. The rig waits for its own URL before
+ * it starts, so a server left behind by an earlier run answers that wait — and
+ * then the whole run measures bytes it did not start (review round 1, R1-2:
+ * the reviewer saw a run complete with an orphan still holding the port). A
+ * pre-flight is the cheap half; spawning into its own process group and killing
+ * the GROUP is the other, because `pnpm vite` forks a grandchild that re-parents
+ * to launchd when only the wrapper is signalled.
+ */
+function portInUse(port) {
+	const probe = (host) =>
+		new Promise((resolve) => {
+			const socket = createConnection({ port, host });
+			const settle = (value) => {
+				socket.destroy();
+				resolve(value);
+			};
+			socket.on("connect", () => settle(true));
+			socket.on("error", () => settle(false));
+			setTimeout(() => settle(false), 500);
+		});
+	return probe("::1").then((v6) => v6 || probe("127.0.0.1"));
+}
+
 async function main() {
 	const profile = mkdtempSync(join(tmpdir(), "child-reader-scroll-chrome-"));
 	let chrome = null;
+	if (await portInUse(PORT)) {
+		throw new Error(
+			`something is already listening on ${PORT}, and this rig cannot tell its own server from a stranger's: a leaked run would make every frame below a picture of bytes this run did not start. Find and reap it by pid - \`lsof -nP -iTCP:${PORT} -sTCP:LISTEN\` - or re-run with --port=<a free one>.`,
+		);
+	}
 	const vite = spawn(
 		"pnpm",
 		["vite", "--config", "scripts/child-reader-scroll-evidence.vite.mjs"],
@@ -185,6 +248,13 @@ async function main() {
 			cwd: ROOT,
 			env: { ...process.env, CHILD_READER_SCROLL_PORT: String(PORT) },
 			stdio: ["ignore", "pipe", "pipe"],
+			/*
+			 * Its own process group, so teardown can reap the Vite the `pnpm`
+			 * wrapper forks and then abandons to launchd when only the wrapper is
+			 * killed. `detached` + `kill(-pid)` is the shape the harness rule asks
+			 * for; without it this rig held port 5197 open after every run.
+			 */
+			detached: true,
 		},
 	);
 	let viteLog = "";
@@ -206,24 +276,61 @@ async function main() {
 	 * `diff-body-evidence.mjs` kills the browser whose stderr it reads for the
 	 * debug-port handshake — and `main` exits by name once the report is out.
 	 */
+	const killGroup = (child) => {
+		if (!child?.pid) return;
+		try {
+			// The group first: the child's own children are in it, and they are
+			// the ones that re-parent and keep the port.
+			process.kill(-child.pid, "SIGKILL");
+		} catch {
+			// Already gone, or never had a group of its own.
+		}
+		try {
+			child.kill("SIGKILL");
+		} catch {
+			// Same.
+		}
+		child.stdout?.destroy();
+		child.stderr?.destroy();
+	};
 	const teardown = () => {
-		vite.kill("SIGKILL");
-		vite.stdout?.destroy();
-		vite.stderr?.destroy();
-		chrome?.kill("SIGKILL");
-		chrome?.stdout?.destroy();
-		chrome?.stderr?.destroy();
+		killGroup(vite);
+		killGroup(chrome);
 		try {
 			rmSync(profile, { recursive: true, force: true });
 		} catch {
 			// Chrome may still hold a handle; the path is under the temp dir.
 		}
 	};
-	process.on("SIGINT", () => {
-		teardown();
-		process.exit(130);
-	});
+	for (const [signal, code] of [
+		["SIGINT", 130],
+		["SIGTERM", 143],
+		["SIGHUP", 129],
+	]) {
+		process.on(signal, () => {
+			teardown();
+			process.exit(code);
+		});
+	}
 
+	/*
+	 * THE ARM IS CHECKED BEFORE A SINGLE FRAME IS TAKEN.
+	 *
+	 * `--arm` names the output directory and the report's label, and it cannot
+	 * swap the code under test — so on a branch where the change is committed the
+	 * two arms are the same bytes and the label is a lie (review round 1, R1-1).
+	 * `scripts/child-reader-scroll-evidence-arms.mjs` performs the swap and hands
+	 * this flag the digest it expects; this refuses to run if the bytes disagree.
+	 */
+	if (EXPECT_DIGEST) {
+		const got = moduleDigest(ARM_MODULE);
+		if (got !== EXPECT_DIGEST)
+			throw new Error(
+				`--expect-digest=${EXPECT_DIGEST} but ${ARM_MODULE} is ${got}: this arm is not the bytes it claims to be. Take the arm with \`node scripts/child-reader-scroll-evidence-arms.mjs ${ARM}${
+					ARM === "before" ? " <base-ref>" : ""
+				} -- <the rest of these arguments>\`, which swaps the module and passes this flag for you.`,
+			);
+	}
 	try {
 		await waitFor(`http://localhost:${PORT}/child-reader-scroll-evidence.html`);
 		const launched = await launchChrome(profile);
@@ -233,16 +340,36 @@ async function main() {
 		await send("Runtime.enable");
 
 		const evaluate = async (expression, awaitPromise = false) => {
-			const { result, exceptionDetails } = await send("Runtime.evaluate", {
-				expression,
-				awaitPromise,
-				returnByValue: true,
-			});
-			if (exceptionDetails)
-				throw new Error(
-					`page threw: ${exceptionDetails.exception?.description ?? exceptionDetails.text}`,
-				);
-			return result.value;
+			/*
+			 * A NAVIGATION RACE IS NOT A PAGE ERROR. This rig navigates once per
+			 * palette, and a `Runtime.evaluate` in flight while the target unloads
+			 * answers `-32000 Inspected target navigated or closed` rather than
+			 * returning anything (observed on the twelve-palette sweep). Retried here,
+			 * once per call site's problem rather than forty times: a real page
+			 * exception is a different error and is NOT swallowed.
+			 */
+			for (let attempt = 0; ; attempt++) {
+				try {
+					const { result, exceptionDetails } = await send("Runtime.evaluate", {
+						expression,
+						awaitPromise,
+						returnByValue: true,
+					});
+					if (exceptionDetails)
+						throw new Error(
+							`page threw: ${exceptionDetails.exception?.description ?? exceptionDetails.text}`,
+						);
+					return result.value;
+				} catch (error) {
+					const racing =
+						attempt < 6 &&
+						/navigated or closed|Cannot find context|Execution context was destroyed/i.test(
+							String(error),
+						);
+					if (!racing) throw error;
+					await sleep(400);
+				}
+			}
 		};
 		/** A wheel event the renderer cannot tell from a trackpad's. */
 		const wheel = async (deltaY) => {
@@ -260,6 +387,27 @@ async function main() {
 		const reads = async () => {
 			const response = await fetch(`http://localhost:${PORT}/__child/state`);
 			return (await response.json()).reads;
+		};
+		/**
+		 * The read count, once it has stopped moving.
+		 *
+		 * The settled pair below is a claim about a SETTLED child, so a read that was
+		 * already in flight when the settle landed must not be counted as one the
+		 * settled child made. Observed once on this host at load ~138 (`a settled
+		 * child was read again (54 -> 55)`, the previous arrival's refetch the
+		 * obvious candidate), and the same rig had passed that assertion in three
+		 * consecutive runs: the wait is what makes the pair measure the settled state
+		 * rather than the tail of the previous step.
+		 */
+		const stableReads = async () => {
+			let last = await reads();
+			for (let attempt = 0; attempt < 20; attempt++) {
+				await sleep(700);
+				const now = await reads();
+				if (now === last) return now;
+				last = now;
+			}
+			return last;
 		};
 		/*
 		 * One frame per STATE per theme, laid out the way the sweep lays its own out:
@@ -282,9 +430,25 @@ async function main() {
 			await assertFramePaints(frame, theme);
 			return frame;
 		};
+		/*
+		 * The palette the CURRENT theme loop is on. The row builder is defined
+		 * outside that loop (it is shared by every step) and each row records the
+		 * palette it measured, so the loop's own variable cannot be the one it
+		 * reads: it would be out of scope here and, worse, a `let` captured by
+		 * closure would be right by accident.
+		 */
+		let themeOf = THEMES[0];
 		const step = async (label, expected) => {
 			return waitForStep(label, expected, () => true, 0);
 		};
+		/*
+		 * `null` and `undefined` are the same answer here, and the difference is
+		 * real: `reading()` returns `null` when the pane paints no scroller at all
+		 * (the session-less child), so a spread row carries no key rather than a
+		 * null one. A gate that "has no control" must accept both, or it reports a
+		 * failure on the state it is meant to describe.
+		 */
+		const absent = (value) => value === null || value === undefined;
 		/**
 		 * A reading taken once a condition holds, or when the bound expires.
 		 *
@@ -305,6 +469,14 @@ async function main() {
 			const reading = await evaluate("window.__childScroll.measure()");
 			const row = {
 				step: label,
+				/*
+				 * The palette is ON the row, not inferred from its position in the file.
+				 * Two themes run back to back and the palette sweep runs twelve, so a
+				 * reader who cannot tell which palette a row measured has to trust the
+				 * order — which is the class of mistake this rig was already bitten by
+				 * once (review round 1, R1-1).
+				 */
+				theme: themeOf,
 				expected,
 				...reading,
 				reads: await reads(),
@@ -320,6 +492,7 @@ async function main() {
 				mobile: false,
 			});
 			const url = `http://localhost:${PORT}/child-reader-scroll-evidence.html?theme=${theme}`;
+			themeOf = theme;
 			await send("Page.navigate", { url });
 			let ready = false;
 			for (let attempt = 0; attempt < 120; attempt++) {
@@ -360,6 +533,38 @@ async function main() {
 				throw new Error(
 					`${theme}: the child's page does not overflow the pane, so there is no tail to follow`,
 				);
+
+			/*
+			 * The palette sweep: ONE state per palette.
+			 *
+			 * Design D1 asks for the control's own boundary across all twelve
+			 * palettes, because the ring is the whole boundary (the fill measures
+			 * 1.07-1.09:1 off the transcript ground) and the palettes are where that
+			 * changes. The state that carries it shows the control over the
+			 * conversation with nothing else in the frame, so the sweep takes that
+			 * state rather than paying fifteen states times ten palettes.
+			 */
+			if (ONLY?.includes("ring")) {
+				await wheel(-600);
+				await sleep(700);
+				const ring = await step(
+					"R0 scrolled up (palette sweep)",
+					"the control is shown, over this palette's own transcript ground",
+				);
+				if (ARM === "after" && !ring.button?.visible)
+					throw new Error(
+						`${theme}: no control while scrolled up, so this palette has no boundary to judge`,
+					);
+				/*
+				 * Its own state directory rather than the core run's `scrolled-up`:
+				 * the sweep takes its reading much earlier in the child's life (right
+				 * after the seed), so a frame from here is a different picture of a
+				 * different row set, and two sets of frames that look alike should not
+				 * share a name.
+				 */
+				await shoot("ring", theme);
+				continue;
+			}
 
 			/* ---- A: anchored at the tail, rows arrive -------------------- */
 			/*
@@ -498,6 +703,15 @@ async function main() {
 			STEPS.push({
 				...placed,
 				step: "E0 3px off the tail",
+				theme,
+				/*
+				 * The route's read count, taken here rather than dropped: this row is
+				 * built from the placement's own return value, and the omission left a
+				 * `null` in a column whose every other row is a number (review round 1,
+				 * R1-4). It is the count BEFORE the arrival two lines down, which is what
+				 * makes the E1 delta readable as "one read for one batch".
+				 */
+				reads: await reads(),
 				expected: "placed and read in the same frame, inside TAIL_EPS_PX",
 			});
 			if (placed.fromBottom < 0.5)
@@ -538,24 +752,247 @@ async function main() {
 
 			/* ---- D: a settled child ------------------------------------- */
 			await evaluate("window.__childScroll.settle()", true);
+			await stableReads();
 			const settled = await step(
 				"D0 settled",
-				"no cadence is left: the read count stops moving",
+				"no cadence is left: the read count has stopped moving",
 			);
-			await sleep(6000);
+			/*
+			 * Two safety-net intervals, not one: the reader's fallback poll is 5s, so a
+			 * 6s window can miss a poll by landing inside it and the assertion would
+			 * pass on a pane that polls. Eleven seconds cannot.
+			 */
+			await sleep(11000);
 			const quiet = await step(
-				"D1 six seconds later",
-				"the read count is unchanged (no 5s safety-net poll)",
+				"D1 eleven seconds later",
+				"the read count is unchanged across two 5s poll intervals",
 			);
 			if (quiet.reads !== settled.reads)
 				throw new Error(
 					`${theme}: a settled child was read again (${settled.reads} -> ${quiet.reads})`,
 				);
 			await shoot("settled", theme);
+
+			/* ---- F: the band the threshold lives in (UX U3) --------------- */
+			/*
+			 * U3's state, and the number that made it a finding: the paging policy says a
+			 * reader past `TAIL_EPS_PX` (24px) is NOT following the tail, while the
+			 * control's own threshold was 50 — so 26-49px off the tail was the one band
+			 * where a reader was quietly being left behind with nothing offered. The
+			 * placement is a write rather than a gesture for the same reason E's is: the
+			 * claim is about the STATE, and a small wheel delta is subject to the
+			 * browser's own snap.
+			 */
+			const nearTailPlaced = await evaluate(
+				"window.__childScroll.drift(40)",
+				true,
+			);
+			if (nearTailPlaced.fromBottom !== 40)
+				throw new Error(
+					`${theme}: F0 could not place the offset at 40px (${nearTailPlaced.fromBottom})`,
+				);
+			/*
+			 * The placement is a synchronous write, but the control's visibility is
+			 * not: the hook updates inside a `requestAnimationFrame` off the scroll
+			 * event. A read in the same turn would sample the state before that rAF
+			 * and report a hidden control for a code path that is about to show it —
+			 * the assertion below would then fail for the rig's own reason.
+			 */
+			await sleep(300);
+			const nearTail = await step(
+				"F0 40px off the tail",
+				"inside the band the paging policy calls not-following, so the control is offered",
+			);
+			if (ARM === "after" && !nearTail.button?.visible)
+				throw new Error(
+					`${theme}: a reader 40px off the tail is not offered the way back — the control's threshold is above TAIL_EPS_PX again`,
+				);
+			await shoot("near-tail-40", theme);
+			await evaluate("window.__childScroll.batch(1)", true);
+			await sleep(300);
+			const nearTailAfter = await step(
+				"F1 after a batch",
+				"the arrival moves the tail away AND the way back is on screen",
+			);
+			if (ARM === "after" && !nearTailAfter.button?.visible)
+				throw new Error(
+					`${theme}: the control left the screen while the reader was being left behind`,
+				);
+			await shoot("near-tail-40-after-batch", theme);
+
+			/* ---- G: the control's own interaction states (design D4) ------ */
+			await evaluate("window.__childScroll.drift(0)", true);
+			await sleep(200);
+			await wheel(-600);
+			await sleep(140);
+			/*
+			 * The appearance, bracketed: the first frame is taken as soon as the state
+			 * flips, so it catches the fade in flight or just settled, and the second
+			 * after the transition's own duration (`duration-base`). Two stills are the
+			 * cheap form of the motion pair this repository captures for exactly this
+			 * question — is the transition deliberate?
+			 */
+			await shoot("appearing", theme);
+			const appearing = await step(
+				"G0 the control appearing",
+				"the control is present at its full size while its opacity settles",
+			);
+			if (ARM === "after" && !appearing.button?.visible)
+				throw new Error(
+					`${theme}: the control never appeared while the reader was scrolled up`,
+				);
+			await sleep(600);
+			await shoot("appeared", theme);
+			const chip = await evaluate("window.__childScroll.chipBox()");
+			if (ARM === "after" && !chip)
+				throw new Error(`${theme}: no control to point at while scrolled up`);
+
+			if (chip) {
+				await send("Input.dispatchMouseEvent", {
+					type: "mouseMoved",
+					x: chip.x,
+					y: chip.y,
+					button: "none",
+					clickCount: 0,
+				});
+				await sleep(260);
+				const hovered = await step(
+					"G1 hover",
+					"a real pointer over the control",
+				);
+				if (ARM === "after" && !hovered.button?.hovered)
+					throw new Error(
+						`${theme}: the pointer is over the control but it does not read as hovered`,
+					);
+				await shoot("hover", theme);
+
+				/*
+				 * Focus by REAL Tab presses, counted: the claim is about the pane's tab
+				 * order (UX U4 moved the control to the top of the DOM for it), and a
+				 * programmatic `.focus()` would prove nothing about the order.
+				 */
+				let focused = null;
+				let tabs = 0;
+				for (let press = 0; press < 24 && !focused; press++) {
+					await send("Input.dispatchKeyEvent", {
+						type: "rawKeyDown",
+						key: "Tab",
+						code: "Tab",
+						windowsVirtualKeyCode: 9,
+						nativeVirtualKeyCode: 9,
+					});
+					await send("Input.dispatchKeyEvent", {
+						type: "keyUp",
+						key: "Tab",
+						code: "Tab",
+						windowsVirtualKeyCode: 9,
+						nativeVirtualKeyCode: 9,
+					});
+					tabs = press + 1;
+					await sleep(140);
+					const now = await evaluate("window.__childScroll.measure()");
+					if (now?.button?.focused) focused = now;
+				}
+				if (ARM === "after" && !focused)
+					throw new Error(
+						`${theme}: ${tabs} Tab presses never reached the control`,
+					);
+				const order = await evaluate("window.__childScroll.tabOrder()");
+				const at = order.findIndex((entry) => entry.isControl);
+				if (ARM === "after" && at < 0)
+					throw new Error(
+						`${theme}: the control is not in the page's tab order at all`,
+					);
+				if (focused)
+					STEPS.push({
+						...focused,
+						step: `G2 focus (${tabs} tabs)`,
+						theme: themeOf,
+						reads: await reads(),
+						tabOrderIndex: at,
+						tabOrderLength: order.length,
+						expected:
+							"keyboard focus lands on the control, and it sits with the pane's own controls rather than after the conversation",
+					});
+				await shoot("focus", theme);
+
+				/*
+				 * A real press, held: the frame is taken while the button is down, which is
+				 * the only way a `:active` state is a picture rather than a claim.
+				 */
+				await send("Input.dispatchMouseEvent", {
+					type: "mousePressed",
+					x: chip.x,
+					y: chip.y,
+					button: "left",
+					clickCount: 1,
+				});
+				await sleep(140);
+				await shoot("pressed", theme);
+				await send("Input.dispatchMouseEvent", {
+					type: "mouseReleased",
+					x: chip.x,
+					y: chip.y,
+					button: "left",
+					clickCount: 1,
+				});
+				await sleep(1400);
+				const afterPress = await step(
+					"G3 after the press",
+					"the reader is at the tail and the control is hidden again",
+				);
+				if (afterPress.fromBottom > 1)
+					throw new Error(
+						`${theme}: pressing the control left the reader ${afterPress.fromBottom}px from the tail`,
+					);
+			}
+
+			/* ---- H: the gate (design D3, QA Q2) -------------------------- */
+			await wheel(-600);
+			await sleep(700);
+			await evaluate('window.__childScroll.shape("failed")', true);
+			const failed = await step(
+				"H0 a failed child, scrolled up",
+				"no control and no band: the exception text owns the foot",
+			);
+			if (!absent(failed.button) || !absent(failed.band))
+				throw new Error(
+					`${theme}: a failed child paints the control's band or the control itself over its exception text (button=${JSON.stringify(failed.button)}, band=${JSON.stringify(failed.band)})`,
+				);
+			await shoot("failed-scrolled-up", theme);
+			await evaluate('window.__childScroll.shape("no-session")', true);
+			const noSession = await step(
+				"H1 a child with no session id",
+				"no control and no band: there is no scroller to lead back to",
+			);
+			if (!absent(noSession.button) || !absent(noSession.band))
+				throw new Error(
+					`${theme}: a session-less child paints the control's band or the control (button=${JSON.stringify(noSession.button)}, band=${JSON.stringify(noSession.band)})`,
+				);
+			if (!absent(noSession.scrollTop))
+				throw new Error(
+					`${theme}: a session-less child still has a scroller to lead back to (${noSession.scrollTop})`,
+				);
+			await shoot("no-session", theme);
+			await evaluate('window.__childScroll.shape("live")', true);
+			await sleep(300);
 		}
+
+		/*
+		 * And the semantic half, which the digest cannot state: the BEFORE arm has
+		 * no control in it at all. A digest check catches a swap that did not happen;
+		 * this catches the other direction — a harness that stopped painting the
+		 * control would make the before arm pass by carrying the after arm's failure.
+		 */
+		if (ARM === "before" && STEPS.some((row) => !absent(row.button)))
+			throw new Error(
+				`${ARM}: a reading found a follow-the-tail control, and the before arm is defined by NOT having one — the module digest says ${moduleDigest(ARM_MODULE)}, so the arm's label and its bytes disagree about what is being measured.`,
+			);
 
 		const report = {
 			arm: ARM,
+			armModule: ARM_MODULE,
+			expectDigest: EXPECT_DIGEST,
 			head: exec(["git", "rev-parse", "HEAD"]).trim(),
 			/*
 			 * The bytes each arm measured, module by module. Two reports are a
@@ -577,7 +1014,9 @@ async function main() {
 		print(STEPS);
 		for (const module of report.modules)
 			console.log(
-				`  ${module.md5.slice(0, 12)}  ${module.path.split("/").pop()}`,
+				`  ${module.md5.slice(0, 12)}  ${module.path.split("/").pop()}${
+					module.path === ARM_MODULE ? "   <- the arm's module" : ""
+				}`,
 			);
 		console.log(
 			`\narm ${ARM} · head ${report.head.slice(0, 9)} · ${STEPS.length} readings${
@@ -611,6 +1050,13 @@ function moduleDigest(path) {
 
 /** The readings as a table, which is the artefact a reviewer reads. */
 function print(steps) {
+	/*
+	 * Every cell is a string, and a reading that does not exist is "-" rather than
+	 * a crash: the session-less child paints no scroller, so its row has no
+	 * `scrollTop` to print, and the table is the artefact a reviewer reads.
+	 */
+	const num = (value, digits = 1) =>
+		value === null || value === undefined ? "-" : Number(value).toFixed(digits);
 	const head = [
 		"step",
 		"scrollTop",
@@ -619,25 +1065,39 @@ function print(steps) {
 		"rows",
 		"anchor",
 		"anchorOffset",
-		"newestVisible",
-		"newestCutPx",
+		"cut",
+		/*
+		 * `cover` is the control's own footprint on the transcript: the tallest
+		 * intersection between its box and any painted row's. Zero is the clearance
+		 * the band is reserved for, so the fix is a number in the artefact rather
+		 * than a sentence in the pull request (QA Q1, UX U1).
+		 */
+		"cover",
+		"under",
+		"band",
+		"tab",
 		"button",
 		"reads",
 	];
 	const rows = steps.map((s) => [
 		s.step,
-		String(s.scrollTop),
-		String(s.fromBottom),
-		String(s.extent),
-		String(s.paintedRows),
+		s.scrollTop === undefined ? "-" : String(s.scrollTop),
+		s.fromBottom === undefined ? "-" : String(s.fromBottom),
+		s.extent === undefined ? "-" : String(s.extent),
+		s.paintedRows === undefined ? "-" : String(s.paintedRows),
 		String(s.anchorId ?? "-"),
-		s.anchorOffset === null ? "-" : s.anchorOffset.toFixed(1),
-		String(s.newestVisible),
-		s.newestCutPx === null || s.newestCutPx === undefined
+		num(s.anchorOffset),
+		num(s.newestCutPx),
+		s.button ? num(s.button.overlapPx) : "-",
+		s.button?.underCentre ?? "-",
+		s.band ? num(s.band.height) : "-",
+		s.tabOrderIndex === undefined
 			? "-"
-			: s.newestCutPx.toFixed(1),
+			: `${s.tabOrderIndex}/${s.tabOrderLength}`,
 		s.button
-			? `${s.button.visible ? "on" : "off"}${s.button.hitTestable ? "" : "/inert"}`
+			? `${s.button.visible ? "on" : "off"}${s.button.hitTestable ? "" : "/inert"}${
+					s.button.hovered ? "/hover" : ""
+				}${s.button.focused ? "/focus" : ""}`
 			: "absent",
 		String(s.reads),
 	]);

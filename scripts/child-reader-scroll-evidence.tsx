@@ -82,6 +82,27 @@ const runningRow: SubagentRow = {
 	stateWord: "running",
 };
 
+/**
+ * The same row, failed — the state whose exception text owns the pane's foot.
+ *
+ * The gate that keeps the control off that text is a claim about a surface, and
+ * a claim about a surface needs a frame (design D3, QA Q2). Only the fields that
+ * decide the branch are changed: a failure is `errorText` on the row, and the
+ * reader paints the exception in its own `shrink-0` block at the foot.
+ */
+const failedRow: SubagentRow = {
+	...runningRow,
+	status: "failed",
+	stateWord: "failed",
+	activity: null,
+	errorLine: "the child stopped before it finished",
+	errorText:
+		"RuntimeError: the ledger export could not be read\n  at reconcile (ledger.py:418)\n  at main (ledger.py:1204)",
+};
+
+/** A child with no session id: the pane's other quiet state, and no scroller. */
+const noSessionRow: SubagentRow = { ...runningRow, childSessionId: null };
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
@@ -135,6 +156,52 @@ function reading() {
 		'[aria-label="Scroll to bottom"]',
 	);
 	const wrap = button?.parentElement ?? null;
+	const band = document.querySelector<HTMLElement>("[data-lo-child-chip-band]");
+	const buttonRect = button?.getBoundingClientRect() ?? null;
+	/*
+	 * WHAT IS ACTUALLY VISIBLE. A row's box is not the same as the row's text on
+	 * screen: the scroller clips its content, so a row scrolled mostly out of view
+	 * still reports a box that extends past the scroller's own edges. Measuring the
+	 * control against those boxes reports coverage that no reader can see — the
+	 * first version of this number did exactly that, reading 32px of "cover" in a
+	 * state where the control sits in a band the rows cannot reach. The intersection
+	 * with the scroller's box is what makes the number mean "text under the chip".
+	 */
+	const visibleBox = (rect) => ({
+		top: Math.max(rect.top, box.top),
+		bottom: Math.min(rect.bottom, box.bottom),
+		left: Math.max(rect.left, box.left),
+		right: Math.min(rect.right, box.right),
+	});
+	const coveredRows =
+		buttonRect === null
+			? []
+			: rows
+					.map((row) => visibleBox(row.getBoundingClientRect()))
+					.filter(
+						(rect) =>
+							rect.bottom > rect.top &&
+							rect.right > rect.left &&
+							rect.top < buttonRect.bottom &&
+							rect.bottom > buttonRect.top,
+					);
+	const overlapPx = coveredRows.reduce((most, rect) => {
+		if (buttonRect === null) return most;
+		return Math.max(
+			most,
+			Math.min(rect.bottom, buttonRect.bottom) -
+				Math.max(rect.top, buttonRect.top),
+		);
+	}, 0);
+	const centre =
+		buttonRect === null
+			? null
+			: {
+					x: buttonRect.left + buttonRect.width / 2,
+					y: buttonRect.top + buttonRect.height / 2,
+				};
+	const underCentre =
+		centre === null ? null : document.elementFromPoint(centre.x, centre.y);
 	return {
 		scrollTop: scroller.scrollTop,
 		fromBottom: Math.abs(scroller.scrollTop),
@@ -168,8 +235,68 @@ function reading() {
 					visible: wrap ? getComputedStyle(wrap).opacity !== "0" : false,
 					hitTestable: getComputedStyle(button).pointerEvents !== "none",
 					label: button.getAttribute("aria-label"),
+					rect: buttonRect
+						? {
+								top: buttonRect.top,
+								left: buttonRect.left,
+								right: buttonRect.right,
+								bottom: buttonRect.bottom,
+								width: buttonRect.width,
+								height: buttonRect.height,
+							}
+						: null,
+					focused: document.activeElement === button,
+					hovered: button.matches(":hover"),
+					/*
+					 * WHAT THE CONTROL COVERS, as a number. `overlapPx` is the tallest
+					 * intersection between the control's box and any painted row's box
+					 * — the finding this rig's clearance fix is measured by (QA Q1, UX
+					 * U1: the first cut covered the row at the fold by its full 32px),
+					 * and `underCentre` says what a press would land on, read from the
+					 * page rather than from the layout's intent.
+					 */
+					overlapPx,
+					overRows: coveredRows.length,
+					underCentre: underCentre
+						? underCentre.closest("[data-record-id]")
+							? "row"
+							: underCentre.tagName.toLowerCase()
+						: null,
 				}
 			: null,
+		/*
+		 * The band the control's home is reserved from. `null` when the pane paints
+		 * no band, which is the failed and the session-less state — the gate, read
+		 * rather than assumed.
+		 */
+		band: band ? { height: band.getBoundingClientRect().height } : null,
+		/*
+		 * THE STACK, bottom to top, in the pane's own coordinates: where the
+		 * scroller ends, where the control is, and where the read-only statement
+		 * begins. A picture says the control is not over the prose; this says which
+		 * box it is actually in, which is the question "a reserved band" is a claim
+		 * about.
+		 */
+		stack: (() => {
+			const statement = Array.from(
+				document.querySelectorAll<HTMLElement>("div, p, span"),
+			).find((el) => el.textContent?.startsWith("Read-only —"));
+			const box = (el: HTMLElement | null | undefined) =>
+				el
+					? {
+							top: el.getBoundingClientRect().top,
+							bottom: el.getBoundingClientRect().bottom,
+						}
+					: null;
+			return {
+				scroller: box(scroller),
+				chip: buttonRect
+					? { top: buttonRect.top, bottom: buttonRect.bottom }
+					: null,
+				band: box(band),
+				statement: box(statement),
+			};
+		})(),
 	};
 }
 
@@ -192,6 +319,13 @@ const App = () => {
 	 * instead of keeping the rows the previous theme left on screen.
 	 */
 	const [mount, setMount] = useState(0);
+	/*
+	 * Which row the pane is given. The two non-live shapes are the states the
+	 * control's own gate is about, and they are states of the ROW rather than of
+	 * the transcript, so they are switched here and read through the same
+	 * `reading()` as every other step.
+	 */
+	const [mode, setMode] = useState<"live" | "failed" | "no-session">("live");
 
 	useEffect(() => {
 		(window as unknown as { __childScroll?: unknown }).__childScroll = {
@@ -297,6 +431,54 @@ const App = () => {
 						: [],
 				};
 			},
+			/** The row's shape: the live child, a failed one, or one with no session. */
+			async shape(next: "live" | "failed" | "no-session") {
+				setMode(next);
+				await sleep(400);
+				return reading();
+			},
+			/**
+			 * The control's own centre, for input dispatched at it rather than near it.
+			 *
+			 * `null` when the control is not mounted at all, which is a state the
+			 * driver asserts rather than skips past.
+			 */
+			chipBox() {
+				const chip = document.querySelector<HTMLElement>(
+					'[aria-label="Scroll to bottom"]',
+				);
+				if (!chip) return null;
+				const box = chip.getBoundingClientRect();
+				return {
+					x: box.left + box.width / 2,
+					y: box.top + box.height / 2,
+					width: box.width,
+					height: box.height,
+				};
+			},
+			/**
+			 * Every focusable in the page, in DOM order, named the way a reader
+			 * would see it — the number behind UX U4's claim about where the control
+			 * sits in the tab order.
+			 */
+			tabOrder() {
+				const named = (el: HTMLElement) =>
+					el.getAttribute("aria-label") ??
+					el.textContent?.trim().slice(0, 40) ??
+					el.tagName.toLowerCase();
+				return Array.from(
+					document.querySelectorAll<HTMLElement>(
+						'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])',
+					),
+				)
+					.filter((el) => !el.hasAttribute("disabled"))
+					.map((el, index) => ({
+						index,
+						name: named(el),
+						role: el.getAttribute("role"),
+						isControl: el.getAttribute("aria-label") === "Scroll to bottom",
+					}));
+			},
 			/** The scroller's box, for a real wheel event's coordinates. */
 			scrollerBox() {
 				const scroller = document.querySelector<HTMLElement>(
@@ -323,7 +505,13 @@ const App = () => {
 			>
 				<RunChildReader
 					key={mount}
-					row={runningRow}
+					row={
+						mode === "failed"
+							? failedRow
+							: mode === "no-session"
+								? noSessionRow
+								: runningRow
+					}
 					childRows={[]}
 					childrenOpenable
 					onOpenChild={() => {}}
