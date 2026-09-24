@@ -18,6 +18,7 @@
  */
 
 import { retryDesktopQuery } from "@shared/api/local-operator/backend-error";
+import type { DesktopProvider } from "../../../../shared/desktop-contract";
 import { ConfigApi } from "@shared/api/local-operator/config-api";
 import {
 	desktopFeatureEnabled,
@@ -72,13 +73,18 @@ export function providerStatusFrom(input: {
 	configLoading: boolean;
 	/** The configured default hosting, or null. */
 	hosting: string | null;
-	/** The census rows, as `providers.list` returned them. */
-	rows: Array<{
-		id: string;
-		local?: boolean;
-		has_credential?: boolean;
-		stored_credentials?: number;
-	}>;
+	/**
+	 * The census rows, as `providers.list` returned them -- the SHARED census type,
+	 * not a structural subset: a local copy of four of its fields stopped
+	 * type-checking the moment the census grew another one (`credential_optional`,
+	 * `configured`), which is the same class of drift this rule exists to catch.
+	 */
+	/*
+	 * The SAME type the hook reads them as (`useDesktopProviders` -> `DesktopProvider[]`),
+	 * not a structural subset: a local copy of a few fields stopped type-checking the
+	 * moment the census grew another one.
+	 */
+	rows: DesktopProvider[];
 }): { needsProvider: boolean; isKnown: boolean } {
 	const { censusEnabled, censusLoaded, configLoading, hosting, rows } = input;
 	const isKnown = censusEnabled && censusLoaded && !configLoading;
