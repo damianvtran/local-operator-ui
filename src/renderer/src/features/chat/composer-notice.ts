@@ -65,7 +65,7 @@ export function composerNoticeFor(input: {
 			message:
 				input.lateDelivered === "draft-only"
 					? SEND_FAILURE_COPY.lateDeliveryDraft
-					: SEND_FAILURE_COPY.lateDelivery,
+					: SEND_FAILURE_COPY.lateDeliveryOverlap,
 			muted: true,
 			// Announce, do not interrupt: nothing failed, nothing needs repairing, and
 			// the reader may be listening to the message that has just been delivered.

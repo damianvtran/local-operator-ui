@@ -2479,16 +2479,16 @@ export const STORIES = [
 	   most Retry and Clear, rather than the transport's twenty-second paragraph
 	   over an empty box with two links under it.
 
-	   Six rather than one, because each is a different DECISION and the frames
-	   differ only in which one is on screen: `failed-unknown` is the timeout the
-	   operator photographed (Retry and Clear), `failed-not-sent` is a refusal
-	   decided before the wire, `failed-too-large` is the arm whose remedy is a
-	   SPLIT rather than a press (Clear only), `failed-merged` is the same failure
-	   arriving after the user typed while it was in flight - the returned message
-	   first and their own sentence kept underneath it - `delivered-late` is the
-	   muted statement that the earlier message arrived after all (the box's edit
-	   untouched, nothing to press), and `send-lock` is the muted fact that a
-	   message is still on its way out, with no controls at all.
+	   THE SIX FAILED-SEND ROWS THAT USED TO SIT HERE ARE GONE (review round 2, D6,
+	   and this paragraph was the prose that still pointed at them - review round 3,
+	   n1). Their frames showed copy the app no longer produces, and a set that
+	   cannot be re-swept on a machine whose Storybook index refuses those ids is a
+	   set of frames that disagree with the app in the one place a reader looks to
+	   see what the app says. The states are rendered instead by the notice-arms rig,
+	   `scripts/composer-alert-geometry.mjs` -> `docs/evidence/composer-notice-arms/`,
+	   which mounts the shipped notice row for each of them and asserts what the
+	   frame is for. The deletion and its reason are recorded on the set's own page:
+	   `docs/evidence/chat-message-input/README.md`.
 
 	   420 tall for the chip-carrying arms (a 100px tile, the field, and the notice
 	   row above them) and 480 for `failed-merged`, whose field holds two
