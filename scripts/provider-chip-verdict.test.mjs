@@ -815,11 +815,15 @@ test("loginClaim withholds the claim until a read that can support it has answer
 			read("refused"),
 			"refused",
 		],
+		/*
+		 * NOT released: before the capability answers, the account read is DISABLED,
+		 * and a disabled read classifies as `signed-out` -- so here it is no answer.
+		 */
 		[
-			"first read out, account signed-out",
+			"first read out, account signed-out (or a disabled read on a cold mount)",
 			pending,
 			read("signed-out"),
-			"unverified",
+			null,
 		],
 		// The verdict answered without a claim: failed, absent, disabled, null-credential unknown.
 		["D12: verdict failed, account in flight", failed, read("checking"), null],
@@ -1449,6 +1453,27 @@ test("the detail panel's badge is keyed on the verdict, not on the credential ro
 	await awaitReads(healthy.container, healthy.queryClient);
 	const healthyText = text(healthy.container);
 	assert.equal(occurrences(healthyText, "Signed in"), 1, healthyText);
+});
+
+/**
+ * The other arm of the panel's `retryOnMount: false` (review round 4, m3), which
+ * was promised only in `RadientLoginVerdictOptions`' docstring: the option stops
+ * a mount from RE-asking a failed read, and must not stop the FIRST read when
+ * nothing has asked yet. The panel is mounted alone, on a client whose verdict
+ * key has never been queried -- so if the option suppressed the first read the
+ * panel would have no verdict at all, and (since round 4) no badge either.
+ */
+test("the panel still starts the first verdict read when nothing has asked yet", async () => {
+	loginAnswer = "ok";
+	accountAnswer = "ready";
+	const { container, queryClient } = await renderDetail();
+	await awaitReads(container, queryClient);
+	assert.equal(verdictRequests, 1, "the panel never asked for the verdict");
+	assert.equal(
+		queryClient.getQueryData(radientSessionIssueKey)?.radient_login?.state,
+		"ok",
+	);
+	assert.equal(occurrences(text(container), "Signed in"), 1, text(container));
 });
 
 /* ---- round 2: the two `unknown` shapes, the refused fallback, and the ---- */
