@@ -48,7 +48,7 @@ import { Check, Copy, Eye, EyeOff, RotateCcw } from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-	loginState,
+	loginClaim,
 	primaryMethod,
 	providerReadiness,
 } from "./provider-labels";
@@ -227,12 +227,13 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	});
 	/**
 	 * The badge's own words, from the same predicate the grid's cards use, so one
-	 * credential cannot be called two things on one screen.
+	 * credential cannot be called two things on one screen -- including the
+	 * WITHHELD answer (`null`, design round 4's D12): while no read that can
+	 * support a claim has answered, the grid's card shows none and neither does
+	 * this badge.
 	 */
-	const readiness = providerReadiness(
-		provider,
-		loginState(provider.id, login.data, { accountRead, unavailable }),
-	);
+	const claim = loginClaim(provider.id, login, { accountRead, unavailable });
+	const readiness = claim === null ? null : providerReadiness(provider, claim);
 	const [methodId, setMethodId] = useState<string | null>(null);
 	const [operation, setOperation] = useState<AuthOperation | null>(null);
 	const [starting, setStarting] = useState(false);
@@ -496,11 +497,14 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 								{method.label}
 							</Button>
 							{/* The row's own badge, keyed on the login verdict rather than on
-							    the credential row -- and NOT painted until the verdict has
-							    answered, because a claim it is about to correct is what design
-							    round 1's D6 measured. The prose rides the same `title` the grid's
-							    chip carries, so the long form is reachable on both surfaces. */}
-							{provider.configured && !login.isPending && (
+							    the credential row -- and NOT painted until a read that can
+							    support it has answered (`loginClaim`), because a claim it is
+							    about to correct is what design round 1's D6 and round 4's D12
+							    measured. No slot is reserved here, unlike the grid card: the
+							    badge sits at the END of the button's row, so its arrival moves
+							    nothing else. The prose rides the same `title` the grid's chip
+							    carries, so the long form is reachable on both surfaces. */}
+							{provider.configured && readiness && (
 								<Badge variant={readiness.tone} title={readiness.detail}>
 									{readiness.label}
 								</Badge>

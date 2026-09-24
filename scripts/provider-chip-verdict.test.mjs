@@ -312,6 +312,8 @@ let verdictFails = false;
  * is the absent-verdict floor reached by a different road: no read at all.
  */
 let tunnelCapability = true;
+/** Whether the census itself fails, so the grid's own error branch is reached. */
+let censusFails = false;
 /** How many times the bridge was asked for the verdict route, per case. */
 let verdictRequests = 0;
 /**
@@ -336,6 +338,15 @@ let authStarts = 0;
 let census = [RADIENT_ROW, OPENAI_ROW];
 /** Releases the held verdict, called from the case that held it. */
 let releaseVerdict = () => {};
+/**
+ * Whether the ACCOUNT read is held open, for design round 4's D12: with the
+ * verdict read failed, that read is the only input left that can support a
+ * claim, and the window it is in flight is the window D12 painted green in.
+ * Answered at release with whatever `accountAnswer` names then.
+ */
+let holdAccount = false;
+/** Releases the held account read, called from the case that held it. */
+let releaseAccount = () => {};
 
 /**
  * Every case starts from the incident's own state, and from a bridge that is not
@@ -358,6 +369,9 @@ beforeEach(() => {
 	authPollStates = [];
 	authStarts = 0;
 	releaseVerdict = () => {};
+	holdAccount = false;
+	releaseAccount = () => {};
+	censusFails = false;
 });
 
 /** The verdict route's answer for the case's current settings. */
@@ -372,6 +386,9 @@ globalThis.window.api = {
 	desktop: {
 		request: async (request) => {
 			if (request?.op === "providers.list") {
+				if (censusFails) {
+					return { status: 500, body: { detail: "Internal Server Error" } };
+				}
 				return {
 					status: 200,
 					body: { result: { providers: census } },
@@ -395,6 +412,11 @@ globalThis.window.api = {
 			}
 			if (request?.control?.operation === "account") {
 				accountRequests += 1;
+				if (holdAccount) {
+					return await new Promise((resolve) => {
+						releaseAccount = () => resolve(ACCOUNT_ANSWERS[accountAnswer]);
+					});
+				}
 				return ACCOUNT_ANSWERS[accountAnswer];
 			}
 			/*
@@ -980,17 +1002,34 @@ test("the chip's verdict is the callout's cache entry", async () => {
 });
 
 /**
- * D6: the claim waits for the read that can correct it.
+ * The Radient card's chip as a user sees it, or a marker for its state.
  *
- * The verdict is held open with the census already answered -- the window design
- * round 1 measured as a green "Signed in" for 72-193 ms, then corrected. The card
- * list must not be on screen claiming anything until the verdict has answered.
+ * `withheld` is the reserved-but-invisible slot `loginClaim`'s `null` renders
+ * (design round 4, D12); `none` is no Radient card at all (the list is not on
+ * screen). Read from the CARD, not from the page text, because the OpenAI
+ * card's "Needs sign-in" is on screen in every frame here and a page-wide
+ * search cannot tell whose chip it is reading.
  */
-test("the card list does not paint a claim while the verdict read is out", async () => {
-	loginAnswer = "refused";
-	accountAnswer = "ready";
-	holdVerdict = true;
-	releaseVerdict = () => {};
+function radientChip(container) {
+	const card = container.querySelector('[data-provider-id="radient"]');
+	if (!card) return "none";
+	if (card.querySelector('[data-claim="withheld"]')) return "withheld";
+	for (const label of [
+		"Signed in",
+		"Needs re-authentication",
+		"Needs sign-in",
+		"No key needed",
+	]) {
+		if (text(card).includes(label)) return label;
+	}
+	return "unlabelled";
+}
+
+/**
+ * Mount the grid WITHOUT waiting for anything, so a case can sample its frames
+ * from the very first commit.
+ */
+async function mountGridRaw() {
 	const queryClient = client();
 	globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 	const container = document.createElement("div");
@@ -1006,11 +1045,93 @@ test("the card list does not paint a claim while the verdict read is out", async
 			),
 		);
 	});
+	return { container, queryClient, root };
+}
+
+/**
+ * Sample the Radient chip on every flush until `done` says stop, and return the
+ * DISTINCT consecutive readings. A sequence rather than one frame is what D6 and
+ * D12 are about: the defect was a claim that was painted and then corrected, and
+ * only a sequence can show there was no such pair.
+ */
+async function chipSequence(container, done, timeoutMs = 5000) {
+	const seen = [];
+	const deadline = Date.now() + timeoutMs;
+	for (;;) {
+		const now = radientChip(container);
+		if (seen.at(-1) !== now) seen.push(now);
+		if (done(now)) return seen;
+		if (Date.now() > deadline) {
+			throw new Error(
+				`timed out; the chip went ${seen.join(" -> ")} and the grid reads "${text(container)}"`,
+			);
+		}
+		await flush();
+	}
+}
+
+/** Flush until the verdict read has FAILED, which is D12's starting state. */
+async function awaitVerdictError(queryClient) {
+	const deadline = Date.now() + 5000;
+	while (
+		queryClient.getQueryState(radientSessionIssueKey)?.status !== "error"
+	) {
+		if (Date.now() > deadline) throw new Error("the verdict read never failed");
+		await flush();
+	}
+	await flush();
+}
+
+/**
+ * Clear the account read's RECORDED failure class, which is module state that
+ * outlives a case's own `QueryClient` (see `accountFailureKinds` in the hook):
+ * it is forgotten only by an answer, so an earlier case's `unavailable` or
+ * `refused` would be on screen from this case's first frame, and D12's window
+ * -- the account read genuinely `checking` -- could not be reached. One answered
+ * read does exactly what a real one does.
+ */
+async function forgetAccountFailure() {
+	const saved = { loginAnswer, accountAnswer };
+	loginAnswer = "ok";
+	accountAnswer = "ready";
+	const { root } = await mountGridRaw();
+	const deadline = Date.now() + 5000;
+	while (accountRequests === 0 || holdAccount) {
+		if (Date.now() > deadline) throw new Error("no account read to clear with");
+		await flush();
+	}
+	await flush();
+	await act(async () => {
+		root.unmount();
+	});
+	({ loginAnswer, accountAnswer } = saved);
+	verdictRequests = 0;
+	accountRequests = 0;
+}
+
+/**
+ * D6: the claim waits for the read that can correct it.
+ *
+ * The verdict is held open with the census already answered -- the window design
+ * round 1 measured as a green "Signed in" for 72-193 ms, then corrected. The card
+ * list IS on screen in that window (holding it was round 3's Q-8 and round 4's
+ * D14), but the Radient card carries no claim until the verdict answers, and then
+ * carries the verdict's own.
+ */
+test("the card list does not paint a claim while the verdict read is out", async () => {
+	loginAnswer = "refused";
+	accountAnswer = "ready";
+	holdVerdict = true;
+	releaseVerdict = () => {};
+	const { container } = await mountGridRaw();
 	/*
 	 * Sampled repeatedly rather than once: the census HAS answered by now (the
 	 * bridge answers it immediately), so a single sample could pass on the frame
 	 * before the query ran. Four flushes is far more than the 46-99 ms the design
-	 * round measured this flash lasting.
+	 * round measured this flash lasting -- and the ACCOUNT read answers `ready`
+	 * inside them, which is the input that must NOT be enough on its own while
+	 * the verdict's first read is out: a refused grant beside an access token
+	 * inside its expiry reads `ready` and is the incident itself.
 	 */
 	for (let sample = 0; sample < 4; sample++) {
 		await flush();
@@ -1021,25 +1142,171 @@ test("the card list does not paint a claim while the verdict read is out", async
 			`sample ${sample + 1} painted a claim before the verdict answered: ${rendered}`,
 		);
 		assert.ok(
-			rendered.includes("Loading providers"),
-			`sample ${sample + 1} should still be holding the grid's own loading state: ${rendered}`,
+			!rendered.includes("Loading providers"),
+			`sample ${sample + 1} held the whole list behind one row's verdict: ${rendered}`,
 		);
+		assert.equal(
+			radientChip(container),
+			"withheld",
+			`sample ${sample + 1}: ${rendered}`,
+		);
+		assert.ok(rendered.includes("OpenAI"), rendered);
 	}
 	holdVerdict = false;
 	releaseVerdict();
-	const deadline = Date.now() + 5000;
-	for (;;) {
-		await flush();
-		if (text(container).includes("Needs re-authentication")) break;
-		if (Date.now() > deadline) {
-			throw new Error(
-				`the refused card never arrived after the verdict answered: ${text(container)}`,
-			);
-		}
-	}
+	const sequence = await chipSequence(
+		container,
+		(chip) => chip === "Needs re-authentication",
+	);
+	assert.deepEqual(sequence, ["withheld", "Needs re-authentication"]);
 	const settled = text(container);
 	assert.equal(occurrences(settled, "Signed in"), 0, settled);
 	assert.equal(occurrences(settled, "Needs re-authentication"), 1, settled);
+});
+
+/**
+ * D12 (design round 4): a FAILED verdict read is an answer to the list's gate
+ * but not a claim, and while the app's own account read is still out the
+ * fallback arm had nothing but the census -- so the card painted the green
+ * "Signed in" and corrected it when the account read answered `refused`
+ * (measured 2,493 ms on the live app). The claim must wait for the account read
+ * instead, and must not guess the other way either.
+ */
+test("a failed verdict read does not paint a claim while the account read is out", async () => {
+	await forgetAccountFailure();
+	verdictFails = true;
+	holdAccount = true;
+	accountAnswer = "refused";
+	const { container, queryClient } = await mountGridRaw();
+	await awaitVerdictError(queryClient);
+	for (let sample = 0; sample < 6; sample++) {
+		await flush();
+		const rendered = text(container);
+		assert.equal(
+			occurrences(rendered, "Signed in"),
+			0,
+			`sample ${sample + 1} painted a claim on a failed verdict with the account read still out: ${rendered}`,
+		);
+		assert.equal(radientChip(container), "withheld", rendered);
+		// And the opposite misdirection: a machine whose reads have not answered is
+		// not a machine that needs a sign-in.
+		assert.equal(
+			occurrences(rendered, "Needs re-authentication"),
+			0,
+			rendered,
+		);
+		assert.ok(!rendered.includes("Loading providers"), rendered);
+		assert.ok(rendered.includes("OpenAI"), rendered);
+	}
+	assert.equal(
+		queryClient.getQueryState(radientUserKeys.user())?.status,
+		"pending",
+		"the account read answered early, so this case sampled nothing",
+	);
+	holdAccount = false;
+	releaseAccount();
+	const sequence = await chipSequence(
+		container,
+		(chip) => chip === "Needs re-authentication",
+	);
+	assert.deepEqual(sequence, ["withheld", "Needs re-authentication"]);
+});
+
+/**
+ * D12's other half: the withheld claim is RELEASED by the account read's answer,
+ * not held until the verdict route recovers. A healthy machine whose verdict
+ * route fails must still be told it is signed in once its own account read says
+ * so -- the pre-verdict floor this PR states. The panel is opened INSIDE the
+ * window, so its badge is held to the same rule as the card: none while no read
+ * can support one, then the account read's answer.
+ */
+test("on a failed verdict, the claim appears once the account read answers", async () => {
+	await forgetAccountFailure();
+	verdictFails = true;
+	holdAccount = true;
+	accountAnswer = "ready";
+	const { container, queryClient } = await mountGridRaw();
+	await awaitVerdictError(queryClient);
+	assert.equal(radientChip(container), "withheld", text(container));
+	await pressButton(container, (label) => label.startsWith("Radient"));
+	assert.ok(panelOpen(container), text(container).slice(0, 200));
+	for (let sample = 0; sample < 4; sample++) {
+		await flush();
+		const opened = text(container);
+		assert.equal(occurrences(opened, "Signed in"), 0, opened);
+		assert.equal(occurrences(opened, "Needs re-authentication"), 0, opened);
+	}
+	holdAccount = false;
+	releaseAccount();
+	const deadline = Date.now() + 5000;
+	while (!text(container).includes("Signed in")) {
+		if (Date.now() > deadline) {
+			throw new Error(`the panel's badge never arrived: ${text(container)}`);
+		}
+		await flush();
+	}
+	assert.equal(occurrences(text(container), "Signed in"), 1, text(container));
+	await pressButton(container, (label) => BACK_TO_PROVIDERS.test(label));
+	await chipSequence(container, (chip) => chip === "Signed in");
+});
+
+/**
+ * The list is never stuck, in every state the verdict can be in that is not an
+ * answer: never answering, no `tunnel` capability (the read is never issued),
+ * and -- with the census itself failing -- the census's own error branch and its
+ * Retry, which a verdict gate once swallowed (`backend-error-surfaces`).
+ */
+test("the card list is never held behind the verdict read", async () => {
+	holdVerdict = true;
+	const hung = await mountGridRaw();
+	await chipSequence(hung.container, (chip) => chip === "withheld");
+	for (let sample = 0; sample < 4; sample++) {
+		await flush();
+		assert.ok(
+			!text(hung.container).includes("Loading providers"),
+			`sample ${sample + 1} under a never-answering verdict: ${text(hung.container)}`,
+		);
+		assert.ok(text(hung.container).includes("OpenAI"), text(hung.container));
+	}
+	await act(async () => {
+		hung.root.unmount();
+	});
+	holdVerdict = false;
+	releaseVerdict();
+
+	tunnelCapability = false;
+	accountAnswer = "ready";
+	verdictRequests = 0;
+	const gated = await mountGridRaw();
+	const sequence = await chipSequence(
+		gated.container,
+		(chip) => chip === "Signed in",
+	);
+	assert.equal(verdictRequests, 0, "a gated read was issued anyway");
+	assert.ok(
+		!sequence.includes("Needs re-authentication"),
+		sequence.join(" -> "),
+	);
+	await act(async () => {
+		gated.root.unmount();
+	});
+	tunnelCapability = true;
+
+	censusFails = true;
+	holdVerdict = true;
+	const broken = await mountGridRaw();
+	const deadline = Date.now() + 5000;
+	while (!text(broken.container).includes("Retry")) {
+		if (Date.now() > deadline) {
+			throw new Error(
+				`the census error never replaced the loading state: ${text(broken.container)}`,
+			);
+		}
+		await flush();
+	}
+	assert.ok(!text(broken.container).includes("Loading providers"));
+	holdVerdict = false;
+	releaseVerdict();
 });
 
 /**
@@ -1475,8 +1742,8 @@ for (const [card, matcher] of [
  * (the 60 s poll, a window focus, `refreshProviders`' invalidation) must not put
  * the card list, or an open panel, back behind "Loading providers". A data-less
  * query is `pending` again for every attempt, which is what the old
- * `isPending` hold read. The FIRST read still holds the list (D6, asserted
- * above), and a first read that fails releases it.
+ * `isPending` hold read. Since round 4 the FIRST read holds only the Radient
+ * card's claim, never the list (D6/D12, asserted above).
  *
  * The re-attempt is HELD open so the frame under it can be sampled; releasing it
  * lets it fail again, and the list must still be there after.
@@ -1502,7 +1769,10 @@ test("a failed verdict read never puts the card list back behind its loading gat
 		);
 	});
 	await flush();
-	assert.ok(text(container).includes("Loading providers"), text(container));
+	// The first read out: the list is on screen and the Radient claim withheld
+	// (D12/D14), rather than the whole list held as it was before round 4.
+	assert.ok(!text(container).includes("Loading providers"), text(container));
+	assert.equal(radientChip(container), "withheld", text(container));
 	holdVerdict = false;
 	releaseVerdict();
 	await awaitReads(container, queryClient);

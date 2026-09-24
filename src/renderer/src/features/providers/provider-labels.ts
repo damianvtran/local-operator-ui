@@ -163,22 +163,21 @@ export type ProviderLoginState = "working" | "refused" | "unverified";
  * is a query like any other, so on a runtime below `v0.61.2` the chip is the
  * store's answer until that read answers -- a local 409 in the case that
  * narrows, and nothing at all in the cases that do not (`unavailable` and
- * `ready` both keep the store's answer). A surface therefore judges THIS
- * function's settled answer, and the grid does not gate its card list on this
- * read: it is an upstream-backed query with retries, and holding a provider list
- * behind it would cost a second or more on exactly the machines where it changes
- * nothing.
+ * `ready` both keep the store's answer). A surface therefore paints only once
+ * this function's answer is settled -- which `loginClaim` below decides -- and
+ * the grid does not gate its card list on this read: it is an upstream-backed
+ * query with retries, and holding a provider list behind it would cost a second
+ * or more on exactly the machines where it changes nothing.
  *
  * The verdict is about ONE provider, so it is joined by id here rather than
  * applied to whichever row is rendering.
  *
- * A SURFACE MUST NOT ASK THIS BEFORE THE VERDICT HAS ANSWERED. The answer here
- * is a claim about a sign-in, and before the read answers the only inputs are
- * the census -- which is the predicate that produced the incident. `useRadientLoginVerdict`
- * exposes `isPending` for exactly that, and both surfaces hold their own paint
- * until it is false (the grid its card list, the panel its badge), which is also
- * what closes design round 1's D6: a green "Signed in" used to be painted for
- * 72-193 ms on a refused machine and then corrected.
+ * A SURFACE MUST NOT PAINT THIS BEFORE A READ THAT CAN SUPPORT IT HAS ANSWERED.
+ * The answer here is a claim about a sign-in, and before either read answers
+ * the only input left is the census -- which is the predicate that produced the
+ * incident. Surfaces therefore paint `loginClaim` below, never this function
+ * directly: it answers `null` for exactly the window in which this one would be
+ * answering from the census alone.
  */
 export function loginState(
 	providerId: string,
@@ -186,19 +185,8 @@ export function loginState(
 	account: RadientSignInRead,
 ): ProviderLoginState {
 	if (providerId !== TUNNEL_LOGIN_PROVIDER) return "working";
-	if (verdict?.state === "login_required") return "refused";
-	// The provider accepting the sign-in is the one answer that lets the row
-	// speak for itself.
-	if (verdict?.state === "ok") return "working";
-	/*
-	 * An answered `unknown`: the app asked and declined to confirm. No claim
-	 * either way -- see the docblock. Gated on the credential it names, because
-	 * the backend's other `unknown` (`credential_id: null`, no tunnel configured)
-	 * is not a verdict about any sign-in and belongs on the fallback arm below.
-	 */
-	if (verdict?.state === "unknown" && verdict.credential_id !== null) {
-		return "unverified";
-	}
+	const claim = verdictClaim(verdict);
+	if (claim !== null) return claim;
 	/*
 	 * And the runtime that has no verdict to answer with at all: the row may not
 	 * be read as a working sign-in while this app's own account read says no
@@ -211,6 +199,101 @@ export function loginState(
 		return "unverified";
 	}
 	return "working";
+}
+
+/**
+ * What the verdict ALONE says, or `null` when it says nothing about a stored
+ * sign-in (absent, unreadable, or the `unknown` that names no credential).
+ *
+ * One function so `loginState` and `loginClaim` cannot disagree about which
+ * verdicts are claims: the second asks "can the verdict answer on its own?" and
+ * the first uses the answer.
+ */
+function verdictClaim(
+	verdict: RadientLoginVerdict | null | undefined,
+): ProviderLoginState | null {
+	if (verdict?.state === "login_required") return "refused";
+	// The provider accepting the sign-in is the one answer that lets the row
+	// speak for itself.
+	if (verdict?.state === "ok") return "working";
+	/*
+	 * An answered `unknown`: the app asked and declined to confirm. No claim
+	 * either way -- see `loginState`'s docblock. Gated on the credential it names,
+	 * because the backend's other `unknown` (`credential_id: null`, no tunnel
+	 * configured) is not a verdict about any sign-in and belongs on the fallback
+	 * arm.
+	 */
+	if (verdict?.state === "unknown" && verdict.credential_id !== null) {
+		return "unverified";
+	}
+	return null;
+}
+
+/**
+ * The sign-in state a surface may PAINT for one provider row, or `null` while
+ * no read that could support a claim has answered -- in which case the surface
+ * paints no claim at all (the grid card reserves the chip's line, the panel
+ * omits its badge).
+ *
+ * WHY THIS EXISTS (design round 4, D12). Round 3 released the grid's hold on the
+ * verdict's first ANSWER, and a failed read is an answer (`isFetched` counts
+ * errors). With the verdict failed, `loginState` falls to its account-read arm,
+ * and while THAT read is still in flight (`checking`) the arm keeps the store's
+ * answer -- the green "Signed in" -- until the account read answers `refused`
+ * and the card is corrected. Design measured it at 2,493 ms on a failing route,
+ * 13-34x the 72-193 ms flash design round 1's D6 closed. The window is the
+ * account read's latency, so it is reachable on any runtime where the verdict
+ * carries no claim: the route failing, a runtime below `v0.61.2`, no `tunnel`
+ * capability, or the `unknown` that names no credential.
+ *
+ * THE CONTRACT, per input (only the Radient row reads either; every other row
+ * is the census and is never withheld):
+ *
+ * - verdict's FIRST read out (`isPending`: capability or verdict not yet
+ *   answered once) -> `null`. The verdict can still overrule an account read of
+ *   `ready` -- a refused refresh grant beside an access token inside its expiry
+ *   is the incident itself -- so an account answer alone is not enough here;
+ * - verdict answered WITH a claim (`login_required`, `ok`, an `unknown` naming
+ *   a credential) -> that claim, whatever the account read is doing;
+ * - verdict answered WITHOUT one (failed, absent, disabled, `unknown` with no
+ *   credential) -> the account-read arm, `null` while that read is `checking`
+ *   and enabled. Every other class is an answer the arm already maps: `ready`,
+ *   `unavailable` and `unknown` keep the store's answer, `signed-out` and
+ *   `refused` narrow it; a read this app cannot ask (`unavailable: true`) is
+ *   the pre-verdict floor the PR body states.
+ *
+ * WHY `null` AND NOT A CAUTIOUS LABEL. A machine whose reads simply have not
+ * answered is not a machine that needs a sign-in: "Needs sign-in" or "Needs
+ * re-authentication" there would send a healthy user to a sign-in they do not
+ * need, which is the misdirection #416's callout was built to avoid, in the
+ * other direction. Absent is the only honest interim.
+ *
+ * WHY THE CARD LIST DOES NOT WAIT INSTEAD. Holding the list is what round 3's
+ * Q-8 was made of, and the account read is upstream-backed with retries (three
+ * attempts, ~20 s apart when it never answers): 17 other cards whose chips do
+ * not read either input would sit behind a read about one row. The claim is the
+ * only thing that depends on these reads, so the claim is the only thing that
+ * waits -- which also means a verdict route that never answers no longer holds
+ * the list for the transport's 20 s deadline (design round 4, D14).
+ */
+export function loginClaim(
+	providerId: string,
+	login: {
+		data: RadientLoginVerdict | null | undefined;
+		isPending: boolean;
+	},
+	account: RadientSignInRead,
+): ProviderLoginState | null {
+	if (providerId !== TUNNEL_LOGIN_PROVIDER) return "working";
+	if (login.isPending) return null;
+	if (
+		verdictClaim(login.data) === null &&
+		!account.unavailable &&
+		account.accountRead === "checking"
+	) {
+		return null;
+	}
+	return loginState(providerId, login.data, account);
 }
 
 /**

@@ -240,17 +240,23 @@ export type UseRadientSessionIssue = {
  * back to `status: "pending"` for every later attempt (`query-core@5.73.3`
  * `fetchState`: `data === undefined` resets `status` to `"pending"`), so while
  * the route is failing, `isPending` is true again on every poll, window focus,
- * `refreshProviders` invalidation and observer mount. The grid holds its whole
- * card list - detail panel included - on this flag, so reading `isPending` here
- * turned each re-attempt into an unmount of the panel, and the panel's own
+ * `refreshProviders` invalidation and observer mount. The grid used to hold its
+ * whole card list - detail panel included - on this flag, so reading `isPending`
+ * here turned each re-attempt into an unmount of the panel, and the panel's own
  * remount into the next attempt: ~70 requests a second and a grid that never
  * left "Loading providers". `isFetched` (the query has answered at least once,
- * data OR error) is what D6's hold is actually about - the first painted card
- * must not carry a claim the first answer is about to correct - and after that
- * answer a re-read keeps the list on screen exactly as a re-read of a SUCCESSFUL
+ * data OR error) is what D6's hold is actually about - the first painted claim
+ * must not be one the first answer is about to correct - and after that answer
+ * a re-read keeps the claim on screen exactly as a re-read of a SUCCESSFUL
  * verdict always has. The capability arm gets the same rule for the same
  * reason: it is `retry: false` with its own renegotiation interval, so a failed
  * capability read is re-asked on a timer too.
+ *
+ * `settling` false is NOT "the verdict can support a claim": a FAILED first
+ * read ends it with no verdict at all. The provider surfaces therefore do not
+ * paint on this flag directly but through `loginClaim` (`provider-labels.ts`),
+ * which also waits for the account read in that case (design round 4, D12), and
+ * which withholds the Radient row's CLAIM rather than the whole card list.
  *
  * `retryOnMount` is the caller's, and the default is React Query's own (`true`):
  * see `RadientLoginVerdictOptions` for which surfaces must turn it off.

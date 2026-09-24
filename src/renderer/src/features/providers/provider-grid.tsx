@@ -43,7 +43,7 @@ import type { FC } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ProviderDetail } from "./provider-detail";
 import {
-	loginState,
+	loginClaim,
 	providerLoadErrorMessage,
 	providerMethodLabel,
 	providerReadiness,
@@ -304,26 +304,18 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 	}
 
 	/*
-	 * THE VERDICT'S OWN GATE COMES AFTER THE ERROR BRANCH, and that ordering is
-	 * load-bearing: a verdict read that never answers must not be able to swallow
-	 * the census's diagnosis and its Retry button. (`scripts/backend-error-surfaces.test.mjs`
-	 * caught exactly that when this gate sat first: the error frame rendered
-	 * "Loading providers".) What follows is design round 1's D6 -- a green
-	 * "Signed in" was painted for 72-193 ms on a refused machine and then
-	 * corrected, because the census answers first and the card painted from it.
-	 * The verdict is one local control issued beside the census, so holding the
-	 * list until it answers costs the frame after the slower of two parallel reads
-	 * rather than a round trip, and the first painted card never carries a chip it
-	 * is about to change.
+	 * NO VERDICT GATE ON THE LIST, deliberately (design round 4, D12 and D14).
+	 * Design round 1's D6 -- a green "Signed in" painted for 72-193 ms on a
+	 * refused machine and then corrected -- used to be closed here by holding the
+	 * whole card list until the verdict's first answer. That held the wrong
+	 * surface: a verdict route that never answers kept 18 cards behind "Loading
+	 * providers" for the transport's 20 s deadline (D14), and a route that FAILED
+	 * released the hold onto a claim the account read had not yet supported (D12:
+	 * green for 2,493 ms, then corrected). The only thing either read decides is
+	 * the Radient row's claim, so the claim is what waits: `loginClaim` answers
+	 * `null` until a read that can support it has answered, and the card renders
+	 * no claim for that window (see the chip below).
 	 */
-	if (login.isPending) {
-		return (
-			<div className="flex h-40 items-center justify-center">
-				<Spinner size="lg" label="Loading providers" />
-			</div>
-		);
-	}
-
 	const selected = rows.find((provider) => provider.id === selectedId) ?? null;
 
 	if (selected) {
@@ -436,13 +428,12 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 					className="grid grid-cols-[repeat(auto-fill,minmax(min(17.5rem,100%),1fr))] gap-3"
 				>
 					{ordered.map((provider) => {
-						const readiness = providerReadiness(
-							provider,
-							loginState(provider.id, login.data, {
-								accountRead,
-								unavailable,
-							}),
-						);
+						const claim = loginClaim(provider.id, login, {
+							accountRead,
+							unavailable,
+						});
+						const readiness =
+							claim === null ? null : providerReadiness(provider, claim);
 						const isRecommended = showsRecommendedCue(
 							provider.id,
 							recommendedId,
@@ -565,9 +556,38 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 										{/* States the credential fact, which this census actually
 									    knows. It used to render `configured` as "Connected",
 									    asserting a reachability nothing had checked. */}
-										<Badge variant={readiness.tone} title={readiness.detail}>
-											{readiness.label}
-										</Badge>
+										{readiness ? (
+											<Badge variant={readiness.tone} title={readiness.detail}>
+												{readiness.label}
+											</Badge>
+										) : (
+											/*
+											 * The WITHHELD claim (`loginClaim` answered `null`): no
+											 * reading has answered yet that could support one, and
+											 * any label here would be a guess -- "Signed in" is the
+											 * D12 claim-then-correct, and "Needs sign-in" would send a
+											 * healthy machine to a sign-in it does not need.
+											 *
+											 * The chip's LINE is kept rather than dropped, because the
+											 * claim lands in it moments later: without the slot the
+											 * method line below would jump by a chip's height when it
+											 * does, and a card whose text moves on arrival reads as
+											 * the correction D6 removed. It is the same Badge, so the
+											 * slot is the chip's own height, `invisible` so it paints
+											 * nothing, and `aria-hidden` with no words so it states
+											 * nothing to a screen reader either. The data attribute
+											 * is for rigs, which otherwise cannot tell a withheld
+											 * claim from a missing card.
+											 */
+											<Badge
+												variant="neutral"
+												className="invisible"
+												aria-hidden="true"
+												data-claim="withheld"
+											>
+												{"\u00a0"}
+											</Badge>
+										)}
 										{/*
 										 * The reason the promoted card is promoted: the line
 										 * after the credential fact, before the method.
