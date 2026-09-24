@@ -92,6 +92,7 @@ const bundle = await build({
 				ASIDE_CONTINUATION_ESCAPE,
 				ASIDE_DECLINED_OPTIONS,
 				ASIDE_OFF_PANEL_MAX_CHARS,
+				ASIDE_ADOPT_CONFIRM_FLOOR_MS,
 				reportUncarriedAsideRefusal,
 				asideAdoptChord,
 				asideAdoptCap,
@@ -247,6 +248,7 @@ const {
 	ASIDE_CONTINUATION_ESCAPE,
 	ASIDE_DECLINED_OPTIONS,
 	ASIDE_OFF_PANEL_MAX_CHARS,
+	ASIDE_ADOPT_CONFIRM_FLOOR_MS,
 	reportUncarriedAsideRefusal,
 	asideAdoptChord,
 	asideAdoptCap,
@@ -855,14 +857,70 @@ test("the chord is the app's modifier plus f, and nothing else", () => {
  * THE CHORD ASKS ONCE BEFORE IT ADOPTS (UX round 2, U16; the operator's ruling).
  * `⌘+F` is Find everywhere else, adopting cannot be taken back, and it used to
  * commit the exchange 52ms after one press. The chord is kept; the first press
- * states on the panel what a second will do, and only the second adopts.
+ * states on the panel what a second will do, and only the second adopts - and the
+ * second has to be able to be a DECISION, which is what the floor is for (UX round
+ * 3, U17).
  */
 test("the adopt chord confirms on its first press and adopts on its second", () => {
-	// The step is keyed on the newest turn: an arm for one exchange never adopts a
-	// later one the user has not seen the confirm for.
-	assert.equal(asideAdoptChordStep(null, "t1"), "arm");
-	assert.equal(asideAdoptChordStep("t1", "t1"), "adopt");
-	assert.equal(asideAdoptChordStep("t1", "t2"), "arm");
+	/*
+	 * The step is keyed on the newest turn: an arm for one exchange never adopts a
+	 * later one the user has not seen the confirm for.
+	 */
+	assert.equal(asideAdoptChordStep(null, "t1", 0), "arm");
+	assert.equal(
+		asideAdoptChordStep({ turnId: "t1", at: 0 }, "t1", 400),
+		"adopt",
+	);
+	assert.equal(
+		asideAdoptChordStep({ turnId: "t1", at: 0 }, "t2", 400),
+		"arm",
+		"an arm for one exchange never adopts another",
+	);
+	/*
+	 * AND A REFLEX SECOND PRESS IS NOT A SECOND PRESS (UX round 3, U17): UX adopted
+	 * with two presses 66ms apart, because the arm was keyed on the turn id and on no
+	 * clock. The floor is the only thing that separates the two gestures, so both
+	 * sides of it are asserted - the same press at 66ms and just under the boundary
+	 * does nothing, and one inside a read of the confirm adopts.
+	 */
+	assert.equal(
+		asideAdoptChordStep({ turnId: "t1", at: 30_708 }, "t1", 30_774),
+		"ignore",
+		"UX's own 66ms double-tap must not adopt",
+	);
+	assert.equal(
+		asideAdoptChordStep(
+			{ turnId: "t1", at: 0 },
+			"t1",
+			ASIDE_ADOPT_CONFIRM_FLOOR_MS - 1,
+		),
+		"ignore",
+	);
+	assert.equal(
+		asideAdoptChordStep(
+			{ turnId: "t1", at: 0 },
+			"t1",
+			ASIDE_ADOPT_CONFIRM_FLOOR_MS,
+		),
+		"adopt",
+		"at the boundary the press is a decision",
+	);
+	/*
+	 * The floor is measured from the CONFIRM, not from the last press, so an ignored
+	 * press leaves the gesture armed: a third press that follows a read adopts rather
+	 * than being swallowed in turn.
+	 */
+	assert.equal(
+		asideAdoptChordStep({ turnId: "t1", at: 1_000 }, "t1", 1_066),
+		"ignore",
+	);
+	assert.equal(
+		asideAdoptChordStep({ turnId: "t1", at: 1_000 }, "t1", 1_400),
+		"adopt",
+	);
+	// The threshold is a real one: a floor under the reported reflex would be no floor.
+	assert.equal(ASIDE_ADOPT_CONFIRM_FLOOR_MS > 66, true);
+
 	// The receipt names the key and that the act is permanent.
 	assert.equal(
 		asideAdoptConfirm(true),
@@ -877,7 +935,7 @@ test("the adopt chord confirms on its first press and adopts on its second", () 
 	);
 	assert.match(
 		input,
-		/asideAdoptChordStep\(adoptArmedTurn\.current, lastTurn\.asideId\) ===\s*"arm"\s*\) \{\s*adoptArmedTurn\.current = lastTurn\.asideId;\s*useAsideStore\s*\.getState\(\)\s*\.setAsideNotice\(sessionForAside, asideAdoptConfirm\(IS_MAC\)\);\s*return;\s*\}\s*adoptArmedTurn\.current = null;\s*void adoptAside\(sessionForAside\)/,
+		/asideAdoptChordStep\(\s*adoptArmedTurn\.current,\s*lastTurn\.asideId,\s*now,\s*\);\s*if \(step === "arm"\) \{\s*adoptArmedTurn\.current = \{ turnId: lastTurn\.asideId, at: now \};\s*useAsideStore\s*\.getState\(\)\s*\.setAsideNotice\(sessionForAside, asideAdoptConfirm\(IS_MAC\)\);\s*return;\s*\}\s*\/\*[\s\S]*?\*\/\s*if \(step === "ignore"\) return;\s*adoptArmedTurn\.current = null;\s*void adoptAside\(sessionForAside\)/,
 	);
 	// A new ask clears the notice, so a stale confirm cannot sit over a new exchange.
 	reset();

@@ -735,17 +735,50 @@ export const asideAdoptConfirm = (isMac: boolean): string =>
 	`Press ${asideAdoptCap(isMac)} again to add the aside to the conversation. Once added, it stays there.`;
 
 /**
- * What an adopt chord does, given which turn the last one armed.
+ * How long after the confirm a second adopt chord is still read as the same gesture.
+ *
+ * WHY A FLOOR AT ALL (UX round 3, U17). The arm was keyed on the turn's id and on no
+ * clock, so a REFLEX double-tap adopted: UX pressed the chord twice 66ms apart, the
+ * panel was gone and the exchange was in the model's context, the confirm having
+ * existed for the 66ms between the presses. The user this rule exists for is exactly
+ * the one whose habit is to press again - out of muscle memory, or because no Find box
+ * appeared - so the gate has to be able to tell that press from a decision.
+ *
+ * WHY 400ms. The value has to sit between two quantities rather than be chosen from
+ * taste. Below: the reflex - 66ms measured, and a slower hand's bounce is under 250ms,
+ * which is the fast end of the interval a platform calls a double-click. Above: reading
+ * the confirm, which is the shortest a DELIBERATE second press can be, because there is
+ * nothing to decide until the panel's eight-word sentence has been read (`asideAdoptConfirm`)
+ * and ordinary reading speed puts that over 1.5s. 400ms clears the reflex by ~150ms and
+ * sits more than a second under the reading, which is the margin a threshold needs to be
+ * worth more than its number.
+ */
+export const ASIDE_ADOPT_CONFIRM_FLOOR_MS = 400;
+
+/** The armed confirm: which exchange it was raised for, and when. */
+export type AsideAdoptArm = { turnId: string; at: number };
+
+/**
+ * What an adopt chord does, given which turn the last one armed and when.
  *
  * Keyed on the NEWEST TURN'S ID rather than on a boolean, so an arm can never
  * carry over to an exchange the user has not seen the confirm for: a follow-up
  * asked after the first press appends a turn, and the next chord arms again.
+ *
+ * AND INSIDE THE FLOOR THE PRESS IS SWALLOWED, not treated as the answer
+ * (`ASIDE_ADOPT_CONFIRM_FLOOR_MS` says why). The floor is measured from the CONFIRM,
+ * not from the last press, so an ignored press leaves the arm where the first one put
+ * it and a third press that is a decision still adopts rather than being swallowed in
+ * turn - which is also what makes this a floor on the gesture rather than a debounce on
+ * the key.
  */
 export function asideAdoptChordStep(
-	armedTurnId: string | null,
+	armed: AsideAdoptArm | null,
 	newestTurnId: string,
-): "arm" | "adopt" {
-	return armedTurnId === newestTurnId ? "adopt" : "arm";
+	now: number,
+): "arm" | "adopt" | "ignore" {
+	if (armed?.turnId !== newestTurnId) return "arm";
+	return now - armed.at < ASIDE_ADOPT_CONFIRM_FLOOR_MS ? "ignore" : "adopt";
 }
 
 /**

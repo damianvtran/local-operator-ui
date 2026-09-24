@@ -79,6 +79,7 @@ import type {
 	CanonicalModel,
 } from "../../../../../shared/desktop-session-contract";
 import {
+	type AsideAdoptArm,
 	adoptAside,
 	asideAdoptChord,
 	asideAdoptChordStep,
@@ -1296,10 +1297,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 *
 		 * A ref rather than state: nothing here paints it - the panel's own notice line
 		 * states the confirm - and the keydown handler is the only reader. Keyed on the
-		 * turn id (`asideAdoptChordStep`), so an arm never outlives the exchange it was
-		 * shown for; the panel's `beginAsk`/`attachAside` clear the notice it raised.
+		 * turn id AND stamped with the time the confirm went up (`asideAdoptChordStep`,
+		 * `ASIDE_ADOPT_CONFIRM_FLOOR_MS`), so an arm neither outlives the exchange it was
+		 * shown for nor lets a reflex second press stand in for the decision; the panel's
+		 * `beginAsk`/`attachAside` clear the notice it raised.
 		 */
-		const adoptArmedTurn = useRef<string | null>(null);
+		const adoptArmedTurn = useRef<AsideAdoptArm | null>(null);
 		/*
 		 * THE CONFIRM IS WITHDRAWN WHEN A CONVERSATION TURN STARTS (agent review round
 		 * 6, R6-5). Adopt needs an idle session (`asideAdoptReady`), so once a turn
@@ -4298,16 +4301,25 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * why the pointer control is not gated the same way.
 					 */
 					const sessionForAside = asideSessionId ?? "";
-					if (
-						asideAdoptChordStep(adoptArmedTurn.current, lastTurn.asideId) ===
-						"arm"
-					) {
-						adoptArmedTurn.current = lastTurn.asideId;
+					const now = Date.now();
+					const step = asideAdoptChordStep(
+						adoptArmedTurn.current,
+						lastTurn.asideId,
+						now,
+					);
+					if (step === "arm") {
+						adoptArmedTurn.current = { turnId: lastTurn.asideId, at: now };
 						useAsideStore
 							.getState()
 							.setAsideNotice(sessionForAside, asideAdoptConfirm(IS_MAC));
 						return;
 					}
+					/*
+					 * A press inside the floor is neither a decision nor an instruction (U17): the
+					 * arm and its confirm stay where the first press put them, so the gesture is
+					 * still armed for the press that follows a read.
+					 */
+					if (step === "ignore") return;
 					adoptArmedTurn.current = null;
 					void adoptAside(sessionForAside).catch(() => {
 						// The refusal is stated on the panel (`adoptAside` writes it there); this
