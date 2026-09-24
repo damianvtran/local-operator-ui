@@ -1285,6 +1285,15 @@ const TranscriptRow = memo(function TranscriptRow({
 	return (
 		<div
 			data-record-id={record.id}
+			// The row's SPEAKER, as a machine-readable marker beside the id. It exists because
+			// nothing in the DOM said which kind a row was: the id names the record, not the
+			// party, so a rig counting user rows had to guess from layout classes - and the
+			// guess one made (two attributes the app has never rendered) read 0 over a
+			// transcript that plainly painted the row (agent review R-5, design D1). The
+			// VALUE is the record's own `kind` (`canonical-transcript-types.ts`), emitted
+			// verbatim rather than mapped, so a new record kind is identifiable the day it
+			// exists instead of the day someone remembers to extend a list.
+			data-record-kind={record.kind}
 			data-completion-anchor={record.id}
 			// Only `"true"` is ever queried, so the attribute is omitted rather
 			// than emitted as `"false"` on every row of a long transcript.

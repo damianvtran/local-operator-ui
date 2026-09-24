@@ -72,3 +72,102 @@ export function useConsentAttention(): string | null {
 		consentAttentionSnapshot,
 	);
 }
+
+/** One conversation, as much of it as a landing decision needs. */
+export interface NamedConversation {
+	session_id: string;
+}
+
+/**
+ * Where a banner click should land, from the requester it carried.
+ *
+ * WHY THE ASKING CONVERSATION WINS WHEN IT IS KNOWN (operator ask, 2026-09-23,
+ * reversing the decision recorded at design 7.3): the click's promise is "show me
+ * the request you told me about", and the conversation-scoped pane is the surface
+ * that shows it beside the work it belongs to. The earlier ruling rejected that
+ * because a click must work "from anywhere without knowing which conversation is
+ * open" — and it does: nothing here reads the currently open conversation, so the
+ * target is the same on every route. What the ruling was right about is the
+ * FALLBACK, which is exactly what an unattributed request gets: the browser route,
+ * the one surface that shows a request no conversation owns.
+ *
+ * MEMBERSHIP, NOT A TITLE LOOKUP: the question is whether the app can SHOW that
+ * conversation, and a conversation whose title has not landed yet is still one the
+ * sidebar lists. The list handed in is the same one the sidebar and the consent
+ * card read, so a click cannot land on a conversation the card would have called
+ * unattributed — and a subagent's own session, which is a valid requester but is
+ * not a conversation in that list, falls back rather than opening a conversation
+ * that does not exist.
+ *
+ * PURE AND OUT OF THE SHELL so the rule can be asserted without a window: the
+ * shell's job is the navigation, not the arithmetic (the same split
+ * `browser-view-policy` and `new-chat-shortcut` already use).
+ */
+export function consentClickTarget(
+	requesterSessionId: string | null,
+	sessions: ReadonlyArray<NamedConversation>,
+): { kind: "conversation"; sessionId: string } | { kind: "browser" } {
+	if (requesterSessionId === null) return { kind: "browser" };
+	const known = sessions.some((row) => row.session_id === requesterSessionId);
+	return known
+		? { kind: "conversation", sessionId: requesterSessionId }
+		: { kind: "browser" };
+}
+
+/**
+ * Whether the ATTENTION may be forgotten: the named request is no longer live.
+ *
+ * The memory exists so a click can land on the request it names, and it has to be
+ * dropped once that request is genuinely gone — otherwise a later arrival inherits an
+ * answer given to an earlier one (review round 1, R8).
+ *
+ * WHO ASKS THIS CHANGED, and that is the fix for UX round 1's U1. It used to be each
+ * SURFACE's question, asked against the list that surface was showing — and a surface
+ * can only see its own scope, so a pane showing conversation A answered "not here" for
+ * a request that belongs to no conversation and cleared the memory on its way OUT,
+ * before the router had mounted the surface the click was actually for. The click then
+ * landed on the oldest row instead of the one the banner named. The question is now
+ * the SHELL's, which is mounted on every route and owns the navigation: it reads the
+ * whole projection, so "not in the queue" means the request is gone rather than "not
+ * in my corner of it", and it holds the memory for exactly as long as the request is
+ * live.
+ *
+ * `pending` is the projection's own list, and `undefined` is "this app has not read
+ * the queue yet" — which is NOT a reason to forget. That distinction is what the
+ * original bug turned on: a surface that had just mounted had no projection, and the
+ * empty list it did have read as "gone".
+ */
+export function shouldForgetConsentAttention(
+	attention: string | null,
+	pending: ReadonlyArray<{ entryId: string }> | undefined,
+): boolean {
+	if (attention === null) return false;
+	if (pending === undefined) return false;
+	return !pending.some((entry) => entry.entryId === attention);
+}
+
+/**
+ * Whether the request a click named is still LIVE, as far as this reading knows.
+ *
+ * TWO STATES ARE NOT THE SAME, and the difference is why this asks about the clock
+ * rather than about the list. A request that ran out its ten minutes is still IN
+ * `pendingConsent` — nothing in main fires at expiry, which is the whole reason the
+ * surfaces derive liveness from `expiresAt` instead of reading the length (`approval-
+ * queue-model.ts` says so at length) — so a membership test answers "still here" for
+ * an entry no surface will draw. UX round 2's U9 is exactly that: a click naming an
+ * expired-but-listed request landed on a surface with nothing in it and said nothing.
+ *
+ * `true` when nothing has been read yet (`pending === undefined`) and when there is no
+ * attention to ask about: the callers use this to decide whether to KEEP something or
+ * to SPEAK, and "not known" must never be spent as "gone".
+ */
+export function isConsentAttentionLive(
+	attention: string | null,
+	pending: ReadonlyArray<{ entryId: string; expiresAt: number }> | undefined,
+	now: number,
+): boolean {
+	if (attention === null || pending === undefined) return true;
+	return pending.some(
+		(entry) => entry.entryId === attention && entry.expiresAt > now,
+	);
+}
