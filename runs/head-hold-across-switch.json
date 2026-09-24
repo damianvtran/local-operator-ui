@@ -1,0 +1,421 @@
+{
+  "label": "head",
+  "scen": "hold-across-switch",
+  "tree": "~/local-operator-ui-worktrees/qa490r4-head-96869",
+  "events": [
+    {
+      "t": 1123,
+      "what": "away-1"
+    },
+    {
+      "t": 1596,
+      "what": "back-1"
+    },
+    {
+      "t": 2122,
+      "what": "away-2"
+    },
+    {
+      "t": 2606,
+      "what": "back-2"
+    }
+  ],
+  "windowMode": "[window-mode] window mode headless: 1380x900, window created and never shown, page throttling off, no Dock tile",
+  "first": {
+    "t": 148,
+    "rows": 34,
+    "standIns": 0,
+    "blank": 2,
+    "readsAnsweredYet": 0,
+    "sample": [
+      {
+        "id": "tool:toolu_01KbMDnt2m2FzxyDMkC1Q83k",
+        "name": "bash",
+        "summary": "yotsxllnunhdotdqdkhherymeidredhsaitiskdhoeplyukkjbeatangjuzpxyxshsxbkysludwfjhbaffdmnlfqbtdtyvljpbtrvlhzxdzkypecuzmchpckx",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01HN42bybBHuxQQNtgdqRCRy",
+        "name": "bash",
+        "summary": "ctxwhrgvoboxhdkoozdeqqjcnrmhssqeiftowitmzshgqqctayccszcfwjtfcrrqqtzhqbgsvasfuqqdiwofslyurwaanhgetftffqoutmhvlbjwdffwkfcnu",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01HrTwpzPy2tSbWqc2oZpxnX",
+        "name": "bash",
+        "summary": "lzvcystqdrbeeknclcgawmctrowttoynxeoasojudnqcxyluekylcqbbomxbepuzahkfaxxouydpqatzdmwhizibvqxfjtorjeldpzxqyfcswsggijkkfwwar",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01WxavbfHmTZX5fyz97geJ4b",
+        "name": "bash",
+        "summary": "zdcbrfxkmqidhtsyrznxmvsalymzrqpabqwdgsunnznxypwatgalbdngcguksrzdymjdpyxbnnawqvmnxnvvoxcvuwankjfjojpngazvlayyvirmqkklcrdrg",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01Mhq4hiwkJ79ykkcenehuhF",
+        "name": "bash",
+        "summary": "vkmrkdnuwgtjxxxoqgypbztedgafdakhedzboizobzewjnjtqvrxjewegfgojznjiqxnhrgdnjofxprofgpidmawzwpkoxqheffwhnkzjdqyemnyqcwwbqvcr",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_018UhtvDm7dUcDfoEbTNMyNa",
+        "name": "bash",
+        "summary": "grhvtartjosadaloitpbtbbjayjxqdgvddrthivpjrxtlgmlrxhgmgughlxmdqbdpfiautiwwrxaaefcfwrueedyyodtiwrjccppqiofxljsivnizaxnbfaej",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01MU5Ag6fyK1jUEpxijkMW7M",
+        "name": "bash",
+        "summary": "kcqtyhtimtacnogovzqbajpfhvetxayphczlllypqinitcbmfevzptxsnoklqgjggyikrxnxzerksgraylcmvzhdtlesjaizqgfgbcdcanwlotehnmiiltfpo",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01VREcSbGfgJuRmC9mxFuMfd",
+        "name": "read",
+        "summary": "jcilqzkdbpvxpyeolusxmbcnoymeizxlnvswitunxichapsdnogrtaxjqciakwwvrrkfcnxbtqalkasvk",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_017XoYD5bbQNSaDV4ZpqEM5k",
+        "name": "bash",
+        "summary": "xuzzoonzakjbqobkcsxxbwwersgsspmqmsmtyeksolmjysuyzahzonnybamxduexdisbwebigibcusvlgemokhnvqdssslvoujdbapgxvigscqgdzxaqgvqfw",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_012c2FUp64snbsHGB5WpoJax",
+        "name": "bash",
+        "summary": "jsbiptmrjfrbvelqqdwmvmvhpfmycctpcfjsughgzdvylwxxvlaxgynsjgtwyfxaziratzyowqbxddshmwcpcsloskkbezfkpdykxkfprrkjriuhdowaiifji",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01Xz9LiKf8zaQuLQ2qZjdNwN",
+        "name": "bash",
+        "summary": "qstghacvfkceknlpkzhmishhqufncupsaclykqioofuxfopvaxbjnadlxudxmxpeczfcbmjjtpkkhvvyfnopadisjdxhihbomeposqaokcldgqdqpsbkjdetm",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01JBF4hGc6y5NoGzTqEyBwr6",
+        "name": "bash",
+        "summary": "gwmvqupxyivhfcwivrtkxaxqcqsygkewctytbdzwnwqykfjrpxtesftubtfsbsgkuejfyruwkjtswhwwtlqykbxictkxbybqtghcghasfhpppeketegmrhxhh",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_015cKT2pN2rE1vfiUwZvd88H",
+        "name": "bash",
+        "summary": "csnwehsxcctrqfadxwluhdwapauoykjdelntvmfipmqfswxqrlcerumvoryghkqpkpkjxmfbdbjvdoydidnjfranfjilydxsyuwhgxbadbnuuvgqmvrinufxk",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01P5kbrGcnfJ289gR4ysVk8Q",
+        "name": "bash",
+        "summary": "ivisraowswduusetypdkovzpjjcvlabafrlgetfxsophdyrezvmulepuawyscnnbpvvgblfdnbowqdhnkoclcmjazwbuzfxcorxvsxkfsuazzohqrfclbfsyn",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01FXnnm9JcEBN9yewVW3SCva",
+        "name": "bash",
+        "summary": "asbgtqjhoeyvyjbocipzflumorkunaxoqyyczbalpsqbvyvimantzvpyjvihpkfepykglolboalpfuseyjahnlsisskwtefubitbabmeqhhzwukkcltgawcpf",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01W3nufHdn2JyZLNr6QiCn6W",
+        "name": "bash",
+        "summary": "kbgjnyilbukzupzxckmswejargeltdevuoxkngupdnaxqqvyvmifjsshfexqjsyqsssslbdnvplxfkcbodgljvslquqxifzteewnlnvnsvflebiqmyizeumoa",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01JTopYmd4BxCm12rBLdQauL",
+        "name": "bash",
+        "summary": "chvfohyutkrwwbtgexffvutnlyvpuokycdoqtnuzlfdetqyhyfecjgdltnilcpcbuncxevpbgesvkcnencqkvmvscyjorxmobcqwafosqsrtoxzchuudyrjzv",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01FfKLXdVgTB46M6dfNxDpKv",
+        "name": "bash",
+        "summary": "rvqkmizegfsdsaijyucjoovijsulhgxvdljjywtnhdrcjandumnqjnoqvazjxbkscqgeifryyjiihnelluzighmxuvhsltjodleskgolmoukvulpogedqloic",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_013RQP1jggRvTvVukd1ooVPi",
+        "name": "read",
+        "summary": "jcilqzkdbpvxpyeolusxmbcnoymeizxlnvswitunxichapsdnogrtaxjqciakwwvrrkfcnxbtqalkasvk",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01KkZmyAeUqYAStZbzaoYvwS",
+        "name": "read",
+        "summary": "yodcoohsucjlvbfwbhceihdwhnojwuyshrnbedyocssxkabvnufrhgnfidojkbclhseopbmp",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_0115sVd47cd9EeQhSCQQVBRD",
+        "name": "edit",
+        "summary": "yodcoohsucjlvbfwbhceihdwhnojwuyshrnbedyocssxkabvnufrhgnfidojkbclhseopbmp",
+        "counts": "+59"
+      },
+      {
+        "id": "tool:toolu_01U8pmogfTz51LPmm7X3Aztb",
+        "name": "bash",
+        "summary": "olrvzvstsgljjkpoevicempfhetzghhovuoetlzwhhhbinkdopmesbpybgeqnjjltzwjwhpwrjbiuidgnkohaqbudpzyhitytzktbbfcx",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01LitBejhWuGxB7Y8sj3kuiY",
+        "name": "edit",
+        "summary": "jcilqzkdbpvxpyeolusxmbcnoymeizxlnvswitunxichapsdnogrtaxjqciakwwvrrkfcnxbtqalkasvk",
+        "counts": "+19 -1"
+      },
+      {
+        "id": "tool:toolu_012dMwJzP3XvWNyHkF2KaX1f",
+        "name": "bash",
+        "summary": "becllkyfstoxngnrhsprpxersydvmppqyibvtxqilxtmnahjipvjmlkboyhcrjahifcygarvwtbvuodcpxvuzioprsuhbkfuwruqwlanvpbfqreohvgywfesm",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01HUJ75JkSkupEVnCxtD8bir",
+        "name": "bash",
+        "summary": "umptbmwfqzrofaydtojvglwnpztjlbwomupbgodapyqsbnfwswlhjkndaxeblodmzefslkfjthlxatfxxghugiprdmydgrcspltpcpzurmigfwtwsprcncxfa",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01ShGubNPBDBMSYveNkD9okM",
+        "name": "bash",
+        "summary": "umptbmwfqzrofaydtojvglwnpztjlbwomupbgodapyqsbnfwswlhjkndaxeblodmzefslkfjthlxatfxxghugiprdmydgrcspltpcpzurmigfwtwsprcncxfa",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_016RP6iYmPgKQXCFwCWc5Rwc",
+        "name": "bash",
+        "summary": "xzgcenwzlydwprvowgohqvkanfzxxywrqpsajhbkcadlgvnhmtszvusmoqeyegnydsmuflcvvqnmoasxhvdznmsqzgucttqccvptebsujjmvn",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01AbiYa649WyHntM2bMERASZ",
+        "name": "bash",
+        "summary": "xzgcenwzlydwprvowgohqvkanfzxxywrqpsajhbkcadlgvnhmtszvusmoqeyegnydsmuflcvvqnmoasxhvdznmsqzgucttqccvptebsujjmvn",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01K8J175GxtZpWXvmxwj3N8R",
+        "name": "bash",
+        "summary": "hdsryjksywqzpqyesofnjpouljkankuvbylpewmmyststdladjkxqslinogsucaxchfxryisqvthvaaeyptntnrrkpatwyzsbkfaqubektgwzrhdzictlqeoa",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01AYtVtH4MDnenmwnUQK9iYb",
+        "name": "bash",
+        "summary": "jkxskiaihrkjafutkaloxqdbhfhlahaigdxcxujawzbyijewbrwgbfixtnqagsupkjigjkzpaaucpzhtvjzywcgkkjslxjbulbwsrmexfzdxowfpgxupigrfg",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_017XD1uBc8sqqegaq1zhP3y7",
+        "name": "bash",
+        "summary": "krxxnacydonnesqszqcngqyougknlvqpqutivlntyljrvpcedcqegewjbjwkyhhjwgdyetbphlskmzvgbigomwucfsxumvfritktjdrrfjqiahvlndxhdopoo",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_01452zQo8uJymbVYds3k85CK",
+        "name": "bash",
+        "summary": "soxskipzstonqfdqhsnrqukiqoywapcausjhzmwifsahxenbtwvdnwtmyivdmxrfefpuectcjxjfywpjzaamsmfzqvhzmlggncnbvyxlscerdgicrdvseglku",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_QA_running_01",
+        "name": "bash",
+        "summary": "",
+        "counts": ""
+      },
+      {
+        "id": "tool:toolu_QA_running_02",
+        "name": "bash",
+        "summary": "",
+        "counts": ""
+      }
+    ]
+  },
+  "timeline": [
+    {
+      "t": 44,
+      "rows": 0,
+      "standIns": 0,
+      "blank": 0,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 148,
+      "rows": 34,
+      "standIns": 0,
+      "blank": 2,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 252,
+      "rows": 34,
+      "standIns": 0,
+      "blank": 2,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 355,
+      "rows": 34,
+      "standIns": 0,
+      "blank": 2,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 457,
+      "rows": 34,
+      "standIns": 0,
+      "blank": 2,
+      "reads": 1,
+      "answered": 0
+    },
+    {
+      "t": 562,
+      "rows": 34,
+      "standIns": 0,
+      "blank": 2,
+      "reads": 1,
+      "answered": 0
+    }
+  ],
+  "openFrames": [
+    {
+      "k": "chat,0,0,0",
+      "from": 0,
+      "to": 0,
+      "frames": 1
+    },
+    {
+      "k": "1490,0,0,0",
+      "from": 32,
+      "to": 40,
+      "frames": 3
+    },
+    {
+      "k": "1490,34,0,2",
+      "from": 87,
+      "to": 557,
+      "frames": 51
+    }
+  ],
+  "historyOnOpen": [
+    {
+      "sid": "5eed1abe1490",
+      "at": 44,
+      "limit": 100,
+      "asked": 100,
+      "beforeId": null,
+      "mode": "hang"
+    }
+  ],
+  "readsBeforeOpen": 0,
+  "settled": {
+    "rows": 34,
+    "standIns": 0,
+    "blank": 2,
+    "hash": "#/chat/5eed1abe1490",
+    "standInRows": [],
+    "blankRows": [
+      "tool:toolu_QA_running_01",
+      "tool:toolu_QA_running_02"
+    ]
+  },
+  "settledShot": "out/head-hold-across-switch-02-settled.png",
+  "editRows": [
+    {
+      "id": "tool:toolu_0115sVd47cd9EeQhSCQQVBRD",
+      "name": "edit",
+      "summary": "yodcoohsucjlvbfwbhceihdwhnojwuyshrnbedyocssxkabvnufrhgnfidojkbclhseopbmp",
+      "counts": "+59"
+    },
+    {
+      "id": "tool:toolu_01LitBejhWuGxB7Y8sj3kuiY",
+      "name": "edit",
+      "summary": "jcilqzkdbpvxpyeolusxmbcnoymeizxlnvswitunxichapsdnogrtaxjqciakwwvrrkfcnxbtqalkasv",
+      "counts": "+19 -1"
+    }
+  ],
+  "holdFirst": {
+    "rows": 34,
+    "standIns": 0,
+    "blank": 2
+  },
+  "holdFrames": [
+    {
+      "k": "1490,34,0,2",
+      "from": 5,
+      "to": 248,
+      "frames": 30
+    },
+    {
+      "k": "b0b0,0,0,0",
+      "from": 267,
+      "to": 276,
+      "frames": 3
+    },
+    {
+      "k": "b0b0,20,0,0",
+      "from": 297,
+      "to": 722,
+      "frames": 53
+    },
+    {
+      "k": "1490,34,2,0",
+      "from": 744,
+      "to": 1213,
+      "frames": 58
+    },
+    {
+      "k": "b0b0,20,0,0",
+      "from": 1233,
+      "to": 1721,
+      "frames": 61
+    },
+    {
+      "k": "1490,34,2,0",
+      "from": 1739,
+      "to": 12755,
+      "frames": 1324
+    }
+  ],
+  "holdSettled": {
+    "rows": 34,
+    "standIns": 2,
+    "blank": 0,
+    "blankIds": []
+  },
+  "unknownRoutes": [
+    "POST /v1/desktop/radient",
+    "GET /v1/agents",
+    "GET /v1/desktop/commands",
+    "GET /v1/credentials",
+    "GET /v1/desktop/sessions/5eed1abe1490/command-entities",
+    "GET /v1/desktop/sessions/5eed1abe1490/mcp",
+    "GET /v1/desktop/sessions/b0b0b0b0b0b0/command-entities",
+    "GET /v1/desktop/sessions/b0b0b0b0b0b0/mcp"
+  ],
+  "historyAll": [
+    {
+      "sid": "5eed1abe1490",
+      "at": 44,
+      "limit": 100,
+      "asked": 100,
+      "beforeId": null,
+      "mode": "hang"
+    },
+    {
+      "sid": "5eed1abe1490",
+      "at": 1611,
+      "limit": 100,
+      "asked": 100,
+      "beforeId": null,
+      "mode": "hang"
+    }
+  ]
+}
