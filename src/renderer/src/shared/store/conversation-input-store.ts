@@ -86,8 +86,34 @@ type ConversationInputState = {
 	 * (clear it silently) or the user has since edited it (say it was delivered and
 	 * leave their text alone). Dropped by the next send, by Clear and by the
 	 * reconciliation itself.
+	 *
+	 * A REFERENCE TO WHAT THE ROW HOLDS, not a second copy of it: see
+	 * `ReturnedPayload`.
 	 */
-	returned?: SentPayload;
+	returned?: ReturnedPayload;
+	/**
+	 * The revision of the box's TEXT as the STORE wrote it last, bumped by every
+	 * store-side write to what the user sees in the textarea.
+	 *
+	 * WHY A REVISION RATHER THAN COMPARING STRINGS. The composer's text lives in
+	 * two places - this row (persisted, and the copy the return path and the
+	 * migration write) and the hook's own state (the copy being typed into) - and a
+	 * store-side write used to reach the box only through one narrow channel
+	 * (`pendingText`, adopted on mount and on arrival) or not at all. That is why
+	 * `Clear` and the late-delivery clear emptied the row and left the words on
+	 * screen to be sent again glued to the next message, and why a write from the
+	 * store could not correct an already-mounted box. The counter says "the store
+	 * wrote this box" in a way a value cannot: a keystroke writes the same string
+	 * back, a capture declines to write at all, and the hook only ever re-seeds the
+	 * textarea when the STORE is the author of the change.
+	 */
+	textRevision?: number;
+	/**
+	 * True when the merged `pendingText` was written while a masked credential
+	 * capture was open: it may BE the credential, so it must never reach disk
+	 * (`partialize` drops it - see `volatileText` on the payload for the rule).
+	 */
+	volatilePendingText?: boolean;
 	/**
 	 * Returned text the box has not taken in yet.
 	 *
@@ -109,6 +135,37 @@ type ConversationInputState = {
 	 * goes on the next edit, send or Clear.
 	 */
 	lateDelivered?: boolean;
+};
+
+/**
+ * The last payload handed back to a composer, as a REFERENCE to what the row
+ * holds rather than a second copy of it.
+ *
+ * WHAT WENT WRONG WITH THE BY-VALUE VERSION (review round 1, B5). This record
+ * kept `attachments` and `replies` by value, and the row it described keeps the
+ * same lists for the user to see and edit - so every pasted screenshot (a `data:`
+ * URL, megabytes of base64) was serialised into `localStorage` TWICE, once as a
+ * chip and once as this record. On a large payload that crossed the store's
+ * quota: the write threw `QuotaExceededError`, the persisted row was left
+ * half-written, and every reload after it showed "Something went wrong" - on a
+ * payload a pristine build persisted without trouble. Measured by QA (Q-6) as a
+ * merge blocker.
+ *
+ * So the record names what it put there - the ids of the chips it restored, in its
+ * own order, and the ids of the staged quotes - and `composerHoldsExactly` asks the
+ * row whether those are still exactly the things it holds. The bytes live once,
+ * the predicate is the same, and a user who removes a chip (or attaches another)
+ * still reads as EDITED, which is the answer that matters.
+ */
+export type ReturnedPayload = {
+	/** The normalised text the message carried, before reply wrapping. */
+	text: string;
+	/** The ids of the chips this return restored, in payload order. */
+	chipIds: string[];
+	/** The ids of the staged quotes this return restored, in payload order. */
+	replyIds: string[];
+	/** See `SentPayload.volatileText`: the text must not reach disk. */
+	volatileText?: boolean;
 };
 
 /**
@@ -205,10 +262,27 @@ function foldReturn(
 		(reply) => !replies.some((kept) => kept.id === reply.id),
 	);
 	const text = payload.text;
+	/*
+	 * The chip and quote IDS the payload's paths and quotes now live under, read
+	 * back off the row this fold has just built. A path already present keeps its
+	 * existing chip (and therefore answers with that chip's id), which is what makes
+	 * the reference equal to the payload it describes rather than to the ids this
+	 * call happened to mint.
+	 */
+	const chips = [...returnedChips, ...attachments];
+	const mergedReplies = [...returnedReplies, ...replies];
 	return {
 		...row,
-		attachments: [...returnedChips, ...attachments],
-		replies: [...returnedReplies, ...replies],
+		attachments: chips,
+		replies: mergedReplies,
+		textRevision: (row.textRevision ?? 0) + 1,
+		/*
+		 * Conservation, not precision: if ANY of the merged text was written inside a
+		 * masked capture then the whole of it stays off disk. Losing a non-secret
+		 * draft on restart is the cheap direction; writing a credential is not.
+		 */
+		volatilePendingText:
+			row.volatilePendingText === true || payload.volatileText === true,
 		pendingText:
 			text === ""
 				? row.pendingText
@@ -219,7 +293,16 @@ function foldReturn(
 			row.unredactedChars ?? 0,
 			payload.unredactedChars ?? 0,
 		),
-		returned: payload,
+		returned: {
+			text,
+			chipIds: payload.attachments
+				.map((path) => chips.find((chip) => chip.path === path)?.id)
+				.filter((id): id is string => id !== undefined),
+			replyIds: payload.replies
+				.map((reply) => mergedReplies.find((kept) => kept.id === reply.id)?.id)
+				.filter((id): id is string => id !== undefined),
+			volatileText: payload.volatileText,
+		},
 		inFlight: undefined,
 		lateDelivered: undefined,
 	};
@@ -237,19 +320,30 @@ function effectivePayload(row: ConversationInputState) {
 	};
 }
 
-/** Whether the composer row holds exactly the payload it was given back. */
+/**
+ * Whether the composer row still holds exactly the message it was given back.
+ *
+ * The comparison is over IDENTITY and not over bytes: the record names the chips
+ * and quotes it restored (see `ReturnedPayload`), and the row is asked whether
+ * those are still the things it holds - all of them, in order, and nothing else.
+ * A chip the user removed, a chip they added, a chip they removed and re-attached
+ * (a new id) and any edit to the text all answer `false`, which is the "edited
+ * since" arm the muted notice exists for.
+ */
 export function composerHoldsExactly(
 	row: ConversationInputState | undefined,
-	payload: SentPayload,
+	returned: ReturnedPayload | undefined,
 ): boolean {
-	if (!row) return false;
+	if (!row || !returned) return false;
 	const now = effectivePayload(row);
+	const chips = row.attachments ?? [];
+	const replies = row.replies ?? [];
 	return (
-		now.text.trim() === payload.text.trim() &&
-		now.attachments.length === payload.attachments.length &&
-		now.attachments.every((path, i) => path === payload.attachments[i]) &&
-		now.replies.length === payload.replies.length &&
-		now.replies.every((reply, i) => reply.id === payload.replies[i]?.id)
+		now.text.trim() === returned.text.trim() &&
+		chips.length === returned.chipIds.length &&
+		chips.every((chip, i) => chip.id === returned.chipIds[i]) &&
+		replies.length === returned.replyIds.length &&
+		replies.every((reply, i) => reply.id === returned.replyIds[i])
 	);
 }
 
@@ -722,6 +816,15 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 							...row,
 							currentInput: textLeaves ? "" : row.currentInput,
 							unredactedChars: textLeaves ? 0 : row.unredactedChars,
+							/*
+							 * The echo took the text out of the box, so the store is the author of a
+							 * box write and says so - the composer that pressed clears itself on the
+							 * echo's paint (see `onEchoPainted`), and this is what reaches a composer
+							 * that was remounted under the press, where nothing else would.
+							 */
+							textRevision: textLeaves
+								? (row.textRevision ?? 0) + 1
+								: row.textRevision,
 							attachments: (row.attachments ?? []).filter(
 								(chip) => !chipIds.has(chip.id),
 							),
@@ -806,6 +909,12 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 							...row,
 							currentInput: merged,
 							pendingText: undefined,
+							/*
+							 * A store-side write of the box, so the revision moves: the hook
+							 * mirrors it, which is what makes the adopted text the textarea's
+							 * text rather than a value held in one place and shown in another.
+							 */
+							textRevision: (row.textRevision ?? 0) + 1,
 						},
 					},
 				});
@@ -828,8 +937,21 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 			reconcileDelivered: (conversationId) => {
 				const row = get().inputByConversation[conversationId];
 				if (!row) return;
-				const delivered = row.returned ?? row.inFlight;
-				const exact = delivered ? composerHoldsExactly(row, delivered) : false;
+				/*
+				 * TWO ARMS, and both are about what is ON SCREEN. A row handed the payload
+				 * back compares against the record of it (`composerHoldsExactly`); a row
+				 * with nothing handed back - the send never came home, or the user cleared
+				 * it - is silent when the composer holds nothing of anybody's, which is the
+				 * same "nothing to clear, nothing to say" answer without a payload to
+				 * compare against.
+				 */
+				const exact = row.returned
+					? composerHoldsExactly(row, row.returned)
+					: (row.currentInput ?? "") === "" &&
+						(row.attachments ?? []).length === 0 &&
+						(row.replies ?? []).length === 0;
+				const hadPayload =
+					row.returned !== undefined || row.inFlight !== undefined;
 				set({
 					inputByConversation: {
 						...get().inputByConversation,
@@ -844,6 +966,8 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 									returned: undefined,
 									inFlight: undefined,
 									lateDelivered: undefined,
+									volatilePendingText: undefined,
+									textRevision: (row.textRevision ?? 0) + 1,
 								}
 							: {
 									...row,
@@ -851,7 +975,7 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 									inFlight: undefined,
 									// Only worth saying when something of that message is still
 									// on screen for the user to wonder about.
-									lateDelivered: delivered ? true : undefined,
+									lateDelivered: hadPayload ? true : undefined,
 								},
 					},
 				});
@@ -881,8 +1005,18 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 							attachments: [],
 							replies: [],
 							pendingText: undefined,
+							volatilePendingText: undefined,
 							returned: undefined,
+							inFlight: undefined,
 							lateDelivered: undefined,
+							/*
+							 * THE BOX ITSELF, not only the row: the press promises the composer
+							 * empties, and the words are in the textarea the hook owns. Without
+							 * this the text stayed on screen with the chips and the notice gone,
+							 * and the next press sent it glued to whatever was typed after it
+							 * (review round 1, B2/Q-1/U3).
+							 */
+							textRevision: (row.textRevision ?? 0) + 1,
 						},
 					},
 				});
@@ -898,12 +1032,23 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 			 */
 			partialize: (state) => ({
 				inputByConversation: Object.fromEntries(
-					Object.entries(state.inputByConversation).map(([id, row]) => [
-						id,
-						row.inFlight?.volatileText
-							? { ...row, inFlight: { ...row.inFlight, text: "" } }
-							: row,
-					]),
+					Object.entries(state.inputByConversation).map(([id, row]) => {
+						let next = row;
+						/*
+						 * A CREDENTIAL IS NEVER WRITTEN, on any of the three paths a payload's
+						 * text can be on: in flight, handed back, or waiting to be adopted.
+						 * The capture's own text can BE the secret the user was mid-way
+						 * through entering, so all three are blanked rather than left to the
+						 * one gate the keystroke path has (review round 1, m1).
+						 */
+						if (next.inFlight?.volatileText)
+							next = { ...next, inFlight: { ...next.inFlight, text: "" } };
+						if (next.returned?.volatileText)
+							next = { ...next, returned: { ...next.returned, text: "" } };
+						if (next.volatilePendingText)
+							next = { ...next, pendingText: undefined };
+						return [id, next];
+					}),
 				),
 			}),
 			// Every hydrate is a fresh process: see `rehydrateInputRows`.
