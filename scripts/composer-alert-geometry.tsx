@@ -229,7 +229,17 @@ const STATES: Record<
 		 * after it - which is what the `draft-only` sentence says - and the delivered
 		 * file went with the message.
 		 */
-		sendError: { message: SEND_FAILURE_COPY.lateDeliveryDraft, muted: true },
+		/*
+		 * `polite: true`, because the app's own late-delivery notice is announced
+		 * rather than interrupting (`composerNoticeFor`) and the rig has to render the
+		 * same register or its frames cannot catch a regression to `role="alert"`
+		 * (review round 3, D10).
+		 */
+		sendError: {
+			message: SEND_FAILURE_COPY.lateDeliveryDraft,
+			muted: true,
+			polite: true,
+		},
 		draft: EDITED_TEXT,
 		noReturnedChip: true,
 	},

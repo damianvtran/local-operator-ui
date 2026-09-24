@@ -601,7 +601,11 @@ type ConversationInputStoreState = {
  * The text is only removable while it is still the block the merge wrote: a user
  * who edited inside the delivered words has made a new message of them, and
  * guessing which half is which would be worse than leaving it (see
- * `LateDeliveryBox`).
+ * `LateDeliveryBox`). On that arm the delivered WORDS stay in the box and the
+ * delivered CHIPS AND QUOTES still come out - their ids are known, so they are not
+ * unknowable - and the note says which box the user is looking at
+ * (`lateDeliveryOverlap`), because a next Send there repeats the sentence they
+ * already sent and only the copy can warn about it (review round 3, m1 + D8).
  */
 function stripDeliveredPayload(
 	row: ConversationInputState,
@@ -626,6 +630,15 @@ function stripDeliveredPayload(
 		 * "edited", which is the arm the duplicate survives in. What is left after the
 		 * delivered text is the user's own draft, however they spaced it, so only the
 		 * line breaks IMMEDIATELY after it are dropped - never their indentation.
+		 *
+		 * A CHOSEN LIMIT, and it is the user's own overwrite that meets it (review
+		 * round 3, m2): a user who selects all and retypes a line whose opening happens
+		 * to be the delivered message's opening loses that opening here, because a
+		 * prefix match cannot tell "typed after" from "typed the same thing again".
+		 * Nothing untrue follows - what remains really is unsent - so this is a boundary
+		 * worth knowing rather than a case worth guessing at, and the alternative
+		 * (byte-comparing spacing the user may have moved) fails the ordinary arm this
+		 * test exists for.
 		 */
 		text = boxed.slice(placed.length).replace(/^\n+/, "");
 		box = "draft-only";
