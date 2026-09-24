@@ -6538,9 +6538,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 														size={isSmallView ? "icon-sm" : "icon"}
 														type="submit"
 														onPointerDown={holdCaretOnRefusedPress}
+														/*
+														 * AND NOT `isLoading` ANY MORE (review round 2, U6). While
+														 * a send is in flight the control used to be DISABLED, so a
+														 * second press did nothing at all: 3.5 s of DOM sampling
+														 * found no line and no state change, and the affordance that
+														 * exists to answer that press - the pane's send lock, "Your
+														 * last message is still sending." - was unreachable from the
+														 * one control the user would reach for. The refusal is the
+														 * STORE's (`admitChatDraft` returns without admitting while
+														 * `pending`) and the LINE is the pane's, so the press has to
+														 * be delivered to them rather than swallowed here. `isInputDisabled`
+														 * stays: a box that refuses input is a different fact.
+														 */
 														disabled={
 															isInputDisabled ||
-															isLoading ||
 															(!newMessage.trim() && attachments.length === 0)
 														}
 														aria-label="Send message"
