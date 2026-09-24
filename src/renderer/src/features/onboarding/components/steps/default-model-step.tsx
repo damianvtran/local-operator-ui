@@ -1,300 +1,184 @@
 /**
  * Default Model Step Component
  *
- * Fifth step in the onboarding process: which model agents use unless an agent
- * says otherwise. The choice saves itself, and the line under the fields is the
- * receipt.
+ * Step 2 of 3: the model new chats use. It CONFIRMS rather than asks (design
+ * audit § 5): a sign-in on a current backend has already written the default
+ * (`defaults_applied`), so the step shows that choice with a "Change". On an
+ * older backend, or when several providers are connected, it preselects the
+ * connected provider's backend suggestion and Continue writes it.
+ *
+ * The data source is the census plus the config (`chooseDefaultModel`), never
+ * the legacy `/v1/credentials` key list: OAuth sign-ins are not in that list,
+ * which is how this step came to say "No providers with credentials yet" to a
+ * user who had just signed in (design D5, UX U2).
  */
 
-import { Spinner } from "@shared/components/common/spinner";
 import {
-	Alert,
-	Label,
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@shared/components/ui";
-import { useConfig } from "@shared/hooks/use-config";
-import { useCredentials } from "@shared/hooks/use-credentials";
-import { useModels } from "@shared/hooks/use-models";
+	type DefaultModelChoice,
+	chooseDefaultModel,
+} from "@features/providers/default-model-choice";
+import {
+	brandOf,
+	modelDisplayName,
+} from "@features/providers/provider-catalog";
+import { useDefaultModel } from "@features/providers/use-provider-status";
+import { useDesktopProviders } from "@shared/api/local-operator/desktop-hooks";
+import { Spinner } from "@shared/components/common/spinner";
+import { HostingSelect } from "@shared/components/hosting/hosting-select";
+import { ModelSelect } from "@shared/components/hosting/model-select";
+import { Alert, Button } from "@shared/components/ui";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import type { FC } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-const PROVIDER_SELECT_ID = "onboarding-default-provider";
-const PROVIDER_HELP_ID = "onboarding-default-provider-help";
-const MODEL_SELECT_ID = "onboarding-default-model";
-const MODEL_HELP_ID = "onboarding-default-model-help";
+import { useEffect, useState } from "react";
 
 /**
- * Default model step in the onboarding process
+ * The step's content, as a pure function of the choice, so a story (and a
+ * test) can render every answer without a backend.
  */
-export const DefaultModelStep: FC = () => {
-	// Get models, credentials, and config
-	const {
-		providers,
-		models,
-		isLoading: isLoadingModels,
-		refreshModels,
-	} = useModels({ autoFetch: false });
-	const { data: credentialsData, isLoading: isLoadingCredentials } =
-		useCredentials();
-	const { isLoading: isLoadingConfig } = useConfig();
-	const updateConfigMutation = useUpdateConfig();
-
-	// State for selected provider and model
-	const [selectedProvider, setSelectedProvider] = useState("");
-	const [selectedModel, setSelectedModel] = useState("");
-	const [isSaving, setIsSaving] = useState(false);
-	const [saveSuccess, setSaveSuccess] = useState(false);
-
-	// Reference to store the timeout ID for clearing
-	const successTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
-
-	// Reference to track if models have been refreshed
-	const hasRefreshedModelsRef = useRef(false);
-
-	// Get available providers based on credentials
-	const availableProviders = useMemo(() => {
-		if (!providers || !credentialsData) return [];
-
-		// Filter providers that have credentials set
-		return providers.filter((provider) => {
-			// Check if the provider has a corresponding credential
-			const providerKey = `${provider.id.toUpperCase()}_API_KEY`;
-			return credentialsData.keys.includes(providerKey);
-		});
-	}, [providers, credentialsData]);
-
-	// Get available models for the selected provider
-	const availableModels = useMemo(() => {
-		if (!models || !selectedProvider) return [];
-		return models.filter((model) => model.provider === selectedProvider);
-	}, [models, selectedProvider]);
-
-	// Save the model configuration when selections are complete
-	const saveModelConfig = useCallback(
-		async (provider: string, model: string) => {
-			if (provider && model && !isSaving) {
-				try {
-					setIsSaving(true);
-					setSaveSuccess(false);
-					await updateConfigMutation.mutateAsync({
-						hosting: provider,
-						model_name: model,
-					});
-					setSaveSuccess(true);
-
-					// Replace any pending hide, so the message lives 3s from this save
-					clearTimeout(successTimeoutRef.current);
-
-					// Set a timeout to hide the success message after 3 seconds
-					successTimeoutRef.current = setTimeout(() => {
-						setSaveSuccess(false);
-					}, 3000);
-				} catch (err) {
-					console.error("Failed to update default model:", err);
-					setSaveSuccess(false);
-				} finally {
-					setIsSaving(false);
-				}
-			}
-		},
-		[isSaving, updateConfigMutation],
+export const DefaultModelSummary: FC<{
+	choice: DefaultModelChoice;
+	onChange: () => void;
+}> = ({ choice, onChange }) => {
+	if (choice.kind === "none") {
+		return (
+			<Alert variant="neutral">
+				No provider is connected yet. Go back to connect one, or skip setup and
+				connect one later from the chat.
+			</Alert>
+		);
+	}
+	if (choice.kind === "choose") {
+		return (
+			<p className="text-body-sm text-ink-muted">
+				{brandOf(choice.provider)} is connected. Pick the model new chats should
+				use.
+			</p>
+		);
+	}
+	const name =
+		choice.kind === "applied"
+			? (modelDisplayName(choice.provider, choice.model) ??
+				`${choice.provider ? brandOf(choice.provider) : choice.hosting}'s default model`)
+			: choice.model.name;
+	const brand =
+		choice.kind === "applied"
+			? choice.provider
+				? brandOf(choice.provider)
+				: choice.hosting
+			: brandOf(choice.provider);
+	return (
+		<div className="flex flex-col gap-1" data-default-model={choice.kind}>
+			<p className="text-heading text-ink">{name}</p>
+			<p className="text-ink-dim text-meta">
+				{brand} ·{" "}
+				{choice.kind === "applied"
+					? "your default"
+					: "suggested for your account"}
+			</p>
+			<div className="pt-2">
+				<Button variant="secondary" size="sm" onClick={onChange}>
+					Change
+				</Button>
+			</div>
+		</div>
 	);
+};
 
-	// Clean up the timeout when the component unmounts
+type DefaultModelStepProps = {
+	/**
+	 * Registers the action Continue must run first, so a PROPOSED default is
+	 * written when the user accepts it rather than the moment the step renders
+	 * (a render that writes config is a surprise a Back press cannot undo).
+	 */
+	onBeforeContinue?: (run: (() => Promise<void>) | null) => void;
+};
+
+export const DefaultModelStep: FC<DefaultModelStepProps> = ({
+	onBeforeContinue,
+}) => {
+	const providers = useDesktopProviders(true);
+	const config = useDefaultModel();
+	const updateConfig = useUpdateConfig();
+	const [editing, setEditing] = useState(false);
+
+	const choice =
+		providers.isLoading || config.isLoading
+			? null
+			: chooseDefaultModel(providers.data ?? [], config);
+	const proposal = choice?.kind === "proposed" && !editing ? choice : null;
+	const proposedProvider = proposal?.provider.id ?? null;
+	const proposedModel = proposal?.model.id ?? null;
+	// Registered from an effect, never during render: the parent holds it in a
+	// ref and runs it when Continue is pressed.
 	useEffect(() => {
-		return () => clearTimeout(successTimeoutRef.current);
-	}, []);
-
-	// Refresh models when credentials change - only once when credentials are loaded
-	useEffect(() => {
-		if (
-			credentialsData &&
-			!isLoadingCredentials &&
-			!hasRefreshedModelsRef.current
-		) {
-			// Force refresh of models data when credentials are loaded
-			refreshModels();
-			hasRefreshedModelsRef.current = true;
-		}
-	}, [credentialsData, isLoadingCredentials, refreshModels]);
-
-	// Initialize provider when credentials and providers are available
-	useEffect(() => {
-		// Skip if already loading or no data available
-		if (
-			isLoadingModels ||
-			isLoadingCredentials ||
-			isLoadingConfig ||
-			!credentialsData ||
-			!providers ||
-			availableProviders.length === 0
-		)
-			return;
-
-		// Skip if provider is already selected
-		if (selectedProvider) return;
-
-		// Find the provider that matches the most recently added credential
-		let provider = availableProviders[0].id; // Default to first available
-
-		// Try to find a provider that matches a credential
-		for (const p of availableProviders) {
-			const providerKey = `${p.id.toUpperCase()}_API_KEY`;
-			if (credentialsData.keys.includes(providerKey)) {
-				provider = p.id;
-				break;
-			}
-		}
-
-		// Set the provider
-		setSelectedProvider(provider);
+		onBeforeContinue?.(
+			proposedProvider && proposedModel
+				? async () => {
+						await updateConfig.mutateAsync({
+							hosting: proposedProvider,
+							model_name: proposedModel,
+						});
+					}
+				: null,
+		);
+		return () => onBeforeContinue?.(null);
 	}, [
-		availableProviders,
-		providers,
-		isLoadingModels,
-		isLoadingCredentials,
-		isLoadingConfig,
-		credentialsData,
-		selectedProvider,
+		onBeforeContinue,
+		proposedProvider,
+		proposedModel,
+		updateConfig.mutateAsync,
 	]);
 
-	// Set default model when available models change
-	useEffect(() => {
-		if (availableModels.length > 0 && !selectedModel) {
-			setSelectedModel(availableModels[0].id);
+	if (choice === null) {
+		return (
+			<div className="flex items-center justify-center gap-3 py-8">
+				<Spinner size="sm" />
+				<p className="text-body-sm text-ink-muted">Loading your models</p>
+			</div>
+		);
+	}
 
-			// If we have both provider and model, save the config
-			if (selectedProvider && availableModels[0].id) {
-				saveModelConfig(selectedProvider, availableModels[0].id);
-			}
-		}
-	}, [availableModels, selectedModel, selectedProvider, saveModelConfig]);
-
-	// Loading state
-	const isLoading = isLoadingModels || isLoadingCredentials || isLoadingConfig;
-
-	const selectedModelName = availableModels.find(
-		(model) => model.id === selectedModel,
-	)?.name;
-	const selectedProviderName = availableProviders.find(
-		(provider) => provider.id === selectedProvider,
-	)?.name;
+	const editor = (
+		<div className="flex flex-col gap-4">
+			<HostingSelect
+				value={
+					config.hosting ??
+					(choice.kind === "choose" || choice.kind === "proposed"
+						? choice.provider.id
+						: "")
+				}
+				onSave={async (value) => {
+					await updateConfig.mutateAsync({ hosting: value });
+				}}
+				filterByCredentials={true}
+				allowCustom={false}
+				allowDefault={false}
+				emptyHelperText="No providers are connected yet. Go back a step to connect one."
+			/>
+			<ModelSelect
+				value={config.model ?? ""}
+				hostingId={config.hosting ?? ""}
+				onSave={async (value) => {
+					await updateConfig.mutateAsync({ model_name: value });
+				}}
+				allowCustom={true}
+				allowDefault={false}
+			/>
+		</div>
+	);
 
 	return (
-		<div className="flex flex-col gap-6">
+		<div className="flex flex-col gap-5">
 			<p className="text-body text-ink-muted">
-				Pick the model your agents use by default. Models differ in speed, cost
-				and capability, and every agent can override this later.
+				New chats use this model. Every agent can pick a different one later.
 			</p>
-
-			{isLoading ? (
-				<div className="flex items-center justify-center gap-3 py-8">
-					<Spinner size="sm" />
-					<p className="text-body-sm text-ink-muted">Loading your models</p>
-				</div>
+			{editing || choice.kind === "choose" ? (
+				editor
 			) : (
-				<div className="flex flex-col gap-5">
-					<div className="flex flex-col gap-2">
-						<Label htmlFor={PROVIDER_SELECT_ID}>Model provider</Label>
-						<Select
-							value={selectedProvider}
-							disabled={availableProviders.length === 0}
-							onValueChange={(value) => {
-								setSelectedProvider(value);
-								setSelectedModel(""); // Reset model when provider changes
-								setSaveSuccess(false);
-							}}
-						>
-							<SelectTrigger
-								id={PROVIDER_SELECT_ID}
-								selectSize="lg"
-								aria-describedby={PROVIDER_HELP_ID}
-							>
-								{/* The zero-option state the model select below has:
-								    a placeholder that names the reason, and `disabled`
-								    so the trigger cannot open onto an empty listbox.
-								    Reachable by pressing Next twice without adding a
-								    key, and an empty "Select a provider" gives no way
-								    to tell an empty list from a slow one. */}
-								<SelectValue
-									placeholder={
-										availableProviders.length === 0
-											? "No providers with credentials yet"
-											: "Select a provider"
-									}
-								/>
-							</SelectTrigger>
-							<SelectContent>
-								{availableProviders.map((provider) => (
-									<SelectItem key={provider.id} value={provider.id}>
-										{provider.name}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-						{/* Follows the select. Describing "providers you have added
-						    credentials for" under a control saying there are none
-						    left the step promising a choice, denying one, and
-						    captioning the list that is not there. */}
-						<p id={PROVIDER_HELP_ID} className="text-ink-dim text-meta">
-							{availableProviders.length === 0
-								? "Add a model key on the previous step to choose a provider here."
-								: "Providers you have added credentials for"}
-						</p>
-					</div>
-
-					{selectedProvider && (
-						<div className="flex flex-col gap-2">
-							<Label htmlFor={MODEL_SELECT_ID}>Model</Label>
-							<Select
-								value={selectedModel}
-								onValueChange={(value) => {
-									setSelectedModel(value);
-									setSaveSuccess(false);
-
-									// Only save when the user explicitly picks a model
-									if (selectedProvider && value) {
-										saveModelConfig(selectedProvider, value);
-									}
-								}}
-								disabled={availableModels.length === 0}
-							>
-								<SelectTrigger
-									id={MODEL_SELECT_ID}
-									selectSize="lg"
-									aria-describedby={MODEL_HELP_ID}
-								>
-									<SelectValue
-										placeholder={
-											availableModels.length === 0
-												? "No models available for this provider"
-												: "Select a model"
-										}
-									/>
-								</SelectTrigger>
-								<SelectContent>
-									{availableModels.map((model) => (
-										<SelectItem key={model.id} value={model.id}>
-											{model.name}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-							<p id={MODEL_HELP_ID} className="text-ink-dim text-meta">
-								{selectedModelName && selectedProviderName && !isSaving
-									? `Agents will use ${selectedModelName} from ${selectedProviderName}`
-									: "The model your agents start with"}
-							</p>
-						</div>
-					)}
-
-					{saveSuccess && <Alert variant="success">Default model saved</Alert>}
-				</div>
+				<DefaultModelSummary
+					choice={choice}
+					onChange={() => setEditing(true)}
+				/>
 			)}
 		</div>
 	);

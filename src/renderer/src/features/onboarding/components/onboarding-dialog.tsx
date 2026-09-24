@@ -90,6 +90,15 @@ export type OnboardingDialogProps = {
 	 * Extra classes for the dialog panel
 	 */
 	className?: string;
+	/**
+	 * Called when the user dismisses the dialog (Escape or the close button).
+	 * Setup used to swallow both and offered no close button (UX U9), so a
+	 * user who did not want to connect anything yet had no way out.
+	 * Dismissing is now "skip setup": the caller decides what that means
+	 * (onboarding lands in the chat, where the connect card waits). Omit it and
+	 * the dialog keeps the old non-dismissible behaviour.
+	 */
+	onDismiss?: () => void;
 };
 
 /**
@@ -106,18 +115,23 @@ export const OnboardingDialog = ({
 	actions,
 	width = "form",
 	className,
+	onDismiss,
 }: OnboardingDialogProps): ReactNode => {
 	const contentRef = useRef<HTMLDivElement>(null);
 
 	return (
 		/*
-		 * Not dismissable, and it takes three separate refusals to say so:
-		 * `onOpenChange` ignores every close request, and escape and
-		 * outside-pointer are cancelled so Radix does not animate a close that
-		 * will not happen. Setup has to finish or be skipped step by step —
-		 * there is no partial state the app can start in.
+		 * Dismissible when the caller says what dismissing means (`onDismiss`):
+		 * Escape and the close button end setup. Without it, the three refusals
+		 * the old dialog relied on still apply. Outside presses are always
+		 * refused; see the note on `onPointerDownOutside`.
 		 */
-		<Dialog open={open}>
+		<Dialog
+			open={open}
+			onOpenChange={(next) => {
+				if (!next) onDismiss?.();
+			}}
+		>
 			<DialogContent
 				/*
 				 * A hook for a HARNESS rather than for the app: the renderer driver's state
@@ -129,8 +143,15 @@ export const OnboardingDialog = ({
 				 * reads it as `onboardingVisible`.
 				 */
 				data-onboarding-modal=""
-				showClose={false}
-				onEscapeKeyDown={(event) => event.preventDefault()}
+				showClose={onDismiss !== undefined}
+				onEscapeKeyDown={(event) => {
+					if (!onDismiss) event.preventDefault();
+				}}
+				/*
+				 * An outside press never dismisses, even when Escape does: a stray
+				 * click beside a sign-in panel mid-flow would end setup, and the
+				 * close button plus Escape are the deliberate exits.
+				 */
 				onPointerDownOutside={(event) => event.preventDefault()}
 				onInteractOutside={(event) => event.preventDefault()}
 				/*
@@ -163,7 +184,13 @@ export const OnboardingDialog = ({
 				 * progress belongs beside the title because it qualifies it.
 				 */}
 				{(title || stepIndicators) && (
-					<div className="flex shrink-0 items-center justify-between gap-4 border-hairline border-b px-6 py-4">
+					<div
+						className={cn(
+							"flex shrink-0 items-center justify-between gap-4 border-hairline border-b px-6 py-4",
+							// The close button sits at the corner; keep the step track clear of it.
+							onDismiss && "pr-14",
+						)}
+					>
 						{title ? (
 							<DialogTitle className="text-title">{title}</DialogTitle>
 						) : (
