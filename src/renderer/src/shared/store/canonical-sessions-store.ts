@@ -2683,6 +2683,49 @@ function launchSession(): string | null {
 	return target.kind === "session" ? target.sessionId : null;
 }
 /**
+ * The draft a launch with nothing to restore lands on (§H, U1/U23).
+ *
+ * WHY THIS EXISTS. The pane used to have an INTERMEDIATE SCREEN between launch and
+ * a conversation: with no session and no draft, `chat-page.tsx` rendered a "Start a
+ * chat" heading with a "New chat" button, and the composer only appeared once the
+ * user pressed it. §H deletes that screen - launch lands on the empty state with
+ * the composer docked and focused - which means the app has to decide, at launch,
+ * that it is holding a NEW conversation rather than none.
+ *
+ * WHY HERE RATHER THAN IN AN EFFECT. `persist` hydrates before the first render, so
+ * this is the one place a decision can be true of the first PAINTED frame; an effect
+ * would paint the intermediate state (or an empty column) and correct itself after,
+ * which is the flash the launch argument's own merge exists to prevent. The row it
+ * builds is the same shape `stageDraft` writes, so nothing downstream can tell a
+ * launched draft from a pressed one.
+ *
+ * IT IS A NO-OP WHEN ANYTHING IS ALREADY ACTIVE: a launch argument for a session, a
+ * restored conversation, a restored draft, or the catalogue launch (which sets
+ * `activeSessionId: null` deliberately) are all left exactly as the arms above and
+ * the persisted state left them. Only "nothing at all" takes a new draft.
+ */
+export function launchDraftSeed(
+	current: Pick<
+		CanonicalSessionsState,
+		"activeSessionId" | "activeDraftKey" | "drafts"
+	>,
+): Pick<CanonicalSessionsState, "activeDraftKey" | "drafts"> | null {
+	if (current.activeSessionId || current.activeDraftKey) return null;
+	const key = `draft:${crypto.randomUUID()}`;
+	return {
+		activeDraftKey: key,
+		drafts: {
+			...current.drafts,
+			[key]: {
+				key,
+				createRequestId: crypto.randomUUID(),
+				admissionRequestId: crypto.randomUUID(),
+			},
+		},
+	};
+}
+
+/**
  * The launch argument OUTRANKS the persisted conversation.
  *
  * Main was asked for this conversation BY NAME, and the window exists to show
@@ -2718,6 +2761,13 @@ export function mergePersistedSession(
 	if (target.kind === "catalogue") {
 		return { ...merged, activeSessionId: null };
 	}
+	/*
+	 * Nothing to restore and no conversation asked for: a launch holds a NEW
+	 * conversation rather than none (§H). See `launchDraftSeed` for why the
+	 * decision belongs in the merge and why it is a no-op in every other case.
+	 */
+	const seed = launchDraftSeed(merged);
+	if (seed) return { ...merged, ...seed };
 	return merged;
 }
 
