@@ -1797,6 +1797,39 @@ and that refusal is load-bearing: a repair must not move `latest` onto an old ta
 It is also not gated on the writeup, because an old Release's body is whatever it
 shipped with.
 
+**A negative npm read right after a publish is not evidence until it has been
+re-read through a distinct cache key.** Measured 2026-09-24 releasing v0.30.24,
+~20 minutes *after* the `Build and Publish to NPM` job reported success — its own
+output carrying `+ local-operator-ui@0.30.24` and a provenance statement in the
+sigstore transparency log — `registry.npmjs.org` still answered
+`dist-tags.latest: 0.30.23`, with no `0.30.24` in `versions`, **404** on
+`/local-operator-ui/0.30.24` and **404** on the tarball
+`/-/local-operator-ui-0.30.24.tgz`, while v0.30.23 read **200** on those same
+endpoints and two independent mirrors agreed with the stale reading. It is a cached
+negative: Cloudflare fronts the registry (`cf-cache-status: HIT`, `age: 131`,
+`max-age: 300`), and the packument, the version document and the tarball URL were
+all served from a stale replica for over 20 minutes. What discriminates is a
+**different cache key, not a second opinion**: the tarball with a cache-buster
+(`…-0.30.24.tgz?cb=<epoch>`) returned **200**, and the packument requested as
+`Accept: application/vnd.npm.install-v1+json` — its own cache entry — showed the
+version present *and* `latest` already moved, within seconds of the reads that had
+denied it. A mirror fallback is stale in exactly the same way, so the fallback and
+the original can agree on the wrong answer: vary the key before believing a
+negative, and cite the cache-busted read when the conclusion is "published".
+
+**Which is why that is worth a paragraph rather than a shrug: a `workflow_dispatch`
+repair cannot heal a genuinely missing npm artifact.** The npm steps are gated on
+the event, not on the tag — `Ensure npm supports trusted publishing`, `Install
+dependencies`, `Pack and assert the tarball ships no V8 bytecode` and `Publish to
+npm` all carry `if: github.event_name != 'workflow_dispatch'` (the last two also
+`&& steps.check_version.outputs.published == 'false'`) — because a repair exists to
+re-attach assets for an older tag whose npm version is already published, so npm is
+the one channel it must skip. `Check if version already published` refuses out loud
+on that path: `Manual repair requires the matching npm version to already exist;
+refusing publish.` A real npm absence therefore needs a Release event on the tag, or
+a hand-run `npm publish` from it — and an owner who read the cache as fact and
+dispatched a repair would get a green run that did nothing about npm at all.
+
 **Attaching an asset is repairable by re-running the job, and the rule that makes
 that true is about the asset, not about its name.** `scripts/upload-release.mjs`
 streams each installer to the pinned release ID — never buffered whole, since the mac
