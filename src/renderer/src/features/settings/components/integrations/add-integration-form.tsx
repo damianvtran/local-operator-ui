@@ -75,9 +75,15 @@ export type AddIntegrationFormProps = {
 	}>;
 };
 
-/** The note under the form, saying when an open chat sees the change. */
+/**
+ * The note under the form, saying when an open chat sees the change.
+ *
+ * It names no chat command, and no monospace (`U13`, round 2): a settings user
+ * has no reason to know a slash command, and the machine voice is for a token
+ * they would type. "Reload integrations" is the action in the chat's own words.
+ */
 export const ADD_INTEGRATION_PICKUP_NOTE =
-	"New chats can use it right away. A chat that's already open picks it up after /mcp reload.";
+	"New chats can use it right away. Open chats pick it up when you start a new chat or reload integrations there.";
 
 /**
  * One line on which transport to pick, because the pair does not explain itself
@@ -341,8 +347,7 @@ export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 			) : null}
 			<div className="flex flex-wrap items-center justify-between gap-3">
 				<p className={cn("text-body-sm text-ink-dim")}>
-					New chats can use it right away. A chat that's already open picks it
-					up after <span className="font-mono text-mono-sm">/mcp reload</span>.
+					{ADD_INTEGRATION_PICKUP_NOTE}
 				</p>
 				<div className="flex gap-2">
 					<Button type="button" variant="ghost" size="md" onClick={onCancel}>

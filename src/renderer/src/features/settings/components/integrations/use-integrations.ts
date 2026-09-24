@@ -210,7 +210,8 @@ export const catalogQueryErrorIsInvalidCwd = (error: unknown): boolean =>
 export const cwdAfterRefusal = (
 	resolved: string | null,
 	refused: string | null,
-): string | null => (refused !== null && resolved === refused ? null : resolved);
+): string | null =>
+	refused !== null && resolved === refused ? null : resolved;
 
 export function rememberedCatalogCwd(
 	sessionId: string | undefined,

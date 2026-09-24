@@ -720,6 +720,47 @@ export const SignInFailed: Story = {
 	},
 };
 
+/*
+ * The phase a COMPLETED sign-in lands in, which had no rendered state at all
+ * (D17, round 2). D3's focus rule sends this phase's lead to `Done`, and the
+ * mapping was pinned through the pure `signInFocusTarget` - so a regression in
+ * what the frame DRAWS would have reached a user unseen. It also renders the
+ * U12 case the walk found: closing it leaves a row with no primary action.
+ *
+ * The row is the catalog's own document with the operation settled, which is
+ * what the page polls while a sign-in runs; the row itself still reads
+ * `Needs sign-in` until that read comes back.
+ */
+export const SignInDone: Story = {
+	render: () => {
+		const complete = op("linear", { status: "complete" });
+		installBridge({
+			catalog: catalog([NEEDS_SIGN_IN_LINEAR, CONNECTED_NOTION]),
+			onControl: async () =>
+				ok({
+					data: {
+						...catalog([NEEDS_SIGN_IN_LINEAR, CONNECTED_NOTION], {
+							operations: [complete],
+						}),
+						operation: complete,
+					},
+					replayed: false,
+				}),
+		});
+		return <Ground />;
+	},
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: /^Sign in/ }),
+		);
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Continue in browser" }),
+		);
+		await screen.findByText(/Signed in to linear/);
+		await screen.findByRole("button", { name: "Done" });
+	},
+};
+
 /** The key dialog for a server whose config references a secret. */
 export const AddKey: Story = {
 	render: () => {

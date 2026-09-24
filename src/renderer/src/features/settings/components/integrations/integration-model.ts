@@ -216,6 +216,29 @@ export const latestOperationFor = (
 		.filter((op) => op.name === name)
 		.sort((a, b) => b.created_at - a.created_at)[0] ?? null;
 
+/**
+ * The newest operation whose OUTCOME says something about the credential.
+ *
+ * A CANCELLED operation is not one of them: the user stopped it, so it did not
+ * add or remove a credential and the last operation that DID decide is still
+ * the truth about the row. Skipping them is what keeps a cancelled attempt from
+ * erasing the state it was trying to clear (U14, round 2): cancelling a sign-in
+ * on a row whose credential a completed sign-out had removed used to leave the
+ * cancelled `login` as the newest operation, which is not a sign-out, so the
+ * row decayed to "Ready" with no route back to a key - beside servers that
+ * genuinely work. Everything that judges the CREDENTIAL reads this (`isSignedOut`
+ * callers, a failed sign-in's wording, the remembered reading); anything asking
+ * what is in flight uses `runningOperationFor`.
+ */
+export const decisiveOperationFor = (
+	name: string,
+	operations: readonly McpCatalogOperation[],
+): McpCatalogOperation | null =>
+	latestOperationFor(
+		name,
+		operations.filter((op) => op.status !== "cancelled"),
+	);
+
 /** Which of the two names the backend uses for "collect a key for this row". */
 export const offersKey = (row: Pick<IntegrationRow, "actions">): boolean =>
 	row.actions.includes("set_key") || row.actions.includes("add_key");
@@ -319,7 +342,7 @@ export function integrationStatus(
 	 * cannot word: a sign-out the user just performed, and a sign-in that
 	 * failed. Both are the backend's own records, not this page's guess.
 	 */
-	const lastOperation = latestOperationFor(row.name, operations);
+	const lastOperation = decisiveOperationFor(row.name, operations);
 	/*
 	 * Through the shared predicates, never re-spelled here: this line used to be
 	 * its own copy of the rule (`status !== "running"`), so fixing `isSignedOut`
@@ -327,6 +350,12 @@ export function integrationStatus(
 	 * that never happened.
 	 */
 	const signedOut = isSignedOut(lastOperation) && row.status !== "connected";
+	/*
+	 * The expired-check reading, resolved once rather than inside the switch: a
+	 * declaration directly in a switch clause is a lint error here
+	 * (`noSwitchDeclarations`), because another clause can fall into it.
+	 */
+	const observedAt = memory.connectedAt ?? row.status_observed_at;
 	const failedSignOut =
 		isFailedSignOut(lastOperation) && row.status !== "connected";
 	const lastSignInFailed =
@@ -447,7 +476,6 @@ export function integrationStatus(
 			 * a health the same payload just contradicted (R2-3, round 2: a live
 			 * Disconnect read exactly that way).
 			 */
-			const observedAt = memory.connectedAt ?? row.status_observed_at;
 			if (
 				row.status_basis === "stored" &&
 				observedAt !== null &&
@@ -551,9 +579,10 @@ export type PrimaryAction = {
 	label: string;
 	/**
 	 * How the button is drawn, when the action is one the row does not need
-	 * fixed. Only a FIRST Test - a row added and not yet checked - is a ghost,
-	 * so the outlined secondary weight is spent on the rows that are actually
-	 * asking for something (D1).
+	 * fixed. Only a FIRST Test - a row added and not yet checked - and a Connect
+	 * on a row with no memory behind it are ghosts, so the outlined secondary
+	 * weight is spent on the rows that are actually asking for something (D1,
+	 * D13).
 	 */
 	variant?: "secondary" | "ghost";
 };
@@ -597,7 +626,7 @@ export function primaryAction(
 	// the backend again. The audit's own table gives this row "Check again".
 	if (!isKnownIntegrationStatus(row.status))
 		return has("test") ? { kind: "test", label: "Check again" } : null;
-	const lastOperation = latestOperationFor(row.name, operations);
+	const lastOperation = decisiveOperationFor(row.name, operations);
 	const signInFailed =
 		lastOperation?.status === "failed" && isSignInAction(lastOperation);
 	switch (row.status) {
@@ -659,8 +688,24 @@ export function primaryAction(
 			 * `connect` is offered by a live runtime (the catalog route offers it
 			 * only with facts in hand) and by the session route, where it is the
 			 * only verb that can start a server at all.
+			 *
+			 * GHOST FOR A ROW THAT HAS NEVER BEEN CHECKED (D13, round 2): the
+			 * session route's `Ready` rows - `echo`, `gitlab` - carry no memory, so
+			 * nothing demoted them and they were drawn as loudly as the `Sign in`
+			 * on a row that needs a decision. A row that says nothing is wrong, and
+			 * whose Connect only STARTS a server, is an offer rather than a
+			 * summons. The live-basis row keeps the outlined weight: `not_started`
+			 * from a live runtime is "Not connected", which IS a decision the user
+			 * has to make.
 			 */
-			if (has("connect")) return { kind: "connect", label: "Connect" };
+			if (has("connect"))
+				return {
+					kind: "connect",
+					label: "Connect",
+					...(memory.connectedAt === null && row.status_basis !== "live"
+						? { variant: "ghost" as const }
+						: {}),
+				};
 			/*
 			 * A row that has never been checked keeps its Test findable, and
 			 * ghost so it ranks below the secondary buttons on the rows that need
@@ -697,7 +742,9 @@ export const isSignedOut = (operation: McpCatalogOperation | null): boolean =>
 	);
 
 /** Whether an operation is a sign-out that did NOT complete. */
-export const isFailedSignOut = (operation: McpCatalogOperation | null): boolean =>
+export const isFailedSignOut = (
+	operation: McpCatalogOperation | null,
+): boolean =>
 	Boolean(
 		operation &&
 			operation.action === "logout" &&
@@ -891,7 +938,7 @@ export function integrationGroupOf(
 	// again".
 	if (row.status === "needs_sign_in" || row.status === "error")
 		return "attention";
-	const lastOperation = latestOperationFor(row.name, operations);
+	const lastOperation = decisiveOperationFor(row.name, operations);
 	// A sign-out and a failed sign-in are the user's own last acts on the row,
 	// and both leave it needing a credential (U2, U3).
 	if (isSignedOut(lastOperation) && row.status !== "connected")
@@ -971,7 +1018,7 @@ export function advanceMemories(
 	for (const row of document.servers) {
 		const before = memoryFor(previous, row.name);
 		const running = runningOperationFor(row.name, document.operations);
-		const lastOperation = latestOperationFor(row.name, document.operations);
+		const lastOperation = decisiveOperationFor(row.name, document.operations);
 		const signedOut = isSignedOut(lastOperation);
 		const connected =
 			row.status === "connected" &&

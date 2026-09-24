@@ -327,14 +327,17 @@ test("the payload's running operation drives the sign-in dialog's own sentence",
 	const operation = document_.operations[0];
 	assert.equal(operation.status, "running");
 	assert.equal(operation.browser_opened, true);
-	const progress = m.signInProgress(operation.name, operation);
+	const progress = m.signInProgress(operation.name, operation, false);
 	assert.match(progress.message, /Your browser opened/);
 	assert.equal(progress.link, operation.authorization_url);
 	// The same operation with the launcher's failure branch says the opposite,
 	// which is what keeps the sentence a reading rather than a slogan.
 	assert.match(
-		m.signInProgress(operation.name, { ...operation, browser_opened: false })
-			.message,
+		m.signInProgress(
+			operation.name,
+			{ ...operation, browser_opened: false },
+			false,
+		).message,
 		/didn't open/,
 	);
 });

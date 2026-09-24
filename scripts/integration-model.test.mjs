@@ -571,19 +571,203 @@ test("a refusal code this build has never seen still gets a true sentence", () =
 	}
 });
 
+test("a dialog body that widens itself keeps the room a focused control's ring needs (D12)", () => {
+	/*
+	 * Round 2's MAJOR: `p-1.5 -mx-1.5` on a dialog body put the prose back on the
+	 * title's edge and, in the same stroke, pushed the control out to the
+	 * container's content box - so the ring, which is `outline-width: 2px` at
+	 * `outline-offset: 2px` (src/renderer/src/styles/index.css) and is clipped by
+	 * the scroll body it sits in, lost its left and right sides. Measured on the
+	 * rendered stories in both brand palettes: the focused input's mid row carried
+	 * 0 accent pixels before this round's fix (outline solid, `:focus-visible`
+	 * true, 0 px of room either side) and 4 after (2 per side, 6 px of room).
+	 *
+	 * WHAT THIS PINS, AND WHAT IT CANNOT: it reads the source, so it cannot tell
+	 * whether the classes land on the right elements - the frames and the numbers
+	 * above are what answer that. This is what fails if the room is dropped again
+	 * in a refactor, which is exactly how it was lost the first time.
+	 */
+	/*
+	 * The COUNT is the pin, and it is deliberate: "at least one px-1.5" survived
+	 * deleting one of them, which is the shape of the regression this exists for.
+	 * Each number is the number of wrappers in that file that hold a focusable
+	 * control, so a restructure that legitimately changes it must say so here.
+	 * The key dialog has three (the two label+input wrappers and the replace
+	 * checkbox row); the sign-in dialog has one (the link row).
+	 */
+	for (const [file, wrappers] of [
+		[
+			"src/renderer/src/features/settings/components/integrations/integration-key-dialog.tsx",
+			3,
+		],
+		[
+			"src/renderer/src/features/settings/components/integrations/integration-sign-in-dialog.tsx",
+			1,
+		],
+	]) {
+		const source = readFileSync(file, "utf8");
+		assert.match(
+			source,
+			/className="[^"]*-mx-1\.5[^"]*p-1\.5[^"]*"/,
+			`${file}: the body widens itself with -mx-1.5 beside p-1.5`,
+		);
+		const room = [...source.matchAll(/className="[^"]*px-1\.5/g)].length;
+		assert.equal(
+			room,
+			wrappers,
+			`${file}: every wrapper holding a focusable control carries px-1.5 (found ${room}, expected ${wrappers})`,
+		);
+	}
+});
+
 /* ------------------------------------------------------ sign-in */
+
+test("a cancelled attempt does not erase the credential state it never changed (U14)", () => {
+	/*
+	 * Round 2: with `linear` signed out (correct: "Signed out | Sign in"),
+	 * starting a sign-in and cancelling it filed the row back under "Ready" with
+	 * NO primary action, beside servers that genuinely work - the last thing the
+	 * user did had changed nothing about the credential, and the page forgot the
+	 * thing that had. A cancelled operation carries no information about the
+	 * credential, so the newest DECISIVE one still does.
+	 */
+	const signedOut = row("linear", {
+		status: "not_started",
+		status_basis: "stored",
+		tool_count: null,
+		auth: { kind: "oauth", signed_in: false, secret_refs: [] },
+		actions: ["test", "sign_in", "remove"],
+	});
+	const logout = op("linear", {
+		id: "b".repeat(32),
+		action: "logout",
+		status: "complete",
+		created_at: 1,
+	});
+	const cancelled = op("linear", {
+		id: "c".repeat(32),
+		action: "login",
+		status: "cancelled",
+		created_at: 2,
+	});
+
+	assert.equal(
+		m.latestOperationFor("linear", [logout, cancelled]).id,
+		cancelled.id,
+		"the cancelled attempt IS the newest operation - which is why it needed its own rule",
+	);
+	assert.equal(
+		m.decisiveOperationFor("linear", [logout, cancelled]).id,
+		logout.id,
+	);
+
+	const status = m.integrationStatus(
+		signedOut,
+		[logout, cancelled],
+		undefined,
+		1_000,
+	);
+	assert.equal(status.label, "Signed out");
+	assert.equal(status.tone, "warning");
+	assert.equal(
+		m.integrationGroupOf(signedOut, [logout, cancelled]),
+		"attention",
+	);
+	assertLeadsWithSignIn(m.primaryAction(signedOut, [logout, cancelled]));
+
+	/*
+	 * And the row this defect was measured on: with the skip removed, the same
+	 * two operations leave the newest one a cancelled login - not a sign-out,
+	 * not a failure - so the row reads Ready with nothing on it to press.
+	 */
+	const before = m.integrationStatus(signedOut, [cancelled], undefined, 1_000);
+	assert.notEqual(before.label, "Signed out");
+
+	// The memory keeps treating the row as credential-less, too: a failed or
+	// cancelled attempt is not a reading, so `connectedAt` must not survive it.
+	assert.equal(
+		m.memoryFor(
+			m.advanceMemories(undefined, {
+				servers: [signedOut],
+				operations: [logout, cancelled],
+			}),
+			"linear",
+		).connectedAt,
+		null,
+	);
+});
+
+/** The two things U14 asks for: the Sign in is there, and it leads. */
+function assertLeadsWithSignIn(primary) {
+	assert.equal(primary.kind, "sign_in");
+	assert.equal(primary.label, "Sign in");
+}
+
+test("a Connect on a never-checked row is an offer, not a demand (D13)", () => {
+	/*
+	 * Round 2: the session route's Ready rows (`echo`, `gitlab`) carried the same
+	 * OUTLINED Connect as the `Sign in` on a row needing attention. A row that
+	 * says nothing is wrong, and whose Connect only starts a server, is drawn at
+	 * the ghost weight; the live runtime's "Not connected" row keeps the outlined
+	 * one, because there the press IS the decision.
+	 */
+	const cold = row("echo", {
+		status: "not_started",
+		status_basis: "stored",
+		actions: ["connect", "test", "remove"],
+	});
+	assert.equal(m.primaryAction(cold, [], undefined).variant, "ghost");
+
+	const live = row("notion", {
+		status: "not_started",
+		status_basis: "live",
+		actions: ["test", "connect", "sign_out", "remove"],
+	});
+	assert.equal(
+		m.primaryAction(live, [], undefined).variant,
+		undefined,
+		"a live `not_started` is Not connected, and that row is asking for the press",
+	);
+
+	/*
+	 * A row that HAS been checked keeps the outlined weight: it has a result, so
+	 * its next step is to answer it. The memory is what says so, and it is
+	 * advanced the way the page advances it.
+	 */
+	const checked = row("echo", {
+		status: "connected",
+		status_basis: "probe",
+		status_observed_at: 1_000,
+		tool_count: 3,
+		tool_count_basis: "probe",
+		actions: ["connect", "test", "remove"],
+	});
+	const memories = m.advanceMemories(
+		undefined,
+		{ servers: [checked], operations: [] },
+		1_000,
+	);
+	const idle = { ...checked, status: "not_started", status_basis: "stored" };
+	assert.equal(
+		m.primaryAction(idle, [], memories).variant,
+		undefined,
+		"a row with a remembered reading is not demoted to a ghost",
+	);
+});
 
 test("the sign-in dialog claims a browser opened only when the backend said so", () => {
 	assert.match(
-		m.signInProgress("linear", null).message,
+		m.signInProgress("linear", null, false).message,
 		/Waiting for you to approve/,
 	);
 	assert.match(
-		m.signInProgress("linear", op("linear", { browser_opened: null })).message,
+		m.signInProgress("linear", op("linear", { browser_opened: null }), false)
+			.message,
 		/Waiting for you to approve/,
 	);
 	assert.match(
-		m.signInProgress("linear", op("linear", { browser_opened: true })).message,
+		m.signInProgress("linear", op("linear", { browser_opened: true }), false)
+			.message,
 		/Your browser opened/,
 	);
 	const noBrowser = m.signInProgress(
@@ -592,6 +776,7 @@ test("the sign-in dialog claims a browser opened only when the backend said so",
 			browser_opened: false,
 			authorization_url: "https://x.example/auth",
 		}),
+		false,
 	);
 	assert.match(noBrowser.message, /didn't open/);
 	assert.equal(noBrowser.link, "https://x.example/auth");
@@ -601,7 +786,7 @@ test("the sign-in dialog claims a browser opened only when the backend said so",
 		op("linear", { browser_opened: false }),
 	])
 		assert.doesNotMatch(
-			m.signInProgress("linear", operation).message,
+			m.signInProgress("linear", operation, false).message,
 			/browser opened/,
 		);
 });
@@ -612,33 +797,53 @@ test("a failed sign-in separates what happened, the server's words, and what to 
 	 * colon, all of it `danger`, and a next step - Try again - that cannot fix a
 	 * rejected redirect. The three parts are separate fields now, and the next
 	 * step is chosen from the reason.
+	 *
+	 * Round 2 (D15) adds the second axis: the sentence may only name a control
+	 * the row actually has, so every key-mentioning case is asserted BOTH ways.
 	 */
 	const redirect = m.signInProgress(
 		"linear",
 		op("linear", { status: "failed", message: "redirect refused" }),
+		true,
 	);
 	assert.equal(redirect.message, "Sign-in didn't finish.");
 	assert.equal(redirect.reason, "redirect refused");
-	assert.match(redirect.nextStep, /add a key|Check the server's settings/);
+	assert.match(redirect.nextStep, /add a key/);
 	assert.doesNotMatch(redirect.message, /redirect/);
+	// The same reason on a row with no key route: same diagnosis, and no advice
+	// the surface cannot carry out.
+	const redirectNoKey = m.signInProgress(
+		"linear",
+		op("linear", { status: "failed", message: "redirect refused" }),
+		false,
+	);
+	assert.doesNotMatch(redirectNoKey.nextStep, /key/);
+	assert.match(redirectNoKey.nextStep, /Check the server's settings/);
 
-	const bare = m.signInProgress("linear", op("linear", { status: "failed" }));
+	const bare = m.signInProgress(
+		"linear",
+		op("linear", { status: "failed" }),
+		false,
+	);
 	assert.equal(bare.message, "Sign-in didn't finish.");
 	assert.match(bare.reason, /didn't say why/);
 	assert.notEqual(bare.message, "Sign-in failed.");
 
-	// The no-OAuth failure points at the key route, which is the one that works.
-	const noOAuth = m.signInProgress(
-		"acme",
-		op("acme", {
-			status: "failed",
-			message:
-				"No OAuth authorization server was discovered for this server; check its URL and your network, or add its key instead.",
-		}),
-	);
+	// The no-OAuth failure points at the key route, which is the one that works -
+	// where there is one.
+	const noOAuthOperation = op("acme", {
+		status: "failed",
+		message:
+			"No OAuth authorization server was discovered for this server; check its URL and your network, or add its key instead.",
+	});
+	const noOAuth = m.signInProgress("acme", noOAuthOperation, true);
 	assert.match(noOAuth.nextStep, /Add its key/);
+	const noOAuthNoKey = m.signInProgress("linear", noOAuthOperation, false);
+	assert.doesNotMatch(noOAuthNoKey.nextStep, /key/);
+	assert.match(noOAuthNoKey.nextStep, /Check the server's settings/);
 	assert.equal(
-		m.signInProgress("linear", op("linear", { status: "complete" })).tone,
+		m.signInProgress("linear", op("linear", { status: "complete" }), false)
+			.tone,
 		"success",
 	);
 });
@@ -1266,13 +1471,21 @@ test("the key dialog hands onSave the HEADER, not just the values (R2-1)", () =>
 		replace: false,
 		canReplace: false,
 	});
-	assert.equal(keyless.header, "X-Api-Key", "the header travels with the write");
+	assert.equal(
+		keyless.header,
+		"X-Api-Key",
+		"the header travels with the write",
+	);
 	assert.deepEqual(
 		Object.keys(keyless.values),
 		["X_API_KEY"],
 		"exactly one id, which is what `add_key` requires beside a header",
 	);
-	assert.equal(keyless.values.X_API_KEY, "s3cret", "trimmed, and the value is the secret");
+	assert.equal(
+		keyless.values.X_API_KEY,
+		"s3cret",
+		"trimmed, and the value is the secret",
+	);
 	assert.deepEqual(keyless.confirmedReplace, []);
 
 	// The referenceful mode is the `set_key` write it always was: no header.
@@ -1284,7 +1497,11 @@ test("the key dialog hands onSave the HEADER, not just the values (R2-1)", () =>
 		replace: true,
 		canReplace: true,
 	});
-	assert.equal(referenced.header, undefined, "no header where the config names the key");
+	assert.equal(
+		referenced.header,
+		undefined,
+		"no header where the config names the key",
+	);
 	assert.deepEqual(referenced.confirmedReplace, ["PGPASSWORD", "PGUSER"]);
 	assert.deepEqual(referenced.values, { PGPASSWORD: "p", PGUSER: "u" });
 
@@ -1324,10 +1541,18 @@ test("only a COMPLETE sign-out is a sign-out, and a failed one says so (R2-2)", 
 	const failed = op("notion", { action: "logout", status: "failed" });
 	const cancelled = op("notion", { action: "logout", status: "cancelled" });
 	assert.equal(m.isSignedOut(complete), true);
-	assert.equal(m.isSignedOut(failed), false, "a failed sign-out kept the credential");
+	assert.equal(
+		m.isSignedOut(failed),
+		false,
+		"a failed sign-out kept the credential",
+	);
 	assert.equal(m.isSignedOut(cancelled), false);
 	assert.equal(m.isFailedSignOut(failed), true);
-	assert.equal(m.isFailedSignOut(complete), false, "a completed one is not a failure");
+	assert.equal(
+		m.isFailedSignOut(complete),
+		false,
+		"a completed one is not a failure",
+	);
 	assert.equal(m.isFailedSignOut(op("notion", { status: "running" })), false);
 
 	const base = row("notion", { status: "not_started", status_basis: "stored" });
@@ -1382,7 +1607,11 @@ test("the expired-check memory is for a STORED basis, never a live one (R2-3)", 
 	};
 	const now = m.integrationStatus(live, [], memories, at + 60_000);
 	assert.equal(now.label, "Not connected");
-	assert.notEqual(now.tone, "success", "no success tone for a row the chat says is off");
+	assert.notEqual(
+		now.tone,
+		"success",
+		"no success tone for a row the chat says is off",
+	);
 	assert.equal(m.integrationGroupOf(connected, [], memories), "connected");
 	assert.notEqual(
 		m.integrationGroupOf(live, [], memories),
@@ -1484,7 +1713,13 @@ test("the expired-check reading survives a reload (U10, R2-7)", () => {
 	const justNow = m.advanceMemories(
 		undefined,
 		{
-			servers: [row("notion", { status: "connected", status_basis: "probe", tool_count: 12 })],
+			servers: [
+				row("notion", {
+					status: "connected",
+					status_basis: "probe",
+					tool_count: 12,
+				}),
+			],
 			operations: [],
 		},
 		now,
@@ -1507,13 +1742,19 @@ test("a refused folder is dropped, forgotten, and recognised by code (R2-4)", ()
 		null,
 		"the refused folder is not asked for again",
 	);
-	assert.equal(m.cwdAfterRefusal("/home/u/here", "/home/u/gone"), "/home/u/here");
+	assert.equal(
+		m.cwdAfterRefusal("/home/u/here", "/home/u/gone"),
+		"/home/u/here",
+	);
 	assert.equal(m.cwdAfterRefusal(null, "/home/u/gone"), null);
 	assert.equal(m.cwdAfterRefusal("/home/u/here", null), "/home/u/here");
 
 	// Recognised from the CODE, never from a message the backend may reword.
 	assert.equal(m.catalogQueryErrorIsInvalidCwd({ code: "invalid_cwd" }), true);
-	assert.equal(m.catalogQueryErrorIsInvalidCwd(new Error("invalid_cwd")), false);
+	assert.equal(
+		m.catalogQueryErrorIsInvalidCwd(new Error("invalid_cwd")),
+		false,
+	);
 	assert.equal(m.catalogQueryErrorIsInvalidCwd(null), false);
 
 	// And the store is actually cleaned, not just ignored.
@@ -1529,7 +1770,11 @@ test("a refused folder is dropped, forgotten, and recognised by code (R2-4)", ()
 	m.forgetCatalogCwd("s1", storage);
 	const left = JSON.parse(table[m.CWD_KEY]);
 	assert.equal("s1" in left, false, "the refused folder is forgotten");
-	assert.equal(left.s2, "/home/u/here", "and only that conversation's entry goes");
+	assert.equal(
+		left.s2,
+		"/home/u/here",
+		"and only that conversation's entry goes",
+	);
 
 	// A store that throws is not a failed render, here either.
 	m.forgetCatalogCwd("s2", {
@@ -1578,16 +1823,35 @@ test("the key route is offered only where the backend lists it (round-3 eligibil
 		auth: { kind: "api_key", signed_in: false, secret_refs: [] },
 		actions: ["test", "sign_in", "remove"],
 	});
-	assert.equal(m.offersKey(literal), false, "no key verb means no key affordance");
+	assert.equal(
+		m.offersKey(literal),
+		false,
+		"no key verb means no key affordance",
+	);
 	assert.equal(m.primaryAction(literal, [], undefined).kind, "sign_in");
 	assert.equal(
-		m.overflowItems(literal, [], undefined).some((item) => item.kind === "set_key"),
+		m
+			.overflowItems(literal, [], undefined)
+			.some((item) => item.kind === "set_key"),
 		false,
 		"and not hidden in the overflow either",
 	);
 
 	// The two the fixture does offer one, under either name.
 	for (const name of ["acme-api", "postgres-prod"]) {
-		assert.equal(m.offersKey(row(name, { auth: { kind: "api_key", signed_in: false, secret_refs: [] }, actions: ["test", name === "acme-api" ? "add_key" : "set_key", "remove"] })), true, name);
+		assert.equal(
+			m.offersKey(
+				row(name, {
+					auth: { kind: "api_key", signed_in: false, secret_refs: [] },
+					actions: [
+						"test",
+						name === "acme-api" ? "add_key" : "set_key",
+						"remove",
+					],
+				}),
+			),
+			true,
+			name,
+		);
 	}
 });

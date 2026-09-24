@@ -184,13 +184,23 @@ export const IntegrationKeyDialog: FC<IntegrationKeyDialogProps> = ({
 				</>
 			}
 		>
-			<div className="-mx-1.5 flex flex-col gap-3 p-1.5 text-body text-ink-muted">
+			<div
+				/*
+				 * `p-1.5 -mx-1.5` is D7's pair: the negative margin puts the prose on
+				 * the title's edge and the padding is the room a focused control's
+				 * outline needs inside the scroll body. The controls carry their own
+				 * `px-1.5` (D12, round 2) so that room survives: with the body's
+				 * negative margin the control used to span the container's content
+				 * box exactly, and the ring's left and right sides were clipped away.
+				 */
+				className="-mx-1.5 flex flex-col gap-3 p-1.5 text-body text-ink-muted"
+			>
 				<p>
 					Keys are saved encrypted on this computer. Other integrations that use
 					the same key name share it.
 				</p>
 				{keyless ? (
-					<div className="flex flex-col gap-1.5">
+					<div className="flex flex-col gap-1.5 px-1.5">
 						<Label htmlFor="integration-key-name">
 							The header this server wants the key in
 						</Label>
@@ -210,7 +220,7 @@ export const IntegrationKeyDialog: FC<IntegrationKeyDialogProps> = ({
 				{fieldKeys
 					.filter((key) => keyless !== true || key.trim().length > 0)
 					.map((key) => (
-						<div key={key} className="flex flex-col gap-1.5">
+						<div key={key} className="flex flex-col gap-1.5 px-1.5">
 							<Label htmlFor={`integration-key-${key}`} className="font-mono">
 								{keyless ? "Key" : key}
 							</Label>
@@ -234,7 +244,7 @@ export const IntegrationKeyDialog: FC<IntegrationKeyDialogProps> = ({
 				 * made and could not see.
 				 */}
 				{canReplace ? (
-					<div className="flex items-center gap-2 text-body-sm">
+					<div className="flex items-center gap-2 px-1.5 text-body-sm">
 						<Checkbox
 							id="integration-key-replace"
 							checked={replace}

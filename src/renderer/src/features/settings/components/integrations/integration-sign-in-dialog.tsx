@@ -45,6 +45,13 @@ export type SignInPhase =
 export function signInProgress(
 	name: string,
 	operation: McpCatalogOperation | null,
+	/*
+	 * Whether the row this dialog was opened for HAS a key route on this
+	 * surface. Required rather than optional: an omitted flag defaults to the
+	 * sentence that names a control nobody can press, which is the defect D15
+	 * raised, so the compiler asks every call site instead of the copy guessing.
+	 */
+	keyRoute: boolean,
 ): {
 	message: string;
 	tone: "progress" | "success" | "failure";
@@ -104,7 +111,7 @@ export function signInProgress(
 		// The absent-reason case still says so rather than leaving the reader to
 		// wonder whether the dialog lost it (N4).
 		reason: operation.message?.trim() ?? "The server didn't say why.",
-		nextStep: signInNextStep(operation.message ?? null),
+		nextStep: signInNextStep(operation.message ?? null, keyRoute),
 	};
 }
 
@@ -116,12 +123,28 @@ export function signInProgress(
  * the two things that can change it - the server's own settings, or a key. The
  * generic line is the one for a failure this page cannot classify.
  */
-export function signInNextStep(reason: string | null): string {
+export function signInNextStep(
+	reason: string | null,
+	keyRoute: boolean,
+): string {
 	const text = (reason ?? "").toLowerCase();
+	/*
+	 * The key sentence is offered ONLY when the row offers the key (D15, round
+	 * 2). `linear` in this state has no `add_key`/`set_key` in its actions and no
+	 * secret reference, so its overflow is Test / Open config file / Remove:
+	 * "add a key instead" sent the reader looking for a control that does not
+	 * exist anywhere on the surface - which is the same defect D5 was raised
+	 * for. When there is no key route the honest half of the sentence is the
+	 * part that IS actionable.
+	 */
 	if (text.includes("redirect"))
-		return "This server may not accept sign-ins from Local Operator. Check the server's settings, or add a key instead.";
+		return keyRoute
+			? "This server may not accept sign-ins from Local Operator. Check the server's settings, or add a key instead."
+			: "This server may not accept sign-ins from Local Operator. Check the server's settings, then try again.";
 	if (text.includes("no oauth") || text.includes("authorization server"))
-		return "This server doesn't publish a browser sign-in. Add its key instead.";
+		return keyRoute
+			? "This server doesn't publish a browser sign-in. Add its key instead."
+			: "This server doesn't publish a browser sign-in. Check the server's settings, then try again.";
 	if (text.includes("network") || text.includes("connect"))
 		return "Check the server's URL and your network, then try again.";
 	return "Check the server's settings, then try again.";
@@ -148,16 +171,32 @@ export type IntegrationSignInDialogProps = {
 	name: string;
 	/** `reauth` replaces an existing sign-in; the copy says so. */
 	action: "login" | "reauth";
+	/**
+	 * Whether the row this dialog belongs to offers the key route (D15).
+	 *
+	 * It rides in from the row's own action list through the section, because
+	 * the failed-sign-in copy may only name a control the surface can actually
+	 * draw - and the dialog cannot see the row.
+	 */
+	keyRoute: boolean;
 	phase: SignInPhase;
 	onStart: () => void;
 	onCancel: (operationId: string) => void;
 	onOpenLink: (url: string) => void;
-	onClose: () => void;
+	/*
+	 * The close reports what it MEANS, not just that it happened: a completed
+	 * sign-in leaves the row with no primary action, so the caller has to move
+	 * focus somewhere of its own choosing (U12). The dialog is the only place
+	 * that knows the phase, and a second copy of the success rule in the caller
+	 * is how the two would come to disagree.
+	 */
+	onClose: (outcome: "signed-in" | "dismissed") => void;
 };
 
 export const IntegrationSignInDialog: FC<IntegrationSignInDialogProps> = ({
 	name,
 	action,
+	keyRoute,
 	phase,
 	onStart,
 	onCancel,
@@ -166,7 +205,7 @@ export const IntegrationSignInDialog: FC<IntegrationSignInDialogProps> = ({
 }) => {
 	const operation = phase.kind === "running" ? phase.operation : null;
 	const progress =
-		phase.kind === "running" ? signInProgress(name, operation) : null;
+		phase.kind === "running" ? signInProgress(name, operation, keyRoute) : null;
 	const running =
 		phase.kind === "starting" ||
 		(phase.kind === "running" && progress?.tone === "progress");
@@ -195,10 +234,14 @@ export const IntegrationSignInDialog: FC<IntegrationSignInDialogProps> = ({
 		if (focusTarget) leadRef.current?.focus();
 	}, [focusTarget]);
 
+	/** Every close path - Done, Close, Escape, the scrim - reports the phase's outcome. */
+	const close = () =>
+		onClose(progress?.tone === "success" ? "signed-in" : "dismissed");
+
 	return (
 		<BaseDialog
 			open
-			onClose={onClose}
+			onClose={close}
 			maxWidth="xs"
 			title={`Sign in to ${name}`}
 			/*
@@ -223,7 +266,7 @@ export const IntegrationSignInDialog: FC<IntegrationSignInDialogProps> = ({
 					) : (
 						<SecondaryButton
 							ref={phase.kind === "ready" ? undefined : leadRef}
-							onClick={onClose}
+							onClick={close}
 						>
 							{progress?.tone === "success" ? "Done" : "Close"}
 						</SecondaryButton>
@@ -248,7 +291,11 @@ export const IntegrationSignInDialog: FC<IntegrationSignInDialogProps> = ({
 				/*
 				 * `p-1.5 -mx-1.5`: the inset is there to give a control's outline
 				 * room inside the dialog's scroll body, and the negative margin
-				 * puts the TEXT back on the title's edge (D7).
+				 * puts the TEXT back on the title's edge (D7). The two classes are
+				 * the same 6 px seen from opposite sides, which is why the padding
+				 * cannot be dropped: the controls inside carry their own `px-1.5`
+				 * (D12, round 2) so that the room a focus ring needs is the room the
+				 * scroll container still shows.
 				 */
 				className="-mx-1.5 flex flex-col gap-3 p-1.5 text-body text-ink-muted"
 				aria-live="polite"
@@ -307,28 +354,44 @@ export const IntegrationSignInDialog: FC<IntegrationSignInDialogProps> = ({
 					</div>
 				) : null}
 				{progress?.link && progress.tone === "progress" ? (
-					<div className="flex flex-wrap items-center gap-1">
-						<span
-							className="max-w-full truncate font-mono text-ink-dim text-mono-sm"
-							title={progress.link}
-						>
-							{progress.link}
-						</span>
-						{/* The link truncates at narrow widths, so it needs a way to
-						    be taken away whole (D11, U4). */}
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							aria-label="Copy the sign-in link"
-							onClick={() => {
-								void navigator.clipboard
-									.writeText(progress.link ?? "")
-									.then(() => showInfoToast("Sign-in link copied."))
-									.catch(() => undefined);
-							}}
-						>
-							<Copy aria-hidden="true" />
-						</Button>
+					/*
+					 * `px-1.5`: the row holds two focusable controls, and the scroll body
+					 * the ring is drawn inside is widened by `-mx-1.5`. Without this the
+					 * ring's left and right sides fall outside the container's clip and
+					 * a focused control looks unmarked (D12, round 2).
+					 *
+					 * The URL owns its own line (`min-w-0 flex-1` + a nowrap row) so the
+					 * copy control anchors to the END of the truncated URL instead of
+					 * wrapping to the line below it, where it read as the leading icon
+					 * of "Open the sign-in page" (D14, round 2).
+					 */
+					<div className="flex flex-col items-start gap-1 px-1.5">
+						<div className="flex w-full min-w-0 items-center gap-1">
+							<span
+								className="min-w-0 flex-1 truncate font-mono text-ink-dim text-mono-sm"
+								title={progress.link}
+							>
+								{progress.link}
+							</span>
+							{/* The link truncates at narrow widths, so it needs a way to
+							    be taken away whole (D11, U4). The tooltip is the visible
+							    half of its name: icon-only, nothing on screen said what
+							    it does (D14). */}
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								aria-label="Copy the sign-in link"
+								title="Copy the sign-in link"
+								onClick={() => {
+									void navigator.clipboard
+										.writeText(progress.link ?? "")
+										.then(() => showInfoToast("Sign-in link copied."))
+										.catch(() => undefined);
+								}}
+							>
+								<Copy aria-hidden="true" />
+							</Button>
+						</div>
 						<Button
 							variant="link"
 							size="sm"

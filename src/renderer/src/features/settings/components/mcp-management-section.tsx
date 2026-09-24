@@ -59,6 +59,8 @@ import {
 	integrationCountLabel,
 	integrationFailureMessage,
 	isSignInAction,
+	offersKey,
+	primaryAction,
 } from "./integrations/integration-model";
 import {
 	IntegrationRow,
@@ -194,8 +196,19 @@ export const McpManagementSection: FC<{
 	const rowPrimaryRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 	const rowOverflowRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 	const addSlotRef = useRef<HTMLButtonElement>(null);
+	/**
+	 * The search field, so "Clear search" (and Escape) can hand focus back to the
+	 * control the user was typing in rather than to `<body>` (n1, n2).
+	 */
+	const searchRef = useRef<HTMLInputElement>(null);
 	const dialogReturn = useRef<HTMLElement | null>(null);
 	const [focusAfterAdd, setFocusAfterAdd] = useState<string | null>(null);
+	/*
+	 * The row a COMPLETED sign-in belonged to (U12). It is a third deferred move
+	 * beside the two below because it waits for a different thing: not for a row
+	 * to appear, but for the row to stop asking for the credential it just got.
+	 */
+	const [focusAfterSignIn, setFocusAfterSignIn] = useState<string | null>(null);
 	const [focusAfterRemove, setFocusAfterRemove] = useState<{
 		index: number;
 	} | null>(null);
@@ -223,6 +236,27 @@ export const McpManagementSection: FC<{
 		setDialog(next);
 	}, []);
 
+	/**
+	 * Close the sign-in dialog, arming the row's own control when it SUCCEEDED.
+	 *
+	 * A completed sign-in is the one close whose opener is guaranteed to be gone:
+	 * the row has its credential, so it stops offering Sign in - and the control
+	 * that opened this dialog unmounts with it, leaving Radix's close-auto-focus
+	 * with nothing to restore to and focus on `<body>` (U12, round 2). The row's
+	 * own control is where the same rule already sends an add and a removal.
+	 *
+	 * The outcome is the dialog's own report rather than a re-derivation here:
+	 * the dialog holds the phase, and a second copy of the success rule is how the
+	 * two would come to disagree.
+	 */
+	const closeSignIn = useCallback(
+		(name: string, outcome: "signed-in" | "dismissed") => {
+			if (outcome === "signed-in") setFocusAfterSignIn(name);
+			closeDialog();
+		},
+		[closeDialog],
+	);
+
 	const target = useMemo(
 		() =>
 			resolveMcpServerTarget(
@@ -247,6 +281,12 @@ export const McpManagementSection: FC<{
 		() => groupIntegrations(visible, operations, integrations.memories),
 		[visible, operations, integrations.memories],
 	);
+
+	/* The row the sign-in dialog belongs to, or none while it is closed. */
+	const signInRow =
+		dialog?.kind === "sign_in"
+			? (servers.find((server) => server.name === dialog.name) ?? null)
+			: null;
 
 	/*
 	 * A filter typed BEFORE the command ran must not hide the row the command
@@ -578,6 +618,30 @@ export const McpManagementSection: FC<{
 		setFocusAfterRemove(null);
 	}, [focusAfterRemove, visible]);
 
+	/*
+	 * Where a COMPLETED sign-in leaves focus (U12). It cannot move at close time:
+	 * the catalog has not read the new credential back yet, so the row still
+	 * leads with the Sign in button that is about to unmount - focusing it is how
+	 * focus ends up on `<body>` again a frame later. It waits for the row to stop
+	 * asking, then lands on the row's own control, or its menu when it has none
+	 * (which is what a just-signed-in row shows).
+	 */
+	useEffect(() => {
+		if (!focusAfterSignIn) return;
+		const row = servers.find((server) => server.name === focusAfterSignIn);
+		if (!row) {
+			setFocusAfterSignIn(null);
+			return;
+		}
+		const primary = primaryAction(row, operations, integrations.memories);
+		if (primary?.kind === "sign_in" || primary?.kind === "reauth") return;
+		const element = primary
+			? rowPrimaryRefs.current[row.name]
+			: rowOverflowRefs.current[row.name];
+		if (element) element.focus();
+		setFocusAfterSignIn(null);
+	}, [focusAfterSignIn, servers, operations, integrations.memories]);
+
 	return (
 		<SettingsSection
 			title={SECTION_TITLE}
@@ -601,7 +665,7 @@ export const McpManagementSection: FC<{
 							Integrations can be managed here once a chat has started.
 						</p>
 						<Button
-							variant="secondary"
+							variant="primary"
 							size="sm"
 							onClick={() => navigate("/chat")}
 						>
@@ -627,8 +691,8 @@ export const McpManagementSection: FC<{
 				{integrations.folderUnavailable ? (
 					<Alert variant="warning">
 						<span>
-							This chat's folder no longer exists, so only global
-							integrations are shown.
+							This chat's folder no longer exists, so only global integrations
+							are shown.
 						</span>
 					</Alert>
 				) : null}
@@ -675,8 +739,21 @@ export const McpManagementSection: FC<{
 							className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-dim"
 						/>
 						<Input
+							ref={searchRef}
 							value={filter}
 							onChange={(event) => setFilter(event.target.value)}
+							/*
+							 * Escape clears the field, matching the search control's own
+							 * affordance: with a filter that matches nothing the only way
+							 * back used to be select-all-and-delete (n1, round 2). The event
+							 * is left alone when there is nothing to clear, so Escape keeps
+							 * whatever meaning the surface around it has.
+							 */
+							onKeyDown={(event) => {
+								if (event.key !== "Escape" || !filter) return;
+								event.preventDefault();
+								setFilter("");
+							}}
 							placeholder={`Search ${integrationCountLabel(servers.length)}`}
 							aria-label="Search integrations"
 							className="pl-9"
@@ -724,7 +801,23 @@ export const McpManagementSection: FC<{
 						<p className="text-body-sm text-ink-muted">
 							No integrations match this search.
 						</p>
-						<Button variant="secondary" size="sm" onClick={() => setFilter("")}>
+						<Button
+							variant="secondary"
+							size="sm"
+							onClick={() => {
+								setFilter("");
+								/*
+								 * The button unmounts with the empty state it belongs to, so
+								 * focus has to be moved after that render - and the field it
+								 * just emptied is where the user was typing (n2, round 2;
+								`<body>` is where it used to land). The Add control is the
+								fallback for the case where the box itself is gone.
+								 */
+								window.setTimeout(() => {
+									(searchRef.current ?? addSlotRef.current)?.focus();
+								}, 0);
+							}}
+						>
 							Clear search
 						</Button>
 					</div>
@@ -785,6 +878,14 @@ export const McpManagementSection: FC<{
 				<IntegrationSignInDialog
 					name={dialog.name}
 					action={dialog.action}
+					/*
+					 * The row's own key route, from the SAME list the row's buttons come
+					 * from (D15): the failed-sign-in copy may only name a control this
+					 * surface can actually draw, and `linear` - whose actions carry no
+					 * `add_key` and no secret reference - has none, so its overflow is
+					 * Test / Open config file / Remove.
+					 */
+					keyRoute={signInRow ? offersKey(signInRow) : false}
 					phase={signIn}
 					onStart={() => void startSignIn(dialog.name, dialog.action)}
 					onCancel={(operationId) =>
@@ -793,7 +894,7 @@ export const McpManagementSection: FC<{
 						)
 					}
 					onOpenLink={(url) => void openUrlTarget(url)}
-					onClose={closeDialog}
+					onClose={(outcome) => closeSignIn(dialog.name, outcome)}
 				/>
 			) : null}
 			{dialog?.kind === "key" ? (
