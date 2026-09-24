@@ -50,6 +50,7 @@ const bundle = await build({
 			export { ProviderDetail } from "./src/renderer/src/features/providers/provider-detail";
 			export { RadientAccountSection } from "./src/renderer/src/features/settings/components/radient-account-section";
 			export {
+				loginClaim,
 				loginState,
 				providerReadiness,
 			} from "./src/renderer/src/features/providers/provider-labels";
@@ -480,6 +481,7 @@ const {
 	QueryClientProvider,
 	createRoot,
 	radientSessionIssueKey,
+	loginClaim,
 	loginState,
 	providerReadiness,
 	radientUserKeys,
@@ -771,6 +773,97 @@ test("loginState refuses a claim on the refusal, and on the absent-verdict contr
 		),
 		"working",
 	);
+});
+
+/**
+ * The PAINT contract, over the shipped module (design round 4, D12): which
+ * combinations of the two reads withhold the Radient claim (`null`) and which
+ * release it. Every row names the state it is; the ones marked D12 and D6 are the
+ * two claim-then-correct windows this contract exists to close, and the ones
+ * marked #416 are the opposite misdirection -- telling a machine whose reads have
+ * not answered that it needs a sign-in.
+ */
+test("loginClaim withholds the claim until a read that can support it has answered", () => {
+	const read = (accountRead, unavailable = false) => ({
+		accountRead,
+		unavailable,
+	});
+	const pending = { data: null, isPending: true };
+	const failed = { data: null, isPending: false };
+	const verdict = (state, credential_id = 7) => ({
+		data: { credential_id, state },
+		isPending: false,
+	});
+	const rows = [
+		// The verdict's first read out.
+		["D6: first read out, account in flight", pending, read("checking"), null],
+		[
+			"D6: first read out, account ready (the incident's own pair)",
+			pending,
+			read("ready"),
+			null,
+		],
+		[
+			"#416: first read out, account unavailable",
+			pending,
+			read("unavailable"),
+			null,
+		],
+		[
+			"first read out, account refused -- this app's own reading of the fault",
+			pending,
+			read("refused"),
+			"refused",
+		],
+		[
+			"first read out, account signed-out",
+			pending,
+			read("signed-out"),
+			"unverified",
+		],
+		// The verdict answered without a claim: failed, absent, disabled, null-credential unknown.
+		["D12: verdict failed, account in flight", failed, read("checking"), null],
+		["verdict failed, account ready", failed, read("ready"), "working"],
+		["verdict failed, account refused", failed, read("refused"), "refused"],
+		[
+			"verdict failed, account unavailable (a healthy machine's failure)",
+			failed,
+			read("unavailable"),
+			"working",
+		],
+		[
+			"verdict failed, account read cannot be asked",
+			failed,
+			read("signed-out", true),
+			"working",
+		],
+		[
+			"D12: null-credential unknown, account in flight",
+			verdict("unknown", null),
+			read("checking"),
+			null,
+		],
+		// The verdict answered WITH a claim: the account read is not waited for.
+		[
+			"login_required, account in flight",
+			verdict("login_required"),
+			read("checking"),
+			"refused",
+		],
+		["ok, account in flight", verdict("ok"), read("checking"), "working"],
+		[
+			"unknown naming a credential, account in flight",
+			verdict("unknown"),
+			read("checking"),
+			"unverified",
+		],
+	];
+	for (const [what, login, account, expected] of rows) {
+		assert.equal(loginClaim("radient", login, account), expected, what);
+	}
+	// Only the Radient row reads either input; nothing else is ever withheld.
+	assert.equal(loginClaim("openai", pending, read("checking")), "working");
+	assert.equal(loginClaim("openai", failed, read("checking")), "working");
 });
 
 test("the refused chip has its own words, its own tone, and the neighbour's group", () => {
@@ -1190,11 +1283,7 @@ test("a failed verdict read does not paint a claim while the account read is out
 		assert.equal(radientChip(container), "withheld", rendered);
 		// And the opposite misdirection: a machine whose reads have not answered is
 		// not a machine that needs a sign-in.
-		assert.equal(
-			occurrences(rendered, "Needs re-authentication"),
-			0,
-			rendered,
-		);
+		assert.equal(occurrences(rendered, "Needs re-authentication"), 0, rendered);
 		assert.ok(!rendered.includes("Loading providers"), rendered);
 		assert.ok(rendered.includes("OpenAI"), rendered);
 	}
@@ -1271,6 +1360,27 @@ test("the card list is never held behind the verdict read", async () => {
 	await act(async () => {
 		hung.root.unmount();
 	});
+	/*
+	 * And under the same never-answering verdict, a fault this app has already
+	 * read for itself is not withheld behind it: the account read's `refused`
+	 * speaks without the verdict (the live rig measured the chip withheld to the
+	 * transport's 20,040 ms deadline on a machine whose account read had said
+	 * `refused` at ~300 ms, before this arm existed).
+	 */
+	accountAnswer = "refused";
+	const hungRefused = await mountGridRaw();
+	const refusedSequence = await chipSequence(
+		hungRefused.container,
+		(chip) => chip === "Needs re-authentication",
+	);
+	assert.ok(
+		!refusedSequence.includes("Signed in"),
+		refusedSequence.join(" -> "),
+	);
+	await act(async () => {
+		hungRefused.root.unmount();
+	});
+	accountAnswer = "ready";
 	holdVerdict = false;
 	releaseVerdict();
 

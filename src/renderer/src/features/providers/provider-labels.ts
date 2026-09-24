@@ -250,9 +250,19 @@ function verdictClaim(
  * is the census and is never withheld):
  *
  * - verdict's FIRST read out (`isPending`: capability or verdict not yet
- *   answered once) -> `null`. The verdict can still overrule an account read of
- *   `ready` -- a refused refresh grant beside an access token inside its expiry
- *   is the incident itself -- so an account answer alone is not enough here;
+ *   answered once) -> the account read's answer ONLY WHERE IT NARROWS
+ *   (`refused` -> refused, `signed-out` -> unverified), otherwise `null`. A
+ *   narrowing answer is this app's own reading of a fault, so it can speak
+ *   without the verdict -- and it must, or a verdict route that never answers
+ *   withholds a fault the app already knows about for the transport's 20 s
+ *   deadline (measured on the rig: `refused` in ~300 ms, chip withheld to
+ *   20,040 ms). The answers that keep the store's GREEN claim (`ready`,
+ *   `unavailable`, `unknown`) wait, because the verdict can still overrule
+ *   them to `refused` -- a refused refresh grant beside an access token inside
+ *   its expiry is the incident itself -- and green-then-corrected is exactly
+ *   D6. (The one overrule left in the other direction, a narrowing account
+ *   answer followed by a verdict of `ok`, needs the app's two reads of one
+ *   store to disagree; it moves toward the healthy claim, not away from it);
  * - verdict answered WITH a claim (`login_required`, `ok`, an `unknown` naming
  *   a credential) -> that claim, whatever the account read is doing;
  * - verdict answered WITHOUT one (failed, absent, disabled, `unknown` with no
@@ -285,7 +295,11 @@ export function loginClaim(
 	account: RadientSignInRead,
 ): ProviderLoginState | null {
 	if (providerId !== TUNNEL_LOGIN_PROVIDER) return "working";
-	if (login.isPending) return null;
+	if (login.isPending) {
+		// No verdict yet: only a narrowing account answer may speak (see above).
+		const fromAccount = loginState(providerId, undefined, account);
+		return fromAccount === "working" ? null : fromAccount;
+	}
 	if (
 		verdictClaim(login.data) === null &&
 		!account.unavailable &&
