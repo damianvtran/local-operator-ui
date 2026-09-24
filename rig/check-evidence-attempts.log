@@ -1,0 +1,16 @@
+=== attempt 1 probe=HELD start 19:44:55
+attempt 1 elapsed=7s
+# rc=75 bounded=False elapsed=7.1s
+Evidence check DEFERRED: another sweep holds the machine lease; retry after it finishes. No frames checked. Do not delete the lock file.
+=== attempt 2 probe=HELD start 19:45:42
+attempt 2 elapsed=5s
+# rc=75 bounded=False elapsed=4.2s
+Evidence check DEFERRED: another sweep holds the machine lease; retry after it finishes. No frames checked. Do not delete the lock file.
+=== attempt 3 probe=HELD start 19:46:27
+attempt 3 elapsed=4s
+# rc=75 bounded=False elapsed=4.5s
+Evidence check DEFERRED: another sweep holds the machine lease; retry after it finishes. No frames checked. Do not delete the lock file.
+=== attempt 4 probe=HELD start 19:47:12
+attempt 4 elapsed=6s
+# rc=75 bounded=False elapsed=5.8s
+Evidence check DEFERRED: another sweep holds the machine lease; retry after it finishes. No frames checked. Do not delete the lock file.
