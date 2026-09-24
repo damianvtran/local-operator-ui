@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { after, test } from "node:test";
 import { unlink, writeFile } from "node:fs/promises";
+import { after, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 
@@ -151,11 +151,15 @@ export const deliverEcho = () => {};`,
 		},
 	],
 });
-const bundlePath = new URL(`./_composer-text-${process.pid}.mjs`, import.meta.url);
+const bundlePath = new URL(
+	`./_composer-text-${process.pid}.mjs`,
+	import.meta.url,
+);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const module = await import(bundlePath.href);
 await unlink(bundlePath);
-const { useMessageInput, useConversationInputStore, composerIdentityFor } = module;
+const { useMessageInput, useConversationInputStore, composerIdentityFor } =
+	module;
 
 const { createElement, act } = await import("react");
 const { createRoot } = await import("react-dom/client");
@@ -284,7 +288,11 @@ test("Clear empties the BOX, and a store write reaches a box already mounted", a
 	 * effect that empties it has run.
 	 */
 	await act(async () => {});
-	assert.equal(boxText(), "", "Clear emptied the row and left the words on screen");
+	assert.equal(
+		boxText(),
+		"",
+		"Clear emptied the row and left the words on screen",
+	);
 	assert.equal(
 		useConversationInputStore.getState().inputByConversation[identity]
 			?.currentInput,
@@ -312,7 +320,11 @@ test("a message that reconciles as delivered empties the box in silence", async 
 		});
 		store.returnInFlight(identity, identity);
 	});
-	assert.equal(boxText(), "sent but unconfirmed", "the returned message is in the box");
+	assert.equal(
+		boxText(),
+		"sent but unconfirmed",
+		"the returned message is in the box",
+	);
 
 	// And then the owner's row arrives: the message was delivered after all.
 	await act(async () => {
