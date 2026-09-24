@@ -3299,6 +3299,86 @@ export function applyLiveSeed(
  * to read anyway, and a call whose row cannot be found spends its own bounded
  * attempts and is dropped like any other (`labelGapCandidates`).
  */
+/**
+ * When each call the seed settled first RAN, in epoch ms, by call id.
+ *
+ * THE WALK'S ONE HONEST FLOOR, and the reason it exists: a call's assistant row —
+ * where its arguments live — is journaled at or within a second of that call's
+ * own start, so a page whose OLDEST row predates the oldest unlabelled target's
+ * start instant cannot contain that call's row, whatever else the journal holds.
+ * That is a fact about one call rather than about the turn it sits in, which is
+ * what the turn-boundary rule (`pageOpensTurn`) is: on a journal that is ONE long
+ * turn there is no boundary row to meet, and a call nothing can label then cost
+ * the whole journal on every open (round 2, QA Q1 / reviewer R1: 4 requests and
+ * 409 rows where `origin/main` reads one page).
+ *
+ * MEASURED, NOT ASSUMED. Over 109,732 real assistant/result pairs in
+ * `~/.local-operator/sessions` (the assistant row's `ts` minus the call's own
+ * `started_at_epoch`), the assistant row is never more than 1.37 s EARLIER than
+ * the start it belongs to; the median is 0.69 s LATER, because a row is written
+ * as its round is recorded rather than when the tool begins. `RECONCILE_START_SLACK_MS`
+ * is five seconds against that 1.37 s, and being wrong costs one page (the row
+ * falls back to its stand-in, exactly as it does on `origin/main`) rather than a
+ * wrong label.
+ *
+ * The unit conversion is the shared `epochMsFromSeconds` — the same helper the
+ * frame's own `started_at_epoch` reader uses — so the two sides cannot disagree
+ * about what a stated instant is.
+ */
+export function seedCallStarts(
+	liveEvents: readonly Record<string, unknown>[] | null | undefined,
+): Map<string, number> {
+	const starts = new Map<string, number>();
+	for (const event of liveEvents ?? []) {
+		if (!event) continue;
+		const frame = event as LiveEvent;
+		if (!settlesACall(frame) && !finishedDictationFrame(frame)) continue;
+		const callId = String(frame.tool_call_id ?? "");
+		if (!callId) continue;
+		const at = epochMs(frame);
+		if (at !== null) starts.set(callId, at);
+	}
+	return starts;
+}
+
+/**
+ * How much earlier than a call's own start an assistant row may be journaled.
+ *
+ * Five seconds against a measured worst case of 1.37 s over 109,732 real pairs
+ * (see `seedCallStarts`). Generous on purpose: a wrongly early stop costs the
+ * page a row's label and nothing else, while a wrongly late one pays the journal.
+ */
+export const RECONCILE_START_SLACK_MS = 5_000;
+
+/**
+ * Whether a fetched page has read past every unlabelled target's own start.
+ *
+ * `starts` is `seedCallStarts` for the calls the walk is still looking for, and
+ * `entries` is the page it just read, whose OLDEST row is what answers. A target
+ * with no stated instant is skipped — a legacy producer that stamps none leaves
+ * the walk its other exits rather than a floor invented for it.
+ */
+export function pagePassedOldestStart(
+	entries: DesktopHistoryPage["entries"],
+	targets: Iterable<string>,
+	starts: ReadonlyMap<string, number>,
+): boolean {
+	const oldestSeconds = entries[0]?.ts;
+	if (typeof oldestSeconds !== "number" || !Number.isFinite(oldestSeconds))
+		return false;
+	let floor: number | null = null;
+	for (const callId of targets) {
+		const at = starts.get(callId);
+		if (at === undefined) continue;
+		if (floor === null || at < floor) floor = at;
+	}
+	if (floor === null) return false;
+	// The row's own unit conversion, spelled the way the rest of this file
+	// converts a durable `ts` (`Math.round((entry.ts ?? 0) * 1000)`).
+	const oldestMs = Math.round(oldestSeconds * 1000);
+	return oldestMs <= floor - RECONCILE_START_SLACK_MS;
+}
+
 export function seedCallsMissingLabels(
 	liveEvents: readonly Record<string, unknown>[] | null | undefined,
 	labelled: ReadonlySet<string>,
@@ -3512,9 +3592,11 @@ export function pageOrphanResults(
  *  - `unlabelled`: how many target calls no fetched page has named yet.
  *
  * The walk's other exits live in the loop, because they are facts about the
- * route or about the turn rather than about the goal: `!has_more`, the
- * `RECONCILE_WALK_MAX_ROWS` and `RECONCILE_WALK_MAX_REQUESTS` bounds, and
- * `pageOpensTurn` — the row past which no seeded call can have its assistant row.
+ * route, the turn or the calls rather than about the goal: `!has_more`, the
+ * `RECONCILE_WALK_MAX_ROWS` and `RECONCILE_WALK_MAX_REQUESTS` bounds,
+ * `pageOpensTurn` (the row past which no seeded call of this turn can have its
+ * assistant row) and `pagePassedOldestStart` (the instant past which the OLDEST
+ * unlabelled call's own row cannot lie) — see each for which shape needs it.
  */
 export function reconcileWalkDone(connected: boolean, unlabelled: number) {
 	return connected && unlabelled === 0;

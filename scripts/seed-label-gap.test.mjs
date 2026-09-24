@@ -878,13 +878,20 @@ const UNPRESENT = "toolu_01SYNTHETICNOTINJOURNAL000";
 
 test("a join whose targets cannot be durable yet stops at the turn boundary", async () => {
 	/*
-	 * ROUND 1, R1. A join during a turn's FIRST round: the seed names calls whose
-	 * assistant rows the journal does not hold yet, so no page can ever label them
-	 * and `labelTargetsBehind` finds no anchor to measure against. The walk used to
-	 * take that as "everything is further back" and page to its bound; the row that
-	 * OPENED the turn is the fact that ends it, because no call of this turn was
-	 * journaled before it. Main pays two reads here (and up to five on a longer
-	 * turn); head pays the one it would have paid with no gap at all.
+	 * ROUND 1, R1, ON THE SHAPE THAT CASE ACTUALLY BUILDS — which round 2's N3 was
+	 * right about: this journal's current turn opens 50 rows above the tail (150
+	 * rows of an earlier turn, then `turn-user`, then 49 rows), i.e. the shape a
+	 * join during a turn's FIRST round makes, and its whole turn is 50 rows long.
+	 * So it discriminates on the TURN BOUNDARY, not on R1's own input: R1's journal
+	 * is ONE long turn (the fixture's, whose opening row is at index 3), where there
+	 * is no boundary row for a page to meet. That shape is the case after this one,
+	 * bounded by the calls' own start instants instead.
+	 *
+	 * Here: the seed names a call whose assistant row the journal does not hold, so
+	 * no page can ever label it and `labelTargetsBehind` finds no anchor. The walk
+	 * used to read that as "everything is further back" and page to its bound; the
+	 * row that OPENED the turn ends it, because no call of this turn was journaled
+	 * before it. Main pays two reads on this journal; head pays one.
 	 */
 	const rows = [];
 	for (let i = 0; i < 150; i++) rows.push(spendRow(`earlier-${i}`, 1_000 + i));
@@ -1226,4 +1233,163 @@ test("the fixture carries structure and no free text", async () => {
 	visit(fixture.moments, "", "moments");
 	assert.deepEqual(offenders, [], "every free-text field is a placeholder");
 	assert.deepEqual(leaks, [], "and no string carries a path, handle or link");
+});
+
+/*
+ * THE ONE-TURN JOURNAL, which is where round 2's Q1/R1 landed. The fixture's own
+ * journal is ONE turn of 471 rows, so there is no opening row behind the tail page
+ * for `pageOpensTurn` to meet, and a seeded call no page can label used to cost the
+ * whole journal: 4 requests / 409 rows on the round-1 head, 5 / 500 on the
+ * reviewer's `counts` input, against `origin/main`'s single page. The floor that
+ * ends it is the call's OWN start instant, which every retained seed entry carries
+ * (`started_at_epoch`) and every journal row is comparable against (its `ts`), so
+ * it holds on this shape as well as on a journal with turns in it.
+ */
+
+/**
+ * The seed with one settled call no page names, placed OLDEST (first in the
+ * order the seed is read in), started at `at` (epoch seconds).
+ *
+ * OLDEST on purpose: `labelTargetsBehind` counts a target only when it sits
+ * OLDER than a call a page already labelled — a target newer than one of those is
+ * inside the read's span by construction, so a stray appended at the end costs no
+ * walk at all and would prove nothing.
+ */
+const withStray = (liveEvents, at) => [
+	endFrame(UNPRESENT, "nothing durable names this call", at),
+	...liveEvents,
+];
+
+test("a one-turn journal bounds the walk by the oldest unlabelled call's own start", async () => {
+	const { durable, page, liveEvents } = moment("labels");
+	/*
+	 * The reviewer's `labels` input: the stray call is placed OLDEST in the seed's
+	 * order — the position `labelTargetsBehind` counts as "behind what was read",
+	 * because a target NEWER than a labelled call is inside the read's span by
+	 * construction — and its own instant is the newest seed start, so an assistant
+	 * row naming it would sit inside the first page if the journal held one.
+	 *
+	 * Pre-fix this cost 2 requests (325 + 104 rows): the turn boundary is the only
+	 * floor on a one-turn journal and it sits at index 3, so the walk had to reach
+	 * it. The call's own instant is the floor that ends it after one page.
+	 */
+	const at = Math.max(...liveEvents.map((event) => event.started_at_epoch));
+	const { handle } = await open({
+		page,
+		liveEvents: withStray(liveEvents, at),
+		durable,
+	});
+	const reads = historyReads();
+	assert.equal(reads.length, 1, `one page, not the journal (read ${reads.length})`);
+	assert.equal(reads[0].beforeId, undefined, "and it is the tail");
+	assert.equal(
+		handle().labelPending.size,
+		0,
+		"the hold ends with that read rather than with the walk",
+	);
+	const tools = handle().transcript.records.filter(
+		(record) => record.kind === "tool",
+	);
+	assert.ok(
+		tools.some((record) => record.args),
+		"the findable half of the seed is still labelled",
+	);
+});
+
+test("a one-turn journal's unlabelable call alone still costs one page", async () => {
+	/*
+	 * QA's `f-noargs` shape, which is the shape round 2 measured as 4 requests /
+	 * 419 rows on the round-1 head: the seed carries ONLY the call nothing can
+	 * label, so `labelTargetsBehind` has no anchor at all and the only floor the
+	 * old walk had was the turn boundary at index 3 (`origin/main` reads one page
+	 * because it stops on connect). Its own instant — the call started a moment
+	 * before the tail — puts the row it needs inside the first page, so the walk
+	 * stops there.
+	 */
+	const { durable, page, liveEvents } = moment("labels");
+	const at = Math.max(...liveEvents.map((event) => event.started_at_epoch));
+	const { handle } = await open({
+		page,
+		liveEvents: [endFrame(UNPRESENT, "no page names this", at)],
+		durable,
+	});
+	const reads = historyReads();
+	assert.equal(reads.length, 1, `one page (read ${reads.length})`);
+	assert.equal(
+		reads[0].limit,
+		reconcileLimit(1),
+		"sized by the goal, exactly as it was before this change",
+	);
+	assert.equal(handle().labelPending.size, 0, "and the hold ends with it");
+});
+
+test("the start floor reads exactly as deep as the instant it is given", async () => {
+	/*
+	 * THE CEILING, so the floor cannot be read as "one page, always". A stray call
+	 * whose own start is the journal's FIRST row really could have its assistant
+	 * row anywhere in the journal, so the walk pays for that: the same four
+	 * requests the round-1 head made, and no more. Everything between the two is
+	 * priced by the instant (measured on this head: the newest seed start 1 request
+	 * / 104 rows, the median 2 / 211, the oldest 3 / 315, the journal's head
+	 * 4 / 419).
+	 */
+	const { durable, page } = moment("labels");
+	const { handle } = await open({
+		page,
+		liveEvents: [endFrame(UNPRESENT, "no page names this", durable[0].ts)],
+		durable,
+	});
+	const reads = historyReads();
+	assert.equal(reads.length, 4, `the journal's own span (read ${reads.length})`);
+	assert.equal(
+		reads.reduce((total, read) => total + read.limit, 0),
+		419,
+		"and it stops at `has_more`, never at the row bound",
+	);
+	assert.equal(handle().labelPending.size, 0, "with the hold released");
+});
+
+test("a later mount does not re-hold a row whose label an earlier read found", async () => {
+	/*
+	 * ROUND 2, N1 — the half of Q1 that lives BEHIND the fix rather than in front
+	 * of it. The hold was keyed off `labelGapRef.current.attempts`, and the sweep
+	 * that keeps the retry budget honest DELETES an id from that map as soon as the
+	 * transcript learns its arguments. So the state that answers "this row has been
+	 * painted once" was destroyed exactly when the fix worked, and a later mount
+	 * held the row empty again (the reviewer measured 3 of 3 targets re-held with
+	 * one benign live frame between two mounts).
+	 *
+	 * That frame is why this case delivers one: the sweep runs on a flush, and a
+	 * mount immediately after the read is not always a flush later.
+	 */
+	const { durable, page, liveEvents } = moment("labels");
+	await open({ page, liveEvents, durable });
+	deliver({
+		session_id: SESSION,
+		epoch: "bridge-epoch",
+		seq: 3,
+		type: "event",
+		payload: { type: "provider_start" },
+	});
+	await pump();
+	let firstFrame = null;
+	const { handle } = await open({
+		page,
+		liveEvents,
+		durable,
+		keepGapBookkeeping: true,
+		beforePump: (view) => {
+			firstFrame = view.labelPending ?? new Set();
+		},
+	});
+	assert.equal(
+		firstFrame.size,
+		0,
+		`${firstFrame.size} rows re-held on a mount whose rows were already painted`,
+	);
+	assert.ok(
+		historyReads().length >= 1,
+		"and the read still fires, so the labels are still being chased",
+	);
+	assert.equal(handle().labelPending.size, 0, "the hold is released at settle");
 });

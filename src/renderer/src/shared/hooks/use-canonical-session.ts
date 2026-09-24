@@ -47,6 +47,8 @@ import {
 	pageLabels,
 	pageOpensTurn,
 	pageOrphanResults,
+	pagePassedOldestStart,
+	seedCallStarts,
 	reconcileLimit,
 	reconcileWalkDone,
 	removeRecord,
@@ -543,6 +545,13 @@ type LabelWalk = {
 	every: ReadonlySet<string>;
 	found: ReadonlySet<string>;
 	pending: readonly string[];
+	/**
+	 * Call id -> the epoch MILLISECONDS each call started, from the seed's own
+	 * frames (`seedCallStarts`). The walk stops once a page's oldest row predates
+	 * the oldest unlabelled target's instant (`pagePassedOldestStart`) — the one
+	 * floor that does not depend on finding a turn's opening row.
+	 */
+	starts: ReadonlyMap<string, number>;
 };
 
 /** A reconcile that is not a label read: connect to the painted rows, nothing more. */
@@ -552,6 +561,7 @@ const NO_LABEL_WALK: LabelWalk = {
 	every: new Set(),
 	found: new Set(),
 	pending: [],
+	starts: new Map(),
 };
 
 /**
@@ -623,11 +633,48 @@ const resyncTargets = new Map<string, () => void>();
  */
 type LabelGapState = {
 	attempts: Map<string, number>;
+	/**
+	 * The ids whose first paint this conversation has ALREADY held empty.
+	 *
+	 * Its own record rather than a reading of `attempts`, and only ever added to:
+	 * `attempts` is the retry BUDGET and an id leaves it the moment the transcript
+	 * learns its arguments, which is exactly when the hold has done its job. Keyed
+	 * off that map the hold was re-armed for calls whose labels an earlier read had
+	 * already FOUND — the same blanking Q1 measured, on a more common path (round
+	 * 2, N1; the reviewer reproduced it 3 of 3 targets with one benign live frame
+	 * between two mounts, and QA's shipped-app run could not reach it at all).
+	 */
+	painted: Set<string>;
 	depth: number;
 	order: readonly string[];
+	/**
+	 * Call id -> the epoch MILLISECONDS the call started, from the seed's own
+	 * frames (`seedCallStarts`). The walk's floor: see `pagePassedOldestStart`.
+	 */
+	starts: Map<string, number>;
 };
 
 const LABEL_GAP_SESSIONS_MAX = 8;
+
+/**
+ * How many ids the hold's painted-once record keeps per conversation.
+ *
+ * Four times the attempt budget, because this one is never pruned by progress:
+ * it grows with the conversation's settled calls and is only there to stop a
+ * SECOND hold for a row this window has already left empty once. Evicted
+ * oldest-first, so what it can still re-hold after 2048 calls is the oldest tail
+ * of a very long conversation.
+ */
+const LABEL_GAP_MAX_PAINTED = 2_048;
+
+/**
+ * How many calls' start instants one conversation remembers.
+ *
+ * The owner caps its own seed at `LIVE_EVENT_END_ROWS_MAX` (100) ends, so this is
+ * several seeds' worth of history for the retry path, which needs an instant for
+ * calls whose own frames have left the seed. Evicted oldest-first.
+ */
+const LABEL_GAP_MAX_STARTS = 1_024;
 
 /**
  * The key an absent session id gets.
@@ -658,8 +705,10 @@ function labelGapFor(sessionId: string | undefined): LabelGapState {
 	}
 	const fresh: LabelGapState = {
 		attempts: new Map(),
+		painted: new Set(),
 		depth: 0,
 		order: [],
+		starts: new Map(),
 	};
 	labelGaps.set(key, fresh);
 	while (labelGaps.size > LABEL_GAP_SESSIONS_MAX) {
@@ -1343,6 +1392,12 @@ export function useCanonicalSessionStream(
 			const found = new Set(labels.found);
 			const behind = () =>
 				labelTargetsBehind(labels.order, labels.targets, found);
+			/**
+			 * The target calls no fetched page has named yet: what the start floor
+			 * (`pagePassedOldestStart`) measures its instant over.
+			 */
+			const behindIds = (): string[] =>
+				[...labels.targets].filter((callId) => !found.has(callId));
 			/*
 			 * Calls a page showed the RESULT of without ever showing the row that
 			 * named them, and which no other page has named since (`pageOrphanResults`,
@@ -1546,7 +1601,24 @@ export function useCanonicalSessionStream(
 				 * argument for the floor is about the SEED's calls, which is the label
 				 * walk's subject and nobody else's.
 				 */
-				if (labelling && reachedTurnStart) return false;
+				/*
+				 * The two floors, and why both are here rather than one of them. The
+				 * turn boundary answers "no call of this turn can be older than this
+				 * row" and needs a turn row to exist behind the page; a journal that is
+				 * ONE long turn has none, which is the shape round 2's Q1 measured (4
+				 * requests and 409 rows where `origin/main` reads one page). The start
+				 * instants answer the same question per CALL — this call's own assistant
+				 * row is journaled at or within a second of this call's start — which
+				 * holds on any journal shape. Whichever is reached first ends the walk,
+				 * and `labelling` gates both: a connecting walk may legitimately have to
+				 * pass either to reach the row the snapshot painted.
+				 */
+				if (
+					labelling &&
+					(pagePassedOldestStart(page.entries, behindIds(), labels.starts) ||
+						reachedTurnStart)
+				)
+					return false;
 				if (reconcileWalkDone(joined, stillBehind)) return false;
 				if (!oldest || !page.has_more) return false;
 				beforeId = oldest.id;
@@ -1698,13 +1770,26 @@ export function useCanonicalSessionStream(
 			 * the row flickering rather than the first frame being right.
 			 */
 			const firstAttempts = missingLabels.filter(
-				(id) => !labelGapRef.current.attempts.has(id),
+				(id) => !labelGapRef.current.painted.has(id),
 			);
-			if (seedEvents.length > 0)
+			if (seedEvents.length > 0) {
 				labelGapRef.current.order = seedCallsMissingLabels(
 					seedEvents,
 					new Set(),
 				);
+				/*
+				 * The seed's own start instants, kept past this flush because a
+				 * round-end retry arrives with no seed at all and still needs the
+				 * floor (`pagePassedOldestStart`).
+				 */
+				for (const [callId, at] of seedCallStarts(seedEvents))
+					labelGapRef.current.starts.set(callId, at);
+				while (labelGapRef.current.starts.size > LABEL_GAP_MAX_STARTS) {
+					const oldest = labelGapRef.current.starts.keys().next().value;
+					if (oldest === undefined) break;
+					labelGapRef.current.starts.delete(oldest);
+				}
+			}
 			/*
 			 * Bookkeeping BEFORE the request, because this counts ATTEMPTS: a read that
 			 * fails or arrives too early must still not be retried forever. An id the
@@ -2057,6 +2142,17 @@ export function useCanonicalSessionStream(
 			});
 			if (firstAttempts.length > 0) {
 				/*
+				 * Painted once is forever FOR THIS CONVERSATION: recorded here, in the
+				 * same breath as the hold, so a later mount cannot hold the same row
+				 * again however the attempt map has moved on (round 2, N1).
+				 */
+				for (const id of firstAttempts) labelGapRef.current.painted.add(id);
+				while (labelGapRef.current.painted.size > LABEL_GAP_MAX_PAINTED) {
+					const oldest = labelGapRef.current.painted.values().next().value;
+					if (oldest === undefined) break;
+					labelGapRef.current.painted.delete(oldest);
+				}
+				/*
 				 * The hold's wall-clock cap, armed with the hold itself. The read that
 				 * will normally release it is the walk's own first answer; this exists
 				 * for the request that never answers, where the choice is between an
@@ -2081,6 +2177,7 @@ export function useCanonicalSessionStream(
 						? {
 								targets,
 								order,
+								starts: labelGapRef.current.starts,
 								every: new Set([...order, ...targets]),
 								found: new Set(
 									pageLabels(
