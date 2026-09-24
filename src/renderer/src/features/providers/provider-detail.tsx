@@ -1,43 +1,97 @@
 /**
- * Provider detail panel: the actual supported auth method for one registry
- * row, with one primary CTA per method.
+ * Provider detail panel: how one provider is connected, in every state a
+ * sign-in passes through (design audit § 3).
  *
- * Sign-in flows run as backend auth operations: the backend owns PKCE/state/
- * callback ports, the UI polls the operation status and renders its pending,
- * input, retry and expiry states. Device instructions (a code to COPY) are
- * display content; an `input_required` prompt is a control to PASTE into —
- * the two are never rendered as the same thing. Keys are saved only by an
- * explicit "Save key" action; blur never persists a credential silently.
+ * Sign-in flows run as backend auth operations: the backend owns PKCE, state
+ * and callback ports, and this panel renders the state `sign-in-flow.ts` emits.
+ * The flow module owns the rules that used to be buried here and got one wrong
+ * -- the browser opening only on a second click (design D1, UX U1) -- so this
+ * file is presentation: which sentence, which button, which fallback.
+ *
+ * Three rules the layout keeps:
+ *
+ * - One primary action per state. The method tabs never repeat the provider
+ *   name, so a tab and the button beneath it can never share an accessible name
+ *   (design D4).
+ * - A paste box is a FALLBACK unless the flow is the paste. A flow the backend
+ *   marks `input_optional` (Anthropic's redirect, which completes on its own)
+ *   leads with "Finish signing in in your browser" and keeps the paste behind a
+ *   disclosure; only a flow that needs the paste shows the field open (D2).
+ * - A device code is display content to copy, shown as the code alone, never
+ *   the sentence around it (UX U4).
+ *
+ * Keys are saved only by an explicit "Save key"; blur never persists a
+ * credential. A rejected key is the backend's 422 sentence, inline under the
+ * field, and nothing was stored (UX U3).
  */
 
+import { pollAuthOperation } from "@shared/api/local-operator/auth-operation";
 import {
-	isTerminalAuthState,
-	pollAuthOperation,
-} from "@shared/api/local-operator/auth-operation";
-import { desktopResult } from "@shared/api/local-operator/desktop-api";
+	DesktopControlError,
+	desktopResult,
+	openAuthorization,
+} from "@shared/api/local-operator/desktop-api";
 import type {
 	AuthOperation,
 	DesktopProvider,
 	ProviderMethod,
 } from "@shared/api/local-operator/desktop-api";
-import { openAuthorization } from "@shared/api/local-operator/desktop-api";
 import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
 import { Spinner } from "@shared/components/common/spinner";
-import { Alert, Badge, Button, Input, Label } from "@shared/components/ui";
+import {
+	Alert,
+	AlertDescription,
+	AlertTitle,
+	Button,
+	Input,
+	Label,
+	Tabs,
+	TabsList,
+	TabsTrigger,
+} from "@shared/components/ui";
+import { Disclosure } from "@shared/components/ui/disclosure";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, Eye, EyeOff, RotateCcw } from "lucide-react";
-import type { FC } from "react";
+import {
+	Check,
+	CircleCheck,
+	Copy,
+	ExternalLink,
+	Eye,
+	EyeOff,
+	RotateCcw,
+} from "lucide-react";
+import type { FC, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type {
+	DefaultsApplied,
+	SaveKeyResult,
+} from "../../../../shared/desktop-contract";
+import {
+	brandOf,
+	deviceCodeOf,
+	hostOf,
+	methodBlurb,
+	methodName,
+	minutesLeft,
+	unfinishedMessage,
+} from "./provider-catalog";
 import { primaryMethod } from "./provider-labels";
+import {
+	INITIAL_SIGN_IN_STATE,
+	type SignInFlow,
+	type SignInState,
+	createSignInFlow,
+} from "./sign-in-flow";
 
 /**
- * Reachability for a local provider, stated only after it has been checked.
+ * Reachability for a local provider.
  *
- * Deliberately NOT run on mount: a probe is a real network round trip, and the
- * UX round's binding constraint is that nothing behind first paint makes one.
- * Before the user asks, the panel says what it knows (no key needed) and what
- * it does not (whether the server is running).
+ * The probe runs when the panel OPENS (design D11): opening a panel is already
+ * an explicit user action, and "Not tested yet" was a state that asked the
+ * user to press a button whose result the app could have fetched itself. The
+ * "no probe on render" rule is about the provider LIST, which still never
+ * probes.
  */
 const LocalProviderReachability: FC<{ provider: DesktopProvider }> = ({
 	provider,
@@ -47,13 +101,6 @@ const LocalProviderReachability: FC<{ provider: DesktopProvider }> = ({
 		reachable: boolean;
 		detail: string;
 	} | null>(null);
-
-	// A different provider row reuses this component; a verdict about the
-	// previous one must not linger beside the new name.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: provider.id is the reset trigger, not a value read here
-	useEffect(() => {
-		setResult(null);
-	}, [provider.id]);
 
 	const test = useCallback(async () => {
 		setTesting(true);
@@ -77,32 +124,68 @@ const LocalProviderReachability: FC<{ provider: DesktopProvider }> = ({
 		}
 	}, [provider.id]);
 
+	// A different provider row reuses this component, so the verdict is reset
+	// and re-asked per provider rather than left beside the new name.
+	useEffect(() => {
+		setResult(null);
+		void test();
+	}, [test]);
+
+	const brand = brandOf(provider);
 	return (
 		<div className="flex flex-col items-start gap-2">
-			<Badge variant={result?.reachable ? "success" : "neutral"}>
-				{result === null
-					? "Not tested yet"
-					: result.reachable
-						? "Server responded"
-						: "No server responded"}
-			</Badge>
-			{result && <p className="text-ink-muted text-meta">{result.detail}</p>}
+			{result === null ? (
+				<p className="flex items-center gap-2 text-body-sm text-ink-muted">
+					<Spinner size="sm" />
+					Checking whether {brand} is running
+				</p>
+			) : result.reachable ? (
+				<p className="text-body-sm text-success">{brand} is running</p>
+			) : (
+				<p className="text-body-sm text-ink-muted">
+					{brand} isn't answering
+					{provider.base_url ? (
+						<>
+							{" at "}
+							<span className="font-mono">{provider.base_url}</span>
+						</>
+					) : null}
+				</p>
+			)}
+			{result && !result.reachable && (
+				<p className="text-ink-dim text-meta">{result.detail}</p>
+			)}
 			<Button
 				variant="secondary"
 				size="sm"
 				onClick={() => void test()}
 				disabled={testing}
 			>
-				{testing ? "Testing" : "Test connection"}
+				{testing ? "Checking" : "Check again"}
 			</Button>
 		</div>
 	);
 };
 
+/**
+ * Where the panel is shown, which decides only the success action's words: in
+ * Settings the flow ends with "Done"; in onboarding and the connect dialog the
+ * next step is the point, so it reads "Continue".
+ */
+export type ProviderDetailContext = "settings" | "dialog";
+
 type ProviderDetailProps = {
 	provider: DesktopProvider;
 	/** Called once an auth method has stored a credential. */
 	onConnected?: () => void;
+	/**
+	 * Called when the user presses the success state's action. Settings uses it
+	 * to collapse the panel; the dialogs to move on.
+	 */
+	onDone?: () => void;
+	/** Opens the model picker from the receipt's "Change". */
+	onChangeModel?: () => void;
+	context?: ProviderDetailContext;
 };
 
 const SecretInput: FC<{
@@ -110,7 +193,9 @@ const SecretInput: FC<{
 	value: string;
 	onChange: (value: string) => void;
 	label: string;
-}> = ({ id, value, onChange, label }) => {
+	invalid?: boolean;
+	describedBy?: string;
+}> = ({ id, value, onChange, label, invalid, describedBy }) => {
 	const [visible, setVisible] = useState(false);
 	return (
 		<div className="relative">
@@ -122,6 +207,8 @@ const SecretInput: FC<{
 				autoComplete="off"
 				spellCheck={false}
 				aria-label={label}
+				aria-invalid={invalid || undefined}
+				aria-describedby={describedBy}
 				className="pr-10 font-mono"
 			/>
 			<Button
@@ -138,36 +225,126 @@ const SecretInput: FC<{
 	);
 };
 
+/** A copy button that says "Copied" for two seconds, then goes back. */
+const CopyButton: FC<{
+	value: string;
+	label: string;
+	variant?: "ghost" | "secondary" | "primary";
+	onCopied?: () => void;
+}> = ({ value, label, variant = "ghost", onCopied }) => {
+	const [copied, setCopied] = useState(false);
+	useEffect(() => {
+		if (!copied) return undefined;
+		const timer = setTimeout(() => setCopied(false), 2000);
+		return () => clearTimeout(timer);
+	}, [copied]);
+	return (
+		<Button
+			variant={variant}
+			size="sm"
+			onClick={async () => {
+				try {
+					await navigator.clipboard.writeText(value);
+					setCopied(true);
+					onCopied?.();
+				} catch {
+					showErrorToast("Could not copy. Select and copy it manually.");
+				}
+			}}
+		>
+			{copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+			{copied ? "Copied" : label}
+		</Button>
+	);
+};
+
+/**
+ * The success receipt: the backend's own sentence, never re-derived here,
+ * because the backend is what decided and wrote the default (`DefaultsApplied`).
+ * An older backend sends no receipt; the panel then says only that the sign-in
+ * worked, rather than implying a default it cannot see.
+ */
+const SignedIn: FC<{
+	brand: string;
+	verb: "Signed in to" | "Connected";
+	defaults: DefaultsApplied | null | undefined;
+	unverified?: string | null;
+	onChangeModel?: () => void;
+	actionLabel: string;
+	onAction: () => void;
+	primaryAction: boolean;
+}> = ({
+	brand,
+	verb,
+	defaults,
+	unverified,
+	onChangeModel,
+	actionLabel,
+	onAction,
+	primaryAction,
+}) => (
+	<div className="flex flex-col gap-3" data-sign-in-state="succeeded">
+		<div className="flex items-center gap-2">
+			<CircleCheck size={20} className="text-success" aria-hidden="true" />
+			<output className="text-heading text-ink">
+				{verb === "Connected" ? `${brand} connected` : `Signed in to ${brand}`}
+			</output>
+		</div>
+		{defaults?.receipt ? (
+			<p className="text-body-sm text-ink-muted">
+				{defaults.receipt}
+				{defaults.hosting && onChangeModel ? (
+					<>
+						{" "}
+						<Button variant="link" size="sm" onClick={onChangeModel}>
+							Change
+						</Button>
+					</>
+				) : null}
+			</p>
+		) : null}
+		{unverified ? (
+			<p className="text-ink-dim text-meta">
+				Saved, but not checked yet: {unverified}
+			</p>
+		) : null}
+		<div>
+			<Button
+				variant={primaryAction ? "primary" : "secondary"}
+				size="sm"
+				onClick={onAction}
+			>
+				{actionLabel}
+			</Button>
+		</div>
+	</div>
+);
+
 export const ProviderDetail: FC<ProviderDetailProps> = ({
 	provider,
 	onConnected,
+	onDone,
+	onChangeModel,
+	context = "settings",
 }) => {
 	const queryClient = useQueryClient();
 	const [methodId, setMethodId] = useState<string | null>(null);
-	const [operation, setOperation] = useState<AuthOperation | null>(null);
-	const [starting, setStarting] = useState(false);
+	const [flow, setFlow] = useState<SignInState>(INITIAL_SIGN_IN_STATE);
 	const [keyValue, setKeyValue] = useState("");
 	const [keySaving, setKeySaving] = useState(false);
-	const [flowError, setFlowError] = useState<string | null>(null);
+	const [keyError, setKeyError] = useState<string | null>(null);
+	const [keySaved, setKeySaved] = useState<SaveKeyResult | null>(null);
 	const [promptValue, setPromptValue] = useState("");
-	const [copied, setCopied] = useState(false);
-	const stopPollRef = useRef<(() => void) | null>(null);
+	const [promptError, setPromptError] = useState<string | null>(null);
+	const flowRef = useRef<SignInFlow | null>(null);
+	const brand = brandOf(provider);
 
 	// Resolved by METHOD identity, not provider id: a provider can offer several
-	// methods that all act on the same provider, so matching on `id` returned the
-	// first one every time and the other panels could not be reached (D2).
+	// methods that all act on the same provider (D2 of the earlier round).
 	const method: ProviderMethod | null =
 		provider.auth_methods.find(
 			(candidate) => candidate.method_id === methodId,
 		) ?? primaryMethod(provider.auth_methods);
-
-	useEffect(
-		() => () => {
-			// Unmount stops polling only; the flow itself belongs to the backend.
-			stopPollRef.current?.();
-		},
-		[],
-	);
 
 	const refreshProviders = useCallback(() => {
 		void queryClient.invalidateQueries({ queryKey: desktopKeys.providers });
@@ -191,64 +368,63 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		 * same event as far as the catalogue is concerned.
 		 */
 		void queryClient.invalidateQueries({ queryKey: desktopKeys.catalogue });
+
+		/*
+		 * AND THE CONFIG, which this branch adds to the same handler: a sign-in can
+		 * write the default model, and the composer, the model settings and the
+		 * empty-chat card all read it from there. The two invalidations answer two
+		 * different questions about one event -- what this account can offer, and
+		 * what the app now uses -- so neither replaces the other.
+		 */
+		// A sign-in can write the default model, which the composer, the model
+		// settings and the empty-chat card all read from the config.
+		void queryClient.invalidateQueries({ queryKey: ["config"] });
 		onConnected?.();
 	}, [queryClient, onConnected]);
 
-	const beginFlow = useCallback(
-		async (selected: ProviderMethod) => {
-			setStarting(true);
-			setFlowError(null);
-			setCopied(false);
-			try {
-				const started = await desktopResult<AuthOperation>({
-					op: "auth.start",
-					provider: selected.id,
-				});
-				setOperation(started);
-				stopPollRef.current?.();
-				stopPollRef.current = pollAuthOperation(started.id, (update) => {
-					setOperation(update);
-					if (update.state === "succeeded") refreshProviders();
-				});
-				if (started.auth_url) {
-					// Main opens the operation's current URL once; the renderer never
-					// supplies it, so a compromised render path cannot turn this into
-					// a general link opener.
-					await openAuthorization(started.id);
-				}
-			} catch (error) {
-				setFlowError(
-					error instanceof Error ? error.message : "Sign-in could not start.",
-				);
-			} finally {
-				setStarting(false);
-			}
-		},
-		[refreshProviders],
-	);
+	const onConnectedRef = useRef(refreshProviders);
+	onConnectedRef.current = refreshProviders;
 
-	const cancelFlow = useCallback(async () => {
-		if (!operation) return;
-		stopPollRef.current?.();
-		stopPollRef.current = null;
-		try {
-			await desktopResult({ op: "auth.cancel", id: operation.id });
-		} catch {
-			// The flow may already be terminal; the local panel closes either way.
-		}
-		setOperation(null);
-	}, [operation]);
+	useEffect(() => {
+		const instance = createSignInFlow({
+			start: (id) =>
+				desktopResult<AuthOperation>({ op: "auth.start", provider: id }),
+			read: (id) => desktopResult<AuthOperation>({ op: "auth.status", id }),
+			cancel: (id) => desktopResult({ op: "auth.cancel", id }),
+			// Main opens the operation's CURRENT url and never takes one from
+			// the renderer, so a compromised render path cannot turn this into
+			// a general link opener; it also dedups the same operation and url.
+			open: (id, reopen) => openAuthorization(id, reopen),
+			poll: pollAuthOperation,
+			onChange: setFlow,
+			onSucceeded: () => onConnectedRef.current(),
+		});
+		flowRef.current = instance;
+		// Unmount stops polling only; the flow itself belongs to the backend.
+		return () => instance.dispose();
+	}, []);
 
-	const retryFlow = useCallback(() => {
-		if (!method) return;
-		stopPollRef.current?.();
-		stopPollRef.current = null;
-		setOperation(null);
-		void beginFlow(method);
-	}, [method, beginFlow]);
+	// A panel reused for another provider starts clean.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: provider.id is the reset trigger
+	useEffect(() => {
+		flowRef.current?.reset();
+		setMethodId(null);
+		setKeyValue("");
+		setKeyError(null);
+		setKeySaved(null);
+	}, [provider.id]);
+
+	const chooseMethod = (next: string) => {
+		setMethodId(next);
+		setKeyError(null);
+		setKeySaved(null);
+		flowRef.current?.reset();
+	};
 
 	const submitPrompt = useCallback(async () => {
+		const operation = flow.operation;
 		if (!operation?.prompt_id || !promptValue) return;
+		setPromptError(null);
 		try {
 			await desktopResult({
 				op: "auth.input",
@@ -260,55 +436,55 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 			// state that could land in a transcript, log or persisted store.
 			setPromptValue("");
 		} catch (error) {
-			setFlowError(
+			setPromptError(
 				error instanceof Error ? error.message : "The code was not accepted.",
 			);
 		}
-	}, [operation, promptValue]);
+	}, [flow.operation, promptValue]);
 
 	const saveKey = useCallback(async () => {
 		if (!method || !keyValue.trim()) return;
 		setKeySaving(true);
-		setFlowError(null);
+		setKeyError(null);
 		try {
-			await desktopResult({
-				op: "auth.key",
-				provider: method.id,
-				value: keyValue.trim(),
-			});
+			const result =
+				(await desktopResult<SaveKeyResult | null>({
+					op: "auth.key",
+					provider: method.id,
+					value: keyValue.trim(),
+				})) ?? {};
 			setKeyValue("");
+			setKeySaved(result);
 			refreshProviders();
 		} catch (error) {
-			setFlowError(
-				error instanceof Error ? error.message : "The key could not be saved.",
+			// A 422 is the backend refusing THIS key (validation, or a provider
+			// with no key route), and its sentence belongs under the field.
+			// Anything else is also shown there: the field is what the user
+			// acts on next either way.
+			setKeyError(
+				error instanceof DesktopControlError || error instanceof Error
+					? error.message
+					: "The key could not be saved.",
 			);
 		} finally {
 			setKeySaving(false);
 		}
 	}, [method, keyValue, refreshProviders]);
 
-	const copyInstructions = useCallback(async () => {
-		if (!operation?.instructions) return;
-		try {
-			await navigator.clipboard.writeText(operation.instructions);
-			setCopied(true);
-		} catch {
-			showErrorToast("Could not copy the code. Select and copy it manually.");
-		}
-	}, [operation?.instructions]);
+	const doneLabel = context === "dialog" ? "Continue" : "Done";
+	const finish = () => {
+		setKeySaved(null);
+		flowRef.current?.reset();
+		onDone?.();
+	};
 
 	if (provider.local) {
 		return (
 			<div className="flex flex-col gap-3">
 				<p className="text-body-sm text-ink-muted">
-					{provider.name} runs on this computer and needs no account or key. It
-					has to be running before this app can use it.
+					Runs on this computer and needs no account or key. Start {brand}, then
+					check the connection.
 				</p>
-				{/* Was a green "Ready" derived from `configured`, which for a local
-				    provider means only "needs no credential" -- nothing has
-				    contacted the server. Test connection is the only thing here
-				    that may claim reachability, because it is the only thing that
-				    checks. */}
 				<LocalProviderReachability provider={provider} />
 			</div>
 		);
@@ -317,55 +493,80 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	if (!method) {
 		return (
 			<Alert variant="warning">
-				This provider has no supported sign-in method on this backend.
+				This provider has no supported sign-in method on this server.
 			</Alert>
 		);
 	}
 
-	const waiting = operation && !isTerminalAuthState(operation.state);
-	const failed =
-		operation &&
-		(operation.state === "failed" ||
-			operation.state === "expired" ||
-			operation.state === "cancelled");
+	const apiKeyMethod = provider.auth_methods.find(
+		(candidate) => candidate.kind === "api_key",
+	);
+	const operation = flow.operation;
+	const keyHelpId = `key-help-${provider.id}`;
 
-	return (
-		<div className="flex flex-col gap-4">
-			{provider.auth_methods.length > 1 && (
-				<fieldset className="flex flex-wrap gap-2">
-					<legend className="sr-only">Sign-in method</legend>
+	const methodTabs =
+		provider.auth_methods.length > 1 ? (
+			<Tabs value={method.method_id} onValueChange={chooseMethod}>
+				<TabsList aria-label="How to connect">
 					{provider.auth_methods.map((candidate) => (
-						<Button
-							key={candidate.method_id}
-							variant={
-								candidate.method_id === method.method_id ? "secondary" : "ghost"
-							}
-							size="sm"
-							onClick={() => {
-								setMethodId(candidate.method_id);
-								setOperation(null);
-								setFlowError(null);
-								stopPollRef.current?.();
-							}}
-						>
-							{candidate.kind === "api_key" ? "API key" : candidate.label}
-						</Button>
+						<TabsTrigger key={candidate.method_id} value={candidate.method_id}>
+							{methodName(candidate)}
+						</TabsTrigger>
 					))}
-				</fieldset>
-			)}
+				</TabsList>
+			</Tabs>
+		) : null;
 
-			{flowError && <Alert variant="danger">{flowError}</Alert>}
-
-			{method.kind === "api_key" ? (
-				<div className="flex flex-col gap-2">
+	/* ------------------------------------------------------------ API key */
+	if (method.kind === "api_key") {
+		if (keySaved) {
+			return (
+				<div className="flex flex-col gap-4">
+					{methodTabs}
+					<SignedIn
+						brand={brand}
+						verb="Connected"
+						defaults={keySaved.defaults_applied}
+						unverified={
+							keySaved.valid === null ? (keySaved.reason ?? null) : null
+						}
+						onChangeModel={onChangeModel}
+						actionLabel={doneLabel}
+						onAction={finish}
+						primaryAction={context === "dialog"}
+					/>
+				</div>
+			);
+		}
+		return (
+			<div className="flex flex-col gap-4">
+				{methodTabs}
+				<div className="flex flex-col gap-2" data-sign-in-state="api-key">
 					<Label htmlFor={`key-${provider.id}`}>API key</Label>
 					<SecretInput
 						id={`key-${provider.id}`}
 						value={keyValue}
-						onChange={setKeyValue}
-						label={`${provider.name} API key`}
+						onChange={(next) => {
+							setKeyValue(next);
+							setKeyError(null);
+						}}
+						label={`${brand} API key`}
+						invalid={keyError !== null}
+						describedBy={keyHelpId}
 					/>
-					<div className="flex items-center gap-2">
+					<p
+						id={keyHelpId}
+						className={
+							keyError ? "text-danger text-meta" : "text-ink-dim text-meta"
+						}
+						role={keyError ? "alert" : undefined}
+					>
+						{keyError ??
+							(provider.has_credential
+								? "A key is saved. Paste a new one to replace it. Stored encrypted on this computer."
+								: "Stored encrypted on this computer.")}
+					</p>
+					<div>
 						<Button
 							variant="primary"
 							size="sm"
@@ -373,142 +574,285 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 							onClick={() => void saveKey()}
 						>
 							{keySaving ? <Spinner size="sm" /> : null}
-							Save key
+							{keySaving ? "Checking key" : "Save key"}
 						</Button>
-						{provider.configured && (
-							<Badge variant="success">A credential is saved</Badge>
-						)}
 					</div>
 				</div>
-			) : (
-				<div className="flex flex-col gap-3">
-					{!operation && (
-						<div className="flex items-center gap-2">
-							<Button
-								variant="primary"
-								size="sm"
-								disabled={starting}
-								onClick={() => void beginFlow(method)}
-							>
-								{starting ? <Spinner size="sm" /> : null}
-								{method.label}
-							</Button>
-							{provider.configured && (
-								<Badge variant="success">Signed in</Badge>
-							)}
-						</div>
-					)}
+			</div>
+		);
+	}
 
-					{waiting && (
-						<div className="flex flex-col gap-3">
-							<p className="text-body-sm text-ink-muted">
-								{operation.message || "Finish signing in to continue."}
-							</p>
-							{/* Device flow: the code is something to COPY and carry to the
-							    provider page — display content with a copy action. */}
-							{operation.instructions && (
-								<div className="flex items-center gap-2 rounded-sm border border-control bg-sunken p-3">
-									<code className="flex-1 font-mono text-body-sm text-ink">
-										{operation.instructions}
-									</code>
-									<Button
-										variant="secondary"
-										size="sm"
-										onClick={() => void copyInstructions()}
-									>
-										{copied ? (
-											<Check aria-hidden="true" />
-										) : (
-											<Copy aria-hidden="true" />
-										)}
-										{copied ? "Copied" : "Copy code"}
-									</Button>
-								</div>
-							)}
-							{operation.auth_url && (
-								<Button
-									variant="secondary"
-									size="sm"
-									onClick={() =>
-										void openAuthorization(operation.id, true).catch(
-											(error: unknown) =>
-												showErrorToast(
-													error instanceof Error
-														? error.message
-														: "The sign-in page could not be opened.",
-												),
-										)
-									}
-								>
-									Reopen sign-in page
-								</Button>
-							)}
-							{/* Auth flow: an input prompt is somewhere to PASTE a code the
-							    provider showed — a control, not display content. */}
-							{operation.input_required && (
-								<div className="flex items-end gap-2">
-									<div className="flex-1">
-										<Label htmlFor={`prompt-${operation.id}`}>
-											Paste the code from the provider
-										</Label>
-										<SecretInput
-											id={`prompt-${operation.id}`}
-											value={promptValue}
-											onChange={setPromptValue}
-											label="Provider code"
-										/>
-									</div>
-									<Button
-										variant="primary"
-										size="sm"
-										disabled={!promptValue}
-										onClick={() => void submitPrompt()}
-									>
-										Submit code
-									</Button>
-								</div>
-							)}
-							<div className="flex items-center gap-2">
-								<Spinner size="sm" />
-								<span className="text-meta text-ink-dim">
-									{operation.state === "input_required"
-										? "Waiting for the code"
-										: `Waiting${operation.expires_in > 0 ? ` (${Math.ceil(operation.expires_in / 60)} min left)` : ""}`}
-								</span>
-								<Button
-									variant="ghost"
-									size="sm"
-									onClick={() => void cancelFlow()}
-								>
-									Cancel
-								</Button>
-							</div>
-						</div>
-					)}
+	/* ----------------------------------------------- browser / device flows */
+	const start = () => void flowRef.current?.start(method.id);
+	const host = hostOf(operation?.launch_url ?? operation?.auth_url);
+	const deviceCode = operation ? deviceCodeOf(operation) : null;
+	const minutes = operation ? minutesLeft(operation.expires_in) : null;
+	/*
+	 * Is the paste box the flow itself, or a fallback? A newer backend says so
+	 * (`input_optional`); on an older one a method whose registry entry offers a
+	 * paste FALLBACK (`paste_fallback`, Anthropic) is optional, and one that
+	 * requires the paste is not.
+	 */
+	const pasteIsFallback =
+		operation?.input_optional ??
+		(method.paste_fallback && !method.requires_secret_input);
 
-					{failed && (
-						<div className="flex flex-col gap-2">
-							<Alert
-								variant={
-									operation.state === "cancelled" ? "neutral" : "warning"
-								}
-							>
-								{operation.state === "expired"
-									? "This sign-in expired before it finished."
-									: operation.state === "cancelled"
-										? "This sign-in was cancelled."
-										: operation.message || "Sign-in did not complete."}
-							</Alert>
-							<div>
-								<Button variant="secondary" size="sm" onClick={retryFlow}>
-									<RotateCcw aria-hidden="true" />
-									Try again
-								</Button>
-							</div>
-						</div>
+	let body: ReactNode;
+	if (flow.phase === "idle") {
+		body = (
+			<div
+				className="flex flex-col items-start gap-3"
+				data-sign-in-state="idle"
+			>
+				<p className="text-body-sm text-ink-muted">
+					{methodBlurb(method, provider)}{" "}
+					{method.kind === "device"
+						? "You'll get a code to enter on the provider's page."
+						: "It opens in your browser."}
+				</p>
+				<Button variant="primary" size="sm" onClick={start}>
+					{method.kind === "device"
+						? "Get a sign-in code"
+						: "Continue in browser"}
+					{method.kind === "device" ? null : (
+						<ExternalLink aria-hidden="true" />
 					)}
+				</Button>
+			</div>
+		);
+	} else if (
+		flow.phase === "starting" ||
+		(flow.phase === "active" && operation && !operation.auth_url && !deviceCode)
+	) {
+		body = (
+			<div className="flex items-center gap-3" data-sign-in-state="starting">
+				<Spinner size="sm" />
+				<output className="text-body-sm text-ink-muted">
+					{method.kind === "device" ? "Getting a code" : "Opening your browser"}
+				</output>
+				<Button
+					variant="ghost"
+					size="sm"
+					onClick={() => void flowRef.current?.cancel()}
+				>
+					Cancel
+				</Button>
+			</div>
+		);
+	} else if (flow.phase === "active" && operation && deviceCode) {
+		const page = operation.launch_url ?? operation.auth_url;
+		body = (
+			<div
+				className="flex flex-col items-start gap-3"
+				data-sign-in-state="device-code"
+			>
+				<p className="text-body-sm text-ink-muted">
+					Enter this code {host ? `at ${host}` : "on the sign-in page"}. This
+					page updates on its own once you approve.
+				</p>
+				<div className="flex items-center gap-3 rounded-md bg-sunken p-3">
+					<code className="font-mono text-ink text-title tracking-wider">
+						{deviceCode}
+					</code>
 				</div>
-			)}
+				<div className="flex flex-wrap items-center gap-2">
+					<CopyButton
+						value={deviceCode}
+						label={page ? "Copy code and open page" : "Copy code"}
+						variant="primary"
+						onCopied={() => {
+							if (page) void flowRef.current?.reopen();
+						}}
+					/>
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() => void flowRef.current?.cancel()}
+					>
+						Cancel
+					</Button>
+				</div>
+				{minutes ? (
+					<p className="text-ink-dim text-meta">
+						Code expires in {minutes} min
+					</p>
+				) : null}
+			</div>
+		);
+	} else if (flow.phase === "active" && operation) {
+		const pasteField = operation.input_required ? (
+			<div className="flex flex-col gap-2">
+				<Label htmlFor={`prompt-${operation.id}`}>
+					{host ? `Code from ${host}` : "Code from the sign-in page"}
+				</Label>
+				<div className="flex items-start gap-2">
+					<div className="flex-1">
+						<SecretInput
+							id={`prompt-${operation.id}`}
+							value={promptValue}
+							onChange={(next) => {
+								setPromptValue(next);
+								setPromptError(null);
+							}}
+							label="Sign-in code"
+							invalid={promptError !== null}
+						/>
+					</div>
+					<Button
+						variant="secondary"
+						size="md"
+						disabled={!promptValue}
+						onClick={() => void submitPrompt()}
+					>
+						Continue
+					</Button>
+				</div>
+				{promptError ? (
+					<p className="text-danger text-meta" role="alert">
+						{promptError}
+					</p>
+				) : null}
+			</div>
+		) : null;
+
+		if (operation.input_required && !pasteIsFallback) {
+			// The paste IS the flow: the field is the headline, open.
+			body = (
+				<div
+					className="flex flex-col items-start gap-3"
+					data-sign-in-state="paste-required"
+				>
+					<p className="text-body text-ink">
+						Paste the code {host ?? "the provider"} shows after you approve
+					</p>
+					<div className="w-full">{pasteField}</div>
+					<div className="flex flex-wrap items-center gap-2">
+						<Button
+							variant="secondary"
+							size="sm"
+							onClick={() => void flowRef.current?.reopen()}
+						>
+							<ExternalLink aria-hidden="true" />
+							{flow.opened ? "Open browser again" : "Open sign-in page"}
+						</Button>
+						{operation.auth_url ? (
+							<CopyButton value={operation.auth_url} label="Copy link" />
+						) : null}
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={() => void flowRef.current?.cancel()}
+						>
+							Cancel
+						</Button>
+					</div>
+				</div>
+			);
+		} else {
+			body = (
+				<div
+					className="flex flex-col items-start gap-3"
+					data-sign-in-state="waiting"
+				>
+					<div className="flex items-center gap-2">
+						<Spinner size="sm" />
+						<output className="text-body text-ink">
+							Finish signing in in your browser
+						</output>
+					</div>
+					<p className="text-body-sm text-ink-muted">
+						{flow.opened
+							? `We opened ${host ?? "the sign-in page"}. Approve access there and this page updates on its own.`
+							: flow.openFailed
+								? "Your browser didn't open. Open the sign-in page yourself, or copy the link."
+								: `Opening ${host ?? "the sign-in page"}. Approve access there and this page updates on its own.`}
+					</p>
+					<div className="flex flex-wrap items-center gap-2">
+						{/* "Open again" only once something opened: a Reopen for a page
+						    that never opened is the lie design D2 photographed. */}
+						<Button
+							variant="secondary"
+							size="sm"
+							onClick={() => void flowRef.current?.reopen()}
+						>
+							<ExternalLink aria-hidden="true" />
+							{flow.opened ? "Open browser again" : "Open sign-in page"}
+						</Button>
+						{operation.auth_url ? (
+							<CopyButton value={operation.auth_url} label="Copy link" />
+						) : null}
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={() => void flowRef.current?.cancel()}
+						>
+							Cancel
+						</Button>
+					</div>
+					{minutes ? (
+						<p className="text-ink-dim text-meta">
+							Link expires in {minutes} min
+						</p>
+					) : null}
+					{pasteField ? (
+						<Disclosure
+							summary="Browser showed a code? Paste it here"
+							className="w-full"
+						>
+							<div className="pt-2">{pasteField}</div>
+						</Disclosure>
+					) : null}
+				</div>
+			);
+		}
+	} else if (flow.phase === "settled" && operation?.state === "succeeded") {
+		body = (
+			<SignedIn
+				brand={brand}
+				verb="Signed in to"
+				defaults={operation.defaults_applied}
+				onChangeModel={onChangeModel}
+				actionLabel={doneLabel}
+				onAction={finish}
+				primaryAction={context === "dialog"}
+			/>
+		);
+	} else {
+		// Failed, expired, cancelled by another window, or a refused start.
+		const message = operation
+			? unfinishedMessage(operation, brand)
+			: (flow.error ?? `${brand} didn't confirm the sign-in.`);
+		body = (
+			<div className="flex flex-col gap-3" data-sign-in-state="unfinished">
+				<Alert
+					variant={operation?.state === "cancelled" ? "neutral" : "warning"}
+				>
+					<AlertTitle>Sign-in didn't finish</AlertTitle>
+					<AlertDescription>{message}</AlertDescription>
+				</Alert>
+				<div className="flex flex-wrap items-center gap-2">
+					<Button variant="secondary" size="sm" onClick={start}>
+						<RotateCcw aria-hidden="true" />
+						Try again
+					</Button>
+					{apiKeyMethod ? (
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={() => chooseMethod(apiKeyMethod.method_id)}
+						>
+							Use an API key instead
+						</Button>
+					) : null}
+				</div>
+			</div>
+		);
+	}
+
+	return (
+		<div className="flex flex-col gap-4">
+			{methodTabs}
+			{body}
 		</div>
 	);
 };
