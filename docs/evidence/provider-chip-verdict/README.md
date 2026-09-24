@@ -239,3 +239,32 @@ conflicted in either, and the second fold's window moves `chat-search.ts`,
 `chat-sidebar.tsx`, `palette-search.ts`, `canonical-sessions-store.ts` and
 `desktop-session-contract.ts` -- none of them the providers feature, the Radient
 hooks or the settings sections photographed here.
+
+## `d12-window/` -- the failed-verdict window (remediation round 4, design D12)
+
+Round 3 released the grid's hold on the verdict's first ANSWER, and a failed read
+is an answer. With the verdict route failing and the app's own account read still
+in flight, the fallback arm had only the census, so the card painted the green
+**Signed in** and corrected it when the account read answered `refused` (design
+round 4 measured 2,493 ms, in 1 of 5 runs). Round 4 moves the wait from the card
+LIST to the CLAIM: `loginClaim` (`provider-labels.ts`) answers `null` until a read
+that can support a claim has answered, and the card keeps the chip's line as an
+invisible, `aria-hidden` slot (the panel omits its badge) for that window.
+
+Taken on a fresh rig (backend `origin/main` = `2a0b96df9`, isolated `HOME`, proxy
+on 18631, `headless`, 1380x900, dark, one boot per frame) whose proxy adds one arm
+the earlier rigs lacked: `acctslow` holds the app's account read for
+`RIG_ACCT_DELAY_S`, so the window design caught by chance is reproduced every run.
+State for all three: dead grant (verdict `login_required`), `GET /v1/auth/status`
+answering **500**, account read held 6 s then `401 radient_credential_refused`.
+
+| frame | tree | what it shows |
+| --- | --- | --- |
+| `before-green-claim.png` (`945c79246c012928`) | `935913551` (round 3's `src/`, folded) | the Radient card's green **Signed in**, inside the window -- the D12 claim |
+| `after-withheld.png` (`c4597812da975aa9`) | `4af44cdac` | the same card and moment: the list painted, NO claim; the slot measured 21.28x23.40, `visibility: hidden`, `aria-hidden="true"` |
+| `after-settled.png` (`8b7f980263aed73f`) | `4af44cdac` | **Needs re-authentication**, attention, once the account read answered; the card box is 281.34x108.49 in both after frames, so the claim's arrival moves nothing |
+
+The sampled sequences behind them (MutationObserver plus a 10 ms interval, armed
+before navigating to Settings) are in the PR's design-remediation round-4 comment.
+The other six directories are unaffected: each was taken after both reads had
+settled, and the settled chip is unchanged by this round.
