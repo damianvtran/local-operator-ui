@@ -1280,7 +1280,11 @@ test("a one-turn journal bounds the walk by the oldest unlabelled call's own sta
 		durable,
 	});
 	const reads = historyReads();
-	assert.equal(reads.length, 1, `one page, not the journal (read ${reads.length})`);
+	assert.equal(
+		reads.length,
+		1,
+		`one page, not the journal (read ${reads.length})`,
+	);
 	assert.equal(reads[0].beforeId, undefined, "and it is the tail");
 	assert.equal(
 		handle().labelPending.size,
@@ -1340,7 +1344,11 @@ test("the start floor reads exactly as deep as the instant it is given", async (
 		durable,
 	});
 	const reads = historyReads();
-	assert.equal(reads.length, 4, `the journal's own span (read ${reads.length})`);
+	assert.equal(
+		reads.length,
+		4,
+		`the journal's own span (read ${reads.length})`,
+	);
 	assert.equal(
 		reads.reduce((total, read) => total + read.limit, 0),
 		419,
