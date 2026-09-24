@@ -29,6 +29,7 @@ import {
 	type SessionBinding,
 	type SessionCatalogueStatus,
 	type SessionLocalityFields,
+	type SessionOpenedBy,
 	type SessionTransferReceipt,
 	mergeCompletionAttention,
 } from "../../../../shared/desktop-session-contract";
@@ -99,6 +100,17 @@ export type CanonicalSessionRow = {
 	subagents_running?: number | null;
 	subagents_queued?: number | null;
 	binding?: SessionBinding;
+	/**
+	 * Who opened this conversation, when an agent rather than the operator did.
+	 *
+	 * Declared rather than left to the index signature below for the reason the two
+	 * stamps above are: every read of an undeclared key on this type is `unknown`,
+	 * and the sidebar's row draws a marker from this one. It needs no write site of
+	 * its own - the catalogue map spreads the wire row's fields onto this one, so
+	 * the value arrives with the read that fetched it, and a backend that sends no
+	 * `opened_by` leaves it `undefined` and the marker undrawn.
+	 */
+	opened_by?: SessionOpenedBy | null;
 	[key: string]: unknown;
 	/*
 	 * The mesh's locality fields (`locality`, `owner_device*`, `reachable`, ...),

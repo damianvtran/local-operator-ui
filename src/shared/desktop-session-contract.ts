@@ -14,6 +14,30 @@ export type CanonicalSessionId = string;
  * unknown rather than to normalise it into a state it does understand. */
 export type SessionCatalogueStatus = { code: string; label: string };
 export type SessionBinding = { agent: string | null; team: string | null };
+/**
+ * Who OPENED a conversation, when it was an agent rather than the operator.
+ *
+ * Present ONLY on a session an agent opened as an explicitly-requested parallel
+ * workstream, and present in BOTH values' senses: the object being here at all is
+ * the fact ("this is not one of your own chats"), which is why the sidebar draws
+ * a marker from its presence rather than from any member. Absent/null on every
+ * conversation the operator opened himself, on every ephemeral machine-started
+ * session, and on every backend that predates the field - so a client that
+ * ignores it renders exactly the list it rendered before.
+ *
+ * EVERY MEMBER IS INDEPENDENTLY NULLABLE, and that is the normal case rather than
+ * a defect: a requester's identity is a fact the backend may hold none of. The
+ * three name the requesting side from three angles - `agent` is its role/agent
+ * identity, `label` its conversation name, `session` its session id - so a
+ * renderer must read each one separately and never require another. `label` is
+ * free text (a conversation name) and may be arbitrarily long, so a surface that
+ * prints it has to bound and truncate it, the way it bounds an agent name.
+ */
+export type SessionOpenedBy = {
+	agent: string | null;
+	label: string | null;
+	session: string | null;
+};
 export type SessionCatalogueRow = {
 	id: CanonicalSessionId;
 	name: string;
@@ -63,6 +87,12 @@ export type SessionCatalogueRow = {
 	archived: boolean;
 	status: SessionCatalogueStatus;
 	binding: SessionBinding;
+	/**
+	 * The agent that opened this conversation, when one did. See
+	 * `SessionOpenedBy` for why its PRESENCE is the fact and why every member
+	 * inside it may be null.
+	 */
+	opened_by?: SessionOpenedBy | null;
 	attention?: CompletionAttention;
 	/**
 	 * The feed's stamp for `status`, when the backend served this row knows it.
