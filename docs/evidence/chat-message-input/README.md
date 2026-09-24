@@ -450,3 +450,289 @@ matches the marker run's box exactly at both rungs (157.33 × 17 at 1024,
 147.67 × 16 at 440), four deltas `0` at every rung, `0,0,0,0` at `scrollTop` 113
 and 225 in the scrolled story, and `0` after the composer's own box is narrowed
 866 → 584 and 374 → 194.
+
+---
+
+## The pending send: six states, three at the full width and three at the compact rung
+
+Three states of one SEND, taken at three different moments - and only two of them
+are a press by this composer. `pending-send-chip-row` is a file staged with
+nothing in flight; `pending-send-payload` is the press BEFORE the echo, so the
+payload is still in the box; `pending-send` is the INHERITED send the New-chat
+flip leaves behind - a live row for the conversation, no press of this composer's
+own, and no chip, because the echo has already carried the payload into the
+transcript. Each is also captured at this set's compact rung (`-small-view`, a
+440px column). They were added with the fix for the operator's report of
+2026-09-23: on pressing Send there is a window - the image encode plus the create
+hop - in which the transcript already shows the user's message with its
+attachment while the composer has cleared its text and still shows the chip for
+that attachment, under the IDLE placeholder. It reads as one file sent twice,
+and as a send that half-happened.
+
+The cause was two triggers for one payload: the words left at the echo
+(`onEchoPainted`) and the chip row and the staged replies left when the send
+SETTLED. Both now leave in ONE call (`use-message-input`'s `clearOnce`, which
+calls `clearStagedPayload`), each entry removed by IDENTITY so a file attached
+during that window survives it, and the composer says the message is still going
+out while the send has not settled, as the new placeholder `Sending your
+message`. The fact behind it is the STORE's own row for the conversation
+(`sendUnsettledForSession` over `draftRowForSession`: `pending` +
+`admissionAttempted`), read by the composer itself and OR'd with its own
+`sendInFlight` - see round 2's section below for why it is not a prop.
+
+### Round 1's remediation: what the reviews changed in these frames
+
+Round 1 ran four review streams and two of their findings landed on the frames
+themselves, so both are corrected here rather than argued with:
+
+- **The sentence was unreachable in the window it was written for, and the first
+  frame made it look reachable** (`### Agent review — round 1`, MAJOR-1; QA's
+  `### QA report — round 1`, Q-1, which executed both revisions). `Sending your
+  message` sat BELOW `awaitingReply` in the placeholder chain, and on a real send
+  `awaitingReply` is already true when the echo empties the box - the store
+  writes `admissionAttempted` before the echo and the pane's rung latches on it -
+  so the live box said `Waiting for the agent`. The first revision of
+  `PendingSend` omitted that prop, which is exactly why the still could show a
+  state the app is not in. The term now sits ABOVE `awaitingReply`, in
+  `composerPlaceholder` (a rule rather than a chain, so the order cannot be
+  edited back into an unreachable state), and **this frame is captured with
+  `awaitingReply={true}`** - the value `chat-content.tsx` passes in this window.
+- **The two in-flight frames rendered an enabled Send** (design round 1, D2): the
+  live pane passes `isLoading = admitting || starting`, which draws the control
+  closed for the whole window, so those frames were one beat early - payload at
+  the press, chrome from before it. The harness now passes the live props for
+  every state: `isLoading` on the two in-flight ones, `awaitingReply` on
+  `pending-send` (staged in the canonical store's row, which is where the
+  composer reads it - the prop this list used to name does not exist).
+- **The compact rung had no frame** (design round 1, D3), though this set carries
+  one for its neighbours (`credential-masked-small-view`, the pill pair) - and
+  round 1's R6 discussion was exactly the case where a frame, not arithmetic,
+  settled a clipping question. Hence the three `-small-view` states.
+- **The "before" half was from a previous palette generation** (design round 1,
+  D1): the `idle` frames standing beside these were captured before the palette
+  lift of `9a26e2d6f`, so `idle` next to `pending-send` showed a different page
+  ground and read as a regression of this change. `idle` and `awaiting-reply` are
+  re-taken on this tree in the same pass, so every frame in this section is one
+  generation.
+
+### Round 2's remediation: the source of the sentence, and the frames it changed
+
+Round 2 (`### Agent review — round 2`, R2-1) found the round-1 wiring did not
+survive the flip: the sentence was fed from `chat-page.tsx`'s `admitting`, a
+`useState` declared inside the panel the identity flip REPLACES, so the panel that
+replaced it reported false for the whole send and the box fell through to
+`Waiting for the agent` - the sentence unreachable in the window it names. The
+source is now the STORE's row for the conversation
+(`sendUnsettledForSession` over `draftRowForSession`), read by the composer
+itself; the `sendingUnsettled` prop is gone, which is why this README no longer
+names it.
+
+Two consequences for this section's frames, both of them corrections rather than
+additions:
+
+- **`pending-send` is no longer a press.** It is the INHERITED send: a live row
+  for the conversation with no press of this composer's own. That is the flip
+  arm's state, and it is the only state that can tell the two sources apart - with
+  a press of its own the composer is covered by `sendInFlight` either way, which
+  is exactly how the first revision's frame came to assert a state the live app
+  is never in. The play asserts the sentence on that mount, with nothing typed.
+- **`pending-send-payload` and `pending-send-chip-row` keep their chips**, because
+  they still hold the payload; only the inherited-send state has lost it to the
+  echo. The harness now stages the store row per state (`none` / `pre-seam` /
+  `in-flight`) instead of passing a prop, so a story renders the state the app
+  would be in rather than one the harness posed.
+
+### Round 3's remediation: the set's palettes, measured - and the count corrected
+
+Round 3 (`### Design review — round 3`, D1c) measured the set against each
+theme's own ground with `sharp` and found frames on an older generation: the
+composer-line directories re-shot in seven palettes were still pre-lift in
+`localOperatorLight` (`#F6F1E7` against the shipped `#F2EDE3`) and `sage`, and the
+`credential-*` directories painted tokyoNight at `#1E1F28` against the shipped
+`#292A35` - 13 units, the largest difference in the set. All were re-shot in one
+narrowed run.
+
+**The count in this section's first version was wrong, and round 4 corrected it
+against the delta itself: that commit moved 49 frames, not 37.** Per palette:
+tokyoNight 17, `localOperatorLight` 11, `obsidian` 12, `sage` 3, `dracula` 2,
+`iceberg` 2, `monokai` 2. The 37 enumerated ten composer-line directories x
+{`localOperatorLight`, `sage`} plus seventeen `credential-*` directories x
+{tokyoNight}, which leaves the twelve `obsidian` frames in the `credential-*`
+directories unnamed, reads `sage` as ten directories when it moved in three, and
+cannot cover `dracula`/`iceberg`/`monokai`, which moved in `pending-send` and
+`stop-control-while-streaming`. The same commit message also gave the wrong cause
+for the stop-control family - the prop it named is visually inert in that story,
+seven of its twelve palettes are byte-identical across the delta, and what moved
+in the other five is a colour-level generation difference in the composer's
+control area and the caption band. Round 4's method replaces the whole approach,
+so the correction lives in that section and in the manifest's note; commit
+messages are not rewritten here.
+
+**What that instrument certifies, and what it cannot:** it reads the frame's
+canvas pixel, so it certifies the canvas. In five palettes each of `pending-send`
+and `stop-control-while-streaming` the canvas was already within a unit of the
+reference before the re-shoot and what moved was the caption band and the
+composer's control area - pixels this reading is blind to by construction. So the
+claim this section stands behind is the canvas's, not the whole frame's.
+
+The residue was settled by re-capture rather than by argument, and the scope of
+that measurement matters: three sample frames (`pending-send-payload/obsidian`,
+`idle/monokai`, `stop-slot-settled/obsidian`) re-captured byte-identically, and
+QA's four `obsidian` frames later proved byte-stable across two captures two
+rounds apart. That is what byte-identity was measured ON - it is not a claim about
+the whole residue class, which round 4 classified from a full-set capture by the
+difference's own scale instead (below). The residue is one list in both documents,
+by the canvas pixel: `obsidian` 22, `monokai` 2, `neon` 3, `localOperatorDark` 1,
+each up to four units (the independent modal-ring census reads `obsidian` at two,
+so the magnitude is instrument-dependent while the list is not).
+
+### Round 4's remediation: enumerated by content, not by colour
+
+Three rounds of sweeps had all enumerated by ground colour, which cannot see a
+stale caption, and round 4's three streams each caught that class again
+(`### Agent review — round 4` R4-1, `### Design review — round 4` D2d,
+`### QA report — round 4` Q-1) - the compact-rung state still shipping the
+caption this PR replaced, in five palettes whose full-width twins the round-3 pass
+had already fixed. The method changed with it: one FULL-SET fresh capture over
+every directory and every palette of this set (36 x 12 = 432 frames, one
+invocation, `--only=chat-message-input--`), byte-diffed against the committed
+files, and then classified by the difference's own scale rather than by where the
+frame stands in a colour space.
+
+218 of the 432 differed. Fifteen of them are content-bearing - `credential-escaped`
+in ten palettes (the sentence `- Enter is held: clear the box to release your
+words` against the retired `- Enter will expose them`) and `pending-send-small-view`
+in five (an inherited send, against the withdrawn "the echo has landed"), which are
+re-shot here and confirmed at the pixels. The other 203 were checked against the
+difference's own magnitude distribution, not against byte-identity, and QA's
+measurements are the ones recorded: 97-99% of the pixels that differ are within 7
+units, the largest connected region of them is 11,887 px, and the class's ceiling
+is 83 units on a single pixel - the 57-unit figure round 4 quoted is exact only
+for the four `obsidian` frames it was measured on - with a whole-frame shift of at
+most 27 units where the change is not local, and no repaint anywhere in a frame.
+Two different things were bundled under one name there and this section separates
+them: deterministic generation drift, where a frame reproduces byte-for-byte
+across captures taken rounds apart and differs from the committed one only by that
+distribution (QA's four `obsidian` frames are this), and genuine nondeterminism,
+where no second capture reproduces the frame at all - `credential-pill-cleared`'s
+twelve frames are its exemplar, repainting thousands of pixels with a content that
+changes per run (the credential token id, and whether the removal toast is up), so
+a fresh capture of them would ship frames no second run reproduces. Both classes
+are left as committed and recorded rather than re-shot, and the manifest's round-4
+note carries the numbers per family.
+
+THE ARM THESE FRAMES MODEL (design round 1, D5): the EXISTING-SESSION arm - one
+composer with a stable `conversationId`, which is the only arm a story can hold
+still. The New-chat identity flip REPLACES the panel mid-wait (`panelIdentityFor`
+moves the mount key from `draft:<uuid>` to the session id). What makes that arm
+safe is not the arm but the SOURCE: the sentence is derived from the store's row
+for the conversation, which every mount reads, rather than from any state of the
+composer or the pane being replaced. `pending-send` is the frame of that state
+(a live row, no press), its play asserts the sentence on a mount that made no
+press, and `canonical-chat.test.mjs` drives the row's whole lifecycle on the real
+store. Round 2's R2-1 is the difference: the round-1 wiring fed the sentence from
+the pane's `useState`, which the flip resets.
+
+The frames were produced by the repository's own rig:
+
+```
+pnpm storybook --port 6123 --no-open
+# The six states this section owns, plus the neighbours they are read against.
+node scripts/capture-evidence.mjs http://127.0.0.1:6123 \
+  --dirs=pending-send,pending-send-payload,pending-send-chip-row,pending-send-small-view,pending-send-payload-small-view,pending-send-chip-row-small-view,idle,awaiting-reply,stop-control-while-streaming \
+  --allow-backend --theme-settle-ms=2000
+```
+
+`--dirs` with `--themes` narrows a run to those palettes in those directories and
+APPENDS, which is how the later rounds' re-shoots were done: round 2's pass over
+seven palettes in nineteen directories, and round 3's over the four stale
+families it measured (below).
+
+`--theme-settle-ms` is not optional on this box: at the load these passes ran
+under (110-140), the first cold `iframe.html` load does not finish the module
+graph inside the shipped ten-second window, so a run dies on its first frame with
+`document carries theme "" after 10s`. The raised budget is a ceiling rather than
+a cost - once the graph is warm every later frame settles in well under a second.
+
+AND THE FIRST CAPTURE AFTER A STORYBOOK BOOT IS THE ONE THAT DIES: QA hit the
+same thing independently (`Storybook never finished preparing the story (60s) …
+counted:0 … loading:true`, its Q-3) and a warm retry always succeeds, so a
+narrowed re-capture that fails on its FIRST frame is a cold module graph rather
+than a broken story.
+
+| State | What the frame is |
+| --- | --- |
+| `pending-send-chip-row` | a file staged and nothing typed: the chip row's own geometry, which this surface had no frame for at all |
+| `pending-send-payload` | pressed, echo NOT yet painted: every register of the payload is still the composer's - the words in the field and the file in the row above them - with Send closed because the pane is still issuing it |
+| `pending-send` | the echo has landed, with `awaitingReply` TRUE as the live pane has it: the field and the chip row are empty TOGETHER, under `Sending your message` |
+| `pending-send-chip-row-small-view` | the same row at the compact rung, measured there |
+| `pending-send-payload-small-view` | the same press at the compact rung |
+| `pending-send-small-view` | the state the operator photographed, at the compact rung |
+
+### Before and after, honestly
+
+`pending-send` is the frame the defect was, and its "before" cannot be taken from
+this tree: the two halves leave through one call now, so the pre-fix appearance
+(the chip still in the row under `Ask me for help`) is not reachable from this
+code - a reviewer who wants that still has to photograph the base commit, which
+is a QA pass rather than a capture this branch can honestly make. The pre-fix
+placeholder half IS here, and it is now the same generation as the frames beside
+it: `idle` and `awaiting-reply` were re-taken on this tree in this pass (design
+round 1, D1), so `idle/localOperatorDark.webp` beside
+`pending-send/localOperatorDark.webp` differs in one word rather than in its page
+ground. The pair that carries this change's own claim is `pending-send-payload`
+against `pending-send`: the same payload, one moment before the echo and one
+moment after, with the chip leaving together with the words in between.
+
+WHAT MOVES WHEN THE ECHO LANDS, measured at 1024 wide, stated because the first
+revision of this section overstated it (design round 1, D4): the composer band is
+**253px** in `pending-send-payload` and **125px** in `pending-send`. The
+difference is exactly the chip row - a 100px tile, the row's own 8+8px padding,
+and the composer's 12px gap - so a send carrying an attachment DOES move the band
+by that height in the frame the echo paints. The band is bottom-anchored, so the
+movement lands on its top edge and on the transcript's newest row above it, while
+the field and the control row hold their position. What does not move, and what
+the first revision was reaching for, is the STATE: `pending-send` is `idle` with
+one word changed, so the new state adds no layout of its own, and the 128px is
+the payload leaving rather than an indicator arriving.
+
+The plays assert rather than pose, at both rungs:
+
+- `pending-send-chip-row` and its compact twin measure the TILE's box (not the
+  name span's, which sits inside the ground the row draws) against the field's,
+  and against every ancestor that could clip it, and throw rather than releasing
+  the shutter if either fails. Both pass on all twelve themes.
+- `pending-send-payload` and its compact twin throw if the words or the chip have
+  left before the echo.
+- `pending-send` and its compact twin throw if the placeholder is not the
+  composer's own sentence (which is what fails if the term is ever put back below
+  `awaitingReply`), if the field still holds the message, or if the chip row still
+  renders a remove control for the file the transcript is carrying.
+
+### The reported geometry, measured
+
+The report also carried "the chip row rendering clipped/overlapping the text
+region". It is not a geometry defect, and the `pending-send-chip-row` frame plus
+its play are the measurement - at the full width AND at the compact rung, which
+is the rung where the arithmetic was least convincing: the tile is `size-25`
+(100x100) at `y=86..185` in the `localOperatorDark` frame, the field's first ink
+row is `y=216`, and the composer's one scroll container (`max-h-[240px]`) does
+not cut the row - so the rows are a band in the composer's own column with ~31px
+between the tile's bottom edge and the field's text, exactly as that container's
+own comment says. In the 440px frame the tile and the field's ink keep the same
+separation.
+
+What the operator's screenshot shows is the STATE, not the box: a chip sitting
+directly above an empty field has nothing between it and the text region to
+separate the two bands, which is why it reads as one area - and it is a state a
+send can no longer be in, because the chip now leaves with the words.
+
+One adjacent defect was found while measuring this and is NOT fixed here:
+`AttachmentsPreview`'s dwell preview (`LARGE_PREVIEW`) is a `size-75` box at
+`-top-80` inside that `max-h-[240px] overflow-y-auto` scroller, so a hover
+preview 300px tall starting 320px above the tile is outside its own scroll port
+and cannot be seen at all. Computed from the two shipped class values rather
+than measured in a browser; it is a pre-existing, hover-only affordance of a
+heavily reviewed component, so it is recorded for its own change rather than
+folded into this one (design round 1 confirmed the two class values and recorded
+the same).

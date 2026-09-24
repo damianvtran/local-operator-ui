@@ -39,7 +39,7 @@ const bundle = await build({
 		contents: `
 			export { admitChatDraft, useCanonicalSessionsStore, draftIdentityFor, isRefusedBeforeAdmission } from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { echoPendingUser, retractPendingUser, discardPendingEchoes, __registerEchoTarget, seedPendingEchoes } from "./src/renderer/src/shared/hooks/use-canonical-session";
-			export { useMessageInput, SEND_HELD, clearSubmittedText, restoreSubmittedText } from "./src/renderer/src/shared/hooks/use-message-input";
+			export { useMessageInput, SEND_HELD, COMPOSER_PLACEHOLDER, composerPlaceholder, clearSubmittedText, restoreSubmittedText, restoreSubmittedReplies, stagedPayloadOf, clearStagedPayload, restoreStagedPayload } from "./src/renderer/src/shared/hooks/use-message-input";
 			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
 			export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 			export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
@@ -125,8 +125,14 @@ const {
 	seedPendingEchoes,
 	useMessageInput,
 	SEND_HELD,
+	COMPOSER_PLACEHOLDER,
+	composerPlaceholder,
 	clearSubmittedText,
 	restoreSubmittedText,
+	restoreSubmittedReplies,
+	stagedPayloadOf,
+	clearStagedPayload,
+	restoreStagedPayload,
 	useConversationInputStore,
 	EMPTY_TRANSCRIPT,
 	DesktopControlError,
@@ -542,9 +548,15 @@ function makeComposerRuntime() {
 	return runtime;
 }
 
-async function driveComposer({ onSubmit, initial = input.text }) {
+async function driveComposer({ onSubmit, initial = input.text, prime }) {
 	// The composer's persisted draft is module state and outlives a case.
 	useConversationInputStore.setState({ inputByConversation: {} });
+	/*
+	 * Run after the wipe and before the typing, so a case can stage the chip row
+	 * the way a real press leaves it (the hooks write through the same store, so
+	 * a `prime` that ran first would be erased by the reset above).
+	 */
+	if (prime) prime();
 	const runtime = makeComposerRuntime();
 	let composer;
 	runtime.render = () => {
@@ -573,6 +585,22 @@ async function driveComposer({ onSubmit, initial = input.text }) {
 		storedDraft:
 			useConversationInputStore.getState().inputByConversation[COMPOSER_ID]
 				?.currentInput ?? "",
+		/*
+		 * The composer's OTHER half, read the way the composer reads it
+		 * (`message-input.tsx` selects `attachments`/`replies` out of the same
+		 * row), and read through paths rather than chip ids because a chip's id is
+		 * an identity for the row rather than part of any payload.
+		 */
+		chips: () =>
+			(
+				useConversationInputStore.getState().inputByConversation[COMPOSER_ID]
+					?.attachments ?? []
+			).map((chip) => chip.path),
+		replies: () =>
+			(
+				useConversationInputStore.getState().inputByConversation[COMPOSER_ID]
+					?.replies ?? []
+			).map((reply) => reply.text),
 	};
 }
 
@@ -768,4 +796,510 @@ test("the echo's paint callback fires with the paint, on both delivery paths", a
 		"and synchronously when a transcript is already mounted, so both updates share a commit",
 	);
 	transcript.unregister();
+});
+
+/* =========================================== one payload, one moment (R1-R3) */
+
+/*
+ * The composer stages THREE registers of ONE payload: the words in the box, the
+ * staged replies `buildSendPayload` turns into the payload's `<reply-to>`
+ * prefix, and the chips whose paths the send encodes. The chip row and the
+ * replies used to leave on a LATER clock than the text - when the send's promise
+ * settled, while the text left at the echo - so for the whole in-flight window
+ * the transcript showed the user's message with its attachment while the
+ * composer still showed the chip for that file. One file apparently sent twice,
+ * on a send that appears to have half-happened. These cases pin BOTH the trigger
+ * and what a refusal owes back, in the fixture that runs the shipped hook over
+ * the shipped store rather than a recorder standing in for it.
+ *
+ * WHAT THEY CAN AND CANNOT CLAIM: this harness models the hook's cells, not
+ * React's scheduler (see the section note above the composer harness), so each
+ * case states what the row HOLDS at the moment of the paint callback - which is
+ * exactly the claim, because both writes happen inside that one call. Nothing
+ * here says what a frame looked like.
+ */
+
+/** The row as the composer reads it: chip paths and quote texts, in order. */
+function composerRow(conversationId = COMPOSER_ID) {
+	const row =
+		useConversationInputStore.getState().inputByConversation[conversationId];
+	return {
+		chips: (row?.attachments ?? []).map((chip) => chip.path),
+		replies: (row?.replies ?? []).map((reply) => reply.text),
+	};
+}
+
+/** The row a press leaves behind: one file, one staged quote. */
+const STAGED = { chip: "/tmp/a.png", reply: "quoted turn" };
+
+function stagePayload(conversationId = COMPOSER_ID) {
+	const inputStore = useConversationInputStore.getState();
+	inputStore.clearReplies(conversationId);
+	inputStore.clearAttachments(conversationId);
+	inputStore.addAttachment(conversationId, { id: "chip-a", path: STAGED.chip });
+	inputStore.addReply(conversationId, { id: "reply-1", text: STAGED.reply });
+}
+
+test("R1: the chip row and the staged replies leave with the text, at the paint", async () => {
+	const seen = {};
+	await driveComposer({
+		prime: () => stagePayload(),
+		onSubmit: ({ onEchoPainted, box }) => {
+			seen.atPress = { box: box(), ...composerRow() };
+			onEchoPainted?.();
+			seen.atPaint = { box: box(), ...composerRow() };
+			return true;
+		},
+	});
+	assert.deepEqual(
+		seen.atPress,
+		{
+			box: input.text,
+			chips: [STAGED.chip],
+			replies: [STAGED.reply],
+		},
+		"all three registers must still be in the composer while the send is in flight",
+	);
+	assert.deepEqual(
+		seen.atPaint,
+		{ box: "", chips: [], replies: [] },
+		"the chip row and the staged replies must leave in the SAME call as the text, or the transcript shows the file while the composer still shows its chip",
+	);
+});
+
+test("R1: a clear at the paint cannot change what the request carries", async () => {
+	/*
+	 * The other half of the same decision, and the reason it is safe: the row the
+	 * composer reads is cleared at the echo, so anything that read the ROW after
+	 * that moment would see nothing. The request is built from the arguments the
+	 * press handed over - `buildSendPayload` for the words and the reply prefix,
+	 * `encodeImageAttachments` for the file paths - and this drives the real
+	 * `admitChatDraft` with a mounted transcript and a paint callback that clears
+	 * the row for real, then reads what reached the wire.
+	 */
+	reset();
+	const order = [];
+	const sent = [];
+	globalThis.__echoRequest = async (request) => {
+		order.push(request.op);
+		sent.push(request);
+		return { status: "admitted" };
+	};
+	const transcript = await mountTranscript(SESSION_ID);
+	stagePayload();
+	const images = [{ data_b64: "QUJD", mime_type: "image/png" }];
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	await admitChatDraft(
+		key,
+		{ ...input, attachments: [STAGED.chip], images },
+		SESSION_ID,
+		() => {
+			order.push("cleared");
+			clearStagedPayload(COMPOSER_ID, stagedPayloadOf(COMPOSER_ID));
+		},
+	);
+	const message = sent.find((request) => request.op === "sessions.message");
+	assert.equal(
+		order.indexOf("cleared") < order.indexOf("sessions.message"),
+		true,
+		"the clear must land BEFORE the message request, or this case proves nothing about a payload read after it",
+	);
+	assert.deepEqual(
+		message.images,
+		images,
+		"the encoded images must come from the paths the press passed, not from a row a clear can empty",
+	);
+	assert.equal(
+		message.text,
+		input.text,
+		"and the words must be the press's, for the same reason",
+	);
+	assert.deepEqual(
+		composerRow().chips,
+		[],
+		"the composer's row IS empty by the time the request is issued, which is what makes the two assertions above a proof rather than a coincidence",
+	);
+	/*
+	 * And the shape the operator reported, at the one moment both surfaces are
+	 * readable: the transcript holds the message while the composer's row is
+	 * empty. Both halves of the payload moved together, so there is no window in
+	 * which the message is on screen and its chip is still in the composer.
+	 */
+	assert.deepEqual(
+		transcript.rows(),
+		[input.text],
+		"the message is painted in the transcript at the moment its chip row is already empty",
+	);
+	transcript.unregister();
+});
+
+test("R2: a refusal puts BOTH halves back, whichever way it arrived", async () => {
+	// The refusal that lands after the echo: the row was taken on the way out and
+	// must come back WITH the text, or the obvious next Enter sends the wording
+	// without the file.
+	const afterEcho = await driveComposer({
+		prime: () => stagePayload(),
+		onSubmit: ({ onEchoPainted }) => {
+			onEchoPainted?.();
+			return false;
+		},
+	});
+	assert.equal(
+		afterEcho.after,
+		input.text,
+		"the refused text belongs back in the box",
+	);
+	assert.deepEqual(
+		afterEcho.chips(),
+		[STAGED.chip],
+		"a refusal that arrives after the echo must bring the file back with the text",
+	);
+	assert.deepEqual(
+		afterEcho.replies(),
+		[STAGED.reply],
+		"and the staged quote, which the payload's own prefix is built from",
+	);
+
+	// The refusal that never echoed (the send lock, the budget, an unreadable
+	// file): nothing left, so nothing may be written and the row is untouched.
+	const neverLeft = await driveComposer({
+		prime: () => stagePayload(),
+		onSubmit: () => false,
+	});
+	assert.equal(
+		neverLeft.after,
+		input.text,
+		"an untouched box keeps the message",
+	);
+	assert.deepEqual(
+		neverLeft.chips(),
+		[STAGED.chip],
+		"and the chips that never left the row",
+	);
+	assert.deepEqual(
+		neverLeft.replies(),
+		[STAGED.reply],
+		"and the staged replies",
+	);
+});
+
+test("R2: a chip the user attaches while waiting is never overwritten by the restore", async () => {
+	const typed = await driveComposer({
+		prime: () => stagePayload(),
+		onSubmit: ({ onEchoPainted }) => {
+			onEchoPainted?.();
+			useConversationInputStore
+				.getState()
+				.addAttachment(COMPOSER_ID, { id: "chip-new", path: "/tmp/new.png" });
+			return false;
+		},
+	});
+	assert.deepEqual(
+		typed.chips(),
+		["/tmp/new.png"],
+		"the restore writes only into an EMPTY row, so a file the user staged while the send was in flight survives it",
+	);
+	assert.deepEqual(
+		typed.replies(),
+		[STAGED.reply],
+		"and the replies follow the same rule on their own row",
+	);
+});
+
+test("R3: a held send keeps BOTH halves, so the guard admits the retry it offers", async () => {
+	/*
+	 * `SEND_HELD` is the ambiguous arm: the message may be on the owner with its
+	 * echo painted, so the TEXT stays out of the box (its copy is on screen) and
+	 * the retry travels through the claim's `Restore message`. The FILES are the
+	 * opposite, and that asymmetry is the point of this case: the
+	 * unchanged-payload guard compares text AND files AND images, so a claim
+	 * whose chip the echo had taken would refuse the very retry Restore exists to
+	 * make possible. A file that cannot come back is a silent partial send.
+	 */
+	const held = await driveComposer({
+		prime: () => stagePayload(),
+		onSubmit: ({ onEchoPainted, box }) => {
+			onEchoPainted?.();
+			assert.equal(box(), "", "the text is withheld from the box on this arm");
+			return SEND_HELD;
+		},
+	});
+	assert.equal(
+		held.after,
+		"",
+		"the held text must not come back to the box - its copy is still painted in the transcript",
+	);
+	assert.deepEqual(
+		held.chips(),
+		[STAGED.chip],
+		"the held claim must keep the file the guard compares, or Restore hands back a payload that is then refused",
+	);
+	assert.deepEqual(
+		held.replies(),
+		[STAGED.reply],
+		"and the staged replies with it",
+	);
+});
+
+test("R1: a send that never echoes still takes both halves once it settles", async () => {
+	const settled = await driveComposer({
+		prime: () => stagePayload(),
+		onSubmit: () => true,
+	});
+	assert.equal(
+		settled.after,
+		"",
+		"the box retires on the post-settle fallback",
+	);
+	assert.deepEqual(
+		settled.chips(),
+		[],
+		"and the chip row goes with it, in the same fallback - a slash command leaves no other trace that the file was spent",
+	);
+	assert.deepEqual(settled.replies(), [], "and the staged replies");
+});
+
+test("the staged-payload rules are exactly the store route's two rules", async () => {
+	// Pure, shipped and asserted directly, so an edit to either transition is
+	// read against the same rule rather than against the call site - and so a
+	// second copy of it cannot appear beside this one.
+	assert.deepEqual(restoreSubmittedReplies([], [{ id: "r1", text: "q" }]), [
+		{ id: "r1", text: "q" },
+	]);
+	assert.deepEqual(
+		restoreSubmittedReplies(
+			[{ id: "r2", text: "mine" }],
+			[{ id: "r1", text: "q" }],
+		),
+		[],
+		"a row that already holds the user's own staged reply is not overwritten",
+	);
+	assert.deepEqual(restoreSubmittedReplies([], undefined), []);
+
+	// And the pair is written in ONE call, which is what makes the halves
+	// inseparable: clearing and restoring each go through one exported function.
+	const inputStore = useConversationInputStore.getState();
+	useConversationInputStore.setState({ inputByConversation: {} });
+	stagePayload();
+	assert.deepEqual(
+		stagedPayloadOf(COMPOSER_ID),
+		{
+			attachments: [{ id: "chip-a", path: STAGED.chip }],
+			replies: [{ id: "reply-1", text: STAGED.reply }],
+		},
+		"the press's snapshot must be the row itself, so a refusal hands back exactly what the send carried",
+	);
+	assert.deepEqual(composerRow().chips, [STAGED.chip]);
+	clearStagedPayload(COMPOSER_ID, stagedPayloadOf(COMPOSER_ID));
+	assert.deepEqual(composerRow(), { chips: [], replies: [] });
+	restoreStagedPayload(COMPOSER_ID, {
+		attachments: [{ id: "chip-a", path: STAGED.chip }],
+		replies: [{ id: "reply-1", text: STAGED.reply }],
+	});
+	assert.deepEqual(composerRow(), {
+		chips: [STAGED.chip],
+		replies: [STAGED.reply],
+	});
+	assert.equal(typeof inputStore.clearAttachments, "function");
+});
+
+/* ============ the composer's sentence: the window, and what it may not claim */
+
+/*
+ * AGENT REVIEW ROUND 1, MAJOR-1, AND QA ROUND 1's Q-1 - the same defect from two
+ * directions, and the reason this rule is a function rather than a chain inline
+ * in the band's JSX.
+ *
+ * `Sending your message` was written to say "this send is still going out" and
+ * placed BELOW `awaitingReply`, on the argument that `awaitingReply` is "set only
+ * once admission answered". That argument is wrong about the timing: the store
+ * writes `admissionAttempted: true` BEFORE the echo and before the wire
+ * (`canonical-sessions-store.ts`, "THE SEAM"), and the pane's rung is up from
+ * there until the owner paints - so on a real send BOTH terms are true in the
+ * window the sentence exists for, and the chain answered with
+ * `Waiting for the agent`. QA executed both revisions with the props the app
+ * actually passes (`awaitingReply={true}`) and read exactly that, which is also
+ * why the story that showed the sentence was a state the live app cannot be in.
+ *
+ * The order is now the rule: while a send this pane issued has not settled, the
+ * box says the message is on its way out; once it has settled and the agent is
+ * answering, that sentence takes over. The earlier terms keep their windows.
+ *
+ * WHAT THIS CANNOT PIN, stated so the test is not read as wider than it is: that
+ * the term is fed by the PANE (`chat-page`'s `admitting`, which survives the
+ * New-chat identity flip) is a wiring fact, and it is pinned on the wiring in
+ * `canonical-chat.test.mjs`. Here the rule is asked with the app's own prop
+ * values, including the one QA proved impossible before this round.
+ */
+test("MAJOR-1/Q-1: an unsettled send outranks `awaitingReply`, and the order is the rule", () => {
+	const earlier = {
+		unavailable: false,
+		inputDisabled: false,
+		awaitingAnswer: false,
+	};
+	/*
+	 * The window the sentence was written for: the echo has landed (so the box is
+	 * empty), the request is out, the owner has painted nothing.
+	 */
+	assert.equal(
+		composerPlaceholder({
+			...earlier,
+			sendingUnsettled: true,
+			awaitingReply: true,
+		}),
+		COMPOSER_PLACEHOLDER.sending,
+		"a send that has not settled must be able to say so with `awaitingReply` true - that is the app's own value on the canonical path, and reading it as `Waiting for the agent` is the defect QA executed",
+	);
+	/* And the moment after it settles, with the agent still answering. */
+	assert.equal(
+		composerPlaceholder({
+			...earlier,
+			sendingUnsettled: false,
+			awaitingReply: true,
+		}),
+		COMPOSER_PLACEHOLDER.waiting,
+		"once the send has settled the agent's sentence takes over, which is the half the operator asked for as the pair to this one",
+	);
+	assert.equal(
+		composerPlaceholder({
+			...earlier,
+			sendingUnsettled: false,
+			awaitingReply: false,
+		}),
+		COMPOSER_PLACEHOLDER.idle,
+		"and with no send in flight and nothing being answered the box invites a message again",
+	);
+	/* The three earlier terms keep the windows they had. */
+	assert.equal(
+		composerPlaceholder({
+			...earlier,
+			unavailable: true,
+			sendingUnsettled: true,
+			awaitingReply: true,
+		}),
+		COMPOSER_PLACEHOLDER.unavailable,
+		"a conversation this machine does not have stays the first reading (design round 2, D3)",
+	);
+	assert.equal(
+		composerPlaceholder({
+			...earlier,
+			inputDisabled: true,
+			sendingUnsettled: true,
+			awaitingReply: true,
+		}),
+		COMPOSER_PLACEHOLDER.busy,
+		"a refused box keeps its own sentence",
+	);
+	assert.equal(
+		composerPlaceholder({
+			...earlier,
+			awaitingAnswer: true,
+			sendingUnsettled: true,
+			awaitingReply: true,
+		}),
+		COMPOSER_PLACEHOLDER.answer,
+		"and a pending question is what the box is for, whatever is in flight",
+	);
+});
+
+/* ============ the clear's blast radius: what it takes, and what it must not */
+
+/*
+ * AGENT REVIEW ROUND 1, MINOR-1; QA Q-2; UX U2 - one defect, three reporters.
+ *
+ * `clearOnce` cleared the WHOLE row (`clearReplies` + `clearAttachments`) while
+ * the text half of the same call was equality-guarded, so a file attached during
+ * the press->echo window was wiped silently. QA measured it: press with a file
+ * staged, attach a second one 250ms later against a 700ms echo, and the head read
+ * `2chip -> 0chip` where the base kept both. UX's phrasing is the one to keep:
+ * "my words stayed, my file vanished".
+ *
+ * The rule now: the clear removes the ENTRIES the press captured, by identity
+ * (`removeAttachment`/`removeReply`), so its blast radius is exactly the payload
+ * it belongs to. Both arms are covered here, because MINOR-1 reaches the clear
+ * through the OTHER trigger (a send that never echoes settles and takes the
+ * post-await `clearOnce`), and that arm is the one where the box is typeable and
+ * live the whole time.
+ */
+const SECOND = { chip: "/tmp/second.png", reply: "a quote staged later" };
+
+test("MINOR-1/Q-2/U2: a file attached while the send is going out survives the echo", async () => {
+	let rowAtPaint = null;
+	await driveComposer({
+		prime: () => stagePayload(),
+		onSubmit: ({ onEchoPainted }) => {
+			// The user attaches a second file while the send is in flight, i.e.
+			// inside the window this change makes the clear land in.
+			useConversationInputStore
+				.getState()
+				.addAttachment(COMPOSER_ID, { id: "chip-late", path: SECOND.chip });
+			onEchoPainted?.();
+			rowAtPaint = composerRow();
+			return true;
+		},
+	});
+	assert.deepEqual(
+		rowAtPaint.chips,
+		[SECOND.chip],
+		"the chip the user attached during the flight is their NEXT payload: the echo must take the file this send carried and leave the one it did not",
+	);
+	assert.deepEqual(
+		rowAtPaint.replies,
+		[],
+		"while the quote this submit DID carry still leaves with it - the rule is per entry, not per row",
+	);
+});
+
+test("MINOR-1: a quote staged while the send is going out survives it too", async () => {
+	let rowAtPaint = null;
+	await driveComposer({
+		prime: () => stagePayload(),
+		onSubmit: ({ onEchoPainted }) => {
+			useConversationInputStore
+				.getState()
+				.addReply(COMPOSER_ID, { id: "reply-late", text: SECOND.reply });
+			onEchoPainted?.();
+			rowAtPaint = composerRow();
+			return true;
+		},
+	});
+	assert.deepEqual(
+		rowAtPaint.replies,
+		[SECOND.reply],
+		"a quote staged during the flight is not this send's and must not be taken by its clear",
+	);
+	assert.deepEqual(
+		rowAtPaint.chips,
+		[],
+		"and the file this send carried still leaves",
+	);
+});
+
+test("MINOR-1: the fallback trigger obeys the same rule, on the arm where the box stays live", async () => {
+	/*
+	 * A send that never echoes - a slash command, a gate answer, the legacy model
+	 * path - settles and takes the post-await `clearOnce()`. That is the arm
+	 * MINOR-1 names, and it is the one where the user has the whole flight to keep
+	 * typing and attaching.
+	 */
+	const settled = await driveComposer({
+		prime: () => stagePayload(),
+		onSubmit: ({ type }) => {
+			type("next message");
+			useConversationInputStore
+				.getState()
+				.addAttachment(COMPOSER_ID, { id: "chip-late", path: SECOND.chip });
+			return true;
+		},
+	});
+	assert.equal(
+		settled.after,
+		"next message",
+		"the words typed during the flight are the user's (the text half's own rule, unchanged)",
+	);
+	assert.deepEqual(
+		settled.chips(),
+		[SECOND.chip],
+		"and the file attached during it is theirs too: the settle may not take more than the payload it settled",
+	);
 });
