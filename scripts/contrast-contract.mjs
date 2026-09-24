@@ -1800,10 +1800,29 @@ const STRUCTURAL_CALL_SITES = [
 		why: "the list panel takes the `surface` panel ground so it steps away from the `canvas` working surface it opens; repainting this panel `canvas` produces the same merged slab from the other side, which the column's own row cannot see",
 	},
 	{
-		what: "user message bubble edge",
+		/*
+		 * THE BUBBLE'S BOUNDARY IS ITS FILL, NOT A RULE (design amendment D10, §L).
+		 *
+		 * This row used to require `border border-control bg-surface` on the argument
+		 * that the border was the edge distinguishing the two speakers, because the
+		 * agent side has no bubble at all. That argument was right about the NEED and
+		 * wrong about the CHANNEL: the bubble sits on the `canvas` working surface and
+		 * keeps the `surface` fill, so the block is separated by a ground step - and
+		 * `max-w-[85%]` of the 640 column makes it an aside by its own width as well.
+		 * Two channels, and the rule on top of them was the third and loudest mark on
+		 * the quietest object in the transcript: on the palettes where `control` is
+		 * dark, a settled turn read as an outlined drawing rather than as a message.
+		 *
+		 * The pin now takes the fill-form this inventory already supports for a chip
+		 * ("the fill IS the chip's boundary"): the two halves of the step are pinned
+		 * from both sides - `chat working surface ground` above holds `bg-canvas`, and
+		 * this row holds `bg-surface` beside it - so repainting either half still
+		 * fails, and dropping the fill entirely fails here.
+		 */
+		what: "user message bubble fill",
 		file: "src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
-		must: "border border-control bg-surface",
-		why: "the bubble is drawn on the canvas-coloured working surface and keeps its own surface fill; the agent side has no bubble, so this border is the edge that distinguishes the speakers",
+		must: "rounded-frame bg-surface text-ink",
+		why: "the bubble's ground step against the canvas working surface IS its boundary (§L's D10 amendment): the edge it used to draw was the third and loudest channel on the quietest object in the transcript, and the other half of this pair is pinned by `chat working surface ground`",
 	},
 	{
 		what: "chat header bottom rule",

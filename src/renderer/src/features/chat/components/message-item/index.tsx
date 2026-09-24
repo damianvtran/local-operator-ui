@@ -67,6 +67,13 @@ export type MessageItemProps = {
 	 * The row opens an agent turn and carries the avatar. Computed by the
 	 * grouping pass in `utils/message-grouping` so a hidden record never takes it.
 	 */
+	/*
+	 * Still ACCEPTED and now ignored: this flag existed only to place the agent
+	 * avatar, and D11 deletes the avatar and its gutter. The field is retained
+	 * rather than removed because the callers are this legacy path's stories, a
+	 * surface the socket transport's removal already left unreachable - churning
+	 * them for a dead flag would be a change this commit cannot justify.
+	 */
 	isTurnStart?: boolean;
 };
 
@@ -172,7 +179,6 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		conversationId,
 		currentExecution,
 		isSmallView,
-		isTurnStart = false,
 	}) => {
 		const showAgentReasoning = useUiPreferencesStore(
 			(state) => state.showAgentReasoning,
@@ -327,11 +333,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		// wiring as any other assistant message.
 		if (isQuestion) {
 			return (
-				<MessageContainer
-					isUser={false}
-					isSmallView={isSmallView}
-					showAvatar={isTurnStart}
-				>
+				<MessageContainer isUser={false} isSmallView={isSmallView}>
 					<MessagePaper
 						isUser={false}
 						content={message.message}
@@ -408,11 +410,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 			);
 
 			return (
-				<MessageContainer
-					isUser={false}
-					isSmallView={isSmallView}
-					showAvatar={isTurnStart}
-				>
+				<MessageContainer isUser={false} isSmallView={isSmallView}>
 					<TraceLine
 						action={message.action}
 						filePath={message.file_path}
@@ -437,11 +435,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 				.join("\n\n");
 
 			return (
-				<MessageContainer
-					isUser={false}
-					isSmallView={isSmallView}
-					showAvatar={isTurnStart}
-				>
+				<MessageContainer isUser={false} isSmallView={isSmallView}>
 					<AgentReasoning content={reasoningText || undefined} />
 					{files.length > 0 && <div className="mt-2">{renderMedia}</div>}
 				</MessageContainer>
@@ -469,11 +463,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 				) : undefined;
 
 			return (
-				<MessageContainer
-					isUser={false}
-					isSmallView={isSmallView}
-					showAvatar={isTurnStart}
-				>
+				<MessageContainer isUser={false} isSmallView={isSmallView}>
 					<SecurityNotice content={message.message} details={details} />
 					{files.length > 0 && <div className="mt-2">{renderMedia}</div>}
 				</MessageContainer>
@@ -501,11 +491,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		);
 
 		return (
-			<MessageContainer
-				isUser={isUser}
-				isSmallView={isSmallView}
-				showAvatar={isTurnStart}
-			>
+			<MessageContainer isUser={isUser} isSmallView={isSmallView}>
 				<MessagePaper
 					isUser={isUser}
 					content={message.message}

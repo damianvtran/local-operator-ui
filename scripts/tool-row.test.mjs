@@ -598,13 +598,21 @@ test("the gap tiers are strictly ordered, trace tightest", () => {
 	for (const view of [0, 1]) {
 		const trace = px(GAP.trace[view]);
 		const item = px(GAP.item[view]);
-		const mark = px(GAP.mark[view]);
 		const turn = px(GAP.turn[view]);
 		assert.equal(trace, 2, "a run's rows sit a hairline apart");
 		assert.ok(
-			trace < item && item < mark && mark <= turn,
-			`tiers must widen: trace ${trace} < item ${item} < mark ${mark} <= turn ${turn}`,
+			trace < item && item <= turn,
+			`tiers must widen: trace ${trace} < item ${item} <= turn ${turn}`,
 		);
+		/*
+		 * There is no third tier between these two any more. The `mark` tier existed
+		 * to raise a row whose caption says its own text is not whole (design round 1,
+		 * D1), and §D1 sets every gap INSIDE a turn to 12px — so `item` is 12px and the
+		 * raise became a second name for the same class string. Its own assertion was
+		 * `mark >= item * 1.5`, which is unreachable at 12 against 12: a tier nobody can
+		 * see and no test can reach is what silently becomes a drift later.
+		 */
+		assert.equal(item, 12, "§D1: inside a turn, 12px");
 		/*
 		 * D1 (design review round 1) is a RATIO requirement, not a preference: the
 		 * caption lives INSIDE the row it describes, 4px from its own chunk, so the gap
@@ -615,8 +623,8 @@ test("the gap tiers are strictly ordered, trace tightest", () => {
 		 * — is invisible in a diff and reads as a note on somebody else's answer.
 		 */
 		assert.ok(
-			mark >= 12 && mark >= item * 1.5,
-			`the marked row's gap must clear the caption's own margin (mark ${mark}, item ${item})`,
+			item >= 12,
+			`the marked row's gap must clear the caption's own margin (item ${item})`,
 		);
 		// The hierarchy the tightening had to preserve: a turn boundary is an
 		// order of magnitude airier than an adjacent pair inside a run, so the
@@ -652,8 +660,8 @@ test("a row whose caption says its text is not whole takes the mark gap", () => 
 	);
 	assert.deepEqual(
 		marked.map((row) => row.gap),
-		["first", "turn", "mark"],
-		"the marked row separates from the answer above it",
+		["first", "turn", "item"],
+		"the marked row separates from the answer above it by the in-turn step",
 	);
 	// The D1 case that was worst before the tier existed: a marked row directly
 	// under a tool row used to inherit the 2px hairline.
@@ -663,7 +671,7 @@ test("a row whose caption says its text is not whole takes the mark gap", () => 
 	);
 	assert.equal(
 		afterTool[1].gap,
-		"mark",
+		"item",
 		"a marked row under a ledger row does not take the hairline",
 	);
 	// And an UNMARKED row is untouched, including the small view's narrower item.
@@ -692,7 +700,32 @@ test("an invisible record does not consume the avatar or a turn boundary", () =>
 		rows.map((row) => row.record.id),
 		["u1", "t1"],
 	);
-	assert.equal(rows[1].showAvatar, true, "the tool row opens the agent turn");
+	/*
+	 * D11 DELETES THE AVATAR AND ITS GUTTER, so there is no longer a flag to consume:
+	 * the assertion is that the row model carries none at all (a re-added flag would
+	 * be the avatar coming back through the model rather than through the markup) and
+	 * that the container which used to draw it renders neither a glyph nor the 40px
+	 * indent that justified it.
+	 */
+	assert.ok(
+		!("showAvatar" in rows[1]),
+		"the row model carries no avatar flag (D11)",
+	);
+	const container = readFileSync(
+		"src/renderer/src/features/chat/components/message-item/message-container.tsx",
+		"utf8",
+	);
+	// Asked of the CODE, not the words: this file's own comment explains what the
+	// `pl-10` indent used to cost, and a token check that read comments would fail
+	// on the explanation of the deletion rather than on a re-introduction.
+	assert.ok(
+		!/from "\.\/message-avatar"/.test(container),
+		"message-container.tsx imports no avatar (D11)",
+	);
+	assert.ok(
+		!/"pl-10"|AGENT_GUTTER/.test(container),
+		"message-container.tsx carries no 40px gutter (D11)",
+	);
 	assert.equal(rows[1].gap, "turn", "a turn boundary still gets its air");
 	// The hierarchy the tightening must preserve: a turn boundary is strictly
 	// airier than an adjacent pair inside a run.
@@ -754,7 +787,10 @@ test("a streaming record cannot swallow the avatar or a gap tier", () => {
 		rows.map((row) => row.record.id),
 		["u1", "t1"],
 	);
-	assert.equal(rows[1].showAvatar, true, "the tool row opens the agent turn");
+	assert.ok(
+		!("showAvatar" in rows[1]),
+		"the row model carries no avatar flag (D11)",
+	);
 	assert.equal(rows[1].gap, "turn", "a turn boundary still gets its air");
 	// And it cannot break trace adjacency between two ledger rows either.
 	const run = buildRows(
@@ -793,7 +829,7 @@ test("no reading measure survives on either surface, by property not by name", (
 	// takes no reading cap, and the user bubble keeps one" — on the reading that
 	// the bubble's narrower box is what makes a turn an aside, and that widening
 	// it was the unrequested half of the earlier change. The report above
-	// reversed that call: the aside is the CARD's own `max-w-[75%]` inside
+	// reversed that call: the aside is the CARD's own `max-w-[85%]` (§D2) inside
 	// `CHAT_MEASURE`, and the prose fills the card. The agent half is unchanged —
 	// no cap there either, so it shares the tool rows' edges.
 	//
@@ -897,7 +933,7 @@ test("no reading measure survives on either surface, by property not by name", (
 		const file = source(path);
 		assert.deepEqual(
 			[...new Set(file.match(/\b(?:max-)?w-\[[^\]]+\]/g) ?? [])].sort(),
-			["max-w-[75%]", "max-w-[92%]"],
+			["max-w-[85%]", "max-w-[92%]"],
 			`${path}: the only arbitrary-value widths are the card's two steps`,
 		);
 		// The BODY wrapper - the div inside the card that holds the quote chip and
