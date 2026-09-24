@@ -1,0 +1,11 @@
+samples 10395 sessions 1357
+k {'p10': 1.96, 'p25': 2.14, 'p50': 2.5, 'p75': 2.88, 'p90': 3.03, 'p95': 3.18, 'p99': 4.23} max 7.7
+k=2: one-request 15.7% mean-limit 200
+k=2.5: one-request 51.6% mean-limit 225
+k=3: one-request 88.5% mean-limit 250
+k=3.25: one-request 96.4% mean-limit 263
+k=3.5: one-request 97.8% mean-limit 275
+k=4: one-request 98.6% mean-limit 300
+needs >500 entries: 0.32%
+missing median 54 max 94
+whole-journal entries/call 1812 {'p10': 2.17, 'p50': 2.65, 'p90': 2.97, 'p95': 3.04}
