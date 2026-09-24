@@ -2453,6 +2453,76 @@ test("the fixtures cover the flat plan, the failure line and both overflows", ()
 	);
 });
 
+/**
+ * One whitespace character, for the clip's boundary assertion.
+ *
+ * A module-level constant rather than a literal at the assertion: biome's
+ * `useTopLevelRegex` is a gate over this tree, and the rule it enforces — a
+ * regex compiled once rather than per call — is what a test file gets for free
+ * by hoisting it here.
+ */
+const WHITESPACE = /\s/;
+
+test("the long-result fixture is the wire's CLIPPED prefix of the conversation's own result", () => {
+	/*
+	 * The two values are one claim, not two strings, and the claim is the reason
+	 * the reader's foot stopped painting the roster row (`§ 5.1`): the wire's
+	 * `result_text` is a PREFIX of what the child's own last row holds, marked
+	 * where the wire cut it. A fixture whose pair did not satisfy that would let a
+	 * frame — or the render test that uses it — prove the opposite of what it says,
+	 * and the way it would go wrong is silent: two unrelated strings still render,
+	 * still differ, still pass a `not equal` assertion.
+	 */
+	assert.ok(
+		fixtures.LONG_RESULT.length > 2_000,
+		"the long result must exceed the wire's own bound or there is no clip",
+	);
+	assert.equal(
+		fixtures.CLIPPED_RESULT,
+		`${fixtures.LONG_RESULT.slice(0, 2_000)}…`,
+	);
+	/*
+	 * ...and the MARKER is part of that claim rather than decoration. The runtime
+	 * marks what it cut (`frontend_state.py`'s `value[:limit] + "…"`), and the
+	 * reader now reads that mark: the foot's label drops to a plain `Result` and
+	 * its shortening sentence disappears when a value arrives whole
+	 * (`run-child-reader.tsx`, `WIRE_CLIP_MARKER`). A fixture carrying the bare
+	 * prefix would be a value the runtime never sends, and the two states would
+	 * then be indistinguishable in every render test that uses it — which is what
+	 * this fixture was before round 1's C2/D1.
+	 */
+	assert.equal(fixtures.CLIPPED_RESULT.slice(-1), "…");
+	assert.equal(
+		fixtures.LONG_RESULT.startsWith(fixtures.CLIPPED_RESULT.slice(0, -1)),
+		true,
+	);
+	// Cut by CHARACTER COUNT, not at a sentence or a word, which is what makes the
+	// wire copy a fragment rather than a short answer. Asserted at the SEAM (the
+	// last character the wire kept and the first it dropped) rather than at the
+	// value's own ends, since the end is now the marker.
+	assert.equal(
+		WHITESPACE.test(fixtures.LONG_RESULT.slice(1_999, 2_000)),
+		false,
+	);
+	assert.equal(
+		WHITESPACE.test(fixtures.LONG_RESULT.slice(2_000, 2_001)),
+		false,
+	);
+	// The dropped part is real text the page carries and the wire does not, so an
+	// assertion built on it can tell the two apart in either direction.
+	assert.equal(
+		fixtures.CLIPPED_RESULT.includes("Recommended next step"),
+		false,
+	);
+	assert.equal(fixtures.LONG_RESULT.includes("Recommended next step"), true);
+
+	// And the page closes on the result, in its own place rather than appended to
+	// a story's markup: the last row this fixture paints is the whole text.
+	const page = fixtures.childPage({ finalResult: fixtures.LONG_RESULT });
+	const last = page.entries[page.entries.length - 1];
+	assert.equal(last.payload.content[0].text, fixtures.LONG_RESULT);
+});
+
 test("the unseen-failure fixture is a run whose only open fact is a failure", () => {
 	const details = deriveRunDetails(fixtures.failureUnseen());
 	// Everything settled: no open child, no open to-do. That is the point of the

@@ -1366,6 +1366,34 @@ export const STORIES = [
 	/* A lineage of depth 3 with the pane at its 320px floor: the width the
 	   breadcrumb's cap has to survive (round 2's open residual risk). */
 	["chat-run-panel--reader-deep-floor", 800, 700],
+	/* The result, in the two states the reader can be in when it is on the wire:
+	   `reader-result-inline` paints it where the conversation is on disk (the
+	   page's own last row, with a foot that says nothing), and
+	   `reader-result-preview` paints the bounded, honestly-labelled preview the
+	   reader keeps for the states that have no conversation at all. Taken as a
+	   pair because the defect they settle was one block growing over the pane:
+	   the same long result once WITH something to push against and once without. */
+	["chat-run-panel--reader-result-inline", 1280, 900],
+	["chat-run-panel--reader-result-preview", 1280, 900],
+	/* The two states round 1's reviews could not photograph, both of them about
+	   what the foot must NOT paint. `reader-cancelled-before-start` is the parked
+	   cancel whose `result_text` is the runtime's own state stamp — the state the
+	   preview used to claim as a shortened result, now carried as the row's state
+	   word with an empty foot, and a frame is the only evidence for an absence.
+	   `reader-result-preview-floor` is the preview at the pane's declared 320px
+	   floor, where the honesty line wraps and the box shows about two lines; 800x700
+	   for the same reason the three floor frames above use it (design round 1, D3
+	   and D4). */
+	["chat-run-panel--reader-cancelled-before-start", 1280, 900],
+	["chat-run-panel--reader-result-preview-floor", 800, 700],
+	/* The preview's THIRD branch, and the one whose evidence was markup only until
+	   round 2: a value the wire left WHOLE (under its bound, no clip marker) over a
+	   page with no conversation, where the label drops to `Result` and the
+	   shortening sentence is not printed at all. Design round 2's D2 and QA round
+	   2's Q2 both asked for these pixels, because a frame-only reviewer could see
+	   the two cut-value states and neither of the two ways the honesty rule can
+	   invert. */
+	["chat-run-panel--reader-result-whole", 1280, 900],
 	/* The two EXITS from a reader, which are the one kind of state this set can
 	   photograph and a keyboard walk could not: the press moves the TREE.
 	   `back-to-roster` is where the defect was and is the after half of the pair
@@ -2421,6 +2449,41 @@ export const STORIES = [
 	["chat-message-input--awaiting-reply", 1024, 300],
 	["chat-message-input--awaiting-reply-transport-down", 1024, 300],
 	["chat-message-input--awaiting-answer", 1024, 300],
+	/* THE PENDING SEND, three moments of one press (operator report, 2026-09-23:
+	   "the transcript already shows the user's message WITH its attachment while the
+	   composer has cleared its text but still displays the attachment chip ... it
+	   reads as the same file sent twice"). One payload used to leave on two clocks
+	   - the words at the echo, the chip row when the send settled - and the composer
+	   said nothing at all about the send it had made while it was unacknowledged.
+
+	   THREE frames rather than one, because the pair is the claim. `chip-row` is a
+	   file staged with nothing typed: the chip row's own geometry, which this
+	   surface had no frame for, and whose play measures the row against the field it
+	   sits above (the band bounds its own rows, so they cannot reach the field and
+	   nothing clips them). `payload` is the press before the echo, with every
+	   register of the payload still the composer's. `pending-send` is the echo
+	   landed: the field and the row empty together, under the composer's own
+	   sentence for a send it has made and not had answered. Against the pre-fix tree
+	   that third frame would show the chip still in the row under "Ask me for
+	   help", which is the state the operator photographed.
+
+	   400 tall for the two that carry the chip row, and 300 for `pending-send`, which
+	   does not: a 100px tile plus the field makes the composer taller than the
+	   chip-less states beside these, and a frame cropped at 300 would cut the row the
+	   pair is about - while `pending-send` is the same height as the `idle` frame it
+	   is read against, so the two can be laid on top of each other. */
+	["chat-message-input--pending-send-chip-row", 1024, 400],
+	["chat-message-input--pending-send-payload", 1024, 400],
+	["chat-message-input--pending-send", 1024, 300],
+	/* AND THE SAME THREE AT THE COMPACT RUNG (design round 1, D3): this set carries
+	   a 440px column for its neighbours (`credential-masked-small-view`, the pill
+	   pair), and round 1's R6 argument was exactly the case where the arithmetic
+	   said the row was safe and only a frame settled it. Same heights as their
+	   full-width twins, so each pair can be laid on one another: 400 for the two
+	   that carry the tile, 300 for `pending-send`, which carries none. */
+	["chat-message-input--pending-send-chip-row-small-view", 440, 400],
+	["chat-message-input--pending-send-payload-small-view", 440, 400],
+	["chat-message-input--pending-send-small-view", 440, 300],
 	/* The interrupt's own states, on the same 1024 measure as the rows above.
 	   The third is the only one that SPEAKS: a stopped turn with nothing left
 	   under it renders nothing at all, so the control's presence and its absence
