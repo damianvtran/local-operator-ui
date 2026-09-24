@@ -1162,8 +1162,8 @@
   "GET /v1/agents",
   "GET /v1/credentials",
   "GET /v1/desktop/commands",
-  "GET /v1/desktop/sessions/70ddfaaf163a/command-entities",
-  "GET /v1/desktop/sessions/70ddfaaf163a/mcp"
+  "GET /v1/desktop/sessions/<session>/command-entities",
+  "GET /v1/desktop/sessions/<session>/mcp"
  ],
  "marks": 1
 }
