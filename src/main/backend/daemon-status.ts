@@ -76,6 +76,7 @@
  */
 
 import type {
+	AddressSubstitution,
 	DaemonConnectionState,
 	DaemonStatusSnapshot,
 } from "../../shared/backend-status";
@@ -225,6 +226,11 @@ export class DaemonStateMachine {
 	 * went on claiming a pairing a successor had already destroyed.
 	 */
 	private pairing: DaemonPairing = DAEMON_UNPAIRED;
+	/**
+	 * Where this launch is serving, when that is not the address it is configured
+	 * for - or that it has since returned to it. See `AddressSubstitution`.
+	 */
+	private addressSubstitution: AddressSubstitution | null = null;
 	private detail = "Looking for a Local Operator daemon.";
 	private updatedAt: number;
 	private detachedSince: number | null = null;
@@ -281,6 +287,24 @@ export class DaemonStateMachine {
 	setPairing(pairing: DaemonPairing): void {
 		this.pairing = pairing;
 		this.updatedAt = this.now();
+	}
+
+	/**
+	 * Record where this launch is serving, relative to the address it is configured
+	 * for (design round 1, D1).
+	 *
+	 * The PRODUCER is the spawn gate, which is the only thing that knows both
+	 * addresses and what held one of them; it lives on the machine rather than on the
+	 * manager because `snapshot()` is the one place the shared snapshot is assembled,
+	 * and a second assembler at the IPC boundary is a second chance to drop the fact.
+	 */
+	setAddressSubstitution(value: AddressSubstitution | null): void {
+		this.addressSubstitution = value;
+	}
+
+	/** What the spawn gate last recorded, so a later attempt can tell a return from silence. */
+	getAddressSubstitution(): AddressSubstitution | null {
+		return this.addressSubstitution;
 	}
 
 	/**
@@ -667,6 +691,7 @@ export class DaemonStateMachine {
 			unanswered: this.unanswered,
 			lastTransportAt: this.lastTransportAt,
 			detail: this.detail,
+			addressSubstitution: this.addressSubstitution,
 			updatedAt: this.updatedAt,
 		};
 	}

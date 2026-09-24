@@ -94,13 +94,15 @@ const RE_PROCESS_IS_GONE = /process is gone/;
 const RE_REFUSES_THIS_APP = /refused this app's credential/;
 const RE_503 = /503/;
 /*
- * The sentence for a daemon this app holds no key to. The old form was a whole
- * clause about what the app did NOT do; the copy now names the holder (address,
- * pid, install, version) and the missing key. The assertion's subject is
- * unchanged - the copy names the PATH into the state, not a generic failure.
+ * The sentence for a daemon this app holds no key to. It used to be a whole clause
+ * about what the app did NOT do; the copy names the holder (address, pid, install,
+ * version) and the missing key, and design round 1 (D3) added the act that ends the
+ * holder - `lop services reclaim <pid>` - which the round's own correction measured
+ * as a command this product ships. The assertion's subject is unchanged - the copy
+ * names the PATH into the state, not a generic failure.
  */
 const RE_THIS_APP_WAS_NOT_GIVEN_THE =
-	/is serving as a Local Operator daemon this app was not given the key to/;
+	/is running a Local Operator daemon this app has no key for/;
 const RE_VITE_DISABLE_BACKEND_MANAG = /VITE_DISABLE_BACKEND_MANAGER/;
 
 /*
@@ -836,7 +838,6 @@ test("an address that answers a status other than 200 is OCCUPIED, not free (F-2
 	 * a stale port. Nothing about the subject changes; the case simply says which
 	 * address it is about.
 	 */
-	globalThis.__testConfiguredUrl = scene.address;
 	globalThis.__testConfiguredUrl = scene.address;
 	const manager = new BackendServiceManager();
 	managers.add(manager);

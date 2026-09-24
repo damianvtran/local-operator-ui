@@ -837,9 +837,33 @@ test("addresses are normalised so an address comparison is exact", () => {
 		normaliseAddress("http://127.0.0.1:1111/"),
 		"http://127.0.0.1:1111",
 	);
+	/*
+	 * ONE SPELLING PER LISTENER (review round 1, R1-4). `localhost` is what a
+	 * configuration or the CSP may say and `127.0.0.1` is what this app's own serve
+	 * records say; before the fold, the record gate compared the two as strings, did
+	 * not find the record its own daemon had written, and fell through to the
+	 * occupancy probe for an address the registry already described.
+	 */
 	assert.equal(
 		normaliseAddress("http://localhost:1111"),
-		"http://localhost:1111",
+		"http://127.0.0.1:1111",
+		"a configuration naming `localhost` names the address its own records describe",
+	);
+	assert.equal(
+		normaliseAddress("http://LocalHost:1111"),
+		"http://127.0.0.1:1111",
+		"the host is folded case-insensitively, as DNS names are",
+	);
+	/*
+	 * IPv6 loopback keeps its own identity - a daemon bound to `::1` alone is not
+	 * reachable at `127.0.0.1` - but its own two spellings are folded to the one the
+	 * URL parser hands back, because a serve record stores the host bare.
+	 */
+	assert.equal(normaliseAddress("http://[::1]:1111"), "http://[::1]:1111");
+	assert.equal(
+		normaliseAddress("http://[0:0:0:0:0:0:0:1]:1111"),
+		"http://[::1]:1111",
+		"the expanded and the compressed IPv6 loopback are one address",
 	);
 	assert.equal(normaliseAddress("not a url"), null);
 	assert.equal(normaliseAddress(""), null);
@@ -947,7 +971,10 @@ test("a daemon answering an address no record describes is reported WITH its ide
  * address the app may spawn on, so a record for one address cannot veto another.
  */
 test("blocksSpawn names the configured address, not the record root", async () => {
-	const daemon = await startDaemon({ instanceId: "holder-1", version: "0.61.4" });
+	const daemon = await startDaemon({
+		instanceId: "holder-1",
+		version: "0.61.4",
+	});
 	const file = writeRecord({
 		pid: process.pid,
 		port: daemon.port,
@@ -979,7 +1006,23 @@ test("blocksSpawn names the configured address, not the record root", async () =
 	// And the helper the per-address gate uses answers the same question the same
 	// way - one predicate, so discovery's verdict and the gate cannot disagree.
 	assert.equal(addressHoldsLiveRecord(daemon.address, { env: env() }), true);
-	assert.equal(addressHoldsLiveRecord("http://127.0.0.1:1", { env: env() }), false);
+	/*
+	 * AND THE SAME RECORD IS FOUND THROUGH THE OTHER SPELLING OF ITS LISTENER
+	 * (review round 1, R1-4). A configuration may name `localhost` - the CSP and the
+	 * manager's own local-host list both accept it - while the record this app wrote
+	 * for the same listener says `127.0.0.1`. Before the fold the gate answered "no
+	 * record" for it and fell through to the occupancy probe, so the app could spawn
+	 * over a daemon its own records described.
+	 */
+	assert.equal(
+		addressHoldsLiveRecord(`http://localhost:${daemon.port}`, { env: env() }),
+		true,
+		"`localhost` and `127.0.0.1` are one listener, so the record for one answers for the other",
+	);
+	assert.equal(
+		addressHoldsLiveRecord("http://127.0.0.1:1", { env: env() }),
+		false,
+	);
 	assert.deepEqual(
 		addressHolders(daemon.address, { env: env() }).records.map((r) => r.pid),
 		[process.pid],
