@@ -19,12 +19,33 @@
 
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import type { PeerRow } from "../../../../shared/desktop-session-contract";
+import { text } from "../../../../shared/mesh-shapes";
 import { deviceLabel } from "./peers-store";
 
 export const isRemoteRow = (row: CanonicalSessionRow): boolean =>
 	row.locality === "remote";
 
+/**
+ * Whether a remote row can be FILED under a peer.
+ *
+ * The section key is the owner's device id, so a remote row whose producer left
+ * `owner_device` empty cannot be keyed: grouping it put every such row in ONE
+ * section headed `device …` (the round-1 review reproduced exactly that with two
+ * rows from two devices). It is not dropped from the list - a conversation is
+ * never hidden - it simply stays in the flat `All chats` list, still marked, where
+ * the mark says it lives elsewhere without naming a device that was not sent
+ * (round-1 review, M2).
+ */
+export const isFileableRemoteRow = (row: CanonicalSessionRow): boolean =>
+	isRemoteRow(row) && text(row.owner_device) !== "";
+
 /** The rows `Active chats`/`Previous chats` draw: this device's own. */
+/**
+ * The ` ago` suffix `shortAge` adds. Hoisted because biome's `useTopLevelRegex`
+ * asks a regex literal not to be rebuilt inside a function.
+ */
+const TRAILING_AGO = / ago$/;
+
 export function localRows<T extends CanonicalSessionRow>(
 	rows: T[],
 	enabled: boolean,
@@ -58,7 +79,9 @@ export function peerReason(
 	peers: ReadonlyMap<string, PeerRow>,
 ): string {
 	const peer = row.owner_device ? peers.get(row.owner_device) : undefined;
-	return (peer?.unreachable_reason || row.unreachable_reason || "").trim();
+	// `text` because the wire is allowed to send `null` for either half (addendum
+	// 2, B) and this string is rendered as a sentence in the flyout and the card.
+	return text(peer?.unreachable_reason ?? row.unreachable_reason);
 }
 
 /** A remote row's owner, as the label every surface spells it. */
@@ -75,8 +98,15 @@ export function ownerLabel(
 export type PeerSection = {
 	/** The device id: the section's React key and disclosure key. */
 	deviceId: string;
-	/** The heading text, `⇄` included, with the state suffix when not live. */
+	/**
+	 * The heading's TEXT, `label + suffix` - never a glyph. The locality mark's
+	 * drawing is `ChatRemoteMark`'s alone, so the heading and the rows cannot drift
+	 * into two drawings of one motif (design round 1, D2: the heading used the font
+	 * glyph `⇄` while the rows used the lucide icon, which draws `⇆`).
+	 */
 	heading: string;
+	/** The state suffix alone (` · unreachable`), appended after the name. */
+	suffix: string;
 	/** The device's label alone, for sentences that name it. */
 	label: string;
 	reachable: boolean;
@@ -90,22 +120,26 @@ export type PeerSection = {
  * reason itself is the tooltip's and S5's, not the heading's, because a sentence
  * in a `truncate` span at 240 px would be cut to a word.
  */
-function headingSuffix(reachable: boolean, lifecycle: string | undefined) {
-	if (!reachable) return " · unreachable";
-	if (lifecycle === "draining" || lifecycle === "expiring")
-		return " · draining";
-	return "";
+function headingSuffix(reachable: boolean) {
+	return reachable ? "" : " · unreachable";
 }
 
 /**
- * One section per peer, in the peer catalogue's order, then any device the rows
- * name that the catalogue does not (a cached row of a peer the last catalogue read
- * omitted still needs a home - dropping it would hide a conversation).
+ * One section per peer THAT HAS CHATS, in the peer catalogue's order, then any
+ * device the rows name that the catalogue does not (a cached row of a peer the
+ * last catalogue read omitted still needs a home - dropping it would hide a
+ * conversation).
  *
- * A catalogue peer with ZERO rows still gets its section: the count says which
- * peer is quiet, and there is no other place in the chats list to say it
- * (`mesh-ui.md` §2.4). Keyed on the DEVICE ID, never the label - two devices may
- * share a human name, and a section keyed on the label would merge them.
+ * WHY ZERO-ROW PEERS GET NO SECTION (design round 1, D5). §2.4 gave a quiet peer
+ * a section "because the count says which peer is quiet", but the `heading()`
+ * primitive renders NO badge for a count of 0 - so the section drew an expanded
+ * chevron over nothing, no count and no rows, which reads as broken rather than as
+ * quiet. The `Peers` group already names every device with its state, its
+ * last-seen and its chat count, so it is the single place a quiet peer is
+ * described, and a section means exactly one thing: here are that peer's chats.
+ *
+ * Keyed on the DEVICE ID, never the label - two devices may share a human name,
+ * and a section keyed on the label would merge them.
  */
 export function peerSections(
 	rows: CanonicalSessionRow[],
@@ -116,8 +150,8 @@ export function peerSections(
 	const byId = new Map(peers.map((peer) => [peer.device_id, peer]));
 	const grouped = new Map<string, CanonicalSessionRow[]>();
 	for (const row of rows) {
-		if (!isRemoteRow(row)) continue;
-		const id = row.owner_device ?? "";
+		if (!isFileableRemoteRow(row)) continue;
+		const id = text(row.owner_device);
 		const list = grouped.get(id);
 		if (list) list.push(row);
 		else grouped.set(id, [row]);
@@ -126,23 +160,30 @@ export function peerSections(
 		...peers.map((peer) => peer.device_id),
 		...[...grouped.keys()].filter((id) => !byId.has(id)),
 	];
-	return order.map((deviceId) => {
-		const members = grouped.get(deviceId) ?? [];
-		const peer = byId.get(deviceId);
-		const reachable = peer
-			? peer.reachable
-			: members.every((row) => row.reachable !== false);
-		const label = peer
-			? deviceLabel(peer)
-			: ownerLabel(members[0] ?? { owner_device: deviceId }, byId);
-		return {
-			deviceId,
-			heading: `⇄ ${label}${headingSuffix(reachable, peer?.lifecycle)}`,
-			label,
-			reachable,
-			rows: members,
-		};
-	});
+	return (
+		order
+			// D5: a peer with no cached chats has nothing for a section to disclose.
+			.filter((deviceId) => (grouped.get(deviceId)?.length ?? 0) > 0)
+			.map((deviceId) => {
+				const members = grouped.get(deviceId) ?? [];
+				const peer = byId.get(deviceId);
+				const reachable = peer
+					? peer.reachable
+					: members.every((row) => row.reachable !== false);
+				const label = peer
+					? deviceLabel(peer)
+					: ownerLabel(members[0] ?? { owner_device: deviceId }, byId);
+				const suffix = headingSuffix(reachable);
+				return {
+					deviceId,
+					heading: `${label}${suffix}`,
+					suffix,
+					label,
+					reachable,
+					rows: members,
+				};
+			})
+	);
 }
 
 /**
@@ -166,12 +207,71 @@ export function shortAge(seconds: number): string {
  * `unreachable · last seen 4m ago` for one that is not. `rtt_ms` null is `—`,
  * never `0ms` (§2.6).
  */
-export function peerTrailing(peer: PeerRow, nowSeconds: number): string {
-	const chats = `${peer.session_count} ${peer.session_count === 1 ? "chat" : "chats"}`;
+export function peerTrailing(
+	peer: PeerRow,
+	/**
+	 * The chat count, from the rows THIS SIDEBAR grouped - the same number the
+	 * peer's section heading shows. Not `peer.session_count`: two counts for one
+	 * fact, read from two sources, can disagree on one screen (design round 1, D1).
+	 */
+	chatCount: number,
+	nowSeconds: number,
+): string {
+	if (!peer.reachable) {
+		// SHORT, because this slot competes with the device's own name for a 240-360px
+		// row: measured in the S4 frame, the long form left the name as `studio…` at
+		// the clamp and cut the one fact that differs between peers (`last see…`) at
+		// the default width. The full sentence is `peerTrailingTitle`'s, i.e. the row's
+		// `title` (design round 1, D4).
+		return peer.last_seen_at === null
+			? "unreachable · never seen"
+			: `unreachable · ${compactAge(nowSeconds - peer.last_seen_at)}`;
+	}
+	// NO LATENCY CLAUSE. The transport publishes no RTT producer, so the shipped
+	// product would render `— · 2 chats` on every live peer, indefinitely: an em
+	// dash in every row says nothing, and the frames that showed `24ms` were
+	// evidence of a UI that cannot exist (design round 1, D1). The field stays in
+	// the wire type; it is rendered again when something measures it.
+	return `${chatCount} ${chatCount === 1 ? "chat" : "chats"}`;
+}
+
+/**
+ * The same duration as `shortAge`, without the trailing `ago` - the form that fits
+ * a 40%-capped slot beside a device's name (D4). `shortAge` itself is unchanged,
+ * because the hover card's `Last seen` wants the sentence.
+ */
+function compactAge(seconds: number): string {
+	return shortAge(seconds).replace(TRAILING_AGO, "");
+}
+
+/**
+ * The `Peers` row's full sentence, for the row's `title` - the half
+ * `peerTrailing` truncates on purpose (D4).
+ */
+export function peerTrailingTitle(
+	peer: PeerRow,
+	chatCount: number,
+	nowSeconds: number,
+): string {
 	if (!peer.reachable) {
 		return peer.last_seen_at === null
 			? "unreachable · never seen"
-			: `unreachable · last seen ${shortAge(nowSeconds - peer.last_seen_at)}`;
+			: // `shortAge` already ends in `ago`; the full sentence only adds `last seen`.
+				`unreachable · last seen ${shortAge(nowSeconds - peer.last_seen_at)}`;
 	}
-	return `${peer.rtt_ms === null ? "—" : `${peer.rtt_ms}ms`} · ${chats}`;
+	const chats = `${chatCount} ${chatCount === 1 ? "chat" : "chats"}`;
+	/*
+	 * THE LATENCY'S HOME, AND WHY IT IS HERE RATHER THAN IN THE ROW. `rtt_ms` is
+	 * `null` on every peer by contract: the transport measures a dial only inside
+	 * its own probe (addendum 3), so publishing a number would mean the backend
+	 * dialling every peer on a 30 s poll to fill one field. Design round 1 (D1)
+	 * settled what that means for the ROW - `— · 2 chats` on every live peer is an
+	 * em dash that can never fill, so the row shows the count alone. The dash is not
+	 * deleted as a convention, it is moved to where a measurement is read in
+	 * context: the row's `title`, which says the count AND that nothing measured the
+	 * round trip. When a producer exists, the number lands in the same cell.
+	 */
+	const latency =
+		peer.rtt_ms === null ? " — latency not reported" : ` — ${peer.rtt_ms}ms`;
+	return `${chats} on ${deviceLabel(peer)}${latency}`;
 }

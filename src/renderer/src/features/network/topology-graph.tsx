@@ -1,7 +1,7 @@
 import {
 	Popover,
-	PopoverAnchor,
 	PopoverContent,
+	PopoverTrigger,
 } from "@shared/components/ui/popover";
 import { cn } from "@shared/lib/utils";
 import { Monitor, Network } from "lucide-react";
@@ -107,6 +107,12 @@ export function TopologyGraph({
 }) {
 	const layout = layoutTopology(topology);
 	const [open, setOpen] = useState<string | null>(openDeviceId ?? null);
+	/**
+	 * WHAT OPENED THE CARD, which decides where focus goes (M5). A story's
+	 * `openDeviceId` counts as keyboard: a card open at mount should be readable
+	 * from the keyboard, and no pointer gesture preceded it.
+	 */
+	const openedBy = useRef<"pointer" | "keyboard">("keyboard");
 	const closeTimer = useRef<number | null>(null);
 	const hold = (id: string) => {
 		if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
@@ -119,6 +125,19 @@ export function TopologyGraph({
 	};
 	const networkById = new Map(layout.networks.map((node) => [node.id, node]));
 	const deviceById = new Map(layout.devices.map((node) => [node.id, node]));
+	/*
+	 * Whether the device has anywhere left to be invited TO: a network it is not an
+	 * active member of. Computed here rather than in `DeviceCard`, which sees one
+	 * device and cannot know what the other networks hold (design round 1, D7).
+	 */
+	const canInvite = (device: DeviceNode) =>
+		layout.networks.some(
+			(network) =>
+				!device.memberships.some(
+					(membership) =>
+						membership.networkId === network.id && membership.active,
+				),
+		);
 
 	return (
 		<div
@@ -176,10 +195,17 @@ export function TopologyGraph({
 							<span className="block truncate text-body-sm text-ink">
 								{node.label}
 							</span>
-							<span className="block truncate text-meta text-ink-dim">
+							<span
+								/* `epoch 7` is protocol vocabulary and a user cannot act on it, so it
+								   leaves the node's face for its `title` - the fact stays reachable
+								   without spending a line of the graph's standing labels (design
+								   round 1, D10). §2.8 puts it in the network node's hover card; a
+								   native tooltip is the same fact at no new widget's cost. */
+								title={`epoch ${node.epoch}`}
+								className="block truncate text-meta text-ink-dim"
+							>
 								{node.memberCount}{" "}
-								{node.memberCount === 1 ? "device" : "devices"} · epoch{" "}
-								{node.epoch}
+								{node.memberCount === 1 ? "device" : "devices"}
 							</span>
 						</span>
 					</li>
@@ -196,16 +222,37 @@ export function TopologyGraph({
 							open={open === node.id}
 							onOpenChange={(next) => setOpen(next ? node.id : null)}
 						>
-							<PopoverAnchor asChild>
+							{/*
+							 * A REAL TRIGGER, NOT AN ANCHOR (round-1 agent review, M5). The
+							 * node used to be a `PopoverAnchor` that opened the card on
+							 * focus, and the card suppressed focus on open - so the two
+							 * actions it carries (`Remove from network…`, `Add to
+							 * network…`) could only be reached with a pointer: Tab went to
+							 * the next node, whose focus swapped the card, and never into
+							 * it. Radix's trigger gives the node `aria-haspopup`/
+							 * `aria-expanded` and opens on Enter, Space and click.
+							 *
+							 * FOCUS NO LONGER OPENS IT. It could not be made reachable
+							 * that way: a card that opens on focus must either take focus
+							 * (which turns tabbing across the graph into a trap - every
+							 * node drags the cursor into its own card) or refuse it (which
+							 * is the pointer-only state this fixes). Opening on the key the
+							 * user presses is the disclosure pattern the actions need, and
+							 * Escape returns focus to the node, which Radix already does.
+							 */}
+							<PopoverTrigger asChild>
 								<button
 									type="button"
 									data-device-node={node.id}
 									data-device-state={node.state}
-									aria-expanded={open === node.id}
-									onPointerEnter={() => hold(node.id)}
+									onPointerEnter={() => {
+										openedBy.current = "pointer";
+										hold(node.id);
+									}}
 									onPointerLeave={release}
-									onFocus={() => hold(node.id)}
-									onClick={() => hold(node.id)}
+									onKeyDown={() => {
+										openedBy.current = "keyboard";
+									}}
 									className={cn(
 										"flex items-center gap-2 rounded-md border border-l-4 border-hairline bg-elevated px-3 text-left",
 										"hover:bg-row-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
@@ -234,21 +281,30 @@ export function TopologyGraph({
 										</span>
 									</span>
 								</button>
-							</PopoverAnchor>
+							</PopoverTrigger>
 							<PopoverContent
 								side="right"
 								align="start"
 								className="w-80"
 								onPointerEnter={() => hold(node.id)}
 								onPointerLeave={release}
-								// The card opens on hover; it must not steal focus from the
-								// node the keyboard user is on.
-								onOpenAutoFocus={(event) => event.preventDefault()}
+								/*
+								 * FOCUS GOES INTO THE CARD ONLY WHEN THE USER ASKED FOR IT.
+								 * Opened by Enter/Space/click the card takes focus, so the
+								 * two actions are the next Tab stops (M5). Opened by the
+								 * POINTER on hover it must not: the mouse user is looking at
+								 * a node, and moving their keyboard focus out from under them
+								 * is how a hover card becomes a hostile one.
+								 */
+								onOpenAutoFocus={(event) => {
+									if (openedBy.current === "pointer") event.preventDefault();
+								}}
 							>
 								<DeviceCard
 									device={node}
 									nowSeconds={nowSeconds}
 									actions={actions}
+									canInvite={canInvite(node)}
 								/>
 							</PopoverContent>
 						</Popover>
@@ -279,10 +335,15 @@ export function DeviceCard({
 	device,
 	nowSeconds,
 	actions,
+	canInvite,
 }: {
 	device: DeviceNode;
 	nowSeconds: number;
 	actions: DeviceActions;
+	/** Whether any network exists that this device is not already an active
+	 * member of. Computed by `TopologyGraph` from the topology, because the card
+	 * sees one device and cannot know what the others hold. */
+	canInvite: boolean;
 }) {
 	return (
 		<div data-device-card={device.id} className="space-y-3">
@@ -352,15 +413,26 @@ export function DeviceCard({
 					</li>
 				))}
 			</ul>
-			{actions.onInvite && device.state !== "self" && (
-				<button
-					type="button"
-					className="text-meta text-ink underline"
-					onClick={() => actions.onInvite?.(device)}
-				>
-					Add to network…
-				</button>
-			)}
+			{actions.onInvite &&
+				device.state !== "self" &&
+				/* D7: the link was offered even when there was no network left to add the
+				   device to, and the dialog could only answer "is already in every network
+				   this device belongs to" - offered-but-broken, which §2.7 itself calls
+				   the worst option. With no candidate the card states the fact instead of
+				   promising an action it cannot take. */
+				(canInvite ? (
+					<button
+						type="button"
+						className="text-meta text-ink underline"
+						onClick={() => actions.onInvite?.(device)}
+					>
+						Add to network…
+					</button>
+				) : (
+					<p className="text-meta text-ink-dim">
+						In every network this device belongs to
+					</p>
+				))}
 		</div>
 	);
 }

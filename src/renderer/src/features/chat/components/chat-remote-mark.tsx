@@ -1,4 +1,5 @@
-import { ArrowLeftRight } from "lucide-react";
+import { cn } from "@shared/lib/utils";
+import { ArrowLeftRight, Unlink } from "lucide-react";
 
 /**
  * The locality mark: a 16 px `⇄` drawn as the FIRST child of a conversation row
@@ -30,7 +31,45 @@ import { ArrowLeftRight } from "lucide-react";
  * opacity, branding § 6). The row's status glyph keeps its own ink, because a
  * cached row's status is its truth as of the last sync and must not read as
  * disabled (§2.5, S4).
+ *
+ * TWO DRAWINGS, ONE MEANING EACH (design round 1, D2 and D6). `RemoteGlyph` is the
+ * single place the motif is drawn, and it draws exactly two shapes: the paired
+ * arrows for a peer that answers, and `Unlink` for one that does not. Before this,
+ * the SAME arrow shape appeared mirrored for two different meanings - the heading's
+ * font glyph `⇄` read as decoration while lucide's `ArrowLeftRight` (which draws
+ * `⇆`) meant "lives elsewhere", and the flat list told an unreachable row apart from
+ * a live one by a 1.38:1 ink step alone, i.e. by colour only, which §2.5 exists to
+ * avoid. The shape now carries it: distinguishable in greyscale.
  */
+export function RemoteGlyph({
+	reachable,
+	className,
+}: {
+	reachable: boolean;
+	/** Size only: the ink and the shape are decided here, never by the caller. */
+	className?: string;
+}) {
+	// `ink-dim` rather than `ink-disabled`: an unreachable peer's row still opens
+	// its cached transcript, so the mark says "not live", not "off".
+	const ink = reachable ? "text-ink-muted" : "text-ink-dim";
+	if (!reachable) {
+		return (
+			<Unlink
+				aria-hidden="true"
+				data-remote-glyph="unreachable"
+				className={cn("size-4 shrink-0", ink, className)}
+			/>
+		);
+	}
+	return (
+		<ArrowLeftRight
+			aria-hidden="true"
+			data-remote-glyph="reachable"
+			className={cn("size-4 shrink-0", ink, className)}
+		/>
+	);
+}
+
 export function ChatRemoteMark({
 	owner,
 	reachable,
@@ -41,12 +80,7 @@ export function ChatRemoteMark({
 }) {
 	return (
 		<span data-remote-mark className="flex size-4 shrink-0">
-			<ArrowLeftRight
-				aria-hidden="true"
-				// `ink-dim` rather than `ink-disabled`: an unreachable peer's row still
-				// opens its cached transcript, so the mark says "not live", not "off".
-				className={reachable ? "size-4 text-ink-muted" : "size-4 text-ink-dim"}
-			/>
+			<RemoteGlyph reachable={reachable} />
 			<span className="sr-only">
 				{reachable ? `On ${owner}, ` : `On ${owner}, unreachable, `}
 			</span>

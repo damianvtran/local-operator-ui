@@ -3,6 +3,7 @@ import {
 	DESKTOP_REFUSAL_CODE,
 	type DesktopResponse,
 	desktopEndpoint,
+	desktopRequestBoundS,
 	desktopRequestByteBudget,
 	desktopRequestDeadlineDetail,
 	desktopRequestDeadlineMs,
@@ -106,7 +107,10 @@ export async function requestDesktopOutcome(
 	 * control budget was cutting those reads off mid-scan and reporting it as a
 	 * dead backend; see `desktopRequestDeadlineMs` for the measurements.
 	 */
-	const deadlineMs = desktopRequestDeadlineMs(request.op);
+	const deadlineMs = desktopRequestDeadlineMs(
+		request.op,
+		desktopRequestBoundS(request),
+	);
 	try {
 		const body =
 			target.body === undefined ? undefined : JSON.stringify(target.body);

@@ -111,6 +111,21 @@ globalThis.__desktop = async (request) => {
 	requests.push(request);
 	if (request.op === "peers.list") return peerAnswer;
 	/*
+	 * A MOVE, per case (M4): the case sets either the reply or the error the
+	 * transport raises, so the two outcomes - refused, and unconfirmed - are driven
+	 * through the STORE rather than painted by a story's `setState`.
+	 */
+	if (request.op === "sessions.transfer") {
+		if (globalThis.__transferError) throw globalThis.__transferError;
+		return (
+			globalThis.__transferReply ?? {
+				locality: "remote",
+				owner_device: request.to,
+				source_retired: true,
+			}
+		);
+	}
+	/*
 	 * The sidebar reads the list itself on mount, so the answer IS the case's
 	 * rows, in the wire's field names - an empty answer would replace what the
 	 * case seeded and every assertion would be about an empty panel.
@@ -178,7 +193,11 @@ const bundle = await build({
 			' export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";' +
 			' export * as peers from "./src/renderer/src/features/chat/chat-peers";' +
 			' export { layoutTopology } from "./src/renderer/src/features/network/topology-layout";' +
-			' export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";' +
+			' export { desktopEndpoint, desktopRequestSchema, desktopRequestBoundS, desktopRequestDeadlineMs } from "./src/shared/desktop-contract";' +
+			// The boundary the mesh answers are read through, and the error class the
+			// store distinguishes a refusal from a deadline by (M3/M4).
+			' export * as mesh from "./src/shared/mesh-shapes";' +
+			' export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";' +
 			// The provider has to be THIS bundle's instance of React Query, or the
 			// sidebar's `usePeers` reads a different context than the one mounted.
 			' export { QueryClient, QueryClientProvider } from "@tanstack/react-query";',
@@ -229,6 +248,10 @@ const {
 	layoutTopology,
 	desktopEndpoint,
 	desktopRequestSchema,
+	desktopRequestBoundS,
+	desktopRequestDeadlineMs,
+	mesh,
+	DesktopControlError,
 	QueryClient,
 	QueryClientProvider,
 } = await import(bundlePath.href);
@@ -255,19 +278,21 @@ const plain = (id, title, over = {}) => ({
 const LAPTOP = "d_9c02aaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const STUDIO = "d_7e11bbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
+/*
+ * A catalogue row in the shape the CONTRACT froze (addendum 2, A: device_id, name,
+ * reachable, unreachable_reason, last_seen_at, session_count, rtt_ms). It used to
+ * carry `kind`/`lifecycle`/`role`/`size_class`/`expires_at` and `rtt_ms: 24` -
+ * values no producer sends (addendum 3: nothing measures latency), which made an
+ * assertion about the dash pass for the wrong reason.
+ */
 const peer = (device_id, name, over = {}) => ({
 	device_id,
 	name,
-	kind: "device",
-	lifecycle: "active",
 	reachable: true,
-	rtt_ms: 24,
-	role: "drive",
+	rtt_ms: null,
 	session_count: 0,
 	last_seen_at: 1_789_400_000,
 	unreachable_reason: "",
-	size_class: "",
-	expires_at: null,
 	...over,
 });
 
@@ -398,11 +423,22 @@ test("features.peers absent: a REMOTE row is still drawn as a plain row, not dro
 
 /* ---------------------------------------------------------- with a network */
 
+/**
+ * D1's failure mode, spelled as a scan: a latency clause (`24ms`, or the `—` the
+ * old code fell back to when nothing measured one). Module scope because biome's
+ * `useTopLevelRegex` asks a regex literal not to be rebuilt inside a function.
+ */
+const LATENCY_CLAIM = /(\d+ms|— ·)/;
+
 test("features.peers present: remote rows carry the mark, local rows do not, and each peer gets a section", async () => {
 	globalThis.__features = { ...BASE_FEATURES, peers: 1 };
 	peerAnswer = {
 		peers: [
-			peer(LAPTOP, "devon-laptop", { session_count: 1 }),
+			/*
+			 * `session_count: 7` against ONE cached row on purpose (D1): the two
+			 * sources disagree, so the count the row prints says which one it read.
+			 */
+			peer(LAPTOP, "devon-laptop", { session_count: 7 }),
 			peer(STUDIO, "studio-mini", {
 				reachable: false,
 				rtt_ms: null,
@@ -446,26 +482,90 @@ test("features.peers present: remote rows carry the mark, local rows do not, and
 		const sections = [...doc.querySelectorAll("[data-peer-section]")].map(
 			(node) => node.getAttribute("data-peer-section"),
 		);
-		assert.deepEqual(
-			sections,
-			[LAPTOP, STUDIO],
-			"one section per peer, keyed by device id, in catalogue order - the quiet one included",
+		/*
+		 * D5: `studio-mini` has no cached chats, so it has NO section - a section for
+		 * a zero-row peer drew an expanded chevron over nothing, because `heading()`
+		 * draws no badge for a count of 0. It is described by the `Peers` group below,
+		 * which is the one list of devices.
+		 */
+		assert.deepEqual(sections, [LAPTOP], "only peers WITH chats get a section");
+		assert.equal(
+			doc.querySelector(`[data-peer-section="${STUDIO}"]`),
+			null,
+			"the quiet peer still has an empty section (D5)",
 		);
-		const studio = doc.querySelector(`[data-peer-section="${STUDIO}"]`);
+		/*
+		 * D2: the heading carries no glyph of its own any more - the motif is drawn by
+		 * `RemoteGlyph` in both the heading and the rows - so its text is the name and
+		 * the state, and the drawing is asserted through `data-remote-glyph`.
+		 */
+		const laptop = doc.querySelector(`[data-peer-section="${LAPTOP}"]`);
+		assert.ok(laptop, "the peer with chats has no section");
 		assert.ok(
-			studio?.textContent.includes("⇄ studio-mini · unreachable"),
-			"the unreachable peer's heading does not say so",
+			laptop.textContent.includes("devon-laptop"),
+			"the section does not name its device",
+		);
+		assert.equal(
+			laptop
+				.querySelector("[data-chat-section] [data-remote-glyph]")
+				?.getAttribute("data-remote-glyph"),
+			"reachable",
+			"the heading does not carry the rows' own drawing (D2)",
+		);
+		assert.equal(
+			laptop
+				.querySelector('[data-tour-tag="chat-session-row"] [data-remote-glyph]')
+				?.getAttribute("data-remote-glyph"),
+			"reachable",
+			"the row's mark is not the paired arrows",
 		);
 		// The remote row is NOT also drawn in Active chats.
 		const active = [...doc.querySelectorAll('[data-chat-section="active"]')];
 		assert.equal(active.length, 1);
-		const laptop = doc.querySelector(`[data-peer-section="${LAPTOP}"]`);
-		assert.ok(laptop?.textContent.includes("Tune the relay keepalive"));
+		assert.ok(laptop.textContent.includes("Tune the relay keepalive"));
 		const group = doc.querySelector("[data-peers-group]");
 		assert.ok(group, "the Peers group is not mounted");
 		assert.ok(
-			group.textContent.includes("unreachable · last seen"),
+			group.textContent.includes("unreachable ·"),
 			"the unreachable peer's row does not lead with its state",
+		);
+		/*
+		 * D6: an unreachable device is drawn as a DIFFERENT SHAPE, not only dimmer
+		 * ink - the flat list has no heading, so a 1.38:1 lightness step was the only
+		 * thing telling a live peer from a cached one, i.e. colour alone (§2.5).
+		 */
+		const studioRow = doc.querySelector(`[data-peer-row="${STUDIO}"]`);
+		assert.equal(
+			studioRow
+				?.querySelector("[data-remote-glyph]")
+				?.getAttribute("data-remote-glyph"),
+			"unreachable",
+			"an unreachable device is drawn with the same shape as a live one (D6)",
+		);
+		/*
+		 * D1: ONE SOURCE for the chat count - the rows the sidebar grouped, which is
+		 * what the peer's own heading counts. The catalogue claims 7 chats and the
+		 * sidebar grouped 1 row, so `1 chat` here proves the row read the grouping and
+		 * not `peer.session_count`; before the fix this frame said `24ms · 7 chats`
+		 * beside a heading that said 1.
+		 */
+		const laptopRow = doc.querySelector(`[data-peer-row="${LAPTOP}"]`);
+		assert.ok(
+			laptopRow?.textContent.includes("1 chat"),
+			`the Peers row's count is not the grouped number: "${laptopRow?.textContent}"`,
+		);
+		assert.ok(
+			!group.textContent.includes("7 chats"),
+			"the Peers row still prints the catalogue's own count (D1)",
+		);
+		assert.ok(
+			laptop.querySelector("[data-chat-section]")?.textContent?.includes("1"),
+			"the section's heading does not carry the grouped count",
+		);
+		/* D1: no latency clause anywhere - nothing measures it yet. */
+		assert.ok(
+			!LATENCY_CLAIM.test(group.textContent),
+			"the Peers group still prints a latency it cannot measure (D1)",
 		);
 		assert.ok(
 			requests.some((request) => request.op === "peers.list"),
@@ -588,7 +688,23 @@ test("a row of a device the catalogue does not list still gets a section (nothin
 		true,
 	);
 	assert.equal(sections.length, 1);
-	assert.equal(sections[0].heading, "⇄ device …bbbbbb · unreachable");
+	// No glyph in the text: `RemoteGlyph` draws it, so heading and rows cannot
+	// drift into two drawings of one motif (D2).
+	assert.equal(sections[0].heading, "device …bbbbbb · unreachable");
+	assert.equal(sections[0].suffix, " · unreachable");
+});
+
+test("a peer with no cached chats gets no section (D5)", () => {
+	const sections = peers.peerSections(
+		[plain("a", "one", { locality: "remote", owner_device: LAPTOP })],
+		[peer(LAPTOP, "devon-laptop"), peer(STUDIO, "studio-mini")],
+		true,
+	);
+	assert.deepEqual(
+		sections.map((section) => section.deviceId),
+		[LAPTOP],
+		"a quiet peer's section is an expanded chevron over nothing",
+	);
 });
 
 test("the mark and the heading read ONE reachability predicate (S4 agreement)", () => {
@@ -606,22 +722,50 @@ test("the mark and the heading read ONE reachability predicate (S4 agreement)", 
 	assert.equal(section.reachable, false);
 });
 
-test("the Peers row's trailing statement: rtt and count live, state and age when not", () => {
+test("the Peers row's trailing statement: the grouped count when live, state and age when not", () => {
 	const now = 1_789_400_240;
+	/*
+	 * D1: the count is an ARGUMENT, because the sidebar passes the number its own
+	 * grouping produced - the same number the peer's section heading shows. The
+	 * catalogue's `session_count` is deliberately NOT read here: two counts of one
+	 * fact, read from two sources (peer.session_count in the row, group.rows.length
+	 * in the heading), disagreed on one screen.
+	 */
+	assert.equal(peers.peerTrailing(peer(LAPTOP, "x"), 2, now), "2 chats");
+	assert.equal(peers.peerTrailing(peer(LAPTOP, "x"), 1, now), "1 chat");
+	assert.equal(peers.peerTrailing(peer(LAPTOP, "x"), 0, now), "0 chats");
+	/* D1: no latency clause, whatever the catalogue claims to have measured. */
 	assert.equal(
-		peers.peerTrailing(peer(LAPTOP, "x", { session_count: 2 }), now),
-		"24ms · 2 chats",
+		peers.peerTrailing(peer(LAPTOP, "x", { rtt_ms: 24 }), 2, now),
+		"2 chats",
+	);
+	/* D4: the unreachable trailing is SHORT, because it competes with the name. */
+	assert.equal(
+		peers.peerTrailing(peer(LAPTOP, "x", { reachable: false }), 0, now),
+		"unreachable · 4m",
 	);
 	assert.equal(
 		peers.peerTrailing(
-			peer(LAPTOP, "x", { rtt_ms: null, session_count: 1 }),
+			peer(LAPTOP, "x", { reachable: false, last_seen_at: null }),
+			0,
 			now,
 		),
-		"— · 1 chat",
+		"unreachable · never seen",
+	);
+	/* The full sentence is the row's `title`, so nothing is lost to the shortening. */
+	assert.equal(
+		peers.peerTrailingTitle(peer(LAPTOP, "x", { reachable: false }), 0, now),
+		"unreachable · last seen 4m ago",
 	);
 	assert.equal(
-		peers.peerTrailing(peer(LAPTOP, "x", { reachable: false }), now),
-		"unreachable · last seen 4m ago",
+		peers.peerTrailingTitle(peer(LAPTOP, "x"), 2, now),
+		"2 chats on x — latency not reported",
+		"the dash lives in the title, where the count is read in context (D1)",
+	);
+	assert.equal(
+		peers.peerTrailingTitle(peer(LAPTOP, "x", { rtt_ms: 24 }), 2, now),
+		"2 chats on x — 24ms",
+		"a real measurement renders in the same cell",
 	);
 });
 
@@ -768,5 +912,226 @@ test("the mesh ops reach the routes plan §3.1 names, and pre-mesh requests are 
 			false,
 			`${bad} was accepted as a network id`,
 		);
+	}
+});
+
+/* ---------------------------------------- the boundary (round-1 review, M1-M3) */
+
+/*
+ * The shapes below are the ones the producers ACTUALLY emit, taken from the
+ * round-1 review: `relay.peer_status` answers one entry per (network, member), and
+ * a row can arrive with a field missing. Every case here is a reproduction the
+ * reviewer ran against the renderer, kept as a regression.
+ */
+
+test("M1: the catalogue dedupes by device id, so a device in two networks is ONE row", () => {
+	const twice = [
+		peer(LAPTOP, "devon-laptop", { session_count: 2 }),
+		peer(LAPTOP, "devon-laptop", { session_count: 2 }),
+	];
+	const { peers: rows } = mesh.peerList({ peers: twice });
+	assert.equal(rows.length, 1, "one device, one row");
+	// Nothing is merged INTO the row: the duplicate is the join's artefact, not a
+	// second fact, so a count is not doubled.
+	assert.equal(rows[0].session_count, 2);
+	assert.equal(
+		mesh.peerList({ peers: [LAPTOP, STUDIO].map((id) => peer(id, id)) }).peers
+			.length,
+		2,
+		"two devices are two rows",
+	);
+});
+
+test("M3: a sparse peer row degrades or is dropped, and NEVER throws", () => {
+	const { peers: rows } = mesh.peerList({
+		peers: [
+			// No identity: it could not be a section key, so it is dropped.
+			{ name: "ghost", reachable: true },
+			// No reachability answer: every reader of that field makes a claim with
+			// it, and neither value is "I do not know", so it is dropped too.
+			{ device_id: LAPTOP, name: "devon-laptop" },
+			// Everything else missing: kept, with the empty answer for each type.
+			{ device_id: STUDIO, reachable: false },
+			// Wrong types, not absences: the same rule applies.
+			{
+				device_id: "d_cccccccccccccccccccccccccccccccc",
+				name: 7,
+				reachable: true,
+				session_count: -3,
+				rtt_ms: "fast",
+			},
+		],
+	});
+	assert.deepEqual(
+		rows.map((row) => row.device_id),
+		[STUDIO, "d_cccccccccccccccccccccccccccccccc"],
+		"a row with no id, or no reachability answer, is not drawable",
+	);
+	assert.equal(rows[0].name, "", "a missing name is the empty string");
+	assert.equal(rows[0].unreachable_reason, null);
+	assert.equal(rows[0].last_seen_at, null);
+	assert.equal(rows[0].session_count, 0);
+	// The label falls back to the id's tail rather than rendering `undefined`.
+	assert.equal(
+		peers.ownerLabel({ owner_device: STUDIO }, new Map()),
+		"device …bbbbbb",
+	);
+	assert.equal(rows[1].session_count, 0, "a negative count is not a count");
+	assert.equal(rows[1].rtt_ms, null, "a string latency is not a measurement");
+});
+
+test("M3: a sparse TOPOLOGY neither normalises nor throws - layout survives raw input", () => {
+	// The reviewer's reproduction, verbatim: these members have no `name` and no
+	// `reason`, and `layoutTopology` used to throw on `.trim()` while the graph
+	// rendered, taking the whole window with it.
+	const raw = {
+		self_device_id: LAPTOP,
+		networks: [
+			{
+				network_id: "n_1",
+				name: "home",
+				members: [
+					{ device_id: LAPTOP },
+					{ name: "nameless" },
+					{ device_id: STUDIO, reason: 7 },
+				],
+			},
+		],
+	};
+	const layout = layoutTopology(raw);
+	assert.deepEqual(
+		layout.devices.map((node) => node.id),
+		[LAPTOP, STUDIO],
+		"a member with no id is not a node (the two that are left sort by label)",
+	);
+	const normalised = mesh.networkTopology(raw);
+	assert.equal(normalised.networks.length, 1);
+	assert.equal(normalised.networks[0].members.length, 2);
+	assert.equal(normalised.networks[0].members[1].reason, "");
+	assert.deepEqual(normalised.networks[0].members[1].capabilities, []);
+	assert.equal(
+		normalised.networks[0].members[1].active,
+		true,
+		"a member is a member",
+	);
+	// And the normalised answer lays out the same way.
+	assert.deepEqual(
+		layoutTopology(normalised).devices.map((node) => node.id),
+		[LAPTOP, STUDIO],
+	);
+});
+
+test("M2: a remote row with no owner opens NO section, and is not hidden either", () => {
+	const orphans = [
+		plain("a", "one", { locality: "remote", owner_device: null }),
+		plain("b", "two", { locality: "remote", owner_device: "" }),
+	];
+	assert.deepEqual(
+		peers.peerSections(orphans, [peer(LAPTOP, "devon-laptop")], true),
+		[],
+		"two devices' rows collapsed into one `device …` section",
+	);
+	// The row is still a remote row (the mark is drawn) - it is only unfiled.
+	assert.ok(orphans.every((row) => peers.isRemoteRow(row)));
+	assert.ok(orphans.every((row) => !peers.isFileableRemoteRow(row)));
+	assert.equal(
+		peers.isFileableRemoteRow(
+			plain("c", "three", { locality: "remote", owner_device: LAPTOP }),
+		),
+		true,
+	);
+});
+
+test("M4: the move's budget follows its own wait, and no other op's does", () => {
+	assert.equal(
+		desktopRequestBoundS({ op: "sessions.transfer", wait_s: 30 }),
+		30,
+	);
+	// The schema's ceiling is 300 s, and a request past it is clamped rather than
+	// believed.
+	assert.equal(
+		desktopRequestBoundS({ op: "sessions.transfer", wait_s: 9_000 }),
+		300,
+	);
+	assert.equal(desktopRequestBoundS({ op: "sessions.transfer" }), null);
+	assert.equal(desktopRequestBoundS({ op: "sessions.list" }), null);
+	// 30 s of waiting plus the route's own margin, which must exceed the wait it
+	// asked for - a budget BELOW `wait_s` is the defect this test exists for.
+	assert.equal(desktopRequestDeadlineMs("sessions.transfer", 30), 45_000);
+	assert.equal(desktopRequestDeadlineMs("sessions.transfer", 300), 315_000);
+	// An op without a bound keeps the standing budgets.
+	assert.equal(desktopRequestDeadlineMs("sessions.transfer"), 20_000);
+	assert.equal(desktopRequestDeadlineMs("sessions.list"), 20_000);
+	assert.equal(desktopRequestDeadlineMs("usage.get"), 90_000);
+});
+
+test("M4: a timed-out move says the outcome is UNKNOWN, and a refusal says nothing changed", async () => {
+	const row = plain("a", "Migrate the deploy script", {
+		locality: "remote",
+		owner_device: LAPTOP,
+		owner_device_name: "devon-laptop",
+		reachable: true,
+	});
+	// The notice renders only with the gate on, which is also what makes the move
+	// reachable in the product.
+	globalThis.__features = { ...BASE_FEATURES, peers: 1, session_transfer: 1 };
+	const harness = await mount([row]);
+	try {
+		// A deadline carries NO status: the request never produced one.
+		globalThis.__transferError = new DesktopControlError(
+			null,
+			"the renderer gave up",
+		);
+		let settled;
+		await act(async () => {
+			settled = await store
+				.getState()
+				.transferSession("a", STUDIO, "Migrate the deploy script");
+		});
+		assert.equal(settled, false, "a timed-out move is not a success");
+		const timedOut = harness.container.querySelector(
+			'[data-mesh-notice="move-unconfirmed"]',
+		);
+		assert.ok(timedOut, "the unconfirmed move has no notice of its own");
+		assert.match(timedOut.textContent, /may have happened/);
+		/*
+		 * THE ASSERTION THIS TEST EXISTS FOR: the old copy appended "Nothing
+		 * changed." to every failure, and a deadline cannot establish that - the
+		 * move may have completed. An invitation to repeat the move is exactly what
+		 * a move must not say.
+		 */
+		assert.doesNotMatch(
+			timedOut.textContent,
+			/Nothing changed/,
+			"a timed-out move claims nothing changed",
+		);
+		assert.match(timedOut.textContent, /check the other device/);
+
+		// A refusal IS an answer: the route looked and said no.
+		globalThis.__transferError = new DesktopControlError(
+			409,
+			"a turn is still running there; stop it or wait for it",
+		);
+		await act(async () => {
+			settled = await store
+				.getState()
+				.transferSession("a", STUDIO, "Migrate the deploy script");
+		});
+		assert.equal(settled, false);
+		const refused = harness.container.querySelector(
+			'[data-mesh-notice="move-failed"]',
+		);
+		assert.ok(refused, "a refused move lost its own notice");
+		assert.match(refused.textContent, /a turn is still running there/);
+		assert.match(
+			refused.textContent,
+			/stop it or wait for it\. Nothing changed\./,
+			"S7's approved copy, with the route's own sentence in front of it",
+		);
+		assert.doesNotMatch(refused.textContent, /may have happened/);
+	} finally {
+		globalThis.__transferError = undefined;
+		globalThis.__features = { ...BASE_FEATURES };
+		await harness.unmount();
 	}
 });

@@ -798,7 +798,7 @@ const STAMP_BINDING_NOTES = [
 	// The ninth, and the one that re-derived the pair: it states this file's own trees for
 	// the mesh-desktop pass, so it is held to them rather than read as history - the
 	// distinction `candidateMacArchRestampNote` was listed for.
-	"meshDesktopRestampNote",
+	"meshDesktopRound2RestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {

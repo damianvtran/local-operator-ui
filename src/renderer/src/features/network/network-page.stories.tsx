@@ -44,13 +44,37 @@ const member = (
 	...over,
 });
 
+/**
+ * What an `admin` membership actually carries, from the backend's own table
+ * (`network/types.py`, `CAPABILITIES`): ten names, no synonyms, and the role is
+ * RESOLVED at admission rather than derived at read time.
+ *
+ * The fixture used to say `["*"]`, which no producer emits - the card printed it
+ * raw, so the frame showed a capability no user can hold (round-1 review, m4).
+ */
+const ADMIN_CAPABILITIES = [
+	"list",
+	"view",
+	"prompt",
+	"steer",
+	"stop",
+	"slash",
+	"delete",
+	"move",
+	"broker_credential",
+	"admin",
+];
+
 const HOME: NetworkTopology["networks"][number] = {
 	network_id: "n_4a1c00000000000000000000",
 	name: "home",
 	epoch: 7,
 	trust: "trusted",
 	members: [
-		member(SELF, "damian-mbp", { role: "admin", capabilities: ["*"] }),
+		member(SELF, "damian-mbp", {
+			role: "admin",
+			capabilities: ADMIN_CAPABILITIES,
+		}),
 		member(LAPTOP, "devon-laptop"),
 		member(STUDIO, "studio-mini", { endpoints: ["192.168.1.31:47100"] }),
 	],
@@ -62,7 +86,10 @@ const WORK: NetworkTopology["networks"][number] = {
 	epoch: 3,
 	trust: "trusted",
 	members: [
-		member(SELF, "damian-mbp", { role: "admin", capabilities: ["*"] }),
+		member(SELF, "damian-mbp", {
+			role: "admin",
+			capabilities: ADMIN_CAPABILITIES,
+		}),
 		member(LAPTOP, "devon-laptop", {
 			role: "read",
 			capabilities: ["list", "view"],
@@ -92,7 +119,7 @@ const base: Omit<NetworkViewProps, "state"> = {
  * biome's `useTopLevelRegex` is a request not to rebuild a literal inside a
  * function, and a play function is one.
  */
-const TYPED_CONFIRMATION = /Type the network's name to confirm/;
+const TYPED_CONFIRMATION = /Type .* to confirm/;
 const REDEEM_SENTENCE = /must redeem it itself/;
 
 const meta = {
@@ -128,7 +155,16 @@ export const ErrorState: Story = {
 		...base,
 		state: {
 			kind: "error",
-			message: "The relay is not running on this device.",
+			/*
+			 * THE BACKEND'S OWN SENTENCE, verbatim (design round 1, D13). The fixture used
+			 * to carry "The relay is not running on this device.", which this app invented -
+			 * so the frame showed copy the product never renders. This is the relay
+			 * surface's string as the backend writes it (local-operator
+			 * `network/cli.py:2622`, `feat/mesh-network`), and it carries the remedy: the
+			 * retry beside it is meaningful precisely because starting the relay makes the
+			 * read succeed.
+			 */
+			message: "the relay is not running; start it with `lop network start`",
 		},
 	},
 };
@@ -147,6 +183,11 @@ export const Populated: Story = {
 /**
  * devon-laptop is in BOTH networks: one node, two edges, and its card lists
  * both memberships with their different roles.
+ *
+ * THE CARD OFFERS NO INVITE HERE (design round 1, D7): there is no network left to
+ * add it to, so the link used to open a dialog whose only possible answer was "is
+ * already in every network this device belongs to". The play asserts the link is
+ * gone and the fact is stated instead, which is what this frame is for.
  */
 export const DeviceInTwoNetworks: Story = {
 	args: {
@@ -156,6 +197,11 @@ export const DeviceInTwoNetworks: Story = {
 			kind: "ready",
 			topology: { networks: [HOME, WORK], self_device_id: SELF },
 		},
+	},
+	play: async () => {
+		await screen.findByText("In every network this device belongs to");
+		if (screen.queryByText("Add to network…"))
+			throw new Error("the card still offers an invite it cannot redeem (D7)");
 	},
 };
 

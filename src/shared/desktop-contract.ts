@@ -2336,6 +2336,26 @@ const DESKTOP_CONTROL_DEADLINE_MS = 20_000;
 const DESKTOP_LONG_READ_DEADLINE_MS = 90_000;
 
 /**
+ * How long the app waits for a MOVE, over and above the wait the request asks for.
+ *
+ * `sessions.transfer` is not a control: it asks the route to wait for the source
+ * runtime to retire, and that wait is the request's OWN `wait_s` (up to 300 s, the
+ * schema's ceiling). Bounding it by the 20 s control budget made the app give up
+ * on a route that was still working, and the give-up sentence - which cannot name
+ * the reason - then told the reader the move might not have happened. So the move's
+ * budget is `wait_s` plus this margin, which is the time the route needs to answer
+ * once its wait is satisfied: the retirement is already complete, and what is left
+ * is one JSON answer over IPC.
+ *
+ * The margin is generous on purpose. Exceeding a budget here is reported as an
+ * UNCONFIRMED move, never as a refusal (round-1 review, M4), so a margin that is
+ * too small is a false alarm rather than a lost answer.
+ */
+export const DESKTOP_TRANSFER_MARGIN_MS = 15_000;
+/** What the renderer asks the route to wait, when the user has not chosen. */
+export const DESKTOP_TRANSFER_WAIT_S = 30;
+
+/**
  * Ops whose answer is an aggregate over the local usage ledger.
  *
  * Listed by SHAPE, because that is what the budget is sized for: each of these
@@ -2379,8 +2399,35 @@ const LONG_READ_OPS: ReadonlySet<string> = new Set([
 	...PROVIDER_READ_OPS,
 ]);
 
-/** The deadline one op's request may run for. */
-export function desktopRequestDeadlineMs(op: DesktopRequest["op"]): number {
+/**
+ * The op's OWN time bound, when it carries one: only a move does, and its `wait_s`
+ * is how long the route may wait for the source runtime to retire.
+ */
+export function desktopRequestBoundS(request: {
+	op: DesktopRequest["op"];
+	wait_s?: number;
+}): number | null {
+	if (request.op !== "sessions.transfer") return null;
+	const wait = request.wait_s;
+	if (typeof wait !== "number" || !Number.isFinite(wait)) return null;
+	return Math.min(Math.max(wait, 0), 300);
+}
+
+/**
+ * The deadline one op's request may run for.
+ *
+ * `boundS` is the request's own bound ({@link desktopRequestBoundS}), because one
+ * op's cost is not a property of its name: a move that asked to wait 30 s cannot
+ * be answered inside a budget that ignores the 30 s. Callers that have the whole
+ * request pass it; a caller that has only the op gets the op's standing budget,
+ * which is what every op but the move has.
+ */
+export function desktopRequestDeadlineMs(
+	op: DesktopRequest["op"],
+	boundS: number | null = null,
+): number {
+	if (op === "sessions.transfer" && boundS !== null)
+		return Math.round(boundS * 1000) + DESKTOP_TRANSFER_MARGIN_MS;
 	return LONG_READ_OPS.has(op)
 		? DESKTOP_LONG_READ_DEADLINE_MS
 		: DESKTOP_CONTROL_DEADLINE_MS;

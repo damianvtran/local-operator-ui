@@ -23,6 +23,7 @@ import {
 	RUNTIME_BUSY_CODE,
 	RUNTIME_RETIRING_CODE,
 } from "../../../../shared/desktop-contract";
+import { DESKTOP_TRANSFER_WAIT_S } from "../../../../shared/desktop-contract";
 import {
 	type CompletionAttention,
 	type CompletionAttentionAckReceipt,
@@ -30,9 +31,12 @@ import {
 	type SessionCatalogueStatus,
 	type SessionLocalityFields,
 	type SessionOpenedBy,
-	type SessionTransferReceipt,
 	mergeCompletionAttention,
 } from "../../../../shared/desktop-session-contract";
+import {
+	localityFields,
+	transferReceipt,
+} from "../../../../shared/mesh-shapes";
 import type { LaunchTarget } from "../../../../shared/open-session";
 
 export type CanonicalSessionRow = {
@@ -425,6 +429,30 @@ export const UNCONFIRMED_SEND_CODE = "unconfirmed_send";
  * direction (three session-switch cases caught it). A transport refusal has a
  * `DesktopControlError`; anything else keeps the message it was given.
  */
+/**
+ * What the renderer asks the route to wait for the source runtime to retire, and
+ * the reason it is a number here rather than the route's default: the TRANSPORT's
+ * budget is derived from this very field (`desktopRequestDeadlineMs`), so a move
+ * whose wait the app does not state is a move the app can cut off.
+ */
+const TRANSFER_WAIT_S = DESKTOP_TRANSFER_WAIT_S;
+
+/**
+ * Whether a failed move is CONFIRMED not to have happened.
+ *
+ * A refusal is an answer: the route looked at the move and said no (`fenced`,
+ * `in_flight_turn`, `unreachable`, `occupied` arrive as 4xx `message`), so nothing
+ * changed on either device and the notice may say so. Everything else - a deadline
+ * (`status: null`), a transport failure, a 5xx that may have applied the move
+ * before failing - leaves the outcome unknown, and the wording must say that
+ * instead (round-1 review, M4).
+ */
+const transferRefusal = (error: unknown): boolean =>
+	error instanceof DesktopControlError &&
+	error.status !== null &&
+	error.status >= 400 &&
+	error.status < 500;
+
 const storeErrorMessage = (error: unknown, fallback: string): string =>
 	error instanceof DesktopControlError
 		? userFacingMessage(error, fallback)
@@ -1971,9 +1999,17 @@ type CanonicalSessionsState = {
 	 * the sidebar spells the device through the peer catalogue, so a notice and
 	 * the heading under it cannot name one device two ways.
 	 */
-	meshNotice:
+	meshNotice: /**
+	 * `refused` - a peer would not create the conversation (S5).
+	 * `move-failed` - the route REFUSED the move, so nothing changed (S7).
+	 * `move-unconfirmed` - the move's outcome is unknown: a deadline, a transport
+	 * failure, or an answer this app cannot read. It may have happened, and the
+	 * copy says only that (round-1 review, M4) - "Nothing changed." is a claim a
+	 * refusal establishes and this state cannot.
+	 */
 		| { kind: "refused"; peer: string; reason: string }
 		| { kind: "move-failed"; title: string; reason: string }
+		| { kind: "move-unconfirmed"; title: string; reason: string }
 		| null;
 	clearMeshNotice: () => void;
 	/**
@@ -2830,12 +2866,47 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						return { transfers };
 					});
 				try {
-					const receipt = await desktopResult<SessionTransferReceipt>({
+					const reply = await desktopResult<unknown>({
 						op: "sessions.transfer",
 						sessionId,
 						requestId: crypto.randomUUID(),
 						to,
+						/*
+						 * The route waits this long for the source runtime to retire
+						 * before refusing, and the TRANSPORT's budget is derived from it
+						 * (`desktopRequestDeadlineMs`): asking for a 30 s wait under a
+						 * 20 s request deadline used to make the renderer the layer that
+						 * gave up first, which is the layer whose copy cannot name why
+						 * (round-1 review, M4).
+						 */
+						wait_s: TRANSFER_WAIT_S,
 					});
+					const receipt = transferReceipt(reply);
+					if (!receipt) {
+						/*
+						 * Answered, but not with a receipt this app can read: the row's
+						 * new locality is UNKNOWN, so it must not be painted as if it had
+						 * moved. The row comes off busy and the list is re-read; if the
+						 * move did happen, that read files it under the peer.
+						 */
+						settle();
+						void get().fetchSessions();
+						set({
+							meshNotice: {
+								/*
+								 * A SEPARATE KIND, not a longer sentence on S7's: the reader's position
+								 * differs, so the copy does too. The answer arrived but nothing in it
+								 * can be read, so where the conversation is now is unknown; the list is
+								 * re-read and the notice says only that (round-1 review, M4).
+								 */
+								kind: "move-unconfirmed",
+								title,
+								reason:
+									"the device answered something this app could not read, so where the conversation is now is unknown. It will be listed where it actually is within half a minute; check the other device before trying again.",
+							},
+						});
+						return false;
+					}
 					/*
 					 * ONE update: the busy flag comes off and the row's new locality goes
 					 * on together, so no frame shows the row un-dimmed in its OLD section
@@ -2869,19 +2940,50 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					void get().fetchSessions();
 					return true;
 				} catch (error) {
-					/*
-					 * S7: the row un-dims IN PLACE and the notice carries the route's own
-					 * `message` (a 409 names `fenced`/`in_flight_turn`/`unreachable`/
-					 * `occupied` in words), never a paraphrase - the backend knows why, and
-					 * nothing changed on either device.
-					 */
 					settle();
+					/*
+					 * TWO FAILURES, TWO SENTENCES (round-1 review, M4). A REFUSAL is an
+					 * answer: the route names the reason (a 409 lists `fenced`/
+					 * `in_flight_turn`/`unreachable`/`occupied` in words) and nothing
+					 * changed on either device, so the notice says so. Anything else - a
+					 * deadline, a transport failure - means the request was SENT and the
+					 * outcome is unconfirmed: the move may have happened, and telling the
+					 * reader "nothing changed" invited a second move of a session that may
+					 * already live elsewhere. The list is re-read for the same reason.
+					 */
+					const refused = transferRefusal(error);
+					if (!refused) void get().fetchSessions();
 					set({
-						meshNotice: {
-							kind: "move-failed",
-							title,
-							reason: storeErrorMessage(error, "the device did not answer"),
-						},
+						meshNotice: refused
+							? {
+									/*
+									 * A REFUSAL IS AN ANSWER: the route looked at the move and said no
+									 * (a 409 names `fenced`/`in_flight_turn`/`unreachable`/`occupied`
+									 * in words), so nothing changed on either device and the notice
+									 * says so - S7's approved copy, which the sidebar completes with
+									 * `Nothing changed.` for this kind alone.
+									 */
+									kind: "move-failed",
+									title,
+									reason: storeErrorMessage(
+										error,
+										"the device refused the move",
+									),
+								}
+							: {
+									/*
+									 * ANYTHING ELSE MEANS THE REQUEST WAS SENT AND THE OUTCOME IS
+									 * UNCONFIRMED (round-1 review, M4): a deadline, a transport
+									 * failure, a 5xx that may have applied the move before failing.
+									 * `Nothing changed.` is a claim this state cannot make, and
+									 * making it invited a second move of a session that may already
+									 * live elsewhere.
+									 */
+									kind: "move-unconfirmed",
+									title,
+									reason:
+										"the request was sent, so the move may have happened. It will be listed where it actually is within half a minute; check the other device before trying again.",
+								},
 					});
 					return false;
 				}
@@ -2952,6 +3054,16 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					if (generation !== refreshGeneration) return;
 					const rows = result.sessions.map(({ id, name, mtime, ...rest }) => ({
 						...rest,
+						/*
+						 * The locality fields are NORMALISED as the page is read (addendum
+						 * 2, D; round-1 review M3), so `null` from the wire and this app's
+						 * own `""` cannot both be in flight: the sidebar's partition, the
+						 * mark and the section key read one spelling. A row whose producer
+						 * left `owner_device` null stops being a remote row that files
+						 * under `""` - see `peerSections`, which will not open a section
+						 * for a remote row with no owner.
+						 */
+						...localityFields(rest),
 						session_id: id,
 						title: name,
 						updated_at: mtime,
