@@ -958,6 +958,14 @@ export const CLEAR_LABEL = "Clear";
  * too large for the wire). It is true for the unknown class, where the same id
  * replays, and for the three not-sent arms whose own new sentence tells the user
  * to try again.
+ *
+ * AND A RETRY REBUILDS ITS PAYLOAD FROM THE BOX (QA round 3, Q3-1). After a
+ * failure whose returned message was merged in front of the user's own line, the
+ * press carries both lines - one message, one request id, one row, and the
+ * delivered words come out of the box once the delivery is known, so this is not
+ * the duplicate the change exists to remove. It is worth knowing all the same:
+ * the retry is "send what the box holds", not "send what failed", which is
+ * exactly why the box's contents are the user's to edit before they press it.
  */
 export function sendFailureCopy(
 	error: unknown,
