@@ -201,6 +201,7 @@ import { ComposerTipRow } from "./composer-tip";
 import { CredentialChipLayer } from "./credential-chip-layer";
 import { CredentialOverlay, composerTextBox } from "./credential-overlay";
 
+import brandMark from "@assets/brand-mark.png";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { useAtResolution } from "../hooks/use-at-resolution";
 import {
@@ -7651,9 +7652,45 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					)}
 				>
 					{showEmptyChatPrompt ? (
-						<h2 className="text-center text-ink text-title">
-							What can I help you with today?
-						</h2>
+						<>
+							{/*
+							 * THE MARK, 32px, at `ink-muted` (§H's composition: "a 32px mark
+							 * (the app's own mark, `ink-muted`, not an illustration), the
+							 * greeting, then the chips").
+							 *
+							 * THE SAME MECHANISM THE SIDEBAR'S MARK USES, deliberately
+							 * (`collapsible-app-logo.tsx`): the packaged artwork is applied as a
+							 * MASK over a background role, so the figure takes the palette's own
+							 * ink in all 59 themes and no per-theme asset exists. A second
+							 * treatment here - a tinted PNG, a filter - would be the "second way
+							 * beside an established one" this repository treats as a defect, and
+							 * it would break on the palettes where a fixed colour does.
+							 *
+							 * `ink-muted` rather than `ink`: the mark is decoration on a screen
+							 * whose subject is the greeting, and §H spends the loudest ink there.
+							 * `aria-hidden` because the greeting below says everything this
+							 * figure means - a second "Local Operator" announcement would be the
+							 * sidebar's, twice.
+							 */}
+							<span
+								aria-hidden="true"
+								data-lo-empty-mark=""
+								className="size-8 shrink-0 bg-ink-muted"
+								style={{
+									maskImage: `url(${brandMark})`,
+									WebkitMaskImage: `url(${brandMark})`,
+									maskSize: "contain",
+									WebkitMaskSize: "contain",
+									maskRepeat: "no-repeat",
+									WebkitMaskRepeat: "no-repeat",
+									maskPosition: "center",
+									WebkitMaskPosition: "center",
+								}}
+							/>
+							<h2 className="text-center text-ink text-title">
+								What can I help you with today?
+							</h2>
+						</>
 					) : null}
 					{inputContent}
 				</div>

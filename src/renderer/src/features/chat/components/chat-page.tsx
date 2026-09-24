@@ -2090,7 +2090,22 @@ function SessionPanel({
 								? (loadedTarget ?? "Starting the session")
 								: draft?.sessionId
 									? canonical.frontend?.cwd || cwd || "Canonical chat"
-									: "The session starts when you send your first message."
+									: /*
+										 * A DRAFT WITH NO SESSION STATES WHERE IT WILL RUN, NOT WHAT IT
+										 * WILL DO (§H, U23). This slot held "The session starts when you
+										 * send your first message." - the same promise the deleted
+										 * "Nothing starts until you send" made, on a screen that now has
+										 * somewhere to type - and at 1380 it did not even survive: the
+										 * header clipped it mid-word ("...tarts when you send your first
+										 * message.", the launch frame of the empty-state set). The path is
+										 * what the slot exists for: the pane's second surface answering
+										 * "where am I" (the comment below says so for the live arm), and
+										 * the composer's chip shows the same directory one line under it.
+										 * With no directory known yet the slot says nothing - an empty string,
+										 * which is what the header's `description` prop takes; `undefined`
+										 * would fall back to the component's own default sentence.
+										 */
+										canonical.frontend?.cwd || cwd || ""
 							: /*
 								 * LIVE: the value the chip paints, not `canonical.frontend?.cwd`.
 								 *
@@ -2510,15 +2525,27 @@ export function ChatPage() {
 					/>
 				</div>
 			) : (
+				/*
+				 * THE "Start a chat" SCREEN IS DELETED (§H, U1 and U23), and what is left
+				 * here is the residue rather than the screen: launch lands on the empty
+				 * state with the composer docked and focused, because the store's own
+				 * hydration seeds a draft when there is nothing to restore
+				 * (`launchDraftSeed`), so a cold start has an identity before the first
+				 * paint and never reaches this arm.
+				 *
+				 * The one state that still can is a LEGACY LINK (`/chat/:agentId`) whose
+				 * conversation this machine does not have: the state effect above sets
+				 * `routeError` and the sentence for it renders at the top of this pane, so
+				 * the pane is not empty and re-staging a draft unasked would be the app
+				 * answering a question the user did not ask while also clearing that
+				 * sentence (the draft-key effect owns its lifetime). A bare `New chat`
+				 * control remains, without the deleted heading or its promise - the
+				 * affordance that state actually needs, and nothing else.
+				 */
 				<div className={cn("p-6")}>
-					<h1 className={cn("text-title")}>Start a chat</h1>
-					<p className={cn("mt-2 text-body text-ink-muted")}>
-						Choose an agent or team, or start a new chat. Nothing starts until
-						you send.
-					</p>
 					<button
 						type="button"
-						className={cn("mt-4 rounded-md border border-control px-3 py-2")}
+						className={cn("rounded-md border border-control px-3 py-2")}
 						onClick={() => stage(undefined, true)}
 					>
 						New chat

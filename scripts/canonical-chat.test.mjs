@@ -2664,7 +2664,7 @@ test("the header stops announcing that the session has not started once one exis
 		"utf8",
 	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
 	const rung = rendered.match(
-		/starting\s*\?\s*\(loadedTarget \?\? "Starting the session"\)\s*: draft\?\.sessionId\s*\?\s*([\s\S]{0,160}?)\s*:\s*"The session starts when you send your first message\."/,
+		/starting\s*\?\s*\(loadedTarget \?\? "Starting the session"\)\s*: draft\?\.sessionId\s*\?\s*([\s\S]{0,160}?)\s*:\s*([\s\S]{0,200}?)\s*\n/,
 	);
 	assert.ok(
 		rung,
@@ -2674,6 +2674,26 @@ test("the header stops announcing that the session has not started once one exis
 		rung[1],
 		/canonical\.frontend\?\.cwd \|\| cwd/,
 		"the session that exists is not described by its directory, so the header and the immutability note below it are once again about different states",
+	);
+	/*
+	 * AND THE ARM FOR THE SESSION THAT DOES NOT EXIST YET NO LONGER PROMISES ANYTHING
+	 * (§H, U23). It held "The session starts when you send your first message." - the
+	 * same promise the deleted "Nothing starts until you send" made, on a screen that
+	 * now has somewhere to type - and at 1380 the header clipped it mid-word. What it
+	 * states now is where the session will run, or nothing at all when the pane cannot
+	 * say; the ABSENCE of the sentence is the pin, because a later change that put a
+	 * sentence back here would be re-making the claim the empty state was changed to
+	 * stop making.
+	 */
+	assert.match(
+		rung[2],
+		/canonical\.frontend\?\.cwd \|\| cwd \|\| ""/,
+		"the not-yet-started arm no longer states the directory it will run in (or nothing), which is what replaced the sentence U23 deleted",
+	);
+	assert.doesNotMatch(
+		rendered,
+		/The session starts when you send your first message\./,
+		"the deleted sentence is back in the pane: §H removed it because the screen now has somewhere to type",
 	);
 });
 
