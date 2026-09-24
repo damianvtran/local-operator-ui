@@ -89,6 +89,7 @@ const bundle = await build({
 				asideModelDeclined,
 				ASIDE_ASK_BUSY,
 				ASIDE_CONTINUATION_ESCAPE,
+				ASIDE_DECLINED_OPTIONS,
 				ASIDE_OFF_PANEL_MAX_CHARS,
 				reportUncarriedAsideRefusal,
 				asideAdoptChord,
@@ -240,6 +241,7 @@ const {
 	asideModelDeclined,
 	ASIDE_ASK_BUSY,
 	ASIDE_CONTINUATION_ESCAPE,
+	ASIDE_DECLINED_OPTIONS,
 	ASIDE_OFF_PANEL_MAX_CHARS,
 	reportUncarriedAsideRefusal,
 	asideAdoptChord,
@@ -1615,11 +1617,18 @@ test("a refused continuation is told the panel's own way out, and a fresh refusa
 		await askAside(SESSION, "first");
 		await assert.rejects(() => askAside(SESSION, "second"));
 		const refused = useAsideStore.getState().streams[calls[1].requestId];
+		/*
+		 * The owner's sentence, then BOTH real options and what each costs (the
+		 * operator's ruling on U11): asking here keeps the exchange, and Esc - the
+		 * key a user reaches for when a panel looks stuck - discards it.
+		 */
 		assert.equal(
 			refused.error,
-			declined.message,
-			`a ${code} refusal keeps the owner's own sentence alone: the panel still continues`,
+			`${declined.message} ${ASIDE_DECLINED_OPTIONS}`,
+			`a ${code} refusal keeps the owner's sentence and states both roads: the panel still continues`,
 		);
+		assert.match(refused.error, /Ask again here to keep this exchange/);
+		assert.match(refused.error, /press Esc to close the aside and discard it/);
 		assert.equal(
 			(refused.error ?? "").includes(ASIDE_CONTINUATION_ESCAPE),
 			false,
@@ -1669,9 +1678,20 @@ test("a refused continuation is told the panel's own way out, and a fresh refusa
 			new DesktopControlError(409, "gone", undefined, "aside_unanswered"),
 			true,
 		),
-		"gone",
+		`gone ${ASIDE_DECLINED_OPTIONS}`,
 		"continued, but the model declined: the exchange is still continuable",
 	);
+	// A FRESH ask the model declined has no exchange above it for Esc to cost, so the
+	// owner's sentence stands alone - the options clause is a continuation's only.
+	assert.equal(
+		asidePanelRefusal(
+			new DesktopControlError(409, "gone", undefined, "aside_unanswered"),
+			false,
+		),
+		"gone",
+	);
+	// The lost-prefix clause says what Esc costs as well, since it sends the user there.
+	assert.match(ASIDE_CONTINUATION_ESCAPE, /discards this exchange/);
 });
 
 /*

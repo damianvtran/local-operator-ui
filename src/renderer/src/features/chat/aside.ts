@@ -120,9 +120,32 @@ export function asideModelDeclined(error: unknown): boolean {
  * false: it arrived directly after the owner's own `ask again`, and following it
  * discards the whole off-the-record exchange, answers included, which nothing
  * brings back. Hence {@link asideModelDeclined} among the terms.
+ *
+ * THE CLAUSE NAMES WHAT ESC COSTS, because here it is the only way out and it is
+ * not free: closing drops the exchange on screen, answers included, and nothing
+ * brings it back (the operator's ruling on U11 - Esc's destruction needs its own
+ * warning, wherever the panel sends the user to it).
  */
 export const ASIDE_CONTINUATION_ESCAPE =
-	"This aside can't continue. Press Esc, then start a new one with /btw.";
+	"This aside can't continue. Press Esc to close it, which discards this exchange, then start a new one with /btw.";
+
+/**
+ * The two real options after the MODEL declined a follow-up, and what each costs.
+ *
+ * WHY THE PANEL SAYS MORE THAN THE OWNER'S `ask again` HERE (UX round 2, U11; the
+ * operator's ruling on its shape). The owner's sentence is true - asking again in
+ * this panel works, the retry came back answered 4.7s later - but it is the only
+ * option it names, and the one a user reaches for when a panel seems stuck is Esc,
+ * which throws the whole off-the-record exchange away. A refusal that stays silent
+ * about that cost lets the user pay it by accident, so the panel states both roads:
+ * asking here keeps the exchange, closing discards it.
+ *
+ * Only on a CONTINUATION: a fresh ask that the model declined has no answered turn
+ * above it, so Esc there costs nothing and the owner's own sentence is enough (U1's
+ * rule that a clause is printed only where it is true).
+ */
+export const ASIDE_DECLINED_OPTIONS =
+	"Ask again here to keep this exchange, or press Esc to close the aside and discard it.";
 
 /**
  * The sentence the PANEL states a refused ask with.
@@ -133,9 +156,10 @@ export const ASIDE_CONTINUATION_ESCAPE =
  */
 export function asidePanelRefusal(error: unknown, continued: boolean): string {
 	const sentence = asideAskFailure(error);
-	return continued && !asideModelDeclined(error)
-		? `${sentence} ${ASIDE_CONTINUATION_ESCAPE}`
-		: sentence;
+	if (!continued) return sentence;
+	return asideModelDeclined(error)
+		? `${sentence} ${ASIDE_DECLINED_OPTIONS}`
+		: `${sentence} ${ASIDE_CONTINUATION_ESCAPE}`;
 }
 
 /**
