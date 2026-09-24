@@ -342,7 +342,7 @@ export function searchChats(
  * So the number of claims is capped here, in the priority order a reader would
  * pick, and every slot is `shrink-0`: the search mark (why the row is onscreen at
  * all), else the row's own state (`· Not sent yet` — a chat that never carried a
- * message), else WHO OPENED IT (`· opened by …` — a workstream an agent opened),
+ * message), else WHO OPENED IT (`· agent-opened` — a workstream an agent opened),
  * else the binding. Whatever is not drawn stays reachable through the row's
  * `title`, the nested list, and the chat itself.
  *
@@ -352,10 +352,19 @@ export function searchChats(
  * opened is answering, while the agent-opened marker says the row is not one of
  * your own conversations at all — the 2026-09-18 incident, where a session an
  * agent had opened sat in the sidebar looking exactly like one the operator had
- * opened himself. Only one of the two can be drawn on that row, and the binding
- * is the half a reader can infer from the marker (an agent's parallel workstream
- * is bound to that agent), so the binding is what yields; it stays reachable
- * through the row's `title`.
+ * opened himself. Only one of the two can be drawn on that row, and in the COMMON
+ * case the binding is the half a reader can infer, so the binding is what yields;
+ * it stays reachable through the row's flyout.
+ *
+ * WHERE THAT REASONING STOPS, stated because review round 1 (m1) caught the
+ * confident version of it: it holds when the binding names the SAME AGENT the
+ * marker does. `bindingName` prefers the TEAM, and the marker only ever knows
+ * `opened_by.agent`, so a workstream bound to a team loses the team from the row's
+ * own pixels when the marker is drawn (`…(Minerva): Recent, opened by coder` in
+ * the flyout, `· agent-opened` on screen) and the flyout is then the only
+ * channel carrying it. The fact still outranks the binding there — a team name is
+ * a subtler thing to lose than "this is not one of your chats" is to withhold —
+ * but the yield is a real loss on that pair rather than a free one.
  *
  * The two claims ABOVE it keep their precedence unchanged, and deliberately: a
  * row that is on screen because the search matched its CONVERSATION, or one that

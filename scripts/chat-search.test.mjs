@@ -438,9 +438,11 @@ test("a row shows ONE trailing statement, in priority order", () => {
 	 * The agent-opened fact, which is the newest claim in the rule and the one
 	 * with a surprise in it: it OUTRANKS the binding while the two claims above
 	 * it are untouched. The pairing is the interesting half - both answer "who",
-	 * and an agent-opened session is bound to the agent that opened it, so the
-	 * binding is the half a reader can infer and the provenance is the half only
-	 * the row can say (the 2026-09-18 incident).
+	 * and an agent-opened session is USUALLY bound to the agent that opened it, so
+	 * the binding is the half a reader can infer and the provenance is the half
+	 * only the row can say (the 2026-09-18 incident). On a TEAM-bound workstream the
+	 * binding names the team and the yield loses it from the pixels; the rule still
+	 * prefers provenance there (review round 1, m1 - see `rowTrailingStatement`).
 	 */
 	assert.equal(show({ ...base, agentOpened: true }), "agent_opened");
 	assert.equal(
