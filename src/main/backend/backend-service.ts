@@ -222,6 +222,9 @@ function describeOccupant(occupant: AddressOccupant): string {
 	if (occupant.startedAtMs !== null) {
 		facts.push(`started ${new Date(occupant.startedAtMs).toISOString()}`);
 	}
+	if (occupant.desktopReadStatus !== null) {
+		facts.push(`its desktop read answered HTTP ${occupant.desktopReadStatus}`);
+	}
 	return facts.length > 0 ? ` (${facts.join(", ")})` : "";
 }
 
@@ -321,6 +324,16 @@ interface AddressOccupant {
 	 * is on your port" into "a daemon that started at 14:02 is still on it".
 	 */
 	startedAtMs: number | null;
+	/**
+	 * The status this app's own DESKTOP READ got from the holder, when a sweep
+	 * observed one (`answeredButUnusable`), or null.
+	 *
+	 * It is the evidence a reader needs to tell "a daemon whose session store
+	 * cannot be read" from "a daemon that never spoke", and it lives beside the
+	 * record facts because that is the arm that reaches the copy without a probe of
+	 * its own.
+	 */
+	desktopReadStatus: number | null;
 }
 
 /**
@@ -3034,6 +3047,10 @@ export class BackendServiceManager {
 			prefix: identity?.prefix || record?.prefix || "",
 			installKind: identity?.installKind || record?.install_kind || "",
 			startedAtMs: record ? record.started_at * 1000 : null,
+			// Probe-side occupancy never carries this: `configuredOriginOccupancy` is
+			// asked about an address the attach path did not just read, and inventing
+			// a status here would be the same class of guess the record arm avoids.
+			desktopReadStatus: null,
 		};
 	}
 
@@ -3089,6 +3106,14 @@ export class BackendServiceManager {
 			if (addressHoldsLiveRecord(address)) {
 				const { records } = addressHolders(address);
 				const record = records[0] ?? null;
+				// The desktop-read status, when this same sweep observed one: the record
+				// arm refuses on the record alone, and "and it answered this app's read
+				// with HTTP 503" is the evidence a reader needs to tell an unreadable
+				// store from an install that never spoke.
+				const observed =
+					this.answeredButUnusable?.address === address
+						? this.answeredButUnusable.status
+						: null;
 				refusals.push({
 					kind: "record",
 					occupant: {
@@ -3101,6 +3126,7 @@ export class BackendServiceManager {
 						prefix: record?.prefix ?? "",
 						installKind: record?.install_kind ?? "",
 						startedAtMs: record ? record.started_at * 1000 : null,
+						desktopReadStatus: observed,
 					},
 					detail: `a serve record in this app's own registry names ${address}`,
 				});
@@ -3109,6 +3135,22 @@ export class BackendServiceManager {
 			const occupancy = await this.configuredOriginOccupancy(address);
 			if (!occupancy) return { target: { address, port }, refusals };
 			refusals.push(occupancy);
+			/*
+			 * A SILENT occupant stops the search for somewhere else, and this is the
+			 * deliberate boundary of the fallback.
+			 *
+			 * `silent` is "the address did not answer with anything this app could use":
+			 * a probe that ran out its 2 s budget, a status that is not 200, a socket
+			 * still closing. Those are exactly the answers OUR OWN daemon gives while it
+			 * is busy on a turn, still importing, or shutting down - and starting a
+			 * daemon somewhere else on one of them would strand it (it keeps the address)
+			 * and rotate its credential away (the mint happens before the spawn), which is
+			 * the cost the design accepted only for the case where the app can NAME the
+			 * holder as a Local Operator daemon it holds no key to. A silent occupant is
+			 * the shape the existing refuse-and-probe path was built for, and this keeps
+			 * it: the app reports what it observed and keeps probing.
+			 */
+			if (occupancy.kind === "silent") return { target: null, refusals };
 		}
 		return { target: null, refusals };
 	}
