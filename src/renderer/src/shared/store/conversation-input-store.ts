@@ -135,6 +135,20 @@ type ConversationInputState = {
 	 * goes on the next edit, send or Clear.
 	 */
 	lateDelivered?: LateDeliveryBox;
+	/**
+	 * THE DELIVERED MESSAGE'S OWN TEXT, beside the flag that says it is still in the box
+	 * (review round 5, U17).
+	 *
+	 * `returned` cannot be where the retirement rule reads it: every state that RAISES
+	 * `lateDelivered` writes `returned: undefined` - the hand-back has been resolved by
+	 * then - while `returned` is only non-null on the path that clears the flag. The
+	 * rule therefore read an empty string and retired the sentence on the FIRST ordinary
+	 * keystroke, while the delivered words were still in the box verbatim: the exact
+	 * repeat the sentence exists to warn about, reached after it had already retired
+	 * itself. Carrying the text here is what lets `overlapStillTrue` answer the question
+	 * it is named for.
+	 */
+	lateDeliveredText?: string;
 };
 
 /**
@@ -359,9 +373,36 @@ function foldReturn(
  * the delivery rather than the contents and stays true however the box changes.
  */
 function overlapStillTrue(row: ConversationInputState, next: string): boolean {
-	const delivered = row.returned?.text ?? "";
-	if (delivered === "") return false;
-	return next.includes(delivered);
+	/*
+	 * `lateDeliveredText`, not `returned.text`: the two are never both set - see the
+	 * field's own note for why reading `returned` here retired the sentence on the first
+	 * keystroke. A row with neither cannot answer the question, so the note stays rather
+	 * than retiring on an empty string.
+	 */
+	const delivered = row.lateDeliveredText ?? row.returned?.text;
+	if (!delivered) return true;
+	if (next.includes(delivered)) return true;
+	/*
+	 * AND A LONGER SHARE COUNTS, because the arm this rule exists for is the one where the
+	 * user corrected a WORD inside the delivered text (UX round 5, U17): the sentence
+	 * claims that message's words are still in the box, and a phrase of them being there
+	 * is what makes that true - while a whole-string test reads a one-word correction as
+	 * "gone" and retires the warning on the first keystroke, which is how the duplicate it
+	 * exists to prevent was reached after the warning had already gone.
+	 *
+	 * A run rather than a similarity score: it is cheap, it needs no threshold to tune,
+	 * and it answers the question the copy asks. The run is a THIRD of the delivered text,
+	 * floored at 8 characters and capped at 24: a correction of one word inside a short
+	 * message has to survive (that is the arm the round measured), while the cap keeps a
+	 * long message from matching some ordinary phrase the user happens to type. The probe
+	 * is bounded so a very long message costs a fixed number of substring searches rather
+	 * than a quadratic one.
+	 */
+	const KEEP_RUN = Math.max(8, Math.min(24, Math.floor(delivered.length / 3)));
+	const probe = delivered.slice(0, 400);
+	for (let i = 0; i + KEEP_RUN <= probe.length; i += 8)
+		if (next.includes(probe.slice(i, i + KEEP_RUN))) return true;
+	return false;
 }
 
 /**
@@ -1148,6 +1189,12 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 										? undefined
 										: row.volatilePendingText,
 								lateDelivered: stripped.box,
+								/*
+								 * The words this arm is ABOUT, carried so the note can be retired
+								 * when the user deletes them and only then (U17).
+								 */
+								lateDeliveredText:
+									stripped.box === "overlap" ? row.returned?.text : undefined,
 								// The box itself moved, so the hook has to be told - the same
 								// revision channel every other store-side write uses.
 								textRevision: (row.textRevision ?? 0) + 1,
@@ -1159,6 +1206,7 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 								// Only worth saying when something of that message is still on
 								// screen for the user to wonder about.
 								lateDelivered: hadPayload ? "overlap" : undefined,
+								lateDeliveredText: hadPayload ? row.returned?.text : undefined,
 							};
 				set({
 					inputByConversation: {
@@ -1177,7 +1225,11 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 				set({
 					inputByConversation: {
 						...get().inputByConversation,
-						[conversationId]: { ...row, lateDelivered: undefined },
+						[conversationId]: {
+							...row,
+							lateDelivered: undefined,
+							lateDeliveredText: undefined,
+						},
 					},
 				});
 			},

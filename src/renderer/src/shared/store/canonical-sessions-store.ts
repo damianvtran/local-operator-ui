@@ -1901,6 +1901,19 @@ export async function admitChatDraft(
 		 * refused as a receipt conflict).
 		 */
 		store.updateDraft(key, {
+			/*
+			 * AND THE PREVIOUS FAILURE'S NOTICE GOES WITH THE ATTEMPT THAT PRODUCES IT
+			 * (review round 5, m5-2). The pane renders the row's sentence when it has one
+			 * (`caughtFailureNotice`), so a row still carrying an older failure's sentence
+			 * would show THAT one for a throw that writes no row of its own - measured: an
+			 * unrelated "not ready" refusal rendered the earlier budget sentence. Clearing
+			 * it here is the store's own way of saying which attempt the sentence belongs
+			 * to: the failure that follows this admission writes its own, and a remount
+			 * with no attempt running is untouched.
+			 */
+			error: undefined,
+			errorCode: undefined,
+			errorRetry: undefined,
 			admissionAttempted: true,
 			submittedRendered: rendered,
 		});

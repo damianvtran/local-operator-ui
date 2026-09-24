@@ -132,6 +132,31 @@ export function caughtFailureNotice(input: {
 	};
 }
 
+/**
+ * Whether a muted lock answer has outlived the flight it described (review round 5,
+ * m5-1, extracted for the pin n5-2 asks for).
+ *
+ * The answer is a claim about a send that is still out, so it must be on screen only
+ * while one is. Three things can hold a flight open, and the row is only one of them:
+ * `ChatDraft.pending` exists once an admission has been issued, while the pane's own
+ * `admitting` covers the window BEFORE that - a press answered during image decode or
+ * an `awaitWindow` had its sentence retired in the same commit - and the approval
+ * gate's own lock answers to the question on screen rather than to any flight.
+ */
+export function lockAnswerOutlived(input: {
+	/** `ChatDraft.pending` for this conversation, if it has a row at all. */
+	rowPending: boolean;
+	/** The pane's own admission flag, set before any row exists. */
+	admitting: boolean;
+	/** The approval gate the answer may have come from instead. */
+	gatePending: boolean;
+	/** Whether the notice on screen is the muted lock answer at all. */
+	muted: boolean;
+}): boolean {
+	if (!input.muted) return false;
+	return !(input.rowPending || input.admitting || input.gatePending);
+}
+
 export function retryOfferedForFailureCode(code: string | undefined): boolean {
 	if (code === undefined) return true;
 	return RETRYABLE_FAILURE_CODES.has(code);
