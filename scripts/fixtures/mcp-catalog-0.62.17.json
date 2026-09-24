@@ -10,7 +10,7 @@
 			"id": "linear",
 			"name": "linear",
 			"scope": "global",
-			"project_path": null,
+			"project_cwd": null,
 			"source": {
 				"kind": "local-operator",
 				"path": "/Users/you/.local-operator/mcp.json",
@@ -26,7 +26,7 @@
 			"status": "connecting",
 			"status_reason": null,
 			"status_observed_at": null,
-			"status_basis": "probe",
+			"status_basis": "operation",
 			"auth": {
 				"kind": "unknown",
 				"signed_in": null,
@@ -40,7 +40,7 @@
 			"id": "github",
 			"name": "github",
 			"scope": "global",
-			"project_path": null,
+			"project_cwd": null,
 			"source": {
 				"kind": "local-operator",
 				"path": "/Users/you/.local-operator/mcp.json",
@@ -70,7 +70,7 @@
 			"id": "postgres-prod",
 			"name": "postgres-prod",
 			"scope": "project",
-			"project_path": "/Users/you/projects/acme",
+			"project_cwd": "/Users/you/projects/acme",
 			"source": {
 				"kind": "local-operator",
 				"path": "/Users/you/projects/acme/.local-operator/mcp.json",
@@ -106,10 +106,40 @@
 			"actions": ["test", "set_key", "remove"]
 		},
 		{
+			"id": "acme-api",
+			"name": "acme-api",
+			"scope": "global",
+			"project_cwd": null,
+			"source": {
+				"kind": "local-operator",
+				"path": "/Users/you/.local-operator/mcp.json",
+				"editable": true,
+				"owned_scope": "global"
+			},
+			"transport": "remote_url",
+			"endpoint": {
+				"command": null,
+				"url": "https://mcp.acme.example/mcp",
+				"endpoint_redacted": false
+			},
+			"status": "needs_sign_in",
+			"status_reason": null,
+			"status_observed_at": null,
+			"status_basis": "stored",
+			"auth": {
+				"kind": "api_key",
+				"signed_in": false,
+				"secret_refs": []
+			},
+			"tool_count": null,
+			"tool_count_basis": null,
+			"actions": ["test", "add_key", "remove"]
+		},
+		{
 			"id": "filesystem",
 			"name": "filesystem",
 			"scope": "global",
-			"project_path": null,
+			"project_cwd": null,
 			"source": {
 				"kind": "local-operator",
 				"path": "/Users/you/.local-operator/mcp.json",
@@ -139,7 +169,7 @@
 			"id": "acme-broken",
 			"name": "acme-broken",
 			"scope": "global",
-			"project_path": null,
+			"project_cwd": null,
 			"source": {
 				"kind": "codex",
 				"path": "/Users/you/.codex/config.toml",
@@ -169,7 +199,7 @@
 			"id": "borrowed-github",
 			"name": "borrowed-github",
 			"scope": "global",
-			"project_path": null,
+			"project_cwd": null,
 			"source": {
 				"kind": "cursor",
 				"path": "/Users/you/.cursor/mcp.json",

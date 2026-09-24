@@ -20,8 +20,9 @@ const bundle = await build({
 	stdin: {
 		contents:
 			'export * from "./src/renderer/src/features/settings/components/integrations/integration-model";' +
-			'export { catalogControlBody, sessionControlBody, catalogCwdFor, newestRosterRow } from "./src/renderer/src/features/settings/components/integrations/use-integrations";' +
+			'export { catalogControlBody, sessionControlBody, catalogCwdFor, newestRosterRow, sessionCwdFromSnapshot, rememberCatalogCwd, rememberedCatalogCwd, CATALOG_CWD_STORAGE_KEY } from "./src/renderer/src/features/settings/components/integrations/use-integrations";' +
 			'export { signInProgress } from "./src/renderer/src/features/settings/components/integrations/integration-sign-in-dialog";' +
+			'export { keylessReference } from "./src/renderer/src/features/settings/components/integrations/integration-key-dialog";' +
 			'export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";' +
 			'export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
 		resolveDir: process.cwd(),
@@ -45,7 +46,7 @@ const row = (name, overrides = {}) => ({
 	id: name,
 	name,
 	scope: "global",
-	project_path: null,
+	project_cwd: null,
 	source: {
 		kind: "local-operator",
 		path: "/home/u/.local-operator/mcp.json",
@@ -205,7 +206,7 @@ test("meta names how it runs, scope only when a project file exists, and the sou
 	const lastSeen = row("a", { tool_count: 3, tool_count_basis: "last_seen" });
 	assert.deepEqual(m.integrationMeta(lastSeen, false), [
 		"Remote URL",
-		"3 tools last time",
+		"3 tools when last checked",
 	]);
 });
 
@@ -342,7 +343,7 @@ test("rows group as needs attention, connected, ready, and empty groups vanish",
 		[
 			["attention", "Needs attention", ["err", "auth"]],
 			["connected", "Connected", ["conn"]],
-			["ready", "Ready", ["ready1", "busy"]],
+			["ready", "Available", ["ready1", "busy"]],
 		],
 	);
 	assert.deepEqual(
@@ -603,20 +604,37 @@ test("the sign-in dialog claims a browser opened only when the backend said so",
 		);
 });
 
-test("a failed sign-in gives the reason, or says there was none", () => {
-	assert.equal(
-		m.signInProgress(
-			"linear",
-			op("linear", { status: "failed", message: "redirect refused" }),
-		).message,
-		"Sign-in didn't finish: redirect refused",
-	);
-	const bare = m.signInProgress(
+test("a failed sign-in separates what happened, the server's words, and what to do", () => {
+	/*
+	 * Round 1 (D6): one paragraph with the backend's sentence spliced in after a
+	 * colon, all of it `danger`, and a next step - Try again - that cannot fix a
+	 * rejected redirect. The three parts are separate fields now, and the next
+	 * step is chosen from the reason.
+	 */
+	const redirect = m.signInProgress(
 		"linear",
-		op("linear", { status: "failed" }),
-	).message;
-	assert.match(bare, /didn't say why/);
-	assert.notEqual(bare, "Sign-in failed.");
+		op("linear", { status: "failed", message: "redirect refused" }),
+	);
+	assert.equal(redirect.message, "Sign-in didn't finish.");
+	assert.equal(redirect.reason, "redirect refused");
+	assert.match(redirect.nextStep, /add a key|Check the server's settings/);
+	assert.doesNotMatch(redirect.message, /redirect/);
+
+	const bare = m.signInProgress("linear", op("linear", { status: "failed" }));
+	assert.equal(bare.message, "Sign-in didn't finish.");
+	assert.match(bare.reason, /didn't say why/);
+	assert.notEqual(bare.message, "Sign-in failed.");
+
+	// The no-OAuth failure points at the key route, which is the one that works.
+	const noOAuth = m.signInProgress(
+		"acme",
+		op("acme", {
+			status: "failed",
+			message:
+				"No OAuth authorization server was discovered for this server; check its URL and your network, or add its key instead.",
+		}),
+	);
+	assert.match(noOAuth.nextStep, /Add its key/);
 	assert.equal(
 		m.signInProgress("linear", op("linear", { status: "complete" })).tone,
 		"success",
@@ -726,4 +744,485 @@ test("the section renders from the model and prints no wire word", () => {
 	}
 	assert.match(rowSource, /bg-row-selected/);
 	assert.match(section, /groupIntegrations\(/);
+});
+
+/* ------------------------------------------------------------------------
+ * Round 1's behaviour fixes, each one pinned to the rule it comes from.
+ * ---------------------------------------------------------------------- */
+
+test("an expired check keeps its last RESULT and its group (U1)", () => {
+	/*
+	 * The row was, then its 300 s probe expired and the backend answered
+	 * `not_started`/`stored` with a last-seen count. Reporting that as "Ready"
+	 * read as a downgrade to a user who had just seen "Connected" - the same
+	 * word the page used for a server that had never been checked at all.
+	 */
+	const connected = row("notion", {
+		status: "connected",
+		status_basis: "probe",
+		status_observed_at: 1_000,
+		tool_count: 1,
+		tool_count_basis: "probe",
+	});
+	const at = 1_000_000;
+	const memories = m.advanceMemories(
+		undefined,
+		{
+			servers: [connected],
+			operations: [],
+		},
+		at,
+	);
+	assert.equal(memories.notion.connectedAt, at, "a probe stamps the time");
+
+	// Five minutes later the same server, as the backend then reports it.
+	const expired = {
+		...connected,
+		status: "not_started",
+		status_basis: "stored",
+		status_observed_at: null,
+		tool_count: 1,
+		tool_count_basis: "last_seen",
+	};
+	const later = m.advanceMemories(
+		memories,
+		{ servers: [expired], operations: [] },
+		at + 6 * 60 * 1000,
+	);
+	const status = m.integrationStatus(expired, [], later, at + 6 * 60 * 1000);
+	assert.equal(status.label, "Worked 6 min ago · 1 tool");
+	assert.equal(status.tone, "success");
+	assert.equal(
+		m.integrationGroupOf(expired, [], later),
+		"connected",
+		"the row stays where the user last saw it",
+	);
+	// And it leads with nothing: its Test is in the overflow, no test button.
+	assert.equal(m.primaryAction(expired, [], later), null);
+
+	// Without the memory - a fresh page load - the idle word is all it can say,
+	// which is honest: nothing here has checked it.
+	assert.equal(m.integrationStatus(expired, [], undefined, at).label, "Ready");
+});
+
+test("a live runtime's idle row is NOT called Ready (F3)", () => {
+	/*
+	 * A chat has this server configured and is not connected to it. "Ready" with
+	 * "Nothing is wrong. It starts when a chat uses it" was a claim the payload
+	 * contradicts: the chat IS using it.
+	 */
+	const live = row("notion", {
+		status: "not_started",
+		status_basis: "live",
+		actions: ["test", "connect", "reload", "remove"],
+	});
+	const status = m.integrationStatus(live, [], undefined, 1_000);
+	assert.equal(status.label, "Not connected");
+	assert.notEqual(status.label, "Ready");
+	assert.equal(m.primaryAction(live, [], undefined).kind, "connect");
+});
+
+test("a sign-out reads as signing out, then as signed out (U2)", () => {
+	const oauth = row("linear", {
+		status: "not_started",
+		status_basis: "stored",
+		auth: { kind: "oauth", signed_in: false, secret_refs: [] },
+		tool_count: 3,
+		tool_count_basis: "last_seen",
+		actions: ["test", "sign_in", "remove"],
+	});
+	const running = [op("linear", { action: "logout", status: "running" })];
+	assert.equal(
+		m.integrationStatus(oauth, running, undefined, 1_000).label,
+		"Signing out…",
+	);
+	const settled = [op("linear", { action: "logout", status: "complete" })];
+	const after = m.integrationStatus(oauth, settled, undefined, 1_000);
+	assert.equal(after.label, "Signed out");
+	assert.equal(after.tone, "warning");
+	assert.equal(m.primaryAction(oauth, settled, undefined).kind, "sign_in");
+	assert.equal(m.integrationGroupOf(oauth, settled, undefined), "attention");
+
+	/*
+	 * And a sign-out destroys the credential, so the remembered good result is
+	 * dropped rather than resurfacing as "Worked 6 min ago" later.
+	 */
+	const memories = m.advanceMemories(
+		m.advanceMemories(
+			undefined,
+			{
+				servers: [{ ...oauth, status: "connected", status_basis: "probe" }],
+				operations: [],
+			},
+			5_000,
+		),
+		{ servers: [oauth], operations: settled },
+		6_000,
+	);
+	assert.equal(memories.linear.connectedAt, null);
+});
+
+test("a re-tested failed row keeps its group while the test runs (F5)", () => {
+	/*
+	 * The backend rewrites the row to `connecting` the moment an operation
+	 * starts, so the group has to be remembered from the last quiet read: the row
+	 * used to jump from Needs attention to Ready under the pointer.
+	 */
+	const failed = row("acme", {
+		status: "error",
+		status_basis: "probe",
+		status_reason: "the server exited with code 1",
+	});
+	const quiet = m.advanceMemories(
+		undefined,
+		{ servers: [failed], operations: [] },
+		1_000,
+	);
+	assert.equal(m.integrationGroupOf(failed, [], quiet), "attention");
+
+	const testing = [
+		op("acme", { id: "b".repeat(32), action: "test", status: "running" }),
+	];
+	const running = {
+		...failed,
+		status: "connecting",
+		status_basis: "operation",
+	};
+	const during = m.advanceMemories(
+		quiet,
+		{ servers: [running], operations: testing },
+		2_000,
+	);
+	assert.equal(
+		m.integrationGroupOf(running, testing, during),
+		"attention",
+		"still the row needing attention while its Retry runs",
+	);
+	assert.equal(
+		m.integrationStatus(running, testing, during, 2_000).label,
+		"Connecting…",
+	);
+
+	// Settled: the pin is released and the backend's answer takes over.
+	const settled = m.advanceMemories(
+		during,
+		{ servers: [failed], operations: [] },
+		3_000,
+	);
+	assert.equal(m.integrationGroupOf(failed, [], settled), "attention");
+});
+
+test("a running operation is its own basis, not a probe (contract delta)", () => {
+	const linear = row("linear", {
+		status: "connecting",
+		status_basis: "operation",
+		status_observed_at: null,
+	});
+	const ops = [op("linear", { action: "login", status: "running" })];
+	assert.equal(
+		m.integrationStatus(linear, ops, undefined, 1_000).label,
+		"Signing in…",
+	);
+	// U4: the grant's link stays reachable after the dialog is dismissed.
+	assert.equal(
+		m.primaryAction(linear, ops, undefined).label,
+		"Continue sign-in",
+	);
+});
+
+test("a server with no OAuth takes a key, under either name (U3)", () => {
+	const noAuth = row("acme-api", {
+		status: "needs_sign_in",
+		auth: { kind: "unknown", signed_in: null, secret_refs: [] },
+		actions: ["test", "sign_in", "add_key", "remove"],
+	});
+	/*
+	 * The backend has not settled whether the verb is `set_key` or `add_key`, so
+	 * both are the same control here: a row that offers either gets "Add key".
+	 */
+	assert.equal(m.offersKey(noAuth), true);
+	/*
+	 * With nothing known yet, Sign in leads: the backend offers it because an
+	 * `unknown` kind cannot be ruled in or out until the network answers, and
+	 * OAuth is the smoother path when it exists. The KEY route takes over the
+	 * moment the sign-in comes back with no authorization server.
+	 */
+	assert.equal(m.primaryAction(noAuth, [], undefined).kind, "sign_in");
+	// A row offering only the key route leads with the key.
+	const keyOnly = { ...noAuth, actions: ["test", "add_key", "remove"] };
+	assert.equal(m.primaryAction(keyOnly, [], undefined).kind, "set_key");
+	assert.equal(m.primaryAction(keyOnly, [], undefined).label, "Add key");
+	// The older name for the same verb behaves identically.
+	assert.equal(
+		m.primaryAction(
+			{ ...noAuth, actions: ["test", "set_key", "remove"] },
+			[],
+			undefined,
+		).kind,
+		"set_key",
+	);
+
+	/*
+	 * The discovery comes from the backend's own failure record, which is where
+	 * it says no authorization server was found. A row with no key route offered
+	 * at all still leads with the key when the failure says so - which is the
+	 * case the walk hit, where the backend offered only `sign_in`.
+	 */
+	const signInOnly = row("acme-api", {
+		status: "needs_sign_in",
+		auth: { kind: "unknown", signed_in: null, secret_refs: [] },
+		actions: ["test", "sign_in", "remove"],
+	});
+	const failed = [
+		op("acme-api", {
+			status: "failed",
+			message:
+				"No OAuth authorization server was discovered for this server; check its URL and your network, or add its key instead.",
+		}),
+	];
+	assert.equal(m.needsKeyFor(noAuth, failed, m.NO_MEMORY), true);
+	assert.equal(
+		m.integrationStatus(
+			{ ...noAuth, status: "not_started" },
+			failed,
+			undefined,
+			1_000,
+		).label,
+		"Needs a key",
+	);
+	assert.equal(
+		m.primaryAction({ ...noAuth, status: "not_started" }, failed, undefined)
+			.label,
+		"Add key",
+	);
+	// A row with no key route at all is not promised one it cannot have.
+	assert.equal(m.needsKeyFor(signInOnly, failed, m.NO_MEMORY), false);
+});
+
+test("only a never-checked row leads with a Test, and it is drawn ghost (D1)", () => {
+	const fresh = row("echo", {
+		status: "not_started",
+		actions: ["test", "remove"],
+	});
+	const first = m.primaryAction(fresh, [], undefined);
+	assert.equal(first.kind, "test");
+	assert.equal(
+		first.variant,
+		"ghost",
+		"outlined weight belongs to the rows that need something",
+	);
+
+	const checked = row("filesystem", {
+		status: "not_started",
+		tool_count: 5,
+		tool_count_basis: "last_seen",
+		actions: ["test", "remove"],
+	});
+	/*
+	 * A row that HAS been checked leads with nothing: its Test is in the
+	 * overflow, exactly where a connected row's is.
+	 */
+	assert.equal(m.primaryAction(checked, [], undefined), null);
+	assert.equal(
+		m.overflowItems(checked, [], undefined)[0].kind,
+		"test",
+		"the action is still reachable, one level in",
+	);
+});
+
+test("a backend reason is shown without the transport prefix or a chat command (U7, Q4)", () => {
+	assert.equal(
+		m.publicRowReason("Connection closed: Error: NOTION_TOKEN is not set"),
+		"NOTION_TOKEN is not set",
+	);
+	assert.equal(
+		m.publicRowReason("Connection closed: Error: Connection closed: boom"),
+		"boom",
+	);
+	// A terminal slash command is not a reason for a Settings reader: it is
+	// dropped rather than reworded, because the row's own button says what to do.
+	assert.equal(m.publicRowReason("/mcp login linear to authorize"), null);
+	assert.equal(m.publicRowReason(null), null);
+
+	const rowWithCommand = row("linear", {
+		status: "needs_sign_in",
+		status_reason: "/mcp login linear to authorize",
+		actions: ["test", "sign_in", "remove"],
+	});
+	assert.equal(
+		m.integrationStatus(rowWithCommand, [], undefined, 1_000).detail,
+		null,
+	);
+});
+
+test("the active chat's folder survives a reload (Q1)", () => {
+	/*
+	 * The roster row carries no `cwd`, so the page asked for the HOME catalog and
+	 * every project-scoped server vanished once the app reloaded. The snapshot
+	 * does carry it, and this is the path that was measured against the backend.
+	 */
+	const snapshot = {
+		session_id: "s",
+		payload: {
+			frontend: { snapshot: { cwd: "/Users/you/projects/acme" } },
+			history: {},
+			cold: true,
+		},
+	};
+	assert.equal(m.sessionCwdFromSnapshot(snapshot), "/Users/you/projects/acme");
+	// Every missing layer answers "unknown folder" rather than throwing inside a
+	// render: this walks a document that is not part of the typed contract.
+	for (const broken of [
+		undefined,
+		null,
+		{},
+		{ payload: null },
+		{ payload: {} },
+		{ payload: { frontend: {} } },
+		{ payload: { frontend: { snapshot: {} } } },
+		{ payload: { frontend: { snapshot: { cwd: 7 } } } },
+		{ payload: { frontend: { snapshot: { cwd: "  " } } } },
+	])
+		assert.equal(m.sessionCwdFromSnapshot(broken), null);
+
+	// And the resolution is remembered, so the next reload paints the right
+	// catalog on its first frame instead of the home one.
+	const store = new Map();
+	const storage = {
+		getItem: (key) => store.get(key) ?? null,
+		setItem: (key, value) => store.set(key, value),
+	};
+	assert.equal(m.rememberedCatalogCwd("s", storage), null);
+	m.rememberCatalogCwd("s", "/Users/you/projects/acme", storage);
+	assert.equal(
+		m.rememberedCatalogCwd("s", storage),
+		"/Users/you/projects/acme",
+	);
+	assert.equal(m.rememberedCatalogCwd("other", storage), null);
+	// A conversation's folder is a path the page lends, never a guess.
+	assert.equal(
+		m.catalogCwdFor(m.rememberedCatalogCwd("s", storage)),
+		"/Users/you/projects/acme",
+	);
+	m.rememberCatalogCwd("s", "~", storage);
+	assert.equal(
+		m.rememberedCatalogCwd("s", storage),
+		"/Users/you/projects/acme",
+	);
+	// A store that throws must not fail a render.
+	m.rememberCatalogCwd("s", "/tmp", {
+		getItem: () => {
+			throw new Error("nope");
+		},
+		setItem: () => undefined,
+	});
+	assert.equal(
+		m.rememberedCatalogCwd("s", {
+			getItem: () => "{not json",
+			setItem: () => undefined,
+		}),
+		null,
+	);
+});
+
+test("a prototype key is not a refusal sentence (F6)", () => {
+	/*
+	 * `code in CATALOG_REFUSAL_COPY` walks the prototype, so a backend code of
+	 * "toString" would have put a FUNCTION where the dialog writes a sentence.
+	 */
+	for (const code of ["toString", "constructor", "valueOf", "hasOwnProperty"]) {
+		const message = m.integrationFailureMessage(
+			"status",
+			new m.DesktopControlError({
+				status: 409,
+				message: "refused",
+				code,
+			}),
+			false,
+		);
+		assert.equal(typeof message, "string");
+		assert.doesNotMatch(message, /function|native code/);
+	}
+});
+
+test("add_key is the key route, under the backend's own shape (U3, #1511 aa927158a)", () => {
+	/*
+	 * The backend's decision, pinned: for a remote server it owns that declares
+	 * no `${ID}` and needs a key, the row is `needs_sign_in` with `auth.kind`
+	 * api_key and `add_key` REPLACING `sign_in` - never beside it, because a
+	 * server with nothing to fill has no use for a browser grant.
+	 */
+	const acme = row("acme-api", {
+		status: "needs_sign_in",
+		status_basis: "stored",
+		auth: { kind: "api_key", signed_in: false, secret_refs: [] },
+		actions: ["test", "add_key", "remove"],
+	});
+	assert.equal(m.offersKey(acme), true);
+	const primary = m.primaryAction(acme, [], undefined);
+	assert.equal(primary.kind, "set_key");
+	assert.equal(primary.label, "Add key");
+	assert.equal(m.integrationStatus(acme, [], undefined, 1_000).label, "Needs a key");
+	// And nothing on the row offers a sign-in.
+	assert.equal(m.overflowItems(acme, [], undefined).some((item) => item.kind === "sign_in"), false);
+
+	/*
+	 * A server whose config DOES declare references keeps the backend's other
+	 * verb, and the same page control.
+	 */
+	const postgres = row("postgres-prod", {
+		status: "needs_sign_in",
+		auth: {
+			kind: "api_key",
+			signed_in: false,
+			secret_refs: [{ id: "PGPASSWORD", state: "missing" }],
+		},
+		actions: ["test", "set_key", "remove"],
+	});
+	assert.equal(m.offersKey(postgres), true);
+	assert.equal(m.primaryAction(postgres, [], undefined).label, "Add key");
+});
+
+test("a keyless write names the header and derives a valid reference", () => {
+	/*
+	 * `POST /v1/desktop/mcp/credentials` with `header` needs exactly one id in
+	 * `values`, and the id reaches the config as `${ID}` - whose syntax is
+	 * `[A-Za-z_][A-Za-z0-9_]*`. So the derivation has to produce that, whatever
+	 * the user typed as a header name.
+	 */
+	assert.equal(m.keylessReference("Authorization"), "AUTHORIZATION");
+	assert.equal(m.keylessReference("x-api-key"), "X_API_KEY");
+	assert.equal(m.keylessReference("  X Api Key  "), "X_API_KEY");
+	assert.equal(m.keylessReference("7-token"), "K_7_TOKEN");
+	assert.equal(m.keylessReference(""), "");
+	assert.equal(m.keylessReference("  "), "");
+	for (const header of ["Authorization", "x-api-key", "7-token", "a", "A.B/C"]) {
+		assert.match(
+			m.keylessReference(header),
+			/^[A-Za-z_][A-Za-z0-9_]*$/,
+			`${header} must derive a reference the ${"${ID}"} syntax accepts`,
+		);
+	}
+});
+
+test("a keyless credential write carries the header to the right endpoint", () => {
+	const request = {
+		op: "mcp.catalog.credentials",
+		cwd: "/home/u/project",
+		name: "acme-api",
+		values: { AUTHORIZATION: "shh" },
+		confirmedReplace: [],
+		header: "Authorization",
+	};
+	assert.equal(
+		m.desktopRequestSchema.safeParse(request).success,
+		true,
+		"the schema refuses nothing the page sends",
+	);
+	const endpoint = m.desktopEndpoint(request);
+	assert.equal(endpoint.path, "/v1/desktop/mcp/credentials");
+	assert.equal(endpoint.body.header, "Authorization");
+	// Without it the request is the set_key write it always was.
+	const plain = m.desktopEndpoint({ ...request, header: undefined });
+	assert.equal("header" in plain.body, false);
 });

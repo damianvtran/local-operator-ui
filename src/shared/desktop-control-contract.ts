@@ -172,8 +172,15 @@ export type McpCatalogRow = {
 	id: string;
 	name: string;
 	scope: "global" | "project";
-	/** The project DIRECTORY when `scope === "project"`, else null. */
-	project_path: string | null;
+	/**
+	 * The project DIRECTORY when `scope === "project"`, else null.
+	 *
+	 * A DIRECTORY, not the file: the catalog's own `project_path` is the file,
+	 * and one word for two things is how a renderer ends up showing a path the
+	 * user cannot act on. Renamed from `project_path` when the backend split them
+	 * (local-operator#1511 `a1ebde44d`).
+	 */
+	project_cwd: string | null;
 	source: {
 		kind:
 			| "local-operator"
@@ -201,7 +208,16 @@ export type McpCatalogRow = {
 	/** Sanitized, one line; set for `error` and for `needs_sign_in` when known. */
 	status_reason: string | null;
 	status_observed_at: number | null;
-	status_basis: "live" | "probe" | "stored";
+	/**
+	 * How this row's status is known.
+	 *
+	 * `live` is a runtime's own view, `probe` a Test that answered, `stored` the
+	 * config and the durable stores, and `operation` an operation that is RUNNING
+	 * - a basis of its own because no probe result exists yet, and reusing
+	 * `probe` for it made one word mean both "a Test answered this" and "a Test
+	 * is running" (local-operator#1511 `a1ebde44d`).
+	 */
+	status_basis: "live" | "probe" | "stored" | "operation";
 	auth: {
 		kind: "none" | "oauth" | "api_key" | "unknown";
 		signed_in: boolean | null;
@@ -215,7 +231,18 @@ export type McpCatalogRow = {
 	actions: (
 		| "test"
 		| "sign_in"
+		/**
+		 * Collect a key for this row.
+		 *
+		 * `add_key` is accepted as a SYNONYM: the backend has not settled whether
+		 * the verb that adds a credential for a server with no OAuth discovery is
+		 * `set_key` (the name it ships today, offered when the config declares
+		 * secret references) or a new `add_key`, so this renderer handles both and
+		 * treats them as one control. A row that offers only one of them gets the
+		 * same button either way.
+		 */
 		| "set_key"
+		| "add_key"
 		| "reauth"
 		| "sign_out"
 		| "remove"

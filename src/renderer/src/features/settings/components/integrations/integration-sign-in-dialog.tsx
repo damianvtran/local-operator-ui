@@ -26,7 +26,9 @@ import {
 } from "@shared/components/common/base-dialog";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui";
-import type { FC } from "react";
+import { showInfoToast } from "@shared/utils/toast-manager";
+import { Copy, TriangleAlert } from "lucide-react";
+import { type FC, useEffect, useRef } from "react";
 import type { McpCatalogOperation } from "../../../../../../shared/desktop-control-contract";
 
 export type SignInPhase =
@@ -47,6 +49,10 @@ export function signInProgress(
 	message: string;
 	tone: "progress" | "success" | "failure";
 	link: string | null;
+	/** The server's own words about a failure, when it gave any (D6). */
+	reason?: string | null;
+	/** What the user can do about it (D6). */
+	nextStep?: string | null;
 } {
 	if (!operation || operation.status === "running") {
 		if (operation?.browser_opened === true)
@@ -76,14 +82,66 @@ export function signInProgress(
 			link: null,
 		};
 	if (operation.status === "cancelled")
-		return { message: "Sign-in cancelled.", tone: "failure", link: null };
+		return {
+			message: "Sign-in cancelled.",
+			tone: "failure",
+			link: null,
+			reason: null,
+			nextStep: "Press Try again when you are ready.",
+		};
+	/*
+	 * WHAT HAPPENED, THEN THE SERVER'S OWN WORDS, THEN WHAT TO DO (D6). One
+	 * paragraph with the backend's sentence spliced in mid-line read as a
+	 * capital letter after a colon inside a wall of `danger` text, and its only
+	 * offered action - Try again - cannot fix a rejected redirect. The three
+	 * parts are drawn separately: the lead in `ink`, the server's sentence in
+	 * `ink-muted`, and a next step that is actually about this failure.
+	 */
 	return {
-		message: operation.message?.trim()
-			? `Sign-in didn't finish: ${operation.message.trim()}`
-			: "Sign-in didn't finish, and the server didn't say why. Try again, or check the server's URL.",
+		message: "Sign-in didn't finish.",
 		tone: "failure",
 		link: null,
+		// The absent-reason case still says so rather than leaving the reader to
+		// wonder whether the dialog lost it (N4).
+		reason: operation.message?.trim() ?? "The server didn't say why.",
+		nextStep: signInNextStep(operation.message ?? null),
 	};
+}
+
+/**
+ * What to do about a failed sign-in, when the reason says.
+ *
+ * A rejected redirect and a missing authorization server are configuration
+ * refusals: pressing Try again re-runs the same refusal, so the next step names
+ * the two things that can change it - the server's own settings, or a key. The
+ * generic line is the one for a failure this page cannot classify.
+ */
+export function signInNextStep(reason: string | null): string {
+	const text = (reason ?? "").toLowerCase();
+	if (text.includes("redirect"))
+		return "This server may not accept sign-ins from Local Operator. Check the server's settings, or add a key instead.";
+	if (text.includes("no oauth") || text.includes("authorization server"))
+		return "This server doesn't publish a browser sign-in. Add its key instead.";
+	if (text.includes("network") || text.includes("connect"))
+		return "Check the server's URL and your network, then try again.";
+	return "Check the server's settings, then try again.";
+}
+
+/**
+ * Which control leads a phase, for the focus move on a phase change (D3).
+ *
+ * Exported and pure so the mapping can be asserted rather than inferred from a
+ * render: the phase decides it, and the phase is the only thing that changes
+ * between two presses of the same button.
+ */
+export function signInFocusTarget(
+	phase: SignInPhase,
+	progress: { tone: "progress" | "success" | "failure" } | null,
+): "ready" | "running" | "failure" | "success" {
+	if (phase.kind === "ready") return "ready";
+	if (phase.kind === "running" && progress && progress.tone !== "progress")
+		return progress.tone === "success" ? "success" : "failure";
+	return "running";
 }
 
 export type IntegrationSignInDialogProps = {
@@ -113,6 +171,29 @@ export const IntegrationSignInDialog: FC<IntegrationSignInDialogProps> = ({
 		phase.kind === "starting" ||
 		(phase.kind === "running" && progress?.tone === "progress");
 	const settled = progress && progress.tone !== "progress";
+	/*
+	 * FOCUS FOLLOWS THE PHASE (D3). The primary that had focus unmounts when the
+	 * phase changes, so Radix fell back to the dialog frame - and the frame then
+	 * drew the accent outline around the whole dialog, which reads as a selected
+	 * dialog and spends the accent on chrome. Each phase names the control that
+	 * now leads, and focus moves there. The mount case is Radix's own
+	 * `onOpenAutoFocus` below, so the effect skips it.
+	 */
+	const leadRef = useRef<HTMLButtonElement>(null);
+	const mounted = useRef(false);
+	/*
+	 * The control that leads the CURRENT phase. Naming it is what makes the
+	 * effect below honest: its dependency is a value the effect reads, and the
+	 * value changes exactly when the leading control is replaced.
+	 */
+	const focusTarget = signInFocusTarget(phase, progress);
+	useEffect(() => {
+		if (!mounted.current) {
+			mounted.current = true;
+			return;
+		}
+		if (focusTarget) leadRef.current?.focus();
+	}, [focusTarget]);
 
 	return (
 		<BaseDialog
@@ -120,28 +201,56 @@ export const IntegrationSignInDialog: FC<IntegrationSignInDialogProps> = ({
 			onClose={onClose}
 			maxWidth="xs"
 			title={`Sign in to ${name}`}
+			/*
+			 * Initial focus belongs on the control the dialog opens FOR, not on
+			 * Close (D3): the ready state exists to be continued.
+			 */
+			dialogProps={{
+				onOpenAutoFocus: (event: Event) => {
+					event.preventDefault();
+					leadRef.current?.focus();
+				},
+			}}
 			actions={
 				<>
 					{running && operation ? (
-						<SecondaryButton onClick={() => onCancel(operation.id)}>
+						<SecondaryButton
+							ref={leadRef}
+							onClick={() => onCancel(operation.id)}
+						>
 							Cancel sign-in
 						</SecondaryButton>
 					) : (
-						<SecondaryButton onClick={onClose}>
+						<SecondaryButton
+							ref={phase.kind === "ready" ? undefined : leadRef}
+							onClick={onClose}
+						>
 							{progress?.tone === "success" ? "Done" : "Close"}
 						</SecondaryButton>
 					)}
 					{phase.kind === "ready" ? (
-						<PrimaryButton onClick={onStart}>Continue in browser</PrimaryButton>
+						<PrimaryButton ref={leadRef} onClick={onStart}>
+							Continue in browser
+						</PrimaryButton>
 					) : null}
 					{phase.kind === "refused" || progress?.tone === "failure" ? (
-						<PrimaryButton onClick={onStart}>Try again</PrimaryButton>
+						<PrimaryButton
+							ref={progress?.tone === "failure" ? leadRef : undefined}
+							onClick={onStart}
+						>
+							Try again
+						</PrimaryButton>
 					) : null}
 				</>
 			}
 		>
 			<div
-				className="flex flex-col gap-3 p-1.5 text-body text-ink-muted"
+				/*
+				 * `p-1.5 -mx-1.5`: the inset is there to give a control's outline
+				 * room inside the dialog's scroll body, and the negative margin
+				 * puts the TEXT back on the title's edge (D7).
+				 */
+				className="-mx-1.5 flex flex-col gap-3 p-1.5 text-body text-ink-muted"
 				aria-live="polite"
 			>
 				{phase.kind === "ready" ? (
@@ -160,28 +269,66 @@ export const IntegrationSignInDialog: FC<IntegrationSignInDialogProps> = ({
 					</p>
 				) : null}
 				{progress ? (
-					<p
-						className={
-							progress.tone === "failure"
-								? "text-danger"
-								: progress.tone === "success"
-									? "text-ink"
-									: "flex items-center gap-2"
-						}
+					<div
+						className="flex flex-col gap-1"
 						role={settled ? "status" : undefined}
 					>
-						{progress.tone === "progress" ? <Spinner size="xs" /> : null}
-						<span>{progress.message}</span>
-					</p>
+						{/*
+						 * `items-start` and a first-line-height spinner box: on a
+						 * two-line paragraph the centred spinner used to sit beside
+						 * the middle of the block (D11).
+						 */}
+						<p
+							className={
+								progress.tone === "success"
+									? "flex items-start gap-2 text-ink"
+									: "flex items-start gap-2 text-ink"
+							}
+						>
+							{progress.tone === "progress" ? (
+								<Spinner size="xs" className="mt-0.5" />
+							) : null}
+							{progress.tone === "failure" ? (
+								<TriangleAlert
+									aria-hidden="true"
+									className="mt-0.5 size-4 shrink-0 text-danger"
+								/>
+							) : null}
+							<span>{progress.message}</span>
+						</p>
+						{/* The server's own words, quieter than the line that frames
+						    them (D6). */}
+						{progress.reason ? (
+							<p className="text-ink-muted">{progress.reason}</p>
+						) : null}
+						{progress.nextStep ? (
+							<p className="text-ink-muted">{progress.nextStep}</p>
+						) : null}
+					</div>
 				) : null}
 				{progress?.link && progress.tone === "progress" ? (
-					<div className="flex flex-col items-start gap-1">
+					<div className="flex flex-wrap items-center gap-1">
 						<span
 							className="max-w-full truncate font-mono text-ink-dim text-mono-sm"
 							title={progress.link}
 						>
 							{progress.link}
 						</span>
+						{/* The link truncates at narrow widths, so it needs a way to
+						    be taken away whole (D11, U4). */}
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label="Copy the sign-in link"
+							onClick={() => {
+								void navigator.clipboard
+									.writeText(progress.link ?? "")
+									.then(() => showInfoToast("Sign-in link copied."))
+									.catch(() => undefined);
+							}}
+						>
+							<Copy aria-hidden="true" />
+						</Button>
 						<Button
 							variant="link"
 							size="sm"

@@ -65,12 +65,20 @@ export const controlMcpCatalog = async (
 	return envelope.data;
 };
 
-/** Store a server's secret values; the answer carries the refreshed document. */
+/**
+ * Store a server's secret values; the answer carries the refreshed document.
+ *
+ * `header` is `add_key`'s one extra field (backend #1511 `aa927158a`): the HTTP
+ * header the key travels in, for a remote server that declares no `${ID}` yet,
+ * in which case `values` must hold exactly one id and the backend binds it as
+ * `headers[header] = "${ID}"`.
+ */
 export const storeMcpCatalogCredentials = async (
 	cwd: string | null,
 	name: string,
 	values: Record<string, string>,
 	confirmedReplace: string[],
+	header?: string,
 ): Promise<McpCatalogCredentialsResult> => {
 	const envelope = await desktopResult<
 		DesktopControlResult<McpCatalogCredentialsResult>
@@ -80,6 +88,7 @@ export const storeMcpCatalogCredentials = async (
 		name,
 		values,
 		confirmedReplace,
+		...(header ? { header } : {}),
 	});
 	return envelope.data;
 };

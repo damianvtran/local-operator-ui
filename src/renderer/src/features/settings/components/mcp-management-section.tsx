@@ -36,12 +36,14 @@
  */
 
 import { openLocalTarget, openUrlTarget } from "@features/chat/utils/link-open";
+import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Button, Input } from "@shared/components/ui";
 import { showInfoToast } from "@shared/utils/toast-manager";
 import { Plug, Plus, Search } from "lucide-react";
 import type { FC, RefObject } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type { McpFailurePhase } from "../../chat/components/run-details/mcp-failure";
 import { parseMcpIntent } from "../../chat/pickers/mcp-command";
 import {
@@ -56,6 +58,7 @@ import {
 	groupIntegrations,
 	integrationCountLabel,
 	integrationFailureMessage,
+	isSignInAction,
 } from "./integrations/integration-model";
 import {
 	IntegrationRow,
@@ -155,6 +158,7 @@ export const McpManagementSection: FC<{
 }> = ({ sessionId, sectionRef, highlightServer }) => {
 	const integrations = useIntegrations({ sessionId });
 	const { document, control } = integrations;
+	const navigate = useNavigate();
 	const servers = document?.servers ?? [];
 	const operations = document?.operations ?? [];
 	const projectScopeAvailable = document?.project_scope_available ?? false;
@@ -172,6 +176,52 @@ export const McpManagementSection: FC<{
 	const [signInOperation, setSignInOperation] = useState<string | null>(null);
 	const [keyFailure, setKeyFailure] = useState<string | null>(null);
 	const [keySaving, setKeySaving] = useState(false);
+
+	/*
+	 * FOCUS PLUMBING (U5, Q3). Round 1 found the page returning focus to
+	 * `<body>` after almost every action, so a keyboard user restarted from the
+	 * top of a very long settings page. Each map below holds the control that
+	 * should get focus back, by the row it belongs to:
+	 *
+	 * - `rowPrimaryRefs` / `rowOverflowRefs`: the row's two focusable controls;
+	 * - `addSlotRef`: the header's Add integration, the fallback when a list
+	 *   becomes empty;
+	 * - `dialogReturn`: whatever had focus when a dialog opened. A control that
+	 *   still exists when the dialog closes gets focus back; one that does not
+	 *   (a menu item, which Radix unmounts) is skipped, and Radix's own
+	 *   close-auto-focus stands.
+	 */
+	const rowPrimaryRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+	const rowOverflowRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+	const addSlotRef = useRef<HTMLButtonElement>(null);
+	const dialogReturn = useRef<HTMLElement | null>(null);
+	const [focusAfterAdd, setFocusAfterAdd] = useState<string | null>(null);
+	const [focusAfterRemove, setFocusAfterRemove] = useState<{
+		index: number;
+	} | null>(null);
+
+	/*
+	 * A dialog's focus comes back to whatever opened it, once the dialog has
+	 * actually unmounted - a macrotask later, because Radix restores focus
+	 * itself during the close and would overwrite an earlier attempt.
+	 */
+	const closeDialog = useCallback(() => {
+		const target = dialogReturn.current;
+		dialogReturn.current = null;
+		setDialog(null);
+		setSignInOperation(null);
+		window.setTimeout(() => {
+			if (target?.isConnected) target.focus();
+		}, 0);
+	}, []);
+
+	const openDialog = useCallback((next: Dialog) => {
+		// `window.document`, because this component destructures the CATALOG
+		// document from `useIntegrations` under the same name.
+		const active = window.document.activeElement;
+		dialogReturn.current = active instanceof HTMLElement ? active : null;
+		setDialog(next);
+	}, []);
 
 	const target = useMemo(
 		() =>
@@ -194,8 +244,8 @@ export const McpManagementSection: FC<{
 		[servers, search],
 	);
 	const groups = useMemo(
-		() => groupIntegrations(visible, operations),
-		[visible, operations],
+		() => groupIntegrations(visible, operations, integrations.memories),
+		[visible, operations, integrations.memories],
 	);
 
 	/*
@@ -270,6 +320,17 @@ export const McpManagementSection: FC<{
 			if (id) setSignInOperation(id);
 			else setSignIn({ kind: "running", operation: null });
 		} catch (cause) {
+			/*
+			 * `oauth_unsupported` is the backend saying, up front, that this
+			 * server has no browser sign-in: the row must offer the key instead
+			 * (U3). A refusal carries no operation, so this is the only place the
+			 * fact can be learned.
+			 */
+			if (
+				cause instanceof DesktopControlError &&
+				cause.code === "oauth_unsupported"
+			)
+				integrations.markNeedsKey(name);
 			setSignIn({
 				kind: "refused",
 				message: integrationFailureMessage("grant", cause, grantRunning),
@@ -280,18 +341,33 @@ export const McpManagementSection: FC<{
 	const onPrimary = (row: IntegrationRowData, action: PrimaryAction) => {
 		switch (action.kind) {
 			case "sign_in":
-			case "reauth":
-				setSignIn({ kind: "ready" });
-				setSignInOperation(null);
-				setDialog({
+			case "reauth": {
+				/*
+				 * "Continue sign-in" (U4) reopens the dialog ON the grant that is
+				 * already running, rather than starting a second one: dismissing
+				 * the dialog mid-grant used to leave a "Signing in…" row whose
+				 * authorization link was unreachable.
+				 */
+				const running = operations.find(
+					(op) => op.name === row.name && op.status === "running",
+				);
+				if (running && isSignInAction(running)) {
+					setSignIn({ kind: "running", operation: running });
+					setSignInOperation(running.id);
+				} else {
+					setSignIn({ kind: "ready" });
+					setSignInOperation(null);
+				}
+				openDialog({
 					kind: "sign_in",
 					name: row.name,
 					action: action.kind === "reauth" ? "reauth" : "login",
 				});
 				return;
+			}
 			case "set_key":
 				setKeyFailure(null);
-				setDialog({
+				openDialog({
 					kind: "key",
 					name: row.name,
 					keyNames: row.auth.secret_refs.map((ref) => ref.id),
@@ -316,6 +392,7 @@ export const McpManagementSection: FC<{
 			case "sign_out":
 				setConfirm({ name: row.name, kind: item.kind });
 				return;
+			case "sign_in":
 			case "reauth":
 			case "set_key":
 				onPrimary(row, { kind: item.kind, label: item.label });
@@ -363,9 +440,22 @@ export const McpManagementSection: FC<{
 		if (kind === "remove") {
 			const scope = row.source.owned_scope;
 			if (!scope) return;
+			// Where the row was, so focus can land on whatever takes its place.
+			const index = visible.findIndex((server) => server.name === row.name);
 			void run(row.name, "remove", () =>
 				control({ action: "remove", name: row.name, scope }),
-			);
+			).then((operationId) => {
+				/*
+				 * The toast says what happened (U6). There is deliberately no
+				 * Undo: the row this page holds carries a local command's
+				 * `command` but NOT its arguments or environment, so an Undo
+				 * would restore a server that runs something else - see the PR's
+				 * "not addressed" note.
+				 */
+				if (operationId !== null || failures[row.name]) return;
+				showInfoToast(`Removed ${row.name}.`);
+				if (index >= 0) setFocusAfterRemove({ index });
+			});
 			return;
 		}
 		void run(row.name, "sign_out", () =>
@@ -386,6 +476,8 @@ export const McpManagementSection: FC<{
 					: { url: values.url }),
 			});
 			setShowAdd(false);
+			// The row that just appeared is where the user's attention is going.
+			setFocusAfterAdd(values.name);
 			return null;
 		} catch (cause) {
 			return integrationFailureMessage("add", cause, false);
@@ -402,6 +494,7 @@ export const McpManagementSection: FC<{
 			</div>
 			{integrations.enabled && servers.length > 0 && !showAdd ? (
 				<Button
+					ref={addSlotRef}
 					variant="secondary"
 					size="sm"
 					onClick={() => setShowAdd(true)}
@@ -440,6 +533,50 @@ export const McpManagementSection: FC<{
 	);
 
 	const dialogRow = dialog ? rowByName(dialog.name) : undefined;
+	/** Failures whose row is gone: the list moved on, the sentence should not. */
+	const orphanFailures = Object.entries(failures).filter(
+		([name]) => !servers.some((server) => server.name === name),
+	);
+	const dismissFailure = (name: string) =>
+		setFailures(({ [name]: _removed, ...rest }) => rest);
+
+	/*
+	 * The two deferred focus moves. Both wait for the row list to change first,
+	 * because the control they aim at does not exist until it does.
+	 */
+	useEffect(() => {
+		if (!focusAfterAdd) return;
+		const element = rowPrimaryRefs.current[focusAfterAdd];
+		if (!element) {
+			// A row with no primary action of its own (a Ready row) still has a
+			// menu, and that is the control the reader would reach for.
+			if (servers.some((server) => server.name === focusAfterAdd)) {
+				rowOverflowRefs.current[focusAfterAdd]?.focus();
+				setFocusAfterAdd(null);
+			}
+			return;
+		}
+		element.focus();
+		setFocusAfterAdd(null);
+	}, [focusAfterAdd, servers]);
+
+	useEffect(() => {
+		if (!focusAfterRemove) return;
+		const focus = focusAfterRemove;
+		// The row that took the removed one's place, else the last row, else the
+		// control that starts a new one.
+		const next =
+			visible[Math.min(focus.index, visible.length - 1)] ?? visible.at(-1);
+		if (next) {
+			const element =
+				rowPrimaryRefs.current[next.name] ?? rowOverflowRefs.current[next.name];
+			if (!element) return;
+			element.focus();
+		} else {
+			addSlotRef.current?.focus();
+		}
+		setFocusAfterRemove(null);
+	}, [focusAfterRemove, visible]);
 
 	return (
 		<SettingsSection
@@ -457,10 +594,23 @@ export const McpManagementSection: FC<{
 					</p>
 				) : null}
 				{integrations.noConversation ? (
-					<p className="text-body-sm text-ink-muted">
-						Start a chat to manage integrations here. Updating the backend
-						removes this step.
-					</p>
+					<div className="flex flex-col items-start gap-2">
+						{/* "The backend" is jargon for this audience, and the page
+						    told them to do something it gave no control for (D5). */}
+						<p className="text-body-sm text-ink-muted">
+							Integrations can be managed here once a chat has started.
+						</p>
+						<Button
+							variant="secondary"
+							size="sm"
+							onClick={() => navigate("/chat")}
+						>
+							Start a chat
+						</Button>
+						<p className="text-ink-dim text-meta">
+							Updating Local Operator removes this step.
+						</p>
+					</div>
 				) : null}
 				{integrations.isLoading ? (
 					<div className="flex h-24 items-center justify-center">
@@ -481,6 +631,27 @@ export const McpManagementSection: FC<{
 						</div>
 					</Alert>
 				) : null}
+				{/*
+				 * A refusal that belonged to a row which no longer exists. The
+				 * list IS re-read after a 409 (F2), so the sentence explaining
+				 * why - "It no longer exists. The list has been refreshed." -
+				 * would otherwise vanish along with the row that carried it, and
+				 * the user would watch a row disappear with no account of it.
+				 */}
+				{orphanFailures.map(([name, message]) => (
+					<Alert key={name} variant="warning">
+						<div className="flex items-center justify-between gap-3">
+							<span>{message}</span>
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => dismissFailure(name)}
+							>
+								Dismiss
+							</Button>
+						</div>
+					</Alert>
+				))}
 				{showAdd && servers.length > 0 ? addForm : null}
 				{servers.length >= SEARCH_THRESHOLD ? (
 					<div className="relative">
@@ -561,9 +732,16 @@ export const McpManagementSection: FC<{
 									key={row.id}
 									row={row}
 									operations={operations}
+									memories={integrations.memories}
 									projectScopeAvailable={projectScopeAvailable}
 									highlighted={row.name === named}
 									rowRef={row.name === named ? highlightRef : undefined}
+									primaryRef={(element) => {
+										rowPrimaryRefs.current[row.name] = element;
+									}}
+									overflowRef={(element) => {
+										rowOverflowRefs.current[row.name] = element;
+									}}
 									pending={pending === row.name}
 									failure={failures[row.name] ?? null}
 									confirm={
@@ -574,7 +752,14 @@ export const McpManagementSection: FC<{
 									onPrimary={(action) => onPrimary(row, action)}
 									onOverflow={(item) => onOverflow(row, item)}
 									onConfirm={() => confirm && onConfirmed(row, confirm.kind)}
-									onCancelConfirm={() => setConfirm(null)}
+									onCancelConfirm={() => {
+										// Keep puts focus back on the control that asked,
+										// so the next Tab continues from where the reader was.
+										setConfirm(null);
+										window.setTimeout(() => {
+											rowOverflowRefs.current[row.name]?.focus();
+										}, 0);
+									}}
 								/>
 							))}
 						</ul>
@@ -593,10 +778,7 @@ export const McpManagementSection: FC<{
 						)
 					}
 					onOpenLink={(url) => void openUrlTarget(url)}
-					onClose={() => {
-						setDialog(null);
-						setSignInOperation(null);
-					}}
+					onClose={closeDialog}
 				/>
 			) : null}
 			{dialog?.kind === "key" ? (
@@ -607,14 +789,24 @@ export const McpManagementSection: FC<{
 							? dialog.keyNames
 							: (dialogRow?.auth.secret_refs.map((ref) => ref.id) ?? [])
 					}
+					/*
+					 * No declared reference means the dialog must also ask for the
+					 * key's NAME (U3): the backend offers no `set_key` for a
+					 * server whose config names none, and the row's own copy
+					 * promised a key it had nowhere to put.
+					 */
+					keyless={dialog.keyNames.length === 0}
+					savedKeys={dialogRow?.auth.secret_refs
+						.filter((ref) => ref.state === "encrypted")
+						.map((ref) => ref.id)}
 					saving={keySaving}
 					failure={keyFailure}
-					onClose={() => setDialog(null)}
-					onSave={(values, confirmedReplace) => {
+					onClose={closeDialog}
+					onSave={(values, confirmedReplace, header) => {
 						setKeySaving(true);
 						setKeyFailure(null);
 						void integrations
-							.storeKeys(dialog.name, values, confirmedReplace)
+							.storeKeys(dialog.name, values, confirmedReplace, header)
 							.then((result) => {
 								if (result.saved) setDialog(null);
 								else setKeyFailure(result.message);

@@ -12738,7 +12738,30 @@ async function readBackendJson(path) {
  * there; the topmost element at that point comes back with the reading, which is
  * how a covered or disabled control is told from a broken press.
  */
-async function pointerPressSelector(cdp, selector) {
+async function pointerPressSelector(cdp, selector, { attempts = 3 } = {}) {
+	/*
+	 * RETRIED ON A MISS, and only on a miss. `press` measures the box in the app
+	 * and the dispatcher presses those coordinates a moment later; a row whose
+	 * STATUS TEXT changes width moves its right-aligned controls between the two,
+	 * so the first attempt can land on the row's padding and read `hit: false`.
+	 * A press that LANDED is never repeated - for a menu trigger that would close
+	 * what it just opened - and a control that is genuinely covered still comes
+	 * back `hit: false` on every attempt, which is the reading the caller
+	 * asserts on.
+	 */
+	let landed = await pointerPressSelectorOnce(cdp, selector);
+	for (
+		let attempt = 1;
+		attempt < attempts && landed && landed.hit !== true;
+		attempt += 1
+	) {
+		await wait(400);
+		landed = await pointerPressSelectorOnce(cdp, selector);
+	}
+	return landed;
+}
+
+async function pointerPressSelectorOnce(cdp, selector) {
 	const point = await cdp.evaluate(`(() => {
 		const node = document.querySelector(${JSON.stringify(selector)});
 		if (!node) return null;
@@ -12774,12 +12797,49 @@ async function sceneSettingsIntegrations(cdp) {
 		Boolean(BACKEND),
 		"pass --backend <url> with the renderer built against the same URL",
 	);
+	/*
+	 * NO FIRST-RUN MODAL OVER THE PAGE. A fresh profile in front of a fresh
+	 * backend is a first-run user, and the onboarding wizard is a MODAL - it
+	 * paints a provider grid over the whole page, so every press this scene makes
+	 * at a control's coordinates lands on the wizard instead. Measured: a re-run
+	 * that dropped `--seed-onboarding-complete` reported "press never landed" for
+	 * the add form's transport switch with the hit element `span "API key"` from
+	 * the provider list, and the frame shows "Connect a provider, Step 1 of 6"
+	 * over the form. The guard is here rather than in the runner because a scene
+	 * whose presses are covered proves nothing whichever way it fails.
+	 */
+	const onboardingModal = await waitForScene(
+		cdp,
+		`!document.body.innerText.includes("Connect a provider") &&
+			!document.body.innerText.includes("Step 1 of 6")`,
+		2000,
+	);
+	check(
+		"no onboarding wizard is covering the page this scene drives",
+		onboardingModal === true,
+		"pass --seed-onboarding-complete: the first-run wizard is a modal, and it swallows every press",
+	);
 	if (!BACKEND) return [];
 	const frames = [];
 	const stdioName = `echo-${process.pid}`;
 	const remoteName = `remote-${process.pid}`;
 
 	/* ---- 0. the backend's own starting facts --------------------------- */
+	/*
+	 * AN EMPTY START, ASSERTED ON THE BACKEND rather than inferred from the page.
+	 * A rig that has already been driven leaves the servers an earlier run added,
+	 * and then the first "the page is empty" check fails for a reason that has
+	 * nothing to do with the code under test (measured: two runs against one rig
+	 * left four servers behind, and the empty-list checks failed twice for it).
+	 */
+	const startCatalog = await readBackendJson("/v1/desktop/mcp");
+	const startServers = startCatalog.body?.data?.servers ?? [];
+	check(
+		"this rig's config starts with NO servers, so an empty list means empty",
+		startServers.length === 0,
+		`the rig already lists ${JSON.stringify(startServers.map((server) => server.name))} - use a fresh rig, or clear its mcp.json`,
+	);
+
 	const caps = await readBackendJson("/v1/capabilities");
 	note(
 		"backend capabilities",
@@ -12841,6 +12901,61 @@ async function sceneSettingsIntegrations(cdp) {
 		const { document } = await catalog();
 		return document?.servers?.find((server) => server.name === name) ?? null;
 	};
+	/**
+	 * Press a control and prove the press LANDED on it.
+	 *
+	 * WHY THIS EXISTS. `press` measures the element's box in the app and the
+	 * DRIVER dispatches the mouse event at those coordinates; between the two, a
+	 * React commit can move the control. A row's controls are right-aligned after
+	 * a status whose WIDTH changes ("Ready" -> "Connecting…" -> "Connected · 1
+	 * tool"), and the list polls while an operation runs, so the button slides
+	 * horizontally a moment after it is measured - and the press lands on the
+	 * row's padding. The first scenario run reported `hitTest: false` with the
+	 * target `disabled: true`, which reads exactly like a broken control.
+	 *
+	 * So a press is retried until the hit test says it landed, and the retry
+	 * window is also the settle window (400 ms, longer than the 2 s poll's
+	 * commit). A scene that asserted an outcome from an unverified press would be
+	 * reporting on whatever happened to be under the pointer.
+	 */
+	const pressSettled = async (selector, { attempts = 8 } = {}) => {
+		/*
+		 * MEASURE FIRST, THEN PRESS. `measure` reports the same hit test as
+		 * `press` without dispatching anything, so polling it separates the two
+		 * things a miss can mean: the page has not settled yet (measure goes true
+		 * on its own) or the control is really covered (it never does). The press
+		 * then happens once, against a control this run has just confirmed is the
+		 * topmost element at its own centre.
+		 */
+		for (let attempt = 0; attempt < attempts; attempt += 1) {
+			const measured = await verb(cdp, "measure", selector);
+			if (measured?.hitTest === true) break;
+			await wait(400);
+		}
+		const pressed = await verb(cdp, "press", selector);
+		if (pressed?.hitTest !== true) {
+			await wait(400);
+			const retry = await verb(cdp, "press", selector);
+			if (retry?.hitTest !== true)
+				note("press never landed", `${selector} ${JSON.stringify(retry)}`);
+			return retry;
+		}
+		return pressed;
+	};
+
+	/** What has focus, in the terms a focus assertion reads. */
+	const activeElementOf = (targetCdp) =>
+		targetCdp.evaluate(`(() => {
+			const node = document.activeElement;
+			if (!node) return null;
+			return {
+				tag: node.tagName.toLowerCase(),
+				label: node.getAttribute('aria-label'),
+				action: node.getAttribute('data-integration-action'),
+				text: (node.textContent || '').trim().slice(0, 40),
+			};
+		})()`);
+
 	const rowText = (name) =>
 		cdp.evaluate(
 			`(document.querySelector('[data-integration=${JSON.stringify(name)}]')?.innerText || '').replace(/\\s+/g, ' ')`,
@@ -12869,11 +12984,7 @@ async function sceneSettingsIntegrations(cdp) {
 			// The transport pair on the real form, pressed through the hook the
 			// component exposes: the two buttons' WORDING is a design decision
 			// that may change, the axis they choose between may not.
-			const switched = await verb(
-				cdp,
-				"press",
-				"[data-integration-transport='url']",
-			);
+			const switched = await pressSettled("[data-integration-transport='url']");
 			check(
 				"the add form switched to Remote URL",
 				switched?.hitTest === true,
@@ -12914,9 +13025,7 @@ async function sceneSettingsIntegrations(cdp) {
 
 	/** Press the row's one action, then wait for the backend's answer. */
 	const testRow = async (name) => {
-		const pressed = await verb(
-			cdp,
-			"press",
+		const pressed = await pressSettled(
 			`[data-integration=${JSON.stringify(name)}] [data-integration-action='test']`,
 		);
 		note(`pressed Test on ${name}`, JSON.stringify(pressed));
@@ -12999,10 +13108,17 @@ async function sceneSettingsIntegrations(cdp) {
 	/* ---- 1. the page, with nothing configured -------------------------- */
 	await verb(cdp, "navigate", "/settings?section=integrations");
 	await verb(cdp, "setTheme", "localOperatorDark");
+	/*
+	 * Generous on purpose: this is the FIRST read of the page, and under the
+	 * fleet's load the catalog round trip can take seconds - a 500 ms window
+	 * reported the loading spinner as "the section is not there", which reads
+	 * exactly like a broken page (measured: the re-run's first check failed on a
+	 * loaded host while the run a minute earlier passed it).
+	 */
 	const empty = await waitForScene(
 		cdp,
 		`document.body.innerText.includes("No integrations yet")`,
-		500,
+		6000,
 	);
 	/*
 	 * AND WAIT FOR THE PAGE'S OWN SCROLL. `section=integrations` is a deep link,
@@ -13166,6 +13282,271 @@ async function sceneSettingsIntegrations(cdp) {
 			countSessions(sessionsAfter) === 0,
 		`before=${countSessions(sessionsBefore)} after=${countSessions(sessionsAfter)}`,
 	);
+	const errors0 = cdp.console.filter((line) => /error/i.test(line)).slice(-10);
+	note("renderer errors", errors0.length ? errors0.join("\n") : "none");
+
+	/*
+	 * ---------------------------------------------------------------
+	 * 6. ROUND 1: a refusal the page could not have known about must BOTH
+	 *    say so AND re-read the list it says it refreshed (F2).
+	 * ---------------------------------------------------------------
+	 *
+	 * The only honest way to reach the 409 is to make the page's copy and the
+	 * backend disagree: the row is added through the form (so the page knows it),
+	 * then removed BEHIND the page's back through the backend's own API. The
+	 * press that follows is a control the backend refuses because its row is
+	 * gone - and the sentence it answers with claims the list has been refreshed,
+	 * so the list has to actually refresh.
+	 */
+	const postJson = async (path, body) => {
+		const response = await fetch(`${BACKEND}${path}`, {
+			method: "POST",
+			headers: {
+				authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+				"content-type": "application/json",
+			},
+			body: JSON.stringify(body),
+		});
+		const text = await response.text();
+		let parsed = null;
+		try {
+			parsed = JSON.parse(text);
+		} catch {
+			/* reported as text below */
+		}
+		return { status: response.status, body: parsed?.result ?? parsed ?? text };
+	};
+
+	const staleName = `stale-${process.pid}`;
+	const staleAdded = await addThroughForm({
+		name: staleName,
+		mode: "command",
+		frame: "integrations-live-11-stale-added",
+	});
+	check(
+		"the refusal case starts from a row the page itself added",
+		staleAdded.onPage === true && staleAdded.row?.status === "not_started",
+		`onPage=${staleAdded.onPage} backend=${staleAdded.row?.status}`,
+	);
+	const behindTheBack = await postJson("/v1/desktop/mcp", {
+		action: "remove",
+		name: staleName,
+		scope: "global",
+		confirmed: true,
+	});
+	check(
+		"and the row is removed OUT OF BAND, so the page's copy is stale by construction",
+		behindTheBack.status === 200 &&
+			(await rowFor(staleName)) === null &&
+			(await rowText(staleName)).includes(staleName),
+		`remove status=${behindTheBack.status} backend row=${JSON.stringify(await rowFor(staleName))} page text=${JSON.stringify(await rowText(staleName))}`,
+	);
+	await verb(
+		cdp,
+		"press",
+		`[data-integration=${JSON.stringify(staleName)}] [data-integration-action='test']`,
+	);
+	const staleGone = await waitForScene(
+		cdp,
+		`document.querySelector('[data-integration=${JSON.stringify(staleName)}]') === null`,
+		1500,
+	);
+	check(
+		"F2: the refusal re-reads the list, so the row it refuses is gone from the page",
+		staleGone === true,
+		`still on the page: ${JSON.stringify(await rowText(staleName))}`,
+	);
+	/*
+	 * Read as a slice rather than a regex: this expression is a JS string that is
+	 * EVALUATED, so `\n` in it becomes a real newline in the evaluated source and
+	 * a character class containing one is a syntax error at the far end.
+	 */
+	const refusal = await waitForScene(
+		cdp,
+		`(() => {
+			const text = document.body.innerText;
+			const at = text.indexOf("It no longer exists");
+			if (at < 0) return false;
+			return text.slice(at, at + 120).split(String.fromCharCode(10))[0];
+		})()`,
+		/*
+		 * Generous: the sentence arrives only AFTER the re-read lands, because it
+		 * is rendered as an orphan once the row it belonged to is gone. Measured on
+		 * a loaded host: a 1.5 s window reported `refusal=false` and the very next
+		 * frame shows the alert on screen.
+		 */
+		6000,
+	);
+	check(
+		"F2: and the sentence that says the list was refreshed is on screen, not lost with the row",
+		typeof refusal === "string" && /refreshed/.test(refusal),
+		`refusal=${JSON.stringify(refusal)}`,
+	);
+	frames.push(await captureSettled(cdp, "integrations-live-12-stale-refusal"));
+
+	/* ---------------------------------------------------------------
+	 * 7. ROUND 1: an action's focus comes back to the control that
+	 *    asked, and Escape gets out of the form (U5, Q3).
+	 * --------------------------------------------------------------- */
+	const focusCase = `focus-${process.pid}`;
+	await addThroughForm({
+		name: focusCase,
+		mode: "command",
+		frame: "integrations-live-13-focus-added",
+	});
+	await verb(
+		cdp,
+		"press",
+		`[data-integration=${JSON.stringify(focusCase)}] button[aria-label^='More actions']`,
+	);
+	await waitForScene(
+		cdp,
+		`Boolean(document.querySelector("[data-integration-menu='remove']"))`,
+		500,
+	);
+	await verb(cdp, "press", "[data-integration-menu='remove']");
+	const asked = await waitForScene(
+		cdp,
+		`Boolean(document.querySelector("[data-integration-confirm='remove']"))`,
+		500,
+	);
+	check(
+		"the inline Remove confirm is on screen before the focus check",
+		asked === true,
+		"the confirm never appeared",
+	);
+	// Escape dismisses it (U5) and focus returns to the control that asked.
+	await cdp.send("Input.dispatchKeyEvent", {
+		type: "keyDown",
+		key: "Escape",
+		code: "Escape",
+		windowsVirtualKeyCode: 27,
+		nativeVirtualKeyCode: 27,
+	});
+	await cdp.send("Input.dispatchKeyEvent", {
+		type: "keyUp",
+		key: "Escape",
+		code: "Escape",
+	});
+	const escaped = await waitForScene(
+		cdp,
+		`document.querySelector("[data-integration-confirm='remove']") === null`,
+		500,
+	);
+	const backOnTrigger = await waitForScene(
+		cdp,
+		`document.activeElement?.getAttribute?.('aria-label')?.startsWith('More actions') === true`,
+		500,
+	);
+	check(
+		"U5/Q3: Escape dismisses the remove confirm and focus lands on the row's own menu button",
+		escaped === true && backOnTrigger === true,
+		`escaped=${escaped} activeElement=${JSON.stringify(await activeElementOf(cdp))}`,
+	);
+
+	/*
+	 * ---------------------------------------------------------------
+	 * 8. ROUND 1: a chat with a project folder, and a RELOAD (Q1).
+	 * ---------------------------------------------------------------
+	 *
+	 * The regression: the app's own session list carries no `cwd`, so once the
+	 * instance that created the chat is gone - a reload, or a chat started in the
+	 * TUI - the page asked for the HOME catalog and every project-scoped server
+	 * disappeared. The folder now resolves from the conversation's own snapshot,
+	 * and this proves it by reloading the app and looking again.
+	 */
+	const projectName = `proj-${process.pid}`;
+	const projectDir = join(SCRATCH, `project-${process.pid}`);
+	mkdirSync(join(projectDir, ".local-operator"), { recursive: true });
+	writeFileSync(
+		join(projectDir, ".local-operator", "mcp.json"),
+		JSON.stringify({
+			mcpServers: {
+				[projectName]: {
+					command: INTEGRATION_COMMAND ?? "python3",
+					args: (INTEGRATION_ARGS ?? "").split("|").filter(Boolean),
+				},
+			},
+		}),
+	);
+	const created = await postJson("/v1/desktop/sessions", {
+		request_id: randomUUID(),
+		cwd: projectDir,
+	});
+	const projectSession =
+		typeof created.body?.session_id === "string"
+			? created.body.session_id
+			: null;
+	check(
+		"a conversation in a project folder exists, created outside this renderer",
+		Boolean(projectSession),
+		`create status=${created.status} body=${JSON.stringify(created.body).slice(0, 300)}`,
+	);
+	if (projectSession) {
+		/*
+		 * THE CHAT FIRST, then Settings through the SAME deep link the rest of
+		 * this scene uses. Navigating straight to `/settings` without the chat
+		 * step would leave the page with no active conversation - which is the
+		 * state the regression is NOT about.
+		 */
+		await verb(cdp, "navigate", `/chat/${projectSession}`);
+		await waitForRoute(cdp, `/chat/${projectSession}`, 10_000);
+		await verb(cdp, "navigate", "/settings?section=integrations");
+		await waitForScene(
+			cdp,
+			`Boolean(document.querySelector("h2")?.textContent?.includes("Integrations"))`,
+			6000,
+		);
+		const before = await waitForScene(
+			cdp,
+			`Boolean(document.querySelector('[data-integration=${JSON.stringify(projectName)}]'))`,
+			2000,
+		);
+		check(
+			"Q1: with the chat active, the project folder's server is listed and scoped to it",
+			before === true && /This project/.test(await rowText(projectName)),
+			`listed=${before} row=${JSON.stringify(await rowText(projectName))}`,
+		);
+		frames.push(
+			await captureSettled(cdp, "integrations-live-14-project-before-reload"),
+		);
+
+		/*
+		 * THE RELOAD. Everything this renderer held about that conversation is
+		 * gone afterwards, which is exactly the state the regression lived in.
+		 */
+		await cdp.send("Page.reload", { ignoreCache: false });
+		await waitForBridge(cdp);
+		/*
+		 * BACK THROUGH THE APP'S OWN ROUTES. `openSection` opens a SIDEBAR section
+		 * (it looks for a `button[data-chat-row]`), so calling it here could only
+		 * ever throw `no Integrations heading in the panel` - measured, this scene's
+		 * first run. The page under test is reached the way every earlier step
+		 * reaches it: the chat, then the settings deep link.
+		 */
+		await verb(cdp, "navigate", `/chat/${projectSession}`);
+		await waitForRoute(cdp, `/chat/${projectSession}`, 10_000);
+		await verb(cdp, "navigate", "/settings?section=integrations");
+		await waitForScene(
+			cdp,
+			`Boolean(document.querySelector("h2")?.textContent?.includes("Integrations"))`,
+			6000,
+		);
+		const survived = await waitForScene(
+			cdp,
+			`Boolean(document.querySelector('[data-integration=${JSON.stringify(projectName)}]'))`,
+			3000,
+		);
+		check(
+			"Q1: and it is STILL there after an app reload, resolved from the conversation's own snapshot",
+			survived === true && /This project/.test(await rowText(projectName)),
+			`listed=${survived} row=${JSON.stringify(await rowText(projectName))}`,
+		);
+		frames.push(
+			await captureSettled(cdp, "integrations-live-15-project-after-reload"),
+		);
+	}
+
 	const errors = cdp.console.filter((line) => /error/i.test(line)).slice(-10);
 	note("renderer errors", errors.length ? errors.join("\n") : "none");
 	return frames;

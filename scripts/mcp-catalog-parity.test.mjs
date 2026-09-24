@@ -50,7 +50,7 @@ import { build } from "esbuild";
 /** The backend revision and version this copy was taken from. */
 const FIXTURE = "scripts/fixtures/mcp-catalog-0.62.17.json";
 const BACKEND_SOURCE =
-	"damianvtran/local-operator#1511, branch feat/sessionless-mcp-catalog, head 111d8e193 (backend 0.62.17)";
+	"damianvtran/local-operator#1511, branch feat/sessionless-mcp-catalog, head aa927158a (backend 0.62.17)";
 
 const bundle = await build({
 	stdin: {
@@ -97,7 +97,7 @@ const ROW_FIELDS = [
 	"id",
 	"name",
 	"scope",
-	"project_path",
+	"project_cwd",
 	"source",
 	"transport",
 	"endpoint",
@@ -113,7 +113,11 @@ const ROW_FIELDS = [
 
 test("the fixture is the backend's pinned payload, not a hand-written one", () => {
 	assert.equal(document_.cwd, "/Users/you/projects/acme");
-	assert.equal(rows.length, 6, "six rows, one per state the audit asked for");
+	assert.equal(
+		rows.length,
+		7,
+		"seven rows, one per state the audit asked for plus the add_key case",
+	);
 	// The vocabulary coverage THIS file's other tests rely on, so that thinning
 	// the fixture cannot make them vacuous.
 	assert.deepEqual(
@@ -175,6 +179,7 @@ test("every word in the payload's vocabularies is one this page handles", () => 
 					"remove",
 					"connect",
 					"disconnect",
+					"add_key",
 				].includes(action),
 				`row ${row.name}: unknown action ${JSON.stringify(action)}`,
 			);
@@ -191,7 +196,7 @@ test("every word in the payload's vocabularies is one this page handles", () => 
 			`row ${row.name}: unknown tool_count_basis`,
 		);
 		assert.ok(
-			["live", "probe", "stored"].includes(row.status_basis),
+			["live", "probe", "stored", "operation"].includes(row.status_basis),
 			`row ${row.name}: unknown status_basis`,
 		);
 		for (const ref of row.auth.secret_refs)
@@ -266,7 +271,17 @@ test("the payload's actions produce one primary action per row, never a dead end
 		"test",
 	);
 	assert.equal(primary("postgres-prod").kind, "set_key");
-	assert.equal(primary("filesystem").kind, "test");
+	/*
+	 * D1: a row that HAS been checked leads with nothing, and its Test is in the
+	 * overflow beside the connected row's - a column of identical outlined Test
+	 * buttons on idle rows was the audit's complaint.
+	 */
+	assert.equal(primary("filesystem"), null);
+	assert.equal(
+		m.overflowItems(rows.find((row) => row.name === "filesystem"))[0].kind,
+		"test",
+		"the action is still one press away",
+	);
 	assert.equal(primary("acme-broken").kind, "test");
 	assert.equal(primary("acme-broken").label, "Retry");
 	// `borrowed-github` is a cursor row this app must not write: it may be
@@ -285,7 +300,10 @@ test("the payload's rows group and read their scope/source correctly", () => {
 		[
 			// `linear` is mid-sign-in, and it STAYS in the group the user left it
 			// in rather than jumping the moment it was pressed.
-			["attention", ["linear", "postgres-prod", "acme-broken"]],
+			[
+				"attention",
+				["linear", "postgres-prod", "acme-api", "acme-broken"],
+			],
 			["connected", ["github"]],
 			["ready", ["filesystem", "borrowed-github"]],
 		],
@@ -294,7 +312,7 @@ test("the payload's rows group and read their scope/source correctly", () => {
 	const postgres = rows.find((row) => row.name === "postgres-prod");
 	assert.deepEqual(
 		m.integrationMeta(postgres, document_.project_scope_available),
-		["Local command", "4 tools last time", "This project"],
+		["Local command", "4 tools when last checked", "This project"],
 	);
 	const broken = rows.find((row) => row.name === "acme-broken");
 	assert.deepEqual(
@@ -304,7 +322,7 @@ test("the payload's rows group and read their scope/source correctly", () => {
 	// And with no separate project file, the same rows carry no scope word.
 	assert.deepEqual(m.integrationMeta(postgres, false), [
 		"Local command",
-		"4 tools last time",
+		"4 tools when last checked",
 	]);
 });
 

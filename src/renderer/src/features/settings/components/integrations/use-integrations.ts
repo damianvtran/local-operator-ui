@@ -23,7 +23,10 @@
  * reload had just produced and then never asked again - is gone.
  */
 
-import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import {
+	DesktopControlError,
+	desktopResult,
+} from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
@@ -40,7 +43,7 @@ import {
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DesktopRequest } from "../../../../../../shared/desktop-contract";
 import type {
 	DesktopMcpState,
@@ -48,8 +51,11 @@ import type {
 } from "../../../../../../shared/desktop-control-contract";
 import {
 	type IntegrationDocument,
+	type RowMemories,
+	advanceMemories,
 	catalogFromSessionState,
 	integrationsPollInterval,
+	memoryFor,
 } from "./integration-model";
 
 /**
@@ -82,6 +88,91 @@ export const catalogCwdFor = (
 	if (!value) return null;
 	return value.startsWith("/") || WINDOWS_ABSOLUTE.test(value) ? value : null;
 };
+
+/**
+ * The folder a conversation works in, read out of its snapshot.
+ *
+ * WHY THE ROSTER IS NOT ENOUGH (QA round 1, Q1). `GET /v1/desktop/sessions`
+ * rows carry no `cwd`: only a row that THIS renderer created in its lifetime
+ * has one, so after an app reload - or for a chat started in the TUI - the page
+ * asked for the HOME catalog and every project-scoped server disappeared. The
+ * snapshot carries it (`GET /v1/desktop/sessions/<id>` answers
+ * `payload.frontend.snapshot.cwd`, verified against the backend head), so that
+ * is where it is resolved from.
+ *
+ * Every step is defensive: this walks a document that is not part of the typed
+ * contract, and a layer that is missing must answer "unknown folder" - which
+ * falls back to the home catalog - rather than throw inside a render.
+ */
+export function sessionCwdFromSnapshot(snapshot: unknown): string | null {
+	const payload = (snapshot as { payload?: unknown } | null | undefined)
+		?.payload;
+	const frontend = (payload as { frontend?: unknown } | null | undefined)
+		?.frontend;
+	const state = (frontend as { snapshot?: unknown } | null | undefined)
+		?.snapshot;
+	const cwd = (state as { cwd?: unknown } | null | undefined)?.cwd;
+	return typeof cwd === "string" && cwd.trim() ? cwd : null;
+}
+
+/**
+ * Where the last known folder per conversation is kept.
+ *
+ * The snapshot read is a round trip, and the reload case is exactly the one
+ * where the page would otherwise paint the home catalog first and the project
+ * rows a moment later. Storage is passed in rather than reached for, so the
+ * resolution can be tested without a DOM.
+ */
+export const CATALOG_CWD_STORAGE_KEY =
+	"local-operator.settings.integrations.last-cwd";
+export type CwdStorage = Pick<Storage, "getItem" | "setItem">;
+
+export function rememberCatalogCwd(
+	sessionId: string,
+	cwd: string | null,
+	storage: CwdStorage | null = typeof localStorage === "undefined"
+		? null
+		: localStorage,
+): void {
+	/*
+	 * Only an absolute path is stored, through the same predicate that decides
+	 * what the page may LEND: the store's default cwd is the literal `~`, and a
+	 * remembered `~` would overwrite a real folder and send the next reload back
+	 * to the home catalog - which is the regression this exists to fix.
+	 */
+	const remembered = catalogCwdFor(cwd);
+	if (!sessionId || !remembered || !storage) return;
+	try {
+		const raw = storage.getItem(CATALOG_CWD_STORAGE_KEY);
+		const table = raw ? (JSON.parse(raw) as Record<string, string>) : {};
+		if (table[sessionId] === remembered) return;
+		storage.setItem(
+			CATALOG_CWD_STORAGE_KEY,
+			JSON.stringify({ ...table, [sessionId]: remembered }),
+		);
+	} catch {
+		// A full or unavailable store is not a reason to fail a render: the
+		// snapshot read is still the authority, and this is only the first paint.
+	}
+}
+
+export function rememberedCatalogCwd(
+	sessionId: string | undefined,
+	storage: CwdStorage | null = typeof localStorage === "undefined"
+		? null
+		: localStorage,
+): string | null {
+	if (!sessionId || !storage) return null;
+	try {
+		const raw = storage.getItem(CATALOG_CWD_STORAGE_KEY);
+		if (!raw) return null;
+		const table = JSON.parse(raw) as Record<string, unknown>;
+		const value = table[sessionId];
+		return typeof value === "string" ? value : null;
+	} catch {
+		return null;
+	}
+}
 
 /** A catalog control, as the section asks for one. */
 export type IntegrationControl =
@@ -181,11 +272,26 @@ export type UseIntegrations = {
 	 * a test), or null when it started none; rejects with the transport's error.
 	 */
 	control: (request: IntegrationControl) => Promise<string | null>;
+	/**
+	 * What the page remembers about each row between reads (see `RowMemory`):
+	 * the last good check, the group a running operation is pinned to, and
+	 * whether a sign-in revealed that the server takes a key rather than a grant.
+	 */
+	memories: RowMemories;
+	/**
+	 * Record that a row's sign-in was refused because the server publishes no
+	 * OAuth metadata (`oauth_unsupported`), which is what makes the key route
+	 * the one to offer (U3). A refusal carries no operation, so this cannot be
+	 * derived from the document the way a failed sign-in can.
+	 */
+	markNeedsKey: (name: string) => void;
 	/** Store a server's key values, then test it. Resolves whether it saved. */
 	storeKeys: (
 		name: string,
 		values: Record<string, string>,
 		confirmedReplace: string[],
+		/** `add_key`'s header: set only when the config declares no reference. */
+		header?: string,
 	) => Promise<{ saved: boolean; message: string | null }>;
 };
 
@@ -228,14 +334,57 @@ export function useIntegrations({
 		void fetchSessions();
 	}, [route, activeSessionId, roster.length, fetchSessions]);
 
-	const cwd = route === "catalog" ? catalogCwdFor(active?.cwd) : null;
+	/*
+	 * The folder an active conversation lends the catalog (Q1). The roster row
+	 * is the freshest source when it has one; otherwise the conversation's
+	 * snapshot is asked, because a reload or a chat started elsewhere leaves the
+	 * roster row without a cwd and the project-scoped rows would vanish.
+	 */
+	const rosterCwd = route === "catalog" ? catalogCwdFor(active?.cwd) : null;
+	const needsSnapshotCwd =
+		route === "catalog" && Boolean(activeSessionId) && rosterCwd === null;
+	const snapshotCwdQuery = useQuery<unknown, Error>({
+		queryKey: ["desktop", "session-cwd", activeSessionId ?? ""],
+		queryFn: () =>
+			desktopResult<unknown>({
+				op: "sessions.get",
+				sessionId: activeSessionId ?? "",
+			}),
+		enabled: needsSnapshotCwd,
+		// A conversation's folder does not move on its own; re-asking on every
+		// focus would spend a round trip on the answer we already hold.
+		staleTime: Number.POSITIVE_INFINITY,
+		retry: false,
+	});
+	const resolvingCwd = needsSnapshotCwd && !snapshotCwdQuery.isFetched;
+	const resolvedCwd =
+		rosterCwd ??
+		catalogCwdFor(sessionCwdFromSnapshot(snapshotCwdQuery.data)) ??
+		// Only after the snapshot has ANSWERED with nothing: until then a
+		// remembered folder could be the one the user has since changed.
+		(snapshotCwdQuery.isFetched
+			? catalogCwdFor(rememberedCatalogCwd(activeSessionId))
+			: null);
+	const cwd = route === "catalog" ? resolvedCwd : null;
 	const overlay = route === "catalog" ? (activeSessionId ?? null) : null;
 	const catalogKey = mcpCatalogKeys.catalog(cwd, overlay);
+
+	// Every resolution is remembered, so the NEXT reload paints the right
+	// catalog on its first frame instead of the home one.
+	useEffect(() => {
+		if (route !== "catalog" || !activeSessionId || !cwd) return;
+		rememberCatalogCwd(activeSessionId, cwd);
+	}, [route, activeSessionId, cwd]);
 
 	const catalogQuery = useQuery<McpCatalog, Error>({
 		queryKey: catalogKey,
 		queryFn: () => fetchMcpCatalog(cwd, overlay),
-		enabled: route === "catalog",
+		/*
+		 * Held until the folder is known: asking now would read the home
+		 * catalog, paint an empty list, and then re-read - which is the reload
+		 * regression (Q1) with extra steps.
+		 */
+		enabled: route === "catalog" && !resolvingCwd,
 		staleTime: 10_000,
 		refetchInterval: (query) => integrationsPollInterval(query.state.data),
 	});
@@ -264,15 +413,54 @@ export function useIntegrations({
 		return undefined;
 	}, [route, catalogQuery.data, sessionQuery.data, readSessionId]);
 
+	/*
+	 * The memories are advanced INSIDE the memo rather than in an effect,
+	 * because the group a running operation pins must be known to the very
+	 * render that first sees the operation: an effect would lag one paint, which
+	 * is precisely the frame the row would visibly jump on (F5). The reducer is
+	 * idempotent for one document, so a double-invoked render cannot drift it.
+	 */
+	const memoriesRef = useRef<RowMemories>({});
+	const [memoryEpoch, setMemoryEpoch] = useState(0);
+	const memories = useMemo(() => {
+		void memoryEpoch;
+		memoriesRef.current = advanceMemories(memoriesRef.current, document);
+		return memoriesRef.current;
+	}, [document, memoryEpoch]);
+
+	const markNeedsKey = useCallback((name: string) => {
+		const before = memoryFor(memoriesRef.current, name);
+		if (before.needsKey) return;
+		memoriesRef.current = {
+			...memoriesRef.current,
+			[name]: { ...before, needsKey: true },
+		};
+		setMemoryEpoch((epoch) => epoch + 1);
+	}, []);
+
 	const control = useCallback(
 		async (request: IntegrationControl): Promise<string | null> => {
 			if (route === "catalog") {
 				const body = catalogControlBody(request);
 				// A live-runtime verb has no catalog form; `liveControl` routes it.
 				if (!body) return null;
-				const next = await controlMcpCatalog(cwd, body);
-				queryClient.setQueryData(catalogKey, next);
-				return next.operation?.id ?? null;
+				try {
+					const next = await controlMcpCatalog(cwd, body);
+					queryClient.setQueryData(catalogKey, next);
+					return next.operation?.id ?? null;
+				} catch (cause) {
+					/*
+					 * A REFUSAL CARRIES NO DOCUMENT (backend § 4.5), so the copy
+					 * that says the list was refreshed is only true once it IS
+					 * refreshed: the row the user just acted on may not exist any
+					 * more, and `unknown_server` is the code that says so
+					 * outright. Invalidate before rethrowing, so the refused
+					 * control both reports the refusal and re-reads the rows (F2).
+					 */
+					if (cause instanceof DesktopControlError && cause.status === 409)
+						void queryClient.invalidateQueries({ queryKey: catalogKey });
+					throw cause;
+				}
 			}
 			if (route === "session" && readSessionId) {
 				const envelope = await desktopResult<{
@@ -336,6 +524,7 @@ export function useIntegrations({
 			name: string,
 			values: Record<string, string>,
 			confirmedReplace: string[],
+			header?: string,
 		): Promise<{ saved: boolean; message: string | null }> => {
 			if (route === "catalog") {
 				const result = await storeMcpCatalogCredentials(
@@ -343,6 +532,7 @@ export function useIntegrations({
 					name,
 					values,
 					confirmedReplace,
+					header,
 				);
 				if (result.catalog)
 					queryClient.setQueryData(catalogKey, result.catalog);
@@ -354,9 +544,24 @@ export function useIntegrations({
 								? "A saved value already exists for this key. Tick “Replace saved values” to overwrite it."
 								: `Not saved: ${(result.failed_ids.length ? result.failed_ids : Object.keys(values)).join(", ")}. The encrypted store may be locked.`,
 					};
-				// A saved key is only worth something once the server accepts it, so
-				// the save is followed by a test and the row settles from that.
-				await control({ action: "test", name });
+				/*
+				 * A saved key is only worth something once the server accepts it, so
+				 * the save is followed by a test and the row settles from that.
+				 *
+				 * The follow-up is caught HERE rather than left to the caller: it
+				 * runs after the values are already stored, and a failure reaching
+				 * the dialog printed "The keys were not saved" about keys that
+				 * were - inviting a re-entry that then answers
+				 * `replace_confirmation_required` (F4). The row shows the server's
+				 * state from here, and a failed follow-up is the row's news, not
+				 * the dialog's.
+				 */
+				try {
+					await control({ action: "test", name });
+				} catch {
+					// Deliberately swallowed: the save is the promise this call
+					// makes, and it is kept.
+				}
 				return { saved: true, message: null };
 			}
 			if (route === "session" && readSessionId) {
@@ -377,7 +582,11 @@ export function useIntegrations({
 								? "A saved value already exists for this key. Tick “Replace saved values” to overwrite it."
 								: `Not saved: ${(stored.data?.failed_ids?.length ? stored.data.failed_ids : Object.keys(values)).join(", ")}. The encrypted store may be locked.`,
 					};
-				await control({ action: "connect", name });
+				try {
+					await control({ action: "connect", name });
+				} catch {
+					// Same reasoning as the catalog branch above (F4).
+				}
 				return { saved: true, message: null };
 			}
 			return { saved: false, message: null };
@@ -399,12 +608,14 @@ export function useIntegrations({
 		document,
 		isLoading:
 			capabilities.isLoading ||
-			(route === "catalog" && catalogQuery.isLoading) ||
+			(route === "catalog" && (resolvingCwd || catalogQuery.isLoading)) ||
 			(route === "session" &&
 				(readSessionId ? sessionQuery.isLoading : rosterLoading)),
 		isError: activeQuery.isError,
 		refetch,
 		control: liveControl,
 		storeKeys,
+		memories,
+		markNeedsKey,
 	};
 }

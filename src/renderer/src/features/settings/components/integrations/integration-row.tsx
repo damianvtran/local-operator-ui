@@ -33,13 +33,15 @@ import {
 } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { MoreHorizontal } from "lucide-react";
-import type { FC, Ref } from "react";
+import type { FC, KeyboardEvent, Ref } from "react";
 import type { McpCatalogOperation } from "../../../../../../shared/desktop-control-contract";
 import {
 	type IntegrationRow as IntegrationRowData,
+	NOT_CONNECTED_EXPLANATION,
 	type OverflowItem,
 	type PrimaryAction,
 	READY_EXPLANATION,
+	type RowMemories,
 	type StatusTone,
 	integrationMeta,
 	integrationStatus,
@@ -70,7 +72,19 @@ const STATUS_INK: Record<StatusTone, string> = {
 	warning: "text-warning",
 	danger: "text-danger",
 	info: "text-ink-muted",
-	neutral: "text-ink-muted",
+	/*
+	 * `ink-dim`, not `ink-muted`: a row asking for nothing states its state more
+	 * quietly than a connected one does, so the eye lands on the rows that need
+	 * something (D1). Measured 5.05:1 on `surface` in brand dark, and never
+	 * below 5.02 in the fleet.
+	 */
+	neutral: "text-ink-dim",
+};
+
+/** The tooltip a status carries, when it needs one at all. */
+const STATUS_EXPLANATION: Record<string, string> = {
+	Ready: READY_EXPLANATION,
+	"Not connected": NOT_CONNECTED_EXPLANATION,
 };
 
 /** A question the row asks inline before a destructive or account change. */
@@ -79,10 +93,18 @@ export type RowConfirm = { kind: "remove" | "sign_out" } | null;
 export type IntegrationRowProps = {
 	row: IntegrationRowData;
 	operations: readonly McpCatalogOperation[];
+	/** What the page remembers about each row (see `RowMemories`). */
+	memories?: RowMemories;
+	/** The clock, so a "worked N ago" label is testable. */
+	now?: number;
 	projectScopeAvailable: boolean;
 	/** The row a `/mcp <name>` deep link named. A colour step, never a ring. */
 	highlighted?: boolean;
 	rowRef?: Ref<HTMLLIElement>;
+	/** Focus goes here after an action on this row settles (U5, Q3). */
+	primaryRef?: Ref<HTMLButtonElement>;
+	/** Focus goes here after an inline confirm is dismissed with Keep. */
+	overflowRef?: Ref<HTMLButtonElement>;
 	/** A control on this row is in flight, so its controls are disabled. */
 	pending: boolean;
 	/** The last failure for THIS row, already worded, or null. */
@@ -97,9 +119,13 @@ export type IntegrationRowProps = {
 export const IntegrationRow: FC<IntegrationRowProps> = ({
 	row,
 	operations,
+	memories,
+	now,
 	projectScopeAvailable,
 	highlighted = false,
 	rowRef,
+	primaryRef,
+	overflowRef,
 	pending,
 	failure,
 	confirm,
@@ -108,7 +134,7 @@ export const IntegrationRow: FC<IntegrationRowProps> = ({
 	onConfirm,
 	onCancelConfirm,
 }) => {
-	const status = integrationStatus(row, operations);
+	const status = integrationStatus(row, operations, memories, now);
 	/*
 	 * On a deep-linked row, "Couldn't start" drops to `ink`: `danger` as text
 	 * measured 4.23-4.47:1 on `row-selected` in six palettes, and the red dot
@@ -118,8 +144,8 @@ export const IntegrationRow: FC<IntegrationRowProps> = ({
 		highlighted && status.tone === "danger"
 			? "text-ink"
 			: STATUS_INK[status.tone];
-	const primary = primaryAction(row, operations);
-	const items = overflowItems(row, operations);
+	const primary = primaryAction(row, operations, memories);
+	const items = overflowItems(row, operations, memories);
 	const meta = integrationMeta(row, projectScopeAvailable);
 	const destructiveAt = items.findIndex(
 		(item) => item.kind === "remove" || item.kind === "remove_elsewhere",
@@ -134,6 +160,21 @@ export const IntegrationRow: FC<IntegrationRowProps> = ({
 				"flex min-h-14 flex-col justify-center gap-1 px-4 py-2.5",
 				highlighted && "bg-row-selected",
 			)}
+			/*
+			 * ESCAPE DISMISSES A QUESTION THIS ROW IS ASKING (U5, Q3), and it is
+			 * caught HERE rather than on the confirm itself: dismissing the menu
+			 * hands focus back to the row's trigger (Radix's own restore), so a key
+			 * pressed while the confirm is open lands on a control OUTSIDE the
+			 * confirm - measured live, where the driver's Escape left the confirm
+			 * on screen with focus on "More actions for X". The row contains both,
+			 * so the handler sees the key either way, and only while a question is
+			 * actually open.
+			 */
+			onKeyDown={(event: KeyboardEvent<HTMLLIElement>) => {
+				if (!confirm || event.key !== "Escape") return;
+				event.stopPropagation();
+				onCancelConfirm();
+			}}
 		>
 			<div className="flex items-center gap-3">
 				<span className="flex size-4 shrink-0 items-center justify-center">
@@ -148,7 +189,13 @@ export const IntegrationRow: FC<IntegrationRowProps> = ({
 					)}
 				</span>
 				<div className="flex min-w-0 flex-1 flex-col">
-					<span className="truncate font-medium text-body text-ink">
+					{/* The full name, for a row narrow enough to truncate it (Q5):
+					    at the 800 px window minimum a long name has an ellipsis and
+					    nowhere else on the row to be read. */}
+					<span
+						className="truncate font-medium text-body text-ink"
+						title={row.name}
+					>
 						{row.name}
 					</span>
 					<span className="truncate text-ink-dim text-meta">
@@ -170,11 +217,9 @@ export const IntegrationRow: FC<IntegrationRowProps> = ({
 						))}
 					</span>
 				</div>
-				{status.label === "Ready" ? (
-					<Tooltip content={READY_EXPLANATION}>
-						<span
-							className={cn("shrink-0 text-body-sm", STATUS_INK[status.tone])}
-						>
+				{STATUS_EXPLANATION[status.label] ? (
+					<Tooltip content={STATUS_EXPLANATION[status.label]}>
+						<span className={cn("shrink-0 text-body-sm", statusInk)}>
 							{status.label}
 						</span>
 					</Tooltip>
@@ -185,8 +230,22 @@ export const IntegrationRow: FC<IntegrationRowProps> = ({
 				)}
 				{primary ? (
 					<Button
-						variant="secondary"
+						ref={primaryRef}
+						/*
+						 * A ghost only for the first, unprobed Test (D1): the
+						 * outlined weight belongs to the rows that are actually
+						 * asking for something, or the list reads as a column of
+						 * identical buttons again (audit D8).
+						 */
+						variant={primary.variant ?? "secondary"}
 						size="sm"
+						/**
+						 * The accessible name carries the ROW, because six rows all
+						 * offering "Test" are six identical buttons to a screen
+						 * reader or to voice control (Q3). The visible label leads
+						 * the name, so "Test" still matches by voice.
+						 */
+						aria-label={`${primary.label} ${row.name}`}
 						disabled={pending}
 						data-integration-action={primary.kind}
 						onClick={() => onPrimary(primary)}
@@ -198,6 +257,7 @@ export const IntegrationRow: FC<IntegrationRowProps> = ({
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
 						<Button
+							ref={overflowRef}
 							variant="ghost"
 							size="icon-sm"
 							aria-label={`More actions for ${row.name}`}
@@ -248,6 +308,15 @@ export const IntegrationRow: FC<IntegrationRowProps> = ({
 							? `Remove ${row.name}?`
 							: `Sign out of ${row.name}?`}
 					</span>
+					{/* What the press actually does (U6): "Remove" alone does not say
+					    that every chat loses the server. */}
+					<span className="text-body-sm text-ink-muted">
+						{confirm.kind === "remove"
+							? `Agents in every chat lose access to ${row.name}.`
+							: row.auth.kind === "oauth"
+								? "The saved sign-in is removed too."
+								: "Its saved credential is removed too."}
+					</span>
 					<Button
 						variant="danger"
 						size="sm"
@@ -275,7 +344,13 @@ const OverflowEntry: FC<{
 		{item.kind === "remove_elsewhere" ? (
 			<DropdownMenuItem disabled className="flex-col items-start gap-0.5">
 				<span>{item.label}</span>
-				<span className="text-meta">{item.hint}</span>
+				{/*
+				 * The hint is EXPLANATORY COPY, not a disabled control, so it does
+				 * not inherit `ink-disabled` - which is exempt from a contrast
+				 * floor because it marks a control as off, and measured 1.99:1 on
+				 * the menu's ground (D2). `ink-dim` measures 5.25:1 there.
+				 */}
+				<span className="text-meta text-ink-dim">{item.hint}</span>
 			</DropdownMenuItem>
 		) : (
 			<DropdownMenuItem

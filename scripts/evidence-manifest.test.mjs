@@ -800,6 +800,14 @@ const STAMP_BINDING_NOTES = [
 	"usageInFlightConvergenceNote",
 	"macNativeComponentsRestampNote",
 	"telemetrySwitchRestampNote",
+	/*
+	 * The newest one, and the reason the list is maintained rather than fixed:
+	 * `integrationsRedesignRestampNote` states this file's OWN pair for UI PR B
+	 * (`fix(settings): answer review round 1 on the Integrations redesign`), which
+	 * re-derived both stamps when the branch moved `src/` and `scripts/`, so it is
+	 * held to that pair rather than read as history.
+	 */
+	"integrationsRedesignRestampNote",
 	// The seventh: `readReceiptRestampNote` states this file's own pair for the
 	// read-receipt branch, so it is held to that pair rather than read as history -
 	// the distinction `candidateMacArchRestampNote` above is in the list for.

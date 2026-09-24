@@ -20,9 +20,25 @@
  */
 
 import { Spinner } from "@shared/components/common/spinner";
-import { Button, Input, Label, Textarea } from "@shared/components/ui";
+import {
+	Button,
+	Input,
+	Label,
+	Tabs,
+	TabsContent,
+	TabsList,
+	TabsTrigger,
+	Textarea,
+} from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
-import { type FC, type FormEvent, useState } from "react";
+import {
+	type FC,
+	type FormEvent,
+	type KeyboardEvent,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import {
 	integrationNameProblem,
 	integrationUrlProblem,
@@ -63,6 +79,14 @@ export type AddIntegrationFormProps = {
 export const ADD_INTEGRATION_PICKUP_NOTE =
 	"New chats can use it right away. A chat that's already open picks it up after /mcp reload.";
 
+/**
+ * One line on which transport to pick, because the pair does not explain itself
+ * (N2): a user who has an `npx` line from a README has no way to know whether
+ * that is "Local command" or a URL.
+ */
+export const TRANSPORT_HINT =
+	"Most services give you a URL. Use Local command when their setup says npx or uvx.";
+
 export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 	existingNames,
 	projectScopeAvailable,
@@ -86,6 +110,18 @@ export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
+	/*
+	 * Focus follows the form (U5): opening it puts the caret in Name, and a
+	 * refused submit goes to the field that is actually wrong rather than
+	 * leaving the reader on the button with a sentence somewhere above it.
+	 */
+	const nameRef = useRef<HTMLInputElement>(null);
+	const commandRef = useRef<HTMLInputElement>(null);
+	const urlRef = useRef<HTMLInputElement>(null);
+	useEffect(() => {
+		nameRef.current?.focus();
+	}, []);
+
 	const nameProblem = integrationNameProblem(name, existingNames);
 	const commandProblem =
 		mode === "command" && !command.trim() ? "Enter the command to run." : null;
@@ -95,7 +131,12 @@ export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 	const submit = async (event: FormEvent) => {
 		event.preventDefault();
 		setSubmitted(true);
-		if (nameProblem || commandProblem || urlProblem) return;
+		if (nameProblem || commandProblem || urlProblem) {
+			if (nameProblem) nameRef.current?.focus();
+			else if (commandProblem) commandRef.current?.focus();
+			else urlRef.current?.focus();
+			return;
+		}
 		setSaving(true);
 		setError(null);
 		const effectiveScope = projectScopeAvailable ? scope : "global";
@@ -127,13 +168,24 @@ export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 			aria-label="Add integration"
 			className="flex flex-col gap-4 rounded-lg bg-surface p-4"
 			onSubmit={(event) => void submit(event)}
+			/*
+			 * Escape cancels, the same way it closes the dialogs and the inline
+			 * confirms (U5). Claimed on the form itself, so the key is only
+			 * swallowed while the form has focus.
+			 */
+			onKeyDown={(event: KeyboardEvent<HTMLFormElement>) => {
+				if (event.key !== "Escape") return;
+				event.stopPropagation();
+				onCancel();
+			}}
 		>
 			<div className="flex flex-col gap-1.5">
 				<Label htmlFor="integration-add-name">Name</Label>
 				<Input
+					ref={nameRef}
 					id="integration-add-name"
 					value={name}
-					placeholder="notion"
+					placeholder="e.g. notion"
 					autoComplete="off"
 					aria-invalid={Boolean(nameProblem && show("name"))}
 					aria-describedby={
@@ -146,45 +198,48 @@ export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 				/>
 				{fieldError("integration-add-name-error", nameProblem, "name")}
 			</div>
-			<fieldset className="flex flex-col gap-1.5">
-				<legend className="mb-1.5 font-medium text-body-sm text-ink">
+			{/*
+			 * The two pickers are the app's SHARED segmented control (D4): as two
+			 * independent buttons with `aria-pressed`, the unselected one read as
+			 * a bare link beside a button rather than the other half of a
+			 * mutually exclusive pair. The `data-integration-*` hooks stay, because
+			 * the live scene drives this axis the way a user does.
+			 */}
+			{/*
+			 * ONE segmented control per axis, and the panels belong to it (D4):
+			 * as two independent buttons with `aria-pressed`, the unselected one
+			 * read as a bare link beside a button rather than the other half of a
+			 * mutually exclusive pair. The `data-integration-*` hooks stay,
+			 * because the live scene drives this axis the way a user does.
+			 */}
+			<Tabs
+				value={mode}
+				onValueChange={(value) => setMode(value === "url" ? "url" : "command")}
+				className="flex flex-col gap-1.5"
+			>
+				<span
+					id="integration-add-transport-label"
+					className="font-medium text-body-sm text-ink"
+				>
 					How it runs
-				</legend>
-				<div className="flex gap-2">
-					<Button
-						type="button"
-						variant={mode === "command" ? "secondary" : "ghost"}
-						size="sm"
-						aria-pressed={mode === "command"}
-						// A stable handle for the live scene, which drives this pair
-						// the way a user does rather than past it (the wording of
-						// these two is a design decision and may change; the axis
-						// they choose between may not).
-						data-integration-transport="command"
-						onClick={() => setMode("command")}
-					>
+				</span>
+				<TabsList aria-labelledby="integration-add-transport-label">
+					<TabsTrigger value="command" data-integration-transport="command">
 						Local command
-					</Button>
-					<Button
-						type="button"
-						variant={mode === "url" ? "secondary" : "ghost"}
-						size="sm"
-						aria-pressed={mode === "url"}
-						data-integration-transport="url"
-						onClick={() => setMode("url")}
-					>
+					</TabsTrigger>
+					<TabsTrigger value="url" data-integration-transport="url">
 						Remote URL
-					</Button>
-				</div>
-			</fieldset>
-			{mode === "command" ? (
-				<>
+					</TabsTrigger>
+				</TabsList>
+				<p className="text-ink-dim text-meta">{TRANSPORT_HINT}</p>
+				<TabsContent value="command" className="mt-0 flex flex-col gap-4">
 					<div className="flex flex-col gap-1.5">
 						<Label htmlFor="integration-add-command">Command</Label>
 						<Input
+							ref={commandRef}
 							id="integration-add-command"
 							value={command}
-							placeholder="npx"
+							placeholder="e.g. npx"
 							autoComplete="off"
 							className="font-mono"
 							aria-invalid={Boolean(commandProblem && show("command"))}
@@ -215,60 +270,61 @@ export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 							onChange={(event) => setArgs(event.target.value)}
 						/>
 					</div>
-				</>
-			) : (
-				<div className="flex flex-col gap-1.5">
-					<Label htmlFor="integration-add-url">URL</Label>
-					<Input
-						id="integration-add-url"
-						type="url"
-						value={url}
-						placeholder="https://mcp.example.com/mcp"
-						autoComplete="off"
-						className="font-mono"
-						aria-invalid={Boolean(urlProblem && show("url"))}
-						aria-describedby={
-							urlProblem && show("url")
-								? "integration-add-url-error"
-								: "integration-add-url-help"
-						}
-						onChange={(event) => setUrl(event.target.value)}
-						onBlur={() => setTouched((t) => ({ ...t, url: true }))}
-					/>
-					{fieldError("integration-add-url-error", urlProblem, "url") ?? (
-						<p id="integration-add-url-help" className="text-ink-dim text-meta">
-							If it needs a sign-in or a key, you'll be asked after it's added.
-						</p>
-					)}
-				</div>
-			)}
-			{projectScopeAvailable ? (
-				<fieldset className="flex flex-col gap-1.5">
-					<legend className="mb-1.5 font-medium text-body-sm text-ink">
-						Available in
-					</legend>
-					<div className="flex gap-2">
-						<Button
-							type="button"
-							variant={scope === "global" ? "secondary" : "ghost"}
-							size="sm"
-							aria-pressed={scope === "global"}
-							data-integration-scope="global"
-							onClick={() => setScope("global")}
-						>
-							All chats
-						</Button>
-						<Button
-							type="button"
-							variant={scope === "project" ? "secondary" : "ghost"}
-							size="sm"
-							aria-pressed={scope === "project"}
-							data-integration-scope="project"
-							onClick={() => setScope("project")}
-						>
-							This project
-						</Button>
+				</TabsContent>
+				<TabsContent value="url" className="mt-0 flex flex-col gap-4">
+					<div className="flex flex-col gap-1.5">
+						<Label htmlFor="integration-add-url">URL</Label>
+						<Input
+							ref={urlRef}
+							id="integration-add-url"
+							type="url"
+							value={url}
+							placeholder="https://mcp.example.com/mcp"
+							autoComplete="off"
+							className="font-mono"
+							aria-invalid={Boolean(urlProblem && show("url"))}
+							aria-describedby={
+								urlProblem && show("url")
+									? "integration-add-url-error"
+									: "integration-add-url-help"
+							}
+							onChange={(event) => setUrl(event.target.value)}
+							onBlur={() => setTouched((t) => ({ ...t, url: true }))}
+						/>
+						{fieldError("integration-add-url-error", urlProblem, "url") ?? (
+							<p
+								id="integration-add-url-help"
+								className="text-ink-dim text-meta"
+							>
+								If it needs a sign-in or a key, you'll be asked after it's
+								added.
+							</p>
+						)}
 					</div>
+				</TabsContent>
+			</Tabs>
+			{projectScopeAvailable ? (
+				<Tabs
+					value={scope}
+					onValueChange={(value) =>
+						setScope(value === "project" ? "project" : "global")
+					}
+					className="flex flex-col gap-1.5"
+				>
+					<span
+						id="integration-add-scope-label"
+						className="font-medium text-body-sm text-ink"
+					>
+						Available in
+					</span>
+					<TabsList aria-labelledby="integration-add-scope-label">
+						<TabsTrigger value="global" data-integration-scope="global">
+							All chats
+						</TabsTrigger>
+						<TabsTrigger value="project" data-integration-scope="project">
+							This project
+						</TabsTrigger>
+					</TabsList>
 					{projectLabel ? (
 						<p className="text-ink-dim text-meta">
 							{scope === "project"
@@ -276,7 +332,7 @@ export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 								: "Every chat, in any folder."}
 						</p>
 					) : null}
-				</fieldset>
+				</Tabs>
 			) : null}
 			{error ? (
 				<p className="text-body-sm text-danger" role="alert">
@@ -285,7 +341,8 @@ export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 			) : null}
 			<div className="flex flex-wrap items-center justify-between gap-3">
 				<p className={cn("text-body-sm text-ink-dim")}>
-					{ADD_INTEGRATION_PICKUP_NOTE}
+					New chats can use it right away. A chat that's already open picks it
+					up after <span className="font-mono text-mono-sm">/mcp reload</span>.
 				</p>
 				<div className="flex gap-2">
 					<Button type="button" variant="ghost" size="md" onClick={onCancel}>

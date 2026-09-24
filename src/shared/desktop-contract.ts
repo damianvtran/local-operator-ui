@@ -1704,6 +1704,16 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("mcp.catalog.credentials"),
+			/*
+			 * WHICH HEADER OR ENV NAME THE KEY BELONGS TO (backend #1511
+			 * `aa927158a`). A server with no `${ID}` reference has nothing for the
+			 * catalog's own `set_key` to fill, so the credential write names the
+			 * header itself and the backend adds `headers[header] = "${ID}"` to the
+			 * defining file. Refused (`invalid_target`) for a header the transport
+			 * owns, one already set, a malformed name, or an invalid id - and
+			 * refused with NOTHING written.
+			 */
+			header: z.string().min(1).max(128).optional(),
 			cwd: mcpCatalogCwd.optional(),
 			name: mcpServerName,
 			values: z
@@ -3683,6 +3693,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 				body: {
 					name: request.name,
 					values: request.values,
+					// `add_key`'s one extra field: which HTTP header the key
+					// travels in, for a server that declares no `${ID}` yet. The
+					// backend binds `headers[header] = "${ID}"` for the single id in
+					// `values` and stores the value beside it.
+					...(request.header ? { header: request.header } : {}),
 					confirmed_replace: request.confirmedReplace,
 					...(request.cwd ? { cwd: request.cwd } : {}),
 				},

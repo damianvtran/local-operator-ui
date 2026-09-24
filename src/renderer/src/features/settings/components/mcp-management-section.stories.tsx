@@ -34,6 +34,7 @@ import type {
 	McpCatalogOperation,
 	McpCatalogRow,
 } from "../../../../../shared/desktop-control-contract";
+import { IntegrationKeyDialog } from "./integrations/integration-key-dialog";
 import { McpManagementSection } from "./mcp-management-section";
 
 /* --------------------------------------------------------------- bridge */
@@ -63,6 +64,8 @@ const installBridge = (handlers: {
 	/** Serve the older session route instead of the catalog. */
 	session?: DesktopMcpState;
 	roster?: RosterRow[];
+	/** What a conversation's own snapshot answers, for the cwd resolution (Q1). */
+	snapshotCwd?: string;
 	loading?: boolean;
 }) => {
 	const { session, roster = [] } = handlers;
@@ -103,6 +106,24 @@ const installBridge = (handlers: {
 				return ok({ data: session, replayed: false });
 			case "sessions.list":
 				return ok({ sessions: roster, truncated: false });
+			case "sessions.get":
+				/*
+				 * The roster row carries no cwd, so a chat this renderer did not
+				 * create has its folder resolved from here (Q1). A story that sets
+				 * neither this nor a roster row's cwd is the honest unknown-folder
+				 * case, and the page asks for the home catalog.
+				 */
+				return ok({
+					payload: {
+						frontend: {
+							snapshot: handlers.snapshotCwd
+								? { cwd: handlers.snapshotCwd }
+								: {},
+						},
+						history: { entries: [] },
+						cold: true,
+					},
+				});
 			default:
 				throw new Error(`unexpected desktop op in this story: ${request.op}`);
 		}
@@ -138,7 +159,7 @@ const row = (
 	id: name,
 	name,
 	scope: "global",
-	project_path: null,
+	project_cwd: null,
 	source: {
 		kind: "local-operator",
 		path: GLOBAL_FILE,
@@ -221,7 +242,7 @@ const IMPORTED_GITLAB = row("gitlab", {
 
 const PROJECT_POSTGRES = row("postgres", {
 	scope: "project",
-	project_path: `${HOME}/code/billing`,
+	project_cwd: `${HOME}/code/billing`,
 	transport: "local_command",
 	endpoint: { command: "uvx", url: null, endpoint_redacted: false },
 	source: {
@@ -230,6 +251,29 @@ const PROJECT_POSTGRES = row("postgres", {
 		editable: true,
 		owned_scope: "project",
 	},
+});
+
+/**
+ * A remote server that needs a key. The backend's own shape for this row
+ * (#1511 `aa927158a`): `add_key` REPLACES `sign_in` for a server it owns that
+ * declares no reference, so a page that still offered sign-in here would be
+ * offering a button that cannot work.
+ */
+const NEEDS_A_KEY_ACME = row("acme-api", {
+	status: "needs_sign_in",
+	auth: { kind: "api_key", signed_in: false, secret_refs: [] },
+	actions: ["test", "add_key", "remove"],
+});
+
+/**
+ * A live runtime's row: a chat has this server configured and is not connected.
+ * `not_started` with a LIVE basis is not "Ready" (F3).
+ */
+const LIVE_NOT_CONNECTED = row("notion", {
+	status: "not_started",
+	status_basis: "live",
+	auth: { kind: "oauth", signed_in: true, secret_refs: [] },
+	actions: ["test", "connect", "sign_out", "remove"],
 });
 
 const catalog = (
@@ -272,6 +316,29 @@ const op = (
 });
 
 /* --------------------------------------------------------------- ground */
+
+/**
+ * The key dialog as the keyless case mounts it, held open for a still.
+ *
+ * Rendered directly because the state is reached by a press that a story cannot
+ * make (the page only opens it after a refused sign-in), and the dialog's own
+ * behaviour is what this frame is about.
+ */
+const KeylessKeyDialog = () => (
+	<div className="min-h-screen bg-canvas p-6">
+		<div className="mx-auto w-full max-w-3xl">
+			<IntegrationKeyDialog
+				name="acme-api"
+				keyNames={[]}
+				keyless
+				saving={false}
+				failure={null}
+				onSave={() => undefined}
+				onClose={() => undefined}
+			/>
+		</div>
+	</div>
+);
 
 const Ground = ({
 	highlight,
@@ -550,7 +617,7 @@ export const SignInReady: Story = {
 	},
 	play: async () => {
 		await userEvent.click(
-			await screen.findByRole("button", { name: "Sign in" }),
+			await screen.findByRole("button", { name: /^Sign in/ }),
 		);
 		await screen.findByText(/opens your browser/);
 	},
@@ -581,7 +648,7 @@ export const SigningIn: Story = {
 	},
 	play: async () => {
 		await userEvent.click(
-			await screen.findByRole("button", { name: "Sign in" }),
+			await screen.findByRole("button", { name: /^Sign in/ }),
 		);
 		await userEvent.click(
 			await screen.findByRole("button", { name: "Continue in browser" }),
@@ -613,7 +680,7 @@ export const SignInNoBrowser: Story = {
 	},
 	play: async () => {
 		await userEvent.click(
-			await screen.findByRole("button", { name: "Sign in" }),
+			await screen.findByRole("button", { name: /^Sign in/ }),
 		);
 		await userEvent.click(
 			await screen.findByRole("button", { name: "Continue in browser" }),
@@ -644,7 +711,7 @@ export const SignInFailed: Story = {
 	},
 	play: async () => {
 		await userEvent.click(
-			await screen.findByRole("button", { name: "Sign in" }),
+			await screen.findByRole("button", { name: /^Sign in/ }),
 		);
 		await userEvent.click(
 			await screen.findByRole("button", { name: "Continue in browser" }),
@@ -661,7 +728,7 @@ export const AddKey: Story = {
 	},
 	play: async () => {
 		await userEvent.click(
-			await screen.findByRole("button", { name: "Add key" }),
+			await screen.findByRole("button", { name: /^Add key/ }),
 		);
 		await screen.findByLabelText("BRAVE_API_KEY");
 	},
@@ -746,6 +813,96 @@ export const FilteredEmpty: Story = {
 
 /** The catalog's empty state, under the id the evidence table already names. */
 export const NoServers: Story = Empty;
+
+/** A sign-out in flight: the row says what it is doing, not "Connecting…" (U2). */
+export const SigningOut: Story = {
+	render: () => {
+		installBridge({
+			catalog: catalog([CONNECTED_NOTION], {
+				operations: [
+					op("notion", {
+						action: "logout",
+						status: "running",
+						browser_opened: null,
+					}),
+				],
+			}),
+		});
+		return <Ground />;
+	},
+};
+
+/**
+ * Signed out: the credential is gone, so the row says so and leads with Sign in
+ * rather than decaying into the idle word (U2).
+ */
+export const SignedOut: Story = {
+	render: () => {
+		installBridge({
+			catalog: catalog(
+				[
+					row("notion", {
+						status: "not_started",
+						status_basis: "stored",
+						auth: { kind: "oauth", signed_in: false, secret_refs: [] },
+						actions: ["test", "sign_in", "remove"],
+					}),
+				],
+				{
+					operations: [
+						op("notion", {
+							action: "logout",
+							status: "complete",
+							credential_removed: true,
+						}),
+					],
+				},
+			),
+		});
+		return <Ground />;
+	},
+};
+
+/**
+ * A server with no OAuth discovery: the sign-in came back saying so, and the row
+ * offers the key that can actually work (U3).
+ */
+export const NeedsAKey: Story = {
+	render: () => {
+		installBridge({
+			catalog: catalog([NEEDS_A_KEY_ACME], {
+				operations: [
+					op("acme-api", {
+						status: "failed",
+						message:
+							"No OAuth authorization server was discovered for this server; check its URL and your network, or add its key instead.",
+					}),
+				],
+			}),
+		});
+		return <Ground />;
+	},
+};
+
+/** A live chat's idle row: "Not connected", with Connect as its one action (F3). */
+export const NotConnected: Story = {
+	render: () => {
+		installBridge({ catalog: catalog([LIVE_NOT_CONNECTED]) });
+		return <Ground />;
+	},
+};
+
+/**
+ * The key dialog for a server whose config declares no reference (U3): it asks
+ * for the key's NAME as well, and offers no "replace" checkbox because there is
+ * nothing saved to replace (D10).
+ */
+export const AddKeyWithoutAReference: Story = {
+	render: () => {
+		installBridge({ catalog: catalog([NEEDS_A_KEY_ACME]) });
+		return <KeylessKeyDialog />;
+	},
+};
 
 /* ------------------------------------------------------------------ */
 /* An older backend: the session route, rendered through the same rows  */
