@@ -191,7 +191,7 @@ const LiveProbe: FC = () => {
 				__lastWarning?: string;
 			};
 			setReadout(
-				`probe notice=${notice ? `${notice.kind}/${notice.revision}` : "none"} toaster=${document.querySelectorAll("[data-sonner-toaster]").length} toasts=${document.querySelectorAll("[data-sonner-toast]").length} warningCalls=${page.__warningCalls ?? 0} dismissCalls=${page.__dismissCalls ?? 0} last=${JSON.stringify(page.__lastWarning ?? null)}`,
+				`probe notice=${notice ? `${notice.kind}/${notice.revision}` : "none"} toaster=${document.querySelectorAll("[data-sonner-toaster]").length} toasts=${document.querySelectorAll("[data-sonner-toast]").length} box=${(() => { const el = document.querySelector("[data-sonner-toast]"); if (!el) return "none"; const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return `${Math.round(r.width)}x${Math.round(r.height)}@${Math.round(r.x)},${Math.round(r.y)} mounted=${el.getAttribute("data-mounted")} op=${cs.opacity} vis=${cs.visibility} disp=${cs.display}`; })()} warningCalls=${page.__warningCalls ?? 0} dismissCalls=${page.__dismissCalls ?? 0} last=${JSON.stringify(page.__lastWarning ?? null)}`,
 			);
 		}, 250);
 		return () => clearInterval(timer);
