@@ -889,8 +889,7 @@ export function sendFailureCopy(
 	 * drop the only fact the user has to act on, and the code is what makes this
 	 * distinguishable from a bare throw, whose text is a leaked exception.
 	 */
-	if (code)
-		return { message: fallback, retry: !retryWillFail(code), code };
+	if (code) return { message: fallback, retry: !retryWillFail(code), code };
 	/*
 	 * And the last arm: a failure with no code at all - a raw throw, or a response
 	 * that never arrived. There is nothing to quote, so the app states what it knows.
@@ -1152,8 +1151,8 @@ export function isRefusedBeforeAdmission(error: unknown): boolean {
 	 * raised before anything is written to the draft and before the transport is
 	 * reached, so "nothing reached the owner" is exactly as true of it as of a
 	 * 413 - and the composer reads this one predicate to decide whether the text
-	 * goes back in the box (`false`) or stays out because the outcome is unknowable
-	 * (`SEND_HELD`). A second copy of that judgement at the call site is how the
+	 * goes back in the box (`false`) or the outcome is unknowable and the notice says
+	 * so. A second copy of that judgement at the call site is how the
 	 * two come to disagree about one refusal.
 	 */
 	/*
