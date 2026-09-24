@@ -22,6 +22,166 @@ slot in when it lands.
 
 ---
 
+## Addendum — this document's rulings were revised on 2026-09-23
+
+Recorded here rather than edited in place, for the reason
+`docs/design/sidebar-conversation-browser.md` gives for its own reversal note: the
+sections below are the record of what was decided, and this is what keeps that record
+from reading as the contract. Each one was an operator report about the shipped
+surfaces, and each is now built — these are the amendments, not proposals.
+
+**1. §7.3's "the click keeps navigating to `/browser`" is superseded — it prefers the
+ASKING CONVERSATION.** The alternative §7.3 rejected ("having the click open the pane
+in the asking conversation's route") was rejected for breaking "the one property the
+fix was made for, that the click works from anywhere without knowing which
+conversation is open". The click still works from anywhere: it reads the requester on
+the event, never the conversation that happens to be open. What the rejection cost was
+the request's own context — the operator reported the click "does nothing and they
+must click the tab by hand", because it navigated a route in a window that was never
+brought forward (see 2). So the landing rule is now: the asking conversation's pane
+when the requester names a conversation the app can show, and `/browser` otherwise
+(`consentClickTarget`, `shared/browser-consent-attention.ts`), with the named request
+in the pane's tray either way.
+
+**2. The banner click RAISES THE WINDOW, where it deliberately did not before.**
+`consent-notifier.ts` used to record "the click therefore only tells the renderer to
+bring the browser route forward; the app's own `window-raise.ts` is still the only
+module that decides whether a window comes up, and this one never calls it". That is
+still true — this module still never calls it — and the WIRING now does
+(`consent-click.ts`, trigger `banner-click`). The banner exists for the window that is
+behind another application or on another Space (design 9.2), so a click that lands
+*nothing there* is the failure it was raised to prevent. The mode gate is unchanged:
+a `never` plan raises nothing and reports nothing.
+
+**3. §5.3's contrast row is right for a reason it did not have at the time, and the
+badge has a FOURTH host: the APP RAIL.** The rail's Browser item now carries the live
+count across every conversation (`use-app-wide-approvals.ts`) — the same
+`Badge variant="attention" shape="pill"` §5.1 specifies, on the rail's `surface`
+ground, which is the `["canvas", "surface"]` row §5.3 asked for and D8 deleted (the
+chat pane's header, the second ground D8's argument rested on, turned out to be
+`canvas` in the shipped tree; the rail is the `surface` host that makes the entry
+true). This restores, on the rail rather than per row, the capability the 2026-09-18
+removal recorded as lost in `sidebar-conversation-browser.md` ("it was the only surface
+reporting ANOTHER conversation's pending browser approvals without opening the browser
+— the sidebar now reports nothing at all"). It is also the answer to the requests no
+conversation's badge can carry: the map behind §5.1 is keyed on `requesterSessionId`, so
+a request raised by a subagent — whose own session id is a valid requester and not a
+conversation the app lists — or by a caller the host could not attribute lights NO
+conversation's badge. The rail's count includes those, deliberately and by name in its
+own docstring.
+
+**4. The header's Globe trigger no longer unmounts with its pane.** The implementation
+recorded that rule as a COST in `sidebar-conversation-browser.md` ("the header's Globe
+is unmounted while the pane is open" — the "one-line follow-up" that note said was
+"deliberately not implemented"), and the operator's report is that cost being paid: the
+badge is the only chrome that reports this conversation's count, so a trigger that
+leaves with the pane takes the number with it (`docs/evidence/browser-pane-live/` reads
+`badge: null` beside three live requests, with the pane open). Both halves of the
+original reasoning are answered rather than overruled: the trigger is a TOGGLE — it
+closes the pane, so it is not "a no-op with a tooltip" — and it stays mounted whether
+or not a badge is drawn, so nothing unmounts under a pointer or a caret. Its two
+neighbours in the cluster still hide, and what discriminates is what each control
+CARRIES: a mark the open pane already shows, versus a count it does not.
+
+**5. THE THREE COUNTS HAVE THREE SCOPES, DELIBERATELY, and they are meant to
+disagree.** The rail counts every live request in the app (unattributed ones included);
+the chat header counts THIS conversation's, because it is that conversation's control;
+the URL bar counts its own surface's scope. QA measured the first two disagreeing on one
+screen (rail "4" against the URL-bar chip's "2") and correctly did not raise it — this
+paragraph exists so the next reader does not "fix" the difference either. Each is
+arithmetic over the same projection and the same clock; what differs is the question,
+and §5.1's grammar is about how a number looks, not about which number.
+
+**6. A CLICK WHILE THE USER IS ALREADY ON `/browser` MOVES THEM OFF IT, and that is the
+accepted cost of 1 above** (UX round 1, U3: reproduced, S3). The route shows every live
+request; landing prefers the asking conversation, so the click narrows the view to the
+tray of the conversation that asked — the named request is still on screen, and the
+queue view is one press away. The alternative (keep the route when the named entry is
+already visible on it) would make the landing rule depend on which route the user
+happened to be on, which is exactly the "works from anywhere without knowing what is
+open" property the original rejection was protecting.
+
+**7. THE COLLAPSED RAIL'S BADGE IS UNCAPPED, AND ITS EDGE ROLE IS `ink-muted`.**
+The edge role is what lets one role clear the 3:1 non-text floor on all four grounds
+this mark is drawn on — `canvas`, `surface`, and the rail row's
+`rowSelected`/`rowHover`, which is where the operator's own report came from (code
+review F2, design D5; §5.1 and §5.3 carry the figures).
+
+THE CAP IS THE HALF THAT DID NOT SHIP, and design round 2's D7 found this addendum
+claiming it: the rail prints the true count. A `9+` cap was considered for the reason
+the chat header keeps one — a two-digit pill grows leftward into the Globe's arc,
+measured in design round 1's D3 — and the rail's own answer turned out to be geometry
+rather than grammar: `-top-2` lifts the pill's box until its bottom edge sits on the
+glyph's top edge, so two digits fit where one did, and a ring is what separates the mark
+from the crown it crosses. **THE RING IS THE HOST'S OWN GROUND, WHICH IS WHY IT IS NOT
+THE HEADER'S ROLE** (design round 3, D9): the header's badge carries `ring-2
+ring-canvas` because the surface behind it there is `canvas`, and the collapsed rail's
+carries `ring-2 ring-surface` because the row behind it is the panel's `surface` - the
+frame shows the pill's own rows pixel-identical to `surface` (`#2b2721`) where
+`ring-canvas` (`#22201c`, 8 L* darker) would be a visible 2px halo. The rule is "the
+ring is the colour of what is behind the mark, so the mark reads as sitting on a gap
+rather than on the glyph", not "the rail wears the header's ring". The header still caps because it has 12px
+of room and a three-digit count, while the rail's queue holds at most 16 requests — two
+digits are always the whole answer, so a cap there would hide a number the operator
+asked for to protect a glyph the offset already protects. Rounds 2 and 3 recorded the
+cost precisely (D6, D11): the mark removes 52 of the icon's stroke pixels over a
+10x3.5px band (x19.5-29.5, y208.5-212), and the pill's box (y194-210) IS 1.5px into that
+stroke - 15 of the 52 sit under the pill's own 1px border and the other 46 under its 2px
+of ring. So the ring is the bulk of the intrusion rather than all of it, and every number
+in this paragraph lives in the width table of
+`docs/evidence/browser-approval-badges/README.md`. That is the header's own arrangement rather than a shortfall
+of this one — in a 32px-pitch list, 16px of badge plus 2px of ring per side cannot fit
+between two glyphs 16px apart, so the choice round 1 made was to cross the ICON'S OWN
+crown rather than the row above's ink.
+
+**8. A CLICK THAT NAMES A REQUEST WHICH IS NO LONGER LIVE SAYS SO.** The landing is
+unchanged — the surface shows what is live — but the request is now judged against a
+fresh read (`use-consent-attention-lifetime.ts`) and a click that names something gone
+reports it rather than opening an empty tray in silence (UX round 1, U6).
+
+WHAT "GONE" MEANS WAS WIDENED IN ROUND 2, and the first cut of this addendum claimed a
+reachability it did not have (QA round 2, Q-2; UX U9). The report was suppressed
+whenever the memory had moved on by the time the read came back — and the shell's own
+forget effect clears the memory as soon as that same read says the request is gone,
+which is exactly the case the report exists for: it was silent in both states it was
+filed for. The click's id is now held independently of the memory (a click whose report
+is owed survives the memory being dropped), and the test is LIVENESS rather than
+membership: a request that ran out its ten minutes is still IN `pendingConsent` —
+nothing in main fires at expiry, which is why every surface derives liveness from
+`expiresAt` — so a membership test answered "still here" for an entry no surface would
+draw (U9's drive). The report fires once per click, against the first read that lands
+after it, and cannot cry wolf on a request the operator answers themselves: that needs
+a press inside the few milliseconds between a click and its own read.
+
+**9. THE PANE-OPEN HEADER SHEDS CONTROLS IN A FIXED ORDER, AND THE TITLE'S FLOOR IS THE
+LAST THING TO YIELD.** Design round 1 gave the title a 40px floor and made the canvas
+button yield when the row could not pay for both; QA round 2's Q-1 measured what that
+missed — at a 900px window the pane-open row is 220px wide, and the control it could not
+pay for was not clipped (the row's `overflow` is VISIBLE) but painted 4px UNDER the pane,
+invisible and unpressable. A floor is only a floor where there is something under it, so
+the row now sheds in an order rather than by one control's own threshold: the run
+trigger first (`@[22.5rem]` — everything it reports is in the transcript below it, and it
+is the only control whose width a run would vary), then the canvas button (`@[20rem]`),
+then the console trigger (`@[17.5rem]` — the browser trigger never yields, because it
+carries the attention badge and is what the operator reported about). THE LADDER'S RULE is stated once, in the code that implements it (`chat-header.tsx`'s
+two comments): a control in that cluster costs 32px plus the gap beside it, the gap that
+resolves while the badge and the canvas are drawn is `gap-3`, and the measured step is
+therefore 44px; the shipped thresholds advance 40px per rung (run trigger 22.5rem, canvas
+20rem, console 17.5rem), so each rung keeps 4px less title than its own step's arithmetic
+would give, and the margin above where a control strictly fits (248 for the console, 292
+for the canvas) is what keeps the title a readable fragment rather than the bare
+two-character floor. THE QUERY READS THE HEADER'S CONTENT BOX, NOT ITS BORDER BOX: its
+`px-4` sits outside the container's inline size, which is why the window that photographs
+the console's band is 1460 (row 320, content 288) and not 1420. Every width and every box
+in this paragraph is measured in ONE place - the width table of
+`docs/evidence/browser-approval-badges/README.md` - and this record points at it rather
+than restating numbers a change to the gap would invalidate. What the driver scene
+guarantees at every width it runs, and in both palettes, is the invariant the rungs are
+only a means to: EVERY painted control lies inside the row, and the title keeps its floor
+wherever the row can pay for it.
+
+---
+
 ## 0. The four asks, and what each actually requires
 
 The operator asked for four things across three messages. Stated as
@@ -444,9 +604,9 @@ specified to the role and to the assertion.
 |---|---|---|
 | Shape | `rounded-full`, `h-4 min-w-4 px-1`, `text-meta`, tabular numbers | One of the three places `rounded-full` is allowed (`badge.tsx:15`), and a count that changes width on every decision is a twitch |
 | Fill | `bg-warning-wash` | One meaning, already in this feature: "an agent is blocked on you" (the tab's Waiting chip) |
-| Edge | `border border-control` | `warningBorder` measures 2.51-2.98:1 on graded grounds in seven palettes — recorded in `contrast-contract.mjs`'s "browser waiting marker chip" row. `border-control` is the contract's own answer |
-| Ink | `text-ink` | 8.62:1 on the danger wash measured for the sibling chip; `warning` as ink is not the same triple |
-| Position | absolute, top-right of the Approvals control, `-translate-y-1/2 translate-x-1/2` | The operator's "corner of the button". The control gains `pr-4` so the badge never sits over the label |
+| Edge | `border border-ink-muted` | Revised 2026-09-23 by code review F2 / design D5: `warningBorder` measures 2.51-2.98:1 on graded grounds in seven palettes, and `border-control` — the interim answer — clears 3:1 on `canvas` (3.13) and `surface` (3.26) but NOT on the rail's row grounds (2.77 on `row-selected`, 2.92 on `row-hover`, twelve of fifty-nine palettes under the floor). The fill cannot carry the boundary either (1.00-1.19:1 on every ground), so the edge is the whole boundary and `ink-muted` is the quietest role that clears it everywhere: 5.63:1 worst |
+| Ink | `text-ink` | 5.73:1 worst over all fifty-nine palettes (oneDark), against the badge's own wash. The 8.62:1 this row used to carry for the sibling chip does not reproduce, and ink against a fill does not depend on the ground |
+| Position | absolute, top-right of the Approvals control, `-translate-y-1/2 translate-x-1/2` | The operator's "corner of the button". The control gains `pr-4` so the badge never sits over the label. **THE RAIL IS THE ONE HOST THAT DIVERGES** (2026-09-23): its item is a row rather than a corner control, so the badge sits IN FLOW at the row's trailing edge (`ml-auto`, its right edge 20px inside the rail) instead of being stamped over a corner — and COLLAPSED at 48px there is no room outside the 32px button at all, so it is only there that the mark is anchored to the button's corner: `-top-2 -right-1` (revised 2026-09-23 by design round 2's D7, which found this row still describing the pre-round-1 offsets), held 3px clear of the rail's OUTER edge (2.5px from its 1px border, which keeps its own pixel its own), carrying the badge's `ring-2 ring-surface` because its pill reaches back over the Globe's crown, and printing the TRUE count rather than a `9+` cap — the offsets, not a digit cap, are what protect the glyph here (addendum 7) |
 | Content | the live count, and `aria-label` on the control: "Approvals, 3 waiting" | Screen readers get the number as part of the control's name, never as a bare floating digit |
 
 **The accent is deliberately not spent here.** The accent budget is about three
@@ -456,11 +616,20 @@ three agent tabs alone exhaust it. A count is passive; the marker is the thing
 the user must not miss.
 
 **Primitive:** `Badge` (`badge.tsx:17-41`) gains one variant,
-`attention: "border-control bg-warning-wash text-ink"`, and the badge is rendered
-`variant="attention" shape="pill"`. The alternative — `variant="warning"` plus a
-`className` that overrides half of it — is precisely the drift the primitive
+`attention: "border-ink-muted bg-warning-wash text-ink"`, and the badge is rendered
+`variant="attention" shape="pill" size="count"`. The alternative — `variant="warning"`
+plus a `className` that overrides half of it — is precisely the drift the primitive
 exists to prevent; the second alternative, a new bespoke span, breaks
-`branding.md:467-471`.
+`branding.md:467-471`. **The count's geometry and its cap moved onto the primitive
+on 2026-09-23** (design D4): three hosts had the same
+`h-4 min-w-4 justify-center px-1 tabular-nums` string and had already drifted, so the
+box is `size="count"` and the digits are spelled by `countLabel(count, cap?)`. The cap
+is the caller's argument because it is a fact about the host's width, not about the
+badge: `9+` where the mark is anchored to a 32px control's corner with no room to grow
+(the chat header), and the true number where the host can grow or the offset protects
+the glyph (the URL bar's chip, the expanded rail, and the collapsed rail, which is
+uncapped — design round 2's D7 corrected this sentence, which still listed the
+collapsed rail as a `9+` host).
 
 ### 5.2 The ordinal, anchored three ways
 
@@ -485,15 +654,19 @@ Three `CONTROLS` rows and one modification. Without them
 
 | Row | `on` | fill | border | ink |
 |---|---|---|---|---|
-| `browser approvals badge` **(new)** | `["canvas", "surface"]` | `warningWash` | `borderControl` | `ink` |
+| `browser approvals badge` **(new)** | `["canvas", "surface", "rowSelected", "rowHover"]` | `warningWash` | `inkMuted` | `ink` |
 | `browser approvals tray row (selected)` **(new)** | `["surface"]` | `elevated` | `borderControl` | `ink` |
 | `browser approvals dock` **(new)** | `["canvas"]` | `surface` | `borderControl` | `ink` |
 | `browser tab (hover)` **(new)** | `["sunken"]` | `elevated` | *(none)* | `ink` |
 | `browser active tab` **(modified)** | `["sunken"]` | `canvas` | `borderControl` | `ink` |
 
-Notes for whoever edits the file: the badge's two grounds are the URL bar
-(`bg-canvas`, `browser-url-bar.tsx:120-123`) and the chat pane's header
-(`surface`), because the same control carries the badge in both hosts; the
+Notes for whoever edits the file: the badge's grounds are the URL bar
+(`bg-canvas`, `browser-url-bar.tsx:120-123`), the chat pane's header (`canvas` — the
+`surface` this line carried until design round 2's D7 measured the shipped control), and
+the app rail's Browser row in its two states (2026-09-23: `rowSelected` while `/browser`
+is the route, `rowHover` under the pointer) — the rail is the host that made the
+two-ground version incomplete, and the `inkMuted` edge is what lets one role clear the
+3:1 floor on all four; the
 active tab's fill becomes `canvas` (the page's own ground) and its bottom edge
 stops existing, so its `on` list loses `surface` — the ground step alone is
 1.11:1 in the dark palettes, which is the measurement D18 already recorded, so

@@ -1,7 +1,4 @@
-import {
-	clearConsentAttention,
-	useConsentAttention,
-} from "@shared/browser-consent-attention";
+import { useConsentAttention } from "@shared/browser-consent-attention";
 import {
 	useBrowserViewSuppressed,
 	useSuppressBrowserView,
@@ -367,17 +364,19 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	}, []);
 
 	// A banner click names the request it was raised for, and the shell has already
-	// navigated here (see `shared/browser-consent-attention`). Two things follow: the
-	// band shows THAT request rather than the oldest, and the attention is dropped
-	// once it is no longer pending — answered, expired or cancelled — so a later
-	// request does not inherit an answer given to an earlier one (review round 1, R8).
+	// navigated here (see `shared/browser-consent-attention`). This surface's part is
+	// to SELECT it — the band shows THAT request rather than the oldest.
+	//
+	// IT DOES NOT DECIDE WHEN THE MEMORY IS DROPPED, and that is deliberate (UX round
+	// 1, U1): a surface sees one scope, so this one read "not in my list" as "gone" for
+	// a request that belongs to no conversation here and cleared the memory before the
+	// router had mounted the surface the click was for. The shell owns that question
+	// now (`use-consent-attention-lifetime.ts`, called once in `app.tsx`); every
+	// surface only reads the answer.
 	const attention = useConsentAttention();
 	const named = attention
 		? pendingRequests.find((entry) => entry.entryId === attention)
 		: undefined;
-	useEffect(() => {
-		if (attention && !named) clearConsentAttention(attention);
-	}, [attention, named]);
 	// An attention click moves the selection, but a LOCAL selection is not thrown
 	// away by an unrelated refresh: only a named request takes the selection over.
 	useEffect(() => {

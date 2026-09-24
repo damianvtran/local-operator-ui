@@ -16,18 +16,25 @@ import { Notification } from "electron";
  * raises a banner for the one event the backend cannot know about, and it
  * deliberately owns no other notification.
  *
- * WHY THE CLICK DOES NOT RAISE THE WINDOW. "Never steal focus" is the product's
- * rule for every browser this project starts (design 11.4), and a banner click
- * is exactly the moment a stray `show()` would interrupt the operator in another
- * application. The click therefore only tells the renderer to bring the browser
- * route forward; the app's own `window-raise.ts` is still the only module that
- * decides whether a window comes up, and this one never calls it.
+ * WHAT THE CLICK DOES, AND WHAT IT DELIBERATELY DOES NOT DO ITSELF. The click
+ * is the OPERATOR'S OWN act, and its whole promise is "take me to the request you
+ * just told me about" — which is worthless if the window it lands in is behind
+ * another application or on another Space, exactly the state the banner exists
+ * for (design 9.2). So the click hands the request up through `onAttention`, and
+ * the WIRING decides what to do with it: `browser/index.ts` names the request to
+ * the renderer first and then comes forward through `window-raise.ts`, the one
+ * module that decides whether a window is shown. This file still never calls
+ * `show`, `showInactive` or `focus`, and its callback still carries no window:
+ * a banner that could raise a window by itself would be a second raise policy
+ * beside the app's own.
  *
  * WHY THE MODE GATE. In `headless` a run has nobody at the screen, and in
  * `inactive` the app has deliberately not been brought forward: a banner in
  * either case interrupts whoever is really at the machine. So the banner is
  * raised only when the launch plan would itself have focused the window
- * (`show === "focus"`), which is the same gate `presentWindow` applies.
+ * (`show === "focus"`), which is the same gate `presentWindow` applies — and it
+ * is also why the raise on the click is a no-op in both other modes, since
+ * `raiseWindow` reads the same plan.
  */
 
 /** The banner's copy. Sentence case, no emoji, and it names the origin because
@@ -49,9 +56,14 @@ export interface ConsentNotifierOptions {
 	/** The launch plan's own answer to "would this window be brought forward?".
 	 * `"focus"` is a normal launch; the other two mean nobody is at the screen. */
 	show: "focus" | "inactive" | "never";
-	/** Told which pending request the user clicked, so the renderer can bring the
-	 * browser route forward. Never a window raise. */
-	onAttention: (entryId: string) => void;
+	/** Told which pending request the user clicked, and WHO ASKED for it.
+	 *
+	 * The `requester` is the host's own identity string for the asker (the
+	 * `session:<id>` spelling `host.ts` publishes), passed through rather than
+	 * resolved here: this module has no opinion about session identity and must
+	 * not grow one — the wiring that owns the renderer channel is what turns it
+	 * into the conversation the click should land on. Never a window raise. */
+	onAttention: (entryId: string, requester: string) => void;
 	log?: (message: string) => void;
 	/**
 	 * How a banner is built, injectable so the ONE-BANNER-PER-COUNT-CHANGE rule has
@@ -96,9 +108,18 @@ export class ConsentNotifier {
 	 * one refresh) raises no second banner. The alternative is a banner per entry,
 	 * and the banner's job is to bring the user to the band — where the tray shows
 	 * the whole live set, numbered. The click names the OLDEST live entry, which is
-	 * the one the tray selects by default.
+	 * the one the tray selects by default — and it carries that entry's requester,
+	 * so the wiring can land the operator on the conversation that asked rather
+	 * than on the queue.
 	 */
-	announce(pending: ReadonlyArray<{ entryId: string; origin: string }>): void {
+	announce(
+		pending: ReadonlyArray<{
+			entryId: string;
+			origin: string;
+			/** The asker's identity string, forwarded to `onAttention` verbatim. */
+			requester: string;
+		}>,
+	): void {
 		const count = pending.length;
 		const increased = count > this.announced;
 		this.announced = count;
@@ -116,7 +137,9 @@ export class ConsentNotifier {
 					silent: false,
 				},
 			);
-			notification.on("click", () => this.options.onAttention(oldest.entryId));
+			notification.on("click", () =>
+				this.options.onAttention(oldest.entryId, oldest.requester),
+			);
 			// Electron's own banner API on a `Notification`, not a window:
 			// `scripts/window-mode.test.mjs` allow-lists this exact call.
 			notification.show();
