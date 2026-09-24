@@ -598,7 +598,8 @@ export async function askAside(
  */
 export async function adoptAside(sessionId: string): Promise<void> {
 	const store = useAsideStore.getState();
-	const asideId = previousAsideId(store, sessionId);
+	const asideId =
+		lastAnsweredAsideId(store, sessionId) ?? previousAsideId(store, sessionId);
 	if (!asideId) return;
 	try {
 		await desktopResult({
@@ -628,6 +629,25 @@ export async function adoptAside(sessionId: string): Promise<void> {
 /**
  * Close the panel, and release the aside it was holding.
  *
+ * WHICH ID "IT" IS (UX round 3, U19). The copy this call serves sends the user to
+ * Escape to "close the aside and discard it", so the entry the DELETE names has to
+ * be the one the OWNER holds the exchange under. That is not the newest turn. A
+ * continuation copies its prefix's turns into a NEW entry keyed by its own request
+ * id and marks the prefix adopted, so after a REFUSED follow-up the newest turn's id
+ * names an entry the owner dropped with the refusal - measured: `DELETE
+ * /v1/desktop/sessions/.../asides/<refused turn id>` answered `404` while the entry
+ * holding the whole exchange answered `GET` `200` with `turns: 2`, `complete: true`,
+ * and was still `200` 9.9s later. The id the ASK path continues from is exactly the
+ * entry that holds the exchange (`lastAnsweredAsideId`), so closing names that one
+ * and the sentence and the owner agree in both arms: an answered exchange is deleted
+ * by its newest answered turn, and a refused follow-up deletes the exchange the
+ * refused turn belongs to rather than the turn itself.
+ *
+ * THE NEWEST TURN IS STILL THE FALLBACK, for the one state that has no answered turn
+ * at all: a FIRST ask the model refused. There the owner has either dropped the entry
+ * (nothing to release, and the silent `404` is the same cost as today) or is still
+ * holding it, and no other id could name it.
+ *
  * The DELETE is best-effort and its failure is deliberately silent: the aside
  * store is bounded on the backend (`64` entries, an hour's expiry) so an
  * unreleased one is a small, self-clearing cost, while the one failure it
@@ -639,7 +659,8 @@ export async function adoptAside(sessionId: string): Promise<void> {
  */
 export function closeAside(sessionId: string): void {
 	const store = useAsideStore.getState();
-	const asideId = previousAsideId(store, sessionId);
+	const asideId =
+		lastAnsweredAsideId(store, sessionId) ?? previousAsideId(store, sessionId);
 	if (asideId) {
 		void desktopResult({
 			op: "sessions.aside.close",

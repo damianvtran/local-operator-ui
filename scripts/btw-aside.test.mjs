@@ -736,6 +736,77 @@ test("closing releases the exchange and detaches even when the release is refuse
 	assert.deepEqual(useAsideStore.getState().streams, {});
 });
 
+/*
+ * WHAT ESC DISCARDS IS THE ENTRY THE OWNER HOLDS (UX round 3, U19).
+ *
+ * The panel sends the user to Escape with "close the aside and discard it", and the
+ * id that sentence trusts has to be the entry the exchange lives under. The owner
+ * keys that entry by the CONTINUATION that created it - a continuation copies its
+ * prefix's turns into a new entry of its own and marks the prefix adopted - so:
+ *
+ * - after an ANSWERED follow-up the exchange's entry is the newest answered turn, and
+ *   the id the ask path continues from is that turn by construction;
+ * - after a REFUSED follow-up the owner has DROPPED the refused turn's entry (a
+ *   question with no answer is neither continuable nor adoptable), so naming the
+ *   newest turn asks it to delete nothing - UX drove exactly that as `404` on
+ *   `DELETE .../asides/<refused id>` while the entry holding the whole exchange
+ *   answered `GET` `200` with `turns: 2` and was still `200` 9.9s later.
+ *
+ * So this asserts the id on the wire in both arms, driven through the real store and
+ * the real transactions: the answer's own case is the one the reviewer's mutation
+ * would leave green (`previousAsideId` happens to equal the answered id there), and
+ * the refusal is the case that separates them.
+ */
+test("closing discards the exchange's own entry, answered or refused", async () => {
+	reset();
+	/** An owner that answers every aside it is asked. */
+	const answer = async (request) => ({
+		data: { aside_id: request.requestId, text: "an answer", off_record: true },
+	});
+	handler = answer;
+	const base = await askAside(SESSION, "the base question");
+	const followUp = await askAside(SESSION, "the follow-up");
+	closeAside(SESSION);
+	const answeredClose = calls.at(-1);
+	assert.equal(answeredClose.op, "sessions.aside.close");
+	assert.equal(answeredClose.asideId, followUp);
+	/*
+	 * The prefix is NOT the entry: naming it would discard the first turn's own copy
+	 * of the exchange while the newest answered turn still held all of it.
+	 */
+	assert.notEqual(answeredClose.asideId, base);
+
+	reset();
+	handler = async (request) =>
+		request.text === "a refused follow-up"
+			? Promise.reject(
+					new DesktopControlError(
+						409,
+						"The model did not answer your aside in text. No answer was produced: ask again.",
+						undefined,
+						"aside_unanswered",
+					),
+				)
+			: answer(request);
+	const held = await askAside(SESSION, "the base question");
+	await assert.rejects(() => askAside(SESSION, "a refused follow-up"));
+	const state = useAsideStore.getState();
+	const refusedTurn = lastAsideTurn(state, SESSION).asideId;
+	// U19's own pair: the newest turn is the refused one, the exchange is the answered
+	// one below it, and the two ids are what the close path has to choose between.
+	assert.equal(previousAsideId(state, SESSION), refusedTurn);
+	assert.equal(lastAnsweredAsideId(state, SESSION), held);
+	closeAside(SESSION);
+	const refusedClose = calls.at(-1);
+	assert.equal(refusedClose.op, "sessions.aside.close");
+	assert.equal(
+		refusedClose.asideId,
+		held,
+		"the DELETE names the entry holding the exchange, not the refused turn",
+	);
+	assert.notEqual(refusedClose.asideId, refusedTurn);
+});
+
 /* ------------------------------------------------------------- the gates */
 
 test("the chord is the app's modifier plus f, and nothing else", () => {
