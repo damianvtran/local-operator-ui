@@ -103,6 +103,7 @@ import {
 	unreadMarkKind,
 } from "../mark-all-read";
 import { newChatShortcutCap } from "../new-chat-shortcut";
+import { readAckCopy, readAckNoticeSentence } from "../read-ack-notice";
 import { catalogueGate } from "../sidebar-catalogue-gate";
 import {
 	type SidebarRegionName,
@@ -201,6 +202,22 @@ const MARK_ALL_READ_LABEL_SHED = "@max-[253px]/chatheading:sr-only";
  * model, because only one of those two facts is ever the panel's latest word.
  */
 const ARCHIVE_TOAST_ID = "archive";
+/**
+ * The receipt announcement's own lane id, and it is STABLE ON PURPOSE.
+ *
+ * A toast is a claim about the state it was raised in, and this one is the only
+ * sentence in the panel the app itself can falsify: the reader presses the row it
+ * names, the receipt lands on the next tick, the mark clears - and the sentence kept
+ * telling them to press for the rest of its life (UX round 2, U4). The archive lane
+ * above already made that rule AND the shape that keeps it true across a remount: ONE
+ * id any instance can dismiss. A per-instance handle cannot keep it - the id lived in
+ * a ref, so a route change off `/chat` and back re-mounted the panel with a fresh ref
+ * while the sentence stood in the app-level container, and nothing left in the app
+ * could retire it (agent review round 3, MINOR 1; UX round 3, U7). With one id the
+ * dismissing branch needs no handle at all, and a new budget's sentence REPLACES the
+ * standing one instead of stacking a second copy of the same fact.
+ */
+const READ_ACK_TOAST_ID = "read-ack";
 /**
  * THE LANE'S OWN `position`, and it is NOT what keeps this message out of the other
  * container - the comment here used to claim the opposite, and R-4 of agent review
@@ -620,7 +637,7 @@ const INCLUDE_ARCHIVED_ID = "chat-search-include-archived";
  * name, where a leading " · " would be read as a separator that is already
  * implied.
  */
-const SILENT_REMEDY = "/stop if it stays silent";
+const SILENT_REMEDY = "/stop if it stays silent.";
 
 /**
  * The id of a row's remedy sentence, WHEN that row renders one.
@@ -631,6 +648,20 @@ const SILENT_REMEDY = "/stop if it stays silent";
  * unique in the document by construction.
  */
 const silentRemedyId = (sessionId: string) => `chat-row-remedy-${sessionId}`;
+
+/**
+ * The id of a row's receipt clause, WHEN that row renders one.
+ *
+ * A SECOND id rather than one shared with the remedy above, because the two are
+ * about two different facts and a row can carry either, both, or neither: the
+ * remedy is the session's state and the clause is the app's own attempt to
+ * receipt it. `aria-describedby` takes a list, so a row that has both has both
+ * announced, in the order it states them.
+ *
+ * Derived from the session id for `silentRemedyId`'s reason: the rows are built
+ * by a plain render function, where a hook cannot run.
+ */
+const readAckClauseId = (sessionId: string) => `chat-row-read-ack-${sessionId}`;
 
 /*
  * The words this sentence uses for a count of at most six; digits beyond that,
@@ -875,6 +906,70 @@ export function ChatSidebar({
 	const activeDraftKey = useCanonicalSessionsStore((s) => s.activeDraftKey);
 	const drafts = useCanonicalSessionsStore((s) => s.drafts);
 	const markAllRead = useCanonicalSessionsStore((s) => s.markAllRead);
+	/*
+	 * THE PER-ROW RECEIPT'S OWN STATE, and the announcement it owes the reader.
+	 *
+	 * The loop that writes it lives in the transcript (`useCompletionView`) because
+	 * that is where the rendered result is; THIS is the surface that can draw it,
+	 * because the mark the operator is waiting on is on a row. One record names one
+	 * conversation - a receipt waits on one at a time - and the rows ask it whether
+	 * it is theirs (`readAckCopy`, in `../read-ack-notice.ts` with the words).
+	 */
+	const readAckNotice = useCanonicalSessionsStore((s) => s.readAckNotice);
+	/**
+	 * The last notice this window has announced.
+	 *
+	 * SEEDED WITH WHATEVER IS ALREADY PUBLISHED, so a remount does not re-announce a
+	 * receipt the reader has been told about: the panel is remounted by the region
+	 * controls, and a toast reappearing for an old refusal is worse than the
+	 * silence this change exists to remove. Keyed on the notice's own revision
+	 * rather than on its kind, because a SECOND budget for the same conversation is
+	 * a new event (`ReadAckNotice.revision` states why it moves).
+	 */
+	const announcedReadAck = useRef(
+		readAckNotice
+			? `${readAckNotice.sessionId}:${readAckNotice.revision}`
+			: null,
+	);
+	useEffect(() => {
+		const key = readAckNotice
+			? `${readAckNotice.sessionId}:${readAckNotice.revision}`
+			: null;
+		const changed = announcedReadAck.current !== key;
+		announcedReadAck.current = key;
+		/*
+		 * ONE ARM ANNOUNCES ITSELF AND THE OTHER TWO DO NOT. `unsettled` is the state
+		 * the reader is owed a sentence about - the app has stopped retrying promptly
+		 * and the mark is still there - and it is the arm the bulk path already says
+		 * in this lane. `pending` is an in-flight cue, and `offscreen` is a remedy
+		 * whose move is to look at the row's own clause: a toast for either would be
+		 * noise where the reader has the fact already, and the lane is shared with the
+		 * bulk receipt and the archive offers.
+		 */
+		if (readAckNotice?.kind !== "unsettled") {
+			// The fact the sentence stated has gone (the receipt landed, the loop was
+			// torn down, another kind replaced it), so the sentence goes with it. By the
+			// LANE'S id rather than a handle: this instance may not be the one that
+			// raised it, and dismissing an id nothing is using is a no-op either way.
+			dismissToast(READ_ACK_TOAST_ID);
+			return;
+		}
+		// The same statement seen again is not a second event; a NEW one replaces the
+		// sentence on screen rather than stacking a second copy of the same fact.
+		if (!changed) return;
+		/*
+		 * THE LANE'S OWN LIFETIME, not sonner's four-second default (design round 1,
+		 * D3). This arm is a sentence plus a remedy the reader has to read before
+		 * acting - the same shape as the archive failure's, which is why it takes that
+		 * lane's number: at the default, a two-line sentence was being read in four
+		 * seconds, and the reader who pressed the row it names spent that time
+		 * watching a fact that had just stopped being true.
+		 */
+		showWarningToast(readAckNoticeSentence(readAckNotice), {
+			id: READ_ACK_TOAST_ID,
+			duration: ARCHIVE_FAILURE_TOAST_MS,
+		});
+	}, [readAckNotice]);
 	const [query, setQuery] = useState("");
 	const [all, setAll] = useState(false);
 	const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
@@ -1780,6 +1875,15 @@ export function ChatSidebar({
 		 * chances for the row to point at a sentence it is not rendering.
 		 */
 		const silent = row.status?.code === "wedged";
+		/**
+		 * WHAT THE RECEIPT IS DOING FOR THIS ROW, if it has anything to say - read once
+		 * for the reason `silent` is: it decides the flyout's tail, the
+		 * `aria-describedby` below and the sentence that id names, and three copies of
+		 * the question would be three chances for the row to point at a sentence it is
+		 * not rendering. Both strings come back together (`readAckCopy`), in the two
+		 * registers the two channels need.
+		 */
+		const readAck = readAckCopy(readAckNotice, row.session_id);
 		/*
 		 * THE ROW IS A WRAPPER PLUS A BUTTON, and it keeps that shape now that the per-row
 		 * browser mark is gone (operator ask, 2026-09-18; the reasoning is at
@@ -1857,6 +1961,13 @@ export function ChatSidebar({
 					{unstarted.has(row.session_id) ? ", not sent yet" : ""}
 					{unreadMarkKind(row) !== null ? ", unread" : ""}
 					{archived ? ", archived" : ""}
+					{/*
+					 * THE RECEIPT'S CLAUSE CLOSES THE LINE, after the flags rather than among
+					 * them: the flags are what the row IS and this is what the app is DOING
+					 * about the mark on it, so it reads as the actionable last word - the slot
+					 * `SILENT_REMEDY` occupies one fact up.
+					 */}
+					{readAck ? ` · ${readAck.clause}` : ""}
 				</span>
 			</>
 		);
@@ -1940,8 +2051,15 @@ export function ChatSidebar({
 				 * The ", unread" tail is read from the SAME predicate the glyph, the
 				 * accessible name and the bulk count read (`unreadMarkKind`).
 				 */
-				{...(silent
-					? { "aria-describedby": silentRemedyId(row.session_id) }
+				{...(silent || readAck
+					? {
+							"aria-describedby": [
+								silent ? silentRemedyId(row.session_id) : null,
+								readAck ? readAckClauseId(row.session_id) : null,
+							]
+								.filter(Boolean)
+								.join(" "),
+						}
 					: {})}
 				onClick={(event) => {
 					/*
@@ -2113,6 +2231,26 @@ export function ChatSidebar({
 				{SILENT_REMEDY}
 			</span>
 		) : null;
+		/*
+		 * THE RECEIPT'S OWN SENTENCE, and it is HERE rather than in the flyout alone
+		 * for the reason the remedy above states at length: the flyout is the
+		 * pointer's channel, a reader who reaches the row by keyboard hears nothing
+		 * from it, and `title` is not presented on focus. It is the SAME string the
+		 * flyout carries (one home, `../read-ack-notice.ts`), and it is the one arm of
+		 * the receipt that a screen reader can be told about at all: the toast's lane
+		 * is `aria-live` and this is the per-row association, so a reader who is
+		 * walking the list hears which row is waiting rather than only that something
+		 * happened somewhere.
+		 *
+		 * OUTSIDE the button, like the remedy, because a button takes its accessible
+		 * name from its contents (round 2's MAJOR 2: the clause was collected into the
+		 * name as well as into the description).
+		 */
+		const readAckRemedy = readAck ? (
+			<span id={readAckClauseId(row.session_id)} className="sr-only">
+				{readAck.description}
+			</span>
+		) : null;
 
 		/*
 		 * THE FLYOUT'S TRIGGER IS THE ROW'S OWN BOX, and the blur guard is the other half of
@@ -2206,6 +2344,7 @@ export function ChatSidebar({
 				>
 					{rowButton}
 					{silentRemedy}
+					{readAckRemedy}
 				</div>,
 				row.session_id,
 			);
@@ -2603,6 +2742,7 @@ export function ChatSidebar({
 			>
 				{rowButton}
 				{silentRemedy}
+				{readAckRemedy}
 				{/*
 				 * THE PAIR. Both acts are siblings of the row's button, never children, and both
 				 * are absent from the layout until the pointer or the keyboard is inside the row
