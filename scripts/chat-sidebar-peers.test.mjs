@@ -1367,12 +1367,19 @@ test("Q3: a retried move REPLAYS its request id, and a confirmed one spends it",
 		 * after a failure must carry the SAME id.
 		 */
 		requests = [];
-		globalThis.__transferError = new DesktopControlError(null, "the app gave up");
+		globalThis.__transferError = new DesktopControlError(
+			null,
+			"the app gave up",
+		);
 		await act(async () => {
-			await store.getState().transferSession("a", STUDIO, "Migrate the deploy script");
+			await store
+				.getState()
+				.transferSession("a", STUDIO, "Migrate the deploy script");
 		});
 		await act(async () => {
-			await store.getState().transferSession("a", STUDIO, "Migrate the deploy script");
+			await store
+				.getState()
+				.transferSession("a", STUDIO, "Migrate the deploy script");
 		});
 		const ids = requests
 			.filter((request) => request.op === "sessions.transfer")
@@ -1381,20 +1388,30 @@ test("Q3: a retried move REPLAYS its request id, and a confirmed one spends it",
 		assert.equal(ids[0], ids[1], "the retry minted a second request id");
 		// A move to a DIFFERENT device is a different move, and gets its own id.
 		await act(async () => {
-			await store.getState().transferSession("a", LAPTOP, "Migrate the deploy script");
+			await store
+				.getState()
+				.transferSession("a", LAPTOP, "Migrate the deploy script");
 		});
 		const toLaptop = requests.filter(
 			(request) => request.op === "sessions.transfer" && request.to === LAPTOP,
 		);
-		assert.notEqual(toLaptop.at(-1).requestId, ids[0], "a different target reused the id");
+		assert.notEqual(
+			toLaptop.at(-1).requestId,
+			ids[0],
+			"a different target reused the id",
+		);
 		// And a CONFIRMED move spends the id: the next move of that conversation is new.
 		globalThis.__transferError = undefined;
 		await act(async () => {
-			await store.getState().transferSession("a", STUDIO, "Migrate the deploy script");
+			await store
+				.getState()
+				.transferSession("a", STUDIO, "Migrate the deploy script");
 		});
 		requests = [];
 		await act(async () => {
-			await store.getState().transferSession("a", STUDIO, "Migrate the deploy script");
+			await store
+				.getState()
+				.transferSession("a", STUDIO, "Migrate the deploy script");
 		});
 		const afterSuccess = requests.find(
 			(request) => request.op === "sessions.transfer",
