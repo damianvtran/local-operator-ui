@@ -1709,7 +1709,7 @@ export const GoalDoneFloor: Story = {
 			<RowFacts>
 				<Band
 					width={FLOOR_COLUMN_PX}
-					label="172 (the app's floor): the same settled chip in the stacked band, where the column is narrowest and the value is the thing that yields - zero horizontal overflow"
+					label="172 (the app's floor): the same settled chip in the stacked band, where the `— done` tag yields so the value keeps the width (D1) - the strike and the check mark still say it is settled - zero horizontal overflow"
 					frontend={lifecycle(LONG_GOAL, "done", { state: "done" })}
 					runDetails={IN_FLIGHT}
 				/>
