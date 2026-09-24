@@ -84,6 +84,33 @@ export const integrationCountLabel = (count: number): string =>
 	`${count} ${count === 1 ? "integration" : "integrations"}`;
 
 /**
+ * The statuses this page knows how to word, as a RUNTIME value.
+ *
+ * A type alone cannot be compared to anything at run time, and the thing that
+ * has to be compared is a BACKEND's vocabulary: the catalog's `status` is the
+ * backend's to extend, and a value this renderer has never seen used to fall
+ * through a `default:` branch to "Ready" - a health claim about a row whose
+ * state nobody read. So the list is a value, `integrationStatus` refuses
+ * anything outside it in words, and `scripts/mcp-catalog-parity.test.mjs`
+ * asserts the backend's own pinned payload is inside it.
+ */
+export const INTEGRATION_STATUSES = [
+	"connected",
+	"needs_sign_in",
+	"not_started",
+	"connecting",
+	"error",
+] as const;
+
+export type IntegrationStatusValue = (typeof INTEGRATION_STATUSES)[number];
+
+/** Whether a word off the wire is one this page can describe. */
+export const isKnownIntegrationStatus = (
+	status: string,
+): status is IntegrationStatusValue =>
+	(INTEGRATION_STATUSES as readonly string[]).includes(status);
+
+/**
  * The tone a status is drawn in. Always paired with words, so the dot never
  * carries meaning by colour alone.
  */
@@ -128,8 +155,23 @@ export function integrationStatus(
 	operations: readonly McpCatalogOperation[] = [],
 ): IntegrationStatusView {
 	const running = runningOperationFor(row.name, operations);
+	// An operation in flight is a fact this renderer HOLDS, whatever the status
+	// word says, so it is reported first.
 	if (running && (running.action === "login" || running.action === "reauth"))
 		return { label: "Signing in…", tone: "info", detail: null, busy: true };
+	/*
+	 * A status this build cannot word is stated as such: rendering it as "Ready"
+	 * would be the app claiming a row is fine on the strength of not
+	 * recognising the word, and a new backend state is exactly how that happens
+	 * (see `INTEGRATION_STATUSES`).
+	 */
+	if (!isKnownIntegrationStatus(row.status))
+		return {
+			label: "Status unavailable",
+			tone: "neutral",
+			detail: null,
+			busy: false,
+		};
 	switch (row.status) {
 		case "connected":
 			return {
@@ -257,6 +299,10 @@ export function primaryAction(
 ): PrimaryAction | null {
 	if (runningOperationFor(row.name, operations)) return null;
 	const has = (action: IntegrationAction) => row.actions.includes(action);
+	// An unreadable status still gets the one control that can answer it: ask
+	// the backend again. The audit's own table gives this row "Check again".
+	if (!isKnownIntegrationStatus(row.status))
+		return has("test") ? { kind: "test", label: "Check again" } : null;
 	switch (row.status) {
 		case "connected":
 		case "connecting":
@@ -378,6 +424,10 @@ export function integrationGroupOf(
 	row: IntegrationRow,
 	operations: readonly McpCatalogOperation[] = [],
 ): IntegrationGroupId {
+	// An unreadable status is NOT put under Needs attention: nothing has been
+	// observed to be wrong with it, and the row's own words already say the
+	// status could not be read. It sits with the idle rows and offers "Check
+	// again".
 	if (row.status === "needs_sign_in" || row.status === "error")
 		return "attention";
 	if (row.status === "connected") return "connected";
