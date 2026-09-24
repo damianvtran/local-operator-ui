@@ -80,10 +80,7 @@ import {
  * code it cannot see is a code that does not withhold the hint (design round 1,
  * D2 — see `answerReport`'s note).
  */
-import {
-	ANSWER_NOT_SENT_CODE,
-	UNCONFIRMED_SEND_CODE,
-} from "@shared/store/canonical-sessions-store";
+import { ANSWER_NOT_SENT_CODE } from "@shared/store/canonical-sessions-store";
 import {
 	DESKTOP_DEADLINE_EXCEEDED_CODE,
 	DESKTOP_LOST_SIGHT_CODE,
@@ -539,7 +536,7 @@ export const unsentAnswerMessage = (error: unknown): string =>
  * the inheritance defect already recorded for the attachment refusal, and this
  * path had it too. So a composer report always names a code: the transport's own
  * when the failure carried one, `ANSWER_NOT_SENT_CODE` when it did not, and
- * `UNCONFIRMED_SEND_CODE` for the arm whose outcome is genuinely unknown — all
+ * `ANSWER_UNCONFIRMED_CODE` for the arm whose outcome is genuinely unknown — all
  * three listed by `withholdsRetryHint`, because "Send it again" is not the remedy
  * for a press whose question is gone and not a promise this app can make for one
  * it never heard back about.
@@ -703,6 +700,18 @@ export const answerReport = (
  *    `pairing.plane-closed`, a coded `409` from the relay or attachment ladders),
  *    where "your answer was not sent" is what the backend just said.
  */
+/**
+ * The code for a press whose outcome the app cannot establish.
+ *
+ * Its own code rather than the send's (which no longer exists as a category): the
+ * two are statements about different acts, and the composer's decisions are made
+ * from the notice the failure carries, so this is kept only as the code a reader
+ * can branch on. `retryWillFail` does not list it - a Retry on this arm is refused
+ * by the notice's own `retry: false`, which is the answer of the failure that owns
+ * it (an option whose question has moved on cannot be pressed again).
+ */
+export const ANSWER_UNCONFIRMED_CODE = "answer_unconfirmed";
+
 const pressSentenceFor = (error: unknown, frame: PressFrame): string => {
 	if (answerOutcomeIsUnknown(error)) return answerUnconfirmedMessage(error);
 	if (answerRefusedWithoutACode(error)) {
@@ -720,7 +729,7 @@ const pressSentenceFor = (error: unknown, frame: PressFrame): string => {
  *
  * Three arms, one per question the alert asks of a code, and each stated by the
  * failure that owns it: the transport's own code where there is one (so a coded
- * refusal keeps its own remedies), `UNCONFIRMED_SEND_CODE` where the outcome is
+ * refusal keeps its own remedies), `ANSWER_UNCONFIRMED_CODE` where the outcome is
  * unknown (the app's existing code for exactly that, whose own sentence is about
  * a send it could not confirm), and `ANSWER_NOT_SENT_CODE` otherwise (the
  * definite loss: the question is gone and there is nothing to press again).
@@ -731,10 +740,10 @@ const composerCodeFor = (error: unknown): string => {
 	 * (UX round 1, U1). Its carried codes are `deadline_exceeded` and
 	 * `transport.failed`, and neither is in `withholdsRetryHint` — so keeping one
 	 * would put "Send it again" under a sentence whose own reason says "check the
-	 * result before repeating it". `UNCONFIRMED_SEND_CODE` is the app's existing
+	 * result before repeating it". `ANSWER_UNCONFIRMED_CODE` is the app's existing
 	 * code for exactly this state and withholds the hint.
 	 */
-	if (answerOutcomeIsUnknown(error)) return UNCONFIRMED_SEND_CODE;
+	if (answerOutcomeIsUnknown(error)) return ANSWER_UNCONFIRMED_CODE;
 	return errorCodeOf(error) ?? ANSWER_NOT_SENT_CODE;
 };
 
