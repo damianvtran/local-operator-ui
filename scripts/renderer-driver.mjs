@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|none>
+ *   --scene <states|new-chat|first-send|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|none>
  *                          which built-in scene to run (default: states)
  *   --gate-state <label>   (with --scene settings-gate) what this run's backend
  *                          state is called in the frames and the log, so two
@@ -6994,6 +6994,139 @@ async function sceneRowSpace(cdp) {
 		}
 	}
 	return [...frames, ...offerFrames];
+}
+
+/**
+ * The first send must not move the composer (§G2, §H), MEASURED and ASSERTED.
+ *
+ * WHY THIS IS AN ASSERTION NOW. The capture rig recorded the pair as a NOTE while
+ * the defect stood - `composer y393 -> y774` at 1380x900 and `y227 -> y474` at
+ * 800x600, the width unchanged - because the empty band centred the whole group
+ * (greeting, composer, chips) while a conversation anchors the composer at the
+ * foot. The band now docks the composer at its foot in both states, so the claim
+ * is a check: the composer box's x, y, width and height are the SAME before and
+ * after the first message, at whatever `--window-size` the run was started with
+ * (the two it is written about are 1380x900 and 800x600).
+ *
+ * WHAT IT DRIVES, and with which instrument. The launch lands on the empty state
+ * (`launchDraftSeed`), so the scene only has to reach `/chat`. The message is
+ * typed with CDP's own input pipeline (a trusted pointer press into the box, then
+ * `Input.insertText`) and sent with `Input.dispatchKeyEvent` Enter, so the send
+ * goes through the composer's real key handler. It requires `--backend`: with no
+ * backend the chat route draws its refusal surface and no composer mounts.
+ *
+ * The frames are captured FIRST and the boxes read after, for the reason the
+ * `floors` scene gives: `captureSettled` commits a frame only when two captures
+ * 150ms apart are identical, which is the proof the layout has stopped moving.
+ */
+async function sceneFirstSend(cdp) {
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	const composerSelector = '[data-tour-tag="chat-input-textarea"]';
+	const theme = THEME ?? "localOperatorDark";
+	await verb(cdp, "setTheme", theme);
+	await verb(cdp, "navigate", "/chat");
+	const mounted = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${composerSelector}') && document.querySelector('[data-lo-empty-mark]'))`,
+		30_000,
+	);
+	check(
+		"the chat route shows the empty state with a composer",
+		mounted.ok,
+		`composer + empty mark present: ${JSON.stringify(mounted.last)}`,
+	);
+	const size = `${WINDOW_WIDTH}x${WINDOW_HEIGHT}`;
+	const emptyFrame = await captureSettled(cdp, `first-send-${size}-empty`);
+	note("frame", JSON.stringify(emptyFrame));
+	const before = (await verb(cdp, "measure", composerSelector)).rect;
+	const stack = await cdp.evaluate(`(() => {
+		const el = document.querySelector('[data-lo-suggestion-stack]');
+		if (!el) return null;
+		const r = el.getBoundingClientRect();
+		return { y: Math.round(r.y), bottom: Math.round(r.bottom), chips: el.children.length };
+	})()`);
+	note("empty state", JSON.stringify({ composer: before, chips: stack }));
+	check(
+		"the chips sit ABOVE the docked composer (§H)",
+		stack === null || stack.bottom <= before.y,
+		`chips ${JSON.stringify(stack)} against composer y${before.y}`,
+	);
+	check(
+		"the composer is docked in the pane's lower half on the empty state",
+		before.y + before.height > WINDOW_HEIGHT * 0.6,
+		`composer y${before.y} h${before.height} in a ${WINDOW_HEIGHT}px window`,
+	);
+
+	await clickAt(cdp, `${composerSelector} textarea`);
+	await cdp.send("Input.insertText", { text: "Summarise yesterday's QA run." });
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	const sent = await waitForCondition(
+		cdp,
+		`(() => { const log = document.querySelector('[role="log"]'); return Boolean(log && log.textContent.includes("Summarise yesterday")) && !document.querySelector('[data-lo-empty-mark]'); })()`,
+		45_000,
+	);
+	check(
+		"the first message reached the transcript and the empty state is gone",
+		sent.ok,
+		`after ${sent.waitedMs ?? "?"}ms: ${JSON.stringify(sent.last)}`,
+	);
+	await wait(1500);
+	const sentFrame = await captureSettled(cdp, `first-send-${size}-sent`);
+	note("frame", JSON.stringify(sentFrame));
+	const after = (await verb(cdp, "measure", composerSelector)).rect;
+	/*
+	 * AND ONCE THE TURN HAS SETTLED: the mock provider answers, and the session's
+	 * readings (the model, the context) arrive with its first frames. Read so a
+	 * transient that only exists while the session is starting is told apart from a
+	 * settled layout that differs.
+	 */
+	const answered = await waitForCondition(
+		cdp,
+		`(() => { const log = document.querySelector('[role="log"]'); return Boolean(log && log.textContent.includes("from the mock provider")); })()`,
+		60_000,
+	);
+	await wait(1500);
+	const settledFrame = await captureSettled(cdp, `first-send-${size}-settled`);
+	note("frame", JSON.stringify(settledFrame));
+	const settled = (await verb(cdp, "measure", composerSelector)).rect;
+	note(
+		"composer box",
+		JSON.stringify({ before, after, settled, answered: answered.ok }),
+	);
+	check(
+		"the first send does not move the composer: its box is identical",
+		before.x === after.x &&
+			before.y === after.y &&
+			before.width === after.width &&
+			before.height === after.height,
+		`x${before.x} y${before.y} w${before.width} h${before.height} -> x${after.x} y${after.y} w${after.width} h${after.height}`,
+	);
+	check(
+		"the agent's answer arrived and the composer is still where it was",
+		answered.ok &&
+			before.x === settled.x &&
+			before.y === settled.y &&
+			before.width === settled.width &&
+			before.height === settled.height,
+		`answered=${answered.ok}; x${before.x} y${before.y} w${before.width} h${before.height} -> x${settled.x} y${settled.y} w${settled.width} h${settled.height}`,
+	);
+	/*
+	 * WHAT THIS DOES NOT COVER, measured: with NO provider configured the composer's
+	 * readings carry a `Choose a model` chip that leaves once the session starts, and
+	 * at 800x600 that chip wraps the readings onto their own line - the box is 32px
+	 * taller before the send than after (y442 h142 -> y474 h110). That is the readings
+	 * row changing its content, not the band moving the composer, so the run seeds the
+	 * mock provider (a configured user, which is the state the claim is about).
+	 */
+	return [emptyFrame, sentFrame, settledFrame];
 }
 
 /**
@@ -19219,6 +19352,11 @@ async function main() {
 			"--scene pins-scroll needs --backend: a panel with no catalogue has no row to pin",
 		);
 	}
+	if (SCENE === "first-send" && BACKEND === null) {
+		throw new Error(
+			"--scene first-send needs --backend: with no backend the chat route draws its refusal surface and no composer mounts, so there is nothing to send from",
+		);
+	}
 	if (SCENE === "radient-issue" && BACKEND === null) {
 		throw new Error(
 			"--scene radient-issue needs --backend: the callout is gated on a capability the backend advertises and speaks a verdict only it can give, so a run with none photographs the absence of the feature",
@@ -19372,6 +19510,7 @@ async function main() {
 			 * overlay mode). No backend is needed: see the scene's own note for the four
 			 * widths it is written about.
 			 */ else if (SCENE === "floors") await sceneFloors(cdp);
+			else if (SCENE === "first-send") await sceneFirstSend(cdp);
 			else if (SCENE === "radient-issue") await sceneRadientIssue(cdp);
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);
 			else if (SCENE === "authoring-refresh") await sceneAuthoringRefresh(cdp);
