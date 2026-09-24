@@ -279,7 +279,27 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 						label={`Resize the sidebar (${sidebarToggleCap(isMacPlatform())})`}
 					/>
 				)}
-				<div className="h-full min-w-0 grow overflow-hidden">{content}</div>
+				{/*
+				 * THE CONTENT COLUMN IS A FLEX COLUMN, and that is load-bearing rather
+				 * than tidy. What this wraps is the route (`<main>`), and `<main>` carries
+				 * `grow` - a flex property, which does nothing at all unless its parent is a
+				 * flex container. As a plain block this wrapper left `<main>`'s height AUTO,
+				 * so the whole chain below it resolved to auto as well: the transcript grew
+				 * to its CONTENT height instead of being the scroller, and the composer sat
+				 * below the fold with a real conversation in it - measured on the AFTER rig's
+				 * own dump at `b-qa`, `transcript.h` 1084 with `composer.y` 1164 in a 768px
+				 * viewport. `<main>`'s own `overflow-hidden` is what then makes its automatic
+				 * minimum size ZERO (a flex item's `min-height: auto` is the content-based
+				 * size only while its overflow is visible), so the column can be SHORTER than
+				 * its content and the transcript can scroll inside it.
+				 *
+				 * Before the one-sidebar merge `<main>` was a direct child of the app's own
+				 * flex row, where `align-items: stretch` gave it a definite height for free;
+				 * that is the property this wrapper has to reproduce, not replace.
+				 */}
+				<div className="flex h-full min-w-0 grow flex-col overflow-hidden">
+					{content}
+				</div>
 			</div>
 		</div>
 	);

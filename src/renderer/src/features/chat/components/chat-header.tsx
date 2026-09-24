@@ -475,12 +475,30 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 					<Skeleton className={cn("h-3 w-24 shrink-0 bg-elevated")} />
 				) : (
 					<span
+						dir="rtl"
 						className={cn(
 							"min-w-0 shrink-[2] truncate text-ink-dim text-mono-sm",
 						)}
 						title={description}
 					>
-						{formatDirectory(description, homeDirectory)}
+						{/*
+						 * TRUNCATED FROM THE LEFT, SO THE TAIL SURVIVES - the app's own
+						 * spelling for a path, copied rather than invented
+						 * (`browser-file-transfer-row.tsx` renders a quarantine directory the
+						 * same way, for the same reason: the tail is the part that identifies
+						 * it). `truncate` alone ellipsises the END, which is what D7 is about -
+						 * the row read `/Users/damian/.local-operator/sessions/d81d04d3...`
+						 * with the one segment that says WHICH directory cut off.
+						 *
+						 * THE `bdi` IS NOT DECORATION. `dir="rtl"` on the outer span is only
+						 * where the overflow is measured and the ellipsis is drawn; the path
+						 * itself has to stay an LTR run, or the bidi algorithm reorders the
+						 * segments and their separators - `/a/b/c` in an RTL paragraph reads
+						 * `c/b/a`, and a leading `~/` moves to the visual end. The inner `bdi`
+						 * is what holds each segment in place while the outer element decides
+						 * which end gives.
+						 */}
+						<bdi dir="ltr">{formatDirectory(description, homeDirectory)}</bdi>
 					</span>
 				)}
 			</div>
