@@ -234,8 +234,30 @@ export type UseRadientSessionIssue = {
  * `isPending` forever in React Query v5, so a caller that held its paint on the
  * query's own `isPending` would hang on every backend without `tunnel`; this
  * flag ends there instead, with no verdict.
+ *
+ * `settling` IS THE FIRST ANSWER ONLY, never "a read is out" (QA round 3, Q-8).
+ * A query that FAILED holds no data, and React Query puts a data-less query
+ * back to `status: "pending"` for every later attempt (`query-core@5.73.3`
+ * `fetchState`: `data === undefined` resets `status` to `"pending"`), so while
+ * the route is failing, `isPending` is true again on every poll, window focus,
+ * `refreshProviders` invalidation and observer mount. The grid holds its whole
+ * card list - detail panel included - on this flag, so reading `isPending` here
+ * turned each re-attempt into an unmount of the panel, and the panel's own
+ * remount into the next attempt: ~70 requests a second and a grid that never
+ * left "Loading providers". `isFetched` (the query has answered at least once,
+ * data OR error) is what D6's hold is actually about - the first painted card
+ * must not carry a claim the first answer is about to correct - and after that
+ * answer a re-read keeps the list on screen exactly as a re-read of a SUCCESSFUL
+ * verdict always has. The capability arm gets the same rule for the same
+ * reason: it is `retry: false` with its own renegotiation interval, so a failed
+ * capability read is re-asked on a timer too.
+ *
+ * `retryOnMount` is the caller's, and the default is React Query's own (`true`):
+ * see `RadientLoginVerdictOptions` for which surfaces must turn it off.
  */
-function useRadientAuthStatus() {
+function useRadientAuthStatus({
+	retryOnMount = true,
+}: RadientLoginVerdictOptions = {}) {
 	const capabilities = useDesktopCapabilities();
 	/*
 	 * Fail closed on the capability, which is a NEW key the backend advertises
@@ -260,14 +282,57 @@ function useRadientAuthStatus() {
 		 * about the login - which renders as `hidden` either way.
 		 */
 		retry: false,
+		/*
+		 * Per OBSERVER in React Query (`shouldLoadOnMount` reads the mounting
+		 * observer's options), so one caller's choice cannot change another's.
+		 */
+		retryOnMount,
 	});
 
 	return {
 		status,
 		enabled,
-		settling: capabilities.isPending || (enabled && status.isPending),
+		settling:
+			(capabilities.isPending && !capabilities.isFetched) ||
+			(enabled && status.isPending && !status.isFetched),
 	};
 }
+
+/**
+ * The part of the verdict read a caller may change.
+ *
+ * `retryOnMount` decides whether a NEW observer mounting on a verdict read that
+ * has already FAILED (and so holds no data) may start another read:
+ * `shouldLoadOnMount` is
+ * `enabled && data === undefined && !(status === "error" && retryOnMount === false)`
+ * (`@tanstack/query-core@5.73.3`, `queryObserver.js`). It is the same trap, and
+ * the same remedy, as the account read's `RadientUserQueryOptions` (round 2's
+ * D7/Q-5), found this time on this key (QA round 3, Q-8): the provider panel
+ * mounts this read for every provider, so on a failing `GET /v1/auth/status`
+ * each panel mount re-commissioned it. The loop was measured at 1,579 requests in
+ * 20 s from the Radient card and 1,459 from OpenAI's; one option on the panel's
+ * call took it to 1.
+ *
+ * The inline-options hypothesis is not the cause here either: React Query hashes
+ * `queryKey` by value and only a MOUNT (or an `enabled` flip) reaches
+ * `shouldLoadOnMount`, which is why the fix is an option and not a hoisted key.
+ */
+export type RadientLoginVerdictOptions = {
+	/**
+	 * Whether mounting this observer may re-ask a verdict read that has failed.
+	 *
+	 * `true` (the default) is right for a surface that OWNS the read: the
+	 * composer's callout, which lives as long as the chat and is the surface that
+	 * should re-ask on its next mount, and the provider grid, which is the read's
+	 * owner in Settings and onboarding. `false` is for an observer that only
+	 * REPORTS a read its host is already taking - the provider detail panel, which
+	 * only ever mounts beneath the grid or the account section. It still starts
+	 * the FIRST read when nothing has asked yet, and it still receives every
+	 * poll, focus refetch and invalidation; it only stops a remount from
+	 * re-commissioning a failure.
+	 */
+	retryOnMount?: boolean;
+};
 
 /**
  * The verdict alone, for a surface that renders it but does not start a sign-in
@@ -284,11 +349,13 @@ function useRadientAuthStatus() {
  * `enabled` is re-applied to `data` for the reason the callout re-applies it: a
  * cached answer from before a withdrawal must not outlive the capability.
  */
-export function useRadientLoginVerdict(): {
+export function useRadientLoginVerdict(
+	options: RadientLoginVerdictOptions = {},
+): {
 	data: RadientLoginVerdict | null;
 	isPending: boolean;
 } {
-	const { status, enabled, settling } = useRadientAuthStatus();
+	const { status, enabled, settling } = useRadientAuthStatus(options);
 	return {
 		data: enabled ? (status.data?.radient_login ?? null) : null,
 		isPending: settling,
