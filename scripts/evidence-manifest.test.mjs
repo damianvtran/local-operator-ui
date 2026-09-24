@@ -804,6 +804,14 @@ const STAMP_BINDING_NOTES = [
 	// read-receipt branch, so it is held to that pair rather than read as history -
 	// the distinction `candidateMacArchRestampNote` above is in the list for.
 	"readReceiptRestampNote",
+	/*
+	 * And the eighth, the round-1 remediation of the failed-send notice: it states
+	 * this file's own pair (both trees moved, which the note says in as many words)
+	 * and declares the two supplementary sets this round added and the three story
+	 * sets it withdrew, so it is held to the stamps it ships rather than read as
+	 * history.
+	 */
+	"composerNoticeRemediationNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {

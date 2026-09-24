@@ -5354,7 +5354,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										 * sentence is asking for.
 										 */
 										className={cn(
-											"cursor-pointer font-medium text-body-sm underline",
+											/*
+											 * `font-semibold`, not `font-medium`: the button's own base
+											 * already draws at medium weight, so a "medium" Retry is
+											 * indistinguishable from Clear - measured by
+											 * `composer-alert-geometry` at 500 for both, which is
+											 * exactly the D2 finding the class was meant to answer.
+											 */
+											"cursor-pointer font-semibold text-body-sm underline",
 										)}
 										onClick={() => sendError.onRetry?.()}
 									>
