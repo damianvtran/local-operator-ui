@@ -2,6 +2,7 @@ import { BrowserPane } from "@features/browser/components/browser-pane";
 import { useConversationApprovals } from "@features/browser/hooks/use-conversation-approvals";
 import { ConsolePane } from "@features/console/components/console-pane";
 import { useConsoleBlipPulse } from "@features/console/hooks/use-console-attention";
+import { useProviderStatus } from "@features/providers/use-provider-status";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
@@ -502,6 +503,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * conversation to archive or delete, so every one of these is inert there.
 		 */
 		const capabilities = useDesktopCapabilities();
+		// Whether to tell the user to connect a provider before they type; see
+		// `useProviderStatus` for why this is false whenever it is not KNOWN.
+		const { needsProvider } = useProviderStatus();
 		const archiveEnabled = desktopFeatureEnabled(
 			capabilities.data,
 			"session_archive",
@@ -1258,6 +1262,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								onSendMessage={onSendMessage}
 								onComposerInput={onComposerInput}
 								initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
+								noProvider={needsProvider}
 								isLoading={
 									canonical
 										? Boolean(canonical.admitting || canonical.starting)

@@ -41,6 +41,10 @@
  * following the tail neither loads a page nor has their offset corrected.
  */
 
+import {
+	NO_PROVIDER_NOTICE,
+	useConnectProviderStore,
+} from "@features/providers/connect-provider-store";
 import { Button } from "@shared/components/ui";
 import { useCompletionView } from "@shared/hooks/use-completion-view";
 import { cn } from "@shared/lib/utils";
@@ -1058,6 +1062,23 @@ const NoticeRow = memo(function NoticeRow({
 					) : undefined
 				}
 			/>
+			{/*
+			 * The backend's "No model provider is configured yet" notice names a
+			 * Settings path to type out (design D7). The sentence is kept -- it is
+			 * the backend's -- and gains the action it describes, which opens the
+			 * connect dialog over this conversation instead of navigating away.
+			 */}
+			{NO_PROVIDER_NOTICE.test(record.text) ? (
+				<div className="mt-1 pl-6">
+					<Button
+						variant="secondary"
+						size="sm"
+						onClick={() => useConnectProviderStore.getState().openConnect()}
+					>
+						Connect a provider
+					</Button>
+				</div>
+			) : null}
 		</MessageContainer>
 	);
 });

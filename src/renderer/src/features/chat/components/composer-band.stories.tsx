@@ -192,9 +192,17 @@ type BandProps = {
 	isSmallView?: boolean;
 	pool?: readonly string[];
 	draft?: string;
+	/** Nothing connected: the connect card replaces the chips (design section 6). */
+	noProvider?: boolean;
 };
 
-const composerBand = ({ story, isSmallView, pool, draft }: BandProps) => {
+const composerBand = ({
+	story,
+	isSmallView,
+	pool,
+	draft,
+	noProvider,
+}: BandProps) => {
 	const conversation = conversationFor(story);
 	const input = (
 		<MessageInput
@@ -203,6 +211,7 @@ const composerBand = ({ story, isSmallView, pool, draft }: BandProps) => {
 			conversationId={conversation}
 			initialSuggestions={pool ?? DEFAULT_MESSAGE_SUGGESTIONS}
 			isSmallView={isSmallView ?? false}
+			noProvider={noProvider ?? false}
 			onSendMessage={async () => true}
 		/>
 	);
@@ -285,6 +294,34 @@ export const EmptyChat: Story = {
 	render: () => (
 		<Column label="empty chat / opening sample: the pool's first four + the tip row">
 			{composerBand({ story: "empty-chat" })}
+		</Column>
+	),
+};
+
+/**
+ * The empty chat with NO model provider connected: the connect card takes the
+ * chips' slot, the tips are withheld, and the placeholder says what to do.
+ */
+export const EmptyChatNoProvider: Story = {
+	render: () => (
+		<Column label="empty chat, no provider connected: the connect card replaces the chips">
+			{composerBand({ story: "empty-chat-no-provider", noProvider: true })}
+		</Column>
+	),
+};
+
+/** The same state in the small view, where the band shows the status line. */
+export const EmptyChatNoProviderSmall: Story = {
+	render: () => (
+		<Column
+			label="small view, no provider: the composer's status line"
+			width={480}
+		>
+			{composerBand({
+				story: "empty-chat-no-provider-small",
+				noProvider: true,
+				isSmallView: true,
+			})}
 		</Column>
 	),
 };

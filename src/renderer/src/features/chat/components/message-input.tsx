@@ -196,6 +196,10 @@ const CREDENTIAL_NOTICE_ID = "composer-credential-notice";
  * asked for.
  */
 const MENTION_OUTSIDE_NOTICE_ID = "composer-mention-outside-notice";
+import {
+	ConnectProviderCard,
+	NoProviderLine,
+} from "@features/providers/connect-provider-card";
 import { sampleSuggestions } from "./composer-suggestions";
 import { ComposerTipRow } from "./composer-tip";
 import { CredentialChipLayer } from "./credential-chip-layer";
@@ -557,6 +561,16 @@ type MessageInputProps = {
 	 * appends to or otherwise edits what it was handed.
 	 */
 	initialSuggestions?: readonly string[];
+	/**
+	 * True when the app KNOWS no model provider is connected (the census was
+	 * read and nothing answers; see `useProviderStatus`). The empty chat then
+	 * shows the connect card instead of suggestion chips, the placeholder says
+	 * what to do, and a status line offers "Connect" -- design audit section 6.
+	 * Typing stays allowed so a draft is never lost; the backend's own notice
+	 * still answers a send. A plain prop rather than a hook read here, so the
+	 * composer stays mountable without a query client in its Node tests.
+	 */
+	noProvider?: boolean;
 	agentData?: AgentDetails | null;
 	/**
 	 * Working directory for this conversation, and the way to change it.
@@ -1202,6 +1216,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			interruptNotice,
 			sendError,
 			initialSuggestions,
+			noProvider = false,
 			agentData,
 			cwd,
 			cwdWritePath,
@@ -6435,6 +6450,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												awaitingAnswer,
 												sendingUnsettled: sendUnsettled || sendInFlight,
 												awaitingReply,
+												// The last reading before the invitation: nothing is in
+												// flight and the box is not refused, but no model
+												// provider is connected, so the invitation is a lie
+												// (design audit section 6).
+												noProvider,
 											})
 										}
 										value={newMessage}
@@ -7243,7 +7263,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * suggestion wrapper below: a component does not own its outer
 				 * margin, the container owns the gap (branding.md § 5).
 				 */}
-				{showEmptyChatPrompt && (
+				{/* With nothing connected the tips (slash commands, mentions) describe
+				    a conversation that cannot run yet; the connect card below is the
+				    one thing this screen should say. */}
+				{showEmptyChatPrompt && !noProvider && (
 					<div className={cn("mt-3", CHAT_MEASURE)}>
 						{/*
 						 * The clock is suspended while the box holds a draft, so a text
@@ -7256,7 +7279,23 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						/>
 					</div>
 				)}
-				{showEmptyChatPrompt && (
+				{noProvider && !showEmptyChatPrompt ? (
+					<div className={cn("mt-2", CHAT_MEASURE)}>
+						<NoProviderLine />
+					</div>
+				) : null}
+				{showEmptyChatPrompt && noProvider && (
+					/*
+					 * The connect card takes the chips' slot, not a slot of its own: the
+					 * chips are examples of what to ask, and with nothing connected there
+					 * is nothing to ask yet. Same margin and measure as the chips, so the
+					 * band's centred group keeps its geometry (see the mirror below).
+					 */
+					<div className={cn("mt-6", CHAT_MEASURE)}>
+						<ConnectProviderCard />
+					</div>
+				)}
+				{showEmptyChatPrompt && !noProvider && (
 					<div className={cn("mt-6", CHAT_MEASURE)}>
 						{/* Borderless chips, left-aligned on the measure. Twelve
 						 * accent-washed pills was the accent budget spent four times over on
