@@ -1,0 +1,86 @@
+[build] current: assets 2026-09-24T07:43:45.041Z >= sources 2026-09-24T07:33:36.932Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8099
+  serve records 1 linked from /Users/damian/.local-operator/sessions/5f4ce7cdfa9e/scratchpad/rig-final/home/.local-operator/run/serve   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/integrations-redesign
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-14977
+  frames        /Users/damian/.local-operator/sessions/5f4ce7cdfa9e/scratchpad/final-frames
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-14977/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8099   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/integrations-redesign/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8099","backend":"http://127.0.0.1:8099"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8099)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown
+[PASS] this scene is running against a live, isolated backend
+[note] backend capabilities
+        {"auth":1,"settings":1,"commands":2,"catalogues":1,"profile_catalogue":1,"team_catalogue":1,"session_catalogue":3,"session_search":1,"draft_preview":1,"draft_selection":1,"lifecycle":1,"completion_ack":1,"completion_ack_bulk":1,"notification_contract":1,"mcp":1,"mcp_auth":1,"mcp_catalog":1,"radient":1,"session_variables":1,"subagent_transcript":1,"session_move":2,"frontend_replace":1,"diagnostics":1,"desktop_feed":1,"desktop_presence":1,"session_interrupt":1,"session_pins":1,"session_archive":1,"session_delete":1,"tunnel":1}
+[PASS] the backend advertises the sessionless catalog
+[note] model access before the run
+        default provider=null default model=null signed-in accounts=0 (status 200)
+[PASS] the config has no model provider, which is the state this scene is about
+[note] sessions before
+        0 (status 200)
+[PASS] the section the deep link names is IN VIEW before the frame is taken
+[PASS] with no chat open and no model, the page still shows the section
+[note] catalog after adding echo-14977
+        {"id":"echo-14977","name":"echo-14977","scope":"global","project_path":null,"source":{"kind":"local-operator","path":"/Users/damian/.local-operator/sessions/5f4ce7cdfa9e/scratchpad/rig-final/home/.local-operator/mcp.json","editable":true,"owned_scope":"global"},"transport":"local_command","endpoint":{"command":"/Users/damian/workspace/repos/lo-sessionless-mcp-b747/.venv/bin/python","url":null,"endpoint_redacted":false},"status":"not_started","status_reason":null,"status_observed_at":null,"status_basis":"stored","auth":{"kind":"none","signed_in":null,"secret_refs":[]},"tool_count":null,"tool_count_basis":null,"actions":["test","remove"]}
+[note] row text for echo-14977
+        echo-14977 Local command Ready Test
+[PASS] the local command landed: on the page AND in the backend's own catalog
+[PASS] its row is a local command, global, with the command the form was given
+[PASS] the add form switched to Remote URL
+[note] catalog after adding remote-14977
+        {"id":"remote-14977","name":"remote-14977","scope":"global","project_path":null,"source":{"kind":"local-operator","path":"/Users/damian/.local-operator/sessions/5f4ce7cdfa9e/scratchpad/rig-final/home/.local-operator/mcp.json","editable":true,"owned_scope":"global"},"transport":"remote_url","endpoint":{"command":null,"url":"http://127.0.0.1:8111/mcp","endpoint_redacted":false},"status":"not_started","status_reason":null,"status_observed_at":null,"status_basis":"stored","auth":{"kind":"unknown","signed_in":null,"secret_refs":[]},"tool_count":null,"tool_count_basis":null,"actions":["test","sign_in","remove"]}
+[note] row text for remote-14977
+        remote-14977 Remote URL Ready Test
+[PASS] the remote URL landed: on the page AND in the backend's own catalog
+[PASS] its row is a remote URL, global, with the URL the form was given
+[note] pressed Test on echo-14977
+        {"selector":"[data-integration=\"echo-14977\"] [data-integration-action='test']","target":"button \"Test\"","hitTest":true,"hit":"button \"Test\"","stack":["button \"Test\"","div \"echo-14977Local commandReadyTest\"","li \"echo-14977Local commandReadyTest\"","ul \"echo-14977Local commandReadyTestremote-14977Remote URLReadyT\""],"disabled":false,"rect":{"x":1241.5078125,"y":147.5078125,"width":42.4921875,"height":28}}
+[note] row while testing echo-14977
+        true echo-14977 Local command Connecting…
+[note] catalog after testing echo-14977
+        {"id":"echo-14977","name":"echo-14977","scope":"global","project_path":null,"source":{"kind":"local-operator","path":"/Users/damian/.local-operator/sessions/5f4ce7cdfa9e/scratchpad/rig-final/home/.local-operator/mcp.json","editable":true,"owned_scope":"global"},"transport":"local_command","endpoint":{"command":"/Users/damian/workspace/repos/lo-sessionless-mcp-b747/.venv/bin/python","url":null,"endpoint_redacted":false},"status":"connected","status_reason":null,"status_observed_at":1790236492.798321,"status_basis":"probe","auth":{"kind":"none","signed_in":null,"secret_refs":[]},"tool_count":1,"tool_count_basis":"probe","actions":["test","remove"]}
+[note] row text after testing echo-14977
+        echo-14977 Local command Connected · 1 tool
+[PASS] the local command's test settled on the backend's own answer, with no reload pressed
+[note] pressed Test on remote-14977
+        {"selector":"[data-integration=\"remote-14977\"] [data-integration-action='test']","target":"button \"Test\"","hitTest":true,"hit":"button \"Test\"","stack":["button \"Test\"","div \"remote-14977Remote URLReadyTest\"","li \"remote-14977Remote URLReadyTest\"","ul \"remote-14977Remote URLReadyTest\""],"disabled":false,"rect":{"x":1241.5078125,"y":208,"width":42.4921875,"height":28}}
+[note] row while testing remote-14977
+        true remote-14977 Remote URL Connecting…
+[note] catalog after testing remote-14977
+        {"id":"remote-14977","name":"remote-14977","scope":"global","project_path":null,"source":{"kind":"local-operator","path":"/Users/damian/.local-operator/sessions/5f4ce7cdfa9e/scratchpad/rig-final/home/.local-operator/mcp.json","editable":true,"owned_scope":"global"},"transport":"remote_url","endpoint":{"command":null,"url":"http://127.0.0.1:8111/mcp","endpoint_redacted":false},"status":"connected","status_reason":null,"status_observed_at":1790236495.1806772,"status_basis":"probe","auth":{"kind":"unknown","signed_in":null,"secret_refs":[]},"tool_count":1,"tool_count_basis":"probe","actions":["test","sign_in","remove"]}
+[note] row text after testing remote-14977
+        remote-14977 Remote URL Connected · 1 tool
+[PASS] the remote URL's test settled on the backend's own answer too
+[PASS] both rows read in plain words, never the wire's
+[PASS] Remove asks before it writes anything
+[PASS] the local command's remove landed: gone from the page AND from the backend's catalog
+[PASS] the remote URL's remove landed the same way
+[PASS] the catalog is empty again, so both writes went through the backend
+[PASS] and the page is back to its empty state
+[PASS] none of it created a conversation, which is what made this reachable at all
+[note] renderer errors
+        none
+[PASS] no process from this run outlived its boot
+
+frames: integrations-live-01-empty.png, integrations-live-02-add-stdio.png, integrations-live-03-added-stdio.png, integrations-live-04-add-remote.png, integrations-live-05-added-remote.png, integrations-live-06-tested-stdio.png, integrations-live-07-tested-remote.png, integrations-live-08-overflow.png, integrations-live-09-remove-confirm.png, integrations-live-10-removed.png
+frames directory: /Users/damian/.local-operator/sessions/5f4ce7cdfa9e/scratchpad/final-frames
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-14977/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-14977 (the frames are also in --out)
+
+ALL CHECKS PASSED
