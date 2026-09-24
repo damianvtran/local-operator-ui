@@ -565,6 +565,39 @@ test("a row that vanishes under the user's highlight is named, not silently repl
 	);
 
 	/*
+	 * (a2) THE CORNER, found from both directions in the confirmation round
+	 * (code review MINOR-1 = UX U8), and the reason `heldIndex >= 0` is part of
+	 * the retirement's guard. ONE pass can do both things at once - the row the
+	 * sentence is about comes BACK while the row the highlight is on goes away -
+	 * and that is ordinary rather than exotic, because a re-list answers with a
+	 * different SET of rows each time. Retiring on that pass without the held
+	 * row's survival returned before the branch below could name the new landing,
+	 * so the footer fell back to the plain hint on the one pass where Enter
+	 * started sending a row the user never chose. The sentence goes only when
+	 * there is nothing to announce; otherwise the pass falls through to the
+	 * branch that set it.
+	 */
+	const swapped = pickerPlacement({
+		options: options(["claude-opus-5.5"]),
+		held: "claude-opus-5",
+		active: 0,
+		query: "opus",
+		queryChanged: false,
+		steered: true,
+		retarget: { lost: "claude-opus-5.5", label: "claude-opus-5" },
+	});
+	assert.deepEqual(
+		swapped.retargeted,
+		{ lost: "claude-opus-5", label: "claude-opus-5.5" },
+		"the sentence about the recovered row is REPLACED, in the same pass, by one naming the row that just went - retiring it here would take the announcement away",
+	);
+	assert.equal(
+		swapped.held,
+		"claude-opus-5.5",
+		"and the highlight is on the row the new sentence names",
+	);
+
+	/*
 	 * (b) The user's own typing, in the case round 3 measured: the row the
 	 * sentence would keep SURVIVES the filter. The highlight staying put is the
 	 * highlight's business; the sentence is a separate claim, and typing is the

@@ -179,11 +179,21 @@ row Enter acts on), three MINORs and two observations:
   `scripts/picker-feedback.test.mjs`).
 - **D6 — the note wrapped the control's own label.** The quoted phrase is one
   unbreakable token now (`\u00a0`), so the note breaks before `Refresh` instead
-  of between `from` and `providers`. The pair that shows it is attached to the
-  PR: the BEFORE half is the committed frame at this branch's previous head, and
-  the AFTER half is a browser capture of this story on this tree
-  (`chat-model-picker--live-listing-failed`, dark), because the rig's shutter for
-  that state cannot currently be relied on — see the note below.
+  of between `from` and `providers`. The pair that shows it is **NOT attached to
+  the PR, and could not be**: attaching an image means uploading it through a
+  page that is logged in, and this session's browser has no GitHub login, so the
+  PR carries raw links to COMMITTED frames and nothing that had to be uploaded
+  (confirmation round, both streams). What the pair actually is, stated so a
+  reader can reach both halves without trusting this file: the BEFORE half is the
+  committed frame at this branch's previous head and is readable straight from
+  the object store at
+  `https://raw.githubusercontent.com/damianvtran/local-operator-ui/ffccfe5ab/docs/evidence/chat-model-picker/after-live-listing-failed/localOperatorDark.webp`
+  (`...Light.webp` beside it, and it is the file in this directory too — see the
+  next bullet), and the AFTER half is a browser capture of
+  `chat-model-picker--live-listing-failed` on this tree, not committed anywhere,
+  reproducible by opening that story — the rig's shutter for the state cannot
+  currently be relied on, which is why it was taken by hand; see the note
+  below.
 - **The failed-listing frame here is the previous head's, and that is measured.**
   Re-capturing `after-live-listing-failed` at this head produced a picture of the
   automatic pass IN FLIGHT (`Checking…`, no note) rather than the settled failure
@@ -233,7 +243,11 @@ and compared against the committed bytes:
   therefore the PRE-fix sentence: `…the shipped models; Refresh from / providers
   tries again.` across two lines with the control's own label split between them.
   The POST-fix copy — `…the shipped models; / Refresh from providers tries
-  again.`, the phrase whole — is the second half of the pair attached to the PR.
+  again.`, the phrase whole — is the second half of that pair, and it is neither
+  attached to this PR nor committed: this session cannot upload an image (no
+  GitHub login in its browser), and the capture is of
+  `chat-model-picker--live-listing-failed` on this tree, so the way to see it is
+  to open that story.
   Both are the same state and the same rows: the picker open with `opus` typed,
   ONE registry row drawn from the search `anthropic/claude-opus-5` (the play
   asserts exactly one `option` row and that it names Claude Opus 5), with the read

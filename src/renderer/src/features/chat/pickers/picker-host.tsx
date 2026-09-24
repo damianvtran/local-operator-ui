@@ -440,7 +440,8 @@ export function pickerPlacement(state: {
 	const index = currentIndex >= 0 ? currentIndex : clamped;
 	if (
 		retarget !== null &&
-		options.some((option) => option.value === retarget.lost)
+		options.some((option) => option.value === retarget.lost) &&
+		heldIndex >= 0
 	) {
 		/*
 		 * THE ROW THE SENTENCE IS ABOUT IS LISTED AGAIN, so the sentence is no
@@ -449,10 +450,28 @@ export function pickerPlacement(state: {
 		 * named and been told what Enter sends, and hopping their selection a
 		 * second time, on a press they made to fix the LISTING rather than the
 		 * selection, is the unbidden movement U1 exists to prevent.
+		 *
+		 * `heldIndex >= 0` IS PART OF THE GUARD, and it is what makes retiring the
+		 * sentence and NAMING the next one a single decision rather than two
+		 * (confirmation round, code review MINOR-1 = UX U8). One listing change
+		 * can do both things at once - the row the sentence calls missing comes
+		 * back while the row the highlight was on goes away, which is the normal
+		 * case for a re-list rather than an exotic one: what the provider answers
+		 * is a different SET of rows each time. Retiring here without that term
+		 * took an announcement away: the pass returned before the branch below
+		 * could name the new landing, so the footer dropped to the plain hint on
+		 * the exact pass where Enter started sending a row the user never chose.
+		 * Nothing was FALSE (the highlight and Enter still agreed, the placement
+		 * still happened) - what was lost was the sentence telling the user so. So
+		 * the sentence goes only on a pass with nothing to announce: the lost row
+		 * back AND the held row still listed. Otherwise the pass falls through to
+		 * the branch that set the sentence in the first place.
 		 */
 		return {
-			index: heldIndex >= 0 ? heldIndex : index,
-			held: heldIndex >= 0 ? held : (options[index]?.value ?? null),
+			// The guard above is why these are not ternaries any more: reaching
+			// this branch MEANS the held row survived.
+			index: heldIndex,
+			held,
 			retargeted: null,
 			steered,
 		};
