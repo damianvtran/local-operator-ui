@@ -54,11 +54,26 @@ const tracked =
 globalThis.setTimeout = tracked(realSetTimeout);
 globalThis.setInterval = tracked(realSetInterval);
 
+/*
+ * A FRESH STORE PER FILE, and not jsdom's. The runner may put more than one file in
+a worker process, and the store bundles other suites install read `localStorage`
+at module scope - so a suite that shares the document's own storage changes
+behaviour depending on which file ran first (measured: one case in this file
+passed against the previous head when it shared a worker with the store suite and
+failed when it did not, which is a regression test that would not have caught its
+own defect). One file, one storage, one outcome.
+ */
+const storage = new Map();
+const localStorageStub = {
+	getItem: (key) => storage.get(key) ?? null,
+	setItem: (key, value) => storage.set(key, String(value)),
+	removeItem: (key) => storage.delete(key),
+};
 for (const [key, value] of Object.entries({
 	window,
 	document: window.document,
-	localStorage: window.localStorage,
-	sessionStorage: window.sessionStorage,
+	localStorage: localStorageStub,
+	sessionStorage: localStorageStub,
 	HTMLElement: window.HTMLElement,
 	HTMLTextAreaElement: window.HTMLTextAreaElement,
 	HTMLInputElement: window.HTMLInputElement,
@@ -184,6 +199,12 @@ async function mount(options) {
 const boxText = () => mounted.container.querySelector("textarea").value;
 const identity = "22222222-2222-2222-2222-222222222222";
 
+/** A clean store for each case: the rows AND the bytes they were persisted as. */
+function resetStore() {
+	storage.clear();
+	useConversationInputStore.setState({ inputByConversation: {} });
+}
+
 /** A send the test releases when it wants the outcome to arrive. */
 function deferredSend() {
 	const sent = [];
@@ -217,7 +238,7 @@ after(async () => {
 /* ------------------------------------------------------------------ the box */
 
 test("Clear empties the BOX, and a store write reaches a box already mounted", async () => {
-	useConversationInputStore.setState({ inputByConversation: {} });
+	resetStore();
 	const { holder } = await mount({
 		conversationId: identity,
 		onSubmit: async () => {},
@@ -242,6 +263,14 @@ test("Clear empties the BOX, and a store write reaches a box already mounted", a
 	await act(async () => {
 		useConversationInputStore.getState().clearComposer(identity);
 	});
+	/*
+	 * TWO FLUSHES, and the second is not decoration: the store write re-renders the
+	 * hook, the hook's effect notices the store authored the box and sets the text it
+	 * owns, and that second render is what moves the DOM. In the app the pair is one
+	 * frame; in a test it has to be awaited, or the assertion reads the box before the
+	 * effect that empties it has run.
+	 */
+	await act(async () => {});
 	assert.equal(boxText(), "", "Clear emptied the row and left the words on screen");
 	assert.equal(
 		useConversationInputStore.getState().inputByConversation[identity]
@@ -251,7 +280,7 @@ test("Clear empties the BOX, and a store write reaches a box already mounted", a
 });
 
 test("a message that reconciles as delivered empties the box in silence", async () => {
-	useConversationInputStore.setState({ inputByConversation: {} });
+	resetStore();
 	const { holder } = await mount({
 		conversationId: identity,
 		onSubmit: async () => {},
@@ -276,6 +305,7 @@ test("a message that reconciles as delivered empties the box in silence", async 
 	await act(async () => {
 		useConversationInputStore.getState().reconcileDelivered(identity);
 	});
+	await act(async () => {});
 	assert.equal(
 		boxText(),
 		"",
@@ -284,7 +314,7 @@ test("a message that reconciles as delivered empties the box in silence", async 
 });
 
 test("a returned payload reaches a composer that mounts after the failure", async () => {
-	useConversationInputStore.setState({ inputByConversation: {} });
+	resetStore();
 	const store = useConversationInputStore.getState();
 	/*
 	 * The failure happens with no composer mounted at all - the identity flip, or a
@@ -315,7 +345,7 @@ test("a returned payload reaches a composer that mounts after the failure", asyn
 });
 
 test("a masked credential capture keeps the box against a store write", async () => {
-	useConversationInputStore.setState({ inputByConversation: {} });
+	resetStore();
 	const { holder } = await mount({
 		conversationId: identity,
 		onSubmit: async () => {},
@@ -344,7 +374,7 @@ test("a masked credential capture keeps the box against a store write", async ()
 /* -------------------------------------------------------------- the press */
 
 test("a second press reaches the pane instead of vanishing", async () => {
-	useConversationInputStore.setState({ inputByConversation: {} });
+	resetStore();
 	const send = deferredSend();
 	const { holder } = await mount({
 		conversationId: identity,
