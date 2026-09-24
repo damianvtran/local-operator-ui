@@ -793,6 +793,20 @@ const STAMP_BINDING_NOTES = [
 	 * `usageAutoCheckRestampNote` and `usageInFlightRemediationNote` got when
 	 * earlier rounds re-derived the stamps under them.
 	 */
+	/*
+	 * NINE NOTES LEFT THIS LIST when this branch folded onto the `origin/main` that
+	 * moved under it and re-derived both stamps: `shellPathRestampNote`,
+	 * `settingsGateRestampNote`, `candidateMacArchRestampNote`,
+	 * `notarizeGateRestampNote`, `usageInFlightConvergenceNote`,
+	 * `macNativeComponentsRestampNote`, `telemetrySwitchRestampNote`,
+	 * `readReceiptRestampNote` and - arriving in the same fold, written by the
+	 * picker's catalogue-focus change - `modelCatalogueFocusRestampNote`. Every one
+	 * of them quoted the pair the fold supersedes, and a pair that is history must
+	 * not be held to this file as if it were its own: that is the defect this list
+	 * exists for. Each note's pair is written as bare SHAs in the note itself, the
+	 * same rewrite `usageAutoCheckRestampNote` and `usageInFlightRemediationNote`
+	 * got when earlier rounds re-derived the stamps under them.
+	 */
 	"occupiedAddressRestampNote",
 ];
 
