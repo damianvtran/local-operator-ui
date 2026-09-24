@@ -258,9 +258,10 @@ const PROBE = `(() => {
 	while (box && getComputedStyle(box).borderTopWidth === "0px") box = box.parentElement;
 	/*
 	 * THE NOTICE, IN EITHER REGISTER (design round 4, D12). A muted statement of fact
-	 * is `role="status"` - the late-delivery line is one - and this rig looked only
-	 * for `role="alert"`, so `--only=892-delivered` found nothing and exited rc=1 on a
-	 * tree where the notice was rendering correctly.
+	 * is a status region - the late-delivery line is one - and this rig looked only for
+	 * an alert region, so --only=892-delivered found nothing and exited rc=1 on a tree
+	 * where the notice was rendering correctly. Backticks cannot appear here: this whole
+	 * probe is a template literal, and one would end the string.
 	 */
 	const notice = document.querySelector('[role="alert"], [role="status"]');
 	const form = textarea ? textarea.closest("form") : null;
