@@ -287,4 +287,17 @@ test("the sidebar's column cannot scroll, and its panes contain their own overfl
 			`${label}'s class list must carry ${marker}`,
 		);
 	}
+
+	/*
+	 * AND THE SECTIONS THAT CAN GROW WITHOUT BOUND CAP THEMSELVES, which is the
+	 * other half of the operator's rule (2026-09-25: "we can just limit how far a
+	 * collapsible section can expand"). The chats list takes the page ladder and
+	 * the Agents and Teams lists take `SIDEBAR_SECTION_ROWS`; the assertion here is
+	 * the CONTROLS, because a cap with no control is content the reader cannot
+	 * reach - and both live in the same file as the two region class lists above,
+	 * so a lane that removes either has to fail this test to do it.
+	 */
+	for (const hook of ["data-sidebar-section-more", "data-sidebar-page-more"]) {
+		assert.ok(pane.includes(hook), `${hook} is not drawn`);
+	}
 });

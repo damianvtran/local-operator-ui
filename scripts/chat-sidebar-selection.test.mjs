@@ -830,9 +830,26 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// inside one, it is guarded by `!current`, and it therefore can never sit
 				// inside a current row: the guard is what keeps the selected ground from
 				// being repainted as the pointer's, which is this table's subject.
-				"hover:bg-row-hover": 8,
+				// TWELVE (the sidebar band and the view popover, 2026-09-25). Four more
+				// row-state steps arrived with the band's create menu and the two cap
+				// controls: `data-sidebar-create-agent` and `data-sidebar-create-team`
+				// (the two rows of the create popover), `data-sidebar-section-more` (the
+				// Agents and Teams lists' cap foot) and `data-sidebar-page-more` (the
+				// chats page's). None of the four can sit inside a current row, and that
+				// is a structural fact rather than a promise: three are rows of a PORTAL
+				// (the popover renders outside this panel's subtree) and the two feet are
+				// siblings of the sections, never descendants of a row. They take the ROW
+				// state rather than a ground, which is what this expectation exists to
+				// hold - a foot that answered the pointer with `elevated` would be the
+				// menu ground leaking into the list.
+				"hover:bg-row-hover": 12,
 				// `rowCurrent` (1), the ground that beats the step above by merge order.
-				"hover:bg-row-selected": 1,
+				// PLUS ONE: the band's view-options button paints `row-selected` while the
+				// view differs from the default (`viewIsCustom`) - the mode's own
+				// "selected" meaning, and the filled pill the operator's reference draws.
+				// It is a BAND control, so it is outside both regions and cannot be a
+				// current row; the `CURRENT` table could never be asked to resolve it.
+				"hover:bg-row-selected": 2,
 				// The New chat row's disabled reset: it paints NOTHING, which is why no
 				// expression has to resolve it. The bulk read receipt carries no reset of
 				// its own: it is the shared `Button` primitive now, whose disabled styling

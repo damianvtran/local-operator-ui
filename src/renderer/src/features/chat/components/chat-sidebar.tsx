@@ -20,6 +20,11 @@ import { ThemedToastContainer } from "@shared/components/common/themed-toast-con
 import { Button } from "@shared/components/ui/button";
 import { Checkbox } from "@shared/components/ui/checkbox";
 import { Label } from "@shared/components/ui/label";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@shared/components/ui/popover";
 import { Tooltip, TooltipProvider } from "@shared/components/ui/tooltip";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
@@ -44,11 +49,16 @@ import {
 	ChevronDown,
 	ChevronRight,
 	ChevronUp,
+	FolderPlus,
+	type LucideIcon,
 	LoaderCircle,
 	MessageSquarePlus,
 	MoreHorizontal,
 	Pin,
 	Plus,
+	Search,
+	SlidersHorizontal,
+	UserPlus,
 	Users,
 	X,
 } from "lucide-react";
@@ -60,6 +70,7 @@ import {
 	type ReactNode,
 	type PointerEvent as ReactPointerEvent,
 	type Ref,
+	createElement,
 	useEffect,
 	useLayoutEffect,
 	useMemo,
@@ -85,8 +96,8 @@ import {
 	visibleRows,
 } from "../chat-archived";
 import {
-	CHAT_LIST_SECTIONS,
 	CHAT_LIST_SECTION_LABEL,
+	type ChatListSection,
 	isRunningRow,
 	relativeTime,
 	relativeTimeSentence,
@@ -102,6 +113,20 @@ import {
 	searchChats,
 } from "../chat-search";
 import { pinnedRows, unpinnedRows } from "../chat-sections";
+import {
+	DEFAULT_SIDEBAR_VIEW,
+	SIDEBAR_SECTION_ROWS,
+	type SidebarSectionKey,
+	groupRows,
+	isEntitySection,
+	isSectionShown,
+	pageLimit,
+	pageMoreLabel,
+	pageOrder,
+	pageRows,
+	parseSidebarView,
+	shownSections,
+} from "../chat-sidebar-view";
 import { clearSearch } from "../clear-search";
 import {
 	markAllReadCopy,
@@ -116,6 +141,7 @@ import {
 	resolveSidebarSplit,
 } from "../sidebar-split";
 import { ChatRowTitle } from "./chat-row-title";
+import { ChatSidebarViewMenu } from "./chat-sidebar-view-menu";
 
 /*
  * The ids the boundary's controls point at with `aria-controls`.
@@ -991,6 +1017,20 @@ export function ChatSidebar({
 		const timer = window.setInterval(() => setListNow(Date.now()), 60_000);
 		return () => window.clearInterval(timer);
 	}, []);
+	/*
+	 * THE COLUMN'S VIEW, from the preferences store (`chat-sidebar-view.ts`
+	 * carries the model and the rules). Read through `parseSidebarView` HERE
+	 * rather than trusted from the store, for the reason
+	 * `chatSidebarListHeight` is passed as it was read: `localStorage` is not the
+	 * setter's path out, so the module is the one place a tampered value is
+	 * rejected and the one place a future field arrives with an answer.
+	 */
+	const chatSidebarView = useUiPreferencesStore((state) => state.chatSidebarView);
+	const setChatSidebarView = useUiPreferencesStore(
+		(state) => state.setChatSidebarView,
+	);
+	const [viewOpen, setViewOpen] = useState(false);
+	const [createOpen, setCreateOpen] = useState(false);
 	const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
 		try {
 			return JSON.parse(
@@ -1719,13 +1759,76 @@ export function ChatSidebar({
 	const pinned = pinnedRows(matching, pinsEnabled);
 	const rest = unpinnedRows(matching, pinsEnabled);
 	/*
+	 * THE PAGE, and it is where the operator's three invariants live
+	 * (`chat-sidebar-view.ts` carries the rules and the reasons):
+	 *
+	 *   - `pageOrder` lifts the ACTIVE rows - a live turn, a turn stopped on the
+	 *     reader, a wedged one - above the rest by a stable partition, so the
+	 *     recency below them is the catalogue's own and never inverted;
+	 *   - `pageRows` cuts the page at the ladder's current rung and LIFTS the
+	 *     viewed conversation in when it sits past the end, so "you are here"
+	 *     is not something a page size can take away;
+	 *   - a search bypasses the limit entirely, because the backend answers over
+	 *     an index of every conversation and the page is not allowed to act as a
+	 *     filter over that answer.
+	 *
+	 * The ORDER of the two calls is the contract: the page is cut from the
+	 * ordered list, never the other way round, so the active rows occupy the
+	 * page's head rather than being appended to it.
+	 */
+	const view = parseSidebarView(chatSidebarView);
+	const page = pageRows(pageOrder(rest, view.orderBy), {
+		limit: pageLimit(view.loads),
+		currentId: selectedConversation,
+		searching: query.trim().length > 0,
+	});
+	const liftedRow = page.lifted ? page.rows[0] : null;
+	const pagedRows = page.lifted ? page.rows.slice(1) : page.rows;
+	/*
+	 * WHETHER ANYTHING IS VIEWER-SET, which is what the band's middle button's
+	 * fill means. It is a comparison against the DEFAULT rather than a flag
+	 * written when the panel is used, because the flag can disagree with the
+	 * view the moment a future field joins the model and is not reset with it.
+	 */
+	const viewIsCustom =
+		view.groupBy !== DEFAULT_SIDEBAR_VIEW.groupBy ||
+		view.orderBy !== DEFAULT_SIDEBAR_VIEW.orderBy ||
+		view.hidden.length > 0 ||
+		view.loads > 0 ||
+		view.order.some((key, index) => key !== DEFAULT_SIDEBAR_VIEW.order[index]);
+	/*
+	 * §C1's sections over the loaded page (`chat-list-sections.ts` carries the
+	 * rules), the sections the popover has switched OFF removed, and the rest in
+	 * the reader's own order - `shownSections` is that order, and it is the same
+	 * one the region boundary's arrows write to.
+	 */
+	const sectioned = sectionRows(pagedRows, listNow);
+	const drawnSections = shownSections(view).filter(
+		(key): key is ChatListSection => key !== "pinned" && !isEntitySection(key),
+	);
+	const pinnedShown = isSectionShown(view, "pinned");
+	/*
 	 * §C1's sections over the unpinned rows (`chat-list-sections.ts` carries the
 	 * rules), and the first one that has rows - the header the bulk read receipt
 	 * sits on.
 	 */
-	const sectioned = sectionRows(rest, listNow);
 	const firstSection =
-		CHAT_LIST_SECTIONS.find((key) => sectioned[key].length > 0) ?? null;
+		drawnSections.find((key) => sectioned[key].length > 0) ?? null;
+	/*
+	 * The counts the view popover prints beside each section's switch, so the
+	 * panel says what it is switching OFF. Zero draws nothing (the panel's own
+	 * rule), and the `Pinned`/`Agents`/`Teams` counts come from the same sources
+	 * their sections render from, rather than from a second read.
+	 */
+	const viewCounts: Partial<Record<SidebarSectionKey, number>> = {
+		pinned: pinned.length,
+		running: sectioned.running.length,
+		today: sectioned.today.length,
+		week: sectioned.week.length,
+		older: sectioned.older.length,
+		agents: ownAgents.length,
+		teams: teams.data?.length ?? 0,
+	};
 	const draft = activeDraftKey ? drafts[activeDraftKey] : undefined;
 	const bindingName = (row: CanonicalSessionRow) =>
 		row.binding?.team || row.binding?.agent || "";
@@ -3175,10 +3278,10 @@ export function ChatSidebar({
 		label: string,
 		initial: boolean,
 		count?: number,
+		glyph?: LucideIcon,
 		action?: ReactNode,
 		toggleRef?: Ref<HTMLButtonElement>,
-	) => (
-		<div
+	) => (		<div
 			className={cn(
 				"@container/chatheading flex h-7 items-center gap-1",
 				/*
@@ -3212,6 +3315,20 @@ export function ChatSidebar({
 				) : (
 					<ChevronRight className="size-3.5" />
 				)}
+				{/*
+				 * THE SECTION'S OWN GLYPH (operator, 2026-09-25: "improve the design of
+				 * the team/agent collapsibles to be more modern"). A muted leading mark
+				 * is how the reference's group headers read - `BOT Agents` rather than a
+				 * bare word - and it earns its pixel by being the only thing that
+				 * distinguishes two sections whose labels are otherwise the same shape.
+				 * `aria-hidden`, because the label beside it already names the section.
+				 */}
+				{glyph ? (
+					createElement(glyph, {
+						"aria-hidden": true,
+						className: "size-3.5 shrink-0 text-ink-dim",
+					})
+				) : null}
 				<span className="min-w-0 flex-1 truncate text-left">{label}</span>
 				{/* A zero badge next to a group that already says it is empty is the
 			    same fact twice; only a non-zero count carries information. */}
@@ -3237,6 +3354,46 @@ export function ChatSidebar({
 	 * section), so the list's top edge is the destinations' 16px step and nothing
 	 * more.
 	 */
+	/*
+	 * HOW FAR A COLLAPSIBLE SECTION MAY EXPAND (operator, 2026-09-25: "we can just
+	 * limit how far a collapsible section can expand").
+	 *
+	 * The cap is a ROW COUNT and never a height, which is the whole point: a
+	 * height cap needs a scrollbar to reach what it clipped (the two nested
+	 * scrollers this replaces), while a count cap costs a click and clips nothing.
+	 * `Show N more` raises THAT section's own cap by one step, so a reader who
+	 * wants the eleventh agent does not also open the eleventh team.
+	 *
+	 * The state is per window and not persisted: it is a question about the moment
+	 * ("which of my agents are in this list, again?") rather than a preference,
+	 * and a remembered cap would leave a reader who expanded it once in June with
+	 * a permanently longer column every launch afterwards.
+	 */
+	const [sectionCaps, setSectionCaps] = useState<Record<string, number>>({});
+	const cappedRows = (key: string, rows: ReactNode[]) => {
+		const cap = sectionCaps[key] ?? SIDEBAR_SECTION_ROWS;
+		const hidden = rows.length - cap;
+		return (
+			<>
+				{rows.slice(0, cap)}
+				{hidden > 0 && (
+					<button
+						type="button"
+						data-sidebar-section-more={key}
+						onClick={() =>
+							setSectionCaps((previous) => ({
+								...previous,
+								[key]: (previous[key] ?? SIDEBAR_SECTION_ROWS) + SIDEBAR_SECTION_ROWS,
+							}))
+						}
+						className="flex h-7 w-full items-center rounded-md px-2 text-left text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
+					>
+						{hidden === 1 ? "Show 1 more" : `Show ${hidden} more`}
+					</button>
+				)}
+			</>
+		);
+	};
 	const sectionLabel = (label: string, action?: ReactNode) => (
 		<div className="flex h-6 items-center gap-1 px-2">
 			<h3 className="min-w-0 flex-1 truncate font-medium text-ink-dim text-meta uppercase tracking-wide">
@@ -3766,7 +3923,7 @@ export function ChatSidebar({
 			{showList && (
 				<div className="space-y-4 pb-2">
 					<section>
-						{heading("agents", "Agents", true)}
+						{heading("agents", "Agents", true, undefined, Bot)}
 						{(query || isOpen("agents", true)) && (
 							<>
 								{profiles.isLoading && (
@@ -3844,7 +4001,10 @@ export function ChatSidebar({
 												)}
 											</>
 										) : (
-											ownAgents.map((profile) => entity("agent", profile.name))
+											cappedRows(
+												"agents",
+												ownAgents.map((profile) => entity("agent", profile.name)),
+											)
 										)}
 									</div>
 									{/* Renders nothing once every built-in is installed. */}
@@ -3865,7 +4025,7 @@ export function ChatSidebar({
 						)}
 					</section>
 					<section>
-						{heading("teams", "Teams", true)}
+						{heading("teams", "Teams", true, undefined, Users)}
 						{(query || isOpen("teams", true)) && (
 							<>
 								{teams.isLoading && (
@@ -3873,7 +4033,11 @@ export function ChatSidebar({
 										Loading teams…
 									</p>
 								)}
-								{teams.data?.map((team) => entity("team", team.name))}
+								{teams.data &&
+									cappedRows(
+										"teams",
+										teams.data.map((team) => entity("team", team.name)),
+									)}
 								<button
 									type="button"
 									className={cn(rowStyle, "w-full text-ink-muted")}
@@ -4595,13 +4759,40 @@ export function ChatSidebar({
 			 * it is pressed; the one action a header carries is `Mark all N read`, on
 			 * the first section that has rows.
 			 */}
-			{pinned.length > 0 && (
+			{/*
+			 * INVARIANT 1, DRAWN: the conversation the reader is IN, when the page
+			 * put it past its own end. It is drawn as its own one-row section at the
+			 * head of the list rather than silently appended to the page - the label
+			 * says WHY a row appears above the sections that should contain it, and
+			 * the reader can see where they are without paging to position 300.
+			 */}
+			{liftedRow && (
+				<section data-chat-section="current">
+					{sectionLabel("Current chat")}
+					{sessionRow(liftedRow)}
+				</section>
+			)}
+			{/*
+			 * THE GROUPING ALTERNATIVES (the view popover's `Group by`). `section` is
+			 * the arrangement below; `agent` and `flat` replace it, and they draw
+			 * over the SAME page, so switching the grouping cannot change which rows
+			 * are loaded - only how they are arranged.
+			 */}
+			{view.groupBy !== "section" &&
+				(groupRows(pagedRows, view.groupBy) ?? []).map((entry) => (
+					<section key={entry.key} data-chat-section={entry.key}>
+						{entry.label ? sectionLabel(entry.label) : null}
+						{entry.rows.map((row) => sessionRow(row))}
+					</section>
+				))}
+			{pinnedShown && view.groupBy === "section" && pinned.length > 0 && (
 				<section>
 					{sectionLabel("Pinned")}
 					{pinned.map((row) => sessionRow(row))}
 				</section>
 			)}
-			{CHAT_LIST_SECTIONS.map((key) => {
+			{view.groupBy === "section" &&
+				drawnSections.map((key) => {
 				const rows = sectioned[key];
 				if (key === "running" && rows.length === 0 && livenessUnread) {
 					/*
@@ -4638,7 +4829,35 @@ export function ChatSidebar({
 						{rows.map((row) => sessionRow(row))}
 					</section>
 				);
-			})}
+				})}
+			{/*
+			 * THE PAGE'S FOOT (`data-sidebar-page-more`), and it is the operator's
+			 * contract: "show the latest 10 ... and then have a 'Load 10 more', starts
+			 * with 10, then 25, then 50, and then user can click to load more". The
+			 * label names the NEXT rung rather than the ladder, and it is bounded by
+			 * what is actually left, so it cannot offer fifteen rows when four are
+			 * unloaded.
+			 *
+			 * IT IS NOT DRAWN WHILE SEARCHING, because the page is not: a query lifts
+			 * the limit entirely (`pageRows`), so there is nothing left to load and a
+			 * control that said otherwise would be a button with no effect.
+			 *
+			 * A MUTED ROW rather than a primary button - the operator's reference
+			 * prints `Show N more sessions` as quiet text at the group's foot, and the
+			 * column's ink budget is spent on the rows themselves.
+			 */}
+			{page.remaining > 0 && !query.trim() && (
+				<button
+					type="button"
+					data-sidebar-page-more
+					onClick={() =>
+						setChatSidebarView({ ...view, loads: view.loads + 1 })
+					}
+					className="flex h-7 w-full items-center rounded-md px-2 text-left text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
+				>
+					{pageMoreLabel(view.loads, page.remaining)}
+				</button>
+			)}
 			{/* A COLD-START sentence, not an empty-list one: it says the store
 		    holds no chats at all, so it must not appear beside rows. The
 		    catalogue being empty while `matching` is not is reachable now
@@ -5121,16 +5340,147 @@ export function ChatSidebar({
 			 */}
 			<TooltipProvider>
 				{/*
-				 * THE `Chats` HEADING IS GONE, and it went with the panel heading rather
-				 * than with a redesign of the panel. The sidebar's sections name themselves
-				 * now (`RUNNING`, `TODAY`, `THIS WEEK`, `OLDER`, and `PINNED` when the
-				 * capability is on), and a heading over the column named the same thing the
-				 * first section label below it names - 32px of chrome spent saying "these
-				 * are chats" to a reader who has just clicked one. The panel's own entry
-				 * points went with it: the header once carried a 16px `Plus` for the action
-				 * the `New chat` row below names in words, which is the defect the row was
-				 * introduced to fix.
+				 * THE BAND: the segment that divides the destinations above from the
+				 * agents/teams/chats below, and the column's one control surface for the
+				 * list's arrangement.
+				 *
+				 * THE OPERATOR'S DIRECTION (2026-09-25), quoted because it is the reason
+				 * this row exists: "It might also be worthwhile to have a segment diving
+				 * the nav from the agents/teams/chats that has view options and buttons to
+				 * create teams/agents similar to creating workspaces in dsh" ... "Make sure
+				 * the buttons are subtle and probably icon-only with tooltips on hover and
+				 * clicking pops out comprehensive options for customizing the view."
+				 *
+				 * NO TEXT LABEL, and that is the one place this deliberately differs from
+				 * the reference. dsh's row prints `Workspaces`; a label here would be the
+				 * `Chats` heading this panel removed on design round 1's D1 - 32px of
+				 * chrome naming the same thing the first section label below it names,
+				 * over a column that holds TWO kinds of section (agents and teams as well
+				 * as chats, which no single noun covers). What is left is what the operator
+				 * actually asked for: the three buttons, at the trailing edge, over a row
+				 * that divides one block of the column from the next.
+				 *
+				 * ICON-ONLY WITH TOOLTIPS, so each control carries an `aria-label` of its
+				 * own rather than relying on the tooltip: Radix's tooltip adds
+				 * `aria-describedby` and only while open, which is not a name.
 				 */}
+				<div
+					data-sidebar-band
+					className="mb-2 flex h-7 shrink-0 items-center justify-end gap-0.5"
+				>
+					<Tooltip content="Search chats and agents">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							data-sidebar-search
+							aria-label="Search chats and agents"
+							onClick={() => {
+								/*
+								 * The field is drawn only while filtering (`filterOpen`), so this
+								 * control is what OPENS it - the same state the list's own typing
+								 * and Escape's ladder already move, rather than a second search
+								 * surface. The focus lands on the next frame because the input
+								 * is `hidden` until this state commits.
+								 */
+								setFilterOpen(true);
+								window.requestAnimationFrame(() => searchRef.current?.focus());
+							}}
+						>
+							<Search aria-hidden="true" />
+						</Button>
+					</Tooltip>
+					<Popover open={viewOpen} onOpenChange={setViewOpen}>
+						<Tooltip content="View options">
+							<PopoverTrigger asChild>
+								<Button
+									variant="ghost"
+									size="icon-sm"
+									data-sidebar-view-options
+									aria-label="View options"
+									aria-expanded={viewOpen}
+									/*
+									 * THE FILLED PILL THE REFERENCE DRAWS (dsh's middle button fills
+									 * when a view option is active), and the condition is the view's
+									 * own difference from the default rather than the panel being
+									 * open: a button that lit up merely because it was clicked would
+									 * say "configured" about a panel the reader then closed
+									 * unchanged.
+									 */
+									className={cn(
+										viewIsCustom && "bg-row-selected text-ink hover:bg-row-selected",
+									)}
+								>
+									<SlidersHorizontal aria-hidden="true" />
+								</Button>
+							</PopoverTrigger>
+						</Tooltip>
+						<PopoverContent
+							align="end"
+							className="w-60 p-2"
+							data-sidebar-view-panel
+						>
+							<ChatSidebarViewMenu
+								view={view}
+								counts={viewCounts}
+								onView={setChatSidebarView}
+							/>
+						</PopoverContent>
+					</Popover>
+					<Popover open={createOpen} onOpenChange={setCreateOpen}>
+						<Tooltip content="New agent or team">
+							<PopoverTrigger asChild>
+								<Button
+									variant="ghost"
+									size="icon-sm"
+									data-sidebar-create
+									aria-label="New agent or team"
+									aria-expanded={createOpen}
+								>
+									<FolderPlus aria-hidden="true" />
+								</Button>
+							</PopoverTrigger>
+						</Tooltip>
+						<PopoverContent
+							align="end"
+							className="w-44 p-1"
+							data-sidebar-create-panel
+						>
+							{/*
+							 * THE TWO EXISTING FLOWS, and they are navigations rather than
+							 * dialogs because the authoring surfaces ARE pages: `
+							 * /agents?create=agent` is what the Agents row's own `Create agent`
+							 * control and the command palette both open. A second, modal
+							 * authoring form here would be a second way to create a profile, and
+							 * the one thing the authoring routes guarantee is that it is the
+							 * same form, the same validation and the same save.
+							 */}
+							<button
+								type="button"
+								data-sidebar-create-agent
+								onClick={() => {
+									setCreateOpen(false);
+									navigate("/agents?create=agent");
+								}}
+								className="flex h-7 w-full items-center gap-2 rounded-md px-1 text-left text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
+							>
+								<UserPlus aria-hidden="true" className="size-3.5 shrink-0" />
+								<span className="min-w-0 flex-1 truncate">New agent</span>
+							</button>
+							<button
+								type="button"
+								data-sidebar-create-team
+								onClick={() => {
+									setCreateOpen(false);
+									navigate("/agents?create=team");
+								}}
+								className="flex h-7 w-full items-center gap-2 rounded-md px-1 text-left text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
+							>
+								<Users aria-hidden="true" className="size-3.5 shrink-0" />
+								<span className="min-w-0 flex-1 truncate">New team</span>
+							</button>
+						</PopoverContent>
+					</Popover>
+				</div>
 				{/* The field carries its own clear control rather than relying on
 		    Escape, which also blurs: a pointer user who wants to widen the filter
 		    back out had to select the text and delete it, and there was nothing on
