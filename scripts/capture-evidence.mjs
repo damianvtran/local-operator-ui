@@ -4023,6 +4023,20 @@ export const STORIES = [
 	["panels-analytics--no-daily-rows", 1140, 980],
 	["panels-analytics--unnamed-sessions", 1140, 980],
 	/*
+	 * The tokens-per-second states. `pre-metric-ledger` is the one that matters
+	 * most on the day this ships: it is the operator's OWN history — every decode
+	 * cell `—` while the wall column carries real numbers — and the whole point of
+	 * the pair is that those are different measurements rather than one rendered
+	 * twice. `model-rows-*` are the slow read's own three states; a taller frame
+	 * than its siblings because the By-model table is the LAST section, so the
+	 * default body cap (`min(76vh, 760px)`) would stop above it.
+	 */
+	["panels-analytics--pre-metric-ledger", 1140, 1240],
+	["panels-analytics--partial-rate-coverage", 1140, 1240],
+	["panels-analytics--model-rows-loading", 1140, 1240],
+	["panels-analytics--model-rows-empty", 1140, 1240],
+	["panels-analytics--model-rows-unavailable", 1140, 1240],
+	/*
 	 * The same state with the panel body parked at its END, which is the only way
 	 * the By-session table's rows are in the picture at all: review round 1 (D6)
 	 * found this story's frame byte-identical to `populated` in ten of twelve
