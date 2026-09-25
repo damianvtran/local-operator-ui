@@ -9,6 +9,7 @@ import {
 	type PersistedWindowChrome,
 	type ResolvedLaunchChrome,
 	WINDOW_CHROME_FILE,
+	WINDOW_CHROME_HEIGHT,
 	WINDOW_CHROME_MENU_CHANNEL,
 	WINDOW_CHROME_REPORT_CHANNEL,
 	WINDOW_CHROME_STATE_CHANNEL,
@@ -267,7 +268,16 @@ export function attachWindowChrome(
 		 * through. Reading focus is not raising: no `focus()` call is involved, and
 		 * `isFocused()` is a plain getter.
 		 */
-		const focusedNow = focused && !window.isDestroyed() ? true : focused;
+		/*
+		 * A FOCUSED WINDOW THAT HAS BEEN DESTROYED IS NOT FOCUSED (agent review round 1,
+		 * R5). This read `focused && !window.isDestroyed() ? true : focused`, whose two
+		 * arms both return `focused` - so `focusedNow === focused` and the `isDestroyed()`
+		 * test changed nothing at all. It read as protection against calling
+		 * `setTitleBarOverlay` on a destroyed window and provided none (the `try/catch`
+		 * below is what absorbs that). A guard that cannot guard is how the next reader
+		 * concludes the case is handled, so it is spelled as the conjunction it meant.
+		 */
+		const focusedNow = focused && !window.isDestroyed();
 		try {
 			window.setTitleBarOverlay({
 				...(platform === "linux"
@@ -360,7 +370,14 @@ export function attachWindowChrome(
 			return false;
 		}
 		const [x, y] = window.getPosition();
-		menu.popup({ window, x, y: y + 40 });
+		/*
+		 * THE POPUP'S OFFSET IS THE CAPTION HEIGHT, IMPORTED RATHER THAN RESTATED (agent
+		 * review round 1, R6). It was the literal `40`, which is `WINDOW_CHROME_HEIGHT` -
+		 * and the neighbouring `titlebar-options.ts` imports that constant for exactly this
+		 * reason. One edit to the caption height would otherwise leave the app menu popping
+		 * at the old offset, under the lane it is supposed to clear.
+		 */
+		menu.popup({ window, x, y: y + WINDOW_CHROME_HEIGHT });
 		return true;
 	};
 

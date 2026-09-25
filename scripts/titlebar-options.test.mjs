@@ -465,10 +465,32 @@ test("the main window takes the frame and the ground from the closed decision", 
 	 * installer window.
 	 */
 	assert.match(main, /backgroundColor:\s*chrome\.colors\.ground/);
+	/*
+	 * THE ASSERTION HAS TO SEE THE CALL, NOT THE PARAMETER (agent review round 1, R2).
+	 *
+	 * This was `/chromeMode:\s*WindowChromeMode/`, which matches the PARAMETER DECLARATION at
+	 * `src/main/index.ts:1261` (`chromeMode: WindowChromeMode,` inside `rendererArgumentFlags`)
+	 * and not the argv entry composed forty lines below it. PROVED, not inferred: deleting the
+	 * `windowChromeArgumentFor(process.platform, chromeMode)` line still matched, so the check
+	 * could not fail for the reason it states. What that leaves load-bearing: with the entry
+	 * gone, `readWindowChromeArgument` answers `DEFAULT_WINDOW_CHROME_FACTS` (`linux`/`native`)
+	 * - which is the guess-towards-native the comment above the entry exists about - so the
+	 * lane rule never matches, `[data-titlebar-lane]{display:none}` holds, and macOS gets no
+	 * 32px lane with the traffic lights landing on the sidebar's brand row.
+	 *
+	 * So the check is about the CALL: the resolved mode has to be what is composed into the
+	 * argument, and the argument has to reach `additionalArguments`. Both halves are asserted,
+	 * because the composition is worthless if its result is dropped.
+	 */
 	assert.match(
 		main,
-		/chromeMode:\s*WindowChromeMode/,
+		/windowChromeArgumentFor\(process\.platform,\s*chromeMode\)/,
 		"the renderer's argv entry must be composed from the resolved mode, not re-read from the environment",
+	);
+	assert.match(
+		main,
+		/const flags = \[[\s\S]{0,400}?windowChromeArgumentFor\(process\.platform,\s*chromeMode\)[\s\S]{0,400}?\];\s*\n\s*return flags\.length > 0 \? \{ additionalArguments: flags \} : \{\};/,
+		"the composed chrome argument must reach the renderer's `additionalArguments`",
 	);
 });
 
