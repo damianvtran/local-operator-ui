@@ -180,10 +180,11 @@ export type CanonicalSessionView = {
 	 * composer's readouts. It is REPLACED WHOLESALE by the next authoritative
 	 * frontend (never merged field-by-field: a half-old reading is a state the
 	 * owner never published), and it is dropped on every state that is terminal
-	 * or that belongs to another conversation: the three terminal arms in the
-	 * stream effect (the snapshot deadline, the 404, and the spent retry budget),
-	 * a genuine session change, and `/clear`. Each of those writes sits beside the
-	 * reason it exists.
+	 * or that belongs to another conversation: the FOUR terminal `unavailable`
+	 * writers in the stream effect (the snapshot deadline, the 404, the spent
+	 * retry budget, and the `HISTORY_UNREADABLE` arm that gives up on
+	 * `/history`), a genuine session change, and `/clear`. Each of those writes
+	 * sits beside the reason it exists.
 	 *
 	 * IT IS NOT A LIVE CLAIM, and the surfaces that read it must not present it
 	 * as one: `status` is `reconnecting` for exactly as long as this is the only
@@ -1694,10 +1695,19 @@ export function useCanonicalSessionStream(
 					// unreachable, and saying so with a way back is the only honest state
 					// left. `hydrated` stays false, so the composer may not claim the
 					// conversation is empty either.
+					//
+					// AND IT TAKES THE HELD READINGS WITH IT (agent review round 1,
+					// MINOR 3). This is a FOURTH terminal `unavailable` writer, and the
+					// hold's contract says every terminal state drops it: a reading kept
+					// past the point where the app has given up on the conversation is the
+					// one thing R2 forbids. It was the state MAJOR 1 turned into a mask,
+					// because `frontend` is deliberately left painted here and the mirror
+					// had therefore refilled the hold from it.
 					setView((state) => ({
 						...state,
 						status: "unavailable",
 						failure: HISTORY_UNREADABLE,
+						heldFrontend: null,
 					}));
 					return false;
 				} finally {
@@ -2263,6 +2273,25 @@ export function useCanonicalSessionStream(
 							 * would be painted as current over a stream that has not
 							 * replayed anything yet.
 							 *
+							 * FROM `live` ONLY, AND THAT IS A CORRECTION RATHER THAN A
+							 * TIDY-UP (agent review round 1, MAJOR 1). The write is about the
+							 * resync from a live pane. `unavailable` is a TERMINAL state the
+							 * app has already given up on, and the pane gates BOTH the
+							 * failure notice and its Reconnect control on
+							 * `status === "unavailable" && failure`
+							 * (`canonical-transcript.tsx`). Overwriting it here left
+							 * `failure` standing while the status said `reconnecting`, so the
+							 * diagnosis and the only control that can act disappeared behind
+							 * a line claiming progress. Two doors reach that state with a
+							 * non-null hold: the `HISTORY_UNREADABLE` arm below, and the
+							 * retry arm, which deliberately PRESERVES `unavailable` +
+							 * `failure` across its own `connect()`.
+							 *
+							 * The road not taken, recorded: clearing `failure` in this same
+							 * write. The failure is a true statement the app has already
+							 * made, and the retry arm keeps it ON PURPOSE; a status write is
+							 * not the place to retract a diagnosis.
+							 *
 							 * Keyed on there being something TO hold, which is also what
 							 * makes the FIRST open of a fresh mount correct: it answers
 							 * `gap: true` too (there is no earlier epoch for the bridge to
@@ -2270,7 +2299,7 @@ export function useCanonicalSessionStream(
 							 * replace its honest "connecting" - a pane that has never
 							 * connected - with a claim that it once was.
 							 */
-							if (held && next.status !== "reconnecting")
+							if (held && next.status === "live")
 								next = { ...next, status: "reconnecting" };
 							snapshotted = false;
 						}
@@ -2571,11 +2600,12 @@ export function useCanonicalSessionStream(
 				 * painted now?
 				 *
 				 * IDENTITY, NOT A DEEP COMPARE: every arm above builds a NEW object (a
-				 * spread of the old one, or the snapshot's own), so reference equality is
-				 * the exact test for "this batch published a frontend", and an unchanged
-				 * one is not re-assigned - which is what keeps a batch that touched only
-				 * attention from looking like a change to a consumer memoised on the
-				 * held value.
+				 * spread of the old one, or the snapshot's own), so reference equality
+				 * is the exact test for "this batch published a frontend". It is a
+				 * cheap test, not a promise about WHICH batches reassign the hold - an
+				 * attention-only batch builds a new frontend object too, so it does
+				 * reassign. What the identity test buys is that a batch which published
+				 * nothing (the early return above) cannot blank or churn the hold.
 				 *
 				 * WHOLESALE, and that is a requirement rather than an implementation
 				 * detail: the held copy is a whole published state, so a fresh snapshot
