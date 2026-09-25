@@ -1,0 +1,502 @@
+{
+ "after/case1-tilde-1000": {
+  "story": "chat-cwd-move--editable-shortest-path",
+  "requestedViewport": "1500x900",
+  "interacted": null,
+  "viewport": {
+   "w": 1500,
+   "h": 900
+  },
+  "theme": "localOperatorDark",
+  "documentScrollWidth": 1500,
+  "chips": [
+   {
+    "container": 1000,
+    "chip": {
+     "box": {
+      "x": 271,
+      "y": 856,
+      "w": 195.9,
+      "h": 32,
+      "right": 466.9
+     },
+     "clientWidth": 195.9,
+     "pathText": "~",
+     "ariaLabel": "Working directory: ~",
+     "boxMaxWidth": "304px"
+    },
+    "labelSpan": {
+     "text": "Working directory:",
+     "width": 114.7
+    },
+    "pathSpan": {
+     "clientWidth": 7,
+     "scrollWidth": 7,
+     "width": 7.2,
+     "maxWidth": "115.2px",
+     "overflowing": false
+    },
+    "chevron": {
+     "x": 438.9,
+     "y": 864,
+     "w": 16,
+     "h": 16,
+     "right": 454.9
+    },
+    "pathToChevronGap": 6,
+    "overflowMenuText": null
+   }
+  ],
+  "rows": [],
+  "tooltip": null
+ },
+ "after/case2-16ch-cap": {
+  "story": "chat-cwd-move--editable-at-cap",
+  "requestedViewport": "1500x900",
+  "interacted": "hover",
+  "viewport": {
+   "w": 1500,
+   "h": 900
+  },
+  "theme": "localOperatorDark",
+  "documentScrollWidth": 1500,
+  "chips": [
+   {
+    "container": 1000,
+    "chip": {
+     "box": {
+      "x": 271,
+      "y": 856,
+      "w": 303.9,
+      "h": 32,
+      "right": 574.9
+     },
+     "clientWidth": 303.9,
+     "pathText": "~/src/project-16",
+     "ariaLabel": "Working directory: ~/src/project-16",
+     "boxMaxWidth": "304px"
+    },
+    "labelSpan": {
+     "text": "Working directory:",
+     "width": 114.7
+    },
+    "pathSpan": {
+     "clientWidth": 115,
+     "scrollWidth": 115,
+     "width": 115.2,
+     "maxWidth": "115.2px",
+     "overflowing": false
+    },
+    "chevron": {
+     "x": 546.9,
+     "y": 864,
+     "w": 16,
+     "h": 16,
+     "right": 562.9
+    },
+    "pathToChevronGap": 6,
+    "overflowMenuText": null
+   }
+  ],
+  "rows": [],
+  "tooltip": "Click to change the working directory. A running session's runtime restarts there."
+ },
+ "after/case2-32ch-over-cap": {
+  "story": "chat-cwd-move--editable-past-cap",
+  "requestedViewport": "1500x900",
+  "interacted": "hover",
+  "viewport": {
+   "w": 1500,
+   "h": 900
+  },
+  "theme": "localOperatorDark",
+  "documentScrollWidth": 1500,
+  "chips": [
+   {
+    "container": 1000,
+    "chip": {
+     "box": {
+      "x": 271,
+      "y": 856,
+      "w": 303.9,
+      "h": 32,
+      "right": 574.9
+     },
+     "clientWidth": 303.9,
+     "pathText": "~/src/a-project-with-a-long-name",
+     "ariaLabel": "Working directory: ~/src/a-project-with-a-long-name",
+     "boxMaxWidth": "304px"
+    },
+    "labelSpan": {
+     "text": "Working directory:",
+     "width": 114.7
+    },
+    "pathSpan": {
+     "clientWidth": 115,
+     "scrollWidth": 230,
+     "width": 115.2,
+     "maxWidth": "115.2px",
+     "overflowing": true
+    },
+    "chevron": {
+     "x": 546.9,
+     "y": 864,
+     "w": 16,
+     "h": 16,
+     "right": 562.9
+    },
+    "pathToChevronGap": 6,
+    "overflowMenuText": null
+   }
+  ],
+  "rows": [],
+  "tooltip": "~/src/a-project-with-a-long-name - Click to change the working directory. A running session's runtime restarts there."
+ },
+ "after/case2-13ch-below-900": {
+  "story": "chat-cwd-move--editable",
+  "requestedViewport": "1500x900",
+  "interacted": null,
+  "viewport": {
+   "w": 1500,
+   "h": 900
+  },
+  "theme": "localOperatorDark",
+  "documentScrollWidth": 1500,
+  "chips": [
+   {
+    "container": 880,
+    "chip": {
+     "box": {
+      "x": 331,
+      "y": 856,
+      "w": 260,
+      "h": 32,
+      "right": 591
+     },
+     "clientWidth": 260,
+     "pathText": "~/src/project",
+     "ariaLabel": "Working directory: ~/src/project",
+     "boxMaxWidth": "260px"
+    },
+    "labelSpan": {
+     "text": "Working directory:",
+     "width": 114.7
+    },
+    "pathSpan": {
+     "clientWidth": 71,
+     "scrollWidth": 94,
+     "width": 71.3,
+     "maxWidth": "none",
+     "overflowing": true
+    },
+    "chevron": {
+     "x": 563,
+     "y": 864,
+     "w": 16,
+     "h": 16,
+     "right": 579
+    },
+    "pathToChevronGap": 6,
+    "overflowMenuText": null
+   }
+  ],
+  "rows": [],
+  "tooltip": null
+ },
+ "after/case4-row-1024-live": {
+  "story": "chat-message-input--cwd-chip-editable-with-readings",
+  "requestedViewport": "1200x900",
+  "interacted": null,
+  "viewport": {
+   "w": 1200,
+   "h": 900
+  },
+  "theme": "localOperatorDark",
+  "documentScrollWidth": 1200,
+  "chips": [
+   {
+    "container": 1024,
+    "chip": {
+     "box": {
+      "x": 147,
+      "y": 141.8,
+      "w": 260.7,
+      "h": 32,
+      "right": 407.7
+     },
+     "clientWidth": 260.7,
+     "pathText": "/Users/you",
+     "ariaLabel": "Working directory: /Users/you",
+     "boxMaxWidth": "304px"
+    },
+    "labelSpan": {
+     "text": "Working directory:",
+     "width": 114.7
+    },
+    "pathSpan": {
+     "clientWidth": 72,
+     "scrollWidth": 72,
+     "width": 72,
+     "maxWidth": "115.2px",
+     "overflowing": false
+    },
+    "chevron": {
+     "x": 379.7,
+     "y": 149.8,
+     "w": 16,
+     "h": 16,
+     "right": 395.7
+    },
+    "pathToChevronGap": 6,
+    "overflowMenuText": null,
+    "rowIndex": 0,
+    "clusterOffsetLeft": 324,
+    "controlsOffsetLeft": 815,
+    "chipGroupOffsetLeft": 17,
+    "rowLineCount": 1,
+    "rowOverflowPx": 0,
+    "chipToClusterGap": 2
+   }
+  ],
+  "rows": [
+   {
+    "box": {
+     "x": 103,
+     "y": 141.8,
+     "w": 866,
+     "h": 32,
+     "right": 969
+    },
+    "classes": "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-[750px]/chatcol:flex-nowrap",
+    "clientWidth": 866,
+    "scrollWidth": 866,
+    "overflowPx": 0,
+    "overflowXStyle": "visible",
+    "lineCount": 1,
+    "children": [
+     {
+      "role": "cluster",
+      "tag": "DIV",
+      "order": "2",
+      "offsetLeft": 324,
+      "marginLeft": "-6px",
+      "box": {
+       "x": 409.7,
+       "y": 145.8,
+       "w": 292.1,
+       "h": 24,
+       "right": 701.8
+      }
+     },
+     {
+      "role": "chip group",
+      "tag": "DIV",
+      "order": "0",
+      "offsetLeft": 17,
+      "marginLeft": "0px",
+      "box": {
+       "x": 103,
+       "y": 141.8,
+       "w": 304.7,
+       "h": 32,
+       "right": 407.7
+      }
+     },
+     {
+      "role": "controls",
+      "tag": "DIV",
+      "order": "3",
+      "offsetLeft": 815,
+      "marginLeft": "197.203px",
+      "box": {
+       "x": 901,
+       "y": 141.8,
+       "w": 68,
+       "h": 32,
+       "right": 969
+      }
+     }
+    ]
+   }
+  ],
+  "tooltip": null
+ },
+ "after/case5-row-240-floor": {
+  "story": "chat-message-input--cwd-chip-in-row",
+  "requestedViewport": "1200x900",
+  "interacted": null,
+  "viewport": {
+   "w": 1200,
+   "h": 900
+  },
+  "theme": "localOperatorDark",
+  "documentScrollWidth": 1200,
+  "chips": [
+   {
+    "container": 1024,
+    "chip": {
+     "box": {
+      "x": 139,
+      "y": 112.4,
+      "w": 303.9,
+      "h": 32,
+      "right": 442.9
+     },
+     "clientWidth": 303.9,
+     "pathText": "/Users/you/src/project",
+     "ariaLabel": "Working directory: /Users/you/src/project",
+     "boxMaxWidth": "304px"
+    },
+    "labelSpan": {
+     "text": "Working directory:",
+     "width": 114.7
+    },
+    "pathSpan": {
+     "clientWidth": 115,
+     "scrollWidth": 158,
+     "width": 115.2,
+     "maxWidth": "115.2px",
+     "overflowing": true
+    },
+    "chevron": {
+     "x": 414.9,
+     "y": 120.4,
+     "w": 16,
+     "h": 16,
+     "right": 430.9
+    },
+    "pathToChevronGap": 6,
+    "overflowMenuText": null,
+    "rowIndex": 0,
+    "clusterOffsetLeft": null,
+    "controlsOffsetLeft": 815,
+    "chipGroupOffsetLeft": 17,
+    "rowLineCount": 1,
+    "rowOverflowPx": 0,
+    "chipToClusterGap": null
+   },
+   {
+    "container": 240,
+    "chip": {
+     "box": {
+      "x": 101,
+      "y": 297.8,
+      "w": 44,
+      "h": 32,
+      "right": 145
+     },
+     "clientWidth": 44,
+     "pathText": "/Users/you/src/project",
+     "ariaLabel": "Working directory: /Users/you/src/project",
+     "boxMaxWidth": "260px"
+    },
+    "labelSpan": {
+     "text": "Working directory:",
+     "width": 0
+    },
+    "pathSpan": {
+     "clientWidth": 1,
+     "scrollWidth": 158,
+     "width": 1,
+     "maxWidth": "none",
+     "overflowing": true
+    },
+    "chevron": {
+     "x": 126,
+     "y": 305.8,
+     "w": 16,
+     "h": 16,
+     "right": 142
+    },
+    "pathToChevronGap": 2.5,
+    "overflowMenuText": null,
+    "rowIndex": 1,
+    "clusterOffsetLeft": null,
+    "controlsOffsetLeft": null,
+    "chipGroupOffsetLeft": 17,
+    "rowLineCount": 1,
+    "rowOverflowPx": 0,
+    "chipToClusterGap": null
+   }
+  ],
+  "rows": [
+   {
+    "box": {
+     "x": 95,
+     "y": 112.4,
+     "w": 866,
+     "h": 32,
+     "right": 961
+    },
+    "classes": "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-[750px]/chatcol:flex-nowrap",
+    "clientWidth": 866,
+    "scrollWidth": 866,
+    "overflowPx": 0,
+    "overflowXStyle": "visible",
+    "lineCount": 1,
+    "children": [
+     {
+      "role": "chip group",
+      "tag": "DIV",
+      "order": "0",
+      "offsetLeft": 17,
+      "marginLeft": "0px",
+      "box": {
+       "x": 95,
+       "y": 112.4,
+       "w": 347.9,
+       "h": 32,
+       "right": 442.9
+      }
+     },
+     {
+      "role": "controls",
+      "tag": "DIV",
+      "order": "3",
+      "offsetLeft": 815,
+      "marginLeft": "442.094px",
+      "box": {
+       "x": 893,
+       "y": 112.4,
+       "w": 68,
+       "h": 32,
+       "right": 961
+      }
+     }
+    ]
+   },
+   {
+    "box": {
+     "x": 57,
+     "y": 297.8,
+     "w": 158,
+     "h": 32,
+     "right": 215
+    },
+    "classes": "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-[750px]/chatcol:flex-nowrap",
+    "clientWidth": 158,
+    "scrollWidth": 158,
+    "overflowPx": 0,
+    "overflowXStyle": "visible",
+    "lineCount": 1,
+    "children": [
+     {
+      "role": "chip group",
+      "tag": "DIV",
+      "order": "0",
+      "offsetLeft": 17,
+      "marginLeft": "0px",
+      "box": {
+       "x": 57,
+       "y": 297.8,
+       "w": 158,
+       "h": 32,
+       "right": 215
+      }
+     }
+    ]
+   }
+  ],
+  "tooltip": null
+ }
+}
