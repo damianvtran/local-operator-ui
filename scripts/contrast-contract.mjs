@@ -1269,6 +1269,24 @@ const GRAPHICS = [
 		on: ["surface", "rowSelected"],
 		fg: role,
 	})),
+	{
+		/*
+		 * The provider row's overflow trigger while its panel is open
+		 * (`provider-grid.tsx`): a ghost, icon-only button that paints
+		 * `bg-control` in that state, so its glyph rides on `borderControl`
+		 * rather than on the row behind it. It shipped with the ghost's own
+		 * `text-ink-muted` for an ink -- 59/59 palettes below the 3:1 floor on
+		 * that fill (2.19:1 by token, 2.02:1 in the rendered frame). `ink` is not
+		 * a remedy either (30/59 below, worst 1.87:1); `onAccent` clears the
+		 * floor in every palette (worst 3.53:1) and is what the component now
+		 * paints. Listed because this is exactly the case AGENTS.md warns about:
+		 * the green run said nothing about a state no row described, which is how
+		 * it shipped (design round 6, D1).
+		 */
+		name: "provider row overflow trigger glyph (open)",
+		on: ["borderControl"],
+		fg: "onAccent",
+	},
 	...["danger", "info"].map((role) => ({
 		/*
 		 * The run pane's trigger dot, which gained a second ink

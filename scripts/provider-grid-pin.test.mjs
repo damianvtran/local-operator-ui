@@ -509,7 +509,13 @@ test("an open panel is visible on the control that opened it, and focus has some
 	);
 	assert.match(
 		trigger,
-		/className=\{open \? "bg-control" : undefined\}/,
+		/*
+		 * The FILL and the INK are one state: the ink on `borderControl` is what
+		 * this pair is measured at in `contrast-contract.mjs`'s GRAPHICS row, so a
+		 * later hand that keeps the fill and drops the step fails here (design
+		 * round 6, D1 -- the state shipped once with `text-ink-muted` on it).
+		 */
+		/className=\{\s*open \? "bg-control text-on-accent" : undefined,?\s*\}/,
 		"and show it: the fill is the colour step a hover takes, held while open",
 	);
 	/*

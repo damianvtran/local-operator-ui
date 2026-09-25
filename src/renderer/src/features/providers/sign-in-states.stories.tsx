@@ -916,6 +916,51 @@ export const PanelSucceededWithDefault: Story = {
 	},
 };
 
+/*
+ * D2's two missing frames (design round 6). Both arms ship with copy that only
+ * jsdom asserted, and the neutral one is the state a first run actually reaches
+ * after a browser sign-in the backend will not confirm: the row says it could
+ * not confirm, and the panel says the same thing in its own words rather than
+ * claiming the refusal it is not.
+ */
+const OPTS_UNCONFIRMED: BridgeOptions = {
+	script: "succeed",
+	loginVerdict: "unknown",
+};
+/** The unconfirmed register: row and panel agree, in the panel's own words. */
+export const PanelSucceededUnconfirmed = panelStory(
+	OPTS_UNCONFIRMED,
+	/Sign in: Anthropic/,
+	async () => {
+		await startIfIdle("succeeded");
+	},
+	"anthropic",
+);
+
+/*
+ * The API-key route under a credential the provider has stopped accepting --
+ * the route Radient also offers, and the one U19's contradiction survived on
+ * before the settled view there was handed the same verdict object.
+ */
+const OPTS_KEY_REFUSED: BridgeOptions = {
+	key: "valid",
+	loginVerdict: "login_required",
+};
+/** The key route's settled view, stating the refusal the row states. */
+export const PanelKeyRefusedVerdict = panelStory(
+	OPTS_KEY_REFUSED,
+	/Sign in: Radient/,
+	async () => {
+		await userEvent.click(await screen.findByRole("tab", { name: /API key/ }));
+		await userEvent.type(
+			await screen.findByLabelText(/API key/i),
+			"sk-test-key",
+		);
+		await userEvent.click(await screen.findByRole("button", { name: /Save/ }));
+	},
+	"radient",
+);
+
 const OPTS_EXPIRE: BridgeOptions = { script: "expire" };
 /** The link expired; Try again, and the API-key route is offered. */
 export const PanelExpired = panelStory(

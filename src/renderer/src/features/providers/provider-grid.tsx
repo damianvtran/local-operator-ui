@@ -741,8 +741,17 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 									 * verdict was in `aria-expanded` alone, which a sighted user
 									 * cannot read (design round 5, D1). The fill is the same colour
 									 * step a hover takes, held while the panel is open.
+									 *
+									 * THE INK STEPS WITH IT (design round 6, D1). The fill was added
+									 * without moving the ink, so the glyph rode on `borderControl` in
+									 * the ghost button's own `text-ink-muted` -- 59/59 palettes below
+									 * the 3:1 floor for a graphic object (2.19:1 by token, 2.02:1 in
+									 * the rendered frame). `text-ink` is not enough either (30/59,
+									 * worst 1.87:1); `on-accent` clears the floor everywhere (worst
+									 * 3.53:1), and the row below in `contrast-contract.mjs` keeps it
+									 * that way.
 									 */
-									className={open ? "bg-control" : undefined}
+									className={open ? "bg-control text-on-accent" : undefined}
 									aria-expanded={open}
 									aria-label={`Manage ${brandOf(provider)}`}
 								>

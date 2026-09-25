@@ -309,6 +309,16 @@ const CopyButton: FC<{
  * An older backend sends no receipt; the panel then says only that the sign-in
  * worked, rather than implying a default it cannot see.
  */
+/*
+ * A sentence the caller supplied is finished before the next one begins: the
+ * verdict's `detail` has no terminal-punctuation contract of its own, and this
+ * view appends a second sentence (UX round 6, U25). The regex lives at module
+ * scope because `useTopLevelRegex` is an error in this repo's biome config.
+ */
+const TERMINAL_STOP = /[.!?]$/;
+const verdictStop = (sentence: string): string =>
+	TERMINAL_STOP.test(sentence.trim()) ? sentence : `${sentence}.`;
+
 const SignedIn: FC<{
 	brand: string;
 	verb: "Signed in to" | "Connected";
@@ -429,10 +439,18 @@ const SignedIn: FC<{
 					 * printed the refusal sentence for both, so the neutral arm made a claim
 					 * the verdict did not (review round 6, minor).
 					 */}
-					{verdict.detail ??
-						(verdict.tone === "attention"
-							? `${brand} is no longer accepting the sign-in stored on this machine.`
-							: `This app could not confirm the sign-in stored on this machine for ${brand}.`)}{" "}
+					{/*
+					 * THE VERDICT'S OWN SENTENCE ends before the next one starts: a
+					 * `detail` that arrives without terminal punctuation ran the two
+					 * together -- "…on this machine The sign-in itself finished…"
+					 * (UX round 6, U25).
+					 */}
+					{verdictStop(
+						verdict.detail ??
+							(verdict.tone === "attention"
+								? `${brand} is no longer accepting the sign-in stored on this machine.`
+								: `This app could not confirm the sign-in stored on this machine for ${brand}.`),
+					)}{" "}
 					The sign-in itself finished; what follows is what it set.
 				</p>
 			) : null}

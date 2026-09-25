@@ -490,6 +490,25 @@ export const STORIES = [
 		{ expectPresent: '[data-sign-in-state="unfinished"]' },
 	],
 	[
+		/*
+		 * D2's pair (design round 6): the unconfirmed register and the API-key route
+		 * under a refused verdict. Both shipped with jsdom-only assertions, so neither
+		 * had a frame; the first is the state a first run actually reaches after a
+		 * sign-in the backend will not confirm, and the second is the route U19's
+		 * contradiction survived on.
+		 */
+		"provider-sign-in-onboarding--panel-succeeded-unconfirmed",
+		1280,
+		900,
+		{ expectPresent: '[data-verdict="neutral"]' },
+	],
+	[
+		"provider-sign-in-onboarding--panel-key-refused-verdict",
+		1280,
+		900,
+		{ expectPresent: '[data-verdict="attention"]' },
+	],
+	[
 		"provider-sign-in-onboarding--panel-succeeded-with-default",
 		1280,
 		620,
