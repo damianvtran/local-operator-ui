@@ -827,10 +827,16 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"round1LabelGapRestampNote",
 	/*
-	 * And this branch's own, which joined the list when the branch folded onto the
-	 * `origin/main` that moved under it and re-derived both stamps: it states the
-	 * pair THIS commit ships for UI PR B's Integrations redesign, so it is held to
-	 * that pair rather than read as history.
+	 * The chip cap's own: it re-derives `srcTree` for a change that moves `src/`
+	 * without touching a frame, so a reader is owed the pair AND the reason no
+	 * still was owed - and a new frame is the wrong answer to a question nobody
+	 * asked.
+	 */
+	"cwdChipCapRestampNote",
+	/*
+	 * And this branch's own, carried through every fold: it states the pair THIS
+	 * commit ships for UI PR B's Integrations redesign, so it is held to that pair
+	 * rather than read as history.
 	 */
 	"integrationsRedesignRestampNote",
 ];
