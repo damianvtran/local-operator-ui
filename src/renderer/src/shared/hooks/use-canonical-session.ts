@@ -64,6 +64,7 @@ import {
 	desktopResult,
 	subscribeDesktopStream,
 } from "@shared/api/local-operator/desktop-api";
+import { useAsideStore } from "@shared/store/aside-store";
 import { dropPaint, readPaint, writePaint } from "@shared/store/paint-cache";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -85,6 +86,69 @@ import {
 } from "../../../../shared/desktop-stream-notice";
 /* The child-pulse rule (§ 5.3): the event set, the id rule and the bump. */
 import { applySubagentPulse, seedSubagentPulses } from "./subagent-pulse";
+
+/**
+ * Route the aside chunks in one frame batch to their own store.
+ *
+ * WHY THIS IS HERE RATHER THAN IN THE TRANSCRIPT REDUCER, and why it is not a
+ * branch of the loop below either. An `aside_delta` is a live-only chunk of an
+ * OFF-RECORD exchange (see the frame's own comment): it is deliberately not an
+ * `event`, precisely so it can never reach `applyEvent`/`applyLiveSeed` and be
+ * painted into the conversation the aside promised not to join. So it is taken
+ * out of the batch before the reducer sees it, keyed by `aside_id`, and landed in
+ * `aside-store` where the panel reads it.
+ *
+ * IT RUNS OUTSIDE THE React UPDATER below, which is load-bearing rather than
+ * tidy: an updater is required to be pure and React invokes it twice under
+ * StrictMode, so appending a chunk from inside it would double that chunk's text
+ * on screen — a defect that would look like the model stuttering, and one the
+ * authoritative settle would then hide at the end of the answer.
+ */
+function applyAsideDeltas(frames: DesktopSessionFrame[]): void {
+	for (const frame of frames) {
+		if (frame.type !== "aside_delta") continue;
+		useAsideStore
+			.getState()
+			.applyAsideDelta(frame.payload.aside_id, frame.payload.delta);
+	}
+}
+
+/**
+ * Whether a frame batch can move the session VIEW at all.
+ *
+ * ONLY TWO TYPES CANNOT, and they are exactly the two the fold in the flush
+ * treats as invisible: `heartbeat` (skipped on the first line of the loop, and
+ * never touching a view field) and `aside_delta` (routed to `aside-store` by
+ * `applyAsideDeltas` above, and deliberately not a transcript event). Everything
+ * else - `open`, `gap`, `snapshot`, `event`, `attention`, `frontend.update`,
+ * `frontend.replace` - writes something the pane paints.
+ *
+ * WHY THE DISTINCTION IS WORTH A FUNCTION (review round 1, F5). The flush's
+ * `setView` builds and returns a FRESH view object every time it runs, so a
+ * batch of nothing but aside chunks re-rendered the whole pane - the composer
+ * subtree included - once per chunk, at chunk cadence, for the whole answer. The
+ * pane-wide re-render per batch is pre-existing; what the aside adds is a new
+ * source of batches at that cadence.
+ *
+ * EXISTS OUTSIDE THE UPDATER, taking the batch as an argument, because the two
+ * rules it would otherwise restate (a frame's type, and whether a chunk belongs
+ * to the view) live one function above and must not be spelled a second time.
+ *
+ * EXPORTED so the classification itself is assertable, not merely its spelling
+ * (review round 2, F8): the bail-out that depends on it is one line inside an
+ * effect no node test can mount, so a source-text assertion would pass with the
+ * condition flipped, with an `||` for the `&&`, or with a third inert type added
+ * — each of which is a transcript that stops updating while the suite stays
+ * green. `scripts/btw-aside.test.mjs` drives it by value instead, including the
+ * fail-safe: `some()` defaults to "moves the view" for every type that is not
+ * one of the two inert ones, so a frame type this function has never heard of
+ * repaints rather than going silent.
+ */
+export function batchMovesView(frames: DesktopSessionFrame[]): boolean {
+	return frames.some(
+		(frame) => frame.type !== "aside_delta" && frame.type !== "heartbeat",
+	);
+}
 
 export type CanonicalSessionStatus =
 	| "connecting"
@@ -1712,6 +1776,12 @@ export function useCanonicalSessionStream(
 			const frames = pending.current;
 			pending.current = [];
 			if (frames.length === 0) return;
+			/*
+			 * The off-record chunks first, and outside the state update: see
+			 * `applyAsideDeltas` for why they can be neither a reducer branch nor a write
+			 * from inside the updater.
+			 */
+			applyAsideDeltas(frames);
 			// Decided here, from the frames, not inside the React updater: an
 			// updater runs lazily (and twice under StrictMode), so a side effect
 			// keyed off it would either never fire or fire on the discarded pass.
@@ -2220,6 +2290,27 @@ export function useCanonicalSessionStream(
 					"lop:transcript:flush:end",
 				);
 				paintedIds.current = next.transcript.index;
+				/*
+				 * AN OFF-RECORD BATCH PAINTS NOTHING, so it must not repaint the pane
+				 * either (review round 1, F5). The loop above has still RUN for these
+				 * frames, which is what keeps `receiptRef` current — the receipt cursor is
+				 * advanced by the same arm for every frame carrying an epoch and a seq, and
+				 * THE REF is what bounds a reconnect's replay. The only field such a batch
+				 * writes into `next` is the view's mirror of that cursor, and every other
+				 * field of `next` is the reference `current` already holds: returning
+				 * `current` therefore hands React the identical object and the pane does not
+				 * re-render at all, while an aside answer streams into the panel and the
+				 * conversation, the composer and the transcript are left alone.
+				 *
+				 * AND IT CANNOT SKIP THE HOLD BELOW. An off-record batch is one whose
+				 * frames are all `aside_delta`/`heartbeat` (see `batchMovesView`), and
+				 * `firstAttempts` is built from snapshot seeds and round-ending event
+				 * frames only - a batch of those two types carries neither, so
+				 * `firstAttempts` is empty here and the hold has nothing to apply. The
+				 * guard sits above the hold rather than below it so that the early return
+				 * can never be the reason a held row went unheld.
+				 */
+				if (!batchMovesView(frames)) return current;
 				if (firstAttempts.length > 0) {
 					// In the same commit as the rows they describe, so no frame paints
 					// a seeded row's stand-in before the hold is in place.
