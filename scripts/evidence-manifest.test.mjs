@@ -855,8 +855,19 @@ const STAMP_BINDING_NOTES = [
 	 * hook's held-frontend field and the readings strip that marks what it holds,
 	 * plus the two harnesses that pin both - without touching a frame, so the
 	 * reader is owed the pair AND the reason no still was owed.
+	 *
+	 * UNIONED WITH MAIN'S OWN, which is the rule this list states for itself: a
+	 * fold keeps every key that was there before. Main's records are carried
+	 * whole above and below this entry.
 	 */
 	"streamGapHeldReadingsRestampNote",
+	/*
+	 * This branch's own: it re-stamps a change that moves both trees this file
+	 * binds — the rule/slot/story under `src/`, the trailing-statement pins under
+	 * `scripts/` — without touching a swept frame, so the reader is owed the pair
+	 * and the reason no still was owed.
+	 */
+	"rowTeamTrailingRestampNote",
 	/*
 	 * And the mention-remedy re-stamp's: THIS FILE'S BINDING IS ITS SUBJECT, which
 	 * is the criterion above - it exists to say which two trees the copy change
