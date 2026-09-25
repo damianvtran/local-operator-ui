@@ -847,6 +847,7 @@ const STAMP_BINDING_NOTES = [
 	 * the reader is owed the pair and the reason no still was owed.
 	 */
 	"meshDesktopRound7FoldRestampNote",
+	"meshDesktopRound9FoldRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
