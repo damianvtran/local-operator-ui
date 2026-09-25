@@ -16,9 +16,9 @@ node docs/evidence/owner-refusal-send/harness/capture.mjs <out-dir> --only=timeo
 
 | frame | state |
 |---|---|
-| `timeout-admitted-composed.webp` | the message typed into the real chat page, before the press |
-| `timeout-admitted-after-first-send.webp` | **the operator's screen, replaced**: the message and its file still in the composer, and above it ONE sentence — "Couldn't confirm your message was sent. Sending it again is safe." — with `Retry` and `Clear`. No held paragraph, no Restore/Discard, and the 20 s transport prose is not what the composer shows |
-| `timeout-admitted-after-second-send.webp` | the operator's remedy pressed: admitted, box empty, the message in the transcript |
+| `timeout-admitted-composed/localOperatorDark.webp` | the message typed into the real chat page, before the press |
+| `timeout-admitted-after-first-send/localOperatorDark.webp` | **the operator's screen, replaced**: the message and its file still in the composer, and above it ONE sentence — "Couldn't confirm your message was sent. Sending it again is safe." — with `Retry` and `Clear`. No held paragraph, no Restore/Discard, and the 20 s transport prose is not what the composer shows |
+| `timeout-admitted-after-second-send/localOperatorDark.webp` | the operator's remedy pressed: admitted, box empty, the message in the transcript |
 
 The `-after-first-send` frame also carries the app's own "Lost the connection to
 this conversation — reconnect to keep reading." line beside the notice, and that
