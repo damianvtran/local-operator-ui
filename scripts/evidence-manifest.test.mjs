@@ -807,13 +807,13 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  */
 const STAMP_BINDING_NOTES = [
 	/*
-	 * THE NOTE THAT STATES THIS FILE'S OWN PAIR - and the only one, because every other note
-	 * whose text quoted a pair this pass's folds superseded has had its values written as bare
-	 * SHAs instead. That is the convention the paragraphs above state, applied in the direction
-	 * the next fold always goes; `meshDesktopRound3RestampNote` left the list the same way
-	 * `meshDesktopRound2RestampNote` did before it.
+	 * THE ONE NOTE THAT STATES THIS FILE'S PAIR, which is why it is the only one listed.
+	 * Every other note whose text quoted a pair this pass's folds superseded has had its values
+	 * written as bare SHAs instead - the convention the paragraphs above state, applied in the
+	 * direction the next fold always goes. That includes main's chip-cap note, which arrived
+	 * holding the pair the third fold moved.
 	 */
-	"meshDesktopRound4FoldRestampNote",
+	"meshDesktopRound5FoldRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
