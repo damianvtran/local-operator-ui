@@ -196,7 +196,18 @@ export type ReturnedPayload = {
  * worse than leaving the box alone. The note says only that the earlier message
  * arrived, which is true either way.
  */
-export type LateDeliveryBox = "draft-only" | "overlap";
+/**
+ * AND `delivered` IS THE ARM THAT CANNOT DESCRIBE THE BOX AT ALL (design round 9, D17).
+ *
+ * It is raised where the delivered text is UNKNOWN - `reconcileDelivered`'s arm with a
+ * payload in flight and no `returned` message to compare against - so nothing here has read
+ * `currentInput` and the app's deliberate text-loss rule may have left the delivered words
+ * exactly where they were. Its sentence therefore says only what is known: the earlier
+ * message arrived. The `draft-only` wording cannot be used there, because its second half
+ * ("what's here now hasn't been sent") is a claim about a box this arm never looked at - and
+ * on the shape it is false in, the claim hides the one repeat the copy exists to warn about.
+ */
+export type LateDeliveryBox = "delivered" | "draft-only" | "overlap";
 
 /**
  * One message as the composer held it when it was sent: the box text before any
@@ -1249,20 +1260,22 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 								// Only worth saying when something of that message is still on
 								// screen for the user to wonder about.
 								/*
-								 * AND THE NEUTRAL SENTENCE WHEN THE TEXT IS UNKNOWN (review round 7,
-								 * Q7-1). This arm is reached with `hadPayload` true and no `returned`
-								 * payload - the in-flight shape - and the `overlap` copy claims that
-								 * the delivered message's words are still in the box. With nothing to
-								 * compare, that claim cannot be made, so the note the user gets is the
-								 * muted delivered one: same fact, no claim about the box. Reusing the
-								 * shipped string rather than adding one keeps this inside the copy the
-								 * design round has already signed off.
+								 * AND THE SENTENCE THAT CLAIMS NOTHING ABOUT THE BOX (review round 7
+								 * Q7-1, re-routed by design round 9's D17). This arm is reached with
+								 * `hadPayload` true and no `returned` payload - the in-flight shape -
+								 * so the delivered text is UNKNOWN and nothing here has read
+								 * `currentInput` at all. Neither of the box-describing sentences can
+								 * be used: `overlap`'s says the delivered words are still in the box,
+								 * and `draft-only`'s says what is here now has not been sent - false
+								 * wherever the text-loss rule left those words in place, and false in
+								 * the direction that hides a repeat. `delivered` says only what is
+								 * known: the earlier message arrived.
 								 */
 								lateDelivered:
 									hadPayload && row.returned?.text
 										? "overlap"
 										: hadPayload
-											? "draft-only"
+											? "delivered"
 											: undefined,
 								lateDeliveredText: hadPayload ? row.returned?.text : undefined,
 							};
