@@ -34,6 +34,7 @@
 			},
 			"tool_count": null,
 			"tool_count_basis": null,
+			"last_seen_at": null,
 			"actions": ["test", "sign_in", "remove"]
 		},
 		{
@@ -64,6 +65,7 @@
 			},
 			"tool_count": 12,
 			"tool_count_basis": "probe",
+			"last_seen_at": null,
 			"actions": ["test", "reauth", "sign_out", "remove"]
 		},
 		{
@@ -103,6 +105,7 @@
 			},
 			"tool_count": 4,
 			"tool_count_basis": "last_seen",
+			"last_seen_at": 1790237640,
 			"actions": ["test", "set_key", "remove"]
 		},
 		{
@@ -133,6 +136,7 @@
 			},
 			"tool_count": null,
 			"tool_count_basis": null,
+			"last_seen_at": null,
 			"actions": ["test", "add_key", "remove"]
 		},
 		{
@@ -163,6 +167,7 @@
 			},
 			"tool_count": 5,
 			"tool_count_basis": "last_seen",
+			"last_seen_at": 1790154000,
 			"actions": ["test", "remove"]
 		},
 		{
@@ -193,6 +198,7 @@
 			},
 			"tool_count": null,
 			"tool_count_basis": null,
+			"last_seen_at": null,
 			"actions": ["test"]
 		},
 		{
@@ -223,6 +229,7 @@
 			},
 			"tool_count": null,
 			"tool_count_basis": null,
+			"last_seen_at": null,
 			"actions": ["test", "sign_in"]
 		}
 	],

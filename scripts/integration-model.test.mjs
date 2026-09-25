@@ -2164,7 +2164,12 @@ test("a failed sign-out files under Needs attention and leads with the retry (m-
 	 */
 	assert.doesNotMatch(status.detail, /readonly|fresh grant|MCP logout|sqlite/i);
 	assert.match(status.detail, /still saved/i);
-	assert.match(status.detail, /Sign out again/);
+	/*
+	 * D21: the detail must NOT name the control standing beside it. "Try Sign out
+	 * again." was the `Sign out again` button to the row's right read aloud, and
+	 * the button's own label is asserted just below.
+	 */
+	assert.doesNotMatch(status.detail, /Sign out again/i);
 	/*
 	 * m-2 / Q3: the row's own words are a warning, so its group has to be the one
 	 * that holds rows needing a decision - it sat under Connected while the page
@@ -2256,6 +2261,207 @@ test("a Disconnect the user pressed is authoritative until a read confirms (Q2)"
 	assert.equal(
 		m.integrationStatus(back, [], confirmed).label,
 		"Connected · 12 tools",
+	);
+});
+
+test("a live Disconnect outlives the read that contradicts it, and never claims a worked reading (Q1, round 4)", () => {
+	/*
+	 * THE REAL LIVE SHAPE, which the round-3 pin did not build. QA measured it on
+	 * a warm runtime: the row read `Connected · 2 tools` with Disconnect in its
+	 * menu, the press went to the overlay's own route, and the ONE read that
+	 * followed landed on the flap's other arm - the overlay answers `live` about
+	 * 12 times in 20 and config-only the other 8, all inside a second - so the
+	 * row went on reading "Worked just now · 2 tools" under Connected with no
+	 * Connect offered, for the whole 20 s sample, while the backend said
+	 * `not_started` with `connect` in its actions. Two of three runs; the third
+	 * landed on the live arm, which is why one read must not decide.
+	 *
+	 * The payload here is the one the backend actually sends, `last_seen` count
+	 * and all: `tool_count` with `tool_count_basis: "last_seen"`, and #1536's
+	 * `last_seen_at` beside it.
+	 */
+	const press = 2_000;
+	const held = press + m.CONTROL_SETTLE_MS;
+	const warm = row("qa-keyless-A", {
+		status: "connected",
+		status_basis: "live",
+		tool_count: 2,
+		tool_count_basis: "live",
+	});
+	const before = m.advanceMemories(
+		undefined,
+		{ servers: [warm], operations: [] },
+		1_000,
+	);
+	assert.equal(before["qa-keyless-A"].connectedAt, 1_000);
+
+	// Exactly what the hook's control memory writes on a Disconnect.
+	const pressed = {
+		...before,
+		"qa-keyless-A": {
+			...before["qa-keyless-A"],
+			connectedAt: null,
+			disconnectedAt: press,
+			holdUntil: held,
+		},
+	};
+
+	/*
+	 * THE ARM THAT FAILED. The contradicting read is a `live` row that still says
+	 * connected - the flap's stale half - carrying the last-seen count and time.
+	 */
+	const staleLive = row("qa-keyless-A", {
+		status: "connected",
+		status_basis: "live",
+		tool_count: 2,
+		tool_count_basis: "last_seen",
+		last_seen_at: 1_790_247_000,
+		actions: ["test", "set_key", "remove", "connect"],
+	});
+	const during = m.advanceMemories(
+		pressed,
+		{ servers: [staleLive], operations: [] },
+		press + 700,
+	);
+	assert.equal(
+		during["qa-keyless-A"].disconnectedAt,
+		press,
+		"a contradicting read inside the hold does not clear the user's Disconnect",
+	);
+	assert.equal(
+		during["qa-keyless-A"].connectedAt,
+		null,
+		"and it does not stamp a worked reading either",
+	);
+	assert.equal(
+		m.integrationStatus(staleLive, [], during).label,
+		"Not connected",
+		"so the row cannot claim a health the payload does not support",
+	);
+	assert.equal(m.integrationGroupOf(staleLive, [], during), "ready");
+	assert.equal(m.primaryAction(staleLive, [], during).kind, "connect");
+
+	/*
+	 * The other arm the round measured - the config-only answer - and the one the
+	 * round-3 pin did build. Kept because both arms are real payloads.
+	 */
+	const storedArm = row("qa-keyless-A", {
+		status: "not_started",
+		status_basis: "stored",
+		tool_count: 2,
+		tool_count_basis: "last_seen",
+		last_seen_at: 1_790_247_000,
+		actions: ["test", "set_key", "remove", "connect"],
+	});
+	const configOnly = m.advanceMemories(
+		pressed,
+		{ servers: [storedArm], operations: [] },
+		press + 800,
+	);
+	assert.equal(
+		m.integrationStatus(storedArm, [], configOnly).label,
+		"Not connected",
+	);
+	assert.equal(
+		configOnly["qa-keyless-A"].connectedAt,
+		null,
+		"a stored last-seen count does not become a worked reading while the hold stands",
+	);
+
+	/*
+	 * PAST THE HOLD the newest read wins again: the app never holds a claim the
+	 * backend has stopped supporting, and a Disconnect that truly failed has to
+	 * be able to come back.
+	 */
+	const after = m.advanceMemories(
+		during,
+		{ servers: [staleLive], operations: [] },
+		held + 1,
+	);
+	assert.equal(after["qa-keyless-A"].disconnectedAt, null);
+	assert.equal(after["qa-keyless-A"].connectedAt, held + 1);
+	assert.equal(
+		m.integrationStatus(staleLive, [], after).label,
+		"Connected · 2 tools",
+	);
+	assert.equal(after["qa-keyless-A"].holdUntil, null);
+});
+
+test("the payload's last-seen time is consumed once, in seconds, and refused when it is not a time (R4-3)", () => {
+	/*
+	 * #1536 publishes `last_seen_at` as epoch SECONDS, set iff the count is a
+	 * `last_seen` count. It is the only second-valued stamp this page receives,
+	 * and the same unit trap already cost this branch twice - a real six-minute
+	 * check once rendered "Worked 20700 d ago" - so it enters through one named
+	 * conversion, and it is refused rather than guessed at in either direction.
+	 */
+	assert.equal(m.lastSeenMillis(1_790_247_000), 1_790_247_000_000);
+	assert.equal(
+		m.lastSeenMillis(1_790_247_000_000),
+		1_790_247_000_000,
+		"a millisecond stamp is passed through, not multiplied again",
+	);
+	for (const value of [
+		null,
+		undefined,
+		"1790247000",
+		0,
+		999_999_999,
+		Number.NaN,
+	])
+		assert.equal(m.lastSeenMillis(value), null, `refused: ${String(value)}`);
+
+	/*
+	 * The page's own reading of it: a `stored` row standing behind a last-seen
+	 * count, with no memory of its own - the reload case - carries the time the
+	 * backend took the count, so the row can say WHEN rather than only that it
+	 * did.
+	 */
+	const now = 1_790_247_600_000;
+	const twoHours = 2 * 60 * 60 * 1000;
+	const stored = row("filesystem", {
+		status: "not_started",
+		status_basis: "stored",
+		tool_count: 5,
+		tool_count_basis: "last_seen",
+		last_seen_at: (now - twoHours) / 1000,
+	});
+	const memories = m.advanceMemories(
+		undefined,
+		{ servers: [stored], operations: [] },
+		now,
+	);
+	assert.equal(memories.filesystem.connectedAt, now - twoHours);
+	assert.equal(memories.filesystem.connectedToolCount, 5);
+	assert.equal(
+		// `now` passed explicitly: the label is an age, and a wall clock would
+		// make this assertion pass for the wrong reason one day and fail the next.
+		m.integrationStatus(stored, [], memories, now).label,
+		"Worked 2 h ago · 5 tools",
+	);
+	// And from the payload alone, with no memory yet: the same age, because the
+	// backend published it rather than the page having watched it.
+	assert.equal(
+		m.integrationStatus(stored, [], undefined, now).label,
+		"Worked 2 h ago · 5 tools",
+	);
+	assert.equal(m.integrationGroupOf(stored, [], memories), "connected");
+	// No usable time: the vaguer wording, which is still true.
+	const untimed = row("filesystem", {
+		status: "not_started",
+		status_basis: "stored",
+		tool_count: 5,
+		tool_count_basis: "last_seen",
+		last_seen_at: null,
+	});
+	assert.equal(
+		m.integrationStatus(
+			untimed,
+			[],
+			m.advanceMemories(undefined, { servers: [untimed], operations: [] }, now),
+			now,
+		).label,
+		"Worked earlier · 5 tools",
 	);
 });
 
@@ -2483,6 +2689,60 @@ test("the dialogs and the row list keep the geometry and the rules the walk meas
 		section,
 		/until: Date\.now\(\) \+ FOCUS_ARM_MS/,
 		"and every arm site carries the deadline",
+	);
+	/*
+	 * m-4's OTHER half, whose reach is stated rather than implied (R4-5): the
+	 * disarm timer is BELT AND BRACES - the deadline check above is what makes a
+	 * late move impossible - so deleting it leaves this suite green, and that is
+	 * a property of the design rather than a hole. It is still pinned, because a
+	 * `focusRow` that outlived its window sitting in state is what the timer is
+	 * for, and nothing else would notice.
+	 */
+	const disarm = section.slice(
+		section.indexOf("Disarm the move when its window closes"),
+		section.indexOf(
+			"return (",
+			section.indexOf("Disarm the move when its window closes"),
+		),
+	);
+	assert.match(
+		disarm,
+		/window\.setTimeout\(/,
+		"the armed move is disarmed when its window closes (m-4, belt and braces)",
+	);
+	assert.match(
+		disarm,
+		/setFocusRow\(null\)/,
+		"and disarming means dropping it",
+	);
+	/*
+	 * Q2/U20: the move must land AFTER the closing surface's own focus restore.
+	 * A dialog or a row menu closing runs Radix's close-auto-focus, whose target
+	 * is the control that opened it - a menu item the close has already
+	 * unmounted - so a focus performed in the same tick was overwritten with
+	 * `<body>` on the two arms whose row then never re-rendered: the confirm on a
+	 * failed sign-out and a key save that left the row with no primary.
+	 *
+	 * The slice runs from the moment the move has a target to the end of that
+	 * effect, so it cannot reach a later `window.setTimeout` elsewhere in the
+	 * file (the round-3 lesson: a slice that runs past its function matches the
+	 * next one's code and then proves nothing).
+	 */
+	const deferred = section.slice(
+		section.indexOf("if (!element) return;"),
+		section.indexOf(
+			"}, [focusRow, servers, operations, integrations.memories]);",
+		),
+	);
+	assert.match(
+		deferred,
+		/window\.setTimeout\(\(\) => \{/,
+		"the deferred move runs a macrotask later, past Radix's own restore (Q2, U20)",
+	);
+	assert.match(
+		deferred,
+		/element\.isConnected/,
+		"and only onto a control that is still in the document",
 	);
 	// U18: the four completions that used to leave focus on `<body>`.
 	assert.match(

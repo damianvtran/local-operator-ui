@@ -228,6 +228,17 @@ export type McpCatalogRow = {
 	};
 	tool_count: number | null;
 	tool_count_basis: "live" | "probe" | "last_seen" | null;
+	/**
+	 * When the `last_seen` count was taken, or null.
+	 *
+	 * EPOCH SECONDS, and set iff `tool_count_basis === "last_seen"` -
+	 * local-operator#1536's contract, which says so in the backend's own words
+	 * precisely because this page's clocks are milliseconds: read as
+	 * milliseconds it renders a date in 1970, which is the same unit trap that
+	 * made an expired check read "Worked 20700 d ago" (M-1). It is what lets a
+	 * row say WHEN it last worked instead of only that it did.
+	 */
+	last_seen_at: number | null;
 	actions: (
 		| "test"
 		| "sign_in"

@@ -384,6 +384,21 @@ type SessionControlBody = Extract<
  * Writes and grants carry `confirmed: true` because the press IS the
  * confirmation - Remove has already asked "Remove X?" by the time it gets here.
  */
+/**
+ * What a control verb is asking the row to become.
+ *
+ * The window's early stop needs it (Q1): "a live read arrived" is not the same
+ * fact as "the live runtime agreed with the press", and treating them as one is
+ * what let a Disconnect close its own window on a read that still said
+ * `connected`. A verb that neither claims nor denies a connection - a Test, a
+ * Reload, a Remove - expects to be CONNECTED only if it is the verb that
+ * provisions one.
+ */
+export const controlExpectation = (request: {
+	action: string;
+}): "connected" | "disconnected" =>
+	request.action === "disconnect" ? "disconnected" : "connected";
+
 export function catalogControlBody(
 	request: IntegrationControl,
 ): CatalogControlBody | null {
@@ -583,11 +598,29 @@ export function useIntegrations({
 	 */
 	const settleUntilRef = useRef(0);
 	const [settleUntil, setSettleUntil] = useState(0);
-	const startSettling = useCallback(() => {
-		const until = Date.now() + CONTROL_SETTLE_MS;
-		settleUntilRef.current = until;
-		setSettleUntil(until);
-	}, []);
+	/*
+	 * WHAT the window is waiting for, not just that it is open.
+	 *
+	 * The window used to close as soon as ANY row arrived with a `live` basis, and
+	 * the overlay is a live runtime for the whole page whenever one chat is warm -
+	 * so a Disconnect closed its own window on the FIRST read, before the read that
+	 * could confirm it had arrived. QA measured exactly that: one catalog GET in
+	 * the twenty seconds after the press (Q1). The window now closes when THIS row
+	 * has answered in the direction the user asked for, or when it runs out.
+	 */
+	const settlingRef = useRef<{
+		name: string;
+		expect: "connected" | "disconnected";
+	} | null>(null);
+	const startSettling = useCallback(
+		(name: string, expect: "connected" | "disconnected") => {
+			const until = Date.now() + CONTROL_SETTLE_MS;
+			settleUntilRef.current = until;
+			settlingRef.current = { name, expect };
+			setSettleUntil(until);
+		},
+		[],
+	);
 
 	const pollIntervalFor = useCallback(
 		(data: IntegrationDocument | undefined): number | false =>
@@ -654,10 +687,25 @@ export function useIntegrations({
 	 */
 	useEffect(() => {
 		if (!settleUntil) return;
-		const live =
-			document?.servers.some((row) => row.status_basis === "live") ?? false;
-		if (!live) return;
+		const settling = settlingRef.current;
+		if (!settling) return;
+		const row = document?.servers.find(
+			(server) => server.name === settling.name,
+		);
+		if (!row) return;
+		/*
+		 * The row's own answer, in the direction the user asked for. A `live` read
+		 * of the RIGHT row is the only thing that can confirm a live verb - the
+		 * runtime is the party that has to agree - and a `connected` status is
+		 * enough for a connect however it was reached.
+		 */
+		const agreed =
+			settling.expect === "connected"
+				? row.status === "connected"
+				: row.status_basis === "live" && row.status !== "connected";
+		if (!agreed) return;
 		settleUntilRef.current = 0;
+		settlingRef.current = null;
 		setSettleUntil(0);
 	}, [document, settleUntil]);
 
@@ -726,18 +774,45 @@ export function useIntegrations({
 	 * a read says it is connected again - which is what clears `disconnectedAt`
 	 * (`advanceMemories`).
 	 */
-	const markControlMemory = useCallback((request: IntegrationControl) => {
-		if (request.action !== "disconnect" && request.action !== "connect") return;
-		const before = memoryFor(memoriesRef.current, request.name);
-		const next: RowMemory =
-			request.action === "disconnect"
-				? { ...before, connectedAt: null, disconnectedAt: Date.now() }
-				: // Connecting clears the claim: the user is asking for it back, and
-					// the read that follows is what confirms it.
-					{ ...before, disconnectedAt: null };
-		memoriesRef.current = { ...memoriesRef.current, [request.name]: next };
-		setMemoryEpoch((epoch) => epoch + 1);
-	}, []);
+	const markControlMemory = useCallback(
+		(request: IntegrationControl) => {
+			if (
+				request.action !== "disconnect" &&
+				request.action !== "connect" &&
+				request.action !== "reload"
+			)
+				return;
+			const before = memoryFor(memoriesRef.current, request.name);
+			/*
+			 * BOTH arms open the hold (`RowMemory.holdUntil`), because both are the
+			 * user contradicting what the last read said, and the read that follows
+			 * them is the overlay's flap half the time: measured 12 `live` against 8
+			 * `config` across 20 identical reads inside a second (Q1).
+			 */
+			const holdUntil = Date.now() + CONTROL_SETTLE_MS;
+			const next: RowMemory =
+				request.action === "disconnect"
+					? {
+							...before,
+							connectedAt: null,
+							disconnectedAt: Date.now(),
+							holdUntil,
+						}
+					: // Connecting clears the claim: the user is asking for it back, and
+						// the read that follows is what confirms it.
+						{ ...before, disconnectedAt: null, holdUntil };
+			memoriesRef.current = { ...memoriesRef.current, [request.name]: next };
+			/*
+			 * The window is opened HERE rather than beside the call, because the two
+			 * are one act: a site that remembers the press but forgets to keep asking
+			 * is how the row went on claiming "Worked just now" for the whole sample
+			 * (Q1), and every control site below now goes through this one path.
+			 */
+			startSettling(request.name, controlExpectation(request));
+			setMemoryEpoch((epoch) => epoch + 1);
+		},
+		[startSettling],
+	);
 
 	const control = useCallback(
 		async (request: IntegrationControl): Promise<string | null> => {
@@ -749,7 +824,6 @@ export function useIntegrations({
 					const next = await controlMcpCatalog(cwd, body);
 					queryClient.setQueryData(catalogKey, next);
 					markControlMemory(request);
-					startSettling();
 					return next.operation?.id ?? null;
 				} catch (cause) {
 					/*
@@ -774,7 +848,6 @@ export function useIntegrations({
 					control: sessionControlBody(request),
 				});
 				markControlMemory(request);
-				startSettling();
 				const key = mcpKeys.list(readSessionId);
 				// `connect`/`reload`/`remove` answer with the snapshot; a grant answers
 				// with its operation, so only a document-shaped answer is written.
@@ -790,15 +863,7 @@ export function useIntegrations({
 			}
 			return null;
 		},
-		[
-			route,
-			cwd,
-			catalogKey,
-			queryClient,
-			readSessionId,
-			markControlMemory,
-			startSettling,
-		],
+		[route, cwd, catalogKey, queryClient, readSessionId, markControlMemory],
 	);
 
 	/*
@@ -845,21 +910,12 @@ export function useIntegrations({
 				 * user their Disconnect had done nothing (Q2).
 				 */
 				markControlMemory(request);
-				startSettling();
 				await queryClient.invalidateQueries({ queryKey: catalogKey });
 				return null;
 			}
 			return control(request);
 		},
-		[
-			route,
-			overlay,
-			queryClient,
-			catalogKey,
-			control,
-			markControlMemory,
-			startSettling,
-		],
+		[route, overlay, queryClient, catalogKey, control, markControlMemory],
 	);
 
 	const storeKeys = useCallback(

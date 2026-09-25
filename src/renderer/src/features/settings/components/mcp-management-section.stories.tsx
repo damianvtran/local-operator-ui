@@ -160,6 +160,9 @@ const row = (
 	name,
 	scope: "global",
 	project_cwd: null,
+	// Required on the wire row; null here because no state this file renders
+	// reads it, and a state that does overrides this with a real value.
+	last_seen_at: null,
 	source: {
 		kind: "local-operator",
 		path: GLOBAL_FILE,

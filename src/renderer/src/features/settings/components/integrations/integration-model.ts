@@ -203,6 +203,25 @@ export type RowMemory = {
 	needsSignIn: boolean;
 	/** Milliseconds since the epoch, from the Disconnect the user pressed. */
 	disconnectedAt: number | null;
+	/**
+	 * Until when the user's OWN control verb outranks a read that contradicts it.
+	 *
+	 * WHY THIS EXISTS (Q1, round 4, measured live): the page re-reads the list
+	 * after a control and the overlay FLAPS - 12 `live` and 8 `config` answers
+	 * across 20 identical back-to-back reads, each under half a second - so the
+	 * one read that follows a Disconnect can legitimately be the stale one that
+	 * still says `connected`. That read used to clear the Disconnect's own mark
+	 * and stamp a fresh `connectedAt`, which is how a row the user had just
+	 * disconnected read "Worked just now · 2 tools" under Connected with no
+	 * Connect offered for the whole 20 s sample - twice out of three runs, and
+	 * the third run is why a single read must not decide.
+	 *
+	 * So the user's act is authoritative until this deadline: inside it, a
+	 * contradicting read is not a contradiction, and the row stops claiming any
+	 * time-based reading at all. Past it, the newest read wins and this is null
+	 * again - the app never holds a claim the backend has stopped supporting.
+	 */
+	holdUntil: number | null;
 	/** The newest settled operation seen here, pruned to what the rules read. */
 	lastDecisive: McpCatalogOperation | null;
 };
@@ -219,7 +238,34 @@ export const NO_MEMORY: RowMemory = {
 	needsKey: false,
 	needsSignIn: false,
 	disconnectedAt: null,
+	holdUntil: null,
 	lastDecisive: null,
+};
+
+/**
+ * The backend's `last_seen_at` as MILLISECONDS this page may use, or null.
+ *
+ * The field is epoch SECONDS and set iff `tool_count_basis === "last_seen"`
+ * (local-operator#1536). It is the ONE place a second-valued stamp enters this
+ * page, and it enters through a named conversion because the same trap has cost
+ * this branch twice: a real six-minute-old check once rendered "Worked 20700 d
+ * ago" from a second-valued stamp read as milliseconds (M-1), and the parity
+ * payload is where the unit is now visible at all.
+ *
+ * Refused rather than guessed, in both directions: anything at or above
+ * `MS_FLOOR` is already milliseconds (some future relay may normalise it, and
+ * multiplying it again would be the same bug one field over), and anything below
+ * `SECONDS_FLOOR` is not a time in this epoch at all - 2001 in seconds or 1970
+ * in milliseconds - so it is dropped rather than rendered as an age.
+ */
+const MS_FLOOR = 1_000_000_000_000; // 2001-09-09 in milliseconds
+const SECONDS_FLOOR = 1_000_000_000; // 2001-09-09 in seconds
+
+export const lastSeenMillis = (value: unknown): number | null => {
+	if (typeof value !== "number" || !Number.isFinite(value)) return null;
+	if (value >= MS_FLOOR) return value;
+	if (value < SECONDS_FLOOR) return null;
+	return value * 1000;
 };
 
 /** The row's memory, or the empty one, so callers never branch on undefined. */
@@ -483,6 +529,33 @@ export function integrationStatus(
 		(lastOperation?.action === "login" || lastOperation?.action === "reauth") &&
 		lastOperation.status === "failed";
 
+	/*
+	 * A DISCONNECT THE USER PRESSED IS AUTHORITATIVE (Q2, Q1). The backend's live
+	 * overlay is optional by contract and is measured degrading to the config
+	 * answer on identical back-to-back reads (12 live / 8 config in 20 reads
+	 * inside one second), so the read this page makes after a Disconnect can
+	 * legitimately be the stale half of that flap - and read as health it made
+	 * the row say "Worked just now" with no Connect, while the backend said not
+	 * connected. The user just said this server should stop; until a read
+	 * CONFIRMS it is connected again, the row says so.
+	 *
+	 * IT SITS ABOVE THE STATUS SWITCH, which is where the round-4 finding came
+	 * from: it used to live inside the `not_started` case, and the case this
+	 * exists for - a live read that still says `connected` - had already
+	 * returned its success words by then. Nothing the press is newer than
+	 * outranks it either: `connecting` and `error` are readings taken before the
+	 * press, and the sign-out wordings above are newer facts than it. It EXPIRES
+	 * by time rather than being cleared (`RowMemory.holdUntil`), so a row cannot
+	 * hold it longer than the window the hook opened.
+	 */
+	if (memory.disconnectedAt !== null)
+		return {
+			label: "Not connected",
+			tone: "neutral",
+			detail: null,
+			busy: false,
+		};
+
 	switch (row.status) {
 		case "connected":
 			return {
@@ -558,24 +631,14 @@ export function integrationStatus(
 					 * the config/file view, which is where a reader debugging a lock goes;
 					 * the row states what did or did not happen and the step that retries.
 					 */
-					detail: "The sign-in is still saved. Try Sign out again.",
-					busy: false,
-				};
-			/*
-			 * A DISCONNECT THE USER PRESSED IS AUTHORITATIVE (Q2). The backend's live
-			 * overlay is optional by contract and is measured degrading to the config
-			 * answer on identical back-to-back reads (12 live / 8 config in 20 reads
-			 * inside one second), so the single read this page makes after a
-			 * Disconnect can legitimately say nothing about the runtime - and read as
-			 * health it made the row say "Worked just now" with no Connect, while the
-			 * backend said not connected. The user just said this server should stop;
-			 * until a read confirms it is connected again, the row says so.
-			 */
-			if (memory.disconnectedAt !== null)
-				return {
-					label: "Not connected",
-					tone: "neutral",
-					detail: null,
+					/*
+					 * "Try Sign out again." used to follow this sentence, which is
+					 * the `Sign out again` button to the row's right read aloud
+					 * (D21). The first sentence is the one that earns its place: it
+					 * is what tells a failed sign-out apart from a completed one,
+					 * and why the row warns rather than claims success.
+					 */
+					detail: "The sign-in is still saved.",
 					busy: false,
 				};
 			/*
@@ -642,16 +705,27 @@ export function integrationStatus(
 				row.status_basis === "stored" &&
 				workedBefore &&
 				memory.disconnectedAt === null
-			)
+			) {
+				/*
+				 * WHICH time, and why the payload may supply it (R4-3): this page's
+				 * own memory is the fresher reading when it has one, and otherwise
+				 * the backend's `last_seen_at` is the only time there is - epoch
+				 * SECONDS, converted once by `lastSeenMillis` and never inline.
+				 * `null` still means "no time at all", which is the honest
+				 * "Worked earlier": the vaguer of the two readings the payload
+				 * supports is the right one only when nothing better is published.
+				 */
+				const workedAt = memory.connectedAt ?? lastSeenMillis(row.last_seen_at);
 				return {
 					label:
-						memory.connectedAt !== null
-							? `Worked ${relativeTime(now, memory.connectedAt)} · ${toolCountLabel(row.tool_count as number)}`
+						workedAt !== null
+							? `Worked ${relativeTime(now, workedAt)} · ${toolCountLabel(row.tool_count as number)}`
 							: `Worked earlier · ${toolCountLabel(row.tool_count as number)}`,
 					tone: "success",
 					detail: null,
 					busy: false,
 				};
+			}
 			/*
 			 * A LIVE runtime saying `not_started` is a chat that has this server
 			 * configured and is not connected to it. "Ready" would claim nothing
@@ -808,6 +882,27 @@ export type PrimaryAction = {
  * A needs-sign-in row that offers neither route (an api-key reference the
  * backend cannot collect here) also falls through to `Fix`.
  */
+/**
+ * The status the page ACTS on, which is not always the one the read carried.
+ *
+ * A Disconnect the user pressed is newer than the read that arrived after it
+ * (`RowMemory.holdUntil`), so while it stands the row is treated as NOT
+ * connected - and this is the single place that substitution is made, so the
+ * words, the group and the controls cannot disagree about it.
+ *
+ * WHY IT HAS TO EXIST SEPARATELY (Q1, round 4): the words said "Not connected"
+ * and the controls did not. The payload still reported `connected` - the stale
+ * half of the overlay's flap - so `primaryAction` returned null for a connected
+ * row, the overflow offered `Disconnect` and no `connect`, and QA measured a row
+ * reading "Not connected" with a menu and NOTHING to press, while the backend's
+ * own `actions` listed `connect`.
+ */
+export const effectiveStatus = (
+	row: Pick<IntegrationRow, "status">,
+	memory: RowMemory,
+): IntegrationRow["status"] =>
+	memory.disconnectedAt !== null ? "not_started" : row.status;
+
 export function primaryAction(
 	row: IntegrationRow,
 	operations: readonly McpCatalogOperation[] = [],
@@ -837,7 +932,10 @@ export function primaryAction(
 	const lastOperation = rememberedDecisiveFor(row.name, operations, memory);
 	const signInFailed =
 		lastOperation?.status === "failed" && isSignInAction(lastOperation);
-	switch (row.status) {
+	// The user's own Disconnect is read here as the status it implies, so a row
+	// whose payload still says `connected` leads with Connect rather than
+	// returning null and leaving the row with nothing to press.
+	switch (effectiveStatus(row, memory)) {
 		case "connected":
 		case "connecting":
 			return null;
@@ -1075,13 +1173,16 @@ export function overflowItems(
 	memories?: RowMemories,
 ): OverflowItem[] {
 	const primary = primaryAction(row, operations, memories)?.kind;
+	// The same substitution the words and the primary make (Q1): a standing
+	// Disconnect means the menu offers Connect, not Disconnect.
+	const status = effectiveStatus(row, memoryFor(memories, row.name));
 	const has = (action: IntegrationAction) => row.actions.includes(action);
 	const items: OverflowItem[] = [];
 	const running = runningOperationFor(row.name, operations);
 	if (running) items.push({ kind: "cancel", label: "Cancel" });
 	if (!running && has("test") && primary !== "test")
 		items.push({ kind: "test", label: "Test connection" });
-	if (has("connect") && primary !== "connect" && row.status !== "connected")
+	if (has("connect") && primary !== "connect" && status !== "connected")
 		items.push({ kind: "connect", label: "Reconnect" });
 	/*
 	 * A plain Sign in belongs in the menu as well as on the button: a row can
@@ -1093,7 +1194,7 @@ export function overflowItems(
 		!running &&
 		has("sign_in") &&
 		primary !== "sign_in" &&
-		row.status !== "connected"
+		status !== "connected"
 	)
 		items.push({ kind: "sign_in", label: "Sign in" });
 	if (has("reload")) items.push({ kind: "reload", label: "Reload" });
@@ -1107,7 +1208,7 @@ export function overflowItems(
 			label: row.auth.secret_refs.length > 0 ? "Update key" : "Add key",
 		});
 	if (has("sign_out")) items.push({ kind: "sign_out", label: "Sign out" });
-	if (has("disconnect") && row.status === "connected")
+	if (has("disconnect") && status === "connected")
 		items.push({ kind: "disconnect", label: "Disconnect" });
 	if (has("copy_setup") && row.setup_prompt)
 		items.push({ kind: "copy_setup", label: "Copy setup prompt" });
@@ -1293,18 +1394,49 @@ export function advanceMemories(
 		const connected =
 			row.status === "connected" &&
 			(row.status_basis === "probe" || row.status_basis === "live");
+		/*
+		 * The user's own control verb outranks a contradicting read until its
+		 * deadline: see `RowMemory.holdUntil` for the measurement this comes
+		 * from. Inside the window the read is the flapping one, so `connected`
+		 * is not allowed to clear the Disconnect or stamp a fresh `connectedAt`.
+		 */
+		const held = before.holdUntil !== null && now < before.holdUntil;
+		/*
+		 * The backend's own answer to WHEN the count was taken, used only where
+		 * this page has nothing better: a `stored` row that still stands behind
+		 * a `last_seen` count, with no memory of its own and no user action in
+		 * the air. That is the reload case (Q1/U10) - and with it the row says
+		 * "Worked 24 hours ago" instead of the vaguer "Worked earlier", which is
+		 * what R4-3 asked for.
+		 */
+		const lastSeenAt =
+			!held &&
+			!signedOut &&
+			before.connectedAt === null &&
+			row.status_basis === "stored" &&
+			row.tool_count_basis === "last_seen"
+				? lastSeenMillis(row.last_seen_at)
+				: null;
 		const keepResult = !signedOut;
 		const failure =
 			lastOperation?.status === "failed" &&
 			isSignInAction(lastOperation) &&
 			NO_OAUTH_METADATA.test(lastOperation.message ?? "");
 		const memory: RowMemory = {
-			connectedAt: connected ? now : keepResult ? before.connectedAt : null,
-			connectedToolCount: connected
-				? (row.tool_count ?? before.connectedToolCount)
-				: keepResult
-					? before.connectedToolCount
-					: null,
+			connectedAt:
+				connected && !held
+					? now
+					: lastSeenAt !== null
+						? lastSeenAt
+						: keepResult
+							? before.connectedAt
+							: null,
+			connectedToolCount:
+				(connected && !held) || lastSeenAt !== null
+					? (row.tool_count ?? before.connectedToolCount)
+					: keepResult
+						? before.connectedToolCount
+						: null,
 			settledGroup: before.settledGroup,
 			pinnedGroup:
 				running && before.pinnedOperationId === running.id
@@ -1328,10 +1460,18 @@ export function advanceMemories(
 				connected || signedOut
 					? false
 					: before.needsSignIn || row.status === "needs_sign_in",
-			// Cleared by any read that says the row is working: a live runtime that
-			// has the server up again contradicts the Disconnect, and its own
-			// "connected" is the stronger fact.
-			disconnectedAt: connected ? null : before.disconnectedAt,
+			/*
+			 * Cleared by a read that says the row is working, EXCEPT inside the
+			 * user's own hold window: a live runtime that has the server up again
+			 * contradicts the Disconnect and its "connected" is the stronger fact,
+			 * but a read inside the window is as likely to be the stale arm of the
+			 * overlay's flap as a real contradiction - and clearing on it is
+			 * exactly the defect this window exists for (Q1).
+			 */
+			disconnectedAt: connected && !held ? null : before.disconnectedAt,
+			// Expires by time rather than being cleared, so a page that stops
+			// reading cannot hold the claim forever.
+			holdUntil: held ? before.holdUntil : null,
 			lastDecisive: lastOperation ? pruneOperation(lastOperation) : null,
 		};
 		/*
@@ -1523,6 +1663,15 @@ export function parseRowMemory(value: unknown): RowMemory | null {
 		needsKey,
 		needsSignIn,
 		disconnectedAt,
+		/*
+		 * The hold is carried too, and it is deliberately not part of the
+		 * "nothing here" test above: a memory that holds only a deadline says
+		 * nothing about the row, so it is dropped rather than seeding one - but a
+		 * memory that DOES say something and was written inside the window must
+		 * keep the window across a reload, or the reload delivers exactly the
+		 * single contradicting read the window exists to survive.
+		 */
+		holdUntil: millisecondsOrNull(value.holdUntil),
 		lastDecisive,
 	};
 }
@@ -1690,6 +1839,9 @@ export function catalogFromSessionState(
 			status,
 			status_reason: null,
 			status_observed_at: null,
+			// The legacy snapshot carries no last-seen time, so the row keeps the
+			// vaguer "Worked earlier" wording rather than inventing an age.
+			last_seen_at: null,
 			status_basis: cold ? "stored" : "live",
 			auth: {
 				kind: refs.length ? "api_key" : remote ? "unknown" : "none",

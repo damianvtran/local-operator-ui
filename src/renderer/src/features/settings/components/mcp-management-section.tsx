@@ -704,11 +704,39 @@ export const McpManagementSection: FC<{
 		const element = primary
 			? rowPrimaryRefs.current[row.name]
 			: rowOverflowRefs.current[row.name];
-		if (element) element.focus();
+		// Nothing to land on YET: stay armed and let a later read re-run this
+		// effect, rather than dropping the move and leaving focus where the
+		// closing surface left it. The deadline above still bounds the wait.
+		if (!element) return;
 		setFocusRow(null);
+		/*
+		 * ONE MACROTASK LATER, and that is the whole of Q2/U20: a dialog or a row
+		 * menu closing runs Radix's close-auto-focus AFTER this effect, its target
+		 * is the control that opened it - a menu item the close has already
+		 * unmounted - and its restore to `<body>` silently undoes a focus
+		 * performed here. Measured on the two arms whose row never re-renders
+		 * again, so nothing re-armed the move: the confirm on a FAILED sign-out
+		 * (the row settles on `Sign-out didn't finish | Sign out again`) and a key
+		 * `Save and test` whose row is left with no primary (QA Q2, UX U20) - both
+		 * left `document.activeElement` on `BODY`. Deferring makes the row's own
+		 * control the last writer whatever order the close runs in.
+		 */
+		window.setTimeout(() => {
+			if (element.isConnected) element.focus();
+		}, 0);
 	}, [focusRow, servers, operations, integrations.memories]);
 
-	/* Disarm the move when its window closes, so nothing is left waiting. */
+	/*
+	 * Disarm the move when its window closes, so nothing is left armed in state.
+	 *
+	 * BELT AND BRACES rather than the load-bearing half of m-4 (R4-5): the
+	 * deadline check at the top of the effect above is what makes a LATE move
+	 * impossible - it drops a stale move on the next payload however long this
+	 * timer takes - and this only stops a `focusRow` that outlived its window
+	 * from sitting in state. Deleting it leaves the suite green because the
+	 * property it protects is already enforced there; see the pin, which asserts
+	 * both halves and names which one carries the promise.
+	 */
 	useEffect(() => {
 		if (!focusRow) return;
 		const timer = window.setTimeout(

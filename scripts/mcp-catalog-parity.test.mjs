@@ -48,10 +48,9 @@ import { build } from "esbuild";
  */
 
 /** The backend revision and version this copy was taken from. */
-const FIXTURE = "scripts/fixtures/mcp-catalog-0.62.17.json";
+const FIXTURE = "scripts/fixtures/mcp-catalog-0.62.30.json";
 const BACKEND_SOURCE =
-	"damianvtran/local-operator#1511, branch feat/sessionless-mcp-catalog, head e2ac4b95e (backend 0.62.17). The fixture is byte-identical to the one at aa927158a - the round-3 remediation changed the write path and the eligibility rule, not the payload - so this is a re-check against the new head rather than a re-vendor. RE-CHECKED AGAIN AT THIS BRANCH'S ROUND-3 PUSH (2026-09-24): #1511's head is then 0d1a1370e, and its own docs/fixtures/mcp-catalog.json is byte-identical between e2ac4b95e and 0d1a1370e (an empty diff, not an eyeball), so this copy still stands and no re-vendor is owed. The backend was still being remediated while this branch was being answered, so the reading is a moment's and the next push should take it again";
-
+	"local-operator `main` at `de9f1d014` (tag `v0.62.30`), which carries #1507, #1511 and #1536. THIS IS A RE-VENDOR, not a re-check: the copy is the backend's own `docs/fixtures/mcp-catalog.json` at that ref, through the documented command (`cp <backend>/docs/fixtures/mcp-catalog.json scripts/fixtures/mcp-catalog-<version>.json`) and `biome format --write`, with its name carrying the version it came from. WHAT MOVED IT: #1536 (merged 2026-09-24T20:06Z) added `last_seen_at` to every row of that payload and to `catalog.py`, epoch SECONDS, set iff `tool_count_basis == \"last_seen\"` - the field this page needs to say WHEN a row last worked rather than only that it did (R4-3). The old copy (0.62.17) had no such key, which made this file's re-vendor path a failing test: `ROW_FIELDS` asserts an exact key set per row, so re-copying the payload the backend ships failed `row linear carries a field set the contract does not declare` until the contract and this list learned the field (R4-1). HISTORY, as bare SHAs: the copy was taken at #1511 `aa927158a`, re-checked at `e2ac4b95e`, then at `0d1a1370e` - one file, `de817bc4...`, unchanged across all three - and #1511's branch head stopped being the payload's authority when its content merged to `main` and `main` moved it again. The next reader should re-derive this ref from `main`, not from the merged PR's branch";
 const bundle = await build({
 	stdin: {
 		contents:
@@ -108,8 +107,39 @@ const ROW_FIELDS = [
 	"auth",
 	"tool_count",
 	"tool_count_basis",
+	// #1536's field. The row type in the shared contract carries it, and this
+	// list must too: the exact key set is what makes a stale copy fail loudly.
+	"last_seen_at",
 	"actions",
 ];
+
+test("the payload's last-seen time is on every row, and set only where it means something (#1536)", () => {
+	/*
+	 * The field's contract, asserted on the real payload rather than described:
+	 * `last_seen_at` is epoch SECONDS and is set iff `tool_count_basis` is
+	 * `last_seen` (local-operator#1536's own rule). A row that carries it with no
+	 * `last_seen` count - or a count with no time - is the mismatch that would
+	 * put an age on a reading the backend never took.
+	 */
+	for (const row of rows) {
+		assert.ok(
+			Object.prototype.hasOwnProperty.call(row, "last_seen_at"),
+			`row ${row.name} must declare last_seen_at`,
+		);
+		const lastSeen = row.tool_count_basis === "last_seen";
+		assert.equal(
+			row.last_seen_at !== null,
+			lastSeen,
+			`row ${row.name}: last_seen_at is set iff the count is a last_seen count`,
+		);
+		if (lastSeen)
+			assert.ok(
+				row.last_seen_at > 1_000_000_000 && row.last_seen_at < 4_000_000_000,
+				`row ${row.name}: last_seen_at is epoch SECONDS, not milliseconds`,
+			);
+	}
+	assert.equal(rows.filter((row) => row.last_seen_at !== null).length, 2);
+});
 
 test("the fixture is the backend's pinned payload, not a hand-written one", () => {
 	assert.equal(document_.cwd, "/Users/you/projects/acme");
@@ -208,10 +238,29 @@ test("every word in the payload's vocabularies is one this page handles", () => 
 });
 
 test("each pinned row derives its OWN words, with no wire word surviving", () => {
+	/*
+	 * The clock this set renders against: the payload's OWN newest observation,
+	 * epoch seconds x 1000, derived from the fixture rather than read from the
+	 * wall.
+	 *
+	 * WHY IT IS NOT `Date.now()`: #1536 publishes `last_seen_at` (epoch SECONDS)
+	 * and the page now renders an AGE from it, so a wall clock would make the
+	 * reading depend on the day the suite ran - the assertion would drift from
+	 * "Worked 1 day ago" to "Worked 2 days ago" overnight and fail for a reason
+	 * that has nothing to do with this branch. The payload's own time is also the
+	 * more honest baseline: it is the moment the fixture describes.
+	 */
+	const NOW =
+		Math.max(
+			...rows.map((row) => (row.status_observed_at ?? 0) * 1000),
+			...rows.map((row) => (row.last_seen_at ?? 0) * 1000),
+		) || Date.now();
 	const view = (name) =>
 		m.integrationStatus(
 			rows.find((row) => row.name === name),
 			document_.operations,
+			undefined,
+			NOW,
 		);
 	const wire =
 		/\b(cold|auth-required|stdio|http|not_started|needs_sign_in|transport)\b/i;
@@ -235,7 +284,13 @@ test("each pinned row derives its OWN words, with no wire word surviving", () =>
 	 * asked for: the round-2 test proved the reload path on a `stored` row with a
 	 * `status_observed_at` the backend never sets, and passed for that reason.
 	 */
-	assert.equal(view("filesystem").label, "Worked earlier · 5 tools");
+	assert.equal(
+		view("filesystem").label,
+		// "1 d", not "1 day": `relativeTime` abbreviates its unit everywhere, and
+		// this reading goes through the same helper as "Worked 6 min ago".
+		"Worked 1 d ago · 5 tools",
+		"#1536 publishes WHEN the last-seen count was taken, so the row states the age instead of the vaguer 'Worked earlier'",
+	);
 	assert.equal(view("filesystem").tone, "success");
 	// A row with NO count has no such evidence, so it stays idle - "Ready" is
 	// then the honest word rather than a claim about work it may never have done.
