@@ -1,0 +1,97 @@
+[build] current: assets 2026-09-25T15:25:54.586Z >= sources 2026-09-25T15:25:04.665Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/run-r8main479b/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/qa-482-r8-main
+  scratch       /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-86790
+  frames        /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/frames/r8main479b
+  app cwd       /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-86790/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown
+        mode=headless visible=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] 479 session
+        f1b2cf32467a
+[note] seed turns
+        3
+[note] aside used and closed before the probe
+        []
+[note] 479 run 1 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 1 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,40,1,1,0,"Ask me for help"],[6,40,1,1,0,"Sending your message"],[17,0,0,0,1,"Sending your message"],[1498,0,0,0,1,"Sending your message"],[1506,0,0,0,1,"Sending your message"]]
+[note] 479 run 1 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[3,40,1,1,0],[11,40,0,0,0],[17,0,0,0,1]]
+[note] 479 run 1 GAP chips-left -> text-left (mutation ms)
+        6
+[PASS] 479 run 1 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[PASS] 479: the empty box says 'Sending your message' while held
+        {"placeholder":"Sending your message"}
+[note] 479 run 2 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 2 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,40,1,1,0,"Ask me for help"],[5,40,1,1,0,"Sending your message"],[10,40,1,1,0,"Sending your message"],[19,0,0,0,1,"Sending your message"],[1493,0,0,0,1,"Sending your message"],[1502,0,0,0,1,"Sending your message"]]
+[note] 479 run 2 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[3,40,1,1,0],[14,40,0,0,0],[18,0,0,0,1]]
+[note] 479 run 2 GAP chips-left -> text-left (mutation ms)
+        4
+[PASS] 479 run 2 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 3 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 3 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,40,1,1,0,"Ask me for help"],[12,40,1,1,0,"Sending your message"],[20,0,0,0,1,"Sending your message"],[1496,0,0,0,1,"Sending your message"],[1504,0,0,0,1,"Sending your message"]]
+[note] 479 run 3 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[3,40,1,1,0],[16,40,0,0,0],[20,0,0,0,1]]
+[note] 479 run 3 GAP chips-left -> text-left (mutation ms)
+        4
+[PASS] 479 run 3 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 4 staged at the press
+        {"replies":1,"attachments":0}
+[note] 479 run 4 (quote only) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,40,1,0,0,"Ask me for help"],[9,0,0,0,1,"Sending your message"],[13,0,0,0,1,"Sending your message"],[1498,0,0,0,1,"Sending your message"],[1505,0,0,0,1,"Sending your message"]]
+[note] 479 run 4 (quote only) mutations [t, value, replies, attachments, echo]
+        [[2,40,1,0,0],[8,0,0,0,1]]
+[note] 479 run 4 GAP chips-left -> text-left (mutation ms)
+        0
+[PASS] 479 run 4 (quote only): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 5 staged at the press
+        {"replies":0,"attachments":1}
+[note] 479 run 5 (file only) frames [t, value, replies, attachments, echo, placeholder]
+        [[9,39,0,1,0,"Ask me for help"],[17,39,0,1,0,"Ask me for help"],[25,39,0,1,0,"Ask me for help"],[51,39,0,1,0,"Sending your message"],[61,0,0,0,1,"Sending your message"],[1492,0,0,0,1,"Sending your message"],[1500,0,0,0,1,"Sending your message"]]
+[note] 479 run 5 (file only) mutations [t, value, replies, attachments, echo]
+        [[45,39,0,1,0],[56,39,0,0,0],[60,0,0,0,1]]
+[note] 479 run 5 GAP chips-left -> text-left (mutation ms)
+        4
+[PASS] 479 run 5 (file only): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[PASS] no process from this run outlived its boot
+
+frames: qa3-r8main479b-479-in-flight.png
+frames directory: /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/frames/r8main479b
+app log: /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-86790/app-scene.log
+scratch removed (--clean)
+
+ALL CHECKS PASSED

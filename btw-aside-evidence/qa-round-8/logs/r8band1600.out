@@ -1,0 +1,151 @@
+port8080.lock taken
+rig up: proxy 39340 on 8080 -> daemon 39022 on 52743, stub 52738; 1111 untouched
+== r8band1600 (btw-r8-band) at 15:19:30 ==
+[build] current: assets 2026-09-25T14:47:42.803Z >= sources 2026-09-25T14:45:07.912Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/run-r8band1600/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/qa-482-r8
+  scratch       /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-39401
+  frames        /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/frames/r8band1600
+  app cwd       /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-39401/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown
+        mode=headless visible=false focused=false
+[note] R8 sessions
+        {"long":{"status":200,"id":"6070c9b649dd","cwd":"/Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-39401/band/an-extremely-long-working-directory-name-for-the-chip/another-long-segment/band-workspace"},"short":{"status":200,"id":"f0c8a1bac800","cwd":"/Users/damian/tools"}}
+[note] R8 short-cwd composer
+        {"viewport":{"w":1600,"h":868},"column":{"tag":"DIV","clientWidth":1100,"contentWidth":1052,"padding":48},"band":{"left":500,"top":56,"right":1600,"bottom":868,"w":1100,"h":812},"chip":{"state":"editable","path":"/Users/damian/tools","box":{"left":661,"top":448.3,"right":900.1,"bottom":480.3,"w":239.1,"h":32},"clientWidth":239,"text":"Working directory:~/tools"},"button":{"left":661,"top":448.3,"right":900.1,"bottom":480.3,"w":239.1,"h":32},"pathSpan":{"box":{"left":815.7,"top":455.5,"right":866.1,"bottom":472.9,"w":50.4,"h":17.4},"clientWidth":50,"scrollWidth":50,"text":"~/tools","maxWidth":"115.2px","textOverflow":"ellipsis","overflow":"hidden","font":"\"Geist Mono\", ui-monospace, SFMono-Regular, Menlo, monospace 12px","className":"min-w-0 truncate font-mono text-mono-sm @max-[240px]/chatcol:sr-only @"},"ceiling16":115.2,"label":{"text":"Working directory:","box":{"left":695,"top":454.5,"right":809.7,"bottom":474,"w":114.7,"h":19.5},"display":"block"},"cluster":null,"controls":{"box":{"left":1415,"top":448.3,"right":1483,"bottom":480.3,"w":68,"h":32},"className":"ml-auto flex items-center gap-1 @min-[750px]/chatcol:order-3"},"field":{"left":617,"top":402.3,"right":1483,"bottom":436.3,"w":866,"h":34},"send":{"left":1451,"top":448.3,"right":1483,"bottom":480.3,"w":32,"h":32},"panel":null,"panelText":null,"region":null,"tooltip":null,"hitAtChipCentre":{"tag":"SPAN","className":"hidden shrink-0 whitespace-nowrap text-ink-muted @min-[620px]/chatcol:","insideChip":true}}
+[note] R8 long-cwd composer
+        {"viewport":{"w":1600,"h":868},"column":{"tag":"DIV","clientWidth":1100,"contentWidth":1052,"padding":48},"band":{"left":500,"top":56,"right":1600,"bottom":868,"w":1100,"h":812},"chip":{"state":"editable","path":"/Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-39401/band/an-extremely-long-working-directory-name-for-the-chip/another-long-segment/band-workspace","box":{"left":661,"top":430.5,"right":964.9,"bottom":462.5,"w":303.9,"h":32},"clientWidth":304,"text":"Working directory:~/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-39401/band/an-extremely-long-working-directory-name-for-the-chip/another-long-segment/band-workspace"},"button":{"left":661,"top":430.5,"right":964.9,"bottom":462.5,"w":303.9,"h":32},"pathSpan":{"box":{"left":815.7,"top":437.8,"right":930.9,"bottom":455.2,"w":115.2,"h":17.4},"clientWidth":115,"scrollWidth":1303,"text":"~/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-39401/band/an-extremely-long-working-directory-name-for-the-chip/another-long-segment/band-workspace","maxWidth":"115.2px","textOverflow":"ellipsis","overflow":"hidden","font":"\"Geist Mono\", ui-monospace, SFMono-Regular, Menlo, monospace 12px","className":"min-w-0 truncate font-mono text-mono-sm @max-[240px]/chatcol:sr-only @"},"ceiling16":115.2,"label":{"text":"Working directory:","box":{"left":695,"top":436.8,"right":809.7,"bottom":456.3,"w":114.7,"h":19.5},"display":"block"},"cluster":null,"controls":{"box":{"left":1415,"top":430.5,"right":1483,"bottom":462.5,"w":68,"h":32},"className":"ml-auto flex items-center gap-1 @min-[750px]/chatcol:order-3"},"field":{"left":617,"top":384.5,"right":1483,"bottom":418.5,"w":866,"h":34},"send":{"left":1451,"top":430.5,"right":1483,"bottom":462.5,"w":32,"h":32},"panel":null,"panelText":null,"region":null,"tooltip":null,"hitAtChipCentre":{"tag":"BUTTON","className":"inline-flex select-none items-center whitespace-nowrap font-medium tra","insideChip":true}}
+[PASS] R8 band a: the cap does not RESERVE the path column - the short path paints a chip that is narrower than the long path's and whose span fits its own text (no reserved 16ch box)
+        {"shortShown":"~/tools","shortSpanW":50,"shortSpanScrollW":50,"shortChipW":239.1,"shortChipLeft":661,"longChipW":303.9,"longChipLeft":661,"ceiling16":115.2,"column":1052}
+[PASS] R8 band b: the long path is ellipsised and nothing is lost with it - the span's own text still carries both ends of the path (the abbreviation the chip prints, including its final segment) while the painted box is narrower than that text
+        {"spanW":115,"spanScrollW":1303,"ellipsised":true,"spanText":"~/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-39401/band/an-extremely-long-working-directory-name-for-the-chip/another-long-segment/band-workspace","chipPath":"/Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-39401/band/an-extremely-long-working-directory-name-for-the-chip/another-long-segment/band-workspace","chipText":"Working directory:~/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-39401/band/an-extremely-long-working-directory-name-for-the-chip/another-long-segment/band-workspace","maxWidth":"115.2px","overflow":"hidden","textOverflow":"ellipsis"}
+[PASS] R8 band c: the cap follows #508's stated 900px chat-column threshold exactly - the engine's own max-width on the path span is the 16ch ceiling when the chatcol container is 900 or wider and 'none' below it
+        {"capped":true,"maxWidth":"115.2px","columnContentWidth":1052,"columnBorderBox":1100,"columnPadding":48,"columnTag":"DIV","ceiling16":115.2,"windowWidth":1600,"bandW":1100}
+[note] R8 the tooltip the truncated path keeps reachable
+        {"tooltip":"~/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-39401/band/an-extremely-long-working-directory-name-for-the-chip/another-long-segment/band-workspace - Click to change the working directory. A running session's runtime restarts there.","tail":"band-workspace","chipPath":"/Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-39401/band/an-extremely-long-working-directory-name-for-the-chip/another-long-segment/band-workspace"}
+[PASS] R8 band d: what the cap clips is recoverable - the chip's hover tooltip still names the path's own tail, so the hidden characters are one hover away
+        {"tooltip":"~/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-39401/band/an-extremely-long-working-directory-name-for-the-chip/another-long-segment/band-workspace - Click to change the working directory. A running session's runtime restarts there.","tail":"band-workspace","chipPath":"/Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-39401/band/an-extremely-long-working-directory-name-for-the-chip/another-long-segment/band-workspace","spanText":"~/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-39401/band/an-extremely-long-working-directory-name-for-the-chip/another-long-segment/band-workspace"}
+[note] R8 stream samples
+        [{"ms":12,"panelChars":241,"panelBottom":456.2,"chipLeft":661,"chipTop":531.2,"chipRight":964.9,"chipW":303.9,"fieldTop":485.2,"sendLeft":1451,"hitInside":true},{"ms":135,"panelChars":241,"panelBottom":456.2,"chipLeft":661,"chipTop":531.2,"chipRight":964.9,"chipW":303.9,"fieldTop":485.2,"sendLeft":1451,"hitInside":true},{"ms":258,"panelChars":241,"panelBottom":456.2,"chipLeft":661,"chipTop":531.2,"chipRight":964.9,"chipW":303.9,"fieldTop":485.2,"sendLeft":1451,"hitInside":true},{"ms":381,"panelChars":241,"panelBottom":456.2,"chipLeft":661,"chipTop":531.2,"chipRight":964.9,"chipW":303.9,"fieldTop":485.2,"sendLeft":1451,"hitInside":true},{"ms":503,"panelChars":241,"panelBottom":456.2,"chipLeft":661,"chipTop":531.2,"chipRight":964.9,"chipW":303.9,"fieldTop":485.2,"sendLeft":1451,"hitInside":true},{"ms":627,"panelChars":241,"panelBottom":456.2,"chipLeft":661,"chipTop":531.2,"chipRight":964.9,"chipW":303.9,"fieldTop":485.2,"sendLeft":1451,"hitInside":true},{"ms":750,"panelChars":241,"panelBottom":456.2,"chipLeft":661,"chipTop":531.2,"chipRight":964.9,"chipW":303.9,"fieldTop":485.2,"sendLeft":1451,"hitInside":true},{"ms":873,"panelChars":241,"panelBottom":456.2,"chipLeft":661,"chipTop":531.2,"chipRight":964.9,"chipW":303.9,"fieldTop":485.2,"sendLeft":1451,"hitInside":true},{"ms":997,"panelChars":241,"panelBottom":456.2,"chipLeft":661,"chipTop":531.2,"chipRight":964.9,"chipW":303.9,"fieldTop":485.2,"sendLeft":1451,"hitInside":true},{"ms":1121,"panelChars":241,"panelBottom":456.2,"chipLeft":661,"chipTop":531.2,"chipRight":964.9,"chipW":303.9,"fieldTop":485.2,"sendLeft":1451,"hitInside":true},{"ms":1261,"panelChars":241,"panelBottom":456.2,"chipLeft":661,"chipTop":531.2,"chipRight":964.9,"chipW":303.9,"fieldTop":485.2,"sendLeft":1451,"hitInside":true},{"ms":1384,"panelChars":241,"panelBottom":456.2,"chipLeft":661,"chipTop":531.2,"chipRight":964.9,"chipW":303.9,"fieldTop":485.2,"sendLeft":1451,"hitInside":true},{"ms":1508,"panelChars":241,"panelBottom":456.2,"chipLeft":661,"chipTop":531.2,"chipRight":964.9,"chipW":303.9,"fieldTop":485.2,"sendLeft":1451,"hitInside":true},{"ms":1635,"panelChars":241,"panelBottom":456.2,"chipLeft":661,"chipTop":531.2,"chipRight":964.9,"chipW":303.9,"fieldTop":485.2,"sendLeft":1451,"hitInside":true},{"ms":1758,"panelChars":241,"panelBottom":456.2,"chipLeft":661,"chipTop":531.2,"chipRight":964.9,"chipW":303.9,"fieldTop":485.2,"sendLeft":1451,"hitInside":true},{"ms":1880,"panelChars":532,"panelBottom":480,"chipLeft":661,"chipTop":555,"chipRight":964.9,"chipW":303.9,"fieldTop":509,"sendLeft":1451,"hitInside":true},{"ms":2004,"panelChars":532,"panelBottom":480,"chipLeft":661,"chipTop":555,"chipRight":964.9,"chipW":303.9,"fieldTop":509,"sendLeft":1451,"hitInside":true},{"ms":2127,"panelChars":532,"panelBottom":480,"chipLeft":661,"chipTop":555,"chipRight":964.9,"chipW":303.9,"fieldTop":509,"sendLeft":1451,"hitInside":true},{"ms":2251,"panelChars":832,"panelBottom":502.4,"chipLeft":661,"chipTop":577.4,"chipRight":964.9,"chipW":303.9,"fieldTop":531.4,"sendLeft":1451,"hitInside":true},{"ms":2374,"panelChars":832,"panelBottom":502.4,"chipLeft":661,"chipTop":577.4,"chipRight":964.9,"chipW":303.9,"fieldTop":531.4,"sendLeft":1451,"hitInside":true},{"ms":2497,"panelChars":1131,"panelBottom":547.2,"chipLeft":661,"chipTop":622.2,"chipRight":964.9,"chipW":303.9,"fieldTop":576.2,"sendLeft":1451,"hitInside":true},{"ms":2620,"panelChars":1131,"panelBottom":547.2,"chipLeft":661,"chipTop":622.2,"chipRight":964.9,"chipW":303.9,"fieldTop":576.2,"sendLeft":1451,"hitInside":true},{"ms":2744,"panelChars":1131,"panelBottom":547.2,"chipLeft":661,"chipTop":622.2,"chipRight":964.9,"chipW":303.9,"fieldTop":576.2,"sendLeft":1451,"hitInside":true},{"ms":2868,"panelChars":1430,"panelBottom":558.4,"chipLeft":661,"chipTop":633.4,"chipRight":964.9,"chipW":303.9,"fieldTop":587.4,"sendLeft":1451,"hitInside":true},{"ms":2992,"panelChars":1430,"panelBottom":558.4,"chipLeft":661,"chipTop":633.4,"chipRight":964.9,"chipW":303.9,"fieldTop":587.4,"sendLeft":1451,"hitInside":true},{"ms":3135,"panelChars":1730,"panelBottom":558.4,"chipLeft":661,"chipTop":633.4,"chipRight":964.9,"chipW":303.9,"fieldTop":587.4,"sendLeft":1451,"hitInside":true},{"ms":3258,"panelChars":1730,"panelBottom":558.4,"chipLeft":661,"chipTop":633.4,"chipRight":964.9,"chipW":303.9,"fieldTop":587.4,"sendLeft":1451,"hitInside":true},{"ms":3380,"panelChars":2028,"panelBottom":558.4,"chipLeft":661,"chipTop":633.4,"chipRight":964.9,"chipW":303.9,"fieldTop":587.4,"sendLeft":1451,"hitInside":true},{"ms":3506,"panelChars":2028,"panelBottom":558.4,"chipLeft":661,"chipTop":633.4,"chipRight":964.9,"chipW":303.9,"fieldTop":587.4,"sendLeft":1451,"hitInside":true},{"ms":3630,"panelChars":2028,"panelBottom":558.4,"chipLeft":661,"chipTop":633.4,"chipRight":964.9,"chipW":303.9,"fieldTop":587.4,"sendLeft":1451,"hitInside":true},{"ms":3755,"panelChars":2328,"panelBottom":558.4,"chipLeft":661,"chipTop":633.4,"chipRight":964.9,"chipW":303.9,"fieldTop":587.4,"sendLeft":1451,"hitInside":true},{"ms":3877,"panelChars":2328,"panelBottom":558.4,"chipLeft":661,"chipTop":633.4,"chipRight":964.9,"chipW":303.9,"fieldTop":587.4,"sendLeft":1451,"hitInside":true},{"ms":4001,"panelChars":2628,"panelBottom":558.4,"chipLeft":661,"chipTop":633.4,"chipRight":964.9,"chipW":303.9,"fieldTop":587.4,"sendLeft":1451,"hitInside":true},{"ms":4125,"panelChars":2628,"panelBottom":558.4,"chipLeft":661,"chipTop":633.4,"chipRight":964.9,"chipW":303.9,"fieldTop":587.4,"sendLeft":1451,"hitInside":true},{"ms":4248,"panelChars":2628,"panelBottom":558.4,"chipLeft":661,"chipTop":633.4,"chipRight":964.9,"chipW":303.9,"fieldTop":587.4,"sendLeft":1451,"hitInside":true},{"ms":4372,"panelChars":2927,"panelBottom":558.4,"chipLeft":661,"chipTop":633.4,"chipRight":964.9,"chipW":303.9,"fieldTop":587.4,"sendLeft":1451,"hitInside":true},{"ms":4496,"panelChars":2927,"panelBottom":558.4,"chipLeft":661,"chipTop":633.4,"chipRight":964.9,"chipW":303.9,"fieldTop":587.4,"sendLeft":1451,"hitInside":true},{"ms":4659,"panelChars":3214,"panelBottom":558.4,"chipLeft":661,"chipTop":633.4,"chipRight":964.9,"chipW":303.9,"fieldTop":587.4,"sendLeft":1451,"hitInside":true}]
+[PASS] R8 band e: with the panel open above the composer the answer streams and settles over the chip - a partial render carrying the answer's text but not its END marker, then the END marker
+        {"partial":{"ms":1880,"panelChars":532,"panelBottom":480},"settledAt":4659,"settledChars":3214,"head":true,"end":true}
+[PASS] R8 band f: the panel hangs ABOVE the composer with no overlap of the field, the chip or the controls, and the chip is still the element at its own centre - nothing in the composer competes with the panel
+        {"panel":{"left":600,"top":164.5,"right":1500,"bottom":558.4,"w":900,"h":393.9},"field":{"left":617,"top":587.4,"right":1483,"bottom":621.4,"w":866,"h":34},"chip":{"left":661,"top":633.4,"right":964.9,"bottom":665.4,"w":303.9,"h":32},"controls":{"left":1415,"top":633.4,"right":1483,"bottom":665.4,"w":68,"h":32},"hitAtChipCentre":{"tag":"BUTTON","className":"inline-flex select-none items-center whitespace-nowrap font-medium tra","insideChip":true},"panelBottomVsFieldTop":-29}
+[PASS] R8 band g: the chip's own box is one value at every sample from the first painted answer frame to the settle - the panel's growth reflows neither its width, its edges, nor the ml-auto controls
+        {"sampled":23,"chipLefts":[661],"chipRights":[964.9],"chipWs":[303.9],"sendLefts":[1451],"chipTops":[555,577.4,622.2,633.4],"fieldTops":[509,531.4,576.2,587.4]}
+[PASS] R8 band h: no two blocks in the composer overlap and every block is inside the viewport, at the short path, the long path and with the panel open
+        {"problems":[],"short":{"chipLeft":661,"chipW":239.1,"chipRight":900.1,"clusterLeft":null,"clusterText":null,"controlsLeft":1415,"bandLeft":500,"bandRight":1600,"column":1052},"long":{"chipLeft":661,"chipW":303.9,"chipRight":964.9,"clusterLeft":null,"clusterText":null,"controlsLeft":1415,"bandLeft":500,"bandRight":1600,"column":1052},"open":{"panel":{"left":600,"top":164.5,"right":1500,"bottom":558.4,"w":900,"h":393.9},"field":{"left":617,"top":587.4,"right":1483,"bottom":621.4,"w":866,"h":34},"chip":{"left":661,"top":633.4,"right":964.9,"bottom":665.4,"w":303.9,"h":32},"cluster":null,"controls":{"left":1415,"top":633.4,"right":1483,"bottom":665.4,"w":68,"h":32},"send":{"left":1451,"top":633.4,"right":1483,"bottom":665.4,"w":32,"h":32}}}
+[note] R8 #508's claim on the live row
+        {"chipDelta":64.8,"clusterDelta":null,"controlsDelta":0,"leftDelta":0,"short":{"chipLeft":661,"chipW":239.1,"chipRight":900.1,"clusterLeft":null,"clusterText":null,"controlsLeft":1415,"bandLeft":500,"bandRight":1600,"column":1052},"long":{"chipLeft":661,"chipW":303.9,"chipRight":964.9,"clusterLeft":null,"clusterText":null,"controlsLeft":1415,"bandLeft":500,"bandRight":1600,"column":1052}}
+[PASS] R8 band i: #508's claim holds on the live row - the chip's left edge and the ml-auto controls group are fixed across a path change of this size
+        {"chipDelta":64.8,"clusterDelta":null,"controlsDelta":0,"leftDelta":0,"capped":true,"column":1052,"longCluster":null,"shortCluster":null,"clusterLeft":null,"controlsLeft":1415}
+[PASS] no process from this run outlived its boot
+
+frames: qa8-r8band1600-r8band-1-short-path.png, qa8-r8band1600-r8band-2-long-path.png, qa8-r8band1600-r8band-3-panel-over-capped-chip.png
+frames directory: /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/frames/r8band1600
+app log: /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-39401/app-scene.log
+scratch removed (--clean)
+
+ALL CHECKS PASSED
+== r8band1600 driver exit: 0 ==
+total 1752
+drwxr-xr-x@  5 damian  staff     160 Sep 25 11:19 .
+drwxr-xr-x@ 14 damian  staff     448 Sep 25 11:19 ..
+-rw-r--r--@  1 damian  staff  213746 Sep 25 11:19 qa8-r8band1600-r8band-1-short-path.png
+-rw-r--r--@  1 damian  staff  237069 Sep 25 11:19 qa8-r8band1600-r8band-2-long-path.png
+-rw-r--r--@  1 damian  staff  441502 Sep 25 11:19 qa8-r8band1600-r8band-3-panel-over-capped-chip.png
+8080 released before this command returned
+port8080.lock released
+--- proxy counters (/Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/run-r8band1600/proxy-stats.json) ---
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T15:19:36.610Z",
+      "url": "/v1/desktop/sessions/6070c9b649dd/asides",
+      "asideId": "d870ddcd-4cec-4a74-a160-83162ccb6ca7",
+      "continues": null,
+      "questionHead": "LONGANSWER: r8 band - does the chip cap survive an open asid",
+      "text": "LONGANSWER: r8 band - does the chip cap survive an open aside?",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "5cc8509c770a4f70b88b6f39ddd56c63",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"d870ddcd-4cec-4a74-a160-83162ccb6ca7\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T15:19:31.500Z",
+      "subscriptionId": "ca00c171c4bf18e7",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/f0c8a1bac800/events?frontend_replace=1",
+      "openedAt": "2026-09-25T15:19:34.046Z",
+      "subscriptionId": "4ca6c7c0ca174745b9ae3cd8098bfefd",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/6070c9b649dd/events?frontend_replace=1",
+      "openedAt": "2026-09-25T15:19:34.999Z",
+      "subscriptionId": "5cc8509c770a4f70b88b6f39ddd56c63",
+      "asideDeltas": 10,
+      "deltaSizes": [
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287
+      ]
+    }
+  ],
+  "asideDeltaFrames": 10,
+  "deltasBySubscription": {
+    "5cc8509c770a4f70b88b6f39ddd56c63": 10
+  },
+  "deltasByAside": {
+    "d870ddcd-4cec-4a74-a160-83162ccb6ca7": 10
+  },
+  "refused422": 0,
+  "messagePosts": [],
+  "asideOps": [
+    {
+      "at": "2026-09-25T15:19:41.423Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/6070c9b649dd/asides/d870ddcd-4cec-4a74-a160-83162ccb6ca7",
+      "kind": "close",
+      "probe": false,
+      "status": 409,
+      "response": "{\"detail\":\"Wait for the aside to finish before closing it\"}"
+    }
+  ]
+}
+--- end counters ---

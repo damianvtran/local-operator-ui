@@ -1,0 +1,96 @@
+{
+  "oldDaemon": true,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T15:18:57.248Z",
+      "url": "/v1/desktop/sessions/40d13cfa72c3/asides",
+      "asideId": "2a86b764-e992-4e42-a27c-dab71a0fcf1e",
+      "continues": null,
+      "questionHead": "what does the retry budget actually cap?",
+      "text": "what does the retry budget actually cap?",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "7f33774819894e31be127c184293df2e",
+      "status": 422,
+      "response": "{\"detail\":\"The request has invalid fields.\"}",
+      "emulated": "old daemon: refused the unknown field, not forwarded"
+    },
+    {
+      "at": "2026-09-25T15:18:57.255Z",
+      "url": "/v1/desktop/sessions/40d13cfa72c3/asides",
+      "asideId": "2a86b764-e992-4e42-a27c-dab71a0fcf1e",
+      "continues": null,
+      "questionHead": "what does the retry budget actually cap?",
+      "text": "what does the retry budget actually cap?",
+      "carriedSubscriptionField": false,
+      "subscriptionId": null,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"2a86b764-e992-4e42-a27c-dab71a0fcf1e\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:19:02.638Z",
+      "url": "/v1/desktop/sessions/40d13cfa72c3/asides",
+      "asideId": "23f52fcc-5831-4646-b7a3-53a4395b1c4a",
+      "continues": "2a86b764-e992-4e42-a27c-dab71a0fcf1e",
+      "questionHead": "and a second question on the same owner?",
+      "text": "and a second question on the same owner?",
+      "carriedSubscriptionField": false,
+      "subscriptionId": null,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"23f52fcc-5831-4646-b7a3-53a4395b1c4a\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:19:12.734Z",
+      "url": "/v1/desktop/sessions/bd58ed62b4e2/asides",
+      "asideId": "d342bab9-e791-4e7b-9115-4a69e88d3c51",
+      "continues": null,
+      "questionHead": "session B first question",
+      "text": "session B first question",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "23b5e69ec2194a33a1ebe8e17be23277",
+      "status": 422,
+      "response": "{\"detail\":\"The request has invalid fields.\"}",
+      "emulated": "old daemon: refused the unknown field, not forwarded"
+    },
+    {
+      "at": "2026-09-25T15:19:12.738Z",
+      "url": "/v1/desktop/sessions/bd58ed62b4e2/asides",
+      "asideId": "d342bab9-e791-4e7b-9115-4a69e88d3c51",
+      "continues": null,
+      "questionHead": "session B first question",
+      "text": "session B first question",
+      "carriedSubscriptionField": false,
+      "subscriptionId": null,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"d342bab9-e791-4e7b-9115-4a69e88d3c51\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T15:18:53.824Z",
+      "subscriptionId": "543ed87748bc002e",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/40d13cfa72c3/events?frontend_replace=1",
+      "openedAt": "2026-09-25T15:18:56.426Z",
+      "subscriptionId": "7f33774819894e31be127c184293df2e",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/bd58ed62b4e2/events?frontend_replace=1",
+      "openedAt": "2026-09-25T15:19:08.020Z",
+      "subscriptionId": "23b5e69ec2194a33a1ebe8e17be23277",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    }
+  ],
+  "asideDeltaFrames": 0,
+  "deltasBySubscription": {},
+  "deltasByAside": {},
+  "refused422": 2,
+  "messagePosts": [],
+  "asideOps": []
+}
