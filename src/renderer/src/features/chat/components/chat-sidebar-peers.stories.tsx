@@ -435,6 +435,66 @@ export const S3SeveralPeers: Story = {
 };
 
 /**
+ * S3b - a REACHABLE peer with a long name AND a chat count at the default width:
+ * the one cell combination no frame has shown (design round 3, coverage gap).
+ *
+ * WHY IT NEEDS ITS OWN STORY rather than an edit to S3: S3's frame is compared
+ * across rounds, and the combination the designer could not see is the one where
+ * the trailing says a count instead of a state. Its costs are different - `2 chats`
+ * is shorter than `unreachable` (~45px against ~68px) and the move control `⋯` is
+ * mounted beside it, because a reachable peer is the only one that can be moved to
+ * (`transferEnabled && peer.reachable`). So this frame photographs the row at its
+ * busiest: the mark, a 46-character name, the count and the control.
+ */
+export const S3bLongNameWithCount: Story = {
+	render: () => {
+		const long = "damians-mac-studio-in-the-back-office-rack-2";
+		bridge({
+			features: MESH,
+			rows: [
+				...localRows(),
+				row("5e6f708192a3", "Tune the relay keepalive", 1_760_000_500, {
+					...remote(LAPTOP, long),
+				}),
+				row("6f708192a3b4", "Benchmark the sync debounce", 1_760_000_050, {
+					...remote(LAPTOP, long),
+				}),
+			],
+			peers: [peer(LAPTOP, long, { session_count: 2 })],
+		});
+		openSections([LAPTOP]);
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(() => rows("[data-peer-row]") >= 1);
+		await scrollTo("[data-peers-group]");
+		const trailing = document.querySelector<HTMLElement>(
+			`[data-peer-row="${LAPTOP}"] [data-peer-row-trailing]`,
+		);
+		if (!trailing) throw new Error("no peer row trailing cell");
+		const state = trailing.querySelector<HTMLElement>(
+			"[data-peer-trailing-state]",
+		);
+		if (!state) throw new Error("the trailing renders no state element");
+		if (state.textContent !== "2 chats")
+			throw new Error(`the trailing reads "${state.textContent}"`);
+		/*
+		 * At the DEFAULT width the whole statement must fit, which is what the 46% cap
+		 * exists for (D4): a count is not something a reader can recover from a `title`,
+		 * because they do not know it is missing.
+		 */
+		if (trailing.scrollWidth > trailing.clientWidth + 1)
+			throw new Error(
+				`the count is truncated at 280px: "${trailing.textContent}"`,
+			);
+		const frame = document.querySelector<HTMLElement>("[data-sidebar-frame]");
+		if (!frame) throw new Error("no sidebar frame");
+		if (frame.scrollWidth > frame.clientWidth + 0.5)
+			throw new Error("the sidebar overflows at its default width");
+	},
+};
+
+/**
  * S4 - a peer unreachable, its rows cached. The heading and the row mark agree
  * (both read `peerReachable`); the row's status glyph keeps its own ink.
  */
@@ -464,7 +524,13 @@ export const S4PeerUnreachable: Story = {
 		 * to cut the one fact that differs between unreachable peers (`last see…`),
 		 * so the state and the age both have to be readable here.
 		 */
-		const trailing = document.querySelector("[data-peer-row-trailing]");
+		/* QUALIFIED (design round 3, D22): an unqualified `[data-peer-row-trailing]`
+		   resolves to the FIRST peer row, which is the reachable one, so this assertion
+		   measured `2 chats` and threw. The aged peer's own row is what this story is
+		   about, exactly as `S4bPeerGoneTenDays` was already scoped. */
+		const trailing = document.querySelector<HTMLElement>(
+			`[data-peer-row="${STUDIO}"] [data-peer-row-trailing]`,
+		);
 		if (!trailing) throw new Error("no peer row trailing cell");
 		if (trailing.scrollWidth > trailing.clientWidth + 1)
 			throw new Error(
@@ -635,24 +701,33 @@ export const LongPeerNameNarrow: Story = {
 				`the device name is cut to ${name.clientWidth}px (D4 wants ~14 characters)`,
 			);
 		/*
-		 * AND NOTHING IS CUT AT ALL (design round 2, D20). The two hard floors in this
-		 * row - the mark and the name's 14ch - plus the state word and the row's own
-		 * gaps come to 209px of the 207 a 215px row has, which is why the tail used to
-		 * cut `unreachable` itself to `unreachable…`-minus-two-pixels and the round-1
-		 * frame showed `unreacha…`. The peers row's gap is 2px rather than 4px for
-		 * exactly those four pixels, so at the clamp the state AND its age are whole.
+		 * AND THE STATE WORD IS WHAT SURVIVES THE CLAMP (design round 3, D21). Round 2
+		 * asserted this and the assertion was RED for two rounds: the cell rendered one
+		 * truncated STRING, so the truncator cut whichever character came last - the word
+		 * (`unreachabl…`) - and nothing ran the play, so the frames were shot over it.
+		 * Now the guards are the two spans themselves: the word has its OWN element (a
+		 * caller that goes back to the joined string deletes it, which the chip suite
+		 * also asserts) and the word's element must not be clipped. The age is the part
+		 * allowed to give way, so the CELL is allowed to be narrower than word + age.
 		 */
 		const trailing = document.querySelector<HTMLElement>(
 			`[data-peer-row="${LAPTOP}"] [data-peer-row-trailing]`,
 		);
 		if (!trailing) throw new Error("no peer row trailing cell");
-		if (!trailing.textContent?.startsWith("unreachable"))
+		const state = trailing.querySelector<HTMLElement>(
+			"[data-peer-trailing-state]",
+		);
+		if (!state)
 			throw new Error(
-				`the trailing lost its state at the clamp: "${trailing.textContent}"`,
+				"the trailing renders one joined string, so its word can be the part that is cut (D21)",
 			);
-		if (trailing.scrollWidth > trailing.clientWidth + 1)
+		if (state.textContent !== "unreachable")
 			throw new Error(
-				`the trailing is cut to ${trailing.clientWidth}px at the clamp: "${trailing.textContent}"`,
+				`the trailing lost its state at the clamp: "${state.textContent}"`,
+			);
+		if (state.scrollWidth > state.clientWidth + 1)
+			throw new Error(
+				`the state word is cut to ${state.clientWidth}px at the clamp: "${state.textContent}"`,
 			);
 		const frame = document.querySelector<HTMLElement>("[data-sidebar-frame]");
 		if (!frame) throw new Error("no sidebar frame");

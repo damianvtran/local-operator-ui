@@ -2006,7 +2006,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					 * most palettes) was measured against the pane's `canvas` and replaced
 					 * with `elevated` there.
 					 */}
-					{remoteBlocked ? (
+					{remoteBlocked !== null ? (
 						/*
 						 * A THIRD STATE, and its own words (QA round 1, Q2). The plane refuses a
 						 * remote conversation with 409 `session_is_remote` and a sentence that names
@@ -2036,18 +2036,38 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 								 * composer's `aria-describedby`. Only inside braces is it a
 								 * comment.
 								 *
-								 * WHAT TO DO, NOT WHAT THIS APP CANNOT DO: the line this replaces
-								 * said the conversation was "on another device" and stopped
-								 * there, which read as "there is nothing to do from here" -
-								 * wrong twice over now that the desktop can pilot a peer's
-								 * session as well as move one home. Both ways out are named, and
-								 * the backend's own sentence (below) is what names the device
-								 * and the commands.
+								 * NO ROUTE THIS WINDOW DOES NOT OFFER (design round 3, D23). The
+								 * line this replaces ended "or bring it here", and "here" is a
+								 * place nothing on this screen can bring a conversation from: the
+								 * product's only `transferSession` call site moves a LOCAL chat
+								 * TO a peer, and this arm is reached precisely when the peer is
+								 * UNREACHABLE - the same condition the sidebar's move control is
+								 * gated on (`transferEnabled && peer.reachable`). So the pair read
+								 * as a promise followed by a refusal, pointing at a control that
+								 * is not on the screen. Clause 1 stays; the dependency is now the
+								 * sentence rather than a remedy this window cannot perform.
+								 *
+								 * THE SECOND CLAUSE IS WORDED FOR BOTH PRODUCERS of this arm. The
+								 * live one is `PeerSessionUnreachable`, so "once that device
+								 * answers" is exactly right; the generic refusal is dead code on
+								 * this branch but not impossible, and this wording stays true
+								 * under it. A remedy that names a command would not, and a
+								 * reachability claim hard-coded here would be wrong the day a
+								 * backend can reach a peer - the designer's own caveat.
 								 */}
-								This conversation is on another device. Open it there, or bring
-								it here.
+								This conversation is on another device. Open it there — this
+								window can show it once that device answers.
 							</p>
-							<p className="text-ink-dim text-meta">{remoteBlocked}</p>
+							{/*
+							 * THE BACKEND'S SENTENCE, WHEN THERE IS ONE. A blocked
+							 * conversation whose refusal carried no `message` (the hook sends
+							 * an empty string, never null - null means "not blocked") gets
+							 * the pane's own line alone rather than that line printed twice
+							 * with a different verb (design round 3, D24).
+							 */}
+							{remoteBlocked !== "" && (
+								<p className="text-ink-dim text-meta">{remoteBlocked}</p>
+							)}
 						</div>
 					) : missing ? (
 						/*
