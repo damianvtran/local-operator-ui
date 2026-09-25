@@ -41,7 +41,10 @@ import { build } from "esbuild";
  * REAL: the shipped `remark-soft-breaks.ts`, `credential-capture.ts` and
  * `credential-citation-remark.ts`, bundled from source by esbuild and driven
  * through the real `unified`/`remark-parse`/`remark-gfm`/`remark-rehype`
- * pipeline the app runs.
+ * modules on a three-member plugin stack (`remark-gfm`,
+ * `remarkCredentialCitations`, `remarkSoftBreaks`); the app's own arrays also
+ * carry `remarkMath` and `remarkLinkifyTargets`, and the transform sits LAST,
+ * so their absence changes nothing these cases assert.
  */
 
 const bundle = await build({
