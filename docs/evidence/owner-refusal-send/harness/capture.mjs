@@ -1190,12 +1190,22 @@ const main = async () => {
 		 * which is the data loss this change exists to remove - evidence lying about the
 		 * product it measures.
 		 */
+		/*
+		 * AND IT SKIPS THE CLEAR, NOT THE ARM (design round 6, D14/D15). As written this
+		 * guard `return`ed from the whole run: the two arms it did not match produced one
+		 * frame each and then exit 0 with no readings, no wire log and no summary - silent
+		 * evidence loss for every arm but one, including the arm the manifest names as the
+		 * source of both composer frame sets. Keyed on `arm.name` too, because no arm
+		 * carries these strings as `custom` (the settling arms are `custom:
+		 * "press-during-flight"`); matching a field nothing sets meant matching nothing.
+		 * Every arm therefore still reaches the settle detector below - only the box clear
+		 * is conditional.
+		 */
 		if (
-			arm.custom !== "press-during-flight-settles" &&
-			arm.custom !== "press-twice-no-stall"
+			arm.name === "press-during-flight-settles" ||
+			arm.name === "press-twice-no-stall"
 		)
-			return;
-		await evaluate(`(() => {
+			await evaluate(`(() => {
 				const area = document.querySelector('textarea[aria-label="Message"]');
 				const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
 				setter.call(area, "");
