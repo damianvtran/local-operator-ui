@@ -677,6 +677,49 @@ export function isStoreWriteRefusal(code: string | undefined): boolean {
 export const ANSWER_NOT_SENT_CODE = "answer_not_sent";
 
 /**
+ * A refused ASIDE whose question is no longer anywhere the composer can see.
+ *
+ * The NINTH entry in `withholdsRetryHint` and the first that is not a store
+ * refusal: an aside ask empties the box at the press (the question left for the
+ * panel), the owner refuses it, and the box at that moment holds whatever the user
+ * typed SINCE. The composer's generic hint then appended "Your message is still in
+ * the composer. Send it again." to a sentence about a question that is neither in
+ * the box nor on screen (UX round 1, U4) - advice that is not merely redundant but
+ * false, and which would have the user resend a NEW question to an exchange that
+ * refused the old one.
+ *
+ * It is a code of its own rather than a pre-computed boolean because the composer
+ * asks exactly one question of a code (is the retry the remedy; see
+ * `withholdsRetryHint`), and the answer has to travel with the sentence that
+ * raised it - the same argument `ANSWER_NOT_SENT_CODE` records one round earlier.
+ * The refusing door sets it; the panel does not (a refusal on the panel is stated
+ * on the turn beside its own question, and the sentence there is the owner's).
+ */
+export const ASIDE_NOT_ANSWERED_CODE = "aside_not_answered";
+
+/**
+ * A FOLLOW-UP REFUSED IN THE APP because the aside is still answering.
+ *
+ * The tenth entry in `withholdsRetryHint`, and the only term there whose remedy IS
+ * the retry - just not yet. The composer's own gate on this refusal sets it (see
+ * `asideAskBlockedReason`), and without it the alert appended its generic "Your
+ * message is still in the composer. Send it again." directly under a sentence
+ * telling the user to wait, so one line carried two contradictory instructions
+ * (UX round 2, U12; agent review round 5, R5-5; design round 3, D13). The retry is
+ * refused for as long as the newest answer is in flight, which is exactly the
+ * condition the sentence beside it names - so the sentence owns the timing and the
+ * hint has nothing to add. That is a different reason from `ASIDE_NOT_ANSWERED_CODE`
+ * one block up, which is withheld because the question has LEFT THE SCREEN: an
+ * aside whose answer is still coming has not failed, and borrowing that code would
+ * have made the two refusals one thing in the only place that reads them.
+ *
+ * The line is also retired with the state it describes rather than left standing
+ * (`chat-page.tsx`, the effect keyed on the same predicate): a composer line that
+ * reads "still answering" under a settled answer is U12's other half.
+ */
+export const ASIDE_STILL_ANSWERING_CODE = "aside_still_answering";
+
+/**
  * Whether a refusal's remedy is anything OTHER than "send it again".
  *
  * The composer's generic retry hint is the alert's "what to do" half, and it is
@@ -715,6 +758,22 @@ export const ANSWER_NOT_SENT_CODE = "answer_not_sent";
  * is in this list rather than in a second one because the composer asks one
  * question of a code (is the retry the remedy), and this is that question's
  * answer, stated by the failure that owns it.
+ *
+ * The NINTH is `ASIDE_NOT_ANSWERED_CODE`, and it is the second term here that is
+ * not a send refusal either — in the same direction as the seventh and for a
+ * sharper reason: an aside ask takes the question out of the box at the press, so
+ * when its refusal lands the box holds whatever the user typed SINCE, and the hint
+ * would point at text the refusal was never about (UX round 1, U4). Its own
+ * statement is on the constant.
+ *
+ * The TENTH is `ASIDE_STILL_ANSWERING_CODE`, and it is the only term here whose
+ * remedy IS the retry — it is merely not yet. The press it refuses is refused for
+ * as long as the newest aside answer is in flight, and the sentence that replaces
+ * the hint is the one that says when that ends, so the hint can only contradict it
+ * (UX round 2, U12; agent review round 5, R5-5; design round 3, D13). Every other
+ * term above is a refusal a resend does not fix; this one is a refusal that a
+ * resend fixes LATER, and both are cases where "Send it again" is not what to do
+ * now. Its own statement is on the constant.
  *
  * The eighth is `runtime_retiring`, and it is here for D13's reason rather than
  * U2's: the remedy that owns this refusal is the SENTENCE, which the owner
@@ -759,6 +818,8 @@ export function withholdsRetryHint(code: string | undefined): boolean {
 		code === STORE_OUT_OF_SPACE_CODE ||
 		code === STORE_UNAVAILABLE_CODE ||
 		code === ANSWER_NOT_SENT_CODE ||
+		code === ASIDE_NOT_ANSWERED_CODE ||
+		code === ASIDE_STILL_ANSWERING_CODE ||
 		code === RUNTIME_RETIRING_CODE
 	);
 }
