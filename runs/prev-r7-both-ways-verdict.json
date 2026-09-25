@@ -593,7 +593,7 @@
       }
     ]
   },
-  "settledShot": "/Users/damian/.local-operator/sessions/40aca639e57c/scratchpad/r7/out/prev-r7-both-ways-verdict-02-settled.png",
+  "settledShot": "/Users/damian/.local-operator/sessions/<session>/scratchpad/r7/out/prev-r7-both-ways-verdict-02-settled.png",
   "editRows": [
     {
       "id": "tool:toolu_0115sVd47cd9EeQhSCQQVBRD",

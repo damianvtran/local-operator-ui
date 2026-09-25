@@ -254,7 +254,7 @@
     ]
   },
   "firstShot": {
-    "file": "/Users/damian/.local-operator/sessions/40aca639e57c/scratchpad/r7/out/head-d-hang-01-first-frame.png",
+    "file": "/Users/damian/.local-operator/sessions/<session>/scratchpad/r7/out/head-d-hang-01-first-frame.png",
     "target": "tool:toolu_01Lr5pu7cYQcAKK3BNd14tAc",
     "targetRow": {
       "id": "tool:toolu_01Lr5pu7cYQcAKK3BNd14tAc",
@@ -871,7 +871,7 @@
       }
     ]
   },
-  "settledShot": "/Users/damian/.local-operator/sessions/40aca639e57c/scratchpad/r7/out/head-d-hang-02-settled.png",
+  "settledShot": "/Users/damian/.local-operator/sessions/<session>/scratchpad/r7/out/head-d-hang-02-settled.png",
   "editRows": [
     {
       "id": "tool:toolu_0115sVd47cd9EeQhSCQQVBRD",

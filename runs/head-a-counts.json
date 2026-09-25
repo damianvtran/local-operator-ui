@@ -254,7 +254,7 @@
     ]
   },
   "firstShot": {
-    "file": "/Users/damian/.local-operator/sessions/40aca639e57c/scratchpad/r7/out/head-a-counts-01-first-frame.png",
+    "file": "/Users/damian/.local-operator/sessions/<session>/scratchpad/r7/out/head-a-counts-01-first-frame.png",
     "target": "tool:toolu_01U3Y21CrbaP1HVMGcKMapJu",
     "targetRow": {
       "id": "tool:toolu_01U3Y21CrbaP1HVMGcKMapJu",
@@ -920,7 +920,7 @@
     ],
     "standIns": []
   },
-  "settledShot": "/Users/damian/.local-operator/sessions/40aca639e57c/scratchpad/r7/out/head-a-counts-02-settled.png",
+  "settledShot": "/Users/damian/.local-operator/sessions/<session>/scratchpad/r7/out/head-a-counts-02-settled.png",
   "editRows": [
     {
       "id": "tool:toolu_0115sVd47cd9EeQhSCQQVBRD",
