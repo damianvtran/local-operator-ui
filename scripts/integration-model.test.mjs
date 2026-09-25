@@ -2340,11 +2340,32 @@ test("a live Disconnect outlives the read that contradicts it, and never claims 
 	);
 	assert.equal(m.integrationGroupOf(staleLive, [], during), "ready");
 	assert.equal(m.primaryAction(staleLive, [], during).kind, "connect");
+	/*
+	 * AND THE MENU (R5-1b): the controls were asserted, the menu was not, and a
+	 * revert of `overflowItems`' status substitution left the suite green while
+	 * putting **Disconnect** back in the menu of a row whose own words say "Not
+	 * connected" - the exact contradiction this fix removes. The primary is
+	 * `connect`, so `connect` itself belongs to the button and not the menu; what
+	 * must not be here is Disconnect.
+	 */
+	const menu = m.overflowItems(staleLive, [], during).map((item) => item.kind);
+	assert.ok(
+		!menu.includes("disconnect"),
+		`a row under a standing Disconnect does not offer Disconnect (menu: ${menu.join(", ")})`,
+	);
+	assert.ok(!menu.includes("connect"), "and it does not repeat the primary");
 
 	/*
 	 * The other arm the round measured - the config-only answer - and the one the
 	 * round-3 pin did build. Kept because both arms are real payloads.
 	 */
+	const disconnectable = row("qa-keyless-A", {
+		status: "connected",
+		status_basis: "live",
+		tool_count: 2,
+		tool_count_basis: "live",
+		actions: ["test", "disconnect", "set_key", "remove"],
+	});
 	const storedArm = row("qa-keyless-A", {
 		status: "not_started",
 		status_basis: "stored",
@@ -2384,7 +2405,65 @@ test("a live Disconnect outlives the read that contradicts it, and never claims 
 		m.integrationStatus(staleLive, [], after).label,
 		"Connected · 2 tools",
 	);
+	/*
+	 * The same substitution, seen from the other side: a payload that really does
+	 * offer Disconnect keeps it once the window has passed, and does not offer it
+	 * while the press stands. Both halves matter - without the second this could
+	 * pass by never offering the verb at all.
+	 */
+	const offersDisconnect = (memory) =>
+		m
+			.overflowItems(disconnectable, [], memory)
+			.map((item) => item.kind)
+			.includes("disconnect");
+	assert.ok(
+		offersDisconnect(after),
+		"after the window the menu follows the read and offers Disconnect",
+	);
+	assert.ok(
+		!offersDisconnect(during),
+		"and inside the window it does not, however the read words the row",
+	);
 	assert.equal(after["qa-keyless-A"].holdUntil, null);
+});
+
+test("a held Disconnect groups with its own words, whatever the fresh read says (R5-3)", () => {
+	/*
+	 * The group has its own copy of the press's rule, and the round-4 claim that
+	 * `effectiveStatus` is the single place the words, the group and the controls
+	 * all read it was not true of this function: its `disconnectedAt` branch sat
+	 * BELOW the `needs_sign_in`/`error` branch, so inside the very window the fix
+	 * exists for, a held Disconnect whose fresh read said `needs_sign_in` rendered
+	 * the words "Not connected" with a `connect` primary while the row sat under
+	 * Needs attention. Reproduced by the reviewer on both statuses.
+	 */
+	const press = 5_000;
+	const held = press + m.CONTROL_SETTLE_MS;
+	const memories = {
+		"qa-keyless-A": {
+			...m.NO_MEMORY,
+			disconnectedAt: press,
+			holdUntil: held,
+		},
+	};
+	for (const status of ["needs_sign_in", "error"]) {
+		const fresh = row("qa-keyless-A", {
+			status,
+			status_reason: "The server said so.",
+			actions: ["test", "connect", "remove"],
+		});
+		assert.equal(
+			m.integrationStatus(fresh, [], memories, press + 1_000).label,
+			"Not connected",
+			`the words follow the press (${status})`,
+		);
+		assert.equal(
+			m.integrationGroupOf(fresh, [], memories),
+			"ready",
+			`and the section follows the words, not the read (${status})`,
+		);
+		assert.equal(m.primaryAction(fresh, [], memories).kind, "connect");
+	}
 });
 
 test("the payload's last-seen time is consumed once, in seconds, and refused when it is not a time (R4-3)", () => {
@@ -2410,6 +2489,26 @@ test("the payload's last-seen time is consumed once, in seconds, and refused whe
 		Number.NaN,
 	])
 		assert.equal(m.lastSeenMillis(value), null, `refused: ${String(value)}`);
+	/*
+	 * AND THE UPPER BOUND (R5-4): anything in the accepted band used to be
+	 * multiplied and taken, so 999 999 999 999 "seconds" - year 33658 - and a
+	 * stamp from the future both rendered `Worked just now` in the success tone,
+	 * because `relativeTime` clamps a negative delta to "just now". The value is a
+	 * tool-cache mtime and cannot be either of those from this backend, which is
+	 * why the answer is a refusal rather than a repair: the row falls back to the
+	 * vaguer "Worked earlier", which is true.
+	 */
+	assert.equal(m.lastSeenMillis(999_999_999_999), null, "an implausible stamp");
+	assert.equal(
+		m.lastSeenMillis((Date.now() + 86_400_000) / 1000),
+		null,
+		"a stamp from the future (clock skew between hosts)",
+	);
+	assert.equal(
+		m.lastSeenMillis((Date.now() - 60_000) / 1000, Date.now()),
+		Date.now() - 60_000,
+		"a minute in the past is inside the tolerance",
+	);
 
 	/*
 	 * The page's own reading of it: a `stored` row standing behind a last-seen
@@ -2729,7 +2828,14 @@ test("the dialogs and the row list keep the geometry and the rules the walk meas
 	 * next one's code and then proves nothing).
 	 */
 	const deferred = section.slice(
-		section.indexOf("if (!element) return;"),
+		/*
+		 * Anchored on the move's own first line, NOT on the guard: the guard text
+		 * occurs twice in this file (the remove flow's focus uses it too), so a
+		 * slice that starts at the text it asserts proves nothing - the round-3
+		 * lesson about slices that run past, or land inside, the wrong function.
+		 * That is why the guard's own pin below reads this slice.
+		 */
+		section.indexOf("const element = primary"),
 		section.indexOf(
 			"}, [focusRow, servers, operations, integrations.memories]);",
 		),
@@ -2795,6 +2901,61 @@ test("the dialogs and the row list keep the geometry and the rules the walk meas
 		hook,
 		/markControlMemory\(request\)/,
 		"and it does so on the control path, not only in a test",
+	);
+	/*
+	 * R5-1a: THE HOLD IS WRITTEN BY THE SAME ARM, and it is pinned by SLICING the
+	 * arm rather than by matching the field anywhere in the hook. Round 5 found
+	 * that dropping `holdUntil` from this one line (use-integrations.ts:792-798)
+	 * left the whole suite green - the model tests build that memory by hand - and
+	 * that in the app the hold then never opens, so the live Q1 defect returns in
+	 * full with every test still passing. The slice starts at the deadline's own
+	 * line and ends at the `setMemoryEpoch` that closes the arm, so it cannot
+	 * reach a later function's code (the round-3 lesson about slices that run
+	 * past their function, which then prove nothing).
+	 */
+	const armStart = hook.indexOf(
+		"const holdUntil = Date.now() + CONTROL_SETTLE_MS;",
+	);
+	assert.ok(armStart > 0, "the hook computes the hold's deadline (R5-1a)");
+	const controlArm = hook.slice(
+		armStart,
+		hook.indexOf("setMemoryEpoch((epoch) => epoch + 1);", armStart),
+	);
+	assert.match(
+		controlArm,
+		/disconnectedAt: Date\.now\(\),?\s*\n?\s*holdUntil,/,
+		"the Disconnect the hook writes opens the hold with it (R5-1a)",
+	);
+	assert.match(
+		controlArm,
+		/connectedAt: null/,
+		"and it drops the worked reading in the same object",
+	);
+	/*
+	 * R5-1b's source half. The behavioural half is the menu assertion in the Q1
+	 * test; this is the line that makes the menu and the words agree, and round 5
+	 * showed it could be reverted to the raw status with everything green.
+	 */
+	const modelSource = readFileSync(
+		"src/renderer/src/features/settings/components/integrations/integration-model.ts",
+		"utf8",
+	);
+	assert.match(
+		modelSource,
+		/const status = effectiveStatus\(row, memoryFor\(memories, row\.name\)\);/,
+		"the menu derives its status from the same substitution the words and the controls use (R5-1b)",
+	);
+	/*
+	 * R5-1c: the stay-armed guard, which is the half of Q2/U20 that stops the
+	 * move being DROPPED when the row's control does not exist yet. Round 5
+	 * deleted it with everything green; without it a move armed before the primary
+	 * is registered leaves focus where the closing surface left it, which is the
+	 * `<body>` U20 measured.
+	 */
+	assert.match(
+		deferred,
+		/if \(!element\) return;/,
+		"a move with nothing to land on stays armed rather than being dropped (R5-1c)",
 	);
 	/*
 	 * AND THE WINDOW IS DECLARED BEFORE THE QUERIES THAT READ IT. React Query

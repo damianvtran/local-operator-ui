@@ -261,11 +261,28 @@ export const NO_MEMORY: RowMemory = {
 const MS_FLOOR = 1_000_000_000_000; // 2001-09-09 in milliseconds
 const SECONDS_FLOOR = 1_000_000_000; // 2001-09-09 in seconds
 
-export const lastSeenMillis = (value: unknown): number | null => {
+/**
+ * How far ahead of this machine a stamp may be before it is refused.
+ *
+ * A minute, for the ordinary skew between two hosts' clocks. The case this
+ * exists for is not skew though: a value in the accepted band that is really
+ * something else - 999 999 999 999 reads as year 33658 - and `relativeTime`
+ * clamps a negative delta to "just now", so an implausible or future stamp
+ * rendered `Worked just now` in the success tone, the same words a genuinely
+ * fresh count gets (R5-4). "Refused rather than guessed at in either direction"
+ * is only true with this bound.
+ */
+const CLOCK_SKEW_MS = 60_000;
+
+export const lastSeenMillis = (
+	value: unknown,
+	now: number = Date.now(),
+): number | null => {
 	if (typeof value !== "number" || !Number.isFinite(value)) return null;
-	if (value >= MS_FLOOR) return value;
-	if (value < SECONDS_FLOOR) return null;
-	return value * 1000;
+	const ms =
+		value >= MS_FLOOR ? value : value < SECONDS_FLOOR ? null : value * 1000;
+	if (ms === null || ms > now + CLOCK_SKEW_MS) return null;
+	return ms;
 };
 
 /** The row's memory, or the empty one, so callers never branch on undefined. */
@@ -715,7 +732,8 @@ export function integrationStatus(
 				 * "Worked earlier": the vaguer of the two readings the payload
 				 * supports is the right one only when nothing better is published.
 				 */
-				const workedAt = memory.connectedAt ?? lastSeenMillis(row.last_seen_at);
+				const workedAt =
+					memory.connectedAt ?? lastSeenMillis(row.last_seen_at, now);
 				return {
 					label:
 						workedAt !== null
@@ -788,8 +806,21 @@ export const READY_EXPLANATION =
 	"Nothing is wrong. It starts when a chat uses it.";
 
 /** What "Not connected" means, for a row a live chat is not using. */
-export const NOT_CONNECTED_EXPLANATION =
-	"Not running in this chat. Connect to start it.";
+/**
+ * The tooltip on the words "Not connected".
+ *
+ * It used to end "Connect to start it.", which is the row's own primary read
+ * aloud whenever the backend offers one - D21's class of copy, one slot over
+ * (R5-6), and it slipped the design sweep because D21 named the `detail`
+ * strings and this is a tooltip. It is worse than redundant in one window: when
+ * a read comes back on the config arm, which carries no `connect` action by
+ * contract, the row reads "Not connected" with only its menu for about two
+ * seconds, and the old sentence named a control that was not on screen (D15's
+ * rule). What is left says the state and why the row is nonetheless one of the
+ * fine ones - each chat runs its own servers - and leaves the control, when
+ * there is one, to say itself.
+ */
+export const NOT_CONNECTED_EXPLANATION = "Not running in this chat.";
 
 export const transportLabel = (row: Pick<IntegrationRow, "transport">) =>
 	row.transport === "local_command" ? "Local command" : "Remote URL";
@@ -1267,6 +1298,20 @@ export function integrationGroupOf(
 	const memory = memoryFor(memories, row.name);
 	const running = runningOperationFor(row.name, operations);
 	/*
+	 * THE STATUS THIS FUNCTION ACTS ON, through the same substitution the words
+	 * and the controls use (R5-3).
+	 *
+	 * `effectiveStatus` was introduced for Q1 and the round-4 comments called it
+	 * the one place the press substitutes the status that the words, the GROUP and
+	 * the controls all read - and that was not true of this function. Its own
+	 * `disconnectedAt` branch sat BELOW the `needs_sign_in`/`error` branch, so a
+	 * held Disconnect whose fresh read said `needs_sign_in` rendered the words
+	 * "Not connected" with a `connect` primary while the row sat under Needs
+	 * attention: the same words/group disagreement earlier rounds treated as a
+	 * defect, inside the very window the fix exists for.
+	 */
+	const status = effectiveStatus(row, memory);
+	/*
 	 * A row with an operation in flight STAYS in the group it was in when the
 	 * press happened (F5). The backend rewrites the row to `connecting` the
 	 * moment an operation starts, so the previous group is not in the payload
@@ -1280,13 +1325,11 @@ export function integrationGroupOf(
 	// observed to be wrong with it, and the row's own words already say the
 	// status could not be read. It sits with the idle rows and offers "Check
 	// again".
-	if (row.status === "needs_sign_in" || row.status === "error")
-		return "attention";
+	if (status === "needs_sign_in" || status === "error") return "attention";
 	const lastOperation = rememberedDecisiveFor(row.name, operations, memory);
 	// A sign-out and a failed sign-in are the user's own last acts on the row,
 	// and both leave it needing a credential (U2, U3).
-	if (isSignedOut(lastOperation) && row.status !== "connected")
-		return "attention";
+	if (isSignedOut(lastOperation) && status !== "connected") return "attention";
 	/*
 	 * A sign-out that FAILED belongs where its own words already put it (m-2,
 	 * Q3): "Sign-out didn't finish" in a warning tone beside a group of healthy
@@ -1294,7 +1337,7 @@ export function integrationGroupOf(
 	 * again on a reload, so the two readings disagreed with each other as well as
 	 * with the words.
 	 */
-	if (isFailedSignOut(lastOperation) && row.status !== "connected")
+	if (isFailedSignOut(lastOperation) && status !== "connected")
 		return "attention";
 	/*
 	 * A Disconnect the user pressed takes the row back to the idle group until a
@@ -1310,14 +1353,14 @@ export function integrationGroupOf(
 	 * until something contradicts it (U14): a cancelled attempt is not evidence
 	 * about the server, and the backend's own verdict ages out of the payload.
 	 */
-	if (memory.needsSignIn && row.status !== "connected") return "attention";
+	if (memory.needsSignIn && status !== "connected") return "attention";
 	if (
 		lastOperation?.status === "failed" &&
 		isSignInAction(lastOperation) &&
-		row.status !== "connected"
+		status !== "connected"
 	)
 		return "attention";
-	if (row.status === "connected") return "connected";
+	if (status === "connected") return "connected";
 	/*
 	 * A check that expired keeps its last RESULT and its group (U1): the row
 	 * worked recently and moves only when something actually changed - and only
@@ -1415,7 +1458,7 @@ export function advanceMemories(
 			before.connectedAt === null &&
 			row.status_basis === "stored" &&
 			row.tool_count_basis === "last_seen"
-				? lastSeenMillis(row.last_seen_at)
+				? lastSeenMillis(row.last_seen_at, now)
 				: null;
 		const keepResult = !signedOut;
 		const failure =

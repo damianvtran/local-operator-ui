@@ -720,6 +720,21 @@ export const McpManagementSection: FC<{
 		 * `Save and test` whose row is left with no primary (QA Q2, UX U20) - both
 		 * left `document.activeElement` on `BODY`. Deferring makes the row's own
 		 * control the last writer whatever order the close runs in.
+		 *
+		 * WHY A MACROTASK IS ENOUGH, stated as the assumption it is (R5-5): the
+		 * ordering holds because the installed Radix focus scope restores focus
+		 * from ONE `setTimeout(..., 0)` registered by the unmounting subtree's
+		 * effect cleanup, and React runs that cleanup no later than the parent
+		 * effect that arms this move - so this timer is registered second and
+		 * fires second. That is a third-party dist's internals rather than a
+		 * property this repository can assert: a future Radix that defers twice,
+		 * or to a `requestAnimationFrame`, would make the restore the last writer
+		 * again, and the pin here can only assert that this deferral exists (it
+		 * does, and it fails when removed). The guard below is deliberately
+		 * conservative in the same spirit: a target that has left the document by
+		 * the time the timer fires drops the move rather than throwing, which
+		 * leaves focus where the close put it - a narrower window than U20's, and
+		 * the one the walk did not reach.
 		 */
 		window.setTimeout(() => {
 			if (element.isConnected) element.focus();
