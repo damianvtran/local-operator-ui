@@ -1,0 +1,189 @@
+port8080.lock taken
+rig up: proxy 23122 on 8080 -> daemon 21379 on 61618, stub 61579; 1111 untouched
+== ux3c (btw-ux3c) at 02:31:39 ==
+[build] current: assets 2026-09-25T02:12:42.616Z >= sources 2026-09-25T01:32:12.604Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/.local-operator/sessions/15622aeab8ed/scratchpad/ux4rig/run-ux3c/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/ux482-r4-d41bf2
+  scratch       /Users/damian/.local-operator/sessions/15622aeab8ed/scratchpad/ux4rig/tmp/lo-renderer-driver-23517
+  frames        /Users/damian/.local-operator/sessions/15622aeab8ed/scratchpad/ux4rig/frames/ux3c
+  app cwd       /Users/damian/.local-operator/sessions/15622aeab8ed/scratchpad/ux4rig/tmp/lo-renderer-driver-23517/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/ux482-r4-d41bf2/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] headless and never shown
+        mode=headless visible=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] UX3c session
+        27b2594bec9e
+[note] C1 two ⌘+F presses 60ms apart
+        {"panelUp":true,"notice":"Press ⌘+F again to add the aside to the conversation. Once added, it stays there.","adoptOps":0,"keys":[{"prevented":true,"at":23987},{"prevented":true,"at":24054}],"msFromFirstPress":1299,"adoptDisabled":false}
+[note] frame
+        {"label":"ux3c-ux3c-c01-double-tap","width":2760,"height":1736}
+[note] C2 ⌘+F with the caret out of the box
+        {"focusStops":["button{Add to conversation}","div[The aside exchange]"],"focusBefore":"div[The aside exchange]","focusAfter":"div[The aside exchange]","noticeBefore":null,"noticeAfter":null,"adoptOps":0,"keys":[{"prevented":true,"at":23987},{"prevented":true,"at":24054},{"prevented":false,"at":31009}]}
+[PASS] C2 a ⌘+F pressed outside the composer neither adopts nor confirms - the chord belongs to the box
+        {"ops":0,"noticeBefore":null,"noticeAfter":null}
+[note] frame
+        {"label":"ux3c-ux3c-c02-chord-outside-the-box","width":2760,"height":1736}
+[note] C3 ⌘+F while the exchange is still settling
+        {"active":"textarea[Message]","adoptDisabled":true,"reason":"The exchange is still settling — a moment before it can be added.","noticeBefore":null,"noticeAfter":null,"bandLines":[],"keys":[{"prevented":true,"at":23987},{"prevented":true,"at":24054},{"prevented":false,"at":31009},{"prevented":false,"at":32572}]}
+[PASS] C3 an unfit chord falls through with no adopt and no confirm, and the panel is already saying why the control is not live
+        {"notice":null,"reason":"The exchange is still settling — a moment before it can be added."}
+[note] frame
+        {"label":"ux3c-ux3c-c03-unfit-chord","width":2760,"height":1736}
+[note] UX3c scene
+        finished
+[PASS] no process from this run outlived its boot
+
+frames: ux3c-ux3c-c01-double-tap.png, ux3c-ux3c-c02-chord-outside-the-box.png, ux3c-ux3c-c03-unfit-chord.png
+frames directory: /Users/damian/.local-operator/sessions/15622aeab8ed/scratchpad/ux4rig/frames/ux3c
+app log: /Users/damian/.local-operator/sessions/15622aeab8ed/scratchpad/ux4rig/tmp/lo-renderer-driver-23517/app-scene.log
+scratch removed (--clean)
+
+ALL CHECKS PASSED
+== ux3c driver exit: 0 ==
+total 1984
+drwxr-xr-x@ 5 damian  staff     160 Sep 24 22:32 .
+drwxr-xr-x@ 8 damian  staff     256 Sep 24 22:31 ..
+-rw-r--r--@ 1 damian  staff  355509 Sep 24 22:32 ux3c-ux3c-c01-double-tap.png
+-rw-r--r--@ 1 damian  staff  344585 Sep 24 22:32 ux3c-ux3c-c02-chord-outside-the-box.png
+-rw-r--r--@ 1 damian  staff  307665 Sep 24 22:32 ux3c-ux3c-c03-unfit-chord.png
+8080 released before this command returned
+port8080.lock released
+--- proxy counters (/Users/damian/.local-operator/sessions/15622aeab8ed/scratchpad/ux4rig/run-ux3c/proxy-stats.json) ---
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T02:32:04.708Z",
+      "url": "/v1/desktop/sessions/27b2594bec9e/asides",
+      "asideId": "93493b11-194e-48e6-a7a4-e4601810371f",
+      "continues": null,
+      "questionHead": "UC1 the exchange a double-tap meets",
+      "text": "UC1 the exchange a double-tap meets",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "16d6d4cce4e4470888227e652e602cf6",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"93493b11-194e-48e6-a7a4-e4601810371f\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:32:11.990Z",
+      "url": "/v1/desktop/sessions/27b2594bec9e/asides",
+      "asideId": "2f8a6504-5efe-4b08-bf8f-3127e1077695",
+      "continues": null,
+      "questionHead": "UC2 the exchange a chord outside the box meets",
+      "text": "UC2 the exchange a chord outside the box meets",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "16d6d4cce4e4470888227e652e602cf6",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"2f8a6504-5efe-4b08-bf8f-3127e1077695\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:32:18.684Z",
+      "url": "/v1/desktop/sessions/27b2594bec9e/asides",
+      "asideId": "bcd44b1c-d6d4-4e0d-ae0d-5629292de701",
+      "continues": null,
+      "questionHead": "SLOWANS UC3 an exchange that is still settling when ⌘+F is p",
+      "text": "SLOWANS UC3 an exchange that is still settling when ⌘+F is pressed",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "16d6d4cce4e4470888227e652e602cf6",
+      "status": null,
+      "response": null
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T02:31:43.910Z",
+      "subscriptionId": "2729c6899c10b6ae",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/27b2594bec9e/events?frontend_replace=1",
+      "openedAt": "2026-09-25T02:31:49.116Z",
+      "subscriptionId": "16d6d4cce4e4470888227e652e602cf6",
+      "asideDeltas": 16,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    }
+  ],
+  "asideDeltaFrames": 16,
+  "deltasBySubscription": {
+    "16d6d4cce4e4470888227e652e602cf6": 16
+  },
+  "deltasByAside": {
+    "93493b11-194e-48e6-a7a4-e4601810371f": 8,
+    "2f8a6504-5efe-4b08-bf8f-3127e1077695": 8
+  },
+  "refused422": 0,
+  "messagePosts": [
+    {
+      "at": "2026-09-25T02:31:57.444Z",
+      "url": "/v1/desktop/sessions/27b2594bec9e/messages",
+      "kind": "message",
+      "text": "ux3c seed turn",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"17473ed9-fb89-406e-a3aa-77e500498930\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T02:31:57.445Z"
+    }
+  ],
+  "asideOps": [
+    {
+      "at": "2026-09-25T02:32:11.508Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/27b2594bec9e/asides/93493b11-194e-48e6-a7a4-e4601810371f",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"93493b11-194e-48e6-a7a4-e4601810371f\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:32:18.033Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/27b2594bec9e/asides/2f8a6504-5efe-4b08-bf8f-3127e1077695",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"2f8a6504-5efe-4b08-bf8f-3127e1077695\",\"status\":\"closed\"},\"replayed\":false}}"
+    }
+  ]
+}
+--- end counters ---

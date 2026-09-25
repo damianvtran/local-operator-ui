@@ -1,0 +1,943 @@
+port8080.lock taken
+rig up: proxy 94867 on 8080 -> daemon 93500 on 58150, stub 58100; 1111 untouched
+== ux3wide (btw-ux3) at 02:26:07 ==
+[build] current: assets 2026-09-25T02:12:42.616Z >= sources 2026-09-25T01:32:12.604Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/.local-operator/sessions/15622aeab8ed/scratchpad/ux4rig/run-ux3wide/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/ux482-r4-d41bf2
+  scratch       /Users/damian/.local-operator/sessions/15622aeab8ed/scratchpad/ux4rig/tmp/lo-renderer-driver-95092
+  frames        /Users/damian/.local-operator/sessions/15622aeab8ed/scratchpad/ux4rig/frames/ux3wide
+  app cwd       /Users/damian/.local-operator/sessions/15622aeab8ed/scratchpad/ux4rig/tmp/lo-renderer-driver-95092/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/ux482-r4-d41bf2/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] headless and never shown
+        mode=headless visible=false focused=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] UX3 session
+        7713746ec8c1
+[PASS] the seed turn is in the transcript before the aside starts
+        {"met":true,"working":false}
+[note] 1a base turn answered
+        {"active":"textarea[Message]","activeIsField":true,"fieldValue":"","refusalText":null,"noticeText":null,"noticeCount":0,"adoptDisabled":false,"adoptReason":null,"bandLines":[],"region":{"scrollTop":0,"maxScroll":0,"clientHeight":188,"turns":1,"tabIndex":0}}
+[note] frame
+        {"label":"ux3-ux3wide-01-u11a-base-answered","width":2760,"height":1736}
+[note] 1b the declined follow-up's refusal, as painted
+        {"msFromPress":5425,"met":true,"active":"textarea[Message]","activeIsField":true,"fieldValue":"","refusalText":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it.","noticeText":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it.","noticeCount":1,"adoptDisabled":true,"adoptReason":"Nothing to add.","bandLines":[],"region":{"scrollTop":15,"maxScroll":15,"clientHeight":248,"turns":2,"tabIndex":0}}
+[note] 1b refusal in the region (Q33 in the flow)
+        {"scrollTop":15,"maxScroll":15,"target":200.3,"state":"alert","alertText":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it.","alertTopInRegion":208.8,"alertBottomInRegion":247.8,"clientHeight":248,"hiddenBelowPx":0,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-2.7,"phrase":{"needle":"discard it","bottomVsClipPx":-2.7,"visible":true}}
+[note] 1b where the two clauses sit
+        [{"zone":"panel","visible":true,"text":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc t"}]
+[PASS] 1b the refusal names BOTH options in one sentence the user can act on
+        {"text":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it."}
+[PASS] 1b the whole refusal is inside the region's clip (the words that name Esc's cost are read, not implied)
+        {"scrollTop":15,"maxScroll":15,"target":200.3,"state":"alert","alertText":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it.","alertTopInRegion":208.8,"alertBottomInRegion":247.8,"clientHeight":248,"hiddenBelowPx":0,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-2.7,"phrase":{"needle":"discard it","bottomVsClipPx":-2.7,"visible":true}}
+[PASS] 1b the refusal reaches the user without a press (it is on the panel, not behind a hover)
+        {"active":"textarea[Message]"}
+[note] frame
+        {"label":"ux3-ux3wide-02-u11a-declined-refusal","width":2760,"height":1736}
+[note] 1c the retry in the same panel
+        {"ms":5170,"active":"textarea[Message]","activeIsField":true,"fieldValue":"","refusalText":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it.","noticeText":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it.","noticeCount":1,"adoptDisabled":false,"adoptReason":null,"bandLines":[],"region":{"scrollTop":215,"maxScroll":215,"clientHeight":248,"turns":3,"tabIndex":0},"wire":{"status":200,"continues":"2628dade-a15e-4ada-a31f-13c5cc412c9e"}}
+[PASS] 1c the copy's first option is true: asking again in the same panel is answered
+        {"status":200,"tails":2,"turns":3}
+[note] frame
+        {"label":"ux3-ux3wide-03-u11a-retry-answered-in-place","width":2760,"height":1736}
+[note] 2a before Esc: the panel's state
+        {"active":"textarea[Message]","activeIsField":true,"fieldValue":"","refusalText":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it.","noticeText":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it.","noticeCount":1,"adoptDisabled":true,"adoptReason":"Nothing to add.","bandLines":[],"region":{"scrollTop":15,"maxScroll":15,"clientHeight":248,"turns":2,"tabIndex":0}}
+[note] 2a before Esc: the owner's entry
+        {"status":200,"detail":null,"turns":2,"firstTurnHead":"[{\"type\":\"text\",\"text\":\"U11b a second base question\"}]","complete":true,"adoptable":true}
+[PASS] 2a the exchange on screen is answered and holds two turns before the key
+        {"turns":2,"inTranscript":false}
+[note] frame
+        {"label":"ux3-ux3wide-04-u11b-refusal-before-esc","width":2760,"height":1736}
+[note] 2b after Esc: what the user has left
+        {"ms":90,"panelUp":false,"active":"textarea[Message]","activeIsField":true}
+[note] 2b after Esc: the owner's entry (the id the panel held)
+        {"status":404,"detail":"This aside is no longer available","turns":null,"firstTurnHead":null,"complete":null,"adoptable":null,"msUntilTheOwnerLetGo":0}
+[note] 2b after Esc: what the app asked the owner to drop
+        [{"id":"ff0393bc-3beb-469b-bc7b-47f8c666f73d","status":200},{"id":"a7b9cf1e-1257-4f39-a949-27654d98a53c","status":200}]
+[note] 2b after Esc: the exchange's own entry, read raw
+        {"status":404,"turns":null}
+[note] 2b after Esc: the transcript
+        {"hasBaseQuestion":0,"hasFollowUp":0,"replies":[]}
+[PASS] 2b Esc takes the exchange off the screen: the panel is gone, focus is back in the box, and neither question is anywhere the user can reach
+        {"panelUp":false,"active":"textarea[Message]","inTranscript":0}
+[PASS] 2b Esc returns focus to the composer
+        {"active":"textarea[Message]"}
+[note] frame
+        {"label":"ux3-ux3wide-05-u11b-after-esc-what-was-lost","width":2760,"height":1736}
+[note] 2c a fresh refused ask
+        {"active":"textarea[Message]","activeIsField":true,"fieldValue":"","refusalText":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.","noticeText":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.","noticeCount":1,"adoptDisabled":true,"adoptReason":"Nothing to add.","bandLines":[],"region":{"scrollTop":0,"maxScroll":0,"clientHeight":63,"turns":1,"tabIndex":0}}
+[PASS] 2c a fresh refusal states the owner's sentence alone - no clause sending the user away from a panel that recovered by itself
+        {"text":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again."}
+[note] frame
+        {"label":"ux3-ux3wide-06-u11c-fresh-refusal-sentence-alone","width":2760,"height":1736}
+[note] 3a out-of-band DELETE of the answered entry (the owner evicting it)
+        {"status":200,"body":"{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"8adaf028-34a8-40e8-9291-7455eab9fc08\",\"status\":\"closed\"},\"replayed\":false}}"}
+[note] 3b the dropped-exchange refusal
+        {"active":"textarea[Message]","activeIsField":true,"fieldValue":"","refusalText":"This aside is no longer available This aside can't continue. Press Esc to close it, which discards this exchange, then start a new one with /btw.","noticeText":"This aside is no longer available This aside can't continue. Press Esc to close it, which discards this exchange, then start a new one with /btw.","noticeCount":1,"adoptDisabled":true,"adoptReason":"Nothing to add.","bandLines":[],"region":{"scrollTop":15,"maxScroll":15,"clientHeight":248,"turns":2,"tabIndex":0},"wire":{"status":409,"continues":"8adaf028-34a8-40e8-9291-7455eab9fc08"}}
+[note] 3b the dropped exchange in the region
+        {"scrollTop":15,"maxScroll":15,"target":200.3,"state":"alert","alertText":"This aside is no longer available This aside can't continue. Press Esc to close it, which discards this exchange, then start a new one with /btw.","alertTopInRegion":208.8,"alertBottomInRegion":247.8,"clientHeight":248,"hiddenBelowPx":0,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-2.7,"phrase":{"needle":"start a new one with /btw","bottomVsClipPx":-2.7,"visible":true}}
+[PASS] 3b the dropped exchange is stated with the owner's sentence AND the one exit that works, and names what the exit costs
+        {"text":"This aside is no longer available This aside can't continue. Press Esc to close it, which discards this exchange, then start a new one with /btw.","status":409}
+[PASS] 3b the dropped-exchange refusal names no retry that cannot work
+        {"text":"This aside is no longer available This aside can't continue. Press Esc to close it, which discards this exchange, then start a new one with /btw.","clip":{"scrollTop":15,"maxScroll":15,"target":200.3,"state":"alert","alertText":"This aside is no longer available This aside can't continue. Press Esc to close it, which discards this exchange, then start a new one with /btw.","alertTopInRegion":208.8,"alertBottomInRegion":247.8,"clientHeight":248,"hiddenBelowPx":0,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-2.7,"phrase":{"needle":"start a new one with /btw","bottomVsClipPx":-2.7,"visible":true}}}
+[note] frame
+        {"label":"ux3-ux3wide-07-u11d-dropped-exchange-refusal","width":2760,"height":1736}
+[note] 3c a fresh ask after the dropped exchange
+        {"ms":5375,"active":"textarea[Message]","activeIsField":true,"fieldValue":"","refusalText":null,"noticeText":null,"noticeCount":0,"adoptDisabled":false,"adoptReason":null,"bandLines":[],"region":{"scrollTop":0,"maxScroll":0,"clientHeight":188,"turns":1,"tabIndex":0}}
+[PASS] 3c a fresh aside after a dropped exchange is answered, and states no clause
+        {"refusal":null}
+[note] frame
+        {"label":"ux3-ux3wide-08-u11d-fresh-ask-answered-after-the-drop","width":2760,"height":1736}
+[note] 4a adoptable exchange
+        {"active":"textarea[Message]","activeIsField":true,"fieldValue":"","refusalText":null,"noticeText":null,"noticeCount":0,"adoptDisabled":false,"adoptReason":null,"bandLines":[],"region":{"scrollTop":0,"maxScroll":0,"clientHeight":188,"turns":1,"tabIndex":0}}
+[note] 4b the FIRST ⌘+F
+        {"active":"textarea[Message]","activeIsField":true,"fieldValue":"","refusalText":"Press ⌘+F again to add the aside to the conversation. Once added, it stays there.","noticeText":"Press ⌘+F again to add the aside to the conversation. Once added, it stays there.","noticeCount":1,"adoptDisabled":false,"adoptReason":null,"bandLines":[],"region":{"scrollTop":0,"maxScroll":0,"clientHeight":188,"turns":1,"tabIndex":0},"key":{"prevented":true,"path":["TEXTAREA","DIV","DIV"]},"adoptOps":0}
+[PASS] 4b the first press only confirms: no adopt request, the panel stays, and the confirm says what a second press will do
+        {"ops":0,"notice":"Press ⌘+F again to add the aside to the conversation. Once added, it stays there."}
+[PASS] 4b the confirm sits with the control it names, inside the panel (not a toast, not the composer line)
+        {"gapPx":4,"noticeY":692,"adoptY":660,"bandLines":[]}
+[note] frame
+        {"label":"ux3-ux3wide-09-u16-first-cmdf-confirm","width":2760,"height":1736}
+[note] 4c the confirm with a draft in the box
+        {"active":"textarea[Message]","activeIsField":true,"fieldValue":"a draft the user was writing","refusalText":"Press ⌘+F again to add the aside to the conversation. Once added, it stays there.","noticeText":"Press ⌘+F again to add the aside to the conversation. Once added, it stays there.","noticeCount":1,"adoptDisabled":false,"adoptReason":null,"bandLines":[],"region":{"scrollTop":0,"maxScroll":0,"clientHeight":188,"turns":1,"tabIndex":0}}
+[PASS] 4c a keystroke in the composer does not withdraw the confirm (nothing about the exchange changed)
+        {"notice":"Press ⌘+F again to add the aside to the conversation. Once added, it stays there.","fieldValue":"a draft the user was writing"}
+[note] 4c2 the confirm after the box was emptied
+        {"notice":"Press ⌘+F again to add the aside to the conversation. Once added, it stays there.","fieldValue":""}
+[note] 4d the confirm after a follow-up was asked
+        {"active":"textarea[Message]","activeIsField":true,"fieldValue":"","refusalText":null,"noticeText":null,"noticeCount":0,"adoptDisabled":false,"adoptReason":null,"bandLines":[],"region":{"scrollTop":141,"maxScroll":141,"clientHeight":248,"turns":2,"tabIndex":0}}
+[PASS] 4d a follow-up asked after the first press withdraws the confirm (it cannot linger over a turn the user has not been shown)
+        {"notice":null,"refusal":null}
+[note] 4e the chord after the new turn: armed again, not adopted
+        {"active":"textarea[Message]","activeIsField":true,"fieldValue":"","refusalText":"Press ⌘+F again to add the aside to the conversation. Once added, it stays there.","noticeText":"Press ⌘+F again to add the aside to the conversation. Once added, it stays there.","noticeCount":1,"adoptDisabled":false,"adoptReason":null,"bandLines":[],"region":{"scrollTop":141,"maxScroll":141,"clientHeight":248,"turns":2,"tabIndex":0},"adoptOps":0}
+[PASS] 4e the arm does not carry over to a turn the user has not seen confirmed
+        {"ops":0,"notice":"Press ⌘+F again to add the aside to the conversation. Once added, it stays there."}
+[note] frame
+        {"label":"ux3-ux3wide-10-u16-rearmed-on-the-new-turn","width":2760,"height":1736}
+[note] 4f Shift+Tab stops from the composer, with an adoptable exchange up
+        ["button{Add to conversation}"]
+[PASS] 4f the adopt control is the composer's own Shift+Tab neighbour, so a keyboard user reaches it without the chord
+        {"stops":["button{Add to conversation}"]}
+[note] 4g Enter on the focused control
+        {"panelGoneMs":64,"active":"textarea[Message]","paintedMs":127,"adoptOps":1}
+[PASS] 4g Enter on the focused adopt control adopts, the panel detaches, and focus returns to the composer
+        {"ops":1,"active":"textarea[Message]"}
+[note] frame
+        {"label":"ux3-ux3wide-11-u16k-adopted-from-the-keyboard","width":2760,"height":1736}
+[note] 5a the second press
+        {"panelGoneMs":8012,"painted":{},"active":"textarea[Message]","adoptOps":1}
+[note] 5a the daemon's record
+        {"history":[26,26],"hasQuestion":0}
+[FAIL] 5a the second press adopts once: rows paint live, the panel detaches, focus returns
+        {"ops":1,"active":"textarea[Message]","painted":{}}
+[FAIL] 5a the exchange is in the conversation's own order, question then answer, and the question appears once
+        {"occurrences":0}
+[note] frame
+        {"label":"ux3-ux3wide-12-u16b-second-press-adopted","width":2760,"height":1736}
+[note] 5b away and back
+        {"awayUrl":"#/settings","whileAway_transcriptMounted":false,"whileAway_hasQuestion":0,"reEntryMs":null,"occurrencesAfter":0}
+[FAIL] 5b the adopted rows are still there after leaving the conversation and coming back, once each
+        {"after":0}
+[note] frame
+        {"label":"ux3-ux3wide-13-u16b-after-reentering","width":2760,"height":1736}
+[note] 6a0 the aside is still answering
+        {"announce":"Asking the aside","panelText":"Asideoff the record — nothing here joins the conversationAsking the asideQuestion: U16b the exchange adopted by the second chordTransport failures and owner 5xx responses, per provider, inside a moving window. each transport failure spends one each owner 5xx spends one a retry that succeeds resets the window A 4xx never spends it: the request was wrong, not the provider.Question: U16b a second turn in the same exchangeTransport failures and owner 5xx responses, per provider, inside a moving window. each transport failure spends one each owner 5xx spends one a retry that succeeds resets the window A 4xx never spends it: the request was wrong, not the provider.Question: SLOWANS: U12 a base turn for the busy windowthinking…Add to conversation⌘+FThe exchange is still settling — a moment before it can be added.","fieldValue":""}
+[note] 6a the press while the aside is answering
+        {"active":"textarea[Message]","activeIsField":true,"fieldValue":"U12 a follow-up pressed before the answer lands","refusalText":null,"noticeText":null,"noticeCount":0,"adoptDisabled":true,"adoptReason":"The exchange is still settling — a moment before it can be added.","bandLines":["The aside is still answering. Press Enter again once the answer is in."],"region":{"scrollTop":196,"maxScroll":196,"clientHeight":248,"turns":3,"tabIndex":0}}
+[PASS] 6a a follow-up pressed mid-answer stays in the composer and is told when and how to send it, without a second line saying to send it now
+        {"fieldValue":"U12 a follow-up pressed before the answer lands","bandLines":["The aside is still answering. Press Enter again once the answer is in."]}
+[note] frame
+        {"label":"ux3-ux3wide-14-u12-busy-line-at-the-press","width":2760,"height":1736}
+[note] 6b after the answer landed
+        {"active":"textarea[Message]","activeIsField":true,"fieldValue":"U12 a follow-up pressed before the answer lands","refusalText":null,"noticeText":null,"noticeCount":0,"adoptDisabled":false,"adoptReason":null,"bandLines":[],"region":{"scrollTop":341,"maxScroll":341,"clientHeight":248,"turns":3,"tabIndex":0}}
+[PASS] 6b the busy line retires by itself once the answer is in, and the draft is still held
+        {"bandLines":[],"fieldValue":"U12 a follow-up pressed before the answer lands"}
+[note] frame
+        {"label":"ux3-ux3wide-15-u12-busy-line-retired","width":2760,"height":1736}
+[note] 6c the /btw door mid-answer
+        {"active":"textarea[Message]","activeIsField":true,"fieldValue":"/btw TOOLCALL2: U13 the slash door pressed mid-answer","refusalText":null,"noticeText":null,"noticeCount":0,"adoptDisabled":true,"adoptReason":"The exchange is still settling — a moment before it can be added.","bandLines":["The aside is still answering. Press Enter again once the answer is in."],"region":{"scrollTop":396,"maxScroll":396,"clientHeight":248,"turns":4,"tabIndex":0},"where":[{"zone":"composer-band","visible":true,"text":"The aside is still answering. Press Enter again once the answer is in."}]}
+[PASS] 6c the /btw door mid-answer states the busy sentence on the composer's own line, not as a transcript receipt
+        {"bandLines":["The aside is still answering. Press Enter again once the answer is in."],"transcriptHasReceipt":0}
+[note] frame
+        {"label":"ux3-ux3wide-16-u13-slash-door-mid-answer","width":2760,"height":1736}
+[note] 7a the quote staged (attempt 1)
+        {"selected":{"selected":true,"rowTop":209},"quoteButton":{"x":959,"y":188,"onScreen":true,"innerHeight":868},"chips":["inside a moving window"]}
+[PASS] 7a the transcript's quote control stages a chip (so the panel's own question is the subject of 7b)
+        {"attempts":1,"chips":["inside a moving window"]}
+[note] 7b the panel's question with a quote staged
+        {"panelText":"Asideoff the record — nothing here joins the conversationThe aside answered: Transport failures and owner 5xx responses, per provider, inside a moving window.Question: inside a moving windowU14 the question asked with a quote stagedTransport failures and owner 5xx responses, per provider, inside a moving window. each transport failure spends one each owner 5xx spends one a retry that succeeds resets the window A 4xx never spends it: the request was wrong, not the provider.Add to conversation⌘+F","hasReplyMarkup":false,"quoteBlock":1,"questionText":"Question: inside a moving windowU14 the question asked with a quote staged","chips":[]}
+[PASS] 7b the panel paints the staged quote as a quote, never as <reply-to> markup
+        {"markup":false,"question":"Question: inside a moving windowU14 the question asked with a quote staged"}
+[note] 7c the settle announcement (U15: no markdown reaches the reader)
+        {"announce":"The aside answered: Transport failures and owner 5xx responses, per provider, inside a moving window.","hasAsterisks":false}
+[PASS] 7c the announcement carries no markdown syntax into the screen reader
+        {"announce":"The aside answered: Transport failures and owner 5xx responses, per provider, inside a moving window."}
+[note] frame
+        {"label":"ux3-ux3wide-17-u14-quote-in-the-panel","width":2760,"height":1736}
+[note] 7d the announcement for an answer with markdown in it
+        {"announce":"The aside answered: Transport failures and owner 5xx responses, per provider, inside a moving window.","hasMarkdownSyntax":false}
+[PASS] 7d a screen reader hears the words, not the markdown
+        {"announce":"The aside answered: Transport failures and owner 5xx responses, per provider, inside a moving window."}
+[note] frame
+        {"label":"ux3-ux3wide-18-u15-announcement","width":2760,"height":1736}
+[note] 8a the conversation is working
+        {"busy":false,"placeholder":"Sending your message","transcriptWorking":true,"active":"textarea[Message]"}
+[note] 8b the aside answered while the turn ran
+        {"msSinceAsk":7824,"active":"textarea[Message]","activeIsField":true,"fieldValue":"U3 an aside while the agent works","refusalText":null,"noticeText":null,"noticeCount":0,"adoptDisabled":true,"adoptReason":"This conversation is working. Adding the aside while it runs would splice a message into a live turn.","bandLines":[],"region":{"scrollTop":0,"maxScroll":492,"clientHeight":248,"turns":1,"tabIndex":0}}
+[PASS] 8b the answer completes and is announced while the conversation still works
+        {"announce":"The aside answered: The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix.","working":true}
+[PASS] 8b the blocked reason names the conversation while it works, and nothing says 'a moment' under a finished answer
+        {"reason":"This conversation is working. Adding the aside while it runs would splice a message into a live turn."}
+[note] frame
+        {"label":"ux3-ux3wide-19-u3-answered-while-working","width":2760,"height":1736}
+[note] 8c the turn ended
+        {"msSinceAsk":12331,"active":"textarea[Message]","adoptDisabled":false,"reason":null,"busy":false}
+[PASS] 8c the adopt goes live by itself when the turn ends, with no press
+        {"ms":12331}
+[note] frame
+        {"label":"ux3-ux3wide-20-u3-adopt-live-after-the-turn","width":2760,"height":1736}
+[note] 8d the region by keyboard
+        {"stops":["button{Add to conversation}","div[The aside exchange]"],"home":{"scrollTop":0,"maxScroll":492,"clientHeight":248,"turns":1,"tabIndex":0},"end":{"scrollTop":493,"maxScroll":492,"clientHeight":248,"turns":1,"tabIndex":0},"pageUp":{"scrollTop":266,"maxScroll":492,"clientHeight":248,"turns":1,"tabIndex":0}}
+[PASS] 8d the exchange region is reachable from the composer and scrolls under the keyboard
+        {"stops":["button{Add to conversation}","div[The aside exchange]"],"home":0,"end":493,"maxScroll":492}
+[note] frame
+        {"label":"ux3-ux3wide-21-u7-region-focused","width":2760,"height":1736}
+[note] frame
+        {"label":"ux3-ux3wide-22-uadopt-panel-before-the-chord","width":2760,"height":1736}
+[note] 9a after the first chord
+        {"active":"textarea[Message]","activeIsField":true,"fieldValue":"","refusalText":"Press ⌘+F again to add the aside to the conversation. Once added, it stays there.","noticeText":"Press ⌘+F again to add the aside to the conversation. Once added, it stays there.","noticeCount":1,"adoptDisabled":false,"adoptReason":null,"bandLines":[],"region":{"scrollTop":0,"maxScroll":0,"clientHeight":188,"turns":1,"tabIndex":0},"adoptOps":1}
+[PASS] 9a the first chord confirms and adds nothing
+        {"ops":1,"notice":"Press ⌘+F again to add the aside to the conversation. Once added, it stays there."}
+[note] frame
+        {"label":"ux3-ux3wide-23-uadopt-first-chord-confirm","width":2760,"height":1736}
+[note] 9b the adopt
+        {"panelGoneMs":34,"questionPaintedMs":97,"occurrences":1,"rows":{"panelUp":false,"active":"textarea[Message]","activeIsField":true,"placeholder":"Ask me for help","bandLines":[]},"visAdv":{"found":true,"scrollerTag":"DIV.relative flex w-full flex-col-reverse [s","rowTop":474,"rowBottom":496,"viewTop":56,"viewBottom":732,"rowFullyInView":true,"rowAboveViewBottomByPx":236,"occurrences":1},"history":[44,46],"adoptOps":1}
+[PASS] 9b the second chord adopts: one POST, the panel detaches, the question paints once, and it is in the daemon's record
+        {"goneAdv":34,"paintedMs":97,"occurrences":1,"history":[44,46]}
+[PASS] 9b the adopted exchange lands in the reader's view rather than below the fold
+        {"found":true,"scrollerTag":"DIV.relative flex w-full flex-col-reverse [s","rowTop":474,"rowBottom":496,"viewTop":56,"viewBottom":732,"rowFullyInView":true,"rowAboveViewBottomByPx":236,"occurrences":1}
+[PASS] 9b the off-the-record affordance is gone once the exchange is part of the conversation
+        {"placeholderBefore":"Ask off the record — Esc closes the aside","placeholderAfter":"Ask me for help","active":"textarea[Message]"}
+[note] frame
+        {"label":"ux3-ux3wide-24-uadopt-adopted-in-the-transcript","width":2760,"height":1736}
+[note] 9c after leaving and re-entering
+        {"awayUrlAdv":"#/settings","transcriptMountedWhileAway":false,"msSinceReEnter":4,"occurrences":1}
+[PASS] 9c the adopted exchange is still part of the conversation after leaving it and coming back, once
+        {"awayUrlAdv":"#/settings","occurrences":1}
+[note] frame
+        {"label":"ux3-ux3wide-25-uadopt-after-reentering","width":2760,"height":1736}
+[note] UX3 scene
+        finished
+  [renderer] [attention] 7713746ec8c1 receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
+    at SEe (file:///Users/damian/local-operator-ui-worktrees/ux482-r4-d41bf2/out/renderer/assets/index-MgrkKJ40.js:812:94627)
+    at async _t (file:///Users/damian/local-operator-ui-worktrees/ux482-r4-d41bf2/out/renderer/assets/index-MgrkKJ40.js:812:95762)
+  [renderer] [attention] 7713746ec8c1 receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
+    at SEe (file:///Users/damian/local-operator-ui-worktrees/ux482-r4-d41bf2/out/renderer/assets/index-MgrkKJ40.js:812:94627)
+    at async _t (file:///Users/damian/local-operator-ui-worktrees/ux482-r4-d41bf2/out/renderer/assets/index-MgrkKJ40.js:812:95762)
+  [renderer] [attention] 7713746ec8c1 receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
+    at SEe (file:///Users/damian/local-operator-ui-worktrees/ux482-r4-d41bf2/out/renderer/assets/index-MgrkKJ40.js:812:94627)
+    at async _t (file:///Users/damian/local-operator-ui-worktrees/ux482-r4-d41bf2/out/renderer/assets/index-MgrkKJ40.js:812:95762)
+
+---- app log (tail) ----
+Error occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.
+    at /Users/damian/local-operator-ui-worktrees/ux482-r4-d41bf2/out/main/index.jsc:1:1048243
+    at /Users/damian/local-operator-ui-worktrees/ux482-r4-d41bf2/out/main/index.jsc:1:1049287
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.
+    at /Users/damian/local-operator-ui-worktrees/ux482-r4-d41bf2/out/main/index.jsc:1:1048243
+    at /Users/damian/local-operator-ui-worktrees/ux482-r4-d41bf2/out/main/index.jsc:1:1049287
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.
+    at /Users/damian/local-operator-ui-worktrees/ux482-r4-d41bf2/out/main/index.jsc:1:1048243
+    at /Users/damian/local-operator-ui-worktrees/ux482-r4-d41bf2/out/main/index.jsc:1:1049287
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+22:29:02.246 › [about-panel] suppressed by window mode headless: a headless run raises no window
+22:29:14.153 › [about-panel] suppressed by window mode headless: a headless run raises no window
+22:29:14.408 › [about-panel] suppressed by window mode headless: a headless run raises no window
+Error occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.
+    at /Users/damian/local-operator-ui-worktrees/ux482-r4-d41bf2/out/main/index.jsc:1:1048243
+    at /Users/damian/local-operator-ui-worktrees/ux482-r4-d41bf2/out/main/index.jsc:1:1049287
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.
+    at /Users/damian/local-operator-ui-worktrees/ux482-r4-d41bf2/out/main/index.jsc:1:1048243
+    at /Users/damian/local-operator-ui-worktrees/ux482-r4-d41bf2/out/main/index.jsc:1:1049287
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.
+    at /Users/damian/local-operator-ui-worktrees/ux482-r4-d41bf2/out/main/index.jsc:1:1048243
+    at /Users/damian/local-operator-ui-worktrees/ux482-r4-d41bf2/out/main/index.jsc:1:1049287
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+22:29:35.746 › [renderer] [attention] 7713746ec8c1 receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
+Error occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.
+    at /Users/damian/local-operator-ui-worktrees/ux482-r4-d41bf2/out/main/index.jsc:1:1048243
+    at /Users/damian/local-operator-ui-worktrees/ux482-r4-d41bf2/out/main/index.jsc:1:1049287
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+
+[PASS] no process from this run outlived its boot
+
+frames: ux3-ux3wide-01-u11a-base-answered.png, ux3-ux3wide-02-u11a-declined-refusal.png, ux3-ux3wide-03-u11a-retry-answered-in-place.png, ux3-ux3wide-04-u11b-refusal-before-esc.png, ux3-ux3wide-05-u11b-after-esc-what-was-lost.png, ux3-ux3wide-06-u11c-fresh-refusal-sentence-alone.png, ux3-ux3wide-07-u11d-dropped-exchange-refusal.png, ux3-ux3wide-08-u11d-fresh-ask-answered-after-the-drop.png, ux3-ux3wide-09-u16-first-cmdf-confirm.png, ux3-ux3wide-10-u16-rearmed-on-the-new-turn.png, ux3-ux3wide-11-u16k-adopted-from-the-keyboard.png, ux3-ux3wide-12-u16b-second-press-adopted.png, ux3-ux3wide-13-u16b-after-reentering.png, ux3-ux3wide-14-u12-busy-line-at-the-press.png, ux3-ux3wide-15-u12-busy-line-retired.png, ux3-ux3wide-16-u13-slash-door-mid-answer.png, ux3-ux3wide-17-u14-quote-in-the-panel.png, ux3-ux3wide-18-u15-announcement.png, ux3-ux3wide-19-u3-answered-while-working.png, ux3-ux3wide-20-u3-adopt-live-after-the-turn.png, ux3-ux3wide-21-u7-region-focused.png, ux3-ux3wide-22-uadopt-panel-before-the-chord.png, ux3-ux3wide-23-uadopt-first-chord-confirm.png, ux3-ux3wide-24-uadopt-adopted-in-the-transcript.png, ux3-ux3wide-25-uadopt-after-reentering.png
+frames directory: /Users/damian/.local-operator/sessions/15622aeab8ed/scratchpad/ux4rig/frames/ux3wide
+app log: /Users/damian/.local-operator/sessions/15622aeab8ed/scratchpad/ux4rig/tmp/lo-renderer-driver-95092/app-scene.log
+scratch removed (--clean)
+
+3 CHECK(S) FAILED
+== ux3wide driver exit: 1 ==
+total 18496
+drwxr-xr-x@ 27 damian  staff     864 Sep 24 22:29 .
+drwxr-xr-x@  6 damian  staff     192 Sep 24 22:25 ..
+-rw-r--r--@  1 damian  staff  354854 Sep 24 22:26 ux3-ux3wide-01-u11a-base-answered.png
+-rw-r--r--@  1 damian  staff  388372 Sep 24 22:26 ux3-ux3wide-02-u11a-declined-refusal.png
+-rw-r--r--@  1 damian  staff  384127 Sep 24 22:26 ux3-ux3wide-03-u11a-retry-answered-in-place.png
+-rw-r--r--@  1 damian  staff  387685 Sep 24 22:26 ux3-ux3wide-04-u11b-refusal-before-esc.png
+-rw-r--r--@  1 damian  staff  270858 Sep 24 22:26 ux3-ux3wide-05-u11b-after-esc-what-was-lost.png
+-rw-r--r--@  1 damian  staff  327745 Sep 24 22:27 ux3-ux3wide-06-u11c-fresh-refusal-sentence-alone.png
+-rw-r--r--@  1 damian  staff  375868 Sep 24 22:27 ux3-ux3wide-07-u11d-dropped-exchange-refusal.png
+-rw-r--r--@  1 damian  staff  354105 Sep 24 22:27 ux3-ux3wide-08-u11d-fresh-ask-answered-after-the-drop.png
+-rw-r--r--@  1 damian  staff  368089 Sep 24 22:27 ux3-ux3wide-09-u16-first-cmdf-confirm.png
+-rw-r--r--@  1 damian  staff  379045 Sep 24 22:27 ux3-ux3wide-10-u16-rearmed-on-the-new-turn.png
+-rw-r--r--@  1 damian  staff  344397 Sep 24 22:27 ux3-ux3wide-11-u16k-adopted-from-the-keyboard.png
+-rw-r--r--@  1 damian  staff  381029 Sep 24 22:28 ux3-ux3wide-12-u16b-second-press-adopted.png
+-rw-r--r--@  1 damian  staff  381017 Sep 24 22:28 ux3-ux3wide-13-u16b-after-reentering.png
+-rw-r--r--@  1 damian  staff  380473 Sep 24 22:28 ux3-ux3wide-14-u12-busy-line-at-the-press.png
+-rw-r--r--@  1 damian  staff  375022 Sep 24 22:28 ux3-ux3wide-15-u12-busy-line-retired.png
+-rw-r--r--@  1 damian  staff  386975 Sep 24 22:28 ux3-ux3wide-16-u13-slash-door-mid-answer.png
+-rw-r--r--@  1 damian  staff  360656 Sep 24 22:29 ux3-ux3wide-17-u14-quote-in-the-panel.png
+-rw-r--r--@  1 damian  staff  368322 Sep 24 22:29 ux3-ux3wide-18-u15-announcement.png
+-rw-r--r--@  1 damian  staff  456461 Sep 24 22:29 ux3-ux3wide-19-u3-answered-while-working.png
+-rw-r--r--@  1 damian  staff  462396 Sep 24 22:29 ux3-ux3wide-20-u3-adopt-live-after-the-turn.png
+-rw-r--r--@  1 damian  staff  452060 Sep 24 22:29 ux3-ux3wide-21-u7-region-focused.png
+-rw-r--r--@  1 damian  staff  370600 Sep 24 22:29 ux3-ux3wide-22-uadopt-panel-before-the-chord.png
+-rw-r--r--@  1 damian  staff  373116 Sep 24 22:29 ux3-ux3wide-23-uadopt-first-chord-confirm.png
+-rw-r--r--@  1 damian  staff  375256 Sep 24 22:29 ux3-ux3wide-24-uadopt-adopted-in-the-transcript.png
+-rw-r--r--@  1 damian  staff  357482 Sep 24 22:29 ux3-ux3wide-25-uadopt-after-reentering.png
+8080 released before this command returned
+port8080.lock released
+--- proxy counters (/Users/damian/.local-operator/sessions/15622aeab8ed/scratchpad/ux4rig/run-ux3wide/proxy-stats.json) ---
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T02:26:26.536Z",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides",
+      "asideId": "2628dade-a15e-4ada-a31f-13c5cc412c9e",
+      "continues": null,
+      "questionHead": "U11a what does the retry budget cap",
+      "text": "U11a what does the retry budget cap",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "cf3b278e2b844bd29b99b0d1906b2b0e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"2628dade-a15e-4ada-a31f-13c5cc412c9e\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:26:31.896Z",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides",
+      "asideId": "f5cfd653-6f52-4675-9a3b-5a09cea8c159",
+      "continues": "2628dade-a15e-4ada-a31f-13c5cc412c9e",
+      "questionHead": "TOOLCALL2: U11a the follow-up the model declines",
+      "text": "TOOLCALL2: U11a the follow-up the model declines",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "cf3b278e2b844bd29b99b0d1906b2b0e",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-25T02:26:38.133Z",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides",
+      "asideId": "ff0393bc-3beb-469b-bc7b-47f8c666f73d",
+      "continues": "2628dade-a15e-4ada-a31f-13c5cc412c9e",
+      "questionHead": "U11a retry in the same panel after the refusal",
+      "text": "U11a retry in the same panel after the refusal",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "cf3b278e2b844bd29b99b0d1906b2b0e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"ff0393bc-3beb-469b-bc7b-47f8c666f73d\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:26:43.827Z",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides",
+      "asideId": "a7b9cf1e-1257-4f39-a949-27654d98a53c",
+      "continues": null,
+      "questionHead": "U11b a second base question",
+      "text": "U11b a second base question",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "cf3b278e2b844bd29b99b0d1906b2b0e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"a7b9cf1e-1257-4f39-a949-27654d98a53c\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:26:48.643Z",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides",
+      "asideId": "8c23a189-c7d0-41c7-82ba-f4863352d0cf",
+      "continues": "a7b9cf1e-1257-4f39-a949-27654d98a53c",
+      "questionHead": "TOOLCALL2: U11b the follow-up before Esc",
+      "text": "TOOLCALL2: U11b the follow-up before Esc",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "cf3b278e2b844bd29b99b0d1906b2b0e",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-25T02:26:54.717Z",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides",
+      "asideId": "8c8ff3da-f618-4de7-915d-e1ebd0dfab2f",
+      "continues": null,
+      "questionHead": "TOOLCALL2: U11c a fresh ask the model declines",
+      "text": "TOOLCALL2: U11c a fresh ask the model declines",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "cf3b278e2b844bd29b99b0d1906b2b0e",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-25T02:27:00.973Z",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides",
+      "asideId": "8adaf028-34a8-40e8-9291-7455eab9fc08",
+      "continues": null,
+      "questionHead": "U11d base for the dropped exchange",
+      "text": "U11d base for the dropped exchange",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "cf3b278e2b844bd29b99b0d1906b2b0e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"8adaf028-34a8-40e8-9291-7455eab9fc08\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:27:06.090Z",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides",
+      "asideId": "fb38c626-01eb-432e-8bec-67ba4ed69102",
+      "continues": "8adaf028-34a8-40e8-9291-7455eab9fc08",
+      "questionHead": "U11d a follow-up after the owner dropped the prefix",
+      "text": "U11d a follow-up after the owner dropped the prefix",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "cf3b278e2b844bd29b99b0d1906b2b0e",
+      "status": 409,
+      "response": "{\"detail\":\"This aside is no longer available\"}"
+    },
+    {
+      "at": "2026-09-25T02:27:06.812Z",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides",
+      "asideId": "e62c1512-a24c-4500-8ca6-6f07838bb40f",
+      "continues": null,
+      "questionHead": "U11d a fresh aside after the dropped one",
+      "text": "U11d a fresh aside after the dropped one",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "cf3b278e2b844bd29b99b0d1906b2b0e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"e62c1512-a24c-4500-8ca6-6f07838bb40f\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:27:12.730Z",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides",
+      "asideId": "b4fff037-2870-41d7-8d13-9e34a1df43c8",
+      "continues": null,
+      "questionHead": "U16 the exchange to be adopted by chord",
+      "text": "U16 the exchange to be adopted by chord",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "cf3b278e2b844bd29b99b0d1906b2b0e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"b4fff037-2870-41d7-8d13-9e34a1df43c8\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:27:19.156Z",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides",
+      "asideId": "99437e5f-c756-4c30-ab95-fe5f2cdd5d22",
+      "continues": "b4fff037-2870-41d7-8d13-9e34a1df43c8",
+      "questionHead": "U16 a follow-up asked after the first press",
+      "text": "U16 a follow-up asked after the first press",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "cf3b278e2b844bd29b99b0d1906b2b0e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"99437e5f-c756-4c30-ab95-fe5f2cdd5d22\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:27:25.849Z",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides",
+      "asideId": "16ec38ff-51ea-4048-8f1b-13a1d344e92c",
+      "continues": null,
+      "questionHead": "U16k the exchange adopted from the keyboard",
+      "text": "U16k the exchange adopted from the keyboard",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "cf3b278e2b844bd29b99b0d1906b2b0e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"16ec38ff-51ea-4048-8f1b-13a1d344e92c\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:27:31.501Z",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides",
+      "asideId": "913efb98-4de9-4709-b33a-e99bdb4f5a82",
+      "continues": null,
+      "questionHead": "U16b the exchange adopted by the second chord",
+      "text": "U16b the exchange adopted by the second chord",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "555710c42fa148a1993a85956927f260",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"913efb98-4de9-4709-b33a-e99bdb4f5a82\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:27:36.555Z",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides",
+      "asideId": "6e734a47-a4e3-440a-a7e7-32a7422d8b4b",
+      "continues": "913efb98-4de9-4709-b33a-e99bdb4f5a82",
+      "questionHead": "U16b a second turn in the same exchange",
+      "text": "U16b a second turn in the same exchange",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "555710c42fa148a1993a85956927f260",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"6e734a47-a4e3-440a-a7e7-32a7422d8b4b\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:28:30.755Z",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides",
+      "asideId": "f571723f-ac1b-4acf-9760-b8875fa4b3e1",
+      "continues": "6e734a47-a4e3-440a-a7e7-32a7422d8b4b",
+      "questionHead": "SLOWANS: U12 a base turn for the busy window",
+      "text": "SLOWANS: U12 a base turn for the busy window",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "807f0d0c65d04e08a756421e1a2e7e79",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"f571723f-ac1b-4acf-9760-b8875fa4b3e1\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:28:42.497Z",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides",
+      "asideId": "9807a21e-d241-4d48-8712-8dde65d65f78",
+      "continues": "f571723f-ac1b-4acf-9760-b8875fa4b3e1",
+      "questionHead": "SLOWANS: U13 a second base turn for the slash door",
+      "text": "SLOWANS: U13 a second base turn for the slash door",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "807f0d0c65d04e08a756421e1a2e7e79",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"9807a21e-d241-4d48-8712-8dde65d65f78\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:29:02.663Z",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides",
+      "asideId": "23d33ab6-8a0e-4fa8-8271-333aa538ee97",
+      "continues": null,
+      "questionHead": "<reply-to>inside a moving window</reply-to>\nU14 the question",
+      "text": "<reply-to>inside a moving window</reply-to>\nU14 the question asked with a quote staged",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "807f0d0c65d04e08a756421e1a2e7e79",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"23d33ab6-8a0e-4fa8-8271-333aa538ee97\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:29:08.387Z",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides",
+      "asideId": "93592735-addf-4f0c-aaa8-7b5bf471ed70",
+      "continues": null,
+      "questionHead": "U15 an ask whose answer carries markdown",
+      "text": "U15 an ask whose answer carries markdown",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "807f0d0c65d04e08a756421e1a2e7e79",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"93592735-addf-4f0c-aaa8-7b5bf471ed70\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:29:14.656Z",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides",
+      "asideId": "091897b2-5487-4953-b729-8266c206a82d",
+      "continues": null,
+      "questionHead": "LONGANSWER U3 an aside while the agent works",
+      "text": "LONGANSWER U3 an aside while the agent works",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "807f0d0c65d04e08a756421e1a2e7e79",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"091897b2-5487-4953-b729-8266c206a82d\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    },
+    {
+      "at": "2026-09-25T02:29:28.845Z",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides",
+      "asideId": "e7308d2a-61c2-42a5-b209-da1c39b81be7",
+      "continues": null,
+      "questionHead": "UADOPT the exchange adopted end to end",
+      "text": "UADOPT the exchange adopted end to end",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "807f0d0c65d04e08a756421e1a2e7e79",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"e7308d2a-61c2-42a5-b209-da1c39b81be7\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T02:26:10.242Z",
+      "subscriptionId": "a23e91ddbf90797f",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/7713746ec8c1/events?frontend_replace=1",
+      "openedAt": "2026-09-25T02:26:14.122Z",
+      "subscriptionId": "cf3b278e2b844bd29b99b0d1906b2b0e",
+      "asideDeltas": 64,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    },
+    {
+      "url": "/v1/desktop/sessions/7713746ec8c1/events?frontend_replace=1",
+      "openedAt": "2026-09-25T02:27:31.101Z",
+      "subscriptionId": "555710c42fa148a1993a85956927f260",
+      "asideDeltas": 16,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    },
+    {
+      "url": "/v1/desktop/sessions/7713746ec8c1/events?frontend_replace=1",
+      "openedAt": "2026-09-25T02:28:04.661Z",
+      "subscriptionId": "807f0d0c65d04e08a756421e1a2e7e79",
+      "asideDeltas": 50,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    },
+    {
+      "url": "/v1/desktop/sessions/7713746ec8c1/events?frontend_replace=1",
+      "openedAt": "2026-09-25T02:29:34.691Z",
+      "subscriptionId": "c5cdc9ff1f38446096be1843b4a8f8f6",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/7713746ec8c1/events?frontend_replace=1",
+      "openedAt": "2026-09-25T02:29:37.647Z",
+      "subscriptionId": "9a308ec951f44785aacbb7bb87992da8",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    }
+  ],
+  "asideDeltaFrames": 130,
+  "deltasBySubscription": {
+    "cf3b278e2b844bd29b99b0d1906b2b0e": 64,
+    "555710c42fa148a1993a85956927f260": 16,
+    "807f0d0c65d04e08a756421e1a2e7e79": 50
+  },
+  "deltasByAside": {
+    "2628dade-a15e-4ada-a31f-13c5cc412c9e": 8,
+    "ff0393bc-3beb-469b-bc7b-47f8c666f73d": 8,
+    "a7b9cf1e-1257-4f39-a949-27654d98a53c": 8,
+    "8adaf028-34a8-40e8-9291-7455eab9fc08": 8,
+    "e62c1512-a24c-4500-8ca6-6f07838bb40f": 8,
+    "b4fff037-2870-41d7-8d13-9e34a1df43c8": 8,
+    "99437e5f-c756-4c30-ab95-fe5f2cdd5d22": 8,
+    "16ec38ff-51ea-4048-8f1b-13a1d344e92c": 8,
+    "913efb98-4de9-4709-b33a-e99bdb4f5a82": 8,
+    "6e734a47-a4e3-440a-a7e7-32a7422d8b4b": 8,
+    "f571723f-ac1b-4acf-9760-b8875fa4b3e1": 8,
+    "9807a21e-d241-4d48-8712-8dde65d65f78": 8,
+    "23d33ab6-8a0e-4fa8-8271-333aa538ee97": 8,
+    "93592735-addf-4f0c-aaa8-7b5bf471ed70": 8,
+    "091897b2-5487-4953-b729-8266c206a82d": 10,
+    "e7308d2a-61c2-42a5-b209-da1c39b81be7": 8
+  },
+  "refused422": 0,
+  "messagePosts": [
+    {
+      "at": "2026-09-25T02:26:20.539Z",
+      "url": "/v1/desktop/sessions/7713746ec8c1/messages",
+      "kind": "message",
+      "text": "seed turn for the round-3 UX walk",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"4e9bffd3-692e-49b1-b30d-923dd194beeb\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T02:26:20.539Z"
+    },
+    {
+      "at": "2026-09-25T02:28:43.648Z",
+      "url": "/v1/desktop/sessions/7713746ec8c1/messages",
+      "kind": "message",
+      "text": "U14 a plain thread question to have a row to quote",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"1e15e873-5d3f-4142-af33-f72cde2e899c\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T02:28:43.648Z"
+    },
+    {
+      "at": "2026-09-25T02:29:14.375Z",
+      "url": "/v1/desktop/sessions/7713746ec8c1/messages",
+      "kind": "message",
+      "text": "SLOWTURN: U3 take your time answering this one",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"5d175fed-5b09-4e75-8551-7e1c0c6df549\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T02:29:14.376Z"
+    }
+  ],
+  "asideOps": [
+    {
+      "at": "2026-09-25T02:26:43.369Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides/ff0393bc-3beb-469b-bc7b-47f8c666f73d",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"ff0393bc-3beb-469b-bc7b-47f8c666f73d\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:26:54.192Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides/a7b9cf1e-1257-4f39-a949-27654d98a53c",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"a7b9cf1e-1257-4f39-a949-27654d98a53c\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:27:00.356Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides/8c8ff3da-f618-4de7-915d-e1ebd0dfab2f",
+      "kind": "close",
+      "probe": false,
+      "status": 404,
+      "response": "{\"detail\":\"This aside is no longer available\"}"
+    },
+    {
+      "at": "2026-09-25T02:27:05.952Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides/8adaf028-34a8-40e8-9291-7455eab9fc08",
+      "kind": "close",
+      "probe": true,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"8adaf028-34a8-40e8-9291-7455eab9fc08\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:27:06.277Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides/8adaf028-34a8-40e8-9291-7455eab9fc08",
+      "kind": "close",
+      "probe": false,
+      "status": 404,
+      "response": "{\"detail\":\"This aside is no longer available\"}"
+    },
+    {
+      "at": "2026-09-25T02:27:12.264Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides/e62c1512-a24c-4500-8ca6-6f07838bb40f",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"e62c1512-a24c-4500-8ca6-6f07838bb40f\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:27:25.143Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides/99437e5f-c756-4c30-ab95-fe5f2cdd5d22",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"99437e5f-c756-4c30-ab95-fe5f2cdd5d22\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:27:31.057Z",
+      "method": "POST",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides/16ec38ff-51ea-4048-8f1b-13a1d344e92c/adopt",
+      "kind": "adopt",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"16ec38ff-51ea-4048-8f1b-13a1d344e92c\",\"status\":\"adopted\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:28:42.976Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides/f571723f-ac1b-4acf-9760-b8875fa4b3e1",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"f571723f-ac1b-4acf-9760-b8875fa4b3e1\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:29:07.834Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides/23d33ab6-8a0e-4fa8-8271-333aa538ee97",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"23d33ab6-8a0e-4fa8-8271-333aa538ee97\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:29:13.699Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides/93592735-addf-4f0c-aaa8-7b5bf471ed70",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"93592735-addf-4f0c-aaa8-7b5bf471ed70\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:29:28.380Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides/091897b2-5487-4953-b729-8266c206a82d",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"091897b2-5487-4953-b729-8266c206a82d\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:29:34.664Z",
+      "method": "POST",
+      "url": "/v1/desktop/sessions/7713746ec8c1/asides/e7308d2a-61c2-42a5-b209-da1c39b81be7/adopt",
+      "kind": "adopt",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"e7308d2a-61c2-42a5-b209-da1c39b81be7\",\"status\":\"adopted\"},\"replayed\":false}}"
+    }
+  ]
+}
+--- end counters ---
