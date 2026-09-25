@@ -480,7 +480,9 @@ test("the send control is pressable while a send is in flight", () => {
 	 */
 	const at = [...composer.matchAll(/aria-label=\{/g)]
 		.map((match) => match.index)
-		.find((index) => composer.slice(index, index + 900).includes('"Send message"'));
+		.find((index) =>
+			composer.slice(index, index + 900).includes('"Send message"'),
+		);
 	assert.ok(typeof at === "number" && at > 0, "the send control moved");
 	const button = composer.slice(
 		composer.lastIndexOf("<Button", at),

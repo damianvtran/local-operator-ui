@@ -1968,12 +1968,17 @@ function SessionPanel({
 	 * it was the last place in the pane still describing it. `submittedText` survives
 	 * as the retry rule's comparison basis, not as something anybody has to release.
 	 */
-	const clearError = () => {
-		setSendError(null);
-		setSendErrorCode(undefined);
-	};
-	const activeError = sendError || draft?.error;
-	const activeErrorCode = sendErrorCode ?? draft?.errorCode;
+	/*
+	 * THE PANE'S OWN `clearError` IS THE ONE ABOVE (main's `useCallback`, which the
+	 * aside door hands to `useSlashDispatch`), and the copy that stood here was this
+	 * branch's - the same two setters, a second identity. Removed by the fold: one
+	 * page, one clearer, or the dispatch callback is rebuilt on every render.
+	 *
+	 * AND `activeError`/`activeErrorCode` ARE GONE WITH IT. They were main's (the
+	 * composer alert read `sendErrorCode ?? draft.errorCode` through them), and in
+	 * the merged flow nothing reads them: this branch classifies the failure once,
+	 * in the store, and the pane renders the row's own copy.
+	 */
 	/*
 	 * A remedy that worked retires the message that asked for it.
 	 *

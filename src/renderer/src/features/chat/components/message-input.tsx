@@ -15,7 +15,6 @@ import {
 	type SendOutcome,
 	composerPlaceholder,
 	isOffRecordAsk,
-	refusedSplitNotice,
 	settleOffRecordPayload,
 	useMessageInput,
 } from "@shared/hooks/use-message-input";
@@ -414,6 +413,27 @@ type MessageInputProps = {
 	 * something else, and no send is gated by it.
 	 */
 	awaitingAnswer?: boolean;
+	/**
+	 * The canonical session the aside panel addresses, or undefined on a pane that
+	 * has none (a draft, a legacy pane).
+	 *
+	 * The panel is the ONE above-composer surface that is not derived from
+	 * anything this component already holds: it is keyed by the session the
+	 * dispatcher's `/btw` addressed, and the store that holds it is keyed the same
+	 * way. Absent means no panel can be attached here, which is the honest answer
+	 * for every harness that mounts a composer alone.
+	 */
+	asideSessionId?: string;
+	/**
+	 * Whether that session is mid-turn — the second term of the adopt gate
+	 * (`asideAdoptReady`, mirroring the TUI's `_aside_can_fork`: splicing a message
+	 * into a live turn is a request no provider accepts).
+	 *
+	 * Passed in rather than read here for the reason `canonicalStop.active` is: the
+	 * page that owns the canonical stream owns the answer, and a second reading of
+	 * it here is a second thing that can disagree with the Stop control beside it.
+	 */
+	asideStreaming?: boolean;
 	conversationId?: string;
 	messages: Message[];
 	currentJobId?: string | null;

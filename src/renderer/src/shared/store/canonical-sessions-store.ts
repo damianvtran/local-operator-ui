@@ -1076,9 +1076,17 @@ export function sendFailureCopy(
 		if (code === SESSION_UNVALIDATED_CODE)
 			return { message: SEND_FAILURE_COPY.notReady, retry: true, code };
 		if (code === ASIDE_NOT_ANSWERED_CODE)
-			return { message: SEND_FAILURE_COPY.asideNotAnswered, retry: false, code };
+			return {
+				message: SEND_FAILURE_COPY.asideNotAnswered,
+				retry: false,
+				code,
+			};
 		if (code === ASIDE_STILL_ANSWERING_CODE)
-			return { message: SEND_FAILURE_COPY.asideStillAnswering, retry: false, code };
+			return {
+				message: SEND_FAILURE_COPY.asideStillAnswering,
+				retry: false,
+				code,
+			};
 		if (code === LEADING_SLASH_CODE)
 			return { message: LEADING_SLASH_MESSAGE, retry: false, code };
 		/*
@@ -1132,7 +1140,8 @@ export function sendFailureCopy(
 	 * drop the only fact the user has to act on, and the code is what makes this
 	 * distinguishable from a bare throw, whose text is a leaked exception.
 	 */
-	if (code) return { message: fallback, retry: !withholdsRetryHint(code), code };
+	if (code)
+		return { message: fallback, retry: !withholdsRetryHint(code), code };
 	/*
 	 * And the last arm: a failure with no code at all - a raw throw, or a response
 	 * that never arrived. There is nothing to quote, so the app states what it knows.
