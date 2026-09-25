@@ -35,7 +35,13 @@ mirrored from the `evidence/*` branch convention this repository already uses.
   `docs/evidence/composer-readings/README.md` uses (row children with role,
   order, `offsetLeft`, `marginLeft` and box; `display: contents` flattened; the
   row's `clientWidth`/`scrollWidth`/`overflowX`; the path span's
-  `clientWidth`/`scrollWidth`; the box's `clientWidth`).
+  `clientWidth`/`scrollWidth`; the box's `clientWidth`). Those two files hold this
+  pass's SIX static per-story cases, and the one row below that is not among them
+  is `--grown-path` (marked in the table): its reading is the story's own
+  POST-MOUNT growth rather than a state that exists at load, so it is recorded in
+  the table and on the PR instead - and it is re-derivable from the fixture it
+  names, 41 characters at the same 7.2px per character being the 295px span that
+  the 16ch cap then pins the box around at that column.
 * **Every frame here was looked at before it was kept**, and the two pairs were
   viewed stacked (`*-pair-*-crop.png`) as well as individually.
 
@@ -51,12 +57,23 @@ so the freed width is exactly one column minus one character.
 | the operator's report: `~`, 1000px column | `chat-cwd-move--editable-shortest-path` | box **303.9**, span 115/115 | box **195.9**, span **7/7** |
 | 16-character path (exactly the cap) | `chat-cwd-move--editable-at-cap` | box 303.9, span 115/115, no ellipsis | box **303.9**, span 115/115, no ellipsis |
 | 32-character path (past the cap) | `chat-cwd-move--editable-past-cap` | box 303.9, span 115/230, ellipsis | box **303.9**, span 115/230, ellipsis |
-| the same long path grown live after mount | `chat-cwd-move--grown-path` | box 303.9, span 115/295 | box **303.9**, span 115/295 |
+| the same long path grown live after mount (not in the saved set - see below) | `chat-cwd-move--grown-path` | box 303.9, span 115/295 | box **303.9**, span 115/295 |
 | 13-character path, 880px column (below the 900px threshold) | `chat-cwd-move--editable` | box 260, span 71/94 | box **260**, span 71/94 |
 | composed row, 1024px column (`/Users/you`) | `chat-message-input--cwd-chip-editable-with-readings` | box 303.9; **cluster 367**; controls **815**; 1 line; row overflow 0 | box **260.7**; **cluster 324**; controls **815**; 1 line; row overflow 0 |
 | composed row, 240px column (the icon-only floor) | `chat-message-input--cwd-chip-in-row` | box 44; span 1/158 | box **44**; span 1/158 |
 
 Falsifiable statements these carry:
+
+* **This table is not all one instrument, and the exception is named.** The six
+  cases in `numbers-{before,after}.json` are static per-story captures; the
+  `--grown-path` row is the story's own post-mount growth, measured in the same
+  pass from the same DOM reads but not saved as one of those six. It is
+  re-derivable without a rig: the story grows to
+  `~/project-with-a-considerably-longer-name` (41 characters, which the
+  committed `grown-path/` frame's tooltip spells out in full), 41 x 7.2px = 295.2
+  is the span it reports, and the cap pins `clientWidth` at 115.2 and the box at
+  303.9px at that column - the same values `--editable-past-cap` reports for a
+  path it also ellipsises.
 
 * **the chip's left edge is invariant** - 147px in both trees in the composed row
   (`rows[0].children`, `chipGroupOffsetLeft` 17px in both);
