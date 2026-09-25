@@ -1,4 +1,10 @@
 import {
+	chatRegionOf,
+	chatRegionStep,
+	enterChatRegion,
+	nextChatRegion,
+} from "@features/chat/chat-regions";
+import {
 	SIDEBAR_COLLAPSED_WIDTH,
 	SIDEBAR_DOCK_MIN_PX,
 	SIDEBAR_MAX_WIDTH,
@@ -196,6 +202,48 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 		document.addEventListener("keydown", onToggle);
 		return () => document.removeEventListener("keydown", onToggle);
 	}, [onToggle]);
+
+	/*
+	 * THE REGION WALK (§C4; UX-BASELINE U2's ~70 presses and U6's stop order).
+	 *
+	 * `F6` and `⌘⌥↓` move focus between the chat surface's four regions in reading
+	 * order: the sidebar, the top row, the transcript, the composer. Before this,
+	 * neither chord did anything, and the only route from the bottom of the surface
+	 * to its top was Tab through every stop between - which is the walk the finding
+	 * counted.
+	 *
+	 * IT IS INSTALLED BY THE SHELL RATHER THAN BY THE ROUTE. The sidebar is this
+	 * component's and the other three regions are the route's, so a listener owned
+	 * by either one would be reaching outside its own tree. It is on `document` for
+	 * the reason the `⌘B` toggle above is: the chord has to work from inside a row, a
+	 * field and the transcript alike, and a bubbling listener on one subtree cannot.
+	 *
+	 * THE TWO GUARDS ARE THE TOGGLE'S, with one difference. A press that landed on a
+	 * dialog, an alert dialog, a menu or a listbox is that overlay's (see
+	 * `pressLandsOnOverlay` for what it deliberately does not catch). And a press is
+	 * answered even when `document.activeElement` is `<body>` - which is the point
+	 * rather than an edge case: `body` is where focus lands when the app has just
+	 * mounted or when a control unmounted under the user, and it is exactly the state
+	 * a reader most needs the walk from.
+	 */
+	const onRegionKey = useCallback((event: KeyboardEvent) => {
+		const step = chatRegionStep(event);
+		if (step === null) return;
+		if (pressLandsOnOverlay(event.target)) return;
+		const next = nextChatRegion(
+			document,
+			chatRegionOf(document.activeElement),
+			step,
+		);
+		if (next === null) return;
+		event.preventDefault();
+		enterChatRegion(document, next);
+	}, []);
+
+	useEffect(() => {
+		document.addEventListener("keydown", onRegionKey);
+		return () => document.removeEventListener("keydown", onRegionKey);
+	}, [onRegionKey]);
 
 	/*
 	 * ONE TREE FOR ALL THREE MODES, and that is the fix for a measured bug rather

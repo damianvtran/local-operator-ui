@@ -381,7 +381,25 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	}, [isConsolePaneOpen]);
 
 	return (
-		<div
+		<header
+			/*
+			 * THE TOP ROW IS THE WALK'S SECOND REGION (§C4), and it is a real `<header>`
+			 * landmark rather than a `div` with a role because that is what it is: one row
+			 * heading the conversation pane, carrying the title, the working directory and
+			 * the action cluster. `tabIndex={-1}` is the door - `F6` entering this region
+			 * lands on the row itself, which is the only sane target for a row whose
+			 * controls are its own children and whose first control would otherwise depend
+			 * on which of them happened to be drawn at this width (`⋯` absorbs whatever the
+			 * row drops).
+			 *
+			 * NO `aria-label`: a landmark that is not `banner` is named by the section it
+			 * heads, and this one heads the pane the reader is looking at. §C4 names the
+			 * three regions that needed a name (`Chats`, `Conversation`, `Message
+			 * composer`) and this is not one of them.
+			 */
+			data-chat-region="header"
+			data-region-entry
+			tabIndex={-1}
 			/*
 			 * ONE ROW, 40px, and no rule under it.
 			 *
@@ -1060,6 +1078,6 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			{reserveTrailingChrome ? (
 				<div className="chrome-reserve-trailing" />
 			) : null}
-		</div>
+		</header>
 	);
 };

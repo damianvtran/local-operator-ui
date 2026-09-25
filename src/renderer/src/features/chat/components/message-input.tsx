@@ -83,6 +83,7 @@ import {
 	CHAT_COLUMN_INSET,
 	CHAT_MEASURE,
 } from "../chat-measure";
+import { CHAT_REGION_LABEL } from "../chat-regions";
 import {
 	COMPOSER_TEXTAREA_SELECTOR,
 	registerComposerFocus,
@@ -5658,7 +5659,25 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		);
 
 		const inputContent = (
-			<form onSubmit={handleSubmit} className="w-full">
+			<form
+				onSubmit={handleSubmit}
+				/*
+				 * §C4's fourth region, and its second name: `Message composer`. The element is
+				 * already the `form` the spec's order names, so the region is a label on what
+				 * was here rather than a new wrapper - a wrapper would have made `form` a
+				 * fifth landmark and this one its child.
+				 *
+				 * THE DOOR IS THE FIELD, marked below rather than inferred: `enterChatRegion`
+				 * looks for this region's own `data-region-entry`, and the textarea is what a
+				 * reader pressing `F6` into the composer is asking for. The region root is
+				 * `tabIndex` -1 as a fallback for the states where the field is not mounted
+				 * (the refusal notice replaces the box).
+				 */
+				data-chat-region="composer"
+				aria-label={CHAT_REGION_LABEL.composer}
+				tabIndex={-1}
+				className="w-full"
+			>
 				{/*
 				 * The session's status row, ABOVE the alert and therefore above the box:
 				 * `docs/composer-status-tabs.md` § 2.1. The alert is a transient failure
@@ -6433,6 +6452,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								>
 									<textarea
 										ref={textareaRef}
+										data-region-entry
 										className={cn(
 											// The box model comes from ONE place, shared with the mirror:
 											// any drift between these two moves the pill off the characters
