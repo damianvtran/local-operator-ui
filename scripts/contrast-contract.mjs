@@ -1250,6 +1250,25 @@ const GRAPHICS = [
 		on: ["surface"],
 		fg: role,
 	})),
+	...["success", "warning", "danger", "info", "inkDim"].map((role) => ({
+		/*
+		 * Settings > Integrations' row status dot (`integration-row.tsx`). Five
+		 * inks: the four states that mean something, plus `inkDim` for Ready,
+		 * which is present but asks for nothing. Ready was first drawn in
+		 * `borderControl` (the design audit's spec) and this row refused it:
+		 * 2.77-2.96:1 on `rowSelected` in eleven palettes. The dot is always paired
+		 * with the status words, so it carries no meaning by colour alone, but it
+		 * is still a graphic object read at a glance and owes the 3:1 floor.
+		 *
+		 * Two grounds, because the row has two: the list's own `surface` card, and
+		 * `rowSelected` when a `/mcp <name>` deep link revealed it (design D14
+		 * moved that highlight off `border-accent` onto this role). A row listing
+		 * only `surface` would be blind to exactly the frame the deep link makes.
+		 */
+		name: `integration status dot (${role})`,
+		on: ["surface", "rowSelected"],
+		fg: role,
+	})),
 	...["danger", "info"].map((role) => ({
 		/*
 		 * The run pane's trigger dot, which gained a second ink
@@ -4075,6 +4094,25 @@ for (const { id, palette: p } of palettes) {
 		"elevated",
 		FLOOR.text,
 		"danger as text on a dialog's ground",
+	);
+
+	/*
+	 * Settings > Integrations' "Needs sign-in" words on a deep-linked row: TEXT
+	 * in `warning` on the `rowSelected` ground a `/mcp <name>` reveal paints.
+	 * `AS_TEXT` covers the four grounds and `accentWash`, not the row states, so
+	 * the pair the deep link actually produces is asserted where it renders.
+	 *
+	 * `danger` is deliberately NOT here: it measured 4.23-4.47:1 on this ground
+	 * in six palettes, so a highlighted row draws "Couldn't start" in `ink` and
+	 * leaves the tone to the dot beside it (`integration-row.tsx`, STATUS_INK).
+	 */
+	assertPair(
+		id,
+		p,
+		"warning",
+		"rowSelected",
+		FLOOR.text,
+		"integration status text on a deep-linked row",
 	);
 
 	/*

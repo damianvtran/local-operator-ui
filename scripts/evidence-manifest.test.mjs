@@ -826,6 +826,19 @@ const STAMP_BINDING_NOTES = [
 	 * to the pair this file ships rather than read as history.
 	 */
 	"round1LabelGapRestampNote",
+	/*
+	 * The chip cap's own: it re-derives `srcTree` for a change that moves `src/`
+	 * without touching a frame, so a reader is owed the pair AND the reason no
+	 * still was owed - and a new frame is the wrong answer to a question nobody
+	 * asked.
+	 */
+	"cwdChipCapRestampNote",
+	/*
+	 * And this branch's own, carried through every fold: it states the pair THIS
+	 * commit ships for UI PR B's Integrations redesign, so it is held to that pair
+	 * rather than read as history.
+	 */
+	"integrationsRedesignRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
