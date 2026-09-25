@@ -1874,29 +1874,29 @@ test("the notice is ONE sentence from ONE place, and the composer renders it rat
 		"utf8",
 	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
 	/*
-	 * THE INVARIANT, NOT A COUNT (fold, review round 7). This pin required exactly one
-	 * `setView(` in the hook, because a write that reaches React's state without updating
-	 * `viewRef.current` is how the delivered-after-all path went wrong - the echo registry
-	 * reads the ref. Main's fold added a SECOND route: a functional update for
-	 * `labelPending`, which deliberately touches neither the ref nor the view it holds. So
-	 * the count is the wrong thing to assert; what must hold is that exactly ONE route
-	 * writes the ref and every other route is a functional update that cannot disagree.
+	 * THE INVARIANT, AS A COUNT (corrected in round 8, where the softer form let this
+	 * through). The hook has ONE writer of the view - `commitView`, which lands the new
+	 * value on a ref before React sees it, because the echo registry reads that ref and
+	 * a queued update has not run when it asks. A second route is therefore not merely
+	 * untidy: a FUNCTIONAL `setView` reaches React's state and not the ref, so the next
+	 * `commitView` spreads the stale ref over it and undoes the write. That is exactly
+	 * how a released label came back held (`scripts/seed-label-gap.test.mjs`, "and
+	 * nothing stayed held", 2 !== 0) on every head carrying main's label machinery.
+	 *
+	 * Round 7 loosened this to "every other route is a functional update that cannot
+	 * disagree with it", which is false for the reason above and is why the failure
+	 * survived a round. One occurrence of `setView` in the file, and it is the call
+	 * inside `commitView`.
 	 */
-	const refWritingRoutes = (
-		sessionHook.match(/viewRef\.current = next;\s*\n\s*setView\(next\);/g) ?? []
-	).length;
 	assert.equal(
-		refWritingRoutes,
+		(sessionHook.match(/setView\(/g) ?? []).length,
 		1,
-		"the view is written through more than one ref-writing route, so a mutation can land in React's state without the ref the echo registry reads",
+		"the hook writes its view through a second route, and a commit from the ref will spread the stale one over it - the round-8 regression",
 	);
-	const viewRoutes = (sessionHook.match(/setView\(/g) ?? []).length;
-	const functionalRoutes = (sessionHook.match(/setView\(\(state\)/g) ?? [])
-		.length;
-	assert.equal(
-		viewRoutes - refWritingRoutes,
-		functionalRoutes,
-		"a setView route neither writes the ref nor is a functional update, so it can disagree with viewRef.current",
+	assert.match(
+		sessionHook,
+		/viewRef\.current = next;\s*\n\s*setView\(next\);/,
+		"the single route is no longer the ref-first commit, so reads of the ref are not the view the registry gets",
 	);
 	assert.ok(
 		(sessionHook.match(/commitView\(/g) ?? []).length > 10,
