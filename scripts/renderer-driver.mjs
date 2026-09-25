@@ -94,6 +94,13 @@
  *   --gate-state <label>   (with --scene settings-gate) what this run's backend
  *                          state is called in the frames and the log, so two
  *                          runs against two backends can be told apart
+ *   --integration-command <cmd> (with --scene settings-integrations) the stdio
+ *                          MCP server that scene adds through the form
+ *   --integration-args <a|b> (with --scene settings-integrations) that server's
+ *                          arguments, PIPE-separated, because the form takes one
+ *                          per line
+ *   --integration-url <url> (with --scene settings-integrations) the remote MCP
+ *                          server the scene adds through the form's URL mode
  *   --authoring-expect <refresh|stale>  (with --scene authoring-refresh) which
  *                          claim this run is in: `refresh` against a backend
  *                          whose feed publishes `authoring` frames, `stale`
@@ -382,6 +389,16 @@ const TUI_CONFIG = argValue("--tui-config", null);
  * question it does not ask.
  */
 const AUTHORING_EXPECT = argValue("--authoring-expect", "refresh");
+
+/**
+ * (with `--scene settings-integrations`) the stdio MCP server that scene adds
+ * through the form. Named by the caller because the rig's server is a file in a
+ * scratch tree, and an argument vector this script guessed would be a second
+ * place to keep it right.
+ */
+const INTEGRATION_COMMAND = argValue("--integration-command", null);
+const INTEGRATION_ARGS = argValue("--integration-args", "");
+const INTEGRATION_URL = argValue("--integration-url", null);
 /**
  * Seed the profile as an EXISTING user before the scene runs.
  *
@@ -12471,6 +12488,831 @@ async function authoringWrite(path, body) {
 	return { path, status: response.status, body: text.slice(0, 300) };
 }
 
+/**
+ * `/btw` — the aside, driven end to end in BOTH trees by one scene.
+ *
+ * WHY ONE SCENE AND NOT TWO. The change is a replacement of one surface by
+ * another, so the most useful pair of frames is the SAME steps taken in the same
+ * order against each tree, with the assertions stating what each tree did at
+ * each step. A scene per tree would let a step quietly differ between them and
+ * the pair would stop being a comparison.
+ *
+ * WHAT IT ASSERTS, RATHER THAN PHOTOGRAPHS. The report this change answers has
+ * four complaints, and every one of them is a claim a frame cannot make on its
+ * own:
+ *
+ *   1. "a second Enter" — after ONE `Input.dispatchKeyEvent` Enter, the AFTER
+ *      tree must have the panel up on the chat route with the question already
+ *      asked (the panel paints the question and its thinking line); the BEFORE
+ *      tree must have a Radix dialog up and NO answer, which is the second press
+ *      the report is about.
+ *   2. "the composer took nothing" — a probe typed while the aside is up must
+ *      land in the composer's textarea in the AFTER tree; in the BEFORE tree the
+ *      composer must be unreachable (Radix marks outside content `aria-hidden`
+ *      with `pointer-events: none`), which is read as the composer's own
+ *      `hitTest` plus its painted value.
+ *   3. "input appears erased" — in the BEFORE tree typing into the dialog's own
+ *      value-pinned field must leave the painted value EMPTY; the AFTER tree has
+ *      no such field, and its answer streams into the panel instead.
+ *   4. "only the final answer was shown" — between the ask and the first chunk
+ *      the AFTER tree paints a thinking line, and with text arriving the panel's
+ *      answer is a PREFIX of the settled answer. Both are read, not assumed: the
+ *      mid-stream frame is only taken while the text is present but incomplete.
+ *
+ * IT ALSO STATES THE ADOPT GATE AND THE ACCESSIBILITY SHAPE, because a panel
+ * whose control is dead and never says why is the failure mode the gate's own
+ * comment names: the disabled control must carry its reason while the exchange
+ * is unfinished, and the enabled one must be reachable and advertised (the
+ * chord cap is painted beside it).
+ *
+ * THE TREE IS DETECTED, NEVER PASSED IN: which surface appeared after the first
+ * Enter is the app's answer, and a scene that was TOLD which tree it is could
+ * pass on a tree where nothing it claims is true.
+ */
+async function sceneBtwAside(cdp) {
+	const FIELD = 'textarea[aria-label="Message"]';
+	const PANEL = "[data-lo-aside-panel]";
+	const DIALOG = '[role="dialog"]';
+	const QUESTION = "what does the retry budget actually cap?";
+	const TAIL = "wrong, not the provider"; // the last clause of the stub's answer
+
+	/**
+	 * The band, the panel and the modal, read as the app paints them.
+	 *
+	 * Everything here is a property of the app's own DOM: the boxes come from
+	 * `getBoundingClientRect`, the copy from `textContent`, the adopt control's
+	 * state from its own `disabled`, and the composer's reachability from
+	 * `elementFromPoint` at its centre (which is the only honest way to ask
+	 * whether a modal has taken the pointer, since the attribute that does it is
+	 * on an ancestor).
+	 */
+	const readBand = () =>
+		cdp.evaluate(`(() => {
+			const box = (el) => {
+				if (!el) return null;
+				const r = el.getBoundingClientRect();
+				return {
+					x: Math.round(r.x), y: Math.round(r.y),
+					right: Math.round(r.right), bottom: Math.round(r.bottom),
+					w: Math.round(r.width), h: Math.round(r.height),
+				};
+			};
+			const text = (el) => (el ? el.textContent.replace(/\\s+/g, " ").trim() : null);
+			const buttons = (root) =>
+				root
+					? Array.from(root.querySelectorAll("button")).map((b) => ({
+							text: b.textContent.replace(/\\s+/g, " ").trim(),
+							label: b.getAttribute("aria-label"),
+							disabled: b.disabled,
+						}))
+					: null;
+			const field = document.querySelector(${JSON.stringify(FIELD)});
+			const panel = document.querySelector(${JSON.stringify(PANEL)});
+			const dialog = document.querySelector(${JSON.stringify(DIALOG)});
+			const active = document.activeElement;
+			const dialogField = dialog ? dialog.querySelector("textarea") : null;
+			const hiddenByAncestor = (el) => {
+				let node = el ? el.parentElement : null;
+				while (node) {
+					if (node.getAttribute && node.getAttribute("aria-hidden") === "true") return true;
+					node = node.parentElement;
+				}
+				return false;
+			};
+			return {
+				field: box(field),
+				fieldMatches: document.querySelectorAll(${JSON.stringify(FIELD)}).length,
+				/** The textarea's ancestors, so an odd rect can be explained rather
+				 * than guessed at: which element is 34px tall, where the frame is, and
+				 * whether a transform is in the chain. */
+				fieldAncestors: (() => {
+					const out = [];
+					let node = field ? field.parentElement : null;
+					for (let depth = 0; depth < 6 && node; depth++) {
+						out.push({
+							tag: node.tagName.toLowerCase(),
+							cls: String(node.className ?? "").slice(0, 90),
+							rect: box(node),
+							transform: getComputedStyle(node).transform,
+							position: getComputedStyle(node).position,
+						});
+						node = node.parentElement;
+					}
+					return out;
+				})(),
+				fieldValue: field ? field.value : null,
+				fieldHittable: (() => {
+					if (!field) return null;
+					const r = field.getBoundingClientRect();
+					const hit = document.elementFromPoint(
+						Math.round(r.left + r.width / 2),
+						Math.round(r.top + r.height / 2),
+					);
+					return hit !== null && (hit === field || field.contains(hit) || (hit.contains && hit.contains(field)));
+				})(),
+				fieldHiddenByAncestor: hiddenByAncestor(field),
+				activeIsField: active === field,
+				active: active
+					? active.tagName.toLowerCase() +
+						(active.getAttribute("aria-label")
+							? "[" + active.getAttribute("aria-label") + "]"
+							: "")
+					: null,
+				box: box(field ? field.parentElement : null),
+				composerBox: (() => {
+					/*
+					 * THE COMPOSER'S OWN FRAME, found the way the app itself finds it: by
+					 * the shared measure class (chat-measure.ts), which is the one
+					 * element both the panel and the box carry. The field's parent is NOT
+					 * that element - it is inset by the box's own padding - and comparing
+					 * the panel against it reported a 17px misalignment that does not
+					 * exist on screen.
+					 */
+					const shared = Array.from(
+						document.querySelectorAll(
+							'[class*="@min-[750px]/chatcol:max-w-[900px]"]',
+						),
+					);
+					const frame = field
+						? shared.find((el) => el.contains(field))
+						: null;
+					return box(frame ?? null);
+				})(),
+				panel: box(panel),
+				panelText: text(panel),
+				panelTag: panel ? panel.tagName.toLowerCase() : null,
+				panelLabelledBy: panel ? panel.getAttribute("aria-labelledby") : null,
+				panelTitleText: panel
+					? text(panel.querySelector("h1, h2, h3"))
+					: null,
+				panelButtons: buttons(panel),
+				panelAlert: panel ? text(panel.querySelector('[role="alert"]')) : null,
+				panelThinking: panel ? panel.textContent.includes("thinking…") : null,
+				dialog: box(dialog),
+				dialogText: text(dialog),
+				dialogTitle: dialog ? text(dialog.querySelector("h1, h2, h3")) : null,
+				dialogFieldValue: dialogField ? dialogField.value : null,
+				dialogButtons: buttons(dialog),
+				dialogFieldHidden: hiddenByAncestor(dialogField),
+			};
+		})()`);
+
+	/** The control in a button list whose text starts with `label`. */
+	const button = (list, label) =>
+		(list ?? []).find((entry) => entry.text.startsWith(label)) ?? null;
+
+	/**
+	 * Start the session's runtime the way the renderer does, and wait for it.
+	 *
+	 * The composer mounts as soon as the pane does; the OWNER that answers an
+	 * aside boots on the first ask and can take seconds. Warming first is what
+	 * separates "the panel never painted the answer" from "the backend was still
+	 * starting", and this rig's whole claim is about the panel.
+	 */
+	const warm = async () => {
+		await fetch(`${BACKEND}/v1/desktop/sessions/${sessionId}/warm`, {
+			method: "POST",
+			headers: {
+				"content-type": "application/json",
+				authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+			},
+			body: "{}",
+		}).catch(() => null);
+		for (let attempt = 0; attempt < 120; attempt++) {
+			const response = await fetch(
+				`${BACKEND}/v1/desktop/sessions/${sessionId}`,
+				{
+					headers: {
+						authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+					},
+				},
+			).catch(() => null);
+			const body = response ? await response.json().catch(() => null) : null;
+			if (body && JSON.stringify(body).includes('"cold":false')) return true;
+			await wait(500);
+		}
+		return false;
+	};
+
+	// ---- the run's own preconditions ----------------------------------------
+	const hello = await verb(cdp, "hello");
+	note("hello", JSON.stringify(hello, null, 2));
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown",
+		facts.windowMode === "headless" && facts.visible === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", "localOperatorDark");
+
+	/*
+	 * A session on this run's own backend, in this run's own scratch tree: the
+	 * aside's op is keyed by a session id, so a draft (which has none) could not
+	 * ask at all. The same `POST /v1/desktop/sessions` the desktop UI makes.
+	 */
+	const workspace = join(SCRATCH, "btw-workspace");
+	mkdirSync(workspace, { recursive: true });
+	const created = await createBackendSession(workspace);
+	note(
+		"the session this scene asks from",
+		JSON.stringify(created.id ? { id: created.id } : created.body),
+	);
+	if (!created.id) {
+		throw new Error(
+			`no session on the backend (${JSON.stringify(created.body)}): this scene needs --backend pointing at an isolated daemon this run owns, with --backend-records so discovery admits it and --seed-onboarding-complete so the first-run wizard is out of the way`,
+		);
+	}
+	const sessionId = created.id;
+	await verb(cdp, "navigate", `/chat/${sessionId}`);
+	for (let attempt = 0; attempt < 80; attempt++) {
+		const present = await cdp.evaluate(
+			`document.querySelector(${JSON.stringify(FIELD)}) !== null`,
+		);
+		if (present) break;
+		await wait(100);
+	}
+	const rested = await readBand();
+	if (rested.field === null) {
+		throw new Error(
+			"no composer on screen for the session this scene created: check that the backend is on a port the PAGE allows (8080 here — `src/renderer/index.html` pins connect-src to 1111/8080, and 1111 is the operator's own backend) and that the renderer was built with VITE_LOCAL_OPERATOR_API_URL set to that same URL",
+		);
+	}
+	note("the band at rest", JSON.stringify(rested));
+	check(
+		"the composer is on screen and holds the caret before anything is typed",
+		rested.activeIsField === true,
+		JSON.stringify({ active: rested.active, field: rested.field }),
+	);
+	const warmed = await warm();
+	note(
+		"the session's owner",
+		warmed ? "warm (snapshot.cold = false)" : "NEVER WARMED",
+	);
+
+	// ---- ONE Enter ----------------------------------------------------------
+	await cdp.send("Input.insertText", { text: `/btw ${QUESTION}` });
+	await wait(150);
+	const typedLine = await readBand();
+	check(
+		"the slash line is in the composer, typed through the browser's own input pipeline",
+		typedLine.fieldValue === `/btw ${QUESTION}`,
+		`composer holds ${JSON.stringify(typedLine.fieldValue)}`,
+	);
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+
+	/*
+	 * WHICH SURFACE THE ONE PRESS PRODUCED is the scene's fork, and it is read
+	 * rather than passed in: the AFTER tree attaches the panel and asks in the
+	 * same press, the BEFORE tree presents a modal and asks only on a second one.
+	 */
+	let opened = await readBand();
+	for (let attempt = 0; attempt < 60; attempt++) {
+		if (opened.panel !== null || opened.dialog !== null) break;
+		await wait(100);
+		opened = await readBand();
+	}
+	const AFTER = opened.panel !== null;
+	const BEFORE = opened.dialog !== null;
+	if (!AFTER && !BEFORE) {
+		throw new Error(
+			`one Enter produced neither the aside panel nor the aside dialog (composer holds ${JSON.stringify(opened.fieldValue)}): the press did not reach the /btw route, so nothing about the aside is being measured`,
+		);
+	}
+	const TREE = AFTER ? "after" : "before";
+	/*
+	 * A prefix for the frame files, so a second pass at another WINDOW SIZE (the
+	 * narrow column, where the band's small-view branch is the one that renders)
+	 * writes beside the first rather than over it.
+	 */
+	const FRAME_PREFIX = RUN_LABEL ? `${TREE}-${RUN_LABEL}` : TREE;
+	note(
+		"which surface one Enter produced",
+		AFTER
+			? "the composer-attached panel ([data-lo-aside-panel])"
+			: "a Radix modal dialog ([role=dialog])",
+	);
+	check(
+		"one Enter produced exactly one of the two surfaces (never both)",
+		AFTER !== BEFORE,
+		JSON.stringify({ panel: opened.panel, dialog: opened.dialog }),
+	);
+
+	/*
+	 * The panel's own accessibility shape, from the browser's accessibility tree
+	 * rather than from attributes: `<section>` with an accessible name IS a
+	 * region, and the name is what makes it one.
+	 */
+	if (AFTER) {
+		const ax = await cdp
+			.send("Accessibility.getFullAXTree", {})
+			.catch((error) => ({ error: String(error) }));
+		const axNodes = ax?.result?.nodes ?? [];
+		const named = axNodes.filter(
+			(node) =>
+				node.name?.value === "Aside" ||
+				String(node.name?.value ?? "").startsWith("Aside"),
+		);
+		note(
+			"the panel in the accessibility tree",
+			JSON.stringify({
+				nodes: axNodes.length,
+				error: ax.error ?? null,
+				regions: axNodes
+					.filter((node) => node.role?.value === "region")
+					.map((node) => node.name?.value),
+				named: named.map((node) => ({
+					role: node.role?.value,
+					name: node.name?.value,
+					ignored: node.ignored,
+				})),
+			}),
+		);
+		check(
+			"the panel is named in the accessibility tree (a named section IS a region)",
+			named.some((node) => node.role?.value === "region"),
+			JSON.stringify(named.map((n) => `${n.role?.value}:${n.name?.value}`)),
+		);
+		check(
+			"the panel is not a dialog, so the composer keeps the app's keys",
+			!named.some((node) => node.role?.value === "dialog"),
+			JSON.stringify(named.map((node) => node.role?.value)),
+		);
+	}
+
+	const frames = [];
+	const take = async (label, mode = "settled") => {
+		const frame =
+			mode === "settled"
+				? await captureSettled(cdp, `${FRAME_PREFIX}-${label}`)
+				: await capture(cdp, `${FRAME_PREFIX}-${label}`);
+		frames.push({ ...frame, mode });
+		note(
+			"frame",
+			JSON.stringify({ label: frame.label, mode, ...frame.pixels }),
+		);
+		return frame;
+	};
+
+	if (AFTER) {
+		// ---- thinking: the panel is up, the question is asked, nothing has
+		// arrived yet. The adopt control must be dead AND must say why.
+		const thinking = await readBand();
+		check(
+			"the question is on the panel in the same press that typed it",
+			(thinking.panelText ?? "").includes(QUESTION),
+			`panel text is ${JSON.stringify(thinking.panelText)}`,
+		);
+		check(
+			"the panel is a sibling of the composer box, not the box itself",
+			thinking.panel !== null &&
+				thinking.composerBox !== null &&
+				thinking.panel.bottom <= thinking.composerBox.y + 1,
+			`panel ${JSON.stringify(thinking.panel)} vs composer box ${JSON.stringify(thinking.composerBox)}: a gap of ${thinking.composerBox.y - thinking.panel.bottom}px between them`,
+		);
+		check(
+			"the panel and the composer box share one left and right edge",
+			thinking.panel !== null &&
+				thinking.composerBox !== null &&
+				Math.abs(thinking.panel.x - thinking.composerBox.x) <= 1 &&
+				Math.abs(thinking.panel.right - thinking.composerBox.right) <= 1,
+			`panel x${thinking.panel?.x}..${thinking.panel?.right} box x${thinking.composerBox?.x}..${thinking.composerBox?.right}`,
+		);
+		check(
+			"the composer keeps the caret while the aside is up",
+			thinking.activeIsField === true,
+			JSON.stringify({ active: thinking.active }),
+		);
+		const adoptThinking = button(thinking.panelButtons, "Add to conversation");
+		check(
+			"the adopt control is present and disabled before the answer settles",
+			adoptThinking !== null && adoptThinking.disabled === true,
+			JSON.stringify(thinking.panelButtons),
+		);
+		check(
+			"the disabled adopt control states its reason on the panel",
+			(thinking.panelText ?? "").includes(
+				"The exchange is still settling — a moment before it can be added.",
+			),
+			JSON.stringify(thinking.panelText),
+		);
+		check(
+			"the panel paints the thinking line, and only one liveness element",
+			thinking.panelThinking === true &&
+				(thinking.panelText ?? "").split("thinking…").length === 2,
+			JSON.stringify(thinking.panelText),
+		);
+		check(
+			"the close control is labelled for a screen reader",
+			button(thinking.panelButtons, "") !== null &&
+				(thinking.panelButtons ?? []).some(
+					(entry) => entry.label === "Close the aside",
+				),
+			JSON.stringify(thinking.panelButtons),
+		);
+		await take("01-panel-thinking", "raw");
+
+		// ---- mid-stream: text is present and INCOMPLETE. The frame is only
+		// taken while that is true, so it cannot be a settled answer mislabelled.
+		let partial = null;
+		for (let attempt = 0; attempt < 80; attempt++) {
+			const now = await readBand();
+			const text = now.panelText ?? "";
+			if (text.includes("Transport failures") && !text.includes(TAIL)) {
+				partial = now;
+				break;
+			}
+			if (text.includes(TAIL)) break;
+			await wait(50);
+		}
+		if (partial !== null) {
+			check(
+				"the mid-stream frame carries partial text rather than the whole answer",
+				partial.panel !== null &&
+					partial.panelText.includes("Transport failures") &&
+					!partial.panelText.includes(TAIL),
+				JSON.stringify(partial.panelText),
+			);
+			await take("02-panel-midstream", "raw");
+		} else {
+			check(
+				"the answer streamed in more than one visible step",
+				false,
+				"no frame caught the answer in a partially-written state: the fake provider's chunks were not visibly separated, or the answer settled between two reads",
+			);
+		}
+
+		// ---- settled. The answer's last chunk reaches the panel BEFORE the POST
+		// that settles the turn returns, so `settled` is a distinct state from
+		// "the text is complete" and is waited for rather than assumed - the gap
+		// is measured here, because the panel is disabled and saying "wait for the
+		// answer" for exactly that window.
+		let settled = await readBand();
+		let textCompleteAt = null;
+		for (let attempt = 0; attempt < 240; attempt++) {
+			if ((settled.panelText ?? "").includes(TAIL)) {
+				textCompleteAt = Date.now();
+				break;
+			}
+			await wait(100);
+			settled = await readBand();
+		}
+		check(
+			"the settled answer is on the panel",
+			(settled.panelText ?? "").includes(TAIL),
+			JSON.stringify(settled.panelText),
+		);
+		let adoptLiveAt = null;
+		for (let attempt = 0; attempt < 240; attempt++) {
+			const live = button(settled.panelButtons, "Add to conversation");
+			if (live !== null && live.disabled === false) {
+				adoptLiveAt = Date.now();
+				break;
+			}
+			await wait(50);
+			settled = await readBand();
+		}
+		note(
+			"how long the adopt control lagged the fully-painted answer",
+			textCompleteAt === null
+				? "the answer never completed within the wait"
+				: `${adoptLiveAt === null ? "never went live" : `${adoptLiveAt - textCompleteAt}ms`}`,
+		);
+		const adoptSettled = button(settled.panelButtons, "Add to conversation");
+		check(
+			"the adopt control is live once the exchange has settled",
+			adoptSettled !== null && adoptSettled.disabled === false,
+			JSON.stringify(settled.panelButtons),
+		);
+		check(
+			"the blocked reason is gone once the control is live",
+			!(settled.panelText ?? "").includes(
+				"The exchange is still settling — a moment before it can be added.",
+			),
+			JSON.stringify(settled.panelText),
+		);
+		check(
+			"the adopt chord is advertised beside the control",
+			(settled.panelText ?? "").includes("+F"),
+			JSON.stringify(settled.panelText),
+		);
+		check(
+			"the panel keeps its contract sentence and the answer, and no second liveness line",
+			(settled.panelText ?? "").includes(
+				"off the record — nothing here joins the conversation",
+			) && settled.panelThinking === false,
+			JSON.stringify(settled.panelText),
+		);
+		await take("03-panel-settled");
+	}
+
+	if (BEFORE) {
+		check(
+			"one Enter opened a modal and did NOT ask: no answer is on it yet",
+			opened.dialogFieldValue === QUESTION,
+			`the dialog's field holds ${JSON.stringify(opened.dialogFieldValue)}, dialog title ${JSON.stringify(opened.dialogTitle)}`,
+		);
+		check(
+			"the modal is a dialog role, which is what takes the app's keys",
+			opened.dialog !== null && opened.dialogTitle === "Aside (off the record)",
+			JSON.stringify({ dialog: opened.dialog, title: opened.dialogTitle }),
+		);
+		await take("01-modal-open", "raw");
+	}
+
+	/*
+	 * THE REPORTED BUG, DRIVEN. A probe typed while the aside is up must reach the
+	 * composer in the AFTER tree. In the BEFORE tree the composer is outside a
+	 * modal, and the two readings that say so are the composer's own hit test and
+	 * its painted value — a click is deliberately NOT delivered there, because a
+	 * Radix modal dismisses on an outside press and that would end the very state
+	 * under test.
+	 */
+	const probe = "composer probe line";
+	let beforeProbe = await readBand();
+	if (AFTER) {
+		await clickAt(cdp, FIELD);
+		beforeProbe = await readBand();
+		check(
+			"the composer takes the pointer while the panel is up",
+			beforeProbe.fieldHittable !== false && beforeProbe.activeIsField === true,
+			JSON.stringify({
+				hittable: beforeProbe.fieldHittable,
+				active: beforeProbe.active,
+			}),
+		);
+	}
+	await cdp.send("Input.insertText", { text: probe });
+	await wait(250);
+	const afterProbe = await readBand();
+	if (AFTER) {
+		check(
+			"a probe typed while the panel is up LANDS in the composer and stays",
+			afterProbe.fieldValue === probe,
+			`composer holds ${JSON.stringify(afterProbe.fieldValue)}`,
+		);
+		check(
+			"the panel is still up after typing in the composer",
+			afterProbe.panel !== null,
+			JSON.stringify(afterProbe.panel),
+		);
+		await take("04-composer-typed-while-panel-up");
+	} else {
+		check(
+			"the composer cannot be reached while the modal is up (Radix marks it aria-hidden, pointer-events: none)",
+			beforeProbe.fieldHittable === false &&
+				beforeProbe.fieldHiddenByAncestor === true,
+			JSON.stringify({
+				hittable: beforeProbe.fieldHittable,
+				hidden: beforeProbe.fieldHiddenByAncestor,
+			}),
+		);
+		check(
+			"a probe typed while the modal is up does NOT land in the composer",
+			afterProbe.fieldValue === "",
+			`composer holds ${JSON.stringify(afterProbe.fieldValue)}`,
+		);
+		await take("02-composer-blocked");
+
+		/*
+		 * THE SECOND GESTURE, and this is the report's own complaint: the BEFORE tree
+		 * asks nothing on the press that typed the question, so the answer only
+		 * arrives after a SECOND one - the modal's own submit control.
+		 *
+		 * The walk is a KEYBOARD walk (Tab from the field, then Enter on the submit
+		 * button) rather than a pointer click, because it measures two things at once:
+		 * that the second gesture exists, and where it sits in the modal's focus
+		 * order. The focus order is recorded rather than asserted - it belongs to the
+		 * surface being replaced - and the submission is asserted.
+		 */
+		await clickAt(cdp, `${DIALOG} textarea`);
+		await wait(150);
+		const focusWalk = [];
+		let submitted = false;
+		for (let step = 0; step < 6 && !submitted; step++) {
+			const active = await cdp.evaluate(`(() => {
+				const a = document.activeElement;
+				return a
+					? {
+							tag: a.tagName.toLowerCase(),
+							type: a.getAttribute("type"),
+							label: a.getAttribute("aria-label"),
+							text: (a.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 40),
+						}
+					: null;
+			})()`);
+			focusWalk.push(active);
+			if (active && (active.type === "submit" || active.text === "Ask")) {
+				await pressChord(cdp, {
+					key: "Enter",
+					code: "Enter",
+					virtualKeyCode: 13,
+				});
+				submitted = true;
+				break;
+			}
+			await pressChord(cdp, { key: "Tab", code: "Tab", virtualKeyCode: 9 });
+			await wait(120);
+		}
+		note("the modal's focus order", JSON.stringify(focusWalk));
+		check(
+			"the modal's own control is what asks, and only a second gesture reaches it",
+			submitted === true,
+			`no submit control was reachable by Tab in 6 steps: ${JSON.stringify(focusWalk)}`,
+		);
+		let answered = await readBand();
+		for (let attempt = 0; attempt < 240; attempt++) {
+			if ((answered.dialogText ?? "").includes(TAIL)) break;
+			await wait(100);
+			answered = await readBand();
+		}
+		check(
+			"the second gesture is what asks in this tree — the finished answer, all at once",
+			(answered.dialogText ?? "").includes(TAIL),
+			JSON.stringify(answered.dialogText),
+		);
+		check(
+			"the composer is still unreachable after the answer lands",
+			answered.fieldHittable === false && answered.fieldValue === "",
+			JSON.stringify({
+				hittable: answered.fieldHittable,
+				value: answered.fieldValue,
+			}),
+		);
+		await take("03-modal-answered");
+
+		/*
+		 * THE PICTURE-DEPENDENT ERASE, and it can only be taken AFTER an answer has
+		 * landed: the field's painted value is `answer ? "" : text`, so before the
+		 * first answer the box shows what is typed into it and after one it is
+		 * pinned empty however much is typed. That is the report's third complaint,
+		 * and it is a second mechanism beside the modal's reach.
+		 */
+		await clickAt(cdp, `${DIALOG} textarea`);
+		await wait(150);
+		const focused = await readBand();
+		await cdp.send("Input.insertText", { text: probe });
+		await wait(250);
+		const typed = await readBand();
+		note(
+			"the modal's own follow-up field",
+			JSON.stringify({
+				focusedBefore: focused.active,
+				valueAfterTyping: typed.dialogFieldValue,
+				composerValue: typed.fieldValue,
+			}),
+		);
+		check(
+			"after an answer, typing into the modal's follow-up field leaves the painted value EMPTY (the pinned value)",
+			typed.dialogFieldValue === "" || typed.dialogFieldValue === null,
+			`the dialog's field paints ${JSON.stringify(typed.dialogFieldValue)} after ${JSON.stringify(probe)} was typed into it`,
+		);
+		await take("04-followup-erased");
+	}
+
+	// ---- Escape ------------------------------------------------------------
+	await pressChord(cdp, { key: "Escape", code: "Escape", virtualKeyCode: 27 });
+	let closed = await readBand();
+	for (let attempt = 0; attempt < 60; attempt++) {
+		if (closed.panel === null && closed.dialog === null) break;
+		await wait(100);
+		closed = await readBand();
+	}
+	check(
+		"Escape closes the aside and leaves neither surface up",
+		closed.panel === null && closed.dialog === null,
+		JSON.stringify({ panel: closed.panel, dialog: closed.dialog }),
+	);
+	check(
+		"the composer holds the caret again after Escape",
+		closed.activeIsField === true,
+		JSON.stringify({ active: closed.active, field: closed.field }),
+	);
+	if (AFTER) {
+		check(
+			"the composer's own text survived the aside being closed",
+			closed.fieldValue === probe,
+			`composer holds ${JSON.stringify(closed.fieldValue)}`,
+		);
+	}
+	await take(`${AFTER ? "05" : "05"}-escape-restored`);
+
+	/*
+	 * The two remaining states of the panel, and only the AFTER tree has them: a
+	 * bare `/btw` (an empty panel, the next line becomes its first question) and an
+	 * ask the backend refused (the error is ON the panel, not in a toast).
+	 */
+	if (AFTER) {
+		// Clear the probe out of the composer first (`Cmd+A` then type, the
+		// gesture a user makes; `Input.insertText` inserts AT THE CARET and would
+		// otherwise prefix the command line with the probe).
+		await clickAt(cdp, FIELD);
+		await pressChord(cdp, {
+			key: "a",
+			code: "KeyA",
+			virtualKeyCode: 65,
+			modifiers: MODIFIER.meta,
+			commands: ["selectAll"],
+		});
+		await cdp.send("Input.insertText", { text: "/btw" });
+		await wait(150);
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		let empty = await readBand();
+		for (let attempt = 0; attempt < 60; attempt++) {
+			if (empty.panel !== null) break;
+			await wait(100);
+			empty = await readBand();
+		}
+		check(
+			"a bare /btw attaches an EMPTY panel rather than asking nothing visible",
+			empty.panel !== null &&
+				(empty.panelText ?? "").includes(
+					"Type a question in the composer below",
+				),
+			JSON.stringify(empty.panelText),
+		);
+		const adoptEmpty = button(empty.panelButtons, "Add to conversation");
+		check(
+			"the empty panel's adopt control is disabled and says there is nothing to add",
+			adoptEmpty !== null &&
+				adoptEmpty.disabled === true &&
+				(empty.panelText ?? "").includes("Nothing to add yet."),
+			JSON.stringify({ text: empty.panelText, buttons: empty.panelButtons }),
+		);
+		await take("06-empty-panel-bare-btw");
+
+		/*
+		 * The refusal needs its OWN panel, so this closes the empty one first:
+		 * while an aside is attached the composer's Enter addresses the ASIDE
+		 * rather than dispatching the command again.
+		 */
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		await wait(300);
+		await cdp.send("Input.insertText", {
+			text: "/btw TOOLCALL2: keep calling tools",
+		});
+		await wait(150);
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		let refused = await readBand();
+		for (let attempt = 0; attempt < 300; attempt++) {
+			if (refused.panelAlert !== null) break;
+			await wait(100);
+			refused = await readBand();
+		}
+		check(
+			"a refused ask states the refusal ON the panel, not in a toast",
+			refused.panelAlert !== null,
+			JSON.stringify(refused.panelAlert),
+		);
+		check(
+			"the panel's error is an alert, and the adopt control stays disabled with its reason",
+			refused.panelAlert !== null &&
+				button(refused.panelButtons, "Add to conversation")?.disabled === true,
+			JSON.stringify({
+				alert: refused.panelAlert,
+				buttons: refused.panelButtons,
+			}),
+		);
+		await take("07-panel-error");
+	}
+
+	check(
+		"every capture wrote a PNG of the requested size",
+		frames.every(
+			(frame) =>
+				frame.bytes > 1000 &&
+				frame.pixels.width ===
+					frame.viewport.width * frame.viewport.devicePixelRatio &&
+				frame.pixels.height ===
+					frame.viewport.height * frame.viewport.devicePixelRatio,
+		),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: ${frame.pixels.width}x${frame.pixels.height}, ${frame.bytes}B`,
+			)
+			.join(" | "),
+	);
+	check(
+		"every settled capture is a frame the app held still for, with no toast on it",
+		frames
+			.filter((frame) => frame.mode === "settled")
+			.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: ${frame.mode}, stable=${frame.stable}, toastFree=${frame.toastFree}`,
+			)
+			.join(" | "),
+	);
+	return { tree: TREE, frames };
+}
+
 async function sceneNewChat(cdp) {
 	/*
 	 * Start anywhere but the chat route: `navigate("/chat")` is 80% of what this
@@ -12686,6 +13528,910 @@ async function focusField(cdp, selector) {
 		input.focus();
 		return document.activeElement === input;
 	})()`);
+}
+
+/**
+ * Settings > Integrations with NO chat and NO model: add stdio, add remote, test
+ * both, remove both.
+ *
+ * WHY THIS SCENE EXISTS. The page used to route every read and write through a
+ * conversation's session, which booted a runtime - and so needed a model
+ * provider - just to write `mcp.json` (UX walk U5: "Integrations can't be set up
+ * until a model works"). The redesign reads and writes the SESSIONLESS catalog
+ * (`GET|POST /v1/desktop/mcp`, capability `mcp_catalog`), and the claim to prove
+ * is exactly the one the walk refuted: on a fresh config with no model provider
+ * and no session at all, the page adds a local command AND a remote URL, tests
+ * each, and removes each.
+ *
+ * BOTH TRANSPORTS, because they are two different rows on this page and two
+ * different code paths on the backend: a local command's row reports through the
+ * probe that spawns it, and a remote URL's through an HTTP handshake the daemon
+ * makes. A run that only ever added a stdio server would leave the URL half - its
+ * `remote_url` transport, its endpoint, and the `--version`-less handshake - to
+ * the reader's imagination.
+ *
+ * Every step is asserted on BOTH sides - what the page shows, and what the
+ * backend's own catalog says - because either half alone passes a wrong
+ * implementation: a page that rendered an optimistic row over a refused write
+ * would satisfy the pixels, and a sessionless route that quietly created a
+ * session would satisfy the backend. The last check closes that second door by
+ * reading the session list before and after: it must still be empty.
+ *
+ * WHAT IT NEEDS: `--backend <url>` - a daemon this run owns, whose config root
+ * has NO model provider configured - the renderer built against the same URL,
+ * `LOCAL_OPERATOR_DESKTOP_TOKEN` in this script's environment,
+ * `--integration-command`/`--integration-args` for the stdio server (arguments
+ * PIPE-separated, because the form takes one per line), and `--integration-url`
+ * for the remote one.
+ *
+ * AND A CONFIG ROOT FREE OF INTEGRATIONS. A rig re-used after a run that died
+ * mid-way still lists the rows that run added, so the empty state never appears
+ * and the closing "the catalog is empty again" count includes them. Measured,
+ * not hypothesised: the second run on a dirty rig reported three failures that
+ * were all one leftover row pair, while its own add/test/remove steps passed.
+ */
+
+/** One backend read this run owns, unwrapped like the app's own transport does. */
+async function readBackendJson(path) {
+	const response = await fetch(`${BACKEND}${path}`, {
+		headers: {
+			authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+		},
+	});
+	const text = await response.text();
+	let body = null;
+	try {
+		body = JSON.parse(text);
+	} catch {
+		/* not JSON: reported as text by the caller */
+	}
+	return { status: response.status, body: body?.result ?? body ?? text };
+}
+
+/**
+ * Press something with a REAL pointer sequence, scrolling it into view first.
+ *
+ * Radix's menu opens on `pointerdown`, so a synthetic `click` on the trigger
+ * leaves the menu shut - and a row's trigger can sit below the fold, where a
+ * press at its off-screen coordinates would hit nothing and read exactly like a
+ * control that does not work. So the element is scrolled to the middle of the
+ * viewport, its centre is read from the live layout, and the press is dispatched
+ * there; the topmost element at that point comes back with the reading, which is
+ * how a covered or disabled control is told from a broken press.
+ */
+async function pointerPressSelector(cdp, selector, { attempts = 3 } = {}) {
+	/*
+	 * RETRIED ON A MISS, and only on a miss. `press` measures the box in the app
+	 * and the dispatcher presses those coordinates a moment later; a row whose
+	 * STATUS TEXT changes width moves its right-aligned controls between the two,
+	 * so the first attempt can land on the row's padding and read `hit: false`.
+	 * A press that LANDED is never repeated - for a menu trigger that would close
+	 * what it just opened - and a control that is genuinely covered still comes
+	 * back `hit: false` on every attempt, which is the reading the caller
+	 * asserts on.
+	 */
+	let landed = await pointerPressSelectorOnce(cdp, selector);
+	for (
+		let attempt = 1;
+		attempt < attempts && landed && landed.hit !== true;
+		attempt += 1
+	) {
+		await wait(400);
+		landed = await pointerPressSelectorOnce(cdp, selector);
+	}
+	return landed;
+}
+
+async function pointerPressSelectorOnce(cdp, selector) {
+	const point = await cdp.evaluate(`(() => {
+		const node = document.querySelector(${JSON.stringify(selector)});
+		if (!node) return null;
+		node.scrollIntoView({ block: "center", inline: "center" });
+		const rect = node.getBoundingClientRect();
+		const x = rect.left + rect.width / 2;
+		const y = rect.top + rect.height / 2;
+		const top = document.elementFromPoint(x, y);
+		return {
+			x,
+			y,
+			hit: top !== null && (top === node || node.contains(top)),
+			top: top === null ? "none" : top.tagName.toLowerCase(),
+			rect: { top: Math.round(rect.top), height: Math.round(rect.height) },
+			viewport: window.innerHeight,
+		};
+	})()`);
+	if (!point) return null;
+	await wait(150);
+	await pressPointer(cdp, point.x, point.y);
+	return point;
+}
+
+async function sceneSettingsIntegrations(cdp) {
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown",
+		facts.windowMode === "headless" && facts.visible === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	check(
+		"this scene is running against a live, isolated backend",
+		Boolean(BACKEND),
+		"pass --backend <url> with the renderer built against the same URL",
+	);
+	/*
+	 * NO FIRST-RUN MODAL OVER THE PAGE. A fresh profile in front of a fresh
+	 * backend is a first-run user, and the onboarding wizard is a MODAL - it
+	 * paints a provider grid over the whole page, so every press this scene makes
+	 * at a control's coordinates lands on the wizard instead. Measured: a re-run
+	 * that dropped `--seed-onboarding-complete` reported "press never landed" for
+	 * the add form's transport switch with the hit element `span "API key"` from
+	 * the provider list, and the frame shows "Connect a provider, Step 1 of 6"
+	 * over the form. The guard is here rather than in the runner because a scene
+	 * whose presses are covered proves nothing whichever way it fails.
+	 */
+	const onboardingModal = await waitForScene(
+		cdp,
+		`!document.body.innerText.includes("Connect a provider") &&
+			!document.body.innerText.includes("Step 1 of 6")`,
+		2000,
+	);
+	check(
+		"no onboarding wizard is covering the page this scene drives",
+		onboardingModal === true,
+		"pass --seed-onboarding-complete: the first-run wizard is a modal, and it swallows every press",
+	);
+	if (!BACKEND) return [];
+	const frames = [];
+	const stdioName = `echo-${process.pid}`;
+	const remoteName = `remote-${process.pid}`;
+
+	/* ---- 0. the backend's own starting facts --------------------------- */
+	/*
+	 * AN EMPTY START, ASSERTED ON THE BACKEND rather than inferred from the page.
+	 * A rig that has already been driven leaves the servers an earlier run added,
+	 * and then the first "the page is empty" check fails for a reason that has
+	 * nothing to do with the code under test (measured: two runs against one rig
+	 * left four servers behind, and the empty-list checks failed twice for it).
+	 */
+	const startCatalog = await readBackendJson("/v1/desktop/mcp");
+	const startServers = startCatalog.body?.data?.servers ?? [];
+	const startSessions = await readBackendJson("/v1/desktop/sessions?limit=50");
+	// Inline rather than through the scene's `countSessions`, which is declared
+	// further down: this guard runs before it and a helper that is not yet
+	// initialised is a TDZ error, not a reading.
+	const startSessionCount = Array.isArray(startSessions.body?.sessions)
+		? startSessions.body.sessions.length
+		: null;
+	check(
+		"this rig starts EMPTY: no servers and no conversations",
+		startServers.length === 0 && startSessionCount === 0,
+		`the rig already lists servers ${JSON.stringify(startServers.map((server) => server.name))} and ${startSessionCount} conversation(s) - use a fresh rig, or clear its mcp.json and its sessions/`,
+	);
+
+	const caps = await readBackendJson("/v1/capabilities");
+	note(
+		"backend capabilities",
+		JSON.stringify(caps.body?.features ?? caps.body),
+	);
+	const hasCatalog = (caps.body?.features?.mcp_catalog ?? 0) >= 1;
+	check(
+		"the backend advertises the sessionless catalog",
+		hasCatalog,
+		`features=${JSON.stringify(caps.body?.features ?? caps)}`,
+	);
+	/*
+	 * A scene whose subject does not exist in this run STOPS here rather than
+	 * failing eleven more times: every later step is about the catalog route, so
+	 * against a backend without the capability their failures would describe the
+	 * fallback surface instead of the claim under test.
+	 */
+	if (!hasCatalog) {
+		note(
+			"stopping",
+			"this backend serves no sessionless catalog, so there is nothing here for this scene to measure; the capability check above is the whole reading",
+		);
+		return frames;
+	}
+	/*
+	 * NO MODEL PROVIDER, stated as a fact rather than assumed: this is the
+	 * condition the walk could not get past, so a run on a configured backend
+	 * would prove nothing about it.
+	 */
+	const config = await readBackendJson("/v1/config");
+	const accounts = await readBackendJson("/v1/auth/status");
+	const signedIn = Array.isArray(accounts.body?.accounts)
+		? accounts.body.accounts.filter((account) => account?.signed_in)
+		: [];
+	note(
+		"model access before the run",
+		`default provider=${JSON.stringify(config.body?.default_provider ?? null)} default model=${JSON.stringify(config.body?.default_model ?? null)} signed-in accounts=${signedIn.length} (status ${accounts.status})`,
+	);
+	check(
+		"the config has no model provider, which is the state this scene is about",
+		!config.body?.default_provider && signedIn.length === 0,
+		`default_provider=${JSON.stringify(config.body?.default_provider ?? null)} signed-in=${signedIn.length}`,
+	);
+	const countSessions = (read) =>
+		Array.isArray(read.body?.sessions) ? read.body.sessions.length : null;
+	const sessionsBefore = await readBackendJson("/v1/desktop/sessions?limit=50");
+	note(
+		"sessions before",
+		`${countSessions(sessionsBefore)} (status ${sessionsBefore.status})`,
+	);
+
+	/* ---- the page's own controls, read back as text and as the catalog -- */
+	const catalog = () =>
+		readBackendJson("/v1/desktop/mcp").then((read) => ({
+			status: read.status,
+			document: read.body?.data ?? null,
+		}));
+	const rowFor = async (name) => {
+		const { document } = await catalog();
+		return document?.servers?.find((server) => server.name === name) ?? null;
+	};
+	/**
+	 * Press a control and prove the press LANDED on it.
+	 *
+	 * WHY THIS EXISTS. `press` measures the element's box in the app and the
+	 * DRIVER dispatches the mouse event at those coordinates; between the two, a
+	 * React commit can move the control. A row's controls are right-aligned after
+	 * a status whose WIDTH changes ("Ready" -> "Connecting…" -> "Connected · 1
+	 * tool"), and the list polls while an operation runs, so the button slides
+	 * horizontally a moment after it is measured - and the press lands on the
+	 * row's padding. The first scenario run reported `hitTest: false` with the
+	 * target `disabled: true`, which reads exactly like a broken control.
+	 *
+	 * So a press is retried until the hit test says it landed, and the retry
+	 * window is also the settle window (400 ms, longer than the 2 s poll's
+	 * commit). A scene that asserted an outcome from an unverified press would be
+	 * reporting on whatever happened to be under the pointer.
+	 */
+	const pressSettled = async (selector, { attempts = 8 } = {}) => {
+		/*
+		 * MEASURE FIRST, THEN PRESS. `measure` reports the same hit test as
+		 * `press` without dispatching anything, so polling it separates the two
+		 * things a miss can mean: the page has not settled yet (measure goes true
+		 * on its own) or the control is really covered (it never does). The press
+		 * then happens once, against a control this run has just confirmed is the
+		 * topmost element at its own centre.
+		 */
+		for (let attempt = 0; attempt < attempts; attempt += 1) {
+			const measured = await verb(cdp, "measure", selector);
+			if (measured?.hitTest === true) break;
+			await wait(400);
+		}
+		const pressed = await verb(cdp, "press", selector);
+		if (pressed?.hitTest !== true) {
+			await wait(400);
+			const retry = await verb(cdp, "press", selector);
+			if (retry?.hitTest !== true)
+				note("press never landed", `${selector} ${JSON.stringify(retry)}`);
+			return retry;
+		}
+		return pressed;
+	};
+
+	/** What has focus, in the terms a focus assertion reads. */
+	const activeElementOf = (targetCdp) =>
+		targetCdp.evaluate(`(() => {
+			const node = document.activeElement;
+			if (!node) return null;
+			return {
+				tag: node.tagName.toLowerCase(),
+				label: node.getAttribute('aria-label'),
+				action: node.getAttribute('data-integration-action'),
+				text: (node.textContent || '').trim().slice(0, 40),
+			};
+		})()`);
+
+	const rowText = (name) =>
+		cdp.evaluate(
+			`(document.querySelector('[data-integration=${JSON.stringify(name)}]')?.innerText || '').replace(/\\s+/g, ' ')`,
+		);
+	const typeInto = async (selector, text) => {
+		await verb(cdp, "press", selector);
+		await focusField(cdp, selector);
+		await cdp.send("Input.insertText", { text });
+	};
+
+	/**
+	 * Fill the add form and submit it, asserting the row arrives on both sides.
+	 *
+	 * `mode` picks which transport the form is in, which is itself a press - the
+	 * two are a radio pair on the real form, so choosing one the way a user does
+	 * is what proves the form's own switch works rather than merely its fields.
+	 */
+	const addThroughForm = async ({ name, mode, frame }) => {
+		await verb(cdp, "press", "button[data-tour-tag='mcp-add-server']");
+		await waitForScene(
+			cdp,
+			`Boolean(document.querySelector('#integration-add-name'))`,
+		);
+		await typeInto("#integration-add-name", name);
+		if (mode === "url") {
+			// The transport pair on the real form, pressed through the hook the
+			// component exposes: the two buttons' WORDING is a design decision
+			// that may change, the axis they choose between may not.
+			const switched = await pressSettled("[data-integration-transport='url']");
+			check(
+				"the add form switched to Remote URL",
+				switched?.hitTest === true,
+				JSON.stringify(switched),
+			);
+			await waitForScene(
+				cdp,
+				`Boolean(document.querySelector('#integration-add-url'))`,
+			);
+			await typeInto("#integration-add-url", INTEGRATION_URL ?? "");
+		} else {
+			await typeInto(
+				"#integration-add-command",
+				INTEGRATION_COMMAND ?? "python3",
+			);
+			if (INTEGRATION_ARGS)
+				await typeInto(
+					"#integration-add-args",
+					INTEGRATION_ARGS.split("|").join("\n"),
+				);
+		}
+		await captureSettled(cdp, frame);
+		await verb(
+			cdp,
+			"press",
+			"form[aria-label='Add integration'] button[type='submit']",
+		);
+		const onPage = await waitForScene(
+			cdp,
+			`Boolean(document.querySelector('[data-integration=${JSON.stringify(name)}]'))`,
+			750,
+		);
+		const row = await rowFor(name);
+		note(`catalog after adding ${name}`, JSON.stringify(row).slice(0, 700));
+		note(`row text for ${name}`, await rowText(name));
+		return { onPage, row };
+	};
+
+	/** Press the row's one action, then wait for the backend's answer. */
+	const testRow = async (name) => {
+		const pressed = await pressSettled(
+			`[data-integration=${JSON.stringify(name)}] [data-integration-action='test']`,
+		);
+		note(`pressed Test on ${name}`, JSON.stringify(pressed));
+		const moving = await waitForScene(
+			cdp,
+			`/Connecting|Connected/.test(document.querySelector('[data-integration=${JSON.stringify(name)}]')?.innerText || '')`,
+			250,
+		);
+		note(`row while testing ${name}`, `${moving} ${await rowText(name)}`);
+		const settled = await waitForScene(
+			cdp,
+			`/Connected ·|Couldn't start/.test(document.querySelector('[data-integration=${JSON.stringify(name)}]')?.innerText || '')`,
+			2500,
+		);
+		const row = await rowFor(name);
+		note(`catalog after testing ${name}`, JSON.stringify(row).slice(0, 700));
+		note(`row text after testing ${name}`, await rowText(name));
+		return { settled, row };
+	};
+
+	/**
+	 * Remove the row through its overflow, with the confirm the page asks.
+	 *
+	 * The ORDER is the assertion, so each step waits for the state it creates:
+	 * the menu is opened by a real pointer press, the confirm is waited for
+	 * BEFORE it is pressed (a press at a control that is not there yet times out
+	 * and reports a missing element, which says nothing about whether Remove
+	 * asks first), and the row is waited for to disappear on both sides.
+	 *
+	 * If the confirm never appears the function returns with `asked: false` and
+	 * presses nothing, so the failure is the check's to report rather than an
+	 * exception that hides which claim broke.
+	 */
+	const removeRow = async (name, { overflowFrame, confirmFrame } = {}) => {
+		const trigger = await pointerPressSelector(
+			cdp,
+			`[aria-label=${JSON.stringify(`More actions for ${name}`)}]`,
+		);
+		const opened = await waitForScene(
+			cdp,
+			`Boolean(document.querySelector("[data-integration-menu='remove']"))`,
+			250,
+		);
+		if (overflowFrame) await captureSettled(cdp, overflowFrame);
+		const item = await pointerPressSelector(
+			cdp,
+			"[data-integration-menu='remove']",
+		);
+		const asked = await waitForScene(
+			cdp,
+			`document.body.innerText.includes(${JSON.stringify(`Remove ${name}?`)})`,
+			250,
+		);
+		if (confirmFrame) await captureSettled(cdp, confirmFrame);
+		if (!asked)
+			return {
+				trigger,
+				opened,
+				item,
+				asked,
+				gone: false,
+				stillThere: Boolean(await rowFor(name)),
+			};
+		await verb(cdp, "press", "[data-integration-confirm='remove']");
+		const gone = await waitForScene(
+			cdp,
+			`!document.querySelector('[data-integration=${JSON.stringify(name)}]')`,
+			750,
+		);
+		return {
+			trigger,
+			opened,
+			item,
+			asked,
+			gone,
+			stillThere: Boolean(await rowFor(name)),
+		};
+	};
+
+	/* ---- 1. the page, with nothing configured -------------------------- */
+	await verb(cdp, "navigate", "/settings?section=integrations");
+	await verb(cdp, "setTheme", "localOperatorDark");
+	/*
+	 * Generous on purpose: this is the FIRST read of the page, and under the
+	 * fleet's load the catalog round trip can take seconds - a 500 ms window
+	 * reported the loading spinner as "the section is not there", which reads
+	 * exactly like a broken page (measured: the re-run's first check failed on a
+	 * loaded host while the run a minute earlier passed it).
+	 */
+	const empty = await waitForScene(
+		cdp,
+		`document.body.innerText.includes("No integrations yet")`,
+		6000,
+	);
+	/*
+	 * AND WAIT FOR THE PAGE'S OWN SCROLL. `section=integrations` is a deep link,
+	 * and the settings page walks the target into view with a ResizeObserver -
+	 * this page is very long, so the heading is below the fold for the first
+	 * frames. `innerText` answers for text that is scrolled away, so the check
+	 * above can pass while the frame would photograph Backend settings instead of
+	 * the section it is about (measured: the first run's frame 01 did exactly
+	 * that). The scroll is the PRODUCT's, not this script's; the explicit
+	 * fallback below exists only so a frame is still of the right surface, and it
+	 * says in the log that it had to do it.
+	 */
+	const headingInView = `(() => {
+		const node = Array.from(document.querySelectorAll("h2")).find(
+			(n) => n.textContent.trim() === "Integrations",
+		);
+		if (!node) return false;
+		const rect = node.getBoundingClientRect();
+		return rect.top >= 0 && rect.top < window.innerHeight - 120;
+	})()`;
+	let inView = await waitForScene(cdp, headingInView, 500);
+	if (!inView) {
+		await cdp.evaluate(
+			`(() => {
+				const node = Array.from(document.querySelectorAll("h2")).find(
+					(n) => n.textContent.trim() === "Integrations",
+				);
+				if (node) node.scrollIntoView({ block: "start" });
+			})()`,
+		);
+		await wait(400);
+		inView = await waitForScene(cdp, headingInView, 100);
+	}
+	check(
+		"the section the deep link names is IN VIEW before the frame is taken",
+		inView === true,
+		"the Integrations heading never entered the viewport, so a frame here would photograph another section",
+	);
+	check(
+		"with no chat open and no model, the page still shows the section",
+		empty === true,
+		(await cdp.evaluate("document.body.innerText.slice(0, 600)")) ?? "",
+	);
+	frames.push(await captureSettled(cdp, "integrations-live-01-empty"));
+
+	/* ---- 2. add a local command, then a remote URL --------------------- */
+	const added = await addThroughForm({
+		name: stdioName,
+		mode: "command",
+		frame: "integrations-live-02-add-stdio",
+	});
+	check(
+		"the local command landed: on the page AND in the backend's own catalog",
+		added.onPage === true && Boolean(added.row),
+		`page=${added.onPage} backend=${Boolean(added.row)}`,
+	);
+	check(
+		"its row is a local command, global, with the command the form was given",
+		added.row?.transport === "local_command" &&
+			added.row?.scope === "global" &&
+			added.row?.endpoint?.command === INTEGRATION_COMMAND,
+		`transport=${added.row?.transport} scope=${added.row?.scope} command=${added.row?.endpoint?.command}`,
+	);
+	frames.push(await captureSettled(cdp, "integrations-live-03-added-stdio"));
+
+	const addedRemote = await addThroughForm({
+		name: remoteName,
+		mode: "url",
+		frame: "integrations-live-04-add-remote",
+	});
+	check(
+		"the remote URL landed: on the page AND in the backend's own catalog",
+		addedRemote.onPage === true && Boolean(addedRemote.row),
+		`page=${addedRemote.onPage} backend=${Boolean(addedRemote.row)}`,
+	);
+	check(
+		"its row is a remote URL, global, with the URL the form was given",
+		addedRemote.row?.transport === "remote_url" &&
+			addedRemote.row?.scope === "global" &&
+			addedRemote.row?.endpoint?.url === INTEGRATION_URL,
+		`transport=${addedRemote.row?.transport} scope=${addedRemote.row?.scope} url=${addedRemote.row?.endpoint?.url}`,
+	);
+	frames.push(await captureSettled(cdp, "integrations-live-05-added-remote"));
+
+	/* ---- 3. test both -------------------------------------------------- */
+	const testedStdio = await testRow(stdioName);
+	check(
+		"the local command's test settled on the backend's own answer, with no reload pressed",
+		testedStdio.settled === true &&
+			testedStdio.row?.status === "connected" &&
+			testedStdio.row?.tool_count === 1 &&
+			testedStdio.row?.status_basis === "probe" &&
+			/Connected · 1 tool\b/.test(await rowText(stdioName)),
+		`page settled=${testedStdio.settled} backend=${testedStdio.row?.status} tools=${testedStdio.row?.tool_count} basis=${testedStdio.row?.status_basis} row=${JSON.stringify(await rowText(stdioName))}`,
+	);
+	frames.push(await captureSettled(cdp, "integrations-live-06-tested-stdio"));
+
+	const testedRemote = await testRow(remoteName);
+	check(
+		"the remote URL's test settled on the backend's own answer too",
+		testedRemote.settled === true &&
+			testedRemote.row?.status === "connected" &&
+			testedRemote.row?.tool_count === 1 &&
+			/Connected · 1 tool\b/.test(await rowText(remoteName)),
+		`page settled=${testedRemote.settled} backend=${testedRemote.row?.status} tools=${testedRemote.row?.tool_count} row=${JSON.stringify(await rowText(remoteName))}`,
+	);
+	frames.push(await captureSettled(cdp, "integrations-live-07-tested-remote"));
+	check(
+		"both rows read in plain words, never the wire's",
+		!/\b(cold|stdio|auth-required|not_started|remote_url|local_command)\b/.test(
+			`${await rowText(stdioName)} ${await rowText(remoteName)}`,
+		),
+		`${await rowText(stdioName)} || ${await rowText(remoteName)}`,
+	);
+
+	/* ---- 4. remove both through the overflow --------------------------- */
+	const removedStdio = await removeRow(stdioName, {
+		overflowFrame: "integrations-live-08-overflow",
+		confirmFrame: "integrations-live-09-remove-confirm",
+	});
+	check(
+		"Remove asks before it writes anything",
+		removedStdio.asked === true,
+		`trigger hit=${removedStdio.trigger?.hit} menu=${removedStdio.opened} item hit=${removedStdio.item?.hit}`,
+	);
+	check(
+		"the local command's remove landed: gone from the page AND from the backend's catalog",
+		removedStdio.gone === true && removedStdio.stillThere === false,
+		`page gone=${removedStdio.gone} backend still lists it=${removedStdio.stillThere}`,
+	);
+	const removedRemote = await removeRow(remoteName);
+	check(
+		"the remote URL's remove landed the same way",
+		removedRemote.asked === true &&
+			removedRemote.gone === true &&
+			removedRemote.stillThere === false,
+		`asked=${removedRemote.asked} page gone=${removedRemote.gone} backend still lists it=${removedRemote.stillThere}`,
+	);
+	const leftBehind = (await catalog()).document?.servers ?? [];
+	check(
+		"the catalog is empty again, so both writes went through the backend",
+		leftBehind.length === 0,
+		`backend still lists=${JSON.stringify(leftBehind.map((server) => server.name))}`,
+	);
+	check(
+		"and the page is back to its empty state",
+		(await waitForScene(
+			cdp,
+			`document.body.innerText.includes("No integrations yet")`,
+			250,
+		)) === true,
+		"the empty state did not return",
+	);
+	frames.push(await captureSettled(cdp, "integrations-live-10-removed"));
+
+	/* ---- 5. and no conversation was ever needed ------------------------ */
+	const sessionsAfter = await readBackendJson("/v1/desktop/sessions?limit=50");
+	/*
+	 * THE PROPERTY, not the accident: what this half must prove is that setting
+	 * up, testing and removing servers created NO conversation - so the count is
+	 * compared, and the "the rig had none to begin with" half is the start guard
+	 * above. Requiring the absolute count to be zero here made a rig that still
+	 * held a previous run's chat fail a check whose subject it was not.
+	 */
+	check(
+		"none of it created a conversation, which is what made this reachable at all",
+		countSessions(sessionsAfter) === countSessions(sessionsBefore),
+		`before=${countSessions(sessionsBefore)} after=${countSessions(sessionsAfter)}`,
+	);
+	const errors0 = cdp.console.filter((line) => /error/i.test(line)).slice(-10);
+	note("renderer errors", errors0.length ? errors0.join("\n") : "none");
+
+	/*
+	 * ---------------------------------------------------------------
+	 * 6. ROUND 1: a refusal the page could not have known about must BOTH
+	 *    say so AND re-read the list it says it refreshed (F2).
+	 * ---------------------------------------------------------------
+	 *
+	 * The only honest way to reach the 409 is to make the page's copy and the
+	 * backend disagree: the row is added through the form (so the page knows it),
+	 * then removed BEHIND the page's back through the backend's own API. The
+	 * press that follows is a control the backend refuses because its row is
+	 * gone - and the sentence it answers with claims the list has been refreshed,
+	 * so the list has to actually refresh.
+	 */
+	const postJson = async (path, body) => {
+		const response = await fetch(`${BACKEND}${path}`, {
+			method: "POST",
+			headers: {
+				authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+				"content-type": "application/json",
+			},
+			body: JSON.stringify(body),
+		});
+		const text = await response.text();
+		let parsed = null;
+		try {
+			parsed = JSON.parse(text);
+		} catch {
+			/* reported as text below */
+		}
+		return { status: response.status, body: parsed?.result ?? parsed ?? text };
+	};
+
+	const staleName = `stale-${process.pid}`;
+	const staleAdded = await addThroughForm({
+		name: staleName,
+		mode: "command",
+		frame: "integrations-live-11-stale-added",
+	});
+	check(
+		"the refusal case starts from a row the page itself added",
+		staleAdded.onPage === true && staleAdded.row?.status === "not_started",
+		`onPage=${staleAdded.onPage} backend=${staleAdded.row?.status}`,
+	);
+	const behindTheBack = await postJson("/v1/desktop/mcp", {
+		action: "remove",
+		name: staleName,
+		scope: "global",
+		confirmed: true,
+	});
+	check(
+		"and the row is removed OUT OF BAND, so the page's copy is stale by construction",
+		behindTheBack.status === 200 &&
+			(await rowFor(staleName)) === null &&
+			(await rowText(staleName)).includes(staleName),
+		`remove status=${behindTheBack.status} backend row=${JSON.stringify(await rowFor(staleName))} page text=${JSON.stringify(await rowText(staleName))}`,
+	);
+	await verb(
+		cdp,
+		"press",
+		`[data-integration=${JSON.stringify(staleName)}] [data-integration-action='test']`,
+	);
+	const staleGone = await waitForScene(
+		cdp,
+		`document.querySelector('[data-integration=${JSON.stringify(staleName)}]') === null`,
+		1500,
+	);
+	check(
+		"F2: the refusal re-reads the list, so the row it refuses is gone from the page",
+		staleGone === true,
+		`still on the page: ${JSON.stringify(await rowText(staleName))}`,
+	);
+	/*
+	 * Read as a slice rather than a regex: this expression is a JS string that is
+	 * EVALUATED, so `\n` in it becomes a real newline in the evaluated source and
+	 * a character class containing one is a syntax error at the far end.
+	 */
+	/*
+	 * A BOOLEAN, because `waitForScene`'s third argument is ATTEMPTS (20 ms
+	 * apart), not milliseconds, and it only accepts an exact `true`: an earlier
+	 * version of this check returned the matched TEXT, so it timed out while the
+	 * sentence was on screen - the frame beside it is what caught that.
+	 */
+	const refusalSeen = await waitForScene(
+		cdp,
+		`(() => {
+			const text = document.body.innerText;
+			const at = text.indexOf("It no longer exists");
+			return at >= 0 && text.indexOf("refreshed", at) > at;
+		})()`,
+		300,
+	);
+	const refusal = refusalSeen
+		? await cdp.evaluate(
+				`(() => {
+					const text = document.body.innerText;
+					const at = text.indexOf("It no longer exists");
+					return text.slice(at, at + 120).split(String.fromCharCode(10))[0];
+				})()`,
+			)
+		: false;
+	check(
+		"F2: and the sentence that says the list was refreshed is on screen, not lost with the row",
+		refusalSeen === true,
+		`refusal=${JSON.stringify(refusal)}`,
+	);
+	frames.push(await captureSettled(cdp, "integrations-live-12-stale-refusal"));
+
+	/* ---------------------------------------------------------------
+	 * 7. ROUND 1: an action's focus comes back to the control that
+	 *    asked, and Escape gets out of the form (U5, Q3).
+	 * --------------------------------------------------------------- */
+	const focusCase = `focus-${process.pid}`;
+	await addThroughForm({
+		name: focusCase,
+		mode: "command",
+		frame: "integrations-live-13-focus-added",
+	});
+	await verb(
+		cdp,
+		"press",
+		`[data-integration=${JSON.stringify(focusCase)}] button[aria-label^='More actions']`,
+	);
+	await waitForScene(
+		cdp,
+		`Boolean(document.querySelector("[data-integration-menu='remove']"))`,
+		500,
+	);
+	await verb(cdp, "press", "[data-integration-menu='remove']");
+	const asked = await waitForScene(
+		cdp,
+		`Boolean(document.querySelector("[data-integration-confirm='remove']"))`,
+		500,
+	);
+	check(
+		"the inline Remove confirm is on screen before the focus check",
+		asked === true,
+		"the confirm never appeared",
+	);
+	// Escape dismisses it (U5) and focus returns to the control that asked.
+	await cdp.send("Input.dispatchKeyEvent", {
+		type: "keyDown",
+		key: "Escape",
+		code: "Escape",
+		windowsVirtualKeyCode: 27,
+		nativeVirtualKeyCode: 27,
+	});
+	await cdp.send("Input.dispatchKeyEvent", {
+		type: "keyUp",
+		key: "Escape",
+		code: "Escape",
+	});
+	const escaped = await waitForScene(
+		cdp,
+		`document.querySelector("[data-integration-confirm='remove']") === null`,
+		500,
+	);
+	const backOnTrigger = await waitForScene(
+		cdp,
+		`document.activeElement?.getAttribute?.('aria-label')?.startsWith('More actions') === true`,
+		500,
+	);
+	check(
+		"U5/Q3: Escape dismisses the remove confirm and focus lands on the row's own menu button",
+		escaped === true && backOnTrigger === true,
+		`escaped=${escaped} activeElement=${JSON.stringify(await activeElementOf(cdp))}`,
+	);
+
+	/*
+	 * ---------------------------------------------------------------
+	 * 8. ROUND 1: a chat with a project folder, and a RELOAD (Q1).
+	 * ---------------------------------------------------------------
+	 *
+	 * The regression: the app's own session list carries no `cwd`, so once the
+	 * instance that created the chat is gone - a reload, or a chat started in the
+	 * TUI - the page asked for the HOME catalog and every project-scoped server
+	 * disappeared. The folder now resolves from the conversation's own snapshot,
+	 * and this proves it by reloading the app and looking again.
+	 */
+	const projectName = `proj-${process.pid}`;
+	const projectDir = join(SCRATCH, `project-${process.pid}`);
+	mkdirSync(join(projectDir, ".local-operator"), { recursive: true });
+	writeFileSync(
+		join(projectDir, ".local-operator", "mcp.json"),
+		JSON.stringify({
+			mcpServers: {
+				[projectName]: {
+					command: INTEGRATION_COMMAND ?? "python3",
+					args: (INTEGRATION_ARGS ?? "").split("|").filter(Boolean),
+				},
+			},
+		}),
+	);
+	const created = await postJson("/v1/desktop/sessions", {
+		request_id: randomUUID(),
+		cwd: projectDir,
+	});
+	const projectSession =
+		typeof created.body?.session_id === "string"
+			? created.body.session_id
+			: null;
+	check(
+		"a conversation in a project folder exists, created outside this renderer",
+		Boolean(projectSession),
+		`create status=${created.status} body=${JSON.stringify(created.body).slice(0, 300)}`,
+	);
+	if (projectSession) {
+		/*
+		 * THE CHAT FIRST, then Settings through the SAME deep link the rest of
+		 * this scene uses. Navigating straight to `/settings` without the chat
+		 * step would leave the page with no active conversation - which is the
+		 * state the regression is NOT about.
+		 */
+		await verb(cdp, "navigate", `/chat/${projectSession}`);
+		await waitForRoute(cdp, `/chat/${projectSession}`, 10_000);
+		await verb(cdp, "navigate", "/settings?section=integrations");
+		await waitForScene(
+			cdp,
+			`Boolean(document.querySelector("h2")?.textContent?.includes("Integrations"))`,
+			6000,
+		);
+		const before = await waitForScene(
+			cdp,
+			`Boolean(document.querySelector('[data-integration=${JSON.stringify(projectName)}]'))`,
+			2000,
+		);
+		check(
+			"Q1: with the chat active, the project folder's server is listed and scoped to it",
+			before === true && /This project/.test(await rowText(projectName)),
+			`listed=${before} row=${JSON.stringify(await rowText(projectName))}`,
+		);
+		frames.push(
+			await captureSettled(cdp, "integrations-live-14-project-before-reload"),
+		);
+
+		/*
+		 * THE RELOAD. Everything this renderer held about that conversation is
+		 * gone afterwards, which is exactly the state the regression lived in.
+		 */
+		await cdp.send("Page.reload", { ignoreCache: false });
+		await waitForBridge(cdp);
+		/*
+		 * BACK THROUGH THE APP'S OWN ROUTES. `openSection` opens a SIDEBAR section
+		 * (it looks for a `button[data-chat-row]`), so calling it here could only
+		 * ever throw `no Integrations heading in the panel` - measured, this scene's
+		 * first run. The page under test is reached the way every earlier step
+		 * reaches it: the chat, then the settings deep link.
+		 */
+		await verb(cdp, "navigate", `/chat/${projectSession}`);
+		await waitForRoute(cdp, `/chat/${projectSession}`, 10_000);
+		await verb(cdp, "navigate", "/settings?section=integrations");
+		await waitForScene(
+			cdp,
+			`Boolean(document.querySelector("h2")?.textContent?.includes("Integrations"))`,
+			6000,
+		);
+		const survived = await waitForScene(
+			cdp,
+			`Boolean(document.querySelector('[data-integration=${JSON.stringify(projectName)}]'))`,
+			3000,
+		);
+		check(
+			"Q1: and it is STILL there after an app reload, resolved from the conversation's own snapshot",
+			survived === true && /This project/.test(await rowText(projectName)),
+			`listed=${survived} row=${JSON.stringify(await rowText(projectName))}`,
+		);
+		frames.push(
+			await captureSettled(cdp, "integrations-live-15-project-after-reload"),
+		);
+	}
+
+	const errors = cdp.console.filter((line) => /error/i.test(line)).slice(-10);
+	note("renderer errors", errors.length ? errors.join("\n") : "none");
+	return frames;
 }
 
 /** What the row and its open list actually are, read from the page. */
@@ -19965,6 +21711,11 @@ async function main() {
 	 * (agent review round 2, NIT-2). Reading argv and refusing costs nothing, and
 	 * the same argument holds for every scene that names an instrument it needs.
 	 */
+	if (SCENE === "btw-aside" && BACKEND === null) {
+		throw new Error(
+			"--scene btw-aside needs --backend: the aside is answered by the daemon (sessions.aside) and its answer streams over the session's own SSE frames, so a run with no backend photographs an app that can never be asked anything",
+		);
+	}
 	if (SCENE === "sidebar-split" && BACKEND === null) {
 		throw new Error(
 			"--scene sidebar-split needs --backend: the boundary only exists while both regions do, and the list region is gated on the catalogue a live backend advertises",
@@ -19978,6 +21729,21 @@ async function main() {
 	if (SCENE === "radient-issue" && BACKEND === null) {
 		throw new Error(
 			"--scene radient-issue needs --backend: the callout is gated on a capability the backend advertises and speaks a verdict only it can give, so a run with none photographs the absence of the feature",
+		);
+	}
+	if (SCENE === "settings-integrations" && BACKEND === null) {
+		throw new Error(
+			"--scene settings-integrations needs --backend: the whole claim is that the page works with no conversation and no model, so the catalog route, the capability and the daemon that spawns the server are all the backend's",
+		);
+	}
+	if (SCENE === "settings-integrations" && INTEGRATION_COMMAND === null) {
+		throw new Error(
+			"--scene settings-integrations needs --integration-command: the scene adds that command through the form, and a default would add whatever this script guessed rather than the rig's own server",
+		);
+	}
+	if (SCENE === "settings-integrations" && INTEGRATION_URL === null) {
+		throw new Error(
+			"--scene settings-integrations needs --integration-url: the remote half is a different row and a different backend path, and a scene that silently skipped it would look like it ran",
 		);
 	}
 	if (SCENE === "authoring-refresh" && BACKEND === null) {
@@ -20125,10 +21891,13 @@ async function main() {
 			else if (SCENE === "states") await sceneStates(cdp);
 			else if (SCENE === "radient-issue") await sceneRadientIssue(cdp);
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);
+			else if (SCENE === "btw-aside") await sceneBtwAside(cdp);
 			else if (SCENE === "authoring-refresh") await sceneAuthoringRefresh(cdp);
 			else if (SCENE === "settings-model") await sceneSettingsModel(cdp);
 			else if (SCENE === "settings-fields") await sceneSettingsFields(cdp);
 			else if (SCENE === "settings-gate") await sceneSettingsGate(cdp);
+			else if (SCENE === "settings-integrations")
+				await sceneSettingsIntegrations(cdp);
 			else if (SCENE === "palette") await scenePalette(cdp);
 			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);
 			else if (SCENE === "approval-badges") await sceneApprovalBadges(cdp);
