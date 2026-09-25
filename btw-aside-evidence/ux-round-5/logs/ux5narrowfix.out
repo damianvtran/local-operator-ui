@@ -1,0 +1,436 @@
+ux5 private-port lock taken
+rig up: proxy 16520 on 8391 -> daemon 15780 on 56228, stub 56206; 1111 and 8080 untouched
+== ux5narrowfix (btw-ux5) at 13:31:17 ==
+[build] current: assets 2026-09-25T13:14:15.052Z >= sources 2026-09-25T12:33:29.028Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8391
+  serve records 1 linked from /Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/run-ux5narrowfix/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/ux482-r5-7c31f9
+  scratch       /Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/tmp/lo-renderer-driver-16624
+  frames        /Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/frames/ux5narrowfix
+  app cwd       /Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/tmp/lo-renderer-driver-16624/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8391   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8391","backend":"http://127.0.0.1:8391"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8391)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] headless and never shown
+        mode=headless visible=false focused=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] UX5 session
+        c26dfd9f3ddf
+[note] A1 the refusal's own path, from the press to the settle
+        {"paintedMs":5765,"atPaint":{"text":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it.","hiddenBelowPx":0.1,"topInRegion":114.6,"bottomInRegion":251.1,"rows":7,"rowsFullyVisible":7,"lastRowBottomVsClipPx":-2.4,"phrase":{"needle":"discard it","bottomVsClipPx":-2.4,"visible":true}},"readableDelayMs":12,"trail":[{"ms":13,"scrollTop":0,"maxScroll":49,"clientHeight":232,"contentHeight":281,"hiddenBelowPx":null,"rows":null,"phraseVisible":null},{"ms":291,"scrollTop":104.5,"maxScroll":105,"clientHeight":251,"contentHeight":356,"hiddenBelowPx":null,"rows":null,"phraseVisible":null},{"ms":5729,"scrollTop":221.5,"maxScroll":222,"clientHeight":251,"contentHeight":473,"hiddenBelowPx":0.1,"rows":"7/7","phraseVisible":true}]}
+[note] A1 the settled reading
+        {"scrollTop":221.5,"maxScroll":222,"clientHeight":251,"contentHeight":473,"turns":2,"questionRel":71.6,"questionAbs":293.1,"questionBoxH":39,"lastRowBottomVsClip":0.1,"refusal":{"text":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it.","hiddenBelowPx":0.1,"topInRegion":114.6,"bottomInRegion":251.1,"rows":7,"rowsFullyVisible":7,"lastRowBottomVsClipPx":-2.4,"phrase":{"needle":"discard it","bottomVsClipPx":-2.4,"visible":true}}}
+[note] A1 the clip at the settle
+        {"scrollTop":221.5,"maxScroll":222,"target":293.1,"state":"alert","alertText":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it.","alertTopInRegion":114.6,"alertBottomInRegion":251.1,"clientHeight":251,"hiddenBelowPx":0.1,"hiddenAbovePx":0,"rows":7,"rowsFullyVisible":7,"lastRowBottomVsClipPx":-2.4,"phrase":{"needle":"discard it","bottomVsClipPx":-2.4,"visible":true}}
+[PASS] A1 at 800px the refusal is whole inside the region's clip when it settles, and the clause that names Esc's cost is readable
+        {"scrollTop":221.5,"maxScroll":222,"target":293.1,"state":"alert","alertText":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it.","alertTopInRegion":114.6,"alertBottomInRegion":251.1,"clientHeight":251,"hiddenBelowPx":0.1,"hiddenAbovePx":0,"rows":7,"rowsFullyVisible":7,"lastRowBottomVsClipPx":-2.4,"phrase":{"needle":"discard it","bottomVsClipPx":-2.4,"visible":true}}
+[PASS] A1 no scroll is needed to read it: the refusal is whole within 500ms of first painting, with no user action of any kind
+        {"readableDelay":12,"paintedMs":5765,"atPaint":{"text":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it.","hiddenBelowPx":0.1,"topInRegion":114.6,"bottomInRegion":251.1,"rows":7,"rowsFullyVisible":7,"lastRowBottomVsClipPx":-2.4,"phrase":{"needle":"discard it","bottomVsClipPx":-2.4,"visible":true}}}
+[PASS] A1 the region rests at its own end, where round 3 left it - not mid-content
+        {"scrollTop":221.5,"maxScroll":222,"clientHeight":251,"contentHeight":473}
+[PASS] A1 the composed refusal still states the remedy once and names both options at 800px (U18)
+        {"text":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it.","askAgain":1}
+[note] frame
+        {"label":"ux5-ux5narrowfix-a01-refusal-whole-on-arrival-at-800px","width":1600,"height":1736}
+[note] A2 the answered follow-up's whole stream
+        {"count":86,"live":81,"first":[{"ms":14,"scrollTop":0,"maxScroll":50,"clientHeight":251,"contentHeight":301,"questionRel":0,"turns":1,"lastRowBottomVsClip":49.6},{"ms":78,"scrollTop":0,"maxScroll":50,"clientHeight":251,"contentHeight":301,"questionRel":0,"turns":1,"lastRowBottomVsClip":49.6},{"ms":148,"scrollTop":0,"maxScroll":50,"clientHeight":251,"contentHeight":301,"questionRel":0,"turns":1,"lastRowBottomVsClip":49.6},{"ms":211,"scrollTop":0,"maxScroll":50,"clientHeight":251,"contentHeight":301,"questionRel":0,"turns":1,"lastRowBottomVsClip":49.6},{"ms":289,"scrollTop":0,"maxScroll":50,"clientHeight":251,"contentHeight":301,"questionRel":0,"turns":1,"lastRowBottomVsClip":49.6},{"ms":373,"scrollTop":124,"maxScroll":124,"clientHeight":251,"contentHeight":375,"questionRel":188.6,"turns":2,"lastRowBottomVsClip":0.1}],"reachedTopAt":{"ms":2683,"scrollTop":312.5,"maxScroll":479,"clientHeight":251,"contentHeight":730,"questionRel":0.1,"turns":2,"lastRowBottomVsClip":166.4},"wandered":[],"incoherent":[],"maxShortOfTargetPx":188.6,"last":[{"ms":6325,"scrollTop":312.5,"maxScroll":2080,"clientHeight":251,"contentHeight":2331,"questionRel":0.1,"turns":2,"lastRowBottomVsClip":1767.8},{"ms":6421,"scrollTop":312.5,"maxScroll":2080,"clientHeight":251,"contentHeight":2331,"questionRel":0.1,"turns":2,"lastRowBottomVsClip":1767.8},{"ms":6506,"scrollTop":312.5,"maxScroll":2080,"clientHeight":251,"contentHeight":2331,"questionRel":0.1,"turns":2,"lastRowBottomVsClip":1767.8},{"ms":6575,"scrollTop":312.5,"maxScroll":2080,"clientHeight":251,"contentHeight":2331,"questionRel":0.1,"turns":2,"lastRowBottomVsClip":1767.8}],"end":{"scrollTop":312.5,"maxScroll":2080,"clientHeight":251,"contentHeight":2331,"turns":2,"questionRel":0.1,"questionAbs":312.6,"questionBoxH":39,"lastRowBottomVsClip":1767.8,"refusal":null}}
+[PASS] A2 at 800px the region is never left mid-content while the answer streams: every arrival is either its own end or the newest question at its top (U22)
+        {"live":81,"incoherent":[]}
+[PASS] A2 at 800px the answered follow-up's question reaches the region's top and HOLDS there for the rest of the stream
+        {"reachedTopAt":{"ms":2683,"scrollTop":312.5,"maxScroll":479,"clientHeight":251,"contentHeight":730,"questionRel":0.1,"turns":2,"lastRowBottomVsClip":166.4},"wandered":[],"settle":{"scrollTop":312.5,"maxScroll":2080,"questionRel":0.1,"contentHeight":2331}}
+[PASS] A2 the question never leaves the region's view while the answer streams
+        []
+[PASS] A2 at the settle the region is in a coherent place: either its own end, or the newest question at its top
+        {"scrollTop":312.5,"maxScroll":2080,"questionRel":0.1}
+[PASS] A2 once it has reached its target the move does not drag the region backwards under the reader
+        []
+[note] frame
+        {"label":"ux5-ux5narrowfix-a02-answered-follow-up-reaches-target","width":1600,"height":1736}
+[note] A3 the reader's own scroll, mid-stream
+        {"ready":{"ms":2022,"scrollTop":291.5,"maxScroll":292,"contentHeight":543},"focusStops":["div[The aside exchange]"],"focus":"div[The aside exchange]","beforeHand":{"scrollTop":291.5,"contentHeight":543},"afterHand":{"scrollTop":0,"contentHeight":938},"after":[{"ms":2790,"scrollTop":0,"maxScroll":687,"contentHeight":938,"questionRel":312.6},{"ms":3062,"scrollTop":0,"maxScroll":895,"contentHeight":1146,"questionRel":312.6},{"ms":3454,"scrollTop":0,"maxScroll":1082,"contentHeight":1333,"questionRel":312.6},{"ms":3662,"scrollTop":0,"maxScroll":1311,"contentHeight":1562,"questionRel":312.6},{"ms":3913,"scrollTop":0,"maxScroll":1519,"contentHeight":1770,"questionRel":312.6},{"ms":4346,"scrollTop":0,"maxScroll":1685,"contentHeight":1936,"questionRel":312.6},{"ms":4548,"scrollTop":0,"maxScroll":1914,"contentHeight":2165,"questionRel":312.6},{"ms":5021,"scrollTop":0,"maxScroll":2080,"contentHeight":2331,"questionRel":312.6}],"end":{"scrollTop":0,"contentHeight":2331}}
+[PASS] A3 the arm is real: the answer was still growing when the reader scrolled, and the scroll moved the region
+        {"before":291.5,"after":0,"grew":1393}
+[PASS] A3 the reader wins at 800px: the rest of the stream does not drag the region back
+        {"hand":0,"end":0,"trail":[0,0,0,0,0,0,0,0]}
+[note] frame
+        {"label":"ux5-ux5narrowfix-a03-the-reader-wins-at-800px","width":1600,"height":1736}
+[note] A3 after the reader's own scroll
+        {"typedMs":331,"panelUp":true,"turns":3,"met":true,"posts":1,"adopt":{"x":600,"y":670,"disabled":false},"adoptDisabled":false,"boxes":{"panel":{"top":345.2,"bottom":693,"left":524,"right":776},"field":{"top":710,"bottom":757,"left":533,"right":767},"viewport":{"w":800,"h":868},"gapPx":17}}
+[PASS] A3 the panel is still usable after the reader took over: the composer takes a whole line and the next ask is answered in the same panel
+        {"typedMs":331,"panelUp":true,"met":true,"posts":1}
+[PASS] A3 the adopt control is still reachable at 800px and has become enabled at the settle
+        {"x":600,"y":670,"disabled":false}
+[PASS] A3 the panel still sits above the composer inside the window, with no overlay and no clipping
+        {"panel":{"top":345.2,"bottom":693,"left":524,"right":776},"field":{"top":710,"bottom":757,"left":533,"right":767},"viewport":{"w":800,"h":868},"gapPx":17}
+[note] frame
+        {"label":"ux5-ux5narrowfix-a04-panel-usable-after-the-scroll","width":1600,"height":1736}
+[note] A4 typing during the aside's answer
+        {"typedMs":247,"announce":"Asking the aside","answerLandedYet":false,"fieldValue":"typing while the aside streams","active":"textarea[Message]","box":{"x":533,"y":373,"right":767,"bottom":624,"w":234,"h":251}}
+[note] A4 the same composer once the aside's answer has landed
+        {"answerLanded":true,"announce":"The aside answered: The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix.","fieldValue":"typing while the aside streams","active":"textarea[Message]"}
+[PASS] A4 at 800px the composer takes the whole line while the aside is STILL answering: a live aside does not freeze the input, and the answer lands afterwards
+        {"typedMs":247,"announceAtTyping":"Asking the aside","answerAtTyping":false,"answerAtSettle":true}
+[PASS] A4 the aside's answer arriving does not erase what the reader has typed into the composer
+        {"fieldValue":"typing while the aside streams","active":"textarea[Message]"}
+[note] frame
+        {"label":"ux5-ux5narrowfix-a05-typing-while-the-aside-streams","width":1600,"height":1736}
+[note] A4 the reflex double-tap inside the floor (U23)
+        {"ops":0,"panelUp":true,"notice":"Press ⌘+F again to add the aside to the conversation. Once added, it stays there.","noticeCount":1,"adoptDisabled":false}
+[PASS] A4 a reflex double-tap still cannot adopt, and the confirm still says what to do (U23 unchanged)
+        {"ops":0,"notice":"Press ⌘+F again to add the aside to the conversation. Once added, it stays there.","panelUp":true}
+[note] frame
+        {"label":"ux5-ux5narrowfix-a06-reflex-double-tap-still-silent","width":1600,"height":1736}
+[note] A4 the deliberate press after the floor (U16/U17)
+        {"ms":297,"panelGoneMs":189,"ops":1}
+[PASS] A4 a deliberate press on the same confirm still adopts, exactly once
+        {"ops":1,"panelUp":false,"opsTotal":1}
+[note] frame
+        {"label":"ux5-ux5narrowfix-a07-deliberate-press-adopts-once","width":1600,"height":1736}
+[note] A5 the single-turn exchange whose answer grows (U24)
+        {"count":70,"distinctScrollTops":[0],"first":[{"ms":313,"scrollTop":0,"maxScroll":0,"clientHeight":63,"contentHeight":63,"questionRel":0},{"ms":376,"scrollTop":0,"maxScroll":0,"clientHeight":63,"contentHeight":63,"questionRel":0},{"ms":457,"scrollTop":0,"maxScroll":0,"clientHeight":63,"contentHeight":63,"questionRel":0},{"ms":519,"scrollTop":0,"maxScroll":0,"clientHeight":63,"contentHeight":63,"questionRel":0},{"ms":579,"scrollTop":0,"maxScroll":0,"clientHeight":63,"contentHeight":63,"questionRel":0}],"last":[{"ms":6644,"scrollTop":0,"maxScroll":1768,"clientHeight":251,"contentHeight":2019,"questionRel":0},{"ms":6735,"scrollTop":0,"maxScroll":1768,"clientHeight":251,"contentHeight":2019,"questionRel":0},{"ms":6856,"scrollTop":0,"maxScroll":1768,"clientHeight":251,"contentHeight":2019,"questionRel":0},{"ms":7053,"scrollTop":0,"maxScroll":1768,"clientHeight":251,"contentHeight":2019,"questionRel":0}],"end":{"scrollTop":0,"maxScroll":1768,"contentHeight":2019,"clientHeight":251,"questionRel":0}}
+[PASS] A5 at 800px a single-turn exchange's answer grows past the region and the region does not move: the move has nothing to do (U24 unchanged)
+        {"scrollTops":[0],"contentHeight":2019,"clientHeight":251}
+[note] frame
+        {"label":"ux5-ux5narrowfix-a08-single-turn-nothing-moves","width":1600,"height":1736}
+[note] UX5 scene
+        finished
+[PASS] no process from this run outlived its boot
+
+frames: ux5-ux5narrowfix-a01-refusal-whole-on-arrival-at-800px.png, ux5-ux5narrowfix-a02-answered-follow-up-reaches-target.png, ux5-ux5narrowfix-a03-the-reader-wins-at-800px.png, ux5-ux5narrowfix-a04-panel-usable-after-the-scroll.png, ux5-ux5narrowfix-a05-typing-while-the-aside-streams.png, ux5-ux5narrowfix-a06-reflex-double-tap-still-silent.png, ux5-ux5narrowfix-a07-deliberate-press-adopts-once.png, ux5-ux5narrowfix-a08-single-turn-nothing-moves.png
+frames directory: /Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/frames/ux5narrowfix
+app log: /Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/tmp/lo-renderer-driver-16624/app-scene.log
+scratch removed (--clean)
+
+ALL CHECKS PASSED
+== ux5narrowfix driver exit: 0 ==
+total 4800
+drwxr-xr-x@ 10 damian  staff     320 Sep 25 09:32 .
+drwxr-xr-x@ 12 damian  staff     384 Sep 25 09:31 ..
+-rw-r--r--@  1 damian  staff  307742 Sep 25 09:31 ux5-ux5narrowfix-a01-refusal-whole-on-arrival-at-800px.png
+-rw-r--r--@  1 damian  staff  326878 Sep 25 09:32 ux5-ux5narrowfix-a02-answered-follow-up-reaches-target.png
+-rw-r--r--@  1 damian  staff  291892 Sep 25 09:32 ux5-ux5narrowfix-a03-the-reader-wins-at-800px.png
+-rw-r--r--@  1 damian  staff  290818 Sep 25 09:32 ux5-ux5narrowfix-a04-panel-usable-after-the-scroll.png
+-rw-r--r--@  1 damian  staff  328023 Sep 25 09:32 ux5-ux5narrowfix-a05-typing-while-the-aside-streams.png
+-rw-r--r--@  1 damian  staff  325599 Sep 25 09:32 ux5-ux5narrowfix-a06-reflex-double-tap-still-silent.png
+-rw-r--r--@  1 damian  staff  229346 Sep 25 09:32 ux5-ux5narrowfix-a07-deliberate-press-adopts-once.png
+-rw-r--r--@  1 damian  staff  339946 Sep 25 09:32 ux5-ux5narrowfix-a08-single-turn-nothing-moves.png
+8391 released before this command returned
+ux5 private-port lock released
+--- proxy counters (/Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/run-ux5narrowfix/proxy-stats.json) ---
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T13:31:37.333Z",
+      "url": "/v1/desktop/sessions/c26dfd9f3ddf/asides",
+      "asideId": "70482667-ec0d-4290-a774-1e3f6f663711",
+      "continues": null,
+      "questionHead": "UN5 what does the retry budget cap",
+      "text": "UN5 what does the retry budget cap",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "72884c9fa0c8462aa44aa1ad82d521f4",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"70482667-ec0d-4290-a774-1e3f6f663711\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:31:42.625Z",
+      "url": "/v1/desktop/sessions/c26dfd9f3ddf/asides",
+      "asideId": "80d51510-48f1-42d3-80a9-f102509fa085",
+      "continues": "70482667-ec0d-4290-a774-1e3f6f663711",
+      "questionHead": "TOOLCALL2: UN5 the follow-up the model declines",
+      "text": "TOOLCALL2: UN5 the follow-up the model declines",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "72884c9fa0c8462aa44aa1ad82d521f4",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-25T13:31:51.564Z",
+      "url": "/v1/desktop/sessions/c26dfd9f3ddf/asides",
+      "asideId": "e1bb6627-b12b-4a20-a8eb-bd44c363a3be",
+      "continues": null,
+      "questionHead": "UN5b the base turn above the long answer",
+      "text": "UN5b the base turn above the long answer",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "72884c9fa0c8462aa44aa1ad82d521f4",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"e1bb6627-b12b-4a20-a8eb-bd44c363a3be\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:31:57.133Z",
+      "url": "/v1/desktop/sessions/c26dfd9f3ddf/asides",
+      "asideId": "24119bfe-f976-4bbf-8938-c1f7d4bd6ae4",
+      "continues": "e1bb6627-b12b-4a20-a8eb-bd44c363a3be",
+      "questionHead": "LONGANSWER UN5b the follow-up whose answer streams",
+      "text": "LONGANSWER UN5b the follow-up whose answer streams",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "72884c9fa0c8462aa44aa1ad82d521f4",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"24119bfe-f976-4bbf-8938-c1f7d4bd6ae4\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    },
+    {
+      "at": "2026-09-25T13:32:04.242Z",
+      "url": "/v1/desktop/sessions/c26dfd9f3ddf/asides",
+      "asideId": "73d65f2e-951e-4b13-baab-6a606cf90efd",
+      "continues": null,
+      "questionHead": "UN5c the base turn the reader interrupts",
+      "text": "UN5c the base turn the reader interrupts",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "72884c9fa0c8462aa44aa1ad82d521f4",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"73d65f2e-951e-4b13-baab-6a606cf90efd\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:32:09.911Z",
+      "url": "/v1/desktop/sessions/c26dfd9f3ddf/asides",
+      "asideId": "448e4525-48c0-4ae6-8bcf-149e843bdaae",
+      "continues": "73d65f2e-951e-4b13-baab-6a606cf90efd",
+      "questionHead": "LONGANSWER UN5c the answer the reader interrupts",
+      "text": "LONGANSWER UN5c the answer the reader interrupts",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "72884c9fa0c8462aa44aa1ad82d521f4",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"448e4525-48c0-4ae6-8bcf-149e843bdaae\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    },
+    {
+      "at": "2026-09-25T13:32:16.187Z",
+      "url": "/v1/desktop/sessions/c26dfd9f3ddf/asides",
+      "asideId": "050c584c-eb68-4f1d-a751-c2be93e7e5cd",
+      "continues": "448e4525-48c0-4ae6-8bcf-149e843bdaae",
+      "questionHead": "UN5c after my own scroll",
+      "text": "UN5c after my own scroll",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "72884c9fa0c8462aa44aa1ad82d521f4",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"050c584c-eb68-4f1d-a751-c2be93e7e5cd\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:32:22.650Z",
+      "url": "/v1/desktop/sessions/c26dfd9f3ddf/asides",
+      "asideId": "b27f1192-f060-472c-a8bb-ce89e5b45027",
+      "continues": null,
+      "questionHead": "UN5d the exchange the composer types over",
+      "text": "UN5d the exchange the composer types over",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "72884c9fa0c8462aa44aa1ad82d521f4",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"b27f1192-f060-472c-a8bb-ce89e5b45027\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:32:28.896Z",
+      "url": "/v1/desktop/sessions/c26dfd9f3ddf/asides",
+      "asideId": "6aa84ea2-225a-49bf-857d-591b5fb64d44",
+      "continues": "b27f1192-f060-472c-a8bb-ce89e5b45027",
+      "questionHead": "LONGANSWER UN5d the answer the composer types over",
+      "text": "LONGANSWER UN5d the answer the composer types over",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "72884c9fa0c8462aa44aa1ad82d521f4",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"6aa84ea2-225a-49bf-857d-591b5fb64d44\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    },
+    {
+      "at": "2026-09-25T13:32:39.032Z",
+      "url": "/v1/desktop/sessions/c26dfd9f3ddf/asides",
+      "asideId": "673a0ffe-c650-4016-9bde-25e1da5c1840",
+      "continues": null,
+      "questionHead": "LONGANSWER UN5e the single turn whose answer grows",
+      "text": "LONGANSWER UN5e the single turn whose answer grows",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "1c0c2078fa13425bb02d07f75523a885",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"673a0ffe-c650-4016-9bde-25e1da5c1840\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T13:31:19.653Z",
+      "subscriptionId": "af4e6f84419f7a41",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/c26dfd9f3ddf/events?frontend_replace=1",
+      "openedAt": "2026-09-25T13:31:25.153Z",
+      "subscriptionId": "72884c9fa0c8462aa44aa1ad82d521f4",
+      "asideDeltas": 70,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287
+      ]
+    },
+    {
+      "url": "/v1/desktop/sessions/c26dfd9f3ddf/events?frontend_replace=1",
+      "openedAt": "2026-09-25T13:32:38.218Z",
+      "subscriptionId": "1c0c2078fa13425bb02d07f75523a885",
+      "asideDeltas": 10,
+      "deltaSizes": [
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287
+      ]
+    }
+  ],
+  "asideDeltaFrames": 80,
+  "deltasBySubscription": {
+    "72884c9fa0c8462aa44aa1ad82d521f4": 70,
+    "1c0c2078fa13425bb02d07f75523a885": 10
+  },
+  "deltasByAside": {
+    "70482667-ec0d-4290-a774-1e3f6f663711": 8,
+    "e1bb6627-b12b-4a20-a8eb-bd44c363a3be": 8,
+    "24119bfe-f976-4bbf-8938-c1f7d4bd6ae4": 10,
+    "73d65f2e-951e-4b13-baab-6a606cf90efd": 8,
+    "448e4525-48c0-4ae6-8bcf-149e843bdaae": 10,
+    "050c584c-eb68-4f1d-a751-c2be93e7e5cd": 8,
+    "b27f1192-f060-472c-a8bb-ce89e5b45027": 8,
+    "6aa84ea2-225a-49bf-857d-591b5fb64d44": 10,
+    "673a0ffe-c650-4016-9bde-25e1da5c1840": 10
+  },
+  "refused422": 0,
+  "messagePosts": [
+    {
+      "at": "2026-09-25T13:31:30.773Z",
+      "url": "/v1/desktop/sessions/c26dfd9f3ddf/messages",
+      "kind": "message",
+      "text": "ux5 seed turn",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"6ee6450b-1e7a-4aca-829a-7a32b5523cc2\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T13:31:30.773Z"
+    }
+  ],
+  "asideOps": [
+    {
+      "at": "2026-09-25T13:31:50.715Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/c26dfd9f3ddf/asides/70482667-ec0d-4290-a774-1e3f6f663711",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"70482667-ec0d-4290-a774-1e3f6f663711\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:32:03.558Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/c26dfd9f3ddf/asides/24119bfe-f976-4bbf-8938-c1f7d4bd6ae4",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"24119bfe-f976-4bbf-8938-c1f7d4bd6ae4\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:32:21.711Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/c26dfd9f3ddf/asides/050c584c-eb68-4f1d-a751-c2be93e7e5cd",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"050c584c-eb68-4f1d-a751-c2be93e7e5cd\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:32:37.935Z",
+      "method": "POST",
+      "url": "/v1/desktop/sessions/c26dfd9f3ddf/asides/6aa84ea2-225a-49bf-857d-591b5fb64d44/adopt",
+      "kind": "adopt",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"6aa84ea2-225a-49bf-857d-591b5fb64d44\",\"status\":\"adopted\"},\"replayed\":false}}"
+    }
+  ]
+}
+--- end counters ---

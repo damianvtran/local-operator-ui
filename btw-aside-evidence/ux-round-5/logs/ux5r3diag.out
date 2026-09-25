@@ -1,0 +1,124 @@
+ux5 private-port lock taken
+rig up: proxy 6831 on 8391 -> daemon 6075 on 54872, stub 54842; 1111 and 8080 untouched
+== ux5r3diag (btw-ux3d) at 13:29:32 ==
+[build] current: assets 2026-09-25T13:14:15.052Z >= sources 2026-09-25T12:33:29.028Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8391
+  serve records 1 linked from /Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/run-ux5r3diag/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/ux482-r5-7c31f9
+  scratch       /Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/tmp/lo-renderer-driver-6900
+  frames        /Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/frames/ux5r3diag
+  app cwd       /Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/tmp/lo-renderer-driver-6900/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8391   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8391","backend":"http://127.0.0.1:8391"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8391)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] headless and never shown
+        mode=headless visible=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] UX3d session
+        e46ddbe4919a
+[note] D1 the panel from the press to the diagram
+        {"sawTextMs":96,"sawSvgMs":2410,"samples":[{"ms":96,"svg":false,"contentHeight":43,"scrollTop":0,"maxScroll":0},{"ms":155,"svg":false,"contentHeight":43,"scrollTop":0,"maxScroll":0},{"ms":220,"svg":false,"contentHeight":43,"scrollTop":0,"maxScroll":0},{"ms":300,"svg":false,"contentHeight":43,"scrollTop":0,"maxScroll":0},{"ms":356,"svg":false,"contentHeight":43,"scrollTop":0,"maxScroll":0},{"ms":454,"svg":false,"contentHeight":43,"scrollTop":0,"maxScroll":0},{"ms":531,"svg":false,"contentHeight":43,"scrollTop":0,"maxScroll":0},{"ms":584,"svg":false,"contentHeight":43,"scrollTop":0,"maxScroll":0},{"ms":638,"svg":false,"contentHeight":43,"scrollTop":0,"maxScroll":0},{"ms":753,"svg":false,"contentHeight":43,"scrollTop":0,"maxScroll":0},{"ms":830,"svg":false,"contentHeight":43,"scrollTop":0,"maxScroll":0},{"ms":919,"svg":false,"contentHeight":43,"scrollTop":0,"maxScroll":0},{"ms":1029,"svg":false,"contentHeight":43,"scrollTop":0,"maxScroll":0},{"ms":1147,"svg":false,"contentHeight":43,"scrollTop":0,"maxScroll":0},{"ms":1206,"svg":false,"contentHeight":43,"scrollTop":0,"maxScroll":0},{"ms":1266,"svg":false,"contentHeight":43,"scrollTop":0,"maxScroll":0},{"ms":1319,"svg":false,"contentHeight":43,"scrollTop":0,"maxScroll":0},{"ms":1370,"svg":false,"contentHeight":43,"scrollTop":0,"maxScroll":0},{"ms":1422,"svg":false,"contentHeight":43,"scrollTop":0,"maxScroll":0},{"ms":1477,"svg":false,"contentHeight":43,"scrollTop":0,"maxScroll":0},{"ms":1532,"svg":false,"contentHeight":43,"scrollTop":0,"maxScroll":0},{"ms":1669,"svg":false,"contentHeight":43,"scrollTop":0,"maxScroll":0},{"ms":1740,"svg":false,"contentHeight":43,"scrollTop":0,"maxScroll":0},{"ms":1834,"svg":false,"contentHeight":43,"scrollTop":0,"maxScroll":0},{"ms":1894,"svg":false,"contentHeight":43,"scrollTop":0,"maxScroll":0},{"ms":1976,"svg":false,"contentHeight":43,"scrollTop":0,"maxScroll":0},{"ms":2042,"svg":false,"contentHeight":43,"scrollTop":0,"maxScroll":0},{"ms":2410,"svg":true,"contentHeight":339,"scrollTop":0,"maxScroll":91},{"ms":2535,"svg":true,"contentHeight":625,"scrollTop":0,"maxScroll":377},{"ms":2599,"svg":true,"contentHeight":625,"scrollTop":0,"maxScroll":377}]}
+[note] D1 after the diagram landed
+        {"scrollTop":0,"maxScroll":377,"clientHeight":248,"contentHeight":625,"svgPresent":true,"svgTop":81,"svgBottom":567,"svgFullyInView":false,"svgHeight":486,"lastRowBottomVsClip":377.3,"text":"aid-font-family:var(--font- an );}ye noA kAn wered?AdoptA k againConver ation\nMERMAID-END."}
+[note] D1 with the region scrolled to its own end
+        {"scrollTop":378,"maxScroll":377,"svgBottomInRegion":189,"clientHeight":248,"svgFullyInView":false}
+[PASS] D1 a late diagram is reachable: its top is in view at the region's start and its bottom at the region's end
+        {"svgTopAtRest":81,"reachable":{"scrollTop":378,"maxScroll":377,"svgBottomInRegion":189,"clientHeight":248,"svgFullyInView":false}}
+[PASS] D1 the region did not chase the growth on its own (the trigger names phase and length, and a diagram changes neither)
+        {"scrollTop":0,"maxScroll":377,"contentHeight":625}
+[note] frame
+        {"label":"ux3d-ux5r3diag-d01-diagram-lands-after-the-settle","width":2760,"height":1736}
+[note] UX3d scene
+        finished
+[PASS] no process from this run outlived its boot
+
+frames: ux3d-ux5r3diag-d01-diagram-lands-after-the-settle.png
+frames directory: /Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/frames/ux5r3diag
+app log: /Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/tmp/lo-renderer-driver-6900/app-scene.log
+scratch removed (--clean)
+
+ALL CHECKS PASSED
+== ux5r3diag driver exit: 0 ==
+total 584
+drwxr-xr-x@  3 damian  staff      96 Sep 25 09:29 .
+drwxr-xr-x@ 11 damian  staff     352 Sep 25 09:29 ..
+-rw-r--r--@  1 damian  staff  298872 Sep 25 09:29 ux3d-ux5r3diag-d01-diagram-lands-after-the-settle.png
+8391 released before this command returned
+ux5 private-port lock released
+--- proxy counters (/Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/run-ux5r3diag/proxy-stats.json) ---
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T13:29:50.274Z",
+      "url": "/v1/desktop/sessions/e46ddbe4919a/asides",
+      "asideId": "03a763d9-8725-4d15-bc9b-c1ba9aecd8c1",
+      "continues": null,
+      "questionHead": "MERMAIDANS draw me the aside flow",
+      "text": "MERMAIDANS draw me the aside flow",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "7ef4e5c5e87f4d788d358244c56f83cf",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"03a763d9-8725-4d15-bc9b-c1ba9aecd8c1\",\"text\":\"Here is the flow.\\n\\n```mermaid\\nflowchart TD\\n  A[Ask] --> B{Answered?}\\n  B -- yes --> C[Adopt]\\n  B -- no --> D[Ask again]\\n  D --> B\\n  C --> E[Conversation]\\n```\\n\\nMERMAID-END.\",\"off_record\":true},\"replayed\":false}}"
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T13:29:34.085Z",
+      "subscriptionId": "3143967889834147",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/e46ddbe4919a/events?frontend_replace=1",
+      "openedAt": "2026-09-25T13:29:38.044Z",
+      "subscriptionId": "7ef4e5c5e87f4d788d358244c56f83cf",
+      "asideDeltas": 1,
+      "deltaSizes": [
+        171
+      ]
+    }
+  ],
+  "asideDeltaFrames": 1,
+  "deltasBySubscription": {
+    "7ef4e5c5e87f4d788d358244c56f83cf": 1
+  },
+  "deltasByAside": {
+    "03a763d9-8725-4d15-bc9b-c1ba9aecd8c1": 1
+  },
+  "refused422": 0,
+  "messagePosts": [
+    {
+      "at": "2026-09-25T13:29:44.284Z",
+      "url": "/v1/desktop/sessions/e46ddbe4919a/messages",
+      "kind": "message",
+      "text": "ux3d seed turn",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"a3a9f6e3-469a-409b-8bfd-e8aa5f1df3ca\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T13:29:44.285Z"
+    }
+  ],
+  "asideOps": []
+}
+--- end counters ---
