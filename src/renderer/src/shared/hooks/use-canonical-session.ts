@@ -1831,7 +1831,51 @@ export function useCanonicalSessionStream(
 						LABEL_GAP_ATTEMPTS,
 					)
 				: [];
-			const missingLabels = [...new Set([...seedMissing, ...retryLabels])];
+			/*
+			 * THE LIVE SETTLE, the seed's sibling and the third carrier of an
+			 * argument-less row. A `tool_execution_end` states no arguments in either
+			 * carrier, so the row it paints asks the durable assistant row for its
+			 * command - and the seed path above is the one that used to ask. A settle
+			 * that arrives LIVE, during the turn instead of inside a snapshot, asked for
+			 * nothing, while the two moments that could have covered for it are neither
+			 * of them guaranteed:
+			 *
+			 *  - the seed keeps only the turn's newest `LIVE_EVENT_END_ROWS_MAX` (100)
+			 *    ends, so a call that has fallen out of that window is named by no later
+			 *    snapshot at all;
+			 *  - the round-end retry (`retryLabels` above) fires only on a DURABLE round
+			 *    ending, and a turn that runs for hours sends none: measured on the
+			 *    reported conversation, a 17-hour turn with 170 calls in it, whose app
+			 *    log carries the two `sessions.history` reads its reader's own paging
+			 *    made and not one label read.
+			 *
+			 * The row then kept its output stand-in - the call's result painted where its
+			 * command belongs - until the reader scrolled its assistant row into a page.
+			 * Asking here is the request the seed path makes, sized by the same
+			 * `reconcileLimit` and capped per call by the same `labelGapCandidates`
+			 * budget, so a call with no assistant row anywhere still spends at most
+			 * `LABEL_GAP_ATTEMPTS` reads in this renderer and is then dropped. A call
+			 * whose arguments the transcript already holds is in `labelled` and asks for
+			 * nothing: every producer that teaches them (a live start, a durable page)
+			 * writes `argsByCall` in the same step.
+			 */
+			const liveSettled: string[] = [];
+			for (const frame of frames) {
+				if (frame.type !== "event") continue;
+				const event = frame.payload as Record<string, unknown>;
+				if (String(event.type ?? "") !== "tool_execution_end") continue;
+				const callId = String(event.tool_call_id ?? "");
+				if (callId) liveSettled.push(callId);
+			}
+			const liveMissing = labelGapCandidates(
+				labelGapRef.current.attempts,
+				liveSettled,
+				labelled,
+				LABEL_GAP_ATTEMPTS,
+			);
+			const missingLabels = [
+				...new Set([...seedMissing, ...retryLabels, ...liveMissing]),
+			];
 			/*
 			 * The rows whose FIRST label read this is. Their object column is held
 			 * empty until the walk below ends (`labelPending`), because the stand-in it

@@ -1738,3 +1738,72 @@ test("one seed naming a call both waiting and settled does not exempt it", async
 		"and the call the seed names both ways is labelled",
 	);
 });
+
+/*
+ * ROUND 8: A LIVE SETTLE IS THE SEED'S SIBLING, AND IT HAD NO READ OF ITS OWN.
+ *
+ * `tool_execution_end` is argument-less in both carriers, so the row asks the
+ * durable assistant row for its command. The SEED path asks for the newest
+ * `LIVE_EVENT_END_ROWS_MAX` ends a snapshot carries. A live settle - the same
+ * frame, delivered while the turn runs - asked for nothing, and the two moments
+ * that could have stood in for it are not guaranteed to arrive:
+ *
+ *   - the seed keeps only the turn's newest 100 ends, so a call that has fallen
+ *     out of that window is named by no later snapshot at all;
+ *   - the round-end retry fires only on a DURABLE round ending (`turn_end` /
+ *     `agent_end`), and a turn that runs for hours sends none. Measured on the
+ *     reported conversation (a 17-hour turn, 170 calls in it): the app's own
+ *     backend log carries the `sessions.history` reads its reader's paging made
+ *     and not one label read.
+ *
+ * So the row kept its output stand-in until the reader scrolled its assistant row
+ * into a page - the report's "garbled lines that go away after scrolling up".
+ * Asking here is the same request the seed path makes, sized by the same
+ * `reconcileLimit` and capped per call by the same `LABEL_GAP_ATTEMPTS`, so a
+ * call with no assistant row anywhere still spends at most that budget.
+ */
+test("a live settle with no start asks for the page that carries its command", async () => {
+	const callId = "toolu_01LIVESETTLEWITHNOSEED00";
+	const durable = [
+		userRow("u1", 1),
+		assistantRow("a1", 2, [[callId, "npm test"]]),
+		toolRow("t0", 3, callId, "tests passed"),
+	];
+	for (let i = 0; i < 130; i++) durable.push(spendRow(`pad${i}`, 4 + i));
+	const page = durable.slice(-100);
+	assert.equal(
+		page.some((entry) =>
+			(entry.payload.tool_calls ?? []).some((call) => call.id === callId),
+		),
+		false,
+		"the tail page must not name the call",
+	);
+
+	const { handle } = await open({ page, liveEvents: [], durable });
+	const readsBefore = historyReads().length;
+	// The settling frame alone: no seed, no start, no round end.
+	deliver({
+		session_id: SESSION,
+		epoch: "bridge-epoch",
+		seq: 3,
+		type: "event",
+		payload: {
+			type: "tool_execution_end",
+			tool_call_id: callId,
+			tool_name: "bash",
+			result: { content: [{ text: "tests passed" }], details: null },
+			duration_s: 0.2,
+			is_error: false,
+		},
+	});
+	await pump();
+	const record = handle().transcript.records.find(
+		(entry) => entry.toolCallId === callId,
+	);
+	assert.ok(record, "the live settle paints the row");
+	assert.ok(record.args, "and a read labels it");
+	assert.ok(
+		historyReads().length > readsBefore,
+		"a read was asked for, rather than the reader's own paging",
+	);
+});
