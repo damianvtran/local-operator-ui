@@ -855,7 +855,7 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"mentionsRemedyRestampNote",
 	"meshDesktopRound7FoldRestampNote",
-	"meshDesktopRound9FoldRestampNote",
+	"meshDesktopRound10FoldRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1205,10 +1205,13 @@ const BRANCH_RECORDS = [
 	 * re-derived tokens in it reading as main's.
 	 */
 	"mentionsRemedyRestampNote",
-	 * THIS PASS'S OWN RECORD, and it is the one that states the pair the file ships:
-	 * the frames were re-shot from a build at this head rather than re-stamped, so
-	 * nothing in it is a claim that outruns what can be cited.
-	"meshDesktopRound7FoldRestampNote",
+	/*
+	 * And by this branch, the mesh-desktop pass, whose folds each re-derive the pair.
+	 * The note listed here is the one that states the pair the file currently ships -
+	 * the frames behind it were re-shot from a build at its own head rather than
+	 * re-stamped, so nothing in it outruns what can be cited.
+	 */
+	"meshDesktopRound10FoldRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
