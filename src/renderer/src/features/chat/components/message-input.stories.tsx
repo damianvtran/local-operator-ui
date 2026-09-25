@@ -1772,7 +1772,7 @@ const SESSION_READINGS = {
  */
 export const CredentialMaskedSessionPane: Story = {
 	render: () => (
-		<Frame label="masked with a live working-directory chip and the session's readings on the row: the sentence is above the box, and the chip takes only the width its own path needs">
+		<Frame label="masked with a live working-directory chip and the session's readings on the row: the sentence is above the box and neither neighbour moves">
 			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
 				<MessageInput
 					isLoading={false}
