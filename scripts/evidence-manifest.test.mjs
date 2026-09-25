@@ -857,6 +857,14 @@ const STAMP_BINDING_NOTES = [
 	 * reader is owed the pair AND the reason no still was owed.
 	 */
 	"streamGapHeldReadingsRestampNote",
+	/*
+	 * And the mention-remedy re-stamp's: THIS FILE'S BINDING IS ITS SUBJECT, which
+	 * is the criterion above - it exists to say which two trees the copy change
+	 * moved and which single frame set was re-captured with them - so it is held
+	 * to the pair the file ships rather than read as history. Its replaced pair is
+	 * written as bare SHAs for exactly that reason.
+	 */
+	"mentionsRemedyRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1209,6 +1217,15 @@ const BRANCH_RECORDS = [
 	 * this change moved and that no frame was owed.
 	 */
 	"streamGapHeldReadingsRestampNote",
+	/*
+	 * And by the mention-remedy pass, which wrote this branch's newest top-level
+	 * record. It is listed for the reason the list exists, and it is the case the
+	 * list is cheapest for: the record is the ONLY statement of which two trees the
+	 * copy change moved and which single frame set was re-captured with them, so a
+	 * fold that took main's copy of this file would drop the claim and leave the
+	 * re-derived tokens in it reading as main's.
+	 */
+	"mentionsRemedyRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
