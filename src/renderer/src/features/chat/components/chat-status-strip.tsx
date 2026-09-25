@@ -10,6 +10,7 @@ import { AlertTriangle, Loader2, WifiOff, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChatStatusDisplay } from "../chat-status";
 import { chatStatusDisplay, chatStatusKey } from "../chat-status";
+import { setChatStatusStripPresent } from "../chat-status-presence";
 
 /**
  * THE CHAT PANE'S ONE CONNECTION SURFACE (chat redesign §F2, design round 1 D3).
@@ -246,6 +247,22 @@ export const ChatStatusStrip = () => {
 			}),
 		[cause, serverSnapshot, internetOffline],
 	);
+
+	/*
+	 * THE STRIP ANNOUNCES ITS OWN PRESENCE (agent review round 2, R11). The
+	 * sidebar's stand-down needs "is the strip on screen", not "would the strip
+	 * have something to say": the copy condition is true on every route while the
+	 * strip is mounted only in the conversation pane, and a sidebar keyed to the
+	 * copy condition alone went silent on /settings with no second voice. The
+	 * dismissed-to-pill state still counts - the pill still states the state
+	 * (§F2) - so presence is `display !== null` and not "expanded". Cleared on
+	 * unmount: a strip that is gone owns nothing.
+	 */
+	const speaking = display !== null;
+	useEffect(() => {
+		setChatStatusStripPresent(speaking);
+		return () => setChatStatusStripPresent(false);
+	}, [speaking]);
 
 	/*
 	 * DISMISSAL IS KEYED, not boolean. The reader dismissed a STATE; when the state

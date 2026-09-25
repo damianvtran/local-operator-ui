@@ -138,6 +138,7 @@ import {
 	parseSidebarView,
 	shownSections,
 } from "../chat-sidebar-view";
+import { useStripSpeaksConnection } from "../chat-status-presence";
 import { clearSearch } from "../clear-search";
 import { untargetedDraftRows } from "../draft-rows";
 import {
@@ -847,6 +848,22 @@ export function ChatSidebar({
 	 * main published (design § 5.2, § 11.1).
 	 */
 	const { data: serverHealth } = useServerHealth();
+	/*
+	 * WHETHER THE STRIP OWNS THE CONNECTION VOICE RIGHT NOW (agent review round 2,
+	 * R11), and why this needs two terms. The strip lives in the conversation pane,
+	 * so it is mounted on the chat routes only, while this sidebar is mounted on
+	 * every route - a stand-down keyed to the copy condition alone
+	 * (`serverHealth?.online === false`) therefore made every NON-chat route go
+	 * silent about a dead server with no second voice to take over. `stripPresent`
+	 * is the strip's own publication (`chat-status-presence.ts`), so the gate is
+	 * "the strip is on screen AND unreachability is the reason", which can only be
+	 * true where a voice remains; where the strip is not mounted this stays false
+	 * and the sidebar keeps speaking. The three sites below read THIS const, so
+	 * the paragraphs and the foot line cannot drift about when to stand down.
+	 */
+	const stripSpeaksConnection = useStripSpeaksConnection(
+		serverHealth?.online === false,
+	);
 	const pairingCause =
 		serverHealth?.snapshot && !serverHealth.snapshot.pairing.available
 			? (serverHealth.snapshot.pairing.cause ?? "unpaired")
@@ -4917,9 +4934,11 @@ export function ChatSidebar({
 			 * list-pane paragraph to be deleted; what is KEPT for the other case is a
 			 * caption rather than a second voice, because a REACHABLE server that failed
 			 * or withdrew this list's own read is a fact about the LIST, which the strip
-			 * does not state, and the refetch is its only remedy. The gate is the foot
-			 * line's own reading (`serverHealth?.online !== false`), deliberately, so the
-			 * two paragraphs cannot drift about when the strip owns the screen.
+			 * does not state, and the refetch is its only remedy. The gate is the SAME
+			 * `stripSpeaksConnection` the other two sites and the foot line read,
+			 * deliberately, so the three cannot drift about when the strip owns the
+			 * screen - and, since R11, it carries the strip's own PRESENCE beside the
+			 * copy condition, so a route the strip is not mounted on keeps this voice.
 			 *
 			 * NO `role="alert"` HERE EITHER: the strip owns the one live region for
 			 * connection state (branding § 9's one register for the status slot), and a
@@ -4927,7 +4946,7 @@ export function ChatSidebar({
 			 * word is the foot's own "Retry refresh" - the strip's one "Retry" is
 			 * re-negotiation, and a screen cannot offer two verbs for one re-read.
 			 */}
-			{capabilities.error && serverHealth?.online !== false && (
+			{capabilities.error && !stripSpeaksConnection && (
 				<div className="space-y-1 text-meta text-ink-muted">
 					<p>
 						{capabilities.error.message}
@@ -4954,9 +4973,11 @@ export function ChatSidebar({
 			    THE SAME STAND-DOWN as the paragraph above, and for the same reason: a
 			    withdrawn gate is read off the SAME stale answer a just-killed server
 			    leaves behind, so without this gate the block would speak over the strip
-			    that has taken the screen's one connection voice.
+			    that has taken the screen's one connection voice. `stripSpeaksConnection`
+			    carries R11's presence term too, so the stand-down holds only where that
+			    strip is genuinely on screen.
 			 */}
-			{notice && serverHealth?.online !== false && (
+			{notice && !stripSpeaksConnection && (
 				<div className="space-y-1 text-meta text-ink-muted">
 					<p>{notice}</p>
 					<button
@@ -6920,24 +6941,28 @@ export function ChatSidebar({
 				 * the strip does not state, and the refresh is its only remedy. It is a
 				 * caption now - `ink-muted`, no `role="alert"` - per branding § 9's one
 				 * register for the status slot; the strip owns the one live alert.
+				 *
+				 * AND THE STAND-DOWN REQUIRES THE STRIP TO BE ON SCREEN (R11): this
+				 * sidebar renders on every route while the strip renders only in the
+				 * conversation pane, so a lost server on /settings and its siblings has
+				 * no strip to hand the voice to and this line keeps it.
 				 */}
-				{(error || profiles.error || teams.error) &&
-					serverHealth?.online !== false && (
-						<div className="pt-2 text-meta text-ink-muted">
-							<p>{error || profiles.error?.message || teams.error?.message}</p>
-							<button
-								type="button"
-								className="mt-1 underline"
-								onClick={() => {
-									void refreshCatalogue();
-									void profiles.refetch();
-									void teams.refetch();
-								}}
-							>
-								Retry refresh
-							</button>
-						</div>
-					)}
+				{(error || profiles.error || teams.error) && !stripSpeaksConnection && (
+					<div className="pt-2 text-meta text-ink-muted">
+						<p>{error || profiles.error?.message || teams.error?.message}</p>
+						<button
+							type="button"
+							className="mt-1 underline"
+							onClick={() => {
+								void refreshCatalogue();
+								void profiles.refetch();
+								void teams.refetch();
+							}}
+						>
+							Retry refresh
+						</button>
+					</div>
+				)}
 			</TooltipProvider>
 			{/*
 			 * THE SIDEBAR'S OWN TOAST LANE, and `position: absolute` inline is the whole

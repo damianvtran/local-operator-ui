@@ -1611,6 +1611,14 @@ export function useCanonicalSessionStream(
 				requests < RECONCILE_WALK_MAX_REQUESTS
 			) {
 				requests += 1;
+				/*
+				 * WHETHER THIS IS THE WALK'S FIRST PAGE, i.e. the TAIL. `beforeId` is only
+				 * advanced after a page is merged, so at this point it still describes the
+				 * request being made - and the distinction is load-bearing for the held-claim
+				 * reconcile below: a page read from `before_id` is a SLICE older than the
+				 * newest rows, and its silence about a recent message proves nothing.
+				 */
+				const isTailPage = beforeId === undefined;
 				let page: DesktopHistoryPage;
 				try {
 					page = await desktopResult<DesktopHistoryPage>({
@@ -1703,6 +1711,23 @@ export function useCanonicalSessionStream(
 					hydrated: true,
 					transcript: applyHistoryPage(state.transcript, page),
 				}));
+				/*
+				 * §F2's LAST BULLET, ON THE READ THE CONTRACT NAMES (UX round 1's U5b): a
+				 * held send is resolved by the server's OWN answer, and on a reconnect that
+				 * answer is this one - the authoritative tail, fetched once per reconcile
+				 * (the snapshot's own page is the other, and both are offered; whichever
+				 * arrives first settles the claim). Only the TAIL page can conclude
+				 * anything (see `isTailPage`) and only a page that is not `cursor_missing`
+				 * counts as complete: a reconciled page is a window, not the tail, so its
+				 * silence about a recent message proves nothing.
+				 */
+				if (sessionId && isTailPage) {
+					useCanonicalSessionsStore.getState().resolveHeldFromServer(
+						sessionId,
+						page.entries.map((entry) => entry.id),
+						!page.cursor_missing,
+					);
+				}
 				/*
 				 * How many target calls were still behind what had been read when this
 				 * page arrived; a page that names one LOWERS it, which is the only
@@ -2228,6 +2253,24 @@ export function useCanonicalSessionStream(
 							let transcript = replayTranscript ?? next.transcript;
 							if (!snapshot.history.cursor_missing) {
 								transcript = applyHistoryPage(transcript, snapshot.history);
+							}
+							/*
+							 * AND A SNAPSHOT RESOLVES A HELD SEND (§F2's last bullet, UX round 1's
+							 * U5b). This frame is "the frame that follows a reconnect or a fresh
+							 * subscription" (the note below says the same of the pulse seed), and
+							 * its page is the server's own statement of what this conversation
+							 * holds — the acknowledgement §F2 says a held state clears from, never
+							 * from the local send. The store decides: an answer that NAMES the held
+							 * request landed; one that does not, on a COMPLETE page (no
+							 * `cursor_missing`), proves it did not. Passed unconditionally because
+							 * both arms are cheap and the claim's existence is the store's test.
+							 */
+							if (sessionId) {
+								useCanonicalSessionsStore.getState().resolveHeldFromServer(
+									sessionId,
+									snapshot.history.entries.map((entry) => entry.id),
+									!snapshot.history.cursor_missing,
+								);
 							}
 							// A cold session (no live owner) snapshots with no history
 							// cursor and therefore an empty page, and a replaced cursor
