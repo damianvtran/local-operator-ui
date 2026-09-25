@@ -228,10 +228,16 @@ test("every failure class resolves once, and the notice says which it is", () =>
 			"not_sent",
 			true,
 		],
+		/*
+		 * The read window is not sent AND NOT PRESSABLE (design round 11, D2): the window
+		 * answers "failed" the moment it is asked, so the press re-refuses into the same
+		 * sentence - the classifier withholds it, and the row now asks the predicate rather
+		 * than restating its answer as a literal.
+		 */
 		[
 			new UserFacingError("not ready", SESSION_UNVALIDATED_CODE),
 			"not_sent",
-			true,
+			false,
 		],
 		[
 			new UserFacingError("no space", STORE_OUT_OF_SPACE_CODE),
