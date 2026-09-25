@@ -812,6 +812,40 @@ const STAMP_BINDING_NOTES = [
 	 * written as bare SHAs instead - the convention the paragraphs above state, applied in the
 	 * direction the next fold always goes.
 	 */
+	"modelCatalogueFocusRestampNote",
+	/*
+	 * This branch's own: it states the pair an earlier fold re-derived, and is held
+	 * to the pair this file ships rather than read as history.
+	 */
+	"round1LabelGapRestampNote",
+	/*
+	 * The chip cap's own: it re-derives `srcTree` for a change that moves `src/`
+	 * without touching a frame, so a reader is owed the pair AND the reason no
+	 * still was owed - and a new frame is the wrong answer to a question nobody
+	 * asked.
+	 */
+	"cwdChipCapRestampNote",
+	/*
+	 * And this branch's own, carried through every fold: it states the pair THIS
+	 * commit ships for UI PR B's Integrations redesign, so it is held to that pair
+	 * rather than read as history.
+	 */
+	"integrationsRedesignRestampNote",
+	/*
+	 * This pass's own, laid back on top of the fold: it re-stamps a
+	 * change that moves `src/` without touching a frame, so the reader is
+	 * owed the pair and the reason no still was owed.
+	 */
+	"liveSettleLabelRestampNote",
+	/*
+	 * This remediation round's own: it re-stamps the change that rounds 1's two MAJORs moved inside, so
+	 * the reader is owed the pair and the reason no still was owed.
+	 */
+	"liveSettleLabelRemediationNote",
+	/*
+	 * This remediation round's own: it re-stamps the change that rounds 1's two MAJORs moved inside, so
+	 * the reader is owed the pair and the reason no still was owed.
+	 */
 	"meshDesktopRound7FoldRestampNote",
 ];
 
