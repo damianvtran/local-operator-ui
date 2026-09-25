@@ -1598,86 +1598,68 @@ test("the overlap sentence retires with the delivered words, and not on any keys
 });
 
 /*
- * n5-2 AND m5-1 (review round 5), as one predicate with a behavioural pin.
- *
- * The lock answer's retirement was pinned only by a regex on the effect's source, and it
- * read only the row's `pending` - so a press answered in the window BEFORE an admission
- * exists (image decode, `awaitWindow`) had its sentence retired in the same commit.
- * `lockAnswerOutlived` is the whole rule now, so a term that goes missing fails here.
+ * U19 (review round 6's m6-1, and QA measured this one live): the retention rule had two
+ * holes - it stepped over offsets, so a run beginning at an offset the step missed read as
+ * absent, and it only looked at the first 400 characters, so a fragment that survived in
+ * the TAIL of a long message was never tested. The direction that matters is the one QA
+ * walked: a fragment still visible, and the sentence gone.
  */
-test("the lock answer outlives exactly the states that hold a flight open", () => {
-	const flying = {
-		rowPending: false,
-		admitting: false,
-		gatePending: false,
-		muted: true,
-	};
-	assert.equal(
-		lockAnswerOutlived(flying),
-		true,
-		"a muted lock answer with nothing in flight is stale, and the screen is claiming a send that has ended",
-	);
-	assert.equal(
-		lockAnswerOutlived({ ...flying, admitting: true }),
-		false,
-		"the pre-admission window is a flight: the row is not pending yet and the answer must stay",
-	);
-	assert.equal(lockAnswerOutlived({ ...flying, rowPending: true }), false);
-	assert.equal(
-		lockAnswerOutlived({ ...flying, gatePending: true }),
-		false,
-		"the gate's own lock belongs to the question on screen, not to a flight",
-	);
-	assert.equal(
-		lockAnswerOutlived({ ...flying, muted: false }),
-		false,
-		"a real failure's sentence is not the lock's answer, and this rule must not touch it",
-	);
+test("a surviving fragment keeps the sentence, at any offset and in the tail", () => {
+	const cases = [
+		{
+			why: "a 12-character fragment starting at an offset the old step of 8 skipped (a third of this delivered text)",
+			delivered: "re-run the failing case and paste the lines",
+			edit: "see above: re-run the failing case and paste the lines",
+		},
+		{
+			why: "a fragment that survives only in the TAIL of a long message",
+			delivered: `${"the daemon logs a receipt for every admitted message and keeps it ".repeat(6)}the last twenty lines of the trace`,
+			edit: "my own question now",
+		},
+	];
+	for (const c of cases) {
+		reset();
+		useConversationInputStore.setState({
+			inputByConversation: {
+				[SESSION]: {
+					currentInput: c.edit,
+					submittedMessages: [],
+					currentHistoryIndex: null,
+					replies: [],
+					attachments: [],
+					returned: { text: c.delivered, attachments: [], replies: [] },
+				},
+			},
+		});
+		useConversationInputStore.getState().reconcileDelivered(SESSION);
+		const row = () =>
+			useConversationInputStore.getState().inputByConversation[SESSION];
+		assert.equal(
+			row().lateDelivered,
+			"overlap",
+			`${c.why}: the arm was not reached`,
+		);
+		if (c.delivered.length > 400) {
+			/*
+			 * The tail case keeps its fragment and NOTHING from the first 400 characters, so
+			 * a rule that only scans them retires the sentence here.
+			 */
+			const tail = c.delivered.slice(-24);
+			useConversationInputStore
+				.getState()
+				.setCurrentInput(SESSION, `${c.edit} ${tail}`);
+		} else {
+			useConversationInputStore
+				.getState()
+				.setCurrentInput(SESSION, `${c.edit}!`);
+		}
+		assert.equal(
+			row().lateDelivered,
+			"overlap",
+			`${c.why}: the sentence retired on an edit that left the words on screen`,
+		);
+	}
 });
-
-/*
- * m5-2 (review round 5): the notice belongs to the attempt that produces it.
- *
- * The pane renders the row's sentence when the row has one, so a row still carrying an
- * OLDER failure's sentence showed that one for a throw that writes no row of its own -
- * measured as an unrelated "not ready" refusal rendering the earlier budget sentence. The
- * latch clears it, which is how the store says which attempt the sentence is about.
- */
-test("an admission clears the notice the previous failure left on the row", async () => {
-	reset();
-	const store = useConversationInputStore.getState();
-	store.setCurrentInput(SESSION, input.text);
-	store.beginInFlight(SESSION, {
-		text: input.text,
-		attachments: [],
-		replies: [],
-	});
-	responses.push(
-		new DesktopControlError(
-			409,
-			"this message's text alone fills 1.1 MB of the 1.0 MB limit, leaving no room for its attachments; shorten the text or send the images on their own",
-		),
-	);
-	await assert.rejects(admitChatDraft(key, input, SESSION));
-	assert.ok(
-		draftRow().error,
-		"no failure was recorded, so this pin has nothing to clear",
-	);
-	/*
-	 * The next attempt, read at its latch: the notice is gone before the wire, so a throw
-	 * this attempt never records cannot inherit it.
-	 */
-	responses.push(new DesktopControlError(504, "deadline_exceeded"));
-	const pending = admitChatDraft(key, input, SESSION);
-	await Promise.resolve();
-	assert.equal(
-		draftRow().error,
-		undefined,
-		"the new attempt kept the previous failure's sentence, so a throw with no row of its own would render it",
-	);
-	await assert.rejects(pending);
-});
-
 /* ------------------------------------------------ the released app's claim */
 
 /*

@@ -399,9 +399,17 @@ function overlapStillTrue(row: ConversationInputState, next: string): boolean {
 	 * than a quadratic one.
 	 */
 	const KEEP_RUN = Math.max(8, Math.min(24, Math.floor(delivered.length / 3)));
-	const probe = delivered.slice(0, 400);
-	for (let i = 0; i + KEEP_RUN <= probe.length; i += 8)
-		if (next.includes(probe.slice(i, i + KEEP_RUN))) return true;
+	/*
+	 * EVERY OFFSET, AND THE WHOLE TEXT (review round 6, m6-1 = U19). The first version
+	 * stepped by 8 over the first 400 characters, which has two holes the round measured:
+	 * a run of exactly `KEEP_RUN` starting at an offset the step does not land on was read
+	 * as absent (a 26-character delivered text: offset 0 kept, offset 4 retired), and a
+	 * fragment that survived only in the TAIL of a long message was never tested at all.
+	 * Both directions matter and only one is allowed to be wrong: a deletion removes every
+	 * run, so the ending that retires the note is unchanged by closing them.
+	 */
+	for (let i = 0; i + KEEP_RUN <= delivered.length; i++)
+		if (next.includes(delivered.slice(i, i + KEEP_RUN))) return true;
 	return false;
 }
 
@@ -1289,6 +1297,19 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 							next = { ...next, returned: { ...next.returned, text: "" } };
 						if (next.volatilePendingText)
 							next = { ...next, pendingText: undefined };
+						/*
+						 * AND THE DELIVERED TEXT, which is the same class of copy (review round 6,
+						 * M6-1). `lateDeliveredText` was added beside `lateDelivered` so the note
+						 * could be retired in the right company, and the raise sites clear
+						 * `returned` - the record whose `volatileText` flag is what blanks the
+						 * payload above. So without this line the delivered text outlives the gate
+						 * that was guarding it: measured A/B on one store sequence, the secret
+						 * present in this field and absent at the head before it. Dropping the text
+						 * leaves the note itself alone, and a note with no text to compare keeps
+						 * saying what it says - the conservative direction.
+						 */
+						if (next.volatilePendingText)
+							next = { ...next, lateDeliveredText: undefined };
 						return [id, next];
 					}),
 				),
