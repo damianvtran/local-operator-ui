@@ -194,19 +194,106 @@ export const Editable: Story = {
 };
 
 /**
- * The same chip with a SHORT path, at the same width as `Editable`.
+ * The same chip with a SHORTER path (11 characters against 13), at the same
+ * width as `Editable`.
  *
  * A pair, and the reason is a measurement rather than a preference: the design
  * round found the chip resizing with its content (260px against 245.9px), so a
- * move would shift every control to its right at the same moment the runtime
- * restarted (D7). The chip now reserves a fixed path column, and these two
- * frames are what says so without an argument - differenced, the only pixels
- * that move are the characters inside the column.
+ * move shifted the chip's neighbours at the same moment the runtime restarted
+ * (D7). The chip reserved a fixed path column in answer, and these two frames
+ * were what said so without an argument: differenced, the only pixels that
+ * moved were the characters inside the column.
+ *
+ * The operator has since asked for the chip to take only the width it needs
+ * ("not take up extra space unless needed … up to the current as max width"),
+ * which supersedes D7 - so the column is a CAP now (`CHIP_PATH_COLUMN`).
+ *
+ * These two frames are NOT evidence about that cap, and saying so is the point
+ * of this paragraph: both render at this file's default 880px column, BELOW the
+ * 900px gate, where the 260px box ceiling (`max-w-65`) binds both paths and both
+ * spans are ellipsised: the pair's own chevron ink sits at the same x in both
+ * frames, and the two contents (282.3px and 267.9px) both exceed the ceiling.
+ * What the pair still shows is the characters INSIDE that
+ * box (`~/src/pr…` against `~/Downlo…`), which is the half of the previous
+ * claim that survives. Above the gate the boxes genuinely differ, by the two
+ * characters the paths differ by; the frames that show WHICH block moves are
+ * `message-input.stories.tsx`'s composed-row stories and the `composed-row`
+ * captures in `docs/evidence/chat-cwd-move-live/`, at the 1024px column the cap
+ * is gated for. What D7 bought is replaced rather than dropped - the chip's left
+ * edge and the mic/send group's right edge are still fixed, and the row never
+ * demands more than it did (the component's own `CHIP_PATH_COLUMN` comment
+ * states the whole of it).
  */
 export const EditableShortPath: Story = {
 	render: () => (
 		<Frame currentWorkingDirectory={`${HOME}/Downloads`} writePath={MOVING} />
 	),
+};
+
+/**
+ * The chip at a ONE-character path (`~`), which is what a session in the home
+ * directory gets and the state the operator reported.
+ *
+ * It exists because no other fixture in this file expresses it: `Editable` and
+ * `EditableShortPath` are both within a character or two of the cap, so the
+ * reserved 16ch column they used to sit in read as a little padding rather than
+ * the 115px of empty box the report was about. At this path the difference
+ * between a column and a cap is the whole of it - 303.9px of chip against
+ * 195.9px, both measured off the DOM at a 1000px column.
+ *
+ * `column` defaults to 1000 rather than the other frames' 880, and that is
+ * load-bearing: 880 is BELOW the 900px threshold the path cap sits behind, so a
+ * frame at the other frames' width photographs the chip with no cap at all and
+ * cannot show this change. 1000 is above the threshold and near the column the
+ * report itself came from.
+ *
+ * The path is fixed here and its SISTERS (`EditableAtCap`, `EditablePastCap`)
+ * carry the cap's other two states, rather than one fixture driven by story args:
+ * Storybook drops an undeclared arg from the iframe URL, so a fixture that
+ * claimed to be drivable that way measured its own default three times over -
+ * which is a measurement that looks like evidence and is not. The path and the
+ * column are what the geometry rig varies, and a fixture per value is the only
+ * spelling of that which the tool actually honours.
+ */
+export const EditableShortestPath: Story = {
+	render: () => (
+		<Frame currentWorkingDirectory={HOME} column={1000} writePath={MOVING} />
+	),
+};
+
+/**
+ * The one place the cap is set, so the two fixtures below cannot drift apart.
+ *
+ * 1000px, not the other frames' 880: 880 is below the 900px threshold the cap
+ * sits behind, so a frame there photographs the UNCAPPED branch and cannot show
+ * this change. See `EditableShortestPath`'s note.
+ */
+const AtCapColumn = (path: string) => (
+	<Frame currentWorkingDirectory={path} column={1000} writePath={MOVING} />
+);
+
+/**
+ * The chip at a 16-character path - exactly the cap, so this is the "fits" half
+ * of the D6 boundary pair and the fixture that answers whether the box is
+ * narrower than the old fixed column when the path fills it.
+ */
+export const EditableAtCap: Story = {
+	render: () => AtCapColumn(`${HOME}/src/project-16`),
+};
+
+/**
+ * The chip at the longest path it will ever show - well past the cap, so the
+ * span ellipsises and the tooltip has to carry the whole path (the regression
+ * frame for the cap, and the reason the cap is kept rather than dropped).
+ *
+ * The same fixture `TruncatedPath` mounts, at the column that fixture is not at:
+ * that story renders at 880px, where there is no cap, so it cannot photograph
+ * the ellipsis the cap produces. Its own doc says the tooltip question is
+ * answered off the rendered span; this is the frame where the span is actually
+ * past it.
+ */
+export const EditablePastCap: Story = {
+	render: () => AtCapColumn(`${HOME}/src/a-project-with-a-long-name`),
 };
 
 /**
@@ -369,19 +456,23 @@ export const RefusedSettled: Story = {
  * A path that GROWS after mount, which is the state the measured tooltip had to
  * survive and did not (agent review round 2, R-1).
  *
- * Above a 900px chat column the path span is a fixed `16ch` column, so a path
- * change moves `scrollWidth` and leaves `clientWidth` alone - and a
- * `ResizeObserver` reports BOX size, so nothing re-measured: the chip ellipsised
- * the new directory while the tooltip went on offering the previous path's
- * answer. The story mounts at `~/src/project` (13 characters, fits) and then
- * grows to a path longer than the column, which is reachable by hand through the
- * feature's own primary action (move to a longer directory) and by no story
- * before this one.
+ * The path span is CAPPED at 16ch above a 900px chat column
+ * (`CHIP_PATH_COLUMN`), so a path can be longer than the room it has, and the
+ * AT-CAP state is the one that traps a box-size observer: `clientWidth` sits at
+ * the ceiling while `scrollWidth` runs past it. This story mounts at
+ * `~/src/project` (13 characters, fits) and then grows to a path well past the
+ * cap, which is reachable by hand through the feature's own primary action (move
+ * to a longer directory) and by no story before this one. THIS fixture crosses
+ * the cap from a FITTING path, so the box does resize on the change and the
+ * observer does fire; the neighbouring case - an at-cap path growing past the
+ * cap, where the box does not resize at all - is the one only the effect's
+ * `[shown]` dependency can see, and `scripts/move-session.test.mjs` pins that
+ * dependency at the source beside the wiring it belongs to. The reason for the
+ * dependency changed with the cap; the mechanism did not.
  *
  * The play asserts the OBSERVABLE end of it rather than the mechanism: the
- * tooltip must reveal the path the chip is hiding. With the effect's dependency
- * list back at `[]`, this assertion fails - the regression is falsifiable here
- * instead of only photographable.
+ * tooltip must reveal the path the chip is hiding, in whichever of the two ways
+ * above the change reached that state.
  */
 const GrownPathFrame: FC = () => {
 	const [path, setPath] = useState(PROJECT);
@@ -390,9 +481,9 @@ const GrownPathFrame: FC = () => {
 		// measured, and the growth is what it never saw.
 		setPath(`${HOME}/project-with-a-considerably-longer-name`);
 	}, []);
-	// `column={1000}` is load-bearing: below 900px the path span hugs its content
-	// and cannot overflow, so the fixed column this regression lives in only exists
-	// above the threshold.
+	// `column={1000}` is load-bearing: below 900px there is no cap at all, so the
+	// span hugs its content until the chip's own 260px ceiling squeezes it, and the
+	// at-cap state this regression is measured against cannot occur.
 	return (
 		<Frame currentWorkingDirectory={path} writePath={MOVING} column={1000} />
 	);
