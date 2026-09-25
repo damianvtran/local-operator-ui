@@ -807,34 +807,13 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  */
 const STAMP_BINDING_NOTES = [
 	/*
-	 * THE UNION OF BOTH SIDES, WHICH IS THIS FOLD'S DEPARTURE FROM THE OLDER PASS.
-	 * `meshDesktopRound3RestampNote` is this branch's own - it states the pair the file
-	 * ships with, so it is held to that pair - and every key `origin/main` listed before
-	 * the fold is kept beside it. Any of main's notes whose quoted pair this fold
-	 * supersedes has left the list in the same commit, with its values written as bare
-	 * SHAs in the note itself, which is the convention the comment above states.
+	 * THE LIST IS WHAT SURVIVES THE FOLD, and the notes that left it did so in the commit that
+	 * removed them: each quoted the pair this fold superseded, and a backticked token here is
+	 * always the value the file SHIPS, so keeping one would hold a superseded pair to this file as
+	 * if it were its own. Their values are written as bare SHAs in the notes themselves - the
+	 * convention `usageAutoCheckRestampNote` and `usageInFlightRemediationNote` left by first.
 	 */
 	"meshDesktopRound3RestampNote",
-	"occupiedAddressRestampNote",
-	"shellPathRestampNote",
-	"settingsGateRestampNote",
-	"candidateMacArchRestampNote",
-	"notarizeGateRestampNote",
-	"usageInFlightConvergenceNote",
-	"macNativeComponentsRestampNote",
-	"telemetrySwitchRestampNote",
-	"readReceiptRestampNote",
-	/*
-	 * This one exists BECAUSE the list is not optional reading: the change it
-	 * re-stamps for rewrote no frame, so a reader is owed the two values it binds
-	 * and the reason no still was owed.
-	 */
-	"modelCatalogueFocusRestampNote",
-	/*
-	 * This branch's own: it states the pair an earlier fold re-derived, and is held
-	 * to the pair this file ships rather than read as history.
-	 */
-	"round1LabelGapRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
