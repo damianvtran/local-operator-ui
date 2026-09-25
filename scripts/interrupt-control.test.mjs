@@ -316,7 +316,15 @@ const resolveRung = (expression, isSmallView) => {
 const ROW_PARTS = (() => {
 	const mic = ROW.indexOf('aria-label="Start recording"');
 	const stop = ROW.indexOf('aria-label="Stop"');
-	const send = ROW.indexOf('aria-label="Send message"');
+	/*
+	 * The Send control's label is an EXPRESSION while the `/btw` aside can own the
+	 * press ("Ask the aside" when attached, PR #482's U5), so it is found by either
+	 * spelling of its label - the literal, or an expression whose conversation arm
+	 * is the literal - rather than by one string the row no longer carries.
+	 */
+	const send = ROW.search(
+		/aria-label=(?:"Send message"|\{[^{}]*"Send message"\s*\})/,
+	);
 	// The ATTRIBUTE, not the bare name: the name also appears in the source's own
 	// prose, and a slice anchored on a mention inside a comment is a slice of the
 	// wrong region (it silently spanned the Stop control and read its `aria-label`).
