@@ -15202,8 +15202,9 @@ async function sceneSidebarLazyChats(cdp) {
 				try {
 					return readFileSync(STUB_LOG, "utf8")
 						.split("\n")
-						.filter((line) => line.includes("sessions?") && line.includes("cursor="))
-						.length;
+						.filter(
+							(line) => line.includes("sessions?") && line.includes("cursor="),
+						).length;
 				} catch {
 					return 0;
 				}
