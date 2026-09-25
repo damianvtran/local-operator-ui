@@ -51,7 +51,7 @@ band rows, not the document.
 | `stopped` | "The Local Operator server stopped. The app keeps looking for one and attaches to it when it appears." + "The daemon's process is gone." | danger |
 | `wedged` | "A Local Operator server is running on this machine and this app is not attached to it." + main's own sentence about the path taken | warning |
 | `unattachable` | the same sentence + main's spawn-gate detail: **the holder first** (address, pid, install, version, and that this app holds no key to it), then that nothing was started over it, then the act that ends it, **with the holder's real pid** (`lop services reclaim 42411`), then the promise | warning |
-| `both-addresses-held` | the two-holder form of the same: the class stated **once** ("are running Local Operator daemons this app has no key for") with both addresses listed under it, the second of them named by its **prefix's last segment** rather than the whole path (`local-operator`) - and the act in its plural form (`Stop them from the installs that own them`), because two holders are not `it` - the state the app used to QUIT in, and the one that had no frame anywhere in the tree before round 1 (D2/D6) | warning |
+| `both-addresses-held` | the two-holder form of the same: the class stated **once** ("are running Local Operator daemons this app has no key for") with both addresses listed under it, the second of them named by its **prefix's last segment** rather than the whole path (`local-operator`) - and the act in its plural form with the **placeholder** rather than one holder's pid (`Stop them from the installs that own them with lop services reclaim <pid>`), because two holders are not `it` and either could be the one to end - the state the app used to QUIT in, and the one that had no frame anywhere in the tree before round 1 (D2/D6) | warning |
 | `serving-on-fallback` | "Serving on http://127.0.0.1:8080, not the address this app is configured for." + main's holder clause for the configured address, the act that frees it **carried from main's own composer with the real pid** (agent round 2, R2-4; design round 2, D9), and where the app ends up - the state that was **byte-identical to `attached`** before it had a presentation (D1) | warning |
 | `attached-elsewhere` | the same state **one launch later**: the app adopted the daemon on 8080 through its persisted credential, so no gate ran, no address was refused, and the band carries the two facts that are true - the address it is on, the address it is configured for - with **no holder clause and no act invented** (agent round 2, R2-1a). Before this round that launch painted nothing at all | warning |
 | `returned-to-configured` | "Back on http://127.0.0.1:1111, the address this app is configured for." + the address it served on until it moved back - the transition OUT of the state above, and the only dismissible band here (D1) | **success** |
@@ -99,8 +99,15 @@ offline, one state over.
 ## The identities, measured
 
 Twenty-eight frames, two palettes, fourteen stories, re-shot in ONE pass in the round-2
-remediation (six of them moved, two are new). The hashes below are hand-maintained, so
-they were re-derived in that pass in the same run that wrote the files.
+remediation (six of them moved, two are new), and swept again as a whole in the round-3
+pass that printed the act clause plainly (six of those twenty-eight changed bytes, the
+other twenty-two came back identical). The values below are the **md5** of each committed
+frame - hand-maintained, and re-derived from the files each pass wrote. The algorithm is
+named here because this section's only other mention of one belongs to the sha256 list
+that used to sit beside it, so a reader had no way to know which of the two they were
+reading (design round 4, D21 / agent round 4, R4-6). The three rows the round-3 pass
+moved - `unattachable`, `both-addresses-held`, `serving-on-fallback` - were re-derived at
+`5cbf7cae2`, the commit that carries the re-shot frames.
 
 - `attached`, `degraded` and `no-bridge` are byte-identical to each other
   (`e784c20a…` dark, `5149fc6f…` light, all three at 1024x333). **That identity is the

@@ -23,6 +23,8 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
+import { daemonRecord, loadBackendComposers } from "./backend-composers.mjs";
+
 const bundle = await build({
 	stdin: {
 		contents:
@@ -49,6 +51,10 @@ const {
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
+
+/* The shipped spawn-refusal sentence, for the `unattachable` observation below: the
+ * fixture used to spell it by hand (agent round 4, R4-2). */
+const { describeSpawnRefusal } = await loadBackendComposers();
 
 const identity = {
 	url: "http://127.0.0.1:7341",
@@ -546,8 +552,13 @@ test("a daemon this app may not drive is WEDGED with its own path named, not det
 	const machine = new DaemonStateMachine();
 	machine.observe({
 		kind: "unattachable",
-		detail:
-			"http://127.0.0.1:1111 (pid 42411, uv-tool, v0.55.6) is running a Local Operator daemon this app has no key for. Nothing was started over it. Stop it from the install that owns it with `lop services reclaim 42411` (`lop services status` lists what is running). It keeps probing for a server it can open.",
+		/*
+		 * THE SHIPPED SENTENCE, not a copy of it (agent round 4, R4-2): this fixture used to
+		 * carry a hand-written copy, so when the composer dropped its markdown delimiters the
+		 * copy kept them, and the copy test's "no shipped sentence carries a backtick"
+		 * assertion - which only reaches the composer - could not fail here.
+		 */
+		detail: describeSpawnRefusal([daemonRecord()]),
 	});
 	assert.equal(machine.getState(), "wedged");
 	assert.equal(

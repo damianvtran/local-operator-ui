@@ -384,14 +384,18 @@ export function describeHolders(refusals: OriginOccupancy[]): string {
 /**
  * How many holders a sentence is about.
  *
- * ONE COUNT FOR TWO AGREEMENTS (agent round 3, R3-2). `describeHolders` words its class
- * clause from a holder count, so the act appended to that clause has to agree with the
- * same count and not with the number of PIDS: two holders that published one pid
- * between them produced "Stop it from the install that owns it with `reclaim 42411`"
- * beside "are running Local Operator daemons" - the same disagreement design round 2's
- * D9 removed for the both-pids case, and a breach of this file's own rule for the
- * placeholder. One helper, asked by both composers, so the two cannot drift apart
- * again.
+ * ONE COUNT FOR TWO AGREEMENTS (agent round 3, R3-2). The class clause beside the act is
+ * worded per KIND - `describeHolders` groups the refusals and words each group - so the
+ * act cannot take its agreement from that loop. It takes it from the question a reader
+ * asks instead, HOW MANY HOLDERS ARE THERE, and never from the number of PIDS: two
+ * holders that published one pid between them produced "Stop it from the install that
+ * owns it with `reclaim 42411`" beside "are running Local Operator daemons" - the same
+ * disagreement design round 2's D9 removed for the both-pids case, and a breach of this
+ * file's own rule for the placeholder. `holderCount` is that one answer, and the claim
+ * above and the pid-or-placeholder choice below both CONSUME it - one call site, whose
+ * value feeds both (agent round 4, R4-5: the sentence here used to claim both composers
+ * asked a holder count, which the per-kind loop above does not; agent round 1 of the
+ * follow-up PR, N2: "ask it" was imprecise for the same reason).
  */
 const holderCount = (refusals: OriginOccupancy[]): number => refusals.length;
 
@@ -428,7 +432,9 @@ export function reclaimClause(refusals: OriginOccupancy[]): string {
 	 * BOTH HALVES FOLLOW THE HOLDER COUNT (agent round 3, R3-2), and the command names a
 	 * pid only where the sentence is about ONE holder: with two holders named, the act is
 	 * plural and the command keeps the placeholder, which is what the doc comment above
-	 * promises. Nothing here reads `pids.length` except the early return.
+	 * promises. `pids.length` is read in two places: the early return, and the `single`
+	 * test below, where a lone pid cannot be named without it (agent round 4, R4-5: the
+	 * sentence here used to say the early return was the only reader).
 	 */
 	const single = holderCount(refusals) === 1 && pids.length === 1;
 	const command = single
@@ -2902,7 +2908,13 @@ export class BackendServiceManager {
 	 */
 	private async registerOwnedDaemon(
 		child: ChildProcess,
-		reason: SubstitutionReason = NO_SUBSTITUTION_REASON,
+		/*
+		 * REQUIRED, not defaulted (agent round 4, R4-4): the only caller composes this from
+		 * the refusals it just measured, and a default here is the shape R3-1 was - a claim
+		 * that can be published without the reason being known. `attachDaemon` keeps its
+		 * default, because its callers legitimately have no refusals to report.
+		 */
+		reason: SubstitutionReason,
 	): Promise<void> {
 		const identity = await this.ownedDaemonIdentity(child);
 		if (!identity) {
