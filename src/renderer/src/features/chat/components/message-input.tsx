@@ -6979,7 +6979,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										 * for the state to the control for as long as it refuses.
 										 */
 										readOnly={isInputDisabled}
-										aria-disabled={isInputDisabled || noModel || undefined}
+										/*
+										 * The TEXTAREA's own attribute: it reports the refusal that keeps the
+										 * box read-only, and nothing else. Round 5's U21 refusal is about
+										 * SENDING, not typing ("typing stays allowed; the send is not"), so
+										 * `noModel` must not appear here -- telling a screen reader the box
+										 * is disabled while it accepts every keystroke is the same class of
+										 * falsehood as a claim its surface cannot support, and
+										 * `composer-refusal` pins exactly that.
+										 */
+										aria-disabled={isInputDisabled || undefined}
 										aria-label="Message"
 										role="combobox"
 										/*
