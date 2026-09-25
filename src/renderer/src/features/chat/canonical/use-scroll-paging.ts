@@ -228,10 +228,10 @@ export function useScrollPaging({
 	 * is device-scaled and a trackpad's is a lie: the same gesture reports
 	 * different numbers on different hardware and neither number says how far the
 	 * content actually moved. `at: 0` means "no input yet", which is what makes
-	 * the first input carry no speed and no travel — there is no previous sample
-	 * to difference it against, and inventing one (the reader's distance from the
-	 * tail, say) would report a flick's worth of travel for a reader who has only
-	 * just put their fingers on the pad.
+	 * the first input carry no travel — there is no previous sample to difference
+	 * it against, and inventing one (the reader's distance from the tail, say)
+	 * would report a flick's worth of travel for a reader who has only just put
+	 * their fingers on the pad.
 	 */
 	const travel = useRef({
 		fromTail: 0,
@@ -397,7 +397,7 @@ export function useScrollPaging({
 			/*
 			 * The slot's paint follows the policy's own view of what is on its way:
 			 * a reveal just dispatched, one in flight, one owed, or a demand that is
-			 * armed AND inside a window the policy spends from — the same
+			 * armed AND inside the zone the policy spends from — the same
 			 * computation `decide` makes, taken from `spendWindows` instead of being
 			 * re-derived here.
 			 *
@@ -415,19 +415,19 @@ export function useScrollPaging({
 			 * fetch that frees it, and the earlier claim that it closed that gap was
 			 * wrong. The button still paints in that gap — 27, 181, 184, 310 and
 			 * 1657ms across the fling-shaped acts, from the `slotTransitions` in the
-			 * committed measurements — because the reader is outside both windows when
+			 * committed measurements — because the reader is outside the zone when
 			 * the widen lands, which is exactly when the policy has nothing in flight.
 			 * What makes it acceptable is where it happens rather than how long it
 			 * lasts: the slot is at least 350px above the viewport in every one of
 			 * those windows, so no reader sees the churn. Both halves are in the set's
 			 * README.
 			 */
-			const windows = spendWindows(geo, next, performance.now());
+			const windows = spendWindows(geo);
 			setRevealInFlight(
 				action !== "none" ||
 					next.busy ||
 					next.pageWidenOwed ||
-					(next.armed && (windows.inZone || windows.inLead)),
+					(next.armed && windows.inZone),
 			);
 			if (action === "none") {
 				// An armed demand waiting only on the settle debounce needs someone to
@@ -524,22 +524,20 @@ export function useScrollPaging({
 			const atHardTop =
 				(geo?.distanceFromTopPx ?? Number.POSITIVE_INFINITY) <= HARD_TOP_PX;
 			/*
-			 * What the reader's own input actually did, in the two terms the policy
-			 * reasons about (rule 3's lead and rule 4's travel record): a speed
-			 * toward the top in px/ms, and a distance travelled since the previous
-			 * input in px.
+			 * What the reader's own input actually did, in the one term the policy
+			 * still reasons about (rule 4's travel record): a distance travelled
+			 * since the previous input, in px.
 			 *
-			 * Both are read from the scroller's OFFSETS at input time, which is the
-			 * only measurement that is the same on every input device — and both are
-			 * read HERE, at the input event, rather than from a `scroll` listener,
-			 * so a landing, a streamed token or the anchor correction can never look
-			 * like the reader moving (clause A).
+			 * It is read from the scroller's OFFSETS at input time, which is the
+			 * only measurement that is the same on every input device — and read
+			 * HERE, at the input event, rather than from a `scroll` listener, so a
+			 * landing, a streamed token or the anchor correction can never look like
+			 * the reader moving (clause A).
 			 */
 			const held = travel.current;
 			const first = held.at === 0;
 			const fromTail = el ? Math.abs(el.scrollTop) : held.fromTail;
 			const extent = el ? el.scrollHeight : held.extent;
-			const elapsed = first ? 0 : at - held.at;
 			/*
 			 * Clamp-follow. Growth observed while the reader is ALREADY against the
 			 * top edge is the browser re-pinning them to the grown extent, not the
@@ -566,11 +564,9 @@ export function useScrollPaging({
 				deliberate,
 				atHardTop,
 				at,
-				// Only motion TOWARD the top is a lead. A downward notch is the reader
-				// turning around, and `noteInput` answers it on its own branch, where
-				// a velocity toward the top would mean nothing.
-				travelVelocityPxPerMs:
-					direction === "up" && elapsed > 0 ? Math.max(0, moved) / elapsed : 0,
+				// `moved` is the NET the reader's own offsets produced; a downward
+				// notch is answered on `noteInput`'s own branch, where travel toward
+				// the top would mean nothing.
 				travelledPx: Math.max(0, moved),
 			});
 			if (deliberate) setFailed(false);
@@ -603,11 +599,11 @@ export function useScrollPaging({
 		 * The DOM half's measurement state belongs to the conversation too
 		 * (review round 1, R1-6). Left alone, the first input of a NEW conversation
 		 * is differenced against the PREVIOUS conversation's offsets, so the travel
-		 * and the speed handed to the policy describe a layout change rather than
-		 * the reader's own motion — the one thing clause A requires them to be.
-		 * `at: 0` is what "no previous sample" means here, so the first notch of a
-		 * fresh conversation carries no speed and no travel, exactly as the first
-		 * notch of the first-ever conversation does.
+		 * handed to the policy describes a layout change rather than the reader's own
+		 * motion — the one thing clause A requires it to be. `at: 0` is what "no
+		 * previous sample" means here, so the first notch of a fresh conversation
+		 * carries no travel, exactly as the first notch of the first-ever
+		 * conversation does.
 		 */
 		travel.current = {
 			fromTail: 0,

@@ -15,9 +15,11 @@
  *
  * What this adds is the RECORD rather than the idea. It refuses to start on a
  * dirty module, writes the ref's bytes, asserts the swap actually happened by a
- * property the arm must have (the module under test has no `LEAD_TIME_MS` before
- * the lead landed), runs the rig, restores from git, and re-reads the md5. The
- * last line is the artefact: `restored=identical`, or a non-zero exit.
+ * property the arm must have (the module under test has no `actFetchSpent`
+ * before this round's act budget landed; a before ref with that symbol in it is
+ * already this branch, which is exactly the confusion the check exists to
+ * catch), runs the rig, restores from git, and re-reads the md5. The last line
+ * is the artefact: `restored=identical`, or a non-zero exit.
  *
  * The module list is deliberately short and explicit. It is the whole of the
  * code under test for this surface: the pure policy and the DOM half beside it.
@@ -79,17 +81,17 @@ if (arm === "before") {
 	/*
 	 * The swap has to be CHECKED, not assumed: an arm that silently failed to
 	 * change anything produces the after measurement under the before label, which
-	 * is the failure this file exists to make impossible. `LEAD_TIME_MS` is the
-	 * symbol the lead added, so its absence is the property the before arm must
-	 * have and the after arm must not.
+	 * is the failure this file exists to make impossible. `actFetchSpent` is the
+	 * symbol this round's act budget added, so its absence is the property the
+	 * before arm must have and the after arm must not.
 	 */
 	for (const path of MODULES) {
 		const text = readFileSync(path, "utf8");
-		const hasLead = text.includes("LEAD_TIME_MS");
-		const wantLead = false;
-		if (hasLead !== wantLead) {
+		const hasActBudget = text.includes("actFetchSpent");
+		const wantActBudget = false;
+		if (hasActBudget !== wantActBudget) {
 			console.error(
-				`${path} does not look like the before arm (LEAD_TIME_MS present=${hasLead})`,
+				`${path} does not look like the before arm (actFetchSpent present=${hasActBudget})`,
 			);
 			process.exit(2);
 		}

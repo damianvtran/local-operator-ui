@@ -36,13 +36,11 @@ const paging = await import(
 const {
 	ANCHOR_EPSILON_PX,
 	GESTURE_GAP_MS,
-	LEAD_TIME_MS,
+	HARD_TOP_PX,
 	MAX_AUTO_ATTEMPTS,
 	MAX_CHAIN_FETCH,
-	MIN_LEAD_VELOCITY_PX_PER_MS,
 	SETTLE_MS,
 	TRAVEL_MIN_PX,
-	VELOCITY_TTL_MS,
 	anchorDrift,
 	anchorDriftForCurrentInput,
 	decide,
@@ -91,10 +89,10 @@ const geo = (over = {}) => {
 /**
  * One upward wheel notch at time `at`.
  *
- * `travelVelocityPxPerMs` and `travelledPx` are what the DOM half measures from
- * the scroller's own offsets and hands the policy (see `use-scroll-paging.ts`).
- * They default to 0 here, so a case written before the lead existed keeps
- * exactly the meaning it had: a notch that reported no speed and no travel.
+ * `travelledPx` is what the DOM half measures from the scroller's own offsets
+ * and hands the policy (see `use-scroll-paging.ts`). It defaults to 0 here, so
+ * a case that is not about travel keeps exactly the meaning it had: a notch
+ * that reported no travel of its own.
  */
 const wheelUp = (state, at, over = {}) =>
 	noteInput(state, {
@@ -103,7 +101,6 @@ const wheelUp = (state, at, over = {}) =>
 		deliberate: false,
 		atHardTop: false,
 		at,
-		travelVelocityPxPerMs: 0,
 		travelledPx: 0,
 		...over,
 	});
@@ -248,7 +245,6 @@ test("a wheel notch clamped at the top does not re-arm the latch", () => {
 		continuous: false,
 		deliberate: true,
 		atHardTop: true,
-		travelVelocityPxPerMs: 0,
 		travelledPx: 0,
 		at: 4000,
 	});
@@ -267,7 +263,6 @@ test("leaving the top re-arms the latch, because arriving again is a new arrival
 		continuous: true,
 		deliberate: false,
 		atHardTop: true,
-		travelVelocityPxPerMs: 0,
 		travelledPx: 0,
 		at: 500,
 	});
@@ -293,7 +288,6 @@ test("a downward gesture cancels the demand retained while busy", () => {
 		continuous: true,
 		deliberate: false,
 		atHardTop: false,
-		travelVelocityPxPerMs: 0,
 		travelledPx: 0,
 		at: 300,
 	});
@@ -304,13 +298,41 @@ test("a downward gesture cancels the demand retained while busy", () => {
 	assert.equal(decide(state, geo(), 1000).action, "none");
 });
 
-test("a retained demand is honoured when the page lands", () => {
+test("a retained demand is honoured when the page lands — as its widen", () => {
+	// Rule 2's follow-up, under rule 2's act budget. The reader pushed again
+	// while the first page was in flight, so the landing owes them the reveal
+	// that makes it visible; what it cannot do is buy a second round trip,
+	// because this whole sequence is one act. Measured on the real surface,
+	// that second round trip is exactly what the operator's chain ran on.
 	let state = wheelUp(initialPagingState(), 0);
 	state = decide(state, geo(), SETTLE_MS + 1).state;
 	state = wheelUp(state, 200);
-	state = noteSettled(state);
+	state = noteSettled(state, { hiddenRowsAfter: 60 });
 	assert.ok(state.armed, "the retained demand became the armed one");
-	assert.equal(decide(state, geo(), 200 + SETTLE_MS + 1).action, "fetch");
+	const widened = decide(state, geo({ hiddenRows: 60 }), 200 + SETTLE_MS + 1);
+	assert.equal(
+		widened.action,
+		"widen",
+		"the follow-up buys the widen that shows the page it asked for",
+	);
+
+	// With the widen spent, the same act's next quiet frame offers nothing more
+	// from the network: the next fetch needs a fresh act.
+	state = noteSettled(widened.state, { network: false });
+	state = wheelUp(state, 400);
+	assert.equal(
+		decide(state, geo(), 400 + SETTLE_MS + 1).action,
+		"none",
+		"one fetch per act: the same gesture cannot buy another",
+	);
+
+	// A fresh act is a fresh budget: the measured pause between two deliberate
+	// flicks clears it.
+	state = wheelUp(state, 400 + GESTURE_GAP_MS + 1);
+	assert.equal(
+		decide(state, geo(), 400 + GESTURE_GAP_MS + 1 + SETTLE_MS + 1).action,
+		"fetch",
+	);
 });
 
 test("the local window is widened before the network is reached", () => {
@@ -497,7 +519,6 @@ test("automatic retries are bounded; the affordance still works", () => {
 		continuous: false,
 		deliberate: true,
 		atHardTop: false,
-		travelVelocityPxPerMs: 0,
 		travelledPx: 0,
 		at: 10_000,
 	});
@@ -633,48 +654,51 @@ test("a session change discards latch, demand and chain budgets", () => {
 
 /*
  * ---------------------------------------------------------------------------
- * The lead (rule 3's second trigger), the latch's travel record (rule 4) and
- * the widen a landed page owes (rule 6).
+ * Rule 3's trigger (a stop, never a prediction), rule 2's act budget, the
+ * latch's travel record (rule 4) and the widen a landed page owes (rule 6).
  *
- * Every case below is written against a number MEASURED on the real surface.
- * ELEVEN OF THE SIXTEEN FAIL against the module this change replaces, and that
- * is what makes them evidence FOR the fix; the other FIVE pass on both modules
- * and are labelled NEGATIVE GUARD, because what they protect is behaviour the
- * fix must not break rather than behaviour it introduces. The split was measured
- * by running this file against the replaced module, not inferred (review round
- * 1, R1-5 — the earlier version of this paragraph claimed all sixteen failed,
- * which was false for five of them, and a claim like that is what a later reader
- * leans on when deciding whether a case is load-bearing).
- *
- * NOTE on how strong that instrument is: the base-module run goes red for a
- * missing SYMBOL as well as for a behaviour difference (the base module has no
- * `VELOCITY_TTL_MS` and no `pageWidenOwed`), so the discriminating check that
- * matters is the mutation one — remove a single clause from the CURRENT module
- * and confirm the case that guards it goes red. The mutation results are listed
- * per case where a case is load-bearing.
+ * Round 2 wrote these cases around a third trigger — a LEAD window projected
+ * from the reader's measured speed — and the operator's report removed it: a
+ * reveal dispatched while the viewport travels mounts under a moving reader
+ * (measured this round: a 6966px single-frame displacement before the anchor
+ * hold restored it) and the chain of mid-motion spends that follows is the
+ * reported loop. The cases that pinned the lead are rewritten here around the
+ * two stops that remain. `no reveal is dispatched while the viewport is
+ * travelling` and `a fling that crosses two walls spends exactly one fetch`
+ * are the two new cases that FAIL against the module this change replaces —
+ * run this file against `origin/main`'s `scroll-paging.ts` to watch them.
  *
  * The measurements they come from:
  *
  *   - 25px/ms at the top of a finger burst (400px in 16ms), 2.4px/ms on a
  *     momentum tail at the wall (80px in 33ms);
  *   - a local widen visible 96ms after the spend, a durable page 85ms;
- *   - a 489px viewport, so `zonePx` is 320 and `LEAD_MAX_VIEWPORTS` clips at
- *     1956px;
+ *   - a 489px viewport, so `zonePx` is 320;
  *   - two continuous acts of 800px and 1200px that issued ZERO requests,
- *     because they never settled inside the zone and never reached the wall;
+ *     because they never settled inside the zone and never reached the wall —
+ *     now the rule rather than an accident;
  *   - a page landing at `rows 200 -> 200, hiddenRows 0 -> 60` followed by 62
- *     clamped notches with nothing revealed at all.
+ *     clamped notches with nothing revealed at all;
+ *   - one fling act on the 620-row fixture that spent TWO round trips
+ *     (`fling-crossing-two-walls` in the harness's own readings).
  * ---------------------------------------------------------------------------
  */
 
-test("a fast train spends inside the lead window, not at the wall", () => {
-	// 25px/ms is the fastest travel measured here. The distance FALLS with the
-	// travel, because the lead is a claim about a reader who is going to arrive:
-	// a fixed distance would describe someone who never gets anywhere.
+test("a fast train is spent at the wall, never mid-motion", () => {
+	// The operator's flick, at the fastest travel measured in this surface's
+	// evidence runs: 25px/ms (400px in 16ms). This is the case the lead existed
+	// for and the case it is removed for: the spend must not land while the
+	// viewport is travelling — a mount then is a lurch the eye sees (see
+	// `decide`'s trigger comment) and every wall it mounts buys the next spend.
+	// The demand waits, and the stop it can be spent at here is the wall, where
+	// the content cannot move under the momentum.
 	const clientHeight = 489;
 	const velocity = 25;
 	const events = [];
 	for (let i = 0; i < 40; i++) {
+		// The velocity is kept for the replaced module's benefit (see the case
+		// above): its lead spends this train mid-motion, which is what the
+		// assertion below discriminates against.
 		events.push([
 			i * 10,
 			(s, at) => wheelUp(s, at, { travelVelocityPxPerMs: velocity }),
@@ -698,23 +722,24 @@ test("a fast train spends inside the lead window, not at the wall", () => {
 		`one page for one train, got ${JSON.stringify(actions)}`,
 	);
 	assert.equal(actions[0].action, "fetch");
-	// The reject-the-unfixed assertion: without the lead this screen never
-	// spends at all (every frame is outside the zone, so the demand is
-	// discarded), and what a fast reader gets instead is nothing until the wall.
+	// Spent AT the wall: the frame it was spent in had the reader against the
+	// edge, not mid-flight. Against the replaced module this assertion reads the
+	// lead's own spend, tens of milliseconds in and still moving — the
+	// discriminating half of the case.
 	assert.ok(
-		actions[0].distanceFromTopPx > 2,
-		`spent at ${actions[0].distanceFromTopPx}px from the top, which is the wall rather than a lead`,
-	);
-	assert.ok(
-		actions[0].distanceFromTopPx > prefetchZonePx(clientHeight),
-		"and from OUTSIDE the static zone, which is the half a tuned constant cannot fix",
+		actions[0].distanceFromTopPx <= HARD_TOP_PX,
+		`spent at ${actions[0].distanceFromTopPx}px from the top, which is mid-motion rather than a stop`,
 	);
 });
 
-test("a train that never reaches the zone and never settles still spends now", () => {
-	// The two measured acts that spent nothing: 800px and 1200px of travel that
-	// never settled inside the 320px zone and never reached the wall, where the
-	// demand was DISCARDED rather than held. 12px/ms projects 1956px here.
+test("a fast train that never settles and never reaches the wall spends nothing", () => {
+	// The negative control for rule 3's trigger, and the inverse of the case the
+	// lead used to win: 12px/ms of travel that neither settles inside the zone
+	// nor reaches the wall within the capture. There is no stop in this fixture,
+	// so there is no spend — the demand waits for one, as the terminal UI's
+	// animator deferral does. A lead that spent here was projecting an arrival
+	// the reader never made; the replaced module spends once, mid-motion, and
+	// this case is written to catch that.
 	const clientHeight = 489;
 	const velocity = 12;
 	const events = [];
@@ -732,101 +757,88 @@ test("a train that never reaches the zone and never settles still spends now", (
 		geometry: (now) =>
 			geo({
 				clientHeight,
-				distanceFromTopPx: Math.max(0, 1900 - velocity * now),
+				distanceFromTopPx: Math.max(0, 4000 - velocity * now),
 			}),
 	});
 
-	assert.equal(actions.length, 1, `one page, got ${JSON.stringify(actions)}`);
-	assert.equal(actions[0].action, "fetch");
-	assert.ok(
-		actions[0].distanceFromTopPx > prefetchZonePx(clientHeight),
-		`the spend happened at ${actions[0].distanceFromTopPx}px, i.e. still on the way rather than parked`,
+	assert.equal(
+		actions.length,
+		0,
+		`mid-motion is not a stop, got ${JSON.stringify(actions)}`,
 	);
 });
 
-test("a reader who stops outside every window spends nothing", () => {
-	// The disarm is preserved, and it is the reason a lead is not a licence to
-	// page a reader who has moved on. Two halves, both measured:
-	//
-	//  - a 2.4px/ms approach stopping 537px from the top projects 432px, which
-	//    is short of where they stopped, so the demand is dropped;
-	//  - a fast sample must not outlive the reader's own input: 250ms of silence
-	//    is past VELOCITY_TTL_MS, so the 2160px a 12px/ms sample would project is
-	//    no longer a velocity at all.
-	const slow = wheelUp(initialPagingState(), 0, { travelVelocityPxPerMs: 2.4 });
-	const dropped = decide(slow, geo({ distanceFromTopPx: 537 }), 16);
+test("a reader who stops outside the zone spends nothing", () => {
+	// The disarm is preserved — now evaluated at the settle rather than
+	// mid-flight, because where the reader STOPS is the fact the spend is
+	// about. A slow approach that stops 537px from the top is outside the 320px
+	// zone, and the demand is dropped then rather than held for a later resize
+	// or clamp to spend.
+	const slow = wheelUp(initialPagingState(), 0);
+
+	// Mid-motion the demand is still armed: it is waiting for the stop.
+	const moving = decide(slow, geo({ distanceFromTopPx: 537 }), 16);
+	assert.equal(moving.action, "none");
+	assert.equal(moving.state.armed, true, "the wait is not a drop");
+
+	// At the settle, still outside the zone: dropped, not held.
+	const dropped = decide(slow, geo({ distanceFromTopPx: 537 }), SETTLE_MS + 1);
 	assert.equal(dropped.action, "none");
-	assert.equal(dropped.state.armed, false, "stale demand dropped, not held");
-
-	// The staleness frame is an ABSOLUTE 250ms rather than `VELOCITY_TTL_MS + 50`
-	// on purpose: a case written in terms of the constant it is testing keeps
-	// passing when the constant is changed, which is the one thing a case about
-	// a bound must not do.
-	const fast = wheelUp(initialPagingState(), 0, { travelVelocityPxPerMs: 12 });
-	assert.ok(250 > VELOCITY_TTL_MS, "the frame below must be past the TTL");
-	const stale = decide(fast, geo({ distanceFromTopPx: 500 }), 250);
-	assert.equal(stale.action, "none", "a speed from 250ms ago is not a gesture");
-	assert.equal(stale.state.armed, false, "and the demand goes with it");
-});
-
-// NEGATIVE GUARD: passes against the replaced module as well. It protects
-// behaviour the fix depends on (a bound, an upper limit, an accident that is now
-// a contract), not behaviour the fix introduces, so it is evidence about the
-// blast radius rather than about the change.
-test("one velocity spike does not lead a page", () => {
-	// The cap cannot catch this one: 4px/ms is well under the 4-viewport ceiling
-	// (1956px here), so the EMA is the whole defence. One notch leaves 2px/ms —
-	// 360px of projection against a reader 500px away — and a train of zeroes
-	// decays it further rather than holding it.
-	const clientHeight = 489;
-	const spike = wheelUp(initialPagingState(), 0, {
-		travelVelocityPxPerMs: 4,
-	});
 	assert.equal(
-		decide(spike, geo({ clientHeight, distanceFromTopPx: 500 }), 16).action,
-		"none",
-		"a single spike must not arm a page",
-	);
-
-	let state = spike;
-	for (const t of [16, 32, 48]) {
-		state = wheelUp(state, t, { travelVelocityPxPerMs: 0 });
-	}
-	assert.equal(
-		decide(
-			state,
-			geo({ clientHeight, distanceFromTopPx: 500 }),
-			48 + SETTLE_MS + 1,
-		).action,
-		"none",
-	);
-
-	// The other half of risk 4, and the half the EMA cannot answer: a genuinely
-	// HUGE single notch (40px/ms is a 640px delta in one frame) still projects
-	// 3600px after the halving, so what stops it is the viewport cap. 4 viewports
-	// of a 489px window is 1956px, and the reader here is 3000px away.
-	const huge = wheelUp(initialPagingState(), 0, {
-		travelVelocityPxPerMs: 40,
-	});
-	assert.equal(
-		decide(huge, geo({ clientHeight, distanceFromTopPx: 3000 }), 16).action,
-		"none",
-		"one huge notch must not arm a page from screens away",
+		dropped.state.armed,
+		false,
+		"a settled demand outside the zone is dropped, not held",
 	);
 });
 
-test("a lead spend does not set the latch, and the arrival then buys a widen", () => {
-	// A2, and the pairing that unwinds the freeze: the page is asked for while
-	// the reader is still moving (so nothing latches), and their arrival at the
-	// wall is therefore a FRESH demand — which spends the local widen that makes
-	// the page they are waiting for visible. One reveal for the page, one for
-	// the widen, instead of a dead stop with a free reveal sitting there.
+test("no reveal is dispatched while the viewport is travelling", () => {
+	// THE OPERATOR'S REPORT, at the level this file can pin it. A demand armed
+	// by an upward notch, then a fast approach INSIDE the zone with the input
+	// still arriving: the spend must not happen. Written to FAIL against the
+	// module this change replaces — its lead spends this demand at frame 16,
+	// inside the zone and still moving, which is the mount that lands under a
+	// moving viewport (measured: a 6966px single-frame displacement before the
+	// anchor hold restored it).
 	const clientHeight = 489;
-	let state = wheelUp(initialPagingState(), 0, { travelVelocityPxPerMs: 12 });
+	// `travelVelocityPxPerMs` is kept in the notch even though the current
+	// policy no longer reads it: this case has to discriminate against the
+	// module this change replaces, whose lead spends a MOVING demand inside the
+	// zone, and that module reads the field the real DOM half still measures.
+	const state = wheelUp(initialPagingState(), 0, {
+		travelVelocityPxPerMs: 24,
+	});
+	const moving = geo({ clientHeight, distanceFromTopPx: 250, hiddenRows: 0 });
+	const mid = decide(state, moving, 16);
+	assert.equal(mid.action, "none", "a moving reader is not spent");
+	assert.equal(mid.state.armed, true, "the demand waits for the stop");
+
+	// The stop inside the zone: spent, and only then.
+	const settled = decide(state, moving, SETTLE_MS + 1);
+	assert.equal(settled.action, "fetch", "the stop is a spend");
+
+	// A stop OUTSIDE the zone is still nothing, at the same instant.
+	const away = decide(
+		state,
+		geo({ clientHeight, distanceFromTopPx: 600, hiddenRows: 0 }),
+		SETTLE_MS + 1,
+	);
+	assert.equal(away.action, "none");
+	assert.equal(away.state.armed, false);
+});
+
+test("a settled spend inside the zone does not set the latch, and the arrival then buys a widen", () => {
+	// A2, and the pairing that unwinds the freeze: the page is asked for at the
+	// reader's settle INSIDE the zone (not against the wall, so nothing latches),
+	// and their arrival at the wall is therefore a FRESH demand — which spends
+	// the local widen that makes the page they are waiting for visible. One
+	// reveal for the page, one for the widen, instead of a dead stop with a free
+	// reveal sitting there.
+	const clientHeight = 489;
+	let state = wheelUp(initialPagingState(), 0);
 	const early = decide(
 		state,
-		geo({ clientHeight, distanceFromTopPx: 600 }),
-		16,
+		geo({ clientHeight, distanceFromTopPx: 100 }),
+		SETTLE_MS + 1,
 	);
 	assert.equal(early.action, "fetch");
 	assert.equal(
@@ -852,38 +864,52 @@ test("a lead spend does not set the latch, and the arrival then buys a widen", (
 	assert.equal(arrival.action, "widen");
 });
 
-// NEGATIVE GUARD: passes against the replaced module as well. It protects
-// behaviour the fix depends on (a bound, an upper limit, an accident that is now
-// a contract), not behaviour the fix introduces, so it is evidence about the
-// blast radius rather than about the change.
-test("one lead spend per act, however far the reader travels afterwards", () => {
-	// Risk 2: an early spend must not become a second one as the reader keeps
-	// travelling. Two pages' worth of travel happen inside this act (2000px to
-	// 0) with the lead window still open in front of them the whole way, and the
-	// page stays in flight for all of it — so the demand behind the spend was
-	// consumed and nothing fresh ever arms another.
+test("a fling that crosses two walls spends exactly one fetch", () => {
+	// THE OPERATOR'S CASE, and the reason rule 2 has an act budget. Momentum
+	// carries the reader from 2000px to the wall and, as each reveal mounts the
+	// next wall in front of them, across it: every crossing used to look like a
+	// fresh arrival and buy the next page, which is the reported loop ("it keeps
+	// loading in chunks and goes into a loop until it loads all the way back to
+	// the start"). One act, one round trip. Written to FAIL against the module
+	// this change replaces: there the mid-motion lead spends at frame 16 AND the
+	// arrival at the second, mounted wall spends again — two requests for one
+	// act, which is what the harness measured on the real surface.
 	const velocity = 12;
-	const events = [];
-	for (let i = 0; i < 150; i++) {
-		events.push([
-			i * 10,
-			(s, at) => wheelUp(s, at, { travelVelocityPxPerMs: velocity }),
-		]);
-	}
-	const frames = [];
-	for (let t = 0; t <= 3000; t += 16) frames.push(t);
-	const { actions } = drive(initialPagingState(), events, {
-		frames,
-		geometry: (now) =>
+	let current = initialPagingState();
+	const spent = [];
+	let nextNotch = 0;
+	for (let now = 0; now <= 3000; now += 16) {
+		while (nextNotch < 150 && nextNotch * 10 <= now) {
+			current = wheelUp(current, nextNotch * 10, {
+				// Kept for the replaced module's benefit (see above): both of
+				// its spend paths — the lead and the wall arrival after a mount
+				// — are what this case counts.
+				travelVelocityPxPerMs: velocity,
+				travelledPx: velocity * 10,
+			});
+			nextNotch++;
+		}
+		const frame = decide(
+			current,
 			geo({
 				clientHeight: 489,
 				distanceFromTopPx: Math.max(0, 2000 - velocity * now),
 			}),
-	});
+			now,
+		);
+		current = frame.state;
+		if (frame.action === "none") continue;
+		spent.push({ at: now, action: frame.action });
+		// A landing lands whole: rows the window holds back are owed their widen.
+		current = noteSettled(current, {
+			hiddenRowsAfter: frame.action === "fetch" ? 100 : 0,
+		});
+	}
+	const fetches = spent.filter((entry) => entry.action === "fetch");
 	assert.equal(
-		actions.length,
+		fetches.length,
 		1,
-		`one page for one act, got ${JSON.stringify(actions)}`,
+		`one round trip for one act, got ${JSON.stringify(spent)}`,
 	);
 });
 
@@ -968,12 +994,13 @@ test("a landing that moves the reader clear of every window still pays its widen
 	// holds back), and the armed branch below then disarmed — so the debt was
 	// thrown away on the same frame it was owed and the reader sat at
 	// `hiddenRows: 100` while 62 further notches produced nothing.
-	// The page is asked for from the LEAD window and lands with its rows held
-	// back, which is the pairing A1 and A3 create together. Spending away from
-	// the wall sets no latch, so the state below is the reader's own.
-	let state = wheelUp(initialPagingState(), 0, { travelVelocityPxPerMs: 12 });
+	// The page is asked for at the reader's settle inside the zone (a stop, not
+	// a prediction) and lands with its rows held back, which is the pairing A1
+	// and A3 create together. Spending away from the wall sets no latch, so the
+	// state below is the reader's own.
+	let state = wheelUp(initialPagingState(), 0);
 	state = noteSettled(
-		decide(state, geo({ distanceFromTopPx: 600 }), 16).state,
+		decide(state, geo({ distanceFromTopPx: 100 }), SETTLE_MS + 1).state,
 		{ hiddenRowsAfter: 100 },
 	);
 	assert.equal(state.pageWidenOwed, true);
@@ -1054,66 +1081,75 @@ test("a rule-6 widen does not forgive the failure budget either", () => {
 	);
 });
 
-test("a reader who travelled since the latch re-arms exactly once", () => {
-	// A4. The latch was set by a spend at the wall; the reader's own notches then
-	// move 500px between two of them, and their arrival carries that travel. The
-	// arrival releases the latch, so it is spent on rather than swallowed — and
-	// the release is bounded to one per act, so the notches that follow it (which
-	// move the content by nothing) are swallowed again.
+test("a travel release is honoured as a demand, and the act's fetch is not re-spent", () => {
+	// A4, under rule 2's budget. The latch was set by the act's own spend; the
+	// reader then travels back to the wall, and that travel is a real arrival —
+	// the release arms a demand — but the act has spent its round trip, so the
+	// demand is refused rather than chained, and the release is recorded so the
+	// same act cannot take it twice. A fresh act clears both and is answered.
 	//
-	// Every input below is inside one act: the gaps are well under
-	// GESTURE_GAP_MS, because the whole point is what happens WITHIN an act.
+	// Every input below is inside one act except the last: the gaps stay well
+	// under GESTURE_GAP_MS, because the whole point is what happens WITHIN an
+	// act.
 	let state = wheelUp(initialPagingState(), 0, { atHardTop: true });
 	state = noteSettled(
 		decide(state, geo({ distanceFromTopPx: 0 }), SETTLE_MS + 1).state,
 	);
 	assert.ok(state.clampLatched);
+	assert.equal(state.actFetchSpent, true, "the act's one fetch is spent");
 
 	// The travelling arrival: 500px of the reader's own motion, with the
 	// browser's clamp-follow already subtracted by the DOM half.
 	state = wheelUp(state, 200, { atHardTop: true, travelledPx: 500 });
 	assert.equal(state.clampLatched, false, "the arrival released the latch");
-	assert.ok(state.armed);
-	const arrival = decide(
+	assert.equal(state.travelledSinceLatch, true, "and the release is recorded");
+	assert.ok(state.armed, "the arrival carries a demand");
+
+	// The budget refuses it: one act, one round trip.
+	const refused = decide(
 		state,
 		geo({ distanceFromTopPx: 0 }),
 		200 + SETTLE_MS + 1,
 	);
-	assert.equal(arrival.action, "fetch");
-	assert.ok(arrival.state.clampLatched, "and the arrival's own spend latches");
-	state = noteSettled(arrival.state);
+	assert.equal(refused.action, "none");
+	assert.equal(refused.state.armed, false);
+	state = refused.state;
 
-	// Twenty restful notches, same act: zero travel each, and the gaps stay
-	// well inside GESTURE_GAP_MS so none of them opens a new act.
-	let spent = 0;
+	// Same act, more travelling notches: an arrival can be earned again, but it
+	// cannot be spent again — the record and the budget both hold, and a reader
+	// who keeps pushing in one gesture gets one chunk rather than a chain.
+	const spent = [];
 	let t = 300;
 	for (let i = 0; i < 20; i++) {
 		t += 100;
-		state = wheelUp(state, t, { atHardTop: true, travelledPx: 0 });
-		const frame = decide(state, geo({ distanceFromTopPx: 0 }), t + 8);
+		state = wheelUp(state, t, { atHardTop: true, travelledPx: 500 });
+		const frame = decide(
+			state,
+			geo({ distanceFromTopPx: 0 }),
+			t + SETTLE_MS + 1,
+		);
 		state = frame.state;
 		if (frame.action !== "none") {
-			spent++;
+			spent.push(frame.action);
 			state = noteSettled(state);
 		}
 	}
-	assert.equal(
+	assert.deepEqual(
 		spent,
-		0,
-		`the release is one per act, not one per notch (got ${spent})`,
+		[],
+		`one act, one fetch, however much travel it contains (got ${spent})`,
 	);
 
-	// A SECOND travelling arrival inside the same act cannot take the same exit
-	// again: the record is the bound, not the latch.
-	state = wheelUp(state, 2600, { atHardTop: true, travelledPx: 500 });
-	assert.ok(
-		state.clampLatched,
-		"the second arrival is swallowed, not released",
+	// A fresh act: quiet past GESTURE_GAP_MS, then a push. The budget clears,
+	// and the arrival is answered — and its own spend latches.
+	state = wheelUp(state, t + GESTURE_GAP_MS + 1, { atHardTop: true });
+	const arrival = decide(
+		state,
+		geo({ distanceFromTopPx: 0 }),
+		t + GESTURE_GAP_MS + 1 + SETTLE_MS + 1,
 	);
-	assert.equal(
-		decide(state, geo({ distanceFromTopPx: 0 }), 2600 + SETTLE_MS + 1).action,
-		"none",
-	);
+	assert.equal(arrival.action, "fetch");
+	assert.ok(arrival.state.clampLatched, "and the arrival's own spend latches");
 });
 
 // NEGATIVE GUARD: passes against the replaced module as well. It protects
@@ -1196,6 +1232,10 @@ test("a demand armed off the wall survives the clamped notches it is swallowed b
 	// t=12747). Written as `{ ...base, lastInputAt }` the swallow would eat that
 	// demand and the reader would have to jitter the wheel to get it back, which
 	// is the workaround this whole change exists to remove.
+	//
+	// What the arrival can buy is bounded by rule 2: this act already spent its
+	// fetch, so the preserved demand is refused here and answered by the next
+	// act — the demand outliving the swallow, not the budget it runs into.
 	let state = wheelUp(initialPagingState(), 0, { atHardTop: true });
 	state = noteSettled(
 		decide(state, geo({ distanceFromTopPx: 0 }), SETTLE_MS + 1).state,
@@ -1204,7 +1244,7 @@ test("a demand armed off the wall survives the clamped notches it is swallowed b
 
 	// Off the wall, with no travel claimed: leaving the top is its own
 	// authorisation, and a notch that moved the reader needs none.
-	state = wheelUp(state, 200, { travelVelocityPxPerMs: 0 });
+	state = wheelUp(state, 200, { travelledPx: 0 });
 	assert.ok(state.armed, "a notch away from the wall arms a demand");
 
 	// Back at the wall inside the same act: swallowed, and the demand survives.
@@ -1212,75 +1252,78 @@ test("a demand armed off the wall survives the clamped notches it is swallowed b
 	assert.ok(state.armed, "the demand survives the swallow");
 	assert.equal(
 		decide(state, geo({ distanceFromTopPx: 0 }), 240 + SETTLE_MS + 1).action,
+		"none",
+		"and the act's spent fetch is not spent twice",
+	);
+
+	// The next act is answered.
+	state = wheelUp(state, 240 + GESTURE_GAP_MS + 1, { atHardTop: true });
+	assert.equal(
+		decide(
+			state,
+			geo({ distanceFromTopPx: 0 }),
+			240 + GESTURE_GAP_MS + 1 + SETTLE_MS + 1,
+		).action,
 		"fetch",
 	);
 });
 
-test("a slow approach inside the zone is spent at its input cadence, not at the settle debounce", () => {
-	// THE CASE THE REVIEW FOUND MISSING (round 1, R1-2), and the one that makes
-	// the claim in `decide`'s comment true or false. The version this replaces
-	// re-derived the lead formula and asserted a demand outside both windows is
-	// dropped — true of every module, including the one being replaced, so
-	// deleting the floor outright left the whole suite green.
-	//
-	// What actually differs, measured on the module: a slow reader (0.29px/ms)
-	// INSIDE the zone has their demand spent at their input cadence rather than
-	// after `SETTLE_MS` of silence. On the replaced module the same frame returns
-	// none; with the floor deleted from this module it returns none too (the floor
-	// is what makes `leadPx === zonePx`, so a low velocity would otherwise project
-	// a 52px window and fall outside it). Both mutations were run by hand.
-	//
-	// It is deliberately NOT a claim that the window grew: the second half of the
-	// case pins the window at today's zone for the same reader.
+test("a slow approach inside the zone is spent once it settles there", () => {
+	// THE OPERATOR'S REPORT, on the reader who is NOT flinging. The version this
+	// replaces asserted the opposite — a moving reader inside the zone was spent
+	// at their input cadence — and that mid-motion spend is what put a mount
+	// under a travelling viewport. The window itself is unchanged: a demand is
+	// spendable exactly inside the same zone, and one pixel outside it is dropped
+	// at the settle rather than held. The trigger moved from "their cadence" to
+	// "their stop", which is the terminal UI's contract (`_check_resume_page`
+	// defers while animating).
 	const clientHeight = 489;
-	const zone = prefetchZonePx(clientHeight);
 	const slow = 0.3; // px/ms: a deliberate scroll, ~300px/s
 	let state = initialPagingState();
 	for (let i = 0; i < 5; i++) {
-		state = wheelUp(state, 1000 + i * 10, { travelVelocityPxPerMs: slow });
+		state = wheelUp(state, 1000 + i * 10, {
+			// Kept for the replaced module's benefit: its lead spends this
+			// reader's demand at their input cadence, mid-motion, which is what
+			// the first assertion discriminates against.
+			travelVelocityPxPerMs: slow,
+			travelledPx: slow * 10,
+		});
 	}
 	const inside = geo({ clientHeight, distanceFromTopPx: 300, hiddenRows: 40 });
 
 	// 40ms after the last notch: well inside SETTLE_MS (120), so this frame is
-	// the trigger question and nothing else.
+	// the trigger question and nothing else. The demand waits.
 	const midMotion = decide(state, inside, 1080);
 	assert.equal(
 		midMotion.action,
-		"widen",
-		"a moving reader inside the zone is answered at their input cadence",
+		"none",
+		"a moving reader is not spent at their input cadence",
 	);
-	assert.ok(
-		1080 - state.lastInputAt < SETTLE_MS,
-		"and the frame really is inside the settle debounce",
+	assert.equal(
+		midMotion.state.armed,
+		true,
+		"the demand waits for the stop rather than being dropped",
 	);
 
-	// The window is still the zone for this reader: one pixel outside it, at the
-	// same instant, nothing is spent — and the demand is dropped rather than held
-	// for a later frame to spend, which is today's rule for a demand that landed
-	// without needing a page.
+	// Their stop, inside the zone: spent.
+	assert.equal(
+		decide(state, inside, 1040 + SETTLE_MS + 1).action,
+		"widen",
+		"the stop inside the zone is a spend",
+	);
+
+	// One pixel outside the zone at the same stop: dropped, not held for a later
+	// frame to spend.
 	const outside = decide(
 		state,
-		geo({ clientHeight, distanceFromTopPx: zone + 1, hiddenRows: 40 }),
-		1080,
+		geo({ clientHeight, distanceFromTopPx: prefetchZonePx(clientHeight) + 1 }),
+		1040 + SETTLE_MS + 1,
 	);
 	assert.equal(outside.action, "none");
 	assert.equal(
 		outside.state.armed,
 		false,
 		"stale demand dropped, not retained",
-	);
-
-	// And a reader who is not moving at all in the same place keeps the debounce:
-	// the trigger change is about motion, never about position.
-	let still = initialPagingState();
-	for (let i = 0; i < 5; i++)
-		still = wheelUp(still, 1000 + i * 10, {
-			travelVelocityPxPerMs: 0,
-		});
-	assert.equal(
-		decide(still, inside, 1080).action,
-		"none",
-		"a stationary reader inside the zone still waits for the debounce",
 	);
 });
 
@@ -1296,18 +1339,15 @@ test("a slow approach inside the zone is spent at its input cadence, not at the 
  *
  * The case asserts both halves, because either alone is not the claim: the
  * refusal (`action: "none"`, `armed: true`) and the window answer the paint is
- * computed from (neither window at 6000px, the zone at 300px). It also asserts
- * the composite expression the DOM half uses, so a later edit to that expression
- * has to face this case rather than a comment — which is what round 3 asked for
- * (R3-5), the gate having shipped with no case of its own.
+ * computed from (outside the zone at 6000px, inside it at 300px). It also
+ * asserts the composite expression the DOM half uses, so a later edit to that
+ * expression has to face this case rather than a comment — which is what round 3
+ * asked for (R3-5), the gate having shipped with no case of its own.
  */
-test("a demand the tail refuses stays armed and outside every spend window", () => {
+test("a demand the tail refuses stays armed and outside its spend window", () => {
 	const at = GESTURE_GAP_MS;
-	const state = wheelUp(initialPagingState(), at, {
-		travelVelocityPxPerMs: 0.3,
-		travelledPx: 30,
-	});
-	// Inside SETTLE_MS, so only the windows can authorise a spend: this is the
+	const state = wheelUp(initialPagingState(), at, { travelledPx: 30 });
+	// Inside SETTLE_MS, so only the window can authorise a spend: this is the
 	// frame the pump sees between one notch and the next.
 	const now = at + 40;
 	const tail = geo({
@@ -1325,34 +1365,25 @@ test("a demand the tail refuses stays armed and outside every spend window", () 
 		"and retains the demand rather than dropping it",
 	);
 
-	const windows = spendWindows(tail, decided.state, now);
+	const windows = spendWindows(tail);
 	assert.equal(
 		windows.inZone,
 		false,
 		"6000px from the top is outside the zone",
 	);
 	assert.equal(
-		windows.inLead,
-		false,
-		"and outside the lead the speed projects",
-	);
-	assert.equal(
 		decided.action !== "none" ||
 			decided.state.busy ||
 			decided.state.pageWidenOwed ||
-			(decided.state.armed && (windows.inZone || windows.inLead)),
+			(decided.state.armed && windows.inZone),
 		false,
 		"so the paint expression use-scroll-paging.ts computes stays off",
 	);
 
 	// Not simply always-off: the same armed demand, the same instant, inside the
-	// zone, is in a window — which is why the paint has to be gated on the window
-	// rather than on `armed` or on the window alone.
-	const inside = spendWindows(
-		geo({ distanceFromTopPx: 300 }),
-		decided.state,
-		now,
-	);
+	// zone, is in the window — which is why the paint has to be gated on the
+	// window rather than on `armed` or on the window alone.
+	const inside = spendWindows(geo({ distanceFromTopPx: 300 }));
 	assert.equal(
 		inside.inZone,
 		true,
