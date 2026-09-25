@@ -972,6 +972,14 @@ function SessionPanel({
 		]);
 		if (!sessionId || marker === lastCatalogueState.current) return;
 		lastCatalogueState.current = marker;
+		/*
+		 * UNNAMED, AND THAT NOW MEANS THE HEAD PAGE (round 3, Q-1). This refresh used to
+		 * take the store's default of `LEGACY_CATALOGUE_PAGE`, so every ordinary
+		 * conversation open fired an unscoped `limit=500&include_archived=true` read - the
+		 * multi-second answer this change exists to remove, and it also replaced the scoped
+		 * membership with 500 rows. The default follows the capability now
+		 * (`cataloguePageDefault`), and nothing else here changes.
+		 */
 		void useCanonicalSessionsStore.getState().fetchSessions();
 	}, [
 		sessionId,

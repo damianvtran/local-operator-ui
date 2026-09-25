@@ -48,7 +48,10 @@ import {
 import { useAgents } from "@shared/hooks/use-agents";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	LEGACY_CATALOGUE_PAGE,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef } from "react";
 import type { SessionSearchHit } from "../../../../shared/desktop-session-contract";
@@ -282,7 +285,15 @@ export function usePaletteItems({
 		if (catalogueAsked.current || sessions.length > 0 || sessionsLoading)
 			return;
 		catalogueAsked.current = true;
-		void fetchSessions();
+		/*
+		 * THE SET, EXPLICITLY (round 3, Q-1). This read is the palette's browse rows and
+		 * the only consumer of a row's `preview`, so it asks for the WHOLE catalogue by
+		 * name - the unnamed default is now the head page on a daemon that advertises
+		 * paging, and a palette whose browse silently dropped to 50 rows would be a
+		 * regression this change introduced. The guard above means a normal session already
+		 * holds rows and never fires this at all.
+		 */
+		void fetchSessions(LEGACY_CATALOGUE_PAGE);
 	}, [open, sessions.length, sessionsLoading, fetchSessions]);
 
 	/*

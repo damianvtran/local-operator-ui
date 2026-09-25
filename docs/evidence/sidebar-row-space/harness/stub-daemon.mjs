@@ -25,6 +25,7 @@
 
 import { randomUUID } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { createServer } from "node:http";
 import { join } from "node:path";
 
@@ -38,6 +39,83 @@ const RECORDS = arg("records", null);
 /* `--no-archive` is the WITHDRAWN half: the same app against a backend that has
  * never heard of archiving, which is the fail-closed pair's other frame. */
 const ARCHIVE = !process.argv.includes("--no-archive");
+/*
+ * THE PAGED CATALOGUE (evidence set `sidebar-lazy-chats`).
+ *
+ * `--catalogue=<n>` swaps the six-conversation fixture for a LARGE one spread
+ * across teams and agents, and (unless `--no-page`) advertises
+ * `session_catalogue_page` so the app asks for it a page at a time. Without the
+ * flag this file answers exactly what it answered before it grew this branch, so
+ * the frames of `sidebar-row-space` are photographed over an unchanged stand-in.
+ *
+ * `--truncate=<n>` is the WITHDRAWN half's lever: answer at most n rows and IGNORE
+ * the requested limit, which is what a daemon that cannot page does - 500 of 757,
+ * with no cursor. A group whose conversations sit past that cap then draws "No
+ * chats yet", which is the operator's own screenshot.
+ */
+const CATALOGUE = Number(arg("catalogue", "0"));
+const TRUNCATE = Number(arg("truncate", "0"));
+const PAGED = CATALOGUE > 0 && !process.argv.includes("--no-page");
+/* `--scope-empty` answers every SCOPED read with no rows while the census still
+ * counts the scope: the page has not caught up with the store, which is the state
+the group must say "Loading chats…" in rather than "No chats yet". */
+const SCOPE_EMPTY = process.argv.includes("--scope-empty");
+/* `--scope-error` makes every SCOPED read refuse, so the group's own failure
+ * sentence and its Retry are photographed. */
+const SCOPE_ERROR = process.argv.includes("--scope-error");
+/*
+ * `--scope-zero-census` makes the scoped-read arm below report a census that does
+ * NOT count the scope: a GENUINELY empty group on the paged path, which must read
+ * "No chats yet" while the group next to it holds seventy (round 1, D3's missing
+ * arms). The distinction the pair exists to photograph is `--scope-empty` (the
+ * census says 70, the page carries none: a state, not an emptiness) against this
+ * one (the census agrees there is nothing).
+ */
+/*
+ * `--zero-census-team <name>`: the census reported by EVERY answer leaves that
+ * team's rows out, so the group has no count anywhere - the head page's census
+ * included, because that is where the badge's number actually comes from. The
+ * earlier shape of this lever only changed the SCOPED answer, and the arm then
+ * photographed a 70 badge over an empty page: the settled state, twice over, which
+ * is the other arm's job (`--scope-empty`).
+ */
+const ZERO_CENSUS_TEAM = arg("zero-census-team", null);
+/*
+ * `--scope-delay-ms=<n>` holds every SCOPED answer for n milliseconds, so the
+ * LOADING arm can photograph a wait that is really happening rather than a state
+ * the store had already settled (round 1, U3: "Loading chats…" now REQUIRES a page
+ * in flight, so a frame of it has to be taken while one is).
+ */
+const SCOPE_DELAY_MS = Number(arg("scope-delay-ms", "0"));
+/*
+ * `--scope-hold <path>` HOLDS every scoped answer until that file exists, then
+ * answers normally. This is what makes the LOADING arm deterministic (round 2,
+ * D12): a wall-clock delay is a window the rig has to hit, and under fleet load
+ * both a designer's runs and QA's attempts missed it - an arm that fails closed is
+ * still an arm nobody can re-shoot. Held on a FILE, the wait is a state the scene
+ * creates and then releases, and the release is followed by the rows arriving,
+ * which is the proof that the wait was real.
+ */
+const SCOPE_HOLD = arg("scope-hold", null);
+/*
+ * `--tail-error` REFUSES the flat list's own extension: an UNSCOPED request that carries a
+ * `cursor` answers 500. It exists so the THIRD refusal site can be photographed rather
+ * than read (round 3, D18) - all three sites share one treatment, and the only way to
+ * show that is a frame of each. The head read (no cursor) is untouched, so the list
+ * paints and then refuses to grow.
+ */
+const TAIL_ERROR = process.argv.includes("--tail-error");
+/*
+ * `--tail-delay-ms <n>` HOLDS the refused tail answer for that long before refusing it.
+ *
+ * WHY A DELAY IS PART OF THE EVIDENCE rather than a convenience (round 4, U14): the walk
+ * through the wait register is what a polite region announces, and a stub that refuses in a
+ * millisecond renders that register for a millisecond - too brief for anything to observe,
+ * which is how "the region carried no change" became a finding about the rig rather than
+ * about the panel. Slowed to a human-plausible 400 ms, the register is on screen and the
+ * sampler sees what a reader would.
+ */
+const TAIL_DELAY_MS = Number(arg("tail-delay-ms", "0"));
 const INSTANCE_ID = randomUUID();
 /** The record's `started_at` is fixed at boot; the heartbeat moves. */
 const startedAt = Date.now() / 1000;
@@ -252,6 +330,13 @@ const route = (method, pathname, query, body) => {
 				mcp: 1,
 				radient: 1,
 				session_catalogue: 2,
+				/*
+				 * ONLY WHEN THE STUB IS SERVING THE PAGED CATALOGUE. The key is the whole
+				 * switch this evidence set is about, and an unconditional one would change
+				 * what every OTHER frame in `docs/evidence/` renders - the withdrawn pair
+				 * above all, whose subject is a panel that does not know the feature.
+				 */
+				...(PAGED ? { session_catalogue_page: 1 } : {}),
 				session_search: 1,
 				session_move: 1,
 				profile_catalogue: 1,
@@ -274,9 +359,108 @@ const route = (method, pathname, query, body) => {
 	}
 	if (method === "GET" && pathname === "/v1/desktop/sessions") {
 		const include = query.get("include_archived") === "true";
+		const limit = Number(query.get("limit") ?? "100");
+		const kind = query.get("scope_kind");
+		const name = query.get("scope_name");
+		const cursor = query.get("cursor");
+		/*
+		 * A SCOPED READ AGAINST A STUB ARMED WITH A FAILURE answers the failure and
+		 * nothing else, so the group's own sentence and its Retry are photographed
+		 * rather than inferred from the store's test suite.
+		 */
+		if (kind && SCOPE_ERROR) {
+			/*
+			 * 500 RATHER THAN 503, and that is not a detail: the app maps 503 to its own
+			 * control-plane sentence ("the server does not accept this app's desktop
+			 * controls", which `remote-error.ts` reserves for a closed plane), so a 503
+			 * here would photograph a pairing message instead of the group's failure.
+			 * A backend fault is a 500.
+			 */
+			return {
+				status: 500,
+				body: { detail: "The stub was asked to refuse scoped reads." },
+			};
+		}
+		if (kind && SCOPE_EMPTY) {
+			/*
+			 * THE CENSUS STILL COUNTS THE SCOPE. That is the whole point of this arm:
+			 * the store SAYS the group holds conversations while the page carries none
+			 * of them, which is the state the group must describe as loading rather
+			 * than as empty.
+			 */
+			return ok({
+				sessions: [],
+				truncated: false,
+				next_cursor: null,
+				cursor_missing: false,
+				scope: { kind, name },
+				...(PAGED
+					? {
+							counts: censusOf(
+								censusRows(served.filter((row) => include || !row.archived)),
+							),
+						}
+					: {}),
+			});
+		}
+		let rows = served.filter((row) => include || !row.archived);
+		if (kind) {
+			rows = rows.filter((row) =>
+				kind === "team"
+					? row.binding?.team === name
+					: !row.binding?.team && row.binding?.agent === name,
+			);
+		}
+		/*
+		 * `--truncate` is the WITHDRAWN half's lever: a daemon that cannot page still
+		 * caps a page, ignores the requested `limit`, and has no cursor to give. The
+		 * app then holds `N` rows of a larger catalogue with `truncated: true` - which
+		 * is what makes an unexpanded group's chats unreachable and its sentence
+		 * false.
+		 */
+		if (TRUNCATE > 0) {
+			const capped = rows.slice(0, TRUNCATE);
+			return ok({
+				sessions: capped,
+				truncated: capped.length < rows.length,
+			});
+		}
+		/*
+		 * The cursor is this file's own spelling (`off:<n>`), because the client treats
+		 * it as opaque; an unrecognisable one is answered with the FIRST page and
+		 * `cursor_missing`, which is the route's own rule for a token it cannot use.
+		 */
+		/*
+		 * WHERE THE OFFSET LIVES IN THE CURSOR, read from the prefix rather than from a
+		 * hand-counted index. `off:` is FOUR characters, so `slice(3)` leaves the colon,
+		 * `Number(":25")` is NaN, `NaN || 0` is 0 - and this stand-in then answered page
+		 * two with PAGE ONE, for as long as the rig's tail-press assertion was reporting
+		 * the panel as broken. The app was right and had already collapsed the repeated
+		 * ids, which is what its merge is specified to do.
+		 */
+		const CURSOR_PREFIX = "off:";
+		const offset =
+			cursor === null ? 0 : Number(cursor.slice(CURSOR_PREFIX.length)) || 0;
+		const page = rows.slice(offset, offset + limit);
+		const more = offset + page.length < rows.length;
 		return ok({
-			sessions: conversations.filter((row) => include || !row.archived),
-			truncated: false,
+			sessions: page,
+			truncated: more,
+			...(PAGED
+				? {
+						next_cursor: more ? `off:${offset + page.length}` : null,
+						cursor_missing:
+							cursor !== null && !cursor.startsWith(CURSOR_PREFIX),
+						...(kind ? { scope: { kind, name } } : {}),
+						...(query.get("with_counts") === "true"
+							? {
+									counts: censusOf(
+										censusRows(served.filter((r) => include || !r.archived)),
+									),
+								}
+							: {}),
+					}
+				: {}),
 		});
 	}
 	if (method === "GET" && pathname === "/v1/desktop/sessions/search") {
@@ -303,10 +487,34 @@ const route = (method, pathname, query, body) => {
 		});
 	}
 	if (method === "GET" && pathname === "/v1/desktop/profiles") {
-		return ok({ profiles: [] });
+		/*
+		 * THE ROSTER THE SIDEBAR'S ENTITY REGION IS BUILT FROM. The paged catalogue's
+		 * agents are real roster rows and not just a `binding` field: a `[data-entity]`
+		 * row exists because `profiles.list` named it, so a fixture that bound its
+		 * conversations to agents nobody lists would render no agent group at all.
+		 * `source: "custom"` rather than `builtin`, which is what makes these the
+		 * user's OWN agents (`ownAgents` partitions the builtin shelf away).
+		 */
+		return ok({
+			profiles:
+				CATALOGUE > 0
+					? [
+							{ name: "reviewer", source: "custom", description: "" },
+							{ name: "qa-tester", source: "custom", description: "" },
+						]
+					: [],
+		});
 	}
 	if (method === "GET" && pathname === "/v1/desktop/teams") {
-		return ok({ teams: [] });
+		return ok({
+			teams:
+				CATALOGUE > 0
+					? [
+							{ name: "lopdev", description: "" },
+							{ name: "minervadev", description: "" },
+						]
+					: [],
+		});
 	}
 	/*
 	 * The pin route, present because the capability above is: the fixture is a
@@ -387,6 +595,125 @@ const route = (method, pathname, query, body) => {
 	};
 };
 
+/*
+ * THE LARGE CATALOGUE: `--catalogue=<n>` conversations spread across two teams,
+ * two agents and the unbound population.
+ *
+ * WHY THE SHAPE IS WHAT IT IS. The paging claims need a group whose chats sit PAST
+ * the head page (`HEAD_PAGE = 50`): a group of 70 does, so an app that reads
+ * fifty rows and stops draws a group it cannot fill, which is exactly the state
+ * the operator photographed. The 20-chat group is the one a SMALL page still
+ * carries, so a frame can show a group that is genuinely page-complete. The
+ * unbound rows exist so the flat list has a tail of its own to extend.
+ *
+ * The ids are deterministic (`p<index>`) rather than random, so two runs of this
+ * rig produce comparable frames and a re-capture is a diff-free operation.
+ */
+const pagedCatalogue = () => {
+	const rows = [];
+	const add = (index, binding, over = {}) => {
+		rows.push({
+			id: `p${String(index).padStart(3, "0")}`,
+			name: `Chat ${String(index).padStart(3, "0")}`,
+			mtime: 1_700_000_000 - index,
+			preview: null,
+			archived: false,
+			pinned: false,
+			active: false,
+			live_state: "idle",
+			pending: null,
+			status: { code: "recent", label: "Recent" },
+			binding,
+			...over,
+		});
+	};
+	/*
+	 * THE ORDER OF THIS ARRAY IS THE ORDER THE PANEL SEES, and it is chosen for one
+	 * reason: the FIRST FIFTY rows must be every conversation that is NOT in the
+	 * team under test. The stand-in slices in array order, so that is what makes the
+	 * head page and the group's own page DISJOINT - which is what the operator's own
+	 * store looks like (434 chats in one team, 283 rendered) and what makes
+	 * "expanding the group fetched something" a number rather than an impression.
+	 */
+	let index = 0;
+	// 50 conversations belonging to somebody else: the unbound tail, a second team,
+	// and two agents. ONE is running, so `Active chats` has a row rather than a
+	// sentence; ONE is pinned, so the pinned section is photographed too.
+	for (let i = 0; i < 15; i += 1) {
+		add(
+			index,
+			{ agent: null, team: null },
+			{
+				...(i === 0 ? { active: true, live_state: "busy" } : {}),
+				...(i === 1 ? { pinned: true } : {}),
+			},
+		);
+		index += 1;
+	}
+	for (let i = 0; i < 20; i += 1)
+		add(index++, { agent: null, team: "minervadev" });
+	for (let i = 0; i < 8; i += 1)
+		add(index++, { agent: "reviewer", team: null });
+	for (let i = 0; i < 7; i += 1)
+		add(index++, { agent: "qa-tester", team: null });
+	// The 70 the page cannot carry: past every one of the fifty above.
+	for (let i = 0; i < 70; i += 1) add(index++, { agent: null, team: "lopdev" });
+	return rows;
+};
+/** The rows this process serves: the six-conversation fixture, or the large one. */
+const served = CATALOGUE > 0 ? pagedCatalogue() : conversations;
+
+/**
+ * The per-scope census the paged route reports under `with_counts`.
+ *
+ * Built from the fixture rather than written down, so the badge and the rows can
+ * never disagree in this rig: a hand-written total would let a frame show a group
+ * whose badge says 70 over a page that carries 25 of an invented 40.
+ */
+/*
+ * THE CENSUS INPUT, with the `--zero-census-team` exclusion applied in ONE place so
+ * every answer's census - the head page's and a scope's - agrees about a team the
+ * rig has emptied (see the flag's own note).
+ */
+const censusRows = (rows) =>
+	ZERO_CENSUS_TEAM === null
+		? rows
+		: rows.filter(
+				(row) =>
+					row.binding?.team !== ZERO_CENSUS_TEAM &&
+					row.binding?.agent !== ZERO_CENSUS_TEAM,
+			);
+
+const censusOf = (rows) => {
+	const counts = new Map();
+	let active = 0;
+	let unbound = 0;
+	for (const row of rows) {
+		if (row.active) active += 1;
+		const team = row.binding?.team ?? "";
+		const agent = row.binding?.agent ?? "";
+		if (!team && !agent) {
+			unbound += 1;
+			continue;
+		}
+		const kind = team ? "team" : "agent";
+		const name = team || agent;
+		const key = `${kind}:${name}`;
+		const at = counts.get(key) ?? { kind, name, total: 0, active: 0 };
+		at.total += 1;
+		if (row.active) at.active += 1;
+		counts.set(key, at);
+	}
+	return {
+		total: rows.length,
+		active,
+		unbound,
+		scopes: [...counts.values()].sort(
+			(a, b) => b.total - a.total || a.kind.localeCompare(b.kind),
+		),
+	};
+};
+
 const server = createServer((request, response) => {
 	const chunks = [];
 	request.on("data", (chunk) => chunks.push(chunk));
@@ -406,11 +733,79 @@ const server = createServer((request, response) => {
 			url.searchParams,
 			body,
 		);
+		/*
+		 * THE FLAT LIST'S TAIL REFUSAL (round 3, D18), decided BEFORE the log line so the
+		 * log states what was actually sent. An unscoped request that carries a cursor is the
+		 * head's own extension, so refusing exactly that leaves the first paint intact and
+		 * makes the THIRD refusal site render: a list that painted and then could not grow.
+		 */
+		const scopedRequest = url.searchParams.get("scope_kind") !== null;
+		const refusingTail =
+			TAIL_ERROR &&
+			!scopedRequest &&
+			url.searchParams.get("cursor") !== null &&
+			answer.status === 200;
 		process.stderr.write(
-			`stub ${request.method} ${url.pathname}${url.search} -> ${answer.status}\n`,
+			/*
+			 * THE ANSWER IS LOGGED WITH THE ROWS IT CARRIED, not only the request: "the
+			 * app asked for page two" and "the daemon answered page two with twenty-five
+			 * rows" are different facts, and a reader debugging a panel that did not grow
+			 * needs the second one in the same line as the first.
+			 */
+			`stub ${request.method} ${url.pathname}${url.search} -> ${refusingTail ? 500 : answer.status}${
+				Array.isArray(answer.body?.result?.sessions)
+					? ` rows=${answer.body.result.sessions.length} next=${answer.body.result.next_cursor ?? "-"}`
+					: ""
+			}\n`,
 		);
-		response.writeHead(answer.status, { "content-type": "application/json" });
-		response.end(JSON.stringify(answer.body));
+		const reply = () => {
+			response.writeHead(answer.status, { "content-type": "application/json" });
+			response.end(JSON.stringify(answer.body));
+		};
+		/*
+		 * THE DELAY IS APPLIED HERE rather than inside the route, so every route stays
+		 * synchronous and one lever holds any scoped answer open for as long as a
+		 * photograph needs (see `--scope-delay-ms`).
+		 */
+		const scoped = url.searchParams.get("scope_kind") !== null;
+		if (refusingTail && TAIL_DELAY_MS > 0) {
+			setTimeout(() => {
+				response.writeHead(500, { "content-type": "application/json" });
+				response.end(
+					JSON.stringify({
+						detail: "The stub was asked to refuse the flat list's tail.",
+					}),
+				);
+			}, TAIL_DELAY_MS);
+			return;
+		}
+		if (refusingTail) {
+			response.writeHead(500, { "content-type": "application/json" });
+			response.end(
+				JSON.stringify({
+					detail: "The stub was asked to refuse the flat list's tail.",
+				}),
+			);
+			return;
+		}
+		if (SCOPE_HOLD !== null && scoped && !existsSync(SCOPE_HOLD)) {
+			/*
+			 * Polled rather than watched: the release is a file the SCENE writes, and a
+			 * 50 ms poll is both simpler and cheaper than an fs watcher for a lever whose
+			 * only job is to exist. Bounded so a scene that dies cannot leave this daemon
+			 * holding a reply for ever.
+			 */
+			const startedAt = Date.now();
+			const waitForRelease = () => {
+				if (existsSync(SCOPE_HOLD) || Date.now() - startedAt > 60_000) reply();
+				else setTimeout(waitForRelease, 50);
+			};
+			waitForRelease();
+		} else if (SCOPE_DELAY_MS > 0 && scoped) {
+			setTimeout(reply, SCOPE_DELAY_MS);
+		} else {
+			reply();
+		}
 	});
 });
 

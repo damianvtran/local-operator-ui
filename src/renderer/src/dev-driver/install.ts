@@ -445,6 +445,29 @@ export function installDevDriver(): string[] {
 				activeSessionId: sessions.activeSessionId,
 				sessionCount: sessions.sessions.length,
 				/*
+				 * THE PAGED CATALOGUE'S OWN FACTS, reported rather than inferred.
+				 *
+				 * A scene that photographs a group's page has to be able to say WHAT the
+				 * store holds for that group - how many ids its scope carries, whether a
+				 * page is in flight, and where its cursor points - because "the panel drew
+				 * 25 rows" and "the group's page reached the store" are different claims
+				 * and only the second one is about the feature. Additive and optional:
+				 * every field is present on a daemon that predates paging, as an empty map
+				 * and nulls.
+				 */
+				scopes: Object.fromEntries(
+					Object.entries(sessions.scopes).map(([key, scope]) => [
+						key,
+						{
+							ids: scope.ids.length,
+							nextCursor: scope.nextCursor,
+							loading: scope.loading,
+							error: scope.error,
+						},
+					]),
+				),
+				countsTotal: sessions.counts?.total ?? null,
+				/*
 				 * THE ARCHIVE LANE'S OWN FACTS, because a scene cannot read an in-place toast update
 				 * off the DOM (agent review round 2, R2-2).
 				 *
