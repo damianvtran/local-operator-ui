@@ -1476,7 +1476,6 @@ test("a leading-slash refusal is classified, and says what the user can do", asy
 	// sentence - an instruction/refusal loop, measured at 0 requests per press.
 	assert.equal(withholdsRetryHint(draft.errorCode), true);
 	/*
-	 * The read-window refusal is NOT on that list any more, and the change is
 	 * THE READ WINDOW IS WITHHELD AGAIN (design round 11, D2), and the round that
 	 * dropped it was wrong about its sentence. "This chat isn't ready yet, so your
 	 * message wasn't sent." does not invite a press: the window answers `"failed"` the

@@ -1548,7 +1548,12 @@ function SessionPanel({
 								SESSION_UNVALIDATED_MESSAGE,
 						);
 						setSendErrorCode(SESSION_UNVALIDATED_CODE);
-						setSendErrorRetry(true);
+						/*
+						 * NO `setSendErrorRetry(true)` HERE (design round 11, D2): the read window
+						 * is withheld by the classifier now - a window that answers "failed" the
+						 * moment it is asked re-refuses the press - so a flag written true here is
+						 * a verdict the notice no longer renders and state that would outlive it.
+						 */
 						setSendErrorMuted(false);
 					}
 					return false;
