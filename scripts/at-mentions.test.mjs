@@ -574,16 +574,37 @@ test("the footer reads off the active row", () => {
 	assert.equal(atFooter(undefined), "Nothing to insert · Esc closes");
 });
 
-test("the harness's own refusal is one sentence that promises nothing", () => {
-	// UX round 2, U12: the state every released install is in said NOTHING, and the
-	// sentence has to name the backend as the reason. Two things are asserted about
+test("the harness's own refusal names the remedy and never the gesture", () => {
+	// UX round 2, U12: the state the app shipped in said NOTHING, and the sentence
+	// has to name the backend as the reason. TWO things are asserted about
 	// it because two things make it honest: it says what the harness cannot do, and
 	// it does not carry the `@` it is refusing (the composer may not teach a gesture
-	// its backend cannot serve) or an offer to update (the capability it lacks is one
-	// no harness advertises, so that promise has nothing behind it).
+	// its backend cannot serve).
+	//
+	// THE UPDATE OFFER IS NOW REQUIRED AND USED TO BE FORBIDDEN, and that is a
+	// reversal on purpose. This test asserted `!/update/i`, on the grounds that the
+	// `references` capability was one no harness advertised, so "update the backend"
+	// had nothing behind it. The harness publishes it from the release carrying the
+	// key — `local_operator/server/routes/capabilities.py` advertises `references`
+	// whenever `at_references_enabled()` — so the offer is one a newer backend keeps,
+	// and a sentence that names the backend as the reason with no way out of the
+	// state is the dead end the sibling gate in the same band already refuses
+	// (`MOVE_UNAVAILABLE_REASON`).
+	//
+	// AND IT IS AN OFFER, NOT THE WORD. The first version of this assertion was
+	// `/update the backend/i`, which review falsified in one line: "This backend
+	// cannot carry file references. You cannot update the backend." satisfied it, and
+	// so did "…Do not update the backend." The second version anchored the verb
+	// exactly (`/\. Update the backend\b/`), which fixed the negations and quietly
+	// made the claim three comments above false — a truthful reword ("Update your
+	// backend and try again.") failed it, while those comments promised the wording
+	// stays editable. What ships is the imperative WITHOUT the exact spelling: a
+	// sentence boundary, an `Update`/`Updating` verb, the word "backend" before the
+	// next full stop. Both reviewers' counterexamples fail it; every reword tried
+	// against it passes.
 	assert.match(AT_UNAVAILABLE_REASON, /^This backend cannot /);
 	assert.ok(!AT_UNAVAILABLE_REASON.includes("@"));
-	assert.ok(!/update/i.test(AT_UNAVAILABLE_REASON));
+	assert.match(AT_UNAVAILABLE_REASON, /\.\s*(Update|Updating)[^.]*backend/i);
 });
 
 test("the count appears only when it adds something", () => {
