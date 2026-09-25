@@ -1420,6 +1420,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										: undefined
 								}
 								/*
+								 * The aside panel's two reads, handed down as the two facts they are rather
+								 * than as a handle to re-derive them from: the SESSION the panel is keyed by
+								 * (`sessionId` is the identity a backend route resolves, which is what
+								 * `sessions.aside` addresses) and whether that session is mid-turn — the
+								 * second term of the adopt gate, read from the same `canonical.busy` the Stop
+								 * control beside it uses so the two cannot disagree. Undefined on a pane with
+								 * no session, where no aside can be attached at all.
+								 */
+								asideSessionId={sessionId}
+								asideStreaming={canonical.busy}
+								/*
 								 * The capability itself, not just its busy half: the composer
 								 * holds the control's SLOT while a turn runs and for a grace
 								 * window after it ends, so the dictation control cannot take the

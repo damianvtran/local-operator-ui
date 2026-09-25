@@ -1560,6 +1560,24 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			requestId,
 			text: z.string().min(1).max(32768),
 			asideId: requestId.optional(),
+			/*
+			 * THE SUBSCRIPTION THAT WANTS THE ANSWER'S CHUNKS, named by the viewer
+			 * that is asking.
+			 *
+			 * `aside_delta` is published on the session's stream, and the stream is
+			 * read by every attached viewer of a session - so the owner has to be
+			 * told WHICH of them asked, or an off-record answer is broadcast to
+			 * windows that never asked the question. The same id the `open` frame
+			 * hands the renderer (`payload.subscription_id`), which is also what
+			 * `sessions.watch` leases it with, so the two cannot disagree about
+			 * which subscription a viewer is.
+			 *
+			 * OPTIONAL, and that is the backward-compatibility half: an owner that
+			 * predates the routing sends no `aside_delta` at all, and a viewer that
+			 * has no subscription yet (the stream has not opened) still gets the
+			 * settled answer from the POST's response.
+			 */
+			subscriptionId: z.string().regex(SUBSCRIPTION_ID_PATTERN).optional(),
 		})
 		.strict(),
 	z
@@ -4050,6 +4068,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 					request_id: request.requestId,
 					text: request.text,
 					aside_id: request.asideId,
+					// The viewer the chunks belong to; see the op's own note for why it
+					// is optional and why it is the stream's own id.
+					subscription_id: request.subscriptionId,
 				},
 			};
 		case "sessions.adopt":
