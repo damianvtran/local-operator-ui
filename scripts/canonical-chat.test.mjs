@@ -170,6 +170,7 @@ const {
 	STORE_UNAVAILABLE_CODE,
 	UNREADABLE_ATTACHMENT_CODE,
 	ANSWER_NOT_SENT_CODE,
+	ASIDE_NOT_ANSWERED_CODE,
 	isRefusedBeforeAdmission,
 	isStoreWriteRefusal,
 	refusedBeforeAdmissionAttachments,
@@ -182,7 +183,7 @@ const {
 	RETRY_LABEL,
 	CLEAR_LABEL,
 	useConversationInputStore,
-	retryWillFail,
+	withholdsRetryHint,
 } = module;
 function reset() {
 	calls.length = 0;
@@ -1472,7 +1473,7 @@ test("a leading-slash refusal is classified, and says what the user can do", asy
 	// meets: the unchanged-payload guard refuses the resend BY CONSTRUCTION, so
 	// "Send it again" over it is an instruction the guard answers with the same
 	// sentence - an instruction/refusal loop, measured at 0 requests per press.
-	assert.equal(retryWillFail(draft.errorCode), true);
+	assert.equal(withholdsRetryHint(draft.errorCode), true);
 	/*
 	 * The read-window refusal is NOT on that list any more, and the change is
 	 * deliberate: spec §4's table gives "This chat isn't ready yet, so your message
@@ -1481,7 +1482,7 @@ test("a leading-slash refusal is classified, and says what the user can do", asy
 	 * the hint here would leave the user with a message they can see and no control
 	 * that acts on it (the state the held paragraph used to create).
 	 */
-	assert.equal(retryWillFail(SESSION_UNVALIDATED_CODE), false);
+	assert.equal(withholdsRetryHint(SESSION_UNVALIDATED_CODE), false);
 	/*
 	 * Round 4's D13: the unreadable-attachment refusal is the third one a resend
 	 * cannot answer. Its chip is still attached and still unreadable, so the next
@@ -1495,15 +1496,15 @@ test("a leading-slash refusal is classified, and says what the user can do", asy
 	 * present and absent on the same sentence (chat-page reads
 	 * `sendErrorCode ?? draft.errorCode`).
 	 */
-	assert.equal(retryWillFail(UNREADABLE_ATTACHMENT_CODE), true);
+	assert.equal(withholdsRetryHint(UNREADABLE_ATTACHMENT_CODE), true);
 	/*
 	 * And the arm the guard used to occupy is now the OPPOSITE of withheld. The
 	 * unknown outcome (the timeout's shape: nothing code-shaped to act on) offers
 	 * Retry, because an unchanged payload replays under the same request id - the
-	 * loop the guard created is gone, not renamed. `retryWillFail` answers "can a
+	 * loop the guard created is gone, not renamed. `withholdsRetryHint` answers "can a
 	 * press work", so it is false for that arm.
 	 */
-	assert.equal(retryWillFail(undefined), false);
+	assert.equal(withholdsRetryHint(undefined), false);
 	/*
 	 * The seventh is not a send refusal at all, and it is here for the same
 	 * reason as the others: an option press that failed says NOTHING the composer's
@@ -1516,9 +1517,24 @@ test("a leading-slash refusal is classified, and says what the user can do", asy
 	 * present on this sentence in one session and absent in another (design round
 	 * 1, D2 — the same inheritance D13 measured on the attachment refusal).
 	 */
-	assert.equal(retryWillFail(ANSWER_NOT_SENT_CODE), true);
-	assert.equal(retryWillFail("unresolved_attachment"), false);
-	assert.equal(retryWillFail(undefined), false);
+	assert.equal(withholdsRetryHint(ANSWER_NOT_SENT_CODE), true);
+	/*
+	 * And the aside's refusal, for the same reason one step further out: an aside
+	 * ask takes the question out of the box at the press, so the hint would point
+	 * at whatever the user typed SINCE the refusal was raised (UX round 1, U4). It
+	 * is the ninth term, and the second here that is not a send refusal at all.
+	 */
+	assert.equal(withholdsRetryHint(ASIDE_NOT_ANSWERED_CODE), true);
+	/*
+	 * AND THE TENTH, which is the only term whose remedy IS the retry - merely not yet: the
+	 * press it refuses is refused for as long as the newest aside answer is in flight, and the
+	 * sentence beside it says when that ends, so a Retry offered here is the same instruction
+	 * twice with the second one refused (UX round 2, U12).
+	 */
+	assert.equal(withholdsRetryHint(ASIDE_STILL_ANSWERING_CODE), true);
+	assert.equal(withholdsRetryHint(ANSWER_NOT_SENT_CODE), true);
+	assert.equal(withholdsRetryHint("unresolved_attachment"), false);
+	assert.equal(withholdsRetryHint(undefined), false);
 });
 
 /*
@@ -1541,7 +1557,7 @@ test("a leading-slash refusal is classified, and says what the user can do", asy
  * BACKEND's, deliberately - it is the process that knows which volume is full and
  * what the remedy is, and a second copy in the renderer would be a second place
  * for that fact to drift - so the assertions are that it reaches the composer
- * VERBATIM and that the code travels beside it into `retryWillFail`. The two
+ * VERBATIM and that the code travels beside it into `withholdsRetryHint`. The two
  * failure modes this rules out are the ones the incident actually had: a generic
  * sentence replacing the actionable one, and a code left unset (or inherited from
  * an earlier refusal) so the alert under it announces a retry that cannot work.
@@ -1601,7 +1617,7 @@ test("a failed store is refused with its own code, and the retry hint it cannot 
 		// history - design round 4's D13, at a refusal the wire classified.
 		assert.equal(draft.errorCode, code);
 		assert.equal(draft.error, message);
-		assert.equal(retryWillFail(draft.errorCode), true);
+		assert.equal(withholdsRetryHint(draft.errorCode), true);
 		/*
 		 * And the OTHER question these codes answer, which is a different one: the
 		 * held line's register. The shared held sentence says the outcome is "not
@@ -1671,7 +1687,7 @@ test("a failed store is refused with its own code, and the retry hint it cannot 
 	);
 	const busyDraft = store.getState().drafts[busyKey];
 	assert.equal(busyDraft.error, busyMessage);
-	assert.equal(retryWillFail(busyDraft.errorCode), false);
+	assert.equal(withholdsRetryHint(busyDraft.errorCode), false);
 	// Contention is NOT a store write refusal, and the difference is what keeps the
 	// shared held sentence - and the retry hint - correct for it.
 	assert.equal(isStoreWriteRefusal(busyDraft.errorCode), false);
@@ -3092,7 +3108,7 @@ test("a session-creation refusal keeps its own code and copy, even for a leading
 	// The generic retry hint is KEPT: a create refusal is not one of the two a
 	// resend cannot answer, and withholding it would be the same
 	// mis-attribution in the opposite direction.
-	assert.equal(retryWillFail(draft.errorCode), false);
+	assert.equal(withholdsRetryHint(draft.errorCode), false);
 	// U13's retention behaviour is unchanged and stands for its own reason - a
 	// pre-admission refusal leaves the text where the fix can be made.
 	assert.equal(draft.admissionAttempted, false);
@@ -3133,7 +3149,7 @@ test("a create payload the shipped schema rejects is not relabelled as a slash r
 	assert.notEqual(draft.errorCode, LEADING_SLASH_CODE);
 	assert.notEqual(draft.error, LEADING_SLASH_MESSAGE);
 	assert.equal(draft.error, "Invalid desktop operation.");
-	assert.equal(retryWillFail(draft.errorCode), false);
+	assert.equal(withholdsRetryHint(draft.errorCode), false);
 	/*
 	 * And the payload stays on the row - as the COMPARISON BASIS the retry rule reads
 	 * (`payloadMatchesClaim`), not as a claim anybody has to release. The copy the user
@@ -3164,7 +3180,7 @@ test("the same 422 without a leading slash keeps the transport's own sentence", 
 	const draft = store.getState().drafts[key];
 	assert.equal(draft.errorCode, undefined);
 	assert.equal(draft.error, "The request has invalid fields.");
-	assert.equal(retryWillFail(draft.errorCode), false);
+	assert.equal(withholdsRetryHint(draft.errorCode), false);
 });
 
 test("latest candidate open wins, and an open spends no request of its own", async () => {
@@ -3494,7 +3510,7 @@ test("the owner's own refusals latch nothing, and their payload still replays un
 		);
 		assert.equal(retracted[0].id, requestId);
 		assert.equal(
-			retryWillFail(arm.code),
+			withholdsRetryHint(arm.code),
 			arm.withholdsHint,
 			`${arm.code}: the hint is offered only where a press is the remedy`,
 		);
@@ -3667,7 +3683,7 @@ test("a failure that establishes nothing about admission is still unknowable - a
 		"and the echo goes with it: the message provably does not exist on the owner",
 	);
 	assert.equal(refused.error, "The store could not be read.");
-	assert.equal(retryWillFail(refused.errorCode), true);
+	assert.equal(withholdsRetryHint(refused.errorCode), true);
 });
 
 test("a busy owner is retried under the same identity before the composer ever sees it", async () => {

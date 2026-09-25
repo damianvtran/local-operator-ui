@@ -963,7 +963,7 @@ const assertions = (probe, expected) => {
  * agrees with itself.
  *
  * PORTING IT is a bounded job with a clear shape: one entry per arm, expectation
- * = the sentence `sendFailureCopy` produces for that code, `retryWillFail(code)`
+ * = the sentence `sendFailureCopy` produces for that code, `withholdsRetryHint(code)`
  * for the control set, and the box holding the payload (or empty, on `cleared`).
  * The frames it produces are the store-failure COPY ladder's own evidence, whose
  * backend half is the sibling PR's subject - see this branch's PR for the

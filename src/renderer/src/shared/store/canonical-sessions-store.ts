@@ -567,7 +567,7 @@ export function isLeadingSlashRefusal(error: unknown, text: string): boolean {
  * The refusal itself is the renderer's own (`unreadableAttachmentRefusal`), and
  * the sentence carries its own remedy, so what this code is FOR is the two
  * decisions that must not be made from the copy: the composer withholds its
- * generic "Send it again" hint for it (see `retryWillFail`), and a code is
+ * generic "Send it again" hint for it (see `withholdsRetryHint`), and a code is
  * how that survives a rewording.
  *
  * A code rather than a fact about the message for one more reason, and it is a
@@ -612,7 +612,7 @@ export const UNREADABLE_ATTACHMENT_CODE = "attachment_read_failed";
  * the process which touched the store has, so authoring a second copy here would
  * be a second place for it to drift from the one the user is shown. The renderer
  * half of the fix is that this code SURVIVES to the alert - it is what
- * `retryWillFail` below reads - and that the sentence is not replaced by a
+ * `withholdsRetryHint` below reads - and that the sentence is not replaced by a
  * generic one on the way (pinned in `scripts/canonical-chat.test.mjs`).
  *
  * The notice does NOT retire on a timer, and that is deliberate: the read
@@ -663,7 +663,7 @@ export const STORE_UNAVAILABLE_CODE = "store_unavailable";
  *
  *   - the held line states the known fact instead of the unknowable-outcome
  *     sentence (see the alert's `storeWriteRefused` branch);
- *   - the generic retry hint is withheld, by `retryWillFail` below, which
+ *   - the generic retry hint is withheld, by `withholdsRetryHint` below, which
  *     is a SEPARATE question - "is the retry the remedy" - and is kept separate
  *     here: one predicate per fact, so a code can be added to either list for
  *     its own reason without silently answering the other question.
@@ -694,10 +694,53 @@ export function isStoreWriteRefusal(code: string | undefined): boolean {
  * carries it has already failed, because the questions the composer asks of a
  * code are exactly the two that must not be answered by history: is the retry
  * the remedy (it is not — the question this press named is gone, and there is
- * nothing to press again; see `retryWillFail`), and which remedies belong
+ * nothing to press again; see `withholdsRetryHint`), and which remedies belong
  * under this sentence (none of the draft's).
  */
 export const ANSWER_NOT_SENT_CODE = "answer_not_sent";
+
+/**
+ * A refused ASIDE whose question is no longer anywhere the composer can see.
+ *
+ * The sixth term in `withholdsRetryHint`, and the first of the two that is not a
+ * send refusal: an aside ask empties the box at the press (the question left for the
+ * panel), the owner refuses it, and the box at that moment holds whatever the user
+ * typed SINCE. The composer's generic hint then appended "Your message is still in
+ * the composer. Send it again." to a sentence about a question that is neither in
+ * the box nor on screen (UX round 1, U4) - advice that is not merely redundant but
+ * false, and which would have the user resend a NEW question to an exchange that
+ * refused the old one.
+ *
+ * It is a code of its own rather than a pre-computed boolean because the composer
+ * asks exactly one question of a code (is the retry the remedy; see
+ * `withholdsRetryHint`), and the answer has to travel with the sentence that
+ * raised it - the same argument `ANSWER_NOT_SENT_CODE` records one round earlier.
+ * The refusing door sets it; the panel does not (a refusal on the panel is stated
+ * on the turn beside its own question, and the sentence there is the owner's).
+ */
+export const ASIDE_NOT_ANSWERED_CODE = "aside_not_answered";
+
+/**
+ * A FOLLOW-UP REFUSED IN THE APP because the aside is still answering.
+ *
+ * The seventh term in `withholdsRetryHint`, and the only term there whose remedy IS
+ * the retry - just not yet. The composer's own gate on this refusal sets it (see
+ * `asideAskBlockedReason`), and without it the alert appended its generic "Your
+ * message is still in the composer. Send it again." directly under a sentence
+ * telling the user to wait, so one line carried two contradictory instructions
+ * (UX round 2, U12; agent review round 5, R5-5; design round 3, D13). The retry is
+ * refused for as long as the newest answer is in flight, which is exactly the
+ * condition the sentence beside it names - so the sentence owns the timing and the
+ * hint has nothing to add. That is a different reason from `ASIDE_NOT_ANSWERED_CODE`
+ * one block up, which is withheld because the question has LEFT THE SCREEN: an
+ * aside whose answer is still coming has not failed, and borrowing that code would
+ * have made the two refusals one thing in the only place that reads them.
+ *
+ * The line is also retired with the state it describes rather than left standing
+ * (`chat-page.tsx`, the effect keyed on the same predicate): a composer line that
+ * reads "still answering" under a settled answer is U12's other half.
+ */
+export const ASIDE_STILL_ANSWERING_CODE = "aside_still_answering";
 
 /**
  * Whether pressing Retry could possibly work for a refusal.
@@ -729,6 +772,22 @@ export const ANSWER_NOT_SENT_CODE = "answer_not_sent";
  * guard's code, which no longer exists: an edited resend is a NEW message under a
  * new request id and is never refused (see `admitChatDraft`).
  *
+ * `ASIDE_NOT_ANSWERED_CODE` IS THE SIXTH TERM, and it is the second here that is
+ * not a send refusal either — in the same direction as `ANSWER_NOT_SENT_CODE`, and for a
+ * sharper reason: an aside ask takes the question out of the box at the press, so
+ * when its refusal lands the box holds whatever the user typed SINCE, and the hint
+ * would point at text the refusal was never about (UX round 1, U4). Its own
+ * statement is on the constant.
+ *
+ * `ASIDE_STILL_ANSWERING_CODE` IS THE SEVENTH, and it is the only term here whose
+ * remedy IS the retry — it is merely not yet. The press it refuses is refused for
+ * as long as the newest aside answer is in flight, and the sentence that replaces
+ * the hint is the one that says when that ends, so the hint can only contradict it
+ * (UX round 2, U12; agent review round 5, R5-5; design round 3, D13). Every other
+ * term above is a refusal a resend does not fix; this one is a refusal that a
+ * resend fixes LATER, and both are cases where "Send it again" is not what to do
+ * now. Its own statement is on the constant.
+ *
  * `runtime_busy` was never on this list and still is not: the app has spent its
  * internal repeats by the time the composer sees it, and the owner's own
  * sentence asks for the press.
@@ -737,13 +796,15 @@ export const ANSWER_NOT_SENT_CODE = "answer_not_sent";
  * instead of listing the codes, and so `scripts/canonical-chat.test.mjs` can
  * execute it against the store that raises them.
  */
-export function retryWillFail(code: string | undefined): boolean {
+export function withholdsRetryHint(code: string | undefined): boolean {
 	return (
 		code === LEADING_SLASH_CODE ||
 		code === UNREADABLE_ATTACHMENT_CODE ||
 		code === STORE_OUT_OF_SPACE_CODE ||
 		code === STORE_UNAVAILABLE_CODE ||
-		code === ANSWER_NOT_SENT_CODE
+		code === ANSWER_NOT_SENT_CODE ||
+		code === ASIDE_NOT_ANSWERED_CODE ||
+		code === ASIDE_STILL_ANSWERING_CODE
 	);
 }
 
@@ -867,6 +928,17 @@ export const SEND_FAILURE_COPY = {
 		"Couldn't reach Local Operator. Your message may not have been sent.",
 	/** The owner took the request and is not free yet. */
 	busy: "The agent is busy, so your message wasn't sent.",
+	/*
+	 * THE TWO ASIDE REFUSALS (fold of `origin/main` = `f9d92ac1e`, #482). The aside panel's own
+	 * semantics are that PR's and are re-stated here rather than re-spelled: the sentence is the
+	 * one `asideAskFailure` composes for a refused ask, and the second is `ASIDE_ASK_BUSY`
+	 * verbatim, because the two surfaces that state these facts - the panel and, when it is gone,
+	 * this composer - must not read as two different facts. What each row carries is the control:
+	 * neither offers Retry, and the classifier says why for both (`withholdsRetryHint`).
+	 */
+	asideNotAnswered: "The aside was not answered.",
+	asideStillAnswering:
+		"The aside is still answering. Press Enter again once the answer is in.",
 	/** The owner is leaving; its own advice is to come back in a moment. */
 	retiring:
 		"Local Operator is restarting, so your message wasn't sent. Try again in a moment.",
@@ -1003,6 +1075,10 @@ export function sendFailureCopy(
 			return { message: SEND_FAILURE_COPY.retiring, retry: true, code };
 		if (code === SESSION_UNVALIDATED_CODE)
 			return { message: SEND_FAILURE_COPY.notReady, retry: true, code };
+		if (code === ASIDE_NOT_ANSWERED_CODE)
+			return { message: SEND_FAILURE_COPY.asideNotAnswered, retry: false, code };
+		if (code === ASIDE_STILL_ANSWERING_CODE)
+			return { message: SEND_FAILURE_COPY.asideStillAnswering, retry: false, code };
 		if (code === LEADING_SLASH_CODE)
 			return { message: LEADING_SLASH_MESSAGE, retry: false, code };
 		/*
@@ -1032,7 +1108,7 @@ export function sendFailureCopy(
 	if (code === DESKTOP_DEADLINE_EXCEEDED_CODE)
 		return {
 			message: SEND_FAILURE_COPY.unconfirmed,
-			retry: !retryWillFail(code),
+			retry: !withholdsRetryHint(code),
 			code,
 		};
 	/*
@@ -1044,7 +1120,7 @@ export function sendFailureCopy(
 	 * "Session owner is unavailable. Reconnect and reconcile before retrying." is
 	 * two sentences, names the owner and a reconcile the user cannot run, and is the
 	 * kind of sentence the table exists to replace. The press is offered because a
-	 * same-id resend is safe (`retryWillFail` is false for it), which is what the
+	 * same-id resend is safe (`withholdsRetryHint` is false for it), which is what the
 	 * sentence's second clause promises.
 	 */
 	if (code === DESKTOP_LOST_SIGHT_CODE.runtimeUnreachable)
@@ -1056,14 +1132,14 @@ export function sendFailureCopy(
 	 * drop the only fact the user has to act on, and the code is what makes this
 	 * distinguishable from a bare throw, whose text is a leaked exception.
 	 */
-	if (code) return { message: fallback, retry: !retryWillFail(code), code };
+	if (code) return { message: fallback, retry: !withholdsRetryHint(code), code };
 	/*
 	 * And the last arm: a failure with no code at all - a raw throw, or a response
 	 * that never arrived. There is nothing to quote, so the app states what it knows.
 	 */
 	return {
 		message: SEND_FAILURE_COPY.unconfirmed,
-		retry: !retryWillFail(code),
+		retry: !withholdsRetryHint(code),
 		code,
 	};
 }
@@ -1512,11 +1588,11 @@ export function migrateHeldClaim(
 		errorCode: draft.heldClaimCode,
 		/*
 		 * And the press from that code, through the same rule every other row uses
-		 * (`retryWillFail`), rather than the hard-wired `true` this used to write. A
+		 * (`withholdsRetryHint`), rather than the hard-wired `true` this used to write. A
 		 * released claim whose code names a refusal the app can act on must not offer
 		 * a Retry that meets it again.
 		 */
-		errorRetry: !retryWillFail(draft.heldClaimCode),
+		errorRetry: !withholdsRetryHint(draft.heldClaimCode),
 		/*
 		 * And the marker that makes the move once-only, whatever the row's shape: a
 		 * pane that mounts twice finds `migratedHeld`, and a row written by THIS build

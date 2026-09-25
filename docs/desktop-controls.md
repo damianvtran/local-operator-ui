@@ -201,7 +201,20 @@ The allowlist additionally provides:
 - `sessions.stop`: exact canonical targets and confirmed=true. Cold targets are
   not started just to stop them; acknowledgement is not completed process exit.
 - `sessions.aside`, `sessions.aside.get/close`, `sessions.adopt`: off-record owner
-  answers, recoverable memory-only panels and confirmed durable adoption.
+  answers, recoverable memory-only panels and confirmed durable adoption. The
+  renderer presents them as an ASIDE PANEL attached to the composer (`/btw`), not
+  as a dialog: `/btw <question>` opens it and asks in one Enter, a bare `/btw`
+  opens it empty and the next Enter asks, and while it is open the composer
+  addresses the aside rather than the thread (Esc closes it and returns routing
+  to the conversation). Draft answers arrive **live-only** as
+  `{"type":"aside_delta","payload":{"aside_id","delta"}}` frames on the session
+  stream (`.../{id}/events`), published with replay disabled and never entering
+  the transcript; `aside_id` is the client-generated `request_id` of the POST, so
+  the panel subscribes before its own request resolves. The POST's returned
+  `text` settles the exchange and is authoritative — a dropped or duplicated
+  delta costs nothing. `sessions.adopt` is the panel's "Add to conversation"
+  control, live only when the exchange is settled and the session is not
+  mid-turn.
 - `mcp.list/control`: effective source ownership, array-valued command args, only
   secret references in env/headers, connect/disconnect/reload, OAuth probe,
   login/logout/reauth and operation status/cancel. Canonical grants remain owner-side.
