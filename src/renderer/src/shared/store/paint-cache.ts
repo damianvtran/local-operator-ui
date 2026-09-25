@@ -90,6 +90,21 @@ export type PaintedConversation = {
 	transcript: TranscriptState;
 	/** `Date.now()` at write, for eviction order and for a test to read. */
 	savedAt: number;
+	/**
+	 * Call ids whose label read the paint was still waiting on when it was stored.
+	 *
+	 * WHY THIS TRAVELS WITH THE ROWS. A cached tool row carries no arguments (the
+	 * seed it came from holds `tool_execution_end` frames, which state none), so
+	 * the row's object column falls back to the first line of the call's OUTPUT
+	 * unless the paint says the command is still coming. That distinction cannot
+	 * be recovered from the rows: a call whose read had finished and found nothing
+	 * is a row whose stand-in is the terminal truth, and a call whose read was
+	 * still outstanding is a row that is one answer away from its command. Cached
+	 * without it, the first frame after a switch back paints result text where the
+	 * command belongs and then repaints the row when the read lands - the jitter
+	 * the hold exists to prevent, moved one mount later.
+	 */
+	owedLabels: ReadonlySet<string>;
 };
 
 type Entry = PaintedConversation & { bytes: number };
@@ -145,7 +160,11 @@ function trimRecords(records: TranscriptState["records"]): {
  */
 export function writePaint(
 	sessionId: string,
-	input: { transcript: TranscriptState },
+	input: {
+		transcript: TranscriptState;
+		/** The call ids still waiting on a label read; see `owedLabels`. */
+		owedLabels?: ReadonlySet<string>;
+	},
 ): void {
 	// In-flight rows are dropped HERE rather than asked of the caller. The
 	// invariant is the cache's, not the call site's: a streaming assistant row or
@@ -181,12 +200,45 @@ export function writePaint(
 		transcript,
 		savedAt: Date.now(),
 		bytes,
+		/*
+		 * Intersected with the rows that SURVIVED the trim and are still tool rows
+		 * with something to stand in for: a call id whose row was dropped would
+		 * otherwise be held on a mount that has no row to hold, and one whose row
+		 * carries arguments needs no hold at all.
+		 */
+		owedLabels: owedLabelsFor(records, input.owedLabels),
 	};
 	// Delete before set so the re-inserted key is the newest for eviction order.
 	cache.delete(sessionId);
 	cache.set(sessionId, entry);
 	evict();
 }
+
+/**
+ * The owed set as it applies to the rows this cache actually holds.
+ *
+ * An absent set is empty rather than a wildcard: a caller that stores rows
+ * without saying what was owed is claiming every row is settled, which paints
+ * the stand-ins and is exactly what the field exists to stop. Only a caller that
+ * HAD a hold can say it had one.
+ */
+function owedLabelsFor(
+	records: TranscriptState["records"],
+	supplied: ReadonlySet<string> | undefined,
+): ReadonlySet<string> {
+	if (!supplied || supplied.size === 0) return EMPTY_OWED;
+	const kept = new Set<string>();
+	for (const record of records) {
+		if (record.kind !== "tool" || record.args) continue;
+		if (!record.toolCallId) continue;
+		if (!supplied.has(record.toolCallId)) continue;
+		kept.add(record.toolCallId);
+	}
+	return kept.size > 0 ? kept : EMPTY_OWED;
+}
+
+/** The shared empty owed set, so an unchanged paint keeps its identity. */
+const EMPTY_OWED: ReadonlySet<string> = new Set();
 
 /** The cached paint for `sessionId`, or null. Does not change eviction order. */
 export function readPaint(sessionId: string): PaintedConversation | null {

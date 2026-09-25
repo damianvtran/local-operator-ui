@@ -2465,6 +2465,35 @@ export function desktopRequestDeadlineMs(op: DesktopRequest["op"]): number {
 }
 
 /**
+ * How long the RENDERER waits for a desktop control before calling it dead.
+ *
+ * Deliberately longer than the main process's own `fetch` deadline for the same
+ * op - `desktopRequestDeadlineMs` plus this margin, rather than the 30 s literal
+ * that used to sit in the renderer's wrapper against main's flat 20 s. The
+ * invariant is the thing worth keeping: the renderer's bound only covers the case
+ * main can never report (the IPC round trip itself never settling), so a backend
+ * that answers slowly is still reported by the layer that actually knows the HTTP
+ * status. Splitting it per op is what keeps that true now that main's deadline is
+ * not one number: a flat 30 s against a 90 s ledger-read budget would have made
+ * the renderer the layer that gives up first, and its copy cannot name the reason.
+ *
+ * It does NOT cover `desktopMedia`, whose transport allows 120 s for speech and
+ * agent-ZIP transfers; that path is bounded separately and is not routed here.
+ *
+ * IT LIVES HERE, beside the deadline it derives from, because more than one
+ * renderer module needs the renderer's bound and only this module is resolved as
+ * a real module by every harness that bundles them (the desktop-api wrapper is
+ * stubbed in several of them). A reader asking "how long does this request
+ * really have" gets one answer with one definition.
+ */
+export const DESKTOP_DEADLINE_MARGIN_MS = 5000;
+
+/** The renderer's own deadline for one op, derived from the transport's. */
+export function desktopRequestTimeoutMs(op: DesktopRequest["op"]): number {
+	return desktopRequestDeadlineMs(op) + DESKTOP_DEADLINE_MARGIN_MS;
+}
+
+/**
  * The code a request that ran out of its own budget carries.
  *
  * A string, read off `DesktopControlError.code`, for the reason

@@ -121,6 +121,14 @@ globalThis.__seedRequest = async (request) => {
 	requests.push(request);
 	if (request.op === "sessions.history") {
 		/*
+		 * A read that is STILL OUTSTANDING when the reader leaves: the state a
+		 * switch away happens in whenever the owner is slower than the click, and
+		 * the state the paint cache has to describe honestly. `true` here holds the
+		 * promise open for the rest of the case, so the hold is never released by an
+		 * answer and the cached paint is written while its rows are still owed.
+		 */
+		if (globalThis.__seedHangHistory) return new Promise(() => {});
+		/*
 		 * The backend's own reader: no cursor is the TAIL, `before_id` is
 		 * exclusive. Served from the case's durable rows rather than from the
 		 * fixture, because the cases below disagree about what is durable when
@@ -174,7 +182,7 @@ const bundle = await build({
 			 */
 			export * as sessionModule from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
-			export { __resetPaintCache } from "./src/renderer/src/shared/store/paint-cache";
+			export { __resetPaintCache, readPaint, writePaint } from "./src/renderer/src/shared/store/paint-cache";
 			export { EMPTY_TRANSCRIPT, applyHistoryPage, reconcileLimit } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 			export { outputFallbackLine } from "./src/renderer/src/features/chat/components/trace/tool-row-model";
 		`,
@@ -228,6 +236,7 @@ const {
 	__resetPaintCache,
 	outputFallbackLine,
 	reconcileLimit,
+	writePaint,
 } = hook;
 
 /*
@@ -471,6 +480,13 @@ async function open({
 	liveEvents,
 	durable,
 	beforePump,
+	/**
+	 * Every render's own view, in order: the frames the reader would have seen,
+	 * including the ones before the first flush. A case that claims something about
+	 * a FRAME ("no stand-in frame on open") needs all of them, and the join below is
+	 * where a painted row's states can be observed one commit at a time.
+	 */
+	onFrame,
 	/*
 	 * The label bookkeeping is per CONVERSATION and survives a mount, because a
 	 * session switch unmounts the pane (round 1, QA Q1). A test that opens the
@@ -497,6 +513,7 @@ async function open({
 	let handle;
 	runtime.render = () => {
 		handle = useCanonicalSessionStream(SESSION, true);
+		onFrame?.(handle);
 		return handle;
 	};
 	runtime.rerender();
@@ -516,10 +533,74 @@ const historyReads = () =>
 	requests.filter((request) => request.op === "sessions.history");
 
 /** What the object column paints for one tool record, given the view. */
+/*
+ * THE HOLD'S EXIT, SPLIT BY CALL (2026-09-25 decision).
+ *
+ * A read ENDING is not a label SETTLING, and the old assertions here conflated
+ * them: they required `labelPending` to be empty once the walk's first read came
+ * back, which is the release that painted the output stand-in for a call the next
+ * page of the same walk was about to name (review round 1, M1: 24 repaints on the
+ * fall-short route, 68 on the failure arm). The hold now ends per call - when the
+ * view can name it, or when its per-call read budget is spent with no page naming
+ * it anywhere - so what a case can assert after a read is this split: NOTHING the
+ * view can name may still be held, and the calls no page named keep their empty
+ * column while a read can still answer for them.
+ */
+const heldSplit = (handle) => {
+	const view = handle();
+	const held = [...(view.labelPending ?? [])];
+	return {
+		held,
+		labelled: held.filter((id) => view.transcript.argsByCall.has(id)),
+		unlabelled: held.filter((id) => !view.transcript.argsByCall.has(id)),
+	};
+};
+
+/** No call the view can name may still be held; returns the ones still owed. */
+const assertHoldIsPerCall = (handle, why) => {
+	const split = heldSplit(handle);
+	assert.deepEqual(
+		split.labelled,
+		[],
+		`${why}: a call the view can name is not held (${split.labelled.join(", ")})`,
+	);
+	return split.unlabelled;
+};
+
 const objectColumn = (record, pending) =>
 	record.args
 		? "args"
 		: outputFallbackLine(record.output, pending.has(record.toolCallId));
+
+/**
+ * Mount the hook over whatever the paint cache holds, recording every render.
+ *
+ * This is the SWITCH-BACK shape rather than a join: no wire frame is delivered,
+ * so the only rows on screen are the ones `paintSeed` read from the cache, and
+ * the first recorded render is the first frame the reader would see. What the
+ * cases below assert is a property of THAT frame - the frame the pre-fix tree
+ * paints a call's result in the command column - so nothing here pumps or waits.
+ */
+function mountCached({ onFrame }) {
+	subscriptions.length = 0;
+	requests.length = 0;
+	rafQueue = [];
+	timers = [];
+	useCanonicalSessionsStore.setState({
+		activeSessionId: null,
+		drafts: {},
+		sessions: [],
+	});
+	const runtime = makeRuntime();
+	let handle;
+	runtime.render = () => {
+		handle = useCanonicalSessionStream(SESSION, true);
+		onFrame?.(handle);
+		return handle;
+	};
+	runtime.rerender();
+	return { handle: () => handle, runtime };
+}
 
 test("every seeded call of a long turn is labelled by the read the open fires", async () => {
 	const { durable, page, liveEvents } = moment("labels");
@@ -663,7 +744,41 @@ test("a read that cannot find a call's arguments gives the stand-in back", async
 	);
 	const { handle } = await open({ page, liveEvents, durable: pruned });
 	const view = handle();
-	assert.equal(view.labelPending.size, 0, "the hold is released");
+	/*
+	 * THE FIRST READ NO LONGER SETTLES THEM. A read that found no assistant row for
+	 * a call has not proved the call unlabelable - the retry at the next durable
+	 * round end can still name it - and releasing the hold on that read is what put
+	 * the output stand-in on screen for a frame before the command arrived (the
+	 * operator's report, and review round 1's M1/U1). So the rows stay objectless
+	 * while their budget is unspent...
+	 */
+	assert.deepEqual(
+		heldSplit(handle).unlabelled.sort(),
+		[...missing].sort(),
+		"the calls no page names keep their empty column while a read can still answer",
+	);
+	/*
+	 * ...AND THE SECOND ATTEMPT IS WHAT SETTLES THEM. The budget is the per-call
+	 * read allowance (`LABEL_GAP_ATTEMPTS`), so a round end re-asks and, when that
+	 * read comes back empty too, nothing can label these calls any more: the
+	 * stand-in is then the true answer and the hold ends - which is what keeps the
+	 * hold from hiding a row forever.
+	 */
+	requests.length = 0;
+	deliver({
+		session_id: SESSION,
+		epoch: "bridge-epoch",
+		seq: 3,
+		type: "event",
+		payload: { type: "turn_end" },
+	});
+	await pump();
+	assert.ok(historyReads().length >= 1, "the round end re-asked for them");
+	assert.equal(
+		handle().labelPending.size,
+		0,
+		"and the budget's second read is what settles them",
+	);
 	const tools = view.transcript.records.filter(
 		(record) => record.kind === "tool" && missing.has(record.toolCallId),
 	);
@@ -671,8 +786,13 @@ test("a read that cannot find a call's arguments gives the stand-in back", async
 		tools.length > 0,
 		"the rows are painted from the durable tool rows",
 	);
+	/*
+	 * Read off the LIVE view, not the one taken before the round end: the hold's
+	 * question is what the pane is showing now, and the rows are only at their
+	 * stand-in once the release has actually committed.
+	 */
 	const standIns = tools.filter((record) =>
-		objectColumn(record, view.labelPending)?.startsWith("… "),
+		objectColumn(record, handle().labelPending)?.startsWith("… "),
 	);
 	assert.ok(
 		standIns.length > 0,
@@ -975,10 +1095,9 @@ test("a join whose targets cannot be durable yet stops at the turn boundary", as
 		reconcileLimit(1),
 		"the read is sized by the goal, exactly as it was before this change",
 	);
-	assert.equal(
-		handle().labelPending.size,
-		0,
-		"and the hold ended with that read rather than with the walk",
+	assert.ok(
+		assertHoldIsPerCall(handle, "the turn-bounded walk").length > 0,
+		"and the calls this walk could not reach are still owed, so they stay held",
 	);
 });
 
@@ -1024,7 +1143,7 @@ test("a call nothing can label does not walk to the bound or raise the retry dep
 		reconcileLimit(2),
 		`the retry is sized by what is missing (${reconcileLimit(2)}), not by the rows the last walk read (${retry[0].limit})`,
 	);
-	assert.equal(handle().labelPending.size, 0, "and nothing stayed held");
+	assertHoldIsPerCall(handle, "the retry");
 });
 
 test("returning to a conversation does not re-blank rows already painted", async () => {
@@ -1348,11 +1467,7 @@ test("a one-turn journal bounds the walk by the oldest unlabelled call's own sta
 		`one page, not the journal (read ${reads.length})`,
 	);
 	assert.equal(reads[0].beforeId, undefined, "and it is the tail");
-	assert.equal(
-		handle().labelPending.size,
-		0,
-		"the hold ends with that read rather than with the walk",
-	);
+	assertHoldIsPerCall(handle, "the single page");
 	const tools = handle().transcript.records.filter(
 		(record) => record.kind === "tool",
 	);
@@ -1409,7 +1524,11 @@ test("a page that opens on a result takes the one extra page its assistant row n
 		!tools.some((record) => record.toolCallId === UNPRESENT && record.args),
 		"and the call nothing names still gets no label, as it must not",
 	);
-	assert.equal(handle().labelPending.size, 0, "with the hold released");
+	assert.deepEqual(
+		heldSplit(handle).unlabelled,
+		[UNPRESENT],
+		"and the call nothing can name is the one that keeps its empty column",
+	);
 });
 
 test("a startless target refuses the floor, so the walk reaches its row", async () => {
@@ -1451,7 +1570,7 @@ test("a startless target refuses the floor, so the walk reaches its row", async 
 		),
 		"and the compose call is labelled by the page that names it",
 	);
-	assert.equal(handle().labelPending.size, 0, "with the hold released");
+	assertHoldIsPerCall(handle, "the compose page");
 });
 
 test("the start floor reads exactly as deep as the instant it is given", async () => {
@@ -1481,7 +1600,7 @@ test("the start floor reads exactly as deep as the instant it is given", async (
 		419,
 		"and it stops at `has_more`, never at the row bound",
 	);
-	assert.equal(handle().labelPending.size, 0, "with the hold released");
+	assertHoldIsPerCall(handle, "the journal-span walk");
 });
 
 test("a later mount does not re-hold a row whose label an earlier read found", async () => {
@@ -1526,7 +1645,7 @@ test("a later mount does not re-hold a row whose label an earlier read found", a
 		historyReads().length >= 1,
 		"and the read still fires, so the labels are still being chased",
 	);
-	assert.equal(handle().labelPending.size, 0, "the hold is released at settle");
+	assertHoldIsPerCall(handle, "the cached mount's walk");
 });
 
 test("a call still waiting at a gate does not refuse the floor", async () => {
@@ -1557,7 +1676,18 @@ test("a call still waiting at a gate does not refuse the floor", async () => {
 		),
 		"and the pending call is not labelled, because no row states its arguments",
 	);
-	assert.equal(handle().labelPending.size, 0, "with the hold released");
+	/*
+	 * Both of the case's unlabelable calls, and only they: the one waiting at a
+	 * gate (whose start may not refuse the floor) and the one the journal does not
+	 * hold at all. Neither can be named by any read, so both keep their empty column
+	 * until their budget is spent - that is the hold's terminal case, not a
+	 * promise that these rows stay blank forever.
+	 */
+	assert.deepEqual(
+		heldSplit(handle).unlabelled.sort(),
+		[PENDING_COMPOSE, UNPRESENT].sort(),
+		"and the calls no read can name are the ones still waiting",
+	);
 });
 
 test("a lone unlabelable call stops at the page its orphan needs, not at the journal", async () => {
@@ -1643,7 +1773,7 @@ test("a settled call whose end frame states no clock still refuses the floor", a
 		),
 		"and the earlier turn`s row is labelled rather than left with its output",
 	);
-	assert.equal(handle().labelPending.size, 0, "with the hold released");
+	assertHoldIsPerCall(handle, "the earlier turn's page");
 });
 
 /*
@@ -2010,5 +2140,176 @@ test("settle reads are coalesced across a flush and bounded by their own allowan
 	assert.ok(
 		spent <= LABEL_SETTLE_ROWS_MAX,
 		`the settle path spent ${spent} rows, over its ${LABEL_SETTLE_ROWS_MAX}-row allowance`,
+	);
+});
+
+test("a cached paint does not paint a stand-in for a row its read was still waiting on", async () => {
+	/*
+	 * THE SWITCH-BACK PATH, which is where the reported symptom's own words land: a
+	 * run of result lines where the commands belong, replaced a moment later.
+	 *
+	 * The rows here are what a paint cache holds when the reader leaves BEFORE the
+	 * label read answers - the seed's argument-less calls, every one of them held
+	 * empty by `labelPending` while the read is outstanding, and therefore stored
+	 * with no arguments and no record of why. On the pre-fix tree the next mount
+	 * paints the first line of such a row's OUTPUT into the object column
+	 * (`outputFallbackLine`) and repaints the row when a read lands: the
+	 * stand-in-to-command repaint no open may contain. What separates those rows
+	 * from ones whose stand-in is the terminal truth is not in the rows - it is the
+	 * owed set carried beside them.
+	 */
+	const { durable, page, liveEvents } = moment("labels");
+	__resetPaintCache();
+	__resetLabelGapBookkeeping();
+	// The reader leaves while the read is still outstanding: the state that leaves
+	// a hold behind, and the state the rows themselves cannot describe.
+	globalThis.__seedHangHistory = true;
+	const leaving = await open({ page, liveEvents, durable });
+	const away = leaving.handle();
+	assert.ok(away.labelPending.size > 0, "the join was still waiting on rows");
+	writePaint(SESSION, {
+		transcript: away.transcript,
+		owedLabels: away.labelPending,
+	});
+	globalThis.__seedHangHistory = false;
+
+	const frames = [];
+	const back = mountCached({ onFrame: (view) => frames.push(view) });
+	const firstFrame = frames[0];
+	assert.ok(firstFrame, "the switch back painted a first frame");
+	const standIns = firstFrame.transcript.records.filter(
+		(record) =>
+			record.kind === "tool" &&
+			objectColumn(record, firstFrame.labelPending)?.startsWith("… ") === true,
+	);
+	assert.deepEqual(
+		standIns.map((record) => record.toolCallId),
+		[],
+		"no stand-in on the first frame of a switch back",
+	);
+	// The rows the paint was waiting on are exactly the ones held, read off the
+	// paint rather than guessed from the rows.
+	for (const callId of away.labelPending)
+		assert.ok(
+			firstFrame.labelPending.has(callId),
+			`${callId} is still held after the switch back`,
+		);
+	const tools = firstFrame.transcript.records.filter(
+		(record) => record.kind === "tool",
+	);
+	assert.ok(tools.length > 0, "the paint carried the rows it was painted with");
+	assert.equal(
+		back.handle().labelPending.size,
+		firstFrame.labelPending.size,
+		"and the hold is still what the paint said it was",
+	);
+});
+
+test("no frame of an open paints a stand-in for a seeded row whose read is outstanding", async () => {
+	/*
+	 * THE SEED PAINT, frame by frame rather than at one instant. `open()` records
+	 * every render, and this walks all of them: the flush that paints the seed's
+	 * rows registers their label targets in the SAME commit, so a row is never on
+	 * screen showing result text in the command column while a read for it is
+	 * outstanding. Allowed transitions are blank -> command, blank -> stand-in
+	 * (after the hold is released) and command -> command; a stand-in that becomes
+	 * anything else is the row repainting itself, which is the jitter this pins.
+	 */
+	const { durable, page, liveEvents } = moment("labels");
+	const frames = [];
+	const { handle } = await open({
+		page,
+		liveEvents,
+		durable,
+		onFrame: (view) => frames.push(view),
+	});
+	const seen = new Map();
+	for (const [index, view] of frames.entries()) {
+		for (const record of view.transcript.records) {
+			if (record.kind !== "tool") continue;
+			const state = objectColumn(record, view.labelPending);
+			const previous = seen.get(record.toolCallId);
+			if (previous !== state) seen.set(record.toolCallId, state);
+			assert.ok(
+				!(previous?.startsWith("… ") && !state?.startsWith("… ")),
+				`${record.toolCallId} repainted from its stand-in to ${state} on frame ${index}`,
+			);
+		}
+	}
+	assert.ok(frames.length > 1, "the open painted more than one frame");
+	const firstWithRows = frames.find((view) =>
+		view.transcript.records.some((record) => record.kind === "tool"),
+	);
+	const standInsOnFirstRows = firstWithRows.transcript.records.filter(
+		(record) =>
+			record.kind === "tool" &&
+			!record.args &&
+			objectColumn(record, firstWithRows.labelPending)?.startsWith("… "),
+	);
+	assert.deepEqual(
+		standInsOnFirstRows.map((record) => record.toolCallId),
+		[],
+		"no stand-in on the first frame that shows rows",
+	);
+	assert.equal(handle().labelPending.size, 0, "the hold ends with the read");
+});
+
+test("no frame of an open paints a stand-in on the fall-short route either", async () => {
+	/*
+	 * THE SAME FRAME-COUNTED CLAIM ON THE ROUTE THE FIRST VERSION COULD NOT SEE
+	 * (review round 1, m2): the recorder above runs on a TAIL page, where
+	 * `reconcileLimit` covers the whole gap in one read, so the defect it exists to
+	 * catch - a row let go by one page and named by the NEXT page of the same walk -
+	 * structurally cannot appear there. This case serves the fall-short journal
+	 * (`padded(durable, missing)`, the fixture of the case above), which makes the
+	 * walk page backwards, and it is the route the reviewer measured 24 stand-in ->
+	 * command repaints on: one per call the releasing commit had not labelled.
+	 *
+	 * The assertion is the invariant, not a count: the object column may go blank ->
+	 * command, blank -> stand-in (once the budget is spent) or command -> command,
+	 * and a stand-in that becomes anything else is a row repainting itself under the
+	 * reader - exactly the operator's report.
+	 */
+	const { durable, page, liveEvents } = moment("labels");
+	const missing = new Set(unlabelledIn(page, liveEvents));
+	const frames = [];
+	await open({
+		page,
+		liveEvents,
+		durable: padded(durable, missing),
+		onFrame: (view) => frames.push(view),
+	});
+	assert.ok(
+		historyReads().length >= 2,
+		"the route really fell short, so the walk paged back",
+	);
+	const seen = new Map();
+	for (const [index, view] of frames.entries()) {
+		for (const record of view.transcript.records) {
+			if (record.kind !== "tool") continue;
+			const state = objectColumn(record, view.labelPending);
+			const previous = seen.get(record.toolCallId);
+			if (previous === state) continue;
+			seen.set(record.toolCallId, state);
+			assert.ok(
+				!(previous?.startsWith("… ") && !state?.startsWith("… ")),
+				`${record.toolCallId} repainted from its stand-in to ${state} on frame ${index}`,
+			);
+		}
+	}
+	const firstWithRows = frames.find((view) =>
+		view.transcript.records.some((record) => record.kind === "tool"),
+	);
+	assert.deepEqual(
+		firstWithRows.transcript.records
+			.filter(
+				(record) =>
+					record.kind === "tool" &&
+					!record.args &&
+					objectColumn(record, firstWithRows.labelPending)?.startsWith("… "),
+			)
+			.map((record) => record.toolCallId),
+		[],
+		"no stand-in on the first frame that shows rows, on the paging route too",
 	);
 });

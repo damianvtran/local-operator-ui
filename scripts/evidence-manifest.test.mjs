@@ -851,31 +851,17 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"liveSettleLabelRemediationNote",
 	/*
-	 * This pass's own: it re-stamps a change that moves BOTH trees - the session
-	 * hook's held-frontend field and the readings strip that marks what it holds,
-	 * plus the two harnesses that pin both - without touching a frame, so the
-	 * reader is owed the pair AND the reason no still was owed.
-	 *
-	 * UNIONED WITH MAIN'S OWN, which is the rule this list states for itself: a
-	 * fold keeps every key that was there before. Main's records are carried
-	 * whole above and below this entry.
-	 */
-	"streamGapHeldReadingsRestampNote",
-	/*
-	 * This branch's own: it re-stamps a change that moves both trees this file
-	 * binds — the rule/slot/story under `src/`, the trailing-statement pins under
-	 * `scripts/` — without touching a swept frame, so the reader is owed the pair
-	 * and the reason no still was owed.
-	 */
-	"rowTeamTrailingRestampNote",
-	/*
-	 * And the mention-remedy re-stamp's: THIS FILE'S BINDING IS ITS SUBJECT, which
-	 * is the criterion above - it exists to say which two trees the copy change
-	 * moved and which single frame set was re-captured with them - so it is held
-	 * to the pair the file ships rather than read as history. Its replaced pair is
-	 * written as bare SHAs for exactly that reason.
-	 */
 	"mentionsRemedyRestampNote",
+	/*
+	 * THIS BRANCH'S OWN, and it belongs here for the list's own reason: the
+	 * first-paint hold's round-1 remediation moves BOTH trees (the hook and the
+	 * paint cache under `src/`, this file and the recorder under `scripts/`) and
+	 * re-shoots no frame, so a reader is owed the two values it binds and the reason
+	 * the stills did not move. It was briefly present without being listed, which is
+	 * the check silently not run - the guard iterates this list (review round 1,
+	 * m3).
+	 */
+	"firstPaintHoldRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1221,22 +1207,6 @@ const BRANCH_RECORDS = [
 	 * predicate does not admit driver-taken PNGs.
 	 */
 	"asidePanelRestampNote",
-	/*
-	 * This pass's own, and the newest top-level record this branch writes. It is
-	 * listed for the reason the list exists: a fold that started from main's
-	 * manifest would drop it, and with it the only statement of which two trees
-	 * this change moved and that no frame was owed.
-	 */
-	"streamGapHeldReadingsRestampNote",
-	/*
-	 * And by the mention-remedy pass, which wrote this branch's newest top-level
-	 * record. It is listed for the reason the list exists, and it is the case the
-	 * list is cheapest for: the record is the ONLY statement of which two trees the
-	 * copy change moved and which single frame set was re-captured with them, so a
-	 * fold that took main's copy of this file would drop the claim and leave the
-	 * re-derived tokens in it reading as main's.
-	 */
-	"mentionsRemedyRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
