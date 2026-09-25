@@ -329,13 +329,41 @@ const ROW_PARTS = (() => {
 	// prose, and a slice anchored on a mention inside a comment is a slice of the
 	// wrong region (it silently spanned the Stop control and read its `aria-label`).
 	const reserved = ROW.indexOf('data-interrupt-slot=""');
+	/*
+	 * A CONTROL'S BLOCK IS ITS OWN ELEMENT, not a fixed window around its label
+	 * (Group D's remediation, 2026-09-25). Both of the blocks below were
+	 * `ROW.slice(at - 400, at + 200)`, and 400 characters is a dependency on the
+	 * DISTANCE between a control's `size` expression and its `aria-label` - which
+	 * is to say, on how much documentation sits between them. A §F3 docblock
+	 * inserted inside the Send control's `disabled={...}` (the held-claim arm)
+	 * moved `size={isSmallView ? "icon-sm" : "icon"}` out of that window and THREE
+	 * tests failed with "the Send control carries no rung-dependent size" - a
+	 * message about geometry, for a change that moved no box. Measured: at
+	 * `9bfdd2e30` the block began `variant="primary" size={...}`; at the next head
+	 * it began mid-sentence in a comment, because the props are 640 characters
+	 * further from the label than the window allowed.
+	 *
+	 * Anchored on the opening tag that actually carries the props, the block is
+	 * the control's own markup however long its documentation grows - the same
+	 * shape `slotElement` below already uses (`ROW.lastIndexOf("<span", reserved)`).
+	 * The claim this block exists to check is unchanged, and a control that really
+	 * loses its `size` expression still fails, in the same words.
+	 */
+	const controlBlock = (at, tail) => {
+		if (at < 0) return "";
+		const opening = [...ROW.slice(0, at).matchAll(/<([A-Za-z][\w.$]*)/g)].pop();
+		return ROW.slice(
+			opening ? opening.index : Math.max(0, at - 400),
+			at + tail,
+		);
+	};
 	return {
 		mic,
 		stop,
 		send,
 		reserved,
-		micBlock: ROW.slice(mic - 400, mic + 400),
-		stopBlock: ROW.slice(stop - 400, stop + 200),
+		micBlock: controlBlock(mic, 400),
+		stopBlock: controlBlock(stop, 200),
 		// The slot's whole element and the cluster it stands in for, to the closing
 		// tag of each: the pair whose widths must agree, and the reason the model
 		// below expresses both as ONE token rather than two measurements.
@@ -343,7 +371,7 @@ const ROW_PARTS = (() => {
 			ROW.lastIndexOf("<span", reserved),
 			ROW.indexOf("</span>", ROW.indexOf("</Button>", reserved)),
 		),
-		sendBlock: ROW.slice(send - 400, send + 200),
+		sendBlock: controlBlock(send, 200),
 		// The mount's own condition, from the `{` that opens it to the span's
 		// attributes, and the span itself.
 		gate: ROW.slice(
