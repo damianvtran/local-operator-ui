@@ -1,4 +1,5 @@
 import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
+import { reportWindowChromeColors } from "@shared/hooks/use-window-chrome";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { FC, ReactNode } from "react";
 import { useLayoutEffect } from "react";
@@ -40,6 +41,16 @@ export const ThemeProvider: FC<ThemeProviderProps> = ({ children }) => {
 	 */
 	useLayoutEffect(() => {
 		applyThemeToDocument(themeName);
+		/*
+		 * THE SAME FRAME INFORMS THE WINDOW CHROME. On Windows and Linux the OS's
+		 * caption glyphs are drawn by Electron over the renderer, and on Linux the box
+		 * behind them is a colour we supply - so a theme switch that stopped at
+		 * `applyThemeToDocument` would leave the app's ink and the OS's glyphs one
+		 * palette apart, with the caption buttons the last thing on screen to catch up.
+		 * Reported from the variables the document paints (see the function's note) and
+		 * in THIS effect rather than a second one, so the two cannot disagree.
+		 */
+		reportWindowChromeColors(getTheme(themeName).id);
 	}, [themeName]);
 
 	return (

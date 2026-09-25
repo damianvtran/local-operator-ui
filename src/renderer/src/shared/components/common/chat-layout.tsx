@@ -221,8 +221,8 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 			 * back out with `data-titlebar-no-drag`.
 			 *
 			 * It is `display: none` outside the mac gate (the rule is in
-			 * `styles/index.css`, keyed on `data-titlebar-platform`), so Windows and
-			 * Linux keep their native frame and lose nothing to it.
+			 * `styles/index.css`, keyed on the chrome attributes), so a platform whose
+			 * OS is not drawing over the app loses nothing to it.
 			 */}
 			<div
 				data-titlebar-lane=""
@@ -311,14 +311,19 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 					className={cn(
 						"w-[260px] max-w-none gap-0 border-0 bg-surface p-0",
 						/*
-						 * The lane's height on macOS, so the sheet's brand row sits on the
-						 * line the docked one does and the traffic lights keep their clear
-						 * band. Read from the platform here rather than from the CSS gate:
-						 * the sheet is PORTALED to `<body>`, outside the element that
-						 * carries `data-titlebar-platform`, so the attribute rule cannot
-						 * reach it.
+						 * The lane's height, so the sheet's brand row sits on the line the
+						 * docked one does and the OS's controls keep their clear band.
+						 *
+						 * Applied UNCONDITIONALLY now, where it used to be behind a
+						 * `navigator.platform` read: the chrome attributes live on the
+						 * document element, so the rule reaches a PORTALED element - and the
+						 * sheet is portal to `<body>`, which is why it needed its own
+						 * platform read before. `--chrome-strip-h` is 0 wherever the OS is
+						 * not drawing over the app (every `native` launch, and Windows and
+						 * Linux with trailing buttons), so the padding is absent exactly
+						 * where it should be.
 						 */
-						isMacPlatform() && "pt-[var(--chrome-strip-h)]",
+						"pt-[var(--chrome-strip-h)]",
 					)}
 					aria-describedby={undefined}
 				>

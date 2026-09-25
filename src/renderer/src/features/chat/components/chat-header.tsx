@@ -95,6 +95,23 @@ type ChatHeaderProps = {
 	listOnScreen?: boolean;
 	readerChildId?: string | null;
 	/**
+	 * Whether THIS header is the element the OS's caption buttons sit over, and so
+	 * must reserve their width at its trailing end.
+	 *
+	 * Passed by `chat-content.tsx`, which is the one component that knows: the right
+	 * slot is EXCLUSIVE in the store (`claimRightSlot`), so either this header or an
+	 * open pane's toolbar reaches the window's right edge and never both. A second
+	 * mechanism - a hook measuring "am I at the right edge" - was considered and
+	 * rejected: the store already holds the fact, and a measurement adds a
+	 * `ResizeObserver` per row and a frame of lag before the buttons are clear.
+	 *
+	 * The reservation is a SPACER at the end of the row rather than padding, so it
+	 * moves the action cluster left of the controls without taking width from the
+	 * title: padding on the row would reserve the same pixels at both ends of the
+	 * flex distribution.
+	 */
+	reserveTrailingChrome?: boolean;
+	/**
 	 * Opens the conversation's browser pane, or absent when this header cannot
 	 * (`ChatContent` passes it only where there is a pane to open).
 	 *
@@ -200,6 +217,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	mcpServers = [],
 	listOnScreen = false,
 	readerChildId = null,
+	reserveTrailingChrome = false,
 	onToggleBrowser,
 	browserAttentionCount = 0,
 	archived = false,
@@ -1009,6 +1027,18 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 					</Tooltip>
 				)}
 			</div>
+			{/*
+			 * THE CONTROLS' CORNER, RESERVED (chat redesign §J4). On Windows and Linux the
+			 * caption buttons are drawn by Electron INTO the client area's top-right 40px,
+			 * so whichever 40px row reaches the window's right edge has to end before them
+			 * - and on this surface that is this header whenever no pane is open. The
+			 * spacer is empty and `--chrome-inset-end` wide, which is 0 on macOS and 0 in
+			 * the native frame, so it costs nothing anywhere the OS is not drawing over
+			 * the app.
+			 */}
+			{reserveTrailingChrome ? (
+				<div className="chrome-reserve-trailing" />
+			) : null}
 		</div>
 	);
 };

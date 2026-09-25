@@ -1,6 +1,12 @@
 import type { FC } from "react";
 import { Suspense, lazy, useEffect } from "react";
-import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import {
+	Navigate,
+	Route,
+	Routes,
+	useLocation,
+	useNavigate,
+} from "react-router-dom";
 
 import { useConsentAttentionLifetime } from "@features/browser/hooks/use-consent-attention-lifetime";
 // ChatPage is the boot route (/ redirects to /chat), so it stays statically
@@ -32,6 +38,7 @@ import { UpdateNotification } from "@shared/components/common/update-notificatio
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { useCheckFirstTimeUser } from "@shared/hooks/use-check-first-time-user";
 import { useLowCreditsDialog } from "@shared/hooks/use-low-credits-dialog";
+import { useWindowChrome } from "@shared/hooks/use-window-chrome";
 import {
 	panelSessionIdOfView,
 	useCanonicalSessionsStore,
@@ -90,6 +97,22 @@ const BrowserWebauthnPrompt = lazy(() =>
  * Handles routing and layout for the entire application
  */
 const App: FC = () => {
+	/*
+	 * The window chrome's live half: which sides the OS put its controls on, and the
+	 * full-screen fact. Mounted once, here, because it writes attributes on the
+	 * document element and two mounts would be two subscribers for one fact. It
+	 * renders nothing.
+	 */
+	useWindowChrome();
+	const { pathname } = useLocation();
+	/*
+	 * The routes that already own a 40px row at the window's top: the chat surface
+	 * draws the lane above both its columns, and the browser pane brings its own
+	 * toolbar. Every other route gets the drag band instead (see the band's note).
+	 */
+	const routeHasOwnChromeRow =
+		pathname.startsWith("/chat") || pathname.startsWith("/browser");
+
 	// Check if this is a first-time user
 	const { isOnboardingActive } = useCheckFirstTimeUser();
 	const {
@@ -459,19 +482,17 @@ const App: FC = () => {
 			<div
 				className="relative flex h-screen flex-col overflow-hidden"
 				/*
-				 * THE CHROME GATES, and they are ATTRIBUTES rather than a second
-				 * `navigator.platform` read in each component: `styles/index.css` keys the
-				 * drag/no-drag vocabulary, the macOS lane and the collapsed-width rules on
-				 * these two, so one renderer-local fact decides all of them and a component
-				 * that changes platform between them is not expressible. The macOS lane
-				 * exists because `src/main/titlebar-options.ts` hides the title bar on
-				 * darwin and leaves the native traffic lights over the renderer
-				 * (`--window-chrome`-independent); on every other platform the native frame
-				 * is still there and both gates are inert.
+				 * THE CHROME GATES MOVED TO `<html>` (this PR), and this element keeps only
+				 * the fact the CSS cannot get anywhere else. They used to live here as
+				 * `data-titlebar-platform`, computed from `navigator.platform` - which could
+				 * not express the native-frame fallback (it knows the OS, not the mode),
+				 * could not know where a Linux WM put its buttons, and did not exist until
+				 * React mounted. `main.tsx` writes `data-chrome-platform|mode|fullscreen` on
+				 * the document element before the first render, from main's own fact
+				 * (`--lo-window-chrome`), and `useWindowChrome` keeps the live ones current.
+				 * Root-level also lets the attribute rules reach PORTALED elements, which the
+				 * sidebar's overlay sheet is.
 				 */
-				data-titlebar-platform={
-					navigator.platform.toUpperCase().indexOf("MAC") >= 0 ? "mac" : "other"
-				}
 				data-titlebar-sidebar-collapsed={isSidebarCollapsed ? "true" : "false"}
 			>
 				{/*
@@ -587,6 +608,26 @@ const App: FC = () => {
 						sidebar={<SidebarNavigation />}
 						content={
 							<main className="flex grow flex-col overflow-hidden">
+								{/*
+								 * THE NON-CHAT ROUTES' DRAG BAND, and it is `--chrome-strip-h` tall on
+								 * macOS (32) and the caption height on Windows and Linux (40).
+								 *
+								 * Those routes have no 40px toolbar row of their own, so on a platform
+								 * where the app hides the OS frame they would have no drag surface above
+								 * the page's own top padding at all - and a frameless window with no drag
+								 * surface cannot be moved. On Windows and Linux it is also where the
+								 * caption buttons sit, which is why the band is the caption's height there
+								 * rather than the strip's (which is 0): the page's own heading then starts
+								 * BELOW the buttons rather than under them.
+								 *
+								 * `/chat` is excluded because `ChatLayout` already draws the lane above
+								 * both of its columns, and the band would double it. `/browser` is
+								 * excluded because the browser pane brings its own 40px toolbar, which is
+								 * the row the controls sit over on that route.
+								 */}
+								{routeHasOwnChromeRow ? null : (
+									<div data-chrome-route-band="" />
+								)}
 								<Suspense
 									fallback={
 										<div className="flex grow items-center justify-center">

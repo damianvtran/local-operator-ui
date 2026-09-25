@@ -540,6 +540,22 @@ const CanvasComponent: FC<CanvasProps> = ({
 			<div
 				className={cn(
 					"flex h-10 shrink-0 items-center justify-between gap-2 bg-sunken px-2",
+					/*
+					 * THE CONTROLS' CORNER, RESERVED (chat redesign §J4). On Windows and Linux
+					 * Electron draws the caption buttons into the client area's top-right 40px,
+					 * and a pane's toolbar is the row that reaches the window's right edge while
+					 * that pane is open - so its trailing control has to end before them.
+					 *
+					 * PADDING here where the chat header uses a spacer, and the difference is the
+					 * row rather than the rule: this row is a single `justify-between` line whose
+					 * last child IS the control that must clear the buttons, so reserving the
+					 * width at the end is the same thing as moving it left. The header cannot use
+					 * padding because its action cluster is `ml-auto` inside a row that can wrap,
+					 * and padding there would spend the buttons' width on the wrapped line too.
+					 * `max(0.5rem, ...)` keeps the row's own 8px at rest, which is where
+					 * `--chrome-inset-end` is 0 (macOS, and every native-frame launch).
+					 */
+					"[padding-inline-end:max(0.5rem,var(--chrome-inset-end))]",
 				)}
 			>
 				<ViewSwitcher

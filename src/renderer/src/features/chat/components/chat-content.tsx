@@ -793,6 +793,21 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * whichever sibling's number happens to be first.
 		 */
 		const isConsolePaneOpen = useUiPreferencesStore((s) => s.isConsolePaneOpen);
+		/*
+		 * Whether a right-slot pane occupies the window's right edge, which is what
+		 * decides whether the CHAT HEADER has to reserve the OS controls' corner (chat
+		 * redesign §J4). The four panes are exclusive through `claimRightSlot`, so this is
+		 * a disjunction of flags the store already keeps rather than a fifth piece of
+		 * state - and it is read HERE, after all four, because a `const` computed above
+		 * one of the store reads it names is in that read's temporal dead zone. A fifth
+		 * pane is one more term in one place.
+		 *
+		 * The header is the only candidate this component renders for that corner: a
+		 * pane's own toolbar reserves it in its own row, which is why the truth of this
+		 * expression is passed as the NEGATION above.
+		 */
+		const rightSlotOccupied =
+			isCanvasOpen || isRunPanelOpen || isBrowserPaneOpen || isConsolePaneOpen;
 		const setConsolePaneOpen = useUiPreferencesStore(
 			(s) => s.setConsolePaneOpen,
 		);
@@ -1201,6 +1216,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							mcpServers={mcpServers}
 							listOnScreen={listOnScreen}
 							readerChildId={readerChildId}
+							/*
+							 * EXACTLY ONE OWNER, DERIVED FROM THE STORE RATHER THAN MEASURED (chat
+							 * redesign §J4). The right slot is exclusive - `claimRightSlot` clears the
+							 * other panes when one opens - so either this header or an open pane's
+							 * toolbar reaches the window's right edge, and the two are never both true.
+							 * That is the whole reason the reservation needs no measurement and no
+							 * `ResizeObserver`: this component is the only one that renders both
+							 * candidates, and the store already holds the fact. A pane's own toolbar
+							 * reserves the corner in its own row (see the toolbars' note).
+							 */
+							reserveTrailingChrome={!rightSlotOccupied}
 							/* THE ONE PLACE A USER'S BROWSER TOGGLE IS DECLARED, the same shape as the
 							   console's below: the header owns the badge and the button, the pane's slot
 							   is the window's, and this is the one field both answer from. */
