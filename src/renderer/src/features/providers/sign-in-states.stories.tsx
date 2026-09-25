@@ -146,7 +146,13 @@ type BridgeOptions = {
 	 * because the verdict read is `enabled` on the feature and an absent verdict has
 	 * to keep reading as "nothing known" rather than as a healthy tunnel.
 	 */
-	loginVerdict?: "ok" | "login_required";
+	/*
+	 * All three shapes the backend answers with: the provider accepting the sign-in
+	 * (`ok`), refusing the grant it holds (`login_required`), and the answer that names no
+	 * verdict at all (`unknown`) -- which is the state a first-run user is in one second
+	 * after the browser loop finishes, and the one U19 repro A was measured in.
+	 */
+	loginVerdict?: "ok" | "login_required" | "unknown";
 };
 
 declare global {
@@ -345,7 +351,27 @@ const installBridge = (options: BridgeOptions) => {
 						);
 					}
 					return ok({
-						accounts: [],
+						/*
+						 * The ACCOUNT ROW, not an empty list: the surface's verdict is read with
+						 * the account read beside it, and `{accounts: []}` is the signed-out
+						 * answer, which is a different arm of the same rule. The live state U19
+						 * repro A was measured in answered `[{provider: "radient", state:
+						 * "configured"}]` with `radient_login {state: "unknown"
+						 * credential_id: null}` -- a sign-in this app holds and the provider did
+						 * not confirm.
+						 */
+						accounts: options.loginVerdict
+							? [
+									{
+										id: 1,
+										provider: "radient",
+										type: "oauth",
+										identity_label: "story@example.com",
+										source: "tunnel",
+										state: "configured",
+									},
+								]
+							: [],
 						...(options.loginVerdict
 							? {
 									radient_login: {
@@ -670,34 +696,59 @@ export const PanelIdle = panelStory(
 	"anthropic",
 );
 
-/**
- * The refused verdict, photographed where this branch paints it: the ROW's own
- * claim (which replaced the card grid's chip, #426), with the row's panel open on
- * it.
+/*
+ * U19'S STATE, in the anatomy a live app reaches, with the whole census on screen.
  *
- * WHY IT NEEDS ITS OWN STORY: main's `provider-chip-verdict` frames photograph the
- * call-grid chip this branch deletes, so the refusal had NO rendered evidence in the
- * anatomy that now carries it -- and an open configured row is exactly the state
- * where the claim is stated twice, the close affordance matters, and the panel could
- * disagree with the row above it (design round 4 D13/D14/D15, review round 4 R4-M2,
- * UX round 4 U15/U16 -- all three judged from one unphotographed state).
+ * WHY THE WHOLE CENSUS AND WHY THE FULL FLOW. The first version of the refusal story
+ * narrowed the grid to one row, so its frame showed "No providers match this search."
+ * under an empty search field -- not a state a user is in (design round 5, D3) -- and it
+ * rendered the panel's IDLE branch, while the live app showed the settled receipt branch,
+ * where the panel contradicted the row it sits under (UX round 5, U19). These stories
+ * drive the real flow instead: the row's own overflow item, then the panel's own
+ * Continue, so the panel reaches the branch the live app reached with the surface's
+ * verdict arriving beside it. The overflow trigger also shows its open state here
+ * (design round 5, D1).
+ *
+ * WHY THERE IS ONE STORY AND NOT TWO. U19 repro A (a completed sign-in whose verdict the
+ * backend answers `unknown` for) needs a credential row the BACKEND holds while the
+ * tunnel reports no verdict, and this bridge cannot stand in for that pair: with the
+ * account row answered and the verdict `unknown`, the surface's rule lands on the healthy
+ * arm, so a second story would have photographed a pair that AGREES under a name claiming
+ * otherwise -- the same defect class as the frame D3 rejected. The neutral register is
+ * pinned where it can be (the claim's ink and the verdict plumbing in `provider-grid-pin`,
+ * the settled-vs-verdict rule in `provider-detail-remount`), and the refused arm below is
+ * photographed because it IS reachable here. QA owns repro A live.
  */
 const OPTS_REFUSED_VERDICT: BridgeOptions = {
 	providers: signedIn(["radient"]),
 	hosting: "radient",
 	model: "auto",
+	script: "succeed",
 	loginVerdict: "login_required",
 };
-export const PanelRefusedVerdict = panelStory(
-	OPTS_REFUSED_VERDICT,
-	/Manage Radient/,
-	async () => {
+/**
+ * U19 repro B and D1's frame: the same settled view with a REFUSED verdict -- the row's
+ * warning claim, the panel stating the refusal instead of a green check, the overflow
+ * trigger filled because its panel is open, and the census behind them.
+ */
+export const PanelRefusedVerdict: Story = {
+	render: () => (
+		<Bridge options={OPTS_REFUSED_VERDICT}>
+			<SettingsFrame>
+				<ProviderGrid onChangeModel={() => undefined} />
+			</SettingsFrame>
+		</Bridge>
+	),
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Manage Radient" }),
+		);
 		await userEvent.click(
 			await screen.findByRole("menuitem", { name: /Sign in again/ }),
 		);
+		await startIfIdle("succeeded");
 	},
-	"radient",
-);
+};
 
 const OPTS_LEGACY: BridgeOptions = { script: "legacy-waiting" };
 /**

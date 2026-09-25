@@ -334,6 +334,14 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 	const [query, setQuery] = useState("");
 	const [confirmSignOut, setConfirmSignOut] = useState<string | null>(null);
 	const searchRef = useRef<HTMLInputElement>(null);
+	/**
+	 * The grid itself, focusable as a last resort.
+	 *
+	 * A focus pass that finds nothing lands on `<body>`, which is not a place: the
+	 * user loses their position in the page they just changed (UX round 4 U18, round 5
+	 * U20). The container always exists, so the fallback chain always has an answer.
+	 */
+	const gridRef = useRef<HTMLDivElement>(null);
 	const rowButtons = useRef(new Map<string, HTMLButtonElement | null>());
 
 	const rows = useMemo(() => providers.data ?? [], [providers.data]);
@@ -355,7 +363,11 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 	const [focusRow, setFocusRow] = useState<string | null>(null);
 	useEffect(() => {
 		if (focusRow === null) return;
-		const target = rowButtons.current.get(focusRow) ?? searchRef.current;
+		const target =
+			rowButtons.current.get(focusRow) ??
+			searchRef.current ??
+			/* The surface itself, when the row and the field are both gone. */
+			gridRef.current;
 		setFocusRow(null);
 		target?.focus();
 	}, [focusRow]);
@@ -540,6 +552,13 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 						</span>
 					</div>
 					<Button
+						/*
+						 * ADD ROWS REGISTER TOO. The focus pass below restores the user's place
+						 * to "the row's own control", and after a sign-out the row the user
+						 * acted on IS an add row: it stopped registering, and with no search
+						 * field on the settings surface both fallbacks were undefined, so the
+						 * destructive arm dropped focus on `<body>` (UX round 5, U20).
+						 */
 						ref={(element) => {
 							rowButtons.current.set(provider.id, element);
 						}}
@@ -698,6 +717,16 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 									}}
 									variant="ghost"
 									size="icon-sm"
+									/*
+									 * THE CONTROL SHOWS THAT ITS PANEL IS OPEN. Every add row in this
+									 * grid puts a bordered "Close" in this slot while open, and this
+									 * row -- whose only control is the menu -- said nothing: the
+									 * verdict was in `aria-expanded` alone, which a sighted user
+									 * cannot read (design round 5, D1). The fill is the same colour
+									 * step a hover takes, held while the panel is open.
+									 */
+									className={open ? "bg-control" : undefined}
+									aria-expanded={open}
 									aria-label={`Manage ${brandOf(provider)}`}
 								>
 									<MoreHorizontal aria-hidden="true" />
@@ -843,7 +872,12 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 				!connected.some((row) => row.id === provider.id),
 		);
 		return (
-			<div className="flex flex-col gap-4" data-provider-grid="">
+			<div
+				ref={gridRef}
+				tabIndex={-1}
+				className="flex flex-col gap-4"
+				data-provider-grid=""
+			>
 				{connected.length > 0 ? (
 					<RowList label="Connected">{connected.map(connectedRow)}</RowList>
 				) : null}
@@ -865,7 +899,12 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 	}
 
 	return (
-		<div className="flex flex-col gap-6" data-provider-grid="">
+		<div
+			ref={gridRef}
+			tabIndex={-1}
+			className="flex flex-col gap-6"
+			data-provider-grid=""
+		>
 			{connected.length > 0 ? (
 				<section
 					className="flex flex-col gap-2"

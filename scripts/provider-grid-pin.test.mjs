@@ -353,6 +353,24 @@ test("every step takes the same panel measure, and it is clamped", () => {
  * beside them was added (review round 4 R4-M2). A shape pin is what fails when the
  * decision is reverted; the pixels are the frames' business.
  */
+/**
+ * The claim line's `className` expression, sliced out of the grid's source.
+ *
+ * A pin on the WHOLE expression rather than a window around a keyword: the previous
+ * version's forty-character distance check passed for a rewrite that reintroduced the
+ * bug it was written for (review round 5, R5-m2).
+ */
+const claimInk = (source) => {
+	const start = source.indexOf("className={`truncate text-meta");
+	assert.ok(
+		start >= 0,
+		"the claim's own className expression must exist for this pin to mean anything",
+	);
+	const end = source.indexOf("}`}", start);
+	assert.ok(end > start, "and it must be closed");
+	return source.slice(start, end);
+};
+
 const stripComments = (path) =>
 	readFileSync(path, "utf8")
 		.replace(/\/\*[\s\S]*?\*\//g, "")
@@ -432,15 +450,28 @@ test("the row's claim carries its tone, and the panel does not repeat the claim"
 	 * moved 3.9% of the `providers-connected` frame's pixels against a sibling capture
 	 * of the pre-round-4 tree. The refusal is the only tone that says something here.
 	 */
-	assert.doesNotMatch(
-		grid,
-		/"text-success"[\s\S]{0,40}?data-claim-tone/,
-		"the claim's own line must not spend the success ink on a healthy row",
+	/*
+	 * THE WHOLE EXPRESSION, not a window beside it. The first version of this pin
+	 * matched `"text-success"` within forty characters of an unrelated anchor, so a
+	 * behaviourally identical rewrite of the very line D14 warns about passed the suite
+	 * (review round 5, R5-m2). This slices the className expression out of the source
+	 * and asserts what it may and may not contain.
+	 */
+	const ink = claimInk(grid);
+	assert.match(
+		ink,
+		/attention[\s\S]*?"text-warning"/,
+		"a refusal must not be painted in the row's ordinary ink",
 	);
 	assert.match(
-		grid,
-		/:\s*"text-ink-muted"\s*\n?\s*\}`\}/,
+		ink,
+		/"text-ink-muted"/,
 		"every other verdict stays in the row's ordinary register",
+	);
+	assert.doesNotMatch(
+		ink,
+		/text-success/,
+		"and nothing on this line may spend the success ink: `loginClaim` answers `working` for every provider that is not Radient, so a success ink here paints every healthy row green (the regression this round's evidence caught)",
 	);
 	assert.doesNotMatch(
 		detail,
@@ -456,5 +487,55 @@ test("the row's claim carries its tone, and the panel does not repeat the claim"
 		grid,
 		/readiness=\{readiness\}/,
 		"the row's verdict must be handed to the panel, so the pair cannot disagree (Q4-2)",
+	);
+});
+
+test("an open panel is visible on the control that opened it, and focus has somewhere to land", () => {
+	const grid = stripComments(GRID_SOURCE);
+	/*
+	 * D1: every add row shows a bordered "Close" in this slot while its panel is open,
+	 * and the Connected row -- whose only control is the overflow menu -- said nothing:
+	 * the state was in `aria-expanded` alone, which a sighted user cannot read. D1 also
+	 * asked for a frame of that state; the swept story `panel-refused-verdict` is it.
+	 */
+	const trigger = grid.slice(
+		grid.indexOf("aria-label={`Manage ${brandOf(provider)}`}") - 900,
+		grid.indexOf("aria-label={`Manage ${brandOf(provider)}`}"),
+	);
+	assert.match(
+		trigger,
+		/aria-expanded=\{open\}/,
+		"the overflow trigger must publish whether its panel is open",
+	);
+	assert.match(
+		trigger,
+		/className=\{open \? "bg-control" : undefined\}/,
+		"and show it: the fill is the colour step a hover takes, held while open",
+	);
+	/*
+	 * U20: the focus pass restores the user's place to "the row's own control", and the
+	 * destructive arm had nowhere to land because the row the user just signed out of is
+	 * an ADD row -- which never registered its control, and the settings surface has no
+	 * search field for the old fallback. Both halves are pinned: the registration, and
+	 * the container as the last resort.
+	 */
+	const addRow = grid.slice(
+		grid.indexOf("const addRow ="),
+		grid.indexOf("const connectedRow ="),
+	);
+	assert.match(
+		addRow,
+		/rowButtons\.current\.set\(provider\.id, element\)/,
+		"an add row must register its own control, or a sign-out drops focus on <body>",
+	);
+	assert.match(
+		grid,
+		/rowButtons\.current\.get\(focusRow\) \?\?[\s\S]{0,240}?gridRef\.current/,
+		"and the grid itself is the last resort, so the chain always has an answer",
+	);
+	assert.match(
+		grid,
+		/ref=\{gridRef\}\s*\n?\s*tabIndex=\{-1\}/,
+		"which requires the container to be focusable",
 	);
 });

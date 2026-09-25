@@ -107,6 +107,14 @@ let configHosting = null;
 let keyReply = null;
 /** Whether the success reply carries the backend's own receipt sentence. */
 let receipted = true;
+
+/**
+ * The tunnel's verdict, as `accounts.list` answers it.
+ *
+ * `ok` for every case except U19's, so the panel's success view is the plain success
+ * everywhere else and the verdict is only in play where a case is about it.
+ */
+let verdictState = "ok";
 /** Every op the panel asked main for, with its payload, so absence is assertable. */
 const ops = [];
 const opsOf = (op) => ops.filter((entry) => entry.op === op);
@@ -122,7 +130,26 @@ globalThis.window.api = {
 						desktop_contract: 1,
 						desktop_available: true,
 						desktop_auth: "bearer",
-						data: { auth: true, config: true, catalogue: false },
+						/*
+						 * `tunnel` is on because the SURFACE'S VERDICT is what the panel must
+						 * answer to (UX round 5, U19): without the feature there is no verdict
+						 * read at all, and a panel that cannot see one cannot be tested for
+						 * contradicting it.
+						 */
+						data: {
+							auth: true,
+							config: true,
+							catalogue: false,
+							tunnel: true,
+						},
+					});
+				case "accounts.list":
+					return ok({
+						accounts: [],
+						radient_login: {
+							state: verdictState,
+							credential_id: verdictState === "ok" ? 7 : null,
+						},
 					});
 				case "providers.list":
 					return ok({ providers: CENSUS });
@@ -407,6 +434,88 @@ trackedTest(
 			mounted.text(),
 			/Default model:/,
 			"the app must not restate what the backend's receipt already said",
+		);
+	},
+);
+
+trackedTest(
+	"a settled sign-in does not claim one the surface says is refused",
+	async (t) => {
+		/*
+		 * U19, at the branch it was measured in: this panel renders its receipt view
+		 * whenever the sign-in OPERATION settled succeeded, and an operation that
+		 * succeeded does not mean the provider still accepts the grant it stored. Live,
+		 * the row read "Needs re-authentication" while the panel under it read "Signed in
+		 * to Radient" with a green check -- and the alert written for that state sat in
+		 * the panel's idle branch, which a configured provider never reaches. The panel
+		 * now takes the verdict its surface holds, so the two cannot disagree: reverting
+		 * the `verdict` on the settled branch fails this case.
+		 */
+		polls = 0;
+		currentProvider = "radient";
+		verdictState = "login_required";
+		t.after(() => {
+			verdictState = "ok";
+		});
+		const mounted = await mount(t);
+
+		await mounted.render("radient", "row-1");
+		await clickButton(mounted, "Continue in browser");
+		await waitFor(
+			() => mounted.find('[data-sign-in-state="succeeded"]'),
+			"the success state",
+		);
+		/*
+		 * And for the VERDICT. The panel reads it from the surface's own query, and the
+		 * state U19 is about is the one where both answers are in: a receipt from the
+		 * operation and a refusal from the provider. A panel that never reaches the
+		 * verdict is the defect this waits out.
+		 */
+		await waitFor(
+			() => mounted.find("[data-verdict]") !== null,
+			"the surface's verdict on the settled view",
+		);
+		const text = mounted.text();
+		assert.ok(
+			!text.includes("Signed in to Radient"),
+			`the panel must not assert a sign-in the surface refuses: ${text}`,
+		);
+		assert.match(
+			text,
+			/Needs (re-authentication|sign-in)/,
+			`the panel must state the verdict it can prove: ${text}`,
+		);
+		assert.match(
+			text,
+			/accepting the sign-in stored on this machine/,
+			`in the row's own words: ${text}`,
+		);
+		/*
+		 * THE TONE, AS THIS HARNESS CAN REACH IT. `needs credential` decides which of
+		 * `providerReadiness`' two verdict arms answers: the census here is a first run
+		 * whose Radient row holds no credential, so the label is the neutral "Needs
+		 * sign-in" rather than the attention-tone "Needs re-authentication". The
+		 * attention arm is the state the live app was measured in and the one the swept
+		 * story renders (its census says configured); what is pinned HERE is that the
+		 * verdict reaches this branch at all and is published for the rigs.
+		 */
+		assert.equal(
+			mounted.find('[data-verdict="neutral"]') !== null,
+			true,
+			`the settled view must publish the verdict it was rendered under: ${text}`,
+		);
+		assert.doesNotMatch(
+			mounted.find("[data-verdict]")?.innerHTML ?? "",
+			/text-success/,
+			"and must not keep the success ink while it states a verdict that is not one",
+		);
+		/*
+		 * And the receipt is still there -- it is what the OPERATION did, which is a fact
+		 * this panel is the only place to read.
+		 */
+		assert.ok(
+			text.includes("Set default hosting and model."),
+			`the receipt still states what the sign-in set: ${text}`,
 		);
 	},
 );

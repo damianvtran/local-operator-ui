@@ -98,7 +98,12 @@ export function planDefaultModelWrite(
 
 	/*
 	 * AND NOTHING IS WRITTEN FOR A PROVIDER THIS LOCAL OPERATOR CANNOT NAME A MODEL
-	 * FOR. A hosting on its own is not a configuration, it is the failure: on a
+	 * FOR -- where "cannot name one" is the MODEL, not the choice. The rule is written
+	 * on `modelToWrite` here as well as on `needsModel`, because the two are not the
+	 * same set: `{choice: null, hosting: "openrouter", model: null}` is a configured
+	 * hosting with no model, and reading the rule off `needsModel` alone left that one
+	 * shape executing as `{hosting: "openrouter", model_name: ""}` (review round 5,
+	 * R5-m1 -- the docblock promised the rule the code did not implement on every path). A hosting on its own is not a configuration, it is the failure: on a
 	 * released backend the first run's OpenRouter connect left `hosting: openrouter,
 	 * model_name: ''` through this very function, and the first message then reached
 	 * no completion endpoint at all (UX round 4, U14 -- the third round this class
@@ -106,7 +111,7 @@ export function planDefaultModelWrite(
 	 * null rather than a spread that could be empty).
 	 */
 	const write =
-		shownProvider && !needsModel
+		shownProvider && !needsModel && modelToWrite
 			? { hosting: shownProvider, model_name: modelToWrite }
 			: null;
 

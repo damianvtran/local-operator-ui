@@ -82,6 +82,7 @@ import {
 	Eye,
 	EyeOff,
 	RotateCcw,
+	TriangleAlert,
 } from "lucide-react";
 import type { FC, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -327,6 +328,20 @@ const SignedIn: FC<{
 	 * to a body-sized muted one.
 	 */
 	tone?: "success" | "unchecked";
+	/**
+	 * THE SURFACE'S VERDICT, which is what this panel may say about a sign-in.
+	 *
+	 * WHY IT IS AN INPUT: the panel renders this view whenever the sign-in OPERATION
+	 * settled succeeded, and an operation that succeeded does not mean the provider
+	 * still accepts the grant it stored. Measured live twice (UX round 5, U19): one
+	 * second after a completed browser sign-in the row read "Needs sign-in" while this
+	 * view read "Signed in to Radient"; and with a refused grant the row read "Needs
+	 * re-authentication" while this view showed a green check. The row's claim and the
+	 * panel's headline now come from ONE source, so the pair cannot state opposite
+	 * things at one instant -- and where the panel still says the refusal the row says,
+	 * that is DELIBERATE agreement rather than a second opinion (review round 5, R5-m4).
+	 */
+	verdict?: ProviderReadiness | null;
 }> = ({
 	brand,
 	verb,
@@ -338,85 +353,146 @@ const SignedIn: FC<{
 	primaryAction,
 	headline,
 	tone = "success",
-}) => (
-	<div className="flex flex-col gap-3" data-sign-in-state="succeeded">
-		<div className="flex items-center gap-2">
-			<CircleCheck
-				size={20}
-				className={tone === "unchecked" ? "text-ink-muted" : "text-success"}
-				aria-hidden="true"
-			/>
-			<output className="text-heading text-ink">
-				{headline ??
-					(verb === "Connected"
-						? `${brand} connected`
-						: `Signed in to ${brand}`)}
-			</output>
+	verdict,
+}) => {
+	/*
+	 * A verdict this panel cannot repeat as a success. `Needs sign-in` is both the
+	 * refusal and the not-confirmed arm (`unknown` with a credential): in the first the
+	 * grant is dead, in the second the app asked and could not get an answer -- and
+	 * neither is a green check with the provider's name after it.
+	 */
+	const contested = verdict?.group === "Needs sign-in";
+	const actionRef = useRef<HTMLButtonElement>(null);
+	/*
+	 * THE VIEW THAT ARRIVES TAKES FOCUS, ON ITS OWN ACTION (UX round 5, U22). The
+	 * success view replaces the field and, in a dialog, leaves Radix's container as the
+	 * focused element -- so a keyboard user's next Tab starts from the dialog rather
+	 * than from the control the app just offered.
+	 */
+	useEffect(() => {
+		actionRef.current?.focus();
+	}, []);
+	return (
+		<div
+			className="flex flex-col gap-3"
+			data-sign-in-state="succeeded"
+			/*
+			 * For rigs and for the swept stories: the verdict this view was rendered under,
+			 * so a frame can wait for the refusal instead of for the clock (the same reason
+			 * the row publishes `data-claim-tone`).
+			 */
+			data-verdict={contested ? verdict.tone : undefined}
+		>
+			<div className="flex items-center gap-2">
+				{contested && verdict ? (
+					<TriangleAlert
+						size={20}
+						/*
+						 * THE TONE FOLLOWS THE VERDICT. `attention` is the refusal and takes the
+						 * warning ink; the not-confirmed arm is neutral and must not spend it
+						 * (review round 5, R5-m4: the alert below this was hard-coded to
+						 * `warning`, so a neutral verdict was painted as a warning).
+						 */
+						className={
+							verdict.tone === "attention" ? "text-warning" : "text-ink-muted"
+						}
+						aria-hidden="true"
+					/>
+				) : (
+					<CircleCheck
+						size={20}
+						className={tone === "unchecked" ? "text-ink-muted" : "text-success"}
+						aria-hidden="true"
+					/>
+				)}
+				<output className="text-heading text-ink">
+					{contested && verdict
+						? verdict.label
+						: (headline ??
+							(verb === "Connected"
+								? `${brand} connected`
+								: `Signed in to ${brand}`))}
+				</output>
+			</div>
+			{contested && verdict ? (
+				/*
+				 * WHAT THE OPERATION DID, SAID UNDER WHAT THE APP CAN PROVE. The receipt below
+				 * still states the default this sign-in wrote -- that is a fact about the
+				 * operation and this panel is where a user reads it. What is NOT said is that
+				 * the sign-in works.
+				 */
+				<p className="text-body-sm text-ink-muted">
+					{verdict.detail ??
+						`${brand} is not accepting the sign-in stored on this machine.`}{" "}
+					The sign-in itself finished; what follows is what it set.
+				</p>
+			) : null}
+			{defaults?.receipt || defaults?.model_name ? (
+				<p className="text-body-sm text-ink-muted">
+					{defaults.receipt}
+					{/*
+					 * The model, named -- and ONLY when the backend sent no sentence at all.
+					 *
+					 * WHY A RECEIPT SILENCES THIS LINE: the receipt IS the backend's own
+					 * sentence about the default it wrote ("Set default hosting to
+					 * 'openrouter', model to 'anthropic/claude-opus-5.5'"), so anything the app
+					 * adds is the same fact twice. The guard here used to compare the model's
+					 * DISPLAY name against that sentence, which carries the model's ID, so it
+					 * never matched and the pane printed both (UX rounds 3 and 4, U12 then
+					 * U17). An older backend sends no receipt and no sentence, and then this
+					 * line is the only thing that names the default.
+					 */}
+					{!defaults.receipt && defaults.model_name ? (
+						<>
+							Default model:{" "}
+							<span className="text-ink">{defaults.model_name}</span>.
+						</>
+					) : null}
+					{onChangeModel ? (
+						<>
+							{" "}
+							<Button variant="link" size="sm" onClick={onChangeModel}>
+								Change
+							</Button>
+						</>
+					) : null}
+				</p>
+			) : null}
+			{/*
+			 * A receipt with no hosting is a change that did NOT happen: on an older
+			 * backend the sign-in writes a credential and leaves the default alone, so
+			 * saying so is the difference between "nothing happened" and "your model
+			 * is unchanged" (code round 1, m5).
+			 */}
+			{defaults && !defaults.hosting && defaults.receipt ? (
+				<p className="text-body-sm text-ink-muted">
+					Your default model is unchanged.
+				</p>
+			) : null}
+			{unverified ? (
+				<p
+					className={
+						tone === "unchecked"
+							? "text-body-sm text-ink-muted"
+							: "text-ink-dim text-meta"
+					}
+				>
+					Saved, but not checked yet: {unverified}
+				</p>
+			) : null}
+			<div>
+				<Button
+					ref={actionRef}
+					variant={primaryAction ? "primary" : "secondary"}
+					size="sm"
+					onClick={onAction}
+				>
+					{actionLabel}
+				</Button>
+			</div>
 		</div>
-		{defaults?.receipt || defaults?.model_name ? (
-			<p className="text-body-sm text-ink-muted">
-				{defaults.receipt}
-				{/*
-				 * The model, named -- and ONLY when the backend sent no sentence at all.
-				 *
-				 * WHY A RECEIPT SILENCES THIS LINE: the receipt IS the backend's own
-				 * sentence about the default it wrote ("Set default hosting to
-				 * 'openrouter', model to 'anthropic/claude-opus-5.5'"), so anything the app
-				 * adds is the same fact twice. The guard here used to compare the model's
-				 * DISPLAY name against that sentence, which carries the model's ID, so it
-				 * never matched and the pane printed both (UX rounds 3 and 4, U12 then
-				 * U17). An older backend sends no receipt and no sentence, and then this
-				 * line is the only thing that names the default.
-				 */}
-				{!defaults.receipt && defaults.model_name ? (
-					<>
-						Default model:{" "}
-						<span className="text-ink">{defaults.model_name}</span>.
-					</>
-				) : null}
-				{onChangeModel ? (
-					<>
-						{" "}
-						<Button variant="link" size="sm" onClick={onChangeModel}>
-							Change
-						</Button>
-					</>
-				) : null}
-			</p>
-		) : null}
-		{/*
-		 * A receipt with no hosting is a change that did NOT happen: on an older
-		 * backend the sign-in writes a credential and leaves the default alone, so
-		 * saying so is the difference between "nothing happened" and "your model
-		 * is unchanged" (code round 1, m5).
-		 */}
-		{defaults && !defaults.hosting && defaults.receipt ? (
-			<p className="text-body-sm text-ink-muted">
-				Your default model is unchanged.
-			</p>
-		) : null}
-		{unverified ? (
-			<p
-				className={
-					tone === "unchecked"
-						? "text-body-sm text-ink-muted"
-						: "text-ink-dim text-meta"
-				}
-			>
-				Saved, but not checked yet: {unverified}
-			</p>
-		) : null}
-		<div>
-			<Button
-				variant={primaryAction ? "primary" : "secondary"}
-				size="sm"
-				onClick={onAction}
-			>
-				{actionLabel}
-			</Button>
-		</div>
-	</div>
-);
+	);
+};
 
 export const ProviderDetail: FC<ProviderDetailProps> = ({
 	provider,
@@ -990,7 +1066,9 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 					 * Q4-2). The sentence is the row's own detail, so the two surfaces
 					 * spell one verdict one way.
 					 */
-					<Alert variant="warning">
+					<Alert
+						variant={readiness.tone === "attention" ? "warning" : "neutral"}
+					>
 						<AlertTitle>{readiness.label}</AlertTitle>
 						<AlertDescription>
 							{readiness.detail ??
@@ -1236,6 +1314,13 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 				actionLabel={doneLabel}
 				onAction={finish}
 				primaryAction={context === "dialog"}
+				/*
+				 * THE SURFACE'S VERDICT, and this is the branch U19 was about: a settled
+				 * operation renders here whether or not the provider still accepts its
+				 * grant, so without this the panel said "Signed in to Radient" over a row
+				 * saying the sign-in was refused or unconfirmed.
+				 */
+				verdict={readiness}
 			/>
 		);
 	} else {

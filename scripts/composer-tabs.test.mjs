@@ -1708,7 +1708,7 @@ test("with nothing connected neither the button nor Enter sends", () => {
 	 */
 	assert.match(
 		source,
-		/if \(\s*noProvider &&\s*event\.key === "Enter" &&\s*!event\.shiftKey &&\s*!event\.nativeEvent\.isComposing\s*\) \{\s*event\.preventDefault\(\);/,
+		/\(noProvider \|\| noModel\) &&\s*event\.key === "Enter" &&\s*!event\.shiftKey &&\s*!event\.nativeEvent\.isComposing\s*\) \{\s*event\.preventDefault\(\);/,
 		"Enter is not refused when nothing can answer",
 	);
 	assert.match(
@@ -1720,6 +1720,28 @@ test("with nothing connected neither the button nor Enter sends", () => {
 		source,
 		/if \(isInputDisabled\) return;\s*if \(noProvider\) return;/,
 		"the form's submit path still sends when nothing can answer",
+	);
+	/*
+	 * AND THE STATE ONE STEP PAST IT (UX round 5, U21). A provider connected with no
+	 * model this app can name is not answered by the `noProvider` guard, and it was the
+	 * live case where the band said "Choose a model", Enter sent anyway, and the turn
+	 * sat at "waiting for the agent" with no completion request reaching the daemon.
+	 * All three ways in are pinned: the key, the form's own submit, and the button.
+	 */
+	assert.match(
+		source,
+		/if \(noModel\) \{\s*setNoProviderHint\(true\);\s*return;\s*\}/,
+		"the submit path still sends with no model to run on",
+	);
+	assert.match(
+		source,
+		/isInputDisabled \|\|\s*isLoading \|\|\s*noProvider \|\|\s*noModel \|\|/,
+		"the Send control must report the same state the key does",
+	);
+	assert.match(
+		source,
+		/noModel\s*\?\s*"Choose a model for this conversation before sending\."/,
+		"and the refusal must say which state it is refusing in",
 	);
 });
 

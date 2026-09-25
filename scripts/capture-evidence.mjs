@@ -472,7 +472,12 @@ export const STORIES = [
 		"provider-sign-in-onboarding--panel-refused-verdict",
 		1280,
 		900,
-		{ expectPresent: '[data-claim-tone="attention"]' },
+		/*
+		 * The VERDICT on the settled view is what this frame exists for (U19): the shutter
+		 * waits for it rather than for the clock, and the same attribute carries the tone
+		 * so the refusal cannot be photographed as a success.
+		 */
+		{ expectPresent: '[data-verdict="attention"]' },
 	],
 	/*
 	 * Superseded by another sign-in: cancelled, in the backend's own sentence, and

@@ -119,6 +119,27 @@ test("a catalogue that ANSWERED and lists nothing is what says the models cannot
 	);
 });
 
+test("a configured hosting with no model is still a write that must not happen", () => {
+	/*
+	 * R5-m1's shape, executed: `needsModel` is about the CHOICE, so a null choice with a
+	 * hosting already configured slipped past the rule the docblock states -- and wrote
+	 * `model_name: ""`, which is the model-less config U14 was about. The write is gated
+	 * on the MODEL, so this shape writes nothing.
+	 */
+	const plan = planDefaultModelWrite({
+		choice: null,
+		hosting: "openrouter",
+		model: null,
+		catalogue: { ready: true, providers: ["openrouter"] },
+	});
+	assert.equal(plan.shownProvider, "openrouter");
+	assert.equal(
+		plan.write,
+		null,
+		"a hosting with no model is not a configuration: nothing may be written",
+	);
+});
+
 test("a model this Local Operator can name is what makes the write happen at all", () => {
 	const plan = planDefaultModelWrite({
 		choice: { kind: "choose", provider: row("radient") },

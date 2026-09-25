@@ -85,7 +85,7 @@ export function providerStatusFrom(input: {
 	 * moment the census grew another one.
 	 */
 	rows: DesktopProvider[];
-}): { needsProvider: boolean; isKnown: boolean } {
+}): { needsProvider: boolean; needsModel: boolean; isKnown: boolean } {
 	const { censusEnabled, censusLoaded, configLoading, hosting, rows } = input;
 	const isKnown = censusEnabled && censusLoaded && !configLoading;
 	/*
@@ -111,15 +111,29 @@ export function providerStatusFrom(input: {
 			hostingRow.local === true ||
 			hostingRow.has_credential === true ||
 			(hostingRow.stored_credentials ?? 0) > 0);
+	/*
+	 * THE STATE ONE STEP PAST `needsProvider`: a provider IS connected and this app
+	 * cannot name a model to run on -- a first run whose provider was connected but
+	 * whose default was deliberately not written, because the backend lists no models
+	 * for it (UX round 5, U21: the band said "Choose a model" and Enter still sent).
+	 *
+	 * Same rule, opposite branch: `hostingUsable` decides both, so a configured default
+	 * (which is how a local runtime shows up here) makes this false, and a census this
+	 * app could not read keeps it false as well -- "I could not tell" is not "nothing
+	 * can answer".
+	 */
+	const needsModel = isKnown && !hostingUsable && hasConnectedProvider(rows);
 	return {
 		isKnown,
 		needsProvider: isKnown && !hostingUsable && !hasConnectedProvider(rows),
+		needsModel,
 	};
 }
 
 /** The hook: the same rule over the two reads the chat already has. */
 export function useProviderStatus(): {
 	needsProvider: boolean;
+	needsModel: boolean;
 	isKnown: boolean;
 } {
 	const capabilities = useDesktopCapabilities();

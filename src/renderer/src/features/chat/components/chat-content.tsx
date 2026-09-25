@@ -505,7 +505,11 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const capabilities = useDesktopCapabilities();
 		// Whether to tell the user to connect a provider before they type; see
 		// `useProviderStatus` for why this is false whenever it is not KNOWN.
-		const { needsProvider } = useProviderStatus();
+		/*
+		 * Both states, from the one rule: nothing connected at all, and a provider
+		 * connected that this app cannot name a model for (UX round 5, U21).
+		 */
+		const { needsProvider, needsModel } = useProviderStatus();
 		const archiveEnabled = desktopFeatureEnabled(
 			capabilities.data,
 			"session_archive",
@@ -1264,6 +1268,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								onComposerInput={onComposerInput}
 								initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
 								noProvider={needsProvider}
+								noModel={needsModel}
 								isLoading={
 									canonical
 										? Boolean(canonical.admitting || canonical.starting)

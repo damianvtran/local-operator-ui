@@ -60,6 +60,11 @@ test("nothing connected and nothing configured is the connect-me state", () => {
 	assert.deepEqual(providerStatusFrom({ ...base, rows: [row("anthropic")] }), {
 		isKnown: true,
 		needsProvider: true,
+		/*
+		 * Nothing with a credential, so there is nothing to name a model WITH: this is
+		 * the connect-me state, not the choose-a-model one (U21).
+		 */
+		needsModel: false,
 	});
 });
 
@@ -75,7 +80,7 @@ test("a configured default whose credential is GONE still asks for a provider", 
 			hosting: "anthropic",
 			rows: [row("anthropic")],
 		}),
-		{ isKnown: true, needsProvider: true },
+		{ isKnown: true, needsProvider: true, needsModel: false },
 	);
 });
 
@@ -87,7 +92,7 @@ test("a configured default whose row is MISSING from the census is trusted", () 
 	 */
 	assert.deepEqual(
 		providerStatusFrom({ ...base, hosting: "anthropic", rows: [] }),
-		{ isKnown: true, needsProvider: false },
+		{ isKnown: true, needsProvider: false, needsModel: false },
 	);
 });
 
@@ -98,7 +103,7 @@ test("a local runtime and a stored key both count as usable", () => {
 			hosting: "ollama",
 			rows: [row("ollama", { local: true })],
 		}),
-		{ isKnown: true, needsProvider: false },
+		{ isKnown: true, needsProvider: false, needsModel: false },
 	);
 	assert.deepEqual(
 		providerStatusFrom({
@@ -106,17 +111,47 @@ test("a local runtime and a stored key both count as usable", () => {
 			hosting: "deepseek",
 			rows: [row("deepseek", { stored_credentials: 1 })],
 		}),
-		{ isKnown: true, needsProvider: false },
+		{ isKnown: true, needsProvider: false, needsModel: false },
 	);
 });
 
-test("a connected provider needs no default to count", () => {
+test("a connected provider with no default is the choose-a-model state, not the connect-me one", () => {
+	/*
+	 * The state U21 was measured in: a first run whose provider IS connected and whose
+	 * default was deliberately NOT written, because the backend lists no models for it.
+	 * `needsProvider` is false -- the provider is there -- and `needsModel` is true,
+	 * which is what the composer refuses a send on.
+	 */
 	assert.deepEqual(
 		providerStatusFrom({
 			...base,
 			rows: [row("anthropic", { has_credential: true })],
 		}),
-		{ isKnown: true, needsProvider: false },
+		{ isKnown: true, needsProvider: false, needsModel: true },
+	);
+	/*
+	 * And with a usable default it is neither state: a configured `hosting` whose row
+	 * holds a credential is something the backend can answer with.
+	 */
+	assert.deepEqual(
+		providerStatusFrom({
+			...base,
+			hosting: "anthropic",
+			rows: [row("anthropic", { has_credential: true })],
+		}),
+		{ isKnown: true, needsProvider: false, needsModel: false },
+	);
+	/*
+	 * Neither is it true while a read is pending: "I could not tell" is not "nothing
+	 * can answer", and refusing a send on unknown state would refuse working setups.
+	 */
+	assert.equal(
+		providerStatusFrom({
+			...base,
+			censusLoaded: false,
+			rows: [row("anthropic", { has_credential: true })],
+		}).needsModel,
+		false,
 	);
 });
 

@@ -575,6 +575,18 @@ type MessageInputProps = {
 	 * composer stays mountable without a query client in its Node tests.
 	 */
 	noProvider?: boolean;
+	/**
+	 * A provider IS connected and no model can be named for it yet (UX round 5, U21).
+	 *
+	 * WHY THE COMPOSER NEEDS IT SEPARATELY: `noProvider` covers "nothing is connected",
+	 * and this is the state one step past it -- a first run whose provider is connected
+	 * but whose default was deliberately NOT written, because the backend lists no
+	 * models for it. Measured live: the band said "Choose a model", `Send` was disabled
+	 * while the box was empty, and **Enter sent anyway** -- the turn then sat at
+	 * "waiting for the agent" with no completion request reaching the daemon at all.
+	 * Typing is still allowed; the send is not, and the line under the box says why.
+	 */
+	noModel?: boolean;
 	agentData?: AgentDetails | null;
 	/**
 	 * Working directory for this conversation, and the way to change it.
@@ -1221,6 +1233,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			sendError,
 			initialSuggestions,
 			noProvider = false,
+			noModel = false,
 			agentData,
 			cwd,
 			cwdWritePath,
@@ -4224,7 +4237,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * produces the staged line that arms it.
 				 */
 				if (
-					noProvider &&
+					(noProvider || noModel) &&
 					event.key === "Enter" &&
 					!event.shiftKey &&
 					!event.nativeEvent.isComposing
@@ -4978,6 +4991,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			if (isInputDisabled) return;
 			// One more way in: nothing connected means no send, whichever control asked.
 			if (noProvider) return;
+			/*
+			 * AND THE SAME RULE ONE STEP PAST IT: a provider this app cannot name a model
+			 * for cannot answer either, so a press that reaches here is refused and
+			 * explained rather than sent (UX round 5, U21).
+			 */
+			if (noModel) {
+				setNoProviderHint(true);
+				return;
+			}
 			if (!newMessage.trim() && attachments.length === 0) return;
 			/*
 			 * THE CAPTURE IS ASKED FIRST, exactly as the key handler asks it, so the
@@ -6719,7 +6741,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										 * for the state to the control for as long as it refuses.
 										 */
 										readOnly={isInputDisabled}
-										aria-disabled={isInputDisabled || undefined}
+										aria-disabled={isInputDisabled || noModel || undefined}
 										aria-label="Message"
 										role="combobox"
 										/*
@@ -7320,6 +7342,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 															isInputDisabled ||
 															isLoading ||
 															noProvider ||
+															noModel ||
 															(!newMessage.trim() && attachments.length === 0)
 														}
 														aria-label="Send message"
@@ -7376,10 +7399,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						<NoProviderLine />
 					</div>
 				) : null}
-				{noProvider && noProviderHint ? (
+				{(noProvider || noModel) && noProviderHint ? (
 					<div className={cn("mt-2", CHAT_MEASURE)}>
 						<output className="block text-body-sm text-ink-muted">
-							Connect a provider to send.
+							{noModel
+								? "Choose a model for this conversation before sending."
+								: "Connect a provider to send."}
 						</output>
 					</div>
 				) : null}
