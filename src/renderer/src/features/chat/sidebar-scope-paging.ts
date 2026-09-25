@@ -117,7 +117,7 @@ export type GroupChatsView = {
  * rather than left to them.
  */
 export const GROUP_WITHHELD_SENTENCE =
-	"None of this group's chats can be drawn here - they may be archived. Search with Include archived to find them.";
+	"These chats may be archived. Search with Include archived to find them.";
 
 export function groupChatsView(args: {
 	/** Whether the daemon negotiates `session_catalogue_page`. */
@@ -221,15 +221,23 @@ export function groupChatsView(args: {
 		};
 	}
 	/*
-	 * `remaining` is the census minus what is DRAWN, and only when the census is
-	 * known: `total - held` cannot tell a row that is missing from one that was
-	 * deleted between the two reads, so it is used only to make the press EXACT and
-	 * never to decide whether a tail exists (`nextCursor` is that fact, above).
+	 * `remaining` is the census minus what the scope's OWN LIST holds - `held` is that
+	 * list's length, not the number of rows drawn (round 2, R2-3: a row the search
+	 * filtered out, or one the panel does not draw, is still a row the press counts,
+	 * and using the drawn count overstated both the label and the focus index).
+	 *
+	 * A NON-POSITIVE REMAINDER FALLS BACK TO THE PAGE, never to 1: a census that says
+	 * nothing remains while the daemon still offers a cursor is a STALE census (the two
+	 * answers were taken at different moments), and the honest label for an unknown
+	 * remainder is the page the press will ask for - `Show 1 more` was the floor of a
+	 * number nobody knows.
 	 */
 	const remaining =
-		args.total === null
+		args.total === null ? CATALOGUE_GROUP_PAGE : args.total - args.held;
+	const addCount =
+		remaining <= 0
 			? CATALOGUE_GROUP_PAGE
-			: Math.max(args.total - args.held, 0);
+			: Math.min(CATALOGUE_GROUP_PAGE, remaining);
 	return {
 		state: "rows",
 		/*
@@ -241,10 +249,7 @@ export function groupChatsView(args: {
 		sentence: scope.error,
 		retry: scope.error !== null,
 		more: scope.nextCursor !== null,
-		addCount:
-			scope.nextCursor === null
-				? 0
-				: Math.max(1, Math.min(CATALOGUE_GROUP_PAGE, remaining)),
+		addCount: scope.nextCursor === null ? 0 : addCount,
 		forbidden: false,
 	};
 }
@@ -332,13 +337,34 @@ export function groupBadgeLabel(badge: number): string {
  */
 export function catalogueTotalSentence(args: {
 	pageable: boolean;
-	/** How many chats the panel is drawing. */
+	/** How many chats the panel is DRAWING - the count the panel's own `All chats` badge shows. */
 	shown: number;
 	/** The census total, or null when it is unknown. */
 	total: number | null;
+	/** Whether a search query is in force, which re-words what the denominator counts. */
+	searching?: boolean;
 }): string | null {
 	if (!args.pageable || args.total === null) return null;
-	return `Showing ${args.shown} of ${args.total} chats`;
+	/*
+	 * THE NUMERATOR IS A DRAWN COUNT, AND A FRACTION OVER ONE IS SUPPRESSED (round 2,
+	 * R2-2 = D9 = F3). It was `sessions.length` - the rows the client HOLDS - while the
+	 * panel deliberately fetches archived rows it does not draw and the backend's
+	 * census counts only non-archived ones. So the sentence overstated the screen and
+	 * could print an impossible `Showing 757 of 757` beside `All chats 49`. The
+	 * numerator is now the panel's own drawn count, and a numerator above the
+	 * denominator is not a claim this function makes at all (reachable exactly when
+	 * archived rows are drawn against a census that does not count them): suppression,
+	 * never a clamp, because a clamp would state a number the panel is not drawing.
+	 */
+	if (args.shown > args.total) return null;
+	/*
+	 * AND WHILE A QUERY IS ACTIVE THE NUMBERS ARE NAMED (round 2, U10). The sentence
+	 * sat over a one-row result reading as if the store held that one row matched: the
+	 * numerator is then the matches DRAWN, the denominator is still the whole
+	 * catalogue, and the words now say which is which.
+	 */
+	const what = args.searching === true ? "chats matching your search" : "chats";
+	return `Showing ${args.shown} of ${args.total} ${what}`;
 }
 
 /**

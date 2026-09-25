@@ -1473,11 +1473,10 @@ test("the open conversation is kept in membership, and a collapse drops a group'
 		),
 		"the head answer is told which row it may not drop",
 	);
-	assert.ok(
-		STORE_SRC.includes(
-			"!owned.has(row.session_id) || fromHeadPage.has(row.session_id)",
-		),
-		"a collapse removes the scope's own rows and keeps the row the head page also carries",
+	assert.match(
+		STORE_SRC,
+		/!owned\.has\(row\.session_id\)[\s\S]{0,200}?fromHeadPage\.has\(row\.session_id\)[\s\S]{0,200}?row\.session_id === active/,
+		"a collapse removes the scope's own rows, keeps the row the head page also carries, AND keeps the conversation the reader has open (round 2, R2-1)",
 	);
 });
 
@@ -1509,5 +1508,164 @@ test("the first paint claims no disconnection, and a hit's binding is looked up 
 	assert.ok(
 		SIDEBAR_SRC.includes("tailArrivalAnnouncement"),
 		"and the flat list's tail says when it lands",
+	);
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * ROUND 2: the convergence findings, each with the case that would have caught it.
+ * ---------------------------------------------------------------------------
+ */
+
+test("collapsing a group keeps the conversation the reader has OPEN (R2-1)", () => {
+	/*
+	 * THE DOOR THE U5 FIX OPENED. `clearScope` removes a group's own rows unless the
+	 * head page also carries them - and it consulted neither the active session nor the
+	 * keep list, so: expand a group, open a chat inside it that sits past the head page,
+	 * collapse the group, and the row the transcript pane is drawing is gone. It does not
+	 * heal either, because the live-title upsert is presence-guarded and the head page is
+	 * above that row's rank.
+	 */
+	reset();
+	store.setState({
+		sessions: [row("head1"), row("open"), row("g2")],
+		activeSessionId: "open",
+		head: { ...EMPTY_HEAD, pageIds: ["head1"] },
+		scopes: {
+			[catalogueScopeKey("team", "lopdev")]: {
+				ids: ["open", "g2"],
+				nextCursor: null,
+				loading: false,
+				error: null,
+				at: 1,
+			},
+		},
+	});
+	store.getState().clearScope("team", "lopdev");
+	assert.deepEqual(
+		ids(),
+		["head1", "open"],
+		"the group's rows go, the head page's row stays, and the OPEN conversation stays with them",
+	);
+});
+
+test("the panel's total counts what is DRAWN, and never claims more than the store holds (R2-2)", () => {
+	assert.equal(
+		catalogueTotalSentence({ pageable: true, shown: 49, total: 755 }),
+		"Showing 49 of 755 chats",
+		"the numerator is the drawn count - the same one the `All chats` badge shows",
+	);
+	assert.equal(
+		catalogueTotalSentence({ pageable: true, shown: 51, total: 755 }),
+		"Showing 51 of 755 chats",
+		"a drawn count below the census is a claim the panel may make",
+	);
+	assert.equal(
+		catalogueTotalSentence({ pageable: true, shown: 757, total: 757 }),
+		"Showing 757 of 757 chats",
+	);
+	assert.equal(
+		catalogueTotalSentence({ pageable: true, shown: 758, total: 757 }),
+		null,
+		"a fraction over one is impossible: reachable when archived rows are drawn against a census that does not count them, and suppressed rather than clamped - a clamp would state a number the panel is not drawing",
+	);
+	assert.equal(
+		catalogueTotalSentence({
+			pageable: true,
+			shown: 1,
+			total: 757,
+			searching: true,
+		}),
+		"Showing 1 of 757 chats matching your search",
+		"with a query active the words say which number is which (U10)",
+	);
+	assert.equal(
+		catalogueTotalSentence({ pageable: false, shown: 500, total: 757 }),
+		null,
+		"still the withdrawn path's own sentence, unchanged",
+	);
+});
+
+test("a stale census never labels the press `Show 1 more` (R2-3)", () => {
+	/*
+	 * `remaining <= 0` is reachable: the census and the scope's answer are taken at
+	 * different moments, so a census that says nothing remains can sit beside a cursor
+	 * the daemon still offers. The honest label for an unknown remainder is the page the
+	 * press will ask for; `Math.max(1, ...)` floored it at one instead.
+	 */
+	const stale = groupChatsView({
+		pageable: true,
+		scope: {
+			ids: ["a"],
+			nextCursor: "off:25",
+			loading: false,
+			error: null,
+			at: 1,
+		},
+		held: 70,
+		total: 70,
+	});
+	assert.equal(
+		stale.more,
+		true,
+		"the cursor is what decides there is more to fetch",
+	);
+	assert.equal(stale.addCount, CATALOGUE_GROUP_PAGE, "not 1");
+	const remainder = groupChatsView({
+		pageable: true,
+		scope: {
+			ids: ["a"],
+			nextCursor: "off:65",
+			loading: false,
+			error: null,
+			at: 1,
+		},
+		held: 65,
+		total: 70,
+	});
+	assert.equal(remainder.addCount, 5, "and a KNOWN remainder is still exact");
+});
+
+test("the round-2 code paths are pinned in source", () => {
+	// The focus effect resolves the group in the ENTITY region and falls back to the
+	// group's own disclosure; `<body>` is not a destination anywhere in the effect.
+	assert.ok(
+		SIDEBAR_SRC.includes("[entityPanelRef.current, listPanelRef.current]"),
+		"the press's recovery looks in the region the group is drawn in (U2 = F1)",
+	);
+	assert.ok(
+		SIDEBAR_SRC.includes(
+			'groupRow?.querySelector<HTMLElement>("[data-disclosure]")',
+		),
+		"and its fallback is the group's own control, which exists at exhaustion",
+	);
+	assert.ok(
+		/DISCLOSURE_LABELS|aria-label="Expand \$\{pending\.name\} chats"/.test(
+			SIDEBAR_SRC,
+		),
+		"the group is matched by its disclosure's label, not by name-plus-badge text",
+	);
+	// All THREE refusal sites wear the one treatment: clamped sentence, Retry on its own
+	// line. Counted rather than eyeballed, because round 1 fixed one of them and the
+	// committed frame photographed another.
+	const clamped = SIDEBAR_SRC.match(/line-clamp-2/g) ?? [];
+	assert.ok(
+		clamped.length >= 3,
+		`the clamped sentence appears ${clamped.length} time(s); the group's first-page refusal, its extension refusal and the flat list's tail refusal all wear it (D10 = U9)`,
+	);
+	const ownLine = SIDEBAR_SRC.match(/<p className="pt-1">\s*<button/g) ?? [];
+	assert.ok(
+		ownLine.length >= 2,
+		`the Retry sits in its own paragraph at ${ownLine.length} site(s) - the group's and the tail's (D10 = U9)`,
+	);
+	// The live region survives the swap (R2-5)
+	assert.ok(
+		SIDEBAR_SRC.includes('? "py-1 pl-7"\n\t\t\t\t\t\t\t\t\t: "sr-only"'),
+		"the group's sentence region is mounted in every state, so loading -> settled is announced",
+	);
+	// The total sentence reads the drawn count (R2-2)
+	assert.ok(
+		SIDEBAR_SRC.includes("shown: matching.length"),
+		"and the panel passes the DRAWN count, not the rows held",
 	);
 });
