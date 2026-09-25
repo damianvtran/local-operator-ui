@@ -87,6 +87,37 @@ as a missing composer rather than a refused fetch; the app's own log carries
 Content Security Policy`, and `--scene mentions` names the port in its refusal
 (QA round 3, Q-6). Run the rig's proxy on `8080` or `1111`.
 
+**AND THE DAEMON MUST BE TOLD ITS HOSTING, which the flags do not do on a fresh
+config root** (QA round 1, Q3 — it cost that lane its whole first pass, and this
+one its first scene set).
+
+```sh
+local-operator serve --host 127.0.0.1 --port <port> --hosting test --model mock-model
+```
+
+writes no hosting into a freshly created config root, so every turn dies in the
+daemon — `local_operator.session_factory.HostingNotConfiguredError: Hosting
+platform is not configured.` → `POST /v1/desktop/sessions/<id>/messages → 503`.
+Inside the app the ONLY symptom is a message that reaches the transcript and is
+never answered, which reads exactly like a UI defect: `--scene first-send`
+reports `answered: false`, and the composer's readings never resolve a model.
+Two lanes have now spent a round photographing it. Write the values the flags
+imply BEFORE the daemon starts:
+
+```sh
+mkdir -p "$CONFIG_DIR"
+cat >"$CONFIG_DIR/config.yml" <<'YAML'
+values:
+  hosting: test
+  model_name: mock-model
+YAML
+```
+
+With that file, the same tree reports `first-send` 14 PASS / 0 FAIL at 1380x900
+and 800x600 (`answered: true`) and `question-dock` 13 PASS / 0 FAIL. Without it,
+the turn-bearing scenes are silently un-runnable, and a FAIL line in their log is
+about the harness rather than about the app.
+
 **The run refuses before its first boot if the tree is not on the Electron this
 branch pins** (`package.json` `optionalDependencies.electron`, the version
 `pnpm install --frozen-lockfile` gives and `build.electronVersion` moves with).
