@@ -15,6 +15,20 @@ const settingKey = z
 	.regex(/^[a-zA-Z0-9_][a-zA-Z0-9_.-]*$/);
 const secret = z.string().min(1).max(32768);
 const sessionId = z.string().regex(/^[a-f0-9]{12}$/);
+/*
+ * The MCP field shapes, named once because the session route and the
+ * sessionless catalog route accept the same server names, secret references and
+ * operation ids - two inline copies of a regex are two places to drift.
+ */
+const mcpServerName = z.string().regex(/^[A-Za-z0-9_.:-]{1,100}$/);
+const mcpSecretReference = z.string().regex(/^\$\{[A-Za-z_][A-Za-z0-9_]*\}$/);
+const mcpOperationId = z.string().regex(/^[a-f0-9]{32}$/);
+/** An absolute POSIX or Windows directory path; the backend checks it exists. */
+const mcpCatalogCwd = z
+	.string()
+	.min(1)
+	.max(4096)
+	.regex(/^(\/|[A-Za-z]:[\\/])/);
 /**
  * The wire shape of a canonical stream subscription id.
  *
@@ -1703,28 +1717,101 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 						"status",
 						"cancel",
 					]),
-					name: z
-						.string()
-						.regex(/^[A-Za-z0-9_.:-]{1,100}$/)
-						.optional(),
+					name: mcpServerName.optional(),
 					scope: z.enum(["global", "project"]).optional(),
 					command: z.string().min(1).max(4096).optional(),
 					args: z.array(z.string().max(8192)).max(128).optional(),
-					env: z
-						.record(z.string().regex(/^\$\{[A-Za-z_][A-Za-z0-9_]*\}$/))
-						.optional(),
+					env: z.record(mcpSecretReference).optional(),
 					url: z.string().max(4096).optional(),
-					headers: z
-						.record(z.string().regex(/^\$\{[A-Za-z_][A-Za-z0-9_]*\}$/))
-						.optional(),
+					headers: z.record(mcpSecretReference).optional(),
 					oauth: z.boolean().optional(),
 					confirmed: z.boolean().optional(),
-					operation_id: z
-						.string()
-						.regex(/^[a-f0-9]{32}$/)
-						.optional(),
+					operation_id: mcpOperationId.optional(),
 				})
 				.strict(),
+		})
+		.strict(),
+	/*
+	 * The SESSIONLESS MCP catalog (`GET|POST /v1/desktop/mcp`), gated on the
+	 * `mcp_catalog` capability. Settings > Integrations reads and writes MCP
+	 * CONFIGURATION through these, so it no longer needs a running conversation -
+	 * the session route above booted a whole runtime (and so needed a model
+	 * provider) just to write a JSON file (UX walk U5). The session ops stay: the
+	 * run panel is a live per-runtime view, and `connect`/`disconnect`/`reload`
+	 * are about a runtime's live connection, so they are not accepted here.
+	 *
+	 * `cwd` is optional (the backend defaults it to the user's home, the desktop's
+	 * own default) and must be absolute: the backend 422s anything else, and the
+	 * schema refuses it first so a relative path never reaches the wire.
+	 */
+	z
+		.object({
+			op: z.literal("mcp.catalog"),
+			cwd: mcpCatalogCwd.optional(),
+			sessionId: sessionId.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("mcp.catalog.control"),
+			cwd: mcpCatalogCwd.optional(),
+			control: z
+				.object({
+					action: z.enum([
+						"add",
+						"remove",
+						"test",
+						"login",
+						"reauth",
+						"logout",
+						"status",
+						"cancel",
+					]),
+					name: mcpServerName.optional(),
+					scope: z.enum(["global", "project"]).optional(),
+					command: z.string().min(1).max(4096).optional(),
+					args: z.array(z.string().max(8192)).max(128).optional(),
+					env: z.record(mcpSecretReference).optional(),
+					url: z.string().max(4096).optional(),
+					headers: z.record(mcpSecretReference).optional(),
+					confirmed: z.boolean().optional(),
+					operation_id: mcpOperationId.optional(),
+				})
+				.strict(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("mcp.catalog.credentials"),
+			/*
+			 * WHICH HEADER OR ENV NAME THE KEY BELONGS TO (backend #1511
+			 * `aa927158a`). A server with no `${ID}` reference has nothing for the
+			 * catalog's own `set_key` to fill, so the credential write names the
+			 * header itself and the backend adds `headers[header] = "${ID}"` to the
+			 * defining file. Refused (`invalid_target`) for a header the transport
+			 * owns, one already set, a malformed name, or an invalid id - and
+			 * refused with NOTHING written.
+			 */
+			header: z.string().min(1).max(128).optional(),
+			cwd: mcpCatalogCwd.optional(),
+			name: mcpServerName,
+			values: z
+				.record(z.string().min(1).max(128), z.string().min(1).max(32768))
+				// The same owner bound as `mcp.credentials.store`, field-level for the
+				// same discriminated-union reason given there.
+				.refine(
+					(secrets) =>
+						Object.keys(secrets).length <= 32 &&
+						Object.values(secrets).reduce(
+							(total, value) => total + value.length,
+							0,
+						) <= 65536,
+					{
+						message:
+							"Too many secret values, or too much secret text, for one MCP credential write.",
+					},
+				),
+			confirmedReplace: z.array(z.string().min(1).max(128)).max(32),
 		})
 		.strict(),
 	z
@@ -2461,6 +2548,7 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"legacy.models.providers",
 	"legacy.schedule.get",
 	"legacy.schedules.list",
+	"mcp.catalog",
 	"mcp.list",
 	"models.catalogue",
 	"profiles.get",
@@ -3689,6 +3777,43 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/sessions/${request.sessionId}/mcp`,
 				method: "POST",
 				body: request.control,
+			};
+		case "mcp.catalog": {
+			// Absent fields are OMITTED rather than sent empty: the backend's own
+			// default (home, no overlay) is the answer for "no conversation open".
+			const query = new URLSearchParams();
+			if (request.cwd) query.set("cwd", request.cwd);
+			if (request.sessionId) query.set("session_id", request.sessionId);
+			const suffix = query.toString();
+			return {
+				path: suffix ? `/v1/desktop/mcp?${suffix}` : "/v1/desktop/mcp",
+				method: "GET",
+			};
+		}
+		case "mcp.catalog.control":
+			return {
+				path: "/v1/desktop/mcp",
+				method: "POST",
+				body: {
+					...request.control,
+					...(request.cwd ? { cwd: request.cwd } : {}),
+				},
+			};
+		case "mcp.catalog.credentials":
+			return {
+				path: "/v1/desktop/mcp/credentials",
+				method: "POST",
+				body: {
+					name: request.name,
+					values: request.values,
+					// `add_key`'s one extra field: which HTTP header the key
+					// travels in, for a server that declares no `${ID}` yet. The
+					// backend binds `headers[header] = "${ID}"` for the single id in
+					// `values` and stores the value beside it.
+					...(request.header ? { header: request.header } : {}),
+					confirmed_replace: request.confirmedReplace,
+					...(request.cwd ? { cwd: request.cwd } : {}),
+				},
 			};
 		case "radient.request":
 			return {
