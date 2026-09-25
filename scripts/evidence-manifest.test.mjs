@@ -845,6 +845,11 @@ const STAMP_BINDING_NOTES = [
 	 * owed the pair and the reason no still was owed.
 	 */
 	"liveSettleLabelRestampNote",
+	/*
+	 * This remediation round's own: it re-stamps the change that rounds 1's two MAJORs moved inside, so
+	 * the reader is owed the pair and the reason no still was owed.
+	 */
+	"liveSettleLabelRemediationNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {

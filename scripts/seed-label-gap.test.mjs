@@ -242,6 +242,13 @@ const RECONCILE_WALK_MAX_REQUESTS =
 	sessionModule.RECONCILE_WALK_MAX_REQUESTS ?? 6;
 const RECONCILE_WALK_MAX_ROWS = sessionModule.RECONCILE_WALK_MAX_ROWS ?? 500;
 const LABEL_HOLD_MAX_MS = sessionModule.LABEL_HOLD_MAX_MS ?? 0;
+/*
+ * The settle path's own allowance, and the fallback is the HEAD value for the
+ * reason above it: a case that pins what the path may SPEND has to fail on what a
+ * tree without the bound does (a bounded walk per settle, forever), not on an
+ * `undefined` arithmetic quietly becoming `NaN`.
+ */
+const LABEL_SETTLE_ROWS_MAX = sessionModule.LABEL_SETTLE_ROWS_MAX ?? 500;
 
 // The fixture's conversation, by placeholder: the real id is the operator's, not
 // this public repository's, and nothing here reads the value as an id.
@@ -1750,17 +1757,26 @@ test("one seed naming a call both waiting and settled does not exempt it", async
  *
  *   - the seed keeps only the turn's newest 100 ends, so a call that has fallen
  *     out of that window is named by no later snapshot at all;
- *   - the round-end retry fires only on a DURABLE round ending (`turn_end` /
- *     `agent_end`), and a turn that runs for hours sends none. Measured on the
- *     reported conversation (a 17-hour turn, 170 calls in it): the app's own
- *     backend log carries the `sessions.history` reads its reader's paging made
- *     and not one label read.
+ *   - the round-end retry (`retryLabels`) draws its candidates from a budget only
+ *     the seed path filled, so a settle it never tracked was not retried either.
+ *
+ * Measured on the reported conversation (`b747a2c8d3bb`): a 24.2-hour turn with 170
+ * calls in it, whose whole app-log history carries three `sessions.history` reads -
+ * `limit=100` at 2026-09-24 00:00:05, and `limit=100` plus one
+ * `limit=100&before_id=…` at 2026-09-25 09:17:25-26 - every one of them a plain
+ * tail or the reader's own page, and NOT ONE with a computed limit, i.e. no label
+ * read was ever asked for. (What that log cannot say is why; the code-verifiable
+ * half is that a live settle asked for nothing at all, per review round 1's R3.)
  *
  * So the row kept its output stand-in until the reader scrolled its assistant row
  * into a page - the report's "garbled lines that go away after scrolling up".
  * Asking here is the same request the seed path makes, sized by the same
- * `reconcileLimit` and capped per call by the same `LABEL_GAP_ATTEMPTS`, so a
- * call with no assistant row anywhere still spends at most that budget.
+ * `reconcileLimit` - but a settle's read is SPECULATIVE (the runtime appends a
+ * round's assistant row and its results together, so a settle from a step that is
+ * still open is asking for a row that does not exist yet), so it is NOT charged to
+ * `LABEL_GAP_ATTEMPTS`: that budget is spent at the durable round ending, where the
+ * same call is a retry candidate, and `LABEL_SETTLE_ROWS_MAX` is what bounds the
+ * speculative path's own total spend.
  */
 test("a live settle with no start asks for the page that carries its command", async () => {
 	const callId = "toolu_01LIVESETTLEWITHNOSEED00";
@@ -1805,5 +1821,194 @@ test("a live settle with no start asks for the page that carries its command", a
 	assert.ok(
 		historyReads().length > readsBefore,
 		"a read was asked for, rather than the reader's own paging",
+	);
+});
+
+/* ------------------------------------------ the settle path's own allowance (R1/R2) */
+
+test("a settle whose step is still open keeps the call's durable read", async () => {
+	/*
+	 * REVIEW ROUND 1, R1, in the reviewer's own sequence: a live settle whose
+	 * assistant row the journal does not hold yet -> a re-sync snapshot whose seed
+	 * names the same call -> the step commits -> a durable `turn_end`.
+	 *
+	 * On `origin/main` that sequence ended with the row LABELLED, because the round
+	 * end still had an attempt to spend. On the first head of this change the
+	 * settle charged one attempt (its read asked for a row that did not exist yet)
+	 * and the snapshot charged the second, so the durable moment - the one read that
+	 * can always succeed - had no budget left at all and the row kept its `… ok`
+	 * stand-in. A settle therefore NAMES its call without charging it, and the row
+	 * is read where `main` read it: at the durable round ending.
+	 *
+	 * The instants are the fixture's own units: `ts` and `started_at_epoch` are
+	 * epoch SECONDS, and the floor converts the page's oldest row to ms.
+	 */
+	const base = 1_790_219_600;
+	const rows = [];
+	for (let i = 0; i < 140; i++) rows.push(spendRow(`earlier-${i}`, base + i));
+	rows.push(userRow("turn-user", base + 200));
+	for (let i = 0; i < 20; i++) rows.push(spendRow(`turn-${i}`, base + 260 + i));
+	const page = rows.slice(-100);
+	const callId = "toolu_01SETTLESTILLOPEN0000000";
+	const startedAt = base + 305;
+	const settled = endFrame(callId, "… ok", startedAt);
+	const { handle } = await open({ page, liveEvents: [], durable: rows });
+	const record = () =>
+		handle().transcript.records.find((entry) => entry.toolCallId === callId);
+
+	// 1. THE SETTLE, whose call's row no page can hold yet. The frame states the
+	// call's own start, so the walk's floor ends the speculative read at the tail
+	// page: one request, not a walk to the bound.
+	requests.length = 0;
+	deliver({
+		session_id: SESSION,
+		epoch: "bridge-epoch",
+		seq: 3,
+		type: "event",
+		payload: settled,
+	});
+	await pump();
+	assert.ok(record(), "the live settle paints the row");
+	assert.ok(!record().args, "no page can label it yet");
+	assert.equal(
+		historyReads().length,
+		1,
+		"the speculative read is one request, not a walk to the bound",
+	);
+
+	// 2. THE RE-SYNC. The owner re-publishes a snapshot whose seed names the same
+	// call: this is the seed path, and its charge is the call's first real one.
+	deliver(
+		snapshotFrame(4, {
+			entries: page,
+			liveEvents: [settled],
+			streaming: true,
+		}),
+	);
+	await pump();
+	assert.ok(
+		!record().args,
+		"the seed cannot label a call whose row is not durable",
+	);
+
+	// 3. THE STEP COMMITS, and the durable round ending follows. The journal now
+	// holds the call's assistant row - the one that carries its arguments - and its
+	// result, so this read can answer, if the settle left it an attempt.
+	globalThis.__seedDurable = [
+		...rows,
+		assistantRow("asst-r1", startedAt, [[callId, "npm test"]]),
+		toolRow("res-r1", startedAt, callId, "… ok"),
+	];
+	requests.length = 0;
+	deliver({
+		session_id: SESSION,
+		epoch: "bridge-epoch",
+		seq: 5,
+		type: "event",
+		payload: { type: "turn_end" },
+	});
+	await pump();
+	const retry = historyReads();
+	assert.ok(
+		retry.length >= 1,
+		"the durable round ending still had its attempt to spend",
+	);
+	assert.ok(
+		record().args,
+		`the round end labels the row (reads: ${JSON.stringify(retry.map((read) => read.limit))})`,
+	);
+});
+
+test("settle reads are coalesced across a flush and bounded by their own allowance", async () => {
+	/*
+	 * REVIEW ROUND 1, R2. A settle's read used to be a full bounded walk PER CALL -
+	 * measured at 5 requests / 500 rows, twice, for one call whose row no page could
+	 * read at all - against a body that said "one read per unlabelled settle". The
+	 * properties pinned here are the ones the QA round measured in the shipped app:
+	 * an OPEN with nothing to label is still exactly one request; N settles in ONE
+	 * flush are ONE walk, sized by N targets rather than by one; a settle whose call
+	 * a page already labelled asks for nothing; and what the path may spend when
+	 * nothing can be labelled is `LABEL_SETTLE_ROWS_MAX` per conversation, not a walk
+	 * per call.
+	 */
+	const { durable, page } = moment("labels");
+	const starts = new Map();
+	for (const row of durable.slice(0, -100)) {
+		for (const call of row.payload.tool_calls ?? [])
+			starts.set(call.id, row.ts);
+	}
+	const targets = [...starts.keys()].slice(-6);
+	assert.equal(targets.length, 6, "the fixture needs six older calls");
+	const deliverAll = (seq, payloads) => {
+		for (const [index, payload] of payloads.entries())
+			deliver({
+				session_id: SESSION,
+				epoch: "bridge-epoch",
+				seq: seq + index,
+				type: "event",
+				payload,
+			});
+	};
+
+	const { handle } = await open({ page, liveEvents: [], durable });
+	assert.equal(
+		historyReads().length,
+		1,
+		"an open with nothing to label is one request",
+	);
+
+	// N settles in one flush: one walk, over all of them.
+	requests.length = 0;
+	deliverAll(
+		3,
+		targets.map((callId) => endFrame(callId, "… ok", starts.get(callId))),
+	);
+	await pump();
+	const coalesced = historyReads();
+	assert.equal(
+		coalesced[0]?.limit,
+		reconcileLimit(targets.length),
+		`one walk sized by the ${targets.length} targets, not one walk per call`,
+	);
+	assert.ok(
+		coalesced.length <= RECONCILE_WALK_MAX_REQUESTS,
+		`the coalesced walk stays inside its request bound (${coalesced.length})`,
+	);
+	for (const callId of targets) {
+		const record = handle().transcript.records.find(
+			(entry) => entry.toolCallId === callId,
+		);
+		assert.ok(record?.args, `the coalesced walk labels ${callId}`);
+	}
+
+	// A second batch whose calls a page has already labelled costs nothing further.
+	requests.length = 0;
+	deliverAll(
+		9,
+		targets
+			.slice(0, 2)
+			.map((callId) => endFrame(callId, "… ok", starts.get(callId))),
+	);
+	await pump();
+	assert.equal(
+		historyReads().length,
+		0,
+		"a settle for a call whose arguments are known asks for nothing",
+	);
+
+	// The unlabelable end of the path is bounded by its own allowance: six settles
+	// whose rows are in no journal at all, one per flush, so each is its own walk.
+	requests.length = 0;
+	for (const [index, suffix] of ["A", "B", "C", "D", "E", "F"].entries()) {
+		deliverAll(20 + index, [
+			endFrameWithoutStart(`toolu_01SETTLEBUDGET${suffix}NOTINJOURNAL`, "… ok"),
+		]);
+		await pump();
+	}
+	const spent = historyReads().reduce((sum, read) => sum + read.limit, 0);
+	assert.ok(spent > 0, "the first unlabelable settle is still read for");
+	assert.ok(
+		spent <= LABEL_SETTLE_ROWS_MAX,
+		`the settle path spent ${spent} rows, over its ${LABEL_SETTLE_ROWS_MAX}-row allowance`,
 	);
 });
