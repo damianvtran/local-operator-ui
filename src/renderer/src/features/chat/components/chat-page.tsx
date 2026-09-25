@@ -2478,6 +2478,18 @@ function SessionPanel({
 									 */
 									frontend: canonical.frontend ?? canonical.heldFrontend,
 									/*
+									 * Whether those readings are the HELD ones, which is a
+									 * different question from whether a frontend is present:
+									 * a pane that has never had a snapshot and a pane drawing
+									 * the one it was last told both arrive here with a null
+									 * `canonical.frontend`, and only the second is a state the
+									 * reader needs told about. So it is the fallback actually
+									 * being the source, not the null.
+									 */
+									held:
+										canonical.frontend === null &&
+										canonical.heldFrontend !== null,
+									/*
 									 * The chosen-but-unconfirmed model, so the strip can paint the pick
 									 * the moment it is made instead of waiting out a cold runtime bind
 									 * (latency U1). Straight off the handle, which owns both the paint and
