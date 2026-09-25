@@ -643,7 +643,16 @@ test("the pinned mark is drawn at rest at every width, and is not inside a displ
 	 * the wrapper ever becomes a display switch again.
 	 */
 	const at = source.indexOf("data-session-pin\n");
-	const block = source.slice(at, at + 4200);
+	/*
+	 * THE WINDOW IS 5200 RATHER THAN 4200 (UX round 2, U2), and the reason is prose
+	 * rather than structure: the control now carries a block comment explaining why
+	 * it left the Tab ring, which sits between the attribute this search anchors on
+	 * and the `pinned` ternary this reads. A window that no longer REACHES the
+	 * branch fails the `notEqual` below rather than passing quietly, so widening it
+	 * cannot hide a control that stopped being drawn - it only has to reach the
+	 * branch the assertions are about.
+	 */
+	const block = source.slice(at, at + 5200);
 	const branchMatch = /\n\s*pinned\n/.exec(block);
 	assert.notEqual(branchMatch, null, "the pin's pinned branch must exist");
 	const pinnedBranchText = block.slice(

@@ -70,6 +70,7 @@ import type {
 } from "../../../../../shared/desktop-session-contract";
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
 import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
+import { CHAT_REGION_LABEL } from "../chat-regions";
 import { MarkdownRenderer } from "../components/markdown-renderer";
 import { MessageContainer } from "../components/message-item/message-container";
 import { TurnTimestamp } from "../components/message-item/turn-timestamp";
@@ -2019,9 +2020,31 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				 * interaction rather than a fix to this one, and nothing here needs it:
 				 * the walk it was proposed to remove is gone.
 				 */
+				data-chat-region="transcript"
+				data-region-entry
+				/*
+				 * §C4's third region, and the stop that was already here. The spec's landmark
+				 * name for it is `Conversation` (the three it lists are `Chats`,
+				 * `Conversation`, `Message composer`), shortened from `Conversation
+				 * transcript` because the region IS the transcript - the word was doing the
+				 * role's work twice.
+				 *
+				 * WHY NOT THE `<main>` AROUND IT: a region marker claims its element for the
+				 * `F6` walk on every route it renders on, and `<main>` is the shell's, drawn
+				 * for Settings and Agents too. The scroller exists only where there is a
+				 * conversation, which is exactly where this region exists.
+				 *
+				 * §C4 also asks for "arrow keys between turns" and that is deliberately NOT
+				 * built: the bare arrows are this scroller's own paging keys
+				 * (`use-scroll-paging.ts`'s `Home`/`ArrowUp`/`PageUp`/`ArrowDown` case), and
+				 * a keyboard-operable scroll region is a WCAG 2.1.1 requirement rather than a
+				 * preference - taking the arrows for a turn walk would trade one accessible
+				 * gesture for another. The transcript's own stop, which is the half the
+				 * finding is about, is here.
+				 */
 				tabIndex={transcript.records.length === 0 ? -1 : 0}
 				role="log"
-				aria-label="Conversation transcript"
+				aria-label={CHAT_REGION_LABEL.transcript}
 				// Only the `windowed` branch renders that id, so the description has to
 				// track the branch rather than the looser "history exists" condition it
 				// was derived from: `hasMore` with no hidden rows yields `idle`, whose
