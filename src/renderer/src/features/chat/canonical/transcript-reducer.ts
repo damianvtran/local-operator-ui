@@ -2194,7 +2194,7 @@ export function applyEvent(
 	 * `message_update`). Omitted on the live path and by every other caller, so the
 	 * default is the live reading.
 	 */
-	options: { seed?: boolean } = {},
+	options: { seed?: boolean; userStoppedAt?: number | null } = {},
 ): TranscriptState {
 	const message = event.message as Record<string, unknown> | undefined;
 	switch (event.type) {
@@ -2812,6 +2812,11 @@ export function applyEvent(
 				learned === state.argsByCall
 					? state
 					: { ...state, argsByCall: learned };
+			const userStoppedAt = options.userStoppedAt ?? null;
+			const killedByUserStop =
+				userStoppedAt !== null &&
+				typeof base.startedAt === "number" &&
+				base.startedAt <= userStoppedAt;
 			return upsert(seeded, {
 				...base,
 				args,
@@ -2825,7 +2830,39 @@ export function applyEvent(
 				notRunReason: null,
 				neverSent: false,
 				output: messageText(result) || null,
-				isError: Boolean(event.is_error ?? result.is_error),
+				/*
+				 * A CALL THE USER'S OWN STOP KILLED DID NOT FAIL (UX round 2, U7).
+				 *
+				 * `Esc` interrupts the turn, the runtime kills the call in flight, and the
+				 * process that died reports a genuine error — so the row landed on `error`
+				 * and painted `failed` in `danger`: the ledger's loudest ink, blaming the
+				 * agent for the user's own decision. Nothing on the wire separates "this
+				 * call failed" from "this call was killed by the press three milliseconds
+				 * ago", which is why the fact is the client's (`stoppedTurns` in the
+				 * sessions store) and why it is consumed HERE rather than at the row's
+				 * paint: this is the moment the end event arrives, so it is the one place
+				 * where "was this call running when the user pressed stop?" is answerable
+				 * from the record alone.
+				 *
+				 * THE TEST IS `startedAt <= userStoppedAt`, precise in the direction that
+				 * matters: only a call ALREADY RUNNING at the press can be the one the
+				 * interrupt killed. A call that settled before the press never comes
+				 * through this branch again — its end event was already consumed — so an
+				 * honest failure earlier in the same turn keeps its `danger` row, and a
+				 * call that started after the press cannot exist because the turn is over.
+				 * `startedAt` is null on a row this viewer only ever met as it settled, and
+				 * that is the one case the guard refuses: a row with no clock is a guess.
+				 *
+				 * `isError` is CLEARED as well as `stopped` set, because the row's outcome
+				 * ladder reads `isError` first (`canonical-transcript.tsx`): leaving it
+				 * true would keep the danger row this exists to remove. The output and the
+				 * failure detail are untouched — the call's real error text is still one
+				 * expansion away, which is what `interrupted` says: the stop is the
+				 * verdict, not a cover-up.
+				 */
+				isError: killedByUserStop
+					? false
+					: Boolean(event.is_error ?? result.is_error),
 				durationS:
 					typeof event.duration_s === "number" ? event.duration_s : null,
 				// The call ended, so the row stops counting and reports the measured
@@ -2863,8 +2900,13 @@ export function applyEvent(
 				// reconnect seed whose `details` were stripped by the live-event
 				// budget must not blank a body the row already showed.
 				diff: preferDiff(diffFromDetails(result.details), base.diff),
-				// It reported an end, so whatever happened it was not interrupted.
-				stopped: false,
+				// It reported an end, so whatever happened it was not interrupted —
+				// UNLESS THE USER STOPPED IT (UX round 2, U7). The leading `base.stopped`
+				// keeps the backend's own `aborted` verdict on a record this upsert
+				// REPLACES; dropping it would turn an abort into a success tick on the way
+				// through. `killedByUserStop` is the client-side half, and `isError` is
+				// cleared beside it because the row's outcome ladder reads `isError` first.
+				stopped: base.stopped || killedByUserStop,
 			});
 		}
 		case "notice": {
