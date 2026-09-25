@@ -166,6 +166,25 @@ export function searchChats(
 	 */
 	pinFacts: Record<string, boolean> = {},
 	archive: ArchiveView = NO_ARCHIVE_VIEW,
+	/*
+	 * THE CLIENT'S OWN KNOWLEDGE OF WHAT A HIT IS BOUND TO (round 1, Q2).
+	 *
+	 * WHY A SEARCH HIT NEEDS THIS AT ALL. The wire's search answer carries an id, a
+	 * name, an `mtime`, its rank and its archive state - and no binding, because the
+	 * scan is over raw session directories rather than over the decorated catalogue.
+	 * So a hit this client does not list is rebuilt here as a row with no binding,
+	 * and the row draws WITHOUT the caption a held row carries: the same search hit
+	 * looked like two different things depending on whether the client happened to
+	 * hold it, which under a fifty-row head page is now the ordinary case rather
+	 * than the rare one.
+	 *
+	 * The binding this client CAN know is the one a LOADED scope names: an expanded
+	 * group's id list says which binding owns that conversation, because the client
+	 * asked the daemon for exactly that scope. When no loaded scope holds the id the
+	 * lookup answers nothing and the row stays captionless - the honest state, since
+	 * the wire did not say and neither does the client.
+	 */
+	bindingOf?: (id: string) => CanonicalSessionRow["binding"],
 ): ChatSearchOutcome {
 	const needle = query.trim();
 	/*
@@ -283,10 +302,18 @@ export function searchChats(
 		 * repair the row it is drawn on (QA round 1, Q1; review round 1, m1).
 		 */
 		const clientPinned = pinFacts[hit.id];
+		/*
+		 * THE BINDING, WHEN THE CLIENT CAN NAME IT (round 1, Q2): a hit whose binding
+		 * a loaded scope names carries the same caption a held row does, and one no
+		 * scope names carries none. Absence is a state rather than a placeholder -
+		 * the row draws without a caption rather than with a wrong one.
+		 */
+		const binding = bindingOf?.(hit.id);
 		const row: CanonicalSessionRow = {
 			session_id: hit.id,
 			title: hit.name,
 			updated_at: hit.mtime,
+			...(binding === undefined ? {} : { binding }),
 			...(() => {
 				const known = clientPinned ?? hit.pinned;
 				return typeof known === "boolean" ? { pinned: known } : {};
