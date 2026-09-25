@@ -59,6 +59,7 @@ import {
 	answerGateOption,
 	answerReport,
 	answerValue,
+	approvalAnswerValue,
 	createSendLock,
 } from "../ask-answer";
 import {
@@ -1275,16 +1276,24 @@ function SessionPanel({
 			const gate = canonical.frontend?.pending_gate;
 			if (gate && canonical.ownerEpoch && sessionId) {
 				if (gate.kind === "approval") {
-					const value = content.trim().toLowerCase();
-					const yes = ["y", "yes", "approve", "ok", "allow"].includes(value);
-					if (!yes && !["n", "no", "deny", "reject", "cancel"].includes(value))
+					/*
+					 * THE WORDS AND THE ORDINALS, resolved against the TYPED text for the
+					 * same reason the ask branch below resolves there: with a staged reply
+					 * `content` is wrapped in `<reply-to>…</reply-to>`, and a rule that had
+					 * to parse that wrapper would be one payload change away from failing
+					 * silently. `approvalAnswerValue` returns the strict boolean or `null`,
+					 * and `null` keeps the shipped sentence — the press sent nothing, so
+					 * the box still holds the text.
+					 */
+					const approved = approvalAnswerValue(typed ?? content);
+					if (approved === null)
 						throw new Error("Reply yes or no to answer the approval request.");
 					await desktopResult({
 						op: "sessions.answer",
 						sessionId,
 						epoch: canonical.ownerEpoch,
 						requestId: gate.request_id,
-						approved: yes,
+						approved,
 					});
 				} else
 					await desktopResult({
@@ -1363,11 +1372,14 @@ function SessionPanel({
 			 *
 			 * THE PENDING-GATE BRANCH ABOVE OUTRANKS IT, and the composer's placeholder
 			 * is what names the winner (`message-input.tsx` puts `awaitingAnswer` ahead
-			 * of the aside term for exactly this reason). An `approval` gate has NO
-			 * OTHER ANSWER PATH: its card says "Reply yes or no in the composer", and
-			 * the aside can be left standing for as long as the user likes, while the
-			 * agent is parked on that gate. Making the aside win would leave a blocked
-			 * turn unanswerable except by closing the panel first.
+			 * of the aside term for exactly this reason). A parked gate is the one thing
+			 * the box must be able to answer — its card's buttons are the pointer path,
+			 * and typing yes/no (or the 1/2 the card prints) into the box is the
+			 * keyboard path a focused composer already has — so the aside can be left
+			 * standing for as long as the user likes while the agent is parked on that
+			 * gate; making the aside win would route the very keystrokes the gate needs
+			 * to a different exchange, and a user with no pointer would have to close
+			 * the panel to answer.
 			 *
 			 * THE QUESTION IS PAINTED BEFORE IT IS SENT, AND THE BOX IS HANDED BACK AT
 			 * THE PRESS. `askAside` registers the turn in the store the panel renders
@@ -1649,7 +1661,8 @@ function SessionPanel({
 		}
 	};
 	/**
-	 * Answer the pending `ask` gate by pressing one of its options.
+	 * Answer the pending gate by pressing one of its options: an `ask` option's
+	 * label, or an approval's Approve/Deny.
 	 *
 	 * This is `send`'s gate branch reached from a click instead of from the
 	 * composer, and it deliberately reuses that path's machinery rather than
@@ -1660,6 +1673,12 @@ function SessionPanel({
 	 * reported with the same authored copy and the same error code as a failed
 	 * send, instead of inventing a second error affordance on the card).
 	 *
+	 * AN APPROVAL IS NOT A SECOND PATH EITHER: its labels are the client's pair
+	 * (`APPROVAL_OPTIONS`), `answerGateOption` turns one into the boolean the
+	 * route takes, and a label outside the pair is refused THERE — nothing sent,
+	 * nothing claimed — which is why the guard below admits both gate kinds and
+	 * refuses neither here.
+	 *
 	 * The transport call itself lives in `answerGateOption`, which is where the
 	 * one-answer-in-flight property and the request body are asserted - neither
 	 * could be reached by a test while they lived inside this component (code
@@ -1668,8 +1687,7 @@ function SessionPanel({
 	 */
 	const answerWithOption = async (label: string) => {
 		const gate = canonical.frontend?.pending_gate;
-		if (!gate || gate.kind !== "ask" || !canonical.ownerEpoch || !sessionId)
-			return;
+		if (!gate || !canonical.ownerEpoch || !sessionId) return;
 		// The lock is checked here only to keep the busy flag honest; the claim
 		// itself is `answerGateOption`'s, and between this read and that claim
 		// there is no `await` for a handler to interleave in.

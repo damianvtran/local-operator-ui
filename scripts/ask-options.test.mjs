@@ -5,7 +5,8 @@ import { test } from "node:test";
 import { build } from "esbuild";
 
 /*
- * The `ask` gate's clickable options, asserted against the SHIPPED modules.
+ * The pending gate's clickable options — the `ask` set the model authored, and
+ * the approval pair the client owns — asserted against the SHIPPED modules.
  *
  * Three things are checked here, and each is a property that a screenshot
  * cannot prove and that a future edit could break silently:
@@ -43,6 +44,14 @@ import { build } from "esbuild";
  *    all four of its cases here, including the one the bug was: a `2xx` says
  *    nothing at all.
  *
+ * 5. **An approval's press carries the strict boolean and nothing else.**
+ *    Approve and Deny are the client's own labels (`APPROVAL_OPTIONS`; the wire
+ *    sends no options for this kind), and the daemon route rejects
+ *    `question_index` on an approval — so the request these tests validate is
+ *    `{op, sessionId, epoch, requestId, approved}`, with no `value` and no
+ *    `questionIndex` on it at all, and the JSON the route receives carries only
+ *    the keys it reads.
+ *
  * ## Why the component is exercised as an element tree, not through a DOM
  *
  * There is no jsdom in this repo's tree and this change is not the place to
@@ -60,7 +69,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { AskOptions } from "./src/renderer/src/features/chat/components/trace/ask-options";',
-			'export { resolveNumericAnswer, answerValue, answerReport, answerRefusedWithoutACode, answerOutcomeIsUnknown, answerUnconfirmedMessage, SETTLED_ELSEWHERE_MESSAGE, QUESTION_MOVED_ON_MESSAGE, ANSWER_UNCONFIRMED_LEAD, ANSWER_LOST_TO_RECONNECT_MESSAGE, unsentAnswerMessage, shouldTabIntoAnswerOptions, composerFocusIsOurs, createSendLock, answerGateOption, errorCodeOf, ANSWER_UNCONFIRMED_CODE } from "./src/renderer/src/features/chat/ask-answer";',
+			'export { resolveNumericAnswer, answerValue, answerReport, answerRefusedWithoutACode, answerOutcomeIsUnknown, answerUnconfirmedMessage, SETTLED_ELSEWHERE_MESSAGE, QUESTION_MOVED_ON_MESSAGE, ANSWER_UNCONFIRMED_LEAD, ANSWER_LOST_TO_RECONNECT_MESSAGE, unsentAnswerMessage, shouldTabIntoAnswerOptions, composerFocusIsOurs, createSendLock, APPROVAL_OPTIONS, approvalVerdict, approvalAnswerValue, answerGateOption, errorCodeOf, ANSWER_UNCONFIRMED_CODE } from "./src/renderer/src/features/chat/ask-answer";',
 			'export { DesktopControlError, UserFacingError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
 			'export { buildSendPayload, ANSWER_NOT_SENT_CODE } from "./src/renderer/src/shared/store/canonical-sessions-store";',
 			'export { DESKTOP_LOST_SIGHT_CODE } from "./src/shared/desktop-contract";',
@@ -117,6 +126,9 @@ const {
 	shouldTabIntoAnswerOptions,
 	composerFocusIsOurs,
 	createSendLock,
+	APPROVAL_OPTIONS,
+	approvalVerdict,
+	approvalAnswerValue,
 	answerGateOption,
 	errorCodeOf,
 	DesktopControlError,
@@ -305,13 +317,26 @@ test("one press is one answer: the second loses, and the lock lets go", async ()
 	assert.equal(sent.length, 2);
 });
 
-test("a question that cannot be addressed is never sent", async () => {
+test("a question that cannot be addressed, or an approval label outside the pair, is never sent", async () => {
 	const lock = createSendLock();
 	for (const deps of [
+		// The approval pair is exhaustive: the loop's label ("whatever") is no
+		// press of any control the card offers, so it is refused before the lock
+		// — and the two unaddressable shapes apply to both kinds the same way.
 		{
 			gate: gate({ kind: "approval", options: [] }),
 			sessionId: SESSION,
 			epoch: EPOCH,
+		},
+		{
+			gate: gate({ kind: "approval", options: [] }),
+			sessionId: null,
+			epoch: EPOCH,
+		},
+		{
+			gate: gate({ kind: "approval", options: [] }),
+			sessionId: SESSION,
+			epoch: null,
 		},
 		{ gate: gate(), sessionId: null, epoch: EPOCH },
 		{ gate: gate(), sessionId: SESSION, epoch: null },
@@ -327,6 +352,179 @@ test("a question that cannot be addressed is never sent", async () => {
 		// would leave the composer disabled on a request that never left.
 		assert.equal(lock.held, false);
 	}
+});
+
+test("an approval mounts the client's pair, and each press posts its own boolean", async () => {
+	// THE MOUNT, through the SHIPPED transcript: an approval gate renders the
+	// option band with the client pair on it — the wire carries no options for
+	// this kind, and this is the branch that did not exist (the card was
+	// typed-answers-only). The ask half of the same component is asserted above.
+	const markup = renderToStaticMarkup(
+		createElement(CanonicalTranscript, {
+			transcript: EMPTY_TRANSCRIPT,
+			gate: gate({ kind: "approval", options: [] }),
+			waiting: false,
+			loadingOlder: false,
+			onLoadOlder: async () => true,
+			containerRef: { current: null },
+			isSmallView: false,
+			status: "live",
+			// Required by this branch's hold work, and `false` for these fixtures: no page
+			// is owed, so the pane paints no placeholder - whose `<output>` would
+			// otherwise sit in every state this file asserts about the answer card.
+			awaitingHydration: false,
+			error: null,
+			onAnswer: () => {},
+		}),
+	);
+	assert.ok(markup.includes('aria-label="Answer options"'));
+	for (const option of APPROVAL_OPTIONS) {
+		assert.ok(markup.includes(option.label), `${option.label} paints`);
+		assert.ok(
+			markup.includes(option.description),
+			`${option.label}'s consequence line paints`,
+		);
+	}
+	assert.ok(
+		!markup.includes("Recommended"),
+		"nothing on an approval is marked recommended - the model authored no options for it",
+	);
+
+	// And the SHIPPED answer path, once per option: the label a button submits
+	// becomes the STRICT BOOLEAN the route takes, with neither `value` nor
+	// `questionIndex` riding along - the daemon rejects a question index on an
+	// approval, and a label would be a value the route does not read.
+	for (const [option, expected] of [
+		[APPROVAL_OPTIONS[0], true],
+		[APPROVAL_OPTIONS[1], false],
+	]) {
+		const { outcome, sent } = await press({
+			label: option.label,
+			over: { kind: "approval", options: [] },
+		});
+		assert.equal(outcome.status, "sent");
+		assert.equal(sent.length, 1);
+		assert.ok(!("value" in sent[0]), "an approval carries no value");
+		assert.ok(
+			!("questionIndex" in sent[0]),
+			"an approval carries no questionIndex",
+		);
+		const parsed = desktopRequestSchema.parse(sent[0]);
+		assert.equal(parsed.approved, expected);
+		const wire = desktopEndpoint(parsed);
+		assert.equal(wire.path, `/v1/desktop/sessions/${SESSION}/answers`);
+		assert.equal(wire.method, "POST");
+		assert.equal(wire.body.approved, expected);
+		// The mapper spells every optional key out, so the absence check has to
+		// be about the BYTES: `JSON.stringify` drops `undefined`, and this is
+		// what the route actually receives.
+		assert.equal(
+			JSON.stringify(wire.body),
+			JSON.stringify({
+				epoch: EPOCH,
+				request_id: gate().request_id,
+				approved: expected,
+			}),
+			"the route receives the boolean and the addressing, nothing else",
+		);
+	}
+});
+
+test("two approval presses racing post one answer, and a stale label never takes the lock", async () => {
+	// The one-answer-in-flight property the ask pair asserts, on the approval
+	// pair: Approve and Deny dispatched from ONE tick are two answers to a
+	// one-shot gate, and only one may leave. The loser sends nothing at all.
+	const lock = createSendLock();
+	const sent = [];
+	const send = async (request) => void sent.push(request);
+	const approval = { over: { kind: "approval", options: [] }, send, lock };
+	const [first, second] = await Promise.all([
+		press({ ...approval, label: APPROVAL_OPTIONS[0].label }),
+		press({ ...approval, label: APPROVAL_OPTIONS[1].label }),
+	]);
+	assert.deepEqual(
+		[first.outcome.status, second.outcome.status],
+		["sent", "refused"],
+	);
+	assert.equal(
+		sent.length,
+		1,
+		"one answer in flight is one answer on the wire",
+	);
+	assert.equal(sent[0].approved, true);
+	assert.equal(lock.held, false);
+
+	// A label outside the pair is refused BEFORE the lock is claimed: it cannot
+	// be a press of any control the card offers, so nothing about it belongs on
+	// the wire — and a held lock would disable the two real options.
+	const bogus = await press({ ...approval, label: "Allow all" });
+	assert.equal(bogus.outcome.status, "refused");
+	assert.deepEqual(bogus.sent, []);
+	assert.equal(lock.held, false);
+	assert.equal(sent.length, 1);
+});
+
+test("a typed approval answer takes the shipped words and the card's own ordinals", () => {
+	// THE WORDS. "Reply yes or no in the composer" predates the buttons, and the
+	// hint teaches it: it must keep working, with case and padding forgiven
+	// exactly as the shipped inline rule forgave them.
+	for (const [text, expected] of [
+		["yes", true],
+		["y", true],
+		["approve", true],
+		["ok", true],
+		["allow", true],
+		["no", false],
+		["n", false],
+		["deny", false],
+		["reject", false],
+		["cancel", false],
+		[" Approve ", true],
+		["DENY", false],
+	]) {
+		assert.equal(approvalAnswerValue(text), expected, `${text} resolves`);
+	}
+	// THE ORDINALS. The card prints `1.` `2.`, and a numeral it draws must be
+	// typeable - the ask card's own rule, with its `1.` spelling included.
+	for (const [text, expected] of [
+		["1", true],
+		["2", false],
+		["1.", true],
+		[" 2. ", false],
+	]) {
+		assert.equal(approvalAnswerValue(text), expected, `${text} resolves`);
+	}
+	// And the negative cases are the contract: nothing here may choose for the
+	// user. `3` is not an option the pair offers, `01` is a different string,
+	// and prose is an answer the user meant literally.
+	for (const text of [
+		"3",
+		"0",
+		"-1",
+		"01",
+		"11",
+		"1 of them",
+		"maybe",
+		"yes please",
+		"no thanks",
+	]) {
+		assert.equal(approvalAnswerValue(text), null, `${text} must not resolve`);
+	}
+	// The two labels are the pair's own, so the words path and the verdict agree
+	// on every string BOTH understand - the property that keeps the buttons and
+	// the typed path from disagreeing about one label.
+	for (const option of APPROVAL_OPTIONS) {
+		assert.equal(
+			approvalAnswerValue(option.label),
+			approvalVerdict(option.label),
+		);
+	}
+	// And the ask rule still leaves approvals alone: its resolution is for the
+	// model's options, which an approval does not have.
+	assert.equal(
+		resolveNumericAnswer(gate({ kind: "approval", options: [] }), "1"),
+		"1",
+	);
 });
 
 test("a failed answer reports the transport's own code, like a failed send", async () => {
@@ -398,8 +596,8 @@ test("only a bare, in-range numeral on an options ask is resolved", () => {
 	// A gate with no options is a free-text or secret ask, where a numeral is
 	// very often the real answer.
 	assert.equal(resolveNumericAnswer(gate({ options: [] }), "1"), "1");
-	// Approvals are answered yes/no and carry no options; this must never
-	// touch that path.
+	// An approval carries no WIRE options; its pair is the client's own and is
+	// resolved by `approvalAnswerValue`, so this rule must leave it untouched.
 	assert.equal(
 		resolveNumericAnswer(gate({ kind: "approval", options: [] }), "1"),
 		"1",
