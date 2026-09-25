@@ -1015,19 +1015,24 @@ export function buildPanelItems(
  *
  * WHAT IT DOES NOT CARRY, stated here because the sidebar's row learned it this
  * round and a reader of this function is one line from the field (review round 1,
- * m3): the sidebar draws the ATTRIBUTION of a conversation an agent opened
- * (`opened_by`, `· agent-opened`), and this row draws the binding instead — so the
- * same conversation reads as the operator's own in the palette, which is the
- * indistinguishability the sidebar's marker exists to remove. It is DELIBERATE and
- * bounded rather than overlooked: this row has ONE secondary slot (`hint`), the
- * search mark already arbitrates for it below (`use-palette-sources.ts`'s
- * `hint: marked ? …`), and choosing between "why is this row on screen" and "who
- * opened it" is exactly the tradeoff the sidebar settles with a precedence rule
- * and its own width measurements. The palette's row would need that same decision
- * made against its own slot, as its own change on the surface the incident did not
- * name — recorded on the pull request that added the sidebar marker as deferred,
- * not left silent. The field is in hand here (`CanonicalSessionRow`), so the work
- * is a precedence choice rather than a wire change.
+ * m3): the sidebar's slot draws the TEAM an agent-opened workstream serves, and
+ * nothing when it serves none (`opened_by` read by `rowTrailingStatement`), while
+ * this row always draws the binding — the same string on a team-bound workstream,
+ * where the two surfaces agree, and `· <agent>` on a team-less one, where the
+ * sidebar's slot is now silent. What this row cannot say, on any of them, is WHO
+ * opened the conversation: a workstream an agent opened reads here as any chat
+ * bound to its team or agent does, which is the indistinguishability the
+ * sidebar's flyout and screen-reader sentence answer where they can. It is
+ * DELIBERATE and bounded rather than overlooked: this row has ONE secondary slot
+ * (`hint`), the search mark already arbitrates for it below
+ * (`use-palette-sources.ts`'s `hint: marked ? …`), and choosing between "why is
+ * this row on screen" and "who opened it" is exactly the tradeoff the sidebar
+ * settles with a precedence rule and its own width measurements. The palette's
+ * row would need that same decision made against its own slot, as its own change
+ * on the surface the incident did not name — recorded on the pull request that
+ * added the sidebar marker as deferred, not left silent. The field is in hand
+ * here (`CanonicalSessionRow`), so the work is a precedence choice rather than a
+ * wire change.
  */
 export function buildChatItem(row: {
 	session_id: string;

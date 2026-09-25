@@ -201,20 +201,52 @@ export function atCandidateKey(rows: readonly { path: string }[]): string {
  * read-only working-directory chip), so this is the app's own vocabulary for the
  * same class of fact rather than a new register.
  *
- * THE ONE THING IT MAY NOT DO IS PROMISE, and that is why it does not read like the
- * other capability sentences in this app ("Update the backend to …"). Those
- * offers are true because the capability they name is one a newer backend has; the
- * `references` key is one NO harness advertises - not the released ones, and not
- * the half in review - so telling the user to update would be a promise nothing on
- * the other side can keep. What is true, and all this says, is what the harness in
- * use cannot do.
+ * IT NAMES THE REMEDY, and that is a REVERSAL of the rule this sentence was first
+ * written under. It used to read "This backend cannot carry file references." and
+ * nothing else, deliberately: the `references` capability was one NO harness
+ * advertised, so "update the backend" would have been a promise with nothing on the
+ * other side to keep it. The harness publishes it now — `capabilities.py`
+ * advertises `references` whenever `at_references_enabled()`, from the release that
+ * carries the key — so the promise is
+ * one a newer backend keeps, and a sentence that names the backend as the reason
+ * while offering no way out of the state is the dead end the sibling gate in this
+ * same band already refuses (`MOVE_UNAVAILABLE_REASON`, on the read-only
+ * working-directory chip). `scripts/at-mentions.test.mjs` asserts BOTH halves of
+ * that: the remedy is an imperative sentence naming the backend, and the sentence
+ * still never carries the `@`. What it deliberately does NOT pin is the wording —
+ * the matcher accepts any `Update …backend` clause, so a reworded remedy passes and
+ * a negated one ("You cannot update the backend.", "Do not update the backend.")
+ * does not.
  *
- * One sentence, in the picker's own notice register ("This folder is empty."),
- * because the picker's one-row notice is where this composer already says why a
- * gesture has nothing behind it.
+ * IT STILL SAYS WHAT THE HARNESS CANNOT DO FIRST. The update clause is the way out
+ * of the state; the first clause is the state, and a user who cannot update this
+ * minute has at least been told why their `@` did nothing. Both clauses are needed
+ * and neither is decoration.
+ *
+ * IT NAMES NO LOCATION FOR THE UPDATE, and that was weighed rather than missed. The
+ * control exists (Settings, under Application updates; the run panel's own failure
+ * sentence names it in full), and the sibling sentence in this band names a second,
+ * always-available route — "Start a new chat to use a different folder, or update
+ * the backend." A mention has no such route: an unexpanded `@path` typed as prose
+ * does nothing at all, so there is no equivalent of "start a new chat" to offer, and
+ * the remaining clause is the same imperative this app uses for a below-version
+ * backend everywhere else (`BACKEND_ERROR_REMEDY.outdated`, "Update the server and
+ * try again."). Adding a path would make the notice three clauses in a one-row slot
+ * to say something the app already says on the surface that owns updating.
+ *
+ * TWO SENTENCES, in the picker's own notice register ("This folder is empty.") -
+ * the one-row notice is where this composer already says why a gesture has nothing
+ * behind it, and the state plus its remedy need one sentence each. It is still ONE line at the app's default column
+ * width — the re-captured frame in `docs/evidence/chat-mention-chips/
+ * harness-cannot-expand/` shows the whole sentence at 1380px — and it is a `block`
+ * in a full-width shell, so a narrower column wraps it inside that shell rather than
+ * widening it or clipping it. Either way it costs the COMPOSER nothing: the notice
+ * stands in the list's own `absolute bottom-full` slot, so it grows upward over the
+ * transcript exactly as the list it stands in for does, and no row of the composer
+ * moves.
  */
 export const AT_UNAVAILABLE_REASON =
-	"This backend cannot carry file references.";
+	"This backend cannot carry file references. Update the backend and try again.";
 
 /**
  * The footer's left line, read off the ACTIVE ROW.

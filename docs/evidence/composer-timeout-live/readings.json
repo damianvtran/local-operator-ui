@@ -1,0 +1,53 @@
+{
+ "tree": "after",
+ "message": "Please re-run the failing case with the trace enabled and paste the last twenty lines here.",
+ "arms": [
+  {
+   "name": "timeout-admitted",
+   "refusals": 0,
+   "holdMs": 21000,
+   "expectRefusal": true,
+   "why": "the transport deadline over a live, slow owner: the message is kept and one sentence offers the retry the receipt de-duplicates",
+   "first": {
+    "regionPresent": true,
+    "alertProse": "Couldn't confirm your message was sent. Sending it again is safe.",
+    "visibleProse": "Couldn't confirm your message was sent. Sending it again is safe.",
+    "controlLabels": [
+     "Retry",
+     "Clear"
+    ],
+    "boxValue": "Please re-run the failing case with the trace enabled and paste the last twenty lines here.",
+    "textareas": [
+     "Message"
+    ],
+    "transcriptRows": 0,
+    "transcriptUserRows": 0,
+    "theme": "localOperatorDark",
+    "bodyText": "Local Operator\nChat\nMy agent \nAgent hub\nSchedule \nBrow er\nSetting \nSearch\n⌘\n+\nK\nAccount unavailable\nChat \n\nAgent \n\nNo agent  yet\n\nCreate agent\nTeam \nCreate team\nAll chat \nNew chat\n⌘\n+\nN\nActive chat \n\nNothing running right now.\n\nPreviou  chat \n\nNo chat  yet. Choo e an agent, team or New chat.\n\nNew chat\n~\nChat\nRaw\ncommit =24 rowRender =2 row =1 flu he =0 flu hP50=0.00m  flu hMax=0.00m   ettledUpdate =0  eedDelta Withheld=0\n\nLo t the connection to thi  conver ation — reconnect to keep reading.\n\nRec"
+   },
+   "second": {
+    "regionPresent": false,
+    "alertProse": null,
+    "visibleProse": null,
+    "controlLabels": [],
+    "boxValue": "",
+    "textareas": [
+     "Message"
+    ],
+    "transcriptRows": 1,
+    "transcriptUserRows": 1,
+    "theme": "localOperatorDark",
+    "bodyText": "Local Operator\nChat\nMy agent \nAgent hub\nSchedule \nBrow er\nSetting \nSearch\n⌘\n+\nK\nAccount unavailable\nChat \n\nAgent \n\nNo agent  yet\n\nCreate agent\nTeam \nCreate team\nAll chat \nNew chat\n⌘\n+\nN\nActive chat \n\nNothing running right now.\n\nPreviou  chat \n\nNo chat  yet. Choo e an agent, team or New chat.\n\nUntitled chat\n \nChat\nRaw\ncommit =24 rowRender =2 row =1 flu he =0 flu hP50=0.00m  flu hMax=0.00m   ettledUpdate =0  eedDelta Withheld=0\nStart of conver ation\n\nLo t the connection to thi  conver ation — reco"
+   },
+   "requestIds": [
+    "797ef5a4-0fd0-40af-abe2-ac0aeee12c0e",
+    "797ef5a4-0fd0-40af-abe2-ac0aeee12c0e",
+    "797ef5a4-0fd0-40af-abe2-ac0aeee12c0e"
+   ],
+   "controls": [
+    "Retry",
+    "Clear"
+   ]
+  }
+ ]
+}
