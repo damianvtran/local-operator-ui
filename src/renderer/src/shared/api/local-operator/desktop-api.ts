@@ -528,6 +528,16 @@ export function subscribeDesktopStream(
 		 * Electron-only - the same shape `status` already has.
 		 */
 		code?: string;
+		/*
+		 * The backend's own sentence for a refusal, when its body carried one.
+		 *
+		 * NOT `detail`: `detail` is the relay's own vocabulary, which the panel
+		 * maps to the app's sentence for a transport failure, and a server's raw
+		 * text in that field would replace product copy with machine words. This
+		 * is read by the one arm whose refusal is about the reader's own work - a
+		 * remote session's 409 - and by nothing else.
+		 */
+		message?: string;
 	}) => void,
 ): () => void {
 	const native = window.api?.desktop?.stream;

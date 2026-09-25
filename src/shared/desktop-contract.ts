@@ -2842,6 +2842,16 @@ export type DesktopStreamEvent = {
 	 * not "gone" but "on another device, and here are the two ways in".
 	 */
 	code?: string;
+	/**
+	 * The backend's own sentence for the refusal, when its body carried one.
+	 *
+	 * Kept apart from the relay's `detail` vocabulary for the reason the relay
+	 * states: `detail` is what the app's transport notices are built from, and a
+	 * server's raw text there would replace a product sentence with machine words.
+	 * Only the remote-session arm reads this, and only when it has a `code` it
+	 * renders differently.
+	 */
+	message?: string;
 };
 
 /**

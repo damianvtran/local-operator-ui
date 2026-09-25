@@ -188,6 +188,18 @@ export type RelayEvent =
 			 * names the remedy.
 			 */
 			code?: string;
+			/**
+			 * The backend's own sentence for that refusal, when its body carried
+			 * one, and `undefined` otherwise.
+			 *
+			 * SEPARATE FROM `detail` ON PURPOSE: `detail` is the relay's fixed
+			 * vocabulary that the app maps to its own copy, and overwriting it with
+			 * a server's text would let a bare "Unauthorized" stand where a product
+			 * sentence belongs. This field exists for the one arm whose answer is
+			 * about the reader's own work rather than the transport - a remote
+			 * session's 409 - and nothing else should read it.
+			 */
+			message?: string;
 	  }
 	| { streamId: string; kind: "end" };
 
@@ -332,14 +344,28 @@ export class DesktopStreamRelay {
 				emit({
 					streamId,
 					kind: "error",
-					detail:
-						refusal.message ?? DESKTOP_STREAM_DETAIL.refused(response.status),
+					/*
+					 * THE MACHINE VOCABULARY, NOT THE BACKEND'S SENTENCE, even when a
+					 * sentence was readable. `detail` is the field the transport ladder
+					 * keys on and `streamFailureNotice` maps to the app's own words for
+					 * a transport failure, so a status like 401 must keep saying
+					 * "refused (401)" rather than passing FastAPI's bare "Unauthorized"
+					 * through as if it were product copy. `session-stream-token.test.mjs`
+					 * pins exactly that.
+					 *
+					 * The backend's sentence is not thrown away - it is what a remote
+					 * session's reader needs, since that answer is about their work and
+					 * not about this transport - so it travels beside the vocabulary in
+					 * `message`, where only the arm that renders it reads it.
+					 */
+					detail: DESKTOP_STREAM_DETAIL.refused(response.status),
 					// Carried so the renderer can tell "this conversation is gone"
 					// from "this transport is down" from "this conversation is on
 					// another device". Each is a different answer; only one of them
 					// is about this machine's copy of the session.
 					status: response.status,
 					...(refusal.code ? { code: refusal.code } : {}),
+					...(refusal.message ? { message: refusal.message } : {}),
 				});
 				return;
 			}

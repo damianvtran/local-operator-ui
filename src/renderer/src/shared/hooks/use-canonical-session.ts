@@ -1730,8 +1730,11 @@ export function useCanonicalSessionStream(
 								subscriptionId: null,
 								status: "unavailable",
 								missing: false,
+								// `message`, not `detail`: the relay's `detail` is its own
+								// fixed vocabulary and this arm needs the backend's
+								// sentence, which names the device and the remedies.
 								remoteBlocked:
-									event.detail ??
+									event.message ??
 									"This conversation lives on another device. Move it home, or drive it from the terminal.",
 								failure: null,
 							}));
