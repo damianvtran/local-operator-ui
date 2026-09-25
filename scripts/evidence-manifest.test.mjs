@@ -780,22 +780,52 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  * than being read as history - the distinction the paragraph above draws.
  */
 const STAMP_BINDING_NOTES = [
-	"shellPathRestampNote",
-	"settingsGateRestampNote",
-	"candidateMacArchRestampNote",
-	"notarizeGateRestampNote",
 	/*
-	 * `usageAutoCheckRestampNote` left this list when the remediation below
-	 * re-derived both stamps: its pair is now history, written as bare SHAs in the
-	 * note itself, because leaving it here would have held a fold's values to this
-	 * file as if they were its own — the defect the list exists for.
+	 * EIGHT NOTES LEFT THIS LIST when `fix(backend): never lose the app to an
+	 * address it does not own` re-derived both stamps: `shellPathRestampNote`,
+	 * `settingsGateRestampNote`, `candidateMacArchRestampNote`,
+	 * `notarizeGateRestampNote`, `usageInFlightConvergenceNote`,
+	 * `macNativeComponentsRestampNote`, `telemetrySwitchRestampNote` and
+	 * `readReceiptRestampNote` all quoted the pair that change supersedes, and a
+	 * pair that is history must not be held to this file as if it were its own -
+	 * the defect this list exists for. Their quoted pairs are written as bare
+	 * SHAs in the notes themselves, the same rewrite
+	 * `usageAutoCheckRestampNote` and `usageInFlightRemediationNote` got when
+	 * earlier rounds re-derived the stamps under them.
 	 */
 	/*
-	 * `usageInFlightRemediationNote` left this list when the convergence round
-	 * below re-derived both stamps on top of it: its pair is now history, written
-	 * as bare SHAs in the note itself, because leaving it here would have held a
-	 * superseded pair to this file as if it were its own. `usageInFlightConvergenceNote`
-	 * carries the binding the round it records re-derived.
+	 * NINE NOTES LEFT THIS LIST when this branch folded onto the `origin/main` that
+	 * moved under it and re-derived both stamps: `shellPathRestampNote`,
+	 * `settingsGateRestampNote`, `candidateMacArchRestampNote`,
+	 * `notarizeGateRestampNote`, `usageInFlightConvergenceNote`,
+	 * `macNativeComponentsRestampNote`, `telemetrySwitchRestampNote`,
+	 * `readReceiptRestampNote` and - arriving in the same fold, written by the
+	 * picker's catalogue-focus change - `modelCatalogueFocusRestampNote`. Every one
+	 * of them quoted the pair the fold supersedes, and a pair that is history must
+	 * not be held to this file as if it were its own: that is the defect this list
+	 * exists for. Each note's pair is written as bare SHAs in the note itself, the
+	 * same rewrite `usageAutoCheckRestampNote` and `usageInFlightRemediationNote`
+	 * got when earlier rounds re-derived the stamps under them.
+	 */
+	/*
+	 * ALL TEN ENTRIES BELOW CARRY THIS FILE'S BINDING AT THE FOLD, and the
+	 * paragraphs above are the history of how the list grew. A fold that re-derives
+	 * both stamps re-stamps every note that quotes the pair as a pointer to this
+	 * file's own values - that is what "re-stamp" means, and the ninth entry's own
+	 * wording says as much ("states this file's own pair ... held to that pair
+	 * rather than read as history").
+	 *
+	 * THE STATE THIS FOLD FOUND: at the head it was cut from, nine of the ten names
+	 * below quoted be8bbbd9 and 2b89b922 - the pair the seamless-chrome pass
+	 * superseded when it re-derived both stamps and wrote the tenth entry - so this
+	 * list was failing its own test on the pre-fold head. Substituting the
+	 * superseded pair in the notes is the fix, not widening the list: the test's
+	 * message for that state is the one it already prints, and a name removed from
+	 * the list to silence it would be the defect the list exists to catch.
+	 *
+	 * `occupiedAddressRestampNote` arrives with the fold: main wrote it for the
+	 * change that re-derived the pair on main's side, and the same re-stamp applies
+	 * to it here, so it is held to this file's pair like the rest.
 	 */
 	"usageInFlightConvergenceNote",
 	"macNativeComponentsRestampNote",
@@ -819,6 +849,7 @@ const STAMP_BINDING_NOTES = [
 	 * case a re-stamp note exists to record.
 	 */
 	"windowChromeRestampNote",
+	"occupiedAddressRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {

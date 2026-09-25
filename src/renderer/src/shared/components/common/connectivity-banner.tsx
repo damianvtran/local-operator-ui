@@ -65,6 +65,17 @@ export const ConnectivityBanner = ({
 	// State to track if the internet connectivity banner has been dismissed
 	const [internetBannerDismissed, setInternetBannerDismissed] = useState(false);
 	/*
+	 * Whether main's address-substitution notice has been dismissed.
+	 *
+	 * Scoped to the NOTICE rather than to the window: the flag only suppresses the
+	 * dismissal-carrying notice it was set on, and is re-armed the moment that notice
+	 * leaves the screen (see the effect below). A dismissal that a re-render undid
+	 * would be a control that does not work; a dismissal that outlived its notice was a
+	 * second return nobody ever saw, which is the same invisibility this state exists to
+	 * remove one state over (agent round 2, R2-3).
+	 */
+	const [dismissedAddressNotice, setAddressNoticeDismissed] = useState(false);
+	/*
 	 * The run of negative internet readings, and whether it has held long enough
 	 * to be reported.
 	 *
@@ -218,6 +229,19 @@ export const ConnectivityBanner = ({
 	};
 
 	/*
+	 * Handle the dismissal of main's own address-substitution notice.
+	 *
+	 * A SECOND dismissal state rather than one shared flag, because the two bands say
+	 * opposite kinds of thing: the internet one reports a condition the operator still
+	 * has, and this one reports that the app has RETURNED to the address it is
+	 * configured for - it has said everything it exists to say. Sharing the flag would
+	 * let a dismissed internet band silence the return notice, or the reverse.
+	 */
+	const handleAddressNoticeDismiss = () => {
+		setAddressNoticeDismissed(true);
+	};
+
+	/*
 	 * What the banner may say, decided rather than stored.
 	 *
 	 * The INTERNET claim waits for the confirmation above; the SERVER claim is
@@ -225,9 +249,40 @@ export const ConnectivityBanner = ({
 	 * reports the daemon gone - a server that stopped is a fact, not a sample.
 	 */
 	const isInternetIssue = connectivityIssue === "internet_offline";
+	/*
+	 * `serverIssue` is read BEFORE the render decision, not after it (design round 1,
+	 * D1): one of its arms - the address substitution - describes a REACHABLE server,
+	 * so `hasConnectivityIssue` alone can no longer decide whether the band paints.
+	 *
+	 * THE ADDITION IS SCOPED TO THE SUBSTITUTION, deliberately: `serverBannerCopy(null)`
+	 * is non-null for a host with no desktop bridge, and painting that sentence here
+	 * would overturn the measured decision that a browser/Storybook host renders NOTHING
+	 * for a state it cannot judge (`showBanner`'s old rule, and the `no-bridge` entry in
+	 * docs/evidence/common-connectivity-banner/README.md). An address substitution can
+	 * only come from main's spawn gate, so scoping to it adds the state that was
+	 * invisible without changing what any other host paints.
+	 */
+	const serverIssue = isInternetIssue ? null : serverBannerCopy(serverSnapshot);
+	const addressNotice = serverSnapshot?.addressSubstitution ?? null;
+	/*
+	 * RE-ARMED WHENEVER THE DISMISSIBLE NOTICE IS NOT THE ONE ON SCREEN (agent round
+	 * 2, R2-3). Without this, dismissing "back on 1111" silenced every later return in
+	 * the same window: the app could substitute again (that band carries no `dismiss`,
+	 * so it painted) and the next return was swallowed by a flag set on a notice that
+	 * had already been replaced. This is not the case the flag exists to prevent - the
+	 * notice it dismissed is gone, not re-rendered.
+	 */
+	useEffect(() => {
+		if (serverIssue?.dismiss !== true) setAddressNoticeDismissed(false);
+	}, [serverIssue?.dismiss]);
+	const addressNoticeDismissed =
+		serverIssue?.dismiss === true && dismissedAddressNotice;
 	const showBanner = isInternetIssue
 		? internetOfflineReported && !internetBannerDismissed
-		: hasConnectivityIssue;
+		: hasConnectivityIssue ||
+			(addressNotice !== null &&
+				serverIssue !== null &&
+				!addressNoticeDismissed);
 
 	// If no connectivity issues or still loading, don't show anything
 	if (!showBanner) {
@@ -245,7 +300,6 @@ export const ConnectivityBanner = ({
 	 * rather than an alarm: "not connected, reconnecting" is not the same claim as
 	 * "the server stopped", and the variant is the banner's own way of saying so.
 	 */
-	const serverIssue = isInternetIssue ? null : serverBannerCopy(serverSnapshot);
 	const isTransientServerIssue = serverSnapshot?.reconnecting === true;
 	/*
 	 * A state the app is expected to recover from on its own is a warning, not an
@@ -260,12 +314,23 @@ export const ConnectivityBanner = ({
 	 * over a healthy daemon. `danger` stays for the paths that ARE failures - the
 	 * server stopped, or a connection that is not coming back (design round 1, D6).
 	 */
+	/*
+	 * The variant says which KIND of thing the sentence reports, and the address
+	 * substitution is the arm that made this more than a switch on the state (design
+	 * round 1, D1): the fallback is not a failure - the app is serving, on the other
+	 * address the renderer trusts - so it is a warning, and the RETURN to the address
+	 * the app was configured for is the app's own good news, which is the one arm here
+	 * that earns `success` rather than a wash that means trouble.
+	 */
 	const bannerVariant: AlertProps["variant"] =
-		isInternetIssue ||
-		isTransientServerIssue ||
-		serverSnapshot?.state === "wedged"
-			? "warning"
-			: "danger";
+		addressNotice?.kind === "returned" && serverIssue !== null
+			? "success"
+			: isInternetIssue ||
+					isTransientServerIssue ||
+					serverSnapshot?.state === "wedged" ||
+					addressNotice?.kind === "substituted"
+				? "warning"
+				: "danger";
 
 	return (
 		/*
@@ -339,6 +404,23 @@ export const ConnectivityBanner = ({
 								size="sm"
 								aria-label="dismiss"
 								onClick={handleDismiss}
+							>
+								Dismiss
+							</Button>
+						)}
+						{/*
+						 * The only server-side notice that may be dismissed, and `serverBannerCopy`
+						 * decides that: it marks the return to the configured address as a notice
+						 * rather than a condition. Everything else this band renders describes a
+						 * state the operator still has, and hiding it would hide the diagnosis
+						 * rather than the news.
+						 */}
+						{serverIssue?.dismiss === true && (
+							<Button
+								variant="ghost"
+								size="sm"
+								aria-label="dismiss"
+								onClick={handleAddressNoticeDismiss}
 							>
 								Dismiss
 							</Button>
