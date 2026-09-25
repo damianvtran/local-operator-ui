@@ -78,13 +78,17 @@ function transcriptOf(entries: Entry[]): TranscriptState {
 }
 
 /**
- * The backend's sentence verbatim, as `PeerSessionUnreachable` composes it: the
- * device, the reason in the backend's own words, and the diagnosis command. The
- * copy above it is judged against THIS string, so it is written out rather than
- * paraphrased.
+ * The backend's sentence VERBATIM, copied from the producer rather than from a
+ * quote of it: `unreachable_peer_sentence` in local-operator's
+ * `session/remote_open.py` composes `f"{session_id} is on {device}, which is
+ * unreachable ({reason in words}). /network doctor {device} diagnoses the link."`
+ * with NO backticks and no monospace - the designer's report quotes it with
+ * markdown emphasis around the substitutions, and a frame built from that quote
+ * showed literal backticks on screen, i.e. a state the product cannot produce.
+ * The copy above this sentence is judged against THIS text.
  */
 const SENTENCE =
-	"`6f708192a3b4` is on `damians-mac-studio-in-the-back-office-rack-2`, which is unreachable (no address of it answered). /network doctor `damians-mac-studio-in-the-back-office-rack-2` diagnoses the link.";
+	"6f708192a3b4 is on damians-mac-studio-in-the-back-office-rack-2, which is unreachable (no address of it answered). /network doctor damians-mac-studio-in-the-back-office-rack-2 diagnoses the link.";
 
 const Frame = ({ remoteBlocked }: { remoteBlocked: string }) => {
 	const containerRef = useRef<HTMLDivElement>(null);
