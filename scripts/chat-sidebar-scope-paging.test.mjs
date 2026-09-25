@@ -77,11 +77,27 @@ const bundle = await build({
 					path: "echo",
 					namespace: "echo-fixture",
 				}));
+				/*
+				 * THE COMPOSER'S OWN STORE, RESOLVED TO THE REAL FILE. The shipped
+				 * `canonical-sessions-store` imports it for the one return path a failed send
+				 * takes, so a harness that bundles the store must resolve this the way
+				 * `scripts/canonical-chat.test.mjs` does - to the same absolute file the
+				 * bundle's export names, because a stubbed copy would be a second store and
+				 * would prove nothing. Without it this harness cannot build at all
+				 * (`Could not resolve`), which is how this suite went red on a branch whose
+				 * own src is fine.
+				 */
+				builder.onResolve(
+					{ filter: /^@shared\/store\/conversation-input-store$/ },
+					() => ({
+						path: `${process.cwd()}/src/renderer/src/shared/store/conversation-input-store.ts`,
+					}),
+				);
 				builder.onLoad(
 					{ filter: ANY_MODULE_RE, namespace: "echo-fixture" },
 					() => ({
 						contents:
-							"export const echoPendingUser = () => {};\nexport const retractPendingUser = () => {};\nexport const discardPendingEchoes = () => {};",
+							"export const echoPendingUser = () => {};\nexport const retractPendingUser = () => {};\nexport const retractLocalEcho = () => 'retracted';\nexport const discardPendingEchoes = () => {};",
 						loader: "js",
 					}),
 				);

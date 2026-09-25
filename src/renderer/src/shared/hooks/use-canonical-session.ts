@@ -1220,8 +1220,11 @@ export function useCanonicalSessionStream(
 	 * then committing the VALUE makes every read of the view synchronous and every
 	 * mutation exactly-once, without making React render any differently.
 	 *
-	 * Every mutation in this hook goes through here. A bare `commitView(` beside it
-	 * would be a write the ref cannot see, i.e. the defect back again.
+	 * Every mutation in this hook goes through here, and that is checkable rather than
+	 * aspirational: `setView` appears in this file exactly ONCE, on the line below, and
+	 * `scripts/canonical-chat.test.mjs` pins the count. A bare `setView(` beside it is a
+	 * write the ref cannot see, and the next commit from here spreads the stale ref over
+	 * it - which is not theoretical: it is what left released labels held in round 8.
 	 */
 	const viewRef = useRef(view);
 	const commitView = useCallback(
@@ -1431,7 +1434,18 @@ export function useCanonicalSessionStream(
 				labelHoldTimer = 0;
 			}
 			if (ids.length === 0) return;
-			setView((state) => {
+			/*
+			 * THROUGH THE ONE WRITER (round 8's CI failure, found by reverting this hook to
+			 * main's: `scripts/seed-label-gap.test.mjs` then passes 23/23). A bare `setView`
+			 * here reaches React's state and not `viewRef`, so the release is invisible to
+			 * the ref - and the next `commitView` write computes from that stale ref, spreads
+			 * it, and puts the released ids BACK into `labelPending`. The walk then leaves a
+			 * hold behind for ids it had released, which is the assertion that failed
+			 * ("and nothing stayed held", 2 !== 0) on every head of this branch that carries
+			 * main's label machinery, and never on main, where this same write is a plain
+			 * functional update and nothing computes from a ref.
+			 */
+			commitView((state) => {
 				if (!ids.some((id) => state.labelPending.has(id))) return state;
 				const left = new Set(state.labelPending);
 				for (const id of ids) left.delete(id);
