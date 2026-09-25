@@ -1330,12 +1330,12 @@ test("a replayed frame without details does not erase a diff already shown", () 
 	);
 	const row = state.records.find((r) => r.kind === "tool");
 	assert.equal(row.diff, before.diff, "the body survives by reference");
-	// The COUNTERS do not, and that is this frame's pre-existing behaviour rather
-	// than something the body introduced: they are read straight from `details`
-	// (`diffCounts`), so a frame carrying no `details` reports zero — which the
-	// durable row that does carry them restores on the next history read. Pinned
-	// here so the asymmetry is visible instead of assumed away.
-	assert.deepEqual([row.added, row.removed], [0, 0]);
+	// And so do the COUNTERS. This used to pin `[0, 0]` as known behaviour — the
+	// counts were read straight out of `details`, so a stripped frame zeroed them
+	// while the body beside them survived — and that asymmetry is exactly the
+	// reported `edit` row with a diff and no `+N -M`. One guard now covers both
+	// (`preferDiffCounts`).
+	assert.deepEqual([row.added, row.removed], [2, 1]);
 });
 
 test("a durable row that dropped its diff leaves the live one in place", () => {
@@ -1623,14 +1623,19 @@ test("the seed names the calls nothing in hand can label, and the page is sized 
 	assert.deepEqual(seedCallsMissingLabels([], new Set()), []);
 	assert.deepEqual(seedCallsMissingLabels(undefined, new Set()), []);
 
-	// The ordinary tail when there is no gap, and two entries per named call
-	// above it — the seed keeps at most 100 settled calls and the durable
-	// transcript spends one assistant row plus one result on each.
+	// The ordinary tail when there is no gap, and 3.25 entries per named call
+	// above it, rounded UP to the integer the route takes. The ratio is measured
+	// rather than derived (see `RECONCILE_ENTRIES_PER_CALL`): a real round writes
+	// an assistant row, a result AND a `session_spend.v1` row, plus the odd
+	// state row, so 2 per call reached the oldest missing call on 15.7% of
+	// simulated joins and 3.25 reaches it on 96.4%.
 	assert.equal(reconcileLimit(0), 100);
-	assert.equal(reconcileLimit(1), 102);
-	assert.equal(reconcileLimit(50), 200);
+	assert.equal(reconcileLimit(1), 104);
+	assert.equal(reconcileLimit(50), 263);
+	assert.equal(reconcileLimit(68), 321);
 	// Clamped to the backend's own ceiling, where asking for more is a 422.
-	assert.equal(reconcileLimit(100), 300);
+	assert.equal(reconcileLimit(100), 425);
+	assert.equal(reconcileLimit(124), 500);
 	assert.equal(reconcileLimit(1_000), 500);
 });
 

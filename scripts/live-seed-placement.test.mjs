@@ -556,7 +556,8 @@ test("the fold no longer depends on the flag, and the read-back is sized for eve
 		);
 		assert.equal(
 			reconcileLimit(missing.length),
-			Math.min(500, 100 + 2 * missing.length),
+			// 3.25 entries per call, rounded up (`RECONCILE_ENTRIES_PER_CALL`).
+			Math.min(500, 100 + Math.ceil(3.25 * missing.length)),
 			`${moment.name}: and the read is sized for exactly those calls`,
 		);
 	}
