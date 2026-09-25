@@ -2502,12 +2502,37 @@ test("the payload's last-seen time is consumed once, in seconds, and refused whe
 	assert.equal(
 		m.lastSeenMillis((Date.now() + 86_400_000) / 1000),
 		null,
-		"a stamp from the future (clock skew between hosts)",
+		"a stamp a day in the future",
+	);
+	/*
+	 * AND THE BOUND IS AT THE SCALE OF THE CLASS IT REFUSES (R6-3): an hour of
+	 * tolerance, because the value this exists for is four orders of magnitude
+	 * beyond any clock disagreement, and a minute also discarded a genuinely fresh
+	 * stamp from a host whose clock runs fast. Inside the tolerance the stamp is
+	 * read as NOW rather than refused - `relativeTime` clamps a negative delta to
+	 * "just now" anyway, so a reading from a slightly fast host IS a reading just
+	 * taken, and saying so costs the row nothing.
+	 */
+	const now = 1_790_247_600_000;
+	assert.equal(
+		m.lastSeenMillis((now + 60_000) / 1000, now),
+		now,
+		"a stamp a minute ahead is read as now, not discarded",
 	);
 	assert.equal(
-		m.lastSeenMillis((Date.now() - 60_000) / 1000, Date.now()),
-		Date.now() - 60_000,
-		"a minute in the past is inside the tolerance",
+		m.lastSeenMillis((now + 30 * 60_000) / 1000, now),
+		now,
+		"and so is half an hour ahead",
+	);
+	assert.equal(
+		m.lastSeenMillis((now + 2 * 60 * 60_000) / 1000, now),
+		null,
+		"two hours ahead is not a reading this page will render",
+	);
+	assert.equal(
+		m.lastSeenMillis((now - 60_000) / 1000, now),
+		now - 60_000,
+		"a minute in the past is returned as it is",
 	);
 
 	/*
@@ -2516,7 +2541,6 @@ test("the payload's last-seen time is consumed once, in seconds, and refused whe
 	 * backend took the count, so the row can say WHEN rather than only that it
 	 * did.
 	 */
-	const now = 1_790_247_600_000;
 	const twoHours = 2 * 60 * 60 * 1000;
 	const stored = row("filesystem", {
 		status: "not_started",
@@ -2919,7 +2943,20 @@ test("the dialogs and the row list keep the geometry and the rules the walk meas
 	assert.ok(armStart > 0, "the hook computes the hold's deadline (R5-1a)");
 	const controlArm = hook.slice(
 		armStart,
-		hook.indexOf("setMemoryEpoch((epoch) => epoch + 1);", armStart),
+		/*
+		 * END ANCHOR: the arm's own closing write, not the state bump that follows
+		 * it (R6-2). `setMemoryEpoch((epoch) => epoch + 1);` occurs twice in the
+		 * hook and says nothing about this arm, so the slice used to end at the
+		 * first one after the start: inserting one unrelated `setMemoryEpoch(...)`
+		 * before the write, with the wiring untouched, failed this pin (61 -> 60).
+		 * It failed in the safe direction, but an anchor that a change elsewhere
+		 * can move is the shape that has already had to be re-anchored twice on
+		 * this branch. This line occurs once and IS the boundary being asserted.
+		 */
+		hook.indexOf(
+			"memoriesRef.current = { ...memoriesRef.current, [request.name]: next };",
+			armStart,
+		),
 	);
 	assert.match(
 		controlArm,
@@ -2940,9 +2977,15 @@ test("the dialogs and the row list keep the geometry and the rules the walk meas
 		"src/renderer/src/features/settings/components/integrations/integration-model.ts",
 		"utf8",
 	);
+	/*
+	 * R6-4: written to tolerate a reflow rather than to match one exact line - the
+	 * behavioural assertion in the Q1 test is what carries this rule, and a
+	 * prettier reformat of a correct file must not fail the suite for its own
+	 * reasons.
+	 */
 	assert.match(
 		modelSource,
-		/const status = effectiveStatus\(row, memoryFor\(memories, row\.name\)\);/,
+		/const\s+status\s*=\s*effectiveStatus\(\s*row,\s*memoryFor\(\s*memories,\s*row\.name,?\s*\)\s*,?\s*\)/,
 		"the menu derives its status from the same substitution the words and the controls use (R5-1b)",
 	);
 	/*

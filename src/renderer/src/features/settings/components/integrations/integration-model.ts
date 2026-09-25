@@ -262,17 +262,24 @@ const MS_FLOOR = 1_000_000_000_000; // 2001-09-09 in milliseconds
 const SECONDS_FLOOR = 1_000_000_000; // 2001-09-09 in seconds
 
 /**
- * How far ahead of this machine a stamp may be before it is refused.
+ * How far ahead of this machine a stamp may be before it is not a reading this
+ * page will render at all.
  *
- * A minute, for the ordinary skew between two hosts' clocks. The case this
- * exists for is not skew though: a value in the accepted band that is really
- * something else - 999 999 999 999 reads as year 33658 - and `relativeTime`
- * clamps a negative delta to "just now", so an implausible or future stamp
- * rendered `Worked just now` in the success tone, the same words a genuinely
- * fresh count gets (R5-4). "Refused rather than guessed at in either direction"
- * is only true with this bound.
+ * THE BOUND IS SET AT THE SCALE OF THE CLASS IT EXISTS FOR, not at the scale of
+ * clock skew (R6-3). The value it was written for is something in the accepted
+ * band that is really something else - 999 999 999 999 read as seconds is year
+ * 33658 - which is four orders of magnitude beyond any disagreement two hosts'
+ * clocks can have. A one-minute bound also refused, silently, a genuinely fresh
+ * stamp from a backend whose clock runs fast: a remote or VM host more than a
+ * minute ahead lost its age and fell back to "Worked earlier" - true but vaguer
+ * - while gaining nothing against the class it was aimed at.
+ *
+ * So the tolerance is an hour, and inside it the stamp is read AS NOW rather
+ * than refused. `relativeTime` already clamps a negative delta to "just now", so
+ * a reading taken by a slightly fast host IS a reading just taken; beyond an
+ * hour, nothing that is really a tool-cache mtime lives there.
  */
-const CLOCK_SKEW_MS = 60_000;
+const FUTURE_TOLERANCE_MS = 60 * 60 * 1000;
 
 export const lastSeenMillis = (
 	value: unknown,
@@ -281,8 +288,8 @@ export const lastSeenMillis = (
 	if (typeof value !== "number" || !Number.isFinite(value)) return null;
 	const ms =
 		value >= MS_FLOOR ? value : value < SECONDS_FLOOR ? null : value * 1000;
-	if (ms === null || ms > now + CLOCK_SKEW_MS) return null;
-	return ms;
+	if (ms === null || ms > now + FUTURE_TOLERANCE_MS) return null;
+	return Math.min(ms, now);
 };
 
 /** The row's memory, or the empty one, so callers never branch on undefined. */
