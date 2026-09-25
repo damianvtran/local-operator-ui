@@ -1237,6 +1237,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										 * is that they cannot drift apart.
 										 */
 										conversationId={conversationId}
+										labelPending={canonical.view.labelPending}
 										onReconnect={canonical.view.retry}
 										onAnswer={canonical.onAnswer}
 										// The composer's own in-flight flag, reused: one

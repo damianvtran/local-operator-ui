@@ -779,38 +779,62 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  * AND quotes both stamps as this file's own values, so it is held to them rather
  * than being read as history - the distinction the paragraph above draws.
  */
+/*
+ * THE FOLD RULE FOR THIS LIST: the union of both sides, taken by KEY.
+ *
+ * MEMBERSHIP IS CURATION, NOT A PREDICATE, and the paragraph above states the
+ * criterion: a note belongs here when THIS FILE'S BINDING is its subject, not when
+ * it records the fold, pass or review it came from. It cannot be re-derived by
+ * testing the text - the re-stamp below rewrites every note's backticked claims to
+ * the shipped pair, so after any fold many more notes quote both stamps at that pair
+ * than this list curates, and the extras are history by subject. (Run the predicate
+ * this test applies over `docs/evidence/manifest.json` rather than trusting a count
+ * written here: it matches dozens, and the number moves with every fold.)
+ * `headNote`, `installerNetworkRestampNote`, the console notes and
+ * `reloadReanchorRestampNote` are the ones the paragraph above names as not here for
+ * exactly that reason. Widening the list to everything the predicate matches would
+ * add notes that CANNOT fail, which is the wrong kind of guard and not what this
+ * list is for.
+ *
+ * WHAT A FOLD MUST DO, and what makes this rule falsifiable against the list: union
+ * the two sides' keys, KEEP EVERY KEY THAT WAS THERE BEFORE, and state the result.
+ * AN OMITTED KEY IS A CHECK SILENTLY NOT RUN - this test iterates the list, so a key
+ * dropped by a hand-resolved merge stops being verified while the suite still goes
+ * green (round 8, M1: four live keys, every one of them still quoting both stamps,
+ * were lost by a resolution that compared added LINES rather than keys). A fold whose
+ * base moved this file therefore diffs the KEY SETS of both sides and of the merged
+ * result, and says in the commit what the union is.
+ */
 const STAMP_BINDING_NOTES = [
 	/*
-	 * EVERY NOTE THAT USED TO BE LISTED HERE LEFT IT IN THE SAME PASS, and that is the
-	 * guard working rather than being removed. `shellPathRestampNote`,
-	 * `settingsGateRestampNote`, `candidateMacArchRestampNote`, `notarizeGateRestampNote`,
-	 * `usageInFlightConvergenceNote`, `macNativeComponentsRestampNote`,
-	 * `telemetrySwitchRestampNote` and `readReceiptRestampNote` each quoted the pair the
-	 * mesh-desktop pass superseded - srcTree 80c7170077ab5ddbbd80f4d62dd9c8bbf6eb079e /
-	 * scriptsTree d8d1fecf1ac90acbdbe4d398d2e2dc30b7a05f8a, which is what `origin/main`
-	 * shipped when this branch folded onto it - and under this list's own convention a
-	 * backticked token here is ALWAYS the value the file ships. Keeping them would have
-	 * held a superseded pair to this file as if it were its own: the defect the list
-	 * exists to catch, in the direction it does not usually fail. Their hashes are written
-	 * as bare SHAs in the notes themselves, which is the convention
-	 * `usageAutoCheckRestampNote` and `usageInFlightRemediationNote` left by first.
-	 */
-	/*
-	 * The tenth, and the one that re-derived the pair: it states this file's own trees
-	 * for the mesh-desktop pass, so it is held to them rather than read as history -
-	 * the distinction `candidateMacArchRestampNote` was listed for.
-	 *
-	 * THIS FOLD DEMOTED MAIN'S FIVE, in the same commit that replaced their pair:
-	 * `usageInFlightConvergenceNote`, `macNativeComponentsRestampNote`,
-	 * `telemetrySwitchRestampNote`, `readReceiptRestampNote` and
-	 * `modelCatalogueFocusRestampNote` each quoted the pair `origin/main` shipped when this
-	 * branch folded onto it, and a backticked token in this list is ALWAYS the value the
-	 * file ships - so keeping them would have held a superseded pair to this file as if it
-	 * were its own. Their values are written as bare SHAs in the notes themselves, which is
-	 * the convention the paragraph above states. `meshDesktopRound2RestampNote` left this
-	 * list the same way one pass earlier.
+	 * THE UNION OF BOTH SIDES, WHICH IS THIS FOLD'S DEPARTURE FROM THE OLDER PASS.
+	 * `meshDesktopRound3RestampNote` is this branch's own - it states the pair the file
+	 * ships with, so it is held to that pair - and every key `origin/main` listed before
+	 * the fold is kept beside it. Any of main's notes whose quoted pair this fold
+	 * supersedes has left the list in the same commit, with its values written as bare
+	 * SHAs in the note itself, which is the convention the comment above states.
 	 */
 	"meshDesktopRound3RestampNote",
+	"occupiedAddressRestampNote",
+	"shellPathRestampNote",
+	"settingsGateRestampNote",
+	"candidateMacArchRestampNote",
+	"notarizeGateRestampNote",
+	"usageInFlightConvergenceNote",
+	"macNativeComponentsRestampNote",
+	"telemetrySwitchRestampNote",
+	"readReceiptRestampNote",
+	/*
+	 * This one exists BECAUSE the list is not optional reading: the change it
+	 * re-stamps for rewrote no frame, so a reader is owed the two values it binds
+	 * and the reason no still was owed.
+	 */
+	"modelCatalogueFocusRestampNote",
+	/*
+	 * This branch's own: it states the pair an earlier fold re-derived, and is held
+	 * to the pair this file ships rather than read as history.
+	 */
+	"round1LabelGapRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {

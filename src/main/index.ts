@@ -2630,16 +2630,42 @@ app
 				}
 
 				if (!backendStarted) {
-					logger.error(
-						"Failed to start backend after installation, quitting app",
-						LogFileType.INSTALLER,
-					);
-					reportBackendFailure(
-						"Failed to start the Local Operator backend service after installation. Please restart the application.",
-						LogFileType.INSTALLER,
-					);
-					app.quit();
-					return;
+					/*
+					 * THE SAME DISPOSITION AS THE EXISTING-INSTALLATION ARM BELOW, and for
+					 * the same reason (review round 1, R1-1). This site used to quit
+					 * unconditionally, and it is REACHABLE in exactly the state the incident
+					 * was measured in: `checkLocalOperatorExists()` false and
+					 * `backendInstaller.isInstalled()` false is a first launch, or an app whose
+					 * managed venv was invalidated, and with both spawn addresses held
+					 * `startOwned` refuses each address (`backend-service.ts`, the record arm
+					 * and `resolveSpawnTarget`), returns false three times, and this arm took
+					 * the window down with the modal - the twelve-minute incident one arm
+					 * down from where it was fixed. The previous round judged this site
+					 * unreachable on the machine it was measured on; the reachability argument
+					 * above is the answer to that, and it is the reason this is fixed rather
+					 * than ticketed.
+					 *
+					 * Falling THROUGH rather than returning is the point, as below: the early
+					 * `return` on the other arms exists to skip window creation, and skipping
+					 * it here would leave the operator with the same nothing, only quieter.
+					 */
+					if (backendService.isStartBlockedByOccupiedAddress()) {
+						logger.error(
+							"Failed to start backend after installation: every address this app may serve on is held by something it does not own. Continuing without quitting; the status surface names the holder and the app keeps probing.",
+							LogFileType.INSTALLER,
+						);
+					} else {
+						logger.error(
+							"Failed to start backend after installation, quitting app",
+							LogFileType.INSTALLER,
+						);
+						reportBackendFailure(
+							"Failed to start the Local Operator backend service after installation. Please restart the application.",
+							LogFileType.INSTALLER,
+						);
+						app.quit();
+						return;
+					}
 				}
 			} else {
 				// Start our backend service (for existing installations).
@@ -2651,16 +2677,41 @@ app
 					reuseDiscovery: true,
 				});
 				if (!backendStarted) {
-					logger.error(
-						"Failed to start backend with existing installation, quitting app",
-						LogFileType.BACKEND,
-					);
-					reportBackendFailure(
-						"Failed to start the Local Operator backend service. Please restart the application.",
-						LogFileType.BACKEND,
-					);
-					app.quit();
-					return;
+					/*
+					 * AN ADDRESS THIS APP DOES NOT OWN IS NOT A REASON TO TAKE THE APP DOWN.
+					 *
+					 * Measured 2026-09-23: the configured address was held by a different
+					 * local-operator install's stray `lop serve`. The app refused it by identity
+					 * (correct) and refused to spawn its own over it (also correct - the token is
+					 * minted before the spawn, so minting over an occupied address overwrites
+					 * that daemon's credential). Then it quit, and the operator had no app for
+					 * twelve minutes while a backend they did not own held their port.
+					 *
+					 * Nothing about that state justifies losing the window. The backend manager
+					 * has already published which holder refused it, the probe loop is armed, and
+					 * a fallback daemon may be running on the other address the renderer trusts
+					 * - so the app opens, says what is on the address, and keeps trying. Falling
+					 * THROUGH rather than returning is the point: the early `return` on the other
+					 * arms exists to skip window creation, and skipping it here would leave the
+					 * operator with the same nothing, only quieter.
+					 */
+					if (backendService.isStartBlockedByOccupiedAddress()) {
+						logger.error(
+							"Failed to start backend with existing installation: every address this app may serve on is held by something it does not own. Continuing without quitting; the status surface names the holder and the app keeps probing.",
+							LogFileType.BACKEND,
+						);
+					} else {
+						logger.error(
+							"Failed to start backend with existing installation, quitting app",
+							LogFileType.BACKEND,
+						);
+						reportBackendFailure(
+							"Failed to start the Local Operator backend service. Please restart the application.",
+							LogFileType.BACKEND,
+						);
+						app.quit();
+						return;
+					}
 				}
 			}
 		}
