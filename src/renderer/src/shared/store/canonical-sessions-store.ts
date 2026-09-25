@@ -6,13 +6,7 @@ import {
 	desktopResult,
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
-import type { DesktopCapabilities } from "@shared/api/local-operator/desktop-api";
-import {
-	desktopFeatureEnabled,
-	desktopKeys,
-} from "@shared/api/local-operator/desktop-hooks";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
-import { queryClient } from "@shared/api/query-client";
 // The echo seam, not the hook itself: these are module-level functions over a
 // registry of mounted transcripts, so the store never touches React state and
 // the dependency stays one-way (the hook does not import this store).
@@ -1759,20 +1753,16 @@ export const LEGACY_CATALOGUE_PAGE = 500;
  * does not it is the legacy read, byte for byte — the compatibility promise, kept here
  * as it is kept in the panel.
  *
- * READ FROM THE QUERY CACHE, NOT THROUGH A HOOK, because this is a zustand action and
- * not a component: `useDesktopCapabilities` writes `desktopKeys.capabilities` into the
- * same cache this reads, and `desktopFeatureEnabled` stays the ONE definition of what
- * "the daemon supports it" means - a second predicate beside it is how the two drift.
- * An unknown capability map answers `false`, which is the fail-closed default and also
- * exactly today's request.
+ * THE FLAG IS PUBLISHED by the surface that already resolves the capability
+ * (`chat-sidebar.tsx` calls `setCataloguePageable`) instead of the store reaching for it,
+ * because this store is the module every desktop suite bundles to assert anything about a
+ * session: importing the renderer's capability hook here would put two more modules in
+ * front of every one of those suites, and the flag keeps the store's dependency list -
+ * and every fixture's stub list - exactly as it was. It is fail-closed by construction:
+ * `false` until a surface says otherwise, which is exactly today's request.
  */
-export function cataloguePageDefault(): number {
-	const capabilities = queryClient.getQueryData<DesktopCapabilities>(
-		desktopKeys.capabilities,
-	);
-	return desktopFeatureEnabled(capabilities, "session_catalogue_page")
-		? CATALOGUE_HEAD_PAGE
-		: LEGACY_CATALOGUE_PAGE;
+export function cataloguePageDefault(pageable: boolean): number {
+	return pageable ? CATALOGUE_HEAD_PAGE : LEGACY_CATALOGUE_PAGE;
 }
 
 /**
@@ -2056,6 +2046,14 @@ export function scopeAnswerRows(args: {
 
 type CanonicalSessionsState = {
 	sessions: CanonicalSessionRow[];
+	/**
+	 * Whether this daemon advertises `session_catalogue_page`, as published by the surface
+	 * that resolves the capability (`setCataloguePageable`). It sizes an unnamed catalogue
+	 * read - see `cataloguePageDefault` - and is `false` until something says otherwise,
+	 * which is the fail-closed direction and also exactly the request this app has always
+	 * made.
+	 */
+	cataloguePageable: boolean;
 	activeSessionId: string | null;
 	activeDraftKey: string | null;
 	drafts: Record<string, ChatDraft>;
@@ -2306,6 +2304,14 @@ type CanonicalSessionsState = {
 	 * The offer's own module owns WHEN it is retired; this is only the write.
 	 */
 	setArchiveUndo: (offer: ArchiveUndoOffer | null) => void;
+	/**
+	 * Publish whether the daemon can page, so an unnamed catalogue read can size itself.
+	 *
+	 * A no-op when the value has not moved: this is called from a render-adjacent effect on
+	 * every capability change, and a store write per render would re-render every subscriber
+	 * for nothing.
+	 */
+	setCataloguePageable: (pageable: boolean) => void;
 	/**
 	 * Clear the refusal once its message's turn in the panel's lane is over.
 	 *
@@ -3261,6 +3267,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 	persist(
 		(set, get) => ({
 			sessions: [],
+			cataloguePageable: false,
 			// Seeded from the launch argument when there is one, so the very first
 			// render is already the requested conversation rather than the persisted
 			// one. `merge` below holds the same line against hydration, which would
@@ -3310,7 +3317,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				 * AN UNNAMED SIZE IS THE HEAD PAGE ON A PAGING DAEMON (Q-1): see
 				 * `cataloguePageDefault`. A caller that needs the whole set says so.
 				 */
-				limit = cataloguePageDefault(),
+				limit = cataloguePageDefault(get().cataloguePageable),
 				withCounts = false,
 			) => {
 				const generation = ++refreshGeneration;
@@ -3883,6 +3890,10 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					);
 					return { scopes, sessions };
 				});
+			},
+			setCataloguePageable: (pageable) => {
+				if (get().cataloguePageable !== pageable)
+					set({ cataloguePageable: pageable });
 			},
 			setArchiveUndo: (offer) => {
 				set({ archiveUndo: offer });

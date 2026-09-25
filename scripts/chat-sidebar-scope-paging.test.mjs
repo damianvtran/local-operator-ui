@@ -10,8 +10,6 @@ const ANY_MODULE_RE = /.*/;
  * whole file rather than only the diff, so a hoist is the fix that keeps it green.
  */
 const DESKTOP_API_IMPORT_RE = /@shared\/api\/local-operator\/desktop-api/;
-const DESKTOP_HOOKS_IMPORT_RE = /@shared\/api\/local-operator\/desktop-hooks/;
-const QUERY_CLIENT_IMPORT_RE = /@shared\/api\/query-client/;
 const ECHO_HOOK_IMPORT_RE = /@shared\/hooks\/use-canonical-session/;
 const ARCHIVED_RE = /archived/;
 const BODY_FOCUS_RE = /document\.body\.focus\(\)/;
@@ -79,39 +77,6 @@ const bundle = await build({
 					path: "echo",
 					namespace: "echo-fixture",
 				}));
-				/*
-				 * THE TWO MODULES THE STORE GAINED FOR Q-1: the capability predicate (re-exported
-				 * from the real file, so the test cannot drift from what the app ships) and the
-				 * query cache the store reads it out of. The cache is a fixture whose answer the
-				 * test sets, which is the only way to ask "what does an unnamed size mean on a
-				 * daemon that advertises paging" without a browser.
-				 */
-				builder.onResolve({ filter: DESKTOP_HOOKS_IMPORT_RE }, () => ({
-					path: "capabilities",
-					namespace: "capability-fixture",
-				}));
-				builder.onLoad(
-					{ filter: ANY_MODULE_RE, namespace: "capability-fixture" },
-					() => ({
-						contents: `export { desktopFeatureEnabled, desktopKeys } from ${JSON.stringify(
-							`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-hooks.ts`,
-						)};`,
-						loader: "js",
-						resolveDir: process.cwd(),
-					}),
-				);
-				builder.onResolve({ filter: QUERY_CLIENT_IMPORT_RE }, () => ({
-					path: "query-client",
-					namespace: "query-fixture",
-				}));
-				builder.onLoad(
-					{ filter: ANY_MODULE_RE, namespace: "query-fixture" },
-					() => ({
-						contents:
-							"export const queryClient = { getQueryData: () => globalThis.__catalogueCapabilities ?? null };",
-						loader: "js",
-					}),
-				);
 				builder.onLoad(
 					{ filter: ANY_MODULE_RE, namespace: "echo-fixture" },
 					() => ({
@@ -1755,10 +1720,7 @@ test("an unnamed size means the HEAD page on a paging daemon, and today's read w
 	 * daemon that advertises `session_catalogue_page` the unnamed size is the head page, and
 	 * on one that does not it is byte-for-byte the read this app has always made.
 	 */
-	globalThis.__catalogueCapabilities = {
-		desktop_available: true,
-		features: { session_catalogue_page: 1 },
-	};
+	store.setState({ cataloguePageable: true });
 	calls.length = 0;
 	await store.getState().fetchSessions();
 	assert.equal(
@@ -1768,10 +1730,7 @@ test("an unnamed size means the HEAD page on a paging daemon, and today's read w
 	);
 	assert.notEqual(calls[0]?.limit, LEGACY_CATALOGUE_PAGE);
 
-	globalThis.__catalogueCapabilities = {
-		desktop_available: true,
-		features: {},
-	};
+	store.setState({ cataloguePageable: false });
 	calls.length = 0;
 	await store.getState().fetchSessions();
 	assert.equal(
@@ -1780,7 +1739,12 @@ test("an unnamed size means the HEAD page on a paging daemon, and today's read w
 		"a daemon without the capability still gets exactly one unscoped limit=500 read",
 	);
 
-	globalThis.__catalogueCapabilities = null;
+	/*
+	 * THE FAIL-CLOSED DIRECTION, asserted as the DEFAULT rather than as a set value: a store
+	 * that no surface has spoken to yet is exactly the store this app has always had, so an
+	 * unnamed read in that state must be the legacy one.
+	 */
+	assert.equal(store.getState().cataloguePageable, false);
 	calls.length = 0;
 	await store.getState().fetchSessions();
 	assert.equal(

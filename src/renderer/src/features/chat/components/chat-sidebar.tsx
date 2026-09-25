@@ -856,6 +856,20 @@ export function ChatSidebar({
 		"session_catalogue_page",
 	);
 	/*
+	 * PUBLISHED, so an UNNAMED catalogue read sizes itself the same way this panel does
+	 * (round 3, QA's Q-1): `chat-page.tsx` refreshes the catalogue when the open
+	 * conversation's marker moves and names no size, and the store's default was the
+	 * legacy `limit=500` read on every daemon. The store holds the flag rather than reading
+	 * the capability itself, because it is the module every desktop suite bundles - see
+	 * `cataloguePageDefault`.
+	 */
+	const setCataloguePageable = useCanonicalSessionsStore(
+		(store) => store.setCataloguePageable,
+	);
+	useEffect(() => {
+		setCataloguePageable(pageable);
+	}, [pageable, setCataloguePageable]);
+	/*
 	 * The paged catalogue's own state, subscribed HERE rather than in the group
 	 * renderer because a subscription is a hook and the group is a plain function
 	 * called from the render body - the same reason `sessions` above is a hook.
