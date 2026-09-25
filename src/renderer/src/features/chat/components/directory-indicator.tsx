@@ -175,38 +175,69 @@ const PATH_TYPE = "font-mono text-mono-sm";
 const RECENT_PATH_TRUNCATES_AT = 42;
 
 /**
- * The chip's path column, from the width at which the composer can afford it.
+ * The chip's path cap, from the width at which the composer can afford it.
  *
- * It is a FIXED column, and that is the point: with `max-w-65` alone the chip's
- * width was a function of the path's length, so a move repainted the directory
- * and everything to the chip's right in the composer row shifted by the delta at
- * the same moment the runtime was restarting (design review D7: 260px against
- * 245.9px for the same fixture with a different path). A path that changes
- * therefore cannot move its neighbours.
+ * It is a CAP, and that is the whole of this change. It used to be a FIXED
+ * 16ch column, and that was D7's answer to a real defect: with `max-w-65` alone
+ * the chip's width was a function of the path's length, so a move repainted the
+ * directory and the chip's neighbours shifted by the delta at the same moment
+ * the runtime was restarting (design review D7: 260px against 245.9px for the
+ * same fixture with a different path). But the reserved column charged every
+ * session for it - a one-character path (`~`, the default) sat in a 115px column
+ * (7.2px per character, measured off this DOM at a 1000px column), so the chip
+ * measured 304px where the same content needs 196px - and the operator asked for
+ * the chip to "not take up extra space
+ * unless needed … up to the current as max width". That request supersedes D7,
+ * and it is safe to grant because intrinsic width <= the old column: the chip
+ * can only ever be narrower or equal, so the box ceilings below bind no harder
+ * than they did and the row's worst case (the D1/D9 yield order) cannot regress.
+ *
+ * WHAT REPLACES D7's PROPERTY, since the observable D7 named was real. Three
+ * things are unchanged and checkable in the DOM: the chip's LEFT edge is
+ * invariant (it is the row's second item, after the attach button), the
+ * `ml-auto` mic/send group is pinned to the row's right edge, and the row's
+ * total demand never grows. What moves on a path change in a live row is the
+ * readings cluster - the chip's own right-hand neighbour, 2px after it (its
+ * `marginLeft` is -6px against the row's 8px `gap-x-2`, which is what the rig
+ * measures painted) - by exactly the path's own delta, capped here: `~` ->
+ * `~/src/project` is ~86px (12 characters at the measured 7.2px per character,
+ * not the plan's 96.4px).
+ * It is a JUMP and not a slide; branding § 5 permits transitions on colour,
+ * opacity and entrance transform only, so there is deliberately no width
+ * transition to soften it.
  *
  * 16ch is 16 12px-monospace glyphs, a little wider than the ~13 characters the
  * old ceiling happened to leave - the second half of D6, where a thirteen-
  * character path was ellipsised in the roomiest variant because its span had one
- * pixel less than it needed. `ch` rather than a pixel value, so the column is
- * stated in the unit of the thing it has to fit.
+ * pixel less than it needed. `ch` rather than a pixel value, so the cap tracks
+ * whatever `--font-mono` resolves to on the platform and is stated in the unit
+ * of the thing it has to fit.
  *
- * TWO thresholds, and they are two different questions. 620px is where the
- * composer can afford the LABEL (`CHIP_LABEL`); 900px is where it can afford
- * this column. That second number is not a guess: the readings cluster sits
- * inline from 750px (`CHAT_ROW_INLINE_PX`) and its own comment measures the
- * slack at exactly 750 as
- * 56px for the model reading, so the wider column is held back until the row
- * clearly has more room than the label alone needed - where the design round
- * that asked for it was measuring, and where these frames are swept. Below
- * 900px the chip keeps the behaviour it shipped with: content-driven,
- * ellipsised at the ceiling, and the path still readable through the tooltip,
- * the menu and the `aria-label`.
+ * The cap is kept rather than dropped to the box ceiling: it is what keeps a
+ * long path from eating the LABEL, and it is what keeps the tooltip/`aria-label`
+ * truncation path reachable.
  *
- * The ceiling that pays for the column lives on `CHIP_BOX_INTERACTIVE` - the
- * read-only branch keeps `max-w-65` and every other class it has, because design
- * § 3.4 pins that branch's markup and only its sentence may change.
+ * ONE threshold, one meaning. 620px is where the composer can afford the LABEL
+ * (`CHIP_LABEL`); 900px is where it can afford this cap's 16 characters. That
+ * second number is not a guess: the readings cluster sits inline from 750px
+ * (`CHAT_ROW_INLINE_PX`, the composer row's own measurement) and its own comment
+ * measures the slack at exactly 750 as 56px for the model
+ * reading, so the wider cap is held back until the row clearly has more room
+ * than the label alone needed - where the design round that asked for it was
+ * measuring, and where these frames are swept. Below 900px the chip keeps the
+ * behaviour it shipped with: content-driven, ellipsised at the ceiling, and the
+ * path still readable through the tooltip, the menu and the `aria-label`. The
+ * threshold now says how much PATH the row can afford rather than whether a
+ * column exists, so moving it changes the path budget - easy to erode, and the
+ * reason this paragraph is here.
+ *
+ * The ceiling that backs the cap lives on `CHIP_BOX_INTERACTIVE` - the read-only
+ * branch keeps `max-w-65` and every other class it has, because design § 3.4
+ * pins that branch's markup and only its sentence may change. That branch has
+ * never carried this column: it is already content-driven at a 260px ceiling,
+ * which is the other half of the argument for making the editable one intrinsic.
  */
-const CHIP_PATH_COLUMN = "@min-[900px]/chatcol:w-[16ch]";
+const CHIP_PATH_COLUMN = "@min-[900px]/chatcol:max-w-[16ch]";
 
 /**
  * What a live move costs, said once - the tooltip is the only pre-commit place.
@@ -340,13 +371,19 @@ const CHIP_BOX = cn(
  * pair to be visibly tighter than the space around it; shrink-wrapping the
  * box is what makes the 6px gap the eye actually sees.
  *
- * The ceiling is raised at 900px of column, and only there, to pay for
- * `CHIP_PATH_COLUMN`: a fixed path column plus the chevron is about 303px, which
- * the old 260px ceiling would have clipped rather than ellipsised. Below that
- * width the ceiling stays where it was, so a narrow composer yields exactly as
- * it did before this change. `19rem` is 304px against a 302.7px content box -
- * and if a theme's metrics ever exceed it, the span SHRINKS rather than the box
- * overflowing, so the failure is a shorter ellipsised path and not a broken row.
+ * The ceiling is raised at 900px of column, and only there. It used to pay for
+ * `CHIP_PATH_COLUMN` as a fixed column (a full column plus the chevron is about
+ * 303px, which the 260px ceiling would have clipped rather than ellipsised); now
+ * that the path is intrinsic it is a BACKSTOP with two remaining jobs. It
+ * catches a longer label (the D11 protection - a longer sentence squeezes the
+ * `min-w-0` path span instead of the row), and it bounds a platform whose
+ * monospace glyphs are wider than the ones measured here. `19rem` is 304px
+ * against a 302.7px content box, and the shipped label at a full 16-character
+ * path is ~290px of content - so it is inert for what ships and binds no harder
+ * than it did before this change. Below that width the ceiling stays where it
+ * was, so a narrow composer yields exactly as it did. And if a theme's metrics
+ * ever exceed it, the span SHRINKS rather than the box overflowing, so the
+ * failure is a shorter ellipsised path and not a broken row.
  */
 const CHIP_BOX_INTERACTIVE = cn(
 	"w-fit max-w-65 min-w-24 shrink cursor-pointer justify-start gap-1.5",
@@ -783,22 +820,23 @@ export const DirectoryIndicator = forwardRef<
 	 *
 	 * Read off the rendered span rather than counted from `shown.length`, because
 	 * the two disagree in both directions and the pixel is the one the user sees:
-	 * the width is a container query's answer, and the chip that hosts this span is
-	 * now a fixed column, so a character threshold can only describe today's
-	 * layout (design review D6, UX U8).
+	 * the width is a container query's answer, so a character threshold can only
+	 * describe today's layout (design review D6, UX U8).
 	 *
 	 * `[shown]`, and the observer is not enough on its own (agent review round 2,
 	 * R-1).
 	 *
-	 * A `ResizeObserver` reports BOX size. Above a 900px chat column the span is a
-	 * fixed 16ch column, so a path CHANGE alters `scrollWidth` and leaves
-	 * `clientWidth` exactly where it was - the box never resizes and the observer
-	 * never fires. Measured once per mount, that made this chip hide the tail of the
-	 * new directory while the tooltip still offered the generic hint: the exact
-	 * defect D6/U8 were fixed for, reachable through a live move, which is the
-	 * feature's own primary action. The observer still earns its place for the
-	 * container-query reflow (a sidebar opening changes the column with no path
-	 * change at all); the dependency covers the other direction.
+	 * A `ResizeObserver` reports BOX size. The span is CAPPED rather than fixed now
+	 * (`CHIP_PATH_COLUMN`), so most path changes do resize the box and the observer
+	 * fires - but not the case R-1 was found in: an at-cap path growing PAST the cap
+	 * leaves `clientWidth` pinned at the 16ch ceiling while `scrollWidth` moves past
+	 * it, so the box never resizes and the observer never fires. Measured once per
+	 * mount, that made this chip hide the tail of the new directory while the
+	 * tooltip still offered the generic hint: the exact defect D6/U8 were fixed for,
+	 * reachable through a live move, which is the feature's own primary action. The
+	 * observer still earns its place for the container-query reflow (a sidebar
+	 * opening changes the column with no path change at all); the dependency covers
+	 * the other direction.
 	 *
 	 * The suppression is the linter's blind spot and not a silence: `shown` is the
 	 * TRIGGER for this effect rather than a value its body reads (the body reads the
