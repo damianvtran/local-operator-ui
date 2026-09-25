@@ -187,6 +187,12 @@ type ChatContentProps = {
 		 * `SessionStatusStripProps["draftResolution"]`.
 		 */
 		draftResolution?: DraftResolution;
+		/**
+		 * The readings are the last ones the session reported, held across a
+		 * transient stream gap. Forwarded verbatim to the composer; see
+		 * `SessionStatusStripProps["held"]`.
+		 */
+		held?: boolean;
 	};
 	/**
 	 * The command dispatcher the composer splices an inline command into, with

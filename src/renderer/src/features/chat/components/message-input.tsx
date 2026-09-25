@@ -730,6 +730,15 @@ type MessageInputProps = {
 		 * `SessionStatusStripProps["draftResolution"]`.
 		 */
 		draftResolution?: DraftResolution;
+		/**
+		 * The readings are the last ones the session reported, held across a
+		 * transient stream gap; see `SessionStatusStripProps["held"]`.
+		 *
+		 * Forwarded verbatim rather than derived here: a composer that recomputed
+		 * this from its own `isLoading` or from the absence of a `frontend` would be
+		 * a second authority for a fact the session handle owns.
+		 */
+		held?: boolean;
 	};
 	/**
 	 * Run the command the composer's planner pulled out of the draft, and report
@@ -7043,6 +7052,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										draft={sessionStatus.draft}
 										onOpenDraftPicker={sessionStatus.onOpenDraftPicker}
 										draftResolution={sessionStatus.draftResolution}
+										held={sessionStatus.held}
 										pendingModel={sessionStatus.pendingModel}
 									/>
 								</ErrorBoundary>
