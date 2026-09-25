@@ -1809,7 +1809,16 @@ test("the three callers that mean the SET name it, and the refused tail stays re
 		],
 		[
 			"mcp",
-			"src/renderer/src/features/settings/components/mcp-management-section.tsx",
+			/*
+			 * THE REDESIGN MOVED THIS CALLER, so the assertion follows the CALL rather
+			 * than the file it used to sit in (this branch's Integrations redesign took
+			 * the roster borrow out of the section and put it in its hook). The section
+			 * has not contained `fetchSessions` since that rewrite, which is why naming
+			 * it here failed on the fold; what the rule is about - a caller whose
+			 * question is about the whole catalogue naming the set - is unchanged, and
+			 * the call it is asserted on is the same one, one layer down.
+			 */
+			"src/renderer/src/features/settings/components/integrations/use-integrations.ts",
 		],
 	]) {
 		const source = readFileSync(file, "utf8");

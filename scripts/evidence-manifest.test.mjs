@@ -833,6 +833,12 @@ const STAMP_BINDING_NOTES = [
 	 * asked.
 	 */
 	"cwdChipCapRestampNote",
+	/*
+	 * And this branch's own, carried through every fold: it states the pair THIS
+	 * commit ships for UI PR B's Integrations redesign, so it is held to that pair
+	 * rather than read as history.
+	 */
+	"integrationsRedesignRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
