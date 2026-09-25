@@ -3821,11 +3821,23 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					 * the head page did NOT carry. A row the head page also carried belongs to
 					 * the head, which is still drawing it.
 					 */
+					/*
+					 * AND THE OPEN CONVERSATION (round 2, R2-1). The U5 fix above removed a
+					 * group's own rows on collapse, which re-entered R3 through this door: open a
+					 * conversation inside a group that sits past the head page, collapse the group,
+					 * and the row the transcript pane is drawing is gone - and it does not heal,
+					 * because the live-title upsert is presence-guarded and the head page is above
+					 * its rank. Collapsing a group is a statement about the GROUP, never about the
+					 * conversation the reader has open.
+					 */
+					const active = state.activeSessionId;
 					const owned = new Set(entry.ids);
 					const fromHeadPage = new Set(state.head.pageIds);
 					const sessions = state.sessions.filter(
 						(row) =>
-							!owned.has(row.session_id) || fromHeadPage.has(row.session_id),
+							!owned.has(row.session_id) ||
+							fromHeadPage.has(row.session_id) ||
+							(active !== null && row.session_id === active),
 					);
 					return { scopes, sessions };
 				});

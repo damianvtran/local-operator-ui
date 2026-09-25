@@ -335,6 +335,21 @@ const THEME = argValue("--theme", null);
  * fails the run rather than moving the goalposts with it.
  */
 const LAZY_CASE = argValue("--scoped-case", "paged");
+/*
+ * THE HOLD FILE the `loading` arm releases (round 2, D12). The stand-in holds every
+ * scoped answer while this file is absent, so the arm photographs a wait that is
+ * really in flight and then RELEASES it - no wall-clock window to hit.
+ */
+const LAZY_HOLD = argValue("--scope-hold", null);
+/**
+ * The two regexes this scene matches sentences with, at TOP LEVEL because the repository's
+ * lint rule says a regex literal inside a function is a per-call allocation (`biome`
+ * `useTopLevelRegex`), and this file is a long-running rig.
+ */
+const LAZY_ARCHIVED_SENTENCE = /archived/;
+const LAZY_NOT_A_WAIT_OR_EMPTINESS = /Loading chats…|No chats yet/;
+/** The theme the one light-theme frame is taken in (UX round 2: the set was dark-only). */
+const LAZY_LIGHT_THEME = "localOperatorLight";
 const LAZY_THEME = THEME ?? "localOperatorDark";
 const LAZY_GROUP = "lopdev";
 /** The stand-in's `lopdev` population at `--catalogue 120`. */
@@ -14321,6 +14336,18 @@ async function sceneSidebarLazyChats(cdp) {
 	const group = await lazyGroupFacts(cdp, LAZY_GROUP);
 	const openFrame = await captureSettled(cdp, "group-open");
 	note("frame", JSON.stringify(openFrame));
+	/*
+	 * THE SAME STATE IN THE OTHER THEME (UX round 2): the set this branch shipped was
+	 * dark-only, so D1/D5's "the badge and the sentence read in both themes" claim had no
+	 * evidence behind it. Captured in the same state as `group-open`, then restored so every
+	 * other frame stays dark.
+	 */
+	await verb(cdp, "setTheme", LAZY_LIGHT_THEME);
+	await wait(LAZY_SETTLE_MS);
+	const lightFrame = await captureSettled(cdp, "group-open-light");
+	note("frame", JSON.stringify(lightFrame));
+	await verb(cdp, "setTheme", LAZY_THEME);
+	await wait(LAZY_SETTLE_MS);
 	note("the expanded group", JSON.stringify(group));
 
 	if (LAZY_CASE === "paged") {
@@ -14438,6 +14465,29 @@ async function sceneSidebarLazyChats(cdp) {
 		 * the scope - which is the evidence that separates "the request never left"
 		 * from "it left, was answered, and the answer did not reach the store".
 		 */
+		/*
+		 * THE FOCUS IS ASSERTED, not promised in a comment (round 2, U2 = F1). Two streams
+		 * measured focus landing on `<body>` after every press: the recovery effect resolved
+		 * its target inside the CHATS region, where an expanded group's rows are not drawn.
+		 * The assertion is made against `document.activeElement`'s own identity, so `<body>`
+		 * cannot satisfy it.
+		 */
+		const activeAfterPress = await cdp.evaluate(`(() => {
+			const el = document.activeElement;
+			if (el === null || el === document.body) return { tag: null, row: null };
+			const row = el.closest("[data-session-row]");
+			return {
+				tag: el.tagName.toLowerCase(),
+				row: row === null ? null : row.getAttribute("data-session-row"),
+			};
+		})()`);
+		note("focus after the tail press", JSON.stringify(activeAfterPress));
+		check(
+			"focus lands on a row of the group, never on body (U2 = F1)",
+			activeAfterPress.tag === "button" &&
+				String(activeAfterPress.row ?? "").startsWith("p"),
+			`activeElement is ${JSON.stringify(activeAfterPress)} (the press added ids from the scope's own list, so the first added row is the group's ${LAZY_GROUP_PAGE + 1}th)`,
+		);
 		const scopeKey = `team:${LAZY_GROUP}`;
 		const grew = await waitForScopeIds(cdp, scopeKey, LAZY_GROUP_PAGE * 2);
 		const observed = JSON.stringify(grew.scope);
@@ -14502,6 +14552,27 @@ async function sceneSidebarLazyChats(cdp) {
 			`scope is ${JSON.stringify(exhausted.scope)}, expected ${LAZY_GROUP_TOTAL} ids and no cursor`,
 		);
 		await wait(LAZY_SETTLE_MS);
+		/*
+		 * AND AT EXHAUSTION THE FALLBACK IS THE GROUP'S OWN CONTROL (round 2, U2): the
+		 * press's control unmounts with the cursor, so the reader must not be left on
+		 * `<body>`. Recorded here rather than asserted to a single shape, because the press
+		 * that consumed the control is exactly the case where the added row may not resolve.
+		 */
+		const activeAtEnd = await cdp.evaluate(`(() => {
+			const el = document.activeElement;
+			if (el === null || el === document.body) return { tag: null, disclosure: false };
+			return {
+				tag: el.tagName.toLowerCase(),
+				disclosure: el.hasAttribute("data-disclosure"),
+				label: el.getAttribute("aria-label"),
+			};
+		})()`);
+		note("focus at exhaustion", JSON.stringify(activeAtEnd));
+		check(
+			"the reader is never left on `<body>` at exhaustion (U2 = F1)",
+			activeAtEnd.tag !== null,
+			`activeElement is ${JSON.stringify(activeAtEnd)}`,
+		);
 		const exhaustedFrame = await captureSettled(cdp, "group-exhausted");
 		note("frame", JSON.stringify(exhaustedFrame));
 	} else if (LAZY_CASE === "empty") {
@@ -14517,7 +14588,7 @@ async function sceneSidebarLazyChats(cdp) {
 			opened.sessionCount === LAZY_CATALOGUE_HEAD_PAGE &&
 				group.badge === LAZY_GROUP_TOTAL &&
 				typeof group.sentence === "string" &&
-				/archived/.test(group.sentence),
+				LAZY_ARCHIVED_SENTENCE.test(group.sentence),
 			`sessionCount ${opened.sessionCount}, badge ${JSON.stringify(group.badge)}, sentence ${JSON.stringify(group.sentence)}`,
 		);
 	} else if (LAZY_CASE === "loading") {
@@ -14532,6 +14603,28 @@ async function sceneSidebarLazyChats(cdp) {
 				group.sentence === "Loading chats…",
 			`sessionCount ${opened.sessionCount}, sentence ${JSON.stringify(group.sentence)}`,
 		);
+		/*
+		 * AND THE HOLD IS RELEASED IN THE SAME RUN (round 2, D12): the frame above is of a
+		 * wait that is really in flight because the stand-in is holding the answer on a file,
+		 * and writing that file here proves the hold released and the group drew its page -
+		 * so the arm is re-shootable rather than a window the run has to hit.
+		 */
+		if (LAZY_HOLD !== null) {
+			writeFileSync(LAZY_HOLD, "released\n");
+			const drew = await waitForSessionCount(
+				cdp,
+				LAZY_CATALOGUE_HEAD_PAGE + LAZY_GROUP_PAGE,
+			);
+			const after = await lazyGroupFacts(cdp, LAZY_GROUP);
+			check(
+				"releasing the hold draws the group's page, so the wait was real",
+				drew === LAZY_CATALOGUE_HEAD_PAGE + LAZY_GROUP_PAGE &&
+					after.rows === LAZY_GROUP_PAGE,
+				`sessionCount ${opened.sessionCount} -> ${drew}, rows ${after.rows}, sentence ${JSON.stringify(after.sentence)}`,
+			);
+			const loadedFrame = await captureSettled(cdp, "group-loaded");
+			note("frame", JSON.stringify(loadedFrame));
+		}
 	} else if (LAZY_CASE === "empty-group") {
 		/*
 		 * A GENUINELY EMPTY GROUP: the page and the census agree (round 1, D3's first
@@ -14583,7 +14676,7 @@ async function sceneSidebarLazyChats(cdp) {
 			refused.ok === true &&
 				typeof failed.sentence === "string" &&
 				failed.sentence.length > 0 &&
-				!/Loading chats…|No chats yet/.test(failed.sentence),
+				!LAZY_NOT_A_WAIT_OR_EMPTINESS.test(failed.sentence),
 			`waited=${JSON.stringify(refused)} sentence=${JSON.stringify(failed.sentence)}`,
 		);
 		const errorFrame = await captureSettled(cdp, "group-error");

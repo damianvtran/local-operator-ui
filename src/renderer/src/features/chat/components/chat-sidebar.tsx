@@ -1303,11 +1303,6 @@ export function ChatSidebar({
 		},
 		[catalogueScopes],
 	);
-	const totalSentence = catalogueTotalSentence({
-		pageable,
-		shown: sessions.length,
-		total: catalogueCounts?.total ?? null,
-	});
 	const toggle = (key: string, initial = false) =>
 		setExpanded((current) => ({
 			...current,
@@ -1836,6 +1831,19 @@ export function ChatSidebar({
 		[listed, heldRows, query, hits, pinFactValues, archiveView, bindingOfHit],
 	);
 	/*
+	 * THE PANEL'S OWN TOTAL, from the rows it DRAWS (round 2, R2-2 = D9 = F3; U10 for the
+	 * search wording). `matching` is the same array the `All chats` badge counts, so the
+	 * sentence and the badge can no longer disagree - which they did: the sentence counted
+	 * rows HELD, including archived ones this panel fetches and does not draw, and printed
+	 * `Showing 51 of 755` beside the panel's own `All chats 49`.
+	 */
+	const totalSentence = catalogueTotalSentence({
+		pageable,
+		shown: matching.length,
+		total: catalogueCounts?.total ?? null,
+		searching: query.trim().length > 0,
+	});
+	/*
 	 * Whether that answer is a full page rather than the whole answer. The answer
 	 * carries no truncation flag (`limit`, `query`, `sessions` are all it holds,
 	 * where the sibling list route returns one), so "exactly as many hits as we
@@ -2012,24 +2020,59 @@ export function ChatSidebar({
 	);
 	useEffect(() => {
 		const pending = tailFocusRef.current;
-		const container = listPanelRef.current;
-		if (pending === null || container === null) return;
+		if (pending === null) return;
 		const ids = catalogueScopes[pending.key]?.ids;
 		if (ids === undefined || ids.length <= pending.at) return;
 		tailFocusRef.current = null;
 		const added = ids[pending.at];
+		/*
+		 * THE ROW IS LOOKED FOR IN BOTH REGIONS (round 2, U2 = F1). The group's rows are drawn
+		 * in the ENTITY region and the flat list's in the chats region, so a lookup inside
+		 * `listPanelRef` alone missed every group row: `target` was null, `target?.focus()`
+		 * was a no-op, and the press dropped focus to `<body>` - exactly what the comment
+		 * above promised not to do, measured on every press by both streams.
+		 */
+		const roots = [entityPanelRef.current, listPanelRef.current];
 		const row =
 			added === undefined
 				? null
-				: (container.querySelector<HTMLElement>(
-						`[data-session-row="${CSS.escape(added)}"]`,
+				: (roots
+						.map(
+							(root) =>
+								root?.querySelector<HTMLElement>(
+									`[data-session-row="${CSS.escape(added)}"]`,
+								) ?? null,
+						)
+						.find((el) => el !== null) ?? null);
+		/*
+		 * AND THE GROUP IS FOUND BY ITS DISCLOSURE'S LABEL, not by the text of its name
+		 * button (round 2, U2): that button's content is the name CONCATENATED with the badge
+		 * (`minervadev49`), so a text match could never resolve - which is why the fallback the
+		 * round-1 comment described did not exist in practice. The disclosure carries
+		 * `Expand <name> chats` / `Collapse <name> chats`, the label the control's own
+		 * consumers already use, so this matches the same element the press does.
+		 */
+		const entityRoot = entityPanelRef.current;
+		const groupRow =
+			entityRoot === null
+				? null
+				: ([...entityRoot.querySelectorAll<HTMLElement>("[data-entity]")].find(
+						(group) =>
+							group.querySelector(
+								`[data-disclosure][aria-label="Expand ${pending.name} chats"], [data-disclosure][aria-label="Collapse ${pending.name} chats"]`,
+							) !== null,
 					) ?? null);
+		/*
+		 * THE FALLBACK IS THE GROUP'S DISCLOSURE, which exists whether or not the group has
+		 * rows - so it resolves at exhaustion too, where the press unmounts the control it was
+		 * made on. `<body>` is therefore unreachable from this effect: if neither the added row
+		 * nor the group's own disclosure can be found, focus is left where it was rather than
+		 * thrown at the document.
+		 */
 		const target =
 			row?.querySelector<HTMLElement>("[data-chat-row]") ??
 			row ??
-			[...container.querySelectorAll<HTMLElement>("[data-entity]")]
-				.map((group) => group.querySelector<HTMLElement>("[data-entity-name]"))
-				.find((el) => (el?.textContent ?? "").trim() === pending.name) ??
+			groupRow?.querySelector<HTMLElement>("[data-disclosure]") ??
 			null;
 		target?.focus();
 	}, [catalogueScopes]);
@@ -2051,23 +2094,32 @@ export function ChatSidebar({
 	});
 	const catalogueTail =
 		tailState.kind === "none" ? null : (
-			<p
-				className="py-1 text-meta text-ink-dim"
-				aria-live={tailState.kind === "loading" ? "polite" : undefined}
-			>
-				{tailState.kind === "loading"
-					? "Loading more chats…"
-					: tailState.sentence}{" "}
+			/*
+			 * THE FLAT LIST'S REFUSAL WEARS THE SAME TREATMENT AS THE GROUP'S (round 2,
+			 * D10 = U9): this was the THIRD unchanged site, still one `<p>` with the Retry
+			 * inline after the sentence and no clamp, so a long backend sentence moved the
+			 * control the reader was aiming at. The sentence is clamped, the Retry is on its
+			 * own line, and the loading register shares the same wrapper so the swap from
+			 * "Loading more chats…" to a sentence is announced.
+			 */
+			<div className="py-1" aria-live="polite">
+				<p className="line-clamp-2 text-meta text-ink-dim">
+					{tailState.kind === "loading"
+						? "Loading more chats…"
+						: tailState.sentence}
+				</p>
 				{tailState.kind === "error" && (
-					<button
-						type="button"
-						className="underline hover:text-ink"
-						onClick={() => void fetchCatalogueTail()}
-					>
-						Retry
-					</button>
+					<p className="pt-1">
+						<button
+							type="button"
+							className="text-meta text-ink-dim underline hover:text-ink"
+							onClick={() => void fetchCatalogueTail()}
+						>
+							Retry
+						</button>
+					</p>
 				)}
-			</p>
+			</div>
 		);
 	/*
 	 * The pinned partition, applied to the FILTERED list and to nothing else: the
@@ -3316,7 +3368,13 @@ export function ChatSidebar({
 		const view = groupChatsView({
 			pageable: groupPaging,
 			scope: catalogueScopes[key],
-			held: rows.length,
+			/*
+			 * THE SCOPE'S OWN LIST, not the rows drawn (round 2, R2-3): the press's arithmetic
+			 * and its focus index both count the rows this group HOLDS, and a row the search
+			 * filtered out or that the panel does not draw is still one of them. Falling back
+			 * to the drawn rows is the withdrawn path, where there is no scope at all.
+			 */
+			held: catalogueScopes[key]?.ids.length ?? rows.length,
 			total: groupPaging ? scopeCensusTotal(catalogueCounts, kind, name) : null,
 		});
 		if (
@@ -3479,32 +3537,47 @@ export function ChatSidebar({
 						 * answers rather than transitions, and an answer that appears as the
 						 * reader arrives is already where they are looking.
 						 */}
-						{view.state !== "rows" && view.sentence !== null && (
-							<p
-								className="py-1 pl-7 text-meta text-ink-dim"
-								aria-live={view.state === "loading" ? "polite" : undefined}
-							>
-								{view.sentence}
-								{/*
-								 * THE RETRY IS A SIBLING OF THE SENTENCE, not part of its text, so it
-								 * is a control rather than a word the reader has to read and then aim
-								 * at. It re-reads the group's FIRST page, which is the only thing a
-								 * failed first page can be retried as.
-								 */}
-								{view.retry && (
-									<>
-										{" "}
-										<button
-											type="button"
-											className="underline hover:text-ink"
-											onClick={() => void fetchScopePage(kind, name, null)}
-										>
-											Retry
-										</button>
-									</>
-								)}
-							</p>
-						)}
+						{/*
+						 * THE SENTENCE'S OWN REGION, MOUNTED IN EVERY STATE (round 2, R2-5), and
+						 * the ONE treatment all three refusal sites wear (round 2, D10 = U9):
+						 * clamped to two lines so a long backend sentence cannot move the control,
+						 * the transport's own detail in `title`, and the Retry on its OWN line so its
+						 * position does not depend on the message's length.
+						 *
+						 * WHY THE REGION CANNOT ARRIVE WITH ITS TEXT: the swap from "Loading chats…"
+						 * to the settled sentence happens in ONE commit, so a region that mounts with
+						 * the new text has no change to announce - the outcome of a press was silent.
+						 * `sr-only` while there is nothing to say keeps it in the tree and out of the
+						 * layout.
+						 */}
+						<div
+							aria-live="polite"
+							className={
+								view.state !== "rows" && view.sentence !== null
+									? "py-1 pl-7"
+									: "sr-only"
+							}
+						>
+							{view.state !== "rows" && view.sentence !== null && (
+								<p
+									className="line-clamp-2 text-meta text-ink-dim"
+									title={view.sentence}
+								>
+									{view.sentence}
+								</p>
+							)}
+							{view.retry && (
+								<p className="pt-1">
+									<button
+										type="button"
+										className="text-meta text-ink-dim underline hover:text-ink"
+										onClick={() => void fetchScopePage(kind, name, null)}
+									>
+										Retry
+									</button>
+								</p>
+							)}
+						</div>
 						{/*
 						 * THE GROUP'S TAIL, and why it is an EXPLICIT row rather than a
 						 * sentinel (ruling 2 / design §5.4). The entity region is shared by every
@@ -3553,7 +3626,7 @@ export function ChatSidebar({
 													kind,
 													name,
 													key,
-													rows.length,
+													catalogueScopes[key]?.ids.length ?? rows.length,
 													view.addCount,
 												)
 											}
@@ -3583,7 +3656,13 @@ export function ChatSidebar({
 									title={`Show ${view.addCount} more chats in ${name}`}
 									className="block w-full py-1 pl-7 text-left text-meta text-ink-dim underline hover:text-ink"
 									onClick={() =>
-										pressShowMore(kind, name, key, rows.length, view.addCount)
+										pressShowMore(
+											kind,
+											name,
+											key,
+											catalogueScopes[key]?.ids.length ?? rows.length,
+											view.addCount,
+										)
 									}
 								>
 									{/*

@@ -25,6 +25,7 @@
 
 import { randomUUID } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { createServer } from "node:http";
 import { join } from "node:path";
 
@@ -86,6 +87,16 @@ const ZERO_CENSUS_TEAM = arg("zero-census-team", null);
  * in flight, so a frame of it has to be taken while one is).
  */
 const SCOPE_DELAY_MS = Number(arg("scope-delay-ms", "0"));
+/*
+ * `--scope-hold <path>` HOLDS every scoped answer until that file exists, then
+ * answers normally. This is what makes the LOADING arm deterministic (round 2,
+ * D12): a wall-clock delay is a window the rig has to hit, and under fleet load
+ * both a designer's runs and QA's attempts missed it - an arm that fails closed is
+ * still an arm nobody can re-shoot. Held on a FILE, the wait is a state the scene
+ * creates and then releases, and the release is followed by the rows arriving,
+ * which is the proof that the wait was real.
+ */
+const SCOPE_HOLD = arg("scope-hold", null);
 const INSTANCE_ID = randomUUID();
 /** The record's `started_at` is fixed at boot; the heartbeat moves. */
 const startedAt = Date.now() / 1000;
@@ -725,7 +736,21 @@ const server = createServer((request, response) => {
 		 * synchronous and one lever holds any scoped answer open for as long as a
 		 * photograph needs (see `--scope-delay-ms`).
 		 */
-		if (SCOPE_DELAY_MS > 0 && url.searchParams.get("scope_kind") !== null) {
+		const scoped = url.searchParams.get("scope_kind") !== null;
+		if (SCOPE_HOLD !== null && scoped && !existsSync(SCOPE_HOLD)) {
+			/*
+			 * Polled rather than watched: the release is a file the SCENE writes, and a
+			 * 50 ms poll is both simpler and cheaper than an fs watcher for a lever whose
+			 * only job is to exist. Bounded so a scene that dies cannot leave this daemon
+			 * holding a reply for ever.
+			 */
+			const startedAt = Date.now();
+			const waitForRelease = () => {
+				if (existsSync(SCOPE_HOLD) || Date.now() - startedAt > 60_000) reply();
+				else setTimeout(waitForRelease, 50);
+			};
+			waitForRelease();
+		} else if (SCOPE_DELAY_MS > 0 && scoped) {
 			setTimeout(reply, SCOPE_DELAY_MS);
 		} else {
 			reply();
