@@ -373,6 +373,33 @@ export type ChatDraft = {
 	 */
 	heldClaimCode?: string;
 	/**
+	 * The message a SERVER ANSWER proved did not reach the owner, kept so the
+	 * transcript can state its fate after the claim that named the ambiguity has
+	 * ended (§F3's `Not delivered`, §F2's last bullet).
+	 *
+	 * WHY A FIELD RATHER THAN THE CLAIM ITSELF. A held claim means "the owner may
+	 * have admitted this before the response was lost" — an open question the
+	 * composer holds the box shut for. A re-subscribe answers it: the server's
+	 * snapshot names every message it holds, so a claimed payload the snapshot
+	 * does not name provably did not land (see `resolveHeldFromServer`). The claim
+	 * then has nothing left to hold — the box reopens, the held sentence is no
+	 * longer true — but the MESSAGE still has a fate to state, and the line that
+	 * states it is on the message. So the claim ends and this record begins,
+	 * carrying its OWN `recordId` because ending the claim mints a fresh
+	 * `admissionRequestId` (the released one may still be executing on the owner,
+	 * and reusing it would make the next send an idempotent replay of the old
+	 * payload — see `releaseClaim`).
+	 *
+	 * CLEARED by every path that ends the draft (`finishDraft`, `discardDraft`) —
+	 * a successful send deletes the row outright, so the line's lifetime ends
+	 * with the conversation moving on.
+	 */
+	undelivered?: {
+		recordId: string;
+		text: string;
+		attachments: readonly string[];
+	};
+	/**
 	 * True only once an admission request has actually been ISSUED, i.e. its
 	 * outcome is genuinely unknown to us. This is what the unchanged-payload
 	 * guard keys on: a send that failed BEFORE admission (session creation
@@ -896,6 +923,27 @@ export function buildSendPayload(
  * unreachable. It lives here, beside the drafts it addresses, so the rule is
  * exercised by the store tests rather than duplicated in an untested component.
  */
+/**
+ * Whether a draft row is the one a given conversation's send wrote.
+ *
+ * THREE SPELLINGS, because a conversation's draft is keyed three ways across one
+ * send's life: `draft:<uuid>` before it is admitted, `<sessionId>` after the flip,
+ * and `send:<sessionId>` for a conversation that was never a draft at all
+ * (`draftIdentityFor`'s fallback). The `sessionId` FIELD is written only on the
+ * create path - the existing-session path patches whatever row it was handed - so
+ * a lookup that trusts the field alone misses the very case the held-claim
+ * reconcile exists for. Measured on the driver's first after-run: the claim
+ * stayed held through a live reconnect because the draft the send wrote was keyed
+ * `send:<id>` and carried no `sessionId` at all.
+ */
+function draftBelongsToSession(draft: ChatDraft, sessionId: string): boolean {
+	return (
+		draft.sessionId === sessionId ||
+		draft.key === sessionId ||
+		draft.key === `send:${sessionId}`
+	);
+}
+
 export function draftIdentityFor(
 	draftKey: string | null,
 	sessionId: string | null | undefined,
@@ -2751,6 +2799,24 @@ type CanonicalSessionsState = {
 	 * leaves identity intact.
 	 */
 	releaseClaim: (key: string) => void;
+	/**
+	 * Resolve a held send against the server's own answer (§F2's last bullet,
+	 * UX round 1's U5b).
+	 *
+	 * Called with the ids a RE-SUBSCRIBE returned — the snapshot's history page,
+	 * i.e. the server's statement of what this conversation holds. A held payload
+	 * the answer names LANDED (the claim ends; the durable row coalesces with the
+	 * echo by id). A held payload it does not name provably did NOT land on a
+	 * complete read, so the claim ends AND the row records it as `undelivered` so
+	 * the message keeps its `Not delivered` line. Either way the composer stops
+	 * waiting: §F2 says the state clears from the server's acknowledgement, never
+	 * from the local send, and this is the acknowledgement arriving.
+	 */
+	resolveHeldFromServer: (
+		sessionId: string,
+		entryIds: readonly string[],
+		complete: boolean,
+	) => void;
 	bindSession: (legacyAgentId: string, sessionId: string) => void;
 	upsertSession: (row: CanonicalSessionRow) => void;
 };
@@ -4896,6 +4962,106 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							// payload - the server keys its receipt on the request id and
 							// would answer with the first attempt's result.
 							[key]: { ...kept, admissionRequestId: crypto.randomUUID() },
+						},
+					};
+				}),
+			resolveHeldFromServer: (sessionId, entryIds, complete) =>
+				set((state) => {
+					/*
+					 * THE LATE-LANDING CORRECTION, AND IT RUNS FIRST: a draft already resolved
+					 * as `undelivered` whose message a LATER server answer NAMES did land after
+					 * all — the one race this mechanism can lose (a read the server composed
+					 * before the attempt settled could miss a message admitted in that window).
+					 * The answer naming the id is proof of delivery, so the line goes. The id
+					 * here is the one recorded at resolution time, which is the id the durable
+					 * row carries.
+					 */
+					const corrected = Object.entries(state.drafts).filter(
+						([, draft]) =>
+							draftBelongsToSession(draft, sessionId) &&
+							draft.undelivered !== undefined &&
+							entryIds.includes(draft.undelivered.recordId),
+					);
+					let drafts = state.drafts;
+					if (corrected.length > 0) {
+						drafts = { ...drafts };
+						for (const [key, draft] of corrected) {
+							const { undelivered: _gone, ...kept } = draft;
+							drafts[key] = kept;
+						}
+					}
+					/*
+					 * THE ONE HELD CLAIM THIS SESSION OWNS, if any. A session can hold at most
+					 * one at a time by the store's own guard (a second send is refused while
+					 * the first is held), and `pending !== true` keeps an IN-FLIGHT attempt
+					 * out of it: a request whose outcome is still unknown is not something a
+					 * snapshot should adjudicate.
+					 */
+					const found = Object.entries(drafts).find(([, draft]) => {
+						return (
+							draftBelongsToSession(draft, sessionId) &&
+							draft.admissionAttempted === true &&
+							draft.pending !== true &&
+							draft.submittedText !== undefined
+						);
+					});
+					/*
+					 * THE CORRECTION SURVIVES AN ABSENT CLAIM: a draft that was already
+					 * resolved (the late-landing case) usually has no claim left to look
+					 * for, and returning here without `drafts` would silently drop the
+					 * very write this branch exists for.
+					 */
+					if (!found) return corrected.length > 0 ? { drafts } : {};
+					const [key, draft] = found;
+					const recordId = draft.admissionRequestId;
+					const delivered = entryIds.includes(recordId);
+					/*
+					 * NOTHING IS CONCLUDED FROM AN INCOMPLETE READ: `cursor_missing` means the
+					 * page does not describe a continuous tail, so its silence about this id
+					 * proves nothing. Finding the id still resolves the claim — an answer that
+					 * NAMES the message is proof of delivery however partial the page is.
+					 */
+					if (!delivered && !complete)
+						return corrected.length > 0 ? { drafts } : {};
+					const {
+						admissionAttempted: _attempted,
+						submittedText: _text,
+						submittedAttachments: _attachments,
+						submittedImages: _images,
+						submittedMode: _mode,
+						heldClaimCode: _claimCode,
+						error: _error,
+						errorCode: _errorCode,
+						...kept
+					} = draft;
+					return {
+						drafts: {
+							...drafts,
+							[key]: {
+								...kept,
+								/*
+								 * LANDED: nothing to record. The claim's whole question ("did this
+								 * reach the owner?") is answered YES by the answer naming the
+								 * request id, and the transcript reconciles itself — the durable row
+								 * and the echo key on the same id.
+								 *
+								 * NOT FOUND on a complete read: the claim is answered NO, and the
+								 * MESSAGE keeps that answer. The line lives on the message (§F3),
+								 * which is why the address is kept: the claim's id dies with the
+								 * claim (see the field's note), so the row that will wear the line
+								 * is named here while its id is still the one the echo carries.
+								 */
+								...(delivered
+									? {}
+									: {
+											undelivered: {
+												recordId,
+												text: _text ?? "",
+												attachments: _attachments ?? [],
+											},
+										}),
+								admissionRequestId: crypto.randomUUID(),
+							},
 						},
 					};
 				}),

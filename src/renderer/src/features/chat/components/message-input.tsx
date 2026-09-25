@@ -511,6 +511,21 @@ type MessageInputProps = {
 	 * answer, and the clause is then left out rather than assumed.
 	 */
 	heldCopyOnScreen?: boolean;
+	/**
+	 * §F3: whether the per-message failure line is drawn on this conversation's
+	 * transcript. The page resolves it against the record the line names (the
+	 * transcript is the only thing that can answer it) and hands the composer the
+	 * boolean.
+	 *
+	 * While it is true the composer does NOT state the same failure a second time:
+	 * the paragraph §F3 deletes is this region's, its `Restore message` is the
+	 * line's `Edit`, and the live region it carries would be a second announcement
+	 * of one press. What stays is the one control the line has no equivalent for -
+	 * `Stop holding it`, the release, which exists for the case where the box holds
+	 * a DIFFERENT message the user would otherwise lose - and the Send gate, whose
+	 * reason says why the box is waiting.
+	 */
+	heldOnTranscript?: boolean;
 	conversationId?: string;
 	messages: Message[];
 	currentJobId?: string | null;
@@ -1184,6 +1199,23 @@ export type MessageInputHandle = {
 	 * asking.
 	 */
 	openWorkingDirectoryMenu: () => void;
+	/**
+	 * Put a failed message's payload back in the box - the composer's half of
+	 * §F3's `Edit`, and the same act as the alert's own `Restore message`.
+	 *
+	 * TAKES THE PAYLOAD RATHER THAN READING ONE, because the caller is the surface
+	 * that knows which failure the press is about: the transcript's line carries a
+	 * `recordId` and the page resolves it to the text and files the send carried
+	 * (from the live claim while it is open, from the draft's resolved
+	 * `undelivered` record after a reconnect closed it). Reading `sendError` here
+	 * would cover only the first of those.
+	 *
+	 * `attachments` undefined means "this caller does not know the file set" -
+	 * the row is left alone rather than emptied, which is the rule the alert's own
+	 * control states: destroying files the app cannot name is worse than leaving
+	 * chips the user chose.
+	 */
+	restoreHeld: (text: string, attachments?: readonly string[]) => void;
 };
 
 /*
@@ -1241,6 +1273,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			asideSessionId,
 			asideStreaming = false,
 			heldCopyOnScreen,
+			heldOnTranscript = false,
 			conversationId,
 			messages,
 			currentJobId,
@@ -1445,6 +1478,31 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		useEffect(() => {
 			if (!awaitingReply) setHeldNotice(null);
 		}, [awaitingReply]);
+		/*
+		 * AND RETIRED WITH THE CLAIM IT IS ABOUT (§F2's last bullet, UX round 1's
+		 * U5b). This sentence answers a press the HELD CLAIM refused, so it is a
+		 * statement about that claim, and the claim can end from outside this
+		 * component: the page clears its own alert when a reconnect resolves the
+		 * claim in the store (`heldClaimLive`), which is the case that effect was
+		 * written for. The composer's sentence was left behind by it, and the arm
+		 * below renders it only when `sendError` is clear - so the one state the
+		 * screen was left in was the state where the sentence's own mask had just
+		 * lifted, saying "the current message is still on its way" about a message
+		 * the server had already answered for. Measured on the driver's after-run,
+		 * verbatim; the effect above could not have caught it, because the rung was
+		 * already down when the sentence was set, so `awaitingReply` never changed
+		 * while the sentence was on screen.
+		 *
+		 * Keyed on the claim's PAYLOAD rather than on a timer of the sentence's own:
+		 * with no held payload on the composer's error contract there is no claim for
+		 * this sentence to be about, whatever this component last heard. The key is
+		 * a dependency VALUE rather than the object, so the effect re-runs when the
+		 * claim ends and not on every render of a live one.
+		 */
+		const heldPayload = sendError?.heldText;
+		useEffect(() => {
+			if (heldPayload === undefined) setHeldNotice(null);
+		}, [heldPayload]);
 		useEffect(() => {
 			if (abandonNotice === null) return;
 			const timer = setTimeout(() => setAbandonNotice(null), ABANDON_NOTICE_MS);
@@ -4526,10 +4584,55 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			textareaRef.current?.focus();
 		}, [textareaRef]);
 
+		/*
+		 * THE ONE IMPLEMENTATION OF "put the held payload back", shared by the alert's
+		 * `Restore message` and §F3's `Edit` on the message itself.
+		 *
+		 * One body rather than two, because the two controls are the same act reached
+		 * from two places, and the details that make it WORK are not obvious: the
+		 * reply markup must be cleared (the payload already carries it, and leaving
+		 * the chips would re-prefix the restored text so the unchanged-payload guard
+		 * refuses the very resend this exists to enable), the files must come back too
+		 * (half a payload is not a remedy - QA round 1, Q-2), and the box must take
+		 * the caret. Every one of those was a measured defect on the control it was
+		 * learned on, so a second copy is a second chance to lose one.
+		 */
+		const restoreHeldPayload = useCallback(
+			(text: string, chips?: readonly string[]) => {
+				if (conversationId) clearReplies(conversationId);
+				setNewMessage(text);
+				if (conversationId && chips !== undefined) {
+					clearAttachments(conversationId);
+					for (const path of chips)
+						addAttachment(conversationId, { id: uuidv4(), path });
+				}
+				textareaRef.current?.focus();
+			},
+			[
+				conversationId,
+				clearReplies,
+				setNewMessage,
+				clearAttachments,
+				addAttachment,
+				/* The box's own node: stable, and named because the caret call reads it. */
+				textareaRef,
+			],
+		);
+
 		useImperativeHandle(ref, () => ({
 			focusInput,
 			openWorkingDirectoryMenu: () => {
 				cwdChipRef.current?.openMenu();
+			},
+			/*
+			 * The page error is this composer's own statement of the same failure, and
+			 * a restored payload that leaves the alert standing over it puts the
+			 * sentence back on a state the press just resolved - the rule the alert's
+			 * own control documents.
+			 */
+			restoreHeld: (text, chips) => {
+				restoreHeldPayload(text, chips);
+				sendError?.onRestoreHeld?.();
 			},
 		}));
 
@@ -5932,7 +6035,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				{(abandonNotice ||
 					refusedNotice ||
 					(!sendError && heldNotice) ||
-					(sendError && (composerAlert.message || composerAlert.showHeld))) && (
+					(sendError &&
+						(heldOnTranscript
+							? composerAlert.abandon === "release"
+							: composerAlert.message || composerAlert.showHeld))) && (
 					/*
 					 * Above the box rather than inside it: the composer box is one
 					 * control with one focus ring (`COMPOSER_BOX`), and folding an alert
@@ -6020,7 +6126,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								// and no icon: this is the resolved state, not a failure.
 								<p className="text-ink-muted">{abandonNotice}</p>
 							)}
-							{!abandonNotice && composerAlert.message && (
+							{!abandonNotice && !heldOnTranscript && composerAlert.message && (
 								/*
 								 * Icon and weight, not colour, are what rank this line.
 								 *
@@ -6165,7 +6271,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								 * asserted non-delivery one clause before denying that anyone could know.
 								 */
 								<div className={cn("flex flex-col gap-1")}>
-									{composerAlert.showHeld && (
+									{composerAlert.showHeld && !heldOnTranscript && (
 										<p className={cn("text-ink-muted")}>
 											{composerAlert.heldCopy}
 										</p>
@@ -6202,7 +6308,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 													{action.label}
 												</Button>
 											))}
-											{composerAlert.restore && (
+											{composerAlert.restore && !heldOnTranscript && (
 												/*
 												 * Puts the held payload back in the box, which is the only
 												 * way to satisfy a guard that demands a byte-identical
@@ -6223,54 +6329,19 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 													// still marks it as the primary action of the two.
 													className={cn("cursor-pointer text-meta underline")}
 													onClick={() => {
-														// The held payload already CARRIES the reply markup, so
-														// the chips that produced it have been consumed. Leaving
-														// them attached would re-prefix the restored text on the
-														// next send, and the guard refuses that mismatch - the
-														// deadlock Restore exists to escape. The referenced text
-														// is not lost: it is in the box, in the payload, visible.
-														if (conversationId) clearReplies(conversationId);
-														setNewMessage(composerAlert.restore ?? "");
 														/*
-														 * AND ITS FILES, because half a payload is not a remedy (QA
-														 * round 1, Q-2).
-														 *
-														 * This control writes the held TEXT over the box; it left
-														 * the chip row alone, and the chip row is half of what the
-														 * unchanged-payload guard compares. In the state the operator
-														 * reaches by following the app's own advice - restore, drop
-														 * the file that pushed the write over the threshold - pressing
-														 * `Restore message` therefore refilled one half and left the
-														 * payload mismatched, so the next Enter was refused by the
-														 * same guard, with the same two controls: a loop for anyone
-														 * who keeps pressing the control that names their remedy.
-														 *
-														 * The whole payload is reconstituted rather than merged into
-														 * whatever the row holds, which is the same rule the text half
-														 * already follows above: one press, one payload, both halves.
-														 * A press that could not do that would be a control whose
-														 * name promises something it does not deliver, which is the
-														 * defect class this whole change exists for. Anything the
-														 * operator has attached since is not silently listed as
-														 * sent either - the chips on screen after the press ARE the
-														 * payload the next send carries.
-														 *
-														 * An ABSENT chip set is left alone rather than cleared: the
-														 * store only knows the text on that arm, so there is nothing
-														 * to put back and emptying the row would destroy files the
-														 * user picked for a payload this app cannot name.
+														 * The body lives in `restoreHeldPayload`, because §F3's `Edit` on
+														 * the message performs the same act from the transcript and the
+														 * details that make it work (cleared replies, restored files, the
+														 * caret) were each learned from a measured defect on this
+														 * control. The files come from `sendError` here and from the
+														 * caller there, which is the only difference between the two.
 														 */
-														const heldChips = sendError?.heldAttachments;
-														if (conversationId && heldChips !== undefined) {
-															clearAttachments(conversationId);
-															for (const path of heldChips)
-																addAttachment(conversationId, {
-																	id: uuidv4(),
-																	path,
-																});
-														}
+														restoreHeldPayload(
+															composerAlert.restore ?? "",
+															sendError?.heldAttachments,
+														);
 														sendError?.onRestoreHeld?.();
-														textareaRef.current?.focus();
 													}}
 												>
 													{RESTORE_LABEL}
@@ -7299,6 +7370,33 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								 * [readings][mic][send] out of a DOM whose first child is the cluster.
 								 */}
 								<div className="ml-auto flex order-3 items-center gap-1">
+									{/*
+									 * §F3: THE SEND GATE'S REASON, IN THE CONTROL ROW AND BESIDE THE
+									 * CONTROL IT IS ABOUT.
+									 *
+									 * While a held message exists and the box does not hold it, Send is
+									 * disabled - the store would refuse the press - and this says why, so
+									 * the control is not a dead button. It sits INSIDE the right cluster
+									 * rather than before it, so it is adjacent to Send at every width;
+									 * `min-w-0 truncate` makes the row take space back from THIS element
+									 * rather than from the controls, and `title` carries the sentence
+									 * whole where a narrow column clips it (the README's 800px band and
+									 * `ComposerAlertGeometry` are why nothing longer than a few words may
+									 * be assumed to fit in this row).
+									 *
+									 * `data-send-waits` is the rig's address for the sentence
+									 * (`scripts/renderer-driver.mjs`'s `connection-drop` scene reads it),
+									 * the same structural-marker rule the per-message line follows.
+									 */}
+									{composerAlert.showHeld && (
+										<span
+											data-send-waits
+											className="min-w-0 truncate text-meta text-ink-dim"
+											title="Send waits for the held message"
+										>
+											Send waits for the held message
+										</span>
+									)}
 									{!isRecording &&
 										!isTranscribing &&
 										!(isLoading && currentJobId) && (
@@ -7654,7 +7752,17 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 														disabled={
 															isInputDisabled ||
 															isLoading ||
-															(!newMessage.trim() && attachments.length === 0)
+															(!newMessage.trim() &&
+																attachments.length === 0) ||
+															/*
+															 * §F3's gate, and the one arm of it that is not about THIS box:
+															 * while the claim is held and this box does not hold the held
+															 * payload, the store refuses every send but the one
+															 * byte-identical to it, so accepting the press would make it
+															 * silently do nothing (U8). The reason is stated beside the
+															 * control; the two remedies are on the message itself.
+															 */
+															composerAlert.showHeld
 														}
 														className="rounded-full disabled:bg-surface"
 														aria-label={

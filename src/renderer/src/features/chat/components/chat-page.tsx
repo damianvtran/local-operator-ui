@@ -69,6 +69,7 @@ import {
 	stoppedAfterAdmission,
 	turnStopped,
 } from "../canonical/working-line-model";
+import { useStripSpeaksConnection } from "../chat-status-presence";
 import { catalogueTitleUpdate, resolveChatTitle } from "../chat-title";
 import {
 	type DraftResolution,
@@ -479,7 +480,23 @@ function SessionPanel({
 			canonical.frontend?.attention,
 			outcomeAtAdmission.current?.anchor ?? null,
 		);
-	if (admitted.current && (answered || stopped || Boolean(draft?.error)))
+	/*
+	 * One more ender, and it arrives from OUTSIDE this panel: the server's own
+	 * answer on a reconnect saying the message never landed (§F2's last bullet,
+	 * UX round 1's U5b). `draft.undelivered` IS that answer - the store records it
+	 * only when a complete tail read failed to name the claimed payload - and the
+	 * rung must not keep claiming progress for a message the owner never received.
+	 *
+	 * WITHOUT IT, RESOLVING THE CLAIM RE-ARMS THE WAIT: `Boolean(draft?.error)` is
+	 * the failure term below, and settling a held send clears that error (the
+	 * sentence belongs to the claim). Measured on the driver's after-run: the
+	 * transcript's rung and the composer's "one message at a time" sentence both
+	 * outlived the resolution by the life of the pane.
+	 */
+	if (
+		admitted.current &&
+		(answered || stopped || Boolean(draft?.error) || draft?.undelivered)
+	)
 		admitted.current = null;
 	const starting = admitted.current !== null;
 	/*
@@ -2109,6 +2126,63 @@ function SessionPanel({
 			useCanonicalSessionsStore.getState().releaseClaim(draftIdentity);
 		clearError();
 	};
+	/*
+	 * §F3's PER-MESSAGE FAILURE STATE, addressed here because this page owns both
+	 * halves of it: the row it is about (the draft's open claim, or the
+	 * `undelivered` record a reconnect left behind) and the two doors its controls
+	 * use - this component's `send`, and the composer's handle.
+	 *
+	 * `recordId` is the address: the echo's own id, which is the id the durable
+	 * row carries if the message ever lands, so the line can only attach to the
+	 * row it is about. Whether that row is ON SCREEN is the pane's question
+	 * (`chat-content.tsx` resolves it against the transcript), and a claim whose
+	 * echo is not painted - the panel that will paint it has not mounted - is
+	 * exactly the case where the composer still speaks.
+	 */
+	const deliveryTurn = !draft
+		? null
+		: heldText !== undefined
+			? {
+					recordId: draft.admissionRequestId,
+					text: heldText,
+					attachments: draft.submittedAttachments ?? [],
+				}
+			: (draft.undelivered ?? null);
+	const undeliveredTurn = deliveryTurn
+		? {
+				recordId: deliveryTurn.recordId,
+				onSendAgain: () => {
+					void send(deliveryTurn.text, [...deliveryTurn.attachments]);
+				},
+				onEdit: () => {
+					input.current?.restoreHeld(
+						deliveryTurn.text,
+						deliveryTurn.attachments,
+					);
+				},
+			}
+		: null;
+	/*
+	 * THE CLAIM ENDED, SO THE COMPOSER'S SENTENCE ABOUT IT ENDS (§F2's last
+	 * bullet, UX round 1's U5b).
+	 *
+	 * Two things end a claim: the user's own press, and the SERVER's answer
+	 * arriving through a reconnect. The first clears this component's state in its
+	 * own handler; the second cannot - the re-subscribe writes the STORE, and this
+	 * page only learns about it on the next render. Without this the screen kept
+	 * saying "a message is still being held ... whether it reached the agent is not
+	 * knowable" over a claim that no longer existed, which is the reported defect:
+	 * the held state was cleared in the store and stayed on the screen.
+	 */
+	const heldClaimLive = heldText !== undefined;
+	const heldClaimWasLive = useRef(heldClaimLive);
+	useEffect(() => {
+		if (heldClaimWasLive.current && !heldClaimLive) {
+			setSendError(null);
+			setSendErrorCode(undefined);
+		}
+		heldClaimWasLive.current = heldClaimLive;
+	}, [heldClaimLive]);
 	const composerSendError =
 		activeError || heldText !== undefined || refusedText !== undefined
 			? {
@@ -2486,6 +2560,7 @@ function SessionPanel({
 					 */
 					paneHasSession={paneHasSession}
 					sendError={composerSendError}
+					undelivered={undeliveredTurn}
 					/*
 					 * The session's readings, straight off the canonical stream, and
 					 * the SAME dispatcher the composer submits through. Routing the
@@ -2652,6 +2727,21 @@ export function ChatPage() {
 	);
 	const enabled = catalogueState === "enabled";
 	const { data: serverHealth } = useServerHealth();
+	/*
+	 * WHETHER THE STRIP OWNS THE CONNECTION VOICE, read here for the CATALOGUE
+	 * error only (agent review round 2, R11).
+	 *
+	 * The pane states a lost server as the store's catalogue failure - the
+	 * transport's own sentence, which is what the walker's before-run photographed
+	 * as the bare alert at the top of the pane - and the strip, one element down in
+	 * this very tree, states the same fact with the right copy and the one Retry.
+	 * The shared predicate carries the strip's presence beside the copy condition
+	 * (`chat-status-presence.ts`), so this stands down exactly where the strip has
+	 * taken the voice.
+	 */
+	const stripSpeaksConnection = useStripSpeaksConnection(
+		serverHealth?.online === false,
+	);
 	const pairingCause =
 		serverHealth?.snapshot && !serverHealth.snapshot.pairing.available
 			? (serverHealth.snapshot.pairing.cause ?? "unpaired")
@@ -2763,8 +2853,17 @@ export function ChatPage() {
 			 * conversation, or a store failure the composer does not own. A
 			 * switch no longer has a failure of its own to state here - the
 			 * target pane speaks for its own stream (see `openSession`).
+			 *
+			 * TWO FAILURES, ONE REGION, AND ONLY ONE OF THEM YIELDS (§F2, R11).
+			 *
+			 * `routeError` is a NAV fact - this conversation is not on this machine,
+			 * the route did not resolve - and the strip does not state it, so it always
+			 * renders. `error` is the store's catalogue failure, which for a dead
+			 * backend IS the connection fact the strip owns; while the strip speaks,
+			 * this half stands down so one press of Retry is not offered twice for one
+			 * root cause.
 			 */}
-			{(routeError || error) && (
+			{(routeError || (error && !stripSpeaksConnection)) && (
 				<p role="alert" className={cn("px-4 py-2 text-body-sm text-danger")}>
 					{routeError || error}
 				</p>
