@@ -442,18 +442,18 @@ export const ConversationGone: Story = {
  *
  * Why this story exists. Round 1's D7 asked for "a stable width OR render the
  * composed row once". The reserved path column answered the first half at the
- * time; the column is retired now (`CHIP_PATH_COLUMN` is a cap), so this frame
- * carries the other half of the operator's request as well - where the width a
- * short path frees up goes. It goes to the gap: the chip hugs its path and the
- * readings cluster sits behind it instead of after a fixed column.
+ * time and the column is retired now (`CHIP_PATH_COLUMN` is a cap), so this frame
+ * is the answer to the OTHER half: the composed row itself, in a real composer,
+ * where the chip's pairing with the row is a frame rather than a derivation.
+ * `Idle` above cannot show it: without a known directory the chip does not mount
+ * at all (`cwdToShow !== undefined` is the gate).
  *
- * What this story does NOT carry: the readings cluster, because it passes no
- * `sessionStatus` (`CwdChipEditableWithReadings` below is the composed row with
- * both). The second half of D7 ("render the composed row once") was still the
- * one state nobody had photographed, so the chip's pairing with the row in a
- * real composer was geometry rather than a frame. `Idle` above cannot show it:
- * without a known directory the chip does not mount at all
- * (`cwdToShow !== undefined` is the gate).
+ * What this frame does NOT carry, said here because its own caption invites the
+ * opposite reading: the readings cluster (this story passes no `sessionStatus`),
+ * and any freed width - its fixture path is 22 characters, PAST the 16ch cap, so
+ * the chip measures the same width before and after this change on both trees.
+ * The row that carries both the cluster and a path short enough for the cap to
+ * free width is `CwdChipEditableWithReadings` below.
  *
  * The two widths are in ONE frame on purpose. The chip's wide and floor variants
  * are behind `@min-[620px]/chatcol` / `@max-[240px]/chatcol`, so each row carries
@@ -1810,8 +1810,9 @@ export const CredentialMaskedSessionPane: Story = {
  * `CredentialMaskedSessionPane` below mounts the readings with a chip that has
  * no write path - which is the READ-ONLY branch, already content-driven and
  * carrying no path cap. So neither of the two frames the composer already had
- * can show the one block this change moves: the readings cluster, which sits 8px
- * behind the chip and travels with the chip's width. This is the row where that
+ * can show the one block this change moves: the readings cluster, which sits 2px
+ * behind the chip (a -6px `marginLeft` against the row's `gap-x-2`) and travels
+ * with the chip's width. This is the row where that
  * is visible, and the row the geometry rig measures the translation in.
  *
  * TWO FACTS ABOUT THIS FRAME a reader would otherwise have to derive: the chip

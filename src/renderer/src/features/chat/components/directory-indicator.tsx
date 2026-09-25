@@ -195,8 +195,11 @@ const RECENT_PATH_TRUNCATES_AT = 42;
  * invariant (it is the row's second item, after the attach button), the
  * `ml-auto` mic/send group is pinned to the row's right edge, and the row's
  * total demand never grows. What moves on a path change in a live row is the
- * readings cluster - the chip's own right-hand neighbour, 8px after it - by
- * exactly the path's own delta, capped here: `~` -> `~/src/project` is ~96px.
+ * readings cluster - the chip's own right-hand neighbour, 2px after it (its
+ * `marginLeft` is -6px against the row's 8px `gap-x-2`, which is what the rig
+ * measures painted) - by exactly the path's own delta, capped here: `~` ->
+ * `~/src/project` is ~86px (12 characters at the measured 7.2px per character,
+ * not the plan's 96.4px).
  * It is a JUMP and not a slide; branding § 5 permits transitions on colour,
  * opacity and entrance transform only, so there is deliberately no width
  * transition to soften it.

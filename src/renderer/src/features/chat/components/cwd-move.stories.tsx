@@ -206,15 +206,23 @@ export const Editable: Story = {
  *
  * The operator has since asked for the chip to take only the width it needs
  * ("not take up extra space unless needed … up to the current as max width"),
- * which supersedes D7 - so the column is a CAP now (`CHIP_PATH_COLUMN`) and
- * these two frames prove the OPPOSITE of what they used to: the boxes differ by
- * exactly the two characters the paths differ by, and in a composed row the
- * readings cluster moves by it. What D7 bought is replaced rather than dropped
- * - the chip's left edge and the mic/send group's right edge are still fixed,
- * and the row never demands more than it did (the component's own
- * `CHIP_PATH_COLUMN` comment states the whole of it) - and the frames that show
- * WHICH block moves are `message-input.stories.tsx`'s `CwdChipInRow` and the
- * `composed-row` captures in `docs/evidence/chat-cwd-move-live/`.
+ * which supersedes D7 - so the column is a CAP now (`CHIP_PATH_COLUMN`).
+ *
+ * These two frames are NOT evidence about that cap, and saying so is the point
+ * of this paragraph: both render at this file's default 880px column, BELOW the
+ * 900px gate, where the 260px box ceiling (`max-w-65`) binds both paths and both
+ * spans are ellipsised: the pair's own chevron ink sits at the same x in both
+ * frames, and the two contents (282.3px and 267.9px) both exceed the ceiling.
+ * What the pair still shows is the characters INSIDE that
+ * box (`~/src/pr…` against `~/Downlo…`), which is the half of the previous
+ * claim that survives. Above the gate the boxes genuinely differ, by the two
+ * characters the paths differ by; the frames that show WHICH block moves are
+ * `message-input.stories.tsx`'s composed-row stories and the `composed-row`
+ * captures in `docs/evidence/chat-cwd-move-live/`, at the 1024px column the cap
+ * is gated for. What D7 bought is replaced rather than dropped - the chip's left
+ * edge and the mic/send group's right edge are still fixed, and the row never
+ * demands more than it did (the component's own `CHIP_PATH_COLUMN` comment
+ * states the whole of it).
  */
 export const EditableShortPath: Story = {
 	render: () => (
