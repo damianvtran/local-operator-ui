@@ -641,7 +641,18 @@ export class DaemonStateMachine {
 		return this.identity?.url ?? null;
 	}
 
-	snapshot(): DaemonStatusSnapshot {
+	/**
+	 * The connection's own snapshot.
+	 *
+	 * IT RETURNS EVERY FIELD EXCEPT `addressSubstitution`, and the Omission is the
+	 * point rather than a type trick (agent round 2, R2-1): that field is DERIVED
+	 * from the address this app is actually on, so it is assembled by the manager
+	 * (`BackendServiceManager.getStatusSnapshot`) which is the only object that holds
+	 * both the configured address and the connection. A machine that could write it
+	 * here would be a second producer, which is exactly how the field came to claim a
+	 * fallback the app had already left.
+	 */
+	snapshot(): Omit<DaemonStatusSnapshot, "addressSubstitution"> {
 		return {
 			state: this.state,
 			reconnecting: this.isReconnecting(),
