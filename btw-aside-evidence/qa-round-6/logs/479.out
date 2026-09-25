@@ -1,0 +1,302 @@
+port8080.lock taken
+rig up: proxy 24352 on 8080 -> daemon 21852 on 57923, stub 57869; 1111 untouched
+== 479 (r3-479) at 01:32:54 ==
+[build] current: assets 2026-09-25T00:33:33.054Z >= sources 2026-09-25T00:04:08.960Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8177
+  serve records 1 linked from /Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/run-479/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/qa-482-r6
+  scratch       /Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/tmp/lo-renderer-driver-25058
+  frames        /Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/frames/479
+  app cwd       /Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/tmp/lo-renderer-driver-25058/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8177   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/qa-482-r6/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8177","backend":"http://127.0.0.1:8177"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8177)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown
+        mode=headless visible=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] 479 session
+        4304aff3bf34
+[note] seed turns
+        3
+[note] aside used and closed before the probe
+        [200]
+[note] 479 run 1 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 1 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[3,40,1,1,0,"Ask me for help"],[16,40,1,1,0,"Ask me for help"],[25,40,1,1,0,"Ask me for help"],[42,40,1,1,0,"Sending your message"],[53,0,0,0,1,"Sending your message"],[1492,0,0,0,1,"Sending your message"],[1500,0,0,0,1,"Sending your message"]]
+[note] 479 run 1 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[39,40,1,1,0],[47,40,0,0,0],[52,0,0,0,1]]
+[note] 479 run 1 GAP chips-left -> text-left (mutation ms)
+        5
+[PASS] 479 run 1 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[PASS] 479: the empty box says 'Sending your message' while held
+        {"placeholder":"Sending your message"}
+[note] 479 run 2 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 2 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,40,1,1,0,"Ask me for help"],[7,40,1,1,0,"Sending your message"],[16,0,0,0,1,"Sending your message"],[1491,0,0,0,1,"Sending your message"],[1500,0,0,0,1,"Sending your message"]]
+[note] 479 run 2 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[3,40,1,1,0],[11,40,0,0,0],[15,0,0,0,1]]
+[note] 479 run 2 GAP chips-left -> text-left (mutation ms)
+        4
+[PASS] 479 run 2 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 3 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 3 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,40,1,1,0,"Ask me for help"],[10,40,1,1,0,"Ask me for help"],[17,40,1,1,0,"Ask me for help"],[35,40,1,1,0,"Sending your message"],[43,0,0,0,1,"Sending your message"],[1496,0,0,0,1,"Sending your message"],[1505,0,0,0,1,"Sending your message"]]
+[note] 479 run 3 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[28,40,1,1,0],[39,40,0,0,0],[43,0,0,0,1]]
+[note] 479 run 3 GAP chips-left -> text-left (mutation ms)
+        4
+[PASS] 479 run 3 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 4 staged at the press
+        {"replies":1,"attachments":0}
+[note] 479 run 4 (quote only) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,40,1,0,0,"Ask me for help"],[10,0,0,0,1,"Sending your message"],[17,0,0,0,1,"Sending your message"],[1493,0,0,0,1,"Sending your message"],[1500,0,0,0,1,"Sending your message"]]
+[note] 479 run 4 (quote only) mutations [t, value, replies, attachments, echo]
+        [[3,40,1,0,0],[10,0,0,0,1]]
+[note] 479 run 4 GAP chips-left -> text-left (mutation ms)
+        0
+[PASS] 479 run 4 (quote only): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 5 staged at the press
+        {"replies":0,"attachments":1}
+[note] 479 run 5 (file only) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,39,0,1,0,"Ask me for help"],[6,39,0,1,0,"Sending your message"],[12,39,0,0,0,"Sending your message"],[19,0,0,0,1,"Sending your message"],[1496,0,0,0,1,"Sending your message"],[1502,0,0,0,1,"Sending your message"]]
+[note] 479 run 5 (file only) mutations [t, value, replies, attachments, echo]
+        [[3,39,0,1,0],[11,39,0,0,0],[18,0,0,0,1]]
+[note] 479 run 5 GAP chips-left -> text-left (mutation ms)
+        7
+[FAIL] 479 run 5 (file only): no painted frame shows the text without its chips (or the reverse)
+        {"split":[[12,39,0,0,0,"Sending your message"]]}
+
+---- app log (tail) ----
+21:32:59.359 › [browser] denied a media permission request from (unknown origin)
+21:32:59.359 › [browser] denied a web-app-installation permission request from (unknown origin)
+21:32:59.359 › [browser] denied a geolocation permission request from (unknown origin)
+21:33:00.662 › Checking for UI updates...
+21:33:00.663 › Skip checkForUpdates because application is not packed and dev update config is not forced
+Error occurred in handler for 'browser-state': Error: No handler registered for 'browser-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'console-state': Error: No handler registered for 'console-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'browser-webauthn-pending': Error: No handler registered for 'browser-webauthn-pending'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+[window-mode] state: visible=false focused=false focusable=false size=1380x900 content=1380x868
+21:33:02.357 › Checking for updates... (silent mode: true)
+21:33:02.357 › Skip checkForUpdates because application is not packed and dev update config is not forced
+21:33:02.358 › Checking for backend updates... (silent mode: true)
+21:33:02.358 › Skip backend update check in dev mode unless forced
+21:33:02.397 › Checking for UI updates...
+21:33:02.397 › Skip checkForUpdates because application is not packed and dev update config is not forced
+Error occurred in handler for 'browser-state': Error: No handler registered for 'browser-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'console-state': Error: No handler registered for 'console-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'browser-webauthn-pending': Error: No handler registered for 'browser-webauthn-pending'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+21:33:14.354 › The pre-split environment at /Users/damian/Library/Application Support/Local Operator/local-operator-venv is built on the interpreter inside /Applications/Local Operator.app; it is left exactly as it is, and this instance does not use it.
+21:33:14.360 › [browser] session cookies: the cookie-jar channel could not be opened (Error: opening the cookie-jar channel did not respond within 15000ms); session cookies will not be restored or saved this run, and the marker this run leaves means the stored snapshot will be discarded at the next start
+21:33:14.378 › [browser] denied a media permission request from (unknown origin)
+21:33:14.379 › [browser] denied a media permission request from (unknown origin)
+21:33:14.379 › [browser] denied a web-app-installation permission request from (unknown origin)
+21:33:14.379 › [browser] denied a geolocation permission request from (unknown origin)
+21:33:14.399 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
+21:33:14.400 › [browser] host on 127.0.0.1:58229 (proto 1), profile /Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/tmp/lo-renderer-driver-25058/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+sandbox_extension_issue_file failed for /Users/damian/local-operator-ui-worktrees/qa-482-r6/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/Resources: 1 (Operation not permitted)
+
+[PASS] no process from this run outlived its boot
+
+frames: qa3-479-479-in-flight.png
+frames directory: /Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/frames/479
+app log: /Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/tmp/lo-renderer-driver-25058/app-scene.log
+scratch removed (--clean)
+
+1 CHECK(S) FAILED
+== 479 driver exit: 1 ==
+total 640
+drwxr-xr-x@ 3 damian  staff      96 Sep 24 21:33 .
+drwxr-xr-x@ 9 damian  staff     288 Sep 24 21:32 ..
+-rw-r--r--@ 1 damian  staff  323653 Sep 24 21:33 qa3-479-479-in-flight.png
+8080 released before this command returned
+port8080.lock released
+--- proxy counters (/Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/run-479/proxy-stats.json) ---
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T01:33:38.831Z",
+      "url": "/v1/desktop/sessions/4304aff3bf34/asides",
+      "asideId": "20c11095-07e0-4614-af3b-38a6e6691463",
+      "continues": null,
+      "questionHead": "an aside before the probe",
+      "text": "an aside before the probe",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "93537eebeb59450c87f7fd538a7d7ae2",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"20c11095-07e0-4614-af3b-38a6e6691463\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T01:32:59.474Z",
+      "subscriptionId": "f0c4abc03851c06a",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/4304aff3bf34/events?frontend_replace=1",
+      "openedAt": "2026-09-25T01:33:05.050Z",
+      "subscriptionId": "93537eebeb59450c87f7fd538a7d7ae2",
+      "asideDeltas": 8,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    }
+  ],
+  "asideDeltaFrames": 8,
+  "deltasBySubscription": {
+    "93537eebeb59450c87f7fd538a7d7ae2": 8
+  },
+  "deltasByAside": {
+    "20c11095-07e0-4614-af3b-38a6e6691463": 8
+  },
+  "refused422": 0,
+  "messagePosts": [
+    {
+      "at": "2026-09-25T01:33:17.174Z",
+      "url": "/v1/desktop/sessions/4304aff3bf34/messages",
+      "kind": "message",
+      "text": "seed turn for quoting",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"206e3456-8551-44f9-857c-9c24cebc015e\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T01:33:17.179Z"
+    },
+    {
+      "at": "2026-09-25T01:33:25.057Z",
+      "url": "/v1/desktop/sessions/4304aff3bf34/messages",
+      "kind": "message",
+      "text": "extra seed turn 0",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"05bbb83d-7712-4e74-8cec-afdeeb77ccc5\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T01:33:25.057Z"
+    },
+    {
+      "at": "2026-09-25T01:33:31.893Z",
+      "url": "/v1/desktop/sessions/4304aff3bf34/messages",
+      "kind": "message",
+      "text": "extra seed turn 1",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"46c816a1-4f73-4613-9681-fd67bbbb0b26\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T01:33:31.894Z"
+    },
+    {
+      "at": "2026-09-25T01:33:46.017Z",
+      "url": "/v1/desktop/sessions/4304aff3bf34/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 1 (quote+file)",
+      "images": 1,
+      "held": 10000,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"1db9c3ac-4015-4447-a0fa-dc2ffc0f03c7\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T01:33:56.019Z"
+    },
+    {
+      "at": "2026-09-25T01:34:06.213Z",
+      "url": "/v1/desktop/sessions/4304aff3bf34/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 2 (quote+file)",
+      "images": 1,
+      "held": 10000,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"45f9306e-2ef5-476e-b8a6-01626e41a410\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T01:34:16.213Z"
+    },
+    {
+      "at": "2026-09-25T01:34:23.774Z",
+      "url": "/v1/desktop/sessions/4304aff3bf34/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 3 (quote+file)",
+      "images": 1,
+      "held": 10000,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"d25ce532-07d8-4765-90e8-6ba01790bf27\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T01:34:33.783Z"
+    },
+    {
+      "at": "2026-09-25T01:34:40.566Z",
+      "url": "/v1/desktop/sessions/4304aff3bf34/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 4 (quote only)",
+      "images": 0,
+      "held": 10000,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"b1e79f20-660c-4c3f-b5dc-62725fabc17a\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T01:34:50.566Z"
+    },
+    {
+      "at": "2026-09-25T01:34:57.287Z",
+      "url": "/v1/desktop/sessions/4304aff3bf34/messages",
+      "kind": "message",
+      "text": "HOLDSEND one-moment probe 5 (file only)",
+      "images": 1,
+      "held": 10000,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"08b21b04-ac56-41a0-8a9c-f9c450c53a34\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T01:35:07.290Z"
+    }
+  ],
+  "asideOps": [
+    {
+      "at": "2026-09-25T01:33:44.970Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/4304aff3bf34/asides/20c11095-07e0-4614-af3b-38a6e6691463",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"20c11095-07e0-4614-af3b-38a6e6691463\",\"status\":\"closed\"},\"replayed\":false}}"
+    }
+  ]
+}
+--- end counters ---

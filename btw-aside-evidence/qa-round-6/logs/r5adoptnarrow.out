@@ -1,0 +1,372 @@
+port8080.lock taken
+rig up: proxy 10729 on 8080 -> daemon 7761 on 56607, stub 56569; 1111 untouched
+== r5adoptnarrow (btw-r5-adopt) at 01:30:41 ==
+[build] current: assets 2026-09-25T00:33:33.054Z >= sources 2026-09-25T00:04:08.960Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8177
+  serve records 1 linked from /Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/run-r5adoptnarrow/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/qa-482-r6
+  scratch       /Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/tmp/lo-renderer-driver-11342
+  frames        /Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/frames/r5adoptnarrow
+  app cwd       /Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/tmp/lo-renderer-driver-11342/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8177   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/qa-482-r6/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8177","backend":"http://127.0.0.1:8177"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8177)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown
+        mode=headless visible=false focused=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] R5 adopt session A
+        11a51cd3ca82
+[note] Q40 wire
+        {"adoptOps":[{"url":"…/asides/29fdc20a-6a29-48bc-b8b5-121389386903/adopt","status":200}],"history":[9,11],"questionInHistory":[false,true],"questionInSnapshot":[false,true],"snapshotStatus":[200,200]}
+[PASS] Q40 control adopt: ONE adopt POST → 200 and the panel detaches
+        {"adoptOps":[200],"panelGoneMs":134}
+[PASS] Q40 control adopt: the question AND its answer paint in the transcript without leaving the pane
+        {"paintedMs":{"q40 adopted with the panel control":265,"Transport failures and owner":265},"questionRows":1,"answerHeads":[1,2]}
+[PASS] Q40 control adopt: the daemon's record holds the exchange (history grew by 2 and carries the question; the snapshot carries it)
+        {"history":[9,11],"snapshot":[false,true]}
+[note] frame
+        {"label":"qa5-r5adoptnarrow-q40-control-adopt-painted-live","mode":"settled"}
+[PASS] Q41 first ⌘+F: NO adopt request leaves; the confirm is shown; the panel stays
+        {"adoptPosts":0,"alerts":["Press ⌘+F again to add the aside to the conversation. Once added, it stays there."],"key":{"prevented":true}}
+[note] frame
+        {"label":"qa5-r5adoptnarrow-q41-first-cmdf-confirm-only","mode":"settled"}
+[PASS] Q41 second ⌘+F: ONE adopt POST → 200, panel detaches, BOTH turns paint live, once each
+        {"adoptOps":[200],"panelGoneMs":86,"paintedMs":{"q41 chord adopt first turn":144,"q41 chord adopt second turn":144}}
+[PASS] Q41 the daemon's record holds both turns (history +4)
+        {"history":[13,17]}
+[note] frame
+        {"label":"qa5-r5adoptnarrow-q41-second-cmdf-adopted-painted-live","mode":"settled"}
+[note] Q42 away from the conversation
+        {"awayUrl":"#/chat/11a51cd3ca82","transcriptMounted":false,"transcriptHasQ40":0}
+[PASS] Q42 after LEAVING the conversation (/settings: its transcript unmounted) and re-entering, all three adopted questions are painted, once each
+        {"paintedMsAfterReentry":{"q40 adopted with the panel control":34,"q41 chord adopt first turn":34,"q41 chord adopt second turn":34},"counts":[1,1,1]}
+[note] frame
+        {"label":"qa5-r5adoptnarrow-q42-after-reentering","mode":"settled"}
+[note] R5 adopt session B (empty conversation)
+        4addfaaa44fc
+[note] Q43 session B entries after the adopt (role / kind / head)
+        [["custom","{\"id\":\"b35e0316163b42838b57283c3c3a7bc5\",\"ts\":1790299919.331617,\"type\""],["message","{\"id\":\"5bebe5749fc64877891a1d8e84812bed\",\"ts\":1790299919.973127,\"type\""],["message","{\"id\":\"8478056e347842b585e27215e68954c8\",\"ts\":1790299919.9731379,\"type"]]
+[note] Q43 session B history count before the adopt
+        1
+[PASS] Q43 adopt into an EMPTY conversation: 200, painted live, in the daemon's record
+        {"paintedMs":{"q43 adopted into an empty conversation":500,"Transport failures and owner":500},"history":[1,3]}
+[note] frame
+        {"label":"qa5-r5adoptnarrow-q43-empty-conversation-adopted","mode":"settled"}
+[PASS] Q43b re-entering B from A: the adopted exchange is still there, once
+        {"paintedMsAfterReentry":{"q43 adopted into an empty conversation":34},"count":1}
+[PASS] Q43c back in A: A's adopted rows are intact and B's did not leak into A
+        {"counts":[1,1,1,0]}
+[note] frame
+        {"label":"qa5-r5adoptnarrow-q44-confirm-withdrawn-while-conversation-works","mode":"raw"}
+[PASS] Q44 R6-5: arm, then a conversation turn starts → the confirm is withdrawn; after the turn, the next ⌘+F only confirms again (0 adopt POSTs)
+        {"armed":["Press ⌘+F again to add the aside to the conversation. Once added, it stays there."],"injected":200,"alertsAfterTurnStart":[],"alertsAfterNextPress":["Press ⌘+F again to add the aside to the conversation. Once added, it stays there."],"adoptPosts":0}
+[PASS] Q44b the second press then adopts (one POST 200) and paints
+        {"adoptOps":[200]}
+  [renderer] [attention] 11a51cd3ca82 receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
+    at SEe (file:///Users/damian/local-operator-ui-worktrees/qa-482-r6/out/renderer/assets/index-BFGKH0Ye.js:812:94627)
+    at async _t (file:///Users/damian/local-operator-ui-worktrees/qa-482-r6/out/renderer/assets/index-BFGKH0Ye.js:812:95762)
+[PASS] no process from this run outlived its boot
+
+frames: qa5-r5adoptnarrow-q40-control-adopt-painted-live.png, qa5-r5adoptnarrow-q41-first-cmdf-confirm-only.png, qa5-r5adoptnarrow-q41-second-cmdf-adopted-painted-live.png, qa5-r5adoptnarrow-q42-after-reentering.png, qa5-r5adoptnarrow-q43-empty-conversation-adopted.png, qa5-r5adoptnarrow-q44-confirm-withdrawn-while-conversation-works.png
+frames directory: /Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/frames/r5adoptnarrow
+app log: /Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/tmp/lo-renderer-driver-11342/app-scene.log
+scratch removed (--clean)
+
+ALL CHECKS PASSED
+== r5adoptnarrow driver exit: 0 ==
+total 3360
+drwxr-xr-x@ 8 damian  staff     256 Sep 24 21:32 .
+drwxr-xr-x@ 8 damian  staff     256 Sep 24 21:30 ..
+-rw-r--r--@ 1 damian  staff  287246 Sep 24 21:31 qa5-r5adoptnarrow-q40-control-adopt-painted-live.png
+-rw-r--r--@ 1 damian  staff  295974 Sep 24 21:31 qa5-r5adoptnarrow-q41-first-cmdf-confirm-only.png
+-rw-r--r--@ 1 damian  staff  291108 Sep 24 21:31 qa5-r5adoptnarrow-q41-second-cmdf-adopted-painted-live.png
+-rw-r--r--@ 1 damian  staff  292621 Sep 24 21:31 qa5-r5adoptnarrow-q42-after-reentering.png
+-rw-r--r--@ 1 damian  staff  245585 Sep 24 21:32 qa5-r5adoptnarrow-q43-empty-conversation-adopted.png
+-rw-r--r--@ 1 damian  staff  290953 Sep 24 21:32 qa5-r5adoptnarrow-q44-confirm-withdrawn-while-conversation-works.png
+8080 released before this command returned
+port8080.lock released
+--- proxy counters (/Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/run-r5adoptnarrow/proxy-stats.json) ---
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T01:31:08.196Z",
+      "url": "/v1/desktop/sessions/11a51cd3ca82/asides",
+      "asideId": "29fdc20a-6a29-48bc-b8b5-121389386903",
+      "continues": null,
+      "questionHead": "q40 adopted with the panel control",
+      "text": "q40 adopted with the panel control",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "540ec54a7d2d483bb68a73d440a42b46",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"29fdc20a-6a29-48bc-b8b5-121389386903\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T01:31:25.920Z",
+      "url": "/v1/desktop/sessions/11a51cd3ca82/asides",
+      "asideId": "1a0208fe-8bf0-4627-9bab-d7ba81e164a0",
+      "continues": null,
+      "questionHead": "q41 chord adopt first turn",
+      "text": "q41 chord adopt first turn",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "411c96b165bb4ca684d8140a44e23af9",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"1a0208fe-8bf0-4627-9bab-d7ba81e164a0\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T01:31:31.456Z",
+      "url": "/v1/desktop/sessions/11a51cd3ca82/asides",
+      "asideId": "7e833854-28e6-4b8f-802f-94a3865ac30a",
+      "continues": "1a0208fe-8bf0-4627-9bab-d7ba81e164a0",
+      "questionHead": "q41 chord adopt second turn",
+      "text": "q41 chord adopt second turn",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "411c96b165bb4ca684d8140a44e23af9",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"7e833854-28e6-4b8f-802f-94a3865ac30a\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T01:31:43.006Z",
+      "url": "/v1/desktop/sessions/4addfaaa44fc/asides",
+      "asideId": "dc5ba538-0dfd-4dc2-a673-588e6cd9bf70",
+      "continues": null,
+      "questionHead": "q43 adopted into an empty conversation",
+      "text": "q43 adopted into an empty conversation",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "e17580eeda564aca89d9ce63169a64fa",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"dc5ba538-0dfd-4dc2-a673-588e6cd9bf70\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T01:32:05.031Z",
+      "url": "/v1/desktop/sessions/11a51cd3ca82/asides",
+      "asideId": "71de82a5-0674-42b0-b3b3-888a5da3f73b",
+      "continues": null,
+      "questionHead": "q44 armed then the conversation starts a turn",
+      "text": "q44 armed then the conversation starts a turn",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "bdc0a8b1b2764903be42c11e20efc7e9",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"71de82a5-0674-42b0-b3b3-888a5da3f73b\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T01:30:46.067Z",
+      "subscriptionId": "ab8db27203902da0",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/11a51cd3ca82/events?frontend_replace=1",
+      "openedAt": "2026-09-25T01:30:51.205Z",
+      "subscriptionId": "540ec54a7d2d483bb68a73d440a42b46",
+      "asideDeltas": 8,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    },
+    {
+      "url": "/v1/desktop/sessions/11a51cd3ca82/events?frontend_replace=1",
+      "openedAt": "2026-09-25T01:31:13.641Z",
+      "subscriptionId": "411c96b165bb4ca684d8140a44e23af9",
+      "asideDeltas": 16,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    },
+    {
+      "url": "/v1/desktop/sessions/11a51cd3ca82/events?frontend_replace=1",
+      "openedAt": "2026-09-25T01:31:38.169Z",
+      "subscriptionId": "f6911fd52c13493b869313b472f04dd6",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/11a51cd3ca82/events?frontend_replace=1",
+      "openedAt": "2026-09-25T01:31:40.857Z",
+      "subscriptionId": "6e3b08ed520f42ecac04fddb5024bc54",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/4addfaaa44fc/events?frontend_replace=1",
+      "openedAt": "2026-09-25T01:31:42.198Z",
+      "subscriptionId": "e17580eeda564aca89d9ce63169a64fa",
+      "asideDeltas": 8,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    },
+    {
+      "url": "/v1/desktop/sessions/4addfaaa44fc/events?frontend_replace=1",
+      "openedAt": "2026-09-25T01:31:59.999Z",
+      "subscriptionId": "54e03ed9a7374ee78f3f455fc3f2a1b0",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/11a51cd3ca82/events?frontend_replace=1",
+      "openedAt": "2026-09-25T01:32:01.503Z",
+      "subscriptionId": "98bff41d10f24789b2c5998579f3b7c8",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/4addfaaa44fc/events?frontend_replace=1",
+      "openedAt": "2026-09-25T01:32:02.627Z",
+      "subscriptionId": "6a81f149bcd24eb895425668df6a44b6",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/11a51cd3ca82/events?frontend_replace=1",
+      "openedAt": "2026-09-25T01:32:03.278Z",
+      "subscriptionId": "bdc0a8b1b2764903be42c11e20efc7e9",
+      "asideDeltas": 8,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    },
+    {
+      "url": "/v1/desktop/sessions/11a51cd3ca82/events?frontend_replace=1",
+      "openedAt": "2026-09-25T01:32:18.533Z",
+      "subscriptionId": "bfdab283e35641179f81e40959ff3ad6",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    }
+  ],
+  "asideDeltaFrames": 40,
+  "deltasBySubscription": {
+    "540ec54a7d2d483bb68a73d440a42b46": 8,
+    "411c96b165bb4ca684d8140a44e23af9": 16,
+    "e17580eeda564aca89d9ce63169a64fa": 8,
+    "bdc0a8b1b2764903be42c11e20efc7e9": 8
+  },
+  "deltasByAside": {
+    "29fdc20a-6a29-48bc-b8b5-121389386903": 8,
+    "1a0208fe-8bf0-4627-9bab-d7ba81e164a0": 8,
+    "7e833854-28e6-4b8f-802f-94a3865ac30a": 8,
+    "dc5ba538-0dfd-4dc2-a673-588e6cd9bf70": 8,
+    "71de82a5-0674-42b0-b3b3-888a5da3f73b": 8
+  },
+  "refused422": 0,
+  "messagePosts": [
+    {
+      "at": "2026-09-25T01:31:00.518Z",
+      "url": "/v1/desktop/sessions/11a51cd3ca82/messages",
+      "kind": "message",
+      "text": "seed turn for the round-5 adopt scene",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"9cc6c9ea-ad3d-4151-88f6-ca9ae9c5bac2\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T01:31:00.518Z"
+    },
+    {
+      "at": "2026-09-25T01:32:10.885Z",
+      "url": "/v1/desktop/sessions/11a51cd3ca82/messages",
+      "kind": "message",
+      "text": "INJECTED TURN: the conversation works while the aside is armed",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"40d13743-ce13-43b0-9a2a-d9d898265132\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T01:32:10.886Z"
+    }
+  ],
+  "asideOps": [
+    {
+      "at": "2026-09-25T01:31:13.460Z",
+      "method": "POST",
+      "url": "/v1/desktop/sessions/11a51cd3ca82/asides/29fdc20a-6a29-48bc-b8b5-121389386903/adopt",
+      "kind": "adopt",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"29fdc20a-6a29-48bc-b8b5-121389386903\",\"status\":\"adopted\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T01:31:38.095Z",
+      "method": "POST",
+      "url": "/v1/desktop/sessions/11a51cd3ca82/asides/7e833854-28e6-4b8f-802f-94a3865ac30a/adopt",
+      "kind": "adopt",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"7e833854-28e6-4b8f-802f-94a3865ac30a\",\"status\":\"adopted\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T01:31:59.768Z",
+      "method": "POST",
+      "url": "/v1/desktop/sessions/4addfaaa44fc/asides/dc5ba538-0dfd-4dc2-a673-588e6cd9bf70/adopt",
+      "kind": "adopt",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"dc5ba538-0dfd-4dc2-a673-588e6cd9bf70\",\"status\":\"adopted\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T01:32:18.496Z",
+      "method": "POST",
+      "url": "/v1/desktop/sessions/11a51cd3ca82/asides/71de82a5-0674-42b0-b3b3-888a5da3f73b/adopt",
+      "kind": "adopt",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"71de82a5-0674-42b0-b3b3-888a5da3f73b\",\"status\":\"adopted\"},\"replayed\":false}}"
+    }
+  ]
+}
+--- end counters ---

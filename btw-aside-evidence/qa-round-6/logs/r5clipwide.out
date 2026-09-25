@@ -1,0 +1,475 @@
+port8080.lock taken
+rig up: proxy 30005 on 8080 -> daemon 28237 on 51090, stub 50994; 1111 untouched
+== r5clipwide (btw-r5-clip) at 01:49:19 ==
+[build] current: assets 2026-09-25T00:33:33.054Z >= sources 2026-09-25T00:04:08.960Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8177
+  serve records 1 linked from /Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/run-r5clipwide/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/qa-482-r6
+  scratch       /Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/tmp/lo-renderer-driver-30294
+  frames        /Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/frames/r5clipwide
+  app cwd       /Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/tmp/lo-renderer-driver-30294/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8177   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/qa-482-r6/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8177","backend":"http://127.0.0.1:8177"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8177)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown
+        mode=headless visible=false focused=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] R5 clip session
+        27243e57c585
+[note] Q35a unanswered (tool call twice) samples [ms, scrollTop, maxScroll, target, state, hiddenBelowPx]
+        [[23,0,0,200.3,"thinking",null],[5699,15,15,200.3,"alert",0]]
+[note] Q35a unanswered (tool call twice) final
+        {"scrollTop":15,"maxScroll":15,"target":200.3,"state":"alert","alertText":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it.","alertTopInRegion":208.8,"alertBottomInRegion":247.8,"clientHeight":248,"hiddenBelowPx":0,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-2.7,"phrase":{"needle":"discard it","bottomVsClipPx":-2.7,"visible":true}}
+[PASS] Q35a unanswered (tool call twice): at rest the region is at D11's target, the whole refusal is in view (0 px hidden), its last line is visible and 'or press Esc to close the aside and discard it' is on screen; scrollTop only moved one way
+        {"scrollTop":15,"maxScroll":15,"target":200.3,"hiddenBelowPx":0,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-2.7,"phrase":{"needle":"discard it","bottomVsClipPx":-2.7,"visible":true},"monotone":true,"alert":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it."}
+[note] frame
+        {"label":"qa5-r5clipwide-q35a-refusal-at-rest","mode":"settled"}
+[note] Q35b answered follow-up samples
+        [[37,70,70,274.8,"thinking",null],[2350,73,73,274.8,"other",null],[3262,125,125,274.8,"other",null],[3552,152,152,274.8,"other",null],[3871,178,178,274.8,"other",null],[4139,215,215,274.8,"other",null]]
+[note] Q35c empty answer samples [ms, scrollTop, maxScroll, target, state, hiddenBelowPx]
+        [[19,270,270,475.1,"thinking",null],[2593,290,290,475.1,"alert",0]]
+[note] Q35c empty answer final
+        {"scrollTop":290,"maxScroll":290,"target":475.1,"state":"alert","alertText":"The model answered your aside with no text at all, so the exchange has no answer to keep. Ask again here to keep this exchange, or press Esc to close the aside and discard it.","alertTopInRegion":208.6,"alertBottomInRegion":247.6,"clientHeight":248,"hiddenBelowPx":0,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-2.9,"phrase":{"needle":"discard it","bottomVsClipPx":-2.9,"visible":true}}
+[PASS] Q35c empty answer: at rest the region is at D11's target, the whole refusal is in view (0 px hidden), its last line is visible and 'or press Esc to close the aside and discard it' is on screen; scrollTop only moved one way
+        {"scrollTop":290,"maxScroll":290,"target":475.1,"hiddenBelowPx":0,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-2.9,"phrase":{"needle":"discard it","bottomVsClipPx":-2.9,"visible":true},"monotone":true,"alert":"The model answered your aside with no text at all, so the exchange has no answer to keep. Ask again here to keep this exchange, or press Esc to close the aside and discard it."}
+[note] frame
+        {"label":"qa5-r5clipwide-q35c-refusal-at-rest","mode":"settled"}
+[note] Q35d unanswered (a call then silence) samples [ms, scrollTop, maxScroll, target, state, hiddenBelowPx]
+        [[17,345,345,549.6,"thinking",null],[5868,364,364,549.6,"alert",0.1]]
+[note] Q35d unanswered (a call then silence) final
+        {"scrollTop":364,"maxScroll":364,"target":549.6,"state":"alert","alertText":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it.","alertTopInRegion":209.1,"alertBottomInRegion":248.1,"clientHeight":248,"hiddenBelowPx":0.1,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-2.4,"phrase":{"needle":"discard it","bottomVsClipPx":-2.4,"visible":true}}
+[PASS] Q35d unanswered (a call then silence): at rest the region is at D11's target, the whole refusal is in view (0 px hidden), its last line is visible and 'or press Esc to close the aside and discard it' is on screen; scrollTop only moved one way
+        {"scrollTop":364,"maxScroll":364,"target":549.6,"hiddenBelowPx":0.1,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-2.4,"phrase":{"needle":"discard it","bottomVsClipPx":-2.4,"visible":true},"monotone":true,"alert":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it."}
+[note] frame
+        {"label":"qa5-r5clipwide-q35d-refusal-at-rest","mode":"settled"}
+[note] Q35e out-of-band DELETE of the answered entry (probe: the owner evicting/expiring it)
+        {"status":200,"body":"{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"73d7cf20-bada-464c-a6ac-4f49320df984\",\"status\":\"closed\"},\"replayed\":false}}"}
+[note] Q35e wire
+        {"status":409,"continues":"73d7cf20-bada-464c-a6ac-4f49320df984","response":"{\"detail\":\"This aside is no longer available\"}"}
+[note] Q35e dropped exchange (409 no longer available) samples [ms, scrollTop, maxScroll, target, state, hiddenBelowPx]
+        [[19,619,619,824.4,"thinking",null],[125,639,639,824.4,"alert",0]]
+[note] Q35e dropped exchange (409 no longer available) final
+        {"scrollTop":639,"maxScroll":639,"target":824.4,"state":"alert","alertText":"This aside is no longer available This aside can't continue. Press Esc to close it, which discards this exchange, then start a new one with /btw.","alertTopInRegion":208.9,"alertBottomInRegion":247.9,"clientHeight":248,"hiddenBelowPx":0,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-2.6,"phrase":{"needle":"start a new one with /btw","bottomVsClipPx":-2.6,"visible":true}}
+[PASS] Q35e dropped exchange (409 no longer available): at rest the region is at D11's target, the whole refusal is in view (0 px hidden), its last line is visible and 'can't continue' is on screen; scrollTop only moved one way
+        {"scrollTop":639,"maxScroll":639,"target":824.4,"hiddenBelowPx":0,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-2.6,"phrase":{"needle":"start a new one with /btw","bottomVsClipPx":-2.6,"visible":true},"monotone":true,"alert":"This aside is no longer available This aside can't continue. Press Esc to close it, which discards this exchange, then start a new one with /btw."}
+[PASS] Q35e the dropped-exchange refusal names no retry that cannot work
+        {"alert":"This aside is no longer available This aside can't continue. Press Esc to close it, which discards this exchange, then start a new one with /btw."}
+[note] frame
+        {"label":"qa5-r5clipwide-q35e-dropped-refusal-at-rest","mode":"settled"}
+[note] Q36 refused follow-up under a long answer samples [ms, scrollTop, maxScroll, target, state, hiddenBelowPx]
+        [[75,547,547,752.3,"thinking",null],[5947,567,567,752.3,"alert",0]]
+[note] Q36 refused follow-up under a long answer final
+        {"scrollTop":567,"maxScroll":567,"target":752.3,"state":"alert","alertText":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it.","alertTopInRegion":208.8,"alertBottomInRegion":247.8,"clientHeight":248,"hiddenBelowPx":0,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-2.7,"phrase":{"needle":"discard it","bottomVsClipPx":-2.7,"visible":true}}
+[PASS] Q36 refused follow-up under a long answer: at rest the region is at D11's target, the whole refusal is in view (0 px hidden), its last line is visible and 'or press Esc to close the aside and discard it' is on screen; scrollTop only moved one way
+        {"scrollTop":567,"maxScroll":567,"target":752.3,"hiddenBelowPx":0,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-2.7,"phrase":{"needle":"discard it","bottomVsClipPx":-2.7,"visible":true},"monotone":true,"alert":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it."}
+[note] frame
+        {"label":"qa5-r5clipwide-q36-refusal-under-long-answer","mode":"settled"}
+[note] Q37 the reader scrolled mid-thinking
+        {"from":622,"to":322,"method":"mouseWheel"}
+[note] Q37 samples
+        [[21,622,622,826.8,"thinking",null],[1060,322,622,826.8,"thinking",null],[5510,322,641,826.8,"alert",319.3]]
+[PASS] Q37 D11 yields to the reader: a hand scroll during thinking holds when the refusal lands (the phase trigger does not re-take the region)
+        {"userAt":322,"finalScrollTop":322,"maxScroll":641,"hiddenBelowPx":319.3}
+[note] Q38 samples [ms, scrollTop, maxScroll, target, state]
+        [[32,547,547,752.3,"thinking",null],[2344,595,595,752.3,"other",null],[2668,640,640,752.3,"other",null],[2938,729,729,752.3,"other",null],[3254,752.5,819,752.3,"other",null],[3578,752.5,886,752.3,"other",null],[3845,752.5,976,752.3,"other",null],[4169,752.5,1043,752.3,"other",null],[4494,752.5,1110,752.3,"other",null],[4814,752.5,1200,752.3,"other",null]]
+[PASS] Q38 D11 on an answered follow-up: scrollTop moves one way only, reaches the question's offset, then holds for every later chunk and through the settle (no per-chunk pin, no jump at settle)
+        {"monotone":true,"reachedAt":[3254,752.5,819,752.3,"other",null],"distinctAfterReach":[752.5],"final":{"scrollTop":752.5,"turnOffset":752.3,"maxScroll":1245}}
+[PASS] Q38c D11 yields to a mid-stream hand scroll through the settle
+        {"userAt":1147,"final":1147}
+[note] Q39 TOOLCALL2: q39 fresh refusal two
+        {"samples":[[15,0,0,74.5,"thinking",null],[5736,0,0,74.5,"alert",0]],"final":{"scrollTop":0,"maxScroll":0,"target":74.5,"state":"alert","alertText":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.","alertTopInRegion":98,"alertBottomInRegion":137,"clientHeight":137,"hiddenBelowPx":0,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-2.5,"phrase":null}}
+[PASS] Q39 stacked fresh refusal 'TOOLCALL2: q39 fresh refusal two': whole alert in view at rest, the backend's sentence alone
+        {"scrollTop":0,"maxScroll":0,"hiddenBelowPx":0,"alert":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again."}
+[note] Q39 EMPTYANS: q39 fresh refusal three
+        {"samples":[[27,0,0,149,"thinking",null],[3016,0,0,149,"alert",0]],"final":{"scrollTop":0,"maxScroll":0,"target":149,"state":"alert","alertText":"The model answered your aside with no text at all, so the exchange has no answer to keep. Ask again.","alertTopInRegion":172.5,"alertBottomInRegion":192,"clientHeight":192,"hiddenBelowPx":0,"hiddenAbovePx":0,"rows":1,"rowsFullyVisible":1,"lastRowBottomVsClipPx":-2.5,"phrase":null}}
+[PASS] Q39 stacked fresh refusal 'EMPTYANS: q39 fresh refusal three': whole alert in view at rest, the backend's sentence alone
+        {"scrollTop":0,"maxScroll":0,"hiddenBelowPx":0,"alert":"The model answered your aside with no text at all, so the exchange has no answer to keep. Ask again."}
+[note] Q39 TOOLCALL2: q39 fresh refusal four
+        {"samples":[[26,0,0,204,"thinking",null],[5995,19,19,204,"alert",0]],"final":{"scrollTop":19,"maxScroll":19,"target":204,"state":"alert","alertText":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.","alertTopInRegion":208.5,"alertBottomInRegion":247.5,"clientHeight":248,"hiddenBelowPx":0,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-3,"phrase":null}}
+[PASS] Q39 stacked fresh refusal 'TOOLCALL2: q39 fresh refusal four': whole alert in view at rest, the backend's sentence alone
+        {"scrollTop":19,"maxScroll":19,"hiddenBelowPx":0,"alert":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again."}
+[note] frame
+        {"label":"qa5-r5clipwide-q39-stacked-fresh-refusals","mode":"settled"}
+[PASS] no process from this run outlived its boot
+
+frames: qa5-r5clipwide-q35a-refusal-at-rest.png, qa5-r5clipwide-q35c-refusal-at-rest.png, qa5-r5clipwide-q35d-refusal-at-rest.png, qa5-r5clipwide-q35e-dropped-refusal-at-rest.png, qa5-r5clipwide-q36-refusal-under-long-answer.png, qa5-r5clipwide-q39-stacked-fresh-refusals.png
+frames directory: /Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/frames/r5clipwide
+app log: /Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/tmp/lo-renderer-driver-30294/app-scene.log
+scratch removed (--clean)
+
+ALL CHECKS PASSED
+== r5clipwide driver exit: 0 ==
+total 4184
+drwxr-xr-x@  8 damian  staff     256 Sep 24 21:51 .
+drwxr-xr-x@ 12 damian  staff     384 Sep 24 21:48 ..
+-rw-r--r--@  1 damian  staff  344621 Sep 24 21:49 qa5-r5clipwide-q35a-refusal-at-rest.png
+-rw-r--r--@  1 damian  staff  335818 Sep 24 21:50 qa5-r5clipwide-q35c-refusal-at-rest.png
+-rw-r--r--@  1 damian  staff  352599 Sep 24 21:50 qa5-r5clipwide-q35d-refusal-at-rest.png
+-rw-r--r--@  1 damian  staff  331526 Sep 24 21:50 qa5-r5clipwide-q35e-dropped-refusal-at-rest.png
+-rw-r--r--@  1 damian  staff  409688 Sep 24 21:50 qa5-r5clipwide-q36-refusal-under-long-answer.png
+-rw-r--r--@  1 damian  staff  353465 Sep 24 21:51 qa5-r5clipwide-q39-stacked-fresh-refusals.png
+8080 released before this command returned
+port8080.lock released
+--- proxy counters (/Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/run-r5clipwide/proxy-stats.json) ---
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T01:49:35.414Z",
+      "url": "/v1/desktop/sessions/27243e57c585/asides",
+      "asideId": "6ab4502c-a621-4481-82e2-471ff1bb5fc3",
+      "continues": null,
+      "questionHead": "q35 first question, answered",
+      "text": "q35 first question, answered",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2ef280514f6441878b873ef999207abc",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"6ab4502c-a621-4481-82e2-471ff1bb5fc3\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T01:49:41.500Z",
+      "url": "/v1/desktop/sessions/27243e57c585/asides",
+      "asideId": "a5fb8ed2-39a2-4942-a6ed-209fb9c6a2b4",
+      "continues": "6ab4502c-a621-4481-82e2-471ff1bb5fc3",
+      "questionHead": "TOOLCALL2: q35 follow-up refused by the model",
+      "text": "TOOLCALL2: q35 follow-up refused by the model",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2ef280514f6441878b873ef999207abc",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-25T01:49:50.423Z",
+      "url": "/v1/desktop/sessions/27243e57c585/asides",
+      "asideId": "75420e44-11f2-439d-854e-8938668b74b6",
+      "continues": "6ab4502c-a621-4481-82e2-471ff1bb5fc3",
+      "questionHead": "q35 second answered question",
+      "text": "q35 second answered question",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2ef280514f6441878b873ef999207abc",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"75420e44-11f2-439d-854e-8938668b74b6\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T01:49:55.906Z",
+      "url": "/v1/desktop/sessions/27243e57c585/asides",
+      "asideId": "5165582e-ed64-4b54-88f7-ceccffda3add",
+      "continues": "75420e44-11f2-439d-854e-8938668b74b6",
+      "questionHead": "EMPTYANS: q35 follow-up empty answer",
+      "text": "EMPTYANS: q35 follow-up empty answer",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2ef280514f6441878b873ef999207abc",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_empty_answer\",\"message\":\"The model answered your aside with no text at all, so the exchange has no answer to keep. Ask again.\"}}"
+    },
+    {
+      "at": "2026-09-25T01:50:01.705Z",
+      "url": "/v1/desktop/sessions/27243e57c585/asides",
+      "asideId": "241c4b86-2d05-40b9-a780-cc51b2020419",
+      "continues": "75420e44-11f2-439d-854e-8938668b74b6",
+      "questionHead": "TOOLSILENT: q35 follow-up call then silence",
+      "text": "TOOLSILENT: q35 follow-up call then silence",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2ef280514f6441878b873ef999207abc",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-25T01:50:10.647Z",
+      "url": "/v1/desktop/sessions/27243e57c585/asides",
+      "asideId": "73d7cf20-bada-464c-a6ac-4f49320df984",
+      "continues": "75420e44-11f2-439d-854e-8938668b74b6",
+      "questionHead": "q35e answered before the owner drops it",
+      "text": "q35e answered before the owner drops it",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2ef280514f6441878b873ef999207abc",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"73d7cf20-bada-464c-a6ac-4f49320df984\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T01:50:15.466Z",
+      "url": "/v1/desktop/sessions/27243e57c585/asides",
+      "asideId": "702e579a-c5fa-4913-a08f-8befb8fdd5e6",
+      "continues": "73d7cf20-bada-464c-a6ac-4f49320df984",
+      "questionHead": "q35e follow-up after the owner dropped the prefix",
+      "text": "q35e follow-up after the owner dropped the prefix",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2ef280514f6441878b873ef999207abc",
+      "status": 409,
+      "response": "{\"detail\":\"This aside is no longer available\"}"
+    },
+    {
+      "at": "2026-09-25T01:50:18.949Z",
+      "url": "/v1/desktop/sessions/27243e57c585/asides",
+      "asideId": "2a2c2229-e277-4038-8eef-57d04b653b73",
+      "continues": null,
+      "questionHead": "LONGANSWER: q36 long first answer",
+      "text": "LONGANSWER: q36 long first answer",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2ef280514f6441878b873ef999207abc",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"2a2c2229-e277-4038-8eef-57d04b653b73\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    },
+    {
+      "at": "2026-09-25T01:50:24.505Z",
+      "url": "/v1/desktop/sessions/27243e57c585/asides",
+      "asideId": "23d8cceb-d690-4fab-937f-68110b209e45",
+      "continues": "2a2c2229-e277-4038-8eef-57d04b653b73",
+      "questionHead": "TOOLCALL2: q36 refused under a long answer",
+      "text": "TOOLCALL2: q36 refused under a long answer",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2ef280514f6441878b873ef999207abc",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-25T01:50:33.438Z",
+      "url": "/v1/desktop/sessions/27243e57c585/asides",
+      "asideId": "dd078acc-5d5d-4bf9-b48e-9a8265b04be1",
+      "continues": "2a2c2229-e277-4038-8eef-57d04b653b73",
+      "questionHead": "TOOLCALL2: q37 the reader scrolls while it thinks",
+      "text": "TOOLCALL2: q37 the reader scrolls while it thinks",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2ef280514f6441878b873ef999207abc",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-25T01:50:42.120Z",
+      "url": "/v1/desktop/sessions/27243e57c585/asides",
+      "asideId": "e5e00d83-d05c-4235-b454-b9b6c01b052d",
+      "continues": null,
+      "questionHead": "LONGANSWER: q38 long first",
+      "text": "LONGANSWER: q38 long first",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2ef280514f6441878b873ef999207abc",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"e5e00d83-d05c-4235-b454-b9b6c01b052d\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    },
+    {
+      "at": "2026-09-25T01:50:47.926Z",
+      "url": "/v1/desktop/sessions/27243e57c585/asides",
+      "asideId": "eecf670d-0aec-4a81-98bc-fb6845b47c6a",
+      "continues": "e5e00d83-d05c-4235-b454-b9b6c01b052d",
+      "questionHead": "LONGANSWER: q38 long follow-up streams",
+      "text": "LONGANSWER: q38 long follow-up streams",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2ef280514f6441878b873ef999207abc",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"eecf670d-0aec-4a81-98bc-fb6845b47c6a\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    },
+    {
+      "at": "2026-09-25T01:50:53.799Z",
+      "url": "/v1/desktop/sessions/27243e57c585/asides",
+      "asideId": "1fc709f5-ba38-4269-88ad-625b3a132bee",
+      "continues": "eecf670d-0aec-4a81-98bc-fb6845b47c6a",
+      "questionHead": "LONGANSWER: q38c reader scrolls mid-stream",
+      "text": "LONGANSWER: q38c reader scrolls mid-stream",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2ef280514f6441878b873ef999207abc",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"1fc709f5-ba38-4269-88ad-625b3a132bee\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    },
+    {
+      "at": "2026-09-25T01:51:00.043Z",
+      "url": "/v1/desktop/sessions/27243e57c585/asides",
+      "asideId": "4b4791f3-3be5-4a70-89f0-6a51ee8f4d91",
+      "continues": null,
+      "questionHead": "TOOLCALL2: q39 fresh refusal one",
+      "text": "TOOLCALL2: q39 fresh refusal one",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2ef280514f6441878b873ef999207abc",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-25T01:51:06.162Z",
+      "url": "/v1/desktop/sessions/27243e57c585/asides",
+      "asideId": "307f572d-98df-44bf-98fe-046ea378269b",
+      "continues": null,
+      "questionHead": "TOOLCALL2: q39 fresh refusal two",
+      "text": "TOOLCALL2: q39 fresh refusal two",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2ef280514f6441878b873ef999207abc",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-25T01:51:14.599Z",
+      "url": "/v1/desktop/sessions/27243e57c585/asides",
+      "asideId": "997b8d0b-8f1e-4c55-bf47-eab44423505d",
+      "continues": null,
+      "questionHead": "EMPTYANS: q39 fresh refusal three",
+      "text": "EMPTYANS: q39 fresh refusal three",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2ef280514f6441878b873ef999207abc",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_empty_answer\",\"message\":\"The model answered your aside with no text at all, so the exchange has no answer to keep. Ask again.\"}}"
+    },
+    {
+      "at": "2026-09-25T01:51:20.326Z",
+      "url": "/v1/desktop/sessions/27243e57c585/asides",
+      "asideId": "e2430105-63bc-45b1-98a3-95483cf4e3c9",
+      "continues": null,
+      "questionHead": "TOOLCALL2: q39 fresh refusal four",
+      "text": "TOOLCALL2: q39 fresh refusal four",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2ef280514f6441878b873ef999207abc",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T01:49:22.969Z",
+      "subscriptionId": "11eabad02edea467",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/27243e57c585/events?frontend_replace=1",
+      "openedAt": "2026-09-25T01:49:28.055Z",
+      "subscriptionId": "2ef280514f6441878b873ef999207abc",
+      "asideDeltas": 64,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287
+      ]
+    }
+  ],
+  "asideDeltaFrames": 64,
+  "deltasBySubscription": {
+    "2ef280514f6441878b873ef999207abc": 64
+  },
+  "deltasByAside": {
+    "6ab4502c-a621-4481-82e2-471ff1bb5fc3": 8,
+    "75420e44-11f2-439d-854e-8938668b74b6": 8,
+    "73d7cf20-bada-464c-a6ac-4f49320df984": 8,
+    "2a2c2229-e277-4038-8eef-57d04b653b73": 10,
+    "e5e00d83-d05c-4235-b454-b9b6c01b052d": 10,
+    "eecf670d-0aec-4a81-98bc-fb6845b47c6a": 10,
+    "1fc709f5-ba38-4269-88ad-625b3a132bee": 10
+  },
+  "refused422": 0,
+  "messagePosts": [],
+  "asideOps": [
+    {
+      "at": "2026-09-25T01:50:15.280Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/27243e57c585/asides/73d7cf20-bada-464c-a6ac-4f49320df984",
+      "kind": "close",
+      "probe": true,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"73d7cf20-bada-464c-a6ac-4f49320df984\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T01:50:18.721Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/27243e57c585/asides/73d7cf20-bada-464c-a6ac-4f49320df984",
+      "kind": "close",
+      "probe": false,
+      "status": 404,
+      "response": "{\"detail\":\"This aside is no longer available\"}"
+    },
+    {
+      "at": "2026-09-25T01:50:41.887Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/27243e57c585/asides/2a2c2229-e277-4038-8eef-57d04b653b73",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"2a2c2229-e277-4038-8eef-57d04b653b73\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T01:50:59.808Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/27243e57c585/asides/1fc709f5-ba38-4269-88ad-625b3a132bee",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"1fc709f5-ba38-4269-88ad-625b3a132bee\",\"status\":\"closed\"},\"replayed\":false}}"
+    }
+  ]
+}
+--- end counters ---

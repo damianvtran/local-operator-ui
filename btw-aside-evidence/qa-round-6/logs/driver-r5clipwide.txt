@@ -1,0 +1,115 @@
+[build] current: assets 2026-09-25T00:33:33.054Z >= sources 2026-09-25T00:04:08.960Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8177
+  serve records 1 linked from /Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/run-r5clipwide/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/qa-482-r6
+  scratch       /Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/tmp/lo-renderer-driver-30294
+  frames        /Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/frames/r5clipwide
+  app cwd       /Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/tmp/lo-renderer-driver-30294/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8177   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/qa-482-r6/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8177","backend":"http://127.0.0.1:8177"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8177)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown
+        mode=headless visible=false focused=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] R5 clip session
+        27243e57c585
+[note] Q35a unanswered (tool call twice) samples [ms, scrollTop, maxScroll, target, state, hiddenBelowPx]
+        [[23,0,0,200.3,"thinking",null],[5699,15,15,200.3,"alert",0]]
+[note] Q35a unanswered (tool call twice) final
+        {"scrollTop":15,"maxScroll":15,"target":200.3,"state":"alert","alertText":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it.","alertTopInRegion":208.8,"alertBottomInRegion":247.8,"clientHeight":248,"hiddenBelowPx":0,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-2.7,"phrase":{"needle":"discard it","bottomVsClipPx":-2.7,"visible":true}}
+[PASS] Q35a unanswered (tool call twice): at rest the region is at D11's target, the whole refusal is in view (0 px hidden), its last line is visible and 'or press Esc to close the aside and discard it' is on screen; scrollTop only moved one way
+        {"scrollTop":15,"maxScroll":15,"target":200.3,"hiddenBelowPx":0,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-2.7,"phrase":{"needle":"discard it","bottomVsClipPx":-2.7,"visible":true},"monotone":true,"alert":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it."}
+[note] frame
+        {"label":"qa5-r5clipwide-q35a-refusal-at-rest","mode":"settled"}
+[note] Q35b answered follow-up samples
+        [[37,70,70,274.8,"thinking",null],[2350,73,73,274.8,"other",null],[3262,125,125,274.8,"other",null],[3552,152,152,274.8,"other",null],[3871,178,178,274.8,"other",null],[4139,215,215,274.8,"other",null]]
+[note] Q35c empty answer samples [ms, scrollTop, maxScroll, target, state, hiddenBelowPx]
+        [[19,270,270,475.1,"thinking",null],[2593,290,290,475.1,"alert",0]]
+[note] Q35c empty answer final
+        {"scrollTop":290,"maxScroll":290,"target":475.1,"state":"alert","alertText":"The model answered your aside with no text at all, so the exchange has no answer to keep. Ask again here to keep this exchange, or press Esc to close the aside and discard it.","alertTopInRegion":208.6,"alertBottomInRegion":247.6,"clientHeight":248,"hiddenBelowPx":0,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-2.9,"phrase":{"needle":"discard it","bottomVsClipPx":-2.9,"visible":true}}
+[PASS] Q35c empty answer: at rest the region is at D11's target, the whole refusal is in view (0 px hidden), its last line is visible and 'or press Esc to close the aside and discard it' is on screen; scrollTop only moved one way
+        {"scrollTop":290,"maxScroll":290,"target":475.1,"hiddenBelowPx":0,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-2.9,"phrase":{"needle":"discard it","bottomVsClipPx":-2.9,"visible":true},"monotone":true,"alert":"The model answered your aside with no text at all, so the exchange has no answer to keep. Ask again here to keep this exchange, or press Esc to close the aside and discard it."}
+[note] frame
+        {"label":"qa5-r5clipwide-q35c-refusal-at-rest","mode":"settled"}
+[note] Q35d unanswered (a call then silence) samples [ms, scrollTop, maxScroll, target, state, hiddenBelowPx]
+        [[17,345,345,549.6,"thinking",null],[5868,364,364,549.6,"alert",0.1]]
+[note] Q35d unanswered (a call then silence) final
+        {"scrollTop":364,"maxScroll":364,"target":549.6,"state":"alert","alertText":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it.","alertTopInRegion":209.1,"alertBottomInRegion":248.1,"clientHeight":248,"hiddenBelowPx":0.1,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-2.4,"phrase":{"needle":"discard it","bottomVsClipPx":-2.4,"visible":true}}
+[PASS] Q35d unanswered (a call then silence): at rest the region is at D11's target, the whole refusal is in view (0 px hidden), its last line is visible and 'or press Esc to close the aside and discard it' is on screen; scrollTop only moved one way
+        {"scrollTop":364,"maxScroll":364,"target":549.6,"hiddenBelowPx":0.1,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-2.4,"phrase":{"needle":"discard it","bottomVsClipPx":-2.4,"visible":true},"monotone":true,"alert":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it."}
+[note] frame
+        {"label":"qa5-r5clipwide-q35d-refusal-at-rest","mode":"settled"}
+[note] Q35e out-of-band DELETE of the answered entry (probe: the owner evicting/expiring it)
+        {"status":200,"body":"{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"73d7cf20-bada-464c-a6ac-4f49320df984\",\"status\":\"closed\"},\"replayed\":false}}"}
+[note] Q35e wire
+        {"status":409,"continues":"73d7cf20-bada-464c-a6ac-4f49320df984","response":"{\"detail\":\"This aside is no longer available\"}"}
+[note] Q35e dropped exchange (409 no longer available) samples [ms, scrollTop, maxScroll, target, state, hiddenBelowPx]
+        [[19,619,619,824.4,"thinking",null],[125,639,639,824.4,"alert",0]]
+[note] Q35e dropped exchange (409 no longer available) final
+        {"scrollTop":639,"maxScroll":639,"target":824.4,"state":"alert","alertText":"This aside is no longer available This aside can't continue. Press Esc to close it, which discards this exchange, then start a new one with /btw.","alertTopInRegion":208.9,"alertBottomInRegion":247.9,"clientHeight":248,"hiddenBelowPx":0,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-2.6,"phrase":{"needle":"start a new one with /btw","bottomVsClipPx":-2.6,"visible":true}}
+[PASS] Q35e dropped exchange (409 no longer available): at rest the region is at D11's target, the whole refusal is in view (0 px hidden), its last line is visible and 'can't continue' is on screen; scrollTop only moved one way
+        {"scrollTop":639,"maxScroll":639,"target":824.4,"hiddenBelowPx":0,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-2.6,"phrase":{"needle":"start a new one with /btw","bottomVsClipPx":-2.6,"visible":true},"monotone":true,"alert":"This aside is no longer available This aside can't continue. Press Esc to close it, which discards this exchange, then start a new one with /btw."}
+[PASS] Q35e the dropped-exchange refusal names no retry that cannot work
+        {"alert":"This aside is no longer available This aside can't continue. Press Esc to close it, which discards this exchange, then start a new one with /btw."}
+[note] frame
+        {"label":"qa5-r5clipwide-q35e-dropped-refusal-at-rest","mode":"settled"}
+[note] Q36 refused follow-up under a long answer samples [ms, scrollTop, maxScroll, target, state, hiddenBelowPx]
+        [[75,547,547,752.3,"thinking",null],[5947,567,567,752.3,"alert",0]]
+[note] Q36 refused follow-up under a long answer final
+        {"scrollTop":567,"maxScroll":567,"target":752.3,"state":"alert","alertText":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it.","alertTopInRegion":208.8,"alertBottomInRegion":247.8,"clientHeight":248,"hiddenBelowPx":0,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-2.7,"phrase":{"needle":"discard it","bottomVsClipPx":-2.7,"visible":true}}
+[PASS] Q36 refused follow-up under a long answer: at rest the region is at D11's target, the whole refusal is in view (0 px hidden), its last line is visible and 'or press Esc to close the aside and discard it' is on screen; scrollTop only moved one way
+        {"scrollTop":567,"maxScroll":567,"target":752.3,"hiddenBelowPx":0,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-2.7,"phrase":{"needle":"discard it","bottomVsClipPx":-2.7,"visible":true},"monotone":true,"alert":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it."}
+[note] frame
+        {"label":"qa5-r5clipwide-q36-refusal-under-long-answer","mode":"settled"}
+[note] Q37 the reader scrolled mid-thinking
+        {"from":622,"to":322,"method":"mouseWheel"}
+[note] Q37 samples
+        [[21,622,622,826.8,"thinking",null],[1060,322,622,826.8,"thinking",null],[5510,322,641,826.8,"alert",319.3]]
+[PASS] Q37 D11 yields to the reader: a hand scroll during thinking holds when the refusal lands (the phase trigger does not re-take the region)
+        {"userAt":322,"finalScrollTop":322,"maxScroll":641,"hiddenBelowPx":319.3}
+[note] Q38 samples [ms, scrollTop, maxScroll, target, state]
+        [[32,547,547,752.3,"thinking",null],[2344,595,595,752.3,"other",null],[2668,640,640,752.3,"other",null],[2938,729,729,752.3,"other",null],[3254,752.5,819,752.3,"other",null],[3578,752.5,886,752.3,"other",null],[3845,752.5,976,752.3,"other",null],[4169,752.5,1043,752.3,"other",null],[4494,752.5,1110,752.3,"other",null],[4814,752.5,1200,752.3,"other",null]]
+[PASS] Q38 D11 on an answered follow-up: scrollTop moves one way only, reaches the question's offset, then holds for every later chunk and through the settle (no per-chunk pin, no jump at settle)
+        {"monotone":true,"reachedAt":[3254,752.5,819,752.3,"other",null],"distinctAfterReach":[752.5],"final":{"scrollTop":752.5,"turnOffset":752.3,"maxScroll":1245}}
+[PASS] Q38c D11 yields to a mid-stream hand scroll through the settle
+        {"userAt":1147,"final":1147}
+[note] Q39 TOOLCALL2: q39 fresh refusal two
+        {"samples":[[15,0,0,74.5,"thinking",null],[5736,0,0,74.5,"alert",0]],"final":{"scrollTop":0,"maxScroll":0,"target":74.5,"state":"alert","alertText":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.","alertTopInRegion":98,"alertBottomInRegion":137,"clientHeight":137,"hiddenBelowPx":0,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-2.5,"phrase":null}}
+[PASS] Q39 stacked fresh refusal 'TOOLCALL2: q39 fresh refusal two': whole alert in view at rest, the backend's sentence alone
+        {"scrollTop":0,"maxScroll":0,"hiddenBelowPx":0,"alert":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again."}
+[note] Q39 EMPTYANS: q39 fresh refusal three
+        {"samples":[[27,0,0,149,"thinking",null],[3016,0,0,149,"alert",0]],"final":{"scrollTop":0,"maxScroll":0,"target":149,"state":"alert","alertText":"The model answered your aside with no text at all, so the exchange has no answer to keep. Ask again.","alertTopInRegion":172.5,"alertBottomInRegion":192,"clientHeight":192,"hiddenBelowPx":0,"hiddenAbovePx":0,"rows":1,"rowsFullyVisible":1,"lastRowBottomVsClipPx":-2.5,"phrase":null}}
+[PASS] Q39 stacked fresh refusal 'EMPTYANS: q39 fresh refusal three': whole alert in view at rest, the backend's sentence alone
+        {"scrollTop":0,"maxScroll":0,"hiddenBelowPx":0,"alert":"The model answered your aside with no text at all, so the exchange has no answer to keep. Ask again."}
+[note] Q39 TOOLCALL2: q39 fresh refusal four
+        {"samples":[[26,0,0,204,"thinking",null],[5995,19,19,204,"alert",0]],"final":{"scrollTop":19,"maxScroll":19,"target":204,"state":"alert","alertText":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.","alertTopInRegion":208.5,"alertBottomInRegion":247.5,"clientHeight":248,"hiddenBelowPx":0,"hiddenAbovePx":0,"rows":2,"rowsFullyVisible":2,"lastRowBottomVsClipPx":-3,"phrase":null}}
+[PASS] Q39 stacked fresh refusal 'TOOLCALL2: q39 fresh refusal four': whole alert in view at rest, the backend's sentence alone
+        {"scrollTop":19,"maxScroll":19,"hiddenBelowPx":0,"alert":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again."}
+[note] frame
+        {"label":"qa5-r5clipwide-q39-stacked-fresh-refusals","mode":"settled"}
+[PASS] no process from this run outlived its boot
+
+frames: qa5-r5clipwide-q35a-refusal-at-rest.png, qa5-r5clipwide-q35c-refusal-at-rest.png, qa5-r5clipwide-q35d-refusal-at-rest.png, qa5-r5clipwide-q35e-dropped-refusal-at-rest.png, qa5-r5clipwide-q36-refusal-under-long-answer.png, qa5-r5clipwide-q39-stacked-fresh-refusals.png
+frames directory: /Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/frames/r5clipwide
+app log: /Users/damian/.local-operator/sessions/c9aa7ba49b42/scratchpad/rig6/tmp/lo-renderer-driver-30294/app-scene.log
+scratch removed (--clean)
+
+ALL CHECKS PASSED
