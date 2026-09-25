@@ -14126,8 +14126,17 @@ async function dragSplit(cdp, x, y, dy, { steps = 6, hold = null } = {}) {
  * `--scoped-case`:
  *
  *   `paged`     the feature: the group's own page arrives, with more behind it.
- *   `empty`     the page has not caught up: the census counts 70, the page is
- *               empty. It must say LOADING, never "No chats yet".
+ *   `empty`     a SETTLED page the census still outruns (the stub's `--scope-empty`):
+ *               the group's chats are not drawable here, so it must say WHY, and
+ *               never "Loading chats…" and never "No chats yet" (round 1, U3).
+ *   `loading`   the same arm with every scoped answer HELD OPEN
+ *               (`--scope-delay-ms`): a wait that is really happening, which is the
+ *               only state in which "Loading chats…" is true.
+ *   `empty-group` a genuinely empty group (`--scope-empty --scope-zero-census`): the
+ *               page and the census agree there is nothing, so "No chats yet" is
+ *               the honest sentence.
+ *   `flat-tail` the flat list's own tail, which has no control: a scroll to the
+ *               bottom, then rows arriving.
  *   `error`     the scoped read refuses; the group says so and offers Retry.
  *   `withdrawn` the app against a daemon that cannot page at all (`--no-page
  *               --truncate 50`): today's behaviour, including the sentence that
@@ -14186,6 +14195,115 @@ async function sceneSidebarLazyChats(cdp) {
 		note("the group's row is on screen", String(roster));
 		const collapsed = await lazyGroupFacts(cdp, LAZY_GROUP);
 		note("the collapsed group", JSON.stringify(collapsed));
+	}
+
+	if (LAZY_CASE === "flat-tail") {
+		/*
+		 * THE FLAT LIST'S OWN TAIL (the second arm round 1's D3 named as missing). It
+		 * has no control by design - one scroller, one scope inside it, so "extend" has
+		 * exactly one meaning - which is why the evidence is a scroll followed by ROWS
+		 * ARRIVING rather than a press, and a frame of the grown list.
+		 *
+		 * RUN HERE, BEFORE ANY GROUP IS EXPANDED, and that is a fact about the fixture
+		 * rather than about the panel: the stand-in's `lopdev` population IS the
+		 * catalogue's second half, so once that group has drawn its own pages the
+		 * head's tail can only re-send rows the client already holds and the frame
+		 * would show a list that did not grow for a reason unrelated to the tail.
+		 */
+		/*
+		 * THE SECTION IS OPENED FIRST, and that is not incidental: a collapsed
+		 * `Previous chats` draws none of its rows, so the tail it would extend is not on
+		 * screen and cannot be scrolled to. The first run of this arm scrolled a closed
+		 * section, asked the daemon for nothing, and would have photographed "the tail
+		 * did not extend" as if that were a fact about the panel.
+		 */
+		const sectionState = await cdp.evaluate(`(() => {
+			const node = document.querySelector('[data-chat-section="previous"]');
+			return node === null ? null : node.getAttribute("aria-expanded");
+		})()`);
+		note("the Previous section before the arm", JSON.stringify(sectionState));
+		if (sectionState !== "true") {
+			const opened = await verb(cdp, "press", {
+				selector: '[data-chat-section="previous"]',
+			});
+			note("the section press", JSON.stringify(opened.target));
+		}
+		await wait(300);
+		const sectionExpanded = await cdp.evaluate(
+			`document.querySelector('[data-chat-section="previous"]')?.getAttribute("aria-expanded") ?? null`,
+		);
+		check(
+			"the Previous chats section is open, so its tail is on screen",
+			sectionExpanded === "true",
+			`aria-expanded is ${JSON.stringify(sectionExpanded)}`,
+		);
+		const beforeFlat = await verb(cdp, "state");
+		/*
+		 * THE REGION IS SCROLLED TO ITS END, by a `scrollTop` write AND a real wheel
+		 * event at the region's OWN centre. Both, because each alone can miss: the first
+		 * run of this arm aimed its wheel at fixed coordinates that turned out to be
+		 * outside the box (`scrollTop` stayed 0 and the daemon was asked for nothing),
+		 * and a `scrollTop` write on a region whose section is shut moves a list that
+		 * draws no rows. The box is measured here rather than guessed.
+		 */
+		const regionBox = await cdp.evaluate(`(() => {
+			const region = document.querySelector('[data-sidebar-region="chats"]');
+			if (region === null) return null;
+			const box = region.getBoundingClientRect();
+			return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) };
+		})()`);
+		note("the chats region's centre", JSON.stringify(regionBox));
+		await cdp.evaluate(
+			`(() => { const region = document.querySelector('[data-sidebar-region="chats"]'); if (region) region.scrollTop = region.scrollHeight; return true; })()`,
+		);
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseWheel",
+			x: regionBox === null ? 140 : regionBox.x,
+			y: regionBox === null ? 400 : regionBox.y,
+			deltaX: 0,
+			deltaY: 6000,
+		});
+		await wait(500);
+		/*
+		 * THE GEOMETRY IS RECORDED, not inferred from the outcome. "The list did not
+		 * grow" has three different causes - the region never scrolled, the section was
+		 * shut, or the extension fired and the answer was not merged - and only these
+		 * numbers separate them.
+		 */
+		const flatGeo = await cdp.evaluate(`(() => {
+			const region = document.querySelector('[data-sidebar-region="chats"]');
+			const heading = Array.from(document.querySelectorAll("button[data-chat-row]"))
+				.find((row) => row.textContent.replace(/\s+/g, " ").trim().startsWith("Previous chats"));
+			return {
+				region: region !== null,
+				scrollTop: region === null ? null : Math.round(region.scrollTop),
+				scrollHeight: region === null ? null : region.scrollHeight,
+				clientHeight: region === null ? null : region.clientHeight,
+				previousExpanded: heading === undefined ? null : heading.getAttribute("aria-expanded"),
+				rows: document.querySelectorAll("[data-session-row]").length,
+			};
+		})()`);
+		note("the flat list's geometry after the scroll", JSON.stringify(flatGeo));
+		const flatGrew = await waitForCondition(
+			cdp,
+			`document.querySelectorAll("[data-session-row]").length > ${beforeFlat.sessionCount}`,
+			15_000,
+		);
+		check(
+			"the flat list extends itself on scroll, with no control to press",
+			flatGrew.ok === true,
+			`rows were ${beforeFlat.sessionCount} before the scroll to the bottom (waited ${flatGrew.waitedMs} ms)`,
+		);
+		await wait(LAZY_SETTLE_MS);
+		const flatFrame = await captureSettled(cdp, "flat-tail");
+		note("frame", JSON.stringify(flatFrame));
+		const grown = await verb(cdp, "state");
+		check(
+			"and the rows that arrived are held",
+			grown.sessionCount > beforeFlat.sessionCount,
+			`rows went ${beforeFlat.sessionCount} -> ${grown.sessionCount}`,
+		);
+		return;
 	}
 
 	// --- the expansion, which is the whole change ---------------------------
@@ -14248,6 +14366,57 @@ async function sceneSidebarLazyChats(cdp) {
 			`(() => { const node = document.querySelector('[data-scope-more="team:${LAZY_GROUP}"]'); if (node) node.scrollIntoView({ block: "center" }); return node !== null; })()`,
 		);
 		await wait(300);
+		/*
+		 * THE CONTROL ITSELF, IN A FRAME (round 1, D3). The press UNMOUNTS the
+		 * control when it fetches the last page, and the earlier version of this set
+		 * claimed a frame showed it while no frame did. Captured here, between the
+		 * scroll that brings it into the viewport and the press that consumes it,
+		 * which is the only moment it is both on screen and still a control.
+		 */
+		const moreFrame = await captureSettled(cdp, "group-more");
+		note("frame", JSON.stringify(moreFrame));
+		/*
+		 * THE PANEL AT ITS OWN DRAG FLOOR (round 1, D8), captured HERE - with the group
+		 * open and its control on screen, before any press moves the geometry. The
+		 * earlier attempt to narrow this surface set a WINDOW size rather than the
+		 * panel's own width, so the panel was boxed at x 438-955 in both frames and
+		 * nothing was narrower. `240` is the floor the preference is clamped to
+		 * (`chatSidebarWidth`, clamped 240..360), set through the driver's own
+		 * preference verb, so the frame is of the app's real floor. It is restored
+		 * before the press: a control whose box the width change has just moved is a
+		 * press that lands on nothing, which is what the first attempt measured.
+		 */
+		const wideWidth = await cdp.evaluate(
+			`document.querySelector('[data-sidebar-region="chats"]')?.offsetWidth ?? null`,
+		);
+		await setSplitPreferences(cdp, { chatSidebarWidth: 240 });
+		await wait(LAZY_SETTLE_MS);
+		const narrowWidth = await cdp.evaluate(
+			`document.querySelector('[data-sidebar-region="chats"]')?.offsetWidth ?? null`,
+		);
+		check(
+			"the narrow frame is NARROWER: the panel is at its own drag floor, not at the window's size",
+			typeof wideWidth === "number" &&
+				typeof narrowWidth === "number" &&
+				narrowWidth <= 250 &&
+				narrowWidth < wideWidth,
+			`the chats region is ${narrowWidth}px at the floor against ${wideWidth}px at this run's default (a WINDOW size, which is what the earlier attempt changed, leaves the panel at x 438-955 in both frames)`,
+		);
+		const narrowFrame = await captureSettled(cdp, "group-narrow");
+		note("frame", JSON.stringify(narrowFrame));
+		await setSplitPreferences(cdp, { chatSidebarWidth: 360 });
+		await wait(LAZY_SETTLE_MS);
+		/*
+		 * AND THE CONTROL IS BROUGHT BACK INTO THE VIEWPORT, because widening the panel
+		 * moves it: the region's scroll position was taken at 240px, so at 360px the
+		 * control as measured sits below the fold and a press at those coordinates lands
+		 * on nothing - which is what the run reported (`hit=null`) with the store state
+		 * still saying the tail had not been asked for.
+		 */
+		await cdp.evaluate(
+			`(() => { const node = document.querySelector('[data-scope-more="team:${LAZY_GROUP}"]'); if (node) node.scrollIntoView({ block: "center" }); return node !== null; })()`,
+		);
+		await wait(300);
 		const tailPress = await verb(cdp, "press", {
 			selector: `[data-scope-more="team:${LAZY_GROUP}"]`,
 		});
@@ -14288,22 +14457,117 @@ async function sceneSidebarLazyChats(cdp) {
 			);
 		}
 		await wait(LAZY_SETTLE_MS);
+		/*
+		 * THE TAIL FRAME SHOWS THE CONTROL (round 1, D3). After the first extension
+		 * there is another page to come, so the group draws fifty rows AND its
+		 * `Show 20 more` control - scrolled into view here so the frame carries the
+		 * grown list and the control together, which is what the PR's frame table
+		 * claims it shows.
+		 */
+		await cdp.evaluate(
+			`(() => { const node = document.querySelector('[data-scope-more="team:${LAZY_GROUP}"]'); if (node) node.scrollIntoView({ block: "center" }); return node !== null; })()`,
+		);
+		await wait(300);
 		const tailFrame = await captureSettled(cdp, "group-tail");
 		note("frame", JSON.stringify(tailFrame));
 		note("the scope after the tail press", observed);
-	} else if (LAZY_CASE === "empty") {
+		/*
+		 * THE LABEL STATES THE ROWS THE PRESS WILL ADD, AND THE LAST PRESS IS EXACT
+		 * (round 1, D7). Sixty-five held of seventy read `Show 25 more` - a page size
+		 * dressed as a remainder. Here: fifty held of seventy, so five short of a full
+		 * page, and the label must say twenty.
+		 */
+		const label = await cdp.evaluate(
+			`(() => { const node = document.querySelector('[data-scope-more="team:${LAZY_GROUP}"]'); return node === null ? null : (node.textContent || "").trim(); })()`,
+		);
 		check(
-			"a group the census says holds chats NEVER reads as empty",
+			"Show more states the rows the press will ADD, not the page size (D7)",
+			label === `Show ${LAZY_GROUP_TOTAL - LAZY_GROUP_PAGE * 2} more`,
+			`the control reads ${JSON.stringify(label)} with ${LAZY_GROUP_PAGE * 2} of ${LAZY_GROUP_TOTAL} drawn`,
+		);
+		const lastPress = await verb(cdp, "press", {
+			selector: `[data-scope-more="team:${LAZY_GROUP}"]`,
+		});
+		check(
+			"the last press reaches the control itself",
+			lastPress.hit === lastPress.target,
+			`hit=${JSON.stringify(lastPress.hit)} target=${JSON.stringify(lastPress.target)}`,
+		);
+		const exhausted = await waitForScopeIds(cdp, scopeKey, LAZY_GROUP_TOTAL);
+		check(
+			"the last press adds the remainder and the control goes at exhaustion (D7)",
+			!exhausted.timedOut &&
+				exhausted.scope.ids === LAZY_GROUP_TOTAL &&
+				exhausted.scope.nextCursor === null,
+			`scope is ${JSON.stringify(exhausted.scope)}, expected ${LAZY_GROUP_TOTAL} ids and no cursor`,
+		);
+		await wait(LAZY_SETTLE_MS);
+		const exhaustedFrame = await captureSettled(cdp, "group-exhausted");
+		note("frame", JSON.stringify(exhaustedFrame));
+	} else if (LAZY_CASE === "empty") {
+		/*
+		 * A SETTLED SCOPE, A NON-ZERO CENSUS, NO ROWS (round 1, U3). The group's
+		 * chats are not drawable here - the ordinary reason being that they are
+		 * archived - so the sentence must name that and offer the way forward. It was
+		 * "Loading chats…" for as long as the census outran the page, whatever
+		 * `scope.loading` said, which sat a settled group in a wait for ever.
+		 */
+		check(
+			"a settled group the census still outruns names why, and never claims a wait",
+			opened.sessionCount === LAZY_CATALOGUE_HEAD_PAGE &&
+				group.badge === LAZY_GROUP_TOTAL &&
+				typeof group.sentence === "string" &&
+				/archived/.test(group.sentence),
+			`sessionCount ${opened.sessionCount}, badge ${JSON.stringify(group.badge)}, sentence ${JSON.stringify(group.sentence)}`,
+		);
+	} else if (LAZY_CASE === "loading") {
+		/*
+		 * THE ONE STATE IN WHICH "Loading chats…" IS TRUE (round 1, U3). Every scoped
+		 * answer is held open by the stand-in, so the group is genuinely waiting: the
+		 * sentence and `scope.loading` agree, which is the pair the finding was about.
+		 */
+		check(
+			"a group whose page is in flight says it is loading",
 			opened.sessionCount === LAZY_CATALOGUE_HEAD_PAGE &&
 				group.sentence === "Loading chats…",
 			`sessionCount ${opened.sessionCount}, sentence ${JSON.stringify(group.sentence)}`,
 		);
+	} else if (LAZY_CASE === "empty-group") {
+		/*
+		 * A GENUINELY EMPTY GROUP: the page and the census agree (round 1, D3's first
+		 * missing arm). "No chats yet" is the honest sentence here, and the badge is
+		 * zero - which is what separates this frame from the `empty` arm's.
+		 */
+		check(
+			"an empty group says so, and no number contradicts it",
+			opened.sessionCount === LAZY_CATALOGUE_HEAD_PAGE &&
+				group.sentence === "No chats yet" &&
+				group.badge === null,
+			`sessionCount ${opened.sessionCount}, sentence ${JSON.stringify(group.sentence)}, badge ${JSON.stringify(group.badge)} (a zero census draws no digit at all)`,
+		);
 	} else if (LAZY_CASE === "error") {
 		// WAITED FOR, not sampled: the refusal has to travel back and be rendered, and
 		// the first run of this arm read the group still saying "Loading chats…".
+		/*
+		 * THE ROW IS FOUND BY ITS OWN CONTROL, not by document order (round 1, D6).
+		 * `document.querySelector('[data-entity]')` is the FIRST entity row on screen -
+		 * an agent group - so the condition could never match the group's sentence, and
+		 * the arm photographed whatever happened to be rendered when the wait gave up.
+		 */
 		const refused = await waitForCondition(
 			cdp,
-			`document.querySelector('[data-scope-more="team:${LAZY_GROUP}"]') === null && /Could not load/.test(document.querySelector('[data-entity]')?.textContent || "")`,
+			`(() => {
+				const row = document.querySelector('[data-entity]:has([data-disclosure][aria-label="Expand ${LAZY_GROUP} chats"], [data-disclosure][aria-label="Collapse ${LAZY_GROUP} chats"])');
+				if (row === null) return false;
+				const text = row.textContent || "";
+				/*
+				 * THE SHAPE OF THE REFUSAL, not a sentence this rig knows: the app quotes
+				 * the backend's own text whenever the daemon authored one, so waiting for a
+				 * particular string waits for something the app may never draw. What the
+				 * group MUST show is a Retry, no wait and no emptiness.
+				 */
+				return /Retry/.test(text) && !/Loading chats…/.test(text) && !/No chats yet/.test(text);
+			})()`,
 			15_000,
 		);
 		note("the refusal is on screen", String(refused));
@@ -14314,6 +14578,14 @@ async function sceneSidebarLazyChats(cdp) {
 		 * photograph of "Loading chats…" labelled as the error case would be a frame
 		 * that does not show what its name claims.
 		 */
+		check(
+			"the refusal is WAITED FOR rather than sampled, and says something that is neither a wait nor an emptiness",
+			refused.ok === true &&
+				typeof failed.sentence === "string" &&
+				failed.sentence.length > 0 &&
+				!/Loading chats…|No chats yet/.test(failed.sentence),
+			`waited=${JSON.stringify(refused)} sentence=${JSON.stringify(failed.sentence)}`,
+		);
 		const errorFrame = await captureSettled(cdp, "group-error");
 		note("frame", JSON.stringify(errorFrame));
 		check(
@@ -14402,9 +14674,19 @@ const LAZY_GROUP_FACTS_EXPR = (name) => `(() => {
 		more: more === null ? null : (more.textContent || "").trim(),
 		retry,
 		rows: body === null ? 0 : body.querySelectorAll("[data-session-row]").length,
-		sentence: body === null
-			? null
-			: ((body.textContent || "").match(/(Loading chats…|No chats yet|Could not load this group's chats\.)/) ?? [null])[0],
+		/*
+		 * THE SENTENCE IS READ FROM ITS OWN ELEMENT, not matched against a list of the
+		 * strings this rig expects. The refusal's sentence is the BACKEND'S own text
+		 * whenever the daemon authored one (the app quotes it rather than paraphrasing),
+		 * so a list of expected sentences is a list this reader would silently stop
+		 * recognising the moment the daemon says something new - which is exactly how
+		 * the error arm read a null sentence while the group was drawing one.
+		 */
+		sentence: (() => {
+			const el = body?.querySelector("p") ?? null;
+			const text = el === null ? "" : (el.textContent || "").trim();
+			return text === "" ? null : text;
+		})(),
 	};
 })()`;
 

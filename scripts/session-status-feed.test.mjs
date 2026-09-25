@@ -714,7 +714,13 @@ test("only a previously connected feed reconnect advances authoring recovery", (
 	for (const effect of globalThis.__effects) effect();
 
 	globalThis.__feedState({ connected: true });
-	assert.deepEqual(globalThis.__stateSets, [true]);
+	/*
+	 * TWO values, not one, and the second is round 1's Q3 fix: `setReported(true)`
+	 * publishes the fact that the transport has spoken at all, which is what keeps
+	 * the sidebar's "Not connected to the backend" line off the first paint. The
+	 * `connected` value is the one that was already here.
+	 */
+	assert.deepEqual(globalThis.__stateSets, [true, true]);
 	globalThis.__stateSets.length = 0;
 
 	// The transport was live, dropped, then came back. A repeated connected
@@ -722,7 +728,15 @@ test("only a previously connected feed reconnect advances authoring recovery", (
 	globalThis.__feedState({ connected: false });
 	globalThis.__feedState({ connected: true });
 	globalThis.__feedState({ connected: true });
-	assert.deepEqual(globalThis.__stateSets, [false, 1, true, true]);
+	assert.deepEqual(globalThis.__stateSets, [
+		true,
+		false,
+		1,
+		true,
+		true,
+		true,
+		true,
+	]);
 	// The initial connection did not publish an authoring recovery generation;
 	// one false-to-true transition after that connection published exactly one,
 	// while the repeated connected state only republishes the live transport state.

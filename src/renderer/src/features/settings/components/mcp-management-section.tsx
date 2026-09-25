@@ -203,6 +203,17 @@ export const resolveMcpServerTarget = (
  * Ordered by `updated_at` descending, with the roster's own order as the
  * fallback (the backend lists newest first, and a row the catalogue gave no
  * timestamp is not a reason to borrow an older one).
+ *
+ * WHAT "NEWEST" MEANS UNDER A PAGED CATALOGUE (round 1, R4), stated because the
+ * old comment claimed more than this function can know. The rows handed in are the
+ * rows the CLIENT HOLDS - the head page plus whatever the reader has extended - and
+ * a head page is ranked by ATTENTION (pinned, then live, then the wake band), which
+ * is not mtime order. So this is "the most recent conversation this client is
+ * holding" and NOT "the newest conversation in the store": a conversation older
+ * than the head page's own floor, or one sitting in a collapsed group, is not a
+ * candidate here. That is still the right conversation to borrow for the question
+ * the caller asks - whether a server EXISTS, which the USER config answers the same
+ * way for every cwd-derived set - and it is the honest scope of the answer.
  */
 export const newestRosterRow = (
 	rows: readonly CanonicalSessionRow[],

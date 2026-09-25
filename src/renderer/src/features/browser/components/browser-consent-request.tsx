@@ -143,6 +143,17 @@ export function requesterLabel(
 	 * that an agent they can see in their sidebar was a stranger. The id remains the
 	 * fallback ONLY for a session the catalogue does not hold (a subagent's own id, a
 	 * `call:` requester), which is the case where "another session" is the honest phrase.
+	 *
+	 * WHAT A PAGED CATALOGUE CHANGES HERE (round 1, R5), said plainly because the old
+	 * claim above no longer covers the case: `sessions` is the rows the CLIENT is
+	 * holding, and since round 1 that is a fifty-row head page plus whatever the reader
+	 * has expanded - so "the catalogue does not hold it" is now also true of an ordinary
+	 * conversation that merely sits past the loaded page. The label is still the honest
+	 * one for BOTH cases, because it is a statement about what is KNOWN (this is not a
+	 * conversation on screen, and the operator cannot read its title here) rather than
+	 * about what does not exist. It is narrowed here rather than re-worded: the copy
+	 * was settled by UX round 1's U5 for the subagent case that reaches it in practice,
+	 * and a second wording for one fact is how two surfaces end up disagreeing.
 	 */
 	const listed = sessions.some((row) => row.session_id === requesterSessionId);
 	const named = name !== requesterSessionId;

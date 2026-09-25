@@ -26,10 +26,11 @@
  * same rule for the sections).
  */
 
-import type {
-	CatalogueScopeCounts,
-	CatalogueScopeState,
-} from "@shared/store/canonical-sessions-store";
+import {
+	CATALOGUE_GROUP_PAGE,
+	type CatalogueScopeCounts,
+	type CatalogueScopeState,
+} from "../../shared/store/canonical-sessions-store";
 
 /**
  * How close to the bottom of the chat region a scroll has to come before the
@@ -52,7 +53,7 @@ const TAIL_EXTEND_MARGIN_SCREENS = 1;
  */
 export type GroupChatsView = {
 	/** The rows the group draws, in the scope's order (empty off the paged path). */
-	state: "rows" | "loading" | "empty" | "error";
+	state: "rows" | "loading" | "empty" | "settled" | "error";
 	/** The sentence to draw when `state` is not `rows`, or null for none. */
 	sentence: string | null;
 	/** Whether the group draws its own `Retry` beside the sentence. */
@@ -60,9 +61,17 @@ export type GroupChatsView = {
 	/** Whether the group draws the `Show more` row for its tail. */
 	more: boolean;
 	/**
-	 * Whether the group is in the state that must never say "No chats yet":
-	 * the census says it holds conversations and the client has none of them.
+	 * How many rows the `Show more` press will ADD, which is what its label says.
+	 *
+	 * WHY THE LABEL IS NOT THE PAGE SIZE (round 1, D7): a group holding 70 with 25
+	 * drawn read `Show 25 more` with 45 still to come, and the row a reader presses
+	 * should tell them what the press does. `remaining` comes from the census when
+	 * there is one, and the last press is therefore EXACT - `min(page, remaining)` is
+	 * also the `limit` the fetch is asked for, so a group with 5 left fetches 5
+	 * rather than 25 and discarding 20.
 	 */
+	addCount: number;
+	/** Whether the census says this group holds chats the panel cannot draw here. */
 	forbidden: boolean;
 };
 
@@ -96,6 +105,20 @@ export type GroupChatsView = {
  *    a next row, and the census total minus the rows held cannot tell a row that
  *    is missing from one that was deleted between the two reads.
  */
+/**
+ * The sentence a group draws when the census says it holds chats and the panel
+ * can draw none of them.
+ *
+ * WHY IT HEDGES, and why it names a way forward (round 1, U3). The client cannot
+ * know WHY a settled page came back empty: the census counts what the daemon can
+ * see, the page counts what this scope may draw, and a conversation that is
+ * archived is the ordinary reason the two disagree. What it CAN know is that it
+ * is not loading, so it must not say so - and the reader's next move is named
+ * rather than left to them.
+ */
+export const GROUP_WITHHELD_SENTENCE =
+	"None of this group's chats can be drawn here - they may be archived. Search with Include archived to find them.";
+
 export function groupChatsView(args: {
 	/** Whether the daemon negotiates `session_catalogue_page`. */
 	pageable: boolean;
@@ -113,6 +136,7 @@ export function groupChatsView(args: {
 			sentence: empty ? "No chats yet" : null,
 			retry: false,
 			more: false,
+			addCount: 0,
 			forbidden: false,
 		};
 	}
@@ -131,6 +155,7 @@ export function groupChatsView(args: {
 			sentence: "Loading chats…",
 			retry: false,
 			more: false,
+			addCount: 0,
 			forbidden,
 		};
 	}
@@ -151,20 +176,38 @@ export function groupChatsView(args: {
 				sentence: scope.error,
 				retry: true,
 				more: false,
+				addCount: 0,
 				forbidden: false,
 			};
 		}
-		if (forbidden) {
-			/*
-			 * The census says this group holds conversations and this page returned
-			 * none of them. That is not emptiness, and it is not an error either - it
-			 * is a page that has not caught up with the store. See step 2 above.
-			 */
+		/*
+		 * A SETTLED SCOPE IS NEVER DESCRIBED AS LOADING (round 1, U3).
+		 *
+		 * The order here is the whole finding. This branch used to claim "Loading
+		 * chats…" whenever the census outran the page, regardless of `scope.loading` -
+		 * so a group whose chats are all archived sat under a 70 badge reading
+		 * "Loading chats…" FOR EVER, in ordinary store state with no daemon fault, and
+		 * the sentence and `scope.loading` disagreed about the same fact. Now the
+		 * loading sentence requires a page actually in flight, and a settled empty page
+		 * says what it is.
+		 */
+		if (scope.loading) {
 			return {
 				state: "loading",
 				sentence: "Loading chats…",
 				retry: false,
 				more: false,
+				addCount: 0,
+				forbidden,
+			};
+		}
+		if (forbidden) {
+			return {
+				state: "settled",
+				sentence: GROUP_WITHHELD_SENTENCE,
+				retry: false,
+				more: false,
+				addCount: 0,
 				forbidden: true,
 			};
 		}
@@ -173,9 +216,20 @@ export function groupChatsView(args: {
 			sentence: "No chats yet",
 			retry: false,
 			more: false,
+			addCount: 0,
 			forbidden: false,
 		};
 	}
+	/*
+	 * `remaining` is the census minus what is DRAWN, and only when the census is
+	 * known: `total - held` cannot tell a row that is missing from one that was
+	 * deleted between the two reads, so it is used only to make the press EXACT and
+	 * never to decide whether a tail exists (`nextCursor` is that fact, above).
+	 */
+	const remaining =
+		args.total === null
+			? CATALOGUE_GROUP_PAGE
+			: Math.max(args.total - args.held, 0);
 	return {
 		state: "rows",
 		/*
@@ -187,6 +241,10 @@ export function groupChatsView(args: {
 		sentence: scope.error,
 		retry: scope.error !== null,
 		more: scope.nextCursor !== null,
+		addCount:
+			scope.nextCursor === null
+				? 0
+				: Math.max(1, Math.min(CATALOGUE_GROUP_PAGE, remaining)),
 		forbidden: false,
 	};
 }
@@ -239,7 +297,65 @@ export function scopeCensusTotal(
 	return null;
 }
 
-/** What the chat region's tail draws. */
+/**
+ * The label a group's census badge carries, for the accessible name and the
+ * `title` (round 1, D1 + D5).
+ *
+ * WHY THE BADGE NEEDS TO SAY WHAT IT IS. The panel draws two kinds of number in
+ * one 12px column: a SECTION heading's count of the rows it is drawing, and a
+ * group's badge, which is the census for that scope. They look alike and mean
+ * different things, and the census is the dimmer of the two - so the badge alone
+ * reads as "how many are here" rather than "how many this group holds". The
+ * sentence is also the only way the number reaches a screen reader: the badge sits
+ * inside buttons whose own `aria-label`s replace their children, so the digit is
+ * announced NOWHERE today. The component draws this sentence in an `sr-only` span
+ * on the group's row and in the badge's `title`.
+ */
+export function groupBadgeLabel(badge: number): string {
+	return `${badge} chats in this group`;
+}
+
+/**
+ * The flat list's own total, on the paged path (round 1, R2 - and U1/D2 with it).
+ *
+ * WHY THE PAGED PATH NEEDS A TOTAL OF ITS OWN. The sentence the panel has always
+ * drawn - "Showing up to 500 chats. Older chats remain available in the terminal."
+ * - is a statement about a TRUNCATED read, and it is only true there. On a paged
+ * backend the panel is not showing "up to" anything: it holds the head page plus
+ * whatever the reader has extended, of a catalogue the census has counted, so the
+ * honest sentence is `<Showing N of M chats>`. That is also the operator's own
+ * confusion answered - the badge says a group HOLDS 70, and this says how many of
+ * the whole catalogue are ON SCREEN.
+ *
+ * Null when the census is unknown (an older daemon, or a request that did not ask
+ * for it): a total nobody counted is not a claim this panel may make.
+ */
+export function catalogueTotalSentence(args: {
+	pageable: boolean;
+	/** How many chats the panel is drawing. */
+	shown: number;
+	/** The census total, or null when it is unknown. */
+	total: number | null;
+}): string | null {
+	if (!args.pageable || args.total === null) return null;
+	return `Showing ${args.shown} of ${args.total} chats`;
+}
+
+/**
+ * What the flat list says, politely, when its tail lands (round 1, U7).
+ *
+ * WHY THIS IS NEEDED AT ALL: the extension is triggered by SCROLL POSITION and
+ * draws nothing of its own in the steady state, so rows appear under a reader
+ * with no announcement at all - and a screen reader's user cannot see that the
+ * list grew. One polite line names the event; the component clears it after a
+ * moment, because a live region that keeps its last value says nothing new the
+ * next time the same number of rows arrive.
+ */
+export function tailArrivalAnnouncement(added: number): string | null {
+	if (added <= 0) return null;
+	return added === 1 ? "1 more chat arrived." : `${added} more chats arrived.`;
+}
+
 /** What the chat region's tail draws. */
 export type CatalogueTailView =
 	| { kind: "none" }

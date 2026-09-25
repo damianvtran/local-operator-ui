@@ -1798,6 +1798,16 @@ export type CatalogueHeadState = {
 	 * exactly as it always did.
 	 */
 	tailIds: string[];
+	/**
+	 * The ids the LAST head answer carried - the rows the head page itself owns.
+	 *
+	 * WHY THE HEAD NEEDS THIS when `tailIds` already names its extensions:
+	 * collapsing a group drops the rows that group fetched, and a row the head page
+	 * ALSO carried is not the group's to drop - the head is still drawing it. The
+	 * two kinds are told apart by this list, so `clearScope` removes exactly the
+	 * scope's own rows and nothing else (round 1, U5).
+	 */
+	pageIds: string[];
 	/** The next page's cursor, or null at the end of the catalogue. */
 	nextCursor: string | null;
 	/** True once an answer said this is the whole catalogue. */
@@ -1901,6 +1911,19 @@ export function headAnswerRows(args: {
 	sessions: CanonicalSessionRow[];
 	scopeIds: ReadonlySet<string>;
 	tailIds: readonly string[];
+	/**
+	 * Rows the answer may not drop even though it does not carry them: the
+	 * conversation the reader has OPEN.
+	 *
+	 * WHY THIS EXISTS (round 1, R3). Under an unscoped 500-row read the open
+	 * conversation was in membership for free - the page was the whole catalogue in
+	 * practice. A 50-row head page can stop ABOVE it: a conversation at rank 51 is
+	 * neither on the page nor in an expanded group, so a poll would take the row out
+	 * from under the reader who is reading it. The rule is the panel's own, the same
+	 * instinct as the pinned-row protection at the call site: a conversation the app
+	 * is drawing does not leave the list because a page did not carry it.
+	 */
+	keepIds?: readonly string[];
 	page: CanonicalSessionRow[];
 	merge: (
 		current: CanonicalSessionRow[],
@@ -1908,8 +1931,8 @@ export function headAnswerRows(args: {
 	) => CanonicalSessionRow[];
 }): { rows: CanonicalSessionRow[]; tailIds: string[] } {
 	const tail = new Set(args.tailIds);
+	const keep = new Set(args.keepIds ?? []);
 	const pageIds = new Set(args.page.map((row) => row.session_id));
-	const headHeld = headHeldRows(args.sessions, args.scopeIds);
 	/*
 	 * WHICH ROWS THE ANSWER DOES NOT SPEAK FOR, and there are exactly two kinds.
 	 * A row a SCOPE holds belongs to that scope's answer, never to this one -
@@ -1927,18 +1950,20 @@ export function headAnswerRows(args: {
 	const survivors = args.sessions.filter((row) => {
 		if (pageIds.has(row.session_id)) return false;
 		if (args.scopeIds.has(row.session_id)) return true;
+		if (keep.has(row.session_id)) return true;
 		return tail.has(row.session_id);
 	});
 	/*
-	 * THE MERGE BASE IS EVERY HEAD-HELD ROW, not only the survivors. `merge` is
-	 * `{...current, ...incoming}`, so a row the page carries must be merged against
-	 * the row the client already had - that is what preserves the values an absent
-	 * key does not restate (a status pair the page is silent about, a title the
-	 * frame updated first). Merging against the survivors alone would silently drop
-	 * every one of them for exactly the page's own rows, which is the whole top of
-	 * the list.
+	 * THE MERGE BASE IS EVERY HELD ROW, and that is a fix rather than a tidy-up
+	 * (round 1, R1). The base was `headHeld`, which EXCLUDES every id a loaded scope
+	 * holds - so a row the head page carries that an expanded group ALSO holds was
+	 * merged against `undefined`, and `mergeRow`'s `heldStatusOver` had nothing to
+	 * compare it against. That is precisely the race it exists for: a newer
+	 * `session_status` frame for a row that happens to sit in an expanded group was
+	 * overwritten by an older page reading. MEMBERSHIP is unchanged - `headHeld` plus
+	 * the survivors above; what changed is only what a page row is merged AGAINST.
 	 */
-	const rows = args.merge(headHeld, args.page);
+	const rows = args.merge(args.sessions, args.page);
 	const carried = new Set(rows.map((row) => row.session_id));
 	for (const row of survivors) {
 		if (carried.has(row.session_id)) continue;
@@ -3223,6 +3248,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			// to extend. `complete: false` rather than true: a catalogue whose head has
 			// never been read is not a catalogue with no tail.
 			head: {
+				pageIds: [],
 				tailIds: [],
 				nextCursor: null,
 				complete: false,
@@ -3415,6 +3441,12 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						const answerComplete =
 							answerCursor === null && result.truncated !== true;
 						/*
+						 * THE IDS THIS PAGE OWNS, recorded for `clearScope`: a group's collapse
+						 * must drop the rows the GROUP fetched and keep the ones the head page
+						 * also carries, and only a record of the page can tell them apart.
+						 */
+						const answerPageIds = page.map((row) => row.session_id);
+						/*
 						 * AND THE ROWS, not only the facts (review round 4, M1; QA Qr4-1).
 						 * `replaceSessionRows` rebuilds membership and values from the page
 						 * alone, so a page whose request STARTED before a press would hand the
@@ -3442,6 +3474,14 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						const headAnswer = headAnswerRows({
 							sessions: state.sessions,
 							scopeIds: scopeHeldIds(state.scopes),
+							/*
+							 * THE OPEN CONVERSATION DOES NOT LEAVE THE LIST ON A PAGE THAT DOES NOT
+							 * CARRY IT (round 1, R3). `activeSessionId` is the row the transcript pane
+							 * is drawing, and a 50-row head page can stop above a conversation at rank
+							 * 51 - under the unscoped read this change replaces, it could not.
+							 */
+							keepIds:
+								state.activeSessionId === null ? [] : [state.activeSessionId],
 							/*
 							 * AN ANSWER THAT SAYS IT IS THE WHOLE CATALOGUE DISCARDS THE TAIL.
 							 * `complete` means `next_cursor === null` with nothing truncated,
@@ -3504,6 +3544,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							 * and a stale one cannot put an older cursor back.
 							 */
 							head: {
+								pageIds: answerPageIds,
 								tailIds: headAnswer.tailIds,
 								nextCursor: answerCursor,
 								complete: answerComplete,
@@ -3763,10 +3804,30 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			clearScope: (kind, name) => {
 				const key = catalogueScopeKey(kind, name);
 				set((state) => {
-					if (state.scopes[key] === undefined) return {};
+					const entry = state.scopes[key];
+					if (entry === undefined) return {};
 					const scopes = { ...state.scopes };
 					delete scopes[key];
-					return { scopes };
+					/*
+					 * COLLAPSING A GROUP TAKES ITS ROWS OUT OF THE STORE (round 1, U5).
+					 *
+					 * Before this, the rows a group had fetched stayed in `sessions` after the
+					 * disclosure was closed: they were no longer drawn under the group, but they
+					 * were still counted in the section headings and still drawn in the flat
+					 * `Previous chats` list until the next head answer happened to drop them -
+					 * rows the reader had closed away, in a list they were still scrolling.
+					 *
+					 * WHAT IS REMOVED IS EXACTLY THE SCOPE'S OWN ROWS: the ids it fetched that
+					 * the head page did NOT carry. A row the head page also carried belongs to
+					 * the head, which is still drawing it.
+					 */
+					const owned = new Set(entry.ids);
+					const fromHeadPage = new Set(state.head.pageIds);
+					const sessions = state.sessions.filter(
+						(row) =>
+							!owned.has(row.session_id) || fromHeadPage.has(row.session_id),
+					);
+					return { scopes, sessions };
 				});
 			},
 			setArchiveUndo: (offer) => {
