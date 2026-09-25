@@ -265,65 +265,97 @@ const settle = async () => {
 	});
 };
 
-test("step 2 asks Continue for the provider it shows, and prefers the backend's suggestion", async (t) => {
-	globalThis.window.__writes.length = 0;
-	globalThis.window.__suggested = {
-		id: "deepseek-reasoner",
-		name: "DeepSeek Reasoner",
-	};
-	seedCatalogue(SERVED);
-	const mounted = await mount(t);
-	await settle();
+/*
+ * WHY THIS SUITE ENDS ITSELF.
+ *
+ * After the tree is unmounted and the query cache cleared, this process still holds
+ * a socket and timer handles, so node never exits on its own and the runner reports
+ * a PASSING file as a job timeout -- which is exactly what happened to this file and
+ * its sibling under `scripts/run-desktop-tests.mjs` ("Promise resolution is still
+ * pending", node 22 and 26, review round 4 R4-m4). The exit is explicit and carries
+ * the code the run earned, so a failure can never be reported as green.
+ */
+after(() => process.exit(failures > 0 ? 1 : 0));
 
-	/*
-	 * The step keeps the write it hands to Continue: a step that SHOWED DeepSeek and
-	 * wrote something else is the defect this rule exists for.
-	 */
-	const run = mounted.continues.at(-1);
-	assert.equal(
-		typeof run,
-		"function",
-		"the step never handed Continue a write, so a rewrite of the shown provider cannot be caught",
-	);
-	await act(async () => {
-		await run();
+let failures = 0;
+const trackedTest = (name, body) =>
+	test(name, async (t) => {
+		try {
+			await body(t);
+		} catch (error) {
+			failures += 1;
+			throw error;
+		}
 	});
-	assert.deepEqual(
-		globalThis.window.__writes,
-		[{ hosting: PROVIDER, model_name: "deepseek-reasoner" }],
-		"Continue must write the provider the step showed, taking the backend's suggestion",
-	);
-	globalThis.window.__suggested = null;
-});
 
-test("with no suggestion to take, the step reports the block its footer reads", async (t) => {
-	seedCatalogue(SERVED);
-	const mounted = await mount(t);
-	await settle();
+trackedTest(
+	"step 2 asks Continue for the provider it shows, and prefers the backend's suggestion",
+	async (t) => {
+		globalThis.window.__writes.length = 0;
+		globalThis.window.__suggested = {
+			id: "deepseek-reasoner",
+			name: "DeepSeek Reasoner",
+		};
+		seedCatalogue(SERVED);
+		const mounted = await mount(t);
+		await settle();
 
-	assert.equal(
-		mounted.blocks.at(-1),
-		"Pick a model to continue.",
-		"the step never reported its block, so the footer cannot disable Continue",
-	);
-});
+		/*
+		 * The step keeps the write it hands to Continue: a step that SHOWED DeepSeek and
+		 * wrote something else is the defect this rule exists for.
+		 */
+		const run = mounted.continues.at(-1);
+		assert.equal(
+			typeof run,
+			"function",
+			"the step never handed Continue a write, so a rewrite of the shown provider cannot be caught",
+		);
+		await act(async () => {
+			await run();
+		});
+		assert.deepEqual(
+			globalThis.window.__writes,
+			[{ hosting: PROVIDER, model_name: "deepseek-reasoner" }],
+			"Continue must write the provider the step showed, taking the backend's suggestion",
+		);
+		globalThis.window.__suggested = null;
+	},
+);
 
-test("with a catalogue that lists nothing for the provider the step names that, and does not block", async (t) => {
-	seedCatalogue([]);
-	const mounted = await mount(t);
-	await settle();
+trackedTest(
+	"with no suggestion to take, the step reports the block its footer reads",
+	async (t) => {
+		seedCatalogue(SERVED);
+		const mounted = await mount(t);
+		await settle();
 
-	assert.equal(
-		mounted.blocks.at(-1),
-		null,
-		"a backend that lists nothing for this provider is not a missing choice to block on",
-	);
-	assert.match(
-		mounted.text(),
-		/can't list DeepSeek models yet/,
-		"the step must say which provider it could not list",
-	);
-});
+		assert.equal(
+			mounted.blocks.at(-1),
+			"Pick a model to continue.",
+			"the step never reported its block, so the footer cannot disable Continue",
+		);
+	},
+);
+
+trackedTest(
+	"with a catalogue that lists nothing for the provider the step names that, and does not block",
+	async (t) => {
+		seedCatalogue([]);
+		const mounted = await mount(t);
+		await settle();
+
+		assert.equal(
+			mounted.blocks.at(-1),
+			null,
+			"a backend that lists nothing for this provider is not a missing choice to block on",
+		);
+		assert.match(
+			mounted.text(),
+			/can't list DeepSeek models yet/,
+			"the step must say which provider it could not list",
+		);
+	},
+);
 
 /*
  * The modal's two hookups, pinned by SHAPE rather than by rendering it.
@@ -345,27 +377,30 @@ const stripComments = (path) =>
 		.replace(/\/\*[\s\S]*?\*\//g, "")
 		.replace(/(^|[^:])\/\/[^\n]*/g, "$1");
 
-test("the modal's Continue is disabled by the block the step reports, not by a spinner", () => {
-	const modal = stripComments(MODAL);
-	assert.match(
-		modal,
-		/const footer = onboardingFooter\(currentStep, stepBlock, continuing\);/,
-		"the footer no longer reads the block the step registered",
-	);
-	assert.match(
-		modal,
-		/disabled=\{footer\.primaryDisabled\}/,
-		"Continue is disabled by something other than the footer's own decision",
-	);
-	assert.match(
-		modal,
-		/onBlockReason=\{registerStepBlock\}/,
-		"the step is not wired to the registration its footer reads",
-	);
-	const step = stripComments(STEP);
-	assert.match(
-		step,
-		/onBlockReason\(block\);/,
-		"the step reports something other than the block it computed",
-	);
-});
+trackedTest(
+	"the modal's Continue is disabled by the block the step reports, not by a spinner",
+	() => {
+		const modal = stripComments(MODAL);
+		assert.match(
+			modal,
+			/const footer = onboardingFooter\(currentStep, stepBlock, continuing\);/,
+			"the footer no longer reads the block the step registered",
+		);
+		assert.match(
+			modal,
+			/disabled=\{footer\.primaryDisabled\}/,
+			"Continue is disabled by something other than the footer's own decision",
+		);
+		assert.match(
+			modal,
+			/onBlockReason=\{registerStepBlock\}/,
+			"the step is not wired to the registration its footer reads",
+		);
+		const step = stripComments(STEP);
+		assert.match(
+			step,
+			/onBlockReason\(block\);/,
+			"the step reports something other than the block it computed",
+		);
+	},
+);

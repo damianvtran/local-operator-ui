@@ -96,14 +96,23 @@ export function planDefaultModelWrite(
 		(choice?.kind === "choose" ||
 			(choice?.kind === "applied" && !choice.model));
 
+	/*
+	 * AND NOTHING IS WRITTEN FOR A PROVIDER THIS LOCAL OPERATOR CANNOT NAME A MODEL
+	 * FOR. A hosting on its own is not a configuration, it is the failure: on a
+	 * released backend the first run's OpenRouter connect left `hosting: openrouter,
+	 * model_name: ''` through this very function, and the first message then reached
+	 * no completion endpoint at all (UX round 4, U14 -- the third round this class
+	 * came back, which is why the write is now a single expression with one way to be
+	 * null rather than a spread that could be empty).
+	 */
+	const write =
+		shownProvider && !needsModel
+			? { hosting: shownProvider, model_name: modelToWrite }
+			: null;
+
 	return {
 		shownProvider,
-		write: shownProvider
-			? {
-					hosting: shownProvider,
-					...(modelToWrite ? { model_name: modelToWrite } : {}),
-				}
-			: null,
+		write,
 		block: needsModel
 			? catalogueHasModels
 				? PICK_A_MODEL

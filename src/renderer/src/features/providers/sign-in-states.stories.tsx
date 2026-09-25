@@ -137,6 +137,16 @@ type BridgeOptions = {
 	script?: Script;
 	/** How `auth.key` answers: saved, saved-unchecked, or rejected (422). */
 	key?: "valid" | "unchecked" | "rejected";
+	/**
+	 * The tunnel's verdict for the Radient row, when a story is about the CLAIM the
+	 * row makes rather than about a panel state.
+	 *
+	 * `tunnel: 1` in capabilities plus this key in `accounts.list`'s answer is the
+	 * pair the real backend sends; the claim cannot be photographed without both,
+	 * because the verdict read is `enabled` on the feature and an absent verdict has
+	 * to keep reading as "nothing known" rather than as a healthy tunnel.
+	 */
+	loginVerdict?: "ok" | "login_required";
 };
 
 declare global {
@@ -309,7 +319,28 @@ const installBridge = (options: BridgeOptions) => {
 						desktop_contract: 1,
 						desktop_available: true,
 						desktop_auth: "bearer",
-						features: { auth: 1 },
+						features: {
+							auth: 1,
+							...(options.loginVerdict ? { tunnel: 1 } : {}),
+						},
+					});
+				/*
+				 * The verdict the row's claim comes from. Absent unless a story asks for
+				 * one, which is the shape of every backend older than the tunnel surface:
+				 * no key, no read, and the row falls back to the credential row's own
+				 * words rather than to a claim nobody made.
+				 */
+				case "accounts.list":
+					return ok({
+						accounts: [],
+						...(options.loginVerdict
+							? {
+									radient_login: {
+										state: options.loginVerdict,
+										credential_id: options.loginVerdict === "ok" ? 7 : null,
+									},
+								}
+							: {}),
 					});
 				case "providers.list":
 					return ok({ providers: options.providers ?? CENSUS });
@@ -626,6 +657,35 @@ export const PanelIdle = panelStory(
 	"anthropic",
 );
 
+/**
+ * The refused verdict, photographed where this branch paints it: the ROW's own
+ * claim (which replaced the card grid's chip, #426), with the row's panel open on
+ * it.
+ *
+ * WHY IT NEEDS ITS OWN STORY: main's `provider-chip-verdict` frames photograph the
+ * call-grid chip this branch deletes, so the refusal had NO rendered evidence in the
+ * anatomy that now carries it -- and an open configured row is exactly the state
+ * where the claim is stated twice, the close affordance matters, and the panel could
+ * disagree with the row above it (design round 4 D13/D14/D15, review round 4 R4-M2,
+ * UX round 4 U15/U16 -- all three judged from one unphotographed state).
+ */
+const OPTS_REFUSED_VERDICT: BridgeOptions = {
+	providers: signedIn(["radient"]),
+	hosting: "radient",
+	model: "auto",
+	loginVerdict: "login_required",
+};
+export const PanelRefusedVerdict = panelStory(
+	OPTS_REFUSED_VERDICT,
+	/Manage Radient/,
+	async () => {
+		await userEvent.click(
+			await screen.findByRole("menuitem", { name: /Sign in again/ }),
+		);
+	},
+	"radient",
+);
+
 const OPTS_LEGACY: BridgeOptions = { script: "legacy-waiting" };
 /**
  * Waiting, on the RELEASED backend: one click, the URL arrives on the first
@@ -662,9 +722,19 @@ export const PanelOptionalPasteOpen = panelStory(
 	/Sign in: Anthropic/,
 	async () => {
 		await clickContinue();
-		await userEvent.click(
-			await screen.findByRole("button", { name: PASTE_DISCLOSURE }),
-		);
+		const disclosure = await screen.findByRole("button", {
+			name: PASTE_DISCLOSURE,
+		});
+		/*
+		 * OPEN IT ONLY IF IT IS CLOSED. Radix's disclosure is a TOGGLE, and the rig
+		 * replays a play when it retries a frame -- which collapsed the very state this
+		 * story exists to photograph, and was recorded as a known non-idempotence
+		 * instead of fixed (review round 4, R4-n3). A play that reads the state it is
+		 * about to change is idempotent by construction.
+		 */
+		if (disclosure.getAttribute("aria-expanded") !== "true") {
+			await userEvent.click(disclosure);
+		}
 	},
 	"anthropic",
 );

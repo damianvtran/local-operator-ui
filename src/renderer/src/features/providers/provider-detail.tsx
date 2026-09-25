@@ -43,7 +43,6 @@ import {
 	Alert,
 	AlertDescription,
 	AlertTitle,
-	Badge,
 	Button,
 	Input,
 	Label,
@@ -100,6 +99,7 @@ import {
 	unfinishedMessage,
 } from "./provider-catalog";
 import {
+	type ProviderReadiness,
 	loginClaim,
 	primaryMethod,
 	providerReadiness,
@@ -218,6 +218,18 @@ type ProviderDetailProps = {
 	/** Opens the model picker from the receipt's "Change". */
 	onChangeModel?: () => void;
 	context?: ProviderDetailContext;
+	/**
+	 * The verdict the SURFACE AROUND this panel already holds, when there is one.
+	 *
+	 * WHY IT IS PASSED IN: the row above this panel paints a claim from the login
+	 * verdict, and when the panel derived its own the pair could disagree -- measured
+	 * on a backend whose `radient_login` names no credential, where the row read
+	 * "Needs sign-in" and the panel open on that same row read "Signed in to Radient"
+	 * (QA round 4, Q4-2). One surface, one read, one verdict. Omitted (the account
+	 * section's sign-in block, the remount tests) means "derive it here", which is
+	 * what the panel did before.
+	 */
+	readiness?: ProviderReadiness | null;
 };
 
 const SecretInput: FC<{
@@ -345,15 +357,19 @@ const SignedIn: FC<{
 			<p className="text-body-sm text-ink-muted">
 				{defaults.receipt}
 				{/*
-				 * The model, named -- because the receipt sentence is the BACKEND's, and
-				 * the older of the two shapes sends a default with no sentence at all.
-				 * Skipped when the sentence already carries it, so the line never says
-				 * the same model twice.
+				 * The model, named -- and ONLY when the backend sent no sentence at all.
+				 *
+				 * WHY A RECEIPT SILENCES THIS LINE: the receipt IS the backend's own
+				 * sentence about the default it wrote ("Set default hosting to
+				 * 'openrouter', model to 'anthropic/claude-opus-5.5'"), so anything the app
+				 * adds is the same fact twice. The guard here used to compare the model's
+				 * DISPLAY name against that sentence, which carries the model's ID, so it
+				 * never matched and the pane printed both (UX rounds 3 and 4, U12 then
+				 * U17). An older backend sends no receipt and no sentence, and then this
+				 * line is the only thing that names the default.
 				 */}
-				{defaults.model_name &&
-				!defaults.receipt?.includes(defaults.model_name) ? (
+				{!defaults.receipt && defaults.model_name ? (
 					<>
-						{defaults.receipt ? " " : ""}
 						Default model:{" "}
 						<span className="text-ink">{defaults.model_name}</span>.
 					</>
@@ -408,6 +424,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	onDone,
 	onChangeModel,
 	context = "settings",
+	readiness: readinessProp,
 }) => {
 	const queryClient = useQueryClient();
 	/*
@@ -478,7 +495,19 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	 * this badge.
 	 */
 	const claim = loginClaim(provider.id, login, { accountRead, unavailable });
-	const readiness = claim === null ? null : providerReadiness(provider, claim);
+	/*
+	 * The claim THIS panel may make: the surrounding surface's verdict when it has
+	 * one, and this panel's own read otherwise (see the `readiness` prop). It is used
+	 * to state a refusal the row above is stating, in the panel's own words, and NOT
+	 * as a badge: the badge was the same sentence 40 px below the row that already
+	 * said it (UX round 4, U16; design round 4, D15).
+	 */
+	const readiness =
+		readinessProp !== undefined
+			? readinessProp
+			: claim === null
+				? null
+				: providerReadiness(provider, claim);
 	const [methodId, setMethodId] = useState<string | null>(null);
 	const [keyValue, setKeyValue] = useState("");
 	const [keySaving, setKeySaving] = useState(false);
@@ -951,6 +980,24 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 				className="flex flex-col items-start gap-3"
 				data-sign-in-state="idle"
 			>
+				{provider.configured && readiness?.group === "Needs sign-in" ? (
+					/*
+					 * THE ROW'S VERDICT, SAID ONCE MORE WHERE THE CONTROLS ARE. This
+					 * provider is in the Connected list (`has_credential || configured`),
+					 * and a grant the provider has stopped accepting keeps both flags --
+					 * so without this the row said "Needs sign-in" and the panel offered a
+					 * frictionless "Continue in browser" as if it were ready (QA round 4,
+					 * Q4-2). The sentence is the row's own detail, so the two surfaces
+					 * spell one verdict one way.
+					 */
+					<Alert variant="warning">
+						<AlertTitle>{readiness.label}</AlertTitle>
+						<AlertDescription>
+							{readiness.detail ??
+								`${brand} is no longer accepting the sign-in stored on this machine.`}
+						</AlertDescription>
+					</Alert>
+				) : null}
 				<p className="text-body-sm text-ink-muted">
 					{methodBlurb(method, provider)}{" "}
 					{method.kind === "device"
@@ -966,19 +1013,6 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 							<ExternalLink aria-hidden="true" />
 						)}
 					</Button>
-					{/* The panel's own badge, keyed on the login verdict rather than on
-					    the credential row -- and NOT painted until a read that can
-					    support it has answered (`loginClaim`), because a claim it is
-					    about to correct is what design round 1's D6 and round 4's D12
-					    measured. No slot is reserved here, unlike the connected row: the
-					    badge sits at the END of the button's row, so its arrival moves
-					    nothing else. The prose rides the same `title` the row carries, so
-					    the long form is reachable on both surfaces. */}
-					{provider.configured && readiness && (
-						<Badge variant={readiness.tone} title={readiness.detail}>
-							{readiness.label}
-						</Badge>
-					)}
 				</div>
 			</div>
 		);

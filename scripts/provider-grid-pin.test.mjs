@@ -20,6 +20,7 @@
  */
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
@@ -341,4 +342,102 @@ test("every step takes the same panel measure, and it is clamped", () => {
 	}
 	assert.match(ONBOARDING_PANEL_WIDTHS.single, /min\(40rem/);
 	assert.equal(Object.keys(ONBOARDING_PANEL_WIDTHS).length, 1);
+});
+
+/*
+ * ---------------------------------------------------------------- round 4 pins
+ *
+ * The Connected row's panel, its claim and the panel's own words, pinned by SHAPE.
+ * These four are one decision each, and the state they live in -- an open Connected
+ * row whose verdict is a refusal -- had no rendered evidence at all until the story
+ * beside them was added (review round 4 R4-M2). A shape pin is what fails when the
+ * decision is reverted; the pixels are the frames' business.
+ */
+const stripComments = (path) =>
+	readFileSync(path, "utf8")
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+
+const GRID_SOURCE = "src/renderer/src/features/providers/provider-grid.tsx";
+const DETAIL_SOURCE = "src/renderer/src/features/providers/provider-detail.tsx";
+
+test("an open Connected row can be closed where it stands: the item toggles, and Escape works", () => {
+	const grid = stripComments(GRID_SOURCE);
+	/*
+	 * U15/R4-M1: the only open/close toggle in this grid lived in `addRow`, so a
+	 * Connected row's panel could not be dismissed in place -- Escape did nothing and
+	 * the only exit was navigating away and back, from a state this PR's own
+	 * "Sign-in expired -- run /login <provider>" advice reaches.
+	 */
+	assert.match(
+		grid,
+		/onSelect=\{\(\) => toggle\(provider\.id\)\}/,
+		"the Connected row's item must toggle the panel it opened",
+	);
+	assert.match(
+		grid,
+		/open\s*\n?\s*\?\s*"Close"/,
+		'and say "Close" while the panel is open, as every add row does',
+	);
+	assert.match(
+		grid,
+		/if \(event\.key !== "Escape" \|\| event\.defaultPrevented\) return;/,
+		"Escape must close the open panel, without stealing it from an open menu",
+	);
+});
+
+test("the sign-out confirm hands focus back to the row's own control", () => {
+	const grid = stripComments(GRID_SOURCE);
+	/*
+	 * U18/Q2: the confirm replaced the row's control, so when it closed focus fell to
+	 * `<body>` -- a keyboard user dropped at the top of the page they had just
+	 * changed. Both exits carry the row's place back.
+	 */
+	const signOut = grid.slice(grid.indexOf("const signOut = async"));
+	assert.match(
+		signOut.slice(0, 1200),
+		/setFocusRow\(provider\.id\)/,
+		"the sign-out arm must return focus to the row",
+	);
+	assert.match(
+		grid,
+		/setConfirmSignOut\(null\);\s*\n\s*setFocusRow\(provider\.id\);/,
+		'the "Keep" arm must return focus to the row too',
+	);
+});
+
+test("the row's claim carries its tone, and the panel does not repeat the claim", () => {
+	const grid = stripComments(GRID_SOURCE);
+	const detail = stripComments(DETAIL_SOURCE);
+	/*
+	 * D14/R4-m3/U16: the row's claim was one ink for every verdict -- so a dead
+	 * sign-in looked like a healthy one while the tone survived only in the panel's
+	 * badge -- and the panel then printed the same sentence 40 px below the row that
+	 * already said it.
+	 */
+	assert.match(
+		grid,
+		/data-claim-tone=\{readiness\?\.tone\}/,
+		"the claim must publish the tone a rig (and this pin) can read",
+	);
+	assert.match(
+		grid,
+		/readiness\.tone === "attention"\s*\n?\s*\?\s*"text-warning"/,
+		"a refusal must not be painted in the row's ordinary ink",
+	);
+	assert.doesNotMatch(
+		detail,
+		/<Badge variant=\{readiness\.tone\}/,
+		"the panel must not restate the row's claim as a badge",
+	);
+	assert.match(
+		detail,
+		/readiness\?\.group === "Needs sign-in"/,
+		"the panel must state a refusal it can see, where its controls are",
+	);
+	assert.match(
+		grid,
+		/readiness=\{readiness\}/,
+		"the row's verdict must be handed to the panel, so the pair cannot disagree (Q4-2)",
+	);
 });

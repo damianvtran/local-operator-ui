@@ -55,12 +55,15 @@ const EMPTY_CATALOGUE = { ready: false, providers: [] };
 /** A backend that ANSWERED and lists nothing for the provider in question. */
 const NO_MODELS_LISTED = { ready: true, providers: [] };
 
-test("the provider the step DISPLAYS is the one Continue WRITES", () => {
+test("step 2 SHOWS the provider just connected, and writes nothing until it can name a model", () => {
 	/*
-	 * The released-backend case, and round 1's M2: nothing is configured, the user
+	 * The released-backend shape, and round 1's M2: nothing is configured, the user
 	 * just connected Radient, and the step shows it. Gating the write on
-	 * `config.hosting` -- the mutant this case exists for -- leaves `write` null and
-	 * setup finishes with no hosting at all, which is the chat that cannot run.
+	 * `config.hosting` -- the mutant this case exists for -- is the opposite failure:
+	 * the step shows nothing and setup finishes with no hosting at all. What the step
+	 * must NOT do is write a hosting it cannot name a model for, which is round 4's
+	 * U14 (`hosting: openrouter, model_name: ''`); while the catalogue is unasked
+	 * there is no model to name, so there is no write either.
 	 */
 	const plan = planDefaultModelWrite({
 		choice: { kind: "choose", provider: row("radient") },
@@ -69,7 +72,11 @@ test("the provider the step DISPLAYS is the one Continue WRITES", () => {
 		catalogue: EMPTY_CATALOGUE,
 	});
 	assert.equal(plan.shownProvider, "radient");
-	assert.deepEqual(plan.write, { hosting: "radient" });
+	assert.equal(
+		plan.write,
+		null,
+		"a hosting with no model is the configuration that cannot answer, so nothing may be written",
+	);
 	/*
 	 * An UNASKED catalogue is not a missing one. Round 3's Q3-3 was this exact
 	 * conflation: a released backend was told it "can't list DeepSeek models" while it
@@ -101,9 +108,28 @@ test("a catalogue that ANSWERED and lists nothing is what says the models cannot
 		"nothing can be picked, so there is nothing to wait for either",
 	);
 	assert.equal(
+		plan.write,
+		null,
+		"U14: an answered catalogue that lists nothing for the provider must leave the CONFIG alone, not write the hosting",
+	);
+	assert.equal(
 		plan.noCatalogue,
 		true,
 		"and the step says so, which is the frame the evidence set carries",
+	);
+});
+
+test("a model this Local Operator can name is what makes the write happen at all", () => {
+	const plan = planDefaultModelWrite({
+		choice: { kind: "choose", provider: row("radient") },
+		hosting: null,
+		model: "auto",
+		catalogue: catalogue("radient"),
+	});
+	assert.deepEqual(
+		plan.write,
+		{ hosting: "radient", model_name: "auto" },
+		"a host with a model is what this step exists to write",
 	);
 });
 

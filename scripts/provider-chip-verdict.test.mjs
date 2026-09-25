@@ -1605,13 +1605,13 @@ test("on a failed verdict, the claim appears once the account read answers", asy
 		await flush();
 	}
 	/*
-	 * The row's claim and the panel's badge land together, and each is read on the
-	 * surface that carries it rather than counted over a page that now says the
-	 * words twice: the row's own line above, and the badge beside the panel's
-	 * control. The panel cannot be collapsed from here -- in this anatomy the row
-	 * is also what closes it, and this row's own control is its overflow menu -- so
-	 * the sequence below polls the row's claim with the panel still open, which the
-	 * header scope in `radientChip` is what makes a fact about the row.
+	 * ONE SURFACE STATES ONE VERDICT. The row's claim is the claim; the panel used to
+	 * carry the same words in a badge 40 px below it, which design round 4 (D15) and UX
+	 * round 4 (U16) asked to remove, and the panel now states only what the row cannot
+	 * -- a refusal, in its own words, where its controls are. The panel cannot be
+	 * collapsed from here either (this row's own control is its overflow menu), so the
+	 * sequence below polls the row's claim with the panel still open, which the header
+	 * scope in `radientChip` is what makes a fact about the row.
 	 */
 	assert.equal(radientChip(container), "Signed in", text(container));
 	const panel = rowOf(container, "radient")?.querySelector(
@@ -1620,8 +1620,8 @@ test("on a failed verdict, the claim appears once the account read answers", asy
 	assert.ok(panel, `the panel's body is on screen: ${text(container)}`);
 	assert.equal(
 		occurrences(text(panel), "Signed in"),
-		1,
-		`the panel's badge states the claim too: ${text(panel)}`,
+		0,
+		`the panel must not restate the row's claim: ${text(panel)}`,
 	);
 	await chipSequence(container, (chip) => chip === "Signed in");
 });
@@ -1707,11 +1707,13 @@ test("the card list is never held behind the verdict read", async () => {
 });
 
 /**
- * The detail panel, which is the surface the incident was photographed on: its
- * green "Signed in" badge sat directly under the account section's own "You are
- * not currently signed in to Radient".
+ * The detail panel, which is the surface the incident was photographed on, and the
+ * surface whose badge design round 4 (D15) removed: the row above it already says
+ * which verdict this is, in the verdict's own tone, with the long form on its
+ * `title` -- so the panel states a refusal in its own words where its controls are
+ * and carries no badge at all.
  */
-test("the detail panel's badge is keyed on the verdict, not on the credential row", async () => {
+test("the detail panel states a refused verdict in its own words, with no badge", async () => {
 	loginAnswer = "refused";
 	accountAnswer = "ready";
 	const refused = await renderDetail();
@@ -1723,7 +1725,17 @@ test("the detail panel's badge is keyed on the verdict, not on the credential ro
 		1,
 		refusedText,
 	);
-	assert.match(refused.container.innerHTML, REFUSED_DETAIL_ATTRIBUTE);
+	/*
+	 * The long form reaches the user through the ALERT's body now, not through a
+	 * badge's `title` -- the badge is gone (D15/U16), and this is the assertion that
+	 * says the sentence did not go with it.
+	 */
+	assert.match(
+		refusedText,
+		REFUSED_DETAIL,
+		`the panel must state the refusal in the verdict's own words: ${refusedText}`,
+	);
+	assert.doesNotMatch(refused.container.innerHTML, /<span[^>]*>Signed in</);
 	// A real unmount rather than a second container: the healthy half asserts
 	// against a panel that rendered from its own answer, not from this one's
 	// state or from a leftover DOM.
@@ -1735,7 +1747,11 @@ test("the detail panel's badge is keyed on the verdict, not on the credential ro
 	const healthy = await renderDetail();
 	await awaitReads(healthy.container, healthy.queryClient);
 	const healthyText = text(healthy.container);
-	assert.equal(occurrences(healthyText, "Signed in"), 1, healthyText);
+	/*
+	 * And a healthy panel states NOTHING: the row above it owns the claim. A count of
+	 * one here is the duplication this round removed; a count of one there is the fix.
+	 */
+	assert.equal(occurrences(healthyText, "Signed in"), 0, healthyText);
 });
 
 /**
@@ -1756,7 +1772,12 @@ test("the panel still starts the first verdict read when nothing has asked yet",
 		queryClient.getQueryData(radientSessionIssueKey)?.radient_login?.state,
 		"ok",
 	);
-	assert.equal(occurrences(text(container), "Signed in"), 1, text(container));
+	/*
+	 * The read happens; the claim is not made HERE. The panel is passed the surround's
+	 * verdict when there is one and derives its own only for a surface that hands it
+	 * nothing -- and neither arm paints a claim the row above already paints (D15/U16).
+	 */
+	assert.equal(occurrences(text(container), "Signed in"), 0, text(container));
 });
 
 /* ---- round 2: the two `unknown` shapes, the refused fallback, and the ---- */
@@ -1843,6 +1864,10 @@ test("the fallback refuses a claim when the account read says the sign-in was re
 	const body = text(container);
 	assert.equal(occurrences(body, "Signed in"), 0, body);
 	assert.equal(occurrences(body, "Needs re-authentication"), 1, body);
+	/*
+	 * The long form rides the ROW's `title` here -- the row states the claim, tone and
+	 * detail, and the panel adds nothing to it (design round 4 D15, UX round 4 U16).
+	 */
 	assert.match(container.innerHTML, REFUSED_DETAIL_ATTRIBUTE);
 
 	// The arm this must NOT swallow: `unavailable` is what a healthy machine's
@@ -2101,7 +2126,12 @@ test("the account section settles on a refused read, with its chip and its sign-
 		body,
 	);
 	assert.equal(occurrences(body, "Needs re-authentication"), 1, body);
-	assert.match(container.innerHTML, REFUSED_DETAIL_ATTRIBUTE);
+	/*
+	 * THE SECTION'S OWN SENTENCE, not the badge's title: the badge this assertion used
+	 * to read is gone (D15/U16), and what the user is owed -- why the details could not
+	 * be read -- is the account read's sentence in the body.
+	 */
+	assert.match(body, /refused the sign-in this app is holding/);
 	assert.ok(
 		/sign in/i.test(body),
 		`the section rendered no sign-in control: ${body}`,

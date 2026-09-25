@@ -58,6 +58,7 @@ import { useRadientLoginVerdict } from "@shared/hooks/use-radient-session-issue"
  * docblock. Importing the leaf keeps this feature out of that graph.
  */
 import { useRadientUserQuery } from "@shared/hooks/use-radient-user-query";
+import { cn } from "@shared/lib/utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useQueryClient } from "@tanstack/react-query";
 import { MoreHorizontal, Search, X } from "lucide-react";
@@ -80,6 +81,7 @@ import {
 } from "./provider-catalog";
 import { ProviderDetail, type ProviderDetailContext } from "./provider-detail";
 import {
+	type ProviderReadiness,
 	loginClaim,
 	providerLoadErrorMessage,
 	providerReadiness,
@@ -389,6 +391,25 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 		if (id) setFocusRow(id);
 		onDone?.();
 	};
+	/*
+	 * ESCAPE CLOSES AN OPEN PANEL. It did not: the only way out of a Connected row's
+	 * panel was to navigate away and back, and Escape did nothing at all (UX round 4,
+	 * U15). Events that a menu, dialog or popover already handled are left alone, so
+	 * Escape inside the overflow menu or a confirm still belongs to that surface.
+	 */
+	useEffect(() => {
+		if (selectedId === null) return undefined;
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.key !== "Escape" || event.defaultPrevented) return;
+			const target = event.target as HTMLElement | null;
+			if (target?.closest('[role="menu"], [role="dialog"], [role="listbox"]')) {
+				return;
+			}
+			collapse();
+		};
+		document.addEventListener("keydown", onKeyDown);
+		return () => document.removeEventListener("keydown", onKeyDown);
+	});
 
 	const refresh = () => {
 		void queryClient.invalidateQueries({ queryKey: desktopKeys.providers });
@@ -423,6 +444,17 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 			showErrorToast(
 				error instanceof Error ? error.message : "Sign-out did not complete.",
 			);
+		} finally {
+			/*
+			 * THE ROW KEEPS THE USER'S PLACE. The confirm replaced the row's own
+			 * control, so when it closed, focus fell to `<body>` and a keyboard user
+			 * was dropped at the top of the page they had just changed -- the same
+			 * destination loss the dialog's Continue has (UX round 4, U18, folding the
+			 * deferred U6 into the destructive arm it belongs with). The row's control
+			 * is still mounted, so focus goes there either way, and the sign-out arm
+			 * leaves a row whose label says what to do next.
+			 */
+			setFocusRow(provider.id);
 		}
 	};
 
@@ -461,7 +493,16 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 		);
 	}
 
-	const panelFor = (provider: DesktopProvider) =>
+	/*
+	 * `readiness` is the CONNECTED row's verdict, handed down so the panel cannot
+	 * answer the row: a panel that derived its own read could say "Signed in to
+	 * Radient" directly under a row saying "Needs sign-in" (QA round 4, Q4-2). Add
+	 * rows pass nothing, and the panel derives its own read as before.
+	 */
+	const panelFor = (
+		provider: DesktopProvider,
+		readiness?: ProviderReadiness | null,
+	) =>
 		selectedId === provider.id ? (
 			<div className="border-hairline border-t bg-surface px-4 py-4">
 				<ProviderDetail
@@ -470,6 +511,7 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 					onDone={collapse}
 					onChangeModel={onChangeModel}
 					context={context}
+					readiness={readiness}
 				/>
 			</div>
 		) : null;
@@ -590,9 +632,23 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 						 * same in every window.
 						 */}
 						<span
-							className="truncate text-ink-muted text-meta"
+							/*
+							 * THE CLAIM CARRIES ITS TONE, not just its words. `neutral` is the
+							 * row's ordinary register; a refusal keeps the warning ink the
+							 * badge used to carry, so a dead sign-in is not one more quiet
+							 * grey line (UX round 4, U16; design round 4, D14).
+							 */
+							className={cn(
+								"truncate text-meta",
+								readiness === null || readiness.tone === "neutral"
+									? "text-ink-muted"
+									: readiness.tone === "attention"
+										? "text-warning"
+										: "text-success",
+							)}
 							title={readiness?.detail}
 							data-claim={claim === null ? "withheld" : undefined}
+							data-claim-tone={readiness?.tone}
 						>
 							{meta ?? "\u00a0"}
 						</span>
@@ -622,7 +678,10 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 							<Button
 								variant="ghost"
 								size="sm"
-								onClick={() => setConfirmSignOut(null)}
+								onClick={() => {
+									setConfirmSignOut(null);
+									setFocusRow(provider.id);
+								}}
 							>
 								Keep
 							</Button>
@@ -677,17 +736,26 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 										Change model…
 									</DropdownMenuItem>
 								) : null}
-								{!provider.local ? (
-									<DropdownMenuItem onSelect={() => setSelectedId(provider.id)}>
-										{providerGroup(provider) === "key"
-											? "Replace key…"
-											: "Sign in again…"}
-									</DropdownMenuItem>
-								) : (
-									<DropdownMenuItem onSelect={() => setSelectedId(provider.id)}>
-										Check connection
-									</DropdownMenuItem>
-								)}
+								{/*
+								 * THE ITEM THAT OPENS THE PANEL CLOSES IT AGAIN. Every add row's
+								 * own control toggles and reads "Close" while open; this row's
+								 * only control is this menu, and it set the id without a way
+								 * back -- so a Connected row's panel could not be dismissed in
+								 * place, Escape included, and the only exit was navigating away
+								 * (UX round 4, U15; review round 4, R4-M1).
+								 */}
+								<DropdownMenuItem
+									onSelect={() => toggle(provider.id)}
+									data-panel-toggle={provider.id}
+								>
+									{open
+										? "Close"
+										: !provider.local
+											? providerGroup(provider) === "key"
+												? "Replace key…"
+												: "Sign in again…"
+											: "Check connection"}
+								</DropdownMenuItem>
 								{!provider.local && provider.stored_credentials > 0 ? (
 									<>
 										<DropdownMenuSeparator />
@@ -703,7 +771,7 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 						</DropdownMenu>
 					)}
 				</div>
-				{open ? panelFor(provider) : null}
+				{open ? panelFor(provider, readiness) : null}
 			</li>
 		);
 	};

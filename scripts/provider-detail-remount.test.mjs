@@ -105,6 +105,8 @@ const CENSUS = JSON.parse(
 let configHosting = null;
 /** What a key save replies. `null` is the OLD backend: no `defaults_applied` at all. */
 let keyReply = null;
+/** Whether the success reply carries the backend's own receipt sentence. */
+let receipted = true;
 /** Every op the panel asked main for, with its payload, so absence is assertable. */
 const ops = [];
 const opsOf = (op) => ops.filter((entry) => entry.op === op);
@@ -151,7 +153,9 @@ globalThis.window.api = {
 								hosting: currentProvider,
 								model: "claude-opus-5-5",
 								model_name: "Claude Opus 5.5",
-								receipt: "Set default hosting and model.",
+								...(receipted
+									? { receipt: "Set default hosting and model." }
+									: {}),
 							},
 						}),
 					);
@@ -333,81 +337,154 @@ const clickButton = async (root, name) => {
 	});
 };
 
-test("a completed sign-in survives the remount the row move causes", async (t) => {
-	polls = 0;
-	currentProvider = "anthropic";
-	const mounted = await mount(t);
+/*
+ * WHY THIS SUITE ENDS ITSELF.
+ *
+ * After the tree is unmounted and the query cache cleared, this process still holds
+ * a socket and timer handles, so node never exits on its own and the runner reports
+ * a PASSING file as a job timeout -- which is exactly what happened to this file and
+ * its sibling under `scripts/run-desktop-tests.mjs` ("Promise resolution is still
+ * pending", node 22 and 26, review round 4 R4-m4). The exit is explicit and carries
+ * the code the run earned, so a failure can never be reported as green.
+ */
+after(() => process.exit(failures > 0 ? 1 : 0));
 
-	await mounted.render("anthropic", "row-1");
-	assert.ok(
-		mounted.find('[data-sign-in-state="idle"]'),
-		"a fresh panel starts idle",
-	);
-	await clickButton(mounted, "Continue in browser");
-	await waitFor(
-		() => mounted.find('[data-sign-in-state="succeeded"]'),
-		"the success state",
-	);
+let failures = 0;
+const trackedTest = (name, body) =>
+	test(name, async (t) => {
+		try {
+			await body(t);
+		} catch (error) {
+			failures += 1;
+			throw error;
+		}
+	});
 
-	/*
-	 * THE ROW MOVE. The provider leaves "Add a provider" and is re-rendered inside
-	 * "Connected", which is a different list item: React unmounts this panel and
-	 * mounts a new one under a new key. With the mount-time `reset()` back in, this
-	 * is the assertion that fails -- the panel comes back idle and invites a second
-	 * sign-in.
-	 */
-	await mounted.render("anthropic", "row-2");
-	assert.ok(
-		mounted.find('[data-sign-in-state="succeeded"]'),
-		"the receipt must still be on screen after the row moves",
-	);
-	assert.match(
-		mounted.text(),
-		/Claude Opus 5\.5/,
-		"and it must still name the default model the backend applied",
-	);
-});
+trackedTest(
+	"a completed sign-in survives the remount the row move causes",
+	async (t) => {
+		polls = 0;
+		currentProvider = "anthropic";
+		const mounted = await mount(t);
 
-test("the same panel, re-rendered for ANOTHER provider, shows that provider and keeps the first one's receipt", async (t) => {
-	/*
-	 * SAME key on purpose. Re-rendering under a new key mounts a new panel and proves
-	 * nothing about the switch: the round-3 probe did exactly that and the branch it
-	 * was meant to pin could be deleted with both cases still green (review round 3
-	 * R3-m1).
-	 */
-	polls = 0;
-	currentProvider = "anthropic";
-	const mounted = await mount(t);
+		await mounted.render("anthropic", "row-1");
+		assert.ok(
+			mounted.find('[data-sign-in-state="idle"]'),
+			"a fresh panel starts idle",
+		);
+		await clickButton(mounted, "Continue in browser");
+		await waitFor(
+			() => mounted.find('[data-sign-in-state="succeeded"]'),
+			"the success state",
+		);
 
-	await mounted.render("anthropic", "row-1");
-	await clickButton(mounted, "Continue in browser");
-	await waitFor(
-		() => mounted.find('[data-sign-in-state="succeeded"]'),
-		"the success state",
-	);
+		/*
+		 * THE ROW MOVE. The provider leaves "Add a provider" and is re-rendered inside
+		 * "Connected", which is a different list item: React unmounts this panel and
+		 * mounts a new one under a new key. With the mount-time `reset()` back in, this
+		 * is the assertion that fails -- the panel comes back idle and invites a second
+		 * sign-in.
+		 */
+		await mounted.render("anthropic", "row-2");
+		assert.ok(
+			mounted.find('[data-sign-in-state="succeeded"]'),
+			"the receipt must still be on screen after the row moves",
+		);
+		/*
+		 * The pane names the backend's own sentence and NOTHING ELSE, because that
+		 * sentence already carries the fact: the app's line used to repeat it in plain
+		 * words ("... model to 'anthropic/claude-opus-5.5'. Default model: Claude Opus
+		 * 5.5") and the guard that was meant to stop it compared the model's DISPLAY name
+		 * against a sentence carrying its ID, so it never matched (UX round 3 U12, round 4
+		 * U17). The receipt-less case below is where the app's own naming is owed.
+		 */
+		assert.match(
+			mounted.text(),
+			/Set default hosting and model\./,
+			"the backend's receipt is what the pane shows",
+		);
+		assert.doesNotMatch(
+			mounted.text(),
+			/Default model:/,
+			"the app must not restate what the backend's receipt already said",
+		);
+	},
+);
 
-	await mounted.render("openai", "row-1");
-	assert.ok(
-		!mounted.find('[data-sign-in-state="succeeded"]'),
-		"another provider's panel must not inherit a receipt",
-	);
-	assert.ok(
-		mounted.find('[data-sign-in-state="idle"]'),
-		"it starts in the idle view",
-	);
+trackedTest(
+	"a backend that sends no receipt is where the pane names the model itself",
+	async (t) => {
+		/*
+		 * An OLD backend applies no defaults and sends no sentence, so the app's own line
+		 * is the only thing that names what the sign-in chose (the same class as the
+		 * release-backend half of U1). Without this case, deleting the line entirely --
+		 * the over-fix for U17 -- would pass the suite.
+		 */
+		polls = 0;
+		currentProvider = "anthropic";
+		receipted = false;
+		t.after(() => {
+			receipted = true;
+		});
+		const mounted = await mount(t);
 
-	/*
-	 * And the receipt is still THERE, not thrown away: coming back shows it, which is
-	 * what fails if the switch is "fixed" by resetting the session the panel is
-	 * leaving (the round-3 probe's other half: that reset hit Anthropic's session and
-	 * stopped its poll).
-	 */
-	await mounted.render("anthropic", "row-1");
-	assert.ok(
-		mounted.find('[data-sign-in-state="succeeded"]'),
-		"the first provider's own receipt must survive the switch away and back",
-	);
-});
+		await mounted.render("anthropic", "row-1");
+		await clickButton(mounted, "Continue in browser");
+		await waitFor(
+			() => mounted.find('[data-sign-in-state="succeeded"]'),
+			"the success state",
+		);
+		assert.match(
+			mounted.text(),
+			/Default model: Claude Opus 5\.5/,
+			"with no receipt the pane must still name the model the backend applied",
+		);
+	},
+);
+
+trackedTest(
+	"the same panel, re-rendered for ANOTHER provider, shows that provider and keeps the first one's receipt",
+	async (t) => {
+		/*
+		 * SAME key on purpose. Re-rendering under a new key mounts a new panel and proves
+		 * nothing about the switch: the round-3 probe did exactly that and the branch it
+		 * was meant to pin could be deleted with both cases still green (review round 3
+		 * R3-m1).
+		 */
+		polls = 0;
+		currentProvider = "anthropic";
+		const mounted = await mount(t);
+
+		await mounted.render("anthropic", "row-1");
+		await clickButton(mounted, "Continue in browser");
+		await waitFor(
+			() => mounted.find('[data-sign-in-state="succeeded"]'),
+			"the success state",
+		);
+
+		await mounted.render("openai", "row-1");
+		assert.ok(
+			!mounted.find('[data-sign-in-state="succeeded"]'),
+			"another provider's panel must not inherit a receipt",
+		);
+		assert.ok(
+			mounted.find('[data-sign-in-state="idle"]'),
+			"it starts in the idle view",
+		);
+
+		/*
+		 * And the receipt is still THERE, not thrown away: coming back shows it, which is
+		 * what fails if the switch is "fixed" by resetting the session the panel is
+		 * leaving (the round-3 probe's other half: that reset hit Anthropic's session and
+		 * stopped its poll).
+		 */
+		await mounted.render("anthropic", "row-1");
+		assert.ok(
+			mounted.find('[data-sign-in-state="succeeded"]'),
+			"the first provider's own receipt must survive the switch away and back",
+		);
+	},
+);
 
 /** Type into the provider's key field, the way a person does. */
 const typeKey = async (root, providerId, value) => {
@@ -432,145 +509,157 @@ const saveKey = async (root, providerId) => {
 	});
 };
 
-test("a connect the backend ANSWERED writes no default of its own -- including its deliberate null", async (t) => {
-	/*
-	 * TypeSafe is decision-only: the backend replies `defaults_applied: {hosting:
-	 * null, receipt: "Nothing changed…"}` and hosts nothing for chat. Reading a null
-	 * hosting as "the old backend applied nothing" made the UI write `hosting:
-	 * typesafe`, a provider that cannot answer a message (review round 3 R3-M1).
-	 */
-	ops.length = 0;
-	configHosting = null;
-	keyReply = {
-		valid: true,
-		reason: null,
-		defaults_applied: {
-			hosting: null,
-			model: null,
-			model_name: null,
-			receipt: "Nothing changed - pick a chat model with /model first.",
-		},
-	};
-	seedCatalogue("typesafe", [{ id: "typesafe-chat", name: "TypeSafe Chat" }]);
-	const mounted = await mount(t);
-
-	await mounted.render("typesafe", "row-1");
-	await saveKey(mounted, "typesafe");
-
-	assert.equal(
-		opsOf("auth.key").length,
-		1,
-		"the key save must have reached the backend, or this asserts nothing",
-	);
-	assert.deepEqual(
-		opsOf("config.update"),
-		[],
-		"the UI moved a default the backend had just declined to set",
-	);
-});
-
-test("a second provider never moves a default that already works", async (t) => {
-	/*
-	 * QA round 3 Q3-2 and UX round 3 U11: a working `deepseek / deepseek-flash`
-	 * became `typesafe / …` on a later connect, because the guard read `config.get`'s
-	 * result at the wrong level -- `hosting` lives under `values`, and the stub in
-	 * this very file returned it flat, which is why the suite was green.
-	 */
-	ops.length = 0;
-	configHosting = "deepseek";
-	keyReply = null;
-	seedCatalogue("typesafe", [{ id: "typesafe-chat", name: "TypeSafe Chat" }]);
-	const mounted = await mount(t);
-
-	await mounted.render("typesafe", "row-1");
-	await saveKey(mounted, "typesafe");
-
-	assert.equal(
-		opsOf("auth.key").length,
-		1,
-		"the key save must have reached the backend, or this asserts nothing",
-	);
-	assert.deepEqual(
-		opsOf("config.update"),
-		[],
-		"a connect to a second provider replaced the default the user already had",
-	);
-});
-
-test("an old backend's connect leaves a model the Local Operator can see, preferring the suggestion", async (t) => {
-	/*
-	 * The released backend applies nothing and sends no `defaults_applied` at all, so
-	 * an adopted default is the UI's own write -- and it names a model its catalogue
-	 * lists, preferring the backend's `suggested_model` over the listing's first row
-	 * (review round 3 R3-m5). Without a model there is NO write: a hosting with an
-	 * empty model is the pair that failed the user's first message.
-	 */
-	ops.length = 0;
-	configHosting = null;
-	keyReply = null;
-	seedCatalogue("typesafe", [
-		{ id: "typesafe-other", name: "TypeSafe Other" },
-		{ id: "typesafe-chat", name: "TypeSafe Chat" },
-	]);
-	const row = rowFor("typesafe");
-	const saved = row.suggested_model;
-	row.suggested_model = { id: "typesafe-chat", name: "TypeSafe Chat" };
-	try {
+trackedTest(
+	"a connect the backend ANSWERED writes no default of its own -- including its deliberate null",
+	async (t) => {
+		/*
+		 * TypeSafe is decision-only: the backend replies `defaults_applied: {hosting:
+		 * null, receipt: "Nothing changed…"}` and hosts nothing for chat. Reading a null
+		 * hosting as "the old backend applied nothing" made the UI write `hosting:
+		 * typesafe`, a provider that cannot answer a message (review round 3 R3-M1).
+		 */
+		ops.length = 0;
+		configHosting = null;
+		keyReply = {
+			valid: true,
+			reason: null,
+			defaults_applied: {
+				hosting: null,
+				model: null,
+				model_name: null,
+				receipt: "Nothing changed - pick a chat model with /model first.",
+			},
+		};
+		seedCatalogue("typesafe", [{ id: "typesafe-chat", name: "TypeSafe Chat" }]);
 		const mounted = await mount(t);
+
 		await mounted.render("typesafe", "row-1");
 		await saveKey(mounted, "typesafe");
-	} finally {
-		row.suggested_model = saved;
-	}
 
-	assert.deepEqual(
-		opsOf("config.update").map((entry) => entry.value),
-		[{ hosting: "typesafe", model_name: "typesafe-chat" }],
-		"the adopted default did not take the backend's suggestion",
-	);
-});
+		assert.equal(
+			opsOf("auth.key").length,
+			1,
+			"the key save must have reached the backend, or this asserts nothing",
+		);
+		assert.deepEqual(
+			opsOf("config.update"),
+			[],
+			"the UI moved a default the backend had just declined to set",
+		);
+	},
+);
 
-test("one panel instance reused for another provider follows the id, and leaves the first provider's flow alone", async (t) => {
-	/*
-	 * Callers key the panel per provider, so this is a guard rather than the common
-	 * path -- and the guard was wrong: re-rendering one instance from `anthropic` to
-	 * `openai` during a running Anthropic flow reset ANTHROPIC's session (stopping its
-	 * poll without cancelling it), cleared OpenAI's saved-key state, and then ran
-	 * OpenAI's Start through Anthropic's flow (review round 3 R3-m1).
-	 */
-	polls = 0;
-	currentProvider = "anthropic";
-	const mounted = await mount(t);
+trackedTest(
+	"a second provider never moves a default that already works",
+	async (t) => {
+		/*
+		 * QA round 3 Q3-2 and UX round 3 U11: a working `deepseek / deepseek-flash`
+		 * became `typesafe / …` on a later connect, because the guard read `config.get`'s
+		 * result at the wrong level -- `hosting` lives under `values`, and the stub in
+		 * this very file returned it flat, which is why the suite was green.
+		 */
+		ops.length = 0;
+		configHosting = "deepseek";
+		keyReply = null;
+		seedCatalogue("typesafe", [{ id: "typesafe-chat", name: "TypeSafe Chat" }]);
+		const mounted = await mount(t);
 
-	await mounted.render("anthropic", "panel");
-	await clickButton(mounted, "Continue in browser");
-	await waitFor(
-		() => mounted.find('[data-sign-in-state="waiting"]'),
-		"the Anthropic flow to reach its browser wait",
-	);
-	assert.equal(
-		peekSignInState("anthropic").phase,
-		"active",
-		"the Anthropic flow must be running before the switch",
-	);
+		await mounted.render("typesafe", "row-1");
+		await saveKey(mounted, "typesafe");
 
-	await mounted.render("openai", "panel");
+		assert.equal(
+			opsOf("auth.key").length,
+			1,
+			"the key save must have reached the backend, or this asserts nothing",
+		);
+		assert.deepEqual(
+			opsOf("config.update"),
+			[],
+			"a connect to a second provider replaced the default the user already had",
+		);
+	},
+);
 
-	assert.equal(
-		mounted
-			.find('[data-sign-in-state="idle"]')
-			?.getAttribute("data-sign-in-state"),
-		"idle",
-		"the panel must show the provider it was re-rendered for",
-	);
-	assert.equal(
-		peekSignInState("anthropic").phase,
-		"active",
-		"switching the panel reset the OTHER provider's running flow",
-	);
-	assert.notEqual(
-		peekSignInState("openai").phase,
-		"active",
-		"the new provider inherited the old provider's flow",
-	);
-});
+trackedTest(
+	"an old backend's connect leaves a model the Local Operator can see, preferring the suggestion",
+	async (t) => {
+		/*
+		 * The released backend applies nothing and sends no `defaults_applied` at all, so
+		 * an adopted default is the UI's own write -- and it names a model its catalogue
+		 * lists, preferring the backend's `suggested_model` over the listing's first row
+		 * (review round 3 R3-m5). Without a model there is NO write: a hosting with an
+		 * empty model is the pair that failed the user's first message.
+		 */
+		ops.length = 0;
+		configHosting = null;
+		keyReply = null;
+		seedCatalogue("typesafe", [
+			{ id: "typesafe-other", name: "TypeSafe Other" },
+			{ id: "typesafe-chat", name: "TypeSafe Chat" },
+		]);
+		const row = rowFor("typesafe");
+		const saved = row.suggested_model;
+		row.suggested_model = { id: "typesafe-chat", name: "TypeSafe Chat" };
+		try {
+			const mounted = await mount(t);
+			await mounted.render("typesafe", "row-1");
+			await saveKey(mounted, "typesafe");
+		} finally {
+			row.suggested_model = saved;
+		}
+
+		assert.deepEqual(
+			opsOf("config.update").map((entry) => entry.value),
+			[{ hosting: "typesafe", model_name: "typesafe-chat" }],
+			"the adopted default did not take the backend's suggestion",
+		);
+	},
+);
+
+trackedTest(
+	"one panel instance reused for another provider follows the id, and leaves the first provider's flow alone",
+	async (t) => {
+		/*
+		 * Callers key the panel per provider, so this is a guard rather than the common
+		 * path -- and the guard was wrong: re-rendering one instance from `anthropic` to
+		 * `openai` during a running Anthropic flow reset ANTHROPIC's session (stopping its
+		 * poll without cancelling it), cleared OpenAI's saved-key state, and then ran
+		 * OpenAI's Start through Anthropic's flow (review round 3 R3-m1).
+		 */
+		polls = 0;
+		currentProvider = "anthropic";
+		const mounted = await mount(t);
+
+		await mounted.render("anthropic", "panel");
+		await clickButton(mounted, "Continue in browser");
+		await waitFor(
+			() => mounted.find('[data-sign-in-state="waiting"]'),
+			"the Anthropic flow to reach its browser wait",
+		);
+		assert.equal(
+			peekSignInState("anthropic").phase,
+			"active",
+			"the Anthropic flow must be running before the switch",
+		);
+
+		await mounted.render("openai", "panel");
+
+		assert.equal(
+			mounted
+				.find('[data-sign-in-state="idle"]')
+				?.getAttribute("data-sign-in-state"),
+			"idle",
+			"the panel must show the provider it was re-rendered for",
+		);
+		assert.equal(
+			peekSignInState("anthropic").phase,
+			"active",
+			"switching the panel reset the OTHER provider's running flow",
+		);
+		assert.notEqual(
+			peekSignInState("openai").phase,
+			"active",
+			"the new provider inherited the old provider's flow",
+		);
+	},
+);

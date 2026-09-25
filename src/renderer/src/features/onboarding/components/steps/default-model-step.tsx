@@ -31,7 +31,7 @@ import { useModels } from "@shared/hooks/use-models";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useModelsStore } from "@shared/store/models-store";
 import type { FC } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { planDefaultModelWrite } from "./default-model-plan";
 
 /**
@@ -169,6 +169,20 @@ export const DefaultModelStep: FC<DefaultModelStepProps> = ({
 		[choice, config.hosting, config.model, modelsReady, catalogueProviders],
 	);
 	const { shownProvider, write, block, noCatalogue, modelToWrite } = plan;
+	/*
+	 * The model this Local Operator can name for a provider, in the same preference
+	 * order the plan uses: what the catalogue marks recommended first, then its own
+	 * first row. `undefined` means it can name none, and the field writes nothing.
+	 */
+	const preferredModelForHosting = useCallback(
+		(providerId: string): string | undefined => {
+			const rows = useModelsStore
+				.getState()
+				.models.filter((model) => model.provider === providerId);
+			return rows.find((model) => model.info?.recommended)?.id ?? rows[0]?.id;
+		},
+		[],
+	);
 	const shownRow =
 		(providers.data ?? []).find((row) => row.id === shownProvider) ?? null;
 
@@ -205,8 +219,19 @@ export const DefaultModelStep: FC<DefaultModelStepProps> = ({
 		<div className="flex flex-col gap-4">
 			<HostingSelect
 				value={shownProvider}
+				/*
+				 * The field's own write carries a MODEL, or it does not happen. It used to
+				 * save `{ hosting }` alone, which is the second way the first run could
+				 * leave a model-less config behind (U14's reproducer counted the daemon's
+				 * own `PATCH /v1/config` after this control ran).
+				 */
 				onSave={async (value) => {
-					await updateConfig.mutateAsync({ hosting: value });
+					const preferred = preferredModelForHosting(value);
+					if (!preferred) return;
+					await updateConfig.mutateAsync({
+						hosting: value,
+						model_name: preferred,
+					});
 				}}
 				filterByCredentials={true}
 				allowCustom={false}
@@ -237,10 +262,19 @@ export const DefaultModelStep: FC<DefaultModelStepProps> = ({
 				New chats use this model. Every agent can pick a different one later.
 			</p>
 			{noCatalogue ? (
+				/*
+				 * THE SENTENCE SAYS WHAT CONTINUE WILL DO, because what it does is the
+				 * finding: with no model this Local Operator can name, the write is
+				 * refused outright, so finishing here leaves no default at all -- and
+				 * "pick one in Settings once it can" read as though it had (UX round 4,
+				 * U14: `hosting: openrouter, model_name: ''` and a first message that
+				 * never reached a completion endpoint).
+				 */
 				<p className="text-ink-dim text-meta">
-					Your Local Operator can't list{" "}
-					{shownRow ? brandOf(shownRow) : "this provider's"} models yet. Finish
-					setup and pick one in Settings once it can.
+					Nothing will be saved: your Local Operator can't list{" "}
+					{shownRow ? brandOf(shownRow) : "this provider's"} models yet, so
+					setup finishes without a default model. Pick one in Settings before
+					your first message.
 				</p>
 			) : null}
 			{editing || choice.kind === "choose" ? (

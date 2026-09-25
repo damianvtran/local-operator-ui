@@ -92,6 +92,7 @@ const bundle = await build({
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 			export { ModelSelect } from "./src/renderer/src/shared/components/hosting/model-select";
 			export { useModelsStore } from "./src/renderer/src/shared/store/models-store";
+			export { getModelsForHostingProvider } from "./src/renderer/src/shared/components/hosting/hosting-model-manifest";
 			export { createElement };
 		`,
 		resolveDir: process.cwd(),
@@ -134,6 +135,7 @@ const {
 	QueryClient,
 	QueryClientProvider,
 	useModelsStore,
+	getModelsForHostingProvider,
 } = await import(bundlePath.href);
 
 // The component refreshes the catalogue through react-query, so the tree needs a
@@ -276,6 +278,106 @@ run(
 			container.textContent ?? "",
 			NO_MODELS,
 			"the picker must re-read the store it was told to wait for",
+		);
+	},
+);
+
+run(
+	"a listing that arrives INSIDE the old cache's window is the listing the picker sees",
+	async (t) => {
+		/*
+		 * THE CASE THE FIVE-SECOND CACHE FAILED. The first case above cannot catch a
+		 * time-based cache at all: it mounts on an EMPTY store, and an empty store
+		 * returns before any cache is written, so the pre-fix implementation
+		 * (`CACHE_TTL = 5000`, `now - lastCacheTime`) passes it (review round 4,
+		 * R4-m1 -- reproduced against `b4856092e^`). Here the first render READS a real
+		 * listing, which is what fills the cache, and then the store changes within
+		 * that window: a cache keyed on a clock still returns the OLD models for the
+		 * rest of it, and one keyed on the store returns the new ones immediately.
+		 */
+		const listing = (id, name) => ({
+			id,
+			provider: "radient",
+			info: {
+				name,
+				description: "",
+				context_window: 8192,
+				max_tokens: 1024,
+			},
+		});
+		const withModels = (models) => ({
+			isInitialized: true,
+			providers: [
+				{
+					id: "radient",
+					name: "Radient",
+					description: "",
+					url: "https://radient.example",
+					requiredCredentials: [],
+				},
+			],
+			models,
+		});
+		useModelsStore.setState(withModels([listing("auto", "Automatic")]));
+		/*
+		 * The store's own fetch is isolated here for the reason the first case states:
+		 * this environment can ANSWER it with an empty catalogue, which wipes the very
+		 * listing this case publishes.
+		 */
+		const realFetch = useModelsStore.getState().fetchModels;
+		useModelsStore.setState({ fetchModels: async () => undefined });
+		t.after(() => useModelsStore.setState({ fetchModels: realFetch }));
+
+		const container = document.createElement("div");
+		document.body.append(container);
+		const root = createRoot(container);
+		t.after(() => {
+			try {
+				root.unmount();
+			} finally {
+				container.remove();
+				queryClient.clear();
+			}
+		});
+
+		await act(async () => {
+			root.render(
+				createElement(
+					QueryClientProvider,
+					{ client: queryClient },
+					createElement(ModelSelect, {
+						hostingId: "radient",
+						value: "",
+						onChange: () => undefined,
+					}),
+				),
+			);
+		});
+		/*
+		 * The render above is what FILLS the cache: the picker's own read ran and the
+		 * old implementation remembered its answer for five seconds. What is asserted
+		 * here is that read, because the option rows themselves only exist in the
+		 * closed select's popup -- the first case covers the render path, and this one
+		 * covers the cache the render left behind.
+		 */
+		assert.deepEqual(
+			getModelsForHostingProvider("radient").map((model) => model.id),
+			["auto"],
+			"the first read must be the listing the store held",
+		);
+
+		/*
+		 * The catalogue a moment later: the provider published a new listing while the
+		 * old cache's five seconds were still running.
+		 */
+		await act(async () => {
+			useModelsStore.setState(withModels([listing("auto-2", "Automatic Two")]));
+		});
+
+		assert.deepEqual(
+			getModelsForHostingProvider("radient").map((model) => model.id),
+			["auto-2"],
+			"a listing inside the old cache's window must reach the picker: the cache belongs to the store, not the clock",
 		);
 	},
 );

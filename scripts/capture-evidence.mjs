@@ -462,6 +462,19 @@ export const STORIES = [
 	 */
 	["provider-sign-in-onboarding--panel-waiting-launch-url", 1280, 620],
 	/*
+	 * The refused verdict in the ROW, with its panel open -- the state three rounds
+	 * judged without a frame (design D13/D14/D15, review R4-M2, UX U15/U16). The
+	 * shutter waits for the claim's tone rather than for the clock, because the claim
+	 * arrives with the verdict's first answer: a beat earlier this frame is the same
+	 * row photographed as a healthy sign-in (the paste-required row's own guard).
+	 */
+	[
+		"provider-sign-in-onboarding--panel-refused-verdict",
+		1280,
+		900,
+		{ expectPresent: '[data-claim-tone="attention"]' },
+	],
+	/*
 	 * Superseded by another sign-in: cancelled, in the backend's own sentence, and
 	 * never rendered before this round (design round 1 D1).
 	 */
