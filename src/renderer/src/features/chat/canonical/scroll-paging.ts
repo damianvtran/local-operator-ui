@@ -39,15 +39,19 @@
  *    is the same one — `_check_resume_page` spends one page, and the next
  *    request needs a fresh act. The act's network budget is `actFetchSpent`;
  *    the next fetch after it needs `GESTURE_GAP_MS` of quiet and a new push,
- *    or the deliberate affordance. Local widens are not budgeted, because they
- *    show the reader rows already in hand rather than crossing the network.
+ *    or the deliberate affordance. A FAILED fetch does not spend the budget —
+ *    rule G's bounded retry owns that case, so the reader's live gesture
+ *    asking again is honoured (round-1 review F2). Local widens are not
+ *    budgeted, because they show the reader rows already in hand rather than
+ *    crossing the network.
  * 3. SPEND WHEN THE MOTION HAS SETTLED, OR AT THE HARD TOP. A demand is spent
  *    after `SETTLE_MS` of input silence, or at the hard top where the content
  *    has stopped moving because it cannot move further. There is deliberately
  *    no third trigger: a reveal dispatched while the viewport TRAVELS lands
  *    under a moving reader, and on the real scroller that is a visible lurch —
- *    measured frame-to-frame, a mount mid-motion displaced the view by the
- *    mount's own height (6966px in one sampled pair) before the anchor hold
+ *    measured frame-to-frame, a mount mid-motion displaced the reader's
+ *    distance-from-top by up to 6834px in a single frame in this change's
+ *    committed samples (`maxDistanceFrameDeltaPx`) before the anchor hold
  *    restored it, and the chained mid-motion spends that followed are what the
  *    operator reported as "it keeps me at the same percentage of scroll which
  *    then keeps me at the top". The terminal UI behaves the same way and it is
@@ -608,8 +612,9 @@ export const decide = (
 	 * under a moving viewport, the anchor hold is deliberately invalidated by
 	 * every reader notch (#461), and the corrected frame arrives after the one
 	 * the eye saw. Measured on the real scroller during this round, a mid-motion
-	 * mount displaced the view by the mount's own height — 6966px in one sampled
-	 * frame pair — before the hold restored it, and every freshly mounted wall in
+	 * mount displaced the reader's distance-from-top by up to 6834px in a single
+	 * frame in this change's committed samples (`maxDistanceFrameDeltaPx`) before
+	 * the hold restored it, and every freshly mounted wall in
 	 * front of the reader bought the next spend, which is the operator's loop
 	 * ("it keeps me at the same percentage of scroll which then keeps me at the
 	 * top which then keeps loading in chunks").
@@ -846,6 +851,15 @@ export const noteSettled = (
  * A durable page failed. The rows already painted are still correct, so nothing
  * is discarded; the demand is simply dropped and the failure counted. Nothing
  * re-arms on its own — the next demand has to come from input.
+ *
+ * THE ACT'S FETCH BUDGET IS CLEARED, not kept (round-1 review F2): the budget
+ * bounds the operator's chain of SUCCESSFUL pages, and a failure is rule G's
+ * case instead — the reader's own continued ask is the retry, and
+ * `MAX_AUTO_ATTEMPTS` is what stops a loop. Keeping the budget spent here made
+ * a failure terminal for the act, so a reader still pushing at the wall after a
+ * blip had nothing coming until they paused, re-pushed or clicked; the terminal
+ * UI draws the line the same way (a genuine fault gets an honest notice and the
+ * next ask, not a spent act).
  */
 export const noteFailed = (state: PagingState): PagingState => ({
 	...state,
@@ -856,6 +870,7 @@ export const noteFailed = (state: PagingState): PagingState => ({
 	retained: false,
 	turnedAround: false,
 	continuation: false,
+	actFetchSpent: false,
 	// Nothing landed, so nothing is owed. A rule-6 widen here would spend the
 	// reader's trust on rows the failure did not produce.
 	pageWidenOwed: false,

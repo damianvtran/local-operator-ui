@@ -432,8 +432,15 @@ export function useScrollPaging({
 			if (action === "none") {
 				// An armed demand waiting only on the settle debounce needs someone to
 				// ask again once the debounce expires: no further input is coming, by
-				// definition of having settled.
-				if (next.armed && !settleTimer.current) {
+				// definition of having settled. So does a rule-6 debt whose landing
+				// decide fell inside the debounce (round-1 review F1): the widen that
+				// shows the just-fetched rows is owed to the reader NOW, and without
+				// this it waited for the next arbitrary event — input, a resize, a
+				// content change — while the slot sat on "Loading earlier messages".
+				if (
+					(next.armed || next.pageWidenOwed) &&
+					!settleTimer.current
+				) {
 					settleTimer.current = window.setTimeout(() => {
 						settleTimer.current = 0;
 						schedule();
