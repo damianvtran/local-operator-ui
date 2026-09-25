@@ -780,25 +780,30 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  * than being read as history - the distinction the paragraph above draws.
  */
 /*
- * The notes that state BOTH of this file's stamps at the pair this file ships.
+ * THE FOLD RULE FOR THIS LIST: the union of both sides, taken by KEY.
  *
- * THE LIST IS A UNION, NOT A HISTORY, and that is the whole rule: every note whose
- * text quotes both `srcTree` and `scriptsTree` at the shipped pair belongs here, so
- * a fold takes the UNION of the two sides' lists. A note whose quoted pair an
- * earlier re-derivation superseded is not held here - its pair is written as bare
- * SHAs in the note itself, which is the defect this list exists for - and because
- * the re-stamp below rewrites every note's backticked claims to the shipped pair,
- * a note can legitimately COME BACK into the list when the branch that owns it
- * re-stamps on top of a newer fold. That is what happened to the four keys after
- * `occupiedAddressRestampNote` here: a merge took only one side of this list, they
- * stopped being checked, and this commit restores them.
+ * MEMBERSHIP IS CURATION, NOT A PREDICATE, and the paragraph above states the
+ * criterion: a note belongs here when THIS FILE'S BINDING is its subject, not when
+ * it records the fold, pass or review it came from. It cannot be re-derived by
+ * testing the text - the re-stamp below rewrites every note's backticked claims to
+ * the shipped pair, so after any fold many more notes quote both stamps at that pair
+ * than this list curates, and the extras are history by subject. (Run the predicate
+ * this test applies over `docs/evidence/manifest.json` rather than trusting a count
+ * written here: it matches dozens, and the number moves with every fold.)
+ * `headNote`, `installerNetworkRestampNote`, the console notes and
+ * `reloadReanchorRestampNote` are the ones the paragraph above names as not here for
+ * exactly that reason. Widening the list to everything the predicate matches would
+ * add notes that CANNOT fail, which is the wrong kind of guard and not what this
+ * list is for.
  *
- * AN OMITTED KEY IS A CHECK SILENTLY NOT RUN, which is why the rule above has to
- * be stated rather than assumed: this test iterates the list, so a key dropped by
- * a hand-resolved merge stops being verified while the suite still goes green
- * (round 8, M1: four LIVE keys - every one of them still quoting both stamps at
- * the shipped pair - were lost that way). A fold's resolution therefore has to
- * compare the KEY SETS of both sides, not the line counts.
+ * WHAT A FOLD MUST DO, and what makes this rule falsifiable against the list: union
+ * the two sides' keys, KEEP EVERY KEY THAT WAS THERE BEFORE, and state the result.
+ * AN OMITTED KEY IS A CHECK SILENTLY NOT RUN - this test iterates the list, so a key
+ * dropped by a hand-resolved merge stops being verified while the suite still goes
+ * green (round 8, M1: four live keys, every one of them still quoting both stamps,
+ * were lost by a resolution that compared added LINES rather than keys). A fold whose
+ * base moved this file therefore diffs the KEY SETS of both sides and of the merged
+ * result, and says in the commit what the union is.
  */
 const STAMP_BINDING_NOTES = [
 	"occupiedAddressRestampNote",
