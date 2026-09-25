@@ -90,7 +90,18 @@ export const ChatStatusStripView = ({
 						"text-meta text-ink-muted hover:text-ink",
 						"focus-visible:outline-2 focus-visible:outline-accent",
 					)}
-					aria-label={`Connection status: ${display.title} Show details`}
+					/*
+					 * THE PILL ANNOUNCES WHAT THE STRIP WAS SAYING, NOT THE PRE-RETRY HALF OF IT
+					 * (UX round 1's U12). The name carried `display.title` alone, so a reader who
+					 * dismissed a strip whose second line was Retry's own outcome heard a sentence
+					 * that had been superseded on screen by the press before it was dismissed -
+					 * the outcome is the NEWEST fact about the same root cause, and it is the half
+					 * that answers "did that button do anything". Both lines are in the name now,
+					 * in the order the strip draws them, so collapsing cannot lose one.
+					 */
+					aria-label={`Connection status: ${display.title}${
+						outcome ? ` ${outcome}` : ""
+					} Show details`}
 				>
 					<span
 						aria-hidden="true"
@@ -245,9 +256,30 @@ export const ChatStatusStrip = () => {
 
 	const [retrying, setRetrying] = useState(false);
 	const [outcome, setOutcome] = useState<string | null>(null);
+	/*
+	 * THE OUTCOME BELONGS TO THE STATE IT WAS REPORTED AGAINST, and it is dropped with
+	 * it (UX round 1's U5, and the stale-caption half of U12). `retry` sets this on
+	 * every return, including the one where the app came back - and nothing ever cleared
+	 * it - so a state the reader reached LATER inherited a sentence about an earlier
+	 * condition and drew it under a root cause it does not describe, which is §F2's "two
+	 * root causes at once" reached by staleness rather than by composition. The press
+	 * records the key it was made against and the sentence is retired when the key moves:
+	 * the same key means the same fact, including its path into it, so a retry that
+	 * changed nothing keeps its answer, and a retry that changed something loses a
+	 * sentence that is no longer about anything on screen.
+	 */
+	const outcomeKeyRef = useRef<string | null>(null);
+	const key = chatStatusKey(display);
+	useEffect(() => {
+		if (outcome === null) return;
+		if (outcomeKeyRef.current === key) return;
+		outcomeKeyRef.current = null;
+		setOutcome(null);
+	}, [key, outcome]);
 	const retry = useCallback(async () => {
 		setRetrying(true);
 		setOutcome(null);
+		outcomeKeyRef.current = key;
 		try {
 			await window.api?.backend?.reconnect?.();
 		} finally {
@@ -264,7 +296,7 @@ export const ChatStatusStrip = () => {
 			setOutcome("Still unreachable.");
 			void refetchServerStatus();
 		}
-	}, [refetchServerStatus]);
+	}, [key, refetchServerStatus]);
 
 	return (
 		<ChatStatusStripView
