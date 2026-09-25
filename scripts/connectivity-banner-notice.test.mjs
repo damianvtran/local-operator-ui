@@ -5,6 +5,8 @@ import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
 
+import { daemonRecord, loadBackendComposers } from "./backend-composers.mjs";
+
 /*
  * A DISMISSAL MUST NOT OUTLIVE THE NOTICE IT DISMISSED (agent round 2, R2-3).
  *
@@ -154,6 +156,16 @@ const { QueryClient, QueryClientProvider, ConnectivityBanner, createElement } =
 const DARK = "http://127.0.0.1:1111";
 const FALLBACK = "http://127.0.0.1:8080";
 
+/*
+ * The holder and act clauses are the COMPOSER'S OUTPUT, not a copy of it (agent round 4,
+ * R4-2): this fixture used to carry the sentence by hand, so the round-3 change that
+ * stopped the act rendering markdown delimiters never reached it - the copy here still
+ * had the backticks, and the assertion that no shipped sentence carries one could not see
+ * them. `refusals` is the same single daemon the story names.
+ */
+const { describeHolders, reclaimClause } = await loadBackendComposers();
+const refusals = [daemonRecord()];
+
 const snapshot = (over = {}) => ({
 	state: "attached",
 	reconnecting: false,
@@ -190,9 +202,8 @@ const substituted = () =>
 			kind: "substituted",
 			configured: DARK,
 			serving: FALLBACK,
-			holder: `${DARK} (pid 42411, uv-tool, v0.55.6) is running a Local Operator daemon this app has no key for`,
-			reclaim:
-				"Stop it from the install that owns it with `lop services reclaim 42411` (`lop services status` lists what is running).",
+			holder: describeHolders(refusals),
+			reclaim: reclaimClause(refusals),
 		},
 	});
 
@@ -294,6 +305,24 @@ test("a dismissed return notice is re-armed when the app substitutes again", asy
 	await until(
 		() => text().includes("Serving on"),
 		"the fallback band after the substitution",
+	);
+
+	/*
+	 * THE FIXTURE IS THE COMPOSER'S OUTPUT, AND THIS IS WHAT PROVES IT (agent round 1,
+	 * M1). Until this assertion existed, this file took `holder`/`reclaim` from
+	 * `describeHolders`/`reclaimClause` in NAME only: nothing here read them, so a change
+	 * to the act clause - the round-3 removal of its markdown delimiters, for instance -
+	 * moved the band and left this suite green, which is why the review found the binding
+	 * here was not load-bearing. The rendered sentence is now compared against the
+	 * composer in the same run that draws it.
+	 */
+	assert.ok(
+		text().includes(reclaimClause(refusals)),
+		"the band renders the composer's own act clause",
+	);
+	assert.ok(
+		!text().includes("`"),
+		"and no shipped sentence carries a backtick (design round 3, D18)",
 	);
 
 	/*
