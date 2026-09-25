@@ -1181,6 +1181,15 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 					returned: undefined,
 					inFlight: undefined,
 					lateDelivered: undefined,
+					/*
+					 * AND ITS TEXT WITH IT (review round 7, R7-1). The gate in `partialize` keys
+					 * on `volatilePendingText`, which this row RESETS, so a copy left here
+					 * outlives the flag that guarded it: the masked-capture secret was measured
+					 * landing in localStorage and staying there through every later write, with
+					 * the note gone. `dismissLateDelivery` already drops the pair; this is the
+					 * same shape on the two paths that clear a row without dismissing a note.
+					 */
+					lateDeliveredText: undefined,
 					volatilePendingText: undefined,
 					textRevision: (row.textRevision ?? 0) + 1,
 				};
@@ -1213,7 +1222,22 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 								inFlight: undefined,
 								// Only worth saying when something of that message is still on
 								// screen for the user to wonder about.
-								lateDelivered: hadPayload ? "overlap" : undefined,
+								/*
+								 * AND THE NEUTRAL SENTENCE WHEN THE TEXT IS UNKNOWN (review round 7,
+								 * Q7-1). This arm is reached with `hadPayload` true and no `returned`
+								 * payload - the in-flight shape - and the `overlap` copy claims that
+								 * the delivered message's words are still in the box. With nothing to
+								 * compare, that claim cannot be made, so the note the user gets is the
+								 * muted delivered one: same fact, no claim about the box. Reusing the
+								 * shipped string rather than adding one keeps this inside the copy the
+								 * design round has already signed off.
+								 */
+								lateDelivered:
+									hadPayload && row.returned?.text
+										? "overlap"
+										: hadPayload
+											? "draft-only"
+											: undefined,
 								lateDeliveredText: hadPayload ? row.returned?.text : undefined,
 							};
 				set({
@@ -1259,6 +1283,9 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 							returned: undefined,
 							inFlight: undefined,
 							lateDelivered: undefined,
+							// Cleared for the same reason as the reconciled row: the flag this
+							// copy was gated on is reset here, so the copy goes with it (R7-1).
+							lateDeliveredText: undefined,
 							/*
 							 * THE BOX ITSELF, not only the row: the press promises the composer
 							 * empties, and the words are in the textarea the hook owns. Without
