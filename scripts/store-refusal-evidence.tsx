@@ -60,8 +60,8 @@ import {
 	admitChatDraft,
 	isRefusedBeforeAdmission,
 	isStoreWriteRefusal,
-	withholdsRetryHint,
 	useCanonicalSessionsStore,
+	withholdsRetryHint,
 } from "@shared/store/canonical-sessions-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { DEFAULT_THEME, applyThemeToDocument, getTheme } from "@shared/themes";

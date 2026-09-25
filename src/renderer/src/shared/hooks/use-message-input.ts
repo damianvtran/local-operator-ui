@@ -180,7 +180,7 @@ export function settleOffRecordPayload(
  * that was never sent. The off-record ask is not recorded either, which is the
  */
 export const recordsSubmittedMessage = (outcome: SendOutcome): boolean =>
-		outcome !== false && !isOffRecordAsk(outcome);
+	outcome !== false && !isOffRecordAsk(outcome);
 
 /**
  * Which text a composer transition may write over what the user has typed.
