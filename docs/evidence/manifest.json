@@ -7138,7 +7138,7 @@
   },
   {
    "path": "sidebar-lazy-chats",
-   "frames": 7,
+   "frames": 13,
    "surfaces": 1,
    "themes": 1,
    "source": "`scripts/renderer-driver.mjs`, scene `sidebar-lazy-chats`, in a headless launch (1380x900 at `deviceScaleFactor: 2`), against the repository's own stand-in `docs/evidence/sidebar-row-space/harness/stub-daemon.mjs` launched with `--catalogue 120` - extended rather than duplicated, and inert without that flag, so the `sidebar-row-space` frames keep the daemon they were photographed over. Four cases, one launch each, one stand-in per case: `--scoped-case paged` against the paged daemon, `withdrawn` against `--no-page --truncate 50`, `empty` against `--scope-empty`, `error` against `--scope-error`. Each run is given `--stub-log` so its request clauses read what the daemon actually received.",

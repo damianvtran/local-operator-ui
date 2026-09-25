@@ -26,7 +26,6 @@ import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { cn } from "@shared/lib/utils";
 import {
-	CATALOGUE_GROUP_PAGE,
 	CATALOGUE_HEAD_PAGE,
 	type CanonicalSessionRow,
 	LEGACY_CATALOGUE_PAGE,
@@ -112,9 +111,12 @@ import { readAckCopy, readAckNoticeSentence } from "../read-ack-notice";
 import { catalogueGate } from "../sidebar-catalogue-gate";
 import {
 	catalogueTailView,
+	catalogueTotalSentence,
 	groupBadgeCount,
+	groupBadgeLabel,
 	groupChatsView,
 	scopeCensusTotal,
+	tailArrivalAnnouncement,
 	tailExtendDue,
 } from "../sidebar-scope-paging";
 import {
@@ -1272,6 +1274,40 @@ export function ChatSidebar({
 	 * "searching" cannot be honoured in one place and forgotten in another.
 	 */
 	const groupPaging = pageable && query.trim().length === 0;
+	/*
+	 * THE PANEL'S OWN TOTAL, on the paged path (round 1, R2 - the fix U1 and D2 also
+	 * name). `sessions.length` is what the client HOLDS - the head page plus whatever
+	 * the reader has extended - and `counts.total` is what the daemon counted, so the
+	 * sentence says how many of the catalogue are on screen rather than implying a
+	 * cap. Null off the paged path, where the withdrawn sentence is the true one.
+	 */
+	/*
+	 * WHAT A SEARCH HIT THE CLIENT DOES NOT HOLD IS BOUND TO, when a loaded group
+	 * can say (round 1, Q2). The wire's search answer carries no binding, so a hit
+	 * outside the client's rows used to draw without the caption a held row has -
+	 * two different-looking rows for one conversation. A loaded scope's id list IS
+	 * the client's own knowledge of a binding, so it is the source used here; a hit
+	 * no loaded scope names stays captionless rather than guessing.
+	 */
+	const bindingOfHit = useCallback(
+		(id: string): CanonicalSessionRow["binding"] => {
+			for (const [key, scope] of Object.entries(catalogueScopes)) {
+				if (!scope.ids.includes(id)) continue;
+				const [kind, ...rest] = key.split(":");
+				const scopeName = rest.join(":");
+				return kind === "agent"
+					? { agent: scopeName, team: null }
+					: { agent: null, team: scopeName };
+			}
+			return undefined;
+		},
+		[catalogueScopes],
+	);
+	const totalSentence = catalogueTotalSentence({
+		pageable,
+		shown: sessions.length,
+		total: catalogueCounts?.total ?? null,
+	});
 	const toggle = (key: string, initial = false) =>
 		setExpanded((current) => ({
 			...current,
@@ -1795,8 +1831,9 @@ export function ChatSidebar({
 				hits,
 				pinFactValues,
 				archiveView,
+				bindingOfHit,
 			),
-		[listed, heldRows, query, hits, pinFactValues, archiveView],
+		[listed, heldRows, query, hits, pinFactValues, archiveView, bindingOfHit],
 	);
 	/*
 	 * Whether that answer is a full page rather than the whole answer. The answer
@@ -1888,6 +1925,7 @@ export function ChatSidebar({
 			})
 		)
 			return;
+		tailPendingRef.current = true;
 		void fetchCatalogueTail();
 	}, [tailVisible, catalogueHead, fetchCatalogueTail]);
 	/*
@@ -1909,6 +1947,92 @@ export function ChatSidebar({
 	useLayoutEffect(() => {
 		extendCatalogueTail();
 	}, [extendCatalogueTail, sessions.length]);
+	/*
+	 * THE FLAT LIST SAYS WHEN ITS TAIL LANDS (round 1, U7).
+	 *
+	 * The extension is driven by scroll position and draws nothing of its own in the
+	 * steady state, so rows appear under a reader with nothing announced - and a
+	 * screen reader's user, who cannot see the list grow, is told nothing at all.
+	 * One polite line names the event; it is cleared after a moment because a live
+	 * region that keeps its last value says nothing new the next time the same
+	 * number of rows arrive.
+	 *
+	 * `tailPendingRef` is what makes this the EXTENSION's arrival rather than any
+	 * growth: a head answer that carries more rows than the last one is not a tail
+	 * arriving, and announcing it as one would be a second false sentence.
+	 */
+	const tailPendingRef = useRef(false);
+	const [tailArrival, setTailArrival] = useState<string | null>(null);
+	const previousRowCountRef = useRef(sessions.length);
+	useEffect(() => {
+		const before = previousRowCountRef.current;
+		previousRowCountRef.current = sessions.length;
+		if (!tailPendingRef.current || sessions.length <= before) return;
+		tailPendingRef.current = false;
+		setTailArrival(tailArrivalAnnouncement(sessions.length - before));
+		const timer = window.setTimeout(() => setTailArrival(null), 4000);
+		return () => window.clearTimeout(timer);
+	}, [sessions.length]);
+	/*
+	 * THE TAIL PRESS, AND WHAT IT OWES THE READER AFTERWARDS (round 1, U2 + D7).
+	 *
+	 * Two things the control cannot do by itself. THE EXACT LIMIT: the row says how
+	 * many chats the press will add, so the fetch asks for that many rather than for
+	 * a page and throwing the rest away - `min(page, remaining)`, which is the same
+	 * number the label prints because both come from one decision. AND THE FOCUS:
+	 * the control unmounts when the last page lands (its cursor is gone), which used
+	 * to drop focus to `<body>` - a keyboard reader was returned to the top of the
+	 * document by the press that was supposed to bring them more rows. The row the
+	 * press added is where they were going, so that is where focus goes; the group's
+	 * own name button is the fallback, and `<body>` never is.
+	 */
+	const tailFocusRef = useRef<{
+		key: string;
+		name: string;
+		at: number;
+	} | null>(null);
+	const pressShowMore = useCallback(
+		(
+			kind: "team" | "agent",
+			name: string,
+			key: string,
+			held: number,
+			addCount: number,
+		) => {
+			tailFocusRef.current = { key, name, at: held };
+			tailPendingRef.current = false;
+			void fetchScopePage(
+				kind,
+				name,
+				catalogueScopes[key]?.nextCursor ?? null,
+				addCount,
+			);
+		},
+		[catalogueScopes, fetchScopePage],
+	);
+	useEffect(() => {
+		const pending = tailFocusRef.current;
+		const container = listPanelRef.current;
+		if (pending === null || container === null) return;
+		const ids = catalogueScopes[pending.key]?.ids;
+		if (ids === undefined || ids.length <= pending.at) return;
+		tailFocusRef.current = null;
+		const added = ids[pending.at];
+		const row =
+			added === undefined
+				? null
+				: (container.querySelector<HTMLElement>(
+						`[data-session-row="${CSS.escape(added)}"]`,
+					) ?? null);
+		const target =
+			row?.querySelector<HTMLElement>("[data-chat-row]") ??
+			row ??
+			[...container.querySelectorAll<HTMLElement>("[data-entity]")]
+				.map((group) => group.querySelector<HTMLElement>("[data-entity-name]"))
+				.find((el) => (el?.textContent ?? "").trim() === pending.name) ??
+			null;
+		target?.focus();
+	}, [catalogueScopes]);
 	/*
 	 * The tail's drawn state (`catalogueTailView` carries the rules): nothing while
 	 * the extension is silently on its way, the wait register while a page is in
@@ -2086,6 +2210,7 @@ export function ChatSidebar({
 			search.data.sessions,
 			pinFactValues,
 			archiveView,
+			bindingOfHit,
 		);
 	}, [
 		answered,
@@ -2094,6 +2219,7 @@ export function ChatSidebar({
 		heldRows,
 		pinFactValues,
 		archiveView,
+		bindingOfHit,
 		query,
 	]);
 	// `!search.isError`: a FAILED search never produces an answer, so without this
@@ -3291,10 +3417,32 @@ export function ChatSidebar({
 					    still lets an absent or two-digit count shift everything left
 					    of it, which moved the glyph across 14px between rows and made
 					    the reveal jitter as the pointer ran down the list. */}
-						<span className="min-w-4 shrink-0 text-right text-meta tabular-nums text-ink-dim">
+						<span
+							/*
+							 * THE BADGE SAYS WHAT IT COUNTS (round 1, D1 + D5). The panel draws two
+							 * kinds of number in one 12px column - a SECTION heading's count of the rows
+							 * it is drawing, and a group's badge, which is this scope's census - and they
+							 * look alike. `title` is what a pointer user gets; the `sr-only` span below is
+							 * what a screen reader gets, because this digit sits inside buttons whose own
+							 * `aria-label`s replace their children and it was otherwise announced nowhere
+							 * at all.
+							 */
+							title={badge > 0 ? groupBadgeLabel(badge) : undefined}
+							className="min-w-4 shrink-0 text-right text-meta tabular-nums text-ink-dim"
+						>
 							{badge || ""}
 						</span>
 					</button>
+					{/*
+					 * THE CENSUS, ANNOUNCED (round 1, D5), and INSIDE THE ROW rather than after
+					 * it: a sibling element between this row and the group's body is a sibling the
+					 * disclosure's own consumers walk past - the evidence rig reads the body as the
+					 * row's next element, and an `sr-only` span (absolutely positioned, out of flow)
+					 * is text in the row rather than a new thing between the row and its children.
+					 */}
+					{badge > 0 && (
+						<span className="sr-only">{groupBadgeLabel(badge)}</span>
+					)}
 					<button
 						type="button"
 						// Stepped down from `ink` so the row's own action outranks it.
@@ -3381,22 +3529,39 @@ export function ChatSidebar({
 									Loading more…
 								</p>
 							) : view.retry ? (
-								<p className="py-1 pl-7 text-meta text-ink-dim">
-									{view.sentence}{" "}
-									<button
-										type="button"
-										className="underline hover:text-ink"
-										onClick={() =>
-											void fetchScopePage(
-												kind,
-												name,
-												catalogueScopes[key]?.nextCursor ?? null,
-											)
-										}
+								/*
+								 * THE REFUSAL'S SHAPE IS FIXED RATHER THAN MEASURED (round 1, D4). The
+								 * sentence is clamped to two lines so a long daemon string cannot push the
+								 * control down the panel - the position the reader is aiming at must not
+								 * depend on how long the message turned out to be - and the transport's
+								 * own text rides in `title`, where a reader who wants the detail can get
+								 * it without the panel shouting it. The store's sentence is what is drawn.
+								 */
+								<>
+									<p
+										className="line-clamp-2 py-1 pl-7 text-meta text-ink-dim"
+										aria-live="polite"
 									>
-										Retry
-									</button>
-								</p>
+										{view.sentence}
+									</p>
+									<p className="py-1 pl-7">
+										<button
+											type="button"
+											className="text-meta text-ink-dim underline hover:text-ink"
+											onClick={() =>
+												pressShowMore(
+													kind,
+													name,
+													key,
+													rows.length,
+													view.addCount,
+												)
+											}
+										>
+											Retry
+										</button>
+									</p>
+								</>
 							) : view.more ? (
 								<button
 									type="button"
@@ -3405,18 +3570,28 @@ export function ChatSidebar({
 									 * `data-session-delete` already follow: the label is a copy string, so a
 									 * scene that reached this control by its text would be asserting a copy
 									 * edit, and the tail's own press is what the evidence frame has to make.
+									 *
+									 * `data-chat-row` IS THE KEYBOARD PATH (round 1, U2). The control sits at
+									 * the end of the group's own rows, so reaching it by Tab means passing
+									 * every one of them - but the region's arrow-key traversal walks
+									 * `[data-chat-row]` elements and focuses them, so joining that set puts the
+									 * press one ArrowDown from the group's last row.
 									 */
 									data-scope-more={key}
+									data-chat-row
+									aria-label={`Show ${view.addCount} more chats in ${name}`}
+									title={`Show ${view.addCount} more chats in ${name}`}
 									className="block w-full py-1 pl-7 text-left text-meta text-ink-dim underline hover:text-ink"
 									onClick={() =>
-										void fetchScopePage(
-											kind,
-											name,
-											catalogueScopes[key]?.nextCursor ?? null,
-										)
+										pressShowMore(kind, name, key, rows.length, view.addCount)
 									}
 								>
-									{`Show ${CATALOGUE_GROUP_PAGE} more`}
+									{/*
+									 * WHAT THE PRESS WILL ADD, not the page size (round 1, D7): with 45
+									 * still to come beside a 70 badge, `Show 25 more` was a page size
+									 * dressed as a remainder.
+									 */}
+									{`Show ${view.addCount} more`}
 								</button>
 							) : null)}
 					</div>
@@ -4977,6 +5152,11 @@ export function ChatSidebar({
 				<section>
 					{rest.map((row) => sessionRow(row))}
 					{catalogueTail}
+					{tailArrival !== null && (
+						<span className="sr-only" aria-live="polite">
+							{tailArrival}
+						</span>
+					)}
 				</section>
 			) : (
 				<>
@@ -5087,14 +5267,25 @@ export function ChatSidebar({
 					</p>
 				)}
 			{/*
-			 * The truncation sentence is the WITHDRAWN path's, and only its: it states
-			 * a 500-row cap that a paged client does not have, and on the paged path
-			 * the tail's own state says what is true instead (`catalogueTail`, drawn
-			 * above, which reports an extension's wait and its failure). Keeping it on
-			 * both paths would tell a reader of a 50-row head page about a 500-row cap
-			 * that is not the reason their list stops.
+			 * THE TRUNCATION SENTENCE IS THE WITHDRAWN PATH'S, and the gate is the
+			 * CAPABILITY rather than the query (round 1, U4 + Q1). It used to read
+			 * `truncated && !groupPaging`, and `groupPaging` is false whenever a search is
+			 * in force - so on a PAGING backend with a query active the panel told the
+			 * reader about a 500-row cap that is not why their list stops, while the
+			 * client's own request asked for a fifty-row head page. Both of the
+			 * sentence's clauses are true exactly when the daemon cannot page.
+			 *
+			 * THE PAGED PATH DRAWS ITS OWN TOTAL INSTEAD: `<Showing N of M chats>` from
+			 * the census (`catalogueTotalSentence`), which is the statement that is true
+			 * here - the panel holds the head page plus whatever the reader has extended,
+			 * of a catalogue somebody has counted. The group's badge says what a GROUP
+			 * holds; this says how many are ON SCREEN, which is the pair the operator's
+			 * original confusion turned on.
 			 */}
-			{truncated && !groupPaging && (
+			{totalSentence !== null && (
+				<p className="text-meta text-ink-muted">{totalSentence}</p>
+			)}
+			{truncated && !pageable && (
 				<p className="text-meta text-ink-muted">
 					Showing up to 500 chats. Older chats remain available in the terminal.
 				</p>
@@ -5117,8 +5308,14 @@ export function ChatSidebar({
 		    (design review round 1, D9): the catalogue fetch fails exactly
 		    when the backend is down, so the two statements about one
 		    backend would otherwise stack — a quiet `ink-dim` line directly
-		    under a `role="alert" text-danger` block about the same thing. */}
-			{feed.available && !feed.connected && !error && (
+		    under a `role="alert" text-danger` block about the same thing.
+
+			    `feed.reported` is what keeps it off the FIRST paint (round 1, Q3):
+			    `connected` is false until the transport says otherwise, so a line
+			    gated on it alone claimed a disconnection during the few
+			    milliseconds before the app had heard anything at all — and the
+			    next frame contradicted it. */}
+			{feed.available && feed.reported && !feed.connected && !error && (
 				<p
 					className={cn(
 						"text-meta",

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -40,7 +41,7 @@ globalThis.__canonicalEcho = () => {};
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {desktopRequestSchema, desktopEndpoint} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {groupChatsView, groupBadgeCount, scopeCensusTotal, catalogueTailView, tailExtendDue} from "./src/renderer/src/features/chat/sidebar-scope-paging";',
+			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {desktopRequestSchema, desktopEndpoint} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {groupChatsView, groupBadgeCount, groupBadgeLabel, scopeCensusTotal, catalogueTailView, catalogueTotalSentence, tailArrivalAnnouncement, tailExtendDue} from "./src/renderer/src/features/chat/sidebar-scope-paging";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -94,12 +95,16 @@ const {
 	desktopEndpoint,
 	groupChatsView,
 	groupBadgeCount,
+	groupBadgeLabel,
 	scopeCensusTotal,
 	catalogueTailView,
+	catalogueTotalSentence,
+	tailArrivalAnnouncement,
 	tailExtendDue,
 } = module;
 
 const EMPTY_HEAD = {
+	pageIds: [],
 	tailIds: [],
 	nextCursor: null,
 	complete: false,
@@ -507,8 +512,8 @@ test("a group's page is a single flight, and a superseded one is dropped", async
 	assert.equal(scopeOf("team", "lopdev"), undefined);
 	assert.deepEqual(
 		ids(),
-		["t1"],
-		"clearing membership does not remove the row from the one row store",
+		[],
+		"a collapse takes the group's own rows out of the store (round 1, U5): the row was fetched for this scope, is not on the head page, and the reader has closed the group it belonged to",
 	);
 });
 
@@ -689,6 +694,7 @@ test("the head page is larger than the active population, per the design's decis
  */
 
 test("a group the census says holds chats never reads as empty", () => {
+	// A group with no scope state yet: the fetch is on its way, so this is a WAIT.
 	const loading = groupChatsView({
 		pageable: true,
 		scope: undefined,
@@ -703,15 +709,23 @@ test("a group the census says holds chats never reads as empty", () => {
 		"a page that has not arrived is not a group with no chats",
 	);
 
+	/*
+	 * A SETTLED page whose census still says the group holds chats, which is round
+	 * 1's U3 and the state the operator's own screenshot came from. It used to be
+	 * answered as "Loading chats…" whatever `scope.loading` said, so a group whose
+	 * chats are all archived waited for ever. It is neither a wait nor an emptiness:
+	 * it is `settled`, and the sentence names why and offers the way forward.
+	 */
 	const emptyPage = groupChatsView({
 		pageable: true,
 		scope: { ids: [], nextCursor: null, loading: false, error: null, at: 1 },
 		held: 0,
 		total: 434,
 	});
-	assert.equal(emptyPage.state, "loading");
+	assert.equal(emptyPage.state, "settled");
 	assert.equal(emptyPage.forbidden, true);
 	assert.notEqual(emptyPage.sentence, "No chats yet");
+	assert.notEqual(emptyPage.sentence, "Loading chats…");
 
 	// The group really is empty: the census agrees.
 	const empty = groupChatsView({
@@ -802,6 +816,7 @@ test("a withdrawn capability renders a group exactly as today", () => {
 		sentence: "No chats yet",
 		retry: false,
 		more: false,
+		addCount: 0,
 		forbidden: false,
 	});
 	const held = groupChatsView({
@@ -951,6 +966,38 @@ test("the tail draws a wait and a failure, and no steady-state press", () => {
 		{ kind: "none" },
 		"the withdrawn path keeps today's `Showing up to 500 chats` sentence",
 	);
+});
+
+test("the page sizes are the design's numbers, pinned by value and not by use (R6)", () => {
+	/*
+	 * WHY THIS CASE EXISTS, and it is the round-1 finding R6: every other case in
+	 * this file ties a REQUEST to one of these constants, so all of them keep
+	 * passing if the constant itself moves (the assertions are self-referential).
+	 * These are the numbers the frozen design fixed, each with the reason it is
+	 * that number, so a change to the page-size arm fails HERE and has to argue
+	 * with the design rather than with a request-fixture.
+	 */
+	assert.equal(
+		CATALOGUE_HEAD_PAGE,
+		50,
+		"the head page the design sized: large enough to outrun the active population, small enough to paint fast",
+	);
+	assert.equal(
+		CATALOGUE_GROUP_PAGE,
+		25,
+		"an expanded group's page: one screen of rows at the entity register",
+	);
+	assert.equal(
+		LEGACY_CATALOGUE_PAGE,
+		500,
+		"the withdrawn path's page is the daemon's own cap, not a choice this client may move",
+	);
+	/*
+	 * The URL that number produces is pinned by the withdrawn-path case above, and
+	 * deliberately from a REAL request the store issued rather than from one built
+	 * here: the compatibility promise is byte-identity, and a hand-built request
+	 * proves only that this test can spell the parameters it passed.
+	 */
 });
 
 /*
@@ -1113,5 +1160,354 @@ test("a head answer landing mid-extension does not discard the extension", async
 		ids().slice().sort(),
 		["h1", "t1", "t2", "t3"],
 		"and they are in the one row store beside the head answer's",
+	);
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * ROUND 1: the findings, each with the case that would have caught it.
+ * ---------------------------------------------------------------------------
+ */
+
+test("a head-page row a scope also holds is merged against the row the client holds (R1)", () => {
+	/*
+	 * THE RACE THE MERGE BASE BROKE, reproduced as the reviewer did. A newer
+	 * `session_status` frame lands on a row that is ALSO in an expanded group, then
+	 * an older page reading arrives for it. `heldStatusOver` is the only thing that
+	 * refuses the older pair, and it compares the incoming row against the CURRENT
+	 * one - so it can only work when the merge base carries that row. The base used
+	 * to be `headHeld`, which excludes every id a loaded scope holds: exactly this
+	 * row was merged against `undefined`, and the older reading won.
+	 */
+	const held = {
+		...row("s1"),
+		status: "working",
+		status_revision: 7,
+		status_epoch: "e1",
+	};
+	const olderPageRow = {
+		...row("s1"),
+		status: "idle",
+		status_revision: 3,
+		status_epoch: "e1",
+	};
+	const held_read = headAnswerRows({
+		sessions: [held],
+		scopeIds: new Set(["s1"]),
+		tailIds: [],
+		page: [olderPageRow],
+		merge: replaceSessionRows,
+	});
+	assert.equal(
+		held_read.rows[0].status,
+		"working",
+		"the newer frame survives an older page reading for a row a scope also holds",
+	);
+	assert.equal(
+		held_read.rows.filter((r) => r.session_id === "s1").length,
+		1,
+		"and the row is in membership once, not twice",
+	);
+});
+
+test("a head page that stops above the open conversation keeps its row (R3)", () => {
+	// The open conversation is at rank 51: not on the page, not in any group. Under
+	// the unscoped read this replaces it could not happen; under a 50-row head page
+	// it is a poll away from taking the row out from under the reader.
+	const open = row("open");
+	const arrived = headAnswerRows({
+		sessions: [open, row("old")],
+		scopeIds: new Set(),
+		tailIds: [],
+		keepIds: ["open"],
+		page: [row("p1"), row("p2")],
+		merge: replaceSessionRows,
+	});
+	assert.deepEqual(
+		arrived.rows.map((r) => r.session_id),
+		["p1", "p2", "open"],
+		"the open conversation stays in membership while the page's own rows replace the rest",
+	);
+	// Without the keep list the same answer drops it - which is the defect, so the
+	// case fails if `keepIds` stops being passed.
+	const dropped = headAnswerRows({
+		sessions: [open, row("old")],
+		scopeIds: new Set(),
+		tailIds: [],
+		page: [row("p1"), row("p2")],
+		merge: replaceSessionRows,
+	});
+	assert.equal(
+		dropped.rows.some((r) => r.session_id === "open"),
+		false,
+	);
+});
+
+test("collapsing a group drops its own rows and keeps the head page's (U5)", () => {
+	reset();
+	store.setState({
+		sessions: [row("head1"), row("shared"), row("g1"), row("g2")],
+		head: { ...EMPTY_HEAD, pageIds: ["head1", "shared"] },
+		scopes: {
+			[catalogueScopeKey("team", "lopdev")]: {
+				ids: ["shared", "g1", "g2"],
+				nextCursor: null,
+				loading: false,
+				error: null,
+				at: 1,
+			},
+		},
+	});
+	store.getState().clearScope("team", "lopdev");
+	assert.deepEqual(
+		ids(),
+		["head1", "shared"],
+		"the group's own rows go, the row the head page also carries stays",
+	);
+	assert.equal(
+		scopeOf("team", "lopdev"),
+		undefined,
+		"and the scope itself is gone",
+	);
+});
+
+test("the paged path states what is on screen of what was counted (R2, U1, D2)", () => {
+	assert.equal(
+		catalogueTotalSentence({ pageable: true, shown: 75, total: 120 }),
+		"Showing 75 of 120 chats",
+		"the design's own sentence, and the pair the operator's confusion turned on",
+	);
+	assert.equal(
+		catalogueTotalSentence({ pageable: true, shown: 75, total: null }),
+		null,
+		"a total nobody counted is not a claim this panel may make",
+	);
+	assert.equal(
+		catalogueTotalSentence({ pageable: false, shown: 500, total: 757 }),
+		null,
+		"the withdrawn path draws its own truncation sentence instead",
+	);
+});
+
+test("a settled group with no rows is never described as loading (U3)", () => {
+	/*
+	 * THE OPERATOR'S OWN STATE, from the other side: a group whose chats are all
+	 * archived, or whose census outruns what this scope may draw. It used to sit
+	 * under a 70 badge reading "Loading chats…" FOR EVER - `scope.loading` false, no
+	 * daemon fault, the sentence and the state disagreeing about the same fact.
+	 */
+	const settled = groupChatsView({
+		pageable: true,
+		scope: { ids: [], nextCursor: null, loading: false, error: null, at: 1 },
+		held: 0,
+		total: 70,
+	});
+	assert.equal(settled.state, "settled");
+	assert.equal(settled.forbidden, true);
+	assert.match(
+		settled.sentence,
+		/archived/,
+		"the sentence names why and offers the way forward",
+	);
+	assert.notEqual(
+		settled.state,
+		"loading",
+		"a settled scope may not claim a wait that is not happening",
+	);
+	// And the converse, so the two can never swap: a page actually in flight IS a
+	// wait, whatever the census says.
+	const waiting = groupChatsView({
+		pageable: true,
+		scope: { ids: [], nextCursor: null, loading: true, error: null, at: 0 },
+		held: 0,
+		total: 70,
+	});
+	assert.equal(waiting.state, "loading");
+});
+
+test("Show more states the rows the press will ADD, exactly (D7)", () => {
+	const partial = groupChatsView({
+		pageable: true,
+		scope: {
+			ids: ["a"],
+			nextCursor: "off:25",
+			loading: false,
+			error: null,
+			at: 1,
+		},
+		held: 25,
+		total: 70,
+	});
+	assert.equal(
+		partial.addCount,
+		25,
+		"a full page still to come: the label and the fetch both say 25",
+	);
+	const last = groupChatsView({
+		pageable: true,
+		scope: {
+			ids: ["a"],
+			nextCursor: "off:65",
+			loading: false,
+			error: null,
+			at: 1,
+		},
+		held: 65,
+		total: 70,
+	});
+	assert.equal(
+		last.addCount,
+		5,
+		"the last press asks for the remainder, not for a page",
+	);
+	// Without a census the page size is the only honest number, and a tail that the
+	// daemon says does not exist offers nothing at all.
+	const uncounted = groupChatsView({
+		pageable: true,
+		scope: {
+			ids: ["a"],
+			nextCursor: "off:25",
+			loading: false,
+			error: null,
+			at: 1,
+		},
+		held: 25,
+		total: null,
+	});
+	assert.equal(uncounted.addCount, CATALOGUE_GROUP_PAGE);
+	const exhausted = groupChatsView({
+		pageable: true,
+		scope: { ids: ["a"], nextCursor: null, loading: false, error: null, at: 1 },
+		held: 70,
+		total: 70,
+	});
+	assert.equal(exhausted.more, false);
+	assert.equal(exhausted.addCount, 0);
+});
+
+test("the badge says what it counts, and the tail says when it lands (D1, D5, U7)", () => {
+	assert.equal(
+		groupBadgeLabel(70),
+		"70 chats in this group",
+		"the census is the group's TOTAL, and the label reads as a sentence about it",
+	);
+	assert.equal(
+		tailArrivalAnnouncement(0),
+		null,
+		"nothing arrived, nothing said",
+	);
+	assert.equal(tailArrivalAnnouncement(1), "1 more chat arrived.");
+	assert.equal(tailArrivalAnnouncement(25), "25 more chats arrived.");
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * THE COMPONENT AND THE STORE, pinned by source: the round-1 changes that are
+ * decisions in JSX or in an effect, and so cannot be reached by a value assertion.
+ * ---------------------------------------------------------------------------
+ */
+
+const SIDEBAR_SRC = readFileSync(
+	"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+	"utf8",
+);
+const STORE_SRC = readFileSync(
+	"src/renderer/src/shared/store/canonical-sessions-store.ts",
+	"utf8",
+);
+const FEED_HOOK_SRC = readFileSync(
+	"src/renderer/src/shared/hooks/use-desktop-feed.ts",
+	"utf8",
+);
+
+test("the Show-more control names its group, joins the arrow-key idiom, and is focus-safe (U2, U6)", () => {
+	assert.ok(
+		SIDEBAR_SRC.includes(
+			"aria-label={`Show ${view.addCount} more chats in ${name}`}",
+		),
+		"the press must say what it does AND which group it belongs to",
+	);
+	assert.ok(
+		SIDEBAR_SRC.includes(
+			"data-scope-more={key}\n\t\t\t\t\t\t\t\t\tdata-chat-row",
+		),
+		"the control joins the region's `[data-chat-row]` traversal, so the press is one ArrowDown from the group's last row rather than eighty Tab stops from the search box",
+	);
+	// The focus hand-off after the press: the first newly added row, then the group's
+	// own control, and `document.body` never.
+	assert.ok(
+		SIDEBAR_SRC.includes("tailFocusRef"),
+		"the press records where the reader was, so the answer can put them there",
+	);
+	assert.ok(
+		SIDEBAR_SRC.includes("target?.focus()"),
+		"and the answer moves focus somewhere deterministic",
+	);
+	assert.ok(
+		SIDEBAR_SRC.includes(
+			'row?.querySelector<HTMLElement>("[data-chat-row]") ??',
+		),
+		"the first NEWLY ADDED row is the target, not the group's first row",
+	);
+	assert.ok(
+		!/document\.body\.focus\(\)/.test(SIDEBAR_SRC),
+		"focus is never sent to `<body>`",
+	);
+});
+
+test("the truncation sentence is the withdrawn path's alone, gated on the capability (U4, Q1)", () => {
+	assert.ok(
+		SIDEBAR_SRC.includes("truncated && !pageable &&"),
+		"the sentence's own two clauses are both true exactly when the daemon cannot page; `!groupPaging` was also true under a query on a paging backend",
+	);
+	assert.ok(
+		SIDEBAR_SRC.includes("totalSentence !== null &&"),
+		"and the paged path draws the census total instead of the 500-row cap",
+	);
+});
+
+test("the open conversation is kept in membership, and a collapse drops a group's own rows (R3, U5)", () => {
+	assert.ok(
+		STORE_SRC.includes(
+			"keepIds:\n\t\t\t\t\t\t\t\tstate.activeSessionId === null",
+		),
+		"the head answer is told which row it may not drop",
+	);
+	assert.ok(
+		STORE_SRC.includes(
+			"!owned.has(row.session_id) || fromHeadPage.has(row.session_id)",
+		),
+		"a collapse removes the scope's own rows and keeps the row the head page also carries",
+	);
+});
+
+test("the refusal holds its shape, and the badge announces its meaning (D4, D1, D5)", () => {
+	assert.ok(
+		SIDEBAR_SRC.includes("line-clamp-2 py-1 pl-7 text-meta text-ink-dim"),
+		"the refusal's sentence is clamped, so a long transport string cannot move the control",
+	);
+	assert.match(
+		SIDEBAR_SRC,
+		/\{badge > 0 && \(\s*<span className="sr-only">\{groupBadgeLabel\(badge\)\}<\/span>/,
+		"the census reaches a screen reader on the group's own row, where no button's `aria-label` replaces it",
+	);
+});
+
+test("the first paint claims no disconnection, and a hit's binding is looked up (Q3, Q2)", () => {
+	assert.ok(
+		FEED_HOOK_SRC.includes("reported: available && reported"),
+		"the transport publishes whether it has spoken at all",
+	);
+	assert.ok(
+		SIDEBAR_SRC.includes("feed.available && feed.reported && !feed.connected"),
+		"so the banner waits for an answer instead of flashing on the first frame",
+	);
+	assert.ok(
+		SIDEBAR_SRC.includes("bindingOfHit"),
+		"a search hit the client does not hold can still carry the binding a loaded group names",
+	);
+	assert.ok(
+		SIDEBAR_SRC.includes("tailArrivalAnnouncement"),
+		"and the flat list's tail says when it lands",
 	);
 });

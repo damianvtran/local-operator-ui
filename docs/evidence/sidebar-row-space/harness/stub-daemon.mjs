@@ -62,6 +62,30 @@ const SCOPE_EMPTY = process.argv.includes("--scope-empty");
 /* `--scope-error` makes every SCOPED read refuse, so the group's own failure
  * sentence and its Retry are photographed. */
 const SCOPE_ERROR = process.argv.includes("--scope-error");
+/*
+ * `--scope-zero-census` makes the scoped-read arm below report a census that does
+ * NOT count the scope: a GENUINELY empty group on the paged path, which must read
+ * "No chats yet" while the group next to it holds seventy (round 1, D3's missing
+ * arms). The distinction the pair exists to photograph is `--scope-empty` (the
+ * census says 70, the page carries none: a state, not an emptiness) against this
+ * one (the census agrees there is nothing).
+ */
+/*
+ * `--zero-census-team <name>`: the census reported by EVERY answer leaves that
+ * team's rows out, so the group has no count anywhere - the head page's census
+ * included, because that is where the badge's number actually comes from. The
+ * earlier shape of this lever only changed the SCOPED answer, and the arm then
+ * photographed a 70 badge over an empty page: the settled state, twice over, which
+ * is the other arm's job (`--scope-empty`).
+ */
+const ZERO_CENSUS_TEAM = arg("zero-census-team", null);
+/*
+ * `--scope-delay-ms=<n>` holds every SCOPED answer for n milliseconds, so the
+ * LOADING arm can photograph a wait that is really happening rather than a state
+ * the store had already settled (round 1, U3: "Loading chats…" now REQUIRES a page
+ * in flight, so a frame of it has to be taken while one is).
+ */
+const SCOPE_DELAY_MS = Number(arg("scope-delay-ms", "0"));
 const INSTANCE_ID = randomUUID();
 /** The record's `started_at` is fixed at boot; the heartbeat moves. */
 const startedAt = Date.now() / 1000;
@@ -343,7 +367,7 @@ const route = (method, pathname, query, body) => {
 				...(PAGED
 					? {
 							counts: censusOf(
-								served.filter((row) => include || !row.archived),
+								censusRows(served.filter((row) => include || !row.archived)),
 							),
 						}
 					: {}),
@@ -401,7 +425,7 @@ const route = (method, pathname, query, body) => {
 						...(query.get("with_counts") === "true"
 							? {
 									counts: censusOf(
-										served.filter((r) => include || !r.archived),
+										censusRows(served.filter((r) => include || !r.archived)),
 									),
 								}
 							: {}),
@@ -616,6 +640,20 @@ const served = CATALOGUE > 0 ? pagedCatalogue() : conversations;
  * never disagree in this rig: a hand-written total would let a frame show a group
  * whose badge says 70 over a page that carries 25 of an invented 40.
  */
+/*
+ * THE CENSUS INPUT, with the `--zero-census-team` exclusion applied in ONE place so
+ * every answer's census - the head page's and a scope's - agrees about a team the
+ * rig has emptied (see the flag's own note).
+ */
+const censusRows = (rows) =>
+	ZERO_CENSUS_TEAM === null
+		? rows
+		: rows.filter(
+				(row) =>
+					row.binding?.team !== ZERO_CENSUS_TEAM &&
+					row.binding?.agent !== ZERO_CENSUS_TEAM,
+			);
+
 const censusOf = (rows) => {
 	const counts = new Map();
 	let active = 0;
@@ -678,8 +716,20 @@ const server = createServer((request, response) => {
 					: ""
 			}\n`,
 		);
-		response.writeHead(answer.status, { "content-type": "application/json" });
-		response.end(JSON.stringify(answer.body));
+		const reply = () => {
+			response.writeHead(answer.status, { "content-type": "application/json" });
+			response.end(JSON.stringify(answer.body));
+		};
+		/*
+		 * THE DELAY IS APPLIED HERE rather than inside the route, so every route stays
+		 * synchronous and one lever holds any scoped answer open for as long as a
+		 * photograph needs (see `--scope-delay-ms`).
+		 */
+		if (SCOPE_DELAY_MS > 0 && url.searchParams.get("scope_kind") !== null) {
+			setTimeout(reply, SCOPE_DELAY_MS);
+		} else {
+			reply();
+		}
 	});
 });
 

@@ -22,13 +22,19 @@ and no badge before; 50 rows held, a `70` badge and the group's own page after.
 
 | frame | what it shows |
 |---|---|
-| `after/head-page.png` | The first paint: **50** rows of the 120-chat stand-in (`All chats 50`), the pinned row and the running row drawn, and every entity row already carrying its census badge (`lopdev 70`, `minervadev 20`, `reviewer 8`, `qa-tester 7`). The daemon's log shows the request that produced it: `limit=50&include_archived=true&with_counts=true`. |
-| `after/group-open.png` | `lopdev` expanded: its **own** page (Chat 050 … Chat 074) and nothing else — the store's row count went 50 → 75, i.e. exactly that group's first page. The badge still reads 70 (the census, not the 25 rows in hand) and `Show 25 more` sits under them. The daemon's log shows `limit=25&scope_kind=team&scope_name=lopdev -> 200 rows=25 next=off:25`. |
-| `after/group-tail.png` | The same list after the tail control was pressed: the second page is appended BELOW the first (the group draws through Chat 077), `All chats` reads **100**, and the group's cursor has advanced to `off:50` rather than resetting. The daemon's log carries both halves of the exchange: `…scope_name=lopdev -> 200 rows=25 next=off:25`, then `…&cursor=off%3A25 -> 200 rows=25 next=off:50`. The numbers behind the frame are in *The tail press* below. |
+| `after/head-page.png` | The first paint: **50** rows of the 120-chat stand-in (`All chats 50`), the pinned row and the running row drawn, every entity row already carrying its census badge (`lopdev 70`, `minervadev 20`, `reviewer 8`, `qa-tester 7`), and the panel's own total — **`Showing 50 of 120 chats`**, from the census the head answer carried. The daemon's log shows the request that produced it: `limit=50&include_archived=true&with_counts=true`. |
+| `after/group-open.png` | `lopdev` expanded: its **own** page and nothing else — the store's row count went 50 → 75, i.e. exactly that group's first page. The badge reads **70** (the census, not the 25 rows in hand) and the panel's total reads `Showing 75 of 120 chats`. The control that offers the rest is below the group's own fold in this frame, which is why the next frame exists. |
+| `after/group-more.png` | **The one this round added, and the reason it exists:** the group's page scrolled to its own end, with **`Show 25 more`** drawn under `Chat 074`. The earlier version of this set CLAIMED a frame showed this control and none did — a press consumes it, so it is only in a frame taken between the scroll and the press. |
+| `after/group-tail.png` | After that press: the second page appended below the first (`Chat 089` … `Chat 099` visible, the group draws through `Chat 119`), `All chats` **100**, `Previous chats` 98, and **`Show 20 more`** — the label reads the rows the NEXT press will ADD, not the page size (70 − 50), and the control is in the frame with the rows it will extend. The daemon's log carries both halves: `…scope_name=lopdev -> 200 rows=25 next=off:25`, then `…&cursor=off%3A25 -> 200 rows=25 next=off:50`. |
+| `after/group-narrow.png` | The same panel at its own drag floor. The chats region measures **224px** here against **264px** at this run's default — asserted in the run, because the first attempt at this frame changed the WINDOW size instead and left the panel boxed at x 438–955 in both frames: nothing was narrower. The badge, the rows' titles and `Showing 75 of 120 chats` are all drawn at the floor. |
+| `after/group-exhausted.png` | After the last press: **70** rows held, `All chats` **120**, `Showing 120 of 120 chats`, and **no control at all** — the daemon answered `limit=20&cursor=off%3A50 -> 200 rows=20 next=-`, so the last press asked for the remainder and the affordance went with the cursor. |
 | `before-withdrawn/group-open.png` | The BEFORE half, and the operator's screenshot: `lopdev` expanded reads **"No chats yet"** while the same store holds 70 of that group's conversations, `All chats 50`, and the panel says `Showing up to 500 chats. Older chats remain available in the terminal.` The group's badge is absent because on this path there is no census to draw one from. |
-| `before-withdrawn/head-page.png` | The same withdrawn panel at first paint. |
-| `census-waiting/group-open.png` | A group whose page has NOT caught up with the store: the daemon counts 70 (`--scope-empty` answers scoped reads with no rows), so the badge reads 70 and the body says **"Loading chats…"**. Under the old rule this state and true emptiness both drew "No chats yet"; the two sentences are now different because the two states are. |
-| `refusal/group-error.png` | A group whose read refused (`--scope-error`, HTTP 500): the group's row carries the daemon's own sentence and a **Retry**, and the row count is unchanged (50). A failure outranks the "not caught up" guess — asked the other way round this state read "Loading chats…" for ever, which is how this frame earned its place: the scene caught it and the order was fixed in `sidebar-scope-paging.ts`. |
+| `before-withdrawn/head-page.png` | The same withdrawn panel at first paint. **Both `before-withdrawn` frames are byte-identical to the ones this set shipped before this round** — the compatibility promise, re-verified rather than restated. |
+| `settled/group-open.png` | A **settled** group whose census still says 70 while the page can draw none of them (`--scope-empty` answers every scoped read with no rows): the badge reads 70 and the body says **"None of this group's chats can be drawn here — they may be archived. Search with Include archived to find them."** This frame's predecessor read "Loading chats…" for ever, because the sentence was chosen by the census outrunning the page rather than by `scope.loading` — the state and the sentence disagreed about the same fact. |
+| `loading/group-open.png` | The same group with the scoped answer **genuinely in flight** (`--scope-delay-ms=12000`): badge 70 and **"Loading chats…"**. This is the only state in which that sentence is true, and it is now the only state that draws it. |
+| `empty-group/group-open.png` | A group that really is empty (`--scope-empty --zero-census-team lopdev`): **no badge** and **"No chats yet"**. The pair with `settled/` is the point — the two states used to share one sentence. |
+| `flat-tail/flat-tail.png` | The FLAT list's own tail, which has no control by design (one scroller, one scope inside it): a scroll to the bottom of `Previous chats`, and rows that were not there before — `Chat 089` … with their `lopdev` captions. The run asserts the growth rather than photographing a scroll. |
+| `refusal/group-error.png` | A group whose read refused (`--scope-error`, HTTP 500): the group draws **the backend's own sentence** (`The stub was asked to refuse scoped reads.`) clamped to two lines, with **Retry** on its own line below it and the row count unchanged (50). The Retry used to sit inline after the message, so its position moved with the message's length. |
 
 ## How these frames were taken
 
@@ -59,17 +65,27 @@ LOCAL_OPERATOR_DESKTOP_TOKEN=$(openssl rand -hex 32) node scripts/renderer-drive
   --theme localOperatorDark --out "$SCRATCH/lz-paged" --window-size 1380x900
 ```
 
-The other three cases are the same command with a different stand-in and
-`--scoped-case`: `--no-page --truncate 50` + `withdrawn`, `--scope-empty` +
-`empty`, `--scope-error` + `error`. `--scoped-case` names which arm of the scene
-this run is photographing, and each arm's assertions are listed in the scene.
+The other six cases are the same command with a different stand-in and
+`--scoped-case`. Each arm names one state, and the flags are the state:
 
-**The scene asserts what it photographs.** Seven checks per run, including the two
-numbers above (the store's row count is the head page, not the catalogue; expanding
-one group adds exactly its own page) and the three sentences (`Loading chats…`,
-`No chats yet` only on the withdrawn path, and the refusal with its Retry). The
-`--stub-log` clauses read the requests the daemon actually received, because the
-DOM cannot say which page a control asked for.
+| arm | stand-in flags | what it photographs |
+|---|---|---|
+| `paged` | (none) | the feature: the head page, a group's own page on expand, its tail, the drag floor, exhaustion |
+| `withdrawn` | `--no-page --truncate 50` | today's behaviour against a daemon that cannot page |
+| `empty` | `--scope-empty` | a settled page the census still outruns |
+| `loading` | `--scope-empty --scope-delay-ms=12000` | a wait that is really happening |
+| `empty-group` | `--scope-empty --zero-census-team lopdev` | a genuinely empty group |
+| `flat-tail` | (none) | the flat list's own tail: a scroll, then rows |
+| `error` | `--scope-error` | a refused scoped read |
+
+**The scene asserts what it photographs.** Each arm checks its own state, including
+the two numbers above (the store's row count is the head page, not the catalogue;
+expanding one group adds exactly its own page), the label's arithmetic (`Show 20
+more` with 50 of 70 drawn), the drag floor's own width, and the sentences — the
+`--stub-log` clauses read the requests the daemon actually received, because the DOM
+cannot say which page a control asked for. Two arms were added in round 1 because
+the set CLAIMED frames it did not have: `group-more` (the control, before a press
+consumes it) and `flat-tail` (the list that extends without a control at all).
 
 ## The tail press: what it is now proven to do, and by what
 
@@ -84,11 +100,23 @@ daemon's lines for that scope. On this tree the wait returns, and the numbers ar
 | the scope's ids | 25 | **50** |
 | the scope's cursor | `off:25` | **`off:50`** (the page after it, not the end) |
 | the store's rows (`state.sessionCount`) | 75 | **100** — `All chats 100` in the frame |
+| the control's label | `Show 25 more` | **`Show 20 more`** (70 − 50: the rows the next press ADDS) |
 | the daemon's own log | `…scope_name=lopdev -> 200 rows=25 next=off:25` | `…&cursor=off%3A25 -> 200 rows=25 next=off:50` |
 
-The frame shows the appended rows (the group now draws through Chat 077) beneath
-the first page's, and the cursor advancing rather than being reset is what the
-merged-scope state above asserts.
+The frame shows the appended rows beneath the first page's, with the control that
+offers the rest in the same frame, and the cursor advancing rather than being reset
+is what the merged-scope state above asserts.
+
+**And the LAST press is exact.** A third press at 50 of 70 read `Show 20 more` and
+asked the daemon for exactly that:
+
+```
+stub GET …sessions?limit=20&scope_kind=team&scope_name=lopdev&cursor=off%3A50 -> 200 rows=20 next=-
+```
+
+70 ids held, cursor `null`, no control — `after/group-exhausted.png`. The label used
+to be the PAGE SIZE, so 65 of 70 read `Show 25 more` and the press fetched 25 for a
+remainder of 5.
 
 **Why the assert is a bounded poll and not a read-back, recorded because the first
 version of this scene got it wrong.** `state.sessionCount` is a PROXY: a page whose
@@ -121,7 +149,30 @@ have shipped a README explaining an app defect that did not exist.
 - Driver scene: `sidebar-lazy-chats` in `scripts/renderer-driver.mjs`.
 - Stand-in: `docs/evidence/sidebar-row-space/harness/stub-daemon.mjs`
   (`--catalogue`, `--no-page`, `--truncate`, `--scope-empty`, `--scope-error`,
-  and the paged/`with_counts` list route).
+  `--scope-delay-ms`, `--zero-census-team`, and the paged/`with_counts` list route).
+
+## What this stand-in cannot drive, said here rather than discovered later
+
+The paged fixtures are the large catalogue (`--catalogue 120`), and the stand-in's
+OTHER routes are still the six-row fixture's. That is a limit of the rig, and it
+bounds what these frames can show:
+
+- **Its pin route answers 404 for a catalogue row.** `sessions.pin` is served for
+  the six fixtures only, so the app's own rule withholds the pin control on the 120
+  rows this set photographs. The pin glyph visible in `after/*.png` belongs to
+  `Chat 001`, one of the six. **The pinned-section behaviour under paging is
+  therefore not exercised here** — it is covered by `chat-sidebar-pins.test.mjs`.
+- **Its search answers only from the six rows, and omits `pinned`.** A query in
+  this rig therefore returns matches that are mostly outside the catalogue page, and
+  the rows it returns carry no pin state, so the search path's interaction with
+  paging (a hit the client does not hold, `chat-search.ts`'s synthesised row) is
+  exercised by `palette-search.test.mjs` and `chat-search.test.mjs` rather than by a
+  frame. The synthesised row's binding caption is derived client-side from the
+  loaded scopes, which those suites assert.
+- **Nothing here drives the real daemon.** The capability, the cursor's opacity and
+  the census are the stand-in's answers, so a frame proves the PANEL's behaviour
+  given those answers; the daemon's own half is the peer branch's evidence (the
+  `session_catalogue_page` route, its cost test and its cursor walk).
 - Window: 1380x900 at `deviceScaleFactor: 2` (2760x1736 frames), one launch per
   case, every launch `--window-mode=headless`, no window shown and none focused
   (asserted in each run), and no process left behind (asserted in each run).
