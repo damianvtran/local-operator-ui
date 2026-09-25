@@ -263,6 +263,35 @@ const expressionAfter = (file, anchor) => {
 	return argumentsFrom(source, at);
 };
 
+/**
+ * The next element's `cn(...)` at or after an anchor, searched only AFTER an
+ * earlier anchor.
+ *
+ * WHY THIS EXISTS (round 1, U2). `expressionAfter` takes the FIRST occurrence of
+ * its anchor in the whole file, which was unambiguous while the only `data-entity-name`
+ * in the sidebar was the button itself. The paged catalogue's focus effect names
+ * the same attribute in a `querySelector` - earlier in the file, and legitimately -
+ * so the anchor moved into that effect and the extraction landed in `sessionRow`.
+ * Scoping the search after the entity wrapper keeps the pin on the element it names
+ * and no longer depends on nothing else mentioning the attribute.
+ */
+const expressionAfterWithin = (file, from, anchor) => {
+	const source = sourceOf(file);
+	const start = source.indexOf(from);
+	assert.notEqual(
+		start,
+		-1,
+		`no element in ${file} matches ${JSON.stringify(from)}`,
+	);
+	const at = source.indexOf(anchor, start);
+	assert.notEqual(
+		at,
+		-1,
+		`no element in ${file} matches ${JSON.stringify(anchor)} after ${JSON.stringify(from)}`,
+	);
+	return argumentsFrom(source, at);
+};
+
 /** The `cn(...)` that owns an anchor sitting INSIDE its own argument list. */
 const expressionBefore = (file, anchor) => {
 	const source = sourceOf(file);
@@ -414,14 +443,16 @@ const CURRENT = [
 		   the GROUND too, which is asserted below. */
 		what: "the entity row's name button",
 		file: SIDEBAR,
-		expression: () => expressionAfter(SIDEBAR, "data-entity-name"),
+		expression: () =>
+			expressionAfterWithin(SIDEBAR, "data-entity>", "data-entity-name"),
 		stubs: { revealArmed: true, rowStyle, rowCurrent, staged: true },
 		ground: true,
 	},
 	{
 		what: "the entity row's disclosure control",
 		file: SIDEBAR,
-		expression: () => expressionAfter(SIDEBAR, "data-disclosure"),
+		expression: () =>
+			expressionAfterWithin(SIDEBAR, "data-entity>", "data-disclosure"),
 		stubs: { revealArmed: true, staged: true },
 		ground: false,
 		notCurrent: { revealArmed: true, staged: false },
