@@ -244,8 +244,16 @@ class Cdp {
  * composer is holding for the operator, which is empty on a held claim and
  * carries their message when the refusal handed it back.
  */
+/*
+ * The note, in EITHER register (UX round 7, U22). A muted statement of fact is
+ * role=status - the late-delivery line is one - and this probe read only role=alert, so it
+ * had no source at all for that note's prose, which is one of the two reasons the
+ * late-typed arm cannot see the line it is about. Same widening the geometry rig needed
+ * (design round 4, D12), and the comment deliberately sits OUTSIDE the template: a
+ * backtick inside it would end the literal, which is how that rig broke.
+ */
 const PROBE = `(() => {
-	const region = document.querySelector('[role="alert"]');
+	const region = document.querySelector('[role="alert"], [role="status"]');
 	const textarea = document.querySelector("textarea");
 	const press = (el) => {
 		if (!el) return;
@@ -328,7 +336,7 @@ const PROBE = `(() => {
 		   carrying the first one's text, which a count alone cannot tell from a
 		   legitimate second message. */
 		transcriptRowTexts: transcriptRows.map((row) =>
-			(row.textContent || "").replace(/\s+/g, " ").trim().slice(0, 160),
+			(row.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 160),
 		),
 		transcriptRows: transcriptRows.length,
 		transcriptUserRows:
@@ -340,7 +348,7 @@ const PROBE = `(() => {
 		theme: document.documentElement.dataset.theme,
 		/* What the page SAYS, for the failure a frame cannot explain on its own: a run
 		   that reports "nothing mounted" is a question about a screen nobody saw. */
-		bodyText: document.body.innerText.replace(/\s+/g, " ").slice(0, 500),
+		bodyText: document.body.innerText.replace(/\\s+/g, " ").slice(0, 500),
 	};
 })()`;
 
