@@ -2457,7 +2457,26 @@ function SessionPanel({
 					sessionStatus={
 						sessionId
 							? {
-									frontend: canonical.frontend,
+									/*
+									 * The live snapshot when there is one, and otherwise the readings
+									 * this pane was last told.
+									 *
+									 * A reconnect is answered with `open{gap}`, which drops the
+									 * authoritative frontend by design, so `canonical.frontend` was
+									 * null for the whole 1.5-4 s the replacement snapshot took to land
+									 * - and a null frontend is exactly what makes the strip render
+									 * nothing at all (its own first line). So all four readings
+									 * blanked and came back at the stream's cadence, which reads as
+									 * the conversation reloading from scratch.
+									 *
+									 * The fallback is honest rather than convenient: `heldFrontend`
+									 * is dropped by every terminal state and by a real session change,
+									 * so it can only be non-null here while a reconnect is genuinely
+									 * in flight - and the pane already says so in its own words,
+									 * because the same state publishes `status: "reconnecting"` and
+									 * the transcript paints its Reconnecting line.
+									 */
+									frontend: canonical.frontend ?? canonical.heldFrontend,
 									/*
 									 * The chosen-but-unconfirmed model, so the strip can paint the pick
 									 * the moment it is made instead of waiting out a cold runtime bind
