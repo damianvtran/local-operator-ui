@@ -170,25 +170,29 @@ const HOOK_SOURCE = readFileSync(
 	"utf8",
 );
 /*
- * The row's control cluster: from its own class to the closing of its wrapper.
+ * The row's control cluster: from its own class to the form's close, which is
+ * the boundary that remains after the chat redesign moved the empty-chat
+ * content out of this subtree - everything between the two anchors belongs to
+ * the composer row.
  *
- * ANCHORED WITHOUT ITS GAP CLASS (code review round 1, N2). The prefix used to
- * include `gap-1`, so changing the row's own gap made `indexOf` return -1 and the
- * slice start at the top of the file: four tests then failed with messages that
- * blamed the controls (`the row lost one of its controls`, `the dictation control
- * carries no rung-dependent size`) instead of the one thing that had moved. The
- * gap is read out of the slice below, so a gap change now fails where the gap is
- * asked for, and a class change that removes the anchor fails here, by name.
+ * ANCHORED ON THE CLASS'S FIRST TWO TOKENS (code review round 1, N2; rebased
+ * after the redesign). The prefix used to include `gap-1`, so changing the
+ * row's own gap made `indexOf` return -1 and the slice start at the top of the
+ * file: four tests then failed with messages that blamed the controls (`the
+ * row lost one of its controls`, `the dictation control carries no
+ * rung-dependent size`) instead of the one thing that had moved. `ml-auto flex`
+ * is the pair the row's own comments call load-bearing - the one live auto
+ * margin and the flex box - while everything after it (the redesign's
+ * `order-3`, `items-center`, the gap) is read out of the slice below. So a gap
+ * or order change fails where its value is asked for, and a class change that
+ * removes the anchor fails here, by name.
  */
-const ROW_START = ROW_SOURCE.indexOf('className="ml-auto flex items-center');
+const ROW_START = ROW_SOURCE.indexOf('className="ml-auto flex');
 assert.ok(
 	ROW_START > -1,
 	"the composer's right-hand cluster is not where the row's own class says it is: the tests below read their geometry out of that slice, so find it before assuming a control moved",
 );
-const ROW = ROW_SOURCE.slice(
-	ROW_START,
-	ROW_SOURCE.indexOf("{messages.length === 0 && !isHydrating && !isSmallView"),
-);
+const ROW = ROW_SOURCE.slice(ROW_START, ROW_SOURCE.indexOf("</form>"));
 assert.ok(
 	ROW.length > 0,
 	"the row slice is empty: the cluster's class is there but its closing marker is not, so the row's shape changed",
@@ -1315,18 +1319,25 @@ test("the parked card names both exits", () => {
 	 * clearing, `last_turn_outcome: aborted` and no denial in the transcript - so a
 	 * card that names only the composer tells the user about one of its two exits.
 	 *
-	 * A SOURCE assertion rather than a rendered one: the card is a branch of
-	 * `canonical-transcript.tsx`, whose render needs a transcript store, a
-	 * completion view and the canonical reducer, and the string is the artefact
-	 * either way. `window-mode.test.mjs` pins call sites the same way.
+	 * RE-BASED onto the redesign's own carrier (§F1): the card was a branch of
+	 * `canonical-transcript.tsx`, and the pending gate is now docked above the
+	 * composer by `QuestionDock`, whose approval hint is the sentence the two
+	 * exits live in. The clause inside the card ("Esc hides") and the clause in
+	 * the message box (the turn's interrupt) are the same key acting in two
+	 * different scopes, which is the distinction the sentence has to keep.
+	 *
+	 * A SOURCE assertion rather than a rendered one, for the card's own reason: the
+	 * dock's render needs the canonical store and the question's state, and the
+	 * string is the artefact either way. `window-mode.test.mjs` pins call sites the
+	 * same way.
 	 */
 	const source = readFileSync(
-		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		"src/renderer/src/features/chat/components/trace/question-dock.tsx",
 		"utf8",
 	);
 	assert.match(
 		source,
-		/"Reply yes or no in the composer, or press Escape to stop the turn\."/,
+		/"Reply yes or no below, or press Escape in the message box to stop the turn\."/,
 	);
 });
 
