@@ -1086,7 +1086,16 @@ export function sendFailureCopy(
 		if (code === RUNTIME_RETIRING_CODE)
 			return { message: SEND_FAILURE_COPY.retiring, retry: true, code };
 		if (code === SESSION_UNVALIDATED_CODE)
-			return { message: SEND_FAILURE_COPY.notReady, retry: true, code };
+			/*
+			 * `retry` is asked of the predicate rather than written as a literal: the read
+			 * window is withheld there (design round 11, D2), and a second copy of that
+			 * answer here is the same defect the notice had - one failure, two verdicts.
+			 */
+			return {
+				message: SEND_FAILURE_COPY.notReady,
+				retry: !withholdsRetryHint(code),
+				code,
+			};
 		if (code === ASIDE_NOT_ANSWERED_CODE)
 			return {
 				message: SEND_FAILURE_COPY.asideNotAnswered,

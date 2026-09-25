@@ -2021,11 +2021,12 @@ test("an ask is refused in the app while the exchange is still answering", () =>
 		/export const ASIDE_STILL_ANSWERING_CODE = "aside_still_answering";/,
 	);
 	/*
-	 * WITHOUT THE TRAILING `||`, deliberately: main's list carried three more terms
-	 * after this one (`session_unvalidated`, `unconfirmed_send`, `runtime_retiring`),
-	 * and the branch this suite was folded into removed all three with its copy
-	 * table - so this code is the predicate's LAST term here and an anchored
-	 * alternative would pin its position rather than its presence.
+	 * WITHOUT THE TRAILING `||`, deliberately: the list this suite was folded into is
+	 * not main's. Main carried two terms after this one (`unconfirmed_send`,
+	 * `runtime_retiring`) that went with the held model, and it carried
+	 * `session_unvalidated` BEFORE it, which came back into the list a round later -
+	 * so this code's neighbours differ on both sides, and the anchored alternative
+	 * would pin its position rather than its presence.
 	 */
 	assert.match(sessions, /code === ASIDE_STILL_ANSWERING_CODE/);
 	assert.match(page, RE_PAGE_RAISES_THE_BUSY_CODE);

@@ -699,6 +699,18 @@ export const STORIES = [
 	["chat-canonical-credential-citation--citation-unconfirmed-narrow", 440, 620],
 	["chat-canonical-credential-citation--citation-in-code-fence", 1024, 620],
 	/*
+	 * THE SECOND REPORT'S THREE SHAPES (operator report, 2026-09-25): the
+	 * reader's message with each field on its own line, WITH citations (the
+	 * reported state), WITHOUT them (the scope question), and an agent-side
+	 * answer as the control that must not move. All three at the same 1024x620
+	 * pane as their siblings above, so the frames read as one set: the first two
+	 * keep their lines after the fix, and the third's before/after pair is
+	 * byte-identical because an agent's answer is a markdown document.
+	 */
+	["chat-canonical-credential-citation--citation-multiline", 1024, 620],
+	["chat-canonical-credential-citation--plain-multiline", 1024, 620],
+	["chat-canonical-credential-citation--agent-multiline", 1024, 620],
+	/*
 	 * THE TWO SUBMIT-TIME NOTICES, at 440 — the measure a toast actually lands in on
 	 * a narrow window, and the size design round 1's D3 asked for. The unresolved
 	 * notice carries a key name and two sentences and had no frame at all; the
