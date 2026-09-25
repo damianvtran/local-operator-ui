@@ -3170,26 +3170,28 @@ async function sceneSessionArchive(cdp) {
 	 *    it - which is why the wait is the ceiling and not the arithmetic.
 	 */
 	/*
-	 * THE SECTION IS OPENED FIRST, and that is a precondition rather than a
-	 * convenience: `Previous chats` ships COLLAPSED, and a collapsed section draws no
-	 * rows at all - so the row this step hovers is not in the DOM until its heading has
-	 * been pressed. Measured 2026-09-21: without this, the step threw
-	 * `nothing matches [data-session-row="b3f1a09c7d52"] after 10000ms of waiting` on a
-	 * panel that was drawing the list correctly ("All chats 4", `Active chats` open,
-	 * `Previous chats` shut), which reads like a missing row and is a shut section. The
-	 * later steps that open the same section anyway (the refusal step below) now find it
-	 * already open, which is the same state they asked for.
+	 * THE ROW IS WAITED FOR, NOT A SECTION PRESSED (RE-BASED, measured against
+	 * the redesign): `Previous chats` no longer exists - the sidebar partitions
+	 * the list into the view popover's sections and none of them collapses - so
+	 * this scene threw `no Previous chats heading in the panel` at this line and
+	 * every frame below it was lost. What the step needs is the row, so it waits
+	 * for the row; the fixture's four conversations are under the first rung of
+	 * the page ladder, so no ladder press is owed here.
 	 */
-	await openSection(cdp, "Previous chats");
+	const longRow = '[data-session-row="b3f1a09c7d52"]';
+	await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(longRow)}) !== null`,
+		10_000,
+	);
 	/*
-	 * The expansion is a transition, so the row's box is read only after it settles:
-	 * hovering a box measured mid-expansion lands the pointer on a NEIGHBOUR, which is
-	 * a wrong-row read that looks like a wrong-row paint (measured 2026-09-21, before
-	 * this wait: the ground came back painted on the long row while the control's own
-	 * ancestry said the pointer was on `2d5ad5da0025`).
+	 * A settle wait is still owed: the row is read as a BOX below, and hovering
+	 * a box measured mid-paint lands the pointer on a NEIGHBOUR, which is a
+	 * wrong-row read that looks like a wrong-row paint (measured 2026-09-21,
+	 * before a wait like this existed: the ground came back painted on the long
+	 * row while the control's own ancestry said the pointer was on `2d5ad5da0025`).
 	 */
 	await wait(500);
-	const longRow = '[data-session-row="b3f1a09c7d52"]';
 	/*
 	 * THE ROW FIRST, THEN ITS CONTROL. The acts are `display`-switched (D3), so the row
 	 * is what reveals them; the pointer then moves ONTO the control, which is the state
@@ -3410,16 +3412,18 @@ async function sceneSessionArchive(cdp) {
 	 */
 	await parkPointer(cdp);
 	/*
-	 * `previous` is OPENED first, and IDEMPOTENTLY: a collapsed section draws no rows,
-	 * and the row this step presses lives there (measured: the refusal step could not
-	 * find its control while the section was collapsed). It is `openSection`, which
-	 * reads the heading's `aria-expanded` and returns when it is already open, rather
-	 * than the toggle press it used to be - step 2 opens this section, so a blind toggle
-	 * here CLOSED it and the row went out of the DOM (measured 2026-09-21: `nothing
-	 * matches [aria-label='Archive "Migration checklist"']`).
+	 * THE ROW IS WAITED FOR, THE SAME RE-BASE AS STEP 2: `Previous chats` no
+	 * longer exists in this design (the sections do not collapse), so nothing is
+	 * opened - this step threw `no Previous chats heading in the panel` once the
+	 * step-2 throw was fixed. The wait is for the row the press below aims at;
+	 * the fixture's four conversations are under the ladder's first rung.
 	 */
-	await openSection(cdp, "Previous chats");
 	const claimedRow = "[aria-label='Archive “Migration checklist”']";
+	await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(claimedRow)}) !== null`,
+		10_000,
+	);
 	/*
 	 * THE ROW FIRST, THEN ITS CONTROL. The acts are `display`-switched (D3), so a
 	 * control addressed at rest has a 0x0 box: the pointer lands on the padding edge,
@@ -6145,24 +6149,16 @@ async function sceneRowSpace(cdp) {
 	);
 
 	/*
-	 * THE `Previous chats` SECTION IS COLLAPSED BY DEFAULT, and a scene that only
-	 * navigates therefore photographs a panel holding the pinned row and the
-	 * running one - measured here, and the reason this expansion is part of the
-	 * scene rather than of the fixture. It is opened with the reader's own gesture
-	 * through the section's own hook (`data-chat-section`), and only when it is
-	 * shut: a press on an open disclosure would close it.
+	 * THE ROWS ARE DRAWN, NOT REVEALED (RE-BASED, measured against the redesign):
+	 * this block used to press the `Previous chats` disclosure open, because on
+	 * main a collapsed section withheld three of this set's four rows. The redesign
+	 * replaced `Active chats` / `Previous chats` with the view popover's sections
+	 * and none of them collapses, so the rows are under the ladder's first rung
+	 * already and what this block owes the steps below is the wait for them -
+	 * which is what `drawAtLeast` is here.
 	 */
-	const previousOpen = await cdp.evaluate(
-		`(() => { const button = document.querySelector('[data-chat-section="previous"]'); return button ? button.getAttribute("aria-expanded") === "true" : null; })()`,
-	);
-	if (previousOpen === false) {
-		await clickAt(cdp, '[data-chat-section="previous"]');
-		await wait(500);
-	}
-	note(
-		"the Previous chats section",
-		previousOpen === true ? "was already expanded" : "expanded by this scene",
-	);
+	const rowsDrawn = await drawAtLeast(cdp, 4);
+	note("rows drawn before anything is photographed", String(rowsDrawn));
 
 	/*
 	 * OPEN A CONVERSATION BEFORE ANYTHING IS PHOTOGRAPHED, and both halves of this
@@ -6213,14 +6209,15 @@ async function sceneRowSpace(cdp) {
 	 * landed on a control labelled `Pin "..."` with `aria-pressed "false"` - four checks failing
 	 * against a state the instrument had moved, none of them about the layout or about the app.
 	 *
-	 * WHY THE RESTORE IS HERE RATHER THAN AT THE PRESS: an unpinned row leaves the `Pinned chats`
-	 * section for `Previous chats`, and that section is COLLAPSED by default - so immediately
-	 * after the press the row is not in the document at all (the press clause's own reading says
-	 * it: `"archivedAfter":"row-absent"`) and there is nothing to press. The expansion above is
-	 * what brings the row back, and the scene cannot avoid the press itself: U6's whole claim is a
-	 * press at the mark's resting centre. So the state the press moved is put back, the way the
-	 * offer step puts its own row back through the offer's Undo rather than leaving the list
-	 * emptied.
+	 * WHY THE RESTORE IS STILL HERE, RE-BASED: on main an unpinned row left the `Pinned chats` section
+	 * for `Previous chats` and that section was collapsed, so the row was genuinely absent after the
+	 * press (`"archivedAfter":"row-absent"` was the reading) until an expansion brought it back.
+	 * THIS DESIGN DRAWS EVERY SECTION - the row re-files into the flat list and stays in the
+	 * document - so the row is pressable the moment the press lands, and the restore is owed for
+	 * the reason it always was: U6's press may flip the pin, and the frames call this row PINNED.
+	 * The press itself is unavoidable - U6's whole claim is a press at the mark's resting centre -
+	 * so the state the press moved is put back, the way the offer step puts its own row back
+	 * through the offer's Undo rather than leaving the list emptied.
 	 *
 	 * THE PRESS IS AIMED THE WAY U6 INSISTS ON. The pointer goes on the row first (an unpinned
 	 * row's acts exist only once revealed), then the mark's own box is read twice with a settle
@@ -8179,75 +8176,37 @@ function rowBox(cdp, index) {
 }
 
 /**
- * Open one of the panel's sections, then wait for its conversations to exist.
+ * Draw at least `wanted` rows of the flat list, spending the page ladder.
  *
- * The sections are collapsible and `Previous chats` starts CLOSED, so on a store
- * nobody has touched yet the panel draws the heading and none of its rows: a
- * scene that assumed otherwise would photograph an empty list and call it a
- * catalogue. Pressed through the app's own heading, and the wait is on the rows
- * rather than on a timer.
+ * THIS REPLACES `openSection`, and the replacement is the redesign's own fact:
+ * the sections it used to press (`Active chats` / `Previous chats`) no longer
+ * exist - the sidebar partitions the list into the view popover's sections
+ * (Running / Today / This week / Older) and none of them collapses, so nothing
+ * about a section withholds rows any more. What withholds them now is the PAGE
+ * LADDER alone (10 -> 25 -> 50, then 50 more per press; `[data-sidebar-page-more]`),
+ * whose mechanics the flat-tail arm of `sidebar-lazy-chats` is the instrument
+ * that measured. A scene needing a list longer than the first rung draws spends
+ * rungs here, bounded; a press that draws nothing new ends the loop (the ladder
+ * is spent and the scroll's own extension owns the rest). The return value is
+ * the count actually drawn, so a caller can assert against it rather than
+ * against a timer.
  */
-async function openSection(cdp, label, timeoutMs = 5_000) {
-	const heading = () =>
-		cdp.evaluate(`(() => {
-			const wanted = ${JSON.stringify(label)};
-			const node = Array.from(document.querySelectorAll("button[data-chat-row]"))
-				.find((row) => row.textContent.replace(/\\s+/g, " ").trim().startsWith(wanted));
-			if (!node) return null;
-			const box = node.getBoundingClientRect();
-			return {
-				expanded: node.getAttribute("aria-expanded") === "true",
-				x: box.left + box.width / 2,
-				y: box.top + box.height / 2,
-			};
-		})()`);
-	const started = Date.now();
-	for (;;) {
-		const at = await heading();
-		if (at === null) {
-			if (Date.now() - started > timeoutMs)
-				throw new Error(`no ${label} heading in the panel`);
-			await wait(100);
-			continue;
-		}
-		/*
-		 * Whether the section is OPEN is read from the heading's own `aria-expanded`,
-		 * not inferred from "some conversation row exists": once anything is pinned the
-		 * Pinned section has rows while this one is still closed, so the inferred
-		 * version returned early and the scene then read a one-row panel.
-		 */
-		if (at.expanded) return readPins(cdp);
-		/*
-		 * Bring the heading into the REGION's view first. A collapsed section whose
-		 * heading sits below the region's own fold (a long catalogue does this: the
-		 * scroll region is a 45%-height box) has a box the press cannot reach at all -
-		 * `elementFromPoint` at those coordinates answers null, and the press is a
-		 * no-op that looks like a dead control.
-		 */
-		await cdp.evaluate(`(() => {
-			const wanted = ${JSON.stringify(label)};
-			const node = Array.from(document.querySelectorAll("button[data-chat-row]"))
-				.find((row) => row.textContent.replace(/\\s+/g, " ").trim().startsWith(wanted));
-			if (node) node.scrollIntoView({ block: "center" });
-			return true;
-		})()`);
-		await wait(180);
-		const onScreen = await heading();
-		await parkPointer(cdp);
-		await pressPointer(cdp, onScreen.x, onScreen.y);
-		await parkPointer(cdp);
-		await wait(150);
-		if (Date.now() - started > timeoutMs) {
-			const why = await heading();
-			const hit = await cdp.evaluate(`(() => {
-				const node = document.elementFromPoint(${why.x}, ${why.y});
-				return { tag: node ? node.tagName.toLowerCase() : null, text: node ? node.textContent.replace(/\\s+/g, " ").trim().slice(0, 40) : null };
-			})()`);
-			throw new Error(
-				`pressing the ${label} heading did not open it: ${JSON.stringify({ heading: why, hit })}`,
-			);
-		}
+async function drawAtLeast(cdp, wanted, presses = 6) {
+	const drawn = () =>
+		cdp.evaluate(`document.querySelectorAll("[data-session-row]").length`);
+	let rows = await drawn();
+	for (let press = 0; press < presses && rows < wanted; press += 1) {
+		const more = await cdp.evaluate(
+			`document.querySelector('[data-sidebar-page-more]') !== null`,
+		);
+		if (more !== true) break;
+		await verb(cdp, "press", { selector: "[data-sidebar-page-more]" });
+		await wait(250);
+		const after = await drawn();
+		if (after === rows) break;
+		rows = after;
 	}
+	return rows;
 }
 
 /**
@@ -8641,12 +8600,15 @@ async function scenePinsScrolled(cdp) {
 		await verb(cdp, "setTheme", theme);
 		await wait(300);
 		/*
-		 * Both disclosure sections OPEN, through their own headings: a collapsed
-		 * section draws no rows at all, so a scene that read the list first would see
-		 * one row and conclude the store was empty.
+		 * THE ROWS ARE DRAWN BY THE LIST ITSELF (RE-BASED, measured against the
+		 * redesign). The pair of presses this replaces opened `Previous chats` /
+		 * `Active chats`, which shipped collapsed on main; the redesign replaced
+		 * both with the view popover's sections and none of them collapses, so the
+		 * only thing withholding rows is the PAGE LADDER (10 -> 25 -> 50,
+		 * `[data-sidebar-page-more]`) - spent, because the check below needs more
+		 * rows than the first rung draws.
 		 */
-		await openSection(cdp, "Previous chats");
-		await openSection(cdp, "Active chats");
+		await drawAtLeast(cdp, 12);
 		const start = await readList(cdp);
 		require("the panel's list has more rows than a page", start &&
 			start.rows.length >= 12, JSON.stringify({
@@ -8694,13 +8656,13 @@ async function scenePinsScrolled(cdp) {
 			await wait(150);
 		}
 		/*
-		 * Both disclosure sections are opened AGAIN here: the fourteen pins arrive through the
-		 * catalogue's own doorbell, and a section that collapses with the re-render draws no
-		 * rows at all - which is how a scene reads "no unpinned rows" off a panel that has
-		 * plenty of them.
+		 * THE LADDER IS SPENT AGAIN HERE (RE-BASED): the fourteen pins arrive
+		 * through the catalogue's own doorbell, and a re-render must not leave the
+		 * flat list on a rung that draws fewer rows than the steps below read.
+		 * There is no collapsed section to open in this design - the ladder is the
+		 * one control that withholds rows.
 		 */
-		await openSection(cdp, "Previous chats");
-		await openSection(cdp, "Active chats");
+		await drawAtLeast(cdp, 12);
 		check(
 			"the fourteen pins the daemon holds are drawn as a Pinned set",
 			drawn !== null,
@@ -9492,8 +9454,13 @@ async function scenePinsSearch(cdp) {
 		const suffix = theme === "localOperatorDark" ? "dark" : "light";
 		await verb(cdp, "setTheme", theme);
 		await wait(300);
-		await openSection(cdp, "Previous chats");
-		await openSection(cdp, "Active chats");
+		/*
+		 * RE-BASED: the pair of section presses this replaces drew the rows on main;
+		 * in this design the sections do not collapse and the page ladder is the
+		 * only thing that withholds rows, so the ladder is spent and the reads
+		 * below see the panel this scene is about.
+		 */
+		await drawAtLeast(cdp, 12);
 
 		/* ---- 1. a conversation the client's page does not hold ---------- */
 		/*
@@ -9838,8 +9805,8 @@ async function scenePinsSearch(cdp) {
 		await parkPointer(cdp);
 		await pressPointer(cdp, clearBox.x, clearBox.y);
 		await wait(400);
-		await openSection(cdp, "Active chats");
-		await openSection(cdp, "Previous chats");
+		/* The same re-base as the top of the loop: rows, not sections. */
+		await drawAtLeast(cdp, 12);
 		const seeds = (await readBackendSessions()).slice(0, 2);
 		for (const row of seeds) await setBackendPin(row.id, true);
 		const started = Date.now();
@@ -10201,12 +10168,14 @@ async function scenePins(cdp) {
 		const suffix = theme === "localOperatorDark" ? "dark" : "light";
 		await parkPointer(cdp);
 		/*
-		 * `Previous chats` starts CLOSED, so on a store nobody has opened yet the
-		 * panel draws its heading and none of its rows. The scene opens it through
-		 * the panel's own heading and waits for the rows rather than assuming a timer
-		 * is enough.
+		 * RE-BASED (measured against the redesign): `Previous chats` is gone - the
+		 * sections the view popover draws do not collapse - so nothing is opened
+		 * here. What the steps below read is the panel drawing its rows, which the
+		 * ladder withholds until spent; `readPins` then reads the panel's own pins,
+		 * which is what those steps work from.
 		 */
-		const start = await openSection(cdp, "Previous chats");
+		await drawAtLeast(cdp, 12);
+		const start = await readPins(cdp);
 		/*
 		 * WHAT THE PIN CONTROL COSTS A TITLE (design round 1, D5). Measured rather than
 		 * argued: the conversation button's own box against the withdrawn run's, where
@@ -15332,11 +15301,12 @@ async function sceneSettingsIntegrations(cdp) {
 		await cdp.send("Page.reload", { ignoreCache: false });
 		await waitForBridge(cdp);
 		/*
-		 * BACK THROUGH THE APP'S OWN ROUTES. `openSection` opens a SIDEBAR section
-		 * (it looks for a `button[data-chat-row]`), so calling it here could only
-		 * ever throw `no Integrations heading in the panel` - measured, this scene's
-		 * first run. The page under test is reached the way every earlier step
-		 * reaches it: the chat, then the settings deep link.
+		 * BACK THROUGH THE APP'S OWN ROUTES. The sidebar's own section opener could
+		 * only ever throw `no Integrations heading in the panel` here - measured, this
+		 * scene's first run; it looked for a `button[data-chat-row]`, and this page has
+		 * none. (That helper is gone from this driver now - the redesign's sections do
+		 * not collapse - so the page under test is reached the way every earlier step
+		 * reaches it: the chat, then the settings deep link.)
 		 */
 		await verb(cdp, "navigate", `/chat/${projectSession}`);
 		await waitForRoute(cdp, `/chat/${projectSession}`, 10_000);
