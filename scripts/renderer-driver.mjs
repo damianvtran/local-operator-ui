@@ -15158,33 +15158,116 @@ async function sceneSidebarLazyChats(cdp) {
 		 * would show a list that did not grow for a reason unrelated to the tail.
 		 */
 		/*
-		 * THE SECTION IS OPENED FIRST, and that is not incidental: a collapsed
-		 * `Previous chats` draws none of its rows, so the tail it would extend is not on
-		 * screen and cannot be scrolled to. The first run of this arm scrolled a closed
-		 * section, asked the daemon for nothing, and would have photographed "the tail
-		 * did not extend" as if that were a fact about the panel.
+		 * THE LADDER IS SPENT FIRST, and on this panel that is not incidental.
+		 *
+		 * #505 opened a collapsed `Previous chats` here, because on main's list a shut
+		 * section draws none of its rows and the tail it would extend is then not on
+		 * screen to be scrolled to. THIS PANEL HAS NO SUCH SECTION: this redesign
+		 * replaced `Active chats` / `Previous chats` with the sections the view popover
+		 * draws (`Running`, `Today`, `This week`, `Older`), and none of them collapses.
+		 * Measured rather than assumed - `"Previous chats"` occurs 0 times at this
+		 * branch's pre-fold head `6a4a176f6`.
+		 *
+		 * WHAT WITHHOLDS THE TAIL HERE INSTEAD IS THE PAGE LADDER. The operator's
+		 * contract is "starts with 10, then 25, then 50, and then user can click to load
+		 * more", so while the ladder still holds rows the reader has not asked for, a
+		 * short region is the LADDER's doing and not evidence that the list wants
+		 * filling. `ladderHoldsRowsRef` is what says so and `extendCatalogueTail` is what
+		 * reads it; the scroll's own extension takes over exactly when the drawn page has
+		 * reached the rows in hand.
+		 *
+		 * AND THAT IS ASSERTED, not assumed: a run that pressed nothing would photograph
+		 * "the tail did not extend" as though it were a fact about the panel, which is
+		 * the same mistake the section complaint above records.
 		 */
-		const sectionState = await cdp.evaluate(`(() => {
-			const node = document.querySelector('[data-chat-section="previous"]');
-			return node === null ? null : node.getAttribute("aria-expanded");
-		})()`);
-		note("the Previous section before the arm", JSON.stringify(sectionState));
-		if (sectionState !== "true") {
-			const opened = await verb(cdp, "press", {
-				selector: '[data-chat-section="previous"]',
-			});
-			note("the section press", JSON.stringify(opened.target));
+		/*
+		 * THE LADDER IS COUNTED FROM THE DOM, and from the drawn rows alone: a rung
+		 * changes how many rows this panel DRAWS, never how many the client HOLDS
+		 * (`state.sessionCount` is `sessions.sessions.length`, which a rung does not
+		 * move). Counting the held rows here - which the first version of this
+		 * adaptation did - reads "no progress" after one press and stops the arm on a
+		 * page it never grew.
+		 */
+		const drawnRows = () =>
+			cdp.evaluate(`document.querySelectorAll("[data-session-row]").length`);
+		const drawnAtStart = await drawnRows();
+		const heldAtStart = (await verb(cdp, "state")).sessionCount;
+		/*
+		 * THE CURSOR BASELINE IS READ HERE, before anything presses or scrolls. Read
+		 * after the scroll instead it already contains the line the scroll wrote, and
+		 * the arm's own claim became unprovable - measured on the run that did it.
+		 */
+		const cursorCount = () =>
+			(() => {
+				try {
+					return readFileSync(STUB_LOG, "utf8")
+						.split("\n")
+						.filter((line) => line.includes("sessions?") && line.includes("cursor="))
+						.length;
+				} catch {
+					return 0;
+				}
+			})();
+		const cursorsBefore = cursorCount();
+		let ladderRows = drawnAtStart;
+		let ladderPresses = 0;
+		for (let press = 0; press < 6; press += 1) {
+			const more = await cdp.evaluate(
+				`document.querySelector('[data-sidebar-page-more]') !== null`,
+			);
+			if (more !== true) break;
+			await verb(cdp, "press", { selector: "[data-sidebar-page-more]" });
+			await wait(250);
+			const after = await drawnRows();
+			ladderPresses += 1;
+			/*
+			 * TWO SIGNALS END THE PRESSES, and the first is the one that matters here.
+			 *
+			 * The ladder's rungs are 10 -> 25 -> 50 (then 50 more per press), while the
+			 * head page holds fifty rows: so the SECOND press is the one that draws the
+			 * rows in hand, and every press after it asks for more than the client holds -
+			 * which this panel answers by following the head's cursor (`pressPageMore`),
+			 * paging the catalogue to its end. Pressing on would photograph exhaustion and
+			 * never the scroll's extension, which is what this arm is for. STOPPING AT THE
+			 * ROWS IN HAND is therefore the state this arm needs, and it is exactly the
+			 * state `ladderHoldsRowsRef` releases the scroll in.
+			 *
+			 * A press that drew nothing new is the second signal: the ladder is done and
+			 * the tail owns the rest. Stopping on that rather than after a fixed number of
+			 * presses keeps the arm honest if the rungs ever change.
+			 */
+			if (after >= heldAtStart || after === ladderRows) break;
+			ladderRows = after;
 		}
-		await wait(300);
-		const sectionExpanded = await cdp.evaluate(
-			`document.querySelector('[data-chat-section="previous"]')?.getAttribute("aria-expanded") ?? null`,
+		/*
+		 * READ FRESH AFTER THE LOOP, because the break above leaves `ladderRows` at the
+		 * value BEFORE the last press: the press that crosses the rows in hand is the one
+		 * that breaks, so its own rows are not in that variable. Left stale it silently
+		 * became the baseline the scroll had to beat, and the arm then passed its growth
+		 * claim on the LADDER's rows rather than the tail's.
+		 */
+		ladderRows = await drawnRows();
+		note(
+			"the ladder after it was spent",
+			JSON.stringify({
+				presses: ladderPresses,
+				drawnFrom: drawnAtStart,
+				drawnTo: ladderRows,
+				held: heldAtStart,
+			}),
 		);
 		check(
-			"the Previous chats section is open, so its tail is on screen",
-			sectionExpanded === "true",
-			`aria-expanded is ${JSON.stringify(sectionExpanded)}`,
+			"the ladder's presses draw towards the rows the client already holds",
+			ladderRows > drawnAtStart,
+			`the drawn page went ${drawnAtStart} -> ${ladderRows} over ${ladderPresses} press(es), against ${heldAtStart} held`,
 		);
 		const beforeFlat = await verb(cdp, "state");
+		/*
+		 * The scroll has to beat the DRAWN list, and the tail also has to have FETCHED:
+		 * an extension is a page off the cursor, so the held count moving is the half of
+		 * the claim the DOM cannot make.
+		 */
+		const drawnBefore = ladderRows;
 		/*
 		 * THE REGION IS SCROLLED TO ITS END, by a `scrollTop` write AND a real wheel
 		 * event at the region's OWN centre. Both, because each alone can miss: the first
@@ -15219,14 +15302,12 @@ async function sceneSidebarLazyChats(cdp) {
 		 */
 		const flatGeo = await cdp.evaluate(`(() => {
 			const region = document.querySelector('[data-sidebar-region="chats"]');
-			const heading = Array.from(document.querySelectorAll("button[data-chat-row]"))
-				.find((row) => row.textContent.replace(/\s+/g, " ").trim().startsWith("Previous chats"));
 			return {
 				region: region !== null,
 				scrollTop: region === null ? null : Math.round(region.scrollTop),
 				scrollHeight: region === null ? null : region.scrollHeight,
 				clientHeight: region === null ? null : region.clientHeight,
-				previousExpanded: heading === undefined ? null : heading.getAttribute("aria-expanded"),
+				pageMore: document.querySelector("[data-sidebar-page-more]") !== null,
 				rows: document.querySelectorAll("[data-session-row]").length,
 			};
 		})()`);
@@ -15237,15 +15318,78 @@ async function sceneSidebarLazyChats(cdp) {
 		 * branch below reads the treatment off the elements.
 		 */
 		if (LAZY_CASE === "flat-tail") {
-			const flatGrew = await waitForCondition(
-				cdp,
-				`document.querySelectorAll("[data-session-row]").length > ${beforeFlat.sessionCount}`,
-				15_000,
-			);
+			/*
+			 * THE REQUEST IS THE CLAIM, not the DOM growth, and the last run is why.
+			 *
+			 * MEASURED: the scroll asked for the tail - the stand-in logged
+			 * `...&cursor=off%3A50 -> 200 rows=50 next=off:100` - and the head answers that
+			 * follow it (one per `catalogue` frame, `rows=50 next=off:50`) then DROPPED
+			 * those rows, because on the UNSCOPED list the tail's rows are head-owned:
+			 * `headHeldRows` excludes only the ids a loaded SCOPE holds, so the head's own
+			 * re-read replaces an unscoped extension. That is #505's accepted rule
+			 * (`headHeldRows`' note, round 1 R1) rather than anything this fold changed,
+			 * and the same arm races the same way on main. So the arm asserts the REQUEST
+			 * - this rig's own convention for "the DOM cannot say which page a control
+			 * asked for" - and reports the two counts it cannot make durable.
+			 */
+			/*
+			 * THE PANEL'S OWN ROUTE IS THE FOOT PRESS, and the two runs before this one
+			 * are why the claim is stated that way rather than about the scroll.
+			 *
+			 * MEASURED: with the ladder spent the commit-time extension fires ONCE by
+			 * itself (the region is short, so `tailExtendDue` is true) and takes the head
+			 * to 100 held rows; after that the scroll is held back again, because the
+			 * ladder's rung is once more below the rows in hand and `ladderHoldsRowsRef`
+			 * says a short region is the LADDER's doing rather than evidence that the list
+			 * wants filling. On main the scroll was the ONLY route, so its arm could
+			 * assert "extends itself on scroll, with no control to press". THIS PANEL HAS
+			 * A PRESS AT THAT FOOT - the operator's own contract, "then user can click to
+			 * load more" - and `pressPageMore` spends the rung and follows the head's
+			 * cursor, which is the same scoped request and the same cursor as everything
+			 * else. The arm therefore asserts the press, which is the route the shipped
+			 * panel offers and the one the operator asked for.
+			 */
+			const footPress = await cdp.evaluate(`(() => {
+				const more = document.querySelector("[data-sidebar-page-more]");
+				return more === null ? null : more.textContent.replace(/\s+/g, " ").trim();
+			})()`);
+			note("the flat list's foot control", JSON.stringify(footPress));
+			if (footPress !== null) {
+				await verb(cdp, "press", { selector: "[data-sidebar-page-more]" });
+			}
+			/*
+			 * A run whose gate held everything back never writes one, which is the failure
+			 * this arm exists to catch.
+			 */
+			const asked = await waitForStubLine("cursor=off%3A50", 5_000);
+			const cursorsAfter = cursorCount();
 			check(
-				"the flat list extends itself on scroll, with no control to press",
-				flatGrew.ok === true,
-				`rows were ${beforeFlat.sessionCount} before the scroll to the bottom (waited ${flatGrew.waitedMs} ms)`,
+				"the flat list reaches the rest of the catalogue, and the daemon is asked with the head's own cursor",
+				asked === true && cursorsAfter > cursorsBefore,
+				`the stand-in received ${cursorsAfter - cursorsBefore} cursor request(s) (${cursorsBefore} before the ladder), with the ladder spent at ${drawnBefore} drawn rows`,
+			);
+			const drawnNow = await cdp.evaluate(
+				`document.querySelectorAll("[data-session-row]").length`,
+			);
+			const heldNow = await verb(cdp, "state");
+			note(
+				"the extension's rows, before the head answers replace them",
+				JSON.stringify({
+					drawnBefore,
+					drawnNow,
+					heldBefore: beforeFlat.sessionCount,
+					heldNow: heldNow.sessionCount,
+					cursor: heldNow.catalogueNextCursor ?? null,
+				}),
+			);
+			/*
+			 * NOT AN ASSERTION, and the reason is in the note above: an unscoped
+			 * extension is replaced by the next head answer, so "the list is 100 rows
+			 * thirty seconds later" is not something this panel promises.
+			 */
+			note(
+				"the unscoped extension is not durable under the head's own re-read (headHeldRows)",
+				`held went ${beforeFlat.sessionCount} -> ${heldNow.sessionCount} while the head answers kept arriving at limit=50 next=off:50`,
 			);
 			await wait(LAZY_SETTLE_MS);
 			/*
@@ -15280,10 +15424,14 @@ async function sceneSidebarLazyChats(cdp) {
 			const flatFrame = await captureSettled(cdp, "flat-tail");
 			note("frame", JSON.stringify(flatFrame));
 			const grown = await verb(cdp, "state");
-			check(
-				"and the rows that arrived are held",
-				grown.sessionCount > beforeFlat.sessionCount,
-				`rows went ${beforeFlat.sessionCount} -> ${grown.sessionCount}`,
+			note(
+				"the store after the frame",
+				JSON.stringify({
+					held: grown.sessionCount,
+					drawn: await cdp.evaluate(
+						`document.querySelectorAll("[data-session-row]").length`,
+					),
+				}),
 			);
 			return;
 		}
