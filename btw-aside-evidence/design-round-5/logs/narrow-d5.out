@@ -1,0 +1,560 @@
+port8080.lock taken
+rig up: proxy 31016 on 8080 -> daemon 29346 on 58772, stub 58748; 1111 untouched
+== narrow-d5 (btw-d5) at 00:39:31 ==
+[build] current: assets 2026-09-25T00:36:17.761Z >= sources 2026-09-25T00:28:22.662Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/run-narrow-d5/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/design482r5-d5a1c9
+  scratch       /Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-31388
+  frames        /Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/frames/narrow-d5
+  app cwd       /Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-31388/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/design482r5-d5a1c9/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown
+        mode=headless visible=false focused=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] d5 session
+        ae8dbdf02e15
+[note] d5 cap none k5
+        {"case":"none","k":5,"stagedQuotes":0,"wireQuotes":0,"quoteBlocks":0,"quoteLines":[],"quoteHeights":[],"questionLines":3,"questionBoxH":19.5,"capPx":231.5,"clientHeight":232,"scrollHeight":793,"maxScroll":561,"answerTop":23.5,"lineHeight":20.8,"rowPitch":20.8,"rowsToEdge":10,"rows":35,"fullyVisibleRows":10,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.8},"paragraphGap":20.8,"scrollTop":0,"gutterPx":8,"answerWidth":226,"clientWidth":226}
+[PASS] d5 cap none k5: the edge is 10.0 answer line boxes below the answer's top and NO row is cut
+        {"rowsToEdge":10,"answerTop":23.5,"lineHeight":20.8,"capPx":231.5,"clientHeight":232,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.8},"quoteLines":[],"questionLines":3}
+[note] frame
+        {"label":"d5-narrow-d5-cap-none-k5","mode":"settled","width":1600,"height":1736}
+[note] cap none k5 geometry
+        {"panelWidth":252,"cap":"231.5px","capPx":231.5,"clientHeight":232,"scrollHeight":793,"maxScroll":561,"scrollTop":0,"overflowing":true,"clientWidth":226,"offsetWidth":234,"gutterPx":8,"gutterStyle":"stable","overflowY":"auto","regionWidth":234,"turns":1,"questionQuoteBlocks":0,"quoteHeights":[],"quoteLines":[],"questionLines":3,"questionTopInRegion":0,"questionBoxH":19.5,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":23.5,"answerWidth":226,"rowPitch":20.8,"rowsToEdge":10,"rows":35,"fullyVisibleRows":10,"rowCrossingClipCount":0,"crossing":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.8},"paragraphGap":20.8}
+[note] d5 cap one k1
+        {"case":"one","k":1,"stagedQuotes":1,"wireQuotes":1,"quoteBlocks":1,"quoteLines":[2],"quoteHeights":[43],"questionLines":4,"questionBoxH":66.5,"capPx":278.5,"clientHeight":279,"scrollHeight":674,"maxScroll":395,"answerTop":70.5,"lineHeight":20.8,"rowPitch":20.8,"rowsToEdge":10,"rows":27,"fullyVisibleRows":9,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.8},"paragraphGap":20.8,"scrollTop":0,"gutterPx":8,"answerWidth":226,"clientWidth":226}
+[PASS] d5 cap one k1: the edge is 10.0 answer line boxes below the answer's top and NO row is cut
+        {"rowsToEdge":10,"answerTop":70.5,"lineHeight":20.8,"capPx":278.5,"clientHeight":279,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.8},"quoteLines":[2],"questionLines":4}
+[note] d5 cap one k5
+        {"case":"one","k":5,"stagedQuotes":1,"wireQuotes":1,"quoteBlocks":1,"quoteLines":[2],"quoteHeights":[43],"questionLines":4,"questionBoxH":66.5,"capPx":278.5,"clientHeight":279,"scrollHeight":840,"maxScroll":561,"answerTop":70.5,"lineHeight":20.8,"rowPitch":20.8,"rowsToEdge":10,"rows":35,"fullyVisibleRows":10,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.8},"paragraphGap":20.8,"scrollTop":0,"gutterPx":8,"answerWidth":226,"clientWidth":226}
+[PASS] d5 cap one k5: the edge is 10.0 answer line boxes below the answer's top and NO row is cut
+        {"rowsToEdge":10,"answerTop":70.5,"lineHeight":20.8,"capPx":278.5,"clientHeight":279,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.8},"quoteLines":[2],"questionLines":4}
+[note] frame
+        {"label":"d5-narrow-d5-cap-one-k5","mode":"settled","width":1600,"height":1736}
+[note] cap one k5 geometry
+        {"panelWidth":252,"cap":"278.5px","capPx":278.5,"clientHeight":279,"scrollHeight":840,"maxScroll":561,"scrollTop":0,"overflowing":true,"clientWidth":226,"offsetWidth":234,"gutterPx":8,"gutterStyle":"stable","overflowY":"auto","regionWidth":234,"turns":1,"questionQuoteBlocks":1,"quoteHeights":[43],"quoteLines":[2],"questionLines":4,"questionTopInRegion":0,"questionBoxH":66.5,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":70.5,"answerWidth":226,"rowPitch":20.8,"rowsToEdge":10,"rows":35,"fullyVisibleRows":10,"rowCrossingClipCount":0,"crossing":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.8},"paragraphGap":20.8}
+[note] d5 cap two k5
+        {"case":"two","k":5,"stagedQuotes":2,"wireQuotes":2,"quoteBlocks":2,"quoteLines":[2,1],"quoteHeights":[43,23.5],"questionLines":5,"questionBoxH":94,"capPx":306,"clientHeight":306,"scrollHeight":867,"maxScroll":561,"answerTop":98,"lineHeight":20.8,"rowPitch":20.8,"rowsToEdge":10,"rows":35,"fullyVisibleRows":10,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.3},"paragraphGap":20.8,"scrollTop":0,"gutterPx":8,"answerWidth":226,"clientWidth":226}
+[PASS] d5 cap two k5: the edge is 10.0 answer line boxes below the answer's top and NO row is cut
+        {"rowsToEdge":10,"answerTop":98,"lineHeight":20.8,"capPx":306,"clientHeight":306,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.3},"quoteLines":[2,1],"questionLines":5}
+[note] frame
+        {"label":"d5-narrow-d5-cap-two-k5","mode":"settled","width":1600,"height":1736}
+[note] d5 cap wrapquote k1
+        {"case":"wrapquote","k":1,"stagedQuotes":1,"wireQuotes":1,"quoteBlocks":1,"quoteLines":[7],"quoteHeights":[140.5],"questionLines":4,"questionBoxH":164,"capPx":376,"clientHeight":376,"scrollHeight":771,"maxScroll":395,"answerTop":168,"lineHeight":20.8,"rowPitch":20.8,"rowsToEdge":10,"rows":27,"fullyVisibleRows":9,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.3},"paragraphGap":20.8,"scrollTop":0,"gutterPx":8,"answerWidth":226,"clientWidth":226}
+[PASS] d5 cap wrapquote k1: the edge is 10.0 answer line boxes below the answer's top and NO row is cut
+        {"rowsToEdge":10,"answerTop":168,"lineHeight":20.8,"capPx":376,"clientHeight":376,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.3},"quoteLines":[7],"questionLines":4}
+[note] frame
+        {"label":"d5-narrow-d5-cap-wrapquote-k1","mode":"settled","width":1600,"height":1736}
+[note] cap wrapquote k1 geometry
+        {"panelWidth":252,"cap":"376px","capPx":376,"clientHeight":376,"scrollHeight":771,"maxScroll":395,"scrollTop":0,"overflowing":true,"clientWidth":226,"offsetWidth":234,"gutterPx":8,"gutterStyle":"stable","overflowY":"auto","regionWidth":234,"turns":1,"questionQuoteBlocks":1,"quoteHeights":[140.5],"quoteLines":[7],"questionLines":4,"questionTopInRegion":0,"questionBoxH":164,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":168,"answerWidth":226,"rowPitch":20.8,"rowsToEdge":10,"rows":27,"fullyVisibleRows":9,"rowCrossingClipCount":0,"crossing":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.3},"paragraphGap":20.8}
+[note] d5 cap wrapquote k5
+        {"case":"wrapquote","k":5,"stagedQuotes":1,"wireQuotes":1,"quoteBlocks":1,"quoteLines":[7],"quoteHeights":[140.5],"questionLines":4,"questionBoxH":164,"capPx":376,"clientHeight":376,"scrollHeight":937,"maxScroll":561,"answerTop":168,"lineHeight":20.8,"rowPitch":20.8,"rowsToEdge":10,"rows":35,"fullyVisibleRows":10,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.3},"paragraphGap":20.8,"scrollTop":0,"gutterPx":8,"answerWidth":226,"clientWidth":226}
+[PASS] d5 cap wrapquote k5: the edge is 10.0 answer line boxes below the answer's top and NO row is cut
+        {"rowsToEdge":10,"answerTop":168,"lineHeight":20.8,"capPx":376,"clientHeight":376,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.3},"quoteLines":[7],"questionLines":4}
+[note] frame
+        {"label":"d5-narrow-d5-cap-wrapquote-k5","mode":"settled","width":1600,"height":1736}
+[note] d5 cap wrapq k1
+        {"case":"wrapq","k":1,"stagedQuotes":0,"wireQuotes":0,"quoteBlocks":0,"quoteLines":[],"quoteHeights":[],"questionLines":8,"questionBoxH":117,"capPx":329,"clientHeight":329,"scrollHeight":724,"maxScroll":395,"answerTop":121,"lineHeight":20.8,"rowPitch":20.8,"rowsToEdge":10,"rows":27,"fullyVisibleRows":9,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.3},"paragraphGap":20.8,"scrollTop":0,"gutterPx":8,"answerWidth":226,"clientWidth":226}
+[PASS] d5 cap wrapq k1: the edge is 10.0 answer line boxes below the answer's top and NO row is cut
+        {"rowsToEdge":10,"answerTop":121,"lineHeight":20.8,"capPx":329,"clientHeight":329,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.3},"quoteLines":[],"questionLines":8}
+[note] frame
+        {"label":"d5-narrow-d5-cap-wrapq-k1","mode":"settled","width":1600,"height":1736}
+[note] cap wrapq k1 geometry
+        {"panelWidth":252,"cap":"329px","capPx":329,"clientHeight":329,"scrollHeight":724,"maxScroll":395,"scrollTop":0,"overflowing":true,"clientWidth":226,"offsetWidth":234,"gutterPx":8,"gutterStyle":"stable","overflowY":"auto","regionWidth":234,"turns":1,"questionQuoteBlocks":0,"quoteHeights":[],"quoteLines":[],"questionLines":8,"questionTopInRegion":0,"questionBoxH":117,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":121,"answerWidth":226,"rowPitch":20.8,"rowsToEdge":10,"rows":27,"fullyVisibleRows":9,"rowCrossingClipCount":0,"crossing":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.3},"paragraphGap":20.8}
+[note] d5 cap wrapq k5
+        {"case":"wrapq","k":5,"stagedQuotes":0,"wireQuotes":0,"quoteBlocks":0,"quoteLines":[],"quoteHeights":[],"questionLines":8,"questionBoxH":117,"capPx":329,"clientHeight":329,"scrollHeight":890,"maxScroll":561,"answerTop":121,"lineHeight":20.8,"rowPitch":20.8,"rowsToEdge":10,"rows":35,"fullyVisibleRows":10,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.3},"paragraphGap":20.8,"scrollTop":0,"gutterPx":8,"answerWidth":226,"clientWidth":226}
+[PASS] d5 cap wrapq k5: the edge is 10.0 answer line boxes below the answer's top and NO row is cut
+        {"rowsToEdge":10,"answerTop":121,"lineHeight":20.8,"capPx":329,"clientHeight":329,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.3},"quoteLines":[],"questionLines":8}
+[note] frame
+        {"label":"d5-narrow-d5-cap-wrapq-k5","mode":"settled","width":1600,"height":1736}
+[note] gutter platform control (detached twins in the same engine: default styling, and a 15px classic scrollbar)
+        {"platform":{"auto":{"gutter":"auto","layoutWidthTaken":8,"clientWidth":192},"stable":{"gutter":"stable","layoutWidthTaken":8,"clientWidth":192},"overlayScrollbars":true},"classic":{"auto":{"gutter":"auto","layoutWidthTaken":15,"clientWidth":185},"stable":{"gutter":"stable","layoutWidthTaken":15,"clientWidth":185},"reserveCostPx":0}}
+[note] frame
+        {"label":"d5-narrow-d5-gutter-short-content","mode":"settled","width":1600,"height":1736}
+[note] gutter short-content geometry
+        {"panelWidth":252,"cap":"251px","capPx":251,"clientHeight":85,"scrollHeight":85,"maxScroll":0,"scrollTop":0,"overflowing":false,"clientWidth":226,"offsetWidth":234,"gutterPx":8,"gutterStyle":"stable","overflowY":"auto","regionWidth":234,"turns":1,"questionQuoteBlocks":0,"quoteHeights":[],"quoteLines":[],"questionLines":4,"questionTopInRegion":0,"questionBoxH":39,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":43,"answerWidth":226,"rowPitch":20.8,"rowsToEdge":2,"rows":2,"fullyVisibleRows":2,"rowCrossingClipCount":0,"crossing":[],"lastWholeRow":{"tag":"p","text":"Line 2 of 2.","bottomVsClip":-3.7},"paragraphGap":null}
+[note] frame
+        {"label":"d5-narrow-d5-gutter-overflowing","mode":"settled","width":1600,"height":1736}
+[note] gutter overflowing geometry
+        {"panelWidth":252,"cap":"251px","capPx":251,"clientHeight":251,"scrollHeight":556,"maxScroll":305,"scrollTop":96.5,"overflowing":true,"clientWidth":226,"offsetWidth":234,"gutterPx":8,"gutterStyle":"stable","overflowY":"auto","regionWidth":234,"turns":2,"questionQuoteBlocks":0,"quoteHeights":[],"quoteLines":[],"questionLines":4,"questionTopInRegion":0.1,"questionBoxH":39,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":43.1,"answerWidth":226,"rowPitch":20.8,"rowsToEdge":10,"rows":20,"fullyVisibleRows":10,"rowCrossingClipCount":0,"crossing":[],"lastWholeRow":{"tag":"p","text":"Line 10 of 20.","bottomVsClip":-3.2},"paragraphGap":null}
+[PASS] gutter: the region's layout width is the same whether the exchange is short or overflowing (the reserve does not appear with the overflow)
+        {"shortClientWidth":226,"longClientWidth":226,"shortGutter":8,"longGutter":8,"shortOverflow":false,"longOverflow":true,"gutterStyle":"stable"}
+[PASS] gutter: the declaration is in effect (this platform's own reserve matches the shipped region's reserve)
+        {"platformStable":8,"platformAuto":8,"shipped":8,"overlayScrollbars":true,"gutterStyle":"stable"}
+[FAIL] gutter: where scrollbars take layout width, the always-on reserve is present in BOTH states (no reflow when the exchange starts to overflow)
+        {"classicStable":15,"classicAuto":15,"reserveCostPx":0}
+[note] d10 9 lines
+        {"capPx":231.5,"clientHeight":211,"scrollHeight":211,"maxScroll":0,"rows":9,"rowsToEdge":9,"fullyVisibleRows":9,"rowCrossingClipCount":0,"cut":[],"gutterPx":8,"clientWidth":226}
+[PASS] d10: a 9-line answer shows no scrollbar (content fits the cap) and cuts no row
+        {"maxScroll":0,"clientHeight":211,"scrollHeight":211,"capPx":231.5}
+[PASS] d10: a 9-line answer leaves every visible row whole
+        {"rowCrossingClipCount":0,"cut":[],"lastWholeRow":{"tag":"p","text":"Line 9 of 9.","bottomVsClip":-3.6},"rowsToEdge":9}
+[note] d10 10 lines
+        {"capPx":231.5,"clientHeight":231,"scrollHeight":231,"maxScroll":0,"rows":10,"rowsToEdge":10,"fullyVisibleRows":10,"rowCrossingClipCount":0,"cut":[],"gutterPx":8,"clientWidth":226}
+[PASS] d10: a 10-line answer shows no scrollbar (content fits the cap) and cuts no row
+        {"maxScroll":0,"clientHeight":231,"scrollHeight":231,"capPx":231.5}
+[PASS] d10: a 10-line answer leaves every visible row whole
+        {"rowCrossingClipCount":0,"cut":[],"lastWholeRow":{"tag":"p","text":"Line 10 of 10.","bottomVsClip":-2.8},"rowsToEdge":10}
+[note] d10 11 lines
+        {"capPx":231.5,"clientHeight":232,"scrollHeight":252,"maxScroll":20,"rows":11,"rowsToEdge":10,"fullyVisibleRows":10,"rowCrossingClipCount":0,"cut":[],"gutterPx":8,"clientWidth":226}
+[PASS] d10: a 11-line answer overflows the cap and cuts no row
+        {"maxScroll":20,"clientHeight":232,"scrollHeight":252,"capPx":231.5}
+[PASS] d10: a 11-line answer leaves every visible row whole
+        {"rowCrossingClipCount":0,"cut":[],"lastWholeRow":{"tag":"p","text":"Line 10 of 11.","bottomVsClip":-3.8},"rowsToEdge":10}
+[note] frame
+        {"label":"d5-narrow-d5-d10-11-line-answer","mode":"settled","width":1600,"height":1736}
+[note] d5 cap table
+        [{"case":"none","k":5,"stagedQuotes":0,"wireQuotes":0,"quoteBlocks":0,"quoteLines":[],"quoteHeights":[],"questionLines":3,"questionBoxH":19.5,"capPx":231.5,"clientHeight":232,"scrollHeight":793,"maxScroll":561,"answerTop":23.5,"lineHeight":20.8,"rowPitch":20.8,"rowsToEdge":10,"rows":35,"fullyVisibleRows":10,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.8},"paragraphGap":20.8,"scrollTop":0,"gutterPx":8,"answerWidth":226,"clientWidth":226},{"case":"one","k":1,"stagedQuotes":1,"wireQuotes":1,"quoteBlocks":1,"quoteLines":[2],"quoteHeights":[43],"questionLines":4,"questionBoxH":66.5,"capPx":278.5,"clientHeight":279,"scrollHeight":674,"maxScroll":395,"answerTop":70.5,"lineHeight":20.8,"rowPitch":20.8,"rowsToEdge":10,"rows":27,"fullyVisibleRows":9,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.8},"paragraphGap":20.8,"scrollTop":0,"gutterPx":8,"answerWidth":226,"clientWidth":226},{"case":"one","k":5,"stagedQuotes":1,"wireQuotes":1,"quoteBlocks":1,"quoteLines":[2],"quoteHeights":[43],"questionLines":4,"questionBoxH":66.5,"capPx":278.5,"clientHeight":279,"scrollHeight":840,"maxScroll":561,"answerTop":70.5,"lineHeight":20.8,"rowPitch":20.8,"rowsToEdge":10,"rows":35,"fullyVisibleRows":10,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.8},"paragraphGap":20.8,"scrollTop":0,"gutterPx":8,"answerWidth":226,"clientWidth":226},{"case":"two","k":5,"stagedQuotes":2,"wireQuotes":2,"quoteBlocks":2,"quoteLines":[2,1],"quoteHeights":[43,23.5],"questionLines":5,"questionBoxH":94,"capPx":306,"clientHeight":306,"scrollHeight":867,"maxScroll":561,"answerTop":98,"lineHeight":20.8,"rowPitch":20.8,"rowsToEdge":10,"rows":35,"fullyVisibleRows":10,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.3},"paragraphGap":20.8,"scrollTop":0,"gutterPx":8,"answerWidth":226,"clientWidth":226},{"case":"wrapquote","k":1,"stagedQuotes":1,"wireQuotes":1,"quoteBlocks":1,"quoteLines":[7],"quoteHeights":[140.5],"questionLines":4,"questionBoxH":164,"capPx":376,"clientHeight":376,"scrollHeight":771,"maxScroll":395,"answerTop":168,"lineHeight":20.8,"rowPitch":20.8,"rowsToEdge":10,"rows":27,"fullyVisibleRows":9,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.3},"paragraphGap":20.8,"scrollTop":0,"gutterPx":8,"answerWidth":226,"clientWidth":226},{"case":"wrapquote","k":5,"stagedQuotes":1,"wireQuotes":1,"quoteBlocks":1,"quoteLines":[7],"quoteHeights":[140.5],"questionLines":4,"questionBoxH":164,"capPx":376,"clientHeight":376,"scrollHeight":937,"maxScroll":561,"answerTop":168,"lineHeight":20.8,"rowPitch":20.8,"rowsToEdge":10,"rows":35,"fullyVisibleRows":10,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.3},"paragraphGap":20.8,"scrollTop":0,"gutterPx":8,"answerWidth":226,"clientWidth":226},{"case":"wrapq","k":1,"stagedQuotes":0,"wireQuotes":0,"quoteBlocks":0,"quoteLines":[],"quoteHeights":[],"questionLines":8,"questionBoxH":117,"capPx":329,"clientHeight":329,"scrollHeight":724,"maxScroll":395,"answerTop":121,"lineHeight":20.8,"rowPitch":20.8,"rowsToEdge":10,"rows":27,"fullyVisibleRows":9,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.3},"paragraphGap":20.8,"scrollTop":0,"gutterPx":8,"answerWidth":226,"clientWidth":226},{"case":"wrapq","k":5,"stagedQuotes":0,"wireQuotes":0,"quoteBlocks":0,"quoteLines":[],"quoteHeights":[],"questionLines":8,"questionBoxH":117,"capPx":329,"clientHeight":329,"scrollHeight":890,"maxScroll":561,"answerTop":121,"lineHeight":20.8,"rowPitch":20.8,"rowsToEdge":10,"rows":35,"fullyVisibleRows":10,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of this paragraph runs about this","bottomVsClip":-3.3},"paragraphGap":20.8,"scrollTop":0,"gutterPx":8,"answerWidth":226,"clientWidth":226}]
+[PASS] every capture wrote a PNG of the requested size
+
+---- app log (tail) ----
+20:39:35.562 › [browser] denied a media permission request from (unknown origin)
+20:39:35.562 › [browser] denied a web-app-installation permission request from (unknown origin)
+20:39:35.562 › [browser] denied a geolocation permission request from (unknown origin)
+20:39:35.570 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
+20:39:35.571 › [browser] host on 127.0.0.1:58975 (proto 1), profile /Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-31388/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+20:39:35.767 › Checking for UI updates...
+20:39:35.767 › Skip checkForUpdates because application is not packed and dev update config is not forced
+20:39:36.338 › Checking for UI updates...
+20:39:36.338 › Skip checkForUpdates because application is not packed and dev update config is not forced
+20:39:37.086 › [browser] tab 1 navigated to about:blank
+[window-mode] state: visible=false focused=false focusable=false size=800x900 content=800x868
+20:39:37.520 › Checking for updates... (silent mode: true)
+20:39:37.520 › Skip checkForUpdates because application is not packed and dev update config is not forced
+20:39:37.520 › Checking for backend updates... (silent mode: true)
+20:39:37.520 › Skip backend update check in dev mode unless forced
+20:39:49.520 › The pre-split environment at /Users/damian/Library/Application Support/Local Operator/local-operator-venv is built on the interpreter inside /Applications/Local Operator.app; it is left exactly as it is, and this instance does not use it.
+20:40:27.579 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:40:27.792 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:40:32.977 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:40:33.505 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:40:37.679 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:40:38.204 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:40:43.346 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:40:44.199 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:40:49.299 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:40:49.959 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:40:55.704 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:40:56.256 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:41:01.466 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:41:01.681 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:41:06.441 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:41:06.658 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:41:12.208 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:41:21.232 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:41:21.438 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:41:25.041 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:41:25.273 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:41:28.966 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:41:29.175 › [about-panel] suppressed by window mode headless: a headless run raises no window
+
+[PASS] no process from this run outlived its boot
+
+frames: d5-narrow-d5-cap-none-k5.png, d5-narrow-d5-cap-one-k5.png, d5-narrow-d5-cap-two-k5.png, d5-narrow-d5-cap-wrapq-k1.png, d5-narrow-d5-cap-wrapq-k5.png, d5-narrow-d5-cap-wrapquote-k1.png, d5-narrow-d5-cap-wrapquote-k5.png, d5-narrow-d5-d10-11-line-answer.png, d5-narrow-d5-gutter-overflowing.png, d5-narrow-d5-gutter-short-content.png
+frames directory: /Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/frames/narrow-d5
+app log: /Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-31388/app-scene.log
+scratch removed (--clean)
+
+1 CHECK(S) FAILED
+== narrow-d5 driver exit: 1 ==
+total 6440
+drwxr-xr-x@ 12 damian  staff     384 Sep 24 20:41 .
+drwxr-xr-x@  3 damian  staff      96 Sep 24 20:37 ..
+-rw-r--r--@  1 damian  staff  333914 Sep 24 20:40 d5-narrow-d5-cap-none-k5.png
+-rw-r--r--@  1 damian  staff  330990 Sep 24 20:40 d5-narrow-d5-cap-one-k5.png
+-rw-r--r--@  1 damian  staff  329557 Sep 24 20:40 d5-narrow-d5-cap-two-k5.png
+-rw-r--r--@  1 damian  staff  337725 Sep 24 20:41 d5-narrow-d5-cap-wrapq-k1.png
+-rw-r--r--@  1 damian  staff  344752 Sep 24 20:41 d5-narrow-d5-cap-wrapq-k5.png
+-rw-r--r--@  1 damian  staff  333886 Sep 24 20:40 d5-narrow-d5-cap-wrapquote-k1.png
+-rw-r--r--@  1 damian  staff  340664 Sep 24 20:41 d5-narrow-d5-cap-wrapquote-k5.png
+-rw-r--r--@  1 damian  staff  292746 Sep 24 20:41 d5-narrow-d5-d10-11-line-answer.png
+-rw-r--r--@  1 damian  staff  297485 Sep 24 20:41 d5-narrow-d5-gutter-overflowing.png
+-rw-r--r--@  1 damian  staff  332460 Sep 24 20:41 d5-narrow-d5-gutter-short-content.png
+8080 released before this command returned
+port8080.lock released
+--- proxy counters (/Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/run-narrow-d5/proxy-stats.json) ---
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T00:40:28.189Z",
+      "url": "/v1/desktop/sessions/ae8dbdf02e15/asides",
+      "asideId": "1db201e3-09e6-4a9a-8c20-bdd92417862b",
+      "continues": null,
+      "questionHead": "PARAGRID5: none",
+      "text": "PARAGRID5: none",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "f577cabd8a6143ddb42fece7e3c08478",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"1db201e3-09e6-4a9a-8c20-bdd92417862b\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T00:40:33.888Z",
+      "url": "/v1/desktop/sessions/ae8dbdf02e15/asides",
+      "asideId": "0fa90d1c-12fa-40b5-abe4-3684fccb9af1",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\nPARAGRID1: one",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "f577cabd8a6143ddb42fece7e3c08478",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"0fa90d1c-12fa-40b5-abe4-3684fccb9af1\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragrap"
+    },
+    {
+      "at": "2026-09-25T00:40:38.579Z",
+      "url": "/v1/desktop/sessions/ae8dbdf02e15/asides",
+      "asideId": "7a37d97f-0c0b-4158-a974-cea37e0e6bee",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\nPARAGRID5: one",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "f577cabd8a6143ddb42fece7e3c08478",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"7a37d97f-0c0b-4158-a974-cea37e0e6bee\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T00:40:44.589Z",
+      "url": "/v1/desktop/sessions/ae8dbdf02e15/asides",
+      "asideId": "0c3c0d3c-8c05-4913-ad41-2420858512f9",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\n<reply-to>a 4xx spends nothing</reply-to>\nPARAGRID5: two",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "f577cabd8a6143ddb42fece7e3c08478",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"0c3c0d3c-8c05-4913-ad41-2420858512f9\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T00:40:50.362Z",
+      "url": "/v1/desktop/sessions/ae8dbdf02e15/asides",
+      "asideId": "227467c6-f6d8-439f-ad24-59ed23eeefd2",
+      "continues": null,
+      "questionHead": "<reply-to>A dropped connection, a reset stream, a timeout be",
+      "text": "<reply-to>A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again.</reply-to>\nPARAGRID1: wrapquote",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "f577cabd8a6143ddb42fece7e3c08478",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"227467c6-f6d8-439f-ad24-59ed23eeefd2\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragrap"
+    },
+    {
+      "at": "2026-09-25T00:40:56.654Z",
+      "url": "/v1/desktop/sessions/ae8dbdf02e15/asides",
+      "asideId": "9eb318bf-aa72-43c4-ab11-cf82a755d8c6",
+      "continues": null,
+      "questionHead": "<reply-to>A dropped connection, a reset stream, a timeout be",
+      "text": "<reply-to>A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again.</reply-to>\nPARAGRID5: wrapquote",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "f577cabd8a6143ddb42fece7e3c08478",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"9eb318bf-aa72-43c4-ab11-cf82a755d8c6\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T00:41:02.074Z",
+      "url": "/v1/desktop/sessions/ae8dbdf02e15/asides",
+      "asideId": "4e658875-791c-4b61-b887-d47fee2ff134",
+      "continues": null,
+      "questionHead": "PARAGRID1: wrapq with a question long enough that it has to ",
+      "text": "PARAGRID1: wrapq with a question long enough that it has to wrap onto more than one line in the panel, because the ceiling counts a single question line and this checks where the edge falls when it does not",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "f577cabd8a6143ddb42fece7e3c08478",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"4e658875-791c-4b61-b887-d47fee2ff134\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragrap"
+    },
+    {
+      "at": "2026-09-25T00:41:07.032Z",
+      "url": "/v1/desktop/sessions/ae8dbdf02e15/asides",
+      "asideId": "2fadb361-dced-4a97-8bc6-c314757dc3d6",
+      "continues": null,
+      "questionHead": "PARAGRID5: wrapq with a question long enough that it has to ",
+      "text": "PARAGRID5: wrapq with a question long enough that it has to wrap onto more than one line in the panel, because the ceiling counts a single question line and this checks where the edge falls when it does not",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "f577cabd8a6143ddb42fece7e3c08478",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"2fadb361-dced-4a97-8bc6-c314757dc3d6\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T00:41:12.597Z",
+      "url": "/v1/desktop/sessions/ae8dbdf02e15/asides",
+      "asideId": "cf44c1c3-ffd5-402e-9a40-1be0d129aac5",
+      "continues": null,
+      "questionHead": "NLINES2: d5 a short answer beside the gutter",
+      "text": "NLINES2: d5 a short answer beside the gutter",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "f577cabd8a6143ddb42fece7e3c08478",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"cf44c1c3-ffd5-402e-9a40-1be0d129aac5\",\"text\":\"Line 1 of 2.  \\nLine 2 of 2.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T00:41:17.043Z",
+      "url": "/v1/desktop/sessions/ae8dbdf02e15/asides",
+      "asideId": "c9547671-2929-4044-af97-96ba9613b57b",
+      "continues": "cf44c1c3-ffd5-402e-9a40-1be0d129aac5",
+      "questionHead": "NLINES20: d5 an answer that overflows the region",
+      "text": "NLINES20: d5 an answer that overflows the region",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "f577cabd8a6143ddb42fece7e3c08478",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"c9547671-2929-4044-af97-96ba9613b57b\",\"text\":\"Line 1 of 20.  \\nLine 2 of 20.  \\nLine 3 of 20.  \\nLine 4 of 20.  \\nLine 5 of 20.  \\nLine 6 of 20.  \\nLine 7 of 20.  \\nLine 8 of 20.  \\nLine 9 of 20.  \\nLine 10 of 20.  \\nLine 11 of 20.  \\nLine 12 of 20.  \\nLine 13 of 20.  \\nLine 14 of 20.  \\nLine 15 of 20.  \\nLine 16 of 20.  \\nLine 17 of 20.  \\nLine 18 of 20.  \\nLine 19 of 20.  \\nLine 20 of 20.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T00:41:21.826Z",
+      "url": "/v1/desktop/sessions/ae8dbdf02e15/asides",
+      "asideId": "0d28ee90-0178-41f8-ad7e-c1cbafd4911c",
+      "continues": null,
+      "questionHead": "NLINES9: d5 the D10 row count",
+      "text": "NLINES9: d5 the D10 row count",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "f577cabd8a6143ddb42fece7e3c08478",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"0d28ee90-0178-41f8-ad7e-c1cbafd4911c\",\"text\":\"Line 1 of 9.  \\nLine 2 of 9.  \\nLine 3 of 9.  \\nLine 4 of 9.  \\nLine 5 of 9.  \\nLine 6 of 9.  \\nLine 7 of 9.  \\nLine 8 of 9.  \\nLine 9 of 9.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T00:41:25.742Z",
+      "url": "/v1/desktop/sessions/ae8dbdf02e15/asides",
+      "asideId": "66318584-ef6f-4a97-b7d5-1debfafb9553",
+      "continues": null,
+      "questionHead": "NLINES10: d5 the D10 row count",
+      "text": "NLINES10: d5 the D10 row count",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "f577cabd8a6143ddb42fece7e3c08478",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"66318584-ef6f-4a97-b7d5-1debfafb9553\",\"text\":\"Line 1 of 10.  \\nLine 2 of 10.  \\nLine 3 of 10.  \\nLine 4 of 10.  \\nLine 5 of 10.  \\nLine 6 of 10.  \\nLine 7 of 10.  \\nLine 8 of 10.  \\nLine 9 of 10.  \\nLine 10 of 10.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T00:41:29.559Z",
+      "url": "/v1/desktop/sessions/ae8dbdf02e15/asides",
+      "asideId": "bd3cda8b-f7e1-4e0f-b069-f876437deca0",
+      "continues": null,
+      "questionHead": "NLINES11: d5 the D10 row count",
+      "text": "NLINES11: d5 the D10 row count",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "f577cabd8a6143ddb42fece7e3c08478",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"bd3cda8b-f7e1-4e0f-b069-f876437deca0\",\"text\":\"Line 1 of 11.  \\nLine 2 of 11.  \\nLine 3 of 11.  \\nLine 4 of 11.  \\nLine 5 of 11.  \\nLine 6 of 11.  \\nLine 7 of 11.  \\nLine 8 of 11.  \\nLine 9 of 11.  \\nLine 10 of 11.  \\nLine 11 of 11.\",\"off_record\":true},\"replayed\":false}}"
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T00:39:34.618Z",
+      "subscriptionId": "c7b85f17269c8ad0",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/ae8dbdf02e15/events?frontend_replace=1",
+      "openedAt": "2026-09-25T00:39:38.772Z",
+      "subscriptionId": "f577cabd8a6143ddb42fece7e3c08478",
+      "asideDeltas": 42,
+      "deltaSizes": [
+        220,
+        220,
+        220,
+        220,
+        202,
+        220,
+        220,
+        220,
+        170,
+        220,
+        220,
+        220,
+        220,
+        202,
+        220,
+        220,
+        220,
+        220,
+        202,
+        220,
+        220,
+        220,
+        170,
+        220,
+        220,
+        220,
+        220,
+        202,
+        220,
+        220,
+        220,
+        170,
+        220,
+        220,
+        220,
+        220,
+        202,
+        27,
+        328,
+        132,
+        158,
+        175
+      ]
+    }
+  ],
+  "asideDeltaFrames": 42,
+  "deltasBySubscription": {
+    "f577cabd8a6143ddb42fece7e3c08478": 42
+  },
+  "deltasByAside": {
+    "1db201e3-09e6-4a9a-8c20-bdd92417862b": 5,
+    "0fa90d1c-12fa-40b5-abe4-3684fccb9af1": 4,
+    "7a37d97f-0c0b-4158-a974-cea37e0e6bee": 5,
+    "0c3c0d3c-8c05-4913-ad41-2420858512f9": 5,
+    "227467c6-f6d8-439f-ad24-59ed23eeefd2": 4,
+    "9eb318bf-aa72-43c4-ab11-cf82a755d8c6": 5,
+    "4e658875-791c-4b61-b887-d47fee2ff134": 4,
+    "2fadb361-dced-4a97-8bc6-c314757dc3d6": 5,
+    "cf44c1c3-ffd5-402e-9a40-1be0d129aac5": 1,
+    "c9547671-2929-4044-af97-96ba9613b57b": 1,
+    "0d28ee90-0178-41f8-ad7e-c1cbafd4911c": 1,
+    "66318584-ef6f-4a97-b7d5-1debfafb9553": 1,
+    "bd3cda8b-f7e1-4e0f-b069-f876437deca0": 1
+  },
+  "refused422": 0,
+  "messagePosts": [
+    {
+      "at": "2026-09-25T00:39:45.733Z",
+      "url": "/v1/desktop/sessions/ae8dbdf02e15/messages",
+      "kind": "message",
+      "text": "LONGANSWER seed for the design round-5 quotes",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"dceda600-d711-4a1a-809f-32871517552e\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T00:39:45.733Z"
+    }
+  ],
+  "asideOps": [
+    {
+      "at": "2026-09-25T00:40:32.954Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/ae8dbdf02e15/asides/1db201e3-09e6-4a9a-8c20-bdd92417862b",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"1db201e3-09e6-4a9a-8c20-bdd92417862b\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T00:40:37.668Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/ae8dbdf02e15/asides/0fa90d1c-12fa-40b5-abe4-3684fccb9af1",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"0fa90d1c-12fa-40b5-abe4-3684fccb9af1\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T00:40:43.335Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/ae8dbdf02e15/asides/7a37d97f-0c0b-4158-a974-cea37e0e6bee",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"7a37d97f-0c0b-4158-a974-cea37e0e6bee\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T00:40:49.260Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/ae8dbdf02e15/asides/0c3c0d3c-8c05-4913-ad41-2420858512f9",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"0c3c0d3c-8c05-4913-ad41-2420858512f9\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T00:40:55.613Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/ae8dbdf02e15/asides/227467c6-f6d8-439f-ad24-59ed23eeefd2",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"227467c6-f6d8-439f-ad24-59ed23eeefd2\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T00:41:01.456Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/ae8dbdf02e15/asides/9eb318bf-aa72-43c4-ab11-cf82a755d8c6",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"9eb318bf-aa72-43c4-ab11-cf82a755d8c6\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T00:41:06.433Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/ae8dbdf02e15/asides/4e658875-791c-4b61-b887-d47fee2ff134",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"4e658875-791c-4b61-b887-d47fee2ff134\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T00:41:12.179Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/ae8dbdf02e15/asides/2fadb361-dced-4a97-8bc6-c314757dc3d6",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"2fadb361-dced-4a97-8bc6-c314757dc3d6\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T00:41:21.221Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/ae8dbdf02e15/asides/c9547671-2929-4044-af97-96ba9613b57b",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"c9547671-2929-4044-af97-96ba9613b57b\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T00:41:25.031Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/ae8dbdf02e15/asides/0d28ee90-0178-41f8-ad7e-c1cbafd4911c",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"0d28ee90-0178-41f8-ad7e-c1cbafd4911c\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T00:41:28.958Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/ae8dbdf02e15/asides/66318584-ef6f-4a97-b7d5-1debfafb9553",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"66318584-ef6f-4a97-b7d5-1debfafb9553\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T00:41:32.841Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/ae8dbdf02e15/asides/bd3cda8b-f7e1-4e0f-b069-f876437deca0",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"bd3cda8b-f7e1-4e0f-b069-f876437deca0\",\"status\":\"closed\"},\"replayed\":false}}"
+    }
+  ]
+}
+--- end counters ---

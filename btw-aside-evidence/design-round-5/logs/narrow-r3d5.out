@@ -1,0 +1,545 @@
+port8080.lock taken
+rig up: proxy 21915 on 8080 -> daemon 20507 on 50330, stub 50270; 1111 untouched
+== narrow-r3d5 (btw-r3design) at 00:55:37 ==
+[build] current: assets 2026-09-25T00:36:17.761Z >= sources 2026-09-25T00:28:22.662Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/run-narrow-r3d5/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/design482r5-d5a1c9
+  scratch       /Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-22229
+  frames        /Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/frames/narrow-r3d5
+  app cwd       /Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-22229/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/design482r5-d5a1c9/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown
+[note] r3 rest
+        {"placeholder":"Ask me for help","fieldValue":"","sendLabel":"Send message","panel":false,"alerts":[],"workingLine":null,"active":"textarea[Message]"}
+[note] r3 D10 9-line answer
+        {"region":{"x":533,"y":283.3,"w":234,"h":210.7,"bottom":494,"styleMaxHeight":"calc(var(--text-body-sm) * 1.6 * 10 + 19.5px + 0.25rem)","computedMaxHeight":"231.5px","clientHeight":211,"scrollHeight":211,"scrollTop":0,"overflowPx":0,"hasScrollbar":false},"lineCount":10,"cutLines":[],"lastLineBottomVsRegion":-3.3,"turns":[{"top":0,"h":210.7,"offsetTop":283,"text":"Question: NLINES9Line 1 of 9. Line 2 of 9. Line 3 "}]}
+[PASS] r3 D10: a 9-line answer shows no scrollbar
+[note] frame
+        {"label":"r3-narrow-r3d5-01-9-line-answer","stable":true,"width":1600,"height":1736}
+[note] r3 D10 10-line answer
+        {"region":{"x":533,"y":272.9,"w":234,"h":231.5,"bottom":504.4,"styleMaxHeight":"calc(var(--text-body-sm) * 1.6 * 10 + 19.5px + 0.25rem)","computedMaxHeight":"231.5px","clientHeight":231,"scrollHeight":231,"scrollTop":0,"overflowPx":0,"hasScrollbar":false},"lineCount":11,"cutLines":[],"lastLineBottomVsRegion":-3.3,"turns":[{"top":0,"h":231.5,"offsetTop":273,"text":"Question: NLINES10Line 1 of 10. Line 2 of 10. Line"}]}
+[PASS] r3 D10: a 10-line answer shows no scrollbar
+[note] r3 D10 11-line answer
+        {"region":{"x":533,"y":272.9,"w":234,"h":231.5,"bottom":504.4,"styleMaxHeight":"calc(var(--text-body-sm) * 1.6 * 10 + 19.5px + 0.25rem)","computedMaxHeight":"231.5px","clientHeight":232,"scrollHeight":252,"scrollTop":0,"overflowPx":20,"hasScrollbar":true},"lineCount":12,"cutLines":[],"lastLineBottomVsRegion":17.5,"turns":[{"top":0,"h":252.3,"offsetTop":273,"text":"Question: NLINES11Line 1 of 11. Line 2 of 11. Line"}]}
+[PASS] r3 D10: a 11-line answer overflows with no line cut at rest
+[note] frame
+        {"label":"r3-narrow-r3d5-01-11-line-answer","stable":true,"width":1600,"height":1736}
+[note] r3 long answer settled
+        {"region":{"x":533,"y":263.1,"w":234,"h":251,"bottom":514.1,"styleMaxHeight":"calc(var(--text-body-sm) * 1.6 * 10 + 39px + 0.25rem)","computedMaxHeight":"251px","clientHeight":251,"scrollHeight":2019,"scrollTop":0,"overflowPx":1768,"hasScrollbar":true},"turns":[{"top":0,"h":2018.7,"offsetTop":263,"text":"Question: LONGANSWER: how does the retry budget wo"}],"cut":[]}
+[note] frame
+        {"label":"r3-narrow-r3d5-02a-long-answer-at-rest","stable":true,"width":1600,"height":1736}
+[note] frame
+        {"label":"r3-narrow-r3d5-02b-followup-just-asked","mode":"raw","width":1600,"height":1736}
+[note] frame
+        {"label":"r3-narrow-r3d5-02c-followup-midstream","mode":"raw","width":1600,"height":1736}
+[note] r3 D6 scroll samples (follow-up 1, short answer)
+        [{"ms":3,"scrollTop":1842,"scrollHeight":2074,"clientHeight":232,"newTurnTopInRegion":188.7,"newTurnH":43,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":89,"scrollTop":1842,"scrollHeight":2074,"clientHeight":232,"newTurnTopInRegion":188.7,"newTurnH":43,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":175,"scrollTop":1842,"scrollHeight":2074,"clientHeight":232,"newTurnTopInRegion":188.7,"newTurnH":43,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":316,"scrollTop":1842,"scrollHeight":2074,"clientHeight":232,"newTurnTopInRegion":188.7,"newTurnH":43,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":404,"scrollTop":1842,"scrollHeight":2074,"clientHeight":232,"newTurnTopInRegion":188.7,"newTurnH":43,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":487,"scrollTop":1842,"scrollHeight":2074,"clientHeight":232,"newTurnTopInRegion":188.7,"newTurnH":43,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":569,"scrollTop":1842,"scrollHeight":2074,"clientHeight":232,"newTurnTopInRegion":188.7,"newTurnH":43,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":654,"scrollTop":1842,"scrollHeight":2074,"clientHeight":232,"newTurnTopInRegion":188.7,"newTurnH":43,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":739,"scrollTop":1842,"scrollHeight":2074,"clientHeight":232,"newTurnTopInRegion":188.7,"newTurnH":43,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":821,"scrollTop":1842,"scrollHeight":2074,"clientHeight":232,"newTurnTopInRegion":188.7,"newTurnH":43,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":905,"scrollTop":1842,"scrollHeight":2074,"clientHeight":232,"newTurnTopInRegion":188.7,"newTurnH":43,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":988,"scrollTop":1842,"scrollHeight":2074,"clientHeight":232,"newTurnTopInRegion":188.7,"newTurnH":43,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":1071,"scrollTop":1842,"scrollHeight":2074,"clientHeight":232,"newTurnTopInRegion":188.7,"newTurnH":43,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":1154,"scrollTop":1842,"scrollHeight":2074,"clientHeight":232,"newTurnTopInRegion":188.7,"newTurnH":43,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":1240,"scrollTop":1842,"scrollHeight":2074,"clientHeight":232,"newTurnTopInRegion":188.7,"newTurnH":43,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":1334,"scrollTop":1842,"scrollHeight":2074,"clientHeight":232,"newTurnTopInRegion":188.7,"newTurnH":43,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":1416,"scrollTop":1842,"scrollHeight":2074,"clientHeight":232,"newTurnTopInRegion":188.7,"newTurnH":43,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":1502,"scrollTop":1842,"scrollHeight":2074,"clientHeight":232,"newTurnTopInRegion":188.7,"newTurnH":43,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":1596,"scrollTop":1842,"scrollHeight":2074,"clientHeight":232,"newTurnTopInRegion":188.7,"newTurnH":43,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":1680,"scrollTop":1842,"scrollHeight":2074,"clientHeight":232,"newTurnTopInRegion":188.7,"newTurnH":43,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":1765,"scrollTop":1842,"scrollHeight":2074,"clientHeight":232,"newTurnTopInRegion":188.7,"newTurnH":43,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":1850,"scrollTop":1842,"scrollHeight":2074,"clientHeight":232,"newTurnTopInRegion":188.7,"newTurnH":43,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":1940,"scrollTop":1842,"scrollHeight":2074,"clientHeight":232,"newTurnTopInRegion":188.7,"newTurnH":43,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":2024,"scrollTop":1842,"scrollHeight":2074,"clientHeight":232,"newTurnTopInRegion":188.7,"newTurnH":43,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":2106,"scrollTop":1843,"scrollHeight":2075,"clientHeight":232,"newTurnTopInRegion":187.7,"newTurnH":44.3,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":2236,"scrollTop":1843,"scrollHeight":2075,"clientHeight":232,"newTurnTopInRegion":187.7,"newTurnH":44.3,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":2321,"scrollTop":1843,"scrollHeight":2075,"clientHeight":232,"newTurnTopInRegion":187.7,"newTurnH":44.3,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":2404,"scrollTop":1864,"scrollHeight":2096,"clientHeight":232,"newTurnTopInRegion":166.7,"newTurnH":65.1,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":2489,"scrollTop":1864,"scrollHeight":2096,"clientHeight":232,"newTurnTopInRegion":166.7,"newTurnH":65.1,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":2574,"scrollTop":1864,"scrollHeight":2096,"clientHeight":232,"newTurnTopInRegion":166.7,"newTurnH":65.1,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":2668,"scrollTop":1864,"scrollHeight":2096,"clientHeight":232,"newTurnTopInRegion":166.7,"newTurnH":65.1,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":2754,"scrollTop":1885,"scrollHeight":2117,"clientHeight":232,"newTurnTopInRegion":145.7,"newTurnH":85.9,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":2837,"scrollTop":1885,"scrollHeight":2117,"clientHeight":232,"newTurnTopInRegion":145.7,"newTurnH":85.9,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":2921,"scrollTop":1885,"scrollHeight":2117,"clientHeight":232,"newTurnTopInRegion":145.7,"newTurnH":85.9,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":3005,"scrollTop":1955,"scrollHeight":2187,"clientHeight":232,"newTurnTopInRegion":75.7,"newTurnH":156.3,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":3090,"scrollTop":1955,"scrollHeight":2187,"clientHeight":232,"newTurnTopInRegion":75.7,"newTurnH":156.3,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":3174,"scrollTop":1955,"scrollHeight":2187,"clientHeight":232,"newTurnTopInRegion":75.7,"newTurnH":156.3,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":3258,"scrollTop":1980,"scrollHeight":2212,"clientHeight":232,"newTurnTopInRegion":50.7,"newTurnH":181.1,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":3347,"scrollTop":1980,"scrollHeight":2212,"clientHeight":232,"newTurnTopInRegion":50.7,"newTurnH":181.1,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":3433,"scrollTop":1980,"scrollHeight":2212,"clientHeight":232,"newTurnTopInRegion":50.7,"newTurnH":181.1,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":3518,"scrollTop":1980,"scrollHeight":2212,"clientHeight":232,"newTurnTopInRegion":50.7,"newTurnH":181.1,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":3603,"scrollTop":2025,"scrollHeight":2257,"clientHeight":232,"newTurnTopInRegion":5.7,"newTurnH":226.7,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":3687,"scrollTop":2025,"scrollHeight":2257,"clientHeight":232,"newTurnTopInRegion":5.7,"newTurnH":226.7,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":3771,"scrollTop":2025,"scrollHeight":2257,"clientHeight":232,"newTurnTopInRegion":5.7,"newTurnH":226.7,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":3854,"scrollTop":2025,"scrollHeight":2257,"clientHeight":232,"newTurnTopInRegion":5.7,"newTurnH":226.7,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":3940,"scrollTop":2030.5,"scrollHeight":2291,"clientHeight":232,"newTurnTopInRegion":0.2,"newTurnH":260.3,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":4025,"scrollTop":2030.5,"scrollHeight":2291,"clientHeight":232,"newTurnTopInRegion":0.2,"newTurnH":260.3,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":4111,"scrollTop":2030.5,"scrollHeight":2291,"clientHeight":232,"newTurnTopInRegion":0.2,"newTurnH":260.3,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":4204,"scrollTop":2030.5,"scrollHeight":2312,"clientHeight":232,"newTurnTopInRegion":0.2,"newTurnH":281.1,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":4289,"scrollTop":2030.5,"scrollHeight":2312,"clientHeight":232,"newTurnTopInRegion":0.2,"newTurnH":281.1,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":4374,"scrollTop":2030.5,"scrollHeight":2312,"clientHeight":232,"newTurnTopInRegion":0.2,"newTurnH":281.1,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":4459,"scrollTop":2030.5,"scrollHeight":2312,"clientHeight":232,"newTurnTopInRegion":0.2,"newTurnH":281.1,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":4544,"scrollTop":2030.5,"scrollHeight":2312,"clientHeight":232,"newTurnTopInRegion":0.2,"newTurnH":281.1,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":4636,"scrollTop":2030.5,"scrollHeight":2312,"clientHeight":232,"newTurnTopInRegion":0.2,"newTurnH":281.1,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":4724,"scrollTop":2030.5,"scrollHeight":2312,"clientHeight":232,"newTurnTopInRegion":0.2,"newTurnH":281.1,"newTurnOffsetTop":2282,"tail":"tling — a moment before it can be added."},{"ms":4809,"scrollTop":2030.5,"scrollHeight":2312,"clientHeight":232,"newTurnTopInRegion":0.2,"newTurnH":281.1,"newTurnOffsetTop":2304,"tail":" not the provider.Add to conversation⌘+F"}]
+[note] r3 D6 distinct scrollTop values
+        [1842,1843,1864,1885,1955,1980,2025,2030.5]
+[PASS] r3 D6: the appended follow-up's question is inside the region's viewport
+[FAIL] r3 D6: the region moved exactly once (one scroll on append, none per chunk)
+        [1842,1843,1864,1885,1955,1980,2025,2030.5]
+[note] frame
+        {"label":"r3-narrow-r3d5-02d-followup-settled","stable":true,"width":1600,"height":1736}
+[note] frame
+        {"label":"r3-narrow-r3d5-03c-long-followup-midstream-untouched","mode":"raw","width":1600,"height":1736}
+[note] r3 D6 long follow-up, untouched (samples)
+        [{"ms":1,"scrollTop":2135.5,"scrollHeight":2386,"clientHeight":251,"qTop":188.3,"turnH":62.5,"visibleOfTurn":62.5},{"ms":116,"scrollTop":2135.5,"scrollHeight":2386,"clientHeight":251,"qTop":188.3,"turnH":62.5,"visibleOfTurn":62.5},{"ms":204,"scrollTop":2135.5,"scrollHeight":2386,"clientHeight":251,"qTop":188.3,"turnH":62.5,"visibleOfTurn":62.5},{"ms":294,"scrollTop":2135.5,"scrollHeight":2386,"clientHeight":251,"qTop":188.3,"turnH":62.5,"visibleOfTurn":62.5},{"ms":377,"scrollTop":2135.5,"scrollHeight":2386,"clientHeight":251,"qTop":188.3,"turnH":62.5,"visibleOfTurn":62.5},{"ms":462,"scrollTop":2135.5,"scrollHeight":2386,"clientHeight":251,"qTop":188.3,"turnH":62.5,"visibleOfTurn":62.5},{"ms":547,"scrollTop":2135.5,"scrollHeight":2386,"clientHeight":251,"qTop":188.3,"turnH":62.5,"visibleOfTurn":62.5},{"ms":633,"scrollTop":2135.5,"scrollHeight":2386,"clientHeight":251,"qTop":188.3,"turnH":62.5,"visibleOfTurn":62.5},{"ms":733,"scrollTop":2135.5,"scrollHeight":2386,"clientHeight":251,"qTop":188.3,"turnH":62.5,"visibleOfTurn":62.5},{"ms":828,"scrollTop":2135.5,"scrollHeight":2386,"clientHeight":251,"qTop":188.3,"turnH":62.5,"visibleOfTurn":62.5},{"ms":911,"scrollTop":2135.5,"scrollHeight":2386,"clientHeight":251,"qTop":188.3,"turnH":62.5,"visibleOfTurn":62.5},{"ms":995,"scrollTop":2135.5,"scrollHeight":2386,"clientHeight":251,"qTop":188.3,"turnH":62.5,"visibleOfTurn":62.5},{"ms":1090,"scrollTop":2135.5,"scrollHeight":2386,"clientHeight":251,"qTop":188.3,"turnH":62.5,"visibleOfTurn":62.5},{"ms":1173,"scrollTop":2135.5,"scrollHeight":2386,"clientHeight":251,"qTop":188.3,"turnH":62.5,"visibleOfTurn":62.5},{"ms":1260,"scrollTop":2135.5,"scrollHeight":2386,"clientHeight":251,"qTop":188.3,"turnH":62.5,"visibleOfTurn":62.5},{"ms":1344,"scrollTop":2135.5,"scrollHeight":2386,"clientHeight":251,"qTop":188.3,"turnH":62.5,"visibleOfTurn":62.5},{"ms":1431,"scrollTop":2135.5,"scrollHeight":2386,"clientHeight":251,"qTop":188.3,"turnH":62.5,"visibleOfTurn":62.5},{"ms":1519,"scrollTop":2135.5,"scrollHeight":2386,"clientHeight":251,"qTop":188.3,"turnH":62.5,"visibleOfTurn":62.5},{"ms":1604,"scrollTop":2135.5,"scrollHeight":2386,"clientHeight":251,"qTop":188.3,"turnH":62.5,"visibleOfTurn":62.5},{"ms":1691,"scrollTop":2135.5,"scrollHeight":2386,"clientHeight":251,"qTop":188.3,"turnH":62.5,"visibleOfTurn":62.5},{"ms":1777,"scrollTop":2135.5,"scrollHeight":2386,"clientHeight":251,"qTop":188.3,"turnH":62.5,"visibleOfTurn":62.5},{"ms":1861,"scrollTop":2135.5,"scrollHeight":2554,"clientHeight":251,"qTop":188.3,"turnH":230.2,"visibleOfTurn":62.7},{"ms":1985,"scrollTop":2135.5,"scrollHeight":2554,"clientHeight":251,"qTop":188.3,"turnH":230.2,"visibleOfTurn":62.7},{"ms":2077,"scrollTop":2135.5,"scrollHeight":2554,"clientHeight":251,"qTop":188.3,"turnH":230.2,"visibleOfTurn":62.7},{"ms":2162,"scrollTop":2135.5,"scrollHeight":2741,"clientHeight":251,"qTop":188.3,"turnH":417.3,"visibleOfTurn":62.7},{"ms":2247,"scrollTop":2135.5,"scrollHeight":2741,"clientHeight":251,"qTop":188.3,"turnH":417.3,"visibleOfTurn":62.7},{"ms":2332,"scrollTop":2135.5,"scrollHeight":2741,"clientHeight":251,"qTop":188.3,"turnH":417.3,"visibleOfTurn":62.7},{"ms":2455,"scrollTop":2135.5,"scrollHeight":2741,"clientHeight":251,"qTop":188.3,"turnH":417.3,"visibleOfTurn":62.7},{"ms":2542,"scrollTop":2135.5,"scrollHeight":2949,"clientHeight":251,"qTop":188.3,"turnH":625.3,"visibleOfTurn":62.7},{"ms":2627,"scrollTop":2135.5,"scrollHeight":2949,"clientHeight":251,"qTop":188.3,"turnH":625.3,"visibleOfTurn":62.7},{"ms":2732,"scrollTop":2135.5,"scrollHeight":2949,"clientHeight":251,"qTop":188.3,"turnH":625.3,"visibleOfTurn":62.7},{"ms":2819,"scrollTop":2135.5,"scrollHeight":3157,"clientHeight":251,"qTop":188.3,"turnH":833.3,"visibleOfTurn":62.7},{"ms":2902,"scrollTop":2135.5,"scrollHeight":3157,"clientHeight":251,"qTop":188.3,"turnH":833.3,"visibleOfTurn":62.7},{"ms":2992,"scrollTop":2135.5,"scrollHeight":3157,"clientHeight":251,"qTop":188.3,"turnH":833.3,"visibleOfTurn":62.7},{"ms":3076,"scrollTop":2135.5,"scrollHeight":3344,"clientHeight":251,"qTop":188.3,"turnH":1020.5,"visibleOfTurn":62.7},{"ms":3161,"scrollTop":2135.5,"scrollHeight":3344,"clientHeight":251,"qTop":188.3,"turnH":1020.5,"visibleOfTurn":62.7},{"ms":3247,"scrollTop":2135.5,"scrollHeight":3344,"clientHeight":251,"qTop":188.3,"turnH":1020.5,"visibleOfTurn":62.7},{"ms":3330,"scrollTop":2135.5,"scrollHeight":3344,"clientHeight":251,"qTop":188.3,"turnH":1020.5,"visibleOfTurn":62.7},{"ms":3419,"scrollTop":2135.5,"scrollHeight":3573,"clientHeight":251,"qTop":188.3,"turnH":1249.2,"visibleOfTurn":62.7},{"ms":3507,"scrollTop":2135.5,"scrollHeight":3573,"clientHeight":251,"qTop":188.3,"turnH":1249.2,"visibleOfTurn":62.7},{"ms":3591,"scrollTop":2135.5,"scrollHeight":3573,"clientHeight":251,"qTop":188.3,"turnH":1249.2,"visibleOfTurn":62.7},{"ms":3693,"scrollTop":2135.5,"scrollHeight":3573,"clientHeight":251,"qTop":188.3,"turnH":1249.2,"visibleOfTurn":62.7},{"ms":3776,"scrollTop":2135.5,"scrollHeight":3781,"clientHeight":251,"qTop":188.3,"turnH":1457.2,"visibleOfTurn":62.7},{"ms":3863,"scrollTop":2135.5,"scrollHeight":3781,"clientHeight":251,"qTop":188.3,"turnH":1457.2,"visibleOfTurn":62.7},{"ms":3947,"scrollTop":2135.5,"scrollHeight":3781,"clientHeight":251,"qTop":188.3,"turnH":1457.2,"visibleOfTurn":62.7},{"ms":4032,"scrollTop":2135.5,"scrollHeight":3947,"clientHeight":251,"qTop":188.3,"turnH":1623.6,"visibleOfTurn":62.7},{"ms":4121,"scrollTop":2135.5,"scrollHeight":3947,"clientHeight":251,"qTop":188.3,"turnH":1623.6,"visibleOfTurn":62.7},{"ms":4204,"scrollTop":2135.5,"scrollHeight":3947,"clientHeight":251,"qTop":188.3,"turnH":1623.6,"visibleOfTurn":62.7},{"ms":4295,"scrollTop":2135.5,"scrollHeight":4176,"clientHeight":251,"qTop":188.3,"turnH":1852.3,"visibleOfTurn":62.7},{"ms":4381,"scrollTop":2135.5,"scrollHeight":4176,"clientHeight":251,"qTop":188.3,"turnH":1852.3,"visibleOfTurn":62.7},{"ms":4466,"scrollTop":2135.5,"scrollHeight":4176,"clientHeight":251,"qTop":188.3,"turnH":1852.3,"visibleOfTurn":62.7},{"ms":4550,"scrollTop":2135.5,"scrollHeight":4176,"clientHeight":251,"qTop":188.3,"turnH":1852.3,"visibleOfTurn":62.7},{"ms":4632,"scrollTop":2135.5,"scrollHeight":4342,"clientHeight":251,"qTop":188.3,"turnH":2018.7,"visibleOfTurn":62.7},{"ms":4716,"scrollTop":2135.5,"scrollHeight":4342,"clientHeight":251,"qTop":188.3,"turnH":2018.7,"visibleOfTurn":62.7},{"ms":4813,"scrollTop":2135.5,"scrollHeight":4342,"clientHeight":251,"qTop":188.3,"turnH":2018.7,"visibleOfTurn":62.7},{"ms":4899,"scrollTop":2135.5,"scrollHeight":4342,"clientHeight":251,"qTop":188.3,"turnH":2018.7,"visibleOfTurn":62.7},{"ms":4986,"scrollTop":2135.5,"scrollHeight":4342,"clientHeight":251,"qTop":188.3,"turnH":2018.7,"visibleOfTurn":62.7},{"ms":5071,"scrollTop":2135.5,"scrollHeight":4342,"clientHeight":251,"qTop":188.3,"turnH":2018.7,"visibleOfTurn":62.7},{"ms":5156,"scrollTop":2135.5,"scrollHeight":4342,"clientHeight":251,"qTop":188.3,"turnH":2018.7,"visibleOfTurn":62.7},{"ms":5241,"scrollTop":2135.5,"scrollHeight":4342,"clientHeight":251,"qTop":188.3,"turnH":2018.7,"visibleOfTurn":62.7},{"ms":5325,"scrollTop":2135.5,"scrollHeight":4342,"clientHeight":251,"qTop":188.3,"turnH":2018.7,"visibleOfTurn":62.7}]
+[note] r3 D6 long follow-up distinct scrollTop
+        [2135.5]
+[note] frame
+        {"label":"r3-narrow-r3d5-03d-long-followup-settled-untouched","stable":true,"width":1600,"height":1736}
+[note] r3 U2 gate while streaming
+        {"placeholder":"Ask off the record — Esc closes the aside","fieldValue":"a third question, pressed mid-answer","sendLabel":"Ask the aside","panel":true,"alerts":["outside: The aside is still answering. Press Enter again once the answer is in."],"workingLine":null,"active":"textarea[Message]"}
+[note] frame
+        {"label":"r3-narrow-r3d5-03a-u2-gate-composer-line","mode":"raw","width":1600,"height":1736}
+[note] r3 D6 scroll samples (follow-up 2, long streaming answer)
+        [{"ms":2,"scrollTop":4166,"scrollHeight":4417,"newTurnTop":188.5},{"ms":605,"scrollTop":4106,"scrollHeight":4417,"newTurnTop":248.5},{"ms":691,"scrollTop":4106,"scrollHeight":4417,"newTurnTop":248.5},{"ms":778,"scrollTop":4106,"scrollHeight":4417,"newTurnTop":248.5},{"ms":863,"scrollTop":4106,"scrollHeight":4417,"newTurnTop":248.5},{"ms":948,"scrollTop":4106,"scrollHeight":4417,"newTurnTop":248.5},{"ms":1032,"scrollTop":4106,"scrollHeight":4417,"newTurnTop":248.5},{"ms":1119,"scrollTop":4106,"scrollHeight":4417,"newTurnTop":248.5},{"ms":1204,"scrollTop":4106,"scrollHeight":4417,"newTurnTop":248.5},{"ms":1288,"scrollTop":4106,"scrollHeight":4417,"newTurnTop":248.5},{"ms":1379,"scrollTop":4106,"scrollHeight":4417,"newTurnTop":248.5},{"ms":1465,"scrollTop":4106,"scrollHeight":4417,"newTurnTop":248.5},{"ms":1549,"scrollTop":4106,"scrollHeight":4417,"newTurnTop":248.5},{"ms":1636,"scrollTop":4106,"scrollHeight":4417,"newTurnTop":248.5},{"ms":1720,"scrollTop":4106,"scrollHeight":4417,"newTurnTop":248.5},{"ms":1807,"scrollTop":4106,"scrollHeight":4417,"newTurnTop":248.5},{"ms":1890,"scrollTop":4106,"scrollHeight":4417,"newTurnTop":248.5},{"ms":1988,"scrollTop":4106,"scrollHeight":4417,"newTurnTop":248.5},{"ms":2076,"scrollTop":4106,"scrollHeight":4585,"newTurnTop":248.5},{"ms":2162,"scrollTop":4106,"scrollHeight":4585,"newTurnTop":248.5},{"ms":2244,"scrollTop":4106,"scrollHeight":4585,"newTurnTop":248.5},{"ms":2329,"scrollTop":4106,"scrollHeight":4772,"newTurnTop":248.5},{"ms":2412,"scrollTop":4106,"scrollHeight":4772,"newTurnTop":248.5},{"ms":2496,"scrollTop":4106,"scrollHeight":4772,"newTurnTop":248.5},{"ms":2581,"scrollTop":4106,"scrollHeight":4772,"newTurnTop":248.5},{"ms":2665,"scrollTop":4106,"scrollHeight":4980,"newTurnTop":248.5},{"ms":2765,"scrollTop":4106,"scrollHeight":4980,"newTurnTop":248.5},{"ms":2851,"scrollTop":4106,"scrollHeight":4980,"newTurnTop":248.5},{"ms":2938,"scrollTop":4106,"scrollHeight":5188,"newTurnTop":248.5},{"ms":3024,"scrollTop":4106,"scrollHeight":5188,"newTurnTop":248.5},{"ms":3111,"scrollTop":4106,"scrollHeight":5188,"newTurnTop":248.5},{"ms":3196,"scrollTop":4106,"scrollHeight":5188,"newTurnTop":248.5},{"ms":3280,"scrollTop":4106,"scrollHeight":5375,"newTurnTop":248.5},{"ms":3367,"scrollTop":4106,"scrollHeight":5375,"newTurnTop":248.5},{"ms":3457,"scrollTop":4106,"scrollHeight":5375,"newTurnTop":248.5},{"ms":3550,"scrollTop":4106,"scrollHeight":5375,"newTurnTop":248.5},{"ms":3642,"scrollTop":4106,"scrollHeight":5604,"newTurnTop":248.5},{"ms":3727,"scrollTop":4106,"scrollHeight":5604,"newTurnTop":248.5},{"ms":3810,"scrollTop":4106,"scrollHeight":5604,"newTurnTop":248.5},{"ms":3914,"scrollTop":4106,"scrollHeight":5812,"newTurnTop":248.5},{"ms":4000,"scrollTop":4106,"scrollHeight":5812,"newTurnTop":248.5},{"ms":4089,"scrollTop":4106,"scrollHeight":5812,"newTurnTop":248.5},{"ms":4174,"scrollTop":4106,"scrollHeight":5978,"newTurnTop":248.5},{"ms":4262,"scrollTop":4106,"scrollHeight":5978,"newTurnTop":248.5},{"ms":4346,"scrollTop":4106,"scrollHeight":5978,"newTurnTop":248.5},{"ms":4432,"scrollTop":4106,"scrollHeight":5978,"newTurnTop":248.5},{"ms":4522,"scrollTop":4106,"scrollHeight":6207,"newTurnTop":248.5},{"ms":4608,"scrollTop":4106,"scrollHeight":6207,"newTurnTop":248.5},{"ms":4694,"scrollTop":4106,"scrollHeight":6207,"newTurnTop":248.5},{"ms":4783,"scrollTop":4106,"scrollHeight":6373,"newTurnTop":248.5},{"ms":4870,"scrollTop":4106,"scrollHeight":6373,"newTurnTop":248.5},{"ms":4955,"scrollTop":4106,"scrollHeight":6373,"newTurnTop":248.5},{"ms":5039,"scrollTop":4106,"scrollHeight":6373,"newTurnTop":248.5},{"ms":5127,"scrollTop":4106,"scrollHeight":6373,"newTurnTop":248.5},{"ms":5215,"scrollTop":4106,"scrollHeight":6373,"newTurnTop":248.5},{"ms":5302,"scrollTop":4106,"scrollHeight":6373,"newTurnTop":248.5},{"ms":5394,"scrollTop":4106,"scrollHeight":6373,"newTurnTop":248.5},{"ms":5479,"scrollTop":4106,"scrollHeight":6373,"newTurnTop":248.5}]
+[note] r3 D6 user-scrolled value and later values
+        {"userScrolled":4106,"later":[4106]}
+[note] r3 after long follow-up settled
+        {"region":{"x":533,"y":263.1,"w":234,"h":251,"bottom":514.1,"styleMaxHeight":"calc(var(--text-body-sm) * 1.6 * 10 + 39px + 0.25rem)","computedMaxHeight":"251px","clientHeight":251,"scrollHeight":6373,"scrollTop":4106,"overflowPx":6122,"hasScrollbar":true},"turns":[{"top":-4106,"h":2018.7,"offsetTop":263,"text":"Question: LONGANSWER: how does the retry budget wo"},{"top":-2075.3,"h":281.1,"offsetTop":2294,"text":"Question: and does a 429 spend it?Transport failur"},{"top":-1782.2,"h":2018.7,"offsetTop":2587,"text":"Question: LONGSLOW and what about a cancelled turn"},{"top":248.5,"h":2018.7,"offsetTop":4618,"text":"Question: LONGSLOW and the model switch case?The r"}],"alerts":[],"fieldValue":"a third question, pressed mid-answer"}
+[note] frame
+        {"label":"r3-narrow-r3d5-03b-long-followup-settled","stable":true,"width":1600,"height":1736}
+[note] r3 U9 while thinking
+        {"adopt":{"disabled":true,"describedby":":r1s:","describedText":"The exchange is still settling — a moment before it can be added."},"live":"Asking the aside","placeholder":"Ask off the record — Esc closes the aside","sendLabel":"Ask the aside"}
+[PASS] r3 U9: the disabled adopt names its reason via aria-describedby
+[note] frame
+        {"label":"r3-narrow-r3d5-04a-thinking-u9","mode":"raw","width":1600,"height":1736}
+[note] r3 U9 when live
+        {"adopt":{"disabled":false,"describedby":null,"describedText":null},"live":"The aside answered: Transport failures and owner 5xx responses, per provider, inside a moving window."}
+[note] frame
+        {"label":"r3-narrow-r3d5-04b-adopt-first-frame-without-panel","mode":"raw","width":1600,"height":1736}
+[note] r3 adopt timeline (D9, U6)
+        [{"ms":11,"panel":true,"hasQ":false,"hasA":false,"hero":false,"activeIsField":false,"active":"button"},{"ms":64,"panel":false,"hasQ":false,"hasA":false,"hero":false,"activeIsField":true,"active":"textarea"},{"ms":162,"panel":false,"hasQ":true,"hasA":true,"hero":false,"activeIsField":true,"active":"textarea"},{"ms":214,"panel":false,"hasQ":true,"hasA":true,"hero":false,"activeIsField":true,"active":"textarea"},{"ms":267,"panel":false,"hasQ":true,"hasA":true,"hero":false,"activeIsField":true,"active":"textarea"},{"ms":319,"panel":false,"hasQ":true,"hasA":true,"hero":false,"activeIsField":true,"active":"textarea"},{"ms":374,"panel":false,"hasQ":true,"hasA":true,"hero":false,"activeIsField":true,"active":"textarea"},{"ms":428,"panel":false,"hasQ":true,"hasA":true,"hero":false,"activeIsField":true,"active":"textarea"},{"ms":482,"panel":false,"hasQ":true,"hasA":true,"hero":false,"activeIsField":true,"active":"textarea"},{"ms":534,"panel":false,"hasQ":true,"hasA":true,"hero":false,"activeIsField":true,"active":"textarea"},{"ms":588,"panel":false,"hasQ":true,"hasA":true,"hero":false,"activeIsField":true,"active":"textarea"},{"ms":642,"panel":false,"hasQ":true,"hasA":true,"hero":false,"activeIsField":true,"active":"textarea"}]
+[PASS] r3 U6: focus is back in the composer after the adopt click
+[note] frame
+        {"label":"r3-narrow-r3d5-04c-adopted","stable":true,"width":1600,"height":1736}
+[note] r3 U6 after the close control
+        {"placeholder":"Ask me for help","fieldValue":"","sendLabel":"Send message","panel":false,"alerts":[],"workingLine":null,"active":"textarea[Message]"}
+[PASS] r3 U6: focus is back in the composer after the close control
+[note] r3 D8 composer line
+        {"placeholder":"Ask me for help","fieldValue":"","sendLabel":"Send message","panel":false,"alerts":["outside: Your aside “SLOW TOOLCALL2 asked from the composer about the budget win…” got no answer: The model didn't reply in text. Ask again."],"workingLine":null,"active":"textarea[Message]"}
+[note] frame
+        {"label":"r3-narrow-r3d5-05a-composer-error-line-d8","stable":true,"width":1600,"height":1736}
+[note] r3 D7 alerts after clearing the box (before the new ask)
+        {"placeholder":"Ask me for help","fieldValue":"","sendLabel":"Send message","panel":false,"alerts":["outside: Your aside “SLOW TOOLCALL2 asked from the composer about the budget win…” got no answer: The model didn't reply in text. Ask again."],"workingLine":null,"active":"textarea[Message]"}
+[note] r3 D7 right after a new /btw <q>
+        {"placeholder":"Ask off the record — Esc closes the aside","fieldValue":"","sendLabel":"Ask the aside","panel":true,"alerts":[],"workingLine":null,"active":"textarea[Message]"}
+[PASS] r3 D7: the composer's aside refusal is gone once a new aside is asked
+[note] frame
+        {"label":"r3-narrow-r3d5-05b-d7-new-aside-retires-line","mode":"raw","width":1600,"height":1736}
+[note] r3 D8 transcript note
+        {"tail":"Start of conversationwhat does the retry budget actually cap?8:56 PMTransport failures and owner 5xx responses, per provider, inside a moving window. each transport failure spends one each owner 5xx spends one a retry that succeeds resets the window A 4xx never spends it: the request was wrong, not the provider.8:56 PMYour aside “SLOW TOOLCALL2 asked from the command about the budget wind…” got no answer: The model didn't reply in text. Ask again.","placeholder":"Ask me for help","fieldValue":"","sendLabel":"Send message","panel":false,"alerts":[],"workingLine":null,"active":"textarea[Message]"}
+[note] frame
+        {"label":"r3-narrow-r3d5-06-transcript-note-d8","stable":true,"width":1600,"height":1736}
+[note] r3 matrix: idle, no aside
+        {"state":"idle, no aside","placeholder":"Ask me for help","fieldValue":"","sendLabel":"Send message","panel":false,"alerts":[],"workingLine":null,"active":"textarea[Message]","composerText":"btw-stubunknown<0.1%/200kWorking directory:~/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-22229/btw-workspace"}
+[note] r3 matrix: aside attached, idle conversation
+        {"state":"aside attached, idle conversation","placeholder":"Ask off the record — Esc closes the aside","fieldValue":"","sendLabel":"Ask the aside","panel":true,"alerts":[],"workingLine":null,"active":"textarea[Message]","composerText":"btw-stubunknown<0.1%/200kWorking directory:~/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-22229/btw-workspace"}
+[note] r3 matrix: thread send in flight (proxy holds POST /messages)
+        {"state":"thread send in flight (proxy holds POST /messages)","placeholder":"Waiting for the agent","fieldValue":"","sendLabel":"Send message","panel":false,"alerts":[],"workingLine":"⣯thinking0s","active":"textarea[Message]","composerText":"btw-stubunknown<0.1%/200k0sWorking directory:~/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-22229/btw-workspace"}
+[note] frame
+        {"label":"r3-narrow-r3d5-07a-sending-no-aside","mode":"raw","width":1600,"height":1736}
+[note] r3 matrix: thread send in flight + /btw attached
+        {"state":"thread send in flight + /btw attached","placeholder":"Ask off the record — Esc closes the aside","fieldValue":"","sendLabel":"Ask the aside","panel":true,"alerts":[],"workingLine":"⣾thinking0s","active":"textarea[Message]","composerText":"btw-stubunknown<0.1%/200k0sWorking directory:~/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-22229/btw-workspace"}
+[note] frame
+        {"label":"r3-narrow-r3d5-07b-sending-plus-aside","mode":"raw","width":1600,"height":1736}
+[note] r3 matrix: thread send in flight, aside closed
+        {"state":"thread send in flight, aside closed","placeholder":"Waiting for the agent","fieldValue":"","sendLabel":"Send message","panel":false,"alerts":[],"workingLine":"⣷thinking0s","active":"textarea[Message]","composerText":"btw-stubunknown<0.1%/200k1sWorking directory:~/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-22229/btw-workspace"}
+[note] r3 matrix: send settled, agent working (stub first chunk at 6 s)
+        {"state":"send settled, agent working (stub first chunk at 6 s)","placeholder":"Waiting for the agent","fieldValue":"","sendLabel":"Send message","panel":false,"alerts":[],"workingLine":"⣾thinking0s","active":"textarea[Message]","composerText":"btw-stubunknown<0.1%/200k1sWorking directory:~/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-22229/btw-workspace"}
+[note] r3 matrix: agent working + aside attached
+        {"state":"agent working + aside attached","placeholder":"Ask off the record — Esc closes the aside","fieldValue":"","sendLabel":"Ask the aside","panel":true,"alerts":[],"workingLine":"⡿thinking1s","active":"textarea[Message]","composerText":"btw-stubunknown<0.1%/200k1sWorking directory:~/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-22229/btw-workspace"}
+[note] frame
+        {"label":"r3-narrow-r3d5-07c-working-plus-aside","mode":"raw","width":1600,"height":1736}
+[note] r3 matrix: navigated to New chat with the aside still attached to the other session
+        {"state":"navigated to New chat with the aside still attached to the other session","placeholder":"Ask me for help","fieldValue":"","sendLabel":"Send message","panel":false,"alerts":[],"workingLine":null,"active":"textarea[Message]","composerText":"btw-stubWorking directory:~"}
+[note] frame
+        {"label":"r3-narrow-r3d5-07d-new-chat-after-switch","mode":"raw","width":1600,"height":1736}
+[note] r3 matrix: back on the session
+        {"state":"back on the session","placeholder":"Ask off the record — Esc closes the aside","fieldValue":"","sendLabel":"Ask the aside","panel":true,"alerts":[],"workingLine":"⣾responding2s","active":"textarea[Message]","composerText":"btw-stubunknown<0.1%/200k4sWorking directory:~/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-22229/btw-workspace"}
+[note] r3 matrix: turn done, aside closed
+        {"state":"turn done, aside closed","placeholder":"Ask me for help","fieldValue":"","sendLabel":"Send message","panel":false,"alerts":[],"workingLine":null,"active":"textarea[Message]","composerText":"btw-stubunknown<0.1%/200k$—4sWorking directory:~/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-22229/btw-workspace"}
+[note] r3 matrix (all rows)
+        [{"state":"idle, no aside","placeholder":"Ask me for help","fieldValue":"","sendLabel":"Send message","panel":false,"alerts":[],"workingLine":null,"active":"textarea[Message]","composerText":"btw-stubunknown<0.1%/200kWorking directory:~/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-22229/btw-workspace"},{"state":"aside attached, idle conversation","placeholder":"Ask off the record — Esc closes the aside","fieldValue":"","sendLabel":"Ask the aside","panel":true,"alerts":[],"workingLine":null,"active":"textarea[Message]","composerText":"btw-stubunknown<0.1%/200kWorking directory:~/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-22229/btw-workspace"},{"state":"thread send in flight (proxy holds POST /messages)","placeholder":"Waiting for the agent","fieldValue":"","sendLabel":"Send message","panel":false,"alerts":[],"workingLine":"⣯thinking0s","active":"textarea[Message]","composerText":"btw-stubunknown<0.1%/200k0sWorking directory:~/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-22229/btw-workspace"},{"state":"thread send in flight + /btw attached","placeholder":"Ask off the record — Esc closes the aside","fieldValue":"","sendLabel":"Ask the aside","panel":true,"alerts":[],"workingLine":"⣾thinking0s","active":"textarea[Message]","composerText":"btw-stubunknown<0.1%/200k0sWorking directory:~/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-22229/btw-workspace"},{"state":"thread send in flight, aside closed","placeholder":"Waiting for the agent","fieldValue":"","sendLabel":"Send message","panel":false,"alerts":[],"workingLine":"⣷thinking0s","active":"textarea[Message]","composerText":"btw-stubunknown<0.1%/200k1sWorking directory:~/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-22229/btw-workspace"},{"state":"send settled, agent working (stub first chunk at 6 s)","placeholder":"Waiting for the agent","fieldValue":"","sendLabel":"Send message","panel":false,"alerts":[],"workingLine":"⣾thinking0s","active":"textarea[Message]","composerText":"btw-stubunknown<0.1%/200k1sWorking directory:~/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-22229/btw-workspace"},{"state":"agent working + aside attached","placeholder":"Ask off the record — Esc closes the aside","fieldValue":"","sendLabel":"Ask the aside","panel":true,"alerts":[],"workingLine":"⡿thinking1s","active":"textarea[Message]","composerText":"btw-stubunknown<0.1%/200k1sWorking directory:~/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-22229/btw-workspace"},{"state":"navigated to New chat with the aside still attached to the other session","placeholder":"Ask me for help","fieldValue":"","sendLabel":"Send message","panel":false,"alerts":[],"workingLine":null,"active":"textarea[Message]","composerText":"btw-stubWorking directory:~"},{"state":"back on the session","placeholder":"Ask off the record — Esc closes the aside","fieldValue":"","sendLabel":"Ask the aside","panel":true,"alerts":[],"workingLine":"⣾responding2s","active":"textarea[Message]","composerText":"btw-stubunknown<0.1%/200k4sWorking directory:~/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-22229/btw-workspace"},{"state":"turn done, aside closed","placeholder":"Ask me for help","fieldValue":"","sendLabel":"Send message","panel":false,"alerts":[],"workingLine":null,"active":"textarea[Message]","composerText":"btw-stubunknown<0.1%/200k$—4sWorking directory:~/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-22229/btw-workspace"}]
+
+---- app log (tail) ----
+Error occurred in handler for 'browser-webauthn-pending': Error: No handler registered for 'browser-webauthn-pending'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+20:55:43.021 › Checking for UI updates...
+20:55:43.021 › Skip checkForUpdates because application is not packed and dev update config is not forced
+Error occurred in handler for 'browser-state': Error: No handler registered for 'browser-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'console-state': Error: No handler registered for 'console-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'browser-webauthn-pending': Error: No handler registered for 'browser-webauthn-pending'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+[window-mode] state: visible=false focused=false focusable=false size=800x900 content=800x868
+20:55:43.613 › Checking for updates... (silent mode: true)
+20:55:43.614 › Skip checkForUpdates because application is not packed and dev update config is not forced
+20:55:43.614 › Checking for backend updates... (silent mode: true)
+20:55:43.614 › Skip backend update check in dev mode unless forced
+20:55:47.673 › [browser] denied a media permission request from (unknown origin)
+20:55:47.674 › [browser] denied a media permission request from (unknown origin)
+20:55:47.674 › [browser] denied a web-app-installation permission request from (unknown origin)
+20:55:47.674 › [browser] denied a geolocation permission request from (unknown origin)
+20:55:47.682 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
+20:55:47.683 › [browser] host on 127.0.0.1:50651 (proto 1), profile /Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-22229/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+20:55:53.497 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:55:55.611 › The pre-split environment at /Users/damian/Library/Application Support/Local Operator/local-operator-venv is built on the interpreter inside /Applications/Local Operator.app; it is left exactly as it is, and this instance does not use it.
+20:55:55.684 › [browser] tab 1 navigated to about:blank
+20:55:57.840 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:56:00.969 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:56:04.342 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:56:54.223 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:57:00.413 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:57:00.937 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:57:07.061 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:57:09.337 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:57:16.404 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:57:16.844 › [about-panel] suppressed by window mode headless: a headless run raises no window
+20:57:18.993 › [about-panel] suppressed by window mode headless: a headless run raises no window
+
+[PASS] no process from this run outlived its boot
+
+frames: r3-narrow-r3d5-01-11-line-answer.png, r3-narrow-r3d5-01-9-line-answer.png, r3-narrow-r3d5-02a-long-answer-at-rest.png, r3-narrow-r3d5-02b-followup-just-asked.png, r3-narrow-r3d5-02c-followup-midstream.png, r3-narrow-r3d5-02d-followup-settled.png, r3-narrow-r3d5-03a-u2-gate-composer-line.png, r3-narrow-r3d5-03b-long-followup-settled.png, r3-narrow-r3d5-03c-long-followup-midstream-untouched.png, r3-narrow-r3d5-03d-long-followup-settled-untouched.png, r3-narrow-r3d5-04a-thinking-u9.png, r3-narrow-r3d5-04b-adopt-first-frame-without-panel.png, r3-narrow-r3d5-04c-adopted.png, r3-narrow-r3d5-05a-composer-error-line-d8.png, r3-narrow-r3d5-05b-d7-new-aside-retires-line.png, r3-narrow-r3d5-06-transcript-note-d8.png, r3-narrow-r3d5-07a-sending-no-aside.png, r3-narrow-r3d5-07b-sending-plus-aside.png, r3-narrow-r3d5-07c-working-plus-aside.png, r3-narrow-r3d5-07d-new-chat-after-switch.png
+frames directory: /Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/frames/narrow-r3d5
+app log: /Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-22229/app-scene.log
+scratch removed (--clean)
+
+1 CHECK(S) FAILED
+== narrow-r3d5 driver exit: 1 ==
+total 9368
+drwxr-xr-x@ 22 damian  staff     704 Sep 24 20:57 .
+drwxr-xr-x@  8 damian  staff     256 Sep 24 20:55 ..
+-rw-r--r--@  1 damian  staff  199650 Sep 24 20:56 r3-narrow-r3d5-01-11-line-answer.png
+-rw-r--r--@  1 damian  staff  199741 Sep 24 20:55 r3-narrow-r3d5-01-9-line-answer.png
+-rw-r--r--@  1 damian  staff  260651 Sep 24 20:56 r3-narrow-r3d5-02a-long-answer-at-rest.png
+-rw-r--r--@  1 damian  staff  253147 Sep 24 20:56 r3-narrow-r3d5-02b-followup-just-asked.png
+-rw-r--r--@  1 damian  staff  257292 Sep 24 20:56 r3-narrow-r3d5-02c-followup-midstream.png
+-rw-r--r--@  1 damian  staff  224246 Sep 24 20:56 r3-narrow-r3d5-02d-followup-settled.png
+-rw-r--r--@  1 damian  staff  270832 Sep 24 20:56 r3-narrow-r3d5-03a-u2-gate-composer-line.png
+-rw-r--r--@  1 damian  staff  242823 Sep 24 20:56 r3-narrow-r3d5-03b-long-followup-settled.png
+-rw-r--r--@  1 damian  staff  242640 Sep 24 20:56 r3-narrow-r3d5-03c-long-followup-midstream-untouched.png
+-rw-r--r--@  1 damian  staff  230990 Sep 24 20:56 r3-narrow-r3d5-03d-long-followup-settled-untouched.png
+-rw-r--r--@  1 damian  staff  198285 Sep 24 20:56 r3-narrow-r3d5-04a-thinking-u9.png
+-rw-r--r--@  1 damian  staff  151657 Sep 24 20:56 r3-narrow-r3d5-04b-adopt-first-frame-without-panel.png
+-rw-r--r--@  1 damian  staff  229081 Sep 24 20:57 r3-narrow-r3d5-04c-adopted.png
+-rw-r--r--@  1 damian  staff  259587 Sep 24 20:57 r3-narrow-r3d5-05a-composer-error-line-d8.png
+-rw-r--r--@  1 damian  staff  271270 Sep 24 20:57 r3-narrow-r3d5-05b-d7-new-aside-retires-line.png
+-rw-r--r--@  1 damian  staff  256722 Sep 24 20:57 r3-narrow-r3d5-06-transcript-note-d8.png
+-rw-r--r--@  1 damian  staff  276508 Sep 24 20:57 r3-narrow-r3d5-07a-sending-no-aside.png
+-rw-r--r--@  1 damian  staff  291016 Sep 24 20:57 r3-narrow-r3d5-07b-sending-plus-aside.png
+-rw-r--r--@  1 damian  staff  290138 Sep 24 20:57 r3-narrow-r3d5-07c-working-plus-aside.png
+-rw-r--r--@  1 damian  staff  148340 Sep 24 20:57 r3-narrow-r3d5-07d-new-chat-after-switch.png
+8080 released before this command returned
+port8080.lock released
+--- proxy counters (/Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/run-narrow-r3d5/proxy-stats.json) ---
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T00:55:53.666Z",
+      "url": "/v1/desktop/sessions/e4cb43efe04d/asides",
+      "asideId": "7f1af983-b9bb-4d07-85df-a1c2ef6ca4c5",
+      "continues": null,
+      "questionHead": "NLINES9",
+      "text": "NLINES9",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "006a1dfa966f4fdea0f45f50e3ab220e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"7f1af983-b9bb-4d07-85df-a1c2ef6ca4c5\",\"text\":\"Line 1 of 9.  \\nLine 2 of 9.  \\nLine 3 of 9.  \\nLine 4 of 9.  \\nLine 5 of 9.  \\nLine 6 of 9.  \\nLine 7 of 9.  \\nLine 8 of 9.  \\nLine 9 of 9.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T00:55:58.005Z",
+      "url": "/v1/desktop/sessions/e4cb43efe04d/asides",
+      "asideId": "41af2c59-393b-43a3-90f2-842d7834cbe1",
+      "continues": null,
+      "questionHead": "NLINES10",
+      "text": "NLINES10",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "006a1dfa966f4fdea0f45f50e3ab220e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"41af2c59-393b-43a3-90f2-842d7834cbe1\",\"text\":\"Line 1 of 10.  \\nLine 2 of 10.  \\nLine 3 of 10.  \\nLine 4 of 10.  \\nLine 5 of 10.  \\nLine 6 of 10.  \\nLine 7 of 10.  \\nLine 8 of 10.  \\nLine 9 of 10.  \\nLine 10 of 10.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T00:56:01.130Z",
+      "url": "/v1/desktop/sessions/e4cb43efe04d/asides",
+      "asideId": "8575168e-0cee-46b5-be5a-679e5b9c1ccb",
+      "continues": null,
+      "questionHead": "NLINES11",
+      "text": "NLINES11",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "006a1dfa966f4fdea0f45f50e3ab220e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"8575168e-0cee-46b5-be5a-679e5b9c1ccb\",\"text\":\"Line 1 of 11.  \\nLine 2 of 11.  \\nLine 3 of 11.  \\nLine 4 of 11.  \\nLine 5 of 11.  \\nLine 6 of 11.  \\nLine 7 of 11.  \\nLine 8 of 11.  \\nLine 9 of 11.  \\nLine 10 of 11.  \\nLine 11 of 11.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T00:56:04.507Z",
+      "url": "/v1/desktop/sessions/e4cb43efe04d/asides",
+      "asideId": "e8381fe4-f64a-4670-bf22-4bf33ad67901",
+      "continues": null,
+      "questionHead": "LONGANSWER: how does the retry budget work, in full?",
+      "text": "LONGANSWER: how does the retry budget work, in full?",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "006a1dfa966f4fdea0f45f50e3ab220e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"e8381fe4-f64a-4670-bf22-4bf33ad67901\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    },
+    {
+      "at": "2026-09-25T00:56:36.843Z",
+      "url": "/v1/desktop/sessions/e4cb43efe04d/asides",
+      "asideId": "9b913717-1c36-4619-940e-3090f284c1fc",
+      "continues": "e8381fe4-f64a-4670-bf22-4bf33ad67901",
+      "questionHead": "and does a 429 spend it?",
+      "text": "and does a 429 spend it?",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "006a1dfa966f4fdea0f45f50e3ab220e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"9b913717-1c36-4619-940e-3090f284c1fc\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T00:56:42.293Z",
+      "url": "/v1/desktop/sessions/e4cb43efe04d/asides",
+      "asideId": "ccc86208-c774-4cb8-8a89-92a3eee805bf",
+      "continues": "9b913717-1c36-4619-940e-3090f284c1fc",
+      "questionHead": "LONGSLOW and what about a cancelled turn?",
+      "text": "LONGSLOW and what about a cancelled turn?",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "006a1dfa966f4fdea0f45f50e3ab220e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"ccc86208-c774-4cb8-8a89-92a3eee805bf\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    },
+    {
+      "at": "2026-09-25T00:56:48.232Z",
+      "url": "/v1/desktop/sessions/e4cb43efe04d/asides",
+      "asideId": "53dd6b65-3e3f-4ed1-9283-9f4072ef0f10",
+      "continues": "ccc86208-c774-4cb8-8a89-92a3eee805bf",
+      "questionHead": "LONGSLOW and the model switch case?",
+      "text": "LONGSLOW and the model switch case?",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "006a1dfa966f4fdea0f45f50e3ab220e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"53dd6b65-3e3f-4ed1-9283-9f4072ef0f10\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    },
+    {
+      "at": "2026-09-25T00:56:54.387Z",
+      "url": "/v1/desktop/sessions/e4cb43efe04d/asides",
+      "asideId": "dd57552c-9c6b-466d-935f-74b25f1213da",
+      "continues": null,
+      "questionHead": "what does the retry budget actually cap?",
+      "text": "what does the retry budget actually cap?",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "006a1dfa966f4fdea0f45f50e3ab220e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"dd57552c-9c6b-466d-935f-74b25f1213da\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T00:57:01.274Z",
+      "url": "/v1/desktop/sessions/e4cb43efe04d/asides",
+      "asideId": "7a12a48b-f55e-46d5-8365-e1824860b054",
+      "continues": null,
+      "questionHead": "SLOW TOOLCALL2 asked from the composer about the budget wind",
+      "text": "SLOW TOOLCALL2 asked from the composer about the budget window",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "adb1f47ae0344234b7e2da13b91ff6c8",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-25T00:57:07.438Z",
+      "url": "/v1/desktop/sessions/e4cb43efe04d/asides",
+      "asideId": "4ccb2263-144a-425c-9a14-e6868a8110a9",
+      "continues": null,
+      "questionHead": "NLINES3 a fresh question",
+      "text": "NLINES3 a fresh question",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "adb1f47ae0344234b7e2da13b91ff6c8",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"4ccb2263-144a-425c-9a14-e6868a8110a9\",\"text\":\"Line 1 of 3.  \\nLine 2 of 3.  \\nLine 3 of 3.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T00:57:09.500Z",
+      "url": "/v1/desktop/sessions/e4cb43efe04d/asides",
+      "asideId": "02b6aa70-206f-4b54-9516-94ce808424f0",
+      "continues": null,
+      "questionHead": "SLOW TOOLCALL2 asked from the command about the budget windo",
+      "text": "SLOW TOOLCALL2 asked from the command about the budget window",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "adb1f47ae0344234b7e2da13b91ff6c8",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T00:55:40.729Z",
+      "subscriptionId": "2b4ef371019f61c4",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/e4cb43efe04d/events?frontend_replace=1",
+      "openedAt": "2026-09-25T00:55:46.628Z",
+      "subscriptionId": "006a1dfa966f4fdea0f45f50e3ab220e",
+      "asideDeltas": 49,
+      "deltaSizes": [
+        132,
+        158,
+        175,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    },
+    {
+      "url": "/v1/desktop/sessions/e4cb43efe04d/events?frontend_replace=1",
+      "openedAt": "2026-09-25T00:56:59.067Z",
+      "subscriptionId": "adb1f47ae0344234b7e2da13b91ff6c8",
+      "asideDeltas": 1,
+      "deltaSizes": [
+        42
+      ]
+    },
+    {
+      "url": "/v1/desktop/sessions/e4cb43efe04d/events?frontend_replace=1",
+      "openedAt": "2026-09-25T00:57:20.767Z",
+      "subscriptionId": "3c3c1f1b9d834ab18203bfc7a35dc33b",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    }
+  ],
+  "asideDeltaFrames": 50,
+  "deltasBySubscription": {
+    "006a1dfa966f4fdea0f45f50e3ab220e": 49,
+    "adb1f47ae0344234b7e2da13b91ff6c8": 1
+  },
+  "deltasByAside": {
+    "7f1af983-b9bb-4d07-85df-a1c2ef6ca4c5": 1,
+    "41af2c59-393b-43a3-90f2-842d7834cbe1": 1,
+    "8575168e-0cee-46b5-be5a-679e5b9c1ccb": 1,
+    "e8381fe4-f64a-4670-bf22-4bf33ad67901": 10,
+    "9b913717-1c36-4619-940e-3090f284c1fc": 8,
+    "ccc86208-c774-4cb8-8a89-92a3eee805bf": 10,
+    "53dd6b65-3e3f-4ed1-9283-9f4072ef0f10": 10,
+    "dd57552c-9c6b-466d-935f-74b25f1213da": 8,
+    "4ccb2263-144a-425c-9a14-e6868a8110a9": 1
+  },
+  "refused422": 0,
+  "messagePosts": [
+    {
+      "at": "2026-09-25T00:57:17.007Z",
+      "url": "/v1/desktop/sessions/e4cb43efe04d/messages",
+      "kind": "message",
+      "text": "SLOWTURN say hi",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"f73a37b5-d136-4221-af27-c9d315ca0f48\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T00:57:17.008Z"
+    }
+  ],
+  "asideOps": [
+    {
+      "at": "2026-09-25T00:55:57.826Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/e4cb43efe04d/asides/7f1af983-b9bb-4d07-85df-a1c2ef6ca4c5",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"7f1af983-b9bb-4d07-85df-a1c2ef6ca4c5\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T00:56:00.955Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/e4cb43efe04d/asides/41af2c59-393b-43a3-90f2-842d7834cbe1",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"41af2c59-393b-43a3-90f2-842d7834cbe1\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T00:56:04.330Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/e4cb43efe04d/asides/8575168e-0cee-46b5-be5a-679e5b9c1ccb",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"8575168e-0cee-46b5-be5a-679e5b9c1ccb\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T00:56:54.206Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/e4cb43efe04d/asides/53dd6b65-3e3f-4ed1-9283-9f4072ef0f10",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"53dd6b65-3e3f-4ed1-9283-9f4072ef0f10\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T00:56:59.020Z",
+      "method": "POST",
+      "url": "/v1/desktop/sessions/e4cb43efe04d/asides/dd57552c-9c6b-466d-935f-74b25f1213da/adopt",
+      "kind": "adopt",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"dd57552c-9c6b-466d-935f-74b25f1213da\",\"status\":\"adopted\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T00:57:01.283Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/e4cb43efe04d/asides/7a12a48b-f55e-46d5-8365-e1824860b054",
+      "kind": "close",
+      "probe": false,
+      "status": 409,
+      "response": "{\"detail\":\"Wait for the aside to finish before closing it\"}"
+    },
+    {
+      "at": "2026-09-25T00:57:09.326Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/e4cb43efe04d/asides/4ccb2263-144a-425c-9a14-e6868a8110a9",
+      "kind": "close",
+      "probe": false,
+      "status": 409,
+      "response": "{\"detail\":\"Wait for the aside to finish before closing it\"}"
+    },
+    {
+      "at": "2026-09-25T00:57:09.508Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/e4cb43efe04d/asides/02b6aa70-206f-4b54-9516-94ce808424f0",
+      "kind": "close",
+      "probe": false,
+      "status": 409,
+      "response": "{\"detail\":\"Wait for the aside to finish before closing it\"}"
+    }
+  ]
+}
+--- end counters ---
