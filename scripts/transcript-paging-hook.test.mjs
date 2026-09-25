@@ -11,7 +11,7 @@ const CACHE = join(ROOT, "node_modules", ".cache", "transcript-paging-hook");
 const bundle = await build({
 	stdin: {
 		contents:
-			'export { useScrollPaging } from "./src/renderer/src/features/chat/canonical/use-scroll-paging";',
+			'export { useScrollPaging } from "./src/renderer/src/features/chat/canonical/use-scroll-paging";\nexport { SETTLE_MS } from "./src/renderer/src/features/chat/canonical/scroll-paging";',
 		resolveDir: ROOT,
 	},
 	bundle: true,
@@ -28,7 +28,7 @@ const bundle = await build({
 mkdirSync(CACHE, { recursive: true });
 const bundlePath = join(CACHE, "use-scroll-paging.mjs");
 writeFileSync(bundlePath, bundle.outputFiles[0].text);
-const { useScrollPaging } = await import(new URL(`file://${bundlePath}`).href);
+const { useScrollPaging, SETTLE_MS } = await import(new URL(`file://${bundlePath}`).href);
 const { createRoot } = await import("react-dom/client");
 
 after(() => {
@@ -42,7 +42,7 @@ after(() => {
  * mocked. This catches a missing hook-to-helper connection without pretending
  * to be a rendered browser capture.
  */
-function mountHook() {
+function mountHook(options = {}) {
 	const dom = new JSDOM(
 		'<!doctype html><div id="root"></div><div id="transcript"><div data-lo-transcript-content><div data-record-id="held-row"></div></div></div>',
 		{ url: "http://localhost/", pretendToBeVisual: true },
@@ -122,16 +122,21 @@ function mountHook() {
 	const root = createRoot(window.document.querySelector("#root"));
 	let rowCount = 1;
 	let widenCalls = 0;
+	// Parameterised so a case can mount the reader in the state it is about
+	// (rows held back, a landing to drive) without a second harness beside
+	// this one.
+	let hiddenRows = options.hiddenRows ?? 1;
+	const onLoadOlder = options.onLoadOlder ?? (async () => false);
 	function Harness() {
 		useScrollPaging({
 			containerRef: { current: scroller },
 			sessionKey: "synthetic-session",
-			hiddenRows: 1,
-			hasMore: true,
+			hiddenRows,
+			hasMore: options.hasMore ?? true,
 			onWiden: () => {
 				widenCalls++;
 			},
-			onLoadOlder: async () => false,
+			onLoadOlder,
 			loadingOlder: false,
 			rowCount,
 			contentKey: "fixture",
@@ -195,6 +200,19 @@ function mountHook() {
 		get widenCalls() {
 			return widenCalls;
 		},
+		setScrollTop: (value) => {
+			scrollTop = value;
+		},
+		setScrollHeight: (value) => {
+			scrollHeight = value;
+		},
+		setHiddenRows: (value) => {
+			hiddenRows = value;
+			render();
+		},
+		flushFrames: (count = 1) => {
+			for (let i = 0; i < count; i++) flushFrame();
+		},
 		requestReveal,
 		readerInput,
 		growAboveAnchor,
@@ -237,5 +255,65 @@ test("the mounted paging hook holds layout growth but yields to later reader inp
 		);
 	} finally {
 		laterInput.close();
+	}
+});
+
+/*
+ * Round-1 review F1, at the layer it was reproduced against the pump: a
+ * rule-6 widen owed because a landing happened inside the input debounce has
+ * nobody to re-decide it when the landing itself returned `none` — the pump's
+ * only delayed re-run for a `none` state was gated on an armed demand. The
+ * pure suite can hold the debt (the policy returns it either way); only the
+ * mounted hook shows whether the pump ever asks again on its own.
+ *
+ * TIMING NOTE, stated because the case is about a window: the landing must
+ * happen within `SETTLE_MS` of the input for the debt to be unpaid at the
+ * landing's own decide, which is the state the pump has to schedule for. No
+ * real work happens between the two here (a wheel event, two frame flushes and
+ * one prop commit), so the margin is the whole debounce; on a machine loaded
+ * enough to lose 120 ms inside that, the case degenerates to the
+ * already-settled path the pure suite covers and stops discriminating.
+ */
+test("a rule-6 debt landed inside the debounce is re-decided at the settle", async () => {
+	let loads = 0;
+	const hook = mountHook({
+		hiddenRows: 0,
+		onLoadOlder: async () => {
+			loads += 1;
+			return true;
+		},
+	});
+	try {
+		// Hard top: distance = scrollHeight - clientHeight - |scrollTop| = 2.
+		hook.setScrollTop(-198);
+		hook.readerInput();
+		hook.flushFrames(4);
+		assert.equal(loads, 1, "the hard-top push buys its round trip");
+		// Let the fetch's promise resolve, then land the page the way the app
+		// does: rows arrive, the extent grows under the reader, and the window
+		// is still holding 60 of them back. The reader is now OFF the hard top
+		// (distance 100) but inside the zone, which is the whole reason the
+		// debt has to wait for a settle: `settled` is only free at the wall.
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		hook.setScrollTop(-500);
+		hook.setScrollHeight(1400);
+		hook.setHiddenRows(60);
+		hook.flushFrames(6);
+		assert.equal(
+			hook.widenCalls,
+			0,
+			"inside the debounce the debt waits rather than mounting under the reader",
+		);
+		// The pump must re-decide at the settle the debt is waiting for: no
+		// further input, no further content change.
+		await new Promise((resolve) => setTimeout(resolve, SETTLE_MS + 80));
+		hook.flushFrames(6);
+		assert.equal(
+			hook.widenCalls,
+			1,
+			"the owed widen is paid at the settle it was waiting for",
+		);
+	} finally {
+		hook.close();
 	}
 });

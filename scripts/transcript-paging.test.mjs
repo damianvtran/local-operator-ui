@@ -540,6 +540,31 @@ test("a successful page clears the failure budget", () => {
 	assert.equal(state.failures, 0);
 });
 
+test("a failed fetch does not spend the act's budget", () => {
+	/*
+	 * Round-1 review F2, in the reviewer's own sequence. The act budget bounds
+	 * the operator's chain of SUCCESSFUL pages; a failure is rule G's case
+	 * instead, where the reader's own continued ask is the retry and
+	 * `MAX_AUTO_ATTEMPTS` is what stops a loop. The terminal UI draws the line
+	 * the same way: a genuine fault gets an honest notice and the next ask, not
+	 * a spent act.
+	 */
+	let state = initialPagingState();
+	state = wheelUp(state, 0);
+	const first = decide(state, geo({ distanceFromTopPx: 0 }), 5);
+	assert.equal(first.action, "fetch", "the push at the wall buys its round trip");
+	state = noteFailed(first.state);
+
+	// Same act: the notch is well inside GESTURE_GAP_MS of the last input, so
+	// no new act has begun and the budget is still this act's.
+	state = wheelUp(state, 150);
+	assert.equal(
+		decide(state, geo({ distanceFromTopPx: 0 }), 150 + SETTLE_MS + 1).action,
+		"fetch",
+		"the reader's continued push retries the failed fetch",
+	);
+});
+
 test("nothing is spent when there is nothing left to reveal", () => {
 	const state = wheelUp(initialPagingState(), 0);
 	const result = decide(
