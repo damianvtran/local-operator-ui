@@ -271,9 +271,12 @@ function runBounded(
  * 4, Q-21). The tail is where the cause is; kept to a few lines and marked when
  * it was cut, so a noisy interpreter cannot paste a whole traceback into a
  * dialog. */
+/* Hoisted to module scope: `useTopLevelRegex` is an error in this repo's biome
+ * config, and a literal inside a function is rebuilt on every call. */
+const NEWLINES = /\r?\n/;
 const errorTail = (text: string, lines = 3): string => {
 	const kept = text
-		.split(/\r?\n/)
+		.split(NEWLINES)
 		.map((line) => line.trim())
 		.filter(Boolean);
 	if (kept.length === 0) return "";

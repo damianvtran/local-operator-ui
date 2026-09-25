@@ -363,11 +363,21 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 	const [focusRow, setFocusRow] = useState<string | null>(null);
 	useEffect(() => {
 		if (focusRow === null) return;
+		/*
+		 * A DETACHED TARGET IS NOT A TARGET. The destructive arm sets this intent in the
+		 * same tick as the refetch that moves the row out of the Connected list, so the
+		 * registered element is still the OLD row's control -- unmounted, truthy, and
+		 * `focus()` on it does nothing, which is why focus landed on `<body>` after a
+		 * sign-out even with the fallbacks added (review round 6, minor; UX round 5, U20).
+		 * Each candidate has to still be in the document for the chain to mean anything.
+		 */
+		const live = (element: HTMLElement | null | undefined) =>
+			element?.isConnected ? element : null;
 		const target =
-			rowButtons.current.get(focusRow) ??
-			searchRef.current ??
-			/* The surface itself, when the row and the field are both gone. */
-			gridRef.current;
+			live(rowButtons.current.get(focusRow)) ??
+			live(searchRef.current) ??
+			/* The surface itself, which is always mounted while this effect can run. */
+			live(gridRef.current);
 		setFocusRow(null);
 		target?.focus();
 	}, [focusRow]);
@@ -449,7 +459,14 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 		setConfirmSignOut(null);
 		try {
 			await desktopResult({ op: "auth.logout", provider: provider.id });
-			refresh();
+			/*
+			 * AWAITED, so the row has moved before the focus intent below is read: a
+			 * fire-and-forget refetch let the intent be set against the row that was about
+			 * to unmount (review round 6, minor).
+			 */
+			await queryClient.invalidateQueries({
+				queryKey: desktopKeys.providers,
+			});
 			onConnected?.();
 		} catch (error) {
 			showErrorToast(

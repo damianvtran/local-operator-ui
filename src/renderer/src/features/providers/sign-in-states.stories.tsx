@@ -882,16 +882,39 @@ export const PanelDeviceCode = panelStory(
 	"openai",
 );
 
-const OPTS_SUCCEED: BridgeOptions = { script: "succeed" };
+const OPTS_SUCCEED: BridgeOptions = {
+	script: "succeed",
+	/*
+	 * THE CENSUS CARRIES THE CREDENTIAL this frame is about, and the play opens the row
+	 * the live app would have after the sign-in: the panel's success view appears once the
+	 * credential IS stored, and that same credential moves the row into the Connected
+	 * block. With a first-run census the row is bare, the surface's verdict is the
+	 * unconfirmed arm, and U19's fix repainted this still as "Needs sign-in" -- so a frame
+	 * named for a success photographed a refusal (review round 6, R6-M1). The other
+	 * movement this frame took was U22's focus ring on the action; the first reason given
+	 * for the change was that one, and it was wrong.
+	 */
+	providers: signedIn(["anthropic"]),
+};
 /** Signed in, with the backend's defaults receipt and "Change". */
-export const PanelSucceededWithDefault = panelStory(
-	OPTS_SUCCEED,
-	/Sign in: Anthropic/,
-	async () => {
+export const PanelSucceededWithDefault: Story = {
+	render: () => (
+		<Bridge options={OPTS_SUCCEED}>
+			<SettingsFrame>
+				<ProviderGrid onChangeModel={() => undefined} />
+			</SettingsFrame>
+		</Bridge>
+	),
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Manage Anthropic" }),
+		);
+		await userEvent.click(
+			await screen.findByRole("menuitem", { name: /Sign in again/ }),
+		);
 		await startIfIdle("succeeded");
 	},
-	"anthropic",
-);
+};
 
 const OPTS_EXPIRE: BridgeOptions = { script: "expire" };
 /** The link expired; Try again, and the API-key route is offered. */

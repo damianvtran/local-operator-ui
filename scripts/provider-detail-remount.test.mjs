@@ -487,8 +487,9 @@ trackedTest(
 		);
 		assert.match(
 			text,
-			/accepting the sign-in stored on this machine/,
-			`in the row's own words: ${text}`,
+			/This app could not confirm the sign-in stored on this machine for Radient\./,
+			`in the verdict's own register -- this census holds no credential, so the arm is
+			 the unconfirmed one and the sentence must not claim a refusal: ${text}`,
 		);
 		/*
 		 * THE TONE, AS THIS HARNESS CAN REACH IT. `needs credential` decides which of

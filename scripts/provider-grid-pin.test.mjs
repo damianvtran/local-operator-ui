@@ -528,14 +528,59 @@ test("an open panel is visible on the control that opened it, and focus has some
 		/rowButtons\.current\.set\(provider\.id, element\)/,
 		"an add row must register its own control, or a sign-out drops focus on <body>",
 	);
+	/*
+	 * AND EVERY CANDIDATE HAS TO STILL BE IN THE DOCUMENT. The destructive arm sets this
+	 * intent in the same tick as the refetch that moves the row out of the Connected
+	 * list, so the registered element is the OLD row's control -- unmounted, truthy, and
+	 * `focus()` on it does nothing. That is why the fallbacks alone still left focus on
+	 * `<body>` (review round 6, minor; UX round 5, U20).
+	 */
 	assert.match(
 		grid,
-		/rowButtons\.current\.get\(focusRow\) \?\?[\s\S]{0,240}?gridRef\.current/,
-		"and the grid itself is the last resort, so the chain always has an answer",
+		/live\(rowButtons\.current\.get\(focusRow\)\) \?\?[\s\S]{0,200}?live\(gridRef\.current\)/,
+		"the focus chain must skip detached targets, and the grid is the last resort",
+	);
+	assert.match(
+		grid,
+		/element\?\.isConnected \? element : null/,
+		"which is what `live` decides",
+	);
+	assert.match(
+		grid,
+		/await queryClient\.invalidateQueries\(\{\s*queryKey: desktopKeys\.providers,?\s*\}\);/,
+		"and the refetch is awaited, so the row has moved before the intent is read",
 	);
 	assert.match(
 		grid,
 		/ref=\{gridRef\}\s*\n?\s*tabIndex=\{-1\}/,
 		"which requires the container to be focusable",
+	);
+});
+
+test("the settled view's verdict reaches the API-key route too, and its sentence keeps its register", () => {
+	const detail = stripComments(DETAIL_SOURCE);
+	/*
+	 * Review round 6's two minors: Radient offers an API key as well as a browser sign-in,
+	 * so the key route's settled view can render under a credential the provider has
+	 * stopped accepting -- it must take the same verdict object the flow's success view
+	 * takes, or U19's contradiction survives one route over. And the fallback sentence has
+	 * to follow the verdict's REGISTER: the refusal sentence was printed for the neutral
+	 * arm, which made a claim the verdict did not.
+	 */
+	const verdicts = detail.match(/verdict=\{readiness\}/g) ?? [];
+	assert.equal(
+		verdicts.length,
+		2,
+		`both settled views must take the surface's verdict: ${verdicts.length}`,
+	);
+	assert.match(
+		detail,
+		/verdict\.tone === "attention"[\s\S]{0,220}?no longer accepting the sign-in stored on this machine/,
+		"the refusal register says the provider stopped accepting it",
+	);
+	assert.match(
+		detail,
+		/This app could not confirm the sign-in stored on this machine for \$\{brand\}/,
+		"and the neutral register says the app could not confirm it",
 	);
 });

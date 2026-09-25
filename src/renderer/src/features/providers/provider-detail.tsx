@@ -422,8 +422,17 @@ const SignedIn: FC<{
 				 * the sign-in works.
 				 */
 				<p className="text-body-sm text-ink-muted">
+					{/*
+					 * THE VERDICT'S OWN SENTENCE, and in its own register when it has none:
+					 * a refusal says the provider stopped accepting this sign-in, an
+					 * unconfirmed one says the app could not confirm it. The first version
+					 * printed the refusal sentence for both, so the neutral arm made a claim
+					 * the verdict did not (review round 6, minor).
+					 */}
 					{verdict.detail ??
-						`${brand} is not accepting the sign-in stored on this machine.`}{" "}
+						(verdict.tone === "attention"
+							? `${brand} is no longer accepting the sign-in stored on this machine.`
+							: `This app could not confirm the sign-in stored on this machine for ${brand}.`)}{" "}
 					The sign-in itself finished; what follows is what it set.
 				</p>
 			) : null}
@@ -980,6 +989,14 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 						actionLabel={doneLabel}
 						onAction={finish}
 						primaryAction={context === "dialog"}
+						/*
+						 * THE SAME VERDICT AS THE FLOW'S SUCCESS VIEW (review round 6, minor).
+						 * Radient offers an API key as well as a browser sign-in, so this
+						 * branch can render under a credential the provider has stopped
+						 * accepting -- and with no verdict it printed "Radient connected" over a
+						 * row saying otherwise: U19's contradiction, one route over.
+						 */
+						verdict={readiness}
 					/>
 				</div>
 			);
