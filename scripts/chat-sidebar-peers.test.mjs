@@ -1464,6 +1464,72 @@ test("Q3: a retried move REPLAYS its request id, and a confirmed one spends it",
 	}
 });
 
+test("Q10b: the peers row's trailing is SPLIT, so the word can never be the part that is cut", async () => {
+	/*
+	 * THE GUARD THAT WAS MISSING (design round 3, D21). The story play that asserts
+	 * this in a real layout existed and was RED for two rounds, because nothing runs
+	 * it: no workflow mentions storybook. What THIS suite can assert without a layout
+	 * engine is the STRUCTURE that makes the layout safe - the state word in its own
+	 * shrink-refusing element, the age as the truncating one, and no `min-w-0` on the
+	 * cell (the property that would let flex shrink the cell below the word, which is
+	 * the round-2 defect measured at a 2.75px cell with the word painted over the
+	 * rows above).
+	 */
+	globalThis.__features = { ...BASE_FEATURES, peers: 1, session_transfer: 1 };
+	peerAnswer = {
+		peers: [
+			peer(LAPTOP, "damians-mac-studio-in-the-back-office-rack-2", {
+				reachable: false,
+				last_seen_at: 1_789_400_000,
+			}),
+		],
+		degraded: [],
+	};
+	localStorage.setItem(
+		"chat-sidebar-disclosures",
+		JSON.stringify({ previous: true, peers: true }),
+	);
+	const harness = await mount([]);
+	try {
+		const cell = harness.container.querySelector("[data-peer-row-trailing]");
+		assert.ok(cell, "no peer row trailing cell");
+		const state = cell.querySelector("[data-peer-trailing-state]");
+		assert.ok(
+			state,
+			"the cell renders ONE joined string, so the truncator can cut the word itself (D21)",
+		);
+		assert.equal(state.textContent, "unreachable");
+		assert.ok(
+			state.className.includes("shrink-0"),
+			"the state word must be able to refuse to shrink",
+		);
+		const detail = cell.querySelector("[data-peer-trailing-detail]");
+		assert.ok(detail, "the age is missing from the split cell");
+		assert.ok(
+			detail.className.includes("min-w-0") &&
+				detail.className.includes("truncate"),
+			"the age must be the half that truncates",
+		);
+		/*
+		 * AND THE CELL MUST BE ABLE TO YIELD ITS AGE. `min-w-0` on the CELL is what
+		 * makes flex hand the remainder to the age rather than overflow the row: left
+		 * to its automatic minimum the cell cannot shrink at all, because the age's
+		 * `whitespace-nowrap` makes its min-content its full width - measured as a
+		 * 17px row overflow at the clamp before this. The word is protected by being
+		 * `shrink-0` in its own element plus the app's own 240px width clamp, not by
+		 * this cell's minimum.
+		 */
+		assert.ok(
+			/\bmin-w-0\b/.test(cell.className),
+			"the cell must be able to yield its age (min-w-0), or the row overflows",
+		);
+	} finally {
+		localStorage.removeItem("chat-sidebar-disclosures");
+		globalThis.__features = { ...BASE_FEATURES };
+		await harness.unmount();
+	}
+});
+
 test("Q10: the peer name cell carries its own full value at the clamp", async () => {
 	globalThis.__features = { ...BASE_FEATURES, peers: 1, session_transfer: 1 };
 	peerAnswer = {

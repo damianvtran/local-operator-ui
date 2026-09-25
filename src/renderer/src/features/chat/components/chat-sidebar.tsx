@@ -98,8 +98,6 @@ import {
 	peerReachable,
 	peerReason,
 	peerSections,
-	peerTrailing,
-	peerTrailingTitle,
 } from "../chat-peers";
 import {
 	type ArchiveView,
@@ -137,6 +135,7 @@ import {
 	resolveSidebarSplit,
 } from "../sidebar-split";
 import { MoveChatHere } from "./chat-peer-move";
+import { PeerRowTrailing } from "./chat-peer-row-trailing";
 import { ChatRemoteMark, RemoteGlyph } from "./chat-remote-mark";
 import { ChatRowTitle } from "./chat-row-title";
 
@@ -4696,15 +4695,19 @@ export function ChatSidebar({
 										key={peer.device_id}
 										data-peer-row={peer.device_id}
 										/*
-										 * `gap-0.5`, not the row's `gap-1` (design round 2, D20). At the
-										 * 240px clamp this row's two hard floors - the mark (16px) and the
-										 * device name's 14ch (115px) - plus the state word (70px) and the
-										 * gaps need 209px of the 207 a 215px row has, so the tail cut the
-										 * WORD itself by 2px (`unreachabl…`), which is the one cell the row
-										 * cannot spare. Two pixels of gap buys them all: the statement stays
-										 * whole, the age included. The chat rows above are untouched -
+										 * `gap-0.5`, not the row's `gap-1`: the four pixels it buys are four
+										 * pixels of age at the clamp, and the chat rows above are untouched -
 										 * `rowStyle` itself is not changed, because D1's budget is about THEIR
 										 * geometry.
+										 *
+										 * IT DOES NOT BUY THE AGE, THOUGH (design round 3, D21). Round 2
+										 * took the state word at 70px and concluded two pixels of gap turned
+										 * a 2px deficit into a whole statement. Measured at the clamp the cell
+										 * is 72px and the word alone is ~68px, so what did not fit was the age
+										 * - ~23px past the two the gap bought, and the frames showed
+										 * `unreachabl…`. The age giving way is the right order; the defect was
+										 * that one truncated STRING let the truncator cut the word instead.
+										 * `PeerRowTrailing` is what makes the order structural.
 										 */
 										className={cn(rowStyle, "w-full gap-0.5")}
 									>
@@ -4749,43 +4752,10 @@ export function ChatSidebar({
 										    than no age at all. The cap is what keeps the device's
 										    own name whole at the clamp, and the whole sentence is
 										    the `title`. */}
-										<span
-											data-peer-row-trailing
-											title={peerTrailingTitle(
-												peer,
-												chatCounts.get(peer.device_id) ?? 0,
-												Date.now() / 1000,
-											)}
-											className={cn(
-												/*
-												 * ONE SPAN, capped at 46%. The split version (a `shrink-0`
-												 * word beside a truncating age) is what D20 asks for in
-												 * principle, and it was measured in the built story: with
-												 * `min-w-0` on the cell the flex line - full to the pixel at
-												 * 280, where a 14ch name floor plus this statement is 246 of
-												 * the row's 247 - shrank the cell to 2.75px and the word
-												 * printed over the rows above it; without `min-w-0` the cell
-												 * kept its content but the row's own box overflowed the
-												 * panel by ~20px at the 240px clamp. At 240 the arithmetic
-												 * does not fit both floors and the age: the mark (16), the
-												 * name's 14ch (115), the state word (70) and two 4px gaps
-												 * need 209 of the 207 a 215px row has. So the cell keeps the
-												 * shape that measures right at both widths - the statement is
-												 * ONE truncated string, exactly as before this round, whose
-												 * cap goes from 40% to 46% so a THREE-character age no longer
-												 * truncates to `1…` (D4) - and the whole sentence stays in the
-												 * row's `title`.
-												 */
-												"min-w-0 max-w-[46%] truncate text-right text-meta tabular-nums",
-												peer.reachable ? "text-ink-dim" : "text-warning",
-											)}
-										>
-											{peerTrailing(
-												peer,
-												chatCounts.get(peer.device_id) ?? 0,
-												Date.now() / 1000,
-											)}
-										</span>
+										<PeerRowTrailing
+											peer={peer}
+											chatCount={chatCounts.get(peer.device_id) ?? 0}
+										/>
 										{transferEnabled && peer.reachable && (
 											<MoveChatHere
 												peerLabel={deviceLabel(peer)}

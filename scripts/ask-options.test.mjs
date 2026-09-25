@@ -1200,9 +1200,21 @@ test("the remote-blocked notice paints the instruction, never its own reasoning"
 	);
 	assert.ok(
 		markup.includes(
-			"This conversation is on another device. Open it there, or bring it here.",
+			"This conversation is on another device. Open it there — this window can show it once that device answers.",
 		),
 		"the notice says what to do",
+	);
+	/*
+	 * AND IT NAMES NO ROUTE THIS WINDOW DOES NOT OFFER (design round 3, D23). The
+	 * sentence this replaced ended "or bring it here": this arm is reached exactly
+	 * when the peer is unreachable, which is the condition the sidebar's own move
+	 * control is gated on, so the clause pointed at a control that is not on screen -
+	 * a promise followed by a refusal. Asserted ABSENT so a later edit cannot quietly
+	 * put it back.
+	 */
+	assert.ok(
+		!markup.includes("bring it here"),
+		"the notice must not name a move this window cannot perform in this state",
 	);
 	/* The backend's own sentence is rendered verbatim: it is the half that names
 	   the device and the commands, and this renderer cannot compose it. */
@@ -1228,6 +1240,43 @@ test("the remote-blocked notice paints the instruction, never its own reasoning"
 	assert.ok(
 		markup.includes(`id="${MISSING_SESSION_NOTICE_ID}"`),
 		"the notice keeps the id the composer's aria-describedby points at",
+	);
+
+	/*
+	 * A REFUSAL WITH NO SENTENCE IS STILL A REFUSAL (design round 3, D24). The hook
+	 * sends an empty string when the relay attached no message, and the pane must
+	 * still paint - once. It used to paint the pane's line twice, the stand-in's copy
+	 * differing only by a verb ("lives" against "is"), which is the duplicate-caption
+	 * class the same component had already lost once.
+	 */
+	const bare = renderToStaticMarkup(
+		createElement(CanonicalTranscript, {
+			transcript: EMPTY_TRANSCRIPT,
+			gate: null,
+			waiting: false,
+			loadingOlder: false,
+			onLoadOlder: async () => true,
+			containerRef: { current: null },
+			isSmallView: false,
+			status: "[redacted]",
+			awaitingHydration: false,
+			error: null,
+			remoteBlocked: "",
+			onAnswer: () => {},
+		}),
+	);
+	assert.ok(
+		bare.includes("data-lo-session-remote"),
+		"a refusal with no sentence must still paint the arm",
+	);
+	assert.equal(
+		bare.split("This conversation is on another device").length - 1,
+		1,
+		"the pane's line is printed once, not once per register (D24)",
+	);
+	assert.ok(
+		!bare.includes("lives on another device"),
+		"the deleted stand-in sentence must not come back",
 	);
 });
 

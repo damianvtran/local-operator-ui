@@ -2678,13 +2678,20 @@ export function useCanonicalSessionStream(
 								remoteBlocked:
 									event.message ??
 									/*
-									 * A STAND-IN FOR THE BACKEND'S SENTENCE, so it must not
-									 * claim less than the app can do: "drive it from the
-									 * terminal" was true when piloting was terminal-only and
-									 * is not true now, since this window can open a peer's
-									 * session. Both ways out, no tool named.
+									 * EMPTY, NOT A STAND-IN SENTENCE (design round 3, D24). A
+									 * stand-in here printed the pane's own line a second time
+									 * with a different verb - two registers saying one thing,
+									 * the duplicate-caption class D10 removed from this same
+									 * component. The pane's line already carries the statement,
+									 * so with no backend sentence the arm renders that line and
+									 * nothing under it.
+									 *
+									 * EMPTY AND NOT NULL: null is how this field says "this
+									 * conversation is not blocked", and a refusal IS a blocked
+									 * conversation whether or not the relay had a sentence to
+									 * attach to it.
 									 */
-									"This conversation lives on another device. Open it there, or bring it here.",
+									"",
 								failure: null,
 							}));
 							return;
