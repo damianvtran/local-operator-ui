@@ -15,9 +15,9 @@ OWNER_REFUSAL_OWNER_PORT=8891 node docs/evidence/owner-refusal-send/harness/capt
 
 | frame | state |
 |---|---|
-| `press-during-flight-composed.webp` | the first message typed, before the press |
-| `press-during-flight-after-press-in-flight.webp` | **the press, answered**: the user's own next line still in the box, the flight's echo in the transcript above it, and one muted sentence over the composer - "Your last message is still sending." |
-| `press-during-flight-after-flight-settled.webp` | the flight's own deadline spent: this app's sentence over the returned message, with `Retry` and `Clear` |
+| `press-during-flight-composed/localOperatorDark.webp` | the first message typed, before the press |
+| `press-during-flight-after-press-in-flight/localOperatorDark.webp` | **the press, answered**: the user's own next line still in the box, the flight's echo in the transcript above it, and one muted sentence over the composer - "Your last message is still sending." |
+| `press-during-flight-after-flight-settled/localOperatorDark.webp` | the flight's own deadline spent: this app's sentence over the returned message, with `Retry` and `Clear` |
 
 ## The readings, which are the claim that can fail
 
