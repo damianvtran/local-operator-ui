@@ -149,12 +149,14 @@ globalThis.KeyboardEvent = bootstrapDOM.window.KeyboardEvent;
 globalThis.MutationObserver = bootstrapDOM.window.MutationObserver;
 globalThis.NodeFilter = bootstrapDOM.window.NodeFilter;
 globalThis.HTMLInputElement = bootstrapDOM.window.HTMLInputElement;
-globalThis.getComputedStyle =
-	bootstrapDOM.window.getComputedStyle.bind(bootstrapDOM.window);
+globalThis.getComputedStyle = bootstrapDOM.window.getComputedStyle.bind(
+	bootstrapDOM.window,
+);
 globalThis.requestAnimationFrame =
 	bootstrapDOM.window.requestAnimationFrame.bind(bootstrapDOM.window);
-globalThis.cancelAnimationFrame =
-	bootstrapDOM.window.cancelAnimationFrame.bind(bootstrapDOM.window);
+globalThis.cancelAnimationFrame = bootstrapDOM.window.cancelAnimationFrame.bind(
+	bootstrapDOM.window,
+);
 globalThis.ResizeObserver = class {
 	observe() {}
 	unobserve() {}
@@ -1612,7 +1614,9 @@ test("on a failed verdict, the claim appears once the account read answers", asy
 	 * header scope in `radientChip` is what makes a fact about the row.
 	 */
 	assert.equal(radientChip(container), "Signed in", text(container));
-	const panel = rowOf(container, "radient")?.querySelector("[data-sign-in-state]");
+	const panel = rowOf(container, "radient")?.querySelector(
+		"[data-sign-in-state]",
+	);
 	assert.ok(panel, `the panel's body is on screen: ${text(container)}`);
 	assert.equal(
 		occurrences(text(panel), "Signed in"),
@@ -1877,7 +1881,9 @@ test("a refused verdict with no stored sign-in owes no sentence about one", asyn
 	assert.equal(occurrences(body, "Signed in"), 0, body);
 	assert.doesNotMatch(container.innerHTML, REFUSED_DETAIL_ATTRIBUTE);
 	await expandAddRow(container, "radient");
-	const panel = rowOf(container, "radient")?.querySelector("[data-sign-in-state]");
+	const panel = rowOf(container, "radient")?.querySelector(
+		"[data-sign-in-state]",
+	);
 	assert.ok(panel, `the Add row did not open its panel: ${text(container)}`);
 	assert.equal(
 		occurrences(text(panel), "Needs re-authentication"),
@@ -1941,9 +1947,18 @@ test("a successful sign-in from the row refreshes the verdict the claim reads", 
 	 * control -- and each is asserted where it lives rather than summed into a total
 	 * that no longer means one claim.
 	 */
-	assert.equal(radientChip(container), "Needs re-authentication", text(container));
-	const panel = rowOf(container, "radient")?.querySelector("[data-sign-in-state]");
-	assert.ok(panel, `the deep link did not open the panel: ${text(container).slice(0, 300)}`);
+	assert.equal(
+		radientChip(container),
+		"Needs re-authentication",
+		text(container),
+	);
+	const panel = rowOf(container, "radient")?.querySelector(
+		"[data-sign-in-state]",
+	);
+	assert.ok(
+		panel,
+		`the deep link did not open the panel: ${text(container).slice(0, 300)}`,
+	);
 	assert.equal(
 		occurrences(text(panel), "Needs re-authentication"),
 		1,
@@ -2107,22 +2122,6 @@ async function renderGridWith({ accountAnswer: answer }) {
 }
 
 /* ---- Q-8: a FAILED verdict read, and the two surfaces that used to loop on it -- */
-
-/**
- * Press the first button whose label the matcher accepts, failing with the frame
- * when there is none: a missing control is the finding, not a harness error.
- */
-async function pressButton(container, matcher) {
-	const button = [...container.querySelectorAll("button")].find((candidate) =>
-		matcher(candidate.textContent ?? ""),
-	);
-	assert.ok(button, `no control matched: ${text(container).slice(0, 300)}`);
-	await act(async () => {
-		button.dispatchEvent(
-			new window.MouseEvent("click", { bubbles: true, cancelable: true }),
-		);
-	});
-}
 
 /**
  * Whether the grid is showing an opened provider's panel.
@@ -2341,7 +2340,11 @@ test("a failed verdict read never puts the row list back behind its loading gate
 		`a failed first read left the list on its gate: ${text(container)}`,
 	);
 
-	const reattempt = async (label, expectPanel, grid = { container, queryClient }) => {
+	const reattempt = async (
+		label,
+		expectPanel,
+		grid = { container, queryClient },
+	) => {
 		const { container, queryClient } = grid;
 		holdVerdict = true;
 		const before = verdictRequests;
