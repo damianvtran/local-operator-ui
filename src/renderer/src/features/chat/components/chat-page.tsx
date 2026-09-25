@@ -16,7 +16,10 @@ import { SEND_HELD, type SendOutcome } from "@shared/hooks/use-message-input";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
 import { useWarmSession } from "@shared/hooks/use-warm-session";
 import { cn } from "@shared/lib/utils";
+import { useAsideStore } from "@shared/store/aside-store";
 import {
+	ASIDE_NOT_ANSWERED_CODE,
+	ASIDE_STILL_ANSWERING_CODE,
 	SEND_UNCONFIRMED_MESSAGE,
 	SESSION_UNVALIDATED_CODE,
 	SESSION_UNVALIDATED_MESSAGE,
@@ -45,6 +48,11 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import { pairingHasRemedy } from "../../../../../shared/backend-status";
 import { DESKTOP_MESSAGE_BUDGET_BYTES } from "../../../../../shared/desktop-contract";
+import {
+	asideAskBlockedReason,
+	askAside,
+	reportUncarriedAsideRefusal,
+} from "../aside";
 import {
 	type AnswerOutcome,
 	type SendLock,
@@ -856,6 +864,77 @@ function SessionPanel({
 	 *     from, and a picker that opens onto an empty list is a dead control wearing
 	 *     a live one's clothes.
 	 */
+	/*
+	 * Retire whatever the composer's error line is holding.
+	 *
+	 * ONE IMPLEMENTATION FOR BOTH ITS CALLERS, because both are the same act: the
+	 * page's own controls (the alert's dismiss, the held-claim controls) and the
+	 * aside door below, which retires the line when it starts a new aside (design
+	 * round 2, D7 - the line outlived the aside it described). It is a
+	 * `useCallback` because the aside door hands it to `useSlashDispatch`, whose
+	 * `dispatch` lists it as a dependency: a fresh identity per render would
+	 * rebuild that callback on every render of this page, and the values it writes
+	 * through are the two setters, which never change.
+	 */
+	const clearError = useCallback(() => {
+		setSendError(null);
+		setSendErrorCode(undefined);
+	}, []);
+
+	/*
+	 * Whether the box is refusing an aside follow-up RIGHT NOW, as the one predicate
+	 * both doors apply reads it.
+	 *
+	 * A BOOLEAN SUBSCRIPTION RATHER THAN THE STORE OBJECT, because both things this
+	 * page does with it are edge-shaped: the line is raised with the refusal's own
+	 * code, and it is retired the moment this flips false - which is the same moment
+	 * the adopt control goes live beside the panel (UX round 2, U12; agent review
+	 * round 5, R5-5; design round 3, D13). Every other error line on this surface is
+	 * retired by the user's own next act; this one describes a state the app can see
+	 * end, so it ends with it.
+	 *
+	 * The comparison rather than the value keeps the subscription's result a
+	 * primitive, so a store write that does not move the gate cannot re-render this
+	 * page: `asideAskBlockedReason` returns a SENTENCE, and a fresh one per call.
+	 */
+	const asideBusy = useAsideStore((state) =>
+		sessionId ? asideAskBlockedReason(state, sessionId) !== null : false,
+	);
+
+	/*
+	 * Raise the busy sentence, minted here so the `/btw` door can reach the same line.
+	 *
+	 * The sentence is the APP's refusal rather than the owner's, and it is stated on
+	 * ONE line for both doors: this page owns the composer's error line, and the
+	 * dispatcher owns none of it - the door used to write a permanent red TRANSCRIPT
+	 * receipt for a state that lasts exactly as long as one answer, which is a record
+	 * of something that is about to stop being true (UX round 2, U13).
+	 */
+	const noteAsideRefusal = useCallback((sentence: string) => {
+		setSendError(sentence);
+		setSendErrorCode(ASIDE_STILL_ANSWERING_CODE);
+	}, []);
+
+	/*
+	 * THE BUSY LINE IS RETIRED WITH THE MOMENT IT DESCRIBES.
+	 *
+	 * It used to stay for the rest of the read dwell - measured: still reading "still
+	 * answering" 9.4s after the answer had settled, with the now-live adopt control
+	 * beside it, and cleared only by the next keystroke (UX round 2, U12; design round
+	 * 3, D13). The condition is the predicate itself, so the line cannot outlive the
+	 * state it names on either exit: the answer settles, or the panel closes and takes
+	 * the turn with it.
+	 *
+	 * GATED ON THE CODE, because this surface carries every one of the composer's
+	 * refusals and only this one is tied to a state the app can watch end. A store
+	 * refusal beside it is the user's to clear, and `clearError` is not scoped.
+	 */
+	useEffect(() => {
+		if (sendErrorCode !== ASIDE_STILL_ANSWERING_CODE) return;
+		if (asideBusy) return;
+		clearError();
+	}, [asideBusy, clearError, sendErrorCode]);
+
 	const {
 		dispatch,
 		dispatchFromControl,
@@ -892,6 +971,21 @@ function SessionPanel({
 		 * surfaces.
 		 */
 		moveReady: !draftKey,
+		/*
+		 * The composer's line is retired by the door that starts an aside, whichever
+		 * door that is (design round 2, D7). The `send` branch above retires it itself
+		 * when the composer asks; this is the `/btw` door's half of the same rule, and
+		 * the dispatcher cannot reach the setter on its own. A new attempt makes every
+		 * line on that surface stale, which is the whole scope of the clear.
+		 */
+		clearAsideRefusal: clearError,
+
+		/*
+		 * The `/btw` door's half of the same line (UX round 2, U13). It has no composer
+		 * error line of its own, so the page mints the sentence: one state, one surface,
+		 * whatever door refused the press.
+		 */
+		noteAsideRefusal,
 
 		/*
 		 * The pane's own selection, handed to the dispatcher only where a pick can
@@ -1145,6 +1239,154 @@ function SessionPanel({
 			if (refusal) {
 				setSendError(refusal);
 				return false;
+			}
+			/*
+			 * WHILE AN ASIDE IS ATTACHED THE COMPOSER ADDRESSES THE ASIDE.
+			 *
+			 * WHY HERE, BETWEEN THE REFUSALS ABOVE AND EVERYTHING BELOW. Above, because
+			 * the two refusals this path already owns are about the PAYLOAD rather than
+			 * about the surface it is addressed to — a message too large, or a file the
+			 * app could not read, is refused the same way whoever it was meant for, and
+			 * an aside path that skipped them would be the one route that does not (the
+			 * interface note: an aside is an off-record ANSWER, not an exemption).
+			 * Below, because every step after this point turns text into a TURN of the
+			 * conversation — the stream wait, `admitChatDraft` — and an aside is
+			 * precisely the exchange that must not become one.
+			 *
+			 * THE PENDING-GATE BRANCH ABOVE OUTRANKS IT, and the composer's placeholder
+			 * is what names the winner (`message-input.tsx` puts `awaitingAnswer` ahead
+			 * of the aside term for exactly this reason). An `approval` gate has NO
+			 * OTHER ANSWER PATH: its card says "Reply yes or no in the composer", and
+			 * the aside can be left standing for as long as the user likes, while the
+			 * agent is parked on that gate. Making the aside win would leave a blocked
+			 * turn unanswerable except by closing the panel first.
+			 *
+			 * THE QUESTION IS PAINTED BEFORE IT IS SENT, AND THE BOX IS HANDED BACK AT
+			 * THE PRESS. `askAside` registers the turn in the store the panel renders
+			 * from BEFORE it posts, so the panel shows the question and its thinking
+			 * state in the same commit that clears the box — and this branch does NOT
+			 * AWAIT the ask, which is what makes that commit the press rather than the
+			 * answer. Awaiting it held the composer's own clear and its `admitting`
+			 * state for the whole POST, so a question visibly being answered above sat
+			 * in the box as well, and a follow-up typed meanwhile made the eventual
+			 * clear a no-op — the next Enter then asked "q1q2" as a NEW turn. The
+			 * `/btw` dispatcher's own branch states the same rule for its own door.
+			 *
+			 * A FAILED ASK DOES NOT PUT THE TEXT BACK, deliberately. The failure is
+			 * unknowable in the way `SEND_HELD` describes — the ask was REGISTERED, so
+			 * "nothing reached the owner" is false and the retry is not the box's to
+			 * offer — and the only text a restore could write into is a box the user
+			 * has since left alone, so whether it came back would depend on a race they
+			 * cannot see.
+			 *
+			 * NOT AWAITING THE POST IS NOT THE SAME AS NOT HEARING IT, and the two
+			 * things that depend on the ask's own answer ride its promise back to the
+			 * composer rather than waiting here: the composer's PAYLOAD is retired only
+			 * if the ask is answered and kept if it is refused (review round 2, F6,
+			 * where a refusal must keep the staged reply and the credential map exactly
+			 * as a refused send does), and a refusal the panel can no longer state is
+			 * stated on the composer instead (F7, below).
+			 */
+			const aside = sessionId
+				? useAsideStore.getState().attached[sessionId]
+				: undefined;
+			if (sessionId && aside) {
+				if (attachments.length > 0) {
+					/*
+					 * An aside carries TEXT ONLY on the wire (the op's body is `text` and the
+					 * exchange's own id), so a send with files would answer a question that
+					 * silently omitted them — the one outcome worse than a refusal, because it
+					 * looks like it worked. Stated through the composer's own error surface,
+					 * where the chips that have to be removed are. `false` keeps both halves
+					 * with the user.
+					 */
+					setSendError(
+						"An aside answers text only. Remove the attached files to ask it.",
+					);
+					return false;
+				}
+				/*
+				 * A FOLLOW-UP WHILE THE EXCHANGE IS STILL ANSWERING IS REFUSED HERE, WHILE THE
+				 * QUESTION IS STILL IN THE BOX (UX round 1, U2). The composer is deliberately
+				 * typable while an answer streams, and the box's placeholder invites the next
+				 * question — so this press used to empty the box, paint the question and then
+				 * fail 800ms later with "This aside is no longer available", because the owner
+				 * refuses a continuation of an entry it is still running. `false` is the
+				 * composer's own refusal-before-admission answer: the text stays where it is,
+				 * and the sentence above says what to wait for. The gate is the same one the
+				 * `/btw` door applies, from one predicate, so the two doors cannot disagree
+				 * about when a question may leave.
+				 */
+				const busy = asideAskBlockedReason(useAsideStore.getState(), sessionId);
+				if (busy) {
+					/*
+					 * THE CODE GOES WITH THE SENTENCE, and it is what keeps the composer's
+					 * generic retry suffix off a line whose whole subject is that the retry is
+					 * not available yet (UX round 2, U12; agent review round 5, R5-5). The box
+					 * still holds the question, so the suffix was otherwise TRUE of the box
+					 * and false of the situation, and it arrived directly under "wait".
+					 */
+					noteAsideRefusal(busy);
+					return false;
+				}
+				/*
+				 * THE SUBSCRIPTION TRAVELS WITH THE ASK. The stream is read by every
+				 * attached viewer of this session, so an owner that routes `aside_delta`
+				 * to the subscription that asked — rather than broadcasting it — needs to
+				 * be told which one that is, and without it the panel degrades to the
+				 * settled answer with no thinking state and no streaming. The id is the
+				 * `open` frame's own (`use-canonical-session` keeps it on the view, which
+				 * is also what the watch lease above leases it with), and it is absent
+				 * only before the stream's first `open`.
+				 *
+				 * A WELL-FORMED ID THIS OWNER DOES NOT HOLD IS A DOCUMENTED LIMITATION, not
+				 * a case with an answer here: the owner streams nothing for it and reports
+				 * nothing back, so the panel paints its thinking state and then the settled
+				 * answer in one piece, which reads as a slow model (QA round 1, Q3). The
+				 * whole statement, and why no client-side change closes it, is on
+				 * `askAside`'s own `subscriptionId` parameter — this branch is one of the
+				 * two places the id is chosen, and it chooses the only value there is.
+				 */
+				/*
+				 * A NEW ASK RETIRES THE LINE THAT DESCRIBED THE LAST ONE (design round 2,
+				 * D7). The composer's aside refusal sat above a panel that had moved on — a
+				 * fresh `/btw` still thinking, a new question in flight — and read as the
+				 * verdict on THEM. Every line on this surface is about the last attempt, so a
+				 * new attempt retires it; the alternative (matching the sentence to the ask it
+				 * came from) is a bookkeeping the line does not need.
+				 */
+				setSendError(null);
+				setSendErrorCode(undefined);
+				const ask = askAside(
+					sessionId,
+					content,
+					canonical.subscriptionId ?? undefined,
+				);
+				/*
+				 * A PANEL THE USER CLOSED HAS NO TURN LEFT TO STATE A REFUSAL ON, and the
+				 * question left the screen with it (review round 2, F7). The composer's
+				 * error line is then the only surface that still knows the ask happened,
+				 * so it says what became of it. Called in the same tick `askAside` returned
+				 * in, which is what lets the helper name this ask's own turn and its
+				 * question; the rule, and why the `/btw` command door shares it, is on the
+				 * helper.
+				 *
+				 * THE CODE GOES WITH THE SENTENCE, and it is what keeps the false half of the
+				 * error contract off this refusal: the box is empty by now (the press handed
+				 * it back) and whatever the user types next is not the question that failed,
+				 * so `ASIDE_NOT_ANSWERED_CODE` withholds the generic "Your message is still in
+				 * the composer. Send it again." (UX round 1, U4).
+				 */
+				reportUncarriedAsideRefusal(ask, sessionId, (sentence) => {
+					setSendError(sentence);
+					setSendErrorCode(ASIDE_NOT_ANSWERED_CODE);
+				});
+				/*
+				 * NOT AWAITED, so the box is handed back in the press's own commit (F1);
+				 * the promise is nested rather than returned for the same reason (see
+				 * `OffRecordAsk`).
+				 */
+				return { offRecord: ask };
 			}
 			/*
 			 * A SEND PRESSED BEFORE THE STREAM HAS ANSWERED WAITS FOR IT, and then
@@ -1668,10 +1910,6 @@ function SessionPanel({
 	 */
 	const activeError = sendError || draft?.error;
 	const activeErrorCode = sendErrorCode ?? draft?.errorCode;
-	const clearError = () => {
-		setSendError(null);
-		setSendErrorCode(undefined);
-	};
 	/*
 	 * A remedy that worked retires the message that asked for it.
 	 *

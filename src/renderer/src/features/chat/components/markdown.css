@@ -45,6 +45,38 @@
 }
 
 /*
+ * A CAPPED REGION THAT CUTS ON A ROW BOUNDARY NEEDS THE ROWS ON A GRID.
+ *
+ * The aside panel derives its exchange's `max-height` as a whole number of the
+ * answer's line boxes (design round 1, D1), so the boundary falls between two rows
+ * - and that arithmetic is only true while every block boundary inside the answer is
+ * a whole number of those boxes too. The `0.5rem` above is not, so an answer with a
+ * paragraph break had its second paragraph's first row cut 11.9px into a 16.5px
+ * glyph box: a row of letter tops under a complete line, read as a rendering
+ * accident rather than as "there is more" (design round 3, D12, which measured the
+ * regression against the same answer resting at 0 cut rows one round earlier).
+ *
+ * ONE LINE BOX OF GAP, expressed against the SAME custom property the renderer
+ * paints the leading with, so moving the leading moves the gap with it and the two
+ * type steps this panel uses each get their own exact box. The carve-outs repeat the
+ * base file's rules so the first paragraph still starts flush with the region's top
+ * - which is what keeps the cap's own term for the question's line count correct -
+ * and they are restated here rather than relied on from above because these three
+ * rules are one device and a later reader should not have to reconstruct the pair.
+ */
+.lo-markdown--row-grid p {
+	margin: calc(1em * var(--md-line-height, 1.6)) 0;
+}
+
+.lo-markdown--row-grid p:first-child {
+	margin-top: 0;
+}
+
+.lo-markdown--row-grid p:last-child {
+	margin-bottom: 0;
+}
+
+/*
  * Inline code carries no fill, no padding and no radius - the monospace face
  * is the whole signal.
  *

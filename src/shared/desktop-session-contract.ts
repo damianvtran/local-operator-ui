@@ -918,6 +918,31 @@ export type DesktopSessionFrame =
 	// AgentEvent the transcript reducer paints, nor a `frontend.update`, which
 	// is a field delta of persistent state — a notification is a one-shot edge.
 	| Receipt<"notification", DesktopNotification>
+	/**
+	 * One live chunk of an off-record aside's answer (`/btw`).
+	 *
+	 * LIVE-ONLY AND REPLAY-EXEMPT, for the same shape of reason `notification` is:
+	 * the backend publishes it with replay disabled, so a late subscriber never
+	 * receives an earlier delta and there is nothing to gap on. An older renderer
+	 * falls through every branch of its frame loop, advances its receipt cursor on
+	 * `seq`, and paints nothing — and because the text is not durable, nothing is
+	 * lost by that beyond a partial answer its own POST settles anyway.
+	 *
+	 * DELIBERATELY NOT AN `event` (a typed canonical AgentEvent the transcript
+	 * reducer paints): an aside is off the record by construction, so a frame that
+	 * could reach that reducer would be the one way the promise "nothing here joins
+	 * the conversation" could be broken by accident. Nor is it a `frontend.update`,
+	 * which is a field delta of persistent state — this is a chunk of a stream the
+	 * renderer reads into its own store, keyed by `aside_id`.
+	 *
+	 * `aside_id` IS THE CLIENT-GENERATED `request_id` of the POST that asked the
+	 * question (the route answers `aside_id: body.request_id`), which is what lets
+	 * the panel subscribe BEFORE its own request resolves and still catch the first
+	 * chunk. `delta` is a chunk, never the whole answer: the POST's returned text is
+	 * what settles the exchange, so a chunk this renderer never saw costs it nothing
+	 * (see `AsideStream`).
+	 */
+	| Receipt<"aside_delta", { aside_id: string; delta: string }>
 	| { session_id: CanonicalSessionId; type: "heartbeat" | "gap" };
 
 /**

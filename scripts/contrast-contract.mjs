@@ -2396,6 +2396,34 @@ const STRUCTURAL_CALL_SITES = [
 		must: 'variant="ghost"\n\t\t\t\t\t\tsize="sm"\n\t\t\t\t\t\tclassName="h-auto max-w-full whitespace-normal break-words rounded-sm px-2 py-1 text-body-sm text-ink-muted hover:bg-elevated hover:text-ink disabled:text-ink-disabled disabled:hover:bg-transparent"',
 		why: 'reverting to `variant="outline"` re-introduces seven 3:1 boundaries as the loudest thing on a screen with nothing to compete with them, and `hairline` is the tempting wrong answer here: it is the decorative role and measures 1.25:1 at its worst, which is a boundary nobody can see rather than a quiet one',
 	},
+	{
+		/*
+		 * THE ASIDE PANEL'S FILL AND EDGE, and why this is a call-site pin rather
+		 * than a `CONTROLS` row.
+		 *
+		 * The panel is a SURFACE, not a control: `bg-sunken` with a `hairline`, and
+		 * the hairline is the correct weight rather than a shortcut - § 2 makes a
+		 * decorative rule owe perceptibility, not 3:1, and a component with no
+		 * analogue boundary must not be pushed onto the control floor. A `CONTROLS`
+		 * row cannot express that: it requires `max(fillEdge, borderEdge) >= 3:1`
+		 * against the ground, and this panel's ground is the chat column's, one
+		 * rung away from `sunken` by design (`elevated` -> `surface` -> `sunken` is
+		 * a ladder, not a boundary). Listing it there would either fail the floor or
+		 * force the panel onto `border-control`, which is the conflation § 2 exists
+		 * to prevent.
+		 *
+		 * WHAT THIS PIN ACTUALLY GUARDS is the merge, and it is the same class of
+		 * edit the neighbouring composer-box row guards from the other side: the
+		 * panel sits DIRECTLY ABOVE the composer box, which IS `bg-surface`. Delete
+		 * the edge or repaint the fill `surface` and the two become one slab, while
+		 * every ratio in this file stays green - the panel's inks on `sunken` are
+		 * already asserted by the INKS loop, so nothing else here can see it.
+		 */
+		what: "aside panel fill and edge",
+		file: "src/renderer/src/features/chat/components/aside-panel.tsx",
+		must: "flex flex-col border border-hairline bg-sunken",
+		why: "the panel is a surface above the composer box and reads as one only while its fill steps away from that box's `surface` and its decorative edge is drawn; `CONTROLS` cannot hold this row (it demands a 3:1 edge on a boundary that is deliberately not one), so the class list is the only place the relationship can be undone unseen",
+	},
 ];
 
 /**

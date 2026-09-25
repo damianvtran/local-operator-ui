@@ -1303,3 +1303,77 @@ test("MINOR-1: the fallback trigger obeys the same rule, on the arm where the bo
 		"and the file attached during it is theirs too: the settle may not take more than the payload it settled",
 	);
 });
+
+/* ======== the off-record arm: #479's one-clock clear meets the `/btw` aside */
+
+/*
+ * FOLD OF PR #482 ONTO #479, and the one place the two rules meet. #479 moved the
+ * staged halves (chips and quotes) off the composer's settle and onto `clearOnce`,
+ * so they leave with the text. #482's aside returns an OFF-RECORD outcome whose
+ * text leaves at the press (F1) but whose staged halves must wait for the ask's
+ * own answer: an answered ask consumed them, a refused one did not (review round
+ * 2, F6). An ask never echoes, so the post-await `clearOnce()` is the only trigger
+ * it reaches - and without the off-record arm that call took the quote at the
+ * press and a refusal left the user without it.
+ */
+function deferredAsk() {
+	let resolve;
+	let reject;
+	const offRecord = new Promise((res, rej) => {
+		resolve = res;
+		reject = rej;
+	});
+	return { outcome: { offRecord }, resolve, reject };
+}
+
+const flushMicrotasks = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+test("F6 x R1: an off-record ask takes the TEXT at the press and its staged halves only on the answer", async () => {
+	const ask = deferredAsk();
+	const settled = await driveComposer({
+		prime: () => stagePayload(),
+		onSubmit: () => ask.outcome,
+	});
+	assert.equal(settled.after, "", "the box is handed back at the press (F1)");
+	assert.deepEqual(
+		{ chips: settled.chips(), replies: settled.replies() },
+		{ chips: [STAGED.chip], replies: [STAGED.reply] },
+		"the ask has not been answered, so nothing says it consumed what it carried",
+	);
+	// A quote staged while the aside answers is the user's NEXT payload.
+	useConversationInputStore
+		.getState()
+		.addReply(COMPOSER_ID, { id: "reply-late", text: SECOND.reply });
+	ask.resolve("the answer");
+	await flushMicrotasks();
+	assert.deepEqual(
+		{ chips: settled.chips(), replies: settled.replies() },
+		{ chips: [], replies: [SECOND.reply] },
+		"an answered ask retires exactly the entries it carried, by identity (#479's rule)",
+	);
+});
+
+test("F6 x R1: a refused off-record ask keeps the staged halves it carried", async () => {
+	const ask = deferredAsk();
+	const settled = await driveComposer({
+		prime: () => stagePayload(),
+		onSubmit: () => ask.outcome,
+	});
+	ask.reject(new Error("the aside was refused"));
+	await flushMicrotasks();
+	assert.equal(
+		settled.after,
+		"",
+		"a refused ask still does not put the text back",
+	);
+	assert.deepEqual(
+		{ chips: settled.chips(), replies: settled.replies() },
+		{ chips: [STAGED.chip], replies: [STAGED.reply] },
+		"a refused ask put nothing anywhere, so the quote and the file stay for the next send",
+	);
+	assert.equal(
+		settled.storedDraft,
+		"",
+		"and the persisted draft is retired as for any accepted press",
+	);
+});
