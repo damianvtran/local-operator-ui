@@ -1847,10 +1847,30 @@ test("the notice is ONE sentence from ONE place, and the composer renders it rat
 		"src/renderer/src/shared/hooks/use-canonical-session.ts",
 		"utf8",
 	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	/*
+	 * THE INVARIANT, NOT A COUNT (fold, review round 7). This pin required exactly one
+	 * `setView(` in the hook, because a write that reaches React's state without updating
+	 * `viewRef.current` is how the delivered-after-all path went wrong - the echo registry
+	 * reads the ref. Main's fold added a SECOND route: a functional update for
+	 * `labelPending`, which deliberately touches neither the ref nor the view it holds. So
+	 * the count is the wrong thing to assert; what must hold is that exactly ONE route
+	 * writes the ref and every other route is a functional update that cannot disagree.
+	 */
+	const refWritingRoutes = (
+		sessionHook.match(/viewRef\.current = next;\s*\n\s*setView\(next\);/g) ?? []
+	).length;
 	assert.equal(
-		(sessionHook.match(/setView\(/g) ?? []).length,
+		refWritingRoutes,
 		1,
-		"the view is written through more than one route, so a mutation can land in React's state without the ref the echo registry reads - which is how the delivered-after-all answer came to depend on when React ran the update (M3)",
+		"the view is written through more than one ref-writing route, so a mutation can land in React's state without the ref the echo registry reads",
+	);
+	const viewRoutes = (sessionHook.match(/setView\(/g) ?? []).length;
+	const functionalRoutes = (sessionHook.match(/setView\(\(state\)/g) ?? [])
+		.length;
+	assert.equal(
+		viewRoutes - refWritingRoutes,
+		functionalRoutes,
+		"a setView route neither writes the ref nor is a functional update, so it can disagree with viewRef.current",
 	);
 	assert.ok(
 		(sessionHook.match(/commitView\(/g) ?? []).length > 10,
