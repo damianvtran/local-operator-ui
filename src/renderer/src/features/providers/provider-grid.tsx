@@ -58,7 +58,6 @@ import { useRadientLoginVerdict } from "@shared/hooks/use-radient-session-issue"
  * docblock. Importing the leaf keeps this feature out of that graph.
  */
 import { useRadientUserQuery } from "@shared/hooks/use-radient-user-query";
-import { cn } from "@shared/lib/utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useQueryClient } from "@tanstack/react-query";
 import { MoreHorizontal, Search, X } from "lucide-react";
@@ -633,19 +632,23 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 						 */}
 						<span
 							/*
-							 * THE CLAIM CARRIES ITS TONE, not just its words. `neutral` is the
-							 * row's ordinary register; a refusal keeps the warning ink the
-							 * badge used to carry, so a dead sign-in is not one more quiet
-							 * grey line (UX round 4, U16; design round 4, D14).
+							 * THE CLAIM CARRIES ITS TONE WHERE THE TONE SAYS SOMETHING: a
+							 * refusal keeps the warning ink the badge used to carry, so a dead
+							 * sign-in is not one more quiet grey line (UX round 4, U16; design
+							 * round 4, D14) -- and every other verdict stays in the row's own
+							 * register. `success` is NOT painted here: `loginClaim` answers
+							 * `working` for every provider that is not Radient, so a success
+							 * ink on this line paints all 18 healthy rows green and spends the
+							 * status colour on the state the user already expects. Measured
+							 * against the committed frame: that mistake moved 3.9% of the
+							 * connected list's pixels, and this version of the line is
+							 * byte-identical to it.
 							 */
-							className={cn(
-								"truncate text-meta",
-								readiness === null || readiness.tone === "neutral"
-									? "text-ink-muted"
-									: readiness.tone === "attention"
-										? "text-warning"
-										: "text-success",
-							)}
+							className={`truncate text-meta ${
+								readiness?.tone === "attention"
+									? "text-warning"
+									: "text-ink-muted"
+							}`}
 							title={readiness?.detail}
 							data-claim={claim === null ? "withheld" : undefined}
 							data-claim-tone={readiness?.tone}

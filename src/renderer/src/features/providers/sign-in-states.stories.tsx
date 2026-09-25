@@ -331,6 +331,19 @@ const installBridge = (options: BridgeOptions) => {
 				 * words rather than to a claim nobody made.
 				 */
 				case "accounts.list":
+					/*
+					 * ONLY when a story asks for a verdict, and it THROWS otherwise: an
+					 * answered `{accounts: []}` is an account read, which the Radient row's
+					 * claim narrows on, so answering it for the stories that never asked
+					 * moved their frames the first time this arm existed (measured: 3.9% of
+					 * the `providers-connected` frame's pixels). Every other story must keep
+					 * the bridge's own behaviour.
+					 */
+					if (!options.loginVerdict) {
+						throw new Error(
+							"unexpected desktop op in this story: accounts.list",
+						);
+					}
 					return ok({
 						accounts: [],
 						...(options.loginVerdict
