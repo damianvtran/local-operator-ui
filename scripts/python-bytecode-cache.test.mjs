@@ -2235,6 +2235,13 @@ const SPAWN_SITES = [
 		"src/main/backend/discovery.ts",
 		"execFileSync",
 		1,
+		/"lsof"/,
+		"reads WHICH pid holds a listening socket (`lsof -nP -iTCP:<port> -sTCP:LISTEN -t`) when an occupant never answered `/health` and so cannot name itself; `lsof` is that tool and starts no interpreter. The port is an integer this app parsed out of its own configured address, never a caller-supplied string",
+	),
+	runsCommand(
+		"src/main/backend/discovery.ts",
+		"execFileSync",
+		2,
 		/"\/bin\/ps"/,
 		"reads one pid's PROCESS STATE (`ps -o state= -p <pid>`) to tell a zombie from a live daemon, which signal 0 cannot; `/bin/ps` is that tool and starts no interpreter",
 	),
