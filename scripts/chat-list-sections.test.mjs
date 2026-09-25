@@ -220,10 +220,24 @@ test("the sidebar draws those sections, and a label is not a control", () => {
 	 * a `Disclosure` row is what a later reader reaches for when a section wants a
 	 * heading.
 	 */
+	/*
+	 * THE SECTIONS ARE DRAWN IN THE READER'S ORDER since the view popover landed
+	 * (2026-09-25), so the loop runs over `drawnSections` - which is
+	 * `shownSections(view)` filtered to the chat sections, i.e. the shipped list
+	 * with the reader's reorder and show/hide applied. The assertion is that the
+	 * ARRANGEMENT still comes from the module rather than from a literal written
+	 * into the JSX, so it accepts either loop head and refuses a third spelling: a
+	 * hand-written `["running", "today", ...]` here would be the second copy this
+	 * line exists to catch.
+	 */
 	assert.match(
 		sidebar,
-		/CHAT_LIST_SECTIONS\.map\(/,
+		/(drawnSections|CHAT_LIST_SECTIONS)\.map\(/,
 		"the sidebar must render its sections from the shipped list",
+	);
+	assert.ok(
+		sidebar.includes("shownSections(view).filter("),
+		"the drawn order must come from the view module, not from a literal",
 	);
 	assert.match(
 		sidebar,

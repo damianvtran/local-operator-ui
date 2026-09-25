@@ -396,7 +396,19 @@ test("the pin slot is mounted inside the capability gate, and nowhere else", () 
 	 * backend without the pin store must not render a heading over rows it cannot
 	 * be asked about.
 	 */
-	assert.match(source, /\{pinned\.length > 0 && \(\s*<section>/);
+	/*
+	 * THE VIEW'S OWN SWITCH JOINS THE GATE (the sidebar view popover, 2026-09-25):
+	 * the section is drawn when the reader has not hidden it AND there is
+	 * something to draw. It is an `&&` chain rather than a nested branch so the
+	 * capability gate is still the branch AROUND THE WHOLE SECTION - which is what
+	 * this assertion exists for, and a `pinnedShown` that swallowed it would leave
+	 * a heading over rows a backend cannot be asked about.
+	 */
+	assert.match(
+		source,
+		/pinnedShown &&[\s\S]{0,80}pinned\.length > 0 && \(\s*<section>/,
+		"the pinned section is no longer gated by the pin capability",
+	);
 });
 
 test("a repeat press is dropped only when it lands on a DIFFERENT conversation", () => {

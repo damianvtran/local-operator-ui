@@ -15,6 +15,10 @@ import {
 	type SidebarOrder,
 	type SidebarRegions,
 } from "@features/chat/sidebar-split";
+import {
+	DEFAULT_SIDEBAR_VIEW,
+	type SidebarView,
+} from "@features/chat/chat-sidebar-view";
 import { DEFAULT_THEME } from "@shared/themes";
 import type { ThemeName } from "@shared/themes";
 import { measureCell } from "@shared/themes/terminal-theme";
@@ -464,6 +468,23 @@ type UiPreferencesState = {
 	chatSidebarOrder: SidebarOrder;
 
 	/**
+	 * How the sidebar's list is ARRANGED: which sections draw, in what order, and
+	 * how the chats are grouped, ordered and paged (the view popover's state).
+	 *
+	 * The rules are `features/chat/chat-sidebar-view.ts`'s, and the component
+	 * reads this through `parseSidebarView` for the reason `chatSidebarListHeight`
+	 * is passed as it was READ: `localStorage` is not the setter's path out, so
+	 * the module is the one place a tampered value is rejected.
+	 *
+	 * ONE OBJECT rather than five fields, and that is what keeps the popover's
+	 * five controls from each writing a field the others read: the setter takes
+	 * the whole next view, so "hide Today" and "move Older up" both go through
+	 * the module's own `toggleSection`/`moveSection` and cannot disagree about the
+	 * order they leave behind.
+	 */
+	chatSidebarView: SidebarView;
+
+	/**
 	 * Toggle the sidebar collapse state
 	 */
 	toggleSidebar: () => void;
@@ -527,6 +548,13 @@ type UiPreferencesState = {
 	 * @param order - The region to draw above the other
 	 */
 	setChatSidebarOrder: (order: SidebarOrder) => void;
+
+	/**
+	 * Replace the sidebar's view. Takes the whole value rather than a patch: the
+	 * popover's controls are built from `chat-sidebar-view.ts`'s own
+	 * `toggleSection`/`moveSection`, which each return a complete next view.
+	 */
+	setChatSidebarView: (view: SidebarView) => void;
 
 	/**
 	 * Restore the canvas width to its default value
@@ -813,6 +841,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			 * user drags or collapses something.
 			 */
 			chatSidebarRegions: DEFAULT_SIDEBAR_REGIONS,
+			chatSidebarView: DEFAULT_SIDEBAR_VIEW,
 			chatSidebarListHeight: null,
 			chatSidebarOrder: "entities-first",
 			isCanvasOpen: false,
@@ -1052,6 +1081,12 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			setChatSidebarOrder: (order: SidebarOrder) => {
 				set({
 					chatSidebarOrder: order,
+				});
+			},
+
+			setChatSidebarView: (view: SidebarView) => {
+				set({
+					chatSidebarView: view,
 				});
 			},
 
