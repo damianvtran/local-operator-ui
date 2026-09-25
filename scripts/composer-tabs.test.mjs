@@ -1294,7 +1294,12 @@ test("the trigger's dot is ONE mark in two inks, and the ink is the whole distin
 test("the row mounts inside the form, ABOVE the alert and therefore above the box", () => {
 	const source = code(COMPOSER);
 	const row = source.indexOf("<ComposerStatusRow");
-	const alert = source.indexOf('role="alert"');
+	// The region's role is a two-arm expression now (a failure asserts, the late
+	// delivery announces politely - review round 2, NIT), so the boundary is the
+	// expression rather than the literal.
+	const alert = source.indexOf(
+		'role={composerAlert.polite ? "status" : "alert"}',
+	);
 	const box = source.indexOf("COMPOSER_BOX,");
 	assert.ok(row > -1, "the composer mounts the row");
 	assert.ok(
@@ -1615,10 +1620,21 @@ test("the composer's two capped blocks share one whole-line cap", () => {
 	 * than inherited so the boundary cannot drift back through a line. */
 	assert.match(measure, /max-h-\[7\.5rem\]/);
 	assert.match(measure, /leading-5/);
+	const row = code(ROW);
+	/*
+	 * The composer's OTHER capped block consumes the same constant, and the
+	 * send-error notice no longer caps at all - which is this change's answer to
+	 * D12 rather than a regression of it. The cap existed to keep a PARAGRAPH from
+	 * pushing the remedy out of the window: the notice is one sentence now, and the
+	 * thing under it is the box the user is typing in, so a cap could only hide the
+	 * sentence or the control it names. Measured rather than argued -
+	 * `scripts/composer-alert-geometry.mjs` puts the notice at 27.5px muted and
+	 * 51.5-110px for the failure across 892/472/172 columns, with the send control
+	 * on screen at every width.
+	 */
+	assert.match(row, /CAPPED_BLOCK/);
 	const input = code(MESSAGE_INPUT);
-	// The send-error alert, which had the identical `max-h-32` and the identical
-	// defect, now consumes the same constant.
-	assert.match(input, /CAPPED_BLOCK/);
+	assert.doesNotMatch(input, /CAPPED_BLOCK/);
 	assert.doesNotMatch(input, /max-h-32/);
 });
 
