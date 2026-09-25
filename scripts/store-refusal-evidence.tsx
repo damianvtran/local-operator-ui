@@ -78,7 +78,7 @@ const CASE = params.get("case") ?? "out-of-space";
 const STATE = (params.get("state") ?? "restored") as State;
 const THEME = (params.get("theme") ?? DEFAULT_THEME) as ThemeName;
 
-type State = "restored" | "held" | "altered";
+type State = "restored" | "cleared";
 
 applyThemeToDocument(THEME);
 
@@ -149,17 +149,11 @@ type Evidence = {
 	code: string | undefined;
 	/** The row's own copy of it, which the guard's refusal does not update (R-4). */
 	rowCode?: string | undefined;
-	/**
-	 * The code of the failure that LEFT the held payload held (`ChatDraft.heldClaimCode`),
-	 * which is the code the composer's held line reads for its register (UX round 2, U10).
-	 */
-	heldClaimCode?: string | undefined;
 	rowMessage?: string | undefined;
 	message: string | undefined;
-	withholdRetryHint: boolean;
+	/** Whether a press of Retry cannot work for this arm (`withholdsRetryHint`). */
+	retryWithheld: boolean;
 	storeWriteRefusal: boolean;
-	/** The same predicate over the CLAIM's verdict, which is what decides the held line. */
-	claimStoreWriteRefusal: boolean;
 	refusedBeforeAdmission: boolean;
 	admissionAttempted: boolean | undefined;
 	submittedText: string | undefined;
@@ -171,6 +165,8 @@ type Evidence = {
 	alertText?: string;
 	/** The same, over the PROSE only: the sentences, without the controls' labels. */
 	alertProse?: string;
+	/** The controls the notice rendered, by label: Retry, Clear, or neither. */
+	alertControls: string[];
 };
 
 const evidence: Evidence = {
@@ -281,16 +277,15 @@ evidence.rowMessage = draft.error;
  * handed, the store's is what the claim knows - and the held line must follow the
  * claim (UX round 2, U10).
  */
-evidence.heldClaimCode = draft.heldClaimCode;
+
 evidence.code =
 	typeof (raised as { code?: unknown })?.code === "string"
 		? ((raised as { code: string }).code as string)
 		: draft.errorCode;
 evidence.message =
 	raised instanceof Error && raised.message ? raised.message : draft.error;
-evidence.withholdRetryHint = withholdsRetryHint(evidence.code);
+evidence.retryWithheld = withholdsRetryHint(evidence.code);
 evidence.storeWriteRefusal = isStoreWriteRefusal(evidence.code);
-evidence.claimStoreWriteRefusal = isStoreWriteRefusal(draft.heldClaimCode);
 evidence.admissionAttempted = draft.admissionAttempted;
 evidence.submittedText = draft.submittedText;
 evidence.submittedAttachments = draft.submittedAttachments;
@@ -305,7 +300,7 @@ evidence.submittedAttachments = draft.submittedAttachments;
  * is the claim's, not the box's.
  */
 const boxAttachments =
-	STATE === "altered"
+	STATE === "cleared"
 		? []
 		: [{ id: "harness-screenshot", path: IMAGE_DATA_URL }];
 /**
@@ -313,7 +308,7 @@ const boxAttachments =
  * control writes exactly `heldText`); `held` is the state the refusal leaves -
  * empty box, claim holding the payload, chip row intact.
  */
-const boxText = STATE === "held" ? "" : (draft.submittedText ?? TEXT);
+const boxText = STATE === "cleared" ? "" : (draft.submittedText ?? TEXT);
 
 /**
  * The held payload, on `chat-page`'s own terms: the claim holds the text only
@@ -322,9 +317,6 @@ const boxText = STATE === "held" ? "" : (draft.submittedText ?? TEXT);
  * box is empty in the `held` state and the restore control is the only way back
  * to a sendable payload.
  */
-const heldText =
-	draft.admissionAttempted && !draft.pending ? draft.submittedText : undefined;
-
 useConversationInputStore.setState({
 	inputByConversation: {
 		[CONVERSATION]: {
@@ -376,21 +368,22 @@ const Harness = () => {
 	 * payload) - i.e. copy, which is exactly what a still is for. Stated in the
 	 * README's "does not prove" list rather than left to be inferred.
 	 */
-	const sendError: ComposerSendError = {
-		message: evidence.message,
-		code: evidence.code,
-		heldText,
-		heldAttachments: draft.submittedAttachments,
-		/*
-		 * `heldClaimCode`, not `code`: the composer's own contract since UX round 2's
-		 * U10, and the field the `altered` frame exists to exercise - there the code
-		 * above is the guard's and this one is still the store's.
-		 */
-		heldClaimCode: draft.heldClaimCode,
-		onRestoreHeld: () => {},
-		onDiscard: () => {},
-		onReleaseHeld: () => {},
-	};
+	const sendError: ComposerSendError | undefined =
+		STATE === "cleared"
+			? undefined
+			: {
+					message: evidence.message,
+					code: evidence.code,
+					/*
+					 * The remedy decision, from the rule the app reads
+					 * (`sendFailureCopy` -> `withholdsRetryHint`): the two store codes are the
+					 * arms whose own sentence names a remedy the notice cannot take, so a
+					 * press is not offered and `Clear` is the only control.
+					 */
+					retry: !withholdsRetryHint(evidence.code),
+					onRetry: () => {},
+					onClear: () => {},
+				};
 
 	return (
 		<div
@@ -456,5 +449,16 @@ requestAnimationFrame(() =>
 					.replace(/\s+/g, " ")
 					.trim()
 			: null;
+		/*
+		 * And the CONTROLS, by label: the arm-level claim is "one sentence, and at
+		 * most the two the table allows" and the two store codes are the arms that
+		 * must offer one. Reading the labels off the DOM is what makes a frame
+		 * unable to show a remedy the sentence does not name.
+		 */
+		evidence.alertControls = region
+			? [...region.querySelectorAll("button")].map((button) =>
+					(button.textContent ?? "").trim(),
+				)
+			: [];
 	}),
 );

@@ -394,31 +394,39 @@ export function searchChats(
  * it cannot know.
  *
  * So the number of claims is capped here, in the priority order a reader would
- * pick, and every slot is `shrink-0`: the search mark (why the row is onscreen at
- * all), else the row's own state (`· Not sent yet` — a chat that never carried a
- * message), else WHO OPENED IT (`· agent-opened` — a workstream an agent opened),
- * else the binding. Whatever is not drawn stays reachable through the row's
- * flyout, the nested list, and the chat itself.
+ * pick: the search mark (why the row is onscreen at all), else the row's own
+ * state (`· Not sent yet` — a chat that never carried a message), else the TEAM
+ * an agent-opened workstream serves (`· <team>`), else the binding. The two
+ * fixed statements are literals and stay `shrink-0` — they cannot grow, so they
+ * cannot starve anything. The team and the binding are both names the user
+ * wrote, drawn from the same `binding` (`team` first, then `agent`), so they
+ * wear the same bounded, truncating treatment as each other. Whatever is not
+ * drawn stays reachable through the row's flyout, the nested list, and the chat
+ * itself.
  *
- * WHY THE AGENT-OPENED FACT OUTRANKS THE BINDING, and why it sits below
- * `not_sent` rather than beside it. Both statements answer "who", so the more
- * surprising of the two wins: the binding says which profile a conversation YOU
- * opened is answering, while the agent-opened marker says the row is not one of
- * your own conversations at all — the 2026-09-18 incident, where a session an
- * agent had opened sat in the sidebar looking exactly like one the operator had
- * opened himself. Only one of the two can be drawn on that row, and in the COMMON
- * case the binding is the half a reader can infer, so the binding is what yields;
- * it stays reachable through the row's flyout.
+ * WHY AN AGENT-OPENED ROW DRAWS ITS TEAM, and why the constant `· agent-opened`
+ * is gone (operator ask, 2026-09-25; it replaces the marker PR #448 added). The
+ * marker answered "is this one of your own chats?" and was paid for out of the
+ * half of the row the reader acts on: on a team-bound workstream the binding IS
+ * the team, so the old precedence drew the generic marker OVER the team — the
+ * yield review round 1 (m1) already named as a real loss — and the row could not
+ * say WHICH team the workstream serves. The slot now names the workstream's team
+ * (`· <team>`), the same string, in the same bounded treatment, that the binding
+ * slot draws for every other row bound to that team; and a workstream with no
+ * team draws NOTHING here, because the claim the row still holds — who opened
+ * it, from which conversation — is an attribution for the two channels built to
+ * carry it (the row's flyout and its screen-reader sentence) rather than a claim
+ * this slot spends the title's width on.
  *
- * WHERE THAT REASONING STOPS, stated because review round 1 (m1) caught the
- * confident version of it: it holds when the binding names the SAME AGENT the
- * marker does. `bindingName` prefers the TEAM, and the marker only ever knows
- * `opened_by.agent`, so a workstream bound to a team loses the team from the row's
- * own pixels when the marker is drawn (`…(Minerva): Recent, opened by coder` in
- * the flyout, `· agent-opened` on screen) and the flyout is then the only
- * channel carrying it. The fact still outranks the binding there — a team name is
- * a subtler thing to lose than "this is not one of your chats" is to withhold —
- * but the yield is a real loss on that pair rather than a free one.
+ * WHAT THE PIXELS TRADE, named rather than implied: on a team-less workstream
+ * the visible slot is silent, so "this is not one of your own chats" — the whole
+ * of the 2026-09-18 incident — is no longer stated in that row's pixels. It is
+ * stated, exactly as a marked or unstarted row already stated it, in the flyout
+ * (`openedByNote`) and in the row's `sr-only` sentence; what moved is the
+ * generic form, not the fact. And the decision is on the TEAM, not on the
+ * binding string: a rule reading `bindingName` could not tell "bound to a team"
+ * from "bound to an agent", and would print the agent's name on the one shape
+ * the operator asked to keep quiet.
  *
  * The two claims ABOVE it keep their precedence unchanged, and deliberately: a
  * row that is on screen because the search matched its CONVERSATION, or one that
@@ -428,7 +436,7 @@ export function searchChats(
 export type RowTrailingStatement =
 	| "conversation"
 	| "not_sent"
-	| "agent_opened"
+	| "team"
 	| "binding"
 	| "none";
 
@@ -438,25 +446,35 @@ export function rowTrailingStatement(input: {
 	nested: boolean;
 	binding: string;
 	/**
+	 * The TEAM this row's binding names, when it names one — `row.binding.team`
+	 * alone, NOT the `binding` string beside it. An agent-opened row bound to an
+	 * agent and no team must draw nothing, and `binding` cannot decide that: it
+	 * falls through to the agent.
+	 */
+	team: string;
+	/**
 	 * Whether an agent opened this conversation — the presence of the wire row's
 	 * `opened_by` (`SessionOpenedBy` in `desktop-session-contract.ts`), which is
 	 * the fact even when every member inside it is null.
 	 *
 	 * A boolean rather than the object: what this rule decides is whether the row
-	 * makes the claim at all. Which agent it names, and how, is the row
-	 * component's business and does not change the precedence.
+	 * takes the agent-opened path at all, whose slot claim is the TEAM (or
+	 * nothing), and which needs no member. Which agent it names, and how, is the
+	 * row component's business and does not change the precedence.
 	 */
 	agentOpened: boolean;
 }): RowTrailingStatement {
 	if (input.marked) return "conversation";
 	if (input.unstarted) return "not_sent";
 	/*
-	 * Provenance is the ROW'S OWN, so unlike the binding below it is stated on
-	 * nested rows too: a nested row inherits its IDENTITY from the parent it is
-	 * filed under, and it does not inherit who opened it — a conversation the
-	 * operator never opened is no less surprising for being listed under an agent.
+	 * An agent-opened row: the team it serves, or NOTHING. Provenance is the
+	 * ROW'S OWN, so unlike the binding below the decision is not withheld from
+	 * nested rows — a nested row inherits its IDENTITY from the parent it is
+	 * filed under and does not inherit who opened it — and the team it would draw
+	 * is its own binding's, drawn wherever the row appears. `nested` therefore
+	 * does not enter this branch at all.
 	 */
-	if (input.agentOpened) return "agent_opened";
+	if (input.agentOpened) return input.team ? "team" : "none";
 	// A nested row inherits the identity from its parent, so it has nothing to
 	// say here even when it is bound.
 	if (!input.nested && input.binding) return "binding";

@@ -1387,25 +1387,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * on the user (UX round 2, U8).
 								 */
 								awaitingAnswer={Boolean(canonical?.view.frontend?.pending_gate)}
-								/*
-								 * U3: the held-claim sentence offers the transcript as proof
-								 * that the message exists somewhere ("its copy is in the
-								 * transcript above"), which is only true when a copy is
-								 * actually painted. On the draft path the pane held no rows at
-								 * all, so the sentence pointed at a greeting (UX round 2, U3).
-								 * Answered from the records this pane renders rather than
-								 * assumed; `undefined` (no canonical stream, nothing held)
-								 * leaves the clause out.
-								 */
-								heldCopyOnScreen={
-									canonical && sendError?.heldText
-										? canonical.view.transcript.records.some(
-												(record) =>
-													record.kind === "user" &&
-													record.text === sendError.heldText,
-											)
-										: undefined
-								}
 								// A conversation the backend says is gone is a KNOWN
 								// answer, so the composer refuses input rather than
 								// accepting a message that can only 404. The pane above
