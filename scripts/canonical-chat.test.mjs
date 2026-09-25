@@ -77,6 +77,32 @@ const bundle = await build({
 						path: `${process.cwd()}/src/renderer/src/shared/store/conversation-input-store.ts`,
 					}),
 				);
+				/*
+				 * The two modules the store gained for QA's Q-1 (an unnamed catalogue read now
+				 * sizes itself from the advertised capability). Both answer "no capability", the
+				 * fail-closed direction, so every assertion in this suite still describes the
+				 * legacy read it was written against.
+				 */
+				builder.onResolve(
+					{ filter: /@shared\/api\/local-operator\/desktop-hooks/ },
+					() => ({ path: "capabilities", namespace: "capability-fixture" }),
+				);
+				builder.onLoad(
+					{ filter: /.*/, namespace: "capability-fixture" },
+					() => ({
+						contents:
+							'export const desktopFeatureEnabled = () => false;\nexport const desktopKeys = { capabilities: ["desktop", "capabilities"] };',
+						loader: "js",
+					}),
+				);
+				builder.onResolve({ filter: /@shared\/api\/query-client/ }, () => ({
+					path: "query-client",
+					namespace: "query-fixture",
+				}));
+				builder.onLoad({ filter: /.*/, namespace: "query-fixture" }, () => ({
+					contents: "export const queryClient = { getQueryData: () => null };",
+					loader: "js",
+				}));
 				builder.onLoad({ filter: /.*/, namespace: "echo-fixture" }, () => ({
 					contents: `export const echoPendingUser = (sessionId, id, text, images) =>
 	globalThis.__canonicalEcho({ kind: "echo", sessionId, id, text, images });
