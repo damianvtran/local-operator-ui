@@ -1178,6 +1178,24 @@ test("a secret ask renders no options at all", () => {
 	assert.equal(render({ options: [] }), null);
 });
 
+/*
+ * How much SOURCE may sit between the dock and the composer in the pane.
+ *
+ * It is a guard against an UNRELATED block being swept in between the two, not a
+ * measurement of the dock: the dock's half of the contract is the ORDER, which is
+ * asserted on its own a line above and which no ceiling can replace.
+ *
+ * §G3's STOPPED-TURN LINE IS THE ONE THING ALLOWED IN BETWEEN, and that is a
+ * decision rather than slack. `chat-content.tsx` places the stopped line "above
+ * the composer and below the transcript's own dock", so when a run has ENDED and a
+ * gate is still open the dock necessarily sits one sibling higher than the
+ * composer's top edge. Measured on the head this was written: 1665 characters with
+ * block comments stripped, the stopped-turn block being all but a few of them. The
+ * old ceiling was 1500, which the sibling alone had outgrown - so this one's job is
+ * to clear that block and to fail on a second one.
+ */
+const DOCK_TO_COMPOSER_CEILING = 2000;
+
 test("the transcript no longer draws the question: it is docked (§F1)", () => {
 	/*
 	 * The card used to be the transcript's last item, and a long turn put it
@@ -1218,7 +1236,7 @@ test("the transcript no longer draws the question: it is docked (§F1)", () => {
 			pane.indexOf("<MessageInput", pane.indexOf("<QuestionDock")) &&
 			pane.indexOf("<MessageInput", pane.indexOf("<QuestionDock")) -
 				pane.indexOf("<QuestionDock") <
-				1500,
+				DOCK_TO_COMPOSER_CEILING,
 		"the dock renders before the composer, so it sits at the composer's top edge",
 	);
 });
