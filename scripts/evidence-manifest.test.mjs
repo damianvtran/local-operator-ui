@@ -810,6 +810,15 @@ const STAMP_BINDING_NOTES = [
 	 * it is held to them rather than read as history.
 	 */
 	"chatSidebarSectionsRestampNote",
+	/*
+	 * The ninth: `windowChromeRestampNote` states this file's own pair for the
+	 * seamless-chrome pass, so it is held to that pair rather than read as history -
+	 * the same distinction `candidateMacArchRestampNote` is in the list for. The
+	 * pass is the first on this branch to move `src/` AND `scripts/` without taking a
+	 * frame (its evidence is a unit suite and a headless launch), which is exactly the
+	 * case a re-stamp note exists to record.
+	 */
+	"windowChromeRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
