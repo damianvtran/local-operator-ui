@@ -391,10 +391,11 @@ export function describeHolders(refusals: OriginOccupancy[]): string {
  * holders that published one pid between them produced "Stop it from the install that
  * owns it with `reclaim 42411`" beside "are running Local Operator daemons" - the same
  * disagreement design round 2's D9 removed for the both-pids case, and a breach of this
- * file's own rule for the placeholder. `holderCount` is that one answer, and this clause
- * and the pid-or-placeholder choice below are the two places that ask it (agent round 4,
- * R4-5: the sentence here used to claim both composers asked a holder count, which the
- * per-kind loop above does not).
+ * file's own rule for the placeholder. `holderCount` is that one answer, and the claim
+ * above and the pid-or-placeholder choice below both CONSUME it - one call site, whose
+ * value feeds both (agent round 4, R4-5: the sentence here used to claim both composers
+ * asked a holder count, which the per-kind loop above does not; agent round 1 of the
+ * follow-up PR, N2: "ask it" was imprecise for the same reason).
  */
 const holderCount = (refusals: OriginOccupancy[]): number => refusals.length;
 

@@ -308,6 +308,24 @@ test("a dismissed return notice is re-armed when the app substitutes again", asy
 	);
 
 	/*
+	 * THE FIXTURE IS THE COMPOSER'S OUTPUT, AND THIS IS WHAT PROVES IT (agent round 1,
+	 * M1). Until this assertion existed, this file took `holder`/`reclaim` from
+	 * `describeHolders`/`reclaimClause` in NAME only: nothing here read them, so a change
+	 * to the act clause - the round-3 removal of its markdown delimiters, for instance -
+	 * moved the band and left this suite green, which is why the review found the binding
+	 * here was not load-bearing. The rendered sentence is now compared against the
+	 * composer in the same run that draws it.
+	 */
+	assert.ok(
+		text().includes(reclaimClause(refusals)),
+		"the band renders the composer's own act clause",
+	);
+	assert.ok(
+		!text().includes("`"),
+		"and no shipped sentence carries a backtick (design round 3, D18)",
+	);
+
+	/*
 	 * THE ASSERTION THIS FILE EXISTS FOR. The second return is a NEW notice, not the one
 	 * that was dismissed, so it must be shown - and under the old flag (never reset) it
 	 * was swallowed for the life of the window.
