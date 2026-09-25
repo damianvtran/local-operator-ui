@@ -11,14 +11,14 @@ import {
 	SIDEBAR_MIN_WIDTH,
 } from "@features/chat/chat-sidebar-layout";
 import {
+	DEFAULT_SIDEBAR_VIEW,
+	type SidebarView,
+} from "@features/chat/chat-sidebar-view";
+import {
 	DEFAULT_SIDEBAR_REGIONS,
 	type SidebarOrder,
 	type SidebarRegions,
 } from "@features/chat/sidebar-split";
-import {
-	DEFAULT_SIDEBAR_VIEW,
-	type SidebarView,
-} from "@features/chat/chat-sidebar-view";
 import { DEFAULT_THEME } from "@shared/themes";
 import type { ThemeName } from "@shared/themes";
 import { measureCell } from "@shared/themes/terminal-theme";

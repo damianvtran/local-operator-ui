@@ -34,11 +34,11 @@
  */
 
 import {
+	SIDEBAR_SECTION_LABEL,
 	type SidebarGroupBy,
 	type SidebarOrderBy,
 	type SidebarSectionKey,
 	type SidebarView,
-	SIDEBAR_SECTION_LABEL,
 	isEntitySection,
 	isSectionShown,
 	moveSection,
@@ -155,7 +155,18 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 	return (
 		<div data-sidebar-view-menu className="w-64">
 			{group("Group by")}
-			<div role="group" aria-label="Group by" className="space-y-0.5">
+			{/*
+			 * A `fieldset`, not a `div role="group"`: it IS the semantic element for a
+			 * labelled group of controls, so the grouping survives without an ARIA role
+			 * restating what the markup already says - the same swap `ask-options.tsx`
+			 * and the canvas view tabs make for their own groups. The UA box is reset by
+			 * the utilities below (`border-0 p-0 min-w-0`; a fieldset's `min-inline-size`
+			 * is `min-content`, which would stop the long option labels wrapping). Its
+			 * name comes from the `sr-only` legend rather than from `aria-label`, because
+			 * a fieldset's accessible name is the legend.
+			 */}
+			<fieldset className="min-w-0 space-y-0.5 border-0 p-0">
+				<legend className="sr-only">Group by</legend>
 				{groupBy.map((option) =>
 					choice(
 						option.key,
@@ -165,9 +176,11 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 						() => onView({ ...view, groupBy: option.key }),
 					),
 				)}
-			</div>
+			</fieldset>
 			{group("Order by")}
-			<div role="group" aria-label="Order by" className="space-y-0.5">
+			{/* The same group, for the same reason - see the comment above. */}
+			<fieldset className="min-w-0 space-y-0.5 border-0 p-0">
+				<legend className="sr-only">Order by</legend>
 				{orderBy.map((option) =>
 					choice(
 						option.key,
@@ -177,7 +190,7 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 						() => onView({ ...view, orderBy: option.key }),
 					),
 				)}
-			</div>
+			</fieldset>
 			{/*
 			 * THE SECTION SWITCHES, over the VIEW's own order rather than over the
 			 * canonical one: a list that re-sorted itself here would undo the
@@ -266,9 +279,7 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 								data-sidebar-view-move={`${key}:down`}
 								aria-label={`Move ${SIDEBAR_SECTION_LABEL[key]} down`}
 								disabled={
-									!shown.includes(key) ||
-									at < 0 ||
-									at >= shown.length - 1
+									!shown.includes(key) || at < 0 || at >= shown.length - 1
 								}
 								className="size-6"
 								onClick={() => onView(moveSection(view, key, 1))}
