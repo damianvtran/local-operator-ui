@@ -105,6 +105,17 @@ const SCOPE_HOLD = arg("scope-hold", null);
  * paints and then refuses to grow.
  */
 const TAIL_ERROR = process.argv.includes("--tail-error");
+/*
+ * `--tail-delay-ms <n>` HOLDS the refused tail answer for that long before refusing it.
+ *
+ * WHY A DELAY IS PART OF THE EVIDENCE rather than a convenience (round 4, U14): the walk
+ * through the wait register is what a polite region announces, and a stub that refuses in a
+ * millisecond renders that register for a millisecond - too brief for anything to observe,
+ * which is how "the region carried no change" became a finding about the rig rather than
+ * about the panel. Slowed to a human-plausible 400 ms, the register is on screen and the
+ * sampler sees what a reader would.
+ */
+const TAIL_DELAY_MS = Number(arg("tail-delay-ms", "0"));
 const INSTANCE_ID = randomUUID();
 /** The record's `started_at` is fixed at boot; the heartbeat moves. */
 const startedAt = Date.now() / 1000;
@@ -757,6 +768,17 @@ const server = createServer((request, response) => {
 		 * photograph needs (see `--scope-delay-ms`).
 		 */
 		const scoped = url.searchParams.get("scope_kind") !== null;
+		if (refusingTail && TAIL_DELAY_MS > 0) {
+			setTimeout(() => {
+				response.writeHead(500, { "content-type": "application/json" });
+				response.end(
+					JSON.stringify({
+						detail: "The stub was asked to refuse the flat list's tail.",
+					}),
+				);
+			}, TAIL_DELAY_MS);
+			return;
+		}
 		if (refusingTail) {
 			response.writeHead(500, { "content-type": "application/json" });
 			response.end(

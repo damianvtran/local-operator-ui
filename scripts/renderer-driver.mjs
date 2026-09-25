@@ -14316,6 +14316,35 @@ async function sceneSidebarLazyChats(cdp) {
 				`rows were ${beforeFlat.sessionCount} before the scroll to the bottom (waited ${flatGrew.waitedMs} ms)`,
 			);
 			await wait(LAZY_SETTLE_MS);
+			/*
+			 * AND THE REGION IS PUT BACK AT ITS END BEFORE THE FRAME (round 4, D21). The scroll
+			 * above is written ONCE, before the page it asks for lands: an absolute `scrollTop`
+			 * is a position, not a promise, so the rows that arrive below the fold leave the
+			 * viewport where it was and the frame showed the middle of the list (the designer
+			 * measured `Chat 040`…`Chat 051` where the arm's own bytes show `Chat 089`…`Chat 100`).
+			 * Scrolled again here, and ASSERTED at the end, because "the frame shows the tail"
+			 * is the whole point of this arm.
+			 */
+			await cdp.evaluate(
+				`(() => { const region = document.querySelector('[data-sidebar-region="chats"]'); if (region) region.scrollTop = region.scrollHeight; return true; })()`,
+			);
+			await wait(500);
+			const flatEnd = await cdp.evaluate(`(() => {
+				const region = document.querySelector('[data-sidebar-region="chats"]');
+				if (region === null) return null;
+				return {
+					atEnd: region.scrollTop + region.clientHeight >= region.scrollHeight - 1,
+					scrollTop: Math.round(region.scrollTop),
+					scrollHeight: region.scrollHeight,
+					clientHeight: region.clientHeight,
+				};
+			})()`);
+			note("the flat list's scroll after the growth", JSON.stringify(flatEnd));
+			check(
+				"and the frame is of the TAIL: the region is at its end when it is captured",
+				flatEnd?.atEnd === true,
+				`scrollTop ${flatEnd?.scrollTop} + clientHeight ${flatEnd?.clientHeight} against scrollHeight ${flatEnd?.scrollHeight} (the first version wrote the scroll once, before the rows landed, and photographed the middle of the list)`,
+			);
 			const flatFrame = await captureSettled(cdp, "flat-tail");
 			note("frame", JSON.stringify(flatFrame));
 			const grown = await verb(cdp, "state");
@@ -14371,6 +14400,153 @@ async function sceneSidebarLazyChats(cdp) {
 		await wait(LAZY_SETTLE_MS);
 		const refusalFrame = await captureSettled(cdp, "flat-tail-error");
 		note("frame", JSON.stringify(refusalFrame));
+		/*
+		 * AND THE PRESS THAT FAILS IDENTICALLY (round 4, U14). This Retry is the one control
+		 * in the panel whose press can come back with the SAME refusal: the requester's
+		 * elements are repainted, and focus used to end on `<body>` with nothing announced.
+		 * Pressed by KEYBOARD here, because that is the reader this defect belongs to, and
+		 * the region's own text is sampled while it happens - the walk through "Loading more
+		 * chats…" and back to the sentence is the re-announcement, and a text that never
+		 * changed is how it would silently not happen.
+		 */
+		await cdp.evaluate(`(() => {
+			window.__tailTexts = [];
+			/*
+			 * THE REGION IS LOOKED UP EVERY TICK, not captured once: a React re-render can
+			 * replace the node, and a detached node's textContent is frozen at whatever it held
+			 * when it was orphaned - which is how the first version of this sampler reported
+			 * zero changes while the reader's own region was changing in front of them.
+			 */
+			const grab = () => {
+				const region = document.querySelector('[data-sidebar-region="chats"]');
+				const text = (region?.textContent ?? "").replace(/\s+/g, " ").trim();
+				const seen = window.__tailTexts;
+				if (seen[seen.length - 1] !== text) seen.push(text);
+			};
+			grab();
+			const timer = setInterval(grab, 50);
+			setTimeout(() => clearInterval(timer), 12_000);
+			return true;
+		})()`);
+		const focusedRetry = await cdp.evaluate(`(() => {
+			const region = document.querySelector('[data-sidebar-region="chats"]');
+			const button = Array.from(region?.querySelectorAll("button") ?? []).find(
+				(node) => node.textContent.trim() === "Retry",
+			);
+			if (button === undefined) return false;
+			button.focus();
+			return document.activeElement === button;
+		})()`);
+		check(
+			"the flat list's Retry can be focused",
+			focusedRetry === true,
+			`focused: ${focusedRetry}`,
+		);
+		/*
+		 * A REAL Enter, in three parts: CDP needs the RAW keydown, the character (which is
+		 * what a focused button activates on) and the keyup. The first attempt sent
+		 * `keyDown` alone and the daemon was asked nothing - the check below passed
+		 * vacuously on the button this script had just focused, which is exactly the shape of
+		 * evidence that proves nothing.
+		 */
+		for (const event of [
+			{ type: "rawKeyDown", text: undefined },
+			{ type: "char", text: "\r" },
+			{ type: "keyUp", text: undefined },
+		]) {
+			await cdp.send("Input.dispatchKeyEvent", {
+				type: event.type,
+				key: "Enter",
+				code: "Enter",
+				windowsVirtualKeyCode: 13,
+				nativeVirtualKeyCode: 13,
+				...(event.text === undefined ? {} : { text: event.text }),
+			});
+		}
+		/*
+		 * AND THE PRESS IS PROVEN TO HAVE LANDED BEFORE ANYTHING IS CONCLUDED FROM IT: the
+		 * arm waits for the REGION'S OWN TEXT to have walked the wait register and come back
+		 * to a refusal, which is both the landing proof and the re-announcement this finding
+		 * is about. Read from the sampler rather than from the daemon's log, because the log
+		 * proves a request and this has to prove what the reader's region did with the answer.
+		 */
+		const reread = await waitForCondition(
+			cdp,
+			`(() => {
+				const texts = window.__tailTexts ?? [];
+				return texts.length >= 2 ? { count: texts.length } : null;
+			})()`,
+			15_000,
+		);
+		check(
+			"the keyboard press reached the daemon, and the region changed while it was in flight (U14)",
+			reread.ok === true,
+			`the region's text changed ${reread.last?.count ?? 0} time(s) during the press and settled back on the refusal (waited ${reread.waitedMs} ms) - one means the region never changed, which is the state this finding filed`,
+		);
+		/*
+		 * THE SETTLED READ, waited for rather than sampled: the refusal has to be BACK (the
+		 * re-read is over) before focus can be judged, which is the mistake the previous shape
+		 * made - it read while the answer was still in flight and reported `<body>` for the
+		 * state that the fix does not govern.
+		 */
+		await waitForCondition(
+			cdp,
+			`(() => {
+				const region = document.querySelector('[data-sidebar-region="chats"]');
+				const text = (region?.textContent ?? "").replace(/\s+/g, " ").trim();
+				return text.includes("refuse") ? true : null;
+			})()`,
+			15_000,
+		);
+		await wait(400);
+		const afterRetry = await cdp.evaluate(`(() => {
+			const region = document.querySelector('[data-sidebar-region="chats"]');
+			const button = Array.from(region?.querySelectorAll("button") ?? []).find(
+				(node) => node.textContent.trim() === "Retry",
+			);
+			return {
+				present: button !== undefined,
+				focused: button !== undefined && document.activeElement === button,
+				activeTag:
+					document.activeElement === document.body
+						? "body"
+						: (document.activeElement?.tagName?.toLowerCase() ?? null),
+				live:
+					region?.querySelector("[aria-live]")?.getAttribute("aria-live") ?? null,
+				/*
+				 * MATCHED ON WHAT THE REGION RENDERS, not on the string this file would write: the
+				 * ellipsis it draws is a single character the sampler reads as part of a longer run,
+				 * so the first filter looked for a phrase that never appears verbatim and counted
+				 * zero changes in a region that had visibly changed.
+				 */
+				texts: (window.__tailTexts ?? []).filter((text) =>
+					/refuse|Loading more/.test(text),
+				).length,
+				sampled: (window.__tailTexts ?? []).length,
+			};
+		})()`);
+		note("the refused retry", JSON.stringify(afterRetry));
+		check(
+			"a failed re-read hands focus BACK to the control that was pressed, never to `<body>` (U14)",
+			afterRetry.present === true && afterRetry.focused === true,
+			`activeElement is ${JSON.stringify(afterRetry.activeTag)}; the settled state is ${JSON.stringify(afterRetry)}`,
+		);
+		check(
+			/*
+			 * THE ANNOUNCEMENT IS THE REGION'S OWN CHANGE, which is what a polite region
+			 * announces: the same refusal rendered again into an unchanged region says nothing,
+			 * and that is precisely the state U14 filed. Asserted from the SETTLED text plus the
+			 * number of distinct texts the press produced, rather than from the wait register,
+			 * because a stub that answers in a millisecond renders that register for a
+			 * millisecond - the arm can now slow it (`--tail-delay-ms`), but the assertion must
+			 * not depend on a lever nobody sets by default.
+			 */
+			"and the refusal is re-announced through the region that already exists",
+			afterRetry.live === "polite" &&
+				afterRetry.sampled >= 2 &&
+				afterRetry.texts >= 1,
+			`the region's aria-live is ${JSON.stringify(afterRetry.live)}, it produced ${afterRetry.sampled} distinct text(s) during the press and settled on ${afterRetry.texts} refusal state(s) - a region that never changed announces nothing`,
+		);
 		return;
 	}
 
@@ -14469,6 +14645,17 @@ async function sceneSidebarLazyChats(cdp) {
 		const wideWidth = await cdp.evaluate(
 			`document.querySelector('[data-sidebar-region="chats"]')?.offsetWidth ?? null`,
 		);
+		/*
+		 * AND THE PREFERENCE ITSELF, because the two are not the same number (round 4, D20):
+		 * `chatSidebarWidth` is the panel's OUTER width (the app's default 280 measures 264
+		 * inside the region), so restoring the region's measured width wrote 264 into a
+		 * preference that means something else and left the post-press frames ~16px inside
+		 * the declared default - a set whose frames and whose README disagreed by a number
+		 * nobody chose. `undefined` is not a value here: it DELETES the key, which is how the
+		 * app's own default comes back on a profile that never stored one.
+		 */
+		const preferencesAtStart = await splitPreferences(cdp);
+		const preferenceWidth = preferencesAtStart.state?.chatSidebarWidth;
 		await setSplitPreferences(cdp, { chatSidebarWidth: 240 });
 		await wait(LAZY_SETTLE_MS);
 		const narrowWidth = await cdp.evaluate(
@@ -14493,8 +14680,17 @@ async function sceneSidebarLazyChats(cdp) {
 		 * frame. `wideWidth` is the width this run actually started at, measured above.
 		 */
 		await setSplitPreferences(cdp, {
-			chatSidebarWidth: typeof wideWidth === "number" ? wideWidth : 281,
+			chatSidebarWidth:
+				typeof preferenceWidth === "number" ? preferenceWidth : undefined,
 		});
+		const restoredWidth = await cdp.evaluate(
+			`document.querySelector('[data-sidebar-region="chats"]')?.offsetWidth ?? null`,
+		);
+		check(
+			"the post-press frames are back at this run's OWN width, preference for preference",
+			restoredWidth === wideWidth,
+			`the chats region is ${restoredWidth}px after the restore against ${wideWidth}px before the narrow capture (preference ${JSON.stringify(preferenceWidth)}); the earlier shape wrote the region's inner measurement into an OUTER-width preference and left these frames 16px inside the set's declared default`,
+		);
 		await wait(LAZY_SETTLE_MS);
 		/*
 		 * AND THE CONTROL IS BROUGHT BACK INTO THE VIEWPORT, because widening the panel

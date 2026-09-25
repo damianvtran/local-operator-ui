@@ -1740,16 +1740,87 @@ test("an unnamed size means the HEAD page on a paging daemon, and today's read w
 	);
 
 	/*
+	 * AND A CALLER THAT MEANS THE SET KEEPS GETTING IT (round 4, R4-1). Three callers ask
+	 * for the whole catalogue by name - the palette's browse, the MCP roster and the browser
+	 * hand-over dialog, whose picker has no search - and that has to hold ON A PAGING DAEMON,
+	 * which is the case the unnamed default no longer covers.
+	 */
+	store.setState({ cataloguePageable: true });
+	calls.length = 0;
+	await store.getState().fetchSessions(LEGACY_CATALOGUE_PAGE);
+	assert.equal(
+		calls[0]?.limit,
+		LEGACY_CATALOGUE_PAGE,
+		"a NAMED legacy read is still 500 on a daemon that advertises paging",
+	);
+
+	/*
 	 * THE FAIL-CLOSED DIRECTION, asserted as the DEFAULT rather than as a set value: a store
 	 * that no surface has spoken to yet is exactly the store this app has always had, so an
 	 * unnamed read in that state must be the legacy one.
 	 */
+	store.setState({ cataloguePageable: false });
 	assert.equal(store.getState().cataloguePageable, false);
 	calls.length = 0;
 	await store.getState().fetchSessions();
 	assert.equal(
 		calls[0]?.limit,
 		LEGACY_CATALOGUE_PAGE,
-		"and an UNKNOWN capability map fails closed to today's read rather than to the head page",
+		"and an unmounted sidebar's store fails closed to today's read rather than to the head page",
+	);
+});
+
+test("the three callers that mean the SET name it, and the refused tail stays refused (round 4)", () => {
+	/*
+	 * R4-1: the unnamed default is the head page on a daemon that advertises paging, so a
+	 * caller whose question is about the whole catalogue has to SAY so. The dialog is the one
+	 * that was left behind, and its picker has no search - a narrowed list there is not a
+	 * smaller view of the same question, it is a list half the conversations cannot be found in.
+	 */
+	const dialog = readFileSync(
+		"src/renderer/src/features/browser/components/browser-hand-over-dialog.tsx",
+		"utf8",
+	);
+	assert.match(
+		dialog,
+		/fetchSessions\(LEGACY_CATALOGUE_PAGE\)/,
+		"the browser hand-over dialog asks for the set by name",
+	);
+	for (const [, file, call] of [
+		[
+			"palette",
+			"src/renderer/src/features/command-palette/use-palette-sources.ts",
+		],
+		[
+			"mcp",
+			"src/renderer/src/features/settings/components/mcp-management-section.tsx",
+		],
+	]) {
+		const source = readFileSync(file, "utf8");
+		assert.match(
+			source,
+			/fetchSessions\(LEGACY_CATALOGUE_PAGE\)/,
+			`${call} asks for the set by name`,
+		);
+	}
+	/*
+	 * U14: a refused tail is sticky (a head answer must not clear it and quietly re-ask), the
+	 * refusal is held against the cursor it belongs to, and the pending press outlives the
+	 * states that are not its outcome.
+	 */
+	assert.ok(
+		SIDEBAR_SRC.includes("tailRefusedCursorRef") &&
+			SIDEBAR_SRC.includes(
+				"catalogueHead.nextCursor === tailRefusedCursorRef.current",
+			),
+		"a cursor the tail refused is not re-asked until the reader asks again (U14)",
+	);
+	assert.ok(
+		SIDEBAR_SRC.includes("setTailRefusal(null)"),
+		"and only the reader's own press clears it",
+	);
+	assert.ok(
+		SIDEBAR_SRC.includes("catalogueHead.nextCursor !== press.cursor"),
+		"the pending press is settled by its OUTCOME (the cursor moved, or the refusal returned), not by a tick",
 	);
 });

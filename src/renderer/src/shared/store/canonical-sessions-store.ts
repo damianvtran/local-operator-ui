@@ -1760,6 +1760,14 @@ export const LEGACY_CATALOGUE_PAGE = 500;
  * front of every one of those suites, and the flag keeps the store's dependency list -
  * and every fixture's stub list - exactly as it was. It is fail-closed by construction:
  * `false` until a surface says otherwise, which is exactly today's request.
+ *
+ * AND THAT MAKES AN UNNAMED READ ROUTE-DEPENDENT, which is worth knowing when you read a
+ * request log rather than this file: the sidebar publishes the flag when it resolves the
+ * capability, so an app launched straight into `/mcp` or `/agents` - where no sidebar has
+ * mounted - takes the legacy read until the first `/chat` visit, and every route after
+ * that takes the head page. The three callers that mean the SET name it explicitly
+ * (`use-palette-sources`, `mcp-management-section`, `browser-hand-over-dialog`), so the
+ * difference is confined to whatever else calls this with no argument.
  */
 export function cataloguePageDefault(pageable: boolean): number {
 	return pageable ? CATALOGUE_HEAD_PAGE : LEGACY_CATALOGUE_PAGE;

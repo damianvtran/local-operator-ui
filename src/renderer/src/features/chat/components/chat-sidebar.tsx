@@ -882,6 +882,26 @@ export function ChatSidebar({
 	const fetchCatalogueTail = useCanonicalSessionsStore(
 		(s) => s.fetchCatalogueTail,
 	);
+	/*
+	 * THE FLAT LIST'S REFUSED RETRY, and where focus goes after a press (round 4, U14).
+	 *
+	 * Its Retry is the one control in this panel whose press can fail IDENTICALLY: the
+	 * request goes out again, the same refusal comes back, and the elements the reader was
+	 * on are repainted from scratch - `<body>` was where focus ended up, with no new
+	 * announcement, which is the same defect family as U2 on the group's Show more.
+	 *
+	 * The ref is a PENDING PRESS rather than a target, because the button that was pressed
+	 * is unmounted while the answer is in flight: the effect below resolves the NEW button
+	 * by the class this file gives it, once the state has settled back to a refusal, and
+	 * focuses that. The re-announcement comes free from the live region the refusal already
+	 * lives in: the text walks sentence -> "Loading more chats…" -> sentence, and a change
+	 * is what a polite region announces.
+	 */
+	const tailRefusalRetryRef = useRef<HTMLButtonElement | null>(null);
+	const tailRetryPendingRef = useRef<{
+		deadline: number;
+		cursor: string | null;
+	} | null>(null);
 	const pinFailure = useCanonicalSessionsStore((s) => s.pinFailure);
 	/*
 	 * The client's own pin state for conversations this panel's page does not carry
@@ -1937,8 +1957,40 @@ export function ChatSidebar({
 	 * A REGION THAT IS NOT MOUNTED IS NOT MEASURED, and is not treated as "at the
 	 * bottom": the commit effect below asks again once it exists.
 	 */
+	/*
+	 * THE CURSOR A TAIL READ REFUSED, and why the panel has to remember it (round 4, U14).
+	 *
+	 * `tailExtendDue` already says a failed page is never retried by a scroll - "the reader
+	 * asked once" - but the HEAD's answers do not carry the tail's error: the 30 s poll
+	 * (and every catalogue frame) replaces the head, the error clears with it, the commit
+	 * effect re-measures, and the tail's cursor page was asked for AGAIN without the reader
+	 * asking. With a backend that keeps refusing, that is a flapping refusal - and the
+	 * control the reader pressed is unmounted under them each time it flaps, which is how
+	 * the press ends on `<body>`.
+	 *
+	 * Remembering WHICH cursor failed is what makes the refusal sticky across head answers.
+	 * Only the reader's own Retry clears it.
+	 */
+	const tailRefusedCursorRef = useRef<string | null>(null);
+	/*
+	 * AND THE REFUSAL ITSELF IS HELD, not only the cursor (round 4, U14). A head answer
+	 * replaces the tail's error with its own win: the 30 s poll lands, `catalogueHead.error`
+	 * goes back to null, and the sentence and its Retry vanish from a panel whose reader was
+	 * just told the page failed - the refusal has to survive the answers that are not about
+	 * it. Held against the cursor it belongs to, so a successful page (whose cursor has
+	 * moved on) clears it without anyone having to remember to.
+	 */
+	const [tailRefusal, setTailRefusal] = useState<{
+		cursor: string;
+		sentence: string;
+	} | null>(null);
 	const extendCatalogueTail = useCallback(() => {
 		if (!tailVisible) return;
+		if (
+			catalogueHead.nextCursor !== null &&
+			catalogueHead.nextCursor === tailRefusedCursorRef.current
+		)
+			return;
 		const box = listPanelRef.current;
 		if (box === null) return;
 		if (
@@ -1956,6 +2008,15 @@ export function ChatSidebar({
 		tailPendingRef.current = true;
 		void fetchCatalogueTail();
 	}, [tailVisible, catalogueHead, fetchCatalogueTail]);
+	useEffect(() => {
+		if (catalogueHead.error !== null && catalogueHead.nextCursor !== null) {
+			tailRefusedCursorRef.current = catalogueHead.nextCursor;
+			setTailRefusal({
+				cursor: catalogueHead.nextCursor,
+				sentence: catalogueHead.error,
+			});
+		}
+	}, [catalogueHead.error, catalogueHead.nextCursor]);
 	/*
 	 * THE SAME QUESTION ON COMMIT, not only on a scroll.
 	 *
@@ -2110,8 +2171,60 @@ export function ChatSidebar({
 		pageable: tailVisible,
 		nextCursor: tailVisible ? catalogueHead.nextCursor : null,
 		loading: catalogueHead.loading,
-		error: catalogueHead.error,
+		/*
+		 * THE STORE'S ERROR, OR THE ONE HELD FOR THIS CURSOR (U14): the second term is what
+		 * keeps a refusal on screen across the head answers that are not about it. It cannot
+		 * outlive the page it belongs to - a successful extension moves the cursor, and the
+		 * held refusal stops applying the moment it does.
+		 */
+		error:
+			catalogueHead.error ??
+			(tailRefusal !== null && catalogueHead.nextCursor === tailRefusal.cursor
+				? tailRefusal.sentence
+				: null),
 	});
+	useEffect(() => {
+		const press = tailRetryPendingRef.current;
+		if (press === null) return;
+		/*
+		 * THE PRESS IS SETTLED BY AN OUTCOME, NOT BY A TICK (round 4, U14). The first version
+		 * cleared the pending press on the first non-loading state, and the 30 s poll's own
+		 * head answer is a non-loading state: it arrives, clears the tail's refusal, renders
+		 * no control, and the effect read that as "it worked" - so when the press's refusal
+		 * DID come back a moment later, there was no pending press left to put the reader
+		 * back on. The press stays pending until the tail is REFUSED again or EXHAUSTED
+		 * (which is the only state that means the rows arrived), with a deadline so a press
+		 * that neither fails nor finishes cannot pin focus for ever.
+		 */
+		/*
+		 * THE OUTCOME IS READ FROM THE STORE'S OWN BITS, not from the drawn state: the tail's
+		 * steady state and its exhaustion both draw nothing (`kind === "none"`), so the first
+		 * version of this effect treated "your page is on its way" as "done" and handed focus
+		 * to a row a tick before the refusal arrived - which is why the reader still ended up
+		 * away from the control they had pressed.
+		 */
+		if (tailState.kind === "error") {
+			tailRetryPendingRef.current = null;
+			tailRefusalRetryRef.current?.focus();
+			return;
+		}
+		/*
+		 * THE PRESS'S PAGE ARRIVED when the cursor it was asked against is no longer the
+		 * cursor in hand - advanced (more to come) or null (the tail is complete). Focus goes
+		 * to the list's last row, which is where a reader who asked for more rows wants to be.
+		 */
+		if (catalogueHead.nextCursor !== press.cursor) {
+			tailRetryPendingRef.current = null;
+			const region = listPanelRef.current;
+			const rows = region?.querySelectorAll<HTMLElement>("[data-session-row]");
+			const last =
+				rows === undefined || rows.length === 0 ? null : rows[rows.length - 1];
+			(last?.querySelector<HTMLElement>("[data-chat-row]") ?? last)?.focus();
+			return;
+		}
+		// Still on its way, and the deadline is the only thing that ends the wait.
+		if (Date.now() > press.deadline) tailRetryPendingRef.current = null;
+	}, [tailState.kind, catalogueHead.nextCursor]);
 	const catalogueTail =
 		tailState.kind === "none" ? null : (
 			/*
@@ -2131,9 +2244,27 @@ export function ChatSidebar({
 				{tailState.kind === "error" && (
 					<p className="pt-1">
 						<button
+							ref={tailRefusalRetryRef}
 							type="button"
 							className="text-meta text-ink-dim underline hover:text-ink"
-							onClick={() => void fetchCatalogueTail()}
+							onClick={() => {
+								/*
+								 * THE PRESS IS REMEMBERED BEFORE IT GOES (U14): the control this handler
+								 * belongs to does not survive the re-read, so the only way to put the
+								 * reader back on it is to say, in advance, that a press is outstanding.
+								 * The deadline is generous - a page of this list measures in seconds on
+								 * the store this change exists for - and its only job is to stop a press
+								 * that neither fails nor finishes from owning focus for ever.
+								 */
+								tailRetryPendingRef.current = {
+									deadline: Date.now() + 20_000,
+									cursor: catalogueHead.nextCursor,
+								};
+								// The reader's own press is the one thing that clears a refusal.
+								tailRefusedCursorRef.current = null;
+								setTailRefusal(null);
+								void fetchCatalogueTail();
+							}}
 						>
 							Retry
 						</button>
