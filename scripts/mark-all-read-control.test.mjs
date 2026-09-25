@@ -306,6 +306,7 @@ export const useTeams = () => ({ data: [], error: null, isLoading: false, refetc
 	"@shared/themes": `export const DEFAULT_THEME = "localOperatorDark";`,
 	"@shared/hooks/use-canonical-session": `export const echoPendingUser = () => undefined;
 export const retractPendingUser = () => undefined;
+export const retractLocalEcho = () => "retracted";
 export const discardPendingEchoes = () => undefined;`,
 };
 

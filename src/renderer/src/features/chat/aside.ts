@@ -58,8 +58,10 @@ const RE_SENTENCE_END = /(?<=[.!?])\s/;
  * would read as two different facts, which is why the composition lives here
  * rather than at either call site.
  */
+export const ASIDE_NOT_ANSWERED_SENTENCE = "The aside was not answered.";
+
 export function asideAskFailure(error: unknown): string {
-	return userFacingMessage(error, "The aside was not answered.");
+	return userFacingMessage(error, ASIDE_NOT_ANSWERED_SENTENCE);
 }
 
 /**
