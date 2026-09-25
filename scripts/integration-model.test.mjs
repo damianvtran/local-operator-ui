@@ -2933,9 +2933,11 @@ test("the dialogs and the row list keep the geometry and the rules the walk meas
 	 * left the whole suite green - the model tests build that memory by hand - and
 	 * that in the app the hold then never opens, so the live Q1 defect returns in
 	 * full with every test still passing. The slice starts at the deadline's own
-	 * line and ends at the `setMemoryEpoch` that closes the arm, so it cannot
-	 * reach a later function's code (the round-3 lesson about slices that run
-	 * past their function, which then prove nothing).
+	 * line and ends at the arm's own closing write (R6-2, which is why it is not
+	 * the `setMemoryEpoch` that follows it: that line occurs twice in the hook and
+	 * says nothing about this arm), so it cannot reach a later function's code (the
+	 * round-3 lesson about slices that run past their function, which then prove
+	 * nothing).
 	 */
 	const armStart = hook.indexOf(
 		"const holdUntil = Date.now() + CONTROL_SETTLE_MS;",
@@ -2967,6 +2969,26 @@ test("the dialogs and the row list keep the geometry and the rules the walk meas
 		controlArm,
 		/connectedAt: null/,
 		"and it drops the worked reading in the same object",
+	);
+	/*
+	 * AND THE HOLD IS ON BOTH ARMS (R7-3, carried as R8-1). `markControlMemory`
+	 * computes the deadline once and BOTH objects it writes carry it - the
+	 * Disconnect arm asserted above and the connect/reload arm asserted here -
+	 * because both are the user contradicting what the last read said, and the read
+	 * that follows is the overlay's flap half the time. Round 7 measured the gap
+	 * this closes: dropping `holdUntil` from the Disconnect arm reddens this suite,
+	 * while dropping it from `{ ...before, disconnectedAt: null, holdUntil }` left
+	 * 61/0 GREEN - so the Q1 flap could return on Connect and Reload with every test
+	 * still passing. The assertion reads the SAME slice as the two above rather than
+	 * the whole hook: the `controlArm` window is the one place the deadline, both
+	 * arms and their shared closing write all sit, and anchoring on text that occurs
+	 * twice in the file is what the previous round's first attempt did - it passed
+	 * under the mutation it was written to catch.
+	 */
+	assert.match(
+		controlArm,
+		/disconnectedAt: null,\s*holdUntil\s*\}/,
+		"the connect/reload arm opens the same hold (R7-3, R8-1)",
 	);
 	/*
 	 * R5-1b's source half. The behavioural half is the menu assertion in the Q1
