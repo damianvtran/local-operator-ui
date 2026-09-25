@@ -1193,6 +1193,12 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 					volatilePendingText: undefined,
 					textRevision: (row.textRevision ?? 0) + 1,
 				};
+				/*
+				 * One term, two fields: the flag below turns OFF when the box is empty, and the
+				 * delivered-text copy is gated on the same fact rather than on `stripped.box`
+				 * alone (review round 8, R8-1).
+				 */
+				const boxIsEmpty = (stripped?.row.currentInput ?? "") === "";
 				const kept: ConversationInputState =
 					stripped && !empty(stripped.row)
 						? {
@@ -1201,17 +1207,37 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 								inFlight: undefined,
 								// Conservation, not precision: any text still in the box that was
 								// written inside a masked capture keeps the whole row off disk.
-								volatilePendingText:
-									(stripped.row.currentInput ?? "") === ""
-										? undefined
-										: row.volatilePendingText,
-								lateDelivered: stripped.box,
+								volatilePendingText: boxIsEmpty
+									? undefined
+									: row.volatilePendingText,
+								/*
+								 * THE COPY GOES WITH THE FLAG THAT GATES IT (review round 8, R8-1). This
+								 * arm resets `volatilePendingText` when the box is empty and kept the
+								 * delivered text in the same object literal, so exactly where the flag
+								 * became `undefined` the `partialize` gate stopped applying - reachable
+								 * through public actions alone (a volatile return, the user deletes the
+								 * text, a chip or quote of their own stays), after which the
+								 * masked-capture secret stayed on disk through every later write,
+								 * including the notice's own dismissal. Same term, both fields.
+								 *
+								 * AND THE NOTE IS ROUTED LIKE THE EMPTIED ARM'S: `stripped.box` is
+								 * "overlap" even when the box is EMPTY, and that copy claims the delivered
+								 * message's words are still in the box. A box with nothing in it cannot
+								 * make that claim, so it gets the muted delivered sentence instead -
+								 * Q7-1's reasoning, one arm over.
+								 */
+								lateDelivered:
+									stripped.box === "overlap" && boxIsEmpty
+										? "draft-only"
+										: stripped.box,
 								/*
 								 * The words this arm is ABOUT, carried so the note can be retired
 								 * when the user deletes them and only then (U17).
 								 */
 								lateDeliveredText:
-									stripped.box === "overlap" ? row.returned?.text : undefined,
+									stripped.box === "overlap" && !boxIsEmpty
+										? row.returned?.text
+										: undefined,
 								// The box itself moved, so the hook has to be told - the same
 								// revision channel every other store-side write uses.
 								textRevision: (row.textRevision ?? 0) + 1,

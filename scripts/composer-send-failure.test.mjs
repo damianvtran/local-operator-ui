@@ -1726,6 +1726,10 @@ test("an admission clears the notice the previous failure left on the row", asyn
 	assert.ok(
 		draftRow().error,
 		"no failure was recorded, so this pin has nothing to clear",
+		/*
+		 * The next attempt, read at its latch: the notice is gone BEFORE the wire, so a throw
+		 * this attempt never records cannot inherit the previous one's sentence.
+		 */
 	);
 	responses.push(new DesktopControlError(504, "deadline_exceeded"));
 	const pending = admitChatDraft(key, input, SESSION);
@@ -1845,6 +1849,56 @@ test("a late delivery with no payload to compare says the neutral sentence, not 
 		row.lateDelivered,
 		"draft-only",
 		"the note claims the delivered words are in the box on an arm that cannot know",
+	);
+});
+
+/*
+ * R8-1 (review round 8), the `kept` arm - and the one the round proved LEAKs where the other
+ * two were fixed. It resets `volatilePendingText` when the box is empty while keeping the
+ * delivered-text copy in the same object literal, so exactly where the flag becomes
+ * `undefined` the `partialize` gate stops applying; the discriminant is any chip or quote of
+ * the user's own in the row, which is what routes it here rather than to the emptied arm.
+ * Reached through public actions only: a volatile return, the user deletes the text, a chip of
+ * theirs stays, the transcript reconciles.
+ *
+ * The gate reads this field, so the field is what the pin asserts - and the note it leaves is
+ * asserted too, because `stripped.box` is "overlap" even over an EMPTY box.
+ */
+test("the kept arm drops the delivered-text copy when it empties the flag, and does not claim an empty box", () => {
+	reset();
+	const delivered = "the words a masked capture pinned";
+	useConversationInputStore.setState({
+		inputByConversation: {
+			[SESSION]: {
+				currentInput: "",
+				submittedMessages: [],
+				currentHistoryIndex: null,
+				replies: [],
+				attachments: [{ path: "/tmp/kept-arm.png", name: "kept-arm.png" }],
+				volatilePendingText: true,
+				lateDelivered: "overlap",
+				lateDeliveredText: delivered,
+				returned: { text: delivered, attachments: [], replies: [] },
+			},
+		},
+	});
+	useConversationInputStore.getState().reconcileDelivered(SESSION);
+	const row = () =>
+		useConversationInputStore.getState().inputByConversation[SESSION];
+	assert.equal(
+		row().volatilePendingText,
+		undefined,
+		"the arm did not empty the flag, so this pin is not measuring the arm it names",
+	);
+	assert.equal(
+		row().lateDeliveredText,
+		undefined,
+		"the copy outlived the flag that gates it - the leak the round measured, on the arm the other two fixes missed",
+	);
+	assert.equal(
+		row().lateDelivered,
+		"draft-only",
+		"an empty box is being told the delivered words are still in it",
 	);
 });
 
