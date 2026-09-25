@@ -109,6 +109,8 @@ const bundle = await build({
 			export { useMessageInput } from "./src/renderer/src/shared/hooks/use-message-input";
 			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
 			export * from "./src/renderer/src/shared/store/canonical-sessions-store";
+			export { composerNoticeFor, retryOfferedForFailureCode } from "./src/renderer/src/features/chat/composer-notice";
+			export { ASIDE_ASK_BUSY, ASIDE_NOT_ANSWERED_SENTENCE } from "./src/renderer/src/features/chat/aside";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -144,7 +146,8 @@ export const retractPendingUser = () => {};
 export const retractLocalEcho = () => "queued";
 export const discardPendingEchoes = () => {};
 export const clearRetractedEchoes = () => {};
-export const deliverEcho = () => {};`,
+export const deliverEcho = () => {};
+export const resyncCanonicalSession = () => {};`,
 					loader: "js",
 					resolveDir: process.cwd(),
 				}));
@@ -507,6 +510,86 @@ test("the send control is pressable while a send is in flight", () => {
 	assert.ok(
 		code.includes("isInputDisabled"),
 		"a box that refuses input must still disable the press",
+	);
+});
+
+/*
+ * THE VERDICT IS MONOTONE (review/design/UX round 11, R11-1 = D1 = U1).
+ *
+ * `Retry` used to render from a CARRIED flag, and the two aside raise sites never wrote
+ * it: one earlier retryable failure left it true and the control appeared over
+ * `aside_still_answering` - the arm this branch's copy table calls Clear-only - while the
+ * row the store wrote, and the classifier itself, both said no press. So the cases below
+ * drive the SHIPPED `composerNoticeFor` with the flag deliberately left STALE, which is
+ * the state the bug needs, and read the answer the pane renders from.
+ */
+test("a stale retry flag cannot add a press the failure's own code withholds", () => {
+	const notice = (code, retry) =>
+		module.composerNoticeFor({
+			error: "the failure's own sentence",
+			code,
+			retry,
+		});
+	/*
+	 * The two aside arms, with the flag left true by an EARLIER failure - the exact
+	 * sequence the round measured (a retryable failure, then a `/btw` door that clears
+	 * the sentence and the code and not the flag, then the refusal).
+	 */
+	for (const code of [
+		module.ASIDE_STILL_ANSWERING_CODE,
+		module.ASIDE_NOT_ANSWERED_CODE,
+	])
+		assert.equal(
+			notice(code, true)?.retry,
+			false,
+			`a stale flag rendered Retry over ${code}, whose own copy offers Clear only`,
+		);
+	/*
+	 * AND THE ARMS WHOSE COPY INVITES THE PRESS ARE UNTOUCHED - including the read
+	 * window, which now withholds it from BOTH rules (design round 11, D2): a window that
+	 * answers "failed" the moment it is asked re-refuses, so a Retry there is the loop.
+	 */
+	for (const code of [
+		module.RUNTIME_BUSY_CODE,
+		module.RUNTIME_RETIRING_CODE,
+		undefined,
+	])
+		assert.equal(
+			notice(code, true)?.retry,
+			true,
+			`a pressable arm lost its Retry: ${code}`,
+		);
+	assert.equal(notice(module.SESSION_UNVALIDATED_CODE, true)?.retry, false);
+	assert.equal(notice(module.SESSION_UNVALIDATED_CODE, false)?.retry, false);
+	/*
+	 * AND IT CANNOT ADD ONE EITHER: a false flag stays false for the pressable arms, so
+	 * the carried verdict is a REMOVAL at most. That is the invariant the row path has
+	 * always had (`retryOfferedForFailureCode`) and the notice now shares it.
+	 */
+	assert.equal(notice(module.RUNTIME_BUSY_CODE, false)?.retry, false);
+	assert.equal(
+		module.retryOfferedForFailureCode(module.SESSION_UNVALIDATED_CODE),
+		false,
+		"the row path offers a press the notice withholds - one failure, two answers",
+	);
+});
+
+/*
+ * THE TWO NEW COPY ROWS ARE THE ASIDE'S OWN SENTENCES (review round 11, R11-2 = UX U2).
+ *
+ * They were second copies of literals that live in `aside.ts` - the strings the panel and
+ * the composer's line actually render - so a drift in either place would have been silent.
+ * The store cannot import the feature module (it sits below it), so the pin is here: the
+ * rows must equal the literals, and a change to either side fails this test.
+ */
+test("the aside refusal rows are the aside module's own sentences", () => {
+	assert.equal(
+		module.SEND_FAILURE_COPY.asideNotAnswered,
+		module.ASIDE_NOT_ANSWERED_SENTENCE,
+	);
+	assert.equal(
+		module.SEND_FAILURE_COPY.asideStillAnswering,
+		module.ASIDE_ASK_BUSY,
 	);
 });
 

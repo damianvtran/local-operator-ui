@@ -356,13 +356,15 @@ test("Retry is withheld exactly where a press cannot work", () => {
 		LEADING_SLASH_CODE,
 		UNREADABLE_ATTACHMENT_CODE,
 		STORE_OUT_OF_SPACE_CODE,
-	])
-		assert.equal(withholdsRetryHint(code), true, code);
-	for (const code of [
-		RUNTIME_BUSY_CODE,
-		RUNTIME_RETIRING_CODE,
+		/*
+		 * The read window is the fourth (design round 11, D2): its sentence does NOT
+		 * invite a press, because the window answers "failed" the moment it is asked and
+		 * the press re-refuses into the same sentence.
+		 */
 		SESSION_UNVALIDATED_CODE,
 	])
+		assert.equal(withholdsRetryHint(code), true, code);
+	for (const code of [RUNTIME_BUSY_CODE, RUNTIME_RETIRING_CODE])
 		assert.equal(
 			withholdsRetryHint(code),
 			false,
@@ -951,7 +953,6 @@ test("the notice offers Retry where a press works, and never over a delivery", (
 		"runtime_unreachable",
 		RUNTIME_BUSY_CODE,
 		RUNTIME_RETIRING_CODE,
-		SESSION_UNVALIDATED_CODE,
 	])
 		assert.equal(retryOfferedForFailureCode(code), true, code);
 	for (const code of [
@@ -959,6 +960,9 @@ test("the notice offers Retry where a press works, and never over a delivery", (
 		UNREADABLE_ATTACHMENT_CODE,
 		STORE_OUT_OF_SPACE_CODE,
 		"pairing.no-credential",
+		// Neither a press that works nor a press that re-refuses: it is not what the
+		// read window needs, which is the window itself (design round 11, D2).
+		SESSION_UNVALIDATED_CODE,
 	])
 		assert.equal(retryOfferedForFailureCode(code), false, code);
 	assert.equal(

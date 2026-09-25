@@ -1954,7 +1954,7 @@ test("a refused continuation is told the panel's own way out, and a fresh refusa
  *  - it was followed by the composer's generic "Your message is still in the
  *    composer. Send it again.", so one line told the user to wait and to press now.
  *    The code is what withholds that suffix, and it is on the composer's own
- *    predicate next to the ninth one rather than borrowed from it — this refusal is
+ *    predicate next to the seventh one rather than borrowed from it — this refusal is
  *    "not yet" where that one is "never".
  *  - it stayed on screen after the answer had settled: measured still reading "still
  *    answering" 9.4s later, beside an adopt control that had gone live.

@@ -763,14 +763,21 @@ export const ASIDE_STILL_ANSWERING_CODE = "aside_still_answering";
  * in a second one because this predicate answers one question (is Retry the
  * remedy) and that is the answer the failure owns.
  *
- * THREE TERMS THIS PREDICATE USED TO CARRY ARE GONE, and the copy table is why.
- * The read window (`session_unvalidated`) and the retiring owner
- * (`runtime_retiring`) each have a sentence of their own now that tells the user
- * to try again - "This chat isn't ready yet" and "Try again in a moment" - so a
- * press is exactly what those sentences invite, and a Retry beside an invitation
- * to press is one instruction, not two. The third is the unchanged-payload
- * guard's code, which no longer exists: an edited resend is a NEW message under a
- * new request id and is never refused (see `admitChatDraft`).
+ * TWO OF THE THREE TERMS THIS PREDICATE USED TO CARRY ARE STILL GONE, and one came
+ * back, because the sentence is the whole argument and one of them was misread.
+ *
+ * The retiring owner (`runtime_retiring`) has a sentence of its own that tells the user
+ * to try again - "Try again in a moment" - so a press is exactly what it invites, and a
+ * Retry beside an invitation to press is one instruction, not two. The third is the
+ * unchanged-payload guard's code, which no longer exists: an edited resend is a NEW
+ * message under a new request id and is never refused (see `admitChatDraft`).
+ *
+ * THE READ WINDOW IS BACK IN THE LIST (design round 11, D2), because the round that
+ * dropped it read its sentence as an invitation and it is not one: "This chat isn't
+ * ready yet, so your message wasn't sent." pairs with a window that answers `"failed"`
+ * the moment it is asked, so a press re-refuses and re-paints the same sentence - the
+ * loop this term exists to prevent, not a second instruction. Main withheld the press
+ * here for exactly that reason and the reason survived the fold intact.
  *
  * `ASIDE_NOT_ANSWERED_CODE` IS THE SIXTH TERM, and it is the second here that is
  * not a send refusal either — in the same direction as `ANSWER_NOT_SENT_CODE`, and for a
@@ -804,7 +811,12 @@ export function withholdsRetryHint(code: string | undefined): boolean {
 		code === STORE_UNAVAILABLE_CODE ||
 		code === ANSWER_NOT_SENT_CODE ||
 		code === ASIDE_NOT_ANSWERED_CODE ||
-		code === ASIDE_STILL_ANSWERING_CODE
+		code === ASIDE_STILL_ANSWERING_CODE ||
+		/*
+		 * Appended rather than slotted in, so the two ordinals the aside constants state
+		 * about themselves ("the sixth term", "the seventh") stay true.
+		 */
+		code === SESSION_UNVALIDATED_CODE
 	);
 }
 
