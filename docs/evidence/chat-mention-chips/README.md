@@ -148,7 +148,7 @@ keystroke, every measure and every paint after that boundary is the shipped code
 | --- | --- | --- |
 | a listing's entries | what the picker does with a listing — ranking, the drill, the parent column, the budget | that a particular directory contains those entries |
 | a probe's answer | the rule `chip <=> the token resolves`, the two fills, the outside-workspace state | that `stat` agrees, or that the containment test is right (that is `scripts/directory-listing.test.mjs`, against real symlinks) |
-| the connected harness's **capabilities** | that the composer's `@` affordance is offered exactly when the shipped `desktopFeatureEnabled` says the harness expands a mention — `harness-cannot-expand` is the state every release carries today — and that the withheld state says WHY in one sentence (UX round 2, U12), which the frame carries | how the capability fetch itself behaves against a live backend (that is main's `/v1/capabilities` path, already exercised by every other gated surface) |
+| the connected harness's **capabilities** | that the composer's `@` affordance is offered exactly when the shipped `desktopFeatureEnabled` says the harness expands a mention — `harness-cannot-expand` is the SKEW state, a backend older than the `references` key or one whose `LOCAL_OPERATOR_AT_REFERENCES` kill switch is off — and that the withheld state says WHY and names the update that clears the older-backend case, which the frame carries | how the capability fetch itself behaves against a live backend (that is main's `/v1/capabilities` path, already exercised by every other gated surface) |
 
 The live half of both is `scripts/renderer-driver.mjs --scene mentions`, written
 in this branch and **not run when this set was committed**: the composer only
@@ -164,7 +164,8 @@ refusal while the app was in fact attached to one: `/chat` mounts no composer
 without a session or a staged draft, so the scene now presses the app's own ⌘N
 chord (the gesture `sceneNewChat` drives) and reaches the field, and it then reads
 `/v1/capabilities` and refuses with the rig named in full unless the backend
-advertises `features.references` — which no released harness does, so the live half
+advertises `features.references` — which the harness publishes from the release
+that carries the key, and no released backend did when this set was captured, so the live half
 of this set needs a loopback proxy that injects that one field in front of a live
 daemon this run owns (the shape QA round 2 ran). Its notice assertion was also
 still checking the pre-remediation copy (`No files match "zzzz".` against a notice
@@ -193,7 +194,7 @@ that now names its scope); that is fixed with it.
 | `budget-800x600` | the same story at the design's narrow case: 4 rows | 800x600 |
 | `ceiling-1380x872` | the same story at the band's own window: the 8-row ceiling | 1380x872 |
 | `floor-768x520` | the same story at the clamp's own window: the 3-row floor binds | 768x520 |
-| `harness-cannot-expand` | a harness that advertises no `references`: no list, no chip, one sentence saying why, the path plain | 1380x872 |
+| `harness-cannot-expand` | a harness that advertises no `references`: no list, no chip, one notice stating why and naming the update, the path plain | 1380x872 |
 | `small-view-mention` | the small view, a 520px column: the fill reaches the field's 6px inset edge | 1380x872 |
 | `scrolled-draft` | a draft past `max-h-28`: the fills travel with the field's own scroll | 1380x872 |
 | `atomic-delete` | one Backspace at a chip's edge, with real arrow keys onto it | 1380x872 |
