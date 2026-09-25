@@ -86,8 +86,21 @@ export function useMemo(fn, deps) { return __runtime.hooks.useMemo(fn, deps); }
 export default { useState, useRef, useEffect, useCallback, useMemo };
 `;
 
+/*
+ * ONLY THE NETWORK IS FAKED. The store imports `UserFacingError` and
+ * `userFacingMessage` from the desktop transport as well as
+ * `DesktopControlError`, and its error-copy rules consult those classes'
+ * actual behaviour (`userFacingMessage` is what decides whether a caught value
+ * is copy or a stack-trace fragment), so the three come from the REAL module
+ * and only `desktopResult`/`subscribeDesktopStream` - the two calls that would
+ * reach a server - are stand-ins. The same split, for the same reason, is what
+ * `attention-seen.test.mjs`'s transport fixture does. The specifier has to be
+ * an ABSOLUTE path: this module IS the substitute that every
+ * `@shared/api/local-operator/*` import resolves to in this harness, so a
+ * relative or aliased specifier would resolve straight back into it.
+ */
 const TRANSPORT_SOURCE = `
-export const DesktopControlError = class DesktopControlError extends Error {};
+export { DesktopControlError, UserFacingError, userFacingMessage } from ${JSON.stringify(`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`)};
 export function desktopResult(request) {
 	return globalThis.__hookTest.network(request);
 }
@@ -142,6 +155,13 @@ const bundle = await build({
 				builder.onLoad({ filter: RE, namespace: "fixture" }, (args) => ({
 					contents: args.path === "react" ? HARNESS_SOURCE : TRANSPORT_SOURCE,
 					loader: "js",
+					// The transport fixture re-exports the REAL error classes from an
+					// absolute path (see TRANSPORT_SOURCE), and a module in the
+					// `fixture` namespace has no directory of its own for esbuild to
+					// resolve that path from. The harness directory is the honest
+					// one: the path is absolute, so this only gives the resolver a
+					// cwd to hand to its own machinery.
+					resolveDir: process.cwd(),
 				}));
 			},
 		},
