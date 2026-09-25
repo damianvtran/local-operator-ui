@@ -62,10 +62,17 @@ export function composerNoticeFor(input: {
 }): ComposerSendError | undefined {
 	if (input.lateDelivered)
 		return {
+			/*
+			 * ONE ROW PER ARM, and the arm picks the sentence rather than the sentence
+			 * guessing the arm (design round 9, D17): `delivered` is the arm that never
+			 * read the box, so it takes the sentence that is true whatever is in it.
+			 */
 			message:
-				input.lateDelivered === "draft-only"
-					? SEND_FAILURE_COPY.lateDeliveryDraft
-					: SEND_FAILURE_COPY.lateDeliveryOverlap,
+				input.lateDelivered === "delivered"
+					? SEND_FAILURE_COPY.lateDelivery
+					: input.lateDelivered === "draft-only"
+						? SEND_FAILURE_COPY.lateDeliveryDraft
+						: SEND_FAILURE_COPY.lateDeliveryOverlap,
 			muted: true,
 			// Announce, do not interrupt: nothing failed, nothing needs repairing, and
 			// the reader may be listening to the message that has just been delivered.

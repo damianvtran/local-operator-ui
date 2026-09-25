@@ -1815,12 +1815,17 @@ test("the reconciled row drops the copy too, on the arm that empties it", () => 
 });
 
 /*
- * Q7-1 (review round 7): `overlap` is reached with NO returned payload (the in-flight shape),
- * and `overlap`'s copy claims the delivered message's words are still in the box. With
- * nothing to compare, that claim cannot be made, so that shape gets the muted delivered note
- * instead - same fact, no claim about the box.
+ * Q7-1 (review round 7), RE-ROUTED BY DESIGN ROUND 9's D17. This arm is raised with no
+ * `returned` payload - the in-flight shape - so the delivered text is UNKNOWN and nothing in
+ * its routing has read `currentInput`. Neither box-describing sentence may be used here:
+ * `overlap`'s says the delivered words are still in the box, `draft-only`'s says what is here
+ * now has not been sent, and the app's deliberate text-loss rule can have left those words
+ * exactly where they were - which is the direction of the claim that HIDES the repeat the copy
+ * exists to warn about. The arm takes the sentence that is true whatever the box holds, and
+ * the last two assertions are the swap's own guard: the rendered copy must BE that row, and it
+ * must carry neither claim.
  */
-test("a late delivery with no payload to compare says the neutral sentence, not the overlap one", () => {
+test("a late delivery with no payload to compare says the sentence that claims nothing about the box", () => {
 	reset();
 	useConversationInputStore.setState({
 		inputByConversation: {
@@ -1847,9 +1852,30 @@ test("a late delivery with no payload to compare says the neutral sentence, not 
 	);
 	assert.equal(
 		row.lateDelivered,
-		"draft-only",
-		"the note claims the delivered words are in the box on an arm that cannot know",
+		"delivered",
+		"the arm routes to a sentence that describes a box its routing never read",
 	);
+	const notice = composerNoticeFor({
+		error: null,
+		code: undefined,
+		retry: false,
+		muted: false,
+		rowError: undefined,
+		rowCode: undefined,
+		rowRetry: undefined,
+		lateDelivered: row.lateDelivered,
+	});
+	assert.equal(
+		notice?.message,
+		SEND_FAILURE_COPY.lateDelivery,
+		"the delivered arm is not rendering the sentence that is true whatever the box holds",
+	);
+	assert.doesNotMatch(
+		notice?.message ?? "",
+		/What's here now|still in the box/,
+		"the delivered arm's copy is claiming something about a box this arm never read",
+	);
+	assert.equal(notice?.muted, true, "a delivery is a quiet statement of fact");
 });
 
 /*
