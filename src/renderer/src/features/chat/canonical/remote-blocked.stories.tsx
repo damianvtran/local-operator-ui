@@ -73,7 +73,11 @@ const PAGE: Entry[] = [
 ];
 
 function transcriptOf(entries: Entry[]): TranscriptState {
-	const page: DesktopHistoryPage = { entries, has_more: false, cursor: null };
+	const page: DesktopHistoryPage = {
+		entries,
+		has_more: false,
+		cursor_missing: false,
+	};
 	return applyHistoryPage(EMPTY_TRANSCRIPT, page);
 }
 
