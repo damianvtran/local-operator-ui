@@ -1,0 +1,64 @@
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T06:29:03.371Z",
+      "url": "/v1/desktop/sessions/eef869a33888/asides",
+      "asideId": "cefb7cbd-3f5f-4e24-a019-58c04945ba41",
+      "continues": null,
+      "questionHead": "q35 first question, answered",
+      "text": "q35 first question, answered",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "9f8bd68fe5c948c88484218fb8168e0d",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"cefb7cbd-3f5f-4e24-a019-58c04945ba41\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T06:29:09.804Z",
+      "url": "/v1/desktop/sessions/eef869a33888/asides",
+      "asideId": "079729ba-e654-4895-a983-bfe3dc25a1d2",
+      "continues": "cefb7cbd-3f5f-4e24-a019-58c04945ba41",
+      "questionHead": "TOOLCALL2: q35 follow-up refused by the model",
+      "text": "TOOLCALL2: q35 follow-up refused by the model",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "9f8bd68fe5c948c88484218fb8168e0d",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T06:28:50.455Z",
+      "subscriptionId": "33c7b4c1aa224bd0",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/eef869a33888/events?frontend_replace=1",
+      "openedAt": "2026-09-25T06:28:54.245Z",
+      "subscriptionId": "9f8bd68fe5c948c88484218fb8168e0d",
+      "asideDeltas": 8,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    }
+  ],
+  "asideDeltaFrames": 8,
+  "deltasBySubscription": {
+    "9f8bd68fe5c948c88484218fb8168e0d": 8
+  },
+  "deltasByAside": {
+    "cefb7cbd-3f5f-4e24-a019-58c04945ba41": 8
+  },
+  "refused422": 0,
+  "messagePosts": [],
+  "asideOps": []
+}

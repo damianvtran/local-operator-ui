@@ -1,0 +1,90 @@
+[build] current: assets 2026-09-25T05:38:32.424Z >= sources 2026-09-25T05:30:45.985Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/qa482r7/rig/run-r7adoptnarrow/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/qa-482-r7
+  scratch       /Users/damian/qa482r7/rig/tmp/lo-renderer-driver-84852
+  frames        /Users/damian/qa482r7/rig/frames/r7adoptnarrow
+  app cwd       /Users/damian/qa482r7/rig/tmp/lo-renderer-driver-84852/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown
+        mode=headless visible=false focused=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] R5 adopt session A
+        0383a524d6d0
+[note] Q40 wire
+        {"adoptOps":[{"url":"…/asides/0f2c15f5-478a-4943-8b85-7d0d3a1b9685/adopt","status":200}],"history":[9,11],"questionInHistory":[false,true],"questionInSnapshot":[false,true],"snapshotStatus":[200,200]}
+[PASS] Q40 control adopt: ONE adopt POST → 200 and the panel detaches
+        {"adoptOps":[200],"panelGoneMs":75}
+[PASS] Q40 control adopt: the question AND its answer paint in the transcript without leaving the pane
+        {"paintedMs":{"q40 adopted with the panel control":137,"Transport failures and owner":138},"questionRows":1,"answerHeads":[1,2]}
+[PASS] Q40 control adopt: the daemon's record holds the exchange (history grew by 2 and carries the question; the snapshot carries it)
+        {"history":[9,11],"snapshot":[false,true]}
+[note] frame
+        {"label":"qa5-r7adoptnarrow-q40-control-adopt-painted-live","mode":"settled"}
+[PASS] Q41 first ⌘+F: NO adopt request leaves; the confirm is shown; the panel stays
+        {"adoptPosts":0,"alerts":["Press ⌘+F again to add the aside to the conversation. Once added, it stays there."],"key":{"prevented":true}}
+[note] frame
+        {"label":"qa5-r7adoptnarrow-q41-first-cmdf-confirm-only","mode":"settled"}
+[PASS] Q41 second ⌘+F: ONE adopt POST → 200, panel detaches, BOTH turns paint live, once each
+        {"adoptOps":[200],"panelGoneMs":76,"paintedMs":{"q41 chord adopt first turn":416,"q41 chord adopt second turn":416}}
+[PASS] Q41 the daemon's record holds both turns (history +4)
+        {"history":[13,17]}
+[note] frame
+        {"label":"qa5-r7adoptnarrow-q41-second-cmdf-adopted-painted-live","mode":"settled"}
+[note] Q42 away from the conversation
+        {"awayUrl":"#/chat/0383a524d6d0","transcriptMounted":false,"transcriptHasQ40":0}
+[PASS] Q42 after LEAVING the conversation (/settings: its transcript unmounted) and re-entering, all three adopted questions are painted, once each
+        {"paintedMsAfterReentry":{"q40 adopted with the panel control":109,"q41 chord adopt first turn":109,"q41 chord adopt second turn":109},"counts":[1,1,1]}
+[note] frame
+        {"label":"qa5-r7adoptnarrow-q42-after-reentering","mode":"settled"}
+[note] R5 adopt session B (empty conversation)
+        39b799d4e257
+[note] Q43 session B entries after the adopt (role / kind / head)
+        [["custom","{\"id\":\"e8309c067b47483cac1cbce056e1d60e\",\"ts\":1790317687.578381,\"type\""],["message","{\"id\":\"d5dc57767a274daf9b422ef5ed15dc58\",\"ts\":1790317688.0493598,\"type"],["message","{\"id\":\"7450134e665943188fb06ec996a2fefc\",\"ts\":1790317688.0493708,\"type"]]
+[note] Q43 session B history count before the adopt
+        1
+[PASS] Q43 adopt into an EMPTY conversation: 200, painted live, in the daemon's record
+        {"paintedMs":{"q43 adopted into an empty conversation":289,"Transport failures and owner":289},"history":[1,3]}
+[note] frame
+        {"label":"qa5-r7adoptnarrow-q43-empty-conversation-adopted","mode":"settled"}
+[PASS] Q43b re-entering B from A: the adopted exchange is still there, once
+        {"paintedMsAfterReentry":{"q43 adopted into an empty conversation":127},"count":1}
+[PASS] Q43c back in A: A's adopted rows are intact and B's did not leak into A
+        {"counts":[1,1,1,0]}
+[note] frame
+        {"label":"qa5-r7adoptnarrow-q44-confirm-withdrawn-while-conversation-works","mode":"raw"}
+[PASS] Q44 R6-5: arm, then a conversation turn starts → the confirm is withdrawn; after the turn, the next ⌘+F only confirms again (0 adopt POSTs)
+        {"armed":["Press ⌘+F again to add the aside to the conversation. Once added, it stays there."],"injected":200,"alertsAfterTurnStart":[],"alertsAfterNextPress":["Press ⌘+F again to add the aside to the conversation. Once added, it stays there."],"adoptPosts":0}
+[PASS] Q44b the second press then adopts (one POST 200) and paints
+        {"adoptOps":[200]}
+  [renderer] [attention] 0383a524d6d0 receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
+    at XEe (file:///Users/damian/local-operator-ui-worktrees/qa-482-r7/out/renderer/assets/index-Bd_tKkfa.js:812:94627)
+    at async Et (file:///Users/damian/local-operator-ui-worktrees/qa-482-r7/out/renderer/assets/index-Bd_tKkfa.js:812:95762)
+[PASS] no process from this run outlived its boot
+
+frames: qa5-r7adoptnarrow-q40-control-adopt-painted-live.png, qa5-r7adoptnarrow-q41-first-cmdf-confirm-only.png, qa5-r7adoptnarrow-q41-second-cmdf-adopted-painted-live.png, qa5-r7adoptnarrow-q42-after-reentering.png, qa5-r7adoptnarrow-q43-empty-conversation-adopted.png, qa5-r7adoptnarrow-q44-confirm-withdrawn-while-conversation-works.png
+frames directory: /Users/damian/qa482r7/rig/frames/r7adoptnarrow
+app log: /Users/damian/qa482r7/rig/tmp/lo-renderer-driver-84852/app-scene.log
+scratch removed (--clean)
+
+ALL CHECKS PASSED

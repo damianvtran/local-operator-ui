@@ -1,0 +1,103 @@
+[build] current: assets 2026-09-25T05:38:32.424Z >= sources 2026-09-25T05:30:45.985Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/qa482r7/rig/run-r7fold/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/qa-482-r7
+  scratch       /Users/damian/qa482r7/rig/tmp/lo-renderer-driver-19603
+  frames        /Users/damian/qa482r7/rig/frames/r7fold
+  app cwd       /Users/damian/qa482r7/rig/tmp/lo-renderer-driver-19603/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown
+        mode=headless visible=false focused=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] R7 fold session
+        c3df4d9b332e
+[note] R7 the tool row's first paint, ms after the press
+        3822
+[note] R7 LIVE rows
+        {"paintedAt":3822,"verdict":{"where":"live","toolRows":1,"labelled":0,"carryingOutputSnippet":0,"samples":[{"kind":"tool","row":"read composing","summary":"read composing","summaryTitle":""}]},"rows":[{"kind":"user","row":"TOOLCALL2: r7 fold label probe 2:35 AM","summary":"","summaryTitle":""},{"kind":"tool","row":"read composing","summary":"read composing","summaryTitle":""}]}
+[note] frame
+        {"label":"qa7fold-r7fold-r7fold-1-live-tool-row","mode":"settled"}
+[note] R7 streaming at the leave
+        false
+[note] R7 seeded rows, ms after the re-enter
+        28
+[note] R7 SEEDED rows after a mid-turn re-enter
+        {"verdict":{"where":"seeded-on-reenter","toolRows":1,"labelled":1,"carryingOutputSnippet":0,"samples":[{"kind":"tool","row":"read README.md failed <0.1s","summary":"read README.md failed <0.1s","summaryTitle":""}]},"rows":[{"kind":"user","row":"TOOLCALL2: r7 fold label probe 2:35 AM","summary":"","summaryTitle":""},{"kind":"tool","row":"read README.md failed <0.1s","summary":"read README.md failed <0.1s","summaryTitle":""}]}
+[note] frame
+        {"label":"qa7fold-r7fold-r7fold-2-seeded-after-reenter","mode":"settled"}
+[FAIL] R7 fold a: a seeded tool row's SUMMARY names the call's argument (README.md) and never a line of the call's OUTPUT (ZZLIVEBODYZZ), both while the turn is live and after leaving and re-entering mid-turn
+        {"live":{"where":"live","toolRows":1,"labelled":0,"carryingOutputSnippet":0,"samples":[{"kind":"tool","row":"read composing","summary":"read composing","summaryTitle":""}]},"seeded":{"where":"seeded-on-reenter","toolRows":1,"labelled":1,"carryingOutputSnippet":0,"samples":[{"kind":"tool","row":"read README.md failed <0.1s","summary":"read README.md failed <0.1s","summaryTitle":""}]}}
+[note] R7 settled rows
+        {"where":"settled","toolRows":1,"labelled":1,"carryingOutputSnippet":0,"samples":[{"kind":"tool","row":"read README.md failed <0.1s","summary":"read README.md failed <0.1s","summaryTitle":""}]}
+[PASS] R7 fold b: once the turn has settled the same row still names its argument and not its output
+        {"where":"settled","toolRows":1,"labelled":1,"carryingOutputSnippet":0,"samples":[{"kind":"tool","row":"read README.md failed <0.1s","summary":"read README.md failed <0.1s","summaryTitle":""}]}
+
+---- app log (tail) ----
+DevTools listening on ws://127.0.0.1:61969/devtools/browser/c20c4e6b-737f-474b-b220-c3ee789a9f2c
+02:35:16.318 › [window-mode] headless run launched by pid 19603; it quits when that process goes
+[window-mode] headless run launched by pid 19603; it quits when that process goes
+02:35:16.319 › [discovery] record directory /Users/damian/qa482r7/rig/tmp/lo-renderer-driver-19603/config/run/serve (1 record(s))
+02:35:16.351 › [shell-path] /bin/zsh reports PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin
+02:35:16.352 › Shell environment variables loaded successfully. PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin
+02:35:16.357 › [discovery] candidate http://127.0.0.1:8080 pid 18525 v0.62.32 prefix /Users/damian/local-operator-worktrees/qa482-r7/.venv (configured URL)
+02:35:16.357 › [discovery] picked http://127.0.0.1:8080 (pid 18525, v0.62.32, configured)
+02:35:16.367 › Attached to daemon http://127.0.0.1:8080 (pid 18525, v0.62.32, editable, record /Users/damian/qa482r7/rig/tmp/lo-renderer-driver-19603/config/run/serve/18525.json)
+02:35:16.368 › Discovered a daemon; the backend manager is configured not to spawn or kill one.
+02:35:16.452 › Update service initialized. Dev mode: true, NPX install: false
+02:35:16.452 › Unpackaged instance: no packaged install state to leave alone.
+02:35:16.453 › Periodic update checks scheduled (every 5 minutes)
+02:35:16.453 › macOS auto-update requires app signing
+02:35:16.453 › [webauthn] Touch ID passkeys are off: unpackaged — an unpackaged run has no signature to carry the entitlement, so there is no group to configure
+02:35:16.459 › [browser] denied a media permission request from (unknown origin)
+02:35:16.459 › [browser] denied a media permission request from (unknown origin)
+02:35:16.459 › [browser] denied a web-app-installation permission request from (unknown origin)
+02:35:16.459 › [browser] denied a geolocation permission request from (unknown origin)
+02:35:16.994 › [browser] denied a media permission request from (unknown origin)
+02:35:16.995 › [browser] denied a media permission request from (unknown origin)
+02:35:16.995 › [browser] denied a web-app-installation permission request from (unknown origin)
+02:35:16.995 › [browser] denied a geolocation permission request from (unknown origin)
+02:35:16.999 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
+02:35:17.000 › [browser] host on 127.0.0.1:61996 (proto 1), profile /Users/damian/qa482r7/rig/tmp/lo-renderer-driver-19603/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+02:35:17.114 › Checking for UI updates...
+02:35:17.115 › Skip checkForUpdates because application is not packed and dev update config is not forced
+02:35:17.519 › Checking for UI updates...
+02:35:17.519 › Skip checkForUpdates because application is not packed and dev update config is not forced
+02:35:17.520 › [browser] tab 1 navigated to about:blank
+[window-mode] state: visible=false focused=false focusable=false size=800x900 content=800x868
+02:35:19.454 › Checking for updates... (silent mode: true)
+02:35:19.454 › Skip checkForUpdates because application is not packed and dev update config is not forced
+02:35:19.454 › Checking for backend updates... (silent mode: true)
+02:35:19.454 › Skip backend update check in dev mode unless forced
+02:35:31.456 › The pre-split environment at /Users/damian/Library/Application Support/Local Operator/local-operator-venv is built on the interpreter inside /Applications/Local Operator.app; it is left exactly as it is, and this instance does not use it.
+(node:19716) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 backend-status-changed listeners added to [IpcRenderer]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `Electron Helper (Renderer) --trace-warnings ...` to show where the warning was created)
+sandbox_extension_issue_file failed for /Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/Resources: 1 (Operation not permitted)
+
+[PASS] no process from this run outlived its boot
+
+frames: qa7fold-r7fold-r7fold-1-live-tool-row.png, qa7fold-r7fold-r7fold-2-seeded-after-reenter.png
+frames directory: /Users/damian/qa482r7/rig/frames/r7fold
+app log: /Users/damian/qa482r7/rig/tmp/lo-renderer-driver-19603/app-scene.log
+scratch removed (--clean)
+
+1 CHECK(S) FAILED

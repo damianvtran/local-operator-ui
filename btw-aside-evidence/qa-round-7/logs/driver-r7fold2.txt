@@ -1,0 +1,63 @@
+[build] current: assets 2026-09-25T05:38:32.424Z >= sources 2026-09-25T05:30:45.985Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/qa482r7/rig/run-r7fold2/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/qa-482-r7
+  scratch       /Users/damian/qa482r7/rig/tmp/lo-renderer-driver-45992
+  frames        /Users/damian/qa482r7/rig/frames/r7fold2
+  app cwd       /Users/damian/qa482r7/rig/tmp/lo-renderer-driver-45992/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown
+        mode=headless visible=false focused=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] R7 fold session
+        ac8ae687caf0
+[note] R7 the tool row's first paint, ms after the press
+        3302
+[note] R7 LIVE rows (the turn is still streaming here, so this is the seed's own state)
+        {"paintedAt":3302,"streaming":false,"verdict":{"where":"live","toolRows":1,"labelled":0,"pending":1,"carryingOutputSnippet":0,"samples":[{"kind":"tool","row":"read composing","summary":"read composing","summaryTitle":""}]},"rows":[{"kind":"user","row":"TOOLCALL2: r7 fold label probe 2:39 AM","summary":"","summaryTitle":""},{"kind":"tool","row":"read composing","summary":"read composing","summaryTitle":""}]}
+[note] frame
+        {"label":"qa7fold-r7fold2-r7fold-1-live-tool-row","mode":"settled"}
+[note] R7 streaming at the leave
+        false
+[note] R7 seeded rows, ms after the re-enter
+        24
+[note] R7 the turn was still streaming when the re-entered pane painted
+        false
+[note] R7 SEEDED rows after a mid-turn re-enter
+        {"verdict":{"where":"seeded-on-reenter","toolRows":1,"labelled":1,"pending":0,"carryingOutputSnippet":0,"samples":[{"kind":"tool","row":"read README.md failed <0.1s","summary":"read README.md failed <0.1s","summaryTitle":""}]},"rows":[{"kind":"user","row":"TOOLCALL2: r7 fold label probe 2:39 AM","summary":"","summaryTitle":""},{"kind":"tool","row":"read README.md failed <0.1s","summary":"read README.md failed <0.1s","summaryTitle":""}]}
+[note] frame
+        {"label":"qa7fold-r7fold2-r7fold-2-seeded-after-reenter","mode":"settled"}
+[PASS] R7 fold a: the call's OUTPUT never reaches a tool row's summary cell (ZZLIVEBODYZZ absent while the turn is live AND after a mid-turn re-enter), and the row names its argument (README.md) as soon as the arguments have arrived
+        {"live":{"where":"live","toolRows":1,"labelled":0,"pending":1,"carryingOutputSnippet":0,"samples":[{"kind":"tool","row":"read composing","summary":"read composing","summaryTitle":""}]},"seeded":{"where":"seeded-on-reenter","toolRows":1,"labelled":1,"pending":0,"carryingOutputSnippet":0,"samples":[{"kind":"tool","row":"read README.md failed <0.1s","summary":"read README.md failed <0.1s","summaryTitle":""}]},"streamingAtReenter":false}
+[note] R7 settled rows
+        {"where":"settled","toolRows":1,"labelled":1,"pending":0,"carryingOutputSnippet":0,"samples":[{"kind":"tool","row":"read README.md failed <0.1s","summary":"read README.md failed <0.1s","summaryTitle":""}]}
+[PASS] R7 fold b: once the turn has settled the same row still names its argument and not its output
+        {"where":"settled","toolRows":1,"labelled":1,"pending":0,"carryingOutputSnippet":0,"samples":[{"kind":"tool","row":"read README.md failed <0.1s","summary":"read README.md failed <0.1s","summaryTitle":""}]}
+[PASS] no process from this run outlived its boot
+
+frames: qa7fold-r7fold2-r7fold-1-live-tool-row.png, qa7fold-r7fold2-r7fold-2-seeded-after-reenter.png
+frames directory: /Users/damian/qa482r7/rig/frames/r7fold2
+app log: /Users/damian/qa482r7/rig/tmp/lo-renderer-driver-45992/app-scene.log
+scratch removed (--clean)
+
+ALL CHECKS PASSED
