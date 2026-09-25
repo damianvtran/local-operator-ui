@@ -1,0 +1,1367 @@
+port8080.lock taken
+rig up: proxy 77945 on 8080 -> daemon 76539 on 65244, stub 65185; 1111 untouched
+== d6capnarrow (btw-r6-cap) at 13:23:30 ==
+[build] current: assets 2026-09-25T13:13:50.108Z >= sources 2026-09-25T12:34:35.518Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/design-482-r6/rig6/run-d6capnarrow/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95
+  scratch       /Users/damian/design-482-r6/rig6/tmp/lo-renderer-driver-78049
+  frames        /Users/damian/design-482-r6/rig6/frames/d6capnarrow
+  app cwd       /Users/damian/design-482-r6/rig6/tmp/lo-renderer-driver-78049/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown
+        mode=headless visible=false focused=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] R6 cap session
+        7a45646e6b54
+[note] frame
+        {"label":"qa6cap-d6capnarrow-q59-cap-none-k9","mode":"settled"}
+[note] Q59 none sweep
+        [{"case":"none","k":1,"staged":[],"wireQuotes":0,"quoteBlocks":0,"cap":"231.5px","clientHeight":232,"answerTop":23.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":395},{"case":"none","k":2,"staged":[],"wireQuotes":0,"quoteBlocks":0,"cap":"231.5px","clientHeight":232,"answerTop":23.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":436},{"case":"none","k":3,"staged":[],"wireQuotes":0,"quoteBlocks":0,"cap":"231.5px","clientHeight":232,"answerTop":23.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":478},{"case":"none","k":4,"staged":[],"wireQuotes":0,"quoteBlocks":0,"cap":"231.5px","clientHeight":232,"answerTop":23.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":519},{"case":"none","k":5,"staged":[],"wireQuotes":0,"quoteBlocks":0,"cap":"231.5px","clientHeight":232,"answerTop":23.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":561},{"case":"none","k":6,"staged":[],"wireQuotes":0,"quoteBlocks":0,"cap":"231.5px","clientHeight":232,"answerTop":23.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":603},{"case":"none","k":7,"staged":[],"wireQuotes":0,"quoteBlocks":0,"cap":"231.5px","clientHeight":232,"answerTop":23.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":644},{"case":"none","k":8,"staged":[],"wireQuotes":0,"quoteBlocks":0,"cap":"231.5px","clientHeight":232,"answerTop":23.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":686},{"case":"none","k":9,"staged":[],"wireQuotes":0,"quoteBlocks":0,"cap":"231.5px","clientHeight":232,"answerTop":23.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":727}]
+[PASS] Q59 none: the edge sits exactly 10.0 line boxes below the newest answer's top and NO answer row is cut, for PARAGRID1..9 (measured 10)
+        {"edgeLineBoxes":[10],"maxHiddenPx":0,"cutKs":[],"cap":"231.5px","answerTop":23.5,"lineHeight":20.8}
+[note] frame
+        {"label":"qa6cap-d6capnarrow-q59-cap-one-k9","mode":"settled"}
+[note] Q59 one sweep
+        [{"case":"one","k":1,"staged":[true],"wireQuotes":1,"quoteBlocks":1,"cap":"278.5px","clientHeight":279,"answerTop":70.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":395},{"case":"one","k":2,"staged":[true],"wireQuotes":1,"quoteBlocks":1,"cap":"278.5px","clientHeight":279,"answerTop":70.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":436},{"case":"one","k":3,"staged":[true],"wireQuotes":1,"quoteBlocks":1,"cap":"278.5px","clientHeight":279,"answerTop":70.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":478},{"case":"one","k":4,"staged":[true],"wireQuotes":1,"quoteBlocks":1,"cap":"278.5px","clientHeight":279,"answerTop":70.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":519},{"case":"one","k":5,"staged":[true],"wireQuotes":1,"quoteBlocks":1,"cap":"278.5px","clientHeight":279,"answerTop":70.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":561},{"case":"one","k":6,"staged":[true],"wireQuotes":1,"quoteBlocks":1,"cap":"278.5px","clientHeight":279,"answerTop":70.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":603},{"case":"one","k":7,"staged":[true],"wireQuotes":1,"quoteBlocks":1,"cap":"278.5px","clientHeight":279,"answerTop":70.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":644},{"case":"one","k":8,"staged":[true],"wireQuotes":1,"quoteBlocks":1,"cap":"278.5px","clientHeight":279,"answerTop":70.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":686},{"case":"one","k":9,"staged":[true],"wireQuotes":1,"quoteBlocks":1,"cap":"278.5px","clientHeight":279,"answerTop":70.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":727}]
+[PASS] Q59 one: the edge sits exactly 10.0 line boxes below the newest answer's top and NO answer row is cut, for PARAGRID1..9 (measured 10)
+        {"edgeLineBoxes":[10],"maxHiddenPx":0,"cutKs":[],"cap":"278.5px","answerTop":70.5,"lineHeight":20.8}
+[note] frame
+        {"label":"qa6cap-d6capnarrow-q59-cap-two-k9","mode":"settled"}
+[note] Q59 two sweep
+        [{"case":"two","k":1,"staged":[true,true],"wireQuotes":2,"quoteBlocks":2,"cap":"306px","clientHeight":306,"answerTop":98,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":395},{"case":"two","k":2,"staged":[true,true],"wireQuotes":2,"quoteBlocks":2,"cap":"306px","clientHeight":306,"answerTop":98,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":437},{"case":"two","k":3,"staged":[true,true],"wireQuotes":2,"quoteBlocks":2,"cap":"306px","clientHeight":306,"answerTop":98,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":478},{"case":"two","k":4,"staged":[true,true],"wireQuotes":2,"quoteBlocks":2,"cap":"306px","clientHeight":306,"answerTop":98,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":520},{"case":"two","k":5,"staged":[true,true],"wireQuotes":2,"quoteBlocks":2,"cap":"306px","clientHeight":306,"answerTop":98,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":561},{"case":"two","k":6,"staged":[true,true],"wireQuotes":2,"quoteBlocks":2,"cap":"306px","clientHeight":306,"answerTop":98,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":603},{"case":"two","k":7,"staged":[true,true],"wireQuotes":2,"quoteBlocks":2,"cap":"306px","clientHeight":306,"answerTop":98,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":645},{"case":"two","k":8,"staged":[true,true],"wireQuotes":2,"quoteBlocks":2,"cap":"306px","clientHeight":306,"answerTop":98,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":686},{"case":"two","k":9,"staged":[true,true],"wireQuotes":2,"quoteBlocks":2,"cap":"306px","clientHeight":306,"answerTop":98,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":728}]
+[PASS] Q59 two: the edge sits exactly 10.0 line boxes below the newest answer's top and NO answer row is cut, for PARAGRID1..9 (measured 10)
+        {"edgeLineBoxes":[10],"maxHiddenPx":0,"cutKs":[],"cap":"306px","answerTop":98,"lineHeight":20.8}
+[note] frame
+        {"label":"qa6cap-d6capnarrow-q59-cap-wrapq-k9","mode":"settled"}
+[note] Q59 wrapq sweep
+        [{"case":"wrapq","k":1,"staged":[],"wireQuotes":0,"quoteBlocks":0,"cap":"348.5px","clientHeight":349,"answerTop":140.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":395},{"case":"wrapq","k":2,"staged":[],"wireQuotes":0,"quoteBlocks":0,"cap":"348.5px","clientHeight":349,"answerTop":140.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":436},{"case":"wrapq","k":3,"staged":[],"wireQuotes":0,"quoteBlocks":0,"cap":"348.5px","clientHeight":349,"answerTop":140.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":478},{"case":"wrapq","k":4,"staged":[],"wireQuotes":0,"quoteBlocks":0,"cap":"348.5px","clientHeight":349,"answerTop":140.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":519},{"case":"wrapq","k":5,"staged":[],"wireQuotes":0,"quoteBlocks":0,"cap":"348.5px","clientHeight":349,"answerTop":140.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":561},{"case":"wrapq","k":6,"staged":[],"wireQuotes":0,"quoteBlocks":0,"cap":"348.5px","clientHeight":349,"answerTop":140.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":603},{"case":"wrapq","k":7,"staged":[],"wireQuotes":0,"quoteBlocks":0,"cap":"348.5px","clientHeight":349,"answerTop":140.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":644},{"case":"wrapq","k":8,"staged":[],"wireQuotes":0,"quoteBlocks":0,"cap":"348.5px","clientHeight":349,"answerTop":140.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":686},{"case":"wrapq","k":9,"staged":[],"wireQuotes":0,"quoteBlocks":0,"cap":"348.5px","clientHeight":349,"answerTop":140.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":727}]
+[PASS] Q59 wrapq: the edge sits exactly 10.0 line boxes below the newest answer's top and NO answer row is cut, for PARAGRID1..9 (measured 10)
+        {"edgeLineBoxes":[10],"maxHiddenPx":0,"cutKs":[],"cap":"348.5px","answerTop":140.5,"lineHeight":20.8}
+[note] frame
+        {"label":"qa6cap-d6capnarrow-q59-cap-wrapboth-k9","mode":"settled"}
+[note] Q59 wrapboth sweep
+        [{"case":"wrapboth","k":1,"staged":[true],"wireQuotes":1,"quoteBlocks":1,"cap":"395.5px","clientHeight":396,"answerTop":187.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":395},{"case":"wrapboth","k":2,"staged":[true],"wireQuotes":1,"quoteBlocks":1,"cap":"395.5px","clientHeight":396,"answerTop":187.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":436},{"case":"wrapboth","k":3,"staged":[true],"wireQuotes":1,"quoteBlocks":1,"cap":"395.5px","clientHeight":396,"answerTop":187.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":478},{"case":"wrapboth","k":4,"staged":[true],"wireQuotes":1,"quoteBlocks":1,"cap":"395.5px","clientHeight":396,"answerTop":187.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":519},{"case":"wrapboth","k":5,"staged":[true],"wireQuotes":1,"quoteBlocks":1,"cap":"395.5px","clientHeight":396,"answerTop":187.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":561},{"case":"wrapboth","k":6,"staged":[true],"wireQuotes":1,"quoteBlocks":1,"cap":"395.5px","clientHeight":396,"answerTop":187.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":603},{"case":"wrapboth","k":7,"staged":[true],"wireQuotes":1,"quoteBlocks":1,"cap":"395.5px","clientHeight":396,"answerTop":187.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":644},{"case":"wrapboth","k":8,"staged":[true],"wireQuotes":1,"quoteBlocks":1,"cap":"395.5px","clientHeight":396,"answerTop":187.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":686},{"case":"wrapboth","k":9,"staged":[true],"wireQuotes":1,"quoteBlocks":1,"cap":"395.5px","clientHeight":396,"answerTop":187.5,"lineHeight":20.8,"rowsToEdge":10,"crossing":[],"scrollTop":0,"maxScroll":727}]
+[PASS] Q59 wrapboth: the edge sits exactly 10.0 line boxes below the newest answer's top and NO answer row is cut, for PARAGRID1..9 (measured 10)
+        {"edgeLineBoxes":[10],"maxHiddenPx":0,"cutKs":[],"cap":"395.5px","answerTop":187.5,"lineHeight":20.8}
+[PASS] no process from this run outlived its boot
+
+frames: qa6cap-d6capnarrow-q59-cap-none-k9.png, qa6cap-d6capnarrow-q59-cap-one-k9.png, qa6cap-d6capnarrow-q59-cap-two-k9.png, qa6cap-d6capnarrow-q59-cap-wrapboth-k9.png, qa6cap-d6capnarrow-q59-cap-wrapq-k9.png
+frames directory: /Users/damian/design-482-r6/rig6/frames/d6capnarrow
+app log: /Users/damian/design-482-r6/rig6/tmp/lo-renderer-driver-78049/app-scene.log
+scratch removed (--clean)
+
+ALL CHECKS PASSED
+./capture-r7.sh: line 160: --clean: command not found
+== d6capnarrow driver exit: 127 ==
+total 3368
+drwxr-xr-x@ 7 damian  staff     224 Sep 25 09:28 .
+drwxr-xr-x@ 7 damian  staff     224 Sep 25 09:23 ..
+-rw-r--r--@ 1 damian  staff  343427 Sep 25 09:24 qa6cap-d6capnarrow-q59-cap-none-k9.png
+-rw-r--r--@ 1 damian  staff  340328 Sep 25 09:25 qa6cap-d6capnarrow-q59-cap-one-k9.png
+-rw-r--r--@ 1 damian  staff  339681 Sep 25 09:26 qa6cap-d6capnarrow-q59-cap-two-k9.png
+-rw-r--r--@ 1 damian  staff  344890 Sep 25 09:28 qa6cap-d6capnarrow-q59-cap-wrapboth-k9.png
+-rw-r--r--@ 1 damian  staff  347447 Sep 25 09:27 qa6cap-d6capnarrow-q59-cap-wrapq-k9.png
+8080 released before this command returned
+port8080.lock released
+--- proxy counters (/Users/damian/design-482-r6/rig6/run-d6capnarrow/proxy-stats.json) ---
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T13:23:53.262Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "4ee32f9a-a4f6-436e-9c6d-ecba1d584816",
+      "continues": null,
+      "questionHead": "PARAGRID1: q59 no quote k1",
+      "text": "PARAGRID1: q59 no quote k1",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"4ee32f9a-a4f6-436e-9c6d-ecba1d584816\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragrap"
+    },
+    {
+      "at": "2026-09-25T13:23:58.643Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "cef03858-86ea-48ca-98fa-391293375d1b",
+      "continues": null,
+      "questionHead": "PARAGRID2: q59 no quote k2",
+      "text": "PARAGRID2: q59 no quote k2",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"cef03858-86ea-48ca-98fa-391293375d1b\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:24:03.806Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "eb19d113-122f-4a6d-993b-f54a305588b1",
+      "continues": null,
+      "questionHead": "PARAGRID3: q59 no quote k3",
+      "text": "PARAGRID3: q59 no quote k3",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"eb19d113-122f-4a6d-993b-f54a305588b1\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:24:09.192Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "b6175be2-830c-4930-84ca-e54e43c5c51c",
+      "continues": null,
+      "questionHead": "PARAGRID4: q59 no quote k4",
+      "text": "PARAGRID4: q59 no quote k4",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"b6175be2-830c-4930-84ca-e54e43c5c51c\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:24:14.361Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "397194d5-7e58-48e8-8cbd-ee4cbc53cb69",
+      "continues": null,
+      "questionHead": "PARAGRID5: q59 no quote k5",
+      "text": "PARAGRID5: q59 no quote k5",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"397194d5-7e58-48e8-8cbd-ee4cbc53cb69\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:24:19.789Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "30da5242-9518-49e3-960d-6f70be29fd45",
+      "continues": null,
+      "questionHead": "PARAGRID6: q59 no quote k6",
+      "text": "PARAGRID6: q59 no quote k6",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"30da5242-9518-49e3-960d-6f70be29fd45\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:24:24.958Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "bed280fb-02ef-4cb5-a58d-2196bc85a871",
+      "continues": null,
+      "questionHead": "PARAGRID7: q59 no quote k7",
+      "text": "PARAGRID7: q59 no quote k7",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"bed280fb-02ef-4cb5-a58d-2196bc85a871\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose. Sentence 7 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:24:30.388Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "6d1283a0-071d-42f3-abbd-2daf5e337017",
+      "continues": null,
+      "questionHead": "PARAGRID8: q59 no quote k8",
+      "text": "PARAGRID8: q59 no quote k8",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"6d1283a0-071d-42f3-abbd-2daf5e337017\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose. Sentence 7 of this paragraph runs about this long, on purpose. Sentence 8 of this paragraph runs"
+    },
+    {
+      "at": "2026-09-25T13:24:36.045Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "a572df20-567b-42f8-a602-ca976d9a3c67",
+      "continues": null,
+      "questionHead": "PARAGRID9: q59 no quote k9",
+      "text": "PARAGRID9: q59 no quote k9",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"a572df20-567b-42f8-a602-ca976d9a3c67\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose. Sentence 7 of this paragraph runs about this long, on purpose. Sentence 8 of this paragraph runs"
+    },
+    {
+      "at": "2026-09-25T13:24:42.771Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "c69efccd-f380-4be0-9b9a-ba9b1ccdd5a2",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\nPARAGRID1: q59 one quote k1",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"c69efccd-f380-4be0-9b9a-ba9b1ccdd5a2\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragrap"
+    },
+    {
+      "at": "2026-09-25T13:24:47.922Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "1a7f8d20-a7c9-4755-91ac-ce341a87f538",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\nPARAGRID2: q59 one quote k2",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"1a7f8d20-a7c9-4755-91ac-ce341a87f538\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:24:53.224Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "11d7596c-47d4-487a-b1eb-1a6c54b51102",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\nPARAGRID3: q59 one quote k3",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"11d7596c-47d4-487a-b1eb-1a6c54b51102\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:24:58.629Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "7c731f45-ea52-4c2a-8b68-55d0bb79b837",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\nPARAGRID4: q59 one quote k4",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"7c731f45-ea52-4c2a-8b68-55d0bb79b837\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:25:04.238Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "fce75822-7d05-41cc-8d47-c1f41ad2ee2f",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\nPARAGRID5: q59 one quote k5",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"fce75822-7d05-41cc-8d47-c1f41ad2ee2f\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:25:09.942Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "5395d240-ada8-401d-a6db-a7ecfd89b0b3",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\nPARAGRID6: q59 one quote k6",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"5395d240-ada8-401d-a6db-a7ecfd89b0b3\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:25:15.615Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "394bc6f1-9364-460a-ad6f-c0ddae821585",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\nPARAGRID7: q59 one quote k7",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"394bc6f1-9364-460a-ad6f-c0ddae821585\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose. Sentence 7 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:25:21.724Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "e4341a30-a4f2-48ed-a912-29cd550c728c",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\nPARAGRID8: q59 one quote k8",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"e4341a30-a4f2-48ed-a912-29cd550c728c\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose. Sentence 7 of this paragraph runs about this long, on purpose. Sentence 8 of this paragraph runs"
+    },
+    {
+      "at": "2026-09-25T13:25:28.258Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "67410658-20db-4666-adc1-7c14663ae663",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\nPARAGRID9: q59 one quote k9",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"67410658-20db-4666-adc1-7c14663ae663\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose. Sentence 7 of this paragraph runs about this long, on purpose. Sentence 8 of this paragraph runs"
+    },
+    {
+      "at": "2026-09-25T13:25:36.120Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "4cae6d59-d165-4979-8264-c8668855a233",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\n<reply-to>a 4xx spends nothing</reply-to>\nPARAGRID1: q59 two quotes k1",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"4cae6d59-d165-4979-8264-c8668855a233\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragrap"
+    },
+    {
+      "at": "2026-09-25T13:25:41.822Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "e7243ebd-5d79-4e4e-a2bc-71fa79c7f794",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\n<reply-to>a 4xx spends nothing</reply-to>\nPARAGRID2: q59 two quotes k2",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"e7243ebd-5d79-4e4e-a2bc-71fa79c7f794\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:25:48.010Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "2a4875e6-f29a-46fd-a6d1-36e077411cab",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\n<reply-to>a 4xx spends nothing</reply-to>\nPARAGRID3: q59 two quotes k3",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"2a4875e6-f29a-46fd-a6d1-36e077411cab\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:25:55.441Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "b1171e56-9044-49bc-a199-50ee76a666b1",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\n<reply-to>a 4xx spends nothing</reply-to>\nPARAGRID4: q59 two quotes k4",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"b1171e56-9044-49bc-a199-50ee76a666b1\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:26:01.894Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "ba6af2e3-1bc4-4318-9a3e-14883bd44089",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\n<reply-to>a 4xx spends nothing</reply-to>\nPARAGRID5: q59 two quotes k5",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"ba6af2e3-1bc4-4318-9a3e-14883bd44089\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:26:07.709Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "f3b44ee6-1cdc-4bcf-b002-807f978d966d",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\n<reply-to>a 4xx spends nothing</reply-to>\nPARAGRID6: q59 two quotes k6",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"f3b44ee6-1cdc-4bcf-b002-807f978d966d\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:26:14.944Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "d1c29269-306e-4b00-b058-81952101fa0c",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\n<reply-to>a 4xx spends nothing</reply-to>\nPARAGRID7: q59 two quotes k7",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"d1c29269-306e-4b00-b058-81952101fa0c\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose. Sentence 7 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:26:22.369Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "033132c1-6c89-4989-9ac1-f3534a3547df",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\n<reply-to>a 4xx spends nothing</reply-to>\nPARAGRID8: q59 two quotes k8",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"033132c1-6c89-4989-9ac1-f3534a3547df\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose. Sentence 7 of this paragraph runs about this long, on purpose. Sentence 8 of this paragraph runs"
+    },
+    {
+      "at": "2026-09-25T13:26:28.794Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "8791f937-fad6-4913-82b5-39953b9c2252",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\n<reply-to>a 4xx spends nothing</reply-to>\nPARAGRID9: q59 two quotes k9",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"8791f937-fad6-4913-82b5-39953b9c2252\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose. Sentence 7 of this paragraph runs about this long, on purpose. Sentence 8 of this paragraph runs"
+    },
+    {
+      "at": "2026-09-25T13:26:35.264Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "df2a2c5d-c5bb-4129-aa1f-b4b804122f0f",
+      "continues": null,
+      "questionHead": "PARAGRID1: q59 with a question long enough that it has to wr",
+      "text": "PARAGRID1: q59 with a question long enough that it has to wrap onto more than one line in the panel, because the ceiling is now said to count the question's MEASURED box and this checks what the edge does then k1",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"df2a2c5d-c5bb-4129-aa1f-b4b804122f0f\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragrap"
+    },
+    {
+      "at": "2026-09-25T13:26:40.232Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "8853ae46-18a7-4129-ae90-96d49250a6e2",
+      "continues": null,
+      "questionHead": "PARAGRID2: q59 with a question long enough that it has to wr",
+      "text": "PARAGRID2: q59 with a question long enough that it has to wrap onto more than one line in the panel, because the ceiling is now said to count the question's MEASURED box and this checks what the edge does then k2",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"8853ae46-18a7-4129-ae90-96d49250a6e2\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:26:45.396Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "732c6824-fad4-4ef2-9bbc-d1bf9ac1c593",
+      "continues": null,
+      "questionHead": "PARAGRID3: q59 with a question long enough that it has to wr",
+      "text": "PARAGRID3: q59 with a question long enough that it has to wrap onto more than one line in the panel, because the ceiling is now said to count the question's MEASURED box and this checks what the edge does then k3",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"732c6824-fad4-4ef2-9bbc-d1bf9ac1c593\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:26:51.128Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "5d3c023b-0c45-4223-8c20-f28cbddabfcf",
+      "continues": null,
+      "questionHead": "PARAGRID4: q59 with a question long enough that it has to wr",
+      "text": "PARAGRID4: q59 with a question long enough that it has to wrap onto more than one line in the panel, because the ceiling is now said to count the question's MEASURED box and this checks what the edge does then k4",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"5d3c023b-0c45-4223-8c20-f28cbddabfcf\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:26:56.267Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "e18cb682-6160-4d92-8f2a-9f0ec8a17f46",
+      "continues": null,
+      "questionHead": "PARAGRID5: q59 with a question long enough that it has to wr",
+      "text": "PARAGRID5: q59 with a question long enough that it has to wrap onto more than one line in the panel, because the ceiling is now said to count the question's MEASURED box and this checks what the edge does then k5",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"e18cb682-6160-4d92-8f2a-9f0ec8a17f46\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:27:01.559Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "ad987356-038c-4e34-9e14-67368551d7fd",
+      "continues": null,
+      "questionHead": "PARAGRID6: q59 with a question long enough that it has to wr",
+      "text": "PARAGRID6: q59 with a question long enough that it has to wrap onto more than one line in the panel, because the ceiling is now said to count the question's MEASURED box and this checks what the edge does then k6",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"ad987356-038c-4e34-9e14-67368551d7fd\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:27:07.878Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "a290da94-fc04-4261-a8b7-c7440318d51a",
+      "continues": null,
+      "questionHead": "PARAGRID7: q59 with a question long enough that it has to wr",
+      "text": "PARAGRID7: q59 with a question long enough that it has to wrap onto more than one line in the panel, because the ceiling is now said to count the question's MEASURED box and this checks what the edge does then k7",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"a290da94-fc04-4261-a8b7-c7440318d51a\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose. Sentence 7 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:27:13.712Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "39855e98-6dd2-4f64-9517-9c52db956282",
+      "continues": null,
+      "questionHead": "PARAGRID8: q59 with a question long enough that it has to wr",
+      "text": "PARAGRID8: q59 with a question long enough that it has to wrap onto more than one line in the panel, because the ceiling is now said to count the question's MEASURED box and this checks what the edge does then k8",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"39855e98-6dd2-4f64-9517-9c52db956282\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose. Sentence 7 of this paragraph runs about this long, on purpose. Sentence 8 of this paragraph runs"
+    },
+    {
+      "at": "2026-09-25T13:27:19.466Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "d90c4323-688f-43c9-9774-464b2ab0ed52",
+      "continues": null,
+      "questionHead": "PARAGRID9: q59 with a question long enough that it has to wr",
+      "text": "PARAGRID9: q59 with a question long enough that it has to wrap onto more than one line in the panel, because the ceiling is now said to count the question's MEASURED box and this checks what the edge does then k9",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"d90c4323-688f-43c9-9774-464b2ab0ed52\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose. Sentence 7 of this paragraph runs about this long, on purpose. Sentence 8 of this paragraph runs"
+    },
+    {
+      "at": "2026-09-25T13:27:26.494Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "55c40dd2-77fe-4da4-ab5d-16d6c594b045",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\nPARAGRID1: q59 quote and with a question long enough that it has to wrap onto more than one line in the panel, because the ceiling is now said to count the question's MEASURED box and this checks what the edge does then k1",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"55c40dd2-77fe-4da4-ab5d-16d6c594b045\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragrap"
+    },
+    {
+      "at": "2026-09-25T13:27:32.131Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "074261e4-67e4-4b1b-9022-86e61baa9dbf",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\nPARAGRID2: q59 quote and with a question long enough that it has to wrap onto more than one line in the panel, because the ceiling is now said to count the question's MEASURED box and this checks what the edge does then k2",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"074261e4-67e4-4b1b-9022-86e61baa9dbf\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:27:38.037Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "82e1a0e3-cb1d-4faf-b578-56a0f2846e4b",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\nPARAGRID3: q59 quote and with a question long enough that it has to wrap onto more than one line in the panel, because the ceiling is now said to count the question's MEASURED box and this checks what the edge does then k3",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"82e1a0e3-cb1d-4faf-b578-56a0f2846e4b\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:27:43.912Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "9742b26a-be1d-444a-8fdd-95c7677a07b0",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\nPARAGRID4: q59 quote and with a question long enough that it has to wrap onto more than one line in the panel, because the ceiling is now said to count the question's MEASURED box and this checks what the edge does then k4",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"9742b26a-be1d-444a-8fdd-95c7677a07b0\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:27:49.829Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "95d2c564-8b28-49f0-bb44-8e2fe3548e92",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\nPARAGRID5: q59 quote and with a question long enough that it has to wrap onto more than one line in the panel, because the ceiling is now said to count the question's MEASURED box and this checks what the edge does then k5",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"95d2c564-8b28-49f0-bb44-8e2fe3548e92\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:27:56.079Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "d84aa2f7-2a65-465d-9ced-96d8d7107a18",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\nPARAGRID6: q59 quote and with a question long enough that it has to wrap onto more than one line in the panel, because the ceiling is now said to count the question's MEASURED box and this checks what the edge does then k6",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"d84aa2f7-2a65-465d-9ced-96d8d7107a18\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:28:03.209Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "bab33857-c5a1-4f2c-93fe-039d0448dc68",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\nPARAGRID7: q59 quote and with a question long enough that it has to wrap onto more than one line in the panel, because the ceiling is now said to count the question's MEASURED box and this checks what the edge does then k7",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"bab33857-c5a1-4f2c-93fe-039d0448dc68\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose. Sentence 7 of this paragraph runs about this long, on purpose.\\n\\nSentence 1 of this paragraph r"
+    },
+    {
+      "at": "2026-09-25T13:28:10.379Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "633870d2-8955-4331-a52b-94c19b6f4302",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\nPARAGRID8: q59 quote and with a question long enough that it has to wrap onto more than one line in the panel, because the ceiling is now said to count the question's MEASURED box and this checks what the edge does then k8",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"633870d2-8955-4331-a52b-94c19b6f4302\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose. Sentence 7 of this paragraph runs about this long, on purpose. Sentence 8 of this paragraph runs"
+    },
+    {
+      "at": "2026-09-25T13:28:16.709Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides",
+      "asideId": "3fe9b343-13ff-4326-8f2e-3b7091ba6221",
+      "continues": null,
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\nPARAGRID9: q59 quote and with a question long enough that it has to wrap onto more than one line in the panel, because the ceiling is now said to count the question's MEASURED box and this checks what the edge does then k9",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"3fe9b343-13ff-4326-8f2e-3b7091ba6221\",\"text\":\"Sentence 1 of this paragraph runs about this long, on purpose. Sentence 2 of this paragraph runs about this long, on purpose. Sentence 3 of this paragraph runs about this long, on purpose. Sentence 4 of this paragraph runs about this long, on purpose. Sentence 5 of this paragraph runs about this long, on purpose. Sentence 6 of this paragraph runs about this long, on purpose. Sentence 7 of this paragraph runs about this long, on purpose. Sentence 8 of this paragraph runs"
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T13:23:33.445Z",
+      "subscriptionId": "e9bf57e2d0319586",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/7a45646e6b54/events?frontend_replace=1",
+      "openedAt": "2026-09-25T13:23:37.111Z",
+      "subscriptionId": "601ab4206fb54578b81e26974263407e",
+      "asideDeltas": 245,
+      "deltaSizes": [
+        220,
+        220,
+        220,
+        170,
+        220,
+        220,
+        220,
+        220,
+        13,
+        220,
+        220,
+        220,
+        220,
+        76,
+        220,
+        220,
+        220,
+        220,
+        139,
+        220,
+        220,
+        220,
+        220,
+        202,
+        220,
+        220,
+        220,
+        220,
+        220,
+        45,
+        220,
+        220,
+        220,
+        220,
+        220,
+        108,
+        220,
+        220,
+        220,
+        220,
+        220,
+        171,
+        220,
+        220,
+        220,
+        220,
+        220,
+        220,
+        14,
+        220,
+        220,
+        220,
+        170,
+        220,
+        220,
+        220,
+        220,
+        13,
+        220,
+        220,
+        220,
+        220,
+        76,
+        220,
+        220,
+        220,
+        220,
+        139,
+        220,
+        220,
+        220,
+        220,
+        202,
+        220,
+        220,
+        220,
+        220,
+        220,
+        45,
+        220,
+        220,
+        220,
+        220,
+        220,
+        108,
+        220,
+        220,
+        220,
+        220,
+        220,
+        171,
+        220,
+        220,
+        220,
+        220,
+        220,
+        220,
+        14,
+        220,
+        220,
+        220,
+        170,
+        220,
+        220,
+        220,
+        220,
+        13,
+        220,
+        220,
+        220,
+        220,
+        76,
+        220,
+        220,
+        220,
+        220,
+        139,
+        220,
+        220,
+        220,
+        220,
+        202,
+        220,
+        220,
+        220,
+        220,
+        220,
+        45,
+        220,
+        220,
+        220,
+        220,
+        220,
+        108,
+        220,
+        220,
+        220,
+        220,
+        220,
+        171,
+        220,
+        220,
+        220,
+        220,
+        220,
+        220,
+        14,
+        220,
+        220,
+        220,
+        170,
+        220,
+        220,
+        220,
+        220,
+        13,
+        220,
+        220,
+        220,
+        220,
+        76,
+        220,
+        220,
+        220,
+        220,
+        139,
+        220,
+        220,
+        220,
+        220,
+        202,
+        220,
+        220,
+        220,
+        220,
+        220,
+        45,
+        220,
+        220,
+        220,
+        220,
+        220,
+        108,
+        220,
+        220,
+        220,
+        220,
+        220,
+        171,
+        220,
+        220,
+        220,
+        220,
+        220,
+        220,
+        14,
+        220,
+        220,
+        220,
+        170,
+        220,
+        220,
+        220,
+        220,
+        13,
+        220,
+        220,
+        220,
+        220,
+        76,
+        220,
+        220,
+        220,
+        220,
+        139,
+        220,
+        220,
+        220,
+        220,
+        202,
+        220,
+        220,
+        220,
+        220,
+        220,
+        45,
+        220,
+        220,
+        220,
+        220,
+        220,
+        108,
+        220,
+        220,
+        220,
+        220,
+        220,
+        171,
+        220,
+        220,
+        220,
+        220,
+        220,
+        220,
+        14
+      ]
+    }
+  ],
+  "asideDeltaFrames": 245,
+  "deltasBySubscription": {
+    "601ab4206fb54578b81e26974263407e": 245
+  },
+  "deltasByAside": {
+    "4ee32f9a-a4f6-436e-9c6d-ecba1d584816": 4,
+    "cef03858-86ea-48ca-98fa-391293375d1b": 5,
+    "eb19d113-122f-4a6d-993b-f54a305588b1": 5,
+    "b6175be2-830c-4930-84ca-e54e43c5c51c": 5,
+    "397194d5-7e58-48e8-8cbd-ee4cbc53cb69": 5,
+    "30da5242-9518-49e3-960d-6f70be29fd45": 6,
+    "bed280fb-02ef-4cb5-a58d-2196bc85a871": 6,
+    "6d1283a0-071d-42f3-abbd-2daf5e337017": 6,
+    "a572df20-567b-42f8-a602-ca976d9a3c67": 7,
+    "c69efccd-f380-4be0-9b9a-ba9b1ccdd5a2": 4,
+    "1a7f8d20-a7c9-4755-91ac-ce341a87f538": 5,
+    "11d7596c-47d4-487a-b1eb-1a6c54b51102": 5,
+    "7c731f45-ea52-4c2a-8b68-55d0bb79b837": 5,
+    "fce75822-7d05-41cc-8d47-c1f41ad2ee2f": 5,
+    "5395d240-ada8-401d-a6db-a7ecfd89b0b3": 6,
+    "394bc6f1-9364-460a-ad6f-c0ddae821585": 6,
+    "e4341a30-a4f2-48ed-a912-29cd550c728c": 6,
+    "67410658-20db-4666-adc1-7c14663ae663": 7,
+    "4cae6d59-d165-4979-8264-c8668855a233": 4,
+    "e7243ebd-5d79-4e4e-a2bc-71fa79c7f794": 5,
+    "2a4875e6-f29a-46fd-a6d1-36e077411cab": 5,
+    "b1171e56-9044-49bc-a199-50ee76a666b1": 5,
+    "ba6af2e3-1bc4-4318-9a3e-14883bd44089": 5,
+    "f3b44ee6-1cdc-4bcf-b002-807f978d966d": 6,
+    "d1c29269-306e-4b00-b058-81952101fa0c": 6,
+    "033132c1-6c89-4989-9ac1-f3534a3547df": 6,
+    "8791f937-fad6-4913-82b5-39953b9c2252": 7,
+    "df2a2c5d-c5bb-4129-aa1f-b4b804122f0f": 4,
+    "8853ae46-18a7-4129-ae90-96d49250a6e2": 5,
+    "732c6824-fad4-4ef2-9bbc-d1bf9ac1c593": 5,
+    "5d3c023b-0c45-4223-8c20-f28cbddabfcf": 5,
+    "e18cb682-6160-4d92-8f2a-9f0ec8a17f46": 5,
+    "ad987356-038c-4e34-9e14-67368551d7fd": 6,
+    "a290da94-fc04-4261-a8b7-c7440318d51a": 6,
+    "39855e98-6dd2-4f64-9517-9c52db956282": 6,
+    "d90c4323-688f-43c9-9774-464b2ab0ed52": 7,
+    "55c40dd2-77fe-4da4-ab5d-16d6c594b045": 4,
+    "074261e4-67e4-4b1b-9022-86e61baa9dbf": 5,
+    "82e1a0e3-cb1d-4faf-b578-56a0f2846e4b": 5,
+    "9742b26a-be1d-444a-8fdd-95c7677a07b0": 5,
+    "95d2c564-8b28-49f0-bb44-8e2fe3548e92": 5,
+    "d84aa2f7-2a65-465d-9ced-96d8d7107a18": 6,
+    "bab33857-c5a1-4f2c-93fe-039d0448dc68": 6,
+    "633870d2-8955-4331-a52b-94c19b6f4302": 6,
+    "3fe9b343-13ff-4326-8f2e-3b7091ba6221": 7
+  },
+  "refused422": 0,
+  "messagePosts": [
+    {
+      "at": "2026-09-25T13:23:44.894Z",
+      "url": "/v1/desktop/sessions/7a45646e6b54/messages",
+      "kind": "message",
+      "text": "LONGANSWER seed for the quotes",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"da4c42a6-487f-4fe3-a455-afb5ab53e01a\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T13:23:44.894Z"
+    }
+  ],
+  "asideOps": [
+    {
+      "at": "2026-09-25T13:23:57.838Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/4ee32f9a-a4f6-436e-9c6d-ecba1d584816",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"4ee32f9a-a4f6-436e-9c6d-ecba1d584816\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:24:03.052Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/cef03858-86ea-48ca-98fa-391293375d1b",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"cef03858-86ea-48ca-98fa-391293375d1b\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:24:08.124Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/eb19d113-122f-4a6d-993b-f54a305588b1",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"eb19d113-122f-4a6d-993b-f54a305588b1\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:24:13.572Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/b6175be2-830c-4930-84ca-e54e43c5c51c",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"b6175be2-830c-4930-84ca-e54e43c5c51c\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:24:18.969Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/397194d5-7e58-48e8-8cbd-ee4cbc53cb69",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"397194d5-7e58-48e8-8cbd-ee4cbc53cb69\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:24:24.229Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/30da5242-9518-49e3-960d-6f70be29fd45",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"30da5242-9518-49e3-960d-6f70be29fd45\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:24:29.638Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/bed280fb-02ef-4cb5-a58d-2196bc85a871",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"bed280fb-02ef-4cb5-a58d-2196bc85a871\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:24:35.181Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/6d1283a0-071d-42f3-abbd-2daf5e337017",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"6d1283a0-071d-42f3-abbd-2daf5e337017\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:24:41.820Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/a572df20-567b-42f8-a602-ca976d9a3c67",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"a572df20-567b-42f8-a602-ca976d9a3c67\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:24:46.764Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/c69efccd-f380-4be0-9b9a-ba9b1ccdd5a2",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"c69efccd-f380-4be0-9b9a-ba9b1ccdd5a2\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:24:52.211Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/1a7f8d20-a7c9-4755-91ac-ce341a87f538",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"1a7f8d20-a7c9-4755-91ac-ce341a87f538\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:24:57.591Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/11d7596c-47d4-487a-b1eb-1a6c54b51102",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"11d7596c-47d4-487a-b1eb-1a6c54b51102\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:25:03.290Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/7c731f45-ea52-4c2a-8b68-55d0bb79b837",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"7c731f45-ea52-4c2a-8b68-55d0bb79b837\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:25:08.877Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/fce75822-7d05-41cc-8d47-c1f41ad2ee2f",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"fce75822-7d05-41cc-8d47-c1f41ad2ee2f\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:25:14.568Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/5395d240-ada8-401d-a6db-a7ecfd89b0b3",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"5395d240-ada8-401d-a6db-a7ecfd89b0b3\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:25:20.704Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/394bc6f1-9364-460a-ad6f-c0ddae821585",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"394bc6f1-9364-460a-ad6f-c0ddae821585\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:25:26.995Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/e4341a30-a4f2-48ed-a912-29cd550c728c",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"e4341a30-a4f2-48ed-a912-29cd550c728c\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:25:34.473Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/67410658-20db-4666-adc1-7c14663ae663",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"67410658-20db-4666-adc1-7c14663ae663\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:25:40.165Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/4cae6d59-d165-4979-8264-c8668855a233",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"4cae6d59-d165-4979-8264-c8668855a233\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:25:46.273Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/e7243ebd-5d79-4e4e-a2bc-71fa79c7f794",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"e7243ebd-5d79-4e4e-a2bc-71fa79c7f794\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:25:53.385Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/2a4875e6-f29a-46fd-a6d1-36e077411cab",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"2a4875e6-f29a-46fd-a6d1-36e077411cab\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:26:00.128Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/b1171e56-9044-49bc-a199-50ee76a666b1",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"b1171e56-9044-49bc-a199-50ee76a666b1\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:26:06.167Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/ba6af2e3-1bc4-4318-9a3e-14883bd44089",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"ba6af2e3-1bc4-4318-9a3e-14883bd44089\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:26:13.222Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/f3b44ee6-1cdc-4bcf-b002-807f978d966d",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"f3b44ee6-1cdc-4bcf-b002-807f978d966d\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:26:20.388Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/d1c29269-306e-4b00-b058-81952101fa0c",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"d1c29269-306e-4b00-b058-81952101fa0c\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:26:27.425Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/033132c1-6c89-4989-9ac1-f3534a3547df",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"033132c1-6c89-4989-9ac1-f3534a3547df\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:26:34.626Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/8791f937-fad6-4913-82b5-39953b9c2252",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"8791f937-fad6-4913-82b5-39953b9c2252\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:26:39.617Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/df2a2c5d-c5bb-4129-aa1f-b4b804122f0f",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"df2a2c5d-c5bb-4129-aa1f-b4b804122f0f\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:26:44.515Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/8853ae46-18a7-4129-ae90-96d49250a6e2",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"8853ae46-18a7-4129-ae90-96d49250a6e2\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:26:49.969Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/732c6824-fad4-4ef2-9bbc-d1bf9ac1c593",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"732c6824-fad4-4ef2-9bbc-d1bf9ac1c593\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:26:55.560Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/5d3c023b-0c45-4223-8c20-f28cbddabfcf",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"5d3c023b-0c45-4223-8c20-f28cbddabfcf\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:27:00.599Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/e18cb682-6160-4d92-8f2a-9f0ec8a17f46",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"e18cb682-6160-4d92-8f2a-9f0ec8a17f46\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:27:07.079Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/ad987356-038c-4e34-9e14-67368551d7fd",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"ad987356-038c-4e34-9e14-67368551d7fd\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:27:12.669Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/a290da94-fc04-4261-a8b7-c7440318d51a",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"a290da94-fc04-4261-a8b7-c7440318d51a\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:27:18.263Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/39855e98-6dd2-4f64-9517-9c52db956282",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"39855e98-6dd2-4f64-9517-9c52db956282\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:27:24.974Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/d90c4323-688f-43c9-9774-464b2ab0ed52",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"d90c4323-688f-43c9-9774-464b2ab0ed52\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:27:30.880Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/55c40dd2-77fe-4da4-ab5d-16d6c594b045",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"55c40dd2-77fe-4da4-ab5d-16d6c594b045\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:27:36.608Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/074261e4-67e4-4b1b-9022-86e61baa9dbf",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"074261e4-67e4-4b1b-9022-86e61baa9dbf\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:27:42.686Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/82e1a0e3-cb1d-4faf-b578-56a0f2846e4b",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"82e1a0e3-cb1d-4faf-b578-56a0f2846e4b\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:27:48.353Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/9742b26a-be1d-444a-8fdd-95c7677a07b0",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"9742b26a-be1d-444a-8fdd-95c7677a07b0\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:27:54.360Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/95d2c564-8b28-49f0-bb44-8e2fe3548e92",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"95d2c564-8b28-49f0-bb44-8e2fe3548e92\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:28:01.146Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/d84aa2f7-2a65-465d-9ced-96d8d7107a18",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"d84aa2f7-2a65-465d-9ced-96d8d7107a18\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:28:08.521Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/bab33857-c5a1-4f2c-93fe-039d0448dc68",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"bab33857-c5a1-4f2c-93fe-039d0448dc68\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:28:15.230Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/633870d2-8955-4331-a52b-94c19b6f4302",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"633870d2-8955-4331-a52b-94c19b6f4302\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:28:22.513Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/7a45646e6b54/asides/3fe9b343-13ff-4326-8f2e-3b7091ba6221",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"3fe9b343-13ff-4326-8f2e-3b7091ba6221\",\"status\":\"closed\"},\"replayed\":false}}"
+    }
+  ]
+}
+--- end counters ---

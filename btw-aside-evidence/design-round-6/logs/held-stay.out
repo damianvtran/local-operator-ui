@@ -1,0 +1,100 @@
+[page:debug] [vite] connecting...
+[page:debug] [vite] connected.
+[page:info] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold
+[page:warning] ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+[page:warning] ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+[page:error] Warning: Internal React error: Expected static flag was missing. Please notify the React team.%s 
+    at SessionStatusStrip (http://localhost:5211/@fs/Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95/src/renderer/src/features/chat/session-status/session-status-strip.tsx:201:3)
+    at ErrorBoundary (http://localhost:5211/@fs/Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95/node_modules/.vite/deps/react-error-boundary.js?v=99f5f17b:18:5)
+    at ErrorBoundary (http://localhost:5211/@fs/Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95/src/renderer/src/shared/components/common/error-boundary.tsx:90:3)
+    at div
+    at div
+    at div
+    at form
+    at div
+    at div
+    at http://localhost:5211/@fs/Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95/src/renderer/src/features/chat/components/message-input.tsx:328:7
+    at div
+    at div
+    at div
+    at http://localhost:5211/@fs/Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95/src/renderer/src/features/chat/components/chat-content.tsx:100:7
+    at div
+    at div
+    at SessionPanel (http://localhost:5211/@fs/Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95/src/renderer/src/features/chat/components/chat-page.tsx:178:3)
+    at div
+    at div
+    at div
+    at div
+    at ChatLayout (http://localhost:5211/@fs/Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95/src/renderer/src/shared/components/common/chat-layout.tsx:20:30)
+    at ChatPage (http://localhost:5211/@fs/Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95/src/renderer/src/features/chat/components/chat-page.tsx:1191:38)
+    at RenderedRoute (http://localhost:5211/@fs/Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95/node_modules/.vite/deps/react-router-dom.js?v=99f5f17b:4089:5)
+    at Routes (http://localhost:5211/@fs/Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95/node_modules/.vite/deps/react-router-dom.js?v=99f5f17b:4559:5)
+    at main
+    at div
+    at ShellFrame (http://localhost:5211/session-switch.tsx:751:23)
+    at Router (http://localhost:5211/@fs/Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95/node_modules/.vite/deps/react-router-dom.js?v=99f5f17b:4502:15)
+    at HashRouter (http://localhost:5211/@fs/Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95/node_modules/.vite/deps/react-router-dom.js?v=99f5f17b:5284:5)
+    at QueryClientProvider (http://localhost:5211/@fs/Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95/node_modules/.vite/deps/@tanstack_react-query.js?v=99f5f17b:2872:3)
+[page:error] Warning: Internal React error: Expected static flag was missing. Please notify the React team.%s 
+    at SessionStatusStrip (http://localhost:5211/@fs/Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95/src/renderer/src/features/chat/session-status/session-status-strip.tsx:201:3)
+    at ErrorBoundary (http://localhost:5211/@fs/Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95/node_modules/.vite/deps/react-error-boundary.js?v=99f5f17b:18:5)
+    at ErrorBoundary (http://localhost:5211/@fs/Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95/src/renderer/src/shared/components/common/error-boundary.tsx:90:3)
+    at div
+    at div
+    at div
+    at form
+    at div
+    at div
+    at http://localhost:5211/@fs/Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95/src/renderer/src/features/chat/components/message-input.tsx:328:7
+    at div
+    at div
+    at div
+    at http://localhost:5211/@fs/Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95/src/renderer/src/features/chat/components/chat-content.tsx:100:7
+    at div
+    at div
+    at SessionPanel (http://localhost:5211/@fs/Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95/src/renderer/src/features/chat/components/chat-page.tsx:178:3)
+    at div
+    at div
+    at div
+    at div
+    at ChatLayout (http://localhost:5211/@fs/Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95/src/renderer/src/shared/components/common/chat-layout.tsx:20:30)
+    at ChatPage (http://localhost:5211/@fs/Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95/src/renderer/src/features/chat/components/chat-page.tsx:1191:38)
+    at RenderedRoute (http://localhost:5211/@fs/Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95/node_modules/.vite/deps/react-router-dom.js?v=99f5f17b:4089:5)
+    at Routes (http://localhost:5211/@fs/Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95/node_modules/.vite/deps/react-router-dom.js?v=99f5f17b:4559:5)
+    at main
+    at div
+    at ShellFrame (http://localhost:5211/session-switch.tsx:751:23)
+    at Router (http://localhost:5211/@fs/Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95/node_modules/.vite/deps/react-router-dom.js?v=99f5f17b:4502:15)
+    at HashRouter (http://localhost:5211/@fs/Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95/node_modules/.vite/deps/react-router-dom.js?v=99f5f17b:5284:5)
+    at QueryClientProvider (http://localhost:5211/@fs/Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95/node_modules/.vite/deps/@tanstack_react-query.js?v=99f5f17b:2872:3)
+{
+  "meta": {
+    "incoming": "abcdef000024",
+    "outgoing": "abcdef000001",
+    "stream": 2500
+  },
+  "validatingAtPress": "abcdef000024",
+  "viewAfter": "abcdef000024",
+  "messages": [
+    "abcdef000024"
+  ],
+  "boxAtLeave": "held then left",
+  "ops": [
+    "config.get:",
+    "credentials.list:",
+    "commands.entities:abcdef000024",
+    "sessions.list:",
+    "sessions.warm:abcdef000024",
+    "capabilities:",
+    "sessions.list:",
+    "sessions.history:abcdef000024",
+    "sessions.list:",
+    "sessions.message:abcdef000024",
+    "sessions.list:"
+  ],
+  "verdict": {
+    "the press landed inside the target's open window": true,
+    "the view stayed on the target": true,
+    "the held send went out exactly once, into the target": true
+  }
+}

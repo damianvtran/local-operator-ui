@@ -1,0 +1,1 @@
+./capture-r7.sh: line 160: --clean: command not found
