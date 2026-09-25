@@ -257,6 +257,12 @@ function SessionPanel({
 	);
 	const cwd = useCanonicalSessionsStore((state) => state.cwd);
 	const setCwd = useCanonicalSessionsStore((state) => state.setCwd);
+	const markTurnStopped = useCanonicalSessionsStore(
+		(state) => state.markTurnStopped,
+	);
+	const clearTurnStopped = useCanonicalSessionsStore(
+		(state) => state.clearTurnStopped,
+	);
 	const [admitting, setAdmitting] = useState(false);
 	/*
 	 * The lock is created lazily and held in a ref, not in state: it has to be
@@ -1509,8 +1515,29 @@ function SessionPanel({
 		 * press's own outcome is the only current one.
 		 */
 		setStopNotice(null);
+		/*
+		 * THE PRESS'S OWN INSTANT, taken before the request leaves.
+		 *
+		 * It is what the reducer compares a killed call's `startedAt` against (`U7`),
+		 * and the receipt's own arrival time would be the wrong clock: the round trip
+		 * is tens of milliseconds on a healthy owner and seconds behind a busy one,
+		 * while the interrupt acts on the press. A call that started inside that gap
+		 * was killed by the press and would be missed by a receipt-stamped fact.
+		 */
+		const pressedAt = Date.now();
 		void interruptTurn(sessionId, crypto.randomUUID())
-			.then((receipt) => setStopNotice(interruptNotice(receipt)))
+			.then((receipt) => {
+				/*
+				 * `interrupted` AND NOTHING ELSE. The route also answers `idle` — no turn was
+				 * running, or the session is cold — and recording a stop for a press that
+				 * stopped nothing would reclassify the next genuine failure in this session as
+				 * the user's own doing. The receipt is the only authority on which of the two
+				 * happened, which is why the fact is written here rather than at the press.
+				 */
+				if (receipt.status === "interrupted")
+					markTurnStopped(sessionId, pressedAt);
+				setStopNotice(interruptNotice(receipt));
+			})
 			.catch((error) =>
 				// Renders in the same composer alert as a failed send, so it takes the
 				// same authored-copy rule. A receipt that never arrives is the one case
@@ -1527,8 +1554,17 @@ function SessionPanel({
 	 * still settling `busy` is still true and this correctly does nothing.
 	 */
 	useEffect(() => {
-		if (busy) setStopNotice(null);
-	}, [busy]);
+		if (busy) {
+			setStopNotice(null);
+			/*
+			 * AND THE STOPPED-TURN FACT GOES WITH IT (U7): the fact says "the turn you
+			 * stopped ended this way", and the next turn is not that turn. Leaving it
+			 * standing would classify the NEXT turn's killed-by-anything calls as the
+			 * user's own stop.
+			 */
+			if (sessionId) clearTurnStopped(sessionId);
+		}
+	}, [busy, sessionId, clearTurnStopped]);
 	/*
 	 * Escape is the control's accelerator, attached HERE because this component
 	 * owns both halves the predicate reads - `busy` and `stop` - and the ladder it

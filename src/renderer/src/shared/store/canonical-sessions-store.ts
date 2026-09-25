@@ -1974,6 +1974,30 @@ type CanonicalSessionsState = {
 		/** The draft's own model pick, when it has one; omitted otherwise. */
 		model?: DesktopModelSelection | null,
 	) => Promise<string | null>;
+	/**
+	 * The turns THIS WINDOW stopped, by session id, stamped in wall-clock ms.
+	 *
+	 * A CLIENT-SIDE FACT, and that is the whole of its point (UX round 2, U7). When
+	 * the user presses `Esc` the runtime kills the call in flight, and the tool that
+	 * was running then reports a REAL failure — its process died — which the row
+	 * classifies as `error` and paints in `danger` as `failed`. The backend is
+	 * telling the truth about the process and the wrong thing about the turn: the
+	 * user stopped it, and blaming the agent for the user's own decision is exactly
+	 * what `tool-row.tsx`'s `interrupted` state exists to say. Nothing on the wire
+	 * distinguishes the two, so the fact is recorded where the press happened.
+	 *
+	 * LIFETIME IS EXACTLY ONE TURN: written when an `interrupted` receipt arrives,
+	 * cleared when the next turn begins (the same `busy` edge that retires the stop
+	 * notice). It is NOT persisted — it describes a run that is over by the time the
+	 * window closes, and a restored fact would reclassify a later turn's honest
+	 * failure.
+	 */
+	stoppedTurns: Record<string, number>;
+	/** Record that this window stopped a session's turn, at `at` (default: now). */
+	markTurnStopped: (sessionId: string, at?: number) => void;
+	/** Clear it — the next turn's arrival, or a session being left. */
+	clearTurnStopped: (sessionId: string) => void;
+
 	setActiveSession: (sessionId: string | null) => void;
 	/**
 	 * Close the validation window because the session's own stream proved it
@@ -2187,6 +2211,11 @@ type CanonicalSessionsState = {
 	) => void;
 	openSession: (sessionId: string) => Promise<boolean>;
 	stageDraft: (target?: ChatTarget, fresh?: boolean) => string;
+	/**
+	 * Switch to a draft this store already holds, by key. See the action's own
+	 * comment for why this is not `stageDraft` (UX round 2, U8).
+	 */
+	openDraft: (key: string) => void;
 	updateDraft: (key: string, patch: Partial<ChatDraft>) => void;
 	/**
 	 * Record — or clear — the model a NEW conversation will be born on.
@@ -2799,6 +2828,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			statusUnavailable: [],
 			archiveFacts: {},
 			forgotten: {},
+			stoppedTurns: {},
 			archiveFailure: null,
 			archiveUndo: null,
 			deleteCandidate: null,
@@ -3379,6 +3409,53 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					activeSessionId,
 					activeDraftKey: null,
 					validatingSessionId: null,
+				});
+			},
+			/*
+			 * The stopped-turn fact's two writers (UX round 2, U7; `stoppedTurns` carries
+			 * what it is for). `at` is the press's own instant rather than the receipt's,
+			 * and it is what the reducer compares a tool row's `startedAt` against: a call
+			 * that was ALREADY running when the user pressed stop is one the stop killed,
+			 * and a call that started afterwards cannot exist because the turn ended.
+			 */
+			markTurnStopped: (sessionId, at = Date.now()) =>
+				set((state) => ({
+					stoppedTurns: { ...state.stoppedTurns, [sessionId]: at },
+				})),
+			clearTurnStopped: (sessionId) =>
+				set((state) => {
+					if (!(sessionId in state.stoppedTurns)) return state;
+					const { [sessionId]: _dropped, ...rest } = state.stoppedTurns;
+					return { stoppedTurns: rest };
+				}),
+			/**
+			 * Open a draft this store ALREADY holds, by its key.
+			 *
+			 * WHY THIS IS NOT `stageDraft` (UX round 2, U8). `stageDraft(undefined, true)`
+			 * — which is what `⌘N` calls — mints a FRESH `draft:<uuid>` key every time, and a
+			 * draft pane's identity IS that key: the composer's text is persisted under it
+			 * (`conversation-input-store`, `inputByConversation[draft:<uuid>]`), so pressing
+			 * ⌘N with text in the box did not delete the text, it moved the window to a key
+			 * nothing on screen pointed at. The text was unreachable rather than absent, and a
+			 * relaunch restored a draft no route could name.
+			 *
+			 * So the second half of the fix is a way BACK to a key that exists, which is what
+			 * the sidebar's `Draft:` rows call. There is no fresh key here, no new
+			 * `createRequestId` and no re-admission: this is a navigation between two panes
+			 * this store is already holding, and minting anything would be the same discard
+			 * one release later.
+			 *
+			 * A key whose row is gone is a NO-OP rather than a blank pane: the caller can be a
+			 * row rendered from persisted state a moment before a `discardDraft` lands, and
+			 * switching to a key with no draft would leave `activeDraftKey` naming nothing.
+			 */
+			openDraft: (key) => {
+				if (!get().drafts[key]) return;
+				set({
+					activeDraftKey: key,
+					activeSessionId: null,
+					validatingSessionId: null,
+					error: null,
 				});
 			},
 			/*

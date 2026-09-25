@@ -64,6 +64,14 @@ import {
 	desktopResult,
 	subscribeDesktopStream,
 } from "@shared/api/local-operator/desktop-api";
+/*
+ * Read at APPLY TIME rather than subscribed to (U7): the stopped-turn fact is
+ * consulted inside the stream's own callback, where a selector has no meaning - the
+ * value is needed at the instant a frame lands, not at the instant a component
+ * renders. `chat-page`'s `send` reaches for the same `getState()` for the same
+ * reason.
+ */
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { dropPaint, readPaint, writePaint } from "@shared/store/paint-cache";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -2163,7 +2171,22 @@ export function useCanonicalSessionStream(
 							// not a round whose namespace consumers need to re-read.
 							next = { ...next, turnsCompleted: next.turnsCompleted + 1 };
 						}
-						const transcript = applyEvent(next.transcript, frame.payload, now);
+						const transcript = applyEvent(next.transcript, frame.payload, now, {
+							/*
+							 * READ AT APPLY TIME, not captured: the store is written by the
+							 * interrupt's receipt, which lands BEFORE the killed call's end event
+							 * comes back through this stream — the same ordering the strip's own
+							 * `stoppedTurns` docstring states. `getState()` rather than a selector
+							 * because this value is needed inside a socket callback rather than
+							 * during a render, which is the shape `chat-page`'s `send` already uses
+							 * for the same reason.
+							 */
+							userStoppedAt: sessionId
+								? (useCanonicalSessionsStore.getState().stoppedTurns[
+										sessionId
+									] ?? null)
+								: null,
+						});
 						if (transcript !== next.transcript) {
 							next = { ...next, transcript };
 						}

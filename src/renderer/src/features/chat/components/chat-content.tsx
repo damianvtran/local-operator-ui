@@ -660,6 +660,45 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const conversationId = agentId; // assuming agentId is the conversation ID
 
 		/*
+		 * THE TURN THE USER STOPPED (UX round 2, U7; spec §G3).
+		 *
+		 * `Esc` leaves one line where the turn ended — `Stopped`, at `text-meta`/`ink-dim`,
+		 * with a retry — and never a failure-red row. The row-level half of that is the
+		 * reducer's (`transcript-reducer.ts` reclassifies the call the interrupt killed, so
+		 * the ledger's own row reads `interrupted` rather than `failed`); this is the
+		 * sentence at the turn's end, which is what tells the reader the turn is over and
+		 * gives them the one control that acts on it.
+		 *
+		 * THE FACT IS THE STORE'S and not this component's, because the press happens in
+		 * `chat-page`'s interrupt handler and the receipt that confirms it is that
+		 * handler's answer — see `stoppedTurns` for why the client has to record it at all
+		 * and how long it lives.
+		 */
+		const stoppedTurnAt = useCanonicalSessionsStore((state) =>
+			conversationId ? (state.stoppedTurns[conversationId] ?? null) : null,
+		);
+		/*
+		 * WHAT A RETRY WOULD RE-SEND: the newest user turn on screen, or null when there
+		 * is none.
+		 *
+		 * Read from the transcript rather than remembered at the press, because the press
+		 * knows nothing the transcript does not: the turn being stopped is defined by the
+		 * message that started it, and that message is a row. A turn stopped before any
+		 * user row exists (an approval, a resume) therefore offers no retry rather than a
+		 * retry that could send nothing — the honest half of §G3's control, and the same
+		 * rule the rest of this pane applies to controls that would have no effect.
+		 */
+		const stoppedRetryText = useMemo(() => {
+			if (stoppedTurnAt === null || !canonical) return null;
+			const records = canonical.view.transcript.records;
+			for (let at = records.length - 1; at >= 0; at -= 1) {
+				const record = records[at];
+				if (record.kind === "user") return record.text;
+			}
+			return null;
+		}, [stoppedTurnAt, canonical]);
+
+		/*
 		 * The Files panel's producer, called exactly once and here because this is
 		 * the only component that holds BOTH halves it needs: the canonical
 		 * transcript (`records`, the full loaded list rather than the painted
@@ -1429,6 +1468,43 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 									// live against a gate the owner already took.
 									answer={canonical.answer ?? null}
 								/>
+							</div>
+						)}
+						{/*
+						 * THE STOPPED TURN'S OWN LINE (§G3). Above the composer and below the transcript's
+						 * own dock, which is where a turn that has ENDED can say so without being part of
+						 * the conversation it ended: the transcript is the record of what was said, and
+						 * this is the pane's statement about the run.
+						 *
+						 * The retry RE-SENDS THE TURN through the same door the composer uses
+						 * (`onSendMessage` is the page's own `send`), so it carries the same admission,
+						 * the same echo and the same failure handling as a press on Enter — a second send
+						 * path would be the defect, not the fix.
+						 */}
+						{stoppedTurnAt !== null && (
+							<div className={cn(CHAT_COLUMN_INSET, "w-full shrink-0 pt-2")}>
+								<p
+									data-stopped-turn
+									className={cn(
+										"flex items-center gap-2 text-ink-dim text-meta",
+										CHAT_MEASURE,
+									)}
+								>
+									<span>Stopped</span>
+									{stoppedRetryText !== null && (
+										<>
+											<span aria-hidden="true">·</span>
+											<button
+												type="button"
+												data-stopped-retry
+												onClick={() => void onSendMessage(stoppedRetryText, [])}
+												className="rounded-sm text-ink-muted underline-offset-2 transition-colors duration-fast ease-out-quart hover:text-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+											>
+												Retry
+											</button>
+										</>
+									)}
+								</p>
 							</div>
 						)}
 						{/* Message input */}
