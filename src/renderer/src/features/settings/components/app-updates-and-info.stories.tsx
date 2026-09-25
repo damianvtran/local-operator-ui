@@ -44,6 +44,9 @@ const snapshot = (
 		capabilityStatus: null,
 		unanswered: 0,
 		lastTransportAt: null,
+		// Null unless a story names one: an address substitution is a fact about a
+		// launch, and none of these states is about the app serving elsewhere.
+		addressSubstitution: null,
 		detail:
 			"Connected to the daemon on http://127.0.0.1:7341 (pid 4242, v0.54.47).",
 		updatedAt: Date.now(),

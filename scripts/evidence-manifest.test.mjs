@@ -779,38 +779,53 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  * AND quotes both stamps as this file's own values, so it is held to them rather
  * than being read as history - the distinction the paragraph above draws.
  */
+/*
+ * THE FOLD RULE FOR THIS LIST: the union of both sides, taken by KEY.
+ *
+ * MEMBERSHIP IS CURATION, NOT A PREDICATE, and the paragraph above states the
+ * criterion: a note belongs here when THIS FILE'S BINDING is its subject, not when
+ * it records the fold, pass or review it came from. It cannot be re-derived by
+ * testing the text - the re-stamp below rewrites every note's backticked claims to
+ * the shipped pair, so after any fold many more notes quote both stamps at that pair
+ * than this list curates, and the extras are history by subject. (Run the predicate
+ * this test applies over `docs/evidence/manifest.json` rather than trusting a count
+ * written here: it matches dozens, and the number moves with every fold.)
+ * `headNote`, `installerNetworkRestampNote`, the console notes and
+ * `reloadReanchorRestampNote` are the ones the paragraph above names as not here for
+ * exactly that reason. Widening the list to everything the predicate matches would
+ * add notes that CANNOT fail, which is the wrong kind of guard and not what this
+ * list is for.
+ *
+ * WHAT A FOLD MUST DO, and what makes this rule falsifiable against the list: union
+ * the two sides' keys, KEEP EVERY KEY THAT WAS THERE BEFORE, and state the result.
+ * AN OMITTED KEY IS A CHECK SILENTLY NOT RUN - this test iterates the list, so a key
+ * dropped by a hand-resolved merge stops being verified while the suite still goes
+ * green (round 8, M1: four live keys, every one of them still quoting both stamps,
+ * were lost by a resolution that compared added LINES rather than keys). A fold whose
+ * base moved this file therefore diffs the KEY SETS of both sides and of the merged
+ * result, and says in the commit what the union is.
+ */
 const STAMP_BINDING_NOTES = [
+	"occupiedAddressRestampNote",
 	"shellPathRestampNote",
 	"settingsGateRestampNote",
 	"candidateMacArchRestampNote",
 	"notarizeGateRestampNote",
-	/*
-	 * `usageAutoCheckRestampNote` left this list when the remediation below
-	 * re-derived both stamps: its pair is now history, written as bare SHAs in the
-	 * note itself, because leaving it here would have held a fold's values to this
-	 * file as if they were its own — the defect the list exists for.
-	 */
-	/*
-	 * `usageInFlightRemediationNote` left this list when the convergence round
-	 * below re-derived both stamps on top of it: its pair is now history, written
-	 * as bare SHAs in the note itself, because leaving it here would have held a
-	 * superseded pair to this file as if it were its own. `usageInFlightConvergenceNote`
-	 * carries the binding the round it records re-derived.
-	 */
 	"usageInFlightConvergenceNote",
 	"macNativeComponentsRestampNote",
 	"telemetrySwitchRestampNote",
-	// The seventh: `readReceiptRestampNote` states this file's own pair for the
-	// read-receipt branch, so it is held to that pair rather than read as history -
-	// the distinction `candidateMacArchRestampNote` above is in the list for.
 	"readReceiptRestampNote",
 	/*
-	 * The eighth: `modelCatalogueFocusRestampNote` states this file's own pair for
-	 * the picker's catalogue-focus branch, and it exists BECAUSE the list is not
-	 * optional reading - the change it re-stamps for rewrote no frame, so a reader
-	 * is owed the two values it does bind and the reason no still was owed.
+	 * This one exists BECAUSE the list is not optional reading: the change it
+	 * re-stamps for rewrote no frame, so a reader is owed the two values it binds
+	 * and the reason no still was owed.
 	 */
 	"modelCatalogueFocusRestampNote",
+	/*
+	 * This branch's own: it states the pair an earlier fold re-derived, and is held
+	 * to the pair this file ships rather than read as history.
+	 */
+	"round1LabelGapRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
