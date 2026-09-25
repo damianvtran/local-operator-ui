@@ -77,13 +77,110 @@ import {
  */
 
 /**
- * What a submit reported back to the composer: `false` when it was refused before
- * admission, `true` when it settled. There is no third answer any more, and that
- * is the change rather than an omission - a failure of either kind leaves the
- * payload in the composer (the STORE's one return path writes it), so nothing here
- * has to describe where the message went.
+ * An accepted send that went OFF THE RECORD rather than into the conversation.
+ *
+ * The aside destination (`/btw`, and a composer send while the panel is
+ * attached) is the one accepted outcome whose text must neither be restored on
+ * failure nor written to the per-conversation history log.
+ *
+ * NOT RECORDED, because the aside's whole promise is that it leaves no trace:
+ * `submittedMessages` is persisted to `localStorage`
+ * (`conversation-input-store.ts`) and loaded back by Up-arrow as though the
+ * question had been sent to the thread, which is exactly what
+ * `aside-store.ts`'s own header refuses for anything durable ("a store that
+ * wrote to `localStorage` would be the one place an off-record exchange outlived
+ * its session"). The `/btw <question>` door never touched that log either, so
+ * which door the user came through must not decide whether the question outlives
+ * the app.
+ *
+ * NOT RESTORED on failure, and that is a decision rather than an omission. Its
+ * difference from `false`: a `false` outcome means nothing reached the owner, so
+ * the box is where the text belongs. Here the ask WAS registered — the panel is
+ * painting the question and its stream entry exists — so the failure is
+ * unknowable to this composer, and the refusal is stated on the
+ * panel that owns the exchange, with the question still painted above it. A
+ * restore writes only into an EMPTY box (`restoreSubmittedText`), so whether the
+ * text came back would depend on whether the user had started typing again — a
+ * race with no visible rule, and one that would silently lose the half of it the
+ * user cared about.
+ *
+ * WHAT IT DOES DO is retire the BOX: the text leaves at the PRESS, not at the
+ * answer, which is what keeps the follow-up that replaced it out of the question
+ * already asked.
+ *
+ * AND IT CARRIES THE ASK'S OWN ANSWER, which is the one thing a string could not
+ * say. The box retiring at the press is the whole point (review round 1, F1), so
+ * this outcome is composed before the POST has answered and cannot know whether
+ * the ask will be answered or refused — while the composer's PAYLOAD (the staged
+ * reply chips and the credential map) must be retired on success and KEPT on
+ * failure, exactly as a refused send keeps it (review round 2, F6). The ask's
+ * own promise is therefore handed over inside this outcome, and the composer
+ * settles the payload on it rather than on the press.
+ *
+ * NESTED RATHER THAN RETURNED, deliberately: `useMessageInput` AWAITS what
+ * `onSubmit` returns, so returning the ask's promise would hold the box's clear
+ * and the composer's `admitting` state for the whole POST — the defect F1 names.
+ * A plain object settles the await in the press's own microtask, and the promise
+ * inside it is read afterwards, when it has something to say.
  */
-export type SendOutcome = undefined | boolean;
+export type OffRecordAsk = {
+	/** The ask itself: resolved when it is answered, rejected when it is refused. */
+	offRecord: Promise<unknown>;
+};
+
+/** What a submit reported back to the composer. See `OffRecordAsk`. */
+export type SendOutcome = undefined | boolean | OffRecordAsk;
+
+/**
+ * Whether an accepted submit went off the record, and which ask it was.
+ *
+ * A guard rather than a comparison, because the outcome is an object now: the
+ * four failures this tree has already been bitten by are all comparisons against
+ * a value that changed shape (`recordsSubmittedMessage` treating an object as
+ * "an ordinary accepted send" would write an off-record question to the
+ * persisted log — the F2 defect, back through a different door).
+ */
+export const isOffRecordAsk = (outcome: SendOutcome): outcome is OffRecordAsk =>
+	typeof outcome === "object" && outcome !== null;
+
+/**
+ * Settle the composer's payload on an off-record ask's own answer.
+ *
+ * AN ASK THAT IS ANSWERED CONSUMED WHAT IT CARRIED, and a REFUSED one did not
+ * (review round 2, F6). The staged reply chips and the credential map are retired
+ * by an accepted send because the text went out with them; an aside ask that the
+ * owner refused put nothing anywhere — the panel keeps the question and states
+ * the refusal under it — so the refusal rule applies instead and the payload
+ * stays, exactly as it does after a `false` outcome. `retire` is the composer's
+ * own retirement (`message-input.tsx`), so this module owns the decision and the
+ * composer owns what the decision does.
+ *
+ * Exported and pure so the rule is assertable, which is the whole reason it is a
+ * function at all: the call site is a React component a node test cannot mount,
+ * and the failure arm is the one that has to be pinned (the success arm is what
+ * the press did before this change, so only a test can tell the two apart).
+ */
+export function settleOffRecordPayload(
+	outcome: OffRecordAsk,
+	retire: () => void,
+): void {
+	void outcome.offRecord.then(retire, () => {});
+}
+
+/**
+ * Whether an accepted submit is written to the per-conversation history log.
+ *
+ * Exported and pure so the off-record rule is pinned by a test rather than
+ * argued from its call site — the shape `clearSubmittedText` below uses for the
+ * text transitions, and for the same reason (a rule stated in one place and
+ * bypassed in another is what review UX-1's U2 was).
+ *
+ * The two failure answers are not recorded either, and for their own documented
+ * reasons: `false` put the text back in the box, so the log would hold a message
+ * that was never sent. The off-record ask is not recorded either, which is the
+ */
+export const recordsSubmittedMessage = (outcome: SendOutcome): boolean =>
+		outcome !== false && !isOffRecordAsk(outcome);
 
 /**
  * Which text a composer transition may write over what the user has typed.
@@ -105,6 +202,11 @@ export const COMPOSER_PLACEHOLDER = {
 	unavailable: "This conversation is gone",
 	busy: "Agent is busy",
 	answer: "Answer the question above",
+	/*
+	 * The exit is named beside the verb for the reason the `@` list's own line
+	 * names its ("Nothing to insert · Esc closes").
+	 */
+	aside: "Ask off the record — Esc closes the aside",
 	sending: "Sending your message",
 	waiting: "Waiting for the agent",
 	idle: "Ask me for help",
@@ -117,8 +219,23 @@ export const COMPOSER_PLACEHOLDER = {
  * other reading (`isInputDisabled` is true for one, so the gone-state sentence has
  * to be asked first or a reader of a missing conversation is told `Agent is busy`
  * about a turn nobody is running - design round 2, D3); then the box's own
- * refusal; then a gate that is waiting to be answered; then THIS pane's send; then
- * the agent; then the invitation.
+ * refusal; then a gate that is waiting to be answered; then an attached aside;
+ * then THIS pane's send; then the agent; then the invitation.
+ *
+ * THE ASIDE TERM SITS AFTER THE TWO REFUSALS AND AFTER THE GATE, and both sides
+ * of that position are load-bearing. After the refusals, because a box that takes
+ * no keystrokes must not be invited to take one: "Ask off the record" over a
+ * read-only composer is a promise nothing can keep. After `awaitingAnswer`,
+ * because while a question card is unanswered the press does NOT reach the aside
+ * - the gate branch outranks it in `chat-page.tsx`, since an `approval` gate has
+ * no other answer path ("Reply yes or no in the composer") while the aside keeps
+ * its exchange on screen - and the surface whose whole job is naming the
+ * destination cannot name the wrong one.
+ *
+ * AHEAD OF BOTH SEND-STATE SENTENCES, for the same reason: while the panel is
+ * attached the next Enter goes to the aside whatever the conversation is doing,
+ * so the box names where the press goes rather than what an earlier send is
+ * doing - the transcript's working line already says that.
  */
 export const composerPlaceholder = (state: {
 	/** The conversation is not on this machine. */
@@ -127,6 +244,8 @@ export const composerPlaceholder = (state: {
 	inputDisabled: boolean;
 	/** A pending `ask` gate is waiting for an answer in this pane. */
 	awaitingAnswer: boolean;
+	/** The `/btw` aside is attached, so the press asks it rather than the thread. */
+	asideAttached: boolean;
 	/** A send this pane issued has not settled. */
 	sendingUnsettled: boolean;
 	/** A send has been issued and the agent has not painted anything yet. */
@@ -135,6 +254,7 @@ export const composerPlaceholder = (state: {
 	if (state.unavailable) return COMPOSER_PLACEHOLDER.unavailable;
 	if (state.inputDisabled) return COMPOSER_PLACEHOLDER.busy;
 	if (state.awaitingAnswer) return COMPOSER_PLACEHOLDER.answer;
+	if (state.asideAttached) return COMPOSER_PLACEHOLDER.aside;
 	if (state.sendingUnsettled) return COMPOSER_PLACEHOLDER.sending;
 	if (state.awaitingReply) return COMPOSER_PLACEHOLDER.waiting;
 	return COMPOSER_PLACEHOLDER.idle;
@@ -661,6 +781,29 @@ export const useMessageInput = ({
 		 */
 		let cleared = false;
 		/*
+		 * Set only for an OFF-RECORD ask, whose staged halves are not the press's to
+		 * take: an answered ask consumed them and a refused one did not (review round
+		 * 2, F6), so they are settled on the ask's own answer below and `clearOnce`
+		 * takes the text alone. Without this the post-await `clearOnce()` - the one
+		 * trigger an ask ever reaches, since it paints no echo - would retire a staged
+		 * reply at the press, and a refusal would leave the user without the quote
+		 * the panel's refusal sentence invites them to send again.
+		 */
+		let stagedSettledByAsk = false;
+		/*
+		 * Declared OUTSIDE the try because the box's own retirement is decided after
+		 * it, from the outcome: see `recordsSubmittedMessage` for the one accepted
+		 * outcome that is deliberately not written to the history log.
+		 */
+		let outcome: SendOutcome;
+		const clearOnce = () => {
+			if (cleared) return;
+			cleared = true;
+			if (initializedRef.current !== conversationId) return;
+			setInputValue((current) => clearSubmittedText(current, submitted));
+			if (conversationId && staged && !stagedSettledByAsk)
+				clearStagedPayload(conversationId, staged);
+		/*
 		 * One clear per submit, whichever of its two triggers gets there first, and
 		 * only over the payload this submit is actually carrying: an echo that lands
 		 * late - or on a composer that has since been remounted - must not clear
@@ -681,8 +824,8 @@ export const useMessageInput = ({
 					conversationId,
 					{
 						text: submitted,
-						attachments: staged?.attachments ?? [],
-						replies: staged?.replies ?? [],
+						attachments: stagedSettledByAsk ? [] : (staged?.attachments ?? []),
+						replies: stagedSettledByAsk ? [] : (staged?.replies ?? []),
 						/*
 						 * A value typed into a MASKED capture never reaches disk (§6):
 						 * the record carries the flag and `partialize` blanks the text,
@@ -693,6 +836,7 @@ export const useMessageInput = ({
 					},
 					record,
 				);
+		};
 		};
 		/*
 		 * The persisted draft is retired as the send settles, not as it starts,
@@ -756,9 +900,27 @@ export const useMessageInput = ({
 		 * Nothing echoed and nothing is being held: an accepted send with no echo at
 		 * all - a slash command, a gate answer, the legacy model path - still has to
 		 * retire the box. When the echo did clear it, this is a no-op.
+		 *
+		 * An off-record ask retires its TEXT here like any accepted send (the box is
+		 * handed back at the press, F1) and its staged halves on the ask's answer,
+		 * by the same identity rule the echo's clear uses - so a quote staged while
+		 * the aside was answering is the user's next payload, not this ask's.
 		 */
+		if (isOffRecordAsk(outcome)) {
+			stagedSettledByAsk = true;
+			if (conversationId && staged)
+				settleOffRecordPayload(outcome, () =>
+					clearStagedPayload(conversationId, staged),
+				);
+		}
 		clearOnce();
-		addSubmittedMessage(conversationId, submitted);
+		/*
+		 * AND THE HISTORY LOG IS FOR THE CONVERSATION'S OWN SENDS ONLY: an off-record
+		 * ask retires the box exactly like any other accepted send, but leaves no
+		 * entry for Up-arrow to recall and nothing on disk. See `OffRecordAsk`.
+		 */
+		if (recordsSubmittedMessage(outcome))
+			addSubmittedMessage(conversationId, submitted);
 		// Cleared BEFORE the store write so a synchronous restore inside
 		// `onSubmit` is not immediately overwritten by this submit's own clear.
 		retireDraft();

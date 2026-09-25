@@ -60,7 +60,7 @@ import {
 	admitChatDraft,
 	isRefusedBeforeAdmission,
 	isStoreWriteRefusal,
-	retryWillFail,
+	withholdsRetryHint,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
@@ -151,7 +151,7 @@ type Evidence = {
 	rowCode?: string | undefined;
 	rowMessage?: string | undefined;
 	message: string | undefined;
-	/** Whether a press of Retry cannot work for this arm (`retryWillFail`). */
+	/** Whether a press of Retry cannot work for this arm (`withholdsRetryHint`). */
 	retryWithheld: boolean;
 	storeWriteRefusal: boolean;
 	refusedBeforeAdmission: boolean;
@@ -284,7 +284,7 @@ evidence.code =
 		: draft.errorCode;
 evidence.message =
 	raised instanceof Error && raised.message ? raised.message : draft.error;
-evidence.retryWithheld = retryWillFail(evidence.code);
+evidence.retryWithheld = withholdsRetryHint(evidence.code);
 evidence.storeWriteRefusal = isStoreWriteRefusal(evidence.code);
 evidence.admissionAttempted = draft.admissionAttempted;
 evidence.submittedText = draft.submittedText;
@@ -376,11 +376,11 @@ const Harness = () => {
 					code: evidence.code,
 					/*
 					 * The remedy decision, from the rule the app reads
-					 * (`sendFailureCopy` -> `retryWillFail`): the two store codes are the
+					 * (`sendFailureCopy` -> `withholdsRetryHint`): the two store codes are the
 					 * arms whose own sentence names a remedy the notice cannot take, so a
 					 * press is not offered and `Clear` is the only control.
 					 */
-					retry: !retryWillFail(evidence.code),
+					retry: !withholdsRetryHint(evidence.code),
 					onRetry: () => {},
 					onClear: () => {},
 				};

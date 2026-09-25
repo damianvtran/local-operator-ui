@@ -139,7 +139,7 @@ const {
 	mergeReturnedPayload,
 	mergeReturnedText,
 	rehydrateInputRows,
-	retryWillFail,
+	withholdsRetryHint,
 	sendFailureClass,
 	sendFailureCopy,
 	SEND_FAILURE_COPY,
@@ -357,14 +357,14 @@ test("Retry is withheld exactly where a press cannot work", () => {
 		UNREADABLE_ATTACHMENT_CODE,
 		STORE_OUT_OF_SPACE_CODE,
 	])
-		assert.equal(retryWillFail(code), true, code);
+		assert.equal(withholdsRetryHint(code), true, code);
 	for (const code of [
 		RUNTIME_BUSY_CODE,
 		RUNTIME_RETIRING_CODE,
 		SESSION_UNVALIDATED_CODE,
 	])
 		assert.equal(
-			retryWillFail(code),
+			withholdsRetryHint(code),
 			false,
 			`${code} has a sentence that invites the press`,
 		);

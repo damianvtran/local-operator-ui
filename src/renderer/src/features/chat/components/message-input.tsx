@@ -14,6 +14,9 @@ import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import {
 	type SendOutcome,
 	composerPlaceholder,
+	isOffRecordAsk,
+	refusedSplitNotice,
+	settleOffRecordPayload,
 	useMessageInput,
 } from "@shared/hooks/use-message-input";
 import { useRadientSessionIssue } from "@shared/hooks/use-radient-session-issue";
@@ -22,6 +25,7 @@ import {
 	useSpeechToTextManager,
 } from "@shared/hooks/use-speech-to-text-manager";
 import { cn } from "@shared/lib/utils";
+import { useAsideStore } from "@shared/store/aside-store";
 import {
 	CLEAR_LABEL,
 	RETRY_LABEL,
@@ -71,6 +75,15 @@ import type {
 	CanonicalFrontendState,
 	CanonicalModel,
 } from "../../../../../shared/desktop-session-contract";
+import {
+	type AsideAdoptArm,
+	adoptAside,
+	asideAdoptChord,
+	asideAdoptChordStep,
+	asideAdoptConfirm,
+	asideAdoptReady,
+	closeAside,
+} from "../aside";
 import { composerFocusIsOurs, shouldTabIntoAnswerOptions } from "../ask-answer";
 import { sendUnsettledForSession } from "../canonical/working-line-model";
 import {
@@ -201,6 +214,7 @@ import {
 	activeModelForDefault,
 	writeModelDefaultSettings,
 } from "../pickers/model-default-settings";
+import { AsidePanel } from "./aside-panel";
 /*
  * The `@` mention layer: the tokenizer, the list over the field, and the chip
  * layer that draws behind the field's own glyphs. Three modules rather than one
@@ -1106,6 +1120,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			isLoading,
 			awaitingReply = false,
 			awaitingAnswer = false,
+			asideSessionId,
+			asideStreaming = false,
 			conversationId,
 			messages,
 			currentJobId,
@@ -1160,6 +1176,50 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			(cwdWritePath?.kind === "move"
 				? undefined
 				: agentData?.current_working_directory);
+		/*
+		 * The aside attached to this session, or null.
+		 *
+		 * ONE subscription for what the composer itself needs — the placeholder that
+		 * names the destination and the two keys that act on it — while the PANEL
+		 * subscribes to the streaming text on its own. That split is deliberate: the
+		 * attachment changes on the attach/detach/ask edges, whereas every
+		 * `aside_delta` rewrites one stream entry, and a composer this size must not
+		 * repaint per chunk of an answer it does not display.
+		 */
+		const aside = useAsideStore((state) =>
+			asideSessionId ? (state.attached[asideSessionId] ?? null) : null,
+		);
+		/*
+		 * The newest aside turn the adopt chord has ARMED, or null (UX round 2, U16).
+		 *
+		 * A ref rather than state: nothing here paints it - the panel's own notice line
+		 * states the confirm - and the keydown handler is the only reader. Keyed on the
+		 * turn id AND stamped with the time the confirm went up (`asideAdoptChordStep`,
+		 * `ASIDE_ADOPT_CONFIRM_FLOOR_MS`), so an arm neither outlives the exchange it was
+		 * shown for nor lets a reflex second press stand in for the decision; the panel's
+		 * `beginAsk`/`attachAside` clear the notice it raised.
+		 */
+		const adoptArmedTurn = useRef<AsideAdoptArm | null>(null);
+		/*
+		 * THE CONFIRM IS WITHDRAWN WHEN A CONVERSATION TURN STARTS (agent review round
+		 * 6, R6-5). Adopt needs an idle session (`asideAdoptReady`), so once a turn
+		 * runs the second press falls through - yet the notice went on saying "Press
+		 * ⌘+F again…" beside the panel's own line saying the conversation is working.
+		 * Both the arm and the notice go, so the next press after the turn asks again
+		 * rather than adopting on a confirm shown before the context changed.
+		 *
+		 * Only the notice this composer raised is cleared: the same line carries the
+		 * owner's adopt refusals, which are the user's to read, not this effect's to
+		 * retire.
+		 */
+		useEffect(() => {
+			if (!asideStreaming || adoptArmedTurn.current === null) return;
+			adoptArmedTurn.current = null;
+			const store = useAsideStore.getState();
+			const sessionForAside = asideSessionId ?? "";
+			if (store.attached[sessionForAside]?.notice === asideAdoptConfirm(IS_MAC))
+				store.setAsideNotice(sessionForAside, null);
+		}, [asideStreaming, asideSessionId]);
 		const removeReply = useConversationInputStore((state) => state.removeReply);
 		const addAttachment = useConversationInputStore(
 			(state) => state.addAttachment,
@@ -1532,6 +1592,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const retirePayloads = useRef(false);
 		/*
+		 * The COMMIT that makes the retirement effect below look at `retirePayloads`
+		 * again when the box itself has not changed (review round 3, F11). An
+		 * off-record aside empties the box at the press and is answered seconds later,
+		 * so the request is written in a commit where `newMessage` is unchanged - and a
+		 * ref alone never re-runs an effect, which left the consumed credential values
+		 * in memory until the next edit, longer than §9.5 intends. Bumped with every
+		 * request; its value means nothing, only that it moved.
+		 */
+		const [retireRequest, setRetireRequest] = useState(0);
+		/*
 		 * The names the session's store already holds, for the key guard (§8).
 		 *
 		 * Fetched when the capture ARMS and cached, because the desktop contract is
@@ -1722,6 +1792,53 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			[credentialSessionId, queryClient],
 		);
 
+		/*
+		 * WHAT AN ACCEPTED SEND RETIRES, in ONE place because TWO paths now ask for
+		 * it: the submit's own tail, and an off-record ask's answer — which retires
+		 * the payload only once the ask has been ANSWERED (see `OffRecordAsk`, and
+		 * the off-record arm of the tail below). Written twice, the two would drift
+		 * and the failure path would go on quietly retiring what a refusal keeps.
+		 *
+		 * The disclosure is retired by the same submit that sends the text it warns
+		 * about (design round 2, D2's re-raise has this as its other half), which is
+		 * why `setDisclosure` is a dependency of THIS callback rather than of the
+		 * memo that calls it.
+		 *
+		 * THE STAGED CHIPS AND QUOTES ARE NOT THIS CALLBACK'S, on either path. An
+		 * ordinary send's leave with its text at the echo (`clearOnce` in
+		 * `use-message-input`, #479's one-payload-one-clock rule), and an off-record
+		 * ask's are settled on the ask's own answer by that same hook, by identity
+		 * (`clearStagedPayload`) - so what is retired here is only what the composer
+		 * alone holds: the credential map, the disclosure and the locked run.
+		 */
+		const retireAcceptedPayload = useCallback(() => {
+			/*
+			 * THE MAP IS RETIRED ONCE THE STORE HOLDS THE VALUES (§9.5) AND THE BUFFER
+			 * HAS STOPPED CITING THEM - the order matters, and getting it wrong was a
+			 * real window: clearing the map first left the raw
+			 * `[Credential #1, 19 chars]` on screen with nothing to paint it as a pill,
+			 * and an Enter inside that window sent a citation no map entry backed any
+			 * more (code review round 1, MINOR-5). `retirePayloads` is the request; the
+			 * effect below performs it in the commit that empties the box, so the two
+			 * cannot be seen apart - or, for an answered aside whose box emptied at the
+			 * press, in the commit `setRetireRequest` makes here. A REFUSED send keeps the map, because the
+			 * operator's unsent draft must not lose the value behind a pill they can
+			 * still see. `SEND_HELD` is the same case — the message may be on the owner
+			 * and its own retry lives on the store's claim, so the value has to stay
+			 * until that resolves.
+			 */
+			retirePayloads.current = true;
+			setRetireRequest((request) => request + 1);
+			setDisclosure(null);
+			/*
+			 * And the locked run's record goes with the buffer it was made from: the box a
+			 * SENT message left behind is not the box that ran the command, and an undo
+			 * pressed after the send used to put the consumed line back on screen (code
+			 * review round 2, MINOR 1).
+			 */
+			lockedRun.current = null;
+		}, [setDisclosure]);
+
 		const onSubmit = useMemo(
 			() => async (message: string, onEchoPainted?: () => void) => {
 				// Assembled by the same function the composer compares against, so the
@@ -1858,20 +1975,44 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * with its attachment beside the composer's chip for the same file. The
 				 * two halves now leave together, in `use-message-input`'s `clearOnce`,
 				 * which is the one trigger both of them share (`clearStagedPayload`).
+				 * AN OFF-RECORD ASK'S PAYLOAD IS THE ASK'S TO SETTLE (review round 2, F6).
+				 * The question left at the press, so nothing here can know yet whether it
+				 * will be answered — and the two outcomes retire different things: an
+				 * ANSWERED ask consumed the staged reply and the credential it carried, so
+				 * both go as an accepted send's do; a REFUSED one keeps them, which is the
+				 * pre-F1 behaviour of that branch and the rule the block above states for a
+				 * refusal ("the operator's unsent draft must not lose the value behind a
+				 * pill they can still see"). Retiring on the press retired them either
+				 * way, and said nothing about it.
+				 *
+				 * The refusal itself is NOT repeated here: it belongs to the surface that
+				 * owns the exchange — the panel, or the composer's own error line when the
+				 * panel is gone (`chat-page.tsx`) — and a second copy of another surface's
+				 * sentence is a second place for the two to drift apart.
 				 */
+				if (isOffRecordAsk(accepted)) {
+					settleOffRecordPayload(accepted, retireAcceptedPayload);
+					return accepted;
+				}
+				retireAcceptedPayload();
 				return accepted;
 			},
 			[
 				onSendMessage,
 				attachments,
 				replies,
+				/*
+				 * The retirement is reached through `retireAcceptedPayload` and no longer
+				 * through this closure's own body, so the values it needs are ITS
+				 * dependencies rather than this memo's - listing them here too is the
+				 * stale-closure hazard in reverse (this memo would be rebuilt for a value
+				 * nothing in it reads).
+				 */
+				retireAcceptedPayload,
 				storeCitedCredentials,
 				// The seam's own decision reads it: with a session there is nothing to
 				// defer, so only a new-chat pane hands the host a callback.
 				credentialSessionId,
-				// The disclosure is retired by the same submit that sends the text it
-				// warns about (design round 2, D2's re-raise has this as its other half).
-				setDisclosure,
 			],
 		);
 
@@ -2085,7 +2226,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * otherwise drag a caret the user had moved to the end of the box.
 		 */
 		const caretSeededFor = useRef<string | null>(null);
-		// biome-ignore lint/correctness/useExhaustiveDependencies: the value and the identity are the triggers; the ref makes it once
 		useLayoutEffect(() => {
 			if (conversationId === undefined) return;
 			if (caretSeededFor.current === conversationId) return;
@@ -2440,7 +2580,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * that honours it, once nothing in the box still cites a payload — so the box
 		 * can never paint a raw marker no map entry backs, and an Enter in that
 		 * window can never send a dangling citation.
+		 *
+		 * `retireRequest` is the second trigger: a request that lands after the box has
+		 * already emptied (an answered aside) is honoured in its own commit instead of
+		 * at the next edit. Firing early is safe by construction, because the cited-
+		 * payload check above still refuses while the box cites anything.
 		 */
+		// biome-ignore lint/correctness/useExhaustiveDependencies: `retireRequest` is a trigger, not a value the body reads - it only makes a request written after the box emptied be seen in its own commit
 		useEffect(() => {
 			if (!retirePayloads.current) return;
 			if (citedPayloads(newMessage, payloadsRef.current.values()).length > 0)
@@ -2448,7 +2594,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			payloadsRef.current.clear();
 			nextIndexRef.current = 1;
 			retirePayloads.current = false;
-		}, [newMessage]);
+		}, [newMessage, retireRequest]);
 
 		/*
 		 * The session's stored names, fetched when the capture ARMS (§7.2).
@@ -3869,6 +4015,77 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					return;
 				}
 				/*
+				 * THE ASIDE'S TWO KEYS, after the two lists and before the submit.
+				 *
+				 * The lists run first because their Escape closes THEM: a popup the user is
+				 * looking at owns its own exit before the surface behind it does, which is
+				 * the same precedence `use-interrupt-on-escape.ts` records one rung up (a
+				 * press the composer claims with `preventDefault` cannot also stop the
+				 * turn — that is why both branches here prevent it).
+				 *
+				 * ESC CLOSES THE ASIDE and routing returns to the conversation at once,
+				 * because the routing IS this attachment: the composer's `send` asks the
+				 * store where a submitted draft goes, so with the attachment gone the next
+				 * Enter goes to the thread. The panel's own close control makes the same
+				 * call through the same function.
+				 */
+				if (aside !== null && event.key === "Escape") {
+					event.preventDefault();
+					closeAside(asideSessionId ?? "");
+					return;
+				}
+				if (aside !== null && asideAdoptChord(event)) {
+					/*
+					 * Readiness is asked AT PRESS TIME rather than subscribed, and that is the
+					 * same decision as the `aside` subscription above: every `aside_delta`
+					 * rewrites a stream entry, and this composer must not repaint per chunk of
+					 * an answer it does not itself paint. An unfit press falls through — the
+					 * chord does nothing rather than being consumed — and the panel is already
+					 * saying why the control is not live.
+					 */
+					const lastTurn = aside.turns.at(-1);
+					const stream = lastTurn
+						? useAsideStore.getState().streams[lastTurn.asideId]
+						: undefined;
+					if (!lastTurn || !asideAdoptReady(stream, asideStreaming)) return;
+					event.preventDefault();
+					/*
+					 * THE FIRST PRESS ASKS, THE SECOND ADOPTS (UX round 2, U16). `⌘+F` is Find
+					 * everywhere else and adopting cannot be taken back, so a press from habit
+					 * must not be the one that commits an off-the-record exchange to the
+					 * model's context. The confirm goes on the panel's notice line - the
+					 * surface already reserved for what the panel has to say about adopting -
+					 * so it is one interaction and no new surface. `asideAdoptConfirm` records
+					 * why the pointer control is not gated the same way.
+					 */
+					const sessionForAside = asideSessionId ?? "";
+					const now = Date.now();
+					const step = asideAdoptChordStep(
+						adoptArmedTurn.current,
+						lastTurn.asideId,
+						now,
+					);
+					if (step === "arm") {
+						adoptArmedTurn.current = { turnId: lastTurn.asideId, at: now };
+						useAsideStore
+							.getState()
+							.setAsideNotice(sessionForAside, asideAdoptConfirm(IS_MAC));
+						return;
+					}
+					/*
+					 * A press inside the floor is neither a decision nor an instruction (U17): the
+					 * arm and its confirm stay where the first press put them, so the gesture is
+					 * still armed for the press that follows a read.
+					 */
+					if (step === "ignore") return;
+					adoptArmedTurn.current = null;
+					void adoptAside(sessionForAside).catch(() => {
+						// The refusal is stated on the panel (`adoptAside` writes it there); this
+						// call site has nothing to add to it.
+					});
+					return;
+				}
+				/*
 				 * THE ATOMIC DELETE, after the two lists and before the submit: a Backspace at
 				 * a chip's right edge (or a Delete at its left) takes the whole token in one
 				 * keystroke and one undo step, through the same `replaceSpan` the inline slash
@@ -3960,6 +4177,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				newMessage,
 				caret,
 				isInputDisabled,
+				aside,
+				asideSessionId,
+				asideStreaming,
 			],
 		);
 
@@ -5459,6 +5679,35 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					</output>
 				)}
 				{/*
+				 * THE ASIDE PANEL, ABOVE THE BOX AND INSIDE THE BAND.
+				 *
+				 * In-flow and unportaled, like every other above-composer surface this band
+				 * carries (the status row, the interrupt notice, the alert). It is a SIBLING of
+				 * the box's anchoring wrapper rather than a child of it, so the slash popup —
+				 * whose `bottom-full` resolves against that wrapper — still paints in its own
+				 * strip and never inside the panel. And it is a plain element rather than a
+				 * Radix layer, which is the whole fix: a modal traps focus and disables the
+				 * pointer outside itself, and the composer underneath is the surface the user
+				 * still has to type in (`aside-panel.tsx` carries the mechanism).
+				 *
+				 * The conditional renders into ITS OWN SLOT: a falsy child keeps its position in
+				 * this children list, so the wrapper after it keeps its index and the textarea
+				 * is never unmounted and remounted — the one thing in this band that must not be
+				 * recreated under the user's hands.
+				 */}
+				{asideSessionId && aside !== null && (
+					<AsidePanel
+						sessionId={asideSessionId}
+						sessionStreaming={asideStreaming}
+						isSmallView={isSmallView}
+						/*
+						 * The panel's own controls take focus with them when they close it, so
+						 * the control that owns the textarea hands it back (UX round 1, U6).
+						 */
+						onReturnFocus={() => textareaRef.current?.focus()}
+					/>
+				)}
+				{/*
 				 * THE SENTENCE AND THE BOX SHARE ONE ANCHORING ELEMENT, and that is the round-3
 				 * fix for the composer's own layout around the capture (design round 3, D1; UX
 				 * round 3, U14; code review round 3, MAJOR 1; QA round 3, Q1/Q2).
@@ -5768,6 +6017,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 											 * agent` takes over once it has settled. See `composerPlaceholder` for why that
 											 * outranks `awaitingReply` and what it must never claim.
 											 *
+											 * `asideAttached` is the attached `/btw` panel, which re-routes this box's
+											 * Enter off the record. Where its term sits in the order - after the two
+											 * refusals and the gate, ahead of both send-state sentences - and why each
+											 * side of that position is load-bearing is stated on `composerPlaceholder`.
+											 *
 											 * WORDING AND INDICATOR. Sentence case, no ellipsis, no spinner, in the
 											 * composer's existing idiom - every state this box has ever had is one
 											 * of these strings and nothing else (design rounds 2 and 3). The
@@ -5786,6 +6040,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												unavailable,
 												inputDisabled: isInputDisabled,
 												awaitingAnswer,
+												asideAttached: aside !== null,
 												sendingUnsettled: sendUnsettled || sendInFlight,
 												awaitingReply,
 											})
@@ -6551,7 +6806,29 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									) : (
 										!isRecording &&
 										!isTranscribing && (
-											<Tooltip content="Send message">
+											<Tooltip
+												content={
+													/*
+													 * THE VERB FOLLOWS THE DESTINATION (UX round 1, U5). While an aside is
+													 * attached this press asks the aside and not the conversation, and the
+													 * control said "Send message" on both — so a screen-reader user got no
+													 * routing cue at all once the placeholder, the only one there was, was
+													 * gone on the first keystroke. The label is the one cue that survives
+													 * typing, because it is attached to the control the press uses.
+													 *
+													 * AND THE DESTINATION IS THE GATE'S WHILE ONE IS PENDING (agent review
+													 * round 5, R5-3). A pending `ask` gate is answered by the very same press
+													 * — `chat-page.tsx` resolves it before it looks for an aside — and the
+													 * placeholder already says so ("Answer the question above", which is
+													 * `composerPlaceholder`'s own order: gate, then aside). The control named
+													 * the aside in that state, which is the one thing this control exists not
+													 * to do.
+													 */
+													aside !== null && !awaitingAnswer
+														? "Ask the aside"
+														: "Send message"
+												}
+											>
 												<span>
 													{/*
 													 * AND NOT `isLoading` ANY MORE (review round 2, U6). While a
@@ -6582,7 +6859,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 															isInputDisabled ||
 															(!newMessage.trim() && attachments.length === 0)
 														}
-														aria-label="Send message"
+														aria-label={
+															aside !== null && !awaitingAnswer
+																? "Ask the aside"
+																: "Send message"
+														}
 													>
 														<Send aria-hidden="true" />
 													</Button>

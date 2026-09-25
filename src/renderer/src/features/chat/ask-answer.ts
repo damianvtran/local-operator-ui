@@ -706,7 +706,7 @@ export const answerReport = (
  * Its own code rather than the send's (which no longer exists as a category): the
  * two are statements about different acts, and the composer's decisions are made
  * from the notice the failure carries, so this is kept only as the code a reader
- * can branch on. `retryWillFail` does not list it - a Retry on this arm is refused
+ * can branch on. `withholdsRetryHint` does not list it - a Retry on this arm is refused
  * by the notice's own `retry: false`, which is the answer of the failure that owns
  * it (an option whose question has moved on cannot be pressed again).
  */
