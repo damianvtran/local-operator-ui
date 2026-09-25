@@ -2332,6 +2332,74 @@ test("session_pins is its own feature key, and its absence closes the feature", 
 	assert.equal(desktopFeatureEnabled(undefined, "session_pins"), false);
 });
 /**
+ * The paged catalogue's four new parameters, and the one promise they carry.
+ *
+ * WHY THIS BELONGS IN THE TRANSPORT SUITE rather than only where the store is
+ * driven: the compatibility claim is about the REQUEST, and it is a claim about
+ * bytes. An older daemon is fully supported only if a client that names none of
+ * the new parameters sends the request it has always sent - and a client that
+ * names them against a daemon that ignores unknown query parameters would receive
+ * an UNSCOPED page, which is why the capability exists and why the schema admits
+ * the fields at all.
+ */
+test("the catalogue's paging parameters are optional, typed, and inert when unset", () => {
+	const plain = desktopRequestSchema.safeParse({
+		op: "sessions.list",
+		limit: 50,
+	});
+	assert.equal(plain.success, true);
+	assert.equal(
+		rendererDesktopEndpoint(plain.data).path,
+		"/v1/desktop/sessions?limit=50",
+		"a request that asks for no paging parameter is what this app always sent",
+	);
+
+	const scoped = desktopRequestSchema.safeParse({
+		op: "sessions.list",
+		limit: 25,
+		scope_kind: "team",
+		scope_name: "lopdev",
+		cursor: "abc",
+		with_counts: true,
+		include_archived: true,
+	});
+	assert.equal(scoped.success, true);
+	assert.equal(
+		rendererDesktopEndpoint(scoped.data).path,
+		"/v1/desktop/sessions?limit=25&include_archived=true&scope_kind=team&scope_name=lopdev&cursor=abc&with_counts=true",
+		"the two parameters this request has always carried come first, so the paged form is a strict superset",
+	);
+
+	// The closed vocabulary, and the bound: a third axis or an over-long name is
+	// refused HERE by name rather than arriving as the daemon's generic 422.
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			op: "sessions.list",
+			scope_kind: "workspace",
+			scope_name: "x",
+		}).success,
+		false,
+	);
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			op: "sessions.list",
+			scope_kind: "team",
+			scope_name: "t".repeat(65),
+		}).success,
+		false,
+	);
+	// A scope NAME is store data, so it is encoded rather than interpolated: a `&`
+	// in a team's name would otherwise end the parameter and change the question.
+	const odd = desktopRequestSchema.safeParse({
+		op: "sessions.list",
+		scope_kind: "team",
+		scope_name: "a&b=c",
+	});
+	assert.equal(odd.success, true);
+	assert.match(rendererDesktopEndpoint(odd.data).path, /scope_name=a%26b%3Dc/);
+});
+
+/**
  * The pairing question, asked of one answer.
  *
  * WHY this is its own guard: `desktopAnswerProvesPairing` is the call site's

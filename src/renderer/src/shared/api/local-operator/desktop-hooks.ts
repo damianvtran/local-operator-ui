@@ -181,6 +181,33 @@ export type DesktopFeature =
 	| "profile_catalogue"
 	| "team_catalogue"
 	| "session_catalogue"
+	/**
+	 * `sessions.list` can be SCOPED, PAGED and COUNTED: `scope_kind`/`scope_name`,
+	 * `cursor`, `with_counts`, answered with `next_cursor`/`cursor_missing`/`scope`/
+	 * `counts`.
+	 *
+	 * ITS OWN KEY RATHER THAN A BUMP OF `session_catalogue` TO 4, on the rule this
+	 * union states in several places: an EXISTING surface must keep working against
+	 * a backend that lacks the new one. The existing surface here is the whole chats
+	 * list, and it keeps working only if the client can ASK whether the daemon
+	 * understands the new parameters - which matters because FastAPI silently
+	 * ignores unknown query parameters, so an un-gated `scope_kind=team&
+	 * scope_name=lopdev` would receive the UNSCOPED page and draw other teams' rows
+	 * under that team, and an un-gated `cursor` would receive page one again and
+	 * duplicate it. A bump to 4 would also overload "the catalogue's shape changed"
+	 * with "the catalogue can be paged", and would have to be bumped again by the
+	 * next shape change.
+	 *
+	 * It gates THREE promises together - the scope, the cursor and the census -
+	 * because they are one contract revision: a client that had the counts without
+	 * the scope could not render a group's count consistently with that group's
+	 * paged rows.
+	 *
+	 * ABSENT MEANS TODAY'S BEHAVIOUR EXACTLY: one unscoped `limit=500` request, the
+	 * badge from the rows the client holds, and every group expanded client-side
+	 * over that one page.
+	 */
+	| "session_catalogue_page"
 	/*
 	 * A session's code memory (the `sessions.variables.*` ops). A backend that
 	 * predates the surface simply does not advertise the key, so
