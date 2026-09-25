@@ -1968,11 +1968,13 @@ derivation to guard. What remains:
 - **Write access to `main` is release authority, and it is the widest control this
   repository has.** `main` is governed by the `Main Protection` ruleset —
   `gh api repos/<owner>/<repo>/rules/branches/main`, the check this file already
-  prescribes, names it, ruleset `23841604` — and the only way past it without a
-  second
-  approval is its one bypass actor, `RepositoryRole` id 5, which on a repository
-  owned by a personal account is the owner alone (AGENTS.md, *Who may merge: two
-  tiers*). What the
+  prescribes, names it, ruleset `23841604` — and past its approval count stand
+  **five** bypass actors rather than one: `RepositoryRole` id 5 with
+  `bypass_mode: always`, which on a repository owned by a personal account is the
+  owner alone, plus four user-scoped actors at `bypass_mode: pull_request` —
+  `bbqben`, `olafagbemi`, `sherman-tsui` and `SanaKetabchi` — who may merge a pull
+  request the count would otherwise refuse, though they may not push to the branch
+  at all (*Who may merge: two tiers*). What the
   Release trigger adds on top is a single, visible act between a merge and a shipped
   version: nothing reaches users until somebody creates a Release, and that Release,
   its notes and its tag are all attributable to whoever ran the command. Read every
@@ -2041,15 +2043,21 @@ false`, `require_last_push_approval: false`,
 additional approval for unattributed Copilot pull requests* — scoped to a pull
 request that **Copilot** opened under its own app identity, so an unattributed
 Copilot PR needs two approvals and nothing here does) and
-`allowed_merge_methods: [merge, squash, rebase]`. It carries exactly one bypass
-actor, `RepositoryRole` id 5 with `bypass_mode: always` — and on a repository
-owned by a personal account **that role is the owner's alone**: such a repository
+`allowed_merge_methods: [merge, squash, rebase]`. It carries **five** bypass
+actors, not one. The first is `RepositoryRole` id 5 with `bypass_mode: always` —
+and on a repository owned by a personal account **that role is the owner's
+alone**: such a repository
 has only two permission levels, owner and collaborator, and GitHub refuses `admin`
-and `maintain` on one (`422 Cannot assign <user> permission of admin`), so the
-bypass belongs to `damianvtran` and to no collaborator (GitHub, *Permission levels
+and `maintain` on one (`422 Cannot assign <user> permission of admin`), so that
+`always` bypass belongs to `damianvtran` and to no collaborator (GitHub, *Permission levels
 for a personal account repository*; the same page names the escape hatch —
 transferring the repository to an organization is what would create those roles,
-and what would permit team-scoped bypass actors). Confirm what is actually
+and what would permit team-scoped bypass actors). The other four are user-scoped
+and deliberately narrower: `bbqben`, `olafagbemi`, `sherman-tsui` and
+`SanaKetabchi`, each `bypass_mode: pull_request`, which GitHub grants *without*
+allowing a direct push — the actor must open a pull request, so the trail survives
+— and they were added on 2026-09-24, which is why this paragraph read "exactly one
+bypass actor" until the ruleset was re-read. Confirm what is actually
 enforced, rather than trusting this paragraph, with
 `gh api repos/damianvtran/local-operator-ui/rules/branches/main` — that endpoint is
 the state, and it returns the ruleset above today; this paragraph is the record,
@@ -2065,7 +2073,13 @@ nobody "fixes" one half without understanding what the other half is for.
 the operator, running on their machine and under their account, which is the
 normal case here — the standing agent review gate **is** the approval. A clean,
 fresh, independent agent review round plus green CI is **sufficient to merge**;
-the agent does not need to find a second human to click approve. On an
+the agent does not need to find a second human to click approve. That authorizes
+the merge; it does not move the count. The round is recorded as a **comment**, and
+a comment is an approving review to nobody: `required_approving_review_count`
+moves only for an *approving review* from an account other than the author, so a
+PR whose only "approval" is the agent round still reads `BLOCKED` with
+`REVIEW_REQUIRED` and `reviews: []` — measured on the v0.30.31 bump PR #510,
+merged 2026-09-25 by the owner's bypass with zero reviews. On an
 owner-authored PR that means the completion is `--admin`, because GitHub refuses
 `422 Review Can not approve your own pull request` — no account here can approve
 the pull request it opened, so the rule the reviewer would satisfy by clicking is
@@ -2088,7 +2102,7 @@ be lowered: at 0 an outsider could land on `main` with nobody having looked at i
 (`422 Review Can not approve your own pull request`), and every agent here pushes
 as the owner's account, so an agent-authored PR the owner created can never be
 *clicked* approved by the account that opened it. The ruleset anticipates exactly
-this: its one bypass actor is the owner's own, so that bypass is the
+this: its `always` bypass actor is the owner's own, so that bypass is the
 **sanctioned** way the owner's reviewed PR completes, not a hole. Concretely, for
 an agent acting for the owner with a clean
 independent round and classified-green CI: try the normal merge first (a
