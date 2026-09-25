@@ -779,57 +779,46 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  * AND quotes both stamps as this file's own values, so it is held to them rather
  * than being read as history - the distinction the paragraph above draws.
  */
+/*
+ * The notes that state BOTH of this file's stamps at the pair this file ships.
+ *
+ * THE LIST IS A UNION, NOT A HISTORY, and that is the whole rule: every note whose
+ * text quotes both `srcTree` and `scriptsTree` at the shipped pair belongs here, so
+ * a fold takes the UNION of the two sides' lists. A note whose quoted pair an
+ * earlier re-derivation superseded is not held here - its pair is written as bare
+ * SHAs in the note itself, which is the defect this list exists for - and because
+ * the re-stamp below rewrites every note's backticked claims to the shipped pair,
+ * a note can legitimately COME BACK into the list when the branch that owns it
+ * re-stamps on top of a newer fold. That is what happened to the four keys after
+ * `occupiedAddressRestampNote` here: a merge took only one side of this list, they
+ * stopped being checked, and this commit restores them.
+ *
+ * AN OMITTED KEY IS A CHECK SILENTLY NOT RUN, which is why the rule above has to
+ * be stated rather than assumed: this test iterates the list, so a key dropped by
+ * a hand-resolved merge stops being verified while the suite still goes green
+ * (round 8, M1: four LIVE keys - every one of them still quoting both stamps at
+ * the shipped pair - were lost that way). A fold's resolution therefore has to
+ * compare the KEY SETS of both sides, not the line counts.
+ */
 const STAMP_BINDING_NOTES = [
-	/*
-	 * EIGHT NOTES LEFT THIS LIST when `fix(backend): never lose the app to an
-	 * address it does not own` re-derived both stamps: `shellPathRestampNote`,
-	 * `settingsGateRestampNote`, `candidateMacArchRestampNote`,
-	 * `notarizeGateRestampNote`, `usageInFlightConvergenceNote`,
-	 * `macNativeComponentsRestampNote`, `telemetrySwitchRestampNote` and
-	 * `readReceiptRestampNote` all quoted the pair that change supersedes, and a
-	 * pair that is history must not be held to this file as if it were its own -
-	 * the defect this list exists for. Their quoted pairs are written as bare
-	 * SHAs in the notes themselves, the same rewrite
-	 * `usageAutoCheckRestampNote` and `usageInFlightRemediationNote` got when
-	 * earlier rounds re-derived the stamps under them.
-	 */
-	/*
-	 * NINE NOTES LEFT THIS LIST when this branch folded onto the `origin/main` that
-	 * moved under it and re-derived both stamps: `shellPathRestampNote`,
-	 * `settingsGateRestampNote`, `candidateMacArchRestampNote`,
-	 * `notarizeGateRestampNote`, `usageInFlightConvergenceNote`,
-	 * `macNativeComponentsRestampNote`, `telemetrySwitchRestampNote`,
-	 * `readReceiptRestampNote` and - arriving in the same fold, written by the
-	 * picker's catalogue-focus change - `modelCatalogueFocusRestampNote`. Every one
-	 * of them quoted the pair the fold supersedes, and a pair that is history must
-	 * not be held to this file as if it were its own: that is the defect this list
-	 * exists for. Each note's pair is written as bare SHAs in the note itself, the
-	 * same rewrite `usageAutoCheckRestampNote` and `usageInFlightRemediationNote`
-	 * got when earlier rounds re-derived the stamps under them.
-	 */
 	"occupiedAddressRestampNote",
+	"shellPathRestampNote",
+	"settingsGateRestampNote",
+	"candidateMacArchRestampNote",
+	"notarizeGateRestampNote",
 	"usageInFlightConvergenceNote",
 	"macNativeComponentsRestampNote",
 	"telemetrySwitchRestampNote",
-	// The seventh: `readReceiptRestampNote` states this file's own pair for the
-	// read-receipt branch, so it is held to that pair rather than read as history -
-	// the distinction `candidateMacArchRestampNote` above is in the list for.
 	"readReceiptRestampNote",
 	/*
-	 * The eighth: `modelCatalogueFocusRestampNote` states this file's own pair for
-	 * the picker's catalogue-focus branch, and it exists BECAUSE the list is not
-	 * optional reading - the change it re-stamps for rewrote no frame, so a reader
-	 * is owed the two values it does bind and the reason no still was owed.
+	 * This one exists BECAUSE the list is not optional reading: the change it
+	 * re-stamps for rewrote no frame, so a reader is owed the two values it binds
+	 * and the reason no still was owed.
 	 */
 	"modelCatalogueFocusRestampNote",
 	/*
-	 * The ninth, this branch's: `round1LabelGapRestampNote` states the pair the
-	 * round-2 fold re-derived, and the re-stamp below re-derives it again — so it is
-	 * held to the shipped pair rather than read as history, which is the same
-	 * distinction `readReceiptRestampNote` above is in the list for. This fold does
-	 * NOT retire the notes it re-derives on top of: the re-stamp rewrites every
-	 * note's backticked claims to the shipped pair, which is what makes the list
-	 * and the notes agree whichever branch last moved.
+	 * This branch's own: it states the pair an earlier fold re-derived, and is held
+	 * to the pair this file ships rather than read as history.
 	 */
 	"round1LabelGapRestampNote",
 ];
