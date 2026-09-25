@@ -1456,9 +1456,186 @@ async function readUntil(reader, done, timeoutMs = 15_000) {
 	return last;
 }
 
+/*
+ * ---- the palette a frame's NAME claims ---------------------------------------
+ *
+ * WHY THIS IS HERE AND NOT IN THE SCENES (design round 2, D20; the same class as
+ * round 1's D4). Round 2 found six frames named `-dark` rendering the light
+ * palette, a `-light` frame rendering the dark one, and a "both palettes" pair
+ * that was one palette photographed twice. The mechanism is identical both
+ * rounds: a scene arranges the palette once per section and then captures
+ * several frames, so every frame after a theme change is shot in the palette the
+ * scene happened to be in rather than the one its name claims - and two of these
+ * were branch-dependent, so whether the set was right depended on which branch a
+ * run took. A scene-level correction holds until the next scene edits; the claim
+ * belongs to the frame's name, so the check lives at the capture every frame
+ * goes through.
+ *
+ * TWO READS, BECAUSE EACH CAN BE RIGHT WHILE THE OTHER IS WRONG. The DOM read
+ * (`data-theme` plus the painted `--lo-canvas`) says which palette the renderer
+ * is compositing; the PIXEL read says which palette reached the file a reviewer
+ * is handed. A theme the renderer took but did not paint, and a capture served
+ * from a stale frame, each satisfy one read and not the other - and the pixel
+ * read is the one that catches the failure this whole mechanism exists for.
+ *
+ * IT DOES NOT SELF-CORRECT, deliberately. Setting the theme from the label here
+ * is two lines and would make every frame true; it would also make this a check
+ * that cannot fail, which is the shape that let D4 and then D20 reach a reviewer
+ * while the runs reported clean. The scene is told its arrangement contradicts
+ * its name, at the frame, in the run, and fixes it there.
+ *
+ * THE SUFFIX IS THE CLAIM, which is this rig's convention across every scene
+ * (`sections-default-dark`, `strip-mark-light`). A name claiming no palette is a
+ * frame about a state, and there is nothing here to hold it to.
+ */
+const FRAME_PALETTE = {
+	dark: "localOperatorDark",
+	light: "localOperatorLight",
+};
+/*
+ * The GENERATED stylesheet, read rather than a palette written down here: a
+ * literal would be a second copy of the brand palettes that the next token change
+ * moves out from under, and this check would then fail on a correct frame. The
+ * generated file is the palettes' own artifact (`pnpm check-themes` keeps it in
+ * step with the registry), so the expectation moves with the thing it checks.
+ */
+const PALETTE_CSS = new URL(
+	"../src/renderer/src/styles/themes.generated.css",
+	import.meta.url,
+);
+
+/** The palette a frame's NAME claims, or `null` for a name that claims none. */
+function claimedPalette(label) {
+	const match = /-(dark|light)$/.exec(label);
+	return match === null ? null : match[1];
+}
+
+/** Rec. 709 luminance of an `#rrggbb`, 0-255. */
+function srgbLuma(hex) {
+	const value = Number.parseInt(hex.slice(1), 16);
+	return (
+		0.2126 * ((value >> 16) & 0xff) +
+		0.7152 * ((value >> 8) & 0xff) +
+		0.0722 * (value & 0xff)
+	);
+}
+
+/** Both palettes' own `--lo-canvas`, as `{ hex, luma }` each, or `null`. */
+function brandCanvas() {
+	const css = readFileSync(PALETTE_CSS, "utf8");
+	const out = {};
+	for (const [palette, theme] of Object.entries(FRAME_PALETTE)) {
+		const block = new RegExp(
+			`\\[data-theme="${theme}"\\][^{]*\\{([\\s\\S]*?)\\n\\}`,
+		).exec(css);
+		const hex =
+			block === null ? null : /--lo-canvas:\s*(#[0-9a-f]{6})\b/i.exec(block[1]);
+		if (hex === null) return null;
+		out[palette] = { hex: hex[1].toLowerCase(), luma: srgbLuma(hex[1]) };
+	}
+	return out;
+}
+
+/**
+ * The mean luminance of a captured frame, sampled across the whole picture.
+ *
+ * A MEAN RATHER THAN ONE PIXEL, because a single coordinate is a claim about the
+ * layout (something must be there) while the mean is a claim about the palette
+ * (nothing in a dark-palette screen can average light: the grounds cover most of
+ * it and ink is thin). Measured across the mislabelled set that bought this
+ * check: the six wrong `-dark` frames average 236.9-237.5 where the correct ones
+ * average 34.5-36.7, so the two populations are ~200 apart and the midpoint test
+ * below has ~100 of margin either side.
+ *
+ * `null` when `sharp` cannot be loaded. The pixel half is the stronger read, but
+ * the DOM half already discriminates this class (in D20's own frames the store
+ * said light while the name said dark), and a rig that cannot start without an
+ * optional dev dependency is worse than one that says which half it could not
+ * run.
+ */
+async function frameMeanLuma(file) {
+	let sharp;
+	try {
+		({ default: sharp } = await import("sharp"));
+	} catch {
+		return null;
+	}
+	const { data, info } = await sharp(file)
+		.raw()
+		.toBuffer({ resolveWithObject: true });
+	const channels = info.channels;
+	let sum = 0;
+	let sampled = 0;
+	/* Every 7th pixel: 394k samples of a 2760x1800 frame, which is 200x more than
+	 * the ~200-luma gap needs and keeps the decode off the run's critical path. */
+	for (let at = 0; at < data.length; at += channels * 7) {
+		sum += 0.2126 * data[at] + 0.7152 * data[at + 1] + 0.0722 * data[at + 2];
+		sampled += 1;
+	}
+	return sum / sampled;
+}
+
+/**
+ * Hold one captured frame to the palette its NAME claims, and say which half
+ * failed when it does not. Called by `capture()` and by the three capturing
+ * helpers on the frame they KEEP, so a `captureSettled` retry does not assert
+ * eight times over.
+ */
+async function assertFramePalette(cdp, frame, palette) {
+	const canvas = brandCanvas();
+	const painted = await cdp.evaluate(`(() => {
+		const root = document.documentElement;
+		return {
+			theme: root.getAttribute("data-theme"),
+			canvas: getComputedStyle(root).getPropertyValue("--lo-canvas").trim(),
+		};
+	})()`);
+	const mean = await frameMeanLuma(frame.path);
+	const own = canvas === null ? null : canvas[palette];
+	const other =
+		canvas === null ? null : canvas[palette === "dark" ? "light" : "dark"];
+	const domOk =
+		own !== null &&
+		painted.theme === FRAME_PALETTE[palette] &&
+		painted.canvas.toLowerCase() === own.hex;
+	/* Closer to its own palette's ground than to the other's: the midpoint test,
+	 * with the palettes supplying the numbers rather than a constant here. */
+	const pixelOk =
+		own !== null && mean !== null
+			? Math.abs(mean - own.luma) < Math.abs(mean - other.luma)
+			: null;
+	const ok = domOk && pixelOk !== false;
+	return check(
+		`${frame.label} draws the ${palette} palette its name claims`,
+		ok,
+		[
+			domOk
+				? null
+				: `DOM: data-theme=${painted.theme} --lo-canvas=${painted.canvas || "(unreadable)"}, expected ${FRAME_PALETTE[palette]} / ${own?.hex ?? "(palette unreadable)"}`,
+			pixelOk === false
+				? `PIXELS: the frame averages luma ${mean.toFixed(1)}, nearer the ${palette === "dark" ? "light" : "dark"} palette's ground (${other.luma.toFixed(1)}) than its own (${own.luma.toFixed(1)})`
+				: null,
+			mean === null
+				? "PIXELS: sharp is unavailable, so only the DOM half ran"
+				: null,
+		]
+			.filter(Boolean)
+			.join("; ") || undefined,
+		pixelOk === null
+			? `DOM ${painted.theme} ${painted.canvas}; pixels unavailable`
+			: `DOM ${painted.theme} ${painted.canvas}; mean luma ${mean.toFixed(1)} vs ${own.luma.toFixed(1)} own / ${other.luma.toFixed(1)} other`,
+	);
+}
+
 /** Capture a frame through the app's own `capturePage()`. */
-function capture(cdp, label) {
-	return cdp.evaluate(`window.__loDevDriver.capture(${JSON.stringify(label)})`);
+async function capture(cdp, label, { assertPalette = true } = {}) {
+	const frame = await cdp.evaluate(
+		`window.__loDevDriver.capture(${JSON.stringify(label)})`,
+	);
+	const palette = claimedPalette(label);
+	if (palette !== null && assertPalette)
+		await assertFramePalette(cdp, frame, palette);
+	return frame;
 }
 
 /**
@@ -1686,7 +1863,12 @@ async function captureSettled(cdp, label, { attempts = 8, gapMs = 150 } = {}) {
 	for (let attempt = 1; attempt <= attempts; attempt += 1) {
 		const clearance = await waitForNoToasts(cdp);
 		toastWaitMs += clearance.waitedMs;
-		frame = await capture(cdp, label);
+		/*
+		 * The palette is asserted BELOW, on the frame this helper KEEPS rather than on
+		 * each attempt: a retry is the same screen captured again, so eight identical
+		 * PASS lines would bury the reading that matters without adding one.
+		 */
+		frame = await capture(cdp, label, { assertPalette: false });
 		const bytes = readFileSync(frame.path);
 		// A toast that arrived while the frame was being taken is not this frame:
 		// the run throws the capture away and starts the comparison again.
@@ -1707,18 +1889,34 @@ async function captureSettled(cdp, label, { attempts = 8, gapMs = 150 } = {}) {
 		 * answers `undefined`, which is falsy and simply keeps waiting.
 		 */
 		if (previous?.equals(bytes)) {
-			return {
+			return await assertKeptFrame(cdp, {
 				...frame,
 				attempts: attempt,
 				stable: true,
 				toastFree,
 				toastWaitMs,
-			};
+			});
 		}
 		previous = bytes;
 		await wait(gapMs);
 	}
-	return { ...frame, attempts, stable: false, toastFree: false, toastWaitMs };
+	return await assertKeptFrame(cdp, {
+		...frame,
+		attempts,
+		stable: false,
+		toastFree: false,
+		toastWaitMs,
+	});
+}
+
+/**
+ * Assert the claimed palette on a frame a capturing helper is about to RETURN,
+ * and hand the same frame back so the helper reads as one expression.
+ */
+async function assertKeptFrame(cdp, frame) {
+	const palette = claimedPalette(frame.label);
+	if (palette !== null) await assertFramePalette(cdp, frame, palette);
+	return frame;
 }
 
 /**
@@ -1744,19 +1942,34 @@ async function captureWithToast(
 	let frame = null;
 	let text = null;
 	for (let attempt = 1; attempt <= attempts; attempt += 1) {
-		const captured = await capture(cdp, label);
+		const captured = await capture(cdp, label, { assertPalette: false });
 		const shown = await toastText(cdp).catch(() => null);
 		if (shown === null)
-			return { ...captured, attempts: attempt, stable: false, toastText: null };
+			return await assertKeptFrame(cdp, {
+				...captured,
+				attempts: attempt,
+				stable: false,
+				toastText: null,
+			});
 		frame = captured;
 		text = shown;
 		const bytes = readFileSync(captured.path);
 		if (previous?.equals(bytes))
-			return { ...captured, attempts: attempt, stable: true, toastText: text };
+			return await assertKeptFrame(cdp, {
+				...captured,
+				attempts: attempt,
+				stable: true,
+				toastText: text,
+			});
 		previous = bytes;
 		await wait(gapMs);
 	}
-	return { ...frame, attempts, stable: false, toastText: text };
+	return await assertKeptFrame(cdp, {
+		...frame,
+		attempts,
+		stable: false,
+		toastText: text,
+	});
 }
 
 /**
@@ -1776,12 +1989,14 @@ async function captureWithToast(
  * mechanism of the failure above.
  */
 async function captureToastPair(cdp, label) {
-	const first = await capture(cdp, label);
+	const first = await capture(cdp, label, { assertPalette: false });
 	const firstBytes = readFileSync(first.path);
 	const firstText = await toastText(cdp).catch(() => null);
-	const second = await capture(cdp, label);
+	const second = await capture(cdp, label, { assertPalette: false });
 	const secondText = await toastText(cdp).catch(() => null);
-	return {
+	/* The palette is asserted on the SECOND shot, which is the frame this helper
+	 * hands back: the first is the same file at the same screen one capture earlier. */
+	return await assertKeptFrame(cdp, {
 		...second,
 		stable:
 			firstText !== null &&
@@ -1789,7 +2004,7 @@ async function captureToastPair(cdp, label) {
 			firstBytes.equals(readFileSync(second.path)),
 		toastText: secondText,
 		firstToastText: firstText,
-	};
+	});
 }
 
 /** The text of the toast on screen, or `null` when there is none. */
@@ -7473,6 +7688,96 @@ async function sceneFloors(cdp) {
 			);
 		}
 	}
+
+	/*
+	 * THE COMPOSER AT REST (design round 2, D25(b)).
+	 *
+	 * Every frame at head carries the 2px `outline-accent` ring, because the empty state
+	 * autofocuses a text input and a text input always matches `:focus-visible` - so §G1's
+	 * "`outline-accent` 2px at `:focus-visible` ONLY" had no frame at rest to be judged in,
+	 * and the operator's loudest original complaint (design round 1's D12, the resting
+	 * accent ring) was the one thing the set could not show.
+	 *
+	 * A blur is what clicking the pane's ground does to it, and the read below is the half
+	 * a frame cannot state on its own: the box's own outline is `none` (or zero-width) and
+	 * NOTHING inside the composer matches `:focus-visible`. The frame is the other half.
+	 */
+	const blurred = await cdp.evaluate(`(() => {
+		const active = document.activeElement;
+		if (active && typeof active.blur === "function") active.blur();
+		return { was: active ? (active.getAttribute("aria-label") ?? active.tagName) : null };
+	})()`);
+	await wait(250);
+	const resting = await cdp.evaluate(`(() => {
+		const box = document.querySelector('[data-tour-tag="chat-input-textarea"]');
+		const band = box ? (box.closest("form") ?? box.parentElement) : null;
+		const style = box ? getComputedStyle(box) : null;
+		return {
+			outlineStyle: style ? style.outlineStyle : null,
+			outlineWidth: style ? style.outlineWidth : null,
+			ringed: band ? [...band.querySelectorAll("*")].filter((el) => el.matches(":focus-visible")).length : null,
+			focused: document.activeElement ? document.activeElement.tagName : null,
+		};
+	})()`);
+	check(
+		"the composer at rest draws no focus ring",
+		resting.ringed === 0 &&
+			(resting.outlineStyle === "none" || resting.outlineWidth === "0px"),
+		JSON.stringify({ blurred, resting }),
+	);
+	await parkPointer(cdp);
+	const restFrame = await captureSettled(
+		cdp,
+		`floors-${WINDOW_WIDTH}x${WINDOW_HEIGHT}-${mode ?? "none"}-unfocused-dark`,
+	);
+	note("frame at rest", JSON.stringify(restFrame));
+
+	/*
+	 * ESC CLOSES THE CANVAS (UX round 1, U6), driven here because this is the one scene
+	 * that has a canvas mounted at all: the reviewer pressed Escape at 1380x900 with the
+	 * transcript focused and the pane's own control still read `Close canvas`.
+	 *
+	 * The press goes to the WINDOW (the pane's binding is a window listener), and the focus
+	 * is put on the transcript first - the state the reviewer was in - so this is the
+	 * binding under test rather than a control's own click. The pane is re-opened at the
+	 * end so a later step in this scene (or a second palette's run) is not changed by it.
+	 */
+	if (expectCanvas && (mode === "docked" || mode === "overlay")) {
+		await cdp.evaluate(
+			`(() => { const t = document.querySelector('[data-lo-canonical-transcript]'); if (t) t.focus(); return true; })()`,
+		);
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		await wait(400);
+		const closed = await cdp.evaluate(`(() => ({
+			pane: document.querySelector('[data-tour-tag="canvas-dock"]') ? "mounted" : "gone",
+			control: (() => { const b = document.querySelector('[data-tour-tag="open-canvas-button"]'); return b ? (b.getAttribute("aria-label") ?? "unlabelled") : null; })(),
+			focus: document.activeElement ? (document.activeElement.getAttribute("data-tour-tag") ?? document.activeElement.tagName) : null,
+		}))()`);
+		check(
+			"Escape closes the canvas pane",
+			closed.pane === "gone",
+			JSON.stringify(closed),
+		);
+		/*
+		 * AND THE READER KEEPS THEIR PLACE. The header moves focus to the toggle only when
+		 * the close LOST it (`document.activeElement === document.body`), and that guard is
+		 * deliberate and shipped: closing the pane from the command palette while the
+		 * composer holds the caret must not pull it out of the message being typed. This
+		 * scene presses Escape with the TRANSCRIPT focused - the state the reviewer was in -
+		 * so the correct reading is the other half of the same rule: focus stays where they
+		 * put it and does not fall to the body, which is the defect round 1's U5 named.
+		 */
+		check(
+			"closing from the transcript leaves the reader's focus where they put it",
+			closed.focus !== "BODY",
+			JSON.stringify(closed),
+		);
+		await verb(cdp, "openCanvasDocument", { path: document_ });
+	}
 }
 
 async function sceneStates(cdp) {
@@ -7512,12 +7817,56 @@ async function sceneStates(cdp) {
 			facts.windowSize.height === WINDOW_HEIGHT,
 		`${JSON.stringify(facts.windowSize)} for a requested ${WINDOW_SIZE}`,
 	);
+	/*
+	 * THE CONTENT FILLS THE WINDOW ON macOS, AND THAT IS THE DESIGN RATHER THAN A LOST INSET
+	 * (QA round 1's Q1).
+	 *
+	 * This assertion used to demand `contentBounds.height < windowSize.height` with an inset of
+	 * at most 40px, and it fails on this head at every size: measured on darwin/headless at
+	 * 1024x673 and 1380x900, `windowSize == contentBounds` exactly (`floors-*`'s own facts note
+	 * carries the same reading at three sizes). The assertion was written when the OS drew the
+	 * frame; this PR switches macOS to `titleBarStyle: "hidden"` (`src/main/titlebar-options.ts`),
+	 * and a hidden title bar is precisely a window whose CONTENT IS THE WHOLE WINDOW - "hidden
+	 * leaves them [the traffic lights] and their OS-managed hit targets intact, so the renderer
+	 * never draws substitute controls", and "on macOS the renderer gives the OS controls their own
+	 * 32px lane and puts every column's first row BELOW it". So the inset is not lost, it moved:
+	 * the app reserves the lane itself, and a window whose content was 40px shorter would put the
+	 * lights over the renderer's own first row - the defect this change exists to remove.
+	 *
+	 * The check therefore asks what is actually true on each path: the content is never WIDER or
+	 * TALLER than the window, an inset that exists is at most the platform's own frame, and where
+	 * the OS frame is gone the app's own lane must be there to take its place. That last clause is
+	 * the half that makes this a check rather than a relaxation, and `laneIsMac` below is where it
+	 * is read - from the RENDERED lane, not from the mode the flag claims.
+	 */
+	const lane = await cdp.evaluate(`(() => {
+		const el = document.querySelector('[data-titlebar-lane]');
+		const root = document.documentElement;
+		const style = el ? getComputedStyle(el) : null;
+		const rect = el ? el.getBoundingClientRect() : null;
+		return {
+			platform: root.getAttribute('data-chrome-platform'),
+			mode: root.getAttribute('data-chrome-mode'),
+			display: style ? style.display : null,
+			height: rect ? Math.round(rect.height) : null,
+			width: rect ? Math.round(rect.width) : null,
+			top: rect ? Math.round(rect.top) : null,
+		};
+	})()`);
+	const laneIsMac =
+		lane.display !== "none" && lane.height === 32 && lane.top === 0;
+	note("the macOS chrome lane", JSON.stringify(lane));
 	check(
-		"the content area is smaller than the window by the platform's chrome only",
+		"the content area never exceeds the window, and an inset that exists is the platform's own frame",
 		facts.contentBounds.width === facts.windowSize.width &&
-			facts.contentBounds.height < facts.windowSize.height &&
+			facts.contentBounds.height <= facts.windowSize.height &&
 			facts.windowSize.height - facts.contentBounds.height <= 40,
 		`window ${JSON.stringify(facts.windowSize)} content ${JSON.stringify(facts.contentBounds)}`,
+	);
+	check(
+		"where the OS frame is gone the app reserves its own 32px lane",
+		facts.contentBounds.height === facts.windowSize.height ? laneIsMac : true,
+		`full-bleed content on ${lane.platform}/${lane.mode}: lane ${lane.display} ${lane.width}x${lane.height} at y${lane.top}`,
 	);
 
 	/*
@@ -15684,6 +16033,16 @@ async function sceneSidebarSections(cdp, handle) {
 	await checkSidebarScroll(link, "both sections overflowing (light)");
 
 	// --- 2. two drag positions, each written and drawn -------------------
+	/*
+	 * IN THE PALETTE THE FRAMES ARE NAMED FOR. The four frames below are `-dark`,
+	 * and before this line the scene was still in the light palette set for
+	 * `sections-default-light` two sections up - which is design round 2's D20 in one
+	 * line: every drag and floor frame was shot light and named dark. The rule this
+	 * block now follows, and the capture path asserts: a `captureSettled` whose label
+	 * names a palette is preceded by the `setTheme` for that palette.
+	 */
+	await verb(link, "setTheme", "localOperatorDark");
+	await wait(300);
 	const dragTo = async (dy, label) => {
 		const sep = await splitBox(link, SPLIT_SEPARATOR);
 		await movePointer(link, sep.x, sep.y);
@@ -15847,7 +16206,12 @@ async function sceneSidebarSections(cdp, handle) {
 	const clear = await splitBox(link, '[aria-label="Clear search"]');
 	if (clear !== null) await pressPointerStationary(link, clear.x, clear.y);
 	await wait(500);
-	await verb(link, "setTheme", "localOperatorLight");
+	/*
+	 * DARK, because the next frame is `sections-agents-hidden-dark`. This line used to
+	 * set LIGHT - which is how the pair below ended up byte-identical, both palettes
+	 * photographed as one (design round 2, D20).
+	 */
+	await verb(link, "setTheme", "localOperatorDark");
 	await wait(250);
 	await ready(link);
 	/*
@@ -15885,8 +16249,6 @@ async function sceneSidebarSections(cdp, handle) {
 			await pressPointerStationary(link, restore.x, restore.y);
 			await wait(400);
 		}
-		await verb(link, "setTheme", "localOperatorDark");
-		await wait(300);
 	}
 
 	// --- 6. the 56px strip's mark, both palettes --------------------------
@@ -15897,6 +16259,14 @@ async function sceneSidebarSections(cdp, handle) {
 		10_000,
 	);
 	await parkPointer(link);
+	/*
+	 * EACH STRIP FRAME NAMES ITS OWN PALETTE (design round 2, D20). These two captures
+	 * used to inherit whatever the block above left live - and that block's `setTheme`
+	 * runs only when the agents section was hidden, so the palette here depended on a
+	 * BRANCH. That is why `strip-mark-light` was shot dark in the shipped set.
+	 */
+	await verb(link, "setTheme", "localOperatorLight");
+	await wait(300);
 	await captureSettled(link, "strip-mark-light");
 	await verb(link, "setTheme", "localOperatorDark");
 	await wait(300);
@@ -15975,6 +16345,10 @@ async function sceneSidebarSections(cdp, handle) {
 		JSON.stringify(empty.last),
 	);
 	await parkPointer(link);
+	/* Named for a palette, so it sets it: see the strip's block above for why a frame
+	 * never inherits one from whatever ran before it (design round 2, D20). */
+	await verb(link, "setTheme", "localOperatorDark");
+	await wait(300);
 	await captureSettled(link, "empty-mark-dark");
 	await verb(link, "setTheme", "localOperatorLight");
 	await wait(300);
