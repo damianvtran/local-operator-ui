@@ -839,6 +839,21 @@ const STAMP_BINDING_NOTES = [
 	 * rather than read as history.
 	 */
 	"integrationsRedesignRestampNote",
+	/*
+	 * This pass's own, laid back on top of the fold: it re-stamps a
+	 * change that moves `src/` without touching a frame, so the reader is
+	 * owed the pair and the reason no still was owed.
+	 */
+	"liveSettleLabelRestampNote",
+	/*
+	 * This remediation round's own: it re-stamps the change that rounds 1's two MAJORs moved inside, so
+	 * the reader is owed the pair and the reason no still was owed.
+	 */
+	"liveSettleLabelRemediationNote",
+	/*
+	 * This remediation round's own: it re-stamps the change that rounds 1's two MAJORs moved inside, so
+	 * the reader is owed the pair and the reason no still was owed.
+	 */
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
