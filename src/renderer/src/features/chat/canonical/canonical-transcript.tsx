@@ -2028,7 +2028,17 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 								id={MISSING_SESSION_NOTICE_ID}
 								className="text-body-sm text-ink"
 							>
-								This conversation is on another device.
+								/*
+								 * WHAT TO DO, NOT WHAT THIS APP CANNOT DO. The line this
+								 * replaces said the conversation was "on another device" and
+								 * stopped there, which read as "there is nothing to do from
+								 * here" - wrong twice over now that the desktop can pilot a
+								 * peer's session as well as move one home. Both ways out are
+								 * named, and the backend's own sentence (below) is what names
+								 * the device and the commands.
+								 */
+								This conversation is on another device. Open it there, or
+								bring it here.
 							</p>
 							<p className="text-ink-dim text-meta">{remoteBlocked}</p>
 						</div>
