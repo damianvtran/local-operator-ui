@@ -46,9 +46,11 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import {
+	copyFileSync,
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
+	readdirSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
@@ -73,8 +75,15 @@ import { build } from "esbuild";
  */
 const RE_ANSWERED_A_REQUEST = /answered a request/;
 const RE_PROBE_EVIDENCE = /(no answer to probe|probe \d+ of \d+)/;
+/*
+ * The sentence an UNIDENTIFIED occupant gets. The old form named the daemon it
+ * could not identify ("answered without proving it is a Local Operator daemon");
+ * the copy now states what the app OBSERVED, with the probe's own account in
+ * parentheses, and never claims a Local Operator daemon it cannot name. The
+ * assertion's subject is unchanged - state the fact, do not invent a daemon.
+ */
 const RE_ANSWERED_WITHOUT_PROVING_I =
-	/answered without proving it is a Local Operator daemon/;
+	/did not answer this app's probe with anything it could use/;
 const RE_CONFIG = /^\.\/config$/;
 const RE_CONNECTED_TO_THE_DAEMON = /Connected to the daemon/;
 const RE_ELECTRON = /^electron$/;
@@ -86,8 +95,16 @@ const RE_LOGGER = /^\.\/logger$/;
 const RE_PROCESS_IS_GONE = /process is gone/;
 const RE_REFUSES_THIS_APP = /refused this app's credential/;
 const RE_503 = /503/;
+/*
+ * The sentence for a daemon this app holds no key to. It used to be a whole clause
+ * about what the app did NOT do; the copy names the holder (address, pid, install,
+ * version) and the missing key, and design round 1 (D3) added the act that ends the
+ * holder - `lop services reclaim <pid>` - which the round's own correction measured
+ * as a command this product ships. The assertion's subject is unchanged - the copy
+ * names the PATH into the state, not a generic failure.
+ */
 const RE_THIS_APP_WAS_NOT_GIVEN_THE =
-	/This app was not given the key to that server, so it did not start a second one/;
+	/is running a Local Operator daemon this app has no key for/;
 const RE_VITE_DISABLE_BACKEND_MANAG = /VITE_DISABLE_BACKEND_MANAGER/;
 
 /*
@@ -667,8 +684,31 @@ test("a daemon answering 503 is not a credential refusal, and is not spawned ove
 		instanceId: "instance-unreadable-store",
 		sessionsStatus: 503,
 	});
+	/*
+	 * THE CONFIGURED ADDRESS IS NAMED HERE, as every other case in this file names
+	 * it. These two were reading whatever the case above left in the global, so
+	 * which address the gate asked about depended on the order the file ran in -
+	 * and when the case above had disposed its daemon, the address they asked about
+	 * was a CLOSED port, which is the one answer that proves it free. Measured while
+	 * changing the gate: `started` came back TRUE and a real backend was started on
+	 * a stale port. Nothing about the subject changes; the case simply says which
+	 * address it is about.
+	 */
+	globalThis.__testConfiguredUrl = scene.address;
 	const manager = new BackendServiceManager();
 	managers.add(manager);
+	/*
+	 * THE FALLBACK BUDGET IS EMPTIED FOR THIS CASE, and the reason is its
+	 * subject: this test is about the OCCUPANT gate, while the shipped default
+	 * (`FALLBACK_SPAWN_URL`, the second origin the renderer's policy trusts)
+	 * would have the manager start a daemon somewhere else - which, in a rig,
+	 * means whatever `local-operator` PATH resolves, on a fixed port. These two
+	 * facts are not in tension: the app refuses to spawn ON the occupant either
+	 * way, and the fallback itself is proved over the real spawn path in
+	 * `scripts/owned-serve-lifecycle.test.mjs`, against a fake install and a
+	 * port the kernel picked.
+	 */
+	manager.fallbackSpawnUrls = [];
 	try {
 		const started = await manager.start({ quiet: true });
 		assert.equal(
@@ -716,6 +756,18 @@ test("a daemon answering the configured origin is never spawned over (EADDRINUSE
 	globalThis.__testConfiguredUrl = scene.address;
 	const manager = new BackendServiceManager();
 	managers.add(manager);
+	/*
+	 * THE FALLBACK BUDGET IS EMPTIED FOR THIS CASE, and the reason is its
+	 * subject: this test is about the OCCUPANT gate, while the shipped default
+	 * (`FALLBACK_SPAWN_URL`, the second origin the renderer's policy trusts)
+	 * would have the manager start a daemon somewhere else - which, in a rig,
+	 * means whatever `local-operator` PATH resolves, on a fixed port. These two
+	 * facts are not in tension: the app refuses to spawn ON the occupant either
+	 * way, and the fallback itself is proved over the real spawn path in
+	 * `scripts/owned-serve-lifecycle.test.mjs`, against a fake install and a
+	 * port the kernel picked.
+	 */
+	manager.fallbackSpawnUrls = [];
 	try {
 		const started = await manager.start({ quiet: true });
 		assert.equal(
@@ -778,6 +830,16 @@ test("an address that answers a status other than 200 is OCCUPIED, not free (F-2
 		publishRecord: false,
 		healthStatus: 503,
 	});
+	/*
+	 * THE CONFIGURED ADDRESS IS NAMED HERE, as every other case in this file names
+	 * it. These two were reading whatever the case above left in the global, so
+	 * which address the gate asked about depended on the order the file ran in -
+	 * and when the case above had disposed its daemon, the address they asked about
+	 * was a CLOSED port, which is the one answer that proves it free. Measured while
+	 * changing the gate: `started` came back TRUE and a real backend was started on
+	 * a stale port. Nothing about the subject changes; the case simply says which
+	 * address it is about.
+	 */
 	globalThis.__testConfiguredUrl = scene.address;
 	const manager = new BackendServiceManager();
 	managers.add(manager);
@@ -988,6 +1050,120 @@ test("a launch re-attaches to the daemon the previous run left running, via the 
 		await withoutToken.stop(false);
 		await reattaching?.stop(false).catch(() => {});
 		await scene.dispose();
+	}
+});
+
+/*
+ * WHERE THIS APP IS SERVING IS DERIVED, NOT REMEMBERED (agent round 2, R2-1).
+ *
+ * The field that carries this fact had exactly one producer - the spawn gate - and
+ * that produced two wrong answers in opposite directions, both in this file's own
+ * territory:
+ *
+ *   (a) the launch that ADOPTS a daemon on another address never runs the gate, so the
+ *       snapshot said nothing at all while the app was on 8080 rather than on the
+ *       address it is configured for. That is the second launch of the 2026-09-23
+ *       incident, one launch after the fallback was taken, and it was byte-for-byte
+ *       the invisibility the presentation exists to remove.
+ *   (b) a substitution was never retracted: once `discoverAndAttach` moved the app
+ *       back to the configured address, the snapshot still carried `serving: <the old
+ *       address>` beside a `url` that was the configured one, and the act it offered
+ *       named a pid that may by then be the daemon the operator is using.
+ *
+ * Both halves are exercised over the REAL discovery path, because that is the path
+ * both the second launch and the recovery take. The config root is assembled by hand
+ * so exactly one daemon has published a record at a time - that is what makes it
+ * deterministic rather than a race between two live candidates.
+ */
+test("an adopted daemon on another address is reported, and a landing on the configured address retracts it (R2-1)", async () => {
+	const configured = await daemonScene({ instanceId: "instance-configured" });
+	const elsewhere = await daemonScene({ instanceId: "instance-elsewhere" });
+	/*
+	 * The configured address is read by the CONSTRUCTOR - it is what the app is told to
+	 * serve on - so the hook has to be set before the manager exists, not after.
+	 */
+	globalThis.__testConfiguredUrl = configured.address;
+	const manager = new BackendServiceManager();
+	managers.add(manager);
+	const root = mkdtempSync(join(tmpdir(), "daemon-observation-swap-"));
+	const runDir = join(root, "run", "serve");
+	mkdirSync(runDir, { recursive: true });
+	const recordsOf = (scene) => join(scene.root, "run", "serve");
+	const showRecords = (scene) => {
+		for (const file of readdirSync(recordsOf(scene))) {
+			copyFileSync(join(recordsOf(scene), file), join(runDir, file));
+		}
+	};
+	const hideRecords = (scene) => {
+		for (const file of readdirSync(recordsOf(scene))) {
+			rmSync(join(runDir, file), { force: true });
+		}
+	};
+	try {
+		/* Only the OTHER daemon has a record, so this launch adopts it. */
+		showRecords(elsewhere);
+		process.env.LOCAL_OPERATOR_CONFIG_DIR = root;
+		assert.equal(
+			await manager.checkExistingBackend(),
+			true,
+			"the daemon another launch left running is adopted",
+		);
+		const adopted = manager.getStatusSnapshot();
+		assert.equal(adopted.url, elsewhere.address);
+		const swap = adopted.addressSubstitution;
+		assert.equal(
+			swap?.kind,
+			"substituted",
+			"and the app says which address it is on instead of the one it is configured for",
+		);
+		assert.equal(swap.configured, configured.address);
+		assert.equal(swap.serving, elsewhere.address);
+		assert.equal(
+			swap.holder,
+			null,
+			"with no holder: no gate ran, so no address was refused",
+		);
+		assert.equal(
+			swap.reclaim,
+			null,
+			"and no act is invented for a holder nobody observed",
+		);
+
+		/*
+		 * THE RECOVERY LANDS ON THE CONFIGURED ADDRESS: the daemon the app was using is
+		 * gone, and the operator's own is now serving the address the app is configured
+		 * for - the act the band's own copy instructs. `discoverAndAttach` is the entry
+		 * both the startup adoption and the recovery use.
+		 */
+		await elsewhere.die();
+		hideRecords(elsewhere);
+		showRecords(configured);
+		assert.equal(
+			await manager.discoverAndAttach(),
+			true,
+			"the daemon on the configured address is found and attached",
+		);
+		const returned = manager.getStatusSnapshot();
+		assert.equal(returned.url, configured.address);
+		assert.equal(
+			returned.addressSubstitution?.kind,
+			"returned",
+			"the move back is reported, not left as a substitution the app has already left",
+		);
+		assert.equal(returned.addressSubstitution.configured, configured.address);
+		assert.equal(
+			returned.addressSubstitution.serving,
+			elsewhere.address,
+			"and it names the address the app was on until it moved back",
+		);
+		console.log(
+			`adopted ${elsewhere.address} while configured for ${configured.address}; recovery moved the app back`,
+		);
+	} finally {
+		await manager.stop(false);
+		await elsewhere.dispose();
+		await configured.dispose();
+		rmSync(root, { recursive: true, force: true });
 	}
 });
 
