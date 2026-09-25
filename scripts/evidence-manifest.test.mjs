@@ -861,8 +861,8 @@ const STAMP_BINDING_NOTES = [
 	 * written as bare SHAs for exactly that reason.
 	 */
 	"mentionsRemedyRestampNote",
-	"meshDesktopRound7FoldRestampNote",
-	"meshDesktopRound10FoldRestampNote",
+	"meshDesktopRound11FoldRestampNote",
+	"meshDesktopRound11FoldRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1218,7 +1218,7 @@ const BRANCH_RECORDS = [
 	 * the frames behind it were re-shot from a build at its own head rather than
 	 * re-stamped, so nothing in it outruns what can be cited.
 	 */
-	"meshDesktopRound10FoldRestampNote",
+	"meshDesktopRound11FoldRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
