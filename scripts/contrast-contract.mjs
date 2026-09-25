@@ -1250,6 +1250,25 @@ const GRAPHICS = [
 		on: ["surface"],
 		fg: role,
 	})),
+	...["success", "warning", "danger", "info", "inkDim"].map((role) => ({
+		/*
+		 * Settings > Integrations' row status dot (`integration-row.tsx`). Five
+		 * inks: the four states that mean something, plus `inkDim` for Ready,
+		 * which is present but asks for nothing. Ready was first drawn in
+		 * `borderControl` (the design audit's spec) and this row refused it:
+		 * 2.77-2.96:1 on `rowSelected` in eleven palettes. The dot is always paired
+		 * with the status words, so it carries no meaning by colour alone, but it
+		 * is still a graphic object read at a glance and owes the 3:1 floor.
+		 *
+		 * Two grounds, because the row has two: the list's own `surface` card, and
+		 * `rowSelected` when a `/mcp <name>` deep link revealed it (design D14
+		 * moved that highlight off `border-accent` onto this role). A row listing
+		 * only `surface` would be blind to exactly the frame the deep link makes.
+		 */
+		name: `integration status dot (${role})`,
+		on: ["surface", "rowSelected"],
+		fg: role,
+	})),
 	...["danger", "info"].map((role) => ({
 		/*
 		 * The run pane's trigger dot, which gained a second ink
@@ -2241,6 +2260,34 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/features/chat/components/measured-suggestion-stack.tsx",
 		must: 'variant="ghost"\n\t\t\t\t\t\tsize="sm"\n\t\t\t\t\t\tclassName="h-auto max-w-full whitespace-normal break-words rounded-sm px-2 py-1 text-body-sm text-ink-muted hover:bg-elevated hover:text-ink disabled:text-ink-disabled disabled:hover:bg-transparent"',
 		why: 'reverting to `variant="outline"` re-introduces seven 3:1 boundaries as the loudest thing on a screen with nothing to compete with them, and `hairline` is the tempting wrong answer here: it is the decorative role and measures 1.25:1 at its worst, which is a boundary nobody can see rather than a quiet one',
+	},
+	{
+		/*
+		 * THE ASIDE PANEL'S FILL AND EDGE, and why this is a call-site pin rather
+		 * than a `CONTROLS` row.
+		 *
+		 * The panel is a SURFACE, not a control: `bg-sunken` with a `hairline`, and
+		 * the hairline is the correct weight rather than a shortcut - § 2 makes a
+		 * decorative rule owe perceptibility, not 3:1, and a component with no
+		 * analogue boundary must not be pushed onto the control floor. A `CONTROLS`
+		 * row cannot express that: it requires `max(fillEdge, borderEdge) >= 3:1`
+		 * against the ground, and this panel's ground is the chat column's, one
+		 * rung away from `sunken` by design (`elevated` -> `surface` -> `sunken` is
+		 * a ladder, not a boundary). Listing it there would either fail the floor or
+		 * force the panel onto `border-control`, which is the conflation § 2 exists
+		 * to prevent.
+		 *
+		 * WHAT THIS PIN ACTUALLY GUARDS is the merge, and it is the same class of
+		 * edit the neighbouring composer-box row guards from the other side: the
+		 * panel sits DIRECTLY ABOVE the composer box, which IS `bg-surface`. Delete
+		 * the edge or repaint the fill `surface` and the two become one slab, while
+		 * every ratio in this file stays green - the panel's inks on `sunken` are
+		 * already asserted by the INKS loop, so nothing else here can see it.
+		 */
+		what: "aside panel fill and edge",
+		file: "src/renderer/src/features/chat/components/aside-panel.tsx",
+		must: "flex flex-col border border-hairline bg-sunken",
+		why: "the panel is a surface above the composer box and reads as one only while its fill steps away from that box's `surface` and its decorative edge is drawn; `CONTROLS` cannot hold this row (it demands a 3:1 edge on a boundary that is deliberately not one), so the class list is the only place the relationship can be undone unseen",
 	},
 ];
 
@@ -4026,6 +4073,25 @@ for (const { id, palette: p } of palettes) {
 		"elevated",
 		FLOOR.text,
 		"danger as text on a dialog's ground",
+	);
+
+	/*
+	 * Settings > Integrations' "Needs sign-in" words on a deep-linked row: TEXT
+	 * in `warning` on the `rowSelected` ground a `/mcp <name>` reveal paints.
+	 * `AS_TEXT` covers the four grounds and `accentWash`, not the row states, so
+	 * the pair the deep link actually produces is asserted where it renders.
+	 *
+	 * `danger` is deliberately NOT here: it measured 4.23-4.47:1 on this ground
+	 * in six palettes, so a highlighted row draws "Couldn't start" in `ink` and
+	 * leaves the tone to the dot beside it (`integration-row.tsx`, STATUS_INK).
+	 */
+	assertPair(
+		id,
+		p,
+		"warning",
+		"rowSelected",
+		FLOOR.text,
+		"integration status text on a deep-linked row",
 	);
 
 	/*

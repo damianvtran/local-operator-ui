@@ -345,6 +345,11 @@ export function slashDestructive(
  * not an argument list), so a POINTER pick of one RUNS it — which is what
  * `pointerPickRuns`'s `kind !== "picker"` arm already does for the other two
  * kinds, and what a pick of `Analytics` must do.
+ *
+ * `aside` owes the same empty answer, for the same reason and with one more of
+ * its own: `/btw` opens a PANEL rather than a list of arguments, so a pick of it
+ * must run the command (`openAsidePanel`/`askAside` is the only way the panel ever
+ * appears), and there is nothing a pick could usefully complete into.
  */
 export type PickDestination =
 	| {
@@ -352,6 +357,7 @@ export type PickDestination =
 			inline?: { source: string; nameThenMessage: boolean; runs: boolean };
 	  }
 	| { kind: "machine-panel" }
+	| { kind: "aside" }
 	| { kind: "navigate" }
 	| { kind: "direct" };
 
