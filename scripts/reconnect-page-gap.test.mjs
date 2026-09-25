@@ -919,11 +919,11 @@ const liveFrame = (type, id, extra = {}) => ({
 const historyReads = () =>
 	requests.filter((request) => request.op === "sessions.history").length;
 
-async function mount() {
+async function mount(sessionIdOf = () => SESSION_A) {
 	const runtime = makeRuntime();
 	let handle;
 	runtime.render = () => {
-		handle = useCanonicalSessionStream(SESSION_A, true);
+		handle = useCanonicalSessionStream(sessionIdOf(), true);
 		return handle;
 	};
 	runtime.rerender();
@@ -947,6 +947,13 @@ async function mount() {
 		 * while the strip still rendered nothing.
 		 */
 		readings: () => handle.frontend ?? handle.heldFrontend,
+		/*
+		 * The panel's own render, for the session-change case: the id is an
+		 * ARGUMENT to the hook, so the only way to change it is to render again the
+		 * way the keyed panel does. `mount` takes it as a getter for exactly this
+		 * case; every other case keeps the default and never re-renders.
+		 */
+		rerender: () => runtime.rerender(),
 	};
 }
 
@@ -1450,5 +1457,73 @@ test("a spent retry budget still clears the held readings", async () => {
 		panel.readings(),
 		null,
 		"the readings go with the budget: a reading held past it would be the only thing still claiming a stream",
+	);
+});
+
+test("a session change drops the held readings", async () => {
+	const plan = conversation({ withSteer: false, awayRows: 0 });
+	const transcript = makeTranscript(plan.rows);
+	reset({ transcript });
+	let sessionId = SESSION_A;
+	const panel = await mount(() => sessionId);
+	const page = () => transcript.page(plan.cursor, SNAPSHOT_PAGE).entries;
+	deliver(openFrame(1, true));
+	deliver(
+		snapshotFrame(2, { cursor: plan.cursor, entries: page(), liveEvents: [] }),
+	);
+	await pump();
+	const painted = panel.readings();
+	assert.ok(painted, "the conversation's readings are painted");
+	assert.equal(
+		panel.handle().heldFrontend,
+		painted,
+		"and mirrored into the hold",
+	);
+
+	// The switch itself: the panel is keyed by identity, so this is a fresh mount
+	// with a new argument rather than a mutation of the old view.
+	sessionId = SESSION_B;
+	panel.rerender();
+	await pump();
+
+	assert.equal(
+		panel.handle().heldFrontend,
+		null,
+		"another conversation's model, effort, context and spend must not be held on this one",
+	);
+	assert.equal(
+		panel.handle().frontend,
+		null,
+		"and the authoritative frontend goes with it, as it always did",
+	);
+	assert.equal(
+		panel.readings(),
+		null,
+		"so the composer draws nothing until this conversation reports",
+	);
+});
+
+test("/clear drops the held readings and leaves the live ones alone", async () => {
+	const { panel } = await paneAtFirstSnapshot();
+	const painted = panel.readings();
+	assert.equal(panel.handle().heldFrontend, painted, "the hold is in place");
+
+	panel.handle().clearView();
+	await pump();
+
+	assert.equal(
+		panel.handle().heldFrontend,
+		null,
+		"a cleared view deliberately has nothing behind it, so the hold goes with it",
+	);
+	assert.equal(
+		panel.handle().frontend,
+		painted,
+		"while the live snapshot is untouched - /clear is view-only",
+	);
+	assert.equal(
+		panel.readings(),
+		painted,
+		"and the composer's readings are unaffected: they come from the live frontend",
 	);
 });
