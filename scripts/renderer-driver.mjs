@@ -7952,11 +7952,25 @@ async function sceneStates(cdp) {
 	);
 
 	// 3. Real controls, to prove the driver reaches the app's own handlers and
-	// not only its stores: press the rail's Agent hub button (the selector the
-	// onboarding tour clicks) and then the Chat button, and watch the route move
-	// both ways. No frame is captured from either destination: `agent-hub` is one
-	// of the backend-gated routes above, and capturing the spinner would say less
-	// than this assertion does.
+	// not only its stores: press the sidebar's Agent hub destination and then its
+	// Schedules destination, and watch the route move both ways. No frame is
+	// captured from either destination: `agent-hub` is one of the backend-gated
+	// routes above, and capturing the spinner would say less than this assertion
+	// does.
+	//
+	// THE `Chat` RAIL ROW THIS STEP USED TO PRESS NO LONGER EXISTS (design round
+	// 1, D1; spec §C1/§C3). The chat list IS that destination now, and every
+	// remaining door onto `/chat` is gated on a backend — the sidebar's `New chat`
+	// row (`disabled: !catalogueReady`) and the command palette's `New chat` item
+	// (`canStageDraft`, the same `session_catalogue` bit) both refuse — so on a
+	// backendless driver run, which is this scene by construction, there is no
+	// control that lands on `/chat`. Measured on the head this was rewritten at:
+	// the press found its element and the route stayed `/agent-hub`.
+	//
+	// The second press is therefore the next destination that IS reachable, and
+	// the claim this step makes is unchanged — a real control receives the point
+	// and the app's own handler moves the route — while the frame is named for
+	// what it is: the shell, in the light theme, after a route round trip.
 	const hubPress = await verb(
 		cdp,
 		"press",
@@ -7978,16 +7992,20 @@ async function sceneStates(cdp) {
 		hubState.route === "/agent-hub",
 		JSON.stringify(hubState),
 	);
-	const chatPress = await verb(cdp, "press", '[data-tour-tag="nav-item-chat"]');
-	const chatState = await verb(cdp, "state");
-	check(
-		"pressing the rail's Chat button navigated back, and the theme survived",
-		chatPress.hitTest === true &&
-			chatState.route === "/chat" &&
-			chatState.theme === "localOperatorLight",
-		JSON.stringify(chatState),
+	const shellPress = await verb(
+		cdp,
+		"press",
+		'[data-tour-tag="nav-item-schedules"]',
 	);
-	const backFrame = await captureSettled(cdp, "chat-light-returned");
+	const shellState = await verb(cdp, "state");
+	check(
+		"pressing the sidebar's Schedules destination navigated the app, and the theme survived",
+		shellPress.hitTest === true &&
+			shellState.route === "/schedules" &&
+			shellState.theme === "localOperatorLight",
+		JSON.stringify(shellState),
+	);
+	const backFrame = await captureSettled(cdp, "shell-light-returned");
 	note("frame", JSON.stringify(backFrame));
 
 	const frames = [beforeFrame, afterFrame, backFrame];
