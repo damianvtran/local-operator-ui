@@ -74,6 +74,27 @@ export type TranscriptRecord =
 			ts: number;
 			text: string;
 			images: TranscriptImage[];
+			/**
+			 * This row is the app's own optimistic echo, not the owner's record of
+			 * the message - it has not been confirmed by the session yet.
+			 *
+			 * WHY A FLAG, WHEN THE MODULE WENT OUT OF ITS WAY TO AVOID ONE. The
+			 * echo's own comment says a distinct variant would break `shallowEqual`'s
+			 * key-count comparison, and that is still true: this is a FIELD on the
+			 * ordinary user record, so the owner's row - which never carries it -
+			 * differs by key count and replaces the echo in one `upsert`. That is the
+			 * point of it. A failed send has to be able to retract its OWN echo and
+			 * must never remove the owner's row for the same id, because that row is
+			 * proof the message was delivered: the two cases are indistinguishable by
+			 * id alone, and only the echo knows which it is.
+			 *
+			 * The cost is one extra render of the user row per send (its first
+			 * update replaces a record with one more key), measured as a single
+			 * commit and nothing else - no scroll or anchor move, because
+			 * `working-line-model.ts` anchors on the request id, which does not
+			 * change (risk R2).
+			 */
+			local?: boolean;
 	  }
 	| {
 			kind: "assistant";
@@ -3979,13 +4000,43 @@ export function appendPendingUser(
 	// The owner's row wins over a later echo for the same id: re-echoing would
 	// otherwise overwrite reconciled content with the composer's original text.
 	if (state.index.has(id)) return state;
-	return upsert(state, { kind: "user", id, ts: now, text, images });
+	return upsert(state, {
+		kind: "user",
+		id,
+		ts: now,
+		text,
+		images,
+		local: true,
+	});
 }
 
 /**
- * Drop one record by id. Used to retract an echo whose send was refused
- * BEFORE admission — the only case where the message provably does not exist
- * on the owner (see `admitChatDraft`'s `refusedBeforeAdmission`).
+ * Remove a record only while it is still this app's own optimistic echo.
+ *
+ * The unknown-outcome case needs the distinction the echo's `local` flag exists
+ * for: the app cannot tell from the id alone whether the row on screen is its own
+ * unconfirmed echo or the owner's durable record of the same message, and the two
+ * demand opposite answers - remove the first, treat the second as proof that the
+ * message was delivered (see `admitChatDraft`).
+ */
+export function removeLocalRecord(
+	state: TranscriptState,
+	id: string,
+): TranscriptState {
+	const record = state.records[state.index.get(id) ?? -1];
+	if (!record || record.kind !== "user" || !record.local) return state;
+	return removeRecord(state, id);
+}
+
+/**
+ * Drop one record by id, whoever painted it.
+ *
+ * The send path uses this for a row whose outcome is UNKNOWN, and it is safe there
+ * for the reason `retractLocalEcho` exists beside it: a `local` row is this app's
+ * own echo, so the message it paints is being handed back to the composer, and
+ * leaving the echo would show one message twice. A durable row for the same id is
+ * never removed this way - `retractLocalEcho` reports that case instead, and the
+ * store treats it as delivery.
  */
 export function removeRecord(
 	state: TranscriptState,
