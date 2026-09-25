@@ -169,8 +169,14 @@ test("both consumers read the shared module, and neither unwraps again", () => {
 		"src/renderer/src/features/chat/components/run-details/use-mcp-servers.ts",
 		"utf8",
 	);
+	/*
+	 * The Settings side's read moved into the section's data hook when the page
+	 * was redesigned onto the sessionless catalog; the session route is its
+	 * fallback, and THAT read is still `mcp-list.ts`'s key and fetch, which is
+	 * the property this test is about.
+	 */
 	const settings = readFileSync(
-		"src/renderer/src/features/settings/components/mcp-management-section.tsx",
+		"src/renderer/src/features/settings/components/integrations/use-integrations.ts",
 		"utf8",
 	);
 
@@ -198,7 +204,8 @@ test("both consumers read the shared module, and neither unwraps again", () => {
 	// The panel reads the document's fields, which is the level the shared fetch
 	// settles on.
 	assert.match(panel, /query\.data\?\.servers/);
-	assert.match(settings, /mcpListServers\(listQuery\.data\)/);
+	assert.match(settings, /queryFn: \(\) => fetchMcpList\(/);
+	assert.match(settings, /queryKey: mcpKeys\.list\(/);
 
 	// And the key is not restated anywhere: one module owns it, so a third
 	// consumer cannot invent a shape this test does not see.

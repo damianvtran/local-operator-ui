@@ -834,8 +834,15 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"cwdChipCapRestampNote",
 	/*
-	 * This pass's own: it re-stamps a change that moves `src/` without touching a
-	 * frame, so the reader is owed the pair and the reason no still was owed.
+	 * And this branch's own, carried through every fold: it states the pair THIS
+	 * commit ships for UI PR B's Integrations redesign, so it is held to that pair
+	 * rather than read as history.
+	 */
+	"integrationsRedesignRestampNote",
+	/*
+	 * This pass's own, laid back on top of the fold: it re-stamps a
+	 * change that moves `src/` without touching a frame, so the reader is
+	 * owed the pair and the reason no still was owed.
 	 */
 	"liveSettleLabelRestampNote",
 ];
