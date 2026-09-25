@@ -1,7 +1,4 @@
-import {
-	SEND_FAILURE_COPY,
-	SESSION_UNVALIDATED_CODE,
-} from "@shared/store/canonical-sessions-store";
+import { SEND_FAILURE_COPY } from "@shared/store/canonical-sessions-store";
 import type { LateDeliveryBox } from "@shared/store/conversation-input-store";
 import {
 	DESKTOP_DEADLINE_EXCEEDED_CODE,
@@ -82,7 +79,20 @@ export function composerNoticeFor(input: {
 		return {
 			message: input.error,
 			code: input.code,
-			retry: input.retry,
+			/*
+			 * MONOTONE, AND THAT IS THE FIX (review/design round 11, R11-1 = D1 = U1). The
+			 * carried verdict is STATE and the code is the fact about this failure, so a
+			 * carried `true` may only ever REMOVE a press, never add one.
+			 *
+			 * It could add one, and did: both of main's aside raise sites install a sentence
+			 * and a code and never write the flag, and `clearError()` clears the sentence and
+			 * the code without it - so one earlier retryable failure left `retry` true and the
+			 * `Retry` control rendered over `aside_still_answering`, the arm this branch's own
+			 * record calls Clear-only. Asking the code is what the ROW path has always done
+			 * (`retryOfferedForFailureCode`, the line below); the notice now agrees with it,
+			 * and the classifier can no longer be outvoted by leftover state.
+			 */
+			retry: input.retry && retryOfferedForFailureCode(input.code),
 			muted: input.muted,
 		};
 	if (input.rowError)
@@ -101,8 +111,8 @@ export function composerNoticeFor(input: {
  * The fallback for a row that predates `errorRetry` (`ChatDraft.errorRetry`). It
  * answers the same question `sendFailureCopy` answers from the failure itself, and
  * it is deliberately the UNION of the arms that sentence offers a press for: an
- * unknown outcome (no code at all), the transport's own deadline, a lost hop, the
- * two "come back in a moment" refusals and the read window. Everything else - a
+ * unknown outcome (no code at all), the transport's own deadline, a lost hop and the
+ * two "come back in a moment" refusals. Everything else - the read window, a
  * refusal that states the message was not admitted, a store that could not write,
  * a pairing state, a slash-prefixed draft, a payload too large - is a press that
  * would meet the same refusal, so it is not offered.
@@ -169,11 +179,21 @@ export function retryOfferedForFailureCode(code: string | undefined): boolean {
 	return RETRYABLE_FAILURE_CODES.has(code);
 }
 
+/*
+ * The arms a press can actually work for. It is NOT simply `!withholdsRetryHint`:
+ * a payload refusal (too large) and a conversation that is gone are in neither list,
+ * because the press is not what fixes them and it is not what re-refuses it either -
+ * so both are stated here deliberately.
+ *
+ * `SESSION_UNVALIDATED_CODE` LEFT THIS SET (design round 11, D2) and joined the
+ * predicate instead: a window that answers `"failed"` the moment it is asked re-refuses
+ * the press and re-paints the same sentence, so offering it is the loop, not a second
+ * instruction. Both rules now answer the read window the same way - no press.
+ */
 const RETRYABLE_FAILURE_CODES = new Set([
 	DESKTOP_DEADLINE_EXCEEDED_CODE,
 	DESKTOP_REFUSAL_CODE.transportFailed,
 	DESKTOP_LOST_SIGHT_CODE.runtimeUnreachable,
 	RUNTIME_BUSY_CODE,
 	RUNTIME_RETIRING_CODE,
-	SESSION_UNVALIDATED_CODE,
 ]);

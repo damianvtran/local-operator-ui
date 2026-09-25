@@ -1477,13 +1477,16 @@ test("a leading-slash refusal is classified, and says what the user can do", asy
 	assert.equal(withholdsRetryHint(draft.errorCode), true);
 	/*
 	 * The read-window refusal is NOT on that list any more, and the change is
-	 * deliberate: spec §4's table gives "This chat isn't ready yet, so your message
-	 * wasn't sent." a Retry, because the chat may have answered its read by the time
-	 * the user presses it and the box is already holding the message. Withholding
-	 * the hint here would leave the user with a message they can see and no control
-	 * that acts on it (the state the held paragraph used to create).
+	 * THE READ WINDOW IS WITHHELD AGAIN (design round 11, D2), and the round that
+	 * dropped it was wrong about its sentence. "This chat isn't ready yet, so your
+	 * message wasn't sent." does not invite a press: the window answers `"failed"` the
+	 * moment it is asked, so the press re-refuses and re-paints the same sentence - the
+	 * loop this predicate exists to prevent, not one instruction in two places. Main
+	 * withheld it for exactly that reason, and the reason survived the fold. The box is
+	 * still holding the message, which is what makes a LATER press possible without the
+	 * hint claiming it is one now.
 	 */
-	assert.equal(withholdsRetryHint(SESSION_UNVALIDATED_CODE), false);
+	assert.equal(withholdsRetryHint(SESSION_UNVALIDATED_CODE), true);
 	/*
 	 * Round 4's D13: the unreadable-attachment refusal is the third one a resend
 	 * cannot answer. Its chip is still attached and still unreadable, so the next
@@ -1523,11 +1526,11 @@ test("a leading-slash refusal is classified, and says what the user can do", asy
 	 * And the aside's refusal, for the same reason one step further out: an aside
 	 * ask takes the question out of the box at the press, so the hint would point
 	 * at whatever the user typed SINCE the refusal was raised (UX round 1, U4). It
-	 * is the ninth term, and the second here that is not a send refusal at all.
+	 * is the sixth term, and the second here that is not a send refusal at all.
 	 */
 	assert.equal(withholdsRetryHint(ASIDE_NOT_ANSWERED_CODE), true);
 	/*
-	 * AND THE TENTH, which is the only term whose remedy IS the retry - merely not yet: the
+	 * AND THE SEVENTH, which is the only term whose remedy IS the retry - merely not yet: the
 	 * press it refuses is refused for as long as the newest aside answer is in flight, and the
 	 * sentence beside it says when that ends, so a Retry offered here is the same instruction
 	 * twice with the second one refused (UX round 2, U12).
