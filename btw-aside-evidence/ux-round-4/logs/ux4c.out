@@ -1,0 +1,314 @@
+port8080.lock taken
+rig up: proxy 87034 on 8080 -> daemon 85397 on 57073, stub 56992; 1111 untouched
+== ux4c (btw-ux4c) at 02:24:41 ==
+[build] current: assets 2026-09-25T02:12:42.616Z >= sources 2026-09-25T01:32:12.604Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/.local-operator/sessions/15622aeab8ed/scratchpad/ux4rig/run-ux4c/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/ux482-r4-d41bf2
+  scratch       /Users/damian/.local-operator/sessions/15622aeab8ed/scratchpad/ux4rig/tmp/lo-renderer-driver-87338
+  frames        /Users/damian/.local-operator/sessions/15622aeab8ed/scratchpad/ux4rig/frames/ux4c
+  app cwd       /Users/damian/.local-operator/sessions/15622aeab8ed/scratchpad/ux4rig/tmp/lo-renderer-driver-87338/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/ux482-r4-d41bf2/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] headless and never shown
+        mode=headless visible=false focused=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] UX4c session
+        dd4ffda6304d
+[note] 0 the tall turn above
+        {"entryId":"302cb5c0-25c3-46ab-9219-6f68aeb50696","boxes":{"scrollTop":0,"maxScroll":492,"clientHeight":248,"contentHeight":740,"questionRel":0,"questionAbs":0,"questionBoxH":19.5,"turnRel":0,"turnBoxH":740.3,"svgPresent":false,"svgHeight":null,"lastRowBottomVsClip":492.3}}
+[PASS] 0 the first turn overflows the region, so a later turn's question has somewhere to come from
+        {"scrollTop":0,"maxScroll":492,"clientHeight":248,"contentHeight":740,"questionRel":0,"questionAbs":0,"questionBoxH":19.5,"turnRel":0,"turnBoxH":740.3,"svgPresent":false,"svgHeight":null,"lastRowBottomVsClip":492.3}
+[note] frame
+        {"label":"ux4c-ux4c-c00-tall-turn-above","width":2760,"height":1736}
+[note] 1 the region from the press to the diagram
+        {"sawTextMs":12,"sawSvgMs":2203,"preDiagram":{"ms":12,"scrollTop":547,"maxScroll":547,"clientHeight":248,"contentHeight":795,"questionRel":205.3,"questionAbs":752.3,"questionBoxH":19.5,"turnRel":205.3,"turnBoxH":43,"svgPresent":false,"svgHeight":null,"lastRowBottomVsClip":0.3},"samples":[{"ms":12,"svg":false,"contentHeight":795,"scrollTop":547,"maxScroll":547,"questionRel":205.3,"questionAbs":752.3},{"ms":75,"svg":false,"contentHeight":795,"scrollTop":547,"maxScroll":547,"questionRel":205.3,"questionAbs":752.3},{"ms":118,"svg":false,"contentHeight":795,"scrollTop":547,"maxScroll":547,"questionRel":205.3,"questionAbs":752.3},{"ms":160,"svg":false,"contentHeight":795,"scrollTop":547,"maxScroll":547,"questionRel":205.3,"questionAbs":752.3},{"ms":203,"svg":false,"contentHeight":795,"scrollTop":547,"maxScroll":547,"questionRel":205.3,"questionAbs":752.3},{"ms":245,"svg":false,"contentHeight":795,"scrollTop":547,"maxScroll":547,"questionRel":205.3,"questionAbs":752.3},{"ms":287,"svg":false,"contentHeight":795,"scrollTop":547,"maxScroll":547,"questionRel":205.3,"questionAbs":752.3},{"ms":330,"svg":false,"contentHeight":795,"scrollTop":547,"maxScroll":547,"questionRel":205.3,"questionAbs":752.3},{"ms":372,"svg":false,"contentHeight":795,"scrollTop":547,"maxScroll":547,"questionRel":205.3,"questionAbs":752.3},{"ms":414,"svg":false,"contentHeight":795,"scrollTop":547,"maxScroll":547,"questionRel":205.3,"questionAbs":752.3},{"ms":458,"svg":false,"contentHeight":795,"scrollTop":547,"maxScroll":547,"questionRel":205.3,"questionAbs":752.3},{"ms":505,"svg":false,"contentHeight":795,"scrollTop":547,"maxScroll":547,"questionRel":205.3,"questionAbs":752.3},{"ms":573,"svg":false,"contentHeight":795,"scrollTop":547,"maxScroll":547,"questionRel":205.3,"questionAbs":752.3},{"ms":618,"svg":false,"contentHeight":795,"scrollTop":547,"maxScroll":547,"questionRel":205.3,"questionAbs":752.3},{"ms":661,"svg":false,"contentHeight":795,"scrollTop":547,"maxScroll":547,"questionRel":205.3,"questionAbs":752.3},{"ms":705,"svg":false,"contentHeight":795,"scrollTop":547,"maxScroll":547,"questionRel":205.3,"questionAbs":752.3},{"ms":748,"svg":false,"contentHeight":795,"scrollTop":547,"maxScroll":547,"questionRel":205.3,"questionAbs":752.3},{"ms":791,"svg":false,"contentHeight":795,"scrollTop":547,"maxScroll":547,"questionRel":205.3,"questionAbs":752.3},{"ms":862,"svg":false,"contentHeight":795,"scrollTop":547,"maxScroll":547,"questionRel":205.3,"questionAbs":752.3},{"ms":905,"svg":false,"contentHeight":795,"scrollTop":547,"maxScroll":547,"questionRel":205.3,"questionAbs":752.3},{"ms":956,"svg":false,"contentHeight":795,"scrollTop":547,"maxScroll":547,"questionRel":205.3,"questionAbs":752.3},{"ms":997,"svg":false,"contentHeight":795,"scrollTop":547,"maxScroll":547,"questionRel":205.3,"questionAbs":752.3},{"ms":1040,"svg":false,"contentHeight":795,"scrollTop":547,"maxScroll":547,"questionRel":205.3,"questionAbs":752.3},{"ms":1087,"svg":false,"contentHeight":795,"scrollTop":547,"maxScroll":547,"questionRel":205.3,"questionAbs":752.3}]}
+[note] 1 after the diagram landed
+        {"scrollTop":752.5,"maxScroll":1129,"clientHeight":248,"contentHeight":1377,"questionRel":-0.2,"questionAbs":752.3,"questionBoxH":19.5,"turnRel":-0.2,"turnBoxH":624.8,"svgPresent":true,"svgHeight":486,"lastRowBottomVsClip":376.5}
+[PASS] 1 the arm reached the state U21 is about: before the diagram the newest question sat BELOW the region's top with the move's clamp biting
+        {"preDiagram":{"ms":12,"scrollTop":547,"maxScroll":547,"clientHeight":248,"contentHeight":795,"questionRel":205.3,"questionAbs":752.3,"questionBoxH":19.5,"turnRel":205.3,"turnBoxH":43,"svgPresent":false,"svgHeight":null,"lastRowBottomVsClip":0.3}}
+[PASS] 1 the diagram really did grow a finished turn (the growth the store cannot see)
+        {"before":795,"after":1377,"svg":true}
+[PASS] 1 the move followed the BOX: after the growth the newest question is at the region's top (questionRel 0) - which nothing but a layout observation could have re-asked
+        {"questionRel":-0.2,"questionAbs":752.3,"scrollTop":752.5,"maxScroll":1129}
+[note] frame
+        {"label":"ux4c-ux4c-c01-diagram-after-the-settle-is-followed","width":2760,"height":1736}
+[note] 2 the long stream
+        {"latch":{"ms":3022,"scrollTop":200.5,"maxScroll":267,"clientHeight":248,"contentHeight":515,"questionRel":-0.2,"questionAbs":200.3,"questionBoxH":19.5,"turnRel":-0.2,"turnBoxH":314.7,"svgPresent":false,"svgHeight":null,"lastRowBottomVsClip":66.5},"entries":11,"tail":[{"ms":4,"contentHeight":243,"scrollTop":0,"questionRel":200.3,"maxScroll":0},{"ms":2156,"contentHeight":291,"scrollTop":43,"questionRel":157.3,"maxScroll":43},{"ms":2424,"contentHeight":336,"scrollTop":88,"questionRel":112.3,"maxScroll":88},{"ms":2730,"contentHeight":425,"scrollTop":177,"questionRel":23.3,"maxScroll":177},{"ms":3022,"contentHeight":515,"scrollTop":200.5,"questionRel":-0.2,"maxScroll":267},{"ms":3365,"contentHeight":582,"scrollTop":200.5,"questionRel":-0.2,"maxScroll":334},{"ms":3668,"contentHeight":672,"scrollTop":200.5,"questionRel":-0.2,"maxScroll":424},{"ms":3948,"contentHeight":739,"scrollTop":200.5,"questionRel":-0.2,"maxScroll":491},{"ms":4229,"contentHeight":806,"scrollTop":200.5,"questionRel":-0.2,"maxScroll":558},{"ms":4565,"contentHeight":896,"scrollTop":200.5,"questionRel":-0.2,"maxScroll":648},{"ms":4855,"contentHeight":941,"scrollTop":200.5,"questionRel":-0.2,"maxScroll":693}],"grewAfterLatch":426,"movedAfterLatch":0}
+[PASS] 2 the move lands with the question at the region's top, and the region does NOT follow every chunk after that
+        {"latch":{"ms":3022,"scrollTop":200.5},"grewAfterLatch":426,"movedAfterLatch":0}
+[PASS] 2 the move never passes the question: the newest question's top is never above the region's top by more than a pixel of rounding
+        {"worst":-0.2}
+[note] 2 after the long stream settled
+        {"end":{"scrollTop":200.5,"maxScroll":693,"clientHeight":248,"contentHeight":941,"questionRel":-0.2,"questionAbs":200.3,"questionBoxH":19.5,"turnRel":-0.2,"turnBoxH":740.3,"svgPresent":false,"svgHeight":null,"lastRowBottomVsClip":492},"entryId":"15b0e28f-7df6-42c0-ad5b-2dbd7eb9a1f0"}
+[note] frame
+        {"label":"ux4c-ux4c-c02-long-stream-does-not-follow-every-chunk","width":2760,"height":1736}
+[note] 3 the hand-scroll arm
+        {"early":null,"focus":"button[Save as SVG]{}","beforeHand":{"scrollTop":200.5,"maxScroll":577,"clientHeight":248,"contentHeight":825,"questionRel":-0.2,"questionAbs":200.3,"questionBoxH":19.5,"turnRel":-0.2,"turnBoxH":624.8,"svgPresent":true,"svgHeight":486,"lastRowBottomVsClip":376.6},"afterHand":{"scrollTop":0,"maxScroll":577,"clientHeight":248,"contentHeight":825,"questionRel":200.3,"questionAbs":200.3,"questionBoxH":19.5,"turnRel":200.3,"turnBoxH":624.8,"svgPresent":true,"svgHeight":486,"lastRowBottomVsClip":577.1},"sawSvg":{"ms":10164,"scrollTop":0,"maxScroll":577,"clientHeight":248,"contentHeight":825,"questionRel":200.3,"questionAbs":200.3,"questionBoxH":19.5,"turnRel":200.3,"turnBoxH":624.8,"svgPresent":true,"svgHeight":486,"lastRowBottomVsClip":577.1},"final":{"scrollTop":0,"maxScroll":577,"clientHeight":248,"contentHeight":825,"questionRel":200.3,"questionAbs":200.3,"questionBoxH":19.5,"turnRel":200.3,"turnBoxH":624.8,"svgPresent":true,"svgHeight":486,"lastRowBottomVsClip":577.1},"handMs":null}
+[PASS] 3 the reader's own scroll moved the region (the arm is real, not a no-op)
+        {"before":200.5,"after":0}
+[FAIL] 3 the reader wins: when the box grows after a hand-scroll, the move does NOT drag the region back
+        {"hand":0,"final":0,"grew":0}
+[note] frame
+        {"label":"ux4c-ux4c-c03-hand-scroll-wins-over-the-late-growth","width":2760,"height":1736}
+[note] UX4c scene
+        finished
+
+---- app log (tail) ----
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'console-state': Error: No handler registered for 'console-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'browser-webauthn-pending': Error: No handler registered for 'browser-webauthn-pending'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+22:24:46.567 › Checking for UI updates...
+22:24:46.567 › Skip checkForUpdates because application is not packed and dev update config is not forced
+Error occurred in handler for 'browser-state': Error: No handler registered for 'browser-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'console-state': Error: No handler registered for 'console-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'browser-webauthn-pending': Error: No handler registered for 'browser-webauthn-pending'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+[window-mode] state: visible=false focused=false focusable=false size=1380x900 content=1380x868
+22:24:47.833 › Checking for updates... (silent mode: true)
+22:24:47.834 › Skip checkForUpdates because application is not packed and dev update config is not forced
+22:24:47.834 › Checking for backend updates... (silent mode: true)
+22:24:47.834 › Skip backend update check in dev mode unless forced
+22:24:51.844 › [browser] denied a media permission request from (unknown origin)
+22:24:51.844 › [browser] denied a media permission request from (unknown origin)
+22:24:51.844 › [browser] denied a web-app-installation permission request from (unknown origin)
+22:24:51.844 › [browser] denied a geolocation permission request from (unknown origin)
+22:24:51.888 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
+22:24:51.888 › [browser] host on 127.0.0.1:57417 (proto 1), profile /Users/damian/.local-operator/sessions/15622aeab8ed/scratchpad/ux4rig/tmp/lo-renderer-driver-87338/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+22:24:56.359 › [about-panel] suppressed by window mode headless: a headless run raises no window
+22:24:59.831 › The pre-split environment at /Users/damian/Library/Application Support/Local Operator/local-operator-venv is built on the interpreter inside /Applications/Local Operator.app; it is left exactly as it is, and this instance does not use it.
+22:25:03.390 › [about-panel] suppressed by window mode headless: a headless run raises no window
+22:25:10.158 › [about-panel] suppressed by window mode headless: a headless run raises no window
+sandbox_extension_issue_file failed for /Users/damian/local-operator-ui-worktrees/ux482-r4-d41bf2/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/Resources: 1 (Operation not permitted)
+22:25:15.576 › [about-panel] suppressed by window mode headless: a headless run raises no window
+22:25:20.199 › [browser] tab 1 navigated to about:blank
+22:25:27.395 › [about-panel] suppressed by window mode headless: a headless run raises no window
+22:25:32.507 › [about-panel] suppressed by window mode headless: a headless run raises no window
+
+[PASS] no process from this run outlived its boot
+
+frames: ux4c-ux4c-c00-tall-turn-above.png, ux4c-ux4c-c01-diagram-after-the-settle-is-followed.png, ux4c-ux4c-c02-long-stream-does-not-follow-every-chunk.png, ux4c-ux4c-c03-hand-scroll-wins-over-the-late-growth.png
+frames directory: /Users/damian/.local-operator/sessions/15622aeab8ed/scratchpad/ux4rig/frames/ux4c
+app log: /Users/damian/.local-operator/sessions/15622aeab8ed/scratchpad/ux4rig/tmp/lo-renderer-driver-87338/app-scene.log
+scratch removed (--clean)
+
+1 CHECK(S) FAILED
+== ux4c driver exit: 1 ==
+total 3024
+drwxr-xr-x@ 6 damian  staff     192 Sep 24 22:25 .
+drwxr-xr-x@ 5 damian  staff     160 Sep 24 22:24 ..
+-rw-r--r--@ 1 damian  staff  445518 Sep 24 22:25 ux4c-ux4c-c00-tall-turn-above.png
+-rw-r--r--@ 1 damian  staff  299801 Sep 24 22:25 ux4c-ux4c-c01-diagram-after-the-settle-is-followed.png
+-rw-r--r--@ 1 damian  staff  445812 Sep 24 22:25 ux4c-ux4c-c02-long-stream-does-not-follow-every-chunk.png
+-rw-r--r--@ 1 damian  staff  351130 Sep 24 22:25 ux4c-ux4c-c03-hand-scroll-wins-over-the-late-growth.png
+8080 released before this command returned
+port8080.lock released
+--- proxy counters (/Users/damian/.local-operator/sessions/15622aeab8ed/scratchpad/ux4rig/run-ux4c/proxy-stats.json) ---
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T02:25:03.657Z",
+      "url": "/v1/desktop/sessions/dd4ffda6304d/asides",
+      "asideId": "302cb5c0-25c3-46ab-9219-6f68aeb50696",
+      "continues": null,
+      "questionHead": "LONGANSWER UM0 the tall turn above the diagram",
+      "text": "LONGANSWER UM0 the tall turn above the diagram",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "b205beefa86449bc872fca89e328c69b",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"302cb5c0-25c3-46ab-9219-6f68aeb50696\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    },
+    {
+      "at": "2026-09-25T02:25:10.357Z",
+      "url": "/v1/desktop/sessions/dd4ffda6304d/asides",
+      "asideId": "7958bb62-a108-41c4-b13e-b921555da025",
+      "continues": "302cb5c0-25c3-46ab-9219-6f68aeb50696",
+      "questionHead": "MERMAIDANS UM1 draw me the aside flow",
+      "text": "MERMAIDANS UM1 draw me the aside flow",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "b205beefa86449bc872fca89e328c69b",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"7958bb62-a108-41c4-b13e-b921555da025\",\"text\":\"Here is the flow.\\n\\n```mermaid\\nflowchart TD\\n  A[Ask] --> B{Answered?}\\n  B -- yes --> C[Adopt]\\n  B -- no --> D[Ask again]\\n  D --> B\\n  C --> E[Conversation]\\n```\\n\\nMERMAID-END.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:25:15.777Z",
+      "url": "/v1/desktop/sessions/dd4ffda6304d/asides",
+      "asideId": "15b0e28f-7df6-42c0-ad5b-2dbd7eb9a1f0",
+      "continues": null,
+      "questionHead": "UM2 a base turn for the long stream",
+      "text": "UM2 a base turn for the long stream",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "b205beefa86449bc872fca89e328c69b",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"15b0e28f-7df6-42c0-ad5b-2dbd7eb9a1f0\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:25:20.622Z",
+      "url": "/v1/desktop/sessions/dd4ffda6304d/asides",
+      "asideId": "b6803c07-4400-4271-93c4-163d8cb1ee89",
+      "continues": "15b0e28f-7df6-42c0-ad5b-2dbd7eb9a1f0",
+      "questionHead": "LONGANSWER UM2 the long streamed follow-up",
+      "text": "LONGANSWER UM2 the long streamed follow-up",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "b205beefa86449bc872fca89e328c69b",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"b6803c07-4400-4271-93c4-163d8cb1ee89\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    },
+    {
+      "at": "2026-09-25T02:25:27.617Z",
+      "url": "/v1/desktop/sessions/dd4ffda6304d/asides",
+      "asideId": "10bebd1e-5273-4e2e-aec7-538b0414723f",
+      "continues": null,
+      "questionHead": "UM3 a base turn under the hand-scroll arm",
+      "text": "UM3 a base turn under the hand-scroll arm",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "b205beefa86449bc872fca89e328c69b",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"10bebd1e-5273-4e2e-aec7-538b0414723f\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:25:32.720Z",
+      "url": "/v1/desktop/sessions/dd4ffda6304d/asides",
+      "asideId": "149898f1-2f88-4395-9d50-36de10c16425",
+      "continues": "10bebd1e-5273-4e2e-aec7-538b0414723f",
+      "questionHead": "MERMAIDANS UM3 draw me the aside flow again",
+      "text": "MERMAIDANS UM3 draw me the aside flow again",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "b205beefa86449bc872fca89e328c69b",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"149898f1-2f88-4395-9d50-36de10c16425\",\"text\":\"Here is the flow.\\n\\n```mermaid\\nflowchart TD\\n  A[Ask] --> B{Answered?}\\n  B -- yes --> C[Adopt]\\n  B -- no --> D[Ask again]\\n  D --> B\\n  C --> E[Conversation]\\n```\\n\\nMERMAID-END.\",\"off_record\":true},\"replayed\":false}}"
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T02:24:44.928Z",
+      "subscriptionId": "367d83ee9a7f36f0",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/dd4ffda6304d/events?frontend_replace=1",
+      "openedAt": "2026-09-25T02:24:49.398Z",
+      "subscriptionId": "b205beefa86449bc872fca89e328c69b",
+      "asideDeltas": 38,
+      "deltaSizes": [
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287,
+        171,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        171
+      ]
+    }
+  ],
+  "asideDeltaFrames": 38,
+  "deltasBySubscription": {
+    "b205beefa86449bc872fca89e328c69b": 38
+  },
+  "deltasByAside": {
+    "302cb5c0-25c3-46ab-9219-6f68aeb50696": 10,
+    "7958bb62-a108-41c4-b13e-b921555da025": 1,
+    "15b0e28f-7df6-42c0-ad5b-2dbd7eb9a1f0": 8,
+    "b6803c07-4400-4271-93c4-163d8cb1ee89": 10,
+    "10bebd1e-5273-4e2e-aec7-538b0414723f": 8,
+    "149898f1-2f88-4395-9d50-36de10c16425": 1
+  },
+  "refused422": 0,
+  "messagePosts": [
+    {
+      "at": "2026-09-25T02:24:56.581Z",
+      "url": "/v1/desktop/sessions/dd4ffda6304d/messages",
+      "kind": "message",
+      "text": "ux4c seed turn",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"c783a484-971d-4f6d-8140-4aba809f8073\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T02:24:56.584Z"
+    }
+  ],
+  "asideOps": [
+    {
+      "at": "2026-09-25T02:25:15.166Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/dd4ffda6304d/asides/7958bb62-a108-41c4-b13e-b921555da025",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"7958bb62-a108-41c4-b13e-b921555da025\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T02:25:26.987Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/dd4ffda6304d/asides/b6803c07-4400-4271-93c4-163d8cb1ee89",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"b6803c07-4400-4271-93c4-163d8cb1ee89\",\"status\":\"closed\"},\"replayed\":false}}"
+    }
+  ]
+}
+--- end counters ---
