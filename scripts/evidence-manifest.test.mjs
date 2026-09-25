@@ -1137,9 +1137,7 @@ const BRANCH_RECORDS = [
 	 * commit - exactly what happened to the eight notes before them, and the reason
 	 * they were listed at all.
 	 */
-<<<<<<< HEAD
 	"meshDesktopRound2RestampNote",
-=======
 	"modelPickerRemediationRestampNote",
 	/*
 	 * Grown by the `/btw` aside panel pass, whose re-stamp is this branch's newest
@@ -1155,7 +1153,12 @@ const BRANCH_RECORDS = [
 	 * predicate does not admit driver-taken PNGs.
 	 */
 	"asidePanelRestampNote",
->>>>>>> origin/main
+	/*
+	 * THIS PASS'S OWN RECORD, and it is the one that states the pair the file ships:
+	 * the frames were re-shot from a build at this head rather than re-stamped, so
+	 * nothing in it is a claim that outruns what can be cited.
+	 */
+	"meshDesktopRound7FoldRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
