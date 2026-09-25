@@ -145,6 +145,23 @@ the common state, so a healthy machine reserves no height here, and the
 `radient-session-issue.tsx` docblock records why a backend that cannot answer
 the verdict is silent rather than assumed healthy.
 
+**The aside panel takes the seat CLOSEST to the box, and it is the one block
+here that is not ambient context.** `/btw` mounts `AsidePanel`
+(`aside-panel.tsx`) in flow between the interrupt notice and the box's anchoring
+wrapper — the last two children of the form before the box, so everything above
+it keeps the order it had. The seat is the box's own because the panel is a MODE
+of the box rather than a report about it: while it is attached the composer
+addresses the aside (the placeholder says so) and its drafts go there, which is
+the last thing before the box for the same reason a `mode` label sits next to
+the field it renames. Two bounds follow, and both are this file's rules rather
+than the panel's own taste: the band still carries **no `max-height` and no
+`overflow`** (the slash popup is an unportaled `absolute bottom-full` child of
+the box's wrapper), so the panel caps its OWN exchange area the way the
+composer's attachment strip does; and the panel is a plain `section` — never a
+Radix dialog, drawer or popover — because a modal traps focus and takes the
+pointer, and this band exists so the user can go on typing while an answer
+streams.
+
 **It is also the one block up here that needs a gap, and it needed one because
 it is the only BORDERED one.** The row and the alert are sentences: their own
 `pb-2` / `pb-1` *is* the gap to the box. A callout's padding is inside its
