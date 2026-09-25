@@ -1,0 +1,172 @@
+port8080.lock taken
+rig up: proxy 35548 on 8080 -> daemon 35013 on 52359, stub 52350; 1111 untouched
+== r8compat (btw-r2-compat) at 15:18:52 ==
+[build] current: assets 2026-09-25T14:47:42.803Z >= sources 2026-09-25T14:45:07.912Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/run-r8compat/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/qa-482-r8
+  scratch       /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-35606
+  frames        /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/frames/r8compat
+  app cwd       /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-35606/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown
+        mode=headless visible=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] compat session A
+        40d13cfa72c3
+[note] frame
+        {"label":"qa2-r8compat-c01-old-daemon-thinking","mode":"raw","width":1600,"height":1736}
+[PASS] (d) against a 422-ing daemon the first ask still SETTLES with the whole answer, no alert
+        {"ms":4653,"alert":null}
+[note] (d) visible lengths (no stream expected)
+        [245]
+[PASS] (d) adopt goes live after the compat settle
+[note] frame
+        {"label":"qa2-r8compat-c02-old-daemon-settled","mode":"settled","width":1600,"height":1736}
+[PASS] (d) a later ask in the same session settles too (the proxy log shows whether it carried the field)
+        {"alert":null}
+[note] frame
+        {"label":"qa2-r8compat-c03-old-daemon-second-ask","mode":"settled","width":1600,"height":1736}
+[note] compat session B
+        bd58ed62b4e2
+[note] frame
+        {"label":"qa2-r8compat-c04-session-b-settled","mode":"settled","width":1600,"height":1736}
+[PASS] (d) session B's first ask settles too
+        {"alert":null}
+[PASS] every capture wrote a PNG of the requested size
+[PASS] no process from this run outlived its boot
+
+frames: qa2-r8compat-c01-old-daemon-thinking.png, qa2-r8compat-c02-old-daemon-settled.png, qa2-r8compat-c03-old-daemon-second-ask.png, qa2-r8compat-c04-session-b-settled.png
+frames directory: /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/frames/r8compat
+app log: /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-35606/app-scene.log
+scratch removed (--clean)
+
+ALL CHECKS PASSED
+== r8compat driver exit: 0 ==
+total 1752
+drwxr-xr-x@  6 damian  staff     192 Sep 25 11:19 .
+drwxr-xr-x@ 13 damian  staff     416 Sep 25 11:18 ..
+-rw-r--r--@  1 damian  staff  198935 Sep 25 11:18 qa2-r8compat-c01-old-daemon-thinking.png
+-rw-r--r--@  1 damian  staff  231321 Sep 25 11:19 qa2-r8compat-c02-old-daemon-settled.png
+-rw-r--r--@  1 damian  staff  229962 Sep 25 11:19 qa2-r8compat-c03-old-daemon-second-ask.png
+-rw-r--r--@  1 damian  staff  229128 Sep 25 11:19 qa2-r8compat-c04-session-b-settled.png
+8080 released before this command returned
+port8080.lock released
+--- proxy counters (/Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/run-r8compat/proxy-stats.json) ---
+{
+  "oldDaemon": true,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T15:18:57.248Z",
+      "url": "/v1/desktop/sessions/40d13cfa72c3/asides",
+      "asideId": "2a86b764-e992-4e42-a27c-dab71a0fcf1e",
+      "continues": null,
+      "questionHead": "what does the retry budget actually cap?",
+      "text": "what does the retry budget actually cap?",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "7f33774819894e31be127c184293df2e",
+      "status": 422,
+      "response": "{\"detail\":\"The request has invalid fields.\"}",
+      "emulated": "old daemon: refused the unknown field, not forwarded"
+    },
+    {
+      "at": "2026-09-25T15:18:57.255Z",
+      "url": "/v1/desktop/sessions/40d13cfa72c3/asides",
+      "asideId": "2a86b764-e992-4e42-a27c-dab71a0fcf1e",
+      "continues": null,
+      "questionHead": "what does the retry budget actually cap?",
+      "text": "what does the retry budget actually cap?",
+      "carriedSubscriptionField": false,
+      "subscriptionId": null,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"2a86b764-e992-4e42-a27c-dab71a0fcf1e\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:19:02.638Z",
+      "url": "/v1/desktop/sessions/40d13cfa72c3/asides",
+      "asideId": "23f52fcc-5831-4646-b7a3-53a4395b1c4a",
+      "continues": "2a86b764-e992-4e42-a27c-dab71a0fcf1e",
+      "questionHead": "and a second question on the same owner?",
+      "text": "and a second question on the same owner?",
+      "carriedSubscriptionField": false,
+      "subscriptionId": null,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"23f52fcc-5831-4646-b7a3-53a4395b1c4a\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:19:12.734Z",
+      "url": "/v1/desktop/sessions/bd58ed62b4e2/asides",
+      "asideId": "d342bab9-e791-4e7b-9115-4a69e88d3c51",
+      "continues": null,
+      "questionHead": "session B first question",
+      "text": "session B first question",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "23b5e69ec2194a33a1ebe8e17be23277",
+      "status": 422,
+      "response": "{\"detail\":\"The request has invalid fields.\"}",
+      "emulated": "old daemon: refused the unknown field, not forwarded"
+    },
+    {
+      "at": "2026-09-25T15:19:12.738Z",
+      "url": "/v1/desktop/sessions/bd58ed62b4e2/asides",
+      "asideId": "d342bab9-e791-4e7b-9115-4a69e88d3c51",
+      "continues": null,
+      "questionHead": "session B first question",
+      "text": "session B first question",
+      "carriedSubscriptionField": false,
+      "subscriptionId": null,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"d342bab9-e791-4e7b-9115-4a69e88d3c51\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T15:18:53.824Z",
+      "subscriptionId": "543ed87748bc002e",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/40d13cfa72c3/events?frontend_replace=1",
+      "openedAt": "2026-09-25T15:18:56.426Z",
+      "subscriptionId": "7f33774819894e31be127c184293df2e",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/bd58ed62b4e2/events?frontend_replace=1",
+      "openedAt": "2026-09-25T15:19:08.020Z",
+      "subscriptionId": "23b5e69ec2194a33a1ebe8e17be23277",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    }
+  ],
+  "asideDeltaFrames": 0,
+  "deltasBySubscription": {},
+  "deltasByAside": {},
+  "refused422": 2,
+  "messagePosts": [],
+  "asideOps": []
+}
+--- end counters ---

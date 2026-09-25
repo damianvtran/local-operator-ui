@@ -1,0 +1,139 @@
+[build] current: assets 2026-09-25T14:47:42.803Z >= sources 2026-09-25T14:45:07.912Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/run-r8479/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/qa-482-r8
+  scratch       /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-12564
+  frames        /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/frames/r8479
+  app cwd       /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-12564/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown
+        mode=headless visible=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] 479 session
+        8e4a5b64d46f
+[note] seed turns
+        3
+[note] aside used and closed before the probe
+        [null]
+[note] 479 run 1 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 1 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,40,1,1,0,"Ask me for help"],[13,40,1,1,0,"Sending your message"],[26,0,0,0,1,"Sending your message"],[1496,0,0,0,1,"Sending your message"],[1505,0,0,0,1,"Sending your message"]]
+[note] 479 run 1 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[11,40,1,1,0],[18,40,0,0,0],[26,0,0,0,1]]
+[note] 479 run 1 GAP chips-left -> text-left (mutation ms)
+        8
+[PASS] 479 run 1 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[PASS] 479: the empty box says 'Sending your message' while held
+        {"placeholder":"Sending your message"}
+[note] 479 run 2 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 2 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,40,1,1,0,"Ask me for help"],[8,40,1,1,0,"Sending your message"],[16,40,1,1,0,"Sending your message"],[25,0,0,0,1,"Sending your message"],[1500,0,0,0,1,"Sending your message"],[1508,0,0,0,1,"Sending your message"]]
+[note] 479 run 2 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[4,40,1,1,0],[21,40,0,0,0],[24,0,0,0,1]]
+[note] 479 run 2 GAP chips-left -> text-left (mutation ms)
+        3
+[PASS] 479 run 2 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 3 staged at the press
+        {"replies":1,"attachments":1}
+[note] 479 run 3 (quote+file) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,40,1,1,0,"Ask me for help"],[10,40,1,1,0,"Ask me for help"],[22,40,1,1,0,"Sending your message"],[30,40,0,0,0,"Sending your message"],[38,0,0,0,1,"Sending your message"],[1498,0,0,0,1,"Sending your message"],[1506,0,0,0,1,"Sending your message"]]
+[note] 479 run 3 (quote+file) mutations [t, value, replies, attachments, echo]
+        [[19,40,1,1,0],[29,40,0,0,0],[37,0,0,0,1]]
+[note] 479 run 3 GAP chips-left -> text-left (mutation ms)
+        8
+[FAIL] 479 run 3 (quote+file): no painted frame shows the text without its chips (or the reverse)
+        {"split":[[30,40,0,0,0,"Sending your message"]]}
+[note] 479 run 4 staged at the press
+        {"replies":1,"attachments":0}
+[note] 479 run 4 (quote only) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,40,1,0,0,"Ask me for help"],[2,40,1,0,0,"Ask me for help"],[11,40,1,0,0,"Ask me for help"],[20,40,1,0,0,"Ask me for help"],[33,0,0,0,1,"Sending your message"],[1494,0,0,0,1,"Sending your message"],[1502,0,0,0,1,"Sending your message"]]
+[note] 479 run 4 (quote only) mutations [t, value, replies, attachments, echo]
+        [[23,40,1,0,0],[32,0,0,0,1]]
+[note] 479 run 4 GAP chips-left -> text-left (mutation ms)
+        0
+[PASS] 479 run 4 (quote only): no painted frame shows the text without its chips (or the reverse)
+        {"split":[]}
+[note] 479 run 5 staged at the press
+        {"replies":0,"attachments":1}
+[note] 479 run 5 (file only) frames [t, value, replies, attachments, echo, placeholder]
+        [[0,39,0,1,0,"Ask me for help"],[7,39,0,1,0,"Sending your message"],[14,39,0,0,0,"Sending your message"],[24,0,0,0,1,"Sending your message"],[1498,0,0,0,1,"Sending your message"],[1506,0,0,0,1,"Sending your message"]]
+[note] 479 run 5 (file only) mutations [t, value, replies, attachments, echo]
+        [[4,39,0,1,0],[11,39,0,0,0],[20,0,0,0,1]]
+[note] 479 run 5 GAP chips-left -> text-left (mutation ms)
+        9
+[FAIL] 479 run 5 (file only): no painted frame shows the text without its chips (or the reverse)
+        {"split":[[14,39,0,0,0,"Sending your message"]]}
+
+---- app log (tail) ----
+[dev-driver] ARMED; frames are written to /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/frames/r8479
+[window-mode] window mode headless: 800x900, window created and never shown, page throttling off, no Dock tile
+
+DevTools listening on ws://127.0.0.1:49876/devtools/browser/c018676b-6d04-46e6-ada8-25c9bfe206bc
+11:14:14.786 › [window-mode] headless run launched by pid 12564; it quits when that process goes
+[window-mode] headless run launched by pid 12564; it quits when that process goes
+11:14:14.790 › [discovery] record directory /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-12564/config/run/serve (1 record(s))
+11:14:15.007 › [discovery] candidate http://127.0.0.1:8080 pid 11047 v0.62.35 prefix /Users/damian/local-operator-worktrees/qa482-r8/.venv (configured URL)
+11:14:15.007 › [discovery] picked http://127.0.0.1:8080 (pid 11047, v0.62.35, configured)
+11:14:15.057 › Attached to daemon http://127.0.0.1:8080 (pid 11047, v0.62.35, editable, record /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-12564/config/run/serve/11047.json)
+11:14:15.058 › Discovered a daemon; the backend manager is configured not to spawn or kill one.
+11:14:15.203 › Update service initialized. Dev mode: true, NPX install: false
+11:14:15.203 › Unpackaged instance: no packaged install state to leave alone.
+11:14:15.204 › Periodic update checks scheduled (every 5 minutes)
+11:14:15.204 › macOS auto-update requires app signing
+11:14:15.204 › [webauthn] Touch ID passkeys are off: unpackaged — an unpackaged run has no signature to carry the entitlement, so there is no group to configure
+11:14:15.212 › [browser] denied a media permission request from (unknown origin)
+11:14:15.213 › [browser] denied a media permission request from (unknown origin)
+11:14:15.213 › [browser] denied a web-app-installation permission request from (unknown origin)
+11:14:15.213 › [browser] denied a geolocation permission request from (unknown origin)
+11:14:15.288 › [shell-path] /bin/zsh reports PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
+11:14:15.289 › Shell environment variables loaded successfully. PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
+11:14:15.985 › [browser] denied a media permission request from (unknown origin)
+11:14:15.985 › [browser] denied a media permission request from (unknown origin)
+11:14:15.986 › [browser] denied a web-app-installation permission request from (unknown origin)
+11:14:15.986 › [browser] denied a geolocation permission request from (unknown origin)
+11:14:15.995 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
+11:14:15.996 › [browser] host on 127.0.0.1:49917 (proto 1), profile /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-12564/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+11:14:16.407 › Checking for UI updates...
+11:14:16.408 › Skip checkForUpdates because application is not packed and dev update config is not forced
+11:14:17.028 › [browser] tab 1 navigated to about:blank
+[window-mode] state: visible=false focused=false focusable=false size=800x900 content=800x868
+11:14:18.241 › Checking for updates... (silent mode: true)
+11:14:18.241 › Skip checkForUpdates because application is not packed and dev update config is not forced
+11:14:18.241 › Checking for backend updates... (silent mode: true)
+11:14:18.241 › Skip backend update check in dev mode unless forced
+11:14:18.623 › Checking for UI updates...
+11:14:18.623 › Skip checkForUpdates because application is not packed and dev update config is not forced
+11:14:30.228 › The pre-split environment at /Users/damian/Library/Application Support/Local Operator/local-operator-venv is built on the interpreter inside /Applications/Local Operator.app; it is left exactly as it is, and this instance does not use it.
+
+[PASS] no process from this run outlived its boot
+
+frames: qa3-r8479-479-in-flight.png
+frames directory: /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/frames/r8479
+app log: /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-12564/app-scene.log
+scratch removed (--clean)
+
+2 CHECK(S) FAILED

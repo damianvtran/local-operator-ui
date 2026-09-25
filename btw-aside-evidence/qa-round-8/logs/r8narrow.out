@@ -1,0 +1,664 @@
+port8080.lock taken
+rig up: proxy 72684 on 8080 -> daemon 71134 on 61633, stub 61605; 1111 untouched
+== r8narrow (btw-r6) at 15:06:02 ==
+[build] current: assets 2026-09-25T14:47:42.803Z >= sources 2026-09-25T14:45:07.912Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/run-r8narrow/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/qa-482-r8
+  scratch       /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-72936
+  frames        /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/frames/r8narrow
+  app cwd       /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-72936/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown
+        mode=headless visible=false focused=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] R6 session
+        46a31e520778
+[note] Q47 the refused follow-up, as the owner holds it BEFORE the door
+        {"base":{"id":"f301d19d-a63e-4e1f-a013-c2b4434337e2","status":200},"refused":{"id":"badb48f5-1930-42bd-aaad-ef00ba46d8fc","status":409,"response":"{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or noth"},"entryHoldingTheExchange":{"id":"f301d19d-a63e-4e1f-a013-c2b4434337e2","get":{"status":200,"turns":2,"complete":true}},"refusedTurnsOwnId":{"id":"badb48f5-1930-42bd-aaad-ef00ba46d8fc","get":{"status":404,"turns":null,"complete":null}}}
+[PASS] Q47 the repro state exists: the refused turn's own id is NOT an entry (GET 404) while the entry that holds the exchange answers 200 with its turns
+        {"refusedTurnId":"badb48f5-1930-42bd-aaad-ef00ba46d8fc","holdingEntryId":"f301d19d-a63e-4e1f-a013-c2b4434337e2","pre47":{"f301d19d-a63e-4e1f-a013-c2b4434337e2":{"status":200,"turns":2,"complete":true},"badb48f5-1930-42bd-aaad-ef00ba46d8fc":{"status":404,"turns":null,"complete":null}},"postStatus":409}
+[PASS] Q47 the copy that sends the user to Escape is the one on screen (so the promise under test is the app's own words)
+        {"tail":"h is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it.Add to conversation⌘+FNothing to add."}
+[note] frame
+        {"label":"qa6-r8narrow-q47-refused-follow-up-before-esc","mode":"settled"}
+[note] Q47 refused follow-up, Escape — the door, on the wire
+        {"door":"Escape in the composer","closeOps":[{"method":"DELETE","url":"/v1/desktop/sessions/46a31e520778/asides/f301d19d-a63e-4e1f-a013-c2b4434337e2","named":"f301d19d-a63e-4e1f-a013-c2b4434337e2","status":200}],"namedId":"f301d19d-a63e-4e1f-a013-c2b4434337e2","expectedId":"f301d19d-a63e-4e1f-a013-c2b4434337e2","namedTheExpectedEntry":true,"probeBefore":{"f301d19d-a63e-4e1f-a013-c2b4434337e2":{"status":200,"turns":2,"complete":true},"badb48f5-1930-42bd-aaad-ef00ba46d8fc":{"status":404,"turns":null,"complete":null}},"probeAfter":{"f301d19d-a63e-4e1f-a013-c2b4434337e2":{"status":404,"turns":null,"complete":null},"badb48f5-1930-42bd-aaad-ef00ba46d8fc":{"status":404,"turns":null,"complete":null}},"entryGoneAfter":true,"panelGone":true}
+[PASS] Q47 refused follow-up, Escape: the close names the entry that holds the exchange (f301d19d), answers 200, and that entry is gone (GET 404)
+        {"closeOps":[{"method":"DELETE","named":"f301d19d-a63e-4e1f-a013-c2b4434337e2","status":200}],"expectedId":"f301d19d-a63e-4e1f-a013-c2b4434337e2","named":"f301d19d-a63e-4e1f-a013-c2b4434337e2","probeBefore":{"status":200,"turns":2,"complete":true},"probeAfter":{"status":404,"turns":null,"complete":null},"alertStillOnScreenBeforeTheDoor":null}
+[note] Q48 the repro state (control door)
+        {"base":"f14bdf6f-98c7-4761-8590-817ef7a43b29","refused":"9936b726-b1ab-4f1b-941b-e85a2a0af807","pre49":{"f14bdf6f-98c7-4761-8590-817ef7a43b29":{"status":200,"turns":2,"complete":true},"9936b726-b1ab-4f1b-941b-e85a2a0af807":{"status":404,"turns":null,"complete":null}}}
+[PASS] Q48 the same repro state before the control door: the refused turn's id is not an entry, the holding entry is 200
+        {"f14bdf6f-98c7-4761-8590-817ef7a43b29":{"status":200,"turns":2,"complete":true},"9936b726-b1ab-4f1b-941b-e85a2a0af807":{"status":404,"turns":null,"complete":null}}
+[note] Q48 refused follow-up, the close control — the door, on the wire
+        {"door":"the panel's \"Close the aside\" control","closeOps":[{"method":"DELETE","url":"/v1/desktop/sessions/46a31e520778/asides/f14bdf6f-98c7-4761-8590-817ef7a43b29","named":"f14bdf6f-98c7-4761-8590-817ef7a43b29","status":200}],"namedId":"f14bdf6f-98c7-4761-8590-817ef7a43b29","expectedId":"f14bdf6f-98c7-4761-8590-817ef7a43b29","namedTheExpectedEntry":true,"probeBefore":{"f301d19d-a63e-4e1f-a013-c2b4434337e2":{"status":404,"turns":null,"complete":null},"badb48f5-1930-42bd-aaad-ef00ba46d8fc":{"status":404,"turns":null,"complete":null},"f14bdf6f-98c7-4761-8590-817ef7a43b29":{"status":200,"turns":2,"complete":true},"9936b726-b1ab-4f1b-941b-e85a2a0af807":{"status":404,"turns":null,"complete":null}},"probeAfter":{"f301d19d-a63e-4e1f-a013-c2b4434337e2":{"status":404,"turns":null,"complete":null},"badb48f5-1930-42bd-aaad-ef00ba46d8fc":{"status":404,"turns":null,"complete":null},"f14bdf6f-98c7-4761-8590-817ef7a43b29":{"status":404,"turns":null,"complete":null},"9936b726-b1ab-4f1b-941b-e85a2a0af807":{"status":404,"turns":null,"complete":null}},"entryGoneAfter":true,"panelGone":true}
+[PASS] Q48 refused follow-up, the close control: the close names the entry that holds the exchange (f14bdf6f), answers 200, and that entry is gone (GET 404)
+        {"closeOps":[{"method":"DELETE","named":"f14bdf6f-98c7-4761-8590-817ef7a43b29","status":200}],"expectedId":"f14bdf6f-98c7-4761-8590-817ef7a43b29","named":"f14bdf6f-98c7-4761-8590-817ef7a43b29","probeBefore":{"status":200,"turns":2,"complete":true},"probeAfter":{"status":404,"turns":null,"complete":null},"alertStillOnScreenBeforeTheDoor":null}
+[note] Q50 the answered continuation, before the door
+        {"base":{"id":"eb0ead78-b160-4e65-85df-e8179d324821","get":{"status":200,"turns":2,"complete":true}},"continuation":{"id":"13545100-d17f-4840-add1-e894a7a5ffe5","continues":"eb0ead78-b160-4e65-85df-e8179d324821","status":200,"get":{"status":200,"turns":4,"complete":true}}}
+[note] Q50 answered follow-up, Escape — the door, on the wire
+        {"door":"Escape in the composer","closeOps":[{"method":"DELETE","url":"/v1/desktop/sessions/46a31e520778/asides/13545100-d17f-4840-add1-e894a7a5ffe5","named":"13545100-d17f-4840-add1-e894a7a5ffe5","status":200}],"namedId":"13545100-d17f-4840-add1-e894a7a5ffe5","expectedId":"13545100-d17f-4840-add1-e894a7a5ffe5","namedTheExpectedEntry":true,"probeBefore":{"f301d19d-a63e-4e1f-a013-c2b4434337e2":{"status":404,"turns":null,"complete":null},"badb48f5-1930-42bd-aaad-ef00ba46d8fc":{"status":404,"turns":null,"complete":null},"f14bdf6f-98c7-4761-8590-817ef7a43b29":{"status":404,"turns":null,"complete":null},"9936b726-b1ab-4f1b-941b-e85a2a0af807":{"status":404,"turns":null,"complete":null},"eb0ead78-b160-4e65-85df-e8179d324821":{"status":200,"turns":2,"complete":true},"13545100-d17f-4840-add1-e894a7a5ffe5":{"status":200,"turns":4,"complete":true}},"probeAfter":{"f301d19d-a63e-4e1f-a013-c2b4434337e2":{"status":404,"turns":null,"complete":null},"badb48f5-1930-42bd-aaad-ef00ba46d8fc":{"status":404,"turns":null,"complete":null},"f14bdf6f-98c7-4761-8590-817ef7a43b29":{"status":404,"turns":null,"complete":null},"9936b726-b1ab-4f1b-941b-e85a2a0af807":{"status":404,"turns":null,"complete":null},"eb0ead78-b160-4e65-85df-e8179d324821":{"status":200,"turns":2,"complete":true},"13545100-d17f-4840-add1-e894a7a5ffe5":{"status":404,"turns":null,"complete":null}},"entryGoneAfter":true,"panelGone":true}
+[PASS] Q50 answered follow-up, Escape: the close names the entry that holds the exchange (13545100), answers 200, and that entry is gone (GET 404)
+        {"closeOps":[{"method":"DELETE","named":"13545100-d17f-4840-add1-e894a7a5ffe5","status":200}],"expectedId":"13545100-d17f-4840-add1-e894a7a5ffe5","named":"13545100-d17f-4840-add1-e894a7a5ffe5","probeBefore":{"status":200,"turns":4,"complete":true},"probeAfter":{"status":404,"turns":null,"complete":null},"alertStillOnScreenBeforeTheDoor":null}
+[PASS] Q51 a fresh ask's own id IS the entry the owner holds (GET 200 with its turns)
+        {"id":"d0543440-d02e-499d-87af-efc768abed4e","get":{"status":200,"turns":2,"complete":true}}
+[note] Q51 fresh ask, the close control — the door, on the wire
+        {"door":"the panel's \"Close the aside\" control","closeOps":[{"method":"DELETE","url":"/v1/desktop/sessions/46a31e520778/asides/d0543440-d02e-499d-87af-efc768abed4e","named":"d0543440-d02e-499d-87af-efc768abed4e","status":200}],"namedId":"d0543440-d02e-499d-87af-efc768abed4e","expectedId":"d0543440-d02e-499d-87af-efc768abed4e","namedTheExpectedEntry":true,"probeBefore":{"f301d19d-a63e-4e1f-a013-c2b4434337e2":{"status":404,"turns":null,"complete":null},"badb48f5-1930-42bd-aaad-ef00ba46d8fc":{"status":404,"turns":null,"complete":null},"f14bdf6f-98c7-4761-8590-817ef7a43b29":{"status":404,"turns":null,"complete":null},"9936b726-b1ab-4f1b-941b-e85a2a0af807":{"status":404,"turns":null,"complete":null},"eb0ead78-b160-4e65-85df-e8179d324821":{"status":200,"turns":2,"complete":true},"13545100-d17f-4840-add1-e894a7a5ffe5":{"status":404,"turns":null,"complete":null},"d0543440-d02e-499d-87af-efc768abed4e":{"status":200,"turns":2,"complete":true}},"probeAfter":{"f301d19d-a63e-4e1f-a013-c2b4434337e2":{"status":404,"turns":null,"complete":null},"badb48f5-1930-42bd-aaad-ef00ba46d8fc":{"status":404,"turns":null,"complete":null},"f14bdf6f-98c7-4761-8590-817ef7a43b29":{"status":404,"turns":null,"complete":null},"9936b726-b1ab-4f1b-941b-e85a2a0af807":{"status":404,"turns":null,"complete":null},"eb0ead78-b160-4e65-85df-e8179d324821":{"status":200,"turns":2,"complete":true},"13545100-d17f-4840-add1-e894a7a5ffe5":{"status":404,"turns":null,"complete":null},"d0543440-d02e-499d-87af-efc768abed4e":{"status":404,"turns":null,"complete":null}},"entryGoneAfter":true,"panelGone":true}
+[PASS] Q51 fresh ask, the close control: the close names the entry that holds the exchange (d0543440), answers 200, and that entry is gone (GET 404)
+        {"closeOps":[{"method":"DELETE","named":"d0543440-d02e-499d-87af-efc768abed4e","status":200}],"expectedId":"d0543440-d02e-499d-87af-efc768abed4e","named":"d0543440-d02e-499d-87af-efc768abed4e","probeBefore":{"status":200,"turns":2,"complete":true},"probeAfter":{"status":404,"turns":null,"complete":null},"alertStillOnScreenBeforeTheDoor":null}
+[note] Q52 a fresh refused ask, closed
+        {"refusedId":"bb8fd67a-4b80-4f40-97d4-88e9430dcca4","postStatus":409,"closeOps":[{"method":"DELETE","named":"bb8fd67a-4b80-4f40-97d4-88e9430dcca4","status":404}],"named":"bb8fd67a-4b80-4f40-97d4-88e9430dcca4","status":404,"probeBefore":{"f301d19d-a63e-4e1f-a013-c2b4434337e2":{"status":404,"turns":null,"complete":null},"badb48f5-1930-42bd-aaad-ef00ba46d8fc":{"status":404,"turns":null,"complete":null},"f14bdf6f-98c7-4761-8590-817ef7a43b29":{"status":404,"turns":null,"complete":null},"9936b726-b1ab-4f1b-941b-e85a2a0af807":{"status":404,"turns":null,"complete":null},"eb0ead78-b160-4e65-85df-e8179d324821":{"status":200,"turns":2,"complete":true},"13545100-d17f-4840-add1-e894a7a5ffe5":{"status":404,"turns":null,"complete":null},"d0543440-d02e-499d-87af-efc768abed4e":{"status":404,"turns":null,"complete":null},"bb8fd67a-4b80-4f40-97d4-88e9430dcca4":{"status":404,"turns":null,"complete":null}},"probeAfter":{"f301d19d-a63e-4e1f-a013-c2b4434337e2":{"status":404,"turns":null,"complete":null},"badb48f5-1930-42bd-aaad-ef00ba46d8fc":{"status":404,"turns":null,"complete":null},"f14bdf6f-98c7-4761-8590-817ef7a43b29":{"status":404,"turns":null,"complete":null},"9936b726-b1ab-4f1b-941b-e85a2a0af807":{"status":404,"turns":null,"complete":null},"eb0ead78-b160-4e65-85df-e8179d324821":{"status":200,"turns":2,"complete":true},"13545100-d17f-4840-add1-e894a7a5ffe5":{"status":404,"turns":null,"complete":null},"d0543440-d02e-499d-87af-efc768abed4e":{"status":404,"turns":null,"complete":null},"bb8fd67a-4b80-4f40-97d4-88e9430dcca4":{"status":404,"turns":null,"complete":null}}}
+[PASS] Q52 the fallback arm: the close names the refused turn's own id, and its 404 is the silent no-op it is documented as — nothing else in this session was destroyed
+        {"named":"bb8fd67a-4b80-4f40-97d4-88e9430dcca4","refusedId":"bb8fd67a-4b80-4f40-97d4-88e9430dcca4","status":404,"destroyed":[]}
+[PASS] Q53 the adopt lands: one adopt POST → 200, the panel detaches, the daemon's history grew by 2 and carries the question
+        {"adopt":[{"named":"10c909bd-37bb-4eda-9244-896c6fd88fd1","status":200}],"history":[12,14],"transcriptRows":1}
+[PASS] Q53b Escape with no panel up leaves no close call and does not touch the adopted entry
+        {"closeOps":0,"before":{"10c909bd-37bb-4eda-9244-896c6fd88fd1":{"status":200,"turns":2,"complete":true}},"after":{"10c909bd-37bb-4eda-9244-896c6fd88fd1":{"status":200,"turns":2,"complete":true}},"strayClose":4}
+[note] Q54 a later aside closed after an adopt — the door, on the wire
+        {"door":"the panel's \"Close the aside\" control","closeOps":[{"method":"DELETE","url":"/v1/desktop/sessions/46a31e520778/asides/58fbec31-9e4a-4bcc-bcd3-1c4828869803","named":"58fbec31-9e4a-4bcc-bcd3-1c4828869803","status":200}],"namedId":"58fbec31-9e4a-4bcc-bcd3-1c4828869803","expectedId":"58fbec31-9e4a-4bcc-bcd3-1c4828869803","namedTheExpectedEntry":true,"probeBefore":{"f301d19d-a63e-4e1f-a013-c2b4434337e2":{"status":404,"turns":null,"complete":null},"badb48f5-1930-42bd-aaad-ef00ba46d8fc":{"status":404,"turns":null,"complete":null},"f14bdf6f-98c7-4761-8590-817ef7a43b29":{"status":404,"turns":null,"complete":null},"9936b726-b1ab-4f1b-941b-e85a2a0af807":{"status":404,"turns":null,"complete":null},"eb0ead78-b160-4e65-85df-e8179d324821":{"status":200,"turns":2,"complete":true},"13545100-d17f-4840-add1-e894a7a5ffe5":{"status":404,"turns":null,"complete":null},"d0543440-d02e-499d-87af-efc768abed4e":{"status":404,"turns":null,"complete":null},"bb8fd67a-4b80-4f40-97d4-88e9430dcca4":{"status":404,"turns":null,"complete":null},"10c909bd-37bb-4eda-9244-896c6fd88fd1":{"status":200,"turns":2,"complete":true},"58fbec31-9e4a-4bcc-bcd3-1c4828869803":{"status":200,"turns":2,"complete":true}},"probeAfter":{"f301d19d-a63e-4e1f-a013-c2b4434337e2":{"status":404,"turns":null,"complete":null},"badb48f5-1930-42bd-aaad-ef00ba46d8fc":{"status":404,"turns":null,"complete":null},"f14bdf6f-98c7-4761-8590-817ef7a43b29":{"status":404,"turns":null,"complete":null},"9936b726-b1ab-4f1b-941b-e85a2a0af807":{"status":404,"turns":null,"complete":null},"eb0ead78-b160-4e65-85df-e8179d324821":{"status":200,"turns":2,"complete":true},"13545100-d17f-4840-add1-e894a7a5ffe5":{"status":404,"turns":null,"complete":null},"d0543440-d02e-499d-87af-efc768abed4e":{"status":404,"turns":null,"complete":null},"bb8fd67a-4b80-4f40-97d4-88e9430dcca4":{"status":404,"turns":null,"complete":null},"10c909bd-37bb-4eda-9244-896c6fd88fd1":{"status":200,"turns":2,"complete":true},"58fbec31-9e4a-4bcc-bcd3-1c4828869803":{"status":404,"turns":null,"complete":null}},"entryGoneAfter":true,"panelGone":true}
+[PASS] Q54 a later aside closed after an adopt: the close names the entry that holds the exchange (58fbec31), answers 200, and that entry is gone (GET 404)
+        {"closeOps":[{"method":"DELETE","named":"58fbec31-9e4a-4bcc-bcd3-1c4828869803","status":200}],"expectedId":"58fbec31-9e4a-4bcc-bcd3-1c4828869803","named":"58fbec31-9e4a-4bcc-bcd3-1c4828869803","probeBefore":{"status":200,"turns":2,"complete":true},"probeAfter":{"status":404,"turns":null,"complete":null},"alertStillOnScreenBeforeTheDoor":null}
+[PASS] Q54 closing the later aside does NOT delete what the adopt spliced into the conversation (the adopted entry is unchanged and the transcript still carries the question once)
+        {"adoptedEntryBefore":{"status":200,"turns":2,"complete":true},"adoptedEntryAfter":{"status":200,"turns":2,"complete":true},"transcriptRows":1}
+[note] frame
+        {"label":"qa6-r8narrow-q53-adopt-then-a-later-close","mode":"settled"}
+[note] Q55 the reflex pair (⌘+F twice, ~66 ms apart)
+        {"keydowns":[{"at":1790348855638,"prevented":true,"phase":"armed"},{"at":1790348855712,"prevented":true,"phase":"armed"}],"measuredGapMs":74,"adoptPosts":0,"panelUp":true,"alerts":["Press ⌘+F again to add the aside to the conversation. Once added, it stays there."]}
+[PASS] Q55 U17: a ⌘+F pair 74 ms apart leaves NO adopt request, the panel stays and the confirm is still up
+        {"measuredGapMs":74,"adoptPosts":0,"panelUp":true,"alerts":["Press ⌘+F again to add the aside to the conversation. Once added, it stays there."]}
+[note] frame
+        {"label":"qa6-r8narrow-q55-reflex-pair-no-adopt","mode":"settled"}
+[PASS] Q55b U17: a deliberate third press 1597 ms after the ignored one adopts (ONE adopt POST → 200, the panel detaches)
+        {"measuredGapMs":1597,"adoptOps":[200],"panelGoneMs":303,"keydowns":[{"at":1790348855638,"prevented":true,"phase":"armed"},{"at":1790348855712,"prevented":true,"phase":"armed"},{"at":1790348857309,"prevented":true,"phase":"armed"}]}
+[note] Q56 the declined follow-up's copy, as painted
+        {"alert":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it.","askAgainCount":1,"rows":7,"visible":7}
+[PASS] Q56 U18: the declined refusal reads the remedy ONCE — the panel's clause is present and 'ask again' appears exactly once in the whole alert
+        {"askAgainCount":1,"alert":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it."}
+[note] frame
+        {"label":"qa6-r8narrow-q56-declined-refusal-copy","mode":"settled"}
+[note] Q56b out-of-band DELETE of the prefix (the owner evicting it)
+        {"status":200,"body":"{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"a485a317-2aaa-4800-a631-25ef268ce068\",\"status\":\"closed\"},\"replayed\":false}}"}
+[note] Q56b U11's continuation arm
+        {"alert":"This aside is no longer available This aside can't continue. Press Esc to close it, which discards this exchange, then start a new one with /btw."}
+[PASS] Q56b U11's continuation arm is unchanged: the owner's sentence plus the escape clause that costs the exchange, and no clause that promises a retry which cannot work
+        {"alert":"This aside is no longer available This aside can't continue. Press Esc to close it, which discards this exchange, then start a new one with /btw."}
+[note] Q57b U21: the panel from the press to 3 s after the diagram landed
+        {"svgLandedMs":2231,"deltasAtPress":82,"deltasAfter":83,"samples":[{"ms":79,"scrollTop":1842,"maxScroll":1842,"contentHeight":2093,"svg":false,"turnOffset":2030.7,"chars":null},{"ms":166,"scrollTop":1842,"maxScroll":1842,"contentHeight":2093,"svg":false,"turnOffset":2030.7,"chars":null},{"ms":262,"scrollTop":1842,"maxScroll":1842,"contentHeight":2093,"svg":false,"turnOffset":2030.7,"chars":null},{"ms":324,"scrollTop":1842,"maxScroll":1842,"contentHeight":2093,"svg":false,"turnOffset":2030.7,"chars":null},{"ms":470,"scrollTop":1842,"maxScroll":1842,"contentHeight":2093,"svg":false,"turnOffset":2030.7,"chars":null},{"ms":558,"scrollTop":1842,"maxScroll":1842,"contentHeight":2093,"svg":false,"turnOffset":2030.7,"chars":null},{"ms":660,"scrollTop":1842,"maxScroll":1842,"contentHeight":2093,"svg":false,"turnOffset":2030.7,"chars":null},{"ms":752,"scrollTop":1842,"maxScroll":1842,"contentHeight":2093,"svg":false,"turnOffset":2030.7,"chars":null},{"ms":869,"scrollTop":1842,"maxScroll":1842,"contentHeight":2093,"svg":false,"turnOffset":2030.7,"chars":null},{"ms":1015,"scrollTop":1842,"maxScroll":1842,"contentHeight":2093,"svg":false,"turnOffset":2030.7,"chars":null},{"ms":1080,"scrollTop":1842,"maxScroll":1842,"contentHeight":2093,"svg":false,"turnOffset":2030.7,"chars":null},{"ms":1170,"scrollTop":1842,"maxScroll":1842,"contentHeight":2093,"svg":false,"turnOffset":2030.7,"chars":null},{"ms":1236,"scrollTop":1842,"maxScroll":1842,"contentHeight":2093,"svg":false,"turnOffset":2030.7,"chars":null},{"ms":1340,"scrollTop":1842,"maxScroll":1842,"contentHeight":2093,"svg":false,"turnOffset":2030.7,"chars":null},{"ms":1429,"scrollTop":1842,"maxScroll":1842,"contentHeight":2093,"svg":false,"turnOffset":2030.7,"chars":null},{"ms":1490,"scrollTop":1842,"maxScroll":1842,"contentHeight":2093,"svg":false,"turnOffset":2030.7,"chars":null},{"ms":1601,"scrollTop":1842,"maxScroll":1842,"contentHeight":2093,"svg":false,"turnOffset":2030.7,"chars":null},{"ms":1681,"scrollTop":1842,"maxScroll":1842,"contentHeight":2093,"svg":false,"turnOffset":2030.7,"chars":null},{"ms":1809,"scrollTop":1842,"maxScroll":1842,"contentHeight":2093,"svg":false,"turnOffset":2030.7,"chars":null},{"ms":1900,"scrollTop":1842,"maxScroll":1842,"contentHeight":2093,"svg":false,"turnOffset":2030.7,"chars":null},{"ms":2008,"scrollTop":1842,"maxScroll":1842,"contentHeight":2093,"svg":false,"turnOffset":2030.7,"chars":null},{"ms":2135,"scrollTop":1842,"maxScroll":1842,"contentHeight":2093,"svg":false,"turnOffset":2030.7,"chars":null},{"ms":2231,"scrollTop":2030.5,"maxScroll":2132,"contentHeight":2383,"svg":true,"turnOffset":2030.7,"chars":49},{"ms":2923,"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"svg":true,"turnOffset":2030.7,"chars":4649},{"ms":2987,"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"svg":true,"turnOffset":2030.7,"chars":4649},{"ms":3173,"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"svg":true,"turnOffset":2030.7,"chars":4649},{"ms":3238,"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"svg":true,"turnOffset":2030.7,"chars":4649},{"ms":3323,"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"svg":true,"turnOffset":2030.7,"chars":4649},{"ms":3490,"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"svg":true,"turnOffset":2030.7,"chars":4649},{"ms":3568,"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"svg":true,"turnOffset":2030.7,"chars":4649},{"ms":3677,"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"svg":true,"turnOffset":2030.7,"chars":4649},{"ms":3800,"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"svg":true,"turnOffset":2030.7,"chars":4649},{"ms":3866,"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"svg":true,"turnOffset":2030.7,"chars":4649},{"ms":3970,"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"svg":true,"turnOffset":2030.7,"chars":4649},{"ms":4044,"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"svg":true,"turnOffset":2030.7,"chars":4649},{"ms":4217,"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"svg":true,"turnOffset":2030.7,"chars":4649},{"ms":4394,"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"svg":true,"turnOffset":2030.7,"chars":4649},{"ms":4478,"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"svg":true,"turnOffset":2030.7,"chars":4649},{"ms":4543,"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"svg":true,"turnOffset":2030.7,"chars":4649},{"ms":4616,"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"svg":true,"turnOffset":2030.7,"chars":4649},{"ms":4673,"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"svg":true,"turnOffset":2030.7,"chars":4649},{"ms":4759,"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"svg":true,"turnOffset":2030.7,"chars":4649},{"ms":4813,"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"svg":true,"turnOffset":2030.7,"chars":4649},{"ms":4896,"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"svg":true,"turnOffset":2030.7,"chars":4649},{"ms":4994,"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"svg":true,"turnOffset":2030.7,"chars":4649},{"ms":5063,"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"svg":true,"turnOffset":2030.7,"chars":4649},{"ms":5125,"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"svg":true,"turnOffset":2030.7,"chars":4649},{"ms":5259,"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"svg":true,"turnOffset":2030.7,"chars":4649}],"end":{"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"clientHeight":251,"turnOffset":2030.7,"turns":2,"svgPresent":true,"svgHeight":400,"answerChars":4649,"announce":"The aside answered: Here is the flow.","alertText":null}}
+[note] Q57b the same reading, summarised
+        {"monotone":true,"distinctScrollTops":[1842,2030.5],"preSvgTops":[[79,1842,2030.7,1842,null],[166,1842,2030.7,1842,null],[262,1842,2030.7,1842,null],[324,1842,2030.7,1842,null],[470,1842,2030.7,1842,null],[558,1842,2030.7,1842,null],[660,1842,2030.7,1842,null],[752,1842,2030.7,1842,null],[869,1842,2030.7,1842,null],[1015,1842,2030.7,1842,null],[1080,1842,2030.7,1842,null],[1170,1842,2030.7,1842,null],[1236,1842,2030.7,1842,null],[1340,1842,2030.7,1842,null],[1429,1842,2030.7,1842,null],[1490,1842,2030.7,1842,null],[1601,1842,2030.7,1842,null],[1681,1842,2030.7,1842,null],[1809,1842,2030.7,1842,null],[1900,1842,2030.7,1842,null],[2008,1842,2030.7,1842,null],[2135,1842,2030.7,1842,null]],"shortBefore":true,"moveSamples":[{"ms":2231,"scrollTop":2030.5,"svg":true}],"movedOnlyAfterTheDiagram":true,"noTextGrowthAfterSvg":false,"atTarget":true,"end":{"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"clientHeight":251,"turnOffset":2030.7,"turns":2,"svgPresent":true,"svgHeight":400,"answerChars":4649,"announce":"The aside answered: Here is the flow.","alertText":null},"deltas":[82,83]}
+[PASS] Q57b U21: at the last frame before the diagram the region is SHORT of the newest question's offset, and the landing of the diagram (no store-visible change) is what closes it — the newest question ends at the region's edge, and the region only ever moved one way
+        {"end":{"scrollTop":2030.5,"maxScroll":2332,"contentHeight":2583,"clientHeight":251,"turnOffset":2030.7,"turns":2,"svgPresent":true,"svgHeight":400,"answerChars":4649,"announce":"The aside answered: Here is the flow.","alertText":null},"svgAt":2231,"shortBefore":true,"lastPreSvg":{"ms":2135,"scrollTop":1842,"maxScroll":1842,"contentHeight":2093,"svg":false,"turnOffset":2030.7,"chars":null},"moveSamples":[{"ms":2231,"scrollTop":2030.5,"svg":true}],"monotone":true,"deltas":[82,83]}
+[note] frame
+        {"label":"qa6-r8narrow-q57b-diagram-growth-followed","mode":"settled"}
+[note] Q58b the reader scrolled by hand before the diagram landed
+        {"at":95,"userAt":1802}
+[note] Q58b U21 with a reader's scroll in the way
+        {"svgLandedMs":2449,"userAt":1802,"end":{"scrollTop":1802,"maxScroll":2332,"contentHeight":2583,"clientHeight":251,"turnOffset":2030.7,"turns":2,"svgPresent":true,"svgHeight":400,"answerChars":4649,"announce":"The aside answered: Here is the flow.","alertText":null}}
+[PASS] Q58b U21 yields to the reader: a hand scroll before the diagram landed holds through the late growth (the box trigger does not re-take the region)
+        {"userAt":1802,"endScrollTop":1802,"svgLandedMs":2449}
+[PASS] NE1 bare /btw attaches an empty panel and asks nothing
+        {"posts":0,"panelText":"Asideoff the record — nothing here joins the conversationType a question in the composer below — the answer lands here.A","fieldValue":""}
+[note] frame
+        {"label":"qa6-r8narrow-ne1-bare-btw-empty-panel","mode":"settled"}
+[PASS] NE1b the empty panel's next Enter is the FIRST question: the POST carries no prefix to continue
+        {"status":200,"continues":null,"requestId":"6a5108de-6d22-4117-bfb7-ac04759e3f87"}
+[PASS] NE2 Escape routing is restored with no panel up: no close/adopt call leaves and the conversation's draft survives
+        {"ops":0,"fieldValue":"a draft the conversation owns","panel":null}
+[note] NE3 the wire counters
+        {"asideDeltaFrames":102,"deltasBySubscription":{"29a67f4df48646b0b484a9f857d95826":48,"48d28379a6854a04927c8b24f2f535f9":16,"ba98da723d28448fbd7bf418a35787b8":38},"deltasByAside":{"f301d19d-a63e-4e1f-a013-c2b4434337e2":8,"f14bdf6f-98c7-4761-8590-817ef7a43b29":8,"eb0ead78-b160-4e65-85df-e8179d324821":8,"13545100-d17f-4840-add1-e894a7a5ffe5":8,"d0543440-d02e-499d-87af-efc768abed4e":8,"10c909bd-37bb-4eda-9244-896c6fd88fd1":8,"58fbec31-9e4a-4bcc-bcd3-1c4828869803":8,"ae793916-ffbe-4ba0-8ac4-7481620e759a":8,"a485a317-2aaa-4800-a631-25ef268ce068":8,"bbde86e3-cd67-4b01-993d-dd111e8f78f5":10,"be336104-c35f-4c36-9038-de5abf9cfbcc":1,"5a00723b-d7b7-41ff-9deb-bdb0c7b5bacd":10,"c7642da7-2fae-4ecc-acf3-f8937b99a390":1,"6a5108de-6d22-4117-bfb7-ac04759e3f87":8},"streams":[{"sub":"c0c790dbf2fc1e80","deltas":0,"sizes":0},{"sub":"29a67f4df48646b0b484a9f857d95826","deltas":48,"sizes":48},{"sub":"48d28379a6854a04927c8b24f2f535f9","deltas":16,"sizes":16},{"sub":"ba98da723d28448fbd7bf418a35787b8","deltas":38,"sizes":38}],"subscribedAsks":["f301d19d-a63e-4e1f-a013-c2b4434337e2","f14bdf6f-98c7-4761-8590-817ef7a43b29","eb0ead78-b160-4e65-85df-e8179d324821","13545100-d17f-4840-add1-e894a7a5ffe5","d0543440-d02e-499d-87af-efc768abed4e","10c909bd-37bb-4eda-9244-896c6fd88fd1","58fbec31-9e4a-4bcc-bcd3-1c4828869803","ae793916-ffbe-4ba0-8ac4-7481620e759a","a485a317-2aaa-4800-a631-25ef268ce068","bbde86e3-cd67-4b01-993d-dd111e8f78f5","be336104-c35f-4c36-9038-de5abf9cfbcc","5a00723b-d7b7-41ff-9deb-bdb0c7b5bacd","c7642da7-2fae-4ecc-acf3-f8937b99a390","6a5108de-6d22-4117-bfb7-ac04759e3f87"]}
+[PASS] NE3 every aside_delta frame this pass counted belongs to a subscription the pane opened (every stream carrying deltas has a named subscription, and the asks carried that same subscription_id), so a frame addressed to another pane's subscription would show up here
+        {"asideDeltaFrames":102,"subs":[["29a67f4df48646b0b484a9f857d95826",48],["48d28379a6854a04927c8b24f2f535f9",16],["ba98da723d28448fbd7bf418a35787b8",38]],"asideKeys":14,"askIds":19,"asksFramed":14}
+[PASS] no process from this run outlived its boot
+
+frames: qa6-r8narrow-ne1-bare-btw-empty-panel.png, qa6-r8narrow-q47-refused-follow-up-before-esc.png, qa6-r8narrow-q53-adopt-then-a-later-close.png, qa6-r8narrow-q55-reflex-pair-no-adopt.png, qa6-r8narrow-q56-declined-refusal-copy.png, qa6-r8narrow-q57b-diagram-growth-followed.png
+frames directory: /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/frames/r8narrow
+app log: /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/tmp/lo-renderer-driver-72936/app-scene.log
+scratch removed (--clean)
+
+ALL CHECKS PASSED
+== r8narrow driver exit: 0 ==
+total 3216
+drwxr-xr-x@ 8 damian  staff     256 Sep 25 11:08 .
+drwxr-xr-x@ 8 damian  staff     256 Sep 25 11:05 ..
+-rw-r--r--@ 1 damian  staff  293220 Sep 25 11:08 qa6-r8narrow-ne1-bare-btw-empty-panel.png
+-rw-r--r--@ 1 damian  staff  245978 Sep 25 11:06 qa6-r8narrow-q47-refused-follow-up-before-esc.png
+-rw-r--r--@ 1 damian  staff  228072 Sep 25 11:07 qa6-r8narrow-q53-adopt-then-a-later-close.png
+-rw-r--r--@ 1 damian  staff  294023 Sep 25 11:07 qa6-r8narrow-q55-reflex-pair-no-adopt.png
+-rw-r--r--@ 1 damian  staff  309344 Sep 25 11:07 qa6-r8narrow-q56-declined-refusal-copy.png
+-rw-r--r--@ 1 damian  staff  264074 Sep 25 11:08 qa6-r8narrow-q57b-diagram-growth-followed.png
+8080 released before this command returned
+./capture-r8.sh: line 33: 71134 Killed: 9               env -i HOME="$RUN" LOCAL_OPERATOR_HOME="$RUN" LOCAL_OPERATOR_CONFIG_DIR="$CONFIG" PATH="$PATH" TERM=xterm-256color GIT_CONFIG_SYSTEM=/dev/null GIT_TERMINAL_PROMPT=0 LOCAL_OPERATOR_DESKTOP_TOKEN="$DESK_STAMP" nohup "$PY" -m local_operator.cli serve --host 127.0.0.1 --port 0 > "$RUN/logs/server.log" 2>&1  (wd: /Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/run-r8narrow)
+port8080.lock released
+--- proxy counters (/Users/damian/.local-operator/sessions/d814f1a89634/scratchpad/r8/rig/run-r8narrow/proxy-stats.json) ---
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T15:06:15.082Z",
+      "url": "/v1/desktop/sessions/46a31e520778/asides",
+      "asideId": "f301d19d-a63e-4e1f-a013-c2b4434337e2",
+      "continues": null,
+      "questionHead": "q47 answered base",
+      "text": "q47 answered base",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "29a67f4df48646b0b484a9f857d95826",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"f301d19d-a63e-4e1f-a013-c2b4434337e2\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:06:20.981Z",
+      "url": "/v1/desktop/sessions/46a31e520778/asides",
+      "asideId": "badb48f5-1930-42bd-aaad-ef00ba46d8fc",
+      "continues": "f301d19d-a63e-4e1f-a013-c2b4434337e2",
+      "questionHead": "TOOLCALL2: q47 refused follow-up",
+      "text": "TOOLCALL2: q47 refused follow-up",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "29a67f4df48646b0b484a9f857d95826",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-25T15:06:28.620Z",
+      "url": "/v1/desktop/sessions/46a31e520778/asides",
+      "asideId": "f14bdf6f-98c7-4761-8590-817ef7a43b29",
+      "continues": null,
+      "questionHead": "q49 answered base",
+      "text": "q49 answered base",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "29a67f4df48646b0b484a9f857d95826",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"f14bdf6f-98c7-4761-8590-817ef7a43b29\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:06:34.218Z",
+      "url": "/v1/desktop/sessions/46a31e520778/asides",
+      "asideId": "9936b726-b1ab-4f1b-941b-e85a2a0af807",
+      "continues": "f14bdf6f-98c7-4761-8590-817ef7a43b29",
+      "questionHead": "TOOLCALL2: q49 refused follow-up",
+      "text": "TOOLCALL2: q49 refused follow-up",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "29a67f4df48646b0b484a9f857d95826",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-25T15:06:42.357Z",
+      "url": "/v1/desktop/sessions/46a31e520778/asides",
+      "asideId": "eb0ead78-b160-4e65-85df-e8179d324821",
+      "continues": null,
+      "questionHead": "q50 answered base",
+      "text": "q50 answered base",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "29a67f4df48646b0b484a9f857d95826",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"eb0ead78-b160-4e65-85df-e8179d324821\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:06:47.973Z",
+      "url": "/v1/desktop/sessions/46a31e520778/asides",
+      "asideId": "13545100-d17f-4840-add1-e894a7a5ffe5",
+      "continues": "eb0ead78-b160-4e65-85df-e8179d324821",
+      "questionHead": "q50 answered follow-up",
+      "text": "q50 answered follow-up",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "29a67f4df48646b0b484a9f857d95826",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"13545100-d17f-4840-add1-e894a7a5ffe5\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:06:55.376Z",
+      "url": "/v1/desktop/sessions/46a31e520778/asides",
+      "asideId": "d0543440-d02e-499d-87af-efc768abed4e",
+      "continues": null,
+      "questionHead": "q51 fresh ask",
+      "text": "q51 fresh ask",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "29a67f4df48646b0b484a9f857d95826",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"d0543440-d02e-499d-87af-efc768abed4e\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:07:03.174Z",
+      "url": "/v1/desktop/sessions/46a31e520778/asides",
+      "asideId": "bb8fd67a-4b80-4f40-97d4-88e9430dcca4",
+      "continues": null,
+      "questionHead": "TOOLCALL2: q52 fresh refused ask",
+      "text": "TOOLCALL2: q52 fresh refused ask",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "29a67f4df48646b0b484a9f857d95826",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-25T15:07:11.206Z",
+      "url": "/v1/desktop/sessions/46a31e520778/asides",
+      "asideId": "10c909bd-37bb-4eda-9244-896c6fd88fd1",
+      "continues": null,
+      "questionHead": "q53 adopted base",
+      "text": "q53 adopted base",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "29a67f4df48646b0b484a9f857d95826",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"10c909bd-37bb-4eda-9244-896c6fd88fd1\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:07:20.837Z",
+      "url": "/v1/desktop/sessions/46a31e520778/asides",
+      "asideId": "58fbec31-9e4a-4bcc-bcd3-1c4828869803",
+      "continues": null,
+      "questionHead": "q54 later aside",
+      "text": "q54 later aside",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "48d28379a6854a04927c8b24f2f535f9",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"58fbec31-9e4a-4bcc-bcd3-1c4828869803\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:07:30.518Z",
+      "url": "/v1/desktop/sessions/46a31e520778/asides",
+      "asideId": "ae793916-ffbe-4ba0-8ac4-7481620e759a",
+      "continues": null,
+      "questionHead": "q55 the floor's exchange",
+      "text": "q55 the floor's exchange",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "48d28379a6854a04927c8b24f2f535f9",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"ae793916-ffbe-4ba0-8ac4-7481620e759a\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:07:38.871Z",
+      "url": "/v1/desktop/sessions/46a31e520778/asides",
+      "asideId": "a485a317-2aaa-4800-a631-25ef268ce068",
+      "continues": null,
+      "questionHead": "q56 the copy's exchange",
+      "text": "q56 the copy's exchange",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "ba98da723d28448fbd7bf418a35787b8",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"a485a317-2aaa-4800-a631-25ef268ce068\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:07:45.186Z",
+      "url": "/v1/desktop/sessions/46a31e520778/asides",
+      "asideId": "f2c7e2aa-a677-4986-b404-5c0935d8f6ac",
+      "continues": "a485a317-2aaa-4800-a631-25ef268ce068",
+      "questionHead": "TOOLCALL2: q56 declined follow-up",
+      "text": "TOOLCALL2: q56 declined follow-up",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "ba98da723d28448fbd7bf418a35787b8",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-25T15:07:54.361Z",
+      "url": "/v1/desktop/sessions/46a31e520778/asides",
+      "asideId": "0075cfa3-7452-4d90-b9a8-a4703e71e2fa",
+      "continues": "a485a317-2aaa-4800-a631-25ef268ce068",
+      "questionHead": "q56b follow-up after the prefix was dropped",
+      "text": "q56b follow-up after the prefix was dropped",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "ba98da723d28448fbd7bf418a35787b8",
+      "status": 409,
+      "response": "{\"detail\":\"This aside is no longer available\"}"
+    },
+    {
+      "at": "2026-09-25T15:07:55.420Z",
+      "url": "/v1/desktop/sessions/46a31e520778/asides",
+      "asideId": "bbde86e3-cd67-4b01-993d-dd111e8f78f5",
+      "continues": null,
+      "questionHead": "LONGANSWER: q57 a tall first answer",
+      "text": "LONGANSWER: q57 a tall first answer",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "ba98da723d28448fbd7bf418a35787b8",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"bbde86e3-cd67-4b01-993d-dd111e8f78f5\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    },
+    {
+      "at": "2026-09-25T15:08:01.688Z",
+      "url": "/v1/desktop/sessions/46a31e520778/asides",
+      "asideId": "be336104-c35f-4c36-9038-de5abf9cfbcc",
+      "continues": "bbde86e3-cd67-4b01-993d-dd111e8f78f5",
+      "questionHead": "MERMAIDANS: q57b draw me the aside flow",
+      "text": "MERMAIDANS: q57b draw me the aside flow",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "ba98da723d28448fbd7bf418a35787b8",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"be336104-c35f-4c36-9038-de5abf9cfbcc\",\"text\":\"Here is the flow.\\n\\n```mermaid\\nflowchart TD\\n  A[Ask] --> B{Answered?}\\n  B -- yes --> C[Adopt]\\n  B -- no --> D[Ask again]\\n  D --> B\\n  C --> E[Conversation]\\n```\\n\\nMERMAID-END.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:08:10.160Z",
+      "url": "/v1/desktop/sessions/46a31e520778/asides",
+      "asideId": "5a00723b-d7b7-41ff-9deb-bdb0c7b5bacd",
+      "continues": null,
+      "questionHead": "LONGANSWER: q58 a tall first answer",
+      "text": "LONGANSWER: q58 a tall first answer",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "ba98da723d28448fbd7bf418a35787b8",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"5a00723b-d7b7-41ff-9deb-bdb0c7b5bacd\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    },
+    {
+      "at": "2026-09-25T15:08:16.606Z",
+      "url": "/v1/desktop/sessions/46a31e520778/asides",
+      "asideId": "c7642da7-2fae-4ecc-acf3-f8937b99a390",
+      "continues": "5a00723b-d7b7-41ff-9deb-bdb0c7b5bacd",
+      "questionHead": "MERMAIDANS: q58b draw me the aside flow",
+      "text": "MERMAIDANS: q58b draw me the aside flow",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "ba98da723d28448fbd7bf418a35787b8",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"c7642da7-2fae-4ecc-acf3-f8937b99a390\",\"text\":\"Here is the flow.\\n\\n```mermaid\\nflowchart TD\\n  A[Ask] --> B{Answered?}\\n  B -- yes --> C[Adopt]\\n  B -- no --> D[Ask again]\\n  D --> B\\n  C --> E[Conversation]\\n```\\n\\nMERMAID-END.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:08:24.233Z",
+      "url": "/v1/desktop/sessions/46a31e520778/asides",
+      "asideId": "6a5108de-6d22-4117-bfb7-ac04759e3f87",
+      "continues": null,
+      "questionHead": "ne1 the first question from the empty panel",
+      "text": "ne1 the first question from the empty panel",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "ba98da723d28448fbd7bf418a35787b8",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"6a5108de-6d22-4117-bfb7-ac04759e3f87\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T15:06:06.736Z",
+      "subscriptionId": "c0c790dbf2fc1e80",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/46a31e520778/events?frontend_replace=1",
+      "openedAt": "2026-09-25T15:06:12.890Z",
+      "subscriptionId": "29a67f4df48646b0b484a9f857d95826",
+      "asideDeltas": 48,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    },
+    {
+      "url": "/v1/desktop/sessions/46a31e520778/events?frontend_replace=1",
+      "openedAt": "2026-09-25T15:07:17.644Z",
+      "subscriptionId": "48d28379a6854a04927c8b24f2f535f9",
+      "asideDeltas": 16,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    },
+    {
+      "url": "/v1/desktop/sessions/46a31e520778/events?frontend_replace=1",
+      "openedAt": "2026-09-25T15:07:37.602Z",
+      "subscriptionId": "ba98da723d28448fbd7bf418a35787b8",
+      "asideDeltas": 38,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287,
+        171,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287,
+        171,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    }
+  ],
+  "asideDeltaFrames": 102,
+  "deltasBySubscription": {
+    "29a67f4df48646b0b484a9f857d95826": 48,
+    "48d28379a6854a04927c8b24f2f535f9": 16,
+    "ba98da723d28448fbd7bf418a35787b8": 38
+  },
+  "deltasByAside": {
+    "f301d19d-a63e-4e1f-a013-c2b4434337e2": 8,
+    "f14bdf6f-98c7-4761-8590-817ef7a43b29": 8,
+    "eb0ead78-b160-4e65-85df-e8179d324821": 8,
+    "13545100-d17f-4840-add1-e894a7a5ffe5": 8,
+    "d0543440-d02e-499d-87af-efc768abed4e": 8,
+    "10c909bd-37bb-4eda-9244-896c6fd88fd1": 8,
+    "58fbec31-9e4a-4bcc-bcd3-1c4828869803": 8,
+    "ae793916-ffbe-4ba0-8ac4-7481620e759a": 8,
+    "a485a317-2aaa-4800-a631-25ef268ce068": 8,
+    "bbde86e3-cd67-4b01-993d-dd111e8f78f5": 10,
+    "be336104-c35f-4c36-9038-de5abf9cfbcc": 1,
+    "5a00723b-d7b7-41ff-9deb-bdb0c7b5bacd": 10,
+    "c7642da7-2fae-4ecc-acf3-f8937b99a390": 1,
+    "6a5108de-6d22-4117-bfb7-ac04759e3f87": 8
+  },
+  "refused422": 0,
+  "messagePosts": [],
+  "asideOps": [
+    {
+      "at": "2026-09-25T15:06:27.793Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/46a31e520778/asides/f301d19d-a63e-4e1f-a013-c2b4434337e2",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"f301d19d-a63e-4e1f-a013-c2b4434337e2\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:06:40.777Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/46a31e520778/asides/f14bdf6f-98c7-4761-8590-817ef7a43b29",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"f14bdf6f-98c7-4761-8590-817ef7a43b29\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:06:54.460Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/46a31e520778/asides/13545100-d17f-4840-add1-e894a7a5ffe5",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"13545100-d17f-4840-add1-e894a7a5ffe5\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:07:01.502Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/46a31e520778/asides/d0543440-d02e-499d-87af-efc768abed4e",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"d0543440-d02e-499d-87af-efc768abed4e\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:07:09.409Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/46a31e520778/asides/bb8fd67a-4b80-4f40-97d4-88e9430dcca4",
+      "kind": "close",
+      "probe": false,
+      "status": 404,
+      "response": "{\"detail\":\"This aside is no longer available\"}"
+    },
+    {
+      "at": "2026-09-25T15:07:17.058Z",
+      "method": "POST",
+      "url": "/v1/desktop/sessions/46a31e520778/asides/10c909bd-37bb-4eda-9244-896c6fd88fd1/adopt",
+      "kind": "adopt",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"10c909bd-37bb-4eda-9244-896c6fd88fd1\",\"status\":\"adopted\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:07:27.448Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/46a31e520778/asides/58fbec31-9e4a-4bcc-bcd3-1c4828869803",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"58fbec31-9e4a-4bcc-bcd3-1c4828869803\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:07:37.368Z",
+      "method": "POST",
+      "url": "/v1/desktop/sessions/46a31e520778/asides/ae793916-ffbe-4ba0-8ac4-7481620e759a/adopt",
+      "kind": "adopt",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"ae793916-ffbe-4ba0-8ac4-7481620e759a\",\"status\":\"adopted\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:07:53.706Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/46a31e520778/asides/a485a317-2aaa-4800-a631-25ef268ce068",
+      "kind": "close",
+      "probe": true,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"a485a317-2aaa-4800-a631-25ef268ce068\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:07:54.790Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/46a31e520778/asides/a485a317-2aaa-4800-a631-25ef268ce068",
+      "kind": "close",
+      "probe": false,
+      "status": 404,
+      "response": "{\"detail\":\"This aside is no longer available\"}"
+    },
+    {
+      "at": "2026-09-25T15:08:09.275Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/46a31e520778/asides/be336104-c35f-4c36-9038-de5abf9cfbcc",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"be336104-c35f-4c36-9038-de5abf9cfbcc\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:08:21.663Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/46a31e520778/asides/c7642da7-2fae-4ecc-acf3-f8937b99a390",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"c7642da7-2fae-4ecc-acf3-f8937b99a390\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:08:29.479Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/46a31e520778/asides/6a5108de-6d22-4117-bfb7-ac04759e3f87",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"6a5108de-6d22-4117-bfb7-ac04759e3f87\",\"status\":\"closed\"},\"replayed\":false}}"
+    }
+  ]
+}
+--- end counters ---

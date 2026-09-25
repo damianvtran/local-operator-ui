@@ -1,0 +1,265 @@
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T15:12:30.589Z",
+      "url": "/v1/desktop/sessions/66704dce7014/asides",
+      "asideId": "23699941-5239-4517-a80c-b35c4862fcdc",
+      "continues": null,
+      "questionHead": "q40 adopted with the panel control",
+      "text": "q40 adopted with the panel control",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "d2e3abbcd1d64793adf3cb66a764c4c8",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"23699941-5239-4517-a80c-b35c4862fcdc\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:12:48.173Z",
+      "url": "/v1/desktop/sessions/66704dce7014/asides",
+      "asideId": "2dcb7453-a9bb-4553-999f-0299309583aa",
+      "continues": null,
+      "questionHead": "q41 chord adopt first turn",
+      "text": "q41 chord adopt first turn",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "568ef5b3800f483baaf6ca4ac6013922",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"2dcb7453-a9bb-4553-999f-0299309583aa\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:12:53.334Z",
+      "url": "/v1/desktop/sessions/66704dce7014/asides",
+      "asideId": "974c3a20-04e4-474d-882c-900ac90f0f19",
+      "continues": "2dcb7453-a9bb-4553-999f-0299309583aa",
+      "questionHead": "q41 chord adopt second turn",
+      "text": "q41 chord adopt second turn",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "568ef5b3800f483baaf6ca4ac6013922",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"974c3a20-04e4-474d-882c-900ac90f0f19\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:13:06.707Z",
+      "url": "/v1/desktop/sessions/d696a4d4702c/asides",
+      "asideId": "d7f0abec-00c1-4cbc-a9ab-ff16d742be32",
+      "continues": null,
+      "questionHead": "q43 adopted into an empty conversation",
+      "text": "q43 adopted into an empty conversation",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "cc419894d6024765ade0687e794930fd",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"d7f0abec-00c1-4cbc-a9ab-ff16d742be32\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:13:24.998Z",
+      "url": "/v1/desktop/sessions/66704dce7014/asides",
+      "asideId": "8013392f-6473-4696-88e5-980c2f4e17c1",
+      "continues": null,
+      "questionHead": "q44 armed then the conversation starts a turn",
+      "text": "q44 armed then the conversation starts a turn",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "d3e812a00c6742b0a4f6af255597a724",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"8013392f-6473-4696-88e5-980c2f4e17c1\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T15:12:19.134Z",
+      "subscriptionId": "c6a34eb52a2034fe",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/66704dce7014/events?frontend_replace=1",
+      "openedAt": "2026-09-25T15:12:23.691Z",
+      "subscriptionId": "d2e3abbcd1d64793adf3cb66a764c4c8",
+      "asideDeltas": 8,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    },
+    {
+      "url": "/v1/desktop/sessions/66704dce7014/events?frontend_replace=1",
+      "openedAt": "2026-09-25T15:12:36.022Z",
+      "subscriptionId": "568ef5b3800f483baaf6ca4ac6013922",
+      "asideDeltas": 16,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    },
+    {
+      "url": "/v1/desktop/sessions/66704dce7014/events?frontend_replace=1",
+      "openedAt": "2026-09-25T15:13:00.716Z",
+      "subscriptionId": "99a7769c17204830bfd0dee89b364040",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/66704dce7014/events?frontend_replace=1",
+      "openedAt": "2026-09-25T15:13:04.073Z",
+      "subscriptionId": "43dc7f20a7364494bb0d397d9c38b286",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/d696a4d4702c/events?frontend_replace=1",
+      "openedAt": "2026-09-25T15:13:05.785Z",
+      "subscriptionId": "cc419894d6024765ade0687e794930fd",
+      "asideDeltas": 8,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    },
+    {
+      "url": "/v1/desktop/sessions/d696a4d4702c/events?frontend_replace=1",
+      "openedAt": "2026-09-25T15:13:19.691Z",
+      "subscriptionId": "8667c192a7ae4b53883df4a3d290ce01",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/66704dce7014/events?frontend_replace=1",
+      "openedAt": "2026-09-25T15:13:21.320Z",
+      "subscriptionId": "af23db2de7ca458d801d3a17fd9df67c",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/d696a4d4702c/events?frontend_replace=1",
+      "openedAt": "2026-09-25T15:13:22.528Z",
+      "subscriptionId": "e92c01fd48c8424cb83b60e2e38f87a7",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/66704dce7014/events?frontend_replace=1",
+      "openedAt": "2026-09-25T15:13:23.183Z",
+      "subscriptionId": "d3e812a00c6742b0a4f6af255597a724",
+      "asideDeltas": 8,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    },
+    {
+      "url": "/v1/desktop/sessions/66704dce7014/events?frontend_replace=1",
+      "openedAt": "2026-09-25T15:13:37.676Z",
+      "subscriptionId": "3cf6b0c4e38142fd9dbe828ca02b403b",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    }
+  ],
+  "asideDeltaFrames": 40,
+  "deltasBySubscription": {
+    "d2e3abbcd1d64793adf3cb66a764c4c8": 8,
+    "568ef5b3800f483baaf6ca4ac6013922": 16,
+    "cc419894d6024765ade0687e794930fd": 8,
+    "d3e812a00c6742b0a4f6af255597a724": 8
+  },
+  "deltasByAside": {
+    "23699941-5239-4517-a80c-b35c4862fcdc": 8,
+    "2dcb7453-a9bb-4553-999f-0299309583aa": 8,
+    "974c3a20-04e4-474d-882c-900ac90f0f19": 8,
+    "d7f0abec-00c1-4cbc-a9ab-ff16d742be32": 8,
+    "8013392f-6473-4696-88e5-980c2f4e17c1": 8
+  },
+  "refused422": 0,
+  "messagePosts": [
+    {
+      "at": "2026-09-25T15:12:24.935Z",
+      "url": "/v1/desktop/sessions/66704dce7014/messages",
+      "kind": "message",
+      "text": "seed turn for the round-5 adopt scene",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"75ff3bbb-3e31-459a-969a-019b8cdace29\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T15:12:24.935Z"
+    },
+    {
+      "at": "2026-09-25T15:13:30.560Z",
+      "url": "/v1/desktop/sessions/66704dce7014/messages",
+      "kind": "message",
+      "text": "INJECTED TURN: the conversation works while the aside is armed",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"4f8d3cb8-a165-4371-8ab1-705b615722a1\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T15:13:30.560Z"
+    }
+  ],
+  "asideOps": [
+    {
+      "at": "2026-09-25T15:12:35.853Z",
+      "method": "POST",
+      "url": "/v1/desktop/sessions/66704dce7014/asides/23699941-5239-4517-a80c-b35c4862fcdc/adopt",
+      "kind": "adopt",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"23699941-5239-4517-a80c-b35c4862fcdc\",\"status\":\"adopted\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:13:00.287Z",
+      "method": "POST",
+      "url": "/v1/desktop/sessions/66704dce7014/asides/974c3a20-04e4-474d-882c-900ac90f0f19/adopt",
+      "kind": "adopt",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"974c3a20-04e4-474d-882c-900ac90f0f19\",\"status\":\"adopted\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:13:19.604Z",
+      "method": "POST",
+      "url": "/v1/desktop/sessions/d696a4d4702c/asides/d7f0abec-00c1-4cbc-a9ab-ff16d742be32/adopt",
+      "kind": "adopt",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"d7f0abec-00c1-4cbc-a9ab-ff16d742be32\",\"status\":\"adopted\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T15:13:37.484Z",
+      "method": "POST",
+      "url": "/v1/desktop/sessions/66704dce7014/asides/8013392f-6473-4696-88e5-980c2f4e17c1/adopt",
+      "kind": "adopt",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"8013392f-6473-4696-88e5-980c2f4e17c1\",\"status\":\"adopted\"},\"replayed\":false}}"
+    }
+  ]
+}

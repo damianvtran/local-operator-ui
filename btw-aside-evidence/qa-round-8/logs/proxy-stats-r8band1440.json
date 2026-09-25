@@ -1,0 +1,71 @@
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T15:21:03.395Z",
+      "url": "/v1/desktop/sessions/5f57e82b28a5/asides",
+      "asideId": "0582ea84-c1fa-466e-9775-4ffe8692bb2d",
+      "continues": null,
+      "questionHead": "LONGANSWER: r8 band - does the chip cap survive an open asid",
+      "text": "LONGANSWER: r8 band - does the chip cap survive an open aside?",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "90cdaf65626c40638d73f367b0b2ccb4",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"0582ea84-c1fa-466e-9775-4ffe8692bb2d\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T15:20:57.784Z",
+      "subscriptionId": "894329f325f32892",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/a819bf139dce/events?frontend_replace=1",
+      "openedAt": "2026-09-25T15:21:00.802Z",
+      "subscriptionId": "a67397d2781b429b85e1386a4b2acbcf",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/5f57e82b28a5/events?frontend_replace=1",
+      "openedAt": "2026-09-25T15:21:01.687Z",
+      "subscriptionId": "90cdaf65626c40638d73f367b0b2ccb4",
+      "asideDeltas": 10,
+      "deltaSizes": [
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287
+      ]
+    }
+  ],
+  "asideDeltaFrames": 10,
+  "deltasBySubscription": {
+    "90cdaf65626c40638d73f367b0b2ccb4": 10
+  },
+  "deltasByAside": {
+    "0582ea84-c1fa-466e-9775-4ffe8692bb2d": 10
+  },
+  "refused422": 0,
+  "messagePosts": [],
+  "asideOps": [
+    {
+      "at": "2026-09-25T15:21:08.214Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/5f57e82b28a5/asides/0582ea84-c1fa-466e-9775-4ffe8692bb2d",
+      "kind": "close",
+      "probe": false,
+      "status": 409,
+      "response": "{\"detail\":\"Wait for the aside to finish before closing it\"}"
+    }
+  ]
+}
