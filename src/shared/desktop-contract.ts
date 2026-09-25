@@ -675,6 +675,43 @@ const publicationDocument = z
 
 // This vocabulary is the security boundary, not a generic authenticated fetch.
 // The renderer selects an operation; it never supplies a URL, method or headers.
+
+/**
+ * The two axes a catalogue request may be scoped to.
+ *
+ * A CLOSED VOCABULARY, and `team`/`agent` are the renderer's own two group kinds
+ * rather than the daemon's binding field names: the group predicate is
+ * `binding.team === name` for a team and `!binding.team && binding.agent === name`
+ * for an agent, and the `!team` half is load-bearing (a team-attached session
+ * that also carries an agent name belongs to the team's group, never the agent's).
+ * Spelling the kinds here is what keeps a client from asking for a third axis
+ * the daemon would have to refuse by hand.
+ */
+const catalogueScopeKind = z.enum(["team", "agent"]);
+/**
+ * A scope's display name, as `attachment.json` recorded it.
+ *
+ * BOUNDED AT 64, the bound the profile and team registries already use for a
+ * name, so an over-long value is refused HERE by name rather than arriving as the
+ * backend's generic "invalid fields" 422. It is deliberately NOT validated
+ * against a registry: an operator renames and deletes teams, and their sessions
+ * keep the old name (`read_session_attachment`'s docstring in the daemon is
+ * explicit that the stored name is a historical fact), so a scope naming a team
+ * that no longer exists is a legitimate empty page rather than a refusal.
+ */
+const catalogueScopeName = z.string().min(1).max(64);
+/**
+ * An opaque position, echoed back from a previous answer's `next_cursor`.
+ *
+ * Opaque to this client on purpose: it encodes the rank tuple the daemon sorts
+ * by, and a client that parsed it would be a second implementation of the
+ * ordering. The bound is what stops a malformed token from being a transport
+ * problem; the daemon answers an unusable one with the scope's first page and
+ * `cursor_missing: true`, so a token this schema admits but the daemon does not
+ * recognise is a RE-READ rather than an error.
+ */
+const catalogueCursor = z.string().min(1).max(256);
+
 export const desktopRequestSchema = z.discriminatedUnion("op", [
 	z.object({ op: z.literal("capabilities") }).strict(),
 	z.object({ op: z.literal("profiles.list") }).strict(),
@@ -736,6 +773,30 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			 * archived state, and an unarchive control on a row found by search.
 			 */
 			include_archived: z.boolean().optional(),
+			/*
+			 * The four parameters that make the catalogue PAGEABLE, and the switch that
+			 * makes the daemon count it.
+			 *
+			 * ALL FOUR ARE OPTIONAL AND DEFAULTED, which is the whole compatibility
+			 * promise: a request that sends none of them is byte-identical to the one
+			 * this app sent before they existed, and an older daemon is therefore fully
+			 * supported. They are gated on the `session_catalogue_page` capability rather
+			 * than on a `session_catalogue` version bump, for the reason that map's own
+			 * register states (an EXISTING surface must keep working against a backend
+			 * that lacks the new one): FastAPI silently ignores unknown query parameters,
+			 * so an un-gated client asking for `scope_kind=team&scope_name=lopdev` would
+			 * receive the UNSCOPED page and draw other teams' rows under that team, and an
+			 * un-gated `cursor` would receive page one again and duplicate it. The client
+			 * has to be able to ask whether the daemon understands these, and the
+			 * capability map is how this codebase asks.
+			 *
+			 * They travel as ONE contract revision rather than three: counts without the
+			 * scope could not be rendered consistently with that scope's paged rows.
+			 */
+			scope_kind: catalogueScopeKind.optional(),
+			scope_name: catalogueScopeName.optional(),
+			cursor: catalogueCursor.optional(),
+			with_counts: z.boolean().optional(),
 		})
 		.strict(),
 	z
@@ -3027,16 +3088,47 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "PATCH",
 				body: { request_id: request.requestId, ...request.fields },
 			};
-		case "sessions.list":
+		case "sessions.list": {
+			/*
+			 * Built as a query string rather than by interpolation, because four of the
+			 * parameters are store data: a team name is whatever the operator called it,
+			 * and a `&` or a `#` in one would otherwise change the request's meaning
+			 * instead of scoping it.
+			 *
+			 * THE ORDER IS PART OF THE COMPATIBILITY PROMISE. `limit` then
+			 * `include_archived` are the two parameters this request has always carried,
+			 * and they come first so a request that names none of the paging parameters
+			 * serialises to the exact bytes it sent before those existed - which is what
+			 * an older daemon is promised.
+			 */
+			const params = new URLSearchParams();
+			params.set("limit", String(request.limit ?? 100));
+			// Omitted when false, for the reason `sessions.search`'s own query states:
+			// the pre-flag request is what an older backend must keep seeing, and
+			// `false` is the route's default anyway.
+			if (request.include_archived) params.set("include_archived", "true");
+			/*
+			 * The paging four, appended only when asked for. `with_counts` follows
+			 * `include_archived`'s rule rather than `cursor`'s: it is a boolean whose
+			 * route default is false, so omitting it is the pre-change request, while
+			 * `scope_kind`/`scope_name`/`cursor` are absent-or-present values.
+			 *
+			 * A HALF SCOPE IS SENT AS SENT. This schema admits `scope_kind` without
+			 * `scope_name` (they are two optional fields, not a discriminated pair), and
+			 * that is deliberate: the daemon refuses the half by name, which is the
+			 * behaviour a client bug should meet rather than a client-side guess at
+			 * which half it meant. Dropping the pair here would turn a bug into an
+			 * unscoped answer drawn under one team.
+			 */
+			if (request.scope_kind) params.set("scope_kind", request.scope_kind);
+			if (request.scope_name) params.set("scope_name", request.scope_name);
+			if (request.cursor) params.set("cursor", request.cursor);
+			if (request.with_counts) params.set("with_counts", "true");
 			return {
-				// Omitted when false, for the reason `sessions.search`'s own query
-				// states: the pre-flag request is what an older backend must keep
-				// seeing, and `false` is the route's default anyway.
-				path: `/v1/desktop/sessions?limit=${request.limit ?? 100}${
-					request.include_archived ? "&include_archived=true" : ""
-				}`,
+				path: `/v1/desktop/sessions?${params}`,
 				method: "GET",
 			};
+		}
 		case "sessions.search": {
 			// `encodeURIComponent` rather than interpolation: a query is whatever
 			// the user typed, and `&`, `#` or a space in it would otherwise change
