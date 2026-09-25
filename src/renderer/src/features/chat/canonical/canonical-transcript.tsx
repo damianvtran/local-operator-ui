@@ -2028,17 +2028,24 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 								id={MISSING_SESSION_NOTICE_ID}
 								className="text-body-sm text-ink"
 							>
-								/*
-								 * WHAT TO DO, NOT WHAT THIS APP CANNOT DO. The line this
-								 * replaces said the conversation was "on another device" and
-								 * stopped there, which read as "there is nothing to do from
-								 * here" - wrong twice over now that the desktop can pilot a
-								 * peer's session as well as move one home. Both ways out are
-								 * named, and the backend's own sentence (below) is what names
-								 * the device and the commands.
-								 */
-								This conversation is on another device. Open it there, or
-								bring it here.
+								{/*
+								 * THE BRACES ARE LOAD-BEARING (delta review R2-1): a slash-star
+								 * block sitting in JSX CHILDREN position is not a comment, it is
+								 * CONTENT - esbuild emits it in `children`, so the notice printed
+								 * its own reasoning at the user and the same text reached the
+								 * composer's `aria-describedby`. Only inside braces is it a
+								 * comment.
+								 *
+								 * WHAT TO DO, NOT WHAT THIS APP CANNOT DO: the line this replaces
+								 * said the conversation was "on another device" and stopped
+								 * there, which read as "there is nothing to do from here" -
+								 * wrong twice over now that the desktop can pilot a peer's
+								 * session as well as move one home. Both ways out are named, and
+								 * the backend's own sentence (below) is what names the device
+								 * and the commands.
+								 */}
+								This conversation is on another device. Open it there, or bring
+								it here.
 							</p>
 							<p className="text-ink-dim text-meta">{remoteBlocked}</p>
 						</div>
