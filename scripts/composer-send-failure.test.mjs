@@ -1660,6 +1660,194 @@ test("a surviving fragment keeps the sentence, at any offset and in the tail", (
 		);
 	}
 });
+
+/*
+ * n5-2 AND m5-1 (review round 5), as one predicate with a behavioural pin.
+ *
+ * The lock answer's retirement was pinned only by a regex on the effect's source, and it
+ * read only the row's `pending` - so a press answered in the window BEFORE an admission
+ * exists (image decode, `awaitWindow`) had its sentence retired in the same commit.
+ * `lockAnswerOutlived` is the whole rule now, so a term that goes missing fails here.
+ */
+test("the lock answer outlives exactly the states that hold a flight open", () => {
+	const flying = {
+		rowPending: false,
+		admitting: false,
+		gatePending: false,
+		muted: true,
+	};
+	assert.equal(
+		lockAnswerOutlived(flying),
+		true,
+		"a muted lock answer with nothing in flight is stale, and the screen is claiming a send that has ended",
+	);
+	assert.equal(
+		lockAnswerOutlived({ ...flying, admitting: true }),
+		false,
+		"the pre-admission window is a flight: the row is not pending yet and the answer must stay",
+	);
+	assert.equal(lockAnswerOutlived({ ...flying, rowPending: true }), false);
+	assert.equal(
+		lockAnswerOutlived({ ...flying, gatePending: true }),
+		false,
+		"the gate's own lock belongs to the question on screen, not to a flight",
+	);
+	assert.equal(
+		lockAnswerOutlived({ ...flying, muted: false }),
+		false,
+		"a real failure's sentence is not the lock's answer, and this rule must not touch it",
+	);
+});
+
+/*
+ * m5-2 (review round 5): the notice belongs to the attempt that produces it.
+ *
+ * The pane renders the row's sentence when the row has one, so a row still carrying an
+ * OLDER failure's sentence showed that one for a throw that writes no row of its own -
+ * measured as an unrelated "not ready" refusal rendering the earlier budget sentence. The
+ * latch clears it, which is how the store says which attempt the sentence is about.
+ */
+test("an admission clears the notice the previous failure left on the row", async () => {
+	reset();
+	const store = useConversationInputStore.getState();
+	store.setCurrentInput(SESSION, input.text);
+	store.beginInFlight(SESSION, {
+		text: input.text,
+		attachments: [],
+		replies: [],
+	});
+	responses.push(
+		new DesktopControlError(
+			409,
+			"this message's text alone fills 1.1 MB of the 1.0 MB limit, leaving no room for its attachments; shorten the text or send the images on their own",
+		),
+	);
+	await assert.rejects(admitChatDraft(key, input, SESSION));
+	assert.ok(
+		draftRow().error,
+		"no failure was recorded, so this pin has nothing to clear",
+	);
+	responses.push(new DesktopControlError(504, "deadline_exceeded"));
+	const pending = admitChatDraft(key, input, SESSION);
+	await Promise.resolve();
+	assert.equal(
+		draftRow().error,
+		undefined,
+		"the new attempt kept the previous failure's sentence, so a throw with no row of its own would render it",
+	);
+	await assert.rejects(pending);
+});
+
+/*
+ * R7-1 (review round 7), both CLEAR paths. The `partialize` gate keys on
+ * `volatilePendingText`, and both of these rows RESET that flag - so a delivered-text copy
+ * they leave behind outlives the check that was guarding it. Measured by the reviewer: the
+ * masked-capture secret landed in localStorage and stayed there through every later write,
+ * with the note gone. The raise path was already gated; these are the two paths that clear a
+ * row without dismissing a note.
+ */
+test("clearing the composer drops the delivered-text copy with the flag it was gated on", () => {
+	reset();
+	useConversationInputStore.setState({
+		inputByConversation: {
+			[SESSION]: {
+				currentInput: "",
+				submittedMessages: [],
+				currentHistoryIndex: null,
+				replies: [],
+				attachments: [],
+				volatilePendingText: true,
+				lateDelivered: "overlap",
+				lateDeliveredText: "the words a masked capture pinned",
+			},
+		},
+	});
+	useConversationInputStore.getState().clearComposer(SESSION);
+	const row = () =>
+		useConversationInputStore.getState().inputByConversation[SESSION];
+	assert.equal(
+		row().volatilePendingText,
+		undefined,
+		"the flag the gate keys on is still set",
+	);
+	assert.equal(
+		row().lateDeliveredText,
+		undefined,
+		"the delivered-text copy survived the clear that reset the flag gating it",
+	);
+});
+
+test("the reconciled row drops the copy too, on the arm that empties it", () => {
+	reset();
+	const delivered = "the words a masked capture pinned";
+	useConversationInputStore.setState({
+		inputByConversation: {
+			[SESSION]: {
+				currentInput: "",
+				submittedMessages: [],
+				currentHistoryIndex: null,
+				replies: [],
+				attachments: [],
+				volatilePendingText: true,
+				lateDelivered: "overlap",
+				lateDeliveredText: delivered,
+				returned: { text: delivered, attachments: [], replies: [] },
+			},
+		},
+	});
+	useConversationInputStore.getState().reconcileDelivered(SESSION);
+	const row = () =>
+		useConversationInputStore.getState().inputByConversation[SESSION];
+	assert.equal(
+		row().volatilePendingText,
+		undefined,
+		"the flag the gate keys on is still set",
+	);
+	assert.equal(
+		row().lateDeliveredText,
+		undefined,
+		"the cleared arm left the delivered-text copy behind",
+	);
+});
+
+/*
+ * Q7-1 (review round 7): `overlap` is reached with NO returned payload (the in-flight shape),
+ * and `overlap`'s copy claims the delivered message's words are still in the box. With
+ * nothing to compare, that claim cannot be made, so that shape gets the muted delivered note
+ * instead - same fact, no claim about the box.
+ */
+test("a late delivery with no payload to compare says the neutral sentence, not the overlap one", () => {
+	reset();
+	useConversationInputStore.setState({
+		inputByConversation: {
+			[SESSION]: {
+				currentInput: "my own words",
+				submittedMessages: [],
+				currentHistoryIndex: null,
+				replies: [],
+				attachments: [],
+				inFlight: {
+					text: "the delivered message",
+					attachments: [],
+					replies: [],
+				},
+			},
+		},
+	});
+	useConversationInputStore.getState().reconcileDelivered(SESSION);
+	const row = useConversationInputStore.getState().inputByConversation[SESSION];
+	assert.equal(
+		row.lateDeliveredText,
+		undefined,
+		"this arm is only meaningful with no delivered text to compare, and it has one",
+	);
+	assert.equal(
+		row.lateDelivered,
+		"draft-only",
+		"the note claims the delivered words are in the box on an arm that cannot know",
+	);
+});
+
 /* ------------------------------------------------ the released app's claim */
 
 /*
