@@ -36,6 +36,7 @@ const bundle = await build({
 			import { createElement } from "react";
 			import { renderToStaticMarkup } from "react-dom/server";
 			import { SessionStatusStrip } from "./src/renderer/src/features/chat/session-status/session-status-strip";
+			export { LAST_READING_NOTE } from "./src/renderer/src/features/chat/session-status/session-status-strip";
 			export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";
 
 			export const renderStrip = (props) =>
@@ -74,7 +75,8 @@ const bundle = await build({
 // has no base path for.
 const bundlePath = new URL("./_composer-readings.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { renderStrip, desktopEndpoint, desktopRequestSchema } = await import(
+const { renderStrip, LAST_READING_NOTE, desktopEndpoint, desktopRequestSchema } =
+	await import(
 	bundlePath.href
 );
 await unlink(bundlePath);
@@ -1093,5 +1095,92 @@ test("the value readings hold their width; only the model name yields", () => {
 		shrinkOverrides.length,
 		1,
 		"exactly one reading may opt back into shrinking, and it is the name",
+	);
+});
+
+/* --------------------------------------- the readings a reconnect holds */
+
+/*
+ * A server-stream gap drops the authoritative `frontend` by design (the flush's
+ * replay/snapshot ordering rests on that field meaning "a snapshot for THIS
+ * epoch has landed"), so the pane hands the strip the readings it was last told
+ * instead — and the strip has to draw them without presenting them as current.
+ *
+ * The words are checked here rather than in a live frame because the CLAIM is
+ * about copy: a frame can see that the strip painted, and only this can see what
+ * it said.
+ */
+
+/** Every accessible name in the markup, in render order. */
+const readingLabels = (html) =>
+	[...html.matchAll(/aria-label="([^"]*)"/g)].map((match) => match[1]);
+
+/** A session's snapshot with every reading the strip draws: model, effort, context, spend, time. */
+const SESSION = {
+	...DRAFT,
+	context_tokens: 12_977,
+	// 400k window, so the reading is a percentage rather than an estimate.
+	context_is_estimate: false,
+	cumulative_parent_cost: 2.4,
+	cost_knowledge: "exact",
+	active_duration_s: 92,
+};
+
+test("a held reading keeps its value and says it is the last one; a live one says nothing of the kind", () => {
+	const live = renderStrip({ frontend: SESSION });
+	const held = renderStrip({ frontend: SESSION, held: true });
+
+	/*
+	 * THE VALUES ARE THE SAME, and that is the assertion the held state exists
+	 * for: the reader keeps the model, the effort, the context window and the
+	 * spend they were last told rather than watching four blanks come and go at
+	 * the stream's cadence. A mark that replaced a value would be the app
+	 * answering a question the owner has not answered.
+	 *
+	 * The comparison is over EVERY accessible name in the markup rather than a
+	 * hand-listed four: the strip's readings are the only thing `held` reaches, so
+	 * a reading this change forgot to mark fails here as a missing suffix, and a
+	 * label that is not a reading (a spinner's, say) is asserted to be identical
+	 * in both - which is also the pin that the mark is not a blanket one.
+	 */
+	const liveLabels = readingLabels(live);
+	const heldLabels = readingLabels(held);
+	assert.ok(
+		liveLabels.length >= 4,
+		`the fixture must render the whole cluster (got ${liveLabels.length}: ${liveLabels.join(" | ")})`,
+	);
+	assert.deepEqual(
+		heldLabels.map((label) => label.replace(` ${LAST_READING_NOTE}`, "")),
+		liveLabels,
+		"every reading renders the same value it renders live, and only its provenance is added",
+	);
+	for (const label of heldLabels)
+		assert.ok(
+			label.endsWith(LAST_READING_NOTE),
+			`each held reading says which reading it is: ${label}`,
+		);
+
+	/*
+	 * AND THE LIVE STRIP SAYS NONE OF IT. Without this half the mark could be
+	 * unconditional and every reading in the app would claim to be stale.
+	 */
+	assert.doesNotMatch(live, /Last reading from before the reconnect/);
+	assert.doesNotMatch(live, /data-lo-session-strip-held/);
+	assert.match(
+		held,
+		/data-lo-session-strip-held="true"/,
+		"and the cluster is marked in the DOM, so a frame or a probe can ask without reading the copy",
+	);
+
+	/*
+	 * THE MARK IS NOT THE PANE'S SENTENCE. The transcript paints "Reconnecting"
+	 * for this whole state four lines above the composer, and a second copy of it
+	 * here would be the same claim twice - the strip's half is saying WHICH
+	 * readings these are.
+	 */
+	assert.doesNotMatch(
+		held,
+		/aria-label="[^"]*Reconnecting/,
+		"the strip must not restate the pane's own reconnecting notice",
 	);
 });
