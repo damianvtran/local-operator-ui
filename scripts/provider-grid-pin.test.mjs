@@ -422,8 +422,25 @@ test("the row's claim carries its tone, and the panel does not repeat the claim"
 	);
 	assert.match(
 		grid,
-		/readiness\.tone === "attention"\s*\n?\s*\?\s*"text-warning"/,
+		/readiness\?\.tone === "attention"[\s\S]{0,80}?"text-warning"/,
 		"a refusal must not be painted in the row's ordinary ink",
+	);
+	/*
+	 * AND NOTHING ELSE TAKES AN INK. The first version of this line painted
+	 * `text-success` for every other verdict, and `loginClaim` answers `working` for
+	 * every provider that is not Radient -- so all 18 healthy rows went green, which
+	 * moved 3.9% of the `providers-connected` frame's pixels against a sibling capture
+	 * of the pre-round-4 tree. The refusal is the only tone that says something here.
+	 */
+	assert.doesNotMatch(
+		grid,
+		/"text-success"[\s\S]{0,40}?data-claim-tone/,
+		"the claim's own line must not spend the success ink on a healthy row",
+	);
+	assert.match(
+		grid,
+		/:\s*"text-ink-muted"\s*\n?\s*\}`\}/,
+		"every other verdict stays in the row's ordinary register",
 	);
 	assert.doesNotMatch(
 		detail,
