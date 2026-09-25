@@ -247,11 +247,39 @@ function forgetAccountReadFailure(): void {
 }
 
 /**
+ * The parts of the read a caller may change, and the one that matters here.
+ *
+ * WHY A CALLER EVER WANTS THIS. React Query's `retryOnMount` (default `true`)
+ * decides whether a NEW observer mounting on a query that has already FAILED may
+ * start another read: `shouldLoadOnMount` is
+ * `options.enabled && query.state.data === undefined && !(query.state.status === "error" && options.retryOnMount === false)`
+ * (`@tanstack/query-core@5.73.3`, `queryObserver.js`). That is right for a
+ * surface that owns the read and wrong for one that only reports it, and the
+ * difference is not academic -- see `useRadientUserQuery`'s caller in
+ * `provider-detail.tsx` for the loop it caused and the measurement.
+ */
+export type RadientUserQueryOptions = {
+	/**
+	 * Whether mounting this observer may re-ask a read that has already failed.
+	 *
+	 * `true` (the default, and what every pre-existing caller passes by not asking)
+	 * is the right answer for a surface that owns the read. `false` is for an
+	 * observer whose job is to report a read somebody else is taking: it still
+	 * receives every cache update and still starts the FIRST read when nothing has
+	 * asked yet, and it stops a remount from re-commissioning a failure -- which
+	 * is the difference between a section that settles and one that spins.
+	 */
+	retryOnMount?: boolean;
+};
+
+/**
  * Hook for the current Radient account, resolved by the backend.
  *
  * @returns Query result with user data, loading state, error state, and sign-out
  */
-export const useRadientUserQuery = () => {
+export const useRadientUserQuery = ({
+	retryOnMount = true,
+}: RadientUserQueryOptions = {}) => {
 	const queryClient = useQueryClient();
 	const { setIsSigningOut } = useUserStore();
 	const capabilities = useDesktopCapabilities();
@@ -303,6 +331,11 @@ export const useRadientUserQuery = () => {
 		 * stalled backend read.
 		 */
 		retry: (failureCount, error) => !isSignedOut(error) && failureCount < 2,
+		/*
+		 * `retryOnMount` is passed through rather than fixed, because the two
+		 * kinds of caller need opposite answers; see `RadientUserQueryOptions`.
+		 */
+		retryOnMount,
 	});
 
 	const isAuthenticated = !!userQuery.data && !userQuery.isLoading;

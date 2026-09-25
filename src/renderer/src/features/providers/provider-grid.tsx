@@ -43,6 +43,21 @@ import {
 	Input,
 } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
+/*
+ * The verdict is read through the composer callout's own module rather than a
+ * query of this feature's: the chip and the callout share one cache entry for
+ * `GET /v1/auth/status`, so they cannot disagree about one verdict at one
+ * instant (see `useRadientAuthStatus`).
+ */
+import { useRadientLoginVerdict } from "@shared/hooks/use-radient-session-issue";
+/*
+ * The MODULE, not the `@shared/hooks` barrel: the barrel carries
+ * `use-connectivity-status`, which reads the renderer's config at import time and
+ * therefore throws in any Node bundle that does not define `import.meta.env` --
+ * `scripts/backend-error-surfaces.test.mjs` bundles this grid and says so in its own
+ * docblock. Importing the leaf keeps this feature out of that graph.
+ */
+import { useRadientUserQuery } from "@shared/hooks/use-radient-user-query";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useQueryClient } from "@tanstack/react-query";
 import { MoreHorizontal, Search, X } from "lucide-react";
@@ -64,7 +79,11 @@ import {
 	rowActionLabel,
 } from "./provider-catalog";
 import { ProviderDetail, type ProviderDetailContext } from "./provider-detail";
-import { providerLoadErrorMessage, providerReadiness } from "./provider-labels";
+import {
+	loginClaim,
+	providerLoadErrorMessage,
+	providerReadiness,
+} from "./provider-labels";
 import { CONFIG_QUERY_KEY, useDefaultModel } from "./use-provider-status";
 
 /**
@@ -101,12 +120,34 @@ const RECOMMENDED_REASON = "One browser sign-in. Nothing to paste.";
  *
  * The credential test is the whole reason this is a function rather than an id
  * comparison, and it is `providerReadiness`'s own answer rather than a second
- * reading of its three flags: the cue stops exactly where the badge changes its
- * mind. That matters on both surfaces this grid renders on -- "Recommended" over
+ * reading of its three flags: the cue stops where the CENSUS says a credential is
+ * held. That matters on both surfaces this grid renders on -- "Recommended" over
  * a credential the reader already holds, above a sentence promising a sign-in
  * they have already done, argues for a decision they have made (UX round 1, U3;
  * code round 1, R1-6). The promoted row is neither local nor credential-free, so
  * for it the two groups that matter here are "Ready to use" and "Needs sign-in".
+ *
+ * WHY A REFUSED OR UNCONFIRMED SIGN-IN DOES NOT MOVE THE PIN (design round 2,
+ * D8), since the badge on that same card now says "Needs re-authentication" and
+ * this comment used to promise the cue "stops exactly where the badge changes its
+ * mind". The recommendation is an ARGUMENT FOR A CHOICE NOT YET MADE: position,
+ * the `Recommended` cue and the reason line ("One browser sign-in. Nothing to
+ * paste.") are all addressed to a reader who has not picked a provider. A row
+ * whose sign-in Radient refuses -- or whose verdict the app cannot confirm -- is a
+ * choice the reader HAS made and which is now broken, and what such a reader
+ * needs is the remedy, which the composer callout names in words and this card's
+ * own badge already shouts. Promoting it would instead move a broken row above
+ * the working providers they are now scanning for, and re-print the sign-in
+ * argument for the sign-in that just failed. So the pin deliberately reads the
+ * census alone, and the badge is where the verdict speaks: two questions, two
+ * answers, and the docblock now says which is which rather than promising the
+ * cue tracks the badge.
+ *
+ * The census is also the honest input for the OTHER states here. A refused row
+ * keeps `has_credential: true` and a never-signed-in row has none, so the two are
+ * already different inputs -- the pin needs no verdict to tell them apart, and a
+ * grid that moved the refused row would move it for a reading (`login_required`)
+ * that says nothing about whether the reader wants a different provider.
  */
 export function recommendedProvider(
 	rows: DesktopProvider[],
@@ -241,6 +282,24 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 	const providers = useDesktopProviders(true);
 	const { hosting, model } = useDefaultModel();
 	const queryClient = useQueryClient();
+	/*
+	 * The verdict on this machine's Radient sign-in, which is the one input that
+	 * can tell a credential ROW from a working sign-in (see `loginState`). Read
+	 * HERE rather than passed down, because the row's own facts cannot answer it:
+	 * the row is the surface that claims a sign-in, so it is the surface that has
+	 * to ask.
+	 */
+	const login = useRadientLoginVerdict();
+	/*
+	 * The app's own answer about whether any Radient sign-in is stored, and
+	 * whether it could be asked at all. It is the second input `loginState` reads,
+	 * and the reason it exists is design round 1's D3: on a runtime whose route
+	 * predates `radient_login` there is no verdict at all, so without this the row
+	 * falls back to the credential ROW and the contradiction this change removes
+	 * comes back. See `loginState` for why only a `signed-out` answer from an
+	 * enabled read narrows it.
+	 */
+	const { accountRead, unavailable } = useRadientUserQuery();
 	const [selectedId, setSelectedId] = useState<string | null>(
 		initialProviderId,
 	);
@@ -478,14 +537,64 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 			? modelDisplayName(provider, model)
 			: (provider.suggested_model?.name ?? null);
 		const open = selectedId === provider.id;
+		/*
+		 * THE ROW'S CLAIM GOES THROUGH THE VERDICT, NOT THE CREDENTIAL ROW (#426;
+		 * UX U1 on the chat session-issue PR). `isConnectedRow` puts a provider here
+		 * from `has_credential || configured`, and a grant Radient has stopped
+		 * accepting keeps both, so a row that read its own census would say
+		 * "Signed in" for a sign-in that is dead -- which is exactly what the chip
+		 * on the card grid used to do, one screen from a composer saying the sign-in
+		 * needed re-authentication.
+		 *
+		 * `loginClaim` answers `null` until a read that can support a claim has
+		 * answered, and the label is `providerReadiness`' own words, so this row, the
+		 * provider panel and the composer callout cannot spell one verdict two ways.
+		 *
+		 * THE CLAIM WAITS; THE LIST DOES NOT (design round 4, D12 and D14, whose
+		 * rationale moves here with the claim it is about). Design round 1's D6 -- a
+		 * green "Signed in" painted for 72-193 ms on a refused machine and then
+		 * corrected -- used to be closed by holding the whole card list until the
+		 * verdict's first answer. That held the wrong surface: a verdict route that
+		 * never answers kept 18 cards behind "Loading providers" for the transport's
+		 * 20 s deadline (D14), and a route that FAILED released the hold onto a claim
+		 * the account read had not yet supported (D12: green for 2,493 ms, then
+		 * corrected). The only thing either read decides is the Radient row's claim,
+		 * so the claim is the only thing that waits.
+		 */
+		const claim = loginClaim(provider.id, login, { accountRead, unavailable });
+		const readiness =
+			claim === null ? null : providerReadiness(provider, claim);
+		const meta = connectedRowMeta(
+			provider,
+			modelName,
+			readiness?.label ?? null,
+		);
 		return (
 			<li key={provider.id} data-provider-id={provider.id}>
 				<div className="flex min-h-14 items-center gap-3 px-4 py-2">
 					<Monogram provider={provider} />
 					<div className="flex min-w-0 flex-1 flex-col">
 						<span className="text-body text-ink">{brandOf(provider)}</span>
-						<span className="truncate text-ink-muted text-meta">
-							{connectedRowMeta(provider, modelName)}
+						{/*
+						 * The claim is this line's first word, and it carries the three
+						 * things the chip carried before it (design round 1, D2): the long form
+						 * on `title`, so a refusal's own sentence is still reachable where the
+						 * short label had to be; the withheld state as `data-claim`, so a rig
+						 * can tell a claim that has not arrived from a row that is not there;
+						 * and the LINE itself, kept when there is no claim to make.
+						 *
+						 * WHY THE LINE IS KEPT RATHER THAN DROPPED: the claim lands in it
+						 * moments later, and a row whose name moves when it does reads as the
+						 * correction D6 removed. The non-breaking space states nothing and
+						 * paints nothing, and the row is `min-h-14`, so the geometry is the
+						 * same in every window.
+						 */}
+						<span
+							className="truncate text-ink-muted text-meta"
+							title={readiness?.detail}
+							data-claim={claim === null ? "withheld" : undefined}
+						>
+							{meta ?? "\u00a0"}
 						</span>
 					</div>
 					{/*

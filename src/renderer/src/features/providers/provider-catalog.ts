@@ -284,19 +284,41 @@ export function addRowsByGroup(
 	return groups;
 }
 
-/** The connected row's meta line: how it is connected, then its model. */
+/**
+ * The connected row's meta line: how it is connected, then its model.
+ *
+ * THE SUBSCRIPTION ARM'S CLAIM IS PASSED IN, and the reason is the one this
+ * whole page had to learn twice: the census's `has_credential`/`configured` are
+ * facts about the credential STORE, and a grant the provider has stopped
+ * accepting keeps both -- so a line that derives "Signed in" from them here
+ * would state a working sign-in for a dead one, which is the chip's own incident
+ * (`provider-labels.ts::loginState`, UX U1 on the chat session-issue PR). The
+ * caller passes `providerReadiness(provider, claim).label`, which is what the
+ * provider panel and the composer callout say, so one verdict cannot be spelled
+ * two ways on one screen. It arrives as a string rather than a claim because
+ * this module stays pure: no hooks, no DOM, which is what
+ * `scripts/provider-catalog.test.mjs` pins it in Node for.
+ *
+ * `null` is the WITHHELD claim -- `loginClaim` answering that no reading has
+ * answered yet that could support one -- and the line then states the model
+ * alone, making no claim about the sign-in at all. A claim painted and then
+ * corrected is the defect this input exists to close (design round 4, D12).
+ * Returns `null` when there is nothing honest left to say, so a caller renders
+ * no line rather than an empty claim.
+ */
 export function connectedRowMeta(
 	provider: DesktopProvider,
 	defaultModelName: string | null,
-): string {
+	signIn: string | null = "Signed in",
+): string | null {
 	const group = providerGroup(provider);
 	const how =
 		group === "local"
 			? "On this computer"
 			: group === "key"
 				? "API key saved"
-				: "Signed in";
-	return defaultModelName ? `${how} · ${defaultModelName}` : how;
+				: signIn;
+	return [how, defaultModelName].filter(Boolean).join(" · ") || null;
 }
 
 /**
