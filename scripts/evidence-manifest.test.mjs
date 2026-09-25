@@ -846,6 +846,14 @@ const STAMP_BINDING_NOTES = [
 	 * This remediation round's own: it re-stamps the change that rounds 1's two MAJORs moved inside, so
 	 * the reader is owed the pair and the reason no still was owed.
 	 */
+	/*
+	 * And the mention-remedy re-stamp's: THIS FILE'S BINDING IS ITS SUBJECT, which
+	 * is the criterion above - it exists to say which two trees the copy change
+	 * moved and which single frame set was re-captured with them - so it is held
+	 * to the pair the file ships rather than read as history. Its replaced pair is
+	 * written as bare SHAs for exactly that reason.
+	 */
+	"mentionsRemedyRestampNote",
 	"meshDesktopRound7FoldRestampNote",
 	"meshDesktopRound9FoldRestampNote",
 ];
@@ -1189,10 +1197,17 @@ const BRANCH_RECORDS = [
 	 */
 	"asidePanelRestampNote",
 	/*
+	 * And by the mention-remedy pass, which wrote this branch's newest top-level
+	 * record. It is listed for the reason the list exists, and it is the case the
+	 * list is cheapest for: the record is the ONLY statement of which two trees the
+	 * copy change moved and which single frame set was re-captured with them, so a
+	 * fold that took main's copy of this file would drop the claim and leave the
+	 * re-derived tokens in it reading as main's.
+	 */
+	"mentionsRemedyRestampNote",
 	 * THIS PASS'S OWN RECORD, and it is the one that states the pair the file ships:
 	 * the frames were re-shot from a build at this head rather than re-stamped, so
 	 * nothing in it is a claim that outruns what can be cited.
-	 */
 	"meshDesktopRound7FoldRestampNote",
 ];
 
