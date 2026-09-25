@@ -698,6 +698,8 @@ type MessageInputProps = {
 		 * `SessionStatusStripProps["draftResolution"]`.
 		 */
 		draftResolution?: DraftResolution;
+		/** Whether this DRAFT pane's model is resolved; see the strip's own note. */
+		draftResolved?: boolean;
 	};
 	/**
 	 * Run the command the composer's planner pulled out of the draft, and report
@@ -1405,7 +1407,27 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const bandCentred = messages.length === 0 && !isHydrating;
 
-		const showEmptyChatPrompt = bandCentred && !isSmallView;
+		/*
+		 * THE SPLASH IS NOT GATED ON THE COLUMN'S WIDTH (design round 2, D22).
+		 *
+		 * It was `bandCentred && !isSmallView`, and `isSmallView` is the column's
+		 * `< 550` flag. That gate deleted the mark, the greeting and all four chips
+		 * exactly where §H says they must survive: "Every width keeps them (D13/U12):
+		 * at 800x600 the chips stack onto two rows inside the 640 column, the mark and
+		 * greeting stay, and nothing is dropped. This is the one place the redesign
+		 * must not degrade." The reviewer's frame is 960x673 with the canvas docked,
+		 * where the chat column sits at its 480px floor (§I) - 480x673 of room for a
+		 * 32px mark, a two-line greeting and two rows of chips - and the screen drew
+		 * the composer and nothing else.
+		 *
+		 * `isSmallView` is NOT the wrong flag, it was the wrong QUESTION for this
+		 * decision: it also drives the composer's own narrow variants (paddings, icon
+		 * sizes, chip spacing), which are correct and stay. The column can never be
+		 * narrower than §I's 480px floor, so there is no width at which the splash has
+		 * nowhere to go, and the splash's own parts already have narrow forms - the
+		 * chips wrap because `MeasuredSuggestionStack` measures what fits.
+		 */
+		const showEmptyChatPrompt = bandCentred;
 
 		/*
 		 * The empty chat's sample, drawn once and HELD for this composer's mount.
@@ -1859,8 +1881,44 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			[credentialSessionId, queryClient],
 		);
 
+		/*
+		 * THE SEND GATE'S OWN VALUE (UX round 1, U1): a DRAFT pane whose model is not
+		 * resolved. `draftResolved` is absent on a pane with a session behind it - there
+		 * is nothing to resolve there - so only a new chat can be gated, which is where
+		 * `baseline-U2` was measured.
+		 */
+		const draftModelUnresolved =
+			sessionStatus?.draft === true && sessionStatus?.draftResolved === false;
+
 		const onSubmit = useMemo(
 			() => async (message: string, onEchoPainted?: () => void) => {
+				/*
+				 * A BUBBLE THAT CANNOT RUN IS NEVER POSTED (UX round 1, U1).
+				 *
+				 * §K answers `baseline-U2` in one sentence: "with no model resolved the send
+				 * control IS `Choose a model` … Enter does the same; a bubble that cannot run
+				 * is never posted." The chip half shipped; the Enter half did not. Measured on
+				 * the live app: with the draft's model unresolved, Enter posted a user bubble
+				 * into the transcript that no runtime could answer, stamped in the transcript a
+				 * turn that never ran - the exact state `baseline-U2` is about.
+				 *
+				 * GATED HERE, ON `onSubmit`, because this is the ONE function both doors reach:
+				 * the form's `type="submit"` control and the Enter key both end in
+				 * `useMessageInput`'s submit, which calls this. A second gate on the key alone
+				 * is how the button and the key start disagreeing - the defect round 1 found in
+				 * the refusal, one door over.
+				 *
+				 * WHAT HAPPENS INSTEAD. The affordance is the pane's own `Choose a model`
+				 * (it is rendered by the strip, above the box, in exactly this state), and when
+				 * the backend can honour a pick the same affordance is one key away, so the key
+				 * opens it rather than doing nothing. With no picker to open (a backend that
+				 * advertises no `draft_selection`) the press is a no-op and the chip is the
+				 * only route, which is what §K says the screen offers.
+				 */
+				if (draftModelUnresolved) {
+					sessionStatus?.onOpenDraftPicker?.("session.model");
+					return;
+				}
 				// Assembled by the same function the composer compares against, so the
 				// string sent, stored, guarded and reasoned about by the copy is one
 				// string on the reply path too. Building the prefix inline here put it
@@ -2014,6 +2072,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				// The disclosure is retired by the same submit that sends the text it
 				// warns about (design round 2, D2's re-raise has this as its other half).
 				setDisclosure,
+				// The send gate above, and the affordance it hands the press to
+				// (UX round 1, U1): a memo that read neither would keep sending after a
+				// pick resolved, or refuse after one arrived.
+				draftModelUnresolved,
+				sessionStatus?.onOpenDraftPicker,
 			],
 		);
 
@@ -6746,14 +6809,27 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						)}
 
 						{/*
-						 * The composer's controls and the session's readings, on ONE row.
+						 * The composer's controls and the session's readings, on ONE row, at EVERY width.
 						 *
-						 * The readings used to have a row of their own above this one. They are
-						 * inside it now, which is why this row wraps: above 750px of COLUMN the
-						 * cluster sits inline, immediately after the working-directory chip, with
-						 * the row's free space falling before the controls; below it the cluster
-						 * takes the FIRST line in full (`basis-full`) and the controls keep the
-						 * second. `justify-between` cannot express either — with three children it
+						 * The readings used to have a row of their own above this one, and when they moved
+						 * inside it the row kept a wrap keyed on the COLUMN's width: above 750px of column
+						 * the cluster sat inline, below it the cluster took the first line in full
+						 * (`basis-full`) and the controls kept the second. Design round 2's D21 is that
+						 * branch: §G1 requires "one control row, 32px, always one line, at every width",
+						 * and at 800x600 - one of §H's own blueprint widths - the composer measured 640x142
+						 * where it measures 640x109 at 1380, a permanent second row.
+						 *
+						 * THE THRESHOLD WAS KEYED ON THE WRONG THING. The composer is capped at the
+						 * 640px reading measure (§B2), so its inner row has the same ~608px of content
+						 * at a 1380px window and at an 800px one - the box is `640x109` in both, measured.
+						 * The column width does not reach the row at all until the column falls below the
+						 * measure (columns < ~688, i.e. a composer narrower than 640), which is the only
+						 * case a breakpoint here could ever have been about. So the row is `flex-nowrap`
+						 * at every width and the yield §G1 names is what makes room: the cwd chip
+						 * truncates, the usage reading drops below a 480px composer, the model selector
+						 * shortens to its glyph.
+						 *
+						 * `justify-between` cannot express this — with three children it
 						 * centres the middle one, which is the opposite of what the row needs — so
 						 * the row uses `ml-auto` instead, on the controls group, which is the one
 						 * child that always renders.
@@ -6765,44 +6841,44 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						 * margin at all — the controls sat flush against the chip, mid-row, in
 						 * this PR's own draft frame (design round 1.5, D7).
 						 *
-						 * `gap-y-2` is the drop between the wrapped line and the controls: 8px,
-						 * the within-component step, tighter than the 12px this composer used
-						 * when the readings were a separate row (§ 5).
+						 * `gap-y-2` is GONE with the wrapped line it existed for: with one row there is
+						 * no second line to keep 8px from the first.
 						 *
-						 * `flex-nowrap` above the threshold is NOT decoration. Wrapping happens
-						 * on the items' CONTENT sizes, before any shrinking: a long model name (an
-						 * aggregator slug is ~48 characters) makes the cluster wider than its
-						 * share, so a still-wrapping row moves the microphone and send to a
-						 * second line instead of truncating the name — the exact inversion of the
-						 * yield order, where the name truncates first and the controls never
-						 * move. Measured on the live composer at a 750px box: with the row free
-						 * to wrap, the controls sat 24px below the readings; with `flex-nowrap`
-						 * they stay on one line and the name gives up the width.
+						 * `flex-nowrap` is NOT decoration either, and it is what holds the single row at
+						 * the narrow end. Wrapping happens on the items' CONTENT sizes, before any
+						 * shrinking: a long model name (an aggregator slug is ~48 characters) makes the
+						 * cluster wider than its share, so a still-wrapping row moves the microphone and
+						 * send to a second line instead of truncating the name — the exact inversion of
+						 * the yield order, where the name truncates first and the controls never move.
+						 * Measured on the live composer at a 750px box: with the row free to wrap, the
+						 * controls sat 24px below the readings; with `flex-nowrap` they stay on one line
+						 * and the name gives up the width. The same rule is what keeps D21's second row
+						 * from coming back: at a 640px box — the composer at its measure, which is the
+						 * case at every window width this app is run at — the row has no width to give.
 						 */}
-						<div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-[750px]/chatcol:flex-nowrap">
+						<div className="flex min-w-0 flex-nowrap items-center gap-x-2">
 							{/*
 							 * The session's readings, inside the row rather than on a row of their
 							 * own above it (R1).
 							 *
-							 * The DOM slot is FIRST, before the left group, so that the wrapped
-							 * state's tab order matches its painted order: below 750 the cluster is
-							 * the row's first line, and `order-first` only ever reordered the paint,
-							 * leaving a keyboard user to walk down to attach and the chip and back
-							 * UP to the readings (UX round 1, U4). Above 750 the strip's own
-							 * `order-2` puts it back between the chip and the controls, and the
-							 * controls' `order-3` keeps mic and send last.
+							 * The DOM slot is FIRST, before the left group. `order-first` only
+							 * ever reordered the paint, leaving a keyboard user to walk down to
+							 * attach and the chip and back UP to the readings (UX round 1, U4),
+							 * so the cluster is first in the DOM and the strip's own `order-2`
+							 * puts it between the chip and the controls, with the controls'
+							 * `order-3` keeping mic and send last.
 							 *
-							 * The two widths want OPPOSITE DOM orders and there is one DOM:
-							 * wrapped, the cluster paints first and must be tabbed first;
-							 * inline, it paints third and UX round 2 (U8) measured it still
-							 * being tabbed first. One node cannot satisfy both, and a second
-							 * render to fix the inline order would be a second layout to keep
-							 * in step - the thing this row is built to avoid, and what the
-							 * composer test pins. The wrapped width keeps the guarantee
-							 * because that is where the mismatch is a visible jump back UP
-							 * the row; inline the readings sit between the chip and the
-							 * controls, so the tab lands one stop early rather than out of
-							 * sequence. Recorded rather than silently chosen.
+							 * THE RESIDUAL THIS LEAVES IS UNCHANGED AND STILL RECORDED (UX round 2,
+							 * U8). `order-2` moves the PAINT, not the tab order, so the keyboard
+							 * still meets the readings one stop before the attach/chip group drawn
+							 * to their left. What the never-wrapping row (design round 2, D21)
+							 * removes is the OTHER half of that trade: there is no longer a width
+							 * at which the same node has to be first for one layout and third for
+							 * the other, so the mismatch is now a single stop on one screen rather
+							 * than two layouts disagreeing. Putting the DOM in paint order would
+							 * close it and is deliberately NOT done here: it is a change to the
+							 * composer's tab sequence (its own finding, U8's, not D21's) and the
+							 * composer suite pins the slot this comment explains.
 							 *
 							 * A crash in the strip must not take the composer down with it — the
 							 * readings are metadata and the ability to type is not — so it renders
@@ -6826,30 +6902,26 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							)}
 
 							{/*
-							 * The BUTTON LINE, as one flex item.
+							 * The BUTTON LINE: attach and the working-directory chip, as one item.
 							 *
-							 * Below 750px of column the readings take the row's first line
-							 * and this is the second - and this wrapper is what makes "the
-							 * second" mean one line rather than however many the items
-							 * need. Without it the row's own `flex-wrap` broke the line on
-							 * the items' CONTENT sizes: the chip's path is 202px at full
-							 * length, so at a 240-336px column the chip did not get the
-							 * chance to shrink and the microphone and send fell to a THIRD
-							 * line (the composer grew 143.5 -> 179.5px at the floor, design
-							 * round 1, D1 and code review round 1, MAJOR 2). A wrapping row
-							 * cannot express "one line, and everything on it yields".
+							 * IT IS `display: contents` AT EVERY WIDTH NOW, so it is a DOM slot rather
+							 * than a box, and saying so is cheaper than leaving the paragraph that used
+							 * to explain the two-line layout here. While the row still wrapped (below
+							 * 750px of column) this was the row's SECOND flex item and `contents` was
+							 * how it dissolved above the threshold; the two-line layout is gone with
+							 * design round 2's D21 (§G1: one 32px row at every width), so the wrapper
+							 * only ever dissolves and the group below is a direct child of the row in
+							 * every rendering. It is kept because the composer suite reads this slot
+							 * and because removing a wrapper is a change to the composer's DOM, which
+							 * belongs to the pass that next touches that tree rather than to a
+							 * geometry fix.
 							 *
-							 * Above the threshold it dissolves: `contents` hands its
-							 * children back to the row, so the cluster's `order-2` puts the
-							 * readings between the chip and the controls and the controls'
-							 * `ml-auto` takes the free space - the same single auto margin
-							 * as below, now between the cluster and mic/send (D7).
-							 *
-							 * `min-w-0` is what lets the chip inside actually shrink rather
-							 * than pushing the group past the row: a flex item's automatic
-							 * floor is its content.
+							 * `min-w-0` on the group is still load-bearing: a flex item's automatic
+							 * floor is its content, so without it the chip cannot shrink and the row
+							 * overflows instead (design round 1, D1 and code review round 1, MAJOR 2
+							 * measured that overflow at 240-336px columns).
 							 */}
-							<div className="flex w-full min-w-0 flex-nowrap items-center gap-x-2 @min-[750px]/chatcol:contents">
+							<div className="contents">
 								{/*
 								 * Left side: attachment button and the working-directory chip.
 								 *
@@ -6871,7 +6943,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								 * `row.overflowX`, which reads 0 because the GROUP fits. The yield
 								 * order needs both halves stated.
 								 */}
-								<div className="flex min-w-0 items-center gap-1 @min-[750px]/chatcol:shrink-0">
+								<div className="flex min-w-0 items-center gap-1 shrink-0">
 									<Tooltip content="Attach file">
 										<span>
 											<Button
@@ -6969,7 +7041,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								 * slot is first (see above); it makes the paint [attach][chip]
 								 * [readings][mic][send] out of a DOM whose first child is the cluster.
 								 */}
-								<div className="ml-auto flex items-center gap-1 @min-[750px]/chatcol:order-3">
+								<div className="ml-auto flex order-3 items-center gap-1">
 									{!isRecording &&
 										!isTranscribing &&
 										!(isLoading && currentJobId) && (

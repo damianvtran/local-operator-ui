@@ -84,7 +84,12 @@ export const questionDockHint = (gate: PendingDesktopGate): string => {
 		 * Escape means two things on this screen and the hint says which is which:
 		 * inside the card it hides the card; in the message box it is still the
 		 * turn's interrupt (`use-interrupt-on-escape.ts`), which is the only way to
-		 * decline an approval without typing.
+		 * decline an approval without typing. §F1 now names BOTH scopes: the clause
+		 * that used to say Esc is never "stop" while a card is docked was the half
+		 * that moved when design round 2's D26 found this sentence advertising a key
+		 * the contract denied (see SPEC.md §F1, "Esc HAS TWO SCOPES WHILE A CARD IS
+		 * DOCKED"). If this copy or the composer's ladder changes, §F1 moves with
+		 * them.
 		 */
 		return "Reply yes or no below, or press Escape in the message box to stop the turn.";
 	const prefix =

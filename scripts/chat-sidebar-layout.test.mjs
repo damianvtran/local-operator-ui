@@ -40,10 +40,15 @@ const {
 	SIDEBAR_MAX_WIDTH,
 	SIDEBAR_MIN_WIDTH,
 	SIDEBAR_SHEET_WIDTH,
+	CANVAS_PANE_MIN_PX,
+	CHAT_PANE_MIN_PX,
+	canvasDockWidth,
+	canvasPaneMode,
 	clampSidebarWidth,
 	isSidebarTogglePress,
 	resolveSidebarLayout,
 	sidebarToggleCap,
+	sidebarYieldsToCanvas,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(layoutBundle.outputFiles[0].text).toString("base64")}`
 );
@@ -179,4 +184,93 @@ test("the chord is ⌘B / Ctrl+B, and no near miss answers it", () => {
 
 	assert.equal(sidebarToggleCap(true), "⌘B");
 	assert.equal(sidebarToggleCap(false), "Ctrl+B");
+});
+
+/* ---- §I's first yielding step, which is the sidebar's (design round 2, D24) ---- */
+
+/**
+ * §I orders the yielding, and the implementation used to stop at step 2: "the
+ * sidebar collapses to the 56px strip (it yields first, because it is re-openable
+ * over the pane)" was applied only by the window's own width, so a docked 260px
+ * sidebar with the canvas open at 1024 went straight to "the canvas overlays the
+ * chat pane instead of docking" - the pane covering the whole conversation, with
+ * no scrim and no edge, which is round 1's D2 impression on the other pane.
+ *
+ * The arithmetic is the whole argument, so the test states it rather than the
+ * outcome alone, and it pins BOTH directions: a strip that does not help must
+ * not collapse the sidebar for nothing.
+ */
+test("a docked sidebar yields to the canvas where the yield is what lets it dock", () => {
+	/*
+	 * The frame's own numbers: at 1024 with the user's 260px, the docked row is
+	 * 764 and `canvasDockWidth(764)` is `min(560, 284)` = 284, below the pane's
+	 * 400px floor - so the canvas would overlay. With the strip (56) the row is
+	 * 968 and the dock is 488, so the chat keeps its 480 floor beside it.
+	 */
+	assert.equal(
+		sidebarYieldsToCanvas(SIDEBAR_DOCK_MIN_PX, SIDEBAR_DEFAULT_WIDTH),
+		true,
+	);
+	assert.equal(canvasDockWidth(1024 - SIDEBAR_DEFAULT_WIDTH), 284);
+	assert.ok(
+		canvasDockWidth(1024 - SIDEBAR_DEFAULT_WIDTH) < CANVAS_PANE_MIN_PX,
+		"the docked row is short of the pane's own floor, which is what forces the overlay",
+	);
+	assert.equal(canvasDockWidth(1024 - SIDEBAR_COLLAPSED_WIDTH), 488);
+	assert.ok(
+		canvasDockWidth(1024 - SIDEBAR_COLLAPSED_WIDTH) >= CANVAS_PANE_MIN_PX,
+		"with the strip the same window docks the canvas, with the chat's 480 floor intact",
+	);
+	assert.equal(
+		1024 -
+			SIDEBAR_COLLAPSED_WIDTH -
+			canvasDockWidth(1024 - SIDEBAR_COLLAPSED_WIDTH),
+		CHAT_PANE_MIN_PX,
+	);
+	assert.equal(canvasPaneMode(1024 - SIDEBAR_DEFAULT_WIDTH), "overlay");
+	assert.equal(canvasPaneMode(1024 - SIDEBAR_COLLAPSED_WIDTH), "docked");
+
+	const yielded = resolveSidebarLayout(
+		1024,
+		false,
+		false,
+		SIDEBAR_DEFAULT_WIDTH,
+		true,
+	);
+	assert.equal(yielded.mode, "strip");
+	assert.equal(yielded.width, SIDEBAR_COLLAPSED_WIDTH);
+	assert.equal(yielded.collapsed, true);
+	assert.equal(
+		yielded.resizable,
+		false,
+		"a yielded strip has nothing to resize: the divider is the dock's control",
+	);
+
+	/* Reversible, and the preference is not rewritten: closing the canvas restores it. */
+	assert.equal(
+		resolveSidebarLayout(1024, false, false, SIDEBAR_DEFAULT_WIDTH, false).mode,
+		"docked",
+	);
+
+	/* Where the docked sidebar already leaves the canvas its floor, nothing yields. */
+	assert.equal(sidebarYieldsToCanvas(1380, SIDEBAR_DEFAULT_WIDTH), false);
+	assert.equal(sidebarYieldsToCanvas(1140, SIDEBAR_DEFAULT_WIDTH), false);
+	assert.equal(canvasPaneMode(1380 - SIDEBAR_DEFAULT_WIDTH), "docked");
+
+	/* The user's own narrower sidebar still yields - it is the mode that is short, not 260. */
+	assert.equal(sidebarYieldsToCanvas(1024, SIDEBAR_MIN_WIDTH), true);
+
+	/*
+	 * AND A STRIP THAT WOULD NOT HELP DOES NOT COLLAPSE ANYTHING. Below the dock
+	 * threshold the sidebar is a strip for its own reasons, and the canvas still
+	 * cannot hold its floor: yielding there would take the panel away for nothing.
+	 */
+	assert.equal(sidebarYieldsToCanvas(900, SIDEBAR_DEFAULT_WIDTH), false);
+	assert.equal(canvasPaneMode(900 - SIDEBAR_COLLAPSED_WIDTH), "overlay");
+
+	/* An already-collapsed sidebar is a strip whatever the canvas does. */
+	assert.equal(
+		resolveSidebarLayout(1024, true, false, SIDEBAR_DEFAULT_WIDTH, true).mode,
+		"strip",
+	);
 });

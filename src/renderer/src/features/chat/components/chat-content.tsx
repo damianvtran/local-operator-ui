@@ -195,6 +195,14 @@ type ChatContentProps = {
 		/** A draft pane's readings, which have no session behind them. */
 		draft?: boolean;
 		/**
+		 * Whether this DRAFT pane's model is resolved (UX round 1, U1).
+		 *
+		 * `true` exactly when the pane is a draft and its `sessions.preview` answer
+		 * has arrived; `false` while that answer is pending or failed; absent for a
+		 * pane with a session behind it, where there is nothing to resolve.
+		 */
+		draftResolved?: boolean;
+		/**
 		 * Open a model or effort picker for this DRAFT pane's own selection.
 		 *
 		 * Forwards to `SessionStatusStripProps["onOpenDraftPicker"]`, and is absent

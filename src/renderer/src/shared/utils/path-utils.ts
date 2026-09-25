@@ -62,7 +62,24 @@ export const formatDirectory = (
 	dir: string,
 	homeDirectory: string | null,
 ): string => {
-	if (homeDirectory && dir.startsWith(homeDirectory)) {
+	/*
+	 * UNDER HOME MEANS UNDER HOME, WITH A SEPARATOR BETWEEN THEM (agent review round 1,
+	 * R10). The test used to be a bare `startsWith`, so `/Users/damianx/project` rendered
+	 * as `~/x/project` and `C:\Users\DamianOther\src` as `~/Other/src` - a SIBLING of the
+	 * account's home named as if it were inside it, on the one surface whose whole job is
+	 * to say where a session is. The predicate is now the home directory itself or a
+	 * child of it across either separator, which is what "under" means on both platforms.
+	 *
+	 * The bodies below are unchanged, including the `~`-only answer for the home directory
+	 * itself - which is now reachable only through this predicate rather than through the
+	 * dead second check that used to follow it.
+	 */
+	const underHome =
+		homeDirectory !== null &&
+		(dir === homeDirectory ||
+			dir.startsWith(`${homeDirectory}/`) ||
+			dir.startsWith(`${homeDirectory}\\`));
+	if (underHome) {
 		// Ensure consistent path separators (especially for Windows)
 		const relativePath = dir.substring(homeDirectory.length);
 		// Add separator if needed, handle both '/' and '\'
@@ -74,10 +91,6 @@ export const formatDirectory = (
 			return `~${relativePath.replace(/\\/g, "/")}`;
 		}
 		return `~/${relativePath.replace(/\\/g, "/")}`;
-	}
-	// Handle the case where the path is exactly the home directory
-	if (homeDirectory && dir === homeDirectory) {
-		return "~";
 	}
 	// Handle explicit '~' path from default directories
 	if (dir === "~") {
@@ -110,8 +123,18 @@ export const formatDirectory = (
  */
 export const middleTruncatePath = (path: string, max: number): string => {
 	if (path.length <= max) return path;
+	/*
+	 * A BUDGET THAT CANNOT HOLD AN ELLIPSIS AND A CHARACTER IS THE ELLIPSIS ALONE (agent
+	 * review round 1, R3). The case below used to fall through to `last.slice(-(max - 1))`,
+	 * and at `max === 1` that is `slice(0)` - the WHOLE last segment, nine characters for a
+	 * budget of one. `max === 0` was worse: `slice(-0)` is `slice(0)`, the same string.
+	 */
+	if (max <= 1) return "…".slice(0, Math.max(0, max));
 	const parts = path.split("/");
 	const last = parts[parts.length - 1] ?? "";
+	// The guard is about what the branch EMITS - `…` plus `last.slice(-(max - 1))`, which
+	// is `max` characters - rather than about `last` on its own, which is what the old
+	// `last.length + 1 >= max` compared and why it let `max` through by one.
 	if (last.length + 1 >= max) return `…${last.slice(-(max - 1))}`;
 	// The head: `~/first` or `/first`, the first real segment and its root.
 	const rooted = parts[0] === "~" || parts[0] === "";
@@ -140,7 +163,18 @@ export const middleTruncatePath = (path: string, max: number): string => {
 	}
 	const root = rooted ? parts[0] : "";
 	const rootTail = tailFor(root);
-	return join(root, rootTail.length > 0 ? rootTail : [last]);
+	if (rootTail.length > 0) return join(root, rootTail);
+	/*
+	 * THE LAST RESORT IS BOUNDED TOO (agent review round 1, R3). This branch used to return
+	 * the last segment whole, and the `~/…/` it is wrapped in is four characters of chrome -
+	 * so a last segment of `max - 2` characters came back at `max + 3`: measured
+	 * `middleTruncatePath("~/a/" + "b".repeat(38), 40)` → 42 characters, against a contract
+	 * that says "at most `max`" and a reason that says "a bounded length, so the title keeps
+	 * its words". The last segment is now cut to the room the wrapper leaves, and a budget
+	 * with no room for even one character of it degrades to the ellipsis alone.
+	 */
+	const room = max - (root ? `${root}/…/`.length : "…/".length);
+	return room > 0 ? join(root, [last.slice(-room)]) : "…";
 };
 
 /**
