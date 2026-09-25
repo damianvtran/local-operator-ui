@@ -1,0 +1,151 @@
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T06:30:17.131Z",
+      "url": "/v1/desktop/sessions/6404b67a5d5b/asides",
+      "asideId": "8db33943-707f-4e43-8594-19a1a751d21f",
+      "continues": null,
+      "questionHead": "an aside before the probe",
+      "text": "an aside before the probe",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "3da0079c532e48679465efee7513fae4",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"8db33943-707f-4e43-8594-19a1a751d21f\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T06:29:44.917Z",
+      "subscriptionId": "f814999819022059",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/6404b67a5d5b/events?frontend_replace=1",
+      "openedAt": "2026-09-25T06:29:49.770Z",
+      "subscriptionId": "3da0079c532e48679465efee7513fae4",
+      "asideDeltas": 8,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    }
+  ],
+  "asideDeltaFrames": 8,
+  "deltasBySubscription": {
+    "3da0079c532e48679465efee7513fae4": 8
+  },
+  "deltasByAside": {
+    "8db33943-707f-4e43-8594-19a1a751d21f": 8
+  },
+  "refused422": 0,
+  "messagePosts": [
+    {
+      "at": "2026-09-25T06:29:58.409Z",
+      "url": "/v1/desktop/sessions/6404b67a5d5b/messages",
+      "kind": "message",
+      "text": "seed turn for quoting",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"fc5e2317-c647-4327-bd6b-7e579e662047\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T06:29:58.409Z"
+    },
+    {
+      "at": "2026-09-25T06:30:04.882Z",
+      "url": "/v1/desktop/sessions/6404b67a5d5b/messages",
+      "kind": "message",
+      "text": "extra seed turn 0",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"749f235c-eebf-4305-811f-6151e96b7a38\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T06:30:04.887Z"
+    },
+    {
+      "at": "2026-09-25T06:30:10.946Z",
+      "url": "/v1/desktop/sessions/6404b67a5d5b/messages",
+      "kind": "message",
+      "text": "extra seed turn 1",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"101aae6f-b0c0-448c-85ba-e83d8e41f08a\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T06:30:10.946Z"
+    },
+    {
+      "at": "2026-09-25T06:30:23.905Z",
+      "url": "/v1/desktop/sessions/6404b67a5d5b/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 1 (quote+file)",
+      "images": 1,
+      "held": 10000,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"04f9cfeb-3662-4893-8e1c-8c856a5af4ca\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T06:30:33.907Z"
+    },
+    {
+      "at": "2026-09-25T06:30:42.460Z",
+      "url": "/v1/desktop/sessions/6404b67a5d5b/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 2 (quote+file)",
+      "images": 1,
+      "held": 10000,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"6e000194-c15e-4a0a-8331-eee8ed37d823\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T06:30:52.462Z"
+    },
+    {
+      "at": "2026-09-25T06:31:00.037Z",
+      "url": "/v1/desktop/sessions/6404b67a5d5b/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 3 (quote+file)",
+      "images": 1,
+      "held": 10000,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"de2b2b48-f32b-4005-920b-553bc100edb0\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T06:31:10.042Z"
+    },
+    {
+      "at": "2026-09-25T06:31:17.903Z",
+      "url": "/v1/desktop/sessions/6404b67a5d5b/messages",
+      "kind": "message",
+      "text": "<reply-to>Transport failures and owner</reply-to>\nHOLDSEND one-moment probe 4 (quote only)",
+      "images": 0,
+      "held": 10000,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"70b62632-21ea-4688-ab4c-ed5609b45642\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T06:31:27.912Z"
+    },
+    {
+      "at": "2026-09-25T06:31:35.659Z",
+      "url": "/v1/desktop/sessions/6404b67a5d5b/messages",
+      "kind": "message",
+      "text": "HOLDSEND one-moment probe 5 (file only)",
+      "images": 1,
+      "held": 10000,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"dc120964-b105-4327-99d8-a07629a73ba4\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T06:31:45.662Z"
+    }
+  ],
+  "asideOps": [
+    {
+      "at": "2026-09-25T06:30:22.914Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/6404b67a5d5b/asides/8db33943-707f-4e43-8594-19a1a751d21f",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"8db33943-707f-4e43-8594-19a1a751d21f\",\"status\":\"closed\"},\"replayed\":false}}"
+    }
+  ]
+}
