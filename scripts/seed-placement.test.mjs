@@ -228,7 +228,7 @@ export default { useState, useEffect, useLayoutEffect, useInsertionEffect, useRe
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { useCanonicalSessionStream } from "./src/renderer/src/shared/hooks/use-canonical-session";
+			export { useCanonicalSessionStream, __resetLabelGapBookkeeping } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { __resetPaintCache } from "./src/renderer/src/shared/store/paint-cache";
 			export { EMPTY_TRANSCRIPT, applyHistoryPage } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
@@ -279,6 +279,7 @@ const hook = await import(
 const {
 	useCanonicalSessionStream,
 	useCanonicalSessionsStore,
+	__resetLabelGapBookkeeping,
 	__resetPaintCache,
 	EMPTY_TRANSCRIPT,
 	applyHistoryPage,
@@ -486,6 +487,13 @@ const ids = (transcript) => transcript.records.map((record) => record.id);
  */
 async function open({ entries, liveEvents, streaming, durable = entries }) {
 	__resetPaintCache();
+	/*
+	 * The label gap's bookkeeping is per CONVERSATION and outlives a mount, the
+	 * same way the paint cache does (round 1, QA Q1: a switch away and back must
+	 * not re-blank rows this window already painted). The cases below are separate
+	 * JOINS of one conversation, not switches back to it, so each says so here.
+	 */
+	__resetLabelGapBookkeeping();
 	subscriptions.length = 0;
 	requests.length = 0;
 	rafQueue = [];
@@ -569,13 +577,17 @@ test("a seed that arrives with the turn over paints nothing after the last messa
 	);
 
 	/*
-	 * The read the refusal rests on, asserted rather than described: ONE tail
-	 * read (no `before_id`, so it is the end of the journal), sized for exactly
-	 * the calls the page cannot label — `reconcileLimit(67) = 100 + 2 * 67`.
+	 * The read the refusal rests on, asserted rather than described: the first
+	 * read is the journal's tail (no `before_id`), sized for the calls the page
+	 * cannot label — `reconcileLimit(67) = 100 + ceil(3.25 * 67) = 318`. The
+	 * operator's own open logged `limit=234` (the old `2 * 67`), which is how
+	 * this fixture's `older` half was cut; the stub below serves only those 234
+	 * rows, so the walk reaches the start of what it has and stops on
+	 * `has_more: false` rather than on a label.
 	 */
 	const reads = requests.filter((request) => request.op === "sessions.history");
 	assert.equal(reads[0]?.beforeId, undefined, "the read is the journal's tail");
-	assert.equal(reads[0]?.limit, 100 + 2 * unlabelledCalls.length);
+	assert.equal(reads[0]?.limit, 100 + Math.ceil(3.25 * unlabelledCalls.length));
 
 	/*
 	 * And what that read is WORTH, in both directions: a tail read is bounded, so

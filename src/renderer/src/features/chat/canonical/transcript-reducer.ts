@@ -41,6 +41,7 @@ import {
 import {
 	diffFromDetails,
 	preferDiff,
+	preferDiffCounts,
 } from "../components/trace/tool-row-model";
 
 /**
@@ -682,24 +683,6 @@ function preferExisting(
 	previous: TranscriptImage[],
 ): TranscriptImage[] {
 	return next.length === 0 && previous.length > 0 ? previous : next;
-}
-
-/**
- * The `+N` / `-M` counters a write reported, from its own `details`.
- *
- * Mirrors the TUI's `_diff_counts` (tool_card.py:567-583): a value counts only
- * when it is a positive integer, and anything else — missing, malformed,
- * negative, a boolean — is zero. Zero is not rendered, because `+0` claims that
- * nothing was added while a missing count claims nothing at all, and these are
- * the second kind.
- */
-function diffCounts(details: unknown): { added: number; removed: number } {
-	const source = (details ?? {}) as Record<string, unknown>;
-	const count = (value: unknown) =>
-		typeof value === "number" && Number.isInteger(value) && value > 0
-			? value
-			: 0;
-	return { added: count(source.added), removed: count(source.removed) };
 }
 
 function sameImages(a: TranscriptImage[], b: TranscriptImage[]) {
@@ -1889,7 +1872,12 @@ function durableRecord(
 				`tool:${toolCallId}`,
 				previous?.kind === "tool" ? previous.images : undefined,
 			),
-			...diffCounts(providerPayload.details),
+			// Counts and body share one guard (`preferDiffCounts`): a page row with
+			// no `details` keeps what the row already showed rather than zeroing it.
+			...preferDiffCounts(
+				providerPayload.details,
+				previous?.kind === "tool" ? previous : null,
+			),
 			// The durable half of the diff body, and the same identity rule the
 			// images beside it follow: a replayed page that carries no `details`
 			// must not blank a row the live event already filled in (the live
@@ -2864,7 +2852,11 @@ export function applyEvent(
 					extractImages(result, id, base.images),
 					base.images,
 				),
-				...diffCounts(result.details),
+				// The counters ride the same `details` object as the body below, so
+				// they take the same guard: a seed end whose `details` the budget
+				// stripped keeps the durable counts instead of writing 0/0 over them
+				// (see `preferDiffCounts` for the measured sequence).
+				...preferDiffCounts(result.details, base),
 				// THE live diff path: `tool_execution_end` carries the tool RESULT, so
 				// `result.details.diff` is the producer's own line list. Guarded the
 				// way the images above are, and for the same measured reason — a
@@ -3286,10 +3278,12 @@ export function applyLiveSeed(
  *
  * WHY THE CALLER SIZES ITS PAGE FROM THIS rather than using a constant: the
  * seed retains at most `LIVE_EVENT_END_ROWS_MAX` (100) settled calls, each of
- * which costs about two durable entries (its assistant row and its result), so
- * `reconcileLimit` below turns this list into the smallest tail that reaches
- * every one of them — paying for the ACTUAL gap beats both a fixed deeper page
- * on every join and leaving the rows labelled with nothing but their output.
+ * which costs about three durable entries (its assistant row, its result and the
+ * round's `session_spend.v1` row — measured, see `RECONCILE_ENTRIES_PER_CALL`),
+ * so `reconcileLimit` below turns this list into a tail that usually reaches
+ * every one of them in one request, and the hook's walk pages further back for
+ * the rest — paying for the ACTUAL gap beats both a fixed deeper page on every
+ * join and leaving the rows labelled with nothing but their output.
  *
  * Oldest first, deduplicated, and only ids the seed actually settled: a call
  * still running has its start, which carries its own arguments.
@@ -3305,6 +3299,202 @@ export function applyLiveSeed(
  * to read anyway, and a call whose row cannot be found spends its own bounded
  * attempts and is dropped like any other (`labelGapCandidates`).
  */
+/**
+ * When each call the seed settled first RAN, in epoch ms, by call id.
+ *
+ * THE WALK'S ONE HONEST FLOOR, and the reason it exists: a page whose OLDEST row
+ * predates an unlabelled call's own start cannot still be missing that call's
+ * assistant row — where its arguments live — whatever else the journal holds. That
+ * is a fact about one call rather than about the turn it sits in, which is what
+ * the turn-boundary rule (`pageOpensTurn`) is: on a journal that is ONE long turn
+ * there is no boundary row to meet, and a call nothing can label then cost the
+ * whole journal on every open (round 2, QA Q1 / reviewer R1: 4 requests and 409
+ * rows where `origin/main` reads one page).
+ *
+ * WHY THE DIRECTION WORKS, corrected by round 3's R9. A tool's assistant row and
+ * its result row are written TOGETHER, at the end of the round they belong to:
+ * over 417,999 real pairs the result's `ts` minus the assistant's is a median of
+ * 13.1 µs apart — 17.2 µs across the 25,707 calls that ran longer than a minute —
+ * and NEVER negative. So an assistant row sits at or after its call's own start,
+ * however long the call ran, which is the one direction this floor needs: a page
+ * older than the start by more than the slack has already passed the row. (The
+ * earlier comment here said the row was written "at or within a second of" the
+ * start, which reads as if the row could come first.) The residual 1.369 s worst
+ * case in the paragraph below is the derivation's own slop — `duration_s` measured
+ * from a clock a hair later than the row's write — not the writer's ordering.
+ *
+ * MEASURED, NOT ASSUMED. Over 418,566 real assistant/result pairs across 3,000
+ * journals in `~/.local-operator/sessions` (the assistant row's `ts` minus the
+ * call's own start, `ts - provider_payload.duration_s`), the assistant row is
+ * never more than 1.369 s EARLIER than the start it belongs to and only ONE pair
+ * in the whole set is below -1 s; the median is 0.541 s LATER, because a row is
+ * written as its round is recorded rather than when the tool begins.
+ * `RECONCILE_START_SLACK_MS` is five seconds against that 1.369 s, and being
+ * wrong costs one page (the row falls back to its stand-in, exactly as it does on
+ * `origin/main`) rather than a wrong label.
+ *
+ * The unit conversion is the shared `epochMsFromSeconds` — the same helper the
+ * frame's own `started_at_epoch` reader uses — so the two sides cannot disagree
+ * about what a stated instant is.
+ */
+export function seedCallStarts(
+	liveEvents: readonly Record<string, unknown>[] | null | undefined,
+): Map<string, number> {
+	const starts = new Map<string, number>();
+	for (const event of liveEvents ?? []) {
+		if (!event) continue;
+		const frame = event as LiveEvent;
+		if (!settlesACall(frame) && !finishedDictationFrame(frame)) continue;
+		const callId = String(frame.tool_call_id ?? "");
+		if (!callId) continue;
+		const at = epochMs(frame);
+		if (at !== null) starts.set(callId, at);
+	}
+	return starts;
+}
+
+/**
+ * The calls whose frame says they are still WAITING: a compose with no reason.
+ *
+ * The ONE startless kind that does not refuse the floor, and the exception is the
+ * whole point (round 6, R16). A `tool_call_compose` with no `not_run_reason` is a
+ * call still at a gate: the backend keeps it in the seed until its own
+ * `tool_execution_start` replaces it, its assistant row is written when the round
+ * closes, so NO page can name it yet — refusing the floor for it buys pages that
+ * cannot end the walk (round 4's R11 measured 1 read of 325 rows becoming 2 of 429,
+ * and 1 of 331 becoming 3 of 500 on the row cap).
+ *
+ * Every OTHER startless call does refuse the floor, which is what R16 corrected:
+ * round 5's rule let only a compose that STATES a verdict block it, so a settled
+ * `tool_execution_end` carrying no clock — what a producer older than v0.57.0
+ * sends, or a viewer that joined after the call started sees — was skipped. That
+ * call DID run and a page can label it, and leaving the floor on cost it its label.
+ * The cost is stated the way it was measured, because the two heads are easy to
+ * swap: `7b5ee49d` (round 5) reads 2 pages / 217 rows and leaves the call
+ * unlabelled, while ITS predecessor `f1ef98c4c` reads 3 / 324 and labels it — the
+ * 3-read figure belongs to the head BEFORE the regression, not to the one that
+ * introduced it (round 7, R19).
+ */
+export function seedWaitingComposes(
+	liveEvents: readonly Record<string, unknown>[] | null | undefined,
+): Set<string> {
+	const waiting = new Set<string>();
+	for (const event of liveEvents ?? []) {
+		if (!event) continue;
+		const frame = event as LiveEvent;
+		if (frame.type !== "tool_call_compose") continue;
+		const reason = frame.not_run_reason;
+		if (typeof reason === "string" && reason.trim().length > 0) continue;
+		const callId = String(frame.tool_call_id ?? "");
+		if (callId) waiting.add(callId);
+	}
+	return waiting;
+}
+
+/**
+ * How much earlier than a call's own start an assistant row may be journaled.
+ *
+ * Five seconds against a measured worst case of 1.369 s over 418,566 real pairs
+ * (see `seedCallStarts`, which states the sample and the direction). Generous on
+ * purpose: a wrongly early stop costs the page a row's label and nothing else,
+ * while a wrongly late one pays the journal.
+ */
+export const RECONCILE_START_SLACK_MS = 5_000;
+
+/**
+ * When each orphan's own result row was journaled, in epoch ms, by call id.
+ *
+ * THE FLOOR'S SECOND KIND OF INSTANT, and the shape round 3's R6a measured. An
+ * orphan is a call nothing ever named, found because a page's boundary fell between
+ * an assistant row and its own result (`pageOrphanResults`) — so its assistant row
+ * is the row immediately ABOVE that result, and the result's own `ts` is the
+ * instant that stands in for the call's start: the page that holds the result row
+ * holds the assistant row with it, and a page whose oldest row predates the result
+ * by more than the slack cannot be that page.
+ *
+ * Without it the floor ended the walk a page early on that shape: the seed's own
+ * targets were labelled by page one, the in-flight call's recent start set the
+ * floor, and the orphan — whose assistant row was one row behind the page — stayed
+ * painted with its output, which is Q4's defect. `f1ef98c4c` made 2 reads and
+ * labelled it; the round-3 head made 1 and did not.
+ *
+ * A `ts` the row does not state is left out rather than defaulted: an orphan with
+ * no instant leaves the floor to the walk's other exits.
+ */
+export function pageOrphanResultInstants(
+	entries: DesktopHistoryPage["entries"],
+	orphans: Iterable<string>,
+): Map<string, number> {
+	const wanted = new Set(orphans);
+	const instants = new Map<string, number>();
+	if (wanted.size === 0) return instants;
+	for (const entry of entries) {
+		if (entry.payload?.role !== "tool") continue;
+		const callId = entry.payload.tool_call_id;
+		if (typeof callId !== "string" || !wanted.has(callId)) continue;
+		const ts = entry.ts;
+		if (typeof ts !== "number" || !Number.isFinite(ts)) continue;
+		instants.set(callId, Math.round(ts * 1000));
+	}
+	return instants;
+}
+
+/**
+ * Whether a fetched page has read past every call still behind it.
+ *
+ * `starts` is `seedCallStarts` for the calls the walk is still looking for,
+ * `orphanInstants` is `pageOrphanResultInstants` for the orphans it is still
+ * chasing, and `entries` is the page it just read, whose OLDEST row is what
+ * answers.
+ *
+ * A TARGET WITH NO STATED INSTANT REFUSES THE FLOOR unless the caller names it in
+ * `startlessWaiting` as a call still waiting at a gate (`seedWaitingComposes`). Skipping EVERY
+ * startless target let a co-target's instant set the floor alone and end the walk
+ * before it: a `tool_call_compose` target is startless BY TYPE — the frame has no
+ * clock field — so a settled call from the current round was enough to stop the
+ * walk while a not-run call from an earlier one sat unlabelled behind it (measured:
+ * 1 read and unlabelled against `f1ef98c4c`'s 3 reads and labelled).
+ *
+ * THE EXCEPTION IS ONE KIND, and R16 is why it is the exception rather than the
+ * rule: a compose still WAITING at a gate cannot be labelled by any page yet, so
+ * exempting it costs nothing, while every other startless call — a never-ran
+ * compose WITH a reason, a blocked call, a settled end frame whose producer states
+ * no clock — did run or did end, and a page may hold the row that labels it. The
+ * caller narrows further with the walk's own behind set (`labelTargetsBehindIds`),
+ * so a call of the round still running, newer than everything a page has named, is
+ * not a target the floor is asked about (round 4's R11).
+ */
+export function pagePassedOldestStart(
+	entries: DesktopHistoryPage["entries"],
+	targets: Iterable<string>,
+	starts: ReadonlyMap<string, number>,
+	orphanInstants: ReadonlyMap<string, number> = new Map(),
+	startlessWaiting: ReadonlySet<string> = new Set(),
+): boolean {
+	const oldestSeconds = entries[0]?.ts;
+	if (typeof oldestSeconds !== "number" || !Number.isFinite(oldestSeconds))
+		return false;
+	let floor: number | null = null;
+	for (const callId of targets) {
+		const at = starts.get(callId);
+		if (at === undefined) {
+			// See the doc: every startless call refuses the floor but the kind the caller
+			// names as still waiting, because no page can label that kind yet.
+			if (startlessWaiting.has(callId)) continue;
+			return false;
+		}
+		if (floor === null || at < floor) floor = at;
+	}
+	for (const at of orphanInstants.values()) {
+		if (floor === null || at < floor) floor = at;
+	}
+	if (floor === null) return false;
+	// The row's own unit conversion, spelled the way the rest of this file
+	// converts a durable `ts` (`Math.round((entry.ts ?? 0) * 1000)`).
+	const oldestMs = Math.round(oldestSeconds * 1000);
+	return oldestMs <= floor - RECONCILE_START_SLACK_MS;
+}
+
 export function seedCallsMissingLabels(
 	liveEvents: readonly Record<string, unknown>[] | null | undefined,
 	labelled: ReadonlySet<string>,
@@ -3359,13 +3549,28 @@ export function labelGapCandidates(
 }
 
 /**
- * Durable entries one settled call occupies: its assistant row and its result.
+ * Durable journal entries to budget per unlabelled call, so the first label
+ * read normally reaches the OLDEST one in a single request.
  *
- * The ratio is the seed's own shape, not an estimate: `_fold_live_event` keeps
- * one end per call and the durable transcript writes the assistant row holding
- * that call's `tool_calls` plus the tool row holding its result.
+ * AN ESTIMATE, MEASURED — not the seed's shape. This used to be 2 and was
+ * described as exact (assistant row + tool row per call), but a real journal
+ * also writes a `custom` `session_spend.v1` row per round, `session_state`
+ * rows, prunes and the odd user/steering row, so the distance from the tail back
+ * to a call's assistant row is not a fixed multiple. Measured read-only over
+ * 1,357 real sessions under `~/.local-operator/sessions` (10,395 simulated joins:
+ * seed = the turn's newest 100 calls, page = the newest 100 entries), the
+ * per-missing-call depth past the page is p50 2.50, p75 2.88, p90 3.03, p95
+ * 3.18, p99 4.23. At 2 one request covered 15.7% of joins; at 3.25 it covers
+ * 96.4%, for a mean limit of 263 entries rather than 200. The rest is closed by
+ * the goal-directed walk in `reconcileTail`, which pages back until every
+ * target is labelled, so this ratio decides how many requests a join costs and
+ * never whether the rows get their labels.
+ *
+ * The session in the report (`<session>`) needs 3.03: its turn repeats
+ * assistant, tool, `session_spend.v1`, and at 2 its first read left 23 of 68
+ * calls without a label.
  */
-export const RECONCILE_ENTRIES_PER_CALL = 2;
+export const RECONCILE_ENTRIES_PER_CALL = 3.25;
 
 /** The tail every reconcile asks for, and the app's ordinary history page. */
 export const RECONCILE_TAIL_ENTRIES = 100;
@@ -3387,10 +3592,226 @@ export const RECONCILE_TAIL_MAX_ENTRIES = 500;
  */
 export function reconcileLimit(missingCalls: number): number {
 	if (missingCalls <= 0) return RECONCILE_TAIL_ENTRIES;
+	// `ceil`: the ratio is fractional and the route takes an integer `limit`.
 	return Math.min(
 		RECONCILE_TAIL_MAX_ENTRIES,
-		RECONCILE_TAIL_ENTRIES + RECONCILE_ENTRIES_PER_CALL * missingCalls,
+		RECONCILE_TAIL_ENTRIES +
+			Math.ceil(RECONCILE_ENTRIES_PER_CALL * missingCalls),
 	);
+}
+
+/**
+ * Which of `targets` a durable page names in an assistant row's `tool_calls`.
+ *
+ * The label walk's stop test: a call is labelled once the row that NAMED it is
+ * in hand, because that is where its arguments live (`applyHistoryPage` copies
+ * them into `argsByCall`). Pure so the hook's walk rule can be tested without a
+ * transport.
+ */
+export function pageLabels(
+	entries: DesktopHistoryPage["entries"],
+	targets: ReadonlySet<string>,
+): string[] {
+	const found: string[] = [];
+	if (targets.size === 0) return found;
+	for (const entry of entries) {
+		const calls = entry.payload?.tool_calls;
+		if (!Array.isArray(calls)) continue;
+		for (const call of calls as Record<string, unknown>[]) {
+			if (call && typeof call.id === "string" && targets.has(call.id))
+				found.push(call.id);
+		}
+	}
+	return found;
+}
+
+/**
+ * Whether a fetched page holds the row that OPENED the turn the seed is of.
+ *
+ * THE ABSOLUTE FLOOR OF A LABEL WALK, and the exit a walk that cannot win needs.
+ * Every call a mid-turn snapshot's seed names belongs to the turn that is in
+ * flight, so its assistant row — where its arguments live — was journaled at or
+ * after that turn's opening user row. Reading past the opening row therefore
+ * proves the rest of the walk is looking for rows the journal does not hold, and
+ * the walk descends to the row/request bound for nothing: round 1's R1 measured
+ * a join during a turn's first round paging to the 500-row bound (four reads,
+ * 416 rows) where main read one page. This is the condition that stops it.
+ *
+ * WHY A `user` ROW IS THE TURN'S OWN START, measured rather than assumed: over
+ * 400 real transcripts under `~/.local-operator/sessions` (914 user rows), 0 of
+ * them sit in the middle of a call's life — no row with `role: "user"` has a
+ * tool result after it whose assistant row is before it. A steer or a harness
+ * notice lands between rounds, never inside one, so the FIRST user row met
+ * walking back from the tail is the turn's opening row. A journal that never
+ * grew one (a pruned head) simply never satisfies this, and the walk keeps its
+ * other exits.
+ */
+export function pageOpensTurn(entries: DesktopHistoryPage["entries"]): boolean {
+	for (const entry of entries) if (entry.payload?.role === "user") return true;
+	return false;
+}
+
+/**
+ * Calls a page holds the RESULT of while no assistant row in that same page
+ * names them.
+ *
+ * A CALL THE SEED NEVER NAMED, and the row QA round 1 called out (Q4): a page's
+ * boundary can fall between an assistant row and its own result, so the page
+ * begins with a tool row whose arguments are one row older than the page — and
+ * because nothing in the seed names that call it was never a walk target, so the
+ * row painted its output where the command belongs. That is the very defect this
+ * read exists to fix, one row away from being fixed, and it is worth one page:
+ * the walk turns such a call into a target and its assistant row is read next.
+ *
+ * `known` is every call id the caller can already account for — the seed's own
+ * calls (`every`), everything a fetched page has named (`found`) and the orphans
+ * already collected — so an ordinary page, whose tool rows all have their
+ * assistant rows beside them, produces nothing here.
+ */
+export function pageOrphanResults(
+	entries: DesktopHistoryPage["entries"],
+	known: ReadonlySet<string>,
+): string[] {
+	const named = new Set(known);
+	for (const entry of entries) {
+		const calls = entry.payload?.tool_calls;
+		if (!Array.isArray(calls)) continue;
+		for (const call of calls as Record<string, unknown>[]) {
+			if (call && typeof call.id === "string") named.add(call.id);
+		}
+	}
+	const orphans: string[] = [];
+	const seen = new Set<string>();
+	for (const entry of entries) {
+		if (entry.payload?.role !== "tool") continue;
+		const callId = entry.payload.tool_call_id;
+		if (typeof callId !== "string" || named.has(callId) || seen.has(callId))
+			continue;
+		seen.add(callId);
+		orphans.push(callId);
+	}
+	return orphans;
+}
+
+/**
+ * Whether the reconcile walk has read far enough to stop.
+ *
+ * TWO conditions, and both are required. The walk used to stop the moment a
+ * fetched page CONNECTED to a painted row, which answers "is anything missing
+ * between the page and the screen" — but the label gap is a different question:
+ * the page has to reach back to the OLDEST unlabelled call's assistant row, and a
+ * tail page connects long before that on any turn with more than a page of
+ * calls. So:
+ *
+ *  - `connected`: some fetched page overlapped the painted rows, or nothing was
+ *    painted (then no page can overlap and one page is the whole coverage);
+ *  - `unlabelled`: how many target calls no fetched page has named yet.
+ *
+ * The walk's other exits live in the loop, because they are facts about the
+ * route, the turn or the calls rather than about the goal: `!has_more`, the
+ * `RECONCILE_WALK_MAX_ROWS` and `RECONCILE_WALK_MAX_REQUESTS` bounds,
+ * `pageOpensTurn` (the row past which no seeded call of this turn can have its
+ * assistant row) and `pagePassedOldestStart` (the instant past which the OLDEST
+ * unlabelled call's own row cannot lie) — see each for which shape needs it.
+ */
+export function reconcileWalkDone(connected: boolean, unlabelled: number) {
+	return connected && unlabelled === 0;
+}
+
+/**
+ * The calls a seed names as STARTED, SETTLED or a stated verdict: the ids that
+ * RETRACT an earlier announcement that the call was still waiting.
+ *
+ * The waiting set is per conversation and outlives the seed that filled it
+ * (round 1, QA Q1), so it can only be right if every later statement about a
+ * call updates it. Without this the set grew monotonically: a second pass of the
+ * same conversation — or a seed that names one id twice — left a call exempt from
+ * the floor that had since started and settled, so the walk stopped at the floor
+ * and the call kept no label (round 7, R18, measured 2 reads of 217 rows where
+ * the same shape reads 3 of 324 and labels it when the exemption is fresh).
+ *
+ * "Started" is `tool_execution_start`, "settled" is the one frame with no clock
+ * (`settlesACall`), and a compose carrying a `not_run_reason` is the stated
+ * verdict — the three ways a runtime says the call is no longer at a gate.
+ */
+export function seedSettledCalls(
+	liveEvents: readonly Record<string, unknown>[] | null | undefined,
+): Set<string> {
+	const settled = new Set<string>();
+	for (const event of liveEvents ?? []) {
+		if (!event) continue;
+		const frame = event as LiveEvent;
+		const reason = frame.not_run_reason;
+		const stated =
+			frame.type === "tool_call_compose" &&
+			typeof reason === "string" &&
+			reason.trim().length > 0;
+		if (
+			frame.type !== "tool_execution_start" &&
+			!settlesACall(frame) &&
+			!stated
+		)
+			continue;
+		const callId = String(frame.tool_call_id ?? "");
+		if (callId) settled.add(callId);
+	}
+	return settled;
+}
+
+/**
+ * How many label targets are still BEHIND everything read so far.
+ *
+ * `order` is the calls in journal order, oldest first — the seed's own order
+ * (`seedCallsMissingLabels` over the whole seed), which holds the calls a page
+ * already labelled as well as the targets. `found` is every call a durable page
+ * READ FROM THE TAIL has named: the snapshot's own page and each page the walk
+ * fetched. Reading is contiguous back from the tail, so once a call is found,
+ * every target NEWER than it would have been inside what was read if it were
+ * durable at all. Those are calls of the round still running (the round's
+ * assistant row is written when the round closes), so no depth of reading finds
+ * them now and the round-end retry is what labels them. Only targets OLDER than
+ * the oldest found call are worth another page.
+ *
+ * Nothing found means nothing is known about where the targets sit, so all of
+ * them count and the walk keeps reading — but only as far as the row that opened
+ * the turn (`pageOpensTurn`) or the route's own bounds, never past them. Without
+ * this rule a join during a round with finished calls would page to the 500-row
+ * bound on every open, hunting rows that do not exist yet (round 1, R1).
+ */
+export function labelTargetsBehindIds(
+	order: readonly string[],
+	targets: ReadonlySet<string>,
+	found: ReadonlySet<string>,
+): string[] {
+	// A target the seed no longer names was evicted from it by newer calls (a
+	// round-end retry carries ids from an earlier snapshot's seed), so it is
+	// older than everything in `order` and is behind whatever was read.
+	const ordered = new Set(order);
+	const behind: string[] = [];
+	for (const id of targets)
+		if (!ordered.has(id) && !found.has(id)) behind.push(id);
+	for (const id of order) {
+		if (found.has(id)) return behind;
+		if (targets.has(id)) behind.push(id);
+	}
+	// No call in `order` was found: every target is still unaccounted for.
+	return behind;
+}
+
+/**
+ * How many label targets are still behind what has been read (`labelTargetsBehindIds`).
+ *
+ * Kept as a count because that is what `reconcileLimit` sizes a page from, and
+ * derived from the ids so the two callers cannot come to disagree about which
+ * targets are behind — round 4's R11 was a walk that used a narrower set for the
+ * floor than for its own goal.
+ */
+export function labelTargetsBehind(
+	order: readonly string[],
+	targets: ReadonlySet<string>,
+	found: ReadonlySet<string>,
+): number {
+	return labelTargetsBehindIds(order, targets, found).length;
 }
 
 /**
