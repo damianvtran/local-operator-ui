@@ -369,26 +369,30 @@ export type DesktopFeature =
 	 * `references`: the harness expands a draft's `@path` tokens into file content
 	 * before the message reaches the model.
 	 *
-	 * THE COMPOSER'S `@` AFFORDANCE IS GATED ON THIS, and it is the one gate in
-	 * this file whose key no backend advertises yet. That is the point of it rather
-	 * than an oversight: the expansion is a HARNESS behaviour, it is not released
-	 * (no tag through `v0.56.8` carries `local_operator/references.py`, and the half
-	 * that adds it is PR #1220, in review), and the harness publishes no route for
-	 * it — the whole feature is two Python modules, with no server surface at all.
-	 * So a composer that offered a picker and painted chips on today's install would
-	 * be promising an expansion nothing on the machine performs: the user picks a
-	 * file, gets a chip that says "this is a reference", and the model receives the
-	 * literal characters. `desktopFeatureEnabled` fails closed, so absent (or
-	 * absent `desktop_available`) means the picker never opens and no chip is ever
-	 * painted — the honest state, and the reason this key is here before its writer.
+	 * THE COMPOSER'S `@` AFFORDANCE IS GATED ON THIS, and this key's writer now
+	 * exists: `local_operator/server/routes/capabilities.py` publishes
+	 * `"references": 1` whenever `at_references_enabled()` is true, so a backend
+	 * built from that tree lights the picker, the chips and the composer tip up by
+	 * itself. Nothing else about this app changed to enable them, which is what the
+	 * key was for: the app shipped the affordance DARK, withheld until a backend
+	 * said it could carry a reference, because a composer that offered a picker and
+	 * painted chips on a backend that does not expand would promise an expansion
+	 * nothing on the machine performs — the user picks a file, gets a chip that says
+	 * "this is a reference", and the model receives the literal characters.
 	 *
-	 * WHAT HAS TO HAPPEN FOR THE AFFORDANCE TO APPEAR: the harness half adds
-	 * `"references": 1` to `features` in
-	 * `local_operator/server/routes/capabilities.py`. That is a one-line change on
-	 * the other side of this contract and it is NOT part of this repository. Named
-	 * where a reader will meet it (the PR body, the review finding) because it is
-	 * load-bearing for the release: until it lands, this feature ships dark by
-	 * design.
+	 * THE KEY IS THE ONE CAPABILITY HERE THAT A CURRENT BACKEND MAY OMIT, because
+	 * the harness's expansion has a per-call kill switch
+	 * (`LOCAL_OPERATOR_AT_REFERENCES`). A process told not to expand advertises
+	 * nothing rather than advertising `0`, so ABSENT covers two cases a client
+	 * cannot tell apart and must answer identically: a backend older than the key,
+	 * and a current one whose operator turned the expansion off. Both mean the same
+	 * thing to this composer — send the draft as typed, offer no affordance, and say
+	 * why when the user's own `@` brings the notice up.
+	 *
+	 * `desktopFeatureEnabled` fails closed, so absent (or an absent
+	 * `desktop_available`, which means no credential for the routes) means the picker
+	 * never opens and no chip is ever painted. A caller that has not read this far
+	 * gets the honest state by default.
 	 */
 	| "references"
 	/**
