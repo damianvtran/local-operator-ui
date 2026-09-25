@@ -1545,7 +1545,7 @@ function SessionPanel({
 				// still on screen and `busy` is still true, which is the honest state.
 				setSendError(userFacingMessage(error, "Stop could not be confirmed.")),
 			);
-	}, [sessionId, interruptAvailable]);
+	}, [sessionId, interruptAvailable, markTurnStopped]);
 	/*
 	 * The notice describes the LAST interrupt, so a turn that starts afterwards
 	 * retires it: the sentence says a turn was stopped, and the next turn is not
