@@ -1,0 +1,154 @@
+port8080.lock taken
+rig up: proxy 64656 on 8080 -> daemon 63785 on 54971, stub 54957; 1111 untouched
+== narrow-d5-gutter (btw-d5) at 01:04:55 ==
+[build] current: assets 2026-09-25T00:36:17.761Z >= sources 2026-09-25T00:28:22.662Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/run-narrow-d5-gutter/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/design482r5-d5a1c9
+  scratch       /Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-64836
+  frames        /Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/frames/narrow-d5-gutter
+  app cwd       /Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-64836/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/design482r5-d5a1c9/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown
+        mode=headless visible=false focused=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] d5 session
+        3163516725cf
+[note] gutter platform control (detached twins in the same engine: default styling, and a 15px classic scrollbar)
+        {"platform":{"fits":{"auto":{"gutter":"auto","content":"fits","layoutWidthTaken":0,"clientWidth":200},"stable":{"gutter":"stable","content":"fits","layoutWidthTaken":8,"clientWidth":192}},"overflows":{"auto":{"gutter":"auto","content":"overflows","layoutWidthTaken":8,"clientWidth":192},"stable":{"gutter":"stable","content":"overflows","layoutWidthTaken":8,"clientWidth":192}},"reserveBesideShortContent":8,"reflowWhenOverflowStarts":0},"classic":{"fits":{"auto":{"gutter":"auto","content":"fits","layoutWidthTaken":0,"clientWidth":200},"stable":{"gutter":"stable","content":"fits","layoutWidthTaken":15,"clientWidth":185}},"overflows":{"auto":{"gutter":"auto","content":"overflows","layoutWidthTaken":15,"clientWidth":185},"stable":{"gutter":"stable","content":"overflows","layoutWidthTaken":15,"clientWidth":185}},"reserveBesideShortContent":15,"reflowWhenOverflowStarts":0}}
+[note] frame
+        {"label":"d5-narrow-d5-gutter-gutter-short-content","mode":"settled","width":1600,"height":1736}
+[note] gutter short-content geometry
+        {"panelWidth":252,"cap":"251px","capPx":251,"clientHeight":85,"scrollHeight":85,"maxScroll":0,"scrollTop":0,"overflowing":false,"clientWidth":226,"offsetWidth":234,"gutterPx":8,"gutterStyle":"stable","overflowY":"auto","regionWidth":234,"turns":1,"questionQuoteBlocks":0,"quoteHeights":[],"quoteLines":[],"questionLines":4,"questionTopInRegion":0,"questionBoxH":39,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":43,"answerWidth":226,"rowPitch":20.8,"rowsToEdge":2,"rows":2,"fullyVisibleRows":2,"rowCrossingClipCount":0,"crossing":[],"lastWholeRow":{"tag":"p","text":"Line 2 of 2.","bottomVsClip":-3.7},"paragraphGap":null}
+[note] frame
+        {"label":"d5-narrow-d5-gutter-gutter-overflowing","mode":"settled","width":1600,"height":1736}
+[note] gutter overflowing geometry
+        {"panelWidth":252,"cap":"251px","capPx":251,"clientHeight":251,"scrollHeight":556,"maxScroll":305,"scrollTop":96.5,"overflowing":true,"clientWidth":226,"offsetWidth":234,"gutterPx":8,"gutterStyle":"stable","overflowY":"auto","regionWidth":234,"turns":2,"questionQuoteBlocks":0,"quoteHeights":[],"quoteLines":[],"questionLines":4,"questionTopInRegion":0.1,"questionBoxH":39,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":43.1,"answerWidth":226,"rowPitch":20.8,"rowsToEdge":10,"rows":20,"fullyVisibleRows":10,"rowCrossingClipCount":0,"crossing":[],"lastWholeRow":{"tag":"p","text":"Line 10 of 20.","bottomVsClip":-3.2},"paragraphGap":null}
+[PASS] gutter: the region's layout width is the same whether the exchange is short or overflowing (the reserve does not appear with the overflow)
+        {"shortClientWidth":226,"longClientWidth":226,"shortGutter":8,"longGutter":8,"shortOverflow":false,"longOverflow":true,"gutterStyle":"stable"}
+[PASS] gutter: the declaration is in effect (this platform's own reserve matches the shipped region's reserve)
+        {"platformStableFitting":8,"platformAutoFitting":0,"reserveBesideShortContent":8,"shipped":8,"gutterStyle":"stable"}
+[PASS] gutter: where scrollbars take layout width, the always-on reserve is present in BOTH states (no reflow when the exchange starts to overflow)
+        {"classicFitsStable":15,"classicFitsAuto":0,"classicOverflowsAuto":15,"reserveBesideShortContent":15}
+[note] d5 cap table
+        []
+[PASS] every capture wrote a PNG of the requested size
+[PASS] no process from this run outlived its boot
+
+frames: d5-narrow-d5-gutter-gutter-overflowing.png, d5-narrow-d5-gutter-gutter-short-content.png
+frames directory: /Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/frames/narrow-d5-gutter
+app log: /Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-64836/app-scene.log
+scratch removed (--clean)
+
+ALL CHECKS PASSED
+== narrow-d5-gutter driver exit: 0 ==
+total 1240
+drwxr-xr-x@  4 damian  staff     128 Sep 24 21:05 .
+drwxr-xr-x@ 12 damian  staff     384 Sep 24 21:04 ..
+-rw-r--r--@  1 damian  staff  297310 Sep 24 21:05 d5-narrow-d5-gutter-gutter-overflowing.png
+-rw-r--r--@  1 damian  staff  332276 Sep 24 21:05 d5-narrow-d5-gutter-gutter-short-content.png
+8080 released before this command returned
+port8080.lock released
+--- proxy counters (/Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/run-narrow-d5-gutter/proxy-stats.json) ---
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T01:05:48.636Z",
+      "url": "/v1/desktop/sessions/3163516725cf/asides",
+      "asideId": "1d769612-3e92-4981-bf50-399c7e42260a",
+      "continues": null,
+      "questionHead": "NLINES2: d5 a short answer beside the gutter",
+      "text": "NLINES2: d5 a short answer beside the gutter",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "447bd3ff5fff49ee984686aca5d3c7d0",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"1d769612-3e92-4981-bf50-399c7e42260a\",\"text\":\"Line 1 of 2.  \\nLine 2 of 2.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T01:05:52.469Z",
+      "url": "/v1/desktop/sessions/3163516725cf/asides",
+      "asideId": "ad3ccbe2-686b-4a54-a7bf-de220ba3e0a6",
+      "continues": "1d769612-3e92-4981-bf50-399c7e42260a",
+      "questionHead": "NLINES20: d5 an answer that overflows the region",
+      "text": "NLINES20: d5 an answer that overflows the region",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "447bd3ff5fff49ee984686aca5d3c7d0",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"ad3ccbe2-686b-4a54-a7bf-de220ba3e0a6\",\"text\":\"Line 1 of 20.  \\nLine 2 of 20.  \\nLine 3 of 20.  \\nLine 4 of 20.  \\nLine 5 of 20.  \\nLine 6 of 20.  \\nLine 7 of 20.  \\nLine 8 of 20.  \\nLine 9 of 20.  \\nLine 10 of 20.  \\nLine 11 of 20.  \\nLine 12 of 20.  \\nLine 13 of 20.  \\nLine 14 of 20.  \\nLine 15 of 20.  \\nLine 16 of 20.  \\nLine 17 of 20.  \\nLine 18 of 20.  \\nLine 19 of 20.  \\nLine 20 of 20.\",\"off_record\":true},\"replayed\":false}}"
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T01:04:57.679Z",
+      "subscriptionId": "222a850f9bd6239c",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/3163516725cf/events?frontend_replace=1",
+      "openedAt": "2026-09-25T01:05:00.807Z",
+      "subscriptionId": "447bd3ff5fff49ee984686aca5d3c7d0",
+      "asideDeltas": 2,
+      "deltaSizes": [
+        27,
+        328
+      ]
+    }
+  ],
+  "asideDeltaFrames": 2,
+  "deltasBySubscription": {
+    "447bd3ff5fff49ee984686aca5d3c7d0": 2
+  },
+  "deltasByAside": {
+    "1d769612-3e92-4981-bf50-399c7e42260a": 1,
+    "ad3ccbe2-686b-4a54-a7bf-de220ba3e0a6": 1
+  },
+  "refused422": 0,
+  "messagePosts": [
+    {
+      "at": "2026-09-25T01:05:05.000Z",
+      "url": "/v1/desktop/sessions/3163516725cf/messages",
+      "kind": "message",
+      "text": "LONGANSWER seed for the design round-5 quotes",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"c4868acf-a786-4e9b-8b28-b4cc369c5158\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T01:05:05.000Z"
+    }
+  ],
+  "asideOps": [
+    {
+      "at": "2026-09-25T01:05:56.268Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/3163516725cf/asides/ad3ccbe2-686b-4a54-a7bf-de220ba3e0a6",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"ad3ccbe2-686b-4a54-a7bf-de220ba3e0a6\",\"status\":\"closed\"},\"replayed\":false}}"
+    }
+  ]
+}
+--- end counters ---

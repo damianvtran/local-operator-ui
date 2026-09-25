@@ -1,0 +1,208 @@
+port8080.lock taken
+rig up: proxy 82092 on 8080 -> daemon 81025 on 56853, stub 56819; 1111 untouched
+== wide-d5-staged2 (btw-d5) at 01:07:59 ==
+[build] current: assets 2026-09-25T00:36:17.761Z >= sources 2026-09-25T00:28:22.662Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/run-wide-d5-staged2/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/design482r5-d5a1c9
+  scratch       /Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-82320
+  frames        /Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/frames/wide-d5-staged2
+  app cwd       /Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-82320/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/design482r5-d5a1c9/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown
+        mode=headless visible=false focused=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] d5 session
+        17189ca1eac2
+[note] staged turn1 (unquoted, first) geometry
+        {"capPx":247.5,"questionBoxH":19.5,"questionQuoteBlocks":0,"quoteLines":[],"answerTop":23.5,"lineHeight":22.4,"rowsToEdge":2,"rowCrossingClipCount":0,"cut":[],"lastWholeRow":{"tag":"p","text":"Sentence 1 of one paragraph, of ordinary len","bottomVsClip":-3.1},"scrollTop":0,"maxScroll":0,"clientHeight":68,"impliedQ":19.5,"wireQuotes":0}
+[note] staged (B: cleared composer) turn2 geometry
+        {"staged":{"selected":"selected","pressed":true},"capPx":275,"questionBoxH":47,"questionQuoteBlocks":1,"quoteLines":[1],"answerTop":50.8,"lineHeight":22.4,"rowsToEdge":10,"rowCrossingClipCount":0,"cut":[],"lastWholeRow":{"tag":"p","text":"Line 10 of 12.","bottomVsClip":-3.6},"scrollTop":80.5,"maxScroll":125,"clientHeight":275,"impliedQ":47,"wireQuotes":1}
+[note] frame
+        {"label":"d5-wide-d5-staged2-staged-b-cleared-composer","mode":"settled","width":2760,"height":1736}
+[note] staged (A: appended) turn3 geometry
+        {"staged":{"selected":"selected","pressed":true},"capPx":247.5,"questionBoxH":19.5,"questionQuoteBlocks":0,"quoteLines":[],"answerTop":435.6,"lineHeight":22.4,"rowsToEdge":-8.4,"rowCrossingClipCount":0,"cut":[],"lastWholeRow":null,"scrollTop":0,"maxScroll":456,"clientHeight":248,"impliedQ":19.5,"wireQuotes":0}
+[note] frame
+        {"label":"d5-wide-d5-staged2-staged-a-appended","mode":"settled","width":2760,"height":1736}
+[PASS] staged: the cap's Q term is the newest question's own measured box, for a quote staged against an OPEN panel
+        {"capPx":247.5,"questionBoxH":19.5,"impliedQ":19.5,"questionQuoteBlocks":0}
+[FAIL] staged: the edge is 10.0 line boxes below the answer's top and no row is cut for a quoted follow-up asked on an open panel
+        {"rowsToEdge":-8.4,"answerTop":435.6,"clientHeight":248,"rowCrossingClipCount":0,"cut":[],"lastWholeRow":null}
+[note] d5 cap table
+        []
+[PASS] every capture wrote a PNG of the requested size
+
+---- app log (tail) ----
+21:08:01.803 › Update service initialized. Dev mode: true, NPX install: false
+21:08:01.804 › Unpackaged instance: no packaged install state to leave alone.
+21:08:01.804 › Periodic update checks scheduled (every 5 minutes)
+21:08:01.805 › macOS auto-update requires app signing
+21:08:01.805 › [webauthn] Touch ID passkeys are off: unpackaged — an unpackaged run has no signature to carry the entitlement, so there is no group to configure
+21:08:01.814 › [browser] denied a media permission request from (unknown origin)
+21:08:01.814 › [browser] denied a media permission request from (unknown origin)
+21:08:01.814 › [browser] denied a web-app-installation permission request from (unknown origin)
+21:08:01.814 › [browser] denied a geolocation permission request from (unknown origin)
+21:08:02.599 › Checking for UI updates...
+21:08:02.599 › Skip checkForUpdates because application is not packed and dev update config is not forced
+Error occurred in handler for 'browser-state': Error: No handler registered for 'browser-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'console-state': Error: No handler registered for 'console-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'browser-webauthn-pending': Error: No handler registered for 'browser-webauthn-pending'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+21:08:02.952 › [browser] denied a media permission request from (unknown origin)
+21:08:02.952 › [browser] denied a media permission request from (unknown origin)
+21:08:02.952 › [browser] denied a web-app-installation permission request from (unknown origin)
+21:08:02.952 › [browser] denied a geolocation permission request from (unknown origin)
+21:08:02.960 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
+21:08:02.962 › [browser] host on 127.0.0.1:57133 (proto 1), profile /Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-82320/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+21:08:03.009 › Checking for UI updates...
+21:08:03.010 › Skip checkForUpdates because application is not packed and dev update config is not forced
+21:08:03.265 › [browser] tab 1 navigated to about:blank
+[window-mode] state: visible=false focused=false focusable=false size=1380x900 content=1380x868
+21:08:04.806 › Checking for updates... (silent mode: true)
+21:08:04.806 › Skip checkForUpdates because application is not packed and dev update config is not forced
+21:08:04.806 › Checking for backend updates... (silent mode: true)
+21:08:04.806 › Skip backend update check in dev mode unless forced
+21:08:16.806 › The pre-split environment at /Users/damian/Library/Application Support/Local Operator/local-operator-venv is built on the interpreter inside /Applications/Local Operator.app; it is left exactly as it is, and this instance does not use it.
+21:08:55.404 › [about-panel] suppressed by window mode headless: a headless run raises no window
+21:08:59.344 › [about-panel] suppressed by window mode headless: a headless run raises no window
+21:08:59.903 › [about-panel] suppressed by window mode headless: a headless run raises no window
+21:09:02.328 › [about-panel] suppressed by window mode headless: a headless run raises no window
+
+[PASS] no process from this run outlived its boot
+
+frames: d5-wide-d5-staged2-staged-a-appended.png, d5-wide-d5-staged2-staged-b-cleared-composer.png
+frames directory: /Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/frames/wide-d5-staged2
+app log: /Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/tmp/lo-renderer-driver-82320/app-scene.log
+scratch removed (--clean)
+
+1 CHECK(S) FAILED
+== wide-d5-staged2 driver exit: 1 ==
+total 1680
+drwxr-xr-x@  4 damian  staff     128 Sep 24 21:09 .
+drwxr-xr-x@ 14 damian  staff     448 Sep 24 21:07 ..
+-rw-r--r--@  1 damian  staff  479426 Sep 24 21:09 d5-wide-d5-staged2-staged-a-appended.png
+-rw-r--r--@  1 damian  staff  376423 Sep 24 21:09 d5-wide-d5-staged2-staged-b-cleared-composer.png
+8080 released before this command returned
+port8080.lock released
+--- proxy counters (/Users/damian/.local-operator/sessions/8b1a00952fab/scratchpad/d5rig/run-wide-d5-staged2/proxy-stats.json) ---
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T01:08:55.818Z",
+      "url": "/v1/desktop/sessions/17189ca1eac2/asides",
+      "asideId": "ec4aff76-43af-49ae-b852-548960603d73",
+      "continues": null,
+      "questionHead": "SENTENCE4: d5 the unquoted first turn",
+      "text": "SENTENCE4: d5 the unquoted first turn",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "c69245b208924b7784b7157ca72b28f6",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"ec4aff76-43af-49ae-b852-548960603d73\",\"text\":\"Sentence 1 of one paragraph, of ordinary length. Sentence 2 of one paragraph, of ordinary length. Sentence 3 of one paragraph, of ordinary length. Sentence 4 of one paragraph, of ordinary length.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T01:09:00.125Z",
+      "url": "/v1/desktop/sessions/17189ca1eac2/asides",
+      "asideId": "01e522c6-f264-4d93-a4ef-e568ba13a8c1",
+      "continues": "ec4aff76-43af-49ae-b852-548960603d73",
+      "questionHead": "<reply-to>The retry budget is a per-provider allowance</repl",
+      "text": "<reply-to>The retry budget is a per-provider allowance</reply-to>\nNLINES12: d5 the quoted follow-up, composer cleared",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "c69245b208924b7784b7157ca72b28f6",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"01e522c6-f264-4d93-a4ef-e568ba13a8c1\",\"text\":\"Line 1 of 12.  \\nLine 2 of 12.  \\nLine 3 of 12.  \\nLine 4 of 12.  \\nLine 5 of 12.  \\nLine 6 of 12.  \\nLine 7 of 12.  \\nLine 8 of 12.  \\nLine 9 of 12.  \\nLine 10 of 12.  \\nLine 11 of 12.  \\nLine 12 of 12.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T01:09:03.150Z",
+      "url": "/v1/desktop/sessions/17189ca1eac2/asides",
+      "asideId": "3d2ce483-c73e-4a35-ba20-5e0e3e3ada2d",
+      "continues": "01e522c6-f264-4d93-a4ef-e568ba13a8c1",
+      "questionHead": "NLINES12: d5 the quoted follow-up, appended",
+      "text": "NLINES12: d5 the quoted follow-up, appended",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "c69245b208924b7784b7157ca72b28f6",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"3d2ce483-c73e-4a35-ba20-5e0e3e3ada2d\",\"text\":\"Line 1 of 12.  \\nLine 2 of 12.  \\nLine 3 of 12.  \\nLine 4 of 12.  \\nLine 5 of 12.  \\nLine 6 of 12.  \\nLine 7 of 12.  \\nLine 8 of 12.  \\nLine 9 of 12.  \\nLine 10 of 12.  \\nLine 11 of 12.  \\nLine 12 of 12.\",\"off_record\":true},\"replayed\":false}}"
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T01:08:01.913Z",
+      "subscriptionId": "528e7ea4a53fff2e",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/17189ca1eac2/events?frontend_replace=1",
+      "openedAt": "2026-09-25T01:08:04.925Z",
+      "subscriptionId": "c69245b208924b7784b7157ca72b28f6",
+      "asideDeltas": 3,
+      "deltaSizes": [
+        195,
+        192,
+        192
+      ]
+    }
+  ],
+  "asideDeltaFrames": 3,
+  "deltasBySubscription": {
+    "c69245b208924b7784b7157ca72b28f6": 3
+  },
+  "deltasByAside": {
+    "ec4aff76-43af-49ae-b852-548960603d73": 1,
+    "01e522c6-f264-4d93-a4ef-e568ba13a8c1": 1,
+    "3d2ce483-c73e-4a35-ba20-5e0e3e3ada2d": 1
+  },
+  "refused422": 0,
+  "messagePosts": [
+    {
+      "at": "2026-09-25T01:08:09.864Z",
+      "url": "/v1/desktop/sessions/17189ca1eac2/messages",
+      "kind": "message",
+      "text": "LONGANSWER seed for the design round-5 quotes",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"ecebb6b1-2668-46ca-a033-94b3ba476ec2\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T01:08:09.864Z"
+    }
+  ],
+  "asideOps": [
+    {
+      "at": "2026-09-25T01:09:05.405Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/17189ca1eac2/asides/01e522c6-f264-4d93-a4ef-e568ba13a8c1",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"01e522c6-f264-4d93-a4ef-e568ba13a8c1\",\"status\":\"closed\"},\"replayed\":false}}"
+    }
+  ]
+}
+--- end counters ---
