@@ -210,8 +210,22 @@ export function chatStatusDisplay(
 	 * 3. Degraded or reconnecting: a connection that is still there. A warning
 	 * wash rather than a danger one, because nothing has failed - the app is
 	 * telling the reader that a send will queue, which is a fact about latency.
+	 *
+	 * AND THE CONNECTION HAS TO BE THERE FOR THIS ROW TO BE TRUE (UX round 2;
+	 * round 1's U3). `reconnecting` alone is not that fact: a daemon whose process
+	 * is GONE is reported as `detached` with a retry in flight, and this row used
+	 * to catch it and draw the degraded copy - "The server is answering slowly.
+	 * Your messages are queued." - over a dead process. Measured in the running
+	 * app: daemon killed, +14 s, and the strip still claimed a slow server while
+	 * the Retry beside it answered "Still unreachable". The reachability predicate
+	 * is the SAME one row 4 uses, so the two rows cannot disagree about whether
+	 * anything is there to answer slowly.
 	 */
-	if (server?.reconnecting === true || server?.state === "degraded") {
+	if (
+		server !== null &&
+		isServerReachable(server.state) &&
+		(server.reconnecting === true || server.state === "degraded")
+	) {
 		return {
 			kind: "degraded",
 			role: "status",

@@ -146,6 +146,52 @@ test("the four states, their washes, their roles and their one action", () => {
 		"degraded",
 	);
 
+	/*
+	 * AND `reconnecting` ALONE IS NOT A REACHABLE SERVER (UX round 1's U3, fixed in
+	 * round 2). A daemon whose PROCESS IS GONE is `detached` with a retry in flight,
+	 * and this row used to catch it on `reconnecting` and draw the degraded copy over
+	 * a dead process - measured in the running app at +14 s after the kill, with the
+	 * strip's own Retry answering "Still unreachable" beside it. Both spellings of a
+	 * gone server are asserted, because `wedged` is the other one and it is the state
+	 * the credential row above does NOT claim.
+	 */
+	const deadWhileRetrying = at({
+		connectivityIssue: "server_offline",
+		server: {
+			state: "detached",
+			reconnecting: true,
+			detail: null,
+			pairing: null,
+		},
+	});
+	assert.equal(deadWhileRetrying?.kind, "unreachable");
+	assert.equal(deadWhileRetrying?.wash, "danger-wash");
+	assert.equal(deadWhileRetrying?.title, CHAT_STATUS_COPY.unreachable);
+	assert.equal(
+		at({
+			server: {
+				state: "wedged",
+				reconnecting: true,
+				detail: null,
+				pairing: null,
+			},
+		})?.kind,
+		"unreachable",
+	);
+	/*
+	 * The degraded row is still reachable IN ITS OWN RIGHT - the fix narrows the row
+	 * rather than deleting it - and no server record at all is still "not connected"
+	 * rather than "answering slowly".
+	 */
+	assert.equal(
+		at({ server: { state: "degraded", detail: null, pairing: null } })?.kind,
+		"degraded",
+	);
+	assert.equal(
+		at({ connectivityIssue: "server_offline", server: null })?.kind,
+		"unreachable",
+	);
+
 	const offline = at({
 		connectivityIssue: "internet_offline",
 		internetOffline: true,
@@ -282,6 +328,22 @@ test("the strip is one live region, one Retry, and one dismissal", () => {
 	assert.match(source, /data-lo-status-pill=""/);
 	assert.match(source, /data-lo-status-strip=""/);
 	assert.match(source, /aria-label=\{`Connection status/);
+	/*
+	 * The pill's name is the strip's own TWO lines, not the first of them: it carried
+	 * `display.title` alone, so dismissing a strip whose second line was Retry's own
+	 * outcome dropped the newest fact about the root cause (UX round 1's U12).
+	 */
+	assert.match(
+		source,
+		/aria-label=\{`Connection status: \$\{display\.title\}\$/,
+	);
+	assert.match(source, /outcome \? ` \$\{outcome\}` : ""/);
+	/*
+	 * And the outcome is RETIRED with the state it was reported against: a sentence a
+	 * Retry wrote cannot ride into a state the reader reached later (U5's contradiction,
+	 * reached by staleness).
+	 */
+	assert.match(source, /outcomeKeyRef/);
 	// And Escape is scoped to the strip's own focus, so it can never be taken from
 	// a running turn - §F2's ladder puts the strip below the question card.
 	assert.match(source, /event\.key !== "Escape"/);
