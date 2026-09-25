@@ -802,8 +802,9 @@ type Story = StoryObj<StoryArgs>;
 /** `opened_by` present on a row bound to the TEAM it serves: the row draws the
  *  team, the control row bound to the same team with no `opened_by` draws the
  *  same string, and the panel draws the opened row NESTED under the `lopdev`
- *  entity as well — the team is the row's own binding, so it draws in both
- *  places on the pre-change tree's `· agent-opened` → here's team transition. */
+ *  entity as well. The team is the row's own binding, so it draws in both
+ *  places — the transition from the pre-change tree's `· agent-opened` to the
+ *  team this tree draws. */
 export const AgentOpenedTeamBound: Story = {
 	render: ({ width }) => (
 		<Page rows={ROSTER_TEAM_BOUND} width={width} teams={TEAMS} />
