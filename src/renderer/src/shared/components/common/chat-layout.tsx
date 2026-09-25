@@ -140,11 +140,23 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 		return () => window.removeEventListener("resize", onResize);
 	}, []);
 
+	/*
+	 * §I's FIRST YIELDING STEP IS THE SIDEBAR'S, and the canvas's own open state is
+	 * what raises it (design round 2, D24): at 1024 with the sidebar at the user's
+	 * 260px and the canvas open, the two panes cannot both have their floors, and
+	 * §I's order gives up the SIDEBAR first - so the canvas docks beside the chat
+	 * instead of covering it with the pane's whole width. Read from the store the
+	 * canvas's own toggle writes, so the choice of pane and the shape of the
+	 * sidebar are one decision and not two that can disagree.
+	 */
+	const canvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
+
 	const layout: SidebarLayout = resolveSidebarLayout(
 		viewportWidth,
 		collapsedPref,
 		sheetRequested,
 		savedWidth,
+		canvasOpen,
 	);
 
 	/*

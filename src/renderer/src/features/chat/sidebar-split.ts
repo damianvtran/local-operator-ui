@@ -273,10 +273,13 @@ export type SidebarSplit = {
 	 * missing measurement: the panel has not been measured yet (one frame, before
 	 * the layout effect runs), or the list region is ALONE in the column - where
 	 * it fills rather than being sized, and a cap left on it would draw a region
-	 * at 45% of the panel with a third of the column empty under it. That second
-	 * cause was a real defect in the first cut of this change, found by looking
-	 * at the `chats-only` frame rather than by a test: the cap and the `flex-1`
-	 * disagreed and the cap won.
+	 * at `SIDEBAR_AUTO_MAX_FRACTION` (0.6, not the 0.45 this sentence carried until
+	 * agent review round 1's R7: the constant moved in this PR and two sibling
+	 * references moved with it, leaving this one describing the opposite of the
+	 * code it explains) of the panel with a third of the column empty under it.
+	 * That second cause was a real defect in the first cut of this change, found by
+	 * looking at the `chats-only` frame rather than by a test: the cap and the
+	 * `flex-1` disagreed and the cap won.
 	 */
 	listMax: number | null;
 	/**

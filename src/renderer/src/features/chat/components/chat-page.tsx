@@ -2265,6 +2265,19 @@ function SessionPanel({
 										 */
 										frontend: preview.data.snapshot,
 										draft: true,
+										/*
+										 * A MODEL IS RESOLVED FOR THIS DRAFT, and that is the fact the
+										 * composer's send is gated on (UX round 1, U1): this branch is taken
+										 * exactly when the preview's answer has arrived, and the branch below
+										 * is the one that runs while it has not. One value, read by the strip
+										 * as its readings and by the composer as its send gate, rather than
+										 * two derivations of "has this draft a model" that can disagree.
+										 * (The payload is deliberately not spelled out in a comment here:
+										 * the composer suite proves it reaches the strip and nowhere else
+										 * by reading every occurrence of its accessor, and a comment naming
+										 * it would fail a guard that is doing its job.)
+										 */
+										draftResolved: true,
 										onOpenDraftPicker: draftPickable
 											? openDraftPicker
 											: undefined,
@@ -2280,6 +2293,8 @@ function SessionPanel({
 											 */
 											frontend: null,
 											draft: true,
+											/* No snapshot and no reading: the draft's model is NOT resolved. */
+											draftResolved: false,
 											draftResolution,
 										}
 									: undefined

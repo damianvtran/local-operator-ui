@@ -744,17 +744,23 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 				 * evenly and float this cluster mid-row, which is the layout
 				 * `justify-between` produced.
 				 *
-				 * The DOM position is first (the row renders this before the left group)
-				 * so that the wrapped order and the tab order agree; `order-2` above the
-				 * threshold restores the visual order [attach][chip] [readings]
+				 * The DOM position is first (the row renders this before the left group),
+				 * and `order-2` puts it in the visual order [attach][chip] [readings]
 				 * [mic][send] without a second render tree (UX round 1, U4).
 				 *
-				 * `flex-nowrap` above the threshold is the other half of the yield order
-				 * (design round 1.5, D9): the row already refuses to wrap, and a
-				 * still-wrapping cluster would spend the name's 56px floor's worth of
-				 * slack on a second internal line instead of letting the name truncate.
+				 * THE TWO CLASSES THAT MADE THIS CONDITIONAL ON THE COLUMN'S WIDTH ARE
+				 * GONE (design round 2, D21). `basis-full` took the row's first line below
+				 * 750px of column and `@min-[750px]:basis-auto` gave it back above - the
+				 * two halves of a two-line control row that §G1 forbids ("one control row,
+				 * 32px, always one line, at every width"). With the row never wrapping the
+				 * cluster is always inline, so both are inert.
+				 *
+				 * `flex-nowrap` stays and is now unconditional: it is the other half of the
+				 * yield order (design round 1.5, D9) - the row refuses to wrap, so a
+				 * still-wrapping cluster would spend the name's slack on a second internal
+				 * line instead of letting the name truncate.
 				 */
-				"basis-full @min-[750px]/chatcol:order-2 @min-[750px]/chatcol:basis-auto @min-[750px]/chatcol:flex-nowrap",
+				"order-2 flex-nowrap",
 				className,
 			)}
 			data-lo-session-strip={true}

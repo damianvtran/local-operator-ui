@@ -159,6 +159,31 @@ test("with no dragged height, the chats take the larger share", () => {
 	 * of the panel, so the chats hold more of the column than the section above.
 	 */
 	assert.equal(SIDEBAR_AUTO_MAX_FRACTION, 0.6);
+	/*
+	 * AND THE COMPONENT'S OWN FALLBACK CLASS IS BOUND TO IT (agent review round 1, R4).
+	 *
+	 * `chat-sidebar.tsx` puts `max-h-[60%]` on the chats region as the rule the module's
+	 * docblock names (`:267`), and that class resolves against the SPLIT CONTAINER rather
+	 * than against the panel's content box the module measures - the exact box the module
+	 * says it deliberately does not use, "because the regions' container is a fraction of a
+	 * panel shorter than the panel, and the cap would silently move by tens of px at a
+	 * 900px window". Two numbers for one cap, in two boxes, with nothing reading the class:
+	 * `assert.equal(0.6)` next door cannot see it move. The assertion below derives the class
+	 * FROM the constant, so an edit to either one alone fails here instead of shipping a
+	 * fallback that caps against the wrong box. (`scripts/chat-pane-floors.test.mjs` binds
+	 * `min-w-[480px]` to `CHAT_PANE_MIN_PX` the same way, which is where the pattern comes
+	 * from.)
+	 */
+	const sidebarSource = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	assert.ok(
+		sidebarSource.includes(
+			`max-h-[${String(Math.round(SIDEBAR_AUTO_MAX_FRACTION * 100))}%]`,
+		),
+		`the chats region's fallback cap must be the auto fraction the module documents (\`max-h-[${String(Math.round(SIDEBAR_AUTO_MAX_FRACTION * 100))}%]\`)`,
+	);
 	const out = split({
 		capacity: AT_900.capacity,
 		panelContentHeight: AT_900.panel,

@@ -359,15 +359,28 @@ const CanvasComponent: FC<CanvasProps> = ({
 				setCreateFileDialogOpen(true);
 			}
 			/*
-			 * Escape leaves the document and returns to the list. A viewer was a room
-			 * with no door: the canvas answered only the two ⌘ shortcuts, so a user
-			 * who opened a file had to find the segment control to go back. The tab
-			 * stays open - this closes the VIEWER, not the document.
+			 * ESCAPE CLOSES THE CANVAS, AND THAT IS THE WHOLE OF ITS MEANING HERE (UX round 1, U6).
 			 *
-			 * Skipped when the event came from inside an open dialog, menu or listbox:
-			 * Escape there closes that surface, and a `role="dialog"` that dismissed
-			 * itself while the canvas also switched views would be two things
-			 * happening on one key.
+			 * §I: "Esc closes the canvas (and the run panel, which already works) and returns focus
+			 * to the toggle in the top row". §G1 spends the same rung in the app's ONE Esc ladder:
+			 * "`Esc` is consumed by, in order: an open composer popover, the question card
+			 * (collapse), the canvas (close), and otherwise the running turn (stop)". Neither
+			 * clause has an exception, and the reviewer's walk is the measurement: with a chat
+			 * open at 1380x900 and focus on the transcript, Escape left the pane exactly as it
+			 * was - no close, no view change - because this branch required an OPEN DOCUMENT and
+			 * then only switched the pane back to its file list.
+			 *
+			 * THE VIEWER'S DOOR IS GIVEN UP WITH IT, deliberately and on the record. The
+			 * previous shape was itself a fix (round 1: "a viewer was a room with no door"), and
+			 * it is unspecified - neither §I nor §G1's ladder names a document-to-list rung - so
+			 * it is the side that yields to the two clauses that are the contract. Nothing is
+			 * trapped by that: the segment control that switches documents/files is in the pane's
+			 * toolbar and on screen the whole time a document is open, and the toggle now closes
+			 * the pane from any view.
+			 *
+			 * Skipped when the event came from inside an open dialog, menu or listbox: Escape
+			 * there closes that surface, and a `role="dialog"` that dismissed itself while the
+			 * canvas also closed would be two things happening on one key.
 			 */
 			if (event.key === "Escape" && conversationId) {
 				/*
@@ -375,21 +388,15 @@ const CanvasComponent: FC<CanvasProps> = ({
 				 * second hand-written copy of the four roles is a fifth one waiting to drift.
 				 */
 				if (pressLandsOnOverlay(event.target)) return;
-				const current = useCanvasStore.getState().conversations[conversationId];
-				if (
-					(current?.viewMode ?? "documents") === "documents" &&
-					current?.selectedTabId
-				) {
-					event.preventDefault();
-					setViewMode(conversationId, "files");
-				}
+				event.preventDefault();
+				onClose();
 			}
 		};
 		window.addEventListener("keydown", handleKeyDown);
 		return () => {
 			window.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [handleOpenFile, conversationId, setViewMode]);
+	}, [handleOpenFile, conversationId, onClose]);
 
 	const handleCreateFile = async (
 		details: {

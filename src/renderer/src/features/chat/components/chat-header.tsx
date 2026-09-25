@@ -253,6 +253,26 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	 * answers both and the two surfaces cannot abbreviate the same path differently.
 	 */
 	const homeDirectory = useHomeDirectory();
+	/*
+	 * THE QUIET PATH, RESOLVED ONCE, AND NOTHING WHEN THERE IS NOTHING TO SAY (UX round 1,
+	 * U11).
+	 *
+	 * `formatDirectory` shortens a path under the home directory to its `~` form, and for a
+	 * directory that IS the home directory the answer is the bare string `~`. A new chat's
+	 * default working directory is exactly that, so the title row read `New chat  ~` - a
+	 * lone tilde with nothing after it, which reads as a string something truncated rather
+	 * than as a place (§C2/U18: "either the resolved path or nothing"). Measured on the live
+	 * app at 1024, 1380 and 800 in the empty state, which is the state a new chat opens in.
+	 *
+	 * Suppressing it is the spec's second option and the honest one: the value IS the home
+	 * directory, and a chip whose whole content is the abbreviation of "where you already
+	 * are" identifies no directory. The composer's chip three inches below still names the
+	 * project, so nothing is lost. `description` also carries prose (a draft's sentence, a
+	 * starting run's target name) and those are not paths: `formatDirectory` returns them
+	 * unchanged, so they are only ever suppressed by being genuinely empty.
+	 */
+	const shownDescription = formatDirectory(description, homeDirectory);
+	const showDescription = shownDescription !== "~" && shownDescription !== "";
 	// Read here rather than passed in: the pane is a property of the window's right
 	// slot, so the control that opens it and the slot that renders it have to answer
 	// from ONE field — the same reason the canvas button reads `isCanvasOpen` itself.
@@ -390,7 +410,11 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * sidebar's brand row and this row share one line once the macOS lane is
 			 * shell-level. The row is a DRAG REGION and every control in it opts out
 			 * (`data-titlebar-no-drag` on the cluster and on the archived pair), which is
-			 * the vocabulary `styles/index.css` gates on `data-titlebar-platform`.
+			 * the vocabulary `styles/index.css` gates on `data-chrome-mode` +
+			 * `data-chrome-platform` (agent review round 1's R9: this sentence still named
+			 * `data-titlebar-platform`, the gate THIS PR REMOVED - and
+			 * `scripts/titlebar-options.test.mjs` asserts the old name cannot survive in
+			 * the CSS, so this comment was the one place it did).
 			 *
 			 * `@container/chathdr` is the row's own width, which is what the title's
 			 * floor needs to ask about. It is NOT the viewport: this header narrows
@@ -504,7 +528,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 					 * dark brand palette, 1.25 in obsidian). The height matches the `text-mono-sm`
 					 * line it stands in, so holding the slot holds the row's height too. */
 					<Skeleton className={cn("h-3 w-24 shrink-0 bg-elevated")} />
-				) : (
+				) : showDescription ? (
 					<span
 						data-header-path=""
 						className={cn(
@@ -523,12 +547,9 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 						 * so does `middleTruncatePath` for a short string - this slot also
 						 * holds a draft's sentence and a starting run's target name.
 						 */}
-						{middleTruncatePath(
-							formatDirectory(description, homeDirectory),
-							PATH_CHIP_CHARS,
-						)}
+						{middleTruncatePath(shownDescription, PATH_CHIP_CHARS)}
 					</span>
-				)}
+				) : null}
 			</div>
 			{/*
 			 * The header's action cluster: the run-panel trigger, the browser pane's trigger,
