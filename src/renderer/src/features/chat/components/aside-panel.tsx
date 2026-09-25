@@ -19,9 +19,11 @@ import {
 	asideAdoptCap,
 	asideAdoptReady,
 	asideAnnouncement,
+	asideCapIsMeasured,
 	asideQuestionTopOffset,
 	asideScrollToTurn,
 	asideScrollTrigger,
+	asideScrollWasClamped,
 	closeAside,
 } from "../aside";
 import { CHAT_MEASURE } from "../chat-measure";
@@ -347,9 +349,14 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 	 * The offset is the one READ BACK after the write rather than the one asked for,
 	 * because a browser is free to round or clamp a `scrollTop` assignment, and the
 	 * comparison below is asking whether the position is still OURS - a reader's
-	 * scroll and the device's own rounding have to be separable.
+	 * scroll and the browser's own clamp have to be separable, which is what the
+	 * height the cap had at that moment is for (`asideScrollWasClamped`).
 	 */
-	const scrollWritten = useRef<{ turnId: string; offset: number } | null>(null);
+	const scrollWritten = useRef<{
+		turnId: string;
+		offset: number;
+		clientHeight: number;
+	} | null>(null);
 	const scrollDone = useRef<string | null>(null);
 	const lastTurnId = attachment?.turns.at(-1)?.asideId ?? null;
 	/*
@@ -404,6 +411,17 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 	const [newestQuestionBox, setNewestQuestionBox] = useState<number | null>(
 		null,
 	);
+	/**
+	 * The same measurement as the LIVE value rather than as this render's copy.
+	 *
+	 * `newestQuestionBox` is what the render in flight handed the cap, so it is one
+	 * pass behind the moment the observer reads a taller question; this one is the
+	 * observer's own last reading, and the move asks whether the two agree before it
+	 * writes (`asideCapIsMeasured` - QA round 6, F1, where writing against the stale
+	 * cap is what the browser then clamped). Both are written together in `measure`,
+	 * so they can differ only while a cap is a pass behind the box that feeds it.
+	 */
+	const newestQuestionMeasured = useRef<number | null>(null);
 	const newestQuestionRef = useRef<HTMLParagraphElement>(null);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: the newest turn's ID re-attaches the observers - both refs move to the new turn's boxes with it - and the body reads only the DOM.
 	useLayoutEffect(() => {
@@ -411,6 +429,7 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 		if (!node) {
 			setNewestTurnBox(null);
 			setNewestQuestionBox(null);
+			newestQuestionMeasured.current = null;
 			return;
 		}
 		const measure = () => {
@@ -419,6 +438,7 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 			const questionBox = question
 				? question.getBoundingClientRect().height
 				: null;
+			newestQuestionMeasured.current = questionBox;
 			setNewestTurnBox((current) => (current === box ? current : box));
 			setNewestQuestionBox((current) =>
 				current === questionBox ? current : questionBox,
@@ -444,13 +464,32 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 	 *
 	 * What makes that not a follow: the target is fixed, so this never chases content
 	 * downward and never passes the question; and the reader wins at any moment, which
-	 * is the `> 1` test - one pixel of drift is the device's rounding, more than that
-	 * is a scroll, and a scroll ends this turn's move permanently.
+	 * is the drift test on what this effect last wrote - one pixel of drift is the
+	 * device's rounding, and a scroll ends this turn's move permanently. The one drift
+	 * that is NOT a scroll is the browser's own clamp, which is what a cap that grows
+	 * after the write leaves behind (`asideScrollWasClamped`, QA round 6, F1), and the
+	 * one pass this effect does not write in at all is the pass before the cap carries
+	 * the newest question's own measurement (`asideCapIsMeasured`, same finding).
 	 */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: the newest turn's growth and its measured box are the effect's TRIGGERS and not values it reads -- the target is reachable only once the turn has grown enough, and the movement itself is read from the DOM. See the two blocks above.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the newest turn's growth and its two measured boxes are the effect's TRIGGERS and not values it moves against -- the target is reachable only once the turn has grown enough, the cap is the box the write is judged against, and the movement itself is read from the DOM. See the three blocks above.
 	useEffect(() => {
 		if (!lastTurnId) return;
 		if (scrollDone.current === lastTurnId) return;
+		/*
+		 * THE MEASUREMENT'S OWN CAP COMES FIRST (QA round 6, F1). The commit that appends
+		 * a turn lays the region out against the cap the PREVIOUS turn's question asked
+		 * for, and a wrapping question makes the cap a line taller than that one: writing
+		 * here asks for a position against a cap that is about to grow, the browser clamps
+		 * the write back when it does, and the guard below used to read that clamp as the
+		 * reader arriving and end the turn's move for good. So the pass the measurement's
+		 * cap is laid out in is the pass the move writes in - it is deferred, never
+		 * dropped, because landing that measurement is what re-runs this effect (the cap
+		 * is `asideExchangeCap(isSmallView, newestQuestionBox)`, and that state is a
+		 * dependency). Nothing else about the move changes: the target is the newest
+		 * question's own top, fixed, and this is still the only place it is written.
+		 */
+		if (!asideCapIsMeasured(newestQuestionBox, newestQuestionMeasured.current))
+			return;
 		const region = exchangeRef.current;
 		const turn = newestTurnRef.current;
 		if (!region || !turn) return;
@@ -460,8 +499,25 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 			written.turnId === lastTurnId &&
 			Math.abs(region.scrollTop - written.offset) > 1
 		) {
-			scrollDone.current = lastTurnId;
-			return;
+			/*
+			 * A position that is not ours is the reader's - UNLESS the browser clamped our
+			 * own write when the cap grew, which is nobody's decision at all and used to
+			 * end the turn's move with the newest answer still below the fold (QA round 6,
+			 * F1). `asideScrollWasClamped` holds the four facts that tell the two apart; a
+			 * hand scroll fails them and still wins, and still ends the following.
+			 */
+			if (
+				!asideScrollWasClamped({
+					scrollTop: region.scrollTop,
+					offset: written.offset,
+					maxScroll: Math.max(0, region.scrollHeight - region.clientHeight),
+					clientHeight: region.clientHeight,
+					writtenClientHeight: written.clientHeight,
+				})
+			) {
+				scrollDone.current = lastTurnId;
+				return;
+			}
 		}
 		const geometry = {
 			regionTop: region.getBoundingClientRect().top,
@@ -472,7 +528,11 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 		};
 		const wanted = asideScrollToTurn(geometry);
 		region.scrollTop = wanted;
-		scrollWritten.current = { turnId: lastTurnId, offset: region.scrollTop };
+		scrollWritten.current = {
+			turnId: lastTurnId,
+			offset: region.scrollTop,
+			clientHeight: region.clientHeight,
+		};
 		/*
 		 * Reached when the region's own ceiling was not what limited the move - the one
 		 * condition under which the question is really at the top of the region.
@@ -480,7 +540,7 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 		if (wanted === Math.max(0, asideQuestionTopOffset(geometry))) {
 			scrollDone.current = lastTurnId;
 		}
-	}, [lastTurnId, newestTurnGrowth, newestTurnBox]);
+	}, [lastTurnId, newestTurnGrowth, newestTurnBox, newestQuestionBox]);
 	// Absent rather than conditional-in-the-parent at this level too: the panel's
 	// own store subscription is what makes it appear, and a caller that removed it
 	// must remove the attachment (or the panel would paint over the composer).

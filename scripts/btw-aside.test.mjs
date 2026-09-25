@@ -82,8 +82,10 @@ const bundle = await build({
 				asideOffPanelRefusal,
 				asideQuotedQuestion,
 				asideAskBlockedReason,
+				asideCapIsMeasured,
 				asideQuestionTopOffset,
 				asideScrollToTurn,
+				asideScrollWasClamped,
 				asideScrollTrigger,
 				asideAnnouncement,
 				asideAnnounceableText,
@@ -238,8 +240,10 @@ const {
 	asideOffPanelRefusal,
 	asideQuotedQuestion,
 	asideAskBlockedReason,
+	asideCapIsMeasured,
 	asideQuestionTopOffset,
 	asideScrollToTurn,
+	asideScrollWasClamped,
 	asideScrollTrigger,
 	asideAnnouncement,
 	asideAnnounceableText,
@@ -440,10 +444,12 @@ const RE_PANEL_CAP_MEASURES_THE_QUESTION =
 const RE_PANEL_SCROLLS_TO_TURN =
 	/const wanted = asideScrollToTurn\(geometry\);\s*region\.scrollTop = wanted;/;
 /*
- * The move toward the question's own top is bounded by two early returns, and the
- * pair is what keeps it from becoming a follow: one for a turn whose target is
- * settled, one for a region the READER has taken over (their scroll is `> 1` away
- * from what this effect last wrote). Design round 3's D11 offered this shape as its
+ * The move toward the question's own top is bounded by three early returns, and the
+ * set is what keeps it from becoming a follow: one for a turn whose target is
+ * settled, one for a pass whose cap is a pass behind the question it counts (QA round
+ * 6, F1 — the deferral below), and one for a region the READER has taken over (their
+ * scroll is `> 1` away from what this effect last wrote, and is not the browser's own
+ * clamp — `asideScrollWasClamped`). Design round 3's D11 offered this shape as its
  * option (a) — a fixed target re-applied until it is reached, never past it.
  */
 const RE_PANEL_SCROLLS_ONCE =
@@ -452,6 +458,18 @@ const RE_PANEL_SCROLLS_UNTIL_REACHED =
 	/if \(wanted === Math\.max\(0, asideQuestionTopOffset\(geometry\)\)\) \{\s*scrollDone\.current = lastTurnId;/;
 const RE_PANEL_YIELDS_TO_THE_READER =
 	/Math\.abs\(region\.scrollTop - written\.offset\) > 1/;
+/*
+ * ...AND THE MOVE DOES NOT WRITE UNTIL THE CAP CARRIES THE QUESTION'S OWN MEASUREMENT
+ * (QA round 6, F1), which is the pass the browser would otherwise clamp it in; and a
+ * drift it does find is the browser's clamp rather than the reader's scroll when
+ * `asideScrollWasClamped` says so. Both are asked through the shipped functions, so
+ * the two decisions are asserted by the tests below and not only by this shape.
+ */
+const RE_PANEL_CAP_IS_MEASURED =
+	/if \(!asideCapIsMeasured\(newestQuestionBox, newestQuestionMeasured\.current\)\)\s*return;/;
+const RE_PANEL_CLAMP_IS_NOT_A_SCROLL = /if \(\s*!asideScrollWasClamped\(\{/;
+const RE_PANEL_WRITES_THE_CLAMP_HEIGHT =
+	/clientHeight: region\.clientHeight,\s*\};/;
 /*
  * The move's trigger is the newest turn's GROWTH, phase included (QA round 4, Q33):
  * the value test below pins what the trigger distinguishes, and this pins that the
@@ -2175,8 +2193,130 @@ test("an appended turn is scrolled into the region's view, and on to the questio
 		panel,
 		/\{\s*turn\.asideId === lastTurnId \? newestTurnRef : undefined\s*\}/,
 	);
-	assert.match(panel, /\}, \[lastTurnId, newestTurnGrowth, newestTurnBox\]\);/);
+	assert.match(
+		panel,
+		/\}, \[lastTurnId, newestTurnGrowth, newestTurnBox, newestQuestionBox\]\);/,
+	);
+	/*
+	 * AND THE CAP'S OWN MEASUREMENT DECIDES WHICH PASS WRITES (QA round 6, F1), with a
+	 * drift that is the browser's clamp rather than the reader's scroll named as such.
+	 * The decisions themselves are asserted just below; these pins are that the effect
+	 * ASKS them, since a test of a predicate nobody calls proves nothing.
+	 */
+	assert.match(panel, RE_PANEL_CAP_IS_MEASURED);
+	assert.match(panel, RE_PANEL_CLAMP_IS_NOT_A_SCROLL);
+	assert.match(panel, RE_PANEL_WRITES_THE_CLAMP_HEIGHT);
 	assert.match(panel, RE_PANEL_REGION_FOCUSABLE);
+});
+
+/*
+ * THE CAP'S MEASUREMENT DECIDES THE PASS, AND A CLAMP IS NOT THE READER'S SCROLL
+ * (QA report round 6, F1; UX review round 4, U22 — one finding, two independent rigs).
+ *
+ * The cap takes its `Q` term from a box measured after the commit that rendered it, so
+ * the commit that APPENDS a turn lays the region out against the previous turn's
+ * question. Because the same 44-character question is one line at 1380 and two at 800,
+ * that cap is a line short at the narrow width, and the two halves of the regression
+ * are one interaction: the move writes a position against the short cap, the browser
+ * clamps that write when the cap grows (the app's own trace at 800x900: `clientHeight`
+ * 232 -> 251, `scrollTop` 124 -> 104.5), and the guard read the clamp as the reader
+ * arriving and ended the turn's move for good. Everything downstream of that was the
+ * symptom: a refused follow-up's alert at rest 117.1px below the fold with 1 of its 7
+ * rows visible, and an answered follow-up's question 188.7px short of the region's top
+ * for the whole stream — both 0 FAIL on the same rig before the cap became a
+ * measurement, and both fixed here without touching the cap's arithmetic.
+ *
+ * The numbers below are that trace's, so the arm that CLAMPS and the arm that does not
+ * are the same geometry the flow produced rather than numbers chosen to agree with the
+ * code: `asideScrollToTurn` against the cap the append saw asks for 124, and against
+ * the cap the measurement lands asks for 105 — which is where the browser put the
+ * 124 — so the deferred write is already the position the clamp would have forced.
+ */
+test("the newest question's own measurement decides the pass, and the browser's clamp is not the reader's scroll", () => {
+	// THE PASS. The append's render carries the last turn's question box, and the
+	// layout effect's measurement lands the new one in the pass that follows; the two
+	// `null`s are the pass before any measurement, where the cap's floor is the box.
+	assert.equal(asideCapIsMeasured(null, null), true);
+	assert.equal(asideCapIsMeasured(null, 19.5), false);
+	assert.equal(
+		asideCapIsMeasured(19.5, 39),
+		false,
+		"the append: a one-line question replaced by a two-line one, so the cap in flight is a line short",
+	);
+	assert.equal(asideCapIsMeasured(39, 39), true);
+
+	// THE TWO WRITES over the same turn geometry (`turnTop` 293.06 is the target the
+	// trace records, `scrollHeight` 356 the turn's own height when it was appended).
+	const atAppend = {
+		regionTop: 0,
+		turnTop: 293.06,
+		scrollTop: 0,
+		scrollHeight: 356,
+		clientHeight: 232,
+	};
+	assert.equal(asideScrollToTurn(atAppend), 124);
+	assert.equal(
+		asideScrollToTurn({ ...atAppend, clientHeight: 251 }),
+		105,
+		"the measured cap: the same move, one line less of ceiling, and the position the browser clamped 124 to",
+	);
+
+	// THE CLAMP. Everything about it is a clamp and nothing about it is a scroll: the
+	// position moved BACK, below what we wrote; what we wrote is past the ceiling now;
+	// the region's own client height GREW, which no reader's scroll can do; and the
+	// position rests ON the new ceiling.
+	assert.equal(
+		asideScrollWasClamped({
+			scrollTop: 104.5,
+			offset: 124,
+			maxScroll: 105,
+			clientHeight: 251,
+			writtenClientHeight: 232,
+		}),
+		true,
+	);
+	// ...which the old rule could not tell from a reader, and that is the regression:
+	// `Math.abs(region.scrollTop - written.offset) > 1` is 19.5 here, and it ended the
+	// turn's move on a position the browser had moved for us.
+	assert.equal(Math.abs(104.5 - 124) > 1, true);
+
+	// THE READER. A mid-stream scroll UP leaves the region's height alone (the arm QA's
+	// Q38c and Q37 drive), and a drag to the BOTTOM of a region whose cap has not moved
+	// lands on the ceiling with nothing having grown — both are the reader's, so the
+	// move still ends. The last two are the ceiling reached from above and from below.
+	assert.equal(
+		asideScrollWasClamped({
+			scrollTop: 1811.2,
+			offset: 2011.2,
+			maxScroll: 3779,
+			clientHeight: 248,
+			writtenClientHeight: 248,
+		}),
+		false,
+		"a hand scroll up mid-stream: the region grew by nothing, so the ceiling explains nothing",
+	);
+	assert.equal(
+		asideScrollWasClamped({
+			scrollTop: 1000,
+			offset: 900,
+			maxScroll: 3779,
+			clientHeight: 248,
+			writtenClientHeight: 248,
+		}),
+		false,
+		"past what we wrote: only the ceiling pulls a position back, so this is a reader too",
+	);
+	assert.equal(
+		asideScrollWasClamped({
+			scrollTop: 222,
+			offset: 124,
+			maxScroll: 222,
+			clientHeight: 251,
+			writtenClientHeight: 251,
+		}),
+		false,
+		"at the ceiling with the client height where the write left it: nobody clamped us",
+	);
 });
 
 /*

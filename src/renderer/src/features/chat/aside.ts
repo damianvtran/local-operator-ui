@@ -937,6 +937,81 @@ export function asideScrollToTurn(input: {
 }
 
 /**
+ * Whether the region's cap is the one the newest question's OWN measurement implies.
+ *
+ * WHY THE MOVE ASKS BEFORE IT WRITES (QA round 6, F1). The cap's `Q` term is measured
+ * after the commit that rendered it, so the commit that appends a turn lays the
+ * region out against the cap the PREVIOUS turn's question asked for. A move that runs
+ * in that pass asks for a position against a cap that is about to change, and the two
+ * halves of that cost the turn its move: a question that wraps is a line taller, so
+ * the cap grows a line when the measurement lands, `clientHeight` grows with it, the
+ * browser CLAMPS the position just written back to the new ceiling, and the move reads
+ * that clamp as the reader arriving and ends the turn for good. Measured at 800x900:
+ * a refused follow-up's alert rested 117.1px below the fold, 1 of its 7 rows visible,
+ * and an answered follow-up's question stayed 188.7px short of the region's top for
+ * the whole stream. Neither happened before the cap became a measurement, because no
+ * arithmetic that does not read the DOM can change under the move.
+ *
+ * SO THE MOVE WAITS FOR THE PASS THAT MEASUREMENT'S CAP IS LAID OUT IN. `rendered` is
+ * the box the render in flight handed to `asideExchangeCap`; `measured` is the newest
+ * question's box as the observer last read it. They differ while a commit's cap is one
+ * pass behind - and the state update that lands the measurement re-runs the move, so
+ * this DEFERS a write rather than dropping one. Two `null`s are a match: that is the
+ * pass before the first measurement, where the cap's own floor
+ * (`ASIDE_QUESTION_MIN_BOX`) is the question's box. A turn whose question is the same
+ * height as the last one matches too, and needs no deferral at all.
+ */
+export function asideCapIsMeasured(
+	rendered: number | null,
+	measured: number | null,
+): boolean {
+	return rendered === measured;
+}
+
+/**
+ * Whether a position that differs from ours is the BROWSER's clamp and not the
+ * reader's scroll.
+ *
+ * D11's move yields to the reader at more than one pixel of drift from what it last
+ * wrote, and that rule assumes a position that is not ours is somebody's decision. A
+ * clamp is nobody's: when the region's own height grows, a position past the new
+ * ceiling is pulled back to it, and the move read that as the reader arriving and
+ * ended the turn's move for good (QA round 6, F1, the clamp below).
+ * `asideCapIsMeasured` removes the clamp the move used to cause itself; what it cannot
+ * rule out is a cap that moves for a reason outside the move - a window resize, the
+ * answer's own type step, a font that lands late - and that is this test's job.
+ *
+ * THE FOUR TERMS ARE EACH A FACT ABOUT A CLAMP, and together they leave a reader's
+ * scroll on the reader's side: only the ceiling can pull a position BACK, so the
+ * position is below what we wrote; our write has to be PAST the current ceiling for a
+ * clamp to have anything to do; the region's client height GREW, which is what moved
+ * the ceiling and is something a reader cannot do; and the position rests ON the new
+ * ceiling, within the one pixel the device's own rounding may differ by. A reader who
+ * scrolls to the bottom of a region whose cap has not moved fails the third term, and
+ * one who scrolls up fails the first two - so the hand scroll still wins, and still
+ * ends the following.
+ */
+export function asideScrollWasClamped(input: {
+	/** Where the region stands now. */
+	scrollTop: number;
+	/** What the move last wrote (and read back) for this turn. */
+	offset: number;
+	/** The current ceiling: `scrollHeight - clientHeight`. */
+	maxScroll: number;
+	/** The region's client height now. */
+	clientHeight: number;
+	/** The region's client height when that write was made. */
+	writtenClientHeight: number;
+}): boolean {
+	return (
+		input.scrollTop < input.offset &&
+		input.maxScroll < input.offset &&
+		input.clientHeight > input.writtenClientHeight &&
+		Math.abs(input.scrollTop - input.maxScroll) <= 1
+	);
+}
+
+/**
  * What re-runs the panel's move toward the newest question, for the changes a STORE
  * can see: every one that can grow the newest turn's box, as ONE primitive.
  *
