@@ -1329,6 +1329,19 @@ test("a gap between two snapshots holds the readings instead of blanking the com
 		painted,
 		"the hold is the snapshot's own object, not a copy that could drift from it",
 	);
+	/*
+	 * AND THE SESSION IS NOT REPORTED MISSING, which is the whole of the
+	 * composer's refusal on this path: the pane's `unavailable` is
+	 * `sessionGone || view.missing`, and `view.missing` is written by the 404 arm
+	 * alone. A gap reaching it would refuse the composer's input for a
+	 * conversation that is still there, so this is the assertion that keeps R1's
+	 * fix from being about looks only.
+	 */
+	assert.equal(
+		panel.handle().missing,
+		false,
+		"a reconnect is not a conversation this machine does not have",
+	);
 
 	// Live again, then the server's own `gap` FRAME - the other door into the same
 	// state, and the one a stream that dies mid-flight leaves behind. Deliberately
