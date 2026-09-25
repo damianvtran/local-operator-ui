@@ -1,0 +1,39 @@
+== seed-label-gap 12:24:44
+✔ the fixture carries structure and no free text (616.591958ms)
+✔ a one-turn journal bounds the walk by the oldest unlabelled call's own start (15.856125ms)
+✔ a page that opens on a result takes the one extra page its assistant row needs (14.682417ms)
+✔ a startless target refuses the floor, so the walk reaches its row (9.910667ms)
+✔ the start floor reads exactly as deep as the instant it is given (7.752916ms)
+✔ a later mount does not re-hold a row whose label an earlier read found (175.947333ms)
+✔ a call still waiting at a gate does not refuse the floor (10.789ms)
+✔ a lone unlabelable call stops at the page its orphan needs, not at the journal (7.092917ms)
+✔ a settled call whose end frame states no clock still refuses the floor (2.641792ms)
+✔ a second pass retracts an exemption an earlier seed announced (9.028625ms)
+✔ one seed naming a call both waiting and settled does not exempt it (2.902ms)
+✔ a live settle with no start asks for the page that carries its command (5.658083ms)
+✔ a settle whose step is still open keeps the call's durable read (5.219375ms)
+✔ settle reads are coalesced across a flush and bounded by their own allowance (30.154375ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2804.251
+== evidence-manifest 12:24:48
+✔ a paragraph left behind by a fold fails, and carries the sentence to paste (1.697958ms)
+✔ a paragraph with no reading in it fails rather than passing by omission (3.195542ms)
+✔ the older paragraphs under the leading one are not this tree's to answer for (4.736917ms)
+✔ a stale surfaces paragraph fails on the literal the field names (1.833834ms)
+✔ a manifest with no countsMean is not this guard's failure (1.756334ms)
+✔ the manifest carries every top-level record this branch wrote (5.11625ms)
+ℹ tests 36
+ℹ suites 0
+ℹ pass 35
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 15637.391084
+== HARNESS DONE 12:25:03
