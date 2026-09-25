@@ -5364,6 +5364,17 @@ export function ChatSidebar({
 				 * own rather than relying on the tooltip: Radix's tooltip adds
 				 * `aria-describedby` and only while open, which is not a name.
 				 */}
+				{/*
+				 * THE BAND IS THE LIST'S CONTROL SURFACE, SO IT TAKES THE LIST'S OWN
+				 * GATE. `showList` is the catalogue's answer, the same value that decides
+				 * whether the two regions are drawn at all - and a band drawn without them
+				 * is three controls over nothing: `Search` would open a field whose list is
+				 * not mounted and `View options` would switch sections nothing is drawing.
+				 * The rule is the one the withdrawn gate already states for the boundary
+				 * ("no catalogue means no regions to split"), applied to the row above
+				 * them. Observed in the no-backend `states` frame, 2026-09-25.
+				 */}
+				{showList && (
 				<div
 					data-sidebar-band
 					className="mb-2 flex h-7 shrink-0 items-center justify-end gap-0.5"
@@ -5481,6 +5492,7 @@ export function ChatSidebar({
 						</PopoverContent>
 					</Popover>
 				</div>
+				)}
 				{/* The field carries its own clear control rather than relying on
 		    Escape, which also blurs: a pointer user who wants to widen the filter
 		    back out had to select the text and delete it, and there was nothing on
