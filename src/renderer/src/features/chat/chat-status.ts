@@ -84,18 +84,39 @@ export const CHAT_STATUS_COPY = {
  * The shape `serverBannerCopy` reads, filled from the record this module is
  * given: the two optional fields are defaulted rather than guessed, so a snapshot
  * that predates them is passed through as "absent" instead of as a claim.
+ *
+ * `addressSubstitution` IS PASSED AS `null` ON PURPOSE, and this is a semantic
+ * choice rather than a field the fold forgot. `serverBannerCopy` answers a
+ * substitution BEFORE its state switch, because on the connectivity banner that
+ * is a reachable server with something to say; this surface borrows the same
+ * function only for its `detail` line, and it borrows it under ITS OWN title -
+ * `credential-refused` when the server refused the credential, `unreachable`
+ * when nothing is answering. Threading a live substitution through would let a
+ * band sentence about the address the app is on be quoted under either of those
+ * titles, which is two facts in one row. The address-substitution band is the
+ * connectivity banner's to show; the strip's rows are §F2's root causes.
+ *
+ * The field is required rather than optional because main widened the parameter
+ * to demand it, so the narrowing has to be stated here instead of being implied
+ * by omission - a caller that later adds the field to `ChatStatusInput` gets a
+ * type error until this decision is revisited rather than a silent behaviour
+ * change.
  */
 function snapshotOf(
 	server: NonNullable<ChatStatusInput["server"]>,
-): Pick<DaemonStatusSnapshot, "state" | "reconnecting" | "detail" | "pairing"> {
+): Pick<
+	DaemonStatusSnapshot,
+	"state" | "reconnecting" | "detail" | "pairing" | "addressSubstitution"
+> {
 	return {
 		state: server.state,
 		reconnecting: server.reconnecting ?? false,
 		detail: server.detail ?? null,
 		pairing: server.pairing ?? null,
+		addressSubstitution: null,
 	} as Pick<
 		DaemonStatusSnapshot,
-		"state" | "reconnecting" | "detail" | "pairing"
+		"state" | "reconnecting" | "detail" | "pairing" | "addressSubstitution"
 	>;
 }
 
