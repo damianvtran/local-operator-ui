@@ -1693,8 +1693,375 @@ export type ReadAckNotice = {
 	reason?: unknown;
 };
 
+/**
+ * The two axes a catalogue request may be scoped to, matching the wire's closed
+ * vocabulary (`catalogueScopeKind` in `shared/desktop-contract.ts`).
+ */
+export type CatalogueScopeKind = "team" | "agent";
+
+/**
+ * The rows the FIRST page of an unscoped catalogue read asks for.
+ *
+ * 50 RATHER THAN 25, and the number is a decision rather than a tuning knob: the
+ * head page must carry every ACTIVE conversation, because `Active chats` is
+ * drawn from the rows the client holds and a full page that stopped short of an
+ * active row would leave that section silently incomplete. The operator's own
+ * sidebar counts 38 active chats, so 50 exceeds the observed population with
+ * room to grow. It costs about 30 ms of per-row work over 25 (from the measured
+ * 20-to-100 slope) on the one read that is now the whole cost of a refresh.
+ *
+ * The rows past it are not lost: they arrive from a scope page when a group is
+ * expanded, or from the flat list's own tail when it is extended.
+ */
+export const CATALOGUE_HEAD_PAGE = 50;
+
+/**
+ * The rows one expanded group asks for at a time.
+ *
+ * Smaller than the head page because a group is opened on intent, one at a time,
+ * and the tail past this is one press away (`Show more`). The alternative -
+ * sizing it like the head - would make each disclosure a bigger read than the
+ * whole first paint.
+ */
+export const CATALOGUE_GROUP_PAGE = 25;
+
+/**
+ * The unscoped page size this client asks for when the daemon cannot page.
+ *
+ * THE PRE-CHANGE REQUEST, byte for byte: against a daemon without
+ * `session_catalogue_page` the app makes exactly one unscoped `limit=500` read
+ * and renders exactly as it did before paging existed. It is also what the
+ * consumers that genuinely need the whole catalogue (the command palette, the
+ * MCP section's roster, the browser hand-over dialog) keep asking for, because
+ * their question is about the set rather than about the top of it.
+ */
+export const LEGACY_CATALOGUE_PAGE = 500;
+
+/**
+ * The page a caller gets when it asks for "the catalogue" without naming a size.
+ *
+ * WHY THIS IS A FUNCTION AND NOT THE CONSTANT (round 3, QA's Q-1). The default used to
+ * be `LEGACY_CATALOGUE_PAGE` on every daemon, so the most ordinary flow in the app —
+ * opening a conversation, whose effect refreshes the catalogue when the conversation's
+ * streaming/attention/binding marker moves — fired an unscoped
+ * `limit=500&include_archived=true` read. On the operator's store that is the 2.1-4.5 s
+ * answer this change exists to remove, and it also threw away the scoped membership the
+ * panel had just fetched, leaving `All chats 499` where the head page had been.
+ *
+ * So the default follows the SAME capability every other paged surface follows: on a
+ * daemon that advertises `session_catalogue_page` it is the head page, and on one that
+ * does not it is the legacy read, byte for byte — the compatibility promise, kept here
+ * as it is kept in the panel.
+ *
+ * THE FLAG IS PUBLISHED by the surface that already resolves the capability
+ * (`chat-sidebar.tsx` calls `setCataloguePageable`) instead of the store reaching for it,
+ * because this store is the module every desktop suite bundles to assert anything about a
+ * session: importing the renderer's capability hook here would put two more modules in
+ * front of every one of those suites, and the flag keeps the store's dependency list -
+ * and every fixture's stub list - exactly as it was. It is fail-closed by construction:
+ * `false` until a surface says otherwise, which is exactly today's request.
+ *
+ * AND THAT MAKES AN UNNAMED READ ROUTE-DEPENDENT, which is worth knowing when you read a
+ * request log rather than this file: the sidebar publishes the flag when it resolves the
+ * capability, so an app launched straight into `/mcp` or `/agents` - where no sidebar has
+ * mounted - takes the legacy read until the first `/chat` visit, and every route after
+ * that takes the head page. The three callers that mean the SET name it explicitly
+ * (`use-palette-sources`, `mcp-management-section`, `browser-hand-over-dialog`), so the
+ * difference is confined to whatever else calls this with no argument.
+ */
+export function cataloguePageDefault(pageable: boolean): number {
+	return pageable ? CATALOGUE_HEAD_PAGE : LEGACY_CATALOGUE_PAGE;
+}
+
+/**
+ * One scope's paging state (`scopes[key]` in the state, keyed
+ * `${kind}:${name}`).
+ *
+ * `ids` is an ID LIST rather than the rows themselves, which is what keeps ONE
+ * row store: `sessions` remains the only row array the sidebar, the search and
+ * every other consumer reads, and this is membership metadata beside it. The
+ * group's ORDER has to come from here and cannot be re-derived, because the wire
+ * carries no rank - a client-side re-sort would be a second ordering authority
+ * beside the server's (`chat-sections.ts` states the same rule for the sections).
+ */
+export type CatalogueScopeState = {
+	/** The scope's rows, in the server's own order, as ids. */
+	ids: string[];
+	/** Non-null iff the daemon says more rows exist in this scope after `ids`. */
+	nextCursor: string | null;
+	/** Single flight: gates the disclosure and the `Show more` row. */
+	loading: boolean;
+	/** The scope read's own failure, worded by this app. */
+	error: string | null;
+	/**
+	 * The `answerSeq` value the request took at its start.
+	 *
+	 * The per-scope twin of the global `if (generation !== refreshGeneration)
+	 * return;` guard: an answer whose stamp is not the scope's current stamp is
+	 * dropped, which is what stops a page asked for before a re-expand from
+	 * overwriting the one asked for after it.
+	 */
+	at: number;
+};
+
+/**
+ * The unscoped catalogue's own paging state.
+ *
+ * WHY IT IS NOT JUST A `CatalogueScopeState`. The head has one job a scope does
+ * not: it SETTLES facts (`pinFacts`/`archiveFacts` are its alone - see the
+ * comment in `fetchSessions`), so it has to know WHICH ids the last answer spoke
+ * for. `tailIds` is that record, and it is what keeps a 30 s poll from
+ * truncating a list the reader has paged further down: an answer that carries the
+ * top 50 rows speaks for the top 50, not for the rows a tail extension fetched by
+ * rank. The design note's `head` shape (`cursor`/`complete`/`at`) is all here;
+ * `tailIds`, `loading` and `error` are added because the flat list's own tail
+ * affordance needs the same three states a group's does.
+ */
+export type CatalogueHeadState = {
+	/**
+	 * The ids an EXTENSION fetched (the rows past the head page).
+	 *
+	 * WHY THE HEAD NEEDS AN ID LIST OF ITS OWN when a scope does not need one.
+	 * A page-one answer speaks for the TOP of the catalogue and settles membership
+	 * there: a row that has left the top (deleted, archived, re-ranked) must leave
+	 * the list. But a reader who extended the flat list holds rows fetched by RANK,
+	 * not by position, and the top-fifty answer says nothing about them - so they
+	 * are held aside here and survive a page-one answer unless it reaches them.
+	 * See `headAnswerRows` for what the answer does with them.
+	 *
+	 * Empty on the withdrawn path, where there is no cursor and so no extension -
+	 * which is what keeps an older daemon's page-one answer REPLACING membership
+	 * exactly as it always did.
+	 */
+	tailIds: string[];
+	/**
+	 * The ids the LAST head answer carried - the rows the head page itself owns.
+	 *
+	 * WHY THE HEAD NEEDS THIS when `tailIds` already names its extensions:
+	 * collapsing a group drops the rows that group fetched, and a row the head page
+	 * ALSO carried is not the group's to drop - the head is still drawing it. The
+	 * two kinds are told apart by this list, so `clearScope` removes exactly the
+	 * scope's own rows and nothing else (round 1, U5).
+	 */
+	pageIds: string[];
+	/** The next page's cursor, or null at the end of the catalogue. */
+	nextCursor: string | null;
+	/** True once an answer said this is the whole catalogue. */
+	complete: boolean;
+	/** Single flight for the tail extension. */
+	loading: boolean;
+	/** The tail extension's own failure. */
+	error: string | null;
+	/** The `answerSeq` stamp of the last answer this state took. */
+	at: number;
+};
+
+/** One binding's census row, exactly as the daemon spells it. */
+export type CatalogueScopeTotal = {
+	kind: CatalogueScopeKind;
+	name: string;
+	/** Visible sessions in this scope. */
+	total: number;
+	/** Of those, how many the catalogue classes `active`. */
+	active: number;
+};
+
+/**
+ * The catalogue's per-scope census (`with_counts=true`), or null.
+ *
+ * THE COLLAPSED BADGE READS THIS rather than the rows the client happens to
+ * hold, which is what stops a group that has 434 conversations from advertising
+ * the 283 a 500-row page carried. Null when the daemon did not answer a census
+ * (the capability is absent, or the request did not ask), and a group then falls
+ * back to counting its own rows - which is exactly today's badge.
+ */
+export type CatalogueScopeCounts = {
+	/** Every visible session (the flat list's own size). */
+	total: number;
+	active: number;
+	/** Visible sessions with no attachment binding. */
+	unbound: number;
+	scopes: CatalogueScopeTotal[];
+};
+
+/** `${kind}:${name}` - the key `scopes` is indexed by. */
+export function catalogueScopeKey(
+	kind: CatalogueScopeKind,
+	name: string,
+): string {
+	return `${kind}:${name}`;
+}
+
+/** The ids every loaded scope holds, as one set. */
+export function scopeHeldIds(
+	scopes: Record<string, CatalogueScopeState>,
+): Set<string> {
+	const held = new Set<string>();
+	for (const scope of Object.values(scopes))
+		for (const id of scope.ids) held.add(id);
+	return held;
+}
+
+/**
+ * The rows an unscoped answer OWNS: the ones no loaded scope holds.
+ *
+ * THIS IS THE MOST DANGEROUS DECISION IN THE PAGED CATALOGUE, which is why it is
+ * a named function with its own test rather than a condition at the call site.
+ * Calling `replaceSessionRows(state.sessions, page)` on a SCOPE answer would
+ * delete every row outside that scope - the whole list, every group, the Pinned
+ * section - because the answer only speaks for its own scope. A scope answer
+ * therefore UNIONS (see `scopeAnswerRows`), and only an unscoped answer rebuilds
+ * membership, and only over the rows no scope holds.
+ */
+export function headHeldRows(
+	sessions: CanonicalSessionRow[],
+	scopeIds: ReadonlySet<string>,
+): CanonicalSessionRow[] {
+	if (scopeIds.size === 0) return sessions;
+	return sessions.filter((row) => !scopeIds.has(row.session_id));
+}
+
+/**
+ * The row list a HEAD answer produces, and the tail it still holds.
+ *
+ * `merge` is `replaceSessionRows`: incoming wins, an absent key is not a claim.
+ * It is passed in rather than imported so this stays a decision about MEMBERSHIP
+ * while the store keeps the one implementation of what a row's VALUE is.
+ *
+ * THE ANSWER REPLACES THE HEAD'S MEMBERSHIP, which is what lets a deleted or
+ * archived row leave the list, and it holds aside only the rows an EXTENSION
+ * fetched (`tailIds`) - those were fetched by rank rather than by position, so a
+ * page-one answer cannot speak for them. A page-one answer that replaced the
+ * whole head-held set instead would truncate an extended flat list back to the
+ * head page on the next 30 s poll, which is the drift insurance editing what is
+ * on screen; asking the poll for every row the client holds instead is the
+ * multi-second read this change exists to remove. With `tailIds` empty (the
+ * withdrawn path, where there is no cursor and no extension) this is exactly the
+ * pre-paging rule: the answer replaces every row no scope holds.
+ *
+ * A row an extension fetched that the new page now carries stops being a tail row
+ * (the page speaks for it), and a tail id whose row is gone from the merged list
+ * is dropped, so the set cannot accumulate ids nothing draws.
+ */
+export function headAnswerRows(args: {
+	sessions: CanonicalSessionRow[];
+	scopeIds: ReadonlySet<string>;
+	tailIds: readonly string[];
+	/**
+	 * Rows the answer may not drop even though it does not carry them: the
+	 * conversation the reader has OPEN.
+	 *
+	 * WHY THIS EXISTS (round 1, R3). Under an unscoped 500-row read the open
+	 * conversation was in membership for free - the page was the whole catalogue in
+	 * practice. A 50-row head page can stop ABOVE it: a conversation at rank 51 is
+	 * neither on the page nor in an expanded group, so a poll would take the row out
+	 * from under the reader who is reading it. The rule is the panel's own, the same
+	 * instinct as the pinned-row protection at the call site: a conversation the app
+	 * is drawing does not leave the list because a page did not carry it.
+	 */
+	keepIds?: readonly string[];
+	page: CanonicalSessionRow[];
+	merge: (
+		current: CanonicalSessionRow[],
+		incoming: CanonicalSessionRow[],
+	) => CanonicalSessionRow[];
+}): { rows: CanonicalSessionRow[]; tailIds: string[] } {
+	const tail = new Set(args.tailIds);
+	const keep = new Set(args.keepIds ?? []);
+	const pageIds = new Set(args.page.map((row) => row.session_id));
+	/*
+	 * WHICH ROWS THE ANSWER DOES NOT SPEAK FOR, and there are exactly two kinds.
+	 * A row a SCOPE holds belongs to that scope's answer, never to this one -
+	 * dropping it here would delete an expanded group's whole page the first time a
+	 * poll landed with the group open. A row an EXTENSION fetched was positioned by
+	 * rank rather than by the page, so a top-of-the-catalogue answer cannot speak
+	 * for it either. Every other head-held row the answer omits has left the
+	 * catalogue and goes.
+	 *
+	 * THE SURVIVORS KEEP THE ORDER THEY HAD, which is why this filters the previous
+	 * array rather than concatenating two groups: the panel draws its sections and
+	 * its flat list in ARRAY ORDER, so re-bucketing them would re-file every scoped
+	 * row to the end of the list under an otherwise unchanged page.
+	 */
+	const survivors = args.sessions.filter((row) => {
+		if (pageIds.has(row.session_id)) return false;
+		if (args.scopeIds.has(row.session_id)) return true;
+		if (keep.has(row.session_id)) return true;
+		return tail.has(row.session_id);
+	});
+	/*
+	 * THE MERGE BASE IS EVERY HELD ROW, and that is a fix rather than a tidy-up
+	 * (round 1, R1). The base was `headHeld`, which EXCLUDES every id a loaded scope
+	 * holds - so a row the head page carries that an expanded group ALSO holds was
+	 * merged against `undefined`, and `mergeRow`'s `heldStatusOver` had nothing to
+	 * compare it against. That is precisely the race it exists for: a newer
+	 * `session_status` frame for a row that happens to sit in an expanded group was
+	 * overwritten by an older page reading. MEMBERSHIP is unchanged - `headHeld` plus
+	 * the survivors above; what changed is only what a page row is merged AGAINST.
+	 */
+	const rows = args.merge(args.sessions, args.page);
+	const carried = new Set(rows.map((row) => row.session_id));
+	for (const row of survivors) {
+		if (carried.has(row.session_id)) continue;
+		carried.add(row.session_id);
+		rows.push(row);
+	}
+	return { rows, tailIds: args.tailIds.filter((id) => carried.has(id)) };
+}
+
+/**
+ * The row list a SCOPE answer produces, and the scope's id list after it.
+ *
+ * A UNION, never a replacement (see `headHeldRows`): the answer speaks about one
+ * binding, so everything else in the store survives it untouched. Rows the store
+ * does not carry are appended, which is what makes a group's rows exist at all
+ * once the head page is small.
+ *
+ * `ids` is the SCOPE's order, and a duplicate collapses rather than being
+ * re-appended: a cursor walk can re-send a row whose tier moved across the
+ * boundary (the design note's accepted imperfection), and the client's merge is
+ * keyed by id for exactly that reason.
+ */
+export function scopeAnswerRows(args: {
+	sessions: CanonicalSessionRow[];
+	previousIds: readonly string[];
+	page: CanonicalSessionRow[];
+	merge: (
+		current: CanonicalSessionRow | undefined,
+		incoming: CanonicalSessionRow,
+	) => CanonicalSessionRow;
+}): { rows: CanonicalSessionRow[]; ids: string[] } {
+	const ids = [...args.previousIds];
+	const known = new Set(ids);
+	for (const row of args.page) {
+		if (known.has(row.session_id)) continue;
+		known.add(row.session_id);
+		ids.push(row.session_id);
+	}
+	const rows = [...args.sessions];
+	const at = new Map(rows.map((row, index) => [row.session_id, index]));
+	for (const row of args.page) {
+		const index = at.get(row.session_id);
+		if (index === undefined) {
+			at.set(row.session_id, rows.length);
+			rows.push(row);
+			continue;
+		}
+		rows[index] = args.merge(rows[index], row);
+	}
+	return { rows, ids };
+}
+
 type CanonicalSessionsState = {
 	sessions: CanonicalSessionRow[];
+	/**
+	 * Whether this daemon advertises `session_catalogue_page`, as published by the surface
+	 * that resolves the capability (`setCataloguePageable`). It sizes an unnamed catalogue
+	 * read - see `cataloguePageDefault` - and is `false` until something says otherwise,
+	 * which is the fail-closed direction and also exactly the request this app has always
+	 * made.
+	 */
+	cataloguePageable: boolean;
 	activeSessionId: string | null;
 	activeDraftKey: string | null;
 	drafts: Record<string, ChatDraft>;
@@ -1844,6 +2211,30 @@ type CanonicalSessionsState = {
 	 */
 	loading: boolean;
 	truncated: boolean;
+	/**
+	 * The unscoped catalogue's own paging state (see `CatalogueHeadState`).
+	 *
+	 * NOT PERSISTED, like `sessions` itself: `partialize` names its keys, and a
+	 * cursor restored into a fresh process would be a position in a ranking that
+	 * process has not read.
+	 */
+	head: CatalogueHeadState;
+	/**
+	 * Every scope the client has expanded, keyed `${kind}:${name}`.
+	 *
+	 * MEMBERSHIP METADATA BESIDE `sessions`, never a second row store: the ids here
+	 * say which of `sessions` belongs to which group and in what order, and the rows
+	 * themselves stay in the one array every consumer already reads.
+	 */
+	scopes: Record<string, CatalogueScopeState>;
+	/**
+	 * The per-scope census a head answer carried, or null.
+	 *
+	 * Kept across a head answer that did not ask for one (the palette's and the
+	 * hand-over dialog's wider reads do not): the census is not a claim about the
+	 * page, so a page that is silent about it is not a page that denies it.
+	 */
+	counts: CatalogueScopeCounts | null;
 	error: string | null;
 	cwd: string;
 	setCwd: (cwd: string) => void;
@@ -1922,6 +2313,14 @@ type CanonicalSessionsState = {
 	 */
 	setArchiveUndo: (offer: ArchiveUndoOffer | null) => void;
 	/**
+	 * Publish whether the daemon can page, so an unnamed catalogue read can size itself.
+	 *
+	 * A no-op when the value has not moved: this is called from a render-adjacent effect on
+	 * every capability change, and a store write per render would re-render every subscriber
+	 * for nothing.
+	 */
+	setCataloguePageable: (pageable: boolean) => void;
+	/**
 	 * Clear the refusal once its message's turn in the panel's lane is over.
 	 *
 	 * THE WRITE ONLY, matching `setArchiveUndo` above rather than adding a third policy: the
@@ -1966,7 +2365,50 @@ type CanonicalSessionsState = {
 		sessionId: string,
 	) => Promise<{ ok: true } | { ok: false; detail: string; guarded: boolean }>;
 	requestSessionDelete: (sessionId: string | null) => void;
-	fetchSessions: (limit?: number) => Promise<void>;
+	fetchSessions: (limit?: number, withCounts?: boolean) => Promise<void>;
+	/**
+	 * Extend the UNSCOPED list by one page, along `head.nextCursor`.
+	 *
+	 * The flat chat list's own tail affordance (§5.4): one container, one scope,
+	 * one sentinel, so "extend" has exactly one meaning. Single flight against
+	 * `head.loading`, and it does nothing when the head is already complete or a
+	 * page is in the air.
+	 */
+	fetchCatalogueTail: () => Promise<void>;
+	/**
+	 * Discard one group's loaded page, so the next expansion re-reads the scope
+	 * from its TOP.
+	 *
+	 * COLLAPSING A GROUP IS WHAT MAKES THE CURSOR'S ACCEPTED IMPERFECTION
+	 * REPAIRABLE. A cursor is a position, not a snapshot: a row whose tier changes
+	 * between two page reads can be skipped in that group's list for that
+	 * expansion. Re-expanding is the remedy - it discards the ids and starts again
+	 * from the scope's own first page - and this is that discard. The sidebar calls
+	 * it as a group closes, which is also where it belongs on its own terms: the
+	 * reader's next expansion is a fresh question, and there is no reason to answer
+	 * it from a page fetched minutes ago.
+	 *
+	 * THE ROWS ARE NOT REMOVED from `sessions`; only membership metadata is. They
+	 * become head-owned again, which is exactly what they were before the group was
+	 * ever opened, and the next head answer settles them like any other row.
+	 */
+	clearScope: (kind: CatalogueScopeKind, name: string) => void;
+	/**
+	 * Read ONE group's rows - the first page on first expand, the next page when
+	 * the group's `Show more` row is pressed.
+	 *
+	 * `cursor` is the group's `nextCursor`, or null for the scope's first page. The
+	 * group pages INDEPENDENTLY: a poll, a focus and a `catalogue` frame all refresh
+	 * the unscoped head only, and never re-fetch a loaded scope (re-fetching every
+	 * expanded group on every frame would reproduce, per group, the amplification
+	 * this change exists to remove).
+	 */
+	fetchScopePage: (
+		kind: CatalogueScopeKind,
+		name: string,
+		cursor?: string | null,
+		limit?: number,
+	) => Promise<void>;
 	createSession: (
 		cwd: string,
 		target?: ChatTarget,
@@ -2602,6 +3044,101 @@ type SessionForgetState = {
 
 /** Full list responses replace membership; a disappeared row is not immortal.
  * Stream updates use upsert separately and never imply a complete inventory. */
+/**
+ * The wire page as this store's rows.
+ *
+ * ONE PLACE, because three reads now pay it: the head page, the flat list's tail
+ * and every group's page. The rename is not cosmetic - the wire's `name` is this
+ * row's `title` and the wire's `mtime` is its `updated_at`, on the same rule
+ * `BackendSessionRow` states: the row type is the UI's, and a second spelling of
+ * the translation is how one of the three reads ends up sorting by `undefined`.
+ */
+function projectRows(raw: BackendSessionRow[]): CanonicalSessionRow[] {
+	return raw.map(({ id, name, mtime, ...rest }) => ({
+		...rest,
+		session_id: id,
+		title: name,
+		updated_at: mtime,
+	}));
+}
+
+/**
+ * A page's rows, with the conversations this window must not draw dropped.
+ *
+ * THE TOMBSTONE FILTER IS NOT OPTIONAL ON A PAGED READ. `forgotten` records what
+ * THIS window deleted, and a page whose request was issued before the delete can
+ * still carry the id - so a read that trusted the daemon's silence would put a
+ * permanently deleted conversation back on screen, clickable, opening onto the
+ * missing-session notice.
+ */
+function answerRows(
+	raw: BackendSessionRow[],
+	forgotten: Record<string, ForgottenFact>,
+): CanonicalSessionRow[] {
+	return projectRows(raw).filter(
+		(row) => forgotten[row.session_id] === undefined,
+	);
+}
+
+/**
+ * A cursor from an answer, or null for anything that is not a usable string.
+ *
+ * VALIDATED RATHER THAN TRUSTED, and it is the same habit `catalogueCountsFrom`
+ * follows one function down for a different reason: the daemon is another
+ * process, and a cursor is sent straight back as a query parameter. A
+ * `next_cursor: ""` (a daemon whose own empty case leaked to the wire) would
+ * serialise as `cursor=`, which the request schema refuses by name - so the tail
+ * affordance would be offered and every press would 422. Normalising here means
+ * the worst case is "no more rows offered", which is visible and honest.
+ */
+function normalisedCursor(raw: unknown): string | null {
+	return typeof raw === "string" && raw.length > 0 ? raw : null;
+}
+
+/**
+ * The census from an answer, or null when it is absent or unusable.
+ *
+ * EVERY FIELD IS CHECKED, and the reason is that these numbers are PAINTED as
+ * badges and counts beside groups: a census that half-parsed would put `NaN` or
+ * `undefined` where a conversation count belongs, which reads as a group with no
+ * chats rather than as a read this client could not use. Null means "no census",
+ * and every surface then falls back to the count it can derive from the rows it
+ * holds - which is exactly today's badge.
+ */
+export function catalogueCountsFrom(raw: unknown): CatalogueScopeCounts | null {
+	if (raw === null || typeof raw !== "object") return null;
+	const counts = raw as Record<string, unknown>;
+	const whole = (value: unknown): number | null =>
+		typeof value === "number" && Number.isFinite(value) && value >= 0
+			? Math.floor(value)
+			: null;
+	const total = whole(counts.total);
+	const active = whole(counts.active);
+	const unbound = whole(counts.unbound);
+	if (total === null || active === null || unbound === null) return null;
+	if (!Array.isArray(counts.scopes)) return null;
+	const scopes: CatalogueScopeTotal[] = [];
+	for (const entry of counts.scopes) {
+		if (entry === null || typeof entry !== "object") return null;
+		const scope = entry as Record<string, unknown>;
+		// The kind is the CLOSED vocabulary the route and the group predicate share;
+		// anything else is a census for an axis this client cannot draw, so it is
+		// dropped rather than stored under a key nothing looks up.
+		if (scope.kind !== "team" && scope.kind !== "agent") continue;
+		if (typeof scope.name !== "string" || scope.name.length === 0) continue;
+		const scopeTotal = whole(scope.total);
+		const scopeActive = whole(scope.active);
+		if (scopeTotal === null || scopeActive === null) continue;
+		scopes.push({
+			kind: scope.kind,
+			name: scope.name,
+			total: scopeTotal,
+			active: scopeActive,
+		});
+	}
+	return { total, active, unbound, scopes };
+}
+
 export function replaceSessionRows(
 	current: CanonicalSessionRow[],
 	incoming: CanonicalSessionRow[],
@@ -2625,23 +3162,36 @@ let refreshGeneration = 0;
  */
 let sessionRefresh: {
 	limit: number;
+	/**
+	 * Whether the collapsed read asks for the per-scope census.
+	 *
+	 * Carried beside `limit` because it is the second half of the same question:
+	 * the flight resumes "the most recently requested read", and a read is its page
+	 * size AND whether it wanted the counts. Collapsing them would let a caller that
+	 * did not ask for a census silently determine what the resuming caller's answer
+	 * carries - and the sidebar's own refresh always wants it.
+	 */
+	withCounts: boolean;
 	invalidated: boolean;
 	promise: Promise<unknown>;
 } | null = null;
 
 function coalesceSessionCatalogueRequest<T>(
 	limit: number,
-	request: (limit: number) => Promise<T>,
+	withCounts: boolean,
+	request: (limit: number, withCounts: boolean) => Promise<T>,
 ): Promise<T> {
 	const active = sessionRefresh;
 	if (active) {
 		active.invalidated = true;
 		active.limit = limit;
+		active.withCounts = withCounts;
 		return active.promise as Promise<T>;
 	}
 
 	const flight = {
 		limit,
+		withCounts,
 		invalidated: false,
 		promise: null as unknown as Promise<T>,
 	};
@@ -2652,7 +3202,7 @@ function coalesceSessionCatalogueRequest<T>(
 				flight.invalidated = false;
 				let answer: T;
 				try {
-					answer = await request(flight.limit);
+					answer = await request(flight.limit, flight.withCounts);
 				} catch (error) {
 					if (flight.invalidated) continue;
 					throw error;
@@ -2804,6 +3354,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 	persist(
 		(set, get) => ({
 			sessions: [],
+			cataloguePageable: false,
 			// Seeded from the launch argument when there is one, so the very first
 			// render is already the requested conversation rather than the persisted
 			// one. `merge` below holds the same line against hydration, which would
@@ -2825,6 +3376,20 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			readAckNotice: null,
 			loading: false,
 			truncated: false,
+			// No page has been read yet, so there is no window, no cursor and nothing
+			// to extend. `complete: false` rather than true: a catalogue whose head has
+			// never been read is not a catalogue with no tail.
+			head: {
+				pageIds: [],
+				tailIds: [],
+				nextCursor: null,
+				complete: false,
+				loading: false,
+				error: null,
+				at: 0,
+			},
+			scopes: {},
+			counts: null,
 			statusUnavailable: [],
 			archiveFacts: {},
 			forgotten: {},
@@ -2835,7 +3400,14 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			error: null,
 			cwd: "~",
 			setCwd: (cwd) => set({ cwd }),
-			fetchSessions: async (limit = 500) => {
+			fetchSessions: async (
+				/*
+				 * AN UNNAMED SIZE IS THE HEAD PAGE ON A PAGING DAEMON (Q-1): see
+				 * `cataloguePageDefault`. A caller that needs the whole set says so.
+				 */
+				limit = cataloguePageDefault(get().cataloguePageable),
+				withCounts = false,
+			) => {
 				const generation = ++refreshGeneration;
 				/*
 				 * The page is an answer too, so it carries the same currency for BOTH
@@ -2849,7 +3421,8 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				try {
 					const result = await coalesceSessionCatalogueRequest(
 						limit,
-						(pageLimit) =>
+						withCounts,
+						(pageLimit, pageCounts) =>
 							desktopResult<{
 								sessions: BackendSessionRow[];
 								truncated?: boolean;
@@ -2858,6 +3431,34 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								 * daemon that sends nothing here is one that answered all of them.
 								 */
 								degraded?: string[];
+								/**
+								 * The paging four, ALL ADDITIVE AND OPTIONAL: a daemon that predates
+								 * them sends none of them, and this read then behaves exactly as it
+								 * did before they existed (no cursor, so nothing to extend).
+								 *
+								 * `next_cursor` is non-null iff more rows exist in this scope after
+								 * the page - the daemon's own invariant is
+								 * `(next_cursor is not None) == truncated`, so this client never
+								 * derives one from the other.
+								 *
+								 * `cursor_missing` is NOT an error: an unusable cursor is answered
+								 * with the scope's FIRST page, and this flag is what tells a client
+								 * that the answer it holds replaced rather than extended. Nothing
+								 * here reads it today (the tail's own id-keyed merge makes a
+								 * re-read idempotent), which is why it is typed and commented
+								 * rather than omitted: the next reader must not treat its absence
+								 * as a promise the daemon never made.
+								 */
+								next_cursor?: string | null;
+								cursor_missing?: boolean;
+								/**
+								 * The census, present only when the request asked for it. Validated
+								 * before it is stored (`catalogueCountsFrom`) because the daemon
+								 * is another process and a badge is a NUMBER: a census that failed
+								 * to parse must leave the badge on its local count rather than
+								 * paint `undefined` beside a group.
+								 */
+								counts?: unknown;
 							}>({
 								op: "sessions.list",
 								limit: pageLimit,
@@ -2887,15 +3488,19 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								 * entirely - fails the two bullets above.
 								 */
 								include_archived: true,
+								/*
+								 * Omitted rather than sent as `false`, on the rule
+								 * `sessions.search`'s own query states: the pre-change request is
+								 * what an older backend must keep seeing, and the route's own
+								 * default for the census is off. So the request object is
+								 * byte-identical to today's when nothing asked for counts - which
+								 * includes every caller but the sidebar's own refresh.
+								 */
+								...(pageCounts ? { with_counts: true } : {}),
 							}),
 					);
 					if (generation !== refreshGeneration) return;
-					const rows = result.sessions.map(({ id, name, mtime, ...rest }) => ({
-						...rest,
-						session_id: id,
-						title: name,
-						updated_at: mtime,
-					}));
+					const rows = projectRows(result.sessions);
 					set((state) => {
 						/*
 						 * A page newer than the write settles the WHOLE pinned set, not only
@@ -2962,6 +3567,23 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							(row) => tombstones[row.session_id] === undefined,
 						);
 						/*
+						 * THE ANSWER'S OWN POSITION AND ITS SIZE CLAIM, read once here because
+						 * two decisions below need them and they must be the SAME reading: the
+						 * state records what the answer said, and the membership rule discards
+						 * the tail when the answer says the catalogue is complete. Deriving the
+						 * pair twice is how a state could say "complete" while the tail was
+						 * still held, or the reverse.
+						 */
+						const answerCursor = normalisedCursor(result.next_cursor);
+						const answerComplete =
+							answerCursor === null && result.truncated !== true;
+						/*
+						 * THE IDS THIS PAGE OWNS, recorded for `clearScope`: a group's collapse
+						 * must drop the rows the GROUP fetched and keep the ones the head page
+						 * also carries, and only a record of the page can tell them apart.
+						 */
+						const answerPageIds = page.map((row) => row.session_id);
+						/*
 						 * AND THE ROWS, not only the facts (review round 4, M1; QA Qr4-1).
 						 * `replaceSessionRows` rebuilds membership and values from the page
 						 * alone, so a page whose request STARTED before a press would hand the
@@ -2977,7 +3599,38 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								tombstones[row.session_id] === undefined &&
 								(state.pinFacts[row.session_id]?.at ?? -1) >= answerAt,
 						);
-						let next = replaceSessionRows(state.sessions, page);
+						/*
+						 * THE HEAD ANSWER'S OWN MEMBERSHIP RULE, which is NOT "replace every row".
+						 *
+						 * It rebuilds the rows no loaded scope holds - the rows this answer can speak
+						 * for - and leaves every scope's rows to their own answer. Calling
+						 * `replaceSessionRows(state.sessions, page)` here would be correct only while
+						 * nothing is expanded, and would delete an expanded group's whole page the
+						 * first time the poll landed with a group open.
+						 */
+						const headAnswer = headAnswerRows({
+							sessions: state.sessions,
+							scopeIds: scopeHeldIds(state.scopes),
+							/*
+							 * THE OPEN CONVERSATION DOES NOT LEAVE THE LIST ON A PAGE THAT DOES NOT
+							 * CARRY IT (round 1, R3). `activeSessionId` is the row the transcript pane
+							 * is drawing, and a 50-row head page can stop above a conversation at rank
+							 * 51 - under the unscoped read this change replaces, it could not.
+							 */
+							keepIds:
+								state.activeSessionId === null ? [] : [state.activeSessionId],
+							/*
+							 * AN ANSWER THAT SAYS IT IS THE WHOLE CATALOGUE DISCARDS THE TAIL.
+							 * `complete` means `next_cursor === null` with nothing truncated,
+							 * so the page it carries IS the catalogue and every row an
+							 * extension had fetched is either in it or gone - keeping them
+							 * would draw conversations the answer has just denied.
+							 */
+							tailIds: answerComplete ? [] : state.head.tailIds,
+							page,
+							merge: replaceSessionRows,
+						});
+						let next = headAnswer.rows;
 						for (const held of protectedRows) {
 							const fact = state.pinFacts[held.session_id];
 							const at = next.findIndex(
@@ -3003,6 +3656,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						 * settles a fact older than the request it answers.
 						 */
 						const archiveFactSet = factsNewerThan(state.archiveFacts, answerAt);
+						const counts = catalogueCountsFrom(result.counts);
 						return {
 							sessions: next,
 							pinFacts: facts,
@@ -3010,6 +3664,39 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							forgotten: tombstones,
 							loading: false,
 							truncated: result.truncated === true,
+							/*
+							 * THE HEAD'S OWN PAGING STATE, taken from THIS answer.
+							 *
+							 * `nextCursor` is the answer's `next_cursor`, so a daemon that predates
+							 * the paging parameters leaves it null and the flat list offers no tail
+							 * affordance at all - which is the old-daemon path, unchanged.
+							 * `complete` is decided HERE rather than `next_cursor === null`: an
+							 * answer that carries no cursor because the daemon cannot page is not
+							 * an answer that reached the end of the catalogue, and saying it had
+							 * would let a surface promise "that is everything" about a page it
+							 * only knows the size of.
+							 *
+							 * `at` is the same stamp the facts above are settled against, so a
+							 * second page-one answer asked for after this one replaces it wholesale
+							 * and a stale one cannot put an older cursor back.
+							 */
+							head: {
+								pageIds: answerPageIds,
+								tailIds: headAnswer.tailIds,
+								nextCursor: answerCursor,
+								complete: answerComplete,
+								loading: false,
+								error: null,
+								at: answerAt,
+							},
+							/*
+							 * SILENCE IS NOT A CLAIM here either: a head answer that did not ask for
+							 * the census (the palette's, the hand-over dialog's, the MCP section's
+							 * wider reads) leaves the last one standing. The census is a fact about
+							 * the store, not about the page, so a page that is quiet about it is not
+							 * a page that denies it - and the sidebar's own refresh asks every time.
+							 */
+							...(counts === null ? {} : { counts }),
 							/*
 							 * Read only from an answer that arrived: a failed read leaves the last
 							 * known list in place (and says so through `error`), so the marker that
@@ -3038,6 +3725,263 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							),
 						});
 				}
+			},
+			/*
+			 * THE FLAT LIST'S TAIL: one page further down the UNSCOPED catalogue.
+			 *
+			 * WHY THIS ONE MAY AUTO-EXTEND ON SCROLL AND A GROUP MAY NOT. This extends
+			 * the CHAT region, which is a scroller of its own with one scope in it, so
+			 * "extend" has exactly one meaning. The entity region is shared by every
+			 * expanded group, so a sentinel near the fold there would fire for whichever
+			 * groups happen to sit at it - the load would become a function of scroll
+			 * position rather than of intent, and N groups would extend together, which
+			 * is the amplification this whole change removes. Groups get an explicit row
+			 * instead (`fetchScopePage` below).
+			 *
+			 * SINGLE FLIGHT against `head.loading`, never against `refreshGeneration`:
+			 * a page-one refresh landing mid-extension is not a reason to discard the
+			 * rows the reader asked for. The two answers merge by id, so a refresh that
+			 * also re-carries some of these rows collapses rather than duplicating, and
+			 * the only cost of the race is one re-fetched page.
+			 */
+			fetchCatalogueTail: async () => {
+				const head = get().head;
+				if (head.nextCursor === null || head.loading) return;
+				const cursor = head.nextCursor;
+				set((state) => ({
+					head: { ...state.head, loading: true, error: null },
+				}));
+				try {
+					const result = await desktopResult<{
+						sessions: BackendSessionRow[];
+						next_cursor?: string | null;
+					}>({
+						op: "sessions.list",
+						limit: CATALOGUE_HEAD_PAGE,
+						include_archived: true,
+						cursor,
+					});
+					const page = answerRows(result.sessions, get().forgotten);
+					set((state) => {
+						/*
+						 * A UNION KEYED BY ID, and a row the client already held is MERGED
+						 * rather than skipped: a cursor page can re-send a row whose tier moved
+						 * across the boundary (the accepted imperfection the design note names),
+						 * and the incoming row is the newer reading of it. The head's own
+						 * MEMBERSHIP is untouched - an extension adds rows below the ones it has,
+						 * it does not re-rank them.
+						 */
+						const at = new Map(
+							state.sessions.map((row, index) => [row.session_id, index]),
+						);
+						const sessions = [...state.sessions];
+						const added: string[] = [];
+						for (const row of page) {
+							const index = at.get(row.session_id);
+							if (index === undefined) {
+								at.set(row.session_id, sessions.length);
+								sessions.push(row);
+								added.push(row.session_id);
+								continue;
+							}
+							sessions[index] = mergeRow(sessions[index], row);
+						}
+						const nextCursor = normalisedCursor(result.next_cursor);
+						return {
+							sessions,
+							head: {
+								...state.head,
+								/*
+								 * THE ROWS THIS EXTENSION FETCHED ARE NOW THE TAIL, and the record
+								 * of that is what a later page-one answer must not drop. A page
+								 * whose rows the client already held adds nothing and records
+								 * nothing, which is why this appends `added` rather than the
+								 * page's ids.
+								 */
+								tailIds: [...state.head.tailIds, ...added],
+								// The tail reached the end only when it says so. `head.at`
+								// is deliberately NOT advanced: it stamps the answer that
+								// is allowed to settle FACTS, and an extension must never be
+								// mistaken for one (a tail page speaks for a rank window, not
+								// for the pinned or archived set).
+								nextCursor,
+								complete: nextCursor === null,
+								loading: false,
+								error: null,
+							},
+						};
+					});
+				} catch (error) {
+					set((state) => ({
+						head: {
+							...state.head,
+							loading: false,
+							/*
+							 * THE TAIL'S OWN ERROR, not the store's. A failed extension is a failure
+							 * of one press at the bottom of the list, and putting it in the store's
+							 * `error` would raise the sidebar's danger alert about the backend -
+							 * a claim about the whole window that one scrolled page cannot support.
+							 */
+							error: storeErrorMessage(error, "Could not load more chats."),
+						},
+					}));
+				}
+			},
+			/*
+			 * ONE GROUP'S PAGE - the first page when its collapsed row is expanded, the
+			 * next page when its own `Show more` row is pressed.
+			 *
+			 * EACH GROUP PAGES INDEPENDENTLY, and nothing else re-fetches it. A poll, a
+			 * window focus and a `catalogue` frame all refresh the unscoped head only;
+			 * re-reading every expanded group on each frame would reproduce, once per
+			 * open group, the amplification this change exists to remove. What goes stale
+			 * without a re-read is a group's internal ORDER (a completion re-files a row on
+			 * the backend); the rows themselves stay fresh, because the per-row status feed
+			 * keeps arriving and `heldStatusOver` is what carries it.
+			 *
+			 * A SCOPE READ DOES NOT ASK FOR THE ARCHIVED SET, and that is a rule rather
+			 * than a saving: only the head answer may settle `archiveFacts` (the page that
+			 * speaks for the archived set as a whole is the unscoped one), and the group
+			 * rendering draws only visible rows - so an archived row in a scope answer would
+			 * be bytes the panel throws away.
+			 */
+			fetchScopePage: async (
+				kind,
+				name,
+				cursor = null,
+				limit = CATALOGUE_GROUP_PAGE,
+			) => {
+				const key = catalogueScopeKey(kind, name);
+				if (get().scopes[key]?.loading) return;
+				const answerAt = get().answerSeq + 1;
+				set({ answerSeq: answerAt });
+				set((state) => ({
+					scopes: {
+						...state.scopes,
+						[key]: {
+							ids: state.scopes[key]?.ids ?? [],
+							nextCursor: state.scopes[key]?.nextCursor ?? null,
+							loading: true,
+							error: null,
+							at: answerAt,
+						},
+					},
+				}));
+				try {
+					const result = await desktopResult<{
+						sessions: BackendSessionRow[];
+						next_cursor?: string | null;
+						cursor_missing?: boolean;
+					}>({
+						op: "sessions.list",
+						limit,
+						include_archived: false,
+						scope_kind: kind,
+						scope_name: name,
+						...(cursor === null ? {} : { cursor }),
+					});
+					const page = answerRows(result.sessions, get().forgotten);
+					set((state) => {
+						const entry = state.scopes[key];
+						/*
+						 * THE PER-SCOPE STAMP GUARD, the twin of the global generation guard in
+						 * `fetchSessions`: an answer whose stamp is not the scope's current one
+						 * was superseded by a later request for the same group (a collapse and a
+						 * re-expand) and must not overwrite it.
+						 */
+						if (entry === undefined || entry.at !== answerAt) return {};
+						/*
+						 * A CURSOR THE DAEMON COULD NOT USE IS A RE-READ, NOT AN EXTENSION.
+						 * `cursor_missing` means this answer is the scope's FIRST page, so
+						 * appending it to the ids a failed cursor was standing on would draw the
+						 * same rows twice, in an order no ranking produced.
+						 */
+						const extending = cursor !== null && result.cursor_missing !== true;
+						const answer = scopeAnswerRows({
+							sessions: state.sessions,
+							previousIds: extending ? entry.ids : [],
+							page,
+							merge: mergeRow,
+						});
+						const nextCursor = normalisedCursor(result.next_cursor);
+						return {
+							sessions: answer.rows,
+							scopes: {
+								...state.scopes,
+								[key]: {
+									ids: answer.ids,
+									nextCursor,
+									loading: false,
+									error: null,
+									at: answerAt,
+								},
+							},
+						};
+					});
+				} catch (error) {
+					set((state) => {
+						const entry = state.scopes[key];
+						if (entry === undefined || entry.at !== answerAt) return {};
+						return {
+							scopes: {
+								...state.scopes,
+								[key]: {
+									...entry,
+									loading: false,
+									error: storeErrorMessage(
+										error,
+										"Could not load this group's chats.",
+									),
+								},
+							},
+						};
+					});
+				}
+			},
+			clearScope: (kind, name) => {
+				const key = catalogueScopeKey(kind, name);
+				set((state) => {
+					const entry = state.scopes[key];
+					if (entry === undefined) return {};
+					const scopes = { ...state.scopes };
+					delete scopes[key];
+					/*
+					 * COLLAPSING A GROUP TAKES ITS ROWS OUT OF THE STORE (round 1, U5).
+					 *
+					 * Before this, the rows a group had fetched stayed in `sessions` after the
+					 * disclosure was closed: they were no longer drawn under the group, but they
+					 * were still counted in the section headings and still drawn in the flat
+					 * `Previous chats` list until the next head answer happened to drop them -
+					 * rows the reader had closed away, in a list they were still scrolling.
+					 *
+					 * WHAT IS REMOVED IS EXACTLY THE SCOPE'S OWN ROWS: the ids it fetched that
+					 * the head page did NOT carry. A row the head page also carried belongs to
+					 * the head, which is still drawing it.
+					 */
+					/*
+					 * AND THE OPEN CONVERSATION (round 2, R2-1). The U5 fix above removed a
+					 * group's own rows on collapse, which re-entered R3 through this door: open a
+					 * conversation inside a group that sits past the head page, collapse the group,
+					 * and the row the transcript pane is drawing is gone - and it does not heal,
+					 * because the live-title upsert is presence-guarded and the head page is above
+					 * its rank. Collapsing a group is a statement about the GROUP, never about the
+					 * conversation the reader has open.
+					 */
+					const active = state.activeSessionId;
+					const owned = new Set(entry.ids);
+					const fromHeadPage = new Set(state.head.pageIds);
+					const sessions = state.sessions.filter(
+						(row) =>
+							!owned.has(row.session_id) ||
+							fromHeadPage.has(row.session_id) ||
+							(active !== null && row.session_id === active),
+					);
+					return { scopes, sessions };
+				});
+			},
+			setCataloguePageable: (pageable) => {
+				if (get().cataloguePageable !== pageable)
+					set({ cataloguePageable: pageable });
 			},
 			setArchiveUndo: (offer) => {
 				set({ archiveUndo: offer });

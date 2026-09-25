@@ -8,7 +8,10 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@shared/components/ui";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	LEGACY_CATALOGUE_PAGE,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 import type { BrowserTabView } from "../hooks/use-browser-chrome";
@@ -61,8 +64,16 @@ export const BrowserHandOverDialog: FC<BrowserHandOverDialogProps> = ({
 	// Loaded when the dialog opens rather than at mount: the list is only needed
 	// here, and a route that fetched the session catalogue on every visit would
 	// make the browser feature depend on the backend being up.
+	//
+	// AND IT ASKS FOR THE SET, BY NAME (round 4, R4-1). Its picker is a plain
+	// `Select` with no search, so a narrowed list is not a smaller view of the
+	// same question - it is a list half the conversations cannot be found in. The
+	// unnamed default is now the head page on a daemon that advertises paging, and
+	// this dialog mounts INSIDE a conversation, where the sidebar has already
+	// published that capability, so leaving it unnamed silently went from ~500
+	// conversations to ~50.
 	useEffect(() => {
-		if (open) void fetchSessions();
+		if (open) void fetchSessions(LEGACY_CATALOGUE_PAGE);
 	}, [open, fetchSessions]);
 
 	useEffect(() => {
