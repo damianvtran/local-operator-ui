@@ -807,13 +807,13 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  */
 const STAMP_BINDING_NOTES = [
 	/*
-	 * THE LIST IS WHAT SURVIVES THE FOLD, and the notes that left it did so in the commit that
-	 * removed them: each quoted the pair this fold superseded, and a backticked token here is
-	 * always the value the file SHIPS, so keeping one would hold a superseded pair to this file as
-	 * if it were its own. Their values are written as bare SHAs in the notes themselves - the
-	 * convention `usageAutoCheckRestampNote` and `usageInFlightRemediationNote` left by first.
+	 * THE NOTE THAT STATES THIS FILE'S OWN PAIR - and the only one, because every other note
+	 * whose text quoted a pair this pass's folds superseded has had its values written as bare
+	 * SHAs instead. That is the convention the paragraphs above state, applied in the direction
+	 * the next fold always goes; `meshDesktopRound3RestampNote` left the list the same way
+	 * `meshDesktopRound2RestampNote` did before it.
 	 */
-	"meshDesktopRound3RestampNote",
+	"meshDesktopRound4FoldRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {

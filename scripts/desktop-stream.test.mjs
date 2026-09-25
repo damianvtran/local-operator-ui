@@ -206,9 +206,12 @@ test("a refusal body is carried beside the vocabulary, never in place of it", as
 	]);
 	relay.dispose();
 
-	// A body with no readable sentence leaves `detail` alone and adds nothing:
-	// FastAPI's bare `{"detail": "Unauthorized"}` is machine text, and the
-	// renderer's own sentence for a 401 is the only one worth showing.
+	// A body with no READER'S sentence leaves both fields alone: FastAPI's bare
+	// `{"detail": "Unauthorized"}` is machine text, and the renderer's own
+	// sentence for a 401 is the only one worth showing. Passing it through as
+	// `message` was this branch's own round-2 review minor: the pane renders that
+	// field as the backend's copy, so a machine word there is a worse answer than
+	// the app's own sentence.
 	globalThis.fetch = async () =>
 		new Response(JSON.stringify({ detail: "Unauthorized" }), {
 			status: 401,
@@ -224,7 +227,6 @@ test("a refusal body is carried beside the vocabulary, never in place of it", as
 			kind: "error",
 			detail: DESKTOP_STREAM_DETAIL.refused(401),
 			status: 401,
-			message: "Unauthorized",
 		},
 	]);
 	bare.dispose();

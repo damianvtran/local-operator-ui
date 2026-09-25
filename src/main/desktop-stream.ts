@@ -150,14 +150,22 @@ const readStreamRefusal = async (
 				? (body.detail as { code?: unknown; message?: unknown })
 				: null;
 		const code = typeof detail?.code === "string" ? detail.code : undefined;
+		/*
+		 * ONLY A SENTENCE THE PRODUCER WROTE FOR A READER, never a bare `detail`
+		 * string (round-2 review minor). FastAPI's stock refusal body is
+		 * `{"detail": "Unauthorized"}` - a machine word that names neither the
+		 * device nor a remedy - and passing it through as `message` would put it in
+		 * the pane exactly where this branch promised the backend's own sentence.
+		 * The object form is the one the mesh's refusals use, so the object form is
+		 * the only shape read here; anything else leaves `message` absent and the
+		 * caller falls back to its own copy.
+		 */
 		const message =
 			typeof detail?.message === "string" && detail.message.trim()
 				? detail.message
 				: typeof body.message === "string" && body.message.trim()
 					? body.message
-					: typeof body.detail === "string" && body.detail.trim()
-						? body.detail
-						: undefined;
+					: undefined;
 		return { ...(code ? { code } : {}), ...(message ? { message } : {}) };
 	} catch {
 		return {};

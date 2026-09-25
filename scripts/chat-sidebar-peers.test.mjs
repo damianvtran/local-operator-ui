@@ -1060,16 +1060,22 @@ test("M2: a remote row with no owner opens NO section, and is not hidden either"
 	);
 });
 
-test("M4: the move's budget follows its own wait, and no other op's does", () => {
+test("M4: the move's budget is the route's PUBLISHED answer, and no other op's is", () => {
 	/*
-	 * THE ROUTE'S OWN BOUND, BY SHAPE, from ONE helper (backend PR #1540 and its
-	 * review). A move that keeps nothing behind is `wait_s + 30`; one that KEEPS a
-	 * copy is `wait_s + 300`, which is 255 s more - the gap a client that ignored
-	 * `keep` would fall through, still reporting an unconfirmed move 4 minutes early.
+	 * THE BACKEND'S OWN NUMBERS, from ONE helper. `mobility.move_client_bound_s(wait_s,
+	 * keep, to)` publishes its answers at `wait_s=0` (backend PR #1540): 145 s for an
+	 * offload, 415 s for a `keep` copy, 415 s for a recall. The helper this case
+	 * exercises returns the route's ENVELOPE and `desktopRequestDeadlineMs` adds the
+	 * published 15 s client margin, which is why the pairs below are asserted at the
+	 * published values rather than at a shape this app derived.
+	 *
+	 * The case is written this way because the derivation it replaces was wrong
+	 * twice: `wait_s + 30` + 45 s gave 75 s against a 130 s envelope, so the app's
+	 * deadline still fired first exactly in the window the fix was for.
 	 */
 	assert.equal(
 		desktopRequestBoundS({ op: "sessions.transfer", wait_s: 30, to: "d_abc" }),
-		60,
+		160,
 	);
 	assert.equal(
 		desktopRequestBoundS({
@@ -1078,52 +1084,51 @@ test("M4: the move's budget follows its own wait, and no other op's does", () =>
 			to: "d_abc",
 			keep: true,
 		}),
-		330,
+		430,
 	);
 	// The schema's ceiling is 300 s, and a request past it is clamped rather than
-	// believed.
+	// believed - on the envelope, so the published pair still holds.
 	assert.equal(
 		desktopRequestBoundS({
 			op: "sessions.transfer",
 			wait_s: 9_000,
 			to: "d_abc",
 		}),
-		330,
+		430,
 	);
 	/*
-	 * A RECALL IS NOT A MOVE: `to: "local"` is bounded by the DESTINATION's own
-	 * retire-and-record deadline plus the copy, which no `wait_s` describes - so it
-	 * takes a standing ceiling rather than a derived number, and its outcome is always
-	 * the unconfirmed one.
+	 * A RECALL IS NOT A MOVE, and it is the shape whose envelope is not on the move
+	 * formula at all: `to: "local"` is bounded by the destination's own retire-and-
+	 * record deadline plus the copy, which the backend publishes as the same 400 s
+	 * envelope a `keep` copy gets. Its outcome is always the unconfirmed one.
 	 */
 	assert.equal(
 		desktopRequestBoundS({ op: "sessions.transfer", wait_s: 30, to: "local" }),
-		180,
+		430,
 	);
 	assert.equal(desktopRequestBoundS({ op: "sessions.transfer" }), null);
 	assert.equal(desktopRequestBoundS({ op: "sessions.list" }), null);
 	/*
-	 * 30 s of waiting plus the route's own margin, which must exceed the wait it
-	 * asked for - a budget BELOW `wait_s` is the defect this test exists for. The
-	 * margin is 45 s, not the 15 s round 1 chose: the route's overhead ABOVE
-	 * `wait_s` was measured at ~30 s against a real peer (`wait_s: 0` answered after
-	 * 30.5 s, `wait_s: 30` after 60.3 s), so a 15 s margin made THIS layer the one
-	 * that gave up first and the route's precise answer never reached the reader
-	 * (QA round 1, Q4a).
+	 * THE PUBLISHED DEADLINES, which is the whole point of the case: an offload at
+	 * `wait_s=0` is 145 s, not the 75 s this app used to hold - the 70 s difference
+	 * is the peer's slow-op budget and the control-socket slack that no local
+	 * derivation modelled. Asserted at `wait_s=30` (175 s) and on the envelope, so a
+	 * future edit that drops either term fails here.
 	 */
-	assert.equal(desktopRequestDeadlineMs("sessions.transfer", 60), 105_000);
-	assert.equal(desktopRequestDeadlineMs("sessions.transfer", 330), 375_000);
-	assert.equal(desktopRequestDeadlineMs("sessions.transfer", 180), 225_000);
+	assert.equal(desktopRequestDeadlineMs("sessions.transfer", 160), 175_000);
+	// The `keep` copy and the recall share the 400 s envelope, so they share this
+	// deadline: the pair is one published number, not two that happen to agree.
+	assert.equal(desktopRequestDeadlineMs("sessions.transfer", 430), 445_000);
 	// An op without a bound keeps the standing budgets.
 	assert.equal(desktopRequestDeadlineMs("sessions.transfer"), 20_000);
 	assert.equal(desktopRequestDeadlineMs("sessions.list"), 20_000);
 	assert.equal(desktopRequestDeadlineMs("usage.get"), 90_000);
 	/*
-	 * Q4b: a create ON A PEER is not a control call. The route's own budget is
-	 * `create_on_peer`'s 120 s and it measured 15.9 s and 22.1 s on loopback, so the
-	 * generic 20 s made this app the layer that gave up - and the sidebar then filed
-	 * the timeout as "the peer refused". A LOCAL create keeps the standing budget:
-	 * there is no second device in it.
+	 * Q4b: a create ON A PEER is not a control call, so it keeps the route's own
+	 * `create_on_peer` budget of 120 s plus the same published 15 s margin - below
+	 * the budget it waits on, this layer would be the one that gives up first and
+	 * the app would file the timeout as "the peer refused". A LOCAL create keeps the
+	 * standing budget: there is no second device in it.
 	 */
 	assert.equal(
 		desktopRequestBoundS({ op: "sessions.create", peer: "d_abc" }),
@@ -1134,7 +1139,7 @@ test("M4: the move's budget follows its own wait, and no other op's does", () =>
 		desktopRequestBoundS({ op: "sessions.create", peer: null }),
 		null,
 	);
-	assert.equal(desktopRequestDeadlineMs("sessions.create", 120), 165_000);
+	assert.equal(desktopRequestDeadlineMs("sessions.create", 120), 135_000);
 	assert.equal(desktopRequestDeadlineMs("sessions.create", null), 20_000);
 });
 
