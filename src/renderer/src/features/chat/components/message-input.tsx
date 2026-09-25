@@ -677,7 +677,7 @@ type MessageInputProps = {
 	 * The flag above is false for two different facts — a turn in flight, and a
 	 * harness that does not carry references — and only the page owns the answer to
 	 * the second, because the capability read is its. The composer's sentence for it
-	 * ("this backend cannot carry file references", UX round 2's U12) must not be
+	 * ("this backend cannot carry file references…", UX round 2's U12) must not be
 	 * said over a turn: that would be a claim about the backend made from a fact
 	 * about the turn.
 	 */

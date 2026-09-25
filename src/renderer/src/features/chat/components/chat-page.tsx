@@ -594,12 +594,14 @@ function SessionPanel({
 	 * decide it and computed HERE because this is where each of them already is:
 	 *
 	 *   1. the connected harness advertises that it expands a mention
-	 *      (`desktop-hooks.ts`'s `references` key). No released harness does — the
-	 *      expansion is `local_operator/references.py`, which is not in any tag
-	 *      through v0.56.8, and the half that adds it is PR #1220. So the composer
-	 *      offers the picker and paints the chips only on a backend that says it can
-	 *      carry them, and on today's installs the `@` is plain text, which is what
-	 *      the harness does with it.
+	 *      (`desktop-hooks.ts`'s `references` key). The composer therefore offers
+	 *      the picker and paints the chips only on a backend that says it can carry
+	 *      them, and withholds all of it otherwise, where the `@` is plain text —
+	 *      which is what such a harness does with it. The key is CONDITIONAL on the
+	 *      harness side rather than a build fact: a backend whose
+	 *      `LOCAL_OPERATOR_AT_REFERENCES` kill switch is off advertises nothing, so
+	 *      the absent key covers both an older backend and a current one that will
+	 *      not expand, and this gate answers both the same way.
 	 *   2. the send this draft would make is a PROMPT rather than a mid-turn STEER.
 	 *      `busy` is the same expression the send path reads one screen down
 	 *      (`mode: busy ? "steer" : "prompt"`), and a steer bypasses
@@ -626,8 +628,21 @@ function SessionPanel({
 	 * nothing would otherwise be reported to the user as "this backend cannot carry
 	 * file references" — a statement about the backend made on the strength of an
 	 * answer the app never received. An answer that arrived and says the harness is
-	 * available without the key is the only evidence the sentence may rest on, and it
-	 * is exactly the state every released install is in today.
+	 * available without the key is the only evidence the sentence may rest on, and
+	 * that answer has two causes: a backend older than the key, and a current one
+	 * whose `LOCAL_OPERATOR_AT_REFERENCES` kill switch is off.
+	 *
+	 * THE SENTENCE'S FIRST CLAUSE IS TRUE OF BOTH AND ITS REMEDY CLAUSE IS TRUE OF
+	 * ONE, which is a deliberate asymmetry rather than an oversight. "This backend
+	 * cannot carry file references" is the state in either case, and this page
+	 * cannot tell them apart. "Update the backend and try again" is the way out of
+	 * the OLDER-BACKEND case and does nothing for the kill switch — but the second
+	 * cause is one the operator set themselves, it is not something the app can
+	 * offer a remedy for, and a notice that stated both causes would be a sentence
+	 * about an environment variable in the composer's own voice. The update is the
+	 * cause a user can act on, so it is the one named. The two are not
+	 * distinguishable from here, which is why the sentence names the state rather
+	 * than a version.
 	 */
 	const mentionsUnsupported =
 		capabilities.isSuccess &&
