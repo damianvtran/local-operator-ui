@@ -69,23 +69,39 @@ export function useDesktopWatchLease(
 			document.removeEventListener("visibilitychange", send);
 			window.removeEventListener("focus", send);
 			window.removeEventListener("blur", send);
-			/*
-			 * WITHDRAW THE DISPLAYED CONVERSATION (review round 2, R2-4).
-			 *
-			 * This cleanup runs when the pane LEAVES the conversation — navigating to
-			 * the catalogue or Settings, or unmounting — as well as when the session
-			 * changes. Stopping the beats is not enough: the backend expires the LEASE
-			 * on a missed heartbeat, but main's own machine-wide presence is built from
-			 * its last report, and it kept renewing "showing A" every beat for as long
-			 * as the process lived. The backend believes fresh presence, so A's banner
-			 * was suppressed while no pane displayed A.
-			 *
-			 * Only on the native path, and fire-and-forget: this is a teardown, so it
-			 * cannot await, and main's own `releaseWatch` is identity-safe — an older
-			 * pane's withdrawal cannot clear a newer pane's report.
-			 */
+		};
+	}, [sessionId, subscriptionId]);
+
+	/*
+	 * WITHDRAW THE DISPLAYED CONVERSATION (review round 2, R2-4).
+	 *
+	 * Its OWN effect, keyed on the SESSION alone: the withdrawal is owned by the
+	 * pane LEAVING the conversation — navigating to the catalogue or Settings,
+	 * unmounting, or the session changing — and by nothing else. It used to sit in
+	 * the heartbeat effect's cleanup, whose deps include `subscriptionId`, and a
+	 * stream restart drops that to null while the same conversation stays on
+	 * screen (`use-canonical-session.ts`), so every SSE reconnect withdrew the
+	 * displayed conversation and main's machine-wide presence reported
+	 * `session_id: ""` for a window that was still showing one, until the next
+	 * renderer beat re-reported it. A stream restart is not a pane-leave.
+	 *
+	 * Stopping the beats is not enough on its own: the backend expires the LEASE
+	 * on a missed heartbeat, but main's own presence is built from its last
+	 * report, and it kept renewing "showing A" every beat for as long as the
+	 * process lived. The backend believes fresh presence, so A's banner was
+	 * suppressed while no pane displayed A; the backend's lease TTL still bounds a
+	 * genuine leave's tail while the pane is between beats.
+	 *
+	 * Only on the native path, and fire-and-forget: this is a teardown, so it
+	 * cannot await, and main's own `releaseWatch` is identity-safe — an older
+	 * pane's withdrawal cannot clear a newer pane's report (an empty or
+	 * mismatched id clears nothing at all).
+	 */
+	useEffect(() => {
+		if (!sessionId) return;
+		return () => {
 			const release = window.api?.desktop?.releaseWatchHeartbeat;
 			if (release) void Promise.resolve(release({ sessionId })).catch(() => {});
 		};
-	}, [sessionId, subscriptionId]);
+	}, [sessionId]);
 }
