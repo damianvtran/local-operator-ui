@@ -912,6 +912,7 @@ const STAMP_BINDING_NOTES = [
 	 * still was owed - and a new frame is the wrong answer to a question nobody
 	 * asked.
 	 */
+	"cwdChipCapRestampNote",
 	/*
 	 * The fourteenth, and this branch's own: it states the pair the fold onto
 	 * `origin/main` `c44d29c34` re-derived, so it is held to the pair this file
@@ -921,6 +922,12 @@ const STAMP_BINDING_NOTES = [
 	 * to record.
 	 */
 	"chatRedesignChipFoldRestampNote",
+	/*
+	 * And this branch's own, carried through every fold: it states the pair THIS
+	 * commit ships for UI PR B's Integrations redesign, so it is held to that pair
+	 * rather than read as history.
+	 */
+	"integrationsRedesignRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
