@@ -441,11 +441,19 @@ export const ConversationGone: Story = {
  * the width its container queries call the floor (design review round 2, D13).
  *
  * Why this story exists. Round 1's D7 asked for "a stable width OR render the
- * composed row once", and the fixed path column answered the first half; the
- * second half was still the one state nobody had photographed, so the chip's
- * pairing with the readings cluster in a real row was geometry rather than a
- * frame. `Idle` above cannot show it: without a known directory the chip does
- * not mount at all (`cwdToShow !== undefined` is the gate).
+ * composed row once". The reserved path column answered the first half at the
+ * time; the column is retired now (`CHIP_PATH_COLUMN` is a cap), so this frame
+ * carries the other half of the operator's request as well - where the width a
+ * short path frees up goes. It goes to the gap: the chip hugs its path and the
+ * readings cluster sits behind it instead of after a fixed column.
+ *
+ * What this story does NOT carry: the readings cluster, because it passes no
+ * `sessionStatus` (`CwdChipEditableWithReadings` below is the composed row with
+ * both). The second half of D7 ("render the composed row once") was still the
+ * one state nobody had photographed, so the chip's pairing with the row in a
+ * real composer was geometry rather than a frame. `Idle` above cannot show it:
+ * without a known directory the chip does not mount at all
+ * (`cwdToShow !== undefined` is the gate).
  *
  * The two widths are in ONE frame on purpose. The chip's wide and floor variants
  * are behind `@min-[620px]/chatcol` / `@max-[240px]/chatcol`, so each row carries
@@ -1764,7 +1772,7 @@ const SESSION_READINGS = {
  */
 export const CredentialMaskedSessionPane: Story = {
 	render: () => (
-		<Frame label="masked with a live working-directory chip and the session's readings on the row: the sentence is above the box and neither neighbour moves">
+		<Frame label="masked with a live working-directory chip and the session's readings on the row: the sentence is above the box, and the chip takes only the width its own path needs">
 			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
 				<MessageInput
 					isLoading={false}
@@ -1789,6 +1797,47 @@ export const CredentialMaskedSessionPane: Story = {
 		}
 		releaseShutter();
 	},
+};
+
+/**
+ * The composed row with the live (editable) chip AND the session's readings
+ * beside it - the state the width decision is about, at the composer's own
+ * 1024px measure.
+ *
+ * Why it exists, and it is a gap in the frame list rather than a preference:
+ * `CwdChipInRow` above mounts the editable chip with NO readings (it passes no
+ * `sessionStatus`, so the cluster never renders), and
+ * `CredentialMaskedSessionPane` below mounts the readings with a chip that has
+ * no write path - which is the READ-ONLY branch, already content-driven and
+ * carrying no path cap. So neither of the two frames the composer already had
+ * can show the one block this change moves: the readings cluster, which sits 8px
+ * behind the chip and travels with the chip's width. This is the row where that
+ * is visible, and the row the geometry rig measures the translation in.
+ *
+ * TWO FACTS ABOUT THIS FRAME a reader would otherwise have to derive: the chip
+ * paints `/Users/you` rather than `~`, because this story file installs no
+ * `getHomeDirectory` stub (the chip's `~/` short form is a call to that stub, and
+ * the cwd-move frames in the same PR do stub it - see that file's own note); and
+ * the cwd is deliberately SHORT, because a path that overflows the 16ch cap
+ * renders the same width before and after this change and would hide the very
+ * difference the frame exists to show.
+ */
+export const CwdChipEditableWithReadings: Story = {
+	render: () => (
+		<Frame label="the editable cwd chip with the session's readings on the row: the chip takes only the width its path needs, and the readings cluster follows it">
+			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story"
+					cwd="/Users/you"
+					cwdWritePath={MOVING_CWD}
+					sessionStatus={SESSION_READINGS}
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	),
 };
 
 /**
