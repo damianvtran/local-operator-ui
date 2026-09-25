@@ -205,7 +205,6 @@ const composerBundle = await build({
 				settleOffRecordPayload,
 				composerPlaceholder,
 				COMPOSER_PLACEHOLDER,
-				SEND_HELD,
 			} from "./src/renderer/src/shared/hooks/use-message-input";`,
 		resolveDir: process.cwd(),
 	},
@@ -276,7 +275,6 @@ const {
 	settleOffRecordPayload,
 	composerPlaceholder,
 	COMPOSER_PLACEHOLDER,
-	SEND_HELD,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(composerBundle.outputFiles[0].text).toString("base64")}`
 );
@@ -1038,13 +1036,15 @@ test("an off-record ask is not written into the persisted composer history", () 
 	const ask = { offRecord: Promise.resolve() };
 	assert.equal(isOffRecordAsk(ask), true);
 	assert.equal(recordsSubmittedMessage(ask), false);
-	// The conversation's own send is, and the two failure answers are not: `false`
-	// put the text back in the box, and `SEND_HELD` keeps the retry on the store's
-	// claim rather than in a log it would have to be recalled from.
+	// The conversation's own send is, and the failure answer is not: `false` put the
+	// text back in the box, so the log would hold a message that was never sent. The
+	// held outcome this list used to carry is gone with the held claim itself - the
+	// branch this suite was folded into removed it, and a failure is now always the
+	// payload coming back to the composer - so the third member is the off-record ask
+	// asserted above, not a held string.
 	assert.equal(recordsSubmittedMessage(true), true);
 	assert.equal(recordsSubmittedMessage(undefined), true);
 	assert.equal(recordsSubmittedMessage(false), false);
-	assert.equal(recordsSubmittedMessage(SEND_HELD), false);
 	/*
 	 * AND NOTHING ELSE IS MISTAKEN FOR IT. The guard reads the shape, so the three
 	 * answers that are NOT off-record asks must not be read as one - a widened
@@ -1052,7 +1052,6 @@ test("an off-record ask is not written into the persisted composer history", () 
 	 */
 	assert.equal(isOffRecordAsk(false), false);
 	assert.equal(isOffRecordAsk(true), false);
-	assert.equal(isOffRecordAsk(SEND_HELD), false);
 	assert.equal(isOffRecordAsk(undefined), false);
 });
 
@@ -2021,7 +2020,14 @@ test("an ask is refused in the app while the exchange is still answering", () =>
 		sessions,
 		/export const ASIDE_STILL_ANSWERING_CODE = "aside_still_answering";/,
 	);
-	assert.match(sessions, /code === ASIDE_STILL_ANSWERING_CODE \|\|/);
+	/*
+	 * WITHOUT THE TRAILING `||`, deliberately: main's list carried three more terms
+	 * after this one (`session_unvalidated`, `unconfirmed_send`, `runtime_retiring`),
+	 * and the branch this suite was folded into removed all three with its copy
+	 * table - so this code is the predicate's LAST term here and an anchored
+	 * alternative would pin its position rather than its presence.
+	 */
+	assert.match(sessions, /code === ASIDE_STILL_ANSWERING_CODE/);
 	assert.match(page, RE_PAGE_RAISES_THE_BUSY_CODE);
 	assert.match(page, RE_PAGE_RETIRES_THE_BUSY_LINE);
 	assert.match(page, /noteAsideRefusal,/);

@@ -171,6 +171,7 @@ const {
 	UNREADABLE_ATTACHMENT_CODE,
 	ANSWER_NOT_SENT_CODE,
 	ASIDE_NOT_ANSWERED_CODE,
+	ASIDE_STILL_ANSWERING_CODE,
 	isRefusedBeforeAdmission,
 	isStoreWriteRefusal,
 	refusedBeforeAdmissionAttachments,
