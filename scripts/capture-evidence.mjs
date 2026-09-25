@@ -3909,8 +3909,10 @@ export const STORIES = [
 	["chat-mention-chips--wrapped-mention", 1380, 872],
 	/*
 	 * The four surfaces this remediation added, each a state a finding named:
-	 * `harness-cannot-expand` is the state every release carries today (no
-	 * `references` capability, so no list and no chip), `small-view-520` is the
+	 * `harness-cannot-expand` is the SKEW state — a backend that does not advertise
+	 * the `references` capability, so no list and no chip, which is an install whose
+	 * backend predates the key or one whose `LOCAL_OPERATOR_AT_REFERENCES` kill switch
+	 * is off — `small-view-520` is the
 	 * field's 6px inset that decided the overhang, `scrolled-draft` is the fill
 	 * layer travelling with the field's own scroll, and `atomic-delete` is the one
 	 * chip promise that is not a drawing.
