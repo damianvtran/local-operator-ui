@@ -912,7 +912,15 @@ const STAMP_BINDING_NOTES = [
 	 * still was owed - and a new frame is the wrong answer to a question nobody
 	 * asked.
 	 */
-	"cwdChipCapRestampNote",
+	/*
+	 * The fourteenth, and this branch's own: it states the pair the fold onto
+	 * `origin/main` `c44d29c34` re-derived, so it is held to the pair this file
+	 * ships rather than read as history - the same distinction
+	 * `candidateMacArchRestampNote` is in this list for. The fold moved no frame
+	 * (no `.webp` on either side of it), which is the case a re-stamp note exists
+	 * to record.
+	 */
+	"chatRedesignChipFoldRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
