@@ -4906,8 +4906,29 @@ export function ChatSidebar({
 					Connecting to chats…
 				</p>
 			)}
-			{capabilities.error && (
-				<div role="alert" className="space-y-1 text-body-sm text-danger">
+			{/*
+			 * THE LIST-PANE PARAGRAPH STANDS DOWN WHILE THE SERVER IS UNREACHABLE (§F2).
+			 *
+			 * A lost server used to be stated twice on one screen, the way it was on the
+			 * foot line below before that fix: the pane's status strip ("Can't reach the
+			 * Local Operator server. Sending will wait." + Retry) and this list-pane
+			 * paragraph with a Retry of its own - one fact, two root causes, two Retries,
+			 * which is the contradiction §F2 exists to end. §F2 asks for the sidebar's
+			 * list-pane paragraph to be deleted; what is KEPT for the other case is a
+			 * caption rather than a second voice, because a REACHABLE server that failed
+			 * or withdrew this list's own read is a fact about the LIST, which the strip
+			 * does not state, and the refetch is its only remedy. The gate is the foot
+			 * line's own reading (`serverHealth?.online !== false`), deliberately, so the
+			 * two paragraphs cannot drift about when the strip owns the screen.
+			 *
+			 * NO `role="alert"` HERE EITHER: the strip owns the one live region for
+			 * connection state (branding § 9's one register for the status slot), and a
+			 * second live region about one fact is the defect this exists to remove. The
+			 * word is the foot's own "Retry refresh" - the strip's one "Retry" is
+			 * re-negotiation, and a screen cannot offer two verbs for one re-read.
+			 */}
+			{capabilities.error && serverHealth?.online !== false && (
+				<div className="space-y-1 text-meta text-ink-muted">
 					<p>
 						{capabilities.error.message}
 						{stale ? " Showing the last chats loaded." : ""}
@@ -4917,7 +4938,7 @@ export function ChatSidebar({
 						className="underline"
 						onClick={() => void capabilities.refetch()}
 					>
-						Retry
+						Retry refresh
 					</button>
 				</div>
 			)}
@@ -4929,16 +4950,21 @@ export function ChatSidebar({
 			    inputs a test can drive, and a JSX condition is not. Retry is re-negotiation
 			    rather than recovery: the poll in `useDesktopCapabilities` re-asks on its own
 			    cadence, and this is the same control the error branch above offers.
+
+			    THE SAME STAND-DOWN as the paragraph above, and for the same reason: a
+			    withdrawn gate is read off the SAME stale answer a just-killed server
+			    leaves behind, so without this gate the block would speak over the strip
+			    that has taken the screen's one connection voice.
 			 */}
-			{notice && (
-				<div role="alert" className="space-y-1 text-body-sm text-warning">
+			{notice && serverHealth?.online !== false && (
+				<div className="space-y-1 text-meta text-ink-muted">
 					<p>{notice}</p>
 					<button
 						type="button"
 						className="underline"
 						onClick={() => void capabilities.refetch()}
 					>
-						Retry
+						Retry refresh
 					</button>
 				</div>
 			)}
