@@ -24,15 +24,26 @@
 # additional approval for unattributed Copilot pull requests*: it is scoped to a
 # pull request COPILOT opened under its own app identity rather than on behalf of
 # a person, not to an ordinary PR), and
-# `allowed_merge_methods: [merge, squash, rebase]`; plus one bypass actor,
-# `RepositoryRole` id 5 with `bypass_mode: always`. On a repository owned by a
-# personal account that role belongs to the OWNER ALONE: such a repository has
-# exactly two permission levels, the owner and collaborators, and GitHub refuses
-# `admin` and `maintain` on one (`422 Cannot assign <user> permission of admin`),
-# so the bypass is the owner's and no collaborator's (GitHub, *Permission levels
-# for a personal account repository*). The same page names the escape hatch if
-# those roles are ever wanted: transferring the repository to an organization is
-# what creates them, and what would let a team-scoped bypass actor exist. The
+# `allowed_merge_methods: [merge, squash, rebase]`; plus FIVE bypass actors, not
+# one. `RepositoryRole` id 5 with `bypass_mode: always` is the owner's: on a
+# repository owned by a personal account that role belongs to the OWNER ALONE --
+# such a repository has exactly two permission levels, the owner and
+# collaborators, and GitHub refuses `admin` and `maintain` on one (`422 Cannot
+# assign <user> permission of admin`) -- so the `always` bypass is the owner's and
+# no collaborator's (GitHub, *Permission levels for a personal account
+# repository*). The same page names the escape hatch if those roles are ever
+# wanted: transferring the repository to an organization is what creates them, and
+# what would let a team-scoped bypass actor exist. The other four are user-scoped
+# and deliberately narrower -- `bbqben`, `olafagbemi`, `sherman-tsui` and
+# `SanaKetabchi`, each `bypass_mode: pull_request`, which GitHub grants *without*
+# allowing a direct push: the actor must open a pull request, so the trail
+# survives. A bypass entry is not access, though -- merging also needs write access
+# of its own, and of these four `SanaKetabchi` holds only the invitation sent
+# 2026-09-22 until she accepts it (see the owner set below). They are also a later
+# edit rather than a review error: the ruleset's history shows one bypass actor at
+# its creation on 2026-09-22 -- which this paragraph, written four minutes later,
+# reported correctly -- two by 2026-09-24T11:27:14 and all five by
+# 2026-09-24T11:27:33. The
 # ruleset IS attached: created 2026-09-22 as id `23841604`, and
 # `gh api .../rules/branches/main` (the second command below) returns it today.
 # Diff these sentences against the repository rather than trusting them:
@@ -50,7 +61,9 @@
 # control, which is why the setting is `false`; the review *count* is what carries
 # the protection. The count is the tier-2 rule in
 # AGENTS.md, "Who may merge: two tiers": an outside contributor's PR cannot reach
-# `main` without an approving review from a collaborator other than its author.
+# `main` without an approving review from a collaborator other than its author --
+# unless one of the four user-scoped bypass actors above merges it, which their
+# `pull_request` bypass mode permits.
 # Before 2026-09-22 `gh api repos/<owner>/<repo>/rules/branches/main` answered
 # `[]` here -- no ruleset was attached -- so nothing mechanical stood behind those
 # rules; with the ruleset attached the approval count and the no-force-push rule
@@ -58,9 +71,9 @@
 #
 # The owner set -- whose judgement stands in for the project's, and who may be
 # asked for a human review when one is genuinely wanted -- is `damianvtran`, who
-# owns this repository and is its only administrator; `bbqben`, who holds write
-# access today; and `olafagbemi`, `sherman-tsui` and `SanaKetabchi`, who hold it
-# by INVITATION sent 2026-09-22 and hold nothing until they accept it. Members of
+# owns this repository and is its only administrator; `bbqben`, `olafagbemi` and
+# `sherman-tsui`, who hold write access today; and `SanaKetabchi`, who holds it
+# by INVITATION sent 2026-09-22 and holds nothing until she accepts it. Members of
 # the set are not administrators and cannot be: a repository owned by a personal
 # account has exactly two permission levels, the owner and collaborators (see the
 # section above). Write access is precisely what makes the
@@ -70,9 +83,9 @@
 # too but is deliberately NOT in that set: ownership here means "can approve on
 # behalf of the project", which is narrower than commit access. Verify a handle
 # before relying on it with
-# `gh api repos/damianvtran/local-operator-ui/collaborators` -- `bbqben` and
-# `jcobhams` hold write while `olafagbemi`, `sherman-tsui` and `SanaKetabchi` hold
-# it by invitation sent 2026-09-22 and take it on acceptance, which is why the
+# `gh api repos/damianvtran/local-operator-ui/collaborators` -- `bbqben`,
+# `olafagbemi`, `sherman-tsui` and `jcobhams` hold write while `SanaKetabchi` holds
+# only the invitation sent 2026-09-22 and takes it on acceptance, which is why the
 # endpoint is read rather than this sentence -- since a handle without write
 # access is silently ignored by GitHub. The review count is satisfied by an
 # approving review from *any* collaborator other than the author, not only from
@@ -82,7 +95,7 @@
 # back: GitHub refuses `422 Review Can not approve your own pull request`, and
 # every agent here pushes as the owner's account, so an agent-authored PR the
 # owner opened can never be clicked approved by the account that opened it. That
-# is why the owner's bypass -- the ruleset's one bypass actor, which only the
+# is why the owner's bypass -- the ruleset's `always` bypass actor, which only the
 # owner can hold -- is the *sanctioned* completion for the owner's own reviewed
 # work here rather than a hole, and why it must be disclosed on the PR
 # (AGENTS.md, "Who may merge: two tiers"; the backend's section of the same name,

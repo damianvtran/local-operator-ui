@@ -552,6 +552,26 @@ const DURABLE_ROUND_ENDINGS = new Set(["turn_end", "agent_end"]);
 const LABEL_GAP_ATTEMPTS = 2;
 
 /**
+ * How many durable rows the SETTLE path may read back per conversation.
+ *
+ * A settle's read is SPECULATIVE, and it is the only read in this file that is:
+ * the runtime appends a round's assistant row and its tool results together, so
+ * a call that has just settled may belong to a step that is still open, and the
+ * row the read is looking for does not exist yet. The read is still worth
+ * taking - for a single-call step it is the row behind the paint, and it is what
+ * makes the ordinary case right in the first frame - but it must not cost the
+ * call its retry budget, which is spent at a durable round ending where a read
+ * can always succeed (see `settled` and the retry path in the flush). What is
+ * left to bound is the waste, and `LABEL_GAP_ATTEMPTS` cannot bound it because a
+ * settle is not charged there: this is the whole of the speculative path's
+ * allowance - one `RECONCILE_WALK_MAX_ROWS` walk per conversation, spent a tail
+ * page at a time when the frame states its call's start (see the floor the
+ * settle's own `started_at_epoch` feeds), and never spent again inside one
+ * renderer. Review round 1, R2.
+ */
+export const LABEL_SETTLE_ROWS_MAX = 500;
+
+/**
  * How many durable rows one reconcile is allowed to read back in total.
  *
  * The read walks BACKWARDS in pages until a fetched page overlaps the row the
@@ -733,6 +753,27 @@ type LabelGapState = {
 	 * conversation like the instants themselves.
 	 */
 	waiting: Set<string>;
+	/**
+	 * The calls a LIVE settle named, still unlabelled (bounded).
+	 *
+	 * Their own record rather than a reading of `attempts`, because a settle is
+	 * not charged there: it is charged when a durable round ending makes it a
+	 * retry candidate, which is the moment a read for it can succeed. Keeping the
+	 * ids here is what lets that retry find them at all - a call that settled live
+	 * and has fallen out of the seed window is named by nothing else, which is the
+	 * gap this path exists to close (review round 1, R1).
+	 */
+	settled: Set<string>;
+	/**
+	 * Rows the speculative settle reads have spent, against
+	 * `LABEL_SETTLE_ROWS_MAX`.
+	 *
+	 * Per conversation, like the map above it. A walk the seed or a retry also
+	 * needed is FREE - it was happening anyway, which is what makes N settles in
+	 * one flush cost one walk - so only a walk a settle ALONE caused is charged
+	 * here (review round 1, R2).
+	 */
+	settleRows: number;
 };
 
 const LABEL_GAP_SESSIONS_MAX = 8;
@@ -799,6 +840,8 @@ function labelGapFor(sessionId: string | undefined): LabelGapState {
 		order: [],
 		starts: new Map(),
 		waiting: new Set(),
+		settled: new Set(),
+		settleRows: 0,
 	};
 	labelGaps.set(key, fresh);
 	while (labelGaps.size > LABEL_GAP_SESSIONS_MAX) {
@@ -1532,6 +1575,14 @@ export function useCanonicalSessionStream(
 			 * never backs off. Callers that are not retrying (`flush`, `reopen`) omit it.
 			 */
 			historyAttempt = 1,
+			/**
+			 * Reports what each page of this walk COST, in rows, so the caller can
+			 * charge a bounded budget to the read it caused. Only the settle path
+			 * passes one: its read is speculative, and `LABEL_SETTLE_ROWS_MAX` is
+			 * what bounds the waste where the per-call attempt budget cannot
+			 * (review round 1, R2).
+			 */
+			onSpend?: (rows: number) => void,
 		) => {
 			/*
 			 * `labelPending` is released on EVERY exit of this walk except the one that
@@ -1542,7 +1593,13 @@ export function useCanonicalSessionStream(
 			 */
 			let handedOff = false;
 			try {
-				handedOff = await walkTail(generation, painted, labels, historyAttempt);
+				handedOff = await walkTail(
+					generation,
+					painted,
+					labels,
+					historyAttempt,
+					onSpend,
+				);
 			} finally {
 				if (!handedOff) releaseLabelPending(labels.pending);
 			}
@@ -1554,6 +1611,7 @@ export function useCanonicalSessionStream(
 			painted: ReadonlySet<string>,
 			labels: LabelWalk,
 			historyAttempt: number,
+			onSpend?: (rows: number) => void,
 		): Promise<boolean> => {
 			const fetchedIds = new Set<string>();
 			let beforeId: string | undefined;
@@ -1690,6 +1748,7 @@ export function useCanonicalSessionStream(
 								painted,
 								labels,
 								historyAttempt + 1,
+								onSpend,
 							);
 						}, streamRetryDelayMs(historyAttempt));
 						return true;
@@ -1723,6 +1782,7 @@ export function useCanonicalSessionStream(
 				if (generationRef.current !== generation) return false;
 				const oldest = page.entries[0];
 				rows += page.entries.length;
+				onSpend?.(page.entries.length);
 				// Merged even when it is the page we already have: durable rows win
 				// by id, so a repeat is free and a partial one is completed.
 				commitView((state) => ({
@@ -1992,15 +2052,110 @@ export function useCanonicalSessionStream(
 				labelled,
 				LABEL_GAP_ATTEMPTS,
 			);
+			/*
+			 * The retry's candidates are the ids the budget already tracks PLUS the calls
+			 * a live settle named - because a settle is not charged in `attempts`, a call
+			 * that settled while its step was still open would otherwise be named by no
+			 * candidate set at all when the durable moment arrives, and the row would keep
+			 * its stand-in for good (review round 1, R1).
+			 */
 			const retryLabels = roundEnded
 				? labelGapCandidates(
 						labelGapRef.current.attempts,
-						labelGapRef.current.attempts.keys(),
+						[
+							...labelGapRef.current.attempts.keys(),
+							...labelGapRef.current.settled,
+						],
 						labelled,
 						LABEL_GAP_ATTEMPTS,
 					)
 				: [];
-			const missingLabels = [...new Set([...seedMissing, ...retryLabels])];
+			/*
+			 * THE LIVE SETTLE, the seed's sibling and the third carrier of an
+			 * argument-less row. A `tool_execution_end` states no arguments in either
+			 * carrier, so the row it paints asks the durable assistant row for its
+			 * command - and the seed path above is the one that used to ask. A settle
+			 * that arrives LIVE, during the turn instead of inside a snapshot, asked for
+			 * nothing, while the two moments that could have covered for it are neither
+			 * of them guaranteed:
+			 *
+			 *  - the seed keeps only the turn's newest `LIVE_EVENT_END_ROWS_MAX` (100)
+			 *    ends, so a call that has fallen out of that window is named by no later
+			 *    snapshot at all;
+			 *  - the round-end retry (`retryLabels` above) draws its candidates from a
+			 *    budget only the seed path filled, so a settle it never tracked was not
+			 *    retried either.
+			 *
+			 * Measured on the reported conversation (`b747a2c8d3bb`): a 24.2-hour turn
+			 * with 170 calls in it, whose whole app-log history carries three
+			 * `sessions.history` reads - `limit=100` at 2026-09-24 00:00:05, and
+			 * `limit=100` plus one `limit=100&before_id=…` at 2026-09-25 09:17:25-26 -
+			 * every one of them a plain tail or a reader's own page, and NOT ONE with a
+			 * computed limit, i.e. no label read was ever asked for. (What that log
+			 * cannot say is why: the reads it shows are consistent with a settle naming
+			 * nothing, which is what the code did; the code-verifiable half is the case
+			 * in `seed-label-gap.test.mjs` that fails on the head which had no settle
+			 * path at all - review round 1, R3.) The row then kept its output stand-in -
+			 * the call's result painted where its command belongs - until the reader
+			 * scrolled its assistant row into a page.
+			 *
+			 * WHAT ASKS, AND WHAT IS CHARGED, are deliberately two different things. The
+			 * read a settle asks for is speculative (the call's row is written when its
+			 * STEP commits, so a settle from an open step is asking for a row that does
+			 * not exist yet) and it is not charged to `LABEL_GAP_ATTEMPTS`; that budget
+			 * is spent at the durable round ending, where the same call is a retry
+			 * candidate and a read can always succeed. A call whose arguments the
+			 * transcript already holds is in `labelled` and asks for nothing: every
+			 * producer that teaches them (a live start, a durable page) writes
+			 * `argsByCall` in the same step.
+			 */
+			const settledEvents: Record<string, unknown>[] = [];
+			for (const frame of frames) {
+				if (frame.type !== "event") continue;
+				const event = frame.payload as Record<string, unknown>;
+				if (String(event.type ?? "") !== "tool_execution_end") continue;
+				if (!String(event.tool_call_id ?? "")) continue;
+				settledEvents.push(event);
+			}
+			const settleCandidates: string[] = [];
+			for (const event of settledEvents) {
+				const callId = String(event.tool_call_id ?? "");
+				if (labelled.has(callId)) continue;
+				if (labelGapRef.current.settled.has(callId)) continue;
+				settleCandidates.push(callId);
+			}
+			for (const callId of settleCandidates) {
+				labelGapRef.current.settled.add(callId);
+			}
+			while (labelGapRef.current.settled.size > LABEL_GAP_MAX_TRACKED) {
+				const oldest = labelGapRef.current.settled.values().next().value;
+				if (oldest === undefined) break;
+				labelGapRef.current.settled.delete(oldest);
+			}
+			/*
+			 * The settle's OWN clock, when the frame states one: the runtime carries the
+			 * call's start onto the retained end (`started_at_epoch`), and that instant
+			 * is the walk's floor. Without it a settle target is startless,
+			 * `pagePassedOldestStart` refuses to stop for it, and the speculative read
+			 * pays the whole `RECONCILE_WALK_MAX_ROWS` for a row that is either in the
+			 * next page or nowhere (review round 1, R2 measured 5 requests / 500 rows per
+			 * pre-commit settle). With it the tail page is already older than a call that
+			 * started moments ago, so the walk stops there - one page, one request.
+			 */
+			for (const [callId, at] of seedCallStarts(settledEvents))
+				labelGapRef.current.starts.set(callId, at);
+			while (labelGapRef.current.starts.size > LABEL_GAP_MAX_STARTS) {
+				const oldest = labelGapRef.current.starts.keys().next().value;
+				if (oldest === undefined) break;
+				labelGapRef.current.starts.delete(oldest);
+			}
+			const settleAsk =
+				labelGapRef.current.settleRows < LABEL_SETTLE_ROWS_MAX
+					? settleCandidates
+					: [];
+			const missingLabels = [
+				...new Set([...seedMissing, ...retryLabels, ...settleAsk]),
+			];
 			/*
 			 * The rows whose FIRST label read this is. Their object column is held
 			 * empty until the walk below ends (`labelPending`), because the stand-in it
@@ -2059,7 +2214,18 @@ export function useCanonicalSessionStream(
 			for (const id of [...labelGapRef.current.attempts.keys()]) {
 				if (labelled.has(id)) labelGapRef.current.attempts.delete(id);
 			}
-			for (const id of missingLabels) {
+			/*
+			 * WHAT IS CHARGED, and why a settle is not among them: this loop is the
+			 * per-call budget, spent per READ THAT COULD HAVE ANSWERED. A settle's
+			 * speculative read (`settleAsk`) is not one of those - the row it wants is
+			 * written when the call's step commits, so the read may be asking for a row
+			 * that does not exist yet - and charging it here is how the first head of
+			 * this change spent both of a call's attempts before the durable round
+			 * ending that could have labelled it (review round 1, R1). Its ids are kept
+			 * in `settled` instead, and charged in the retry path the moment a durable
+			 * ending makes them candidates again.
+			 */
+			for (const id of new Set([...seedMissing, ...retryLabels])) {
 				labelGapRef.current.attempts.set(
 					id,
 					(labelGapRef.current.attempts.get(id) ?? 0) + 1,
@@ -2446,6 +2612,17 @@ export function useCanonicalSessionStream(
 					releaseLabelPending(held);
 				}, LABEL_HOLD_MAX_MS);
 			}
+			/*
+			 * A walk a settle ALONE asked for is paid out of the settle budget; one the
+			 * seed, a retry or the reconcile also needed is FREE, because it was
+			 * happening anyway. That is the coalescing: N settles in one flush are one
+			 * walk, and a settle whose call a page already names costs nothing further.
+			 */
+			const settleOnly =
+				settleAsk.length > 0 &&
+				seedMissing.length === 0 &&
+				retryLabels.length === 0 &&
+				!needsReconcile;
 			if (needsReconcile || missingLabels.length > 0) {
 				const targets = new Set(missingLabels);
 				const order = labelGapRef.current.order;
@@ -2472,6 +2649,16 @@ export function useCanonicalSessionStream(
 								pending: firstAttempts,
 							}
 						: NO_LABEL_WALK,
+					/*
+					 * The first attempt, stated rather than defaulted: the settle
+					 * budget's callback rides behind it (see `onSpend`).
+					 */
+					1,
+					settleOnly
+						? (spent: number) => {
+								labelGapRef.current.settleRows += spent;
+							}
+						: undefined,
 				);
 			}
 		};
