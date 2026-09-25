@@ -50,6 +50,7 @@ import {
 	AddIntegrationForm,
 	type AddIntegrationValues,
 } from "./integrations/add-integration-form";
+import { focusHoldStep } from "./integrations/integration-focus";
 import { IntegrationKeyDialog } from "./integrations/integration-key-dialog";
 import {
 	type IntegrationRow as IntegrationRowData,
@@ -224,6 +225,13 @@ export const McpManagementSection: FC<{
 		name: string;
 		waitForSignIn: boolean;
 		until: number;
+		/*
+		 * The control this move has already landed on, once it has (U21). Its presence
+		 * is what tells a later run of the effect that this is a payload arriving
+		 * AFTER the move rather than the move itself - and the row it targets can have
+		 * been mounted again under it in between, which is the whole of U21.
+		 */
+		landedOn?: HTMLElement | null;
 	} | null>(null);
 	const [focusAfterRemove, setFocusAfterRemove] = useState<{
 		index: number;
@@ -708,7 +716,57 @@ export const McpManagementSection: FC<{
 		// effect, rather than dropping the move and leaving focus where the
 		// closing surface left it. The deadline above still bounds the wait.
 		if (!element) return;
-		setFocusRow(null);
+		/*
+		 * THE MOVE HAS ALREADY LANDED ONCE (UX round 5, U21), and this run is a
+		 * payload arriving afterwards - the move is not consumed by landing, because
+		 * the row it landed on can be MOUNTED AGAIN under it. A row that changes group
+		 * is unmounted and re-created rather than moved (each group is its own
+		 * `<ul>`), so the focused control goes with the old node and focus falls to
+		 * `<body>` - measured on the built app after a successful sign-out: `⋯` at
+		 * 1.5 s, `<body>` at 2.8 s, `⋯` again at 3.1 s, `<body>` at 5.3 s, with the
+		 * sampled row and menu reporting `isConnected: false`; the same signature on a
+		 * key save's Available -> Connected, while the remove flow, which lands on a
+		 * NEIGHBOURING row, holds.
+		 *
+		 * WHERE IT GOES IS `focusHoldStep`'s DECISION rather than a second rule
+		 * written here (the sibling hold/refetch work in #494 settled the same class of
+		 * bug by rejecting a DETACHED candidate and waiting for the read that replaces
+		 * it before restoring, and one idiom for one problem is worth more than two):
+		 * `settled` leaves focus alone because the row has not re-stood, `restore`
+		 * re-applies the move onto the control the row has where it now stands, and
+		 * `drop` gives the move up - past its window, or onto a reader who holds focus.
+		 */
+		const landedOn = focusRow.landedOn;
+		let until = focusRow.until;
+		if (landedOn) {
+			const step = focusHoldStep({
+				hold: { node: landedOn, until: focusRow.until },
+				candidate: element,
+				active: window.document.activeElement,
+				body: window.document.body,
+				now: Date.now(),
+			});
+			if (step === "settled") return;
+			if (step === "drop") {
+				setFocusRow(null);
+				return;
+			}
+			/*
+			 * A RE-STAND RE-ANCHORS THE WINDOW rather than inheriting it, because the
+			 * alternative is a hold that expires while the row it is following is still
+			 * moving. What m-4 removed is kept by the rule rather than by the clock: a
+			 * `restore` only ever happens onto a row whose control NOBODY's focus is on,
+			 * so a late one cannot take focus from wherever the reader moved on to, which
+			 * is the hazard the deadline exists to bound.
+			 */
+			until = Date.now() + FOCUS_ARM_MS;
+		}
+		setFocusRow({
+			name: row.name,
+			waitForSignIn: false,
+			until,
+			landedOn: element,
+		});
 		/*
 		 * ONE MACROTASK LATER, and that is the whole of Q2/U20: a dialog or a row
 		 * menu closing runs Radix's close-auto-focus AFTER this effect, its target
@@ -732,9 +790,11 @@ export const McpManagementSection: FC<{
 		 * again, and the pin here can only assert that this deferral exists (it
 		 * does, and it fails when removed). The guard below is deliberately
 		 * conservative in the same spirit: a target that has left the document by
-		 * the time the timer fires drops the move rather than throwing, which
-		 * leaves focus where the close put it - a narrower window than U20's, and
-		 * the one the walk did not reach.
+		 * the time the timer fires drops the move rather than throwing - and the
+		 * hold above is what picks that dropped move back up when its node was
+		 * REPLACED rather than withdrawn, which is the window this paragraph used to
+		 * say the walk had not reached (U21 is that window, and the reader's place is
+		 * no longer left where the close put it).
 		 */
 		window.setTimeout(() => {
 			if (element.isConnected) element.focus();

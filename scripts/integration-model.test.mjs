@@ -26,6 +26,7 @@ const bundle = await build({
 			'export { keylessReference, keyDialogSave, KEYLESS_VALUE_KEY, MAX_REFERENCE_LENGTH } from "./src/renderer/src/features/settings/components/integrations/integration-key-dialog";' +
 			'export { forgetCatalogCwd, cwdAfterRefusal, catalogQueryErrorIsInvalidCwd, CATALOG_CWD_STORAGE_KEY as CWD_KEY } from "./src/renderer/src/features/settings/components/integrations/use-integrations";' +
 			'export { isSignedOut, isFailedSignOut } from "./src/renderer/src/features/settings/components/integrations/integration-model";' +
+			'export { focusHoldStep } from "./src/renderer/src/features/settings/components/integrations/integration-focus";' +
 			'export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";' +
 			'export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
 		resolveDir: process.cwd(),
@@ -2886,8 +2887,19 @@ test("the dialogs and the row list keep the geometry and the rules the walk meas
 	 * save arm the deferred row move, and the add form's cancel hands focus back
 	 * to the control that OPENED it (the form is inline, and its opener is still
 	 * on screen).
+	 *
+	 * COUNTED BY AN ARM SITE'S OWN SIGNATURE, NOT BY `setFocusRow({` (U21). The
+	 * landing write is now a fourth call of that shape, because the move is no
+	 * longer consumed when it lands - it is kept armed with the control it landed on,
+	 * which is what lets it follow a row that is mounted again in another group - so
+	 * a count of the call would have read the fix as a fifth completion. The
+	 * deadline inside the armed object is what a completion sets and nothing else
+	 * does (the re-stand's `until = Date.now() + FOCUS_ARM_MS` assigns a local and
+	 * has no colon), so the count still reddens when a completion is added or one of
+	 * the three is removed - which is the property this pin exists for.
 	 */
-	const arms = [...section.matchAll(/setFocusRow\(\{/g)].length;
+	const arms = [...section.matchAll(/until: Date\.now\(\) \+ FOCUS_ARM_MS,/g)]
+		.length;
 	assert.equal(
 		arms,
 		3,
@@ -3050,5 +3062,162 @@ test("the dialogs and the row list keep the geometry and the rules the walk meas
 		hook,
 		/Date\.now\(\) < settleUntilRef\.current\s*\n\s*\? INTEGRATIONS_POLL_MS\s*\n\s*: integrationsPollInterval\(data\)/,
 		"which polls every tick inside the window and hands back to the moving-row rule after it (Q2)",
+	);
+});
+
+/*
+ * U21, as a rule rather than as a walk: a landed focus move is not finished while
+ * the row it landed on can still be MOUNTED AGAIN under it.
+ *
+ * WHY THE RULE IS DRIVEN DIRECTLY, AND WHAT THAT DOES NOT COVER (stated rather
+ * than implied). The arm the walk measured needs a live pointer on the built app - a
+ * row only re-stands when a daemon read lands, and this menu is not drivable in
+ * jsdom at all (which is why every other assertion about it in this file reads its
+ * source). So the decision is a leaf module with fake nodes here, and the section's
+ * use of it is pinned by source below. What is NOT covered by either: that the
+ * built app's row really is remounted on a group change, and that the restore lands
+ * on the control the reader's next Tab continues from. Both are QA's cell on the
+ * live rig, and this test says so instead of implying the defect is closed here.
+ */
+test("a landed focus move follows the row across its own re-stand (U21)", () => {
+	const node = (isConnected) => ({ isConnected });
+	const body = node(true);
+	const control = node(true);
+	const step = (overrides) =>
+		m.focusHoldStep({
+			hold: { node: control, until: 2_000 },
+			candidate: control,
+			active: body,
+			body,
+			now: 1_000,
+			...overrides,
+		});
+	/*
+	 * THE COMMON CASE IS INERT. The control the move landed on is still the row's, so
+	 * the row has not re-stood and focus must not be touched - not even to re-focus
+	 * the same control, which is what would pull a reader back out of the row they had
+	 * tabbed on to.
+	 */
+	assert.equal(
+		step({}),
+		"settled",
+		"a control still in the document means the row has not re-stood",
+	);
+	assert.equal(
+		step({ active: node(true) }),
+		"settled",
+		"and a landing that is still connected is left alone whatever holds focus",
+	);
+	/*
+	 * THE ARM U21 MEASURED. The landed control has left the document - the row was
+	 * mounted again in another group - and nobody holds focus, so the move is
+	 * re-applied onto the control the row has where it now stands.
+	 */
+	assert.equal(
+		step({ hold: { node: node(false), until: 2_000 } }),
+		"restore",
+		"a detached landing with nobody focused is re-applied onto the row's control",
+	);
+	assert.equal(
+		step({ hold: { node: node(false), until: 2_000 }, active: null }),
+		"restore",
+		"and `activeElement` on nothing counts as nobody, not as somebody",
+	);
+	/*
+	 * THE TWO REFUSALS. A reader who holds focus is the answer to where focus
+	 * belongs, and a move whose window has closed is not taken: dropping it leaves
+	 * focus on `<body>`, which is strictly better than a move performed late (m-4).
+	 */
+	assert.equal(
+		step({ hold: { node: node(false), until: 2_000 }, active: node(true) }),
+		"drop",
+		"a move is never taken back from a control that holds focus",
+	);
+	assert.equal(
+		step({ hold: { node: node(false), until: 2_000 }, now: 2_001 }),
+		"drop",
+		"and the window bounds a hold the row keeps re-standing under",
+	);
+	assert.equal(
+		step({
+			hold: { node: node(false), until: 2_000 },
+			now: 2_001,
+			active: node(true),
+		}),
+		"drop",
+		"the window is checked before anything else can ask for a restore",
+	);
+	assert.equal(
+		step({ hold: { node: node(false), until: 2_000 }, candidate: null }),
+		"drop",
+		"a row with no control to land on ends the move rather than waiting on it twice",
+	);
+	assert.equal(
+		step({ hold: { node: node(false), until: 2_000 }, candidate: node(false) }),
+		"drop",
+		"and a candidate that is itself detached is not a target",
+	);
+	/*
+	 * THE WIRING, in the same shape as every other assertion about this menu: the
+	 * rule above is only the fix if the section consults it, keeps the landed
+	 * control, and treats `settled`/`drop`/restore as the rule says. This is a
+	 * source pin and is honest about being one - the live cell is QA's.
+	 */
+	const section = readFileSync(
+		"src/renderer/src/features/settings/components/mcp-management-section.tsx",
+		"utf8",
+	);
+	assert.match(
+		section,
+		/landedOn\?: HTMLElement \| null;/,
+		"the armed move carries the control it landed on, or the hold cannot exist",
+	);
+	const hold = section.slice(
+		section.indexOf("const landedOn = focusRow.landedOn;"),
+		section.indexOf(
+			"}, [focusRow, servers, operations, integrations.memories]);",
+			section.indexOf("const landedOn = focusRow.landedOn;"),
+		),
+	);
+	assert.match(
+		hold,
+		/const step = focusHoldStep\(\{/,
+		"the re-stand decision is the shared rule rather than a second idiom (U21)",
+	);
+	assert.match(
+		hold,
+		/hold: \{ node: landedOn, until: focusRow\.until \}/,
+		"and it is asked about the control the move landed on and that move's window",
+	);
+	for (const arg of [
+		"candidate: element,",
+		"active: window.document.activeElement,",
+		"body: window.document.body,",
+	]) {
+		assert.match(
+			hold,
+			new RegExp(arg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+			`the rule is handed ${arg.split(":")[0]}, so it decides on this page's DOM`,
+		);
+	}
+	assert.match(
+		hold,
+		/if \(step === "settled"\) return;/,
+		"a row that has not re-stood leaves focus where it is",
+	);
+	assert.match(
+		hold,
+		/if \(step === "drop"\) \{\s*\n\s*setFocusRow\(null\);\s*\n\s*return;/,
+		"and a dropped move is dropped rather than left armed",
+	);
+	assert.match(
+		hold,
+		/until = Date\.now\(\) \+ FOCUS_ARM_MS;/,
+		"a re-stand re-anchors the move's window, so the hold does not expire mid-move",
+	);
+	assert.match(
+		hold,
+		/landedOn: element,/,
+		"and the move re-arms onto the control the row has now rather than being consumed by landing",
 	);
 });
