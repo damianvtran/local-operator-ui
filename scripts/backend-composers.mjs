@@ -67,7 +67,7 @@ const mainProcessFixtures = (home) => ({
 export async function loadBackendComposers() {
 	/*
 	 * THE SCRATCH HOME IS MADE HERE AND REMOVED ON EXIT (agent round 1, N4): created at
-	 * import time it outlived every run, and twenty-six `backend-composers-*` directories
+	 * import time it outlived every run, and twenty-seven `backend-composers-*` directories
 	 * had accumulated in `$TMPDIR` from three suites before the review counted them.
 	 */
 	const home = mkdtempSync(join(tmpdir(), "backend-composers-"));
