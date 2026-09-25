@@ -928,9 +928,25 @@ async function mount() {
 	};
 	runtime.rerender();
 	return {
+		/*
+		 * The handle ITSELF, for a case about a published field rather than about
+		 * rows. The three accessors beside it exist because most of this file
+		 * asserts on transcript CONTENT; a case about the state the composer reads
+		 * is about the object the panel hands it, so it takes the object.
+		 */
+		handle: () => handle,
 		row: (id) => handle.transcript.records.find((record) => record.id === id),
 		ids: () => ids(handle.transcript),
 		status: () => handle.status,
+		/*
+		 * What the composer's readings row is handed, by the SAME expression
+		 * `chat-page.tsx` uses: the live snapshot when there is one, and the held
+		 * copy otherwise. Asserting on this rather than on `heldFrontend` alone is
+		 * the point of the cases at the foot of this file - the claim is about what
+		 * reaches the reader, and a hold that nothing reads would satisfy the field
+		 * while the strip still rendered nothing.
+		 */
+		readings: () => handle.frontend ?? handle.heldFrontend,
 	};
 }
 
@@ -1235,5 +1251,191 @@ test("replayed events paint even when the snapshot lands in a later batch", asyn
 		panel.row(id).text,
 		"replayed text",
 		"and is not doubled by the seed",
+	);
+});
+
+/* ------------------------------------- the readings a reconnect must not blank */
+
+/*
+ * The reported defect: while viewing a busy session the pane alternated between
+ * a conversation-LOADING state - the send control unusable and NO composer
+ * readouts at all - and the loaded state, at the stream's own cadence of ~1.5-4 s.
+ *
+ * The backend ends the stream that often for a busy session and answers every
+ * reconnect with `open {gap: true}` (the bridge rotates its epoch on a cold
+ * re-acquire), and this hook handled BOTH a `gap` frame and a gapped `open` by
+ * clearing `frontend` - which is exactly what the readings strip renders
+ * NOTHING for. So the four readings blanked and returned, once per reconnect.
+ *
+ * The cases below drive the REAL hook through those frame sequences and assert
+ * on the readings expression the pane itself uses, in both directions: held
+ * across a transient reconnect (R1), and still dropped by every terminal state
+ * (R3) rather than held forever.
+ */
+
+/** The transport's own `end`, as main's relay and the dev proxy both emit it. */
+function endStream() {
+	const active = subscriptions.at(-1);
+	assert.ok(active, "no subscription to end");
+	active.onEvent({ kind: "end" });
+}
+
+/** The plan and the first snapshot every case here starts from. */
+async function paneAtFirstSnapshot() {
+	const plan = conversation({ withSteer: false, awayRows: 0 });
+	const transcript = makeTranscript(plan.rows);
+	reset({ transcript });
+	const panel = await mount();
+	const page = () =>
+		transcript.page(plan.cursor, SNAPSHOT_PAGE).entries;
+	deliver(openFrame(1, true));
+	deliver(
+		snapshotFrame(2, { cursor: plan.cursor, entries: page(), liveEvents: [] }),
+	);
+	await pump();
+	assert.ok(
+		panel.readings(),
+		"the first snapshot is what gives the pane its readings",
+	);
+	return { plan, page, panel };
+}
+
+test("a gap between two snapshots holds the readings instead of blanking the composer", async () => {
+	const { plan, page, panel } = await paneAtFirstSnapshot();
+	const painted = panel.readings();
+
+	// The reconnect's own open, which is what a busy session answers with: the
+	// bridge's epoch rotated, so the receipt cannot be replayed and the frame
+	// says so. This is the frame that blanked the strip.
+	deliver(openFrame(9, true));
+	await pump();
+	assert.equal(
+		panel.readings(),
+		painted,
+		"the readings a reconnect must not blank are still the ones it painted",
+	);
+	assert.equal(
+		panel.handle().frontend,
+		null,
+		"while the AUTHORITATIVE frontend is still dropped, so the replacement stream's frames are replay",
+	);
+	assert.equal(
+		panel.status(),
+		"reconnecting",
+		"and the pane says the connection is not live, which is what keeps the hold honest",
+	);
+	assert.equal(
+		panel.handle().heldFrontend,
+		painted,
+		"the hold is the snapshot's own object, not a copy that could drift from it",
+	);
+
+	// Live again, then the server's own `gap` FRAME - the other door into the same
+	// state, and the one a stream that dies mid-flight leaves behind. Deliberately
+	// with no replacement snapshot after it: the hold has to survive the window
+	// where nothing has answered yet, which is the whole of the operator's wait.
+	deliver(openFrame(10, false));
+	deliver(
+		snapshotFrame(11, { cursor: plan.cursor, entries: page(), liveEvents: [] }),
+	);
+	await pump();
+	assert.equal(panel.status(), "live", "the reconnect's snapshot lands");
+	const relaid = panel.readings();
+
+	deliver({ session_id: SESSION_A, type: "gap" });
+	await pump();
+	assert.equal(
+		panel.readings(),
+		relaid,
+		"a bare gap frame does not blank the readings either",
+	);
+	assert.equal(panel.status(), "reconnecting", "and it is what says so");
+});
+
+test("a fresh snapshot replaces the held readings wholesale", async () => {
+	const { plan, page, panel } = await paneAtFirstSnapshot();
+	const painted = panel.readings();
+	deliver(openFrame(9, true));
+	await pump();
+	assert.equal(panel.readings(), painted, "the hold is in place");
+
+	const second = snapshotFrame(10, {
+		cursor: plan.cursor,
+		entries: page(),
+		liveEvents: [],
+	});
+	/*
+	 * The owner's own new values, so "replaced wholesale" is falsifiable: a merge
+	 * that kept the held context reading would satisfy a test that only asserted
+	 * the hold was still there.
+	 */
+	second.payload.frontend.snapshot.context_tokens = 4321;
+	second.payload.frontend.snapshot.conversation_title = "Conversation A, resumed";
+	deliver(second);
+	await pump();
+
+	const readings = panel.readings();
+	assert.equal(
+		readings,
+		panel.handle().frontend,
+		"the held copy IS the painted frontend once a snapshot lands",
+	);
+	assert.equal(readings.context_tokens, 4321, "with the new snapshot's value");
+	assert.equal(
+		readings.conversation_title,
+		"Conversation A, resumed",
+		"and its title",
+	);
+	assert.deepEqual(
+		Object.keys(readings).sort(),
+		Object.keys(second.payload.frontend.snapshot).sort(),
+		"and the snapshot's own field set, with nothing of the held copy merged in",
+	);
+});
+
+test("a 404 for the session still clears the held readings", async () => {
+	const { panel } = await paneAtFirstSnapshot();
+	deliver(openFrame(9, true));
+	await pump();
+	assert.ok(panel.readings(), "the readings are held across the reconnect");
+
+	const active = subscriptions.at(-1);
+	assert.ok(active, "the subscription the failure is reported on");
+	active.onEvent({ kind: "error", status: 404, detail: "no such session" });
+	await pump();
+
+	assert.equal(panel.handle().missing, true, "the failure is the terminal one");
+	assert.equal(panel.status(), "unavailable", "and the pane says so");
+	assert.equal(
+		panel.readings(),
+		null,
+		"a conversation this host does not have has no readings to hold, and holding them would describe a session that does not exist",
+	);
+});
+
+test("a spent retry budget still clears the held readings", async () => {
+	const { panel } = await paneAtFirstSnapshot();
+	deliver(openFrame(9, true));
+	await pump();
+	assert.ok(panel.readings(), "the readings are held across the reconnect");
+
+	// The budget is the hook's own (`STREAM_RETRY_DELAYS_MS`), so this walks it
+	// rather than restating the count: the claim is about the state the pane ends
+	// in, not about how many attempts it takes to get there.
+	for (let i = 0; i < 12 && panel.status() !== "unavailable"; i++) {
+		endStream();
+		await pump();
+	}
+
+	assert.equal(
+		panel.status(),
+		"unavailable",
+		"the stream failed its way through the whole retry budget",
+	);
+	assert.ok(panel.handle().failure, "and the pane has the sentence for it");
+	assert.equal(
+		panel.readings(),
+		null,
+		"the readings go with the budget: a reading held past it would be the only thing still claiming a stream",
 	);
 });
