@@ -28,6 +28,16 @@ import {
 	isWebauthnSettledOutcome,
 	parseWebauthnRequest,
 } from "../shared/webauthn-request";
+import {
+	DEFAULT_WINDOW_CHROME_FACTS,
+	WINDOW_CHROME_MENU_CHANNEL,
+	WINDOW_CHROME_REPORT_CHANNEL,
+	WINDOW_CHROME_STATE_CHANNEL,
+	type WindowChromeColors,
+	type WindowChromeFacts,
+	type WindowChromeState,
+	readWindowChromeArgument,
+} from "../shared/window-chrome";
 import { installDevDriverBridge } from "./dev-driver";
 
 // Custom APIs for renderer
@@ -217,6 +227,42 @@ const api = {
 	 * `shared/config/telemetry.ts`, which holds the same rule.
 	 */
 	telemetryEnabled: readTelemetryArgument(process.argv)?.enabled ?? false,
+	/**
+	 * The window chrome: the synchronous facts the shell lays out from, the report
+	 * the renderer sends back on every theme change, and the state main pushes.
+	 *
+	 * `facts` is read from THIS process's argv, which main composed in
+	 * `rendererArgumentFlags`. It is synchronous because the shell cannot wait for
+	 * it: `data-chrome-platform` decides whether every column's first row starts 32px
+	 * lower (the macOS lane) or at y 0, and a value that arrives after the first paint
+	 * is a visible jump on every launch.
+	 *
+	 * The default is `native`, the mode that paints the layout the app shipped before
+	 * this work. A window main did not create (Storybook, a bare renderer, a future
+	 * second window path that forgot the entry) gets no lane and no insets, which is
+	 * wrong only in that it is not seamless - the alternative is a 32px band of dead
+	 * space under a native title bar.
+	 */
+	windowChrome: {
+		facts: (): WindowChromeFacts =>
+			readWindowChromeArgument(process.argv) ?? DEFAULT_WINDOW_CHROME_FACTS,
+		report: (report: {
+			themeId?: string;
+			colors?: Partial<WindowChromeColors>;
+			cornerGround?: string;
+		}): Promise<boolean> =>
+			ipcRenderer.invoke(WINDOW_CHROME_REPORT_CHANNEL, report),
+		popupAppMenu: (): Promise<boolean> =>
+			ipcRenderer.invoke(WINDOW_CHROME_MENU_CHANNEL),
+		onState: (callback: (state: WindowChromeState) => void): (() => void) => {
+			const handler = (_event: IpcRendererEvent, state: WindowChromeState) =>
+				callback(state);
+			ipcRenderer.on(WINDOW_CHROME_STATE_CHANNEL, handler);
+			return () => {
+				ipcRenderer.removeListener(WINDOW_CHROME_STATE_CHANNEL, handler);
+			};
+		},
+	},
 	// Add methods to open files and URLs
 	openFile: (filePath: string): Promise<FileActionOutcome> =>
 		ipcRenderer.invoke("open-file", filePath),

@@ -430,6 +430,50 @@ const CONTROLS = [
 		ink: "inkDisabled",
 	},
 	{
+		/*
+		 * THE WINDOW'S OWN CAPTION GLYPHS (chat redesign §J3, evidence plan U-8).
+		 *
+		 * Windows and Linux draw the minimize/maximize/close controls INSIDE the client
+		 * area and take their colour from `symbolColor`, which this app supplies from
+		 * the palette. That makes the OS's controls a component whose ink we choose - the
+		 * one non-text UI component in the app that the app does not draw - and WCAG
+		 * 1.4.11 asks 3:1 of it. The rows below assert the file's own text floor on the
+		 * two grounds the glyphs actually sit on, which is stricter.
+		 *
+		 * `edge: false` because the buttons have NO edge of their own: on Windows the
+		 * overlay is transparent so the app's own pixels are the ground, and on Linux the
+		 * overlay colour IS the ground under them. `CONTROLS`' edge floor would demand a
+		 * boundary the OS does not draw, and the alternative - leaving the row out -
+		 * is the "green output about a component nobody listed" failure this section
+		 * opens with. The two grounds are the app's page and the pane toolbars' recessed
+		 * strip, which is what `data-chrome-inset-end`'s owner paints under the buttons
+		 * when a pane is open.
+		 *
+		 * `inkMuted` and `inkDim`, not `ink`: the glyphs must read as part of the
+		 * header's own quiet icon cluster. `ink` would make the OS's buttons the heaviest
+		 * thing in a row of controls, which is the failure mode § 7's liveness rule and
+		 * D8 both name. Measured over the fleet, `inkMuted` is 6.23:1 at worst on
+		 * `canvas` and `inkDim` 5.0:1 at worst on `sunken`.
+		 */
+		name: "window caption glyphs (active)",
+		on: ["canvas", "sunken"],
+		fill: null,
+		border: null,
+		edge: false,
+		ink: "inkMuted",
+	},
+	{
+		/* The inactive state: Microsoft's own guidance dims the glyphs when the window
+		   loses activation, and macOS does it to the lights by itself. Reading
+		   `isFocused()` is a READ and never a raise - see `window-chrome.ts`. */
+		name: "window caption glyphs (inactive)",
+		on: ["canvas", "sunken"],
+		fill: null,
+		border: null,
+		edge: false,
+		ink: "inkDim",
+	},
+	{
 		name: "success callout",
 		on: ["canvas", "surface"],
 		fill: "successWash",

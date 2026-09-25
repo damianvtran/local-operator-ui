@@ -36,6 +36,33 @@ const posthogOptions: Partial<PostHogConfig> = {
 installDevDriver();
 
 document.addEventListener("DOMContentLoaded", () => {
+	/*
+	 * THE CHROME FACTS LAND ON THE DOCUMENT ELEMENT HERE, BEFORE THE FIRST RENDER.
+	 *
+	 * `data-chrome-platform` decides whether every column's first row starts 32px
+	 * lower (the macOS lane) and `data-chrome-mode` decides whether the app reserves
+	 * the OS controls' corners at all, so a value that arrived after the first paint
+	 * would be a visible jump on EVERY launch - which is why it is read
+	 * synchronously from the preload rather than over an IPC round trip, and why it
+	 * is written here rather than by a hook inside `App`.
+	 *
+	 * It replaces #477's `data-titlebar-platform`, which `App` computed from
+	 * `navigator.platform`. That source cannot express the native fallback (it knows
+	 * the OS, not the mode), it cannot know where the OS put its controls (a Linux
+	 * WM may put them leading), and it only exists after React mounts.
+	 *
+	 * `data-chrome-fullscreen` starts at "false" and is kept up to date by
+	 * `useWindowChrome`, which subscribes to main's state pushes - full screen is not
+	 * something the renderer can observe, and it is what collapses the lane to 0.
+	 */
+	const chromeFacts = window.api?.windowChrome?.facts?.();
+	if (chromeFacts) {
+		const root = document.documentElement;
+		root.dataset.chromePlatform = chromeFacts.platform;
+		root.dataset.chromeMode = chromeFacts.mode;
+		root.dataset.chromeFullscreen = "false";
+	}
+
 	const root = ReactDOM.createRoot(
 		document.getElementById("app") as HTMLElement,
 	);

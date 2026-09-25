@@ -7,32 +7,131 @@
  * WINDOW CHROME
  * ============================================================================
  *
- * On macOS the app hides Electron's native title bar and keeps its traffic
- * lights, which Electron draws OVER the renderer with their own OS hit targets
- * (`src/main/titlebar-options.ts`). The renderer therefore has to leave those
- * controls alone, reserve their lane at the top of the shell, and mark only
- * empty surfaces draggable - interactive descendants opt back out so clicks
- * still land.
+ * There is NO window-wide title bar on any platform. The top 40px of every column
+ * is already a toolbar row - the sidebar's brand row, the conversation title, each
+ * pane's toolbar - and that row IS the chrome. The OS's own controls take a CORNER
+ * of it (macOS: AppKit's traffic lights, which Electron leaves over the renderer)
+ * or the whole trailing end of its first row (Windows and Linux: Electron's WCO
+ * caption buttons, which the overlay enables and which are drawn into the client
+ * area), and the column that owns that corner reserves it.
  *
- * EVERY RULE HERE IS GATED ON `data-titlebar-platform`, which `app.tsx` sets on
- * the shell from one `navigator.platform` read. Outside macOS none of it
- * applies: Windows and Linux keep their native frame and lose no space to a lane
- * for controls the OS is not drawing over the app.
+ * EVERY RULE HERE IS GATED ON `data-chrome-mode`, `data-chrome-platform`,
+ * `data-chrome-leading`, `data-chrome-trailing` and `data-chrome-fullscreen`, which
+ * `main.tsx` writes onto the DOCUMENT ELEMENT before the first render from main's
+ * own fact (`--lo-window-chrome`) and which `useWindowChrome` keeps current. Two
+ * reasons the root element rather than the shell div, and both were defects under
+ * the previous `data-titlebar-platform`-on-the-shell spelling: the attribute rules
+ * could not reach a PORTALED element (the sidebar's overlay sheet is portaled to
+ * `body`, and had to re-read `navigator.platform` for itself), and `App` could not
+ * know the chrome MODE at all - it only knew the OS - so the native-frame fallback
+ * had no way to switch the lane and the insets off.
+ *
+ * THE THREE CUSTOM PROPERTIES ARE THE ONLY PLACE `env()` IS READ. Every component
+ * reads these instead, which is what lets a rig simulate any platform's geometry on
+ * a mac host by overriding them on `:root` (a mac host has no WCO rect to measure).
+ * `data-chrome-mode="native"` leaves all three at 0, so the app lays out exactly as
+ * it did before this work.
  */
-[data-titlebar-platform="mac"] {
-	/*
-	 * 8 above the lights' 16px hit frame, 16 for it, one 8px step below: 32. The
-	 * number is derived from the OS frame rather than chosen, and the derivation is
-	 * on `titlebar-options.ts` beside the `screencapture -l` reading it comes from.
-	 */
-	--chrome-strip-h: 32px;
+:root {
+	/* The fallback for a document main did not create a renderer for, and for
+	   `data-chrome-mode="native"`. A lane drawn under a native title bar is 32px of
+	   nothing, so the default is the safe direction. */
+	--chrome-strip-h: 0px;
+	--chrome-inset-start: 0px;
+	--chrome-inset-end: 0px;
 }
 
-[data-titlebar-platform="mac"] [data-titlebar-drag] {
+/*
+ * WINDOWS IS 0 AND LINUX IS ONLY SOMETIMES NOT, which is the part that looks like a
+ * mistake. `env(titlebar-area-height)` is 40 on BOTH platforms - it is the height of
+ * the WCO area, not a band above the content - so applying it as a top inset on
+ * Windows would push every page's first row 40px down, away from the buttons the
+ * user expects to sit level with it. On Windows the controls are always trailing,
+ * so the reservation is `--chrome-inset-end` and the strip stays 0. On Linux the
+ * buttons are the WM's to place: trailing (GNOME, KDE by default) gives the same
+ * answer as Windows, while a LEADING layout overhangs the sidebar's own column and
+ * needs a lane of the buttons' height, which is where the env value belongs.
+ *
+ * `data-chrome-leading`/`-trailing` exist because CSS cannot branch on "is this
+ * length greater than zero". `useWindowChrome` derives both from the live WCO rect.
+ */
+[data-chrome-mode="integrated"][data-chrome-leading="true"] {
+	--chrome-strip-h: env(titlebar-area-height, 0px);
+	--chrome-inset-start: env(titlebar-area-x, 0px);
+}
+
+[data-chrome-mode="integrated"][data-chrome-trailing="true"] {
+	/*
+	 * The buttons' width, from the other side of the WCO rect: the rect's own width
+	 * is the area LEFT of the buttons when they trail. `max(0px, ...)` because a
+	 * leading layout reports a rect that already starts at 0 and the subtraction
+	 * would otherwise go negative.
+	 */
+	--chrome-inset-end: max(
+		0px,
+		calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw))
+	);
+}
+
+/*
+ * macOS: the lane is a CONSTANT rather than an env() value, because macOS
+ * deliberately does not enable WCO (it would add no pixels, and it would hand the
+ * renderer a geometry main already reproduces from its own full-screen events).
+ *
+ * 32 is derived from the OS frame rather than chosen - the lights' hit frames are
+ * 16px tall at y 8, so 8 above + 16 + one 8px step below - and a `screencapture -l`
+ * window capture reads the drawn circles at centre 16.00. The derivation and the
+ * instrument note are on `src/main/titlebar-options.ts`, beside the
+ * `trafficLightPosition` decision they explain.
+ *
+ * The 80px start inset is the BANNER's, not the columns'. #462 derived it as "one
+ * 8px step past the zoom button's hit frame (x 70)" for a rail whose first row sat
+ * BESIDE the lights; this shell puts the lane above every column instead, so no
+ * column's first row is beside them and the inset's only consumer left is a banner,
+ * which is a first child of the shell and therefore paints under the lights.
+ */
+[data-chrome-mode="integrated"][data-chrome-platform="mac"] {
+	--chrome-strip-h: 32px;
+	--chrome-inset-start: 80px;
+	--chrome-inset-end: 0px;
+}
+
+/*
+ * Full screen: the lane collapses to 0 and both insets fall with it. Driven by
+ * main's `enter-full-screen`/`leave-full-screen`, because full screen is not
+ * something the renderer can observe - on macOS the lights come back on the
+ * slide-down title bar, and on Linux the WCO rect goes empty and Blink REMOVES the
+ * four `titlebar-area-*` env vars, so the fallbacks above already resolve to 0.
+ */
+[data-chrome-mode="integrated"][data-chrome-fullscreen="true"] {
+	--chrome-strip-h: 0px;
+	--chrome-inset-start: 0px;
+	--chrome-inset-end: 0px;
+}
+
+/*
+ * THE DRAG VOCABULARY IS #477's, UNCHANGED, AND ITS GATE IS THE ONLY THING THAT
+ * MOVED. `data-titlebar-drag` on an empty surface, with interactive descendants
+ * opting back out so clicks still land; the no-drag list is kept byte-identical
+ * because it was derived rather than guessed (a button inside a drag region is not
+ * clickable, and the list is every control type the app actually renders in a
+ * header). What changed is the gate: `[data-titlebar-platform="mac"]` became
+ * `[data-chrome-mode="integrated"]`, so Windows and Linux get the drag surfaces too
+ * - without which a frameless window has no way to be moved at all except by its
+ * OS-drawn edges.
+ *
+ * NO CUSTOM CONTEXT MENU ON ANY DRAG SURFACE. Right-click on a drag region raises
+ * the system menu on Windows and Linux, which is the behaviour a frameless window
+ * needs (it is where Alt+Space's menu and Move/Size live); preventing it to draw our
+ * own would take that away. The docs say the same thing, and
+ * `scripts/titlebar-options.test.mjs` scans for an `onContextMenu` in any file that
+ * renders a drag region.
+ */
+[data-chrome-mode="integrated"] [data-titlebar-drag] {
 	-webkit-app-region: drag;
 }
 
-[data-titlebar-platform="mac"]
+[data-chrome-mode="integrated"]
 	[data-titlebar-drag]
 	:is(
 		button,
@@ -49,23 +148,103 @@
 }
 
 /*
- * THE LANE IS INVISIBLE OFF macOS, and it has to be invisible rather than
- * unrendered: `chat-layout.tsx` renders it once for every platform so the drag
- * vocabulary, the inset and the two first rows' alignment are all decided in one
- * place. Off macOS the native frame already carries the controls, and a lane
- * there would be 32px of nothing between the title bar and the app's own rows.
+ * THE LANE IS INVISIBLE WHERE THE OS IS NOT DRAWING OVER THE APP, and it has to be
+ * invisible rather than unrendered: `chat-layout.tsx` renders it once for every
+ * platform so the drag vocabulary, the inset and the two first rows' alignment are
+ * all decided in one place. On macOS it is always up; on Linux it exists only when
+ * the WM puts the buttons leading, which is the one case where they overhang the
+ * sidebar's own column.
  *
- * It is `display: none` rather than `height: 0` so it is out of the flow
- * entirely: a zero-height drag region still swallows a press along the window's
- * top edge on Windows, where the OS frame is what owns it.
+ * It is `display: none` rather than `height: 0` so it is out of the flow entirely: a
+ * zero-height drag region still swallows a press along the window's top edge, which
+ * on Windows is where the OS frame lives.
  */
 [data-titlebar-lane] {
 	display: none;
 }
 
-[data-titlebar-platform="mac"] [data-titlebar-lane] {
+[data-chrome-mode="integrated"][data-chrome-platform="mac"]
+	[data-titlebar-lane],
+[data-chrome-mode="integrated"][data-chrome-leading="true"]
+	[data-titlebar-lane] {
 	display: block;
 	height: var(--chrome-strip-h);
+}
+
+/*
+ * THE TRAILING RESERVATION, AS ONE UTILITY.
+ *
+ * It is a SPACER at the end of a 40px row's first line rather than padding on the
+ * row, and that is load-bearing at narrow widths: below 620px the chat header's
+ * action cluster drops to a SECOND line, which sits below the controls and needs no
+ * reservation at all. Padding on the row would waste the buttons' width on line 2.
+ *
+ * Exactly one element wears it at a time - the chat header when no pane is open, the
+ * open pane's toolbar otherwise - because the right slot is exclusive in the store
+ * (`claimRightSlot`), so the two never both need it and neither has to know which
+ * case it is in.
+ */
+@utility chrome-reserve-trailing {
+	width: var(--chrome-inset-end);
+	flex: none;
+}
+
+/*
+ * THE NON-CHAT ROUTES' DRAG BAND. Settings, agents, agent hub and schedules have no
+ * 40px toolbar row of their own, so on a platform where the app hides the frame they
+ * would have no drag surface at all above the page's own top padding. The band is
+ * `--chrome-strip-h` tall, which is 0 on Windows and Linux (their buttons sit IN the
+ * first row, so the band has nothing to clear) and 32 on macOS.
+ */
+[data-chrome-mode="integrated"] [data-chrome-route-band] {
+	display: block;
+	height: var(--chrome-strip-h);
+	-webkit-app-region: drag;
+}
+
+/*
+ * On Windows and Linux the band is the CAPTION HEIGHT rather than the strip, for the
+ * same reason the strip is 0 there: the buttons are drawn INTO the client area's
+ * top 40px, so a route with no 40px row of its own needs a band where they sit - both
+ * to keep the page's own heading clear of them and because a frameless window with
+ * no drag surface cannot be moved at all. `env(titlebar-area-height)` is that 40, and
+ * on Linux a leading layout resolves the same value the strip already has.
+ */
+[data-chrome-mode="integrated"][data-chrome-platform="win"]
+	[data-chrome-route-band],
+[data-chrome-mode="integrated"][data-chrome-platform="linux"]
+	[data-chrome-route-band] {
+	height: env(titlebar-area-height, 0px);
+}
+
+/*
+ * BANNERS, AT BOTH ENDS. A banner is a first child of the shell and is therefore
+ * the surface the controls sit over while one is up - above the lane, and above
+ * every column's first row. #462's mac-only rule generalised: the copy and its
+ * action button are inset past the controls, and the corner keeps painting `canvas`
+ * so the lights (mac) and the Linux overlay sit on the colour they were given, and
+ * Windows' transparent buttons show `canvas` rather than a warning wash.
+ *
+ * The header row BELOW keeps its trailing reservation while a banner is up even
+ * though the controls are no longer over it. That is a deliberate choice of layout
+ * stability over 138px: otherwise the cluster jumps sideways at the moment a banner
+ * appears, on top of the push-down the band's arrival already costs.
+ */
+[data-chrome-mode="integrated"] [data-titlebar-banner] {
+	padding-inline-start: max(
+		var(--chrome-banner-inset, 16px),
+		var(--chrome-inset-start)
+	);
+	padding-inline-end: max(
+		var(--chrome-banner-inset, 16px),
+		var(--chrome-inset-end)
+	);
+	background-image: linear-gradient(
+		to right,
+		var(--color-canvas) 0 var(--chrome-inset-start),
+		transparent var(--chrome-inset-start) calc(100% - var(--chrome-inset-end)),
+		var(--color-canvas) calc(100% - var(--chrome-inset-end))
+	);
 }
 
 /*
