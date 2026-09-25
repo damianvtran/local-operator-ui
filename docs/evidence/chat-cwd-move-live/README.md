@@ -46,7 +46,7 @@ Story ids: `chat-cwd-move--<state>` (this branch's own story file) and
 
 | Directory | Story | What the picture shows |
 | --- | --- | --- |
-| `editable/` | `--editable`, light | The settled chip: folder glyph, `Working directory:`, a 16ch path column ellipsising `~/src/project`, the at-rest chevron. The BEFORE for every other frame here. |
+| `editable/` | `--editable`, light | The settled chip: folder glyph, `Working directory:`, the path `~/src/project` (13 characters), the at-rest chevron. The BEFORE for every other frame here. **Corrected caption.** It used to read "a 16ch path column ellipsising `~/src/project`", and neither half was true of these pixels: the frame is taken at an 880px column, BELOW the 900px threshold the path column was gated on, and a 13-character path was never long enough to ellipsise in it. The column has since been retired for a 16ch CAP (`CHIP_PATH_COLUMN`), so the old sentence describes a mechanism that no longer exists at any width - this is a historical capture of the chip, and `editable/`'s geometry at THIS width is unchanged by that retirement (measured: 260px box, 71/94 span, identical before and after). |
 | `pending/` | `--pending`, light + dark + `dracula` | A move in flight, with the backend's acceptance (the story passes it): the folder glyph is replaced by the app's `Spinner` (accent quadrant visible in the ring) and the **label slot reads `Moving session:`**, with the destination still legible in its own column. Tooltip: `Restarting this session's runtime…`. This is D11 answered in pixels — words at rest, not only on hover — and the ring is the D2 cue. |
 | `pending-before-receipt/` | `--pending-moving`, light | The same state **before** the receipt: identical spinner and label, tooltip `Moving to ~/Downloads…`. The pair is the U3(r2) fix visible: the restart claim is not made until the backend makes it true. |
 | `refused-settled/` | `--refused-settled`, light | The chip after a refusal revoked the value it was painting: no ring, no in-flight words, the path back to the directory the session is really in. D14's frame, which had none. |
@@ -67,12 +67,27 @@ Story ids: `chat-cwd-move--<state>` (this branch's own story file) and
   reported here rather than left for a reviewer to find: the ink box of the chip row is
   530px wide at rest against 515px in flight (both measured at 2x with
   `magick … -format %@` on the `editable` and `pending` frames above). It is the LABEL
-  getting shorter (`Working directory:` to `Moving session:`), not the path: the path keeps
-  its own column, and the two in-flight frames are **identical to the pixel** (515 = 515),
-  so nothing reflows when the receipt lands. The alternative - the full sentence in that
-  slot - was captured first and pushed the destination out of the chip entirely, because
-  the chip sits at its own 19rem ceiling at the composer's width; that capture was
-  discarded rather than kept, since the state it showed is not the one that ships.
+  getting shorter (`Working directory:` to `Moving session:`), and the two in-flight
+  frames are **identical to the pixel** (515 = 515), so nothing reflows when the receipt
+  lands. Every frame here is taken at an 880px column, BELOW the 900px threshold the
+  chip's path cap is gated on, so the path contributes nothing to their width and these
+  numbers stand unchanged by the change described next. The alternative - the full
+  sentence in that slot - was captured first and pushed the destination out of the chip
+  entirely, because the chip sits at its own 19rem ceiling at the composer's width; that
+  capture was discarded rather than kept, since the state it showed is not the one that
+  ships.
+- **The old half of that bullet is no longer true above 900px, and the column it
+  described is gone.** It read "not the path: the path keeps its own column", and the
+  path HAD a fixed 16ch column whose whole purpose was to keep a path change from moving
+  the chip's neighbours. That column is retired in favour of a 16ch CAP (the operator
+  asked for the chip to "not take up extra space unless needed … up to the current as max
+  width"), so above 900px a move between two directories shorter than the cap moves the
+  chip - and the readings cluster beside it - by the path's own delta: 86px for `~` to
+  `~/src/project` at the measured 7.2px per character. What still does NOT move is the
+  chip's left edge, the mic/send group at the row's right edge, and the row's total
+  demand; the before/after frames and the DOM readings behind that claim are on the PR,
+  not in this set (this set is a declared supplementary capture and nothing regenerates
+  it).
 - **Storybook states, not a live session.** Every frame is a story drive of the
   production `DirectoryIndicator` (with the two Electron calls the chip makes stubbed),
   not the app against a daemon. The live-flow half is QA's, in the PR thread — this set
