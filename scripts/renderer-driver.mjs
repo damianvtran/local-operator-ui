@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|sidebar-sections|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|none>
+ *   --scene <states|new-chat|first-send|connection-drop|sidebar-sections|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|none>
  *                          which built-in scene to run (default: states)
  *   --gate-state <label>   (with --scene settings-gate) what this run's backend
  *                          state is called in the frames and the log, so two
@@ -115,6 +115,10 @@
  *                          LOCAL_OPERATOR_DESKTOP_TOKEN; the run asserts both
  *   --backend-records <dir> the serve record that backend wrote for itself, which
  *                          `discovery.ts` needs before it admits the daemon
+ *   --backend-revive <cmd> (with --scene connection-drop) the command that starts
+ *                          a fresh daemon on the --backend address, run with this
+ *                          process's environment when the scene needs the backend
+ *                          back. The token never enters argv
  *   --seed-onboarding-complete  write the scratch profile's onboarding flags, so a
  *                          fresh profile in front of a fresh backend is not a
  *                          first-run user whose six-step wizard is a modal over
@@ -139,6 +143,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import {
 	existsSync,
+	lstatSync,
 	mkdirSync,
 	readFileSync,
 	readdirSync,
@@ -149,6 +154,7 @@ import {
 	utimesSync,
 	writeFileSync,
 } from "node:fs";
+import { get as httpGet } from "node:http";
 import { createRequire } from "node:module";
 import { connect, createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -296,6 +302,17 @@ const BACKEND = argValue("--backend", null);
  * daemon was started with).
  */
 const BACKEND_RECORDS = argValue("--backend-records", null);
+/**
+ * The command that starts a fresh daemon on the `--backend` address, for
+ * `--scene connection-drop`'s reconnect half.
+ *
+ * A SHELL COMMAND AND NOT A PID, because a pid is what the scene takes FROM the
+ * run; what it needs back is the daemon, and only the lane that started the
+ * first one knows how (its scratch config root, its HOME, its serve flags). It
+ * runs with THIS process's environment, so the token and the scratch paths
+ * arrive the way they did for the first daemon and never travel through argv.
+ */
+const REVIVE_CMD = argValue("--backend-revive", null);
 /*
  * A suffix on every frame's file name, for a scene that is run twice against two
  * backends (`session-archive`'s withdrawn pair: the same app against a daemon
@@ -3126,8 +3143,33 @@ async function sceneSessionArchive(cdp) {
 			`[data-session-archive] ${controlPresent ? "matched a control" : "matched nothing"}`,
 		);
 		await clickAt(cdp, '[aria-label="Search chats and agents"]');
+		/*
+		 * THE QUERY IS TYPED INTO A FIELD THAT HAS TO EXIST FIRST, and this step used
+		 * to assume one: `Input.insertText` delivers to whatever holds focus when it
+		 * arrives, the search field is drawn by the click's own state change, and on
+		 * this host the insert lands first often enough that the withdrawn run was
+		 * measuring a search that was never narrowed. Waited for by the field's own
+		 * role and label (the trigger and the field share the aria-label; only the
+		 * field is an `input`), then focused rather than assumed.
+		 */
+		await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector('input[aria-label="Search chats and agents"]'))`,
+			10_000,
+		);
+		await cdp.evaluate(
+			`document.querySelector('input[aria-label="Search chats and agents"]').focus()`,
+		);
 		await cdp.send("Input.insertText", { text: "notes" });
 		await wait(600);
+		const withdrawnQuery = await cdp.evaluate(
+			`document.querySelector('input[aria-label="Search chats and agents"]')?.value ?? null`,
+		);
+		check(
+			"the withdrawn run's query landed in the search field",
+			withdrawnQuery === "notes",
+			`the field reads ${JSON.stringify(withdrawnQuery)}, and every claim below is about a NARROWED panel`,
+		);
 		let togglePresent = true;
 		try {
 			await verb(cdp, "measure", {
@@ -3284,8 +3326,29 @@ async function sceneSessionArchive(cdp) {
 	 */
 	await parkPointer(cdp);
 	await clickAt(cdp, '[aria-label="Search chats and agents"]');
+	/* Same wait, same reason as the withdrawn run above: the field is a state change
+	   away from the click, and a query typed into nothing leaves the panel at rest -
+	   which is what made this scene's "not in the list while off" check pass
+	   vacuously and then threw on the include-archived control, whose own render
+	   rule is `archiveEnabled && query.trim()`. */
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('input[aria-label="Search chats and agents"]'))`,
+		10_000,
+	);
+	await cdp.evaluate(
+		`document.querySelector('input[aria-label="Search chats and agents"]').focus()`,
+	);
 	await cdp.send("Input.insertText", { text: "notes" });
 	await wait(600);
+	const typedQuery = await cdp.evaluate(
+		`document.querySelector('input[aria-label="Search chats and agents"]')?.value ?? null`,
+	);
+	check(
+		"the query landed in the search field",
+		typedQuery === "notes",
+		`the field reads ${JSON.stringify(typedQuery)}, and the toggle this scene clicks next is drawn only for a non-empty query`,
+	);
 	frames.push(await captureSettled(cdp, `search-off${RUN_LABEL}`));
 
 	let archivedBefore = true;
@@ -7392,6 +7455,771 @@ async function sceneFirstSend(cdp) {
 	 * mock provider (a configured user, which is the state the claim is about).
 	 */
 	return [emptyFrame, sentFrame, settledFrame];
+}
+
+/**
+ * THE DAEMON-KILL WALKER: the connection surfaces with the daemon gone, MID-RUN.
+ *
+ * WHY THIS SCENE EXISTS. Every connection-surface finding on the redesign was
+ * observed by a lane that killed its own serve daemon by hand and read the
+ * screen - four live regions and two Retries for one root cause (UX round 1,
+ * U3), a held message with no state on the message (U4), a reconnect that
+ * cleared nothing (U5) - and the scene that should have carried the fixes could
+ * not be written, because nothing in this harness could stop the daemon the run
+ * is pointed at. `--backend` hands the run a daemon somebody else started, and
+ * nothing held its pid. What this adds is that one capability and the readings
+ * it exists for:
+ *
+ *   - the pid comes from the run's OWN serve record (`--backend-records`, the
+ *     daemon's own file at `<config>/run/serve/<pid>.json`), and the kill is a
+ *     SIGTERM to that pid, scoped so it cannot reach another daemon: the
+ *     record's port must be `--backend`'s, its host must be loopback, and the
+ *     scene refuses outright on 1111, which is the operator's own daemon;
+ *   - the revive is `--backend-revive "<command>"` - the lane's own serve
+ *     command, run with THIS process's environment (where the scratch
+ *     HOME/config and the token live; the token never enters argv). The scene
+ *     watches `/health` and re-links the serve records, because a re-started
+ *     daemon is a fresh process with a fresh record, and the app admits a
+ *     daemon only while a record describes one.
+ *
+ * WHAT IT ASSERTS. With the daemon gone: ONE live region states the connection
+ * and ONE Retry control is on screen (U3b, §F2's "one root cause, one Retry").
+ * A message sent while offline carries its state on the message
+ * (`Not delivered · Send again · Edit`, §F3) with the Send control disabled and
+ * its reason stated. A revived daemon clears the held state from the server's
+ * own answer (U5, §F2's last bullet) without adding a second voice.
+ *
+ * WHAT IT NEEDS: `--backend` pointing at a daemon this run owns - started with
+ * the scratch `config.yml` hosting step `docs/agent-driver.md` records, without
+ * which every turn dies 503 and the app's only symptom is an unanswered
+ * message - plus `--backend-records` for that daemon's record directory, and
+ * `--backend-revive` for the reconnect half. A run without `--backend-revive`
+ * takes the offline half and says so.
+ */
+function sceneConnectionDropRecords() {
+	const dir = BACKEND_RECORDS;
+	if (dir === null) return [];
+	const records = [];
+	for (const entry of readdirSync(dir)) {
+		if (!entry.endsWith(".json")) continue;
+		try {
+			records.push({
+				file: join(dir, entry),
+				record: JSON.parse(readFileSync(join(dir, entry), "utf8")),
+			});
+		} catch {
+			/*
+			 * A record that does not parse is SKIPPED rather than fatal: the daemon
+			 * rewrites its own file in place on a heartbeat, and a read that races
+			 * that write is a torn file, not a fact about the run.
+			 */
+		}
+	}
+	return records;
+}
+
+/**
+ * Link this run's serve records into the app's scratch config root.
+ *
+ * A LINK, NOT A COPY, and the difference decides whether the app admits this
+ * run's daemon at all. A serve record is a LIVING document: the real daemon
+ * rewrites it every `HEARTBEAT_INTERVAL_MS` (15s), and discovery classifies a
+ * record whose pid is alive and whose heartbeat is older than
+ * `HEARTBEAT_TIMEOUT_MS` (45s) as WEDGED - refusing both to attach to it and
+ * to spawn a second daemon over it. A copy taken once at launch therefore
+ * stops describing a daemon 45 seconds into the run, and from then on the app
+ * draws its "not attached" banners ACROSS THE FRAMES this rig exists to take.
+ *
+ * Measured, 2026-09-21, on a run whose scene outlives the timeout: every scan
+ * for the rest of the run logged `[discovery] rejected
+ * <config>/run/serve/<pid>.json: wedged (pid <pid> is alive but its heartbeat
+ * is 48s old)` and grew from there, while the stub two directories away was
+ * rewriting that same record every 5s. The link keeps the stub's own rewrites
+ * visible, which is what a record is for.
+ *
+ * CALLED TWICE ON PURPOSE since the connection-drop scene: once at startup, and
+ * again after that scene revives its daemon. A revived daemon is a fresh
+ * process with a fresh pid and a fresh record, and the app admits a daemon only
+ * while a record describes one - so without the second call the app would keep
+ * staring at the dead daemon's record while a healthy one answered. Entries
+ * already linked are left alone; only new files are linked.
+ */
+function linkServeRecords() {
+	if (BACKEND_RECORDS === null) return 0;
+	const records = join(CONFIG_DIR, "run", "serve");
+	mkdirSync(records, { recursive: true });
+	let linked = 0;
+	/*
+	 * A MISSING DIRECTORY IS A LANE ERROR, SAID PLAINLY. `readdirSync` on a path
+	 * that has never existed throws ENOENT from inside `fs`, which names the
+	 * syscall rather than the mistake - and the mistake has one shape: `--backend`
+	 * names a daemon whose config root is not the one `--backend-records` points
+	 * into (a daemon the lane did not start, or a config root it did not clean).
+	 * It cost a run on 2026-09-25, diagnosed from `lsof` rather than from this
+	 * sentence.
+	 */
+	if (!existsSync(BACKEND_RECORDS)) {
+		throw new Error(
+			`--backend-records ${BACKEND_RECORDS} does not exist, so no serve record describes ${BACKEND}\\nThat directory is written by the daemon this run owns, under its own config root (<config>/run/serve). A missing one means --backend names a daemon somebody else started (its record lives under THEIR config root), or the lane's config root was cleaned after its daemon died.`,
+		);
+	}
+	for (const entry of readdirSync(BACKEND_RECORDS)) {
+		if (!entry.endsWith(".json")) continue;
+		const target = join(records, entry);
+		let exists = true;
+		try {
+			lstatSync(target);
+		} catch {
+			exists = false;
+		}
+		if (exists) continue;
+		symlinkSync(join(BACKEND_RECORDS, entry), target);
+		linked += 1;
+	}
+	return linked;
+}
+
+/**
+ * SIGTERM the daemon `--backend` names, and no other.
+ *
+ * The three guards are the whole safety story: the port must be the one the run
+ * is pointed at, the host must be loopback, and 1111 is refused outright - that
+ * is the operator's own daemon, and a scene named after killing daemons must
+ * not be the one that kills his. Returns what it signalled, so the scene
+ * asserts against the record it read rather than against a hope.
+ */
+function killRunDaemon() {
+	const backendPort = Number(new URL(BACKEND).port);
+	if (backendPort === 1111) {
+		throw new Error(
+			"--scene connection-drop refuses a backend on 1111: that is the operator's own daemon, and this scene exists to kill a run-owned one",
+		);
+	}
+	const killed = [];
+	for (const { file, record } of sceneConnectionDropRecords()) {
+		const pid = record?.pid;
+		if (typeof pid !== "number" || pid <= 0) continue;
+		if (Number(record.port) !== backendPort) continue;
+		if (
+			typeof record.host === "string" &&
+			!["127.0.0.1", "localhost", "::1"].includes(record.host)
+		)
+			continue;
+		try {
+			process.kill(pid, "SIGTERM");
+		} catch {
+			continue; // already gone: nothing to signal, nothing to report
+		}
+		killed.push({ pid, file, version: record.version });
+	}
+	return killed;
+}
+
+/**
+ * The daemon's LISTENER is gone when `/health` refuses - the app-visible fact,
+ * and the right bar for "the daemon is gone".
+ *
+ * WHY NOT THE PROCESS EXIT: `local_operator serve` shuts down gracefully, and its
+ * own log says so - `Waiting for connections to close` - while the open session
+ * stream keeps the process alive after the listening socket is closed. Measured
+ * on the first walker run: SIGTERM, the app detached and drew the strip, and the
+ * pid was still there 15s later. What the scene needs to be true is what the app
+ * checks: new connections refused and probes failing.
+ */
+async function waitForBackendRefused(timeoutMs) {
+	const started = Date.now();
+	const port = Number(new URL(BACKEND).port);
+	for (;;) {
+		/*
+		 * A TCP CONNECT, not an HTTP request: the fact this waits for is the
+		 * LISTENER being gone, and a refused connection states it directly -
+		 * `isListening` is the harness's own probe for it (the boot assertion reads
+		 * the same function). It also keeps this window away from `fetch`
+		 * entirely, for the Node 26.5.0 crash `waitForBackendHealth` documents.
+		 */
+		if (!(await isListening(port)))
+			return { ok: true, waitedMs: Date.now() - started };
+		if (Date.now() - started > timeoutMs)
+			return { ok: false, waitedMs: Date.now() - started };
+		await wait(300);
+	}
+}
+
+/**
+ * SIGKILL a daemon that will not finish its graceful shutdown, bounded.
+ *
+ * AFTER THE LISTENER IS GONE, and only there: the run owns these processes, and
+ * one blocked on draining a stream the driver itself holds is exactly the shape
+ * that must not outlive the run. Escalated rather than assumed - the caller
+ * notes it, because "we had to SIGKILL it" is a fact about the daemon, not a
+ * detail of the harness.
+ */
+async function endDaemonProcess(pid) {
+	const first = await waitForPidExit(pid, 10_000);
+	if (first.ok) return { ok: true, killed: false, waitedMs: first.waitedMs };
+	try {
+		process.kill(pid, "SIGKILL");
+	} catch {
+		/* raced its own exit */
+	}
+	const second = await waitForPidExit(pid, 10_000);
+	return {
+		ok: second.ok,
+		killed: true,
+		waitedMs: first.waitedMs + second.waitedMs,
+	};
+}
+
+/** Whether the pid is gone, bounded - SIGTERM is a request, not a guarantee. */
+async function waitForPidExit(pid, timeoutMs) {
+	const started = Date.now();
+	for (;;) {
+		let alive = true;
+		try {
+			process.kill(pid, 0);
+		} catch {
+			alive = false;
+		}
+		if (!alive) return { ok: true, waitedMs: Date.now() - started };
+		if (Date.now() - started > timeoutMs)
+			return { ok: false, waitedMs: Date.now() - started };
+		await wait(200);
+	}
+}
+
+/**
+ * Start the lane's own serve command again, detached.
+ *
+ * The command is argv and never a secret: the token it needs reaches the child
+ * through THIS process's environment, which the lane already exports for the
+ * first daemon. `detached` keeps it out of this run's process group, so the
+ * driver's own reaper does not take it for a stray app; the scene reaps it by
+ * pid (from the fresh record) before it returns.
+ */
+function spawnReviveDaemon(command) {
+	const child = spawn("/bin/sh", ["-c", command], {
+		env: process.env,
+		detached: true,
+		stdio: "ignore",
+	});
+	child.unref();
+	return child.pid;
+}
+
+/** `/health` on the run's backend, polled until it answers or the bound expires. */
+/** One bounded HTTP GET at the run's backend, over `node:http` (see below). */
+function backendGet(path, timeoutMs = 1500) {
+	return new Promise((resolve) => {
+		const target = new URL(BACKEND);
+		const request = httpGet(
+			{
+				host: target.hostname,
+				port: Number(target.port),
+				path,
+				timeout: timeoutMs,
+			},
+			(response) => {
+				response.resume();
+				resolve({
+					ok:
+						response.statusCode !== undefined &&
+						response.statusCode >= 200 &&
+						response.statusCode < 300,
+					statusCode: response.statusCode ?? null,
+				});
+			},
+		);
+		request.on("timeout", () => request.destroy(new Error("timeout")));
+		request.on("error", () => resolve({ ok: false, statusCode: null }));
+	});
+}
+
+/**
+ * `/health` on the run's backend, polled until it answers or the bound expires.
+ *
+ * `node:http`, NOT `fetch`, and this is a measured bug rather than a style: on
+ * Node 26.5.0 a `fetch` into an address whose socket is being torn down crashed
+ * the whole driver - `Error: setTypeOfService EINVAL` thrown from inside
+ * undici's `writeH1`, an uncaught exception with no rejection to catch. The
+ * revival run of 2026-09-25 died in exactly that window, between the kill and
+ * the strip check, and the two probes below are the only HTTP this scene makes.
+ */
+async function waitForBackendHealth(timeoutMs) {
+	const started = Date.now();
+	for (;;) {
+		const answer = await backendGet("/health");
+		if (answer.ok) return { ok: true, waitedMs: Date.now() - started };
+		if (Date.now() - started > timeoutMs)
+			return { ok: false, waitedMs: Date.now() - started };
+		await wait(500);
+	}
+}
+
+/**
+ * Every live region on screen, as the accessibility tree states it.
+ *
+ * `role="alert"`/`role="status"` are what a screen reader ANNOUNCES, which is
+ * the count UX round 1's U3 measured by hand; reading them here makes the count
+ * an assertion rather than a paragraph. Text is trimmed of runs of whitespace,
+ * because the DOM's own line breaks are layout rather than copy, and zero-area
+ * regions are skipped: a hidden region announces nothing.
+ */
+function readLiveRegions(cdp) {
+	return cdp.evaluate(`(() => {
+		const clean = (s) => (s || "").replace(/\\s+/g, " ").trim();
+		const out = [];
+		for (const el of document.querySelectorAll('[role="alert"], [role="status"]')) {
+			const rect = el.getBoundingClientRect();
+			/*
+			 * A hidden region announces nothing, and the two shapes to skip are the
+			 * zero-area box and the sr-only 1x1 box a screen-reader-only span renders
+			 * as. checkVisibility() is asked too - it is the browser's own answer and
+			 * catches what a rect cannot (visibility, content-visibility).
+			 */
+			if (rect.width <= 1 && rect.height <= 1) continue;
+			if (
+				typeof el.checkVisibility === "function" &&
+				el.checkVisibility() === false
+			)
+				continue;
+			out.push({
+				role: el.getAttribute("role"),
+				text: clean(el.textContent).slice(0, 260),
+				controls: [...el.querySelectorAll("button")]
+					.map((b) => clean(b.getAttribute("aria-label")) || clean(b.textContent))
+					.filter(Boolean),
+				box: {
+					x: Math.round(rect.x),
+					y: Math.round(rect.y),
+					w: Math.round(rect.width),
+					h: Math.round(rect.height),
+				},
+			});
+		}
+		return out;
+	})()`);
+}
+
+/**
+ * Every visible control whose accessible name says Retry.
+ *
+ * The other half of U3's "two Retries", and counted across the WHOLE screen
+ * rather than inside one region: the duplicate the finding names sat in a
+ * different pane from the strip it duplicated.
+ */
+function readRetryControls(cdp) {
+	return cdp.evaluate(`(() => {
+		const clean = (s) => (s || "").replace(/\\s+/g, " ").trim();
+		const out = [];
+		for (const b of document.querySelectorAll("button")) {
+			const name = clean(b.getAttribute("aria-label")) || clean(b.textContent);
+			if (!/retry/i.test(name)) continue;
+			const rect = b.getBoundingClientRect();
+			if (rect.width <= 1 && rect.height <= 1) continue;
+			if (
+				typeof b.checkVisibility === "function" &&
+				b.checkVisibility() === false
+			)
+				continue;
+			out.push({
+				name,
+				disabled: b.disabled === true,
+				x: Math.round(rect.x + rect.width / 2),
+				y: Math.round(rect.y + rect.height / 2),
+			});
+		}
+		return out;
+	})()`);
+}
+
+/** The pointer sequence at a point - `clickAt`'s gesture, for a control found by hand. */
+async function clickPoint(cdp, x, y) {
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseMoved",
+		x,
+		y,
+		button: "none",
+		buttons: 0,
+	});
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mousePressed",
+		x,
+		y,
+		button: "left",
+		buttons: 1,
+		clickCount: 1,
+	});
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseReleased",
+		x,
+		y,
+		button: "left",
+		buttons: 0,
+		clickCount: 1,
+	});
+}
+
+/**
+ * The held message's own state, as the message states it (§F3).
+ *
+ * `data-undelivered` is the line's own marker (the attribute name survives
+ * minification and no design value moves it - the same reason the build gate's
+ * marker is an attribute), and the two controls are read by their words because
+ * the words are the contract.
+ */
+function readUndeliveredLine(cdp) {
+	return cdp.evaluate(`(() => {
+		const clean = (s) => (s || "").replace(/\\s+/g, " ").trim();
+		const el = document.querySelector("[data-undelivered]");
+		if (!el) return null;
+		const rect = el.getBoundingClientRect();
+		return {
+			text: clean(el.textContent),
+			controls: [...el.querySelectorAll("button")]
+				.map((b) => clean(b.textContent) || clean(b.getAttribute("aria-label")))
+				.filter(Boolean),
+			box: {
+				x: Math.round(rect.x),
+				y: Math.round(rect.y),
+				w: Math.round(rect.width),
+				h: Math.round(rect.height),
+			},
+		};
+	})()`);
+}
+
+/** The send control's disabled state and the reason stated beside it, if any. */
+function readSendGate(cdp) {
+	return cdp.evaluate(`(() => {
+		const clean = (s) => (s || "").replace(/\\s+/g, " ").trim();
+		const send = document.querySelector('button[aria-label="Send message"]');
+		const reason = document.querySelector("[data-send-waits]");
+		return {
+			present: send !== null,
+			disabled: send ? send.disabled === true : null,
+			reason: reason ? clean(reason.textContent) : null,
+		};
+	})()`);
+}
+
+async function sceneConnectionDrop(cdp) {
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	const theme = THEME ?? "localOperatorDark";
+	await verb(cdp, "setTheme", theme);
+	await verb(cdp, "navigate", "/chat");
+	const composer = '[data-tour-tag="chat-input-textarea"]';
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${composer}'))`,
+		30_000,
+	);
+	const size = `${WINDOW_WIDTH}x${WINDOW_HEIGHT}`;
+
+	/*
+	 * 1. A real turn, so the pane is a session with a transcript rather than the
+	 *    empty state: the connection surfaces this scene reads sit in a mounted
+	 *    conversation, and a send while offline needs somewhere to post its echo.
+	 */
+	await clickAt(cdp, `${composer} textarea`);
+	await cdp.send("Input.insertText", {
+		text: "Say hello before the daemon drops.",
+	});
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	const answered = await waitForCondition(
+		cdp,
+		`(() => { const log = document.querySelector('[role="log"]'); return Boolean(log && log.textContent.includes("from the mock provider")); })()`,
+		60_000,
+	);
+	check(
+		"the daemon answered a turn, so the run is attached before the kill",
+		answered.ok,
+		`no mock answer arrived in ${answered.waitedMs}ms: ${JSON.stringify(answered.last)}`,
+	);
+	const attached = await verb(cdp, "state");
+	note(
+		"state while attached",
+		JSON.stringify({
+			activeSessionId: attached.activeSessionId,
+			sessionCount: attached.sessionCount,
+		}),
+	);
+	await parkPointer(cdp);
+	const attachedFrame = await captureSettled(
+		cdp,
+		`connection-${size}-attached`,
+	);
+	note("frame", JSON.stringify(attachedFrame));
+
+	/*
+	 * 2. The kill. The records are read fresh (the lane's daemon rewrites its
+	 *    heartbeat, and the kill must signal the daemon this record describes).
+	 */
+	const killed = killRunDaemon();
+	check(
+		"the run-owned daemon was signalled (SIGTERM to the pid its own record names)",
+		killed.length > 0,
+		JSON.stringify(killed),
+	);
+	if (killed.length === 0) {
+		throw new Error(
+			"connection-drop found no live serve record for --backend, so nothing was killed and every reading below would describe a live daemon",
+		);
+	}
+	/*
+	 * The bar is the LISTENER, not the process (see `waitForBackendRefused`): a
+	 * graceful shutdown closes the socket and then waits for open streams, and it
+	 * is the closed socket every probe and every send in this scene reacts to.
+	 */
+	const refused = await waitForBackendRefused(15_000);
+	check(
+		"the daemon's listener is gone: /health refuses after the kill",
+		refused.ok,
+		`still answering after ${refused.waitedMs}ms`,
+	);
+	for (const { pid } of killed) {
+		const ended = await endDaemonProcess(pid);
+		if (!ended.ok) {
+			check(
+				`the daemon (pid ${pid}) was stopped`,
+				false,
+				`still alive after ${ended.waitedMs}ms`,
+			);
+		} else if (ended.killed) {
+			note(
+				`the daemon (pid ${pid}) was SIGKILLed after its graceful shutdown did not drain`,
+				`listener closed first; the pid was still there ${ended.waitedMs}ms later`,
+			);
+		}
+	}
+
+	/*
+	 * 3. The app's own statement of it. Waited for rather than slept on: the
+	 *    detach is the app's state machine reacting (a 10s probe + the health
+	 *    check's own cadence), and the strip appears when it has reacted.
+	 */
+	const stripUp = await waitForCondition(
+		cdp,
+		`document.body.textContent.includes("Can't reach the Local Operator server")`,
+		90_000,
+	);
+	check(
+		"the pane's strip states the root cause once the daemon is gone",
+		stripUp.ok,
+		`no unreachable strip after ${stripUp.waitedMs}ms`,
+	);
+	await wait(2000); // let any second surface paint, which is what this counts
+	const goneRegions = await readLiveRegions(cdp);
+	const goneRetries = await readRetryControls(cdp);
+	note("live regions while the daemon is gone", JSON.stringify(goneRegions));
+	note("Retry controls while the daemon is gone", JSON.stringify(goneRetries));
+	const connectionRegions = goneRegions.filter((region) =>
+		/Local Operator server|machine is offline|answering slowly/i.test(
+			region.text,
+		),
+	);
+	check(
+		"ONE live region states the connection (U3b)",
+		connectionRegions.length === 1,
+		`${connectionRegions.length} connection regions: ${JSON.stringify(connectionRegions.map((r) => r.text.slice(0, 90)))}`,
+	);
+	check(
+		"no OTHER live region stands beside the strip",
+		goneRegions.length === connectionRegions.length,
+		`${goneRegions.length} live regions, ${connectionRegions.length} of them the connection: ${JSON.stringify(goneRegions.filter((r) => !connectionRegions.includes(r)).map((r) => `${r.role}: ${r.text.slice(0, 120)}`))}`,
+	);
+	check(
+		"exactly ONE Retry control is on screen for that one root cause",
+		goneRetries.filter((control) => !control.disabled).length === 1,
+		JSON.stringify(goneRetries.map((c) => c.name)),
+	);
+	const goneFrame = await captureSettled(cdp, `connection-${size}-server-gone`);
+	note("frame", JSON.stringify(goneFrame));
+
+	/*
+	 * 4. A send while offline: the message takes the failure (§F3), the composer
+	 *    states why it is waiting.
+	 */
+	await clickAt(cdp, `${composer} textarea`);
+	await cdp.send("Input.insertText", { text: "did that reach you?" });
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	const held = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector("[data-undelivered]")) || document.body.textContent.includes("still being held")`,
+		30_000,
+	);
+	check(
+		"a send that failed while offline leaves a state on screen",
+		held.ok,
+		`neither the per-message state nor the old paragraph appeared after ${held.waitedMs}ms`,
+	);
+	await wait(800);
+	const undelivered = await readUndeliveredLine(cdp);
+	const sendGate = await readSendGate(cdp);
+	note("the message's own state (§F3)", JSON.stringify(undelivered));
+	note("the send control and its reason", JSON.stringify(sendGate));
+	check(
+		"the failure attaches to the message: `Not delivered · Send again · Edit` (§F3)",
+		undelivered !== null &&
+			/Not delivered/.test(undelivered.text) &&
+			undelivered.controls.includes("Send again") &&
+			undelivered.controls.includes("Edit"),
+		JSON.stringify(undelivered),
+	);
+	check(
+		"the Send control is disabled while the held message exists, with the reason stated (§F3)",
+		sendGate.present === true &&
+			sendGate.disabled === true &&
+			/Send waits for the held message/.test(sendGate.reason ?? ""),
+		JSON.stringify(sendGate),
+	);
+	const heldRegions = await readLiveRegions(cdp);
+	const heldRetries = await readRetryControls(cdp);
+	const heldConnection = heldRegions.filter((region) =>
+		/Local Operator server|machine is offline|answering slowly/i.test(
+			region.text,
+		),
+	);
+	check(
+		"the failed send adds no second connection voice",
+		heldConnection.length === 1 && heldRegions.length <= 1,
+		`${heldRegions.length} live regions (${heldConnection.length} of them the connection): ${JSON.stringify(heldRegions.map((r) => `${r.role}: ${r.text.slice(0, 90)}`))}`,
+	);
+	check(
+		"still exactly one Retry control",
+		heldRetries.filter((control) => !control.disabled).length === 1,
+		JSON.stringify(heldRetries.map((c) => c.name)),
+	);
+	const heldFrame = await captureSettled(
+		cdp,
+		`connection-${size}-held-message`,
+	);
+	note("frame", JSON.stringify(heldFrame));
+
+	/*
+	 * 5. The reconnect. The lane's command starts a fresh daemon on the same
+	 *    address (same scratch config, same token from this environment); the
+	 *    records are re-linked because the app admits a daemon only while a
+	 *    record describes one, and the fresh process published a fresh record.
+	 */
+	const frames = [attachedFrame, goneFrame, heldFrame];
+	if (REVIVE_CMD === null) {
+		note(
+			"the reconnect half did not run",
+			"no --backend-revive was passed: the scene took the offline half only, so nothing below was measured",
+		);
+		killRunDaemon();
+		return frames;
+	}
+	spawnReviveDaemon(REVIVE_CMD);
+	const health = await waitForBackendHealth(60_000);
+	check(
+		"the revived daemon answers /health at --backend",
+		health.ok,
+		`no /health answer after ${health.waitedMs}ms`,
+	);
+	const relinked = linkServeRecords();
+	note("serve records re-linked after the revive", String(relinked));
+	/*
+	 * The app's own recovery, waited for rather than pressed. If the state
+	 * machine has not swept within the bound, the strip's Retry is the
+	 * documented remedy (§F2) and is pressed ONCE, named here.
+	 */
+	let recovered = await waitForCondition(
+		cdp,
+		`!document.body.textContent.includes("Can't reach the Local Operator server")`,
+		90_000,
+	);
+	if (!recovered.ok) {
+		const live = await readRetryControls(cdp);
+		if (live.length > 0) {
+			note(
+				"strip Retry pressed",
+				`no automatic recovery after ${recovered.waitedMs}ms; pressing the one Retry at ${live[0].x},${live[0].y}`,
+			);
+			await clickPoint(cdp, live[0].x, live[0].y);
+			recovered = await waitForCondition(
+				cdp,
+				`!document.body.textContent.includes("Can't reach the Local Operator server")`,
+				90_000,
+			);
+		}
+	}
+	check(
+		"the strip clears once a daemon answers again",
+		recovered.ok,
+		`the strip still stood after ${recovered.waitedMs}ms`,
+	);
+	/*
+	 * WAITED FOR, NOT SLEPT ON: the strip clears when the app re-attaches, and the
+	 * claim is settled by the conversation's own re-subscribe - the tail read that
+	 * follows it - so the two are seconds apart on a loaded host. The bound is
+	 * generous because the walk's own pacing is, and the assertion below is about
+	 * the state the server's answer produces, not about how fast it arrives.
+	 */
+	const cleared = await waitForCondition(
+		cdp,
+		`!document.querySelector("[data-send-waits]")`,
+		60_000,
+	);
+	note(
+		"the composer's send gate cleared after the reconnect",
+		`${cleared.ok ? "cleared" : "STILL WAITING"} after ${cleared.waitedMs}ms`,
+	);
+	const settled = await cdp.evaluate(`(() => {
+		const clean = (s) => (s || "").replace(/\\s+/g, " ").trim();
+		const el = document.querySelector("[data-undelivered]");
+		const wait = document.querySelector("[data-send-waits]");
+		return {
+			body: clean(document.body.textContent).slice(0, 4000),
+			undelivered: el ? clean(el.textContent) : null,
+			sendWaits: wait ? clean(wait.textContent) : null,
+			stripRegions: [...document.querySelectorAll('[role="alert"], [role="status"]')]
+				.map((r) => clean(r.textContent).slice(0, 120)),
+		};
+	})()`);
+	note("state after the reconnect", JSON.stringify(settled));
+	check(
+		"the reconnect cleared the held state: the composer is no longer waiting on it (U5b)",
+		settled.sendWaits === null &&
+			!/still being held/i.test(settled.body) &&
+			settled.stripRegions.length === 0,
+		JSON.stringify({
+			sendWaits: settled.sendWaits,
+			stillBeingHeld: /still being held/i.test(settled.body),
+			liveRegions: settled.stripRegions,
+		}),
+	);
+	check(
+		"the message's fate is stated on the message, not left blank (§F3)",
+		settled.undelivered === null || /Not delivered/.test(settled.undelivered),
+		JSON.stringify(settled.undelivered),
+	);
+	const reconnectedFrame = await captureSettled(
+		cdp,
+		`connection-${size}-reconnected`,
+	);
+	note("frame", JSON.stringify(reconnectedFrame));
+	frames.push(reconnectedFrame);
+	/*
+	 * The revived daemon is this scene's own to reap: it was started here, and a
+	 * harness that leaves a daemon running after it exits is the defect the
+	 * scratch-tree sweep exists for. Nothing else names this pid.
+	 */
+	for (const { pid } of killRunDaemon()) {
+		const ended = await endDaemonProcess(pid);
+		note(
+			"revived daemon stopped",
+			`pid ${pid} ${ended.ok ? (ended.killed ? "SIGKILLed" : "exited") : `STILL ALIVE after ${ended.waitedMs}ms`}`,
+		);
+	}
+	return frames;
 }
 
 /**
@@ -23513,31 +24341,7 @@ async function main() {
 	if (BACKEND) note("csp for this run's backend", widenCspForBackend(BACKEND));
 
 	if (BACKEND_RECORDS) {
-		const records = join(CONFIG_DIR, "run", "serve");
-		mkdirSync(records, { recursive: true });
-		let linked = 0;
-		for (const entry of readdirSync(BACKEND_RECORDS)) {
-			if (!entry.endsWith(".json")) continue;
-			/*
-			 * A LINK, NOT A COPY, and the difference decides whether the app admits this
-			 * run's daemon at all. A serve record is a LIVING document: the real daemon
-			 * rewrites it every `HEARTBEAT_INTERVAL_MS` (15s), and discovery classifies a
-			 * record whose pid is alive and whose heartbeat is older than
-			 * `HEARTBEAT_TIMEOUT_MS` (45s) as WEDGED - refusing both to attach to it and
-			 * to spawn a second daemon over it. A copy taken once at launch therefore
-			 * stops describing a daemon 45 seconds into the run, and from then on the app
-			 * draws its "not attached" banners ACROSS THE FRAMES this rig exists to take.
-			 *
-			 * Measured, 2026-09-21, on a run whose scene outlives the timeout: every scan
-			 * for the rest of the run logged `[discovery] rejected
-			 * <config>/run/serve/<pid>.json: wedged (pid <pid> is alive but its heartbeat
-			 * is 48s old)` and grew from there, while the stub two directories away was
-			 * rewriting that same record every 5s. The link keeps the stub's own rewrites
-			 * visible, which is what a record is for.
-			 */
-			symlinkSync(join(BACKEND_RECORDS, entry), join(records, entry));
-			linked += 1;
-		}
+		const linked = linkServeRecords();
 		say(
 			`  serve records ${linked} linked from ${BACKEND_RECORDS}   (the app admits a daemon only while a record describes one, and a record is a heartbeat)`,
 		);
@@ -23624,6 +24428,16 @@ async function main() {
 	 * (agent review round 2, NIT-2). Reading argv and refusing costs nothing, and
 	 * the same argument holds for every scene that names an instrument it needs.
 	 */
+	if (SCENE === "connection-drop" && BACKEND === null) {
+		throw new Error(
+			"--scene connection-drop needs --backend: the whole scene is the daemon this run owns, killed by the pid its own serve record names",
+		);
+	}
+	if (SCENE === "connection-drop" && BACKEND_RECORDS === null) {
+		throw new Error(
+			"--scene connection-drop needs --backend-records: the record is where the daemon's pid lives, and killing a guessed pid is what this argument exists to prevent",
+		);
+	}
 	if (SCENE === "sidebar-sections" && BACKEND === null) {
 		throw new Error(
 			"--scene sidebar-sections needs --backend: both sections are gated on the catalogue a live backend advertises, and the scene seeds an agent, a team and chats through that backend's own routes",
@@ -23815,6 +24629,7 @@ async function main() {
 			}
 			if (SCENE === "states") await sceneStates(cdp);
 			if (SCENE === "session-archive") await sceneSessionArchive(cdp);
+			else if (SCENE === "connection-drop") await sceneConnectionDrop(cdp);
 			else if (SCENE === "row-space") await sceneRowSpace(cdp);
 			else if (SCENE === "states") await sceneStates(cdp);
 			/*

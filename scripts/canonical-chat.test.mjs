@@ -1804,35 +1804,64 @@ test("Restore hands back both halves of the held payload, so the guard admits it
 	);
 
 	// And the control really does that, rather than the test doing it for it.
+	//
+	// The body lives in `restoreHeldPayload` since §F3's `Edit` on the message
+	// needed the same act reached from the transcript (UX round 1's U4), so the
+	// slice is the SHARED function and a second read checks that THIS control
+	// hands it the claim's own file list - the function is only half the story,
+	// and the half that names the files is the half that can silently go missing.
 	const source = readFileSync(
 		"src/renderer/src/features/chat/components/message-input.tsx",
 		"utf8",
 	);
+	const sharedStart = source.indexOf("const restoreHeldPayload = useCallback(");
+	assert.ok(
+		sharedStart > 0,
+		"restore is no longer shared, so §F3's Edit and this control are two implementations of one act",
+	);
 	const press = source.slice(
-		source.indexOf("composerAlert.restore &&"),
-		source.indexOf(
-			"{RESTORE_LABEL}",
-			source.indexOf("composerAlert.restore &&"),
-		),
+		sharedStart,
+		source.indexOf("useImperativeHandle(ref, () => ({", sharedStart),
 	);
 	assert.ok(
 		press.length > 0,
-		"the restore control is no longer rendered at all",
+		"the restore implementation is no longer reachable at all",
 	);
 	assert.match(
 		press,
-		/const heldChips = sendError\?\.heldAttachments;/,
-		"the press no longer reads the files the claim is holding, so it can only restore half the payload (QA round 1, Q-2)",
+		/chips\?: readonly string\[\]/,
+		"the shared restore no longer takes the claim's files, so it can only restore half the payload (QA round 1, Q-2)",
 	);
 	assert.match(
 		press,
 		/clearAttachments\(conversationId\);/,
 		"the press no longer reconstitutes the chip row, so it merges the held files into whatever is attached instead of putting the held payload back",
 	);
-	assert.match(
-		press,
-		/for \(const path of heldChips\)\s*\n?\s*addAttachment\(conversationId, \{\s*\n?\s*id: uuidv4\(\),\s*\n?\s*path,\s*\n?\s*\}\);/,
+	/*
+	 * Whitespace-squashed rather than matched line by line: the formatter owns
+	 * where this statement's lines break (it collapsed the object literal onto one
+	 * since the first version of this test), and the claim here is about the
+	 * STATEMENT, not about its layout.
+	 */
+	assert.ok(
+		press
+			.replace(/\s+/g, " ")
+			.includes(
+				"for (const path of chips) addAttachment(conversationId, { id: uuidv4(), path });",
+			),
 		"the press no longer writes the held files into the composer's own row, so the box shows a payload the next send will not carry",
+	);
+	const callSite = source.slice(
+		source.indexOf("composerAlert.restore &&"),
+		source.indexOf(
+			"{RESTORE_LABEL}",
+			source.indexOf("composerAlert.restore &&"),
+		),
+	);
+	assert.match(
+		callSite,
+		/sendError\?\.heldAttachments/,
+		"the press no longer reads the files the claim is holding, so the shared restore has nothing to put back (QA round 1, Q-2)",
 	);
 });
 
@@ -2600,8 +2629,17 @@ test("the alert region renders the failure before the muted context, and keeps i
 		 * list is about the DOM rather than about the window. Read as "the failure
 		 * still leads" - which is what the cap's window shows - and then as "the
 		 * claim that names the remedy follows the prose it explains".
+		 *
+		 * THE GATE IS PART OF THE MARKER since §F3 (UX round 1's U4): while the
+		 * transcript's own line states this failure, the region does not - the
+		 * sentence is deleted from here, and the `!heldOnTranscript` term is what
+		 * says so. The marker carries it so a future edit cannot quietly restore
+		 * the paragraph this round removed.
 		 */
-		["the held-claim statement", "composerAlert.showHeld && ("],
+		[
+			"the held-claim statement",
+			"composerAlert.showHeld && !heldOnTranscript && (",
+		],
 	];
 	let previous = -1;
 	for (const [what, marker] of order) {
@@ -2669,7 +2707,9 @@ test("the alert region renders the failure before the muted context, and keeps i
 	 * The two are asserted separately because they can fail apart - the control can
 	 * be pinned while the sentence explaining it scrolls.
 	 */
-	const claimAt = region.indexOf("composerAlert.showHeld && (");
+	const claimAt = region.indexOf(
+		"composerAlert.showHeld && !heldOnTranscript && (",
+	);
 	assert.ok(
 		claimAt >= 0,
 		"the held-claim statement is no longer rendered at all",
@@ -4631,5 +4671,155 @@ test("R2-1: the composer derives it from the store, and no longer accepts it as 
 		composer,
 		/sendingUnsettled: sendUnsettled \|\| sendInFlight/,
 		"and the store's answer must still be OR'd with this composer's own press, which covers the arms where no row exists",
+	);
+});
+
+/*
+ * §F2's LAST BULLET (UX round 1's U5b), as the store keeps it: a held send is
+ * resolved by the SERVER's own answer, never by the local send, and the answer
+ * is the page a re-subscribe returns.
+ *
+ * THE KEYING IS THE LOAD-BEARING PART, and it cost a live run to find: the
+ * driver's first after-run reconnected, read the tail, and left the claim held,
+ * because the draft a send into an EXISTING conversation writes is keyed
+ * `send:<id>` and carries no `sessionId` FIELD at all (that field is written
+ * only on the create path). The first case below therefore drives the real
+ * admission shape rather than a hand-built row, and asserts on the identity the
+ * store itself computes.
+ */
+test("a server answer that cannot name the held payload ends the claim and marks the message (U5b)", async () => {
+	reset();
+	const session = "sess-4f21c9";
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		return Promise.reject(
+			new DesktopControlError(
+				507,
+				"This computer is out of disk space, so the message could not be written.",
+				undefined,
+				STORE_OUT_OF_SPACE_CODE,
+			),
+		);
+	};
+	const key = draftIdentityFor(null, session);
+	assert.equal(
+		key,
+		`send:${session}`,
+		"the pane's identity for an existing conversation is the store's own `send:<id>` fallback",
+	);
+	const text = "did that reach you?";
+	await assert.rejects(
+		admitChatDraft(key, { ...input, text, attachments: [] }, session),
+		(error) => error.code === STORE_OUT_OF_SPACE_CODE,
+	);
+	const held = store.getState().drafts[key];
+	assert.equal(
+		held.admissionAttempted,
+		true,
+		"the send was admitted, so the claim is open",
+	);
+	assert.equal(
+		held.sessionId,
+		undefined,
+		"the existing-session path does not stamp the field - which is exactly why the lookup cannot trust it",
+	);
+	const recordId = held.admissionRequestId;
+
+	store.getState().resolveHeldFromServer(session, ["other-row"], true);
+	const after = store.getState().drafts[key];
+	assert.equal(
+		after.admissionAttempted,
+		undefined,
+		"the server's answer did not name the message, so the claim has nothing left to hold",
+	);
+	assert.equal(after.submittedText, undefined);
+	assert.notEqual(after.pending, true, "and no send is in flight");
+	assert.notEqual(
+		after.admissionRequestId,
+		recordId,
+		"ending a claim mints a fresh admission id, so the next send is not an idempotent replay of the released one",
+	);
+	assert.deepEqual(
+		after.undelivered,
+		{ recordId, text, attachments: [] },
+		"the MESSAGE keeps the answer: the line is drawn from the draft's own record of it, addressed to the id the echo carries",
+	);
+});
+
+test("an answer that NAMES the payload lands it and records nothing (U5b)", async () => {
+	reset();
+	const session = "sess-9a77e0";
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		return Promise.reject(
+			new DesktopControlError(503, "lost", undefined, "transport_failed"),
+		);
+	};
+	const key = draftIdentityFor(null, session);
+	await assert.rejects(
+		admitChatDraft(key, { ...input, text: "hello", attachments: [] }, session),
+	);
+	const recordId = store.getState().drafts[key].admissionRequestId;
+	store.getState().resolveHeldFromServer(session, ["row-1", recordId], true);
+	const after = store.getState().drafts[key];
+	assert.equal(after.admissionAttempted, undefined, "the claim ends");
+	assert.equal(
+		after.undelivered,
+		undefined,
+		"a message the answer names LANDED: there is no `Not delivered` line to draw",
+	);
+});
+
+test("an INCOMPLETE read concludes nothing, and a partial one still lands a named message (U5b)", async () => {
+	reset();
+	const session = "sess-05cc13";
+	globalThis.__canonicalRequest = async () => {
+		return Promise.reject(
+			new DesktopControlError(503, "lost", undefined, "transport_failed"),
+		);
+	};
+	const key = draftIdentityFor(null, session);
+	await assert.rejects(
+		admitChatDraft(key, { ...input, text: "hello", attachments: [] }, session),
+	);
+	const held = store.getState().drafts[key];
+	assert.equal(held.admissionAttempted, true, "precondition: a claim is open");
+	store.getState().resolveHeldFromServer(session, [], false);
+	assert.equal(
+		store.getState().drafts[key].admissionAttempted,
+		true,
+		"`cursor_missing` means the page is a window rather than the tail, so its silence about the message proves nothing and the claim stands",
+	);
+	store
+		.getState()
+		.resolveHeldFromServer(session, [held.admissionRequestId], false);
+	assert.equal(
+		store.getState().drafts[key].admissionAttempted,
+		undefined,
+		"an answer that NAMES the message is proof of delivery however partial the page is",
+	);
+});
+
+test("a message that lands LATER clears its `undelivered` record (U5b's own race)", () => {
+	reset();
+	const session = "sess-77b1aa";
+	const key = draftIdentityFor(null, session);
+	store.getState().updateDraft(key, {
+		key,
+		createRequestId: "c",
+		admissionRequestId: "fresh",
+		sessionId: session,
+		undelivered: { recordId: "old-record", text: "hello", attachments: [] },
+	});
+	store.getState().resolveHeldFromServer(session, ["some-row"], true);
+	assert.ok(
+		store.getState().drafts[key].undelivered,
+		"an answer that does not name it leaves the fate standing",
+	);
+	store.getState().resolveHeldFromServer(session, ["old-record"], true);
+	assert.equal(
+		store.getState().drafts[key].undelivered,
+		undefined,
+		"a later answer naming the id is proof the message landed after all, so the line goes",
 	);
 });
