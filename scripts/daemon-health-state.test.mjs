@@ -547,7 +547,7 @@ test("a daemon this app may not drive is WEDGED with its own path named, not det
 	machine.observe({
 		kind: "unattachable",
 		detail:
-			"This app was not given the key to that server, so it did not start a second one. It keeps probing for a server it can open.",
+			"http://127.0.0.1:1111 (pid 42411, uv-tool, v0.55.6) is running a Local Operator daemon this app has no key for. Nothing was started over it. Stop it from the install that owns it with `lop services reclaim 42411` (`lop services status` lists what is running). It keeps probing for a server it can open.",
 	});
 	assert.equal(machine.getState(), "wedged");
 	assert.equal(
