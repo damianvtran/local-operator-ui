@@ -1,45 +1,61 @@
 /**
  * The chat sidebar's AGENT-OPENED rows: a conversation an agent opened as an
- * explicitly-requested parallel workstream, marked so it cannot be read as a chat
- * the operator opened himself.
+ * explicitly-requested parallel workstream. The row names the TEAM the workstream
+ * serves (`· <team>`), or draws nothing when it has none, and the attribution —
+ * who opened it, from which conversation — lives in the row's flyout and its
+ * screen-reader sentence.
  *
  * ## Why this surface needed a story at all
  *
  * The incident is a READING failure, not a data one. On 2026-09-18 a session an
  * agent had opened sat in this list looking exactly like the operator's own
  * conversations, and he had no way to tell them apart from the panel. The wire
- * now carries `opened_by` on such a row, and the row draws it — so the claim
+ * now carries `opened_by` on such a row, and the row draws from it — so the claim
  * under test is "a reader can tell the two rows apart, and the row says WHAT it
  * is", which is a claim about pixels. A green assertion that the store holds the
  * field would prove the data moved, not that anything on screen changed.
  *
  * ## The fixtures, and why each one is here
  *
- *   - `AgentOpenedNamed` — `opened_by` present with an agent and a requesting
- *     conversation name. The two rows beside it are the controls: one bound to
- *     the SAME agent with no `opened_by` (the binding still draws), and one with
- *     neither (a plain conversation). The panel's `Agents` section also draws the
- *     opened row NESTED under the agent that opened it, which is deliberate
- *     coverage rather than a side effect: provenance is the row's own fact, not
- *     an identity it inherits from the parent, so the marker is drawn in both
- *     places (see `rowTrailingStatement`).
+ *   - `AgentOpenedTeamBound` — `opened_by` present on a row bound to a TEAM:
+ *     `lopdev`, the real case (`attachment.json`'s team, and the same string the
+ *     flyout's binding clause shows beside the attribution). The row draws
+ *     `· lopdev` — the same string, in the same bounded treatment, as the control
+ *     row bound to the same team with NO `opened_by` — and the panel draws it
+ *     NESTED under the team entity, where a real `lopdev` workstream is listed.
+ *     The nested instance draws the team too, deliberately rather than as a side
+ *     effect: the team is the row's own binding and the provenance is the row's
+ *     own fact, so neither is an identity inherited from the parent (see
+ *     `rowTrailingStatement`). On the pre-change tree this same fixture draws
+ *     `· agent-opened` in both places — that pair is the transition.
+ *   - `AgentOpenedTeamLess` — `opened_by` present on a row bound to an AGENT and
+ *     no team, nested under that agent because that is its binding. The trailing
+ *     slot draws NOTHING: there is no team to name, and the agent half of the
+ *     binding deliberately does not fall through. The controls are the row bound
+ *     to the same agent with no `opened_by` (the binding still draws) and a plain
+ *     row. The attribution the row carries — who opened it, from which
+ *     conversation — is reachable here through the flyout and the `sr-only`
+ *     sentence; the readout states the latter, and the flyout is photographed by
+ *     hovering the row.
  *   - `AgentOpenedUnnamed` — `opened_by` present with ALL THREE members null. The
  *     wire documents that as a normal case (the backend may know nothing about
- *     the requester while knowing an agent opened the row), so the marker has to
- *     be drawn from the field's PRESENCE; a rendering that fell back to the label
- *     would draw nothing here, which is the row that most needs to say something.
+ *     the requester while knowing an agent opened the row), and the row keeps its
+ *     own claims for it: with no team to name the slot draws nothing, and the
+ *     sentence falls back to `opened by an agent` — the presence of the field,
+ *     not its members, is the fact.
  *   - `NotAgentOpened` — no workstream row: one row with the key absent and one
  *     with it explicitly null (the two non-workstream shapes the wire permits),
  *     which must render exactly as they do on the pre-change tree.
  *   - `AgentOpenedAndSearchMarked` — the template row is BOTH agent-opened and
  *     matched by the CONVERSATION rather than by its own label, so the row draws
- *     the search mark and the agent-opened fact reaches the reader through the
- *     row's flyout only. That is the precedence case `rowTrailingStatement` documents
- *     (`marked` outranks `agent_opened`), photographed here rather than asserted
- *     — the panel's box is searched by the story itself, in the panel's own box.
- *   - `AgentOpenedNotSent` — the OTHER claim above the new one: an unfinished
- *     draft in this window still holds the row's id, so the row draws
- *     `· Not sent yet` and the attribution again rides the flyout.
+ *     the search mark and the team is NOT drawn: `marked` outranks the team
+ *     claim, and the agent-opened fact reaches the reader through the row's
+ *     flyout. That is the precedence case `rowTrailingStatement` documents,
+ *     photographed here rather than asserted — the panel's box is searched by the
+ *     story itself, in the panel's own box.
+ *   - `AgentOpenedNotSent` — the OTHER claim above it: an unfinished draft in
+ *     this window still holds the row's id, so the row draws `· Not sent yet`
+ *     and the attribution again rides the flyout.
  *
  * ## The width is an arg, because a claim about truncation needs widths
  *
@@ -61,9 +77,11 @@
  *
  * The rows below are plain objects in the wire's own field names, cast nowhere
  * and typed by this file's own `WireRow` — so the file compiles unchanged against
- * `origin/main`, where `opened_by` is a key the renderer never reads and the row
- * draws no marker. That pair is the point: the same fixture, one tree apart,
- * shows the field is what moved the row. It is the arrangement
+ * `origin/main`, where the rule's slot draws the constant `· agent-opened` on
+ * every agent-opened row and the binding otherwise. That pair is the point: the
+ * same fixture, one tree apart, shows the row moving from the marker to the team
+ * it serves — or to nothing at all — while the control rows show the rest of the
+ * slot did not move. It is the arrangement
  * `chat-sidebar-status-feed.stories.tsx` documents for its own baseline set.
  *
  * ## What is stubbed, and what is not
@@ -91,22 +109,25 @@
  *     conversation past the catalogue page reaches this panel only as a
  *     `SessionSearchHit`, whose shape carries no `opened_by` at all
  *     (`desktop-session-contract.ts`), so the row synthesized for it in
- *     `chatSearch` has nothing to read and draws no marker — measured, not
+ *     `chatSearch` has nothing to read and draws no team — measured, not
  *     assumed: this story's own search answer proves the marked path, and the
  *     synthesized path is the one place a future `opened_by` on a hit would land.
  *     It is recorded as deferred on the pull request with the backend PR named as
  *     its home, because the client cannot publish a field the wire does not carry.
- *   - **The truncation is bounded by the fixture, not by the marker.** The panel
- *     width is swept (240/280/360), and the marker is a fixed string, so its own
- *     width is width-independent by construction; what the title does with the
- *     remaining space is what these frames show. The agent-name case a 64-char
- *     limit allows is NOT drawn here: the marker carries no name any more, which
- *     is what took it out of the row's width arithmetic altogether.
+ *   - **The truncation is bounded by the fixture, not by the team.** The panel
+ *     width is swept (240/280/360), and the team drawn here (`lopdev`, six
+ *     characters) does not reach the slot's 45% cap at any of them; what the
+ *     title does with the remaining space is what these frames show. The
+ *     64-character case the team field allows — the one that clips inside the
+ *     cap — is the binding slot's own pinned width case (review round 4, R21),
+ *     not re-taken here.
  *
  * ## The readout is what makes the unpainted channel legible
  *
- * The row's accessible name carries the attribution through an `sr-only` span,
- * which no still can paint. The caption beside the panel is read out of the DOM
+ * The row's accessible name carries the team as DRAWN words (the team span is
+ * not `aria-hidden`, so the name is never narrower than the pixels) and the
+ * attribution through an `sr-only` span, which no still can paint. The caption
+ * beside the panel is read out of the DOM
  * every 200ms — each row's trailing statement, whether it is nested, its
  * accessible name, and the geometry above — so a frame carries those bytes and
  * the row's widths as well as the pixels. The row's flyout (main's replacement
@@ -194,8 +215,8 @@ const row = (
  * The requesting conversation, named the way a real one is: the operator asks an
  * agent for a workstream INSIDE a conversation, so the label is that
  * conversation's own title — long, sentence-cased, and nothing like an agent
- * name. It is what the marker's flyout clause carries and what the trailing
- * slot deliberately does not draw.
+ * name. It is what the flyout's attribution clause carries and what the
+ * trailing slot deliberately does not draw.
  */
 const REQUESTER = {
 	agent: "coder",
@@ -204,9 +225,18 @@ const REQUESTER = {
 };
 
 /**
- * The row this set marks, named once because three fixtures share it: the named,
- * the search-marked and the unstarted stories all photograph the SAME row, so a
- * frame from one can be read against a frame from another.
+ * The team the workstream rows serve — the real case this change is about (a
+ * session attached to a team; `attachment.json`'s `team`), and the same string
+ * the flyout's binding clause shows beside the attribution. The team-bound roster
+ * draws it from the opened row AND from the control row bound to it with no
+ * `opened_by`, which is what makes the two rows' slots one treatment.
+ */
+const TEAM = "lopdev";
+
+/**
+ * The row this set marks, named once because THREE fixtures share it: the
+ * team-bound, the team-less and the search-marked stories all photograph the SAME
+ * row, so a frame from one can be read against a frame from another.
  */
 const TEMPLATE_ID = "9c1d2e3f4a5b";
 const TEMPLATE_NAME = "Retry ladder for superseded tokens";
@@ -220,7 +250,7 @@ const TEMPLATE_MTIME = 1_760_001_000;
  * AND the row's own title/agent/team does not contain the query (that rule is what
  * keeps `· in conversation` off a row whose title visibly contains it). A query the
  * title matched would be admitted by the local half, carry no mark, and draw the
- * agent-opened marker instead — a frame of the wrong state, not a frame of the
+ * team it serves instead — a frame of the wrong state, not a frame of the
  * precedence case.
  */
 const MARKED_QUERY = "credential";
@@ -228,12 +258,31 @@ const MARKED_QUERY = "credential";
 /**
  * The row the `AgentOpenedNotSent` story's own draft holds: an unfinished draft in
  * this window carrying a session id is what `unstarted` reads, and it is the only
- * way the `not_sent` branch — the other claim `rowTrailingStatement` puts above the
- * marker — is reachable at all (`chat-sidebar.tsx`'s `unstarted` memo).
+ * way the `not_sent` branch — the other claim `rowTrailingStatement` puts above
+ * the agent-opened slot — is reachable at all (`chat-sidebar.tsx`'s `unstarted`
+ * memo).
  */
 const UNSTARTED_ID = "8f9012345678";
 
-const ROSTER_NAMED: WireRow[] = [
+const ROSTER_TEAM_BOUND: WireRow[] = [
+	row(TEMPLATE_ID, TEMPLATE_NAME, TEMPLATE_MTIME, {
+		binding: { agent: "coder", team: TEAM },
+		opened_by: REQUESTER,
+	}),
+	row("1f2e3d4c5b6a", "Release notes for 0.30.10", 1_760_000_900, {
+		binding: { agent: "coder", team: TEAM },
+	}),
+	row("2a3b4c5d6e7f", "Tidy the migration fixtures", 1_760_000_800),
+];
+
+/*
+ * The same three rows with the OTHER binding half: an agent and no team. The
+ * template and the `Release notes` control each keep everything but their team,
+ * so the two rosters read as one row tested both ways — and this is the roster
+ * whose opened row must draw NOTHING in the slot (the agent must not fall
+ * through).
+ */
+const ROSTER_TEAM_LESS: WireRow[] = [
 	row(TEMPLATE_ID, TEMPLATE_NAME, TEMPLATE_MTIME, {
 		binding: { agent: "coder", team: null },
 		opened_by: REQUESTER,
@@ -267,7 +316,8 @@ const ROSTER_PLAIN: WireRow[] = [
 ];
 
 /**
- * The search-marked set: the SAME template row, plus a second row the query
+ * The search-marked set: the SAME template row (with the team binding, so the
+ * mark is shown taking the slot from the team too), plus a second row the query
  * matches BY ITS OWN TITLE.
  *
  * The second row is the control the precedence frame needs. It is admitted by the
@@ -277,7 +327,7 @@ const ROSTER_PLAIN: WireRow[] = [
  */
 const ROSTER_MARKED: WireRow[] = [
 	row(TEMPLATE_ID, TEMPLATE_NAME, TEMPLATE_MTIME, {
-		binding: { agent: "coder", team: null },
+		binding: { agent: "coder", team: TEAM },
 		opened_by: REQUESTER,
 	}),
 	row("5d6e7f80913a", "Credential handling notes", 1_760_000_950, {
@@ -334,15 +384,38 @@ const PROFILES = [
 ];
 
 /**
- * The bridge, with the search answer switched on only where a story asks for it.
+ * The Teams section's own entity, so the team-bound roster's rows NEST under the
+ * team they serve — the shape a real `lopdev` workstream is listed in, and half
+ * of what `AgentOpenedTeamBound` photographs. Only that story answers
+ * `teams.list` with a team; the empty answer everywhere else is deliberate (see
+ * the bridge below).
+ */
+const TEAMS = [
+	{
+		id: "team-lopdev",
+		name: TEAM,
+		description: "",
+		manager: "manager",
+		members: [],
+	},
+];
+
+/**
+ * The bridge, with the search answer switched on only where a story asks for it,
+ * and the team list only where a story's rows bind to a team.
  *
  * `search` is a parameter rather than unconditional because advertising
  * `session_search` changes the capability answer every story sees — a story about
- * the marker's PIXELS has no business negotiating a feature it never uses, and the
+ * the slot's PIXELS has no business negotiating a feature it never uses, and the
  * frames of those stories are meant to stay comparable with the ones taken before
- * this parameter existed.
+ * this parameter existed. `teams` is the same shape for the same reason: the
+ * `teams.list` answer is empty on every story except the one whose rows nest
+ * under the team entity, where the nested instance is the point.
  */
-const bridge = (rows: WireRow[], options: { search?: boolean } = {}) => {
+const bridge = (
+	rows: WireRow[],
+	options: { search?: boolean; teams?: typeof TEAMS } = {},
+) => {
 	const ok = (result: unknown): DesktopResponse => ({
 		status: 200,
 		body: { result },
@@ -377,7 +450,7 @@ const bridge = (rows: WireRow[], options: { search?: boolean } = {}) => {
 			case "profiles.list":
 				return ok({ profiles: PROFILES });
 			case "teams.list":
-				return ok({ teams: [] });
+				return ok({ teams: options.teams ?? [] });
 			default:
 				throw new Error(`unexpected desktop op in this story: ${request.op}`);
 		}
@@ -483,6 +556,22 @@ const rowFacts = (): RowFact[] =>
 		});
 
 /**
+ * The window this frame was taken in, read from the page rather than recalled.
+ *
+ * `innerWidth`/`innerHeight`/`devicePixelRatio` are the numbers a frame's own
+ * caption has to quote when it is cropped or scaled, and they are the RUN's
+ * numbers rather than constants: the window chrome and the device scale both
+ * moved between Electron versions on this repository once already, so a caption
+ * that restates a remembered pair can disagree with its own bytes.
+ * `visibilityState` rides along because it gates what the compositor presents —
+ * a pane that is not visible stops producing frames, so a still taken from one
+ * is the last frame it painted rather than the state now — and because it is the
+ * fact a reader of a frame would never guess from the picture.
+ */
+const windowFacts = (): string =>
+	`window: ${window.innerWidth}x${window.innerHeight} @${window.devicePixelRatio}x · ${document.visibilityState}`;
+
+/**
  * The query in force, read from the box itself.
  *
  * The same rule as the per-row facts: the caption states what the panel HOLDS
@@ -502,10 +591,12 @@ const boxQuery = (): string =>
 const Readout: FC = () => {
 	const [facts, setFacts] = useState<RowFact[]>([]);
 	const [query, setQuery] = useState("");
+	const [windowLine, setWindowLine] = useState("");
 	useEffect(() => {
 		const poll = () => {
 			setFacts(rowFacts());
 			setQuery(boxQuery());
+			setWindowLine(windowFacts());
 		};
 		poll();
 		const timer = window.setInterval(poll, 200);
@@ -517,6 +608,7 @@ const Readout: FC = () => {
 			className="w-[520px] shrink-0 overflow-auto border-l border-hairline p-4 font-mono text-[11px] text-ink-muted"
 		>
 			<p className="mb-4 text-ink">query: {query || "(empty)"}</p>
+			<p className="mb-4">{windowLine}</p>
 			{facts.map((fact) => (
 				<p
 					key={`${fact.nested ? "nested" : "flat"}:${fact.name}`}
@@ -576,9 +668,12 @@ const pinLayout = (width: number) => {
 			pinned: true,
 			active: true,
 			previous: true,
-			// An entity's own chevron: `agent:coder` is the key `children()` opens by,
-			// and the row nested under it is half of what this set photographs.
+			// An entity's own chevron: `agent:coder` and `team:lopdev` are the keys
+			// `children()` opens by, and the rows nested under them are half of what
+			// this set photographs (the team-less workstream under its agent, the
+			// team-bound one under its team).
 			"agent:coder": true,
+			"team:lopdev": true,
 		}),
 	);
 };
@@ -588,8 +683,9 @@ const Page = ({
 	width = DEFAULT_PANEL_WIDTH,
 	query,
 	drafts = {},
+	teams,
 }: PageProps) => {
-	bridge(rows, { search: Boolean(query) });
+	bridge(rows, { search: Boolean(query), teams });
 	pinLayout(width);
 	setDrafts(drafts);
 	useEffect(() => {
@@ -677,6 +773,8 @@ type PageProps = {
 	query?: string;
 	/** Unfinished drafts in this window, which is what makes a row `not_sent`. */
 	drafts?: Record<string, ChatDraft>;
+	/** The team entities `teams.list` answers with, where a story nests rows. */
+	teams?: typeof TEAMS;
 };
 
 /**
@@ -701,28 +799,44 @@ export default meta;
 
 type Story = StoryObj<StoryArgs>;
 
-/** `opened_by` present, with the requesting agent and conversation named. */
-export const AgentOpenedNamed: Story = {
-	render: ({ width }) => <Page rows={ROSTER_NAMED} width={width} />,
+/** `opened_by` present on a row bound to the TEAM it serves: the row draws the
+ *  team, the control row bound to the same team with no `opened_by` draws the
+ *  same string, and the panel draws the opened row NESTED under the `lopdev`
+ *  entity as well — the team is the row's own binding, so it draws in both
+ *  places on the pre-change tree's `· agent-opened` → here's team transition. */
+export const AgentOpenedTeamBound: Story = {
+	render: ({ width }) => (
+		<Page rows={ROSTER_TEAM_BOUND} width={width} teams={TEAMS} />
+	),
+};
+
+/** `opened_by` present on a row bound to an AGENT and no team: the slot draws
+ *  NOTHING — there is no team to name and the agent half does not fall through —
+ *  while the attribution stays reachable through the flyout and the `sr-only`
+ *  sentence, which the readout states. */
+export const AgentOpenedTeamLess: Story = {
+	render: ({ width }) => <Page rows={ROSTER_TEAM_LESS} width={width} />,
 };
 
 /** `opened_by` present with all three members null — the presence is the fact.
- *  At 240 this is the case design round 1 (D2) measured clipping its own noun. */
+ *  There is no team to name, so the slot draws nothing and the sentence falls
+ *  back to `opened by an agent`. */
 export const AgentOpenedUnnamed: Story = {
 	render: ({ width }) => <Page rows={ROSTER_UNNAMED} width={width} />,
 };
 
 /** The row is agent-opened AND matched by its CONVERSATION: `marked` outranks
- *  `agent_opened`, so the marker yields and the flyout is the only channel that
- *  still carries the attribution. The query is typed into the panel's own box. */
+ *  the team claim, so the mark takes the slot and the flyout is the only channel
+ *  that still carries the attribution. The query is typed into the panel's own
+ *  box. */
 export const AgentOpenedAndSearchMarked: Story = {
 	render: ({ width }) => (
 		<Page rows={ROSTER_MARKED} width={width} query={MARKED_QUERY} />
 	),
 };
 
-/** The other claim above the marker: an unfinished draft in this window holds the
- *  row's id, so the row draws `· Not sent yet`. */
+/** The other claim above it: an unfinished draft in this window holds the row's
+ *  id, so the row draws `· Not sent yet`. */
 export const AgentOpenedNotSent: Story = {
 	render: ({ width }) => (
 		<Page rows={ROSTER_UNSTARTED} width={width} drafts={UNSTARTED_DRAFT} />
