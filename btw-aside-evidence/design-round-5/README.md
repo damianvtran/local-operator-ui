@@ -58,6 +58,7 @@ beside 1111, so **no CSP surgery was needed** — the rig never edited
 | `narrow-d4r5` | 800x900 | dark | design round 4's | its default set | 11 PASS / 1 FAIL³ |
 | `wide-d4r5` | 1380x900 | dark | design round 4's | its default set | 12 PASS / 0 FAIL |
 | `narrow-r3d5` | 800x900 | dark | design round 3's | its default set | 16 PASS / 1 FAIL⁴ |
+| `narrow-qad5` | 800x900 | dark | QA round 4's | its default set | 41 PASS / 0 FAIL |
 | `wide-qad5` | 1380x900 | dark | QA round 4's | its default set | 41 PASS / 0 FAIL |
 
 ¹ the old-shape classic-scrollbar twin assertion in this round's own **first**
@@ -280,7 +281,7 @@ round 3's and QA round 4's scenes, unchanged.
 | `d4-narrow-paragraph-break-k5.png`, `d4-wide-d11-*.png` | D12 at the cap; D11's follow-up landed |
 | `d5-narrow-code-edge.png`, `d5-wide-code-edge.png`, `d5-narrow-list-edge.png` | D17's class on this head |
 | `r3-narrow-d10-11-line.png`, `r3-narrow-d7-new-aside-retires-line.png` | design round 3's re-driven checks |
-| `qa4-wide-q29-d11-question-at-top.png`, `qa4-wide-q31c-d14-off-panel-short-form.png` | QA round 4's scene re-driven (41/41) |
+| `qa4-*-q29-d11-question-at-top.png`, `qa4-*-q31c-d14-off-panel-short-form.png`, `qa4-narrow-q31d-u14-quote-rendered.png` | QA round 4's scene re-driven at both widths, 41/41 each |
 
 ## Logs and rig
 
