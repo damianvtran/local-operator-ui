@@ -779,6 +779,44 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  * AND quotes both stamps as this file's own values, so it is held to them rather
  * than being read as history - the distinction the paragraph above draws.
  */
+/*
+ * THE FOLD RULE FOR THIS LIST: the union of both sides, taken by KEY.
+ *
+ * MEMBERSHIP IS CURATION, NOT A PREDICATE, and the paragraph above states the
+ * criterion: a note belongs here when THIS FILE'S BINDING is its subject, not when
+ * it records the fold, pass or review it came from. It cannot be re-derived by
+ * testing the text - the re-stamp below rewrites every note's backticked claims to
+ * the shipped pair, so after any fold many more notes quote both stamps at that pair
+ * than this list curates, and the extras are history by subject. (Run the predicate
+ * this test applies over `docs/evidence/manifest.json` rather than trusting a count
+ * written here: it matches dozens, and the number moves with every fold.)
+ * `headNote`, `installerNetworkRestampNote`, the console notes and
+ * `reloadReanchorRestampNote` are the ones the paragraph above names as not here for
+ * exactly that reason. Widening the list to everything the predicate matches would
+ * add notes that CANNOT fail, which is the wrong kind of guard and not what this
+ * list is for.
+ *
+ * WHAT A FOLD MUST DO, and what makes this rule falsifiable against the list: union
+ * the two sides' keys, KEEP EVERY KEY THAT WAS THERE BEFORE, and state the result.
+ * AN OMITTED KEY IS A CHECK SILENTLY NOT RUN - this test iterates the list, so a key
+ * dropped by a hand-resolved merge stops being verified while the suite still goes
+ * green (round 8, M1: four live keys, every one of them still quoting both stamps,
+ * were lost by a resolution that compared added LINES rather than keys). A fold whose
+ * base moved this file therefore diffs the KEY SETS of both sides and of the merged
+ * result, and says in the commit what the union is.
+ *
+ * THE UNION THIS FOLD TOOK (`origin/main` `a7df70995`, over this branch's `b3a2cabe0`),
+ * stated here because the rule above asks for it: this branch's side named
+ * `usageInFlightConvergenceNote`, `macNativeComponentsRestampNote`,
+ * `telemetrySwitchRestampNote`, `readReceiptRestampNote`,
+ * `chatSidebarSectionsRestampNote` and `windowChromeRestampNote`; main's side named
+ * `occupiedAddressRestampNote`, `shellPathRestampNote`, `settingsGateRestampNote`,
+ * `candidateMacArchRestampNote`, `notarizeGateRestampNote`, `modelCatalogueFocusRestampNote`
+ * and `round1LabelGapRestampNote`. THIRTEEN, deduplicated by name - the four notes both
+ * sides held are listed once, at this branch's position. No key was dropped: the same
+ * union was applied to `docs/evidence/manifest.json`, which gained main's eight
+ * fold/label-gap notes and kept every key this branch already carried.
+ */
 const STAMP_BINDING_NOTES = [
 	/*
 	 * EIGHT NOTES LEFT THIS LIST when `fix(backend): never lose the app to an
@@ -850,6 +888,377 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"windowChromeRestampNote",
 	"occupiedAddressRestampNote",
+	"shellPathRestampNote",
+	"settingsGateRestampNote",
+	"candidateMacArchRestampNote",
+	"notarizeGateRestampNote",
+	"modelCatalogueFocusRestampNote",
+	"round1LabelGapRestampNote",
+];
+
+test("the notes that claim this file's binding quote the stamp values it ships", () => {
+	const manifest = JSON.parse(
+		readFileSync("docs/evidence/manifest.json", "utf8"),
+	);
+	for (const note of STAMP_BINDING_NOTES) {
+		const quoted = [
+			...String(manifest[note]).matchAll(
+				/`(srcTree|scriptsTree)`\s*`([0-9a-f]{7,40})`/g,
+			),
+		];
+		assert.ok(
+			new Set(quoted.map(([, key]) => key)).size === 2,
+			`${note} must quote both stamps it ships, so a reader can compare them without leaving the note`,
+		);
+		for (const [, key, value] of quoted) {
+			assert.ok(
+				manifest[key].startsWith(value),
+				`${note} quotes ${key} ${value} while the file ships ${manifest[key]}`,
+			);
+		}
+	}
+});
+
+/**
+ * Whether the checkout has history to ask the ancestry question against.
+ *
+ * A one-commit-deep clone - every CI checkout, `actions/checkout`'s default -
+ * has no ancestor of `HEAD` at all, so the citation test below would fail on
+ * every run for a reason that is about the clone and not about the manifest.
+ * A repository that cannot answer is not a repository that has found a defect,
+ * so the test says which it is and stands down.
+ */
+const SHALLOW = (() => {
+	try {
+		return (
+			execFileSync("git", ["rev-parse", "--is-shallow-repository"], {
+				stdio: ["ignore", "pipe", "ignore"],
+			})
+				.toString()
+				.trim() === "true"
+		);
+	} catch {
+		return false;
+	}
+})();
+
+/**
+ * The citation half of the same question, bound to the same shipped file.
+ *
+ * `stampFailures` above catches a rebase that re-stamps the file against
+ * somebody else's tree. Nothing caught the other half. A rebase replays this
+ * branch's commits onto a new base, which changes their SHAs, and the manifest
+ * keeps citing the old ones - and those old spellings still resolve in the clone
+ * that did the rebase, because the rebase left a backup ref beside the branch.
+ * `citationFailures` only asks whether SOME ref reaches a sha, so it stayed
+ * silent while the file shipped certifying its frames against commits no
+ * reviewer can fetch. Three rebases running broke it that way (round 3's stamp
+ * block, round 5's force-push orphans, and both at once on the v0.22.1 rebase),
+ * and in every case a reviewer found it by eye rather than a gate.
+ *
+ * Bound here rather than in `check-evidence.mjs`'s own sweep for the same reason
+ * the stamp test is: the question needs nothing but `HEAD`'s history, it costs
+ * about a second, and it has to be in the suite the author already runs.
+ */
+test(
+	"the SHIPPED manifest's head citations lie in the history it ships in",
+	{ skip: SHALLOW && "a shallow clone has no ancestor of HEAD to check" },
+	() => {
+		const manifest = JSON.parse(
+			readFileSync("docs/evidence/manifest.json", "utf8"),
+		);
+		assert.deepEqual(
+			citationAncestryFailures(manifest),
+			[],
+			"docs/evidence/manifest.json must cite commits THIS branch carries: `head`, `partialCapture.addedAtHead` and `partialCapture.refreshedAtHead` are the three a rebase re-spells, and each has to name the commit of this lineage that carries its work rather than the pre-rebase one",
+		);
+	},
+);
+
+/* ---- the prose beside the counts ---------------------------------------- */
+
+/*
+ * `countsMean` explains `frames`, `surfaces` and `themes`, and it is what a
+ * reader checks a fold against - while the fields beside it are guarded and the
+ * prose was not. It went stale at three consecutive folds (round 1 R5, round 2
+ * R2-1, round 3 R3-1), the third time in the commit that moved the stamps, so the
+ * guard below derives the same numbers from the same walk and reads the
+ * paragraph.
+ *
+ * These cells are what makes THAT guard falsifiable rather than decorative: a
+ * paragraph the check cannot read has to be a failure, not a pass by omission,
+ * because "no numbers found" is exactly the state a fold leaves behind when it
+ * re-writes the field and forgets the sentence around it.
+ */
+
+/** A capture script with a known STORIES/THEMES literal, as `show` returns it. */
+const capture = (stories) =>
+	`const STORIES = [\n${[...Array(stories)]
+		.map((_, i) => `\t["story-${i}"],`)
+		.join("\n")}\n];\nconst THEMES = [\n\t"localOperatorDark",\n];\n`;
+
+/** The layout every `countsMean` cell walks: 3 outside a set, 2 inside one. */
+const COUNTS_LAYOUT = { "outside-a": 3, "declared-b": 2 };
+const countsGit = fakeGit({ show: capture(2) });
+
+/*
+ * A scratch tree whose life is bounded to the case that asks for it.
+ *
+ * WHY PER CASE, AND NOT ONE TREE FOR THE FILE. These cells used to share a
+ * `COUNTS_TREE` built at MODULE scope, so the tree sat in the shared system
+ * temp directory from the moment this file loaded until the last cell ran -
+ * seconds of an idle directory that any process on the box may delete, with
+ * the cells that walk it at the END of the file. Measured on this machine, the
+ * gap from module scope to the first `countsMean` walk is 1.6s of a 1.9s run,
+ * and a deleter in that window takes the file to `29 pass / 5 fail` with
+ * `ENOENT` raised on the fixture at `check-evidence.mjs:129`.
+ *
+ * Bound to the case, the same delete has to land inside one synchronous
+ * assertion instead - and it is the second half of the repair, not a substitute
+ * for the name above: a deleter that reaches this namespace by name has
+ * milliseconds where it used to have seconds. `tree()`'s own `scratch` list
+ * still covers the cells that do not bound their tree, and `rmSync` with
+ * `force` is idempotent, so the second removal is not one too many.
+ */
+function caseTree(t, layout) {
+	const root = tree(layout);
+	t.after(() => rmSync(root, { recursive: true, force: true }));
+	return root;
+}
+
+/** A manifest whose `countsMean` reads the numbers of the case's tree. */
+const countsManifest = ({ framesProse = "", surfacesProse = "" } = {}) => ({
+	frames: 3,
+	surfaces: 2,
+	themes: 1,
+	supplementary: [{ path: "declared-b" }],
+	countsMean: {
+		frames: framesProse,
+		surfaces: surfacesProse,
+		themes:
+			"RE-DERIVED FOR THIS FOLD: 1 theme names in the `THEMES` literal, counted the same way.",
+	},
+});
+
+const FRAMES_LEADING =
+	"RE-DERIVED FOR THIS FOLD (this branch folded onto `origin/main` = `<base>`): 3 committed WebP files outside the 1 declared supplementary sets below, of 5 on disk (2 of them inside the sets).";
+
+test("a countsMean paragraph leading with the walk's numbers passes", (t) => {
+	const countsTree = caseTree(t, COUNTS_LAYOUT);
+	const manifest = countsManifest({
+		framesProse: FRAMES_LEADING,
+		surfacesProse:
+			"RE-DERIVED FOR THIS FOLD: 2 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them.",
+	});
+	assert.deepEqual(countsMeanFailures(manifest, countsGit, countsTree), []);
+});
+
+test("a paragraph left behind by a fold fails, and carries the sentence to paste", (t) => {
+	const countsTree = caseTree(t, COUNTS_LAYOUT);
+	const manifest = countsManifest({
+		framesProse: FRAMES_LEADING.replace("3 committed", "2 committed").replace(
+			"of 5 on disk (2 of them",
+			"of 4 on disk (2 of them",
+		),
+	});
+	const [failure] = countsMeanFailures(manifest, countsGit, countsTree);
+	assert.match(failure, /countsMean\.frames/);
+	assert.match(failure, /the walk finds 3/);
+	assert.match(
+		failure,
+		/Lead the field with: "RE-DERIVED FOR THIS FOLD \(this branch folded onto `origin\/main` = `<base>`\): 3 committed WebP files outside the 1 declared supplementary sets below, of 5 on disk \(2 of them inside the sets\)\."/,
+		"the message has to carry the reading the fold author pastes, or the next fold solves it by hand again",
+	);
+});
+
+test("a paragraph with no reading in it fails rather than passing by omission", (t) => {
+	// The state a fold leaves behind when it re-writes the field and forgets the
+	// sentence around it: nothing to compare, and silence would be a pass.
+	const countsTree = caseTree(t, COUNTS_LAYOUT);
+	const manifest = countsManifest({
+		framesProse:
+			"RE-DERIVED FOR THIS FOLD: the counts beside this note describe the tree that ships.",
+	});
+	const [failure] = countsMeanFailures(manifest, countsGit, countsTree);
+	assert.match(failure, /countsMean\.frames/);
+	assert.match(failure, /nothing this check can read/);
+});
+
+test("the older paragraphs under the leading one are not this tree's to answer for", (t) => {
+	const countsTree = caseTree(t, COUNTS_LAYOUT);
+	/*
+	 * Every paragraph below the first says in its own words that it describes an
+	 * older tree. Demanding this tree's numbers of them would force the history to
+	 * be deleted rather than kept, which is the practice `citationConvention` group
+	 * (4) protects - so only the leading paragraph is checked.
+	 */
+	const manifest = countsManifest({
+		framesProse: `${FRAMES_LEADING}\n\nRE-DERIVED FOR THE SECOND FOLD: 2 committed WebP files outside the 1 declared supplementary sets below, of 4 on disk (2 of them inside the sets).`,
+		surfacesProse:
+			"RE-DERIVED FOR THIS FOLD: 2 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them.",
+	});
+	assert.deepEqual(countsMeanFailures(manifest, countsGit, countsTree), []);
+});
+
+test("a stale surfaces paragraph fails on the literal the field names", (t) => {
+	const countsTree = caseTree(t, COUNTS_LAYOUT);
+	const manifest = countsManifest({
+		framesProse: FRAMES_LEADING,
+		surfacesProse:
+			"RE-DERIVED FOR THE FIFTH FOLD: 1 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them.",
+	});
+	const [failure] = countsMeanFailures(manifest, countsGit, countsTree);
+	assert.match(failure, /countsMean\.surfaces/);
+	assert.match(failure, /the walk finds 2/);
+});
+
+test("a manifest with no countsMean is not this guard's failure", (t) => {
+	// The fixture manifests other cells build carry no prose at all; a missing
+	// field is `stampFailures`' business, not a stale paragraph. This case builds
+	// the same tree as the five above it and never walks it - the guard returns
+	// before the walk when there is no prose - so the cells differ only in the
+	// paragraph they assert about.
+	const countsTree = caseTree(t, COUNTS_LAYOUT);
+	assert.deepEqual(
+		countsMeanFailures({ frames: 3, supplementary: [] }, countsGit, countsTree),
+		[],
+	);
+});
+
+/*
+ * AND A FOLD MUST NOT DROP THIS BRANCH'S OWN TOP-LEVEL RECORDS (design review round 5,
+ * D14). The rule that says so lives in two homes - the rig's fold block in
+ * `scripts/capture-evidence.mjs` and `citationConvention` in the manifest itself - and
+ * both are read by a RESOLVER, i.e. at the one moment nobody has time to read a rule
+ * carefully. This is the same clause as a failure: the twelfth fold onto `c69f78b92`
+ * kept main's schema, honoured every other group in the rule, and lost seven of this
+ * branch's records without a word, because nothing said they had to survive.
+ *
+ * The list is this branch's records, not a schema: it grows when a pass writes a new
+ * top-level field, and a field that is being retired deliberately belongs here only with
+ * a sentence saying which pass retired it (none has). A fold that starts from main's
+ * manifest fails on the first name it dropped, which is far earlier than the round that
+ * next reads the note.
+ */
+const BRANCH_RECORDS = [
+	"browserMarkRemovalPass",
+	"roundOneRemediationNote",
+	"roundTwoCaptureNote",
+	"roundThreeCaptureNote",
+	"roundFourRePortNote",
+	"chatSlashHighlightEvidence",
+	"themeLegibilityCapture",
+	/*
+	 * Grown by the provider-setup pass, which wrote this branch's newest top-level
+	 * record. It is the entry that makes the list's own promise true for it: the
+	 * fold onto `d7397b055` merged the manifest key-by-key and kept this record
+	 * because nothing had to drop it, but nothing would have caught it if it had -
+	 * and the pair of fields the same fold had to re-read (see
+	 * `refreshedThemesUnionNote`) is the case where a KEY-GRANULAR merge is exactly
+	 * the wrong instrument (fold convergence round, C-4).
+	 */
+	"providerSetupUxNote",
+	"renameRefreshArgumentListPass",
+	/*
+	 * Grown by the `/usage` pass, whose re-stamp is this branch's newest top-level
+	 * record. It is listed for the reason the list exists: a fold that starts from
+	 * main's manifest would drop it (and with it the note that says which two tree
+	 * hashes this branch's delta moved) without a word, and the re-derived tokens
+	 * the token-binding test holds would then read as a claim about main's trees.
+	 */
+	"usageAutoCheckRestampNote",
+	/*
+	 * Grown by the `/usage` in-flight remediation, this branch's newest top-level
+	 * record and the one that re-derived both stamps and moved four frames. It is
+	 * listed for the reason the list exists: a fold that started from main's
+	 * manifest would drop it, and with it the only statement of which four frames
+	 * moved, why two of them were re-taken, and what the two trees are now.
+	 */
+	"usageInFlightRemediationNote",
+	/*
+	 * Grown by this branch's fold onto `origin/main` = `e48d64b81` (the #475
+	 * telemetry-off merge), which wrote this branch's newest top-level record. It is
+	 * listed for the reason the list exists, and this one is the case the list was
+	 * written for: the fold is the only commit in this lineage that resolves
+	 * `docs/evidence/manifest.json` against a main that has moved, and a resolver who
+	 * took main's copy would drop this record and with it the only statement of which
+	 * two trees the fold moved, which of main's fields the per-field rule refuses, and
+	 * that no frame moved. (Note for a later reader, not an action: the `/usage`
+	 * convergence round's own record, `usageInFlightConvergenceNote`, is absent from
+	 * this list - the list's promise is therefore already one record short of true, and
+	 * this fold reports that rather than widening its own diff to fix it.)
+	 */
+	"foldOntoTelemetryOffNote",
+	/*
+	 * Grown by the read-receipt remediation (agent review round 2, MINOR 1), which
+	 * wrote this branch's newest top-level record. It is listed for exactly the
+	 * reason the entry above records: this pass's own fold onto a moved `origin/main`
+	 * had to lay this record back by hand, and the record is the only statement of
+	 * which two trees the receipt's bytes moved - so a resolver who took main's copy
+	 * would drop the claim the token-binding test then reads as main's.
+	 */
+	"readReceiptRestampNote",
+	/*
+	 * The record the entry above's own note reported as MISSING from this list, and
+	 * it is filled in here because the same pass is editing this list anyway: the
+	 * `/usage` convergence round wrote `usageInFlightConvergenceNote`, and until now
+	 * the list's promise was one record short of true - a fold that resolved the
+	 * manifest against a moved main could drop that record with nothing to catch it,
+	 * which is the failure this whole list exists to make loud. Naming it is a
+	 * one-line widening of the guard and changes nothing about any captured frame;
+	 * it is disclosed on the round's remediation comment rather than smuggled in.
+	 */
+	"usageInFlightConvergenceNote",
+	/*
+	 * Grown by the pass that made the desktop picker list the providers by
+	 * itself, which wrote this branch's newest top-level record. It is listed for
+	 * the reason the list exists: a fold that starts from main's manifest drops
+	 * it, and with it the only statement of which two trees this pass moved, which
+	 * six frames it added, and which of this surface's frames were re-captured and
+	 * came back byte-identical.
+	 */
+	"modelPickerLiveListingNote",
+	/*
+	 * And by round 1's remediation of that pass — the pass this fold carries: it re-captured four of
+	 * this surface's frames, withdrew its cross-tree `before-` row for a declared supplementary set
+	 * (so a later sweep cannot rewrite a base-tree claim from this tree), and re-derived the stamps
+	 * the round moved.
+	 */
+	"modelPickerRemediationRestampNote",
+];
+
+test("the manifest carries every top-level record this branch wrote", () => {
+	const manifest = JSON.parse(
+		readFileSync("docs/evidence/manifest.json", "utf8"),
+	);
+	const missing = BRANCH_RECORDS.filter((key) => !(key in manifest));
+	assert.deepEqual(
+		missing,
+		[],
+		"a fold dropped this branch's own top-level records - union the manifest at the TOP level as well as inside it (the rig's fold block, group 2b, and the manifest's `citationConvention`)",
+	);
+});
+
+	"occupiedAddressRestampNote",
+	"shellPathRestampNote",
+	"settingsGateRestampNote",
+	"candidateMacArchRestampNote",
+	"notarizeGateRestampNote",
+	"usageInFlightConvergenceNote",
+	"macNativeComponentsRestampNote",
+	"telemetrySwitchRestampNote",
+	"readReceiptRestampNote",
+	/*
+	 * This one exists BECAUSE the list is not optional reading: the change it
+	 * re-stamps for rewrote no frame, so a reader is owed the two values it binds
+	 * and the reason no still was owed.
+	 */
+	"modelCatalogueFocusRestampNote",
+	/*
+	 * This branch's own: it states the pair an earlier fold re-derived, and is held
+	 * to the pair this file ships rather than read as history.
+	 */
+	"round1LabelGapRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {

@@ -1386,6 +1386,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										 * is that they cannot drift apart.
 										 */
 										conversationId={conversationId}
+										labelPending={canonical.view.labelPending}
 										onReconnect={canonical.view.retry}
 										// The two states a notification click paints before the
 										// owner answers: the rows may be this window's memory of
