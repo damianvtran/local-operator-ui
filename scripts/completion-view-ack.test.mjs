@@ -87,6 +87,7 @@ const storeBundle = await build({
 export const desktopResult = request => globalThis.__storeRequest(request);`,
 							echo: `export const echoPendingUser = () => undefined;
 export const retractPendingUser = () => undefined;
+export const retractLocalEcho = () => "retracted";
 export const discardPendingEchoes = () => undefined;`,
 						}[args.path],
 						loader: "js",
