@@ -287,6 +287,72 @@ export function formatBytes(value: number | null | undefined): string {
 }
 
 /**
+ * A generation rate, from its two halves: `decode_tokens / (decode_us / 1e6)`.
+ *
+ * The UNKNOWN here is the point of the function, so it is worth being exact
+ * about which absences produce it and which do not:
+ *
+ * - **`calls === 0` is unknown**, and it is the case the whole feature is built
+ *   around. It means no call in scope contributed a measured window — either a
+ *   backend that predates the field (the triple is absent, and the caller's
+ *   `?? 0` makes that a zero count) or a ledger written before the feature
+ *   shipped. The rate is not zero; nothing was measured. It renders `—`.
+ * - **A zero-length window is unknown too.** A measured window of `0 us` with
+ *   tokens in it has no finite rate, and `Infinity` is not a number to print.
+ *   This is defensive: the backend's own `§8(b)` guard excludes such calls, so
+ *   the pair cannot arrive from a shipped route.
+ * - **`tokens === 0` over a real window is ZERO, not unknown.** A call can
+ *   genuinely decode at under one token per second (`0.4 tok/s`), and the
+ *   inverse trap — folding a measured slow rate into the unknown spelling — is
+ *   the one this file has to refuse in both directions.
+ *
+ * Nothing here rounds: the caller gets the number, and
+ * {@link formatTokensPerSecond} is the single place it becomes a string.
+ */
+export function tokensPerSecond(
+	tokens: number,
+	us: number,
+	calls: number,
+): number | null {
+	if (calls <= 0) return null;
+	if (us <= 0) return null;
+	return tokens / (us / 1_000_000);
+}
+
+/**
+ * A rate as it is printed: `315 tok/s` / `0.4 tok/s` / {@link UNKNOWN}.
+ *
+ * **The decimal rule is the whole decision, and it is two-sided.** Below ten the
+ * value keeps ONE decimal, because a genuine sub-ten rate is reachable and
+ * rounding `0.4 tok/s` to a flat `0` would present a slow call as a stopped one
+ * — the same unknown-versus-zero failure {@link tokensPerSecond} refuses, in the
+ * other direction. At ten and above it is a whole number, which is the spelling
+ * the reference harness shows (`315 tok/s`) and the one a reader can hold
+ * against a distribution (p50 = 92, p99 = 249 tok/s on the operator's ledger):
+ * a tenth of a token per second is not a distinction anything on these panels
+ * acts on.
+ *
+ * **Not abbreviated, deliberately.** `formatTokens`'s `1.2k` ladder is for a
+ * token COUNT, which crosses nine orders of magnitude on a long-lived machine
+ * and is read as a magnitude. A rate is a measurement and lives in a range of
+ * about three; `1.2k tok/s` would be a spelling no reader can compare against
+ * `980` at a glance, so thousands are grouped instead (`1,240 tok/s`) through
+ * {@link formatCount}, whose rule for an exact count this borrows wholesale —
+ * including the rounding, which is {@link roundHalfEven} in both branches so
+ * `0.5` cannot land on two spellings inside one column.
+ *
+ * `null` and `undefined` are the same answer, and it is {@link UNKNOWN}. A rate
+ * is never `0 tok/s` unless something genuinely decoded at nothing.
+ */
+export function formatTokensPerSecond(
+	value: number | null | undefined,
+): string {
+	if (value === null || value === undefined) return UNKNOWN;
+	if (value < 10) return `${(roundHalfEven(value * 10) / 10).toFixed(1)} tok/s`;
+	return `${formatCount(roundHalfEven(value))} tok/s`;
+}
+
+/**
  * A duration in seconds: `42s` / `4m` / `3h 12m` / `2d 4h` / `unknown`
  * (`info/model.py` `format_duration`).
  *
