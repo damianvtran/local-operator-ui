@@ -85,7 +85,10 @@ export const SIDEBAR_SECTION_LABEL: Record<SidebarSectionKey, string> = {
  * off is this file's `hidden` list. One decision, one spelling - a second
  * boolean for "is the agents section open" is how the two drift apart.
  */
-export const ENTITY_SECTIONS: readonly SidebarSectionKey[] = ["agents", "teams"];
+export const ENTITY_SECTIONS: readonly SidebarSectionKey[] = [
+	"agents",
+	"teams",
+];
 
 export function isEntitySection(key: SidebarSectionKey): boolean {
 	return key === "agents" || key === "teams";
@@ -263,7 +266,11 @@ export function pageRows(
 }
 
 /** One group of the agent-grouped list. */
-export type SidebarRowGroup = { key: string; label: string; rows: CanonicalSessionRow[] };
+export type SidebarRowGroup = {
+	key: string;
+	label: string;
+	rows: CanonicalSessionRow[];
+};
 
 /**
  * The arranged list under a given `groupBy`.
@@ -307,7 +314,10 @@ export function groupRows(
 }
 
 /** Whether a section draws, under this view. */
-export function isSectionShown(view: SidebarView, key: SidebarSectionKey): boolean {
+export function isSectionShown(
+	view: SidebarView,
+	key: SidebarSectionKey,
+): boolean {
 	return !view.hidden.includes(key);
 }
 

@@ -5950,10 +5950,13 @@ export function ChatSidebar({
 					onClick={pressPageMore}
 					className="flex h-7 w-full items-center rounded-md px-2 text-left text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
 				>
-					{pageMoreLabel(view.loads, page.remaining > 0 ? page.remaining : ladderStep)}
+					{pageMoreLabel(
+						view.loads,
+						page.remaining > 0 ? page.remaining : ladderStep,
+					)}
 				</button>
 			)}
-			/*
+			{/*
 			 * THE TAIL, AT THE FOOT OF THE LIST IT EXTENDS (#505).
 			 *
 			 * `catalogueTail` is the extension's own register: the wait sentence while a
@@ -5966,7 +5969,7 @@ export function ChatSidebar({
 			 * while the tail goes from loading to settled, because a live region that is
 			 * replaced by an empty one announces nothing - and the rows arriving are the
 			 * whole of what this control does.
-			 */
+			 */}
 			{catalogueTail}
 			{tailArrival !== null && (
 				<span className="sr-only" aria-live="polite">
