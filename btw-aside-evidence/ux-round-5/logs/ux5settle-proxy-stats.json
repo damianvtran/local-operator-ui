@@ -1,0 +1,130 @@
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T13:27:26.762Z",
+      "url": "/v1/desktop/sessions/b2468fd132ee/asides",
+      "asideId": "f8d178ec-36c6-4d57-92bd-eed1cf49a14b",
+      "continues": null,
+      "questionHead": "UD1 what does the retry budget cap",
+      "text": "UD1 what does the retry budget cap",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "7bae4fd13e69475b95748dc482e608e2",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"f8d178ec-36c6-4d57-92bd-eed1cf49a14b\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:27:32.194Z",
+      "url": "/v1/desktop/sessions/b2468fd132ee/asides",
+      "asideId": "844bcfa8-0155-4022-bcca-a8b49d5b8b14",
+      "continues": "f8d178ec-36c6-4d57-92bd-eed1cf49a14b",
+      "questionHead": "TOOLCALL2: UD1 the follow-up the model declines",
+      "text": "TOOLCALL2: UD1 the follow-up the model declines",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "7bae4fd13e69475b95748dc482e608e2",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-25T13:27:42.085Z",
+      "url": "/v1/desktop/sessions/b2468fd132ee/asides",
+      "asideId": "83facce9-82f4-446f-9252-72ab95787f81",
+      "continues": null,
+      "questionHead": "UD2 a base turn above the interrupted answer",
+      "text": "UD2 a base turn above the interrupted answer",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "7bae4fd13e69475b95748dc482e608e2",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"83facce9-82f4-446f-9252-72ab95787f81\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:27:47.334Z",
+      "url": "/v1/desktop/sessions/b2468fd132ee/asides",
+      "asideId": "18f491f7-f378-4351-9919-27fe8ca08235",
+      "continues": "83facce9-82f4-446f-9252-72ab95787f81",
+      "questionHead": "LONGANSWER UD2 the answer the reader interrupts",
+      "text": "LONGANSWER UD2 the answer the reader interrupts",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "7bae4fd13e69475b95748dc482e608e2",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"18f491f7-f378-4351-9919-27fe8ca08235\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T13:27:05.935Z",
+      "subscriptionId": "683a09193cbea47c",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/b2468fd132ee/events?frontend_replace=1",
+      "openedAt": "2026-09-25T13:27:10.768Z",
+      "subscriptionId": "7bae4fd13e69475b95748dc482e608e2",
+      "asideDeltas": 26,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287
+      ]
+    }
+  ],
+  "asideDeltaFrames": 26,
+  "deltasBySubscription": {
+    "7bae4fd13e69475b95748dc482e608e2": 26
+  },
+  "deltasByAside": {
+    "f8d178ec-36c6-4d57-92bd-eed1cf49a14b": 8,
+    "83facce9-82f4-446f-9252-72ab95787f81": 8,
+    "18f491f7-f378-4351-9919-27fe8ca08235": 10
+  },
+  "refused422": 0,
+  "messagePosts": [
+    {
+      "at": "2026-09-25T13:27:19.474Z",
+      "url": "/v1/desktop/sessions/b2468fd132ee/messages",
+      "kind": "message",
+      "text": "ux4d seed turn",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"4a529eeb-93b1-4967-b89a-265dde45844c\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T13:27:19.474Z"
+    }
+  ],
+  "asideOps": [
+    {
+      "at": "2026-09-25T13:27:41.253Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/b2468fd132ee/asides/f8d178ec-36c6-4d57-92bd-eed1cf49a14b",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"f8d178ec-36c6-4d57-92bd-eed1cf49a14b\",\"status\":\"closed\"},\"replayed\":false}}"
+    }
+  ]
+}

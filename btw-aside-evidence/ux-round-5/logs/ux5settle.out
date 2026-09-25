@@ -1,0 +1,257 @@
+ux5 private-port lock taken
+rig up: proxy 95185 on 8391 -> daemon 93905 on 52891, stub 52861; 1111 and 8080 untouched
+== ux5settle (btw-ux4d) at 13:27:02 ==
+[build] current: assets 2026-09-25T13:14:15.052Z >= sources 2026-09-25T12:33:29.028Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8391
+  serve records 1 linked from /Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/run-ux5settle/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/ux482-r5-7c31f9
+  scratch       /Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/tmp/lo-renderer-driver-95370
+  frames        /Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/frames/ux5settle
+  app cwd       /Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/tmp/lo-renderer-driver-95370/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8391   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8391","backend":"http://127.0.0.1:8391"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8391)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] headless and never shown
+        mode=headless visible=false focused=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] UX4d session
+        b2468fd132ee
+[note] D1 the region before the refused follow-up
+        {"scrollTop":0,"maxScroll":49,"clientHeight":232,"contentHeight":281,"children":[{"cls":"flex flex-col gap-1","top":0,"topAbs":0,"h":281.1,"text":"Question: UD1 what does the retry bu"}],"paragraphsAbs":[{"topAbs":0,"h":19.5},{"topAbs":23.5,"h":62.4},{"topAbs":239.5,"h":41.6}],"alert":null,"text":"xx never spends it: the request was wrong, not the provider."}
+[note] D1 the path, from the press to the settle
+        {"trail":[{"ms":7,"scrollTop":0,"maxScroll":49,"contentHeight":281,"children":["0+281.1"],"alertTopAbs":null},{"ms":257,"scrollTop":104.5,"maxScroll":105,"contentHeight":356,"children":["-104.5+281.1","188.6+62.5"],"alertTopAbs":null},{"ms":5751,"scrollTop":221.5,"maxScroll":222,"contentHeight":473,"children":["-221.5+281.1","71.6+179.5"],"alertTopAbs":336.1}],"met":true}
+[note] D1 the settled geometry
+        {"scrollTop":221.5,"maxScroll":222,"clientHeight":251,"contentHeight":473,"children":[{"cls":"flex flex-col gap-1","top":-221.5,"topAbs":0,"h":281.1,"text":"Question: UD1 what does the retry bu"},{"cls":"flex flex-col gap-1","top":71.6,"topAbs":293.1,"h":179.5,"text":"Question: TOOLCALL2: UD1 the follow-"}],"paragraphsAbs":[{"topAbs":0,"h":19.5},{"topAbs":23.5,"h":62.4},{"topAbs":239.5,"h":41.6},{"topAbs":293.1,"h":39},{"topAbs":336.1,"h":136.5}],"alert":{"topAbs":336.1,"h":136.5},"text":"is exchange, or press Esc to close the aside and discard it."}
+[note] D1 the clip at the settle
+        {"scrollTop":221.5,"maxScroll":222,"target":293.1,"state":"alert","alertText":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it.","alertTopInRegion":114.6,"alertBottomInRegion":251.1,"clientHeight":251,"hiddenBelowPx":0.1,"hiddenAbovePx":0,"rows":7,"rowsFullyVisible":7,"lastRowBottomVsClipPx":-2.4,"phrase":{"needle":"discard it","bottomVsClipPx":-2.4,"visible":true}}
+[FAIL] D1 the refusal is not fully inside the region's clip at 800px on the settled reading
+        {"rows":7,"fullyVisible":7,"hiddenBelowPx":0.1,"phrase":{"needle":"discard it","bottomVsClipPx":-2.4,"visible":true}}
+[FAIL] D1 the resting place is neither end of the region: mid-content, with the move's own target beyond the region's maximum scroll
+        {"restScroll":221.5,"maxScroll":222,"target":293.1,"children":[{"cls":"flex flex-col gap-1","top":-221.5,"topAbs":0,"h":281.1,"text":"Question: UD1 what does the retry bu"},{"cls":"flex flex-col gap-1","top":71.6,"topAbs":293.1,"h":179.5,"text":"Question: TOOLCALL2: UD1 the follow-"}]}
+[note] frame
+        {"label":"ux4d-ux5settle-d01-the-settled-refusal-at-the-edge","width":1600,"height":1736}
+[note] D1 after End with the region focused
+        {"stops":["div[The aside exchange]"],"afterEnd":{"scrollTop":221.5,"maxScroll":222,"clientHeight":251,"contentHeight":473,"children":[{"cls":"flex flex-col gap-1","top":-221.5,"topAbs":0,"h":281.1,"text":"Question: UD1 what does the retry bu"},{"cls":"flex flex-col gap-1","top":71.6,"topAbs":293.1,"h":179.5,"text":"Question: TOOLCALL2: UD1 the follow-"}],"paragraphsAbs":[{"topAbs":0,"h":19.5},{"topAbs":23.5,"h":62.4},{"topAbs":239.5,"h":41.6},{"topAbs":293.1,"h":39},{"topAbs":336.1,"h":136.5}],"alert":{"topAbs":336.1,"h":136.5},"text":"is exchange, or press Esc to close the aside and discard it."},"clipAfterEnd":{"scrollTop":221.5,"maxScroll":222,"target":293.1,"state":"alert","alertText":"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: Ask again here to keep this exchange, or press Esc to close the aside and discard it.","alertTopInRegion":114.6,"alertBottomInRegion":251.1,"clientHeight":251,"hiddenBelowPx":0.1,"hiddenAbovePx":0,"rows":7,"rowsFullyVisible":7,"lastRowBottomVsClipPx":-2.4,"phrase":{"needle":"discard it","bottomVsClipPx":-2.4,"visible":true}}}
+[PASS] D1 one key press on the region brings the whole refusal into the clip (the remedy is reachable, not lost)
+        {"scrollTop":221.5,"maxScroll":222,"hiddenBelowPx":0.1,"phrase":{"needle":"discard it","bottomVsClipPx":-2.4,"visible":true}}
+[note] frame
+        {"label":"ux4d-ux5settle-d02-after-end-the-refusal-is-read","width":1600,"height":1736}
+[note] D2 the reader's scroll mid-stream
+        {"ready":{"ms":2168,"scrollTop":291.5,"maxScroll":292,"clientHeight":251,"contentHeight":543,"questionRel":21.1,"questionAbs":312.6,"questionBoxH":39,"turnRel":21.1,"turnBoxH":230.2,"svgPresent":false,"svgHeight":null,"lastRowBottomVsClip":0.2},"focus":"div[The aside exchange]","beforeHand":{"scrollTop":312.5,"maxScroll":479,"clientHeight":251,"contentHeight":730,"questionRel":0.1,"questionAbs":312.6,"questionBoxH":39,"turnRel":0.1,"turnBoxH":417.3,"svgPresent":false,"svgHeight":null,"lastRowBottomVsClip":166.4},"afterHand":{"scrollTop":0,"maxScroll":687,"clientHeight":251,"contentHeight":938,"questionRel":312.6,"questionAbs":312.6,"questionBoxH":39,"turnRel":312.6,"turnBoxH":625.3,"svgPresent":false,"svgHeight":null,"lastRowBottomVsClip":686.9},"after":[{"ms":3036,"scrollTop":0,"contentHeight":1146,"questionAbs":312.6,"questionRel":312.6},{"ms":3313,"scrollTop":0,"contentHeight":1333,"questionAbs":312.6,"questionRel":312.6},{"ms":3590,"scrollTop":0,"contentHeight":1562,"questionAbs":312.6,"questionRel":312.6},{"ms":4046,"scrollTop":0,"contentHeight":1770,"questionAbs":312.6,"questionRel":312.6},{"ms":4360,"scrollTop":0,"contentHeight":1936,"questionAbs":312.6,"questionRel":312.6},{"ms":4736,"scrollTop":0,"contentHeight":2165,"questionAbs":312.6,"questionRel":312.6},{"ms":4984,"scrollTop":0,"contentHeight":2331,"questionAbs":312.6,"questionRel":312.6}],"end":{"scrollTop":0,"maxScroll":2080,"clientHeight":251,"contentHeight":2331,"questionRel":312.6,"questionAbs":312.6,"questionBoxH":39,"turnRel":312.6,"turnBoxH":2018.7,"svgPresent":false,"svgHeight":null,"lastRowBottomVsClip":2080.3}}
+[PASS] D2 the arm is real: the answer was still growing when the reader scrolled, and the scroll moved the region
+        {"before":312.5,"after":0,"grew":1393}
+[PASS] D2 the reader wins: the rest of the stream does not drag the region back
+        {"hand":0,"end":0,"trail":[0,0,0,0,0,0,0]}
+[note] frame
+        {"label":"ux4d-ux5settle-d03-the-reader-wins-on-a-streamed-answer","width":1600,"height":1736}
+[note] UX4d scene
+        finished
+
+---- app log (tail) ----
+09:27:05.375 › [window-mode] headless run launched by pid 95370; it quits when that process goes
+[window-mode] headless run launched by pid 95370; it quits when that process goes
+09:27:05.377 › [discovery] record directory /Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/tmp/lo-renderer-driver-95370/config/run/serve (1 record(s))
+09:27:05.533 › [discovery] candidate http://127.0.0.1:8391 pid 93905 v0.62.33 prefix /Users/damian/local-operator-worktrees/ux482-r5-7c31f9/.venv (configured URL)
+09:27:05.533 › [discovery] picked http://127.0.0.1:8391 (pid 93905, v0.62.33, configured)
+09:27:05.656 › Attached to daemon http://127.0.0.1:8391 (pid 93905, v0.62.33, editable, record /Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/tmp/lo-renderer-driver-95370/config/run/serve/93905.json)
+09:27:05.657 › Discovered a daemon; the backend manager is configured not to spawn or kill one.
+09:27:05.734 › Update service initialized. Dev mode: true, NPX install: false
+09:27:05.735 › Unpackaged instance: no packaged install state to leave alone.
+09:27:05.736 › Periodic update checks scheduled (every 5 minutes)
+09:27:05.736 › macOS auto-update requires app signing
+09:27:05.736 › [webauthn] Touch ID passkeys are off: unpackaged — an unpackaged run has no signature to carry the entitlement, so there is no group to configure
+09:27:05.741 › [browser] denied a media permission request from (unknown origin)
+09:27:05.741 › [browser] denied a media permission request from (unknown origin)
+09:27:05.741 › [browser] denied a web-app-installation permission request from (unknown origin)
+09:27:05.741 › [browser] denied a geolocation permission request from (unknown origin)
+09:27:05.811 › [shell-path] /bin/zsh reports PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
+09:27:05.811 › Shell environment variables loaded successfully. PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
+09:27:06.532 › [browser] denied a media permission request from (unknown origin)
+09:27:06.533 › [browser] denied a media permission request from (unknown origin)
+09:27:06.533 › [browser] denied a web-app-installation permission request from (unknown origin)
+09:27:06.533 › [browser] denied a geolocation permission request from (unknown origin)
+09:27:06.540 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
+09:27:06.541 › [browser] host on 127.0.0.1:53049 (proto 1), profile /Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/tmp/lo-renderer-driver-95370/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+09:27:06.577 › Checking for UI updates...
+09:27:06.578 › Skip checkForUpdates because application is not packed and dev update config is not forced
+09:27:07.079 › [browser] tab 1 navigated to about:blank
+09:27:07.117 › Checking for UI updates...
+09:27:07.117 › Skip checkForUpdates because application is not packed and dev update config is not forced
+[window-mode] state: visible=false focused=false focusable=false size=800x900 content=800x868
+09:27:08.739 › Checking for updates... (silent mode: true)
+09:27:08.739 › Skip checkForUpdates because application is not packed and dev update config is not forced
+09:27:08.739 › Checking for backend updates... (silent mode: true)
+09:27:08.739 › Skip backend update check in dev mode unless forced
+09:27:19.124 › [about-panel] suppressed by window mode headless: a headless run raises no window
+09:27:20.744 › The pre-split environment at /Users/damian/Library/Application Support/Local Operator/local-operator-venv is built on the interpreter inside /Applications/Local Operator.app; it is left exactly as it is, and this instance does not use it.
+09:27:26.427 › [about-panel] suppressed by window mode headless: a headless run raises no window
+09:27:41.767 › [about-panel] suppressed by window mode headless: a headless run raises no window
+09:27:47.126 › [about-panel] suppressed by window mode headless: a headless run raises no window
+
+[PASS] no process from this run outlived its boot
+
+frames: ux4d-ux5settle-d01-the-settled-refusal-at-the-edge.png, ux4d-ux5settle-d02-after-end-the-refusal-is-read.png, ux4d-ux5settle-d03-the-reader-wins-on-a-streamed-answer.png
+frames directory: /Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/frames/ux5settle
+app log: /Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/tmp/lo-renderer-driver-95370/app-scene.log
+scratch removed (--clean)
+
+2 CHECK(S) FAILED
+== ux5settle driver exit: 1 ==
+total 1792
+drwxr-xr-x@ 5 damian  staff     160 Sep 25 09:27 .
+drwxr-xr-x@ 9 damian  staff     288 Sep 25 09:26 ..
+-rw-r--r--@ 1 damian  staff  308300 Sep 25 09:27 ux4d-ux5settle-d01-the-settled-refusal-at-the-edge.png
+-rw-r--r--@ 1 damian  staff  308404 Sep 25 09:27 ux4d-ux5settle-d02-after-end-the-refusal-is-read.png
+-rw-r--r--@ 1 damian  staff  294467 Sep 25 09:27 ux4d-ux5settle-d03-the-reader-wins-on-a-streamed-answer.png
+8391 released before this command returned
+ux5 private-port lock released
+--- proxy counters (/Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/run-ux5settle/proxy-stats.json) ---
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T13:27:26.762Z",
+      "url": "/v1/desktop/sessions/b2468fd132ee/asides",
+      "asideId": "f8d178ec-36c6-4d57-92bd-eed1cf49a14b",
+      "continues": null,
+      "questionHead": "UD1 what does the retry budget cap",
+      "text": "UD1 what does the retry budget cap",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "7bae4fd13e69475b95748dc482e608e2",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"f8d178ec-36c6-4d57-92bd-eed1cf49a14b\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:27:32.194Z",
+      "url": "/v1/desktop/sessions/b2468fd132ee/asides",
+      "asideId": "844bcfa8-0155-4022-bcca-a8b49d5b8b14",
+      "continues": "f8d178ec-36c6-4d57-92bd-eed1cf49a14b",
+      "questionHead": "TOOLCALL2: UD1 the follow-up the model declines",
+      "text": "TOOLCALL2: UD1 the follow-up the model declines",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "7bae4fd13e69475b95748dc482e608e2",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-25T13:27:42.085Z",
+      "url": "/v1/desktop/sessions/b2468fd132ee/asides",
+      "asideId": "83facce9-82f4-446f-9252-72ab95787f81",
+      "continues": null,
+      "questionHead": "UD2 a base turn above the interrupted answer",
+      "text": "UD2 a base turn above the interrupted answer",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "7bae4fd13e69475b95748dc482e608e2",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"83facce9-82f4-446f-9252-72ab95787f81\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:27:47.334Z",
+      "url": "/v1/desktop/sessions/b2468fd132ee/asides",
+      "asideId": "18f491f7-f378-4351-9919-27fe8ca08235",
+      "continues": "83facce9-82f4-446f-9252-72ab95787f81",
+      "questionHead": "LONGANSWER UD2 the answer the reader interrupts",
+      "text": "LONGANSWER UD2 the answer the reader interrupts",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "7bae4fd13e69475b95748dc482e608e2",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"18f491f7-f378-4351-9919-27fe8ca08235\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T13:27:05.935Z",
+      "subscriptionId": "683a09193cbea47c",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/b2468fd132ee/events?frontend_replace=1",
+      "openedAt": "2026-09-25T13:27:10.768Z",
+      "subscriptionId": "7bae4fd13e69475b95748dc482e608e2",
+      "asideDeltas": 26,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287
+      ]
+    }
+  ],
+  "asideDeltaFrames": 26,
+  "deltasBySubscription": {
+    "7bae4fd13e69475b95748dc482e608e2": 26
+  },
+  "deltasByAside": {
+    "f8d178ec-36c6-4d57-92bd-eed1cf49a14b": 8,
+    "83facce9-82f4-446f-9252-72ab95787f81": 8,
+    "18f491f7-f378-4351-9919-27fe8ca08235": 10
+  },
+  "refused422": 0,
+  "messagePosts": [
+    {
+      "at": "2026-09-25T13:27:19.474Z",
+      "url": "/v1/desktop/sessions/b2468fd132ee/messages",
+      "kind": "message",
+      "text": "ux4d seed turn",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"4a529eeb-93b1-4967-b89a-265dde45844c\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T13:27:19.474Z"
+    }
+  ],
+  "asideOps": [
+    {
+      "at": "2026-09-25T13:27:41.253Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/b2468fd132ee/asides/f8d178ec-36c6-4d57-92bd-eed1cf49a14b",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"f8d178ec-36c6-4d57-92bd-eed1cf49a14b\",\"status\":\"closed\"},\"replayed\":false}}"
+    }
+  ]
+}
+--- end counters ---

@@ -1,0 +1,186 @@
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T13:18:23.995Z",
+      "url": "/v1/desktop/sessions/330fcc6e4acc/asides",
+      "asideId": "aba300e7-b306-4198-ba29-6145235cc3fd",
+      "continues": null,
+      "questionHead": "UN1 what does the retry budget cap",
+      "text": "UN1 what does the retry budget cap",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "cbfd84ba7d8e4c1798dd0894dc62c064",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"aba300e7-b306-4198-ba29-6145235cc3fd\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:18:29.862Z",
+      "url": "/v1/desktop/sessions/330fcc6e4acc/asides",
+      "asideId": "b5d8ab9b-547c-4943-96df-8fc2f099e555",
+      "continues": "aba300e7-b306-4198-ba29-6145235cc3fd",
+      "questionHead": "TOOLCALL2: UN1 the follow-up the model declines",
+      "text": "TOOLCALL2: UN1 the follow-up the model declines",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "cbfd84ba7d8e4c1798dd0894dc62c064",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-25T13:18:37.484Z",
+      "url": "/v1/desktop/sessions/330fcc6e4acc/asides",
+      "asideId": "44bdea53-3ff2-4401-bff8-961f9898b8dc",
+      "continues": null,
+      "questionHead": "UN2 the retry in place",
+      "text": "UN2 the retry in place",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "cbfd84ba7d8e4c1798dd0894dc62c064",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"44bdea53-3ff2-4401-bff8-961f9898b8dc\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:18:43.026Z",
+      "url": "/v1/desktop/sessions/330fcc6e4acc/asides",
+      "asideId": "b9b34f20-1d7c-47cb-8876-a2f1cb6ba998",
+      "continues": "44bdea53-3ff2-4401-bff8-961f9898b8dc",
+      "questionHead": "TOOLCALL2: UN2 the declined follow-up",
+      "text": "TOOLCALL2: UN2 the declined follow-up",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "cbfd84ba7d8e4c1798dd0894dc62c064",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-25T13:18:49.821Z",
+      "url": "/v1/desktop/sessions/330fcc6e4acc/asides",
+      "asideId": "f8e42eed-c37e-48f3-beed-b46843417fd8",
+      "continues": "44bdea53-3ff2-4401-bff8-961f9898b8dc",
+      "questionHead": "UN2 retry in the same panel",
+      "text": "UN2 retry in the same panel",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "cbfd84ba7d8e4c1798dd0894dc62c064",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"f8e42eed-c37e-48f3-beed-b46843417fd8\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:18:55.992Z",
+      "url": "/v1/desktop/sessions/330fcc6e4acc/asides",
+      "asideId": "0cb43d89-25aa-4fb0-9e01-e17a19f3a70d",
+      "continues": null,
+      "questionHead": "UN3 the exchange to adopt",
+      "text": "UN3 the exchange to adopt",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "cbfd84ba7d8e4c1798dd0894dc62c064",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"0cb43d89-25aa-4fb0-9e01-e17a19f3a70d\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T13:18:07.420Z",
+      "subscriptionId": "37dccefa539139a6",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/330fcc6e4acc/events?frontend_replace=1",
+      "openedAt": "2026-09-25T13:18:10.499Z",
+      "subscriptionId": "cbfd84ba7d8e4c1798dd0894dc62c064",
+      "asideDeltas": 32,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    },
+    {
+      "url": "/v1/desktop/sessions/330fcc6e4acc/events?frontend_replace=1",
+      "openedAt": "2026-09-25T13:19:03.615Z",
+      "subscriptionId": "da060e13294d46348a6f8b82ac5ee67d",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    }
+  ],
+  "asideDeltaFrames": 32,
+  "deltasBySubscription": {
+    "cbfd84ba7d8e4c1798dd0894dc62c064": 32
+  },
+  "deltasByAside": {
+    "aba300e7-b306-4198-ba29-6145235cc3fd": 8,
+    "44bdea53-3ff2-4401-bff8-961f9898b8dc": 8,
+    "f8e42eed-c37e-48f3-beed-b46843417fd8": 8,
+    "0cb43d89-25aa-4fb0-9e01-e17a19f3a70d": 8
+  },
+  "refused422": 0,
+  "messagePosts": [
+    {
+      "at": "2026-09-25T13:18:17.228Z",
+      "url": "/v1/desktop/sessions/330fcc6e4acc/messages",
+      "kind": "message",
+      "text": "ux4b seed turn",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"c3d35c19-e5b9-42ea-8cb2-414cde8acee8\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T13:18:17.229Z"
+    }
+  ],
+  "asideOps": [
+    {
+      "at": "2026-09-25T13:18:36.911Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/330fcc6e4acc/asides/aba300e7-b306-4198-ba29-6145235cc3fd",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"aba300e7-b306-4198-ba29-6145235cc3fd\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:18:55.260Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/330fcc6e4acc/asides/f8e42eed-c37e-48f3-beed-b46843417fd8",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"f8e42eed-c37e-48f3-beed-b46843417fd8\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:19:03.293Z",
+      "method": "POST",
+      "url": "/v1/desktop/sessions/330fcc6e4acc/asides/0cb43d89-25aa-4fb0-9e01-e17a19f3a70d/adopt",
+      "kind": "adopt",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"0cb43d89-25aa-4fb0-9e01-e17a19f3a70d\",\"status\":\"adopted\"},\"replayed\":false}}"
+    }
+  ]
+}

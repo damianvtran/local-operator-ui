@@ -1,0 +1,57 @@
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T13:29:50.274Z",
+      "url": "/v1/desktop/sessions/e46ddbe4919a/asides",
+      "asideId": "03a763d9-8725-4d15-bc9b-c1ba9aecd8c1",
+      "continues": null,
+      "questionHead": "MERMAIDANS draw me the aside flow",
+      "text": "MERMAIDANS draw me the aside flow",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "7ef4e5c5e87f4d788d358244c56f83cf",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"03a763d9-8725-4d15-bc9b-c1ba9aecd8c1\",\"text\":\"Here is the flow.\\n\\n```mermaid\\nflowchart TD\\n  A[Ask] --> B{Answered?}\\n  B -- yes --> C[Adopt]\\n  B -- no --> D[Ask again]\\n  D --> B\\n  C --> E[Conversation]\\n```\\n\\nMERMAID-END.\",\"off_record\":true},\"replayed\":false}}"
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T13:29:34.085Z",
+      "subscriptionId": "3143967889834147",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/e46ddbe4919a/events?frontend_replace=1",
+      "openedAt": "2026-09-25T13:29:38.044Z",
+      "subscriptionId": "7ef4e5c5e87f4d788d358244c56f83cf",
+      "asideDeltas": 1,
+      "deltaSizes": [
+        171
+      ]
+    }
+  ],
+  "asideDeltaFrames": 1,
+  "deltasBySubscription": {
+    "7ef4e5c5e87f4d788d358244c56f83cf": 1
+  },
+  "deltasByAside": {
+    "03a763d9-8725-4d15-bc9b-c1ba9aecd8c1": 1
+  },
+  "refused422": 0,
+  "messagePosts": [
+    {
+      "at": "2026-09-25T13:29:44.284Z",
+      "url": "/v1/desktop/sessions/e46ddbe4919a/messages",
+      "kind": "message",
+      "text": "ux3d seed turn",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"a3a9f6e3-469a-409b-8bfd-e8aa5f1df3ca\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T13:29:44.285Z"
+    }
+  ],
+  "asideOps": []
+}

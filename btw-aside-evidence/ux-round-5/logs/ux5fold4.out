@@ -1,0 +1,256 @@
+ux5 private-port lock taken
+rig up: proxy 87567 on 8391 -> daemon 85983 on 54135, stub 54067; 1111 and 8080 untouched
+== ux5fold4 (btw-ux5b) at 13:47:01 ==
+[build] current: assets 2026-09-25T13:14:15.052Z >= sources 2026-09-25T12:33:29.028Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8391
+  serve records 1 linked from /Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/run-ux5fold4/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/ux482-r5-7c31f9
+  scratch       /Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/tmp/lo-renderer-driver-87766
+  frames        /Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/frames/ux5fold4
+  app cwd       /Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/tmp/lo-renderer-driver-87766/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8391   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8391","backend":"http://127.0.0.1:8391"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8391)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] headless and never shown
+        mode=headless visible=false focused=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] b00 the aside open on A before the leave
+        {"conversation":"05d4ee1581ea","rows":1,"asideId":"1ad92ab4-756a-40cb-9f16-a14796268a8d","panelUp":true,"announce":"The aside answered: Transport failures and owner 5xx responses, per provider, inside a moving window.","head":"Asideoff the record — nothing here joins the conversationThe aside answered: Transport failures and owner 5xx responses,"}
+[PASS] b00 the exchange is open and settled on A, and A is the conversation on screen
+        {"conversation":"05d4ee1581ea","A":"05d4ee1581ea","panelUp":true,"asideId":"1ad92ab4-756a-40cb-9f16-a14796268a8d"}
+[note] b01 the New chat row
+        {"found":true,"tag":"button","disabled":false,"text":"New chat⌘+N","x":356,"y":691,"inViewport":true}
+[PASS] b01 the sidebar publishes a New chat row a person can press
+        {"found":true,"tag":"button","disabled":false,"text":"New chat⌘+N","x":356,"y":691,"inViewport":true}
+[note] b01 after the press, on the staged draft
+        {"current":{"sessionId":null,"draftCurrent":true,"currentRowText":"New chat⌘+N","rows":1},"panelUp":false,"panelText":"","fieldValue":"","bandLines":[]}
+[PASS] b01 leaving by the New chat row takes A's panel with it: the exchange is not painted over a draft that belongs to no conversation
+        {"sessionId":null,"panelUp":false,"panelText":""}
+[note] frame
+        {"label":"ux5b-ux5fold4-b01-on-the-staged-draft","width":1600,"height":1736}
+[note] b02 the conversation the send created
+        {"current":{"sessionId":null,"draftCurrent":true,"currentRowText":"New chat⌘+N","rows":1},"publishedRow":{"present":false},"inTranscript":true,"threadPosts":[{"status":null}],"asidePosts":0,"bandLines":[]}
+[PASS] b02 the send lands in the conversation on screen as a thread message - not in the aside of the one that was left
+        {"threadPosts":1,"asidePosts":0,"bandLines":[]}
+[FAIL] b02 the new conversation is on screen and published in the sidebar, and the send is visibly there
+        {"conversation":null,"row":false,"inTranscript":true}
+[note] frame
+        {"label":"ux5b-ux5fold4-b02-sent-into-the-new-conversation","width":1600,"height":1736}
+[note] b03 A's own row
+        {"present":true,"text":"Unseen completion, unreadUX5B seed turn","x":356,"y":767,"inViewport":true}
+[PASS] b03 conversation A is published in the sidebar and pressable
+        {"present":true,"text":"Unseen completion, unreadUX5B seed turn","x":356,"y":767,"inViewport":true}
+[note] b03 what coming back shows
+        {"current":"05d4ee1581ea","panelUp":true,"panelText":"Asideoff the record — nothing here joins the conversationThe aside answered: Transport failures and ","fieldValue":"","bandLines":[],"transcriptHead":"UX5B seed turn9:47 AMTransport failures and owner 5xx responses, per provider, inside a moving window. each transport fa"}
+[PASS] b03 coming back shows A's own transcript, with the seed turn still in it
+        {"current":"05d4ee1581ea","head":"UX5B seed turn9:47 AMTransport failures and owner 5xx responses, per provider, inside a moving window. each transport fa"}
+[PASS] b03 coming back paints A's OWN exchange on the panel (or none at all) - never another conversation's
+        {"panelUp":true,"panelText":"Asideoff the record — nothing here joins the conversationThe aside answered: Transport failures and owner 5xx responses, per provider, inside a moving window.Qu","announce":"The aside answered: Transport failures and owner 5xx responses, per provider, inside a moving window."}
+[PASS] b03 the composer the reader comes back to does not carry the send that belonged to the other conversation
+        {"fieldValue":""}
+[note] b04 the exchange that was open when the reader left
+        {"getStatus":200,"turns":null,"adoptable":null,"closes":[],"adopts":0}
+[PASS] b04 the leave itself sent no close: navigating away is not Esc, and the reader's exchange is still held on the wire
+        {"closes":[],"getStatus":200,"keys":["status","message","result"]}
+[note] b03 a fresh aside after the round trip
+        {"asideId":"2cae141a-a1ca-4a19-aaaa-bd4975bb52fe","panelUp":true,"adoptDisabled":false,"adoptReason":null,"head":"Asideoff the record — nothing here joins the conversationThe aside answered: Transport failures and owner 5xx responses, per provider, insid"}
+[PASS] b03 a fresh /btw after the round trip still opens, streams its answer and offers the adopt control
+        {"panelUp":true,"adoptDisabled":false,"adoptReason":null,"head":"Asideoff the record — nothing here joins the conversationThe aside answered: Transport failures and owner 5xx responses, per provider, insid"}
+[note] frame
+        {"label":"ux5b-ux5fold4-b03-fresh-aside-after-returning","width":1600,"height":1736}
+[note] UX5B scene
+        finished
+  [renderer] [attention] 05d4ee1581ea receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
+    at tRe (file:///Users/damian/local-operator-ui-worktrees/ux482-r5-7c31f9/out/renderer/assets/index-DXqzQhMe.js:812:95051)
+    at async Qt (file:///Users/damian/local-operator-ui-worktrees/ux482-r5-7c31f9/out/renderer/assets/index-DXqzQhMe.js:812:96186)
+
+---- app log (tail) ----
+09:47:09.341 › Checking for backend updates... (silent mode: true)
+09:47:09.341 › Skip backend update check in dev mode unless forced
+09:47:21.227 › [about-panel] suppressed by window mode headless: a headless run raises no window
+09:47:21.352 › The pre-split environment at /Users/damian/Library/Application Support/Local Operator/local-operator-venv is built on the interpreter inside /Applications/Local Operator.app; it is left exactly as it is, and this instance does not use it.
+09:47:29.084 › [about-panel] suppressed by window mode headless: a headless run raises no window
+09:47:36.023 › [about-panel] suppressed by window mode headless: a headless run raises no window
+Error occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.
+    at /Users/damian/local-operator-ui-worktrees/ux482-r5-7c31f9/out/main/index.jsc:1:1072580
+    at /Users/damian/local-operator-ui-worktrees/ux482-r5-7c31f9/out/main/index.jsc:1:1073624
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.
+    at /Users/damian/local-operator-ui-worktrees/ux482-r5-7c31f9/out/main/index.jsc:1:1072580
+    at /Users/damian/local-operator-ui-worktrees/ux482-r5-7c31f9/out/main/index.jsc:1:1073624
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.
+    at /Users/damian/local-operator-ui-worktrees/ux482-r5-7c31f9/out/main/index.jsc:1:1072580
+    at /Users/damian/local-operator-ui-worktrees/ux482-r5-7c31f9/out/main/index.jsc:1:1073624
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+(electron) 'console-message' arguments are deprecated and will be removed. Please use Event<WebContentsConsoleMessageEventParams> object instead.
+09:47:40.119 › [renderer] [attention] 05d4ee1581ea receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
+Error occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.
+    at /Users/damian/local-operator-ui-worktrees/ux482-r5-7c31f9/out/main/index.jsc:1:1072580
+    at /Users/damian/local-operator-ui-worktrees/ux482-r5-7c31f9/out/main/index.jsc:1:1073624
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.
+    at /Users/damian/local-operator-ui-worktrees/ux482-r5-7c31f9/out/main/index.jsc:1:1072580
+    at /Users/damian/local-operator-ui-worktrees/ux482-r5-7c31f9/out/main/index.jsc:1:1073624
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+09:47:45.465 › [about-panel] suppressed by window mode headless: a headless run raises no window
+Error occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.
+    at /Users/damian/local-operator-ui-worktrees/ux482-r5-7c31f9/out/main/index.jsc:1:1072580
+    at /Users/damian/local-operator-ui-worktrees/ux482-r5-7c31f9/out/main/index.jsc:1:1073624
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+
+[PASS] no process from this run outlived its boot
+
+frames: ux5b-ux5fold4-b01-on-the-staged-draft.png, ux5b-ux5fold4-b02-sent-into-the-new-conversation.png, ux5b-ux5fold4-b03-fresh-aside-after-returning.png
+frames directory: /Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/frames/ux5fold4
+app log: /Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/tmp/lo-renderer-driver-87766/app-scene.log
+scratch removed (--clean)
+
+1 CHECK(S) FAILED
+== ux5fold4 driver exit: 1 ==
+total 1240
+drwxr-xr-x@  5 damian  staff     160 Sep 25 09:47 .
+drwxr-xr-x@ 17 damian  staff     544 Sep 25 09:46 ..
+-rw-r--r--@  1 damian  staff  154604 Sep 25 09:47 ux5b-ux5fold4-b01-on-the-staged-draft.png
+-rw-r--r--@  1 damian  staff  183098 Sep 25 09:47 ux5b-ux5fold4-b02-sent-into-the-new-conversation.png
+-rw-r--r--@  1 damian  staff  294641 Sep 25 09:47 ux5b-ux5fold4-b03-fresh-aside-after-returning.png
+8391 released before this command returned
+ux5 private-port lock released
+--- proxy counters (/Users/damian/.local-operator/sessions/bde1c5028625/scratchpad/ux5rig/run-ux5fold4/proxy-stats.json) ---
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T13:47:29.551Z",
+      "url": "/v1/desktop/sessions/05d4ee1581ea/asides",
+      "asideId": "1ad92ab4-756a-40cb-9f16-a14796268a8d",
+      "continues": null,
+      "questionHead": "UX5B the question in the conversation we leave",
+      "text": "UX5B the question in the conversation we leave",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "b1f7dbb1d8e0496e83ce80b3e9211606",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"1ad92ab4-756a-40cb-9f16-a14796268a8d\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:47:45.794Z",
+      "url": "/v1/desktop/sessions/05d4ee1581ea/asides",
+      "asideId": "2cae141a-a1ca-4a19-aaaa-bd4975bb52fe",
+      "continues": "1ad92ab4-756a-40cb-9f16-a14796268a8d",
+      "questionHead": "UX5B the question after we come back",
+      "text": "UX5B the question after we come back",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "23464c0201c141cfae24762c15b46a20",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"2cae141a-a1ca-4a19-aaaa-bd4975bb52fe\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T13:47:06.711Z",
+      "subscriptionId": "89521084eb40295c",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/05d4ee1581ea/events?frontend_replace=1",
+      "openedAt": "2026-09-25T13:47:12.017Z",
+      "subscriptionId": "b1f7dbb1d8e0496e83ce80b3e9211606",
+      "asideDeltas": 8,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    },
+    {
+      "url": "/v1/desktop/sessions/4f325b2288be/events?frontend_replace=1",
+      "openedAt": "2026-09-25T13:47:38.581Z",
+      "subscriptionId": "1adc652edd474753be2fbe25f47bc6db",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/05d4ee1581ea/events?frontend_replace=1",
+      "openedAt": "2026-09-25T13:47:39.086Z",
+      "subscriptionId": "23464c0201c141cfae24762c15b46a20",
+      "asideDeltas": 8,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    }
+  ],
+  "asideDeltaFrames": 16,
+  "deltasBySubscription": {
+    "b1f7dbb1d8e0496e83ce80b3e9211606": 8,
+    "23464c0201c141cfae24762c15b46a20": 8
+  },
+  "deltasByAside": {
+    "1ad92ab4-756a-40cb-9f16-a14796268a8d": 8,
+    "2cae141a-a1ca-4a19-aaaa-bd4975bb52fe": 8
+  },
+  "refused422": 0,
+  "messagePosts": [
+    {
+      "at": "2026-09-25T13:47:21.791Z",
+      "url": "/v1/desktop/sessions/05d4ee1581ea/messages",
+      "kind": "message",
+      "text": "UX5B seed turn",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"480c4c54-3e26-4427-8915-89e9274e56ed\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T13:47:21.802Z"
+    },
+    {
+      "at": "2026-09-25T13:47:36.733Z",
+      "url": "/v1/desktop/sessions/4f325b2288be/messages",
+      "kind": "message",
+      "text": "UX5B a thread message in a new conversation",
+      "images": 0,
+      "held": 0,
+      "status": null,
+      "response": null,
+      "forwardedAt": "2026-09-25T13:47:36.733Z"
+    }
+  ],
+  "asideOps": []
+}
+--- end counters ---

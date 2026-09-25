@@ -1,0 +1,112 @@
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T13:47:29.551Z",
+      "url": "/v1/desktop/sessions/05d4ee1581ea/asides",
+      "asideId": "1ad92ab4-756a-40cb-9f16-a14796268a8d",
+      "continues": null,
+      "questionHead": "UX5B the question in the conversation we leave",
+      "text": "UX5B the question in the conversation we leave",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "b1f7dbb1d8e0496e83ce80b3e9211606",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"1ad92ab4-756a-40cb-9f16-a14796268a8d\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:47:45.794Z",
+      "url": "/v1/desktop/sessions/05d4ee1581ea/asides",
+      "asideId": "2cae141a-a1ca-4a19-aaaa-bd4975bb52fe",
+      "continues": "1ad92ab4-756a-40cb-9f16-a14796268a8d",
+      "questionHead": "UX5B the question after we come back",
+      "text": "UX5B the question after we come back",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "23464c0201c141cfae24762c15b46a20",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"2cae141a-a1ca-4a19-aaaa-bd4975bb52fe\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T13:47:06.711Z",
+      "subscriptionId": "89521084eb40295c",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/05d4ee1581ea/events?frontend_replace=1",
+      "openedAt": "2026-09-25T13:47:12.017Z",
+      "subscriptionId": "b1f7dbb1d8e0496e83ce80b3e9211606",
+      "asideDeltas": 8,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    },
+    {
+      "url": "/v1/desktop/sessions/4f325b2288be/events?frontend_replace=1",
+      "openedAt": "2026-09-25T13:47:38.581Z",
+      "subscriptionId": "1adc652edd474753be2fbe25f47bc6db",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/05d4ee1581ea/events?frontend_replace=1",
+      "openedAt": "2026-09-25T13:47:39.086Z",
+      "subscriptionId": "23464c0201c141cfae24762c15b46a20",
+      "asideDeltas": 8,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    }
+  ],
+  "asideDeltaFrames": 16,
+  "deltasBySubscription": {
+    "b1f7dbb1d8e0496e83ce80b3e9211606": 8,
+    "23464c0201c141cfae24762c15b46a20": 8
+  },
+  "deltasByAside": {
+    "1ad92ab4-756a-40cb-9f16-a14796268a8d": 8,
+    "2cae141a-a1ca-4a19-aaaa-bd4975bb52fe": 8
+  },
+  "refused422": 0,
+  "messagePosts": [
+    {
+      "at": "2026-09-25T13:47:21.791Z",
+      "url": "/v1/desktop/sessions/05d4ee1581ea/messages",
+      "kind": "message",
+      "text": "UX5B seed turn",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"480c4c54-3e26-4427-8915-89e9274e56ed\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T13:47:21.802Z"
+    },
+    {
+      "at": "2026-09-25T13:47:36.733Z",
+      "url": "/v1/desktop/sessions/4f325b2288be/messages",
+      "kind": "message",
+      "text": "UX5B a thread message in a new conversation",
+      "images": 0,
+      "held": 0,
+      "status": null,
+      "response": null,
+      "forwardedAt": "2026-09-25T13:47:36.733Z"
+    }
+  ],
+  "asideOps": []
+}

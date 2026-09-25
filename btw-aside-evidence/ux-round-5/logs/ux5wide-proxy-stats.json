@@ -1,0 +1,259 @@
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T13:16:49.857Z",
+      "url": "/v1/desktop/sessions/94979ec066cf/asides",
+      "asideId": "a99817be-0290-4fff-be78-5accb56062fc",
+      "continues": null,
+      "questionHead": "UA1 what does the retry budget cap",
+      "text": "UA1 what does the retry budget cap",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "b37b67ea1ddd43bd9723c752a2b26a89",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"a99817be-0290-4fff-be78-5accb56062fc\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:16:54.979Z",
+      "url": "/v1/desktop/sessions/94979ec066cf/asides",
+      "asideId": "c436c77d-4dfe-43b0-808d-348d178617d1",
+      "continues": "a99817be-0290-4fff-be78-5accb56062fc",
+      "questionHead": "TOOLCALL2: UA1 the follow-up the model declines",
+      "text": "TOOLCALL2: UA1 the follow-up the model declines",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "b37b67ea1ddd43bd9723c752a2b26a89",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    },
+    {
+      "at": "2026-09-25T13:17:02.162Z",
+      "url": "/v1/desktop/sessions/94979ec066cf/asides",
+      "asideId": "63fde788-14c7-4312-bc8b-1f5d23a053b6",
+      "continues": null,
+      "questionHead": "UB1 the answered exchange to be closed",
+      "text": "UB1 the answered exchange to be closed",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "b37b67ea1ddd43bd9723c752a2b26a89",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"63fde788-14c7-4312-bc8b-1f5d23a053b6\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:17:07.434Z",
+      "url": "/v1/desktop/sessions/94979ec066cf/asides",
+      "asideId": "10a195b0-6015-4268-9dfd-f57be742974d",
+      "continues": null,
+      "questionHead": "UC1 the exchange adopted then closed",
+      "text": "UC1 the exchange adopted then closed",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "b37b67ea1ddd43bd9723c752a2b26a89",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"10a195b0-6015-4268-9dfd-f57be742974d\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:17:19.186Z",
+      "url": "/v1/desktop/sessions/94979ec066cf/asides",
+      "asideId": "db24ddc4-275f-48e2-8bbd-66727c75205d",
+      "continues": null,
+      "questionHead": "UD1 the exchange a reflex double-tap meets",
+      "text": "UD1 the exchange a reflex double-tap meets",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "2e65b57e1e4b4392ab5000ace0415c27",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"db24ddc4-275f-48e2-8bbd-66727c75205d\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:17:26.014Z",
+      "url": "/v1/desktop/sessions/94979ec066cf/asides",
+      "asideId": "38e54128-843e-4945-9eec-e9b29f76507b",
+      "continues": null,
+      "questionHead": "UE1 the exchange a deliberate press meets",
+      "text": "UE1 the exchange a deliberate press meets",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "6a4a520f5f89494ebc7294f0cc61242c",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"38e54128-843e-4945-9eec-e9b29f76507b\",\"text\":\"Transport failures and owner **5xx** responses, per provider, inside a moving window.\\n\\n- each transport failure spends one\\n- each owner 5xx spends one\\n- a retry that succeeds resets the window\\n\\nA **4xx** never spends it: the request was wrong, not the provider.\",\"off_record\":true},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:17:33.677Z",
+      "url": "/v1/desktop/sessions/94979ec066cf/asides",
+      "asideId": "22bf1055-e18a-46db-ae57-4dc8ff6cd238",
+      "continues": null,
+      "questionHead": "TOOLCALL2: UF1 a fresh ask the model declines",
+      "text": "TOOLCALL2: UF1 a fresh ask the model declines",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "9200f017025c4b60af7b448cb7716a17",
+      "status": 409,
+      "response": "{\"detail\":{\"code\":\"aside_unanswered\",\"message\":\"The model did not answer your aside in text — either a tool call, which is not available off the record, or nothing at all. No answer was produced: ask again.\"}}"
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T13:16:30.406Z",
+      "subscriptionId": "0de3b75c8f78e811",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/94979ec066cf/events?frontend_replace=1",
+      "openedAt": "2026-09-25T13:16:35.517Z",
+      "subscriptionId": "b37b67ea1ddd43bd9723c752a2b26a89",
+      "asideDeltas": 24,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40,
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    },
+    {
+      "url": "/v1/desktop/sessions/94979ec066cf/events?frontend_replace=1",
+      "openedAt": "2026-09-25T13:17:13.604Z",
+      "subscriptionId": "0356f488e78d479fbb218d5efe493bba",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/94979ec066cf/events?frontend_replace=1",
+      "openedAt": "2026-09-25T13:17:18.265Z",
+      "subscriptionId": "2e65b57e1e4b4392ab5000ace0415c27",
+      "asideDeltas": 8,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    },
+    {
+      "url": "/v1/desktop/sessions/94979ec066cf/events?frontend_replace=1",
+      "openedAt": "2026-09-25T13:17:25.561Z",
+      "subscriptionId": "6a4a520f5f89494ebc7294f0cc61242c",
+      "asideDeltas": 8,
+      "deltaSizes": [
+        29,
+        33,
+        25,
+        36,
+        28,
+        43,
+        27,
+        40
+      ]
+    },
+    {
+      "url": "/v1/desktop/sessions/94979ec066cf/events?frontend_replace=1",
+      "openedAt": "2026-09-25T13:17:33.216Z",
+      "subscriptionId": "9200f017025c4b60af7b448cb7716a17",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    }
+  ],
+  "asideDeltaFrames": 40,
+  "deltasBySubscription": {
+    "b37b67ea1ddd43bd9723c752a2b26a89": 24,
+    "2e65b57e1e4b4392ab5000ace0415c27": 8,
+    "6a4a520f5f89494ebc7294f0cc61242c": 8
+  },
+  "deltasByAside": {
+    "a99817be-0290-4fff-be78-5accb56062fc": 8,
+    "63fde788-14c7-4312-bc8b-1f5d23a053b6": 8,
+    "10a195b0-6015-4268-9dfd-f57be742974d": 8,
+    "db24ddc4-275f-48e2-8bbd-66727c75205d": 8,
+    "38e54128-843e-4945-9eec-e9b29f76507b": 8
+  },
+  "refused422": 0,
+  "messagePosts": [
+    {
+      "at": "2026-09-25T13:16:43.053Z",
+      "url": "/v1/desktop/sessions/94979ec066cf/messages",
+      "kind": "message",
+      "text": "ux4 seed turn",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"a920f3c1-8684-4478-8402-522f0f826aa6\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T13:16:43.054Z"
+    }
+  ],
+  "asideOps": [
+    {
+      "at": "2026-09-25T13:17:01.529Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/94979ec066cf/asides/a99817be-0290-4fff-be78-5accb56062fc",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"a99817be-0290-4fff-be78-5accb56062fc\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:17:07.109Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/94979ec066cf/asides/63fde788-14c7-4312-bc8b-1f5d23a053b6",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"63fde788-14c7-4312-bc8b-1f5d23a053b6\",\"status\":\"closed\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:17:13.460Z",
+      "method": "POST",
+      "url": "/v1/desktop/sessions/94979ec066cf/asides/10a195b0-6015-4268-9dfd-f57be742974d/adopt",
+      "kind": "adopt",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"10a195b0-6015-4268-9dfd-f57be742974d\",\"status\":\"adopted\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:17:25.492Z",
+      "method": "POST",
+      "url": "/v1/desktop/sessions/94979ec066cf/asides/db24ddc4-275f-48e2-8bbd-66727c75205d/adopt",
+      "kind": "adopt",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"db24ddc4-275f-48e2-8bbd-66727c75205d\",\"status\":\"adopted\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:17:33.176Z",
+      "method": "POST",
+      "url": "/v1/desktop/sessions/94979ec066cf/asides/38e54128-843e-4945-9eec-e9b29f76507b/adopt",
+      "kind": "adopt",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"38e54128-843e-4945-9eec-e9b29f76507b\",\"status\":\"adopted\"},\"replayed\":false}}"
+    },
+    {
+      "at": "2026-09-25T13:17:39.481Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/94979ec066cf/asides/22bf1055-e18a-46db-ae57-4dc8ff6cd238",
+      "kind": "close",
+      "probe": false,
+      "status": 404,
+      "response": "{\"detail\":\"This aside is no longer available\"}"
+    }
+  ]
+}
