@@ -1510,8 +1510,9 @@ fatal — but that is not "nothing is required": the same `Main Protection` rule
 carries a `pull_request` rule with `required_approving_review_count: 1` (*Who may
 merge: two tiers*). Measured 2026-09-24 on the v0.30.24 bump PR #492: a merge
 without `--admin` was refused with `is not mergeable: the base branch policy
-prohibits the merge`, and it completed only through the ruleset's bypass actor with
-`--admin`, disclosed on the PR. Read a refusal for what it is — **a refusal naming
+prohibits the merge`, and it completed only through the owner's `always` bypass
+actor with `--admin`, disclosed on the PR. Read a refusal for what it is — **a
+refusal naming
 the base branch policy is the missing approval, not the merge method and not CI**;
 `allowed_merge_methods` on that rule is `[merge, squash, rebase]`, so the method
 was never the obstacle. `--admin` is the sanctioned completion for the owner's own
@@ -1972,9 +1973,12 @@ derivation to guard. What remains:
   **five** bypass actors rather than one: `RepositoryRole` id 5 with
   `bypass_mode: always`, which on a repository owned by a personal account is the
   owner alone, plus four user-scoped actors at `bypass_mode: pull_request` —
-  `bbqben`, `olafagbemi`, `sherman-tsui` and `SanaKetabchi` — who may merge a pull
-  request the count would otherwise refuse, though they may not push to the branch
-  at all (*Who may merge: two tiers*). What the
+  `bbqben`, `olafagbemi`, `sherman-tsui` and `SanaKetabchi`. A bypass *entry* is
+  not access: merging a pull request also needs write access, which the first three
+  hold and `SanaKetabchi` does not until she accepts the invitation sent
+  2026-09-22, and the mode means they may merge a pull request the count would
+  otherwise refuse while still being unable to push to the branch at all (*Who may
+  merge: two tiers*). What the
   Release trigger adds on top is a single, visible act between a merge and a shipped
   version: nothing reaches users until somebody creates a Release, and that Release,
   its notes and its tag are all attributable to whoever ran the command. Read every
@@ -2056,8 +2060,14 @@ and what would permit team-scoped bypass actors). The other four are user-scoped
 and deliberately narrower: `bbqben`, `olafagbemi`, `sherman-tsui` and
 `SanaKetabchi`, each `bypass_mode: pull_request`, which GitHub grants *without*
 allowing a direct push — the actor must open a pull request, so the trail survives
-— and they were added on 2026-09-24, which is why this paragraph read "exactly one
-bypass actor" until the ruleset was re-read. Confirm what is actually
+— which is not access: merging also needs write access of its own, and of these
+four `SanaKetabchi` holds only the invitation sent 2026-09-22 until she accepts it
+(the owner set, `.github/CODEOWNERS`). The four are where this paragraph went
+stale, and it was right when it was written: the ruleset's own history shows one
+bypass actor at its creation on 2026-09-22, two by 2026-09-24T11:27:14 and all
+five by 2026-09-24T11:27:33, and this section was committed four minutes after
+that creation — so the four user-scoped actors are a later ruleset edit, not a
+review error. Confirm what is actually
 enforced, rather than trusting this paragraph, with
 `gh api repos/damianvtran/local-operator-ui/rules/branches/main` — that endpoint is
 the state, and it returns the ruleset above today; this paragraph is the record,
@@ -2078,8 +2088,11 @@ the merge; it does not move the count. The round is recorded as a **comment**, a
 a comment is an approving review to nobody: `required_approving_review_count`
 moves only for an *approving review* from an account other than the author, so a
 PR whose only "approval" is the agent round still reads `BLOCKED` with
-`REVIEW_REQUIRED` and `reviews: []` — measured on the v0.30.31 bump PR #510,
-merged 2026-09-25 by the owner's bypass with zero reviews. On an
+`REVIEW_REQUIRED` and `reviews: []` while it is open — #511 and #513 are in that
+state today — and the v0.30.31 bump PR #510 did too before it merged on
+2026-09-25 by the owner's bypass with zero reviews. (Read those three fields on an
+*open* PR: GitHub stops computing mergeability once one merges, and #510 reads
+`UNKNOWN` there now.) On an
 owner-authored PR that means the completion is `--admin`, because GitHub refuses
 `422 Review Can not approve your own pull request` — no account here can approve
 the pull request it opened, so the rule the reviewer would satisfy by clicking is
@@ -2094,7 +2107,11 @@ rather than as a pass (*Change scope*).
 an approving review **and** a clean agent review round. The approval is the
 ruleset's `required_approving_review_count: 1` doing its job — it must come from a
 collaborator other than the author, and with no code owners declared it is not
-constrained to the owner set. The agent round is this file's standing gate.
+constrained to the owner set. **The four user-scoped bypass actors named above
+are not a route around this tier**: they are the owner's own collaborators, and
+an agent is forbidden from using `--admin` on a tier-2 PR (*Never use `--admin` on
+a tier-2 PR* below), so an outsider's PR still needs the approval however it is
+completed. The agent round is this file's standing gate.
 Neither substitutes for the other, and this tier is why the review count must not
 be lowered: at 0 an outsider could land on `main` with nobody having looked at it.
 

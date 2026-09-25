@@ -37,8 +37,13 @@
 # and deliberately narrower -- `bbqben`, `olafagbemi`, `sherman-tsui` and
 # `SanaKetabchi`, each `bypass_mode: pull_request`, which GitHub grants *without*
 # allowing a direct push: the actor must open a pull request, so the trail
-# survives. They were added 2026-09-24 (the ruleset's `updated_at`), which is why
-# this paragraph read "one bypass actor" until the ruleset was re-read. The
+# survives. A bypass entry is not access, though -- merging also needs write access
+# of its own, and of these four `SanaKetabchi` holds only the invitation sent
+# 2026-09-22 until she accepts it (see the owner set below). They are also a later
+# edit rather than a review error: the ruleset's history shows one bypass actor at
+# its creation on 2026-09-22 -- which this paragraph, written four minutes later,
+# reported correctly -- two by 2026-09-24T11:27:14 and all five by
+# 2026-09-24T11:27:33. The
 # ruleset IS attached: created 2026-09-22 as id `23841604`, and
 # `gh api .../rules/branches/main` (the second command below) returns it today.
 # Diff these sentences against the repository rather than trusting them:
@@ -57,7 +62,7 @@
 # the protection. The count is the tier-2 rule in
 # AGENTS.md, "Who may merge: two tiers": an outside contributor's PR cannot reach
 # `main` without an approving review from a collaborator other than its author --
-# unless one of the four user-scoped bypass actors below merges it, which their
+# unless one of the four user-scoped bypass actors above merges it, which their
 # `pull_request` bypass mode permits.
 # Before 2026-09-22 `gh api repos/<owner>/<repo>/rules/branches/main` answered
 # `[]` here -- no ruleset was attached -- so nothing mechanical stood behind those
@@ -66,9 +71,9 @@
 #
 # The owner set -- whose judgement stands in for the project's, and who may be
 # asked for a human review when one is genuinely wanted -- is `damianvtran`, who
-# owns this repository and is its only administrator; `bbqben`, who holds write
-# access today; and `olafagbemi`, `sherman-tsui` and `SanaKetabchi`, who hold it
-# by INVITATION sent 2026-09-22 and hold nothing until they accept it. Members of
+# owns this repository and is its only administrator; `bbqben`, `olafagbemi` and
+# `sherman-tsui`, who hold write access today; and `SanaKetabchi`, who holds it
+# by INVITATION sent 2026-09-22 and holds nothing until she accepts it. Members of
 # the set are not administrators and cannot be: a repository owned by a personal
 # account has exactly two permission levels, the owner and collaborators (see the
 # section above). Write access is precisely what makes the
@@ -78,9 +83,9 @@
 # too but is deliberately NOT in that set: ownership here means "can approve on
 # behalf of the project", which is narrower than commit access. Verify a handle
 # before relying on it with
-# `gh api repos/damianvtran/local-operator-ui/collaborators` -- `bbqben` and
-# `jcobhams` hold write while `olafagbemi`, `sherman-tsui` and `SanaKetabchi` hold
-# it by invitation sent 2026-09-22 and take it on acceptance, which is why the
+# `gh api repos/damianvtran/local-operator-ui/collaborators` -- `bbqben`,
+# `olafagbemi`, `sherman-tsui` and `jcobhams` hold write while `SanaKetabchi` holds
+# only the invitation sent 2026-09-22 and takes it on acceptance, which is why the
 # endpoint is read rather than this sentence -- since a handle without write
 # access is silently ignored by GitHub. The review count is satisfied by an
 # approving review from *any* collaborator other than the author, not only from
