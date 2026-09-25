@@ -2399,7 +2399,14 @@ export function useCanonicalSessionStream(
 								// sentence, which names the device and the remedies.
 								remoteBlocked:
 									event.message ??
-									"This conversation lives on another device. Move it home, or drive it from the terminal.",
+									/*
+									 * A STAND-IN FOR THE BACKEND'S SENTENCE, so it must not
+									 * claim less than the app can do: "drive it from the
+									 * terminal" was true when piloting was terminal-only and
+									 * is not true now, since this window can open a peer's
+									 * session. Both ways out, no tool named.
+									 */
+									"This conversation lives on another device. Open it there, or bring it here.",
 								failure: null,
 							}));
 							return;
