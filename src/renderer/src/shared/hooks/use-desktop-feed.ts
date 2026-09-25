@@ -55,6 +55,18 @@ export type DesktopFeedConnection = {
 	/** The feed socket is live. Meaningless (and reported false) when unavailable. */
 	connected: boolean;
 	/**
+	 * Whether the transport has REPORTED a state at all, ever.
+	 *
+	 * WHY THIS IS NOT `connected`'s job (round 1, Q3). `connected` starts `false` and
+	 * the first `watchState` callback arrives a few milliseconds after mount, so a
+	 * banner gated on `!connected` alone drew "Not connected to the backend" for one
+	 * frame on every launch - a statement about a connection the app had not yet
+	 * asked about, and about the last known state before there is one. A reader
+	 * cannot act on it and the next paint contradicts it. `reported` is the fact that
+	 * distinguishes "not connected" from "not asked yet".
+	 */
+	reported: boolean;
+	/**
 	 * The backend's catalogue revision as of the last `catalogue` frame, or null
 	 * before the first one. A sidebar effect keyed on this refetches once per
 	 * invalidation.
@@ -83,6 +95,7 @@ export function useDesktopFeed(): DesktopFeedConnection {
 	const available =
 		desktopFeatureEnabled(capabilities.data, "desktop_feed") && Boolean(native);
 	const [connected, setConnected] = useState(false);
+	const [reported, setReported] = useState(false);
 	const [catalogueRevision, setCatalogueRevision] = useState<number | null>(
 		null,
 	);
@@ -105,6 +118,7 @@ export function useDesktopFeed(): DesktopFeedConnection {
 			// leave the sidebar rendering a connection it no longer has.
 			wasConnected.current = false;
 			setConnected(false);
+			setReported(false);
 			return;
 		}
 		const applyAttention = useCanonicalSessionsStore.getState().applyAttention;
@@ -121,6 +135,7 @@ export function useDesktopFeed(): DesktopFeedConnection {
 				hasConnected.current = true;
 			}
 			wasConnected.current = nextConnected;
+			setReported(true);
 			setConnected(nextConnected);
 		});
 		const offFrames = native.subscribe((frame: DesktopFeedFrame) => {
@@ -187,6 +202,7 @@ export function useDesktopFeed(): DesktopFeedConnection {
 	return {
 		available,
 		connected: available && connected,
+		reported: available && reported,
 		catalogueRevision,
 		authoringRevision,
 		authoringReconnectRevision,

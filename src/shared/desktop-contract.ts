@@ -687,6 +687,43 @@ const publicationDocument = z
 
 // This vocabulary is the security boundary, not a generic authenticated fetch.
 // The renderer selects an operation; it never supplies a URL, method or headers.
+
+/**
+ * The two axes a catalogue request may be scoped to.
+ *
+ * A CLOSED VOCABULARY, and `team`/`agent` are the renderer's own two group kinds
+ * rather than the daemon's binding field names: the group predicate is
+ * `binding.team === name` for a team and `!binding.team && binding.agent === name`
+ * for an agent, and the `!team` half is load-bearing (a team-attached session
+ * that also carries an agent name belongs to the team's group, never the agent's).
+ * Spelling the kinds here is what keeps a client from asking for a third axis
+ * the daemon would have to refuse by hand.
+ */
+const catalogueScopeKind = z.enum(["team", "agent"]);
+/**
+ * A scope's display name, as `attachment.json` recorded it.
+ *
+ * BOUNDED AT 64, the bound the profile and team registries already use for a
+ * name, so an over-long value is refused HERE by name rather than arriving as the
+ * backend's generic "invalid fields" 422. It is deliberately NOT validated
+ * against a registry: an operator renames and deletes teams, and their sessions
+ * keep the old name (`read_session_attachment`'s docstring in the daemon is
+ * explicit that the stored name is a historical fact), so a scope naming a team
+ * that no longer exists is a legitimate empty page rather than a refusal.
+ */
+const catalogueScopeName = z.string().min(1).max(64);
+/**
+ * An opaque position, echoed back from a previous answer's `next_cursor`.
+ *
+ * Opaque to this client on purpose: it encodes the rank tuple the daemon sorts
+ * by, and a client that parsed it would be a second implementation of the
+ * ordering. The bound is what stops a malformed token from being a transport
+ * problem; the daemon answers an unusable one with the scope's first page and
+ * `cursor_missing: true`, so a token this schema admits but the daemon does not
+ * recognise is a RE-READ rather than an error.
+ */
+const catalogueCursor = z.string().min(1).max(256);
+
 export const desktopRequestSchema = z.discriminatedUnion("op", [
 	z.object({ op: z.literal("capabilities") }).strict(),
 	z.object({ op: z.literal("profiles.list") }).strict(),
@@ -756,6 +793,30 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			 * receiving the byte-identical request it always did.
 			 */
 			include_peers: z.boolean().optional(),
+			/*
+			 * The four parameters that make the catalogue PAGEABLE, and the switch that
+			 * makes the daemon count it.
+			 *
+			 * ALL FOUR ARE OPTIONAL AND DEFAULTED, which is the whole compatibility
+			 * promise: a request that sends none of them is byte-identical to the one
+			 * this app sent before they existed, and an older daemon is therefore fully
+			 * supported. They are gated on the `session_catalogue_page` capability rather
+			 * than on a `session_catalogue` version bump, for the reason that map's own
+			 * register states (an EXISTING surface must keep working against a backend
+			 * that lacks the new one): FastAPI silently ignores unknown query parameters,
+			 * so an un-gated client asking for `scope_kind=team&scope_name=lopdev` would
+			 * receive the UNSCOPED page and draw other teams' rows under that team, and an
+			 * un-gated `cursor` would receive page one again and duplicate it. The client
+			 * has to be able to ask whether the daemon understands these, and the
+			 * capability map is how this codebase asks.
+			 *
+			 * They travel as ONE contract revision rather than three: counts without the
+			 * scope could not be rendered consistently with that scope's paged rows.
+			 */
+			scope_kind: catalogueScopeKind.optional(),
+			scope_name: catalogueScopeName.optional(),
+			cursor: catalogueCursor.optional(),
+			with_counts: z.boolean().optional(),
 		})
 		.strict(),
 	z
@@ -2343,30 +2404,41 @@ const DESKTOP_LONG_READ_DEADLINE_MS = 90_000;
  * schema's ceiling). Bounding it by the 20 s control budget made the app give up
  * on a route that was still working, and the give-up sentence - which cannot name
  * the reason - then told the reader the move might not have happened. So the move's
- * budget is `wait_s` plus this margin, which is the time the route needs to answer
- * once its wait is satisfied: the retirement is already complete, and what is left
- * is one JSON answer over IPC.
+ * budget is the route's own published ENVELOPE ({@link DESKTOP_MOVE_ENVELOPE_S} for
+ * an offload, {@link DESKTOP_KEEP_MOVE_ENVELOPE_S} for a copy that is kept,
+ * {@link DESKTOP_RECALL_ENVELOPE_S} for a recall) plus the `wait_s` the request
+ * asked for, plus this margin - and the margin is the SMALLEST of those three
+ * terms on purpose. Sizing this file's own term from local measurements is how the
+ * app came to hold a deadline of 75 s against a route that may legitimately take
+ * 130 s.
  *
  * The margin is generous on purpose. Exceeding a budget here is reported as an
  * UNCONFIRMED move, never as a refusal (round-1 review, M4), so a margin that is
  * too small is a false alarm rather than a lost answer.
  *
- * FIFTEEN SECONDS WAS NOT ENOUGH, and the measurement is the reason it is 45 (QA
- * round 1, Q4a). The route's own overhead ABOVE `wait_s` was measured at ~30 s
- * against a real peer: `wait_s: 0` answered after 30.5 s, `wait_s: 5` after
- * 35.2 s, `wait_s: 30` after 60.3 s. Under a 15 s margin the app's deadline always
- * fired first, so the reader got "could not confirm the move" and the route's
- * precise answer ("Nothing was deleted: this device still holds the
- * conversation.") never arrived - and the user could not act on either. A margin
- * of 45 s covers the measured overhead with room, and it is a CEILING rather than
- * a wait: a route that answers in 2.1 s (the measured healthy move) still resolves
- * the moment it answers.
+ * IT IS FIFTEEN SECONDS BECAUSE THAT IS THE BACKEND'S OWN PUBLISHED TERM, and the
+ * 45 s it replaces was the sizing mistake this file has now made twice. The route
+ * publishes its client answer through `mobility.move_client_bound_s(wait_s, keep,
+ * to)` (backend PR #1540), whose three answers at `wait_s=0` are 145 s for an
+ * offload, 415 s for a `keep` copy and 415 s for a recall - i.e. the route's own
+ * envelopes (130 s / 400 s / 400 s) plus this 15 s. A margin of 45 s was reasoned
+ * from a MEASURED TYPICAL overhead (~30.5 s above `wait_s` against a real peer,
+ * QA round 1's figures) used as if it were a bound, which is exactly the mistake
+ * #1540's round 1 was rejected for; and the number it produced, 75 s, still sat
+ * BELOW the route's own 130 s envelope, so this layer went on being the one that
+ * gave up first - the defect the whole change exists to remove. Use the published
+ * pair, not a derivation of your own.
+ *
+ * WHAT IS AND IS NOT MEASURED HERE: the three published answers are read off the
+ * backend's own constant, and I have not measured the keep or recall wall clocks
+ * end to end on a real pair - neither has the backend lane. So this margin is a
+ * published TERM, not a figure of my own; do not quote it as a measurement.
  *
  * The same margin is used for a peer CREATE (`desktopRequestBoundS`'s second
  * arm), where the backend's own budget is 120 s: an app bound below the budget it
  * waits on is the layer that gives up first, which is the whole defect (Q4b).
  */
-export const DESKTOP_OPERATION_MARGIN_MS = 45_000;
+export const DESKTOP_OPERATION_MARGIN_MS = 15_000;
 /** What the renderer asks the route to wait, when the user has not chosen. */
 export const DESKTOP_TRANSFER_WAIT_S = 30;
 
@@ -2451,40 +2523,76 @@ export function desktopRequestBoundS(request: {
 	 * a measurement: the backend lane derived the recall's shape from code, and a
 	 * figure quoted as measured would be a claim nobody made.
 	 */
-	if (request.to === "local") return DESKTOP_RECALL_BOUND_S;
 	const wait = request.wait_s;
-	if (typeof wait !== "number" || !Number.isFinite(wait)) return null;
-	const bounded = Math.min(Math.max(wait, 0), 300);
 	/*
-	 * THE ROUTE'S OWN BOUND, BY SHAPE (backend PR #1540 and its review): a move that
-	 * keeps nothing behind is `wait_s + 30`, and one that KEEPS a copy is
-	 * `wait_s + 300` - 255 s more, which is exactly the kind of gap a client that
-	 * ignores `keep` falls through. Returned here so the deadline below is derived
-	 * from ONE place and the three shapes cannot drift apart.
+	 * THE WAIT TERM IS ADDED 1:1, ON EVERY SHAPE, which is how the route's own
+	 * expression carries it: the published answers are stated at `wait_s=0`, and a
+	 * request that asks the route to wait longer pushes its envelope out by the same
+	 * amount. Clamped at the schema's 300 s ceiling, so a request past it is clamped
+	 * rather than believed.
+	 */
+	const bounded =
+		typeof wait === "number" && Number.isFinite(wait)
+			? Math.min(Math.max(wait, 0), 300)
+			: null;
+	/*
+	 * A RECALL FIRST, because it is the shape whose envelope does NOT come from the
+	 * move formula - and deriving one for it is the mistake this helper exists to
+	 * prevent.
+	 */
+	if (request.to === "local") {
+		return bounded === null ? null : bounded + DESKTOP_RECALL_ENVELOPE_S;
+	}
+	if (bounded === null) return null;
+	/*
+	 * THE ROUTE'S OWN ENVELOPE, ONE PLACE FOR BOTH MOVE SHAPES: 130 s for an offload
+	 * and 400 s for one that KEEPS a copy, with this file's 15 s margin added by
+	 * `desktopRequestDeadlineMs` to reach the answers the backend publishes (145 s
+	 * and 415 s at `wait_s=0`). Returned from here so the three shapes cannot drift
+	 * apart.
 	 */
 	return (
 		bounded +
 		(request.keep === true
-			? DESKTOP_KEEP_MOVE_OVERHEAD_S
-			: DESKTOP_MOVE_OVERHEAD_S)
+			? DESKTOP_KEEP_MOVE_ENVELOPE_S
+			: DESKTOP_MOVE_ENVELOPE_S)
 	);
 }
 
-/** The peer route's own overhead above `wait_s` for a move that keeps no copy. */
-export const DESKTOP_MOVE_OVERHEAD_S = 30;
-
-/** The same for a move that KEEPS a copy on the source (the route's `keep` term). */
-export const DESKTOP_KEEP_MOVE_OVERHEAD_S = 300;
+/**
+ * The route's own envelope for a move that keeps no copy, in seconds.
+ *
+ * 130 s is the backend's published number, not this app's estimate: the route
+ * answers within it, and `mobility.move_client_bound_s` adds this file's 15 s
+ * margin to publish 145 s to clients. The `wait_s` term is added 1:1 on top, the
+ * same way the route's expression carries it, so the app's deadline is exactly
+ * the published answer at every `wait_s`.
+ */
+export const DESKTOP_MOVE_ENVELOPE_S = 130;
 
 /**
- * The ceiling a RECALL is given, as a ceiling rather than a derived bound.
+ * The same for a move that KEEPS a copy on the source (the route's `keep` term).
  *
- * The destination device retires its own runtime and records the conversation
- * before answering, which the backend lane measured at about 90 s; this sits above
- * that plus the copy. Its outcome is always "unconfirmed - check where it is",
- * because a number nobody measured must not be spent on a precise claim.
+ * 400 s, which publishes as 415 s: 270 s more than the offload's envelope, and
+ * the gap a client that ignored `keep` falls straight through.
  */
-export const DESKTOP_RECALL_BOUND_S = 180;
+export const DESKTOP_KEEP_MOVE_ENVELOPE_S = 400;
+
+/**
+ * The route's envelope for a RECALL (`to: "local"`), on the same footing as the
+ * two above rather than derived from a shape.
+ *
+ * A recall is NOT bounded by the move formula: the destination retires its own
+ * runtime and records the conversation before answering, which is a different
+ * path from the peer route's. The backend publishes 400 s for it - the same
+ * envelope as a `keep` copy, and 415 s once the 15 s margin is added - so this
+ * app reads its number off the backend rather than deriving one.
+ *
+ * Its OUTCOME is still always "unconfirmed - check where it is": the envelope
+ * bounds how long the route may take, not what it will have done by then, and a
+ * recall has no precise refusal to spend on a client-side guess.
+ */
+export const DESKTOP_RECALL_ENVELOPE_S = 400;
 
 /**
  * What a create asked to run on a peer is given before this app gives up.
@@ -3250,17 +3358,55 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "PATCH",
 				body: { request_id: request.requestId, ...request.fields },
 			};
-		case "sessions.list":
+		case "sessions.list": {
+			/*
+			 * Built as a query string rather than by interpolation, because four of the
+			 * parameters are store data: a team name is whatever the operator called it,
+			 * and a `&` or a `#` in one would otherwise change the request's meaning
+			 * instead of scoping it.
+			 *
+			 * THE ORDER IS PART OF THE COMPATIBILITY PROMISE. `limit` then
+			 * `include_archived` are the two parameters this request has always carried,
+			 * and they come first so a request that names none of the paging parameters
+			 * serialises to the exact bytes it sent before those existed - which is what
+			 * an older daemon is promised.
+			 */
+			const params = new URLSearchParams();
+			params.set("limit", String(request.limit ?? 100));
+			// Omitted when false, for the reason `sessions.search`'s own query states:
+			// the pre-flag request is what an older backend must keep seeing, and
+			// `false` is the route's default anyway.
+			if (request.include_archived) params.set("include_archived", "true");
+			/*
+			 * MESH: omitted unless the backend advertised `features.peers`, for the
+			 * same reason `include_archived` is omitted when false - a pre-mesh daemon
+			 * keeps receiving the byte-identical request it always did.
+			 */
+			if (request.include_peers) params.set("include_peers", "true");
+			/*
+			 * The paging four, appended only when asked for. `with_counts` follows
+			 * `include_archived`'s rule rather than `cursor`'s: it is a boolean whose
+			 * route default is false, so omitting it is the pre-change request, while
+			 * `scope_kind`/`scope_name`/`cursor` are absent-or-present values.
+			 *
+			 * A HALF SCOPE IS SENT AS SENT. This schema admits `scope_kind` without
+			 * `scope_name` (they are two optional fields, not a discriminated pair), and
+			 * that is deliberate: the daemon refuses the half by name, which is the
+			 * behaviour a client bug should meet rather than a client-side guess at
+			 * which half it meant. Dropping the pair here would turn a bug into an
+			 * unscoped answer drawn under one team.
+			 */
+			if (request.scope_kind) params.set("scope_kind", request.scope_kind);
+			if (request.scope_name) params.set("scope_name", request.scope_name);
+			if (request.cursor) params.set("cursor", request.cursor);
+			if (request.with_counts) params.set("with_counts", "true");
 			return {
-				// Omitted when false, for the reason `sessions.search`'s own query
-				// states: the pre-flag request is what an older backend must keep
-				// seeing, and `false` is the route's default anyway. `include_peers`
-				// follows the same rule.
-				path: `/v1/desktop/sessions?limit=${request.limit ?? 100}${
-					request.include_archived ? "&include_archived=true" : ""
-				}${request.include_peers ? "&include_peers=true" : ""}`,
+				path: `/v1/desktop/sessions?${params}`,
+				// `include_peers` rides in `params` (see the builder above), omitted
+				// unless the backend advertised the capability.
 				method: "GET",
 			};
+		}
 		case "sessions.search": {
 			// `encodeURIComponent` rather than interpolation: a query is whatever
 			// the user typed, and `&`, `#` or a space in it would otherwise change

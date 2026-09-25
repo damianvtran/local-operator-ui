@@ -1077,3 +1077,82 @@ test("the next press retires the previous failure", async () => {
 	await store.getState().setSessionPin(PINNED, true);
 	assert.equal(store.getState().pinFailure, null);
 });
+
+/*
+ * THE PINNED SET IS THE HEAD ANSWER'S TO SETTLE, and a SCOPE answer is not a head
+ * answer (paged catalogue, design §4.2).
+ *
+ * Why this is a test rather than a comment: the settle rule rests on the list
+ * route APPENDING every pinned conversation below the page's newest rows, so
+ * absence from a newer page means "the conversation is unpinned or gone". That
+ * argument holds for the unscoped head - the route applies it there - and it does
+ * NOT hold for a page that was asked about ONE team. A scope answer that settled
+ * the facts wholesale would erase a pin made on any conversation outside that
+ * team: its glyph, its Pinned-section membership and its `heldRows` row would all
+ * vanish at the moment an unrelated group was expanded.
+ */
+test("a scope page neither settles nor hides a pin made outside it", async () => {
+	const LISTED = "1a2b3c4d5e6f";
+	const TEAM_ROW = "9f8e7d6c5b4a";
+	const HEAD_ROW = "aaaaaaaaaaaa";
+	store.setState({
+		sessions: [],
+		scopes: {},
+		counts: null,
+		head: {
+			tailIds: [],
+			nextCursor: null,
+			complete: false,
+			loading: false,
+			error: null,
+			at: 0,
+		},
+		pinFacts: {},
+		pinFailure: null,
+		answerSeq: 0,
+		forgotten: {},
+		archiveFacts: {},
+	});
+	globalThis.__pinRequest = async (request) => {
+		if (request.op !== "sessions.list")
+			return { session_id: LISTED, pinned: true };
+		if (request.scope_kind === "team")
+			return {
+				sessions: [
+					{ id: TEAM_ROW, name: "A team chat", mtime: 1, pinned: false },
+				],
+				truncated: false,
+				next_cursor: null,
+			};
+		return {
+			sessions: [
+				{ id: HEAD_ROW, name: "Only the head", mtime: 2, pinned: false },
+			],
+			truncated: true,
+			next_cursor: "p2",
+		};
+	};
+
+	await store.getState().fetchSessions(50, true);
+	await store.getState().fetchScopePage("team", "lopdev");
+	assert.equal(
+		await store.getState().setSessionPin(LISTED, true, {
+			title: "Outside the page",
+		}),
+		true,
+	);
+	const before = store.getState().pinFacts[LISTED];
+
+	// A re-read of the team, whose rows have nothing to do with that pin.
+	await store.getState().fetchScopePage("team", "lopdev");
+	assert.deepEqual(
+		store.getState().pinFacts[LISTED],
+		before,
+		"a scope answer is silent about the pinned set, and silence is not a claim",
+	);
+	assert.equal(
+		store.getState().sessions.some((row) => row.session_id === LISTED),
+		true,
+		"and the row the press inserted is still in the store",
+	);
+});
