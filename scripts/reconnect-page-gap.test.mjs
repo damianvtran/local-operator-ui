@@ -1286,8 +1286,7 @@ async function paneAtFirstSnapshot() {
 	const transcript = makeTranscript(plan.rows);
 	reset({ transcript });
 	const panel = await mount();
-	const page = () =>
-		transcript.page(plan.cursor, SNAPSHOT_PAGE).entries;
+	const page = () => transcript.page(plan.cursor, SNAPSHOT_PAGE).entries;
 	deliver(openFrame(1, true));
 	deliver(
 		snapshotFrame(2, { cursor: plan.cursor, entries: page(), liveEvents: [] }),
@@ -1383,7 +1382,8 @@ test("a fresh snapshot replaces the held readings wholesale", async () => {
 	 * the hold was still there.
 	 */
 	second.payload.frontend.snapshot.context_tokens = 4321;
-	second.payload.frontend.snapshot.conversation_title = "Conversation A, resumed";
+	second.payload.frontend.snapshot.conversation_title =
+		"Conversation A, resumed";
 	deliver(second);
 	await pump();
 

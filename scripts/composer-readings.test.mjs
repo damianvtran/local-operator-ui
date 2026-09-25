@@ -75,10 +75,12 @@ const bundle = await build({
 // has no base path for.
 const bundlePath = new URL("./_composer-readings.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { renderStrip, LAST_READING_NOTE, desktopEndpoint, desktopRequestSchema } =
-	await import(
-	bundlePath.href
-);
+const {
+	renderStrip,
+	LAST_READING_NOTE,
+	desktopEndpoint,
+	desktopRequestSchema,
+} = await import(bundlePath.href);
 await unlink(bundlePath);
 
 /** The rendered text a user reads, with markup and layout whitespace removed. */
