@@ -16,6 +16,15 @@ import { build } from "esbuild";
  * banner while no pane displayed it). The notifier half was well covered; this
  * is the caller.
  *
+ * THE RESTART PIN, and why the instrument below models re-renders. The
+ * withdrawal once sat in the heartbeat effect's cleanup, whose deps include
+ * `subscriptionId` — and a stream restart drops that to null while the same
+ * conversation stays on screen — so every SSE reconnect withdrew a conversation
+ * the pane was still displaying. That bug lives on the dep-change path: a
+ * changed dep runs the effect's previous cleanup, and only a re-render can
+ * express it, so `mount()` now hands back a `rerender` that replays the hook
+ * against the same cells with React's dep semantics.
+ *
  * The hook is bundled and driven through a React stand-in rather than rendered,
  * the same instrument `reconnect-page-gap.test.mjs` uses and for the same
  * reason: what is asserted is the CALL the shipped hook makes, not a frame.
@@ -24,22 +33,49 @@ import { build } from "esbuild";
 const reactStandIn = `
 let cells = [];
 let cursor = 0;
+let block = 0;
+const starts = new Map();
 const slot = () => {
 	const index = cursor++;
-	if (!cells[index]) cells[index] = {};
+	if (!cells[index]) cells[index] = { block };
 	return cells[index];
 };
+globalThis.__beginMount = () => {
+	block += 1;
+	cursor = cells.length;
+	starts.set(block, cursor);
+	return block;
+};
+globalThis.__rerenderBlock = (id) => {
+	cursor = starts.get(id);
+};
+globalThis.__unmountBlock = (id) => {
+	for (const cell of cells) {
+		if (cell.block !== id || !cell.cleanup) continue;
+		const cleanup = cell.cleanup;
+		cell.cleanup = undefined;
+		cleanup();
+	}
+};
+const changed = (cell, deps) =>
+	!cell.deps ||
+	!deps ||
+	cell.deps.length !== deps.length ||
+	cell.deps.some((value, index) => !Object.is(value, deps[index]));
 export const useEffect = (fn, deps) => {
 	const cell = slot();
-	const changed =
-		!cell.deps ||
-		!deps ||
-		cell.deps.length !== deps.length ||
-		cell.deps.some((value, index) => !Object.is(value, deps[index]));
-	if (changed) {
-		cell.deps = deps;
-		globalThis.__effects.push(fn);
-	}
+	if (!changed(cell, deps)) return;
+	/*
+	 * React's dep semantics: a changed dep runs the effect's previous cleanup
+	 * before the next effect. The withdrawal used to live in a cleanup whose
+	 * deps included the subscription id, so this reconciliation — and not a
+	 * fresh mount — is the event that bug turned on.
+	 */
+	cell.cleanup?.();
+	cell.deps = deps;
+	globalThis.__effects.push(() => {
+		cell.cleanup = fn();
+	});
 };
 export const useLayoutEffect = useEffect;
 export const useInsertionEffect = () => {};
@@ -126,26 +162,36 @@ await unlink(bundlePath);
 const SUBSCRIPTION = "a".repeat(32);
 const SESSION = "123456abcdef";
 const OTHER = "654321fedcba";
+const RESTARTED_SUBSCRIPTION = "c".repeat(32);
 
-/** Drive the shipped hook through the stand-in, and hand back its teardown. */
+/**
+ * Drive the shipped hook through the stand-in, and hand back its teardown.
+ *
+ * `mount` opens a fresh cell block — a component mounting with its own identity
+ * — and the returned teardown carries `rerender`, which replays the hook
+ * against that same block with React's dep semantics: a changed dep runs the
+ * effect's previous cleanup, an unchanged one runs nothing. `rerender` is what
+ * drives a subscription restart; a fresh mount cannot say that a dep changed
+ * under an already-running pane.
+ */
 const mounted = [];
 
 function mount(sessionId, subscriptionId) {
-	const cleanups = [];
-	globalThis.__effects = [];
-	globalThis.__cursor = 0;
-	const slots = [];
-	// The stand-in keeps its cells in module state; a fresh mount starts at zero,
-	// which is what a component that mounted with a different identity does.
-	useDesktopWatchLease(sessionId, subscriptionId);
-	const flush = globalThis.__effects.splice(0);
-	for (const effect of flush) {
-		const cleanup = effect();
-		if (typeof cleanup === "function") cleanups.push(cleanup);
-	}
-	const unmount = () => {
-		for (const cleanup of cleanups.splice(0)) cleanup();
+	const block = globalThis.__beginMount();
+	const render = (nextSessionId, nextSubscriptionId) => {
+		globalThis.__effects = [];
+		useDesktopWatchLease(nextSessionId, nextSubscriptionId);
+		for (const effect of globalThis.__effects.splice(0)) effect();
 	};
+	render(sessionId, subscriptionId);
+	const rerender = (nextSessionId, nextSubscriptionId) => {
+		globalThis.__rerenderBlock(block);
+		render(nextSessionId, nextSubscriptionId);
+	};
+	const unmount = () => {
+		globalThis.__unmountBlock(block);
+	};
+	unmount.rerender = rerender;
 	/*
 	 * Registered as well as returned: a failed assertion would otherwise skip the
 	 * cleanup, and the hook's 15 s interval would keep the whole run alive — a
@@ -212,25 +258,60 @@ test("the pane withdraws the conversation it LEAVES when the session changes", (
 	 * current, or released nothing, is what R2-4 was.
 	 */
 	const { releases } = installBridge();
-	const unmountA = mount(SESSION, SUBSCRIPTION);
-	unmountA();
-	const unmountB = mount(OTHER, SUBSCRIPTION);
+	const pane = mount(SESSION, SUBSCRIPTION);
+	pane.rerender(OTHER, SUBSCRIPTION);
 	assert.deepEqual(
 		releases,
 		[{ sessionId: SESSION }],
 		"the pane withdrew the conversation it left, and not the one it moved to",
 	);
-	unmountB();
-	assert.deepEqual(releases.at(-1), { sessionId: OTHER });
+	pane();
+	assert.deepEqual(
+		releases,
+		[{ sessionId: SESSION }, { sessionId: OTHER }],
+		"the pane's own leave withdraws its own conversation",
+	);
 });
 
-test("a pane that never held a valid lease withdraws nothing", () => {
+test("a subscription restart re-runs the heartbeat and withdraws nothing", () => {
 	/*
-	 * The hook early-returns on a falsy session id and on a subscription id that
-	 * is not the backend's `[a-f0-9]{32}`, so there is nothing displayed to
-	 * withdraw — and main's `releaseWatch` would otherwise be asked to clear a
-	 * report that does not exist. Both directions are asserted, because "sends
-	 * nothing" is only meaningful next to the case that does send.
+	 * THE LIVE BUG THIS PIN EXISTS FOR. A stream restart — every SSE reconnect on
+	 * a busy machine — drops `subscriptionId` to null while the SAME conversation
+	 * stays on screen, and the next `open` frame establishes a new id. With the
+	 * withdrawal riding the heartbeat effect's cleanup, each of those transitions
+	 * withdrew the displayed conversation; main's machine-wide presence then
+	 * reported `session_id: ""` for a window that was still showing one.
+	 */
+	const { heartbeats, releases } = installBridge();
+	const pane = mount(SESSION, SUBSCRIPTION);
+	assert.equal(heartbeats.length, 1, "the mount sent no first beat");
+	pane.rerender(SESSION, null);
+	assert.equal(heartbeats.length, 1, "a beat was sent without a subscription");
+	assert.equal(
+		releases.length,
+		0,
+		"the stream's end withdrew the conversation the pane still displays",
+	);
+	pane.rerender(SESSION, RESTARTED_SUBSCRIPTION);
+	assert.equal(heartbeats.length, 2, "the restarted subscription did not beat");
+	assert.equal(
+		releases.length,
+		0,
+		"re-establishing the stream withdrew the displayed conversation",
+	);
+	pane();
+	assert.deepEqual(
+		releases,
+		[{ sessionId: SESSION }],
+		"a genuine leave must still withdraw, exactly once",
+	);
+});
+
+test("no beat is sent for a subscription id the backend would reject", () => {
+	/*
+	 * The hook early-returns on a falsy subscription id and on one that is not
+	 * the backend's `[a-f0-9]{32}`; sending the lease anyway earns a 422 on every
+	 * beat. "Sends nothing" is only meaningful next to the cases that do send.
 	 */
 	for (const [sessionId, subscriptionId] of [
 		[undefined, SUBSCRIPTION],
@@ -238,7 +319,7 @@ test("a pane that never held a valid lease withdraws nothing", () => {
 		[SESSION, "not-a-subscription-id"],
 		[SESSION, "b".repeat(31)],
 	]) {
-		const { heartbeats, releases } = installBridge();
+		const { heartbeats } = installBridge();
 		const unmount = mount(sessionId, subscriptionId);
 		assert.equal(
 			heartbeats.length,
@@ -246,10 +327,29 @@ test("a pane that never held a valid lease withdraws nothing", () => {
 			`no lease is sent for ${String(sessionId)}/${String(subscriptionId)}`,
 		);
 		unmount();
-		assert.equal(
-			releases.length,
-			0,
-			`nothing is withdrawn for ${String(sessionId)}/${String(subscriptionId)}`,
+	}
+});
+
+test("a leave withdraws by the session id alone, even when no lease was sent", () => {
+	/*
+	 * The withdrawal is keyed on the session, not on a live subscription: a
+	 * stream that has already ended must not strand main's "showing A" until the
+	 * report's own TTL, and main's `releaseWatch` is identity-safe, so a release
+	 * for a report that does not exist clears nothing.
+	 */
+	for (const [sessionId, subscriptionId, expected] of [
+		[undefined, SUBSCRIPTION, []],
+		[SESSION, null, [{ sessionId: SESSION }]],
+		[SESSION, "not-a-subscription-id", [{ sessionId: SESSION }]],
+		[SESSION, "b".repeat(31), [{ sessionId: SESSION }]],
+	]) {
+		const { releases } = installBridge();
+		const unmount = mount(sessionId, subscriptionId);
+		unmount();
+		assert.deepEqual(
+			releases,
+			expected,
+			`${String(sessionId)}/${String(subscriptionId)} withdrew ${JSON.stringify(releases)}`,
 		);
 	}
 });
