@@ -18,6 +18,7 @@ make a pass pass.
 | `r6capnarrow-post` | `284ae00d0` | 800×900 | **16 PASS / 0 FAIL** (63 cells) |
 | `r6capwide-post` | `284ae00d0` | 1380×900 | **16 PASS / 0 FAIL** (63 cells) |
 | `capq-base` / `capq-fix` | `f105c9953` / `284ae00d0` | 800×900 | the mechanism, per frame |
+| `r5clipnarrow-clampmutant` | `284ae00d0` with the deferral removed, the clamp attribution kept | 800×900 | **21 PASS / 0 FAIL** — the second half of the fix classified a real clamp |
 
 The three narrow failures are QA round 6's F1, and the pre-fix numbers are QA's own to
 the byte: `Q35a` at rest `scrollTop 104.5` against `maxScroll 222` → `hiddenBelowPx
