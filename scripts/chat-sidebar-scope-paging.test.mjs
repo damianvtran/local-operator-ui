@@ -2,6 +2,25 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
+const ANY_MODULE_RE = /.*/;
+
+/*
+ * The regex literals this file uses, at TOP LEVEL: the repository's lint contract for
+ * `scripts/` treats an inline literal as a per-call allocation, and this gate reads the
+ * whole file rather than only the diff, so a hoist is the fix that keeps it green.
+ */
+const DESKTOP_API_IMPORT_RE = /@shared\/api\/local-operator\/desktop-api/;
+const DESKTOP_HOOKS_IMPORT_RE = /@shared\/api\/local-operator\/desktop-hooks/;
+const QUERY_CLIENT_IMPORT_RE = /@shared\/api\/query-client/;
+const ECHO_HOOK_IMPORT_RE = /@shared\/hooks\/use-canonical-session/;
+const ARCHIVED_RE = /archived/;
+const BODY_FOCUS_RE = /document\.body\.focus\(\)/;
+const COLLAPSE_FILTER_RE =
+	/!owned\.has\(row\.session_id\)[\s\S]{0,200}?fromHeadPage\.has\(row\.session_id\)[\s\S]{0,200}?row\.session_id === active/;
+const BADGE_SR_ONLY_RE =
+	/\{badge > 0 && \(\s*<span className="sr-only">\{groupBadgeLabel\(badge\)\}<\/span>/;
+const DISCLOSURE_LABEL_RE =
+	/DISCLOSURE_LABELS|aria-label="Expand \$\{pending\.name\} chats"/;
 
 /*
  * THE PAGED CATALOGUE, driven through the shipped store and the shipped
@@ -52,20 +71,56 @@ const bundle = await build({
 		{
 			name: "paged-catalogue-fixture",
 			setup(builder) {
-				builder.onResolve(
-					{ filter: /@shared\/api\/local-operator\/desktop-api/ },
-					() => ({ path: "transport", namespace: "fixture" }),
-				);
-				builder.onResolve(
-					{ filter: /@shared\/hooks\/use-canonical-session/ },
-					() => ({ path: "echo", namespace: "echo-fixture" }),
-				);
-				builder.onLoad({ filter: /.*/, namespace: "echo-fixture" }, () => ({
-					contents:
-						"export const echoPendingUser = () => {};\nexport const retractPendingUser = () => {};\nexport const discardPendingEchoes = () => {};",
-					loader: "js",
+				builder.onResolve({ filter: DESKTOP_API_IMPORT_RE }, () => ({
+					path: "transport",
+					namespace: "fixture",
 				}));
-				builder.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({
+				builder.onResolve({ filter: ECHO_HOOK_IMPORT_RE }, () => ({
+					path: "echo",
+					namespace: "echo-fixture",
+				}));
+				/*
+				 * THE TWO MODULES THE STORE GAINED FOR Q-1: the capability predicate (re-exported
+				 * from the real file, so the test cannot drift from what the app ships) and the
+				 * query cache the store reads it out of. The cache is a fixture whose answer the
+				 * test sets, which is the only way to ask "what does an unnamed size mean on a
+				 * daemon that advertises paging" without a browser.
+				 */
+				builder.onResolve({ filter: DESKTOP_HOOKS_IMPORT_RE }, () => ({
+					path: "capabilities",
+					namespace: "capability-fixture",
+				}));
+				builder.onLoad(
+					{ filter: ANY_MODULE_RE, namespace: "capability-fixture" },
+					() => ({
+						contents: `export { desktopFeatureEnabled, desktopKeys } from ${JSON.stringify(
+							`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-hooks.ts`,
+						)};`,
+						loader: "js",
+						resolveDir: process.cwd(),
+					}),
+				);
+				builder.onResolve({ filter: QUERY_CLIENT_IMPORT_RE }, () => ({
+					path: "query-client",
+					namespace: "query-fixture",
+				}));
+				builder.onLoad(
+					{ filter: ANY_MODULE_RE, namespace: "query-fixture" },
+					() => ({
+						contents:
+							"export const queryClient = { getQueryData: () => globalThis.__catalogueCapabilities ?? null };",
+						loader: "js",
+					}),
+				);
+				builder.onLoad(
+					{ filter: ANY_MODULE_RE, namespace: "echo-fixture" },
+					() => ({
+						contents:
+							"export const echoPendingUser = () => {};\nexport const retractPendingUser = () => {};\nexport const discardPendingEchoes = () => {};",
+						loader: "js",
+					}),
+				);
+				builder.onLoad({ filter: ANY_MODULE_RE, namespace: "fixture" }, () => ({
 					contents: `export {DesktopControlError, UserFacingError, userFacingMessage} from ${JSON.stringify(
 						`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
 					)}
@@ -1306,7 +1361,7 @@ test("a settled group with no rows is never described as loading (U3)", () => {
 	assert.equal(settled.forbidden, true);
 	assert.match(
 		settled.sentence,
-		/archived/,
+		ARCHIVED_RE,
 		"the sentence names why and offers the way forward",
 	);
 	assert.notEqual(
@@ -1450,7 +1505,7 @@ test("the Show-more control names its group, joins the arrow-key idiom, and is f
 		"the first NEWLY ADDED row is the target, not the group's first row",
 	);
 	assert.ok(
-		!/document\.body\.focus\(\)/.test(SIDEBAR_SRC),
+		!BODY_FOCUS_RE.test(SIDEBAR_SRC),
 		"focus is never sent to `<body>`",
 	);
 });
@@ -1475,7 +1530,7 @@ test("the open conversation is kept in membership, and a collapse drops a group'
 	);
 	assert.match(
 		STORE_SRC,
-		/!owned\.has\(row\.session_id\)[\s\S]{0,200}?fromHeadPage\.has\(row\.session_id\)[\s\S]{0,200}?row\.session_id === active/,
+		COLLAPSE_FILTER_RE,
 		"a collapse removes the scope's own rows, keeps the row the head page also carries, AND keeps the conversation the reader has open (round 2, R2-1)",
 	);
 });
@@ -1487,7 +1542,7 @@ test("the refusal holds its shape, and the badge announces its meaning (D4, D1, 
 	);
 	assert.match(
 		SIDEBAR_SRC,
-		/\{badge > 0 && \(\s*<span className="sr-only">\{groupBadgeLabel\(badge\)\}<\/span>/,
+		BADGE_SR_ONLY_RE,
 		"the census reaches a screen reader on the group's own row, where no button's `aria-label` replaces it",
 	);
 });
@@ -1576,8 +1631,28 @@ test("the panel's total counts what is DRAWN, and never claims more than the sto
 			total: 757,
 			searching: true,
 		}),
-		"Showing 1 of 757 chats matching your search",
-		"with a query active the words say which number is which (U10)",
+		"Showing 1 match of 757 chats",
+		"with a query active the words say which number is which (U10), and the singular reads as a match rather than as a chat (round 3, U13)",
+	);
+	assert.equal(
+		catalogueTotalSentence({
+			pageable: true,
+			shown: 3,
+			total: 757,
+			searching: true,
+		}),
+		"Showing 3 matches of 757 chats",
+	);
+	assert.equal(
+		catalogueTotalSentence({
+			pageable: true,
+			shown: 100,
+			total: 757,
+			searching: true,
+			clipped: true,
+		}),
+		"Showing 100+ matches of 757 chats",
+		"and a CLIPPED answer's number is a floor, in the badge's own `100+` idiom - never an exact count this file knows to be a floor (round 3, R3-1)",
 	);
 	assert.equal(
 		catalogueTotalSentence({ pageable: false, shown: 500, total: 757 }),
@@ -1640,9 +1715,7 @@ test("the round-2 code paths are pinned in source", () => {
 		"and its fallback is the group's own control, which exists at exhaustion",
 	);
 	assert.ok(
-		/DISCLOSURE_LABELS|aria-label="Expand \$\{pending\.name\} chats"/.test(
-			SIDEBAR_SRC,
-		),
+		DISCLOSURE_LABEL_RE.test(SIDEBAR_SRC),
 		"the group is matched by its disclosure's label, not by name-plus-badge text",
 	);
 	// All THREE refusal sites wear the one treatment: clamped sentence, Retry on its own
@@ -1667,5 +1740,52 @@ test("the round-2 code paths are pinned in source", () => {
 	assert.ok(
 		SIDEBAR_SRC.includes("shown: matching.length"),
 		"and the panel passes the DRAWN count, not the rows held",
+	);
+});
+
+test("an unnamed size means the HEAD page on a paging daemon, and today's read without one (Q-1)", async () => {
+	/*
+	 * THE CALLER THAT STARTED THIS. `chat-page.tsx` refreshes the catalogue when the open
+	 * conversation's streaming/attention/binding marker moves, and it names no size - so
+	 * before this the default took `LEGACY_CATALOGUE_PAGE` on EVERY daemon, and opening a
+	 * conversation fired an unscoped `limit=500&include_archived=true` read (2.1-4.5 s on
+	 * the operator's store) that also replaced the scoped membership with 500 rows.
+	 *
+	 * Both halves are asserted, because the fix has to keep the compatibility promise: on a
+	 * daemon that advertises `session_catalogue_page` the unnamed size is the head page, and
+	 * on one that does not it is byte-for-byte the read this app has always made.
+	 */
+	globalThis.__catalogueCapabilities = {
+		desktop_available: true,
+		features: { session_catalogue_page: 1 },
+	};
+	calls.length = 0;
+	await store.getState().fetchSessions();
+	assert.equal(
+		calls[0]?.limit,
+		CATALOGUE_HEAD_PAGE,
+		`the first request asked for ${calls[0]?.limit}; an unnamed size must not be the legacy whole-catalogue read on a daemon that can page`,
+	);
+	assert.notEqual(calls[0]?.limit, LEGACY_CATALOGUE_PAGE);
+
+	globalThis.__catalogueCapabilities = {
+		desktop_available: true,
+		features: {},
+	};
+	calls.length = 0;
+	await store.getState().fetchSessions();
+	assert.equal(
+		calls[0]?.limit,
+		LEGACY_CATALOGUE_PAGE,
+		"a daemon without the capability still gets exactly one unscoped limit=500 read",
+	);
+
+	globalThis.__catalogueCapabilities = null;
+	calls.length = 0;
+	await store.getState().fetchSessions();
+	assert.equal(
+		calls[0]?.limit,
+		LEGACY_CATALOGUE_PAGE,
+		"and an UNKNOWN capability map fails closed to today's read rather than to the head page",
 	);
 });

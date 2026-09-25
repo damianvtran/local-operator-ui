@@ -97,6 +97,14 @@ const SCOPE_DELAY_MS = Number(arg("scope-delay-ms", "0"));
  * which is the proof that the wait was real.
  */
 const SCOPE_HOLD = arg("scope-hold", null);
+/*
+ * `--tail-error` REFUSES the flat list's own extension: an UNSCOPED request that carries a
+ * `cursor` answers 500. It exists so the THIRD refusal site can be photographed rather
+ * than read (round 3, D18) - all three sites share one treatment, and the only way to
+ * show that is a frame of each. The head read (no cursor) is untouched, so the list
+ * paints and then refuses to grow.
+ */
+const TAIL_ERROR = process.argv.includes("--tail-error");
 const INSTANCE_ID = randomUUID();
 /** The record's `started_at` is fixed at boot; the heartbeat moves. */
 const startedAt = Date.now() / 1000;
@@ -714,6 +722,18 @@ const server = createServer((request, response) => {
 			url.searchParams,
 			body,
 		);
+		/*
+		 * THE FLAT LIST'S TAIL REFUSAL (round 3, D18), decided BEFORE the log line so the
+		 * log states what was actually sent. An unscoped request that carries a cursor is the
+		 * head's own extension, so refusing exactly that leaves the first paint intact and
+		 * makes the THIRD refusal site render: a list that painted and then could not grow.
+		 */
+		const scopedRequest = url.searchParams.get("scope_kind") !== null;
+		const refusingTail =
+			TAIL_ERROR &&
+			!scopedRequest &&
+			url.searchParams.get("cursor") !== null &&
+			answer.status === 200;
 		process.stderr.write(
 			/*
 			 * THE ANSWER IS LOGGED WITH THE ROWS IT CARRIED, not only the request: "the
@@ -721,7 +741,7 @@ const server = createServer((request, response) => {
 			 * rows" are different facts, and a reader debugging a panel that did not grow
 			 * needs the second one in the same line as the first.
 			 */
-			`stub ${request.method} ${url.pathname}${url.search} -> ${answer.status}${
+			`stub ${request.method} ${url.pathname}${url.search} -> ${refusingTail ? 500 : answer.status}${
 				Array.isArray(answer.body?.result?.sessions)
 					? ` rows=${answer.body.result.sessions.length} next=${answer.body.result.next_cursor ?? "-"}`
 					: ""
@@ -737,6 +757,15 @@ const server = createServer((request, response) => {
 		 * photograph needs (see `--scope-delay-ms`).
 		 */
 		const scoped = url.searchParams.get("scope_kind") !== null;
+		if (refusingTail) {
+			response.writeHead(500, { "content-type": "application/json" });
+			response.end(
+				JSON.stringify({
+					detail: "The stub was asked to refuse the flat list's tail.",
+				}),
+			);
+			return;
+		}
 		if (SCOPE_HOLD !== null && scoped && !existsSync(SCOPE_HOLD)) {
 			/*
 			 * Polled rather than watched: the release is a file the SCENE writes, and a

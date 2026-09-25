@@ -14212,7 +14212,7 @@ async function sceneSidebarLazyChats(cdp) {
 		note("the collapsed group", JSON.stringify(collapsed));
 	}
 
-	if (LAZY_CASE === "flat-tail") {
+	if (LAZY_CASE === "flat-tail" || LAZY_CASE === "flat-tail-error") {
 		/*
 		 * THE FLAT LIST'S OWN TAIL (the second arm round 1's D3 named as missing). It
 		 * has no control by design - one scroller, one scope inside it, so "extend" has
@@ -14299,25 +14299,78 @@ async function sceneSidebarLazyChats(cdp) {
 			};
 		})()`);
 		note("the flat list's geometry after the scroll", JSON.stringify(flatGeo));
-		const flatGrew = await waitForCondition(
+		/*
+		 * THE TWO CASES ASSERT OPPOSITE THINGS about the same scroll, so the growth branch is
+		 * the success case's alone: with `--tail-error` the extension is refused and its own
+		 * branch below reads the treatment off the elements.
+		 */
+		if (LAZY_CASE === "flat-tail") {
+			const flatGrew = await waitForCondition(
+				cdp,
+				`document.querySelectorAll("[data-session-row]").length > ${beforeFlat.sessionCount}`,
+				15_000,
+			);
+			check(
+				"the flat list extends itself on scroll, with no control to press",
+				flatGrew.ok === true,
+				`rows were ${beforeFlat.sessionCount} before the scroll to the bottom (waited ${flatGrew.waitedMs} ms)`,
+			);
+			await wait(LAZY_SETTLE_MS);
+			const flatFrame = await captureSettled(cdp, "flat-tail");
+			note("frame", JSON.stringify(flatFrame));
+			const grown = await verb(cdp, "state");
+			check(
+				"and the rows that arrived are held",
+				grown.sessionCount > beforeFlat.sessionCount,
+				`rows went ${beforeFlat.sessionCount} -> ${grown.sessionCount}`,
+			);
+			return;
+		}
+	}
+
+	if (LAZY_CASE === "flat-tail-error") {
+		/*
+		 * THE FLAT LIST'S OWN REFUSAL (round 3, D18). The third refusal site, and the one
+		 * nobody could see: D10's history is a fix that landed on one of three sites while the
+		 * frame photographed another, so the site with no frame is the site to photograph.
+		 *
+		 * The list has already painted (the head read is untouched by `--tail-error`), so what
+		 * this arm shows is a list that refused to GROW - and the check reads the treatment
+		 * off the ELEMENTS rather than off the copy: the sentence clamped, and the Retry in
+		 * its own paragraph rather than inline after the text.
+		 */
+		const tailRefusal = await waitForCondition(
 			cdp,
-			`document.querySelectorAll("[data-session-row]").length > ${beforeFlat.sessionCount}`,
-			15_000,
+			`(() => {
+				const region = document.querySelector('[data-sidebar-region="chats"]');
+				if (region === null) return null;
+				const button = Array.from(region.querySelectorAll("button")).find(
+					(node) => node.textContent.trim() === "Retry",
+				);
+				if (button === undefined) return null;
+				const sentence = button.parentElement?.previousElementSibling ?? null;
+				return {
+					retryParentTag: button.parentElement?.tagName ?? null,
+					sentenceTag: sentence?.tagName ?? null,
+					sentence: (sentence?.textContent ?? "").trim(),
+					lineClamp: sentence === null ? null : getComputedStyle(sentence).webkitLineClamp,
+					rows: document.querySelectorAll("[data-session-row]").length,
+				};
+			})()`,
+			20_000,
 		);
+		note("the flat list's refusal", JSON.stringify(tailRefusal));
 		check(
-			"the flat list extends itself on scroll, with no control to press",
-			flatGrew.ok === true,
-			`rows were ${beforeFlat.sessionCount} before the scroll to the bottom (waited ${flatGrew.waitedMs} ms)`,
+			"the third refusal site renders the one treatment: a clamped sentence with the Retry on its own line",
+			tailRefusal.ok === true &&
+				tailRefusal.last?.sentenceTag === "P" &&
+				tailRefusal.last?.retryParentTag === "P" &&
+				tailRefusal.last?.lineClamp === "2",
+			`read off the elements: ${JSON.stringify(tailRefusal.last)}`,
 		);
 		await wait(LAZY_SETTLE_MS);
-		const flatFrame = await captureSettled(cdp, "flat-tail");
-		note("frame", JSON.stringify(flatFrame));
-		const grown = await verb(cdp, "state");
-		check(
-			"and the rows that arrived are held",
-			grown.sessionCount > beforeFlat.sessionCount,
-			`rows went ${beforeFlat.sessionCount} -> ${grown.sessionCount}`,
-		);
+		const refusalFrame = await captureSettled(cdp, "flat-tail-error");
+		note("frame", JSON.stringify(refusalFrame));
 		return;
 	}
 
@@ -14431,7 +14484,17 @@ async function sceneSidebarLazyChats(cdp) {
 		);
 		const narrowFrame = await captureSettled(cdp, "group-narrow");
 		note("frame", JSON.stringify(narrowFrame));
-		await setSplitPreferences(cdp, { chatSidebarWidth: 360 });
+		/*
+		 * RESTORED TO THIS RUN'S OWN WIDTH, NOT TO 360 (round 3, D16). The narrow capture
+		 * above is taken at the floor, and the press briefly needed the panel wider than the
+		 * floor to keep the control on screen; leaving it at the clamp's ceiling made the two
+		 * post-press frames 361 logical px wide while every other frame in the set was at the
+		 * run's default 281 - a set that mixes undeclared widths cannot be compared frame to
+		 * frame. `wideWidth` is the width this run actually started at, measured above.
+		 */
+		await setSplitPreferences(cdp, {
+			chatSidebarWidth: typeof wideWidth === "number" ? wideWidth : 281,
+		});
 		await wait(LAZY_SETTLE_MS);
 		/*
 		 * AND THE CONTROL IS BROUGHT BACK INTO THE VIEWPORT, because widening the panel
@@ -14591,6 +14654,38 @@ async function sceneSidebarLazyChats(cdp) {
 				LAZY_ARCHIVED_SENTENCE.test(group.sentence),
 			`sessionCount ${opened.sessionCount}, badge ${JSON.stringify(group.badge)}, sentence ${JSON.stringify(group.sentence)}`,
 		);
+		/*
+		 * AND THE SAME SENTENCE AT THE PANEL'S DRAG FLOOR (round 3, D17). The clamp is two
+		 * lines and the designer's arithmetic said it may eat this sentence's tail at 240px;
+		 * whether it does is a fact about a rendered frame, not about a sum, and the sentence
+		 * is the one this state exists to say - so it gets its own narrow picture rather than
+		 * being trusted at the width where it was written.
+		 */
+		const settledDefaultWidth = await cdp.evaluate(
+			`document.querySelector('[data-sidebar-region="chats"]')?.offsetWidth ?? null`,
+		);
+		await setSplitPreferences(cdp, { chatSidebarWidth: 240 });
+		await wait(LAZY_SETTLE_MS);
+		const settledFloor = await lazyGroupFacts(cdp, LAZY_GROUP);
+		const settledFloorWidth = await cdp.evaluate(
+			`document.querySelector('[data-sidebar-region="chats"]')?.offsetWidth ?? null`,
+		);
+		check(
+			"the settled sentence is whole at the panel's own floor, not clipped by the clamp",
+			typeof settledFloorWidth === "number" &&
+				settledFloorWidth <= 250 &&
+				typeof settledFloor.sentence === "string" &&
+				LAZY_ARCHIVED_SENTENCE.test(settledFloor.sentence) &&
+				settledFloor.sentenceClipped === false,
+			`at ${settledFloorWidth}px (from ${settledDefaultWidth}px) the group says ${JSON.stringify(settledFloor.sentence)}, clamped=${JSON.stringify(settledFloor.clamped)}`,
+		);
+		const settledNarrowFrame = await captureSettled(cdp, "group-open-narrow");
+		note("frame", JSON.stringify(settledNarrowFrame));
+		await setSplitPreferences(cdp, {
+			chatSidebarWidth:
+				typeof settledDefaultWidth === "number" ? settledDefaultWidth : 281,
+		});
+		await wait(LAZY_SETTLE_MS);
 	} else if (LAZY_CASE === "loading") {
 		/*
 		 * THE ONE STATE IN WHICH "Loading chats…" IS TRUE (round 1, U3). Every scoped
@@ -14663,7 +14758,12 @@ async function sceneSidebarLazyChats(cdp) {
 			})()`,
 			15_000,
 		);
-		note("the refusal is on screen", String(refused));
+		/*
+		 * STRINGIFIED, NOT COERCED (round 3, D13): `waitForCondition` answers an object, so
+		 * `String(refused)` printed `[object Object]` where the note is supposed to carry the
+		 * wait's own result - the waited time and the value it settled on.
+		 */
+		note("the refusal is on screen", JSON.stringify(refused));
 		const failed = await lazyGroupFacts(cdp, LAZY_GROUP);
 		/*
 		 * ITS OWN FRAME, AFTER THE REFUSAL RENDERED: the `group-open` capture above is
@@ -14779,6 +14879,17 @@ const LAZY_GROUP_FACTS_EXPR = (name) => `(() => {
 			const el = body?.querySelector("p") ?? null;
 			const text = el === null ? "" : (el.textContent || "").trim();
 			return text === "" ? null : text;
+		})(),
+		/*
+		 * WHETHER THE SENTENCE THE READER READS IS THE WHOLE SENTENCE (round 3, D17). The
+		 * clamp is two lines, so an element whose scrollHeight exceeds its clientHeight is
+		 * an element that ate its own tail - the one fact a picture at the panel's floor is
+		 * meant to settle, and one a text extraction cannot see.
+		 */
+		sentenceClipped: (() => {
+			const el = body?.querySelector("p") ?? null;
+			if (el === null) return null;
+			return el.scrollHeight > el.clientHeight + 1;
 		})(),
 	};
 })()`;

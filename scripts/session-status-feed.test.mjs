@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+/** The regexes this file's fixture resolvers use, hoisted (see the same note in the paged suite). */
+const DESKTOP_API_IMPORT_RE = /@shared\/api\/local-operator\/desktop-api/;
+const DESKTOP_HOOKS_IMPORT_RE = /@shared\/api\/local-operator\/desktop-hooks/;
+const QUERY_CLIENT_IMPORT_RE = /@shared\/api\/query-client/;
+const REACT_MODULE_RE = /^react$/;
+const USE_DESKTOP_FEED_IMPORT_RE = /shared\/hooks\/use-desktop-feed\.ts$/;
+const ANY_MODULE_RE = /.*/;
+
 import { build } from "esbuild";
+const ECHO_HOOK_IMPORT_RE = /@shared\/hooks\/use-canonical-session/;
 
 /*
  * The `session_status` frame's arrival path, and the guard that stops the two
@@ -100,10 +109,10 @@ const storeBundle = await build({
 		{
 			name: "session-status-fixture",
 			setup(builder) {
-				builder.onResolve(
-					{ filter: /@shared\/api\/local-operator\/desktop-api/ },
-					() => ({ path: "transport", namespace: "session-status-fixture" }),
-				);
+				builder.onResolve({ filter: DESKTOP_API_IMPORT_RE }, () => ({
+					path: "transport",
+					namespace: "session-status-fixture",
+				}));
 				/*
 				 * The hook's other two dependencies, and ONLY where the hook asks for
 				 * them: the filter keys off the importer, because `react` is also what
@@ -113,28 +122,41 @@ const storeBundle = await build({
 				 * `useEffect` records its effect instead of running it, so the test owns
 				 * the commit - the same seam `completion-view-ack.test.mjs` uses.
 				 */
-				builder.onResolve({ filter: /^react$/ }, (args) =>
-					/shared\/hooks\/use-desktop-feed\.ts$/.test(args.importer)
+				builder.onResolve({ filter: REACT_MODULE_RE }, (args) =>
+					USE_DESKTOP_FEED_IMPORT_RE.test(args.importer)
 						? { path: "react-hooks", namespace: "session-status-fixture" }
 						: undefined,
 				);
-				builder.onResolve(
-					{ filter: /@shared\/api\/local-operator\/desktop-hooks/ },
-					() => ({ path: "capabilities", namespace: "session-status-fixture" }),
-				);
+				builder.onResolve({ filter: DESKTOP_HOOKS_IMPORT_RE }, () => ({
+					path: "capabilities",
+					namespace: "session-status-fixture",
+				}));
+				builder.onResolve({ filter: QUERY_CLIENT_IMPORT_RE }, () => ({
+					path: "query-client",
+					namespace: "session-status-fixture",
+				}));
 				// Only `desktopResult` is faked - it is the network. The error
 				// classes are re-exported from the real module, because the store's
 				// error-copy rules depend on their actual behaviour.
 				builder.onLoad(
-					{ filter: /.*/, namespace: "session-status-fixture" },
+					{ filter: ANY_MODULE_RE, namespace: "session-status-fixture" },
 					(args) => ({
 						contents: {
 							transport: `export {DesktopControlError, UserFacingError, userFacingMessage} from ${JSON.stringify(
 								`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
 							)}
 export const desktopResult = request => globalThis.__statusRequest(request);`,
+							/*
+							 * `desktopKeys` and the query cache join this stub because the store now
+							 * reads the CATALOGUE capability out of that cache to size an unnamed
+							 * read (QA's Q-1). `null` is the fail-closed answer, so this suite keeps
+							 * the request it has always made and its assertions stay about the feed.
+							 */
 							capabilities: `export const desktopFeatureEnabled = () => true;
+export const desktopKeys = { capabilities: ["desktop", "capabilities"] };
 export const useDesktopCapabilities = () => ({data: {features: {desktop_feed: true}}});`,
+							"query-client":
+								"export const queryClient = { getQueryData: () => null };",
 							"react-hooks": `export function useEffect(effect) { globalThis.__effects.push(effect); return () => {}; }
 export function useRef(initial) { return { current: initial }; }
 export function useState(initial) { let current = typeof initial === "function" ? initial() : initial; return [current, (value) => { current = typeof value === "function" ? value(current) : value; globalThis.__stateSets.push(current); }]; }`,
@@ -146,17 +168,20 @@ export function useState(initial) { let current = typeof initial === "function" 
 				// The store's contract with the transcript hook is three no-op calls,
 				// and this file is not testing the echo. Same stub the neighbouring
 				// store tests use.
-				builder.onResolve(
-					{ filter: /@shared\/hooks\/use-canonical-session/ },
-					() => ({ path: "echo", namespace: "echo-fixture" }),
-				);
-				builder.onLoad({ filter: /.*/, namespace: "echo-fixture" }, () => ({
-					contents: `export const echoPendingUser = () => undefined;
+				builder.onResolve({ filter: ECHO_HOOK_IMPORT_RE }, () => ({
+					path: "echo",
+					namespace: "echo-fixture",
+				}));
+				builder.onLoad(
+					{ filter: ANY_MODULE_RE, namespace: "echo-fixture" },
+					() => ({
+						contents: `export const echoPendingUser = () => undefined;
 export const retractPendingUser = () => undefined;
 export const discardPendingEchoes = () => undefined;`,
-					loader: "js",
-					resolveDir: process.cwd(),
-				}));
+						loader: "js",
+						resolveDir: process.cwd(),
+					}),
+				);
 			},
 		},
 	],
