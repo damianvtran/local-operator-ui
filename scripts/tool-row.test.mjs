@@ -51,6 +51,7 @@ const {
 	isDiffBodyTool,
 	isDiffBodyRow,
 	preferDiff,
+	preferDiffCounts,
 	outputFallbackLine,
 	requestDesktopMedia,
 	stripDiffHeader,
@@ -3066,4 +3067,50 @@ test("the category-to-ink map is written once, and no second one shadows it", ()
 			`the state-only ink must not consult ${token}`,
 		);
 	}
+});
+
+test("a row whose first label read is in flight shows no stand-in yet", () => {
+	/*
+	 * The first frame of a mid-turn join. Every seeded row starts without its
+	 * arguments, and the stand-in would put the call's RESULT in the command's
+	 * column — the operator's `bash  … {"text": 200, "solo_cpu": 0.08…` rows.
+	 * While the read that finds the arguments is pending the column is empty;
+	 * once it settles (`labelPending` false) the stand-in is exactly what it was.
+	 */
+	const output = '{"text": 200, "solo_cpu": 0.08, "fanout": 4}';
+	assert.equal(outputFallbackLine(output, true), null);
+	assert.equal(
+		outputFallbackLine(output, false),
+		'… {"text": 200, "solo_cpu": 0.08, "fanout": 4}',
+	);
+	assert.equal(
+		outputFallbackLine(output),
+		outputFallbackLine(output, false),
+		"the default is the settled rule, so every other caller is unchanged",
+	);
+});
+
+test("a result with no details keeps the counts the row already had", () => {
+	/*
+	 * The sequence from the report, reduced to the rule: the durable row said
+	 * `+91 -19`, then the seed's end for the same call arrived with `details:
+	 * null` because `_bound_live_result_in_place` stripped it. "Said nothing"
+	 * keeps the counts; a stated `details` object wins, zero included.
+	 */
+	const had = { added: 91, removed: 19 };
+	assert.deepEqual(preferDiffCounts(null, had), had);
+	assert.deepEqual(preferDiffCounts(undefined, had), had);
+	assert.deepEqual(preferDiffCounts(null, null), { added: 0, removed: 0 });
+	assert.deepEqual(preferDiffCounts({ added: 3, removed: 0 }, had), {
+		added: 3,
+		removed: 0,
+	});
+	// A stated object with no counts is the producer saying "none", not silence:
+	// `{}` is the `details` every non-diff tool reports.
+	assert.deepEqual(preferDiffCounts({}, had), { added: 0, removed: 0 });
+	// Malformed counts read as unknown, as `diffCount` always did.
+	assert.deepEqual(preferDiffCounts({ added: -1, removed: "7" }, had), {
+		added: 0,
+		removed: 0,
+	});
 });

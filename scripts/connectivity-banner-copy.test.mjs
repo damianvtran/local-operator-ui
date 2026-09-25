@@ -1,11 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { test } from "node:test";
-import { build } from "esbuild";
 
+import { daemonRecord, loadBackendComposers } from "./backend-composers.mjs";
 /*
  * THE FRAMES MUST DOCUMENT THE SENTENCE THE APP SHIPS (design round 1, D2; review
  * round 1, R1-7).
@@ -39,69 +37,17 @@ import { build } from "esbuild";
  * subject here is as much the literal as the component.
  */
 
-const HOME = mkdtempSync(join(tmpdir(), "banner-copy-"));
-mkdirSync(join(HOME, "userData"), { recursive: true });
-
-const bundle = await build({
-	stdin: {
-		contents:
-			'export { serverBannerCopy } from "./src/shared/backend-status.ts"; export { describeHolders, describeSpawnRefusal, reclaimClause } from "./src/main/backend/backend-service.ts";',
-		resolveDir: process.cwd(),
-	},
-	bundle: true,
-	format: "esm",
-	platform: "node",
-	write: false,
-	plugins: [
-		{
-			/*
-			 * The main-process fixtures `scripts/owned-serve-lifecycle.test.mjs` and
-			 * `daemon-observation.test.mjs` use, and for the same reason: this file
-			 * must not touch the operator's own config, log or daemon on any path. The
-			 * composers below are pure, so the stubs are never reached - they exist so
-			 * that stays true if a future edit makes one reach for `app` or the logger.
-			 */
-			name: "main-process-fixtures",
-			setup(builder) {
-				builder.onResolve({ filter: /^electron$/ }, () => ({
-					path: "electron",
-					namespace: "fixture",
-				}));
-				for (const filter of [/^\.\/logger$/, /^\.\/config$/]) {
-					builder.onResolve({ filter }, (args) =>
-						args.importer.endsWith("main/backend/backend-service.ts")
-							? { path: args.path, namespace: "fixture" }
-							: undefined,
-					);
-				}
-				builder.onLoad(
-					{
-						filter: /^(electron|\.\/logger|\.\/config)$/,
-						namespace: "fixture",
-					},
-					(args) => ({
-						contents:
-							args.path === "electron"
-								? `export const app = { getPath: () => ${JSON.stringify(HOME)}, whenReady: async () => {}, on: () => {}, quit: () => {}, isPackaged: false }; export const dialog = { showErrorBox: () => {} }; export default { app, dialog };`
-								: args.path === "./logger"
-									? 'export const LogFileType = { INSTALLER: "installer", BACKEND: "backend" }; const emit = () => () => {}; export const logger = { info: emit(), warn: emit(), error: emit(), debug: emit(), verbose: emit() };'
-									: 'export const backendConfig = { VITE_LOCAL_OPERATOR_API_URL: "http://127.0.0.1:1111", VITE_DISABLE_BACKEND_MANAGER: "false" };',
-						loader: "js",
-					}),
-				);
-			},
-		},
-	],
-});
-
+/*
+ * The shipped composers, bundled from source by the shared loader (agent round 4, R4-2:
+ * this file carried its own inline entry AND its own copy of the occupancy fixtures, which
+ * drifted from the composer when the act clause changed).
+ */
 const {
 	serverBannerCopy,
 	describeHolders,
 	describeSpawnRefusal,
 	reclaimClause,
-} = await import(
-	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-);
+} = await loadBackendComposers();
 
 const stories = readFileSync(
 	"src/renderer/src/shared/components/common/connectivity-banner.stories.tsx",
@@ -133,28 +79,10 @@ const literal = (name, field) => {
  * the values are the ones the stories name: `pid 42411, uv-tool, v0.55.6` at 1111 and
  * `pid 53501, v0.55.5` at 8080 (no `install_kind`, so no install fact).
  */
-const occupant = (over) => ({
-	address: "http://127.0.0.1:1111",
-	pid: null,
-	pidSource: null,
-	version: "",
-	prefix: "",
-	installKind: "",
-	startedAtMs: null,
-	desktopReadStatus: null,
-	...over,
-});
-const daemonRecord = (over = {}) => ({
-	kind: "daemon",
-	occupant: occupant({
-		pid: 42411,
-		pidSource: "answer",
-		version: "0.55.6",
-		installKind: "uv-tool",
-		...over,
-	}),
-	detail: "answered with a different instance id",
-});
+/*
+ * The occupancy fixtures come from `./backend-composers.mjs`, which owns their shape for
+ * every harness - see its header for why one owner exists (agent round 4, R4-2).
+ */
 const oneHolder = [daemonRecord()];
 const bothHeld = [
 	daemonRecord(),
