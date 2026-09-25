@@ -1831,19 +1831,6 @@ export function ChatSidebar({
 		[listed, heldRows, query, hits, pinFactValues, archiveView, bindingOfHit],
 	);
 	/*
-	 * THE PANEL'S OWN TOTAL, from the rows it DRAWS (round 2, R2-2 = D9 = F3; U10 for the
-	 * search wording). `matching` is the same array the `All chats` badge counts, so the
-	 * sentence and the badge can no longer disagree - which they did: the sentence counted
-	 * rows HELD, including archived ones this panel fetches and does not draw, and printed
-	 * `Showing 51 of 755` beside the panel's own `All chats 49`.
-	 */
-	const totalSentence = catalogueTotalSentence({
-		pageable,
-		shown: matching.length,
-		total: catalogueCounts?.total ?? null,
-		searching: query.trim().length > 0,
-	});
-	/*
 	 * Whether that answer is a full page rather than the whole answer. The answer
 	 * carries no truncation flag (`limit`, `query`, `sessions` are all it holds,
 	 * where the sibling list route returns one), so "exactly as many hits as we
@@ -1853,6 +1840,25 @@ export function ChatSidebar({
 	 */
 	const clipped =
 		hits !== null && searchAnswerIsClipped(hits.length, search.data?.limit);
+	/*
+	 * THE PANEL'S OWN TOTAL, from the rows it DRAWS (round 2, R2-2 = D9 = F3; U10 for the
+	 * search wording). `matching` is the same array the `All chats` badge counts, so the
+	 * sentence and the badge can no longer disagree - which they did: the sentence counted
+	 * rows HELD, including archived ones this panel fetches and does not draw, and printed
+	 * `Showing 51 of 755` beside the panel's own `All chats 49`.
+	 *
+	 * AND IT IS TOLD WHEN THE COUNT IS A FLOOR (round 3, R3-1 = U13). While the search
+	 * answer is clipped the badge already says `100+` and the row says "At least 100 chats
+	 * match this search", so a bare `Showing 100 of 757 chats matching your search` beside
+	 * them stated an exact number this file knows to be a floor.
+	 */
+	const totalSentence = catalogueTotalSentence({
+		pageable,
+		shown: matching.length,
+		total: catalogueCounts?.total ?? null,
+		searching: query.trim().length > 0,
+		clipped,
+	});
 	const children = (kind: ChatTarget["kind"], name: string) =>
 		matching.filter((row) =>
 			kind === "team"
@@ -3566,7 +3572,17 @@ export function ChatSidebar({
 									{view.sentence}
 								</p>
 							)}
-							{view.retry && (
+							{/*
+							 * AND THE REGION'S RETRY ONLY WHEN THIS IS THE FAILED FIRST PAGE
+							 * (round 3, R3-2). In the rows-plus-failed-extension state the panel
+							 * draws its own Retry below - the one that re-reads from the CURSOR -
+							 * and this second copy sat inside the `sr-only` region, one Tab away
+							 * and performing a different action (a first-page re-read). A control
+							 * a reader can reach without seeing it, doing something else, is worse
+							 * than no control: the region carries the sentence's announcement and
+							 * the rows state draws the control.
+							 */}
+							{view.state !== "rows" && view.retry && (
 								<p className="pt-1">
 									<button
 										type="button"

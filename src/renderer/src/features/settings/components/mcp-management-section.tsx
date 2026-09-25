@@ -51,6 +51,7 @@ import { Alert, Badge, Button, Input, Label } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import {
 	type CanonicalSessionRow,
+	LEGACY_CATALOGUE_PAGE,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -461,7 +462,13 @@ export const McpManagementSection: FC<{
 	// sidebar's own would be the duplicate this section avoids elsewhere.
 	useEffect(() => {
 		if (sessionId || !enabled || roster.length > 0) return;
-		void fetchSessions();
+		/*
+		 * THE SET, EXPLICITLY (round 3, Q-1): this section borrows the newest conversation
+		 * the client holds, so what it wants is the widest roster it can get rather than the
+		 * top of it - and, like the palette, it only asks when the sidebar's own read has
+		 * left the roster empty, so the cost is not paid twice.
+		 */
+		void fetchSessions(LEGACY_CATALOGUE_PAGE);
 	}, [sessionId, enabled, roster.length, fetchSessions]);
 
 	const listQuery = useQuery<DesktopMcpState, Error>({

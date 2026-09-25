@@ -6,7 +6,13 @@ import {
 	desktopResult,
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
+import type { DesktopCapabilities } from "@shared/api/local-operator/desktop-api";
+import {
+	desktopFeatureEnabled,
+	desktopKeys,
+} from "@shared/api/local-operator/desktop-hooks";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
+import { queryClient } from "@shared/api/query-client";
 // The echo seam, not the hook itself: these are module-level functions over a
 // registry of mounted transcripts, so the store never touches React state and
 // the dependency stays one-way (the hook does not import this store).
@@ -1738,6 +1744,38 @@ export const CATALOGUE_GROUP_PAGE = 25;
 export const LEGACY_CATALOGUE_PAGE = 500;
 
 /**
+ * The page a caller gets when it asks for "the catalogue" without naming a size.
+ *
+ * WHY THIS IS A FUNCTION AND NOT THE CONSTANT (round 3, QA's Q-1). The default used to
+ * be `LEGACY_CATALOGUE_PAGE` on every daemon, so the most ordinary flow in the app —
+ * opening a conversation, whose effect refreshes the catalogue when the conversation's
+ * streaming/attention/binding marker moves — fired an unscoped
+ * `limit=500&include_archived=true` read. On the operator's store that is the 2.1-4.5 s
+ * answer this change exists to remove, and it also threw away the scoped membership the
+ * panel had just fetched, leaving `All chats 499` where the head page had been.
+ *
+ * So the default follows the SAME capability every other paged surface follows: on a
+ * daemon that advertises `session_catalogue_page` it is the head page, and on one that
+ * does not it is the legacy read, byte for byte — the compatibility promise, kept here
+ * as it is kept in the panel.
+ *
+ * READ FROM THE QUERY CACHE, NOT THROUGH A HOOK, because this is a zustand action and
+ * not a component: `useDesktopCapabilities` writes `desktopKeys.capabilities` into the
+ * same cache this reads, and `desktopFeatureEnabled` stays the ONE definition of what
+ * "the daemon supports it" means - a second predicate beside it is how the two drift.
+ * An unknown capability map answers `false`, which is the fail-closed default and also
+ * exactly today's request.
+ */
+export function cataloguePageDefault(): number {
+	const capabilities = queryClient.getQueryData<DesktopCapabilities>(
+		desktopKeys.capabilities,
+	);
+	return desktopFeatureEnabled(capabilities, "session_catalogue_page")
+		? CATALOGUE_HEAD_PAGE
+		: LEGACY_CATALOGUE_PAGE;
+}
+
+/**
  * One scope's paging state (`scopes[key]` in the state, keyed
  * `${kind}:${name}`).
  *
@@ -3268,7 +3306,11 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			cwd: "~",
 			setCwd: (cwd) => set({ cwd }),
 			fetchSessions: async (
-				limit = LEGACY_CATALOGUE_PAGE,
+				/*
+				 * AN UNNAMED SIZE IS THE HEAD PAGE ON A PAGING DAEMON (Q-1): see
+				 * `cataloguePageDefault`. A caller that needs the whole set says so.
+				 */
+				limit = cataloguePageDefault(),
 				withCounts = false,
 			) => {
 				const generation = ++refreshGeneration;

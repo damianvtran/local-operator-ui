@@ -31,11 +31,29 @@ and no badge before; 50 rows held, a `70` badge and the group's own page after.
 | `after/group-exhausted.png` | After the last press: **70** rows held, `All chats` **120**, `Showing 120 of 120 chats`, and **no control at all** — the daemon answered `limit=20&cursor=off%3A50 -> 200 rows=20 next=-`, so the last press asked for the remainder and the affordance went with the cursor. |
 | `before-withdrawn/group-open.png` | The BEFORE half, and the operator's screenshot: `lopdev` expanded reads **"No chats yet"** while the same store holds 70 of that group's conversations, `All chats 50`, and the panel says `Showing up to 500 chats. Older chats remain available in the terminal.` The group's badge is absent because on this path there is no census to draw one from. |
 | `before-withdrawn/head-page.png` | The same withdrawn panel at first paint. **Both `before-withdrawn` frames are byte-identical to the ones this set shipped before this round** — the compatibility promise, re-verified rather than restated. |
-| `settled/group-open.png` | A **settled** group whose census still says 70 while the page can draw none of them (`--scope-empty` answers every scoped read with no rows): the badge reads 70 and the body says **"These chats may be archived. Search with Include archived to find them."** — two lines at the panel's 240px drag floor, and no wait and no emptiness (round 2, U11/D13-D15 shortened it and moved it onto the reader's own word, *archived*, rather than "drawn"). 
+| `settled/group-open.png` | A **settled** group whose census still says 70 while the page can draw none of them (`--scope-empty` answers every scoped read with no rows): the badge reads 70 and the body says **"They may be archived. Search with Include archived."** — two lines at the panel's default width (281 logical px), and no wait and no emptiness (round 2, U11/D13-D15 shortened it and moved it onto the reader's own word, *archived*, rather than "drawn"). 
+| `settled/group-open-narrow.png` | The SAME sentence at the panel's own drag floor (224px against this run's 264px default), which is the width the clamp was most likely to eat: the sentence is whole here — two lines, nothing truncated — and the run asserts that from the element's own `scrollHeight` rather than from the text, because a clamped sentence extracts identically to a whole one (round 3, D17; the first version of this sentence WAS clipped at the floor and the picture is what settled it). |
 | `loading/group-open.png` | The same group with its answer **genuinely in flight**: badge 70 and **"Loading chats…"** — the only state in which that sentence is true. Round 2 changed how this arm drives it: the stand-in holds every scoped answer while a hold file is absent (`--scope-hold`), so the state is created and released rather than raced for. `loading/group-loaded.png` is the same run a moment later, after the scene wrote that file: the group draws its 25 rows, which is what proves the wait was real. 
 | `empty-group/group-open.png` | A group that really is empty (`--scope-empty --zero-census-team lopdev`): **no badge** and **"No chats yet"**. The pair with `settled/` is the point — the two states used to share one sentence. |
 | `flat-tail/flat-tail.png` | The FLAT list's own tail, which has no control by design (one scroller, one scope inside it): a scroll to the bottom of `Previous chats`, and rows that were not there before — `Chat 089` … with their `lopdev` captions. The run asserts the growth rather than photographing a scroll. |
 | `refusal/group-error.png` | A group whose read refused (`--scope-error`, HTTP 500): the group draws **the backend's own sentence** (`The stub was asked to refuse scoped reads.`), clamped to two lines, with **Retry on its own line** underneath so the control's position does not depend on the message's length. Round 2, D10 = U9: the round-1 fix landed on the failed-EXTENSION branch while this frame photographed the failed FIRST page, so the treated markup and the photograph disagreed; all three refusal sites - this one, the extension's, and the flat list's tail - now wear it. 
+| `refusal/flat-tail-error.png` | The **third** refusal site, and the one with no frame until now: the flat list's own tail refused (`--tail-error` refuses an unscoped request that carries a cursor, so the list paints and then cannot grow). Same treatment, read off the elements: the sentence clamped and the Retry in its own paragraph. D10's history is a fix that landed on one of three sites while the frame photographed another, so the site with no picture was the site to photograph (round 3, D18). |
+
+## The panel's width in these frames
+
+Every frame is taken with the sidebar at THIS run's default width (264 logical px,
+measured in the run) with two exceptions, and the exception is now declared rather
+than left to be discovered:
+
+* `after/group-narrow.png` and `settled/group-open-narrow.png` are at the app's own
+  drag floor (224px, the `chatSidebarWidth` clamp's lower bound), which is what makes
+  them evidence about the narrow column at all.
+* The two post-press frames used to be a third width — 361px, the clamp's ceiling,
+  because the scene widened the panel to keep the control on screen for the press —
+  and a set that mixes undeclared widths cannot be compared frame to frame (round 3,
+  D16). The width is restored to this run's default before those captures now, and the
+  press still lands because the control is scrolled into view rather than the panel
+  widened around it.
 
 ## How these frames were taken
 
@@ -74,7 +92,7 @@ The other six cases are the same command with a different stand-in and
 | `paged` | (none) | the feature: the head page, a group's own page on expand, its tail, the drag floor, exhaustion |
 | `withdrawn` | `--no-page --truncate 50` | today's behaviour against a daemon that cannot page |
 | `empty` | `--scope-empty` | a settled page the census still outruns |
-| `loading` | `--scope-empty --scope-delay-ms=12000` | a wait that is really happening |
+| `loading` | `--scope-hold <file>` | a wait that is really happening |
 | `empty-group` | `--scope-empty --zero-census-team lopdev` | a genuinely empty group |
 | `flat-tail` | (none) | the flat list's own tail: a scroll, then rows |
 | `error` | `--scope-error` | a refused scoped read |

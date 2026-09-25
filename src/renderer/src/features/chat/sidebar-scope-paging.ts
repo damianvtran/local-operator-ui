@@ -117,7 +117,7 @@ export type GroupChatsView = {
  * rather than left to them.
  */
 export const GROUP_WITHHELD_SENTENCE =
-	"These chats may be archived. Search with Include archived to find them.";
+	"They may be archived. Search with Include archived.";
 
 export function groupChatsView(args: {
 	/** Whether the daemon negotiates `session_catalogue_page`. */
@@ -343,6 +343,8 @@ export function catalogueTotalSentence(args: {
 	total: number | null;
 	/** Whether a search query is in force, which re-words what the denominator counts. */
 	searching?: boolean;
+	/** Whether the numerator is a FLOOR rather than the whole answer (a clipped search). */
+	clipped?: boolean;
 }): string | null {
 	if (!args.pageable || args.total === null) return null;
 	/*
@@ -358,13 +360,24 @@ export function catalogueTotalSentence(args: {
 	 */
 	if (args.shown > args.total) return null;
 	/*
-	 * AND WHILE A QUERY IS ACTIVE THE NUMBERS ARE NAMED (round 2, U10). The sentence
-	 * sat over a one-row result reading as if the store held that one row matched: the
-	 * numerator is then the matches DRAWN, the denominator is still the whole
-	 * catalogue, and the words now say which is which.
+	 * AND WHILE A QUERY IS ACTIVE THE NUMBERS ARE NAMED (round 2, U10; round 3, U13). The
+	 * sentence sat over a one-row result reading as if the store held that one row
+	 * matched: the numerator is then the matches DRAWN, the denominator is still the whole
+	 * catalogue, and the words now say which is which - `Showing 1 match of 120 chats`.
 	 */
-	const what = args.searching === true ? "chats matching your search" : "chats";
-	return `Showing ${args.shown} of ${args.total} ${what}`;
+	if (args.searching === true) {
+		/*
+		 * A CLIPPED ANSWER'S NUMBER IS A FLOOR (round 3, R3-1): the badge beside this
+		 * sentence already reads `100+` and the row says "At least 100 chats match this
+		 * search", so stating `Showing 100 of 757 chats matching your search` here would be
+		 * the one place in the panel claiming an exact number it knows to be a floor. The
+		 * `+` is the badge's own idiom, which is why it is the one used.
+		 */
+		const noun = args.shown === 1 ? "match" : "matches";
+		const exact = args.clipped === true ? "+" : "";
+		return `Showing ${args.shown}${exact} ${noun} of ${args.total} chats`;
+	}
+	return `Showing ${args.shown} of ${args.total} chats`;
 }
 
 /**
