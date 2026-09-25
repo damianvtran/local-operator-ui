@@ -68,6 +68,22 @@ export function useRef(initial) { return __runtime.hooks.useRef(initial); }
 export function useEffect(fn, deps) { return __runtime.hooks.useEffect(fn, deps); }
 export function useCallback(fn, deps) { return __runtime.hooks.useCallback(fn, deps); }
 export function useMemo(fn, deps) { return __runtime.hooks.useMemo(fn, deps); }
+/*
+ * The DEFAULT export, which this stand-in did without until the hook's graph
+ * gained a store: \`zustand\`'s React entry is written \`import React from
+ * "react"\`, so a stand-in carrying only named exports fails the BUNDLE with "No
+ * matching export in \"fixture:react\" for import \"default\"". The two sibling
+ * harnesses that already bundle a zustand store (\`frontend-replace.test.mjs\`,
+ * \`reconnect-page-gap.test.mjs\`) carry the same line for the same reason; this
+ * one never needed it, because nothing in its graph reached a store until the
+ * aside's deltas were routed out of \`use-canonical-session\`.
+ *
+ * The object deliberately holds the five hooks above and not a
+ * \`useSyncExternalStore\`: nothing in this file SUBSCRIBES to a store (the aside
+ * path is read with \`getState()\` from the flush), and inventing a hook the test
+ * never exercises would be a claim rather than a stand-in.
+ */
+export default { useState, useRef, useEffect, useCallback, useMemo };
 `;
 
 const TRANSPORT_SOURCE = `
