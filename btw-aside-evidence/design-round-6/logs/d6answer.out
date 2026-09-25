@@ -1,0 +1,155 @@
+port8080.lock taken
+rig up: proxy 29960 on 8080 -> daemon 28671 on 58530, stub 58462; 1111 untouched
+== d6answer (d6-answer) at 13:33:58 ==
+[build] current: assets 2026-09-25T13:13:50.108Z >= sources 2026-09-25T12:34:35.518Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/design-482-r6/rig6/run-d6answer/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95
+  scratch       /Users/damian/design-482-r6/rig6/tmp/lo-renderer-driver-30113
+  frames        /Users/damian/design-482-r6/rig6/frames/d6answer
+  app cwd       /Users/damian/design-482-r6/rig6/tmp/lo-renderer-driver-30113/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown
+        mode=headless visible=false focused=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] d6 answer session
+        414edc51069a
+[note] d6 first turn geometry
+        {"width":234,"scrollTop":0,"clientHeight":251,"scrollHeight":2019,"maxScroll":1768,"cap":"251px","turns":1,"turnOffset":0,"questionTopInRegion":0,"questionText":"Question: LONGANSWER: d6 first question, a long answer that already overflows","questionHasMarkup":false,"questionQuoteBlocks":0,"answerFontSize":"13px","answerLineHeight":20.8,"answerTopInRegion":43,"firstAnswerRowInRegion":[45.5,60.5],"answerStartVisible":true,"rowsBetweenAnswerTopAndEdge":10,"paragraphs":6,"paragraphGapPx":20.8,"mdClass":"lo-markdown lo-markdown--row-grid","rows":90,"fullyVisibleRows":10,"crossing":[]}
+[PASS] d6 the first turn already overflows the region (so the follow-up has somewhere to move from)
+        {"maxScroll":1768,"scrollTop":0,"clientHeight":251,"cap":"251px"}
+[note] frame
+        {"label":"d6ans-d6answer-answered-followup-just-asked","mode":"raw"}
+[note] frame
+        {"label":"d6ans-d6answer-answered-followup-settled","mode":"settled"}
+[note] d6 answered-followup samples [ms, scrollTop, maxScroll, target, state, questionTopInRegion, answerTopInRegion]
+        [[116,1842,1842,2030.7,"thinking",188.7,null],[2138,2009,2009,2030.7,"other",21.7,84.2]]
+[note] d6 answered-followup rest
+        {"scrollTop":2030.5,"maxScroll":3798,"target":2030.7,"state":"other","questionTopInRegion":0.2,"answerTopInRegion":62.7,"cap":"270.5px","clientHeight":271,"answerLineHeight":20.8,"rowsToEdge":10,"crossing":[]}
+[PASS] d6 the answered follow-up's question sits at the region's top (`questionTopInRegion` within 1.5 px) and its first answer row is inside the clip, at rest and for every sample after the region reached the turn
+        {"questionTopInRegion":0.2,"answerTopInRegion":62.7,"clientHeight":271,"scrollTop":2030.5,"target":2030.7,"maxScroll":3798,"monotone":true,"shortestGapPx":null}
+[PASS] no process from this run outlived its boot
+
+frames: d6ans-d6answer-answered-followup-just-asked.png, d6ans-d6answer-answered-followup-settled.png
+frames directory: /Users/damian/design-482-r6/rig6/frames/d6answer
+app log: /Users/damian/design-482-r6/rig6/tmp/lo-renderer-driver-30113/app-scene.log
+scratch removed (--clean)
+
+ALL CHECKS PASSED
+== d6answer driver exit: 0 ==
+total 1064
+drwxr-xr-x@ 4 damian  staff     128 Sep 25 09:34 .
+drwxr-xr-x@ 9 damian  staff     288 Sep 25 09:33 ..
+-rw-r--r--@ 1 damian  staff  269589 Sep 25 09:34 d6ans-d6answer-answered-followup-just-asked.png
+-rw-r--r--@ 1 damian  staff  271212 Sep 25 09:34 d6ans-d6answer-answered-followup-settled.png
+8080 released before this command returned
+port8080.lock released
+--- proxy counters (/Users/damian/design-482-r6/rig6/run-d6answer/proxy-stats.json) ---
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T13:34:13.279Z",
+      "url": "/v1/desktop/sessions/414edc51069a/asides",
+      "asideId": "a8ded526-139c-4417-8819-18f00c5ee2ae",
+      "continues": null,
+      "questionHead": "LONGANSWER: d6 first question, a long answer that already ov",
+      "text": "LONGANSWER: d6 first question, a long answer that already overflows",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "3e548a4f271b46adb17516f49bc95d51",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"a8ded526-139c-4417-8819-18f00c5ee2ae\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    },
+    {
+      "at": "2026-09-25T13:34:20.566Z",
+      "url": "/v1/desktop/sessions/414edc51069a/asides",
+      "asideId": "813ddc9f-ad71-4c1e-84e6-8a825bd1712b",
+      "continues": "a8ded526-139c-4417-8819-18f00c5ee2ae",
+      "questionHead": "LONGANSWER: d6 the answered follow-up whose question must ho",
+      "text": "LONGANSWER: d6 the answered follow-up whose question must hold the top",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "3e548a4f271b46adb17516f49bc95d51",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"813ddc9f-ad71-4c1e-84e6-8a825bd1712b\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T13:34:00.539Z",
+      "subscriptionId": "27b8c11641172107",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/414edc51069a/events?frontend_replace=1",
+      "openedAt": "2026-09-25T13:34:06.536Z",
+      "subscriptionId": "3e548a4f271b46adb17516f49bc95d51",
+      "asideDeltas": 20,
+      "deltaSizes": [
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287
+      ]
+    }
+  ],
+  "asideDeltaFrames": 20,
+  "deltasBySubscription": {
+    "3e548a4f271b46adb17516f49bc95d51": 20
+  },
+  "deltasByAside": {
+    "a8ded526-139c-4417-8819-18f00c5ee2ae": 10,
+    "813ddc9f-ad71-4c1e-84e6-8a825bd1712b": 10
+  },
+  "refused422": 0,
+  "messagePosts": [],
+  "asideOps": [
+    {
+      "at": "2026-09-25T13:34:27.312Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/414edc51069a/asides/813ddc9f-ad71-4c1e-84e6-8a825bd1712b",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"813ddc9f-ad71-4c1e-84e6-8a825bd1712b\",\"status\":\"closed\"},\"replayed\":false}}"
+    }
+  ]
+}
+--- end counters ---

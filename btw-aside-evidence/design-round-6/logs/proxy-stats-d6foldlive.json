@@ -1,0 +1,45 @@
+{
+  "oldDaemon": false,
+  "asidePosts": [],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T13:34:49.524Z",
+      "subscriptionId": "bef2470132517117",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/8acd9f4c6b33/events?frontend_replace=1",
+      "openedAt": "2026-09-25T13:34:53.354Z",
+      "subscriptionId": "81e6ff3111d14736b5ed93135215af4e",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/8acd9f4c6b33/events?frontend_replace=1",
+      "openedAt": "2026-09-25T13:35:08.732Z",
+      "subscriptionId": "57e774f215744bf6b43b24063834c34f",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    }
+  ],
+  "asideDeltaFrames": 0,
+  "deltasBySubscription": {},
+  "deltasByAside": {},
+  "refused422": 0,
+  "messagePosts": [
+    {
+      "at": "2026-09-25T13:35:01.256Z",
+      "url": "/v1/desktop/sessions/8acd9f4c6b33/messages",
+      "kind": "message",
+      "text": "TOOLCALL2: r7 fold label probe",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"4b95295f-ddce-41c9-b5f2-fd68dc52e789\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T13:35:01.256Z"
+    }
+  ],
+  "asideOps": []
+}

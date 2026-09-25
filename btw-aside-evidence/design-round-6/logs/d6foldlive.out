@@ -1,0 +1,121 @@
+port8080.lock taken
+rig up: proxy 33960 on 8080 -> daemon 33205 on 59340, stub 59319; 1111 untouched
+== d6foldlive (btw-r7-fold) at 13:34:47 ==
+[build] current: assets 2026-09-25T13:13:50.108Z >= sources 2026-09-25T12:34:35.518Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/design-482-r6/rig6/run-d6foldlive/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/design482r6-cf5a12f95
+  scratch       /Users/damian/design-482-r6/rig6/tmp/lo-renderer-driver-34059
+  frames        /Users/damian/design-482-r6/rig6/frames/d6foldlive
+  app cwd       /Users/damian/design-482-r6/rig6/tmp/lo-renderer-driver-34059/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown
+        mode=headless visible=false focused=false
+[PASS] the composer is on screen before anything is typed
+[note] the session's owner
+        warm (snapshot.cold = false)
+[note] R7 fold session
+        8acd9f4c6b33
+[note] R7 the tool row's first paint, ms after the press
+        3734
+[note] R7 LIVE rows (the turn is still streaming here, so this is the seed's own state)
+        {"paintedAt":3734,"streaming":false,"verdict":{"where":"live","toolRows":1,"labelled":0,"pending":1,"carryingOutputSnippet":0,"samples":[{"kind":"tool","row":"read composing","summary":"read composing","summaryTitle":""}]},"rows":[{"kind":"user","row":"TOOLCALL2: r7 fold label probe 9:35 AM","summary":"","summaryTitle":""},{"kind":"tool","row":"read composing","summary":"read composing","summaryTitle":""}]}
+[note] frame
+        {"label":"qa7fold-d6foldlive-r7fold-1-live-tool-row","mode":"settled"}
+[note] R7 streaming at the leave
+        false
+[note] R7 seeded rows, ms after the re-enter
+        402
+[note] R7 the turn was still streaming when the re-entered pane painted
+        false
+[note] R7 SEEDED rows after a mid-turn re-enter
+        {"verdict":{"where":"seeded-on-reenter","toolRows":1,"labelled":1,"pending":0,"carryingOutputSnippet":0,"samples":[{"kind":"tool","row":"read README.md failed 0.1s","summary":"read README.md failed 0.1s","summaryTitle":""}]},"rows":[{"kind":"user","row":"TOOLCALL2: r7 fold label probe 9:35 AM","summary":"","summaryTitle":""},{"kind":"tool","row":"read README.md failed 0.1s","summary":"read README.md failed 0.1s","summaryTitle":""}]}
+[note] frame
+        {"label":"qa7fold-d6foldlive-r7fold-2-seeded-after-reenter","mode":"settled"}
+[PASS] R7 fold a: the call's OUTPUT never reaches a tool row's summary cell (ZZLIVEBODYZZ absent while the turn is live AND after a mid-turn re-enter), and the row names its argument (README.md) as soon as the arguments have arrived
+        {"live":{"where":"live","toolRows":1,"labelled":0,"pending":1,"carryingOutputSnippet":0,"samples":[{"kind":"tool","row":"read composing","summary":"read composing","summaryTitle":""}]},"seeded":{"where":"seeded-on-reenter","toolRows":1,"labelled":1,"pending":0,"carryingOutputSnippet":0,"samples":[{"kind":"tool","row":"read README.md failed 0.1s","summary":"read README.md failed 0.1s","summaryTitle":""}]},"streamingAtReenter":false}
+[note] R7 settled rows
+        {"where":"settled","toolRows":1,"labelled":1,"pending":0,"carryingOutputSnippet":0,"samples":[{"kind":"tool","row":"read README.md failed <0.1s","summary":"read README.md failed <0.1s","summaryTitle":""}]}
+[PASS] R7 fold b: once the turn has settled the same row still names its argument and not its output
+        {"where":"settled","toolRows":1,"labelled":1,"pending":0,"carryingOutputSnippet":0,"samples":[{"kind":"tool","row":"read README.md failed <0.1s","summary":"read README.md failed <0.1s","summaryTitle":""}]}
+[PASS] no process from this run outlived its boot
+
+frames: qa7fold-d6foldlive-r7fold-1-live-tool-row.png, qa7fold-d6foldlive-r7fold-2-seeded-after-reenter.png
+frames directory: /Users/damian/design-482-r6/rig6/frames/d6foldlive
+app log: /Users/damian/design-482-r6/rig6/tmp/lo-renderer-driver-34059/app-scene.log
+scratch removed (--clean)
+
+ALL CHECKS PASSED
+== d6foldlive driver exit: 0 ==
+total 736
+drwxr-xr-x@  4 damian  staff     128 Sep 25 09:35 .
+drwxr-xr-x@ 10 damian  staff     320 Sep 25 09:34 ..
+-rw-r--r--@  1 damian  staff  184972 Sep 25 09:35 qa7fold-d6foldlive-r7fold-1-live-tool-row.png
+-rw-r--r--@  1 damian  staff  186043 Sep 25 09:35 qa7fold-d6foldlive-r7fold-2-seeded-after-reenter.png
+8080 released before this command returned
+port8080.lock released
+--- proxy counters (/Users/damian/design-482-r6/rig6/run-d6foldlive/proxy-stats.json) ---
+{
+  "oldDaemon": false,
+  "asidePosts": [],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T13:34:49.524Z",
+      "subscriptionId": "bef2470132517117",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/8acd9f4c6b33/events?frontend_replace=1",
+      "openedAt": "2026-09-25T13:34:53.354Z",
+      "subscriptionId": "81e6ff3111d14736b5ed93135215af4e",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/8acd9f4c6b33/events?frontend_replace=1",
+      "openedAt": "2026-09-25T13:35:08.732Z",
+      "subscriptionId": "57e774f215744bf6b43b24063834c34f",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    }
+  ],
+  "asideDeltaFrames": 0,
+  "deltasBySubscription": {},
+  "deltasByAside": {},
+  "refused422": 0,
+  "messagePosts": [
+    {
+      "at": "2026-09-25T13:35:01.256Z",
+      "url": "/v1/desktop/sessions/8acd9f4c6b33/messages",
+      "kind": "message",
+      "text": "TOOLCALL2: r7 fold label probe",
+      "images": 0,
+      "held": 0,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"status\":\"admitted\",\"duplicate\":false,\"detail\":\"prompt admitted\",\"command_id\":\"4b95295f-ddce-41c9-b5f2-fd68dc52e789\",\"replayed\":false}}",
+      "forwardedAt": "2026-09-25T13:35:01.256Z"
+    }
+  ],
+  "asideOps": []
+}
+--- end counters ---

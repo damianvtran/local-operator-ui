@@ -1,0 +1,87 @@
+{
+  "oldDaemon": false,
+  "asidePosts": [
+    {
+      "at": "2026-09-25T13:34:13.279Z",
+      "url": "/v1/desktop/sessions/414edc51069a/asides",
+      "asideId": "a8ded526-139c-4417-8819-18f00c5ee2ae",
+      "continues": null,
+      "questionHead": "LONGANSWER: d6 first question, a long answer that already ov",
+      "text": "LONGANSWER: d6 first question, a long answer that already overflows",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "3e548a4f271b46adb17516f49bc95d51",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"a8ded526-139c-4417-8819-18f00c5ee2ae\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    },
+    {
+      "at": "2026-09-25T13:34:20.566Z",
+      "url": "/v1/desktop/sessions/414edc51069a/asides",
+      "asideId": "813ddc9f-ad71-4c1e-84e6-8a825bd1712b",
+      "continues": "a8ded526-139c-4417-8819-18f00c5ee2ae",
+      "questionHead": "LONGANSWER: d6 the answered follow-up whose question must ho",
+      "text": "LONGANSWER: d6 the answered follow-up whose question must hold the top",
+      "carriedSubscriptionField": true,
+      "subscriptionId": "3e548a4f271b46adb17516f49bc95d51",
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"813ddc9f-ad71-4c1e-84e6-8a825bd1712b\",\"text\":\"The retry budget is a per-provider allowance, and it is spent only by failures that a second attempt could plausibly fix. A dropped connection, a reset stream, a timeout before the first byte and an owner 5xx each spend one unit; a 4xx spends nothing, because the request itself was refused and sending it again would be refused again. The window moves, so an allowance spent an hour ago is back by now, and a burst of failures inside a single minute exhausts it quickly on "
+    }
+  ],
+  "streams": [
+    {
+      "url": "/v1/desktop/events",
+      "openedAt": "2026-09-25T13:34:00.539Z",
+      "subscriptionId": "27b8c11641172107",
+      "asideDeltas": 0,
+      "deltaSizes": []
+    },
+    {
+      "url": "/v1/desktop/sessions/414edc51069a/events?frontend_replace=1",
+      "openedAt": "2026-09-25T13:34:06.536Z",
+      "subscriptionId": "3e548a4f271b46adb17516f49bc95d51",
+      "asideDeltas": 20,
+      "deltaSizes": [
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        287
+      ]
+    }
+  ],
+  "asideDeltaFrames": 20,
+  "deltasBySubscription": {
+    "3e548a4f271b46adb17516f49bc95d51": 20
+  },
+  "deltasByAside": {
+    "a8ded526-139c-4417-8819-18f00c5ee2ae": 10,
+    "813ddc9f-ad71-4c1e-84e6-8a825bd1712b": 10
+  },
+  "refused422": 0,
+  "messagePosts": [],
+  "asideOps": [
+    {
+      "at": "2026-09-25T13:34:27.312Z",
+      "method": "DELETE",
+      "url": "/v1/desktop/sessions/414edc51069a/asides/813ddc9f-ad71-4c1e-84e6-8a825bd1712b",
+      "kind": "close",
+      "probe": false,
+      "status": 200,
+      "response": "{\"status\":200,\"message\":\"Desktop session result.\",\"result\":{\"data\":{\"aside_id\":\"813ddc9f-ad71-4c1e-84e6-8a825bd1712b\",\"status\":\"closed\"},\"replayed\":false}}"
+    }
+  ]
+}
