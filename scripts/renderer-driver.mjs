@@ -331,6 +331,42 @@ const TUI_PYTHON = argValue("--tui-python", null);
  */
 const THEME = argValue("--theme", null);
 /*
+ * The paged-catalogue evidence set (`docs/evidence/sidebar-lazy-chats`).
+ *
+ * `--scoped-case` names which of the stand-in's four arms this run is
+ * photographing; `LAZY_CATALOGUE_HEAD_PAGE` and `LAZY_GROUP_PAGE` MIRROR the
+ * app's own `CATALOGUE_HEAD_PAGE` and `CATALOGUE_GROUP_PAGE`
+ * (`canonical-sessions-store.ts`) because the driver is plain JS and cannot import
+ * them. They are not a second authority: every assertion that uses them is a
+ * NUMBER the store's own row count has to match, so a drift in either direction
+ * fails the run rather than moving the goalposts with it.
+ */
+const LAZY_CASE = argValue("--scoped-case", "paged");
+/*
+ * THE HOLD FILE the `loading` arm releases (round 2, D12). The stand-in holds every
+ * scoped answer while this file is absent, so the arm photographs a wait that is
+ * really in flight and then RELEASES it - no wall-clock window to hit.
+ */
+const LAZY_HOLD = argValue("--scope-hold", null);
+/**
+ * The two regexes this scene matches sentences with, at TOP LEVEL because the repository's
+ * lint rule says a regex literal inside a function is a per-call allocation (`biome`
+ * `useTopLevelRegex`), and this file is a long-running rig.
+ */
+const LAZY_ARCHIVED_SENTENCE = /archived/;
+const LAZY_NOT_A_WAIT_OR_EMPTINESS = /Loading chats…|No chats yet/;
+/** The theme the one light-theme frame is taken in (UX round 2: the set was dark-only). */
+const LAZY_LIGHT_THEME = "localOperatorLight";
+const LAZY_THEME = THEME ?? "localOperatorDark";
+const LAZY_GROUP = "lopdev";
+/** The stand-in's `lopdev` population at `--catalogue 120`. */
+const LAZY_GROUP_TOTAL = 70;
+const LAZY_CATALOGUE_TOTAL = 120;
+const LAZY_CATALOGUE_HEAD_PAGE = 50;
+const LAZY_GROUP_PAGE = 25;
+/** Long enough for the panel's own paint, short enough to stay an evidence run. */
+const LAZY_SETTLE_MS = 1800;
+/*
  * The title the search-only scene looks for, and it is a flag because the seeder owns the
  * order: `--generate N` writes its mtimes in sequence, so the oldest titles are the ones the
  * catalogue page drops. Defaulted to the first of that numbering.
@@ -15003,6 +15039,1043 @@ async function dragSplit(cdp, x, y, dy, { steps = 6, hold = null } = {}) {
  *     no conversations: the SUBJECT is the boundary, the controls on it and the
  *     state they write, all of which exist with an empty catalogue.
  */
+/**
+ * The paged chats sidebar: what the panel paints first, and what a group's row
+ * does when it is expanded.
+ *
+ * WHY THIS SCENE EXISTS, in the operator's own words: "no chats are showing up /
+ * taking a very long time to load chats". Two mechanisms produced that - a
+ * whole-catalogue read re-fired on every catalogue frame, and an empty sentence
+ * chosen by a count of the rows in hand - and both are visible only against a
+ * catalogue LARGER than one page, which is what the stand-in serves under
+ * `--catalogue` (`docs/evidence/sidebar-row-space/harness/stub-daemon.mjs`).
+ *
+ * THE ASSERTIONS ARE THE HALF-FRAME THE PIXELS CANNOT CARRY. `state.sessionCount`
+ * is the store's own row count, so "the first paint is 50 rows of a 120-chat
+ * catalogue" and "expanding one team added exactly its first page" are numbers a
+ * reader can check rather than impressions of a screenshot. The group's SENTENCE
+ * is read off the DOM, because "a group the census says holds chats is not drawn
+ * saying it has none" is the invariant this change exists for and a frame alone
+ * would only show it for one of the four cases.
+ *
+ * THE FOUR CASES come from the stand-in's own flags, passed to this run as
+ * `--scoped-case`:
+ *
+ *   `paged`     the feature: the group's own page arrives, with more behind it.
+ *   `empty`     a SETTLED page the census still outruns (the stub's `--scope-empty`):
+ *               the group's chats are not drawable here, so it must say WHY, and
+ *               never "Loading chats…" and never "No chats yet" (round 1, U3).
+ *   `loading`   the same arm with every scoped answer HELD OPEN
+ *               (`--scope-delay-ms`): a wait that is really happening, which is the
+ *               only state in which "Loading chats…" is true.
+ *   `empty-group` a genuinely empty group (`--scope-empty --scope-zero-census`): the
+ *               page and the census agree there is nothing, so "No chats yet" is
+ *               the honest sentence.
+ *   `flat-tail` the flat list's own tail, which has no control: a scroll to the
+ *               bottom, then rows arriving.
+ *   `error`     the scoped read refuses; the group says so and offers Retry.
+ *   `withdrawn` the app against a daemon that cannot page at all (`--no-page
+ *               --truncate 50`): today's behaviour, including the sentence that
+ *               is FALSE there - the operator's screenshot, kept as the before.
+ */
+async function sceneSidebarLazyChats(cdp) {
+	const lazyFacts = await factsOf(cdp);
+	check(
+		"window mode is headless",
+		lazyFacts.windowMode === "headless",
+		lazyFacts.windowMode,
+	);
+	check(
+		"the window is never shown and never focused",
+		lazyFacts.visible === false && lazyFacts.focused === false,
+		`visible=${lazyFacts.visible} focused=${lazyFacts.focused}`,
+	);
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", LAZY_THEME);
+	await parkPointer(cdp);
+	/*
+	 * THE HEAD PAGE, waited for by its own number rather than by the clock: the
+	 * catalogue is 120 rows in this fixture and the panel asks for its head page, so
+	 * `sessionCount` reaching fifty is the claim, and a run that never gets there
+	 * fails here instead of photographing an empty panel and calling it a frame.
+	 */
+	if (LAZY_CASE !== "withdrawn") {
+		const arrived = await waitForCondition(
+			cdp,
+			'document.querySelectorAll("[data-session-row]").length > 0',
+			15_000,
+		);
+		note("head page arrived", String(arrived));
+	}
+	await wait(LAZY_SETTLE_MS);
+	const head = await verb(cdp, "state");
+	const headFrame = await captureSettled(cdp, "head-page");
+	note("frame", JSON.stringify(headFrame));
+	check(
+		"the first paint is the HEAD PAGE, not the catalogue",
+		head.sessionCount === LAZY_CATALOGUE_HEAD_PAGE,
+		`sessionCount is ${head.sessionCount} (expected ${LAZY_CATALOGUE_HEAD_PAGE} of a ${LAZY_CATALOGUE_TOTAL}-chat stand-in)`,
+	);
+	if (LAZY_CASE !== "withdrawn") {
+		/*
+		 * THE ROSTER ARRIVES SEPARATELY FROM THE CATALOGUE (`teams.list`), so the
+		 * group's ROW existing is its own moment: reading the badge before it lands
+		 * reported `badge: null` on the first run of this scene, which is a fact about
+		 * the harness and not about the panel.
+		 */
+		const roster = await waitForCondition(
+			cdp,
+			`document.querySelector('[data-disclosure][aria-label="Expand ${LAZY_GROUP} chats"]') !== null`,
+			15_000,
+		);
+		note("the group's row is on screen", String(roster));
+		const collapsed = await lazyGroupFacts(cdp, LAZY_GROUP);
+		note("the collapsed group", JSON.stringify(collapsed));
+	}
+
+	if (LAZY_CASE === "flat-tail" || LAZY_CASE === "flat-tail-error") {
+		/*
+		 * THE FLAT LIST'S OWN TAIL (the second arm round 1's D3 named as missing). It
+		 * has no control by design - one scroller, one scope inside it, so "extend" has
+		 * exactly one meaning - which is why the evidence is a scroll followed by ROWS
+		 * ARRIVING rather than a press, and a frame of the grown list.
+		 *
+		 * RUN HERE, BEFORE ANY GROUP IS EXPANDED, and that is a fact about the fixture
+		 * rather than about the panel: the stand-in's `lopdev` population IS the
+		 * catalogue's second half, so once that group has drawn its own pages the
+		 * head's tail can only re-send rows the client already holds and the frame
+		 * would show a list that did not grow for a reason unrelated to the tail.
+		 */
+		/*
+		 * THE SECTION IS OPENED FIRST, and that is not incidental: a collapsed
+		 * `Previous chats` draws none of its rows, so the tail it would extend is not on
+		 * screen and cannot be scrolled to. The first run of this arm scrolled a closed
+		 * section, asked the daemon for nothing, and would have photographed "the tail
+		 * did not extend" as if that were a fact about the panel.
+		 */
+		const sectionState = await cdp.evaluate(`(() => {
+			const node = document.querySelector('[data-chat-section="previous"]');
+			return node === null ? null : node.getAttribute("aria-expanded");
+		})()`);
+		note("the Previous section before the arm", JSON.stringify(sectionState));
+		if (sectionState !== "true") {
+			const opened = await verb(cdp, "press", {
+				selector: '[data-chat-section="previous"]',
+			});
+			note("the section press", JSON.stringify(opened.target));
+		}
+		await wait(300);
+		const sectionExpanded = await cdp.evaluate(
+			`document.querySelector('[data-chat-section="previous"]')?.getAttribute("aria-expanded") ?? null`,
+		);
+		check(
+			"the Previous chats section is open, so its tail is on screen",
+			sectionExpanded === "true",
+			`aria-expanded is ${JSON.stringify(sectionExpanded)}`,
+		);
+		const beforeFlat = await verb(cdp, "state");
+		/*
+		 * THE REGION IS SCROLLED TO ITS END, by a `scrollTop` write AND a real wheel
+		 * event at the region's OWN centre. Both, because each alone can miss: the first
+		 * run of this arm aimed its wheel at fixed coordinates that turned out to be
+		 * outside the box (`scrollTop` stayed 0 and the daemon was asked for nothing),
+		 * and a `scrollTop` write on a region whose section is shut moves a list that
+		 * draws no rows. The box is measured here rather than guessed.
+		 */
+		const regionBox = await cdp.evaluate(`(() => {
+			const region = document.querySelector('[data-sidebar-region="chats"]');
+			if (region === null) return null;
+			const box = region.getBoundingClientRect();
+			return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) };
+		})()`);
+		note("the chats region's centre", JSON.stringify(regionBox));
+		await cdp.evaluate(
+			`(() => { const region = document.querySelector('[data-sidebar-region="chats"]'); if (region) region.scrollTop = region.scrollHeight; return true; })()`,
+		);
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseWheel",
+			x: regionBox === null ? 140 : regionBox.x,
+			y: regionBox === null ? 400 : regionBox.y,
+			deltaX: 0,
+			deltaY: 6000,
+		});
+		await wait(500);
+		/*
+		 * THE GEOMETRY IS RECORDED, not inferred from the outcome. "The list did not
+		 * grow" has three different causes - the region never scrolled, the section was
+		 * shut, or the extension fired and the answer was not merged - and only these
+		 * numbers separate them.
+		 */
+		const flatGeo = await cdp.evaluate(`(() => {
+			const region = document.querySelector('[data-sidebar-region="chats"]');
+			const heading = Array.from(document.querySelectorAll("button[data-chat-row]"))
+				.find((row) => row.textContent.replace(/\s+/g, " ").trim().startsWith("Previous chats"));
+			return {
+				region: region !== null,
+				scrollTop: region === null ? null : Math.round(region.scrollTop),
+				scrollHeight: region === null ? null : region.scrollHeight,
+				clientHeight: region === null ? null : region.clientHeight,
+				previousExpanded: heading === undefined ? null : heading.getAttribute("aria-expanded"),
+				rows: document.querySelectorAll("[data-session-row]").length,
+			};
+		})()`);
+		note("the flat list's geometry after the scroll", JSON.stringify(flatGeo));
+		/*
+		 * THE TWO CASES ASSERT OPPOSITE THINGS about the same scroll, so the growth branch is
+		 * the success case's alone: with `--tail-error` the extension is refused and its own
+		 * branch below reads the treatment off the elements.
+		 */
+		if (LAZY_CASE === "flat-tail") {
+			const flatGrew = await waitForCondition(
+				cdp,
+				`document.querySelectorAll("[data-session-row]").length > ${beforeFlat.sessionCount}`,
+				15_000,
+			);
+			check(
+				"the flat list extends itself on scroll, with no control to press",
+				flatGrew.ok === true,
+				`rows were ${beforeFlat.sessionCount} before the scroll to the bottom (waited ${flatGrew.waitedMs} ms)`,
+			);
+			await wait(LAZY_SETTLE_MS);
+			/*
+			 * AND THE REGION IS PUT BACK AT ITS END BEFORE THE FRAME (round 4, D21). The scroll
+			 * above is written ONCE, before the page it asks for lands: an absolute `scrollTop`
+			 * is a position, not a promise, so the rows that arrive below the fold leave the
+			 * viewport where it was and the frame showed the middle of the list (the designer
+			 * measured `Chat 040`…`Chat 051` where the arm's own bytes show `Chat 089`…`Chat 100`).
+			 * Scrolled again here, and ASSERTED at the end, because "the frame shows the tail"
+			 * is the whole point of this arm.
+			 */
+			await cdp.evaluate(
+				`(() => { const region = document.querySelector('[data-sidebar-region="chats"]'); if (region) region.scrollTop = region.scrollHeight; return true; })()`,
+			);
+			await wait(500);
+			const flatEnd = await cdp.evaluate(`(() => {
+				const region = document.querySelector('[data-sidebar-region="chats"]');
+				if (region === null) return null;
+				return {
+					atEnd: region.scrollTop + region.clientHeight >= region.scrollHeight - 1,
+					scrollTop: Math.round(region.scrollTop),
+					scrollHeight: region.scrollHeight,
+					clientHeight: region.clientHeight,
+				};
+			})()`);
+			note("the flat list's scroll after the growth", JSON.stringify(flatEnd));
+			check(
+				"and the frame is of the TAIL: the region is at its end when it is captured",
+				flatEnd?.atEnd === true,
+				`scrollTop ${flatEnd?.scrollTop} + clientHeight ${flatEnd?.clientHeight} against scrollHeight ${flatEnd?.scrollHeight} (the first version wrote the scroll once, before the rows landed, and photographed the middle of the list)`,
+			);
+			const flatFrame = await captureSettled(cdp, "flat-tail");
+			note("frame", JSON.stringify(flatFrame));
+			const grown = await verb(cdp, "state");
+			check(
+				"and the rows that arrived are held",
+				grown.sessionCount > beforeFlat.sessionCount,
+				`rows went ${beforeFlat.sessionCount} -> ${grown.sessionCount}`,
+			);
+			return;
+		}
+	}
+
+	if (LAZY_CASE === "flat-tail-error") {
+		/*
+		 * THE FLAT LIST'S OWN REFUSAL (round 3, D18). The third refusal site, and the one
+		 * nobody could see: D10's history is a fix that landed on one of three sites while the
+		 * frame photographed another, so the site with no frame is the site to photograph.
+		 *
+		 * The list has already painted (the head read is untouched by `--tail-error`), so what
+		 * this arm shows is a list that refused to GROW - and the check reads the treatment
+		 * off the ELEMENTS rather than off the copy: the sentence clamped, and the Retry in
+		 * its own paragraph rather than inline after the text.
+		 */
+		const tailRefusal = await waitForCondition(
+			cdp,
+			`(() => {
+				const region = document.querySelector('[data-sidebar-region="chats"]');
+				if (region === null) return null;
+				const button = Array.from(region.querySelectorAll("button")).find(
+					(node) => node.textContent.trim() === "Retry",
+				);
+				if (button === undefined) return null;
+				const sentence = button.parentElement?.previousElementSibling ?? null;
+				return {
+					retryParentTag: button.parentElement?.tagName ?? null,
+					sentenceTag: sentence?.tagName ?? null,
+					sentence: (sentence?.textContent ?? "").trim(),
+					lineClamp: sentence === null ? null : getComputedStyle(sentence).webkitLineClamp,
+					rows: document.querySelectorAll("[data-session-row]").length,
+				};
+			})()`,
+			20_000,
+		);
+		note("the flat list's refusal", JSON.stringify(tailRefusal));
+		check(
+			"the third refusal site renders the one treatment: a clamped sentence with the Retry on its own line",
+			tailRefusal.ok === true &&
+				tailRefusal.last?.sentenceTag === "P" &&
+				tailRefusal.last?.retryParentTag === "P" &&
+				tailRefusal.last?.lineClamp === "2",
+			`read off the elements: ${JSON.stringify(tailRefusal.last)}`,
+		);
+		await wait(LAZY_SETTLE_MS);
+		const refusalFrame = await captureSettled(cdp, "flat-tail-error");
+		note("frame", JSON.stringify(refusalFrame));
+		/*
+		 * AND THE PRESS THAT FAILS IDENTICALLY (round 4, U14). This Retry is the one control
+		 * in the panel whose press can come back with the SAME refusal: the requester's
+		 * elements are repainted, and focus used to end on `<body>` with nothing announced.
+		 * Pressed by KEYBOARD here, because that is the reader this defect belongs to, and
+		 * the region's own text is sampled while it happens - the walk through "Loading more
+		 * chats…" and back to the sentence is the re-announcement, and a text that never
+		 * changed is how it would silently not happen.
+		 */
+		await cdp.evaluate(`(() => {
+			window.__tailTexts = [];
+			/*
+			 * THE REGION IS LOOKED UP EVERY TICK, not captured once: a React re-render can
+			 * replace the node, and a detached node's textContent is frozen at whatever it held
+			 * when it was orphaned - which is how the first version of this sampler reported
+			 * zero changes while the reader's own region was changing in front of them.
+			 */
+			const grab = () => {
+				const region = document.querySelector('[data-sidebar-region="chats"]');
+				const text = (region?.textContent ?? "").replace(/\s+/g, " ").trim();
+				const seen = window.__tailTexts;
+				if (seen[seen.length - 1] !== text) seen.push(text);
+			};
+			grab();
+			const timer = setInterval(grab, 50);
+			setTimeout(() => clearInterval(timer), 12_000);
+			return true;
+		})()`);
+		const focusedRetry = await cdp.evaluate(`(() => {
+			const region = document.querySelector('[data-sidebar-region="chats"]');
+			const button = Array.from(region?.querySelectorAll("button") ?? []).find(
+				(node) => node.textContent.trim() === "Retry",
+			);
+			if (button === undefined) return false;
+			button.focus();
+			return document.activeElement === button;
+		})()`);
+		check(
+			"the flat list's Retry can be focused",
+			focusedRetry === true,
+			`focused: ${focusedRetry}`,
+		);
+		/*
+		 * A REAL Enter, in three parts: CDP needs the RAW keydown, the character (which is
+		 * what a focused button activates on) and the keyup. The first attempt sent
+		 * `keyDown` alone and the daemon was asked nothing - the check below passed
+		 * vacuously on the button this script had just focused, which is exactly the shape of
+		 * evidence that proves nothing.
+		 */
+		for (const event of [
+			{ type: "rawKeyDown", text: undefined },
+			{ type: "char", text: "\r" },
+			{ type: "keyUp", text: undefined },
+		]) {
+			await cdp.send("Input.dispatchKeyEvent", {
+				type: event.type,
+				key: "Enter",
+				code: "Enter",
+				windowsVirtualKeyCode: 13,
+				nativeVirtualKeyCode: 13,
+				...(event.text === undefined ? {} : { text: event.text }),
+			});
+		}
+		/*
+		 * AND THE PRESS IS PROVEN TO HAVE LANDED BEFORE ANYTHING IS CONCLUDED FROM IT: the
+		 * arm waits for the REGION'S OWN TEXT to have walked the wait register and come back
+		 * to a refusal, which is both the landing proof and the re-announcement this finding
+		 * is about. Read from the sampler rather than from the daemon's log, because the log
+		 * proves a request and this has to prove what the reader's region did with the answer.
+		 */
+		const reread = await waitForCondition(
+			cdp,
+			`(() => {
+				const texts = window.__tailTexts ?? [];
+				return texts.length >= 2 ? { count: texts.length } : null;
+			})()`,
+			15_000,
+		);
+		check(
+			"the keyboard press reached the daemon, and the region changed while it was in flight (U14)",
+			reread.ok === true,
+			`the region's text changed ${reread.last?.count ?? 0} time(s) during the press and settled back on the refusal (waited ${reread.waitedMs} ms) - one means the region never changed, which is the state this finding filed`,
+		);
+		/*
+		 * THE SETTLED READ, waited for rather than sampled: the refusal has to be BACK (the
+		 * re-read is over) before focus can be judged, which is the mistake the previous shape
+		 * made - it read while the answer was still in flight and reported `<body>` for the
+		 * state that the fix does not govern.
+		 */
+		await waitForCondition(
+			cdp,
+			`(() => {
+				const region = document.querySelector('[data-sidebar-region="chats"]');
+				const text = (region?.textContent ?? "").replace(/\s+/g, " ").trim();
+				return text.includes("refuse") ? true : null;
+			})()`,
+			15_000,
+		);
+		await wait(400);
+		const afterRetry = await cdp.evaluate(`(() => {
+			const region = document.querySelector('[data-sidebar-region="chats"]');
+			const button = Array.from(region?.querySelectorAll("button") ?? []).find(
+				(node) => node.textContent.trim() === "Retry",
+			);
+			return {
+				present: button !== undefined,
+				focused: button !== undefined && document.activeElement === button,
+				activeTag:
+					document.activeElement === document.body
+						? "body"
+						: (document.activeElement?.tagName?.toLowerCase() ?? null),
+				live:
+					region?.querySelector("[aria-live]")?.getAttribute("aria-live") ?? null,
+				/*
+				 * MATCHED ON WHAT THE REGION RENDERS, not on the string this file would write: the
+				 * ellipsis it draws is a single character the sampler reads as part of a longer run,
+				 * so the first filter looked for a phrase that never appears verbatim and counted
+				 * zero changes in a region that had visibly changed.
+				 */
+				texts: (window.__tailTexts ?? []).filter((text) =>
+					/refuse|Loading more/.test(text),
+				).length,
+				sampled: (window.__tailTexts ?? []).length,
+			};
+		})()`);
+		note("the refused retry", JSON.stringify(afterRetry));
+		check(
+			"a failed re-read hands focus BACK to the control that was pressed, never to `<body>` (U14)",
+			afterRetry.present === true && afterRetry.focused === true,
+			`activeElement is ${JSON.stringify(afterRetry.activeTag)}; the settled state is ${JSON.stringify(afterRetry)}`,
+		);
+		check(
+			/*
+			 * THE ANNOUNCEMENT IS THE REGION'S OWN CHANGE, which is what a polite region
+			 * announces: the same refusal rendered again into an unchanged region says nothing,
+			 * and that is precisely the state U14 filed. Asserted from the SETTLED text plus the
+			 * number of distinct texts the press produced, rather than from the wait register,
+			 * because a stub that answers in a millisecond renders that register for a
+			 * millisecond - the arm can now slow it (`--tail-delay-ms`), but the assertion must
+			 * not depend on a lever nobody sets by default.
+			 */
+			"and the refusal is re-announced through the region that already exists",
+			afterRetry.live === "polite" &&
+				afterRetry.sampled >= 2 &&
+				afterRetry.texts >= 1,
+			`the region's aria-live is ${JSON.stringify(afterRetry.live)}, it produced ${afterRetry.sampled} distinct text(s) during the press and settled on ${afterRetry.texts} refusal state(s) - a region that never changed announces nothing`,
+		);
+		return;
+	}
+
+	// --- the expansion, which is the whole change ---------------------------
+	await verb(cdp, "press", {
+		selector: `[data-disclosure][aria-label="Expand ${LAZY_GROUP} chats"]`,
+	});
+	await wait(LAZY_SETTLE_MS);
+	if (LAZY_CASE === "paged") {
+		// Waited for, not sampled: see `waitForSessionCount`.
+		await waitForSessionCount(cdp, LAZY_CATALOGUE_HEAD_PAGE + LAZY_GROUP_PAGE);
+	}
+	const opened = await verb(cdp, "state");
+	note("the store's scopes after the expansion", JSON.stringify(opened.scopes));
+	note("the census total the head answer carried", String(opened.countsTotal));
+	const group = await lazyGroupFacts(cdp, LAZY_GROUP);
+	const openFrame = await captureSettled(cdp, "group-open");
+	note("frame", JSON.stringify(openFrame));
+	/*
+	 * THE SAME STATE IN THE OTHER THEME (UX round 2): the set this branch shipped was
+	 * dark-only, so D1/D5's "the badge and the sentence read in both themes" claim had no
+	 * evidence behind it. Captured in the same state as `group-open`, then restored so every
+	 * other frame stays dark.
+	 */
+	await verb(cdp, "setTheme", LAZY_LIGHT_THEME);
+	await wait(LAZY_SETTLE_MS);
+	const lightFrame = await captureSettled(cdp, "group-open-light");
+	note("frame", JSON.stringify(lightFrame));
+	await verb(cdp, "setTheme", LAZY_THEME);
+	await wait(LAZY_SETTLE_MS);
+	note("the expanded group", JSON.stringify(group));
+
+	if (LAZY_CASE === "paged") {
+		check(
+			"expanding one group fetched exactly its own first page",
+			opened.sessionCount === LAZY_CATALOGUE_HEAD_PAGE + LAZY_GROUP_PAGE,
+			`sessionCount went ${head.sessionCount} -> ${opened.sessionCount} (expected ${LAZY_CATALOGUE_HEAD_PAGE + LAZY_GROUP_PAGE})`,
+		);
+		/*
+		 * THE BADGE IS READ WITH THE GROUP OPEN, and that is a deliberate retreat
+		 * rather than a weakened claim. It is the same element either way (the badge is
+		 * drawn on the group's own row, open or closed), and the read of a CLOSED group
+		 * raced the roster's arrival: this scene's second run read nulls for a row the
+		 * press immediately found and labelled "Collapse lopdev chats". The FRAME below
+		 * is the closed-group evidence; the number is asserted where the read is
+		 * reliable.
+		 */
+		check(
+			"the group's badge is the CENSUS, not the rows in hand",
+			group.badge === LAZY_GROUP_TOTAL,
+			`badge reads ${JSON.stringify(group.badge)} (expected ${LAZY_GROUP_TOTAL} over a page of ${LAZY_GROUP_PAGE})`,
+		);
+		check(
+			"the group draws its rows rather than a sentence",
+			group.sentence === null && group.rows > 0,
+			`rows=${group.rows} sentence=${JSON.stringify(group.sentence)}`,
+		);
+		check(
+			"the group offers its tail, because the daemon said there is one",
+			group.more !== null,
+			JSON.stringify(group.more),
+		);
+		// --- and the tail, one press at a time ------------------------------
+		/*
+		 * SCROLLED INTO VIEW FIRST, because `press` is a REAL pointer event at the
+		 * element's box (`pressAt` in `src/renderer/src/dev-driver/install.ts`) and
+		 * the tail sits at the bottom of a scroller: a press on a control below the
+		 * fold lands on whatever is actually there, which is how the first run of this
+		 * scene pressed the button and changed nothing. The pattern is the driver's
+		 * own (`sceneSessionArchive` does the same before a press).
+		 */
+		await cdp.evaluate(
+			`(() => { const node = document.querySelector('[data-scope-more="team:${LAZY_GROUP}"]'); if (node) node.scrollIntoView({ block: "center" }); return node !== null; })()`,
+		);
+		await wait(300);
+		/*
+		 * THE CONTROL ITSELF, IN A FRAME (round 1, D3). The press UNMOUNTS the
+		 * control when it fetches the last page, and the earlier version of this set
+		 * claimed a frame showed it while no frame did. Captured here, between the
+		 * scroll that brings it into the viewport and the press that consumes it,
+		 * which is the only moment it is both on screen and still a control.
+		 */
+		const moreFrame = await captureSettled(cdp, "group-more");
+		note("frame", JSON.stringify(moreFrame));
+		/*
+		 * THE PANEL AT ITS OWN DRAG FLOOR (round 1, D8), captured HERE - with the group
+		 * open and its control on screen, before any press moves the geometry. The
+		 * earlier attempt to narrow this surface set a WINDOW size rather than the
+		 * panel's own width, so the panel was boxed at x 438-955 in both frames and
+		 * nothing was narrower. `240` is the floor the preference is clamped to
+		 * (`chatSidebarWidth`, clamped 240..360), set through the driver's own
+		 * preference verb, so the frame is of the app's real floor. It is restored
+		 * before the press: a control whose box the width change has just moved is a
+		 * press that lands on nothing, which is what the first attempt measured.
+		 */
+		const wideWidth = await cdp.evaluate(
+			`document.querySelector('[data-sidebar-region="chats"]')?.offsetWidth ?? null`,
+		);
+		/*
+		 * AND THE PREFERENCE ITSELF, because the two are not the same number (round 4, D20):
+		 * `chatSidebarWidth` is the panel's OUTER width (the app's default 280 measures 264
+		 * inside the region), so restoring the region's measured width wrote 264 into a
+		 * preference that means something else and left the post-press frames ~16px inside
+		 * the declared default - a set whose frames and whose README disagreed by a number
+		 * nobody chose. `undefined` is not a value here: it DELETES the key, which is how the
+		 * app's own default comes back on a profile that never stored one.
+		 */
+		const preferencesAtStart = await splitPreferences(cdp);
+		const preferenceWidth = preferencesAtStart.state?.chatSidebarWidth;
+		await setSplitPreferences(cdp, { chatSidebarWidth: 240 });
+		await wait(LAZY_SETTLE_MS);
+		const narrowWidth = await cdp.evaluate(
+			`document.querySelector('[data-sidebar-region="chats"]')?.offsetWidth ?? null`,
+		);
+		check(
+			"the narrow frame is NARROWER: the panel is at its own drag floor, not at the window's size",
+			typeof wideWidth === "number" &&
+				typeof narrowWidth === "number" &&
+				narrowWidth <= 250 &&
+				narrowWidth < wideWidth,
+			`the chats region is ${narrowWidth}px at the floor against ${wideWidth}px at this run's default (a WINDOW size, which is what the earlier attempt changed, leaves the panel at x 438-955 in both frames)`,
+		);
+		const narrowFrame = await captureSettled(cdp, "group-narrow");
+		note("frame", JSON.stringify(narrowFrame));
+		/*
+		 * RESTORED TO THIS RUN'S OWN WIDTH, NOT TO 360 (round 3, D16). The narrow capture
+		 * above is taken at the floor, and the press briefly needed the panel wider than the
+		 * floor to keep the control on screen; leaving it at the clamp's ceiling made the two
+		 * post-press frames 361 logical px wide while every other frame in the set was at the
+		 * run's default 281 - a set that mixes undeclared widths cannot be compared frame to
+		 * frame. `wideWidth` is the width this run actually started at, measured above.
+		 */
+		await setSplitPreferences(cdp, {
+			chatSidebarWidth:
+				typeof preferenceWidth === "number" ? preferenceWidth : undefined,
+		});
+		const restoredWidth = await cdp.evaluate(
+			`document.querySelector('[data-sidebar-region="chats"]')?.offsetWidth ?? null`,
+		);
+		check(
+			"the post-press frames are back at this run's OWN width, preference for preference",
+			restoredWidth === wideWidth,
+			`the chats region is ${restoredWidth}px after the restore against ${wideWidth}px before the narrow capture (preference ${JSON.stringify(preferenceWidth)}); the earlier shape wrote the region's inner measurement into an OUTER-width preference and left these frames 16px inside the set's declared default`,
+		);
+		await wait(LAZY_SETTLE_MS);
+		/*
+		 * AND THE CONTROL IS BROUGHT BACK INTO THE VIEWPORT, because widening the panel
+		 * moves it: the region's scroll position was taken at 240px, so at 360px the
+		 * control as measured sits below the fold and a press at those coordinates lands
+		 * on nothing - which is what the run reported (`hit=null`) with the store state
+		 * still saying the tail had not been asked for.
+		 */
+		await cdp.evaluate(
+			`(() => { const node = document.querySelector('[data-scope-more="team:${LAZY_GROUP}"]'); if (node) node.scrollIntoView({ block: "center" }); return node !== null; })()`,
+		);
+		await wait(300);
+		const tailPress = await verb(cdp, "press", {
+			selector: `[data-scope-more="team:${LAZY_GROUP}"]`,
+		});
+		note("the tail control", JSON.stringify(tailPress.target));
+		check(
+			"the tail press reaches the control itself",
+			tailPress.hit === tailPress.target,
+			`hit=${JSON.stringify(tailPress.hit)} target=${JSON.stringify(tailPress.target)}`,
+		);
+		/*
+		 * THE EXTENSION IS WAITED FOR, BOUNDED, ON THE SCOPE'S OWN STATE.
+		 *
+		 * What the press is asserted to do: ask the daemon for THAT SCOPE'S next page,
+		 * and MERGE the answer - the scope's ids grow by exactly one page and its
+		 * cursor advances to the page after it. The merge half is the part a single
+		 * sample cannot see (an unmerged answer and a merged one look identical in the
+		 * same instant), so this polls the store's own scope every 100 ms and FAILS
+		 * LOUDLY on timeout with the state it last saw and the daemon's own lines for
+		 * the scope - which is the evidence that separates "the request never left"
+		 * from "it left, was answered, and the answer did not reach the store".
+		 */
+		/*
+		 * THE FOCUS IS ASSERTED, not promised in a comment (round 2, U2 = F1). Two streams
+		 * measured focus landing on `<body>` after every press: the recovery effect resolved
+		 * its target inside the CHATS region, where an expanded group's rows are not drawn.
+		 * The assertion is made against `document.activeElement`'s own identity, so `<body>`
+		 * cannot satisfy it.
+		 */
+		const activeAfterPress = await cdp.evaluate(`(() => {
+			const el = document.activeElement;
+			if (el === null || el === document.body) return { tag: null, row: null };
+			const row = el.closest("[data-session-row]");
+			return {
+				tag: el.tagName.toLowerCase(),
+				row: row === null ? null : row.getAttribute("data-session-row"),
+			};
+		})()`);
+		note("focus after the tail press", JSON.stringify(activeAfterPress));
+		check(
+			"focus lands on a row of the group, never on body (U2 = F1)",
+			activeAfterPress.tag === "button" &&
+				String(activeAfterPress.row ?? "").startsWith("p"),
+			`activeElement is ${JSON.stringify(activeAfterPress)} (the press added ids from the scope's own list, so the first added row is the group's ${LAZY_GROUP_PAGE + 1}th)`,
+		);
+		const scopeKey = `team:${LAZY_GROUP}`;
+		const grew = await waitForScopeIds(cdp, scopeKey, LAZY_GROUP_PAGE * 2);
+		const observed = JSON.stringify(grew.scope);
+		if (grew.timedOut) {
+			const lines = stubLinesForScope(STUB_LOG, LAZY_GROUP);
+			check(
+				"the tail page is merged into the scope",
+				false,
+				`the scope did not reach ${LAZY_GROUP_PAGE * 2} ids within 10 s. Last read: ${observed}. The daemon logged for this scope:\n${lines.length > 0 ? lines.join("\n") : "(nothing)"}`,
+			);
+		} else {
+			check(
+				"the tail page is merged into the scope, and the cursor advances past it",
+				grew.scope.ids === LAZY_GROUP_PAGE * 2 &&
+					grew.scope.nextCursor === `off:${LAZY_GROUP_PAGE * 2}`,
+				`scope is ${observed}, expected ${LAZY_GROUP_PAGE * 2} ids and cursor off:${LAZY_GROUP_PAGE * 2}`,
+			);
+		}
+		await wait(LAZY_SETTLE_MS);
+		/*
+		 * THE TAIL FRAME SHOWS THE CONTROL (round 1, D3). After the first extension
+		 * there is another page to come, so the group draws fifty rows AND its
+		 * `Show 20 more` control - scrolled into view here so the frame carries the
+		 * grown list and the control together, which is what the PR's frame table
+		 * claims it shows.
+		 */
+		await cdp.evaluate(
+			`(() => { const node = document.querySelector('[data-scope-more="team:${LAZY_GROUP}"]'); if (node) node.scrollIntoView({ block: "center" }); return node !== null; })()`,
+		);
+		await wait(300);
+		const tailFrame = await captureSettled(cdp, "group-tail");
+		note("frame", JSON.stringify(tailFrame));
+		note("the scope after the tail press", observed);
+		/*
+		 * THE LABEL STATES THE ROWS THE PRESS WILL ADD, AND THE LAST PRESS IS EXACT
+		 * (round 1, D7). Sixty-five held of seventy read `Show 25 more` - a page size
+		 * dressed as a remainder. Here: fifty held of seventy, so five short of a full
+		 * page, and the label must say twenty.
+		 */
+		const label = await cdp.evaluate(
+			`(() => { const node = document.querySelector('[data-scope-more="team:${LAZY_GROUP}"]'); return node === null ? null : (node.textContent || "").trim(); })()`,
+		);
+		check(
+			"Show more states the rows the press will ADD, not the page size (D7)",
+			label === `Show ${LAZY_GROUP_TOTAL - LAZY_GROUP_PAGE * 2} more`,
+			`the control reads ${JSON.stringify(label)} with ${LAZY_GROUP_PAGE * 2} of ${LAZY_GROUP_TOTAL} drawn`,
+		);
+		const lastPress = await verb(cdp, "press", {
+			selector: `[data-scope-more="team:${LAZY_GROUP}"]`,
+		});
+		check(
+			"the last press reaches the control itself",
+			lastPress.hit === lastPress.target,
+			`hit=${JSON.stringify(lastPress.hit)} target=${JSON.stringify(lastPress.target)}`,
+		);
+		const exhausted = await waitForScopeIds(cdp, scopeKey, LAZY_GROUP_TOTAL);
+		check(
+			"the last press adds the remainder and the control goes at exhaustion (D7)",
+			!exhausted.timedOut &&
+				exhausted.scope.ids === LAZY_GROUP_TOTAL &&
+				exhausted.scope.nextCursor === null,
+			`scope is ${JSON.stringify(exhausted.scope)}, expected ${LAZY_GROUP_TOTAL} ids and no cursor`,
+		);
+		await wait(LAZY_SETTLE_MS);
+		/*
+		 * AND AT EXHAUSTION THE FALLBACK IS THE GROUP'S OWN CONTROL (round 2, U2): the
+		 * press's control unmounts with the cursor, so the reader must not be left on
+		 * `<body>`. Recorded here rather than asserted to a single shape, because the press
+		 * that consumed the control is exactly the case where the added row may not resolve.
+		 */
+		const activeAtEnd = await cdp.evaluate(`(() => {
+			const el = document.activeElement;
+			if (el === null || el === document.body) return { tag: null, disclosure: false };
+			return {
+				tag: el.tagName.toLowerCase(),
+				disclosure: el.hasAttribute("data-disclosure"),
+				label: el.getAttribute("aria-label"),
+			};
+		})()`);
+		note("focus at exhaustion", JSON.stringify(activeAtEnd));
+		check(
+			"the reader is never left on `<body>` at exhaustion (U2 = F1)",
+			activeAtEnd.tag !== null,
+			`activeElement is ${JSON.stringify(activeAtEnd)}`,
+		);
+		const exhaustedFrame = await captureSettled(cdp, "group-exhausted");
+		note("frame", JSON.stringify(exhaustedFrame));
+	} else if (LAZY_CASE === "empty") {
+		/*
+		 * A SETTLED SCOPE, A NON-ZERO CENSUS, NO ROWS (round 1, U3). The group's
+		 * chats are not drawable here - the ordinary reason being that they are
+		 * archived - so the sentence must name that and offer the way forward. It was
+		 * "Loading chats…" for as long as the census outran the page, whatever
+		 * `scope.loading` said, which sat a settled group in a wait for ever.
+		 */
+		check(
+			"a settled group the census still outruns names why, and never claims a wait",
+			opened.sessionCount === LAZY_CATALOGUE_HEAD_PAGE &&
+				group.badge === LAZY_GROUP_TOTAL &&
+				typeof group.sentence === "string" &&
+				LAZY_ARCHIVED_SENTENCE.test(group.sentence),
+			`sessionCount ${opened.sessionCount}, badge ${JSON.stringify(group.badge)}, sentence ${JSON.stringify(group.sentence)}`,
+		);
+		/*
+		 * AND THE SAME SENTENCE AT THE PANEL'S DRAG FLOOR (round 3, D17). The clamp is two
+		 * lines and the designer's arithmetic said it may eat this sentence's tail at 240px;
+		 * whether it does is a fact about a rendered frame, not about a sum, and the sentence
+		 * is the one this state exists to say - so it gets its own narrow picture rather than
+		 * being trusted at the width where it was written.
+		 */
+		const settledDefaultWidth = await cdp.evaluate(
+			`document.querySelector('[data-sidebar-region="chats"]')?.offsetWidth ?? null`,
+		);
+		await setSplitPreferences(cdp, { chatSidebarWidth: 240 });
+		await wait(LAZY_SETTLE_MS);
+		const settledFloor = await lazyGroupFacts(cdp, LAZY_GROUP);
+		const settledFloorWidth = await cdp.evaluate(
+			`document.querySelector('[data-sidebar-region="chats"]')?.offsetWidth ?? null`,
+		);
+		check(
+			"the settled sentence is whole at the panel's own floor, not clipped by the clamp",
+			typeof settledFloorWidth === "number" &&
+				settledFloorWidth <= 250 &&
+				typeof settledFloor.sentence === "string" &&
+				LAZY_ARCHIVED_SENTENCE.test(settledFloor.sentence) &&
+				settledFloor.sentenceClipped === false,
+			`at ${settledFloorWidth}px (from ${settledDefaultWidth}px) the group says ${JSON.stringify(settledFloor.sentence)}, clamped=${JSON.stringify(settledFloor.clamped)}`,
+		);
+		const settledNarrowFrame = await captureSettled(cdp, "group-open-narrow");
+		note("frame", JSON.stringify(settledNarrowFrame));
+		await setSplitPreferences(cdp, {
+			chatSidebarWidth:
+				typeof settledDefaultWidth === "number" ? settledDefaultWidth : 281,
+		});
+		await wait(LAZY_SETTLE_MS);
+	} else if (LAZY_CASE === "loading") {
+		/*
+		 * THE ONE STATE IN WHICH "Loading chats…" IS TRUE (round 1, U3). Every scoped
+		 * answer is held open by the stand-in, so the group is genuinely waiting: the
+		 * sentence and `scope.loading` agree, which is the pair the finding was about.
+		 */
+		check(
+			"a group whose page is in flight says it is loading",
+			opened.sessionCount === LAZY_CATALOGUE_HEAD_PAGE &&
+				group.sentence === "Loading chats…",
+			`sessionCount ${opened.sessionCount}, sentence ${JSON.stringify(group.sentence)}`,
+		);
+		/*
+		 * AND THE HOLD IS RELEASED IN THE SAME RUN (round 2, D12): the frame above is of a
+		 * wait that is really in flight because the stand-in is holding the answer on a file,
+		 * and writing that file here proves the hold released and the group drew its page -
+		 * so the arm is re-shootable rather than a window the run has to hit.
+		 */
+		if (LAZY_HOLD !== null) {
+			writeFileSync(LAZY_HOLD, "released\n");
+			const drew = await waitForSessionCount(
+				cdp,
+				LAZY_CATALOGUE_HEAD_PAGE + LAZY_GROUP_PAGE,
+			);
+			const after = await lazyGroupFacts(cdp, LAZY_GROUP);
+			check(
+				"releasing the hold draws the group's page, so the wait was real",
+				drew === LAZY_CATALOGUE_HEAD_PAGE + LAZY_GROUP_PAGE &&
+					after.rows === LAZY_GROUP_PAGE,
+				`sessionCount ${opened.sessionCount} -> ${drew}, rows ${after.rows}, sentence ${JSON.stringify(after.sentence)}`,
+			);
+			const loadedFrame = await captureSettled(cdp, "group-loaded");
+			note("frame", JSON.stringify(loadedFrame));
+		}
+	} else if (LAZY_CASE === "empty-group") {
+		/*
+		 * A GENUINELY EMPTY GROUP: the page and the census agree (round 1, D3's first
+		 * missing arm). "No chats yet" is the honest sentence here, and the badge is
+		 * zero - which is what separates this frame from the `empty` arm's.
+		 */
+		check(
+			"an empty group says so, and no number contradicts it",
+			opened.sessionCount === LAZY_CATALOGUE_HEAD_PAGE &&
+				group.sentence === "No chats yet" &&
+				group.badge === null,
+			`sessionCount ${opened.sessionCount}, sentence ${JSON.stringify(group.sentence)}, badge ${JSON.stringify(group.badge)} (a zero census draws no digit at all)`,
+		);
+	} else if (LAZY_CASE === "error") {
+		// WAITED FOR, not sampled: the refusal has to travel back and be rendered, and
+		// the first run of this arm read the group still saying "Loading chats…".
+		/*
+		 * THE ROW IS FOUND BY ITS OWN CONTROL, not by document order (round 1, D6).
+		 * `document.querySelector('[data-entity]')` is the FIRST entity row on screen -
+		 * an agent group - so the condition could never match the group's sentence, and
+		 * the arm photographed whatever happened to be rendered when the wait gave up.
+		 */
+		const refused = await waitForCondition(
+			cdp,
+			`(() => {
+				const row = document.querySelector('[data-entity]:has([data-disclosure][aria-label="Expand ${LAZY_GROUP} chats"], [data-disclosure][aria-label="Collapse ${LAZY_GROUP} chats"])');
+				if (row === null) return false;
+				const text = row.textContent || "";
+				/*
+				 * THE SHAPE OF THE REFUSAL, not a sentence this rig knows: the app quotes
+				 * the backend's own text whenever the daemon authored one, so waiting for a
+				 * particular string waits for something the app may never draw. What the
+				 * group MUST show is a Retry, no wait and no emptiness.
+				 */
+				return /Retry/.test(text) && !/Loading chats…/.test(text) && !/No chats yet/.test(text);
+			})()`,
+			15_000,
+		);
+		/*
+		 * STRINGIFIED, NOT COERCED (round 3, D13): `waitForCondition` answers an object, so
+		 * `String(refused)` printed `[object Object]` where the note is supposed to carry the
+		 * wait's own result - the waited time and the value it settled on.
+		 */
+		note("the refusal is on screen", JSON.stringify(refused));
+		const failed = await lazyGroupFacts(cdp, LAZY_GROUP);
+		/*
+		 * ITS OWN FRAME, AFTER THE REFUSAL RENDERED: the `group-open` capture above is
+		 * taken the moment the group opens, which in this arm is the loading state. A
+		 * photograph of "Loading chats…" labelled as the error case would be a frame
+		 * that does not show what its name claims.
+		 */
+		check(
+			"the refusal is WAITED FOR rather than sampled, and says something that is neither a wait nor an emptiness",
+			refused.ok === true &&
+				typeof failed.sentence === "string" &&
+				failed.sentence.length > 0 &&
+				!LAZY_NOT_A_WAIT_OR_EMPTINESS.test(failed.sentence),
+			`waited=${JSON.stringify(refused)} sentence=${JSON.stringify(failed.sentence)}`,
+		);
+		const errorFrame = await captureSettled(cdp, "group-error");
+		note("frame", JSON.stringify(errorFrame));
+		check(
+			"a refused group read says so and offers its own retry",
+			opened.sessionCount === LAZY_CATALOGUE_HEAD_PAGE && failed.retry !== null,
+			`sessionCount ${opened.sessionCount}, retry ${JSON.stringify(failed.retry)}, sentence ${JSON.stringify(failed.sentence)}`,
+		);
+	} else {
+		/*
+		 * THE BEFORE HALF. A daemon that cannot page answers 50 rows of 120 with no
+		 * cursor, so the group's 70 chats are past the cap and the panel draws the
+		 * FALSE sentence over them - which is the operator's screenshot, and the reason
+		 * this change exists.
+		 */
+		check(
+			"expanding a group against a daemon that cannot page fetches nothing",
+			opened.sessionCount === head.sessionCount,
+			`sessionCount ${head.sessionCount} -> ${opened.sessionCount}`,
+		);
+		check(
+			"and the withdrawn panel draws the false negative this change removes",
+			group.sentence === "No chats yet",
+			`sentence is ${JSON.stringify(group.sentence)}`,
+		);
+	}
+}
+
+/**
+ * Wait for a line to appear in the stand-in's own stdout.
+ *
+ * WHY THE REQUEST THE DAEMON SAW IS THE INSTRUMENT HERE. The DOM cannot say which
+ * page a control asked for, and `state.sessionCount` cannot either (a page whose
+ * rows the client already held grows it by nothing). The daemon's request line is
+ * the one place "the press asked for THAT SCOPE'S next page, with the cursor it
+ * minted" is directly visible, which is the same reason `sceneRowSpace` reads
+ * `--stub-log` for its write clauses.
+ */
+async function waitForStubLine(needle, timeoutMs = 15_000) {
+	if (STUB_LOG === null) return false;
+	const started = Date.now();
+	while (Date.now() - started < timeoutMs) {
+		try {
+			if (readFileSync(STUB_LOG, "utf8").includes(needle)) return true;
+		} catch {
+			// The file may not exist for the first moments of a run.
+		}
+		await wait(150);
+	}
+	return false;
+}
+
+/**
+ * The sidebar's team/agent row, as the DOM has it.
+ *
+ * Read through the driver's own evaluation channel rather than through the verb
+ * vocabulary, because the verb set answers about GEOMETRY and PRESSES (the app's
+ * layout and input are its own) and none of them can read a sentence. This is the
+ * driver looking, not the app being asked.
+ */
+const LAZY_GROUP_FACTS_EXPR = (name) => `(() => {
+	/*
+	 * THE ROW IS FOUND BY THE CONTROL IT CONTAINS, not by the text it happens to
+	 * carry: the selector below matches data-entity elements that hold a
+	 * data-disclosure button labelled "Expand <name> chats" - the same element the
+	 * press in this scene aims at, so the row this reads is always the row that
+	 * control belongs to. Matching on text found a row whose data-disclosure did not
+	 * exist on the first run of this scene - a read and a press disagreeing about
+	 * which node they meant.
+	 */
+	const row = document.querySelector(
+		'[data-entity]:has([data-disclosure][aria-label="Expand ${name} chats"], [data-disclosure][aria-label="Collapse ${name} chats"])',
+	);
+	if (!row) return null;
+	const button = row.querySelector("[data-disclosure]");
+	const body = button?.parentElement?.nextElementSibling ?? null;
+	const badge = [...row.querySelectorAll("span")]
+		.map((el) => (el.textContent || "").trim())
+		.filter((text) => /^[0-9]+$/.test(text))
+		.pop() ?? null;
+	const more = row.querySelector("[data-scope-more]");
+	const retry = [...(body?.querySelectorAll("button") ?? [])]
+		.map((el) => (el.textContent || "").trim())
+		.find((text) => text === "Retry") ?? null;
+	return {
+		badge: badge === null ? null : Number(badge),
+		more: more === null ? null : (more.textContent || "").trim(),
+		retry,
+		rows: body === null ? 0 : body.querySelectorAll("[data-session-row]").length,
+		/*
+		 * THE SENTENCE IS READ FROM ITS OWN ELEMENT, not matched against a list of the
+		 * strings this rig expects. The refusal's sentence is the BACKEND'S own text
+		 * whenever the daemon authored one (the app quotes it rather than paraphrasing),
+		 * so a list of expected sentences is a list this reader would silently stop
+		 * recognising the moment the daemon says something new - which is exactly how
+		 * the error arm read a null sentence while the group was drawing one.
+		 */
+		sentence: (() => {
+			const el = body?.querySelector("p") ?? null;
+			const text = el === null ? "" : (el.textContent || "").trim();
+			return text === "" ? null : text;
+		})(),
+		/*
+		 * WHETHER THE SENTENCE THE READER READS IS THE WHOLE SENTENCE (round 3, D17). The
+		 * clamp is two lines, so an element whose scrollHeight exceeds its clientHeight is
+		 * an element that ate its own tail - the one fact a picture at the panel's floor is
+		 * meant to settle, and one a text extraction cannot see.
+		 */
+		sentenceClipped: (() => {
+			const el = body?.querySelector("p") ?? null;
+			if (el === null) return null;
+			return el.scrollHeight > el.clientHeight + 1;
+		})(),
+	};
+})()`;
+
+const lazyGroupFacts = (cdp, name) => cdp.evaluate(LAZY_GROUP_FACTS_EXPR(name));
+
+/**
+ * The store's row count, WAITED FOR rather than read once.
+ *
+ * A page arrives on the app's own schedule, so a scene that reads the count the
+ * instant after a press is asserting a race it happens to win: this scene's first
+ * run read `75 -> 75` for an extension the stand-in had ALREADY answered (its log
+ * shows the `cursor=off:25` request), which is a fact about the harness and not
+ * about the panel. Polling the number is what makes the claim about the feature.
+ */
+/**
+ * The scope's own state, WAITED FOR rather than sampled.
+ *
+ * WHY THIS REPLACED A READ-BACK AND A ROW COUNT. `state.sessionCount` is a PROXY
+ * for "the extension landed" and a bad one: a page whose rows the client already
+ * holds grows it by nothing, so a passing extension and a dropped answer are
+ * indistinguishable through it. The scope's own `ids` and `nextCursor` are the
+ * claim itself. And the read has to be BOUNDED POLLING, not a read after a fixed
+ * sleep: the two are indistinguishable in a single sample, which is exactly how
+ * this step reported a discrepancy for a whole session's worth of runs.
+ */
+async function waitForScopeIds(cdp, key, atLeast, timeoutMs = 10_000) {
+	const started = Date.now();
+	let scope = (await verb(cdp, "state")).scopes[key] ?? null;
+	while (Date.now() - started < timeoutMs) {
+		if (scope !== null && scope.ids >= atLeast)
+			return { scope, timedOut: false };
+		await wait(100);
+		scope = (await verb(cdp, "state")).scopes[key] ?? null;
+	}
+	return { scope, timedOut: true };
+}
+
+/**
+ * The daemon's own lines for one scope, as the failure message's evidence.
+ *
+ * A timeout is not a verdict on its own: the two remaining explanations are "the
+ * request never left" and "it left, was answered, and the answer did not reach
+ * the store". The `rows=` the stand-in now logs with each answer is what tells
+ * them apart, so the failure carries those lines rather than an assertion.
+ */
+function stubLinesForScope(path, name) {
+	if (STUB_LOG === null) return [];
+	try {
+		return readFileSync(STUB_LOG, "utf8")
+			.split("\n")
+			.filter((line) => line.includes(`scope_name=${name}`))
+			.slice(-4);
+	} catch {
+		return [];
+	}
+}
+
+async function waitForSessionCount(cdp, atLeast, timeoutMs = 15_000) {
+	const started = Date.now();
+	let last = 0;
+	while (Date.now() - started < timeoutMs) {
+		last = (await verb(cdp, "state")).sessionCount;
+		if (last >= atLeast) return last;
+		await wait(200);
+	}
+	return last;
+}
+
 async function sceneSidebarSplit(cdp, handle) {
 	/* The live connection, which becomes a NEW one after the restart below. */
 	let link = cdp;
@@ -20005,6 +21078,7 @@ async function main() {
 				cdp = await sceneSidebarSplit(cdp, app);
 			else if (SCENE === "canvas-freshness")
 				await sceneCanvasFreshness(cdp, app);
+			else if (SCENE === "sidebar-lazy-chats") await sceneSidebarLazyChats(cdp);
 			else if (SCENE !== "none") throw new Error(`unknown scene "${SCENE}"`);
 			for (const line of cdp.console.slice(-20)) say(`  [renderer] ${line}`);
 		} finally {

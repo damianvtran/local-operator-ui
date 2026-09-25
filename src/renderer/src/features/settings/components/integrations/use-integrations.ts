@@ -40,6 +40,9 @@ import {
 import { fetchMcpList, mcpKeys } from "@shared/api/local-operator/mcp-list";
 import {
 	type CanonicalSessionRow,
+	// Ported from main's #505 (`feat/sidebar-lazy-chats`): the page a borrow
+	// asks for is the WIDEST one, not the catalogue's head page.
+	LEGACY_CATALOGUE_PAGE,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -71,6 +74,18 @@ import {
  *
  * Only the session route needs this: its reads and writes are addressed to a
  * session. Newest by `updated_at`, the roster's own order breaking ties.
+ *
+ * WHAT "NEWEST" MEANS UNDER A PAGED CATALOGUE, ported with main's #505 and
+ * stated because the shorter claim above says more than this function can know.
+ * The rows handed in are the rows the CLIENT HOLDS - the head page plus whatever
+ * the reader has extended - and a head page is ranked by ATTENTION (pinned,
+ * then live, then the wake band), which is not mtime order. So this is "the most
+ * recent conversation this client is holding" and NOT "the newest conversation
+ * in the store": one older than the head page's own floor, or sitting in a
+ * collapsed group, is not a candidate here. That is still the right conversation
+ * to borrow for the question the caller asks - whether a server EXISTS, which
+ * the user config answers the same way for every cwd-derived set - and it is the
+ * honest scope of the answer.
  */
 export const newestRosterRow = (
 	rows: readonly CanonicalSessionRow[],
@@ -528,10 +543,18 @@ export function useIntegrations({
 			? (activeSessionId ?? borrowed?.session_id ?? null)
 			: null;
 
-	// The fallback's roster read, only when there is nothing to borrow yet.
+	/*
+	 * The fallback's roster read, only when there is nothing to borrow yet - and
+	 * THE SET, EXPLICITLY (ported from main's #505, round 3 Q-1 there): this page
+	 * borrows the newest conversation the client holds, so what it wants is the
+	 * widest roster it can get rather than the top of it. Asking for the head page
+	 * would rank candidates by attention instead of mtime and could borrow a row
+	 * that is not the newest one held. The read only happens when the sidebar's own
+	 * has left the roster empty, so the cost is not paid twice.
+	 */
 	useEffect(() => {
 		if (route !== "session" || activeSessionId || roster.length > 0) return;
-		void fetchSessions();
+		void fetchSessions(LEGACY_CATALOGUE_PAGE);
 	}, [route, activeSessionId, roster.length, fetchSessions]);
 
 	/*
