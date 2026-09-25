@@ -454,11 +454,19 @@ export const ConversationGone: Story = {
  * the width its container queries call the floor (design review round 2, D13).
  *
  * Why this story exists. Round 1's D7 asked for "a stable width OR render the
- * composed row once", and the fixed path column answered the first half; the
- * second half was still the one state nobody had photographed, so the chip's
- * pairing with the readings cluster in a real row was geometry rather than a
- * frame. `Idle` above cannot show it: without a known directory the chip does
- * not mount at all (`cwdToShow !== undefined` is the gate).
+ * composed row once". The reserved path column answered the first half at the
+ * time and the column is retired now (`CHIP_PATH_COLUMN` is a cap), so this frame
+ * is the answer to the OTHER half: the composed row itself, in a real composer,
+ * where the chip's pairing with the row is a frame rather than a derivation.
+ * `Idle` above cannot show it: without a known directory the chip does not mount
+ * at all (`cwdToShow !== undefined` is the gate).
+ *
+ * What this frame does NOT carry, said here because its own caption invites the
+ * opposite reading: the readings cluster (this story passes no `sessionStatus`),
+ * and any freed width - its fixture path is 22 characters, PAST the 16ch cap, so
+ * the chip measures the same width before and after this change on both trees.
+ * The row that carries both the cluster and a path short enough for the cap to
+ * free width is `CwdChipEditableWithReadings` below.
  *
  * The two widths are in ONE frame on purpose. The chip's wide and floor variants
  * are behind `@min-[620px]/chatcol` / `@max-[240px]/chatcol`, so each row carries
@@ -1802,6 +1810,48 @@ export const CredentialMaskedSessionPane: Story = {
 		}
 		releaseShutter();
 	},
+};
+
+/**
+ * The composed row with the live (editable) chip AND the session's readings
+ * beside it - the state the width decision is about, at the composer's own
+ * 1024px measure.
+ *
+ * Why it exists, and it is a gap in the frame list rather than a preference:
+ * `CwdChipInRow` above mounts the editable chip with NO readings (it passes no
+ * `sessionStatus`, so the cluster never renders), and
+ * `CredentialMaskedSessionPane` below mounts the readings with a chip that has
+ * no write path - which is the READ-ONLY branch, already content-driven and
+ * carrying no path cap. So neither of the two frames the composer already had
+ * can show the one block this change moves: the readings cluster, which sits 2px
+ * behind the chip (a -6px `marginLeft` against the row's `gap-x-2`) and travels
+ * with the chip's width. This is the row where that
+ * is visible, and the row the geometry rig measures the translation in.
+ *
+ * TWO FACTS ABOUT THIS FRAME a reader would otherwise have to derive: the chip
+ * paints `/Users/you` rather than `~`, because this story file installs no
+ * `getHomeDirectory` stub (the chip's `~/` short form is a call to that stub, and
+ * the cwd-move frames in the same PR do stub it - see that file's own note); and
+ * the cwd is deliberately SHORT, because a path that overflows the 16ch cap
+ * renders the same width before and after this change and would hide the very
+ * difference the frame exists to show.
+ */
+export const CwdChipEditableWithReadings: Story = {
+	render: () => (
+		<Frame label="the editable cwd chip with the session's readings on the row: the chip takes only the width its path needs, and the readings cluster follows it">
+			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story"
+					cwd="/Users/you"
+					cwdWritePath={MOVING_CWD}
+					sessionStatus={SESSION_READINGS}
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	),
 };
 
 /**
