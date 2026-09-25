@@ -833,6 +833,11 @@ const STAMP_BINDING_NOTES = [
 	 * asked.
 	 */
 	"cwdChipCapRestampNote",
+	/*
+	 * This pass's own: it re-stamps a change that moves `src/` without touching a
+	 * frame, so the reader is owed the pair and the reason no still was owed.
+	 */
+	"liveSettleLabelRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
