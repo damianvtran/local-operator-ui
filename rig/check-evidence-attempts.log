@@ -14,3 +14,16 @@ Evidence check DEFERRED: another sweep holds the machine lease; retry after it f
 attempt 4 elapsed=6s
 # rc=75 bounded=False elapsed=5.8s
 Evidence check DEFERRED: another sweep holds the machine lease; retry after it finishes. No frames checked. Do not delete the lock file.
+=== attempt 5 probe=HELD start 19:47:58
+attempt 5 elapsed=5s
+# rc=75 bounded=False elapsed=5.1s
+Evidence check DEFERRED: another sweep holds the machine lease; retry after it finishes. No frames checked. Do not delete the lock file.
+=== attempt 6 probe=HELD start 19:48:43
+attempt 6 elapsed=8s
+# rc=75 bounded=False elapsed=7.6s
+Evidence check DEFERRED: another sweep holds the machine lease; retry after it finishes. No frames checked. Do not delete the lock file.
+=== attempt 7 probe=FREE start 19:49:31
+attempt 7 elapsed=910s
+# rc=-15 bounded=True elapsed=910.1s
+RAN WITHOUT VERDICT (bounded) - see ce-7.log
+=== SWEEP DRIVER DONE 20:04:41

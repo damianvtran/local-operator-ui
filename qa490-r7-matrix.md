@@ -79,6 +79,10 @@ Round 6's published `486351dbd` column, against this head:
 | 2k | open mid-turn, counts (`a-counts`) | 1 read / 328, `+91 -19` on the first frame | **1 / 328**; first frame 0 stand-ins / 26 blank; the row the fold row measures carries **`+91 -19` in the first-frame dump too**; 2 of the 3 mounted edit rows carry counts on the first frame, all 3 by settle (`+59`, `+19 -1`, `+91 -19`); settled 56/0/0 | PASS, identical |
 | 2l | short turn plus a running round (`c2-short-running`) | 1 read / 100; 2 empty then 2 stand-ins | **1 / 100**; first frame 0 stand-ins / 2 blank; settled 34 rows / 2 stand-ins / 0 blank | PASS, identical |
 | 2m | finished conversation (`b-finished`) | 0 reads | **0 reads**; settled 30 rows / 0 stand-ins / 0 blank | PASS, identical |
+| 2n | **the mixing shape this delta's logic actually edits**: R16's shape **plus** a compose still waiting at a gate (`r6-noclock-settled-pending`) | 3 / 333, EARLY labelled, waiting compose not painted | `110T 113B 110B` = **333**, 58 rows/1 stand-in/0 blank, `EARLY` **labelled**, the waiting compose **absent** — not painted under any record id | PASS, identical |
+| 2o | the blocked variant of the same mixing shape (`r6-noclock-blocked-pending`) | 3 / 333, EARLY labelled | **333**, `EARLY` labelled, waiting compose absent | PASS, identical |
+| 2p | the all-clockless runtime (`r5-oldruntime-noclock-pair`) | 3 / 324, EARLY labelled | **324**, `EARLY` labelled, `UNPRESENT` not painted, 0 blank | PASS, identical |
+| 2q | counts-journal stray row plus a pending compose (`r5-counts-stray-pending`) | 1 / 331 | **1 / 331**, stray row `… QA-STRAY`, waiting call not painted, 56 rows/0 stand-ins/0 blank | PASS, identical |
 
 ## 3. The fold regression sweep, this head
 
@@ -102,17 +106,23 @@ All four in one invocation: 206 tests, 206 pass, 0 fail.
 
 ## 5. `pnpm check-evidence`
 
-**BLOCKED — the machine lease, not load.** The sweep is admitted by a non-waiting
-`flock` on `/tmp/local-operator-ui-check-evidence.lock`
-(`scripts/evidence-run-guard.py`), so a free probe is not an admission: the lease was
-**FREE at 19:44:27** and **HELD by another session at 19:44:31**, and every bounded
-attempt then failed closed in ~4–7 s with `Evidence check DEFERRED: another sweep holds
-the machine lease… No frames checked` and `rc=75` (pnpm's `ELIFECYCLE`, exit 75). That is
-contention between sessions on a shared lock, not the load-bound failure round 6
-recorded; the sweep never started, so there is no partial sweep to report. Every attempt
-was run in its own process group under `bounded.py` with a 900 s bound, and no run
-survived it (see the attempt log in this ref's `rig/`). CI's `Desktop Tests` on this head
-is the evidence gate here.
+**BLOCKED — lease contention first, then the bound.** Seven attempts, each in its own process
+group under `bounded.py` with a 900 s bound (raw log: `rig/check-evidence-attempts.log`):
+
+- attempts 1–6 (19:44:55 → 19:48:43) probed the lease **HELD** and failed closed in **4.2–7.6 s**
+  each, with `Evidence check DEFERRED: another sweep holds the machine lease… No frames checked`
+  and `rc=75` — the sweep never started, so those are contention between sessions on a shared
+  lock, not a load failure;
+- attempt 7 (19:49:31) won the lease (probed FREE — it was FREE at 19:44:27 and already HELD at
+  19:44:31, taken by another session between my probe and my first launch) and **ran the full
+  bound**: `rc=-15`, `bounded=True`, **elapsed 910.1 s**, output = pnpm's banner plus
+  `ELIFECYCLE`, **no verdict and no progress lines**.
+
+The group was reaped on the bound (`SIGTERM` then `SIGKILL`); no survivor process carried my
+worktree's cwd afterwards, and the lease re-probed **FREE at 20:04:52** — my sweep released it. The
+second failure mode is round 6's (the sweep dies under fleet load); this round adds the elapsed-time
+evidence and shows the lease is contended besides. Neither is a property of this PR: CI's
+`Desktop Tests` on this head is the pixel-sweep gate here.
 
 ## Notes (informational, not findings)
 
