@@ -471,8 +471,17 @@ test("the send control is pressable while a send is in flight", () => {
 	 * guards a slash action half a file away), and a file-wide match would pin one of
 	 * those instead of the button this finding is about.
 	 */
-	const at = composer.indexOf('aria-label="Send message"');
-	assert.ok(at > 0, "the send control moved");
+	/*
+	 * THE CONTROL IS FOUND BY ITS LABEL'S TAIL, not by a literal
+	 * `aria-label="Send message"`. Main's #482 made the label follow the DESTINATION
+	 * ("Ask the aside" while a panel is attached), so the send button's label is a
+	 * ternary now and the old anchor matched nothing at all - a source assertion that
+	 * matches nothing is a failure, which is how the fold surfaced it.
+	 */
+	const at = [...composer.matchAll(/aria-label=\{/g)]
+		.map((match) => match.index)
+		.find((index) => composer.slice(index, index + 900).includes('"Send message"'));
+	assert.ok(typeof at === "number" && at > 0, "the send control moved");
 	const button = composer.slice(
 		composer.lastIndexOf("<Button", at),
 		composer.indexOf("</Button>", at),

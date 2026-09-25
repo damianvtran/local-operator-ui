@@ -312,6 +312,29 @@ export const stagedPayloadOf = (conversationId: string): StagedPayload => {
 };
 
 /**
+ * Retire exactly the entries in a snapshot, through the store's own removers.
+ *
+ * RESTORED BY THE FOLD (`origin/main` = `f9d92ac1e`), and it is main's own helper:
+ * the aside's settlement is the one caller that has to clear the staged halves
+ * WITHOUT recording them as in flight, because an off-record ask that is ANSWERED
+ * consumed them and one that is REFUSED keeps them (see `settleOffRecordPayload`).
+ * `inFlight` is a statement about a message on the wire, so the ask's halves cannot
+ * go through it - which is why `clearOnce` (this branch's single store update, for
+ * the sends that are on the wire) and this function both exist rather than one of
+ * them standing in for the other.
+ */
+export const clearStagedPayload = (
+	conversationId: string,
+	staged: StagedPayload,
+): void => {
+	const store = useConversationInputStore.getState();
+	for (const reply of staged.replies)
+		store.removeReply(conversationId, reply.id);
+	for (const attachment of staged.attachments)
+		store.removeAttachment(conversationId, attachment.id);
+};
+
+/**
  * The disclosure a caller with no capture to report hands over: nothing.
  *
  * A named function rather than an inline `() => 0` default, so the identity is
@@ -796,13 +819,6 @@ export const useMessageInput = ({
 		 * outcome that is deliberately not written to the history log.
 		 */
 		let outcome: SendOutcome;
-		const clearOnce = () => {
-			if (cleared) return;
-			cleared = true;
-			if (initializedRef.current !== conversationId) return;
-			setInputValue((current) => clearSubmittedText(current, submitted));
-			if (conversationId && staged && !stagedSettledByAsk)
-				clearStagedPayload(conversationId, staged);
 		/*
 		 * One clear per submit, whichever of its two triggers gets there first, and
 		 * only over the payload this submit is actually carrying: an echo that lands
@@ -837,7 +853,6 @@ export const useMessageInput = ({
 					record,
 				);
 		};
-		};
 		/*
 		 * The persisted draft is retired as the send settles, not as it starts,
 		 * because until then the text is still this composer's: the box is holding
@@ -859,7 +874,7 @@ export const useMessageInput = ({
 			 * would leave a durable "unconfirmed" record over a message the owner
 			 * took, which a restart would then hand back to the user as unsent.
 			 */
-			const outcome = await onSubmit?.(submitted, () => clearOnce(true));
+			outcome = await onSubmit?.(submitted, () => clearOnce(true));
 			if (outcome === false) {
 				/*
 				 * THE FAILURE ARM'S WHOLE JOB IS TO NOT UNDO THE STORE'S WORK. The

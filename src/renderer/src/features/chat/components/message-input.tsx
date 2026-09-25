@@ -1823,9 +1823,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * cannot be seen apart - or, for an answered aside whose box emptied at the
 			 * press, in the commit `setRetireRequest` makes here. A REFUSED send keeps the map, because the
 			 * operator's unsent draft must not lose the value behind a pill they can
-			 * still see. `SEND_HELD` is the same case — the message may be on the owner
-			 * and its own retry lives on the store's claim, so the value has to stay
-			 * until that resolves.
+			 * still see, and an off-record ask keeps it until its own answer says
+			 * whether the value was consumed (both are `false`-like outcomes: nothing
+			 * left the machine with it).
 			 */
 			retirePayloads.current = true;
 			setRetireRequest((request) => request + 1);
@@ -1933,40 +1933,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * (or of the notice's Retry) over unchanged bytes.
 				 */
 				if (accepted === false) return accepted;
-				/*
-				 * THE MAP IS CLEARED ONCE THE STORE HOLDS THE VALUES (§9.5), and only
-				 * then: a REFUSED send keeps it, because the operator's unsent draft must
-				 * not lose the value behind a pill they can still see. A REFUSED send is
-				 * the only case that needs the sentence now, and it needs it more than
-				 * ever: the failed message is back in the composer with its pill still
-				 * rendered, and its retry is a press over the same bytes - so the value
-				 * stays until the buffer that cites it is retired for another reason.
-				 */
-				/*
-				 * THE MAP IS RETIRED ONCE THE STORE HOLDS THE VALUES (§9.5) AND THE BUFFER
-				 * HAS STOPPED CITING THEM - the order matters, and getting it wrong was a
-				 * real window: clearing the map first left the raw
-				 * `[Credential #1, 19 chars]` on screen with nothing to paint it as a pill,
-				 * and an Enter inside that window sent a citation no map entry backed any
-				 * more (code review round 1, MINOR-5). `retirePayloads` is the request; the
-				 * effect below performs it in the commit that empties the box, so the two
-				 * cannot be seen apart. A REFUSED send keeps the map, because the
-				 * operator's unsent draft must not lose the value behind a pill they can
-				 * still see. A REFUSED send is the only case that needs the sentence now,
-				 * and it needs it more than ever: the failed message is back in the
-				 * composer with its pill still rendered, and its retry is a press over the
-				 * same bytes - so the value stays until the buffer that cites it is retired
-				 * for another reason.
-				 */
-				retirePayloads.current = true;
-				setDisclosure(null);
-				/*
-				 * And the locked run's record goes with the buffer it was made from: the box a
-				 * SENT message left behind is not the box that ran the command, and an undo
-				 * pressed after the send used to put the consumed line back on screen (code
-				 * review round 2, MINOR 1).
-				 */
-				lockedRun.current = null;
 				/*
 				 * THE CHIP ROW IS NOT CLEARED HERE ANY MORE, and that is the fix rather
 				 * than an omission. It used to be cleared on this line - i.e. once the
