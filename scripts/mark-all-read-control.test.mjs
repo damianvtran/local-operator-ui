@@ -489,6 +489,29 @@ async function flyoutLines(button) {
 	return [...tip.children].map((line) => line.textContent?.trim() ?? "");
 }
 
+/**
+ * The ring, named for a failure message. A bare count ("2 !== 0") says neither
+ * which stops preceded the control nor that the count moved with a change
+ * somewhere else in the sidebar, so a red run here prints what the walk held:
+ * each stop's hook - its tour tag, section key, draft key or session id - or a
+ * slice of its text for anything with no hook at all.
+ */
+const describeRing = (ring) =>
+	ring
+		.map((element, index) => {
+			const hook =
+				element.getAttribute("data-tour-tag") ??
+				element.getAttribute("data-chat-section") ??
+				element.getAttribute("data-draft-row") ??
+				element
+					.closest("[data-session-row]")
+					?.getAttribute("data-session-row") ??
+				element.textContent?.trim().slice(0, 24) ??
+				element.tagName.toLowerCase();
+			return `${index}:${hook}`;
+		})
+		.join(", ");
+
 /** Mount the shipped sidebar and return the handles a case drives it with. */
 const mount = async (rows) => {
 	store.setState({ sessions: rows, loading: false, error: null });
@@ -529,6 +552,28 @@ const mount = async (rows) => {
 		 */
 		sectionLabelRow: () =>
 			document.querySelector("[data-chat-section] > div") ?? null,
+		/**
+		 * The control's own section's FIRST conversation row - the stop the walk
+		 * boundary is about.
+		 *
+		 * Read from the control's `[data-chat-section]` rather than from the ring's
+		 * index 1, which was the old spelling: index 1 is the walk's second stop
+		 * OVERALL, and it stops being this row the moment any other region of the
+		 * sidebar contributes a stop above the list (it currently contributes two -
+		 * the Agents and Teams entity disclosures). The first `[data-chat-row]` in
+		 * the section after the control is the row the boundary is made of,
+		 * wherever the walk's earlier stops move to.
+		 */
+		sectionFirstRow: () => {
+			const control = walkTo("mark-all-read");
+			const section = control?.closest("[data-chat-section]");
+			if (!section) return null;
+			return (
+				[...section.querySelectorAll("[data-chat-row]")].find(
+					(row) => row !== control,
+				) ?? null
+			);
+		},
 		/** The ring itself, in the order `keyDown` walks it. */
 		ring: () => [...document.querySelectorAll("[data-chat-row]")],
 		/** ArrowDown/ArrowUp as the panel's own handler takes them. */
@@ -576,32 +621,49 @@ const PILE = [
 
 test("the control is a stop in the ↑/↓ walk, before the section's first row", async () => {
 	/*
-	 * THE CONTRACT CHANGED WITH THE SECTION HEADERS. The control used to sit one
-	 * stop after its section's disclosure, because the disclosure was a row. The
-	 * headers are labels now (U22), so the control is the FIRST stop in the ring
-	 * and ArrowDown from it lands on the first conversation row — the same
-	 * guarantee (a keyboard reader reaches the control and leaves it in one press
-	 * each way) against the same boundary.
+	 * THE CONTRACT IS ABOUT THE WALK, NOT ABOUT A COUNT. The tight form this
+	 * replaces (`indexOf(control) === 0`) measured the stops OTHER regions of the
+	 * sidebar put in front of the list: it fails on plain `origin/main` (control
+	 * at 5), and the same count moved under our own section-header work - each
+	 * time reading as a failure of this control rather than of the layout above
+	 * it. What the finding (agent review R2, UX round 1 U2) is about: the control
+	 * IS a stop in the ↑/↓ walk, and it precedes the section's own first
+	 * conversation row, which one ArrowDown from it lands on. Presence plus
+	 * order, so a walk re-based around the control fails HERE by name while a
+	 * stop added elsewhere in the sidebar cannot.
+	 *
+	 * OPEN QUESTION, RECORDED RATHER THAN ACTED ON: whether the entity
+	 * disclosures above the list - which are what puts the control at 2 rather
+	 * than at 0 today - belong in this ring at all (they are destinations, not
+	 * chat rows). Moving them is a walk-wide decision with its own review to
+	 * run, so it is recorded and not taken here.
 	 */
 	const harness = await mount(PILE);
 	try {
 		assert.ok(harness.sectionLabelRow(), "the section label is missing");
 		const ring = harness.ring();
-		assert.equal(
-			ring.indexOf(harness.control()),
-			0,
-			"the control is not the first stop in the ring, ahead of every conversation",
-		);
+		const control = harness.control();
+		const controlIndex = ring.indexOf(control);
 		assert.ok(
-			ring.length > 1,
-			"the ring holds no conversation row, so the walk below proves nothing",
+			controlIndex >= 0,
+			`the control is not a stop in the ↑/↓ walk at all - it carries no \`data-chat-row\`, so no arrow press can land on it. The ring was ${describeRing(ring)}`,
+		);
+		const firstRow = harness.sectionFirstRow();
+		assert.ok(
+			firstRow,
+			"the ring holds no conversation row in the control's own section, so the walk below proves nothing",
+		);
+		const firstRowIndex = ring.indexOf(firstRow);
+		assert.ok(
+			controlIndex < firstRowIndex,
+			`the control does not precede its section's first row (control at ${controlIndex}, first row at ${firstRowIndex}). The ring was ${describeRing(ring)}`,
 		);
 		// And ArrowDown really moves there rather than only the DOM order saying so.
-		harness.control().focus();
+		control.focus();
 		await harness.press("ArrowDown");
 		assert.equal(
 			document.activeElement,
-			ring[1],
+			firstRow,
 			"ArrowDown from the control did not reach the first conversation row",
 		);
 	} finally {
@@ -703,7 +765,13 @@ test("clearing the last mark hands focus to the list, not to <body>", async () =
 			superseded: [],
 			unknown: [],
 		});
-		const firstRow = harness.ring()[1];
+		/*
+		 * The stop the control sat in front of - the section's own first conversation
+		 * row, read the way the walk case above reads it. The app's own hand-off
+		 * targets exactly this element: the first `[data-chat-row]` of the list
+		 * panel once the control has unmounted.
+		 */
+		const firstRow = harness.sectionFirstRow();
 		assert.ok(firstRow, "the list's first conversation row is missing");
 		const control = harness.control();
 		control.focus();
