@@ -174,7 +174,11 @@ export const useTeams = () => ({ data: [], error: null, isLoading: false, refetc
 	"@shared/themes": `export const DEFAULT_THEME = "localOperatorDark";`,
 	"@shared/hooks/use-canonical-session": `export const echoPendingUser = () => undefined;
 export const retractPendingUser = () => undefined;
-export const discardPendingEchoes = () => undefined;`,
+export const discardPendingEchoes = () => undefined;
+// The store's echo seam gained this with main's unconfirmed-echo work. A
+// stub that does not export it fails the whole esbuild pass, which is how
+// this was caught rather than silently missing.
+export const retractLocalEcho = () => "queued";`,
 };
 const STUB_PATHS = Object.keys(STUB_CONTENTS);
 

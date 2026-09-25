@@ -2766,7 +2766,15 @@ export function useCanonicalSessionStream(
 						 */
 						if (event.kind === "error" && event.code === "session_is_remote") {
 							if (sessionId) dropPaint(sessionId);
-							setView((current) => ({
+							/*
+							 * `commitView`, NOT `setView` - the semantic conflict this fold's
+							 * auto-merge hid, caught by main's round-8 count. This arm was written
+							 * before that invariant existed and reached React's state WITHOUT
+							 * landing on `viewRef`, so the next `commitView` spread the stale ref
+							 * over it and undid the write - which is how a released label came
+							 * back held. Same functional update, the file's one writer.
+							 */
+							commitView((current) => ({
 								...current,
 								subscriptionId: null,
 								status: "unavailable",
