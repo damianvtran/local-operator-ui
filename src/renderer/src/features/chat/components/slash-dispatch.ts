@@ -42,6 +42,7 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+import { useAsideStore } from "@shared/store/aside-store";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
 	PANEL_REQUEST_TTL_MS,
@@ -53,6 +54,12 @@ import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import type { NativeDesktopAction } from "../../../../../shared/desktop-control-contract";
 import type { DesktopCommandReceipt } from "../../../../../shared/desktop-session-contract";
+import {
+	asideAskBlockedReason,
+	askAside,
+	openAsidePanel,
+	reportUncarriedAsideRefusal,
+} from "../aside";
 import {
 	ARCHIVE_ALREADY_ARCHIVED_REASON,
 	ARCHIVE_NOT_ARCHIVED_REASON,
@@ -125,6 +132,36 @@ type SlashDispatchOptions = {
 	focusCwdChip?: () => void;
 	/** Shares the composer's request latch, receipt and eval-history state. */
 	moveSession: (path: string) => Promise<MoveCommitOutcome>;
+	/**
+	 * Retire the composer's own aside refusal, which is the page's line and no part
+	 * of this dispatcher's state.
+	 *
+	 * When this door starts a new aside - a bare `/btw` attaching a panel, or
+	 * `/btw <question>` asking one - anything the composer's error line still says
+	 * about a PREVIOUS ask is stale, and it sits directly above the new panel (design
+	 * round 2, D7). The line is cleared by the surface that raises it, which is why
+	 * this is a callback rather than a store write: `chat-page.tsx` owns both the
+	 * aside refusal it renders and the ordinary send errors beside it, and only it
+	 * knows that a new attempt retires the last one.
+	 */
+	clearAsideRefusal?: () => void;
+	/**
+	 * State the composer's own ASIDE BUSY sentence, on the composer's own line.
+	 *
+	 * The one refusal this door has that is not a RECORD (UX round 2, U13). A
+	 * follow-up asked while the exchange is still answering is refused here with the
+	 * draft retained, exactly as the composer door refuses it - but this door's
+	 * surface was the transcript, so the same momentary condition was written as a red
+	 * receipt that stayed between unrelated turns long after it had stopped being
+	 * true, while the other door stated it on a line that retires with the state.
+	 * One condition, one lifetime, one surface: the page owns the line, so the page
+	 * writes it (the same argument `clearAsideRefusal` above records).
+	 *
+	 * Absent means the caller has no composer line to state it on, and only then does
+	 * this door fall back to the receipt - which is the honest surface for a caller
+	 * with nothing else, and why the fallback stays.
+	 */
+	noteAsideRefusal?: (sentence: string) => void;
 	/**
 	 * Whether a move can be asked for on this pane AT ALL, as the chip decides it.
 	 *
@@ -265,6 +302,8 @@ export function useSlashDispatch({
 	focusCwdChip,
 	moveSession,
 	moveReady,
+	clearAsideRefusal,
+	noteAsideRefusal,
 }: SlashDispatchOptions) {
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
@@ -860,6 +899,110 @@ export function useSlashDispatch({
 				return "consumed";
 			}
 
+			/*
+			 * `/btw` — THE ASIDE PANEL, above the composer and never a dialog.
+			 *
+			 * ONE ENTER, WHICH IS THE WHOLE RULE THIS BRANCH EXISTS FOR. The question
+			 * used to be routed into a MODAL picker's form state and asked only when the
+			 * user pressed Enter a second time inside it — and that dialog was modal, so
+			 * the composer it sits over took no keystrokes at all while it was up. Here
+			 * the question is asked by the SAME press that typed it: the panel is opened
+			 * (the composer's band shows it above the box) and the ask leaves at once.
+			 *
+			 * The text leaves the composer in this press — a whole-draft command is a
+			 * `whole` clear (`applyPlan`) — so the question has to be somewhere the user
+			 * can read it the instant it goes. It is: `askAside` registers the turn in the
+			 * store the panel renders from BEFORE it posts, so the panel paints the
+			 * question and its thinking state in the same commit the box empties.
+			 * That is also why this branch does not AWAIT the ask: the answer can take
+			 * seconds, and returning the outcome would hold the composer's own clear until
+			 * the model finished — leaving a question in the box that is visibly being
+			 * answered above it. A refusal lands on the panel, which is the surface that
+			 * asked for it (the TUI's own rule for this card) - or in the transcript when
+			 * the panel was closed first and holds no turn to state it on (below).
+			 *
+			 * A BARE `/btw` opens the panel EMPTY and asks nothing: there is no question
+			 * yet, and the next line typed into the composer becomes the aside's first
+			 * turn — the box's own `send` asks the same store where a draft goes, so no
+			 * second command is needed to say so.
+			 */
+			if (entry?.kind === "aside") {
+				/*
+				 * A NEW ASIDE RETIRES THE LINE THAT DESCRIBED THE LAST ONE (design round 2,
+				 * D7). A composer-line refusal outlived a fresh panel and sat directly above
+				 * it — measured 40px from an identical transcript note about a DIFFERENT ask —
+				 * which is D7 in one picture. The page's line is cleared by the page, because
+				 * the surface that raises a sentence is the one that knows its scope, and
+				 * this door never reached `setSendError(null)` at all: only a text edit or a
+				 * thread send cleared it, so a refusal about an aside the user had already
+				 * dismissed stayed on screen while the aside was re-opened.
+				 */
+				clearAsideRefusal?.();
+				if (args) {
+					/*
+					 * A FOLLOW-UP ASKED WHILE THE EXCHANGE IS STILL ANSWERING IS REFUSED HERE, WITH
+					 * THE COMPOSER'S OWN TEXT KEPT (UX round 1, U2). `retained` is that outcome: the
+					 * press did not run, so the draft stays for the user to send when the answer
+					 * settles (see `SlashDispatchOutcome`). Without it this door emptied the box,
+					 * painted the question and then failed 800ms later — the owner refuses a
+					 * continuation of an entry it is still running. The gate is the same predicate
+					 * the composer's own send applies, so the two doors cannot disagree about when
+					 * a question may leave.
+					 */
+					const busy = asideAskBlockedReason(
+						useAsideStore.getState(),
+						sessionId,
+					);
+					if (busy) {
+						/*
+						 * THE SENTENCE GOES ON THE COMPOSER'S LINE, NOT INTO THE TRANSCRIPT (UX
+						 * round 2, U13). "Wait a moment" is not a record: it stopped being true
+						 * the instant the answer landed, and it sat in the transcript for the rest
+						 * of the session - measured between two unrelated turns. The other door
+						 * says the same condition on a line that the page retires with the state.
+						 */
+						if (noteAsideRefusal) noteAsideRefusal(busy);
+						else note(busy, true);
+						return "retained";
+					}
+					/*
+					 * THE PANE'S SUBSCRIPTION ID TRAVELS WITH THE ASK, on this door too.
+					 * The answer's chunks are published on the session's stream, which every
+					 * attached viewer of that session reads, so an owner that routes them to
+					 * the requesting subscription needs to be told which one asked - and
+					 * leaving it off here would make the ONE-ENTER path (the door this whole
+					 * branch exists for) the one that never receives a chunk, painting the
+					 * settled answer with no thinking state and no streaming. The id is the
+					 * `open` frame's `payload.subscription_id`, which the canonical handle
+					 * keeps; it is absent only before the stream's first `open`. See
+					 * `askAside`'s `subscriptionId` parameter for the whole statement of what
+					 * an id no live subscription owns costs (QA round 1, Q3: no frames, no
+					 * error, the settled answer in one piece).
+					 */
+					const ask = askAside(
+						sessionId,
+						args,
+						canonical.subscriptionId ?? undefined,
+					);
+					/*
+					 * A REFUSAL THE PANEL CAN NO LONGER STATE IS STATED IN THE TRANSCRIPT
+					 * (review round 3, F9). This door consumed the whole draft at the press,
+					 * so Escape on the panel before the answer takes the question off the
+					 * screen with it and leaves `failAside` nothing to write on; an empty
+					 * handler here then lost both the question and the refusal without a
+					 * word. The dispatcher has no composer error line, so its surface is the
+					 * receipt note every other refused command already uses. Same tick as
+					 * the ask, for the reason on the helper.
+					 */
+					reportUncarriedAsideRefusal(ask, sessionId, (sentence) =>
+						note(sentence, true),
+					);
+				} else {
+					openAsidePanel(sessionId);
+				}
+				return "consumed";
+			}
+
 			// Owner commands whose bare form is a READ (goal shows the goal,
 			// context shows the breakdown, compact starts a pass) present in the
 			// host straight away: the adapter makes the same owner call and shows
@@ -1048,6 +1191,18 @@ export function useSlashDispatch({
 			paneReady,
 			moveSession,
 			presentCwdChip,
+			/*
+			 * The page's own error line is a dependency because this door now retires it
+			 * when it starts an aside (design round 2, D7): a `dispatch` closed over a
+			 * stale setter would clear a line the page had since replaced.
+			 */
+			clearAsideRefusal,
+			/*
+			 * And its writer, for U13's reason (UX round 2): the busy sentence is stated on
+			 * that same line, so a `dispatch` closed over a stale writer would put it
+			 * somewhere the page is no longer reading.
+			 */
+			noteAsideRefusal,
 		],
 	);
 

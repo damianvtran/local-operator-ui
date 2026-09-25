@@ -812,7 +812,7 @@ const STAMP_BINDING_NOTES = [
 	 * written as bare SHAs instead - the convention the paragraphs above state, applied in the
 	 * direction the next fold always goes.
 	 */
-	"meshDesktopRound6FoldRestampNote",
+	"meshDesktopRound7FoldRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1137,7 +1137,25 @@ const BRANCH_RECORDS = [
 	 * commit - exactly what happened to the eight notes before them, and the reason
 	 * they were listed at all.
 	 */
+<<<<<<< HEAD
 	"meshDesktopRound2RestampNote",
+=======
+	"modelPickerRemediationRestampNote",
+	/*
+	 * Grown by the `/btw` aside panel pass, whose re-stamp is this branch's newest
+	 * top-level record. It is listed for the reason the list exists, and this
+	 * branch is a second instance of the case the entry above names: the fold onto
+	 * `origin/main` = `1020b48a9` resolved `docs/evidence/manifest.json` by taking
+	 * main's copy as the base and re-laying this branch's own records on top, and
+	 * THIS record survived only because the resolver put it back by hand - a
+	 * resolver who had not would have dropped the only statement of which two trees
+	 * the remediation moved and that no frame moved, with the gate staying green.
+	 * It is also the branch's record that names where its rendered frames live: the
+	 * evidence-only branch `evidence/btw-aside-frames`, since the sweep's frame
+	 * predicate does not admit driver-taken PNGs.
+	 */
+	"asidePanelRestampNote",
+>>>>>>> origin/main
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

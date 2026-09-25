@@ -143,6 +143,7 @@ const {
 	STORE_UNAVAILABLE_CODE,
 	UNREADABLE_ATTACHMENT_CODE,
 	ANSWER_NOT_SENT_CODE,
+	ASIDE_NOT_ANSWERED_CODE,
 	isRefusedBeforeAdmission,
 	isStoreWriteRefusal,
 	refusedBeforeAdmissionAttachments,
@@ -1353,6 +1354,13 @@ test("a leading-slash refusal is classified, and says what the user can do", asy
 	 * 1, D2 — the same inheritance D13 measured on the attachment refusal).
 	 */
 	assert.equal(withholdsRetryHint(ANSWER_NOT_SENT_CODE), true);
+	/*
+	 * And the aside's refusal, for the same reason one step further out: an aside
+	 * ask takes the question out of the box at the press, so the hint would point
+	 * at whatever the user typed SINCE the refusal was raised (UX round 1, U4). It
+	 * is the ninth term, and the second here that is not a send refusal at all.
+	 */
+	assert.equal(withholdsRetryHint(ASIDE_NOT_ANSWERED_CODE), true);
 	assert.equal(withholdsRetryHint("unresolved_attachment"), false);
 	assert.equal(withholdsRetryHint(undefined), false);
 });
