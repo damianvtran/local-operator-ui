@@ -192,7 +192,7 @@ export const TeamBound: Story = {
 		return (
 			<Band>
 				<ChatHeader
-					agentName="Redesign local-operator-ui installer loading panel"
+					agentName="Install the pinned uv on Windows"
 					description="manager · lopdev"
 					identity={identity({ activeTeam: "lopdev" })}
 					onRenameConversation={() => undefined}
@@ -209,7 +209,7 @@ export const NoTeamNoAgent: Story = {
 		return (
 			<Band>
 				<ChatHeader
-					agentName="Redesign local-operator-ui installer loading panel"
+					agentName="Install the pinned uv on Windows"
 					description="~"
 					identity={identity({})}
 					onRenameConversation={() => undefined}
@@ -226,7 +226,7 @@ export const AgentAndTeam: Story = {
 		return (
 			<Band>
 				<ChatHeader
-					agentName="Redesign local-operator-ui installer loading panel"
+					agentName="Install the pinned uv on Windows"
 					description="coder · lopdev"
 					identity={identity({ activeAgent: "coder", activeTeam: "lopdev" })}
 					onRenameConversation={() => undefined}
@@ -244,7 +244,7 @@ export const Before: Story = {
 		return (
 			<Band>
 				<ChatHeader
-					agentName="Redesign local-operator-ui installer loading panel"
+					agentName="Install the pinned uv on Windows"
 					description="manager · lopdev"
 					onOpenOptions={() => undefined}
 				/>
@@ -278,7 +278,7 @@ export const TeamMenuEmpty: Story = {
 		return (
 			<Band>
 				<ChatHeader
-					agentName="Redesign local-operator-ui installer loading panel"
+					agentName="Install the pinned uv on Windows"
 					description="manager · lopdev"
 					identity={identity({ activeTeam: "lopdev" })}
 					onRenameConversation={() => undefined}
@@ -296,7 +296,7 @@ export const TeamMenuRefused: Story = {
 		return (
 			<Band>
 				<ChatHeader
-					agentName="Redesign local-operator-ui installer loading panel"
+					agentName="Install the pinned uv on Windows"
 					description="manager · lopdev"
 					identity={identity({ activeTeam: "lopdev" })}
 					onRenameConversation={() => undefined}
