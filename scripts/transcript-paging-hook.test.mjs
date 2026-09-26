@@ -28,7 +28,9 @@ const bundle = await build({
 mkdirSync(CACHE, { recursive: true });
 const bundlePath = join(CACHE, "use-scroll-paging.mjs");
 writeFileSync(bundlePath, bundle.outputFiles[0].text);
-const { useScrollPaging, SETTLE_MS } = await import(new URL(`file://${bundlePath}`).href);
+const { useScrollPaging, SETTLE_MS } = await import(
+	new URL(`file://${bundlePath}`).href
+);
 const { createRoot } = await import("react-dom/client");
 
 after(() => {

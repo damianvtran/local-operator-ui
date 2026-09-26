@@ -552,7 +552,11 @@ test("a failed fetch does not spend the act's budget", () => {
 	let state = initialPagingState();
 	state = wheelUp(state, 0);
 	const first = decide(state, geo({ distanceFromTopPx: 0 }), 5);
-	assert.equal(first.action, "fetch", "the push at the wall buys its round trip");
+	assert.equal(
+		first.action,
+		"fetch",
+		"the push at the wall buys its round trip",
+	);
 	state = noteFailed(first.state);
 
 	// Same act: the notch is well inside GESTURE_GAP_MS of the last input, so
