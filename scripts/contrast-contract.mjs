@@ -1256,6 +1256,29 @@ const CONTROLS = [
 		border: "borderControl",
 		ink: "ink",
 	},
+	{
+		/*
+		 * A device node on the Mesh tab's canvas (`mesh-node.tsx`).
+		 *
+		 * THE GROUND IS `sunken`, because the canvas is a well: the topology is drawn
+		 * inside one recessed region rather than on the page. The node's boundary is
+		 * `border-control` and that is a decision the numbers made rather than taste: it
+		 * shipped as a `hairline` first, and `hairline` against the node's own `elevated`
+		 * fill measures ΔE00 1.44 on `localOperatorLight` and 1.23 on `localOperatorDark`
+		 * - below this file's own ΔE00 2.0 field floor, i.e. a boundary nobody can see -
+		 * while the fill's own step off the well (`elevated` on `sunken`) is ΔE00 6.85 / 7.71,
+		 * which is what separates the node.
+		 *
+		 * The SELF node's accent stripe, the warning and danger stripes and the ink edge a
+		 * selected node takes are all state, not boundary, and each is a role this file
+		 * already measures (accent, warning, danger on their grounds; ink on fill here).
+		 */
+		name: "mesh device node",
+		on: ["sunken"],
+		fill: "elevated",
+		border: "borderControl",
+		ink: "ink",
+	},
 ];
 
 /**
@@ -3630,16 +3653,6 @@ const ROW_STATE_STEP_SLACK = 0.25;
 const ROW_STATE_NEUTRAL_PANEL = 2.0;
 /* An accent below this chroma has no hue to speak with either. */
 const ROW_STATE_ACCENTLESS = 2.0;
-/*
- * The same derivation the role loop reads, in a form the pair-separation check
- * (which sits outside that loop) can call for itself. Keyed on the PANEL's
- * chroma and never on a palette's name.
- */
-const isNeutralClass = (palette) => {
-	const [, a, b] = toLab(palette.surface);
-	return Math.hypot(a, b) < ROW_STATE_NEUTRAL_PANEL;
-};
-
 /*
  * THE TWO LEDGERS, and they are LEDGERS rather than exemptions: every row names
  * the bound a palette cannot hold, and the assertion that would have failed

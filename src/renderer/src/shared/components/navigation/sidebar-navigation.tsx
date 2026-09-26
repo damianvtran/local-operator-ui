@@ -18,6 +18,7 @@ import {
 } from "@features/command-palette/palette-shortcut";
 import {
 	desktopFeatureEnabled,
+	desktopFeatureState,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
@@ -38,6 +39,7 @@ import {
 	ChevronRight,
 	Globe,
 	MessageSquarePlus,
+	Network,
 	Search,
 	Settings,
 	Store,
@@ -154,6 +156,13 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * chat header's count.
 	 */
 	const browserApprovals = useAppWideApprovals();
+	/*
+	 * Whether this device is in any mesh AT ALL, as the tri-state: `enabled` is the
+	 * only value that draws a row, which is the same rule `app.tsx` mounts the route
+	 * on (one gate, read in two places, rather than a row that leads to a route that
+	 * is not there).
+	 */
+	const meshState = desktopFeatureState(capabilities.data, "peers");
 
 	const navItems: NavItem[] = [
 		{
@@ -188,6 +197,24 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			isActive: currentView === "agent-hub",
 			tourTag: "nav-item-agent-hub",
 		},
+		/*
+		 * The Mesh tab, ONLY when the backend advertises `features.peers`: a rail item
+		 * for a mesh the user is not in would be a dead end on the one piece of chrome
+		 * that is on screen everywhere. Placed after Agent hub and before the Settings
+		 * row - it is a view of THIS machine's infrastructure, which is nearer to Settings
+		 * than to any chat surface.
+		 */
+		...(meshState === "enabled"
+			? [
+					{
+						icon: Network,
+						label: "Mesh",
+						path: "/mesh",
+						isActive: currentView === "mesh",
+						tourTag: "nav-item-mesh",
+					},
+				]
+			: []),
 	];
 
 	/*

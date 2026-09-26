@@ -22,6 +22,7 @@ import { OnboardingProvider } from "@features/onboarding/components/onboarding-p
 import { ConnectProviderDialog } from "@features/providers/connect-provider-dialog";
 import {
 	desktopFeatureEnabled,
+	desktopFeatureState,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import {
@@ -72,6 +73,17 @@ const SchedulesPage = lazy(() =>
 const BrowserPage = lazy(() =>
 	import("@features/browser/components/browser-page").then((m) => ({
 		default: m.BrowserPage,
+	})),
+);
+/*
+ * The Mesh tab. Lazy like every other page, and ROUTED ONLY WHEN the backend
+ * advertises `features.peers` (see the gate below): a machine in no network never
+ * loads its chunk at all, which is the half of "ships dark" a chunk boundary can
+ * carry.
+ */
+const MeshPage = lazy(() =>
+	import("@features/mesh/mesh-page").then((m) => ({
+		default: m.MeshPage,
 	})),
 );
 const SettingsPage = lazy(() =>
@@ -175,6 +187,21 @@ const App: FC = () => {
 		"session_catalogue",
 		2,
 	);
+	/*
+	 * The Mesh tab's gate, read as the TRI-STATE and not as the boolean.
+	 *
+	 * `desktopFeatureEnabled` is this function's `=== "enabled"` projection, so the two
+	 * agree about what may mount - and that agreement is the point of reading the
+	 * tri-state at the site that decides it: `unpaired` (this app holds no credential
+	 * for the daemon), `below-version` (the daemon predates `peers`) and `unknown` (no
+	 * answer yet) are three different reasons a route is absent, and collapsing them
+	 * before the decision is how a surface comes to guess a cause it cannot see. The
+	 * route is mounted for `enabled` ONLY, which is `session_pins`' rule rather than a
+	 * convenience: a reserved destination that renders for a feature the user does not
+	 * have advertises something that cannot work, and a mesh the user has not joined
+	 * must leave this app's chrome exactly as it found it.
+	 */
+	const meshState = desktopFeatureState(capabilities.data, "peers");
 
 	const handleAgentCreated = (agentId: string) => {
 		navigate(`/chat/${agentId}`);
@@ -667,6 +694,12 @@ const App: FC = () => {
 										/>
 										<Route path="/schedules" element={<SchedulesPage />} />
 										<Route path="/browser" element={<BrowserPage />} />
+										{/* Mounted only with `features.peers`: without it `/mesh` falls through
+										    to the catch-all like any unknown path, rather than rendering a tab
+										    for a feature this backend does not have. */}
+										{meshState === "enabled" && (
+											<Route path="/mesh" element={<MeshPage />} />
+										)}
 										<Route path="*" element={<Navigate to="/chat" replace />} />
 									</Routes>
 								</Suspense>
