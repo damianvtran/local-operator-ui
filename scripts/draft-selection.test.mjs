@@ -8,6 +8,10 @@ import { build, transform } from "esbuild";
 
 const ROOT = process.cwd();
 
+/** The shipped picker module, for the call-site facts this file pins as source. */
+const PICKERS =
+	"src/renderer/src/features/chat/pickers/destination-pickers.tsx";
+
 /*
  * A NEW conversation's model and effort pick: what it resolves through, what it
  * records, and what it sends.
@@ -1328,5 +1332,77 @@ test("a model pick on a pane with no rung is unchanged, and passes no carry ques
 	assert.match(
 		settled.result.text,
 		/This conversation will run openrouter\/openai\/gpt-6-astra\./,
+	);
+});
+
+/* ---- 8. which model the picker thinks is running (UX round 1, U1, BLOCKER) -- */
+
+/*
+ * A HELD PICK USED TO POST A MODEL THE SESSION HAD NEVER RUN.
+ *
+ * During a reconnect the hook drops the authoritative `frontend` BY DESIGN (so
+ * the replacement stream's frames are treated as replay) and the pane keeps the
+ * readings it was last told in `heldFrontend`. The strip is handed
+ * `frontend ?? heldFrontend`; this dialog read `canonical.frontend` alone, so it
+ * mounted with NO current row marked and its cursor on catalogue row 0 — Enter
+ * then POSTed whichever model sorted first, which the strip painted as pending.
+ * The same press in the live phase marks the running row and re-picks the model
+ * already in use, so the two phases disagreed about what a press MEANS.
+ *
+ * The shipped helper is EXECUTED rather than restated, because the claim is
+ * about an expression and a copy of it here would pass while the component read
+ * something else.
+ */
+test("U1: the picker's running model is the value the strip paints, held or live", () => {
+	const source = readFileSync(PICKERS, "utf8");
+
+	const body = source.match(
+		/const runningFrontend = \(canonical: CanonicalSessionHandle\) =>\s*\n?\s*([^;]+);/,
+	);
+	assert.ok(
+		body,
+		"the picker must answer 'which model is running' in one place",
+	);
+	// eslint-disable-next-line no-new-func -- the shipped expression, executed
+	const runningFrontend = new Function("canonical", `return (${body[1]});`);
+
+	const running = { provider: "openrouter", model_id: "openai/gpt-5" };
+	const other = { provider: "deepseek", model_id: "deepseek/deepseek-pro" };
+	assert.equal(
+		runningFrontend({ frontend: running, heldFrontend: null }),
+		running,
+		"a live pane answers with the authoritative frontend",
+	);
+	assert.equal(
+		runningFrontend({ frontend: null, heldFrontend: running }),
+		running,
+		"a HELD pane answers with the held copy - the same value the strip paints",
+	);
+	assert.equal(
+		runningFrontend({ frontend: null, heldFrontend: null }),
+		null,
+		"and a pane that never had a snapshot answers with nothing, not with a guess",
+	);
+	assert.notEqual(
+		runningFrontend({ frontend: null, heldFrontend: running }),
+		other,
+		"which is what stops Enter from POSTing a model the session never ran",
+	);
+
+	/*
+	 * AND BOTH DIALOGS ASK IT THAT WAY. The two reads that decided "the model
+	 * this session is on" are pinned here so a later edit cannot quietly go back
+	 * to the authoritative field at one of them — which is exactly how the two
+	 * phases came apart.
+	 */
+	assert.equal(
+		(source.match(/runningFrontend\(canonical\)/g) ?? []).length,
+		4,
+		"both reads use the helper, on both of the fields they name",
+	);
+	assert.doesNotMatch(
+		source,
+		/canonical\.frontend\?\.(effective_model|selected_model)/,
+		"and no call site reads the authoritative frontend for the running model any more",
 	);
 });
