@@ -169,6 +169,39 @@ export type CanonicalSessionView = {
 	status: CanonicalSessionStatus;
 	frontend: CanonicalFrontendState | null;
 	/**
+	 * The last AUTHORITATIVE `frontend` this pane painted, held across a
+	 * transient stream gap.
+	 *
+	 * WHY THIS IS A SECOND FIELD RATHER THAN SIMPLY NOT CLEARING `frontend`.
+	 * `frontend` is not "the readings we have", it is a statement about THIS
+	 * epoch: the flush computes `snapshotted = next.frontend !== null` at the top
+	 * of every batch, and that boolean is what routes a replayed `event` into the
+	 * scratch transcript instead of letting it apply over newer snapshot text
+	 * (see the replay/snapshot ordering contract on the loop). A gap clears
+	 * `frontend` precisely so the frames of the replacement stream are treated as
+	 * replay again; leaving the old object there would make the next batch treat
+	 * a replayed delta as post-snapshot state, which is the older-text-regresses-
+	 * newer-text bug that ordering exists to prevent.
+	 *
+	 * So the hook keeps BOTH facts. `frontend` keeps meaning "a snapshot for the
+	 * current epoch has landed"; this holds the readings the pane was last told,
+	 * for the surfaces that must not blank while a reconnect is in flight — the
+	 * composer's readouts. It is REPLACED WHOLESALE by the next authoritative
+	 * frontend (never merged field-by-field: a half-old reading is a state the
+	 * owner never published), and it is dropped on every state that is terminal
+	 * or that belongs to another conversation: the FOUR terminal `unavailable`
+	 * writers in the stream effect (the snapshot deadline, the 404, the spent
+	 * retry budget, and the `HISTORY_UNREADABLE` arm that gives up on
+	 * `/history`), a genuine session change, and `/clear`. Each of those writes
+	 * sits beside the reason it exists.
+	 *
+	 * IT IS NOT A LIVE CLAIM, and the surfaces that read it must not present it
+	 * as one: `status` is `reconnecting` for exactly as long as this is the only
+	 * frontend there is, and the status strip marks the readings it draws from it
+	 * (`SessionStatusStripProps["held"]`).
+	 */
+	heldFrontend: CanonicalFrontendState | null;
+	/**
 	 * A model the user just chose, painted before the owner confirms it.
 	 *
 	 * A PENDING value, never a claimed one: it is dropped as soon as an
@@ -1263,6 +1296,10 @@ export function useCanonicalSessionStream(
 		return {
 			status: "connecting",
 			frontend: null,
+			// Nothing has been painted yet, so there is no reading to hold: a pane
+			// that has never had a snapshot is genuinely without readings, and a
+			// held copy here would be a claim this mount never received.
+			heldFrontend: null,
 			pendingModel: null,
 			history: null,
 			cold: false,
@@ -1765,10 +1802,23 @@ export function useCanonicalSessionStream(
 					// unreachable, and saying so with a way back is the only honest state
 					// left. `hydrated` stays false, so the composer may not claim the
 					// conversation is empty either.
+					//
+					// AND IT TAKES THE HELD READINGS WITH IT (agent review round 1,
+					// MINOR 3). This is a FOURTH terminal `unavailable` writer, and the
+					// hold's contract says every terminal state drops it: a reading kept
+					// past the point where the app has given up on the conversation is the
+					// one thing R2 forbids. It was the state MAJOR 1 turned into a mask,
+					// because `frontend` is deliberately left painted here and the mirror
+					// had therefore refilled the hold from it.
+					//
+					// `commitView` rather than `setView` is MAIN's shape, kept: the fold
+					// that brought #495 renamed this arm's writer, and the held-readings
+					// change is re-applied on top of it rather than the other way round.
 					commitView((state) => ({
 						...state,
 						status: "unavailable",
 						failure: HISTORY_UNREADABLE,
+						heldFrontend: null,
 					}));
 					return false;
 				} finally {
@@ -2272,9 +2322,18 @@ export function useCanonicalSessionStream(
 						// being erased and rewritten from its last chunk. See
 						// `markLiveRecordsTruncated` for what is marked and why exactly
 						// those rows.
+						//
+						// THE READINGS ARE KEPT TOO, in `heldFrontend`, and that is the
+						// difference between a gap and a lie: the pane still knows the
+						// model, the effort, the context window and the spend it was last
+						// told, and blanking them made a ~1.5-4 s reconnect look like a
+						// conversation being reloaded from scratch. `next.frontend` is read
+						// here because this is the LAST batch in which it is still the
+						// value the pane painted - one line later it is null.
 						next = {
 							...next,
 							frontend: null,
+							heldFrontend: next.frontend ?? next.heldFrontend,
 							history: null,
 							terminal: null,
 							status: "reconnecting",
@@ -2301,12 +2360,58 @@ export function useCanonicalSessionStream(
 							subscriptionId: frame.payload.subscription_id,
 						};
 						if (frame.payload.gap) {
+							// The same hold as the `gap` arm above, for the same reason:
+							// an `open{gap}` is the reopen AFTER a broken receipt, and the
+							// readings it must not blank are the ones on screen right now.
+							const held = next.frontend ?? next.heldFrontend;
 							next = {
 								...next,
 								frontend: null,
+								heldFrontend: held,
 								history: null,
 								transcript: markLiveRecordsTruncated(next.transcript),
 							};
+							/*
+							 * AND THE PAINT SAYS IT IS NOT LIVE, WHICH IS THE HALF THAT
+							 * MAKES THE HOLD HONEST.
+							 *
+							 * A `gap` FRAME does this itself (the arm above), because the
+							 * server sends one before it closes. This arm had no such write,
+							 * and with the hold in place that becomes a lie rather than a
+							 * blank: a reconnect the renderer asks for ITSELF (the resync
+							 * after another surface changed something, `reopen`) reaches an
+							 * `open{gap}` with `status` still `live`, so four held readings
+							 * would be painted as current over a stream that has not
+							 * replayed anything yet.
+							 *
+							 * FROM `live` ONLY, AND THAT IS A CORRECTION RATHER THAN A
+							 * TIDY-UP (agent review round 1, MAJOR 1). The write is about the
+							 * resync from a live pane. `unavailable` is a TERMINAL state the
+							 * app has already given up on, and the pane gates BOTH the
+							 * failure notice and its Reconnect control on
+							 * `status === "unavailable" && failure`
+							 * (`canonical-transcript.tsx`). Overwriting it here left
+							 * `failure` standing while the status said `reconnecting`, so the
+							 * diagnosis and the only control that can act disappeared behind
+							 * a line claiming progress. Two doors reach that state with a
+							 * non-null hold: the `HISTORY_UNREADABLE` arm below, and the
+							 * retry arm, which deliberately PRESERVES `unavailable` +
+							 * `failure` across its own `connect()`.
+							 *
+							 * The road not taken, recorded: clearing `failure` in this same
+							 * write. The failure is a true statement the app has already
+							 * made, and the retry arm keeps it ON PURPOSE; a status write is
+							 * not the place to retract a diagnosis.
+							 *
+							 * Keyed on there being something TO hold, which is also what
+							 * makes the FIRST open of a fresh mount correct: it answers
+							 * `gap: true` too (there is no earlier epoch for the bridge to
+							 * match against), and calling that pane "reconnecting" would
+							 * replace its honest "connecting" - a pane that has never
+							 * connected - with a claim that it once was.
+							 */
+							if (held && next.status === "live")
+								next = { ...next, status: "reconnecting" };
 							snapshotted = false;
 						}
 						continue;
@@ -2606,6 +2711,35 @@ export function useCanonicalSessionStream(
 					for (const id of firstAttempts) held.add(id);
 					next = { ...next, labelPending: held };
 				}
+				/*
+				 * The hold's SOURCE: whatever authoritative frontend this batch left
+				 * painted becomes the copy a later gap falls back to.
+				 *
+				 * WRITTEN ONCE, HERE, rather than at each of the four arms that can
+				 * publish a frontend (`snapshot`, `frontend.update`, `frontend.replace`,
+				 * and the attention merge that rides `frontend.update`). Four call sites
+				 * would be four chances for a new arm to forget, and the failure of a
+				 * forgotten one is invisible: the readings would simply be one frame
+				 * stale in a state nobody screenshots. A rule over the batch's OUTCOME
+				 * covers every arm that exists and every arm added later, because it asks
+				 * the only question that matters - is there an authoritative frontend
+				 * painted now?
+				 *
+				 * IDENTITY, NOT A DEEP COMPARE: every arm above builds a NEW object (a
+				 * spread of the old one, or the snapshot's own), so reference equality
+				 * is the exact test for "this batch published a frontend". It is a
+				 * cheap test, not a promise about WHICH batches reassign the hold - an
+				 * attention-only batch builds a new frontend object too, so it does
+				 * reassign. What the identity test buys is that a batch which published
+				 * nothing (the early return above) cannot blank or churn the hold.
+				 *
+				 * WHOLESALE, and that is a requirement rather than an implementation
+				 * detail: the held copy is a whole published state, so a fresh snapshot
+				 * REPLACES it. Merging old and new fields would be a state the owner
+				 * never published and could not be asked about.
+				 */
+				if (next.frontend !== null && next.frontend !== next.heldFrontend)
+					next = { ...next, heldFrontend: next.frontend };
 				return next;
 			});
 			if (firstAttempts.length > 0) {
@@ -2721,6 +2855,13 @@ export function useCanonicalSessionStream(
 					subscriptionId: null,
 					status: "unavailable",
 					failure: streamFailureNotice(DESKTOP_STREAM_DETAIL.ended),
+					// A connection that accepted and then said nothing is the frozen-owner
+					// case, and it is TERMINAL for this attempt: the pane states the
+					// failure and offers Reconnect rather than holding readings over a
+					// stream that is not coming back on its own. Held here would be the
+					// one thing R2 forbids - a reading kept past the point where anything
+					// says it is still being refreshed.
+					heldFrontend: null,
 				}));
 				if (rechecked) return;
 				rechecked = true;
@@ -2774,6 +2915,14 @@ export function useCanonicalSessionStream(
 								status: "unavailable",
 								missing: true,
 								failure: null,
+								// 404 is about the SESSION, so it is the one terminal state
+								// that must take the readings with it: the conversation this
+								// machine does not have has no model, no context window and no
+								// spend to report, and holding them would describe a session
+								// that, as far as this host can answer, does not exist. The
+								// same reasoning that drops the paint above (see its comment)
+								// applies to every other reading of the same session.
+								heldFrontend: null,
 							}));
 							return;
 						}
@@ -2794,6 +2943,12 @@ export function useCanonicalSessionStream(
 								// transport; the reader gets the product sentence for that
 								// condition instead (D1).
 								failure: streamFailureNotice(detail),
+								// The retry budget is spent, and that is the state R3 keeps
+								// terminal: what says the connection is not live is the
+								// failure notice and its Reconnect, so a reading held past it
+								// would be the only thing on the pane still claiming to
+								// describe a stream. Cleared with the budget.
+								heldFrontend: null,
 							}));
 							return;
 						}
@@ -3013,6 +3168,17 @@ export function useCanonicalSessionStream(
 		commitView((current) => ({
 			...current,
 			frontend: null,
+			/*
+			 * The held readings follow the TRANSCRIPT's rule, not `frontend`'s, and
+			 * the two differ here on purpose. `frontend` is always dropped - a new
+			 * subscription owes its own snapshot whatever the id - but a held
+			 * reading is only ever the previous state of THIS conversation, so it
+			 * survives a remount that keeps the conversation (the New-chat identity
+			 * flip, which mounts this hook with the id it keeps) and goes with a
+			 * genuine session change, where the readings on screen describe a
+			 * conversation nobody is looking at any more.
+			 */
+			heldFrontend: sameSession ? current.heldFrontend : null,
 			// A different session's unconfirmed paint describes the model of a
 			// conversation that is no longer on screen.
 			pendingModel: null,
@@ -3229,6 +3395,16 @@ export function useCanonicalSessionStream(
 		commitView((current) => ({
 			...current,
 			transcript: clearTranscript(current.transcript),
+			/*
+			 * The held copy goes with it, and costs nothing visible: `/clear` is
+			 * VIEW-only, so `frontend` is still painted and the readings still come
+			 * from it. What this buys is the invariant - `heldFrontend` is only ever
+			 * the fallback for a pane that was painting an authoritative frontend a
+			 * moment ago, and a cleared view is the one state that deliberately has
+			 * nothing behind it. If a gap follows, the hold is re-taken from the
+			 * still-live `frontend` by the gap arm itself.
+			 */
+			heldFrontend: null,
 		}));
 	}, [commitView]);
 
