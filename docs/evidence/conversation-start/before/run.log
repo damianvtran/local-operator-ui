@@ -1,0 +1,114 @@
+[build] current: assets 2026-09-26T17:27:19.198Z >= sources 2026-09-26T17:20:26.880Z
+[note] abandoned scratch trees
+        2 seen, 0 owned by a live pid (kept), 2 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:7391
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/conversation-start-before
+  scratch       /tmp/lo-renderer-driver-99588
+  frames        /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before
+  app cwd       /tmp/lo-renderer-driver-99588/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:7391   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/conversation-start-before/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:7391","backend":"http://127.0.0.1:7391"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:7391)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[note] facts (from main)
+        {
+  "windowMode": "headless",
+  "appVersion": "0.31.0",
+  "platform": "darwin",
+  "title": "Local Operator",
+  "windowSize": {
+    "width": 1380,
+    "height": 900
+  },
+  "contentBounds": {
+    "width": 1380,
+    "height": 900
+  },
+  "visible": false,
+  "focused": false,
+  "minimized": false,
+  "frames": [],
+  "outDir": "/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before"
+}
+[PASS] window mode is headless and the window is never shown or focused
+[note] second conversation
+        {"status":200,"body":{"status":200,"message":"Desktop session result.","result":{"binding":{"agent":null,"team":null},"session_id":"17d713e8cfd8","replayed":false}},"id":"17d713e8cfd8"}
+[PASS] the chat route shows the empty state with a composer
+[note] focus at the press
+        {"tag":"TEXTAREA","editable":true}
+[note] frame
+        {"label":"conversation-start-1380x900-press","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before/conversation-start-1380x900-press.png","bytes":217001,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":3,"stable":true,"toastFree":true,"toastWaitMs":16}
+[note] press
+        {"read":{"rows":0,"rowIds":[],"rowTops":[],"scrollTop":0,"overflow":0,"composer":"Summarise yesterday's QA run.","alert":"","controls":[]},"line":null}
+[note] before-arm
+        the press frame on the pre-change tree: the text is still the composer's and there is no row (the state the change removes)
+[note] frame
+        {"label":"conversation-start-1380x900-flip","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before/conversation-start-1380x900-flip.png","bytes":199300,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":8,"stable":false,"toastFree":false,"toastWaitMs":33}
+[note] frame
+        {"label":"conversation-start-1380x900-flip-plus-1s","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before/conversation-start-1380x900-flip-plus-1s.png","bytes":213838,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":8,"stable":false,"toastFree":false,"toastWaitMs":67}
+[note] flip
+        {"read":{"rows":1,"rowIds":["6b8dcd54-3c1a-45e7-a6dd-0698e7680220"],"rowTops":[678],"scrollTop":0,"overflow":0,"composer":"","alert":"","controls":[]},"line":{"phase":"waiting for the agent","seconds":0},"flipped":true}
+[note] before-arm
+        the flip frame on the pre-change tree: any row here arrived only with the create's answer, and the composer's own copy of the text went with it
+[note] tap control
+        200 {"armed":1}
+[note] focus at the press
+        {"tag":"TEXTAREA","editable":true}
+[note] frame
+        {"label":"conversation-start-1380x900-failure","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before/conversation-start-1380x900-failure.png","bytes":244648,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":10}
+[note] failure
+        {"read":{"rows":3,"rowIds":["6b8dcd54-3c1a-45e7-a6dd-0698e7680220","82b13bcdcd6749858f7b485b8a42b086","24e0986c-c0e7-4322-aa96-363d83b665b1"],"rowTops":[481,555,631],"scrollTop":0,"overflow":0,"composer":"A refusal the owner raises after the paint.","alert":"Couldn't confirm your message was sent. Sending it again is safe.RetryClear","controls":["Send again","Edit"]},"refused":true}
+[note] before-arm
+        the failure frame on the pre-change tree: the payload comes back to the composer (the #495 decision this change supersedes for post-paint failures)
+[note] frame
+        {"label":"conversation-start-1380x900-reload","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before/conversation-start-1380x900-reload.png","bytes":210530,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":19}
+[note] reload
+        {"read":{"rows":2,"rowIds":["6b8dcd54-3c1a-45e7-a6dd-0698e7680220","82b13bcdcd6749858f7b485b8a42b086"],"rowTops":[632,706],"scrollTop":0,"overflow":0,"composer":"A refusal the owner raises after the paint.","alert":"","controls":[]},"back":false}
+[note] before-arm
+        the reload frame on the pre-change tree: the message is not in the transcript at all
+[note] first conversation
+        "b59541d18fb7"
+[note] tap hold
+        200 {"count":1,"ms":12000}
+[note] focus at the press
+        {"tag":"TEXTAREA","editable":true}
+[note] frame
+        {"label":"conversation-start-1380x900-away-press","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before/conversation-start-1380x900-away-press.png","bytes":258634,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":5,"stable":true,"toastFree":true,"toastWaitMs":10292}
+[note] away press
+        {"rows":3,"rowIds":["6b8dcd54-3c1a-45e7-a6dd-0698e7680220","82b13bcdcd6749858f7b485b8a42b086","f7b4babd-ab8b-4126-89cc-097e6d162148"],"rowTops":[458,533,608],"scrollTop":0,"overflow":0,"composer":"A refusal the owner raises after the paint.A second message, in flight while the run leaves.","alert":"Couldn't reach Local Operator. Your message may not have been sent.RetryClear","controls":["Send again","Edit"]}
+[note] sidebar (away)
+        {"rows":13,"text":"TODAY\nMark all 4 read\nUnseen completion, unread\nHello from the mock provider\nnow\n, just now\nUnseen completion, unread\nHello from the mock provider\nnow\n, just now\nUnseen completion, unread\nHello from the mock provider\n1m\n, 1 minute ago\nUnseen completion, unread\nHello from the mock provider\n2m\n, 2 minutes ago\nRecent\nUntitled chat\n, just now\nRecent\nUntitled chat\n2m\n, 2 minutes ago"}
+[note] frame
+        {"label":"conversation-start-1380x900-away","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before/conversation-start-1380x900-away.png","bytes":234449,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":3,"stable":true,"toastFree":true,"toastWaitMs":28}
+[note] frame
+        {"label":"conversation-start-1380x900-return","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before/conversation-start-1380x900-return.png","bytes":243476,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":12}
+[note] return
+        {"read":{"rows":3,"rowIds":["6b8dcd54-3c1a-45e7-a6dd-0698e7680220","82b13bcdcd6749858f7b485b8a42b086","f7b4babd-ab8b-4126-89cc-097e6d162148"],"rowTops":[514,588,664],"scrollTop":0,"overflow":0,"composer":"A refusal the owner raises after the paint.A second message, in flight while the run leaves.","alert":"","controls":["Send again","Edit"]},"line":null}
+[note] before-arm
+        the return frame on the pre-change tree: recorded as-is (no pre-session row existed to return to)
+  [renderer] [attention] b59541d18fb7 receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
+    at A5e (file:///Users/damian/local-operator-ui-worktrees/conversation-start-before/out/renderer/assets/index-BJe6pkOB.js:772:97597)
+    at async St (file:///Users/damian/local-operator-ui-worktrees/conversation-start-before/out/renderer/assets/index-BJe6pkOB.js:772:98732)
+[PASS] no process from this run outlived its boot
+
+frames: conversation-start-1380x900-away-press.png, conversation-start-1380x900-away.png, conversation-start-1380x900-failure.png, conversation-start-1380x900-flip-plus-1s.png, conversation-start-1380x900-flip.png, conversation-start-1380x900-press.png, conversation-start-1380x900-reload.png, conversation-start-1380x900-return.png
+frames directory: /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before
+app log: /tmp/lo-renderer-driver-99588/app-scene.log
+scratch removed (--clean)
+
+ALL CHECKS PASSED
