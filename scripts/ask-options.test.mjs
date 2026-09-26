@@ -60,9 +60,9 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { AskOptions } from "./src/renderer/src/features/chat/components/trace/ask-options";',
-			'export { resolveNumericAnswer, answerValue, answerReport, answerRefusedWithoutACode, answerOutcomeIsUnknown, answerUnconfirmedMessage, SETTLED_ELSEWHERE_MESSAGE, QUESTION_MOVED_ON_MESSAGE, ANSWER_UNCONFIRMED_LEAD, ANSWER_LOST_TO_RECONNECT_MESSAGE, unsentAnswerMessage, shouldTabIntoAnswerOptions, composerFocusIsOurs, createSendLock, answerGateOption, errorCodeOf } from "./src/renderer/src/features/chat/ask-answer";',
+			'export { resolveNumericAnswer, answerValue, answerReport, answerRefusedWithoutACode, answerOutcomeIsUnknown, answerUnconfirmedMessage, SETTLED_ELSEWHERE_MESSAGE, QUESTION_MOVED_ON_MESSAGE, ANSWER_UNCONFIRMED_LEAD, ANSWER_LOST_TO_RECONNECT_MESSAGE, unsentAnswerMessage, shouldTabIntoAnswerOptions, composerFocusIsOurs, createSendLock, answerGateOption, errorCodeOf, ANSWER_UNCONFIRMED_CODE } from "./src/renderer/src/features/chat/ask-answer";',
 			'export { DesktopControlError, UserFacingError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
-			'export { buildSendPayload, ANSWER_NOT_SENT_CODE, UNCONFIRMED_SEND_CODE } from "./src/renderer/src/shared/store/canonical-sessions-store";',
+			'export { buildSendPayload, ANSWER_NOT_SENT_CODE } from "./src/renderer/src/shared/store/canonical-sessions-store";',
 			'export { DESKTOP_LOST_SIGHT_CODE } from "./src/shared/desktop-contract";',
 			'export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";',
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
@@ -123,7 +123,7 @@ const {
 	UserFacingError,
 	buildSendPayload,
 	ANSWER_NOT_SENT_CODE,
-	UNCONFIRMED_SEND_CODE,
+	ANSWER_UNCONFIRMED_CODE,
 	DESKTOP_LOST_SIGHT_CODE,
 	desktopRequestSchema,
 	desktopEndpoint,
@@ -921,7 +921,10 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 	// (v) NO HTTP RESPONSE AT ALL: the outcome is unknown, and the sentence says
 	// so rather than asserting a loss (UX round 1, U1 — the owner HAD kept the
 	// pressed label while the composer claimed it was not sent). The code is the
-	// app's existing one for an unconfirmable send.
+	// press's own (`ANSWER_UNCONFIRMED_CODE`): the send's code for this state was
+	// removed with the held claim, and the composer's decisions are now taken from
+	// the notice the failure carries, so this is kept as the one thing a reader can
+	// branch on rather than as the thing that decided the copy.
 	for (const error of [
 		new DesktopControlError(
 			null,
@@ -937,7 +940,7 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 		assert.deepEqual(answerReport({ status: "failed", error }, frame()), {
 			to: "composer",
 			message: answerUnconfirmedMessage(error),
-			code: UNCONFIRMED_SEND_CODE,
+			code: ANSWER_UNCONFIRMED_CODE,
 		});
 	}
 	/*
@@ -984,7 +987,7 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 		assert.deepEqual(answerReport({ status: "failed", error }, frame()), {
 			to: "composer",
 			message: answerUnconfirmedMessage(error),
-			code: UNCONFIRMED_SEND_CODE,
+			code: ANSWER_UNCONFIRMED_CODE,
 		});
 	}
 	/*

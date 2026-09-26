@@ -1,0 +1,49 @@
+{
+ "tree": "after",
+ "message": "Please re-run the failing case with the trace enabled and paste the last twenty lines here.",
+ "arms": [
+  {
+   "name": "press-during-flight",
+   "refusals": 0,
+   "holdMs": 21000,
+   "expectRefusal": true,
+   "custom": "press-during-flight",
+   "why": "a press while the first send is still out: the composer answers it in words, and no second attempt reaches the owner",
+   "first": {
+    "regionPresent": true,
+    "alertProse": "Your last message is still sending.",
+    "visibleProse": "Your last message is still sending.",
+    "controlLabels": [],
+    "boxValue": "and here is my own next line, typed while that one was still on its way",
+    "textareas": [
+     "Message"
+    ],
+    "transcriptRowTexts": [
+     "Plea e re-run the failing ca e with the trace enabled and pa te the la t twenty line  here.11:18 AM"
+    ],
+    "transcriptRows": 1,
+    "transcriptUserRows": 1,
+    "theme": "localOperatorDark",
+    "bodyText": "Local Operator\nChat\nMy agent \nAgent hub\nSchedule \nBrow er\nSetting \nSearch\n\u2318\n+\nK\nAccount unavailable\nChat \n\nAgent \n\nNo agent  yet\n\nCreate agent\nTeam \nCreate team\nAll chat \nNew chat\n\u2318\n+\nN\nActive chat \n\nNothing running right now.\n\nPreviou  chat \n\nNo chat  yet. Choo e an agent, team or New chat.\n\nNew chat\nStarting the  e ion\nChat\nRaw\ncommit =8 rowRender =2 row =1 flu he =0 flu hP50=0.00m  flu hMax=0.00m   ettledUpdate =0  eedDelta Withheld=0\nStart of conver ation\n\nPlea e re-run the failing ca e with"
+   },
+   "afterReload": {
+    "regionPresent": true,
+    "alertProse": "Couldn't confirm your message was sent. Sending it again is safe.",
+    "visibleProse": "Couldn't confirm your message was sent. Sending it again is safe.",
+    "controlLabels": [
+     "Retry",
+     "Clear"
+    ],
+    "boxValue": "Please re-run the failing case with the trace enabled and paste the last twenty lines here.\n\nand here is my own next line, typed while that one was still on its way",
+    "textareas": [
+     "Message"
+    ],
+    "transcriptRowTexts": [],
+    "transcriptRows": 0,
+    "transcriptUserRows": 0,
+    "theme": "localOperatorDark",
+    "bodyText": "Local Operator\nChat\nMy agent \nAgent hub\nSchedule \nBrow er\nSetting \nSearch\n\u2318\n+\nK\nAccount unavailable\nChat \n\nAgent \n\nNo agent  yet\n\nCreate agent\nTeam \nCreate team\nAll chat \nNew chat\n\u2318\n+\nN\nActive chat \n\nNothing running right now.\n\nPreviou  chat \n\nNo chat  yet. Choo e an agent, team or New chat.\n\nNew chat\n~\nChat\nRaw\ncommit =33 rowRender =2 row =0 flu he =0 flu hP50=0.00m  flu hMax=0.00m   ettledUpdate =0  eedDelta Withheld=0\n\nLo t the connection to thi  conver ation \u2014 reconnect to keep reading.\n\nRec"
+   }
+  }
+ ]
+}
