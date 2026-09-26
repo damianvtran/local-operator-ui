@@ -4223,6 +4223,29 @@ test("the on-demand document read is a function of the cache and its keys, per r
 		undefined,
 		"and an empty cache is an answer, not a throw",
 	);
+
+	/*
+	 * AND THE HOOK'S OWN HALF, which is a WIRING pin and is stated as one. The read's
+	 * behaviour lives in `documentFromCache`, driven above; what this holds is that the
+	 * hook asks THAT function with its four terms rather than handing back the render's
+	 * own value - the revert ("`readDocument` -> `document`") was the second of the two
+	 * round 4 measured green, and the body of a closure inside a hook is not reachable
+	 * from here at all. Saying which kind of pin this is matters more than the pin.
+	 */
+	const hook = readFileSync(
+		"src/renderer/src/features/settings/components/integrations/use-integrations.ts",
+		"utf8",
+	);
+	assert.match(
+		hook,
+		/const readDocument = useCallback\(\s*\(\): IntegrationDocument \| undefined =>\s*documentFromCache\(\{[\s\S]{0,200}?sessionId: readSessionId,/,
+		"the hook's on-demand read IS the extracted function, asked with the cache, the route, the catalogue key and the conversation (MINOR 2)",
+	);
+	assert.doesNotMatch(
+		hook,
+		/const readDocument = useCallback\(\(\) => document,/,
+		"and not the render's own value, which is the revert round 4 measured green (MINOR 2)",
+	);
 });
 
 test("a landing is never handed a control nobody can focus (U34)", () => {
