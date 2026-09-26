@@ -902,6 +902,15 @@ const STAMP_BINDING_NOTES = [
 	 * so a reader is owed the two values it binds and the reason the stills did not move.
 	 */
 	"firstPaintHoldRound4RestampNote",
+	/*
+	 * AND THIS BRANCH'S OWN, for round 4's refusal-release mark, and it belongs here
+	 * for the list's own reason: the refused stand-down hands the hold to the mark,
+	 * which moves the hook, the paint cache and the row's own condition under `src/`
+	 * and the cases that pin it under `scripts/` - both trees this file binds - while
+	 * re-shooting no frame, so a reader is owed the two values it binds and the reason
+	 * the stills did not move.
+	 */
+	"refusalMarkRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {

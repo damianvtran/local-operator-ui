@@ -314,6 +314,44 @@ export type CanonicalSessionView = {
 	 */
 	labelPending: ReadonlySet<string>;
 	/**
+	 * The ids whose HOLD a refusal ended, and whose MARK therefore stands in its place.
+	 *
+	 * WHY IT IS NOT A HOLD (round 4). A walk that spends `LABEL_GAP_ATTEMPTS` attempts
+	 * on failures stands down having named nothing, and at that instant the rule has
+	 * no hold to justify: no read is in flight for these calls any more (term (a)),
+	 * and asking term (b) - "a durable round ending can still name it" - holds them to
+	 * the backstop, which measured 25 182 ms of blank-then-mark on the app (review
+	 * round 3's Q-2 route) where main settles in ~188-324 ms.
+	 *
+	 * WHY IT IS NOT A RELEASE EITHER. The two routes that reach that stand-down are
+	 * indistinguishable at the moment of the decision. A permanently refusing owner
+	 * means no read can ever name these calls, so their stand-in - the first line of
+	 * the call's OUTPUT - is the truth, and main is right to paint it. An owner that
+	 * refuses now and answers at the next round ending means a read IS coming, and a
+	 * row that stated the output in the meantime is the operator's reported symptom,
+	 * exactly: `26 stand-in frames -> command`, output text on screen from 125 ms to
+	 * 4 790 ms, measured on this branch's own rig when the release was taken at the
+	 * stand-down.
+	 *
+	 * SO THE REFUSAL CHANGES WHAT THE ROW SHOWS WHILE THE QUESTION IS OPEN, not which
+	 * of the two answers it guesses. The hold ends - the row is no longer owed a
+	 * blank - and the MARK takes its place: one glyph meaning "a value belongs here
+	 * and is not known yet", which states no fact and therefore cannot be the wrong
+	 * one. Its exits are the same two the hold had: a later read that names the call
+	 * gives the command, and the backstop gives the stand-in. Nothing else clears it -
+	 * in particular the turn's end does NOT, because a round ending is exactly where
+	 * the retry that names these calls is issued from.
+	 *
+	 * THE MARK ARRIVES AT THE RELEASE rather than after `LABEL_HOLD_MARK_MS`: the hold
+	 * it replaced is already over, so there is no blank left for a clock to age, and
+	 * the reader gets the cue in the frame the refusal was learned (measured 123 ms
+	 * against the 25 182 ms the hold cost). That timing is a DESIGN decision this
+	 * branch's coder took on the manager's instruction and handed to the designer
+	 * (design round 4): the mark's own design - one static textless glyph, `--lo-ink-dim`,
+	 * no motion, no count, no output text, `title` suppressed - is unchanged.
+	 */
+	labelMarked: ReadonlySet<string>;
+	/**
 	 * Whether a held column should show the LATE-HOLD mark instead of nothing.
 	 *
 	 * A blank cell cannot tell the reader that an answer is coming, and on this bound
@@ -330,6 +368,29 @@ export type CanonicalSessionView = {
 
 /** The shared empty `labelPending`, so an unchanged view keeps its identity. */
 const NO_LABELS_PENDING: ReadonlySet<string> = new Set();
+
+/** The shared empty `labelMarked`, for the same reason. */
+const NO_LABELS_MARKED: ReadonlySet<string> = new Set();
+
+/**
+ * `set` without `drop`, keeping its IDENTITY when nothing was removed.
+ *
+ * The view is committed on every page, and a set that is rebuilt unconditionally
+ * re-renders the pane for a release that released nothing. Returning the same
+ * reference is what tells React the answer did not change.
+ */
+function withoutLabels(
+	set: ReadonlySet<string>,
+	drop: Iterable<string>,
+): ReadonlySet<string> {
+	let left: Set<string> | null = null;
+	for (const id of drop) {
+		if (!set.has(id)) continue;
+		left = left ?? new Set(set);
+		left.delete(id);
+	}
+	return left ?? set;
+}
 
 export type CanonicalSessionHandle = CanonicalSessionView & {
 	/**
@@ -704,6 +765,10 @@ export const RECONCILE_WALK_MAX_REQUESTS = 6;
  * 2026-09-25 decision reverses it, because a hold cut short by a clock is the
  * exact screen the report is about, while a hold bounded by the transport is a
  * read that is still genuinely in flight).
+ *
+ * `LABEL_HOLD_MARK_MS` below is the other half of the same problem for a read that
+ * IS still in flight, and round 4 makes one case of its own: a hold that ends in a
+ * REFUSAL becomes a mark immediately rather than after that window.
  */
 export const LABEL_HOLD_MAX_MS = desktopRequestTimeoutMs("sessions.history");
 
@@ -729,6 +794,16 @@ export const LABEL_HOLD_MAX_MS = desktopRequestTimeoutMs("sessions.history");
  *
  * THE NUMBER WAS DEAD UNTIL ROUND 3 (D7): the flag it feeds had no writer, so the
  * constant was read by nothing at all. `labelMarkEffect` below is what reads it.
+ *
+ * ROUND 4 GIVES IT A SECOND, EARLIER READER, AND THAT TIMING IS THE DESIGNER'S
+ * SURFACE RATHER THAN THIS FILE'S. When a walk stands down on a REFUSAL - the read
+ * path refused and named nothing - the hold does not survive to be aged by this
+ * clock: it ends, and the MARK takes its place in the same frame (measured 123 ms,
+ * against 25 182 ms for holding to the backstop). The reader gets a cue promptly
+ * instead of a blank column for 25 s, and no call's OUTPUT can be painted while a
+ * later read may still name it. The mark itself is unchanged - same glyph, same ink,
+ * same absence of motion, count and title - so what moved is only WHEN it appears on
+ * that route, which design round 4 is asked to judge; see `labelMarked`.
  */
 export const LABEL_HOLD_MARK_MS = 2_000;
 
@@ -880,6 +955,21 @@ type LabelGapState = {
 	 * nothing else would clear those.
 	 */
 	inFlight: Set<string>;
+	/**
+	 * Whether this conversation's LAST read attempt on the history route FAILED.
+	 *
+	 * WHAT SETS IT: the stand-down after `LABEL_GAP_ATTEMPTS` attempts, which is the
+	 * one place a walk concludes that the route is refusing rather than slow. A single
+	 * failed attempt does not set it - that walk still has its own retry to spend.
+	 * WHAT CLEARS IT: any page that arrives, because that is the same event that makes
+	 * it untrue, the route answering again.
+	 *
+	 * WHAT READS IT: the walk's exit, which hands this walk's still-held targets to
+	 * `markRefusedTargets` instead of releasing them to their stand-ins. See
+	 * `labelMarked` on the view for why the refusal is not allowed to decide between
+	 * the two answers, only what the row shows while neither is known.
+	 */
+	refused: boolean;
 	depth: number;
 	order: readonly string[];
 	/**
@@ -977,6 +1067,7 @@ function labelGapFor(sessionId: string | undefined): LabelGapState {
 		attempts: new Map(),
 		painted: new Set(),
 		inFlight: new Set(),
+		refused: false,
 		depth: 0,
 		order: [],
 		starts: new Map(),
@@ -1417,6 +1508,7 @@ function paintSeed(sessionId: string): {
 	transcript: TranscriptState;
 	stale: boolean;
 	owedLabels: ReadonlySet<string>;
+	markLabels: ReadonlySet<string>;
 } {
 	const cached = readPaint(sessionId);
 	if (!cached) {
@@ -1424,6 +1516,7 @@ function paintSeed(sessionId: string): {
 			transcript: seedPendingEchoes(sessionId, EMPTY_TRANSCRIPT),
 			stale: false,
 			owedLabels: NO_LABELS_PENDING,
+			markLabels: NO_LABELS_MARKED,
 		};
 	}
 	return {
@@ -1434,6 +1527,10 @@ function paintSeed(sessionId: string): {
 		// for why the store carries them beside the rows rather than leaving each
 		// mount to guess.
 		owedLabels: cached.owedLabels,
+		// And the ones whose hold a refusal ended, whose mark was standing instead.
+		// Same argument one state over: rows cannot say whether a column owes the
+		// mark or may fall back to the call's OUTPUT.
+		markLabels: cached.markLabels,
 	};
 }
 
@@ -1542,6 +1639,7 @@ export function useCanonicalSessionStream(
 			 * snapshot's own flush registers its targets (`firstAttempts`).
 			 */
 			labelPending: seed?.owedLabels ?? NO_LABELS_PENDING,
+			labelMarked: seed?.markLabels ?? NO_LABELS_MARKED,
 			labelHoldLate: false,
 			/*
 			 * NOT hydrated, even when the initial transcript above was seeded from a
@@ -1846,12 +1944,81 @@ export function useCanonicalSessionStream(
 						continue;
 					releasing.add(id);
 				}
-				if (releasing.size === 0) return state;
+				/*
+				 * AND THE MARKED SET IS PRUNED BY THE SAME PREDICATE (round 4). A marked id is
+				 * one whose hold a refusal ended while it was still owed, so "still owed" is the
+				 * whole of its claim - and the moment that stops being true the stand-in is the
+				 * truth, exactly as it is for a held id. Without this the mark would outlive its
+				 * own justification and hold a row to the backstop after a round ending whose
+				 * retry refused too: measured on the app's refused-plus-round-ending arm, whose
+				 * stand-in belongs at ~4.1 s rather than at the 25 s bound.
+				 *
+				 * READ OFF THE WHOLE SET rather than the caller's `ids`: a walk names the calls it
+				 * was for, and a marked id whose walk has ended is decided by the rule like any
+				 * other. `argsByCall` is the `labelled` view here, so an id a page has since named
+				 * is pruned in the same pass.
+				 */
+				let marked: Set<string> | null = null;
+				for (const id of state.labelMarked) {
+					if (
+						labelOwed(
+							labelGapRef.current,
+							state.transcript.argsByCall,
+							id,
+							turnRunning(state),
+						)
+					)
+						continue;
+					marked = marked ?? new Set(state.labelMarked);
+					marked.delete(id);
+				}
+				if (releasing.size === 0 && !marked) return state;
 				const left = new Set(state.labelPending);
 				for (const id of releasing) left.delete(id);
 				return {
 					...state,
 					labelPending: left.size ? left : NO_LABELS_PENDING,
+					labelMarked:
+						marked && marked.size === 0
+							? NO_LABELS_MARKED
+							: (marked ?? state.labelMarked),
+				};
+			});
+		};
+
+		/**
+		 * End the hold on the rows this REFUSAL released, and keep their mark standing.
+		 *
+		 * THE OTHER EXIT OF A WALK THAT NAMED NOTHING. `releaseLabelPending` answers "is
+		 * this call owed to a read?" and, on the refusing route, answering it alone paints
+		 * the call's OUTPUT - right for an owner that will refuse forever, wrong for one
+		 * whose round ending is about to name the call, and the two are the same walk up
+		 * to the instant the answer would arrive (see `labelMarked` on the view). So a
+		 * refused stand-down does not decide between them: it ends the hold, because no
+		 * read is in flight for these ids any more, and hands the ids to the mark, which
+		 * states no fact and therefore cannot state the wrong one.
+		 *
+		 * ONLY THE IDS THE REFUSAL ACTUALLY RELEASED. An id absent from `labelPending`
+		 * was not held by this walk - a page named it, or its hold had already ended - and
+		 * marking it would put the cue on a row whose exit this refusal did not decide.
+		 * Marking is also idempotent, so the retries of one refusal cost nothing here.
+		 */
+		const markRefusedTargets = (ids: Iterable<string>) => {
+			commitView((state) => {
+				let left: Set<string> | null = null;
+				let marked: Set<string> | null = null;
+				for (const id of ids) {
+					if (!state.labelPending.has(id)) continue;
+					left = left ?? new Set(state.labelPending);
+					left.delete(id);
+					marked = marked ?? new Set(state.labelMarked);
+					marked.add(id);
+				}
+				if (!left || !marked) return state;
+				return {
+					...state,
+					labelPending: left.size ? left : NO_LABELS_PENDING,
+					labelMarked: marked,
 				};
 			});
 		};
@@ -1933,6 +2100,19 @@ export function useCanonicalSessionStream(
 				if (!handedOff) {
 					for (const id of labels.targets)
 						labelGapRef.current.inFlight.delete(id);
+					/*
+					 * AND WHEN THE ROUTE REFUSED, THE HOLD BECOMES THE MARK (round 4). The read this
+					 * walk was for is over and it named nothing; what the row shows next depends on
+					 * whether that was a refusal or a walk that stopped short, and only the first of
+					 * the two may not state the call's output. Read off the flag the stand-down set,
+					 * which is cleared by any page, so a walk that got an answer anywhere in it takes
+					 * the ordinary release below.
+					 *
+					 * BEFORE the release, deliberately: the hand-off removes these ids from
+					 * `labelPending`, so the release that follows cannot paint the very stand-in the
+					 * mark exists to keep off the row.
+					 */
+					if (labelGapRef.current.refused) markRefusedTargets(labels.targets);
 					releaseLabelPending();
 				}
 			}
@@ -2064,7 +2244,18 @@ export function useCanonicalSessionStream(
 					 *    composer cannot offer the greeting while this is being tried.
 					 */
 					if (viewRef.current.transcript.records.length > 0) {
-						if (failures++ > 0) return false;
+						if (failures++ > 0) {
+							/*
+							 * ROUND 4: the route refused for the whole walk. Recorded HERE, where the
+							 * conclusion is actually drawn, rather than inferred from "the walk found
+							 * nothing" at the exit - a walk that stops short has found nothing too, and
+							 * its rows are owed to the next page, not to a refusal. Cleared by any page
+							 * that arrives (`walkTail`'s own page path), which is the event that makes it
+							 * untrue.
+							 */
+							labelGapRef.current.refused = true;
+							return false;
+						}
 						continue;
 					}
 					if (historyAttempt < HISTORY_RECONCILE_ATTEMPTS) {
@@ -2135,6 +2326,14 @@ export function useCanonicalSessionStream(
 					releaseLabelPending();
 				}
 				if (generationRef.current !== generation) return false;
+				/*
+				 * A PAGE ARRIVED, so the refusal is over: the route that refused is answering
+				 * again, and the rows it was refusing for are owed to a read once more. This
+				 * is the ONLY clear, and it is the event that makes the flag untrue - not a
+				 * clock and not a mount, so a switch back to a conversation whose route was
+				 * refusing still knows that it was.
+				 */
+				labelGapRef.current.refused = false;
 				const oldest = page.entries[0];
 				rows += page.entries.length;
 				onSpend?.(page.entries.length);
@@ -2163,8 +2362,9 @@ export function useCanonicalSessionStream(
 					 * answer for; the rest stay held, and the walk's own exit or the backstop
 					 * releases them once their read budget is spent.
 					 */
+					const named = pageLabels(page.entries, known);
 					const left = new Set(state.labelPending);
-					for (const id of pageLabels(page.entries, known)) left.delete(id);
+					for (const id of named) left.delete(id);
 					return {
 						...state,
 						// A page that RESOLVED is the proof hydration was waiting for,
@@ -2173,6 +2373,13 @@ export function useCanonicalSessionStream(
 						// all - which is what lets the composer offer the greeting.
 						hydrated: true,
 						labelPending: left.size ? left : NO_LABELS_PENDING,
+						/*
+						 * A MARKED ID THIS PAGE NAMED STOPS BEING MARKED (round 4). The mark is a
+						 * row's WHOLE object column while it stands, so an id left in this set after a
+						 * read named it would hide the command that just arrived - the row would keep
+						 * the cue and never show the answer it was waiting for.
+						 */
+						labelMarked: withoutLabels(state.labelMarked, named),
 						transcript,
 					};
 				});
@@ -3524,6 +3731,7 @@ export function useCanonicalSessionStream(
 			 * in the meantime.
 			 */
 			labelPending: seed?.owedLabels ?? NO_LABELS_PENDING,
+			labelMarked: seed?.markLabels ?? NO_LABELS_MARKED,
 			labelHoldLate: false,
 			// And this session's history is unknown again: the previous session's
 			// page proves nothing about this one, so the composer must not state
@@ -3587,6 +3795,15 @@ export function useCanonicalSessionStream(
 							),
 						),
 					),
+					/*
+					 * AND THE MARKED SET TRAVELS WHOLE (round 4). These ids are not held - a refusal
+					 * ended their hold - so `owedLabels` above cannot carry them, and the next mount
+					 * would paint the call's OUTPUT on its first frame for a conversation whose read
+					 * path was refusing. No intersection with `labelOwed` here, deliberately: what
+					 * the mark needs is not "is a read owed" but "has no read named this yet", and
+					 * an id whose read answered would have left the set in the commit that named it.
+					 */
+					markLabels: new Set(viewRef.current.labelMarked),
 				});
 			/*
 			 * AND THIS PANE'S OUTSTANDING READS GO WITH IT (agent review round 3, M2's
@@ -3641,7 +3858,14 @@ export function useCanonicalSessionStream(
 	 */
 	const labelHoldTimerRef = useRef(0);
 	useEffect(() => {
-		if (view.labelPending.size === 0) {
+		/*
+		 * BOTH SETS ARE ON THIS DEADLINE (round 4). A marked id has no hold left to end,
+		 * so `fire` below is the only thing that can ever resolve it to the stand-in, and
+		 * the marked set is therefore armed by the same rule the held one follows: the
+		 * deadline follows the sets, armed when either becomes non-empty, cleared when
+		 * both are empty, and a batch already running is not restarted by an arrival.
+		 */
+		if (view.labelPending.size === 0 && view.labelMarked.size === 0) {
 			if (labelHoldTimerRef.current) {
 				window.clearTimeout(labelHoldTimerRef.current);
 				labelHoldTimerRef.current = 0;
@@ -3677,8 +3901,16 @@ export function useCanonicalSessionStream(
 		const fire = () => {
 			labelHoldTimerRef.current = 0;
 			const held = viewRef.current.labelPending;
-			if (held.size === 0) return;
+			const marked = viewRef.current.labelMarked;
+			if (held.size === 0 && marked.size === 0) return;
 			const gap = labelGapRef.current;
+			/*
+			 * THE DEFERRAL COVERS BOTH SETS. A marked id whose retry is out is a read that
+			 * can still name the call - the same fact this refusal exists for on a held one
+			 * (U4) - and a marked row that fired early would put the call's OUTPUT in the
+			 * command column while that read was still running, which is the 4.97 s the
+			 * round measured.
+			 */
 			for (const id of held) {
 				if (gap.inFlight.has(id)) {
 					labelHoldTimerRef.current = window.setTimeout(
@@ -3688,14 +3920,27 @@ export function useCanonicalSessionStream(
 					return;
 				}
 			}
+			for (const id of marked) {
+				if (gap.inFlight.has(id)) {
+					labelHoldTimerRef.current = window.setTimeout(
+						fire,
+						LABEL_HOLD_MAX_MS,
+					);
+					return;
+				}
+			}
 			commitView((state) =>
-				state.labelPending.size === 0
+				state.labelPending.size === 0 && state.labelMarked.size === 0
 					? state
-					: { ...state, labelPending: NO_LABELS_PENDING },
+					: {
+							...state,
+							labelPending: NO_LABELS_PENDING,
+							labelMarked: NO_LABELS_MARKED,
+						},
 			);
 		};
 		labelHoldTimerRef.current = window.setTimeout(fire, LABEL_HOLD_MAX_MS);
-	}, [commitView, view.labelPending]);
+	}, [commitView, view.labelPending, view.labelMarked]);
 
 	/**
 	 * The late-hold mark's arm, and the ONLY writer of `labelHoldLate`.
