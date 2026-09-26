@@ -1181,6 +1181,86 @@ test("a travel release is honoured as a demand, and the act's fetch is not re-sp
 	assert.ok(arrival.state.clampLatched, "and the arrival's own spend latches");
 });
 
+test("a reversal inside one act does not refill the act's fetch budget", () => {
+	// Round-3 review F1 / QA Q2, the STRICT reading of rule 2: "one act spends
+	// at most one round trip, however much travel it contains, in either
+	// direction". An up-at-wall spends the act's round trip; the down notch is a
+	// reversal — it voids the retained demand and the latch — but it does not
+	// open a new act, so the up notch that follows (every gap well under
+	// GESTURE_GAP_MS) is refused. Before this case, the down branch cleared
+	// `actFetchSpent` and this sequence spent a second fetch on the replaced
+	// modules; the assertion below is exactly that difference.
+	let state = wheelUp(initialPagingState(), 0, { atHardTop: true });
+	state = noteSettled(
+		decide(state, geo({ distanceFromTopPx: 0 }), SETTLE_MS + 1).state,
+	);
+	assert.equal(state.actFetchSpent, true, "the act's one fetch is spent");
+
+	// The reversal, 150ms later — inside the same act.
+	state = noteInput(state, {
+		direction: "down",
+		continuous: true,
+		deliberate: false,
+		atHardTop: false,
+		travelledPx: 0,
+		at: SETTLE_MS + 151,
+	});
+	assert.equal(
+		state.actFetchSpent,
+		true,
+		"a reversal voids the debt, not the budget",
+	);
+
+	// The reader comes back up, still inside the act (gap 150ms < GESTURE_GAP_MS).
+	state = wheelUp(state, SETTLE_MS + 301, { atHardTop: true });
+	const again = decide(
+		state,
+		geo({ distanceFromTopPx: 0 }),
+		SETTLE_MS + 301 + SETTLE_MS + 1,
+	);
+	assert.equal(
+		again.action,
+		"none",
+		"one act, one round trip — in either direction",
+	);
+});
+
+test("the budget refills when the quiet window opens a new act", () => {
+	// The other half of the strict reading: the refusal above is not a latch.
+	// GESTURE_GAP_MS of quiet and a fresh push open a new act, whose round trip
+	// is honoured — so a reader who really did turn around and start again is
+	// answered rather than stuck.
+	let state = wheelUp(initialPagingState(), 0, { atHardTop: true });
+	state = noteSettled(
+		decide(state, geo({ distanceFromTopPx: 0 }), SETTLE_MS + 1).state,
+	);
+	state = noteInput(state, {
+		direction: "down",
+		continuous: true,
+		deliberate: false,
+		atHardTop: false,
+		travelledPx: 0,
+		at: SETTLE_MS + 151,
+	});
+	state = wheelUp(state, SETTLE_MS + 301, { atHardTop: true });
+	const refused = decide(
+		state,
+		geo({ distanceFromTopPx: 0 }),
+		SETTLE_MS + 301 + SETTLE_MS + 1,
+	);
+	assert.equal(refused.action, "none");
+
+	// Quiet past GESTURE_GAP_MS, then a fresh push: a new act, a new budget.
+	const at = SETTLE_MS + 301 + SETTLE_MS + 1 + GESTURE_GAP_MS + 1;
+	state = wheelUp(refused.state, at, { atHardTop: true });
+	const fresh = decide(
+		state,
+		geo({ distanceFromTopPx: 0 }),
+		at + SETTLE_MS + 1,
+	);
+	assert.equal(fresh.action, "fetch", "a new act spends again");
+});
+
 // NEGATIVE GUARD: passes against the replaced module as well. It protects
 // behaviour the fix depends on (a bound, an upper limit, an accident that is now
 // a contract), not behaviour the fix introduces, so it is evidence about the
