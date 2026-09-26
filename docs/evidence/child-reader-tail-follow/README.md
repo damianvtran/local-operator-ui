@@ -10,8 +10,10 @@ shipped component.
 ```
 
 Arms: `before` (the reader at this branch's base, no control anywhere in the
-pane) and `after` (the reader with the control, its band, and the threshold the
-paging policy already used).
+pane), `after` (the reader with the control, its band, and the threshold the
+paging policy already used), and `prev` (the band WITHOUT this round's clip fix,
+shot by the same rig at `ccd6f4b55` in the two foot states the clip pair
+needs - see "The clip, and the pair that proves it").
 
 ## What produced them — the arms are a script, and each arm is checked
 
@@ -25,7 +27,18 @@ node scripts/child-reader-scroll-evidence-arms.mjs after -- --frames \
 node scripts/child-reader-scroll-evidence.mjs --arm=after --frames --only=ring \
   --themes=localOperatorDark,localOperatorLight,dracula,dune,sage,monokai,tokyoNight,iceberg,radient,neon,obsidian,synth \
   --json=docs/evidence/child-reader-tail-follow/after-ring-readings.json
+node scripts/child-reader-scroll-evidence-arms.mjs prev ccd6f4b55 -- --frames --only=foot \
+  --themes=localOperatorDark,localOperatorLight \
+  --json=docs/evidence/child-reader-tail-follow/prev-foot-readings.json
+node scripts/child-reader-scroll-evidence.mjs --arm=after --frames --only=foot \
+  --themes=localOperatorDark,localOperatorLight \
+  --json=docs/evidence/child-reader-tail-follow/after-foot-readings.json
 ```
+
+**The tree must be still while a run is in flight.** The rig's Vite server
+watches it; a write anywhere under the repository mid-run makes the page reload
+between steps and the step it lands in fails for the rig's own reason - measured
+twice while this pass's runs were being written. Commit, then run.
 
 **The recipe is a script because the hand-run one could not reproduce.** The
 first version of this README told a reader to run `git stash push -- <the
@@ -44,7 +57,7 @@ picture of:
 
 | module | before arm | after arm |
 |---|---|---|
-| `run-child-reader.tsx` (the arm's module) | `8c68061ca3ab` | `a08da51c2349` |
+| `run-child-reader.tsx` (the arm's module) | `8c68061ca3ab` | `148a2a6e6a14` |
 | `canonical-transcript.tsx` | `8a590b414a9c` | `8a590b414a9c` |
 | `use-scroll-paging.ts` | `042ae70a3c22` | `042ae70a3c22` |
 | `scroll-paging.ts` | `4e32a82e085c` | `4e32a82e085c` |
@@ -83,51 +96,56 @@ the origin is the tail), `cut` is how many pixels of the NEWEST row fall below t
 viewport's bottom edge, `cover` is how many pixels of a VISIBLE row the control's
 box covers, `band` is the reserved band's height, `tab` is the control's index in
 the page's tab order, and `button` is read from computed style rather than from
-the prop.
+the prop. The `after` arm's foot states live in their own readings file
+(`after-foot-readings.json`), and the `prev` arm's two states in
+(`prev-foot-readings.json`); the `G0`/`G1` pair is the fade frozen and released
+(see "The fade, frozen").
 
 | step | arm | top | fromTail | cut | cover | band | tab | button | reads |
 |---|---|---|---|---|---|---|---|---|---|
-| A0 at the tail | before | 0 | 0 | 0.0 | - | - | - | absent | 29 |
-| A0 at the tail | after | 0 | 0 | 0.0 | 0.0 | 48 | - | off/inert | 28 |
+| A0 at the tail | before | 0 | 0 | 0.0 | - | - | - | absent | 28 |
+| A0 at the tail | after | 0 | 0 | 0.0 | 0.0 | 48 | - | off/inert | 29 |
 | A1 after a batch | before | 0 | 0 | 0.0 | - | - | - | absent | 31 |
-| A1 after a batch | after | 0 | 0 | 0.0 | 0.0 | 48 | - | off/inert | 30 |
+| A1 after a batch | after | 0 | 0 | 0.0 | 0.0 | 48 | - | off/inert | 31 |
 | A2 after a batch | before | 0 | 0 | 0.0 | - | - | - | absent | 34 |
-| A2 after a batch | after | 0 | 0 | 0.0 | 0.0 | 48 | - | off/inert | 33 |
-| A3 after a batch | before | 0 | 0 | 0.0 | - | - | - | absent | 37 |
-| A3 after a batch | after | 0 | 0 | 0.0 | 0.0 | 48 | - | off/inert | 36 |
-| B0 scrolled up | before | -600 | 600 | 558.6 | - | - | - | absent | 37 |
-| B0 scrolled up | after | -600 | 600 | 558.6 | 0.0 | 48 | - | on | 36 |
-| B1 after a batch | before | -868 | 868 | 826.6 | - | - | - | absent | 40 |
-| B1 after a batch | after | -868 | 868 | 826.6 | 0.0 | 48 | - | on | 39 |
-| B2 after a batch | before | -1114 | 1114 | 1072.6 | - | - | - | absent | 43 |
-| B2 after a batch | after | -1114 | 1114 | 1072.6 | 0.0 | 48 | - | on | 41 |
-| C0 scrolled up | before | -1114 | 1114 | 1072.6 | - | - | - | absent | 43 |
-| C0 scrolled up | after | -1114 | 1114 | 1072.6 | 0.0 | 48 | - | on | 41 |
-| C1 back at the tail | before | 0 | 0 | 0.0 | - | - | - | absent | 43 |
-| C1 back at the tail | after | 0 | 0 | 0.0 | 0.0 | 48 | - | off/inert | 42 |
-| E0 3px off the tail | before | -3 | 3 | 0.0 | - | - | - | absent | 43 |
-| E0 3px off the tail | after | -3 | 3 | 0.0 | 0.0 | 48 | - | off/inert | 42 |
-| E1 after a batch | before | -3 | 3 | 0.0 | - | - | - | absent | 46 |
+| A2 after a batch | after | 0 | 0 | 0.0 | 0.0 | 48 | - | off/inert | 34 |
+| A3 after a batch | before | 0 | 0 | 0.0 | - | - | - | absent | 36 |
+| A3 after a batch | after | 0 | 0 | 0.0 | 0.0 | 48 | - | off/inert | 37 |
+| B0 scrolled up | before | -600 | 600 | 558.6 | - | - | - | absent | 36 |
+| B0 scrolled up | after | -600 | 600 | 558.6 | 0.0 | 48 | - | on | 37 |
+| B1 after a batch | before | -868 | 868 | 826.6 | - | - | - | absent | 39 |
+| B1 after a batch | after | -868 | 868 | 826.6 | 0.0 | 48 | - | on | 40 |
+| B2 after a batch | before | -1114 | 1114 | 1072.6 | - | - | - | absent | 42 |
+| B2 after a batch | after | -1114 | 1114 | 1072.6 | 0.0 | 48 | - | on | 43 |
+| C0 scrolled up | before | -1114 | 1114 | 1072.6 | - | - | - | absent | 42 |
+| C0 scrolled up | after | -1114 | 1114 | 1072.6 | 0.0 | 48 | - | on | 43 |
+| C1 back at the tail | before | 0 | 0 | 0.0 | - | - | - | absent | 42 |
+| C1 back at the tail | after | 0 | 0 | 0.0 | 0.0 | 48 | - | off/inert | 43 |
+| E0 3px off the tail | before | -3 | 3 | 0.0 | - | - | - | absent | 42 |
+| E0 3px off the tail | after | -3 | 3 | 0.0 | 0.0 | 48 | - | off/inert | 43 |
+| E1 after a batch | before | -3 | 3 | 0.0 | - | - | - | absent | 45 |
 | E1 after a batch | after | -3 | 3 | 0.0 | 0.0 | 48 | - | off/inert | 46 |
-| E2 after a second batch | before | -3 | 3 | 0.0 | - | - | - | absent | 49 |
-| E2 after a second batch | after | -3 | 3 | 0.0 | 0.0 | 48 | - | off/inert | 49 |
-| D0 settled | before | -3 | 3 | 0.0 | - | - | - | absent | 50 |
-| D0 settled | after | -3 | 3 | 0.0 | 0.0 | 48 | - | off/inert | 50 |
-| D1 eleven seconds later | before | -3 | 3 | 0.0 | - | - | - | absent | 50 |
-| D1 eleven seconds later | after | -3 | 3 | 0.0 | 0.0 | 48 | - | off/inert | 50 |
-| F0 40px off the tail | before | -40 | 40 | 0.0 | - | - | - | absent | 50 |
-| F0 40px off the tail | after | -40 | 40 | 0.0 | 0.0 | 48 | - | on | 50 |
-| F1 after a batch | before | -40 | 40 | 0.0 | - | - | - | absent | 50 |
-| F1 after a batch | after | -40 | 40 | 0.0 | 0.0 | 48 | - | on | 50 |
-| G0 the control appearing | before | -600 | 600 | 558.6 | - | - | - | absent | 50 |
-| G0 the control appearing | after | -600 | 600 | 558.6 | 0.0 | 48 | - | on | 50 |
-| G1 hover | after | -600 | 600 | 558.6 | 0.0 | 48 | - | on/hover | 50 |
-| G2 focus (21 tabs) | after | -147 | 147 | 105.6 | 0.0 | 48 | 0/22 | on/hover/focus | 50 |
-| G3 after the press | after | 0 | 0 | 0.0 | 0.0 | 48 | - | off/inert/focus | 50 |
-| H0 a failed child, scrolled up | before | -1284 | 1284 | 1268.0 | - | - | - | absent | 50 |
-| H0 a failed child, scrolled up | after | -635 | 635 | 619.0 | - | - | - | absent | 50 |
-| H1 a child with no session id | before | - | - | - | - | - | - | absent | 50 |
-| H1 a child with no session id | after | - | - | - | - | - | - | absent | 50 |
+| E2 after a second batch | before | -3 | 3 | 0.0 | - | - | - | absent | 47 |
+| E2 after a second batch | after | -3 | 3 | 0.0 | 0.0 | 48 | - | off/inert | 48 |
+| D0 settled | before | -3 | 3 | 0.0 | - | - | - | absent | 48 |
+| D0 settled | after | -3 | 3 | 0.0 | 0.0 | 48 | - | off/inert | 49 |
+| D1 eleven seconds later | before | -3 | 3 | 0.0 | - | - | - | absent | 48 |
+| D1 eleven seconds later | after | -3 | 3 | 0.0 | 0.0 | 48 | - | off/inert | 49 |
+| F0 40px off the tail | before | -40 | 40 | 0.0 | - | - | - | absent | 48 |
+| F0 40px off the tail | after | -40 | 40 | 0.0 | 0.0 | 48 | - | on | 49 |
+| F1 after a batch | before | -40 | 40 | 0.0 | - | - | - | absent | 48 |
+| F1 after a batch | after | -40 | 40 | 0.0 | 0.0 | 48 | - | on | 49 |
+| G0 the control appearing (fade frozen at 40%) | before | -600 | 600 | 558.6 | - | - | - | absent | 48 |
+| G0 the control appearing (fade frozen at 40%) | after | -600 | 600 | 558.6 | 0.0 | 48 | - | on | 49 |
+| G1 the control settled (fade released) | before | -600 | 600 | 558.6 | - | - | - | absent | 48 |
+| G1 the control settled (fade released) | after | -600 | 600 | 558.6 | 0.0 | 48 | - | on | 49 |
+| G2 hover | after | -600 | 600 | 558.6 | 0.0 | 48 | - | on/hover | 49 |
+| G3 focus (21 tabs) | after | -147 | 147 | 105.6 | 0.0 | 48 | 0/22 | on/hover/focus | 49 |
+| G4 after the press | after | 0 | 0 | 0.0 | 0.0 | 48 | - | off/inert/focus | 49 |
+| H0 a failed child, scrolled up | before | -1284 | 1284 | 1268.0 | - | - | - | absent | 48 |
+| H0 a failed child, scrolled up | after | -635 | 635 | 619.0 | - | - | - | absent | 49 |
+| H1 a child with no session id | before | - | - | - | - | - | - | absent | 48 |
+| H1 a child with no session id | after | - | - | - | - | - | - | absent | 49 |
 
 Read these ways:
 
@@ -191,6 +209,49 @@ asked for the other ten palettes (D1). Measured two ways:
   light off the old frame), which is why both numbers are here: the tokens are the
   contract, the frames are what the eye gets.
 
+## The clip, and the pair that proves it (design round 2, D6)
+
+The band extends the scroller's clip; the scroller's own focus ring then painted
+its bottom segment ACROSS the foot - a full-width accent rule 2px into the
+reserved band, with nothing under it to focus. Design round 2 read it off the
+frames and asked for the scroller's box to clip its ring instead. The fix is a
+wrapper at the scroller's own box (`data-child-transcript-clip`): the clip moves
+off the scroller, and the scroller's backdrop draws the ring the way it does
+everywhere else `CanonicalTranscript` is mounted.
+
+The pair is committed, one module apart, both photographed by the same rig, same
+sequence, same two brand palettes:
+
+| | `prev` - `ccd6f4b55` | `after` - this head |
+|---|---|---|
+| frames | `child-reader-tail-follow/prev/<state>/<theme>.webp` | `child-reader-tail-follow/after/<state>/<theme>.webp` |
+| module (`run-child-reader.tsx`) | `a08da51c2349` | `148a2a6e6a14` |
+| the ring, read by walk | bottom **755.609** against a clip bottom of **800.609** - `contained: true` | bottom **755.609** against **752.609** - `contained: false` |
+| the rule, read off the pixels | rows 754-757 carry a 2px accent core; **418 px** of ink on each core row (755, 756) | the same rows, and the band's own rows, carry **zero** ink outside the chip |
+
+`ringClip` is the rig's own walk: up from the scroller to the nearest ancestor
+whose computed `overflow` hides the vertical axis, then the arithmetic above. It
+is read in every step and asserted in the `foot` group, so a regression fails the
+run rather than the eye. The arithmetic before this round read `contained: true`
+because the BODY was the clip; the walk is deliberately ancestor-based, so it
+kept answering "contained" while the segment still painted inside the wrapper -
+which is why the pixels, not the boolean, are the finding.
+
+**What this set does not fix**: the scroller shows no ring at all under this fix,
+which is `CanonicalTranscript`'s behaviour at every other mount. The wrapper
+drawing the ring is the honest end state and is deferred - see "Deferred".
+
+## The fade, frozen (design round 2, D7)
+
+The control fades in; nothing in the previous readings could say a fade was IN
+FLIGHT rather than settled, which no still of a 200ms transition can show by
+construction. The rig now freezes the animation at 40% of its duration
+(`freezeFade`) and reads the computed `opacity` on every step. `G0` is that
+frozen state: **0.913982**, a value no other reading in the set produces. `G1`
+is the same state with the fade released: **1** (settled). The pair is what
+makes an in-flight reading a measurement rather than a claim.
+
+
 ## A failing shape this rig does NOT reproduce, and does not claim to
 
 A bare scroller carrying this scroller's exact declarations — `column-reverse`,
@@ -214,6 +275,11 @@ an explanation of a report that stopped reproducing after #478.
   reader's own arrivals; that premise is about a parent mount which does not
   derive it, so the note is what needs amending and the register is recorded on
   the pull request.
+- **The scroller's own focus indicator.** This round's clip fix restores the base
+  behaviour - no visible ring on the scroller - rather than painting one from the
+  wrapper. The honest end state is the wrapper-draws-the-ring pattern on the
+  SHARED component, with evidence across its mounts; it is recorded on the pull
+  request (design round 2, D6) instead of half-done here.
 - **The parent's own threshold** (50px against the same `TAIL_EPS_PX` of 24px):
   the same shape as U3 one surface over, left alone here because the parent's band
   is a composer and the change would need its own evidence. Recorded on the pull

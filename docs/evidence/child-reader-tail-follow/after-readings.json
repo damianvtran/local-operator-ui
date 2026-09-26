@@ -1,12 +1,12 @@
 {
   "arm": "after",
   "armModule": "src/renderer/src/features/chat/components/run-details/run-child-reader.tsx",
-  "expectDigest": "a08da51c23492e08370455d33cb09cf5",
-  "head": "1ef85b0fefdb14e564bd8c16858d0c55f21fd90d",
+  "expectDigest": "148a2a6e6a14b1961319251e78dddf9a",
+  "head": "aefa9c91847a74d90d24a8a85aed829b1d2adaad",
   "modules": [
     {
       "path": "src/renderer/src/features/chat/components/run-details/run-child-reader.tsx",
-      "md5": "a08da51c23492e08370455d33cb09cf5"
+      "md5": "148a2a6e6a14b1961319251e78dddf9a"
     },
     {
       "path": "src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
@@ -61,12 +61,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 0,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "div"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 755.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -86,7 +99,7 @@
           "bottom": 835
         }
       },
-      "reads": 27
+      "reads": 29
     },
     {
       "step": "A0 at the tail",
@@ -119,12 +132,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 0,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "div"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -144,7 +170,7 @@
           "bottom": 835
         }
       },
-      "reads": 28
+      "reads": 29
     },
     {
       "step": "A1 after a batch",
@@ -177,12 +203,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 0,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "div"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -202,7 +241,7 @@
           "bottom": 835
         }
       },
-      "reads": 30
+      "reads": 31
     },
     {
       "step": "A2 after a batch",
@@ -235,12 +274,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 0,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "div"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -260,7 +312,7 @@
           "bottom": 835
         }
       },
-      "reads": 33
+      "reads": 34
     },
     {
       "step": "A3 after a batch",
@@ -293,12 +345,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 0,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "div"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -318,7 +383,7 @@
           "bottom": 835
         }
       },
-      "reads": 36
+      "reads": 37
     },
     {
       "step": "B0 scrolled up",
@@ -351,12 +416,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 1,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "button"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -376,7 +454,7 @@
           "bottom": 835
         }
       },
-      "reads": 36
+      "reads": 37
     },
     {
       "step": "B1 after a batch",
@@ -409,12 +487,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 1,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "button"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -434,7 +525,7 @@
           "bottom": 835
         }
       },
-      "reads": 39
+      "reads": 40
     },
     {
       "step": "B2 after a batch",
@@ -467,12 +558,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 1,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "button"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -492,7 +596,7 @@
           "bottom": 835
         }
       },
-      "reads": 41
+      "reads": 43
     },
     {
       "step": "C0 scrolled up",
@@ -525,12 +629,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 1,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "button"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -550,7 +667,7 @@
           "bottom": 835
         }
       },
-      "reads": 41
+      "reads": 43
     },
     {
       "step": "C1 back at the tail",
@@ -583,12 +700,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 0,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "div"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -608,7 +738,7 @@
           "bottom": 835
         }
       },
-      "reads": 42
+      "reads": 43
     },
     {
       "scrollTop": -3,
@@ -638,12 +768,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 0,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "div"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -665,7 +808,7 @@
       },
       "step": "E0 3px off the tail",
       "theme": "localOperatorDark",
-      "reads": 42,
+      "reads": 43,
       "expected": "placed and read in the same frame, inside TAIL_EPS_PX"
     },
     {
@@ -699,12 +842,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 0,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "div"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -757,12 +913,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 0,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "div"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -782,7 +951,7 @@
           "bottom": 835
         }
       },
-      "reads": 49
+      "reads": 48
     },
     {
       "step": "D0 settled",
@@ -815,12 +984,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 0,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "div"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -840,7 +1022,7 @@
           "bottom": 835
         }
       },
-      "reads": 50
+      "reads": 49
     },
     {
       "step": "D1 eleven seconds later",
@@ -873,12 +1055,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 0,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "div"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -898,7 +1093,7 @@
           "bottom": 835
         }
       },
-      "reads": 50
+      "reads": 49
     },
     {
       "step": "F0 40px off the tail",
@@ -931,12 +1126,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 0.914535,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "button"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -956,7 +1164,7 @@
           "bottom": 835
         }
       },
-      "reads": 50
+      "reads": 49
     },
     {
       "step": "F1 after a batch",
@@ -989,12 +1197,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 1,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "button"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -1014,12 +1235,12 @@
           "bottom": 835
         }
       },
-      "reads": 50
+      "reads": 49
     },
     {
-      "step": "G0 the control appearing",
+      "step": "G0 the control appearing (fade frozen at 40%)",
       "theme": "localOperatorDark",
-      "expected": "the control is present at its full size while its opacity settles",
+      "expected": "a fade in flight: the control is mounted, its opacity is mid-transition",
       "scrollTop": -600,
       "fromBottom": 600,
       "extent": 5351,
@@ -1047,12 +1268,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 0.913982,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "button"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -1072,10 +1306,93 @@
           "bottom": 835
         }
       },
-      "reads": 50
+      "reads": 49,
+      "frozen": {
+        "count": 1,
+        "fraction": 0.4,
+        "atMs": [
+          400
+        ],
+        "opacity": 0
+      }
     },
     {
-      "step": "G1 hover",
+      "step": "G1 the control settled (fade released)",
+      "theme": "localOperatorDark",
+      "expected": "the fade has completed: opacity 1",
+      "scrollTop": -600,
+      "fromBottom": 600,
+      "extent": 5351,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-023",
+      "anchorOffset": 1.0625,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 558.609375,
+      "newestVisible": false,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-25-reply",
+      "button": {
+        "visible": true,
+        "hitTestable": true,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "opacity": 1,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "button"
+      },
+      "band": {
+        "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 49,
+      "released": {
+        "count": 1,
+        "opacity": 1
+      }
+    },
+    {
+      "step": "G2 hover",
       "theme": "localOperatorDark",
       "expected": "a real pointer over the control",
       "scrollTop": -600,
@@ -1105,12 +1422,25 @@
         },
         "focused": false,
         "hovered": true,
+        "opacity": 1,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "button"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -1130,7 +1460,7 @@
           "bottom": 835
         }
       },
-      "reads": 50
+      "reads": 49
     },
     {
       "scrollTop": -147,
@@ -1160,12 +1490,25 @@
         },
         "focused": true,
         "hovered": true,
+        "opacity": 1,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "button"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "button",
+        "ariaLabel": "Scroll to bottom",
+        "dataRecordId": null,
+        "isScroller": false
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 755.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -1185,17 +1528,17 @@
           "bottom": 835
         }
       },
-      "step": "G2 focus (21 tabs)",
+      "step": "G3 focus (21 tabs)",
       "theme": "localOperatorDark",
-      "reads": 50,
+      "reads": 49,
       "tabOrderIndex": 0,
       "tabOrderLength": 22,
       "expected": "keyboard focus lands on the control, and it sits with the pane's own controls rather than after the conversation"
     },
     {
-      "step": "G3 after the press",
+      "step": "G4 after the press",
       "theme": "localOperatorDark",
-      "expected": "the reader is at the tail and the control is hidden again",
+      "expected": "the reader is back at the tail and the control is hidden again",
       "scrollTop": 0,
       "fromBottom": 0,
       "extent": 5351,
@@ -1223,12 +1566,25 @@
         },
         "focused": true,
         "hovered": false,
+        "opacity": 0,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "div"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "button",
+        "ariaLabel": "Scroll to bottom",
+        "dataRecordId": null,
+        "isScroller": false
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 755.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -1248,7 +1604,8 @@
           "bottom": 835
         }
       },
-      "reads": 50
+      "reads": 49,
+      "waitedMs": 418
     },
     {
       "step": "H0 a failed child, scrolled up",
@@ -1269,6 +1626,18 @@
       "bottomId": "entry-assistant-25-reply",
       "button": null,
       "band": null,
+      "activeElement": {
+        "tag": "body",
+        "ariaLabel": null,
+        "dataRecordId": null,
+        "isScroller": false
+      },
+      "ringClip": {
+        "scrollerBottom": 691.75,
+        "clipBottom": 691.75,
+        "ringBottom": 694.75,
+        "contained": false
+      },
       "stack": {
         "scroller": {
           "top": 72.890625,
@@ -1281,13 +1650,13 @@
           "bottom": 835
         }
       },
-      "reads": 50
+      "reads": 49
     },
     {
       "step": "H1 a child with no session id",
       "theme": "localOperatorDark",
       "expected": "no control and no band: there is no scroller to lead back to",
-      "reads": 50
+      "reads": 49
     },
     {
       "step": "0 seeded",
@@ -1320,12 +1689,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 0,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "div"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -1378,12 +1760,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 0,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "div"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -1436,12 +1831,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 0,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "div"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -1494,12 +1902,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 0,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "div"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -1519,7 +1940,7 @@
           "bottom": 835
         }
       },
-      "reads": 34
+      "reads": 36
     },
     {
       "step": "A3 after a batch",
@@ -1552,12 +1973,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 0,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "div"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -1577,7 +2011,7 @@
           "bottom": 835
         }
       },
-      "reads": 37
+      "reads": 39
     },
     {
       "step": "B0 scrolled up",
@@ -1610,12 +2044,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 1,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "button"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -1635,7 +2082,7 @@
           "bottom": 835
         }
       },
-      "reads": 37
+      "reads": 39
     },
     {
       "step": "B1 after a batch",
@@ -1668,12 +2115,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 1,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "button"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -1693,7 +2153,7 @@
           "bottom": 835
         }
       },
-      "reads": 40
+      "reads": 41
     },
     {
       "step": "B2 after a batch",
@@ -1726,12 +2186,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 1,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "button"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -1751,7 +2224,7 @@
           "bottom": 835
         }
       },
-      "reads": 42
+      "reads": 44
     },
     {
       "step": "C0 scrolled up",
@@ -1784,12 +2257,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 1,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "button"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -1809,7 +2295,7 @@
           "bottom": 835
         }
       },
-      "reads": 42
+      "reads": 44
     },
     {
       "step": "C1 back at the tail",
@@ -1842,12 +2328,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 0,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "div"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -1867,7 +2366,7 @@
           "bottom": 835
         }
       },
-      "reads": 43
+      "reads": 44
     },
     {
       "scrollTop": -3,
@@ -1897,12 +2396,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 0,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "div"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -1924,7 +2436,7 @@
       },
       "step": "E0 3px off the tail",
       "theme": "localOperatorLight",
-      "reads": 43,
+      "reads": 44,
       "expected": "placed and read in the same frame, inside TAIL_EPS_PX"
     },
     {
@@ -1958,12 +2470,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 0,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "div"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -1983,7 +2508,7 @@
           "bottom": 835
         }
       },
-      "reads": 46
+      "reads": 47
     },
     {
       "step": "E2 after a second batch",
@@ -2016,12 +2541,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 0,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "div"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -2041,7 +2579,7 @@
           "bottom": 835
         }
       },
-      "reads": 48
+      "reads": 50
     },
     {
       "step": "D0 settled",
@@ -2074,12 +2612,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 0,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "div"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -2099,7 +2650,7 @@
           "bottom": 835
         }
       },
-      "reads": 49
+      "reads": 51
     },
     {
       "step": "D1 eleven seconds later",
@@ -2132,12 +2683,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 0,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "div"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -2157,7 +2721,7 @@
           "bottom": 835
         }
       },
-      "reads": 49
+      "reads": 51
     },
     {
       "step": "F0 40px off the tail",
@@ -2190,12 +2754,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 0.843544,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "button"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -2215,7 +2792,7 @@
           "bottom": 835
         }
       },
-      "reads": 49
+      "reads": 51
     },
     {
       "step": "F1 after a batch",
@@ -2248,12 +2825,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 1,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "button"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -2273,12 +2863,12 @@
           "bottom": 835
         }
       },
-      "reads": 49
+      "reads": 51
     },
     {
-      "step": "G0 the control appearing",
+      "step": "G0 the control appearing (fade frozen at 40%)",
       "theme": "localOperatorLight",
-      "expected": "the control is present at its full size while its opacity settles",
+      "expected": "a fade in flight: the control is mounted, its opacity is mid-transition",
       "scrollTop": -600,
       "fromBottom": 600,
       "extent": 5351,
@@ -2306,12 +2896,25 @@
         },
         "focused": false,
         "hovered": false,
+        "opacity": 0.843661,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "button"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -2331,10 +2934,93 @@
           "bottom": 835
         }
       },
-      "reads": 49
+      "reads": 51,
+      "frozen": {
+        "count": 1,
+        "fraction": 0.4,
+        "atMs": [
+          400
+        ],
+        "opacity": 0
+      }
     },
     {
-      "step": "G1 hover",
+      "step": "G1 the control settled (fade released)",
+      "theme": "localOperatorLight",
+      "expected": "the fade has completed: opacity 1",
+      "scrollTop": -600,
+      "fromBottom": 600,
+      "extent": 5351,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-023",
+      "anchorOffset": 1.0625,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 558.609375,
+      "newestVisible": false,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-25-reply",
+      "button": {
+        "visible": true,
+        "hitTestable": true,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "opacity": 1,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "button"
+      },
+      "band": {
+        "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 51,
+      "released": {
+        "count": 1,
+        "opacity": 1
+      }
+    },
+    {
+      "step": "G2 hover",
       "theme": "localOperatorLight",
       "expected": "a real pointer over the control",
       "scrollTop": -600,
@@ -2364,12 +3050,25 @@
         },
         "focused": false,
         "hovered": true,
+        "opacity": 1,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "button"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 756.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -2389,7 +3088,7 @@
           "bottom": 835
         }
       },
-      "reads": 49
+      "reads": 51
     },
     {
       "scrollTop": -147,
@@ -2419,12 +3118,25 @@
         },
         "focused": true,
         "hovered": true,
+        "opacity": 1,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "button"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "button",
+        "ariaLabel": "Scroll to bottom",
+        "dataRecordId": null,
+        "isScroller": false
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 755.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -2444,17 +3156,17 @@
           "bottom": 835
         }
       },
-      "step": "G2 focus (22 tabs)",
+      "step": "G3 focus (22 tabs)",
       "theme": "localOperatorLight",
-      "reads": 49,
+      "reads": 51,
       "tabOrderIndex": 0,
       "tabOrderLength": 22,
       "expected": "keyboard focus lands on the control, and it sits with the pane's own controls rather than after the conversation"
     },
     {
-      "step": "G3 after the press",
+      "step": "G4 after the press",
       "theme": "localOperatorLight",
-      "expected": "the reader is at the tail and the control is hidden again",
+      "expected": "the reader is back at the tail and the control is hidden again",
       "scrollTop": 0,
       "fromBottom": 0,
       "extent": 5351,
@@ -2482,12 +3194,25 @@
         },
         "focused": true,
         "hovered": false,
+        "opacity": 0,
         "overlapPx": 0,
         "overRows": 0,
         "underCentre": "div"
       },
       "band": {
         "height": 48
+      },
+      "activeElement": {
+        "tag": "button",
+        "ariaLabel": "Scroll to bottom",
+        "dataRecordId": null,
+        "isScroller": false
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 752.609375,
+        "ringBottom": 755.609375,
+        "contained": false
       },
       "stack": {
         "scroller": {
@@ -2507,7 +3232,8 @@
           "bottom": 835
         }
       },
-      "reads": 49
+      "reads": 51,
+      "waitedMs": 418
     },
     {
       "step": "H0 a failed child, scrolled up",
@@ -2528,6 +3254,18 @@
       "bottomId": "entry-assistant-25-reply",
       "button": null,
       "band": null,
+      "activeElement": {
+        "tag": "body",
+        "ariaLabel": null,
+        "dataRecordId": null,
+        "isScroller": false
+      },
+      "ringClip": {
+        "scrollerBottom": 691.75,
+        "clipBottom": 691.75,
+        "ringBottom": 694.75,
+        "contained": false
+      },
       "stack": {
         "scroller": {
           "top": 72.890625,
@@ -2540,13 +3278,13 @@
           "bottom": 835
         }
       },
-      "reads": 49
+      "reads": 51
     },
     {
       "step": "H1 a child with no session id",
       "theme": "localOperatorLight",
       "expected": "no control and no band: there is no scroller to lead back to",
-      "reads": 49
+      "reads": 51
     }
   ]
 }
