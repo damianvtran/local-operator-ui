@@ -1127,6 +1127,7 @@ const STAMP_BINDING_NOTES = [
 	 * that fix ships - the same criterion the fold note above meets.
 	 */
 	"walkFirstRunRestampNote",
+	"scratchDriverRemovalRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
