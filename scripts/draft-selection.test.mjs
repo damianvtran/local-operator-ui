@@ -87,6 +87,7 @@ const bundle = await build({
 				admitChatDraft,
 				useCanonicalSessionsStore,
 			} from "./src/renderer/src/shared/store/canonical-sessions-store";
+			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -132,6 +133,7 @@ const {
 	selectionFromModel,
 	selectionSelector,
 	specUnresolved,
+	useConversationInputStore,
 	useCanonicalSessionsStore,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
@@ -1713,5 +1715,110 @@ test("the minted id is stripped from what is persisted; the receipt key is not",
 		persisted.drafts[key].draftRequestId,
 		state.drafts[key].draftRequestId,
 		"but the receipt key persists: on a daemon that still holds the draft, the re-mint replays the same id",
+	);
+});
+
+test("a cwd change drops the warm intent on INACTIVE draft rows too (review round 1, MAJOR-1)", async () => {
+	calls.length = 0;
+	const store = useCanonicalSessionsStore.getState();
+	store.setCwd("/x");
+	advertiseDraftWarm();
+	/*
+	 * The reviewer's repro, in miniature: `cwd` is ONE value read by whatever
+	 * pane mints and whatever pane sends, while agent/team-keyed rows are
+	 * RE-USED by `stageDraft` when the user comes back to them. A warm left on
+	 * an inactive row is a send waiting to adopt a runtime engaged for the
+	 * previous directory, which is exactly what the drop rule exists to prevent.
+	 */
+	const agentKey = store.stageDraft({ kind: "agent", name: "agent-a" });
+	assert.equal(await mintOnce(agentKey, "a1a1a1a1a1a1"), "a1a1a1a1a1a1");
+
+	// Another pane becomes the active one; the directory then changes on it.
+	const freshKey = store.stageDraft();
+	assert.notEqual(freshKey, agentKey);
+	useCanonicalSessionsStore.getState().setCwd("/y");
+	assert.equal(
+		useCanonicalSessionsStore.getState().drafts[agentKey].warmId,
+		undefined,
+		"the INACTIVE row's stale warm must be gone: cwd is one value for every draft",
+	);
+
+	// Re-entering the reused row and sending must not adopt the /x runtime.
+	calls.length = 0;
+	reply = (request) =>
+		request.op === "sessions.create"
+			? {
+					result: { session_id: "abcdef123456", binding: { kind: "none" } },
+				}
+			: { result: {} };
+	store.stageDraft({ kind: "agent", name: "agent-a" });
+	const admitted = await admitChatDraft(agentKey, {
+		text: "hello",
+		attachments: [],
+		images: [],
+		mode: "prompt",
+		cwd: "/y",
+	});
+	assert.equal(admitted, "abcdef123456");
+	const create = wire().find((call) => call.path === "/v1/desktop/sessions");
+	assert.equal(create?.body.cwd, "/y");
+	assert.ok(
+		!("draft_id" in create.body),
+		"no draft id: the /x warm was dropped, not adopted",
+	);
+});
+
+test("the capability landing on a pane that already holds text re-arms the mint (review round 1, MINOR-1)", async () => {
+	calls.length = 0;
+	const store = useCanonicalSessionsStore.getState();
+	store.setCwd(CWD);
+	useCanonicalSessionsStore.getState().setDraftWarmable(false);
+	const key = store.stageDraft();
+	/*
+	 * The cold-start race: the first keystroke's edge fires before the capability
+	 * query answers, so the mint is refused - and the composer's edge is spent
+	 * for the whole message. The pane's text is what says the intent is still
+	 * there when the answer lands.
+	 */
+	useConversationInputStore.getState().setCurrentInput(key, "half a sentence");
+	useCanonicalSessionsStore.getState().ensureDraftWarm(key);
+	await settle();
+	assert.equal(
+		wire().length,
+		0,
+		"no capability yet: nothing minted, nothing loud",
+	);
+
+	reply = (request) =>
+		request.op === "sessions.draft"
+			? { result: { draft_id: MINTED } }
+			: { result: {} };
+	useCanonicalSessionsStore.getState().setDraftWarmable(true);
+	await settle();
+	assert.equal(
+		useCanonicalSessionsStore.getState().drafts[key].warmId,
+		MINTED,
+		"the arriving capability re-arms the mint for the text already typed",
+	);
+	assert.equal(
+		wire().length,
+		1,
+		"exactly one mint: the same silent, receipt-stable call the edge makes",
+	);
+
+	// A pane with NO text still waits for its own keystroke.
+	calls.length = 0;
+	const empty = store.stageDraft();
+	useCanonicalSessionsStore.getState().setDraftWarmable(false);
+	useCanonicalSessionsStore.getState().setDraftWarmable(true);
+	await settle();
+	assert.equal(
+		wire().length,
+		0,
+		"no text, no mint: the keystroke policy is intact",
+	);
+	assert.equal(
+		useCanonicalSessionsStore.getState().drafts[empty].warmId,
+		undefined,
 	);
 });

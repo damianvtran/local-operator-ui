@@ -276,7 +276,17 @@ function SessionPanel({
 	 * id the stream carries, never when the panel remounts.
 	 */
 	const streamId = sessionId ?? draft?.warmId;
-	const canonical = useCanonicalSessionStream(streamId, Boolean(streamId));
+	/*
+	 * The third answer is the one only this pane can give: whether `streamId`
+	 * names a session a page can be owed for, or a DRAFT's bridge subscription
+	 * (`useCanonicalSessionStream`'s own note carries why the hook cannot tell
+	 * them apart). A draft's stream is a bridge, not a page (UX round 1, U1).
+	 */
+	const canonical = useCanonicalSessionStream(
+		streamId,
+		Boolean(streamId),
+		Boolean(sessionId),
+	);
 	useDesktopWatchLease(streamId, canonical.subscriptionId);
 	// Read here rather than threaded from the page: the query is cached with a
 	// 60 s staleTime, so this is a store read and not a second request.
@@ -573,10 +583,17 @@ function SessionPanel({
 	 * With no canonical frontend there is no model, which is what leaves the
 	 * legacy path - `ChatContent`'s header without a canonical session - with no
 	 * trigger at all rather than one that opens an empty panel.
+	 *
+	 * A DRAFT PANE GETS THAT SAME ANSWER (design review round 1, D2). The draft's
+	 * own subscription makes a canonical frontend exist while the pane has no
+	 * conversation, and the header grew the Run-details control over a run that
+	 * cannot exist yet - a panel that could only open on nothing. A draft has no
+	 * run to report, so the model stays null until the session exists; the trigger
+	 * then arrives with the conversation, which is exactly when main draws it.
 	 */
 	const runDetails = useMemo(
 		() =>
-			canonical.frontend
+			sessionId && canonical.frontend
 				? deriveRunDetails({
 						jobs: canonical.frontend.jobs,
 						todos: canonical.frontend.todos,
@@ -590,7 +607,7 @@ function SessionPanel({
 						wakes: canonical.frontend.wakes,
 					})
 				: null,
-		[canonical.frontend],
+		[sessionId, canonical.frontend],
 	);
 	/*
 	 * The run panel's MCP half, read here for the reason the model is derived here:
