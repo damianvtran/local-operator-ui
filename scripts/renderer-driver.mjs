@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|connection-drop|sidebar-sections|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|conversation-start|none>
+ *   --scene <states|new-chat|first-send|connection-drop|sidebar-sections|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|none>
  *                          which built-in scene to run (default: states)
  *   --gate-state <label>   (with --scene settings-gate) what this run's backend
  *                          state is called in the frames and the log, so two
@@ -15176,6 +15176,133 @@ async function sceneBtwAside(cdp) {
  * old build is the old build. The before half is what makes each after reading a
  * difference rather than a coincidence.
  */
+/*
+ * THE CREATE THAT DIES INSIDE THE PRESS WINDOW (UX round 1, U2).
+ *
+ * The tap's `kill-creates` arm destroys the socket the create went out on, so
+ * the request leaves and no answer ever comes: the shape the round measured as
+ * "the message has no home at all - no row, no wait line, no sidebar row - and
+ * only a reload recovers it". The checks are the round's own ask: the row, the
+ * statement with its controls, the sidebar presence, and the reload that must
+ * bring the row back.
+ *
+ * Usage:
+ *   TAP_TARGET=<backend> TAP_PORT=<tap> node docs/evidence/conversation-start/harness/create-tap.mjs
+ *   node scripts/renderer-driver.mjs --scene conversation-start-create-failure \
+ *     --backend http://127.0.0.1:<tap> --tap-control http://127.0.0.1:<tap> --out <dir> --clean
+ */
+async function sceneConversationStartCreateFailure(cdp) {
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	const composerSelector = '[data-tour-tag="chat-input-textarea"]';
+	const size = `${WINDOW_WIDTH}x${WINDOW_HEIGHT}`;
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+	check(
+		"the kill arm needs the tap's control door",
+		TAP_CONTROL !== null,
+		TAP_CONTROL ?? "pass --tap-control http://127.0.0.1:<tap>",
+	);
+	if (!TAP_CONTROL) return;
+	const armed = await fetch(`${TAP_CONTROL}/__tap/kill-creates`, {
+		method: "POST",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({ count: 1 }),
+	});
+	note("tap kill", `${armed.status} ${await armed.text()}`);
+
+	const reads = () =>
+		cdp.evaluate(`(() => {
+			const log = document.querySelector('[role="log"]');
+			const rows = log ? [...log.querySelectorAll('[data-record-id]')] : [];
+			const composer = document.querySelector('${composerSelector} textarea');
+			const undelivered = document.querySelector('[data-undelivered]');
+			const region = document.querySelector('[data-sidebar-region="chats"]');
+			const draft = region ? region.querySelector('[data-draft-row]') : null;
+			return {
+				rows: rows.length,
+				rowIds: rows.map((row) => row.getAttribute('data-record-id')),
+				composer: composer ? composer.value : null,
+				controls: log ? [...log.querySelectorAll('button')].map((b) => b.textContent.trim()) : [],
+				undelivered: undelivered ? undelivered.textContent.trim() : null,
+				draftRow: draft ? draft.getAttribute('data-draft-row') : null,
+			};
+		})()`);
+
+	await verb(cdp, "navigate", "/chat");
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${composerSelector}') && document.querySelector('[data-lo-empty-mark]'))`,
+		30_000,
+	);
+	await clickAt(cdp, `${composerSelector} textarea`);
+	await cdp.send("Input.insertText", { text: "Summarise yesterday's QA run." });
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	// The killed socket rejects quickly; the row and its statement are what the
+	// window is judged by, so the read comes after the failure arm can have run.
+	await wait(2500);
+	const dead = await reads();
+	note("after the dead create", JSON.stringify(dead));
+	check(
+		"U2: the message keeps its row when the create dies in the press window",
+		dead.rows === 1,
+		`rows=${dead.rows} ids=${JSON.stringify(dead.rowIds)}`,
+	);
+	check(
+		"U2: the row states the failure, with both controls",
+		dead.undelivered !== null &&
+			dead.controls.includes("Send again") &&
+			dead.controls.includes("Edit"),
+		`undelivered=${JSON.stringify(dead.undelivered)} controls=${JSON.stringify(dead.controls)}`,
+	);
+	check(
+		"U2: and the composer stays empty - the row is the message's home",
+		dead.composer === "",
+		`composer=${JSON.stringify(dead.composer)}`,
+	);
+	check(
+		"U2: the sidebar still lists the chat, so a switch-away can come back to it",
+		dead.draftRow !== null,
+		`draftRow=${JSON.stringify(dead.draftRow)}`,
+	);
+	const deadFrame = await captureSettled(
+		cdp,
+		`conversation-start-${size}-dead-create`,
+	);
+	note("frame", JSON.stringify(deadFrame));
+
+	/* The reload: the failure shape is the one S6's adapter re-paints. */
+	await cdp.send("Page.reload", { ignoreCache: false });
+	const back = await waitForCondition(
+		cdp,
+		`(() => {
+			const log = document.querySelector('[role="log"]');
+			return Boolean(document.querySelector('${composerSelector}') && log && log.textContent.includes("Send again"));
+		})()`,
+		30_000,
+	);
+	const reloaded = await reads();
+	note("reload", JSON.stringify({ read: reloaded, back: back.ok }));
+	check(
+		"U2/T6: after a reload the row is back and still states its failure",
+		back.ok === true &&
+			reloaded.rows === 1 &&
+			reloaded.controls.includes("Send again"),
+		`rows=${reloaded.rows} controls=${JSON.stringify(reloaded.controls)}`,
+	);
+	const reloadFrame = await captureSettled(
+		cdp,
+		`conversation-start-${size}-dead-create-reload`,
+	);
+	note("frame", JSON.stringify(reloadFrame));
+}
+
 async function sceneConversationStart(cdp) {
 	const expectAfter = START_EXPECT !== "before";
 	const facts = await factsOf(cdp);
@@ -15243,6 +15370,7 @@ async function sceneConversationStart(cdp) {
 			const log = document.querySelector('[role="log"]');
 			const rows = log ? [...log.querySelectorAll('[data-record-id]')] : [];
 			const composer = document.querySelector('${composerSelector} textarea');
+			const undelivered = document.querySelector('[data-undelivered]');
 			return {
 				rows: rows.length,
 				rowIds: rows.map((row) => row.getAttribute('data-record-id')),
@@ -15254,12 +15382,30 @@ async function sceneConversationStart(cdp) {
 					.map((el) => el.textContent.trim())
 					.join(' | '),
 				controls: log ? [...log.querySelectorAll('button')].map((b) => b.textContent.trim()) : [],
+				undelivered: undelivered ? undelivered.textContent.trim() : null,
 			};
 		})()`);
 	const waitLine = () =>
 		cdp.evaluate(`(() => {
 			const match = document.body.innerText.match(/(starting the session|waiting for the agent)(?:\\s+(\\d+)s)?/);
 			return match ? { phase: match[1], seconds: match[2] ? Number(match[2]) : null } : null;
+		})()`);
+	/*
+	 * The sidebar's own answer about the chat under test (design review round 1,
+	 * D3): the draft row the press's chat is listed under while no session exists,
+	 * and the session rows beside it - so "the chat is in the list" is read from
+	 * the list rather than inferred from the pane.
+	 */
+	const sidebarState = () =>
+		cdp.evaluate(`(() => {
+			const region = document.querySelector('[data-sidebar-region="chats"]');
+			if (!region) return null;
+			const draft = region.querySelector('[data-draft-row]');
+			return {
+				draftRow: draft ? draft.getAttribute('data-draft-row') : null,
+				draftLabel: draft ? (draft.textContent || '').trim().slice(0, 80) : null,
+				sessionRows: region.querySelectorAll('[data-session-row]').length,
+			};
 		})()`);
 
 	/*
@@ -15293,7 +15439,11 @@ async function sceneConversationStart(cdp) {
 		`conversation-start-${size}-press`,
 	);
 	note("frame", JSON.stringify(pressFrame));
-	const press = { read: await reads(), line: await waitLine() };
+	const press = {
+		read: await reads(),
+		line: await waitLine(),
+		sidebar: await sidebarState(),
+	};
 	note("press", JSON.stringify(press));
 	if (expectAfter) {
 		check(
@@ -15315,6 +15465,19 @@ async function sceneConversationStart(cdp) {
 			"and no alert speaks over the row for a send that has not failed",
 			press.read.alert === "",
 			`alert=${JSON.stringify(press.read.alert)}`,
+		);
+		/*
+		 * DESIGN REVIEW ROUND 1, D3: the composer clears at the press, and the
+		 * sidebar's draft row used to clear with it - the chat was in neither list
+		 * for the whole create hop. The row reads the composer OR the claim's own
+		 * `submittedText`, so it must still be here, named by the message. 
+		 */
+		check(
+			"D3: the sidebar keeps the chat's own row through the create hop",
+			press.sidebar !== null &&
+				press.sidebar.draftRow !== null &&
+				(press.sidebar.draftLabel ?? "").includes("Summarise"),
+			`sidebar=${JSON.stringify(press.sidebar)}`,
 		);
 	} else {
 		note(
@@ -15339,6 +15502,7 @@ async function sceneConversationStart(cdp) {
 	 */
 	const flipRead = await reads();
 	const flipLine = await waitLine();
+	const flipSidebar = await sidebarState();
 	const flipFrame = await captureSettled(
 		cdp,
 		`conversation-start-${size}-flip`,
@@ -15350,7 +15514,7 @@ async function sceneConversationStart(cdp) {
 		`conversation-start-${size}-flip-plus-1s`,
 	);
 	note("frame", JSON.stringify(plusOneFrame));
-	const flip = { read: flipRead, line: flipLine, flipped: flipped.ok };
+	const flip = { read: flipRead, line: flipLine, sidebar: flipSidebar, flipped: flipped.ok };
 	note("flip", JSON.stringify(flip));
 	if (expectAfter) {
 		/*
@@ -15390,6 +15554,17 @@ async function sceneConversationStart(cdp) {
 			"the composer's box stays empty after the flip - one home for the message",
 			flip.read.composer === "",
 			`composer=${JSON.stringify(flip.read.composer)}`,
+		);
+		/*
+		 * D3's second half: the draft row may disappear the moment `sessionId`
+		 * patches, but the chat must be in ONE of the two lists throughout - the S5
+		 * refresh is what puts the session row in place as the draft row leaves.
+		 */
+		check(
+			"D3: at the flip the chat is still in the sidebar, as a draft or a session",
+			flip.sidebar !== null &&
+				(flip.sidebar.draftRow !== null || flip.sidebar.sessionRows >= 1),
+			`sidebar=${JSON.stringify(flip.sidebar)}`,
 		);
 	} else {
 		note(
@@ -15497,7 +15672,7 @@ async function sceneConversationStart(cdp) {
 		`conversation-start-${size}-reload`,
 	);
 	note("frame", JSON.stringify(reloadFrame));
-	const reload = { read: await reads(), back: reloaded.ok };
+	const reload = { read: await reads(), back: reloaded.ok, line: await waitLine() };
 	note("reload", JSON.stringify(reload));
 	if (expectAfter) {
 		check(
@@ -15507,6 +15682,19 @@ async function sceneConversationStart(cdp) {
 				reload.read.rowIds.includes(failedId) &&
 				reload.read.controls.includes("Send again"),
 			`failedId=${failedId} rows=${JSON.stringify(reload.read.rowIds)} controls=${JSON.stringify(reload.read.controls)}`,
+		);
+		/*
+		 * DESIGN REVIEW ROUND 1, D1, IN ITS OWN READING: the reload is where the
+		 * resolved claim used to keep waiting - the server's read clears `error`,
+		 * the rung re-armed, and the frame showed `Not delivered` with `waiting for
+		 * the agent 3s` underneath it. One message cannot be both, and with the
+		 * resolved shape among the enders the line must be gone while the row's own
+		 * statement stays.
+		 */
+		check(
+			"D1: the resolved claim stops waiting - no line under a `Not delivered` row",
+			reload.read.undelivered !== null && reload.line === null,
+			`undelivered=${JSON.stringify(reload.read.undelivered)} line=${JSON.stringify(reload.line)}`,
 		);
 	} else {
 		note(
@@ -26305,6 +26493,8 @@ async function main() {
 			else if (SCENE === "first-send") await sceneFirstSend(cdp);
 			else if (SCENE === "conversation-start")
 				await sceneConversationStart(cdp);
+			else if (SCENE === "conversation-start-create-failure")
+				await sceneConversationStartCreateFailure(cdp);
 			else if (SCENE === "question-dock") await sceneQuestionDock(cdp);
 			else if (SCENE === "radient-issue") await sceneRadientIssue(cdp);
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);

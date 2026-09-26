@@ -66,6 +66,20 @@ let failMessages = 0;
  */
 let holdMessages = { count: 0, ms: 0 };
 
+/**
+ * How many create POSTs the tap should KILL rather than forward, armed through
+ * the same control door (`POST /__tap/kill-creates`).
+ *
+ * WHY THIS ARM EXISTS. UX round 1's U2: a create that DIES inside the press
+ * window - the connection dropped after the request left, no answer ever - left
+ * the message with no home at all on the shipped head, recoverable only by a
+ * reload. The daemon's own `sessions.create` cannot be made to die on demand,
+ * and destroying the socket is the wire-faithful way to reproduce the shape:
+ * the renderer's `fetch` rejects, exactly as it does when the daemon vanishes
+ * mid-press, while nothing is written on the backend's side.
+ */
+let killCreates = 0;
+
 /** The owner's own captured body for a hop failure, from `stub-owner.mjs`'s set. */
 const UNREACHABLE_BODY = {
 	detail: {
@@ -123,6 +137,25 @@ const server = createServer((req, res) => {
 		});
 		return;
 	}
+	if (req.method === "POST" && req.url === "/__tap/kill-creates") {
+		let body = "";
+		req.on("data", (chunk) => {
+			body += chunk;
+		});
+		req.on("end", () => {
+			let count = 1;
+			try {
+				count = Number(JSON.parse(body).count) || 0;
+			} catch {
+				/* a malformed body arms nothing rather than guessing */
+			}
+			killCreates = Math.max(0, count);
+			log(`POST /__tap/kill-creates <- armed ${killCreates}`);
+			res.writeHead(200, { "content-type": "application/json" });
+			res.end(JSON.stringify({ armed: killCreates }));
+		});
+		return;
+	}
 	const isMessage =
 		req.method === "POST" && /^\/v1\/desktop\/sessions\/[^/]+\/messages$/.test(req.url);
 	if (isMessage && failMessages > 0) {
@@ -133,6 +166,12 @@ const server = createServer((req, res) => {
 		return;
 	}
 	const isCreate = req.method === "POST" && req.url === "/v1/desktop/sessions";
+	if (isCreate && killCreates > 0) {
+		killCreates -= 1;
+		log(`POST ${req.url} <- killed (tap arm: no answer, socket destroyed)`);
+		req.socket.destroy();
+		return;
+	}
 	const holdThisMessage = isMessage && holdMessages.count > 0;
 	if (holdThisMessage)
 		holdMessages = { count: holdMessages.count - 1, ms: holdMessages.ms };
