@@ -1295,7 +1295,11 @@ test("the accepted mirror: an own-fault no-clock failure inside the standing win
 		null,
 		"no clock: nothing this viewer ever watched start",
 	);
-	assert.equal(row.stopped, true, "the standing stop fact is the reading taken");
+	assert.equal(
+		row.stopped,
+		true,
+		"the standing stop fact is the reading taken",
+	);
 	assert.equal(
 		row.isError,
 		false,
