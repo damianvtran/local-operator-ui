@@ -1003,6 +1003,26 @@ every painted conversation, and that is the trade: an inset rather than text und
 a control. The rejected alternative was a band that appears with the chip, which
 would move the reader's own text at the moment they are reading it.
 
+**The clip is the scroller's own box, and the band sits outside it (design round
+2, D6).** The conversation's scroller takes focus after any wheel, so it draws
+the app's own `:focus-visible` ring (2px + a 2px offset, `--color-accent`) — and
+outlines are ink overflow, which an ancestor's `overflow: hidden` clips exactly as
+it clips a shadow. That is why this scroller never showed a ring: its box was the
+clip box. The reserved band moved that clip bottom down by 48px, and the ring's
+bottom segment landed inside it — a full-width accent rule across the foot in
+twelve of the sixteen captured states, appearing and disappearing with focus. The
+pane now carries the clip on a wrapper of its own
+(`data-lo-child-transcript-clip`, around `CanonicalTranscript`), so the clip is
+the scroller's own box again and the band is OUTSIDE it; nothing else about the
+layout moves, and the rig asserts the containment as geometry (`ringClip.contained`
+in every state it shoots). Stated rather than hidden: this leaves the scroller a
+focusable element with no VISIBLE ring — the pre-existing defect the segment
+exposed, not one this pane introduced. The honest fix is the stylesheet's own
+pattern for that case (the wrapper draws the ring, `has-[:focus-visible]:outline-solid`)
+applied to `CanonicalTranscript`'s scroller, which is shared with the chat page and
+needs its own evidence there; recorded as a follow-up on the pull request rather
+than half-done here.
+
 **Why the footer and not the header.** `§ 3.1 B` rejected a dock band as a place
 for the reader to live (it reclaims transcript height on every turn and cannot
 host a child reader) — that is a different question from this band, which is
@@ -1014,8 +1034,13 @@ where the fold is.
 50.** The reader is scrolled away from the tail, by the paging policy's own
 definition, as soon as `|scrollTop| > TAIL_EPS_PX` (`use-scroll-paging.ts`);
 between 24px and 50px a reader was being left behind with nothing offered, which
-is one condition answered two ways (UX round 1, U3 — measured: 40px off the tail,
-an arrival left the newest row 264px below the fold with the control hidden). The
+is one condition answered two ways (UX round 1, U3 — measured on the
+pre-remediation head: at 24, 25, 49 and 50px from the tail the control is hidden
+while the paging policy already calls the reader not-following; at 51px it
+shows. QA round 2's Q3 corrected the earlier sentence here, which claimed an
+arrival: an arrival does leave the tail 263px away with the newest row 221px
+below the fold, but the hook's own recompute has shown the control by then — the
+reproducible defect is the stationary window). The
 parent keeps its own 50; its band is a composer and its threshold is its own
 question.
 

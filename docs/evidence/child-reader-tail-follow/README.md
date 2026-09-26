@@ -138,10 +138,9 @@ Read these ways:
   place while the extent grows under it, and the control shows.
 - **The control does not cover the rows.** The first cut put it at the
   transcript's own `p-4` inset, which is where the rows' TEXT is: that is what
-  the `before` arm measures at 0.0px
-  of cover — the chip sitting on a line of prose. The band makes it
-  0.0px in every state where the control is shown,
-  which is the number this round exists for (QA Q1, UX U1).
+  the previous head measured at 32.0px of cover — the chip sitting on a line of
+  prose by its full height. The band makes it 0.0px in every state where the
+  control is shown, which is the number this round exists for (QA Q1, UX U1).
 - **A reader 40px off the tail is offered the way back** (`F0`), and still is
   after an arrival moves the tail away (`F1`). The paging policy calls a reader
   past `TAIL_EPS_PX` (24px) *not following the tail*, so the control's own
