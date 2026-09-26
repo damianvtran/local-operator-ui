@@ -128,6 +128,50 @@ export type RelaySubscribeArgs = {
 	afterSeq?: number;
 };
 
+/**
+ * The backend's own refusal, when the body carries one.
+ *
+ * Read from a BOUNDED copy: a refusal body is small, and a proxy that answers a
+ * megabyte of HTML for a refused stream must not be able to make this app hold it.
+ * Anything unparseable is an absence, not an error - the caller falls back to the
+ * transport's own sentence.
+ */
+const readStreamRefusal = async (
+	response: Response,
+): Promise<{ code?: string; message?: string }> => {
+	try {
+		const text = (await response.text()).slice(0, 4_096);
+		const body = JSON.parse(text) as {
+			detail?: unknown;
+			message?: unknown;
+		};
+		const detail =
+			typeof body.detail === "object" && body.detail !== null
+				? (body.detail as { code?: unknown; message?: unknown })
+				: null;
+		const code = typeof detail?.code === "string" ? detail.code : undefined;
+		/*
+		 * ONLY A SENTENCE THE PRODUCER WROTE FOR A READER, never a bare `detail`
+		 * string (round-2 review minor). FastAPI's stock refusal body is
+		 * `{"detail": "Unauthorized"}` - a machine word that names neither the
+		 * device nor a remedy - and passing it through as `message` would put it in
+		 * the pane exactly where this branch promised the backend's own sentence.
+		 * The object form is the one the mesh's refusals use, so the object form is
+		 * the only shape read here; anything else leaves `message` absent and the
+		 * caller falls back to its own copy.
+		 */
+		const message =
+			typeof detail?.message === "string" && detail.message.trim()
+				? detail.message
+				: typeof body.message === "string" && body.message.trim()
+					? body.message
+					: undefined;
+		return { ...(code ? { code } : {}), ...(message ? { message } : {}) };
+	} catch {
+		return {};
+	}
+};
+
 export type RelayEvent =
 	| { streamId: string; kind: "data"; data: string }
 	| {
@@ -145,6 +189,25 @@ export type RelayEvent =
 			 * gone (M6).
 			 */
 			status?: number;
+			/**
+			 * The backend's own token for the refusal, when its body carried one
+			 * (`session_is_remote` is the one this app acts on): a 409 is one arm of
+			 * many ladders, and the token names the condition while the sentence
+			 * names the remedy.
+			 */
+			code?: string;
+			/**
+			 * The backend's own sentence for that refusal, when its body carried
+			 * one, and `undefined` otherwise.
+			 *
+			 * SEPARATE FROM `detail` ON PURPOSE: `detail` is the relay's fixed
+			 * vocabulary that the app maps to its own copy, and overwriting it with
+			 * a server's text would let a bare "Unauthorized" stand where a product
+			 * sentence belongs. This field exists for the one arm whose answer is
+			 * about the reader's own work rather than the transport - a remote
+			 * session's 409 - and nothing else should read it.
+			 */
+			message?: string;
 	  }
 	| { streamId: string; kind: "end" };
 
@@ -275,14 +338,50 @@ export class DesktopStreamRelay {
 				redirect: "error",
 				signal,
 			});
-			if (!response.ok || !response.body) {
+			if (!response.ok) {
+				/*
+				 * A REFUSAL THAT NAMES ITSELF IS THE BACKEND'S TO SPEAK. The plane
+				 * answers 409 `session_is_remote` for a conversation that lives on
+				 * another device, and its `detail.message` says which device and the
+				 * two ways in - a sentence this renderer cannot compose, because the
+				 * device name is the peer's. Without carrying it the reader was told
+				 * the conversation "was deleted", which is false about their own live
+				 * work (QA round 1, Q2).
+				 */
+				const refusal = await readStreamRefusal(response);
+				emit({
+					streamId,
+					kind: "error",
+					/*
+					 * THE MACHINE VOCABULARY, NOT THE BACKEND'S SENTENCE, even when a
+					 * sentence was readable. `detail` is the field the transport ladder
+					 * keys on and `streamFailureNotice` maps to the app's own words for
+					 * a transport failure, so a status like 401 must keep saying
+					 * "refused (401)" rather than passing FastAPI's bare "Unauthorized"
+					 * through as if it were product copy. `session-stream-token.test.mjs`
+					 * pins exactly that.
+					 *
+					 * The backend's sentence is not thrown away - it is what a remote
+					 * session's reader needs, since that answer is about their work and
+					 * not about this transport - so it travels beside the vocabulary in
+					 * `message`, where only the arm that renders it reads it.
+					 */
+					detail: DESKTOP_STREAM_DETAIL.refused(response.status),
+					// Carried so the renderer can tell "this conversation is gone"
+					// from "this transport is down" from "this conversation is on
+					// another device". Each is a different answer; only one of them
+					// is about this machine's copy of the session.
+					status: response.status,
+					...(refusal.code ? { code: refusal.code } : {}),
+					...(refusal.message ? { message: refusal.message } : {}),
+				});
+				return;
+			}
+			if (!response.body) {
 				emit({
 					streamId,
 					kind: "error",
 					detail: DESKTOP_STREAM_DETAIL.refused(response.status),
-					// Carried so the renderer can tell "this conversation is gone"
-					// from "this transport is down". Both are refusals; only one of
-					// them is about the session, and the two need different words.
 					status: response.status,
 				});
 				return;

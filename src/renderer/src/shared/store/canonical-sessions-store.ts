@@ -36,15 +36,21 @@ import {
 	RUNTIME_RETIRING_CODE,
 	isDesktopRefusalCode,
 } from "../../../../shared/desktop-contract";
+import { DESKTOP_TRANSFER_WAIT_S } from "../../../../shared/desktop-contract";
 import {
 	type CanonicalFrontendState,
 	type CompletionAttention,
 	type CompletionAttentionAckReceipt,
 	type SessionBinding,
 	type SessionCatalogueStatus,
+	type SessionLocalityFields,
 	type SessionOpenedBy,
 	mergeCompletionAttention,
 } from "../../../../shared/desktop-session-contract";
+import {
+	localityFields,
+	transferReceipt,
+} from "../../../../shared/mesh-shapes";
 import type { LaunchTarget } from "../../../../shared/open-session";
 
 export type CanonicalSessionRow = {
@@ -124,7 +130,14 @@ export type CanonicalSessionRow = {
 	 */
 	opened_by?: SessionOpenedBy | null;
 	[key: string]: unknown;
-};
+	/*
+	 * The mesh's locality fields (`locality`, `owner_device*`, `reachable`, ...),
+	 * declared rather than left to the index signature for the reason `pinned` is:
+	 * the sidebar's partition and the remote mark read them, and an `unknown` read
+	 * is where a missing `locality` quietly becomes "remote". They arrive through
+	 * `fetchSessions`'s `...rest` untouched; this store derives nothing from them.
+	 */
+} & SessionLocalityFields;
 type BackendSessionRow = Omit<CanonicalSessionRow, "session_id"> & {
 	id: string;
 	name: string;
@@ -442,6 +455,32 @@ export type ChatImage = {
  * direction (three session-switch cases caught it). A transport refusal has a
  * `DesktopControlError`; anything else keeps the message it was given.
  */
+/**
+ * What the renderer asks the route to wait for the source runtime to retire, and
+ * the reason it is a number here rather than the route's default: the TRANSPORT's
+ * budget is derived from this very field (`desktopRequestDeadlineMs`), so a move
+ * whose wait the app does not state is a move the app can cut off.
+ */
+const TRANSFER_WAIT_S = DESKTOP_TRANSFER_WAIT_S;
+
+/**
+ * Whether a failed request is CONFIRMED not to have happened.
+ *
+ * A refusal is an answer: the route looked at the move (or the create) and said no
+ * (`fenced`, `in_flight_turn`, `unreachable`, `occupied`, a capability refusal -
+ * all arrive as 4xx `message`), so nothing changed on either device and the notice
+ * may say so. Everything else - a deadline (`status: null`, which is what a
+ * request that ran out of this app's own budget carries), a transport failure, a
+ * 5xx that may have applied the request before failing - leaves the outcome
+ * unknown, and the wording must say that instead (round-1 review, M4; QA round 1,
+ * Q4, where a CREATE's deadline was filed as "the peer refused").
+ */
+const desktopRefusal = (error: unknown): boolean =>
+	error instanceof DesktopControlError &&
+	error.status !== null &&
+	error.status >= 400 &&
+	error.status < 500;
+
 const storeErrorMessage = (error: unknown, fallback: string): string =>
 	error instanceof DesktopControlError
 		? userFacingMessage(error, fallback)
@@ -2956,6 +2995,78 @@ type CanonicalSessionsState = {
 	 */
 	deleteCandidate: string | null;
 	/**
+	 * Conversations being MOVED to another device right now, by session id, with
+	 * the destination (`"local"` or a device id).
+	 *
+	 * Drives S6 (`mesh-ui.md` §2.5): the row stays IN PLACE, busy and dimmed, for
+	 * the lifetime of the transfer request. It is not an optimistic re-file - the
+	 * row changes section exactly once, on success, in the same update that writes
+	 * its new `locality`; a row that jumped before the move landed and back on
+	 * failure would be two lies in a row.
+	 */
+	transfers: Record<string, string>;
+	/**
+	 * The `request_id` of each move this window has STARTED, keyed by `sessionId|to`
+	 * (backend PR #1540's at-most-once journal).
+	 *
+	 * A RETRY MUST REPLAY, NOT START A SECOND MOVE. The route journals the id and
+	 * replays its recorded outcome for a repeat, so re-sending a move that failed -
+	 * or whose answer was lost - with the SAME id is the difference between "where did
+	 * it go?" and a clean answer, and minting a fresh id per press is what let one
+	 * gesture reach the peer's relay twice 3 ms apart (QA round 1, Q3). Held per
+	 * target, so moving the conversation somewhere else is a different move; cleared
+	 * when the move is CONFIRMED, because a later move is then a new one.
+	 */
+	transferRequestIds: Record<string, string>;
+	/**
+	 * The last mesh refusal the sidebar has to say out loud, or null: a peer that
+	 * refused a create (S5), or a move that failed (S7).
+	 *
+	 * Carries the device ID and the backend's own words, never a composed label:
+	 * the sidebar spells the device through the peer catalogue, so a notice and
+	 * the heading under it cannot name one device two ways.
+	 */
+	meshNotice: /**
+	 * `refused` - a peer would not create the conversation (S5).
+	 * `move-failed` - the route REFUSED the move, so nothing changed (S7).
+	 * `move-unconfirmed` - the move's outcome is unknown: a deadline, a transport
+	 * failure, or an answer this app cannot read. It may have happened, and the
+	 * copy says only that (round-1 review, M4) - "Nothing changed." is a claim a
+	 * refusal establishes and this state cannot.
+	 */
+		| { kind: "refused"; peer: string; reason: string }
+		/**
+		 * A create on a peer that was never answered: the request was sent and the
+		 * conversation may exist there. Not `refused`, which claims the device said
+		 * no (QA round 1, Q4b - a 20 s app budget filed a 120 s backend as a refusal).
+		 */
+		| { kind: "create-unconfirmed"; peer: string; reason: string }
+		/**
+		 * A move this app did not send, because the conversation is the one the pane
+		 * has open (QA round 1, Q4a). Nothing changed, and the user can act on it.
+		 */
+		| { kind: "move-blocked"; title: string; reason: string }
+		| { kind: "move-failed"; title: string; reason: string }
+		| {
+				kind: "move-unconfirmed";
+				title: string;
+				reason: string;
+				/** The device the move was addressed to, so the notice can name it (D16). */
+				peer: string;
+		  }
+		| null;
+	clearMeshNotice: () => void;
+	/**
+	 * Move one conversation to a peer (`to` = device id) or home (`"local"`).
+	 * Resolves `true` when the backend confirmed the move; a refusal is recorded
+	 * as `meshNotice` in the route's own words and resolves `false`.
+	 */
+	transferSession: (
+		sessionId: string,
+		to: string,
+		title: string,
+	) => Promise<boolean>;
+	/**
 	 * Archive or unarchive one conversation: the optimistic write, its currency
 	 * stamp, and the revert-and-report path when the backend refuses.
 	 *
@@ -3028,6 +3139,11 @@ type CanonicalSessionsState = {
 		requestId?: string,
 		/** The draft's own model pick, when it has one; omitted otherwise. */
 		model?: DesktopModelSelection | null,
+		/**
+		 * The mesh device to create the conversation on (`/new`'s device choice);
+		 * omitted means this device and leaves the wire body byte-identical.
+		 */
+		peer?: string,
 	) => Promise<string | null>;
 	setActiveSession: (sessionId: string | null) => void;
 	/**
@@ -3628,6 +3744,18 @@ type SessionForgetState = {
 function projectRows(raw: BackendSessionRow[]): CanonicalSessionRow[] {
 	return raw.map(({ id, name, mtime, ...rest }) => ({
 		...rest,
+		/*
+		 * THE LOCALITY FIELDS ARE NORMALISED HERE, IN THE ONE PLACE EVERY READ
+		 * PASSES THROUGH (addendum 2, D; round-1 review M3). `null` from the wire and
+		 * this app's own `""` must not both be in flight, because the sidebar's
+		 * partition, the row mark and the section key read one spelling - and a row
+		 * whose producer left `owner_device` null would otherwise file under `""` as
+		 * a remote row with no owner. Folding it in here rather than at the head
+		 * page's call site is what the fold onto the paging work forced: there are
+		 * three reads now, and a normaliser that ran on one of them is how two
+		 * spellings get back in.
+		 */
+		...localityFields(rest),
 		session_id: id,
 		title: name,
 		updated_at: mtime,
@@ -3748,6 +3876,21 @@ let sessionRefresh: {
 	promise: Promise<unknown>;
 } | null = null;
 
+/**
+ * Whether the backend advertises `features.peers`, as the sidebar last read it.
+ *
+ * MODULE STATE rather than a store field or an argument, because `fetchSessions`
+ * has eight callers across the app (the palette, the chat page, settings, the
+ * browser hand-over) and only the sidebar reads capabilities. Threading the flag
+ * through all of them would put a mesh parameter on surfaces that have no opinion
+ * about it; defaulting to `false` means any fetch that runs before the sidebar
+ * has read the capability sends the pre-mesh request - the harmless direction,
+ * since the next read after the sidebar mounts carries the peers.
+ */
+let peerCatalogueAdvertised = false;
+export function setPeerCatalogueAdvertised(advertised: boolean): void {
+	peerCatalogueAdvertised = advertised;
+}
 function coalesceSessionCatalogueRequest<T>(
 	limit: number,
 	withCounts: boolean,
@@ -3918,6 +4061,212 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			archiveFailure: null,
 			archiveUndo: null,
 			deleteCandidate: null,
+			transfers: {},
+			transferRequestIds: {},
+			meshNotice: null,
+			clearMeshNotice: () => set({ meshNotice: null }),
+			transferSession: async (sessionId, to, title) => {
+				/*
+				 * ONE MOVE PER CONVERSATION AT A TIME (QA round 1, Q3).
+				 *
+				 * Every press minted a FRESH `request_id`, so a second press while the
+				 * first was still running could not be recognised as the same move: the
+				 * route's at-most-once guard keys on that id, and the peer's relay
+				 * logged two pulls 3 ms apart for one gesture. The row's own dimming and
+				 * `aria-busy` were already right - the menu that STARTS the move simply
+				 * did not read `transfers`. Refusing here rather than there closes it for
+				 * every entrance (the sidebar menu, the command palette, a future one),
+				 * because the store is what knows a move is in flight.
+				 */
+				if (get().transfers[sessionId] !== undefined) return false;
+				/*
+				 * A CONVERSATION OPEN IN THIS WINDOW CANNOT BE MOVED, and the route
+				 * cannot say so (QA round 1, Q4a): the source runtime refuses while ANY
+				 * other viewer is attached - the desktop's own pane counts - and that
+				 * refusal reaches the peer's log rather than the caller, so the app waits
+				 * out its deadline and then reads "the outcome is unconfirmed". Measured:
+				 * the same conversation moved in 2.1 s once the pane was on another chat,
+				 * and failed nine times while it was on screen, including once after the
+				 * route was navigated back. Telling the truth here costs nothing and saves
+				 * the whole wait, which is the difference between an actionable sentence
+				 * and a minute of nothing.
+				 *
+				 * The check is on the pane's ACTIVE conversation rather than on the
+				 * subscriber, because the stream subscription lives inside whichever panel
+				 * is showing it: `activeSessionId` is the store's own record of that, and
+				 * a draft (no session) cannot be moved.
+				 */
+				if (get().activeSessionId === sessionId) {
+					set({
+						meshNotice: {
+							kind: "move-blocked",
+							title,
+							reason:
+								"it is open here, and a conversation that is open in this window cannot be moved. Switch to another chat, then move it.",
+						},
+					});
+					return false;
+				}
+				const moveKey = `${sessionId}|${to}`;
+				const requestId =
+					get().transferRequestIds[moveKey] ?? crypto.randomUUID();
+				set((state) => ({
+					transfers: { ...state.transfers, [sessionId]: to },
+					transferRequestIds: {
+						...state.transferRequestIds,
+						[moveKey]: requestId,
+					},
+					meshNotice: null,
+				}));
+				const settle = () =>
+					set((state) => {
+						const transfers = { ...state.transfers };
+						delete transfers[sessionId];
+						return { transfers };
+					});
+				try {
+					const reply = await desktopResult<unknown>({
+						op: "sessions.transfer",
+						sessionId,
+						requestId,
+						to,
+						/*
+						 * The route waits this long for the source runtime to retire
+						 * before refusing, and the TRANSPORT's budget is derived from it
+						 * (`desktopRequestDeadlineMs`): asking for a 30 s wait under a
+						 * 20 s request deadline used to make the renderer the layer that
+						 * gave up first, which is the layer whose copy cannot name why
+						 * (round-1 review, M4).
+						 */
+						wait_s: TRANSFER_WAIT_S,
+					});
+					const receipt = transferReceipt(reply);
+					if (!receipt) {
+						/*
+						 * Answered, but not with a receipt this app can read: the row's
+						 * new locality is UNKNOWN, so it must not be painted as if it had
+						 * moved. The row comes off busy and the list is re-read; if the
+						 * move did happen, that read files it under the peer.
+						 */
+						settle();
+						void get().fetchSessions();
+						set({
+							meshNotice: {
+								/*
+								 * A SEPARATE KIND, not a longer sentence on S7's: the reader's position
+								 * differs, so the copy does too. The answer arrived but nothing in it
+								 * can be read, so where the conversation is now is unknown; the list is
+								 * re-read and the notice says only that (round-1 review, M4).
+								 */
+								kind: "move-unconfirmed",
+								title,
+								peer: to,
+								reason:
+									// Four lines at 280 px, the same measurement as the timeout arm below.
+									"the answer could not be read; check that device first.",
+							},
+						});
+						return false;
+					}
+					/*
+					 * ONE update: the busy flag comes off and the row's new locality goes
+					 * on together, so no frame shows the row un-dimmed in its OLD section
+					 * before it moves. The name is left to the peer catalogue (the heading
+					 * is keyed by device id), and the next list read settles the rest.
+					 */
+					set((state) => {
+						const transfers = { ...state.transfers };
+						delete transfers[sessionId];
+						/*
+						 * THE ID IS SPENT: the route answered, so a later move of this
+						 * conversation is a NEW move and must not replay this one's outcome
+						 * (PR #1540's journal). A FAILED or unconfirmed move keeps its id, so
+						 * the user's retry replays rather than sending a second pull.
+						 */
+						const transferRequestIds = { ...state.transferRequestIds };
+						delete transferRequestIds[moveKey];
+						const remote = receipt.locality === "remote";
+						return {
+							transfers,
+							transferRequestIds,
+							sessions: state.sessions.map((row) =>
+								row.session_id === sessionId
+									? {
+											...row,
+											locality: receipt.locality,
+											owner_device: remote ? receipt.owner_device : "",
+											owner_device_name: remote
+												? row.owner_device === receipt.owner_device
+													? (row.owner_device_name ?? "")
+													: ""
+												: "",
+											reachable: true,
+											unreachable_reason: "",
+										}
+									: row,
+							),
+						};
+					});
+					void get().fetchSessions();
+					return true;
+				} catch (error) {
+					settle();
+					/*
+					 * TWO FAILURES, TWO SENTENCES (round-1 review, M4). A REFUSAL is an
+					 * answer: the route names the reason (a 409 lists `fenced`/
+					 * `in_flight_turn`/`unreachable`/`occupied` in words) and nothing
+					 * changed on either device, so the notice says so. Anything else - a
+					 * deadline, a transport failure - means the request was SENT and the
+					 * outcome is unconfirmed: the move may have happened, and telling the
+					 * reader "nothing changed" invited a second move of a session that may
+					 * already live elsewhere. The list is re-read for the same reason.
+					 */
+					const refused = desktopRefusal(error);
+					if (!refused) void get().fetchSessions();
+					set({
+						meshNotice: refused
+							? {
+									/*
+									 * A REFUSAL IS AN ANSWER: the route looked at the move and said no
+									 * (a 409 names `fenced`/`in_flight_turn`/`unreachable`/`occupied`
+									 * in words), so nothing changed on either device and the notice
+									 * says so - S7's approved copy, which the sidebar completes with
+									 * `Nothing changed.` for this kind alone.
+									 */
+									kind: "move-failed",
+									title,
+									reason: storeErrorMessage(
+										error,
+										"the device refused the move",
+									),
+								}
+							: {
+									/*
+									 * ANYTHING ELSE MEANS THE REQUEST WAS SENT AND THE OUTCOME IS
+									 * UNCONFIRMED (round-1 review, M4): a deadline, a transport
+									 * failure, a 5xx that may have applied the move before failing.
+									 * `Nothing changed.` is a claim this state cannot make, and
+									 * making it invited a second move of a session that may already
+									 * live elsewhere.
+									 */
+									kind: "move-unconfirmed",
+									title,
+									peer: to,
+									reason:
+										/*
+										 * FOUR LINES AT 280 px, MEASURED (design round 2, D16): the
+										 * six-line version this replaces measured 104 px of a 280px
+										 * panel, and the designer asked for four. "This list updates
+										 * within 30 s" is the clause that goes - the list does update,
+										 * and the sentence keeps the two facts a reader acts on: it may
+										 * already be there, and which device to check.
+										 */
+										"it may already be there; check that device first.",
+								},
+					});
+					return false;
+				}
+			},
 			error: null,
 			cwd: "~",
 			setCwd: (cwd) => set({ cwd }),
@@ -4010,6 +4359,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								 */
 								include_archived: true,
 								/*
+								 * A peer's conversations, only when the backend advertised
+								 * `features.peers` (see `setPeerCatalogueAdvertised`). Omitted
+								 * otherwise, so a pre-mesh backend sees the request it always saw.
+								 */
+								...(peerCatalogueAdvertised ? { include_peers: true } : {}),
+								...(pageCounts ? { with_counts: true } : {}),
+								/*
 								 * Omitted rather than sent as `false`, on the rule
 								 * `sessions.search`'s own query states: the pre-change request is
 								 * what an older backend must keep seeing, and the route's own
@@ -4017,7 +4373,6 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								 * byte-identical to today's when nothing asked for counts - which
 								 * includes every caller but the sidebar's own refresh.
 								 */
-								...(pageCounts ? { with_counts: true } : {}),
 							}),
 					);
 					if (generation !== refreshGeneration) return;
@@ -4833,6 +5188,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				target,
 				requestId = crypto.randomUUID(),
 				model?: DesktopModelSelection | null,
+				peer?: string,
 			) => {
 				try {
 					const result = await desktopResult<{
@@ -4850,14 +5206,61 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						 * caller that never used it.
 						 */
 						...(model ? { model } : {}),
+						...(peer ? { peer } : {}),
 					});
 					get().upsertSession({
 						session_id: result.session_id,
 						cwd,
 						binding: result.binding,
+						/*
+						 * A conversation born on a peer is filed under that peer from its
+						 * first frame: without `locality` here the optimistic row would be
+						 * drawn in `Active chats` as a local one until the next list read
+						 * moved it - a section jump the user did not cause. The heading's
+						 * label comes from the peer catalogue by device id, so the name is
+						 * not needed here.
+						 */
+						...(peer
+							? {
+									locality: "remote" as const,
+									owner_device: peer,
+									reachable: true,
+									unreachable_reason: "",
+								}
+							: {}),
 					});
 					return result.session_id;
 				} catch (error) {
+					/*
+					 * A PEER that refused is S5 (`mesh-ui.md` §2.5): the rows are unchanged
+					 * and the sidebar says which device refused, in its own words. It is not
+					 * the catalogue's `error`, which would read as "chats could not load".
+					 */
+					if (peer) {
+						/*
+						 * A REFUSAL AND A DEADLINE ARE DIFFERENT ANSWERS (QA round 1,
+						 * Q4b): the peer's route answers 4xx in words when it declines,
+						 * and anything else means the request was sent and the outcome is
+						 * unconfirmed - the create measured 15.9-22.1 s on loopback under
+						 * a 20 s app budget, and the sidebar filed that timeout as
+						 * "damians-MacBook-Pro refused:", over a conversation that existed
+						 * on that device by the time the user read it.
+						 */
+						set({
+							meshNotice: desktopRefusal(error)
+								? {
+										kind: "refused",
+										peer,
+										reason: storeErrorMessage(error, "it did not answer"),
+									}
+								: {
+										kind: "create-unconfirmed",
+										peer,
+										reason: storeErrorMessage(error, "it did not answer"),
+									},
+						});
+						throw error;
+					}
 					// Same rule as `fetchSessions` above: the app states the refusal's own
 					// consequence rather than repeating the server's words (UX round 2, U1).
 					set({

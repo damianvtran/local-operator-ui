@@ -169,6 +169,70 @@ test("a refused stream carries the status, which is how a 404 is tellable apart"
 	globalThis.fetch = original;
 });
 
+test("a refusal body is carried beside the vocabulary, never in place of it", async () => {
+	/*
+	 * TWO FIELDS, TWO AUDIENCES, and the split is the point. `detail` is the
+	 * relay's own fixed vocabulary, which the renderer maps to the app's sentence
+	 * for a transport failure; a backend body dropped into it would put machine
+	 * text ("Unauthorized") where product copy is read, and would also break the
+	 * contract `session-stream-token.test.mjs` pins. `message` carries the
+	 * backend's sentence for the one arm that needs it - a remote session's 409
+	 * refuses the stream with words about the reader's own work, and those words
+	 * are the only truthful thing to show.
+	 */
+	const original = globalThis.fetch;
+	const REMOTE =
+		"It runs on devon-laptop. Move it home with `lop sessions move`.";
+	globalThis.fetch = async () =>
+		new Response(
+			JSON.stringify({
+				detail: { code: "session_is_remote", message: REMOTE },
+			}),
+			{ status: 409, headers: { "content-type": "application/json" } },
+		);
+	const relay = new DesktopStreamRelay("http://127.0.0.1:9/", "token");
+	const events = [];
+	relay.subscribe({ sessionId: SESSION }, (event) => events.push(event));
+	await sleep(60);
+	assert.deepEqual(events, [
+		{
+			streamId: events[0].streamId,
+			kind: "error",
+			detail: DESKTOP_STREAM_DETAIL.refused(409),
+			status: 409,
+			code: "session_is_remote",
+			message: REMOTE,
+		},
+	]);
+	relay.dispose();
+
+	// A body with no READER'S sentence leaves both fields alone: FastAPI's bare
+	// `{"detail": "Unauthorized"}` is machine text, and the renderer's own
+	// sentence for a 401 is the only one worth showing. Passing it through as
+	// `message` was this branch's own round-2 review minor: the pane renders that
+	// field as the backend's copy, so a machine word there is a worse answer than
+	// the app's own sentence.
+	globalThis.fetch = async () =>
+		new Response(JSON.stringify({ detail: "Unauthorized" }), {
+			status: 401,
+			headers: { "content-type": "application/json" },
+		});
+	const bare = new DesktopStreamRelay("http://127.0.0.1:9/", "token");
+	const bareEvents = [];
+	bare.subscribe({ sessionId: SESSION }, (event) => bareEvents.push(event));
+	await sleep(60);
+	assert.deepEqual(bareEvents, [
+		{
+			streamId: bareEvents[0].streamId,
+			kind: "error",
+			detail: DESKTOP_STREAM_DETAIL.refused(401),
+			status: 401,
+		},
+	]);
+	bare.dispose();
+	globalThis.fetch = original;
+});
+
 /*
  * THE TERMINATOR'S OWN SPELLING, which is the part of the framing above that
  * cannot be inferred from a pure-LF stream.

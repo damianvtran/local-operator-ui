@@ -9,6 +9,10 @@ import {
 	paletteShortcutCaps,
 	paletteShortcutLabel,
 } from "@features/command-palette/palette-shortcut";
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { CollapsibleAppLogo } from "@shared/components/navigation/collapsible-app-logo";
 import { UserProfileSidebar } from "@shared/components/navigation/user-profile-sidebar";
@@ -24,6 +28,7 @@ import {
 	ChevronRight,
 	Globe,
 	MessageSquare,
+	Network,
 	Search,
 	Settings,
 	Store,
@@ -161,6 +166,8 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * chat header's count.
 	 */
 	const browserApprovals = useAppWideApprovals();
+	const capabilities = useDesktopCapabilities();
+	const peersEnabled = desktopFeatureEnabled(capabilities.data, "peers");
 
 	const navItems: NavItem[] = [
 		{
@@ -202,6 +209,24 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			tourTag: "nav-item-browser",
 			attention: browserApprovals,
 		},
+		/*
+		 * The Networks tab, ONLY when the backend advertises `features.peers`: a
+		 * rail item for a mesh the user does not have would be a dead end on the one
+		 * piece of chrome that is on screen everywhere. Placed after Browser and
+		 * before Settings - it is a view of this machine's infrastructure, closer to
+		 * Settings than to the chat surfaces.
+		 */
+		...(peersEnabled
+			? [
+					{
+						icon: Network,
+						label: "Network",
+						path: "/network",
+						isActive: currentView === "network",
+						tourTag: "nav-item-network",
+					},
+				]
+			: []),
 		{
 			icon: Settings,
 			label: "Settings",

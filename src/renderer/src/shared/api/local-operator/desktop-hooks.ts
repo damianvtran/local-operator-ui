@@ -342,6 +342,30 @@ export type DesktopFeature =
 	 */
 	| "session_pins"
 	/**
+	 * The mesh: this backend is one device in one or more networks.
+	 *
+	 * `mesh-session-mobility.md` §9.3's key, unchanged: the peer catalogue
+	 * (`GET /v1/desktop/peers`), the locality fields on every catalogue row, the
+	 * `include_peers` parameter on the list and search, `peer` on create, and the
+	 * networks routes the Networks tab reads.
+	 *
+	 * ABSENT MEANS NOT MOUNTED, never mounted-disabled: no peer sections, no remote
+	 * marks, no `Peers` group, no device choice on `/new`, no Network rail item and
+	 * no `/network` route. A reserved empty section advertises a feature the user
+	 * does not have - the argument `session_pins` makes above - and a user with no
+	 * network must get today's sidebar byte for byte (`chat-sidebar-peers.test.mjs`
+	 * pins the DOM identity).
+	 */
+	| "peers"
+	/**
+	 * Moving a conversation between devices (`POST /v1/desktop/sessions/{id}/transfer`).
+	 *
+	 * ITS OWN KEY rather than implied by `peers`, because a backend can show a
+	 * peer's sessions and be unable to move one; on `peers` alone the renderer would
+	 * draw the move gesture and 404 (`mesh-ui.md` §2.6).
+	 */
+	| "session_transfer"
+	/**
 	 * `references`: the harness expands a draft's `@path` tokens into file content
 	 * before the message reaches the model.
 	 *

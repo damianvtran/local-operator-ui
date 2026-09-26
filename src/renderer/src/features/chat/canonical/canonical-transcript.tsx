@@ -271,6 +271,16 @@ export type CanonicalTranscriptProps = {
 	 * spent to learn it.
 	 */
 	missing?: boolean;
+	/**
+	 * The BACKEND'S sentence when it refused this conversation because it lives on
+	 * another device (409 `session_is_remote`), else `null` (QA round 1, Q2).
+	 *
+	 * Rendered INSTEAD of the missing-session notice, and with the backend's words
+	 * intact: the plane's sentence names the device and both ways in, and this pane
+	 * has no way to compose either. The two are exclusive - `missing` says this
+	 * machine does not have the conversation, this says a peer does.
+	 */
+	remoteBlocked?: string | null;
 
 	/**
 	 * Which conversation's rows this is, for attachment resolution — defaulting
@@ -1424,6 +1434,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	awaitingHydration,
 	stale = false,
 	missing = false,
+	remoteBlocked = null,
 	attachmentScope,
 	conversationId,
 	labelPending,
@@ -2017,7 +2028,70 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					 * most palettes) was measured against the pane's `canvas` and replaced
 					 * with `elevated` there.
 					 */}
-					{missing ? (
+					{remoteBlocked !== null ? (
+						/*
+						 * A THIRD STATE, and its own words (QA round 1, Q2). The plane refuses a
+						 * remote conversation with 409 `session_is_remote` and a sentence that names
+						 * the device and both ways in; this pane renders THAT sentence, because the
+						 * device name is the peer's and this renderer cannot compose it. Before
+						 * this arm the refusal fell into `missing`, so a live remote conversation
+						 * was reported as "no longer on this machine. It was deleted" and the row
+						 * was tombstoned with it. Nothing here says deleted, and nothing clears the
+						 * selection for the reader: the conversation is fine, it is somewhere else.
+						 */
+						<div
+							data-lo-session-remote
+							className={cn(
+								"mb-4 flex flex-col gap-2",
+								!isSmallView && AGENT_GUTTER,
+							)}
+						>
+							<p
+								id={MISSING_SESSION_NOTICE_ID}
+								className="text-body-sm text-ink"
+							>
+								{/*
+								 * THE BRACES ARE LOAD-BEARING (delta review R2-1): a slash-star
+								 * block sitting in JSX CHILDREN position is not a comment, it is
+								 * CONTENT - esbuild emits it in `children`, so the notice printed
+								 * its own reasoning at the user and the same text reached the
+								 * composer's `aria-describedby`. Only inside braces is it a
+								 * comment.
+								 *
+								 * NO ROUTE THIS WINDOW DOES NOT OFFER (design round 3, D23). The
+								 * line this replaces ended "or bring it here", and "here" is a
+								 * place nothing on this screen can bring a conversation from: the
+								 * product's only `transferSession` call site moves a LOCAL chat
+								 * TO a peer, and this arm is reached precisely when the peer is
+								 * UNREACHABLE - the same condition the sidebar's move control is
+								 * gated on (`transferEnabled && peer.reachable`). So the pair read
+								 * as a promise followed by a refusal, pointing at a control that
+								 * is not on the screen. Clause 1 stays; the dependency is now the
+								 * sentence rather than a remedy this window cannot perform.
+								 *
+								 * THE SECOND CLAUSE IS WORDED FOR BOTH PRODUCERS of this arm. The
+								 * live one is `PeerSessionUnreachable`, so "once that device
+								 * answers" is exactly right; the generic refusal is dead code on
+								 * this branch but not impossible, and this wording stays true
+								 * under it. A remedy that names a command would not, and a
+								 * reachability claim hard-coded here would be wrong the day a
+								 * backend can reach a peer - the designer's own caveat.
+								 */}
+								This conversation is on another device. Open it there — this
+								window can show it once that device answers.
+							</p>
+							{/*
+							 * THE BACKEND'S SENTENCE, WHEN THERE IS ONE. A blocked
+							 * conversation whose refusal carried no `message` (the hook sends
+							 * an empty string, never null - null means "not blocked") gets
+							 * the pane's own line alone rather than that line printed twice
+							 * with a different verb (design round 3, D24).
+							 */}
+							{remoteBlocked !== "" && (
+								<p className="text-ink-dim text-meta">{remoteBlocked}</p>
+							)}
+						</div>
+					) : missing ? (
 						/*
 						 * The named state for a conversation this machine does not have,
 						 * and its way out. It replaces the whole status block rather than

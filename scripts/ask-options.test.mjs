@@ -75,7 +75,8 @@ const bundle = await build({
 			'export { DESKTOP_LOST_SIGHT_CODE } from "./src/shared/desktop-contract";',
 			'export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";',
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
-			'export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
+			'export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";' +
+				' export { MISSING_SESSION_NOTICE_ID } from "./src/renderer/src/features/chat/missing-session-notice";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -142,6 +143,7 @@ const {
 	desktopEndpoint,
 	CanonicalTranscript,
 	EMPTY_TRANSCRIPT,
+	MISSING_SESSION_NOTICE_ID,
 } = await import(bundlePath.href);
 // Unlinked as soon as the graph is evaluated, so no build artifact survives a
 // crash mid-run and none can be committed by accident.
@@ -1534,6 +1536,119 @@ test("the accessible name is the label, not the numeral", () => {
 	assert.ok(first.includes("I will read the code back to you."));
 	// The third option has no description and must still render.
 	assert.ok(accessibleText(buttons[2]).join(" ").includes("Something else"));
+});
+
+test("the remote-blocked notice paints the instruction, never its own reasoning", () => {
+	/*
+	 * THE ARM THAT HAD NO RENDERING CELL, and the exact place a rendering mistake
+	 * just hid (delta review R2-1, the blocker and its nit). A comment block sitting
+	 * in JSX CHILDREN position is not a comment: esbuild emits it in `children`, so
+	 * the notice painted its own rationale at the reader and the same text reached
+	 * the composer's `aria-describedby`. Rendered from the SHIPPED component, so the
+	 * assertion is about what a person sees rather than about the source's shape.
+	 *
+	 * The instruction is asserted as ONE sentence, and the rationale's own words are
+	 * asserted ABSENT: a future edit that wants to explain itself in the markup has
+	 * to change this cell, which is the point.
+	 */
+	const BACKEND =
+		"It runs on devon-laptop. Move it home with `lop sessions move`, or pilot it from there.";
+	const markup = renderToStaticMarkup(
+		createElement(CanonicalTranscript, {
+			transcript: EMPTY_TRANSCRIPT,
+			gate: null,
+			waiting: false,
+			loadingOlder: false,
+			onLoadOlder: async () => true,
+			containerRef: { current: null },
+			isSmallView: false,
+			status: "unavailable",
+			awaitingHydration: false,
+			error: null,
+			remoteBlocked: BACKEND,
+			onAnswer: () => {},
+		}),
+	);
+	assert.ok(
+		markup.includes(
+			"This conversation is on another device. Open it there — this window can show it once that device answers.",
+		),
+		"the notice says what to do",
+	);
+	/*
+	 * AND IT NAMES NO ROUTE THIS WINDOW DOES NOT OFFER (design round 3, D23). The
+	 * sentence this replaced ended "or bring it here": this arm is reached exactly
+	 * when the peer is unreachable, which is the condition the sidebar's own move
+	 * control is gated on, so the clause pointed at a control that is not on screen -
+	 * a promise followed by a refusal. Asserted ABSENT so a later edit cannot quietly
+	 * put it back.
+	 */
+	assert.ok(
+		!markup.includes("bring it here"),
+		"the notice must not name a move this window cannot perform in this state",
+	);
+	/* The backend's own sentence is rendered verbatim: it is the half that names
+	   the device and the commands, and this renderer cannot compose it. */
+	assert.ok(
+		markup.includes(BACKEND),
+		"the backend's sentence is painted as sent",
+	);
+	/* And nothing else: no rationale, no comment punctuation, no deleted claim. */
+	for (const leak of [
+		"WHAT TO DO",
+		"THE BRACES ARE LOAD-BEARING",
+		"only inside braces",
+		"*/",
+		"It was deleted",
+	]) {
+		assert.ok(
+			!markup.includes(leak),
+			`the pane must not paint ${JSON.stringify(leak)}`,
+		);
+	}
+	// The notice carries the id the composer's `aria-describedby` points at, which
+	// is why text leaking into this element reached a screen reader too.
+	assert.ok(
+		markup.includes(`id="${MISSING_SESSION_NOTICE_ID}"`),
+		"the notice keeps the id the composer's aria-describedby points at",
+	);
+
+	/*
+	 * A REFUSAL WITH NO SENTENCE IS STILL A REFUSAL (design round 3, D24). The hook
+	 * sends an empty string when the relay attached no message, and the pane must
+	 * still paint - once. It used to paint the pane's line twice, the stand-in's copy
+	 * differing only by a verb ("lives" against "is"), which is the duplicate-caption
+	 * class the same component had already lost once.
+	 */
+	const bare = renderToStaticMarkup(
+		createElement(CanonicalTranscript, {
+			transcript: EMPTY_TRANSCRIPT,
+			gate: null,
+			waiting: false,
+			loadingOlder: false,
+			onLoadOlder: async () => true,
+			containerRef: { current: null },
+			isSmallView: false,
+			status: "[redacted]",
+			awaitingHydration: false,
+			error: null,
+			remoteBlocked: "",
+			onAnswer: () => {},
+		}),
+	);
+	assert.ok(
+		bare.includes("data-lo-session-remote"),
+		"a refusal with no sentence must still paint the arm",
+	);
+	assert.equal(
+		bare.split("This conversation is on another device").length - 1,
+		1,
+		"the pane's line is printed once, not once per register (D24)",
+	);
+	assert.ok(
+		!bare.includes("lives on another device"),
+		"the deleted stand-in sentence must not come back",
+	);
 });
 
 test("a secret ask renders no options at all", () => {

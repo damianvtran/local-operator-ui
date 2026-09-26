@@ -806,19 +806,11 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  * result, and says in the commit what the union is.
  */
 const STAMP_BINDING_NOTES = [
-	"occupiedAddressRestampNote",
-	"shellPathRestampNote",
-	"settingsGateRestampNote",
-	"candidateMacArchRestampNote",
-	"notarizeGateRestampNote",
-	"usageInFlightConvergenceNote",
-	"macNativeComponentsRestampNote",
-	"telemetrySwitchRestampNote",
-	"readReceiptRestampNote",
 	/*
-	 * This one exists BECAUSE the list is not optional reading: the change it
-	 * re-stamps for rewrote no frame, so a reader is owed the two values it binds
-	 * and the reason no still was owed.
+	 * THE ONE NOTE THAT STATES THIS FILE'S PAIR, which is why it is the only one listed. Every
+	 * other note whose text quoted a pair a fold of this pass superseded has had its values
+	 * written as bare SHAs instead - the convention the paragraphs above state, applied in the
+	 * direction the next fold always goes.
 	 */
 	"modelCatalogueFocusRestampNote",
 	/*
@@ -883,7 +875,27 @@ const STAMP_BINDING_NOTES = [
 	 * written as bare SHAs for exactly that reason.
 	 */
 	"mentionsRemedyRestampNote",
+	"meshDesktopRound11FoldRestampNote",
 	/*
+	 * And by this fold's own re-stamp, which wrote this branch's newest top-level
+	 * record. It is listed for the reason the list exists, and this fold is the
+	 * case the list is most expensive to lose: the fold resolves this file against
+	 * a main thirty commits and 303 paths ahead, so a resolver who took main's
+	 * copy would drop the record that says which two trees the fold moved, that the
+	 * frames were re-shot because eight of the 29-story set's closure members moved
+	 * with them, and the three plays the manager surface has since read through it:
+	 * 29/29 green with 0 `playFunctionThrewException`, so nothing is owed.
+	 */
+	"meshDesktopRound12FoldRestampNote",
+	/*
+	 * And by the SECOND fold of the same round, which wrote this branch's newest
+	 * top-level record: `main` moved while the first one was being pushed (#523), so
+	 * the head went DIRTY again and this is the note that states the pair the file
+	 * now ships. It is listed for the reason the list exists - a resolver who took
+	 * main's copy would drop it, and with it the only statement that this fold owed
+	 * no re-shoot and why.
+	 */
+	"meshDesktopRound13FoldRestampNote",
 	/*
 	 * This branch's own: it re-stamps the change that added the approval card's
 	 * options, so the reader is owed the pair the file ships - and the two moved
@@ -1214,20 +1226,15 @@ const BRANCH_RECORDS = [
 	 */
 	"usageInFlightConvergenceNote",
 	/*
-	 * Grown by the pass that made the desktop picker list the providers by
-	 * itself, which wrote this branch's newest top-level record. It is listed for
-	 * the reason the list exists: a fold that starts from main's manifest drops
-	 * it, and with it the only statement of which two trees this pass moved, which
-	 * six frames it added, and which of this surface's frames were re-captured and
-	 * came back byte-identical.
-	 */
-	"modelPickerLiveListingNote",
 	/*
-	 * And by round 1's remediation of that pass — the pass this fold carries: it re-captured four of
-	 * this surface's frames, withdrew its cross-tree `before-` row for a declared supplementary set
-	 * (so a later sweep cannot rewrite a base-tree claim from this tree), and re-derived the stamps
-	 * the round moved.
+	 * THE FOLD DEMOTES WHAT IT SUPERSEDES, and this list is where that shows: main's
+	 * `modelPickerLiveListingNote` and `modelPickerRemediationRestampNote` claimed the
+	 * pair `origin/main` shipped (bfa32f5fe / 27ac3612e) and the fold moved both trees
+	 * again, so their quoted pairs became bare SHAs and they left this list in the same
+	 * commit - exactly what happened to the eight notes before them, and the reason
+	 * they were listed at all.
 	 */
+	"meshDesktopRound2RestampNote",
 	"modelPickerRemediationRestampNote",
 	/*
 	 * Grown by the `/btw` aside panel pass, whose re-stamp is this branch's newest
@@ -1259,6 +1266,29 @@ const BRANCH_RECORDS = [
 	 * re-derived tokens in it reading as main's.
 	 */
 	"mentionsRemedyRestampNote",
+	/*
+	 * And by this branch, the mesh-desktop pass, whose folds each re-derive the pair.
+	 * The note listed here is the one that states the pair the file currently ships -
+	 * the frames behind it were re-shot from a build at its own head rather than
+	 * re-stamped, so nothing in it outruns what can be cited.
+	 */
+	/*
+	 * And by this fold, which wrote this branch's newest top-level record. It is
+	 * listed for the reason the list exists: the fold is the only commit in this
+	 * lineage that resolves `docs/evidence/manifest.json` against a main that has
+	 * moved thirty commits, and a resolver who took main's copy would drop the only
+	 * statement of which two trees the fold moved and why the frame set was
+	 * re-shot rather than re-stamped.
+	 */
+	"meshDesktopRound12FoldRestampNote",
+	/*
+	 * And by the second fold of the same round, which wrote this branch's newest
+	 * top-level record. It is listed for the reason the list exists: the record is
+	 * the only statement of which two trees this fold moved, that #523's source paths
+	 * are outside the 29-story closure, and therefore why no re-shoot was owed while
+	 * a re-stamp was.
+	 */
+	"meshDesktopRound13FoldRestampNote",
 	/*
 	 * And by the reveal-at-rest pass - the pass this fold carries. It is the case
 	 * the entry above names, one fold over: the manifest resolution kept this

@@ -45,6 +45,18 @@ const mcpCatalogCwd = z
  * at every hop instead of being assumed from the id's presence.
  */
 export const SUBSCRIPTION_ID_PATTERN = /^[a-f0-9]{32}$/;
+/*
+ * A mesh device id (`d_` + 32 hex today, `network/identity.py device_id_for`) and
+ * a network id (`n_` + 24 hex, `network/store.py new_network_id`).
+ *
+ * PATH-SAFE rather than exact: both are interpolated into route paths, so the
+ * rule that matters here is that neither can carry `/`, `.` or `%` - the
+ * `sessionId` rule's purpose. The exact shapes are the backend's to evolve (a
+ * pool member's id is not a device key's hash), and a renderer that pinned them
+ * would refuse the first new kind the backend learned.
+ */
+const deviceId = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
+const networkId = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
 const requestId = z
 	.string()
 	.regex(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/);
@@ -788,6 +800,14 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			 */
 			include_archived: z.boolean().optional(),
 			/*
+			 * Whether conversations OWNED BY A PEER (another device in a network this
+			 * backend belongs to) belong in the answer. Absent means `false`, the same
+			 * compatibility promise `include_archived` makes: the renderer sends it only
+			 * when the backend advertises `features.peers`, so a pre-mesh backend keeps
+			 * receiving the byte-identical request it always did.
+			 */
+			include_peers: z.boolean().optional(),
+			/*
 			 * The four parameters that make the catalogue PAGEABLE, and the switch that
 			 * makes the daemon count it.
 			 *
@@ -840,6 +860,8 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			 * stale-row failure `chat-search.test.mjs` pins.
 			 */
 			include_archived: z.boolean().optional(),
+			/** As on `sessions.list`: only sent when `features.peers` is advertised. */
+			include_peers: z.boolean().optional(),
 		})
 		.strict(),
 	/*
@@ -902,6 +924,13 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			 * different request for every caller that never asked.
 			 */
 			model: modelSelection.optional(),
+			/*
+			 * The DEVICE to create the conversation on, by device id (`mesh-ui.md`
+			 * §2.6). Omitted means this device, and the body is then byte-identical to
+			 * the pre-mesh one - the `model` field's own rule. Only `/new`'s device
+			 * choice writes it, and only when `features.peers` is advertised.
+			 */
+			peer: deviceId.optional(),
 		})
 		.strict(),
 	/*
@@ -1938,6 +1967,65 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			value: secret,
 		})
 		.strict(),
+	/*
+	 * THE MESH OPS (`features.peers`, `features.session_transfer`). All of them
+	 * reach a peer only THROUGH this app's one backend: the renderer never dials a
+	 * peer, never learns an address to dial, and holds no mesh credential
+	 * (`mesh-ui.md` §2.2) - a UI that could would have to re-implement the relay's
+	 * authorisation model in JavaScript.
+	 *
+	 * `peers.list` and `networks.list` are reads; the other three change state and
+	 * are therefore NOT in `READ_ONLY_OPS`, so a timeout on them gets the cautious
+	 * "may or may not have reached the server" sentence.
+	 */
+	z
+		.object({ op: z.literal("peers.list") })
+		.strict(),
+	z.object({ op: z.literal("networks.list") }).strict(),
+	z
+		.object({
+			/*
+			 * An INVITE, never an "add": admission is two-sided and the joining device
+			 * proves the code itself (`mesh-ui.md` §2.8, decision 4). The backend writes
+			 * the token to a file and answers with its path - the token never crosses
+			 * this IPC.
+			 */
+			op: z.literal("networks.invite"),
+			networkId,
+			role: z.enum(["read", "drive", "admin"]),
+			device: deviceId.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			/*
+			 * `member rm`: revokes the member and ROTATES the network secret, so every
+			 * other device is affected. `confirm` is the network's name as the user
+			 * TYPED it, echoed so the route itself refuses a removal no dialog answered
+			 * (the `sessions.delete` precedent, stronger because the act is wider).
+			 */
+			op: z.literal("networks.member.remove"),
+			networkId,
+			deviceId,
+			confirm: z.string().min(1).max(256),
+		})
+		.strict(),
+	z
+		.object({
+			/*
+			 * Move a conversation to another device (`to` = a device id) or home
+			 * (`to` = "local"). Idempotent by `requestId` like every desktop write that
+			 * admits work. `wait_s` bounds how long the route waits for the source
+			 * runtime to retire before refusing with `in_flight_turn`.
+			 */
+			op: z.literal("sessions.transfer"),
+			sessionId,
+			requestId,
+			to: z.union([deviceId, z.literal("local")]),
+			keep: z.boolean().optional(),
+			wait_s: z.number().min(0).max(300).optional(),
+		})
+		.strict(),
 ]);
 
 export type DesktopRequest = z.infer<typeof desktopRequestSchema>;
@@ -2439,6 +2527,52 @@ const DESKTOP_CONTROL_DEADLINE_MS = 20_000;
 const DESKTOP_LONG_READ_DEADLINE_MS = 90_000;
 
 /**
+ * How long the app waits for a MOVE, over and above the wait the request asks for.
+ *
+ * `sessions.transfer` is not a control: it asks the route to wait for the source
+ * runtime to retire, and that wait is the request's OWN `wait_s` (up to 300 s, the
+ * schema's ceiling). Bounding it by the 20 s control budget made the app give up
+ * on a route that was still working, and the give-up sentence - which cannot name
+ * the reason - then told the reader the move might not have happened. So the move's
+ * budget is the route's own published ENVELOPE ({@link DESKTOP_MOVE_ENVELOPE_S} for
+ * an offload, {@link DESKTOP_KEEP_MOVE_ENVELOPE_S} for a copy that is kept,
+ * {@link DESKTOP_RECALL_ENVELOPE_S} for a recall) plus the `wait_s` the request
+ * asked for, plus this margin - and the margin is the SMALLEST of those three
+ * terms on purpose. Sizing this file's own term from local measurements is how the
+ * app came to hold a deadline of 75 s against a route that may legitimately take
+ * 130 s.
+ *
+ * The margin is generous on purpose. Exceeding a budget here is reported as an
+ * UNCONFIRMED move, never as a refusal (round-1 review, M4), so a margin that is
+ * too small is a false alarm rather than a lost answer.
+ *
+ * IT IS FIFTEEN SECONDS BECAUSE THAT IS THE BACKEND'S OWN PUBLISHED TERM, and the
+ * 45 s it replaces was the sizing mistake this file has now made twice. The route
+ * publishes its client answer through `mobility.move_client_bound_s(wait_s, keep,
+ * to)` (backend PR #1540), whose three answers at `wait_s=0` are 145 s for an
+ * offload, 415 s for a `keep` copy and 415 s for a recall - i.e. the route's own
+ * envelopes (130 s / 400 s / 400 s) plus this 15 s. A margin of 45 s was reasoned
+ * from a MEASURED TYPICAL overhead (~30.5 s above `wait_s` against a real peer,
+ * QA round 1's figures) used as if it were a bound, which is exactly the mistake
+ * #1540's round 1 was rejected for; and the number it produced, 75 s, still sat
+ * BELOW the route's own 130 s envelope, so this layer went on being the one that
+ * gave up first - the defect the whole change exists to remove. Use the published
+ * pair, not a derivation of your own.
+ *
+ * WHAT IS AND IS NOT MEASURED HERE: the three published answers are read off the
+ * backend's own constant, and I have not measured the keep or recall wall clocks
+ * end to end on a real pair - neither has the backend lane. So this margin is a
+ * published TERM, not a figure of my own; do not quote it as a measurement.
+ *
+ * The same margin is used for a peer CREATE (`desktopRequestBoundS`'s second
+ * arm), where the backend's own budget is 120 s: an app bound below the budget it
+ * waits on is the layer that gives up first, which is the whole defect (Q4b).
+ */
+export const DESKTOP_OPERATION_MARGIN_MS = 15_000;
+/** What the renderer asks the route to wait, when the user has not chosen. */
+export const DESKTOP_TRANSFER_WAIT_S = 30;
+
+/**
  * Ops whose answer is an aggregate over the local usage ledger.
  *
  * Listed by SHAPE, because that is what the budget is sized for: each of these
@@ -2491,8 +2625,141 @@ const LONG_READ_OPS: ReadonlySet<string> = new Set([
 	...PROVIDER_READ_OPS,
 ]);
 
-/** The deadline one op's request may run for. */
-export function desktopRequestDeadlineMs(op: DesktopRequest["op"]): number {
+/**
+ * The op's OWN time bound, when it carries one: only a move does, and its `wait_s`
+ * is how long the route may wait for the source runtime to retire.
+ */
+export function desktopRequestBoundS(request: {
+	op: DesktopRequest["op"];
+	wait_s?: number;
+	/** The peer a create was addressed to, when one was (QA round 1, Q4b). */
+	peer?: string | null;
+	/** The move's destination: a device id, or `"local"` for a recall. */
+	to?: string | null;
+	/** Whether the move keeps a copy behind (the route's `keep` term). */
+	keep?: boolean;
+}): number | null {
+	if (request.op === "sessions.create") {
+		/*
+		 * A CREATE ON A PEER IS NOT A CONTROL CALL. The route's own budget for it is
+		 * `create_on_peer`'s 120 s, and it measured 15.9 s and 22.1 s on LOOPBACK -
+		 * the fastest case there will ever be. Under this app's generic 20 s control
+		 * budget the create timed out, told the user the peer "did not create the
+		 * conversation", and then the conversation appeared anyway on the next poll
+		 * (QA round 1, Q4b). A local create keeps the standing budget: there is no
+		 * second device in it.
+		 */
+		return request.peer ? DESKTOP_PEER_CREATE_BOUND_S : null;
+	}
+	if (request.op !== "sessions.transfer") return null;
+	/*
+	 * A RECALL IS NOT A MOVE, and deriving its bound from `wait_s` is the mistake
+	 * this helper exists to prevent. `to: "local"` is bounded by the DESTINATION's own
+	 * retire-and-record deadline (about 90 s) plus the copy, which is a different
+	 * shape from the peer route's `wait_s + 30` - so it takes a standing ceiling that
+	 * deliberately EXCEEDS that, and its outcome is always reported as unconfirmed
+	 * ("check where it is"), never as a precise refusal. The number is a ceiling, not
+	 * a measurement: the backend lane derived the recall's shape from code, and a
+	 * figure quoted as measured would be a claim nobody made.
+	 */
+	const wait = request.wait_s;
+	/*
+	 * THE WAIT TERM IS ADDED 1:1, ON EVERY SHAPE, which is how the route's own
+	 * expression carries it: the published answers are stated at `wait_s=0`, and a
+	 * request that asks the route to wait longer pushes its envelope out by the same
+	 * amount. Clamped at the schema's 300 s ceiling, so a request past it is clamped
+	 * rather than believed.
+	 */
+	const bounded =
+		typeof wait === "number" && Number.isFinite(wait)
+			? Math.min(Math.max(wait, 0), 300)
+			: null;
+	/*
+	 * A RECALL FIRST, because it is the shape whose envelope does NOT come from the
+	 * move formula - and deriving one for it is the mistake this helper exists to
+	 * prevent.
+	 */
+	if (request.to === "local") {
+		return bounded === null ? null : bounded + DESKTOP_RECALL_ENVELOPE_S;
+	}
+	if (bounded === null) return null;
+	/*
+	 * THE ROUTE'S OWN ENVELOPE, ONE PLACE FOR BOTH MOVE SHAPES: 130 s for an offload
+	 * and 400 s for one that KEEPS a copy, with this file's 15 s margin added by
+	 * `desktopRequestDeadlineMs` to reach the answers the backend publishes (145 s
+	 * and 415 s at `wait_s=0`). Returned from here so the three shapes cannot drift
+	 * apart.
+	 */
+	return (
+		bounded +
+		(request.keep === true
+			? DESKTOP_KEEP_MOVE_ENVELOPE_S
+			: DESKTOP_MOVE_ENVELOPE_S)
+	);
+}
+
+/**
+ * The route's own envelope for a move that keeps no copy, in seconds.
+ *
+ * 130 s is the backend's published number, not this app's estimate: the route
+ * answers within it, and `mobility.move_client_bound_s` adds this file's 15 s
+ * margin to publish 145 s to clients. The `wait_s` term is added 1:1 on top, the
+ * same way the route's expression carries it, so the app's deadline is exactly
+ * the published answer at every `wait_s`.
+ */
+export const DESKTOP_MOVE_ENVELOPE_S = 130;
+
+/**
+ * The same for a move that KEEPS a copy on the source (the route's `keep` term).
+ *
+ * 400 s, which publishes as 415 s: 270 s more than the offload's envelope, and
+ * the gap a client that ignored `keep` falls straight through.
+ */
+export const DESKTOP_KEEP_MOVE_ENVELOPE_S = 400;
+
+/**
+ * The route's envelope for a RECALL (`to: "local"`), on the same footing as the
+ * two above rather than derived from a shape.
+ *
+ * A recall is NOT bounded by the move formula: the destination retires its own
+ * runtime and records the conversation before answering, which is a different
+ * path from the peer route's. The backend publishes 400 s for it - the same
+ * envelope as a `keep` copy, and 415 s once the 15 s margin is added - so this
+ * app reads its number off the backend rather than deriving one.
+ *
+ * Its OUTCOME is still always "unconfirmed - check where it is": the envelope
+ * bounds how long the route may take, not what it will have done by then, and a
+ * recall has no precise refusal to spend on a client-side guess.
+ */
+export const DESKTOP_RECALL_ENVELOPE_S = 400;
+
+/**
+ * What a create asked to run on a peer is given before this app gives up.
+ *
+ * The PEER's own create budget, taken from the route rather than invented here:
+ * the app must sit above the layer it is waiting on, or the reader is told the
+ * peer refused when the peer was still working (QA round 1, Q4b).
+ */
+export const DESKTOP_PEER_CREATE_BOUND_S = 120;
+
+/**
+ * The deadline one op's request may run for.
+ *
+ * `boundS` is the request's own bound ({@link desktopRequestBoundS}), because one
+ * op's cost is not a property of its name: a move that asked to wait 30 s cannot
+ * be answered inside a budget that ignores the 30 s. Callers that have the whole
+ * request pass it; a caller that has only the op gets the op's standing budget,
+ * which is what every op but the move has.
+ */
+export function desktopRequestDeadlineMs(
+	op: DesktopRequest["op"],
+	boundS: number | null = null,
+): number {
+	if (
+		(op === "sessions.transfer" || op === "sessions.create") &&
+		boundS !== null
+	)
+		return Math.round(boundS * 1000) + DESKTOP_OPERATION_MARGIN_MS;
 	return LONG_READ_OPS.has(op)
 		? DESKTOP_LONG_READ_DEADLINE_MS
 		: DESKTOP_CONTROL_DEADLINE_MS;
@@ -2585,6 +2852,8 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"legacy.schedules.list",
 	"mcp.catalog",
 	"mcp.list",
+	"networks.list",
+	"peers.list",
 	"models.catalogue",
 	"profiles.get",
 	"profiles.list",
@@ -2814,6 +3083,25 @@ export type DesktopStreamEvent = {
 	 * and a frame-budget overflow are failures, not refusals.
 	 */
 	status?: number;
+	/**
+	 * The backend's own token for the refusal, when its body carried one.
+	 *
+	 * 409 is one arm of several ladders on that plane, so the TOKEN is what a
+	 * client keys on and the sentence is what a person reads: `session_is_remote`
+	 * names the one condition this app renders differently, because the answer is
+	 * not "gone" but "on another device, and here are the two ways in".
+	 */
+	code?: string;
+	/**
+	 * The backend's own sentence for the refusal, when its body carried one.
+	 *
+	 * Kept apart from the relay's `detail` vocabulary for the reason the relay
+	 * states: `detail` is what the app's transport notices are built from, and a
+	 * server's raw text there would replace a product sentence with machine words.
+	 * Only the remote-session arm reads this, and only when it has a `code` it
+	 * renders differently.
+	 */
+	message?: string;
 };
 
 /**
@@ -3305,6 +3593,12 @@ export function desktopEndpoint(request: DesktopRequest): {
 			// `false` is the route's default anyway.
 			if (request.include_archived) params.set("include_archived", "true");
 			/*
+			 * MESH: omitted unless the backend advertised `features.peers`, for the
+			 * same reason `include_archived` is omitted when false - a pre-mesh daemon
+			 * keeps receiving the byte-identical request it always did.
+			 */
+			if (request.include_peers) params.set("include_peers", "true");
+			/*
 			 * The paging four, appended only when asked for. `with_counts` follows
 			 * `include_archived`'s rule rather than `cursor`'s: it is a boolean whose
 			 * route default is false, so omitting it is the pre-change request, while
@@ -3323,6 +3617,8 @@ export function desktopEndpoint(request: DesktopRequest): {
 			if (request.with_counts) params.set("with_counts", "true");
 			return {
 				path: `/v1/desktop/sessions?${params}`,
+				// `include_peers` rides in `params` (see the builder above), omitted
+				// unless the backend advertised the capability.
 				method: "GET",
 			};
 		}
@@ -3340,6 +3636,7 @@ export function desktopEndpoint(request: DesktopRequest): {
 			// existed - which is what keeps the control a strict superset of the old
 			// behaviour against a backend that has not learned the flag yet.
 			if (request.include_archived) query.set("include_archived", "true");
+			if (request.include_peers) query.set("include_peers", "true");
 			return {
 				path: `/v1/desktop/sessions/search?${query}`,
 				method: "GET",
@@ -3371,6 +3668,37 @@ export function desktopEndpoint(request: DesktopRequest): {
 					cwd: request.cwd,
 					...(request.target ? { target: request.target } : {}),
 					...(request.model ? { model: request.model } : {}),
+					...(request.peer ? { peer: request.peer } : {}),
+				},
+			};
+		case "peers.list":
+			return { path: "/v1/desktop/peers", method: "GET" };
+		case "networks.list":
+			return { path: "/v1/desktop/networks", method: "GET" };
+		case "networks.invite":
+			return {
+				path: `/v1/desktop/networks/${request.networkId}/invite`,
+				method: "POST",
+				body: {
+					role: request.role,
+					...(request.device ? { device: request.device } : {}),
+				},
+			};
+		case "networks.member.remove":
+			return {
+				path: `/v1/desktop/networks/${request.networkId}/members/${request.deviceId}`,
+				method: "DELETE",
+				body: { confirm: request.confirm },
+			};
+		case "sessions.transfer":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/transfer`,
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					to: request.to,
+					...(request.keep !== undefined ? { keep: request.keep } : {}),
+					...(request.wait_s !== undefined ? { wait_s: request.wait_s } : {}),
 				},
 			};
 		case "sessions.preview":

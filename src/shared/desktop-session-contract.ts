@@ -126,6 +126,188 @@ export type SessionCatalogueRow = {
 	 */
 	subagents_running?: number | null;
 	subagents_queued?: number | null;
+} & SessionLocalityFields;
+/**
+ * Where a conversation LIVES, when this app's backend is part of a mesh.
+ *
+ * The field names are `mesh-session-mobility.md` §9.2's, adopted verbatim by
+ * `mesh-ui.md` §2.6, and the mirror is the backend's `SessionRow`
+ * (`local_operator/server/models/desktop_sessions.py`).
+ *
+ * PRESENT WITH BOTH VALUES ON EVERY ROW when the backend advertises
+ * `features.peers`, for the reason `pinned` states above: the store's row merge
+ * is `{...current, ...incoming}` under "an absent key is not a claim", so a row
+ * that moved home and came back WITHOUT `locality` would keep its stale
+ * `"remote"` forever - the mark would stay on a local row and the row would stay
+ * filed under a peer it no longer lives on.
+ *
+ * OPTIONAL IN THIS TYPE because a pre-mesh backend sends none of them, and
+ * absent means exactly that: the renderer draws today's sidebar, byte for byte
+ * (the S1 story, and `chat-sidebar-peers.test.mjs`'s DOM-identity case).
+ *
+ * `locality` is a FIELD, never a derivation. The UI must not infer remoteness
+ * from an id shape, a title prefix or a cwd (spine §8): the row is the one place
+ * it is read, so the mark and the peer section cannot disagree.
+ *
+ * THE WIRE MAY SEND `null` WHERE THIS APP'S OWN ROWS CARRY `""` (addendum 2, B:
+ * `owner_device`/`owner_device_name`/`unreachable_reason` are `string | null`).
+ * Both spell the same absence, so `mesh-shapes.ts` normalises null to `""` as the
+ * reply is read, and everything downstream sees one spelling.
+ */
+export type SessionLocalityFields = {
+	locality?: "local" | "remote";
+	/** The owning device's id; absent, `""` or `null` when local. */
+	owner_device?: string | null;
+	/** The owning device's human name; absent, `""` or `null` when local. */
+	owner_device_name?: string | null;
+	/**
+	 * `true` for a local row; for a remote row, whether its owner answered THIS
+	 * poll. A cached row of an unreachable peer is still listed - its status is
+	 * the truth as of the last sync - and this is what says so.
+	 */
+	reachable?: boolean;
+	/**
+	 * One sentence when `reachable` is false, in the BACKEND's words. The backend
+	 * glosses the relay's protocol tokens (`network_panel.peer_reason_words`), so
+	 * this app renders the string it is given and never keeps a vocabulary of its
+	 * own: a second glossary here would drift from the TUI's the first time either
+	 * side learned a new reason.
+	 */
+	unreachable_reason?: string | null;
+	/** For a `--keep` copy at this device: when it last pulled (epoch seconds). */
+	last_synced_at?: number | null;
+	placement?: SessionPlacement | null;
+	origin?: SessionOrigin | null;
+};
+export type SessionPlacement = {
+	mode: string;
+	network_id: string;
+	home_device: string;
+	policy: string;
+};
+export type SessionOrigin = {
+	kind: "moved" | "fork";
+	source_device: string;
+	source_session_id: string;
+};
+/**
+ * `GET /v1/desktop/peers`: the mesh's peer catalogue.
+ *
+ * ONE ROW PER DEVICE (addendum 2, A). The route reads the relay's `peer_status`,
+ * which answers one entry per (network, member) - so a device in two networks
+ * arrives TWICE, and a renderer that took the array as given drew two peer
+ * sections holding the same conversations (the round-1 review reproduced it).
+ * `mesh-shapes.ts` dedupes by `device_id` as the reply is read, so the invariant
+ * is held here whatever the producer does; a device's sessions are never
+ * duplicated by a second membership.
+ */
+export type PeerRow = {
+	device_id: string;
+	/** The label. `""` ⇒ render the id's tail; never invent a name. */
+	name: string;
+	reachable: boolean;
+	/** The BACKEND's gloss of why not, or null when it can reach the device. */
+	unreachable_reason: string | null;
+	last_seen_at: number | null;
+	/**
+	 * How many chats this device holds, counted by the backend from the same row
+	 * set the sidebar groups on (addendum 2, A), so a peer's heading and its `Peers`
+	 * row cannot state two numbers for one fact.
+	 *
+	 * THE SIDEBAR DOES NOT READ IT (design round 1, D1). It prints the number of
+	 * rows it has grouped, which is the number its own heading counts - equal to
+	 * this field by contract, and equal to it STRUCTURALLY rather than by
+	 * agreement, which also holds on a paged list where this count may exceed the
+	 * rows the client holds.
+	 */
+	session_count: number;
+	/**
+	 * The peer's measured round trip, or `null` when nothing measured it.
+	 *
+	 * NOTHING RENDERS IT TODAY (design round 1, D1): the transport publishes no
+	 * producer for this field, so every live peer's row used to print `— · 2 chats`
+	 * on every read, indefinitely. The sidebar shows the chat count instead and the
+	 * field is drawn again only when something can measure it.
+	 */
+	rtt_ms: number | null;
+};
+export type PeerList = {
+	peers: PeerRow[];
+	/**
+	 * THIS device's id, when the backend says which entry it is (addendum 2, A).
+	 * Optional: absent is a missing fact, not a wrong one.
+	 */
+	self_device_id?: string;
+	/** The same `degraded` vocabulary the session list uses, when sent. */
+	degraded?: string[];
+};
+/**
+ * One device's membership of ONE network, as `GET /v1/desktop/networks` joins
+ * `network_detail`'s `members_detail` with `peer_status` (plan §3.1).
+ *
+ * Per NETWORK, deliberately: a device in two networks appears in both member
+ * lists, and the graph draws it as one node with two edges. The flat peer
+ * catalogue cannot express that (`mesh-ui.md` §2.8.1: its block map is keyed by
+ * device id alone, so the second membership is silent), which is why the tab
+ * reads this route rather than `PeerList`.
+ */
+export type NetworkMember = {
+	device_id: string;
+	name: string;
+	role: string;
+	capabilities: string[];
+	active: boolean;
+	suspect: boolean;
+	endpoints: string[];
+	last_seen_at: number | null;
+	reachable: boolean;
+	/** The backend's words for why, `""` when reachable. */
+	reason: string;
+};
+export type NetworkSummary = {
+	network_id: string;
+	name: string;
+	epoch: number;
+	trust: string;
+	members: NetworkMember[];
+};
+export type NetworkTopology = {
+	networks: NetworkSummary[];
+	/**
+	 * THIS device's id, when the backend says which member it is. Optional because
+	 * plan §3.1's shape does not name it: absent ⇒ no node is drawn as "this
+	 * device", which is a missing fact rather than a wrong one.
+	 */
+	self_device_id?: string;
+};
+/** `POST /v1/desktop/networks/{net}/invite`: the token is WRITTEN, never returned. */
+export type NetworkInviteReceipt = {
+	token_path: string;
+	expires_at: number | null;
+};
+/**
+ * `POST /v1/desktop/sessions/{id}/transfer`, as ONE answer.
+ *
+ * The backend's route produces a phase transcript; this app's IPC is
+ * request/response, so it reads the transcript whole when the move settles. The
+ * row is busy (S6) for the request's lifetime and settles in place (S7) or moves
+ * sections on success - the single store update `mesh-ui.md` §2.5 requires.
+ */
+export type SessionTransferReceipt = {
+	phases?: { phase: string; peer: string; progress: number }[];
+	locality: "local" | "remote";
+	owner_device: string;
+	source_retired: boolean;
+	/**
+	 * The id the conversation has AFTER the move, when the route renamed it.
+	 *
+	 * Carried because a move need not keep the id, and a renderer that assumed it
+	 * did would leave the reader looking at a row that no longer exists (QA round 1,
+	 * Q6: the field was on the wire and dropped by this app's normaliser).
+	 */
+	new_session_id?: string;
+	/** How the move was performed, when the route said (`move`/`copy`/`fork`). */
+	mode?: string;
 };
 /**
  * One hit from `sessions.search`, returned by the `session_search` capability
@@ -183,7 +365,7 @@ export type SessionSearchHit = {
 	 * that is not on this client's catalogue page.
 	 */
 	archived: boolean;
-};
+} & SessionLocalityFields;
 /**
  * The search answer. `query` is ECHOED rather than assumed: keystrokes are
  * debounced and their requests can complete out of order, so the only thing

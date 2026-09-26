@@ -16,13 +16,22 @@
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import type { DesktopProvider } from "@shared/api/local-operator/desktop-api";
 import {
+	desktopFeatureEnabled,
 	desktopKeys,
+	useDesktopCapabilities,
 	useDesktopProviders,
 } from "@shared/api/local-operator/desktop-hooks";
 import { SNAPSHOT_READ_OPTIONS } from "@shared/api/query-client";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@shared/components/ui/select";
 import { Textarea } from "@shared/components/ui/textarea";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
 
@@ -54,7 +63,14 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { type FC, useCallback, useEffect, useMemo, useState } from "react";
+import {
+	type FC,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import type { DesktopModelSelection } from "../../../../../shared/desktop-contract";
@@ -83,6 +99,7 @@ import {
 	selectionFromModel,
 	selectionSelector,
 } from "../draft-selection";
+import { deviceLabel, usePeers } from "../peers-store";
 import {
 	bandReadings,
 	effortDisplay,
@@ -2263,12 +2280,40 @@ export const ResumePicker: FC<PickerContext> = ({
 	);
 };
 
+/** The device choice's value for "this device": never a device id, which starts `d_`. */
+const THIS_DEVICE = "this-device";
+
 export const NewSessionPicker: FC<PickerContext> = ({
 	canonical,
 	onClose,
 	rebind,
 }) => {
 	const [cwd, setCwd] = useState(canonical.frontend?.cwd ?? "");
+	/*
+	 * WHERE the conversation is created: this device, or a peer by device id
+	 * (`mesh-ui.md` §2.6). The choice exists only when the backend advertises
+	 * `features.peers` AND lists at least one peer - otherwise the form is exactly
+	 * the one it always was, and `peer` is never sent.
+	 *
+	 * Unreachable peers are listed but DISABLED with their reason, rather than
+	 * hidden: a device that vanished from the choice would read as "removed from
+	 * the network", and the reason says what to fix.
+	 */
+	const capabilities = useDesktopCapabilities();
+	const peersEnabled = desktopFeatureEnabled(capabilities.data, "peers");
+	const peers = usePeers(peersEnabled);
+	const peerRows = peersEnabled ? (peers.data?.peers ?? []) : [];
+	const [device, setDevice] = useState(THIS_DEVICE);
+	const chosen = peerRows.find((peer) => peer.device_id === device);
+	/*
+	 * ONE REQUEST ID PER OPENED PICKER (QA round 1, Q4b). `createSession` defaults
+	 * this to a fresh uuid per CALL, so a second press of Create - which is what a
+	 * reader does after a timeout - minted a SECOND conversation on the peer: the
+	 * route's at-most-once guard keys on this id and could not see the retry as one.
+	 * Held for the life of the picker: pressing Create twice sends the same request
+	 * twice, and the route answers the second from its own record.
+	 */
+	const requestIdRef = useRef<string>(uuidv4());
 	const op = useOperation();
 	const createSession = useCanonicalSessionsStore(
 		(state) => state.createSession,
@@ -2277,19 +2322,44 @@ export const NewSessionPicker: FC<PickerContext> = ({
 		const value = await op.perform(
 			async () => {
 				const id = await createSession(
-					cwd.trim() || (canonical.frontend?.cwd ?? "~"),
+					/*
+					 * A PEER GETS `~`, NEVER THIS MACHINE'S PATH (QA round 1, Q9; backend
+					 * PR #1540). The route forwards `cwd` now and VALIDATES it on the
+					 * peer, answering 409 with the path that does not exist there and the
+					 * device it does not exist on - so sending the local pane's directory
+					 * to a peer would produce exactly that refusal on every real network.
+					 * `~` is the one path that means the same thing on both ends, which is
+					 * also where the peer would have started anyway.
+					 */
+					chosen ? "~" : cwd.trim() || (canonical.frontend?.cwd ?? "~"),
+					undefined,
+					requestIdRef.current,
+					undefined,
+					chosen ? chosen.device_id : undefined,
 				);
 				if (!id) throw new Error("the backend did not return a session id");
 				return id;
 			},
 			(id) => ({
 				tone: "success",
-				text: `New conversation ${id}. The previous one keeps running.`,
+				text: chosen
+					? /* CREATED IS NOT YET RUNNING (backend PR #1540): a promptless create on a
+					     peer answers with the id in ~1 s and warms the runtime in the
+					     background, so "on <peer>" alone would imply it is up there. It says
+					     the conversation exists and is starting, which is what the wire
+					     supports; the row's own state settles by the next list read, and a
+					     failed warm is recorded on the peer as `session.create.warm_failed`
+					     (an audit record this renderer has no field for, so it is not
+					     invented here). */
+						`New conversation ${id} on ${deviceLabel(chosen)}; it is starting there. The previous one keeps running.`
+					: `New conversation ${id}. The previous one keeps running.`,
 			}),
-			"The conversation was not created",
+			chosen
+				? `${deviceLabel(chosen)} did not create the conversation`
+				: "The conversation was not created",
 		);
 		if (value) rebind(value);
-	}, [op, createSession, cwd, canonical.frontend?.cwd, rebind]);
+	}, [op, createSession, cwd, canonical.frontend?.cwd, rebind, chosen]);
 	return (
 		<PickerHost
 			open
@@ -2297,16 +2367,104 @@ export const NewSessionPicker: FC<PickerContext> = ({
 			title="New conversation"
 			description="Starts a fresh canonical session. Work in the current one continues."
 			form={
-				<PickerField
-					label="Working directory"
-					hint="Must exist on this machine."
-				>
-					<Input value={cwd} onChange={(event) => setCwd(event.target.value)} />
-				</PickerField>
+				<>
+					{peerRows.length > 0 && (
+						<PickerField label="Device" htmlFor="new-session-device">
+							<Select value={device} onValueChange={setDevice}>
+								<SelectTrigger id="new-session-device">
+									<SelectValue />
+								</SelectTrigger>
+								{/*
+								 * THE PANEL IS EXACTLY AS WIDE AS THE CONTROL THAT OPENED IT
+								 * (design round 2, D14). One of these labels carries the
+								 * backend's reason in full, and the round-1 cap (`max-w-26rem`)
+								 * made the reason CLIP rather than wrap: the viewport kept the
+								 * trigger's own `min-w`, so the text wrapped at 534 px and was
+								 * then cut at 416 - losing the address a user would act on, and
+								 * making the panel narrower than its own trigger, which
+								 * `select.tsx`'s comment explicitly guards against. Sizing the
+								 * content to the trigger's width makes wrapping and clipping
+								 * agree, and the panel can no longer outgrow the dialog either.
+								 */}
+								<SelectContent className="w-(--radix-select-trigger-width)">
+									<SelectItem value={THIS_DEVICE}>This device</SelectItem>
+									{peerRows.map((peer) => (
+										<SelectItem
+											key={peer.device_id}
+											value={peer.device_id}
+											disabled={!peer.reachable}
+										>
+											{/*
+											 * THE REASON IS NOT DISABLED INK (design round 2, D18): the
+											 * option is unselectable, but the reason is the only
+											 * information here and it is READ, not clicked - `ink-dim`
+											 * is 5.25:1 dark / 6.14:1 light on `elevated` where the
+											 * inherited `ink-disabled` measured 1.99:1 and 2.96:1.
+											 * The name keeps the disabled ink, so the option still
+											 * reads as unselectable (with no hover wash and
+											 * `aria-disabled`).
+											 */}
+											<span className="min-w-0">
+												<span className="block truncate">
+													{deviceLabel(peer)}
+												</span>
+												{!peer.reachable && (
+													<span className="block text-ink-dim">
+														{`unreachable${
+															peer.unreachable_reason
+																? `: ${peer.unreachable_reason}`
+																: ""
+														}`}
+													</span>
+												)}
+											</span>
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</PickerField>
+					)}
+					{/*
+					 * A PEER CREATE HAS NO WORKING DIRECTORY TO CHOOSE (QA round 1, Q9).
+					 * The route does not forward `cwd` for a peer - "An empty cwd makes the
+					 * peer default to its own home" - so this field said `Must exist on
+					 * <peer>.` over a value that was never sent, never validated, and never
+					 * used: a create pointed at `/nonexistent/on/this/mac` answered 200 and
+					 * ran in the peer's home. Asking for a path and then ignoring it is
+					 * worse than not asking, because the reader believes the session runs
+					 * where they typed. Hidden for a peer, with the place it WILL run
+					 * stated instead; the local form is byte-identical to the one it always
+					 * was.
+					 */}
+					{chosen ? (
+						<PickerField
+							label="Working directory"
+							hint={`Starts in ${deviceLabel(chosen)}'s home folder.`}
+						>
+							<p className="text-body-sm text-ink-dim">
+								{`This app cannot choose a folder on ${deviceLabel(chosen)} yet.`}
+							</p>
+						</PickerField>
+					) : (
+						<PickerField
+							label="Working directory"
+							htmlFor="new-session-cwd"
+							hint="Must exist on this machine."
+						>
+							<Input
+								id="new-session-cwd"
+								value={cwd}
+								onChange={(event) => setCwd(event.target.value)}
+							/>
+						</PickerField>
+					)}
+				</>
 			}
 			onSubmit={submit}
 			submitLabel="Create"
-			submitDisabled={!cwd.trim()}
+			/* Nothing to fill in for a peer: the field it would have checked is gone
+			   rather than sitting empty and blocking the form (QA round 1, Q9). */
+			submitDisabled={!chosen && !cwd.trim()}
 			busy={op.busy}
 			result={op.result}
 		/>
