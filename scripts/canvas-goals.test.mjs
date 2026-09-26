@@ -217,6 +217,23 @@ test("the empty state names the next action rather than the absence", () => {
 	assert.doesNotMatch(markup, /<button/);
 });
 
+test("the empty state tells a user with a goal in flight to wait, not to set one", () => {
+	/*
+	 * The other half of D2, pinned rather than only photographed: with `goalPresent`
+	 * true the invitation would be false (the chip two panes over displays that goal)
+	 * and the pane states its own condition instead. The frame
+	 * `canvas-workspace/goal-history-empty-and-capped` paints this band; this cell is
+	 * what fails if the ternary is ever flattened (agent review round 4, R4-4).
+	 */
+	const markup = renderGoals({
+		entries: [],
+		truncated: false,
+		goalPresent: true,
+	});
+	assert.match(markup, /Goals appear here once they are finished\./);
+	assert.doesNotMatch(markup, /No goal set/);
+});
+
 /* ---------------------------------------------------------------- */
 /* The pane's own wiring (a source pin)                              */
 /* ---------------------------------------------------------------- */

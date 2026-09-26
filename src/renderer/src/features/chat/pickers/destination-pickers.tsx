@@ -48,6 +48,7 @@ import {
 	type DesktopHistoryPage,
 	type SessionCatalogueStatus,
 	goalCapability,
+	goalPresent,
 } from "../../../../../shared/desktop-session-contract";
 import { messageText } from "../canonical/transcript-reducer";
 import { credentialNamesFrom } from "../components/credential-capture";
@@ -2290,7 +2291,7 @@ export const GoalPicker: FC<PickerContext> = ({
 	 * including the TRIM, because the row treats a whitespace-only goal as no goal and
 	 * the picker's field is the one place such a value can be typed.
 	 */
-	const hasGoal = current.trim().length > 0;
+	const hasGoal = goalPresent(frontend);
 	/*
 	 * The judge's state, in the chip's own vocabulary (`goalStateWord`) so the dialog
 	 * and the row cannot describe one state with two words. A goal at rest gets the

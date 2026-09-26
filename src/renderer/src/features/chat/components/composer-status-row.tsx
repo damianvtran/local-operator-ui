@@ -122,6 +122,7 @@ import type { DesktopLoopState } from "../../../../../shared/desktop-control-con
 import {
 	type CanonicalFrontendState,
 	goalCapability,
+	goalPresent,
 } from "../../../../../shared/desktop-session-contract";
 import { CAPPED_BLOCK, CHAT_MEASURE } from "../chat-measure";
 import {
@@ -1181,7 +1182,7 @@ export const ComposerStatusRow = ({
 	 * fresh draft, a cleared goal and a legacy pane alike.
 	 */
 	const goal = frontend?.goal?.trim() ?? "";
-	const showGoal = goal.length > 0;
+	const showGoal = goalPresent(frontend);
 	/*
 	 * THE GOAL'S LIFECYCLE, read once, here, from the three new fields.
 	 *
