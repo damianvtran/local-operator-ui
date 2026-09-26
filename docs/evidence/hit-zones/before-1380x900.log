@@ -1,0 +1,200 @@
+[build] current: assets 2026-09-26T16:31:06.954Z >= sources 2026-09-26T16:30:38.324Z
+[note] abandoned scratch trees
+        5 seen, 0 owned by a live pid (kept), 5 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        out/renderer/index.html: http://127.0.0.1:8123 added to frame-src and media-src (build output only; src/ untouched)
+  serve records 1 linked from /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T//lop-ui-hitzones-backend-8jr80y/config/run/serve   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui/.worktrees/hitzones-2f6d
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-75068
+  frames        /Users/damian/.local-operator/sessions/67f8b21daa75/scratchpad/evidence-staging/before/frames
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-75068/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8123   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8123","backend":"http://127.0.0.1:8123"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8123)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[note] hello
+        {
+  "armed": true,
+  "outDir": "/Users/damian/.local-operator/sessions/67f8b21daa75/scratchpad/evidence-staging/before/frames",
+  "title": "Local Operator",
+  "route": "/chat",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/hitzones-2f6d/out/renderer/index.html#/chat",
+  "theme": "localOperatorDark",
+  "viewport": {
+    "width": 1380,
+    "height": 900,
+    "devicePixelRatio": 2
+  },
+  "visibilityState": "visible",
+  "hasFocus": false,
+  "apiBaseUrl": "http://127.0.0.1:8123",
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) LocalOperator/0.31.0 Chrome/152.0.7977.78 Electron/44.3.0 Safari/537.36"
+}
+[note] facts (from main)
+        {
+  "windowMode": "headless",
+  "appVersion": "0.31.0",
+  "platform": "darwin",
+  "title": "Local Operator",
+  "windowSize": {
+    "width": 1380,
+    "height": 900
+  },
+  "contentBounds": {
+    "width": 1380,
+    "height": 900
+  },
+  "visible": false,
+  "focused": false,
+  "minimized": false,
+  "frames": [],
+  "outDir": "/Users/damian/.local-operator/sessions/67f8b21daa75/scratchpad/evidence-staging/before/frames"
+}
+[PASS] window mode is headless and the window is never shown or focused
+[note] window chrome
+        {"mode":"integrated","platform":"mac","viewport":{"width":1380,"height":900},"lane":{"x":0,"y":0,"w":1380,"h":32,"display":"block"},"vocabulary":{"drag":"drag","noDrag":"no-drag","plain":"none"}}
+[PASS] the window is the integrated chrome with the mac lane drawn
+[PASS] the computed app-region vocabulary is the one this read filters on
+[PASS] [/analytics] the composer mounted
+[PASS] [analytics-panel] the panel opened
+[PASS] hit-zones-analytics-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 43.5 vs 32.1 own / 237.3 other
+[note] frame analytics-panel
+        {"label":"hit-zones-analytics-dark","path":"/Users/damian/.local-operator/sessions/67f8b21daa75/scratchpad/evidence-staging/before/frames/hit-zones-analytics-dark.png","bytes":253374,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":5}
+[PASS] [analytics-panel] the overlay is in the document
+        7 control(s) sampled, region 12 entr(ies)
+[FAIL] [analytics-panel] every sampled point of every control is OUTSIDE the window drag region
+        button "Close" at centre (1171, 50.8) - held by drag div "New chat/private/…/home"
+        button "Close" at top-left (1164, 43.8) - held by drag div "New chat/private/…/home"
+        button "Close" at top-right (1178, 43.8) - held by drag div "New chat/private/…/home"
+        button "Close" at bottom-left (1164, 57.8) - held by drag div "New chat/private/…/home"
+        button "Close" at bottom-right (1178, 57.8) - held by drag div "New chat/private/…/home"
+        (region: 12 entr(ies) (5 drag, 7 no-drag), drag-entry union {"x":0,"y":0,"w":1380,"h":72}; overlay box {"x":178,"y":20,"w":1024,"h":860})
+[PASS] [analytics-panel] every sampled point's top element is the control it belongs to
+        7 control(s) x 5 samples
+[PASS] [analytics-panel] the lane outside the overlay still drags
+        lane left of the overlay (138, 16): inside=true | lane right of the overlay (1242, 16): inside=true
+[PASS] [/usage] the composer mounted
+[PASS] [usage-panel] the panel opened
+[PASS] hit-zones-usage-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 18.9 vs 32.1 own / 237.3 other
+[note] frame usage-panel
+        {"label":"hit-zones-usage-dark","path":"/Users/damian/.local-operator/sessions/67f8b21daa75/scratchpad/evidence-staging/before/frames/hit-zones-usage-dark.png","bytes":185411,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":3,"stable":true,"toastFree":true,"toastWaitMs":32}
+[PASS] [usage-panel] the overlay is in the document
+        3 control(s) sampled, region 12 entr(ies)
+[PASS] [usage-panel] every sampled point of every control is OUTSIDE the window drag region
+        3 control(s) x 5 samples in region 12 entr(ies); 0 swallowed now, 0 would be without this surface's own opt-out; 0 disabled, 0 unpaintable and 0 outside the visible box were not sampled
+[PASS] [usage-panel] every sampled point's top element is the control it belongs to
+        3 control(s) x 5 samples
+[PASS] [usage-panel] the lane outside the overlay still drags
+        lane left of the overlay (266, 16): inside=true | lane right of the overlay (1114, 16): inside=true
+[PASS] [/info] the composer mounted
+[PASS] [info-panel] the panel opened
+[PASS] hit-zones-info-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 37.2 vs 32.1 own / 237.3 other
+[note] frame info-panel
+        {"label":"hit-zones-info-dark","path":"/Users/damian/.local-operator/sessions/67f8b21daa75/scratchpad/evidence-staging/before/frames/hit-zones-info-dark.png","bytes":386400,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":17}
+[PASS] [info-panel] the overlay is in the document
+        2 control(s) sampled, region 12 entr(ies)
+[FAIL] [info-panel] every sampled point of every control is OUTSIDE the window drag region
+        button "Close" at top-left (1164, 67.6) - held by drag header "New chat/private/…/home"
+        button "Close" at top-right (1178, 67.6) - held by drag header "New chat/private/…/home"
+        (region: 12 entr(ies) (5 drag, 7 no-drag), drag-entry union {"x":0,"y":0,"w":1380,"h":72}; overlay box {"x":178,"y":44,"w":1024,"h":813})
+[PASS] [info-panel] every sampled point's top element is the control it belongs to
+        2 control(s) x 5 samples
+[PASS] [info-panel] the lane outside the overlay still drags
+        lane left of the overlay (138, 16): inside=true | lane right of the overlay (1242, 16): inside=true
+[PASS] [command-palette] the palette opened
+[PASS] hit-zones-palette-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 22.7 vs 32.1 own / 237.3 other
+[note] frame command-palette
+        {"label":"hit-zones-palette-dark","path":"/Users/damian/.local-operator/sessions/67f8b21daa75/scratchpad/evidence-staging/before/frames/hit-zones-palette-dark.png","bytes":212715,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":3,"stable":true,"toastFree":true,"toastWaitMs":30}
+[PASS] [command-palette] the overlay is in the document
+        10 control(s) sampled, region 12 entr(ies)
+[PASS] [command-palette] every sampled point of every control is OUTSIDE the window drag region
+        10 control(s) x 5 samples in region 12 entr(ies); 0 swallowed now, 0 would be without this surface's own opt-out; 0 disabled, 0 unpaintable and 11 outside the visible box were not sampled
+[PASS] [command-palette] every sampled point's top element is the control it belongs to
+        10 control(s) x 5 samples
+[PASS] [command-palette] the lane outside the overlay still drags
+        lane left of the overlay (330, 16): inside=true | lane right of the overlay (1050, 16): inside=true
+[note] sidebar-sheet not exercised
+        the sidebar is docked above SIDEBAR_DOCK_MIN_PX (1024) at this width (1380), so there is no sheet here to probe - run this scene at a narrower --window-size for it
+[PASS] [settings-route-band] the band stands down where the lane is drawn
+        display=none rect={"x":0,"y":0,"w":0,"h":0} while /settings is up
+[PASS] [settings-route-band] the lane is drawn as this route's drag surface
+        lane {"display":"block","rect":{"x":0,"y":0,"w":1380,"h":32}}
+[PASS] [settings-route-band] the lane's own centre is a drag region
+        lane centre inside=true
+[PASS] [settings-route-band] no route control reaches into the lane's strip
+        0 control(s) in the 32px lane strip
+[note] route-band platform scope
+        leading=true -> asserted the leading branch (the lane is the drag surface); only the host's own branch runs here — the other platform's assertions ride the runners that render it
+[note] surfaces probed
+        analytics-panel: 7 control(s), 5 swallowed sample(s) now, 5 without this surface's own opt-out, overlay {"x":178,"y":20,"w":1024,"h":860}, region 12 entr(ies) (5 drag, 7 no-drag)
+        usage-panel: 3 control(s), 0 swallowed sample(s) now, 0 without this surface's own opt-out, overlay {"x":306,"y":350,"w":768,"h":199}, region 12 entr(ies) (5 drag, 7 no-drag)
+        info-panel: 2 control(s), 2 swallowed sample(s) now, 2 without this surface's own opt-out, overlay {"x":178,"y":44,"w":1024,"h":813}, region 12 entr(ies) (5 drag, 7 no-drag)
+        command-palette: 10 control(s), 0 swallowed sample(s) now, 0 without this surface's own opt-out, overlay {"x":370,"y":213,"w":640,"h":475}, region 12 entr(ies) (5 drag, 7 no-drag)
+
+---- app log (tail) ----
+12:31:12.514 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
+12:31:12.515 › [browser] host on 127.0.0.1:61082 (proto 1), profile /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-75068/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+[75110:0926/123112.516460:INFO:CONSOLE:2] "%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
+  Policy set or a policy with "unsafe-eval" enabled. This exposes users of
+  this app to unnecessary security risks.
+
+For more information and help, consult
+https://electronjs.org/docs/tutorial/security.
+This warning will not show up
+once the app is packaged.", source: node:electron/js2c/sandbox_bundle (2)
+12:31:12.631 › [browser] tab 1 navigated to about:blank
+[75110:0926/123112.635581:INFO:CONSOLE:2] "%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
+  Policy set or a policy with "unsafe-eval" enabled. This exposes users of
+  this app to unnecessary security risks.
+
+For more information and help, consult
+https://electronjs.org/docs/tutorial/security.
+This warning will not show up
+once the app is packaged.", source: node:electron/js2c/sandbox_bundle (2)
+[75110:0926/123112.777153:INFO:electron/shell/browser/ui/draggable_region_debugger.cc:108] [draggable-regions] webContents 1: debugging enabled
+[75110:0926/123112.777173:INFO:electron/shell/browser/ui/draggable_region_debugger.cc:150] [draggable-regions] webContents 1: update #1: renderer sent 1 region(s) (1 drag, 0 no-drag); hit-test region computed in 0.0 us: 1 rect(s), bounds 0,0 1380x32
+12:31:12.783 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+12:31:12.783 › Checking for UI updates...
+12:31:12.783 › Skip checkForUpdates because application is not packed and dev update config is not forced
+[75110:0926/123112.859188:INFO:electron/shell/browser/ui/draggable_region_debugger.cc:150] [draggable-regions] webContents 1: update #2, 82.0 ms since previous update: renderer sent 12 region(s) (5 drag, 7 no-drag); hit-test region computed in 5.0 us: 5 rect(s), bounds 0,0 1380x72
+[75110:0926/123113.153956:INFO:electron/shell/browser/ui/draggable_region_debugger.cc:150] [draggable-regions] webContents 1: update #3, 294.8 ms since previous update: renderer sent 1 region(s) (1 drag, 0 no-drag); hit-test region computed in 0.0 us: 1 rect(s), bounds 0,0 1380x32
+12:31:13.155 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+12:31:13.155 › Checking for UI updates...
+12:31:13.155 › Skip checkForUpdates because application is not packed and dev update config is not forced
+[75110:0926/123113.181507:INFO:electron/shell/browser/ui/draggable_region_debugger.cc:150] [draggable-regions] webContents 1: update #4, 27.6 ms since previous update: renderer sent 12 region(s) (5 drag, 7 no-drag); hit-test region computed in 6.0 us: 5 rect(s), bounds 0,0 1380x72
+[window-mode] state: visible=false focused=false focusable=false size=1380x900 content=1380x900
+[75110:0926/123114.815135:INFO:electron/shell/browser/ui/draggable_region_debugger.cc:150] [draggable-regions] webContents 1: update #5, 1633.6 ms since previous update: renderer sent 13 region(s) (6 drag, 7 no-drag); hit-test region computed in 6.0 us: 5 rect(s), bounds 0,0 1380x72 (identical to previous region)
+12:31:15.261 › Checking for updates... (silent mode: true)
+12:31:15.261 › Skip checkForUpdates because application is not packed and dev update config is not forced
+12:31:15.261 › Checking for backend updates... (silent mode: true)
+12:31:15.261 › Skip backend update check in dev mode unless forced
+(node:75181) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 backend-status-changed listeners added to [IpcRenderer]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `Electron Helper (Renderer) --trace-warnings ...` to show where the warning was created)
+[75110:0926/123122.816681:INFO:electron/shell/browser/ui/draggable_region_debugger.cc:150] [draggable-regions] webContents 1: update #6, 8001.5 ms since previous update: renderer sent 1 region(s) (1 drag, 0 no-drag); hit-test region computed in 1.0 us: 1 rect(s), bounds 0,0 1380x32
+
+[PASS] no process from this run outlived its boot
+
+frames: hit-zones-analytics-dark.png, hit-zones-info-dark.png, hit-zones-palette-dark.png, hit-zones-usage-dark.png
+frames directory: /Users/damian/.local-operator/sessions/67f8b21daa75/scratchpad/evidence-staging/before/frames
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-75068/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-75068 (the frames are also in --out)
+
+2 CHECK(S) FAILED

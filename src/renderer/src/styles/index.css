@@ -148,6 +148,33 @@
 }
 
 /*
+ * AND THE SAME OPT-OUT, STANDING ON ITS OWN - because the region a control is
+ * swallowed by does not have to be an ancestor's.
+ *
+ * The rule above is scoped to descendants of a drag row, which is where #477 put
+ * the vocabulary. The mechanism is not scoped: Chromium builds the window's
+ * draggable region from ELEMENT RECTS, in layout order, and that walk never sees
+ * the top layer (`LocalFrameView::CollectDraggableRegions`). A dialog painted over
+ * the chrome strip therefore does not stop being inside the strip's rect - the
+ * overlay's own `no-drag` rect is the only thing that subtracts it - and a control
+ * inside a surface that skipped this is swallowed as a window drag. The user sees a
+ * button that does nothing, and a swallowed event is indistinguishable from a dead
+ * handler, which is what made the Analytics panel's `×` report read as "unclickable".
+ *
+ * The subtraction is per SURFACE rather than per control, and deliberately: the
+ * value inherits, so one marker on a dialog/a sheet/a popover/a menu carves out
+ * everything that surface covers (`dropdown-menu.tsx`, `select.tsx` and the rest
+ * carry it). That is also how the trade-off reads - a modal owns what it covers -
+ * and it leaves the lane BESIDE the overlay draggable, which is what a frameless
+ * window needs while one is up. What this is not for: the scrim. Clicking the strip
+ * while a modal is up still drags the window, which is the behaviour the strip has
+ * always had.
+ */
+[data-chrome-mode="integrated"] [data-titlebar-no-drag] {
+	-webkit-app-region: no-drag;
+}
+
+/*
  * THE LANE IS INVISIBLE WHERE THE OS IS NOT DRAWING OVER THE APP, and it has to be
  * invisible rather than unrendered: `chat-layout.tsx` renders it once for every
  * platform so the drag vocabulary, the inset and the two first rows' alignment are
