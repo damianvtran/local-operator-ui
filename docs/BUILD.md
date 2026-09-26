@@ -223,13 +223,33 @@ self-upgrade). End to end through the shipped script: uv 31-34.5 s against pip
 pip 15.9-33.8 s against uv 0.65-1.57 s. The seconds are this box's; the ratio is
 link- and load-dependent.
 
-The `uv` binary ships as a sealed resource, pinned to an exact release and staged
-by `pnpm setup-python` from its publisher's signed and notarized build; the app
+The `uv` binary ships as a resource of every platform's artifact, pinned to an
+exact release and staged from the publisher's own signed builds with the
+published sha256 verified before anything is unpacked; `afterPack` prunes it per
+architecture, so each packed app keeps only the tree its machine can run. The app
 hands its path down as `LOCAL_OPERATOR_UV_BIN` (`src/main/backend/uv-tool.ts`)
 and the scripts fall back to the pip path exactly as they ran before when it is
-absent or unrunnable. **macOS only**, because that is where it is staged and
-tested: `build.win` and `build.linux` name no uv at all, since a macOS Mach-O in
-one of those artifacts is dead weight with a misleading name.
+absent or unrunnable - a fallback exercised on every pull request by
+`install-scripts-check.yml`, on all three platforms.
+
+- **macOS**: `pnpm setup-python` (`scripts/setup-python-resource.sh`) stages the
+two `*-apple-darwin` releases beside the interpreter seeds, and `build-macos`
+runs it; `bundledUvToolCheck` (`scripts/verify-macos-artifacts.mjs`) asserts what
+the shipped app carries.
+- **Linux**: the same script detects its platform and stages the two
+`*-unknown-linux-gnu` releases, skipping the interpreter seeds Linux does not
+ship; `build-linux` runs it as its own step. The requirement is a system Python
+3.12+ on the user's machine, exactly as it was when every Linux install used pip.
+- **Windows**: `pnpm setup-python:win` (`scripts/setup-python-resource.ps1`)
+stages the two `*-pc-windows-msvc` releases. The Windows release is a `.zip`
+whose member layout differs from the tar releases (`uv.exe` at the archive root),
+which is why it has its own stager - reading the same
+`src/shared/bundled-runtime-layout.json` the app and the pack hooks read, so a
+triple or a version cannot drift between them.
+- **Both non-macOS build jobs verify the artifact**: `build-windows` and
+`build-linux` run `scripts/verify-bundled-uv.mjs` against the unpacked app, so a
+staging regression fails the release instead of silently reverting every install
+to pip while the build stays green.
 
 **The mode is repaired at runtime, not only at build time.** A ZIP drops modes and
 `codesign`'s seal does not cover them, so a uv that arrived by update can be

@@ -22,8 +22,11 @@ import {
 	PYTHON_VERSION,
 	SEED_STDLIB_MARKER,
 	SEED_TK_DIR,
+	UV_ARCHIVE_EXTENSION,
 	UV_NAMESPACE,
+	UV_RELEASE_TRIPLES,
 	UV_VERSION,
+	uvArchiveMember,
 	uvBinaryName,
 	uvResourceDir,
 } from "./bundled-runtime-layout.mjs";
@@ -204,36 +207,108 @@ test("the staging script takes its versions and its staging names from the defin
 	assert.doesNotMatch(script, /\$\{RESOURCES_DIR\}\/uv/);
 });
 
-test("the staging script stages both uv triples from the pinned release", () => {
+test("the staging scripts stage every platform's uv triples from the pinned release", () => {
 	const script = read("scripts/setup-python-resource.sh");
+	const windowsScript = read("scripts/setup-python-resource.ps1");
 	assert.ok(
 		script.includes(
 			'UV_RELEASE_BASE_URL="https://github.com/astral-sh/uv/releases/download/${UV_VERSION}"',
 		),
 		"the uv URL must be built from the pinned version, never `latest`",
 	);
-	for (const triple of ["x86_64-apple-darwin", "aarch64-apple-darwin"])
+	// The Unix stager serves two platforms now, and which triple is staged is read
+	// from the definition rather than spelled: a triple spelled here is one that
+	// can disagree with the release it names.
+	for (const selector of [
+		'read_layout ".uv.releaseTriples.${LAYOUT_PLATFORM}.x64"',
+		'read_layout ".uv.releaseTriples.${LAYOUT_PLATFORM}.arm64"',
+	])
 		assert.ok(
-			script.includes("setup_uv_arch") && script.includes(triple),
-			`the ${triple} release must be staged`,
+			script.includes(selector),
+			`scripts/setup-python-resource.sh must read ${selector} rather than spell a triple`,
 		);
-	// The checksum is what makes the pin the bytes rather than the URL.
-	assert.ok(script.includes(".sha256"), "the published sha256 must be fetched");
+	for (const spelled of ["x86_64-apple-darwin", "aarch64-apple-darwin"])
+		assert.ok(
+			!script.includes(`uv-${spelled}`),
+			`scripts/setup-python-resource.sh must not spell the uv-${spelled} asset beside the definition`,
+		);
+	// And the definition carries all three platforms' triples, so the stagers'
+	// reads have something to resolve.
+	assert.deepEqual(Object.keys(LAYOUT.uv.releaseTriples).sort(), [
+		"darwin",
+		"linux",
+		"win32",
+	]);
+	assert.deepEqual(Object.keys(LAYOUT.uv.releaseTriples.darwin).sort(), [
+		"arm64",
+		"x64",
+	]);
+	// The Windows stager is the same contract in PowerShell - both triples, read
+	// from the definition, neither spelled beside it.
 	assert.ok(
-		script.includes("sha256_of") && script.includes("ACTUAL_SHA"),
-		"the staged archive must be checked against its published sha256",
+		windowsScript.includes("$Layout.uv.releaseTriples.$LayoutPlatform.x64") &&
+			windowsScript.includes("$Layout.uv.releaseTriples.$LayoutPlatform.arm64"),
+		"the Windows stager must read both triples from the definition",
 	);
+	for (const triple of ["x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc"]) {
+		assert.ok(
+			!windowsScript.includes(`uv-${triple}`),
+			`scripts/setup-python-resource.ps1 must not spell the uv-${triple} asset beside the definition`,
+		);
+		assert.ok(
+			Object.values(LAYOUT.uv.releaseTriples.win32).includes(triple),
+			`the definition must carry the ${triple} triple the Windows stager reads`,
+		);
+	}
+	assert.ok(
+		script.includes('read_layout ".uv.archiveExtension.${LAYOUT_PLATFORM}"'),
+		"the Unix stager must read the archive extension from the definition: the tar and zip shapes differ",
+	);
+	assert.ok(
+		script.includes('read_layout ".uv.archiveMember.${LAYOUT_PLATFORM}"') &&
+			script.includes("UV_ARCHIVE_MEMBER//\\{triple\\}"),
+		"the Unix stager must expand the archive member from the definition rather than assume the tar layout",
+	);
+	assert.ok(
+		windowsScript.includes("Expand-Archive") &&
+			windowsScript.includes("Get-FileHash") &&
+			windowsScript.includes(".Replace('{triple}', $Triple)"),
+		"the Windows stager must verify, extract and expand the member the same way",
+	);
+	// The checksum is what makes the pin the bytes rather than the URL, on both
+	// scripts, and the published Windows zip is a different archive from the tar
+	// releases - so both must fetch the digest beside their own asset.
+	for (const [file, text] of [
+		["scripts/setup-python-resource.sh", script],
+		["scripts/setup-python-resource.ps1", windowsScript],
+	]) {
+		assert.ok(
+			text.includes(".sha256"),
+			`${file}: the published sha256 must be fetched`,
+		);
+		assert.ok(
+			text.includes("ACTUAL_SHA") || text.includes("Get-FileHash"),
+			`${file}: the staged archive must be checked against its published sha256`,
+		);
+	}
 	// `uvx` is a tool runner this app never invokes, and it is a third of the
-	// archive: it must not be copied into the staged tree.
+	// archive: it must not be copied into the staged tree - on either platform.
 	assert.doesNotMatch(
 		script,
 		/cp .*uvx|"uvx"/,
 		"only `uv` is staged; `uvx` is not needed and app size is a download every user pays",
 	);
+	assert.doesNotMatch(
+		windowsScript,
+		/Copy-Item .*uvx|"uvx"/,
+		"only `uv.exe` is staged; `uvx.exe` is not needed and app size is a download every user pays",
+	);
 	// A download with no bound hangs the build; with no `--fail` a 404 writes its
 	// error page into the tree as if it were the artifact.
 	assert.match(script, /curl --fail --location/);
 	assert.match(script, /--max-time/);
+	assert.match(windowsScript, /--fail --location/);
+	assert.match(windowsScript, /--max-time/);
 });
 
 test("each install script installs with uv and keeps the pip path it had", () => {
@@ -301,84 +376,86 @@ test("each install script installs with uv and keeps the pip path it had", () =>
 	}
 });
 
-test("the app resolves the directory the packaging lists copy into", () => {
+test("the app resolves the directory the packaging lists copy into, on every platform", () => {
 	const config = JSON.parse(read("package.json")).build;
 	const resources = tempDir("lo-uv-resolve-");
-	const name = uvBinaryName("darwin");
-	// The two directories the packaged app can carry, with a binary in each.
+	// Every (arch, platform) pair the app can ask about, with the binary name
+	// that platform resolves staged under the directory the app looks in.
 	// `uvToolPath` answers null only when NOTHING is there (`F_OK` + `isFile()`);
 	// the mode is `ensureUvToolExecutable`'s question now, and it REPAIRS a
 	// missing bit rather than treating the file as absent (review R1-1 changed
 	// that contract - a reader who restores `X_OK` here reinstates the silent
 	// absence that finding was about).
-	for (const arch of LAYOUT.architectures) {
-		mkdirSync(join(resources, uvResourceDir(arch)), { recursive: true });
-		const binary = join(resources, uvResourceDir(arch), name);
-		writeFileSync(binary, "#!/bin/sh\nexit 0\n", "utf8");
-		chmodSync(binary, 0o755);
-	}
-
-	for (const arch of LAYOUT.architectures) {
-		// Packaged: the namespace `extraResources` writes, for the architecture
-		// that ships in that artifact.
-		const packaged = appResolvers.uvToolPath({
-			resources,
-			packaged: true,
-			arch,
-			platform: "darwin",
-		});
-		assert.equal(packaged, join(resources, uvResourceDir(arch), name));
-		const macTargets = (config.mac.extraResources ?? []).map(
-			(entry) => entry.to,
-		);
-		assert.ok(
-			macTargets.includes(uvResourceDir(arch)),
-			`build.mac.extraResources has no entry writing ${uvResourceDir(arch)}`,
-		);
-		// macOS ONLY, and that is the R1-3 correction: `setup-python-resource.sh`
-		// stages the two `*-apple-darwin` triples and `publish.yml` runs it in
-		// `build-macos` alone, so a win/linux entry naming these trees would ship
-		// ~74 MB of macOS Mach-O into an artifact whose only use for it is an `exec
-		// format error` and a pip fallback - when a dev's checkout had staged them.
-		for (const scope of ["win", "linux"])
-			assert.deepEqual(
-				(config[scope].extraResources ?? []).filter((entry) =>
-					String(entry.to).startsWith(UV_NAMESPACE),
-				),
-				[],
-				`build.${scope}.extraResources must name no uv: nothing stages a ${scope} uv, and the copy lists are not architecture-aware`,
-			);
-
-		// Dev: the staged checkout directory, by the name the staging script reads
-		// from the same definition.
-		const checkout = LAYOUT.uv.checkoutNames[arch];
-		mkdirSync(join(resources, checkout), { recursive: true });
-		writeFileSync(
-			join(resources, checkout, name),
-			"#!/bin/sh\nexit 0\n",
-			"utf8",
-		);
-		chmodSync(join(resources, checkout, name), 0o755);
-		assert.equal(
-			appResolvers.uvToolPath({
+	for (const arch of LAYOUT.architectures)
+		for (const platform of ["darwin", "linux", "win32"]) {
+			mkdirSync(join(resources, uvResourceDir(arch)), { recursive: true });
+			const binary = join(
 				resources,
-				packaged: false,
-				arch,
-				platform: "darwin",
-			}),
-			join(resources, checkout, name),
-		);
-		const macSources = (config.mac.extraResources ?? []).map(
-			(entry) => entry.from,
-		);
-		assert.ok(
-			macSources.includes(`resources/${checkout}`),
-			`the mac packaging list must copy resources/${checkout}, the tree the staging script writes and a dev instance resolves`,
-		);
+				uvResourceDir(arch),
+				uvBinaryName(platform),
+			);
+			writeFileSync(binary, "#!/bin/sh\nexit 0\n", "utf8");
+			chmodSync(binary, 0o755);
+		}
+
+	for (const arch of LAYOUT.architectures) {
+		const checkout = LAYOUT.uv.checkoutNames[arch];
+		for (const [platform, scope] of [
+			["darwin", "mac"],
+			["win32", "win"],
+			["linux", "linux"],
+		]) {
+			// Packaged: the namespace `extraResources` writes, for the architecture
+			// that ships in that artifact - the same resolution on all three
+			// platforms now that each of them stages and ships its own release.
+			assert.equal(
+				appResolvers.uvToolPath({ resources, packaged: true, arch, platform }),
+				join(resources, uvResourceDir(arch), uvBinaryName(platform)),
+			);
+			// And the packaging list that writes it: every platform's copy list
+			// names both architecture directories, sourced from the checkout
+			// directories the staging script writes.
+			const targets = (config[scope].extraResources ?? []).map(
+				(entry) => entry.to,
+			);
+			assert.ok(
+				targets.includes(uvResourceDir(arch)),
+				`build.${scope}.extraResources has no entry writing ${uvResourceDir(arch)}`,
+			);
+			const sources = (config[scope].extraResources ?? []).map(
+				(entry) => entry.from,
+			);
+			assert.ok(
+				sources.includes(`resources/${checkout}`),
+				`build.${scope} must copy resources/${checkout}, the tree its own staging step writes`,
+			);
+		}
+
+		// Dev: the staged checkout directory, by the name the platform's staging
+		// script writes and the app resolves without packaging.
+		for (const platform of ["darwin", "linux", "win32"]) {
+			mkdirSync(join(resources, checkout), { recursive: true });
+			writeFileSync(
+				join(resources, checkout, uvBinaryName(platform)),
+				"#!/bin/sh\nexit 0\n",
+				"utf8",
+			);
+			chmodSync(join(resources, checkout, uvBinaryName(platform)), 0o755);
+			assert.equal(
+				appResolvers.uvToolPath({
+					resources,
+					packaged: false,
+					arch,
+					platform,
+				}),
+				join(resources, checkout, uvBinaryName(platform)),
+			);
+		}
 	}
 
-	// And the absence case, which is what every artifact built before this change
-	// looks like: no file, no path, and the install script falls back to pip.
+	// And the absence case, which is what an artifact built before its platform
+	// shipped a uv looks like: no file, no path, and the install script falls
+	// back to pip.
 	assert.equal(
 		appResolvers.uvToolPath({
 			resources: join(resources, "nothing-here"),
@@ -430,6 +507,27 @@ test("a bundled uv that lost its execute bit is repaired at runtime", () => {
 	// A second call is a no-op, because the mode is now there.
 	assert.equal(appResolvers.ensureUvToolExecutable(options).healed, false);
 
+	// Windows has no execute bit: every file reports bits without OWNER_EXECUTE,
+	// so the repair above would claim a heal on every install of a bundle that
+	// was never broken. The call must hand back the path and claim nothing.
+	const winResources = tempDir("lo-uv-mode-win-");
+	const winBinary = join(
+		winResources,
+		uvResourceDir("x64"),
+		uvBinaryName("win32"),
+	);
+	mkdirSync(join(winResources, uvResourceDir("x64")), { recursive: true });
+	writeFileSync(winBinary, "MZ\n");
+	const win = appResolvers.ensureUvToolExecutable({
+		resources: winResources,
+		packaged: true,
+		arch: "x64",
+		platform: "win32",
+	});
+	assert.equal(win.path, winBinary);
+	assert.equal(win.healed, false);
+	assert.equal(win.reason, null);
+
 	// No uv staged at all: no path, and the reason names which absence it is
 	// rather than reporting a repair it did not make.
 	const absent = appResolvers.ensureUvToolExecutable({
@@ -441,12 +539,49 @@ test("a bundled uv that lost its execute bit is repaired at runtime", () => {
 	assert.match(absent.reason, /no bundled uv is staged/);
 });
 
+test("the archive members expand from the definition, per platform", () => {
+	// The released archives are NOT one shape: the Unix releases nest the binary
+	// under `uv-<triple>/`, while the Windows zip is flat. Two stagers expand the
+	// same template, so the OUTCOME is pinned here rather than trusted to two
+	// spellings - and the wrong shape extracts nothing, failing with an ENOENT
+	// that names the archive rather than the assumption.
+	assert.equal(
+		uvArchiveMember("darwin", "aarch64-apple-darwin"),
+		"uv-aarch64-apple-darwin/uv",
+	);
+	assert.equal(
+		uvArchiveMember("linux", "x86_64-unknown-linux-gnu"),
+		"uv-x86_64-unknown-linux-gnu/uv",
+	);
+	assert.equal(uvArchiveMember("win32", "x86_64-pc-windows-msvc"), "uv.exe");
+	assert.throws(() => uvArchiveMember("freebsd", "x"), /No uv archive member/);
+	// The extension beside it, and the triples the stagers read: a stager that
+	// guessed `tar.gz` on Windows fails on the asset name, and a triple spelled
+	// in two places can disagree.
+	assert.deepEqual(UV_ARCHIVE_EXTENSION, {
+		darwin: "tar.gz",
+		linux: "tar.gz",
+		win32: "zip",
+	});
+	assert.deepEqual(UV_RELEASE_TRIPLES.win32, {
+		x64: "x86_64-pc-windows-msvc",
+		arm64: "aarch64-pc-windows-msvc",
+	});
+	assert.deepEqual(UV_RELEASE_TRIPLES.linux, {
+		x64: "x86_64-unknown-linux-gnu",
+		arm64: "aarch64-unknown-linux-gnu",
+	});
+});
+
 test("the pinned uv release is named once, in the definition", () => {
 	const sources = [
 		"scripts/setup-python-resource.sh",
+		"scripts/setup-python-resource.ps1",
+		"scripts/verify-bundled-uv.mjs",
 		"scripts/verify-macos-artifacts.mjs",
 		"src/main/backend/uv-tool.ts",
 		".github/workflows/install-scripts-check.yml",
+		".github/workflows/publish.yml",
 	];
 	for (const path of sources) {
 		const text = read(path);
