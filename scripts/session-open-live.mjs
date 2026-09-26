@@ -235,6 +235,17 @@ const main = async () => {
 			await sleep(400);
 			const load = Math.round(loadavg()[0] * 10) / 10;
 			const firstOpen = round === 0 && FRAMES;
+			/*
+			 * The header identity's reading at the first content paint, compared with
+			 * the settled one below (design observation on PR #543): every resolved-chip
+			 * frame the rig has also has content, which is consistent with one paint but
+			 * pins nothing - a chip that resolved a commit after the transcript would
+			 * look the same in a still. `undefined` means no first frame was written
+			 * (an open that never paints gets its settled frame instead), and only a
+			 * reading is compared: whatever the slot holds at the first paint, it has
+			 * to hold at settle.
+			 */
+			let headerAtFirstPaint;
 			const pending = cdp.eval(
 				`window.__lopOpen.open(${JSON.stringify(id)}, ${DEADLINE_MS})`,
 				true,
@@ -256,6 +267,7 @@ const main = async () => {
 				for (let i = 0; i < 400; i++) {
 					const state = await cdp.eval("window.__lopOpen.state()");
 					if (state.active === id && state.painted) {
+						headerAtFirstPaint = state.headerLine;
 						frames.push(await shoot(join(FRAMES, `${id}-first.webp`)));
 						break;
 					}
@@ -285,6 +297,21 @@ const main = async () => {
 			if (firstOpen) {
 				await sleep(1200);
 				frames.push(await shoot(join(FRAMES, `${id}-settled.webp`)));
+				/*
+				 * THE CHIP DOES NOT ARRIVE LATE, OR THIS RUN SAYS SO. The header identity
+				 * resolves from the same snapshot the transcript's hold waits for, so the
+				 * first painted frame and the settled one must read the same slot; a
+				 * difference is the staggered arrival this pass exists to remove, and a
+				 * still cannot show it - only the comparison can.
+				 */
+				if (headerAtFirstPaint !== undefined) {
+					const settledHeaderLine = (await cdp.eval("window.__lopOpen.state()"))
+						.headerLine;
+					if (headerAtFirstPaint !== settledHeaderLine)
+						throw new Error(
+							`${id}: the header's identity resolves after the transcript's first paint (first ${JSON.stringify(headerAtFirstPaint)}, settled ${JSON.stringify(settledHeaderLine)}) - a chip arriving after content is the jitter this pass removes`,
+						);
+				}
 			}
 			runs.push({
 				round,
