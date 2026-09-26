@@ -26,7 +26,7 @@ const bundle = await build({
 			'export { keylessReference, keyDialogSave, KEYLESS_VALUE_KEY, MAX_REFERENCE_LENGTH } from "./src/renderer/src/features/settings/components/integrations/integration-key-dialog";' +
 			'export { forgetCatalogCwd, cwdAfterRefusal, catalogQueryErrorIsInvalidCwd, CATALOG_CWD_STORAGE_KEY as CWD_KEY } from "./src/renderer/src/features/settings/components/integrations/use-integrations";' +
 			'export { isSignedOut, isFailedSignOut } from "./src/renderer/src/features/settings/components/integrations/integration-model";' +
-			'export { focusHoldStep } from "./src/renderer/src/features/settings/components/integrations/integration-focus";' +
+			'export { focusHoldStep, focusHoldWindow, FOCUS_REANCHOR_CAP } from "./src/renderer/src/features/settings/components/integrations/integration-focus";' +
 			'export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";' +
 			'export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
 		resolveDir: process.cwd(),
@@ -2803,11 +2803,23 @@ test("the dialogs and the row list keep the geometry and the rules the walk meas
 	 * m-4: the deferred focus move is armed with a DEADLINE and dropped past it.
 	 * Armed until the row stopped asking for a sign-in, it could take focus long
 	 * after the dialog that armed it, from wherever the user had moved on to.
+	 *
+	 * THE COMPARISON IS AGAINST THE RULE'S ANSWER, NOT THE FIELD THE ARM WROTE (QA
+	 * round 2, Q1): the effective deadline is `focusHoldWindow`'s, because the window is
+	 * anchored on the row and extended while the row is moving. The promise this pin has
+	 * always made is unchanged - a stale move is dropped rather than performed - while
+	 * the number it compares has moved, and BOTH readers of the window ask the same
+	 * function rather than each applying its own arithmetic.
 	 */
 	assert.match(
 		section,
-		/Date\.now\(\) > focusRow\.until/,
+		/if \(now > until\) \{\s*\n\s*setFocusRow\(null\);\s*\n\s*return;\s*\n\s*\}/,
 		"a stale focus move is dropped rather than performed (m-4)",
+	);
+	assert.match(
+		section,
+		/let until = focusHoldWindow\(\{/,
+		"and the deadline it is dropped past is the rule's answer, not the arm's own clock (Q1)",
 	);
 	assert.match(
 		section,
@@ -3093,7 +3105,7 @@ test("a landed focus move follows the row across its own re-stand (U21)", () => 
 	const control = node(true);
 	const step = (overrides) =>
 		m.focusHoldStep({
-			hold: { node: control, until: 2_000 },
+			hold: { node: control, until: 2_000, reanchors: 0 },
 			candidate: control,
 			active: body,
 			body,
@@ -3122,12 +3134,15 @@ test("a landed focus move follows the row across its own re-stand (U21)", () => 
 	 * re-applied onto the control the row has where it now stands.
 	 */
 	assert.equal(
-		step({ hold: { node: node(false), until: 2_000 } }),
+		step({ hold: { node: node(false), until: 2_000, reanchors: 0 } }),
 		"restore",
 		"a detached landing with nobody focused is re-applied onto the row's control",
 	);
 	assert.equal(
-		step({ hold: { node: node(false), until: 2_000 }, active: null }),
+		step({
+			hold: { node: node(false), until: 2_000, reanchors: 0 },
+			active: null,
+		}),
 		"restore",
 		"and `activeElement` on nothing counts as nobody, not as somebody",
 	);
@@ -3142,9 +3157,52 @@ test("a landed focus move follows the row across its own re-stand (U21)", () => 
 	 */
 	const detached = node(false);
 	assert.equal(
-		step({ hold: { node: detached, until: 2_000 }, active: detached }),
+		step({
+			hold: { node: detached, until: 2_000, reanchors: 0 },
+			active: detached,
+		}),
 		"restore",
 		"the move's own detached node counts as nobody, not as a reader holding focus",
+	);
+	/*
+	 * THE TARGET IS RE-RESOLVED, NOT DECIDED ONCE (UX round 2, U30). The landing that
+	 * the arm triggers at dispatch time resolves the row's control at an instant when a
+	 * row mid-operation has NO primary by design (`primaryAction` answers null for
+	 * `connecting`), so it lands on the `⋯` - and under a
+	 * connectedness-only test it stayed there for good while the row settled into a group
+	 * with a control of its own. Measured on the built app in both directions: the failing
+	 * arm lands on the row's `Retry` (its row re-stands, so the move is re-applied) while
+	 * the arm whose group does NOT change leaves the caret on the `⋯` for 12 s.
+	 */
+	const landed = node(true);
+	assert.equal(
+		step({ hold: { node: landed, until: 2_000, reanchors: 0 } }),
+		"restore",
+		"a landed control that is no longer the row's target is re-applied onto the control the row has now",
+	);
+	assert.equal(
+		step({
+			hold: { node: landed, until: 2_000, reanchors: 0 },
+			candidate: landed,
+		}),
+		"settled",
+		"and a target that is still the landed control is left exactly where it is",
+	);
+	assert.equal(
+		step({
+			hold: { node: landed, until: 2_000, reanchors: 0 },
+			active: node(true),
+		}),
+		"drop",
+		"but never over a caret a reader holds: re-resolution is refused like every other application",
+	);
+	assert.equal(
+		step({
+			hold: { node: landed, until: 2_000, reanchors: 0 },
+			candidate: null,
+		}),
+		"settled",
+		"and a row with no control to resolve leaves the move where it landed rather than dropping it",
 	);
 	/*
 	 * THE TWO REFUSALS. A reader who holds focus is the answer to where focus
@@ -3152,18 +3210,24 @@ test("a landed focus move follows the row across its own re-stand (U21)", () => 
 	 * focus on `<body>`, which is strictly better than a move performed late (m-4).
 	 */
 	assert.equal(
-		step({ hold: { node: node(false), until: 2_000 }, active: node(true) }),
+		step({
+			hold: { node: node(false), until: 2_000, reanchors: 0 },
+			active: node(true),
+		}),
 		"drop",
 		"a move is never taken back from a control that holds focus",
 	);
 	assert.equal(
-		step({ hold: { node: node(false), until: 2_000 }, now: 2_001 }),
+		step({
+			hold: { node: node(false), until: 2_000, reanchors: 0 },
+			now: 2_001,
+		}),
 		"drop",
 		"and the window bounds a hold the row keeps re-standing under",
 	);
 	assert.equal(
 		step({
-			hold: { node: node(false), until: 2_000 },
+			hold: { node: node(false), until: 2_000, reanchors: 0 },
 			now: 2_001,
 			active: node(true),
 		}),
@@ -3171,14 +3235,50 @@ test("a landed focus move follows the row across its own re-stand (U21)", () => 
 		"the window is checked before anything else can ask for a restore",
 	);
 	assert.equal(
-		step({ hold: { node: node(false), until: 2_000 }, candidate: null }),
+		step({
+			hold: { node: node(false), until: 2_000, reanchors: 0 },
+			candidate: null,
+		}),
 		"drop",
 		"a row with no control to land on ends the move rather than waiting on it twice",
 	);
 	assert.equal(
-		step({ hold: { node: node(false), until: 2_000 }, candidate: node(false) }),
+		step({
+			hold: { node: node(false), until: 2_000, reanchors: 0 },
+			candidate: node(false),
+		}),
 		"drop",
 		"and a candidate that is itself detached is not a target",
+	);
+	/*
+	 * A ROW THAT KEEPS RE-STANDING IS GIVEN UP ON, AND THE COUNT IS THE BOUND (QA round 2,
+	 * Q1; UX round 2, U31). The window is re-anchored while the row moves - a duration
+	 * cannot bound a window that a read can move - so what bounds the extension is how
+	 * many re-stands one move has followed. One operation produces one group change, so a
+	 * row past this cap is flapping, and chasing it is the move-that-fires-late m-4
+	 * refuses.
+	 */
+	assert.equal(
+		step({
+			hold: {
+				node: node(false),
+				until: 2_000,
+				reanchors: m.FOCUS_REANCHOR_CAP,
+			},
+		}),
+		"drop",
+		"a move that has followed as many re-stands as it may is given up on",
+	);
+	assert.equal(
+		step({
+			hold: {
+				node: node(false),
+				until: 2_000,
+				reanchors: m.FOCUS_REANCHOR_CAP - 1,
+			},
+		}),
+		"restore",
+		"and one re-stand short of the cap is still followed, so the cap is not the common case",
 	);
 	/*
 	 * THE WIRING, in the same shape as every other assertion about this menu: the
@@ -3209,7 +3309,7 @@ test("a landed focus move follows the row across its own re-stand (U21)", () => 
 	);
 	assert.match(
 		hold,
-		/hold: \{ node: landedOn, until: focusRow\.until \}/,
+		/hold: \{ node: landedOn, until, reanchors: focusRow\.reanchors \}/,
 		"and it is asked about the control the move landed on and that move's window",
 	);
 	for (const arg of [
@@ -3237,6 +3337,11 @@ test("a landed focus move follows the row across its own re-stand (U21)", () => 
 		hold,
 		/until = Date\.now\(\) \+ FOCUS_ARM_MS;/,
 		"a re-stand re-anchors the move's window, so the hold does not expire mid-move",
+	);
+	assert.match(
+		hold,
+		/reanchors \+= 1;/,
+		"a followed re-stand is counted, which is the bound the re-anchor cap is read against (Q1)",
 	);
 	assert.match(
 		hold,
@@ -3274,8 +3379,8 @@ test("a landed focus move follows the row across its own re-stand (U21)", () => 
 	);
 	assert.match(
 		arm,
-		/if \(active && active !== window\.document\.body\) return;/,
-		"the arm refuses to perform over a caret somebody else holds, which `focusHoldStep`'s own refusal states one level up (m-4)",
+		/if \(active && active !== window\.document\.body && active\.isConnected\) return;/,
+		"the arm refuses to perform over a caret somebody else holds, and a DETACHED node is nobody (agent review round 2, MINOR 2)",
 	);
 	assert.match(
 		arm,
@@ -3293,7 +3398,190 @@ test("a landed focus move follows the row across its own re-stand (U21)", () => 
 	);
 	assert.match(
 		section,
-		/if \(key !== "remove" && key !== "sign_out"\)\s*\n\s*armRowFocusAfterOperation\(name\);/,
-		"`run`'s own settle calls it for every operation whose flow has no move of its own, so a Test that lands arms the hold the operation's group change is read against",
+		/if \(key === "sign_out"\) return \{ operationId, failed \};\s*\n\s*if \(key !== "remove" \|\| failed\) armRowFocusAfterOperation\(name\);/,
+		"`run`'s own settle calls it for every operation whose flow has no move of its own, and for a REMOVAL THAT FAILED, whose row is still on the page (agent review round 2, MINOR 3)",
+	);
+	assert.match(
+		section,
+		/if \(failed \|\| operationId !== null\) return;/,
+		"and the neighbour move a landed removal owes is skipped on the failure, so one operation still owns one move",
+	);
+	/*
+	 * THE OUTCOME IS CARRIED OUT OF `run` RATHER THAN INFERRED FROM STATE, which is the
+	 * substance of MINOR 3: `failures` is read by a closure created during the press's
+	 * render, so it cannot say what the operation that just finished did.
+	 */
+	assert.match(
+		section,
+		/\{ operationId: string \| null; failed: boolean \}/,
+		"`run` reports the outcome rather than leaving a caller to guess it from a stale read (agent review round 2, MINOR 3)",
+	);
+	/*
+	 * EVERY ARM SITE CARRIES A RE-ANCHOR COUNT OF ZERO, counted the same way the arm
+	 * sites themselves are: the landing write inside the effect sets `reanchors` from the
+	 * local that the restore path increments (`reanchors,` and no colon), so an arm site
+	 * that forgets to start the count reddens here rather than being folded into it.
+	 */
+	const freshArms = [...section.matchAll(/reanchors: 0,/g)].length;
+	assert.equal(
+		freshArms,
+		4,
+		`exactly the four arm sites start a move's re-anchor count (found ${freshArms})`,
+	);
+	/*
+	 * AND THE WINDOW IS ANCHORED ON THE ROW (QA round 2, Q1; UX round 2, U31): the
+	 * terms are the page's own `is this list still moving` terms, the same ones
+	 * `integrationsPollInterval` polls on - which is what makes extending the window
+	 * safe, because a row that keeps either of them true is a row the page is re-reading
+	 * every poll.
+	 */
+	assert.match(
+		section,
+		/const rowMoving =\s*\n\s*row\.status === "connecting" \|\|\s*\n\s*runningOperationFor\(row\.name, operations\) !== null;/,
+		"the row's own movement is read with the list's own poll terms (Q1)",
+	);
+	assert.match(
+		section,
+		/if \(rowMoving\) rowMovingAtRef\.current = now;/,
+		"and the last read that found it moving is what anchors the window once it stops",
+	);
+	assert.match(
+		section,
+		/let until = focusHoldWindow\(\{/,
+		"the deadline the effect judges the move against is the shared rule's answer rather than the field the arm wrote",
+	);
+	/*
+	 * AND THE SECOND READER OF THAT WINDOW RE-MEASURES IT (QA round 2, Q1). The disarm
+	 * timer used to sleep once on the state's own `until`, which a poll that finds the row
+	 * still moving can outrun without changing any state - so it would close a window the
+	 * effect still considers open, which is the defect this round removes rather than a
+	 * detail of the timer. It is still the belt-and-braces half (the effect's own check is
+	 * what makes a late move impossible), and the pin says which half carries what.
+	 */
+	const disarmTick = section.slice(
+		section.indexOf("Disarm the move when its window closes"),
+		section.indexOf(
+			"return (",
+			section.indexOf("Disarm the move when its window closes"),
+		),
+	);
+	assert.match(
+		disarmTick,
+		/const tick = \(\) => \{/,
+		"the disarm timer re-measures the window rather than sleeping on the deadline it was handed (Q1)",
+	);
+	assert.match(
+		disarmTick,
+		/focusHoldWindow\(\{/,
+		"and it asks the same rule the effect asks, so the two cannot disagree about one window",
+	);
+	assert.doesNotMatch(
+		disarmTick,
+		/Math\.max\(focusRow\.until - Date\.now\(\), 0\)/,
+		"and no longer sleeps on the state's own field, which a read of a moving row can outrun",
+	);
+});
+
+/*
+ * QA ROUND 2'S MAJOR AS A RULE: the move's window is anchored on the ROW, not on the
+ * press.
+ *
+ * WHAT THE ROUND MEASURED, LIVE, on the built app: pressing a row's own Test puts the
+ * app's own move on the row's overflow at ~250 ms (a row mid-operation has no primary
+ * by design), and the daemon's answer is what re-stands the row - 4 250 ms later for a
+ * 3 s server, 21 750 ms for a 20 s one. The arm carried `dispatch + FOCUS_ARM_MS`, so
+ * the window had closed underneath both: the caret rested on the row for the fast
+ * fixture (38/40 samples inside the row) and on `<body>` for every slow one. `main` was
+ * `<body>` 25/25 for every operation, so this is the fix's REACH rather than a
+ * regression - and the reach is what the rule below now states.
+ *
+ * WHY THE RULE RATHER THAN THE WALK: the reading is arithmetic over two moments - the
+ * last read that found the row moving, and the read that carries its new group. The
+ * table above has the rest of this page's minutes and costs; the live cell stays QA's,
+ * and what this settles is that the arithmetic cannot expire before the operation it is
+ * following.
+ */
+test("the move's window is anchored on the row rather than on the press (Q1, U31)", () => {
+	const windowMs = 4_000;
+	/* The arm QA's 3 s arm carried: `dispatch` at 250 ms, so the deadline it wrote. */
+	const hold = { until: 250 + windowMs };
+	const at = (overrides) =>
+		m.focusHoldWindow({
+			hold,
+			now: 0,
+			windowMs,
+			rowMoving: false,
+			lastMovingAt: 0,
+			...overrides,
+		});
+	/*
+	 * WHILE THE ROW IS MOVING THE WINDOW DOES NOT RUN. A full window from NOW, which is
+	 * what makes a 20 s MCP server reachable at all: the row is `connecting` for the
+	 * whole operation, so every read pushes the deadline forward and the hold cannot
+	 * expire mid-operation.
+	 */
+	assert.equal(
+		at({ now: 20_000, rowMoving: true }),
+		24_000,
+		"a row still moving carries a full window from the read that found it moving",
+	);
+	/*
+	 * THE READ THAT CARRIES THE ROW'S NEW GROUP IS THE ONE THAT MATTERS, and by then
+	 * `rowMoving` is false: the deadline is a full window from the last read that saw it
+	 * moving - at most one poll earlier, because the page polls on the terms this rule is
+	 * anchored on. Both of QA's slow arms, as arithmetic: the 3 s one re-stood at
+	 * 4 250 ms with the last moving read at 2 000 ms, the 20 s one at 21 750 ms with its
+	 * last at 20 000 ms.
+	 */
+	assert.equal(
+		at({ now: 4_250, lastMovingAt: 2_000 }),
+		6_000,
+		"the 3 s arm's re-stand is inside a window that starts at the last read that saw the row move",
+	);
+	assert.equal(
+		at({ now: 21_750, lastMovingAt: 20_000 }),
+		24_000,
+		"and so is the 20 s arm's",
+	);
+	/*
+	 * THE DEADLINE THE ARM WROTE IS A FLOOR, NOT THE ANSWER: nothing here shortens a
+	 * hold, and a movement seen after the arm can only lengthen the window.
+	 */
+	assert.equal(
+		at({ now: 1_000 }),
+		hold.until,
+		"a row at rest keeps the deadline it was armed with",
+	);
+	assert.equal(
+		at({ now: 4_000, lastMovingAt: 3_000 }),
+		7_000,
+		"and a movement seen after the arm lengthens it rather than replacing it",
+	);
+	/*
+	 * THE PAIR THAT MAKES THIS A READING RATHER THAN A NUMBER. Same nodes, same moment,
+	 * same everything except the deadline the step is judged against: the rule's answer
+	 * follows the re-stand, and the deadline the arm wrote alone drops it - which is
+	 * exactly what QA measured on this head, and is why the caret ended on `<body>` for
+	 * every server slower than the app's own dispatch.
+	 */
+	const node = (isConnected) => ({ isConnected });
+	const body = node(true);
+	const stepAt = (until) =>
+		m.focusHoldStep({
+			hold: { node: node(false), until, reanchors: 0 },
+			candidate: node(true),
+			active: body,
+			body,
+			now: 21_750,
+		});
+	assert.equal(
+		stepAt(at({ now: 21_750, lastMovingAt: 20_000 })),
+		"restore",
+		"a 20 s operation's re-stand is followed, so the caret comes back to the row",
+	);
+	assert.equal(
+		stepAt(hold.until),
+		"drop",
+		"where the arm's own deadline drops the same move at the same moment, which is the reading QA took on this head",
 	);
 });

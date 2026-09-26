@@ -38,9 +38,15 @@ sign-in the backend will not confirm (`data-verdict="neutral"`), and
 that contradiction survived on. The count above is measured from this directory
 (`ls -d */`), which is the only claim in this file a reader can re-run in one
 command - and in the re-run's own words the three are the directories
-`panel-refused-verdict`, `panel-succeeded-unconfirmed` and `panel-key-refused-verdict`
-(every directory in this set carries the `panel-` prefix, which is why the state
-names above are the short forms).
+`panel-refused-verdict`, `panel-succeeded-unconfirmed` and `panel-key-refused-verdict`,
+which is why the state names above are the short forms. THE `panel-` PREFIX IS NOT
+UNIVERSAL HERE, and the sentence that stood in this place claimed it was: the re-run
+prints 34 directories of which 22 carry the prefix, and the 12 that do not are the
+onboarding steps and the provider-list states around them (`onboarding-step-1` through
+`onboarding-step-3`, `providers-*`, `connect-dialog`, `empty-chat-card`). What is true,
+and what the short forms rest on, is that all THREE verdict-register directories carry
+it - so a reader looking for the state names in the `ls` output knows to look for the
+prefixed ones, rather than for every name in the set (agent review round 2, MINOR 4).
 
 These frames come from `scripts/capture-evidence.mjs` driving Storybook, which is
 the committed and re-derivable route. The exact command that wrote them:

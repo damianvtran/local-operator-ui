@@ -4289,9 +4289,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * fact the recording understated: Enter is `preventDefault`ed and returns, and
 			 * the sentence the branch raises on its way out is gated by the same pair the
 			 * stale read is wrong about - the notice renders only while
-			 * `(noProvider || noModel) && noProviderHint` - so with a provider now connected
-			 * the hint is set for a notice that draws NOTHING. The reader presses Enter on
-			 * a composer that can send, and the app answers nobody.
+			 * `(noProvider || noModel) && noProviderHint` (`message-input.tsx:7175` at
+			 * this head, the anchor the PR body cites for the same gate; an earlier round
+			 * quoted `:7122`, which this file has since moved past) - so with a provider
+			 * now connected the hint is set for a notice that draws NOTHING. The reader
+			 * presses Enter on a composer that can send, and the app answers nobody.
 			 *
 			 * WHY IT STAYS OPEN. The omission is pre-existing (the base's inline
 			 * `(noProvider || noModel)` was equally unlisted), and closing it means
