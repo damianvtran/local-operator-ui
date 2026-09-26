@@ -24312,6 +24312,187 @@ async function assertBuildIsCurrent() {
 	);
 }
 
+/**
+ * `route-tops`: the top of every route the shell draws, and where its first box lands.
+ *
+ * WHY THIS SCENE EXISTS. The operator's report of 2026-09-26 - "for sub-views like the
+ * settings page, the sidebar and view doesn't go all the way to the top" - is a claim
+ * about ONE y coordinate on every route the shell draws: where a column's own first box
+ * begins. The chat surface keeps the macOS controls' lane clear (`data-titlebar-lane`,
+ * above both columns), and the non-chat routes carried a SECOND band
+ * (`data-chrome-route-band`) whose two jobs - a drag surface for a frameless window, and
+ * clearance for OS controls drawn INTO the client area - the lane already does wherever
+ * it is drawn. On macOS that second band put /settings' rail and content on 64 against
+ * the chat header's 32.
+ *
+ * WHAT IT MEASURES. Per route: `main`'s first element that is not the band (the route's
+ * own root - on settings that is the box both the rail and the content sit in, and it is
+ * the box the report is about), plus the lane, the band, the app sidebar, and the
+ * settings rail and content where those exist. The frames are captures of the same
+ * state, so the claim can be read as numbers and looked at as pixels.
+ *
+ * THE ASSERTION IS macOS' AND SAYS SO. On Windows and Linux with the buttons trailing
+ * there IS no lane above the columns, so the band there is a route's only drag surface
+ * and its caption clearance, and a route's first box legitimately starts at the caption
+ * height; on a host that is not a macOS integrated window the scene prints the readings
+ * and asserts only the mechanics rather than the macOS answer.
+ *
+ * RUN TWICE PER TREE, like every before/after pair: once at 1380x900 and once at
+ * 800x600, with `--run-label` keeping the frame names apart in one directory.
+ */
+async function sceneRouteTops(cdp) {
+	const ROUTES = [
+		["chat", "/chat"],
+		["settings", "/settings"],
+		["settings-integrations", "/settings?section=integrations"],
+		["agents", "/agents"],
+		["agent-hub", "/agent-hub"],
+		["schedules", "/schedules"],
+	];
+	const frames = [];
+	const readings = [];
+	/*
+	 * One evaluate for every box this scene wants, so the reading is a snapshot of
+	 * ONE layout rather than several: two evaluates could straddle a settle (a pane
+	 * opening, a read landing) and describe two different screens.
+	 */
+	const readTops = () =>
+		cdp.evaluate(`(() => {
+			const box = (el) => {
+				if (!el) return null;
+				const rect = el.getBoundingClientRect();
+				return {
+					top: Math.round(rect.top * 100) / 100,
+					height: Math.round(rect.height * 100) / 100,
+				};
+			};
+			const main = document.querySelector("main");
+			let own = null;
+			if (main) {
+				for (const child of main.children) {
+					if (child.hasAttribute("data-chrome-route-band")) continue;
+					own = child;
+					break;
+				}
+			}
+			const lane = document.querySelector("[data-titlebar-lane]");
+			const band = document.querySelector("[data-chrome-route-band]");
+			return {
+				platform: document.documentElement.getAttribute("data-chrome-platform"),
+				mode: document.documentElement.getAttribute("data-chrome-mode"),
+				viewport: { width: window.innerWidth, height: window.innerHeight },
+				lane: box(lane),
+				laneDisplay: lane ? getComputedStyle(lane).display : null,
+				band: box(band),
+				bandDisplay: band ? getComputedStyle(band).display : null,
+				sidebar: box(document.querySelector("[data-sidebar-shell]")),
+				route: box(own),
+				routeTag: own ? own.tagName.toLowerCase() : null,
+				settingsRail: box(
+					document.querySelector('nav[aria-label="Settings sections"]'),
+				),
+				settingsContent: box(document.querySelector("[data-settings-content]")),
+			};
+		})()`);
+
+	for (const [slug, path] of ROUTES) {
+		await verb(cdp, "navigate", path);
+		const landed = await waitForRoute(cdp, path);
+		check(
+			`the app is on ${path}`,
+			landed.route === path,
+			`the app is on ${landed.route} after ${landed.waited}ms`,
+		);
+		/*
+		 * The route's own reads (config, profiles, schedules) land behind its first
+		 * paint. `captureSettled` below is what makes the frame a frame of the route
+		 * AT REST; the reading is taken after it for the same reason - a number read
+		 * before the frame would describe a moment the frame does not show.
+		 */
+		await wait(600);
+		frames.push(await captureSettled(cdp, `route-tops-${slug}${RUN_LABEL}`));
+		const reading = await readTops();
+		readings.push([slug, path, reading]);
+		note(`the top of ${path}`, JSON.stringify(reading));
+	}
+
+	/*
+	 * THE macOS CLAIM, in the one place the lane's bottom edge is known. `lane ===
+	 * null` and a `display: none` lane are the two shapes of "this window draws no
+	 * lane", and they are answered together rather than branched on separately:
+	 * both mean the window's chrome reserves no band at the top of the client area.
+	 * The CONTROL route supplies the lane's geometry - /chat is a route this change
+	 * does not touch, which is exactly why its reading is the reference.
+	 */
+	const control = readings.find(([slug]) => slug === "chat")?.[2] ?? null;
+	const laneDrawn =
+		control !== null && control.lane !== null && control.laneDisplay !== "none";
+	const laneBottom = laneDrawn ? control.lane.top + control.lane.height : 0;
+	const macIntegrated =
+		control !== null &&
+		control.platform === "mac" &&
+		control.mode === "integrated" &&
+		laneDrawn;
+
+	if (macIntegrated) {
+		for (const [, path, reading] of readings) {
+			check(
+				`${path}: the route's own first box starts on the lane's bottom edge (${laneBottom}px)`,
+				reading.route !== null &&
+					Math.abs(reading.route.top - laneBottom) < 0.5,
+				`the route's first box is at y ${reading.route === null ? "(absent)" : reading.route.top} against a lane that ends at ${laneBottom}`,
+				`route y ${reading.route === null ? "(absent)" : reading.route.top}, sidebar y ${reading.sidebar === null ? "(none)" : reading.sidebar.top}, settings rail y ${reading.settingsRail === null ? "(none)" : reading.settingsRail.top}, settings content y ${reading.settingsContent === null ? "(none)" : reading.settingsContent.top}`,
+			);
+		}
+		/*
+		 * The app sidebar is the control for the same number: its first row sat on
+		 * the lane's bottom on every route before the report and must still, or the
+		 * fix moved the one column that was never wrong.
+		 */
+		for (const [, path, reading] of readings.filter(([, , r]) => r.sidebar)) {
+			check(
+				`${path}: the app sidebar still starts on the lane's bottom edge (${laneBottom}px)`,
+				Math.abs(reading.sidebar.top - laneBottom) < 0.5,
+				`the sidebar's own top is ${reading.sidebar.top}`,
+			);
+		}
+	} else {
+		note(
+			"the macOS lane claim did not run",
+			`platform ${control?.platform}, mode ${control?.mode}, lane ${control?.laneDisplay} - the band is load-bearing wherever no lane is drawn, so its readings are printed rather than asserted`,
+		);
+	}
+
+	check(
+		"every capture is a frame the app held still for, with no toast on it",
+		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: ${frame.stable === true ? `held still after ${frame.attempts} capture(s)` : `never held still in ${frame.attempts} capture(s)`}, toast-free ${frame.toastFree === true}`,
+			)
+			.join(" | "),
+	);
+	check(
+		"every capture wrote a PNG of the window's own size",
+		frames.every(
+			(frame) =>
+				frame.bytes > 1000 &&
+				frame.pixels.width ===
+					frame.viewport.width * frame.viewport.devicePixelRatio &&
+				frame.pixels.height ===
+					frame.viewport.height * frame.viewport.devicePixelRatio,
+		),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: ${frame.pixels.width}x${frame.pixels.height} at dpr ${frame.viewport.devicePixelRatio} for a ${frame.viewport.width}x${frame.viewport.height} viewport`,
+			)
+			.join(" | "),
+	);
+	return frames;
+}
+
 async function main() {
 	await assertBuildIsCurrent();
 	/*
@@ -24661,6 +24842,7 @@ async function main() {
 			else if (SCENE === "settings-gate") await sceneSettingsGate(cdp);
 			else if (SCENE === "settings-integrations")
 				await sceneSettingsIntegrations(cdp);
+			else if (SCENE === "route-tops") await sceneRouteTops(cdp);
 			else if (SCENE === "palette") await scenePalette(cdp);
 			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);
 			else if (SCENE === "approval-badges") await sceneApprovalBadges(cdp);

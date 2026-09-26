@@ -395,6 +395,31 @@ test("U-9 a CSS comment is prose, and the rules that act on the chrome are decla
 		css,
 		/\[data-chrome-mode="integrated"\]\[data-chrome-platform="win"\]\s+\[data-chrome-route-band\]/,
 	);
+	/*
+	 * AND THE BAND STANDS DOWN WHERE THE LANE STANDS UP, which is the fix for the
+	 * operator's 2026-09-26 report ("for sub-views like the settings page, the
+	 * sidebar and view doesn't go all the way to the top"). The lane is drawn on
+	 * `platform=mac` OR `leading=true`; a band that also applies there is a SECOND
+	 * inset - measured on macOS at y 62.86 against the chat header's 32. The three
+	 * pins below hold the pair apart in both directions: the leading case draws no box
+	 * at all, the band's own height is the caption area (never the strip), and no band
+	 * rule may read the strip variable.
+	 */
+	assert.match(
+		css,
+		/\[data-chrome-mode="integrated"\]\[data-chrome-leading="true"\]\s+\[data-chrome-route-band\]\s*\{\s*display:\s*none;/,
+		"where the lane is drawn the band must stand down entirely, out of the flow",
+	);
+	assert.match(
+		css,
+		/\[data-chrome-platform="win"\]\s+\[data-chrome-route-band\][\s\S]*?height:\s*env\(titlebar-area-height/,
+		"the band's height is the caption area the OS draws into, which is the clearance it exists for",
+	);
+	assert.doesNotMatch(
+		css,
+		/\[data-chrome-route-band\][^{}]*\{[^}]*var\(--chrome-strip-h\)/,
+		"the band must never be the strip's height again: under a lane that is 32px of nothing on every non-chat route",
+	);
 
 	/* The lane: invisible by default, shown only where the OS is drawing over us. */
 	assert.match(css, /\[data-titlebar-lane\]\s*\{\s*display:\s*none;/);
