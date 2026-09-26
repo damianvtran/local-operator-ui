@@ -17,7 +17,7 @@ config root, its own 32-byte token and an OS-assigned port.
 | `before-click/localOperatorDark.webp` | **The card, live, on the build this branch ships.** A real pending approval in the shipped renderer: the callout names the tool (`bash`) and the action (`run: rm -rf ./dist`), and beneath it the two options this change adds — `1. Approve` and `2. Deny`, each with its consequence line, on the transcript's own ground with the standard control triple. The hint below names all three exits: the buttons, the composer's words (yes/no and the `1`/`2` the card prints), and Escape. |
 | `after-click/localOperatorDark.webp` | **The resolution of a press on Approve.** The same run, after a real `Input.dispatchMouseEvent` press and release at the option's hit-tested centre (`x 960, y 622`, `elementFromPoint` resolving to the option itself). The card is **gone** — the gate cleared rather than the page failing — and the composer is ready again. |
 | `deny-click/before-click/localOperatorDark.webp`, `deny-click/after-click/localOperatorDark.webp` | **Deny rides the identical route with the other boolean.** The press resolves the gate the same way and the card clears; what the owner kept is `{"approved": false}`. The two options differ in nothing but that boolean, which is why this arm's evidence is the record rather than the pair of stills. |
-| `refused-card/before-click/localOperatorDark.webp`, `refused-card/after-click/localOperatorDark.webp` | **A refusal, rendered on the card.** A run whose answer route refuses with a bare 409 — the sentence the route itself produces for an answer naming no pending gate ("This question or approval is no longer pending") — so the gate stays pending and the card stays UP: both options disabled, and "Your answer was not sent." carrying the refusal under them, where the press was made. |
+| `refused-card/before-click/localOperatorDark.webp`, `refused-card/after-click/localOperatorDark.webp` | **A refusal, rendered on the card.** A run whose answer route refuses with a bare 409 — the sentence the route itself produces for an answer naming no pending gate ("This question or approval is no longer pending") — so the gate stays pending and the card stays UP: both options disabled, "Your answer was not sent." carrying the refusal under them, where the press was made, and the hint above them swapped off the dead buttons onto the composer, the control that still reaches the gate (remediation round 1, U2/U3). |
 
 **The records are what say so, not the prose.** Each arm's own
 `click-result.json` carries the resolution (`resolved`, `gateCleared`), the aim
@@ -38,7 +38,7 @@ and after are the diff between that directory and this branch's
 
 Each record's `tree` also names the trees the frames were taken from
 (`srcTree`/`head`, with `srcDirty` there to catch a run on an uncommitted
-tree): this set's are `57eda8f922` / `4dec2a9342` — the twice-folded tip this
+tree): this set's are `97291b4cdd` / `1887b8f01a` — the remediation round's tip this
 branch ships at (the arms are re-run on the folded tree, because #521's
 sidebar is painted in every one of them).
 
