@@ -707,6 +707,22 @@ test("a gapped open does not turn a terminal failure into a reconnect", async ()
 	await settle();
 	send(cursorMissingSnapshotFrame());
 	await settle();
+	/*
+	 * THE HOLD IS LIVE WHEN THE ARM FIRES, and that is what makes the clear
+	 * asserted below falsifiable rather than vacuous: the snapshot painted a
+	 * frontend and the mirror refilled the hold from it, so a `/history` arm
+	 * that kept the hold would leave those readings standing past the point the
+	 * app had given up on the conversation.
+	 */
+	assert.ok(
+		mounted.view().frontend,
+		"the snapshot painted the pane's readings",
+	);
+	assert.equal(
+		mounted.view().heldFrontend,
+		mounted.view().frontend,
+		"and the hold mirrored them, so this case can see the arm drop it",
+	);
 	await runTimers();
 	await settle();
 
@@ -717,6 +733,15 @@ test("a gapped open does not turn a terminal failure into a reconnect", async ()
 		"the history read gave up",
 	);
 	assert.ok(failure?.statement, "with a sentence the reader can act on");
+	assert.equal(
+		mounted.view().heldFrontend,
+		null,
+		"the /history arm is a terminal state, so it takes the held readings with it (round 1, MINOR 3)",
+	);
+	assert.ok(
+		mounted.view().frontend,
+		"while the painted frontend stays - this arm leaves it deliberately, which is why the assertion above is about the hold and not about a blanked pane",
+	);
 
 	// The reopen a resync makes, carrying the gap every reopen carries.
 	send(openFrameWithGap());
