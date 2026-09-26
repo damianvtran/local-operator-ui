@@ -39,6 +39,17 @@ const SPAWN_NAMES = [
 	"execSync",
 	"execFile",
 	"execFileSync",
+	/*
+	 * And `spawnOwned`, the rigs' own ownership wrapper (agent review round 3,
+	 * Q2-era finding on the evidential side): it is how a rig starts a process it
+	 * can later reap as a GROUP, so a launch spelled that way is still a launch
+	 * site - leaving it out of this list is what made the child-reader rig's
+	 * Chrome spawn invisible to the scan and its registry row read as stale. The
+	 * wrapper's own internal `spawn(` matches `spawn` above; its command is a
+	 * parameter rather than a literal, so it classifies as nothing and needs no
+	 * row of its own.
+	 */
+	"spawnOwned",
 ];
 
 /**
@@ -382,9 +393,9 @@ const CHROME_LAUNCH_SITES = [
 	),
 	guarded(
 		"scripts/child-reader-scroll-evidence.mjs",
-		"spawn",
+		"spawnOwned",
 		1,
-		"measures the run pane's child reader over time - where the viewport sits after an arrival, whether the newest row is on screen, and what its follow-the-tail control is doing - and photographs those states while the scripted child streams; its second spawn is the vite server that serves the page",
+		"measures the run pane's child reader over time - where the viewport sits after an arrival, whether the newest row is on screen, and what its follow-the-tail control is doing - and photographs those states while the scripted child streams; its second spawnOwned is the vite server that serves the page",
 	),
 ];
 

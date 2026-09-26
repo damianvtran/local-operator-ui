@@ -1087,9 +1087,15 @@ async function main() {
 					8000,
 				);
 				afterPress.waitedMs = Date.now() - pressStart;
-				if (afterPress.fromBottom > 1)
+				/*
+				 * The throw re-asserts BOTH halves of the poll condition above (agent review
+				 * round 3, F4): checking only `fromBottom` let a control that stayed visible
+				 * at the tail time out, record `button: on` with the full waitedMs, and pass
+				 * the run - a state the poll itself refuses to accept.
+				 */
+				if (afterPress.fromBottom > 1 || afterPress.button?.visible)
 					throw new Error(
-						`${theme}: pressing the control left the reader ${afterPress.fromBottom}px from the tail after waiting ${afterPress.waitedMs}ms`,
+						`${theme}: pressing the control left the reader ${afterPress.fromBottom}px from the tail${afterPress.button?.visible ? " with the control still showing" : ""} after waiting ${afterPress.waitedMs}ms`,
 					);
 			}
 
