@@ -1262,6 +1262,85 @@ export const STORIES = [
 	["chat-header-cluster--console-blip", 560, 84],
 	["chat-header-cluster--console-blip-resting", 560, 84],
 	/*
+	 * THE CHAT HEADER'S IDENTITY CONTROLS (operator, 2026-09-26): the team and
+	 * the agent as two menus you can switch, plus the rename pencil the title
+	 * reveals on hover. Same band and size as the cluster's frames above, so a
+	 * reviewer holds them beside those.
+	 *
+	 * WHY THE PRESS AND HOVER ENTRIES. Three of the claims are about states a
+	 * resting frame cannot show: the menu that opens on a press (with the
+	 * current row marked), the pencil that only exists while the TITLE is
+	 * hovered, and the assign affordance's own menu. The shutters wait on the
+	 * menu's own hook rather than on a clock, and the hover entry goes through
+	 * the rig's real pointer so a frame filed under `:hover` is one the element
+	 * genuinely matched. `before` is the string this change replaces, rendered
+	 * by the same story on the same tree - the before half from `origin/main`
+	 * is re-captured by handing THIS file to that tree, which it builds
+	 * unchanged because it uses nothing this branch adds.
+	 */
+	["chat-header-identity--team-bound", 560, 84],
+	[
+		"chat-header-identity--team-bound",
+		560,
+		84,
+		{
+			press: '[data-header-identity="team"]',
+			expectPresent: '[data-header-identity-menu="team"]',
+			dir: "team-menu-open",
+		},
+	],
+	[
+		"chat-header-identity--team-bound",
+		560,
+		84,
+		{
+			press: '[data-header-identity="agent"]',
+			expectPresent: '[data-header-identity-menu="agent"]',
+			dir: "agent-menu-open",
+		},
+	],
+	[
+		"chat-header-identity--team-bound",
+		560,
+		84,
+		{ hover: "[data-header-title]", dir: "title-hover" },
+	],
+	["chat-header-identity--no-team-no-agent", 560, 84],
+	[
+		"chat-header-identity--no-team-no-agent",
+		560,
+		84,
+		{
+			press: '[data-header-identity="team"]',
+			expectPresent: '[data-header-identity-menu="team"]',
+			dir: "assign-team-menu",
+		},
+	],
+	["chat-header-identity--agent-and-team", 560, 84],
+	["chat-header-identity--before", 560, 84],
+	/* The operator's own width: the same arrangement the screenshot showed. */
+	["chat-header-identity--wide", 1380, 84],
+	/* The menu's two honest states, from the catalogue's own answers: no teams
+	 * registered, and the registry's refusal in its own words. */
+	[
+		"chat-header-identity--team-menu-empty",
+		560,
+		84,
+		{
+			press: '[data-header-identity="team"]',
+			expectPresent: '[data-header-identity-menu="team"]',
+		},
+	],
+	[
+		"chat-header-identity--team-menu-refused",
+		560,
+		84,
+		{
+			press: '[data-header-identity="team"]',
+			expectPresent: '[data-header-identity-menu="team"]',
+		},
+	],
+	/*
 	 * The strip's own arithmetic at the pane's width, and the route's strip at the
 	 * same tab count (design round 1, D1's remainder; QA round 1, Q2). The pair is
 	 * the claim: four tabs fit a 640 pane whole and six do not, and where they do not
