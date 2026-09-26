@@ -15441,7 +15441,7 @@ async function sceneConversationStart(cdp) {
 	const pressFrame = await captureSettled(
 		cdp,
 		`conversation-start-${size}-press`,
-			{ toastWaitMs: 500 },
+		{ toastWaitMs: 500 },
 	);
 	note("frame", JSON.stringify(pressFrame));
 	const press = {
@@ -15511,14 +15511,14 @@ async function sceneConversationStart(cdp) {
 	const flipFrame = await captureSettled(
 		cdp,
 		`conversation-start-${size}-flip`,
-			{ toastWaitMs: 500 },
+		{ toastWaitMs: 500 },
 	);
 	note("frame", JSON.stringify(flipFrame));
 	await wait(1000);
 	const plusOneFrame = await captureSettled(
 		cdp,
 		`conversation-start-${size}-flip-plus-1s`,
-			{ toastWaitMs: 500 },
+		{ toastWaitMs: 500 },
 	);
 	note("frame", JSON.stringify(plusOneFrame));
 	const flip = {
@@ -15625,7 +15625,7 @@ async function sceneConversationStart(cdp) {
 		const beforeRetryFrame = await captureSettled(
 			cdp,
 			`conversation-start-${size}-failure-before-retry`,
-				{ toastWaitMs: 500 },
+			{ toastWaitMs: 500 },
 		);
 		note("frame", JSON.stringify(beforeRetryFrame));
 		note(
@@ -15638,7 +15638,7 @@ async function sceneConversationStart(cdp) {
 	const failureFrame = await captureSettled(
 		cdp,
 		`conversation-start-${size}-failure`,
-			{ toastWaitMs: 500 },
+		{ toastWaitMs: 500 },
 	);
 	note("frame", JSON.stringify(failureFrame));
 	const failure = { read: await reads(), refused: refused.ok };
@@ -15684,7 +15684,7 @@ async function sceneConversationStart(cdp) {
 	const reloadFrame = await captureSettled(
 		cdp,
 		`conversation-start-${size}-reload`,
-			{ toastWaitMs: 500 },
+		{ toastWaitMs: 500 },
 	);
 	note("frame", JSON.stringify(reloadFrame));
 	const reload = {
@@ -15784,17 +15784,19 @@ async function sceneConversationStart(cdp) {
 		}
 		await typeIntoComposer("A second message, in flight while the run leaves.");
 		await wait(400);
-	/*
-	 * THE TOAST WAIT IS BOUNDED FOR THESE THREE - AND THE SAME BOUND IS ON THE SCENE'S OWN SIX (the press, flip, flip-plus-1s, failure-before-retry, failure and reload captures; found while re-shooting on the
-	 * folded tree): a completed turn raises a completion toast, and the default
-	 * 15 s clearance would sit out the toast's whole lifetime before each frame -
-	 * measured ~10 s per capture - so the run's own steps outlasted the app's
-	 * 25 s send deadline, the tap's hold was cut short by the app recording
-	 * `Couldn't confirm`, and the return read a FINISHED send instead of the
-	 * in-flight one T5 is about. Half a second is enough for a toast already
-	 * fading, and a toast that is still up is part of the moment these frames
-	 * photograph (the README says so).
-	 */
+		/*
+		 * THE TOAST WAIT IS BOUNDED FOR THESE THREE, AND THE SAME BOUND IS ON THE
+		 * SCENE'S OWN SIX (the press, flip, flip-plus-1s, failure-before-retry,
+		 * failure and reload captures; found while re-shooting on the
+		 * folded tree): a completed turn raises a completion toast, and the default
+		 * 15 s clearance would sit out the toast's whole lifetime before each frame -
+		 * measured ~10 s per capture - so the run's own steps outlasted the app's
+		 * 25 s send deadline, the tap's hold was cut short by the app recording
+		 * `Couldn't confirm`, and the return read a FINISHED send instead of the
+		 * in-flight one T5 is about. Half a second is enough for a toast already
+		 * fading, and a toast that is still up is part of the moment these frames
+		 * photograph (the README says so).
+		 */
 		const awayPressFrame = await captureSettled(
 			cdp,
 			`conversation-start-${size}-away-press`,
@@ -15817,7 +15819,7 @@ async function sceneConversationStart(cdp) {
 			return { rows: rows.length, text: region.innerText.slice(0, 400) };
 		})()`);
 		note("sidebar (away)", JSON.stringify(sidebar));
-	// The same bounded toast wait the away-press capture explains.
+		// The same bounded toast wait the away-press capture explains.
 		const awayFrame = await captureSettled(
 			cdp,
 			`conversation-start-${size}-away`,
@@ -15832,7 +15834,7 @@ async function sceneConversationStart(cdp) {
 			);
 		}
 		await wait(600);
-	// The same bounded toast wait the away-press capture explains.
+		// The same bounded toast wait the away-press capture explains.
 		const backFrame = await captureSettled(
 			cdp,
 			`conversation-start-${size}-return`,
