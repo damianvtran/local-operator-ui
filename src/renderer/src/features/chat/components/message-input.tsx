@@ -204,6 +204,14 @@ const CREDENTIAL_NOTICE_ID = "composer-credential-notice";
  * asked for.
  */
 const MENTION_OUTSIDE_NOTICE_ID = "composer-mention-outside-notice";
+import {
+	ConnectProviderCard,
+	NoProviderLine,
+} from "@features/providers/connect-provider-card";
+import {
+	NO_PROVIDER_NOTICE,
+	useConnectProviderStore,
+} from "@features/providers/connect-provider-store";
 import { sampleSuggestions } from "./composer-suggestions";
 import { ComposerTipRow } from "./composer-tip";
 import { CredentialChipLayer } from "./credential-chip-layer";
@@ -520,6 +528,28 @@ type MessageInputProps = {
 	 * appends to or otherwise edits what it was handed.
 	 */
 	initialSuggestions?: readonly string[];
+	/**
+	 * True when the app KNOWS no model provider is connected (the census was
+	 * read and nothing answers; see `useProviderStatus`). The empty chat then
+	 * shows the connect card instead of suggestion chips, the placeholder says
+	 * what to do, and a status line offers "Connect" -- design audit section 6.
+	 * Typing stays allowed so a draft is never lost; the backend's own notice
+	 * still answers a send. A plain prop rather than a hook read here, so the
+	 * composer stays mountable without a query client in its Node tests.
+	 */
+	noProvider?: boolean;
+	/**
+	 * A provider IS connected and no model can be named for it yet (UX round 5, U21).
+	 *
+	 * WHY THE COMPOSER NEEDS IT SEPARATELY: `noProvider` covers "nothing is connected",
+	 * and this is the state one step past it -- a first run whose provider is connected
+	 * but whose default was deliberately NOT written, because the backend lists no
+	 * models for it. Measured live: the band said "Choose a model", `Send` was disabled
+	 * while the box was empty, and **Enter sent anyway** -- the turn then sat at
+	 * "waiting for the agent" with no completion request reaching the daemon at all.
+	 * Typing is still allowed; the send is not, and the line under the box says why.
+	 */
+	noModel?: boolean;
 	agentData?: AgentDetails | null;
 	/**
 	 * Working directory for this conversation, and the way to change it.
@@ -1180,6 +1210,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			interruptNotice,
 			sendError,
 			initialSuggestions,
+			noProvider = false,
+			noModel = false,
 			agentData,
 			cwd,
 			cwdWritePath,
@@ -1301,6 +1333,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const [isRecording, setIsRecording] = useState(false);
 		const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
 		const [isTranscribing, setIsTranscribing] = useState(false);
+		/*
+		 * The hint Enter's refusal shows (UX round 3 U13). A countdown, not a toggle,
+		 * so it cannot outlive the moment it explains.
+		 */
+		const [noProviderHint, setNoProviderHint] = useState(false);
+		useEffect(() => {
+			if (!noProviderHint) return undefined;
+			const timer = window.setTimeout(() => setNoProviderHint(false), 5000);
+			return () => window.clearTimeout(timer);
+		}, [noProviderHint]);
 		const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 		const audioChunksRef = useRef<Blob[]>([]);
 		const [platform, setPlatform] = useState("");
@@ -4224,6 +4266,31 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * produces the staged line that arms it.
 				 */
 				if (
+					(noProvider || noModel) &&
+					event.key === "Enter" &&
+					!event.shiftKey &&
+					!event.nativeEvent.isComposing
+				) {
+					/*
+					 * NOTHING CAN ANSWER, so Enter does not send. The button was already
+					 * disabled and the key was not: measured live, typing with no provider
+					 * connected and pressing Enter issued `sessions.create` and
+					 * `sessions.message`, and the message landed in the transcript waiting
+					 * for an agent that could never run (QA round 2 R2-Q2). Typing stays
+					 * allowed -- the box is where the failure is explained -- and the
+					 * status line under it carries the Connect action.
+					 */
+					event.preventDefault();
+					/*
+					 * AND IT SAYS SO. The refusal is right and silent, and the placeholder
+					 * that explained it disappears the moment the user types: "Enter did
+					 * nothing" with no reason is the complaint (UX round 3 U13). The line
+					 * clears itself, so it cannot become furniture.
+					 */
+					setNoProviderHint(true);
+					return;
+				}
+				if (
 					event.key === "Enter" &&
 					!event.shiftKey &&
 					!event.nativeEvent.isComposing
@@ -4746,11 +4813,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					activeElement &&
 					(activeElement.tagName === "INPUT" ||
 						activeElement.tagName === "TEXTAREA");
-				if (!isInputFocused) {
+				/*
+				 * Not while nothing is connected: the empty chat's headline invites a
+				 * question and the connect card asks for a provider, and autofocus put
+				 * the composer's accent outline on screen as a third, competing signal
+				 * (design round 1 D5). Typing is still allowed - the user clicks in when
+				 * they want to.
+				 */
+				if (!isInputFocused && !noProvider) {
 					textareaRef.current?.focus();
 				}
 			}
-		}, [isInputDisabled, isRecording, isTranscribing, textareaRef]);
+		}, [isInputDisabled, isRecording, isTranscribing, textareaRef, noProvider]);
 
 		useEffect(() => {
 			window.electron.ipcRenderer
@@ -4948,6 +5022,17 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * submits this form.
 			 */
 			if (isInputDisabled) return;
+			// One more way in: nothing connected means no send, whichever control asked.
+			if (noProvider) return;
+			/*
+			 * AND THE SAME RULE ONE STEP PAST IT: a provider this app cannot name a model
+			 * for cannot answer either, so a press that reaches here is refused and
+			 * explained rather than sent (UX round 5, U21).
+			 */
+			if (noModel) {
+				setNoProviderHint(true);
+				return;
+			}
 			if (!newMessage.trim() && attachments.length === 0) return;
 			/*
 			 * THE CAPTURE IS ASKED FIRST, exactly as the key handler asks it, so the
@@ -5340,11 +5425,45 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const composerAlert = useMemo(() => {
 			const boxPayload = buildSendPayload(newMessage, replies);
 			const hasSomethingToClear = boxPayload !== "" || attachments.length > 0;
+			/*
+			 * `noProvider` FIRST, not only the notice text: live, the failure a user
+			 * actually gets with nothing connected is the app's own 20-second timeout
+			 * (the backend's 503 arrives after the IPC deadline at load), so the
+			 * backend's sentence never matched and this action never appeared (UX round
+			 * 2 N3). The condition the action answers is "nothing can answer", which
+			 * this component already knows.
+			 */
+			const providerConnectActions =
+				noProvider ||
+				(sendError?.message && NO_PROVIDER_NOTICE.test(sendError.message))
+					? [
+							{
+								label: "Connect a provider",
+								onClick: () => useConnectProviderStore.getState().openConnect(),
+							},
+						]
+					: [];
 			return {
 				message: sendError?.message,
 				muted: sendError?.muted === true,
 				polite: sendError?.polite === true,
-				actions: sendError?.actions ?? [],
+				/*
+				 * THE BACKEND'S "no model provider" REFUSAL ARRIVES HERE, as this
+				 * alert, not as a transcript record. The action the transcript notice
+				 * gained was therefore never rendered for the case it was written for -
+				 * a user who sends with nothing connected got the sentence, a Settings
+				 * path to type out, and no way to act (QA round 1 Q5, UX round 1 N3).
+				 * One action, opening the same dialog the other surfaces open.
+				 *
+				 * AND THIS LIST IS THE ONE THING THIS BRANCH CONTRIBUTES TO THIS MEMO. The memo's
+				 * own shape - the mute/politeness pair, `retry`, and the single `clear` hinge on
+				 * `hasSomethingToClear` - is main's, from the composer series that replaced the
+				 * held-claim register this branch's copy still carried, and the notice that reads
+				 * these fields is main's too. So the fold is a PORT rather than a side: main's memo
+				 * and main's notice, with this branch's action re-laid into it. See the note on the
+				 * Send control's `disabled` for the other half of the same fold.
+				 */
+				actions: [...(sendError?.actions ?? []), ...providerConnectActions],
 				retry: sendError?.retry === true,
 				/*
 				 * Clear is offered whenever the notice is - the box may hold the returned
@@ -5366,7 +5485,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					sendError?.muted !== true &&
 					(sendError?.onClear !== undefined || hasSomethingToClear),
 			};
-		}, [sendError, newMessage, replies, attachments]);
+		}, [sendError, newMessage, replies, attachments, noProvider]);
 
 		/*
 		 * The session issue: the state of this machine's Radient sign-in, and the one
@@ -6135,6 +6254,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												asideAttached: aside !== null,
 												sendingUnsettled: sendUnsettled || sendInFlight,
 												awaitingReply,
+												// The last reading before the invitation: nothing is in
+												// flight and the box is not refused, but no model
+												// provider is connected, so the invitation is a lie
+												// (design audit section 6).
+												noProvider,
 											})
 										}
 										value={newMessage}
@@ -6318,6 +6442,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										 * for the state to the control for as long as it refuses.
 										 */
 										readOnly={isInputDisabled}
+										/*
+										 * The TEXTAREA's own attribute: it reports the refusal that keeps the
+										 * box read-only, and nothing else. Round 5's U21 refusal is about
+										 * SENDING, not typing ("typing stays allowed; the send is not"), so
+										 * `noModel` must not appear here -- telling a screen reader the box
+										 * is disabled while it accepts every keystroke is the same class of
+										 * falsehood as a claim its surface cannot support, and
+										 * `composer-refusal` pins exactly that.
+										 */
 										aria-disabled={isInputDisabled || undefined}
 										aria-label="Message"
 										role="combobox"
@@ -7009,6 +7142,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 													 * to them rather than swallowed here. `isInputDisabled` stays:
 													 * a box that refuses input is a different fact.
 													 *
+													 * Spec § 6: with nothing connected (`noProvider`) Send is
+													 * disabled by COLOUR STEP. It used to be enabled and answered
+													 * the press with a backend refusal, which taught the user that
+													 * the app half-works (QA round 1 Q7). Typing stays allowed: the
+													 * box is where the failure is explained. The note sits here,
+													 * not inside `disabled`, so the Button's own attributes stay
+													 * one short block (interrupt-control.test.mjs reads the size
+													 * expression within a fixed window of its aria-label).
+													 *
 													 * The note sits ABOVE the element rather than inside its
 													 * attribute list on purpose: `interrupt-control.test.mjs`
 													 * reads this control's `size` expression out of the 400
@@ -7023,6 +7165,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 														onPointerDown={holdCaretOnRefusedPress}
 														disabled={
 															isInputDisabled ||
+															noProvider ||
+															noModel ||
 															(!newMessage.trim() && attachments.length === 0)
 														}
 														className="rounded-full disabled:bg-surface"
@@ -7043,6 +7187,29 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						</div>
 					</div>
 				</div>
+				{/*
+				 * The two lines main's lane put under the box: the connect line for a
+				 * conversation with no provider, and the model/provider refusal's hint.
+				 * The rest of that lane's block - the tip row, the chips and the connect
+				 * card - lives in the splash above, where this branch's rework moved it
+				 * (the card takes the chips' slot there); the two mirrors main kept for a
+				 * centred band are dropped with the centring they existed for.
+				 */}
+				{noProvider && !showEmptyChatPrompt ? (
+					<div className={cn("mt-2", CHAT_MEASURE)}>
+						<NoProviderLine />
+					</div>
+				) : null}
+
+				{(noProvider || noModel) && noProviderHint ? (
+					<div className={cn("mt-2", CHAT_MEASURE)}>
+						<output className="block text-body-sm text-ink-muted">
+							{noModel
+								? "Choose a model for this conversation before sending."
+								: "Connect a provider to send."}
+						</output>
+					</div>
+				) : null}
 			</form>
 		);
 
@@ -7220,42 +7387,62 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								<span data-lo-empty-mark="" className="contents">
 									<BrandMark className="size-8" tone="ink-muted" />
 								</span>
-								<h2 className="text-center text-ink text-title">
-									What can I help you with today?
-								</h2>
 								{/*
-								 * The chips ABOVE the composer (§H), left-aligned on the shared
-								 * measure so they share the box's left edge. Borderless ghost
-								 * controls: twelve accent-washed pills was the accent budget spent
-								 * four times over, and outlined ones still drew seven 3:1
-								 * boundaries on examples rather than the primary action.
+								 * With nothing connected there is no question to ask yet: the card
+								 * below says what to do, and a headline inviting a prompt the app
+								 * cannot run pointed the two strongest signals on the screen in
+								 * opposite directions (main's design round 1 D5; the gate arrived
+								 * with this fold).
 								 */}
-								<div className={cn("flex flex-col gap-3", CHAT_MEASURE)}>
-									<MeasuredSuggestionStack
-										band={band}
-										splash={splash}
-										foot={foot}
-										suggestions={suggestions}
-										disabled={suggestionsDisabled}
-										onRefusedPress={holdCaretOnRefusedPress}
-										onSelect={handleSuggestionClick}
-										focusComposer={() => textareaRef.current?.focus()}
-									/>
-									{/*
-									 * The ambient tip line, under the chips. OUTSIDE
-									 * `[data-lo-suggestion-stack]` deliberately: the cap reads that
-									 * node's children as chips and derives rows from shared top edges
-									 * (`suggestion-stack.ts`), so a non-chip child there would corrupt
-									 * the row model. Inside the group, so its row lands in the cap's
-									 * fixed budget automatically. The clock is suspended while the box
-									 * holds a draft, so a changing peripheral line cannot pull the eye
-									 * off what the user is typing.
-									 */}
-									<ComposerTipRow
-										suspended={newMessage.trim().length > 0}
-										mentionsEnabled={mentionsEnabled}
-									/>
-								</div>
+								{noProvider ? null : (
+									<h2 className="text-center text-ink text-title">
+										What can I help you with today?
+									</h2>
+								)}
+								{noProvider ? (
+									/*
+									 * The connect card takes the chips' slot, not a slot of its own
+									 * (main's design audit section 6): the chips are examples of what
+									 * to ask, and with nothing connected there is nothing to ask yet.
+									 */
+									<div className={cn("w-full", CHAT_MEASURE)}>
+										<ConnectProviderCard />
+									</div>
+								) : (
+									/*
+									 * The chips ABOVE the composer (§H), left-aligned on the shared
+									 * measure so they share the box's left edge. Borderless ghost
+									 * controls: twelve accent-washed pills was the accent budget spent
+									 * four times over, and outlined ones still drew seven 3:1
+									 * boundaries on examples rather than the primary action.
+									 */
+									<div className={cn("flex flex-col gap-3", CHAT_MEASURE)}>
+										<MeasuredSuggestionStack
+											band={band}
+											splash={splash}
+											foot={foot}
+											suggestions={suggestions}
+											disabled={suggestionsDisabled}
+											onRefusedPress={holdCaretOnRefusedPress}
+											onSelect={handleSuggestionClick}
+											focusComposer={() => textareaRef.current?.focus()}
+										/>
+										{/*
+										 * The ambient tip line, under the chips. OUTSIDE
+										 * `[data-lo-suggestion-stack]` deliberately: the cap reads that
+										 * node's children as chips and derives rows from shared top edges
+										 * (`suggestion-stack.ts`), so a non-chip child there would corrupt
+										 * the row model. Inside the group, so its row lands in the cap's
+										 * fixed budget automatically. The clock is suspended while the box
+										 * holds a draft, so a changing peripheral line cannot pull the eye
+										 * off what the user is typing.
+										 */}
+										<ComposerTipRow
+											suspended={newMessage.trim().length > 0}
+											mentionsEnabled={mentionsEnabled}
+										/>
+									</div>
+								)}
 							</>
 						) : null}
 					</div>
@@ -7267,6 +7454,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * containing it (`measured-suggestion-stack.tsx`).
 				 */}
 				<div ref={setFoot} data-lo-composer-foot="" className="w-full">
+					=======
+					{/*
+					 * With nothing connected there is no question to ask yet: the card
+					 * below says what to do, and a headline inviting a prompt the app
+					 * cannot run pointed the two strongest signals on the screen in
+					 * opposite directions (design round 1 D5).
+					 */}
+					{showEmptyChatPrompt && !noProvider ? (
+						<h2 className="text-center text-ink text-title">
+							What can I help you with today?
+						</h2>
+					) : null}
 					{inputContent}
 				</div>
 			</div>

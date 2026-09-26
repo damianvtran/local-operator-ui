@@ -1348,6 +1348,24 @@ const GRAPHICS = [
 		on: ["surface", "rowSelected"],
 		fg: role,
 	})),
+	{
+		/*
+		 * The provider row's overflow trigger while its panel is open
+		 * (`provider-grid.tsx`): a ghost, icon-only button that paints
+		 * `bg-control` in that state, so its glyph rides on `borderControl`
+		 * rather than on the row behind it. It shipped with the ghost's own
+		 * `text-ink-muted` for an ink -- 59/59 palettes below the 3:1 floor on
+		 * that fill (2.19:1 by token, 2.02:1 in the rendered frame). `ink` is not
+		 * a remedy either (30/59 below, worst 1.87:1); `onAccent` clears the
+		 * floor in every palette (worst 3.53:1) and is what the component now
+		 * paints. Listed because this is exactly the case AGENTS.md warns about:
+		 * the green run said nothing about a state no row described, which is how
+		 * it shipped (design round 6, D1).
+		 */
+		name: "provider row overflow trigger glyph (open)",
+		on: ["borderControl"],
+		fg: "onAccent",
+	},
 	...["danger", "info"].map((role) => ({
 		/*
 		 * The run pane's trigger dot, which gained a second ink
@@ -1483,6 +1501,55 @@ const PERCEPTIBLE = [
 		pairedWith: "elevated",
 		maxWeightChange: 2.0,
 		against: "elevated",
+	},
+	{
+		/*
+		 * THE PROVIDER LISTS AND THE EMPTY-CHAT CONNECT CARD (design audit
+		 * section 2 and section 6): a `bg-surface rounded-[14px]` container with NO
+		 * border, on the page's `canvas` (Settings, the empty chat). Here rather
+		 * than in `CONTROLS` because it is not a control: elevation is a lightness
+		 * step (`branding.md`), so the container owes being SEEN as one object,
+		 * not a 3:1 edge. The controls inside it are the ordinary button rows
+		 * `CONTROLS` already asserts on `surface`.
+		 */
+		name: "provider list / connect card container",
+		role: "surface",
+		on: ["canvas"],
+		minDeltaE: 2.0,
+	},
+	{
+		/*
+		 * The same list inside a DIALOG (onboarding step 1, the connect dialog):
+		 * `bg-surface` on the dialog's `elevated`, a step DOWN rather than up. Its
+		 * own row because the pair differs and a list that vanished into the dialog
+		 * would pass the row above.
+		 */
+		name: "provider list inside a dialog",
+		role: "surface",
+		on: ["elevated"],
+		minDeltaE: 2.0,
+	},
+	{
+		/*
+		 * The row's monogram tile: `bg-elevated` two letters on the list's
+		 * `surface`. A fill step behind `ink` text, which the `INKS` loop already
+		 * asserts on `elevated`; this row asserts only that the tile reads as a tile.
+		 */
+		name: "provider monogram tile",
+		role: "elevated",
+		on: ["surface"],
+		minDeltaE: 2.0,
+	},
+	{
+		/*
+		 * The device-code well: the code in mono on `bg-sunken` inside the
+		 * `surface` panel. The code's ink is `ink`, asserted on `sunken` by the
+		 * `INKS` loop; this row asserts the well is visible as one.
+		 */
+		name: "device code well",
+		role: "sunken",
+		on: ["surface"],
+		minDeltaE: 2.0,
 	},
 	{
 		/*

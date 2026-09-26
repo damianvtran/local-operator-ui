@@ -958,6 +958,13 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"rowTeamTrailingRestampNote",
 	/*
+	 * The offer card's own: the server-release-notes pass re-derived both
+	 * trees for a change that moves `src/` and `scripts/` and adds twenty-four
+	 * frames in two stories, so the reader is owed the pair AND the reason no
+	 * other still was owed.
+	 */
+	"serverReleaseNotesPassNote",
+	/*
 	 * And the mention-remedy re-stamp's: THIS FILE'S BINDING IS ITS SUBJECT, which
 	 * is the criterion above - it exists to say which two trees the copy change
 	 * moved and which single frame set was re-captured with them - so it is held
@@ -974,6 +981,13 @@ const STAMP_BINDING_NOTES = [
 	 * run was dirty; its own head and flag stay as its records).
 	 */
 	"u15D28RestampNote",
+	/*
+	 * The fold's own: ITS SUBJECT IS THIS FILE'S BINDING (the re-derived pair),
+	 * so it is held to the pair the file ships rather than read as history - and
+	 * it is the note that records the union of this list itself, which is the
+	 * rule the paragraph above states.
+	 */
+	"foldOntoDfd93f7e9Note",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1343,6 +1357,14 @@ const BRANCH_RECORDS = [
 	 * run, and the one flake it did not fix.
 	 */
 	"u15D28RestampNote",
+	/*
+	 * And the fold onto `dfd93f7e9`, this branch's newest top-level record. It is
+	 * listed for the reason the list exists: the fold is the commit that resolves
+	 * this file against a main that had moved (five conflicted paths), and the
+	 * record is the only statement of what the two trees carry now, what frames
+	 * were NOT re-taken, and how each conflict was resolved.
+	 */
+	"foldOntoDfd93f7e9Note",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
