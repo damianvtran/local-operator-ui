@@ -15531,11 +15531,30 @@ async function sceneConversationStart(cdp) {
 		 * the app's answer rather than the script's guess.
 		 */
 		const firstId = await cdp.evaluate(
-			`(() => {
-				const parts = (window.location.hash + window.location.pathname).split("/");
-				const at = parts.indexOf("chat");
-				return at === -1 ? null : (parts[at + 1] || null);
-			})()`,
+			/* The second id rides in as a JSON literal so the filter can exclude it. */
+			`(function (secondId) {
+				var isId = function (value) {
+					return typeof value === "string" && new RegExp("^[0-9a-f]{8,}$").test(value);
+				};
+				var parts = (window.location.hash + "/" + window.location.pathname).split("/");
+				var at = parts.indexOf("chat");
+				if (at !== -1 && isId(parts[at + 1])) return parts[at + 1];
+				/*
+				 * The route may not carry the session id (the pre-change tree can sit
+				 * on a bare /chat while a draft is active), so the sidebar is the
+				 * fallback - the SAME rows the return click uses, which is why an id
+				 * found here is one the click can find again.
+				 */
+				var rows = Array.prototype.slice
+					.call(document.querySelectorAll('[data-sidebar-region="chats"] [data-session-row]'))
+					.map(function (el) {
+						return el.getAttribute("data-session-row");
+					})
+					.filter(function (id) {
+						return isId(id) && id !== secondId;
+					});
+				return rows.length ? rows[0] : null;
+			})(${JSON.stringify(secondId)})`,
 		);
 		note("first conversation", JSON.stringify(firstId));
 		if (TAP_CONTROL) {
