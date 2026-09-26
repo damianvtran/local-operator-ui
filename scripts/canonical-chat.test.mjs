@@ -495,6 +495,10 @@ test("create success plus admission failure retries exact same session and paylo
 				session_id: "222222222222",
 				binding: { agent: "reviewer", team: null },
 			};
+		// The catalogue read the create's answer now issues (S5) is answered and
+		// does not count as a send attempt.
+		if (request.op === "sessions.list")
+			return { sessions: [], truncated: false };
 		if (++attempts === 1) throw new Error("provider unavailable");
 		return { status: "admitted" };
 	};
@@ -528,6 +532,10 @@ test("the admission seam stores against the session the send created, and its an
 				session_id: "222222222222",
 				binding: { agent: "reviewer", team: null },
 			};
+		// The catalogue read the create's answer now issues (S5); it is not a send
+		// and must not enter the order this test reads.
+		if (request.op === "sessions.list")
+			return { sessions: [], truncated: false };
 		order.push("send");
 		return { status: "admitted" };
 	};
@@ -700,6 +708,10 @@ test("an issued admission pins the payload for replay, and a discard always free
 		calls.push(request);
 		if (request.op === "sessions.create")
 			return { session_id: "222222222222", binding: null };
+		// The catalogue read the create's answer now issues (S5) must not consume
+		// the single refusal this test arms.
+		if (request.op === "sessions.list")
+			return { sessions: [], truncated: false };
 		if (failNext) {
 			failNext = false;
 			throw new Error("provider unavailable");
@@ -2461,7 +2473,11 @@ test("a leading-slash refusal on the created-session arm hands the payload to th
 	// The session was created inside the send, and the request that carried the
 	// text is the one that was refused.
 	assert.deepEqual(
-		[...new Set(calls.map((request) => request.op))],
+		// The catalogue read (S5) is the create's answer's own follower and not part
+		// of the send path this assertion is about.
+		[...new Set(calls.map((request) => request.op))].filter(
+			(op) => op !== "sessions.list",
+		),
 		["sessions.create", "sessions.message"],
 	);
 	assert.equal(draft.sessionId, "222222222222");
@@ -3820,6 +3836,10 @@ test("a busy owner is retried under the same identity before the composer ever s
 		calls.push(request);
 		if (request.op === "sessions.create")
 			return { session_id: "222222222222", binding: null };
+		// The catalogue read (S5) is not a send attempt; counting it would eat one
+		// of the two refusals this test arms.
+		if (request.op === "sessions.list")
+			return { sessions: [], truncated: false };
 		if (attempt < waits.length)
 			throw new DesktopControlError(
 				503,
@@ -4878,6 +4898,59 @@ test("the draft send remounts the panel exactly once, before the message POST", 
 		undefined,
 		"no session and no draft is no panel",
 	);
+});
+
+/*
+ * S5's other half: the catalogue read rides the CREATE'S answer, not the send's.
+ *
+ * The sidebar's draft row drops the moment `sessionId` is patched on the row,
+ * and the session row only arrives with a catalogue answer; the pane's own
+ * post-send read is skipped when the user has switched away, so without a read
+ * at the create the conversation lives in neither list until the 30 s poll.
+ * This pins the read while the message POST is still hanging, which is the
+ * property - the exact ordering inside one tick is deliberately not hoisted
+ * into an assertion.
+ */
+test("the create's answer re-reads the catalogue while the message POST is still in flight", async () => {
+	reset();
+	useConversationInputStore.setState({ inputByConversation: {} });
+	let releaseMessage;
+	const ops = [];
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		ops.push(request.op);
+		if (request.op === "sessions.create")
+			return { session_id: "222222222222", binding: null };
+		if (request.op === "sessions.list")
+			return { sessions: [], truncated: false };
+		if (request.op === "sessions.message") {
+			await new Promise((resolve) => {
+				releaseMessage = resolve;
+			});
+			return { status: "admitted" };
+		}
+		return { status: "admitted" };
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	// The app's own shape for a draft press: no session id yet.
+	const pending = admitChatDraft(key, input, undefined);
+	await new Promise((resolve) => setTimeout(resolve, 25));
+	assert.ok(
+		ops.includes("sessions.message"),
+		"the arm is real: the message POST has been issued and is hanging",
+	);
+	assert.ok(
+		ops.includes("sessions.list"),
+		"the catalogue was re-read on the create's answer, while the message POST was still in flight",
+	);
+	const create = ops.indexOf("sessions.create");
+	const list = ops.indexOf("sessions.list");
+	assert.ok(
+		create < list,
+		"and it is the create's answer it rides, not something earlier",
+	);
+	releaseMessage();
+	await pending;
 });
 
 test("the palette's close-time comparison reads the pane's own identity, on every door", () => {

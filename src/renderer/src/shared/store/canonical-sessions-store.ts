@@ -2094,6 +2094,23 @@ export async function admitChatDraft(
 			 * that can await.
 			 */
 			if (paintIdentity) movePendingSendIdentity(paintIdentity, id);
+			/*
+			 * AND THE CATALOGUE IS RE-READ HERE (S5), on the create's OWN answer
+			 * rather than after the send resolves. The sidebar's draft row drops the
+			 * moment `sessionId` is patched on the row (`draft-rows.ts` condition 1)
+			 * while the session row only arrives with a catalogue answer - and the
+			 * post-send read below lives in the PANE that pressed, so a user who
+			 * switched away has only the 30 s poll; between the two the conversation
+			 * is in neither list. Issuing the read here makes the appearance overlap
+			 * the disappearance instead of leaving a gap.
+			 *
+			 * ONE READ, NOT A SECOND REFRESH POLICY: `fetchSessions` coalesces
+			 * concurrent catalogue reads (`coalesceSessionCatalogueRequest`), so the
+			 * pane's own post-send read joins this one in the common path and costs
+			 * nothing extra. The post-send read STAYS - it re-reads once the message
+			 * is admitted, which is an answer this one predates.
+			 */
+			void store.fetchSessions();
 		}
 		// From here the outcome is unknowable on failure: the owner may have
 		// admitted the command before the response was lost.
