@@ -323,6 +323,22 @@ test("the warm is wired to the composer inside the subscribed panel, not above i
 		panel.includes("sessionId ?? draft?.warmId"),
 		"the stream must address the minted draft id until the create hop",
 	);
+	// The pane also answers whether that stream is a SESSION's (UX round 1, U1):
+	// the two ids have the same shape, and without the third input the composed
+	// `awaitingHydration` holds `Loading conversation…` over the empty state until
+	// the draft's first frame lands.
+	assert.match(
+		panel,
+		/useCanonicalSessionStream\(\s*streamId,\s*Boolean\(streamId\),\s*Boolean\(sessionId\),\s*\)/,
+		"the panel must answer whether the stream is a session's, not a draft's",
+	);
+	// And the Run-details model stays null for a draft (design review round 1,
+	// D2): a draft has no run, so the header must not grow the ⓘ control while
+	// the user is merely typing.
+	assert.ok(
+		panel.includes("sessionId && canonical.frontend"),
+		"run details must be gated on the pane having a session",
+	);
 	assert.ok(
 		panel.includes("onComposerInput={onComposerInput}"),
 		"the trigger must reach the composer, where the keystroke is observable",

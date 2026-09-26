@@ -2901,10 +2901,14 @@ type CanonicalSessionsState = {
 	 * `stage` kind; the composer's chip is the only caller).
 	 *
 	 * Changing where the first send will run changes what a runtime warmed for the
-	 * old directory would have engaged, so the warm intent on the active draft is
-	 * dropped with it (see `ensureDraftWarm`) and the next keystroke re-arms
-	 * against the new directory. A draft that already has a session, and every
-	 * pane with no draft at all, takes the plain write.
+	 * old directory would have engaged, so the warm intent is dropped with it (see
+	 * `ensureDraftWarm`) and the next keystroke re-arms against the new directory.
+	 *
+	 * EVERY draft row without a session, not just the active one: `cwd` is one
+	 * value, read by whatever pane mints and whatever pane sends, while the rows
+	 * outlive the pane in front of you (an agent/team-keyed row is reused by
+	 * `stageDraft` when the user comes back to it). A row with a session, and a
+	 * store with no draft rows at all, takes today's plain write.
 	 */
 	setCwd: (cwd: string) => void;
 	/**
@@ -2994,6 +2998,11 @@ type CanonicalSessionsState = {
 	 * keystroke can mint one. A no-op when the value has not moved, for the same
 	 * reason `setCataloguePageable` is: this is called from an effect on every
 	 * capability change.
+	 *
+	 * The false -> true transition also RE-ARMS the active draft when it already
+	 * holds text (review round 1, MINOR-1): the keystroke's edge can fire before a
+	 * cold-start capability read answers, and the mint would otherwise be skipped
+	 * for the whole message.
 	 */
 	setDraftWarmable: (warmable: boolean) => void;
 	/**
@@ -3315,27 +3324,18 @@ type CanonicalSessionsState = {
 	stageDraft: (target?: ChatTarget, fresh?: boolean) => string;
 	updateDraft: (key: string, patch: Partial<ChatDraft>) => void;
 	/**
-	 * Mint the draft id a NEW chat's runtime will be warmed on, if this pane can
-	 * have one and does not yet. Called from the composer's first keystroke.
-	 *
-	 * Fire-and-forget BY DESIGN: nothing on the send path waits on it, and a mint
-	 * that fails (or never fires) leaves the send engaging inline exactly as it
-	 * always did. It no-ops when the daemon does not advertise
-	 * `session_draft_warm` (the flag above), when the pane has no settled
-	 * directory to mint against, when it already has a `warmId`, or once its
-	 * session exists. The request id is the row's `draftRequestId`, so a retry
-	 * replays the same mint rather than registering a second draft.
-	 */
-	/**
 	 * The new-chat pane's first keystroke: mint the id its runtime is warmed on
 	 * (`sessions.draft`), fire-and-forget, once the backend advertises
 	 * `session_draft_warm`.
 	 *
-	 * The mint's request id is stable per draft, so a retry replays the same
-	 * draft rather than registering a second; the id is dropped together with the
-	 * request id when the selection changes before the send. Nothing on the send
-	 * path waits on this and no-session/capability-absent failures are silent, so
-	 * every path that cannot warm is exactly today's flow.
+	 * Fire-and-forget BY DESIGN: nothing on the send path waits on it, and a mint
+	 * that fails (or never fires) leaves the send engaging inline exactly as it
+	 * always did. It no-ops when the daemon does not advertise the capability (the
+	 * flag above), when the pane has no settled directory to mint against, when it
+	 * already has a `warmId`, or once its session exists. The request id is the
+	 * row's `draftRequestId`, so a retry replays the same mint rather than
+	 * registering a second draft; the id and the request id together are dropped
+	 * when the selection changes before the send.
 	 */
 	ensureDraftWarm: (key: string) => void;
 	/**
@@ -4030,24 +4030,38 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			 * first send will run changes what a runtime warmed for the old directory
 			 * would have engaged, so the same drop rule a model pick applies applies
 			 * here: the warm intent and its receipt key go, and the next keystroke
-			 * re-arms against the new directory. A row with a session (or no active
-			 * draft at all) keeps today's plain write.
+			 * re-arms against the new directory.
+			 *
+			 * EVERY draft row without a session, not just the active one (review round
+			 * 1's MAJOR-1). `cwd` is ONE value, read by whatever pane mints and by
+			 * whatever pane sends, while the rows outlive the pane in front of you: an
+			 * agent/team-keyed row (`draft:agent:<name>`) is RE-USED by `stageDraft`
+			 * when the user comes back to it, so a warm left on an inactive row is a
+			 * send waiting to adopt a runtime engaged for the previous directory - the
+			 * exact case the spec's drop rule exists to remove ("v1 favours semantic
+			 * equality with today"). A row with a session keeps today's plain write,
+			 * and a store with no draft rows at all does not even rebuild the map.
 			 */
 			setCwd: (cwd) =>
 				set((state) => {
-					const key = state.activeDraftKey;
-					const draft = key ? state.drafts[key] : undefined;
-					if (!key || !draft || draft.sessionId) return { cwd };
+					const rows = Object.entries(state.drafts);
+					if (!rows.some(([, draft]) => !draft.sessionId)) return { cwd };
 					return {
 						cwd,
-						drafts: {
-							...state.drafts,
-							[key]: {
-								...draft,
-								warmId: undefined,
-								draftRequestId: crypto.randomUUID(),
-							},
-						},
+						drafts: Object.fromEntries(
+							rows.map(([key, draft]) =>
+								draft.sessionId
+									? [key, draft]
+									: [
+											key,
+											{
+												...draft,
+												warmId: undefined,
+												draftRequestId: crypto.randomUUID(),
+											},
+										],
+							),
+						),
 					};
 				}),
 			fetchSessions: async (
@@ -4634,7 +4648,28 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					set({ cataloguePageable: pageable });
 			},
 			setDraftWarmable: (warmable) => {
-				if (get().draftWarmable !== warmable) set({ draftWarmable: warmable });
+				if (get().draftWarmable === warmable) return;
+				set({ draftWarmable: warmable });
+				/*
+				 * RE-ARM ON ARRIVAL (review round 1, MINOR-1). On a cold start the pane's
+				 * first keystroke can beat the capability query's answer, and the composer's
+				 * edge fires once per message - so without this the whole first sentence
+				 * silently degrades to the pre-draft wiring, which is the one case the
+				 * keystroke policy exists to cover. The ACTIVE draft is the pane in view
+				 * (every pane action stages it; `setActiveSession` clears it); if it already
+				 * holds text and nothing has minted yet, this transition is the moment the
+				 * mint becomes possible, and the call is the same silent, receipt-stable one
+				 * the keystroke edge makes. A pane with no text waits for its own keystroke,
+				 * exactly as before.
+				 */
+				if (!warmable) return;
+				const key = get().activeDraftKey;
+				const draft = key ? get().drafts[key] : undefined;
+				if (!key || !draft || draft.sessionId || draft.warmId) return;
+				const held =
+					useConversationInputStore.getState().inputByConversation[key]
+						?.currentInput;
+				if (held) get().ensureDraftWarm(key);
 			},
 			setArchiveUndo: (offer) => {
 				set({ archiveUndo: offer });

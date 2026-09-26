@@ -412,8 +412,10 @@ export type CanonicalSessionHandle = CanonicalSessionView & {
 	 * `Loading conversation…` and its shimmer above the splash the band had
 	 * restored - two contradictory claims on one screen.
 	 *
-	 * Both terms are this hook's own inputs, which is why the rule is here and
-	 * said once:
+	 * Both readers are claims this hook composes once: `enabled`/`sessionId` are
+	 * "there is a stream that owes us a page", `isSession` is the caller's answer
+	 * to whether that id is a SESSION's, and `hydrated` is "a page has been
+	 * applied". The rule lives here, and it is said once:
 	 *
 	 *   - `enabled`/`sessionId` are "there is a stream that owes us a page". A
 	 *     draft has neither, and a caller that holds the stream off on purpose
@@ -425,6 +427,16 @@ export type CanonicalSessionHandle = CanonicalSessionView & {
 	 *     over rows that had simply not arrived. Both call sites pass
 	 *     `Boolean(sessionId)` today, so no caller is in that state - the
 	 *     sentence is here for the one that would be.
+	 *   - `isSession` is the caller's answer to "is that id a SESSION's?", the one
+	 *     fact this hook cannot derive - a NEW chat's draft now has a stream of
+	 *     its own (`sessions.draft`'s minted id, the bridge that holds the warm)
+	 *     and the two ids have the same shape. A draft's subscription is not a
+	 *     page anyone is waiting for: no conversation exists yet, so the pane
+	 *     keeps its empty state until the send creates one (UX round 1, U1: the
+	 *     pane held `Loading conversation…` over that state for the ~200 ms the
+	 *     draft's first frame took). Until drafts could warm, `enabled` was false
+	 *     for them, and this term is what keeps that answer once the pane holds a
+	 *     draft stream.
 	 *   - `hydrated` stays false for a session whose stream failed, so a real
 	 *     conversation whose cold history is in flight (or whose read failed)
 	 *     keeps waiting instead of asserting it is empty over rows that had
@@ -1282,6 +1294,18 @@ function pageIsJournalTail(snapshot: DesktopSnapshot): boolean {
 export function useCanonicalSessionStream(
 	sessionId: string | undefined,
 	enabled: boolean,
+	/**
+	 * Whether `sessionId` is a SESSION this pane can be OWED a page for, or a
+	 * DRAFT's bridge subscription (`sessions.draft`'s minted id).
+	 *
+	 * The two ids have the same shape and only the caller knows which one it
+	 * holds: `SessionPanel` passes `sessionId ?? draft?.warmId`, so the pane's own
+	 * `sessionId` is the answer. A draft's stream exists to hold the engage open,
+	 * not to deliver a page - nothing here is "still loading" until the user's
+	 * first send creates a conversation (see `awaitingHydration`). Every
+	 * pre-draft caller passes a session id and keeps the `true` default.
+	 */
+	isSession = true,
 ): CanonicalSessionHandle {
 	const [view, setView] = useState<CanonicalSessionView>(() => {
 		const seed = enabled && sessionId ? paintSeed(sessionId) : null;
@@ -3468,7 +3492,8 @@ export function useCanonicalSessionStream(
 			 * changed session. See `CanonicalSessionHandle.awaitingHydration` for why
 			 * the composer needs it and why `hydrated` is left alone.
 			 */
-			awaitingHydration: enabled && Boolean(sessionId) && !view.hydrated,
+			awaitingHydration:
+				enabled && Boolean(sessionId) && isSession && !view.hydrated,
 			loadOlder,
 			refreshTail,
 			clearView,
@@ -3481,6 +3506,7 @@ export function useCanonicalSessionStream(
 			view,
 			enabled,
 			sessionId,
+			isSession,
 			loadOlder,
 			refreshTail,
 			clearView,
