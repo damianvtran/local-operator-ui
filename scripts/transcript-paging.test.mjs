@@ -689,9 +689,11 @@ test("a session change discards latch, demand and chain budgets", () => {
  * Round 2 wrote these cases around a third trigger — a LEAD window projected
  * from the reader's measured speed — and the operator's report removed it: a
  * reveal dispatched while the viewport travels mounts under a moving reader
- * (measured this round: a 6966px single-frame displacement before the anchor
- * hold restored it) and the chain of mid-motion spends that follows is the
- * reported loop. The cases that pinned the lead are rewritten here around the
+ * and the chain of mid-motion spends that follows is the reported loop. The
+ * committed readings that discriminate are the on-approach counts (3→1,
+ * 3→1, 7→0, 6→1) and the anchor hold's own 0px frame delta; the
+ * distance-from-top figure this paragraph used to cite is withdrawn
+ * (round-3 review F3). The cases that pinned the lead are rewritten here around the
  * two stops that remain. `no reveal is dispatched while the viewport is
  * travelling` and `a fling that crosses two walls spends exactly one fetch`
  * are the two new cases that FAIL against the module this change replaces —
@@ -826,8 +828,9 @@ test("no reveal is dispatched while the viewport is travelling", () => {
 	// still arriving: the spend must not happen. Written to FAIL against the
 	// module this change replaces — its lead spends this demand at frame 16,
 	// inside the zone and still moving, which is the mount that lands under a
-	// moving viewport (measured: a 6966px single-frame displacement before the
-	// anchor hold restored it).
+	// moving viewport (the committed readings that discriminate are the
+	// on-approach counts; the distance-from-top figure this comment used to
+	// cite is withdrawn, round-3 review F3).
 	const clientHeight = 489;
 	// `travelVelocityPxPerMs` is kept in the notch even though the current
 	// policy no longer reads it: this case has to discriminate against the
@@ -1259,6 +1262,45 @@ test("the budget refills when the quiet window opens a new act", () => {
 		at + SETTLE_MS + 1,
 	);
 	assert.equal(fresh.action, "fetch", "a new act spends again");
+});
+
+test("a downward notch that OPENS the act still refills the budget", () => {
+	// The follow-up to the case above, from the CI review's next round: the down
+	// branch returns BEFORE the shared act-open test runs, so the refill has to
+	// be mirrored in it — otherwise a paused reader whose first notch is
+	// downward loses the fetch the new act should have bought (the notch that
+	// opens the act is the downward one; the up push 100ms later is inside it).
+	let state = wheelUp(initialPagingState(), 0, { atHardTop: true });
+	state = noteSettled(
+		decide(state, geo({ distanceFromTopPx: 0 }), SETTLE_MS + 1).state,
+	);
+	assert.equal(state.actFetchSpent, true, "the act's one fetch is spent");
+
+	// Quiet past GESTURE_GAP_MS, then the DOWNWARD notch: this one opens the
+	// act, so it refills the budget whatever its direction.
+	const downAt = SETTLE_MS + 1 + GESTURE_GAP_MS + 1;
+	state = noteInput(state, {
+		direction: "down",
+		continuous: true,
+		deliberate: false,
+		atHardTop: false,
+		travelledPx: 0,
+		at: downAt,
+	});
+	assert.equal(
+		state.actFetchSpent,
+		false,
+		"the notch that opened the act refilled the budget",
+	);
+
+	// The reader pushes up, still inside that new act.
+	state = wheelUp(state, downAt + 100, { atHardTop: true });
+	const fresh = decide(
+		state,
+		geo({ distanceFromTopPx: 0 }),
+		downAt + 100 + SETTLE_MS + 1,
+	);
+	assert.equal(fresh.action, "fetch", "the new act's push is answered");
 });
 
 // NEGATIVE GUARD: passes against the replaced module as well. It protects
