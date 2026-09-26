@@ -526,11 +526,14 @@ test("the offer is drawn in the sidebar's own lane, mounted at the panel's root 
 	assert.match(source, /position: "relative"/);
 	assert.match(source, /position: "static"/);
 	assert.match(source, /"--width": "min\(248px, 100%\)"/);
-	// The pins' failure line keeps its three sites; the register has none left.
+	// ONE FLOW, ONE SITE (2026-09-26): the three assembly branches are one
+	// scroller now, so the pin's failure line renders exactly once. The old
+	// "every assembly branch" shape cannot be kept by a count on one branch.
 	const pins = source.match(/\{pinFailureLine\}/g) ?? [];
-	assert.ok(
-		pins.length >= 3,
-		`expected the pin's failure line in every assembly branch, found ${pins.length}`,
+	assert.equal(
+		pins.length,
+		1,
+		`expected the pin's failure line once in the merged assembly, found ${pins.length}`,
 	);
 	assert.equal(
 		(source.match(/\{archiveRegister\}/g) ?? []).length,
@@ -548,15 +551,19 @@ test("the offer is drawn in the sidebar's own lane, mounted at the panel's root 
 
 test("the press record expires on the pointer's own path", () => {
 	/*
-	 * THE SLICE IS THE CHATS LIST PANEL'S OWN HANDLERS, and its end marker moved 2026-09-22: the
-	 * element used to end at a `className="mt-2` (gone with the gutter/split class work), and the
-	 * list's class list now sits AFTER its handlers as `className={cn(` - the same marker the
-	 * sessionRow slice below uses. Before `between` was hardened, this slice ran to the end of
-	 * the file, so every pattern it asserts could have been satisfied by the ENTITY region's
-	 * nested rows rather than by this panel, which is exactly what its own comment says the
-	 * records are region-scoped about.
+	 * THE SLICE IS THE CHATS LIST PANEL'S OWN HANDLERS, and its start marker moved 2026-09-26: the
+	 * list panel no longer carries `ref={listPanelRef}` (the merged scroller takes the twin ref) and
+	 * its end marker is the new flow class the one-scroll pass gave it, `className={cn("relative
+	 * space-y-4")}` - the same `className={cn(` marker the sessionRow slice below uses. Before
+	 * `between` was hardened, this slice ran to the end of the file, so every pattern it asserts
+	 * could have been satisfied by the ENTITY region's nested rows rather than by this panel, which
+	 * is exactly what its own comment says the records are region-scoped about.
 	 */
-	const panel = between(SIDEBAR, "ref={listPanelRef}", "className={cn(");
+	const panel = between(
+		SIDEBAR,
+		'key="chats"',
+		'className={cn("relative space-y-4")}',
+	);
 	assert.match(panel, /onPointerMove=/);
 	assert.match(panel, /archivePressExpired\(lastArchivePress\.current/);
 	assert.match(panel, /onPointerLeave=/);
