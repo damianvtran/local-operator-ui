@@ -1,0 +1,11 @@
+# The same two files against this branch's modules (folding tip included).
+
+== scripts/transcript-paging.test.mjs ==
+== postfix: this branch's modules (+ round-1 F1/F2 fixes) ==
+ℹ tests 39
+ℹ pass 39
+ℹ fail 0
+== postfix: hook suite ==
+ℹ tests 2
+ℹ pass 2
+ℹ fail 0

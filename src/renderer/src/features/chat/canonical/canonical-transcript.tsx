@@ -71,6 +71,7 @@ import type {
 	PendingDesktopGate,
 } from "../../../../../shared/desktop-session-contract";
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
+import { APPROVAL_OPTIONS } from "../ask-answer";
 import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
 import { MarkdownRenderer } from "../components/markdown-renderer";
 import {
@@ -2279,22 +2280,61 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 									onAnswer={(label) => onAnswer?.(label)}
 								/>
 							)}
+							{/*
+							 * An approval gets the same affordance as an ask, and the SAME
+							 * component: `AskOptions` carries the contrast triple, the focus
+							 * handling, the aria and the busy semantics as one unit, and a forked
+							 * copy would be a second implementation of a control the design
+							 * contract tests by the triple it is built from. The options are the
+							 * client's own pair — the wire carries none for an approval — and the
+							 * label a press submits is what `approvalVerdict` turns into the
+							 * boolean the request carries.
+							 *
+							 * `busy` is the ask arm's own expression, so the two option bands
+							 * hold identically across the whole window between a press and the
+							 * gate moving.
+							 */}
+							{gate.kind === "approval" && (
+								<AskOptions
+									options={APPROVAL_OPTIONS}
+									requestId={gate.request_id}
+									busy={answering || answer !== null}
+									onAnswer={(label) => onAnswer?.(label)}
+								/>
+							)}
 							<p className="mt-2 text-ink-dim text-meta">
 								{gate.kind === "approval"
 									? /*
-										 * BOTH exits, because a parked card has two and used to
-										 * name one (UX round 1, U2). Escape aborts the WHOLE
-										 * turn - measured: the card clears, the turn ends
-										 * `aborted`, the transcript keeps no denial - so the
-										 * sentence promises the turn's stop exactly as the
-										 * composer's Stop control does. On a paired backend that
-										 * predates the control Escape does nothing, and the
-										 * composer says so while the turn runs; the card stays
-										 * unconditional rather than reading the capability a
-										 * second time, which is a copy decision the UX round can
-										 * revisit if the skew window ever outlives the fix.
+										 * The sentence names THREE exits, in the order a reader
+										 * meets them: the two buttons this card grew, the
+										 * composer's typed path — yes/no kept from when it was
+										 * the only composer path, plus the `1`/`2` the card
+										 * itself prints, which resolve through
+										 * `approvalAnswerValue` because digits that work but are
+										 * unnameable are the trap the ask hint records (UX
+										 * round 1, U6) — and Escape, which aborts the WHOLE
+										 * turn. Measured, for the last one: the card clears,
+										 * the turn ends `aborted`, the transcript keeps no
+										 * denial — so the sentence promises the turn's stop
+										 * exactly as the composer's Stop control does. On a
+										 * paired backend that predates the control Escape does
+										 * nothing, and the composer says so while the turn
+										 * runs; the card stays unconditional rather than
+										 * reading the capability a second time, which is a copy
+										 * decision the UX round can revisit if the skew window
+										 * ever outlives the fix.
+										 *
+										 * AND IT IS THE IDLE SENTENCE, not the held one (agent review
+										 * round 1, finding 7; UX round 1, U2/U3): while a refused or
+										 * unconfirmed answer holds the card, its options are disabled
+										 * for the rest of the card's life, so the buttons-first
+										 * sentence would instruct the two controls that cannot send
+										 * and name no control that still can. The held card names the
+										 * composer, which still reaches the gate, and keeps the exit.
 										 */
-										"Reply yes or no in the composer, or press Escape to stop the turn."
+										answer?.refused
+										? "Answer from the composer instead: type yes, no, 1, or 2 and send, or press Escape to stop the turn."
+										: "Choose Approve or Deny above, type yes, no, 1, or 2 and send, or press Escape to stop the turn."
 									: /*
 										 * The hint names the new affordance first and keeps the
 										 * free-text path honest, because both are real: the

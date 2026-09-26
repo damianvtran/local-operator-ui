@@ -883,7 +883,8 @@ const STAMP_BINDING_NOTES = [
 	 * a main thirty commits and 303 paths ahead, so a resolver who took main's
 	 * copy would drop the record that says which two trees the fold moved, that the
 	 * frames were re-shot because eight of the 29-story set's closure members moved
-	 * with them, and which three plays the manager surface still owes a verdict on.
+	 * with them, and the three plays the manager surface has since read through it:
+	 * 29/29 green with 0 `playFunctionThrewException`, so nothing is owed.
 	 */
 	"meshDesktopRound12FoldRestampNote",
 	/*
@@ -895,6 +896,20 @@ const STAMP_BINDING_NOTES = [
 	 * no re-shoot and why.
 	 */
 	"meshDesktopRound13FoldRestampNote",
+	/*
+	 * This branch's own: it re-stamps the change that added the approval card's
+	 * options, so the reader is owed the pair the file ships - and the two moved
+	 * trees are each that change's own files plus this note's registration here.
+	 */
+	"approvalOptionsRestampNote",
+	/*
+	 * This branch's own, and the first one that adds a declared set in the same
+	 * commit it re-stamps: it re-stamps `fix(chat): spend history reveals at rest,
+	 * one fetch per gesture`, which moves both trees AND adds
+	 * `[redacted]`, so the reader is owed the pair, the frame
+	 * arithmetic, and the reason the swept count does not move.
+	 */
+	"transcriptRevealAtRestRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1274,6 +1289,15 @@ const BRANCH_RECORDS = [
 	 * a re-stamp was.
 	 */
 	"meshDesktopRound13FoldRestampNote",
+	/*
+	 * And by the reveal-at-rest pass - the pass this fold carries. It is the case
+	 * the entry above names, one fold over: the manifest resolution kept this
+	 * branch's set, note and counts by hand against a moved main, and this record
+	 * is the only statement of which two trees the scroll-reveal change moved and
+	 * that the 16 frames it added came from this tree with the `before` arm's two
+	 * modules swapped for `origin/main`'s.
+	 */
+	"transcriptRevealAtRestRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

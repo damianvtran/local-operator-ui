@@ -1,0 +1,18 @@
+{
+	"arm": "before",
+	"ref": "origin/main",
+	"sha256Before": {
+		"src/renderer/src/features/chat/canonical/scroll-paging.ts": "352a3d55bbdbf88b",
+		"src/renderer/src/features/chat/canonical/use-scroll-paging.ts": "4cf55619fef9c915"
+	},
+	"sha256AfterSwap": {
+		"src/renderer/src/features/chat/canonical/scroll-paging.ts": "c363b3ceb221b24c",
+		"src/renderer/src/features/chat/canonical/use-scroll-paging.ts": "e78cfcd67a34e425"
+	},
+	"sha256Restored": {
+		"src/renderer/src/features/chat/canonical/scroll-paging.ts": "352a3d55bbdbf88b",
+		"src/renderer/src/features/chat/canonical/use-scroll-paging.ts": "4cf55619fef9c915"
+	},
+	"restored": true,
+	"harnessExit": 0
+}
