@@ -1534,6 +1534,19 @@ const BRANCH_RECORDS = [
 	 * entry a later fold that started from main's copy would drop first.
 	 */
 	"foldOntoFd19adc9d9Note",
+	/*
+	 * And the child-reader scroll-control pass's four records, this branch's own:
+	 * `childReaderScrollControlFoldNote` and `childReaderScrollControlRestampNote`
+	 * from its fold and its re-stamps, `childReaderScrollControlRoundOneNote` and
+	 * `childReaderScrollControlRoundTwoNote` from its review rounds. A fold that
+	 * starts from main's copy drops them without a word, which is this list's
+	 * whole subject - and the records test is what fails first (agent review
+	 * round 5, R5-1: the list had not been extended for this pass).
+	 */
+	"childReaderScrollControlFoldNote",
+	"childReaderScrollControlRestampNote",
+	"childReaderScrollControlRoundOneNote",
+	"childReaderScrollControlRoundTwoNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
