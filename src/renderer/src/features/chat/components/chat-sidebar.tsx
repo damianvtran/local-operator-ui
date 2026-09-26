@@ -1124,10 +1124,9 @@ export function ChatSidebar({
 	/*
 	 * THE COLUMN'S VIEW, from the preferences store (`chat-sidebar-view.ts`
 	 * carries the model and the rules). Read through `parseSidebarView` HERE
-	 * rather than trusted from the store, for the reason
-	 * `chatSidebarListHeight` is passed as it was read: `localStorage` is not the
-	 * setter's path out, so the module is the one place a tampered value is
-	 * rejected and the one place a future field arrives with an answer.
+	 * rather than trusted from the store: `localStorage` is not the setter's
+	 * path out, so the module is the one place a tampered value is rejected
+	 * and the one place a future field arrives with an answer.
 	 */
 	const chatSidebarView = useUiPreferencesStore(
 		(state) => state.chatSidebarView,
@@ -5386,8 +5385,8 @@ export function ChatSidebar({
 	 * value, so the extra call is free and cannot loop.
 	 *
 	 * The FREEZE itself is the designer's constraint, and it is kept: while a band stands this returns
-	 * immediately, so the forced box (`max(0, base - band)`) is never re-read as a new base - the
-	 * The merged scroller IS the bottom region, so the yield applies to it directly:
+	 * immediately, so the forced box (`max(0, base - band)`) is never re-read as a new base. The
+	 * merged scroller IS the bottom region, so the yield applies to it directly:
 	 * there is no flex-1 region above it for the band to move.
 	 */
 	useLayoutEffect(() => {
@@ -5426,6 +5425,13 @@ export function ChatSidebar({
 
 	const listRegion = (
 		/*
+		 * THE LIST'S OWN REGION MARKER LIVES HERE (round 1, R3). It used to be on the
+		 * merged scroller, which made every rig scoping `[data-sidebar-region="chats"]`
+		 * read the whole sidebar body - the entity sections included - rather than the
+		 * list. The scroller carries `scroller` now and this node carries `chats`, so a
+		 * rig's scope names the list and only the list; the scroller answers for the
+		 * scroll, the clip and the gutter.
+		 *
 		 *  The global partition is NAVIGATION, not a peer of the entity lists.
 		 * Sharing one scroll flow pushed Previous below the fold at 16+ sessions
 		 * and its disclosure became easy to miss, so it is pinned below the
@@ -5480,6 +5486,7 @@ export function ChatSidebar({
 		 */
 		<div
 			key="chats"
+			data-sidebar-region="chats"
 			/*
 			 * The pointer's path, which is the half a coordinate test cannot see: a
 			 * reader who moves away from the point they pressed and comes back has made
@@ -6230,12 +6237,20 @@ export function ChatSidebar({
 				    used to name one of the two regions (the two focus slots, the
 				    walk's roots, the scroll handlers) keep working against this node.
 				    `docs/design/sidebar-sections.md` and `sidebar-split.ts` remain
-				    the record of the removed split. */}
+				    the record of the removed split.
+
+				    THE MARKER IS `scroller`, NOT `chats` (round 1, R3): while this
+				    node carried the `chats` name, every rig that scoped
+				    `[data-sidebar-region="chats"]` to mean "the chats list" read the
+				    whole sidebar body, entity sections included - and the cap rule a
+				    rig wrote for the list capped the entities too. The list's own
+				    node carries `chats` (see the list region below); this node
+				    answers for the scroll, the clip and the gutter. */}
 				<div
 					ref={bindPanelRef}
 					id={CHAT_REGION_ID}
 					tabIndex={-1}
-					data-sidebar-region="chats"
+					data-sidebar-region="scroller"
 					onScroll={() => {
 						refreshFocusedInside(entityPanelRef.current, entitySlotRef);
 						refreshFocusedInside(listPanelRef.current, listSlotRef);

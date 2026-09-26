@@ -1439,7 +1439,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * exactly where §H says they must survive: "Every width keeps them (D13/U12):
 		 * at 800x600 the chips stack onto two rows inside the 640 column, the mark and
 		 * greeting stay, and nothing is dropped. This is the one place the redesign
-		 * must not degrade." The reviewer's frame is 960x673 with the canvas docked,
+		 * must not degrade."
+		 * THE 640 IN THAT QUOTE IS THE REDESIGN'S MEASURE, which the operator
+		 * restored to 900 on 2026-09-26 (`branding.md` § 7); §H's rule — nothing is
+		 * dropped at any width — is what this gate protects, and the rule is
+		 * width-agnostic. The reviewer's frame is 960x673 with the canvas docked,
 		 * where the chat column sits at its 480px floor (§I) - 480x673 of room for a
 		 * 32px mark, a two-line greeting and two rows of chips - and the screen drew
 		 * the composer and nothing else.
@@ -5835,7 +5839,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * ring frames. Sharing `CHAT_MEASURE` - the same container-keyed track
 					 * `COMPOSER_BOX` resolves - keeps the two edge-aligned at every width;
 					 * viewport-keyed classes that merely look equivalent drift from it in
-					 * the 640-768px band, and a notice half a box-width off reads as
+					 * the band around the container's threshold, and a notice half a box-width off reads as
 					 * unrelated chrome rather than as this composer's own failure.
 					 *
 					 * `role="alert"` rather than `aria-live="polite"`: a send that did not
@@ -6703,15 +6707,20 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						 * (`basis-full`) and the controls kept the second. Design round 2's D21 is that
 						 * branch: §G1 requires "one control row, 32px, always one line, at every width",
 						 * and at 800x600 - one of §H's own blueprint widths - the composer measured 640x142
-						 * where it measures 640x109 at 1380, a permanent second row.
+						 * where it measures 640x109 at 1380, a permanent second row. (Both numbers were
+						 * taken under the redesign's 640 measure, which the operator restored to 900 on
+						 * 2026-09-26; the defect and the fix are about the ROW, and the row's rule below is
+						 * width-agnostic.)
 						 *
-						 * THE THRESHOLD WAS KEYED ON THE WRONG THING. The composer is capped at the
-						 * 640px reading measure (§B2), so its inner row has the same ~608px of content
-						 * at a 1380px window and at an 800px one - the box is `640x109` in both, measured.
-						 * The column width does not reach the row at all until the column falls below the
-						 * measure (columns < ~688, i.e. a composer narrower than 640), which is the only
-						 * case a breakpoint here could ever have been about. So the row is `flex-nowrap`
-						 * at every width and the yield §G1 names is what makes room: the cwd chip
+						 * THE THRESHOLD WAS KEYED ON THE WRONG THING. What reaches this row is the
+						 * composer's own box, not the window's width, and a breakpoint on the COLUMN
+						 * could only ever be about the column: a wrap that fired there moved the
+						 * controls while the composer's own box had not changed. (The numbers this
+						 * paragraph once leaned on - the same `640x109` content box at 1380 and at
+						 * 800x600 - were measured under the redesign's 640 measure, so they no longer
+						 * describe the restored 900 one; the ROW is what the rule below is about.)
+						 * So the row is `flex-nowrap` at every width and the yield §G1 names is what
+						 * makes room: the cwd chip
 						 * truncates, the usage reading drops below a 480px composer, the model selector
 						 * shortens to its glyph.
 						 *
@@ -6739,8 +6748,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						 * Measured on the live composer at a 750px box: with the row free to wrap, the
 						 * controls sat 24px below the readings; with `flex-nowrap` they stay on one line
 						 * and the name gives up the width. The same rule is what keeps D21's second row
-						 * from coming back: at a 640px box — the composer at its measure, which is the
-						 * case at every window width this app is run at — the row has no width to give.
+						 * from coming back: at the composer's own measure box, and at every box below
+						 * it, the row has no width to give and yields instead.
 						 */}
 						<div className="flex min-w-0 flex-nowrap items-center gap-x-2">
 							{/*

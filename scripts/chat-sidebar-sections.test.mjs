@@ -14,8 +14,13 @@
  * heights rather than at a fixture's.
  *
  * WHAT THIS CANNOT SAY: that the sections LOOK right, or that a drag on the real
- * boundary produces these numbers - `renderer-driver.mjs --scene sidebar-sections`
- * does that on the built app, and its frames are the claim.
+ * boundary produces these numbers. That used to be `renderer-driver.mjs --scene
+ * sidebar-sections`'s job on the built app; the scene was RETIRED with the
+ * split's removal (agent review round 1, R2/Q3 - the merged panel draws no
+ * boundary and no collapse), so this file's contract over the module kept as the
+ * record, and the surviving stories under
+ * `docs/evidence/chat-sidebar-sections/` for the merged panel's own frames, are
+ * what is left.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -83,6 +88,8 @@ const {
  * Both were read off the built app by `--scene sidebar-sections` at 1380x900 and
  * 1024x673 (`capacity`, `panel` in its `default geometry` note; at 900 the two
  * drags' extremes 72 + 480 re-derive the same 552) - real numbers, not round ones.
+ * (The scene has since been retired with the split's removal; the numbers stay
+ * as the module record's own.)
  */
 const AT_900 = { capacity: 552, panel: 560 };
 const AT_673 = { capacity: 325, panel: 333 };
@@ -225,12 +232,15 @@ test("the dragged size is persisted, and survives the round trip to disk", () =>
  * scroller wrapping the two its sections carry, which is exactly what the operator
  * photographed. No node test in this suite renders CSS, and jsdom computes no
  * layout at all, so the instrument is the shipped class list on the two elements
- * that decide it, plus the drill the rig runs: `--scene sidebar-sections`
- * `checkSidebarScroll` measures `scrollHeight === clientHeight` on the column and the
- * panel, one scrollable element under a point, and a wheel over either pane leaving
- * the chrome and the other pane where they were, in both palettes and at short
- * heights. Read together - this file says the classes are right, the scene says the
- * browser agrees.
+ * that decide it - and that is the instrument ALONE since the scene that used to
+ * take the browser's word for them (`--scene sidebar-sections`, whose
+ * `checkSidebarScroll` measured `scrollHeight === clientHeight` on the column and
+ * the panel, one scrollable element under a point, and a wheel leaving the chrome
+ * and the other pane where they were) was retired with the split's removal (agent
+ * review round 1, R2/Q3). Per-region slices rather than whole-file counts, for the
+ * reason the round-1 R7 finding states: a whole-file count can be satisfied by two
+ * unrelated occurrences, and the previous `overflow-y-auto === 1` counted text in
+ * comments while missing `overflow-y-scroll` altogether.
  */
 test("the sidebar's column cannot scroll, and its panes contain their own overflow", () => {
 	const sidebar = readFileSync(
@@ -275,15 +285,43 @@ test("the sidebar's column cannot scroll, and its panes contain their own overfl
 		),
 		"the merged scroller's class list must carry the single overflow layer",
 	);
-	assert.equal(
-		(pane.match(/overflow-y-auto/g) ?? []).length,
-		1,
-		"exactly one scrollable layer in the panel: the sidebar must not scroll on top of its sections, and a region must not scroll inside them (operator rule, restated 2026-09-26)",
+	/*
+	 * PER-REGION SLICES, NOT WHOLE-FILE COUNTS (agent review round 1, R7). The
+	 * scroller's own tag is read for the one scrollable layer; each region's own
+	 * tag-to-class slice is read for ordinary flow and for the absence of a scroll
+	 * layer of its own; and the class whole-file scan the old count missed is kept
+	 * as an absence check. A count over the file could be satisfied by two
+	 * unrelated occurrences and could be fed by comments - this cannot.
+	 */
+	const scrollerClass = pane.match(
+		/data-sidebar-region="scroller"[\s\S]{0,400}?className="([^"]+)"/,
 	);
-	assert.equal(
-		(pane.match(/relative space-y-4/g) ?? []).length,
-		2,
-		"both regions are ordinary flow inside the one scroller",
+	assert.ok(scrollerClass, "the scroller's own class list was not found");
+	assert.match(
+		scrollerClass[1],
+		/(^|\s)overflow-y-auto(\s|$)/,
+		"the one scrollable layer is the merged scroller's",
+	);
+	const regionClass = 'className={cn("relative space-y-4")}';
+	for (const region of ["entities", "chats"]) {
+		const marker = `data-sidebar-region="${region}"`;
+		const at = pane.indexOf(marker);
+		assert.ok(at >= 0, `${marker} is not drawn`);
+		const classAt = pane.indexOf(regionClass, at);
+		assert.ok(
+			classAt > at,
+			`the ${region} region's own class list was not found`,
+		);
+		assert.doesNotMatch(
+			pane.slice(at, classAt + regionClass.length),
+			/overflow(-y)?-(auto|scroll)/,
+			`the ${region} region must be ordinary flow inside the one scroller: no scroll layer of its own`,
+		);
+	}
+	assert.doesNotMatch(
+		pane,
+		/overflow-y-scroll/,
+		"no `overflow-y-scroll` layer anywhere in the panel (the whole-file count this replaces looked only for `overflow-y-auto`)",
 	);
 	assert.doesNotMatch(
 		pane,
