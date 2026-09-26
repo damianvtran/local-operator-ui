@@ -153,6 +153,20 @@ export const CHAT_PAGE_START = 10;
 export const CHAT_PAGE_STEPS = [25, 50] as const;
 export const CHAT_PAGE_STEP = 50;
 
+/**
+ * The ceiling `loads` is clamped to on read (review round 3, R13).
+ *
+ * The ladder's arithmetic overflows long before a stored value stops being
+ * finite: `pageLimit` computes `50 + (steps - 2) * 50`, so any `loads` past
+ * ~3.6e306 returns Infinity and the foot's label takes `Infinity - Infinity` into
+ * `Show NaN more chats`. Nothing in the app writes a value like that - this is
+ * the tampered-storage edge of `parseSidebarView`, which already floors,
+ * type-checks and degrades everything else it reads - so the clamp is the
+ * read-side piece of the same rule: the largest read this list can ask for is the
+ * 500-row page the store's own cap names, and no stored number may exceed it.
+ */
+export const CHAT_PAGE_MAX = 500;
+
 /** How many rows a list that has been "load more"-ed `loads` times draws. */
 export function pageLimit(loads: number): number {
 	const steps = Math.max(0, Math.floor(loads));
@@ -348,9 +362,18 @@ export function toggleSection(
 }
 
 /**
- * Moving a section up or down one place - the popover's alternate to drag and
- * drop, and THE SAME ORDER the region boundary's arrow switches write, so the
- * two controls cannot disagree about what "next" means.
+ * Moving a section up or down one place - the popover's move pair, which is the
+ * ONLY route to a reordered section list at this head: no drag-and-drop reorder
+ * ships (`docs/design/sidebar-sections.md` records the decision), so this is not
+ * an alternate to anything.
+ *
+ * AND IT WRITES A DIFFERENT AXIS THAN THE DIVIDER'S ARROW. That control swaps
+ * which REGION draws first (`chat-sidebar.tsx`'s region order), while this one
+ * writes `view.order` - which SECTION draws first. The two cannot disagree
+ * because they never write the same field, not because they share one order, so
+ * a future editor must not try to keep a single order in sync between them. (An
+ * earlier revision of this comment claimed both; neither held - review round 3,
+ * R14.)
  *
  * The move is over the SHOWN sections, and it stays that way when a hidden one
  * sits between: the reader is looking at what is drawn, so "up" has to mean the
@@ -427,7 +450,7 @@ export function parseSidebarView(value: unknown): SidebarView {
 		: DEFAULT_SIDEBAR_VIEW.orderBy;
 	const loads =
 		typeof raw.loads === "number" && Number.isFinite(raw.loads) && raw.loads > 0
-			? Math.floor(raw.loads)
+			? Math.min(CHAT_PAGE_MAX, Math.floor(raw.loads))
 			: 0;
 	return { hidden, order, groupBy, orderBy, loads };
 }

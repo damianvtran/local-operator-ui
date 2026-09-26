@@ -268,6 +268,38 @@ function SessionPanel({
 		draftIdentity ? state.drafts[draftIdentity] : undefined,
 	);
 	const cwd = useCanonicalSessionsStore((state) => state.cwd);
+	// Read here rather than threaded from the page, for the same reason as
+	// `panelCapabilities` above: the query is cached (`useServerHealth`'s staleTime),
+	// so this is a store read and not a second request.
+	const serverHealth = useServerHealth();
+	/*
+	 * A RECOVERED SERVER RE-SUBSCRIBES THE OPEN CONVERSATION (UX round 2, U19;
+	 * QA round 2's Q3).
+	 *
+	 * The app can cross its own "the daemon is stopped" decision - main reports that
+	 * after its 90 s line - and the later auto-attach clears the strip WITHOUT
+	 * reopening this conversation's stream: the transcript keeps its LOST_CONNECTION
+	 * notice and manual Reconnect, and everything behind them stays frozen. Measured
+	 * by the UX round as a notice that "outlives the recovery", and by QA as a
+	 * conversation that never re-subscribed: the walker waited 60 s past the revive
+	 * and the pane was still waiting.
+	 *
+	 * EDGE-TRIGGERED on the server coming BACK, not level: a view that is
+	 * `unavailable` while the server is already online is one whose own retry has
+	 * just failed, or whose refusal is per-conversation, and re-pressing it on every
+	 * render would be a reconnect loop with the reader's health as its budget. The
+	 * press is the SAME door the notice's Reconnect uses (`canonical.view.retry`), so
+	 * the automatic and manual routes cannot drift.
+	 */
+	const serverOnline = serverHealth?.online === true;
+	const wasOnline = useRef(serverOnline);
+	useEffect(() => {
+		const recovered = serverOnline && !wasOnline.current;
+		wasOnline.current = serverOnline;
+		if (!recovered) return;
+		if (canonical.view.status !== "unavailable") return;
+		canonical.view.retry();
+	}, [serverOnline, canonical]);
 	const setCwd = useCanonicalSessionsStore((state) => state.setCwd);
 	const markTurnStopped = useCanonicalSessionsStore(
 		(state) => state.markTurnStopped,
@@ -1892,17 +1924,38 @@ function SessionPanel({
 		 * was killed by the press and would be missed by a receipt-stamped fact.
 		 */
 		const pressedAt = Date.now();
+		/*
+		 * WRITTEN AT THE PRESS, AND THE RECEIPT CAN ONLY TAKE IT BACK (UX round 2,
+		 * U15).
+		 *
+		 * This fact is what the reducer reads when the killed call's END event lands
+		 * (`killedByUserStop`), and that event is pushed by the daemon the moment the
+		 * interrupt acts - while the receipt is the HTTP response to this request, which
+		 * returns after the turn has wound down. Writing the fact from the receipt
+		 * therefore loses a race the fact exists to survive: measured in the interrupt
+		 * rig's Esc half, the ledger row read `Ran sleep 45 failed 0.1s` with
+		 * `[data-stopped-turn]` already drawn beside it - the line proves the receipt
+		 * did arrive `interrupted`, but the row's own classification had already been
+		 * made, and the reducer never revisits a settled row.
+		 *
+		 * THE HONESTY CLAUSE IS THE RECEIPT'S OTHER ANSWER: a press the owner ran on a
+		 * session that had nothing to interrupt must not reclassify the next genuine
+		 * failure as the user's own doing, so an answer that is NOT `interrupted`
+		 * clears the fact again. Between the press and that answer the fact stands - a
+		 * window of one round trip, and the only window in which a call already running
+		 * at the press can be told apart from one that failed on its own. A press that
+		 * never gets an answer (`catch` below) leaves the fact until the next turn
+		 * starts, which is the same door `clearTurnStopped` reads on `busy`.
+		 *
+		 * One visible consequence, stated rather than discovered: the Stop line and its
+		 * Retry read this same fact, so they appear at the press rather than a round
+		 * trip later, and vanish with the clear when the owner answers `idle`.
+		 */
+		markTurnStopped(sessionId, pressedAt);
 		void interruptTurn(sessionId, crypto.randomUUID())
 			.then((receipt) => {
-				/*
-				 * `interrupted` AND NOTHING ELSE. The route also answers `idle` — no turn was
-				 * running, or the session is cold — and recording a stop for a press that
-				 * stopped nothing would reclassify the next genuine failure in this session as
-				 * the user's own doing. The receipt is the only authority on which of the two
-				 * happened, which is why the fact is written here rather than at the press.
-				 */
-				if (receipt.status === "interrupted")
-					markTurnStopped(sessionId, pressedAt);
+				if (receipt.status !== "interrupted")
+					clearTurnStopped(sessionId);
 				setStopNotice(interruptNotice(receipt));
 			})
 			.catch((error) =>
@@ -1912,7 +1965,7 @@ function SessionPanel({
 				// still on screen and `busy` is still true, which is the honest state.
 				setSendError(userFacingMessage(error, "Stop could not be confirmed.")),
 			);
-	}, [sessionId, interruptAvailable, markTurnStopped]);
+	}, [sessionId, interruptAvailable, markTurnStopped, clearTurnStopped]);
 	/*
 	 * The notice describes the LAST interrupt, so a turn that starts afterwards
 	 * retires it: the sentence says a turn was stopped, and the next turn is not

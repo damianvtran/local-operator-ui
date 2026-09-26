@@ -395,6 +395,23 @@ test("an unreadable or tampered view draws the column nobody has configured", ()
 		0,
 		"an infinite page is refused rather than clamped to a row count",
 	);
+	/*
+	 * R13 (review round 3): a FINITE absurd counter used to pass through, and the
+	 * ladder's own arithmetic then overflowed into `Infinity - Infinity` - the foot
+	 * control printed `Show NaN more chats`. Clamped to the store's own 500-row page
+	 * cap, which is the largest read this list can honestly ask for.
+	 */
+	assert.equal(
+		parseSidebarView({ loads: 1e9 }).loads,
+		500,
+		"a tampered click counter is clamped to the store's page cap",
+	);
+	assert.equal(parseSidebarView({ loads: 1e308 }).loads, 500);
+	assert.equal(
+		pageMoreLabel(parseSidebarView({ loads: 1e308 }).loads, 40),
+		"Show 40 more chats",
+		"and the foot it feeds names a count rather than `NaN` (the R13 symptom)",
+	);
 	assert.deepEqual(DEFAULT_SIDEBAR_VIEW.hidden, []);
 	assert.equal(DEFAULT_SIDEBAR_VIEW.groupBy, "section");
 	assert.equal(DEFAULT_SIDEBAR_VIEW.orderBy, "active-first");

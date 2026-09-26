@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { type FC, useEffect, useRef } from "react";
 import { archiveControlLabel } from "../chat-archived";
+import { canvasToggleCap, isCanvasTogglePress } from "../canvas-shortcut";
 import type { McpServerRow, RunDetails } from "./run-details";
 import { RunDetailsTrigger } from "./run-details";
 
@@ -281,7 +282,37 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	const isConsolePaneOpen = useUiPreferencesStore((s) => s.isConsolePaneOpen);
 
 	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
-	const shortcut = isMac ? "⌘+Shift+C" : "Ctrl+Shift+C";
+	// The cap and the predicate share one module, so the promise this string prints
+	// and the press that answers it cannot drift (UX round 2, U14).
+	const shortcut = canvasToggleCap(isMac);
+
+	/*
+	 * THE CHORD THIS CONTROL PRINTS IS BOUND HERE (UX round 2, U14).
+	 *
+	 * The name advertised `⌘⇧C` and nothing answered it: four recorded presses left
+	 * the pane closed while `⌘B`, `⌘N` and `⌘K` all acted. The listener lives with
+	 * the control rather than in the shell because the control is what makes the
+	 * promise, and it is bound wherever the control's own gate (`onOpenOptions`, the
+	 * prop that decides whether this pane can offer the canvas at all) is answered -
+	 * the same condition the button renders under, so the chord cannot outlive the
+	 * cap it is printed from. It TOGGLES: while the canvas is open the button is
+	 * unmounted, and the reader who opened it with the chord must be able to close
+	 * it with the chord.
+	 *
+	 * The state is read through `getState()` at press time, the shape the shell's own
+	 * chord uses: a listener that closes over `isCanvasOpen` would be re-registered
+	 * on every toggle and could still answer with the render it was born in.
+	 */
+	useEffect(() => {
+		if (!onOpenOptions) return;
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (!isCanvasTogglePress(event)) return;
+			event.preventDefault();
+			setCanvasOpen(!useUiPreferencesStore.getState().isCanvasOpen);
+		};
+		document.addEventListener("keydown", onKeyDown);
+		return () => document.removeEventListener("keydown", onKeyDown);
+	}, [onOpenOptions, setCanvasOpen]);
 
 	/*
 	 * Three facts about the cluster's children, read once because the CLUSTER's
