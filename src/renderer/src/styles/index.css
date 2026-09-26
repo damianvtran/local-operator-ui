@@ -190,31 +190,62 @@
 }
 
 /*
- * THE NON-CHAT ROUTES' DRAG BAND. Settings, agents, agent hub and schedules have no
- * 40px toolbar row of their own, so on a platform where the app hides the frame they
- * would have no drag surface at all above the page's own top padding. The band is
- * `--chrome-strip-h` tall, which is 0 on Windows and Linux (their buttons sit IN the
- * first row, so the band has nothing to clear) and 32 on macOS.
+ * THE NON-CHAT ROUTES' DRAG BAND, AND WHERE THE LANE ALREADY STANDS IN FOR IT.
+ *
+ * Settings, agents, agent hub and schedules have no 40px toolbar row of their own, so
+ * on Windows and Linux - where the OS draws its caption buttons INTO the client area
+ * and no lane is drawn above the columns - the page would otherwise sit under the
+ * buttons and a frameless window would have no drag surface above it at all. There
+ * the band is the caption's own height (40), which is both the drag handle and the
+ * clearance: `env(titlebar-area-height)` is the WCO area's height, and spending it as
+ * a top inset is correct HERE because the buttons sit inside the client area's top
+ * 40px rather than above it.
+ *
+ * macOS AND A LEADING LINUX LAYOUT ARE NOT IN ITS GATE, and that is the fix rather
+ * than an omission. On both, `[data-titlebar-lane]` is already drawn above every
+ * column - it IS the drag surface and the clearance - so a band on top of it was a
+ * SECOND inset: on macOS the settings rail and its content began 32px below the chat
+ * header (measured y 62.86 against 32; the operator's report of 2026-09-26, "for
+ * sub-views like the settings page, the sidebar and view doesn't go all the way to
+ * the top").
+ *
+ * THE COMPLEMENT IS WRITTEN IN THE SELECTORS, NOT IN THE ORDER OF THE BLOCKS. Each
+ * arm below carries `:not([data-chrome-leading="true"])`, so no document state can
+ * match this rule and the leading rule together and moving either block cannot
+ * change which one wins; a later review (round 1, R1) measured the opposite shape:
+ * with the negative condition absent, a leading layout matched both rules and
+ * `display: none` won only by being later in the file, so a reorder re-introduced the
+ * double inset with the suite green. `:not(...=true)` rather than `...=false` is
+ * deliberate: a document whose `leading` has not been written yet matches the
+ * negative test, so a win/linux window keeps its drag surface and its caption
+ * clearance in that state instead of losing both (`useWindowChrome` writes the
+ * attribute in a layout effect, before the first paint). Do not re-add the strip
+ * height here: under a lane it is 32px of nothing on every non-chat route.
  */
-[data-chrome-mode="integrated"] [data-chrome-route-band] {
+[data-chrome-mode="integrated"][data-chrome-platform="win"]:not(
+		[data-chrome-leading="true"]
+	)
+	[data-chrome-route-band],
+[data-chrome-mode="integrated"][data-chrome-platform="linux"]:not(
+		[data-chrome-leading="true"]
+	)
+	[data-chrome-route-band] {
 	display: block;
-	height: var(--chrome-strip-h);
+	height: env(titlebar-area-height, 0px);
 	-webkit-app-region: drag;
 }
 
 /*
- * On Windows and Linux the band is the CAPTION HEIGHT rather than the strip, for the
- * same reason the strip is 0 there: the buttons are drawn INTO the client area's
- * top 40px, so a route with no 40px row of its own needs a band where they sit - both
- * to keep the page's own heading clear of them and because a frameless window with
- * no drag surface cannot be moved at all. `env(titlebar-area-height)` is that 40, and
- * on Linux a leading layout resolves the same value the strip already has.
+ * THE EXPLICIT HALF OF THE COMPLEMENT, for the state where it is not implied: a
+ * leading layout draws no band, `display: none` rather than height 0, for the reason
+ * the lane's own rule gives (a zero-height drag region still swallows a press along
+ * the window's top edge). With the negative condition on the block rule this can no
+ * longer be the only thing standing between a leading layout and a double inset - it
+ * is the readable statement of the same fact, and it is what a reader checks first.
  */
-[data-chrome-mode="integrated"][data-chrome-platform="win"]
-	[data-chrome-route-band],
-[data-chrome-mode="integrated"][data-chrome-platform="linux"]
+[data-chrome-mode="integrated"][data-chrome-leading="true"]
 	[data-chrome-route-band] {
-	height: env(titlebar-area-height, 0px);
+	display: none;
 }
 
 /*
