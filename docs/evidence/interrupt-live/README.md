@@ -356,3 +356,29 @@ remediation comment with both readings and is NOT what the U15 fix changes; it
 is visible here rather than smoothed over so a later reader can tell the two
 apart. The frames committed here are from the clean-build run whose record
 holds the claim.
+
+## Re-taken again at the remediation head, with Q5's widened arm
+
+The set was re-shot from a clean build of the remediation tree (2026-09-26,
+isolated daemon on its own scratch config, `interrupt-proof.json` beside the
+frames). What moved since the take above: `transcript-reducer.ts`'s no-clock arm
+was widened from `seededByThisEnd && claimsFailure` to `claimsFailure`, so BOTH
+no-clock shapes read stopped - the row this viewer only ever met as it settled
+(what U15's passing run measured) AND the row it saw ANNOUNCED but never started.
+
+That second shape is what this rig actually kills on this daemon, and it is why
+QA round 3 measured the claim failing 3/3 while U15's runs measured it passing: a
+`[bash:N]` call PARKS at the approval gate, so depending on whether the pane had
+met the announced row before the press, the pre-Q5 arm took the seeded branch or
+refused the row and painted `failed` under the turn's own Stopped line. Both
+readings were real; the classification now covers both.
+
+Falsification, one command pair apart on the same rig:
+
+- pre-Q5 arm restored: `turn2.readsAsStopped.ok = false`, transcript tail
+  `["Ran sleep 45 failed 0.2s"]`, run rc=1;
+- arm in place: `turn2.readsAsStopped.ok = true`, transcript tail
+  `["Ran sleep 45 interrupted 0.2s"]`, run rc=0.
+
+The frames and record committed here are from the second run; the readings they
+carry are the ones quoted above.
