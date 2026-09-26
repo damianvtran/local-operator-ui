@@ -1157,6 +1157,7 @@ const STAMP_BINDING_NOTES = [
 	"scratchDriverRemovalRestampNote",
 
 	"foldOnto22c0fcd4fdNote",
+	"foldSpliceLintRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
