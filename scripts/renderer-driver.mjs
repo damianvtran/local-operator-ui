@@ -1946,13 +1946,17 @@ async function waitForGone(cdp, selector, timeoutMs = 15_000) {
  * the scene checks both, because a frame the app never held still for, or one
  * with a transient banner on it, is not evidence.
  */
-async function captureSettled(cdp, label, { attempts = 8, gapMs = 150 } = {}) {
+async function captureSettled(
+	cdp,
+	label,
+	{ attempts = 8, gapMs = 150, toastWaitMs = 15_000 } = {},
+) {
 	let previous = null;
 	let frame = null;
-	let toastWaitMs = 0;
+	let waitedForToastsMs = 0;
 	for (let attempt = 1; attempt <= attempts; attempt += 1) {
-		const clearance = await waitForNoToasts(cdp);
-		toastWaitMs += clearance.waitedMs;
+		const clearance = await waitForNoToasts(cdp, toastWaitMs);
+		waitedForToastsMs += clearance.waitedMs;
 		/*
 		 * The palette is asserted BELOW, on the frame this helper KEEPS rather than on
 		 * each attempt: a retry is the same screen captured again, so eight identical
@@ -1984,7 +1988,7 @@ async function captureSettled(cdp, label, { attempts = 8, gapMs = 150 } = {}) {
 				attempts: attempt,
 				stable: true,
 				toastFree,
-				toastWaitMs,
+				toastWaitMs: waitedForToastsMs,
 			});
 		}
 		previous = bytes;
@@ -1995,7 +1999,7 @@ async function captureSettled(cdp, label, { attempts = 8, gapMs = 150 } = {}) {
 		attempts,
 		stable: false,
 		toastFree: false,
-		toastWaitMs,
+		toastWaitMs: waitedForToastsMs,
 	});
 }
 
@@ -15437,6 +15441,7 @@ async function sceneConversationStart(cdp) {
 	const pressFrame = await captureSettled(
 		cdp,
 		`conversation-start-${size}-press`,
+			{ toastWaitMs: 500 },
 	);
 	note("frame", JSON.stringify(pressFrame));
 	const press = {
@@ -15506,12 +15511,14 @@ async function sceneConversationStart(cdp) {
 	const flipFrame = await captureSettled(
 		cdp,
 		`conversation-start-${size}-flip`,
+			{ toastWaitMs: 500 },
 	);
 	note("frame", JSON.stringify(flipFrame));
 	await wait(1000);
 	const plusOneFrame = await captureSettled(
 		cdp,
 		`conversation-start-${size}-flip-plus-1s`,
+			{ toastWaitMs: 500 },
 	);
 	note("frame", JSON.stringify(plusOneFrame));
 	const flip = {
@@ -15618,6 +15625,7 @@ async function sceneConversationStart(cdp) {
 		const beforeRetryFrame = await captureSettled(
 			cdp,
 			`conversation-start-${size}-failure-before-retry`,
+				{ toastWaitMs: 500 },
 		);
 		note("frame", JSON.stringify(beforeRetryFrame));
 		note(
@@ -15630,6 +15638,7 @@ async function sceneConversationStart(cdp) {
 	const failureFrame = await captureSettled(
 		cdp,
 		`conversation-start-${size}-failure`,
+			{ toastWaitMs: 500 },
 	);
 	note("frame", JSON.stringify(failureFrame));
 	const failure = { read: await reads(), refused: refused.ok };
@@ -15675,6 +15684,7 @@ async function sceneConversationStart(cdp) {
 	const reloadFrame = await captureSettled(
 		cdp,
 		`conversation-start-${size}-reload`,
+			{ toastWaitMs: 500 },
 	);
 	note("frame", JSON.stringify(reloadFrame));
 	const reload = {
@@ -15755,18 +15765,40 @@ async function sceneConversationStart(cdp) {
 		);
 		note("first conversation", JSON.stringify(firstId));
 		if (TAP_CONTROL) {
+			/*
+			 * SIXTY SECONDS, not the twelve the first cut armed. A completed turn now
+			 * raises an unseen-completion toast (the fold's catalogue work), and
+			 * `captureSettled` waits a frame out of any toast it finds - measured at
+			 * ~10 s per capture on the away and return frames - so the scene's own
+			 * steps easily outlasted a 12 s hold, the mock answered the away message
+			 * and the return read a FINISHED turn: no wait line, T5 red for the right
+			 * reason (a response the scene never meant to allow). The hold must outlive
+			 * the scene's own waits, so it does.
+			 */
 			const armed = await fetch(`${TAP_CONTROL}/__tap/hold-messages`, {
 				method: "POST",
 				headers: { "content-type": "application/json" },
-				body: JSON.stringify({ count: 1, ms: 12000 }),
+				body: JSON.stringify({ count: 1, ms: 60000 }),
 			});
 			note("tap hold", `${armed.status} ${await armed.text()}`);
 		}
 		await typeIntoComposer("A second message, in flight while the run leaves.");
 		await wait(400);
+	/*
+	 * THE TOAST WAIT IS BOUNDED FOR THESE THREE - AND THE SAME BOUND IS ON THE SCENE'S OWN SIX (the press, flip, flip-plus-1s, failure-before-retry, failure and reload captures; found while re-shooting on the
+	 * folded tree): a completed turn raises a completion toast, and the default
+	 * 15 s clearance would sit out the toast's whole lifetime before each frame -
+	 * measured ~10 s per capture - so the run's own steps outlasted the app's
+	 * 25 s send deadline, the tap's hold was cut short by the app recording
+	 * `Couldn't confirm`, and the return read a FINISHED send instead of the
+	 * in-flight one T5 is about. Half a second is enough for a toast already
+	 * fading, and a toast that is still up is part of the moment these frames
+	 * photograph (the README says so).
+	 */
 		const awayPressFrame = await captureSettled(
 			cdp,
 			`conversation-start-${size}-away-press`,
+			{ toastWaitMs: 500 },
 		);
 		note("frame", JSON.stringify(awayPressFrame));
 		const awayPress = await reads();
@@ -15785,9 +15817,11 @@ async function sceneConversationStart(cdp) {
 			return { rows: rows.length, text: region.innerText.slice(0, 400) };
 		})()`);
 		note("sidebar (away)", JSON.stringify(sidebar));
+	// The same bounded toast wait the away-press capture explains.
 		const awayFrame = await captureSettled(
 			cdp,
 			`conversation-start-${size}-away`,
+			{ toastWaitMs: 500 },
 		);
 		note("frame", JSON.stringify(awayFrame));
 		// COME BACK, pressed from the sidebar the way a user returns.
@@ -15798,9 +15832,11 @@ async function sceneConversationStart(cdp) {
 			);
 		}
 		await wait(600);
+	// The same bounded toast wait the away-press capture explains.
 		const backFrame = await captureSettled(
 			cdp,
 			`conversation-start-${size}-return`,
+			{ toastWaitMs: 500 },
 		);
 		note("frame", JSON.stringify(backFrame));
 		const returned = { read: await reads(), line: await waitLine() };
