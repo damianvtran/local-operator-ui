@@ -965,6 +965,15 @@ const STAMP_BINDING_NOTES = [
 	 * written as bare SHAs for exactly that reason.
 	 */
 	"mentionsRemedyRestampNote",
+	/*
+	 * This pass's own: it re-stamps the U15 fix (both trees move - the reducer and
+	 * its suite, the corrected menu docblock, the new story file and the sweep
+	 * rows) AND records the frames that moved with them: 156 new up the view-menu
+	 * set, the interrupt set re-taken whole. A reader is owed the pair and the
+	 * reason it was re-derived in a commit rather than by the capture run (that
+	 * run was dirty; its own head and flag stay as its records).
+	 */
+	"u15D28RestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1326,6 +1335,14 @@ const BRANCH_RECORDS = [
 	 * re-derived tokens in it reading as main's.
 	 */
 	"mentionsRemedyRestampNote",
+	/*
+	 * Grown by the U15 + D28 pass, which wrote this branch's newest top-level
+	 * record. It is listed for the reason the list exists: the pass moved BOTH
+	 * trees and added a frame set, and the record is the only statement of what
+	 * moved, why the pair was re-derived in a commit rather than by the capture
+	 * run, and the one flake it did not fix.
+	 */
+	"u15D28RestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
