@@ -243,7 +243,10 @@ const main = async () => {
 			 * look the same in a still. `undefined` means no first frame was written
 			 * (an open that never paints gets its settled frame instead), and only a
 			 * reading is compared: whatever the slot holds at the first paint, it has
-			 * to hold at settle.
+			 * to hold at settle - and it has to hold SOMETHING, because two empty
+			 * strings are what a selector broken by a header move produces (QA round 2,
+			 * Q1; the surface this reads follows #542's move - see `session-open-live.tsx`'s
+			 * `headerLine`).
 			 */
 			let headerAtFirstPaint;
 			const pending = cdp.eval(
@@ -303,14 +306,28 @@ const main = async () => {
 				 * first painted frame and the settled one must read the same slot; a
 				 * difference is the staggered arrival this pass exists to remove, and a
 				 * still cannot show it - only the comparison can.
+				 *
+				 * AN EMPTY FIRST READING REFUSES THE RUN (QA round 2, Q1). The guard went
+				 * inert once when #542 moved the header under its selector and both
+				 * readings became "": equality of two empty strings is exactly what a
+				 * broken selector produces, so a slot that holds nothing once content has
+				 * painted is a run that cannot be judged - it fails loudly instead of
+				 * passing vacuously.
 				 */
 				if (headerAtFirstPaint !== undefined) {
 					const settledHeaderLine = (await cdp.eval("window.__lopOpen.state()"))
 						.headerLine;
+					if (headerAtFirstPaint === null || headerAtFirstPaint === "")
+						throw new Error(
+							`${id}: the header's identity slot is unresolved at the transcript's first paint (first ${JSON.stringify(headerAtFirstPaint)}, settled ${JSON.stringify(settledHeaderLine)}) - an empty reading is inconclusive, so this run refuses rather than passes vacuously`,
+						);
 					if (headerAtFirstPaint !== settledHeaderLine)
 						throw new Error(
 							`${id}: the header's identity resolves after the transcript's first paint (first ${JSON.stringify(headerAtFirstPaint)}, settled ${JSON.stringify(settledHeaderLine)}) - a chip arriving after content is the jitter this pass removes`,
 						);
+					console.log(
+						`header identity ${id}: first ${JSON.stringify(headerAtFirstPaint)} settled ${JSON.stringify(settledHeaderLine)}`,
+					);
 				}
 			}
 			runs.push({
