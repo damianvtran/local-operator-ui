@@ -2200,7 +2200,9 @@ test("the composer names the failed row's controls only while the row is on scre
 		),
 		"while a delivery row exists the box names the hint",
 	);
-	const hint = window.document.getElementById("composer-delivery-remedies-hint");
+	const hint = window.document.getElementById(
+		"composer-delivery-remedies-hint",
+	);
 	assert.ok(hint, "and the hint element is in the document");
 	assert.match(
 		hint.textContent ?? "",

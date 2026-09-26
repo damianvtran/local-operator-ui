@@ -6681,7 +6681,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												credentialNotice ? CREDENTIAL_NOTICE_ID : null,
 												outsideMentions > 0 ? MENTION_OUTSIDE_NOTICE_ID : null,
 												unavailable ? MISSING_SESSION_NOTICE_ID : null,
-												deliveryRemediesReachable ? DELIVERY_REMEDIES_HINT_ID : null,
+												deliveryRemediesReachable
+													? DELIVERY_REMEDIES_HINT_ID
+													: null,
 											]
 												.filter(Boolean)
 												.join(" ") || undefined

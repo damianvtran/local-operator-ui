@@ -15470,7 +15470,7 @@ async function sceneConversationStart(cdp) {
 		 * DESIGN REVIEW ROUND 1, D3: the composer clears at the press, and the
 		 * sidebar's draft row used to clear with it - the chat was in neither list
 		 * for the whole create hop. The row reads the composer OR the claim's own
-		 * `submittedText`, so it must still be here, named by the message. 
+		 * `submittedText`, so it must still be here, named by the message.
 		 */
 		check(
 			"D3: the sidebar keeps the chat's own row through the create hop",
@@ -15514,7 +15514,12 @@ async function sceneConversationStart(cdp) {
 		`conversation-start-${size}-flip-plus-1s`,
 	);
 	note("frame", JSON.stringify(plusOneFrame));
-	const flip = { read: flipRead, line: flipLine, sidebar: flipSidebar, flipped: flipped.ok };
+	const flip = {
+		read: flipRead,
+		line: flipLine,
+		sidebar: flipSidebar,
+		flipped: flipped.ok,
+	};
 	note("flip", JSON.stringify(flip));
 	if (expectAfter) {
 		/*
@@ -15672,7 +15677,11 @@ async function sceneConversationStart(cdp) {
 		`conversation-start-${size}-reload`,
 	);
 	note("frame", JSON.stringify(reloadFrame));
-	const reload = { read: await reads(), back: reloaded.ok, line: await waitLine() };
+	const reload = {
+		read: await reads(),
+		back: reloaded.ok,
+		line: await waitLine(),
+	};
 	note("reload", JSON.stringify(reload));
 	if (expectAfter) {
 		check(

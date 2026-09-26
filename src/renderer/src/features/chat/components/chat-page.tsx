@@ -666,7 +666,10 @@ function SessionPanel({
 	 */
 	if (
 		admitted.current &&
-		(answered || stopped || Boolean(draft?.error) || Boolean(draft?.undelivered))
+		(answered ||
+			stopped ||
+			Boolean(draft?.error) ||
+			Boolean(draft?.undelivered))
 	)
 		admitted.current = null;
 	const starting = admitted.current !== null;
