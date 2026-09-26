@@ -42,7 +42,7 @@ const [arm, ref, ...rest] = process.argv.slice(2);
  * D6) are the same operation with a different label, and the rig's `--arm` is
  * already just a label plus an output directory.
  */
-if (!arm || (arm === "after" && ref?.startsWith("--"))) {
+if (!arm) {
 	console.error(
 		"usage: child-reader-scroll-evidence-arms.mjs <after | <arm-name> <ref>> -- <rig args>",
 	);
@@ -52,6 +52,20 @@ const swappedArm = arm !== "after";
 if (swappedArm && (!ref || ref.startsWith("--"))) {
 	console.error(
 		`the ${arm} arm needs the revision to take the module from: \`... ${arm} <ref> -- <rig args>\``,
+	);
+	process.exit(2);
+}
+/*
+ * The after arm reads the WORKING TREE and takes no revision, so the only
+ * thing that may follow it is the `--` separator (which `argv` hands us as
+ * `ref`). Anything else is a lost `--` or a stray argument, and either would
+ * silently hand the rig the wrong argument list. The first version of this
+ * guard rejected the CANONICAL `after -- <rig args>` call itself (the
+ * separator reads as a `--`-prefixed ref); this is that fix.
+ */
+if (!swappedArm && ref !== undefined && ref !== "--") {
+	console.error(
+		"the after arm takes no revision — rig args go after `--`: `... after -- <rig args>`",
 	);
 	process.exit(2);
 }
