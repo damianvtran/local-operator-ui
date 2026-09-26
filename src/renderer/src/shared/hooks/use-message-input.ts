@@ -209,6 +209,11 @@ export const COMPOSER_PLACEHOLDER = {
 	aside: "Ask off the record — Esc closes the aside",
 	sending: "Sending your message",
 	waiting: "Waiting for the agent",
+	/**
+	 * Nothing connected: the invitation would be a lie, and this is the one
+	 * sentence that names the action instead (design audit section 6).
+	 */
+	noProvider: "Connect a provider to start chatting",
 	idle: "Ask me for help",
 } as const;
 
@@ -250,6 +255,14 @@ export const composerPlaceholder = (state: {
 	sendingUnsettled: boolean;
 	/** A send has been issued and the agent has not painted anything yet. */
 	awaitingReply: boolean;
+	/**
+	 * No model provider is connected. LAST of the readings, because it is the
+	 * only one that is not about this turn: a send in flight, a pending question
+	 * or a refused box are all things the user is doing right now, and telling
+	 * them to connect a provider while the agent is answering above the box
+	 * would be the composer arguing with the transcript.
+	 */
+	noProvider?: boolean;
 }): string => {
 	if (state.unavailable) return COMPOSER_PLACEHOLDER.unavailable;
 	if (state.inputDisabled) return COMPOSER_PLACEHOLDER.busy;
@@ -257,6 +270,7 @@ export const composerPlaceholder = (state: {
 	if (state.asideAttached) return COMPOSER_PLACEHOLDER.aside;
 	if (state.sendingUnsettled) return COMPOSER_PLACEHOLDER.sending;
 	if (state.awaitingReply) return COMPOSER_PLACEHOLDER.waiting;
+	if (state.noProvider) return COMPOSER_PLACEHOLDER.noProvider;
 	return COMPOSER_PLACEHOLDER.idle;
 };
 
