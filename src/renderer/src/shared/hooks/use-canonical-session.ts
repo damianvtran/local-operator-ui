@@ -10,8 +10,10 @@
  *   with the OWNER epoch/sequence checked independently of the HTTP receipt
  *   cursor — the two cursors are different clocks.
  * - `event` frames carry typed canonical AgentEvents; a terminal event is what
- *   resolves the "Waiting to start" latch. The receipt cursor is only for
- *   dedupe/reconnect, never for deciding what is newer paint state.
+ *   resolves the "Waiting to start" latch. The receipt cursor is for
+ *   dedupe/reconnect — at the receipt and, per row, at the reducer's cursor
+ *   gate (a re-delivered `message_update` is refused rather than appended) —
+ *   and never for deciding what is newer paint state.
  * - A `gap` frame (or any replay-with-gap open) says the receipt lost continuity:
  *   painted FRONTEND state is dropped, and the transcript's in-flight rows are
  *   KEPT and marked uncertain (`markLiveRecordsTruncated`) rather than erased,
@@ -3370,6 +3372,18 @@ export function useCanonicalSessionStream(
 								replayTranscript ?? next.transcript,
 								frame.payload,
 								now,
+								{
+									/*
+									 * The replay's own cursor, and the point of passing it: a frame this
+									 * viewer has already folded — a window re-sent because the receipt
+									 * cursor was behind the applied position — carries a seq at or behind
+									 * the row's, and `message_update` refuses it rather than appending the
+									 * fragment a second time. Without this, folding the replay over the
+									 * PAINTED transcript re-applies every re-sent delta and the text
+									 * doubles (the operator's "chunks not in the proper overlap/order").
+									 */
+									frame: { epoch: frame.epoch, seq: frame.seq },
+								},
 							);
 						}
 						if (frame.type === "snapshot") {
@@ -3408,6 +3422,11 @@ export function useCanonicalSessionStream(
 								transcript,
 								snapshot.frontend.snapshot,
 								now,
+								// The seed states the turn as of THIS snapshot, so rows it mints
+								// or extends record the snapshot frame's cursor as their
+								// position — a later replay of an older frame is then refused
+								// rather than appended (see the reducer's cursor gate).
+								{ epoch: frame.epoch, seq: frame.seq },
 							);
 							next = {
 								...next,
@@ -3578,6 +3597,13 @@ export function useCanonicalSessionStream(
 							next = { ...next, turnsCompleted: next.turnsCompleted + 1 };
 						}
 						const transcript = applyEvent(next.transcript, frame.payload, now, {
+							/*
+							 * The live frame's own cursor: the row records the position its
+							 * text belongs to, so a re-delivery of the same frame (an
+							 * interleaved flush after a reconnect) is refused rather than
+							 * appended twice.
+							 */
+							frame: { epoch: frame.epoch, seq: frame.seq },
 							/*
 							 * READ AT APPLY TIME, not captured: the store is written by the
 							 * interrupt's receipt, which lands BEFORE the killed call's end event
