@@ -1730,12 +1730,12 @@ test("with nothing connected neither the button nor Enter sends", () => {
 	 */
 	assert.match(
 		source,
-		/\(noProvider \|\| noModel\) &&\s*event\.key === "Enter" &&\s*!event\.shiftKey &&\s*!event\.nativeEvent\.isComposing\s*\) \{\s*event\.preventDefault\(\);/,
+		/sendRefused &&\s*event\.key === "Enter" &&\s*!event\.shiftKey &&\s*!event\.nativeEvent\.isComposing\s*\) \{\s*event\.preventDefault\(\);/,
 		"Enter is not refused when nothing can answer",
 	);
 	assert.match(
 		source,
-		/setNoProviderHint\(true\);/,
+		/explainRefusedSend\(\);/,
 		"the refusal says why: the placeholder that explained it is gone once the user types (U13)",
 	);
 	assert.match(
@@ -1752,7 +1752,7 @@ test("with nothing connected neither the button nor Enter sends", () => {
 	 */
 	assert.match(
 		source,
-		/if \(noModel\) \{\s*setNoProviderHint\(true\);\s*return;\s*\}/,
+		/if \(noModel\) \{\s*explainRefusedSend\(\);\s*return;\s*\}/,
 		"the submit path still sends with no model to run on",
 	);
 	/*
@@ -1768,13 +1768,94 @@ test("with nothing connected neither the button nor Enter sends", () => {
 	 */
 	assert.match(
 		source,
-		/isInputDisabled \|\|\s*noProvider \|\|\s*noModel \|\|/,
+		/isInputDisabled \|\|\s*sendRefused \|\|/,
 		"the Send control must report the same state the key does",
 	);
 	assert.match(
 		source,
 		/noModel\s*\?\s*"Choose a model for this conversation before sending\."/,
 		"and the refusal must say which state it is refusing in",
+	);
+});
+
+test("the disabled Send press answers the way Enter does, and keeps the caret (U27)", () => {
+	const source = code(MESSAGE_INPUT);
+	/*
+	 * UX round 7, U27, measured on the built app: with nothing connected, a press on
+	 * the DISABLED Send kept the value, raised nothing, and took the caret out of the
+	 * box (`composer.focused true -> false`) - while Enter, in the same state, raised
+	 * "Connect a provider to send." and kept the caret. The cause is the gate rather
+	 * than the term: `holdCaretOnRefusedPress` suppresses the caret-clearing default
+	 * for `isInputDisabled`, and this branch disabled Send with `noProvider ||
+	 * noModel`, which that predicate does not cover.
+	 *
+	 * The fix is ONE term read by every door - declared once, read by the control's
+	 * `disabled`, by both refusal doors and by the press handler - so a fourth door
+	 * cannot quietly fall behind the other three. That is what these four assertions
+	 * hold down between them.
+	 */
+	assert.match(
+		source,
+		/const sendRefused = noProvider \|\| noModel;/,
+		"the two terms that refuse a send are declared once, not spelled out per door",
+	);
+	assert.match(
+		source,
+		/type="submit"[\s\S]{0,240}?onPointerDown=\{holdCaretOnSendPress\}/,
+		"the Send control carries its own press handler, because its disabling terms are wider than the shared gate's",
+	);
+	assert.match(
+		source,
+		/if \(!isInputDisabled && !sendRefused\) return;/,
+		"and that handler's gate is exactly the terms the control is disabled by",
+	);
+	assert.ok(
+		source.includes(
+			"if (sendRefused && !isInputDisabled) explainRefusedSend();",
+		),
+		"and the refusal that used to be silent raises the same sentence the key raises, and is silent exactly where the key is",
+	);
+	assert.match(
+		source,
+		/isInputDisabled \|\|\s*sendRefused \|\|\s*\(!newMessage\.trim\(\) && attachments\.length === 0\)/,
+		"the empty box keeps its own disabling term OUTSIDE the refusal's pair: it is disabled for its own reason, so it keeps the browser's press behaviour",
+	);
+});
+
+test("the composer notice carries the connect action the fold re-laid into it (F2)", () => {
+	const source = code(MESSAGE_INPUT);
+	/*
+	 * #494's review round 9, F2, measured by deletion on that branch: the fold onto
+	 * main's composer rewrite re-laid this branch's `providerConnectActions` action into
+	 * main's notice memo, and removing the spread left 13 suites / 226 tests green - so
+	 * the fold's only semantic re-lay had no pin at all. The behaviour is "with nothing
+	 * connected the notice carries a Connect a provider action, and its press opens the
+	 * dialog"; the seam it lives on is the memo's `actions` and the term those actions
+	 * are built from, which is where it is pinned.
+	 */
+	assert.match(
+		source,
+		/actions: \[\.\.\.\(sendError\?\.actions \?\? \[\]\), \.\.\.providerConnectActions\]/,
+		"the notice's action list still carries the re-laid provider action rather than main's list alone",
+	);
+	assert.match(
+		source,
+		/const providerConnectActions =\s*noProvider \|\|/,
+		"and it is built from `noProvider` FIRST, not only from the failure text: with nothing connected the failure a user actually gets is the app's own 20-second timeout, so the backend's sentence never matched (UX round 2 N3)",
+	);
+	assert.match(
+		source,
+		/label: "Connect a provider"/,
+		"the action names what the no-connection line offers",
+	);
+	assert.match(
+		source,
+		/useConnectProviderStore\.getState\(\)\.openConnect\(\)/,
+		"and opens the same dialog every other connect surface opens",
+	);
+	assert.ok(
+		source.includes("NO_PROVIDER_NOTICE.test(sendError.message)"),
+		"the backend's own refusal still reaches the same action, which is the arm the fold had to keep",
 	);
 });
 

@@ -1,6 +1,6 @@
 # The provider sign-in, the Providers page, first run and the empty chat
 
-Thirty states, each captured in BOTH brand themes (`localOperatorDark.webp` and
+Thirty-four states, each captured in BOTH brand themes (`localOperatorDark.webp` and
 `localOperatorLight.webp`), for the change that makes a provider reachable from the
 app: the
 Providers settings page (a first run, connected, and a row's overflow menu open),
@@ -27,6 +27,26 @@ alias must not change a pixel, and `scripts/evidence-sign-in-states.test.mjs` ho
 that equality. The first-run set carries the blocked step-2 path as well
 (`onboarding-step-2-choose` with a catalogue, `-2-choose-blocked` without a model
 chosen).
+
+Three more are the VERDICT REGISTER, which the design rounds added after finding the
+settled view could be photographed as a success: `refused-verdict` (the subject of
+this frame is the verdict itself, which is why `scripts/capture-evidence.mjs` waits
+for `data-verdict="attention"` rather than for the clock, U19), and design round 6's
+D2 pair - `succeeded-unconfirmed`, the state a first run actually reaches after a
+sign-in the backend will not confirm (`data-verdict="neutral"`), and
+`key-refused-verdict`, the API-key route under a refused verdict, which is the route
+that contradiction survived on. The count above is measured from this directory
+(`ls -d */`), which is the only claim in this file a reader can re-run in one
+command - and in the re-run's own words the three are the directories
+`panel-refused-verdict`, `panel-succeeded-unconfirmed` and `panel-key-refused-verdict`,
+which is why the state names above are the short forms. THE `panel-` PREFIX IS NOT
+UNIVERSAL HERE, and the sentence that stood in this place claimed it was: the re-run
+prints 34 directories of which 22 carry the prefix, and the 12 that do not are the
+onboarding steps and the provider-list states around them (`onboarding-step-1` through
+`onboarding-step-3`, `providers-*`, `connect-dialog`, `empty-chat-card`). What is true,
+and what the short forms rest on, is that all THREE verdict-register directories carry
+it - so a reader looking for the state names in the `ls` output knows to look for the
+prefixed ones, rather than for every name in the set (agent review round 2, MINOR 4).
 
 These frames come from `scripts/capture-evidence.mjs` driving Storybook, which is
 the committed and re-derivable route. The exact command that wrote them:
