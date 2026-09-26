@@ -36,6 +36,7 @@ const bundle = await build({
 			import { createElement } from "react";
 			import { renderToStaticMarkup } from "react-dom/server";
 			import { SessionStatusStrip } from "./src/renderer/src/features/chat/session-status/session-status-strip";
+			export { LAST_READING_NOTE } from "./src/renderer/src/features/chat/session-status/session-status-strip";
 			export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";
 
 			export const renderStrip = (props) =>
@@ -74,9 +75,12 @@ const bundle = await build({
 // has no base path for.
 const bundlePath = new URL("./_composer-readings.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { renderStrip, desktopEndpoint, desktopRequestSchema } = await import(
-	bundlePath.href
-);
+const {
+	renderStrip,
+	LAST_READING_NOTE,
+	desktopEndpoint,
+	desktopRequestSchema,
+} = await import(bundlePath.href);
 await unlink(bundlePath);
 
 /** The rendered text a user reads, with markup and layout whitespace removed. */
@@ -1108,13 +1112,26 @@ test("duration is the only reading that may be shed, and only between the two th
 	);
 	assert.doesNotMatch(strip, /@max-\[860px\]\/chatcol:sr-only/);
 
-	// And it is the ONLY one: the other four are protected by R8/R14, so a
-	// `hidden` anywhere else in this file is a reading being dropped that the
-	// design says must never drop.
-	assert.equal(
-		strip.match(/chatcol:hidden/g)?.length,
-		1,
-		"only the duration reading may be shed",
+	/*
+	 * And it is the only READING that may be shed: the other four are protected by
+	 * R8/R14, so a `hidden` on a reading is a reading being dropped that the
+	 * design says must never drop.
+	 *
+	 * ONE other `hidden` is allowed in this file and it is NOT a reading: the held
+	 * cluster's visible mark is hidden below the wrap threshold, where the design
+	 * round measured ~23px free and the word would push the mic and send onto a
+	 * third line - the defect design round 1.5's D9 fixed. It is named by its own
+	 * class rather than counted, so a THIRD `hidden` still fails here, and the
+	 * statement is not lost at that width: the group name reaches assistive
+	 * technology and the tooltips reach a pointer.
+	 */
+	assert.deepEqual(
+		(strip.match(/[^\s"]*chatcol:hidden/g) ?? []).sort(),
+		[
+			"@max-[750px]/chatcol:hidden",
+			"@min-[750px]/chatcol:@max-[860px]/chatcol:hidden",
+		].sort(),
+		"only the duration reading and the held mark may be hidden, and the mark is not a reading",
 	);
 });
 
@@ -1141,5 +1158,161 @@ test("the value readings hold their width; only the model name yields", () => {
 		shrinkOverrides.length,
 		1,
 		"exactly one reading may opt back into shrinking, and it is the name",
+	);
+});
+
+/* --------------------------------------- the readings a reconnect holds */
+
+/*
+ * A server-stream gap drops the authoritative `frontend` by design (the flush's
+ * replay/snapshot ordering rests on that field meaning "a snapshot for THIS
+ * epoch has landed"), so the pane hands the strip the readings it was last told
+ * instead — and the strip has to draw them without presenting them as current.
+ *
+ * The words are checked here rather than in a live frame because the CLAIM is
+ * about copy: a frame can see that the strip painted, and only this can see what
+ * it said.
+ */
+
+/**
+ * Every READING's accessible name, in render order.
+ *
+ * The held cluster's own `aria-label` is excluded by name: it is the strip's
+ * group statement (design D4), not a reading, and including it would make every
+ * comparison below about a sentence no reading carries.
+ */
+const readingLabels = (html) =>
+	[...html.matchAll(/aria-label="([^"]*)"/g)]
+		.map((match) => match[1])
+		.filter((label) => !label.startsWith("Session readings."));
+
+/** A session's snapshot with every reading the strip draws: model, effort, context, spend, time. */
+const SESSION = {
+	...DRAFT,
+	context_tokens: 12_977,
+	// 400k window, so the reading is a percentage rather than an estimate.
+	context_is_estimate: false,
+	cumulative_parent_cost: 2.4,
+	cost_knowledge: "exact",
+	active_duration_s: 92,
+};
+
+test("a held reading keeps its value, and the strip says once that it is the last one", () => {
+	/*
+	 * A DISPATCHER, so the context reading is OPENABLE and its closing line is the
+	 * measured/estimated one rather than `COMMANDS_OFF`: that first branch returns
+	 * before the status is read, so a fixture without one could not see D3's
+	 * difference at all.
+	 */
+	const openable = { frontend: SESSION, onCommand: () => undefined };
+	const live = renderStrip(openable);
+	const held = renderStrip({ ...openable, held: true });
+
+	/*
+	 * THE VALUES ARE THE SAME, and that is the assertion the held state exists
+	 * for: the reader keeps the model, the effort, the context window and the
+	 * spend they were last told rather than watching four blanks come and go at
+	 * the stream's cadence. A mark that replaced a value would be the app
+	 * answering a question the owner has not answered.
+	 */
+	const liveLabels = readingLabels(live);
+	const heldLabels = readingLabels(held);
+	assert.ok(
+		liveLabels.length >= 4,
+		`the fixture must render the whole cluster (got ${liveLabels.length}: ${liveLabels.join(" | ")})`,
+	);
+
+	/*
+	 * THE PROVENANCE CLAUSE IS NOT ON THE READINGS ANY MORE (design round 1, D4).
+	 * It used to be appended to all four accessible names, which is the same
+	 * sentence four times over and, after a pick, two qualifications in one
+	 * utterance (UX round 1, U2). The cluster states it once; the tooltips keep
+	 * it per reading. So no reading's name carries it now.
+	 */
+	for (const label of heldLabels)
+		assert.ok(
+			!label.includes(LAST_READING_NOTE),
+			`the clause must not be repeated on every reading: ${label}`,
+		);
+
+	/*
+	 * THE ONE READING WHOSE NAME LEGITIMATELY DIFFERS WHILE HELD is the context
+	 * chip, and for a different reason: its closing line may not say "Measured
+	 * now" while the strip is saying the reading is from before the reconnect
+	 * (design round 1, D3). Every other reading is asserted IDENTICAL to its live
+	 * name, character for character.
+	 */
+	const contextOf = (labels) => labels.filter((l) => l.startsWith("Context: "));
+	assert.equal(contextOf(heldLabels).length, 1, "one context reading");
+	assert.match(
+		contextOf(liveLabels)[0],
+		/Measured now;/,
+		"the live context reading says it was measured now",
+	);
+	assert.doesNotMatch(
+		contextOf(heldLabels)[0],
+		/Measured now|Estimated now/,
+		"and the held one may not, or the panel asserts current and stale at once",
+	);
+	assert.deepEqual(
+		heldLabels.filter((l) => !l.startsWith("Context: ")),
+		liveLabels.filter((l) => !l.startsWith("Context: ")),
+		"every other reading renders the value AND the name it renders live",
+	);
+
+	/*
+	 * D1: A VISIBLE MARK, which the first cut of this change did not have.
+	 * Measured, the transcript's "Reconnecting" line sat thousands of pixels above
+	 * the readings and hit-tested none of 713 held samples, so a held band and a
+	 * live one were the same glyphs in the same inks.
+	 */
+	assert.match(held, />\s*Last reading\s*</, "the cluster carries the word");
+	assert.doesNotMatch(
+		live,
+		/>\s*Last reading\s*</,
+		"and a live cluster does not",
+	);
+	/*
+	 * D4: the SAME statement reaches assistive technology, once, as the group's
+	 * own name -- announced on entering the group rather than four times over.
+	 */
+	assert.match(
+		held,
+		/role="group" aria-label="Session readings\. Last reading from before the reconnect\."/,
+		"the strip states it once as a group name",
+	);
+	/*
+	 * Asserted on the STATEMENT rather than on `role="group"`: the strip's own
+	 * markup contains a group role elsewhere (the context wheel's), so a bare role
+	 * check would be about somebody else's element. What must not exist on a live
+	 * strip is the held sentence.
+	 */
+	assert.doesNotMatch(
+		live,
+		/Session readings\./,
+		"and a live strip states none of it",
+	);
+
+	/*
+	 * AND THE LIVE STRIP SAYS NONE OF IT. Without this half the mark could be
+	 * unconditional and every reading in the app would claim to be stale.
+	 */
+	assert.doesNotMatch(live, /Last reading/);
+	assert.doesNotMatch(live, /data-lo-session-strip-held/);
+	assert.match(
+		held,
+		/data-lo-session-strip-held="true"/,
+		"and the cluster is marked in the DOM, so a frame or a probe can ask without reading the copy",
+	);
+
+	/*
+	 * THE MARK IS NOT THE PANE'S SENTENCE. The transcript paints "Reconnecting"
+	 * for this whole state, and a second copy of it here would be the same claim
+	 * twice - the strip's half is saying WHICH readings these are.
+	 */
+	assert.doesNotMatch(
+		held,
+		/aria-label="[^"]*Reconnecting/,
+		"the strip must not restate the pane's own reconnecting notice",
 	);
 });
