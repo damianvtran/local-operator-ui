@@ -11,16 +11,44 @@ user crosses several in a row:
 > conversation cancels loading for others which might help in situations where
 > users might be clicking across multiple conversations"
 
-## The frames here are unchanged by this change, and were not re-taken
+## The frames here were re-taken at the held-first-paint head (2026-09-26)
 
 They photograph the switch's own panel states (before, hydrating, settled,
-mark, refusal, slow, error), and this change moves no pixel: the defect and its
-fix are both in the URL write, and the address bar is not a rendered surface —
-no component's markup, props, classes or copy moved. The one visible behaviour
-change is which conversation you end up on, and that is what the arms below
-assert; a re-shot frame would be byte-identical apart from lossy-WebP noise.
-They are also not re-shootable on this machine under the policy five of the
-manifest's supplementary sets record: the rig drives a scripted browser engine.
+mark, held-press, slow, error), and this change moves them: a conversation's
+first paint now waits for its page (cached rows no longer paint early under the
+stale caption), the loading placeholder is one small pulsing mark rather than
+three skeleton bars, and the row window's reset moved into the same render as
+the switch. The pair in `before-switching/` is NOT re-taken and does not need to
+be: it photographs the base tree (`--expect-outgoing`, a detached worktree),
+which this change does not touch.
+
+Two of the states' arms had been dead on this head since earlier merges, and
+that is recorded here rather than left to the next reader to rediscover:
+
+- `held-press` replaces `refusal`. The state the old arm drove — the composer
+  painting "Sending works once it is ready" — has not existed since #464: a
+  press made before anything has confirmed the target is HELD and then
+  admitted, so the sentence never paints and the arm died waiting for it
+  (measured on this head: typing and pressing Enter leaves the words in the
+  box, no alert, no request). The frame is now what a reader gets instead: the
+  words still in the box, no error row, and zero `sessions.message` on the
+  transport — the last of those is asserted, because a still cannot show it.
+- `error`'s arm waited for the rollback, which #464 deleted with the guard read
+  ("asserts the tombstone and the notice instead of the deleted rollback"). It
+  now asserts the state the design keeps: the view on the refused conversation,
+  the tombstone sentence in the pane, and the composer disabled under its own
+  "This conversation is gone".
+- The rigs themselves could not run on this head at all when the re-shoot
+  started: the chat redesign moved the conversation list out of the chat route
+  and into the shell, so both harness pages (this one and `session-open-live`)
+  mounted a route with no rows and every arm died at "no sidebar row" /
+  "never listed every session". Both pages now mount `ChatLayout` +
+  `SidebarNavigation` the way `app.tsx` does, and every row lookup goes through
+  one resolver (`probe.rowFor`), spelled against the title anchor
+  (`[data-session-title]`) the redesign left in place. The earlier version of
+  this section said the set was not re-shootable on this machine; it was, once
+  the rigs were repaired — the sentence had gone stale with the redesigned
+  shell.
 
 ## The rule this directory's evidence now rests on
 
