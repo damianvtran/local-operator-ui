@@ -149,6 +149,21 @@ export type DisclosureProps = {
 	 */
 	triggerTooltip?: ReactNode;
 	/**
+	 * Applied to the `triggerTooltip` panel, not to the trigger.
+	 *
+	 * THE CONTENT IS THE CALLER'S, SO ITS MEASURE IS TOO (design review round 2,
+	 * D4). `triggerTooltip` here carries the value the summary had to truncate — the
+	 * goal, a to-do's text — which is unbounded by construction, exactly the defect
+	 * the composer row's own `TOOLTIP_CLAMP` (`line-clamp-4`) exists for on the
+	 * dismiss beside it: a 1956px goal at `TooltipContent`'s `max-w-64` is ~8 lines
+	 * drawn over the composer in a 172px column. It stays a per-call prop rather than
+	 * a default on this primitive because the measure is a claim about the CONTENT,
+	 * which only the caller knows — the app's other disclosures pass strings that
+	 * cannot reach four lines, and a primitive-wide clamp would be a claim they never
+	 * made.
+	 */
+	tooltipClassName?: string;
+	/**
 	 * A control that belongs to the TRIGGER'S OWN LINE, rendered after it inside
 	 * this component's ROOT — so the disclosed body stays below both.
 	 *
@@ -266,6 +281,7 @@ export const Disclosure = ({
 	disabled = false,
 	triggerLabel,
 	triggerTooltip,
+	tooltipClassName,
 	trailing,
 	onOpenChange,
 }: DisclosureProps) => {
@@ -460,7 +476,7 @@ export const Disclosure = ({
 	 * receiving a fix.
 	 */
 	const trigger = (
-		<Tooltip content={triggerTooltip} side="top">
+		<Tooltip content={triggerTooltip} side="top" className={tooltipClassName}>
 			<button
 				type="button"
 				aria-expanded={isOpen}
