@@ -1,0 +1,4 @@
+2026-09-26 10:59:29,337 - INFO - warmed a standby for /Users/damian/.local-operator/sessions/318576ecda22/scratchpad/rig/config (1/2)
+2026-09-26 10:59:29,350 - INFO - warmed a standby for /Users/damian/.local-operator/sessions/318576ecda22/scratchpad/rig/config (2/2)
+
+[1;31mError: cannot bind http://127.0.0.1:8080: [Errno 48] Address already in use[0m

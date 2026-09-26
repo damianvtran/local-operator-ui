@@ -14,15 +14,16 @@ owned — a scratch `HOME`, `LOCAL_OPERATOR_CONFIG_DIR` and `LOCAL_OPERATOR_LOG_
 outside the operator's state, the desktop token passed in the environment (never
 argv), and the app asserted to hold no connection to the operator's own backend.
 
-**One daemon served all four runs, said plainly because the first draft of this
-paragraph claimed otherwise.** It was started by the set's first command and
-survived it (a kill aimed at that command's launcher shell missed the child), so the
-three later commands found `:8080` already answering and their own serve attempts
-failed to bind — each failure is in `runs/daemon-*.log`, and the daemon (pid 59837)
-was reaped by exact pid once the four runs were done. The first run
-(`runs/run-before-1380.log`) names the earlier daemon it used, pid 48732. What
-"isolated" means here is the config root, the log directory and the bearer — not
-four separate processes; and each run's app was started and reaped by the driver
+**Two daemons served the four runs, said plainly because the first two drafts of
+this paragraph claimed otherwise (the second said "one daemon" for all four).** Run 1
+(`runs/run-before-1380.log`) attached to the daemon the set's FIRST command started,
+pid 48732, which then died. The set's SECOND command started a new one, pid 59837,
+and the kill aimed at that command's launcher shell missed the child, so the
+remaining three commands found `:8080` already answering and their own serve
+attempts failed to bind - each failure is in `runs/daemon-*.log` - and their apps
+attached to the survivor. It was reaped by exact pid once the four runs were done.
+What "isolated" means here is the config root, the log directory and the bearer,
+not a process per command; and each run's app was started and reaped by the driver
 itself, by exact pid, when its command returned.
 
 Four runs, two trees:
@@ -68,8 +69,11 @@ Route's own first box, CSS px from the window's top edge, macOS integrated windo
 
 The band itself (`[data-chrome-route-band]`), same runs: before
 `{top: 32, height: 30.86, display: block}`; after `{top: 0, height: 0,
-display: none}`. The app sidebar's own first row (`[data-sidebar-shell]`, docked at
-1380) reads 32 in all runs — the control that never moved.
+display: none}`. The app sidebar's own first row (`[data-sidebar-shell]`) reads 32 in both runs at
+1380 — the control that never moved. At 800 the dock collapses to the 56px strip and
+that marker is absent, so the sidebar check is skipped there (the route-top claim is
+asserted at both widths) — a correction made in remediation round 1, R2: an earlier
+draft said "all four runs", which was two.
 
 The settings rail (`nav[aria-label="Settings sections"]`) and the settings content
 column (`[data-settings-content]`) are the two boxes the report names, and both read
@@ -107,4 +111,27 @@ the check is the defect measured, not a green suite with the defect in it.
 | --- | --- |
 | `frames/before-1380/`, `frames/before-800/` | origin/main's rendering: `route-tops-<route>-<size>.png`, the band above the settings rail and every non-chat route's first box at ~62 |
 | `frames/after-1380/`, `frames/after-800/` | the fix: `route-tops-<route>-after-<size>.png`, every route's first box on the lane's bottom edge at 32 |
-| `runs/` | the four driver logs, including every `[note] the top of <route>` reading and the check verdicts, plus the three daemon logs whose `Address already in use` failures record the one-daemon shape above |
+| `frames/r1-1380/`, `frames/r1-800/` | the round 1 remediation head (`2bdd7a0541`): the same six routes again, after the band's block rule was made selector-exact |
+| `runs/` | the four driver logs, including every `[note] the top of <route>` reading and the check verdicts, plus the three daemon logs whose `Address already in use` failures record the two-daemon shape above, plus the remediation round's own two driver and two daemon logs |
+
+## Round 1 remediation (head `2bdd7a0541`)
+
+Review round 1's R1 found that the band/lane complement held only by SOURCE ORDER: on
+a leading layout both rules matched and `display: none` won by being later in the
+file, so reordering the two blocks re-introduced the double inset with the suite
+green. The fix moves the negative condition into the selectors
+(`:not([data-chrome-leading="true"])` on each win/linux arm), so no state matches
+both rules; the scene also refuses at argv time without `--backend` (R5), and the
+pins are now split into three that discriminate against the replaced shape and four
+that guard invariants (R4). Six more runs of the same scene re-verified the
+rendering at that head:
+
+| run | verdict |
+| --- | --- |
+| `runs/run-r1-1380.log` | 27 PASS / 0 FAIL - every route's first box at 32, band `display:none` |
+| `runs/run-r1-800.log` | 21 PASS / 0 FAIL - the same at 800x600 |
+
+Frames: `frames/r1-1380/`, `frames/r1-800/`. Unlike the original four runs, these two
+each started and reaped their own daemon inside their own command
+(`runs/daemon-r1-*.log`); the mutation matrix and the full finding-by-finding
+answers are in the PR's remediation comments.

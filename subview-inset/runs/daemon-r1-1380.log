@@ -1,0 +1,65 @@
+2026-09-26 10:57:32,721 - INFO - warmed a standby for /Users/damian/.local-operator/sessions/318576ecda22/scratchpad/rig/config (1/2)
+2026-09-26 10:57:32,840 - INFO - warmed a standby for /Users/damian/.local-operator/sessions/318576ecda22/scratchpad/rig/config (2/2)
+INFO:     Started server process [29094]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+Starting server at http://127.0.0.1:8080
+INFO:     127.0.0.1:49664 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49670 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49718 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49720 - "GET /v1/desktop/sessions?limit=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49718 - "GET /v1/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49726 - "GET /v1/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49727 - "GET /v1/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49718 - "GET /v1/desktop/events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49720 - "POST /v1/desktop/presence HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49727 - "GET /v1/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49720 - "GET /v1/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49727 - "GET /v1/desktop/teams HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49746 - "GET /v1/desktop/commands HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49750 - "GET /v1/credentials HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49751 - "GET /v1/agents?page=1&per_page=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49744 - "GET /v1/desktop/sessions?limit=50&include_archived=true&with_counts=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49747 - "GET /v1/auth/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49748 - "GET /v1/auth/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49720 - "GET /v1/desktop/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49745 - "POST /v1/desktop/radient HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49749 - "POST /v1/desktop/sessions/preview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49759 - "GET /v1/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49757 - "GET /v1/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49726 - "POST /v1/desktop/radient HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49746 - "GET /v1/desktop/commands HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49750 - "GET /v1/credentials HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49751 - "GET /v1/agents?page=1&per_page=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49744 - "GET /v1/desktop/sessions?limit=50&include_archived=true&with_counts=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49727 - "GET /v1/desktop/teams HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49748 - "GET /v1/auth/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49747 - "GET /v1/auth/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49720 - "GET /v1/desktop/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49749 - "POST /v1/desktop/sessions/preview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49745 - "POST /v1/desktop/radient HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49758 - "POST /v1/desktop/radient HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49720 - "GET /v1/config/system-prompt HTTP/1.1" 204 No Content
+INFO:     127.0.0.1:49744 - "GET /v1/models/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49745 - "GET /v1/models/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49746 - "GET /v1/models/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49747 - "GET /v1/models/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49726 - "GET /v1/desktop/mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49727 - "GET /v1/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49792 - "GET /v1/models HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:49746 - "GET /v1/models?sort=recommended&direction=descending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49720 - "GET /v1/models?sort=recommended&direction=descending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49745 - "GET /v1/models?sort=recommended&direction=descending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49744 - "GET /v1/models?sort=recommended&direction=descending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49720 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49720 - "POST /v1/desktop/radient HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49720 - "POST /v1/desktop/radient HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49744 - "GET /v1/schedules?page=1&per_page=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49841 - "GET /v1/agents?page=1&per_page=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49840 - "GET /v1/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49720 - "GET /v1/desktop/wakes?include_dormant=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49891 - "POST /v1/desktop/presence HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [29094]
