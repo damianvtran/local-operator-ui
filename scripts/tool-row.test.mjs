@@ -3090,6 +3090,52 @@ test("a row whose first label read is in flight shows no stand-in yet", () => {
 	);
 });
 
+test("the mark's state reaches a reader who cannot see it, and only while it stands", () => {
+	/*
+	 * UX round 4, U7. The late-hold glyph is `aria-hidden` — it is a glyph, and
+	 * "…" is not a word — so before this the cell said NOTHING to assistive tech
+	 * for the whole hold: 49.9 s on a wedged owner and 25.0 s on the refusing
+	 * route, where a sighted reader gets the cue at 2.0 s. The word rides in the
+	 * SAME branch as the mark, which is what bounds it to the state that
+	 * justifies it: the pre-threshold blank carries no word (nothing is being
+	 * announced on a row that is merely waiting), and the release takes the word
+	 * away with the glyph, so no stale "pending" outlives the hold.
+	 *
+	 * WHAT IT IS NOT, stated so a later round does not change it by accident: it
+	 * is not a live region. The mark's arrival is ONE event for a whole hold
+	 * batch — 26 rows in the reported conversation, in the same frame — so
+	 * `aria-live` here would announce 26 times at the threshold. The row's
+	 * existing idiom for a mark that says something is exactly this: a static
+	 * `sr-only` word beside it, read when the reader reaches the row.
+	 */
+	const blank = renderRow("bash", "success", { summaryHold: false });
+	const marked = renderRow("bash", "success", { summaryHold: true });
+	assert.match(
+		marked,
+		/<span class="sr-only">pending<\/span>/,
+		"the marked cell spells its state out for assistive tech",
+	);
+	assert.equal(
+		blank.includes(">pending<"),
+		false,
+		"and the blank cell says nothing: the word exists only while the mark stands",
+	);
+	assert.equal(
+		/aria-live/.test(marked),
+		false,
+		"and it is not a live region: a hold batch is one event across every held row, so a live region would announce once per row at the threshold",
+	);
+	// The glyph stays decorative: the word is a SIBLING of the hidden span, not
+	// inside it, or `aria-hidden` would hide the word with the glyph.
+	const hidden = marked.slice(marked.indexOf('aria-hidden="true"'));
+	const hiddenContent = hidden.slice(0, hidden.indexOf("</span>"));
+	assert.equal(
+		hiddenContent.includes("pending"),
+		false,
+		`the word is not inside the hidden span — got ${hiddenContent}`,
+	);
+});
+
 test("a result with no details keeps the counts the row already had", () => {
 	/*
 	 * The sequence from the report, reduced to the rule: the durable row said

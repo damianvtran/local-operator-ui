@@ -971,7 +971,35 @@ const STAMP_BINDING_NOTES = [
 	 * to the pair the file ships rather than read as history. Its replaced pair is
 	 * written as bare SHAs for exactly that reason.
 	 */
+
 	"mentionsRemedyRestampNote",
+	/*
+	 * THIS BRANCH'S OWN, and it belongs here for the list's own reason: the
+	 * first-paint hold's round-1 remediation moves BOTH trees (the hook and the
+	 * paint cache under `src/`, this file and the recorder under `scripts/`) and
+	 * re-shoots no frame, so a reader is owed the two values it binds and the reason
+	 * the stills did not move. It was briefly present without being listed, which is
+	 * the check silently not run - the guard iterates this list (review round 1,
+	 * m3).
+	 */
+	"firstPaintHoldRestampNote",
+	"firstPaintHoldFoldRestampNote",
+	/*
+	 * THIS BRANCH'S OWN, for round 4, and it belongs here for the list's own reason:
+	 * the late-hold mark's arming, the turn-liveness read, the in-flight set's lifetime
+	 * and the backstop's deferral move BOTH trees this file binds and re-shoot no frame,
+	 * so a reader is owed the two values it binds and the reason the stills did not move.
+	 */
+	"firstPaintHoldRound4RestampNote",
+	/*
+	 * AND THIS BRANCH'S OWN, for round 4's refusal-release mark, and it belongs here
+	 * for the list's own reason: the refused stand-down hands the hold to the mark,
+	 * which moves the hook, the paint cache and the row's own condition under `src/`
+	 * and the cases that pin it under `scripts/` - both trees this file binds - while
+	 * re-shooting no frame, so a reader is owed the two values it binds and the reason
+	 * the stills did not move.
+	 */
+	"refusalMarkRestampNote",
 	/*
 	 * This pass's own: it re-stamps the U15 fix (both trees move - the reducer and
 	 * its suite, the corrected menu docblock, the new story file and the sweep
@@ -1002,6 +1030,22 @@ const STAMP_BINDING_NOTES = [
 	 * arithmetic, and the reason the swept count does not move.
 	 */
 	"transcriptRevealAtRestRestampNote",
+	/*
+	 * AND THIS BRANCH'S OWN, for round 4's gap-liveness repair, and it belongs here for
+	 * the list's own reason: reading the turn's liveness across a stream gap moves the
+	 * hook under `src/` and the harness case that pins the route under `scripts/` - both
+	 * trees this file binds - while re-shooting no frame, so a reader is owed the two
+	 * values it binds and the reason the stills did not move.
+	 */
+	"gapLivenessRestampNote",
+	/*
+	 * AND THIS BRANCH'S OWN, for the word the marked cell now spells out (UX round 4,
+	 * U7), and it belongs here for the list's own reason: the word lives under `src/`,
+	 * the two cases that pin it live under `scripts/`, and neither re-shoots a frame,
+	 * so a reader is owed the two values it binds and the reason the stills did not
+	 * move.
+	 */
+	"markSpokenRestampNote",
 	/*
 	 * THE ROUND-4 REMEDIATION'S EVIDENCE PASS. It re-stamps the change that
 	 * answers rounds 4 (the fold debris, the restored §F3 fate, the widened
@@ -1361,21 +1405,7 @@ const BRANCH_RECORDS = [
 	 * predicate does not admit driver-taken PNGs.
 	 */
 	"asidePanelRestampNote",
-	/*
-	 * This pass's own, and the newest top-level record this branch writes. It is
-	 * listed for the reason the list exists: a fold that started from main's
-	 * manifest would drop it, and with it the only statement of which two trees
-	 * this change moved and that no frame was owed.
-	 */
 	"streamGapHeldReadingsRestampNote",
-	/*
-	 * And by the mention-remedy pass, which wrote this branch's newest top-level
-	 * record. It is listed for the reason the list exists, and it is the case the
-	 * list is cheapest for: the record is the ONLY statement of which two trees the
-	 * copy change moved and which single frame set was re-captured with them, so a
-	 * fold that took main's copy of this file would drop the claim and leave the
-	 * re-derived tokens in it reading as main's.
-	 */
 	"mentionsRemedyRestampNote",
 	/*
 	 * Grown by the U15 + D28 pass, which wrote this branch's newest top-level
@@ -1409,6 +1439,35 @@ const BRANCH_RECORDS = [
 	 * carried into the tree, and the two readings the Q5 falsification produced.
 	 */
 	"remediationRound4EvidenceNote",
+	/*
+	 * The records MAIN's #520 carried in, added here by this fold for the reason the
+	 * list exists: the fold that brought them to this lineage had to splice them into
+	 * the manifest by hand, and main's own copy of this list never grew them - so a
+	 * later fold that started from main's manifest would drop them silently and with
+	 * them the statements of which two trees the hold's rounds moved and why no still
+	 * moved.
+	 */
+	"firstPaintHoldRestampNote",
+	"firstPaintHoldFoldRestampNote",
+	"firstPaintHoldRound4RestampNote",
+	"refusalMarkRestampNote",
+	"gapLivenessRestampNote",
+	"markSpokenRestampNote",
+	/*
+	 * And the round-5 evidence pass, this branch's newest: the re-shot approval
+	 * stories on the dock, the three carried connection logs, and the re-stamps the
+	 * two instrument fixes moved. Listed for the reason the list exists - a fold that
+	 * started from main's manifest would drop it and with it the only statement of
+	 * which frames moved and why.
+	 */
+	"chatRedesignRound5EvidenceNote",
+	/*
+	 * And the fold onto `a6a04f2f` (#520), this branch's newest: it is the commit
+	 * that resolves this file against a main that had moved AND the one that records
+	 * main's six records being spliced in - the manifest entry a later fold that
+	 * started from main's copy would drop first.
+	 */
+	"foldOntoA6a04f2fNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

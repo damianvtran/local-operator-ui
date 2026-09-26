@@ -96,9 +96,18 @@ globalThis.window = {
 	},
 };
 
-/** Run every still-armed timer whose delay is exactly `delay` (fake timers). */
+/**
+ * Run every still-armed timer whose delay is exactly `delay` (fake timers).
+ *
+ * OVER A SNAPSHOT OF THE LIST, not the live array. A deadline that refuses to
+ * fire - the backstop, while a read is still out - re-arms a new timer at its own
+ * delay from inside its own callback, and `for...of` over a growing array would
+ * run the re-armed copy, and its copy, until the heap ran out: measured as a V8
+ * OOM at 4.08 GB mid-suite while the rule was being written. One pass, one fire
+ * per armed timer, is what "advance to this instant" means.
+ */
 function fireTimers(delay) {
-	for (const timer of timers) {
+	for (const timer of [...timers]) {
 		if (timer.delay !== delay || timer.cleared) continue;
 		timer.cleared = true;
 		timer.fn();
@@ -120,6 +129,14 @@ globalThis.__seedSubscribe = (args, onEvent) => {
 globalThis.__seedRequest = async (request) => {
 	requests.push(request);
 	if (request.op === "sessions.history") {
+		/*
+		 * A read that is STILL OUTSTANDING when the reader leaves: the state a
+		 * switch away happens in whenever the owner is slower than the click, and
+		 * the state the paint cache has to describe honestly. `true` here holds the
+		 * promise open for the rest of the case, so the hold is never released by an
+		 * answer and the cached paint is written while its rows are still owed.
+		 */
+		if (globalThis.__seedHangHistory) return new Promise(() => {});
 		/*
 		 * The backend's own reader: no cursor is the TAIL, `before_id` is
 		 * exclusive. Served from the case's durable rows rather than from the
@@ -174,7 +191,7 @@ const bundle = await build({
 			 */
 			export * as sessionModule from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
-			export { __resetPaintCache } from "./src/renderer/src/shared/store/paint-cache";
+			export { __resetPaintCache, readPaint, writePaint } from "./src/renderer/src/shared/store/paint-cache";
 			export { EMPTY_TRANSCRIPT, applyHistoryPage, reconcileLimit } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 			export { outputFallbackLine } from "./src/renderer/src/features/chat/components/trace/tool-row-model";
 		`,
@@ -226,8 +243,10 @@ const {
 	useCanonicalSessionsStore,
 	sessionModule,
 	__resetPaintCache,
+	readPaint,
 	outputFallbackLine,
 	reconcileLimit,
+	writePaint,
 } = hook;
 
 /*
@@ -242,6 +261,53 @@ const RECONCILE_WALK_MAX_REQUESTS =
 	sessionModule.RECONCILE_WALK_MAX_REQUESTS ?? 6;
 const RECONCILE_WALK_MAX_ROWS = sessionModule.RECONCILE_WALK_MAX_ROWS ?? 500;
 const LABEL_HOLD_MAX_MS = sessionModule.LABEL_HOLD_MAX_MS ?? 0;
+/**
+ * The late-hold mark's own threshold (design round 3, D7). Named here for the
+ * same reason as every other bound: a case that asserts the mark ARRIVES at the
+ * threshold has to fail on a head where the constant is missing, not on an
+ * `undefined` delay that would fire the mark case's timer for the wrong reason.
+ */
+const LABEL_HOLD_MARK_MS = sessionModule.LABEL_HOLD_MARK_MS ?? 0;
+/*
+ * The three JSX-level readings the D7 case takes, hoisted as literals: the rule
+ * they assert lives in a `.tsx` the node suite cannot mount without the whole chat
+ * tree, which is the convention this file already follows for JSX rules (see
+ * `canonical-chat.test.mjs`'s sidebar case), and a literal per call site is what
+ * biome's `useTopLevelRegex` asks not to do.
+ *
+ * They are deliberately STRUCTURAL rather than line-anchored: `data-label-hold`
+ * must be inside the `summaryHold ? (` branch, so the attribute cannot be moved to
+ * the blank branch and keep a green gate.
+ */
+const COMMENT_TEXT = /\/\*[\s\S]*?\*\/|\/\/[^\n]*/g;
+const MARK_ON_SUMMARY_HOLD =
+	/summaryHold\s*\?\s*\(\s*(?:<>\s*)?<span[^>]*data-label-hold="true"/s;
+/*
+ * ROUND 6 (UX round 4, U7): the spoken state must ride in the SAME branch as the
+ * mark. That is the whole of the guard - a word left on the blank branch would
+ * announce "pending" on every row that is merely waiting, and one lifted out of
+ * both branches would announce it on rows whose hold never outlived the threshold,
+ * which the case above spends its second arm pinning from the state side.
+ *
+ * The MARK pattern above gained an optional `<>` in the same change, and it is a
+ * widening of the spelling rather than of the rule: the branch now holds two spans
+ * (the glyph and the word), so the fragment is what the branch looks like. What the
+ * pattern still forbids is the thing it was written for - `data-label-hold` on the
+ * settled side of the ternary.
+ */
+const SPOKEN_PENDING_ON_SUMMARY_HOLD =
+	/summaryHold\s*\?\s*\(\s*<>\s*<span[^>]*data-label-hold="true"(?:(?!<\/>)[\s\S])*?<span className=\{cn\("sr-only"\)\}>pending<\/span>\s*<\/>/;
+const TITLE_SUPPRESSED_WHILE_HELD =
+	/title=\{summaryHold\s*\?\s*undefined\s*:\s*summaryText\}/;
+/*
+ * The row's `summaryHold` expression, which round 4 widens: the mark stands on a
+ * row a REFUSAL released as well as on one whose hold has outlived the threshold.
+ * Structural rather than line-anchored, and it must name BOTH halves for the reason
+ * the case states - a tree with only the late half compiles and quietly loses the
+ * cue on the refusing route.
+ */
+const SUMMARY_HOLD_PROP =
+	/summaryHold=\{\s*labelMarked === true \|\|\s*\(labelPending === true && labelHoldLate === true\)\s*\}/;
 /*
  * The settle path's own allowance, and the fallback is the HEAD value for the
  * reason above it: a case that pins what the path may SPEND has to fail on what a
@@ -344,6 +410,20 @@ function makeRuntime() {
 		},
 		useSyncExternalStore: (_subscribe, getSnapshot) => getSnapshot(),
 	};
+	/**
+	 * Tear the tree down through the REAL cleanup path.
+	 *
+	 * A switch away in the app UNMOUNTS the pane, and the mount's cleanups are where
+	 * its teardown lives - the paint the next mount seeds from is written by one of
+	 * them. This stand-in ran a cleanup only when a DEP changed, so no case could
+	 * reach that path (agent review round 3, M2: the switch-back case had to
+	 * hand-write `owedLabels` instead). Cleanups run in MOUNT order, which is the
+	 * order React runs them in.
+	 */
+	runtime.unmount = () => {
+		for (const cell of cells) cell.cleanup?.();
+		for (const cell of cells) cell.cleanup = undefined;
+	};
 	return runtime;
 }
 
@@ -355,6 +435,22 @@ const openFrame = (seq, gap) => ({
 	seq,
 	type: "open",
 	payload: { subscription_id: `sub-${seq}`, gap, watch_ttl_seconds: 45 },
+});
+
+/**
+ * A `gap` frame: receipt continuity broke and the server will send a snapshot.
+ *
+ * Its own shape rather than a `snapshot` with a flag, because the reducer treats it
+ * as its own arm: the frame NULLS `frontend` and keeps the last published reading in
+ * `heldFrontend` (round 4, M4's route). `payload` is empty in the wire's own terms -
+ * a gap carries no state, which is the point of one.
+ */
+const gapFrame = (seq) => ({
+	session_id: SESSION,
+	epoch: "bridge-epoch",
+	seq,
+	type: "gap",
+	payload: {},
 });
 
 /**
@@ -471,6 +567,13 @@ async function open({
 	liveEvents,
 	durable,
 	beforePump,
+	/**
+	 * Every render's own view, in order: the frames the reader would have seen,
+	 * including the ones before the first flush. A case that claims something about
+	 * a FRAME ("no stand-in frame on open") needs all of them, and the join below is
+	 * where a painted row's states can be observed one commit at a time.
+	 */
+	onFrame,
 	/*
 	 * The label bookkeeping is per CONVERSATION and survives a mount, because a
 	 * session switch unmounts the pane (round 1, QA Q1). A test that opens the
@@ -480,6 +583,15 @@ async function open({
 	 * this window has already painted).
 	 */
 	keepGapBookkeeping = false,
+	/**
+	 * The wire's own statement about whether a TURN is in flight, and therefore the
+	 * field every case here is implicitly a case about (agent review round 3, M3).
+	 * The fixture does not carry the flag - `snapshotFrame` states it - and the join
+	 * it is cut from is a mid-turn one, so `true` is the default and the one every
+	 * other case has always been driven at. `false` is what a finished conversation
+	 * sends, and it is a different rule.
+	 */
+	streaming = true,
 }) {
 	__resetPaintCache();
 	if (!keepGapBookkeeping) __resetLabelGapBookkeeping();
@@ -497,11 +609,12 @@ async function open({
 	let handle;
 	runtime.render = () => {
 		handle = useCanonicalSessionStream(SESSION, true);
+		onFrame?.(handle);
 		return handle;
 	};
 	runtime.rerender();
 	deliver(openFrame(1, false));
-	deliver(snapshotFrame(2, { entries: page, liveEvents, streaming: true }));
+	deliver(snapshotFrame(2, { entries: page, liveEvents, streaming }));
 	// The first frame the reader sees, before any read has come back: the
 	// flush has painted the snapshot and fired the read, and nothing else.
 	const callbacks = rafQueue;
@@ -516,10 +629,85 @@ const historyReads = () =>
 	requests.filter((request) => request.op === "sessions.history");
 
 /** What the object column paints for one tool record, given the view. */
-const objectColumn = (record, pending) =>
+/*
+ * THE HOLD'S EXIT, SPLIT BY CALL (2026-09-25 decision).
+ *
+ * A read ENDING is not a label SETTLING, and the old assertions here conflated
+ * them: they required `labelPending` to be empty once the walk's first read came
+ * back, which is the release that painted the output stand-in for a call the next
+ * page of the same walk was about to name (review round 1, M1: 24 repaints on the
+ * fall-short route, 68 on the failure arm). The hold now ends per call - when the
+ * view can name it, or when its per-call read budget is spent with no page naming
+ * it anywhere - so what a case can assert after a read is this split: NOTHING the
+ * view can name may still be held, and the calls no page named keep their empty
+ * column while a read can still answer for them.
+ */
+const heldSplit = (handle) => {
+	const view = handle();
+	const held = [...(view.labelPending ?? [])];
+	return {
+		held,
+		labelled: held.filter((id) => view.transcript.argsByCall.has(id)),
+		unlabelled: held.filter((id) => !view.transcript.argsByCall.has(id)),
+	};
+};
+
+/** No call the view can name may still be held; returns the ones still owed. */
+const assertHoldIsPerCall = (handle, why) => {
+	const split = heldSplit(handle);
+	assert.deepEqual(
+		split.labelled,
+		[],
+		`${why}: a call the view can name is not held (${split.labelled.join(", ")})`,
+	);
+	return split.unlabelled;
+};
+
+/*
+ * What a row's object column PRINTS, per the row's own rule in `tool-row.tsx`:
+ * the command once its arguments are known, the mark while its id is marked, the
+ * empty column while it is held, and the output stand-in otherwise. The mark is
+ * the glyph ALONE and a stand-in is the glyph plus content, so every
+ * `startsWith("… ")` probe in this file remains a probe for the stand-in - which
+ * is what makes "no stand-in frame" a claim a marked row cannot satisfy by
+ * accident (round 4: the mark stands on rows a refusal released from the hold).
+ */
+const objectColumn = (record, pending, marked) =>
 	record.args
 		? "args"
-		: outputFallbackLine(record.output, pending.has(record.toolCallId));
+		: marked?.has(record.toolCallId)
+			? "…"
+			: outputFallbackLine(record.output, pending.has(record.toolCallId));
+
+/**
+ * Mount the hook over whatever the paint cache holds, recording every render.
+ *
+ * This is the SWITCH-BACK shape rather than a join: no wire frame is delivered,
+ * so the only rows on screen are the ones `paintSeed` read from the cache, and
+ * the first recorded render is the first frame the reader would see. What the
+ * cases below assert is a property of THAT frame - the frame the pre-fix tree
+ * paints a call's result in the command column - so nothing here pumps or waits.
+ */
+function mountCached({ onFrame }) {
+	subscriptions.length = 0;
+	requests.length = 0;
+	rafQueue = [];
+	timers = [];
+	useCanonicalSessionsStore.setState({
+		activeSessionId: null,
+		drafts: {},
+		sessions: [],
+	});
+	const runtime = makeRuntime();
+	let handle;
+	runtime.render = () => {
+		handle = useCanonicalSessionStream(SESSION, true);
+		onFrame?.(handle);
+		return handle;
+	};
+	runtime.rerender();
+	return { handle: () => handle, runtime };
+}
 
 test("every seeded call of a long turn is labelled by the read the open fires", async () => {
 	const { durable, page, liveEvents } = moment("labels");
@@ -663,7 +851,51 @@ test("a read that cannot find a call's arguments gives the stand-in back", async
 	);
 	const { handle } = await open({ page, liveEvents, durable: pruned });
 	const view = handle();
-	assert.equal(view.labelPending.size, 0, "the hold is released");
+	/*
+	 * THE FIRST READ NO LONGER SETTLES THEM. A read that found no assistant row for
+	 * a call has not proved the call unlabelable - the retry at the next durable
+	 * round end can still name it - and releasing the hold on that read is what put
+	 * the output stand-in on screen for a frame before the command arrived (the
+	 * operator's report, and review round 1's M1/U1). So the rows stay objectless
+	 * while their budget is unspent...
+	 */
+	/*
+	 * THE WALK ENDING NO LONGER SETTLES THEM, AND THE TURN IS WHAT DOES. This
+	 * assertion used to read the other way (the rows released here) because
+	 * `turnRunning` asked the newest RECORD whether the turn was live, and on this
+	 * conversation the newest record is a settled tool call - so term (b) was inert
+	 * and a walk that fell short released everything it could not name (agent review
+	 * round 3, M3). The fixture's own snapshot is `streaming: true`: the owner is
+	 * mid-turn, a durable round ending can still name these calls, so the hold stands
+	 * - `pending` empty, term (b) true.
+	 */
+	assert.deepEqual(
+		heldSplit(handle).unlabelled,
+		[...missing].filter((id) => heldSplit(handle).held.includes(id)),
+		"a walk that found nothing does not release a row while the owner's turn is running",
+	);
+	/*
+	 * ...AND THE SECOND ATTEMPT IS WHAT SETTLES THEM. The budget is the per-call
+	 * read allowance (`LABEL_GAP_ATTEMPTS`), so a round end re-asks and, when that
+	 * read comes back empty too, nothing can label these calls any more: the
+	 * stand-in is then the true answer and the hold ends - which is what keeps the
+	 * hold from hiding a row forever.
+	 */
+	requests.length = 0;
+	deliver({
+		session_id: SESSION,
+		epoch: "bridge-epoch",
+		seq: 3,
+		type: "event",
+		payload: { type: "turn_end" },
+	});
+	await pump();
+	assert.ok(historyReads().length >= 1, "the round end re-asked for them");
+	assert.equal(
+		handle().labelPending.size,
+		0,
+		"and the budget's second read is what settles them",
+	);
 	const tools = view.transcript.records.filter(
 		(record) => record.kind === "tool" && missing.has(record.toolCallId),
 	);
@@ -671,8 +903,13 @@ test("a read that cannot find a call's arguments gives the stand-in back", async
 		tools.length > 0,
 		"the rows are painted from the durable tool rows",
 	);
+	/*
+	 * Read off the LIVE view, not the one taken before the round end: the hold's
+	 * question is what the pane is showing now, and the rows are only at their
+	 * stand-in once the release has actually committed.
+	 */
 	const standIns = tools.filter((record) =>
-		objectColumn(record, view.labelPending)?.startsWith("… "),
+		objectColumn(record, handle().labelPending)?.startsWith("… "),
 	);
 	assert.ok(
 		standIns.length > 0,
@@ -975,10 +1212,41 @@ test("a join whose targets cannot be durable yet stops at the turn boundary", as
 		reconcileLimit(1),
 		"the read is sized by the goal, exactly as it was before this change",
 	);
-	assert.equal(
-		handle().labelPending.size,
-		0,
-		"and the hold ended with that read rather than with the walk",
+	const leftover = assertHoldIsPerCall(handle, "the turn-bounded walk");
+	/*
+	 * m4: THE LEFTOVER SET IS KEPT. This helper's RETURN is the case's subject - which
+	 * calls a walk that fell short left owed - and asserting only that it is empty
+	 * throws the subject away: the assertion cannot be read against what the walk was
+	 * given. So the set is named, and the case shows its own candidate was not empty
+	 * (the live end frame's call is in no page), which is what makes the emptiness
+	 * mean something rather than pass vacuously.
+	 */
+	assert.deepEqual(
+		leftover,
+		[UNPRESENT],
+		`and the one call this walk could not reach is still HELD, because the owner's turn is running and its round ending can still name it (leftover: ${leftover.join(", ")})`,
+	);
+	assert.ok(
+		page.every((record) => record.toolCallId !== UNPRESENT),
+		"the case's candidate: no page names this call, so the walk really did fall short of a target",
+	);
+	/*
+	 * AND THE ROUND ENDING IS WHAT RELEASES IT, which is the other direction of the
+	 * same rule and the half that keeps a hold from lasting the conversation. The
+	 * turn's own end clears term (b), so the release lets the stand-in speak.
+	 */
+	deliver({
+		session_id: SESSION,
+		epoch: "bridge-epoch",
+		seq: 3,
+		type: "event",
+		payload: { type: "turn_end" },
+	});
+	await pump();
+	assert.deepEqual(
+		heldSplit(handle).held,
+		[],
+		"and the turn's own ending releases it, so the hold is bounded by the turn and not by the clock",
 	);
 });
 
@@ -1024,7 +1292,37 @@ test("a call nothing can label does not walk to the bound or raise the retry dep
 		reconcileLimit(2),
 		`the retry is sized by what is missing (${reconcileLimit(2)}), not by the rows the last walk read (${retry[0].limit})`,
 	);
-	assert.equal(handle().labelPending.size, 0, "and nothing stayed held");
+	/*
+	 * m4: THE LEFTOVER SET IS KEPT AND ASSERTED (agent review rounds 2 and 3).
+	 * `assertHoldIsPerCall`'s RETURN is this case's subject - which calls a walk that
+	 * fell short was still holding - and discarding it throws the subject away: a
+	 * claim about the hold cannot be read against what the walk was given. So the set
+	 * is named and printed, and the emptiness is made to MEAN something by pinning
+	 * the candidate side first: both seeded calls are in no page, and the round has
+	 * ENDED, so nothing left can name them and the hold is correctly over. Before the
+	 * round ended this same helper returns both of them - see the turn-bounded case,
+	 * which asserts exactly that.
+	 */
+	const unnameable = handle()
+		.transcript.records.filter(
+			(record) =>
+				record.kind === "tool" &&
+				(record.toolCallId === UNPRESENT ||
+					record.toolCallId === `${UNPRESENT}b`) &&
+				record.args,
+		)
+		.map((record) => record.toolCallId);
+	assert.deepEqual(
+		unnameable,
+		[],
+		"the case's candidate: no page names either seeded call, so neither can be labelled",
+	);
+	const leftover = assertHoldIsPerCall(handle, "the retry").sort();
+	assert.deepEqual(
+		leftover,
+		[],
+		`and with the round over the hold is empty rather than blank-forever (leftover: ${leftover.join(", ")})`,
+	);
 });
 
 test("returning to a conversation does not re-blank rows already painted", async () => {
@@ -1072,33 +1370,41 @@ test("returning to a conversation does not re-blank rows already painted", async
 	assert.equal(second.handle().labelPending.size, 0, "nothing left held");
 });
 
-test("a read that never answers releases the hold at its own cap", async () => {
+test("the backstop defers to a read that is still out, and fires once none is", async () => {
 	/*
-	 * ROUND 1, design D1 and QA Q3. An owner that accepts `/history` and never
-	 * answers left 26 rows objectless for 40 s - two 20 s control deadlines - under
-	 * a comment promising "one read". The hold's first exit is the first attempt
-	 * SETTLING, which a hang never does, so it also has a wall-clock cap; the
-	 * retries keep running either way and fill the labels in when they land.
+	 * ROUND 3, U4 / Q-4 - AND THE RULE THIS CASE ASSERTS IS THE REVERSE OF THE ONE
+	 * IT USED TO. It previously required `fireTimers(LABEL_HOLD_MAX_MS)` to release a
+	 * hold whose read never answers; that single shot was the defect. The deadline
+	 * was armed once per BATCH and fired on a clock, so it painted the stand-in
+	 * WHILE A READ WAS IN FLIGHT: measured on the abort-then-retry arm, 26 rows
+	 * showed the call's OUTPUT in the command column for 4.97 s from 25 124 ms with
+	 * the read issued at 20 005 ms still running, and the wedge ended at 25 159 ms,
+	 * 5.2 s into attempt two's own 20 s window. The deadline now DEFERS to the read
+	 * it is waiting for, and re-arms per attempt.
+	 *
+	 * BOTH DIRECTIONS, on one route and with the clock under the case's control:
+	 * while the read is out the deadline re-arms and the rows stay held; once nothing
+	 * is out for them, the next fire releases them - which is what still bounds the
+	 * hold, and what keeps a wedged owner from holding to the end of the
+	 * conversation.
 	 */
 	const { durable, page, liveEvents } = moment("labels");
 	const serve = globalThis.__seedRequest;
-	globalThis.__seedRequest = async (request) => {
-		requests.push(request);
-		if (request.op === "sessions.history") return new Promise(() => {});
-		return {};
-	};
+	const armedDeadlines = () =>
+		timers.filter(
+			(timer) => timer.delay === LABEL_HOLD_MAX_MS && !timer.cleared,
+		).length;
 	try {
-		let firstFrame = null;
-		const { handle } = await open({
-			page,
-			liveEvents,
-			durable,
-			beforePump: (view) => {
-				firstFrame = view;
-			},
-		});
+		/* ARM ONE: a read that is accepted and never answered. */
+		globalThis.__seedRequest = async (request) => {
+			requests.push(request);
+			if (request.op === "sessions.history") return new Promise(() => {});
+			return {};
+		};
+		const hanging = await open({ page, liveEvents, durable });
+		const heldWhileOut = hanging.handle().labelPending.size;
 		assert.ok(
-			firstFrame.labelPending.size > 0,
+			heldWhileOut > 0,
 			"the rows are held while the read is outstanding",
 		);
 		assert.equal(
@@ -1106,16 +1412,57 @@ test("a read that never answers releases the hold at its own cap", async () => {
 			1,
 			"the read was issued and never answered",
 		);
+		assert.equal(armedDeadlines(), 1, "one deadline is armed for the batch");
+		fireTimers(LABEL_HOLD_MAX_MS);
+		await pump();
+		assert.equal(
+			hanging.handle().labelPending.size,
+			heldWhileOut,
+			"the deadline does NOT fire while the read it is waiting for is still out",
+		);
+		assert.equal(
+			armedDeadlines(),
+			1,
+			"it re-arms instead, so the hold is still bounded rather than held with no deadline at all",
+		);
+		/*
+		 * ARM TWO: the owner REFUSES the read, so the walk spends its attempts and
+		 * stands down - nothing is out for these calls any more, while the turn it is
+		 * running for carries on. That is the state the deadline exists for, and the
+		 * state U4's defect fired in the middle of.
+		 */
+		const refusingStub = async (request) => {
+			requests.push(request);
+			if (request.op === "sessions.history")
+				throw new Error("history unavailable");
+			return {};
+		};
+		globalThis.__seedRequest = refusingStub;
+		const refusing = await open({ page, liveEvents, durable });
 		assert.ok(
-			handle().labelPending.size > 0,
-			"and the hold outlasts it, for now",
+			historyReads().length >= 2,
+			"the walk spent its retry against the refusing owner and stood down",
+		);
+		assert.equal(
+			refusing.handle().labelPending.size,
+			0,
+			"and the HOLD ends there (round 4), because nothing is out for these calls any more",
+		);
+		assert.ok(
+			refusing.handle().labelMarked.size > 0,
+			"while the MARK stands in its place: the turn it is running for can still name them, so the output must not be stated and a cue must be",
+		);
+		assert.equal(
+			armedDeadlines(),
+			1,
+			"and the deadline covers the marked set too, so the cue is bounded by the transport rather than standing with no deadline at all",
 		);
 		fireTimers(LABEL_HOLD_MAX_MS);
 		await pump();
 		assert.equal(
-			handle().labelPending.size,
+			refusing.handle().labelMarked.size,
 			0,
-			"the cap releases the hold, so the stand-in can speak",
+			"with nothing out for them the deadline fires, so the stand-in speaks - the cue is bounded by the transport, not by the pane's patience",
 		);
 	} finally {
 		globalThis.__seedRequest = serve;
@@ -1348,10 +1695,17 @@ test("a one-turn journal bounds the walk by the oldest unlabelled call's own sta
 		`one page, not the journal (read ${reads.length})`,
 	);
 	assert.equal(reads[0].beforeId, undefined, "and it is the tail");
-	assert.equal(
-		handle().labelPending.size,
-		0,
-		"the hold ends with that read rather than with the walk",
+	/*
+	 * m4: THE LEFTOVER SET IS KEPT AND ASSERTED - this site and the one
+	 * `:1166`-era case above are the two round 2 named, and the site where the round-8
+	 * tripwire lived. The helper's return is the case's subject, so it is named and
+	 * printed rather than discarded.
+	 */
+	const leftover = assertHoldIsPerCall(handle, "the single page").sort();
+	assert.deepEqual(
+		leftover,
+		[UNPRESENT],
+		`and the stray call, which no page in this journal holds, is the one the walk ends up still holding (leftover: ${leftover.join(", ")})`,
 	);
 	const tools = handle().transcript.records.filter(
 		(record) => record.kind === "tool",
@@ -1409,7 +1763,37 @@ test("a page that opens on a result takes the one extra page its assistant row n
 		!tools.some((record) => record.toolCallId === UNPRESENT && record.args),
 		"and the call nothing names still gets no label, as it must not",
 	);
-	assert.equal(handle().labelPending.size, 0, "with the hold released");
+	/*
+	 * AND THE RULE IS WHAT DECIDES, NOT THE WALK ENDING. `unlabelled` here is
+	 * `pending`, the calls a walk could not name - and a walk that ends does not
+	 * release them while the owner's turn is running, because a durable round ending
+	 * can still name them. This assertion used to require `[]` on the premise "the
+	 * walk ended and no round ending is coming", which was true only because
+	 * `turnRunning` asked the newest RECORD rather than the turn (agent review round
+	 * 3, M3: the fixture's own snapshot is `streaming: true`).
+	 */
+	assert.deepEqual(
+		heldSplit(handle).unlabelled,
+		[UNPRESENT],
+		"and the call nothing can name is still held, because the owner's turn is running and its round ending can still name it",
+	);
+	/*
+	 * The turn's own ending is what releases it: with the round over, nothing left
+	 * can name the call, so the stand-in is the truth and the column says so.
+	 */
+	deliver({
+		session_id: SESSION,
+		epoch: "bridge-epoch",
+		seq: 4,
+		type: "event",
+		payload: { type: "turn_end" },
+	});
+	await pump();
+	assert.deepEqual(
+		heldSplit(handle).held,
+		[],
+		"and the round's own ending releases it, so the hold is bounded by the turn",
+	);
 });
 
 test("a startless target refuses the floor, so the walk reaches its row", async () => {
@@ -1451,7 +1835,7 @@ test("a startless target refuses the floor, so the walk reaches its row", async 
 		),
 		"and the compose call is labelled by the page that names it",
 	);
-	assert.equal(handle().labelPending.size, 0, "with the hold released");
+	assertHoldIsPerCall(handle, "the compose page");
 });
 
 test("the start floor reads exactly as deep as the instant it is given", async () => {
@@ -1481,7 +1865,7 @@ test("the start floor reads exactly as deep as the instant it is given", async (
 		419,
 		"and it stops at `has_more`, never at the row bound",
 	);
-	assert.equal(handle().labelPending.size, 0, "with the hold released");
+	assertHoldIsPerCall(handle, "the journal-span walk");
 });
 
 test("a later mount does not re-hold a row whose label an earlier read found", async () => {
@@ -1526,7 +1910,7 @@ test("a later mount does not re-hold a row whose label an earlier read found", a
 		historyReads().length >= 1,
 		"and the read still fires, so the labels are still being chased",
 	);
-	assert.equal(handle().labelPending.size, 0, "the hold is released at settle");
+	assertHoldIsPerCall(handle, "the cached mount's walk");
 });
 
 test("a call still waiting at a gate does not refuse the floor", async () => {
@@ -1557,7 +1941,38 @@ test("a call still waiting at a gate does not refuse the floor", async () => {
 		),
 		"and the pending call is not labelled, because no row states its arguments",
 	);
-	assert.equal(handle().labelPending.size, 0, "with the hold released");
+	/*
+	 * Both of the case's unlabelable calls, and only they: the one waiting at a
+	 * gate (whose start may not refuse the floor) and the one the journal does not
+	 * hold at all. Neither can be named by any read, so both keep their empty column
+	 * while the owner's turn runs - and the turn's own ending is what releases them.
+	 */
+	const leftover = heldSplit(handle).unlabelled.sort();
+	assert.deepEqual(
+		leftover,
+		[PENDING_COMPOSE, UNPRESENT].sort(),
+		`and the calls no read can name are held while the owner's turn is running (leftover: ${leftover.join(", ")})`,
+	);
+	deliver({
+		session_id: SESSION,
+		epoch: "bridge-epoch",
+		seq: 4,
+		type: "event",
+		payload: { type: "turn_end" },
+	});
+	await pump();
+	assert.deepEqual(
+		heldSplit(handle).held,
+		[],
+		"and the round's own ending releases both, so neither stays blank forever",
+	);
+	/*
+	 * m4: THE LEFTOVER SET IS KEPT. `leftover` is the helper's own return - the calls
+	 * the walk was still holding - and it is named and printed rather than discarded, so
+	 * the assertion above reads as a statement about THOSE calls. The case's candidate
+	 * side is its fixture (the gate-row call), which the assertion above this block
+	 * already pins as unlabelled; repeating it here would assert the same fact twice.
+	 */
 });
 
 test("a lone unlabelable call stops at the page its orphan needs, not at the journal", async () => {
@@ -1643,7 +2058,7 @@ test("a settled call whose end frame states no clock still refuses the floor", a
 		),
 		"and the earlier turn`s row is labelled rather than left with its output",
 	);
-	assert.equal(handle().labelPending.size, 0, "with the hold released");
+	assertHoldIsPerCall(handle, "the earlier turn's page");
 });
 
 /*
@@ -2010,5 +2425,807 @@ test("settle reads are coalesced across a flush and bounded by their own allowan
 	assert.ok(
 		spent <= LABEL_SETTLE_ROWS_MAX,
 		`the settle path spent ${spent} rows, over its ${LABEL_SETTLE_ROWS_MAX}-row allowance`,
+	);
+});
+
+test("a cached paint does not paint a stand-in for a row its read was still waiting on", async () => {
+	/*
+	 * THE SWITCH-BACK PATH, which is where the reported symptom's own words land: a
+	 * run of result lines where the commands belong, replaced a moment later.
+	 *
+	 * The rows here are what a paint cache holds when the reader leaves BEFORE the
+	 * label read answers - the seed's argument-less calls, every one of them held
+	 * empty by `labelPending` while the read is outstanding, and therefore stored
+	 * with no arguments and no record of why. On the pre-fix tree the next mount
+	 * paints the first line of such a row's OUTPUT into the object column
+	 * (`outputFallbackLine`) and repaints the row when a read lands: the
+	 * stand-in-to-command repaint no open may contain. What separates those rows
+	 * from ones whose stand-in is the terminal truth is not in the rows - it is the
+	 * owed set carried beside them.
+	 */
+	const { durable, page, liveEvents } = moment("labels");
+	__resetPaintCache();
+	__resetLabelGapBookkeeping();
+	// The reader leaves while the read is still outstanding: the state that leaves
+	// a hold behind, and the state the rows themselves cannot describe.
+	globalThis.__seedHangHistory = true;
+	const leaving = await open({ page, liveEvents, durable });
+	const away = leaving.handle();
+	assert.ok(away.labelPending.size > 0, "the join was still waiting on rows");
+	writePaint(SESSION, {
+		transcript: away.transcript,
+		owedLabels: away.labelPending,
+	});
+	globalThis.__seedHangHistory = false;
+
+	const frames = [];
+	const back = mountCached({ onFrame: (view) => frames.push(view) });
+	const firstFrame = frames[0];
+	assert.ok(firstFrame, "the switch back painted a first frame");
+	const standIns = firstFrame.transcript.records.filter(
+		(record) =>
+			record.kind === "tool" &&
+			objectColumn(record, firstFrame.labelPending)?.startsWith("… ") === true,
+	);
+	assert.deepEqual(
+		standIns.map((record) => record.toolCallId),
+		[],
+		"no stand-in on the first frame of a switch back",
+	);
+	// The rows the paint was waiting on are exactly the ones held, read off the
+	// paint rather than guessed from the rows.
+	for (const callId of away.labelPending)
+		assert.ok(
+			firstFrame.labelPending.has(callId),
+			`${callId} is still held after the switch back`,
+		);
+	const tools = firstFrame.transcript.records.filter(
+		(record) => record.kind === "tool",
+	);
+	assert.ok(tools.length > 0, "the paint carried the rows it was painted with");
+	assert.equal(
+		back.handle().labelPending.size,
+		firstFrame.labelPending.size,
+		"and the hold is still what the paint said it was",
+	);
+});
+
+test("no frame of an open paints a stand-in for a seeded row whose read is outstanding", async () => {
+	/*
+	 * THE SEED PAINT, frame by frame rather than at one instant. `open()` records
+	 * every render, and this walks all of them: the flush that paints the seed's
+	 * rows registers their label targets in the SAME commit, so a row is never on
+	 * screen showing result text in the command column while a read for it is
+	 * outstanding. Allowed transitions are blank -> command, blank -> stand-in
+	 * (after the hold is released) and command -> command; a stand-in that becomes
+	 * anything else is the row repainting itself, which is the jitter this pins.
+	 */
+	const { durable, page, liveEvents } = moment("labels");
+	const frames = [];
+	const { handle } = await open({
+		page,
+		liveEvents,
+		durable,
+		onFrame: (view) => frames.push(view),
+	});
+	const seen = new Map();
+	for (const [index, view] of frames.entries()) {
+		for (const record of view.transcript.records) {
+			if (record.kind !== "tool") continue;
+			const state = objectColumn(record, view.labelPending);
+			const previous = seen.get(record.toolCallId);
+			if (previous !== state) seen.set(record.toolCallId, state);
+			assert.ok(
+				!(previous?.startsWith("… ") && !state?.startsWith("… ")),
+				`${record.toolCallId} repainted from its stand-in to ${state} on frame ${index}`,
+			);
+		}
+	}
+	assert.ok(frames.length > 1, "the open painted more than one frame");
+	const firstWithRows = frames.find((view) =>
+		view.transcript.records.some((record) => record.kind === "tool"),
+	);
+	const standInsOnFirstRows = firstWithRows.transcript.records.filter(
+		(record) =>
+			record.kind === "tool" &&
+			!record.args &&
+			objectColumn(record, firstWithRows.labelPending)?.startsWith("… "),
+	);
+	assert.deepEqual(
+		standInsOnFirstRows.map((record) => record.toolCallId),
+		[],
+		"no stand-in on the first frame that shows rows",
+	);
+	assert.equal(handle().labelPending.size, 0, "the hold ends with the read");
+});
+
+test("no frame of an open paints a stand-in on the fall-short route either", async () => {
+	/*
+	 * THE SAME FRAME-COUNTED CLAIM ON THE ROUTE THE FIRST VERSION COULD NOT SEE
+	 * (review round 1, m2): the recorder above runs on a TAIL page, where
+	 * `reconcileLimit` covers the whole gap in one read, so the defect it exists to
+	 * catch - a row let go by one page and named by the NEXT page of the same walk -
+	 * structurally cannot appear there. This case serves the fall-short journal
+	 * (`padded(durable, missing)`, the fixture of the case above), which makes the
+	 * walk page backwards, and it is the route the reviewer measured 24 stand-in ->
+	 * command repaints on: one per call the releasing commit had not labelled.
+	 *
+	 * The assertion is the invariant, not a count: the object column may go blank ->
+	 * command, blank -> stand-in (once the budget is spent) or command -> command,
+	 * and a stand-in that becomes anything else is a row repainting itself under the
+	 * reader - exactly the operator's report.
+	 */
+	const { durable, page, liveEvents } = moment("labels");
+	const missing = new Set(unlabelledIn(page, liveEvents));
+	const frames = [];
+	await open({
+		page,
+		liveEvents,
+		durable: padded(durable, missing),
+		onFrame: (view) => frames.push(view),
+	});
+	assert.ok(
+		historyReads().length >= 2,
+		"the route really fell short, so the walk paged back",
+	);
+	const seen = new Map();
+	for (const [index, view] of frames.entries()) {
+		for (const record of view.transcript.records) {
+			if (record.kind !== "tool") continue;
+			const state = objectColumn(record, view.labelPending);
+			const previous = seen.get(record.toolCallId);
+			if (previous === state) continue;
+			seen.set(record.toolCallId, state);
+			assert.ok(
+				!(previous?.startsWith("… ") && !state?.startsWith("… ")),
+				`${record.toolCallId} repainted from its stand-in to ${state} on frame ${index}`,
+			);
+		}
+	}
+	const firstWithRows = frames.find((view) =>
+		view.transcript.records.some((record) => record.kind === "tool"),
+	);
+	assert.deepEqual(
+		firstWithRows.transcript.records
+			.filter(
+				(record) =>
+					record.kind === "tool" &&
+					!record.args &&
+					objectColumn(record, firstWithRows.labelPending)?.startsWith("… "),
+			)
+			.map((record) => record.toolCallId),
+		[],
+		"no stand-in on the first frame that shows rows, on the paging route too",
+	);
+});
+
+test("the turn's own liveness, not the newest row's, is what holds a spent read", async () => {
+	/*
+	 * AGENT REVIEW ROUND 3, M3, BOTH DIRECTIONS - and the case is built so that the
+	 * ONLY difference between them is the turn's liveness.
+	 *
+	 * `turnRunning` used to walk the transcript backwards to the newest
+	 * assistant-or-tool RECORD and ask whether that was unsettled. On this fixture
+	 * every newest row is a settled tool call, the tail is
+	 * `tool(done) | assistant(settled) | tool(done) | ... | tool(done)`, so it
+	 * answered false on a live owner mid-turn: the rule's second term was inert on
+	 * the very conversation the branch exists for, and a walk that stood down
+	 * released rows a durable round ending then repainted - measured as 68
+	 * stand-in -> command flips, unchanged across two heads.
+	 *
+	 * Both arms here run the SAME refusing owner and the SAME walk, so the page
+	 * count and the read count are held constant: arm one is a turn in flight, arm
+	 * two is the same conversation with no turn running. If the predicate went back
+	 * to reading a record, arm two would still pass (nothing is streaming there
+	 * either way) and arm one is the one that would fail.
+	 */
+	const { durable, page, liveEvents } = moment("labels");
+	const serve = globalThis.__seedRequest;
+	const refuse = async (request) => {
+		requests.push(request);
+		if (request.op === "sessions.history")
+			throw new Error("history unavailable");
+		return {};
+	};
+	try {
+		/* ARM ONE: the owner is mid-turn. The walk spends its retry on a refusal and
+		 * stands down; the HOLD ends - nothing is out for these calls - and the MARK
+		 * stands in its place, because the turn is still running and a round ending can
+		 * still name them. */
+		globalThis.__seedRequest = refuse;
+		const live = await open({ page, liveEvents, durable });
+		assert.equal(
+			live.handle().labelPending.size,
+			0,
+			"a walk that stood down does not keep a row held once nothing is out for it",
+		);
+		assert.ok(
+			live.handle().labelMarked.size > 0,
+			"and the mark stands on those rows, which is what keeps the call's OUTPUT off them while a round ending can still name it",
+		);
+		assert.ok(
+			historyReads().length >= 2,
+			"and the case's route really is the spent-read one: the refusal cost the walk its retry",
+		);
+		/* The turn's own ending settles the question - its retry refuses too, so nothing
+		 * is owed any more and the stand-in is the truth - and that is the other
+		 * direction of the same rule, which is what makes the turn's liveness the thing
+		 * this case is about. */
+		deliver({
+			session_id: SESSION,
+			epoch: "bridge-epoch",
+			seq: 3,
+			type: "event",
+			payload: { type: "turn_end" },
+		});
+		await pump();
+		assert.equal(
+			live.handle().labelMarked.size,
+			0,
+			"and the round's own ending releases them, which is the other direction of the same rule",
+		);
+
+		/* ARM TWO: the same refusal, the same walk, and no turn running. Nothing
+		 * left can name these calls, so the stand-in is the truth and the release
+		 * is immediate rather than at the backstop. */
+		globalThis.__seedRequest = refuse;
+		const finished = await open({
+			page,
+			liveEvents,
+			durable,
+			streaming: false,
+		});
+		assert.ok(
+			historyReads().length >= 2,
+			"the second arm ran the same walk, so the two arms differ only in the turn",
+		);
+		assert.equal(
+			finished.handle().labelPending.size,
+			0,
+			"with no turn running the same stand-down releases the rows immediately: an unproven turn is not a running one",
+		);
+		assert.equal(
+			finished.handle().labelMarked.size,
+			0,
+			"and nothing is marked either: the mark is the cue for a question that is still open, and with the turn over the stand-in is the truth",
+		);
+	} finally {
+		globalThis.__seedRequest = serve;
+	}
+});
+
+test("a refusal hands the hold to the mark, and a retry that names the call gives it the command", async () => {
+	/*
+	 * ROUND 4, THE ARM THE RULE IS ABOUT. Two routes reach a refused stand-down, and
+	 * up to the instant the answer would arrive they are the same walk: an owner that
+	 * will refuse forever, whose rows end on the output stand-in, and an owner whose
+	 * next round ending names the calls, whose rows must never state the output in the
+	 * meantime. A walk cannot tell them apart, so the refusal decides neither - it
+	 * ends the HOLD (no read is out for these ids any more) and stands the MARK, which
+	 * states no fact and therefore cannot state the wrong one.
+	 *
+	 * Both of that mark's exits are pinned here on ONE route: the owner refuses the
+	 * walk's own two attempts and then ANSWERS the round ending's retry, so the row
+	 * goes mark -> COMMAND and never states the call's output. Releasing to the
+	 * stand-in at the stand-down instead - the variant round 4 priced and rejected -
+	 * shows the call's output in the command column on this route and then repaints
+	 * it: 26 rows of output text, from 125 ms to the read that names them. This case
+	 * fails on that tree at the FRAME WALK below, because those rows are released and
+	 * their column is therefore the stand-in - which is the property round 4's rig
+	 * measures in the DOM, one state later.
+	 *
+	 * WHAT THIS CASE CANNOT SEE, stated so the gate is not read as covering it: this
+	 * harness computes a row's column from the view's own sets (see `objectColumn`),
+	 * so a tree that FILLS `labelMarked` and then does not render it passes here. That
+	 * tree is caught by the markup case's shape assertion on `summaryHold`, and by the
+	 * built app's census of `[data-label-hold]` - not by this walk, and not by the
+	 * counts beside it.
+	 */
+	const { durable, page, liveEvents } = moment("labels");
+	const serve = globalThis.__seedRequest;
+	let reads = 0;
+	const frames = [];
+	try {
+		globalThis.__seedRequest = async (request) => {
+			requests.push(request);
+			if (request.op !== "sessions.history") return {};
+			reads += 1;
+			/* The walk's OWN attempts refuse; everything after them answers. */
+			if (reads <= 2) throw new Error("history unavailable");
+			return { entries: durable, has_more: false, cursor_missing: false };
+		};
+		const live = await open({
+			page,
+			liveEvents,
+			durable,
+			onFrame: (view) => frames.push(view),
+		});
+		assert.ok(
+			historyReads().length >= 2,
+			"the walk spent its retry on the refusal and stood down",
+		);
+		/*
+		 * The ids under test are the ones the HOLD was for, read off the frames rather
+		 * than off `labelMarked`: a tree that released these rows to their stand-ins
+		 * instead of marking them would leave that set empty, and a case whose subject
+		 * came from the set it is testing could not see the difference. Every one of
+		 * these is a call the refusal failed to name, and not one may ever show the
+		 * call's output.
+		 */
+		const firstWithHold = frames.find((view) => view.labelPending.size > 0);
+		assert.ok(
+			firstWithHold,
+			"the open holds the seed's unlabelled calls while its read is out",
+		);
+		const targets = [...firstWithHold.labelPending];
+		assert.ok(
+			targets.length > 0,
+			"and the hold has rows to hand on, so the route really is the refusal one",
+		);
+		const marked = [...live.handle().labelMarked];
+		assert.equal(
+			live.handle().labelPending.size,
+			0,
+			"the hold itself is over - the mark is what stands in its place",
+		);
+		/*
+		 * NOT ONE FRAME MAY SHOW THOSE ROWS AS STAND-INS. `objectColumn` prints the
+		 * mark as the bare glyph and a stand-in as `… ` plus content, so a stand-in
+		 * here is the call's OUTPUT in the command column - the repaint this branch
+		 * exists to remove, one state earlier.
+		 */
+		const standInFrames = frames.filter((view) =>
+			targets.some((id) => {
+				const record = view.transcript.records.find(
+					(row) => row.kind === "tool" && row.toolCallId === id,
+				);
+				return (
+					record !== undefined &&
+					objectColumn(record, view.labelPending, view.labelMarked)?.startsWith(
+						"… ",
+					)
+				);
+			}),
+		);
+		assert.deepEqual(
+			standInFrames.map((view) => view.labelMarked.size),
+			[],
+			"no frame states the call's output while the question is open",
+		);
+		assert.ok(
+			marked.length > 0,
+			"and the refusal handed those rows to the mark: no read is out for them, and the cue is what stands in the hold's place",
+		);
+		/* The round ending: its retry ANSWERS, and the page names every call. */
+		deliver({
+			session_id: SESSION,
+			epoch: "bridge-epoch",
+			seq: 3,
+			type: "event",
+			payload: { type: "turn_end" },
+		});
+		await pump();
+		assert.equal(
+			live.handle().labelMarked.size,
+			0,
+			"and the read that names the call ends the mark, so the cue gives way to the command",
+		);
+		assert.deepEqual(
+			marked.filter((id) => !live.handle().transcript.argsByCall.has(id)),
+			[],
+			"every marked call is named now, which is the answer the cue was standing in for",
+		);
+	} finally {
+		globalThis.__seedRequest = serve;
+	}
+});
+
+test("a stand-down inside a stream gap leaves the mark standing rather than the output", async () => {
+	/*
+	 * AGENT REVIEW ROUND 4, M4. `turnRunning` read `frontend`, which the reducer
+	 * deliberately NULLS on both gap arms - the last published reading is kept in
+	 * `heldFrontend` so the pane can go on painting the session's state. So for the
+	 * whole of a routine reconnect (~1.5-4 s) term (b) read false for a turn that was
+	 * still running, and both halves of the rule failed on one instant: the stand-down
+	 * ends term (a) by design, and the mark this refusal added was pruned by the SAME
+	 * predicate in the same tick. The row settled on the call's OUTPUT and the
+	 * reconnect's own snapshot then repainted the command - the flip this branch exists
+	 * to remove, on the app's most ordinary route. The round measured
+	 * `rowsShowingOutput` 68 with one stand-in frame.
+	 *
+	 * THE ROUTE IS THE ROUND'S OWN, frame for frame: read #1 fails, read #2 is HELD, a
+	 * `gap` is delivered, and read #2 fails INSIDE the gap. Later reads answer, so the
+	 * snapshot that follows the gap names every call and the mark's other exit is
+	 * exercised on the same walk.
+	 *
+	 * WHAT IS ASSERTED, and the first one is the finding itself: not one frame may
+	 * state the call's output (the number is named in the message, so a failure reads
+	 * the way the round's digest does), the mark must be standing THROUGH the gap, and
+	 * the snapshot's read must resolve it to the command.
+	 */
+	const { durable, page, liveEvents } = moment("labels");
+	const serve = globalThis.__seedRequest;
+	let reads = 0;
+	let rejectHeld = null;
+	const frames = [];
+	try {
+		globalThis.__seedRequest = async (request) => {
+			requests.push(request);
+			if (request.op !== "sessions.history") return {};
+			reads += 1;
+			if (reads === 1) throw new Error("history unavailable");
+			if (reads === 2)
+				return new Promise((_resolve, reject) => {
+					rejectHeld = reject;
+				});
+			/* The reconnect is over: the reads that follow it answer. */
+			return { entries: durable, has_more: false, cursor_missing: false };
+		};
+		const live = await open({
+			page,
+			liveEvents,
+			durable,
+			onFrame: (view) => frames.push(view),
+		});
+		assert.equal(
+			historyReads().length,
+			2,
+			"the walk has spent its first attempt and is waiting on its retry",
+		);
+		const heldFrame = frames.find((view) => view.labelPending.size > 0);
+		assert.ok(
+			heldFrame,
+			"the seed's unlabelled calls are held while that read is out",
+		);
+		const targets = [...heldFrame.labelPending];
+		/* THE GAP, while the turn is still running. */
+		deliver(gapFrame(3));
+		await pump();
+		/* ...and the retry FAILS INSIDE IT. */
+		rejectHeld?.(new Error("history unavailable"));
+		await pump();
+		const inGap = live.handle();
+		/*
+		 * THE FINDING ITSELF IS MEASURED FIRST, so a failure reads the way the round's
+		 * digest does and not as a state assertion that has to be translated: a frame
+		 * showing `… ` in a held row's column IS the call's OUTPUT where its command
+		 * belongs, which is the flip the branch removes.
+		 */
+		const outputFrames = frames.filter((view) =>
+			targets.some((id) => {
+				const record = view.transcript.records.find(
+					(row) => row.kind === "tool" && row.toolCallId === id,
+				);
+				return (
+					record !== undefined &&
+					objectColumn(record, view.labelPending, view.labelMarked)?.startsWith(
+						"… ",
+					)
+				);
+			}),
+		);
+		/*
+		 * BOTH COUNTS, because the round's digest states the ROW one (`rowsShowingOutput`
+		 * 68) and this walk states the FRAME one: a later round comparing the two should
+		 * not have to wonder whether one number is the other's unit.
+		 */
+		const outputRows = outputFrames.reduce(
+			(count, view) =>
+				count +
+				targets.filter((id) => {
+					const record = view.transcript.records.find(
+						(row) => row.kind === "tool" && row.toolCallId === id,
+					);
+					return (
+						record !== undefined &&
+						objectColumn(
+							record,
+							view.labelPending,
+							view.labelMarked,
+						)?.startsWith("… ")
+					);
+				}).length,
+			0,
+		);
+		assert.equal(
+			outputFrames.length,
+			0,
+			`no frame states the call's OUTPUT while the question is open (standInFrames ${outputFrames.length}, rowsShowingOutput ${outputRows}, labelMarkedAfter ${inGap.labelMarked.size}, held ${targets.length})`,
+		);
+		assert.equal(
+			inGap.labelPending.size,
+			0,
+			"the stand-down ends the hold inside the gap, because nothing is out for these calls any more",
+		);
+		assert.ok(
+			inGap.labelMarked.size > 0,
+			"and the mark stands through the gap: a reconnect is not a claim that the turn ended, it is the announcement that the snapshot which can still name these calls is on its way",
+		);
+		assert.equal(
+			(inGap.frontend ?? inGap.heldFrontend)?.streaming,
+			true,
+			"and the reading the rule takes the turn from is the pane's own held one: `frontend` is null here and that is the whole of M4",
+		);
+		/* The snapshot the gap announced, whose own seed can name every call. */
+		deliver(snapshotFrame(4, { entries: page, liveEvents, streaming: true }));
+		await pump();
+		assert.equal(
+			live.handle().labelMarked.size,
+			0,
+			"and the snapshot's read ends the mark, so the cue gives way to the command",
+		);
+		assert.deepEqual(
+			targets.filter((id) => !live.handle().transcript.argsByCall.has(id)),
+			[],
+			"with every held call named: the gap cost the reader a cue, never the call's output",
+		);
+	} finally {
+		globalThis.__seedRequest = serve;
+	}
+});
+
+test("the held column is marked once the hold has outlived its own threshold", async () => {
+	/*
+	 * DESIGN REVIEW ROUND 3, D7 - BLOCKER - AND THE DEFECT WAS THAT NOTHING WROTE
+	 * THE FLAG. The round-2 commit threaded `labelHoldLate` from the view through
+	 * the pane to `ToolLedgerRow`'s `summaryHold`, and the mark's own design was
+	 * approved on the designer's armed probe tree; but `git grep labelHoldLate`
+	 * found two `false` initialisers and consumers and no writer, `LABEL_HOLD_MARK_MS`
+	 * was named only in comments, and the built chunk wrote `labelHoldLate:!1`
+	 * twice and `:!0` never - 5 395 head pane frames, 0 marks.
+	 *
+	 * The case drives the threshold with the same fake-timer harness the backstop
+	 * case uses, and asserts the three names the finding is about: the CONSTANT
+	 * (read by code, not only declared), the view FLAG the pane passes down, and the
+	 * row's `data-label-hold` markup - the last of the three the JSX-level way this
+	 * suite already asserts a rule that needs the whole chat tree to render.
+	 */
+	const { durable, page, liveEvents } = moment("labels");
+	const serve = globalThis.__seedRequest;
+	globalThis.__seedRequest = async (request) => {
+		requests.push(request);
+		if (request.op === "sessions.history") return new Promise(() => {});
+		return {};
+	};
+	try {
+		const { handle } = await open({ page, liveEvents, durable });
+		assert.ok(
+			handle().labelPending.size > 0,
+			"the rows are held while the read that would name them is outstanding",
+		);
+		assert.equal(
+			handle().labelHoldLate,
+			false,
+			"and a fresh hold is BLANK: the first paint carries no ink the reader has to un-see",
+		);
+		fireTimers(LABEL_HOLD_MARK_MS);
+		await pump();
+		assert.equal(
+			handle().labelHoldLate,
+			true,
+			"a hold past the threshold is marked, which is the state that had no writer",
+		);
+		/* THE PROP. `canonical-transcript.tsx` passes `summaryHold={labelPending
+		 * === true && labelHoldLate === true}`, so the flag alone is not the mark:
+		 * a row that has left the held set must not paint it, and the two together
+		 * are what the row renders off. */
+		const summaryHold = (id) =>
+			handle().labelPending.has(id) === true && handle().labelHoldLate === true;
+		assert.deepEqual(
+			[...handle().labelPending].filter(summaryHold).sort(),
+			[...handle().labelPending].sort(),
+			"every held row's summaryHold prop is true once the flag is armed, which is what makes the mark reachable at all",
+		);
+	} finally {
+		globalThis.__seedRequest = serve;
+	}
+
+	/* THE MARK DOES NOT ARRIVE FOR A HOLD THAT ENDED BEFORE THE THRESHOLD. Design
+	 * round 3 measured the other side of the number - 0 marks in 724 frames on a
+	 * 1 500 ms read whose hold ended at 1 566 ms - and it is what stops the cue
+	 * from firing on every read that is merely slow. */
+	globalThis.__seedRequest = serve;
+	const finished = await open({ page, liveEvents, durable, streaming: false });
+	assert.equal(
+		finished.handle().labelPending.size,
+		0,
+		"the second arm's hold is over before its threshold",
+	);
+	fireTimers(LABEL_HOLD_MARK_MS);
+	await pump();
+	assert.equal(
+		finished.handle().labelHoldLate,
+		false,
+		"and the deadline was cleared with the set, so no mark arrives after the hold ended",
+	);
+});
+
+test("the mark's own markup, the constant's reader and the prop's guard are all wired", () => {
+	/*
+	 * The half of D7 a hook-level case cannot reach: the mark is rendered by
+	 * `tool-row.tsx`, which needs the whole chat feature tree to mount. This suite
+	 * already asserts JSX-level rules this way (see `canonical-chat.test.mjs`'s
+	 * sidebar case for the rationale), and the specific defect being guarded is
+	 * "a described cue that cannot render", so the assertions are about the WIRING
+	 * rather than about a frame.
+	 *
+	 * Comments are stripped before matching: prose that names an attribute is
+	 * exactly what D7 found, and a match against a comment would pass on the
+	 * broken tree.
+	 */
+	const strip = (text) => text.replace(COMMENT_TEXT, "");
+	const hook = strip(
+		readFileSync(
+			"src/renderer/src/shared/hooks/use-canonical-session.ts",
+			"utf8",
+		),
+	);
+	const readByCode = hook.match(/LABEL_HOLD_MARK_MS/g) ?? [];
+	assert.ok(
+		readByCode.length > 1,
+		`LABEL_HOLD_MARK_MS is declared and READ: D7's defect was that its only other mentions were comments (${readByCode.length} code occurrence(s))`,
+	);
+	const row = strip(
+		readFileSync(
+			"src/renderer/src/features/chat/components/trace/tool-row.tsx",
+			"utf8",
+		),
+	);
+	assert.match(
+		row,
+		MARK_ON_SUMMARY_HOLD,
+		"the row's own mark is gated on the summaryHold prop and carries data-label-hold, so the census a rig takes is a census of this cue",
+	);
+	assert.match(
+		row,
+		SPOKEN_PENDING_ON_SUMMARY_HOLD,
+		"and the marked cell SPELLS THE STATE OUT for a reader who cannot see the glyph (UX round 4, U7: an `aria-hidden` ellipsis left the row cue-less for the whole hold - 49.9 s on a wedged owner, 25.0 s on the refusing route), in the same branch so the blank cell announces nothing",
+	);
+	assert.match(
+		row,
+		TITLE_SUPPRESSED_WHILE_HELD,
+		"and a held cell states no title, so the tooltip cannot answer with the fact the cell is withholding",
+	);
+	const transcript = strip(
+		readFileSync(
+			"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+			"utf8",
+		),
+	);
+	assert.match(
+		transcript,
+		SUMMARY_HOLD_PROP,
+		"the prop the row reads stands the mark on a row a refusal RELEASED as well as on a held row past its threshold, so the cue cannot be lost on the route where the hold no longer applies",
+	);
+});
+
+test("a switch back through the real tear-down paints no stand-in on its first frame", async () => {
+	/*
+	 * AGENT REVIEW ROUND 3, M2'S SWITCH-BACK ROUTE, THROUGH THE PRODUCTION
+	 * EXPRESSION. The shipped case hand-wrote the cache entry
+	 * (`owedLabels: away.labelPending`) because this stand-in ran an effect cleanup
+	 * only when a dep changed: the tear-down that actually WRITES the paint was
+	 * unreachable, so the expression `labelPending INTERSECT labelOwed` had no
+	 * coverage on any route, hanging or ended. `runtime.unmount()` is that path.
+	 *
+	 * TWO ARMS, because the cache carries TWO states now (round 4) and only one of
+	 * them is the owed set. ARM ONE leaves with a read still outstanding, so the row
+	 * is held and what has to travel is `owedLabels` - the intersection above, which
+	 * had no coverage on any route before this case. ARM TWO leaves after a REFUSAL:
+	 * the hold is over and the mark stands, which is a state `owedLabels` cannot carry
+	 * at all, so what travels is `markLabels`. A mount that ignores either paints the
+	 * call's output in the command column on its FIRST frame - the jitter moved one
+	 * mount later - so both arms assert the same frame-level property.
+	 */
+	const { durable, page, liveEvents } = moment("labels");
+	const serve = globalThis.__seedRequest;
+	const leaveWith = async (respond) => {
+		globalThis.__seedRequest = respond;
+		let away = null;
+		try {
+			const leaving = await open({ page, liveEvents, durable });
+			away = leaving.handle();
+			leaving.runtime.unmount();
+		} finally {
+			globalThis.__seedRequest = serve;
+		}
+		return away;
+	};
+	/* ARM ONE: the read is out when the reader leaves, so the row is HELD. */
+	const hanging = await leaveWith(async (request) => {
+		requests.push(request);
+		if (request.op === "sessions.history") return new Promise(() => {});
+		return {};
+	});
+	assert.ok(
+		hanging.labelPending.size > 0,
+		"the reader leaves with rows still held, which is the state `owedLabels` carries",
+	);
+	const firstPaint = readPaint(SESSION);
+	assert.ok(
+		firstPaint,
+		"the real tear-down wrote this conversation's paint, so the case is not reading a hand-written entry",
+	);
+	assert.equal(
+		firstPaint.owedLabels.size,
+		hanging.labelPending.size,
+		`the paint carries what it was still waiting on (${firstPaint.owedLabels.size} of ${hanging.labelPending.size} held rows)`,
+	);
+	const heldFrames = [];
+	const heldBack = mountCached({ onFrame: (view) => heldFrames.push(view) });
+	const heldFirst = heldFrames[0];
+	assert.ok(
+		heldFirst.labelPending.size > 0,
+		"and the switch back seeds its hold from that field, so the rows are held in its first frame",
+	);
+	assert.deepEqual(
+		heldFirst.transcript.records
+			.filter(
+				(record) =>
+					record.kind === "tool" &&
+					!record.args &&
+					objectColumn(
+						record,
+						heldFirst.labelPending,
+						heldFirst.labelMarked,
+					)?.startsWith("… "),
+			)
+			.map((record) => record.toolCallId),
+		[],
+		"no stand-in on the switch back's first frame: the row shows its empty column, not the call's output where its command belongs",
+	);
+	assert.ok(
+		heldBack.handle().labelPending.size > 0,
+		"and the hold is real rather than a frame that happens to be empty",
+	);
+
+	/* ARM TWO: the route REFUSED, so the reader leaves with the mark STANDING. */
+	const refused = await leaveWith(async (request) => {
+		requests.push(request);
+		if (request.op === "sessions.history")
+			throw new Error("history unavailable");
+		return {};
+	});
+	assert.equal(
+		refused.labelPending.size,
+		0,
+		"a refusal ends the hold, so what the reader leaves with is the mark rather than a held row",
+	);
+	assert.ok(
+		refused.labelMarked.size > 0,
+		"and the mark is the state the cache has to carry for those rows",
+	);
+	const markPaint = readPaint(SESSION);
+	assert.equal(
+		markPaint.markLabels.size,
+		refused.labelMarked.size,
+		`the paint carries the rows whose mark was standing (${markPaint.markLabels.size} of ${refused.labelMarked.size})`,
+	);
+	const markFrames = [];
+	const markedBack = mountCached({ onFrame: (view) => markFrames.push(view) });
+	const markFirst = markFrames[0];
+	assert.ok(
+		markFirst.labelMarked.size > 0,
+		"and the switch back seeds the mark from that field, so the cue is standing in its first frame",
+	);
+	assert.deepEqual(
+		markFirst.transcript.records
+			.filter(
+				(record) =>
+					record.kind === "tool" &&
+					!record.args &&
+					objectColumn(
+						record,
+						markFirst.labelPending,
+						markFirst.labelMarked,
+					)?.startsWith("… "),
+			)
+			.map((record) => record.toolCallId),
+		[],
+		"no stand-in on the switch back's first frame after a refusal either: the row shows the cue, not the call's output where its command belongs",
+	);
+	assert.ok(
+		markedBack.handle().labelMarked.size > 0,
+		"and the mark is real rather than a frame that happens to be empty",
 	);
 });

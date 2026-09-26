@@ -90,6 +90,34 @@ export type PaintedConversation = {
 	transcript: TranscriptState;
 	/** `Date.now()` at write, for eviction order and for a test to read. */
 	savedAt: number;
+	/**
+	 * Call ids whose label read the paint was still waiting on when it was stored.
+	 *
+	 * WHY THIS TRAVELS WITH THE ROWS. A cached tool row carries no arguments (the
+	 * seed it came from holds `tool_execution_end` frames, which state none), so
+	 * the row's object column falls back to the first line of the call's OUTPUT
+	 * unless the paint says the command is still coming. That distinction cannot
+	 * be recovered from the rows: a call whose read had finished and found nothing
+	 * is a row whose stand-in is the terminal truth, and a call whose read was
+	 * still outstanding is a row that is one answer away from its command. Cached
+	 * without it, the first frame after a switch back paints result text where the
+	 * command belongs and then repaints the row when the read lands - the jitter
+	 * the hold exists to prevent, moved one mount later.
+	 */
+	owedLabels: ReadonlySet<string>;
+	/**
+	 * Call ids whose HOLD a refusal ended and whose mark was standing when stored.
+	 *
+	 * The sibling of `owedLabels`, for the same reason one mount later. A refused
+	 * stand-down releases the row's hold and keeps its mark standing (round 4): the
+	 * read path has refused, no read has named the call, and the call's OUTPUT is
+	 * therefore not yet a fact - but neither is a command. The rows alone cannot say
+	 * which of the two states a column is in, so a cache without this paints result
+	 * text in the command column on a switch back's FIRST frame and then repaints the
+	 * row when a later read lands: the jitter this branch exists for, one mount later
+	 * on a route that has just refused to answer.
+	 */
+	markLabels: ReadonlySet<string>;
 };
 
 type Entry = PaintedConversation & { bytes: number };
@@ -145,7 +173,16 @@ function trimRecords(records: TranscriptState["records"]): {
  */
 export function writePaint(
 	sessionId: string,
-	input: { transcript: TranscriptState },
+	input: {
+		transcript: TranscriptState;
+		/** The call ids still waiting on a label read; see `owedLabels`. */
+		owedLabels?: ReadonlySet<string>;
+		/**
+		 * The call ids whose hold a refusal ended but whose mark was standing; see
+		 * `markLabels` on `PaintedConversation`.
+		 */
+		markLabels?: ReadonlySet<string>;
+	},
 ): void {
 	// In-flight rows are dropped HERE rather than asked of the caller. The
 	// invariant is the cache's, not the call site's: a streaming assistant row or
@@ -181,12 +218,56 @@ export function writePaint(
 		transcript,
 		savedAt: Date.now(),
 		bytes,
+		/*
+		 * Intersected with the rows that SURVIVED the trim and are still tool rows
+		 * with something to stand in for: a call id whose row was dropped would
+		 * otherwise be held on a mount that has no row to hold, and one whose row
+		 * carries arguments needs no hold at all.
+		 */
+		owedLabels: carriedLabelsFor(records, input.owedLabels),
+		/*
+		 * Filtered by the same rule and for the same reason as `owedLabels`: a marked id
+		 * whose row was trimmed away has nothing to mark, and one whose row carries
+		 * arguments shows its command whatever this set says.
+		 */
+		markLabels: carriedLabelsFor(records, input.markLabels),
 	};
 	// Delete before set so the re-inserted key is the newest for eviction order.
 	cache.delete(sessionId);
 	cache.set(sessionId, entry);
 	evict();
 }
+
+/**
+ * A carried label set, as it applies to the rows this cache actually holds.
+ *
+ * One filter for both sets (`owedLabels`, `markLabels`), because the question is
+ * the same for each: does a row exist here that is in the set AND can still use
+ * the answer? Only a tool row with no arguments can - a dropped row has nothing to
+ * hold or mark, and a row with arguments shows its command whatever the set says.
+ *
+ * An absent set is empty rather than a wildcard: a caller that stores rows
+ * without saying what was owed is claiming every row is settled, which paints
+ * the stand-ins and is exactly what the field exists to stop. Only a caller that
+ * HAD a hold can say it had one.
+ */
+function carriedLabelsFor(
+	records: TranscriptState["records"],
+	supplied: ReadonlySet<string> | undefined,
+): ReadonlySet<string> {
+	if (!supplied || supplied.size === 0) return EMPTY_OWED;
+	const kept = new Set<string>();
+	for (const record of records) {
+		if (record.kind !== "tool" || record.args) continue;
+		if (!record.toolCallId) continue;
+		if (!supplied.has(record.toolCallId)) continue;
+		kept.add(record.toolCallId);
+	}
+	return kept.size > 0 ? kept : EMPTY_OWED;
+}
+
+/** The shared empty carried set, so an unchanged paint keeps its identity. */
+const EMPTY_OWED: ReadonlySet<string> = new Set();
 
 /** The cached paint for `sessionId`, or null. Does not change eviction order. */
 export function readPaint(sessionId: string): PaintedConversation | null {
