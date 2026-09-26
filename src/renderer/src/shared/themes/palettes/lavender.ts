@@ -72,6 +72,11 @@ export const lavender: ThemeDefinition = {
 		elevated: "#393345",
 		sunken: "#212029",
 
+		// The user block's fill: ΔE00 4.01 off the canvas, where `surface` alone
+		// measures 3.31 - a step toward `elevated` to clear the role's 4.0 floor,
+		// which the block carries because the fill IS its boundary.
+		messageSurface: "#342f41",
+
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
 		 * step of THIS palette's own panel at the panel's own hue; they used to be
