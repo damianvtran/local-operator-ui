@@ -610,6 +610,13 @@ test("a session-less draft owes no page, so the pane makes no claim at all", () 
  *
  * The matrix is asserted COMPLETE as well as correct - all 32 combinations, once
  * each - so dropping a row fails here even when every remaining row agrees.
+ *
+ * AND A SIXTH AXIS SITS BESIDE IT: `stale`, the cache's own flag. It is not a
+ * column of THIS table because it changes nothing for the rows here - every one
+ * of them passes no `stale`, which is the "not the cache's" row - and doubling a
+ * 64-row table to say one extra thing is how the extra thing gets skimmed. The
+ * cached combinations have their own table below, with the same two shipped
+ * functions and the completeness check that makes a missing row a failure.
  */
 const STATUSES = ["connecting", "live", "reconnecting", "unavailable"];
 /** Any non-null notice: the rule reads its presence, not its prose. */
@@ -761,6 +768,151 @@ test("the pane's single claim, over every combination of the rule's inputs", asy
 			);
 		});
 	}
+});
+
+test("the pane paints nothing of a CACHED conversation until its page lands", async (t) => {
+	/*
+	 * The sixth axis, and the operator's report that made it one: opening a
+	 * conversation this window had already seen painted the cached rows in the
+	 * click's own frame, the readings strip ~67 ms later and the caption's removal
+	 * with it - "things seem to load at different times ... everything should load
+	 * in one solid paint instead of incrementally". Rows that are the cache's while
+	 * a page is owed are therefore held, not painted:
+	 *
+	 * - the hold is TRUE for a quiet pane at any status, owed, with cached rows;
+	 * - it is FALSE the moment the page lands (no page owed), which is when the
+	 *   rows, the readings and the caption-less transcript arrive in ONE commit;
+	 * - it is FALSE while the pane has a send of its own admitted (the wait line
+	 *   outranks it) or a statement of its own (the notice, the reconnecting
+	 *   line) - the same two exclusions every other row of the matrix has;
+	 * - and a pane with records never collapses out of the layout, so the band
+	 *   cannot take the free height for a greeting while anything is held.
+	 *
+	 * `stale` with no page owed is a store-unreachable pair (the page's own commit
+	 * clears the flag, `use-canonical-session.ts:3128`) and is asserted anyway, for
+	 * the same reason the failure rows are: the decision is total. It must paint
+	 * the rows - a pane that has an answer and still holds would be a spinner over
+	 * content nobody is waiting for.
+	 */
+	const CACHED = [
+		// status, owed, admitted, hold
+		["connecting", true, false, true],
+		["connecting", true, true, false],
+		["connecting", false, false, false],
+		["connecting", false, true, false],
+		["live", true, false, true],
+		["live", true, true, false],
+		["live", false, false, false],
+		["live", false, true, false],
+		["reconnecting", true, false, false],
+		["reconnecting", true, true, false],
+		["reconnecting", false, false, false],
+		["reconnecting", false, true, false],
+		["unavailable", true, false, true],
+		["unavailable", true, true, false],
+		["unavailable", false, false, false],
+		["unavailable", false, true, false],
+	];
+	assert.equal(CACHED.length, 16, "a cached combination is missing from the table");
+	for (const status of STATUSES)
+		for (const owed of [true, false])
+			for (const admitted of [false, true])
+				assert.ok(
+					CACHED.some(
+						(row) =>
+							row[0] === status && row[1] === owed && row[2] === admitted,
+					),
+					`${status}|cached|${owed ? "owed" : "settled"}|${admitted ? "admitted" : "quiet"} is not in the table`,
+				);
+
+	for (const [status, owed, admitted, hold] of CACHED) {
+		await t.test(
+			`${status}|cached|${owed ? "owed" : "settled"}|${admitted ? "admitted" : "quiet"} -> ${hold ? "placeholder" : "rows"}`,
+			() => {
+				const view = {
+					status,
+					failure: null,
+					awaitingHydration: owed,
+					recordCount: 2,
+					admittedSend: admitted,
+					stale: true,
+				};
+				assert.equal(holdsPlaceholder(view), hold, "the cached hold");
+				assert.equal(
+					collapses(view),
+					false,
+					"a pane with cached records never collapses out of the layout",
+				);
+				// The invariant the matrix above states, on this axis too: the
+				// placeholder never accompanies the pane's own STATEMENT. (The stale
+				// caption is not a statement for this rule - it is the flag the hold
+				// reads - which is why `speaks` is not the term here.)
+				if (hold)
+					assert.ok(
+						status !== "reconnecting" && !view.missing,
+						"a placeholder beside the pane's own statement",
+					);
+			},
+		);
+	}
+});
+
+test("the cached paint's rows and caption are withheld in the component, not only in the rule", () => {
+	// Two facts, one file: the rule above decides, and these two gates are what
+	// makes the decision paint nothing. Both are single expressions at the sites
+	// the comment above each names, so a later edit that drops the hold from one of
+	// them fails HERE - the rule tests would stay green while the pane went back to
+	// painting its guess under a caption.
+	const transcript = readFileSync(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		"utf8",
+	);
+	assert.match(
+		transcript,
+		/\{stale && !holdPlaceholder && \(/,
+		"the stale caption must stand down while the pane holds",
+	);
+	assert.match(
+		transcript,
+		/\{!missing && !holdPlaceholder && \(/,
+		"the rows must be suppressed while the pane holds",
+	);
+	// And the stop stays keyed on the painted rows, which is what the cached case
+	// needs on top of the record count.
+	assert.match(
+		transcript,
+		/transcript\.records\.length === 0 \|\| holdPlaceholder \? -1 : 0/,
+		"the scroller's stop is keyed on the painted rows",
+	);
+});
+
+test("the loading indicator stays one small quiet mark", () => {
+	// The operator's shape for this state (2026-09-26): "a small loading indicator
+	// that is non-intrusive". Three pulse bars were the old shape and a regression
+	// to a skeleton would pass every behavioural test in this file, so the shape
+	// has a cheap structural pin too: no `Skeleton` bars, and exactly ONE
+	// indeterminate element (branding.md's "one such element per surface").
+	const placeholder = readFileSync(
+		"src/renderer/src/features/chat/canonical/transcript-placeholder.tsx",
+		"utf8",
+	);
+	assert.ok(
+		!placeholder.includes("<Skeleton"),
+		"the placeholder is a mark and a sentence, not a content sketch",
+	);
+	assert.equal(
+		// On the class strings rather than the bare token: the docstring names the
+		// keyframes in prose, and a count over the whole file would be counting the
+		// argument for the rule instead of the element it governs.
+		(placeholder.match(/className="[^"]*animate-pulse-visible/g) ?? []).length,
+		1,
+		"one indeterminate element per surface",
+	);
+	assert.match(
+		placeholder,
+		/aria-label="Loading conversation"/,
+		"the live region keeps its name",
+	);
 });
 
 /*

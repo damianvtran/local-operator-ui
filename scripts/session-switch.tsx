@@ -33,6 +33,8 @@ import "@renderer/assets/fonts/fonts.css";
 import { ChatPage } from "@features/chat/components/chat-page";
 import { MISSING_SESSION_NOTICE_ID } from "@features/chat/missing-session-notice";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
+import { ChatLayout } from "@shared/components/common/chat-layout";
+import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -191,6 +193,13 @@ type Probe = {
 	settle: (id: string) => Promise<void>;
 	switchTo: (id: string, label: string) => Promise<Run>;
 	snapshot: () => unknown;
+	/**
+	 * The sidebar row for a fixture id, resolved by the one lookup every arm
+	 * drives (`rowFor` above). The capture driver re-spelled this in two places
+	 * with the design the redesign changed (`[data-chat-row][title^=…]`), so its
+	 * runs died at "no sidebar row for the capture target" — one resolver, here.
+	 */
+	rowFor: (id: string) => HTMLElement | null;
 	view: () => {
 		activeSessionId: string | null;
 		validating: string | null;
@@ -212,6 +221,8 @@ type Probe = {
 		content: boolean;
 		rowInView: boolean;
 		composerAlert: string | null;
+		composerText: string | null;
+		composerPlaceholder: string | null;
 		sentMessages: number;
 	};
 	/** The route the router is on, as `/chat/<id>` or `/chat`. */
@@ -473,17 +484,27 @@ const goneShown = () =>
 const errorSurfaces = () =>
 	document.querySelectorAll(`#${MISSING_SESSION_NOTICE_ID}`).length;
 /*
- * Found by the row's VISIBLE NAME, which is what a user clicks.
+ * Found by the row's TITLE, which is what a user clicks - the clip box
+ * (`[data-session-title]`) that carries the name at rest.
  *
  * This matched `[data-chat-row][title^=<name>]`, and #430 (the row that pans its
- * title) took the `title` attribute off the row, so on that main every lookup
- * returned null and every arm died at "no sidebar row" before measuring
- * anything. `data-session-row` is not a substitute here: the sidebar sets it
- * only on the branch that renders per-row pin/archive controls, and this rig's
- * scripted owner advertises neither. The row button's own text starts with the
- * relative time ("Recent") and then the name, so the match is on the name's
- * presence in the button - unique across the rig's fixtures, whose names are
- * numbered.
+ * title) took the `title` attribute off the row, so the match moved to the
+ * button's own text. The chat redesign then made that text the wrong shape in
+ * both directions: a leading status word ("Recent") and the relative time
+ * AFTER the title ("now, just now", "2h, 2 hours ago"), so the `endsWith` this
+ * used stopped matching every row - measured on this harness after the
+ * redesign, the fixture's fourth row read "RecentWorkspace session 4now, just
+ * now" and the lookup returned null for all 24, which is why every arm died at
+ * "no sidebar row". The title element is the stable anchor the redesign left
+ * in place (it is what the renderer driver's own measure verb addresses), so
+ * the lookup scopes to it and compares exactly - which also keeps "Workspace
+ * session 1" from matching "Workspace session 10".
+ *
+ * `data-session-row` is NOT the substitute here, and it is worth saying because
+ * it looks like the better one: the sidebar sets it only on the row shape that
+ * carries per-row pin/archive controls, and this rig's scripted owner
+ * advertises neither (`features: { session_catalogue, canonical_stream }`), so
+ * on this fixture's own rows the attribute does not exist at all.
  */
 const rowFor = (id: string) => {
 	const title = sessions.find((row) => row.id === id)?.name;
@@ -491,8 +512,10 @@ const rowFor = (id: string) => {
 	return (
 		Array.from(
 			document.querySelectorAll<HTMLButtonElement>("[data-chat-row]"),
-		).find((row) =>
-			(row.textContent ?? "").replace(/\s+/g, " ").endsWith(title),
+		).find(
+			(row) =>
+				(row.querySelector("[data-session-title]")?.textContent ?? "") ===
+				title,
 		) ?? null
 	);
 };
@@ -1158,6 +1181,12 @@ const api: Probe = {
 		latency: bridge.log.latency,
 		hasRow: (id: string) => rowFor(id) !== null,
 	}),
+	/**
+	 * The row itself, for callers that have to ACT on it: the capture driver
+	 * scrolls it into view and clicks it. Same resolver `hasRow` reads, so a
+	 * change to how a row is found cannot reach one and miss the other.
+	 */
+	rowFor,
 	/*
 	 * What the user can actually see, read from the document rather than from
 	 * the store alone.
@@ -1216,14 +1245,18 @@ const api: Probe = {
 		content: transcriptHasContent(),
 		rowInView: rowInView(rowFor(INCOMING)),
 		/**
-		 * The refusal, and the fact that nothing left the app.
+		 * The composer's row and its box, for the states a PRESS leaves behind.
 		 *
-		 * The read window's refusal is a claim about two things at once: the
-		 * sentence is on screen where the composer can be read, and no message
-		 * reached the transport. The requests are the bridge's own log, so this is
-		 * the transport's answer rather than the absence of a render.
+		 * The transport half is a claim about two things at once: what the composer
+		 * says (the alert's sentence, or nothing), and whether anything reached the
+		 * wire. The requests are the bridge's own log, so it is the transport's
+		 * answer rather than the absence of a render - a HELD press has the words in
+		 * the box, no alert, and zero messages, which is the state #464 replaced the
+		 * refusal with.
 		 */
 		composerAlert: composerAlert(),
+		composerText: document.querySelector("textarea")?.value ?? null,
+		composerPlaceholder: document.querySelector("textarea")?.placeholder ?? null,
 		sentMessages: bridge.log.requests.filter(
 			(request) => request.op === "sessions.message",
 		).length,
@@ -1516,16 +1549,27 @@ const probePath = () => window.location.hash.replace(/^#/, "") || "/chat";
 const ShellFrame = ({ children }: { children: React.ReactNode }) => (
 	<div className={cn("flex h-screen overflow-hidden bg-canvas")}>
 		{/*
-		 * No `SidebarNavigation`. The shell story renders it; here it paints the
-		 * product's splash mark at viewport size (a browser has no desktop bridge
-		 * to tell it otherwise) and pushes the chat column off the right edge.
-		 * The rail is app chrome beside the subject, and the switch is the chat
-		 * column's, so the frame is the chat column: same box the app gives it,
-		 * minus the rail that sits to its left.
+		 * THE ONE SIDEBAR, MOUNTED THE WAY THE APP MOUNTS IT — and this replaced a
+		 * bare `<main>` when the chat redesign moved the conversation list out of
+		 * the chat route and into the shell.
+		 *
+		 * The list (`chat-sidebar.tsx`'s sections and its rows) used to be
+		 * `ChatPage`'s own second column, so a frame that mounted the page painted
+		 * the rows the arms click. After the move the rows live in
+		 * `SidebarNavigation`, which the shell draws beside the route; a harness
+		 * that kept mounting the page alone painted no `[data-chat-row]` at all and
+		 * every `switchTo` threw "no sidebar row" before the phase table could be
+		 * produced. `ChatLayout` + `SidebarNavigation` is the app's own arrangement
+		 * (`app.tsx`), so the click this page drives is the click the app receives.
 		 */}
-		<main className="flex min-w-0 grow flex-col overflow-hidden">
-			{children}
-		</main>
+		<ChatLayout
+			sidebar={<SidebarNavigation />}
+			content={
+				<main className="flex min-w-0 grow flex-col overflow-hidden">
+					{children}
+				</main>
+			}
+		/>
 	</div>
 );
 
@@ -1581,6 +1625,39 @@ createRoot(document.getElementById("app") as HTMLElement).render(
 );
 
 /*
+ * REVEAL EVERY FIXTURE ROW BEFORE `ready`, THROUGH THE LIST'S OWN CONTROL.
+ *
+ * The list is paged (the operator's ladder: 10 rows, then 25, then 50) and the
+ * fixture's INCOMING session is the LAST of 24, so a boot that did not ask for
+ * more drew ten rows and `rowFor(INCOMING)` found none - `switchTo` threw "no
+ * sidebar row" before a single phase could be read. The reveal presses
+ * `[data-sidebar-page-more]`, the control a reader presses for the same reason,
+ * so the rows are drawn by the product's own ladder rather than by a fixture
+ * that seeded `loads` directly - a fixture whose list state the product could
+ * not have reached would invalidate every run that starts from it.
+ *
+ * The press is FIXTURE SETUP and never a measured switch: it happens before
+ * `ready`, and the driver times nothing until `ready` is true. It also waits for
+ * the list's first read to land (a `[data-sidebar-page-more]` that does not
+ * exist yet is simply retried), and returns false rather than lying when the
+ * row never appears - `ready` stays false and the driver reports "never became
+ * ready" instead of a run whose every click would throw.
+ */
+const revealFixtureRows = async (): Promise<boolean> => {
+	const deadline = performance.now() + 10_000;
+	while (performance.now() < deadline) {
+		if (rowFor(INCOMING) !== null) return true;
+		const more = document.querySelector<HTMLButtonElement>(
+			"[data-sidebar-page-more]",
+		);
+		if (more !== null) more.click();
+		await new Promise((resolve) => setTimeout(resolve, 40));
+	}
+	console.error(`the incoming row never appeared in the sidebar`);
+	return false;
+};
+
+/*
  * The boot is not a measured switch: it is "the app is open on a session",
  * which is the state every measured switch starts from. It goes through the
  * store's own action rather than a click because no row has been painted yet
@@ -1591,6 +1668,7 @@ void useCanonicalSessionsStore
 	.getState()
 	.openSession(OUTGOING)
 	.then(() => api.settle(OUTGOING))
-	.then(() => {
-		api.ready = true;
+	.then(() => revealFixtureRows())
+	.then((revealed) => {
+		if (revealed) api.ready = true;
 	});

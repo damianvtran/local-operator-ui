@@ -34,6 +34,8 @@
 import "./session-switch.css";
 import "@renderer/assets/fonts/fonts.css";
 import { ChatPage } from "@features/chat/components/chat-page";
+import { ChatLayout } from "@shared/components/common/chat-layout";
+import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { __resetPaintCache } from "@shared/store/paint-cache";
@@ -371,13 +373,27 @@ const queryClient = new QueryClient({
 createRoot(document.getElementById("app") as HTMLElement).render(
 	<QueryClientProvider client={queryClient}>
 		<HashRouter>
+			{/*
+			 * THE ONE SIDEBAR, MOUNTED THE WAY THE APP MOUNTS IT. The chat redesign
+			 * moved the conversation list out of the chat route and into the shell
+			 * (`SidebarNavigation` beside the route), so a page that mounted the route
+			 * alone painted no rows at all and `rows()` came back empty - the driver
+			 * then stopped at "the page never listed every session". `ChatLayout` +
+			 * `SidebarNavigation` is `app.tsx`'s own arrangement, so the row this page
+			 * clicks is the row the app renders.
+			 */}
 			<div className={cn("flex h-screen overflow-hidden bg-canvas")}>
-				<main className="flex min-w-0 grow flex-col overflow-hidden">
-					<Routes>
-						<Route path="/chat" element={<ChatPage />} />
-						<Route path="/chat/:agentId" element={<ChatPage />} />
-					</Routes>
-				</main>
+				<ChatLayout
+					sidebar={<SidebarNavigation />}
+					content={
+						<main className="flex min-w-0 grow flex-col overflow-hidden">
+							<Routes>
+								<Route path="/chat" element={<ChatPage />} />
+								<Route path="/chat/:agentId" element={<ChatPage />} />
+							</Routes>
+						</main>
+					}
+				/>
 			</div>
 		</HashRouter>
 	</QueryClientProvider>,
