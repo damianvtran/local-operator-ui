@@ -1,0 +1,128 @@
+[build] current: assets 2026-09-26T17:25:29.389Z >= sources 2026-09-26T17:20:15.112Z
+[note] abandoned scratch trees
+        2 seen, 0 owned by a live pid (kept), 2 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:7391
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/conversation-start
+  scratch       /tmp/lo-renderer-driver-89261
+  frames        /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-after
+  app cwd       /tmp/lo-renderer-driver-89261/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:7391   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/conversation-start/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:7391","backend":"http://127.0.0.1:7391"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:7391)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[note] facts (from main)
+        {
+  "windowMode": "headless",
+  "appVersion": "0.31.0",
+  "platform": "darwin",
+  "title": "Local Operator",
+  "windowSize": {
+    "width": 1380,
+    "height": 900
+  },
+  "contentBounds": {
+    "width": 1380,
+    "height": 900
+  },
+  "visible": false,
+  "focused": false,
+  "minimized": false,
+  "frames": [],
+  "outDir": "/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-after"
+}
+[PASS] window mode is headless and the window is never shown or focused
+[note] second conversation
+        {"status":200,"body":{"status":200,"message":"Desktop session result.","result":{"binding":{"agent":null,"team":null},"session_id":"3b340439de06","replayed":false}},"id":"3b340439de06"}
+[PASS] the chat route shows the empty state with a composer
+[note] focus at the press
+        {"tag":"TEXTAREA","editable":true}
+[note] frame
+        {"label":"conversation-start-1380x900-press","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-after/conversation-start-1380x900-press.png","bytes":162242,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":8,"stable":false,"toastFree":false,"toastWaitMs":71}
+[note] press
+        {"read":{"rows":1,"rowIds":["301544bc-15e4-41dd-8a1b-d6a1bda830e8"],"rowTops":[132],"scrollTop":0,"overflow":0,"composer":"","alert":"","controls":[]},"line":{"phase":"starting the session","seconds":2}}
+[PASS] J1: the row is painted BEFORE the session exists - one row, and it is the press
+[PASS] the composer is empty at the press: the row is the message's home
+[PASS] the wait line reads 'starting the session' with the clock running
+[PASS] and no alert speaks over the row for a send that has not failed
+[note] frame
+        {"label":"conversation-start-1380x900-flip","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-after/conversation-start-1380x900-flip.png","bytes":171319,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":8,"stable":false,"toastFree":false,"toastWaitMs":39}
+[note] frame
+        {"label":"conversation-start-1380x900-flip-plus-1s","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-after/conversation-start-1380x900-flip-plus-1s.png","bytes":171350,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":8,"stable":false,"toastFree":false,"toastWaitMs":25}
+[note] flip
+        {"read":{"rows":1,"rowIds":["301544bc-15e4-41dd-8a1b-d6a1bda830e8"],"rowTops":[132],"scrollTop":0,"overflow":0,"composer":"","alert":"","controls":[]},"line":{"phase":"waiting for the agent","seconds":2},"flipped":true}
+[PASS] J1: one row across the flip - the SAME id the press painted, once
+[PASS] J2: no position jump across the flip - the row's top is within 1px
+[PASS] J3: no scroll jump across the flip - the scroller stays at its origin
+[PASS] J5: the clock does not restart - the flip's seconds are >= the press's
+[PASS] the composer's box stays empty after the flip - one home for the message
+[note] tap control
+        200 {"armed":1}
+[note] focus at the press
+        {"tag":"TEXTAREA","editable":true}
+[note] frame
+        {"label":"conversation-start-1380x900-failure-before-retry","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-after/conversation-start-1380x900-failure-before-retry.png","bytes":187718,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":3,"stable":true,"toastFree":true,"toastWaitMs":17}
+[note] failure retry
+        no refusal after 8s; clearing the box and pressing once more
+[note] focus at the press
+        {"tag":"TEXTAREA","editable":true}
+[note] frame
+        {"label":"conversation-start-1380x900-failure","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-after/conversation-start-1380x900-failure.png","bytes":212060,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":4,"stable":true,"toastFree":true,"toastWaitMs":34}
+[note] failure
+        {"read":{"rows":3,"rowIds":["301544bc-15e4-41dd-8a1b-d6a1bda830e8","735018ecb6ee40dcb5ccee2e644f38ea","78ec45d4-ad49-44f9-97ee-689a5cc1b94e"],"rowTops":[132,206,282],"scrollTop":0,"overflow":0,"composer":"","alert":"","controls":["Send again","Edit"]},"refused":true}
+[PASS] a post-paint refusal keeps its row, with the class's two controls
+[PASS] and the payload does NOT come back to the composer (one home, the row)
+[PASS] no composer alert speaks over a failure the row states
+[note] frame
+        {"label":"conversation-start-1380x900-reload","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-after/conversation-start-1380x900-reload.png","bytes":207490,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":8,"stable":false,"toastFree":false,"toastWaitMs":59}
+[note] reload
+        {"read":{"rows":3,"rowIds":["301544bc-15e4-41dd-8a1b-d6a1bda830e8","735018ecb6ee40dcb5ccee2e644f38ea","78ec45d4-ad49-44f9-97ee-689a5cc1b94e"],"rowTops":[132,206,282],"scrollTop":0,"overflow":0,"composer":"","alert":"","controls":["Send again","Edit"]},"back":true}
+[PASS] T6: the failed row is back after a reload, under the id the durable row would carry
+[note] first conversation
+        "7e279789c043"
+[note] tap hold
+        200 {"count":1,"ms":12000}
+[note] focus at the press
+        {"tag":"TEXTAREA","editable":true}
+[note] frame
+        {"label":"conversation-start-1380x900-away-press","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-after/conversation-start-1380x900-away-press.png","bytes":222672,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":8,"stable":true,"toastFree":true,"toastWaitMs":10170}
+[note] away press
+        {"rows":4,"rowIds":["301544bc-15e4-41dd-8a1b-d6a1bda830e8","735018ecb6ee40dcb5ccee2e644f38ea","78ec45d4-ad49-44f9-97ee-689a5cc1b94e","a9d280d2-b96a-483d-af4f-37680cb33006"],"rowTops":[132,206,282,357],"scrollTop":0,"overflow":0,"composer":"","alert":"","controls":["Send again","Edit"]}
+[note] sidebar (away)
+        {"rows":5,"text":"TODAY\nMark all 1 read\nUnseen completion, unread\nHello from the mock provider\nnow\n, just now\nRecent\nUntitled chat\n, just now"}
+[note] frame
+        {"label":"conversation-start-1380x900-away","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-after/conversation-start-1380x900-away.png","bytes":207916,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":7}
+[note] frame
+        {"label":"conversation-start-1380x900-return","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-after/conversation-start-1380x900-return.png","bytes":220415,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":8,"stable":false,"toastFree":false,"toastWaitMs":10315}
+[note] return
+        {"read":{"rows":4,"rowIds":["301544bc-15e4-41dd-8a1b-d6a1bda830e8","735018ecb6ee40dcb5ccee2e644f38ea","78ec45d4-ad49-44f9-97ee-689a5cc1b94e","a9d280d2-b96a-483d-af4f-37680cb33006"],"rowTops":[132,206,282,357],"scrollTop":0,"overflow":0,"composer":"","alert":"","controls":["Send again","Edit"]},"line":{"phase":"waiting for the agent","seconds":27}}
+[PASS] T5: on return the row and its wait line are present, and the composer is empty
+[PASS] T5: the elapsed number is the true one - it does not restart at the return
+  [renderer] [attention] 7e279789c043 receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
+    at D5e (file:///Users/damian/local-operator-ui-worktrees/conversation-start/out/renderer/assets/index-BLqizcNL.js:772:97597)
+    at async Pt (file:///Users/damian/local-operator-ui-worktrees/conversation-start/out/renderer/assets/index-BLqizcNL.js:772:98732)
+  [renderer] [attention] 7e279789c043 receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
+    at D5e (file:///Users/damian/local-operator-ui-worktrees/conversation-start/out/renderer/assets/index-BLqizcNL.js:772:97597)
+    at async Pt (file:///Users/damian/local-operator-ui-worktrees/conversation-start/out/renderer/assets/index-BLqizcNL.js:772:98732)
+[PASS] no process from this run outlived its boot
+
+frames: conversation-start-1380x900-away-press.png, conversation-start-1380x900-away.png, conversation-start-1380x900-failure-before-retry.png, conversation-start-1380x900-failure.png, conversation-start-1380x900-flip-plus-1s.png, conversation-start-1380x900-flip.png, conversation-start-1380x900-press.png, conversation-start-1380x900-reload.png, conversation-start-1380x900-return.png
+frames directory: /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-after
+app log: /tmp/lo-renderer-driver-89261/app-scene.log
+scratch removed (--clean)
+
+ALL CHECKS PASSED
