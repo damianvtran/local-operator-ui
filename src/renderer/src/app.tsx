@@ -615,21 +615,33 @@ const App: FC = () => {
 						content={
 							<main className="flex grow flex-col overflow-hidden">
 								{/*
-								 * THE NON-CHAT ROUTES' DRAG BAND, and it is `--chrome-strip-h` tall on
-								 * macOS (32) and the caption height on Windows and Linux (40).
+								 * THE NON-CHAT ROUTES' DRAG BAND, WHERE THE LANE IS NOT.
 								 *
-								 * Those routes have no 40px toolbar row of their own, so on a platform
-								 * where the app hides the OS frame they would have no drag surface above
-								 * the page's own top padding at all - and a frameless window with no drag
-								 * surface cannot be moved. On Windows and Linux it is also where the
-								 * caption buttons sit, which is why the band is the caption's height there
-								 * rather than the strip's (which is 0): the page's own heading then starts
-								 * BELOW the buttons rather than under them.
+								 * Settings, agents, agent hub and schedules have no 40px toolbar row of
+								 * their own. On Windows and Linux - where the OS draws its caption
+								 * buttons INTO the client area and nothing is drawn above the columns -
+								 * the band is the drag surface a frameless window needs and the caption
+								 * clearance the page's heading needs. The rules in `styles/index.css`
+								 * gate it to exactly those two platforms with the buttons NOT leading,
+								 * in the SELECTORS rather than by cascade order, so which of the band
+								 * and the lane is drawn cannot change when either rule moves.
+								 *
+								 * macOS IS NOT IN THAT GATE, and that is the fix this element carries:
+								 * `ChatLayout` already draws the 32px lane above BOTH columns there -
+								 * the same drag surface and the same clearance - and a band on top of
+								 * it was a SECOND inset that put the settings rail and its content
+								 * 32px below the chat header ("for sub-views like the settings page,
+								 * the sidebar and view doesn't go all the way to the top",
+								 * 2026-09-26). The element stays in the tree, rendered as nothing
+								 * there, so "where the OS draws" is decided in one place - the
+								 * `data-chrome-*` attributes on the document element, the same ones
+								 * the lane is gated on - rather than by a second JS platform read
+								 * that could drift from it.
 								 *
 								 * `/chat` is excluded because `ChatLayout` already draws the lane above
-								 * both of its columns, and the band would double it. `/browser` is
-								 * excluded because the browser pane brings its own 40px toolbar, which is
-								 * the row the controls sit over on that route.
+								 * both of its columns.
+								 * `/browser` is excluded because the browser pane brings its own 40px
+								 * toolbar, which is the row the controls sit over on that route.
 								 */}
 								{routeHasOwnChromeRow ? null : (
 									<div data-chrome-route-band="" />
