@@ -2887,10 +2887,13 @@ export const STORIES = [
 	   no reviewer is meant to read (design review round 2, D9). */
 	["chat-tool-rows--mixed-prose-code-and-tables", 1440, 800],
 	/* The `ask` gate's options, which became real controls rather than an inert
-	   numbered list. Swept because these states are slow and awkward to hold
+	   numbered list, plus the approval card that later joined the same band. Swept
+	   because these states are slow and awkward to hold
 	   open live — a gate ends the moment anyone answers, and eight options, a
 	   wrapping label, a multi-question ask and a secret ask (no options at all)
-	   are not states a live session offers on demand.
+	   are not states a live session offers on demand. The two approval frames
+	   replaced `chat-ask-options--approval-unchanged`, which retired with its
+	   story when that card grew the options band.
 
 	   Each height MATCHES its story's own `Frame height`: the capture floors at
 	   the declared viewport, so declaring more than the story renders pads the
@@ -2919,7 +2922,8 @@ export const STORIES = [
 	["chat-ask-options--multi-question", 1024, 450],
 	["chat-ask-options--answer-in-flight", 1024, 470],
 	["chat-ask-options--secret-ask", 1024, 360],
-	["chat-ask-options--approval-unchanged", 1024, 360],
+	["chat-ask-options--approval", 1024, 360],
+	["chat-ask-options--approval-answer-in-flight", 1024, 360],
 	["design-system-primitives--all-primitives", 1280, 1600],
 
 	/* `/model`: the desktop model picker's FEEDBACK states, which is the
