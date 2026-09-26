@@ -345,11 +345,16 @@ export type CanonicalTranscriptProps = {
 	 *
 	 * WHY IT TRAVELS AS A RECORD ID (§F3, UX round 1's U4). The failure used to be
 	 * stated by a paragraph above the composer - one register for a whole screen's
-	 * worth of failures - and §F3 moves it onto the message: `Not delivered` with
-	 * the two remedies that resolve it. The address is the transcript's own id
-	 * (`record.id`, the id the durable row will carry if it ever lands), so the
-	 * line cannot attach to a neighbouring turn, and the row that wears it is the
-	 * only one that re-renders when it changes.
+	 * worth of failures - and §F3 moves it onto the message: the class's own
+	 * sentence with the remedies that resolve it. The address is the transcript's
+	 * own id (`record.id`, the id the durable row will carry if it ever lands), so
+	 * the line cannot attach to a neighbouring turn, and the row that wears it is
+	 * the only one that re-renders when it changes.
+	 *
+	 * EVERY POST-PAINT FAILURE wears it now (S4): the store keeps the row and
+	 * classifies the failure on it, so this surface - which the unknown class
+	 * already had - became the one place every class states itself. See
+	 * `UndeliveredTurn` for the copy and control rules.
 	 */
 	undelivered?: UndeliveredTurn | null;
 	/**
@@ -381,16 +386,30 @@ export type CanonicalTranscriptProps = {
 // ---------------------------------------------------------------- rows
 
 /**
- * The two controls §F3's line offers, bound to the message they resolve.
+ * The two controls §F3's line offers, bound to the message they resolve, and
+ * the class's own copy for it.
  *
  * `Send again` re-issues the SAME payload through the composer's own send door
  * (so the store's unchanged-payload guard is satisfied by construction, not by a
- * second code path), and `Edit` puts the payload back in the box - idempotent
- * with the return path the failure already performed - reached from the message
- * the restore is about.
+ * second code path), and `Edit` returns the payload to the box - idempotent
+ * with the act the failure's row already performs - reached from the message the
+ * restore is about.
+ *
+ * GENERALISED FROM THE UNKNOWN CLASS TO EVERY POST-PAINT ONE (S4). For a
+ * failure the STORE classified, the sentence is the class's own
+ * (`sendFailureCopy`'s message, carried on the draft row as `error`) and
+ * `retry` is the same call's verdict on whether a press can work - so this
+ * line no longer states the fixed `Not delivered` over a refusal whose remedy
+ * is an edit, and it no longer offers `Send again` where the daemon would only
+ * refuse again. The reconnect-held claim is the one source with neither fact
+ * (nothing classified it), and it keeps the fixed sentence and both controls.
  */
 export type UndeliveredTurn = {
 	recordId: string;
+	/** The class's sentence, or absent for a claim nothing classified. */
+	message?: string;
+	/** Whether a press can work. Absent means the held claim's rule: it can. */
+	retry?: boolean;
 	onSendAgain: () => void;
 	onEdit: () => void;
 };
@@ -666,15 +685,17 @@ const UserRow = memo(function UserRow({
 								aria-hidden="true"
 								className={cn("size-3.5 shrink-0")}
 							/>
-							Not delivered
+							{undelivered.message ?? "Not delivered"}
 						</span>
-						<button
-							type="button"
-							className={cn("cursor-pointer underline")}
-							onClick={undelivered.onSendAgain}
-						>
-							Send again
-						</button>
+						{undelivered.retry !== false && (
+							<button
+								type="button"
+								className={cn("cursor-pointer underline")}
+								onClick={undelivered.onSendAgain}
+							>
+								Send again
+							</button>
+						)}
 						<button
 							type="button"
 							className={cn("cursor-pointer underline")}
