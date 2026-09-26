@@ -1857,6 +1857,35 @@ function durableRecord(
 			string,
 			unknown
 		>;
+		const details = (providerPayload.details ?? {}) as Record<string, unknown>;
+		/*
+		 * WHETHER THE RUNTIME SAYS THE CALL WAS ABORTED RATHER THAN FAILED.
+		 *
+		 * The comment this variable replaces said an interrupt was "a live-only fact
+		 * the transcript does not encode separately from `is_error`" - and the second
+		 * half of that is not true. `details.__fault` is the runtime's own fault
+		 * CLASSIFIER (`harness/types.py`'s `FAULT_KEY`; the vocabulary includes
+		 * `aborted` beside `execution`, `denied` and the model faults), written at the
+		 * source through `ToolResult.details` and never text-matched afterwards, and
+		 * it survives into the stored message's `provider_payload` - measured on this
+		 * branch's own rig session, where an Esc-killed call's durable entry reads
+		 * `{"__fault": "aborted", "__synthetic": true}` (UX round 2, U15).
+		 *
+		 * WHY THE DURABLE ROW HAS TO READ IT. Durable rows win over the live record
+		 * with the same id, so without this the reconcile this app performs after a
+		 * turn REWRITES the classification the live event just made: a killed call's
+		 * row painted `stopped` by the end event flipped back to `failed` in danger
+		 * ink the moment the page landed (measured in the rig's own reading, and
+		 * pinned by `transcript-reducer.test.mjs`'s composed-sequence case).
+		 *
+		 * ONLY `aborted`, and only as the ladder's "no verdict" state: `denied`,
+		 * `gate_failed` and `skipped` are other fates with their own surfaces, and a
+		 * genuine `execution` fault keeps the danger ink. This is the same mapping the
+		 * live turn end already makes - "an abort is an interrupt"
+		 * (`agent_end`'s tool branch) - so a reloaded transcript and a live one
+		 * cannot describe the one call two ways.
+		 */
+		const aborted = details.__fault === "aborted";
 		return {
 			kind: "tool",
 			// Tool records key by call id: the live start/end events for the same
@@ -1876,7 +1905,14 @@ function durableRecord(
 			notRunReason: null,
 			neverSent: false,
 			output: messageText(payload) || null,
-			isError: Boolean(payload.is_error),
+			/*
+			 * An aborted call did not fail, so the danger ink the raw flag would paint
+			 * is cleared HERE rather than at the row's paint, for the same reason the
+			 * live end event clears it: the row's `isError` is the wire's claim about
+			 * how the call ended, and the runtime has already said the end was an
+			 * abort.
+			 */
+			isError: aborted ? false : Boolean(payload.is_error),
 			durationS:
 				typeof providerPayload.duration_s === "number"
 					? providerPayload.duration_s
@@ -1908,10 +1944,12 @@ function durableRecord(
 				diffFromDetails(providerPayload.details),
 				previous?.kind === "tool" ? previous.diff : null,
 			),
-			// A durable row is the authoritative record of how the call ended, and
-			// it ended normally: an interrupt is a live-only fact the transcript
-			// does not encode separately from `is_error`.
-			stopped: false,
+			// A durable row is the authoritative record of how the call ended - and
+			// when the runtime's own classifier says the end was an ABORT, "ended" is
+			// not "failed": the row wears the ladder's no-verdict state the live end
+			// event gives the same call above (`aborted`'s note), so a reconcile cannot
+			// re-accuse a call the user stopped. Every other end keeps `false` here.
+			stopped: aborted,
 		};
 	}
 	return null;
@@ -2834,10 +2872,27 @@ export function applyEvent(
 					? state
 					: { ...state, argsByCall: learned };
 			const userStoppedAt = options.userStoppedAt ?? null;
+			/*
+			 * WHETHER THIS END EVENT IS CREATING THE ROW (UX round 2, U15).
+			 *
+			 * `base` above is the fresh default exactly when no tool row for this
+			 * call existed before this event — the row was never seen running by
+			 * this viewer, so no layer holds a clock for it (measured in the
+			 * interrupt rig: the killed call's start never reaches a lagging pane
+			 * before the press, and this event is the row's whole biography).
+			 */
+			const seededByThisEnd = !(current && current.kind === "tool");
+			/*
+			 * The event's own failure claim, ONE expression shared with the paint
+			 * below, so "would this row have painted danger?" is asked in exactly
+			 * one place.
+			 */
+			const claimsFailure = Boolean(event.is_error ?? result.is_error);
 			const killedByUserStop =
 				userStoppedAt !== null &&
-				typeof base.startedAt === "number" &&
-				base.startedAt <= userStoppedAt;
+				(typeof base.startedAt === "number"
+					? base.startedAt <= userStoppedAt
+					: seededByThisEnd && claimsFailure);
 			return upsert(seeded, {
 				...base,
 				args,
@@ -2852,7 +2907,8 @@ export function applyEvent(
 				neverSent: false,
 				output: messageText(result) || null,
 				/*
-				 * A CALL THE USER'S OWN STOP KILLED DID NOT FAIL (UX round 2, U7).
+				 * A CALL THE USER'S OWN STOP KILLED DID NOT FAIL (UX round 2, U7; the
+				 * second arm below is that round's U15).
 				 *
 				 * `Esc` interrupts the turn, the runtime kills the call in flight, and the
 				 * process that died reports a genuine error — so the row landed on `error`
@@ -2865,14 +2921,38 @@ export function applyEvent(
 				 * where "was this call running when the user pressed stop?" is answerable
 				 * from the record alone.
 				 *
-				 * THE TEST IS `startedAt <= userStoppedAt`, precise in the direction that
+				 * THE TEST HAS TWO ARMS, BECAUSE TWO SHAPES OF ROW REACH IT.
+				 *
+				 * ARM ONE, `startedAt <= userStoppedAt`, is precise in the direction that
 				 * matters: only a call ALREADY RUNNING at the press can be the one the
 				 * interrupt killed. A call that settled before the press never comes
 				 * through this branch again — its end event was already consumed — so an
 				 * honest failure earlier in the same turn keeps its `danger` row, and a
 				 * call that started after the press cannot exist because the turn is over.
-				 * `startedAt` is null on a row this viewer only ever met as it settled, and
-				 * that is the one case the guard refuses: a row with no clock is a guess.
+				 *
+				 * ARM TWO, `seededByThisEnd`, ANSWERS THE CASE ARM ONE HAD TO REFUSE (U15).
+				 * The row `current` finds nothing for is a call this viewer only ever met
+				 * as it settled, so `startedAt` is null and the clock test cannot answer.
+				 * Refusing it — the "a row with no clock is a guess" rule this comment
+				 * used to state — is precisely the defect: the same turn then painted
+				 * `failed` in danger beside its own Stopped line, blaming the agent for
+				 * the user's press. The stop fact standing for this session is the only
+				 * story that fits a row born inside the stop window, so it is taken:
+				 * between `failed` and `stopped`, "you stopped this" is the reading that
+				 * does not accuse the user's own agent. That is a decision about whose
+				 * in-principle guess wins (the transcript's "no clock is a guess" rule
+				 * yields here), and the accepted cost is its mirror: a failure that
+				 * settled BEFORE the press, whose end event only reaches a lagging
+				 * viewer afterwards, rides the same window and reads `stopped`. The
+				 * window is bounded rather than open — the press's receipt clears the
+				 * fact on any answer that is not `interrupted`, and the next turn clears
+				 * it again (`chat-page.tsx`) — and the call's real error text stays one
+				 * expansion away either way.
+				 *
+				 * The second arm also requires the event's own failure claim: the
+				 * accusation it answers exists only when the row would paint danger, so
+				 * a born row whose event reports SUCCESS keeps that outcome — the stop
+				 * fact must not overwrite a result the call demonstrably produced.
 				 *
 				 * `isError` is CLEARED as well as `stopped` set, because the row's outcome
 				 * ladder reads `isError` first (`canonical-transcript.tsx`): leaving it
@@ -2881,9 +2961,7 @@ export function applyEvent(
 				 * expansion away, which is what `interrupted` says: the stop is the
 				 * verdict, not a cover-up.
 				 */
-				isError: killedByUserStop
-					? false
-					: Boolean(event.is_error ?? result.is_error),
+				isError: killedByUserStop ? false : claimsFailure,
 				durationS:
 					typeof event.duration_s === "number" ? event.duration_s : null,
 				// The call ended, so the row stops counting and reports the measured
