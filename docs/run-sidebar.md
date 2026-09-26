@@ -936,8 +936,24 @@ child from this pane, and the composer stays live for the parent conversation �
 `hub ask` traffic and stop controls are their own design problem and the old doc
 already defers the first (`docs/run-details.md` § 10). The footer states the
 surface is read-only for the child (the TUI's `READ_ONLY_NOTE` precedent,
-`subagent_view.py:1619-1623`) so the absence of controls is a stated fact rather
-than a puzzle.
+`subagent_view.py:1619-1623`) so the absence of STEERING controls is a stated fact
+rather than a puzzle.
+
+**One control is painted, and it steers nothing.** The pane's foot carries the
+parent transcript's own scroll-to-bottom control (`§ 5.8b`): a 2rem chip that
+appears when the reader has scrolled away from the live tail and returns them to
+it. It is NAVIGATION within this pane — the same relationship the parent's own
+chip has to its conversation — so the read-only sentence above stays true: it
+moves the reader, never the child. The earlier wording ("the absence of controls")
+was written when the foot held nothing but the working line, and it is corrected
+here rather than left to contradict the shipped surface (design round 1, D2).
+
+**And a failed child gets no control at all**, even when its conversation is long
+and scrollable: with `errorText` on the row, neither the chip nor the band it
+lives in is mounted, because that band sits under the exception text — the one
+thing on this surface a reader must be able to read — and a floating control
+there would sit on top of it. A wheel still moves the reader, and the trade is
+stated rather than inherited (QA round 1, Q2).
 
 **It names the PAGE, not the conversation, and that is what makes it true in
 every state it is painted in:** "Read-only — this is the subagent's page, not a
@@ -961,6 +977,78 @@ it holds.
 | child never wrote a transcript | the body shows one quiet line naming that fact (`pending`: the child's directory exists and `transcript.jsonl` does not) and the reader retries on the next pulse |
 | the child's session directory is missing | the body shows the final "session directory is no longer on disk" line (`gone`). **This is what `gone` means**: the route derives both absences from the FILESYSTEM (`desktop_sessions.child_transcript`), and only a missing DIRECTORY is final — a transcript file that has been moved aside, pruned or never written leaves the same two facts on disk as a child that never appended, so the route answers `pending` and this line is not reachable through it (round 1, Q10). The copy states the filesystem, not the child's history. |
 | entry cursor vanished mid-read (compaction) | re-read the tail, dedupe by id |
+
+### 5.8b The way back: the control, and the band it lives in
+
+The pane paints the parent transcript's OWN control, not a second one built for
+this surface: `ScrollToBottomButton` and `useScrollToBottom`, over the reader's
+own scroller (`containerRef`, `run-child-reader.tsx`) and the reader's own record
+count as the content key. Nothing about the reader's doctrine changes with it —
+the reader still borrows none of the parent's live-session machinery
+(`canonical-transcript.tsx`'s "autoscroll is never taken from the reader") — this
+is a user-invoked scroll of the reader's own box and a visibility flag.
+
+**Where it is.** The parent mounts the chip in its composer band, a column under
+the transcript that carries no prose. This pane has no composer, so the chip
+floats in a band reserved at the foot of the conversation: 48px (8px of air, the
+32px chip, 8px of air), marked `data-lo-child-chip-band`, with the chip at
+`bottomDistance={8}`. The band is reserved STATICALLY — whenever the pane paints a
+conversation and the row carries no failure — so the reader's text never moves as
+the chip appears: the first cut put the chip at the transcript's own `p-4` inset,
+which is where the rows' text is, and the chip covered the row at the fold by its
+full 32px (QA round 1, Q1; UX U1). The rig measures the clearance it now has
+(`cover`, the tallest intersection between the chip and any VISIBLE row: 0.0 in
+every state where the chip is shown). The cost is the 48px inset at the foot of
+every painted conversation, and that is the trade: an inset rather than text under
+a control. The rejected alternative was a band that appears with the chip, which
+would move the reader's own text at the moment they are reading it.
+
+**The clip is the scroller's own box, and the band sits outside it (design round
+2, D6).** The conversation's scroller takes focus after any wheel, so it draws
+the app's own `:focus-visible` ring (2px + a 2px offset, `--color-accent`) — and
+outlines are ink overflow, which an ancestor's `overflow: hidden` clips exactly as
+it clips a shadow. That is why this scroller never showed a ring: its box was the
+clip box. The reserved band moved that clip bottom down by 48px, and the ring's
+bottom segment landed inside it — a full-width accent rule across the foot in
+twelve of the sixteen captured states, appearing and disappearing with focus. The
+pane now carries the clip on a wrapper of its own
+(`data-lo-child-transcript-clip`, around `CanonicalTranscript`), so the clip is
+the scroller's own box again and the band is OUTSIDE it; nothing else about the
+layout moves, and the rig asserts the containment as geometry (`ringClip.contained`
+in every state it shoots). Stated rather than hidden: this leaves the scroller a
+focusable element with no VISIBLE ring — the pre-existing defect the segment
+exposed, not one this pane introduced. The honest fix is the stylesheet's own
+pattern for that case (the wrapper draws the ring, `has-[:focus-visible]:outline-solid`)
+applied to `CanonicalTranscript`'s scroller, which is shared with the chat page and
+needs its own evidence there; recorded as a follow-up on the pull request rather
+than half-done here.
+
+**Why the footer and not the header.** `§ 3.1 B` rejected a dock band as a place
+for the reader to live (it reclaims transcript height on every turn and cannot
+host a child reader) — that is a different question from this band, which is
+inside the pane. Within the pane the header is the wrong end of the conversation:
+the control's whole meaning is "there is more below the fold", and the foot is
+where the fold is.
+
+**When it is offered: `isFarFromBottom` at `TAIL_EPS_PX` (24px), not the parent's
+50.** The reader is scrolled away from the tail, by the paging policy's own
+definition, as soon as `|scrollTop| > TAIL_EPS_PX` (`use-scroll-paging.ts`);
+between 24px and 50px a reader was being left behind with nothing offered, which
+is one condition answered two ways (UX round 1, U3 — measured on the
+pre-remediation head: at 24, 25, 49 and 50px from the tail the control is hidden
+while the paging policy already calls the reader not-following; at 51px it
+shows. QA round 2's Q3 corrected the earlier sentence here, which claimed an
+arrival: an arrival does leave the tail 263px away with the newest row 221px
+below the fold, but the hook's own recompute has shown the control by then — the
+reproducible defect is the stationary window). The
+parent keeps its own 50; its band is a composer and its threshold is its own
+question.
+
+**In the tab order with the pane's own controls.** The chip is rendered FIRST in
+the pane body's DOM and positioned by `absolute`, so its place in the tab order is
+with the header's controls rather than after every row of a streaming child (UX
+round 1, U4: as the last element it was the last tabbable in the pane and in the
+app, reached only after tabbing through the whole conversation).
 
 ### 5.8 The working line at the foot
 
