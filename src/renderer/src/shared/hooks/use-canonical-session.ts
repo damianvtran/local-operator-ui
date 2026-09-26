@@ -66,6 +66,14 @@ import {
 	subscribeDesktopStream,
 } from "@shared/api/local-operator/desktop-api";
 import { useAsideStore } from "@shared/store/aside-store";
+/*
+ * Read at APPLY TIME rather than subscribed to (U7): the stopped-turn fact is
+ * consulted inside the stream's own callback, where a selector has no meaning - the
+ * value is needed at the instant a frame lands, not at the instant a component
+ * renders. `chat-page`'s `send` reaches for the same `getState()` for the same
+ * reason.
+ */
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { dropPaint, readPaint, writePaint } from "@shared/store/paint-cache";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { desktopRequestTimeoutMs } from "../../../../shared/desktop-contract";
@@ -495,8 +503,10 @@ export type CanonicalSessionHandle = CanonicalSessionView & {
 	 * `Loading conversation…` and its shimmer above the splash the band had
 	 * restored - two contradictory claims on one screen.
 	 *
-	 * Both terms are this hook's own inputs, which is why the rule is here and
-	 * said once:
+	 * Both readers are claims this hook composes once: `enabled`/`sessionId` are
+	 * "there is a stream that owes us a page", `isSession` is the caller's answer
+	 * to whether that id is a SESSION's, and `hydrated` is "a page has been
+	 * applied". The rule lives here, and it is said once:
 	 *
 	 *   - `enabled`/`sessionId` are "there is a stream that owes us a page". A
 	 *     draft has neither, and a caller that holds the stream off on purpose
@@ -508,6 +518,16 @@ export type CanonicalSessionHandle = CanonicalSessionView & {
 	 *     over rows that had simply not arrived. Both call sites pass
 	 *     `Boolean(sessionId)` today, so no caller is in that state - the
 	 *     sentence is here for the one that would be.
+	 *   - `isSession` is the caller's answer to "is that id a SESSION's?", the one
+	 *     fact this hook cannot derive - a NEW chat's draft now has a stream of
+	 *     its own (`sessions.draft`'s minted id, the bridge that holds the warm)
+	 *     and the two ids have the same shape. A draft's subscription is not a
+	 *     page anyone is waiting for: no conversation exists yet, so the pane
+	 *     keeps its empty state until the send creates one (UX round 1, U1: the
+	 *     pane held `Loading conversation…` over that state for the ~200 ms the
+	 *     draft's first frame took). Until drafts could warm, `enabled` was false
+	 *     for them, and this term is what keeps that answer once the pane holds a
+	 *     draft stream.
 	 *   - `hydrated` stays false for a session whose stream failed, so a real
 	 *     conversation whose cold history is in flight (or whose read failed)
 	 *     keeps waiting instead of asserting it is empty over rows that had
@@ -1535,6 +1555,35 @@ export function retractPendingUser(sessionId: string, id: string): void {
 }
 
 /**
+ * Whether the row an admission request id names is STILL ours - the verdict
+ * `retractLocalEcho` reads, without its act.
+ *
+ * §F3's arm (agent review round 4, R17): an UNKNOWN outcome KEEPS the message
+ * on screen - the row wears `Not delivered · Send again · Edit` until the
+ * server's own answer resolves the claim - so the send path may not have the
+ * removal `retractLocalEcho` performs. `owner` still means the message was
+ * delivered, and nothing may be reported as failed. `local` and `unseen` (the
+ * row is our own echo, or no transcript is mounted to hold it - in which case
+ * the pane's own reconciliation reads it again when one mounts), both leave the
+ * row alone and let the payload come home to the composer as well.
+ */
+export function peekLocalEcho(
+	sessionId: string,
+	id: string,
+): "owner" | "local" | "unseen" {
+	const target = echoTargets.get(sessionId);
+	if (!target) return "unseen";
+	let outcome: "owner" | "local" | "unseen" = "unseen";
+	target((state) => {
+		const record = state.records[state.index.get(id) ?? -1];
+		if (!record || record.kind !== "user") return state;
+		outcome = record.local ? "local" : "owner";
+		return state;
+	});
+	return outcome;
+}
+
+/**
  * The paint a conversation starts from: the cached rows with any queued
  * optimistic echo applied on top, and whether anything was cached at all.
  *
@@ -1619,6 +1668,18 @@ function pageIsJournalTail(snapshot: DesktopSnapshot): boolean {
 export function useCanonicalSessionStream(
 	sessionId: string | undefined,
 	enabled: boolean,
+	/**
+	 * Whether `sessionId` is a SESSION this pane can be OWED a page for, or a
+	 * DRAFT's bridge subscription (`sessions.draft`'s minted id).
+	 *
+	 * The two ids have the same shape and only the caller knows which one it
+	 * holds: `SessionPanel` passes `sessionId ?? draft?.warmId`, so the pane's own
+	 * `sessionId` is the answer. A draft's stream exists to hold the engage open,
+	 * not to deliver a page - nothing here is "still loading" until the user's
+	 * first send creates a conversation (see `awaitingHydration`). Every
+	 * pre-draft caller passes a session id and keeps the `true` default.
+	 */
+	isSession = true,
 ): CanonicalSessionHandle {
 	const [view, setView] = useState<CanonicalSessionView>(() => {
 		const seed = enabled && sessionId ? paintSeed(sessionId) : null;
@@ -1700,10 +1761,11 @@ export function useCanonicalSessionStream(
 	 * sees anything.
 	 *
 	 * WHY THIS EXISTS AT ALL (review round 1, M3): the echo registry ANSWERS A
-	 * QUESTION about the transcript - `retractLocalEcho` reports whether the row
+	 * QUESTION about the transcript - `peekLocalEcho` reports whether the row
 	 * under an admission request id is still this app's own echo or the owner's -
-	 * and that answer decides whether a failed payload is handed back to the
-	 * composer or treated as delivered. The answer was read from inside the update,
+	 * and that answer decides whether a failed payload is treated as delivered or
+	 * handed back to the composer beside the kept row. The answer was read from
+	 * inside the update,
 	 * so REACT'S SCHEDULING decided it: an update already queued in the same batch
 	 * (which is exactly the case that matters, the owner's row arriving as the
 	 * failure resolves) meant the updater had not run when the registry asked, the
@@ -2427,6 +2489,24 @@ export function useCanonicalSessionStream(
 				 * question and a second call from here would only be a second no-op.
 				 */
 				/*
+				 * §F2's LAST BULLET, ON THE READ THE CONTRACT NAMES (UX round 1's U5b): a
+				 * held send is resolved by the server's OWN answer, and on a reconnect that
+				 * answer is this one - the authoritative tail, fetched once per reconcile
+				 * (the snapshot's own page is the other, and both are offered; whichever
+				 * arrives first settles the claim). Only the TAIL page can conclude
+				 * anything (`beforeId === undefined` is the first, tail-most page of the
+				 * walk) and only a page that is not `cursor_missing` counts as complete: a
+				 * walked-back window is not the tail, so its silence about a recent
+				 * message proves nothing.
+				 */
+				if (sessionId && beforeId === undefined) {
+					useCanonicalSessionsStore.getState().resolveHeldFromServer(
+						sessionId,
+						page.entries.map((entry) => entry.id),
+						!page.cursor_missing,
+					);
+				}
+				/*
 				 * How many target calls were still behind what had been read when this
 				 * page arrived; a page that names one LOWERS it, which is the only
 				 * thing that makes this read worth remembering (see the depth floor
@@ -3002,6 +3082,24 @@ export function useCanonicalSessionStream(
 							if (!snapshot.history.cursor_missing) {
 								transcript = applyHistoryPage(transcript, snapshot.history);
 							}
+							/*
+							 * AND A SNAPSHOT RESOLVES A HELD SEND (§F2's last bullet, UX round 1's
+							 * U5b). This frame is "the frame that follows a reconnect or a fresh
+							 * subscription" (the note below says the same of the pulse seed), and
+							 * its page is the server's own statement of what this conversation
+							 * holds — the acknowledgement §F2 says a held state clears from, never
+							 * from the local send. The store decides: an answer that NAMES the held
+							 * request landed; one that does not, on a COMPLETE page (no
+							 * `cursor_missing`), proves it did not. Passed unconditionally because
+							 * both arms are cheap and the claim's existence is the store's test.
+							 */
+							if (sessionId) {
+								useCanonicalSessionsStore.getState().resolveHeldFromServer(
+									sessionId,
+									snapshot.history.entries.map((entry) => entry.id),
+									!snapshot.history.cursor_missing,
+								);
+							}
 							// A cold session (no live owner) snapshots with no history
 							// cursor and therefore an empty page, and a replaced cursor
 							// reports cursor_missing. Both are the contract's "reconcile
@@ -3180,7 +3278,22 @@ export function useCanonicalSessionStream(
 							// not a round whose namespace consumers need to re-read.
 							next = { ...next, turnsCompleted: next.turnsCompleted + 1 };
 						}
-						const transcript = applyEvent(next.transcript, frame.payload, now);
+						const transcript = applyEvent(next.transcript, frame.payload, now, {
+							/*
+							 * READ AT APPLY TIME, not captured: the store is written by the
+							 * interrupt's receipt, which lands BEFORE the killed call's end event
+							 * comes back through this stream — the same ordering the strip's own
+							 * `stoppedTurns` docstring states. `getState()` rather than a selector
+							 * because this value is needed inside a socket callback rather than
+							 * during a render, which is the shape `chat-page`'s `send` already uses
+							 * for the same reason.
+							 */
+							userStoppedAt: sessionId
+								? (useCanonicalSessionsStore.getState().stoppedTurns[
+										sessionId
+									] ?? null)
+								: null,
+						});
 						if (transcript !== next.transcript) {
 							next = { ...next, transcript };
 						}
@@ -4281,7 +4394,8 @@ export function useCanonicalSessionStream(
 			 * changed session. See `CanonicalSessionHandle.awaitingHydration` for why
 			 * the composer needs it and why `hydrated` is left alone.
 			 */
-			awaitingHydration: enabled && Boolean(sessionId) && !view.hydrated,
+			awaitingHydration:
+				enabled && Boolean(sessionId) && isSession && !view.hydrated,
 			loadOlder,
 			refreshTail,
 			clearView,
@@ -4294,6 +4408,7 @@ export function useCanonicalSessionStream(
 			view,
 			enabled,
 			sessionId,
+			isSession,
 			loadOlder,
 			refreshTail,
 			clearView,

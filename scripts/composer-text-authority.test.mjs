@@ -144,6 +144,7 @@ const bundle = await build({
 					contents: `export const echoPendingUser = () => {};
 export const retractPendingUser = () => {};
 export const retractLocalEcho = () => "queued";
+export const peekLocalEcho = () => "unseen";
 export const discardPendingEchoes = () => {};
 export const clearRetractedEchoes = () => {};
 export const deliverEcho = () => {};

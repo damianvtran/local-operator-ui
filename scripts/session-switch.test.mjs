@@ -92,6 +92,7 @@ export const desktopResult = request => globalThis.__switchRequest(request);`,
 					contents: `export const echoPendingUser = () => {};
 export const retractPendingUser = () => {};
 export const retractLocalEcho = () => "retracted";
+export const peekLocalEcho = () => "unseen";
 export const discardPendingEchoes = () => {};`,
 					loader: "js",
 					resolveDir: process.cwd(),
@@ -904,6 +905,16 @@ const expectListed = (found, listed, what) => {
 
 const ENTRANCE_FILES = {
 	"chat-page.tsx": "src/renderer/src/features/chat/components/chat-page.tsx",
+	/*
+	 * THE SIDEBAR'S ENTRANCE MOVED WITH THE SIDEBAR. The rail and the chat list are
+	 * one column now, and it is mounted above the routes (`app.tsx`), so the rows
+	 * that switch conversations are the sidebar's own and no longer call back
+	 * through `chat-page.tsx`. The table follows the call site, which is the point
+	 * of it: an entrance that moved is still an entrance this file has to be able
+	 * to see.
+	 */
+	"sidebar-navigation.tsx":
+		"src/renderer/src/shared/components/navigation/sidebar-navigation.tsx",
 	"command-palette.tsx":
 		"src/renderer/src/features/command-palette/components/command-palette.tsx",
 };
@@ -966,11 +977,22 @@ test("every entrance writes the switch's URL with the commit, through one rule",
 			`${name} chains its URL write on the guard read`,
 		);
 	}
-	/* Two entrances live in `chat-page` (the sidebar's row and the `/chat` rebind); the palette's is the third. */
+	/*
+	 * One entrance lives in each of the three files now: the sidebar's rows, the
+	 * `/chat` rebind (which is still `chat-page.tsx`'s) and the palette's. The pair
+	 * that used to be counted in `chat-page` was the sidebar's row plus that rebind,
+	 * and the sidebar's row left with the sidebar.
+	 */
 	assert.equal(
 		readSource(ENTRANCE_FILES["chat-page.tsx"]).split("openConversation(")
 			.length - 1,
-		2,
+		1,
+	);
+	assert.equal(
+		readSource(ENTRANCE_FILES["sidebar-navigation.tsx"]).split(
+			"openConversation(",
+		).length - 1,
+		1,
 	);
 	assert.equal(
 		readSource(ENTRANCE_FILES["command-palette.tsx"]).split("openConversation(")

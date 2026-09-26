@@ -1684,11 +1684,15 @@ test("the empty-chat band keeps one wrapper, so a narrowing column cannot remoun
 	/*
 	 * The wrapper is unconditional; only what it HOLDS depends on the band. With a
 	 * provider connected the headline renders (design round 1 D5 added the
-	 * `!noProvider` half - the next test pins the other branch).
+	 * `!noProvider` half - the next test pins the other branch). The fold's
+	 * resolution spells the gate as the null arm - `{noProvider ? null : (<h2
+	 * ...>)}` - so this pin tracks the shipped spelling rather than the branch's
+	 * earlier `showEmptyChatPrompt && !noProvider ? (` form (agent review round
+	 * 4, R15).
 	 */
 	assert.match(
 		source,
-		/\{showEmptyChatPrompt && !noProvider \? \(\s*<h2[^>]*>\s*What can I help you with today\?/,
+		/\{noProvider \? null : \(\s*<h2[^>]*>\s*What can I help you with today\?/,
 	);
 });
 
@@ -1699,7 +1703,9 @@ test("with nothing connected the empty-chat band drops the headline and shows th
 	 * strongest signals in opposite directions, so with no provider the headline
 	 * is withheld and the connect card takes the chips' slot. Both halves are
 	 * pinned: the headline carries the `!noProvider` guard (above), and the card
-	 * is mounted under the opposite guard, in the same wrapper.
+	 * is mounted under the opposite guard, in the same wrapper - the fold's
+	 * shipped spelling, `{noProvider ? (<div ...><ConnectProviderCard />`
+	 * (agent review round 4, R15).
 	 */
 	assert.doesNotMatch(
 		source,
@@ -1708,7 +1714,7 @@ test("with nothing connected the empty-chat band drops the headline and shows th
 	);
 	assert.match(
 		source,
-		/\{showEmptyChatPrompt && noProvider && \(\s*<div[^>]*>\s*<ConnectProviderCard \/>/,
+		/\{noProvider \? \(\s*<div[^>]*>\s*<ConnectProviderCard \/>/,
 	);
 });
 

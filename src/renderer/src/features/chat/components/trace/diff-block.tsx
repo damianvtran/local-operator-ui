@@ -131,7 +131,9 @@ export const DiffBlock: FC<DiffBlockProps> = ({ diff, className }) => {
 				// so the frame said "40 lines" with nothing saying there were more.
 				// The scroll region that remains is for a WRAPPED body (a 560px column
 				// turns 40 lines into 80 rows), which is the case it was always for.
-				"max-h-[740px] overflow-y-auto overflow-x-hidden rounded-sm border border-hairline bg-sunken p-3 font-mono text-ink text-mono-sm whitespace-pre-wrap break-words",
+				// §E5: one treatment for detail, code and diffs - `sunken`, radius
+				// 10, no border (design round 1, D9).
+				"max-h-[740px] overflow-y-auto overflow-x-hidden rounded-md bg-sunken p-3 font-mono text-ink text-mono-sm whitespace-pre-wrap break-words",
 				className,
 			)}
 		>

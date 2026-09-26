@@ -151,18 +151,57 @@ test("the icon is decorative and the query never runs under the control", () => 
 	);
 });
 
-test("Escape keeps clearing and blurring, unchanged", () => {
+test("Escape clears the field and hands focus to the list, and comes back from it", () => {
+	/*
+	 * The closing anchor is searched FROM the handler, not from the top of the file.
+	 * `chat-sidebar.tsx` now holds an earlier `const rows = [` - the arrow walk's own
+	 * `const rows = [...nav.querySelectorAll("[data-chat-row]")]` - which a plain
+	 * `indexOf` matched first, so the slice ran BACKWARDS and came back EMPTY: every
+	 * assertion below then failed against text this case never read, which is how it
+	 * reported "the input's Escape branch must still clear the query" while the
+	 * shipped branch clears the query on exactly that press.
+	 */
+	const keyDownFrom = sidebar.indexOf("const keyDown = (");
 	const keyDown = sidebar.slice(
-		sidebar.indexOf("const keyDown = ("),
-		sidebar.indexOf("const rows = ["),
+		keyDownFrom,
+		sidebar.indexOf("const rows = [", keyDownFrom),
 	);
-	// The new control is an addition, not a replacement: Escape is still the
-	// keyboard user's way out of the field, blur included, and the list's own
-	// Escape branch (which restores focus to the field) still follows it.
+	/*
+	 * THE CONTRACT CHANGED, and this is the change rather than a relaxation of
+	 * the guard. Escape in the field used to clear and BLUR, which parked
+	 * `document.activeElement` on `<body>`: the key that emptied the field also
+	 * dropped the user's place, so the next Tab started from the top of the
+	 * document and the list below was unreachable without a pointer. The
+	 * sidebar's search now takes the command palette's own model - ↓ into the
+	 * results, Escape clears and returns focus to the list - and the field keeps
+	 * its clear-half: the query is still emptied on the same press, so nothing
+	 * about what the control DOES was lost, only where the caret lands.
+	 */
 	assert.match(
 		keyDown,
-		/target\.tagName === "INPUT"\) \{\s*if \(event\.key === "Escape"\) \{\s*setQuery\(""\);\s*target\.blur\(\);/,
-		"the input's Escape branch must still clear the query and blur the field",
+		/target\.tagName === "INPUT"\) \{[\s\S]*?event\.key === "Escape"\) \{\s*setQuery\(""\);/,
+		"the input's Escape branch must still clear the query",
+	);
+	assert.match(
+		keyDown,
+		/event\.key === "ArrowDown"\)[\s\S]*?querySelector<HTMLElement>\(\s*"\[data-chat-row\]"\s*\)/,
+		"↓ must enter the list from the field (the palette's model)",
+	);
+	/*
+	 * Read from the ESCAPE BRANCH rather than from the handler, and the reason is the
+	 * same one the anchor above exists for: the branch is no longer the one-liner
+	 * `if (first) first.focus();` this used to pin. The redesign expanded it - the
+	 * row-stop stamp (`applyRowStop`) joined the focus move, and the branch gained
+	 * the `else target.blur()` arm for a list with no rows - so a regex pinned to the
+	 * old line would go on failing while the OUTCOME it guards was intact. What is
+	 * pinned is still the outcome: on Escape the cleared field moves focus INTO the
+	 * list rather than dropping it to `<body>`.
+	 */
+	const escapeBranch = keyDown.slice(keyDown.indexOf('event.key === "Escape"'));
+	assert.match(
+		escapeBranch,
+		/first\.focus\(\);/,
+		"the cleared field hands focus to the list rather than blurring to `body`",
 	);
 	assert.match(
 		keyDown,

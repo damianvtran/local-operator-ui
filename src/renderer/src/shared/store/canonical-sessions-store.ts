@@ -13,7 +13,7 @@ import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
 import {
 	discardPendingEchoes,
 	echoPendingUser,
-	retractLocalEcho,
+	peekLocalEcho,
 	retractPendingUser,
 } from "@shared/hooks/use-canonical-session";
 /*
@@ -340,6 +340,39 @@ export type ChatDraft = {
 	admissionRequestId: string;
 	sessionId?: string;
 	/**
+	 * The mint's at-most-once key (`sessions.draft`'s `requestId`), stable per
+	 * draft.
+	 *
+	 * WHY IT LIVES ON THE ROW. A mint registers an id on the daemon, so the
+	 * retries the pane will inevitably make for one draft — a fast second
+	 * keystroke before the first answer lands, a lost response — must be the SAME
+	 * request for the backend's receipt to answer them with the same id. Two ids
+	 * for one pane would warm two runtimes and leave a registry entry nobody can
+	 * consume.
+	 *
+	 * Regenerated whenever the selection changes (`setDraftModel`, `setCwd`),
+	 * because a receipt replays the FIRST answer: after a drop, re-asking under
+	 * the old key would hand the pane back the superseded selection's draft id —
+	 * the one runtime v1 deliberately does not carry across the change.
+	 *
+	 * Optional because rows outlive builds and arrive from storage: a row without
+	 * one gets its key lazily, on the keystroke that mints.
+	 */
+	draftRequestId?: string;
+	/**
+	 * The draft id `sessions.draft` minted for this pane, or absent.
+	 *
+	 * The pane's runtime is warmed on THIS id and `sessions.create` adopts it on
+	 * send, so the conversation is born on a runtime that is already up. It is
+	 * runtime state about a daemon registry, and every one of its rules follows:
+	 * NOT persisted (`partialize` strips it — a reload cannot know whether the
+	 * registry survived, and a stale id would 404 the pane's own stream), cleared
+	 * when the selection changes, and never a substitute for `sessionId` — the
+	 * identity the panel keys on stays the draft key until the create hop sets
+	 * `sessionId`.
+	 */
+	warmId?: string;
+	/**
 	 * The model the FIRST turn of this draft will be born on, or absent when the
 	 * user never picked one.
 	 *
@@ -408,6 +441,33 @@ export type ChatDraft = {
 	 * property the migration needs and the one the old gate did not have.
 	 */
 	heldClaimCode?: string;
+	/**
+	 * The message a SERVER ANSWER proved did not reach the owner, kept so the
+	 * transcript can state its fate after the claim that named the ambiguity has
+	 * ended (§F3's `Not delivered`, §F2's last bullet).
+	 *
+	 * WHY A FIELD RATHER THAN THE CLAIM ITSELF. A held claim means "the owner may
+	 * have admitted this before the response was lost" — an open question the
+	 * composer states its own notice about while it is open. A re-subscribe
+	 * answers it: the server's snapshot names every message it holds, so a claimed
+	 * payload the snapshot does not name provably did not land (see
+	 * `resolveHeldFromServer`). The claim then has nothing left to hold — the
+	 * composer stops stating it — but the MESSAGE still has a fate to state, and
+	 * the line that states it is on the message. So the claim ends and this record
+	 * begins, carrying its OWN `recordId` because ending the claim mints a fresh
+	 * `admissionRequestId` (the released one may still be executing on the owner,
+	 * and reusing it would make the next send an idempotent replay of the old
+	 * payload — this is the rotation inside `resolveHeldFromServer`).
+	 *
+	 * CLEARED by every path that ends the draft (`finishDraft`, `discardDraft`) —
+	 * a successful send deletes the row outright, so the line's lifetime ends
+	 * with the conversation moving on.
+	 */
+	undelivered?: {
+		recordId: string;
+		text: string;
+		attachments: readonly string[];
+	};
 	/**
 	 * True only once an admission request has actually been ISSUED, i.e. its
 	 * outcome is genuinely unknown to us. This is what the unchanged-payload
@@ -1240,12 +1300,26 @@ export function buildSendPayload(
 }
 
 /**
- * Which draft a chat view owns. A staged draft is keyed by its own key, but once
- * a session exists `draftKey` is null and the send draft lives under
- * `send:<id>` — reading only `draftKey` there left a failed send's retained text
- * unreachable. It lives here, beside the drafts it addresses, so the rule is
- * exercised by the store tests rather than duplicated in an untested component.
+ * Whether a draft row is the one a given conversation's send wrote.
+ *
+ * THREE SPELLINGS, because a conversation's draft is keyed three ways across one
+ * send's life: `draft:<uuid>` before it is admitted, `<sessionId>` after the flip,
+ * and `send:<sessionId>` for a conversation that was never a draft at all
+ * (`draftIdentityFor`'s fallback). The `sessionId` FIELD is written only on the
+ * create path - the existing-session path patches whatever row it was handed - so
+ * a lookup that trusts the field alone misses the very case the held-claim
+ * reconcile exists for. Measured on the driver's first after-run: the claim
+ * stayed held through a live reconnect because the draft the send wrote was keyed
+ * `send:<id>` and carried no `sessionId` at all.
  */
+function draftBelongsToSession(draft: ChatDraft, sessionId: string): boolean {
+	return (
+		draft.sessionId === sessionId ||
+		draft.key === sessionId ||
+		draft.key === `send:${sessionId}`
+	);
+}
+
 export function draftIdentityFor(
 	draftKey: string | null,
 	sessionId: string | null | undefined,
@@ -1963,6 +2037,11 @@ export async function admitChatDraft(
 					// The pane's own pick, or nothing at all: a draft that was never
 					// picked from omits the field from the create body entirely.
 					draft.model ?? null,
+					// The pre-engaged runtime, when the first keystroke's mint adopted
+					// one. `undefined` here is the ordinary path — an older backend, a
+					// send before the mint answered — and the create then mints fresh
+					// exactly as it always did.
+					draft.warmId,
 				)) ?? undefined;
 			if (!id)
 				throw new UserFacingError(
@@ -2127,20 +2206,28 @@ export async function admitChatDraft(
 		 * answered this way, and only when the id the owner would have used is
 		 * already painted as a row that is not ours.
 		 *
-		 * `retractLocalEcho` removes the record only while it is still this app's
+		 * `peekLocalEcho` reports whether the row under that id is still this app's
 		 * own optimistic echo (`local: true`, stamped by `appendPendingUser`). A
 		 * user record without that flag is the OWNER's - its `message_start` or a
 		 * durable history row - which means the message was admitted, the failure
 		 * was the response to it, and nothing should be handed back: the send
-		 * succeeded. The three direct answers matter, because the third one has
-		 * nothing to report: with no transcript mounted the retraction is QUEUED
-		 * exactly as the echo was, and the reconciliation in the pane decides it
-		 * when the panel mounts (see `SessionPanel`'s delivered effect).
+		 * succeeded.
+		 *
+		 * AND AN UNKNOWN OUTCOME KEEPS THE ECHO (§F3, agent review round 4's R17).
+		 * The read is `peekLocalEcho` rather than `retractLocalEcho` for exactly
+		 * this arm, and the difference is the whole restore: `retractLocalEcho`
+		 * REMOVES our row, which is right for a message that lives only in the
+		 * composer - but an unconfirmed send must keep its `Not delivered · Send
+		 * again · Edit` line on the transcript until the server's own answer
+		 * resolves it (`resolveHeldFromServer`), so the row stays and the payload
+		 * comes home beside it. `unseen` (no transcript mounted to hold the row)
+		 * resolves the same way - nothing delivered, nothing removed - and the
+		 * pane's reconciliation re-reads the verdict when a panel mounts.
 		 */
 		let delivered = false;
 		if (id && attempted) {
 			if (klass === "unknown") {
-				delivered = retractLocalEcho(id, admissionRequestId) === "owner";
+				delivered = peekLocalEcho(id, admissionRequestId) === "owner";
 			} else {
 				retractPendingUser(id, admissionRequestId);
 			}
@@ -2459,6 +2546,27 @@ export type CatalogueHeadState = {
 	pageIds: string[];
 	/** The next page's cursor, or null at the end of the catalogue. */
 	nextCursor: string | null;
+	/**
+	 * The EXTENSION frontier: the cursor the next `fetchCatalogueTail` continues
+	 * from, or null once the walk reached the end.
+	 *
+	 * WHY IT IS NOT `nextCursor` (QA round 2, Q2). `nextCursor` is the PAGE-ONE
+	 * answer's own continuation, and page one is re-read by the poll: the question
+	 * "where does the tail continue from" and the question "what did the newest
+	 * page-one answer say" have different answers the moment a poll lands, and
+	 * reading the second for the first rewound the tail's place while the merged
+	 * rows stayed - a press then re-requested a page the client already held,
+	 * added nothing, and at human pace (a press every few seconds, a poll every
+	 * 30 s) the list never grew.
+	 *
+	 * `tailStarted` guards the seeding: until an extension has been REQUESTED,
+	 * page-one answers seed this value (the reader may scroll before the next
+	 * poll); after that only extensions move it, so a page-one answer can neither
+	 * rewind nor advance the place a press continues from.
+	 */
+	tailCursor: string | null;
+	/** Whether an extension has ever been requested; see `tailCursor`. */
+	tailStarted: boolean;
 	/** True once an answer said this is the whole catalogue. */
 	complete: boolean;
 	/** Single flight for the tail extension. */
@@ -2675,6 +2783,14 @@ type CanonicalSessionsState = {
 	 * made.
 	 */
 	cataloguePageable: boolean;
+	/**
+	 * Whether this daemon advertises `session_draft_warm`, as published by the
+	 * surface that resolves the capability (`setDraftWarmable`). It gates the
+	 * mint a NEW chat's first keystroke would spend — see `ensureDraftWarm` — and
+	 * is `false` until something says otherwise, which is the fail-closed
+	 * direction and also exactly the behaviour every older daemon keeps.
+	 */
+	draftWarmable: boolean;
 	activeSessionId: string | null;
 	activeDraftKey: string | null;
 	drafts: Record<string, ChatDraft>;
@@ -2850,6 +2966,20 @@ type CanonicalSessionsState = {
 	counts: CatalogueScopeCounts | null;
 	error: string | null;
 	cwd: string;
+	/**
+	 * The write path for a DRAFT's staged directory (`DirectoryWritePath`'s
+	 * `stage` kind; the composer's chip is the only caller).
+	 *
+	 * Changing where the first send will run changes what a runtime warmed for the
+	 * old directory would have engaged, so the warm intent is dropped with it (see
+	 * `ensureDraftWarm`) and the next keystroke re-arms against the new directory.
+	 *
+	 * EVERY draft row without a session, not just the active one: `cwd` is one
+	 * value, read by whatever pane mints and whatever pane sends, while the rows
+	 * outlive the pane in front of you (an agent/team-keyed row is reused by
+	 * `stageDraft` when the user comes back to it). A row with a session, and a
+	 * store with no draft rows at all, takes today's plain write.
+	 */
 	setCwd: (cwd: string) => void;
 	/**
 	 * What THIS CLIENT knows about one conversation's archive state, and WHEN it
@@ -2934,6 +3064,18 @@ type CanonicalSessionsState = {
 	 */
 	setCataloguePageable: (pageable: boolean) => void;
 	/**
+	 * Publish whether the daemon can warm a new chat's draft, so the composer's
+	 * keystroke can mint one. A no-op when the value has not moved, for the same
+	 * reason `setCataloguePageable` is: this is called from an effect on every
+	 * capability change.
+	 *
+	 * The false -> true transition also RE-ARMS the active draft when it already
+	 * holds text (review round 1, MINOR-1): the keystroke's edge can fire before a
+	 * cold-start capability read answers, and the mint would otherwise be skipped
+	 * for the whole message.
+	 */
+	setDraftWarmable: (warmable: boolean) => void;
+	/**
 	 * Clear the refusal once its message's turn in the panel's lane is over.
 	 *
 	 * THE WRITE ONLY, matching `setArchiveUndo` above rather than adding a third policy: the
@@ -2980,11 +3122,13 @@ type CanonicalSessionsState = {
 	requestSessionDelete: (sessionId: string | null) => void;
 	fetchSessions: (limit?: number, withCounts?: boolean) => Promise<void>;
 	/**
-	 * Extend the UNSCOPED list by one page, along `head.nextCursor`.
+	 * Extend the UNSCOPED list by one page, along the extension's own frontier
+	 * (`head.tailCursor`, not `head.nextCursor` - see that field's note for the
+	 * poll-rewind this distinction exists to prevent).
 	 *
 	 * The flat chat list's own tail affordance (§5.4): one container, one scope,
 	 * one sentinel, so "extend" has exactly one meaning. Single flight against
-	 * `head.loading`, and it does nothing when the head is already complete or a
+	 * `head.loading`, and it does nothing when the walk has reached the end or a
 	 * page is in the air.
 	 */
 	fetchCatalogueTail: () => Promise<void>;
@@ -3028,7 +3172,39 @@ type CanonicalSessionsState = {
 		requestId?: string,
 		/** The draft's own model pick, when it has one; omitted otherwise. */
 		model?: DesktopModelSelection | null,
+		/**
+		 * The minted draft this conversation was warmed on, when it has one:
+		 * the create adopts the id (and the already-engaged runtime) instead of
+		 * minting fresh. Omitted — byte-for-byte today's request — when the
+		 * pane never minted, and an id the daemon cannot resolve mints fresh
+		 * rather than failing the send (see `ensureDraftWarm`).
+		 */
+		draftId?: string,
 	) => Promise<string | null>;
+	/**
+	 * The turns THIS WINDOW stopped, by session id, stamped in wall-clock ms.
+	 *
+	 * A CLIENT-SIDE FACT, and that is the whole of its point (UX round 2, U7). When
+	 * the user presses `Esc` the runtime kills the call in flight, and the tool that
+	 * was running then reports a REAL failure — its process died — which the row
+	 * classifies as `error` and paints in `danger` as `failed`. The backend is
+	 * telling the truth about the process and the wrong thing about the turn: the
+	 * user stopped it, and blaming the agent for the user's own decision is exactly
+	 * what `tool-row.tsx`'s `interrupted` state exists to say. Nothing on the wire
+	 * distinguishes the two, so the fact is recorded where the press happened.
+	 *
+	 * LIFETIME IS EXACTLY ONE TURN: written when an `interrupted` receipt arrives,
+	 * cleared when the next turn begins (the same `busy` edge that retires the stop
+	 * notice). It is NOT persisted — it describes a run that is over by the time the
+	 * window closes, and a restored fact would reclassify a later turn's honest
+	 * failure.
+	 */
+	stoppedTurns: Record<string, number>;
+	/** Record that this window stopped a session's turn, at `at` (default: now). */
+	markTurnStopped: (sessionId: string, at?: number) => void;
+	/** Clear it — the next turn's arrival, or a session being left. */
+	clearTurnStopped: (sessionId: string) => void;
+
 	setActiveSession: (sessionId: string | null) => void;
 	/**
 	 * Close the validation window because the session's own stream proved it
@@ -3242,7 +3418,27 @@ type CanonicalSessionsState = {
 	) => void;
 	openSession: (sessionId: string) => Promise<boolean>;
 	stageDraft: (target?: ChatTarget, fresh?: boolean) => string;
+	/**
+	 * Switch to a draft this store already holds, by key. See the action's own
+	 * comment for why this is not `stageDraft` (UX round 2, U8).
+	 */
+	openDraft: (key: string) => void;
 	updateDraft: (key: string, patch: Partial<ChatDraft>) => void;
+	/**
+	 * The new-chat pane's first keystroke: mint the id its runtime is warmed on
+	 * (`sessions.draft`), fire-and-forget, once the backend advertises
+	 * `session_draft_warm`.
+	 *
+	 * Fire-and-forget BY DESIGN: nothing on the send path waits on it, and a mint
+	 * that fails (or never fires) leaves the send engaging inline exactly as it
+	 * always did. It no-ops when the daemon does not advertise the capability (the
+	 * flag above), when the pane has no settled directory to mint against, when it
+	 * already has a `warmId`, or once its session exists. The request id is the
+	 * row's `draftRequestId`, so a retry replays the same mint rather than
+	 * registering a second draft; the id and the request id together are dropped
+	 * when the selection changes before the send.
+	 */
+	ensureDraftWarm: (key: string) => void;
 	/**
 	 * Record — or clear — the model a NEW conversation will be born on.
 	 *
@@ -3253,6 +3449,10 @@ type CanonicalSessionsState = {
 	 * selection is therefore a changed intent, and it gets a fresh request id —
 	 * scoped to the pre-session state, since once a session exists the create is
 	 * already behind us and its id must stay pinned for an idempotent replay.
+	 *
+	 * The same change drops the draft's warm intent (`warmId`): v1 does not re-aim
+	 * a runtime engaged for the previous selection, so the next keystroke mints
+	 * fresh and the send (if it beats that mint) creates without a draft id.
 	 */
 	setDraftModel: (key: string, model: DesktopModelSelection | null) => void;
 	finishDraft: (key: string, sessionId: string) => void;
@@ -3262,6 +3462,24 @@ type CanonicalSessionsState = {
 	 * next send must match it, and never touch the session or its transcript.
 	 */
 	discardDraft: (key: string) => void;
+	/**
+	 * Resolve a held send against the server's own answer (§F2's last bullet,
+	 * UX round 1's U5b).
+	 *
+	 * Called with the ids a RE-SUBSCRIBE returned — the snapshot's history page,
+	 * i.e. the server's statement of what this conversation holds. A held payload
+	 * the answer names LANDED (the claim ends; the durable row coalesces with the
+	 * echo by id). A held payload it does not name provably did NOT land on a
+	 * complete read, so the claim ends AND the row records it as `undelivered` so
+	 * the message keeps its `Not delivered` line. Either way the composer stops
+	 * waiting: §F2 says the state clears from the server's acknowledgement, never
+	 * from the local send, and this is the acknowledgement arriving.
+	 */
+	resolveHeldFromServer: (
+		sessionId: string,
+		entryIds: readonly string[],
+		complete: boolean,
+	) => void;
 	bindSession: (legacyAgentId: string, sessionId: string) => void;
 	upsertSession: (row: CanonicalSessionRow) => void;
 };
@@ -3834,6 +4052,49 @@ function launchSession(): string | null {
 	return target.kind === "session" ? target.sessionId : null;
 }
 /**
+ * The draft a launch with nothing to restore lands on (§H, U1/U23).
+ *
+ * WHY THIS EXISTS. The pane used to have an INTERMEDIATE SCREEN between launch and
+ * a conversation: with no session and no draft, `chat-page.tsx` rendered a "Start a
+ * chat" heading with a "New chat" button, and the composer only appeared once the
+ * user pressed it. §H deletes that screen - launch lands on the empty state with
+ * the composer docked and focused - which means the app has to decide, at launch,
+ * that it is holding a NEW conversation rather than none.
+ *
+ * WHY HERE RATHER THAN IN AN EFFECT. `persist` hydrates before the first render, so
+ * this is the one place a decision can be true of the first PAINTED frame; an effect
+ * would paint the intermediate state (or an empty column) and correct itself after,
+ * which is the flash the launch argument's own merge exists to prevent. The row it
+ * builds is the same shape `stageDraft` writes, so nothing downstream can tell a
+ * launched draft from a pressed one.
+ *
+ * IT IS A NO-OP WHEN ANYTHING IS ALREADY ACTIVE: a launch argument for a session, a
+ * restored conversation, a restored draft, or the catalogue launch (which sets
+ * `activeSessionId: null` deliberately) are all left exactly as the arms above and
+ * the persisted state left them. Only "nothing at all" takes a new draft.
+ */
+export function launchDraftSeed(
+	current: Pick<
+		CanonicalSessionsState,
+		"activeSessionId" | "activeDraftKey" | "drafts"
+	>,
+): Pick<CanonicalSessionsState, "activeDraftKey" | "drafts"> | null {
+	if (current.activeSessionId || current.activeDraftKey) return null;
+	const key = `draft:${crypto.randomUUID()}`;
+	return {
+		activeDraftKey: key,
+		drafts: {
+			...current.drafts,
+			[key]: {
+				key,
+				createRequestId: crypto.randomUUID(),
+				admissionRequestId: crypto.randomUUID(),
+			},
+		},
+	};
+}
+
+/**
  * The launch argument OUTRANKS the persisted conversation.
  *
  * Main was asked for this conversation BY NAME, and the window exists to show
@@ -3869,6 +4130,13 @@ export function mergePersistedSession(
 	if (target.kind === "catalogue") {
 		return { ...merged, activeSessionId: null };
 	}
+	/*
+	 * Nothing to restore and no conversation asked for: a launch holds a NEW
+	 * conversation rather than none (§H). See `launchDraftSeed` for why the
+	 * decision belongs in the merge and why it is a no-op in every other case.
+	 */
+	const seed = launchDraftSeed(merged);
+	if (seed) return { ...merged, ...seed };
 	return merged;
 }
 
@@ -3877,6 +4145,11 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 		(set, get) => ({
 			sessions: [],
 			cataloguePageable: false,
+			// Fail-closed until a mounted pane resolves the capability and publishes it
+			// (`setDraftWarmable`): no backend this app has ever shipped warms drafts
+			// by default, and the absent flag is what keeps every older daemon on
+			// today's wiring.
+			draftWarmable: false,
 			// Seeded from the launch argument when there is one, so the very first
 			// render is already the requested conversation rather than the persisted
 			// one. `merge` below holds the same line against hydration, which would
@@ -3905,6 +4178,8 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				pageIds: [],
 				tailIds: [],
 				nextCursor: null,
+				tailCursor: null,
+				tailStarted: false,
 				complete: false,
 				loading: false,
 				error: null,
@@ -3915,12 +4190,52 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			statusUnavailable: [],
 			archiveFacts: {},
 			forgotten: {},
+			stoppedTurns: {},
 			archiveFailure: null,
 			archiveUndo: null,
 			deleteCandidate: null,
 			error: null,
 			cwd: "~",
-			setCwd: (cwd) => set({ cwd }),
+			/*
+			 * The write path for a DRAFT's staged directory (`DirectoryWritePath`'s
+			 * `stage` kind; the composer's chip is the only caller). Changing where the
+			 * first send will run changes what a runtime warmed for the old directory
+			 * would have engaged, so the same drop rule a model pick applies applies
+			 * here: the warm intent and its receipt key go, and the next keystroke
+			 * re-arms against the new directory.
+			 *
+			 * EVERY draft row without a session, not just the active one (review round
+			 * 1's MAJOR-1). `cwd` is ONE value, read by whatever pane mints and by
+			 * whatever pane sends, while the rows outlive the pane in front of you: an
+			 * agent/team-keyed row (`draft:agent:<name>`) is RE-USED by `stageDraft`
+			 * when the user comes back to it, so a warm left on an inactive row is a
+			 * send waiting to adopt a runtime engaged for the previous directory - the
+			 * exact case the spec's drop rule exists to remove ("v1 favours semantic
+			 * equality with today"). A row with a session keeps today's plain write,
+			 * and a store with no draft rows at all does not even rebuild the map.
+			 */
+			setCwd: (cwd) =>
+				set((state) => {
+					const rows = Object.entries(state.drafts);
+					if (!rows.some(([, draft]) => !draft.sessionId)) return { cwd };
+					return {
+						cwd,
+						drafts: Object.fromEntries(
+							rows.map(([key, draft]) =>
+								draft.sessionId
+									? [key, draft]
+									: [
+											key,
+											{
+												...draft,
+												warmId: undefined,
+												draftRequestId: crypto.randomUUID(),
+											},
+										],
+							),
+						),
+					};
+				}),
 			fetchSessions: async (
 				/*
 				 * AN UNNAMED SIZE IS THE HEAD PAGE ON A PAGING DAEMON (Q-1): see
@@ -4205,6 +4520,20 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								pageIds: answerPageIds,
 								tailIds: headAnswer.tailIds,
 								nextCursor: answerCursor,
+								/*
+								 * THE EXTENSION FRONTIER, SEEDED ONCE AND THEN THE EXTENSIONS' OWN
+								 * (QA round 2, Q2 - see `tailCursor`). A poll landing after an
+								 * extension must not move it, or the press that follows re-requests
+								 * a page the client already holds and the list stalls. An answer that
+								 * says it is the WHOLE catalogue still clears it: nothing below it
+								 * exists to continue to.
+								 */
+								tailCursor: answerComplete
+									? null
+									: state.head.tailStarted
+										? state.head.tailCursor
+										: answerCursor,
+								tailStarted: state.head.tailStarted,
 								complete: answerComplete,
 								loading: false,
 								error: null,
@@ -4267,10 +4596,22 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			 */
 			fetchCatalogueTail: async () => {
 				const head = get().head;
-				if (head.nextCursor === null || head.loading) return;
-				const cursor = head.nextCursor;
+				const cursor = head.tailCursor;
+				if (cursor === null || head.loading) return;
 				set((state) => ({
-					head: { ...state.head, loading: true, error: null },
+					head: {
+						...state.head,
+						loading: true,
+						error: null,
+						/*
+						 * THE ATTEMPT MARKS THE EXTENSION AS STARTED, at REQUEST time and not
+						 * on success: a failed extension keeps its place (the retry continues
+						 * from the same cursor), and once started, a page-one answer can no
+						 * longer rewrite the frontier out from under a press.
+						 */
+						tailStarted: true,
+						tailCursor: cursor,
+					},
 				}));
 				try {
 					const result = await desktopResult<{
@@ -4320,12 +4661,17 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								 * page's ids.
 								 */
 								tailIds: [...state.head.tailIds, ...added],
+								/*
+								 * THE FRONTIER MOVES ONLY HERE. `nextCursor` is deliberately NOT
+								 * written: it is the page-one answer's own continuation, and this
+								 * extension has said nothing about the head page (QA round 2, Q2).
+								 */
+								tailCursor: nextCursor,
 								// The tail reached the end only when it says so. `head.at`
 								// is deliberately NOT advanced: it stamps the answer that
 								// is allowed to settle FACTS, and an extension must never be
 								// mistaken for one (a tail page speaks for a rank window, not
 								// for the pinned or archived set).
-								nextCursor,
 								complete: nextCursor === null,
 								loading: false,
 								error: null,
@@ -4503,6 +4849,30 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			setCataloguePageable: (pageable) => {
 				if (get().cataloguePageable !== pageable)
 					set({ cataloguePageable: pageable });
+			},
+			setDraftWarmable: (warmable) => {
+				if (get().draftWarmable === warmable) return;
+				set({ draftWarmable: warmable });
+				/*
+				 * RE-ARM ON ARRIVAL (review round 1, MINOR-1). On a cold start the pane's
+				 * first keystroke can beat the capability query's answer, and the composer's
+				 * edge fires once per message - so without this the whole first sentence
+				 * silently degrades to the pre-draft wiring, which is the one case the
+				 * keystroke policy exists to cover. The ACTIVE draft is the pane in view
+				 * (every pane action stages it; `setActiveSession` clears it); if it already
+				 * holds text and nothing has minted yet, this transition is the moment the
+				 * mint becomes possible, and the call is the same silent, receipt-stable one
+				 * the keystroke edge makes. A pane with no text waits for its own keystroke,
+				 * exactly as before.
+				 */
+				if (!warmable) return;
+				const key = get().activeDraftKey;
+				const draft = key ? get().drafts[key] : undefined;
+				if (!key || !draft || draft.sessionId || draft.warmId) return;
+				const held =
+					useConversationInputStore.getState().inputByConversation[key]
+						?.currentInput;
+				if (held) get().ensureDraftWarm(key);
 			},
 			setArchiveUndo: (offer) => {
 				set({ archiveUndo: offer });
@@ -4833,6 +5203,15 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				target,
 				requestId = crypto.randomUUID(),
 				model?: DesktopModelSelection | null,
+				/**
+				 * The minted draft this conversation was warmed on, when the pane has
+				 * one: the create adopts the id (and the already-engaged runtime)
+				 * instead of minting a fresh session. Omitted — leaving the body
+				 * byte-for-byte the one this op sent before drafts could be warmed —
+				 * when the pane never minted, and a daemon that cannot resolve the id
+				 * mints fresh rather than refusing the send.
+				 */
+				draftId?: string,
 			) => {
 				try {
 					const result = await desktopResult<{
@@ -4850,6 +5229,10 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						 * caller that never used it.
 						 */
 						...(model ? { model } : {}),
+						// The same omission rule for the minted draft, and the same promise:
+						// absent leaves this request byte-for-byte what it was before drafts
+						// could be warmed. The draft row's own note explains the lifecycle.
+						...(draftId ? { draftId } : {}),
 					});
 					get().upsertSession({
 						session_id: result.session_id,
@@ -4874,6 +5257,53 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					activeSessionId,
 					activeDraftKey: null,
 					validatingSessionId: null,
+				});
+			},
+			/*
+			 * The stopped-turn fact's two writers (UX round 2, U7; `stoppedTurns` carries
+			 * what it is for). `at` is the press's own instant rather than the receipt's,
+			 * and it is what the reducer compares a tool row's `startedAt` against: a call
+			 * that was ALREADY running when the user pressed stop is one the stop killed,
+			 * and a call that started afterwards cannot exist because the turn ended.
+			 */
+			markTurnStopped: (sessionId, at = Date.now()) =>
+				set((state) => ({
+					stoppedTurns: { ...state.stoppedTurns, [sessionId]: at },
+				})),
+			clearTurnStopped: (sessionId) =>
+				set((state) => {
+					if (!(sessionId in state.stoppedTurns)) return state;
+					const { [sessionId]: _dropped, ...rest } = state.stoppedTurns;
+					return { stoppedTurns: rest };
+				}),
+			/**
+			 * Open a draft this store ALREADY holds, by its key.
+			 *
+			 * WHY THIS IS NOT `stageDraft` (UX round 2, U8). `stageDraft(undefined, true)`
+			 * — which is what `⌘N` calls — mints a FRESH `draft:<uuid>` key every time, and a
+			 * draft pane's identity IS that key: the composer's text is persisted under it
+			 * (`conversation-input-store`, `inputByConversation[draft:<uuid>]`), so pressing
+			 * ⌘N with text in the box did not delete the text, it moved the window to a key
+			 * nothing on screen pointed at. The text was unreachable rather than absent, and a
+			 * relaunch restored a draft no route could name.
+			 *
+			 * So the second half of the fix is a way BACK to a key that exists, which is what
+			 * the sidebar's `Draft:` rows call. There is no fresh key here, no new
+			 * `createRequestId` and no re-admission: this is a navigation between two panes
+			 * this store is already holding, and minting anything would be the same discard
+			 * one release later.
+			 *
+			 * A key whose row is gone is a NO-OP rather than a blank pane: the caller can be a
+			 * row rendered from persisted state a moment before a `discardDraft` lands, and
+			 * switching to a key with no draft would leave `activeDraftKey` naming nothing.
+			 */
+			openDraft: (key) => {
+				if (!get().drafts[key]) return;
+				set({
+					activeDraftKey: key,
+					activeSessionId: null,
+					validatingSessionId: null,
+					error: null,
 				});
 			},
 			/*
@@ -5220,11 +5650,102 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								 */
 								...(present.sessionId
 									? {}
-									: { createRequestId: crypto.randomUUID() }),
+									: {
+											createRequestId: crypto.randomUUID(),
+											/*
+											 * THE DROP RULE: a runtime warmed from THIS selection is not the one the
+											 * new selection would have engaged, and v1 does not re-aim one — it
+											 * drops the intent, and the next keystroke re-arms against the new
+											 * selection. The mint's request id goes with it: a receipt replays
+											 * the FIRST answer, so re-asking under the old key would hand the
+											 * pane back the superseded selection's draft id. Regenerated even
+											 * when no `warmId` was ever adopted, because a lost response can
+											 * leave a receipt (and its registered draft) behind a row that
+											 * never learned the id.
+											 */
+											warmId: undefined,
+											draftRequestId: crypto.randomUUID(),
+										}),
 							},
 						},
 					};
 				}),
+			/*
+			 * THE FIRST KEYSTROKE OF A NEW CHAT: mint the id the runtime will be
+			 * warmed on.
+			 *
+			 * The pane has no session to warm yet, so without this the multi-second
+			 * engage the first send pays sits ON the send path — the complaint this
+			 * whole change answers. The mint itself engages nothing: it allocates an
+			 * id and registers it for the draft allow-list (`events`/`watch`/`warm`
+			 * and the create that adopts it), and the runtime is started separately
+			 * by the pane's own warm once its subscription holds the bridge. That is
+			 * what makes abandonment free: dropping the pane drops the bridge, and
+			 * the same `_detach` that cancels a session's warm cancels this one.
+			 *
+			 * FIRE AND FORGET, DELIBERATELY. Nothing on the send path awaits this,
+			 * the composer is never gated on it, and every failure — transport, an
+			 * older daemon that slipped the flag, the fast refusal of a latched
+			 * daemon — leaves the send engaging inline exactly as it always did. A
+			 * speculative optimisation that could DELAY a send would be strictly
+			 * worse than not warming at all.
+			 *
+			 * The guards, in order: the published capability (fail-closed: a daemon
+			 * without the key must never see a mint call, which would spend a
+			 * keystroke learning 404); a settled staged directory (the wire's own
+			 * 1..4096 bound); no `warmId` yet (a drop clears it, and re-minting is
+			 * the next keystroke's job, not this call's); and no `sessionId` (the
+			 * create already happened — a mint now would register an id nothing
+			 * will ever adopt).
+			 */
+			ensureDraftWarm: (key) => {
+				const state = get();
+				if (!state.draftWarmable) return;
+				const draft = state.drafts[key];
+				if (!draft || draft.sessionId || draft.warmId || !state.cwd) return;
+				/*
+				 * A STABLE request id, generated lazily and stored BEFORE the request
+				 * goes out: two keystrokes landing before the first answer must be one
+				 * receipt, so the second asks the same question rather than registering
+				 * a second draft. The drop rule — not this action — regenerates it when
+				 * the selection changes.
+				 */
+				const requestId = draft.draftRequestId ?? crypto.randomUUID();
+				if (!draft.draftRequestId)
+					get().updateDraft(key, { draftRequestId: requestId });
+				void desktopResult<{ draft_id: string }>({
+					op: "sessions.draft",
+					requestId,
+					cwd: state.cwd,
+					...(draft.target ? { target: draft.target } : {}),
+					// Omitted when nothing was picked, exactly as `sessions.create` and the
+					// preview omit it: the configured default is the backend's to resolve.
+					...(draft.model ? { model: draft.model } : {}),
+				})
+					.then((result) => {
+						/*
+						 * Adopt the id only if this row is still the draft that asked and is
+						 * still waiting for it. A discarded row is gone; a selection change
+						 * regenerated the request id, so this answer names a superseded
+						 * draft; a row that already has an id, or a session, is past this
+						 * question. Stamping any of those would warm the wrong thing or
+						 * leak an id nothing consumes.
+						 */
+						const row = get().drafts[key];
+						if (
+							row &&
+							!row.warmId &&
+							!row.sessionId &&
+							row.draftRequestId === requestId
+						)
+							get().updateDraft(key, { warmId: result.draft_id });
+					})
+					.catch(() => {
+						// Silent, precisely like the session warm: this fires from TYPING, it
+						// gates nothing, and the next keystroke retries under the SAME
+						// request id — so a lost response heals instead of leaking a draft.
+					});
+			},
 			finishDraft: (key, sessionId) =>
 				set((state) => {
 					/*
@@ -5289,6 +5810,121 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					return {
 						drafts,
 						...(state.activeDraftKey === key ? { activeDraftKey: null } : {}),
+					};
+				}),
+			resolveHeldFromServer: (sessionId, entryIds, complete) =>
+				set((state) => {
+					/*
+					 * THE LATE-LANDING CORRECTION, AND IT RUNS FIRST: a draft already resolved
+					 * as `undelivered` whose message a LATER server answer NAMES did land after
+					 * all — the one race this mechanism can lose (a read the server composed
+					 * before the attempt settled could miss a message admitted in that window).
+					 * The answer naming the id is proof of delivery, so the line goes. The id
+					 * here is the one recorded at resolution time, which is the id the durable
+					 * row carries.
+					 */
+					const corrected = Object.entries(state.drafts).filter(
+						([, draft]) =>
+							draftBelongsToSession(draft, sessionId) &&
+							draft.undelivered !== undefined &&
+							entryIds.includes(draft.undelivered.recordId),
+					);
+					let drafts = state.drafts;
+					if (corrected.length > 0) {
+						drafts = { ...drafts };
+						for (const [key, draft] of corrected) {
+							const { undelivered: _gone, ...kept } = draft;
+							drafts[key] = kept;
+						}
+					}
+					/*
+					 * THE ONE HELD CLAIM THIS SESSION OWNS, if any. A session can hold at most
+					 * one at a time by the store's own guard (a second send is refused while
+					 * the first is held), and `pending !== true` keeps an IN-FLIGHT attempt
+					 * out of it: a request whose outcome is still unknown is not something a
+					 * snapshot should adjudicate.
+					 */
+					const found = Object.entries(drafts).find(([, draft]) => {
+						return (
+							draftBelongsToSession(draft, sessionId) &&
+							draft.admissionAttempted === true &&
+							draft.pending !== true &&
+							draft.submittedText !== undefined
+						);
+					});
+					/*
+					 * THE CORRECTION SURVIVES AN ABSENT CLAIM: a draft that was already
+					 * resolved (the late-landing case) usually has no claim left to look
+					 * for, and returning here without `drafts` would silently drop the
+					 * very write this branch exists for.
+					 */
+					if (!found) return corrected.length > 0 ? { drafts } : {};
+					const [key, draft] = found;
+					const recordId = draft.admissionRequestId;
+					const delivered = entryIds.includes(recordId);
+					/*
+					 * NOTHING IS CONCLUDED FROM AN INCOMPLETE READ: `cursor_missing` means the
+					 * page does not describe a continuous tail, so its silence about this id
+					 * proves nothing. Finding the id still resolves the claim — an answer that
+					 * NAMES the message is proof of delivery however partial the page is.
+					 */
+					if (!delivered && !complete)
+						return corrected.length > 0 ? { drafts } : {};
+					/*
+					 * The failure's own copy goes with the claim: `error`/`errorCode` are
+					 * what the composer's notice states the failure FROM, and `errorRetry`
+					 * is main's classifier verdict on it — a resolved claim must not leave
+					 * a sentence about a send the server has now answered standing over
+					 * the composer (the §F3 line is the message's own record and stays).
+					 */
+					const {
+						admissionAttempted: _attempted,
+						submittedText: _text,
+						submittedAttachments: _attachments,
+						submittedImages: _images,
+						submittedMode: _mode,
+						heldClaimCode: _claimCode,
+						error: _error,
+						errorCode: _errorCode,
+						errorRetry: _errorRetry,
+						...kept
+					} = draft;
+					return {
+						drafts: {
+							...drafts,
+							[key]: {
+								...kept,
+								/*
+								 * LANDED: nothing to record. The claim's whole question ("did this
+								 * reach the owner?") is answered YES by the answer naming the
+								 * request id, and the transcript reconciles itself — the durable row
+								 * and the echo key on the same id.
+								 *
+								 * NOT FOUND on a complete read: the claim is answered NO, and the
+								 * MESSAGE keeps that answer. The line lives on the message (§F3),
+								 * which is why the address is kept: the claim's id dies with the
+								 * claim (see the field's note), so the row that will wear the line
+								 * is named here while its id is still the one the echo carries.
+								 */
+								...(delivered
+									? {}
+									: {
+											undelivered: {
+												recordId,
+												text: _text ?? "",
+												attachments: _attachments ?? [],
+											},
+										}),
+								/*
+								 * A fresh admission id with the claim: the resolved one may still be
+								 * executing on the owner, and reusing it would make the next
+								 * (different) message an idempotent REPLAY of the old payload — the
+								 * server keys its receipt on the request id and would answer with the
+								 * first attempt's result.
+								 */
+								admissionRequestId: crypto.randomUUID(),
+							},
+						},
 					};
 				}),
 			bindSession: (_legacyAgentId, sessionId) =>
@@ -5602,7 +6238,21 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				drafts: Object.fromEntries(
 					Object.entries(state.drafts).map(([key, draft]) => [
 						key,
-						{ ...draft, pending: false },
+						{
+							...draft,
+							pending: false,
+							/*
+							 * `warmId` is the one row field that must NOT survive a reload: it
+							 * names a registry entry in a daemon this process cannot make claims
+							 * about, and a reload cannot know whether that daemon restarted in
+							 * between. The next keystroke re-mints instead — `draftRequestId`
+							 * DOES persist, so on a daemon that still holds the draft the
+							 * receipt replays the SAME id, and on one that does not the mint
+							 * is simply fresh. Either way the pane never carries an id it has
+							 * not just proved its daemon answers for.
+							 */
+							warmId: undefined,
+						},
 					]),
 				),
 			}),

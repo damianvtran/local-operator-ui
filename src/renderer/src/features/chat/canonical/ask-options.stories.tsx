@@ -46,6 +46,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { useRef } from "react";
 import type { PendingDesktopGate } from "../../../../../shared/desktop-session-contract";
 import "../../../styles/index.css";
+import { QuestionDock } from "../components/trace/question-dock";
 import { CanonicalTranscript } from "./canonical-transcript";
 import type { TranscriptRecord, TranscriptState } from "./transcript-reducer";
 
@@ -142,29 +143,22 @@ const Frame = ({
 				containerRef={containerRef}
 				isSmallView={false}
 				status="live"
-				// Required by main's failure-notice work, and a no-op here for the
-				// same reason `onAnswer` is: this story renders no failure state,
-				// so nothing can reach the action. The other canonical stories
-				// pass an empty function too.
 				onReconnect={() => {}}
-				// `failure`, not the pre-rebase `error`: main's chat-failure work
-				// replaced the transcript's error slot with the published failure
-				// notice, and the rebase left this story naming a prop that no
-				// longer exists. Null is the honest value either way - these
-				// frames are about the pending gate, not about a failure - and
-				// every other story in this directory passes it the same way.
 				failure={null}
-				// Required by this branch's hold work: the pane keys its placeholder on
-				// whether a page for THIS session is still owed, so every call site states
-				// it. This story's transcript has rows and nothing is in flight, and the
-				// other canonical stories pass `false` for the same frames.
 				awaitingHydration={false}
+			/>
+			{/*
+			 * The question is DOCKED under the transcript, where the pane mounts it
+			 * above the composer (§F1) - so the story composes the two the way
+			 * `chat-content.tsx` does rather than asking the transcript for a card it
+			 * no longer draws. `onAnswer` is a no-op: a story has no session, and the
+			 * click path is asserted in `scripts/ask-options.test.mjs`.
+			 */}
+			<QuestionDock
+				gate={pending}
 				answering={answering}
-				// A no-op on purpose: these frames are about what the card LOOKS
-				// like, and a story has no session to answer. The click path is
-				// asserted in `scripts/ask-options.test.mjs` and demonstrated in a
-				// real renderer on the PR.
 				onAnswer={() => {}}
+				className="pt-2"
 			/>
 		</div>
 	);

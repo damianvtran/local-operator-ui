@@ -58,11 +58,11 @@ const echoes = [];
 globalThis.__canonicalEcho = (event) => {
 	echoes.push(event);
 	// The real registry answers "was that still our own echo", which is the one
-	// fact the send path reads back from it. A fixture that always said
-	// "retracted" would make the delivered-after-all case unreachable here, so the
-	// answer is scripted per id - see `__ownerRow`.
-	if (event.kind === "retractLocal")
-		return globalThis.__ownerHasIt ? "owner" : "retracted";
+	// fact the send path reads back from it. A fixture that always said "local"
+	// would make the delivered-after-all case unreachable here, so the answer is
+	// scripted per id - see `__ownerHasIt`.
+	if (event.kind === "peekLocal")
+		return globalThis.__ownerHasIt ? "owner" : "local";
 	return undefined;
 };
 
@@ -100,9 +100,9 @@ export const desktopResult = request => globalThis.__canonicalRequest(request);`
 				/*
 				 * The echo seam, stubbed rather than aliased: the real module is
 				 * React and a live EventSource, and the store's contract with it is
-				 * these three calls. `retractLocalEcho` reports the ONE answer the
-				 * send path branches on, so the delivered-after-all case is
-				 * reachable without a browser.
+				 * these calls. `peekLocalEcho` reports the ONE answer the send path
+				 * branches on, so the delivered-after-all case is reachable without a
+				 * browser.
 				 */
 				builder.onResolve(
 					{ filter: /@shared\/hooks\/use-canonical-session/ },
@@ -113,8 +113,8 @@ export const desktopResult = request => globalThis.__canonicalRequest(request);`
 	globalThis.__canonicalEcho({ kind: "echo", sessionId, id, text, images });
 export const retractPendingUser = (sessionId, id) =>
 	globalThis.__canonicalEcho({ kind: "retract", sessionId, id });
-export const retractLocalEcho = (sessionId, id) =>
-	globalThis.__canonicalEcho({ kind: "retractLocal", sessionId, id });
+export const peekLocalEcho = (sessionId, id) =>
+	globalThis.__canonicalEcho({ kind: "peekLocal", sessionId, id });
 export const discardPendingEchoes = (sessionId) =>
 	globalThis.__canonicalEcho({ kind: "discard", sessionId });`,
 					loader: "js",
