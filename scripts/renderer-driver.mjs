@@ -15339,7 +15339,10 @@ async function sceneConversationStart(cdp) {
 	 */
 	const flipRead = await reads();
 	const flipLine = await waitLine();
-	const flipFrame = await captureSettled(cdp, `conversation-start-${size}-flip`);
+	const flipFrame = await captureSettled(
+		cdp,
+		`conversation-start-${size}-flip`,
+	);
 	note("frame", JSON.stringify(flipFrame));
 	await wait(1000);
 	const plusOneFrame = await captureSettled(
@@ -15441,10 +15444,7 @@ async function sceneConversationStart(cdp) {
 			"failure retry",
 			"no refusal after 8s; clearing the box and pressing once more",
 		);
-		await typeIntoComposer(
-			"A refusal the owner raises after the paint.",
-			true,
-		);
+		await typeIntoComposer("A refusal the owner raises after the paint.", true);
 		refused = await waitForCondition(cdp, refusalWait, 12_000);
 	}
 	const failureFrame = await captureSettled(
@@ -25405,7 +25405,8 @@ async function main() {
 			 * widths it is written about.
 			 */ else if (SCENE === "floors") await sceneFloors(cdp);
 			else if (SCENE === "first-send") await sceneFirstSend(cdp);
-			else if (SCENE === "conversation-start") await sceneConversationStart(cdp);
+			else if (SCENE === "conversation-start")
+				await sceneConversationStart(cdp);
 			else if (SCENE === "question-dock") await sceneQuestionDock(cdp);
 			else if (SCENE === "radient-issue") await sceneRadientIssue(cdp);
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);
