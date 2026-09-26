@@ -1575,6 +1575,14 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
 								noProvider={needsProvider}
 								noModel={needsModel}
+								/*
+								 * THE WAY BACK TO THE FAILED ROW'S CONTROLS (UX round 1, U3): the
+								 * line is on screen in this transcript, and the composer names it for
+								 * the reader whose focus is in the box. Read from the SAME
+								 * `undeliveredOnScreen` the transcript and the composer's own
+								 * stand-down read, so the hint cannot outlive the line.
+								 */
+								deliveryRemediesReachable={undeliveredOnScreen !== null}
 								isLoading={
 									canonical
 										? Boolean(canonical.admitting || canonical.starting)

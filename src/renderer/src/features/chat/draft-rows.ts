@@ -28,15 +28,18 @@
  *  - **non-empty text** — an untouched draft is the pane the user is looking at,
  *    and the launch seed (`launchDraftSeed`) writes one on every cold start. A
  *    list that opened with an empty `Draft:` row on a brand-new install would be
- *    one row of noise that says nothing.
+ *    one row of noise that says nothing. THE TEXT HAS TWO SOURCES: the composer,
+ *    and - when the box has cleared at a press - the claim's own `submittedText`,
+ *    because a chat whose first send is in flight is exactly the chat a reader
+ *    needs to find in this list (design review round 1's D3; UX round 1's U2 for
+ *    the create that dies in that window).
  *
- * THE TEXT COMES FROM THE INPUT STORE, not from the draft row, because that is
- * where the composer writes it — the draft row carries identity (key, target,
- * request ids) and never the user's words. Reading the two maps together is what
- * makes the label track the typing: the composer writes on every change
+ * THE TEXT COMES FROM THE INPUT STORE, or from the draft's claim, not from a
+ * third place: the composer writes on every change
  * (`use-message-input`'s persistence effect), so the row's first line is one
  * keystroke behind the box, which is the same interval at which the box is the
- * truth.
+ * truth - and `submittedText` is the press's own record of what went, kept until
+ * the claim resolves.
  */
 import type { ChatDraft } from "@shared/store/canonical-sessions-store";
 
@@ -95,7 +98,16 @@ export function untargetedDraftRows(
 	for (const [key, draft] of Object.entries(drafts)) {
 		if (draft.sessionId) continue;
 		if (draft.target) continue;
-		const text = inputByConversation[key]?.currentInput ?? "";
+		const typed = inputByConversation[key]?.currentInput ?? "";
+		/*
+		 * THE CLAIM'S TEXT IS THE FALLBACK (design review round 1, D3). The composer
+		 * clears at the press, and this row used to clear with it - so the chat lost
+		 * its only sidebar presence for the whole create hop, and a create that died
+		 * in that window left the conversation unreachable from the list entirely
+		 * (UX round 1, U2). `submittedText` is kept on the draft until the claim
+		 * resolves, so the row can state what is in flight.
+		 */
+		const text = typed.trim().length > 0 ? typed : (draft.submittedText ?? "");
 		if (text.trim().length === 0) continue;
 		rows.push({
 			key,

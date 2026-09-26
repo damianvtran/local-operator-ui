@@ -1668,6 +1668,37 @@ export function seedPendingSends(
 }
 
 /**
+ * Whether a change of the pane's stream id is a change of CONVERSATION - i.e.
+ * whether `useCanonicalSessionStream`'s reset effect must replace the transcript.
+ *
+ * Extracted rather than computed inline for the reason `draftIdentityFor` and
+ * `panelIdentityFor` state: a rule that only exists inside an effect cannot be
+ * exercised outside a renderer, and this one is load-bearing.
+ *
+ * THE MINT'S BRIDGE ID IS NOT A SESSION (UX round 1, U1). A draft pane's stream
+ * id moves `undefined` -> the id `sessions.draft` minted when the first
+ * keystroke's mint answers, while the conversation the pane SHOWS
+ * (`panelIdentityFor(draftKey, id)`) is unchanged - still the draft key. The
+ * reset used to read that swap as "a different session", replace the transcript
+ * with the new id's cached paint (a draft bridge has none), and take the row the
+ * press had just painted with it: measured on a warm-capable daemon (installed
+ * `lop` 0.63.2, which advertises `session_draft_warm`) as the press reading
+ * `rows:0` with the row reappearing only at the flip, Enter beating the mint's
+ * answer in the 25 ms the rig types and presses. A bridge id names no session
+ * page, so a swap to (or between) bridge ids never replaces the transcript; a
+ * REAL session id still does, which is the rule's other arm.
+ */
+export function streamChangeKeepsTranscript(
+	previous: string | undefined,
+	next: string | undefined,
+	/** Whether `next` is a session this pane can be owed a page for. */
+	nextIsSession: boolean,
+): boolean {
+	if (previous === next) return true;
+	return !nextIsSession;
+}
+
+/**
  * Remove an echo whose send was refused before anything was admitted. Never
  * call this for an ambiguous failure: see `admitChatDraft`.
  *
@@ -2024,6 +2055,10 @@ export function useCanonicalSessionStream(
 	 * A ref rather than state: it is read inside the effect's updater, must not
 	 * schedule a render of its own, and only ever changes at a session boundary -
 	 * the same moments the effect itself runs.
+	 *
+	 * A SESSION BOUNDARY, NOT EVERY STREAM-ID CHANGE: the mint's bridge id is not
+	 * a session, and the swap to it must not read as one (see
+	 * `streamChangeKeepsTranscript`, UX round 1's U1).
 	 */
 	const transcriptSession = useRef<string | undefined>(sessionId);
 	// Mutable side-channel for the frame pump; React state is the published,
@@ -4034,8 +4069,18 @@ export function useCanonicalSessionStream(
 		 * replacing that with an empty transcript is the defect UX round 2's U1
 		 * measured. A real change of session id still resets, because the state on
 		 * screen then belongs to a conversation nobody is looking at.
+		 *
+		 * AND THE MINT'S BRIDGE ID KEEPS IT TOO (UX round 1, U1): the draft pane's
+		 * stream id moves `undefined` -> the minted warm id mid-press, the
+		 * conversation does not change, and this reset used to wipe the row the
+		 * press had just painted. The rule and the measurement are on
+		 * `streamChangeKeepsTranscript`.
 		 */
-		const sameSession = transcriptSession.current === sessionId;
+		const sameSession = streamChangeKeepsTranscript(
+			transcriptSession.current,
+			sessionId,
+			isSession,
+		);
 		transcriptSession.current = sessionId;
 		// The cached rows when this window has shown the conversation before, so a
 		// switch paints in its first frame; empty otherwise. The paint is NOT
@@ -4113,7 +4158,12 @@ export function useCanonicalSessionStream(
 		 * already seen (round 1, QA Q1).
 		 */
 		labelGapRef.current = labelGapFor(sessionId);
-	}, [sessionId]);
+		/*
+		 * `isSession` rides the deps because the rule reads it: the property is
+		 * "is this change a change of conversation", and `undefined` -> the mint's
+		 * bridge id is not one (UX round 1, U1).
+		 */
+	}, [sessionId, isSession]);
 
 	/*
 	 * Cache this conversation's paint on the way out.

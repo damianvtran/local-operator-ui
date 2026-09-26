@@ -572,7 +572,21 @@ function SessionPanel({
 	 * render.
 	 */
 	const pendingNow = pendingSendForView(identity);
-	const admitted = useRef<{ requestId: string } | null>(null);
+	const admitted = useRef<{
+		requestId: string;
+		/*
+		 * THE PRESS ANCHOR TRAVELS WITH THE CLAIM (agent review round 1, MINOR).
+		 * When the message POST's answer lands before the owner's `message_start`,
+		 * `finishDraft` deletes the draft row and `draft?.submittedAt` goes with it
+		 * while the latch correctly stays held - so `startingSince` moved `T ->
+		 * undefined`, the line's withdrawal rule blanked the seconds, and the clock
+		 * reappeared only when the owner painted something. Pre-change the rung kept
+		 * a local zero through that gap; it must now keep the PRESS's number, which
+		 * is the one the design's J5 is about. Snapshotted once per claim, so the
+		 * row's deletion cannot take it.
+		 */
+		submittedAt?: number;
+	} | null>(null);
 	const outcomeAtAdmission = useRef<{
 		requestId: string;
 		anchor: string | null;
@@ -588,7 +602,12 @@ function SessionPanel({
 				anchor: canonical.frontend?.attention?.anchor_id ?? null,
 			};
 		}
-		admitted.current = { requestId: pendingNow.id };
+		if (admitted.current?.requestId !== pendingNow.id) {
+			admitted.current = {
+				requestId: pendingNow.id,
+				submittedAt: draft?.submittedAt,
+			};
+		}
 	}
 	/*
 	 * What ends the wait, and what deliberately does not.
@@ -623,11 +642,30 @@ function SessionPanel({
 		);
 	/*
 	 * The enders, from this panel's own state: the turn answered, the turn stopped,
-	 * or the row carrying a failure. The failure term is what ends the wait for a
-	 * send the store has already handed back to the composer - the transcript has
-	 * nothing to say about it yet, and the rung must not outlive the flight.
+	 * the row carrying a failure, or the claim RESOLVED AS UNDELIVERED. The failure
+	 * term is what ends the wait for a send the store has already handed back to the
+	 * composer - the transcript has nothing to say about it yet, and the rung must
+	 * not outlive the flight.
+	 *
+	 * THE RESOLUTION IS THE THIRD SHAPE OF THE SAME FACT (design review round 1,
+	 * D1). When the server's complete read does not name the message,
+	 * `resolveHeldFromServer` clears `error`/`errorCode`/`errorRetry` and records
+	 * `undelivered` - so the term above stops firing while the row it describes is
+	 * still on screen, and the rung re-armed beside `Not delivered · Send again ·
+	 * Edit`: one message both "not delivered" and "being waited on", measured on
+	 * `after/reload` and `after/return` in the round-1 set. `undelivered` is the
+	 * resolution's own record, so it ends the rung exactly as the live failure does.
+	 *
+	 * THE ENDER IS THE FIX, NOT A RETIREMENT OF THE ENTRY: the registry entry is
+	 * the ROW's home (its retention is what re-seeds the row on a switch-away and
+	 * a remount), so resolving the claim removes the WAIT and nothing else - the
+	 * row stays on screen, and after a reload it is re-painted from `undelivered`
+	 * (`resynthesisePendingSend`).
 	 */
-	if (admitted.current && (answered || stopped || Boolean(draft?.error)))
+	if (
+		admitted.current &&
+		(answered || stopped || Boolean(draft?.error) || Boolean(draft?.undelivered))
+	)
 		admitted.current = null;
 	const starting = admitted.current !== null;
 	/*
@@ -1368,8 +1406,12 @@ function SessionPanel({
 		 * nothing said so (UX round 2, U8).
 		 *
 		 * `false` is the right answer for it because nothing reached the owner, so
-		 * the text belongs back in the box; `isRefusedBeforeAdmission` decides that,
-		 * and knows this refusal's code. The composer is deliberately NOT disabled:
+		 * the message does not exist on the far side; the class the failure lands in
+		 * (`sendFailureClass`, which reads `isRefusedBeforeAdmission` inside the
+		 * store) is what decides the sentence, and since S4 no failure arm RETURNS a
+		 * payload to this box: a failure raised before the press painted a row stays
+		 * composer-side with the text where the user left it, and one raised after
+		 * it is stated by the row. The composer is deliberately NOT disabled:
 		 * the panel has already told the user they are in the target, and the two
 		 * can only disagree for a round trip.
 		 */
@@ -2522,6 +2564,15 @@ function SessionPanel({
 		(state) => state.inputByConversation[identity]?.lateDelivered,
 	);
 	/*
+	 * THE PAYLOAD'S OTHER HOME, for U4: after `Edit` the text is back in the box,
+	 * and the row's `Send again` would offer a second live press for the same
+	 * message. Read from the same store `Edit` wrote to, so the comparison is
+	 * against the box the user is looking at.
+	 */
+	const composerText = useConversationInputStore(
+		(state) => state.inputByConversation[identity]?.currentInput ?? "",
+	);
+	/*
 	 * §F3's PER-MESSAGE FAILURE STATE, addressed here because this page owns both
 	 * halves of it: the row it is about (the draft's open claim, or the
 	 * `undelivered` record a reconnect left behind) and the two doors its controls
@@ -2562,6 +2613,16 @@ function SessionPanel({
 				recordId: deliveryTurn.recordId,
 				message: deliveryTurn.message,
 				retry: deliveryTurn.retry,
+				/*
+				 * DIMMED WHILE THE BOX HOLDS THIS EXACT PAYLOAD (UX round 1, U4): the row
+				 * keeps its statement - the outcome may be unknowable - but one message
+				 * does not get two live presses, and after `Edit` the composer's Send is
+				 * the live one. Equality is against the same string `Edit` handed back, so
+				 * the comparison is exact rather than trimmed: a box the user changed is a
+				 * different message and the row's press is re-armed rather than dimmed.
+				 */
+				retryDisabled:
+					composerText.trim().length > 0 && composerText === deliveryTurn.text,
 				onSendAgain: () => {
 					void send(deliveryTurn.text, [...deliveryTurn.attachments]);
 				},
@@ -2597,12 +2658,19 @@ function SessionPanel({
 						 * failure has no home left to state itself in - and the restart adapter
 						 * re-synthesises exactly the rows that still carry one, so leaving it
 						 * here would resurrect a row the user already retired on the next load.
+						 *
+						 * THE RESOLUTION'S OWN RECORD GOES WITH THEM (design review round 1,
+						 * D2): `undelivered` names the row and the text, and the adapter now
+						 * re-paints from it too - so an Edit that left it behind would
+						 * resurrect the row on the next load by the same argument, one field
+						 * further along.
 						 */
 						if (draftIdentity)
 							useCanonicalSessionsStore.getState().updateDraft(draftIdentity, {
 								error: undefined,
 								errorCode: undefined,
 								errorRetry: undefined,
+								undelivered: undefined,
 							});
 					}
 					input.current?.focusInput();
@@ -3136,7 +3204,14 @@ function SessionPanel({
 						starting,
 						startingAfterId: admitted.current?.requestId ?? null,
 						startingSession,
-						startingSince: draft?.submittedAt ?? null,
+						/*
+						 * THE ROW'S ANCHOR, WITH THE LATCH'S AS THE FALLBACK: the draft row is
+						 * deleted at the receipt while the latch may still hold (agent review
+						 * round 1's MINOR), and the number must survive that gap rather than
+						 * blank - see the latch's own note.
+						 */
+						startingSince:
+							draft?.submittedAt ?? admitted.current?.submittedAt ?? null,
 						onStop: stop,
 						stopAvailable: interruptAvailable,
 						/*
