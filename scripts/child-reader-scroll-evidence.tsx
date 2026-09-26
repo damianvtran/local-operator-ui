@@ -304,14 +304,29 @@ function reading() {
 			};
 		})(),
 		ringClip: (() => {
-			const clip = document.querySelector<HTMLElement>(
-				"[data-lo-child-transcript-clip]",
-			);
+			/*
+			 * WHICH ELEMENT'S CLIP THE RING'S BOTTOM SEGMENT FACES. The clip is read by
+			 * WALKING UP to the nearest ancestor whose computed overflow hides over the
+			 * vertical axis: on this head that is the pane's own wrapper
+			 * (`data-lo-child-transcript-clip`), and on a head without it (`prev`,
+			 * `before`) it is the body whose box the band extended. An earlier version
+			 * looked the wrapper up by attribute and fell back to the scroller's own box
+			 * when it was absent — which made this reading report `contained: false` on
+			 * the one arm that PAINTS the rule: the fallback was the defect rather than
+			 * a measurement of it.
+			 */
+			let clippingAncestor: HTMLElement | null = scroller.parentElement;
+			while (clippingAncestor) {
+				if (getComputedStyle(clippingAncestor).overflowY !== "visible") break;
+				clippingAncestor = clippingAncestor.parentElement;
+			}
 			const style = getComputedStyle(scroller);
 			const width = Number.parseFloat(style.outlineWidth) || 0;
 			const offset = Number.parseFloat(style.outlineOffset) || 0;
 			const ringBottom = box.bottom + width + offset;
-			const clipBottom = clip?.getBoundingClientRect().bottom ?? box.bottom;
+			const clipBottom = clippingAncestor
+				? clippingAncestor.getBoundingClientRect().bottom
+				: box.bottom;
 			return {
 				scrollerBottom: box.bottom,
 				clipBottom,
