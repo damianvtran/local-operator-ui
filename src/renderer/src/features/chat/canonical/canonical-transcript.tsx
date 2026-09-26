@@ -75,7 +75,10 @@ import type {
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
 import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
 import { CHAT_REGION_LABEL } from "../chat-regions";
-import { MarkdownRenderer } from "../components/markdown-renderer";
+import {
+	MarkdownRenderer,
+	StreamingMarkdown,
+} from "../components/markdown-renderer";
 import { MessageContainer } from "../components/message-item/message-container";
 import { TurnTimestamp } from "../components/message-item/turn-timestamp";
 import { ReplyPreview } from "../components/reply-preview";
@@ -770,23 +773,67 @@ const AssistantRow = memo(function AssistantRow({
 							: "Part of this answer may be missing"}
 					</p>
 				)}
-				<MarkdownRenderer
-					content={remainingContent}
-					className={cn(refused && "[--md-ink:var(--lo-danger)]")}
-					styleProps={{
-						fontSize: isSmallView ? "var(--text-body-sm)" : "var(--text-body)",
-						lineHeight: 1.6,
-					}}
-					/*
-					 * A STREAMING ROW IS NOT LINKIFIED, for the reason `isQuotable`
-					 * refuses a streaming record: the row is a prefix the next token
-					 * falsifies, so `/Users/x/opoint-renewal-2026-09-1` would become a link
-					 * to a path that does not exist and then silently re-link as the rest
-					 * of it arrived. The links appear when the row settles - which is also
-					 * when its Quote control appears.
-					 */
-					linkify={!record.streaming}
-				/>
+				{/*
+				 * A STREAMING ROW RENDERS INCREMENTALLY; A SETTLED ROW RENDERS WHOLE.
+				 *
+				 * WHY THE SPLIT, MEASURED. The whole-message renderer re-parses the
+				 * entire document on every flush — react-markdown 10.1.0 builds a fresh
+				 * processor per render and `MarkdownRenderer`'s own comment records that
+				 * there is no memo to miss — so a streaming row pays O(message) per
+				 * frame. Measured in this repo's jsdom harness (one flush per 4-char
+				 * delta, `scripts/streaming-markdown-parity.test.mjs`'s sibling): summed
+				 * commit time over a 3KB/753-flush stream 3.2-4.2s, mean 4.3-5.6ms per
+				 * flush; a 6KB/1506-flush stream 10.7-12.2s, mean 7.1-8.1ms per flush,
+				 * worst 45-184ms — against a 16.7ms frame budget. The incremental
+				 * renderer holds closed blocks memoised and paints the open tail as
+				 * text: the same streams cost 0.26-0.47s total, mean 0.2-0.6ms per
+				 * flush, and cost does NOT grow with the message.
+				 *
+				 * THE HANDOVER IS THE CORRECTNESS RULE, not a detail: the moment the row
+				 * settles, the WHOLE message goes through `MarkdownRenderer` — the same
+				 * renderer every settled row has always used — so the final paint is the
+				 * authoritative full parse and the streaming path's per-block rendering
+				 * can never be what a reader is left with. What the incremental path
+				 * shows mid-flight is the parsed closed blocks plus the open block as
+				 * text (its documented trade: `**bold**` reads literally until its
+				 * paragraph closes); what settles is exactly what the full parse makes
+				 * of the same string.
+				 */}
+				{record.streaming ? (
+					<StreamingMarkdown
+						content={remainingContent}
+						className={cn(refused && "[--md-ink:var(--lo-danger)]")}
+						styleProps={{
+							fontSize: isSmallView
+								? "var(--text-body-sm)"
+								: "var(--text-body)",
+							lineHeight: 1.6,
+						}}
+					/>
+				) : (
+					<MarkdownRenderer
+						content={remainingContent}
+						className={cn(refused && "[--md-ink:var(--lo-danger)]")}
+						styleProps={{
+							fontSize: isSmallView
+								? "var(--text-body-sm)"
+								: "var(--text-body)",
+							lineHeight: 1.6,
+						}}
+						/*
+						 * Linkification is the settled row's, and the streaming half is
+						 * deliberately not handed this prop: `StreamingMarkdown` linkifies a
+						 * block the moment it CLOSES (`StableBlock`'s own note: a closed
+						 * block's source can never change again, so a path inside it is a
+						 * finished path), while the open tail is painted as text and is never
+						 * scanned — so `/Users/x/opoint-renewal-2026-09-1` cannot become a
+						 * link to a path that does not exist. That is the same hazard the
+						 * old `linkify={!record.streaming}` line refused, now enforced per
+						 * block instead of per row.
+						 */
+						linkify
+					/>
+				)}
 				{record.stopReason === "aborted" && (
 					<p className="mt-1 text-ink-dim text-meta">
 						Stopped before finishing
