@@ -1,0 +1,449 @@
+# The paging suite at this round's bytes against BOTH earlier policy states.
+#
+# Arm 1: `0ed7c7efb`'s two modules — the pre-strict-fix branch state that
+# review round 1 measured (NOT today's origin/main). The strict-reading cases
+# discriminate here: the down/up sequence spends a second fetch and the refill
+# case reads a spent budget where it now reads a refill, so "a reversal inside
+# one act does not refill the act's fetch budget" and "the budget refills when
+# the quiet window opens a new act" fail — with the round-1 F2 case, three in
+# all (39/42). The follow-up case ("a downward notch that OPENS the act still
+# refills the budget") passes here because that module's down branch clears
+# `actFetchSpent` unconditionally, so the sequence it pins cannot arise.
+#
+# Arm 2: today's `origin/main` blob (`710dc3b7`) — the module has no
+# `actFetchSpent` field at all, so the whole budget family fails there,
+# the follow-up case first (30/42).
+#
+# The head arm is unit-tests-round3-postfix.txt; the sequences driven through
+# the policy builds in one process are unit-tests-round3-reversal-sequence.txt.
+
+✔ a fling of many wheel events yields exactly one fetch (0.978125ms)
+✔ a demand is not spent while input is still arriving (0.078ms)
+✔ a demand outside the prefetch zone is dropped rather than held (0.074333ms)
+✔ a wheel notch clamped at the top does not re-arm the latch (0.2295ms)
+✔ leaving the top re-arms the latch, because arriving again is a new arrival (0.066667ms)
+✔ a downward gesture cancels the demand retained while busy (0.068125ms)
+✔ a retained demand is honoured when the page lands — as its widen (0.088584ms)
+✔ the local window is widened before the network is reached (0.071666ms)
+✔ one gesture yields one reveal, however near the top it leaves the reader (0.071125ms)
+✔ a transcript too short to scroll chains a bounded number of pages (0.90975ms)
+✔ an unscrollable transcript is not treated as following the tail (0.448542ms)
+✔ the chain stops as soon as the reader has a gesture available (0.16325ms)
+✔ a local widen does not forgive the network failure budget (0.59125ms)
+✔ a reader following the tail is never paged under (0.079083ms)
+✔ automatic retries are bounded; the affordance still works (0.080625ms)
+✔ a successful page clears the failure budget (0.041375ms)
+✖ a failed fetch does not spend the act's budget (0.600125ms)
+✔ nothing is spent when there is nothing left to reveal (0.092042ms)
+✔ the prefetch zone scales with the viewport between its bounds (0.034292ms)
+✔ the anchor correction is a no-op while the extent is stable (0.068833ms)
+✔ reader input skips stale anchor correction while layout-only growth is corrected (0.049ms)
+✔ a session change discards latch, demand and chain budgets (0.422541ms)
+✔ a fast train is spent at the wall, never mid-motion (0.143333ms)
+✔ a fast train that never settles and never reaches the wall spends nothing (0.072375ms)
+✔ a reader who stops outside the zone spends nothing (0.038375ms)
+✔ no reveal is dispatched while the viewport is travelling (0.04325ms)
+✔ a settled spend inside the zone does not set the latch, and the arrival then buys a widen (0.04825ms)
+✔ a fling that crosses two walls spends exactly one fetch (0.181084ms)
+✔ a landed durable page buys exactly one widen (0.045584ms)
+✔ a page that lands while the reader is still pushing still owes its widen (0.053459ms)
+✔ a landing that moves the reader clear of every window still pays its widen (0.050083ms)
+✔ a landed durable page with nothing hidden buys no widen (0.041792ms)
+✔ a rule-6 widen does not forgive the failure budget either (0.04775ms)
+✔ a travel release is honoured as a demand, and the act's fetch is not re-spent (0.099917ms)
+✖ a reversal inside one act does not refill the act's fetch budget (0.138791ms)
+✖ the budget refills when the quiet window opens a new act (0.114167ms)
+✔ a downward notch that OPENS the act still refills the budget (0.052833ms)
+✔ travel below TRAVEL_MIN_PX does not re-arm (0.0745ms)
+✔ extent growth under a clamped reader is not travel (0.144542ms)
+✔ a demand armed off the wall survives the clamped notches it is swallowed beside (0.047083ms)
+✔ a slow approach inside the zone is spent once it settles there (0.061458ms)
+✔ a demand the tail refuses stays armed and outside its spend window (0.072458ms)
+ℹ tests 42
+ℹ suites 0
+ℹ pass 39
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 160.597959
+
+✖ failing tests:
+
+test at scripts/transcript-paging.test.mjs:543:1
+✖ a failed fetch does not spend the act's budget (0.600125ms)
+  AssertionError [ERR_ASSERTION]: the reader's continued push retries the failed fetch
+  
+  'none' !== 'fetch'
+  
+      at TestContext.<anonymous> (file:///Users/damian/.local-operator/sessions/c50c87690363/scratchpad/paging/arms3/scripts/transcript-paging.test.mjs:565:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'none',
+    expected: 'fetch',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/transcript-paging.test.mjs:1187:1
+✖ a reversal inside one act does not refill the act's fetch budget (0.138791ms)
+  AssertionError [ERR_ASSERTION]: a reversal voids the debt, not the budget
+  
+  false !== true
+  
+      at TestContext.<anonymous> (file:///Users/damian/.local-operator/sessions/c50c87690363/scratchpad/paging/arms3/scripts/transcript-paging.test.mjs:1211:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/transcript-paging.test.mjs:1231:1
+✖ the budget refills when the quiet window opens a new act (0.114167ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  'fetch' !== 'none'
+  
+      at TestContext.<anonymous> (file:///Users/damian/.local-operator/sessions/c50c87690363/scratchpad/paging/arms3/scripts/transcript-paging.test.mjs:1254:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'fetch',
+    expected: 'none',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+== arm 2: origin/main's blob (710dc3b7) ==
+✔ a fling of many wheel events yields exactly one fetch (16.79375ms)
+✔ a demand is not spent while input is still arriving (0.120292ms)
+✔ a demand outside the prefetch zone is dropped rather than held (0.07975ms)
+✔ a wheel notch clamped at the top does not re-arm the latch (1.471208ms)
+✔ leaving the top re-arms the latch, because arriving again is a new arrival (0.140125ms)
+✔ a downward gesture cancels the demand retained while busy (0.215ms)
+✖ a retained demand is honoured when the page lands — as its widen (3.241083ms)
+✔ the local window is widened before the network is reached (0.12425ms)
+✔ one gesture yields one reveal, however near the top it leaves the reader (0.080875ms)
+✔ a transcript too short to scroll chains a bounded number of pages (0.140292ms)
+✔ an unscrollable transcript is not treated as following the tail (0.07125ms)
+✔ the chain stops as soon as the reader has a gesture available (0.096667ms)
+✔ a local widen does not forgive the network failure budget (0.096625ms)
+✔ a reader following the tail is never paged under (0.054208ms)
+✔ automatic retries are bounded; the affordance still works (0.077541ms)
+✔ a successful page clears the failure budget (0.047959ms)
+✔ a failed fetch does not spend the act's budget (0.046333ms)
+✔ nothing is spent when there is nothing left to reveal (0.590084ms)
+✔ the prefetch zone scales with the viewport between its bounds (0.134625ms)
+✔ the anchor correction is a no-op while the extent is stable (0.374542ms)
+✔ reader input skips stale anchor correction while layout-only growth is corrected (0.154167ms)
+✔ a session change discards latch, demand and chain budgets (0.927459ms)
+✖ a fast train is spent at the wall, never mid-motion (0.410709ms)
+✔ a fast train that never settles and never reaches the wall spends nothing (0.1025ms)
+✖ a reader who stops outside the zone spends nothing (0.112125ms)
+✖ no reveal is dispatched while the viewport is travelling (0.098416ms)
+✔ a settled spend inside the zone does not set the latch, and the arrival then buys a widen (0.053083ms)
+✖ a fling that crosses two walls spends exactly one fetch (0.282709ms)
+✔ a landed durable page buys exactly one widen (0.049166ms)
+✔ a page that lands while the reader is still pushing still owes its widen (0.044042ms)
+✔ a landing that moves the reader clear of every window still pays its widen (0.044125ms)
+✔ a landed durable page with nothing hidden buys no widen (12.16775ms)
+✔ a rule-6 widen does not forgive the failure budget either (0.06775ms)
+✖ a travel release is honoured as a demand, and the act's fetch is not re-spent (0.227584ms)
+✖ a reversal inside one act does not refill the act's fetch budget (0.102375ms)
+✖ the budget refills when the quiet window opens a new act (0.105792ms)
+✖ a downward notch that OPENS the act still refills the budget (20.356917ms)
+✔ travel below TRAVEL_MIN_PX does not re-arm (3.003583ms)
+✔ extent growth under a clamped reader is not travel (23.324375ms)
+✖ a demand armed off the wall survives the clamped notches it is swallowed beside (4.505291ms)
+✖ a slow approach inside the zone is spent once it settles there (24.64525ms)
+✖ a demand the tail refuses stays armed and outside its spend window (0.48425ms)
+ℹ tests 42
+ℹ suites 0
+ℹ pass 30
+ℹ fail 12
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 808.126667
+
+✖ failing tests:
+
+test at scripts/transcript-paging.test.mjs:301:1
+✖ a retained demand is honoured when the page lands — as its widen (3.241083ms)
+  AssertionError [ERR_ASSERTION]: one fetch per act: the same gesture cannot buy another
+  
+  'fetch' !== 'none'
+  
+      at TestContext.<anonymous> (file:///Users/damian/.local-operator/sessions/c50c87690363/scratchpad/paging/arms4/scripts/transcript-paging.test.mjs:323:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'fetch',
+    expected: 'none',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/transcript-paging.test.mjs:718:1
+✖ a fast train is spent at the wall, never mid-motion (0.410709ms)
+  AssertionError [ERR_ASSERTION]: spent at 1600px from the top, which is mid-motion rather than a stop
+      at TestContext.<anonymous> (file:///Users/damian/.local-operator/sessions/c50c87690363/scratchpad/paging/arms4/scripts/transcript-paging.test.mjs:760:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at scripts/transcript-paging.test.mjs:802:1
+✖ a reader who stops outside the zone spends nothing (0.112125ms)
+  AssertionError [ERR_ASSERTION]: the wait is not a drop
+  
+  false !== true
+  
+      at TestContext.<anonymous> (file:///Users/damian/.local-operator/sessions/c50c87690363/scratchpad/paging/arms4/scripts/transcript-paging.test.mjs:813:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/transcript-paging.test.mjs:825:1
+✖ no reveal is dispatched while the viewport is travelling (0.098416ms)
+  AssertionError [ERR_ASSERTION]: a moving reader is not spent
+  
+  'fetch' !== 'none'
+  
+      at TestContext.<anonymous> (file:///Users/damian/.local-operator/sessions/c50c87690363/scratchpad/paging/arms4/scripts/transcript-paging.test.mjs:844:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'fetch',
+    expected: 'none',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/transcript-paging.test.mjs:899:1
+✖ a fling that crosses two walls spends exactly one fetch (0.282709ms)
+  AssertionError [ERR_ASSERTION]: one round trip for one act, got [{"at":32,"action":"fetch"},{"at":48,"action":"fetch"},{"at":64,"action":"fetch"},{"at":80,"action":"fetch"},{"at":96,"action":"fetch"},{"at":112,"action":"fetch"},{"at":128,"action":"fetch"},{"at":144,"action":"fetch"},{"at":160,"action":"fetch"},{"at":176,"action":"fetch"},{"at":192,"action":"fetch"},{"at":208,"action":"fetch"},{"at":224,"action":"fetch"},{"at":240,"action":"fetch"},{"at":256,"action":"fetch"},{"at":272,"action":"fetch"},{"at":288,"action":"fetch"},{"at":304,"action":"fetch"},{"at":320,"action":"fetch"},{"at":336,"action":"fetch"},{"at":352,"action":"fetch"},{"at":368,"action":"fetch"},{"at":384,"action":"fetch"},{"at":400,"action":"fetch"},{"at":416,"action":"fetch"},{"at":432,"action":"fetch"},{"at":448,"action":"fetch"},{"at":464,"action":"fetch"},{"at":480,"action":"fetch"},{"at":496,"action":"fetch"},{"at":512,"action":"fetch"},{"at":528,"action":"fetch"},{"at":544,"action":"fetch"},{"at":560,"action":"fetch"},{"at":576,"action":"fetch"},{"at":592,"action":"fetch"},{"at":608,"action":"fetch"},{"at":624,"action":"fetch"},{"at":640,"action":"fetch"},{"at":656,"action":"fetch"},{"at":672,"action":"fetch"},{"at":688,"action":"fetch"},{"at":704,"action":"fetch"},{"at":720,"action":"fetch"},{"at":736,"action":"fetch"},{"at":752,"action":"fetch"},{"at":768,"action":"fetch"},{"at":784,"action":"fetch"},{"at":800,"action":"fetch"},{"at":816,"action":"fetch"},{"at":832,"action":"fetch"},{"at":848,"action":"fetch"},{"at":864,"action":"fetch"},{"at":880,"action":"fetch"},{"at":896,"action":"fetch"},{"at":912,"action":"fetch"},{"at":928,"action":"fetch"},{"at":944,"action":"fetch"},{"at":960,"action":"fetch"},{"at":976,"action":"fetch"},{"at":992,"action":"fetch"},{"at":1008,"action":"fetch"},{"at":1024,"action":"fetch"},{"at":1040,"action":"fetch"},{"at":1056,"action":"fetch"},{"at":1072,"action":"fetch"},{"at":1088,"action":"fetch"},{"at":1104,"action":"fetch"},{"at":1120,"action":"fetch"},{"at":1136,"action":"fetch"},{"at":1152,"action":"fetch"},{"at":1168,"action":"fetch"},{"at":1184,"action":"fetch"},{"at":1200,"action":"fetch"},{"at":1216,"action":"fetch"},{"at":1232,"action":"fetch"},{"at":1248,"action":"fetch"},{"at":1264,"action":"fetch"},{"at":1280,"action":"fetch"},{"at":1296,"action":"fetch"},{"at":1312,"action":"fetch"},{"at":1328,"action":"fetch"},{"at":1344,"action":"fetch"},{"at":1360,"action":"fetch"},{"at":1376,"action":"fetch"},{"at":1392,"action":"fetch"},{"at":1408,"action":"fetch"},{"at":1424,"action":"fetch"},{"at":1440,"action":"fetch"},{"at":1456,"action":"fetch"},{"at":1472,"action":"fetch"},{"at":1488,"action":"fetch"},{"at":1504,"action":"fetch"}]
+  
+  93 !== 1
+  
+      at TestContext.<anonymous> (file:///Users/damian/.local-operator/sessions/c50c87690363/scratchpad/paging/arms4/scripts/transcript-paging.test.mjs:941:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 93,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/transcript-paging.test.mjs:1116:1
+✖ a travel release is honoured as a demand, and the act's fetch is not re-spent (0.227584ms)
+  AssertionError [ERR_ASSERTION]: the act's one fetch is spent
+  + actual - expected
+  
+  + undefined
+  - true
+  
+      at TestContext.<anonymous> (file:///Users/damian/.local-operator/sessions/c50c87690363/scratchpad/paging/arms4/scripts/transcript-paging.test.mjs:1131:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/transcript-paging.test.mjs:1187:1
+✖ a reversal inside one act does not refill the act's fetch budget (0.102375ms)
+  AssertionError [ERR_ASSERTION]: the act's one fetch is spent
+  + actual - expected
+  
+  + undefined
+  - true
+  
+      at TestContext.<anonymous> (file:///Users/damian/.local-operator/sessions/c50c87690363/scratchpad/paging/arms4/scripts/transcript-paging.test.mjs:1200:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/transcript-paging.test.mjs:1231:1
+✖ the budget refills when the quiet window opens a new act (0.105792ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  'fetch' !== 'none'
+  
+      at TestContext.<anonymous> (file:///Users/damian/.local-operator/sessions/c50c87690363/scratchpad/paging/arms4/scripts/transcript-paging.test.mjs:1254:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'fetch',
+    expected: 'none',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/transcript-paging.test.mjs:1267:1
+✖ a downward notch that OPENS the act still refills the budget (20.356917ms)
+  AssertionError [ERR_ASSERTION]: the act's one fetch is spent
+  + actual - expected
+  
+  + undefined
+  - true
+  
+      at TestContext.<anonymous> (file:///Users/damian/.local-operator/sessions/c50c87690363/scratchpad/paging/arms4/scripts/transcript-paging.test.mjs:1277:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/transcript-paging.test.mjs:1378:1
+✖ a demand armed off the wall survives the clamped notches it is swallowed beside (4.505291ms)
+  AssertionError [ERR_ASSERTION]: and the act's spent fetch is not spent twice
+  
+  'fetch' !== 'none'
+  
+      at TestContext.<anonymous> (file:///Users/damian/.local-operator/sessions/c50c87690363/scratchpad/paging/arms4/scripts/transcript-paging.test.mjs:1404:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'fetch',
+    expected: 'none',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/transcript-paging.test.mjs:1422:1
+✖ a slow approach inside the zone is spent once it settles there (24.64525ms)
+  AssertionError [ERR_ASSERTION]: a moving reader is not spent at their input cadence
+  
+  'widen' !== 'none'
+  
+      at TestContext.<anonymous> (file:///Users/damian/.local-operator/sessions/c50c87690363/scratchpad/paging/arms4/scripts/transcript-paging.test.mjs:1448:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'widen',
+    expected: 'none',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/transcript-paging.test.mjs:1498:1
+✖ a demand the tail refuses stays armed and outside its spend window (0.48425ms)
+  TypeError: Cannot read properties of undefined (reading 'lastInputAt')
+      at spendWindows (data:text/javascript;base64,Ly8gc3JjL3JlbmRlcmVyL3NyYy9mZWF0dXJlcy9jaGF0L2Nhbm9uaWNhbC9zY3JvbGwtcGFnaW5nLnRzCnZhciBTRVRUTEVfTVMgPSAxMjA7CnZhciBHRVNUVVJFX0dBUF9NUyA9IDQwMDsKdmFyIFpPTkVfRlJBQ1RJT04gPSAwLjU7CnZhciBaT05FX01JTl9QWCA9IDMyMDsKdmFyIFpPTkVfTUFYX1BYID0gOTAwOwp2YXIgTEVBRF9USU1FX01TID0gMTgwOwp2YXIgTEVBRF9NQVhfVklFV1BPUlRTID0gNDsKdmFyIE1JTl9MRUFEX1ZFTE9DSVRZX1BYX1BFUl9NUyA9IDAuMjU7CnZhciBWRUxPQ0lUWV9FTUEgPSAwLjU7CnZhciBWRUxPQ0lUWV9UVExfTVMgPSAyMDA7CnZhciBUUkFWRUxfTUlOX1BYID0gNjQ7CnZhciBIQVJEX1RPUF9QWCA9IDI7CnZhciBUQUlMX0VQU19QWCA9IDI0Owp2YXIgTUFYX0FVVE9fQVRURU1QVFMgPSAzOwp2YXIgTUFYX0NIQUlOX0ZFVENIID0gNDsKdmFyIE1BWF9DSEFJTl9XSURFTiA9IDEyOwp2YXIgQU5DSE9SX0VQU0lMT05fUFggPSAwLjU7CnZhciBpbml0aWFsUGFnaW5nU3RhdGUgPSAoKSA9PiAoewogIGFybWVkOiBmYWxzZSwKICBkZWxpYmVyYXRlOiBmYWxzZSwKICByZXRhaW5lZDogZmFsc2UsCiAgYnVzeTogZmFsc2UsCiAgY29udGludWF0aW9uOiBmYWxzZSwKICBjbGFtcExhdGNoZWQ6IGZhbHNlLAogIHZlbG9jaXR5OiAwLAogIHRyYXZlbGxlZFNpbmNlTGF0Y2g6IGZhbHNlLAogIHBhZ2VXaWRlbk93ZWQ6IGZhbHNlLAogIHR1cm5lZEFyb3VuZDogZmFsc2UsCiAgLy8gTm90IGBEYXRlLm5vdygpYDogYSBzdGF0ZSBjcmVhdGVkIGF0IG1vdW50IHdvdWxkIG90aGVyd2lzZSBob2xkIHRoZSBzZXR0bGUKICAvLyBkZWJvdW5jZSBjbG9zZWQgZm9yIGl0cyBmaXJzdCAxMjBtcywgd2hpY2ggaXMgZXhhY3RseSB0aGUgd2luZG93IHRoZQogIC8vIHNob3J0LXRyYW5zY3JpcHQgY2hhaW4gKHJ1bGUgNSdzIGAhc2Nyb2xsYWJsZWAgcGF0aCkgbmVlZHMgdG8gc3RhcnQgaW4uCiAgbGFzdElucHV0QXQ6IE51bWJlci5ORUdBVElWRV9JTkZJTklUWSwKICBmYWlsdXJlczogMCwKICBjaGFpbkZldGNoOiAwLAogIGNoYWluV2lkZW46IDAKfSk7CnZhciBwcmVmZXRjaFpvbmVQeCA9IChjbGllbnRIZWlnaHQpID0+IE1hdGgubWluKAogIFpPTkVfTUFYX1BYLAogIE1hdGgubWF4KFpPTkVfTUlOX1BYLCBNYXRoLnJvdW5kKGNsaWVudEhlaWdodCAqIFpPTkVfRlJBQ1RJT04pKQopOwp2YXIgbm90ZUlucHV0ID0gKHN0YXRlLCBpbnB1dCkgPT4gewogIGlmIChpbnB1dC5kaXJlY3Rpb24gPT09ICJkb3duIikgewogICAgcmV0dXJuIHsKICAgICAgLi4uc3RhdGUsCiAgICAgIGFybWVkOiBmYWxzZSwKICAgICAgZGVsaWJlcmF0ZTogZmFsc2UsCiAgICAgIHJldGFpbmVkOiBmYWxzZSwKICAgICAgY29udGludWF0aW9uOiBmYWxzZSwKICAgICAgY2xhbXBMYXRjaGVkOiBmYWxzZSwKICAgICAgLy8gVGhlIHRyYXZlbCB0aGUgcmVsZWFzZSBiZWxvdyBpcyBlYXJuZWQgYnkgYmVsb25ncyB0byB0aGUgbGF0Y2gsIGFuZAogICAgICAvLyB0aGUgcmVhZGVyIGhhcyBqdXN0IGxlZnQgdGhlIHdhbGw6IHRoZXJlIGlzIG5vdGhpbmcgbGVmdCB0byByZWxlYXNlLgogICAgICB0cmF2ZWxsZWRTaW5jZUxhdGNoOiBmYWxzZSwKICAgICAgLy8gVGhlIHJlYWRlciB0dXJuZWQgYXJvdW5kLiBBIHBhZ2UgdGhhdCBsYW5kZWQgd2l0aCByb3dzIGhlbGQgYmFjayBpcwogICAgICAvLyBzdGlsbCBob2xkaW5nIHRoZW0gYmFjaywgYnV0IGEgcmVhZGVyIHNjcm9sbGluZyBBV0FZIGZyb20gaXQgaXMgbm90CiAgICAgIC8vIHdhaXRpbmcgdG8gc2VlIGl0LCBhbmQgc3BlbmRpbmcgYSB3aWRlbiBvbiB0aGVpciBiZWhhbGYgd291bGQgZ3JvdwogICAgICAvLyB0aGUgY29udGVudCB1bmRlciB0aGUgZGlyZWN0aW9uIHRoZXkgYXJlIHRyYXZlbGxpbmcuCiAgICAgIHBhZ2VXaWRlbk93ZWQ6IGZhbHNlLAogICAgICB0dXJuZWRBcm91bmQ6IHN0YXRlLmJ1c3ksCiAgICAgIGNoYWluRmV0Y2g6IDAsCiAgICAgIGNoYWluV2lkZW46IDAsCiAgICAgIGxhc3RJbnB1dEF0OiBpbnB1dC5hdAogICAgfTsKICB9CiAgY29uc3QgZ2VzdHVyZUVuZGVkID0gaW5wdXQuYXQgLSBzdGF0ZS5sYXN0SW5wdXRBdCA+PSBHRVNUVVJFX0dBUF9NUzsKICBjb25zdCB2ZWxvY2l0eSA9IFZFTE9DSVRZX0VNQSAqIE1hdGgubWF4KDAsIGlucHV0LnRyYXZlbFZlbG9jaXR5UHhQZXJNcykgKyAoMSAtIFZFTE9DSVRZX0VNQSkgKiBzdGF0ZS52ZWxvY2l0eTsKICBjb25zdCBiYXNlID0gewogICAgLi4uc3RhdGUsCiAgICB2ZWxvY2l0eSwKICAgIC8vIFRoZSB0cmF2ZWwgcmVjb3JkIGJlbG9uZ3MgdG8gdGhlIGxhdGNoJ3Mgb3duIGFjdDsgYSBub3RjaCB0aGF0IG9wZW5zIGEKICAgIC8vIG5ldyBhY3Qgc3RhcnRzIGEgbmV3IHF1ZXN0aW9uLCBhbmQgdGhlIHJlbGVhc2UgaXQgZ3VhcmRzIGlzIG9uZSBwZXIKICAgIC8vIGxhdGNoIHJhdGhlciB0aGFuIG9uZSBwZXIgcmVhZGVyLgogICAgdHJhdmVsbGVkU2luY2VMYXRjaDogZ2VzdHVyZUVuZGVkID8gZmFsc2UgOiBzdGF0ZS50cmF2ZWxsZWRTaW5jZUxhdGNoLAogICAgY29udGludWF0aW9uOiBmYWxzZSwKICAgIHR1cm5lZEFyb3VuZDogZmFsc2UsCiAgICBjaGFpbkZldGNoOiAwLAogICAgY2hhaW5XaWRlbjogMCwKICAgIGxhc3RJbnB1dEF0OiBpbnB1dC5hdAogIH07CiAgaWYgKGlucHV0LmRlbGliZXJhdGUpIHsKICAgIHJldHVybiB7CiAgICAgIC4uLmJhc2UsCiAgICAgIGNsYW1wTGF0Y2hlZDogZmFsc2UsCiAgICAgIGZhaWx1cmVzOiAwLAogICAgICBkZWxpYmVyYXRlOiB0cnVlLAogICAgICAuLi5zdGF0ZS5idXN5ID8geyByZXRhaW5lZDogdHJ1ZSB9IDogeyBhcm1lZDogdHJ1ZSB9CiAgICB9OwogIH0KICBpZiAoaW5wdXQuYXRIYXJkVG9wICYmIGlucHV0LmNvbnRpbnVvdXMgJiYgc3RhdGUuY2xhbXBMYXRjaGVkICYmICFnZXN0dXJlRW5kZWQpIHsKICAgIGlmIChpbnB1dC50cmF2ZWxsZWRQeCA+PSBUUkFWRUxfTUlOX1BYICYmICFzdGF0ZS50cmF2ZWxsZWRTaW5jZUxhdGNoKSB7CiAgICAgIHJldHVybiB7CiAgICAgICAgLi4uYmFzZSwKICAgICAgICBhcm1lZDogdHJ1ZSwKICAgICAgICBjbGFtcExhdGNoZWQ6IGZhbHNlLAogICAgICAgIHRyYXZlbGxlZFNpbmNlTGF0Y2g6IHRydWUKICAgICAgfTsKICAgIH0KICAgIHJldHVybiB7CiAgICAgIC4uLnN0YXRlLAogICAgICBsYXN0SW5wdXRBdDogaW5wdXQuYXQsCiAgICAgIHZlbG9jaXR5CiAgICB9OwogIH0KICBpZiAoc3RhdGUuYnVzeSkgcmV0dXJuIHsgLi4uYmFzZSwgcmV0YWluZWQ6IHRydWUgfTsKICByZXR1cm4geyAuLi5iYXNlLCBhcm1lZDogdHJ1ZSB9Owp9Owp2YXIgc3BlbmQgPSAoc3RhdGUsIGFjdGlvbiwgZ2VvKSA9PiAoewogIGFjdGlvbiwKICBzdGF0ZTogewogICAgLi4uc3RhdGUsCiAgICBhcm1lZDogZmFsc2UsCiAgICBkZWxpYmVyYXRlOiBmYWxzZSwKICAgIGJ1c3k6IHRydWUsCiAgICBjb250aW51YXRpb246IGZhbHNlLAogICAgLy8gTGF0Y2ggb25seSB3aGVuIGFuIElOUFVUIGRlbWFuZCB3YXMgc3BlbnQgYWdhaW5zdCB0aGUgdG9wIGVkZ2UuIFR3bwogICAgLy8gY29uZGl0aW9ucywgZWFjaCBsb2FkLWJlYXJpbmc6CiAgICAvLwogICAgLy8gLSBgc3RhdGUuYXJtZWRgIOKAlCB0aGUgbGF0Y2ggaXMgYWJvdXQgaW5wdXQgcmVwZWF0aW5nIHdpdGhvdXQgdGhlIHJlYWRlcgogICAgLy8gICBkb2luZyBhbnl0aGluZyBmdXJ0aGVyLCBzbyBhIGNvbnRpbnVhdGlvbiAod2hpY2ggaGFzIG5vIGlucHV0IGJlaGluZAogICAgLy8gICBpdCBhbmQgaXMgYm91bmRlZCBieSBpdHMgb3duIGNvdW50ZXJzKSBtdXN0IG5vdCBzZXQgaXQuIFJ1bGUgTCdzCiAgICAvLyAgIHVuc2Nyb2xsYWJsZSB0cmFuc2NyaXB0IHNpdHMgYXQgZGlzdGFuY2UgMCBieSBjb25zdHJ1Y3Rpb247IGxhdGNoaW5nCiAgICAvLyAgIHRoZXJlIHdvdWxkIGVuZCB0aGUgY2hhaW4gYWZ0ZXIgb25lIHBhZ2UuCiAgICAvLyAtIGF0IHRoZSB0b3AgZWRnZSDigJQgYSBkZW1hbmQgc3BlbnQgZnJvbSBpbnNpZGUgdGhlIHByZWZldGNoIHpvbmUgbGVhdmVzCiAgICAvLyAgIHRoZSBsYXRjaCBvcGVuLCBiZWNhdXNlIHRoZSByZWFkZXIgc3RpbGwgaGFzIHJvb20gdG8ga2VlcCBzY3JvbGxpbmcKICAgIC8vICAgYW5kIGV2ZXJ5IGZ1cnRoZXIgbm90Y2ggaXMgcmVhbCBtb3ZlbWVudCByYXRoZXIgdGhhbiB0aGUgc2FtZSBvbmUKICAgIC8vICAgcmVwb3J0ZWQgYWdhaW4uCiAgICBjbGFtcExhdGNoZWQ6IHN0YXRlLmNsYW1wTGF0Y2hlZCB8fCBzdGF0ZS5hcm1lZCAmJiBnZW8uZGlzdGFuY2VGcm9tVG9wUHggPD0gSEFSRF9UT1BfUFgsCiAgICAvLyBOb3RlIHRoZSBhc3ltbWV0cnkgdGhpcyBjcmVhdGVzLCBhbmQgd2h5IGl0IGlzIHRoZSBwb2ludCBvZiBBMS9BMgogICAgLy8gcmF0aGVyIHRoYW4gYW4gb3ZlcnNpZ2h0OiBhIGRlbWFuZCBzcGVudCBmcm9tIGluc2lkZSB0aGUgTEVBRCB3aW5kb3cgaXMKICAgIC8vIHNwZW50IHdoaWxlIHRoZSByZWFkZXIgaXMgc3RpbGwgTU9WSU5HLCBzbyBgZGlzdGFuY2VGcm9tVG9wUHhgIGlzIG5vdAogICAgLy8gPD0gSEFSRF9UT1BfUFggYW5kIG5vIGxhdGNoIGlzIHNldC4gVGhlIHJlYWRlcidzIGFycml2YWwgYXQgdGhlIHdhbGwgaXMKICAgIC8vIHRoZW4gYSBmcmVzaCwgdW5sYXRjaGVkIGRlbWFuZCwgd2hpY2ggYnV5cyB0aGUgbG9jYWwgd2lkZW4gdGhhdCBtYWtlcyB0aGUKICAgIC8vIHBhZ2UgdGhleSBhcmUgd2FpdGluZyBmb3IgdmlzaWJsZSAtLSBvbmUgcmV2ZWFsIGZvciB0aGUgcGFnZSwgb25lIGZvciB0aGUKICAgIC8vIHdpZGVuLCBhbmQgcHJvZ3Jlc3Mgb24gc2NyZWVuIGluc3RlYWQgb2YgYSBkZWFkIHN0b3AuIFRoZSBsYXRjaCBrZWVwcwogICAgLy8gbWVhbmluZyBleGFjdGx5IHdoYXQgcnVsZSA0IHNheXMgaXQgbWVhbnM6IGlucHV0IHJlcGVhdGluZyBhZ2FpbnN0IGFuCiAgICAvLyBlZGdlIHRoYXQgY2Fubm90IG1vdmUuCiAgICAvLwogICAgLy8gQTQncyB0cmF2ZWwgcmVjb3JkIGlzIE5PVCByZXNldCBoZXJlLiBgc3BlbmRgIG9wZW5zIGEgbmV3IGxhdGNoLCBidXQgdGhlCiAgICAvLyByZWxlYXNlIHRoZSByZWNvcmQgZ3VhcmRzIGlzIGJvdW5kZWQgcGVyIEFDVCByYXRoZXIgdGhhbiBwZXIgbGF0Y2gg4oCUIHNlZQogICAgLy8gYHRyYXZlbGxlZFNpbmNlTGF0Y2hgIOKAlCBhbmQgYW4gYWN0IHRoYXQgaGFzIGFscmVhZHkgYmVlbiByZWxlYXNlZCBvbmNlCiAgICAvLyBtdXN0IG5vdCBiZSByZWxlYXNlZCBhZ2FpbiBieSB0aGUgbmV4dCBhcnJpdmFsIGluc2lkZSBpdC4KICAgIC8vCiAgICAvLyBBIFdJREVOIGlzIHRoZSBvbmx5IHNwZW5kIHRoYXQgc2V0dGxlcyB0aGUgcnVsZS02IGRlYnQsIGJlY2F1c2UgYSB3aWRlbiBpcwogICAgLy8gdGhlIG9ubHkgYWN0aW9uIHRoYXQgcHV0cyB0aGUgcGFnZSdzIGhlbGQtYmFjayByb3dzIG9uIHNjcmVlbjogYSB3aWRlbgogICAgLy8gdGhlcmVmb3JlIGNsZWFycyBgcGFnZVdpZGVuT3dlZGAgd2hldGhlciBpdCB3YXMgdGhlIGRlYnQgaXRzZWxmIG9yIGFuCiAgICAvLyBvcmRpbmFyeSBhcm1lZCB3aWRlbi4gQSBgZmV0Y2hgIGNhbm5vdCByZWFjaCBoZXJlIHdpdGggdGhlIGZsYWcgc2V0IOKAlAogICAgLy8gYGRlY2lkZWAgb25seSBvZmZlcnMgYGZldGNoYCB3aGVuIGBoaWRkZW5Sb3dzID09PSAwYCwgYW5kIHRoZSBmbGFnIGlzIHNldAogICAgLy8gb25seSB3aGVuIHJvd3MgYXJlIGhlbGQgYmFjayDigJQgc28gdGhpcyBleHByZXNzaW9uJ3MgZWZmZWN0IG9uIGEgZmV0Y2ggaXMKICAgIC8vIHVucmVhY2hhYmxlIHJhdGhlciB0aGFuIG1lYW5pbmdmdWwsIHdoaWNoIGlzIHdoYXQgdGhlIGNvbW1lbnQgaGVyZSB1c2VkIHRvCiAgICAvLyBnZXQgdGhlIHdyb25nIHdheSByb3VuZCAocmV2aWV3IHJvdW5kIDEsIFIxLTgpLgogICAgcGFnZVdpZGVuT3dlZDogc3RhdGUucGFnZVdpZGVuT3dlZCAmJiBhY3Rpb24gIT09ICJ3aWRlbiIsCiAgICBjaGFpbldpZGVuOiBhY3Rpb24gPT09ICJ3aWRlbiIgPyBzdGF0ZS5jaGFpbldpZGVuICsgMSA6IHN0YXRlLmNoYWluV2lkZW4sCiAgICBjaGFpbkZldGNoOiBhY3Rpb24gPT09ICJmZXRjaCIgPyBzdGF0ZS5jaGFpbkZldGNoICsgMSA6IHN0YXRlLmNoYWluRmV0Y2gKICB9Cn0pOwpmdW5jdGlvbiBzcGVuZFdpbmRvd3MoZ2VvLCBzdGF0ZSwgbm93LCB6b25lUHggPSBwcmVmZXRjaFpvbmVQeChnZW8uY2xpZW50SGVpZ2h0KSkgewogIGNvbnN0IHZlbG9jaXR5ID0gbm93IC0gc3RhdGUubGFzdElucHV0QXQgPiBWRUxPQ0lUWV9UVExfTVMgPyAwIDogc3RhdGUudmVsb2NpdHk7CiAgY29uc3QgbGVhZFB4ID0gTWF0aC5taW4oCiAgICBNYXRoLm1heCh2ZWxvY2l0eSAqIExFQURfVElNRV9NUywgem9uZVB4KSwKICAgIExFQURfTUFYX1ZJRVdQT1JUUyAqIGdlby5jbGllbnRIZWlnaHQKICApOwogIHJldHVybiB7CiAgICBpblpvbmU6IGdlby5kaXN0YW5jZUZyb21Ub3BQeCA8PSB6b25lUHgsCiAgICBpbkxlYWQ6IGdlby5kaXN0YW5jZUZyb21Ub3BQeCA8PSBsZWFkUHggJiYgdmVsb2NpdHkgPj0gTUlOX0xFQURfVkVMT0NJVFlfUFhfUEVSX01TLAogICAgbGVhZFB4CiAgfTsKfQp2YXIgZGVjaWRlID0gKHN0YXRlLCBnZW8sIG5vdykgPT4gewogIGlmIChzdGF0ZS5idXN5KSByZXR1cm4geyBhY3Rpb246ICJub25lIiwgc3RhdGUgfTsKICBjb25zdCBncm93dGggPSBnZW8uaGlkZGVuUm93cyA+IDAgPyAid2lkZW4iIDogZ2VvLmhhc01vcmUgPyAiZmV0Y2giIDogIm5vbmUiOwogIGlmIChncm93dGggPT09ICJub25lIikgewogICAgcmV0dXJuIHsKICAgICAgYWN0aW9uOiAibm9uZSIsCiAgICAgIHN0YXRlOiBzdGF0ZS5hcm1lZCB8fCBzdGF0ZS5jb250aW51YXRpb24gPyB7IC4uLnN0YXRlLCBhcm1lZDogZmFsc2UsIGRlbGliZXJhdGU6IGZhbHNlLCBjb250aW51YXRpb246IGZhbHNlIH0gOiBzdGF0ZQogICAgfTsKICB9CiAgaWYgKGdlby5mb2xsb3dpbmdUYWlsICYmIGdlby5zY3JvbGxhYmxlKSByZXR1cm4geyBhY3Rpb246ICJub25lIiwgc3RhdGUgfTsKICBjb25zdCB6b25lUHggPSBwcmVmZXRjaFpvbmVQeChnZW8uY2xpZW50SGVpZ2h0KTsKICBjb25zdCB7IGluWm9uZSwgaW5MZWFkIH0gPSBzcGVuZFdpbmRvd3MoZ2VvLCBzdGF0ZSwgbm93LCB6b25lUHgpOwogIGNvbnN0IHNldHRsZWQgPSBub3cgLSBzdGF0ZS5sYXN0SW5wdXRBdCA+PSBTRVRUTEVfTVMgfHwgZ2VvLmRpc3RhbmNlRnJvbVRvcFB4IDw9IEhBUkRfVE9QX1BYOwogIGlmIChzdGF0ZS5wYWdlV2lkZW5Pd2VkICYmIGdyb3d0aCA9PT0gIndpZGVuIiAmJiBzdGF0ZS5jaGFpbldpZGVuIDwgTUFYX0NIQUlOX1dJREVOKSB7CiAgICByZXR1cm4gc3BlbmQoCiAgICAgIHsKICAgICAgICAuLi5zdGF0ZSwKICAgICAgICBwYWdlV2lkZW5Pd2VkOiBmYWxzZSwKICAgICAgICBjb250aW51YXRpb246IGZhbHNlLAogICAgICAgIGFybWVkOiBmYWxzZSwKICAgICAgICByZXRhaW5lZDogZmFsc2UsCiAgICAgICAgZGVsaWJlcmF0ZTogZmFsc2UKICAgICAgfSwKICAgICAgZ3Jvd3RoLAogICAgICBnZW8KICAgICk7CiAgfQogIGlmIChzdGF0ZS5hcm1lZCkgewogICAgaWYgKHN0YXRlLmRlbGliZXJhdGUpIHJldHVybiBzcGVuZChzdGF0ZSwgZ3Jvd3RoLCBnZW8pOwogICAgaWYgKGdyb3d0aCA9PT0gImZldGNoIiAmJiBzdGF0ZS5mYWlsdXJlcyA+PSBNQVhfQVVUT19BVFRFTVBUUykgewogICAgICByZXR1cm4geyBhY3Rpb246ICJub25lIiwgc3RhdGU6IHsgLi4uc3RhdGUsIGFybWVkOiBmYWxzZSB9IH07CiAgICB9CiAgICBpZiAoIWluWm9uZSAmJiAhaW5MZWFkKSB7CiAgICAgIHJldHVybiB7IGFjdGlvbjogIm5vbmUiLCBzdGF0ZTogeyAuLi5zdGF0ZSwgYXJtZWQ6IGZhbHNlIH0gfTsKICAgIH0KICAgIGlmICghc2V0dGxlZCAmJiAhaW5MZWFkKSByZXR1cm4geyBhY3Rpb246ICJub25lIiwgc3RhdGUgfTsKICAgIHJldHVybiBzcGVuZChzdGF0ZSwgZ3Jvd3RoLCBnZW8pOwogIH0KICBpZiAoc3RhdGUuY29udGludWF0aW9uKSB7CiAgICBpZiAoZ2VvLnNjcm9sbGFibGUgJiYgIShzdGF0ZS5wYWdlV2lkZW5Pd2VkICYmIGdyb3d0aCA9PT0gIndpZGVuIikpIHsKICAgICAgcmV0dXJuIHsKICAgICAgICBhY3Rpb246ICJub25lIiwKICAgICAgICBzdGF0ZTogeyAuLi5zdGF0ZSwgY29udGludWF0aW9uOiBmYWxzZSwgcGFnZVdpZGVuT3dlZDogZmFsc2UgfQogICAgICB9OwogICAgfQogICAgY29uc3QgYm91bmQgPSBncm93dGggPT09ICJ3aWRlbiIgPyBzdGF0ZS5jaGFpbldpZGVuIDwgTUFYX0NIQUlOX1dJREVOIDogc3RhdGUuY2hhaW5GZXRjaCA8IE1BWF9DSEFJTl9GRVRDSCAmJiBzdGF0ZS5mYWlsdXJlcyA8IE1BWF9BVVRPX0FUVEVNUFRTOwogICAgaWYgKGJvdW5kKSB7CiAgICAgIHJldHVybiBzcGVuZCgKICAgICAgICB7IC4uLnN0YXRlLCBwYWdlV2lkZW5Pd2VkOiBmYWxzZSwgY29udGludWF0aW9uOiBmYWxzZSB9LAogICAgICAgIGdyb3d0aCwKICAgICAgICBnZW8KICAgICAgKTsKICAgIH0KICAgIHJldHVybiB7CiAgICAgIGFjdGlvbjogIm5vbmUiLAogICAgICBzdGF0ZTogeyAuLi5zdGF0ZSwgY29udGludWF0aW9uOiBmYWxzZSwgcGFnZVdpZGVuT3dlZDogZmFsc2UgfQogICAgfTsKICB9CiAgcmV0dXJuIHsgYWN0aW9uOiAibm9uZSIsIHN0YXRlIH07Cn07CnZhciBub3RlU2V0dGxlZCA9IChzdGF0ZSwgewogIC8qKgogICAqIFdoZXRoZXIgdGhlIHJldmVhbCB0aGF0IHNldHRsZWQgcmVhY2hlZCB0aGUgTkVUV09SSy4gQSB3aWRlbiBpcyBwdXJlbHkKICAgKiBsb2NhbCwgc28gaXQgaXMgbm8gZXZpZGVuY2UgdGhhdCBhIGZhaWxpbmcgYmFja2VuZCBoYXMgcmVjb3ZlcmVkIOKAlAogICAqIGNsZWFyaW5nIHRoZSBidWRnZXQgb24gb25lIGxldCBhIHJlYWRlciB3aXRoIGEgZGVhZCBiYWNrZW5kIGJ1eSB0aHJlZQogICAqIGZyZXNoIGZldGNoIGF0dGVtcHRzIHBlciBsb2NhbCB3aWRlbi4KICAgKi8KICBuZXR3b3JrID0gdHJ1ZSwKICAvKioKICAgKiBSb3dzIHRoZSByZW5kZXIgd2luZG93IHdhcyBzdGlsbCBob2xkaW5nIGJhY2sgd2hlbiB0aGUgcmV2ZWFsIHdhcwogICAqIE9CU0VSVkVEIG9uIHNjcmVlbiwgcmVhZCBieSB0aGUgRE9NIGhhbGYuCiAgICoKICAgKiBSdWxlIDYncyB3aG9sZSBpbnB1dCwgYW5kIHRoZSByZWFzb24gaXQgaXMgcGFzc2VkIHJhdGhlciB0aGFuIGluZmVycmVkOiBhCiAgICogcGFnZSBjYW4gbGFuZCBzdWNjZXNzZnVsbHkgYW5kIG1vdW50IG5vdGhpbmcgKHRoZSB3aW5kb3cgYWxyZWFkeSBoZWxkIHRoZQogICAqIHJvd3MgaW4gZnJvbnQgb2YgaXQpLCB3aGljaCBpcyBpbnZpc2libGUgb24gc2NyZWVuIGFuZCBtdXN0IG5vdCByZWFkIGFzIGEKICAgKiByZXZlYWwuIE9ubHkgYSBEVVJBQkxFIHBhZ2UgY2FuIG93ZSB0aGUgd2lkZW4sIGFuZCBvbmx5IHdoZW4gdGhlIG51bWJlciBpcwogICAqIHBvc2l0aXZlOyBhIHdpZGVuIHRoYXQgc2V0dGxlcyB3aXRoIHRoZSBzYW1lIGZpZWxkIHNldCBvd2VzIG5vdGhpbmcsIHNvCiAgICogdGhlIHR3byBncm93dGggcGF0aHMgY2Fubm90IHBpbmcgZWFjaCBvdGhlci4KICAgKi8KICBoaWRkZW5Sb3dzQWZ0ZXIgPSAwCn0gPSB7fSkgPT4gKHsKICAuLi5zdGF0ZSwKICBidXN5OiBmYWxzZSwKICBmYWlsdXJlczogbmV0d29yayA/IDAgOiBzdGF0ZS5mYWlsdXJlcywKICBhcm1lZDogc3RhdGUucmV0YWluZWQsCiAgZGVsaWJlcmF0ZTogc3RhdGUucmV0YWluZWQgPyBzdGF0ZS5kZWxpYmVyYXRlIDogZmFsc2UsCiAgcmV0YWluZWQ6IGZhbHNlLAogIHR1cm5lZEFyb3VuZDogZmFsc2UsCiAgcGFnZVdpZGVuT3dlZDogbmV0d29yayAmJiBoaWRkZW5Sb3dzQWZ0ZXIgPiAwLAogIC8qCiAgICogUnVsZSA2IG5lZWRzIHRoZSBDT05USU5VQVRJT04sIG5vdCBqdXN0IHRoZSBmbGFnLCBhbmQgdGhpcyBpcyB0aGUgaGFsZiB0aGUKICAgKiBmaXJzdCBjdXQgZ290IHdyb25nIOKAlCBtZWFzdXJlZCBvbiB0aGUgcmVhbCBzdXJmYWNlLCBub3QgcmVhc29uZWQ6IGEgcGFnZQogICAqIHRoYXQgbGFuZHMgd2hpbGUgdGhlIHJlYWRlciBpcyBzdGlsbCBwdXNoaW5nIHJldGFpbnMgYSBkZW1hbmQKICAgKiAoYHN0YXRlLnJldGFpbmVkYCksIGFuZCB0aGUgbGluZSBiZWxvdyB1c2VkIHRvIHJlZnVzZSB0aGUgY29udGludWF0aW9uIGZvcgogICAqIGV4YWN0bHkgdGhhdCByZWFzb24uIFNvIHRoZSBwYWdlIGxhbmRlZCB3aXRoIHJvd3MgaGVsZCBiYWNrLCB0aGUgcmVhZGVyIHNhdAogICAqIHBpbm5lZCBhdCB0aGUgaGFyZCB0b3Agd2l0aCB0aG9zZSByb3dzIG9uZSB3aWRlbiBhd2F5LCB0aGUgc2xvdCB0b2xkIHRoZW0gdG8KICAgKiBzY3JvbGwgdXAgZm9yIGNvbnRlbnQgYSB3aWRlbiB3b3VsZCBzaG93LCBhbmQgdGhlIHdpZGVuIG5ldmVyIGNhbWUgdW50aWwKICAgKiB0aGVpciBORVhUIGFjdCByZS1hcm1lZCBhIGRlbWFuZCDigJQgd2hpY2ggaXMgdGhlIHN0dWNrLXRoZW4tamlnZ2xlIHJlcG9ydC4KICAgKgogICAqIEEgbGFuZGVkIHBhZ2UgdGhhdCBvd2VzIGEgd2lkZW4gdGhlcmVmb3JlIGVhcm5zIHRoZSBjb250aW51YXRpb24gd2hhdGV2ZXIKICAgKiB0aGUgcmVhZGVyIHdhcyBkb2luZyB3aGlsZSBpdCB3YXMgaW4gZmxpZ2h0LiBUaGUgYm91bmQgaXMgdW5jaGFuZ2VkIHdoZXJlIGl0CiAgICogbWF0dGVyczogYGNvbnRpbnVhdGlvbmAgaXMgc3BlbnQgYnkgdGhhdCBvbmUgd2lkZW4sIHRoZSBkb29yIGluIGBkZWNpZGVgCiAgICogY2xvc2VzIHdpdGggaXQsIGFuZCBhIHBhZ2Ugd2l0aCBub3RoaW5nIGhpZGRlbiAoYGhpZGRlblJvd3NBZnRlciA9PT0gMGApCiAgICogc3RpbGwgZ2V0cyB0aGUgb2xkIHJ1bGUg4oCUIHNvIHRoZSAyMDAtY2xhbXBlZC1ub3RjaGVzIGJvdW5kIGFuZCB0aGUgcm91bmQtMQogICAqIGNoYWluIGl0IHdhcyB3cml0dGVuIGFnYWluc3QgYm90aCBzdGFuZC4KICAgKi8KICBjb250aW51YXRpb246IG5ldHdvcmsgJiYgaGlkZGVuUm93c0FmdGVyID4gMCB8fCAhc3RhdGUucmV0YWluZWQgJiYgIXN0YXRlLnR1cm5lZEFyb3VuZAp9KTsKdmFyIG5vdGVGYWlsZWQgPSAoc3RhdGUpID0+ICh7CiAgLi4uc3RhdGUsCiAgYnVzeTogZmFsc2UsCiAgZmFpbHVyZXM6IHN0YXRlLmZhaWx1cmVzICsgMSwKICBhcm1lZDogZmFsc2UsCiAgZGVsaWJlcmF0ZTogZmFsc2UsCiAgcmV0YWluZWQ6IGZhbHNlLAogIHR1cm5lZEFyb3VuZDogZmFsc2UsCiAgY29udGludWF0aW9uOiBmYWxzZSwKICAvLyBOb3RoaW5nIGxhbmRlZCwgc28gbm90aGluZyBpcyBvd2VkLiBBIHJ1bGUtNiB3aWRlbiBoZXJlIHdvdWxkIHNwZW5kIHRoZQogIC8vIHJlYWRlcidzIHRydXN0IG9uIHJvd3MgdGhlIGZhaWx1cmUgZGlkIG5vdCBwcm9kdWNlLgogIHBhZ2VXaWRlbk93ZWQ6IGZhbHNlCn0pOwp2YXIgaXNFeGhhdXN0ZWQgPSAoc3RhdGUpID0+IHN0YXRlLmZhaWx1cmVzID49IE1BWF9BVVRPX0FUVEVNUFRTOwp2YXIgYW5jaG9yRHJpZnRGb3JDdXJyZW50SW5wdXQgPSAoYmVmb3JlLCBhZnRlciwgaGVsZElucHV0UmV2aXNpb24sIGN1cnJlbnRJbnB1dFJldmlzaW9uKSA9PiBoZWxkSW5wdXRSZXZpc2lvbiA9PT0gY3VycmVudElucHV0UmV2aXNpb24gPyBhbmNob3JEcmlmdChiZWZvcmUsIGFmdGVyKSA6IG51bGw7CnZhciBhbmNob3JEcmlmdCA9IChiZWZvcmUsIGFmdGVyKSA9PiB7CiAgaWYgKCFiZWZvcmUgfHwgIWFmdGVyKSByZXR1cm4gMDsKICBpZiAoYmVmb3JlLmlkICE9PSBhZnRlci5pZCkgcmV0dXJuIDA7CiAgaWYgKGJlZm9yZS5leHRlbnQgPT09IGFmdGVyLmV4dGVudCkgcmV0dXJuIDA7CiAgY29uc3QgZHJpZnQgPSBhZnRlci52aWV3cG9ydE9mZnNldCAtIGJlZm9yZS52aWV3cG9ydE9mZnNldDsKICByZXR1cm4gTWF0aC5hYnMoZHJpZnQpIDwgQU5DSE9SX0VQU0lMT05fUFggPyAwIDogZHJpZnQ7Cn07CmV4cG9ydCB7CiAgQU5DSE9SX0VQU0lMT05fUFgsCiAgR0VTVFVSRV9HQVBfTVMsCiAgSEFSRF9UT1BfUFgsCiAgTEVBRF9NQVhfVklFV1BPUlRTLAogIExFQURfVElNRV9NUywKICBNQVhfQVVUT19BVFRFTVBUUywKICBNQVhfQ0hBSU5fRkVUQ0gsCiAgTUFYX0NIQUlOX1dJREVOLAogIE1JTl9MRUFEX1ZFTE9DSVRZX1BYX1BFUl9NUywKICBTRVRUTEVfTVMsCiAgVEFJTF9FUFNfUFgsCiAgVFJBVkVMX01JTl9QWCwKICBWRUxPQ0lUWV9FTUEsCiAgVkVMT0NJVFlfVFRMX01TLAogIFpPTkVfRlJBQ1RJT04sCiAgWk9ORV9NQVhfUFgsCiAgWk9ORV9NSU5fUFgsCiAgYW5jaG9yRHJpZnQsCiAgYW5jaG9yRHJpZnRGb3JDdXJyZW50SW5wdXQsCiAgZGVjaWRlLAogIGluaXRpYWxQYWdpbmdTdGF0ZSwKICBpc0V4aGF1c3RlZCwKICBub3RlRmFpbGVkLAogIG5vdGVJbnB1dCwKICBub3RlU2V0dGxlZCwKICBwcmVmZXRjaFpvbmVQeCwKICBzcGVuZFdpbmRvd3MKfTsK:157:32)
+      at TestContext.<anonymous> (file:///Users/damian/.local-operator/sessions/c50c87690363/scratchpad/paging/arms4/scripts/transcript-paging.test.mjs:1519:18)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)

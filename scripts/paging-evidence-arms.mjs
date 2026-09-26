@@ -9,15 +9,17 @@
  * and that mode names the OUTPUT FILES AND THE REPORT'S ARM LABEL — it cannot
  * swap the code under test. So the first version of the before arm was two
  * hand-run commands and a sentence in the README saying the modules had been
- * "restored byte-identically afterwards (md5 compared)": no md5s, no script, no
+ * "restored byte-identically afterwards (md5 compared)": no digests, no script, no
  * artefact, and a reader who ran `before` on a feature branch would measure the
  * feature branch and get a report labelled `before` (review round 1, R1-4).
  *
  * What this adds is the RECORD rather than the idea. It refuses to start on a
  * dirty module, writes the ref's bytes, asserts the swap actually happened by a
- * property the arm must have (the module under test has no `LEAD_TIME_MS` before
- * the lead landed), runs the rig, restores from git, and re-reads the md5. The
- * last line is the artefact: `restored=identical`, or a non-zero exit.
+ * property the arm must have (the module under test has no `actFetchSpent`
+ * before this round's act budget landed; a before ref with that symbol in it is
+ * already this branch, which is exactly the confusion the check exists to
+ * catch), runs the rig, restores from git, and re-reads the SHA-256 digests (truncated to 16 hex). The record's fields are named for the function that produced them (`sha256Before`/`sha256AfterSwap`/`sha256Restored`) — round 1 observed the inherited `md5*` names on those same values, so they are renamed here rather than re-explained. The last line
+ * is the artefact: `restored=identical`, or a non-zero exit.
  *
  * The module list is deliberately short and explicit. It is the whole of the
  * code under test for this surface: the pure policy and the DOM half beside it.
@@ -64,7 +66,7 @@ if (dirty && arm === "before") {
 }
 
 const before = digests();
-const record = { arm, ref: ref ?? null, md5Before: before };
+const record = { arm, ref: ref ?? null, sha256Before: before };
 
 if (arm === "before") {
 	if (!ref) {
@@ -75,21 +77,21 @@ if (arm === "before") {
 		execFileSync("git", ["checkout", ref, "--", path]);
 	}
 	const swapped = digests();
-	record.md5AfterSwap = swapped;
+	record.sha256AfterSwap = swapped;
 	/*
 	 * The swap has to be CHECKED, not assumed: an arm that silently failed to
 	 * change anything produces the after measurement under the before label, which
-	 * is the failure this file exists to make impossible. `LEAD_TIME_MS` is the
-	 * symbol the lead added, so its absence is the property the before arm must
-	 * have and the after arm must not.
+	 * is the failure this file exists to make impossible. `actFetchSpent` is the
+	 * symbol this round's act budget added, so its absence is the property the
+	 * before arm must have and the after arm must not.
 	 */
 	for (const path of MODULES) {
 		const text = readFileSync(path, "utf8");
-		const hasLead = text.includes("LEAD_TIME_MS");
-		const wantLead = false;
-		if (hasLead !== wantLead) {
+		const hasActBudget = text.includes("actFetchSpent");
+		const wantActBudget = false;
+		if (hasActBudget !== wantActBudget) {
 			console.error(
-				`${path} does not look like the before arm (LEAD_TIME_MS present=${hasLead})`,
+				`${path} does not look like the before arm (actFetchSpent present=${hasActBudget})`,
 			);
 			process.exit(2);
 		}
@@ -106,7 +108,7 @@ const restore = () => {
 	execFileSync("git", ["checkout", "HEAD", "--", ...MODULES]);
 	execFileSync("git", ["reset", "-q", "HEAD", "--", ...MODULES]);
 	const restored = digests();
-	record.md5Restored = restored;
+	record.sha256Restored = restored;
 	record.restored = MODULES.every((path) => restored[path] === before[path]);
 	return record.restored;
 };
@@ -135,7 +137,7 @@ try {
 				Object.fromEntries(
 					MODULES.map((path) => [
 						path.split("/").pop(),
-						record.md5Restored[path],
+						record.sha256Restored[path],
 					]),
 				),
 			)}`,

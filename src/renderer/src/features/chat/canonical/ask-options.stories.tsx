@@ -1,6 +1,8 @@
 /**
- * The pending `ask` gate, across the states that decide whether its options
- * are answerable.
+ * The pending gate, across the states that decide whether its options are
+ * answerable: an `ask` carrying the model's own options, and an `approval`,
+ * whose two options are the client's own (`APPROVAL_OPTIONS`) — the wire sends
+ * none for that kind, and it is answered with a strict boolean.
  *
  * These render the PRODUCTION `CanonicalTranscript` from real
  * `PendingDesktopGate` fixtures, so what is judged is what ships — not a
@@ -32,6 +34,12 @@
  *   so the numerals are no longer a promise the app breaks.
  * - **The in-flight state disables by COLOUR, never opacity**, so the disabled
  *   card is legible on its own ground rather than washed toward it.
+ * - **An approval wears the same band as an ask**, from the same component
+ *   rather than a forked one — the operator asked for exactly that
+ *   ("approvals need to show options like that too ... and show context about
+ *   the requested command/action"), and one component for both kinds is what
+ *   keeps the contrast triple, the ordinals, the focus handling and the busy
+ *   semantics from drifting apart between them.
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
@@ -384,20 +392,51 @@ export const SecretAsk: Story = {
 };
 
 /**
- * An approval gate, unchanged by this work and captured so that stays true.
+ * An approval gate, which now shows the same options affordance as an ask.
  *
- * The wire carries no options for an approval and it is answered yes/no in the
- * composer, so this card must look exactly as it did before.
+ * The wire carries no options for an approval — the title is the tool's name
+ * and the detail the action it wants — so Approve and Deny are the CLIENT's
+ * labels (`APPROVAL_OPTIONS`), and pressing one posts the strict boolean the
+ * answer route takes. This replaced `ApprovalUnchanged`, which photographed the
+ * old yes/no-only card precisely so this change could not go unnoticed.
  */
-export const ApprovalUnchanged: Story = {
+export const Approval: Story = {
 	render: () => (
 		<Frame
 			asked="Clean the build output before rebuilding."
 			height={360}
 			pending={gate({
 				kind: "approval",
-				title: "Run `rm -rf ./dist`?",
-				detail: "In ~/local-operator-ui.",
+				// The live wire's own shape for a shell call: the tool's name as
+				// the title, and the tool's own approval describer as the detail
+				// (`_describe_shell_approval` in the backend: "run: <command>").
+				title: "bash",
+				detail: "run: rm -rf ./dist",
+				options: [],
+			})}
+		/>
+	),
+};
+
+/**
+ * An approval mid-answer.
+ *
+ * The eyebrow says "Sending your answer…" and both options are disabled — the
+ * same in-flight semantics as an ask, from the same component — because the
+ * window between the press and the gate moving is exactly when a second press
+ * (or a typed send racing the click) would post a second answer to a one-shot
+ * gate. The live half of this pair is in `docs/evidence/approval-options-live/`.
+ */
+export const ApprovalAnswerInFlight: Story = {
+	render: () => (
+		<Frame
+			asked="Clean the build output before rebuilding."
+			height={360}
+			answering={true}
+			pending={gate({
+				kind: "approval",
+				title: "bash",
+				detail: "run: rm -rf ./dist",
 				options: [],
 			})}
 		/>

@@ -988,6 +988,34 @@ const STAMP_BINDING_NOTES = [
 	 * rule the paragraph above states.
 	 */
 	"foldOntoDfd93f7e9Note",
+	/*
+	 * This branch's own: it re-stamps the change that added the approval card's
+	 * options, so the reader is owed the pair the file ships - and the two moved
+	 * trees are each that change's own files plus this note's registration here.
+	 */
+	"approvalOptionsRestampNote",
+	/*
+	 * This branch's own, and the first one that adds a declared set in the same
+	 * commit it re-stamps: it re-stamps `fix(chat): spend history reveals at rest,
+	 * one fetch per gesture`, which moves both trees AND adds
+	 * `[redacted]`, so the reader is owed the pair, the frame
+	 * arithmetic, and the reason the swept count does not move.
+	 */
+	"transcriptRevealAtRestRestampNote",
+	/*
+	 * THE ROUND-4 REMEDIATION'S EVIDENCE PASS. It re-stamps the change that
+	 * answers rounds 4 (the fold debris, the restored §F3 fate, the widened
+	 * stop classification, the popover width) and re-shoots the three popover
+	 * states after D31, so the reader is owed the pair the file ships.
+	 */
+	"remediationRound4EvidenceNote",
+	/*
+	 * The fold's own: ITS SUBJECT IS THIS FILE'S BINDING (the re-derived pair),
+	 * and it is the note that records the union of this list itself - main's
+	 * approval-options and reveal-at-rest records beside this branch's, the rule
+	 * the paragraph above states.
+	 */
+	"foldOnto601a9d5032Note",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1365,6 +1393,22 @@ const BRANCH_RECORDS = [
 	 * were NOT re-taken, and how each conflict was resolved.
 	 */
 	"foldOntoDfd93f7e9Note",
+	/*
+	 * And by the reveal-at-rest pass - the pass this fold carries. It is the case
+	 * the entry above names, one fold over: the manifest resolution kept this
+	 * branch's set, note and counts by hand against a moved main, and this record
+	 * is the only statement of which two trees the scroll-reveal change moved and
+	 * that the 16 frames it added came from this tree with the `before` arm's two
+	 * modules swapped for `origin/main`'s.
+	 */
+	"transcriptRevealAtRestRestampNote",
+	/*
+	 * And the round-4 remediation's record, this branch's newest. Listed for the
+	 * reason the list exists: a fold that started from main's manifest would drop
+	 * it, and with it the only statement of what this pass re-shot, what it
+	 * carried into the tree, and the two readings the Q5 falsification produced.
+	 */
+	"remediationRound4EvidenceNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

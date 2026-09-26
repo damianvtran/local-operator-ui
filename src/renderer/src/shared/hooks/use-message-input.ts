@@ -244,10 +244,11 @@ export const COMPOSER_PLACEHOLDER = {
  * no keystrokes must not be invited to take one: "Ask off the record" over a
  * read-only composer is a promise nothing can keep. After `awaitingAnswer`,
  * because while a question card is unanswered the press does NOT reach the aside
- * - the gate branch outranks it in `chat-page.tsx`, since an `approval` gate has
- * no other answer path ("Reply yes or no in the composer") while the aside keeps
- * its exchange on screen - and the surface whose whole job is naming the
- * destination cannot name the wrong one.
+ * - the gate branch outranks it in `chat-page.tsx`, since a parked gate must
+ * stay answerable from the box that is about to send the aside text (the card's
+ * buttons are the pointer path; the composer's yes/no/ordinal path is the
+ * keyboard one) while the aside keeps its exchange on screen - and the surface
+ * whose whole job is naming the destination cannot name the wrong one.
  *
  * AHEAD OF BOTH SEND-STATE SENTENCES, for the same reason: while the panel is
  * attached the next Enter goes to the aside whatever the conversation is doing,

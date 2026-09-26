@@ -382,3 +382,8 @@ Falsification, one command pair apart on the same rig:
 
 The frames and record committed here are from the second run; the readings they
 carry are the ones quoted above.
+
+The set was re-taken once more after the fold onto `601a9d5032` (the tip this
+ships on): same readings - `turn2.readsAsStopped.ok = true`, transcript tail
+`["Ran sleep 45 interrupted 0.2s"]`, rc=0 - against the folded tree, whose
+conflict resolution moved neither the reducer nor the escape ladder.

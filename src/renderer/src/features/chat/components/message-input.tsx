@@ -83,7 +83,11 @@ import {
 	asideAdoptReady,
 	closeAside,
 } from "../aside";
-import { composerFocusIsOurs, shouldTabIntoAnswerOptions } from "../ask-answer";
+import {
+	approvalAnswerValue,
+	composerFocusIsOurs,
+	shouldTabIntoAnswerOptions,
+} from "../ask-answer";
 import { sendUnsettledForSession } from "../canonical/working-line-model";
 import {
 	CHAT_COLUMN_CONTAINER,
@@ -1141,6 +1145,19 @@ export type MessageInputHandle = {
 	 * for (the planner is the whole of that argument in `submitMessage`).
 	 */
 	submitNow: () => void;
+	/**
+	 * Consume the composer's text as the answer a press just gave.
+	 *
+	 * The press path's half of the typed path's own behaviour (UX round 1, U4): a
+	 * keyboard user types `1`, presses Approve, and the keystrokes used to stay in
+	 * the box - focus is already there, so the next Enter sent `1` as an ordinary
+	 * message (measured: a real turn started with it). Called by the winning arm
+	 * of an approval press, this clears the box ONLY when what it holds IS an
+	 * approval answer (`approvalAnswerValue` returns a verdict); a message someone
+	 * was writing fails that test and is never touched. The ask gate keeps its
+	 * inherited behaviour - its presses still leave the box alone.
+	 */
+	consumeApprovalAnswerDraft: () => void;
 };
 
 /*
@@ -4346,12 +4363,27 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			textareaRef.current?.focus();
 		}, [textareaRef]);
 
+		/*
+		 * THE PRESS'S DRAFT-CONSUME (UX round 1, U4), guarded by the one predicate
+		 * that separates "an answer the press just consumed" from "a message the
+		 * user is writing": `approvalAnswerValue` returns a verdict only for the
+		 * shipped words and the card's own ordinals, and `null` for everything
+		 * else - so prose, a partial token, or an unrelated draft is left exactly
+		 * where it was. Emptying through `handleChange` retires the persisted
+		 * draft with the box, the same write path a user's backspace takes.
+		 */
+		const consumeApprovalAnswerDraft = useCallback(() => {
+			if (approvalAnswerValue(newMessage) === null) return;
+			setNewMessage("");
+		}, [newMessage, setNewMessage]);
+
 		useImperativeHandle(ref, () => ({
 			focusInput,
 			openWorkingDirectoryMenu: () => {
 				cwdChipRef.current?.openMenu();
 			},
 			submitNow: () => submitMessage(),
+			consumeApprovalAnswerDraft,
 		}));
 
 		/*
