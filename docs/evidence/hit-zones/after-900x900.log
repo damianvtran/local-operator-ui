@@ -1,0 +1,163 @@
+[build] current: assets 2026-09-26T16:29:08.043Z >= sources 2026-09-26T16:27:53.756Z
+[note] abandoned scratch trees
+        3 seen, 0 owned by a live pid (kept), 3 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8123
+  serve records 1 linked from /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T//lop-ui-hitzones-backend-8jr80y/config/run/serve   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui/.worktrees/hitzones-2f6d
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-68803
+  frames        /Users/damian/.local-operator/sessions/67f8b21daa75/scratchpad/evidence-staging/after-900/frames
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-68803/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8123   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8123","backend":"http://127.0.0.1:8123"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8123)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[note] hello
+        {
+  "armed": true,
+  "outDir": "/Users/damian/.local-operator/sessions/67f8b21daa75/scratchpad/evidence-staging/after-900/frames",
+  "title": "Local Operator",
+  "route": "/chat",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/hitzones-2f6d/out/renderer/index.html#/chat",
+  "theme": "localOperatorDark",
+  "viewport": {
+    "width": 900,
+    "height": 900,
+    "devicePixelRatio": 2
+  },
+  "visibilityState": "visible",
+  "hasFocus": false,
+  "apiBaseUrl": "http://127.0.0.1:8123",
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) LocalOperator/0.31.0 Chrome/152.0.7977.78 Electron/44.3.0 Safari/537.36"
+}
+[note] facts (from main)
+        {
+  "windowMode": "headless",
+  "appVersion": "0.31.0",
+  "platform": "darwin",
+  "title": "Local Operator",
+  "windowSize": {
+    "width": 900,
+    "height": 900
+  },
+  "contentBounds": {
+    "width": 900,
+    "height": 900
+  },
+  "visible": false,
+  "focused": false,
+  "minimized": false,
+  "frames": [],
+  "outDir": "/Users/damian/.local-operator/sessions/67f8b21daa75/scratchpad/evidence-staging/after-900/frames"
+}
+[PASS] window mode is headless and the window is never shown or focused
+[note] window chrome
+        {"mode":"integrated","platform":"mac","viewport":{"width":900,"height":900},"lane":{"x":0,"y":0,"w":900,"h":32,"display":"block"},"vocabulary":{"drag":"drag","noDrag":"no-drag","plain":"none"}}
+[PASS] the window is the integrated chrome with the mac lane drawn
+[PASS] the computed app-region vocabulary is the one this read filters on
+[PASS] [/analytics] the composer mounted
+[PASS] [analytics-panel] the panel opened
+[PASS] hit-zones-analytics-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 52.7 vs 32.1 own / 237.3 other
+[note] frame analytics-panel
+        {"label":"hit-zones-analytics-dark","path":"/Users/damian/.local-operator/sessions/67f8b21daa75/scratchpad/evidence-staging/after-900/frames/hit-zones-analytics-dark.png","bytes":128406,"pixels":{"width":1800,"height":1800},"viewport":{"width":900,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":8}
+[PASS] [analytics-panel] the overlay is in the document
+        7 control(s) sampled, region 375 entr(ies)
+[PASS] [analytics-panel] every sampled point of every control is OUTSIDE the window drag region
+        7 control(s) x 5 samples in region 375 entr(ies); 0 swallowed now, 2 would be without this surface's own opt-out; 4 disabled, 5 unpaintable and 9 outside the visible box were not sampled
+[PASS] [analytics-panel] every sampled point's top element is the control it belongs to
+        7 control(s) x 5 samples
+[PASS] [analytics-panel] the lane outside the overlay still drags
+        lane left of the overlay (4, 16): inside=true | lane right of the overlay (896, 16): inside=true
+[PASS] [/usage] the composer mounted
+[PASS] [usage-panel] the panel opened
+[PASS] hit-zones-usage-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 20.8 vs 32.1 own / 237.3 other
+[note] frame usage-panel
+        {"label":"hit-zones-usage-dark","path":"/Users/damian/.local-operator/sessions/67f8b21daa75/scratchpad/evidence-staging/after-900/frames/hit-zones-usage-dark.png","bytes":99089,"pixels":{"width":1800,"height":1800},"viewport":{"width":900,"height":900,"devicePixelRatio":2},"attempts":3,"stable":true,"toastFree":true,"toastWaitMs":4}
+[PASS] [usage-panel] the overlay is in the document
+        3 control(s) sampled, region 30 entr(ies)
+[PASS] [usage-panel] every sampled point of every control is OUTSIDE the window drag region
+        3 control(s) x 5 samples in region 30 entr(ies); 0 swallowed now, 0 would be without this surface's own opt-out; 0 disabled, 0 unpaintable and 0 outside the visible box were not sampled
+[PASS] [usage-panel] every sampled point's top element is the control it belongs to
+        3 control(s) x 5 samples
+[PASS] [usage-panel] the lane outside the overlay still drags
+        lane left of the overlay (26, 16): inside=true | lane right of the overlay (874, 16): inside=true
+[PASS] [/info] the composer mounted
+[PASS] [info-panel] the panel opened
+[PASS] hit-zones-info-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 43.6 vs 32.1 own / 237.3 other
+[note] frame info-panel
+        {"label":"hit-zones-info-dark","path":"/Users/damian/.local-operator/sessions/67f8b21daa75/scratchpad/evidence-staging/after-900/frames/hit-zones-info-dark.png","bytes":233559,"pixels":{"width":1800,"height":1800},"viewport":{"width":900,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":3}
+[PASS] [info-panel] the overlay is in the document
+        2 control(s) sampled, region 167 entr(ies)
+[PASS] [info-panel] every sampled point of every control is OUTSIDE the window drag region
+        2 control(s) x 5 samples in region 167 entr(ies); 0 swallowed now, 1 would be without this surface's own opt-out; 0 disabled, 0 unpaintable and 1 outside the visible box were not sampled
+[PASS] [info-panel] every sampled point's top element is the control it belongs to
+        2 control(s) x 5 samples
+[PASS] [info-panel] the lane outside the overlay still drags
+        lane left of the overlay (4, 16): inside=true | lane right of the overlay (896, 16): inside=true
+[PASS] [command-palette] the palette opened
+[PASS] hit-zones-palette-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 26.6 vs 32.1 own / 237.3 other
+[note] frame command-palette
+        {"label":"hit-zones-palette-dark","path":"/Users/damian/.local-operator/sessions/67f8b21daa75/scratchpad/evidence-staging/after-900/frames/hit-zones-palette-dark.png","bytes":126371,"pixels":{"width":1800,"height":1800},"viewport":{"width":900,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":2}
+[PASS] [command-palette] the overlay is in the document
+        10 control(s) sampled, region 130 entr(ies)
+[PASS] [command-palette] every sampled point of every control is OUTSIDE the window drag region
+        10 control(s) x 5 samples in region 130 entr(ies); 0 swallowed now, 0 would be without this surface's own opt-out; 0 disabled, 0 unpaintable and 11 outside the visible box were not sampled
+[PASS] [command-palette] every sampled point's top element is the control it belongs to
+        10 control(s) x 5 samples
+[PASS] [command-palette] the lane outside the overlay still drags
+        lane left of the overlay (90, 16): inside=true | lane right of the overlay (810, 16): inside=true
+[PASS] [sidebar-sheet] the sidebar toggle opened the sheet
+[PASS] hit-zones-sidebar-sheet-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 23.4 vs 32.1 own / 237.3 other
+[note] frame sidebar-sheet
+        {"label":"hit-zones-sidebar-sheet-dark","path":"/Users/damian/.local-operator/sessions/67f8b21daa75/scratchpad/evidence-staging/after-900/frames/hit-zones-sidebar-sheet-dark.png","bytes":166627,"pixels":{"width":1800,"height":1800},"viewport":{"width":900,"height":900,"devicePixelRatio":2},"attempts":3,"stable":true,"toastFree":true,"toastWaitMs":4}
+[PASS] [sidebar-sheet] the overlay is in the document
+        17 control(s) sampled, region 117 entr(ies)
+[PASS] [sidebar-sheet] every sampled point of every control is OUTSIDE the window drag region
+        17 control(s) x 5 samples in region 117 entr(ies); 0 swallowed now, 5 would be without this surface's own opt-out; 0 disabled, 3 unpaintable and 0 outside the visible box were not sampled
+[PASS] [sidebar-sheet] every sampled point's top element is the control it belongs to
+        17 control(s) x 5 samples
+[PASS] [sidebar-sheet] the lane outside the overlay still drags
+        lane left of the overlay (4, 16): the overlay covers it | lane right of the overlay (300, 16): inside=true
+[PASS] [settings-route-band] the band stands down where the lane is drawn
+        display=none rect={"x":0,"y":0,"w":0,"h":0} while /settings is up
+[PASS] [settings-route-band] the lane is drawn as this route's drag surface
+        lane {"display":"block","rect":{"x":0,"y":0,"w":900,"h":32}}
+[PASS] [settings-route-band] the lane's own centre is a drag region
+        lane centre inside=true
+[PASS] [settings-route-band] no route control reaches into the lane's strip
+        0 control(s) in the 32px lane strip
+[note] route-band platform scope
+        leading=true -> asserted the leading branch (the lane is the drag surface); only the host's own branch runs here — the other platform's assertions ride the runners that render it
+[note] surfaces probed
+        analytics-panel: 7 control(s), 0 swallowed sample(s) now, 2 without this surface's own opt-out, overlay {"x":0,"y":20,"w":900,"h":860}, region 375 entr(ies) (5 drag, 370 no-drag)
+        usage-panel: 3 control(s), 0 swallowed sample(s) now, 0 without this surface's own opt-out, overlay {"x":66,"y":350,"w":768,"h":199}, region 30 entr(ies) (5 drag, 25 no-drag)
+        info-panel: 2 control(s), 0 swallowed sample(s) now, 1 without this surface's own opt-out, overlay {"x":0,"y":44,"w":900,"h":813}, region 167 entr(ies) (5 drag, 162 no-drag)
+        command-palette: 10 control(s), 0 swallowed sample(s) now, 0 without this surface's own opt-out, overlay {"x":130,"y":213,"w":640,"h":475}, region 130 entr(ies) (5 drag, 125 no-drag)
+        sidebar-sheet: 17 control(s), 0 swallowed sample(s) now, 5 without this surface's own opt-out, overlay {"x":0,"y":0,"w":260,"h":900}, region 117 entr(ies) (5 drag, 112 no-drag)
+[PASS] no process from this run outlived its boot
+
+frames: hit-zones-analytics-dark.png, hit-zones-info-dark.png, hit-zones-palette-dark.png, hit-zones-sidebar-sheet-dark.png, hit-zones-usage-dark.png
+frames directory: /Users/damian/.local-operator/sessions/67f8b21daa75/scratchpad/evidence-staging/after-900/frames
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-68803/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-68803 (the frames are also in --out)
+
+ALL CHECKS PASSED

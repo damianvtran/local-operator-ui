@@ -902,6 +902,15 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"modelCatalogueFocusRestampNote",
 	/*
+	 * And `childReaderScrollControlRestampNote`, on the same terms as the two
+	 * above: it states this file's own pair for the child reader's
+	 * scroll-to-bottom control. The change it records re-stamped both trees and
+	 * re-pointed every note in this list, because a re-stamp moves the pair they
+	 * all bind, and it rewrote no frame of the sweep - so a reader is owed the
+	 * two values it does bind and the reason no still was owed.
+	 */
+	"childReaderScrollControlRestampNote",
+	/*
 	 * This branch's own: it states the pair an earlier fold re-derived, and is held
 	 * to the pair this file ships rather than read as history.
 	 */
@@ -1089,6 +1098,16 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"foldOntoFd19adc9d9Note",
 	/*
+	 * The overlay hit-zones fix's own: it states this file's pair for the change
+	 * that gives every portalled surface the no-drag opt-out, so it is held to
+	 * that pair rather than read as history. The change moves BOTH trees (the
+	 * rule and the five primitives under `src/`, the `hit-zones` scene and its
+	 * source-contract test under `scripts/`) and takes NO swept frame - its
+	 * evidence is a new set of PNGs and run logs that no supplementary set
+	 * declares - so the reader is owed the pair AND the reason no still was.
+	 */
+	"overlayDragZonesRestampNote",
+	/*
 	 * AND THIS LANE'S OWN, for the sub-view top inset (the operator's report of
 	 * 2026-09-26, "for sub-views like the settings page, the sidebar and view
 	 * doesn't go all the way to the top"): it states the pair THIS FILE SHIPS as
@@ -1103,20 +1122,6 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"subviewInsetRestampNote",
 	/*
-	 * THIS CHANGE'S OWN: it re-stamps the pass that made the chat header's
-	 * identity slot the controls it describes (the team and the agent menus,
-	 * the rename pencil) and re-captured its own eleven states - so ITS
-	 * SUBJECT IS THIS FILE'S BINDING (the pair the file ships), and a reader
-	 * is owed the check rather than the prose.
-	 */
-	"headerIdentityRestampNote",
-	/*
-	 * AND THIS FOLD'S OWN: its subject IS this file's binding (the pair the
-	 * folded tree produces), so a reader is owed the check rather than the
-	 * prose - the same case foldOntoFd19adc9d9Note is in the list for.
-	 */
-	"foldOnto093a329a4dNote",
-	/*
 	 * And `goalDesignRoundTwoNote`, this branch's own record: it carries the pair the
 	 * judged-goals design-round-2 pass re-derived, so it is the entry later re-stamps
 	 * have to re-point. It joins this list under the union rule rather than replacing
@@ -1125,11 +1130,33 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"goalDesignRoundTwoNote",
 	/*
+	 * THIS CHANGE'S OWN: it re-stamps the pass that made the chat header's
+	 * identity slot the controls it describes (the team and the agent menus,
+	 * the rename pencil) and re-captured its own eleven states - so ITS
+	 * SUBJECT IS THIS FILE'S BINDING (the pair the file ships), and a reader
+	 * is owed the check rather than the prose.
+	 */
+	"headerIdentityRestampNote",
+
+	/*
+	 * AND THIS FOLD'S OWN: its subject IS this file's binding (the pair the
+	 * folded tree produces), so a reader is owed the check rather than the
+	 * prose - the same case foldOntoFd19adc9d9Note is in the list for.
+	 */
+	"foldOnto093a329a4dNote",
+
+	/*
 	 * AND THIS FOLD'S OWN: its subject IS this file's binding (the pair the
 	 * folded tree produces), so a reader is owed the check rather than the
 	 * prose - the same case foldOnto093a329a4dNote is in the list for.
 	 */
 	"foldOnto9d3e68ddf6Note",
+	/*
+	 * AND THIS FOLD'S OWN: its subject IS this file's binding (the pair the
+	 * folded tree produces), so a reader is owed the check rather than the
+	 * prose - the same case foldOnto093a329a4dNote is in the list for.
+	 */
+	"foldOnto22c0fcd4fdNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1554,20 +1581,6 @@ const BRANCH_RECORDS = [
 	 */
 	"foldOntoFd19adc9d9Note",
 	/*
-	 * And this fold's own, beside the lane's sub-view record: the union the
-	 * merge resolved, so a later fold that resolved this file from either side
-	 * alone would drop the statement of what was carried from the other.
-	 */
-	"subviewInsetRestampNote",
-	"foldOnto093a329a4dNote",
-	/*
-	 * And THIS CHANGE'S: the record of the pass that made the chat header's
-	 * identity slot its own controls and captured their eleven states. It is
-	 * listed for the reason the list exists - a fold that resolved this file
-	 * from main's copy would drop the only statement of which two trees moved
-	 * and which frames are the change's own.
-	 */
-	"headerIdentityRestampNote",
 	/*
 	 * Grown by the judged-goals (`feat/goal-done-history`) pass, which wrote four
 	 * top-level records - `goalDoneRestampNote` and `goalDoneFoldRestampNote` from
@@ -1581,10 +1594,46 @@ const BRANCH_RECORDS = [
 	"goalDoneFramePassNote",
 	"goalDesignRoundTwoNote",
 	/*
+	 * And the child-reader scroll-control pass's four records, this branch's own:
+	 * `childReaderScrollControlFoldNote` and `childReaderScrollControlRestampNote`
+	 * from its fold and its re-stamps, `childReaderScrollControlRoundOneNote` and
+	 * `childReaderScrollControlRoundTwoNote` from its review rounds. A fold that
+	 * starts from main's copy drops them without a word, which is this list's
+	 * whole subject - and the records test is what fails first (agent review
+	 * round 5, R5-1: the list had not been extended for this pass).
+	 */
+	"childReaderScrollControlFoldNote",
+	"childReaderScrollControlRestampNote",
+	"childReaderScrollControlRoundOneNote",
+	"childReaderScrollControlRoundTwoNote",
+	/*
+	 * And this fold's own, beside the lane's sub-view record: the union the
+	 * merge resolved, so a later fold that resolved this file from either side
+	 * alone would drop the statement of what was carried from the other.
+	 */
+	"subviewInsetRestampNote",
+
+	"foldOnto093a329a4dNote",
+
+	/*
+	 * And THIS CHANGE'S: the record of the pass that made the chat header's
+	 * identity slot its own controls and captured their eleven states. It is
+	 * listed for the reason the list exists - a fold that resolved this file
+	 * from main's copy would drop the only statement of which two trees moved
+	 * and which frames are the change's own.
+	 */
+	"headerIdentityRestampNote",
+
+	/*
 	 * And this fold's own: the union the merge resolved, registered beside the
 	 * lane's judged-goals records for the reason the list exists.
 	 */
 	"foldOnto9d3e68ddf6Note",
+	/*
+	 * And this fold's own: the union the merge resolved, registered beside the
+	 * child-reader records for the reason the list exists.
+	 */
+	"foldOnto22c0fcd4fdNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
