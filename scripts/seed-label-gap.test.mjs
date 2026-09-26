@@ -281,7 +281,22 @@ const LABEL_HOLD_MARK_MS = sessionModule.LABEL_HOLD_MARK_MS ?? 0;
  */
 const COMMENT_TEXT = /\/\*[\s\S]*?\*\/|\/\/[^\n]*/g;
 const MARK_ON_SUMMARY_HOLD =
-	/summaryHold\s*\?\s*\(\s*<span[^>]*data-label-hold="true"/s;
+	/summaryHold\s*\?\s*\(\s*(?:<>\s*)?<span[^>]*data-label-hold="true"/s;
+/*
+ * ROUND 6 (UX round 4, U7): the spoken state must ride in the SAME branch as the
+ * mark. That is the whole of the guard - a word left on the blank branch would
+ * announce "pending" on every row that is merely waiting, and one lifted out of
+ * both branches would announce it on rows whose hold never outlived the threshold,
+ * which the case above spends its second arm pinning from the state side.
+ *
+ * The MARK pattern above gained an optional `<>` in the same change, and it is a
+ * widening of the spelling rather than of the rule: the branch now holds two spans
+ * (the glyph and the word), so the fragment is what the branch looks like. What the
+ * pattern still forbids is the thing it was written for - `data-label-hold` on the
+ * settled side of the ternary.
+ */
+const SPOKEN_PENDING_ON_SUMMARY_HOLD =
+	/summaryHold\s*\?\s*\(\s*<>\s*<span[^>]*data-label-hold="true"(?:(?!<\/>)[\s\S])*?<span className=\{cn\("sr-only"\)\}>pending<\/span>\s*<\/>/;
 const TITLE_SUPPRESSED_WHILE_HELD =
 	/title=\{summaryHold\s*\?\s*undefined\s*:\s*summaryText\}/;
 /*
@@ -3060,6 +3075,11 @@ test("the mark's own markup, the constant's reader and the prop's guard are all 
 		row,
 		MARK_ON_SUMMARY_HOLD,
 		"the row's own mark is gated on the summaryHold prop and carries data-label-hold, so the census a rig takes is a census of this cue",
+	);
+	assert.match(
+		row,
+		SPOKEN_PENDING_ON_SUMMARY_HOLD,
+		"and the marked cell SPELLS THE STATE OUT for a reader who cannot see the glyph (UX round 4, U7: an `aria-hidden` ellipsis left the row cue-less for the whole hold - 49.9 s on a wedged owner, 25.0 s on the refusing route), in the same branch so the blank cell announces nothing",
 	);
 	assert.match(
 		row,

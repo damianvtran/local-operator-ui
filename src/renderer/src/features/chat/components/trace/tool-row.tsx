@@ -674,13 +674,37 @@ export const ToolRow = ({
 					 * It resolves to the command, or to the stand-in at the terminal release
 					 * (`labelOwed`), exactly as the blank did.
 					 */
-					<span
-						className="text-ink-dim"
-						data-label-hold="true"
-						aria-hidden={true}
-					>
-						…
-					</span>
+					/*
+					 * The glyph is `aria-hidden` and the SPELLED-OUT STATE rides beside it, which is
+					 * this row's own idiom for a mark that says something (`OUTCOME_LABEL`'s
+					 * `sr-only` word): a glyph is not pronounceable, but the pending state is a fact
+					 * the row is the only carrier of, and a reader who cannot see it otherwise hears
+					 * an empty cell for the whole hold - 49.9 s on a wedged owner, 25.0 s on the
+					 * refusing route (UX round 4, U7).
+					 *
+					 * WHY IT IS INSIDE THIS BRANCH AND NOT A LIVE REGION. The word exists only while
+					 * the mark stands, so nothing announces on the rows that are merely blank before
+					 * the threshold, and the release takes the word away with the mark - no stale
+					 * claim survives either transition. Deliberately NOT `aria-live`: the mark's
+					 * arrival is one event for a whole hold batch (26 rows in the reported
+					 * conversation, all in the same frame), so a live region here would announce 26
+					 * times at the instant of the threshold - the "not repeatedly" failure rather
+					 * than its fix. A batch-level announcement ("N labels pending", once per hold)
+					 * belongs at the transcript, not at the row; it is not added here.
+					 * Real reading, stated rather than implied: the row is not a live region today,
+					 * so a reader hears the state when they reach the row - the same way they hear
+					 * "succeeded" - not pushed at them when it begins.
+					 */
+					<>
+						<span
+							className="text-ink-dim"
+							data-label-hold="true"
+							aria-hidden={true}
+						>
+							…
+						</span>
+						<span className={cn("sr-only")}>pending</span>
+					</>
 				) : (
 					summaryText
 				)}

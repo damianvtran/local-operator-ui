@@ -933,6 +933,14 @@ const STAMP_BINDING_NOTES = [
 	 * values it binds and the reason the stills did not move.
 	 */
 	"gapLivenessRestampNote",
+	/*
+	 * AND THIS BRANCH'S OWN, for the word the marked cell now spells out (UX round 4,
+	 * U7), and it belongs here for the list's own reason: the word lives under `src/`,
+	 * the two cases that pin it live under `scripts/`, and neither re-shoots a frame,
+	 * so a reader is owed the two values it binds and the reason the stills did not
+	 * move.
+	 */
+	"markSpokenRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
