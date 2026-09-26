@@ -1,6 +1,6 @@
 {
   "backend": "http://127.0.0.1:8080",
-  "out": "/Users/damian/.local-operator/sessions/293257bf2ce2/scratchpad/rig/interrupt4",
+  "out": "/Users/damian/.local-operator/sessions/293257bf2ce2/scratchpad/rig/interrupt5",
   "steps": [
     {
       "step": "bridge",
@@ -21,7 +21,7 @@
     },
     {
       "step": "capabilities",
-      "value": "{\"desktop_contract\":1,\"desktop_available\":true,\"desktop_auth\":\"bearer\",\"features\":{\"auth\":1,\"settings\":1,\"commands\":2,\"catalogues\":1,\"profile_catalogue\":1,\"team_catalogue\":1,\"session_catalogue\":3,\"session_catalogue_page\":1,\"session_search\":1,\"draft_preview\":1,\"draft_selection\":1,\"lifecycle\":1,\"completion_ack\":1,\"completion_ack_bulk\":1,\"notification_contract\":1,\"mcp\":1,\"mcp_auth\":1,\"mcp_catalog\":1,\"radient\":1,\"session_variables\":1,\"subagent_transcript\":1,\"subagent_trajectory\":1,\"session_move\":2,\"frontend_replace\":1,\"diagnostics\":1,\"desktop_feed\":1,\"desktop_presence\":1,\"session_interrupt\":1,\"session_pins\":1,\"session_archive\":1,\"session_delete\":1,\"tunnel\":1,\"references\":1}}"
+      "value": "{\"desktop_contract\":1,\"desktop_available\":true,\"desktop_auth\":\"bearer\",\"features\":{\"auth\":1,\"settings\":1,\"commands\":2,\"catalogues\":1,\"profile_catalogue\":1,\"team_catalogue\":1,\"session_catalogue\":3,\"session_catalogue_page\":1,\"session_search\":1,\"draft_preview\":1,\"draft_selection\":1,\"session_draft_warm\":1,\"lifecycle\":1,\"completion_ack\":1,\"completion_ack_bulk\":1,\"notification_contract\":1,\"mcp\":1,\"mcp_auth\":1,\"mcp_catalog\":1,\"radient\":1,\"session_variables\":1,\"subagent_transcript\":1,\"subagent_trajectory\":1,\"session_move\":2,\"frontend_replace\":1,\"diagnostics\":1,\"desktop_feed\":1,\"desktop_presence\":1,\"session_interrupt\":1,\"session_pins\":1,\"session_archive\":1,\"session_delete\":1,\"tunnel\":1,\"references\":1}}"
     },
     {
       "step": "dictation.live",
@@ -136,7 +136,7 @@
         }
       ],
       "at": {
-        "sinceFlipMs": 225
+        "sinceFlipMs": 222
       },
       "graceMs": 500
     },
@@ -148,8 +148,8 @@
       },
       "owner": "div|not-reserved",
       "at": {
-        "beforeSinceFlipMs": 298,
-        "afterSinceFlipMs": 301
+        "beforeSinceFlipMs": 296,
+        "afterSinceFlipMs": 297
       },
       "after": {
         "recording": false,
@@ -252,8 +252,8 @@
         },
         "owner": "div|not-reserved",
         "at": {
-          "beforeSinceFlipMs": 298,
-          "afterSinceFlipMs": 301
+          "beforeSinceFlipMs": 296,
+          "afterSinceFlipMs": 297
         },
         "after": {
           "recording": false,
@@ -278,7 +278,7 @@
         }
       ],
       "at": {
-        "sinceFlipMs": 1908
+        "sinceFlipMs": 1901
       }
     },
     {
@@ -322,7 +322,7 @@
       ],
       "rowGap": 4,
       "at": {
-        "sinceFlipMs": 1908
+        "sinceFlipMs": 1901
       }
     },
     {
@@ -527,7 +527,7 @@
         }
       ],
       "at": {
-        "sinceFlipMs": 240
+        "sinceFlipMs": 247
       },
       "graceMs": 500
     },
@@ -554,7 +554,7 @@
         }
       ],
       "at": {
-        "sinceFlipMs": 1236
+        "sinceFlipMs": 1247
       }
     },
     {
@@ -821,17 +821,17 @@
     },
     {
       "step": "settle.timeline",
-      "changes": 76,
-      "sampledMs": 10751,
+      "changes": 74,
+      "sampledMs": 10687,
       "samples": [
         {
-          "t": 5536,
+          "t": 5529,
           "stop": false,
           "slot": false,
           "placeholder": "Ask anything. @ adds files, / runs commands"
         },
         {
-          "t": 5603,
+          "t": 5636,
           "stop": true,
           "slot": false,
           "placeholder": "Steer the agent. Enter sends now · Esc stops"
@@ -843,19 +843,19 @@
           "placeholder": "Type your own answer…"
         },
         {
-          "t": 5959,
+          "t": 5970,
           "stop": false,
           "slot": true,
           "placeholder": "Ask anything. @ adds files, / runs commands"
         },
         {
-          "t": 6459,
+          "t": 6469,
           "stop": false,
           "slot": false,
           "placeholder": "Ask anything. @ adds files, / runs commands"
         },
         {
-          "t": 8606,
+          "t": 8605,
           "stop": false,
           "slot": true,
           "placeholder": null
@@ -867,109 +867,97 @@
           "placeholder": "Ask anything. @ adds files, / runs commands"
         },
         {
-          "t": 10566,
+          "t": 10560,
           "stop": false,
           "slot": true,
           "placeholder": null
         },
         {
-          "t": 11821,
+          "t": 11817,
           "stop": true,
           "slot": false,
           "placeholder": null
         },
         {
-          "t": 12055,
+          "t": 12043,
           "stop": false,
           "slot": true,
           "placeholder": null
         },
         {
-          "t": 13390,
+          "t": 13387,
           "stop": false,
           "slot": false,
           "placeholder": "Ask anything. @ adds files, / runs commands"
         },
         {
-          "t": 14349,
+          "t": 14352,
           "stop": true,
           "slot": false,
           "placeholder": "Steer the agent. Enter sends now · Esc stops"
         },
         {
-          "t": 14363,
+          "t": 14360,
           "stop": true,
           "slot": false,
           "placeholder": "Type your own answer…"
         },
         {
-          "t": 14577,
+          "t": 14573,
           "stop": true,
           "slot": false,
           "placeholder": "Steer the agent. Enter sends now · Esc stops"
         },
         {
-          "t": 14588,
+          "t": 14585,
           "stop": false,
           "slot": true,
           "placeholder": "Ask anything. @ adds files, / runs commands"
         },
         {
-          "t": 14979,
+          "t": 14936,
           "stop": true,
           "slot": false,
           "placeholder": "Steer the agent. Enter sends now · Esc stops"
         },
         {
-          "t": 14989,
+          "t": 14976,
+          "stop": false,
+          "slot": true,
+          "placeholder": "Ask anything. @ adds files, / runs commands"
+        },
+        {
+          "t": 15478,
+          "stop": false,
+          "slot": false,
+          "placeholder": "Ask anything. @ adds files, / runs commands"
+        },
+        {
+          "t": 15585,
+          "stop": true,
+          "slot": false,
+          "placeholder": "Steer the agent. Enter sends now · Esc stops"
+        },
+        {
+          "t": 15603,
           "stop": true,
           "slot": false,
           "placeholder": "Type your own answer…"
         },
         {
-          "t": 15013,
+          "t": 15709,
           "stop": true,
           "slot": false,
           "placeholder": "Steer the agent. Enter sends now · Esc stops"
         },
         {
-          "t": 15038,
+          "t": 15717,
           "stop": false,
           "slot": true,
           "placeholder": "Ask anything. @ adds files, / runs commands"
         },
         {
-          "t": 15536,
-          "stop": false,
-          "slot": false,
-          "placeholder": "Ask anything. @ adds files, / runs commands"
-        },
-        {
-          "t": 15645,
-          "stop": true,
-          "slot": false,
-          "placeholder": "Steer the agent. Enter sends now · Esc stops"
-        },
-        {
-          "t": 15656,
-          "stop": true,
-          "slot": false,
-          "placeholder": "Type your own answer…"
-        },
-        {
-          "t": 15778,
-          "stop": true,
-          "slot": false,
-          "placeholder": "Steer the agent. Enter sends now · Esc stops"
-        },
-        {
-          "t": 15787,
-          "stop": false,
-          "slot": true,
-          "placeholder": "Ask anything. @ adds files, / runs commands"
-        },
-        {
-          "t": 16287,
+          "t": 16216,
           "stop": false,
           "slot": false,
           "placeholder": "Ask anything. @ adds files, / runs commands"
@@ -982,17 +970,17 @@
       "what": "the settle observer saw too little of the run to attribute anything with it",
       "timeline": {
         "step": "settle.timeline",
-        "changes": 76,
-        "sampledMs": 10751,
+        "changes": 74,
+        "sampledMs": 10687,
         "samples": [
           {
-            "t": 5536,
+            "t": 5529,
             "stop": false,
             "slot": false,
             "placeholder": "Ask anything. @ adds files, / runs commands"
           },
           {
-            "t": 5603,
+            "t": 5636,
             "stop": true,
             "slot": false,
             "placeholder": "Steer the agent. Enter sends now · Esc stops"
@@ -1004,19 +992,19 @@
             "placeholder": "Type your own answer…"
           },
           {
-            "t": 5959,
+            "t": 5970,
             "stop": false,
             "slot": true,
             "placeholder": "Ask anything. @ adds files, / runs commands"
           },
           {
-            "t": 6459,
+            "t": 6469,
             "stop": false,
             "slot": false,
             "placeholder": "Ask anything. @ adds files, / runs commands"
           },
           {
-            "t": 8606,
+            "t": 8605,
             "stop": false,
             "slot": true,
             "placeholder": null
@@ -1028,109 +1016,97 @@
             "placeholder": "Ask anything. @ adds files, / runs commands"
           },
           {
-            "t": 10566,
+            "t": 10560,
             "stop": false,
             "slot": true,
             "placeholder": null
           },
           {
-            "t": 11821,
+            "t": 11817,
             "stop": true,
             "slot": false,
             "placeholder": null
           },
           {
-            "t": 12055,
+            "t": 12043,
             "stop": false,
             "slot": true,
             "placeholder": null
           },
           {
-            "t": 13390,
+            "t": 13387,
             "stop": false,
             "slot": false,
             "placeholder": "Ask anything. @ adds files, / runs commands"
           },
           {
-            "t": 14349,
+            "t": 14352,
             "stop": true,
             "slot": false,
             "placeholder": "Steer the agent. Enter sends now · Esc stops"
           },
           {
-            "t": 14363,
+            "t": 14360,
             "stop": true,
             "slot": false,
             "placeholder": "Type your own answer…"
           },
           {
-            "t": 14577,
+            "t": 14573,
             "stop": true,
             "slot": false,
             "placeholder": "Steer the agent. Enter sends now · Esc stops"
           },
           {
-            "t": 14588,
+            "t": 14585,
             "stop": false,
             "slot": true,
             "placeholder": "Ask anything. @ adds files, / runs commands"
           },
           {
-            "t": 14979,
+            "t": 14936,
             "stop": true,
             "slot": false,
             "placeholder": "Steer the agent. Enter sends now · Esc stops"
           },
           {
-            "t": 14989,
+            "t": 14976,
+            "stop": false,
+            "slot": true,
+            "placeholder": "Ask anything. @ adds files, / runs commands"
+          },
+          {
+            "t": 15478,
+            "stop": false,
+            "slot": false,
+            "placeholder": "Ask anything. @ adds files, / runs commands"
+          },
+          {
+            "t": 15585,
+            "stop": true,
+            "slot": false,
+            "placeholder": "Steer the agent. Enter sends now · Esc stops"
+          },
+          {
+            "t": 15603,
             "stop": true,
             "slot": false,
             "placeholder": "Type your own answer…"
           },
           {
-            "t": 15013,
+            "t": 15709,
             "stop": true,
             "slot": false,
             "placeholder": "Steer the agent. Enter sends now · Esc stops"
           },
           {
-            "t": 15038,
+            "t": 15717,
             "stop": false,
             "slot": true,
             "placeholder": "Ask anything. @ adds files, / runs commands"
           },
           {
-            "t": 15536,
-            "stop": false,
-            "slot": false,
-            "placeholder": "Ask anything. @ adds files, / runs commands"
-          },
-          {
-            "t": 15645,
-            "stop": true,
-            "slot": false,
-            "placeholder": "Steer the agent. Enter sends now · Esc stops"
-          },
-          {
-            "t": 15656,
-            "stop": true,
-            "slot": false,
-            "placeholder": "Type your own answer…"
-          },
-          {
-            "t": 15778,
-            "stop": true,
-            "slot": false,
-            "placeholder": "Steer the agent. Enter sends now · Esc stops"
-          },
-          {
-            "t": 15787,
-            "stop": false,
-            "slot": true,
-            "placeholder": "Ask anything. @ adds files, / runs commands"
-          },
-          {
-            "t": 16287,
+            "t": 16216,
             "stop": false,
             "slot": false,
             "placeholder": "Ask anything. @ adds files, / runs commands"
@@ -1139,7 +1115,7 @@
       }
     }
   ],
-  "session": "c21f4aba0f02",
+  "session": "e441895b5019",
   "claims": [],
   "viewport": "{\"w\":1380,\"h\":900,\"dpr\":2}"
 }

@@ -58,3 +58,9 @@ remediation's other changes (R16's composer debris, R15's pins) do not render
 here either. The delta between the two sets is the composer's notice, by
 design, and both states are kept so a reader can see the before and after
 rather than one of them.
+
+`fix-head/` was re-shot once more after the fold onto `601a9d5032` (the tip this
+ships on): the same scenes, `run.log` again ALL CHECKS PASSED (24/24). The
+fold's resolution of the composer region keeps this branch's structure and
+carries main's approval semantics into the dock, which none of these states
+photographs - the frames were re-taken rather than argued across the fold.

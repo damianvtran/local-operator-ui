@@ -35,15 +35,22 @@
  *
  * ## An approval gate
  *
- * `kind: "approval"` has no options and is answered by `yes`/`no` in the
- * composer; it docks the same way with its own hint, because it is the same
- * blocked-on-you state.
+ * `kind: "approval"` carries the client's own pair (`APPROVAL_OPTIONS` — the wire
+ * sends no options for this kind) and docks the same way with its own hint,
+ * because it is the same blocked-on-you state. The pair arrived with main's
+ * approval-options change and was CARRIED INTO THIS CARRIER BY THE FOLD ONTO
+ * `601a9d5032`: the transcript no longer draws the gate at all (§F1), so a
+ * resolution that dropped main's arm would have silently removed buttons the
+ * shipped app offers. The hint's sentence names the three exits the arm creates
+ * — the pair, the composer's typed path (yes/no and the ordininals the rows
+ * print), and Escape with its message-box scope.
  */
 
 import { cn } from "@shared/lib/utils";
 import { MessageCircleQuestion } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { PendingDesktopGate } from "../../../../../../shared/desktop-session-contract";
+import { APPROVAL_OPTIONS } from "../../ask-answer";
 import { focusComposer } from "../../composer-field";
 import { MarkdownRenderer } from "../markdown-renderer";
 import { AskOptions } from "./ask-options";
@@ -78,20 +85,37 @@ export const questionKeyOf = (gate: {
  * and the composer below because the options are never guaranteed exhaustive. A
  * `secret` ask carries no options, so its hint is the composer alone.
  */
-export const questionDockHint = (gate: PendingDesktopGate): string => {
+export const questionDockHint = (
+	gate: PendingDesktopGate,
+	held = false,
+): string => {
 	if (gate.kind === "approval")
 		/*
-		 * Escape means two things on this screen and the hint says which is which:
-		 * inside the card it hides the card; in the message box it is still the
-		 * turn's interrupt (`use-interrupt-on-escape.ts`), which is the only way to
-		 * decline an approval without typing. §F1 now names BOTH scopes: the clause
-		 * that used to say Esc is never "stop" while a card is docked was the half
-		 * that moved when design round 2's D26 found this sentence advertising a key
-		 * the contract denied (see SPEC.md §F1, "Esc HAS TWO SCOPES WHILE A CARD IS
-		 * DOCKED"). If this copy or the composer's ladder changes, §F1 moves with
-		 * them.
+		 * THE THREE EXITS, IN THE ORDER A READER MEETS THEM (main's approval-options
+		 * copy, carried into this carrier by the fold): the pair this card now draws
+		 * above the sentence, the composer's typed path - yes/no kept from when it
+		 * was the only path, plus the `1`/`2` the rows print, which resolve through
+		 * `approvalAnswerValue` because digits that work but are unnameable are the
+		 * trap the ask hint records (UX round 1, U6) - and Escape, which aborts the
+		 * WHOLE turn. On a paired backend that predates the control Escape does
+		 * nothing, and the composer says so while the turn runs; the card stays
+		 * unconditional rather than reading the capability a second time.
+		 *
+		 * AND THE HELD SENTENCE IS THE COMPOSER'S (agent review round 1, finding 7;
+		 * UX round 1, U2/U3): while a refused or unconfirmed answer holds the card,
+		 * its options are disabled for the rest of the card's life, so the
+		 * buttons-first sentence would instruct the two controls that cannot send.
+		 *
+		 * THE ESCAPE CLAUSE KEEPS THIS DOCK'S SCOPE (design round 2, D26): Escape
+		 * means two things while a card is docked - inside the card it hides the
+		 * card; in the message box it is the turn's interrupt - and this sentence is
+		 * where both scopes are named (§F1). Main's card could say "press Escape to
+		 * stop the turn" bare because collapsing does not exist there; here the
+		 * scopes are the point, so the clause is the dock's own.
 		 */
-		return "Reply yes or no below, or press Escape in the message box to stop the turn.";
+		return held
+			? "Answer from the composer instead: type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn."
+			: "Choose Approve or Deny above, type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.";
 	const prefix =
 		gate.question_total > 1
 			? `Question ${gate.question_index + 1} of ${gate.question_total}. `
@@ -130,6 +154,13 @@ export const QuestionDock = ({
 
 	const busy = answering || answer !== null;
 	const sending = answering || Boolean(answer?.sending);
+	/*
+	 * The rows this card draws: an ask's model-authored set, or the client's own
+	 * approval pair (main's arm, carried into this carrier by the fold). ONE
+	 * expression for both, because the eyebrow below, the option band and the
+	 * hint's digit clause all have to count the same set.
+	 */
+	const options = gate.kind === "approval" ? APPROVAL_OPTIONS : gate.options;
 	const content = gate.detail
 		? `**${gate.title}**\n\n${gate.detail}`
 		: gate.title;
@@ -204,11 +235,16 @@ export const QuestionDock = ({
 					<p className="font-medium text-ink-muted text-meta">
 						{sending ? "Sending your answer…" : "The agent is asking"}
 					</p>
-					{gate.kind === "ask" && gate.options.length > 0 && (
+					{/*
+					 * The ordinal eyebrow, for every kind whose rows print digits: an ask's
+					 * model-authored set, and the approval pair this card now draws. The `1-2`
+					 * matches the rows' own ordinals (`AskOptions`) and the sentence below.
+					 */}
+					{options.length > 0 && (
 						<p aria-hidden={true} className="ml-auto text-ink-dim text-meta">
-							{gate.options.length === 1
+							{options.length === 1
 								? "1 to answer"
-								: `1-${Math.min(gate.options.length, 9)} to answer`}
+								: `1-${Math.min(options.length, 9)} to answer`}
 						</p>
 					)}
 				</div>
@@ -224,7 +260,29 @@ export const QuestionDock = ({
 						onAnswer={(label) => onAnswer?.(label)}
 					/>
 				)}
-				<p className="text-ink-dim text-meta">{questionDockHint(gate)}</p>
+				{/*
+				 * An approval gets the same affordance as an ask, and the SAME component
+				 * (main's approval-options arm, carried into this carrier by the fold):
+				 * `AskOptions` holds the contrast triple, the focus handling, the aria and
+				 * the busy semantics as one unit, so a forked copy would be a second
+				 * implementation of a control the design contract tests by the triple it
+				 * is built from. The options are the client's own pair - the wire carries
+				 * none for an approval - and the label a press submits is what
+				 * `approvalVerdict` turns into the boolean the request carries. `busy` is
+				 * the ask arm's own expression, so the two option bands hold identically
+				 * across the whole window between a press and the gate moving.
+				 */}
+				{gate.kind === "approval" && (
+					<AskOptions
+						options={APPROVAL_OPTIONS}
+						requestId={gate.request_id}
+						busy={busy}
+						onAnswer={(label) => onAnswer?.(label)}
+					/>
+				)}
+				<p className="text-ink-dim text-meta">
+					{questionDockHint(gate, Boolean(answer?.refused))}
+				</p>
 				{/*
 				 * A refused answer lands on the card it was pressed on, outcome first,
 				 * and the card stays held so it cannot be pressed twice (QA round 1, Q3;
