@@ -5734,6 +5734,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						 * (review round 2, NIT).
 						 */
 						role={composerAlert.polite ? "status" : "alert"}
+						/*
+						 * The rig's address for this row (`scripts/renderer-driver.mjs`'s
+						 * `connection-drop` scene reads it, and waits on its clearance after a
+						 * reconnect): the same structural-marker rule as `data-undelivered`.
+						 */
+						data-composer-notice
 						className={cn(
 							CHAT_MEASURE,
 							"flex flex-col gap-1 text-body-sm",
@@ -7454,18 +7460,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * containing it (`measured-suggestion-stack.tsx`).
 				 */}
 				<div ref={setFoot} data-lo-composer-foot="" className="w-full">
-					=======
-					{/*
-					 * With nothing connected there is no question to ask yet: the card
-					 * below says what to do, and a headline inviting a prompt the app
-					 * cannot run pointed the two strongest signals on the screen in
-					 * opposite directions (design round 1 D5).
-					 */}
-					{showEmptyChatPrompt && !noProvider ? (
-						<h2 className="text-center text-ink text-title">
-							What can I help you with today?
-						</h2>
-					) : null}
 					{inputContent}
 				</div>
 			</div>

@@ -46,7 +46,10 @@ import {
 } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { pairingHasRemedy } from "../../../../../shared/backend-status";
-import { DESKTOP_MESSAGE_BUDGET_BYTES } from "../../../../../shared/desktop-contract";
+import {
+	DESKTOP_MESSAGE_BUDGET_BYTES,
+	DESKTOP_REFUSAL_CODE,
+} from "../../../../../shared/desktop-contract";
 import {
 	asideAskBlockedReason,
 	askAside,
@@ -272,6 +275,15 @@ function SessionPanel({
 	// `panelCapabilities` above: the query is cached (`useServerHealth`'s staleTime),
 	// so this is a store read and not a second request.
 	const { data: serverHealth } = useServerHealth();
+	/*
+	 * WHETHER THE STRIP OWNS THE CONNECTION VOICE, read for the composer's notice
+	 * below - the same predicate the sidebar's paragraphs and the pane's catalogue
+	 * error yield to (R11), so the four surfaces cannot drift about which of them
+	 * is speaking.
+	 */
+	const stripSpeaksConnection = useStripSpeaksConnection(
+		serverHealth?.online === false,
+	);
 	/*
 	 * A RECOVERED SERVER RE-SUBSCRIBES THE OPEN CONVERSATION (UX round 2, U19;
 	 * QA round 2's Q3).
@@ -2325,6 +2337,73 @@ function SessionPanel({
 		(state) => state.inputByConversation[identity]?.lateDelivered,
 	);
 	/*
+	 * §F3's PER-MESSAGE FAILURE STATE, addressed here because this page owns both
+	 * halves of it: the row it is about (the draft's open claim, or the
+	 * `undelivered` record a reconnect left behind) and the two doors its controls
+	 * use - this component's `send`, and the composer handle.
+	 *
+	 * `recordId` is the address: the echo's own id, which is the id the durable
+	 * row carries if the message ever lands, so the line can only attach to the
+	 * row it is about. Whether that row is ON SCREEN is the pane's question
+	 * (`chat-content.tsx` resolves it against the transcript), and a claim whose
+	 * echo is not painted - the panel that will paint it has not mounted - is
+	 * exactly the case where the composer still speaks.
+	 */
+	const deliveryTurn = !draft
+		? null
+		: unresolvedRequestId !== undefined && draft.submittedText !== undefined
+			? {
+					recordId: unresolvedRequestId,
+					text: draft.submittedText,
+					attachments: draft.submittedAttachments ?? [],
+				}
+			: (draft.undelivered ?? null);
+	const undeliveredTurn = deliveryTurn
+		? {
+				recordId: deliveryTurn.recordId,
+				onSendAgain: () => {
+					void send(deliveryTurn.text, [...deliveryTurn.attachments]);
+				},
+				onEdit: () => {
+					/*
+					 * The failure's own return path already put the payload in the box; this
+					 * is the same act reached from the message. `returnPayload` merges under
+					 * the user's typing and refuses while an attempt is in flight, so
+					 * pressing Edit after the text came home cannot double the message.
+					 */
+					useConversationInputStore.getState().returnPayload(identity, {
+						text: deliveryTurn.text,
+						attachments: [...deliveryTurn.attachments],
+						replies: [],
+					});
+					input.current?.focusInput();
+				},
+			}
+		: null;
+	/*
+	 * THE CLAIM ENDED, SO THE COMPOSER'S SENTENCE ABOUT IT ENDS (§F2's last
+	 * bullet, UX round 1's U5b; restored with §F3's surface).
+	 *
+	 * Two things end a claim: the user's own press, and the SERVER's answer
+	 * arriving through a reconnect. The first clears this component's state in
+	 * its own handler; the second cannot - the re-subscribe writes the STORE,
+	 * and this page only learns about it on the next render. Without this the
+	 * notice kept stating a failure over a claim the server had already
+	 * answered.
+	 */
+	const heldClaimLive =
+		draft?.admissionAttempted === true && draft.pending !== true;
+	const heldClaimWasLive = useRef(heldClaimLive);
+	useEffect(() => {
+		if (heldClaimWasLive.current && !heldClaimLive) {
+			setSendError(null);
+			setSendErrorCode(undefined);
+			setSendErrorRetry(false);
+			setSendErrorMuted(false);
+		}
+		heldClaimWasLive.current = heldClaimLive;
+	}, [heldClaimLive]);
+	/*
 	 * AND THE LOCK'S OWN ANSWER GOES WHEN THE FLIGHT DOES (review round 4, M2 - also
 	 * QA's Q4-1, the designer's D11 and UX's U16).
 	 *
@@ -2382,57 +2461,77 @@ function SessionPanel({
 		rowRetry: draft?.errorRetry,
 		lateDelivered,
 	});
-	const composerSendError = notice
-		? {
-				...notice,
-				actions: undefined,
-				/*
-				 * The composer's Send, which is the whole of Retry: pressing it replays
-				 * an unchanged payload under its own request id, and sends an edited one
-				 * as a new message. See `admitChatDraft`'s replay rule.
-				 *
-				 * FOCUS COMES BACK TO THE BOX, because the control that was pressed is
-				 * about to unmount: with the press accepted, the notice goes and the
-				 * button that owned the focus goes with it, and the browser hands the
-				 * caret to the document - measured in review round 1 (U5) as the next
-				 * Enter collapsing a sidebar section, because the caret had landed on the
-				 * sidebar's own toggle. Clear did this and Retry did not.
-				 */
-				onRetry: () => {
-					input.current?.submitNow();
-					input.current?.focusInput();
-				},
-				onClear: () => {
-					if (identity)
-						useConversationInputStore.getState().clearComposer(identity);
-					clearError();
-					if (draftIdentity)
-						useCanonicalSessionsStore.getState().discardDraft(draftIdentity);
-					input.current?.focusInput();
-				},
-				/*
-				 * Editing dismisses the notice, and must clear the STORE's copy too -
-				 * `draft.error` outlives local state, so clearing only `sendError` would
-				 * leave the message hanging over text the user has since fixed, which is
-				 * the exact defect being replaced.
-				 *
-				 * It clears the SENTENCE and nothing else. The claim
-				 * (`admissionAttempted`, the request id, the pinned payload) is a fact
-				 * about a request that may already be executing on the owner, and a
-				 * keystroke is not evidence about that: an edit followed by Send is a
-				 * NEW message under a new id (the replay rule), and if the first one
-				 * landed after all, the reconciliation says so.
-				 */
-				onDismiss: () => {
-					clearError();
-					if (draftIdentity && draft)
-						useCanonicalSessionsStore.getState().updateDraft(draftIdentity, {
-							error: undefined,
-							errorCode: undefined,
-						});
-				},
-			}
-		: undefined;
+	/*
+	 * THE COMPOSER STANDS DOWN WHILE THE STRIP SPEAKS, for the one failure the
+	 * strip's own sentence already covers (§F2's "one root cause, one Retry"; the
+	 * same rule the sidebar's caption follows, D30). RESTORED WITH §F3
+	 * (agent review round 4's R17, reconciling the connection-drop rig's
+	 * single-voice checks with the composer rework): the failed message states its
+	 * own fate ON ITS ROW (`Not delivered · Send again · Edit`) and its payload is
+	 * in the box, so a "Couldn't reach Local Operator" sentence here was a second
+	 * telling of the strip's own fact, with a second Retry repeating the row's
+	 * `Send again`. Withheld for the TRANSPORT failure only - the arm whose
+	 * sentence restates the connection. A refusal the daemon itself answered (the
+	 * credential strip's state, D29's scene) keeps the composer's notice, because
+	 * that sentence is about the app's attempt rather than the connection's
+	 * absence, and its `Retry` is that state's own remedy.
+	 */
+	const composerSendError =
+		notice &&
+		!(
+			stripSpeaksConnection &&
+			notice.code === DESKTOP_REFUSAL_CODE.transportFailed
+		)
+			? {
+					...notice,
+					actions: undefined,
+					/*
+					 * The composer's Send, which is the whole of Retry: pressing it replays
+					 * an unchanged payload under its own request id, and sends an edited one
+					 * as a new message. See `admitChatDraft`'s replay rule.
+					 *
+					 * FOCUS COMES BACK TO THE BOX, because the control that was pressed is
+					 * about to unmount: with the press accepted, the notice goes and the
+					 * button that owned the focus goes with it, and the browser hands the
+					 * caret to the document - measured in review round 1 (U5) as the next
+					 * Enter collapsing a sidebar section, because the caret had landed on the
+					 * sidebar's own toggle. Clear did this and Retry did not.
+					 */
+					onRetry: () => {
+						input.current?.submitNow();
+						input.current?.focusInput();
+					},
+					onClear: () => {
+						if (identity)
+							useConversationInputStore.getState().clearComposer(identity);
+						clearError();
+						if (draftIdentity)
+							useCanonicalSessionsStore.getState().discardDraft(draftIdentity);
+						input.current?.focusInput();
+					},
+					/*
+					 * Editing dismisses the notice, and must clear the STORE's copy too -
+					 * `draft.error` outlives local state, so clearing only `sendError` would
+					 * leave the message hanging over text the user has since fixed, which is
+					 * the exact defect being replaced.
+					 *
+					 * It clears the SENTENCE and nothing else. The claim
+					 * (`admissionAttempted`, the request id, the pinned payload) is a fact
+					 * about a request that may already be executing on the owner, and a
+					 * keystroke is not evidence about that: an edit followed by Send is a
+					 * NEW message under a new id (the replay rule), and if the first one
+					 * landed after all, the reconciliation says so.
+					 */
+					onDismiss: () => {
+						clearError();
+						if (draftIdentity && draft)
+							useCanonicalSessionsStore.getState().updateDraft(draftIdentity, {
+								error: undefined,
+								errorCode: undefined,
+							});
+					},
+				}
+			: undefined;
 
 	return (
 		<div className="flex h-full min-h-0 flex-col">
@@ -2645,6 +2744,7 @@ function SessionPanel({
 					 */
 					paneHasSession={paneHasSession}
 					sendError={composerSendError}
+					undelivered={undeliveredTurn}
 					/*
 					 * The session's readings, straight off the canonical stream, and
 					 * the SAME dispatcher the composer submits through. Routing the

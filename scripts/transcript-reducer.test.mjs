@@ -1179,14 +1179,17 @@ test("a frame stating nothing still refuses to move a running clock", () => {
  * `Esc` kills the call in flight, and the process that died reports a REAL
  * error - so classifying that row is a client decision over a client-held
  * fact (`stoppedTurns`), consumed when the end event arrives
- * (`transcript-reducer.ts`'s `killedByUserStop`). Two shapes of row reach the
- * test, and they need different evidence: one this viewer watched run (a
- * clock to compare against the press), and one it only ever met as it
- * settled - born from the end event, no clock on any layer - which is the
- * shape that used to paint `failed` in danger beside the turn's own Stopped
- * line. That second case is U15, and it is decision-bearing rather than
- * mechanical: between `failed` and `stopped` the stop fact wins, because it
- * is the reading that does not accuse the user's own agent.
+ * (`transcript-reducer.ts`'s `killedByUserStop`). Three shapes of row reach
+ * the test, and they need different evidence: one this viewer watched run (a
+ * clock to compare against the press); and two it never watched start - the
+ * row it only ever met as it SETTLED (born from the end event, no clock on
+ * any layer), which is the shape U15 was filed on; and the row it saw
+ * ANNOUNCED but never started, which is what the press actually kills on this
+ * daemon: a `[bash:N]` call PARKS at the approval gate, so no
+ * `tool_execution_start` precedes an `Esc` (agent review round 4's Q5, where
+ * the rig's three failing runs met UX's measurement). Both no-clock shapes
+ * used to paint `failed` in danger beside the turn's own Stopped line; the
+ * stop fact now speaks for both.
  * ---------------------------------------------------------------------- */
 
 /** The press, one minute into a call that started at `expectedStart`. */
@@ -1224,6 +1227,40 @@ test("an end event that seeds the row during a stopped turn reads stopped, not f
 		false,
 		"and the danger ink is cleared, because the outcome ladder reads this first",
 	);
+});
+
+test("a row announced but never started, killed by the stop, reads stopped (the parked call)", () => {
+	/*
+	 * THE THIRD SHAPE (agent review round 4's Q5, reconciling the interrupt rig's
+	 * three failing runs with UX's measurement). On this daemon a `[bash:N]` call
+	 * PARKS at the approval gate: the viewer sees the announced row, no
+	 * `tool_execution_start` (the call has not run), and the press kills it before
+	 * it ever starts. `current` EXISTS with `startedAt === null` and the end event
+	 * does not seed it - the case both of U15's arms refused, which painted
+	 * `failed` in danger beneath the turn's own Stopped line, the same accusation
+	 * U15 exists to remove.
+	 */
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_call_compose",
+			tool_call_id: "c-parked",
+			tool_name: "bash",
+			argument_bytes: 28,
+		},
+		ARRIVAL,
+	);
+	assert.equal(
+		ranRow(state, "c-parked").startedAt,
+		null,
+		"the parked row has no clock: nothing has run yet",
+	);
+	state = applyEvent(state, endFrame("c-parked"), ARRIVAL + 1_000, {
+		userStoppedAt: STOP_PRESSED_AT,
+	});
+	const row = ranRow(state, "c-parked");
+	assert.equal(row.stopped, true, "the stop is the parked row's verdict too");
+	assert.equal(row.isError, false, "and the danger ink is cleared with it");
 });
 
 test("the same birth with no standing stop fact keeps its danger row", () => {

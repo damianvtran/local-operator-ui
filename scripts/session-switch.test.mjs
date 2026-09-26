@@ -92,6 +92,7 @@ export const desktopResult = request => globalThis.__switchRequest(request);`,
 					contents: `export const echoPendingUser = () => {};
 export const retractPendingUser = () => {};
 export const retractLocalEcho = () => "retracted";
+export const peekLocalEcho = () => "unseen";
 export const discardPendingEchoes = () => {};`,
 					loader: "js",
 					resolveDir: process.cwd(),

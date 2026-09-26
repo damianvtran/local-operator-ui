@@ -164,7 +164,15 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 	];
 
 	return (
-		<div data-sidebar-view-menu className="w-64">
+		/*
+		 * THE MENU FILLS THE PANEL IT IS MOUNTED IN, and that is the fix rather than a
+		 * default (design round 4's D31): the root carried its own `w-64` while
+		 * `PopoverContent` draws a `w-60` card, so every row's trailing control - the
+		 * selection tick, the sections' move chevrons - was painted past the card's
+		 * own edge, on the dimmed backdrop, in all twelve palettes. One owner for the
+		 * width: the panel sets it, this fills it, and the two cannot diverge again.
+		 */
+		<div data-sidebar-view-menu className="w-full">
 			{group("Group by")}
 			{/*
 			 * A `fieldset`, not a `div role="group"`: it IS the semantic element for a
@@ -272,31 +280,45 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 							 * The reorder pair, at the panel's trailing edge, labelled
 							 * in the row's own name so a screen reader hears which
 							 * section moves and which way.
+							 *
+							 * NOT OFFERED ON THE TWO ENTITY ROWS (UX round 3's U23). The
+							 * pair's rule is that a control which moves a section moves it
+							 * WHERE THE READER SEES IT, and the entity region draws its two
+							 * sections in fixed source order (Agents above Teams - the
+							 * region's own anatomy, like the header and the search field
+							 * above it). An arrow there moved only the stored order and this
+							 * menu: offered, pressed, and inert in the region it named. The
+							 * honest form of the rule is not to draw it, so the entity rows
+							 * keep the switch and the tick and no pair.
 							 */}
-							<Button
-								variant="ghost"
-								size="icon-sm"
-								data-sidebar-view-move={`${key}:up`}
-								aria-label={`Move ${SIDEBAR_SECTION_LABEL[key]} up`}
-								disabled={at <= 0 || !shown.includes(key)}
-								className="size-6"
-								onClick={() => onView(moveSection(view, key, -1))}
-							>
-								<ChevronUp aria-hidden="true" className="size-3" />
-							</Button>
-							<Button
-								variant="ghost"
-								size="icon-sm"
-								data-sidebar-view-move={`${key}:down`}
-								aria-label={`Move ${SIDEBAR_SECTION_LABEL[key]} down`}
-								disabled={
-									!shown.includes(key) || at < 0 || at >= shown.length - 1
-								}
-								className="size-6"
-								onClick={() => onView(moveSection(view, key, 1))}
-							>
-								<ChevronDown aria-hidden="true" className="size-3" />
-							</Button>
+							{!isEntitySection(key) && (
+								<>
+									<Button
+										variant="ghost"
+										size="icon-sm"
+										data-sidebar-view-move={`${key}:up`}
+										aria-label={`Move ${SIDEBAR_SECTION_LABEL[key]} up`}
+										disabled={at <= 0 || !shown.includes(key)}
+										className="size-6"
+										onClick={() => onView(moveSection(view, key, -1))}
+									>
+										<ChevronUp aria-hidden="true" className="size-3" />
+									</Button>
+									<Button
+										variant="ghost"
+										size="icon-sm"
+										data-sidebar-view-move={`${key}:down`}
+										aria-label={`Move ${SIDEBAR_SECTION_LABEL[key]} down`}
+										disabled={
+											!shown.includes(key) || at < 0 || at >= shown.length - 1
+										}
+										className="size-6"
+										onClick={() => onView(moveSection(view, key, 1))}
+									>
+										<ChevronDown aria-hidden="true" className="size-3" />
+									</Button>
+								</>
+							)}
 						</div>
 					);
 				})}
