@@ -1,0 +1,36 @@
+<!doctype html>
+<!--
+  Harness page for the child reader's scroll behaviour.
+
+  What it exists for: the run pane's child reader is the parent transcript's
+  grammar in a second pane, and the operator reports that it does not FOLLOW
+  the tail, offers no scroll-to-bottom control, and reaches only the parent's
+  composer band for the affordance it does have. Those are claims about a
+  scroll container's behaviour over TIME — which row is at the top when rows
+  arrive, and where the viewport sits after they land — so they are measured
+  and photographed rather than argued from the source.
+
+  WHICH HALF IS REAL. The reader, its loader and cadence, the reducer, the
+  transcript component, the paging policy, the stylesheet and the browser's own
+  scroll anchoring are all shipped code. The transport is shipped too: the page
+  calls `desktopResult` -> `desktopRequest` -> the same-origin `POST /__desktop`
+  branch that browser development uses. What is scripted is the BACKEND behind
+  it — `child-reader-scroll-evidence.vite.mjs` answers one op,
+  `subagents.transcript`, from a list of rows the driver grows a batch at a
+  time. So this rig proves the RENDERER's half of the reader's scroll
+  behaviour; the wire half (a real child process writing a real file, relayed
+  as `subagent_progress`) is `docs/evidence/chat-run-panel-live/`'s subject.
+
+  Not part of the app or the test suite: a capture and measurement surface,
+  started by `node scripts/child-reader-scroll-evidence.mjs`.
+-->
+<html lang="en" data-theme="localOperatorDark">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Child reader — tail follow and the affordance</title>
+	</head>
+	<body>
+		<div id="root"></div>
+		<script type="module" src="./child-reader-scroll-evidence.tsx"></script>
+	</body>
+</html>

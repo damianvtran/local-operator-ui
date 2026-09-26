@@ -26,6 +26,12 @@ export const PopoverContent = forwardRef<
 	<PopoverPrimitive.Portal>
 		<PopoverPrimitive.Content
 			ref={ref}
+			/*
+			 * Not a drag surface; see the marker's note in `dialog.tsx` and the rule it is
+			 * read by in `styles/index.css`. A popover anchored near the top of the window
+			 * paints over the chrome strip, and its controls have to stay clickable there.
+			 */
+			data-titlebar-no-drag=""
 			align={align}
 			sideOffset={sideOffset}
 			className={cn(
