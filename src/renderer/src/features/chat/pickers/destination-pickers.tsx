@@ -25,6 +25,26 @@ import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
 import { Textarea } from "@shared/components/ui/textarea";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+
+/**
+ * The model this session is RUNNING, for a dialog whose job is not to offer the
+ * model it already runs.
+ *
+ * `frontend ?? heldFrontend`, THE SAME VALUE THE READINGS STRIP PAINTS. During a
+ * reconnect the authoritative `frontend` is NULL by design -- the hook drops it
+ * so the replacement stream's frames are treated as replay -- and the readings
+ * the pane keeps are the held copy. Reading `canonical.frontend` alone here made
+ * a HELD pick open with no current row marked and its cursor on catalogue row 0,
+ * so Enter POSTed whichever model sorted first: a model this session had never
+ * run, painted as pending by the strip (UX round 1, U1, a blocker). The same
+ * press in the live phase marks the running row and re-picks the model already
+ * in use, so the two phases disagreed about what a press means.
+ *
+ * Stated once rather than at each call site: two dialogs ask this question and a
+ * second copy is how they would come to disagree about what "current" is.
+ */
+const runningFrontend = (canonical: CanonicalSessionHandle) =>
+	canonical.frontend ?? canonical.heldFrontend;
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -812,7 +832,8 @@ export const ModelPicker: FC<PickerContext> = ({
 	const persist = useOperation();
 	const [persistDefault, setPersistDefault] = useState(false);
 	const selected =
-		canonical.frontend?.effective_model ?? canonical.frontend?.selected_model;
+		runningFrontend(canonical)?.effective_model ??
+		runningFrontend(canonical)?.selected_model;
 	/*
 	 * Both halves must be non-empty to name a model, and the guard is the shared
 	 * selector rather than a local expression: a session frame can carry a spec
@@ -1345,8 +1366,8 @@ export const EffortPicker: FC<PickerContext> = ({
 		: null;
 	const model = draft
 		? draftModel
-		: (canonical.frontend?.effective_model ??
-			canonical.frontend?.selected_model);
+		: (runningFrontend(canonical)?.effective_model ??
+			runningFrontend(canonical)?.selected_model);
 	const rungs = draft
 		? effortLadder(draftModel)
 		: (entities.data?.entities ?? []).map((row) => row.value);
