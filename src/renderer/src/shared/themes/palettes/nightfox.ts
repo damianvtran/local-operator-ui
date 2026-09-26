@@ -73,6 +73,11 @@ export const nightfox: ThemeDefinition = {
 		elevated: "#243449",
 		sunken: "#131A24",
 
+		// The user block's fill: ΔE00 4.04 off the canvas, where `surface` alone
+		// measures 3.54 - a step toward `elevated` to clear the role's 4.0 floor,
+		// which the block carries because the fill IS its boundary.
+		messageSurface: "#212e40",
+
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
 		 * step of THIS palette's own panel at the panel's own hue; they used to be
