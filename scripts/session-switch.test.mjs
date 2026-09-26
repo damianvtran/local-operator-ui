@@ -890,6 +890,33 @@ test("the cached paint's rows and caption are withheld in the component, not onl
 	);
 });
 
+test("a switch re-windows in the same render, and never from an effect again", () => {
+	/*
+	 * The operator's report named this stagger too: "things seem to load at
+	 * different times". As an effect the window reset landed one commit AFTER the
+	 * new transcript's first paint - measured on the cached-switch sequence, the
+	 * first painted frame held all 106 fetched rows and the next commit trimmed it
+	 * (scroller extent 8,315.6 -> 4,864.2 px, all of it above the fold). The reset
+	 * is a render-phase adjustment now; both halves are pinned here so the effect
+	 * shape cannot come back green - the render-phase one has to exist, and the
+	 * `useEffect(..., [sessionId])` reset has to stay gone.
+	 */
+	const transcript = readFileSync(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		"utf8",
+	);
+	assert.match(
+		transcript,
+		/if \(windowSession !== sessionId\) \{[\s\S]{0,160}setWindowSize\(WINDOW\)/,
+		"the window reset is decided during render, in the switch's own commit",
+	);
+	assert.doesNotMatch(
+		transcript,
+		/useEffect\(\(\) => \{\s*setWindowSize\(WINDOW\);\s*\}, \[sessionId\]\)/,
+		"the reset must not move back into an effect on sessionId",
+	);
+});
+
 test("the loading indicator stays one small quiet mark", () => {
 	// The operator's shape for this state (2026-09-26): "a small loading indicator
 	// that is non-intrusive". Three pulse bars were the old shape and a regression
