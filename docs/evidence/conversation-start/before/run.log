@@ -1,13 +1,11 @@
-[build] current: assets 2026-09-26T17:27:19.198Z >= sources 2026-09-26T17:20:26.880Z
-[note] abandoned scratch trees
-        2 seen, 0 owned by a live pid (kept), 2 younger than 30m (kept), 0 removed
+[build] current: assets 2026-09-26T20:52:49.508Z >= sources 2026-09-26T20:52:23.273Z
 [note] csp for this run's backend
-        already widened for http://127.0.0.1:7391
+        out/renderer/index.html: http://127.0.0.1:7391 added to frame-src and media-src (build output only; src/ untouched)
 local-operator-ui renderer driver
   repo          /Users/damian/local-operator-ui-worktrees/conversation-start-before
-  scratch       /tmp/lo-renderer-driver-99588
-  frames        /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before
-  app cwd       /tmp/lo-renderer-driver-99588/cwd   (scratch: the repo's .env is not read)
+  scratch       /tmp/lo-renderer-driver-13986
+  frames        /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r1-shoot/before
+  app cwd       /tmp/lo-renderer-driver-13986/cwd   (scratch: the repo's .env is not read)
   backend url   http://127.0.0.1:7391   (--backend: a live isolated backend this run owns)
   electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/conversation-start-before/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
   electron pin  44.3.0   (package.json optionalDependencies)
@@ -43,26 +41,26 @@ local-operator-ui renderer driver
   "focused": false,
   "minimized": false,
   "frames": [],
-  "outDir": "/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before"
+  "outDir": "/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r1-shoot/before"
 }
 [PASS] window mode is headless and the window is never shown or focused
 [note] second conversation
-        {"status":200,"body":{"status":200,"message":"Desktop session result.","result":{"binding":{"agent":null,"team":null},"session_id":"17d713e8cfd8","replayed":false}},"id":"17d713e8cfd8"}
+        {"status":200,"body":{"status":200,"message":"Desktop session result.","result":{"binding":{"agent":null,"team":null},"session_id":"151c52e429cd","replayed":false,"identity":null,"warming":false,"admitted":true,"detail":"","model":{"applied":false,"detail":""}}},"id":"151c52e429cd"}
 [PASS] the chat route shows the empty state with a composer
 [note] focus at the press
         {"tag":"TEXTAREA","editable":true}
 [note] frame
-        {"label":"conversation-start-1380x900-press","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before/conversation-start-1380x900-press.png","bytes":217001,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":3,"stable":true,"toastFree":true,"toastWaitMs":16}
+        {"label":"conversation-start-1380x900-press","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r1-shoot/before/conversation-start-1380x900-press.png","bytes":231542,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":5,"stable":true,"toastFree":true,"toastWaitMs":96}
 [note] press
-        {"read":{"rows":0,"rowIds":[],"rowTops":[],"scrollTop":0,"overflow":0,"composer":"Summarise yesterday's QA run.","alert":"","controls":[]},"line":null}
+        {"read":{"rows":0,"rowIds":[],"rowTops":[],"scrollTop":0,"overflow":0,"composer":"Summarise yesterday's QA run.","alert":"","controls":[],"undelivered":null},"line":null,"sidebar":{"draftRow":"draft:4ccecdb4-e2cc-4d3f-aa3f-df43a09a1add","draftLabel":"Draft: Summarise yesterday's QA run.","sessionRows":7}}
 [note] before-arm
         the press frame on the pre-change tree: the text is still the composer's and there is no row (the state the change removes)
 [note] frame
-        {"label":"conversation-start-1380x900-flip","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before/conversation-start-1380x900-flip.png","bytes":199300,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":8,"stable":false,"toastFree":false,"toastWaitMs":33}
+        {"label":"conversation-start-1380x900-flip","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r1-shoot/before/conversation-start-1380x900-flip.png","bytes":198807,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":8,"stable":false,"toastFree":false,"toastWaitMs":95}
 [note] frame
-        {"label":"conversation-start-1380x900-flip-plus-1s","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before/conversation-start-1380x900-flip-plus-1s.png","bytes":213838,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":8,"stable":false,"toastFree":false,"toastWaitMs":67}
+        {"label":"conversation-start-1380x900-flip-plus-1s","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r1-shoot/before/conversation-start-1380x900-flip-plus-1s.png","bytes":211618,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":8,"stable":false,"toastFree":false,"toastWaitMs":63}
 [note] flip
-        {"read":{"rows":1,"rowIds":["6b8dcd54-3c1a-45e7-a6dd-0698e7680220"],"rowTops":[678],"scrollTop":0,"overflow":0,"composer":"","alert":"","controls":[]},"line":{"phase":"waiting for the agent","seconds":0},"flipped":true}
+        {"read":{"rows":1,"rowIds":["ed0c38fd-6630-435d-80d1-68175fccd03c"],"rowTops":[678],"scrollTop":0,"overflow":0,"composer":"","alert":"","controls":[],"undelivered":null},"line":{"phase":"waiting for the agent","seconds":0},"sidebar":{"draftRow":null,"draftLabel":null,"sessionRows":8},"flipped":true}
 [note] before-arm
         the flip frame on the pre-change tree: any row here arrived only with the create's answer, and the composer's own copy of the text went with it
 [note] tap control
@@ -70,45 +68,48 @@ local-operator-ui renderer driver
 [note] focus at the press
         {"tag":"TEXTAREA","editable":true}
 [note] frame
-        {"label":"conversation-start-1380x900-failure","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before/conversation-start-1380x900-failure.png","bytes":244648,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":10}
+        {"label":"conversation-start-1380x900-failure","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r1-shoot/before/conversation-start-1380x900-failure.png","bytes":247584,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":5,"stable":true,"toastFree":true,"toastWaitMs":15}
 [note] failure
-        {"read":{"rows":3,"rowIds":["6b8dcd54-3c1a-45e7-a6dd-0698e7680220","82b13bcdcd6749858f7b485b8a42b086","24e0986c-c0e7-4322-aa96-363d83b665b1"],"rowTops":[481,555,631],"scrollTop":0,"overflow":0,"composer":"A refusal the owner raises after the paint.","alert":"Couldn't confirm your message was sent. Sending it again is safe.RetryClear","controls":["Send again","Edit"]},"refused":true}
+        {"read":{"rows":3,"rowIds":["ed0c38fd-6630-435d-80d1-68175fccd03c","0d24c84134f24ff3a635de7b3b2e7794","683150f8-bea9-41bc-92c6-d096c3dfe7b5"],"rowTops":[481,555,631],"scrollTop":0,"overflow":0,"composer":"A refusal the owner raises after the paint.","alert":"Couldn't confirm your message was sent. Sending it again is safe.RetryClear","controls":["Send again","Edit"],"undelivered":"Not deliveredSend againEdit"},"refused":true}
 [note] before-arm
         the failure frame on the pre-change tree: the payload comes back to the composer (the #495 decision this change supersedes for post-paint failures)
 [note] frame
-        {"label":"conversation-start-1380x900-reload","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before/conversation-start-1380x900-reload.png","bytes":210530,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":19}
+        {"label":"conversation-start-1380x900-reload","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r1-shoot/before/conversation-start-1380x900-reload.png","bytes":210177,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":8}
 [note] reload
-        {"read":{"rows":2,"rowIds":["6b8dcd54-3c1a-45e7-a6dd-0698e7680220","82b13bcdcd6749858f7b485b8a42b086"],"rowTops":[632,706],"scrollTop":0,"overflow":0,"composer":"A refusal the owner raises after the paint.","alert":"","controls":[]},"back":false}
+        {"read":{"rows":2,"rowIds":["ed0c38fd-6630-435d-80d1-68175fccd03c","0d24c84134f24ff3a635de7b3b2e7794"],"rowTops":[632,706],"scrollTop":0,"overflow":0,"composer":"A refusal the owner raises after the paint.","alert":"","controls":[],"undelivered":null},"back":false,"line":null}
 [note] before-arm
         the reload frame on the pre-change tree: the message is not in the transcript at all
 [note] first conversation
-        "b59541d18fb7"
+        "1a698e9b89f3"
 [note] tap hold
-        200 {"count":1,"ms":12000}
+        200 {"count":1,"ms":60000}
 [note] focus at the press
         {"tag":"TEXTAREA","editable":true}
 [note] frame
-        {"label":"conversation-start-1380x900-away-press","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before/conversation-start-1380x900-away-press.png","bytes":258634,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":5,"stable":true,"toastFree":true,"toastWaitMs":10292}
+        {"label":"conversation-start-1380x900-away-press","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r1-shoot/before/conversation-start-1380x900-away-press.png","bytes":251584,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":8,"stable":false,"toastFree":false,"toastWaitMs":1991}
 [note] away press
-        {"rows":3,"rowIds":["6b8dcd54-3c1a-45e7-a6dd-0698e7680220","82b13bcdcd6749858f7b485b8a42b086","f7b4babd-ab8b-4126-89cc-097e6d162148"],"rowTops":[458,533,608],"scrollTop":0,"overflow":0,"composer":"A refusal the owner raises after the paint.A second message, in flight while the run leaves.","alert":"Couldn't reach Local Operator. Your message may not have been sent.RetryClear","controls":["Send again","Edit"]}
+        {"rows":3,"rowIds":["ed0c38fd-6630-435d-80d1-68175fccd03c","0d24c84134f24ff3a635de7b3b2e7794","7e8cccdf-4e26-407b-889f-466113099ce0"],"rowTops":[506,580,656],"scrollTop":0,"overflow":0,"composer":"","alert":"","controls":[],"undelivered":null}
 [note] sidebar (away)
-        {"rows":13,"text":"TODAY\nMark all 4 read\nUnseen completion, unread\nHello from the mock provider\nnow\n, just now\nUnseen completion, unread\nHello from the mock provider\nnow\n, just now\nUnseen completion, unread\nHello from the mock provider\n1m\n, 1 minute ago\nUnseen completion, unread\nHello from the mock provider\n2m\n, 2 minutes ago\nRecent\nUntitled chat\n, just now\nRecent\nUntitled chat\n2m\n, 2 minutes ago"}
+        {"rows":17,"text":"TODAY\nMark all 4 read\nUnseen completion, unread\nHello from the mock provider\nnow\n, just now\nUnseen completion, unread\nHello from the mock provider\n1m\n, 1 minute ago\nUnseen completion, unread\nHello from the mock provider\n4m\n, 4 minutes ago\nUnseen completion, unread\nHello from the mock provider\n5m\n, 5 minutes ago\nReady\nUntitled chat\n1m\n, 1 minute ago\nRecent\nUntitled chat\n, just now\nRecent\nUntitled c"}
 [note] frame
-        {"label":"conversation-start-1380x900-away","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before/conversation-start-1380x900-away.png","bytes":234449,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":3,"stable":true,"toastFree":true,"toastWaitMs":28}
+        {"label":"conversation-start-1380x900-away","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r1-shoot/before/conversation-start-1380x900-away.png","bytes":235941,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":23}
 [note] frame
-        {"label":"conversation-start-1380x900-return","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before/conversation-start-1380x900-return.png","bytes":243476,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":12}
+        {"label":"conversation-start-1380x900-return","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r1-shoot/before/conversation-start-1380x900-return.png","bytes":252334,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":8,"stable":false,"toastFree":false,"toastWaitMs":3267}
 [note] return
-        {"read":{"rows":3,"rowIds":["6b8dcd54-3c1a-45e7-a6dd-0698e7680220","82b13bcdcd6749858f7b485b8a42b086","f7b4babd-ab8b-4126-89cc-097e6d162148"],"rowTops":[514,588,664],"scrollTop":0,"overflow":0,"composer":"A refusal the owner raises after the paint.A second message, in flight while the run leaves.","alert":"","controls":["Send again","Edit"]},"line":null}
+        {"read":{"rows":3,"rowIds":["ed0c38fd-6630-435d-80d1-68175fccd03c","0d24c84134f24ff3a635de7b3b2e7794","7e8cccdf-4e26-407b-889f-466113099ce0"],"rowTops":[506,580,656],"scrollTop":0,"overflow":0,"composer":"","alert":"","controls":[],"undelivered":null},"line":{"phase":"waiting for the agent","seconds":5}}
 [note] before-arm
         the return frame on the pre-change tree: recorded as-is (no pre-session row existed to return to)
-  [renderer] [attention] b59541d18fb7 receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
-    at A5e (file:///Users/damian/local-operator-ui-worktrees/conversation-start-before/out/renderer/assets/index-BJe6pkOB.js:772:97597)
-    at async St (file:///Users/damian/local-operator-ui-worktrees/conversation-start-before/out/renderer/assets/index-BJe6pkOB.js:772:98732)
+  [renderer] [attention] 1a698e9b89f3 receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
+    at A5e (file:///Users/damian/local-operator-ui-worktrees/conversation-start-before/out/renderer/assets/index-CMmRbw6x.js:772:97597)
+    at async St (file:///Users/damian/local-operator-ui-worktrees/conversation-start-before/out/renderer/assets/index-CMmRbw6x.js:772:98732)
+  [renderer] [attention] 1a698e9b89f3 receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
+    at A5e (file:///Users/damian/local-operator-ui-worktrees/conversation-start-before/out/renderer/assets/index-CMmRbw6x.js:772:97597)
+    at async St (file:///Users/damian/local-operator-ui-worktrees/conversation-start-before/out/renderer/assets/index-CMmRbw6x.js:772:98732)
 [PASS] no process from this run outlived its boot
 
 frames: conversation-start-1380x900-away-press.png, conversation-start-1380x900-away.png, conversation-start-1380x900-failure.png, conversation-start-1380x900-flip-plus-1s.png, conversation-start-1380x900-flip.png, conversation-start-1380x900-press.png, conversation-start-1380x900-reload.png, conversation-start-1380x900-return.png
-frames directory: /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before
-app log: /tmp/lo-renderer-driver-99588/app-scene.log
+frames directory: /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r1-shoot/before
+app log: /tmp/lo-renderer-driver-13986/app-scene.log
 scratch removed (--clean)
 
 ALL CHECKS PASSED

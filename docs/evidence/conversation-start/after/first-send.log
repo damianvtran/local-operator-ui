@@ -1,13 +1,11 @@
-[build] current: assets 2026-09-26T17:25:29.389Z >= sources 2026-09-26T17:20:15.112Z
-[note] abandoned scratch trees
-        2 seen, 0 owned by a live pid (kept), 2 younger than 30m (kept), 0 removed
+[build] current: assets 2026-09-26T22:06:14.281Z >= sources 2026-09-26T21:40:03.649Z
 [note] csp for this run's backend
         already widened for http://127.0.0.1:7391
 local-operator-ui renderer driver
   repo          /Users/damian/local-operator-ui-worktrees/conversation-start
-  scratch       /tmp/lo-renderer-driver-94054
-  frames        /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-firstsend
-  app cwd       /tmp/lo-renderer-driver-94054/cwd   (scratch: the repo's .env is not read)
+  scratch       /tmp/lo-renderer-driver-20265
+  frames        /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r1-shoot/after
+  app cwd       /tmp/lo-renderer-driver-20265/cwd   (scratch: the repo's .env is not read)
   backend url   http://127.0.0.1:7391   (--backend: a live isolated backend this run owns)
   electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/conversation-start/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
   electron pin  44.3.0   (package.json optionalDependencies)
@@ -43,19 +41,19 @@ local-operator-ui renderer driver
   "focused": false,
   "minimized": false,
   "frames": [],
-  "outDir": "/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-firstsend"
+  "outDir": "/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r1-shoot/after"
 }
 [PASS] window mode is headless and the window is never shown or focused
 [PASS] the chat route shows the empty state with a composer
 [note] frame
-        {"label":"first-send-1380x900-empty","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-firstsend/first-send-1380x900-empty.png","bytes":193151,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":8}
+        {"label":"first-send-1380x900-empty","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r1-shoot/after/first-send-1380x900-empty.png","bytes":226034,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":8}
 [note] empty state
         {"composer":{"x":500,"y":774,"width":640,"height":110},"chips":{"y":433,"bottom":496,"chips":4}}
 [PASS] the chips sit ABOVE the docked composer (§H)
 [PASS] the composer is docked in the pane's lower half on the empty state
 [PASS] the first message reached the transcript and the empty state is gone
 [note] frame
-        {"label":"first-send-1380x900-sent","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-firstsend/first-send-1380x900-sent.png","bytes":180536,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":8,"stable":false,"toastFree":false,"toastWaitMs":109}
+        {"label":"first-send-1380x900-sent","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r1-shoot/after/first-send-1380x900-sent.png","bytes":201325,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":8,"stable":false,"toastFree":false,"toastWaitMs":91}
 [note] anchor
         {"region":{"top":72,"bottom":766,"height":694},"content":{"top":88,"bottom":204,"height":116},"row":{"top":132,"bottom":174,"height":42},"slot":{"top":88,"bottom":116,"height":28},"overflow":0,"scrollTop":0}
 [PASS] a short transcript is anchored to the TOP of the pane: the row sits in the region's upper half
@@ -63,16 +61,16 @@ local-operator-ui renderer driver
 [PASS] the row sits just under the region's top inset, below the start-of-conversation slot
         row.top 132 region.top 72 slot {"top":88,"bottom":116,"height":28}
 [note] frame
-        {"label":"first-send-1380x900-settled","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-firstsend/first-send-1380x900-settled.png","bytes":195275,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":11}
+        {"label":"first-send-1380x900-settled","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r1-shoot/after/first-send-1380x900-settled.png","bytes":219796,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":3,"stable":true,"toastFree":true,"toastWaitMs":16}
 [note] composer box
         {"before":{"x":500,"y":774,"width":640,"height":110},"after":{"x":500,"y":774,"width":640,"height":110},"settled":{"x":500,"y":774,"width":640,"height":110},"answered":true}
 [PASS] the first send does not move the composer: its box is identical
 [PASS] the agent's answer arrived and the composer is still where it was
 [PASS] no process from this run outlived its boot
 
-frames: first-send-1380x900-empty.png, first-send-1380x900-sent.png, first-send-1380x900-settled.png
-frames directory: /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-firstsend
-app log: /tmp/lo-renderer-driver-94054/app-scene.log
+frames: conversation-start-1380x900-away-press.png, conversation-start-1380x900-away.png, conversation-start-1380x900-dead-create-reload.png, conversation-start-1380x900-dead-create.png, conversation-start-1380x900-failure-before-retry.png, conversation-start-1380x900-failure.png, conversation-start-1380x900-flip-plus-1s.png, conversation-start-1380x900-flip.png, conversation-start-1380x900-press.png, conversation-start-1380x900-reload.png, conversation-start-1380x900-return.png, first-send-1380x900-empty.png, first-send-1380x900-sent.png, first-send-1380x900-settled.png
+frames directory: /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r1-shoot/after
+app log: /tmp/lo-renderer-driver-20265/app-scene.log
 scratch removed (--clean)
 
 ALL CHECKS PASSED
