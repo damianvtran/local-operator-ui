@@ -4260,6 +4260,27 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				}
 				handleKeyDown(event);
 			},
+			/*
+			 * WHAT THIS ARRAY DOES NOT NAME, AND WHAT THAT COSTS (agent review round 1,
+			 * MINOR 3 - recorded rather than fixed). The body now reads `sendRefused` and
+			 * calls `explainRefusedSend`, and the array names neither: `isInputDisabled` is
+			 * listed because the body's own first guard reads it. A provider connected
+			 * while an untouched draft sits in the box can therefore leave a handler built
+			 * for an earlier render still answering with `sendRefused === true`.
+			 *
+			 * THE STALE BRANCH IS A SILENT NO-OP, NOT A LATE SENTENCE, and that is the
+			 * fact the recording understated: Enter is `preventDefault`ed and returns, and
+			 * the sentence the branch raises on its way out is gated by the same pair the
+			 * stale read is wrong about - the notice renders only while
+			 * `(noProvider || noModel) && noProviderHint` - so with a provider now connected
+			 * the hint is set for a notice that draws NOTHING. The reader presses Enter on
+			 * a composer that can send, and the app answers nobody.
+			 *
+			 * WHY IT STAYS OPEN. The omission is pre-existing (the base's inline
+			 * `(noProvider || noModel)` was equally unlisted), and closing it means
+			 * rebuilding this handler on every provider change - a behavioural change of
+			 * its own, with its own review, rather than a tidy-up to fold in here.
+			 */
 			[
 				slash,
 				handleSlashPick,

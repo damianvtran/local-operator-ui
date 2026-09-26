@@ -37,7 +37,10 @@ sign-in the backend will not confirm (`data-verdict="neutral"`), and
 `key-refused-verdict`, the API-key route under a refused verdict, which is the route
 that contradiction survived on. The count above is measured from this directory
 (`ls -d */`), which is the only claim in this file a reader can re-run in one
-command.
+command - and in the re-run's own words the three are the directories
+`panel-refused-verdict`, `panel-succeeded-unconfirmed` and `panel-key-refused-verdict`
+(every directory in this set carries the `panel-` prefix, which is why the state
+names above are the short forms).
 
 These frames come from `scripts/capture-evidence.mjs` driving Storybook, which is
 the committed and re-derivable route. The exact command that wrote them:

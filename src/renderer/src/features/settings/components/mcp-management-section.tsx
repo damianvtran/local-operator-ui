@@ -356,6 +356,49 @@ export const McpManagementSection: FC<{
 
 	const grantRunning = operations.some((op) => op.status === "running");
 
+	/**
+	 * Arm the deferred row move when the row's OWN operation lands (QA round 1, Q1;
+	 * UX round 1, U1).
+	 *
+	 * WHY THIS DOOR NEEDED ARMING AT ALL. Every control a row operates through is
+	 * `disabled={pending}` for the whole of that operation, and a control that becomes
+	 * `disabled` is blurred by the engine - so the caret is on `<body>` from the first
+	 * frame of a Test to its last, and the row's landing in a NEW group (each group is
+	 * its own `<ul>`, so the row is mounted again rather than moved) had no move
+	 * ARMED for the re-stand to be read against: measured on the built app with a real
+	 * stdio MCP server, `document.activeElement` was `<body>` on 25 of 25 samples over
+	 * 6 s (`samplesInsideTheRow: 0`) while the row moved `Available 3 -> Connected 1`,
+	 * with the same signature on a FAILING test as the row moves to `Needs attention`
+	 * (QA round 1, Q1; UX round 1, U1). The rule above is inert with
+	 * nothing armed - `focusHoldStep` is only consulted when a hold exists - so the
+	 * fix is this arm rather than a second rule.
+	 *
+	 * WHY THE ARM IS THE SAME SHAPE AS A DIALOG CLOSE'S. The move is armed with no
+	 * `landedOn`, so the shared effect lands the row's own control (its primary, or its
+	 * menu when it has none) and the hold it leaves behind is what follows the row if
+	 * it re-stands again inside the window. That means the landing happens AFTER the
+	 * operation, which is the whole difference from a dialog close: the control cannot
+	 * hold focus while it is disabled, so "the caret survives its own operation" can
+	 * only mean "the caret is on the row again when the operation lands".
+	 *
+	 * ONLY WHILE NOBODY ELSE HOLDS THE CARET, which is `focusHoldStep`'s own refusal
+	 * stated one level up ("nobody else's focus is taken"), and it is required HERE
+	 * rather than redundant: an operation is seconds long - the app's own failure path
+	 * is 20 s - so unlike a dialog close this arm fires long after the press that
+	 * started it, and a reader who has tabbed into the search field meanwhile must keep
+	 * the caret they moved. A focus move that does not happen is a small thing; one
+	 * that happens over the reader's caret is not (m-4).
+	 */
+	const armRowFocusAfterOperation = (name: string) => {
+		const active = window.document.activeElement;
+		if (active && active !== window.document.body) return;
+		setFocusRow({
+			name,
+			waitForSignIn: false,
+			until: Date.now() + FOCUS_ARM_MS,
+		});
+	};
+
 	const run = async (
 		name: string,
 		key: string,
@@ -377,6 +420,21 @@ export const McpManagementSection: FC<{
 			return null;
 		} finally {
 			setPending(null);
+			/*
+			 * THE OPERATION ARMS THE ROW'S OWN MOVE (QA round 1, Q1 / UX round 1, U1), for
+			 * every action EXCEPT the two that already own one. A removal lands the caret
+			 * on the NEIGHBOURING row that takes the removed one's place
+			 * (`setFocusAfterRemove`, and the row this arm would name is gone by the time
+			 * the hold is read); a sign-out arms the same deferred row move from its
+			 * confirm. Arming here as well would be a second move for one operation, and
+			 * for a removal it would be a move onto a row that no longer exists.
+			 *
+			 * It runs on FAILURE too (`finally`), which is one of the two signatures Q1
+			 * measured: a test that fails moves the row to `Needs attention` - a group
+			 * change like any other - and the caret has to come back with it.
+			 */
+			if (key !== "remove" && key !== "sign_out")
+				armRowFocusAfterOperation(name);
 		}
 	};
 
@@ -734,7 +792,13 @@ export const McpManagementSection: FC<{
 		 * it before restoring, and one idiom for one problem is worth more than two):
 		 * `settled` leaves focus alone because the row has not re-stood, `restore`
 		 * re-applies the move onto the control the row has where it now stands, and
-		 * `drop` gives the move up - past its window, or onto a reader who holds focus.
+		 * `drop` gives the move up - past its window, or because a control of the
+		 * reader's holds the caret. THAT LAST TERM IS NOT "THE READER WENT ANYWHERE"
+		 * (agent review round 1, MINOR 2): a click on non-focusable chrome leaves
+		 * `document.activeElement` on `<body>`, which the rule reads as nobody, so a
+		 * click of that kind does NOT refuse the re-stand - the row the reader was on
+		 * is where their next Tab should continue from. See the module's own note on
+		 * that trade.
 		 */
 		const landedOn = focusRow.landedOn;
 		let until = focusRow.until;

@@ -36,9 +36,24 @@
  * that from becoming the focus-stealing this whole mechanism exists to avoid:
  *
  * - **Nobody else's focus is taken.** A landing is only re-applied while the
- *   document's active element is nobody (`<body>`, or nothing at all) - which is
- *   where a replaced control leaves it. If the reader has tabbed or clicked
- *   anywhere, that is the answer and the move is dropped.
+ *   document's active element is nobody: `<body>`, nothing at all, or the move's
+ *   OWN landed node when the engine is still reporting that detached element as
+ *   active. The moment a control of the reader's holds the caret, that is the
+ *   answer and the move is dropped.
+ *
+ *   WHAT "NOBODY" DOES NOT MEAN, stated because the difference is a behaviour this
+ *   rule INTRODUCES and the first version of this doc claimed otherwise: a reader
+ *   who TABS or CLICKS A CONTROL is covered - the caret moves and the move is
+ *   dropped - but one who clicks NON-FOCUSABLE chrome leaves
+ *   `document.activeElement === body`, which is indistinguishable from the state a
+ *   replaced control leaves, so the move can still be re-applied onto the row after
+ *   such a click. Before this rule the move was consumed when it landed and no click
+ *   could bring it back, so this is new (agent review round 1, MINOR 2). It is the
+ *   deliberate side of the trade: the row the reader was on is where their next Tab
+ *   should continue from, the window below still bounds how long that offer stands,
+ *   and the alternative - treating every `body` as "the reader left" - would drop the
+ *   move in the one state the rule exists for (`<body>` is exactly where a control
+ *   that becomes `disabled` or unmounts leaves the caret).
  * - **The window still bounds the move.** Past `until` the hold is dropped
  *   whatever the nodes say, so a row that keeps re-standing cannot keep a move
  *   alive indefinitely (`m-4`: a focus move that does not happen is a small
@@ -87,6 +102,23 @@ export function focusHoldStep(args: {
 }): FocusHoldStep {
 	if (args.now > args.hold.until) return "drop";
 	if (args.hold.node.isConnected) return "settled";
-	if (args.active && args.active !== args.body) return "drop";
+	/*
+	 * THE MOVE'S OWN LANDED NODE COUNTS AS NOBODY (agent review round 1, MINOR 1).
+	 *
+	 * A control removed from the document is USUALLY reported by the engine as
+	 * `<body>` - that is what the walk measured (`<body>` at 2.8 s) - but nothing
+	 * makes that a property, and a detached element CAN still be the active one.
+	 * When it is, the thing holding focus is the control this move landed on, left
+	 * behind by the very re-stand the rule exists for, so the move is ours to
+	 * re-apply rather than somebody else's to own. Reading it as "somebody else
+	 * holds focus" would return `drop` in exactly the state this rule was written
+	 * for, and leave focus on `<body>` for good - the U21 defect, restored.
+	 */
+	if (
+		args.active &&
+		args.active !== args.body &&
+		args.active !== args.hold.node
+	)
+		return "drop";
 	return args.candidate?.isConnected ? "restore" : "drop";
 }

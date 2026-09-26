@@ -2888,22 +2888,30 @@ test("the dialogs and the row list keep the geometry and the rules the walk meas
 	 * to the control that OPENED it (the form is inline, and its opener is still
 	 * on screen).
 	 *
-	 * COUNTED BY AN ARM SITE'S OWN SIGNATURE, NOT BY `setFocusRow({` (U21). The
-	 * landing write is now a fourth call of that shape, because the move is no
-	 * longer consumed when it lands - it is kept armed with the control it landed on,
-	 * which is what lets it follow a row that is mounted again in another group - so
-	 * a count of the call would have read the fix as a fifth completion. The
-	 * deadline inside the armed object is what a completion sets and nothing else
-	 * does (the re-stand's `until = Date.now() + FOCUS_ARM_MS` assigns a local and
-	 * has no colon), so the count still reddens when a completion is added or one of
-	 * the three is removed - which is the property this pin exists for.
+	 * COUNTED BY AN ARM SITE'S OWN SIGNATURE, NOT BY `setFocusRow({` (U21). That call
+	 * shape occurs FIVE times in this file now - the four arm sites this pin counts
+	 * and the re-stand's own landing write, because the move is no longer consumed
+	 * when it lands (it is kept armed with the control it landed on, which is what
+	 * lets it follow a row that is mounted again in another group) - so a count of the
+	 * call would read the fix as a completion, and the next arm site as a sixth. The
+	 * deadline inside the armed object is what an ARM SITE sets and nothing else does
+	 * (the re-stand's `until = Date.now() + FOCUS_ARM_MS` assigns a local and has no
+	 * colon), so the count still reddens when an arm site is added or one is removed -
+	 * which is the property this pin exists for.
+	 *
+	 * AND THE FOURTH ARM SITE IS THIS BRANCH'S OWN (QA round 1, Q1 / UX round 1, U1):
+	 * the row's OWN operation arms the same move now, because its controls are
+	 * `disabled={pending}` for the operation's whole length and the caret was therefore
+	 * on `<body>` when the row landed in its new group. It is counted here rather than
+	 * excused from the count, so removing it reddens this assertion as well as its own
+	 * pin below.
 	 */
 	const arms = [...section.matchAll(/until: Date\.now\(\) \+ FOCUS_ARM_MS,/g)]
 		.length;
 	assert.equal(
 		arms,
-		3,
-		`the deferred row move is armed by exactly these three completions (found ${arms})`,
+		4,
+		`the deferred row move is armed by exactly these four sites - U18's three completions and the row's own operation (found ${arms})`,
 	);
 	assert.match(
 		addForm,
@@ -3124,6 +3132,21 @@ test("a landed focus move follows the row across its own re-stand (U21)", () => 
 		"and `activeElement` on nothing counts as nobody, not as somebody",
 	);
 	/*
+	 * AND THE ENGINE MAY STILL BE REPORTING THE DETACHED NODE ITSELF AS ACTIVE (agent
+	 * review round 1, MINOR 1). A removed control is USUALLY handed back as `<body>` -
+	 * that is what the walk measured - but nothing makes that a property, and when the
+	 * engine keeps the detached node active the only thing "holding focus" is the move's
+	 * OWN landed control. Reading that as somebody else would drop the move in exactly
+	 * the state this rule exists for and leave focus on `<body>` for good, which is the
+	 * U21 defect restored.
+	 */
+	const detached = node(false);
+	assert.equal(
+		step({ hold: { node: detached, until: 2_000 }, active: detached }),
+		"restore",
+		"the move's own detached node counts as nobody, not as a reader holding focus",
+	);
+	/*
 	 * THE TWO REFUSALS. A reader who holds focus is the answer to where focus
 	 * belongs, and a move whose window has closed is not taken: dropping it leaves
 	 * focus on `<body>`, which is strictly better than a move performed late (m-4).
@@ -3219,5 +3242,58 @@ test("a landed focus move follows the row across its own re-stand (U21)", () => 
 		hold,
 		/landedOn: element,/,
 		"and the move re-arms onto the control the row has now rather than being consumed by landing",
+	);
+	/*
+	 * AND THE ROW'S OWN OPERATION ARMS THE MOVE (QA round 1, Q1; UX round 1, U1).
+	 *
+	 * The rule above is inert with nothing armed - `focusHoldStep` is consulted only when
+	 * a hold exists - and every control a row operates through is `disabled={pending}`
+	 * for the operation's whole length, so a control that becomes `disabled` is blurred
+	 * by the engine. Before this arm the row's own Test therefore left the caret on
+	 * `<body>` for the whole operation AND after it, including the group change that
+	 * replaces the row: measured on the built app, 25 of 25 samples over 6 s with
+	 * `samplesInsideTheRow: 0` (QA round 1, Q1), the same signature on a FAILING test.
+	 *
+	 * THREE THINGS ARE PINNED BECAUSE THEY FAIL DIFFERENTLY: the arm's own two lines (the
+	 * refusal and the deadline), the absence of `landedOn` in it - with a landed control
+	 * preset the shared effect would take the `settled` branch and never perform the
+	 * landing the row needs after its controls re-enable - and the funnel that calls it.
+	 * This is a source pin and is honest about being one: what it cannot see is the
+	 * operation landing, which is QA's live cell.
+	 */
+	const armFrom = section.indexOf(
+		"const armRowFocusAfterOperation = (name: string) => {",
+	);
+	assert.ok(
+		armFrom > 0,
+		"the row's own operation has to arm the move (Q1, U1)",
+	);
+	const arm = section.slice(
+		armFrom,
+		section.indexOf("const run = async (", armFrom),
+	);
+	assert.match(
+		arm,
+		/if \(active && active !== window\.document\.body\) return;/,
+		"the arm refuses to perform over a caret somebody else holds, which `focusHoldStep`'s own refusal states one level up (m-4)",
+	);
+	assert.match(
+		arm,
+		/const active = window\.document\.activeElement;/,
+		"and it asks the page's own caret rather than assuming the one the operation started with",
+	);
+	assert.match(
+		arm,
+		/until: Date\.now\(\) \+ FOCUS_ARM_MS,/,
+		"armed with the same window every other move is armed with, rather than a fourth duration invented here",
+	);
+	assert.ok(
+		!/landedOn/.test(arm),
+		"and armed with NO landed control, so the shared effect performs the landing (a preset would hit `settled` and leave the caret on <body>)",
+	);
+	assert.match(
+		section,
+		/if \(key !== "remove" && key !== "sign_out"\)\s*\n\s*armRowFocusAfterOperation\(name\);/,
+		"`run`'s own settle calls it for every operation whose flow has no move of its own, so a Test that lands arms the hold the operation's group change is read against",
 	);
 });
