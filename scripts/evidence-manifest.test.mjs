@@ -889,6 +889,13 @@ const STAMP_BINDING_NOTES = [
 	 * trees are each that change's own files plus this note's registration here.
 	 */
 	"approvalOptionsRestampNote",
+	/*
+	 * The draft-warm pass's own: it re-stamps a change that moves BOTH trees -
+	 * the contract, store, hooks and panel on one side, the two suites that pin
+	 * them on the other - without touching a frame, so the reader is owed the
+	 * pair AND the reason no still was owed.
+	 */
+	"newchatDraftWarmRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
