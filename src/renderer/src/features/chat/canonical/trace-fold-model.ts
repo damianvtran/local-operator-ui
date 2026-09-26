@@ -408,9 +408,11 @@ export function foldSpan(actions: FoldableAction[]): FoldSpan | null {
  * and the expanded row cannot say two different things. No output fallback is
  * passed: a call that has not settled has no output to stand in with.
  *
- * This is also the fold's own settle predicate: `foldLive(...) === null` IS
- * "nothing in this run is still running", which is what the component's
- * condense waits on.
+ * NOT the fold's settle predicate on its own (review round 2, R7): after U2 the
+ * null means "no call EXECUTING", and a composing or queued call is unsettled
+ * yet unnamed. The component closes on `!sectionLive && live === null`, so those
+ * phases are held by the section's own liveness rather than by this value; what
+ * this value alone closes is the call executing as the section ends.
  */
 export function foldLive(actions: FoldableAction[]): FoldLive | null {
 	/*

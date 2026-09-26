@@ -819,6 +819,16 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  * kept every key this branch already carried; that file's own key count is
  * unchanged by the resolution except for those additions, and its union is checked by
  * the records test below rather than by prose.
+ *
+ * THE UNION THIS FOLD TOOK (`origin/main` `9d3e68ddf6`, #467 the goal done-state,
+ * over this branch's `78c4e6a529`), stated here because the rule above asks for
+ * it: this branch's side named `actionFoldEvidenceNote` and
+ * `foldOnto093a329a4dNote`; main's side named `goalDesignRoundTwoNote`. FORTY-ONE
+ * entries, deduplicated by name - no key from either side was dropped, checked by
+ * evaluating both sides' arrays and diffing the key sets rather than by reading
+ * the conflict. The same union was applied to `docs/evidence/manifest.json`,
+ * which took main's four goal notes and kept every key this branch already
+ * carried (178 + 2 + 1 = 181 keys, the records test's own check).
  */
 const STAMP_BINDING_NOTES = [
 	/*
@@ -1120,6 +1130,14 @@ const STAMP_BINDING_NOTES = [
 	 * the paragraphs above state.
 	 */
 	"foldOnto093a329a4dNote",
+	/*
+	 * And `goalDesignRoundTwoNote`, this branch's own record: it carries the pair the
+	 * judged-goals design-round-2 pass re-derived, so it is the entry later re-stamps
+	 * have to re-point. It joins this list under the union rule rather than replacing
+	 * it: the eight main-side notes it superseded in this branch's narrow spellings
+	 * keep their membership and are held to the shipped pair by the same sweep.
+	 */
+	"goalDesignRoundTwoNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1543,6 +1561,18 @@ const BRANCH_RECORDS = [
 	 * entry a later fold that started from main's copy would drop first.
 	 */
 	"foldOntoFd19adc9d9Note",
+	/*
+	 * Grown by the judged-goals (`feat/goal-done-history`) pass, which wrote four
+	 * top-level records - `goalDoneRestampNote` and `goalDoneFoldRestampNote` from
+	 * its rebases and folds, `goalDoneFramePassNote` from the frame pass, and
+	 * `goalDesignRoundTwoNote` from the batched design-round-2 remediation. A fold
+	 * that starts from main's manifest drops them without a word, which is this
+	 * list's whole subject.
+	 */
+	"goalDoneRestampNote",
+	"goalDoneFoldRestampNote",
+	"goalDoneFramePassNote",
+	"goalDesignRoundTwoNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

@@ -91,10 +91,14 @@ export type TraceFoldProps = {
 	 */
 	span: FoldSpan | null;
 	/**
-	 * The call being watched (`foldLive`), or null when every call has settled.
-	 * Names the header while the fold is collapsed AND blocks the condense while
-	 * anything is still running - the same value carries both, so the two cannot
-	 * disagree about whether the run is over.
+	 * The call being watched (`foldLive`), or null when no call is EXECUTING.
+	 *
+	 * It names the header while the fold is collapsed. It is NOT the fold's
+	 * settle predicate on its own: the close is gated on `!sectionLive &&
+	 * live === null`, and a composing or queued call is unsettled yet unnamed -
+	 * those phases cannot coexist with `!sectionLive`, so the section guard is
+	 * what holds them, and the call executing as the section ends is the race
+	 * this value closes by itself (UX round 2, U2 narrowed it from "unsettled").
 	 */
 	live: FoldLive | null;
 	/**
@@ -161,9 +165,12 @@ export const TraceFold = ({
 	 *
 	 * - it never fires while the section is STILL live, so a fold the reader
 	 *   opened mid-watch is never closed underneath them while they watch it;
-	 * - it never fires while a call in the run has not settled (`live` is the
-	 *   in-flight call and therefore the fold's own settle predicate), so a fold
-	 *   cannot condense while it would hide a live clock.
+	 * - it never fires while a call in the run has not settled: the close reads
+	 *   `live === null` (nothing EXECUTING) AND the section having ended, so a
+	 *   call composing or queued - unsettled but unnamed - cannot slip past it
+	 *   while `!sectionLive`, because the turn working through such a call is
+	 *   exactly what `sectionLive` reports. The call executing as the section
+	 *   ends is the race the `live` half closes on its own (UX round 2, U2).
 	 *
 	 * `armed` is what makes this an EVENT rather than a state: it is set while the
 	 * section is live and cleared when the condense fires once, so a fold restored
