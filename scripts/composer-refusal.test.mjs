@@ -307,8 +307,8 @@ test("every control the refusal disables keeps the caret on a press, and only wh
 	);
 	assert.match(
 		sendHandler,
-		/if \(sendRefused\) explainRefusedSend\(\);/,
-		"and the refusal that used to be silent says why, through the same call the key makes",
+		/if \(sendRefused && !isInputDisabled\) explainRefusedSend\(\);/,
+		"and the refusal that used to be silent says why, through the same call the key makes - withheld only where the key is silent too",
 	);
 });
 

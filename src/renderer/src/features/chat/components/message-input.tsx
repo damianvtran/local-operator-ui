@@ -5074,15 +5074,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * AND IT ANSWERS THE WAY THE KEY DOES. The press used to be refused in silence while
 		 * Enter raised "Connect a provider to send." for its window; two doors onto one
 		 * refusal have to say the same thing, so the explanation is the same call the key
-		 * makes. `preventDefault` stays ONE call under one gate, for the reason the shared
-		 * handler's own note gives: a second, ungated call would swallow the press on a
-		 * control disabled for its own reason, which this refusal does not claim.
+		 * makes - and it is withheld in the one state where the KEY is silent too, the box
+		 * refusing input, because "a box that refuses input" and "nothing can answer" are
+		 * two different facts and only the second is this press's to explain.
+		 * `preventDefault` stays ONE call under one gate, for the reason the shared handler's
+		 * own note gives: a second, ungated call would swallow the press on a control
+		 * disabled for its own reason, which this refusal does not claim.
 		 */
 		const holdCaretOnSendPress = useCallback(
 			(event: PointerEvent<HTMLButtonElement>) => {
 				if (!isInputDisabled && !sendRefused) return;
 				event.preventDefault();
-				if (sendRefused) explainRefusedSend();
+				if (sendRefused && !isInputDisabled) explainRefusedSend();
 			},
 			[isInputDisabled, sendRefused, explainRefusedSend],
 		);

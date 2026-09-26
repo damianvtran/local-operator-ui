@@ -1804,8 +1804,10 @@ test("the disabled Send press answers the way Enter does, and keeps the caret (U
 		"and that handler's gate is exactly the terms the control is disabled by",
 	);
 	assert.ok(
-		source.includes("if (sendRefused) explainRefusedSend();"),
-		"and the refusal that used to be silent raises the same sentence the key raises",
+		source.includes(
+			"if (sendRefused && !isInputDisabled) explainRefusedSend();",
+		),
+		"and the refusal that used to be silent raises the same sentence the key raises, and is silent exactly where the key is",
 	);
 	assert.match(
 		source,
