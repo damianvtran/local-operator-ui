@@ -343,12 +343,30 @@ export function tokensPerSecond(
  *
  * `null` and `undefined` are the same answer, and it is {@link UNKNOWN}. A rate
  * is never `0 tok/s` unless something genuinely decoded at nothing.
+ *
+ * **A positive rate below the tenth boundary is `<0.1 tok/s`, not `0.0`.** The
+ * docstring above already refuses to present a slow call as a stopped one at
+ * `0.4`; the same trap sits one decimal lower, where the value IS real and the
+ * rounded string is not — `tokensPerSecond(1, 30_000_000, 1)` is 0.0333 tok/s,
+ * which `toFixed(1)` renders as `0.0 tok/s`, i.e. the stopped reading this
+ * function exists to avoid. The backend's eligibility admits such a rate (one
+ * output token over a slow window is a measurement), so the bound belongs here
+ * rather than in a caller (review round 1 on the UI PR, residual 1).
  */
 export function formatTokensPerSecond(
 	value: number | null | undefined,
 ): string {
 	if (value === null || value === undefined) return UNKNOWN;
-	if (value < 10) return `${(roundHalfEven(value * 10) / 10).toFixed(1)} tok/s`;
+	if (value < 10) {
+		const tenths = roundHalfEven(value * 10) / 10;
+		// The bound is on the ROUNDED tenth, not on a hand-picked threshold: a
+		// value whose tenth rounds to zero would print `0.0 tok/s`, and `0.05`
+		// does exactly that (round-half-even sends it to `0.0`). Testing the
+		// rounded result is what makes the guard cover every such value instead
+		// of the ones a threshold happens to catch.
+		if (value > 0 && tenths === 0) return "<0.1 tok/s";
+		return `${tenths.toFixed(1)} tok/s`;
+	}
 	return `${formatCount(roundHalfEven(value))} tok/s`;
 }
 
