@@ -196,6 +196,26 @@ export default defineConfig({
 		{
 			name: "child-reader-scripted-child",
 			configureServer(server) {
+				/*
+				 * EXIT WHEN THE RIG DIES — INCLUDING ON SIGKILL, WHICH NO HANDLER IN
+				 * THE RIG CAN CATCH (review round 2, R2-1's abnormal path).
+				 *
+				 * The rig spawns this server with a PIPED stdin and never writes to
+				 * it, so the write end is held by the rig alone: when the rig goes
+				 * away for any reason - a clean exit, a signal, `kill -9` - the pipe
+				 * closes, fd 0 reaches EOF, and the server shuts itself down. A leaked
+				 * server holds the rig's OWN port (`strictPort: true` below), which on
+				 * this fleet is another session's failed run: the port is either held
+				 * by a live run or free, and the rig's pre-flight is the other half of
+				 * that rule.
+				 */
+				const shutDownWithTheRig = () => {
+					server.close();
+					process.exit(0);
+				};
+				process.stdin.on("end", shutDownWithTheRig);
+				process.stdin.on("close", shutDownWithTheRig);
+				process.stdin.resume();
 				const child = new ScriptedChild();
 				const readBody = (req) =>
 					new Promise((done) => {

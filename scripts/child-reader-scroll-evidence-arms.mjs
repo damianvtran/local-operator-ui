@@ -34,9 +34,24 @@ const MODULE =
 	"src/renderer/src/features/chat/components/run-details/run-child-reader.tsx";
 
 const [arm, ref, ...rest] = process.argv.slice(2);
-if (arm !== "before" && arm !== "after") {
+/*
+ * `after` is the working tree's own bytes and needs no revision. ANY OTHER NAME is
+ * an arm taken from a revision — `before` (this branch's base) and `prev` (a
+ * head whose bytes a round is comparing against, e.g. the round that added the
+ * chip band without the clip that keeps the focus ring out of it, design round 2
+ * D6) are the same operation with a different label, and the rig's `--arm` is
+ * already just a label plus an output directory.
+ */
+if (!arm || (arm === "after" && ref?.startsWith("--"))) {
 	console.error(
-		"usage: child-reader-scroll-evidence-arms.mjs <before <ref>|after> -- <rig args>",
+		"usage: child-reader-scroll-evidence-arms.mjs <after | <arm-name> <ref>> -- <rig args>",
+	);
+	process.exit(2);
+}
+const swappedArm = arm !== "after";
+if (swappedArm && (!ref || ref.startsWith("--"))) {
+	console.error(
+		`the ${arm} arm needs the revision to take the module from: \`... ${arm} <ref> -- <rig args>\``,
 	);
 	process.exit(2);
 }
@@ -57,7 +72,7 @@ const digest = () =>
 
 /** Refuse to overwrite an edit nobody asked this script to touch. */
 const dirty = git(["status", "--porcelain", "--", MODULE]).trim();
-if (dirty && arm === "before") {
+if (dirty && swappedArm) {
 	console.error(
 		`refusing to swap: ${MODULE} is already modified in the worktree:\n${dirty}`,
 	);
@@ -67,11 +82,7 @@ if (dirty && arm === "before") {
 const before = digest();
 console.log(`arm=${arm} ref=${ref ?? "HEAD"} md5Before=${before}`);
 
-if (arm === "before") {
-	if (!ref) {
-		console.error("the before arm needs the revision to take the module from");
-		process.exit(2);
-	}
+if (swappedArm) {
 	/*
 	 * The revision the arm is taken from has to carry the module, or the swap
 	 * silently reads the CURRENT file back (a bad ref, a shallow clone) and the
@@ -82,7 +93,7 @@ if (arm === "before") {
 }
 
 const swapped = digest();
-if (arm === "before" && swapped === before) {
+if (swappedArm && swapped === before) {
 	console.error(
 		`the swap did not change ${MODULE} (md5 ${swapped} before and after): ${ref} must not already be the working tree's content`,
 	);
@@ -105,7 +116,7 @@ const result = spawnSync(
  * Restore unconditionally: a failed rig run must not leave the worktree holding
  * the other arm's module, which would make the NEXT run measure it too.
  */
-if (arm === "before") git(["checkout", "HEAD", "--", MODULE]);
+if (swappedArm) git(["checkout", "HEAD", "--", MODULE]);
 const restored = digest();
 const identical = restored === before;
 console.log(

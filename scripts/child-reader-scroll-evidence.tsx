@@ -248,6 +248,14 @@ function reading() {
 					focused: document.activeElement === button,
 					hovered: button.matches(":hover"),
 					/*
+					 * THE FADE, AS A NUMBER (design round 2, D7). Two stills taken
+					 * after a sleep are both settled — mean |Δ| 0.05/255 light — so the
+					 * transition cannot be judged from them; the wrapper's computed
+					 * opacity says where the fade was at the instant the reading was
+					 * taken, and it is checkable even when the capture lands late.
+					 */
+					opacity: wrap ? Number(getComputedStyle(wrap).opacity) : null,
+					/*
 					 * WHAT THE CONTROL COVERS, as a number. `overlapPx` is the tallest
 					 * intersection between the control's box and any painted row's box
 					 * — the finding this rig's clearance fix is measured by (QA Q1, UX
@@ -277,6 +285,40 @@ function reading() {
 		 * box it is actually in, which is the question "a reserved band" is a claim
 		 * about.
 		 */
+		/*
+		 * WHICH ELEMENT HOLDS FOCUS, and where the scroller's focus ring would be
+		 * painted. Design round 2 (D6) found the ring's bottom segment landing in
+		 * the band; these two facts are what make that checkable as geometry rather
+		 * than only as pixels — the scroller is focused after a wheel, and its ring
+		 * (2px + a 2px offset) sits outside its own box, so whether a clip contains
+		 * it is arithmetic.
+		 */
+		activeElement: (() => {
+			const active = document.activeElement as HTMLElement | null;
+			if (!active) return null;
+			return {
+				tag: active.tagName.toLowerCase(),
+				ariaLabel: active.getAttribute("aria-label"),
+				dataRecordId: active.getAttribute("data-record-id"),
+				isScroller: active.hasAttribute("data-lo-canonical-transcript"),
+			};
+		})(),
+		ringClip: (() => {
+			const clip = document.querySelector<HTMLElement>(
+				"[data-lo-child-transcript-clip]",
+			);
+			const style = getComputedStyle(scroller);
+			const width = Number.parseFloat(style.outlineWidth) || 0;
+			const offset = Number.parseFloat(style.outlineOffset) || 0;
+			const ringBottom = box.bottom + width + offset;
+			const clipBottom = clip?.getBoundingClientRect().bottom ?? box.bottom;
+			return {
+				scrollerBottom: box.bottom,
+				clipBottom,
+				ringBottom,
+				contained: ringBottom <= clipBottom,
+			};
+		})(),
 		stack: (() => {
 			const statement = Array.from(
 				document.querySelectorAll<HTMLElement>("div, p, span"),
@@ -478,6 +520,87 @@ const App = () => {
 						role: el.getAttribute("role"),
 						isControl: el.getAttribute("aria-label") === "Scroll to bottom",
 					}));
+			},
+			/**
+			 * Freeze the chip's fade at a fraction of its own duration.
+			 *
+			 * WHY THIS EXISTS. `appearing` and `appeared` were two frames taken
+			 * after sleeps, so both were settled and the pair said nothing about the
+			 * transition (design round 2, D7). This catches the transition ON THE
+			 * FRAME IT STARTS — an in-page `requestAnimationFrame` poll, so it cannot
+			 * miss the window — pauses it, and moves its clock to `fraction` of the
+			 * duration it actually has. The caller then photographs a fade in
+			 * flight, and `runFade()` completes it for the settled frame.
+			 *
+			 * The animations are the page's own (`document.getAnimations()`), which
+			 * for this pane is the chip's opacity transition; the count is returned
+			 * so a reader can see whether anything was frozen at all.
+			 */
+			freezeFade(fraction = 0.4) {
+				return new Promise((resolve) => {
+					const startedAt = performance.now();
+					const tick = () => {
+						const animations = document.getAnimations();
+						if (animations.length > 0) {
+							const at: number[] = [];
+							for (const animation of animations) {
+								const timing = animation.effect?.getComputedTiming?.();
+								const duration =
+									typeof timing?.duration === "number" ? timing.duration : 200;
+								animation.pause();
+								animation.currentTime = duration * fraction;
+								at.push(Number(animation.currentTime));
+							}
+							resolve({
+								count: animations.length,
+								fraction,
+								atMs: at,
+								opacity: (() => {
+									const chip = document.querySelector<HTMLElement>(
+										'[aria-label="Scroll to bottom"]',
+									);
+									return chip?.parentElement
+										? Number(getComputedStyle(chip.parentElement).opacity)
+										: null;
+								})(),
+							});
+							return;
+						}
+						if (performance.now() - startedAt > 4000) {
+							resolve({
+								count: 0,
+								fraction,
+								atMs: [],
+								opacity: null,
+							});
+							return;
+						}
+						requestAnimationFrame(tick);
+					};
+					requestAnimationFrame(tick);
+				});
+			},
+			/** Let a frozen fade finish, and report where it landed. */
+			runFade() {
+				let count = 0;
+				for (const animation of document.getAnimations()) {
+					try {
+						animation.finish();
+					} catch {
+						animation.currentTime = 10_000;
+						animation.play();
+					}
+					count += 1;
+				}
+				const chip = document.querySelector<HTMLElement>(
+					'[aria-label="Scroll to bottom"]',
+				);
+				return {
+					count,
+					opacity: chip?.parentElement
+						? Number(getComputedStyle(chip.parentElement).opacity)
+						: null,
+				};
 			},
 			/** The scroller's box, for a real wheel event's coordinates. */
 			scrollerBox() {

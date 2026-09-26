@@ -148,7 +148,7 @@ async function waitFor(url, attempts = 120) {
 async function launchChrome(profile) {
 	if (!existsSync(CHROME))
 		throw new Error(`no Chrome at ${CHROME} — set CHROME_PATH to one`);
-	const chrome = spawn(
+	const chrome = spawnOwned(
 		CHROME,
 		withMockKeychain([
 			"--headless=new",
@@ -160,9 +160,10 @@ async function launchChrome(profile) {
 			"--window-size=900,900",
 			"about:blank",
 		]),
-		// Its own group as well: Chrome's own children (the renderer, the GPU
-		// process) are the ones a killed wrapper leaves behind.
-		{ detached: true },
+		// `spawnOwned` puts it in its own group and remembers it AT SPAWN, which is
+		// what closes R2-2: Chrome's renderer and GPU children are the ones a
+		// killed wrapper leaves behind, and the handshake's await is exactly when
+		// a signal used to make the browser unreachable.
 	);
 	const port = await new Promise((resolvePort, reject) => {
 		chrome.stderr.on("data", (chunk) => {
@@ -208,6 +209,53 @@ async function launchChrome(profile) {
 const STEPS = [];
 
 /**
+ * Every child this rig starts, tracked from the moment `spawn` returns.
+ *
+ * ROUND 2, R2-2: a child recorded only AFTER its handshake resolves is
+ * unreachable to a signal that lands while the handshake is pending, and
+ * Chrome's own tree goes with it (measured: 8 processes re-parented to pid 1
+ * when the wrapper was signalled ~4s in, and none when signalled at ~30s). The
+ * set is module-level so `launchChrome` can register at its own spawn rather
+ * than returning a child nobody owns yet.
+ */
+const CHILDREN = new Set();
+
+/** Spawn into its OWN PROCESS GROUP, and remember it. */
+function spawnOwned(command, args, options = {}) {
+	const child = spawn(command, args, { ...options, detached: true });
+	CHILDREN.add(child);
+	return child;
+}
+
+/**
+ * Kill a child's process GROUP.
+ *
+ * The group first: `pnpm vite` forks a `vite` grandchild that re-parents to
+ * launchd when only the wrapper is signalled, and that grandchild is what holds
+ * the port. Chrome's renderer and GPU processes are the same shape.
+ */
+function killGroup(child) {
+	if (!child?.pid) return;
+	try {
+		process.kill(-child.pid, "SIGKILL");
+	} catch {
+		// Already gone, or never had a group of its own.
+	}
+	try {
+		child.kill("SIGKILL");
+	} catch {
+		// Same.
+	}
+	child.stdout?.destroy();
+	child.stderr?.destroy();
+	CHILDREN.delete(child);
+}
+
+function reapChildren() {
+	for (const child of [...CHILDREN]) killGroup(child);
+}
+
+/**
  * Whether nothing is listening on the port yet.
  *
  * THE HAZARD THIS CLOSES is not tidiness. The rig waits for its own URL before
@@ -236,25 +284,56 @@ function portInUse(port) {
 async function main() {
 	const profile = mkdtempSync(join(tmpdir(), "child-reader-scroll-chrome-"));
 	let chrome = null;
+	/*
+	 * THE ARM IS CHECKED BEFORE A SINGLE FRAME IS TAKEN — AND BEFORE ANYTHING IS
+	 * SPAWNED (review round 2, R2-1).
+	 *
+	 * `--arm` names the output directory and the report's label, and it cannot
+	 * swap the code under test — so on a branch where the change is committed the
+	 * two arms are the same bytes and the label is a lie (review round 1, R1-1).
+	 * `scripts/child-reader-scroll-evidence-arms.mjs` performs the swap and hands
+	 * this flag the digest it expects; this refuses to run if the bytes disagree.
+	 *
+	 * WHERE the refusal happens is the round-2 finding: this check used to sit
+	 * below the Vite spawn and OUTSIDE the `try` that owns `teardown`, so the
+	 * refusal exited with the rig's own `pnpm`→`vite` pair still holding the port
+	 * (reproduced twice by the reviewer). The rig's own rule is that a run either
+	 * measures its own bytes or holds nothing; a refusal now happens before the
+	 * first child exists, and the port pre-flight below is ordered with it for the
+	 * same reason.
+	 */
+	if (EXPECT_DIGEST) {
+		const got = moduleDigest(ARM_MODULE);
+		if (got !== EXPECT_DIGEST)
+			throw new Error(
+				`--expect-digest=${EXPECT_DIGEST} but ${ARM_MODULE} is ${got}: this arm is not the bytes it claims to be. Take the arm with \`node scripts/child-reader-scroll-evidence-arms.mjs ${ARM}${
+					ARM === "after" ? "" : " <the-ref-this-arm-is-taken-from>"
+				} -- <the rest of these arguments>\`, which checks the module out of that revision and passes this flag for you.`,
+			);
+	}
+
 	if (await portInUse(PORT)) {
 		throw new Error(
 			`something is already listening on ${PORT}, and this rig cannot tell its own server from a stranger's: a leaked run would make every frame below a picture of bytes this run did not start. Find and reap it by pid - \`lsof -nP -iTCP:${PORT} -sTCP:LISTEN\` - or re-run with --port=<a free one>.`,
 		);
 	}
-	const vite = spawn(
+	const vite = spawnOwned(
 		"pnpm",
 		["vite", "--config", "scripts/child-reader-scroll-evidence.vite.mjs"],
 		{
 			cwd: ROOT,
 			env: { ...process.env, CHILD_READER_SCROLL_PORT: String(PORT) },
-			stdio: ["ignore", "pipe", "pipe"],
 			/*
-			 * Its own process group, so teardown can reap the Vite the `pnpm`
-			 * wrapper forks and then abandons to launchd when only the wrapper is
-			 * killed. `detached` + `kill(-pid)` is the shape the harness rule asks
-			 * for; without it this rig held port 5197 open after every run.
+			 * STDIN IS A PIPE THAT THE RIG HOLDS AND NEVER WRITES TO, and the server
+			 * watches it: when this process goes away for ANY reason - a clean exit,
+			 * a signal, `kill -9` - the write end closes, the server's fd 0 reaches
+			 * EOF, and it closes itself (`child-reader-scroll-evidence.vite.mjs`).
+			 * That is the one path no signal handler in this rig can cover, and it
+			 * is the path a held port costs another session its run. The vite
+			 * process inherits this fd through `pnpm`, so the watch is on the
+			 * server's own stdin rather than on a wrapper's.
 			 */
-			detached: true,
+			stdio: ["pipe", "pipe", "pipe"],
 		},
 	);
 	let viteLog = "";
@@ -276,26 +355,12 @@ async function main() {
 	 * `diff-body-evidence.mjs` kills the browser whose stderr it reads for the
 	 * debug-port handshake — and `main` exits by name once the report is out.
 	 */
-	const killGroup = (child) => {
-		if (!child?.pid) return;
-		try {
-			// The group first: the child's own children are in it, and they are
-			// the ones that re-parent and keep the port.
-			process.kill(-child.pid, "SIGKILL");
-		} catch {
-			// Already gone, or never had a group of its own.
-		}
-		try {
-			child.kill("SIGKILL");
-		} catch {
-			// Same.
-		}
-		child.stdout?.destroy();
-		child.stderr?.destroy();
-	};
 	const teardown = () => {
-		killGroup(vite);
-		killGroup(chrome);
+		/*
+		 * EVERY tracked child, not the two the happy path happens to hold: the set
+		 * is what makes a signal during the Chrome handshake safe (R2-2).
+		 */
+		reapChildren();
 		try {
 			rmSync(profile, { recursive: true, force: true });
 		} catch {
@@ -313,24 +378,6 @@ async function main() {
 		});
 	}
 
-	/*
-	 * THE ARM IS CHECKED BEFORE A SINGLE FRAME IS TAKEN.
-	 *
-	 * `--arm` names the output directory and the report's label, and it cannot
-	 * swap the code under test — so on a branch where the change is committed the
-	 * two arms are the same bytes and the label is a lie (review round 1, R1-1).
-	 * `scripts/child-reader-scroll-evidence-arms.mjs` performs the swap and hands
-	 * this flag the digest it expects; this refuses to run if the bytes disagree.
-	 */
-	if (EXPECT_DIGEST) {
-		const got = moduleDigest(ARM_MODULE);
-		if (got !== EXPECT_DIGEST)
-			throw new Error(
-				`--expect-digest=${EXPECT_DIGEST} but ${ARM_MODULE} is ${got}: this arm is not the bytes it claims to be. Take the arm with \`node scripts/child-reader-scroll-evidence-arms.mjs ${ARM}${
-					ARM === "before" ? " <base-ref>" : ""
-				} -- <the rest of these arguments>\`, which swaps the module and passes this flag for you.`,
-			);
-	}
 	try {
 		await waitFor(`http://localhost:${PORT}/child-reader-scroll-evidence.html`);
 		const launched = await launchChrome(profile);
@@ -544,6 +591,45 @@ async function main() {
 			 * conversation with nothing else in the frame, so the sweep takes that
 			 * state rather than paying fifteen states times ten palettes.
 			 */
+			/*
+			 * The foot group: the states the FOCUS RULE appeared in wrongly, for an
+			 * arm taken from a head that had the band without the clip (design round
+			 * 2, D6 — `scripts/child-reader-scroll-evidence-arms.mjs prev <ref>`
+			 * produces it). Two states rather than sixteen: the rule is a property of
+			 * the foot's geometry, and `at-tail` and `scrolled-up` are the two the
+			 * foot's own composition is judged from, in every palette asked for.
+			 */
+			if (ONLY?.includes("foot")) {
+				const tailFoot = await step(
+					"P0 at the tail (foot group)",
+					"the foot's own composition with the control hidden",
+				);
+				if (
+					ARM === "after" &&
+					tailFoot.ringClip &&
+					!tailFoot.ringClip.contained
+				)
+					throw new Error(
+						`${theme}: the scroller's focus ring is not contained by its clip box (ring bottom ${tailFoot.ringClip.ringBottom}, clip ${tailFoot.ringClip.clipBottom})`,
+					);
+				await shoot("at-tail", theme);
+				await wheel(-600);
+				await sleep(700);
+				const scrolledFoot = await step(
+					"P1 scrolled up (foot group)",
+					"the foot's own composition with the control shown",
+				);
+				if (
+					ARM === "after" &&
+					scrolledFoot.ringClip &&
+					!scrolledFoot.ringClip.contained
+				)
+					throw new Error(
+						`${theme}: the scroller's focus ring is not contained by its clip box while scrolled up (ring bottom ${scrolledFoot.ringClip.ringBottom}, clip ${scrolledFoot.ringClip.clipBottom})`,
+					);
+				await shoot("scrolled-up", theme);
+				continue;
+			}
 			if (ONLY?.includes("ring")) {
 				await wheel(-600);
 				await sleep(700);
@@ -575,7 +661,23 @@ async function main() {
 			 */
 			await wheel(4000);
 			await sleep(900);
-			await step("A0 at the tail", "scrollTop 0, the newest row on screen");
+			const tailReading = await step(
+				"A0 at the tail",
+				"scrollTop 0, the newest row on screen",
+			);
+			/*
+			 * R2-7: the semantic guard at the foot of this function, pulled up to where
+			 * it can still be BEFORE the first frame is written. A bare
+			 * `--arm=before --frames` on the head's bytes used to overwrite the `before/`
+			 * frames it reached and only then hit the end-of-run guard, so a reader who
+			 * ignored the exit status was left holding after pictures labelled before.
+			 * The first reading is the cheapest place to notice: a before arm is defined
+			 * by having NO control at all, and this state paints none.
+			 */
+			if (ARM === "before" && !absent(tailReading.button))
+				throw new Error(
+					`${theme}: the first reading found a follow-the-tail control, and the before arm is defined by NOT having one — refusing before a single frame is written (the module digest says ${moduleDigest(ARM_MODULE)}, so the arm's label and its bytes disagree about what is being measured).`,
+				);
 			const tailSteps = [];
 			for (let i = 1; i <= 3; i++) {
 				await evaluate("window.__childScroll.batch(1)", true);
@@ -798,10 +900,17 @@ async function main() {
 			 * and report a hidden control for a code path that is about to show it —
 			 * the assertion below would then fail for the rig's own reason.
 			 */
-			await sleep(300);
-			const nearTail = await step(
+			/*
+			 * Polled, not slept: the control's visibility lands a frame after the
+			 * placement (the hook recomputes inside a `requestAnimationFrame`), and a
+			 * fixed sleep either wastes time or, under load, samples the state before
+			 * the frame that carries it (R2-5's shape).
+			 */
+			const nearTail = await waitForStep(
 				"F0 40px off the tail",
 				"inside the band the paging policy calls not-following, so the control is offered",
+				(reading) => reading?.button?.visible === true,
+				8000,
 			);
 			if (ARM === "after" && !nearTail.button?.visible)
 				throw new Error(
@@ -823,25 +932,46 @@ async function main() {
 			/* ---- G: the control's own interaction states (design D4) ------ */
 			await evaluate("window.__childScroll.drift(0)", true);
 			await sleep(200);
-			await wheel(-600);
-			await sleep(140);
 			/*
-			 * The appearance, bracketed: the first frame is taken as soon as the state
-			 * flips, so it catches the fade in flight or just settled, and the second
-			 * after the transition's own duration (`duration-base`). Two stills are the
-			 * cheap form of the motion pair this repository captures for exactly this
-			 * question — is the transition deliberate?
+			 * THE APPEARANCE, FROZEN RATHER THAN RACED (design round 2, D7).
+			 *
+			 * The pair used to be two frames taken after sleeps, and both were
+			 * settled — mean |Δ| 0.05/255 in the chip's own box in light — so the
+			 * pairing answered nothing about the transition. `freezeFade` watches for
+			 * the transition on the frame it starts, pauses it and moves its clock to
+			 * 40% of the duration it actually has, so `appearing` is a fade in
+			 * flight; `runFade` then completes it for `appeared`. Both frames carry
+			 * the wrapper's computed opacity in their readings, so the pair is a
+			 * number even if a capture lands late.
 			 */
-			await shoot("appearing", theme);
-			const appearing = await step(
-				"G0 the control appearing",
-				"the control is present at its full size while its opacity settles",
+			await wheel(-600);
+			const frozen = await evaluate(
+				"window.__childScroll.freezeFade(0.4)",
+				true,
 			);
+			const appearing = await waitForStep(
+				"G0 the control appearing (fade frozen at 40%)",
+				"a fade in flight: the control is mounted, its opacity is mid-transition",
+				(reading) => reading?.button?.visible === true,
+				8000,
+			);
+			appearing.frozen = frozen;
 			if (ARM === "after" && !appearing.button?.visible)
 				throw new Error(
 					`${theme}: the control never appeared while the reader was scrolled up`,
 				);
-			await sleep(600);
+			if (ARM === "after" && frozen.count === 0)
+				throw new Error(
+					`${theme}: no transition was running when the control appeared, so this arm cannot show the fade`,
+				);
+			await shoot("appearing", theme);
+			const released = await evaluate("window.__childScroll.runFade()", true);
+			await sleep(400);
+			const appeared = await step(
+				"G1 the control settled (fade released)",
+				"the fade has completed: opacity 1",
+			);
+			appeared.released = released;
 			await shoot("appeared", theme);
 			const chip = await evaluate("window.__childScroll.chipBox()");
 			if (ARM === "after" && !chip)
@@ -857,7 +987,7 @@ async function main() {
 				});
 				await sleep(260);
 				const hovered = await step(
-					"G1 hover",
+					"G2 hover",
 					"a real pointer over the control",
 				);
 				if (ARM === "after" && !hovered.button?.hovered)
@@ -906,7 +1036,7 @@ async function main() {
 				if (focused)
 					STEPS.push({
 						...focused,
-						step: `G2 focus (${tabs} tabs)`,
+						step: `G3 focus (${tabs} tabs)`,
 						theme: themeOf,
 						reads: await reads(),
 						tabOrderIndex: at,
@@ -936,14 +1066,30 @@ async function main() {
 					button: "left",
 					clickCount: 1,
 				});
-				await sleep(1400);
-				const afterPress = await step(
-					"G3 after the press",
-					"the reader is at the tail and the control is hidden again",
+				/*
+				 * WAIT ON THE EVENT, NOT ON A CLOCK (review round 2, R2-5). This was a
+				 * `sleep 1400` followed by a 1px tolerance, and it flaked in the
+				 * reviewer's round at load ~200 ("pressing the control left the reader
+				 * 192px from the tail") — a smooth scroll still in flight read as a
+				 * product defect. A wait that can read a mid-flight state as a failure
+				 * is a defect in the instrument, so the state is polled until it holds
+				 * (`waitForStep`) and the elapsed wait is recorded on the row; the
+				 * assertion below still fires, with the time it waited, if the bound
+				 * expires.
+				 */
+				const pressStart = Date.now();
+				const afterPress = await waitForStep(
+					"G4 after the press",
+					"the reader is back at the tail and the control is hidden again",
+					(reading) =>
+						(reading?.fromBottom ?? Number.POSITIVE_INFINITY) <= 1 &&
+						!reading?.button?.visible,
+					8000,
 				);
+				afterPress.waitedMs = Date.now() - pressStart;
 				if (afterPress.fromBottom > 1)
 					throw new Error(
-						`${theme}: pressing the control left the reader ${afterPress.fromBottom}px from the tail`,
+						`${theme}: pressing the control left the reader ${afterPress.fromBottom}px from the tail after waiting ${afterPress.waitedMs}ms`,
 					);
 			}
 
