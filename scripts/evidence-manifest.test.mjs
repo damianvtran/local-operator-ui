@@ -1261,7 +1261,6 @@ const STAMP_BINDING_NOTES = [
 	 * than read as history.
 	 */
 	"headerIdentityRoundOneRestampNote",
-
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {

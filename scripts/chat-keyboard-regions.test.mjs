@@ -312,10 +312,7 @@ test("a draft with an open claim keeps its row after the composer clears", () =>
 	 */
 	const rows = mod.untargetedDraftRows(
 		drafts([
-			[
-				"draft:inflight",
-				{ submittedText: "Summarise yesterday's Q3 numbers" },
-			],
+			["draft:inflight", { submittedText: "Summarise yesterday's Q3 numbers" }],
 			["draft:typed", { submittedText: "the claim the hit sent" }],
 		]),
 		input([["draft:typed", "what the user is typing now"]]),

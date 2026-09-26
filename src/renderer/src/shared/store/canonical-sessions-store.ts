@@ -1750,8 +1750,9 @@ export function resynthesisePendingSend(
 ): boolean {
 	if (!draft) return false;
 	const resolved = draft.undelivered;
+	const submittedText = draft.submittedText;
 	const failed =
-		draft.submittedText !== undefined &&
+		submittedText !== undefined &&
 		draft.error !== undefined &&
 		draft.errorRetry !== undefined;
 	if (!resolved && !failed) return false;
@@ -1771,6 +1772,10 @@ export function resynthesisePendingSend(
 		});
 		return true;
 	}
+	// The failure arm's own guard, repeated as a narrowing rather than trusted
+	// from a boolean: `submittedText` is what the row shows when nothing was
+	// pinned, and the renderer reads it below.
+	if (submittedText === undefined) return false;
 	const id = draft.admissionRequestId;
 	paintPendingSend(identity, {
 		id,
@@ -1780,7 +1785,7 @@ export function resynthesisePendingSend(
 		 * spliced to, and it is pinned before the attempt. `submittedText` is the
 		 * fallback for the classes whose failure came before the seam.
 		 */
-		text: draft.submittedRendered ?? draft.submittedText,
+		text: draft.submittedRendered ?? submittedText,
 		// The same id shape the press's own paint used, so a later owner row for
 		// this id coalesces with it rather than sitting beside it.
 		images: (draft.submittedImages ?? []).map((image, index) => ({
