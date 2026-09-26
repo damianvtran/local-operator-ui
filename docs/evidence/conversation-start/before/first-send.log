@@ -1,13 +1,11 @@
-[build] current: assets 2026-09-26T17:27:19.198Z >= sources 2026-09-26T17:20:26.880Z
-[note] abandoned scratch trees
-        2 seen, 0 owned by a live pid (kept), 2 younger than 30m (kept), 0 removed
+[build] current: assets 2026-09-26T22:11:51.858Z >= sources 2026-09-26T20:52:23.273Z
 [note] csp for this run's backend
         already widened for http://127.0.0.1:7391
 local-operator-ui renderer driver
   repo          /Users/damian/local-operator-ui-worktrees/conversation-start-before
-  scratch       /tmp/lo-renderer-driver-7081
-  frames        /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before-firstsend
-  app cwd       /tmp/lo-renderer-driver-7081/cwd   (scratch: the repo's .env is not read)
+  scratch       /tmp/lo-renderer-driver-21784
+  frames        /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r1-shoot/before
+  app cwd       /tmp/lo-renderer-driver-21784/cwd   (scratch: the repo's .env is not read)
   backend url   http://127.0.0.1:7391   (--backend: a live isolated backend this run owns)
   electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/conversation-start-before/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
   electron pin  44.3.0   (package.json optionalDependencies)
@@ -43,19 +41,19 @@ local-operator-ui renderer driver
   "focused": false,
   "minimized": false,
   "frames": [],
-  "outDir": "/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before-firstsend"
+  "outDir": "/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r1-shoot/before"
 }
 [PASS] window mode is headless and the window is never shown or focused
 [PASS] the chat route shows the empty state with a composer
 [note] frame
-        {"label":"first-send-1380x900-empty","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before-firstsend/first-send-1380x900-empty.png","bytes":218539,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":4}
+        {"label":"first-send-1380x900-empty","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r1-shoot/before/first-send-1380x900-empty.png","bytes":227691,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":8,"stable":true,"toastFree":true,"toastWaitMs":79}
 [note] empty state
         {"composer":{"x":500,"y":774,"width":640,"height":110},"chips":{"y":433,"bottom":496,"chips":4}}
 [PASS] the chips sit ABOVE the docked composer (§H)
 [PASS] the composer is docked in the pane's lower half on the empty state
 [PASS] the first message reached the transcript and the empty state is gone
 [note] frame
-        {"label":"first-send-1380x900-sent","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before-firstsend/first-send-1380x900-sent.png","bytes":203834,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":8,"stable":false,"toastFree":false,"toastWaitMs":39}
+        {"label":"first-send-1380x900-sent","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r1-shoot/before/first-send-1380x900-sent.png","bytes":207010,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":8,"stable":false,"toastFree":false,"toastWaitMs":115}
 [note] anchor
         {"region":{"top":72,"bottom":766,"height":694},"content":{"top":634,"bottom":750,"height":116},"row":{"top":678,"bottom":721,"height":42},"slot":{"top":634,"bottom":662,"height":28},"overflow":0,"scrollTop":0}
 [FAIL] a short transcript is anchored to the TOP of the pane: the row sits in the region's upper half
@@ -63,58 +61,58 @@ local-operator-ui renderer driver
 [FAIL] the row sits just under the region's top inset, below the start-of-conversation slot
         row.top 678 region.top 72 slot {"top":634,"bottom":662,"height":28}
 [note] frame
-        {"label":"first-send-1380x900-settled","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before-firstsend/first-send-1380x900-settled.png","bytes":217640,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":3,"stable":true,"toastFree":true,"toastWaitMs":8}
+        {"label":"first-send-1380x900-settled","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r1-shoot/before/first-send-1380x900-settled.png","bytes":223265,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":5,"stable":true,"toastFree":true,"toastWaitMs":112}
 [note] composer box
         {"before":{"x":500,"y":774,"width":640,"height":110},"after":{"x":500,"y":774,"width":640,"height":110},"settled":{"x":500,"y":774,"width":640,"height":110},"answered":true}
 [PASS] the first send does not move the composer: its box is identical
 [PASS] the agent's answer arrived and the composer is still where it was
 
 ---- app log (tail) ----
-DevTools listening on ws://127.0.0.1:57317/devtools/browser/40cd1d05-d58a-4736-9857-65a267d52536
-13:39:20.483 › [window-mode] headless run launched by pid 7081; it quits when that process goes
-[window-mode] headless run launched by pid 7081; it quits when that process goes
-13:39:20.488 › [discovery] record directory /tmp/lo-renderer-driver-7081/config/run/serve (0 record(s))
-13:39:20.514 › [shell-path] /bin/zsh reports PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
-13:39:20.514 › Shell environment variables loaded successfully. PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
-13:39:20.585 › [discovery] rejected http://127.0.0.1:7391: identity-mismatch (a daemon answered but no serve record describes http://127.0.0.1:7391, so it cannot be proven to be the one this app found)
-13:39:20.585 › [discovery] no valid daemon among 0 record(s) (directory absent)
-13:39:20.585 › Deprecated: no serve records found. Falling back to the fixed-port probe at http://127.0.0.1:7391/health for a daemon predating the record format. This fallback is scheduled for removal (design §8).
-13:39:20.768 › Adopted a pre-record daemon at http://127.0.0.1:7391 (v0.61.9) through the deprecated fallback.
-13:39:20.769 › Discovered a daemon; the backend manager is configured not to spawn or kill one.
-13:39:20.880 › Update service initialized. Dev mode: true, NPX install: false
-13:39:20.881 › Unpackaged instance: no packaged install state to leave alone.
-13:39:20.881 › Periodic update checks scheduled (every 5 minutes)
-13:39:20.881 › macOS auto-update requires app signing
-13:39:20.882 › [webauthn] Touch ID passkeys are off: unpackaged — an unpackaged run has no signature to carry the entitlement, so there is no group to configure
-13:39:20.888 › [browser] denied a media permission request from (unknown origin)
-13:39:20.888 › [browser] denied a media permission request from (unknown origin)
-13:39:20.889 › [browser] denied a web-app-installation permission request from (unknown origin)
-13:39:20.889 › [browser] denied a geolocation permission request from (unknown origin)
-13:39:21.514 › [browser] denied a media permission request from (unknown origin)
-13:39:21.514 › [browser] denied a media permission request from (unknown origin)
-13:39:21.515 › [browser] denied a web-app-installation permission request from (unknown origin)
-13:39:21.515 › [browser] denied a geolocation permission request from (unknown origin)
-13:39:21.524 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
-13:39:21.525 › [browser] host on 127.0.0.1:57339 (proto 1), profile /private/tmp/lo-renderer-driver-7081/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
-13:39:21.576 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
-13:39:21.577 › Checking for UI updates...
-13:39:21.577 › Skip checkForUpdates because application is not packed and dev update config is not forced
-13:39:22.198 › [browser] tab 1 navigated to about:blank
-13:39:22.402 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
-13:39:22.403 › Checking for UI updates...
-13:39:22.403 › Skip checkForUpdates because application is not packed and dev update config is not forced
+18:15:14.382 › [window-mode] headless run launched by pid 21784; it quits when that process goes
+[window-mode] headless run launched by pid 21784; it quits when that process goes
+18:15:14.385 › [discovery] record directory /tmp/lo-renderer-driver-21784/config/run/serve (0 record(s))
+18:15:14.521 › [shell-path] /bin/zsh reports PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
+18:15:14.522 › Shell environment variables loaded successfully. PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
+18:15:14.548 › [discovery] rejected http://127.0.0.1:7391: identity-mismatch (a daemon answered but no serve record describes http://127.0.0.1:7391, so it cannot be proven to be the one this app found)
+18:15:14.549 › [discovery] no valid daemon among 0 record(s) (directory absent)
+18:15:14.549 › Deprecated: no serve records found. Falling back to the fixed-port probe at http://127.0.0.1:7391/health for a daemon predating the record format. This fallback is scheduled for removal (design §8).
+18:15:15.094 › Adopted a pre-record daemon at http://127.0.0.1:7391 (v0.63.3) through the deprecated fallback.
+18:15:15.096 › Discovered a daemon; the backend manager is configured not to spawn or kill one.
+18:15:15.287 › Update service initialized. Dev mode: true, NPX install: false
+18:15:15.287 › Unpackaged instance: no packaged install state to leave alone.
+18:15:15.287 › Periodic update checks scheduled (every 5 minutes)
+18:15:15.288 › macOS auto-update requires app signing
+18:15:15.288 › [webauthn] Touch ID passkeys are off: unpackaged — an unpackaged run has no signature to carry the entitlement, so there is no group to configure
+18:15:15.297 › [browser] denied a media permission request from (unknown origin)
+18:15:15.297 › [browser] denied a media permission request from (unknown origin)
+18:15:15.297 › [browser] denied a web-app-installation permission request from (unknown origin)
+18:15:15.297 › [browser] denied a geolocation permission request from (unknown origin)
+18:15:16.473 › [browser] denied a media permission request from (unknown origin)
+18:15:16.474 › [browser] denied a media permission request from (unknown origin)
+18:15:16.474 › [browser] denied a web-app-installation permission request from (unknown origin)
+18:15:16.474 › [browser] denied a geolocation permission request from (unknown origin)
+18:15:16.481 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
+18:15:16.483 › [browser] host on 127.0.0.1:57669 (proto 1), profile /private/tmp/lo-renderer-driver-21784/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+18:15:16.720 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+18:15:16.721 › Checking for UI updates...
+18:15:16.722 › Skip checkForUpdates because application is not packed and dev update config is not forced
+18:15:17.820 › [browser] tab 1 navigated to about:blank
 [window-mode] state: visible=false focused=false focusable=false size=1380x900 content=1380x900
-13:39:23.887 › Checking for updates... (silent mode: true)
-13:39:23.888 › Skip checkForUpdates because application is not packed and dev update config is not forced
-13:39:23.888 › Checking for backend updates... (silent mode: true)
-13:39:23.888 › Skip backend update check in dev mode unless forced
-13:39:30.882 › Backend health check response status: 200
+18:15:18.288 › Checking for updates... (silent mode: true)
+18:15:18.288 › Skip checkForUpdates because application is not packed and dev update config is not forced
+18:15:18.288 › Checking for backend updates... (silent mode: true)
+18:15:18.289 › Skip backend update check in dev mode unless forced
+18:15:18.805 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+18:15:18.806 › Checking for UI updates...
+18:15:18.806 › Skip checkForUpdates because application is not packed and dev update config is not forced
+18:15:25.117 › Backend health check response status: 200
+18:15:30.302 › The pre-split environment at /Users/damian/Library/Application Support/Local Operator/local-operator-venv is built on the interpreter inside /Applications/Local Operator.app; it is left exactly as it is, and this instance does not use it.
 
 [PASS] no process from this run outlived its boot
 
-frames: first-send-1380x900-empty.png, first-send-1380x900-sent.png, first-send-1380x900-settled.png
-frames directory: /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/cs-frames-before-firstsend
-app log: /tmp/lo-renderer-driver-7081/app-scene.log
+frames: conversation-start-1380x900-away-press.png, conversation-start-1380x900-away.png, conversation-start-1380x900-dead-create-reload.png, conversation-start-1380x900-dead-create.png, conversation-start-1380x900-failure.png, conversation-start-1380x900-flip-plus-1s.png, conversation-start-1380x900-flip.png, conversation-start-1380x900-press.png, conversation-start-1380x900-reload.png, conversation-start-1380x900-return.png, first-send-1380x900-empty.png, first-send-1380x900-sent.png, first-send-1380x900-settled.png
+frames directory: /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r1-shoot/before
+app log: /tmp/lo-renderer-driver-21784/app-scene.log
 scratch removed (--clean)
 
 2 CHECK(S) FAILED
