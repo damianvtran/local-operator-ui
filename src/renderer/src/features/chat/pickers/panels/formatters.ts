@@ -282,10 +282,9 @@ export function formatPercent(fraction: number | null | undefined): string {
  */
 export function formatBytes(value: number | null | undefined): string {
 	if (value === null || value === undefined) return UNKNOWN;
-	// Non-finite is not a rate either: `NaN` and `Infinity` would print as
-	// `NaN tok/s` / `∞ tok/s`, and the TUI's formatter returns its unknown mark
-	// for them. Unreachable from the route today (JSON cannot carry them, and
-	// `us <= 0` returns null first) — which is why the guard is cheap.
+	// A size that is not a number is not a size: `NaN`/`Infinity` would print as
+	// `NaN MB` / `∞ MB`, and the unknown mark is the same answer this function
+	// already gives for "could not be read".
 	if (!Number.isFinite(value)) return UNKNOWN;
 	if (value >= 1 << 30) return `${(value / (1 << 30)).toFixed(1)} GB`;
 	return `${roundHalfEven(value / (1 << 20))} MB`;
@@ -362,6 +361,13 @@ export function formatTokensPerSecond(
 	value: number | null | undefined,
 ): string {
 	if (value === null || value === undefined) return UNKNOWN;
+	// Non-finite is not a rate either: `NaN` and `Infinity` would print as
+	// `NaN tok/s` / `∞ tok/s`, and the TUI's formatter answers its unknown mark
+	// for them. Unreachable from the route today (JSON cannot carry them, and
+	// `us <= 0` returns null first) — which is why the guard is cheap, and why a
+	// wrong-site edit could otherwise sit here unnoticed: the neighbouring byte
+	// formatter opens with the same three lines.
+	if (!Number.isFinite(value)) return UNKNOWN;
 	if (value < 10) {
 		const tenths = roundHalfEven(value * 10) / 10;
 		// The bound is on the ROUNDED tenth, not on a hand-picked threshold: a
