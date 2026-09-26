@@ -66,6 +66,19 @@ export type TranscriptImage = {
 	mimeType: string;
 };
 
+/**
+ * The receipt cursor of one frame on the session stream: the owner epoch and
+ * the sequence the frame was published under.
+ *
+ * ONE clock, and deliberately not the frontend state's `(epoch, sequence)` —
+ * `use-canonical-session` checks those two independently because they are
+ * different clocks. This is the one every `event` frame carries, and it is
+ * stable across re-delivery: a frame replayed after a reconnect keeps its
+ * original seq, which is what makes "has this row already folded this frame"
+ * a decidable question (`TranscriptRecord`'s `frame` field).
+ */
+export type DeltaFrame = { epoch: string; seq: number };
+
 /** The § 7 tier a record renders at, decided once here rather than per view. */
 export type TranscriptRecord =
 	| {
@@ -140,6 +153,29 @@ export type TranscriptRecord =
 			 * saying it about every row.
 			 */
 			truncated?: "prefix" | "interrupted";
+			/**
+			 * The wire cursor of the last `message_update` frame folded onto this
+			 * row, or absent when every frame that painted it carried none (a seed
+			 * folded with no snapshot cursor in hand, a caller that folds bare
+			 * events).
+			 *
+			 * WHY A ROW HOLDS THE STREAM'S OWN POSITION. Deltas are fragments of an
+			 * ordered stream, and the frame's `(epoch, seq)` IS that order: the seq
+			 * is assigned once, at publish, and a RE-DELIVERY (a receipt replay
+			 * after a reconnect, a flush from a dead stream interleaved with its
+			 * successor's) carries the ORIGINAL seq rather than a new one. Holding
+			 * the last folded seq is what lets `message_update` refuse a frame the
+			 * row has already consumed instead of appending its fragment a second
+			 * time — the corruption class the operator photographed as "some chunks
+			 * are not in the proper overlap/order", where a re-sent fragment lands
+			 * twice in the text (and a short trailing fragment re-applied per
+			 * re-delivery grows a run that was never in the message at all).
+			 *
+			 * Per-EPOCH, because a replaced owner restarts the numbering: the
+			 * comparison is only meaningful within one epoch, and a frame from a
+			 * new epoch is always accepted.
+			 */
+			frame?: DeltaFrame;
 			/** Provider stop reason when settled: refusal/error/aborted change ink. */
 			stopReason: string | null;
 			error: boolean;
@@ -724,6 +760,28 @@ function withIndex(records: TranscriptRecord[]): TranscriptState["index"] {
 	const index = new Map<string, number>();
 	records.forEach((record, position) => index.set(record.id, position));
 	return index;
+}
+
+/**
+ * Keep the FURTHEST-advanced frame cursor of the two, never a regression.
+ *
+ * WHY IT CAN REGRESS WITHOUT THIS. The seed fold carries the SNAPSHOT's own
+ * cursor, and a snapshot can state a position BEHIND a row that live frames
+ * already advanced (a re-attach whose snapshot was cut earlier). Stamping the
+ * snapshot's cursor over the row's own would move the row's position backwards,
+ * and then a re-delivery of a frame between the two would pass the gate and
+ * append a fragment the row already consumed — the exact corruption the cursor
+ * exists to refuse. So a stamp is only ever an advance: within one epoch the
+ * higher seq wins, and a new epoch always wins (a replaced owner restarts the
+ * stream, and the old numbering means nothing beside the new).
+ */
+function advancedFrame(
+	current: DeltaFrame | undefined,
+	incoming: DeltaFrame | undefined,
+): DeltaFrame | undefined {
+	if (!incoming) return current;
+	if (!current || incoming.epoch !== current.epoch) return incoming;
+	return incoming.seq >= current.seq ? incoming : current;
 }
 
 /**
@@ -2233,6 +2291,19 @@ export const streamDiagnostics = {
 	 * evidence about the withhold rule.
 	 */
 	seededDeltaWithheld: 0,
+	/**
+	 * A `message_update` frame was refused because the row already held a frame
+	 * at or past its cursor.
+	 *
+	 * THE MEASUREMENT for the re-delivery class: a receipt replay after a
+	 * reconnect re-sends frames a healthy cursor excludes, and an interleaved
+	 * flush from a dead stream can land a frame again after its successor
+	 * already applied it. Both used to append their fragment a second time;
+	 * this counts every refusal, so "is the stream actually re-delivering
+	 * frames to this viewer" is answered by data rather than by the absence of
+	 * a symptom.
+	 */
+	staleUpdateFrameDropped: 0,
 };
 
 /**
@@ -2253,9 +2324,20 @@ export function applyEvent(
 	 * `message_update`). Omitted on the live path and by every other caller, so the
 	 * default is the live reading.
 	 */
-	options: { seed?: boolean; userStoppedAt?: number | null } = {},
-): TranscriptState {
+	options: {
+		seed?: boolean;
+		userStoppedAt?: number | null;
+		/**
+		 * The frame this event arrived on, when the caller has one. `seed` folds
+		 * bare events with no frame; the live and receipt-replay paths have the
+		 * frame and pass its cursor, which is what makes a re-delivered
+		 * `message_update` decidable (see `message_update`'s cursor gate).
+		 */
+		frame?: DeltaFrame;
+	} = {},
+	): TranscriptState {
 	const message = event.message as Record<string, unknown> | undefined;
+	const incoming = options.frame;
 	switch (event.type) {
 		case "agent_start": {
 			const generation = Number(event.generation ?? state.generation + 1);
@@ -2363,6 +2445,7 @@ export function applyEvent(
 				ts: now,
 				text: "",
 				streaming: true,
+				...(incoming ? { frame: incoming } : {}),
 				stopReason: null,
 				error: false,
 			});
@@ -2407,6 +2490,7 @@ export function applyEvent(
 					text: body ? body + delta : delta,
 					streaming: true,
 					truncated: body === "" ? "prefix" : undefined,
+					...(incoming ? { frame: incoming } : {}),
 					stopReason: null,
 					error: false,
 				});
@@ -2434,6 +2518,49 @@ export function applyEvent(
 				streamDiagnostics.settledAssistantUpdate += 1;
 				return state;
 			}
+			/*
+			 * A FRAME THE ROW HAS ALREADY CONSUMED IS NOT APPLIED AGAIN — the cursor
+			 * gate, and the fix for the re-delivery class.
+			 *
+			 * `frame` travels with every `event` frame and keeps its value across
+			 * re-delivery, so a row whose last folded frame is at or past this one
+			 * has, by the stream's own accounting, already consumed this fragment:
+			 * a receipt replay after a reconnect re-sending a window the viewer
+			 * already applied, or a flush from a stream that died interleaved with
+			 * its successor's. Appending again is the corruption the operator
+			 * photographed as "some chunks are not in the proper overlap/order" — a
+			 * chunk landing twice in the text, and a short trailing fragment
+			 * re-applied per re-delivery accumulating into a run that was never in
+			 * the message.
+			 *
+			 * The comparison is per-EPOCH because a replaced owner restarts the
+			 * numbering; a frame whose epoch differs is a different stream and is
+			 * applied. When no frame is in hand (tests call `applyEvent` directly)
+			 * there is nothing to compare and the rules below decide alone, exactly as
+			 * before.
+			 *
+			 * SEED FOLDS ARE EXEMPT (`options.seed`). Every event in one seed shares
+			 * the snapshot's single cursor, so gating them against each other would
+			 * refuse the seed's own sequence — its `message_start` would stamp the
+			 * cursor and its own `message_update` would then be dropped as stale. The
+			 * seed's window is already decided by the withhold rules immediately
+			 * below, which is the older and more specific rule for exactly that
+			 * question.
+			 */
+			if (
+				options.seed !== true &&
+				incoming &&
+				current.frame &&
+				incoming.epoch === current.frame.epoch &&
+				incoming.seq <= current.frame.seq
+			) {
+				streamDiagnostics.staleUpdateFrameDropped += 1;
+				return state;
+			}
+			// The cursor a row ends this case with: the last folded frame's, never
+			// a regression (see `advancedFrame`). Computed once because both
+			// branches below stamp it.
+			const nextFrame = advancedFrame(current.frame, incoming);
 			if (options.seed === true && !body) {
 				/*
 				 * A SEEDED DELTA-ONLY frame, against a row already on screen.
@@ -2472,6 +2599,10 @@ export function applyEvent(
 				return upsert(state, {
 					...current,
 					text: current.text || delta,
+					// The seed states the row as of the snapshot, so the snapshot's
+					// own cursor is the position this text belongs to — advanced,
+					// never regressed (see `advancedFrame`).
+					...(nextFrame ? { frame: nextFrame } : {}),
 					/*
 					 * Which claim depends on the SAME fact the counter reads: a row that already
 					 * had text had a chunk withheld from the middle of what it holds, while a
@@ -2504,6 +2635,13 @@ export function applyEvent(
 			return upsert(state, {
 				...current,
 				text: next,
+				// The frame that carried this text IS the row's new position: a later
+				// re-delivery of the same frame (or an interleave from the
+				// predecessor stream) is refused by the gate above rather than
+				// appended. Without a frame in hand the previous cursor is kept, and
+				// it is only ever ADVANCED — a snapshot's older cursor cannot pull
+				// the row's position backwards (see `advancedFrame`).
+				...(nextFrame ? { frame: nextFrame } : {}),
 				/*
 				 * A frame with a body supplies the whole running text, so the row stops
 				 * being missing anything and the mark goes on the SAME frame that
@@ -3343,6 +3481,15 @@ export function applyLiveSeed(
 	state: TranscriptState,
 	frontend: CanonicalFrontendState,
 	now = Date.now(),
+	/**
+	 * The snapshot frame's own cursor, when the caller has one. Every event the
+	 * seed folds is applied AT that position: the seed states the turn as of the
+	 * snapshot, so a row it mints or extends has, by construction, consumed the
+	 * stream up to here — which is what lets a later receipt-replay frame with an
+	 * older cursor be refused rather than appended (see `message_update`'s
+	 * cursor gate).
+	 */
+	origin: DeltaFrame | null = null,
 ): TranscriptState {
 	let next = state;
 	if (frontend.streaming && frontend.generation > next.generation) {
@@ -3396,7 +3543,12 @@ export function applyLiveSeed(
 		// `seed: true` is what tells `message_update` that this delta is a REPLAY of a
 		// window this viewer may have painted already, so a row with text of its own
 		// keeps it rather than having an unplaceable chunk appended (see that case).
-		next = applyEvent(next, event, clock, { seed: true });
+		// The snapshot's cursor rides along so a row the seed touches records the
+		// position its text belongs to.
+		next = applyEvent(next, event, clock, {
+			seed: true,
+			...(origin ? { frame: origin } : {}),
+		});
 	}
 	if (!placed) return next;
 	const records = withTimeOrder(next.records);

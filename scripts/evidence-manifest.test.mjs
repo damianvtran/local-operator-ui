@@ -1088,6 +1088,14 @@ const STAMP_BINDING_NOTES = [
 	 * the rule the paragraph above states.
 	 */
 	"foldOntoFd19adc9d9Note",
+	/*
+	 * THIS LANE'S OWN: the streaming re-delivery fix, which moves `src/` AND
+	 * `scripts/` without taking a frame — the change is a reducer/transport
+	 * correctness fix whose evidence is the pinned repro in
+	 * `scripts/transcript-reducer.test.mjs` and the desktop suite, so the reader
+	 * is owed the pair AND the reason no still was owed.
+	 */
+	"streamRedeliveryRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1511,6 +1519,12 @@ const BRANCH_RECORDS = [
 	 * entry a later fold that started from main's copy would drop first.
 	 */
 	"foldOntoFd19adc9d9Note",
+	/*
+	 * And by this lane, whose note is the newest top-level record on the
+	 * branch: it states the pair the streaming re-delivery fix ships, and a
+	 * later fold that started from main's copy would drop it first.
+	 */
+	"streamRedeliveryRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

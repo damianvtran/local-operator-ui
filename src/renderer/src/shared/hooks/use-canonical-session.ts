@@ -3071,6 +3071,18 @@ export function useCanonicalSessionStream(
 								replayTranscript ?? next.transcript,
 								frame.payload,
 								now,
+								{
+									/*
+									 * The replay's own cursor, and the point of passing it: a frame this
+									 * viewer has already folded — a window re-sent because the receipt
+									 * cursor was behind the applied position — carries a seq at or behind
+									 * the row's, and `message_update` refuses it rather than appending the
+									 * fragment a second time. Without this, folding the replay over the
+									 * PAINTED transcript re-applies every re-sent delta and the text
+									 * doubles (the operator's "chunks not in the proper overlap/order").
+									 */
+									frame: { epoch: frame.epoch, seq: frame.seq },
+								},
 							);
 						}
 						if (frame.type === "snapshot") {
@@ -3109,6 +3121,11 @@ export function useCanonicalSessionStream(
 								transcript,
 								snapshot.frontend.snapshot,
 								now,
+								// The seed states the turn as of THIS snapshot, so rows it mints
+								// or extends record the snapshot frame's cursor as their
+								// position — a later replay of an older frame is then refused
+								// rather than appended (see the reducer's cursor gate).
+								{ epoch: frame.epoch, seq: frame.seq },
 							);
 							next = {
 								...next,
@@ -3279,6 +3296,13 @@ export function useCanonicalSessionStream(
 							next = { ...next, turnsCompleted: next.turnsCompleted + 1 };
 						}
 						const transcript = applyEvent(next.transcript, frame.payload, now, {
+							/*
+							 * The live frame's own cursor: the row records the position its
+							 * text belongs to, so a re-delivery of the same frame (an
+							 * interleaved flush after a reconnect) is refused rather than
+							 * appended twice.
+							 */
+							frame: { epoch: frame.epoch, seq: frame.seq },
 							/*
 							 * READ AT APPLY TIME, not captured: the store is written by the
 							 * interrupt's receipt, which lands BEFORE the killed call's end event
