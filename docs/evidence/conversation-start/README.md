@@ -1,7 +1,9 @@
 # Conversation start: the press, the flip, the failure, the return
 
-Two halves, one rig. `after/` is this branch (`feat/conversation-start`, folded
-onto `origin/main` = `9d3e68ddf6`); `before/` is unmodified `origin/main` at that
+Two halves, one rig. `after/` is this branch (`feat/conversation-start`; the frames were shot at its head
+folded onto `origin/main` = `9d3e68ddf6`, and the branch has since folded `22c0fcd4fd`
+(#539, overlay drag regions) under it - see the manifest's
+`conversationStartEvidenceNote` for why no frame moved with that second fold); `before/` is unmodified `origin/main` at that
 same `9d3e68ddf6`, in its own worktree, with an identical build configuration.
 Same tap, same backend, same message, same window (1380x900): the difference
 between the frames is the change.
