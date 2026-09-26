@@ -13,7 +13,7 @@ import {
 	DESKTOP_REFUSAL_SENTENCE,
 	desktopEndpoint,
 	desktopRefusalCodeForStatus,
-	desktopRequestDeadlineMs,
+	desktopRequestTimeoutMs,
 	isDesktopRefusalCode,
 } from "../../../../../shared/desktop-contract";
 import { DESKTOP_STREAM_DETAIL } from "../../../../../shared/desktop-stream-notice";
@@ -27,28 +27,13 @@ export type {
 	ProviderMethod,
 } from "../../../../../shared/desktop-contract";
 
-/**
- * How long the renderer waits for ANY desktop control before calling it dead.
- *
- * Deliberately longer than the main process's own `fetch` deadline for the same
- * op — `desktopRequestDeadlineMs` plus this margin, rather than the 30 s literal
- * that used to sit here against main's flat 20 s. The invariant is the thing
- * worth keeping: the renderer's bound only covers the case main can never
- * report (the IPC round trip itself never settling), so a backend that answers
- * slowly is still reported by the layer that actually knows the HTTP status.
- * Splitting it per op is what keeps that true now that main's deadline is not
- * one number: a flat 30 s against a 90 s ledger-read budget would have made the
- * renderer the layer that gives up first, and its copy cannot name the reason.
- *
- * It does NOT cover `desktopMedia`, whose transport allows 120s for speech and
- * agent-ZIP transfers; that path is bounded separately and is not routed here.
+/*
+ * The renderer's own deadline for one op: the transport's deadline plus the margin
+ * that covers an IPC round trip main can never report. DEFINED in the shared
+ * contract (see `desktopRequestTimeoutMs` there for why), and re-exported from here
+ * because this is where its callers import it from.
  */
-const DESKTOP_DEADLINE_MARGIN_MS = 5000;
-
-/** The renderer's own deadline for one op, derived from the transport's. */
-export function desktopRequestTimeoutMs(op: DesktopRequest["op"]): number {
-	return desktopRequestDeadlineMs(op) + DESKTOP_DEADLINE_MARGIN_MS;
-}
+export { desktopRequestTimeoutMs };
 
 export async function desktopRequest(
 	request: DesktopRequest,
