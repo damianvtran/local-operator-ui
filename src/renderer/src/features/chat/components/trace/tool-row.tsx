@@ -59,9 +59,8 @@ import {
 	displayName,
 	formatDuration,
 	formatSettledDuration,
-	isBareToolName,
 	toolCategory,
-	toolVerb,
+	toolRowLabel,
 } from "./tool-row-model";
 
 export type ToolRowOutcome =
@@ -616,18 +615,20 @@ export const ToolRow = ({
 	 * wire name is the GLYPH's job now. A tool the verb table does not know keeps
 	 * its display name at the head of the object, so an MCP call still says
 	 * which call it was.
+	 *
+	 * The composition lives in `toolRowLabel` (`tool-row-model.ts`) because the
+	 * trace fold's condensed header names a running call with the SAME words —
+	 * the row paints it, the fold lifts it. The two columns keep their names
+	 * here: `seed-label-gap.test.mjs` pins the held cell's own expressions
+	 * (`summaryHold ? undefined : summaryText`), and those are wiring, not
+	 * naming.
 	 */
-	const verb = toolVerb(toolName);
-	const verbText = running ? verb.running : verb.settled;
-	// The one expression the summary cell both prints and titles, so the tooltip
-	// cannot drift from the text it stands for — including the dropped-stutter
-	// fallback below.
-	const bareSummary = isBareToolName(summary, toolName)
-		? (summaryFallback ?? "")
-		: summary;
-	const summaryText = toolVerb(toolName).named
-		? bareSummary
-		: [displayName(toolName), bareSummary].filter(Boolean).join(" ");
+	const { verb: verbText, object: summaryText } = toolRowLabel(
+		toolName,
+		summary,
+		summaryFallback,
+		running,
+	);
 
 	const row = (
 		<span className={cn("flex min-w-0 flex-1 items-center gap-2")}>
