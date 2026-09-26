@@ -60,7 +60,14 @@ import {
 import { cn } from "@shared/lib/utils";
 import { showErrorToast, showWarningToast } from "@shared/utils/toast-manager";
 import { ChevronDown } from "lucide-react";
-import { type FC, type ReactNode, useCallback, useState } from "react";
+import {
+	type FC,
+	type MutableRefObject,
+	type ReactNode,
+	useCallback,
+	useRef,
+	useState,
+} from "react";
 import { useEntities } from "../pickers/destination-pickers";
 import { errorText, useSessionCommand } from "../pickers/use-picker-backend";
 import { resolveHeaderIdentity } from "./chat-header-identity-model";
@@ -153,6 +160,14 @@ type IdentityControlProps = {
 	/** Loads the menu's rows, lazily on first open. */
 	enabled: boolean;
 	triggerLabel: string;
+	/**
+	 * The pair's swap guard, shared by both controls: set when either trigger
+	 * is PRESSED, cleared on the next task. See `chat-header-identity`'s own
+	 * note for what it protects (`onCloseAutoFocus` skips the focus-return
+	 * while it is set).
+	 */
+	swapRef: MutableRefObject<boolean>;
+	markSwap: () => void;
 };
 
 /**
@@ -174,6 +189,8 @@ const IdentityControl: FC<IdentityControlProps> = ({
 	sessionId,
 	enabled,
 	triggerLabel,
+	swapRef,
+	markSwap,
 }) => {
 	const rows = useEntities<HeaderEntityRow>(
 		sessionId,
@@ -205,12 +222,17 @@ const IdentityControl: FC<IdentityControlProps> = ({
 		 * is what lets both the latch and the frame's own claim name the state
 		 * rather than measure it by eye.
 		 */
-		<DropdownMenuLabel className={cn("text-danger")} data-header-identity-error="">
+		<DropdownMenuLabel
+			className={cn("text-danger")}
+			data-header-identity-error=""
+		>
 			{errorText(rows.error)}
 		</DropdownMenuLabel>
 	) : items.length === 0 ? (
 		<DropdownMenuLabel>
-			{kind === "team" ? "No teams are registered." : "No agents are registered."}
+			{kind === "team"
+				? "No teams are registered."
+				: "No agents are registered."}
 		</DropdownMenuLabel>
 	) : null;
 
@@ -232,6 +254,11 @@ const IdentityControl: FC<IdentityControlProps> = ({
 					data-header-identity={kind}
 					className={cn(TRIGGER_BOX, !assigned && "text-ink-dim")}
 					aria-busy={busy || undefined}
+					/* The swap guard's mark: every press on either trigger records
+					 * that the closure about to run is a SWAP, not a dismissal - see
+					 * `onCloseAutoFocus` on the menu below, and the pair's own note
+					 * under `ChatHeaderIdentity` for the measured failure it fixes. */
+					onPointerDown={markSwap}
 					/*
 					 * The accessible name states the role and the action and still
 					 * CONTAINS the visible label (`lopdev`, `No team`), so voice
@@ -276,6 +303,26 @@ const IdentityControl: FC<IdentityControlProps> = ({
 			<DropdownMenuContent
 				align="start"
 				className={cn("min-w-45")}
+				/*
+				 * THE SWAP GUARD (UX round 1, U4 - see the note under
+				 * `ChatHeaderIdentity` for the measured sequence this answers).
+				 * A close caused by a press on the SIBLING control must not run
+				 * Radix's focus-return: that refocus lands on this control's own
+				 * trigger and the just-opened sibling menu reads it as
+				 * focus-outside and dismisses itself 4ms later (measured: agent
+				 * aria-expanded true at t, false at t+4). Outside clicks, Escape
+				 * and same-trigger toggles leave `swapRef` false and keep the
+				 * return.
+				 */
+				onCloseAutoFocus={(event) => {
+					if (swapRef.current) {
+						/* Consume on use: the close-autofocus runs from a passive
+						 * cleanup, so clearing on a zero timeout raced it (see the
+						 * pair's note under `ChatHeaderIdentity`). */
+						swapRef.current = false;
+						event.preventDefault();
+					}
+				}}
 				/* Inert hook for the sweep's shutter: the rig ASSERTS the menu
 				 * present at shutter time (a one-shot claim, not a wait), so a frame
 				 * filed under an open-menu name cannot photograph the closed
@@ -340,6 +387,42 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 	 * The state is also the lists' lazy gate - a closed menu costs no query.
 	 */
 	const [open, setOpen] = useState<"agent" | "team" | null>(null);
+	/*
+	 * THE SWAP GUARD, and why modal={false} alone was not enough (UX round 1,
+	 * U4; measured on Radix 2.1.24 through this header rather than reasoned
+	 * about). With `modal={false}` the sibling press DOES reach the idle trigger
+	 * and its menu DOES open - aria-expanded flips true in the same commit the
+	 * dismissing menu closes - but the dismissing menu's own close then runs
+	 * Radix's focus-return onto its trigger, and the just-opened sibling reads
+	 * that focus as `focus-outside` and dismisses itself 4ms later (verbatim
+	 * from the probe: agent true at t=4363, team false at t=4363, agent false
+	 * at t=4367; the two-click behaviour the review measured, reproduced and
+	 * traced). Radix's own guard for this - `hasInteractedOutsideRef` skipping
+	 * the focus-return when the closure was an outside interaction - does not
+	 * engage for a same-tick sibling swap, because the outside event is
+	 * dispatched to the layer that just mounted (the sibling's) rather than the
+	 * one that received it.
+	 *
+	 * So the pair carries the flag itself: every press on either trigger marks
+	 * `swapRef`, and a menu whose close-autofocus runs while it is set skips the
+	 * focus-return and CONSUMES the flag (`onCloseAutoFocus` in
+	 * `IdentityControl`). Two details are load-bearing, both measured: the flag
+	 * is consumed on use rather than cleared on a zero timeout, because the
+	 * close-autofocus runs from a PASSIVE effect cleanup a few ms after the
+	 * commit and a `setTimeout(0)` clear raced it (the first attempt still
+	 * focused the trigger at t+4); and the timeout that remains is a ceiling
+	 * for the case where a press produces no close at all, long enough to
+	 * outlive any passive flush and short enough that a genuine dismissal right
+	 * after an opening press is the only thing it could ever affect. Escape,
+	 * outside clicks and same-trigger toggles keep the focus-return.
+	 */
+	const swapRef = useRef(false);
+	const markSwap = useCallback(() => {
+		swapRef.current = true;
+		window.setTimeout(() => {
+			swapRef.current = false;
+		}, 300);
+	}, []);
 	const teamCommand = useSessionCommand(sessionId);
 	const agentCommand = useSessionCommand(sessionId);
 
@@ -391,6 +474,8 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 				label={view.agentLabel}
 				current={view.agentValue}
 				busy={agentCommand.busy}
+				swapRef={swapRef}
+				markSwap={markSwap}
 				open={open === "agent"}
 				onOpenChange={(next) => setOpen(next ? "agent" : null)}
 				onPick={(name) => void runSwitch("agent", name, agentCommand)}
@@ -403,6 +488,8 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 				label={view.teamLabel}
 				current={view.teamValue}
 				busy={teamCommand.busy}
+				swapRef={swapRef}
+				markSwap={markSwap}
 				open={open === "team"}
 				onOpenChange={(next) => setOpen(next ? "team" : null)}
 				onPick={(name) => void runSwitch("team", name, teamCommand)}

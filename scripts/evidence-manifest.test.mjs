@@ -1157,6 +1157,14 @@ const STAMP_BINDING_NOTES = [
 	 * prose - the same case foldOnto093a329a4dNote is in the list for.
 	 */
 	"foldOnto22c0fcd4fdNote",
+	/*
+	 * AND THIS ROUND'S OWN: UX round 1's U1/U4 and design D2 changed what the
+	 * identity surfaces RENDER, and the remediation re-shot the frames that
+	 * moved plus six new states - so its subject is this file's binding (the
+	 * pair the committed tree produces), and it is held to the check rather
+	 * than read as history.
+	 */
+	"headerIdentityRoundOneRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1634,6 +1642,12 @@ const BRANCH_RECORDS = [
 	 * child-reader records for the reason the list exists.
 	 */
 	"foldOnto22c0fcd4fdNote",
+	/*
+	 * And this round's own, beside the rest of the header identity's records:
+	 * the remediation that answered review round 1. Registered here for the
+	 * list's usual reason - a fold resolved from main's copy would drop it.
+	 */
+	"headerIdentityRoundOneRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

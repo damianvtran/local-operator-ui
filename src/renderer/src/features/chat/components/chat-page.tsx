@@ -2837,9 +2837,9 @@ function SessionPanel({
 					 * destination - `PRESENT_DIRECTLY` holds `session.goal` and
 					 * `session.context` and no rename, which is what the old sentence read it
 					 * as. The pencil opens the one existing rename flow rather than a second
-						* surface for one write path.
-							*
-							* `dispatchFromControl`, not `dispatch`: a control has no composer text
+					 * surface for one write path.
+					 *
+					 * `dispatchFromControl`, not `dispatch`: a control has no composer text
 					 * to report through, so the wrapper is what turns the commands-off
 					 * `"not-a-command"` into the composer's own failure note rather than a
 					 * dead pencil (bot 4; the options row already uses the same wrapper).

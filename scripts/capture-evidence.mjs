@@ -1353,7 +1353,7 @@ export const STORIES = [
 		"chat-header-identity--team-bound",
 		560,
 		84,
-		{ tabTo: '[data-header-rename]', dir: "pencil-focus" },
+		{ tabTo: "[data-header-rename]", dir: "pencil-focus" },
 	],
 	/*
 	 * A keyboard-highlighted menu row: opened by pointer, then ArrowDown puts
