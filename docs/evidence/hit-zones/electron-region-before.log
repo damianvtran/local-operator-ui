@@ -1,0 +1,7 @@
+webContents 1: debugging enabled
+webContents 1: update #1: renderer sent 1 region(s) (1 drag, 0 no-drag); hit-test region computed in 0.0 us: 1 rect(s), bounds 0,0 1380x32
+webContents 1: update #2, 82.0 ms since previous update: renderer sent 12 region(s) (5 drag, 7 no-drag); hit-test region computed in 5.0 us: 5 rect(s), bounds 0,0 1380x72
+webContents 1: update #3, 294.8 ms since previous update: renderer sent 1 region(s) (1 drag, 0 no-drag); hit-test region computed in 0.0 us: 1 rect(s), bounds 0,0 1380x32
+webContents 1: update #4, 27.6 ms since previous update: renderer sent 12 region(s) (5 drag, 7 no-drag); hit-test region computed in 6.0 us: 5 rect(s), bounds 0,0 1380x72
+webContents 1: update #5, 1633.6 ms since previous update: renderer sent 13 region(s) (6 drag, 7 no-drag); hit-test region computed in 6.0 us: 5 rect(s), bounds 0,0 1380x72 (identical to previous region)
+webContents 1: update #6, 8001.5 ms since previous update: renderer sent 1 region(s) (1 drag, 0 no-drag); hit-test region computed in 1.0 us: 1 rect(s), bounds 0,0 1380x32
