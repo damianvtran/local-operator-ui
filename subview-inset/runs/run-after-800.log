@@ -1,0 +1,68 @@
+[build] current: assets 2026-09-26T13:44:39.232Z >= sources 2026-09-26T13:44:17.239Z
+[note] abandoned scratch trees
+        9 seen, 0 owned by a live pid (kept), 9 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/.local-operator/sessions/318576ecda22/scratchpad/rig/config/run/serve   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/fix-subview-inset-318576ecda22
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-64876
+  frames        /Users/damian/.local-operator/sessions/318576ecda22/scratchpad/rig/frames-after-800
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-64876/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/fix-subview-inset-318576ecda22/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] the app is on /chat
+[note] the top of /chat
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"height":32},"laneDisplay":"block","band":null,"bandDisplay":null,"sidebar":null,"route":{"top":32,"height":568},"routeTag":"div","settingsRail":null,"settingsContent":null}
+[PASS] the app is on /settings
+[note] the top of /settings
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"height":32},"laneDisplay":"block","band":{"top":0,"height":0},"bandDisplay":"none","sidebar":null,"route":{"top":32,"height":568},"routeTag":"div","settingsRail":{"top":32,"height":568},"settingsContent":{"top":32,"height":568}}
+[PASS] the app is on /settings?section=integrations
+[note] the top of /settings?section=integrations
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"height":32},"laneDisplay":"block","band":{"top":0,"height":0},"bandDisplay":"none","sidebar":null,"route":{"top":32,"height":568},"routeTag":"div","settingsRail":{"top":32,"height":568},"settingsContent":{"top":32,"height":568}}
+[PASS] the app is on /agents
+[note] the top of /agents
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"height":32},"laneDisplay":"block","band":{"top":0,"height":0},"bandDisplay":"none","sidebar":null,"route":{"top":32,"height":568},"routeTag":"div","settingsRail":null,"settingsContent":null}
+[PASS] the app is on /agent-hub
+[note] the top of /agent-hub
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"height":32},"laneDisplay":"block","band":{"top":0,"height":0},"bandDisplay":"none","sidebar":null,"route":{"top":32,"height":568},"routeTag":"div","settingsRail":null,"settingsContent":null}
+[PASS] the app is on /schedules
+[note] the top of /schedules
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"height":32},"laneDisplay":"block","band":{"top":0,"height":0},"bandDisplay":"none","sidebar":null,"route":{"top":32,"height":568},"routeTag":"div","settingsRail":null,"settingsContent":null}
+[PASS] /chat: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y (none), settings content y (none)
+[PASS] /settings: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y 32, settings content y 32
+[PASS] /settings?section=integrations: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y 32, settings content y 32
+[PASS] /agents: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y (none), settings content y (none)
+[PASS] /agent-hub: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y (none), settings content y (none)
+[PASS] /schedules: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y (none), settings content y (none)
+[PASS] every capture is a frame the app held still for, with no toast on it
+[PASS] every capture wrote a PNG of the window's own size
+[PASS] no process from this run outlived its boot
+
+frames: route-tops-agent-hub-after-800.png, route-tops-agents-after-800.png, route-tops-chat-after-800.png, route-tops-schedules-after-800.png, route-tops-settings-after-800.png, route-tops-settings-integrations-after-800.png
+frames directory: /Users/damian/.local-operator/sessions/318576ecda22/scratchpad/rig/frames-after-800
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-64876/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-64876 (the frames are also in --out)
+
+ALL CHECKS PASSED

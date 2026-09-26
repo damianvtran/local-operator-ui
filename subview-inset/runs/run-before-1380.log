@@ -1,0 +1,116 @@
+[build] current: assets 2026-09-26T13:39:58.583Z >= sources 2026-09-26T13:22:50.820Z
+[note] abandoned scratch trees
+        5 seen, 0 owned by a live pid (kept), 5 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/.local-operator/sessions/318576ecda22/scratchpad/rig/config/run/serve   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/fix-subview-inset-318576ecda22
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-50973
+  frames        /Users/damian/.local-operator/sessions/318576ecda22/scratchpad/rig/frames-before-1380
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-50973/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/fix-subview-inset-318576ecda22/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] the app is on /chat
+[note] the top of /chat
+        {"platform":"mac","mode":"integrated","viewport":{"width":1380,"height":900},"lane":{"top":0,"height":32},"laneDisplay":"block","band":null,"bandDisplay":null,"sidebar":{"top":32,"height":868},"route":{"top":32,"height":868},"routeTag":"div","settingsRail":null,"settingsContent":null}
+[PASS] the app is on /settings
+[note] the top of /settings
+        {"platform":"mac","mode":"integrated","viewport":{"width":1380,"height":900},"lane":{"top":0,"height":32},"laneDisplay":"block","band":{"top":32,"height":30.86},"bandDisplay":"block","sidebar":{"top":32,"height":868},"route":{"top":62.86,"height":837.14},"routeTag":"div","settingsRail":{"top":62.86,"height":837.14},"settingsContent":{"top":62.86,"height":837.14}}
+[PASS] the app is on /settings?section=integrations
+[note] the top of /settings?section=integrations
+        {"platform":"mac","mode":"integrated","viewport":{"width":1380,"height":900},"lane":{"top":0,"height":32},"laneDisplay":"block","band":{"top":32,"height":30.86},"bandDisplay":"block","sidebar":{"top":32,"height":868},"route":{"top":62.86,"height":837.14},"routeTag":"div","settingsRail":{"top":62.86,"height":837.14},"settingsContent":{"top":62.86,"height":837.14}}
+[PASS] the app is on /agents
+[note] the top of /agents
+        {"platform":"mac","mode":"integrated","viewport":{"width":1380,"height":900},"lane":{"top":0,"height":32},"laneDisplay":"block","band":{"top":32,"height":30.86},"bandDisplay":"block","sidebar":{"top":32,"height":868},"route":{"top":62.86,"height":837.14},"routeTag":"div","settingsRail":null,"settingsContent":null}
+[PASS] the app is on /agent-hub
+[note] the top of /agent-hub
+        {"platform":"mac","mode":"integrated","viewport":{"width":1380,"height":900},"lane":{"top":0,"height":32},"laneDisplay":"block","band":{"top":32,"height":30.8},"bandDisplay":"block","sidebar":{"top":32,"height":868},"route":{"top":62.8,"height":837.2},"routeTag":"div","settingsRail":null,"settingsContent":null}
+[PASS] the app is on /schedules
+[note] the top of /schedules
+        {"platform":"mac","mode":"integrated","viewport":{"width":1380,"height":900},"lane":{"top":0,"height":32},"laneDisplay":"block","band":{"top":32,"height":30.8},"bandDisplay":"block","sidebar":{"top":32,"height":868},"route":{"top":62.8,"height":837.2},"routeTag":"div","settingsRail":null,"settingsContent":null}
+[PASS] /chat: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y 32, settings rail y (none), settings content y (none)
+[FAIL] /settings: the route's own first box starts on the lane's bottom edge (32px)
+        the route's first box is at y 62.86 against a lane that ends at 32
+[FAIL] /settings?section=integrations: the route's own first box starts on the lane's bottom edge (32px)
+        the route's first box is at y 62.86 against a lane that ends at 32
+[FAIL] /agents: the route's own first box starts on the lane's bottom edge (32px)
+        the route's first box is at y 62.86 against a lane that ends at 32
+[FAIL] /agent-hub: the route's own first box starts on the lane's bottom edge (32px)
+        the route's first box is at y 62.8 against a lane that ends at 32
+[FAIL] /schedules: the route's own first box starts on the lane's bottom edge (32px)
+        the route's first box is at y 62.8 against a lane that ends at 32
+[PASS] /chat: the app sidebar still starts on the lane's bottom edge (32px)
+[PASS] /settings: the app sidebar still starts on the lane's bottom edge (32px)
+[PASS] /settings?section=integrations: the app sidebar still starts on the lane's bottom edge (32px)
+[PASS] /agents: the app sidebar still starts on the lane's bottom edge (32px)
+[PASS] /agent-hub: the app sidebar still starts on the lane's bottom edge (32px)
+[PASS] /schedules: the app sidebar still starts on the lane's bottom edge (32px)
+[PASS] every capture is a frame the app held still for, with no toast on it
+[PASS] every capture wrote a PNG of the window's own size
+
+---- app log (tail) ----
+[window-mode] headless run launched by pid 50973; it quits when that process goes
+09:40:16.910 › [discovery] record directory /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-50973/config/run/serve (1 record(s))
+09:40:16.944 › [shell-path] /bin/zsh reports PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
+09:40:16.944 › Shell environment variables loaded successfully. PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
+09:40:16.952 › [discovery] candidate http://127.0.0.1:8080 pid 48732 v0.63.0 prefix /Users/damian/.local/share/lop/generations/20260926T125249Z-a3228afd4c6e/tools/local-operator (configured URL)
+09:40:16.953 › [discovery] picked http://127.0.0.1:8080 (pid 48732, v0.63.0, configured)
+09:40:16.961 › Attached to daemon http://127.0.0.1:8080 (pid 48732, v0.63.0, uv-tool, record /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-50973/config/run/serve/48732.json)
+09:40:16.962 › Discovered a daemon; the backend manager is configured not to spawn or kill one.
+09:40:17.115 › Update service initialized. Dev mode: true, NPX install: false
+09:40:17.115 › Unpackaged instance: no packaged install state to leave alone.
+09:40:17.115 › Periodic update checks scheduled (every 5 minutes)
+09:40:17.116 › macOS auto-update requires app signing
+09:40:17.116 › [webauthn] Touch ID passkeys are off: unpackaged — an unpackaged run has no signature to carry the entitlement, so there is no group to configure
+09:40:17.124 › [browser] denied a media permission request from (unknown origin)
+09:40:17.124 › [browser] denied a media permission request from (unknown origin)
+09:40:17.124 › [browser] denied a web-app-installation permission request from (unknown origin)
+09:40:17.124 › [browser] denied a geolocation permission request from (unknown origin)
+09:40:17.281 › [browser] denied a media permission request from (unknown origin)
+09:40:17.281 › [browser] denied a media permission request from (unknown origin)
+09:40:17.281 › [browser] denied a web-app-installation permission request from (unknown origin)
+09:40:17.281 › [browser] denied a geolocation permission request from (unknown origin)
+09:40:17.416 › [console] restored the exec bit on /Users/damian/local-operator-ui-worktrees/fix-subview-inset-318576ecda22/node_modules/.pnpm/node-pty@1.1.0/node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper
+09:40:17.417 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
+09:40:17.418 › [browser] host on 127.0.0.1:49684 (proto 1), profile /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-50973/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+09:40:17.420 › [browser] tab 1 navigated to about:blank
+09:40:17.677 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+09:40:17.678 › Checking for UI updates...
+09:40:17.678 › Skip checkForUpdates because application is not packed and dev update config is not forced
+sandbox_extension_issue_file failed for /Users/damian/local-operator-ui-worktrees/fix-subview-inset-318576ecda22/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/Resources: 1 (Operation not permitted)
+09:40:17.907 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+09:40:17.908 › Checking for UI updates...
+09:40:17.910 › Skip checkForUpdates because application is not packed and dev update config is not forced
+[window-mode] state: visible=false focused=false focusable=false size=1380x900 content=1380x900
+09:40:20.133 › Checking for updates... (silent mode: true)
+09:40:20.133 › Skip checkForUpdates because application is not packed and dev update config is not forced
+09:40:20.133 › Checking for backend updates... (silent mode: true)
+09:40:20.133 › Skip backend update check in dev mode unless forced
+(node:51027) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 backend-status-changed listeners added to [IpcRenderer]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `Electron Helper (Renderer) --trace-warnings ...` to show where the warning was created)
+
+[PASS] no process from this run outlived its boot
+
+frames: route-tops-agent-hub-1380.png, route-tops-agents-1380.png, route-tops-chat-1380.png, route-tops-schedules-1380.png, route-tops-settings-1380.png, route-tops-settings-integrations-1380.png
+frames directory: /Users/damian/.local-operator/sessions/318576ecda22/scratchpad/rig/frames-before-1380
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-50973/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-50973 (the frames are also in --out)
+
+5 CHECK(S) FAILED

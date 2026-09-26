@@ -1,0 +1,110 @@
+[build] current: assets 2026-09-26T13:42:30.320Z >= sources 2026-09-26T13:42:14.185Z
+[note] abandoned scratch trees
+        7 seen, 0 owned by a live pid (kept), 7 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/.local-operator/sessions/318576ecda22/scratchpad/rig/config/run/serve   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/fix-subview-inset-318576ecda22
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-60442
+  frames        /Users/damian/.local-operator/sessions/318576ecda22/scratchpad/rig/frames-before-800
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-60442/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/fix-subview-inset-318576ecda22/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] the app is on /chat
+[note] the top of /chat
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"height":32},"laneDisplay":"block","band":null,"bandDisplay":null,"sidebar":null,"route":{"top":32,"height":568},"routeTag":"div","settingsRail":null,"settingsContent":null}
+[PASS] the app is on /settings
+[note] the top of /settings
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"height":32},"laneDisplay":"block","band":{"top":32,"height":30.3},"bandDisplay":"block","sidebar":null,"route":{"top":62.3,"height":537.7},"routeTag":"div","settingsRail":{"top":62.3,"height":537.7},"settingsContent":{"top":62.3,"height":537.7}}
+[PASS] the app is on /settings?section=integrations
+[note] the top of /settings?section=integrations
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"height":32},"laneDisplay":"block","band":{"top":32,"height":30.3},"bandDisplay":"block","sidebar":null,"route":{"top":62.3,"height":537.7},"routeTag":"div","settingsRail":{"top":62.3,"height":537.7},"settingsContent":{"top":62.3,"height":537.7}}
+[PASS] the app is on /agents
+[note] the top of /agents
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"height":32},"laneDisplay":"block","band":{"top":32,"height":30.3},"bandDisplay":"block","sidebar":null,"route":{"top":62.3,"height":537.7},"routeTag":"div","settingsRail":null,"settingsContent":null}
+[PASS] the app is on /agent-hub
+[note] the top of /agent-hub
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"height":32},"laneDisplay":"block","band":{"top":32,"height":30.15},"bandDisplay":"block","sidebar":null,"route":{"top":62.15,"height":537.85},"routeTag":"div","settingsRail":null,"settingsContent":null}
+[PASS] the app is on /schedules
+[note] the top of /schedules
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"height":32},"laneDisplay":"block","band":{"top":32,"height":30.15},"bandDisplay":"block","sidebar":null,"route":{"top":62.15,"height":537.85},"routeTag":"div","settingsRail":null,"settingsContent":null}
+[PASS] /chat: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y (none), settings content y (none)
+[FAIL] /settings: the route's own first box starts on the lane's bottom edge (32px)
+        the route's first box is at y 62.3 against a lane that ends at 32
+[FAIL] /settings?section=integrations: the route's own first box starts on the lane's bottom edge (32px)
+        the route's first box is at y 62.3 against a lane that ends at 32
+[FAIL] /agents: the route's own first box starts on the lane's bottom edge (32px)
+        the route's first box is at y 62.3 against a lane that ends at 32
+[FAIL] /agent-hub: the route's own first box starts on the lane's bottom edge (32px)
+        the route's first box is at y 62.15 against a lane that ends at 32
+[FAIL] /schedules: the route's own first box starts on the lane's bottom edge (32px)
+        the route's first box is at y 62.15 against a lane that ends at 32
+[PASS] every capture is a frame the app held still for, with no toast on it
+[PASS] every capture wrote a PNG of the window's own size
+
+---- app log (tail) ----
+DevTools listening on ws://127.0.0.1:50632/devtools/browser/56e7daae-23e0-4d18-ac52-91039f3bf2a6
+09:43:47.491 › [window-mode] headless run launched by pid 60442; it quits when that process goes
+[window-mode] headless run launched by pid 60442; it quits when that process goes
+09:43:47.493 › [discovery] record directory /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-60442/config/run/serve (1 record(s))
+09:43:47.526 › [shell-path] /bin/zsh reports PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
+09:43:47.526 › Shell environment variables loaded successfully. PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
+09:43:47.535 › [discovery] candidate http://127.0.0.1:8080 pid 59837 v0.63.0 prefix /Users/damian/.local/share/lop/generations/20260926T125249Z-a3228afd4c6e/tools/local-operator (configured URL)
+09:43:47.536 › [discovery] picked http://127.0.0.1:8080 (pid 59837, v0.63.0, configured)
+09:43:47.549 › Attached to daemon http://127.0.0.1:8080 (pid 59837, v0.63.0, uv-tool, record /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-60442/config/run/serve/59837.json)
+09:43:47.550 › Discovered a daemon; the backend manager is configured not to spawn or kill one.
+09:43:47.683 › Update service initialized. Dev mode: true, NPX install: false
+09:43:47.684 › Unpackaged instance: no packaged install state to leave alone.
+09:43:47.684 › Periodic update checks scheduled (every 5 minutes)
+09:43:47.684 › macOS auto-update requires app signing
+09:43:47.684 › [webauthn] Touch ID passkeys are off: unpackaged — an unpackaged run has no signature to carry the entitlement, so there is no group to configure
+09:43:47.694 › [browser] denied a media permission request from (unknown origin)
+09:43:47.694 › [browser] denied a media permission request from (unknown origin)
+09:43:47.694 › [browser] denied a web-app-installation permission request from (unknown origin)
+09:43:47.695 › [browser] denied a geolocation permission request from (unknown origin)
+09:43:47.816 › [browser] denied a media permission request from (unknown origin)
+09:43:47.816 › [browser] denied a media permission request from (unknown origin)
+09:43:47.816 › [browser] denied a web-app-installation permission request from (unknown origin)
+09:43:47.816 › [browser] denied a geolocation permission request from (unknown origin)
+09:43:47.859 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
+09:43:47.860 › [browser] host on 127.0.0.1:50651 (proto 1), profile /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-60442/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+09:43:47.930 › [browser] tab 1 navigated to about:blank
+09:43:48.133 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+09:43:48.134 › Checking for UI updates...
+09:43:48.135 › Skip checkForUpdates because application is not packed and dev update config is not forced
+09:43:48.414 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+09:43:48.415 › Checking for UI updates...
+09:43:48.415 › Skip checkForUpdates because application is not packed and dev update config is not forced
+[window-mode] state: visible=false focused=false focusable=false size=800x600 content=800x600
+09:43:50.686 › Checking for updates... (silent mode: true)
+09:43:50.686 › Skip checkForUpdates because application is not packed and dev update config is not forced
+09:43:50.686 › Checking for backend updates... (silent mode: true)
+09:43:50.686 › Skip backend update check in dev mode unless forced
+(node:60519) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 backend-status-changed listeners added to [IpcRenderer]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `Electron Helper (Renderer) --trace-warnings ...` to show where the warning was created)
+
+[PASS] no process from this run outlived its boot
+
+frames: route-tops-agent-hub-800.png, route-tops-agents-800.png, route-tops-chat-800.png, route-tops-schedules-800.png, route-tops-settings-800.png, route-tops-settings-integrations-800.png
+frames directory: /Users/damian/.local-operator/sessions/318576ecda22/scratchpad/rig/frames-before-800
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-60442/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-60442 (the frames are also in --out)
+
+5 CHECK(S) FAILED
