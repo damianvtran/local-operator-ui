@@ -428,6 +428,158 @@ export const STORIES = [
 	 * surfaces were committed with (1308 / 1409 / 3327), so the frames keep the
 	 * full transcript and a re-capture is a fair comparison again.
 	 */
+	/*
+	 * THE PROVIDER SIGN-IN, PROVIDERS PAGE, ONBOARDING AND DISCOVERABILITY SET.
+	 *
+	 * Every row below is a story id, a viewport and -- where the state arrives a
+	 * beat after the click -- the selector that must be PRESENT before the shutter
+	 * opens. That third field is not decoration: four terminal rows used to be
+	 * photographed 900 ms in, while the stories reach their terminal state about
+	 * 1.5 s after the click, so `succeeded`, `expired`, `gone-404` and `failed`
+	 * were committed as four copies of the WAITING panel and the PR claimed
+	 * evidence it did not have (code round 1 M3, design round 1 D1, QA round 1
+	 * Q8). `scripts/evidence-sign-in-states.test.mjs` holds those four hashes
+	 * apart, so the same mistake fails a test rather than a review.
+	 *
+	 * The two waiting rows are the released backend's sequence (the sign-in url
+	 * arrives on the first POLL rather than on the start reply) and the newer one
+	 * (url on the reply): the defect this set exists for was backend-shape
+	 * dependent, and a frame of only one shape cannot show that both work.
+	 *
+	 * The story's bridge is scripted and its `openAuthorization` RECORDS instead
+	 * of opening a browser, so these frames are publishable by construction.
+	 */
+	["provider-sign-in-onboarding--providers-first-run", 1280, 1100],
+	["provider-sign-in-onboarding--providers-connected", 1280, 1100],
+	["provider-sign-in-onboarding--providers-connected-menu", 1280, 1100],
+	["provider-sign-in-onboarding--panel-idle", 1280, 620],
+	[
+		"provider-sign-in-onboarding--panel-waiting-legacy-backend",
+		1280,
+		620,
+		{ dir: "panel-waiting-first-click-released-backend" },
+	],
+	[
+		"provider-sign-in-onboarding--panel-waiting-current-backend",
+		1280,
+		620,
+		{ dir: "panel-waiting-url-on-start-reply" },
+	],
+	["provider-sign-in-onboarding--panel-device-code", 1280, 620],
+	["provider-sign-in-onboarding--panel-optional-paste", 1280, 620],
+	["provider-sign-in-onboarding--panel-optional-paste-open", 1280, 780],
+	["provider-sign-in-onboarding--panel-paste-required", 1280, 620],
+	/*
+	 * The same paste body reached with NO url at all, which is the case a released
+	 * backend's Token Plan sign-in hits (QA round 1 Q2).
+	 */
+	[
+		"provider-sign-in-onboarding--panel-paste-required-no-url",
+		1280,
+		620,
+		/*
+		 * The spinner this row exists to catch is a DIFFERENT image from the paste
+		 * body, so a hash comparison alone cannot tell them apart from the other
+		 * states: the attribute is the claim (review round 2 R2-m2).
+		 */
+		{ expectPresent: '[data-sign-in-state="paste-required"]' },
+	],
+	/*
+	 * `launch_url` set beside the provider's own `auth_url`: the sentence must name
+	 * the provider, not the backend's loopback alias (code round 1 M1, UX N2).
+	 */
+	["provider-sign-in-onboarding--panel-waiting-launch-url", 1280, 620],
+	/*
+	 * The refused verdict in the ROW, with its panel open -- the state three rounds
+	 * judged without a frame (design D13/D14/D15, review R4-M2, UX U15/U16). The
+	 * shutter waits for the claim's tone rather than for the clock, because the claim
+	 * arrives with the verdict's first answer: a beat earlier this frame is the same
+	 * row photographed as a healthy sign-in (the paste-required row's own guard).
+	 */
+	[
+		"provider-sign-in-onboarding--panel-refused-verdict",
+		1280,
+		900,
+		/*
+		 * The VERDICT on the settled view is what this frame exists for (U19): the shutter
+		 * waits for it rather than for the clock, and the same attribute carries the tone
+		 * so the refusal cannot be photographed as a success.
+		 */
+		{ expectPresent: '[data-verdict="attention"]' },
+	],
+	/*
+	 * Superseded by another sign-in: cancelled, in the backend's own sentence, and
+	 * never rendered before this round (design round 1 D1).
+	 */
+	[
+		"provider-sign-in-onboarding--panel-cancelled-superseded",
+		1280,
+		620,
+		{ expectPresent: '[data-sign-in-state="unfinished"]' },
+	],
+	[
+		/*
+		 * D2's pair (design round 6): the unconfirmed register and the API-key route
+		 * under a refused verdict. Both shipped with jsdom-only assertions, so neither
+		 * had a frame; the first is the state a first run actually reaches after a
+		 * sign-in the backend will not confirm, and the second is the route U19's
+		 * contradiction survived on.
+		 */
+		"provider-sign-in-onboarding--panel-succeeded-unconfirmed",
+		1280,
+		900,
+		{ expectPresent: '[data-verdict="neutral"]' },
+	],
+	[
+		"provider-sign-in-onboarding--panel-key-refused-verdict",
+		1280,
+		900,
+		{ expectPresent: '[data-verdict="attention"]' },
+	],
+	[
+		"provider-sign-in-onboarding--panel-succeeded-with-default",
+		1280,
+		620,
+		{ expectPresent: '[data-sign-in-state="succeeded"]' },
+	],
+	[
+		"provider-sign-in-onboarding--panel-expired",
+		1280,
+		620,
+		{ expectPresent: '[data-sign-in-state="unfinished"]' },
+	],
+	[
+		"provider-sign-in-onboarding--panel-gone-404",
+		1280,
+		620,
+		{ expectPresent: '[data-sign-in-state="unfinished"]' },
+	],
+	[
+		"provider-sign-in-onboarding--panel-failed",
+		1280,
+		620,
+		{ expectPresent: '[data-sign-in-state="unfinished"]' },
+	],
+	["provider-sign-in-onboarding--panel-api-key", 1280, 620],
+	["provider-sign-in-onboarding--panel-invalid-key", 1280, 660],
+	["provider-sign-in-onboarding--panel-key-saved", 1280, 620],
+	["provider-sign-in-onboarding--panel-key-saved-unchecked", 1280, 660],
+	["provider-sign-in-onboarding--panel-local", 1280, 620],
+	["provider-sign-in-onboarding--onboarding-step-1", 1280, 900],
+	["provider-sign-in-onboarding--onboarding-step-1-connected", 1280, 900],
+	["provider-sign-in-onboarding--onboarding-step-2-applied", 1280, 900],
+	["provider-sign-in-onboarding--onboarding-step-2-proposed", 1280, 900],
+	/*
+	 * The path current users take: a released backend applies no default and
+	 * suggests none, so step 2 has to ask -- and has to write what it shows
+	 * (code round 1 M2, QA round 1 Q3, UX round 1 U1).
+	 */
+	["provider-sign-in-onboarding--onboarding-step-2-choose", 1280, 900],
+	["provider-sign-in-onboarding--onboarding-step-2-no-catalogue", 1280, 900],
+	["provider-sign-in-onboarding--onboarding-step-3", 1280, 900],
+	["provider-sign-in-onboarding--empty-chat-card", 1280, 620],
+	["provider-sign-in-onboarding--connect-dialog", 1280, 900],
+
 	["chat-trace--conversation", 1280, 1308],
 	["chat-trace--conversation-with-reasoning", 1280, 1409],
 	["chat-trace--conversation-reasoning-open", 1280, 3327],

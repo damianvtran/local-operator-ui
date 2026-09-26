@@ -5,6 +5,7 @@ import {
 } from "@features/chat/composer-caret";
 import { openConversation } from "@features/chat/open-conversation";
 import { destinationNeedsSession } from "@features/chat/pickers/picker-registry";
+import { useConnectProviderStore } from "@features/providers/connect-provider-store";
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import {
@@ -247,6 +248,11 @@ export const CommandPalette: FC = () => {
 		navigate("/agents?create=agent");
 	}, [closeCommandPalette, navigate]);
 
+	const handleConnectProvider = useCallback(() => {
+		closeCommandPalette();
+		useConnectProviderStore.getState().openConnect();
+	}, [closeCommandPalette]);
+
 	const handleNewChat = useCallback(() => {
 		/*
 		 * The sidebar's own \"New chat\": stage a fresh draft and go to the chat
@@ -291,6 +297,9 @@ export const CommandPalette: FC = () => {
 				case "create-agent":
 					handleCreateAgent();
 					return;
+				case "connect-provider":
+					handleConnectProvider();
+					return;
 				case "new-chat":
 					handleNewChat();
 					return;
@@ -306,6 +315,7 @@ export const CommandPalette: FC = () => {
 		},
 		[
 			handleCreateAgent,
+			handleConnectProvider,
 			handleNewChat,
 			handleToggleCanvas,
 			handleClearConversation,

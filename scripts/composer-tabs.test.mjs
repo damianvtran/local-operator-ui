@@ -1681,7 +1681,95 @@ test("the empty-chat band keeps one wrapper, so a narrowing column cannot remoun
 		source,
 		/messages\.length === 0 && !isHydrating && !isSmallView \?/,
 	);
-	assert.match(source, /\{showEmptyChatPrompt \? \(/);
+	/*
+	 * The wrapper is unconditional; only what it HOLDS depends on the band. With a
+	 * provider connected the headline renders (design round 1 D5 added the
+	 * `!noProvider` half - the next test pins the other branch).
+	 */
+	assert.match(
+		source,
+		/\{showEmptyChatPrompt && !noProvider \? \(\s*<h2[^>]*>\s*What can I help you with today\?/,
+	);
+});
+
+test("with nothing connected the empty-chat band drops the headline and shows the connect card", () => {
+	const source = code(MESSAGE_INPUT);
+	/*
+	 * D5: a headline inviting a prompt the app cannot run pointed the screen's two
+	 * strongest signals in opposite directions, so with no provider the headline
+	 * is withheld and the connect card takes the chips' slot. Both halves are
+	 * pinned: the headline carries the `!noProvider` guard (above), and the card
+	 * is mounted under the opposite guard, in the same wrapper.
+	 */
+	assert.doesNotMatch(
+		source,
+		/\{showEmptyChatPrompt \? \(\s*<h2/,
+		"the headline renders on the empty band whether or not a provider is connected",
+	);
+	assert.match(
+		source,
+		/\{showEmptyChatPrompt && noProvider && \(\s*<div[^>]*>\s*<ConnectProviderCard \/>/,
+	);
+});
+
+test("with nothing connected neither the button nor Enter sends", () => {
+	const source = code(MESSAGE_INPUT);
+	/*
+	 * The button was disabled and the KEY was not: measured live, typing with no
+	 * provider connected and pressing Enter created a session and sent the message,
+	 * which the transcript then held waiting for an agent that could never run (QA
+	 * round 2 R2-Q2). All three refusals are pinned here -- the keydown, the hint it
+	 * raises, and the form's own submit -- because removing them wholesale left every
+	 * neighbouring suite green (review round 3 R3-m2).
+	 */
+	assert.match(
+		source,
+		/\(noProvider \|\| noModel\) &&\s*event\.key === "Enter" &&\s*!event\.shiftKey &&\s*!event\.nativeEvent\.isComposing\s*\) \{\s*event\.preventDefault\(\);/,
+		"Enter is not refused when nothing can answer",
+	);
+	assert.match(
+		source,
+		/setNoProviderHint\(true\);/,
+		"the refusal says why: the placeholder that explained it is gone once the user types (U13)",
+	);
+	assert.match(
+		source,
+		/if \(isInputDisabled\) return;\s*if \(noProvider\) return;/,
+		"the form's submit path still sends when nothing can answer",
+	);
+	/*
+	 * AND THE STATE ONE STEP PAST IT (UX round 5, U21). A provider connected with no
+	 * model this app can name is not answered by the `noProvider` guard, and it was the
+	 * live case where the band said "Choose a model", Enter sent anyway, and the turn
+	 * sat at "waiting for the agent" with no completion request reaching the daemon.
+	 * All three ways in are pinned: the key, the form's own submit, and the button.
+	 */
+	assert.match(
+		source,
+		/if \(noModel\) \{\s*setNoProviderHint\(true\);\s*return;\s*\}/,
+		"the submit path still sends with no model to run on",
+	);
+	/*
+	 * THE FOLD DROPPED THE `isLoading` TERM THIS PIN USED TO REQUIRE, and that is
+	 * main's change rather than a convenience: main's own composer series removed
+	 * `isLoading` from this control deliberately (U6), because a press while a send
+	 * is in flight has to REACH the store's refusal and the pane's send-lock line
+	 * ("Your last message is still sending.") instead of being swallowed by a
+	 * disabled button. The pin's subject is that the button reports the same state
+	 * the key does, which it still does for every term that remains; asserting a
+	 * term main deleted would have made this fold carry main's change and its
+	 * opposite at once.
+	 */
+	assert.match(
+		source,
+		/isInputDisabled \|\|\s*noProvider \|\|\s*noModel \|\|/,
+		"the Send control must report the same state the key does",
+	);
+	assert.match(
+		source,
+		/noModel\s*\?\s*"Choose a model for this conversation before sending\."/,
+		"and the refusal must say which state it is refusing in",
+	);
 });
 
 test("the pane consumes the request: leave a reader, scroll the plan in, retire it", () => {
