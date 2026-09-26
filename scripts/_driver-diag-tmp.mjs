@@ -2679,7 +2679,15 @@ async function scrolledArrival(
 			return inside[inside.length - 1] ?? null;
 		};
 		let chosen = pickFocus();
-		if (chosen === null) return { ok: false, why: "no session row starts inside the clip" };
+		if (chosen === null) return { ok: false, why: "no session row starts inside the clip", diag: (() => {
+			const clip2 = clipOf();
+			const all = Array.from(list.querySelectorAll("[data-session-row]")).map((row) => {
+				const btn = row.querySelector("[data-chat-row]");
+				const r = (btn ?? row).getBoundingClientRect();
+				return { id: row.getAttribute("data-session-row"), hasBtn: btn !== null, top: Math.round(r.top), bottom: Math.round(r.bottom) };
+			});
+			return { scrollTop: list.scrollTop, clientHeight: list.clientHeight, scrollHeight: list.scrollHeight, clientTop: list.clientTop, clip: clip2, rows: all };
+		})() };
 		chosen.querySelector("[data-chat-row]").focus();
 		list.scrollTop = ${JSON.stringify(scroll)};
 		chosen = pickFocus() ?? chosen;
@@ -5535,16 +5543,9 @@ async function sceneSessionArchive(cdp) {
 		frames.every((frame) => frame.stable === true && frame.toastFree === true),
 		frames.map((frame) => `${frame.label}: stable=${frame.stable}`).join(" | "),
 	);
-	/*
-	 * THE COUNT FOLLOWS THE SCENE'S OWN CAPTURES: it was three while
-	 * `archive-refused-chats-only` existed, and the push site left with the mode at round 1
-	 * of this fix (Q3/R4-1 - the merged panel cannot unmount a region), so the pin is the
-	 * two the scene still takes. A count left at three would be a stale expectation, not a
-	 * stricter check.
-	 */
 	check(
 		"every frame of a toast is a held-still picture of one that was really there",
-		offerFrames.length === 2 &&
+		offerFrames.length === 3 &&
 			offerFrames.every(
 				(frame) => frame.stable === true && frame.toastOnScreen === true,
 			),
