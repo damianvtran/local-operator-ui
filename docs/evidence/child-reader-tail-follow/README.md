@@ -241,6 +241,29 @@ which is why the pixels, not the boolean, are the finding.
 which is `CanonicalTranscript`'s behaviour at every other mount. The wrapper
 drawing the ring is the honest end state and is deferred - see "Deferred".
 
+## What the fold walked, and what it left alone
+
+The set's capture head is `aefa9c918`; the branch has moved twice since - the fold
+onto `origin/main` (`3c3919c891`, 375 commits) and the chip remount (`b74b9f0b93`).
+The fold's own walk for these stories, taken live at the tip (design round 3,
+with QA round 3's own cell agreeing):
+
+| module | at capture | at the tip |
+|---|---|---|
+| `run-child-reader.tsx` | `148a2a6e6a14` | `5574724c8ece` (the remount moved this one) |
+| `canonical-transcript.tsx` | `8a590b414a9c` | `9722389f68cb` |
+| `use-scroll-paging.ts` | `042ae70a3c22` | `a977ac155c9f` |
+| `scroll-paging.ts` | `4e32a82e085c` | `f98869453fe9` |
+
+The six foot readings (the chip's rect, `overlapPx` 0, `band` 48, the statement's box,
+`ringClip.contained`) come back IDENTICAL to the committed baseline, so the pair's foot
+claims are pictures of this tree as well as of the capture's. What the fold moved, and
+why this is recorded rather than re-rendered: transcript-side fields only - `extent`
+5328 -> 5076, the anchor offsets, the scroller's accessible name
+`Conversation transcript` -> `Conversation`; `reads` varies by the cadence itself.
+`prev/` is unaffected by construction: it is the `ccd6f4b55` module swapped in for its
+own run, and that commit is immutable.
+
 ## The fade, frozen (design round 2, D7)
 
 The control fades in; nothing in the previous readings could say a fade was IN
