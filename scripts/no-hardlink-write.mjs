@@ -72,7 +72,7 @@
 
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { resolve, sep } from "node:path";
+import { join, resolve, sep } from "node:path";
 
 /**
  * The CJS `node:fs` exports object, obtained WITHOUT an ESM `node:fs` import.
@@ -277,6 +277,31 @@ const OPERATIONS = {
 	appendFileSync: { victim: 0 },
 	truncateSync: { victim: 0 },
 	copyFileSync: { victim: 1, modeArg: 2 },
+	/*
+	 * `cpSync` is in the table for the RECURSIVE DIRECTORY shape ONLY, and the
+	 * scope is measured rather than assumed, because the neighbouring shapes are
+	 * genuinely safe and refusing them would be the over-broad class that gets a
+	 * guard switched off:
+	 *
+	 *   - `cpSync(srcDir, existingDestDir, { recursive: true })` — and the same
+	 *     with `force: true` — TRUNCATES an existing destination file IN PLACE.
+	 *     Measured on a `destdir/f` hardlinked to a sibling: `ino` unchanged,
+	 *     `nlink` unchanged 2 -> 2, `destdir/f` and the OUTSIDE sibling both became
+	 *     the stub. This is the incident's own class, and it is why the row exists.
+	 *   - `cpSync(file, existingFile)` in every variant (`recursive`, `force`,
+	 *     `errorOnExist`) REPLACES the destination NAME: `ino` changes, `nlink`
+	 *     2 -> 1, and the outside sibling keeps its bytes. It never reaches the
+	 *     victim check below with a link left to damage, so it is not refused.
+	 *   - `cpSync(dir, existingFile, { recursive: true })` makes node throw
+	 *     `ERR_FS_CP_DIR_TO_NON_DIR` on its own; the shared bytes are untouched.
+	 *
+	 * The ASYNC `cp` is deliberately NOT in the promise table: it was measured as
+	 * safe in the one shape that matters here (directory onto an existing
+	 * destination directory replaces the NAME, `SAME_INODE=false`, outside sibling
+	 * intact), and adding a refusal for a hazard nobody has measured is how a
+	 * guard acquires false positives.
+	 */
+	cpSync: { victim: 1, onlyIfDirectorySource: 0 },
 	openSync: { victim: 0, flagArg: 1, defaultFlag: "r" },
 	createWriteStream: {
 		victim: 0,
@@ -428,7 +453,81 @@ export function classifyCall(op, args, form = "sync") {
 			return { hit: null, mayClobber: false };
 		}
 	}
+	/*
+	 * The recursive DIRECTORY copy is the only `cpSync` shape that truncates in
+	 * place, and the path it truncates is not the argument itself: `cpSync(srcDir,
+	 * destDir, { recursive: true })` walks the SOURCE directory and rewrites every
+	 * matching file UNDER the destination, each in place. So the victim is each
+	 * existing destination file, and the check follows the source tree rather than
+	 * inspecting one path.
+	 *
+	 * A FILE source replaces the destination NAME instead — node unlinks and
+	 * recreates — so the destination's other names keep their bytes and there is
+	 * nothing to refuse. Measured: `cpSync(file, existingFile)` in every variant
+	 * changed the inode and dropped nlink to 1 with the outside sibling intact, so
+	 * refusing it (which an unscoped `victim: 1` does) is a false positive on a
+	 * safe call — the very class this guard must not grow.
+	 */
+	if (spec.onlyIfDirectorySource !== undefined) {
+		return classifyRecursiveCopy(
+			op,
+			args[spec.onlyIfDirectorySource],
+			args[spec.victim],
+		);
+	}
 	return { hit: sharedInodeWrite(op, args[spec.victim]), mayClobber: true };
+}
+
+/** Depth and breadth bounds for the recursive-copy walk, stated with the check. */
+const COPY_WALK_MAX_DEPTH = 6;
+const COPY_WALK_MAX_ENTRIES = 500;
+
+/**
+ * The first existing destination file a recursive directory copy would rewrite.
+ *
+ * BOUNDED ON PURPOSE, and the bound is this check's honest limitation: a source
+ * tree deeper than `COPY_WALK_MAX_DEPTH` or wider than `COPY_WALK_MAX_ENTRIES` is
+ * walked only that far. The alternative — refusing every recursive directory copy
+ * regardless of its tree — is the false-positive class described above, so the
+ * walk is scoped rather than removed, and the measured hazard (a fixture copying
+ * a shallow tree over a shared destination file) is well inside it.
+ */
+function classifyRecursiveCopy(op, source, destination) {
+	let sourceIsDir = false;
+	try {
+		sourceIsDir = fs.statSync(source).isDirectory();
+	} catch {
+		sourceIsDir = false;
+	}
+	if (!sourceIsDir) return { hit: null, mayClobber: false };
+	const pending = [{ from: source, to: destination, depth: 0 }];
+	let seen = 0;
+	while (pending.length > 0) {
+		const { from, to, depth } = pending.pop();
+		if (depth > COPY_WALK_MAX_DEPTH || seen > COPY_WALK_MAX_ENTRIES) break;
+		let entries;
+		try {
+			entries = fs.readdirSync(String(from), { withFileTypes: true });
+		} catch {
+			continue;
+		}
+		for (const entry of entries) {
+			seen += 1;
+			const childFrom = join(String(from), entry.name);
+			const childTo = join(String(to), entry.name);
+			if (entry.isDirectory()) {
+				pending.push({ from: childFrom, to: childTo, depth: depth + 1 });
+				continue;
+			}
+			/*
+			 * Only an EXISTING destination file can be damaged: one that is absent has
+			 * no inode to share, and a name being replaced is not the hazard.
+			 */
+			const hit = sharedInodeWrite(op, childTo);
+			if (hit) return { hit, mayClobber: true };
+		}
+	}
+	return { hit: null, mayClobber: true };
 }
 
 /**

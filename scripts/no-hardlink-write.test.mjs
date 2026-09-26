@@ -62,7 +62,20 @@ const REPO = process.cwd();
 const GUARD = join(REPO, "scripts", "no-hardlink-write.mjs");
 const PRELOAD = join(REPO, "scripts", "no-hardlink-write-preload.mjs");
 const RUNNER = join(REPO, "scripts", "run-desktop-tests.mjs");
-const SCRATCH = join(REPO, "node_modules", ".cache", "no-hardlink-write-test");
+/*
+ * Keyed on the PID, not a fixed name. `test.before`/`test.after` `rmSync` this root
+ * recursively, so two concurrent runs in ONE checkout used to delete each other's
+ * fixtures — a peer `node --test` in the same worktree made this suite read
+ * 4-of-6 red as `ENOENT …/positive-<pid>/base` and `Cannot find module …/in-temp.mjs`.
+ * It cannot bite CI (one suite per checkout), which is exactly why it survives to
+ * cost the next reader a cycle. The path stays git-ignored either way.
+ */
+const SCRATCH = join(
+	REPO,
+	"node_modules",
+	".cache",
+	`no-hardlink-write-test-${process.pid}`,
+);
 const CHILD_PATH = join(SCRATCH, "child.mjs");
 const ORIGINAL = "ORIGINAL SHARED CONTENT";
 
@@ -711,10 +724,16 @@ test("the exemption is reported on BOTH invocation paths, not merely granted", (
 	 * `Could not find` — which is the whole reason a probe under node_modules
 	 * appears to show "no exemption line".
 	 */
+	/*
+	 * PID-keyed for the same reason the scratch root is: a fixed name here let two
+	 * concurrent runs in one checkout delete each other's driver mid-flight, which
+	 * surfaced as `Cannot find module …/no-hardlink-write-exemption-fixture.test.mjs`
+	 * in the OTHER run rather than as a failure of this one.
+	 */
 	const runnerDriver = join(
 		REPO,
 		"scripts",
-		"no-hardlink-write-exemption-fixture.test.mjs",
+		`no-hardlink-write-exemption-fixture-${process.pid}.test.mjs`,
 	);
 	writeFileSync(runnerDriver, RUNNER_DRIVER);
 	try {
@@ -730,5 +749,109 @@ test("the exemption is reported on BOTH invocation paths, not merely granted", (
 		);
 	} finally {
 		rmSync(runnerDriver, { force: true });
+	}
+});
+
+test("a recursive directory copy is refused, and the copy shapes node makes safe are not", () => {
+	/*
+	 * `cpSync` is in the table for the RECURSIVE DIRECTORY shape only, and this test
+	 * carries both directions because the two neighbouring shapes are genuinely safe
+	 * — refusing them would be the false-positive class that gets a guard switched
+	 * off, so a fix that "refuses cpSync" outright would fail here.
+	 *
+	 * The hazard is not the second argument: a directory copy walks the SOURCE and
+	 * rewrites every matching file UNDER the destination in place, so an existing
+	 * destination file that shares its inode is truncated for all its names. A FILE
+	 * source instead replaces the destination NAME, which is why it is not refused.
+	 */
+	const dir = scratch("cpsync");
+	const sourceDir = join(dir, "srcdir");
+	const destDir = join(dir, "destdir");
+	const sourceFile = join(sourceDir, "f");
+	const destFile = join(destDir, "f");
+	const sibling = join(destDir, "sibling");
+
+	const build = () => {
+		rmSync(sourceDir, { recursive: true, force: true });
+		rmSync(destDir, { recursive: true, force: true });
+		mkdirSync(sourceDir, { recursive: true });
+		mkdirSync(join(destDir, "nested", "deeper"), { recursive: true });
+		writeFileSync(sourceFile, "STUB");
+		mkdirSync(join(sourceDir, "nested", "deeper"), { recursive: true });
+		writeFileSync(join(sourceDir, "nested", "deeper", "g"), "STUBDEEP");
+		writeFileSync(destFile, ORIGINAL);
+		linkSync(destFile, sibling);
+		writeFileSync(join(destDir, "nested", "deeper", "g"), ORIGINAL);
+		linkSync(
+			join(destDir, "nested", "deeper", "g"),
+			join(destDir, "siblingDeep"),
+		);
+	};
+
+	const probe = join(SCRATCH, "cpsync.mjs");
+	writeFileSync(
+		probe,
+		`import fs from "node:fs";
+const [mode, base] = process.argv.slice(2);
+const cases = {
+	dirToDir: () => fs.cpSync(base + "/srcdir", base + "/destdir", { recursive: true }),
+	dirToDirForce: () => fs.cpSync(base + "/srcdir", base + "/destdir", { recursive: true, force: true }),
+	fileToFile: () => fs.cpSync(base + "/srcdir/f", base + "/destdir/f"),
+	fileToFileRecursive: () => fs.cpSync(base + "/srcdir/f", base + "/destdir/f", { recursive: true, force: true }),
+	fileToFileExclusive: () => fs.cpSync(base + "/srcdir/f", base + "/destdir/f", { errorOnExist: true }),
+};
+try { cases[mode](); console.log(mode + "=wrote"); }
+catch (error) { console.log(mode + "=threw:" + error.name); }
+`,
+	);
+
+	const run = (mode, guard) =>
+		spawnSync(
+			process.execPath,
+			guard ? [`--import=${PRELOAD}`, probe, mode, dir] : [probe, mode, dir],
+			{ encoding: "utf8" },
+		);
+
+	// The hazard: without the guard the shared destination inode is clobbered...
+	build();
+	const unguarded = run("dirToDir", false);
+	assert.equal(unguarded.stdout.trim(), "dirToDir=wrote");
+	assert.equal(
+		readFileSync(sibling, "utf8"),
+		"STUB",
+		"the unguarded control must clobber, or the refusal below proves nothing",
+	);
+
+	// ...and with it, both the shallow and the nested file are protected.
+	for (const mode of ["dirToDir", "dirToDirForce"]) {
+		build();
+		const guarded = run(mode, true);
+		assert.equal(
+			guarded.stdout.trim(),
+			`${mode}=threw:SharedInodeWriteError`,
+			`${mode} must be refused; got:\n${guarded.stdout}${guarded.stderr}`,
+		);
+		assert.equal(readFileSync(sibling, "utf8"), ORIGINAL);
+		assert.equal(readFileSync(join(destDir, "siblingDeep"), "utf8"), ORIGINAL);
+	}
+
+	// The measured-safe shapes must still run: a name replacement, not a truncation.
+	for (const mode of [
+		"fileToFile",
+		"fileToFileRecursive",
+		"fileToFileExclusive",
+	]) {
+		build();
+		const safe = run(mode, true);
+		assert.equal(
+			safe.stdout.trim(),
+			`${mode}=wrote`,
+			`${mode} is safe and must not be refused; got:\n${safe.stdout}${safe.stderr}`,
+		);
+		assert.equal(
+			readFileSync(sibling, "utf8"),
+			ORIGINAL,
+			`${mode} replaces the destination NAME, so the sibling keeps its bytes`,
+		);
 	}
 });
