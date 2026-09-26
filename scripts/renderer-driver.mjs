@@ -5535,9 +5535,16 @@ async function sceneSessionArchive(cdp) {
 		frames.every((frame) => frame.stable === true && frame.toastFree === true),
 		frames.map((frame) => `${frame.label}: stable=${frame.stable}`).join(" | "),
 	);
+	/*
+	 * THE COUNT FOLLOWS THE SCENE'S OWN CAPTURES: it was three while
+	 * `archive-refused-chats-only` existed, and the push site left with the mode at round 1
+	 * of this fix (Q3/R4-1 - the merged panel cannot unmount a region), so the pin is the
+	 * two the scene still takes. A count left at three would be a stale expectation, not a
+	 * stricter check.
+	 */
 	check(
 		"every frame of a toast is a held-still picture of one that was really there",
-		offerFrames.length === 3 &&
+		offerFrames.length === 2 &&
 			offerFrames.every(
 				(frame) => frame.stable === true && frame.toastOnScreen === true,
 			),
