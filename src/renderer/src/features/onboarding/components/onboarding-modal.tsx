@@ -10,79 +10,65 @@
  * connected — not a renderer-held OAuth session.
  */
 
+import { useDesktopProviders } from "@shared/api/local-operator/desktop-hooks";
 import { Button, Tooltip } from "@shared/components/ui";
+import { hasConnectedProvider } from "@shared/hooks/first-time-user";
 import { cn } from "@shared/lib/utils";
 import {
 	OnboardingStep,
 	useOnboardingStore,
 } from "@shared/store/onboarding-store";
-import { CircleCheck } from "lucide-react";
 import type { FC } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { OnboardingDialog } from "./onboarding-dialog";
 import type { OnboardingPanelWidth } from "./onboarding-dialog";
+import { onboardingFooter } from "./onboarding-footer";
 import { ConnectProviderStep } from "./steps/connect-provider-step";
-import { CreateAgentStep } from "./steps/create-agent-step";
 import { DefaultModelStep } from "./steps/default-model-step";
-import { SearchApiStep } from "./steps/search-api-step";
-import { UserProfileStep } from "./steps/user-profile-step";
+import { ExtrasStep } from "./steps/extras-step";
 
 /*
- * One title per step, each a plain verb phrase naming the single thing that
- * step asks for. The provider step names the outcome ("Connect a provider"),
- * not the machinery ("model provider credentials").
- *
- * These double as the accessible names of the progress segments, so they have
- * to survive being read on their own, out of order.
+ * One title per step, each naming the single thing that step is for. These
+ * double as the accessible names of the progress segments, so they have to
+ * survive being read on their own, out of order.
  */
-const stepTitles: Partial<Record<OnboardingStep, string>> = {
-	[OnboardingStep.CONNECT_PROVIDER]: "Connect a provider",
-	// Verb-led, like the others, and not a repeat of the first field's own
-	// label 60px below it — the step asks for a name and an optional email.
-	[OnboardingStep.USER_PROFILE]: "Introduce yourself",
-	[OnboardingStep.SEARCH_API]: "Turn on web search",
-	[OnboardingStep.DEFAULT_MODEL]: "Pick a default model",
-	[OnboardingStep.CREATE_AGENT]: "Create your first agent",
-	[OnboardingStep.CONGRATULATIONS]: "You're all set",
+const stepTitles: Record<OnboardingStep, string> = {
+	[OnboardingStep.CONNECT_PROVIDER]: "Connect a model provider",
+	[OnboardingStep.DEFAULT_MODEL]: "Your default model",
+	[OnboardingStep.EXTRAS]: "A few optional extras",
 };
 
-/** The numbered sequence, in order. Connection precedes profile because the
- * model picker and web-search steps only make sense once a provider exists. */
+/**
+ * The numbered sequence, in order (design audit section 5). Three steps: the
+ * model access the app cannot work without, the model it bought, and the
+ * extras that are genuinely optional. "Create your first agent" and the
+ * congratulations screen are gone -- the first failed on a clean install
+ * (UX U11) and the second is folded into Finish, which lands in the chat.
+ */
 const STEP_SEQUENCE: OnboardingStep[] = [
 	OnboardingStep.CONNECT_PROVIDER,
-	OnboardingStep.USER_PROFILE,
-	OnboardingStep.SEARCH_API,
 	OnboardingStep.DEFAULT_MODEL,
-	OnboardingStep.CREATE_AGENT,
-	OnboardingStep.CONGRATULATIONS,
+	OnboardingStep.EXTRAS,
 ];
 
-/** Steps whose absence never blocks the flow. */
-const SKIPPABLE = new Set([
-	OnboardingStep.SEARCH_API,
-	OnboardingStep.CREATE_AGENT,
-]);
-
 /**
- * The panel measure each step is laid out at, for the steps that are not a
- * form.
+ * The panel measure each step is laid out at -- EMPTY, because every step takes
+ * the same one.
  *
- * One entry, and it is here rather than at the `OnboardingDialog` call site
- * below because the value is a decision about the STEP rather than an argument
- * at a render: the provider step renders a grid of registry rows and asks for
- * the measure that fits a third column of cards; every other step asks for the
- * form measure by default. See `ONBOARDING_PANEL_WIDTHS` for the arithmetic.
+ * It used to map step 1 to a wider `grid` measure, and the dialog narrowed from
+ * about 960px to 560px when Continue was pressed: the title, the step indicator
+ * and the close button all jumped inward mid-flow (design round 1 D6). One
+ * measure for the flow is the fix, and an empty map is how that is stated rather
+ * than left to each call site to remember.
  *
- * EXPORTED because it is a rule CI has to be able to check: `scripts/provider-grid-pin.test.mjs`
- * asserts the mapping, so that a step added later cannot silently inherit the
- * grid's measure (or the grid step lose it) without a red test.
+ * EXPORTED because it is a rule CI has to be able to check:
+ * `scripts/provider-grid-pin.test.mjs` asserts it is empty and that the single
+ * measure is clamped, so a step added later cannot quietly widen the dialog.
  */
 export const STEP_PANEL_WIDTH: Partial<
 	Record<OnboardingStep, OnboardingPanelWidth>
-> = {
-	[OnboardingStep.CONNECT_PROVIDER]: "grid",
-};
+> = {};
 
 /**
  * Props for the OnboardingModal component
@@ -103,14 +89,39 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	const { currentStep, setCurrentStep, completeModalOnboarding } =
 		useOnboardingStore();
 	const navigate = useNavigate();
-
-	// State to track if the Create Agent step is valid (at least one agent added)
-	const [isCreateAgentStepValid, setIsCreateAgentStepValid] = useState(false);
+	/*
+	 * Whether step 1 has done its job. Read from the census, the same predicate
+	 * the first-run gate uses, so "Continue" appears exactly when a provider is
+	 * connected and never before (design D6: an enabled Next with nothing
+	 * connected let a user finish setup into a chat that could not run).
+	 */
+	const providers = useDesktopProviders(open);
+	const connected = hasConnectedProvider(providers.data ?? []);
+	/** Step 2 registers the write a PROPOSED default needs on Continue. */
+	const beforeContinue = useRef<(() => Promise<void>) | null>(null);
+	/*
+	 * And what it still needs from the user before Continue can mean anything.
+	 * A step that can be walked past with nothing chosen lands the user in a chat
+	 * that cannot run (QA round 1 Q3, UX U1), so the step says what is missing
+	 * here and Continue is disabled for exactly as long as it is missing it.
+	 */
+	const [stepBlock, setStepBlock] = useState<string | null>(null);
+	const registerStepBlock = useCallback((reason: string | null) => {
+		setStepBlock(reason);
+	}, []);
+	const [continuing, setContinuing] = useState(false);
+	const registerBeforeContinue = useCallback(
+		(run: (() => Promise<void>) | null) => {
+			beforeContinue.current = run;
+		},
+		[],
+	);
 
 	/*
-	 * A persisted mid-flow step from before this flow existed (or from the old
-	 * Radient-gated flow) must not strand the modal on an unknown step: any
-	 * value outside the current sequence falls back to the first step.
+	 * A persisted mid-flow step from before this flow existed (the six-step
+	 * flow, or the old Radient-gated one) must not strand the modal on an
+	 * unknown step: any value outside the current sequence falls back to the
+	 * first step.
 	 */
 	useEffect(() => {
 		if (!STEP_SEQUENCE.includes(currentStep)) {
@@ -118,17 +129,9 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		}
 	}, [currentStep, setCurrentStep]);
 
-	// The profile prefill used to come from a renderer-held Radient session.
-	// The backend AuthStore now owns that account; the field stays editable
-	// here and nothing needs restoring at mount.
-
-	// Track visited steps for navigation
-	// Initialize empty, as currentStep might be undefined during hydration
 	const [visitedSteps, setVisitedSteps] = useState<Set<OnboardingStep>>(
 		new Set<OnboardingStep>(),
 	);
-
-	// Update visited steps when currentStep changes
 	useEffect(() => {
 		setVisitedSteps((prev) => {
 			if (prev.has(currentStep)) return prev;
@@ -138,142 +141,115 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		});
 	}, [currentStep]);
 
-	/**
-	 * Get the main title for the dialog based on the current step
-	 */
-	const dialogTitle = useMemo(() => {
-		if (!currentStep) return "Loading...";
-		return stepTitles[currentStep] || "First-time setup";
-	}, [currentStep]);
+	const dialogTitle = stepTitles[currentStep] ?? "First-time setup";
 
 	/**
-	 * Get the content component for the current step
+	 * Leave setup and land in the chat. Used by Finish, by "Skip for now" and
+	 * by Escape / the close button: all three end setup, and the empty chat's
+	 * connect card is what a user who skipped sees next (design section 6), so
+	 * skipping is never a trap (UX U9).
 	 */
-	const stepContent = useMemo(() => {
-		if (!currentStep) return null;
+	const finish = useCallback(() => {
+		completeModalOnboarding();
+		navigate("/chat");
+	}, [completeModalOnboarding, navigate]);
 
-		switch (currentStep) {
-			case OnboardingStep.CONNECT_PROVIDER:
-				return <ConnectProviderStep />;
-			case OnboardingStep.USER_PROFILE:
-				return <UserProfileStep />;
-			case OnboardingStep.SEARCH_API:
-				return <SearchApiStep />;
-			case OnboardingStep.DEFAULT_MODEL:
-				return <DefaultModelStep />;
-			case OnboardingStep.CREATE_AGENT:
-				// Pass the validity callback
-				return <CreateAgentStep onValidityChange={setIsCreateAgentStepValid} />;
-			case OnboardingStep.CONGRATULATIONS:
-				/*
-				 * The one accent moment in the flow, spent here. Setup ending is the
-				 * only thing in onboarding worth a colour, and it gets a single mark
-				 * rather than the three stacked celebration glyphs this used to have.
-				 */
-				return (
-					<div className="flex flex-col gap-4">
-						<CircleCheck size={28} className="text-accent" aria-hidden="true" />
-						<p className="text-body text-ink-muted">
-							Local Operator is ready. Start a conversation with your new agent,
-							or change anything you picked here later in Settings.
-						</p>
-					</div>
-				);
-			default:
-				return null; // Should not happen
-		}
-	}, [currentStep]);
-
-	/**
-	 * Handle moving to the next step
-	 */
-	const handleNext = useCallback(() => {
-		if (currentStep === OnboardingStep.CONGRATULATIONS) {
-			completeModalOnboarding();
-			// Navigate to the chat view, potentially with the newly created agent
-			const createdAgentId = sessionStorage.getItem(
-				"onboarding_created_agent_id",
-			);
-			if (createdAgentId) {
-				navigate(`/chat/${createdAgentId}`);
-				sessionStorage.removeItem("onboarding_created_agent_id");
-			} else {
-				navigate("/chat");
-			}
-			return;
-		}
+	const handleNext = useCallback(async () => {
 		const index = STEP_SEQUENCE.indexOf(currentStep);
+		if (
+			currentStep === OnboardingStep.DEFAULT_MODEL &&
+			beforeContinue.current
+		) {
+			setContinuing(true);
+			try {
+				await beforeContinue.current();
+			} catch {
+				// `useUpdateConfig` already toasted the reason; stay on the step.
+				setContinuing(false);
+				return;
+			}
+			setContinuing(false);
+		}
 		if (index >= 0 && index < STEP_SEQUENCE.length - 1) {
 			setCurrentStep(STEP_SEQUENCE[index + 1]);
+		} else {
+			finish();
 		}
-	}, [currentStep, setCurrentStep, completeModalOnboarding, navigate]);
+	}, [currentStep, setCurrentStep, finish]);
 
-	/**
-	 * Handle moving to the previous step
-	 */
 	const handleBack = useCallback(() => {
 		const index = STEP_SEQUENCE.indexOf(currentStep);
-		if (index > 0) {
-			setCurrentStep(STEP_SEQUENCE[index - 1]);
-		}
+		if (index > 0) setCurrentStep(STEP_SEQUENCE[index - 1]);
 	}, [currentStep, setCurrentStep]);
 
-	/**
-	 * Handle skipping the current step (for optional steps)
-	 */
-	const handleSkip = useCallback(() => {
-		handleNext();
-	}, [handleNext]);
+	const stepContent = useMemo(() => {
+		switch (currentStep) {
+			case OnboardingStep.CONNECT_PROVIDER:
+				return (
+					<ConnectProviderStep
+						onContinue={() => setCurrentStep(OnboardingStep.DEFAULT_MODEL)}
+					/>
+				);
+			case OnboardingStep.DEFAULT_MODEL:
+				return (
+					<DefaultModelStep
+						onBeforeContinue={registerBeforeContinue}
+						onBlockReason={registerStepBlock}
+					/>
+				);
+			case OnboardingStep.EXTRAS:
+				return <ExtrasStep />;
+			default:
+				return null;
+		}
+	}, [currentStep, setCurrentStep, registerBeforeContinue, registerStepBlock]);
 
-	const canSkip = SKIPPABLE.has(currentStep);
-
-	/**
-	 * The first step and the last screen have no Back.
-	 */
-	const canGoBack =
-		currentStep !== OnboardingStep.CONNECT_PROVIDER &&
-		currentStep !== OnboardingStep.CONGRATULATIONS;
-
-	/**
-	 * Get the text for the 'Next'/'Finish' button
-	 */
-	const nextButtonText =
-		currentStep === OnboardingStep.CONGRATULATIONS ? "Get started" : "Next";
-
-	// Connecting a provider is encouraged, never forced: the grid is skippable
-	// in effect because Next always works. Only Create Agent gates on validity.
-	const isNextDisabled =
-		currentStep === OnboardingStep.CREATE_AGENT && !isCreateAgentStepValid;
+	const isFirst = currentStep === OnboardingStep.CONNECT_PROVIDER;
+	const isLast = currentStep === OnboardingStep.EXTRAS;
 
 	/*
-	 * Back on the left, forward on the right, and the row keeps its height when
-	 * there is no Back — `justify-between` with an empty first slot rather than
-	 * a spacer element of a guessed width.
+	 * Footer per step (design section 5):
+	 * - step 1: ghost "Skip for now" on the left until something is connected,
+	 *   then primary "Continue" on the right -- never an enabled Next over
+	 *   nothing;
+	 * - step 2: Back, then primary "Continue";
+	 * - step 3: Back, then ghost "Skip" and primary "Finish".
 	 */
+	const footer = onboardingFooter(currentStep, stepBlock, continuing);
 	const dialogActions = (
-		<div className="flex w-full items-center justify-between gap-3">
-			<div>
-				{canGoBack && (
-					<Button variant="secondary" size="lg" onClick={handleBack}>
-						Back
-					</Button>
-				)}
-			</div>
-
-			<div className="flex items-center gap-3">
-				{canSkip && (
-					<Button variant="ghost" size="lg" onClick={handleSkip}>
-						Skip
-					</Button>
-				)}
-				<Button
-					variant="primary"
-					size="lg"
-					onClick={handleNext}
-					disabled={isNextDisabled}
-				>
-					{nextButtonText}
-				</Button>
+		<div className="flex w-full flex-col gap-2">
+			{footer.reason ? (
+				<p className="text-ink-dim text-meta">{footer.reason}</p>
+			) : null}
+			<div className="flex w-full items-center justify-between gap-3">
+				<div>
+					{isFirst ? (
+						<Button variant="ghost" size="lg" onClick={finish}>
+							Skip for now
+						</Button>
+					) : (
+						<Button variant="secondary" size="lg" onClick={handleBack}>
+							Back
+						</Button>
+					)}
+				</div>
+				<div className="flex items-center gap-3">
+					{isLast ? (
+						<Button variant="ghost" size="lg" onClick={finish}>
+							Skip
+						</Button>
+					) : null}
+					{!isFirst || connected ? (
+						<Button
+							variant="primary"
+							size="lg"
+							onClick={() => void handleNext()}
+							disabled={footer.primaryDisabled}
+						>
+							{isLast ? "Finish" : "Continue"}
+						</Button>
+					) : null}
+				</div>
 			</div>
 		</div>
 	);
@@ -356,10 +332,11 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	return (
 		<OnboardingDialog
 			open={open}
+			onDismiss={finish}
 			title={dialogTitle}
 			stepIndicators={finalStepIndicatorsProp}
 			actions={dialogActions}
-			width={STEP_PANEL_WIDTH[currentStep] ?? "form"}
+			width={STEP_PANEL_WIDTH[currentStep] ?? "single"}
 		>
 			{stepContent}
 		</OnboardingDialog>

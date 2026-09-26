@@ -15,8 +15,27 @@
  * why it reads as a move rather than a new idiom.
  */
 
-import { desktopResult } from "./desktop-api";
+import { DesktopControlError, desktopResult } from "./desktop-api";
 import type { AuthOperation } from "./desktop-api";
+
+/**
+ * Optional behaviour for {@link pollAuthOperation}.
+ *
+ * `onGone` is the one failure a retry cannot repair: the backend answered 404,
+ * which means it no longer holds this operation at all (it restarted, or the
+ * operation aged out of its bounded table). Polling it again asks a question
+ * with a fixed answer forever, and the surface above it sits on "waiting" for a
+ * flow nobody is running any more. A caller that passes `onGone` gets the poll
+ * STOPPED and is told once; a caller that does not keeps the historical
+ * keep-asking behaviour, so the Radient session issue is unchanged by this.
+ *
+ * `read` exists for tests: it replaces the desktop op so the poll's rules can
+ * be exercised in Node without the IPC bridge.
+ */
+export type PollAuthOperationOptions = {
+	onGone?: () => void;
+	read?: (id: string) => Promise<AuthOperation>;
+};
 
 /**
  * How often an unsettled operation is re-read.
@@ -47,21 +66,40 @@ export function isTerminalAuthState(state: AuthOperation["state"]): boolean {
 export function pollAuthOperation(
 	id: string,
 	onUpdate: (operation: AuthOperation) => void,
+	options: PollAuthOperationOptions = {},
 ): () => void {
 	let stopped = false;
 	let timer: ReturnType<typeof setTimeout> | null = null;
+	const read =
+		options.read ??
+		((operationId: string) =>
+			desktopResult<AuthOperation>({ op: "auth.status", id: operationId }));
 	const tick = async () => {
 		if (stopped) return;
 		try {
-			const operation = await desktopResult<AuthOperation>({
-				op: "auth.status",
-				id,
-			});
+			const operation = await read(id);
+			// A stop that landed while the read was in flight wins: the surface
+			// that asked has moved on, and handing it a late snapshot would repaint
+			// a flow it already left (a superseded operation, a closed panel).
+			if (stopped) return;
 			onUpdate(operation);
+			// The callback may have stopped the poll itself (a caller that reads
+			// a dead flow from more than `state`, e.g. `sign-in-flow.ts`).
+			if (stopped) return;
 			if (!isTerminalAuthState(operation.state)) {
 				timer = setTimeout(tick, AUTH_OPERATION_POLL_MS);
 			}
-		} catch {
+		} catch (error) {
+			if (stopped) return;
+			if (
+				options.onGone &&
+				error instanceof DesktopControlError &&
+				error.status === 404
+			) {
+				stopped = true;
+				options.onGone();
+				return;
+			}
 			// A lost poll is a lost status read, not a failed login; keep polling
 			// so a transient network blip does not strand a waiting browser flow.
 			timer = setTimeout(tick, AUTH_OPERATION_POLL_MS * 2);
