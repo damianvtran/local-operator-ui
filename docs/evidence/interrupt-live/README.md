@@ -336,3 +336,23 @@ Three claims, all measured rather than carried from an earlier pass:
   layer, and `Cmd+Shift+S` is bound in main's `before-input-event`, which
   synthesised CDP events do not reach. Each is covered at unit or source level
   (see the PR's testing evidence) and none is claimed as exercised here.
+
+## Re-taken at `a7fd091089`, with U15's fix in the build
+
+The whole set above was re-shot from a clean build of this head carrying UX round
+2's U15 fix (`transcript-reducer.ts`: the end event that CREATES a row now
+classifies it against the session's stop fact, and `durableRecord` reads the
+runtime's own `__fault: "aborted"` so the post-turn reconcile cannot re-project
+the row back to `failed`). What the re-take shows: `after-escape.png`'s killed
+call wears the interrupted marker beside the turn's own `Stopped · Retry` line
+above the composer - the reading the finding asked for - and this run's record
+(`interrupt-proof.json`) holds the rig's own claim for it:
+`turn2.readsAsStopped.ok = true`, transcript
+`{"stoppedLine":"Stopped·Retry","stoppedRetry":"Retry","tail":["Ran sleep 45 interrupted 0.2s"]}`.
+TWO EARLIER RUNS OF THIS PASS - one with the fix reverted, one with it in -
+produced the press-missing shape instead (no stopped line at all, and a `failed`
+row): the press wrote no fact in those runs. That flake is recorded in the PR's
+remediation comment with both readings and is NOT what the U15 fix changes; it
+is visible here rather than smoothed over so a later reader can tell the two
+apart. The frames committed here are from the clean-build run whose record
+holds the claim.
