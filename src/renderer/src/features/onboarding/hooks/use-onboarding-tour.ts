@@ -1146,7 +1146,7 @@ A good description helps you and others understand what the agent does and any s
 			on: "right",
 		},
 		title: "General settings",
-		text: "Here you can update your user profile, configure model settings (like default hosting provider and model), and adjust history settings for conversations and learnings.",
+		text: "Here you can update your user profile and configure model settings (like default hosting provider and model).",
 		buttons: [
 			{
 				text: "Back",
