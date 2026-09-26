@@ -852,6 +852,18 @@ export const STORIES = [
 	["chat-canonical-user-card-measure--reported-shape", 1024, 620],
 	["chat-canonical-user-card-measure--wide-attachment", 1024, 620],
 	["chat-canonical-user-card-measure--long-text-only", 1024, 620],
+	/*
+	 * THE USER MESSAGE BLOCK'S OWN SURFACE (operator report, 2026-09-26). The
+	 * block's fill IS its boundary (D10), and this row is the AFTER half of the
+	 * pair its step is judged on; the BEFORE half is the declared supplementary
+	 * set `../chat-canonical-message-surface-before/` - the same story on the
+	 * pre-change tree, its title suffixed `before` for the run so the ids land
+	 * in their own surface directory. Four themes only, chosen from the audit's
+	 * extremes rather than taste (the story's own docblock carries the picks):
+	 * the two worst steps in the fleet, one light theme the change moves at the
+	 * margin, and the widest step of all, which the change does NOT move.
+	 */
+	["chat-canonical-message-surface--user-turn", 1024, 560],
 	/* THE CITATION A SENT MESSAGE CARRIES, as the chip the composer showed before
 	   the send (operator report, 2026-09-17). Three stories at the user-card
 	   measure's own 1024x620 pane, so they read beside the rows above: the reported

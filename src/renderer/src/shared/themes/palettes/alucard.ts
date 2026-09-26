@@ -76,6 +76,11 @@ export const alucard: ThemeDefinition = {
 		elevated: "#FEFDF8",
 		sunken: "#EAE5D2",
 
+		// The user block's fill: ΔE00 4.09 off the canvas, where `surface` alone
+		// measures 2.60 - a step toward `elevated` to clear the role's 4.0 floor,
+		// which the block carries because the fill IS its boundary.
+		messageSurface: "#fbf8f0",
+
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
 		 * step of THIS palette's own panel at the panel's own hue; they used to be
