@@ -119,6 +119,12 @@ export const SelectContent = forwardRef<
 	<SelectPrimitive.Portal>
 		<SelectPrimitive.Content
 			ref={ref}
+			/*
+			 * Not a drag surface; see the marker's note in `dialog.tsx` and the rule it is
+			 * read by in `styles/index.css`. A select opened near the top of the window
+			 * can flip its list over the chrome strip, and every row in it is a control.
+			 */
+			data-titlebar-no-drag=""
 			position={position}
 			className={cn(
 				"relative z-50 max-h-96 min-w-32 overflow-hidden rounded-md",

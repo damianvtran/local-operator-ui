@@ -373,6 +373,22 @@ rule:
   surfaces to render at all, and is run twice per tree (`--window-size 1380x900` and
   `800x600`, `--run-label` keeping the two sets of frame names apart).
 
+- **`hit-zones`** — the window drag region against the overlays painted over it,
+  and the audit that goes with it: every control of every overlay the scene can
+  open is sampled at five points through a page-side re-implementation of the
+  rect walk Chromium runs for `app-region` (drag unions, no-drag subtracts), so a
+  swallowed click is separated from a dead handler — the operator's report of
+  2026-09-26 ("the X button at the top of the analytics also seems to be
+  unclickable") is reproduced as a region reading rather than a click attempt. It
+  cross-checks against Electron's own `[draggable-regions]` debugger lines, and
+  asserts the non-chat route band's shape PER PLATFORM since #535: stood down
+  where the shell's lane is drawn (macOS and leading layouts), the caption height
+  `env(titlebar-area-height)` where it is not. **Requires `--backend`** (the
+  machine panels open through a slash command the backend's catalogue resolves),
+  and only macOS is exercised here — the caption-trailing branch is written for
+  the Windows/Linux runners that render it. The evidence set is
+  `docs/evidence/hit-zones/`, force-tracked run logs included.
+
 - **`sidebar-sections`** — the one sidebar's two sections, Agents + Teams and
   Chats, both drawn on a column nobody has touched, and the draggable boundary
   between them. It seeds an agent, a team and eight chats through the backend's
