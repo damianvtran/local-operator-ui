@@ -5,6 +5,15 @@
 # standalone Python the backend venv is built on, and the `uv` release the
 # install scripts use to install the backend.
 #
+# WHICH HALF RUNS WHERE, because the two halves serve different platforms now. On
+# macOS both are staged - the interpreters the mac artifacts ship as inert data
+# plus the two `*-apple-darwin` uv releases. On Linux only the uv half is staged
+# (the two `*-unknown-linux-gnu` releases): this repository ships no Linux
+# interpreter, the Linux install script requires a system Python 3.12+, and a
+# darwin tree in a Linux artifact is `exec format error` weight. Windows stages
+# its uv with the PowerShell sibling (`scripts/setup-python-resource.ps1`), which
+# this script points at when it is run on a platform it does not stage for.
+#
 # This script uses python-build-standalone from Gregory Szorc, which is designed
 # for easy bundling with applications. It's also used by PyOxidize and Datasette Desktop.
 #
@@ -34,13 +43,35 @@ LAYOUT_JSON="${REPO_ROOT}/src/shared/bundled-runtime-layout.json"
 read_layout() {
     node -e "process.stdout.write(require('${LAYOUT_JSON}')$1)"
 }
+
+# Which platform's resources this run stages. Detected from the host rather than
+# taken as a flag: the stagers are run by the build job of the platform they
+# serve (publish.yml), the trees they write are copied into THAT platform's
+# artifacts, and a cross-staged tree would ship binaries the artifact cannot
+# execute (the review R1-3 class). There is one stager per platform family and
+# the platform names are the layout's own (`binaryNames`/`releaseTriples` keys).
+case "$(uname -s)" in
+    Darwin) LAYOUT_PLATFORM="darwin" ;;
+    Linux) LAYOUT_PLATFORM="linux" ;;
+    *)
+        echo "Error: this script stages macOS and Linux runtime resources; it was run on $(uname -s)."
+        echo "Windows stages its uv with scripts/setup-python-resource.ps1."
+        exit 1
+        ;;
+esac
+
 PYTHON_VERSION="$(read_layout '.python.version')"
 PYTHON_BUILD_DATE="$(read_layout '.python.buildDate')"
 UV_VERSION="$(read_layout '.uv.version')"
+UV_ARCHIVE_EXTENSION="$(read_layout ".uv.archiveExtension.${LAYOUT_PLATFORM}")"
+UV_ARCHIVE_MEMBER="$(read_layout ".uv.archiveMember.${LAYOUT_PLATFORM}")"
+UV_BINARY_NAME="$(read_layout ".uv.binaryNames.${LAYOUT_PLATFORM}")"
 
 # The canonical org: `indygreg/python-build-standalone` redirects here (301), and
 # a build that depends on a redirect is one rename away from failing. Both the
-# release assets and the redirect were checked on 2026-09-21.
+# release assets and the redirect were checked on 2026-09-21. These two URLs are
+# the darwin seeds - the only interpreter this repository stages (the Linux half
+# of this script stages uv alone; `pnpm setup-python` skips them there).
 BASE_PYTHON_STANDALONE_URL="https://github.com/astral-sh/python-build-standalone/releases/download/${PYTHON_BUILD_DATE}/cpython-${PYTHON_VERSION}+${PYTHON_BUILD_DATE}"
 PYTHON_STANDALONE_URL_X86_64="${BASE_PYTHON_STANDALONE_URL}-x86_64-apple-darwin-install_only.tar.gz"
 PYTHON_STANDALONE_URL_AARCH64="${BASE_PYTHON_STANDALONE_URL}-aarch64-apple-darwin-install_only.tar.gz"
@@ -48,9 +79,19 @@ PYTHON_STANDALONE_URL_AARCH64="${BASE_PYTHON_STANDALONE_URL}-aarch64-apple-darwi
 # uv is pinned to an exact release, never `latest`: the install scripts' behaviour
 # is then a property of this repository rather than of the day a build ran, and
 # the release gate can assert the version that shipped. The asset is a `.tar.gz`
-# (it carries `uv` and `uvx`; only `uv` is staged, see setup_uv_arch below) with a
-# published `.sha256` beside it, which is checked before anything is unpacked.
+# for the Unix triples and a `.zip` for the Windows ones (`archiveExtension`
+# above); only `uv` is staged out of it (see setup_uv_arch below), and every
+# asset's published `.sha256` beside it is checked before anything is unpacked.
 UV_RELEASE_BASE_URL="https://github.com/astral-sh/uv/releases/download/${UV_VERSION}"
+
+# This script extracts the tar releases only; the zip shape is the PowerShell
+# sibling's (scripts/setup-python-resource.ps1). Named rather than left to fail
+# inside `tar -xzf` as a gzip error, because the reader of that error has to
+# already know the two stagers split the shapes to act on it.
+if [ "${UV_ARCHIVE_EXTENSION}" != "tar.gz" ]; then
+    echo "Error: src/shared/bundled-runtime-layout.json names the '${UV_ARCHIVE_EXTENSION}' archive for ${LAYOUT_PLATFORM}, which this script does not extract; the zip release is staged by scripts/setup-python-resource.ps1."
+    exit 1
+fi
 
 RESOURCES_DIR="$(dirname "$0")/../resources"
 # The staging directory names come from the layout too. They are not cosmetic:
@@ -62,6 +103,8 @@ PYTHON_DIR_X86_64="${RESOURCES_DIR}/$(read_layout '.python.checkoutSeedNames.x64
 PYTHON_DIR_AARCH64="${RESOURCES_DIR}/$(read_layout '.python.checkoutSeedNames.arm64')"
 UV_DIR_X86_64="${RESOURCES_DIR}/$(read_layout '.uv.checkoutNames.x64')"
 UV_DIR_AARCH64="${RESOURCES_DIR}/$(read_layout '.uv.checkoutNames.arm64')"
+UV_TRIPLE_X86_64="$(read_layout ".uv.releaseTriples.${LAYOUT_PLATFORM}.x64")"
+UV_TRIPLE_AARCH64="$(read_layout ".uv.releaseTriples.${LAYOUT_PLATFORM}.arm64")"
 
 # Every download in this script is bounded and fails on an HTTP error. Why the
 # pair rather than the bare `curl -L` this used to be: a build with no bound and
@@ -79,13 +122,22 @@ fetch_to() {
 }
 
 # The sha256 of a file, in the spelling the published `.sha256` files use.
+#
+# Both spellings deliberately: `shasum -a 256` is macOS's and `sha256sum` is the
+# one a Linux runner or container has. A single spelling would fail the staging
+# step on the platform this script now serves, and both print `<hex>  <name>`.
 sha256_of() {
-    shasum -a 256 "$1" | awk '{print $1}'
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$1" | awk '{print $1}'
+    else
+        shasum -a 256 "$1" | awk '{print $1}'
+    fi
 }
 
 echo "Setting up the bundled runtime resources for Local Operator UI..."
+echo "Platform: ${LAYOUT_PLATFORM}"
 echo "Python version: ${PYTHON_VERSION} (${PYTHON_BUILD_DATE})"
-echo "uv version: ${UV_VERSION}"
+echo "uv version: ${UV_VERSION} (${UV_ARCHIVE_EXTENSION})"
 echo "Resources directory: ${RESOURCES_DIR}"
 echo "Python x86_64 directory: ${PYTHON_DIR_X86_64}"
 echo "Python aarch64 directory: ${PYTHON_DIR_AARCH64}"
@@ -96,14 +148,22 @@ echo "uv aarch64 directory: ${UV_DIR_AARCH64}"
 mkdir -p "${RESOURCES_DIR}"
 echo "Created resources directory: ${RESOURCES_DIR}"
 
-# Remove existing staged directories if they exist
-if [ -d "${PYTHON_DIR_X86_64}" ]; then
-    echo "Removing existing Python x86_64 directory: ${PYTHON_DIR_X86_64}..."
-    rm -rf "${PYTHON_DIR_X86_64}"
-fi
-if [ -d "${PYTHON_DIR_AARCH64}" ]; then
-    echo "Removing existing Python aarch64 directory: ${PYTHON_DIR_AARCH64}..."
-    rm -rf "${PYTHON_DIR_AARCH64}"
+# Remove existing staged directories if they exist.
+#
+# The interpreter half is macOS's alone, so on Linux neither the removal nor the
+# creation below touches `resources/python*`: creating empty trees there would
+# put empty directories into a Linux artifact (the copy lists name those sources)
+# and make `findPython` on a Linux dev checkout find a directory that is not an
+# interpreter.
+if [ "${LAYOUT_PLATFORM}" = "darwin" ]; then
+    if [ -d "${PYTHON_DIR_X86_64}" ]; then
+        echo "Removing existing Python x86_64 directory: ${PYTHON_DIR_X86_64}..."
+        rm -rf "${PYTHON_DIR_X86_64}"
+    fi
+    if [ -d "${PYTHON_DIR_AARCH64}" ]; then
+        echo "Removing existing Python aarch64 directory: ${PYTHON_DIR_AARCH64}..."
+        rm -rf "${PYTHON_DIR_AARCH64}"
+    fi
 fi
 
 # Remove existing staged uv directories if they exist (the staged tree is a build
@@ -116,11 +176,14 @@ for dir in "${UV_DIR_X86_64}" "${UV_DIR_AARCH64}"; do
     mkdir -p "${dir}"
 done
 
-# Create Python architecture-specific directories
-mkdir -p "${PYTHON_DIR_X86_64}"
-echo "Created Python x86_64 directory: ${PYTHON_DIR_X86_64}"
-mkdir -p "${PYTHON_DIR_AARCH64}"
-echo "Created Python aarch64 directory: ${PYTHON_DIR_AARCH64}"
+# Create Python architecture-specific directories (macOS only; see the note on
+# the removal above).
+if [ "${LAYOUT_PLATFORM}" = "darwin" ]; then
+    mkdir -p "${PYTHON_DIR_X86_64}"
+    echo "Created Python x86_64 directory: ${PYTHON_DIR_X86_64}"
+    mkdir -p "${PYTHON_DIR_AARCH64}"
+    echo "Created Python aarch64 directory: ${PYTHON_DIR_AARCH64}"
+fi
 
 # Function to download and extract Python for a given architecture
 setup_python_arch() {
@@ -237,11 +300,16 @@ setup_python_arch() {
     echo "Verified: no .pyc or .pyo under ${final_python_dir}."
 }
 
-# Setup Python for x86_64
-setup_python_arch "x86_64" "${PYTHON_STANDALONE_URL_X86_64}" "${PYTHON_DIR_X86_64}"
-
-# Setup Python for aarch64
-setup_python_arch "aarch64" "${PYTHON_STANDALONE_URL_AARCH64}" "${PYTHON_DIR_AARCH64}"
+# Setup Python for x86_64 and aarch64. macOS only - see the note on the
+# directory removal above: the Linux install script requires a system Python
+# 3.12+ on the user's machine (`linux-install-script.sh`), and this repository
+# ships no Linux interpreter seed for it to fall back to.
+if [ "${LAYOUT_PLATFORM}" = "darwin" ]; then
+    setup_python_arch "x86_64" "${PYTHON_STANDALONE_URL_X86_64}" "${PYTHON_DIR_X86_64}"
+    setup_python_arch "aarch64" "${PYTHON_STANDALONE_URL_AARCH64}" "${PYTHON_DIR_AARCH64}"
+else
+    echo "Skipping the interpreter seed: not macOS (${LAYOUT_PLATFORM}). The Linux install uses the system Python 3.12+."
+fi
 
 # --- uv ---------------------------------------------------------------------
 #
@@ -252,10 +320,14 @@ setup_python_arch "aarch64" "${PYTHON_STANDALONE_URL_AARCH64}" "${PYTHON_DIR_AAR
 # dependency set: pip 28 s against uv 4 s for the package install, and the venv
 # creation is 3 s on both paths. That is the phase a user waits through.
 #
-# WHY THE ARCHIVE AND NOT A BARE BINARY: the release publishes
-# `uv-<triple>.tar.gz` with a `.sha256` beside it. The archive carries `uv` and
-# `uvx`; only `uv` is staged, because `uvx` is a tool runner this app never
-# invokes and app size is a download every user pays.
+# WHY THE ARCHIVE AND NOT A BARE BINARY: the release publishes one archive per
+# triple with a `.sha256` beside it - `uv-<triple>.tar.gz` for the Unix triples,
+# `uv-<triple>.zip` (flat, `uv.exe` at the root) for the Windows ones. The
+# extension and the member path are read from the layout rather than spelled
+# here, because the two shapes differ and a stager that assumed one extracts
+# nothing on the other platform. Only `uv` is staged out of whichever archive -
+# `uvx` is a tool runner this app never invokes and app size is a download every
+# user pays.
 #
 # WHAT THIS DOES NOT DO: re-sign or normalise the binary. It ships exactly the
 # bytes its publisher signed and notarized (`codesign -dv` reports a Developer ID
@@ -268,13 +340,18 @@ setup_uv_arch() {
     local arch=$1
     local triple=$2
     local final_dir=$3
-    local tarball_url="${UV_RELEASE_BASE_URL}/uv-${triple}.tar.gz"
+    local asset="uv-${triple}.${UV_ARCHIVE_EXTENSION}"
+    local asset_url="${UV_RELEASE_BASE_URL}/${asset}"
+    # `uv-{triple}/uv` for the tar releases; the Windows zip's flat `uv.exe` is
+    # the PowerShell stager's shape, and this script refuses a non-tar extension
+    # before it gets here.
+    local member="${UV_ARCHIVE_MEMBER//\{triple\}/${triple}}"
 
     echo "Setting up uv for ${arch} (${triple})..."
     TMP_UV_TAR=$(mktemp)
     TMP_UV_SUM=$(mktemp)
-    fetch_to "${tarball_url}" "${TMP_UV_TAR}"
-    fetch_to "${tarball_url}.sha256" "${TMP_UV_SUM}"
+    fetch_to "${asset_url}" "${TMP_UV_TAR}"
+    fetch_to "${asset_url}.sha256" "${TMP_UV_SUM}"
 
     # The published checksum, checked before anything is unpacked. This is the
     # half that makes "pinned to a release" mean the bytes rather than the URL:
@@ -287,7 +364,7 @@ setup_uv_arch() {
         echo "Error: uv ${UV_VERSION} for ${arch} does not match its published sha256."
         echo "Expected: ${EXPECTED_SHA}"
         echo "Actual:   ${ACTUAL_SHA}"
-        echo "URL fetched: ${tarball_url}"
+        echo "URL fetched: ${asset_url}"
         rm -f "${TMP_UV_TAR}" "${TMP_UV_SUM}"
         exit 1
     fi
@@ -295,14 +372,14 @@ setup_uv_arch() {
 
     TMP_UV_EXTRACT=$(mktemp -d)
     tar -xzf "${TMP_UV_TAR}" -C "${TMP_UV_EXTRACT}"
-    if [ ! -f "${TMP_UV_EXTRACT}/uv-${triple}/uv" ]; then
-        echo "Error: expected uv-${triple}/uv in the archive for ${arch}."
+    if [ ! -f "${TMP_UV_EXTRACT}/${member}" ]; then
+        echo "Error: expected ${member} in ${asset} for ${arch}; the layout's archiveMember says that is where the release puts it."
         rm -f "${TMP_UV_TAR}" "${TMP_UV_SUM}"
         rm -rf "${TMP_UV_EXTRACT}"
         exit 1
     fi
-    cp "${TMP_UV_EXTRACT}/uv-${triple}/uv" "${final_dir}/uv"
-    chmod +x "${final_dir}/uv"
+    cp "${TMP_UV_EXTRACT}/${member}" "${final_dir}/${UV_BINARY_NAME}"
+    chmod +x "${final_dir}/${UV_BINARY_NAME}"
     rm -f "${TMP_UV_TAR}" "${TMP_UV_SUM}"
     rm -rf "${TMP_UV_EXTRACT}"
 
@@ -314,7 +391,7 @@ setup_uv_arch() {
     # ships is asserted per artifact by the release gate (`bundledUvToolCheck`).
     # What is checked here is that a binary this host CAN run reports the version
     # the layout declares - i.e. that the pin and the staged bytes agree.
-    REPORTED_UV=$( "${final_dir}/uv" --version 2>/dev/null || true )
+    REPORTED_UV=$( "${final_dir}/${UV_BINARY_NAME}" --version 2>/dev/null || true )
     if [ -n "${REPORTED_UV}" ]; then
         case "${REPORTED_UV}" in
             "uv ${UV_VERSION}"*)
@@ -326,18 +403,23 @@ setup_uv_arch() {
                 ;;
         esac
     else
-        echo "Staged ${final_dir}/uv for ${arch} cannot run on this host ($(uname -m)); its version is asserted on an artifact built for that architecture."
+        echo "Staged ${final_dir}/${UV_BINARY_NAME} for ${arch} cannot run on this host ($(uname -m)); its version is asserted on an artifact built for that architecture."
     fi
 }
 
-# The two macOS triples the layout's `uv.binaryNames` map is paired with. A
-# Windows or Linux uv is deliberately NOT staged here: this script runs only in
-# the macOS job (`publish.yml`), while `package.json`'s win/linux
-# `extraResources` carry the same two target directories so a future platform job
-# that does stage them ships them without another change to the layout.
-setup_uv_arch "x86_64" "x86_64-apple-darwin" "${UV_DIR_X86_64}"
-setup_uv_arch "aarch64" "aarch64-apple-darwin" "${UV_DIR_AARCH64}"
+# Both of THIS platform's triples are staged, even where the target list builds
+# only one of them (linux is x64-only today): `extraResources` is not
+# architecture-aware, `afterPack` prunes the off-architecture tree out of every
+# packed app (`scripts/prune-bundled-resources.mjs`), and staging both keeps the
+# build jobs a copy of each other rather than a platform-specific list to
+# maintain. The triples come from the layout definition - a triple spelled here
+# is a triple that can disagree with the release it names.
+setup_uv_arch "x86_64" "${UV_TRIPLE_X86_64}" "${UV_DIR_X86_64}"
+setup_uv_arch "aarch64" "${UV_TRIPLE_AARCH64}" "${UV_DIR_AARCH64}"
 
-echo "Python standalone setup complete for all architectures!"
+echo "Runtime resource staging complete for ${LAYOUT_PLATFORM}!"
 echo "uv ${UV_VERSION} staged for both architectures."
-echo "You can now build the application with 'pnpm dist:mac'"
+case "${LAYOUT_PLATFORM}" in
+    darwin) echo "You can now build the application with 'pnpm dist:mac'" ;;
+    linux) echo "You can now build the application with 'pnpm dist:linux'" ;;
+esac
