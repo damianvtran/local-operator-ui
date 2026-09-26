@@ -1,13 +1,17 @@
 import type {
+	DesktopModelRate,
 	DesktopUsageAggregate,
 	DesktopUsagePeriod,
 } from "../../../../../../shared/desktop-contract";
 import {
+	UNKNOWN,
 	formatClock,
+	formatCount,
 	formatDayBucket,
 	formatMicroUsd,
 	formatPercent,
 	formatTokens,
+	tokensPerSecond,
 } from "./formatters";
 
 /**
@@ -226,6 +230,257 @@ export function metricValue(
 	return metric === "spend" ? aggregate.cost_micro : totalTokens(aggregate);
 }
 
+/* ---------------------------------------------------------------------------
+ * Generation rate: the measured-decode half, and its coverage.
+ *
+ * Two quantities live under the word "rate" and this file keeps them apart by
+ * TYPE as well as by name, because a surface that could pick the wrong one by
+ * reading a similarly-named field would eventually do so:
+ *
+ * - **decode** — the measured generation window, from a call's first output
+ *   token to its last. It is what `aggregate()` carries (the three optional
+ *   `decode_*` fields) and what all three tables' `tok/s (decode)` column
+ *   reads. Forward-fill: a call recorded before the feature has no window, so
+ *   `decode_calls === 0` means UNKNOWN and the column prints `—`.
+ * - **wall** — the whole call, `wall_tokens / (wall_us / 1e6)`, which exists
+ *   only on `DesktopModelRate` because it needs no new column and so covers the
+ *   entire existing ledger. It includes time-to-first-token and any provider
+ *   queueing, is NEVER decode speed, and is therefore the By-model table's
+ *   second column and no other table's.
+ *
+ * The unknown-never-zero rule is enforced in ONE place (`tokensPerSecond` in
+ * `formatters.ts`), so every cell below inherits it rather than restating it:
+ * a rate is `null` exactly when nothing was measured, and a measured slow rate
+ * stays a number.
+ * ------------------------------------------------------------------------- */
+
+/** The rate column's heading, spelled once for all three tables. */
+export const TOK_PER_SECOND_LABEL = "tok/s (decode)";
+
+/**
+ * The By-model table's SECOND rate column.
+ *
+ * A different name rather than a second `tok/s`, because the two columns sit
+ * side by side and a reader has to be able to tell which is which from the
+ * header alone. `wall` is the backend's own word for it (`wall_us`,
+ * `wall_tokens`, `wall_calls`) and the one the design uses.
+ */
+export const WALL_TOK_PER_SECOND_LABEL = "tok/s (wall)";
+
+/** The coverage column's heading on the By-model table. */
+export const COVERAGE_LABEL = "Coverage";
+
+/**
+ * `decode_tokens / (decode_us / 1e6)` for one aggregate, or `null` when no call
+ * in it contributed a measured window.
+ *
+ * The `?? 0` on all three reads is the compatibility rule, not defensiveness:
+ * the fields are ADDITIVE, so a backend that predates them omits them entirely
+ * — and an absent triple and a present `{0, 0, 0}` are the same fact ("nothing
+ * was measured"), which is why they converge here rather than producing two
+ * spellings of unknown.
+ */
+export function decodeRate(aggregate: DesktopUsageAggregate): number | null {
+	return tokensPerSecond(
+		aggregate.decode_tokens ?? 0,
+		aggregate.decode_us ?? 0,
+		aggregate.decode_calls ?? 0,
+	);
+}
+
+/** How much of a scope a rate actually speaks for. */
+export type RateCoverage = {
+	/** Calls in scope. */
+	calls: number;
+	/** Calls that contributed a measured window. Always `<= calls`. */
+	covered: number;
+};
+
+/** The decode half of an aggregate's coverage. */
+export const decodeCoverage = (
+	aggregate: DesktopUsageAggregate,
+): RateCoverage => ({
+	calls: aggregate.calls,
+	covered: aggregate.decode_calls ?? 0,
+});
+
+/** `covered / calls`, or `null` when the scope has no calls to cover. */
+export function coverageFraction(coverage: RateCoverage): number | null {
+	if (coverage.calls <= 0) return null;
+	return coverage.covered / coverage.calls;
+}
+
+/**
+ * What a rate column's `—` means, in one line, or `null` when there is nothing
+ * to explain.
+ *
+ * Silent when coverage is complete: `Decode rate over 1,530 of 1,530 calls` is
+ * a sentence that says nothing, and the panel already refuses those
+ * (`sessionMatchLine` returns `null` for the same reason). It speaks in the two
+ * states a reader can be misled by:
+ *
+ * - **Partial coverage**, where the number in the column is real but is not the
+ *   whole scope — stated as the counts rather than as a percentage, because
+ *   "how many calls does this speak for" is the question, and `81%` does not
+ *   answer it.
+ * - **No coverage at all**, which is the whole column rendering `—`. The
+ *   sentence says WHY, because a reader who does not know the feature is
+ *   forward-fill would read a column of `—` as a broken panel rather than as a
+ *   ledger that predates the measurement. It is also the one place the panel
+ *   states the inverse of the usual trap out loud: this is not `0 tok/s`, it is
+ *   *nothing measured*.
+ *
+ * The words avoid the vocabulary the panel's copy rules forbid: no "decode
+ * window" as a bare noun phrase without saying what it is, no "rollup", no
+ * "field".
+ */
+export function rateLegend(coverage: RateCoverage): string | null {
+	if (coverage.calls === 0) return null;
+	if (coverage.covered === 0) {
+		return `No call in this window has a measured generation time yet, so the rate reads ${UNKNOWN} rather than 0 tok/s.`;
+	}
+	if (coverage.covered < coverage.calls) {
+		return `Decode rate over ${formatCount(coverage.covered)} of ${formatCount(coverage.calls)} calls.`;
+	}
+	return null;
+}
+
+/**
+ * The By-model table's own line, which has to explain TWO columns at once.
+ *
+ * Composed from the same `rateLegend` sentence rather than re-spelled, so the
+ * decode half of the two tables cannot drift; the wall clause is appended
+ * because that table is the only one with a wall column, and it is stated as a
+ * count for the same reason — the wall rate covers every call that has a
+ * duration, which on a real ledger is nearly but not exactly all of them.
+ *
+ * The source clause is here rather than in the meta line because it is a fact
+ * about the NUMBERS and not about the section: these counts come from the raw
+ * ledger, while the Totals above them came from the rollup, and the columns
+ * that must not be read as one partition are exactly these.
+ */
+export function modelRateLegend(
+	decode: RateCoverage,
+	wall: RateCoverage,
+): string | null {
+	const parts = [
+		rateLegend(decode) ??
+			`Decode rate over all ${formatCount(decode.calls)} calls.`,
+		`Wall rate over ${formatCount(wall.covered)} of ${formatCount(wall.calls)} calls.`,
+	];
+	return parts.join(" ");
+}
+
+/**
+ * The By-model rows, ranked by output tokens.
+ *
+ * **This table does not follow the metric control, and that is a property of
+ * its payload rather than a choice.** `DesktopModelRate` carries `output_tokens`
+ * and `calls` and no price at all — the grouped ledger scan does not read
+ * `cost_micro` — so under `Spend` there is no column here to rank by. Ranking
+ * it by the metric would mean printing a share of a number the row does not
+ * have. The order is therefore the backend's own (`SUM(output_tokens) DESC`,
+ * `provider`, `model_id`) and the section's meta says so out loud.
+ *
+ * The tie-break is the `provider/model_id` label, ascending, which is
+ * `providerRows`' rule (`b.fraction - a.fraction || a.key.localeCompare(b.key)`)
+ * applied to the one measure these rows carry — so two tables that rank by
+ * different quantities still break ties the same way, and equal rows keep one
+ * order across two identical renders.
+ *
+ * A row whose sum is meaningless is not dropped: a model with `calls: 0` cannot
+ * arrive (the server groups rows that exist), but a model with zero output
+ * tokens can, and it renders a zero-length bar rather than disappearing.
+ */
+export type ModelRow = {
+	/** `provider/model_id`. A stable identity and the row's tie-break. */
+	key: string;
+	provider: string;
+	modelId: string;
+	/** `anthropic/claude-opus-5`; a missing half reads `—`, never a bare `/`. */
+	label: string;
+	calls: number;
+	outputTokens: number;
+	/** Share of the table's output tokens, which is what the bar draws. */
+	fraction: number;
+	decodeRate: number | null;
+	wallRate: number | null;
+	/** Share of the row's calls carrying a measured window. `null` at no calls. */
+	decodeCoverage: number | null;
+	wallCoverage: number | null;
+};
+
+/**
+ * The row's label: two halves with the unknown spelling per half.
+ *
+ * `formatModelSpec` refuses the join of two empty strings, which is the right
+ * rule for a `{provider: "", model_id: ""}` spec and the wrong one here: a
+ * ledger row that recorded a provider but no model would lose its provider, and
+ * the provider is the half that still identifies the group. So each half is
+ * spelled and the separator is kept — unless NEITHER half is present, where a
+ * bare `/` would be a fabricated glyph and the row says `—` once.
+ */
+function modelLabel(provider: string, modelId: string): string {
+	if (!provider && !modelId) return UNKNOWN;
+	return `${provider || UNKNOWN}/${modelId || UNKNOWN}`;
+}
+
+export function modelRows(
+	rows: DesktopModelRate[] | undefined | null,
+): ModelRow[] {
+	const entries = rows ?? [];
+	const total = entries.reduce((sum, row) => sum + row.output_tokens, 0);
+	return entries
+		.map((row) => ({
+			/*
+			 * The key is the pair and NOT the label: `(provider, model_id)` is the
+			 * `GROUP BY`'s own key, so it is unique by construction, while the label
+			 * folds a missing half into `—` and could therefore collide for two
+			 * groups that each miss a different half.
+			 */
+			key: `${row.provider}\u0000${row.model_id}`,
+			provider: row.provider,
+			modelId: row.model_id,
+			label: modelLabel(row.provider, row.model_id),
+			calls: row.calls,
+			outputTokens: row.output_tokens,
+			fraction: total > 0 ? row.output_tokens / total : 0,
+			decodeRate: tokensPerSecond(
+				row.decode_tokens,
+				row.decode_us,
+				row.decode_calls,
+			),
+			wallRate: tokensPerSecond(row.wall_tokens, row.wall_us, row.wall_calls),
+			decodeCoverage: coverageFraction({
+				calls: row.calls,
+				covered: row.decode_calls,
+			}),
+			wallCoverage: coverageFraction({
+				calls: row.calls,
+				covered: row.wall_calls,
+			}),
+		}))
+		.sort((a, b) => b.fraction - a.fraction || a.key.localeCompare(b.key));
+}
+
+/** The decode coverage of a whole By-model table, summed over its rows. */
+export function modelCoverage(rows: DesktopModelRate[] | undefined | null): {
+	decode: RateCoverage;
+	wall: RateCoverage;
+} {
+	const all = rows ?? [];
+	return {
+		decode: {
+			calls: all.reduce((sum, row) => sum + row.calls, 0),
+			covered: all.reduce((sum, row) => sum + row.decode_calls, 0),
+		},
+		wall: {
+			calls: all.reduce((sum, row) => sum + row.calls, 0),
+			covered: all.reduce((sum, row) => sum + row.wall_calls, 0),
+		},
+	};
+}
+
 /**
  * A tick on a spend axis: a COMPLETE figure with no lower-bound mark.
  *
@@ -311,6 +566,15 @@ export type ProviderRow = {
 	fraction: number;
 	/** The provider's OWN cache hit rate, `null` when it has no denominator. */
 	cacheHit: number | null;
+	/**
+	 * The provider's OWN measured decode rate, `null` when none of its calls
+	 * carries a generation window.
+	 *
+	 * Read from the ROW's aggregate and never from the panel's headline: the
+	 * heading's number is a different claim about a different scope, and the two
+	 * would disagree on the first row that is not the whole table.
+	 */
+	decodeRate: number | null;
 };
 
 /**
@@ -319,6 +583,12 @@ export type ProviderRow = {
  * A share is `row / total` over the same metric, so a bar's length and the
  * table's order agree: sorting by one quantity and drawing another is how a
  * bar chart starts contradicting its own table.
+ *
+ * The rate column does NOT participate in the ranking, and cannot: it is a
+ * ratio of two quantities this table does not sum, its denominator is only some
+ * of the row's calls, and ordering by it would put a provider with one measured
+ * call above a provider with a hundred thousand. It is a reading beside the row
+ * it describes, exactly as the cache hit rate is.
  */
 export function providerRows(
 	byProvider: Record<string, DesktopUsageAggregate> | undefined,
@@ -341,6 +611,7 @@ export function providerRows(
 			),
 			fraction: total > 0 ? metricValue(aggregate, metric) / total : 0,
 			cacheHit: cacheReadFraction(aggregate),
+			decodeRate: decodeRate(aggregate),
 		}))
 		.sort((a, b) => b.fraction - a.fraction || a.key.localeCompare(b.key));
 }
@@ -358,6 +629,13 @@ export type SessionRow = {
 	fraction: number;
 	/** The session's OWN rate; the totals beside it include subagents. */
 	cacheHit: number | null;
+	/**
+	 * The session's OWN measured decode rate, same rule as `cacheHit`: read from
+	 * the row's aggregate, and `null` when no call of this session carries a
+	 * generation window. Filled by `analytics-session-state.ts`, which owns the
+	 * row enrichment; this type is the column's reading of it.
+	 */
+	decodeRate: number | null;
 };
 
 /*
