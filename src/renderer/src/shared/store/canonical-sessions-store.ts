@@ -340,6 +340,39 @@ export type ChatDraft = {
 	admissionRequestId: string;
 	sessionId?: string;
 	/**
+	 * The mint's at-most-once key (`sessions.draft`'s `requestId`), stable per
+	 * draft.
+	 *
+	 * WHY IT LIVES ON THE ROW. A mint registers an id on the daemon, so the
+	 * retries the pane will inevitably make for one draft — a fast second
+	 * keystroke before the first answer lands, a lost response — must be the SAME
+	 * request for the backend's receipt to answer them with the same id. Two ids
+	 * for one pane would warm two runtimes and leave a registry entry nobody can
+	 * consume.
+	 *
+	 * Regenerated whenever the selection changes (`setDraftModel`, `setCwd`),
+	 * because a receipt replays the FIRST answer: after a drop, re-asking under
+	 * the old key would hand the pane back the superseded selection's draft id —
+	 * the one runtime v1 deliberately does not carry across the change.
+	 *
+	 * Optional because rows outlive builds and arrive from storage: a row without
+	 * one gets its key lazily, on the keystroke that mints.
+	 */
+	draftRequestId?: string;
+	/**
+	 * The draft id `sessions.draft` minted for this pane, or absent.
+	 *
+	 * The pane's runtime is warmed on THIS id and `sessions.create` adopts it on
+	 * send, so the conversation is born on a runtime that is already up. It is
+	 * runtime state about a daemon registry, and every one of its rules follows:
+	 * NOT persisted (`partialize` strips it — a reload cannot know whether the
+	 * registry survived, and a stale id would 404 the pane's own stream), cleared
+	 * when the selection changes, and never a substitute for `sessionId` — the
+	 * identity the panel keys on stays the draft key until the create hop sets
+	 * `sessionId`.
+	 */
+	warmId?: string;
+	/**
 	 * The model the FIRST turn of this draft will be born on, or absent when the
 	 * user never picked one.
 	 *
@@ -1963,6 +1996,11 @@ export async function admitChatDraft(
 					// The pane's own pick, or nothing at all: a draft that was never
 					// picked from omits the field from the create body entirely.
 					draft.model ?? null,
+					// The pre-engaged runtime, when the first keystroke's mint adopted
+					// one. `undefined` here is the ordinary path — an older backend, a
+					// send before the mint answered — and the create then mints fresh
+					// exactly as it always did.
+					draft.warmId,
 				)) ?? undefined;
 			if (!id)
 				throw new UserFacingError(
@@ -2675,6 +2713,14 @@ type CanonicalSessionsState = {
 	 * made.
 	 */
 	cataloguePageable: boolean;
+	/**
+	 * Whether this daemon advertises `session_draft_warm`, as published by the
+	 * surface that resolves the capability (`setDraftWarmable`). It gates the
+	 * mint a NEW chat's first keystroke would spend — see `ensureDraftWarm` — and
+	 * is `false` until something says otherwise, which is the fail-closed
+	 * direction and also exactly the behaviour every older daemon keeps.
+	 */
+	draftWarmable: boolean;
 	activeSessionId: string | null;
 	activeDraftKey: string | null;
 	drafts: Record<string, ChatDraft>;
@@ -2850,6 +2896,16 @@ type CanonicalSessionsState = {
 	counts: CatalogueScopeCounts | null;
 	error: string | null;
 	cwd: string;
+	/**
+	 * The write path for a DRAFT's staged directory (`DirectoryWritePath`'s
+	 * `stage` kind; the composer's chip is the only caller).
+	 *
+	 * Changing where the first send will run changes what a runtime warmed for the
+	 * old directory would have engaged, so the warm intent on the active draft is
+	 * dropped with it (see `ensureDraftWarm`) and the next keystroke re-arms
+	 * against the new directory. A draft that already has a session, and every
+	 * pane with no draft at all, takes the plain write.
+	 */
 	setCwd: (cwd: string) => void;
 	/**
 	 * What THIS CLIENT knows about one conversation's archive state, and WHEN it
@@ -2933,6 +2989,13 @@ type CanonicalSessionsState = {
 	 * for nothing.
 	 */
 	setCataloguePageable: (pageable: boolean) => void;
+	/**
+	 * Publish whether the daemon can warm a new chat's draft, so the composer's
+	 * keystroke can mint one. A no-op when the value has not moved, for the same
+	 * reason `setCataloguePageable` is: this is called from an effect on every
+	 * capability change.
+	 */
+	setDraftWarmable: (warmable: boolean) => void;
 	/**
 	 * Clear the refusal once its message's turn in the panel's lane is over.
 	 *
@@ -3028,6 +3091,14 @@ type CanonicalSessionsState = {
 		requestId?: string,
 		/** The draft's own model pick, when it has one; omitted otherwise. */
 		model?: DesktopModelSelection | null,
+		/**
+		 * The minted draft this conversation was warmed on, when it has one:
+		 * the create adopts the id (and the already-engaged runtime) instead of
+		 * minting fresh. Omitted — byte-for-byte today's request — when the
+		 * pane never minted, and an id the daemon cannot resolve mints fresh
+		 * rather than failing the send (see `ensureDraftWarm`).
+		 */
+		draftId?: string,
 	) => Promise<string | null>;
 	setActiveSession: (sessionId: string | null) => void;
 	/**
@@ -3244,6 +3315,30 @@ type CanonicalSessionsState = {
 	stageDraft: (target?: ChatTarget, fresh?: boolean) => string;
 	updateDraft: (key: string, patch: Partial<ChatDraft>) => void;
 	/**
+	 * Mint the draft id a NEW chat's runtime will be warmed on, if this pane can
+	 * have one and does not yet. Called from the composer's first keystroke.
+	 *
+	 * Fire-and-forget BY DESIGN: nothing on the send path waits on it, and a mint
+	 * that fails (or never fires) leaves the send engaging inline exactly as it
+	 * always did. It no-ops when the daemon does not advertise
+	 * `session_draft_warm` (the flag above), when the pane has no settled
+	 * directory to mint against, when it already has a `warmId`, or once its
+	 * session exists. The request id is the row's `draftRequestId`, so a retry
+	 * replays the same mint rather than registering a second draft.
+	 */
+	/**
+	 * The new-chat pane's first keystroke: mint the id its runtime is warmed on
+	 * (`sessions.draft`), fire-and-forget, once the backend advertises
+	 * `session_draft_warm`.
+	 *
+	 * The mint's request id is stable per draft, so a retry replays the same
+	 * draft rather than registering a second; the id is dropped together with the
+	 * request id when the selection changes before the send. Nothing on the send
+	 * path waits on this and no-session/capability-absent failures are silent, so
+	 * every path that cannot warm is exactly today's flow.
+	 */
+	ensureDraftWarm: (key: string) => void;
+	/**
 	 * Record — or clear — the model a NEW conversation will be born on.
 	 *
 	 * A dedicated action rather than a bare `updateDraft("model")` because of the
@@ -3253,6 +3348,10 @@ type CanonicalSessionsState = {
 	 * selection is therefore a changed intent, and it gets a fresh request id —
 	 * scoped to the pre-session state, since once a session exists the create is
 	 * already behind us and its id must stay pinned for an idempotent replay.
+	 *
+	 * The same change drops the draft's warm intent (`warmId`): v1 does not re-aim
+	 * a runtime engaged for the previous selection, so the next keystroke mints
+	 * fresh and the send (if it beats that mint) creates without a draft id.
 	 */
 	setDraftModel: (key: string, model: DesktopModelSelection | null) => void;
 	finishDraft: (key: string, sessionId: string) => void;
@@ -3877,6 +3976,11 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 		(set, get) => ({
 			sessions: [],
 			cataloguePageable: false,
+			// Fail-closed until a mounted pane resolves the capability and publishes it
+			// (`setDraftWarmable`): no backend this app has ever shipped warms drafts
+			// by default, and the absent flag is what keeps every older daemon on
+			// today's wiring.
+			draftWarmable: false,
 			// Seeded from the launch argument when there is one, so the very first
 			// render is already the requested conversation rather than the persisted
 			// one. `merge` below holds the same line against hydration, which would
@@ -3920,7 +4024,32 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			deleteCandidate: null,
 			error: null,
 			cwd: "~",
-			setCwd: (cwd) => set({ cwd }),
+			/*
+			 * The write path for a DRAFT's staged directory (`DirectoryWritePath`'s
+			 * `stage` kind; the composer's chip is the only caller). Changing where the
+			 * first send will run changes what a runtime warmed for the old directory
+			 * would have engaged, so the same drop rule a model pick applies applies
+			 * here: the warm intent and its receipt key go, and the next keystroke
+			 * re-arms against the new directory. A row with a session (or no active
+			 * draft at all) keeps today's plain write.
+			 */
+			setCwd: (cwd) =>
+				set((state) => {
+					const key = state.activeDraftKey;
+					const draft = key ? state.drafts[key] : undefined;
+					if (!key || !draft || draft.sessionId) return { cwd };
+					return {
+						cwd,
+						drafts: {
+							...state.drafts,
+							[key]: {
+								...draft,
+								warmId: undefined,
+								draftRequestId: crypto.randomUUID(),
+							},
+						},
+					};
+				}),
 			fetchSessions: async (
 				/*
 				 * AN UNNAMED SIZE IS THE HEAD PAGE ON A PAGING DAEMON (Q-1): see
@@ -4504,6 +4633,9 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				if (get().cataloguePageable !== pageable)
 					set({ cataloguePageable: pageable });
 			},
+			setDraftWarmable: (warmable) => {
+				if (get().draftWarmable !== warmable) set({ draftWarmable: warmable });
+			},
 			setArchiveUndo: (offer) => {
 				set({ archiveUndo: offer });
 			},
@@ -4833,6 +4965,15 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				target,
 				requestId = crypto.randomUUID(),
 				model?: DesktopModelSelection | null,
+				/**
+				 * The minted draft this conversation was warmed on, when the pane has
+				 * one: the create adopts the id (and the already-engaged runtime)
+				 * instead of minting a fresh session. Omitted — leaving the body
+				 * byte-for-byte the one this op sent before drafts could be warmed —
+				 * when the pane never minted, and a daemon that cannot resolve the id
+				 * mints fresh rather than refusing the send.
+				 */
+				draftId?: string,
 			) => {
 				try {
 					const result = await desktopResult<{
@@ -4850,6 +4991,10 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						 * caller that never used it.
 						 */
 						...(model ? { model } : {}),
+						// The same omission rule for the minted draft, and the same promise:
+						// absent leaves this request byte-for-byte what it was before drafts
+						// could be warmed. The draft row's own note explains the lifecycle.
+						...(draftId ? { draftId } : {}),
 					});
 					get().upsertSession({
 						session_id: result.session_id,
@@ -5220,11 +5365,102 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								 */
 								...(present.sessionId
 									? {}
-									: { createRequestId: crypto.randomUUID() }),
+									: {
+											createRequestId: crypto.randomUUID(),
+											/*
+											 * THE DROP RULE: a runtime warmed from THIS selection is not the one the
+											 * new selection would have engaged, and v1 does not re-aim one — it
+											 * drops the intent, and the next keystroke re-arms against the new
+											 * selection. The mint's request id goes with it: a receipt replays
+											 * the FIRST answer, so re-asking under the old key would hand the
+											 * pane back the superseded selection's draft id. Regenerated even
+											 * when no `warmId` was ever adopted, because a lost response can
+											 * leave a receipt (and its registered draft) behind a row that
+											 * never learned the id.
+											 */
+											warmId: undefined,
+											draftRequestId: crypto.randomUUID(),
+										}),
 							},
 						},
 					};
 				}),
+			/*
+			 * THE FIRST KEYSTROKE OF A NEW CHAT: mint the id the runtime will be
+			 * warmed on.
+			 *
+			 * The pane has no session to warm yet, so without this the multi-second
+			 * engage the first send pays sits ON the send path — the complaint this
+			 * whole change answers. The mint itself engages nothing: it allocates an
+			 * id and registers it for the draft allow-list (`events`/`watch`/`warm`
+			 * and the create that adopts it), and the runtime is started separately
+			 * by the pane's own warm once its subscription holds the bridge. That is
+			 * what makes abandonment free: dropping the pane drops the bridge, and
+			 * the same `_detach` that cancels a session's warm cancels this one.
+			 *
+			 * FIRE AND FORGET, DELIBERATELY. Nothing on the send path awaits this,
+			 * the composer is never gated on it, and every failure — transport, an
+			 * older daemon that slipped the flag, the fast refusal of a latched
+			 * daemon — leaves the send engaging inline exactly as it always did. A
+			 * speculative optimisation that could DELAY a send would be strictly
+			 * worse than not warming at all.
+			 *
+			 * The guards, in order: the published capability (fail-closed: a daemon
+			 * without the key must never see a mint call, which would spend a
+			 * keystroke learning 404); a settled staged directory (the wire's own
+			 * 1..4096 bound); no `warmId` yet (a drop clears it, and re-minting is
+			 * the next keystroke's job, not this call's); and no `sessionId` (the
+			 * create already happened — a mint now would register an id nothing
+			 * will ever adopt).
+			 */
+			ensureDraftWarm: (key) => {
+				const state = get();
+				if (!state.draftWarmable) return;
+				const draft = state.drafts[key];
+				if (!draft || draft.sessionId || draft.warmId || !state.cwd) return;
+				/*
+				 * A STABLE request id, generated lazily and stored BEFORE the request
+				 * goes out: two keystrokes landing before the first answer must be one
+				 * receipt, so the second asks the same question rather than registering
+				 * a second draft. The drop rule — not this action — regenerates it when
+				 * the selection changes.
+				 */
+				const requestId = draft.draftRequestId ?? crypto.randomUUID();
+				if (!draft.draftRequestId)
+					get().updateDraft(key, { draftRequestId: requestId });
+				void desktopResult<{ draft_id: string }>({
+					op: "sessions.draft",
+					requestId,
+					cwd: state.cwd,
+					...(draft.target ? { target: draft.target } : {}),
+					// Omitted when nothing was picked, exactly as `sessions.create` and the
+					// preview omit it: the configured default is the backend's to resolve.
+					...(draft.model ? { model: draft.model } : {}),
+				})
+					.then((result) => {
+						/*
+						 * Adopt the id only if this row is still the draft that asked and is
+						 * still waiting for it. A discarded row is gone; a selection change
+						 * regenerated the request id, so this answer names a superseded
+						 * draft; a row that already has an id, or a session, is past this
+						 * question. Stamping any of those would warm the wrong thing or
+						 * leak an id nothing consumes.
+						 */
+						const row = get().drafts[key];
+						if (
+							row &&
+							!row.warmId &&
+							!row.sessionId &&
+							row.draftRequestId === requestId
+						)
+							get().updateDraft(key, { warmId: result.draft_id });
+					})
+					.catch(() => {
+						// Silent, precisely like the session warm: this fires from TYPING, it
+						// gates nothing, and the next keystroke retries under the SAME
+						// request id — so a lost response heals instead of leaking a draft.
+					});
+			},
 			finishDraft: (key, sessionId) =>
 				set((state) => {
 					/*
@@ -5602,7 +5838,21 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				drafts: Object.fromEntries(
 					Object.entries(state.drafts).map(([key, draft]) => [
 						key,
-						{ ...draft, pending: false },
+						{
+							...draft,
+							pending: false,
+							/*
+							 * `warmId` is the one row field that must NOT survive a reload: it
+							 * names a registry entry in a daemon this process cannot make claims
+							 * about, and a reload cannot know whether that daemon restarted in
+							 * between. The next keystroke re-mints instead — `draftRequestId`
+							 * DOES persist, so on a daemon that still holds the draft the
+							 * receipt replays the SAME id, and on one that does not the mint
+							 * is simply fresh. Either way the pane never carries an id it has
+							 * not just proved its daemon answers for.
+							 */
+							warmId: undefined,
+						},
 					]),
 				),
 			}),

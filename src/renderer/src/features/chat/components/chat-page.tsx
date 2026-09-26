@@ -16,7 +16,10 @@ import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
 import type { SendOutcome } from "@shared/hooks/use-message-input";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
-import { useWarmSession } from "@shared/hooks/use-warm-session";
+import {
+	useDraftWarmSession,
+	useWarmSession,
+} from "@shared/hooks/use-warm-session";
 import { cn } from "@shared/lib/utils";
 import { useAsideStore } from "@shared/store/aside-store";
 import {
@@ -257,20 +260,76 @@ function SessionPanel({
 	draftKey: string | null;
 	sessionId?: string;
 }) {
-	const canonical = useCanonicalSessionStream(sessionId, Boolean(sessionId));
-	useDesktopWatchLease(sessionId, canonical.subscriptionId);
+	const draftIdentity = draftIdentityFor(draftKey, sessionId);
+	const draft = useCanonicalSessionsStore((state) =>
+		draftIdentity ? state.drafts[draftIdentity] : undefined,
+	);
+	/*
+	 * The id this pane's STREAM addresses: the session once it exists, the
+	 * minted draft before that (`sessions.draft`'s id — a real bridge on the
+	 * backend through the draft allow-list), and nothing at all for a fresh
+	 * pane nobody has typed into. What the id is FOR is the same either way:
+	 * the subscription is the bridge user that keeps a speculative warm alive
+	 * across the wait, and it is the precondition the draft's warm checks before
+	 * it fires (`useDraftWarmSession`). The identity that KEYS the panel stays
+	 * `draftKey` until the create hop (`panelIdentityFor`): this changes which
+	 * id the stream carries, never when the panel remounts.
+	 */
+	const streamId = sessionId ?? draft?.warmId;
+	const canonical = useCanonicalSessionStream(streamId, Boolean(streamId));
+	useDesktopWatchLease(streamId, canonical.subscriptionId);
 	// Read here rather than threaded from the page: the query is cached with a
 	// 60 s staleTime, so this is a store read and not a second request.
 	const panelCapabilities = useDesktopCapabilities();
 	// Fired from the composer's first keystroke, never from this mount - see
 	// `useWarmSession` for why browsing must not spawn runtimes.
 	const warm = useWarmSession(sessionId, panelCapabilities.data);
+	/*
+	 * Publish the draft-warm capability the way the sidebar publishes
+	 * `cataloguePageable`: the store refuses to mint on its own (it must not
+	 * import this module's capability hook, see `setDraftWarmable`), so the
+	 * mounted pane — which already resolves the capability — states the answer
+	 * before the first keystroke can need it. Fail-closed by construction: an
+	 * unanswered query leaves the flag false, which is exactly today's wiring
+	 * against every daemon that predates the key.
+	 */
+	useEffect(() => {
+		useCanonicalSessionsStore
+			.getState()
+			.setDraftWarmable(
+				desktopFeatureEnabled(panelCapabilities.data, "session_draft_warm"),
+			);
+	}, [panelCapabilities.data]);
+	/*
+	 * The draft's warm, once its own subscription holds the bridge: the same
+	 * policy `warm` applies to a session, addressed at the minted draft id.
+	 * Nothing fires before the mint landed (there is no id), and nothing fires
+	 * before the stream opened (`subscriptionId`) — see the hook for why an
+	 * earlier warm would be cancelled without engaging anything.
+	 */
+	useDraftWarmSession(
+		draft?.warmId,
+		canonical.subscriptionId,
+		panelCapabilities.data,
+	);
+	/*
+	 * The composer's empty-to-non-empty edge, which is the app's one statement
+	 * of intent to send: a session warms itself (`warm`), a draft MINTS the id
+	 * its runtime will be warmed on (`ensureDraftWarm` — the warm itself fires
+	 * from the hook above once the subscription is open). Both are
+	 * fire-and-forget, both no-op where they cannot act, and nothing on the
+	 * send path awaits either: this edge costs the keystroke nothing.
+	 */
+	const onComposerInput = useCallback(() => {
+		if (sessionId) {
+			warm();
+			return;
+		}
+		if (draftKey)
+			useCanonicalSessionsStore.getState().ensureDraftWarm(draftKey);
+	}, [sessionId, warm, draftKey]);
 	const input = useRef<MessageInputHandle>(null);
 	const container = useRef<HTMLDivElement>(null);
-	const draftIdentity = draftIdentityFor(draftKey, sessionId);
-	const draft = useCanonicalSessionsStore((state) =>
-		draftIdentity ? state.drafts[draftIdentity] : undefined,
-	);
 	const cwd = useCanonicalSessionsStore((state) => state.cwd);
 	const setCwd = useCanonicalSessionsStore((state) => state.setCwd);
 	const [admitting, setAdmitting] = useState(false);
@@ -2703,7 +2762,7 @@ function SessionPanel({
 					 * than taken inside the content component, so the branch's new props
 					 * sit BESIDE it rather than in its place.
 					 */
-					onComposerInput={warm}
+					onComposerInput={onComposerInput}
 					mcpServers={mcpServers}
 					mcpGrantRunning={mcpGrantRunning}
 					mcpRemedy={mcpRemedy}
