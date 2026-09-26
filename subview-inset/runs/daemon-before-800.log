@@ -1,0 +1,4 @@
+2026-09-26 09:43:46,756 - INFO - this root's daemon standby slot is held by another console; engages here will spawn cold (/Users/damian/.local-operator/sessions/318576ecda22/scratchpad/rig/config)
+2026-09-26 09:43:46,756 - INFO - the daemon standby slot for /Users/damian/.local-operator/sessions/318576ecda22/scratchpad/rig/config is held by another console; retrying in 30s
+
+[1;31mError: cannot bind http://127.0.0.1:8080: [Errno 48] Address already in use[0m

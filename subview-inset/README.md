@@ -9,10 +9,23 @@ begins. These are the frames and the readings for the fix.
 
 The app's own harness, headless, photographed with its own
 `webContents.capturePage()`: `scripts/renderer-driver.mjs --scene route-tops` (new in
-this change), against an isolated `local-operator serve` the run owned on `:8080`,
-with scratch `HOME`, `LOCAL_OPERATOR_CONFIG_DIR` and `LOCAL_OPERATOR_LOG_DIR`, the
-desktop token passed in the environment (never argv), and both app and daemon reaped
-by exact pid when the command returned. Four runs, two trees:
+this change), against an isolated `local-operator serve` on `:8080` that this lane
+owned — a scratch `HOME`, `LOCAL_OPERATOR_CONFIG_DIR` and `LOCAL_OPERATOR_LOG_DIR`
+outside the operator's state, the desktop token passed in the environment (never
+argv), and the app asserted to hold no connection to the operator's own backend.
+
+**One daemon served all four runs, said plainly because the first draft of this
+paragraph claimed otherwise.** It was started by the set's first command and
+survived it (a kill aimed at that command's launcher shell missed the child), so the
+three later commands found `:8080` already answering and their own serve attempts
+failed to bind — each failure is in `runs/daemon-*.log`, and the daemon (pid 59837)
+was reaped by exact pid once the four runs were done. The first run
+(`runs/run-before-1380.log`) names the earlier daemon it used, pid 48732. What
+"isolated" means here is the config root, the log directory and the bearer — not
+four separate processes; and each run's app was started and reaped by the driver
+itself, by exact pid, when its command returned.
+
+Four runs, two trees:
 
 ```sh
 # The diorama, as it stood on origin/main (44ae98286e) with only the new scene added:
@@ -94,4 +107,4 @@ the check is the defect measured, not a green suite with the defect in it.
 | --- | --- |
 | `frames/before-1380/`, `frames/before-800/` | origin/main's rendering: `route-tops-<route>-<size>.png`, the band above the settings rail and every non-chat route's first box at ~62 |
 | `frames/after-1380/`, `frames/after-800/` | the fix: `route-tops-<route>-after-<size>.png`, every route's first box on the lane's bottom edge at 32 |
-| `runs/` | the four driver logs, including every `[note] the top of <route>` reading and the check verdicts |
+| `runs/` | the four driver logs, including every `[note] the top of <route>` reading and the check verdicts, plus the three daemon logs whose `Address already in use` failures record the one-daemon shape above |
