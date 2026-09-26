@@ -1264,8 +1264,13 @@ export const STORIES = [
 	/*
 	 * THE CHAT HEADER'S IDENTITY CONTROLS (operator, 2026-09-26): the team and
 	 * the agent as two menus you can switch, plus the rename pencil the title
-	 * reveals on hover. Same band and size as the cluster's frames above, so a
-	 * reviewer holds them beside those.
+	 * reveals on hover.
+	 *
+	 * The band states share the cluster's 560x84 frame so a reviewer holds them
+	 * beside those; the five menu states declare 220px instead, because the
+	 * panel hangs BELOW the 84px row and a frame at the band's own size cuts it
+	 * off - the first swing photographed the open menu's first row and clipped
+	 * the second, a picture of a menu the reader cannot check against the list.
 	 *
 	 * WHY THE PRESS AND HOVER ENTRIES. Three of the claims are about states a
 	 * resting frame cannot show: the menu that opens on a press (with the
@@ -1274,15 +1279,15 @@ export const STORIES = [
 	 * menu's own hook rather than on a clock, and the hover entry goes through
 	 * the rig's real pointer so a frame filed under `:hover` is one the element
 	 * genuinely matched. `before` is the string this change replaces, rendered
-	 * by the same story on the same tree - the before half from `origin/main`
-	 * is re-captured by handing THIS file to that tree, which it builds
-	 * unchanged because it uses nothing this branch adds.
+	 * by the same story on this tree; the declared `before-main` set is the
+	 * origin/main half, re-captured by swapping main's `chat-header.tsx` under
+	 * this story file - see that set's README and the manifest's `source`.
 	 */
 	["chat-header-identity--team-bound", 560, 84],
 	[
 		"chat-header-identity--team-bound",
 		560,
-		84,
+		220,
 		{
 			press: '[data-header-identity="team"]',
 			expectPresent: '[data-header-identity-menu="team"]',
@@ -1292,7 +1297,7 @@ export const STORIES = [
 	[
 		"chat-header-identity--team-bound",
 		560,
-		84,
+		220,
 		{
 			press: '[data-header-identity="agent"]',
 			expectPresent: '[data-header-identity-menu="agent"]',
@@ -1309,7 +1314,7 @@ export const STORIES = [
 	[
 		"chat-header-identity--no-team-no-agent",
 		560,
-		84,
+		220,
 		{
 			press: '[data-header-identity="team"]',
 			expectPresent: '[data-header-identity-menu="team"]',
@@ -1325,7 +1330,7 @@ export const STORIES = [
 	[
 		"chat-header-identity--team-menu-empty",
 		560,
-		84,
+		220,
 		{
 			press: '[data-header-identity="team"]',
 			expectPresent: '[data-header-identity-menu="team"]',
@@ -1334,7 +1339,7 @@ export const STORIES = [
 	[
 		"chat-header-identity--team-menu-refused",
 		560,
-		84,
+		220,
 		{
 			press: '[data-header-identity="team"]',
 			expectPresent: '[data-header-identity-menu="team"]',
