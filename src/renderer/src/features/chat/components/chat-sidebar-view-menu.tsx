@@ -17,14 +17,25 @@
  * switches, and it is where the operator's "showing and hiding sections,
  * reordering" lives.
  *
- * WHY REORDER IS ARROW BUTTONS RATHER THAN A DRAG. The operator asked for
- * reordering in the popover as "a redundant/alternate way over drag and drop and
- * clicking the arrow switches in the divider". A drag inside a popover fights
- * the popover's own pointer handling and cannot be driven by a keyboard; two
- * small buttons per row can, and they say which direction they move in their
- * own names. They are the ALTERNATE, not the primary: the divider's chevrons
- * keep their meaning (collapse/expand the section), and this panel is where the
- * order itself changes.
+ * WHY REORDER IS ARROW BUTTONS RATHER THAN A DRAG, AND WHY THE ARROWS ARE
+ * THE ONLY ROUTE TO A CHANGED SECTION ORDER. The operator asked for reordering
+ * here as "a redundant/alternate way over drag and drop and clicking the arrow
+ * switches in the divider". A drag inside a popover fights the popover's own
+ * pointer handling and cannot be driven by a keyboard; two small buttons per
+ * row can, and they say which direction they move in their own names. And no
+ * drag-and-drop reorder ships anywhere in this sidebar at this head (the
+ * recorded decision is `docs/design/sidebar-sections.md`), so this pair is not
+ * an alternate to a gesture that exists - it is the route, and it writes
+ * `view.order`, which SECTION draws first.
+ *
+ * A DIFFERENT AXIS THAN THE DIVIDER'S CONTROLS, deliberately. The divider's
+ * chevrons collapse/expand the two REGIONS and its swap glyph reorders them
+ * (`setChatSidebarOrder`, `chat-sidebar.tsx`), while this panel's arrows write
+ * the section order above. The two cannot disagree because they never write
+ * the same field, not because they share one order. (An earlier revision of
+ * this comment claimed the pair rode the divider's order and was "an alternate
+ * to drag and drop"; neither held - review round 3, R14. See `moveSection` in
+ * `chat-sidebar-view.ts` for the same correction in the model's own words.)
  *
  * THE ARROWS ARE BOUNDED BY WHAT IS SHOWN, which is `moveSection`'s rule rather
  * than this file's: "up" means the section above the one the reader can see, so
