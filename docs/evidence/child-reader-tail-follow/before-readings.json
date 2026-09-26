@@ -1,0 +1,1870 @@
+{
+  "arm": "before",
+  "armModule": "src/renderer/src/features/chat/components/run-details/run-child-reader.tsx",
+  "expectDigest": "8c68061ca3ab3ba680c40b1fc17f0795",
+  "head": "aefa9c91847a74d90d24a8a85aed829b1d2adaad",
+  "modules": [
+    {
+      "path": "src/renderer/src/features/chat/components/run-details/run-child-reader.tsx",
+      "md5": "8c68061ca3ab3ba680c40b1fc17f0795"
+    },
+    {
+      "path": "src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+      "md5": "8a590b414a9cc17db2167b0c231551d2"
+    },
+    {
+      "path": "src/renderer/src/features/chat/canonical/use-scroll-paging.ts",
+      "md5": "042ae70a3c228ed696bbb89984d92975"
+    },
+    {
+      "path": "src/renderer/src/features/chat/canonical/scroll-paging.ts",
+      "md5": "4e32a82e085c2027e2d3f63a0d0060fd"
+    }
+  ],
+  "themes": [
+    "localOperatorDark",
+    "localOperatorLight"
+  ],
+  "viewport": {
+    "width": 900,
+    "height": 900
+  },
+  "steps": [
+    {
+      "step": "0 seeded",
+      "theme": "localOperatorDark",
+      "expected": "the pane is scrollable and opened at the tail",
+      "scrollTop": 0,
+      "fromBottom": 0,
+      "extent": 5328,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-018",
+      "anchorOffset": 7.265625,
+      "newestId": "entry-assistant-20-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-20-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 803.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 28
+    },
+    {
+      "step": "A0 at the tail",
+      "theme": "localOperatorDark",
+      "expected": "scrollTop 0, the newest row on screen",
+      "scrollTop": 0,
+      "fromBottom": 0,
+      "extent": 5328,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-018",
+      "anchorOffset": 7.265625,
+      "newestId": "entry-assistant-20-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-20-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 28
+    },
+    {
+      "step": "A1 after a batch",
+      "theme": "localOperatorDark",
+      "expected": "scrollTop stays 0 and the newest row is on screen",
+      "scrollTop": 0,
+      "fromBottom": 0,
+      "extent": 5351,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-019",
+      "anchorOffset": -15.125,
+      "newestId": "entry-assistant-21-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-21-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 31
+    },
+    {
+      "step": "A2 after a batch",
+      "theme": "localOperatorDark",
+      "expected": "scrollTop stays 0 and the newest row is on screen",
+      "scrollTop": 0,
+      "fromBottom": 0,
+      "extent": 5328,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-020",
+      "anchorOffset": -15.125,
+      "newestId": "entry-assistant-22-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-22-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 34
+    },
+    {
+      "step": "A3 after a batch",
+      "theme": "localOperatorDark",
+      "expected": "scrollTop stays 0 and the newest row is on screen",
+      "scrollTop": 0,
+      "fromBottom": 0,
+      "extent": 5328,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-021",
+      "anchorOffset": 7.265625,
+      "newestId": "entry-assistant-23-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-23-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 36
+    },
+    {
+      "step": "B0 scrolled up",
+      "theme": "localOperatorDark",
+      "expected": "a reading position above the tail (fromBottom > 0)",
+      "scrollTop": -600,
+      "fromBottom": 600,
+      "extent": 5328,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-19",
+      "anchorOffset": -26.109375,
+      "newestId": "entry-assistant-23-reply",
+      "newestCutPx": 558.609375,
+      "newestVisible": false,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-21-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 36
+    },
+    {
+      "step": "B1 after a batch",
+      "theme": "localOperatorDark",
+      "expected": "the viewport does not move (anchor entry-assistant-19 holds its offset)",
+      "scrollTop": -868,
+      "fromBottom": 868,
+      "extent": 5351,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-19",
+      "anchorOffset": -26.015625,
+      "newestId": "entry-assistant-24-reply",
+      "newestCutPx": 826.609375,
+      "newestVisible": false,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-21-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 39
+    },
+    {
+      "step": "B2 after a batch",
+      "theme": "localOperatorDark",
+      "expected": "the viewport does not move (anchor entry-assistant-19 holds its offset)",
+      "scrollTop": -1114,
+      "fromBottom": 1114,
+      "extent": 5328,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-19",
+      "anchorOffset": -25.53125,
+      "newestId": "entry-assistant-25-reply",
+      "newestCutPx": 1072.609375,
+      "newestVisible": false,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-21-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 42
+    },
+    {
+      "step": "C0 scrolled up",
+      "theme": "localOperatorDark",
+      "expected": "the scroll-to-bottom control is present and hit-testable",
+      "scrollTop": -1114,
+      "fromBottom": 1114,
+      "extent": 5328,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-19",
+      "anchorOffset": -25.53125,
+      "newestId": "entry-assistant-25-reply",
+      "newestCutPx": 1072.609375,
+      "newestVisible": false,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-21-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 42
+    },
+    {
+      "step": "C1 back at the tail",
+      "theme": "localOperatorDark",
+      "expected": "the control is hidden at the tail",
+      "scrollTop": 0,
+      "fromBottom": 0,
+      "extent": 5328,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-023",
+      "anchorOffset": -15.125,
+      "newestId": "entry-assistant-25-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-25-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 42
+    },
+    {
+      "scrollTop": -3,
+      "fromBottom": 3,
+      "extent": 5328,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-023",
+      "anchorOffset": -12.125,
+      "newestId": "entry-assistant-25-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-25-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "step": "E0 3px off the tail",
+      "theme": "localOperatorDark",
+      "reads": 42,
+      "expected": "placed and read in the same frame, inside TAIL_EPS_PX"
+    },
+    {
+      "step": "E1 after a batch",
+      "theme": "localOperatorDark",
+      "expected": "the arrival lands on screen and the reader stays inside TAIL_EPS_PX",
+      "scrollTop": -3,
+      "fromBottom": 3,
+      "extent": 5328,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-24",
+      "anchorOffset": -109.6875,
+      "newestId": "entry-assistant-26-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-26-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 45
+    },
+    {
+      "step": "E2 after a second batch",
+      "theme": "localOperatorDark",
+      "expected": "and again: the drift does not accumulate",
+      "scrollTop": -3,
+      "fromBottom": 3,
+      "extent": 5351,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-025",
+      "anchorOffset": -12.125,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-27-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 47
+    },
+    {
+      "step": "D0 settled",
+      "theme": "localOperatorDark",
+      "expected": "no cadence is left: the read count has stopped moving",
+      "scrollTop": -3,
+      "fromBottom": 3,
+      "extent": 5351,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-025",
+      "anchorOffset": -12.125,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-27-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 48
+    },
+    {
+      "step": "D1 eleven seconds later",
+      "theme": "localOperatorDark",
+      "expected": "the read count is unchanged across two 5s poll intervals",
+      "scrollTop": -3,
+      "fromBottom": 3,
+      "extent": 5351,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-025",
+      "anchorOffset": -12.125,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-27-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 48
+    },
+    {
+      "step": "F0 40px off the tail",
+      "theme": "localOperatorDark",
+      "expected": "inside the band the paging policy calls not-following, so the control is offered",
+      "scrollTop": -40,
+      "fromBottom": 40,
+      "extent": 5351,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-25",
+      "anchorOffset": -72.6875,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-27-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 48
+    },
+    {
+      "step": "F1 after a batch",
+      "theme": "localOperatorDark",
+      "expected": "the arrival moves the tail away AND the way back is on screen",
+      "scrollTop": -40,
+      "fromBottom": 40,
+      "extent": 5351,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-25",
+      "anchorOffset": -72.6875,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-27-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 48
+    },
+    {
+      "step": "G0 the control appearing (fade frozen at 40%)",
+      "theme": "localOperatorDark",
+      "expected": "a fade in flight: the control is mounted, its opacity is mid-transition",
+      "scrollTop": -600,
+      "fromBottom": 600,
+      "extent": 5351,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-23",
+      "anchorOffset": -48.5,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 558.609375,
+      "newestVisible": false,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-25-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 48,
+      "frozen": {
+        "count": 1,
+        "fraction": 0.4,
+        "atMs": [
+          400
+        ],
+        "opacity": null
+      }
+    },
+    {
+      "step": "G1 the control settled (fade released)",
+      "theme": "localOperatorDark",
+      "expected": "the fade has completed: opacity 1",
+      "scrollTop": -600,
+      "fromBottom": 600,
+      "extent": 5351,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-23",
+      "anchorOffset": -48.5,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 558.609375,
+      "newestVisible": false,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-25-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 48,
+      "released": {
+        "count": 1,
+        "opacity": null
+      }
+    },
+    {
+      "step": "H0 a failed child, scrolled up",
+      "theme": "localOperatorDark",
+      "expected": "no control and no band: the exception text owns the foot",
+      "scrollTop": -1284,
+      "fromBottom": 1284,
+      "extent": 5325,
+      "client": 619,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-20-reply",
+      "anchorOffset": -103.734375,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 1268,
+      "newestVisible": false,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-23",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 691.75,
+        "clipBottom": 800.609375,
+        "ringBottom": 695.75,
+        "contained": true
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 691.75
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 48
+    },
+    {
+      "step": "H1 a child with no session id",
+      "theme": "localOperatorDark",
+      "expected": "no control and no band: there is no scroller to lead back to",
+      "reads": 48
+    },
+    {
+      "step": "0 seeded",
+      "theme": "localOperatorLight",
+      "expected": "the pane is scrollable and opened at the tail",
+      "scrollTop": 0,
+      "fromBottom": 0,
+      "extent": 5328,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-018",
+      "anchorOffset": 7.265625,
+      "newestId": "entry-assistant-20-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-20-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 803.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 29
+    },
+    {
+      "step": "A0 at the tail",
+      "theme": "localOperatorLight",
+      "expected": "scrollTop 0, the newest row on screen",
+      "scrollTop": 0,
+      "fromBottom": 0,
+      "extent": 5328,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-018",
+      "anchorOffset": 7.265625,
+      "newestId": "entry-assistant-20-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-20-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 29
+    },
+    {
+      "step": "A1 after a batch",
+      "theme": "localOperatorLight",
+      "expected": "scrollTop stays 0 and the newest row is on screen",
+      "scrollTop": 0,
+      "fromBottom": 0,
+      "extent": 5351,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-019",
+      "anchorOffset": -15.125,
+      "newestId": "entry-assistant-21-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-21-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 32
+    },
+    {
+      "step": "A2 after a batch",
+      "theme": "localOperatorLight",
+      "expected": "scrollTop stays 0 and the newest row is on screen",
+      "scrollTop": 0,
+      "fromBottom": 0,
+      "extent": 5328,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-020",
+      "anchorOffset": -15.125,
+      "newestId": "entry-assistant-22-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-22-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 34
+    },
+    {
+      "step": "A3 after a batch",
+      "theme": "localOperatorLight",
+      "expected": "scrollTop stays 0 and the newest row is on screen",
+      "scrollTop": 0,
+      "fromBottom": 0,
+      "extent": 5328,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-021",
+      "anchorOffset": 7.265625,
+      "newestId": "entry-assistant-23-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-23-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 37
+    },
+    {
+      "step": "B0 scrolled up",
+      "theme": "localOperatorLight",
+      "expected": "a reading position above the tail (fromBottom > 0)",
+      "scrollTop": -600,
+      "fromBottom": 600,
+      "extent": 5328,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-19",
+      "anchorOffset": -26.109375,
+      "newestId": "entry-assistant-23-reply",
+      "newestCutPx": 558.609375,
+      "newestVisible": false,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-21-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 37
+    },
+    {
+      "step": "B1 after a batch",
+      "theme": "localOperatorLight",
+      "expected": "the viewport does not move (anchor entry-assistant-19 holds its offset)",
+      "scrollTop": -868,
+      "fromBottom": 868,
+      "extent": 5351,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-19",
+      "anchorOffset": -26.015625,
+      "newestId": "entry-assistant-24-reply",
+      "newestCutPx": 826.609375,
+      "newestVisible": false,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-21-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 40
+    },
+    {
+      "step": "B2 after a batch",
+      "theme": "localOperatorLight",
+      "expected": "the viewport does not move (anchor entry-assistant-19 holds its offset)",
+      "scrollTop": -1114,
+      "fromBottom": 1114,
+      "extent": 5328,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-19",
+      "anchorOffset": -25.53125,
+      "newestId": "entry-assistant-25-reply",
+      "newestCutPx": 1072.609375,
+      "newestVisible": false,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-21-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 43
+    },
+    {
+      "step": "C0 scrolled up",
+      "theme": "localOperatorLight",
+      "expected": "the scroll-to-bottom control is present and hit-testable",
+      "scrollTop": -1114,
+      "fromBottom": 1114,
+      "extent": 5328,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-19",
+      "anchorOffset": -25.53125,
+      "newestId": "entry-assistant-25-reply",
+      "newestCutPx": 1072.609375,
+      "newestVisible": false,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-21-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 43
+    },
+    {
+      "step": "C1 back at the tail",
+      "theme": "localOperatorLight",
+      "expected": "the control is hidden at the tail",
+      "scrollTop": 0,
+      "fromBottom": 0,
+      "extent": 5328,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-023",
+      "anchorOffset": -15.125,
+      "newestId": "entry-assistant-25-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-25-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 43
+    },
+    {
+      "scrollTop": -3,
+      "fromBottom": 3,
+      "extent": 5328,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-023",
+      "anchorOffset": -12.125,
+      "newestId": "entry-assistant-25-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-25-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "step": "E0 3px off the tail",
+      "theme": "localOperatorLight",
+      "reads": 43,
+      "expected": "placed and read in the same frame, inside TAIL_EPS_PX"
+    },
+    {
+      "step": "E1 after a batch",
+      "theme": "localOperatorLight",
+      "expected": "the arrival lands on screen and the reader stays inside TAIL_EPS_PX",
+      "scrollTop": -3,
+      "fromBottom": 3,
+      "extent": 5328,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-24",
+      "anchorOffset": -109.6875,
+      "newestId": "entry-assistant-26-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-26-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 46
+    },
+    {
+      "step": "E2 after a second batch",
+      "theme": "localOperatorLight",
+      "expected": "and again: the drift does not accumulate",
+      "scrollTop": -3,
+      "fromBottom": 3,
+      "extent": 5351,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-025",
+      "anchorOffset": -12.125,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-27-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 49
+    },
+    {
+      "step": "D0 settled",
+      "theme": "localOperatorLight",
+      "expected": "no cadence is left: the read count has stopped moving",
+      "scrollTop": -3,
+      "fromBottom": 3,
+      "extent": 5351,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-025",
+      "anchorOffset": -12.125,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-27-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 50
+    },
+    {
+      "step": "D1 eleven seconds later",
+      "theme": "localOperatorLight",
+      "expected": "the read count is unchanged across two 5s poll intervals",
+      "scrollTop": -3,
+      "fromBottom": 3,
+      "extent": 5351,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "tool:call-025",
+      "anchorOffset": -12.125,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-27-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 50
+    },
+    {
+      "step": "F0 40px off the tail",
+      "theme": "localOperatorLight",
+      "expected": "inside the band the paging policy calls not-following, so the control is offered",
+      "scrollTop": -40,
+      "fromBottom": 40,
+      "extent": 5351,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-25",
+      "anchorOffset": -72.6875,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-27-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 50
+    },
+    {
+      "step": "F1 after a batch",
+      "theme": "localOperatorLight",
+      "expected": "the arrival moves the tail away AND the way back is on screen",
+      "scrollTop": -40,
+      "fromBottom": 40,
+      "extent": 5351,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-25",
+      "anchorOffset": -72.6875,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-27-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 50
+    },
+    {
+      "step": "G0 the control appearing (fade frozen at 40%)",
+      "theme": "localOperatorLight",
+      "expected": "a fade in flight: the control is mounted, its opacity is mid-transition",
+      "scrollTop": -600,
+      "fromBottom": 600,
+      "extent": 5351,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-23",
+      "anchorOffset": -48.5,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 558.609375,
+      "newestVisible": false,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-25-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 50,
+      "frozen": {
+        "count": 1,
+        "fraction": 0.4,
+        "atMs": [
+          400
+        ],
+        "opacity": null
+      }
+    },
+    {
+      "step": "G1 the control settled (fade released)",
+      "theme": "localOperatorLight",
+      "expected": "the fade has completed: opacity 1",
+      "scrollTop": -600,
+      "fromBottom": 600,
+      "extent": 5351,
+      "client": 728,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-23",
+      "anchorOffset": -48.5,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 558.609375,
+      "newestVisible": false,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-25-reply",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 800.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 804.609375,
+        "contained": false
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 800.609375
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 50,
+      "released": {
+        "count": 1,
+        "opacity": null
+      }
+    },
+    {
+      "step": "H0 a failed child, scrolled up",
+      "theme": "localOperatorLight",
+      "expected": "no control and no band: the exception text owns the foot",
+      "scrollTop": -1284,
+      "fromBottom": 1284,
+      "extent": 5325,
+      "client": 619,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-20-reply",
+      "anchorOffset": -103.734375,
+      "newestId": "entry-assistant-27-reply",
+      "newestCutPx": 1268,
+      "newestVisible": false,
+      "visibleRows": 8,
+      "bottomId": "entry-assistant-23",
+      "button": null,
+      "band": null,
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 691.75,
+        "clipBottom": 800.609375,
+        "ringBottom": 695.75,
+        "contained": true
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 691.75
+        },
+        "chip": null,
+        "band": null,
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 50
+    },
+    {
+      "step": "H1 a child with no session id",
+      "theme": "localOperatorLight",
+      "expected": "no control and no band: there is no scroller to lead back to",
+      "reads": 50
+    }
+  ]
+}
