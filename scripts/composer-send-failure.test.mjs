@@ -114,20 +114,61 @@ export const desktopResult = request => globalThis.__canonicalRequest(request);`
 					() => ({ path: "echo", namespace: "echo-fixture" }),
 				);
 				builder.onLoad({ filter: /.*/, namespace: "echo-fixture" }, () => ({
-					contents: `export const paintPendingSend = (identity, send) =>
+					/*
+					 * The registry is a REAL little Map now, not a recorder (S6): the restart
+					 * adapter's guard (`pendingSendForView`) and its paint share it, and a
+					 * recorder could not tell "the press already painted this row" from
+					 * "nothing is retained" - which is exactly the reload the S6 case stages.
+					 * Every recorded echo is byte-identical to before; the Map only backs
+					 * the reads.
+					 */
+					contents: `const registry = new Map();
+globalThis.__pendingSendRegistry = registry;
+export const paintPendingSend = (identity, send) => {
 	globalThis.__canonicalEcho({ kind: "echo", sessionId: identity, id: send.id, text: send.text, images: send.images });
-export const movePendingSendIdentity = (from, to) =>
+	let entries = registry.get(identity);
+	if (!entries) { entries = new Map(); registry.set(identity, entries); }
+	entries.set(send.id, { identity, id: send.id, text: send.text, images: send.images });
+};
+export const pendingSendForView = (identity) => {
+	const entries = registry.get(identity);
+	if (!entries) return null;
+	const first = entries.values().next();
+	return first.done ? null : first.value;
+};
+export const movePendingSendIdentity = (from, to) => {
 	globalThis.__canonicalEcho({ kind: "move", from, to });
-export const replacePendingSendText = (identity, id, text) =>
+	if (from === to) return;
+	const entries = registry.get(from);
+	if (!entries) return;
+	registry.delete(from);
+	const destination = registry.get(to) ?? new Map();
+	for (const [id, entry] of entries) { entry.identity = to; destination.set(id, entry); }
+	registry.set(to, destination);
+};
+export const replacePendingSendText = (identity, id, text) => {
 	globalThis.__canonicalEcho({ kind: "replace", sessionId: identity, id, text });
-export const discardPendingSends = (sessionId) =>
+	const entry = registry.get(identity)?.get(id);
+	if (entry) entry.text = text;
+};
+export const resolvePendingSend = (identity, id) => {
+	const entries = registry.get(identity);
+	if (!entries) return;
+	entries.delete(id);
+	if (entries.size === 0) registry.delete(identity);
+};
+export const discardPendingSends = (sessionId) => {
 	globalThis.__canonicalEcho({ kind: "discard", sessionId });
+	registry.delete(sessionId);
+};
 export const retractPendingUser = (sessionId, id) =>
 	globalThis.__canonicalEcho({ kind: "retract", sessionId, id });
 export const peekLocalEcho = (sessionId, id) =>
 	globalThis.__canonicalEcho({ kind: "peekLocal", sessionId, id });
-export const discardPendingEchoes = (sessionId) =>
-	globalThis.__canonicalEcho({ kind: "discard", sessionId });`,
+export const discardPendingEchoes = (sessionId) => {
+	globalThis.__canonicalEcho({ kind: "discard", sessionId });
+	registry.delete(sessionId);
+};`,
 					loader: "js",
 					resolveDir: process.cwd(),
 				}));
@@ -150,6 +191,7 @@ const {
 	mergeReturnedPayload,
 	mergeReturnedText,
 	rehydrateInputRows,
+	resynthesisePendingSend,
 	withholdsRetryHint,
 	sendFailureClass,
 	sendFailureCopy,
@@ -184,6 +226,8 @@ function reset() {
 		error: null,
 	});
 	useConversationInputStore.setState({ inputByConversation: {} });
+	// The registry is process state: a case starts in a fresh process's shape.
+	globalThis.__pendingSendRegistry.clear();
 }
 
 const key = `send:${SESSION}`;
@@ -596,6 +640,81 @@ test("the New-chat flip leaves the payload on the draft row, under the identity 
 	assert.equal(draft.submittedText, "Review this");
 	assert.deepEqual(draft.submittedAttachments, ["/tmp/b.png"]);
 	assert.equal(composerIdentityFor(draftKey, SESSION), SESSION);
+});
+
+/*
+ * T6: A RELOAD. The registry is process state and starts empty in a fresh
+ * process; the draft row's claim fields persist. The row must come back - S4
+ * made it the message's home, and a reload that lost it would leave the
+ * conversation silently empty with the payload no longer coming home either.
+ */
+test("a failed row is re-synthesised after a reload, under the id the durable row would carry", async () => {
+	reset();
+	const draftKey = "draft:33333333-3333-3333-3333-333333333333";
+	responses.push({ session_id: SESSION });
+	responses.push(new DesktopControlError(504, "deadline_exceeded"));
+	await assert.rejects(admitChatDraft(draftKey, { ...input }, undefined));
+	const draft = useCanonicalSessionsStore.getState().drafts[draftKey];
+	assert.equal(
+		draft.admissionAttempted,
+		true,
+		"an unknown outcome: the claim survives on the row",
+	);
+	assert.equal(
+		draft.submittedRendered,
+		"Review this",
+		"and the text the row showed is the pinned render - the seam ran before the wire",
+	);
+	// The reload: a fresh process retains nothing.
+	globalThis.__pendingSendRegistry.clear();
+	// The pane's mount pass, reading the row it is on screen with.
+	assert.equal(
+		resynthesisePendingSend(draftKey, draft),
+		true,
+		"the row comes back",
+	);
+	const identity = composerIdentityFor(draftKey, draft.sessionId);
+	const restored = globalThis.__pendingSendRegistry
+		.get(identity)
+		?.get(draft.admissionRequestId);
+	assert.equal(
+		restored?.id,
+		draft.admissionRequestId,
+		"under the id the durable row would carry, so a later owner row coalesces with it",
+	);
+	assert.equal(
+		restored?.text,
+		"Review this",
+		"with the text the row showed when it failed",
+	);
+	// Idempotent: the effect can run again without painting a second row.
+	assert.equal(resynthesisePendingSend(draftKey, draft), false);
+	// And the SHAPE guards, exercised with the registry empty again.
+	globalThis.__pendingSendRegistry.clear();
+	assert.equal(
+		resynthesisePendingSend(draftKey, {
+			...draft,
+			errorRetry: undefined,
+			submittedRendered: undefined,
+		}),
+		false,
+		"a released-app row is not this adapter's to re-paint - `migrateHeldClaim` owns it",
+	);
+	assert.equal(
+		resynthesisePendingSend(draftKey, {
+			...draft,
+			error: undefined,
+			errorCode: undefined,
+			errorRetry: undefined,
+		}),
+		false,
+		"nor is a failure the user already resolved (the not-delivered Edit clears the sentence)",
+	);
+	assert.equal(
+		resynthesisePendingSend(draftKey, draft),
+		true,
+		"while the unresolved failure still paints - the guards are about the shape, not the clear",
+	);
 });
 
 /* --------------------------------------------------------------------- merge */

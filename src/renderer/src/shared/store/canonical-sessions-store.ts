@@ -15,6 +15,7 @@ import {
 	movePendingSendIdentity,
 	paintPendingSend,
 	peekLocalEcho,
+	pendingSendForView,
 	replacePendingSendText,
 } from "@shared/hooks/use-canonical-session";
 /*
@@ -1692,6 +1693,68 @@ export function migrateHeldClaim(
 		 * (review round 3, R2-2).
 		 */
 		heldClaimCode: undefined,
+	});
+	return true;
+}
+
+/**
+ * Put THIS build's failed row back on screen after a reload.
+ *
+ * WHY IT IS NEEDED AT ALL (S6). The registry is process state: a reload starts
+ * with nothing retained, and the row the user was looking at when the send
+ * failed used to come home through the COMPOSER instead (the payload was handed
+ * back and the box was the message's home). S4 moved that home onto the row - and
+ * a row that only exists in memory would leave the conversation silently empty
+ * after a reload, with the payload no longer guaranteed to come home either. So
+ * the row is re-synthesised from the draft's own claim fields, which ARE
+ * persisted: the request id (`admissionRequestId`), the text the row showed when
+ * it failed (`submittedRendered`, pinned before the wire - the typed payload when
+ * the seam never ran), and the images it was painted with.
+ *
+ * THE GUARDS, one by one:
+ *
+ *  - `error` present AND `errorRetry` present: a failure THIS build recorded and
+ *    the user has not resolved. Every path that ends a claim clears one of those
+ *    (the server's later answer, a retry that landed, the user's own `Edit` on a
+ *    row that provably never left), and the released app's rows carry no
+ *    `errorRetry` at all - `migrateHeldClaim` above owns those.
+ *  - the registry does not already hold it: in the live process the press's own
+ *    paint is still there, and the server's own reconciliation
+ *    (`resolveObservedPendingSends`) drops the entry the moment the durable row
+ *    is observed - which is the other half of T6, and why this cannot resurrect
+ *    a message the owner has answered for.
+ *
+ * Idempotent by construction: the first call paints, every later one sees the
+ * entry and returns false. Run from the pane that is showing the conversation,
+ * beside `migrateHeldClaim` - the pane is the only place with the fact that the
+ * row is still on screen at all (the same R6 argument the migration carries).
+ */
+export function resynthesisePendingSend(
+	key: string,
+	draft: ChatDraft | undefined,
+): boolean {
+	if (!draft || draft.submittedText === undefined) return false;
+	if (draft.error === undefined || draft.errorRetry === undefined) return false;
+	const identity = composerIdentityFor(key, draft.sessionId);
+	if (pendingSendForView(identity)) return false;
+	const id = draft.admissionRequestId;
+	paintPendingSend(identity, {
+		id,
+		/*
+		 * The text the ROW showed when the failure landed, not the payload basis:
+		 * the seam's substitution is what the wire carried and what the row was
+		 * spliced to, and it is pinned before the attempt. `submittedText` is the
+		 * fallback for the classes whose failure came before the seam.
+		 */
+		text: draft.submittedRendered ?? draft.submittedText,
+		// The same id shape the press's own paint used, so a later owner row for
+		// this id coalesces with it rather than sitting beside it.
+		images: (draft.submittedImages ?? []).map((image, index) => ({
+			id: `${id}:${index}`,
+			data: image.data_b64,
+			attachment: null,
+			mimeType: image.mime_type,
+		})),
 	});
 	return true;
 }

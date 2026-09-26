@@ -39,6 +39,7 @@ import {
 	panelIdentityFor,
 	panelSessionIdOfView,
 	pressLockCopy,
+	resynthesisePendingSend,
 	sendFailureCopy,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
@@ -2438,6 +2439,18 @@ function SessionPanel({
 	useEffect(() => {
 		if (!draftIdentity) return;
 		migrateHeldClaim(draftIdentity, draft);
+		/*
+		 * AND THIS BUILD'S OWN FAILED ROW COMES BACK THE SAME WAY (S6).
+		 *
+		 * The registry is process state, so a reload has nothing retained, while
+		 * the draft's claim fields - the request id, the text the row showed, the
+		 * images - persist. Without this the conversation would be silently empty
+		 * after a reload: the row was the message's home (S4), so it must be
+		 * guaranteed to return. The released app's claim above still comes home to
+		 * the COMPOSER - its rows carry no `errorRetry` and this build's adapter
+		 * refuses them on exactly that fact.
+		 */
+		resynthesisePendingSend(draftIdentity, draft);
 	}, [draftIdentity, draft]);
 
 	/*
@@ -2579,6 +2592,18 @@ function SessionPanel({
 					 */
 					if (draft?.admissionAttempted !== true) {
 						retractLocalEcho(identity, deliveryTurn.recordId);
+						/*
+						 * AND ITS SENTENCE GOES WITH IT (S6): the row was retracted, so the
+						 * failure has no home left to state itself in - and the restart adapter
+						 * re-synthesises exactly the rows that still carry one, so leaving it
+						 * here would resurrect a row the user already retired on the next load.
+						 */
+						if (draftIdentity)
+							useCanonicalSessionsStore.getState().updateDraft(draftIdentity, {
+								error: undefined,
+								errorCode: undefined,
+								errorRetry: undefined,
+							});
 					}
 					input.current?.focusInput();
 				},
