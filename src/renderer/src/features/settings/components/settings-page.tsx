@@ -6,7 +6,6 @@ import type { ConfigUpdate } from "@shared/api/local-operator/types";
 import { EditableField } from "@shared/components/common/editable-field";
 import { PageHeader } from "@shared/components/common/page-header";
 import { RadientMark } from "@shared/components/common/radient-mark";
-import { SliderSetting } from "@shared/components/common/slider-setting";
 import { Spinner } from "@shared/components/common/spinner";
 import { ToggleSetting } from "@shared/components/common/toggle-setting";
 import { HostingSelect } from "@shared/components/hosting/hosting-select";
@@ -39,12 +38,8 @@ import {
 	CirclePlus,
 	Contrast,
 	CreditCard,
-	Database,
 	ExternalLink,
-	History,
 	Info,
-	List,
-	MessagesSquare,
 	Plug,
 	Settings,
 	SlidersHorizontal,
@@ -1160,61 +1155,6 @@ export const SettingsPage: FC = () => {
 							</SettingsSection>
 
 							<SystemPrompt />
-
-							<SettingsSection
-								title="History settings"
-								icon={History}
-								description="Configure how much conversation history is retained and displayed. These are tools to help balance cost and performance by controlling the amount of data used by the agents."
-							>
-								<div className="flex flex-col gap-4">
-									<SliderSetting
-										value={config.values.conversation_length}
-										label="Maximum conversation history"
-										description="Number of messages to keep in conversation history for context. More messages will make the agents have longer memory but more expensive to run. Recommended: 100"
-										min={10}
-										max={500}
-										step={10}
-										unit="msgs"
-										// `MessagesSquare`, not `History`: the section heading is
-										// the history, this slider is a count of messages. Its two
-										// siblings keep `List` and `Database`, so the label column
-										// stays even.
-										icon={MessagesSquare}
-										isSaving={savingField === "conversation_length"}
-										onChange={(value) =>
-											handleUpdateField("conversation_length", value)
-										}
-									/>
-									<SliderSetting
-										value={config.values.detail_length}
-										label="Detail view length"
-										description="Maximum number of messages to show in the detailed conversation view. Messages beyond this limit will be summarized. Shortening this will decrease costs but some important details could get lost from earlier messages. Recommended: 15"
-										min={10}
-										max={500}
-										step={5}
-										unit="msgs"
-										icon={List}
-										isSaving={savingField === "detail_length"}
-										onChange={(value) =>
-											handleUpdateField("detail_length", value)
-										}
-									/>
-									<SliderSetting
-										value={config.values.max_learnings_history}
-										label="Maximum learnings history"
-										description="Agents note down specific insights and key learnings in memory which persist beyond the maximum conversation history and summarization. This setting controls the maximum number of learning items to retain. More items will make the agents acquire a longer history of knowledge from your conversations but more expensive to run. Recommended: 50"
-										min={10}
-										max={200}
-										step={10}
-										unit="notes"
-										icon={Database}
-										isSaving={savingField === "max_learnings_history"}
-										onChange={(value) =>
-											handleUpdateField("max_learnings_history", value)
-										}
-									/>
-								</div>
-							</SettingsSection>
 
 							<SettingsSection
 								title="Configuration information"
