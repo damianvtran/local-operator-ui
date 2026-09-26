@@ -330,7 +330,19 @@ export function focusHoldRead(args: {
 			land: element,
 		};
 	const step = focusHoldStep({
-		hold: { ...args.hold, landedOn },
+		/*
+		 * THE DEADLINE THIS READ COMPUTED, NOT THE FIELD THE HOLD CARRIES (QA round 3,
+		 * Q-1). `until` above is the rule's answer for THIS read; `args.hold.until` is
+		 * whatever the caller last wrote to its own state, and a caller that writes state
+		 * only on a landing carries the arm's own deadline there for the whole of an
+		 * operation. Handing that to the step put the same defect back one level down -
+		 * measured live on the built app: nineteen reads at 250 ms across a 20 s test, the
+		 * row `connecting` and the window answering `now + 4000` in every one of them, and
+		 * the move dropped at 4 022 ms because the step judged it against the 4 000 ms the
+		 * arm had written. Both readers of a window ask one rule; this is the line that
+		 * makes that true for the step too.
+		 */
+		hold: { until, reanchors: args.hold.reanchors, landedOn },
 		candidate: element,
 		active: args.active,
 		body: args.body,

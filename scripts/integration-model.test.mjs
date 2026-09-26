@@ -3669,7 +3669,15 @@ test("a slow operation's landing survives the arm's own clock, and the cap count
 
 	let hold = { name: "qa-slow", until: 250 + windowMs, reanchors: 0 };
 	let lastMovingAt = 0;
-	/** One read, carrying the hold the way the component's watcher does. */
+	/**
+	 * One read, carrying the hold the way the COMPONENT's state does - which is the part
+	 * that has to be modelled rather than assumed, because it is what made the round-3
+	 * defect survivable one level down. A read that only extends the window writes NOTHING
+	 * (the extension lives in the ref both readers consult), so the state's `until` keeps
+	 * the value the ARM wrote for the whole of an operation - and a rule fed that field
+	 * instead of its own answer drops the move at the arm's deadline, exactly as the live
+	 * rig measured at 4 022 ms into a 20 s test.
+	 */
 	const readAt = (now, overrides = {}) => {
 		const read = m.focusHoldRead({
 			hold,
@@ -3682,7 +3690,8 @@ test("a slow operation's landing survives the arm's own clock, and the cap count
 			body,
 			...overrides,
 		});
-		hold = read.hold ? { name: "qa-slow", ...read.hold } : null;
+		if (!read.hold) hold = null;
+		else if (read.land) hold = { name: "qa-slow", ...read.hold };
 		if (overrides.rowMoving !== false) lastMovingAt = now;
 		return read;
 	};
@@ -3719,14 +3728,32 @@ test("a slow operation's landing survives the arm's own clock, and the cap count
 			`and it lands nothing while the row has not re-stood (${now} ms)`,
 		);
 		assert.ok(
-			hold.until > now,
-			`and its deadline is ahead of the read rather than anchored on the press (${now} ms, until ${hold.until})`,
+			read.hold.until > now,
+			`and the rule's own answer is ahead of the read rather than anchored on the press (${now} ms, answer ${read.hold.until})`,
+		);
+		/*
+		 * AND THE STATE'S OWN FIELD IS STILL THE ARM'S DEADLINE, which is the discipline
+		 * this cell exists to model rather than to assume: a read that only extends the
+		 * window writes nothing, so `until` in state keeps `250 + windowMs` for the whole
+		 * of the operation. That is exactly why the step has to be handed the answer
+		 * above and not this field - handed this one, the same 20 s operation ends at
+		 * 4 250 ms, which is what the live rig caught.
+		 */
+		assert.equal(
+			hold.until,
+			250 + windowMs,
+			`and the state's field is still the arm's deadline at ${now} ms, which the rule must not be judged by (Q-1)`,
 		);
 	}
 	assert.equal(
 		hold.until,
+		250 + windowMs,
+		"a read that only extends the window writes nothing, so state carries the arm's deadline to the end of the operation (Q-1)",
+	);
+	assert.equal(
+		readAt(20_000).hold.until,
 		20_000 + windowMs,
-		"a row still moving carries a full window from the read that found it moving (Q1)",
+		"while the read's OWN answer is a full window from the read that found the row moving (Q1)",
 	);
 	/*
 	 * THE GROUP CHANGE, 1 750 ms later: the row is mounted again in its new group, so the
@@ -3815,7 +3842,8 @@ test("a slow operation's landing survives the arm's own clock, and the cap count
 			body,
 			...overrides,
 		});
-		failHold = read.hold ? { name: "qa-slow-fail", ...read.hold } : null;
+		if (!read.hold) failHold = null;
+		else if (read.land) failHold = { name: "qa-slow-fail", ...read.hold };
 		if (overrides.rowMoving !== false) failMovingAt = now;
 		return read;
 	};
