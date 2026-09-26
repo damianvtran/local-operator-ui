@@ -423,6 +423,22 @@ const openFrame = (seq, gap) => ({
 });
 
 /**
+ * A `gap` frame: receipt continuity broke and the server will send a snapshot.
+ *
+ * Its own shape rather than a `snapshot` with a flag, because the reducer treats it
+ * as its own arm: the frame NULLS `frontend` and keeps the last published reading in
+ * `heldFrontend` (round 4, M4's route). `payload` is empty in the wire's own terms -
+ * a gap carries no state, which is the point of one.
+ */
+const gapFrame = (seq) => ({
+	session_id: SESSION,
+	epoch: "bridge-epoch",
+	seq,
+	type: "gap",
+	payload: {},
+});
+
+/**
  * A snapshot of a conversation whose turn has ENDED.
  *
  * `streaming` is the wire's own statement about whether a turn is in flight and
@@ -2783,6 +2799,150 @@ test("a refusal hands the hold to the mark, and a retry that names the call give
 			marked.filter((id) => !live.handle().transcript.argsByCall.has(id)),
 			[],
 			"every marked call is named now, which is the answer the cue was standing in for",
+		);
+	} finally {
+		globalThis.__seedRequest = serve;
+	}
+});
+
+test("a stand-down inside a stream gap leaves the mark standing rather than the output", async () => {
+	/*
+	 * AGENT REVIEW ROUND 4, M4. `turnRunning` read `frontend`, which the reducer
+	 * deliberately NULLS on both gap arms - the last published reading is kept in
+	 * `heldFrontend` so the pane can go on painting the session's state. So for the
+	 * whole of a routine reconnect (~1.5-4 s) term (b) read false for a turn that was
+	 * still running, and both halves of the rule failed on one instant: the stand-down
+	 * ends term (a) by design, and the mark this refusal added was pruned by the SAME
+	 * predicate in the same tick. The row settled on the call's OUTPUT and the
+	 * reconnect's own snapshot then repainted the command - the flip this branch exists
+	 * to remove, on the app's most ordinary route. The round measured
+	 * `rowsShowingOutput` 68 with one stand-in frame.
+	 *
+	 * THE ROUTE IS THE ROUND'S OWN, frame for frame: read #1 fails, read #2 is HELD, a
+	 * `gap` is delivered, and read #2 fails INSIDE the gap. Later reads answer, so the
+	 * snapshot that follows the gap names every call and the mark's other exit is
+	 * exercised on the same walk.
+	 *
+	 * WHAT IS ASSERTED, and the first one is the finding itself: not one frame may
+	 * state the call's output (the number is named in the message, so a failure reads
+	 * the way the round's digest does), the mark must be standing THROUGH the gap, and
+	 * the snapshot's read must resolve it to the command.
+	 */
+	const { durable, page, liveEvents } = moment("labels");
+	const serve = globalThis.__seedRequest;
+	let reads = 0;
+	let rejectHeld = null;
+	const frames = [];
+	try {
+		globalThis.__seedRequest = async (request) => {
+			requests.push(request);
+			if (request.op !== "sessions.history") return {};
+			reads += 1;
+			if (reads === 1) throw new Error("history unavailable");
+			if (reads === 2)
+				return new Promise((_resolve, reject) => {
+					rejectHeld = reject;
+				});
+			/* The reconnect is over: the reads that follow it answer. */
+			return { entries: durable, has_more: false, cursor_missing: false };
+		};
+		const live = await open({
+			page,
+			liveEvents,
+			durable,
+			onFrame: (view) => frames.push(view),
+		});
+		assert.equal(
+			historyReads().length,
+			2,
+			"the walk has spent its first attempt and is waiting on its retry",
+		);
+		const heldFrame = frames.find((view) => view.labelPending.size > 0);
+		assert.ok(
+			heldFrame,
+			"the seed's unlabelled calls are held while that read is out",
+		);
+		const targets = [...heldFrame.labelPending];
+		/* THE GAP, while the turn is still running. */
+		deliver(gapFrame(3));
+		await pump();
+		/* ...and the retry FAILS INSIDE IT. */
+		rejectHeld?.(new Error("history unavailable"));
+		await pump();
+		const inGap = live.handle();
+		/*
+		 * THE FINDING ITSELF IS MEASURED FIRST, so a failure reads the way the round's
+		 * digest does and not as a state assertion that has to be translated: a frame
+		 * showing `… ` in a held row's column IS the call's OUTPUT where its command
+		 * belongs, which is the flip the branch removes.
+		 */
+		const outputFrames = frames.filter((view) =>
+			targets.some((id) => {
+				const record = view.transcript.records.find(
+					(row) => row.kind === "tool" && row.toolCallId === id,
+				);
+				return (
+					record !== undefined &&
+					objectColumn(record, view.labelPending, view.labelMarked)?.startsWith(
+						"… ",
+					)
+				);
+			}),
+		);
+		/*
+		 * BOTH COUNTS, because the round's digest states the ROW one (`rowsShowingOutput`
+		 * 68) and this walk states the FRAME one: a later round comparing the two should
+		 * not have to wonder whether one number is the other's unit.
+		 */
+		const outputRows = outputFrames.reduce(
+			(count, view) =>
+				count +
+				targets.filter((id) => {
+					const record = view.transcript.records.find(
+						(row) => row.kind === "tool" && row.toolCallId === id,
+					);
+					return (
+						record !== undefined &&
+						objectColumn(
+							record,
+							view.labelPending,
+							view.labelMarked,
+						)?.startsWith("… ")
+					);
+				}).length,
+			0,
+		);
+		assert.equal(
+			outputFrames.length,
+			0,
+			`no frame states the call's OUTPUT while the question is open (standInFrames ${outputFrames.length}, rowsShowingOutput ${outputRows}, labelMarkedAfter ${inGap.labelMarked.size}, held ${targets.length})`,
+		);
+		assert.equal(
+			inGap.labelPending.size,
+			0,
+			"the stand-down ends the hold inside the gap, because nothing is out for these calls any more",
+		);
+		assert.ok(
+			inGap.labelMarked.size > 0,
+			"and the mark stands through the gap: a reconnect is not a claim that the turn ended, it is the announcement that the snapshot which can still name these calls is on its way",
+		);
+		assert.equal(
+			(inGap.frontend ?? inGap.heldFrontend)?.streaming,
+			true,
+			"and the reading the rule takes the turn from is the pane's own held one: `frontend` is null here and that is the whole of M4",
+		);
+		/* The snapshot the gap announced, whose own seed can name every call. */
+		deliver(snapshotFrame(4, { entries: page, liveEvents, streaming: true }));
+		await pump();
+		assert.equal(
+			live.handle().labelMarked.size,
+			0,
+			"and the snapshot's read ends the mark, so the cue gives way to the command",
+		);
+		assert.deepEqual(
+			targets.filter((id) => !live.handle().transcript.argsByCall.has(id)),
+			[],
+			"with every held call named: the gap cost the reader a cue, never the call's output",
 		);
 	} finally {
 		globalThis.__seedRequest = serve;

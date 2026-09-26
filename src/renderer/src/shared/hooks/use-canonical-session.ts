@@ -337,10 +337,18 @@ export type CanonicalSessionView = {
 	 * of the two answers it guesses. The hold ends - the row is no longer owed a
 	 * blank - and the MARK takes its place: one glyph meaning "a value belongs here
 	 * and is not known yet", which states no fact and therefore cannot be the wrong
-	 * one. Its exits are the same two the hold had: a later read that names the call
-	 * gives the command, and the backstop gives the stand-in. Nothing else clears it -
-	 * in particular the turn's end does NOT, because a round ending is exactly where
-	 * the retry that names these calls is issued from.
+	 * one. It has THREE exits, and the third is the one easiest to reason wrongly about:
+	 * (1) a later read that names the call gives the command; (2) a RELEASE EVENT at
+	 * which the rule no longer owes the row - `releaseLabelPending` prunes the mark by
+	 * the same `labelOwed` predicate that releases the hold - gives the stand-in; and
+	 * (3) the backstop's own deadline gives the stand-in too, for a conversation whose
+	 * reads never settle. The turn's own ending is NOT a fourth exit: nothing is keyed
+	 * to it, and it clears a mark only through (2), at the next release event - which is
+	 * what the refused-plus-round-ending arm measures, the stand-in at ~4 s rather than
+	 * at the bound. Nor is it a licence to release early: a round ending is exactly
+	 * where the retry that names these calls is issued from, and while that retry is out
+	 * the row is owed a read again (term (a)), so the retry's own answer - command or
+	 * stand-in - is what the reader gets.
 	 *
 	 * THE MARK ARRIVES AT THE RELEASE rather than after `LABEL_HOLD_MARK_MS`: the hold
 	 * it replaced is already over, so there is no blank left for a clock to age, and
@@ -1108,10 +1116,39 @@ function labelGapFor(sessionId: string | undefined): LabelGapState {
  * the last thing that could name a call ends.
  *
  * A terminal event for the turn, or a stream that failed, ends it - nothing more
- * can name a call after that, so the release below is prompt. `frontend` is null
- * before the owner's first snapshot and across a stream gap, and an unproven
- * turn is not a running one: the hold then rests on the read it is waiting for
- * (term (a)) rather than on a claim about a session state nobody published.
+ * can name a call after that, so the release below is prompt.
+ *
+ * ACROSS A STREAM GAP THE LAST READING IS THE ONE TO USE, NOT THE ABSENCE OF ONE
+ * (round 4, M4). `frontend` is nulled on both gap arms - the `gap` frame and
+ * `open{gap}` - with the reading the pane was painting kept in `heldFrontend` for
+ * exactly that reason, so reading `frontend` alone answered "the turn is over" for
+ * the whole ~1.5-4 s of a routine reconnect. Both terms of the rule then failed on
+ * one instant: the stand-down ends term (a) by design, and term (b) read false, so
+ * `markRefusedTargets` marked the rows and `releaseLabelPending` pruned that very
+ * mark by this same predicate in the SAME tick - the refusal's cue added and
+ * removed at once, the row settling on the call's OUTPUT, and the reconnect's own
+ * snapshot repainting the command afterwards. That is the flip this branch exists
+ * to remove, on the app's most ordinary route: the reviewer measured
+ * `rowsShowingOutput` 68 with one stand-in frame.
+ *
+ * WHY THE HELD READING IS THE HONEST ONE HERE RATHER THAN THE CONVENIENT ONE. A
+ * gap is not a statement that the turn ended; it is the announcement that receipt
+ * continuity broke and an authoritative snapshot is on its way - and a snapshot's
+ * own seed is one of the things that can name a call, which is why `firstAttempts`
+ * exists. So on the one question this predicate answers ("can something still name
+ * this call?") the gap is when the answer is most clearly yes, and the reading the
+ * app still holds is the one that says so. The narrower alternative - suppress the
+ * release while `status === "reconnecting"` - was rejected because it would state
+ * the same fact in a second place and leave this predicate answering a question
+ * nobody asked; `heldFrontend` is the pane's own value for the session's state (the
+ * readings strip and the destination pickers paint `frontend ?? heldFrontend`), so
+ * taking the liveness from the same pair keeps ONE definition of "the turn is
+ * running". It is a no-op wherever `frontend` is non-null, because `heldFrontend`
+ * mirrors it on every commit that sets one.
+ *
+ * WHAT IT CANNOT DO: keep a row held past the session's own bounds. A gap that
+ * never resolves still ends the hold at `LABEL_HOLD_MAX_MS`, and a terminal event
+ * or a stream failure still ends it immediately - the two arms above.
  *
  * WHY IT EXISTS AT ALL (round 2, M3): with only the budget term, a SPENT budget
  * released the row, and a durable round ending that named those calls then
@@ -1122,10 +1159,11 @@ function turnRunning(state: {
 	terminal: string | null;
 	failure: unknown;
 	frontend: { streaming: boolean } | null;
+	heldFrontend: { streaming: boolean } | null;
 }): boolean {
 	if (state.terminal) return false;
 	if (state.failure) return false;
-	return state.frontend?.streaming === true;
+	return (state.frontend ?? state.heldFrontend)?.streaming === true;
 }
 
 /**

@@ -925,6 +925,14 @@ const STAMP_BINDING_NOTES = [
 	 * arithmetic, and the reason the swept count does not move.
 	 */
 	"transcriptRevealAtRestRestampNote",
+	/*
+	 * AND THIS BRANCH'S OWN, for round 4's gap-liveness repair, and it belongs here for
+	 * the list's own reason: reading the turn's liveness across a stream gap moves the
+	 * hook under `src/` and the harness case that pins the route under `scripts/` - both
+	 * trees this file binds - while re-shooting no frame, so a reader is owed the two
+	 * values it binds and the reason the stills did not move.
+	 */
+	"gapLivenessRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
