@@ -4096,6 +4096,37 @@ export function dropLiveRecords(state: TranscriptState): TranscriptState {
 }
 
 /**
+ * The stamp a LOCALLY-minted row may carry: `now`, or the largest `ts` already
+ * painted when the client's clock is behind it.
+ *
+ * WHY THIS EXISTS (operator report, 2026-09-26): "when sending a user message,
+ * it seems to end up in an inconsistent place within the conversation history -
+ * it shows up above an older message and then corrects after some time to its
+ * proper position". The mechanism is the seam between two functions that are
+ * each correct alone: the local echo is stamped with the CLIENT's `Date.now()`,
+ * and every merge re-sorts the whole list by `ts` (`withTimeOrder`). A session
+ * whose stamps come from a clock even fractions of a second AHEAD of the
+ * client's - a remote owner, or any client whose clock trails - therefore sorts
+ * the fresh echo BEFORE the newest painted row, above an older message, until
+ * the owner's durable row (the same id, its own stamp) replaces it: the visible
+ * "corrects after some time".
+ *
+ * The guarantee this keeps is the one the sort states: content in time order,
+ * canonical rows authoritative. It changes only WHERE a locally-minted row sits
+ * among rows already painted - never before them. A tie keeps the row after the
+ * one it followed, because `withTimeOrder` breaks ties by position and a freshly
+ * appended row holds the tail position; and the durable row still replaces this
+ * one and sorts to its own canonical place, because the two share an id.
+ */
+function monotonicStamp(state: TranscriptState, now: number): number {
+	let ts = now;
+	for (const record of state.records) {
+		if (record.ts > ts) ts = record.ts;
+	}
+	return ts;
+}
+
+/**
  * Paint the user's own message the instant it is admitted, before the owner
  * echoes it back.
  *
@@ -4126,7 +4157,7 @@ export function appendPendingUser(
 	return upsert(state, {
 		kind: "user",
 		id,
-		ts: now,
+		ts: monotonicStamp(state, now),
 		text,
 		images,
 		local: true,
@@ -4181,7 +4212,7 @@ export function appendLocalNote(
 	return upsert(state, {
 		kind: "notice",
 		id: `local:${now}:${localNoteCounter}`,
-		ts: now,
+		ts: monotonicStamp(state, now),
 		text,
 		level,
 	});

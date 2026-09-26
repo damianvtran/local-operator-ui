@@ -153,36 +153,24 @@ test("the split is offered at every docked window height the app draws", () => {
 
 test("with no dragged height, the chats take the larger share", () => {
 	/*
-	 * The one-sidebar merge's reason for existing was that the agents tree pushed
-	 * the chats below the fold. With both sections visible by default, the auto
-	 * rule is what keeps that from coming back: a long chat list is capped at 60%
-	 * of the panel, so the chats hold more of the column than the section above.
+	 * The auto rule is still the module's, and the module still ships it (the
+	 * split's arithmetic is the record of the removed feature and stays covered
+	 * here). The COMPONENT no longer draws a cap of its own: the one-scroll pass
+	 * of 2026-09-26 removed the two-region cap from the sidebar entirely,
+	 * because one scroller is the operator's whole report - what bounds a long
+	 * list now is the section ladder (`data-sidebar-section-more` /
+	 * `data-sidebar-page-more`), which the one-scroller test below still pins.
 	 */
 	assert.equal(SIDEBAR_AUTO_MAX_FRACTION, 0.6);
-	/*
-	 * AND THE COMPONENT'S OWN FALLBACK CLASS IS BOUND TO IT (agent review round 1, R4).
-	 *
-	 * `chat-sidebar.tsx` puts `max-h-[60%]` on the chats region as the rule the module's
-	 * docblock names (`:267`), and that class resolves against the SPLIT CONTAINER rather
-	 * than against the panel's content box the module measures - the exact box the module
-	 * says it deliberately does not use, "because the regions' container is a fraction of a
-	 * panel shorter than the panel, and the cap would silently move by tens of px at a
-	 * 900px window". Two numbers for one cap, in two boxes, with nothing reading the class:
-	 * `assert.equal(0.6)` next door cannot see it move. The assertion below derives the class
-	 * FROM the constant, so an edit to either one alone fails here instead of shipping a
-	 * fallback that caps against the wrong box. (`scripts/chat-pane-floors.test.mjs` binds
-	 * `min-w-[480px]` to `CHAT_PANE_MIN_PX` the same way, which is where the pattern comes
-	 * from.)
-	 */
 	const sidebarSource = readFileSync(
 		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
 		"utf8",
 	);
 	assert.ok(
-		sidebarSource.includes(
+		!sidebarSource.includes(
 			`max-h-[${String(Math.round(SIDEBAR_AUTO_MAX_FRACTION * 100))}%]`,
 		),
-		`the chats region's fallback cap must be the auto fraction the module documents (\`max-h-[${String(Math.round(SIDEBAR_AUTO_MAX_FRACTION * 100))}%]\`)`,
+		`the component must not draw the split's \`max-h-[${String(Math.round(SIDEBAR_AUTO_MAX_FRACTION * 100))}%]\` fallback any more: one-scroll removed the region cap, and the section ladder is what bounds a list (operator report, 2026-09-26)`,
 	);
 	const out = split({
 		capacity: AT_900.capacity,
@@ -275,18 +263,33 @@ test("the sidebar's column cannot scroll, and its panes contain their own overfl
 		"utf8",
 	);
 	/*
-	 * Both region class lists, by the marker each carries: the entity pane's
-	 * `[overflow-anchor:none]` and the list pane's `[scrollbar-gutter:stable]`.
+	 * ONE SCROLLER (operator report, 2026-09-26). The two regions are ordinary
+	 * flow inside it: no `overflow` of their own, no cap of their own. The pins
+	 * below are the merged scroller's class tail, the EXACTLY-ONE count of
+	 * scrollable layers in the panel, the two regions' shared flow class, and
+	 * the absence of the split's affordances from the DOM.
 	 */
-	for (const [marker, label] of [
-		["min-h-0 flex-1 space-y-4 overflow-y-auto", "the agents pane"],
-		["relative space-y-4 overflow-y-auto", "the chats pane"],
-	]) {
-		assert.ok(
-			pane.includes(marker),
-			`${label}'s class list must carry ${marker}`,
-		);
-	}
+	assert.ok(
+		pane.includes(
+			"relative min-h-0 flex-1 space-y-4 overflow-y-auto p-1 [overflow-anchor:none] [scrollbar-gutter:stable]",
+		),
+		"the merged scroller's class list must carry the single overflow layer",
+	);
+	assert.equal(
+		(pane.match(/overflow-y-auto/g) ?? []).length,
+		1,
+		"exactly one scrollable layer in the panel: the sidebar must not scroll on top of its sections, and a region must not scroll inside them (operator rule, restated 2026-09-26)",
+	);
+	assert.equal(
+		(pane.match(/relative space-y-4/g) ?? []).length,
+		2,
+		"both regions are ordinary flow inside the one scroller",
+	);
+	assert.doesNotMatch(
+		pane,
+		/data-sidebar-split|data-sidebar-cluster|data-sidebar-order|data-sidebar-restore/,
+		"the split's affordances (divider, cluster, order swap, restore row) must not be drawn any more",
+	);
 
 	/*
 	 * AND THE SECTIONS THAT CAN GROW WITHOUT BOUND CAP THEMSELVES, which is the

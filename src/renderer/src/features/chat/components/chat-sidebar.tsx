@@ -12,10 +12,6 @@ import {
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
 import { useChatSearch } from "@shared/api/local-operator/session-search";
-import {
-	HOVER_INTENT_MS,
-	ResizableDivider,
-} from "@shared/components/common/resizable-divider";
 import { ThemedToastContainer } from "@shared/components/common/themed-toast-container";
 import { Button } from "@shared/components/ui/button";
 import { Checkbox } from "@shared/components/ui/checkbox";
@@ -47,12 +43,10 @@ import {
 import {
 	Archive,
 	ArchiveRestore,
-	ArrowUpDown,
 	Bot,
 	CheckCheck,
 	ChevronDown,
 	ChevronRight,
-	ChevronUp,
 	FileText,
 	FolderPlus,
 	LoaderCircle,
@@ -71,9 +65,7 @@ import {
 	type CSSProperties,
 	type KeyboardEvent,
 	type FocusEvent as ReactFocusEvent,
-	type MouseEvent as ReactMouseEvent,
 	type ReactNode,
-	type PointerEvent as ReactPointerEvent,
 	type Ref,
 	createElement,
 	useCallback,
@@ -158,11 +150,6 @@ import {
 	tailArrivalAnnouncement,
 	tailExtendDue,
 } from "../sidebar-scope-paging";
-import {
-	type SidebarRegionName,
-	hideRegion,
-	resolveSidebarSplit,
-} from "../sidebar-split";
 import { ChatRowTitle } from "./chat-row-title";
 import { ChatSidebarViewMenu } from "./chat-sidebar-view-menu";
 
@@ -1340,16 +1327,6 @@ export function ChatSidebar({
 	 */
 	const PIN_PRESS_SLOP_PX = 6;
 
-	/**
-	 * How far a pointer may travel on a boundary control before the click it would
-	 * produce is treated as a drag rather than as a press.
-	 *
-	 * It is NOT `PIN_PRESS_SLOP_PX` beside it: that one is about the reflex of
-	 * pressing a row twice, and this one is about a 28px control sitting on a 10px
-	 * drag band. Four pixels is above the jitter of a click that was meant as a
-	 * click and below the travel of a gesture that was meant as a drag.
-	 */
-	const CONTROL_PRESS_SLOP_PX = 4;
 	/**
 	 * Whether a pointer press repeats the previous one on a DIFFERENT conversation.
 	 *
@@ -4624,257 +4601,36 @@ export function ChatSidebar({
 		visibility: "outside",
 		clipHeight: 0,
 	});
+	/*
+	 * One node, two refs: the merged scroller answers to BOTH names the split
+	 * left behind (see the assembly's comment). Stable identity so React does
+	 * not detach and reattach it every render.
+	 */
+	const bindPanelRef = useCallback((node: HTMLDivElement | null) => {
+		entityPanelRef.current = node;
+		listPanelRef.current = node;
+	}, []);
+
 	useLayoutEffect(() => {
 		holdFocusedRow(entityPanelRef.current, entitySlotRef);
 		holdFocusedRow(listPanelRef.current, listSlotRef);
 	});
 
 	/*
-	 * ---- The split ----------------------------------------------------------
-	 *
-	 * Which of the two regions are on screen, how tall the chats list is, which
-	 * edge the boundary sits on, and whether it may be dragged at all. The
-	 * DECISION is `resolveSidebarSplit`'s, in `features/chat/sidebar-split.ts`,
-	 * so it is drivable without a browser; this component owns the two
-	 * MEASUREMENTS that decision takes and the nodes it draws.
-	 *
-	 * `useLayoutEffect` rather than `useEffect`, for the reason
-	 * `chat-content.tsx` gives for the same choice one component over: the
-	 * numbers feed the rendering of the commit that produced them, so a passive
-	 * effect would paint one frame of a panel sized from a guess and correct it
-	 * after the browser had already shown it.
+	 * ONE SCROLLER (operator report, 2026-09-26): the two-region split - its
+	 * persisted height, the drag, the collapse and the region swap - is removed.
+	 * This component no longer resolves or measures a split; the assembly below
+	 * renders one flow, and `showList` (the catalogue gate's answer) is the one
+	 * flag that survives, gating the chats LIST's content exactly as before.
 	 */
 	const navRef = useRef<HTMLElement | null>(null);
-	const splitRef = useRef<HTMLDivElement | null>(null);
-	/*
-	 * The two children of the split container that are NOT regions.
-	 *
-	 * They exist so `capacity` can mean what every number below treats it as: the
-	 * box the two regions share. The boundary carries its own `mt-2` and the pin
-	 * failure line is a paragraph, both inside the same flex container, so a
-	 * container-height capacity silently charged their space to the region that
-	 * is not sized - which is how a 72px floor measured 64px and 8px more when a
-	 * pin failed (review round 1, m-1; design D5; UX U3).
-	 */
-	const bandRef = useRef<HTMLDivElement | null>(null);
 	const pinRef = useRef<HTMLParagraphElement | null>(null);
-	const [splitCapacity, setSplitCapacity] = useState(0);
-	const [splitPanelHeight, setSplitPanelHeight] = useState(0);
-	const [drawnListHeight, setDrawnListHeight] = useState(0);
-	const chatSidebarRegions = useUiPreferencesStore((s) => s.chatSidebarRegions);
-	const chatSidebarListHeight = useUiPreferencesStore(
-		(s) => s.chatSidebarListHeight,
-	);
-	const chatSidebarOrder = useUiPreferencesStore((s) => s.chatSidebarOrder);
-	const setChatSidebarRegions = useUiPreferencesStore(
-		(s) => s.setChatSidebarRegions,
-	);
-	const setChatSidebarListHeight = useUiPreferencesStore(
-		(s) => s.setChatSidebarListHeight,
-	);
-	const restoreDefaultChatSidebarListHeight = useUiPreferencesStore(
-		(s) => s.restoreDefaultChatSidebarListHeight,
-	);
-	const setChatSidebarOrder = useUiPreferencesStore(
-		(s) => s.setChatSidebarOrder,
-	);
 	/*
-	 * The persisted values are passed as they were READ rather than as a
-	 * pre-validated copy: `localStorage` is not the setter's path out, so the
-	 * module is the one place a tampered value is rejected, and validating here
-	 * as well would be a second opinion about the same blob.
+	 * `showList` is the catalogue gate's own answer, and the chats list's
+	 * content is still gated on it: a withdrawn gate keeps the last-known
+	 * ENTITY rows mounted and renders no list content at all.
 	 */
-	const split = resolveSidebarSplit({
-		regions: chatSidebarRegions,
-		listHeight: chatSidebarListHeight,
-		order: chatSidebarOrder,
-		showList,
-		query: Boolean(query),
-		capacity: splitCapacity,
-		drawnListHeight,
-		panelContentHeight: splitPanelHeight,
-	});
-	const observedRef = useRef<Element[]>([]);
-	const splitObserverRef = useRef<ResizeObserver | null>(null);
-	/*
-	 * No dependency list, for the reason the `holdFocusedRow` effect above has
-	 * none: the measurement is cheap and must follow nodes that mount and
-	 * unmount, which a dependency list can only spell as a list of booleans the
-	 * body does not itself read. The OBSERVER, which is the expensive half, is
-	 * rebuilt only when the set of measured nodes changes - a `ResizeObserver`
-	 * left on a detached node would report its last height for ever.
-	 */
-	useLayoutEffect(() => {
-		const nav = navRef.current;
-		const container = splitRef.current;
-		if (!nav || !container) return;
-		const measure = () => {
-			/*
-			 * The box the two regions share, measured from the container rather
-			 * than summed from the regions: the container's height is fixed by
-			 * the panel, so it does not move while a drag moves the boundary -
-			 * which is the property the divider's live range needs, and the
-			 * reason a derived sum would be circular in a window too short to
-			 * host both floors.
-			 *
-			 * The container's height MINUS the children that are not regions: the
-			 * boundary's own band (its `h-0` box plus the `mt-2` that separates it
-			 * from the region above) and the pin failure line when one renders.
-			 * Measured from the DOM rather than named as constants, so a class
-			 * change moves the arithmetic with it, and summed with the margins
-			 * because a margin is main-axis space in a flex column.
-			 */
-			const reservations = (node: HTMLElement | null) => {
-				if (!node) return 0;
-				const style = getComputedStyle(node);
-				const margin =
-					Number.parseFloat(style.marginTop || "0") +
-					Number.parseFloat(style.marginBottom || "0");
-				return node.offsetHeight + (Number.isFinite(margin) ? margin : 0);
-			};
-			const capacity =
-				container.getBoundingClientRect().height -
-				reservations(bandRef.current) -
-				reservations(pinRef.current);
-			/*
-			 * The panel's own content box, which is what the list's fallback
-			 * `max-h-[60%]` resolves against, not the regions' own
-			 * container. `p-2` is 8px on each side, and the nav's class list is
-			 * pinned byte-for-byte by `scripts/contrast-contract.mjs`, so the 16
-			 * cannot drift without that gate failing.
-			 */
-			const panelHeight = nav.clientHeight - 16;
-			/*
-			 * Sub-pixel changes are ignored, the way `chat-content.tsx` ignores
-			 * them for its own measurement: without that, a fractional layout
-			 * would have this panel re-rendering against its own measurement.
-			 */
-			setSplitCapacity((current) =>
-				Math.abs(current - capacity) < 1 ? current : capacity,
-			);
-			setSplitPanelHeight((current) =>
-				Math.abs(current - panelHeight) < 1 ? current : panelHeight,
-			);
-			const list = listPanelRef.current;
-			const drawn = list ? list.getBoundingClientRect().height : 0;
-			setDrawnListHeight((current) =>
-				Math.abs(current - drawn) < 1 ? current : drawn,
-			);
-		};
-		measure();
-		const nodes: Element[] = [nav, container];
-		if (listPanelRef.current) nodes.push(listPanelRef.current);
-		/*
-		 * Observed too, because their own heights move the capacity: the band is
-		 * fixed but the pin line appears and disappears, and its appearing is a
-		 * layout change the regions' own resizes would not report.
-		 */
-		if (bandRef.current) nodes.push(bandRef.current);
-		if (pinRef.current) nodes.push(pinRef.current);
-		const observed = observedRef.current;
-		const sameShape =
-			observed.length === nodes.length &&
-			observed.every((node, index) => node === nodes[index]);
-		if (!sameShape) {
-			splitObserverRef.current?.disconnect();
-			const observer = new ResizeObserver(measure);
-			for (const node of nodes) observer.observe(node);
-			splitObserverRef.current = observer;
-			observedRef.current = nodes;
-		}
-	});
-	/*
-	 * The observer outlives the layout effects above on purpose, so its teardown
-	 * is its own: a component that unmounts with a live `ResizeObserver` leaves
-	 * a callback wired to a detached node.
-	 */
-	useEffect(
-		() => () => {
-			splitObserverRef.current?.disconnect();
-			splitObserverRef.current = null;
-			observedRef.current = [];
-		},
-		[],
-	);
-	/*
-	 * A drag WRITES, and only when the boundary can honour what the drag
-	 * produced: with the range collapsed (`resizable` false) the separator
-	 * reports the drawn height and this refuses, so a gesture the panel cannot
-	 * express does not destroy a preference the user set in a window that could.
-	 * That is `chat-content.tsx`'s `runPanelResizable` contract, unchanged.
-	 */
-	const handleListHeightChange = (height: number) => {
-		if (!split.divider?.resizable) return;
-		setChatSidebarListHeight(height);
-	};
-	/*
-	 * The reset is the boundary's double-click AND its Enter, and it stores
-	 * `null`: the auto rule is renderable in every window, so unlike a stored
-	 * pixel height it needs no clamp on its way in.
-	 */
-	const topRegion: SidebarRegionName =
-		split.order === "entities-first" ? "entities" : "chats";
-	const bottomRegion: SidebarRegionName =
-		split.order === "entities-first" ? "chats" : "entities";
-	/*
-	 * The two regions' names in the controls' own register. "the chats list"
-	 * rather than "chats" because the control is named for what it does to a
-	 * region, and the list region's own row is the one that says "All chats".
-	 */
-	const hideLabel = (region: SidebarRegionName) =>
-		region === "entities" ? "Hide agents and teams" : "Hide the chats list";
-	/*
-	 * One label for both channels: the row's visible text IS this string, and its
-	 * accessible name is the same string (plus the count where there is one). A
-	 * terse visible version beside an action-shaped accessible one was the shipped
-	 * state and it named the row after the panel's own heading (design round 1,
-	 * D3) - so there is one string, and it says what pressing it does.
-	 */
-	const showLabel = (region: SidebarRegionName) =>
-		region === "entities" ? "Show agents and teams" : "Show the chats list";
-	/*
-	 * The chats list is the region the ORDER control moves, and its name states
-	 * the outcome rather than the mechanism: `Move the chats list to the top`
-	 * is what the panel will look like, and it is what a screen reader reads.
-	 */
-	const orderLabel =
-		split.order === "entities-first"
-			? "Move the chats list to the top"
-			: "Move the chats list to the bottom";
-	/*
-	 * `showList` is the catalogue gate's own answer, and the list region is
-	 * still gated on it: a withdrawn gate keeps the last-known ENTITY rows
-	 * mounted and renders no list region at all, which is the DOM the gate's
-	 * frames photograph. `split.listVisible` says the user has not hidden it -
-	 * the two are different questions, and the assembly below needs both.
-	 */
-	const listShown = split.listVisible && showList;
-	const bothVisible = split.entityVisible && listShown;
-	/*
-	 * Which end of the column a hidden region's restore row sits at: where the
-	 * region itself was, so the row is at the top when the hidden region was
-	 * the one drawn first. The row expanding downward at the top and upward at
-	 * the bottom is what the chevron on it points at.
-	 */
-	const restoreAtTop =
-		split.restore !== null &&
-		(split.order === "entities-first") === (split.restore === "entities");
-	/*
-	 * The RULE between the regions is the lower one's own `border-t`, so the
-	 * region above the boundary never carries it. With the default order that
-	 * is the list region's shipped `border-t border-hairline`, which is the
-	 * boundary's whole resting appearance.
-	 */
-	const entityHasRuleAbove = bothVisible && split.order === "chats-first";
-	/*
-	 * The list's rule is the boundary's resting line while both sections are
-	 * drawn, and it also sits under a restore row drawn above the list (the
-	 * hidden entities' `Show agents and teams`), which is the line that tells the
-	 * row apart from the list's own first section label.
-	 */
-	const listHasRuleAbove = bothVisible
-		? split.order === "entities-first"
-		: restoreAtTop;
+	const listShown = showList;
 
 	const entityRegion = (
 		/*
@@ -4908,39 +4664,16 @@ export function ChatSidebar({
 			 * travels with it.
 			 */
 			key="entities"
-			ref={entityPanelRef}
-			onScroll={() =>
-				refreshFocusedInside(entityPanelRef.current, entitySlotRef)
-			}
 			id={ENTITY_REGION_ID}
 			data-sidebar-region="entities"
 			/*
-			 * The padding and the rule are the LOWER region's, so this container
-			 * keeps its `p-1` and no rule until the order puts it below the boundary
-			 * - and then it takes the 8px lead the list region's `pt-2` has always
-			 * given the side below a rule, which is what keeps the 10px band inside
-			 * padding rather than over a row's pixels.
+			 * The outer scroller in the assembly carries the containing block
+			 * (`relative`) and the clip for every row in BOTH regions now: with a
+			 * pane `static`, a long chats list made the nav report its own
+			 * overflow once (measured 890/576), and the merged scroller is the
+			 * one pane that can contain it.
 			 */
-			/*
-			 * `relative` IS THE CONTAINMENT, and it is what makes this pane's own
-			 * scrolled rows stop inflating the PANEL's (and the window's) scrollable
-			 * overflow. Measured on the built app with the driver's `sidebar-sections`
-			 * scene: with the pane `static`, a 20-row chats list made the nav report
-			 * `scrollHeight 890` against a `clientHeight` of 576 - content inside a
-			 * scroller, counted by the scroller's ANCESTORS - so the column carried an
-			 * overflow region of its own and, wrapped in the `overflow-x-hidden` the
-			 * shell used to carry, a third scrollbar. Giving the pane its own
-			 * positioning context puts every absolutely positioned row descendant into
-			 * THIS pane's containing block, where the pane's own clip contains it:
-			 * measured, nav `576/576` and shell `868/868`. `contain: paint` measures the
-			 * same and is the stronger rule - it would also clip shadows and anything a
-			 * future row wants to draw outside its box - so the containing block is the
-			 * one taken.
-			 */
-			className={cn(
-				"relative min-h-0 flex-1 space-y-4 overflow-y-auto [overflow-anchor:none]",
-				entityHasRuleAbove ? "border-t border-hairline px-1 pt-2 pb-1" : "p-1",
-			)}
+			className={cn("relative space-y-4")}
 		>
 			{capabilities.isLoading && (
 				<p aria-live="polite" className="text-meta text-ink-dim">
@@ -5627,7 +5360,9 @@ export function ChatSidebar({
 	 * `flex-1` one, so it yields by itself and this rule leaves the list exactly as it was. That is
 	 * the shape's other half, not an omission.
 	 */
-	const listIsBottomRegion = bottomRegion === "chats";
+	// ONE REGION, AND IT IS THE BOTTOM ONE: the merged scroller takes the
+	// band's yield directly (there is no flex-1 region above it to move).
+	const listIsBottomRegion = true;
 	const [listBase, setListBase] = useState<number | null>(null);
 	/*
 	 * THE BASE IS READ IN THE COMMIT ITSELF, AND THAT IS THE FIX FOR AN INTERMITTENT FAILURE RATHER
@@ -5652,8 +5387,8 @@ export function ChatSidebar({
 	 *
 	 * The FREEZE itself is the designer's constraint, and it is kept: while a band stands this returns
 	 * immediately, so the forced box (`max(0, base - band)`) is never re-read as a new base - the
-	 * 289 -> 147 -> 5 -> 0 trap. `chats-first` needs nothing from any of this: the entity region is
-	 * the `flex-1` bottom region there and yields by itself, so the list is left exactly as it was.
+	 * The merged scroller IS the bottom region, so the yield applies to it directly:
+	 * there is no flex-1 region above it for the band to move.
 	 */
 	useLayoutEffect(() => {
 		if (bandHeightNow > 0) return;
@@ -5745,52 +5480,6 @@ export function ChatSidebar({
 		 */
 		<div
 			key="chats"
-			ref={listPanelRef}
-			onScroll={() => {
-				refreshFocusedInside(listPanelRef.current, listSlotRef);
-				/*
-				 * THE TAIL EXTENDS FROM THIS SAME HANDLER, rather than from a second
-				 * listener or an `IntersectionObserver`: the geometry it needs is the
-				 * geometry this handler already reads, and a second mechanism would be a
-				 * second source of truth for "am I at the bottom". `extendCatalogueTail`
-				 * is a no-op unless the tail is visible, a page is not already in flight
-				 * and the cursor has not run out.
-				 */
-				extendCatalogueTail();
-			}}
-			id={CHAT_REGION_ID}
-			/*
-			 * OUT OF THE TAB RING (UX round 2, U16): a scrollable section is
-			 * keyboard-focusable by Chromium's own default, so this element appeared as an
-			 * UNNAMED stop between the list's controls and the rows - a stop that says
-			 * nothing and goes nowhere. The list's arrow walk is the intended scroll route
-			 * (the roving row stop is where the reader lands), so the scroller leaves the
-			 * Tab order and stays reachable programmatically: `-1` rather than a name,
-			 * because naming the box would make it a destination rather than the container
-			 * the walk scrolls.
-			 */
-			tabIndex={-1}
-			data-sidebar-region="chats"
-			style={
-				split.listMax === null && listYield === undefined
-					? undefined
-					: {
-							/*
-							 * The cap the split module computed, and the definite box the band's ruling forces
-							 * while a message stands (`listYield`, read at the hook above): the list's own band-0
-							 * height less the band, deliberately below its content, so the rows the band hides
-							 * are the overflow at the bottom rather than a re-laid list. A CHOSEN (`listFixed`)
-							 * height is still forced when no message stands; with a band up the yield is the
-							 * definite box, which is the same mechanism one step further.
-							 */
-							maxHeight: split.listMax ?? undefined,
-							height:
-								listYield ??
-								(split.listFixed && split.listMax !== null
-									? split.listMax
-									: undefined),
-						}
-			}
 			/*
 			 * The pointer's path, which is the half a coordinate test cannot see: a
 			 * reader who moves away from the point they pressed and comes back has made
@@ -5836,36 +5525,7 @@ export function ChatSidebar({
 				lastPinPress.current = null;
 				lastArchivePress.current = null;
 			}}
-			className={cn(
-				/*
-				 * `scrollbar-gutter: stable` IS A DECISION ABOUT THE USER'S OWN MACHINE, not a
-				 * tidy-up: on a system set to always show scrollbars a classic scrollbar eats
-				 * about 15px INSIDE this scroller - off every row's width - and it appears and
-				 * disappears as the list crosses the scrollable threshold, which the archive,
-				 * unarchive, pin and unpin flows all cross. Reserving the gutter pays that 15px
-				 * permanently in exchange for a title that never re-truncates because a row
-				 * was added or removed (design D12 in `docs/design/sidebar-row-space.md`).
-				 * The idiom is one the app already opts into in `canonical-transcript.tsx`
-				 * and `picker-host.tsx`. It is one class to remove if the other trade is
-				 * preferred, and the cost is NOT zero on this machine: the row's own box is 8px
-				 * narrower than the panel's content box (`listGutter: {offsetWidth: 264,
-				 * clientWidth: 256, reserved: 8}` in both after-JSONs under
-				 * `docs/evidence/sidebar-row-space/measurements/`, which is why every title
-				 * width the spec promises is asserted MINUS this number), and on a system set to
-				 * always show scrollbars it is the ~15px above. The trade is stated in the
-				 * spec's § 11 rather than left to be discovered from the de-aligned right edge.
-				 */
-				"relative space-y-4 overflow-y-auto [overflow-anchor:none] [scrollbar-gutter:stable]",
-				/*
-				 * Two shapes, and which one is drawn is the difference between a split
-				 * and a collapse: with both regions on screen this container is the
-				 * SIZED one, so it is `shrink-0` with the cap the module handed it;
-				 * alone, it is the one that fills the column and its `flex-1` is the
-				 * mirror of the entity region's.
-				 */
-				bothVisible ? "max-h-[60%] shrink-0" : "min-h-0 flex-1",
-				listHasRuleAbove ? "border-t border-hairline pt-2" : "",
-			)}
+			className={cn("relative space-y-4")}
 		>
 			{/*
 			 * ONE LIST, SECTIONED BY WHAT A READER ASKS OF IT (§C1; design round 1, D1).
@@ -5915,33 +5575,46 @@ export function ChatSidebar({
 			 * `data-chat-row` puts the row in the panel's one roving walk, so ↑/↓ reaches
 			 * it exactly as it reaches a conversation (§C4, U2).
 			 */}
-			{draftRows.length > 0 &&
-				!query.trim() &&
-				draftRows.map((row) => (
-					<button
-						key={row.key}
-						type="button"
-						data-chat-row
-						data-draft-row={row.key}
-						aria-label={`Open ${row.label}`}
-						title={row.label}
-						onClick={() => {
-							openDraft(row.key);
-							navigate("/chat");
-						}}
-						className={cn(
-							rowStyle,
-							"w-full text-left",
-							row.key === activeDraftKey && rowCurrent,
-						)}
-					>
-						<FileText
-							className="size-4 shrink-0 text-ink-dim"
-							aria-hidden="true"
-						/>
-						<span className="min-w-0 flex-1 truncate">{row.label}</span>
-					</button>
-				))}
+			{draftRows.length > 0 && !query.trim() && (
+				/*
+				 * ONE SECTION, not bare children: the scroller's `space-y-4` is
+				 * the SECTION rhythm (16px between groups), and a draft row rendered
+				 * as a direct child inherited it - two drafts sat 16px apart while
+				 * adjacent chat rows inside a section sit flush, which is the
+				 * operator's 2026-09-26 report ("too much space between drafts ... not
+				 * consistent with the spacing between other chats"). A `<section>`
+				 * gives the drafts their own group: flush between themselves, one
+				 * section step from the groups around them, exactly like the chats
+				 * list's own sections.
+				 */
+				<section data-chat-section="drafts">
+					{draftRows.map((row) => (
+						<button
+							key={row.key}
+							type="button"
+							data-chat-row
+							data-draft-row={row.key}
+							aria-label={`Open ${row.label}`}
+							title={row.label}
+							onClick={() => {
+								openDraft(row.key);
+								navigate("/chat");
+							}}
+							className={cn(
+								rowStyle,
+								"w-full text-left",
+								row.key === activeDraftKey && rowCurrent,
+							)}
+						>
+							<FileText
+								className="size-4 shrink-0 text-ink-dim"
+								aria-hidden="true"
+							/>
+							<span className="min-w-0 flex-1 truncate">{row.label}</span>
+						</button>
+					))}
+				</section>
+			)}
 			{/*
 			 * THE GROUPING ALTERNATIVES (the view popover's `Group by`). `section` is
 			 * the arrangement below; `agent` and `flat` replace it, and they draw
@@ -6163,411 +5836,18 @@ export function ChatSidebar({
 	);
 
 	/*
-	 * The boundary, and the controls that live on it.
-	 *
-	 * It is drawn only while BOTH regions are: with one hidden there is no
-	 * boundary to drag, and the restore row is the way back. The wrapper is
-	 * `h-0`, so the boundary itself contributes no layout, and it carries the
-	 * `mt-2` the list region used to hold as its own margin - the margin has to
-	 * sit above the boundary so the boundary's line lands ON the lower region's
-	 * rule rather than 8px above it.
-	 *
-	 * The cluster is a SIBLING of the separator rather than a child: the
-	 * separator's band starts a drag on `mousedown`, so a control inside it
-	 * would have to stop that event from reaching its own parent. As siblings
-	 * the two can never share a target, and a press on a control cannot also
-	 * start a drag - one structural fact instead of a `stopPropagation` that a
-	 * later edit can drop.
-	 *
-	 * It takes the panel's own ground (`bg-surface`, the declaration the sticky
-	 * group heading in this file already uses for something that floats over
-	 * rows) rather than the rail's groundless shape: these buttons sit across
-	 * the boundary, so without a ground their hover wash would paint over a row.
+	 * THE SPLIT'S AFFORDANCES ARE GONE (operator report, 2026-09-26): the
+	 * draggable boundary, the collapse cluster and the region swap are not drawn
+	 * anywhere any more, because there is one region to draw them on. Each
+	 * behaviour is recorded here rather than silently dropped: a drag has
+	 * nothing to size with one region; collapsing one of two regions is not a
+	 * state; the swap's memory is moot with the order fixed. Arrangement still
+	 * lives where the operator put it - on the SECTIONS themselves (their
+	 * disclosures and their row-count caps). `features/chat/sidebar-split.ts`,
+	 * its tests and `docs/design/sidebar-sections.md` remain the record of the
+	 * removed feature; nothing in this file reads the split any more.
 	 */
-	/*
-	 * ---- The boundary's controls, and the intent behind them -----------------
-	 *
-	 * THE REVEAL IS INTENT-GATED, which is S4's contract rather than a taste call.
-	 * The boundary is 10px of hit band on a line the pointer crosses every time it
-	 * moves between the two halves of the panel, and a plate of three glyph buttons
-	 * that appears on the way past is exactly the clutter the operator's request
-	 * owns up to not wanting. `HOVER_INTENT_MS` is the SEPARATOR's own constant,
-	 * imported rather than copied: its state line and this plate are one affordance
-	 * arriving together, and two delays that happen to agree today are two numbers a
-	 * later change can disagree (review round 1, M-1 - the shipped build revealed
-	 * the plate after 120ms of CSS while the line waited 200ms, and the PR body
-	 * claimed the delay was already there).
-	 *
-	 * FOCUS DOES NOT WAIT. A keyboard arrival is a decision rather than a crossing,
-	 * so `focus` reveals the plate at once - and, before this change, focus was the
-	 * ONLY path that did, because the CSS reveal was on `group-hover` alone.
-	 */
-	const [clusterRevealed, setClusterRevealed] = useState(false);
-	const intentTimer = useRef<number | null>(null);
-	const armCluster = () => {
-		if (intentTimer.current !== null) return;
-		intentTimer.current = window.setTimeout(() => {
-			intentTimer.current = null;
-			setClusterRevealed(true);
-		}, HOVER_INTENT_MS);
-	};
-	const disarmCluster = () => {
-		if (intentTimer.current !== null) {
-			window.clearTimeout(intentTimer.current);
-			intentTimer.current = null;
-		}
-		setClusterRevealed(false);
-	};
-	useEffect(
-		() => () => {
-			if (intentTimer.current !== null)
-				window.clearTimeout(intentTimer.current);
-		},
-		[],
-	);
-	/*
-	 * A PRESS THAT MOVES IS NOT A PRESS ON A CONTROL.
-	 *
-	 * The plate sits on the boundary, so the two gestures a user can make there are
-	 * one pixel apart: reach for the divider and land on a button. Travel past a
-	 * few pixels therefore cancels the control's click - the panel neither
-	 * collapses nor reorders under a gesture that was asking for something else, and
-	 * the pixel the gesture started on is free to be a drag instead (UX round 1, U1,
-	 * whose second limb the trailing-end placement answers and whose first this
-	 * answers). The record is a REF because the click that has to be cancelled is
-	 * the one already in flight.
-	 */
-	const controlPressRef = useRef<{
-		x: number;
-		y: number;
-		moved: boolean;
-	} | null>(null);
-	const armControlPress = (event: ReactPointerEvent) => {
-		controlPressRef.current = {
-			x: event.clientX,
-			y: event.clientY,
-			moved: false,
-		};
-	};
-	/*
-	 * `pointercancel` is the one release that cannot produce a click, so the record
-	 * it left is cleared here rather than left for the next activation to consume.
-	 * `pointerup` deliberately does NOT clear it: the click is dispatched after the
-	 * release, and clearing there would erase the `moved` flag before the handler
-	 * that exists to read it (agent review round 2, m-2).
-	 */
-	useEffect(() => {
-		const travel = (event: PointerEvent) => {
-			const press = controlPressRef.current;
-			if (press === null || press.moved) return;
-			if (
-				Math.hypot(event.clientX - press.x, event.clientY - press.y) >
-				CONTROL_PRESS_SLOP_PX
-			) {
-				press.moved = true;
-			}
-		};
-		const cancel = () => {
-			controlPressRef.current = null;
-		};
-		window.addEventListener("pointermove", travel, true);
-		window.addEventListener("pointercancel", cancel, true);
-		return () => {
-			window.removeEventListener("pointermove", travel, true);
-			window.removeEventListener("pointercancel", cancel, true);
-		};
-	}, []);
-	/*
-	 * THE SWAP MUST NOT COST THE USER THEIR PLACE IN A LIST.
-	 *
-	 * The two regions are keyed, so React MOVES the nodes rather than re-filling
-	 * them in place - which is what review round 1 (U2) asked for and what the
-	 * driven scene now checks by node identity. It is not sufficient on its own:
-	 * a scroller that is moved in the DOM is re-attached, and Chromium resets its
-	 * `scrollTop` when it is, measured here as `24 -> 0` on a region that still
-	 * overflowed on both sides of the swap. So the positions are carried across by
-	 * The positions are carried across by hand: saved in the order control's
-	 * `onClick` (a click is the only moment both nodes are known good and the
-	 * reorder has not rendered yet) and restored in the layout effect below.
-	 */
-	const savedScrollRef = useRef<Map<Element, number>>(new Map());
-	const saveRegionScroll = () => {
-		const saved = new Map<Element, number>();
-		for (const node of [entityPanelRef.current, listPanelRef.current]) {
-			if (node) saved.set(node, node.scrollTop);
-		}
-		savedScrollRef.current = saved;
-	};
-	/*
-	 * No dependency list, deliberately: the map is a ONE-SHOT by construction -
-	 * `saveRegionScroll` fills it and this empties it on the next commit - so the
-	 * effect is a no-op on every render that is not the render immediately after a
-	 * swap. Listing `split.order` would be the cheaper-looking spelling and is the
-	 * wrong one: the effect does not read the order, it reads a map the press wrote,
-	 * and the lint rule that says so is right.
-	 */
-	useLayoutEffect(() => {
-		const saved = savedScrollRef.current;
-		if (saved.size === 0) return;
-		savedScrollRef.current = new Map();
-		for (const [node, top] of saved) node.scrollTop = top;
-	});
-	/*
-	 * A PRESS THAT MOVES IS NOT A PRESS ON A CONTROL, and only a POINTER press can
-	 * move: a keyboard activation produces a `click` whose `detail` is 0, so it is
-	 * never weighed against a record a pointer left behind. That distinction is the
-	 * fix for two things at once - the record cannot swallow a later Enter/Space on
-	 * a focused control, and it does not have to be cleared on `pointerup`, which
-	 * would erase it BEFORE the click it exists to cancel (the click is dispatched
-	 * after the release; clearing there is the tidier-looking spelling and is
-	 * wrong). `pointercancel` is the one release that cannot produce a click, so it
-	 * clears the record outright.
-	 */
-	const clusterAction =
-		(act: () => void) =>
-		(event: ReactMouseEvent): void => {
-			const press = controlPressRef.current;
-			controlPressRef.current = null;
-			if (event.detail > 0 && press?.moved) return;
-			act();
-		};
-	/*
-	 * WHAT THE SEPARATOR ANNOUNCES WHEN THE WINDOW IS SHORT.
-	 *
-	 * A stored height is clamped for the render and kept for the window that can
-	 * honour it, and the clamp is otherwise invisible: the entity region is at its
-	 * floor, the panel looks deliberate, and nothing says the user's own number is
-	 * 900 rather than the 352 on screen (design round 1, D5). The name is where it
-	 * is cheapest to say, on the control the user would reach for next.
-	 */
-	const resizeLabel =
-		split.divider !== null &&
-		split.listHeight !== null &&
-		Math.round(split.divider.value) !== Math.round(split.listHeight)
-			? `Resize the chats list - showing ${Math.round(
-					split.divider.value,
-				)} of ${Math.round(split.listHeight)} pixels in this window`
-			: "Resize the chats list";
 
-	const boundary = split.divider ? (
-		<div
-			data-sidebar-split
-			ref={bandRef}
-			onPointerEnter={armCluster}
-			onPointerLeave={disarmCluster}
-			className="group relative mt-2 h-0 shrink-0"
-		>
-			{/*
-			 * A HOVER-ONLY strip, declared before the separator so the drag band wins
-			 * every pixel it and this share. It exists because the reveal surface and
-			 * the drag surface are not the same size: the separator's band is the
-			 * 10px the design pins, and finding a 10px band is the affordance's whole
-			 * cost (UX round 1, U4). This adds nothing to the drag and nothing at
-			 * rest - it is transparent, aria-hidden, and its events are read by the
-			 * wrapper's own enter/leave.
-			 *
-			 * Its height is bounded by the region padding it sits in, and the binding
-			 * side is BELOW: the lower region's own 8px `pt-2` (the list region when it
-			 * is the second one, the entity region when the order puts it below), so
-			 * −8/+8 is the exact bound and 16 is not an approximation of it. Above the
-			 * line there is the band's own 8px `mt-2` of dead space and then the upper
-			 * region's `p-1`, which is the tighter of the two sides but not the one
-			 * that fixes the number - a strip wider than 16 would reach 1px into a row
-			 * on the padding side (agent review round 2, NIT-3).
-			 */}
-			<div aria-hidden="true" className="absolute inset-x-0 -top-2 h-4" />
-			<ResizableDivider
-				orientation="horizontal"
-				side={split.side}
-				sidebarWidth={split.divider.value}
-				onSidebarWidthChange={handleListHeightChange}
-				minWidth={split.divider.min}
-				maxWidth={split.divider.max}
-				onDoubleClick={restoreDefaultChatSidebarListHeight}
-				label={resizeLabel}
-				/*
-				 * The APG register, passed explicitly: this separator's value, name and
-				 * bounds are all the chats list's, so Home/End are that region's extremes
-				 * rather than the axis's - which in the default order (`side="top"`) they
-				 * otherwise invert. Passed rather than defaulted so the three
-				 * `side="left"` panels in `chat-content.tsx` keep the behaviour they
-				 * ship; their divergence from the pattern is deferred on the pull
-				 * request rather than changed here (design round 2, D8).
-				 */
-				homeEnd="value"
-			/>
-			<div
-				data-sidebar-cluster
-				data-sidebar-cluster-revealed={clusterRevealed ? "" : undefined}
-				onPointerDown={armControlPress}
-				onFocus={() => setClusterRevealed(true)}
-				onBlur={(event) => {
-					if (
-						!event.currentTarget.contains(event.relatedTarget as Node | null)
-					) {
-						disarmCluster();
-					}
-				}}
-				className={cn(
-					/*
-					 * AT THE TRAILING END rather than across the middle, and that is a
-					 * hit-testing decision rather than a taste one: centred, the plate
-					 * owned 36% of the band's width, so a press at the most natural
-					 * grab point - the panel's centre - collapsed a region, and a drag
-					 * from that same pixel did nothing at all (UX round 1, U1). Here the
-					 * whole centre of the band is the separator. `right-2` keeps the
-					 * plate clear of the scrollbar's own column.
-					 *
-					 * FOCUS IS NOT THE POINTER'S GUEST, so the `focus-within` terms are
-					 * unconditional rather than part of the revealed branch: a plate
-					 * button can hold focus while the pointer has left the band, and
-					 * hiding a focused control is how the toggle `sidebar-navigation.tsx`
-					 * copies stays usable - a keyboard user must never be able to hold
-					 * focus on something that is `opacity-0` (agent review round 2, m-1).
-					 */
-					"absolute top-0 right-2 z-[13] flex -translate-y-1/2 items-center gap-1 rounded-md bg-surface px-0.5",
-					"transition-opacity duration-fast ease-out-quart",
-					"focus-within:pointer-events-auto focus-within:opacity-100",
-					clusterRevealed
-						? "pointer-events-auto opacity-100"
-						: "pointer-events-none opacity-0",
-				)}
-			>
-				<Tooltip content={hideLabel(topRegion)}>
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						data-sidebar-hide={topRegion}
-						aria-label={hideLabel(topRegion)}
-						aria-expanded
-						aria-controls={
-							topRegion === "entities" ? ENTITY_REGION_ID : CHAT_REGION_ID
-						}
-						onClick={clusterAction(() =>
-							setChatSidebarRegions(hideRegion(chatSidebarRegions, topRegion)),
-						)}
-					>
-						<ChevronUp aria-hidden="true" />
-					</Button>
-				</Tooltip>
-				<Tooltip content={hideLabel(bottomRegion)}>
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						data-sidebar-hide={bottomRegion}
-						aria-label={hideLabel(bottomRegion)}
-						aria-expanded
-						aria-controls={
-							bottomRegion === "entities" ? ENTITY_REGION_ID : CHAT_REGION_ID
-						}
-						onClick={clusterAction(() =>
-							setChatSidebarRegions(
-								hideRegion(chatSidebarRegions, bottomRegion),
-							),
-						)}
-					>
-						<ChevronDown aria-hidden="true" />
-					</Button>
-				</Tooltip>
-				<Tooltip content={orderLabel}>
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						data-sidebar-order
-						aria-label={orderLabel}
-						onClick={clusterAction(() => {
-							saveRegionScroll();
-							setChatSidebarOrder(
-								split.order === "entities-first"
-									? "chats-first"
-									: "entities-first",
-							);
-						})}
-					>
-						<ArrowUpDown aria-hidden="true" />
-					</Button>
-				</Tooltip>
-			</div>
-		</div>
-	) : null;
-	/*
-	 * The way back, and it is not optional: the control that COLLAPSED a region
-	 * lives on the boundary, and with one region hidden there is no boundary
-	 * left - so the affordance that hid it cannot be the only one that restores
-	 * it. The row is one control, 28px on the heading ramp, and it names what is
-	 * hidden rather than offering a second action: while the chats list is
-	 * hidden the primary `New chat` row is one press further away and `⌘N` still
-	 * works, and a `MessageSquarePlus` here would make the collapsed state two
-	 * controls instead of one.
-	 */
-	/*
-	 * FOR EITHER HIDDEN SECTION. An earlier cut drew this only for the chats list
-	 * and gave the entities an `Agents` destination-row chevron as their way back;
-	 * that chevron is gone (both sections are visible by default and the column is
-	 * sized by the boundary, the operator's call on the preview), so this row is
-	 * again the one way back for whichever section the boundary's cluster hid.
-	 */
-	const restoreRow =
-		split.restore !== null ? (
-			<button
-				type="button"
-				data-sidebar-restore={split.restore}
-				/*
-				 * THE VISIBLE LABEL IS THE ACTION, and it has to be, because the row sits
-				 * under the panel's own `<h2>` reading "Chats": a row that says "Chats"
-				 * two rows below a heading that says "Chats" leaves the reader to work out
-				 * which one is missing, and in form it is a twin of the panel's group
-				 * headings rather than a control (design round 1, D3). The count stays, so
-				 * the collapsed state still says how many chats there are; the accessible
-				 * name carries it in words for the same reason.
-				 */
-				aria-label={
-					split.restore === "chats" && matching.length > 0
-						? `${showLabel(split.restore)}, ${matching.length} chats`
-						: showLabel(split.restore)
-				}
-				/*
-				 * The `⌘N` clause is the one hint this row carries, and it exists because
-				 * collapsing the chats list removes the app's only visible way to start a
-				 * conversation: `New chat` lives in the region that is gone, and the
-				 * operator's own constraint - no new controls on this row - rules out
-				 * putting one back (design round 1, D7). A title is not chrome, and it
-				 * names the keyboard path for a sighted user who is looking at the way
-				 * back. The entities row carries no such clause: its own region is the one
-				 * holding `New chat` whenever this row renders.
-				 */
-				title={
-					split.restore === "chats"
-						? "Show the chats list - ⌘N starts a new chat"
-						: undefined
-				}
-				className={cn(rowStyle, "h-7 shrink-0 text-ink-muted")}
-				onClick={() => setChatSidebarRegions("both")}
-			>
-				{/*
-				 * The chevron points where the region will come back: downward for a
-				 * row at the top of the column, upward for one at the bottom, which
-				 * is the same direction the region itself expands in.
-				 */}
-				{restoreAtTop ? (
-					<ChevronDown className="size-3.5" aria-hidden="true" />
-				) : (
-					<ChevronUp className="size-3.5" aria-hidden="true" />
-				)}
-				<span className="min-w-0 flex-1 truncate text-left">
-					{showLabel(split.restore)}
-				</span>
-				{/*
-				 * The list region's own count, from the same predicate its `All
-				 * chats` row uses, so the collapsed state tells the truth about how
-				 * many chats there are instead of hiding the panel's main signal.
-				 * The entity region has no count today, so its row carries none.
-				 */}
-				{split.restore === "chats" &&
-					matching.length > 0 &&
-					countBadge(matching.length)}
-			</button>
-		) : null;
 	return (
 		<nav
 			ref={navRef}
@@ -6942,42 +6222,31 @@ export function ChatSidebar({
 							? `Nothing in your chats matches ${query.trim()}.`
 							: ""}
 				</p>
-				<div ref={splitRef} className="flex min-h-0 flex-1 flex-col">
-					{bothVisible ? (
-						/*
-						 * The pin failure line sits above the BOUNDARY in both
-						 * orders, which is where it has always sat: below it, it
-						 * would push the lower region's rule off the boundary's own
-						 * line and leave the band straddling nothing.
-						 */
-						<>
-							{split.order === "entities-first" ? entityRegion : listRegion}
-							{pinFailureLine}
-							{boundary}
-							{split.order === "entities-first" ? listRegion : entityRegion}
-						</>
-					) : listShown ? (
-						<>
-							{restoreAtTop && restoreRow}
-							{pinFailureLine}
-							{listRegion}
-							{!restoreAtTop && restoreRow}
-						</>
-					) : (
-						/*
-						 * The entity region alone, which is the withdrawn-gate DOM as well as a
-						 * collapsed chats list. The pin failure line sits AFTER the region here
-						 * rather than before it, because that is where it has always sat: it
-						 * belongs to the list region's side of the column, so it follows the
-						 * region above it and precedes the region below.
-						 */
-						<>
-							{restoreAtTop && restoreRow}
-							{entityRegion}
-							{pinFailureLine}
-							{!restoreAtTop && restoreRow}
-						</>
-					)}
+				{/* ONE SCROLLER, ONE FLOW (operator report, 2026-09-26): the entity
+				    sections and the chats list are children of this one box, in that
+				    order; nothing scrolls inside it or around it, and a section that
+				    grows is still bounded by its own row-count cap (`Show N more`)
+				    rather than by a scroller. The twin ref lets every consumer that
+				    used to name one of the two regions (the two focus slots, the
+				    walk's roots, the scroll handlers) keep working against this node.
+				    `docs/design/sidebar-sections.md` and `sidebar-split.ts` remain
+				    the record of the removed split. */}
+				<div
+					ref={bindPanelRef}
+					id={CHAT_REGION_ID}
+					tabIndex={-1}
+					data-sidebar-region="chats"
+					onScroll={() => {
+						refreshFocusedInside(entityPanelRef.current, entitySlotRef);
+						refreshFocusedInside(listPanelRef.current, listSlotRef);
+						extendCatalogueTail();
+					}}
+					style={listYield === undefined ? undefined : { height: listYield }}
+					className="relative min-h-0 flex-1 space-y-4 overflow-y-auto p-1 [overflow-anchor:none] [scrollbar-gutter:stable]"
+				>
+					{entityRegion}
+					{pinFailureLine}
+					{listShown && listRegion}
 				</div>
 				{/*
 				 * THE FOOT LINE STANDS DOWN WHILE THE SERVER IS UNREACHABLE (§F2).

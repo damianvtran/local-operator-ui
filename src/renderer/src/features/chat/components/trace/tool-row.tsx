@@ -412,15 +412,22 @@ const DiffCounters = ({
 			)}
 		>
 			{/*
-			 * QUIET, both of them (D8). `+5` in `success` and `-2` in `danger` made
-			 * every edit row a two-colour badge and put the ledger's danger ink on a
-			 * count that is not a failure - the only loud status in a trace is a
-			 * FAILED call's. The counts still differ by sign, which is the channel
-			 * that carries their meaning, and they keep `tabular-nums` so a column of
-			 * them stays a column.
+			 * COLOURED AGAIN (operator report on PR #534, 2026-09-26): `+N` in
+			 * `text-success`, `-N` in `text-danger` - the pair is meant to be
+			 * scannable at a glance.
+			 *
+			 * D8 dimmed both (`ink-dim`) on the argument that the ledger states a
+			 * state once. That argument was about the OUTCOME column, and these
+			 * counters answer a DIFFERENT question: which side of the diff a count is,
+			 * additions or deletions. The `+`/`-` glyphs carry that meaning and stay
+			 * the primary channel, so the colour is reinforcement rather than the only
+			 * signal - and `danger` on a deletion count is not the ledger claiming a
+			 * failure (the only loud status in a trace is a FAILED call, and its word
+			 * lives in the status column). `tabular-nums` keeps a column of them a
+			 * column.
 			 */}
-			{added > 0 && <span className={cn("text-ink-dim")}>+{added}</span>}
-			{removed > 0 && <span className={cn("text-ink-dim")}>-{removed}</span>}
+			{added > 0 && <span className={cn("text-success")}>+{added}</span>}
+			{removed > 0 && <span className={cn("text-danger")}>-{removed}</span>}
 		</span>
 	);
 };
@@ -523,8 +530,12 @@ const StatusCluster = ({
 	 * `interrupted` only: a settled success draws nothing and a settled failure
 	 * draws the WORD in `danger` beside this slot. The three-arm expression that
 	 * used to live here mapped success to `text-success` and failure to
-	 * `text-danger` - two more places the ledger repeated a state it now states
-	 * once, in the word, at the edge the reader is already looking at.
+	 * `text-danger`; those inks are retired HERE, where the word states the
+	 * outcome once at the edge the reader is already looking at - and NOT from
+	 * the row: `DiffCounters` above spends the same two roles on the diff's own
+	 * sides, a different question from this column's (operator report on PR #534,
+	 * 2026-09-26). Do not dim the counters back to restore "consistency" - the
+	 * pair is meant to be scannable at a glance.
 	 */
 	const glyphInk = "text-ink-dim";
 	/*

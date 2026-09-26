@@ -8671,6 +8671,77 @@ async function sceneFloors(cdp) {
 	}
 }
 
+/**
+ * The v0.31.0 shell-regression evidence: the sidebar's scrollable LAYERS
+ * counted rather than eyeballed, and the account foot's geometry, read from the
+ * rendered DOM with the settled frame beside them (the still shows the symptom,
+ * the numbers show the cause).
+ *
+ * No backend: every surface it measures is shell chrome that mounts on every
+ * route. What needs a catalogue answer the transcript's measure and a fold of
+ * tool rows, and this scene names that gap instead of photographing a refusal
+ * surface and calling it the transcript.
+ */
+async function sceneShellEvidence(cdp) {
+	const hello = await verb(cdp, "hello");
+	note("hello", JSON.stringify(hello, null, 2));
+	const facts = await factsOf(cdp);
+	note("facts", JSON.stringify(facts, null, 2));
+	await verb(cdp, "navigate", "/chat");
+	await wait(600);
+	const frame = await captureSettled(cdp, "shell-default");
+	note("frame", JSON.stringify(frame, null, 2));
+	const read = await cdp.evaluate(`(() => {
+		const info = (el) => {
+			if (!el) return null;
+			const cs = getComputedStyle(el);
+			const r = el.getBoundingClientRect();
+			return {
+				rect: { x: Math.round(r.x * 10) / 10, y: Math.round(r.y * 10) / 10, w: Math.round(r.width * 10) / 10, h: Math.round(r.height * 10) / 10, bottom: Math.round(r.bottom * 10) / 10 },
+				overflowY: cs.overflowY,
+				overflowX: cs.overflowX,
+				scrollHeight: el.scrollHeight,
+				clientHeight: el.clientHeight,
+				scrollbarWidth: el.offsetWidth - el.clientWidth,
+				scrolls: el.scrollHeight > el.clientHeight + 1,
+			};
+		};
+		const layers = [];
+		for (const el of document.querySelectorAll("*")) {
+			const cs = getComputedStyle(el);
+			if (cs.overflowY === "auto" || cs.overflowY === "scroll") {
+				layers.push({
+					tag: el.tagName.toLowerCase(),
+					region: el.getAttribute("data-sidebar-region"),
+					cls: typeof el.className === "string" ? el.className.split(/\\s+/).slice(0, 4).join(" ") : "",
+					...info(el),
+				});
+			}
+		}
+		const gear = document.querySelector('[data-tour-tag="nav-item-settings"]');
+		const foot = gear ? gear.parentElement : null;
+		const account = foot ? foot.firstElementChild : null;
+		const nav = document.querySelector('[aria-label="Chats"]');
+		const marks = [];
+		for (const el of document.querySelectorAll("[data-tour-tag]")) {
+			if (marks.length >= 14) break;
+			marks.push({ tag: el.getAttribute("data-tour-tag"), ...info(el) });
+		}
+		return {
+			viewport: { w: innerWidth, h: innerHeight },
+			layerCount: layers.length,
+			layers,
+			sidebar: info(nav),
+			foot: info(foot),
+			account: info(account),
+			avatar: info(account ? account.firstElementChild : null),
+			gear: info(gear),
+			marks,
+		};
+	})()`);
+	note("shell-geometry", JSON.stringify(read, null, 2));
+}
+
 async function sceneStates(cdp) {
 	const hello = await verb(cdp, "hello");
 	note("hello", JSON.stringify(hello, null, 2));
@@ -24672,6 +24743,7 @@ async function main() {
 				cdp = await sceneSidebarSplit(cdp, app);
 			else if (SCENE === "sidebar-sections")
 				cdp = await sceneSidebarSections(cdp, app);
+			else if (SCENE === "shell-evidence") await sceneShellEvidence(cdp);
 			else if (SCENE === "canvas-freshness")
 				await sceneCanvasFreshness(cdp, app);
 			else if (SCENE === "sidebar-lazy-chats") await sceneSidebarLazyChats(cdp);
