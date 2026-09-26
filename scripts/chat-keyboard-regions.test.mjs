@@ -41,6 +41,7 @@ const bundle = await build({
 		contents: [
 			'export * from "./src/renderer/src/features/chat/chat-regions";',
 			'export * from "./src/renderer/src/features/chat/draft-rows";',
+			'export * from "./src/renderer/src/features/chat/canvas-shortcut";',
 		].join("\n"),
 		resolveDir: ROOT,
 		loader: "ts",
@@ -66,6 +67,45 @@ test("the four regions are in the spec's reading order (§C4)", () => {
 	assert.deepEqual(
 		[...mod.CHAT_REGIONS],
 		["sidebar", "header", "transcript", "composer"],
+	);
+});
+
+test("the canvas chord is ⌘⇧C / ⌘+Shift+C, and the unshifted ⌘C is never claimed (U14)", () => {
+	/*
+	 * UX round 2, U14: the canvas control printed `⌘+Shift+C` and nothing answered
+	 * it. The predicate is the half a suite can press; the header binds it, and
+	 * `chat-header`'s own source is asserted to call it so the cap cannot be
+	 * printed by a control that never listens.
+	 */
+	assert.equal(mod.isCanvasTogglePress(press("c", { metaKey: true, shiftKey: true })), true);
+	// The uppercase spelling is what a shifted press produces on layouts that
+	// report the character rather than the base key.
+	assert.equal(mod.isCanvasTogglePress(press("C", { metaKey: true, shiftKey: true })), true);
+	assert.equal(mod.isCanvasTogglePress(press("c", { ctrlKey: true, shiftKey: true })), true);
+	// NOT the unshifted chord: ⌘C is Copy and belongs to the reader's selection.
+	assert.equal(mod.isCanvasTogglePress(press("c", { metaKey: true })), false);
+	assert.equal(mod.isCanvasTogglePress(press("c")), false);
+	assert.equal(mod.isCanvasTogglePress(press("c", { metaKey: true, shiftKey: true, altKey: true })), false);
+	assert.equal(mod.isCanvasTogglePress(press("b", { metaKey: true, shiftKey: true })), false);
+
+	const header = readFileSync(
+		"src/renderer/src/features/chat/components/chat-header.tsx",
+		"utf8",
+	);
+	assert.match(
+		header,
+		/const shortcut = canvasToggleCap\(isMac\);/,
+		"the control's printed cap no longer comes from the shared module, so what it promises and what answers it can drift",
+	);
+	assert.match(
+		header,
+		/document\.addEventListener\("keydown", onKeyDown\)/,
+		"the canvas chord is printed but not bound",
+	);
+	assert.match(
+		header,
+		/isCanvasTogglePress\(event\)/,
+		"the header's key listener no longer asks the shared predicate",
 	);
 });
 

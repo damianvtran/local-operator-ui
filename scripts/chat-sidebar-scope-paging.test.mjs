@@ -282,10 +282,61 @@ test("the head answer paints its rows immediately, and a tail never replaces the
 
 	await store.getState().fetchCatalogueTail();
 	assert.deepEqual(ids(), ["a", "b", "c"], "the tail appends");
-	assert.equal(store.getState().head.nextCursor, null);
+	assert.equal(
+		store.getState().head.tailCursor,
+		null,
+		"the frontier moves where the extension's own answer says",
+	);
+	assert.equal(
+		store.getState().head.nextCursor,
+		"page2",
+		"and page one's own continuation is not rewritten by the extension (QA round 2, Q2)",
+	);
 	assert.equal(store.getState().head.complete, true);
 	assert.equal(calls[1].limit, CATALOGUE_HEAD_PAGE);
 	assert.equal(calls[1].cursor, "page2");
+});
+
+test("a page-one answer cannot rewind the tail's place, so a press after a poll still grows (QA round 2, Q2)", async () => {
+	reset();
+	/*
+	 * THE QA REPRO, AT THE SEAM IT WAS MEASURED AT: press, poll, press. Page one
+	 * carries its own continuation; the extension consumes one page and moves the
+	 * frontier to `p3`; the poll then re-reads page one and carries ITS
+	 * continuation (`p2`) again. The press that follows must continue from the
+	 * EXTENSION's place - request `p3` and grow - where the pre-fix build
+	 * re-requested `p2`, deduped to nothing, and the list stalled at human pace.
+	 */
+	answer = async (request) =>
+		request.cursor === undefined
+			? { sessions: [wire("a"), wire("b")], truncated: true, next_cursor: "p2" }
+			: request.cursor === "p2"
+				? {
+						sessions: [wire("c"), wire("d")],
+						truncated: true,
+						next_cursor: "p3",
+					}
+				: { sessions: [wire("e")], truncated: false, next_cursor: null };
+	await store.getState().fetchSessions(CATALOGUE_HEAD_PAGE, true);
+	await store.getState().fetchCatalogueTail();
+	assert.deepEqual(ids(), ["a", "b", "c", "d"]);
+
+	// The poll lands: page one is re-read and carries its own continuation again.
+	await store.getState().fetchSessions(CATALOGUE_HEAD_PAGE, true);
+	assert.equal(
+		store.getState().head.tailCursor,
+		"p3",
+		"the poll's page-one cursor does not move the extension's frontier",
+	);
+
+	// The press that follows continues from the extension's own place.
+	await store.getState().fetchCatalogueTail();
+	assert.deepEqual(
+		ids(),
+		["a", "b", "c", "d", "e"],
+		"the press after a poll grows the list rather than re-requesting the page it already held",
+	);
+	assert.equal(calls.at(-1).cursor, "p3", "the request continues from the frontier");
 });
 
 test("a head refresh keeps the rows an extension fetched, and still drops the ones it denies", async () => {
@@ -1836,7 +1887,7 @@ test("the three callers that mean the SET name it, and the refused tail stays re
 	assert.ok(
 		SIDEBAR_SRC.includes("tailRefusedCursorRef") &&
 			SIDEBAR_SRC.includes(
-				"catalogueHead.nextCursor === tailRefusedCursorRef.current",
+				"catalogueHead.tailCursor === tailRefusedCursorRef.current",
 			),
 		"a cursor the tail refused is not re-asked until the reader asks again (U14)",
 	);
@@ -1845,7 +1896,7 @@ test("the three callers that mean the SET name it, and the refused tail stays re
 		"and only the reader's own press clears it",
 	);
 	assert.ok(
-		SIDEBAR_SRC.includes("catalogueHead.nextCursor !== press.cursor"),
+		SIDEBAR_SRC.includes("catalogueHead.tailCursor !== press.cursor"),
 		"the pending press is settled by its OUTCOME (the cursor moved, or the refusal returned), not by a tick",
 	);
 });

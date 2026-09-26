@@ -2120,8 +2120,8 @@ export function ChatSidebar({
 		 */
 		if (ladderHoldsRowsRef.current) return;
 		if (
-			catalogueHead.nextCursor !== null &&
-			catalogueHead.nextCursor === tailRefusedCursorRef.current
+			catalogueHead.tailCursor !== null &&
+			catalogueHead.tailCursor === tailRefusedCursorRef.current
 		)
 			return;
 		const box = listPanelRef.current;
@@ -2129,7 +2129,7 @@ export function ChatSidebar({
 		if (
 			!tailExtendDue({
 				pageable: tailVisible,
-				nextCursor: catalogueHead.nextCursor,
+				nextCursor: catalogueHead.tailCursor,
 				loading: catalogueHead.loading,
 				error: catalogueHead.error,
 				scrollTop: box.scrollTop,
@@ -2142,14 +2142,14 @@ export function ChatSidebar({
 		void fetchCatalogueTail();
 	}, [tailVisible, catalogueHead, fetchCatalogueTail]);
 	useEffect(() => {
-		if (catalogueHead.error !== null && catalogueHead.nextCursor !== null) {
-			tailRefusedCursorRef.current = catalogueHead.nextCursor;
+		if (catalogueHead.error !== null && catalogueHead.tailCursor !== null) {
+			tailRefusedCursorRef.current = catalogueHead.tailCursor;
 			setTailRefusal({
-				cursor: catalogueHead.nextCursor,
+				cursor: catalogueHead.tailCursor,
 				sentence: catalogueHead.error,
 			});
 		}
-	}, [catalogueHead.error, catalogueHead.nextCursor]);
+	}, [catalogueHead.error, catalogueHead.tailCursor]);
 	/*
 	 * THE SAME QUESTION ON COMMIT, not only on a scroll.
 	 *
@@ -2302,7 +2302,7 @@ export function ChatSidebar({
 	 */
 	const tailState = catalogueTailView({
 		pageable: tailVisible,
-		nextCursor: tailVisible ? catalogueHead.nextCursor : null,
+		nextCursor: tailVisible ? catalogueHead.tailCursor : null,
 		loading: catalogueHead.loading,
 		/*
 		 * THE STORE'S ERROR, OR THE ONE HELD FOR THIS CURSOR (U14): the second term is what
@@ -2312,7 +2312,7 @@ export function ChatSidebar({
 		 */
 		error:
 			catalogueHead.error ??
-			(tailRefusal !== null && catalogueHead.nextCursor === tailRefusal.cursor
+			(tailRefusal !== null && catalogueHead.tailCursor === tailRefusal.cursor
 				? tailRefusal.sentence
 				: null),
 	});
@@ -2346,7 +2346,7 @@ export function ChatSidebar({
 		 * cursor in hand - advanced (more to come) or null (the tail is complete). Focus goes
 		 * to the list's last row, which is where a reader who asked for more rows wants to be.
 		 */
-		if (catalogueHead.nextCursor !== press.cursor) {
+		if (catalogueHead.tailCursor !== press.cursor) {
 			tailRetryPendingRef.current = null;
 			const region = listPanelRef.current;
 			const rows = region?.querySelectorAll<HTMLElement>("[data-session-row]");
@@ -2357,7 +2357,7 @@ export function ChatSidebar({
 		}
 		// Still on its way, and the deadline is the only thing that ends the wait.
 		if (Date.now() > press.deadline) tailRetryPendingRef.current = null;
-	}, [tailState.kind, catalogueHead.nextCursor]);
+	}, [tailState.kind, catalogueHead.tailCursor]);
 	const catalogueTail =
 		tailState.kind === "none" ? null : (
 			/*
@@ -2391,7 +2391,7 @@ export function ChatSidebar({
 								 */
 								tailRetryPendingRef.current = {
 									deadline: Date.now() + 20_000,
-									cursor: catalogueHead.nextCursor,
+									cursor: catalogueHead.tailCursor,
 								};
 								// The reader's own press is the one thing that clears a refusal.
 								tailRefusedCursorRef.current = null;
@@ -2477,7 +2477,7 @@ export function ChatSidebar({
 	 */
 	ladderHoldsRowsRef.current = page.remaining > 0 || view.hidden.length > 0;
 	const ladderStep = pageLimit(view.loads + 1) - pageLimit(view.loads);
-	const tailMore = groupPaging && catalogueHead.nextCursor !== null;
+	const tailMore = groupPaging && catalogueHead.tailCursor !== null;
 	/*
 	 * THE FOOT'S PRESS: SPEND THE RUNG, AND FOLLOW THE CURSOR WHEN THE RUNG IS
 	 * BEYOND WHAT IS HELD. The two are one gesture because the reader asked for one
@@ -5759,6 +5759,17 @@ export function ChatSidebar({
 				extendCatalogueTail();
 			}}
 			id={CHAT_REGION_ID}
+			/*
+			 * OUT OF THE TAB RING (UX round 2, U16): a scrollable section is
+			 * keyboard-focusable by Chromium's own default, so this element appeared as an
+			 * UNNAMED stop between the list's controls and the rows - a stop that says
+			 * nothing and goes nowhere. The list's arrow walk is the intended scroll route
+			 * (the roving row stop is where the reader lands), so the scroller leaves the
+			 * Tab order and stays reachable programmatically: `-1` rather than a name,
+			 * because naming the box would make it a destination rather than the container
+			 * the walk scrolls.
+			 */
+			tabIndex={-1}
 			data-sidebar-region="chats"
 			style={
 				split.listMax === null && listYield === undefined
@@ -6117,8 +6128,24 @@ export function ChatSidebar({
 			    `connected` is false until the transport says otherwise, so a line
 			    gated on it alone claimed a disconnection during the few
 			    milliseconds before the app had heard anything at all — and the
-			    next frame contradicted it. */}
-			{feed.available && feed.reported && !feed.connected && !error && (
+			    next frame contradicted it.
+
+			   AND IT IS THE FOURTH SITE TO STAND DOWN TO THE STRIP (design round
+			   3, D30): the caption's connection half restated the strip's own
+			   sentence one row apart, so it reads `stripSpeaksConnection` like the
+			   two paragraphs above it and the foot line — the list half's fact is
+			   still stated by the rows themselves, and off /chat, where the strip
+			   is not mounted, this caption is the voice again. */}
+			{/*
+			 * The pinned spelling below is the same expression round 1 settled on
+			 * (`feed.available && feed.reported && !feed.connected`): the transport
+			 * must have SPOKEN, so the caption cannot flash on the first frame, and
+			 * it must not be CONNECTED. The two clauses that follow are the D9 alert
+			 * suppression and D30's stand-down to the strip.
+			 */}
+			{(feed.available && feed.reported && !feed.connected) &&
+				!error &&
+				!stripSpeaksConnection && (
 				<p
 					className={cn(
 						"text-meta",

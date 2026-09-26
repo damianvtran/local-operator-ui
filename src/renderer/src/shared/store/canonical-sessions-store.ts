@@ -2480,6 +2480,27 @@ export type CatalogueHeadState = {
 	pageIds: string[];
 	/** The next page's cursor, or null at the end of the catalogue. */
 	nextCursor: string | null;
+	/**
+	 * The EXTENSION frontier: the cursor the next `fetchCatalogueTail` continues
+	 * from, or null once the walk reached the end.
+	 *
+	 * WHY IT IS NOT `nextCursor` (QA round 2, Q2). `nextCursor` is the PAGE-ONE
+	 * answer's own continuation, and page one is re-read by the poll: the question
+	 * "where does the tail continue from" and the question "what did the newest
+	 * page-one answer say" have different answers the moment a poll lands, and
+	 * reading the second for the first rewound the tail's place while the merged
+	 * rows stayed - a press then re-requested a page the client already held,
+	 * added nothing, and at human pace (a press every few seconds, a poll every
+	 * 30 s) the list never grew.
+	 *
+	 * `tailStarted` guards the seeding: until an extension has been REQUESTED,
+	 * page-one answers seed this value (the reader may scroll before the next
+	 * poll); after that only extensions move it, so a page-one answer can neither
+	 * rewind nor advance the place a press continues from.
+	 */
+	tailCursor: string | null;
+	/** Whether an extension has ever been requested; see `tailCursor`. */
+	tailStarted: boolean;
 	/** True once an answer said this is the whole catalogue. */
 	complete: boolean;
 	/** Single flight for the tail extension. */
@@ -4005,6 +4026,8 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				pageIds: [],
 				tailIds: [],
 				nextCursor: null,
+				tailCursor: null,
+				tailStarted: false,
 				complete: false,
 				loading: false,
 				error: null,
@@ -4306,6 +4329,20 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								pageIds: answerPageIds,
 								tailIds: headAnswer.tailIds,
 								nextCursor: answerCursor,
+								/*
+								 * THE EXTENSION FRONTIER, SEEDED ONCE AND THEN THE EXTENSIONS' OWN
+								 * (QA round 2, Q2 - see `tailCursor`). A poll landing after an
+								 * extension must not move it, or the press that follows re-requests
+								 * a page the client already holds and the list stalls. An answer that
+								 * says it is the WHOLE catalogue still clears it: nothing below it
+								 * exists to continue to.
+								 */
+								tailCursor: answerComplete
+									? null
+									: state.head.tailStarted
+										? state.head.tailCursor
+										: answerCursor,
+								tailStarted: state.head.tailStarted,
 								complete: answerComplete,
 								loading: false,
 								error: null,
@@ -4368,10 +4405,22 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			 */
 			fetchCatalogueTail: async () => {
 				const head = get().head;
-				if (head.nextCursor === null || head.loading) return;
-				const cursor = head.nextCursor;
+				const cursor = head.tailCursor;
+				if (cursor === null || head.loading) return;
 				set((state) => ({
-					head: { ...state.head, loading: true, error: null },
+					head: {
+						...state.head,
+						loading: true,
+						error: null,
+						/*
+						 * THE ATTEMPT MARKS THE EXTENSION AS STARTED, at REQUEST time and not
+						 * on success: a failed extension keeps its place (the retry continues
+						 * from the same cursor), and once started, a page-one answer can no
+						 * longer rewrite the frontier out from under a press.
+						 */
+						tailStarted: true,
+						tailCursor: cursor,
+					},
 				}));
 				try {
 					const result = await desktopResult<{
@@ -4411,26 +4460,31 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						const nextCursor = normalisedCursor(result.next_cursor);
 						return {
 							sessions,
-							head: {
-								...state.head,
-								/*
-								 * THE ROWS THIS EXTENSION FETCHED ARE NOW THE TAIL, and the record
-								 * of that is what a later page-one answer must not drop. A page
-								 * whose rows the client already held adds nothing and records
-								 * nothing, which is why this appends `added` rather than the
-								 * page's ids.
-								 */
-								tailIds: [...state.head.tailIds, ...added],
-								// The tail reached the end only when it says so. `head.at`
-								// is deliberately NOT advanced: it stamps the answer that
-								// is allowed to settle FACTS, and an extension must never be
-								// mistaken for one (a tail page speaks for a rank window, not
-								// for the pinned or archived set).
-								nextCursor,
-								complete: nextCursor === null,
-								loading: false,
-								error: null,
-							},
+								head: {
+									...state.head,
+									/*
+									 * THE ROWS THIS EXTENSION FETCHED ARE NOW THE TAIL, and the record
+									 * of that is what a later page-one answer must not drop. A page
+									 * whose rows the client already held adds nothing and records
+									 * nothing, which is why this appends `added` rather than the
+									 * page's ids.
+									 */
+									tailIds: [...state.head.tailIds, ...added],
+									/*
+									 * THE FRONTIER MOVES ONLY HERE. `nextCursor` is deliberately NOT
+									 * written: it is the page-one answer's own continuation, and this
+									 * extension has said nothing about the head page (QA round 2, Q2).
+									 */
+									tailCursor: nextCursor,
+									// The tail reached the end only when it says so. `head.at`
+									// is deliberately NOT advanced: it stamps the answer that
+									// is allowed to settle FACTS, and an extension must never be
+									// mistaken for one (a tail page speaks for a rank window, not
+									// for the pinned or archived set).
+									complete: nextCursor === null,
+									loading: false,
+									error: null,
+								},
 						};
 					});
 				} catch (error) {
