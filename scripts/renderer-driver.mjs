@@ -24445,9 +24445,12 @@ async function sceneRouteTops(cdp) {
 			);
 		}
 		/*
-		 * The app sidebar is the control for the same number: its first row sat on
-		 * the lane's bottom on every route before the report and must still, or the
-		 * fix moved the one column that was never wrong.
+		 * The app sidebar is the control for the same number, WHERE IT EXISTS to be
+		 * read: `[data-sidebar-shell]` is the docked column's marker, so at 800 - where
+		 * the dock collapses to the 56px strip - the filter below skips this check rather
+		 * than comparing a box that is not there. On every route at 1380 the sidebar's
+		 * first row sat on the lane's bottom before the report and must still, or the fix
+		 * moved the one column that was never wrong.
 		 */
 		for (const [, path, reading] of readings.filter(([, , r]) => r.sidebar)) {
 			check(
@@ -24694,6 +24697,11 @@ async function main() {
 	) {
 		throw new Error(
 			`--authoring-expect takes refresh or stale (got ${JSON.stringify(AUTHORING_EXPECT)}): the two are different claims about the same run, and a defaulted typo would silently answer the other one`,
+		);
+	}
+	if (SCENE === "route-tops" && BACKEND === null) {
+		throw new Error(
+			"--scene route-tops needs --backend: settings, agents, hub and schedules are gated on the catalogue a live backend advertises, and the macOS lane assertion is read over every one of them",
 		);
 	}
 	if (SCENE === "pins-search" && (TUI_PYTHON === null || TUI_CONFIG === null)) {

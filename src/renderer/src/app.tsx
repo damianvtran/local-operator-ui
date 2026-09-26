@@ -622,7 +622,9 @@ const App: FC = () => {
 								 * buttons INTO the client area and nothing is drawn above the columns -
 								 * the band is the drag surface a frameless window needs and the caption
 								 * clearance the page's heading needs. The rules in `styles/index.css`
-								 * gate it to exactly those two platforms with the buttons NOT leading.
+								 * gate it to exactly those two platforms with the buttons NOT leading,
+								 * in the SELECTORS rather than by cascade order, so which of the band
+								 * and the lane is drawn cannot change when either rule moves.
 								 *
 								 * macOS IS NOT IN THAT GATE, and that is the fix this element carries:
 								 * `ChatLayout` already draws the 32px lane above BOTH columns there -

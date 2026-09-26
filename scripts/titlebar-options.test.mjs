@@ -393,18 +393,49 @@ test("U-9 a CSS comment is prose, and the rules that act on the chrome are decla
 	 */
 	assert.match(
 		css,
-		/\[data-chrome-mode="integrated"\]\[data-chrome-platform="win"\]\s+\[data-chrome-route-band\]/,
+		/\[data-chrome-mode="integrated"\]\[data-chrome-platform="win"\]:not\(\s*\[data-chrome-leading="true"\]\s*\)\s+\[data-chrome-route-band\]/,
+		"the band's block rule is gated on `platform=win` AND `leading` not being true, in the selector rather than by source order",
 	);
 	/*
 	 * AND THE BAND STANDS DOWN WHERE THE LANE STANDS UP, which is the fix for the
 	 * operator's 2026-09-26 report ("for sub-views like the settings page, the
 	 * sidebar and view doesn't go all the way to the top"). The lane is drawn on
 	 * `platform=mac` OR `leading=true`; a band that also applies there is a SECOND
-	 * inset - measured on macOS at y 62.86 against the chat header's 32. The three
-	 * pins below hold the pair apart in both directions: the leading case draws no box
-	 * at all, the band's own height is the caption area (never the strip), and no band
-	 * rule may read the strip variable.
+	 * inset - measured on macOS at y 62.86 against the chat header's 32.
+	 *
+	 * WHICH PINS SEPARATE THE TREES AND WHICH GUARD AN INVARIANT, said here because
+	 * round 1 (R4) measured the difference and the next reader should not have to: the
+	 * EXCLUSIVITY pins and the strip-variable pin DISCRIMINATE (each is red against the
+	 * shape this change replaced); the linux-arm, leading-arc, height and no-mac pins
+	 * GUARD INVARIANTS that hold in both trees - they are the rules a future edit could
+	 * quietly delete, not a separation between the two.
+	 *
+	 * THE EXCLUSIVITY IS IN THE SELECTORS, NOT IN THE ORDER OF THE BLOCKS, and that is
+	 * round 1's R1: with a platform-only gate on the block rule, a leading layout
+	 * matched BOTH rules and `display: none` won only by being later in the file, so
+	 * reordering the blocks re-introduced the double inset with this suite green. Both
+	 * arms now carry `:not([data-chrome-leading="true"])`, so no state matches both.
 	 */
+	assert.match(
+		css,
+		/\[data-chrome-platform="linux"\]:not\(\s*\[data-chrome-leading="true"\]\s*\)\s+\[data-chrome-route-band\]/,
+		"the band's block rule negates `leading=true` on the linux arm too, so order cannot be what keeps the two rules apart (R1)",
+	);
+	assert.doesNotMatch(
+		css,
+		/\[data-chrome-mode="integrated"\](?!\[data-chrome-(?:platform|leading))[^{}]*\[data-chrome-route-band\]\s*\{/,
+		"every band rule must be gated on a platform or on `leading`, or a bare rule re-adds the macOS double inset",
+	);
+	assert.match(
+		css,
+		/\[data-chrome-platform="linux"\][\s\S]{0,160}\[data-chrome-route-band\]/,
+		"the linux arm must stay: without it Linux gets no drag surface and no caption clearance",
+	);
+	assert.doesNotMatch(
+		css,
+		/\[data-chrome-platform="mac"\][^{}]*\[data-chrome-route-band\]/,
+		"no band rule may be gated on macOS: that is the double inset this change removed",
+	);
 	assert.match(
 		css,
 		/\[data-chrome-mode="integrated"\]\[data-chrome-leading="true"\]\s+\[data-chrome-route-band\]\s*\{\s*display:\s*none;/,
@@ -412,8 +443,8 @@ test("U-9 a CSS comment is prose, and the rules that act on the chrome are decla
 	);
 	assert.match(
 		css,
-		/\[data-chrome-platform="win"\]\s+\[data-chrome-route-band\][\s\S]*?height:\s*env\(titlebar-area-height/,
-		"the band's height is the caption area the OS draws into, which is the clearance it exists for",
+		/\[data-chrome-platform="win"\][^{}]*\[data-chrome-route-band\][\s\S]*?height:\s*env\(titlebar-area-height/,
+		"INVARIANT, not a separator: the band's height is the caption area the OS draws into, which is the clearance it exists for",
 	);
 	assert.doesNotMatch(
 		css,
