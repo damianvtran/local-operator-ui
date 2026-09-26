@@ -1108,6 +1108,16 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"foldOntoFd19adc9d9Note",
 	/*
+	 * The overlay hit-zones fix's own: it states this file's pair for the change
+	 * that gives every portalled surface the no-drag opt-out, so it is held to
+	 * that pair rather than read as history. The change moves BOTH trees (the
+	 * rule and the five primitives under `src/`, the `hit-zones` scene and its
+	 * source-contract test under `scripts/`) and takes NO swept frame - its
+	 * evidence is a new set of PNGs and run logs that no supplementary set
+	 * declares - so the reader is owed the pair AND the reason no still was.
+	 */
+	"overlayDragZonesRestampNote",
+	/*
 	 * AND THIS LANE'S OWN, for the sub-view top inset (the operator's report of
 	 * 2026-09-26, "for sub-views like the settings page, the sidebar and view
 	 * doesn't go all the way to the top"): it states the pair THIS FILE SHIPS as
