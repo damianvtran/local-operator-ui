@@ -63,11 +63,13 @@ import type {
 	DesktopModelCatalogue,
 	NativeDesktopAction,
 } from "../../../../../shared/desktop-control-contract";
-import type {
-	CanonicalFrontendSync,
-	CanonicalModel,
-	DesktopHistoryPage,
-	SessionCatalogueStatus,
+import {
+	type CanonicalFrontendSync,
+	type CanonicalModel,
+	type DesktopHistoryPage,
+	type SessionCatalogueStatus,
+	goalCapability,
+	goalPresent,
 } from "../../../../../shared/desktop-session-contract";
 import { messageText } from "../canonical/transcript-reducer";
 import { credentialNamesFrom } from "../components/credential-capture";
@@ -110,8 +112,10 @@ import {
 import {
 	GOAL_CLEAR_ARGS,
 	GOAL_COMMAND,
+	GOAL_DONE_ARGS,
 	LOOP_COMMAND,
 	LOOP_STOP_ARGS,
+	goalStateWord,
 	loopIsRunning,
 } from "./session-commands";
 import {
@@ -2320,43 +2324,158 @@ export const GoalPicker: FC<PickerContext> = ({
 	canonical,
 	onClose,
 }) => {
-	const current = canonical.frontend?.goal ?? "";
+	const frontend = canonical.frontend;
+	const current = frontend?.goal ?? "";
 	const [goal, setGoal] = useState(current);
 	const command = useSessionCommand(sessionId);
+	/*
+	 * `Mark done` owns its own press (agent review round 2, MINOR 2's rule): a command
+	 * in flight on the danger button must not disable the safe one beside it.
+	 */
+	const doneCommand = useSessionCommand(sessionId);
+	/*
+	 * THE SAME TWO GATES THE CHIP USES, for the same two reasons. `done` decides which
+	 * actions exist (a settled goal cannot be marked done twice) and `capable` decides
+	 * whether the new argument may be sent at all: on a backend without the new wire
+	 * fields, `Mark done` is not rendered, so `/goal done` can never reach a build that
+	 * would store the literal word as the user's goal.
+	 */
+	const done = frontend?.goal_status === "done";
+	const capable = goalCapability(frontend);
+	const judge = frontend?.goal_judge ?? null;
+	/*
+	 * WHETHER THERE IS A GOAL FOR A JUDGE TO BE READING (design review round 1, D5).
+	 *
+	 * `capable` is `typeof goal_status === "string"`, so it is true on any new backend
+	 * — INCLUDING one whose goal is the empty string — and `judgeWord` then falls back
+	 * to `idle`. `/goal` opened on a session with no goal therefore printed
+	 * `Judge: idle`: a readout about a judge with nothing to judge, in the picker whose
+	 * whole job at that moment is to take the first goal. The row's own rule for the
+	 * same state is to paint the judge's resting state NOWHERE (`goalStateWord` returns
+	 * `""` and the chip says nothing at all), and this row follows it —
+	 * including the TRIM, because the row treats a whitespace-only goal as no goal and
+	 * the picker's field is the one place such a value can be typed.
+	 */
+	const hasGoal = goalPresent(frontend);
+	/*
+	 * The judge's state, in the chip's own vocabulary (`goalStateWord`) so the dialog
+	 * and the row cannot describe one state with two words. A goal at rest gets the
+	 * word instead of the chip's deliberate silence, because a readout with room for it
+	 * has to say something — and `stalled` carries the clause the user needs to act on.
+	 */
+	const judgeWord =
+		goalStateWord(frontend?.goal_status, judge?.state) ||
+		(judge?.state === "waiting" ? "waiting" : "idle");
+	const judgeLine =
+		judgeWord === "stalled"
+			? "stalled — send a message to continue"
+			: judgeWord;
 	return (
 		<PickerHost
 			open
 			onClose={onClose}
 			title="Session goal"
+			/*
+			 * NEUTRAL ON PURPOSE (design review round 1, D3). `done` has TWO authors — the
+			 * judge's ACHIEVED and the user's own `Done` press / `/goal --done` — and on the
+			 * user's path the history entry's `reason` is `""`, which the wire's own docblock
+			 * calls "an act of judgement by a person, not a model verdict". The shipped
+			 * sentence attributed that act to the judge and then contradicted the `Judge` row
+			 * directly beneath it, which reads `waiting`/`idle` in exactly that case. This
+			 * sentence names the RECORD rather than the decider, so it is true of both
+			 * authors and of a goal settled by either route.
+			 */
 			description={
-				current
-					? "The standing goal is prepended to every turn. Clear it to remove it."
-					: "A standing goal the agent keeps in view on every turn."
+				done
+					? /*
+						 * THE SETTLED SENTENCE, AND IT NOW POINTS AT THE RECORD (UX round 1, U5). The
+						 * sentence names the history and this dialog is the one surface that names it
+						 * in words — but it named it without offering a way there, and the two routes
+						 * that exist are a 24px icon-only segment and a typed `/goal --history`. The
+						 * clause added here names the segment's own word (`Goals view`, its accessible
+						 * name) so the pointer is followable: a user told to look for a `Goals view`
+						 * can find the one control that answers to it. ONE route and not two: the
+						 * canvas view is the discoverable one, and the typed command keeps its place
+						 * in the `/goal` receipt rather than being repeated in a description.
+						 */
+						"This goal is settled. It stays in the goal history — dismiss it to clear the chip, or find it in the canvas's Goals view."
+					: current
+						? "The standing goal is prepended to every turn. Clear it to remove it."
+						: "A standing goal the agent keeps in view on every turn."
 			}
 			form={
-				<PickerField label="Goal">
-					<Textarea
-						value={goal}
-						onChange={(event) => setGoal(event.target.value)}
-						rows={3}
-						placeholder="Ship the release with green gates"
-					/>
-				</PickerField>
+				<>
+					{/*
+					 * THE STRUCK VALUE, while the goal is done — the same settled paint the
+					 * chip and the pane use (`line-through text-ink-dim` on the value, the
+					 * app's role for a record rather than an instruction). It carries NO new
+					 * copy: the word is the wire's `done`, already in the description above and
+					 * in the Judge row below, and this element is the VALUE.
+					 *
+					 * The field beneath is still a live textarea, and that is deliberate: a
+					 * struck textarea is not a thing, and the picker is where a user types the
+					 * goal that supersedes this one. So the settled state is stated here and the
+					 * editable value stays editable, rather than the one being sacrificed to the
+					 * other.
+					 */}
+					{done && (
+						<p className={cn("text-body-sm text-ink-dim line-through")}>
+							{current}
+						</p>
+					)}
+					<PickerField label="Goal">
+						<Textarea
+							value={goal}
+							onChange={(event) => setGoal(event.target.value)}
+							rows={3}
+							placeholder="Ship the release with green gates"
+						/>
+					</PickerField>
+					{/*
+					 * THE JUDGE ROW EXISTS ONLY WHERE THERE IS A JUDGE TO READ, which is why the
+					 * backend publishes `goal_judge` — the same capability signal the actions are
+					 * gated on — AND a goal for it to be reading (design review round 1, D5: the
+					 * capability alone is true on a session with no goal, and `/goal` then printed
+					 * `Judge: idle` about a goal that does not exist). Showing it on a backend that
+					 * has no judge would invent a state out of the absent field; showing it with no
+					 * goal would invent a judge.
+					 */}
+					{capable && hasGoal && (
+						<PickerField label="Judge">
+							<span className="text-ink-muted text-body-sm">{judgeLine}</span>
+						</PickerField>
+					)}
+				</>
 			}
 			onSubmit={() => void command.run(GOAL_COMMAND, goal.trim())}
 			submitLabel="Set goal"
 			submitDisabled={!goal.trim()}
 			actions={
 				current ? (
-					<Button
-						variant="danger"
-						size="sm"
-						type="button"
-						onClick={() => void command.run(GOAL_COMMAND, GOAL_CLEAR_ARGS)}
-						disabled={command.busy}
-					>
-						Clear goal
-					</Button>
+					<>
+						{capable && !done && (
+							<Button
+								variant="secondary"
+								size="sm"
+								type="button"
+								onClick={() =>
+									void doneCommand.run(GOAL_COMMAND, GOAL_DONE_ARGS)
+								}
+								disabled={doneCommand.busy}
+							>
+								Mark done
+							</Button>
+						)}
+						<Button
+							variant="danger"
+							size="sm"
+							type="button"
+							onClick={() => void command.run(GOAL_COMMAND, GOAL_CLEAR_ARGS)}
+							disabled={command.busy}
+						>
+							Clear goal
+						</Button>
+					</>
 				) : undefined
 			}
 			busy={command.busy}
