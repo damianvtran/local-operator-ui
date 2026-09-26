@@ -6,6 +6,12 @@ story on the pre-change tree, where the block's fill was the shared `surface`
 role - 2.05 ΔE00 off the canvas in `sage`, 2.08 in `catppuccinMacchiato`, 3.85
 in `mintLight` and 6.76 in `radient`.
 
+**Palette-space numbers, as in the after half.** Every figure here is declared
+(palette-space), re-derived from the palettes rather than read off the frames -
+a still-read lands up to 0.6 ΔE00 away (design review round 1 reads `sage` 2.19
+here against its declared 2.05). Re-derive from the palettes or
+`themes.generated.css`, not from the stills.
+
 **How they were taken.** With the 63 files that carry the message-surface
 change reverted to `origin/main` in the working tree (58 palette files,
 `palette-contract.ts`, `index.css`, `themes.generated.css`,

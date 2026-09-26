@@ -63,6 +63,19 @@ function setHex(file, role, hex) {
 	return () => writeFileSync(path, before);
 }
 
+/**
+ * Rewrite one role's literal with an arbitrary string, for the malformed-value
+ * case `setHex` cannot express (its pattern only matches hex characters).
+ */
+function setRaw(file, role, value) {
+	const path = join(probeRoot, PALETTES, file);
+	const before = readFileSync(path, "utf8");
+	const literal = new RegExp(`(\\n\\t\\t${role}: ")([^"]+)(",)`);
+	assert.ok(literal.test(before), `${file} does not declare \`${role}\``);
+	writeFileSync(path, before.replace(literal, `$1${value}$3`));
+	return () => writeFileSync(path, before);
+}
+
 /** Remove one role's literal entirely, for the completeness case. */
 function dropRole(file, role) {
 	const path = join(probeRoot, PALETTES, file);
@@ -133,6 +146,27 @@ test("a palette that omits the role fails the completeness check", () => {
 	try {
 		const out = runGate();
 		assert.match(out, /sage: missing required role `messageSurface`/);
+	} finally {
+		restore();
+	}
+});
+
+test("a present but non-hex value fails rather than switching the floor off", () => {
+	/*
+	 * Agent review round 1 (R2): with a malformed value the gate used to exit 0
+	 * with the assertion count lower - the 6b block and the ink pass both skip
+	 * non-hex values, and the completeness check tests presence only - so the
+	 * role's whole guarantee could be switched off by a value the palette parser
+	 * accepts, and the tree looked green. A skip guard may answer "absent";
+	 * "malformed" must fail loudly, and this case proves it does.
+	 */
+	const restore = setRaw(SAGE, "messageSurface", "notahex");
+	try {
+		const out = runGate();
+		assert.match(
+			out,
+			/sage: the user message block's fill `messageSurface` "notahex" is present but not a flat hex colour/,
+		);
 	} finally {
 		restore();
 	}

@@ -21,7 +21,7 @@ what already clears it alone.
 
 | theme | fill before | ΔE00 before | fill after | ΔE00 after | worst ink on the new fill |
 |---|---|---|---|---|---|
-| `sage` | `#FAF6EB` | 2.05 | `#fdfbf5` | 4.20 | 14.01:1 |
+| `sage` | `#FAF6EB` | 2.05 | `#fdfbf5` | 4.20 | 6.37:1 |
 | `catppuccinMacchiato` | `#2A2D42` | 2.08 | `#303349` | 4.02 | 5.02:1 |
 | `mintLight` | `#F0F7F2` | 3.85 | `#f1f7f2` | 4.19 | 6.09:1 |
 | `radient` | `#25293A` | 6.76 | `#25293A` | 6.76 | 6.03:1 |
@@ -30,6 +30,22 @@ The full 59-theme before/after table lives in the pull request's body, and the
 executable half is `MESSAGE_SURFACE_DELTA_E` in `scripts/contrast-contract.mjs`
 (asserted per palette, with the lightness half and the ink floors around it;
 `scripts/message-surface-floors.test.mjs` proves each bound fires).
+
+**These are palette-space numbers, and the stills are not the instrument.**
+Every figure in this file is re-derived from the palettes and
+`themes.generated.css` - the same values `pnpm check-themes` reads. Measured off
+the committed stills the same fills sit within a code value of the declared
+hexes, but at these step sizes that moves a still-read ΔE00 by up to 0.6 away
+from its declared figure (design review round 1 reads `catppuccinMacchiato` 3.70
+against its declared 4.02 on the after side, and `sage` 2.19 against 2.05 on the
+before side): re-derive from the palettes, not from the frames, or a passing
+tree can read as sub-floor.
+
+**Framed coverage, stated.** Four of the 59 palettes are photographed here, by
+the selection logic above; the other 55 are computed, not read from stills (the
+per-palette floor is asserted for every one of them). If the set is ever
+extended, `localOperatorLight` - the default brand light, a 2.32 → 4.07 move -
+is the still with the most to say.
 
 **How they were taken.**
 

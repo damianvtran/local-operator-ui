@@ -44,7 +44,7 @@ graph LR
 ```
 
 - **`src/renderer/src/shared/themes/palettes/*.ts`** — the single source of
-  truth. Fifty-nine `ThemePalette` objects, 33 roles each, every value a literal
+  truth. Fifty-nine `ThemePalette` objects, 36 roles each, every value a literal
   string.
 - **MUI** consumes them as hex, because roughly 299 `alpha()` call sites need a
   real colour and cannot take a `var()`. This half shrinks as the port
@@ -136,16 +136,18 @@ every gate green.
 block's own surface — not a fifth ground and not a state: the fill **is** the block's
 boundary (the border D10 retired was "the third and loudest mark on the quietest object
 in the transcript"), so it carries a findability floor of its own — **ΔE00 4.0 off the
-canvas** it is drawn on, with a **≥ 2.5 `L*`** step — authored as the smallest step from
+canvas** it is drawn on, with a **≥ 2.5 `L*`** step — authored as the first clearing step along
 `surface` toward `elevated`, or `surface` itself where that already clears the floor. It
 is not `surface` because that role is the app's shared panel ground, bounded by the
 ladder (2.5–5.0 `L*`) and moving every card and panel with it: on the palettes where its
 step lands low (sage 2.05, `catppuccinMacchiato` 2.08, `oneLight` 2.10 ΔE00) the block's
 only boundary was a fill a reader cannot see — the operator's report that "the contrast
 between the user message background and the chat background is quite poor on some
-themes". 4.0 sits below the step the same column's composer carries in every palette
-(`elevated`/`canvas`, 4.17 at its worst of the 59), so the block stays the quietest
-object on the screen on every theme.
+themes". 4.0 sits at or below the step the same column's composer carries
+(`elevated`/`canvas`, 4.17 at its fleet worst) on all but one of the 59 palettes -
+`catppuccinFrappe`'s block steps 4.26 against its composer's 4.23, 0.03 over and
+below any perceptual step - so the block reads as the quietest object on the
+screen, that single exception stated rather than rounded away.
 
 There are **two state roles, and each is a rung of the panel's own ladder**: `rowHover`,
 the fill of the row under the pointer, and `rowSelected`, the fill of the row the
@@ -312,15 +314,16 @@ placeholders) → `ink-disabled`.
 
 | Role | Register | Standard floor | This system's floor |
 |---|---|---|---|
-| `ink` | body, names, headings | 4.5:1 (AA) | **7:1 on all six grounds; 8:1 on `canvas`** |
+| `ink` | body, names, headings | 4.5:1 (AA) | **7:1 on all eight grounds; 8:1 on `canvas`** |
 | `ink-muted` | secondary: descriptions, 13px rows, chip labels | 4.5:1 | **5.5:1** |
 | `ink-dim` | captions, metadata, placeholders, keycaps, 11–13px | 4.5:1 | **5.0:1** |
 | `ink-disabled` | disabled controls | exempt (SC 1.4.3) | no floor — **capped at 0.8 × `ink-dim`** |
 
-The **six grounds** are the four elevation steps plus the two that carry text as a
-*state*: `accent-wash` (selection/hover tint, callouts, chips, find-match) and
-`rowSelected` (the current row in the sidebar and the settings rail; `rowHover`,
-the row under the pointer, is the seventh and carries the same floors). SC 1.4.3 asks
+The **eight measured grounds** are the four elevation steps plus the four that
+carry text as a *state* or a surface: `accent-wash` (selection/hover tint,
+callouts, chips, find-match), `rowSelected` (the current row in the sidebar and
+the settings rail), `rowHover` (the row under the pointer), and `message-surface`
+(the user message block's own fill). SC 1.4.3 asks
 4.5:1 of every ink and nothing more, and the reason this system asks more is that
 4.5:1 at 11px is not 4.5:1 at 14px: a contrast ratio is luminance-only and says
 nothing about stroke weight, size, or the thin-hairline register metadata is
@@ -496,11 +499,11 @@ the weakest pair anywhere in the system is sage at 8.4.
 |---|---|
 | dark `canvas` / dark `elevated` / light `canvas` / light `sunken` | L\* 12–22 / ≤ 30 / ≤ 94 / ≥ 80 |
 | `canvas`→`surface` / `surface`→`elevated` / `canvas`→`sunken` | +2.5–5.0 / +2.5–6.0 / 1.5–6.0 `L*` |
-| `ink` on each of the six grounds | 7:1 |
+| `ink` on each of the eight grounds | 7:1 |
 | `ink` on `canvas` | 8:1 |
-| `ink-muted`, `ink-dim` on each of the six grounds | 5.5:1 / 5.0:1 |
-| `ink-disabled` against `ink-dim`, on each of the six grounds | ≤ 0.8 × |
-| `accent` and each semantic colour as text on all six grounds | 4.5:1 |
+| `ink-muted`, `ink-dim` on each of the eight grounds | 5.5:1 / 5.0:1 |
+| `ink-disabled` against `ink-dim`, on each of the eight grounds | ≤ 0.8 × |
+| `accent` and each semantic colour as text on all six tone grounds | 4.5:1 |
 | `accent-alt` as text on `canvas`, `surface` and `sunken` | 4.5:1 |
 | `accent-alt` as text on a row's state ground (the trace row's hover ground, `elevated`) | 4.5:1 |
 | `accent-alt` against `accent` | ΔE00 15 |

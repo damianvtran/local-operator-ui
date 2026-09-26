@@ -142,7 +142,7 @@ const INKS = [
 	["inkDim", 5.0],
 ];
 
-/* ---- 4a. the legibility pass: the six grounds, the ladder, the inks ---- */
+/* ---- 4a. the legibility pass: the eight grounds, the ladder, the inks ---- */
 
 /**
  * The EIGHT grounds an ink can sit on.
@@ -274,7 +274,7 @@ const INK_STEP_DELTA_E = 2.0;
  * which is why the relation is asserted rather than assumed. It is a ratio of
  * two ratios, and because both inks sit on the same side of every ground it
  * reduces to a fact about the two inks alone (the ground cancels), so it is
- * measured on all six grounds and moves only when the pair itself collapses.
+ * measured on all eight grounds and moves only when the pair itself collapses.
  * At the old values the factor ran 0.39-0.54, so 0.80 is generous by design: it
  * catches a collapse rather than policing a margin.
  */
@@ -313,10 +313,13 @@ const SELECTION_LIGHTNESS_STEP = 2.0;
  * and 2.10 (`oneLight`) ΔE00 off the canvas, which is the operator's report -
  * "the contrast between the user message background and the chat background is
  * quite poor on some themes". 4.0 is this file's floor for the smallest mark
- * the eye must find (`LINE_SEPARATION_FLOOR`, a 1px rule), and it sits under
- * the step the same column's composer carries in every palette (`elevated` over
- * `canvas`, 4.17 at its weakest of the 59), so the block never reads louder
- * than the composer on the same screen.
+ * the eye must find (`LINE_SEPARATION_FLOOR`, a 1px rule). It also sits at or
+ * below the step the same column's composer carries (`elevated` over `canvas`,
+ * 4.17 at its fleet weakest) on 58 of the 59 palettes - `catppuccinFrappe` is
+ * the one exception, the block's 4.26 stepping 0.03 over its composer's 4.23,
+ * which is below any perceptual step and that fill is within ΔE00 0.51 of
+ * `elevated` anyway - so the block reads as the quietest object on the screen,
+ * with that single exception stated rather than rounded away.
  *
  * The lightness half is asserted with it - at least 2.5 `L*`, the ladder's own
  * `canvas` -> `surface` minimum - because ΔE00 is a budget a chroma-only step
@@ -2530,13 +2533,14 @@ const STRUCTURAL = [
  *
  * `sunken` is in the list because it is the editor's own ground: every syntax
  * colour is painted on it, and the code-mirror theme rejected `inkDisabled` for
- * comments on exactly the grounds it failed 4.5:1 there. `elevated`,
- * `accentWash` and `highlight` are in it because each is a ground a tone role
- * is genuinely drawn on - a dialog's required-mark and a danger button's label
- * (`elevated`), the ask-option card and the find-match tint (`accentWash`), the
- * selected sidebar row (`highlight`) - and the old list stopped at `sunken`,
- * which is how `danger` came to be drawn at 3.76:1 on `elevated` in `monokai`
- * behind a green gate.
+ * comments on exactly the grounds it failed 4.5:1 there. `elevated` and
+ * `accentWash` are in it because each is a ground a tone role is genuinely
+ * drawn on - a dialog's required-mark and a danger button's label (`elevated`),
+ * the ask-option card and the find-match tint (`accentWash`) - and
+ * `messageSurface` is in it because the block renders arbitrary user prose,
+ * links and markdown included, the likeliest carrier of tone text in a
+ * transcript - and the old list stopped at `sunken`, which is how `danger`
+ * came to be drawn at 3.76:1 on `elevated` in `monokai` behind a green gate.
  */
 const AS_TEXT = ["accent", "success", "warning", "danger", "info"];
 
@@ -3760,7 +3764,7 @@ for (const { id, palette: p } of palettes) {
 	}
 
 	/*
-	 * Ink on every ground, the SIX of them.
+	 * Ink on every ground, the EIGHT of them.
 	 *
 	 * `accentWash` and `highlight` are grounds a body ink is genuinely read on
 	 * - a keycap on a selected row, a reading button on its own hover fill, the
@@ -4227,17 +4231,20 @@ for (const { id, palette: p } of palettes) {
 	 * recorded pins rather than a floor. Those pins are gone; see `EXCEPTIONS`.
 	 */
 	/*
-	 * The TONE grounds are the five, not the seven, and the two the row states
+	 * The TONE grounds are the six, not the eight, and the two the row states
 	 * add are deliberately excluded HERE while being asserted in the ink loop
 	 * above. The measurement is the reason: a tone role reaches a selected row
 	 * only as a badge or a dot, and on the accent-derived fills the four tones plus
 	 * `accent` measure 4.45-4.50:1 in five palettes - the chroma ceiling is what
 	 * caps them, so the shortfall is a property of the rule rather than of a value.
 	 * What a row DOES carry is its own text, and that is the ink layer, which is
-	 * asserted on both row states. So the tones stay on the five grounds the pass
-	 * that added them measured, and the row states are held to the ink floors.
-	 */
-	const TONE_GROUNDS = [...GROUNDS, "accentWash"];
+	 * asserted on both row states. `messageSurface` is the sixth: the block renders
+	 * user prose - links and markdown included - so a tone role is genuinely drawn
+	 * on it (fleet minimum 4.60:1, measured). So the tones stay on the six grounds
+	* this file measures them on - the four elevations, `accentWash` and
+	* `messageSurface` - and the row states are held to the ink floors.
+	*/
+	const TONE_GROUNDS = [...GROUNDS, "accentWash", "messageSurface"];
 	for (const role of AS_TEXT) {
 		for (const g of TONE_GROUNDS) {
 			assertPair(id, p, role, g, FLOOR.text, "colour as text");
@@ -5060,8 +5067,21 @@ for (const { id, palette: p } of palettes) {
 	{
 		/* A palette missing the role already failed the completeness check above;
 		   this block must skip rather than crash on it, the way every other loop
-		   here does. */
-		if (!isHex(p.messageSurface) || !isHex(p.canvas)) continue;
+		   here does. A PRESENT-but-malformed value is the other case, and it must
+		   FAIL rather than skip: measured (agent review round 1, R2), setting
+		   `messageSurface: "notahex"` left this gate exiting 0 with the count
+		   falling 28,111 -> 28,083 - the block's whole floor silently switched off
+		   by a value the palette parser accepts, and a tree that looks green. A
+		   skip guard may answer "absent"; "malformed" has to be loud, because a
+		   malformed value that disarms a floor is worse than no floor. */
+		if (p.messageSurface === undefined) continue;
+		if (!isHex(p.messageSurface)) {
+			fail(
+				`${id}: the user message block's fill \`messageSurface\` ${JSON.stringify(p.messageSurface)} is present but not a flat hex colour, so the role's floor would be silently unmeasured - a malformed value must not switch a floor off`,
+			);
+			continue;
+		}
+		if (!isHex(p.canvas)) continue;
 		const got = deltaE(p.messageSurface, p.canvas);
 		assertions++;
 		if (got < MESSAGE_SURFACE_DELTA_E) {
