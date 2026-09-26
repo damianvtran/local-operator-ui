@@ -1223,9 +1223,12 @@ test("the notice names the surface the app names, and says 'still running' once"
 
 test("the parked card names both exits", () => {
 	/*
-	 * UX round 1's U2. Escape aborts the whole turn - QA measured the card
-	 * clearing, `last_turn_outcome: aborted` and no denial in the transcript - so a
-	 * card that names only the composer tells the user about one of its two exits.
+	 * UX round 1's U2, widened when the card grew its own options: Escape aborts
+	 * the whole turn - QA measured the card clearing, `last_turn_outcome:
+	 * aborted` and no denial in the transcript - so a card that names only the
+	 * composer tells the user about one of its exits. The sentence names the
+	 * buttons first now, and keeps the composer's words and the ordinal the card
+	 * prints beside them.
 	 *
 	 * A SOURCE assertion rather than a rendered one: the card is a branch of
 	 * `canonical-transcript.tsx`, whose render needs a transcript store, a
@@ -1238,7 +1241,7 @@ test("the parked card names both exits", () => {
 	);
 	assert.match(
 		source,
-		/"Reply yes or no in the composer, or press Escape to stop the turn\."/,
+		/"Choose Approve or Deny above, type yes, no, 1, or 2 and send, or press Escape to stop the turn\."/,
 	);
 });
 

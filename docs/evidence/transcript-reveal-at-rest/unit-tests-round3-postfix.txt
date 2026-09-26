@@ -1,0 +1,23 @@
+# Against this branch's modules (the round-3 fix commits): 42/42, and the
+# hook suite 2/2 (unchanged this round). The suite grew by the three cases
+# the strict reading and its follow-up added.
+
+== pagination suite ==
+ℹ tests 42
+ℹ suites 0
+ℹ pass 42
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 163.837375
+
+== hook suite ==
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1074.152542
