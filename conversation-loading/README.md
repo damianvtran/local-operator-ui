@@ -124,3 +124,9 @@ The committed evidence set re-shoots with:
 node_modules/.bin/vite --config scripts/session-switch.vite.mjs   # one shell
 node scripts/session-switch-latency.mjs --frames=docs/evidence/session-switch
 ```
+
+A third fold followed (#542, 44c7f8fd76, the header's team/agent identity and
+its message paper). The stills here remain the runs' own records at the heads
+they were taken on; the committed `session-switch` set was re-shot at that
+folded tip and compared (the fold moves the transcript's pixels, so eight
+frames were re-taken) - the manifest's note records it.
