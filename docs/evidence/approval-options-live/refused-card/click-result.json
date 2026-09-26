@@ -6,7 +6,7 @@
     "height": 900
   },
   "driver": "scripts/click-proof.mjs",
-  "at": "2026-09-26T00:54:06.256Z",
+  "at": "2026-09-26T01:11:59.244Z",
   "arm": {
     "armed": true
   },
@@ -57,18 +57,18 @@
   "answers": [
     {
       "path": "/v1/desktop/sessions/a1a1a1a1a1a1/answers",
-      "requestedAt": 1790384097970.2651,
+      "requestedAt": 1790385172632.66,
       "rejected": "This question or approval is no longer pending",
       "status": 409,
-      "answeredAt": 1790384097970.289,
-      "deliveredAt": 1790384097970.825
+      "answeredAt": 1790385172632.672,
+      "deliveredAt": 1790385172642.7332
     }
   ],
   "answersFrom": "route",
   "ownerAnswer": null,
   "tree": {
-    "head": "14fc4c9d75f891989e25a7b1ef94e67e1ae339a8",
-    "srcTree": "2e35ed6bc8b70d858d212726ed26ab3f6ff26034",
+    "head": "4dec2a93421359cf5468d98011519804ffa6ac30",
+    "srcTree": "57eda8f9229e9099fa809328fe41a4b292041a3f",
     "srcDirty": false,
     "srcStatus": null
   },
