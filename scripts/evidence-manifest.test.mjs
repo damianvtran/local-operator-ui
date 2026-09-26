@@ -902,6 +902,15 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"modelCatalogueFocusRestampNote",
 	/*
+	 * And `childReaderScrollControlRestampNote`, on the same terms as the two
+	 * above: it states this file's own pair for the child reader's
+	 * scroll-to-bottom control. The change it records re-stamped both trees and
+	 * re-pointed every note in this list, because a re-stamp moves the pair they
+	 * all bind, and it rewrote no frame of the sweep - so a reader is owed the
+	 * two values it does bind and the reason no still was owed.
+	 */
+	"childReaderScrollControlRestampNote",
+	/*
 	 * This branch's own: it states the pair an earlier fold re-derived, and is held
 	 * to the pair this file ships rather than read as history.
 	 */
@@ -1544,6 +1553,7 @@ const BRANCH_RECORDS = [
 	 */
 	"foldOntoFd19adc9d9Note",
 	/*
+	/*
 	 * Grown by the judged-goals (`feat/goal-done-history`) pass, which wrote four
 	 * top-level records - `goalDoneRestampNote` and `goalDoneFoldRestampNote` from
 	 * its rebases and folds, `goalDoneFramePassNote` from the frame pass, and
@@ -1555,6 +1565,19 @@ const BRANCH_RECORDS = [
 	"goalDoneFoldRestampNote",
 	"goalDoneFramePassNote",
 	"goalDesignRoundTwoNote",
+	/*
+	 * And the child-reader scroll-control pass's four records, this branch's own:
+	 * `childReaderScrollControlFoldNote` and `childReaderScrollControlRestampNote`
+	 * from its fold and its re-stamps, `childReaderScrollControlRoundOneNote` and
+	 * `childReaderScrollControlRoundTwoNote` from its review rounds. A fold that
+	 * starts from main's copy drops them without a word, which is this list's
+	 * whole subject - and the records test is what fails first (agent review
+	 * round 5, R5-1: the list had not been extended for this pass).
+	 */
+	"childReaderScrollControlFoldNote",
+	"childReaderScrollControlRestampNote",
+	"childReaderScrollControlRoundOneNote",
+	"childReaderScrollControlRoundTwoNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
