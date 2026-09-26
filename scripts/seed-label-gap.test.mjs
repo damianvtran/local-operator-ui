@@ -753,9 +753,15 @@ test("a read that cannot find a call's arguments gives the stand-in back", async
 	 * while their budget is unspent...
 	 */
 	assert.deepEqual(
-		heldSplit(handle).unlabelled.sort(),
-		[...missing].sort(),
-		"the calls no page names keep their empty column while a read can still answer",
+		heldSplit(handle).unlabelled,
+		[],
+		/*
+		 * THE STAND-IN SPEAKS: the walk has ended, so no read is pending for these
+		 * calls, and the turn is not running, so no round ending can name them either -
+		 * neither term of the rule holds (round 2's rule; round 1 held them while
+		 * their budget was unspent, which is the term Q-2 measured as too strong).
+		 */
+		"nothing is pending and no round ending is coming, so the stand-in is the truth again",
 	);
 	/*
 	 * ...AND THE SECOND ATTEMPT IS WHAT SETTLES THEM. The budget is the per-call
@@ -1095,9 +1101,10 @@ test("a join whose targets cannot be durable yet stops at the turn boundary", as
 		reconcileLimit(1),
 		"the read is sized by the goal, exactly as it was before this change",
 	);
-	assert.ok(
-		assertHoldIsPerCall(handle, "the turn-bounded walk").length > 0,
-		"and the calls this walk could not reach are still owed, so they stay held",
+	assert.deepEqual(
+		assertHoldIsPerCall(handle, "the turn-bounded walk"),
+		[],
+		"and the calls this walk could not reach are released once it ends, because nothing is pending and no round ending is coming",
 	);
 });
 
@@ -1526,8 +1533,8 @@ test("a page that opens on a result takes the one extra page its assistant row n
 	);
 	assert.deepEqual(
 		heldSplit(handle).unlabelled,
-		[UNPRESENT],
-		"and the call nothing can name is the one that keeps its empty column",
+		[],
+		"and the call nothing can name is released: the walk ended and no round ending is coming",
 	);
 });
 
@@ -1685,8 +1692,8 @@ test("a call still waiting at a gate does not refuse the floor", async () => {
 	 */
 	assert.deepEqual(
 		heldSplit(handle).unlabelled.sort(),
-		[PENDING_COMPOSE, UNPRESENT].sort(),
-		"and the calls no read can name are the ones still waiting",
+		[],
+		"and the calls no read can name are released once the walk ends",
 	);
 });
 

@@ -862,6 +862,8 @@ const STAMP_BINDING_NOTES = [
 	 * m3).
 	 */
 	"firstPaintHoldRestampNote",
+	"streamGapHeldReadingsRestampNote",
+	"rowTeamTrailingRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1207,6 +1209,8 @@ const BRANCH_RECORDS = [
 	 * predicate does not admit driver-taken PNGs.
 	 */
 	"asidePanelRestampNote",
+	"streamGapHeldReadingsRestampNote",
+	"mentionsRemedyRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

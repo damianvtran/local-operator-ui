@@ -313,6 +313,19 @@ export type CanonicalSessionView = {
 	 * to a conversation whose rows were painted before (round 1, QA Q1).
 	 */
 	labelPending: ReadonlySet<string>;
+	/**
+	 * Whether a held column should show the LATE-HOLD mark instead of nothing.
+	 *
+	 * A blank cell cannot tell the reader that an answer is coming, and on this bound
+	 * the blank can last as long as a read does (design round 2, D6). Two seconds
+	 * into a hold - long enough that a merely slow read has answered
+	 * (`LABEL_HOLD_MARK_MS`) - the held cells paint a static, textless, DIM mark: no
+	 * motion, no count, no output text, and it resolves to the command or to the
+	 * stand-in exactly as the blank did. One flag for the batch rather than a clock
+	 * per row: the hold is armed per batch, and per-row ink on the first frame is
+	 * what D3 declined.
+	 */
+	labelHoldLate: boolean;
 };
 
 /** The shared empty `labelPending`, so an unchanged view keeps its identity. */
@@ -651,9 +664,18 @@ export const RECONCILE_WALK_MAX_REQUESTS = 6;
  * page landed (design round 1), and both the base and the previous head showed
  * stand-ins ahead of a 6 s page (360 frames each: reviewer and QA). A 2 s cap
  * would be worse. So the number here is the transport's, and the hold itself is
- * normally ended by the ANSWER rather than by the clock: this only covers the
- * read that never resolves at all - a wedged IPC round trip, which is the one
- * case the transport's own bound cannot report either.
+ * normally ended by the ANSWER rather than by the clock.
+ *
+ * IT BOUNDS ONE ATTEMPT, AND IT IS RE-ARMED PER ATTEMPT (round 2, U4). The
+ * transport's deadline is what turns a wedged invoke into a rejection - the
+ * sentence that used to stand here claimed the opposite of what `withDeadline`
+ * does (round 2, n3) - and a call is allowed `LABEL_GAP_ATTEMPTS` attempts, so a
+ * batch-armed timer firing once could paint a stand-in while attempt two was still
+ * in flight: measured at 25,127 ms of hold followed by 2.0 s of output text where
+ * the command belongs. The effect below therefore re-arms while a read is out for
+ * a held id and never fires while one is; the cost is that a WEDGED owner holds
+ * for up to `LABEL_GAP_ATTEMPTS` windows (~50 s) instead of one, which is the
+ * same blank-over-wrong-text trade the rule makes everywhere else.
  *
  * WHAT IT TRADES, stated rather than implied: against an owner that accepts
  * `/history` and never answers, rows stay objectless until the transport gives
@@ -664,6 +686,21 @@ export const RECONCILE_WALK_MAX_REQUESTS = 6;
  * read that is still genuinely in flight).
  */
 export const LABEL_HOLD_MAX_MS = desktopRequestTimeoutMs("sessions.history");
+
+/**
+ * How long a held column stays BLANK before it shows the late-hold mark, in
+ * milliseconds.
+ *
+ * Design round 2's D6, and its number: a blank cell cannot tell the reader an
+ * answer is coming, while the stand-in is a wrong fact and a spinner is motion the
+ * round declined. Two seconds is late enough that a merely slow read - the repo's
+ * own read figure is 0.5-1.5 s - has answered and painted its command, so the mark
+ * appears on the reads that are actually worth a cue and not on the ones that were
+ * about to land. The cost, stated: a read answering in 2.0-2.5 s paints the mark
+ * and then the command 100-500 ms later, one extra state on a row that was going
+ * to change at that instant anyway.
+ */
+export const LABEL_HOLD_MARK_MS = 2_000;
 
 /**
  * What one reconcile walk is trying to label, when it is a label read at all.
@@ -919,28 +956,78 @@ function labelGapFor(sessionId: string | undefined): LabelGapState {
 }
 
 /**
+ * Whether the OWNER'S TURN is still running, which is what makes a spent read
+ * budget NON-terminal (the rule's second term).
+ *
+ * Read off the transcript's own live pass rather than off a clock or a latch: an
+ * assistant row still streaming, or a tool row whose phase is not \`done\`, is the
+ * app's existing definition of work in flight (the working line derives from the
+ * same two fields). A terminal event for the turn, or a stream that failed, ends
+ * it - nothing more can name a call after that, so the release below is prompt.
+ *
+ * WHY IT EXISTS (round 2, M3): with only the budget term, a SPENT budget
+ * released the row, and a durable round ending that named those calls then
+ * repainted them - 24 stand-in -> command flips on a route no shipped case
+ * covered. "Spent" is not the same fact as "no round ending can still come".
+ */
+function turnRunning(state: {
+	terminal: string | null;
+	failure: unknown;
+	transcript: {
+		records: readonly {
+			kind?: string;
+			streaming?: boolean;
+			phase?: string;
+		}[];
+	};
+}): boolean {
+	if (state.terminal) return false;
+	if (state.failure) return false;
+	const records = state.transcript.records;
+	for (let index = records.length - 1; index >= 0; index -= 1) {
+		const record = records[index];
+		if (record?.kind === "assistant") return record.streaming === true;
+		if (record?.kind === "tool") return record.phase !== "done";
+	}
+	return false;
+}
+
+/**
  * Whether a call's label is still OWED, which is the question the hold asks.
  *
- * A call no page has named, whose per-call read budget (`LABEL_GAP_ATTEMPTS`) is
- * not spent, still has a read coming: the page of a walk that stopped short, a
- * retry at a durable round ending, or the next snapshot's seed. The stand-in is
- * therefore not a fallback for "the first read is over" - it is a statement about
- * the DATA, and it is the terminal answer only once nothing can name the call
- * any more. Anything else is the operator's own report: result text in the
- * command column for a frame or two, replaced when the answer lands.
+ * TWO TERMS, and the second is round 2's M3: (a) a call no page has named whose
+ * per-call read budget (\`LABEL_GAP_ATTEMPTS\`) is not spent still has a read
+ * coming - the page of a walk that stopped short, a retry at a durable round
+ * ending, or the next snapshot's seed; (b) a call whose budget IS spent is still
+ * owed while the owner's turn is running, because a durable round ending can
+ * still name it. Only when the budget is spent AND the turn is over (nothing
+ * pending and no round ending still expected) is nothing able to name the call
+ * any more - and THAT is the terminal case the stand-in is the truth for.
  *
- * `labelled` is the caller's view of what has been named (`argsByCall` at the
+ * \`labelled\` is the caller's view of what has been named (\`argsByCall\` at the
  * moment of the decision, or the walk's own found set); the budget is read off
  * the shared per-conversation bookkeeping, which is what makes this stable across
  * a remount.
  */
 function labelOwed(
-	state: LabelGapState,
+	gap: LabelGapState,
 	labelled: ReadonlySet<string> | ReadonlyMap<string, unknown>,
 	callId: string,
+	turnIsRunning: boolean,
 ): boolean {
 	if (labelled.has(callId)) return false;
-	return (state.attempts.get(callId) ?? 0) < LABEL_GAP_ATTEMPTS;
+	/*
+	 * TERM (a): A READ IS PENDING FOR THIS CALL - which is the WALK being in flight
+	 * for it, not "its budget is unspent". The two differ exactly where round 2
+	 * found the hold both too strong (Q-2: the refusing-owner route spent its retry
+	 * and stood down with the budget still reading 1 of 2, so nothing but the wall
+	 * clock could release it - 25.0 s of blank where the previous code settled in
+	 * 198 ms) and too weak (M2: a walk that ENDED left the cache carrying nothing).
+	 * A read the walk has stopped making is not pending, whatever the budget says.
+	 */
+	if (gap.inFlight.has(callId)) return true;
+	/* TERM (b): spent or not, a durable round ending can still name it (M3). */
+	return turnIsRunning;
 }
 
 /**
@@ -1405,6 +1492,7 @@ export function useCanonicalSessionStream(
 			 * snapshot's own flush registers its targets (`firstAttempts`).
 			 */
 			labelPending: seed?.owedLabels ?? NO_LABELS_PENDING,
+			labelHoldLate: false,
 			/*
 			 * NOT hydrated, even when the initial transcript above was seeded from a
 			 * pending echo. The two are different claims: an echo is this renderer's own
@@ -1637,13 +1725,24 @@ export function useCanonicalSessionStream(
 		 * walk back on every open.
 		 */
 		/**
-		 * Let the stand-in speak again for rows whose first label read is over.
+		 * Charge one read's worth of the per-call budget, and record that a read is IN
+		 * FLIGHT for those calls.
 		 *
-		 * The hold's backstop is NOT disarmed here: it follows the SET (see the
-		 * effect above), so a row a later walk holds again - or one the cached paint
-		 * brought in with it - keeps its own deadline. A release that cancelled the
-		 * timer outright would be a row held with no bound at all.
+		 * ONE PLACE, because both facts are inseparable: an id's budget is spent by a
+		 * read that asked about it, and while that read is out the backstop may not fire
+		 * (round 2, U4). The failure arm charges too - a read that FAILED is an attempt
+		 * spent even though it named nothing, which is what keeps the refusing-owner
+		 * route settling promptly instead of at the backstop (round 2, Q-2: 25.0 s
+		 * against the 0.2 s it used to take).
 		 */
+		const chargeLabelAttempts = (ids: Iterable<string>) => {
+			for (const id of ids)
+				labelGapRef.current.attempts.set(
+					id,
+					(labelGapRef.current.attempts.get(id) ?? 0) + 1,
+				);
+		};
+
 		/**
 		 * Let the stand-in speak for the rows whose label can no longer be found.
 		 *
@@ -1673,7 +1772,14 @@ export function useCanonicalSessionStream(
 				const releasing = new Set<string>();
 				for (const id of ids ?? state.labelPending) {
 					if (!state.labelPending.has(id)) continue;
-					if (labelOwed(labelGapRef.current, state.transcript.argsByCall, id))
+					if (
+						labelOwed(
+							labelGapRef.current,
+							state.transcript.argsByCall,
+							id,
+							turnRunning(state),
+						)
+					)
 						continue;
 					releasing.add(id);
 				}
@@ -1715,6 +1821,13 @@ export function useCanonicalSessionStream(
 			 * or by a newer generation all mean the same thing to a row: its first read
 			 * is over, so the stand-in may speak again.
 			 */
+			/*
+			 * THIS WALK IS A PENDING READ FOR ITS TARGETS, which is what term (a) of the
+			 * rule reads: while the walk is out - including between its own pages - the rows
+			 * it is for are held. Cleared when the walk ends, or kept when a retry timer
+			 * takes it over, because that read is still pending.
+			 */
+			for (const id of labels.targets) labelGapRef.current.inFlight.add(id);
 			let handedOff = false;
 			try {
 				handedOff = await walkTail(
@@ -1725,7 +1838,17 @@ export function useCanonicalSessionStream(
 					onSpend,
 				);
 			} finally {
-				if (!handedOff) releaseLabelPending(labels.pending);
+				/*
+				 * The walk is over unless a timer owns it: clear the pending read and let the
+				 * release answer the rule - immediate on the refusing-owner route, where
+				 * nothing is in flight and the turn is not running (round 2, Q-2). No ids are
+				 * named, because a RETRY walk is already painted (its own `pending` is empty)
+				 * and the RULE, not the walk, decides what is owed.
+				 */
+				if (!handedOff) {
+					labelGapRef.current.inFlight.clear();
+					releaseLabelPending();
+				}
 			}
 		};
 
@@ -1905,7 +2028,6 @@ export function useCanonicalSessionStream(
 					 * does not: the release asks whether the LABEL is settled, not whether
 					 * a read is running.
 					 */
-					labelGapRef.current.inFlight.clear();
 					/*
 					 * A read has ENDED, which is not the same fact as "this call is settled":
 					 * `releaseLabelPending` releases the ids the view can now answer for (the
@@ -2404,13 +2526,7 @@ export function useCanonicalSessionStream(
 			 * in `settled` instead, and charged in the retry path the moment a durable
 			 * ending makes them candidates again.
 			 */
-			for (const id of new Set([...seedMissing, ...retryLabels])) {
-				labelGapRef.current.attempts.set(
-					id,
-					(labelGapRef.current.attempts.get(id) ?? 0) + 1,
-				);
-				labelGapRef.current.inFlight.add(id);
-			}
+			chargeLabelAttempts([...seedMissing, ...retryLabels]);
 			while (labelGapRef.current.attempts.size > LABEL_GAP_MAX_TRACKED) {
 				const oldest = labelGapRef.current.attempts.keys().next().value;
 				if (oldest === undefined) break;
@@ -3318,6 +3434,7 @@ export function useCanonicalSessionStream(
 			 * in the meantime.
 			 */
 			labelPending: seed?.owedLabels ?? NO_LABELS_PENDING,
+			labelHoldLate: false,
 			// And this session's history is unknown again: the previous session's
 			// page proves nothing about this one, so the composer must not state
 			// that this conversation is empty until its own page lands.
@@ -3372,7 +3489,12 @@ export function useCanonicalSessionStream(
 					 */
 					owedLabels: new Set(
 						[...viewRef.current.labelPending].filter((id) =>
-							labelGapRef.current.inFlight.has(id),
+							labelOwed(
+								labelGapRef.current,
+								viewRef.current.transcript.argsByCall,
+								id,
+								turnRunning(viewRef.current),
+							),
 						),
 					),
 				});
@@ -3421,11 +3543,6 @@ export function useCanonicalSessionStream(
 					: { ...state, labelPending: NO_LABELS_PENDING },
 			);
 		}, LABEL_HOLD_MAX_MS);
-		/*
-		 * `commitView` is a dependency because it IS the writer this effect uses to
-		 * release a wedged hold: the timer callback must go through the same writer the
-		 * walk does, or the ref the next commit computes from never sees the release.
-		 */
 	}, [commitView, view.labelPending]);
 	// The conversation currently on screen, read at resolution time rather than
 	// closed over, so an in-flight page can tell whether it is still wanted.
