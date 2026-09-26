@@ -910,18 +910,37 @@ test("a failed action is answered by the process that refused it, never the othe
 test("every surface that can refuse an action asks the rule, not the local classifier", () => {
 	const card =
 		"src/renderer/src/features/agent-hub/components/agent-card-container.tsx";
+	const details = "src/renderer/src/features/agent-hub/agent-details-page.tsx";
+	/*
+	 * The PULL arm, and the reason it needs an anchor of its own rather than the
+	 * bare rule call the two entries above pin: `agentActionFailureMessage` routes
+	 * ONLY `"download"` to `pullRefusalMessage` - a pull refusal is authored by the
+	 * hub while `like`, `favourite` and `delist` are local-server calls that keep
+	 * `backendLoadErrorMessage` - so a surface that stopped setting its download
+	 * failure, or rendered it through the local classifier, would leave both of
+	 * those entries green. The anchor therefore requires the download failure to be
+	 * SET and the rule to be called, in that file, in that order.
+	 */
+	const PULL_RENDERED_BY_THE_RULE =
+		/setFailedAction\("download"\)[\s\S]*?agentActionFailureMessage\(/;
 	for (const [what, path, anchor] of [
 		["the hub card", card, /agentActionFailureMessage\(/],
-		[
-			"the agent details page",
-			"src/renderer/src/features/agent-hub/agent-details-page.tsx",
-			/agentActionFailureMessage\(/,
-		],
-		[
-			"the onboarding batch",
-			"src/renderer/src/features/onboarding/components/steps/create-agent-step.tsx",
-			/pullRefusalMessage\(/,
-		],
+		["the agent details page", details, /agentActionFailureMessage\(/],
+		/*
+		 * THE THIRD SURFACE MOVED HERE RATHER THAN LEAVING WITH ITS FILE. This entry
+		 * used to name the onboarding batch
+		 * (`onboarding/components/steps/create-agent-step.tsx`), which rendered
+		 * `pullRefusalMessage` under the control that failed. The first-run redesign
+		 * removed that step - setup no longer creates an agent at all - so the file is
+		 * gone and the batch is no longer a surface. The RULE is not gone, and neither
+		 * is the action it answers: installing an agent from the hub is the same pull
+		 * the batch performed, and its renderers are these two download controls. An
+		 * entry deleted with the file would have left `pullRefusalMessage` with no
+		 * pinned renderer at all - which is the state this whole test exists to make
+		 * impossible, restored silently.
+		 */
+		["the hub card's download", card, PULL_RENDERED_BY_THE_RULE],
+		["the details page's download", details, PULL_RENDERED_BY_THE_RULE],
 	]) {
 		assert.match(
 			read(path),
