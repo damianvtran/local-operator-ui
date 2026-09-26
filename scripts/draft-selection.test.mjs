@@ -87,6 +87,7 @@ const bundle = await build({
 				admitChatDraft,
 				useCanonicalSessionsStore,
 			} from "./src/renderer/src/shared/store/canonical-sessions-store";
+			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -132,6 +133,7 @@ const {
 	selectionFromModel,
 	selectionSelector,
 	specUnresolved,
+	useConversationInputStore,
 	useCanonicalSessionsStore,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
@@ -1404,5 +1406,419 @@ test("U1: the picker's running model is the value the strip paints, held or live
 		source,
 		/canonical\.frontend\?\.(effective_model|selected_model)/,
 		"and no call site reads the authoritative frontend for the running model any more",
+	);
+});
+
+/* ---- the mint: a pre-engaged runtime for a NEW chat ----------------------- */
+
+/*
+ * `ensureDraftWarm` is the first keystroke's half of the draft pre-engage: it
+ * mints the id the pane's runtime is warmed on and, on send, the id `create`
+ * adopts. The warm itself fires from the panel's hook once the minted id's own
+ * subscription is open (pinned in `warm-session.test.mjs`); this file pins the
+ * store's half - the capability gate, the stable receipt key, the drop rule,
+ * and the create body's byte-identity when no mint happened.
+ */
+
+/** Flush the fire-and-forget mint's promise chain. */
+const settle = () => new Promise((resolve) => setImmediate(resolve));
+
+const MINTED = "d0d0d0d0d0d0";
+
+/** The capability that publishes the draft routes, and nothing else. */
+const advertiseDraftWarm = () =>
+	useCanonicalSessionsStore.getState().setDraftWarmable(true);
+
+/** Mint once and return the row's adopted id, with the transport answering. */
+async function mintOnce(key, draftId = MINTED) {
+	reply = (request) =>
+		request.op === "sessions.draft"
+			? { result: { draft_id: draftId } }
+			: { result: {} };
+	useCanonicalSessionsStore.getState().ensureDraftWarm(key);
+	await settle();
+	return useCanonicalSessionsStore.getState().drafts[key].warmId;
+}
+
+test("the first keystroke mints a draft id, gated on the capability", async () => {
+	calls.length = 0;
+	const store = useCanonicalSessionsStore.getState();
+	store.setCwd(CWD);
+	const key = store.stageDraft();
+
+	// Capability absent - the default, and every daemon that predates the routes:
+	// no call at all, because a mint would spend a keystroke learning 404.
+	useCanonicalSessionsStore.getState().setDraftWarmable(false);
+	useCanonicalSessionsStore.getState().ensureDraftWarm(key);
+	await settle();
+	assert.equal(wire().length, 0, "no capability, no mint call");
+
+	advertiseDraftWarm();
+	const id = await mintOnce(key);
+	assert.equal(id, MINTED);
+	assert.deepEqual(lastWire(), {
+		path: "/v1/desktop/sessions/draft",
+		method: "POST",
+		body: { request_id: lastWire().body.request_id, cwd: CWD },
+	});
+	assert.match(lastWire().body.request_id, /^[0-9a-f-]{36}$/);
+
+	// A second keystroke spends nothing: the id is already there.
+	useCanonicalSessionsStore.getState().ensureDraftWarm(key);
+	await settle();
+	assert.equal(wire().length, 1, "one mint per draft, not one per keystroke");
+});
+
+test("a lost answer is retried under the SAME receipt key, and the selection's drop re-mints fresh", async () => {
+	calls.length = 0;
+	const store = useCanonicalSessionsStore.getState();
+	store.setCwd(CWD);
+	const key = store.stageDraft();
+	advertiseDraftWarm();
+
+	// The transport loses the first two answers; the third lands.
+	let attempts = 0;
+	reply = (request) => {
+		if (request.op !== "sessions.draft") return { result: {} };
+		attempts += 1;
+		if (attempts <= 2) throw new Error("lost response");
+		return { result: { draft_id: MINTED } };
+	};
+	const mint = () => useCanonicalSessionsStore.getState().ensureDraftWarm(key);
+	mint();
+	await settle();
+	mint();
+	await settle();
+	const lost = wire();
+	assert.equal(lost.length, 2, "two attempts, and nothing adopted");
+	assert.equal(
+		lost[0].body.request_id,
+		lost[1].body.request_id,
+		"ONE receipt key: the backend answers both with the same draft id",
+	);
+	assert.equal(
+		useCanonicalSessionsStore.getState().drafts[key].warmId,
+		undefined,
+		"a lost answer adopts nothing",
+	);
+	mint();
+	await settle();
+	assert.equal(useCanonicalSessionsStore.getState().drafts[key].warmId, MINTED);
+
+	/*
+	 * THE DROP RULE. A model pick changes what the first turn will run, and v1
+	 * does not re-aim a runtime it already engaged: the warm intent goes, and the
+	 * next keystroke asks a FRESH question - re-asking under the old receipt key
+	 * would return the previous selection's draft id (receipts replay the first
+	 * answer), which is exactly the runtime the drop exists to abandon.
+	 */
+	const before = useCanonicalSessionsStore.getState().drafts[key];
+	store.setDraftModel(key, PICKED);
+	const dropped = useCanonicalSessionsStore.getState().drafts[key];
+	assert.equal(dropped.warmId, undefined, "the pick drops the warm intent");
+	assert.notEqual(
+		dropped.draftRequestId,
+		before.draftRequestId,
+		"and the receipt key, so a re-mint cannot replay the superseded draft",
+	);
+	assert.notEqual(
+		dropped.createRequestId,
+		before.createRequestId,
+		"the create's own key moves with the changed body, exactly as before",
+	);
+	const reminted = await mintOnce(key);
+	assert.equal(reminted, MINTED, "the re-mint registers under the fresh key");
+	assert.equal(lastWire().body.model, PICKED, "and asks for the NEW selection");
+	assert.notEqual(
+		lastWire().body.request_id,
+		lost[0].body.request_id,
+		"under a key the old receipt cannot answer",
+	);
+});
+
+test("changing the staged directory drops the warm intent, and the re-mint asks for the new one", async () => {
+	calls.length = 0;
+	const store = useCanonicalSessionsStore.getState();
+	store.setCwd(CWD);
+	const key = store.stageDraft();
+	advertiseDraftWarm();
+	await mintOnce(key, "a1a1a1a1a1a1");
+	assert.equal(
+		useCanonicalSessionsStore.getState().drafts[key].warmId,
+		"a1a1a1a1a1a1",
+	);
+
+	const before =
+		useCanonicalSessionsStore.getState().drafts[key].draftRequestId;
+	useCanonicalSessionsStore.getState().setCwd("/tmp/other");
+	const dropped = useCanonicalSessionsStore.getState().drafts[key];
+	assert.equal(dropped.warmId, undefined, "a new directory is a new question");
+	assert.notEqual(dropped.draftRequestId, before);
+	const id = await mintOnce(key, "b2b2b2b2b2b2");
+	assert.equal(id, "b2b2b2b2b2b2");
+	assert.equal(lastWire().body.cwd, "/tmp/other");
+});
+
+test("an answer that arrives after the selection changed is not adopted", async () => {
+	calls.length = 0;
+	const original = globalThis.window.api.desktop.request;
+	let release;
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	globalThis.window.api.desktop.request = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.draft") {
+			await gate;
+			return { status: 200, body: { result: { draft_id: "e1e1e1e1e1e1" } } };
+		}
+		return { status: 200, body: { result: {} } };
+	};
+	try {
+		const store = useCanonicalSessionsStore.getState();
+		store.setCwd(CWD);
+		const key = store.stageDraft();
+		advertiseDraftWarm();
+		useCanonicalSessionsStore.getState().ensureDraftWarm(key);
+		await settle();
+		assert.equal(wire().length, 1, "the mint is in flight");
+
+		// The user re-picks while the answer is in flight: the drop rule replaces
+		// the receipt key, so this answer now belongs to a superseded question.
+		store.setDraftModel(key, PICKED);
+		release();
+		await settle();
+		await settle();
+		assert.equal(
+			useCanonicalSessionsStore.getState().drafts[key].warmId,
+			undefined,
+			"a superseded answer must not stamp the row",
+		);
+	} finally {
+		globalThis.window.api.desktop.request = original;
+	}
+});
+
+test("the send adopts the minted id, and a pane with no mint omits the field entirely", async () => {
+	calls.length = 0;
+	const store = useCanonicalSessionsStore.getState();
+	store.setCwd(CWD);
+	advertiseDraftWarm();
+	reply = (request) => {
+		if (request.op === "sessions.draft")
+			return { result: { draft_id: "c3c3c3c3c3c3" } };
+		if (request.op === "sessions.create")
+			return {
+				result: { session_id: "abcdef123456", binding: { kind: "none" } },
+			};
+		return { result: {} };
+	};
+	const key = store.stageDraft();
+	useCanonicalSessionsStore.getState().ensureDraftWarm(key);
+	await settle();
+	const admitted = await admitChatDraft(key, {
+		text: "hello",
+		attachments: [],
+		images: [],
+		mode: "prompt",
+		cwd: CWD,
+	});
+	assert.equal(admitted, "abcdef123456");
+	const create = wire().find((call) => call.path === "/v1/desktop/sessions");
+	assert.equal(
+		create?.body.draft_id,
+		"c3c3c3c3c3c3",
+		"the create adopts the pre-engaged draft",
+	);
+
+	// NO MINT (this pane never got a keystroke before the send): the body is the
+	// one this app sent before the draft could be warmed - no key, not a null.
+	calls.length = 0;
+	const plainKey = store.stageDraft();
+	await admitChatDraft(plainKey, {
+		text: "hello",
+		attachments: [],
+		images: [],
+		mode: "prompt",
+		cwd: CWD,
+	});
+	const plainCreate = wire().find(
+		(call) => call.path === "/v1/desktop/sessions",
+	);
+	assert.ok(
+		!("draft_id" in plainCreate.body),
+		"an unminted pane omits draft_id rather than sending null",
+	);
+});
+
+test("the mint refuses where there is nothing to register", async () => {
+	calls.length = 0;
+	const store = useCanonicalSessionsStore.getState();
+	store.setCwd(CWD);
+	advertiseDraftWarm();
+
+	// A row whose create already happened: a mint now would register an id
+	// nothing will ever adopt.
+	const sessioned = store.stageDraft();
+	useCanonicalSessionsStore.getState().updateDraft(sessioned, {
+		sessionId: "abcdef123456",
+	});
+	useCanonicalSessionsStore.getState().ensureDraftWarm(sessioned);
+	await settle();
+	assert.equal(wire().length, 0);
+
+	// An empty staged directory fails the wire's own bound; there is nothing to
+	// ask about yet.
+	const dirless = store.stageDraft();
+	useCanonicalSessionsStore.getState().setCwd("");
+	useCanonicalSessionsStore.getState().ensureDraftWarm(dirless);
+	await settle();
+	assert.equal(wire().length, 0);
+
+	// And a row that already holds an id mints nothing more.
+	useCanonicalSessionsStore.getState().setCwd(CWD);
+	const warm = store.stageDraft();
+	await mintOnce(warm);
+	assert.equal(wire().length, 1);
+	useCanonicalSessionsStore.getState().ensureDraftWarm(warm);
+	await settle();
+	assert.equal(
+		wire().length,
+		1,
+		"an id already in hand is not asked for twice",
+	);
+});
+
+test("the minted id is stripped from what is persisted; the receipt key is not", async () => {
+	calls.length = 0;
+	const store = useCanonicalSessionsStore.getState();
+	store.setCwd(CWD);
+	advertiseDraftWarm();
+	const key = store.stageDraft();
+	await mintOnce(key);
+	const state = useCanonicalSessionsStore.getState();
+	assert.equal(
+		state.drafts[key].warmId,
+		MINTED,
+		"in memory the row holds the id",
+	);
+
+	const persisted = useCanonicalSessionsStore.persist
+		.getOptions()
+		.partialize(state);
+	assert.equal(
+		persisted.drafts[key].warmId,
+		undefined,
+		"a reload cannot trust a registry entry it has no proof survives",
+	);
+	assert.equal(
+		persisted.drafts[key].draftRequestId,
+		state.drafts[key].draftRequestId,
+		"but the receipt key persists: on a daemon that still holds the draft, the re-mint replays the same id",
+	);
+});
+
+test("a cwd change drops the warm intent on INACTIVE draft rows too (review round 1, MAJOR-1)", async () => {
+	calls.length = 0;
+	const store = useCanonicalSessionsStore.getState();
+	store.setCwd("/x");
+	advertiseDraftWarm();
+	/*
+	 * The reviewer's repro, in miniature: `cwd` is ONE value read by whatever
+	 * pane mints and whatever pane sends, while agent/team-keyed rows are
+	 * RE-USED by `stageDraft` when the user comes back to them. A warm left on
+	 * an inactive row is a send waiting to adopt a runtime engaged for the
+	 * previous directory, which is exactly what the drop rule exists to prevent.
+	 */
+	const agentKey = store.stageDraft({ kind: "agent", name: "agent-a" });
+	assert.equal(await mintOnce(agentKey, "a1a1a1a1a1a1"), "a1a1a1a1a1a1");
+
+	// Another pane becomes the active one; the directory then changes on it.
+	const freshKey = store.stageDraft();
+	assert.notEqual(freshKey, agentKey);
+	useCanonicalSessionsStore.getState().setCwd("/y");
+	assert.equal(
+		useCanonicalSessionsStore.getState().drafts[agentKey].warmId,
+		undefined,
+		"the INACTIVE row's stale warm must be gone: cwd is one value for every draft",
+	);
+
+	// Re-entering the reused row and sending must not adopt the /x runtime.
+	calls.length = 0;
+	reply = (request) =>
+		request.op === "sessions.create"
+			? {
+					result: { session_id: "abcdef123456", binding: { kind: "none" } },
+				}
+			: { result: {} };
+	store.stageDraft({ kind: "agent", name: "agent-a" });
+	const admitted = await admitChatDraft(agentKey, {
+		text: "hello",
+		attachments: [],
+		images: [],
+		mode: "prompt",
+		cwd: "/y",
+	});
+	assert.equal(admitted, "abcdef123456");
+	const create = wire().find((call) => call.path === "/v1/desktop/sessions");
+	assert.equal(create?.body.cwd, "/y");
+	assert.ok(
+		!("draft_id" in create.body),
+		"no draft id: the /x warm was dropped, not adopted",
+	);
+});
+
+test("the capability landing on a pane that already holds text re-arms the mint (review round 1, MINOR-1)", async () => {
+	calls.length = 0;
+	const store = useCanonicalSessionsStore.getState();
+	store.setCwd(CWD);
+	useCanonicalSessionsStore.getState().setDraftWarmable(false);
+	const key = store.stageDraft();
+	/*
+	 * The cold-start race: the first keystroke's edge fires before the capability
+	 * query answers, so the mint is refused - and the composer's edge is spent
+	 * for the whole message. The pane's text is what says the intent is still
+	 * there when the answer lands.
+	 */
+	useConversationInputStore.getState().setCurrentInput(key, "half a sentence");
+	useCanonicalSessionsStore.getState().ensureDraftWarm(key);
+	await settle();
+	assert.equal(
+		wire().length,
+		0,
+		"no capability yet: nothing minted, nothing loud",
+	);
+
+	reply = (request) =>
+		request.op === "sessions.draft"
+			? { result: { draft_id: MINTED } }
+			: { result: {} };
+	useCanonicalSessionsStore.getState().setDraftWarmable(true);
+	await settle();
+	assert.equal(
+		useCanonicalSessionsStore.getState().drafts[key].warmId,
+		MINTED,
+		"the arriving capability re-arms the mint for the text already typed",
+	);
+	assert.equal(
+		wire().length,
+		1,
+		"exactly one mint: the same silent, receipt-stable call the edge makes",
+	);
+
+	// A pane with NO text still waits for its own keystroke.
+	calls.length = 0;
+	const empty = store.stageDraft();
+	useCanonicalSessionsStore.getState().setDraftWarmable(false);
+	useCanonicalSessionsStore.getState().setDraftWarmable(true);
+	await settle();
+	assert.equal(
+		wire().length,
+		0,
+		"no text, no mint: the keystroke policy is intact",
+	);
+	assert.equal(
+		useCanonicalSessionsStore.getState().drafts[empty].warmId,
+		undefined,
 	);
 });
