@@ -471,6 +471,14 @@ export type UseIntegrations = {
 	/** True when the fallback has no conversation at all to read through. */
 	noConversation: boolean;
 	document: IntegrationDocument | undefined;
+	/**
+	 * The same document, read from the cache ON DEMAND rather than carried by a
+	 * render (QA round 3, Q-1). A poll whose payload is deeply equal to the cached one
+	 * keeps its reference, so nothing gated on `document`'s identity need run again -
+	 * this answers with what the last poll wrote either way, and it is what lets the
+	 * page's focus rule see a row whose operation is still in flight.
+	 */
+	readDocument: () => IntegrationDocument | undefined;
 	isLoading: boolean;
 	isError: boolean;
 	/** True while the chat's folder is one the backend refused (`invalid_cwd`). */
@@ -702,6 +710,37 @@ export function useIntegrations({
 			return catalogFromSessionState(sessionQuery.data, readSessionId);
 		return undefined;
 	}, [route, catalogQuery.data, sessionQuery.data, readSessionId]);
+
+	/*
+	 * THE DOCUMENT AS THE LAST READ OF IT STANDS, asked on demand (QA round 3, Q-1; UX
+	 * round 3, U31).
+	 *
+	 * The `document` above is a RENDER's value, and a render is not something a poll is
+	 * guaranteed to produce: React Query's structural sharing hands the same object back
+	 * for a payload deeply equal to the cached one, and an observer that tracks only the
+	 * props its render reads is not notified when none of them changed - so for the whole
+	 * length of a slow operation (`connecting` in every poll, `pollIntervalFor` asking
+	 * every 2 s) this component can re-render not at all. Anything that has to answer "is
+	 * this row still doing its own work" seconds into an operation therefore cannot read
+	 * its term off a render: it would keep the value the action armed it with and drop the
+	 * move mid-operation, which is the round-3 defect.
+	 *
+	 * This reads the CACHE, which every poll writes whether or not the reference is
+	 * renewed, so the answer is fresh within one poll and independent of whether React
+	 * chose to paint. It is a READ and not a subscription: the caller is a rule with a
+	 * window to maintain, not a view.
+	 */
+	const readDocument = useCallback((): IntegrationDocument | undefined => {
+		if (route === "catalog")
+			return queryClient.getQueryData<McpCatalog>(catalogKey);
+		if (route === "session" && readSessionId) {
+			const data = queryClient.getQueryData<DesktopMcpState>(
+				mcpKeys.list(readSessionId),
+			);
+			return data ? catalogFromSessionState(data, readSessionId) : undefined;
+		}
+		return undefined;
+	}, [route, catalogKey, queryClient, readSessionId]);
 
 	/*
 	 * A live read is the CONFIRMATION the window is waiting for, so it closes as
@@ -1043,6 +1082,7 @@ export function useIntegrations({
 		 */
 		folderUnavailable: folderUnavailableFor(refusedCwd, resolvedCwd),
 		refetch,
+		readDocument,
 		control: liveControl,
 		storeKeys,
 		memories,

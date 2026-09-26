@@ -4289,11 +4289,19 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * fact the recording understated: Enter is `preventDefault`ed and returns, and
 			 * the sentence the branch raises on its way out is gated by the same pair the
 			 * stale read is wrong about - the notice renders only while
-			 * `(noProvider || noModel) && noProviderHint` (`message-input.tsx:7175` at
-			 * this head, the anchor the PR body cites for the same gate; an earlier round
-			 * quoted `:7122`, which this file has since moved past) - so with a provider
-			 * now connected the hint is set for a notice that draws NOTHING. The reader
-			 * presses Enter on a composer that can send, and the app answers nobody.
+			 * `(noProvider || noModel) && noProviderHint` - so with a provider now connected
+			 * the hint is set for a notice that draws NOTHING. The reader presses Enter on a
+			 * composer that can send, and the app answers nobody.
+			 *
+			 * THAT GATE IS NAMED BY ITS OWN TEXT, NOT BY A LINE NUMBER, and the reason is the
+			 * history of this one sentence (agent review round 3, MINOR 1): three rounds have
+			 * now quoted three different numbers for the same gate - `:7122`, then `:7175`,
+			 * which the very commit that wrote it had already pushed to `:7177`, because the
+			 * anchor was recorded in the same change that added lines above it. A reference
+			 * that invalidates itself as it is written is worse than no reference, and what
+			 * the sibling recording one fact with one reference is for (round 2's NIT 1) is
+			 * a reference a reader can still resolve. The gate's own text is that reference,
+			 * and this file moves past it only when the gate itself changes.
 			 *
 			 * WHY IT STAYS OPEN. The omission is pre-existing (the base's inline
 			 * `(noProvider || noModel)` was equally unlisted), and closing it means

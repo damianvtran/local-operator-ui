@@ -50,10 +50,7 @@ import {
 	AddIntegrationForm,
 	type AddIntegrationValues,
 } from "./integrations/add-integration-form";
-import {
-	focusHoldStep,
-	focusHoldWindow,
-} from "./integrations/integration-focus";
+import { focusHoldRead } from "./integrations/integration-focus";
 import { IntegrationKeyDialog } from "./integrations/integration-key-dialog";
 import {
 	type IntegrationRow as IntegrationRowData,
@@ -151,6 +148,38 @@ const PHASE: Record<string, McpFailurePhase> = {
 	reauth: "grant",
 };
 
+/**
+ * One armed deferred focus move (U12, U18, U21): the row it follows, and how far it
+ * may keep following it.
+ */
+type FocusMove = {
+	name: string;
+	/**
+	 * A COMPLETED sign-in is the one close whose opener is guaranteed to be gone
+	 * (`closeSignIn`), so this move waits for the row to stop offering Sign in before
+	 * it lands anywhere (U12).
+	 */
+	waitForSignIn: boolean;
+	until: number;
+	/**
+	 * The control this move has already landed on, once it has (U21). Its presence is
+	 * what tells a later read that this is a payload arriving AFTER the move rather
+	 * than the move itself - and the row it targets can have been mounted again under
+	 * it in between, which is the whole of U21.
+	 */
+	landedOn?: HTMLElement | null;
+	/**
+	 * How many re-MOUNTS this move has followed (QA round 2, Q1; UX U31). Counted in
+	 * state rather than derived because it is the ONLY bound on how far the move's
+	 * window can be extended: the deadline itself is re-anchored while the row moves,
+	 * so a row that is mounted again under the move over and over is given up on by
+	 * `FOCUS_REANCHOR_CAP` rather than by a clock that expires mid-operation. It
+	 * counts re-mounts and not candidate changes, which is what `focusHoldRead`
+	 * spends it on (agent review round 3, MINOR 5).
+	 */
+	reanchors: number;
+};
+
 export const McpManagementSection: FC<{
 	sessionId?: string;
 	sectionRef?: RefObject<HTMLDivElement>;
@@ -164,7 +193,7 @@ export const McpManagementSection: FC<{
 	highlightServer?: string;
 }> = ({ sessionId, sectionRef, highlightServer }) => {
 	const integrations = useIntegrations({ sessionId });
-	const { document, control } = integrations;
+	const { document, control, readDocument } = integrations;
 	const navigate = useNavigate();
 	const servers = document?.servers ?? [];
 	const operations = document?.operations ?? [];
@@ -240,26 +269,7 @@ export const McpManagementSection: FC<{
 	 * how focus reaches `<body>` again. After a cancellation, a key save or a
 	 * sign-out there is nothing to wait for.
 	 */
-	const [focusRow, setFocusRow] = useState<{
-		name: string;
-		waitForSignIn: boolean;
-		until: number;
-		/*
-		 * The control this move has already landed on, once it has (U21). Its presence
-		 * is what tells a later run of the effect that this is a payload arriving
-		 * AFTER the move rather than the move itself - and the row it targets can have
-		 * been mounted again under it in between, which is the whole of U21.
-		 */
-		landedOn?: HTMLElement | null;
-		/**
-		 * How many re-stands this move has followed (QA round 2, Q1; UX U31). Counted in
-		 * state rather than derived because it is the ONLY bound on how far the move's
-		 * window can be extended: the deadline itself is re-anchored while the row moves,
-		 * so a row that is mounted again under the move over and over is given up on by
-		 * `FOCUS_REANCHOR_CAP` rather than by a clock that expires mid-operation.
-		 */
-		reanchors: number;
-	} | null>(null);
+	const [focusRow, setFocusRow] = useState<FocusMove | null>(null);
 	const [focusAfterRemove, setFocusAfterRemove] = useState<{
 		index: number;
 	} | null>(null);
@@ -421,12 +431,17 @@ export const McpManagementSection: FC<{
 		const active = window.document.activeElement;
 		/*
 		 * A DETACHED NODE THE ENGINE STILL REPORTS AS ACTIVE IS NOBODY (agent review
-		 * round 2, MINOR 2), which is the same carve-out `focusHoldStep` makes one level
-		 * below - and for the same reason: a control that a re-stand has left detached can
-		 * still be `activeElement`, and reading that as "a reader holds the caret" makes
-		 * this arm decline in exactly the state it exists for, leaving the caret on
-		 * `<body>`. It cannot mask a real reader: the only node it accepts beyond `<body>`
-		 * is one still in the document, which is where a reader's own caret lives.
+		 * round 2, MINOR 2), and it is the carve-out `focusHoldStep` makes one level below
+		 * WITHOUT BEING THE SAME SET (agent review round 3, NIT 2). The rule's nobody set is
+		 * `{body, null, the move's OWN landed control}` - identity, so ANY OTHER detached
+		 * node reads as a real holder and drops the move. This arm's set is
+		 * `{body, null, ANY detached node}` - connectedness, which it has to be: the arm
+		 * asks before the move has a landed control, so it has nothing to compare against.
+		 * The two are deliberately close, and the difference is reachable only in the narrow
+		 * state where the reader's caret sits on a node unmounted out of an open dialog
+		 * mid-operation - where this arm proceeds and the rule, one read later, would
+		 * refuse. It cannot mask a real reader: the only input it accepts beyond `<body>`
+		 * is a node no longer in the document, and a reader's caret lives in the document.
 		 */
 		if (active && active !== window.document.body && active.isConnected) return;
 		setFocusRow({
@@ -490,8 +505,15 @@ export const McpManagementSection: FC<{
 			 * landed: on a failed one there is no neighbour to take the caret, the confirm's
 			 * menu item has been unmounted by Radix's own restore, and the row the reader
 			 * removed is still on the page with its control where the next Tab should start
-			 * from. QA measured the failure arm of the same shape landing on the row's `Retry`
-			 * where it does land, so the two confirmed flows now behave the same.
+			 * from - the row's `Retry`, the control UX round 2's Cell 7 measured the caret on
+			 * at +3 000 ms and +12 000 ms for a failed operation. WHAT THE TWO ARMS SHARE IS
+			 * THE ENDING, NOT THE SHAPE, and the difference is the one this rule is about: UX's
+			 * arm is a failing Test whose row CHANGES GROUP, so its landing comes from the
+			 * re-stand path, while a failed removal leaves the row in the group it was already
+			 * in - the non-re-standing shape (U30), where the only thing that moves the caret
+			 * is the row's own primary reappearing. Both end with the row's primary as the
+			 * control to land on, which is why one arm serves them, and neither is a reading
+			 * QA took.
 			 *
 			 * It arms on FAILURE too, which is one of the two signatures Q1 measured: a test
 			 * that fails moves the row to `Needs attention` - a group change like any other -
@@ -827,225 +849,218 @@ export const McpManagementSection: FC<{
 	 * round 2, U31). A clock started at the press expires while the operation it is
 	 * following is still running - the app's own failure path is 20 s - and every
 	 * re-stand after that leaves the caret on `<body>`. `focusHoldWindow` states the
-	 * rule the two readers of it share (this effect and the tick that disarms the
-	 * move): while the row is moving the deadline is a window from NOW, and once it
-	 * stops it is a window from the last read that found it moving, which is at most
-	 * one poll before the read that carries its new group.
+	 * rule both readers of it share: while the row is moving the deadline is a
+	 * window from NOW, and once it stops it is a window from the last read that
+	 * found it moving.
 	 */
-	useEffect(() => {
-		if (!focusRow) return;
-		const now = Date.now();
-		const row = servers.find((server) => server.name === focusRow.name);
-		if (!row) {
-			setFocusRow(null);
-			return;
-		}
-		/*
-		 * WHILE THE ROW IS MOVING THE WINDOW DOES NOT RUN (QA round 2, Q1; UX round 2,
-		 * U31). The deadline this move is judged against is not the clock it was armed
-		 * with: it is anchored on the row. The two terms are the page's own "is this list
-		 * still moving" terms - the same ones `integrationsPollInterval` polls on - and
-		 * that is what makes extending the window safe: a row that keeps either of them
-		 * true is also a row the page is re-reading every `INTEGRATIONS_POLL_MS`, so the
-		 * read that carries the row's group change arrives within one poll of the last one
-		 * seen here.
-		 *
-		 * WHAT THIS FIXES, MEASURED. A row's controls are disabled while its operation
-		 * runs, so the app's own move lands on the row's overflow at ~250 ms; the daemon's
-		 * answer is what re-stands the row, and it does that seconds later - 4 250 ms for a
-		 * 3 s server, 21 750 ms for a 20 s one (QA round 2, Q1). Against a window anchored
-		 * at the dispatch, both re-stands landed outside it, the hold was dropped and the
-		 * caret stayed on `<body>` for good - the symptom this whole fix exists to remove,
-		 * for every server slower than the app's own promise.
-		 */
-		const rowMoving =
-			row.status === "connecting" ||
-			runningOperationFor(row.name, operations) !== null;
-		if (rowMoving) rowMovingAtRef.current = now;
-		let until = focusHoldWindow({
-			hold: focusRow,
-			now,
-			windowMs: FOCUS_ARM_MS,
-			rowMoving,
-			lastMovingAt: rowMovingAtRef.current,
-		});
-		if (now > until) {
-			setFocusRow(null);
-			return;
-		}
-		const primary = primaryAction(row, operations, integrations.memories);
-		if (
-			focusRow.waitForSignIn &&
-			(primary?.kind === "sign_in" || primary?.kind === "reauth")
-		)
-			return;
-		/*
-		 * WHERE THE MOVE LANDS, RE-RESOLVED ON EVERY RUN (UX round 2, U30). The target is
-		 * the row's own primary control, or its overflow when the row has none - and a row
-		 * that is mid-operation has no primary BY DESIGN (`primaryAction` answers null for
-		 * `connecting`), so the landing the arm triggers at dispatch time is the `⋯` and
-		 * nothing else. That is the right place for it to be while the row cannot act, and
-		 * it is the wrong place for it to be afterwards: the row settles with a control of
-		 * its own, and a move that stayed on the `⋯` would leave the reader's next Tab
-		 * starting from the menu rather than from the control the row is offering - or from
-		 * the one they pressed, when that is the control the row has again. So the target is
-		 * resolved here rather than decided once at the landing, and `focusHoldStep`
-		 * re-applies the move when the row's control is no longer the one it landed on.
-		 */
-		const element = primary
-			? rowPrimaryRefs.current[row.name]
-			: rowOverflowRefs.current[row.name];
-		// Nothing to land on YET: stay armed and let a later read re-run this
-		// effect, rather than dropping the move and leaving focus where the
-		// closing surface left it. The deadline above still bounds the wait.
-		if (!element) return;
-		/*
-		 * THE MOVE HAS ALREADY LANDED ONCE (UX round 5, U21), and this run is a
-		 * payload arriving afterwards - the move is not consumed by landing, because
-		 * the row it landed on can be MOUNTED AGAIN under it. A row that changes group
-		 * is unmounted and re-created rather than moved (each group is its own
-		 * `<ul>`), so the focused control goes with the old node and focus falls to
-		 * `<body>` - measured on the built app after a successful sign-out: `⋯` at
-		 * 1.5 s, `<body>` at 2.8 s, `⋯` again at 3.1 s, `<body>` at 5.3 s, with the
-		 * sampled row and menu reporting `isConnected: false`; the same signature on a
-		 * key save's Available -> Connected, while the remove flow, which lands on a
-		 * NEIGHBOURING row, holds.
-		 *
-		 * WHERE IT GOES IS `focusHoldStep`'s DECISION rather than a second rule
-		 * written here (the sibling hold/refetch work in #494 settled the same class of
-		 * bug by rejecting a DETACHED candidate and waiting for the read that replaces
-		 * it before restoring, and one idiom for one problem is worth more than two):
-		 * `settled` leaves focus alone because the row has not re-stood, `restore`
-		 * re-applies the move onto the control the row has where it now stands, and
-		 * `drop` gives the move up - past its window, or because a control of the
-		 * reader's holds the caret. THAT LAST TERM IS NOT "THE READER WENT ANYWHERE"
-		 * (agent review round 1, MINOR 2): a click on non-focusable chrome leaves
-		 * `document.activeElement` on `<body>`, which the rule reads as nobody, so a
-		 * click of that kind does NOT refuse the re-stand - the row the reader was on
-		 * is where their next Tab should continue from. See the module's own note on
-		 * that trade.
-		 */
-		const landedOn = focusRow.landedOn;
-		let reanchors = focusRow.reanchors;
-		if (landedOn) {
-			const step = focusHoldStep({
-				hold: { node: landedOn, until, reanchors: focusRow.reanchors },
-				candidate: element,
-				active: window.document.activeElement,
-				body: window.document.body,
-				now: Date.now(),
-			});
-			if (step === "settled") return;
-			if (step === "drop") {
-				setFocusRow(null);
-				return;
-			}
-			/*
-			 * A RE-STAND IS WHAT THIS RULE EXISTS FOR, and it is counted rather than timed
-			 * out (QA round 2, Q1; UX round 2, U31): the window is re-anchored on the row
-			 * rather than inherited from the press, because the alternative is a hold that
-			 * expires while the row it is following is still moving - and the bound that
-			 * replaces the clock is `FOCUS_REANCHOR_CAP` re-stands, which is what a row that
-			 * flapped would have to exceed to keep a move alive. What m-4 removed is kept by
-			 * the rule rather than by the clock: a `restore` only ever happens onto a row
-			 * whose control NOBODY's focus is on, so a late one cannot take focus from
-			 * wherever the reader moved on to.
-			 */
-			until = Date.now() + FOCUS_ARM_MS;
-			reanchors += 1;
-		}
-		setFocusRow({
-			name: row.name,
-			waitForSignIn: false,
-			until,
-			landedOn: element,
-			reanchors,
-		});
-		/*
-		 * ONE MACROTASK LATER, and that is the whole of Q2/U20: a dialog or a row
-		 * menu closing runs Radix's close-auto-focus AFTER this effect, its target
-		 * is the control that opened it - a menu item the close has already
-		 * unmounted - and its restore to `<body>` silently undoes a focus
-		 * performed here. Measured on the two arms whose row never re-renders
-		 * again, so nothing re-armed the move: the confirm on a FAILED sign-out
-		 * (the row settles on `Sign-out didn't finish | Sign out again`) and a key
-		 * `Save and test` whose row is left with no primary (QA Q2, UX U20) - both
-		 * left `document.activeElement` on `BODY`. Deferring makes the row's own
-		 * control the last writer whatever order the close runs in.
-		 *
-		 * WHY A MACROTASK IS ENOUGH, stated as the assumption it is (R5-5): the
-		 * ordering holds because the installed Radix focus scope restores focus
-		 * from ONE `setTimeout(..., 0)` registered by the unmounting subtree's
-		 * effect cleanup, and React runs that cleanup no later than the parent
-		 * effect that arms this move - so this timer is registered second and
-		 * fires second. That is a third-party dist's internals rather than a
-		 * property this repository can assert: a future Radix that defers twice,
-		 * or to a `requestAnimationFrame`, would make the restore the last writer
-		 * again, and the pin here can only assert that this deferral exists (it
-		 * does, and it fails when removed). The guard below is deliberately
-		 * conservative in the same spirit: a target that has left the document by
-		 * the time the timer fires drops the move rather than throwing - and the
-		 * hold above is what picks that dropped move back up when its node was
-		 * REPLACED rather than withdrawn, which is the window this paragraph used to
-		 * say the walk had not reached (U21 is that window, and the reader's place is
-		 * no longer left where the close put it).
-		 */
-		window.setTimeout(() => {
-			if (element.isConnected) element.focus();
-		}, 0);
-	}, [focusRow, servers, operations, integrations.memories]);
 
-	/*
-	 * Disarm the move when its window closes, so nothing is left armed in state.
+	/**
+	 * One read of the armed move, whoever asks for it.
 	 *
-	 * BELT AND BRACES rather than the load-bearing half of m-4 (R4-5): the
-	 * deadline check at the top of the effect above is what makes a LATE move
-	 * impossible - it drops a stale move on the next payload however long this
-	 * timer takes - and this only stops a `focusRow` that outlived its window
-	 * from sitting in state. Deleting it leaves the suite green because the
-	 * property it protects is already enforced there; see the pin, which asserts
-	 * both halves and names which one carries the promise.
+	 * WHY THE ROW IS READ FROM THE PAGE'S OWN DOCUMENT AND NOT FROM THIS RENDER (QA
+	 * round 3, Q-1; UX round 3, U31). This is the round-3 defect, and this read is
+	 * the whole of it: `rowMoving` used to be computed inside the effect below off
+	 * `servers`/`operations`, whose identity React Query's structural sharing keeps
+	 * for a payload deeply equal to the cached one - so a poll that found the row
+	 * still `connecting`, which is every poll for the length of an operation,
+	 * changed nothing, re-rendered nothing and ran nothing. The deadline therefore
+	 * never advanced past the arm's own `dispatch + FOCUS_ARM_MS`, the disarm timer
+	 * cleared the hold at ~4 250 ms, and the row's re-stand seconds later found
+	 * nothing armed. Measured on the built app at the round-3 head: the caret was on
+	 * `<body>` for 100% of the samples after the row's group change for a 5 s, 8 s
+	 * and 20 s answer (28/28, 24/24, 24/24) and for a server that sleeps 8 s and
+	 * exits 7 (63/63) - with NO `focus()` call made at the group change at all,
+	 * which is the reading that says the app never tried, as against a move that was
+	 * applied and then lost.
+	 *
+	 * `readDocument()` is the same document the poll writes, asked on demand rather
+	 * than carried by a render, so the row's own operation is fresh within one poll
+	 * whether or not a render happened and no identity that stayed still can freeze
+	 * the answer. The render's own `document` is the fallback for the frame before
+	 * the cache has anything to say.
 	 */
-	useEffect(() => {
-		if (!focusRow) return;
-		let timer = 0;
-		/*
-		 * IT RE-MEASURES RATHER THAN SLEEPING ONCE (QA round 2, Q1). The window is no
-		 * longer a duration fixed at the press: it is anchored on the row, and the
-		 * `until` in state is only what the last landing or re-anchor wrote, so a timer
-		 * armed for it - and never re-armed, because a poll that extends the window
-		 * changes no state - would close a window that is still open, which is the
-		 * defect this round removes. It asks `focusHoldWindow` the same question the
-		 * effect asks, over the same reading of the row (`rowMovingAtRef`, which the
-		 * effect advances on every read that finds the row moving), and sleeps no
-		 * further than the window it is watching.
-		 */
-		const tick = () => {
-			const now = Date.now();
-			const until = focusHoldWindow({
-				hold: focusRow,
+	const readFocusMove = useCallback(
+		(move: FocusMove, now: number): "kept" | "landed" | "finished" => {
+			const live = readDocument() ?? document;
+			const row = live?.servers.find((server) => server.name === move.name);
+			const operations = live?.operations ?? [];
+			/*
+			 * THE ROW'S OWN MOVEMENT, read with the list's own poll terms - the same two
+			 * `integrationsPollInterval` asks - so a row that keeps this true is a row the
+			 * page is re-reading every `INTEGRATIONS_POLL_MS`, and a read that finds it
+			 * true is a read that pushes the deadline out.
+			 */
+			const rowMoving = row
+				? row.status === "connecting" ||
+					runningOperationFor(row.name, operations) !== null
+				: false;
+			if (rowMoving && row) rowMovingAtRef.current = now;
+			const primary = row
+				? primaryAction(row, operations, integrations.memories)
+				: null;
+			/*
+			 * A COMPLETED SIGN-IN WAITS FOR THE ROW (U12): after one, the row still leads
+			 * with the Sign in button until the catalog reads the new credential back, and
+			 * focusing a button that is about to unmount is how focus reaches `<body>` a
+			 * frame later. This read stays armed and lands nothing until the row stops
+			 * offering one.
+			 */
+			if (
+				row &&
+				move.waitForSignIn &&
+				(primary?.kind === "sign_in" || primary?.kind === "reauth")
+			)
+				return "kept";
+			/*
+			 * WHERE THE MOVE LANDS, RE-RESOLVED ON EVERY READ (UX round 2, U30). The
+			 * target is the row's own primary control, or its overflow when the row has
+			 * none - and a row that is mid-operation has no primary BY DESIGN
+			 * (`primaryAction` answers null for `connecting`), so the landing the arm
+			 * triggers at dispatch time is the `⋯` and nothing else. That is the right
+			 * place for it to be while the row cannot act, and it is the wrong place for
+			 * it to be afterwards: the row settles with a control of its own, and a move
+			 * that stayed on the `⋯` would leave the reader's next Tab starting from the
+			 * menu rather than from the control the row is offering - or from the one
+			 * they pressed, when that is the control the row has again. So the target is
+			 * resolved on every read rather than decided once at the landing, and
+			 * `focusHoldStep` re-applies the move when the row's control is no longer the
+			 * one it landed on.
+			 *
+			 * A ROW WITH NOTHING TO LAND ON YET - and a read that lands in the frame
+			 * between a re-stand's unmount and its mount - leaves the move armed rather
+			 * than dropping it, which `focusHoldRead` states: the window above still
+			 * bounds the wait.
+			 */
+			const read = focusHoldRead({
+				hold: move,
 				now,
 				windowMs: FOCUS_ARM_MS,
-				/*
-				 * This tick has no row state of its own, and `rowMoving: false` is what
-				 * asks the rule the only question it can answer here - how long ago a read
-				 * last found the row moving - on the ref the effect keeps current. While
-				 * the row IS moving that ref is at most one poll old, so the window stays
-				 * open and this sleep comes round again.
-				 */
-				rowMoving: false,
+				rowMoving,
 				lastMovingAt: rowMovingAtRef.current,
+				/*
+				 * A ROW THAT HAS LEFT THE PAGE OFFERS NO CANDIDATE, and the read still runs
+				 * rather than returning early: the deadline is what ends a move whose row was
+				 * removed under it, and skipping the read would leave the watcher ticking for
+				 * a row that is not coming back.
+				 */
+				candidate: row
+					? primary
+						? rowPrimaryRefs.current[row.name]
+						: rowOverflowRefs.current[row.name]
+					: undefined,
+				active: window.document.activeElement,
+				body: window.document.body,
 			});
-			const remaining = until - now;
-			if (remaining <= 0) {
+			if (!read.hold) {
 				setFocusRow(null);
-				return;
+				return "finished";
 			}
-			timer = window.setTimeout(tick, remaining);
+			/*
+			 * NOTHING OBSERVABLE HAPPENED, SO NOTHING IS WRITTEN. A read that only
+			 * extends the window must not re-render the page: the extension lives in
+			 * `rowMovingAtRef`, which both readers consult, and a `setFocusRow` per read
+			 * would cost a render every watcher period for the length of an operation.
+			 * State is written by a LANDING and by the end of the move - and a stale
+			 * `until` in state is harmless, because `focusHoldWindow` answers
+			 * `max(hold.until, lastMovingAt + windowMs)` and the ref is the fresh term.
+			 */
+			if (!read.land) return "kept";
+			setFocusRow({
+				name: move.name,
+				waitForSignIn: false,
+				until: read.hold.until,
+				landedOn: read.land,
+				reanchors: read.hold.reanchors,
+			});
+			/*
+			 * ONE MACROTASK LATER, and that is the whole of Q2/U20: a dialog or a row
+			 * menu closing runs Radix's close-auto-focus AFTER this read, its target is
+			 * the control that opened it - a menu item the close has already unmounted -
+			 * and its restore to `<body>` silently undoes a focus performed here.
+			 * Measured on the two arms whose row never re-renders again, so nothing
+			 * re-armed the move: the confirm on a FAILED sign-out (the row settles on
+			 * `Sign-out didn't finish | Sign out again`) and a key `Save and test` whose
+			 * row is left with no primary (QA Q2, UX U20) - both left
+			 * `document.activeElement` on `BODY`. Deferring makes the row's own control
+			 * the last writer whatever order the close runs in.
+			 *
+			 * WHY A MACROTASK IS ENOUGH, stated as the assumption it is (R5-5): the
+			 * ordering holds because the installed Radix focus scope restores focus from
+			 * ONE `setTimeout(..., 0)` registered by the unmounting subtree's effect
+			 * cleanup, and React runs that cleanup no later than the parent effect that
+			 * arms this move - so this timer is registered second and fires second. That
+			 * is a third-party dist's internals rather than a property this repository can
+			 * assert: a future Radix that defers twice, or to a `requestAnimationFrame`,
+			 * would make the restore the last writer again, and the pin here can only
+			 * assert that this deferral exists (it does, and it fails when removed). The
+			 * guard below is deliberately conservative in the same spirit: a target that
+			 * has left the document by the time the timer fires drops the move rather
+			 * than throwing - and the watcher below is what picks that dropped move back
+			 * up when its node was REPLACED rather than withdrawn.
+			 */
+			const landed = read.land;
+			window.setTimeout(() => {
+				if (landed.isConnected) landed.focus();
+			}, 0);
+			return "landed";
+		},
+		[readDocument, document, integrations.memories],
+	);
+
+	/*
+	 * THE WATCHER: the half a render cannot switch off (QA round 3, Q-1; UX round 3,
+	 * U31). It is also the FAST PATH - a payload that carries a change re-runs the read
+	 * at once, so a dialog's own landing arrives on the first read after it rather than
+	 * up to a cadence later.
+	 *
+	 * WHY A MOVE NEEDS A CADENCE OF ITS OWN AT ALL. The read above runs when React
+	 * re-runs it, and for the length of a slow operation React has nothing to say: the
+	 * poll answers with a payload deeply equal to the cached one, structural sharing
+	 * keeps the reference, no tracked prop changes, and nothing else in this component
+	 * runs either. A hold waiting on a render is therefore a hold waiting on a poll that
+	 * may never produce one - which is exactly how a 20 s answer ended with the caret on
+	 * `<body>`.
+	 *
+	 * WHAT IT DOES. The same read as the one at the top of this effect, on its own
+	 * cadence: the row's own operation is what keeps the window open while it is in
+	 * flight (QA round 2, Q1 measured 21 750 ms for a 20 s server), and the row's RE-STAND is noticed where it
+	 * happens - the row is replaced while its operation runs, no payload needs to change
+	 * for that, and the read that follows lands the move on the row's new control. That
+	 * is why the app now makes a `focus()` call AT the group change rather than only at
+	 * dispatch, which is the reading the round-3 failure was missing.
+	 *
+	 * WHY A TIMER AND NOT A `requestAnimationFrame`: the window is not always painted -
+	 * every rig that measures this runs the app headless - and a frame-driven watcher
+	 * would stop watching in exactly the environment the defect was found in.
+	 * `FOCUS_WATCH_MS` is short against the window it is watching (about sixteen reads
+	 * inside one `FOCUS_ARM_MS`), and while no move is armed there is no timer at all.
+	 *
+	 * THE PROMISE THIS HALF CARRIES, stated rather than implied (R4-5): the read's own
+	 * deadline check is what makes a LATE move impossible; this watcher is what makes a
+	 * DROPPED one recoverable. Removing it leaves the deadline honest and the re-stand
+	 * unfollowed, which is the defect this round exists to remove.
+	 */
+	useEffect(() => {
+		if (!focusRow) return;
+		readFocusMove(focusRow, Date.now());
+		let timer = 0;
+		let stopped = false;
+		const tick = () => {
+			if (stopped) return;
+			/*
+			 * A `finished` read has already cleared `focusRow`, which tears this effect
+			 * down; the return keeps a tick that ran in the same macrotask from re-arming
+			 * the timer the cleanup is about to clear.
+			 */
+			if (readFocusMove(focusRow, Date.now()) === "finished") return;
+			timer = window.setTimeout(tick, FOCUS_WATCH_MS);
 		};
-		tick();
-		return () => window.clearTimeout(timer);
-	}, [focusRow]);
+		timer = window.setTimeout(tick, FOCUS_WATCH_MS);
+		return () => {
+			stopped = true;
+			window.clearTimeout(timer);
+		};
+	}, [focusRow, readFocusMove]);
 
 	return (
 		<SettingsSection
@@ -1359,12 +1374,38 @@ export const McpManagementSection: FC<{
 };
 
 /**
- * How long a deferred focus move stays armed (m-4): long enough for the read that
- * follows an action to land (the list polls every 2 s while something is moving,
- * and a catalog read answers in well under that), and short enough that it cannot
- * fire after the user has moved on by themselves.
+ * How long a deferred focus move stays armed BETWEEN the row's own reads of its own
+ * operation (m-4).
+ *
+ * THIS IS NOT HOW LONG THE MOVE LIVES, which is what the round-3 review caught this
+ * doc claiming (NIT 1). A row doing its own work pushes the deadline out on every
+ * read, so an armed move lasts as long as the operation it is following - measured
+ * at 21 750 ms for a 20 s server - and the only clockless bound on that is
+ * `FOCUS_REANCHOR_CAP` re-mounts. What this number is instead is the FLOOR and the
+ * TAIL: long enough for the read that follows an action to land (the list polls every
+ * 2 s while something is moving, and a catalog read answers in well under that), and
+ * long enough AFTER a row stops moving for the read that carries its new group to
+ * arrive. What stops a move firing after the reader has moved on is not this number:
+ * it is the refusal in `focusHoldStep`, which drops the move the moment a control of
+ * the reader's holds the caret.
  */
 const FOCUS_ARM_MS = 4_000;
+
+/**
+ * How often an armed move is re-read while the row's own operation is in flight (QA
+ * round 3, Q-1; UX round 3, U31).
+ *
+ * THE PAGE'S OWN POLL CANNOT BE THE CADENCE. It answers every 2 s with a payload
+ * deeply equal to the cached one for the whole of an operation, and structural sharing
+ * makes that a no-op for every reader gated on a reference - which is how a hold
+ * expired 4.25 s into a 20 s operation, and why the app made no `focus()` call at all
+ * at the row's group change. This is the read that does not depend on one, so it has
+ * to be frequent enough that a re-stand is caught well inside the window it is judged
+ * against: about sixteen reads to one `FOCUS_ARM_MS`, and against a window that is
+ * itself renewed from the last read that found the row moving. It exists only while a
+ * move is armed, and nothing else in this file polls.
+ */
+const FOCUS_WATCH_MS = 250;
 
 /** `/Users/x/proj` as `~/proj`, for a label. Machine paths stay machine voice elsewhere. */
 const HOME_PREFIX = /^\/(?:Users|home)\/[^/]+(?=\/|$)/;
