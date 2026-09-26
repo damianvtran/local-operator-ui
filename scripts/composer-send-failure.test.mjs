@@ -127,8 +127,19 @@ export const paintPendingSend = (identity, send) => {
 	globalThis.__canonicalEcho({ kind: "echo", sessionId: identity, id: send.id, text: send.text, images: send.images });
 	let entries = registry.get(identity);
 	if (!entries) { entries = new Map(); registry.set(identity, entries); }
-	entries.set(send.id, { identity, id: send.id, text: send.text, images: send.images });
+	entries.set(send.id, {
+		identity,
+		id: send.id,
+		text: send.text,
+		images: send.images,
+		settled: send.settled,
+	});
 };
+export const settlePendingSend = (identity, id) => {
+	const entry = registry.get(identity)?.get(id);
+	if (entry) entry.settled = true;
+};
+export const hasPendingSend = (identity, id) => Boolean(registry.get(identity)?.has(id));
 export const pendingSendForView = (identity) => {
 	const entries = registry.get(identity);
 	if (!entries) return null;

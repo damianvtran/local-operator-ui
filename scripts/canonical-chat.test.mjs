@@ -115,6 +115,9 @@ export const replacePendingSendText = (identity, id, text) =>
 export const discardPendingSends = (identity) =>
 	globalThis.__canonicalEcho({ kind: "discard", sessionId: identity });
 export const pendingSendForView = () => null;
+export const settlePendingSend = (identity, id) =>
+	globalThis.__canonicalEcho({ kind: "settle", identity, id });
+export const hasPendingSend = () => false;
 export const retractPendingUser = (sessionId, id) =>
 	globalThis.__canonicalEcho({ kind: "retract", sessionId, id });
 /*

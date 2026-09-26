@@ -12,11 +12,12 @@ import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
 // the dependency stays one-way (the hook does not import this store).
 import {
 	discardPendingSends,
+	hasPendingSend,
 	movePendingSendIdentity,
 	paintPendingSend,
 	peekLocalEcho,
-	pendingSendForView,
 	replacePendingSendText,
+	settlePendingSend,
 } from "@shared/hooks/use-canonical-session";
 /*
  * The composer's own store, imported for the ONE return path (`returnPayload`)
@@ -1757,18 +1758,25 @@ export function resynthesisePendingSend(
 		draft.errorRetry !== undefined;
 	if (!resolved && !failed) return false;
 	const identity = composerIdentityFor(key, draft.sessionId);
-	if (pendingSendForView(identity)) return false;
 	if (resolved) {
 		/*
 		 * The RESOLVED arm: the id and the text are the resolution's own record, and
 		 * there are no images to restore - `undelivered` keeps the attachment PATHS
 		 * (the payload basis), not encoded bytes, and a row that showed none at paint
 		 * time must not invent them. The line's controls act on the same text.
+		 *
+		 * PAINTED SETTLED, and the guard is membership rather than liveness: the
+		 * claim's outcome is known (that is what the record IS), so this entry keeps
+		 * painting the row without answering "still going out" for it - the
+		 * distinction a NEXT message on the same conversation needed, because the
+		 * oldest entry is the one every pending reader names (see `settled`).
 		 */
+		if (hasPendingSend(identity, resolved.recordId)) return false;
 		paintPendingSend(identity, {
 			id: resolved.recordId,
 			text: resolved.text,
 			images: [],
+			settled: true,
 		});
 		return true;
 	}
@@ -1777,6 +1785,7 @@ export function resynthesisePendingSend(
 	// pinned, and the renderer reads it below.
 	if (submittedText === undefined) return false;
 	const id = draft.admissionRequestId;
+	if (hasPendingSend(identity, id)) return false;
 	paintPendingSend(identity, {
 		id,
 		/*
@@ -6087,6 +6096,16 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						errorRetry: _errorRetry,
 						...kept
 					} = draft;
+					/*
+					 * AND THE CLAIM IS ANSWERED FOR THE TAB THAT NEVER RELOADS (design review
+					 * round 1, D1/D2, as the re-shoot extended it): the entry stays - it is the
+					 * row's home - but it is marked ANSWERED, so the very frame the
+					 * resolution lands on stops answering "still going out" to the pane's
+					 * latch and to any next message sent on this conversation. The identity is
+					 * the session itself: the re-key moved the entry there at the create, and
+					 * a live-session send was addressed by it from the press.
+					 */
+					if (!delivered) settlePendingSend(sessionId, recordId);
 					return {
 						drafts: {
 							...drafts,
