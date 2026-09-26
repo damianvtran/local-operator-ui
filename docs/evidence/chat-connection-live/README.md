@@ -1,9 +1,10 @@
 # `chat-connection-live` — the connection states, in the real app, on this branch
 
-Two live PNG sets, carried here so the round-3/round-4 review closures rest on
-bytes in the tree rather than on a lane's scratchpad. Neither set is a sweep
-capture: they are frames of the BUILT app paired with a real isolated daemon,
-shot at 1380x900 with `devicePixelRatio: 2` (2760x1800 on disk).
+Three live PNG sets, carried here so the round-3/round-4 review closures (and
+the notice-band pass's change) rest on bytes in the tree rather than on a lane's
+scratchpad. None of the sets is a sweep capture: they are frames of the BUILT
+app paired with a real isolated daemon, shot at 1380x900 with
+`devicePixelRatio: 2` (2760x1800 on disk).
 
 ## `lane-round3/` — the qa-tester lane's frames
 
@@ -64,3 +65,49 @@ ships on): the same scenes, `run.log` again ALL CHECKS PASSED (24/24). The
 fold's resolution of the composer region keeps this branch's structure and
 carries main's approval semantics into the dock, which none of these states
 photographs - the frames were re-taken rather than argued across the fold.
+
+## `band-pass/` - the notice-band pass's re-shoot
+
+The same scene re-driven on the tree that carries the notice-band change (the
+strip's row 1 gated on main's pairing CAUSE, the banner's yield, both bands on
+the shared `NOTICE_BAND` band grammar), via the repository's own rig, so the
+live surface set is not left describing the pre-change bands:
+
+```sh
+cd <worktree>
+RIG=<scratch>/rig-live
+# 1. an isolated daemon this run owns, on a scratch config root (values:
+#    {hosting: test, model_name: mock-model}), its bearer written to a file so
+#    it never enters argv
+LOCAL_OPERATOR_CONFIG_DIR="$RIG/root" LOCAL_OPERATOR_DESKTOP_TOKEN="$(cat "$RIG/token")" \
+  LOCAL_OPERATOR_NO_NOTIFICATIONS=1 LOCAL_OPERATOR_NO_TERMINAL_TITLE=1 \
+  lop serve --host 127.0.0.1 --port 18991 &
+# 2. the worktree was rebuilt against that daemon
+#    (VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:18991)
+# 3. the scene: it kills the run's own daemon mid-flight and revives it
+LOCAL_OPERATOR_CONFIG_DIR="$RIG/root" LOCAL_OPERATOR_DESKTOP_TOKEN="$(cat "$RIG/token")" \
+  node scripts/renderer-driver.mjs --scene connection-drop \
+  --backend http://127.0.0.1:18991 --backend-records "$RIG/root/run/serve" \
+  --backend-revive "lop serve --host 127.0.0.1 --port 18991" \
+  --out "$RIG/frames" --clean --seed-onboarding-complete
+```
+
+`run.log` is that run's full record: **ALL CHECKS PASSED**, 24 checks,
+including the one-voice pair this change is about - `ONE live region states the
+connection (U3b)` and `no OTHER live region stands beside the strip` - the
+single `Retry` control, and the reconnect resolution. The four states are the
+same as `fix-head/`'s; the visible delta is the band's grammar (the strip's row
+1 sentence, its filled remedy, the 14px mark), which is the change a reader of
+this directory can see rather than argue.
+
+| file | state | note |
+| --- | --- | --- |
+| `connection-1380x900-attached.png` | attached, a turn answered | baseline |
+| `connection-1380x900-server-gone.png` | daemon gone | the strip states the root cause; ONE live region; one `Retry` |
+| `connection-1380x900-held-message.png` | the failed send | the message carries `Not delivered · Send again · Edit`; no second connection voice |
+| `connection-1380x900-reconnected.png` | revived daemon | the strip clears; the message's fate stays on the message |
+
+The daemon this run started was stopped by the scene itself (`revived daemon
+stopped` in `run.log`), and no process from the run outlived its boot. The
+change's 56-still pair and the twelve-palette sweep live in
+`docs/evidence/chat-status-bands/`.
