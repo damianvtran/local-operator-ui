@@ -19,6 +19,7 @@
  * describes stay gated on `desktopFeatureEnabled` individually.
  */
 
+import { useChatStatusStripPresent } from "@features/chat/chat-status-presence";
 import {
 	REQUIRED_BACKEND_FEATURES,
 	backendCompatibilityMessage,
@@ -26,7 +27,6 @@ import {
 	backendUpdateIsRemedy,
 	compatibilityBannerShown,
 } from "@shared/api/local-operator/backend-error";
-import { useChatStatusStripPresent } from "@features/chat/chat-status-presence";
 import {
 	desktopKeys,
 	useDesktopCapabilities,

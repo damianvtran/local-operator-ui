@@ -1266,7 +1266,6 @@ export function buildSendPayload(
 	return normalizeSendText(`${replyContent}\n${text}`);
 }
 
-
 export function draftIdentityFor(
 	draftKey: string | null,
 	sessionId: string | null | undefined,
@@ -4460,31 +4459,31 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						const nextCursor = normalisedCursor(result.next_cursor);
 						return {
 							sessions,
-								head: {
-									...state.head,
-									/*
-									 * THE ROWS THIS EXTENSION FETCHED ARE NOW THE TAIL, and the record
-									 * of that is what a later page-one answer must not drop. A page
-									 * whose rows the client already held adds nothing and records
-									 * nothing, which is why this appends `added` rather than the
-									 * page's ids.
-									 */
-									tailIds: [...state.head.tailIds, ...added],
-									/*
-									 * THE FRONTIER MOVES ONLY HERE. `nextCursor` is deliberately NOT
-									 * written: it is the page-one answer's own continuation, and this
-									 * extension has said nothing about the head page (QA round 2, Q2).
-									 */
-									tailCursor: nextCursor,
-									// The tail reached the end only when it says so. `head.at`
-									// is deliberately NOT advanced: it stamps the answer that
-									// is allowed to settle FACTS, and an extension must never be
-									// mistaken for one (a tail page speaks for a rank window, not
-									// for the pinned or archived set).
-									complete: nextCursor === null,
-									loading: false,
-									error: null,
-								},
+							head: {
+								...state.head,
+								/*
+								 * THE ROWS THIS EXTENSION FETCHED ARE NOW THE TAIL, and the record
+								 * of that is what a later page-one answer must not drop. A page
+								 * whose rows the client already held adds nothing and records
+								 * nothing, which is why this appends `added` rather than the
+								 * page's ids.
+								 */
+								tailIds: [...state.head.tailIds, ...added],
+								/*
+								 * THE FRONTIER MOVES ONLY HERE. `nextCursor` is deliberately NOT
+								 * written: it is the page-one answer's own continuation, and this
+								 * extension has said nothing about the head page (QA round 2, Q2).
+								 */
+								tailCursor: nextCursor,
+								// The tail reached the end only when it says so. `head.at`
+								// is deliberately NOT advanced: it stamps the answer that
+								// is allowed to settle FACTS, and an extension must never be
+								// mistaken for one (a tail page speaks for a rank window, not
+								// for the pinned or archived set).
+								complete: nextCursor === null,
+								loading: false,
+								error: null,
+							},
 						};
 					});
 				} catch (error) {

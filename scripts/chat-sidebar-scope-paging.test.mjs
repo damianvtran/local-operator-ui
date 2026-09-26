@@ -336,7 +336,11 @@ test("a page-one answer cannot rewind the tail's place, so a press after a poll 
 		["a", "b", "c", "d", "e"],
 		"the press after a poll grows the list rather than re-requesting the page it already held",
 	);
-	assert.equal(calls.at(-1).cursor, "p3", "the request continues from the frontier");
+	assert.equal(
+		calls.at(-1).cursor,
+		"p3",
+		"the request continues from the frontier",
+	);
 });
 
 test("a head refresh keeps the rows an extension fetched, and still drops the ones it denies", async () => {

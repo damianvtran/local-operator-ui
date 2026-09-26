@@ -326,7 +326,6 @@ export type CanonicalTranscriptProps = {
 
 // ---------------------------------------------------------------- rows
 
-
 const UserRow = memo(function UserRow({
 	record,
 	isSmallView,
