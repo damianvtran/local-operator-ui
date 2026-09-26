@@ -737,6 +737,17 @@ test("the mark and the heading read ONE reachability predicate (S4 agreement)", 
 	assert.equal(section.reachable, false);
 });
 
+/*
+ * THE SHIPPED SHAPE'S TWO HALVES, composed here rather than by a second spelling in
+ * the product (design round 4, D28). `peerTrailing` - the joined string - had no
+ * product caller once the row was split, so it is gone; these cases still assert the
+ * same sentences, now against the parts the row actually renders.
+ */
+const joined = (row, count, now) => {
+	const { state, detail } = peers.peerTrailingParts(row, count, now);
+	return detail === null ? state : `${state} · ${detail}`;
+};
+
 test("the Peers row's trailing statement: the grouped count when live, state and age when not", () => {
 	const now = 1_789_400_240;
 	/*
@@ -746,25 +757,18 @@ test("the Peers row's trailing statement: the grouped count when live, state and
 	 * fact, read from two sources (peer.session_count in the row, group.rows.length
 	 * in the heading), disagreed on one screen.
 	 */
-	assert.equal(peers.peerTrailing(peer(LAPTOP, "x"), 2, now), "2 chats");
-	assert.equal(peers.peerTrailing(peer(LAPTOP, "x"), 1, now), "1 chat");
-	assert.equal(peers.peerTrailing(peer(LAPTOP, "x"), 0, now), "0 chats");
+	assert.equal(joined(peer(LAPTOP, "x"), 2, now), "2 chats");
+	assert.equal(joined(peer(LAPTOP, "x"), 1, now), "1 chat");
+	assert.equal(joined(peer(LAPTOP, "x"), 0, now), "0 chats");
 	/* D1: no latency clause, whatever the catalogue claims to have measured. */
-	assert.equal(
-		peers.peerTrailing(peer(LAPTOP, "x", { rtt_ms: 24 }), 2, now),
-		"2 chats",
-	);
+	assert.equal(joined(peer(LAPTOP, "x", { rtt_ms: 24 }), 2, now), "2 chats");
 	/* D4: the unreachable trailing is SHORT, because it competes with the name. */
 	assert.equal(
-		peers.peerTrailing(peer(LAPTOP, "x", { reachable: false }), 0, now),
+		joined(peer(LAPTOP, "x", { reachable: false }), 0, now),
 		"unreachable · 4m",
 	);
 	assert.equal(
-		peers.peerTrailing(
-			peer(LAPTOP, "x", { reachable: false, last_seen_at: null }),
-			0,
-			now,
-		),
+		joined(peer(LAPTOP, "x", { reachable: false, last_seen_at: null }), 0, now),
 		"unreachable · never seen",
 	);
 	/* The full sentence is the row's `title`, so nothing is lost to the shortening. */

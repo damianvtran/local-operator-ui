@@ -202,21 +202,6 @@ export function shortAge(seconds: number): string {
 }
 
 /**
- * The `Peers` row's trailing statement - its OWN slot (peers are a different list
- * from chats, so nothing competes for it): `24ms · 2 chats` for a live peer,
- * `unreachable · last seen 4m ago` for one that is not. `rtt_ms` null is `—`,
- * never `0ms` (§2.6).
- */
-export function peerTrailing(
-	peer: PeerRow,
-	chatCount: number,
-	nowSeconds: number,
-): string {
-	const { state, detail } = peerTrailingParts(peer, chatCount, nowSeconds);
-	return detail ? `${state} · ${detail}` : state;
-}
-
-/**
  * The same statement, SPLIT so the cell can yield the right half (design round 2,
  * D4/D20).
  *
@@ -273,7 +258,7 @@ function compactAge(seconds: number): string {
 
 /**
  * The `Peers` row's full sentence, for the row's `title` - the half
- * `peerTrailing` truncates on purpose (D4).
+ * `peerTrailingParts` splits so the WORD cannot be truncated (D21): the age is the half that gives way, and `peerTrailingTitle` carries the whole sentence (D4).
  */
 export function peerTrailingTitle(
 	peer: PeerRow,

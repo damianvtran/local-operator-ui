@@ -13,7 +13,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
-import { screen, userEvent } from "@storybook/test";
+import { screen, userEvent, waitFor } from "@storybook/test";
 import type {
 	NetworkMember,
 	NetworkTopology,
@@ -298,7 +298,28 @@ export const RemoveConfirmation: Story = {
 	},
 	play: async () => {
 		await userEvent.click(await screen.findByText("Remove from network…"));
-		await screen.findByText(TYPED_CONFIRMATION);
+		/*
+		 * THE SENTENCE IS SPLIT ACROSS NODES, so an exact whole-element `findByText`
+		 * never matches it (design round 4, D26): the confirmation renders the network's
+		 * name in its own element, which is what a reader needs. The guard therefore
+		 * waits for the dialog and reads ITS text - and it throws on absence, because a
+		 * predicate that returns a null node resolves on the first tick and asserts
+		 * against a dialog that has not mounted.
+		 */
+		const dialog = await waitFor(() => {
+			const node = document.querySelector("[data-network-remove-dialog]");
+			if (!node) throw new Error("no removal dialog yet");
+			return node;
+		});
+		await waitFor(() => {
+			/* `TYPED_CONFIRMATION` is a REGEX and the dialog's sentence is split across
+			   nodes, which is why the whole-element `findByText` never matched it: match
+			   the regex against the dialog's own text. */
+			if (!TYPED_CONFIRMATION.test(dialog.textContent ?? ""))
+				throw new Error(
+					`the typed confirmation is not in the dialog: "${dialog.textContent?.slice(0, 160)}"`,
+				);
+		});
 	},
 };
 
