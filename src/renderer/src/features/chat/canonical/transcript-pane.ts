@@ -32,22 +32,41 @@ import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-
  *
  * Which gives, for a pane with no rows:
  *
- * - `speaks` -> the statement alone (the failure notice, or "Reconnecting"). The
- *   scroller still grows for it; see `collapsed` below.
- * - `!speaks && admittedSend` -> the wait line alone: the reader has just sent
- *   and is waiting on the turn, which outranks the placeholder (see
+ * - `statement` -> the statement alone (the failure notice, or "Reconnecting").
+ *   The scroller still grows for it; see `collapsed` below.
+ * - `!statement && admittedSend` -> the wait line alone: the reader has just
+ *   sent and is waiting on the turn, which outranks the placeholder (see
  *   `transcriptPaneHoldsPlaceholder`). The scroller grows for the line, which is
  *   what makes it paintable at all.
- * - `!speaks && !admittedSend && awaitingHydration` -> the placeholder: nothing
+ * - `!statement && !admittedSend && awaitingHydration` -> the placeholder: nothing
  *   has told the reader what this conversation holds yet, and the pane has
  *   nothing of its own to say.
- * - `!speaks && !admittedSend && !awaitingHydration` -> nothing at all: the pane
+ * - `!statement && !admittedSend && !awaitingHydration` -> nothing at all: the pane
  *   collapses, and the band may claim the conversation is empty because the read
  *   proved it (or because nothing here owes a read in the first place).
  *
- * A pane WITH rows paints them and holds nothing. A statement may stand above
- * them, which is not a contradiction: rows are the conversation's own content
- * and the notice is a claim about the transport that failed to extend it.
+ * A pane WITH rows of its own paints them and holds nothing. A statement may
+ * stand above them, which is not a contradiction: rows are the conversation's own
+ * content and the notice is a claim about the transport that failed to extend it.
+ *
+ * THE SIXTH INPUT IS THE CACHE'S ROWS, AND THEY ARE NOT ROWS OF THE PANE'S OWN
+ * (operator report, 2026-09-26: "there's no jitter where things seem to load at
+ * different times ... everything should load in one solid paint instead of
+ * incrementally"). A `stale` paint is this window's MEMORY of the conversation,
+ * not the conversation: painted early it is a partial state that the snapshot then
+ * corrects on screen - measured on the switch harness, a cached switch painted its
+ * rows in the click's own frame, the readings strip at +67 ms and the stale
+ * caption's removal at the same moment, which moved the whole transcript up by
+ * 33.4 px (pane top 174.4 -> 141) under the reader. The rule above read "has rows"
+ * and let all of that paint piecemeal. It now reads the cache flag the pane
+ * already carried: while a page is OWED, rows that are the CACHE's hold the
+ * placeholder exactly as no rows did, so the page - rows, readings, everything -
+ * lands in ONE commit, and what the reader sees first is the finished frame. The
+ * cache's own rows still paint on every path where the page is not coming
+ * (a refusal, a failed stream, a tombstoned id), which is where the caption that
+ * describes them belongs; and rows that are NOT the cache's (a live event, an
+ * optimistic echo) still paint while a page is owed, unchanged, because they are
+ * the conversation's own content rather than this window's memory of it.
  *
  * WHY THE READER'S QUESTION AND NOT THE TRANSPORT'S. `awaitingHydration` asks
  * whether this session is still owed a page; `status` says where the stream is.
@@ -111,6 +130,28 @@ export type CanonicalTranscriptStatus =
 	| "unavailable";
 
 /**
+ * The pane's own STATEMENT: the states in which the pane has something to say
+ * that is neither the placeholder nor the reader's rows.
+ *
+ * ONE spelling, two readers, because they must agree about which states outrank
+ * the placeholder: `canonicalTranscriptSpeaks` adds the stale paint to this set
+ * (for its callers, the caption IS something the pane is saying), while the hold
+ * below asks the narrower question - a stale paint is a reason to keep holding
+ * until the page lands, not a statement that would end the hold.
+ */
+function paneStatement(view: {
+	status: CanonicalTranscriptStatus;
+	failure: SessionFailureNotice | null;
+	missing?: boolean;
+}): boolean {
+	return (
+		view.status === "reconnecting" ||
+		(view.status === "unavailable" && Boolean(view.failure)) ||
+		Boolean(view.missing)
+	);
+}
+
+/**
  * Does the transcript pane have something of its own to say right now?
  *
  * ONE authority for the two decisions that must agree: whether the pane may
@@ -140,12 +181,7 @@ export function canonicalTranscriptSpeaks(view: {
 	missing?: boolean;
 	stale?: boolean;
 }): boolean {
-	return (
-		view.status === "reconnecting" ||
-		(view.status === "unavailable" && Boolean(view.failure)) ||
-		Boolean(view.missing) ||
-		Boolean(view.stale)
-	);
+	return paneStatement(view) || Boolean(view.stale);
 }
 
 /** The state every decision in this module reads. */
@@ -189,9 +225,9 @@ export type TranscriptPaneView = {
 /**
  * Does the pane paint the loading placeholder?
  *
- * The one row-less state where nothing else is being claimed: a page is still
- * owed for this session, and the pane has no statement of its own. See the
- * matrix at the head of this file for the other three.
+ * The one state where nothing else is being claimed: a page is still owed for
+ * this session, and the pane has no statement of its own. See the matrix at the
+ * head of this file for the other rows.
  *
  * ITS THIRD EXCLUSION IS THE ADMITTED SEND, and it is a ruling rather than a
  * convenience: a row-less pane makes ONE claim, and while a send is admitted the
@@ -201,15 +237,21 @@ export type TranscriptPaneView = {
  * waiting on the turn, and the history of a session they created seconds ago is
  * nothing they are waiting for. Keeping both would also put two loading claims
  * in one column, which is the shape `#150` exists to remove.
+ *
+ * AND ITS ROWS TERM IS WHY IT REACHES BEYOND A ROW-LESS PANE: rows this window
+ * CACHED (`stale`) do not end the hold, because they are not yet the
+ * conversation - see the cache paragraph at the head of this file. Rows that are
+ * not the cache's (any record while `stale` is false) still end it, so a live
+ * event and an optimistic echo paint exactly as they did.
  */
 export function transcriptPaneHoldsPlaceholder(
 	view: TranscriptPaneView,
 ): boolean {
 	return (
-		view.recordCount === 0 &&
 		view.awaitingHydration &&
 		!view.admittedSend &&
-		!canonicalTranscriptSpeaks(view)
+		!paneStatement(view) &&
+		(view.recordCount === 0 || view.stale === true)
 	);
 }
 
