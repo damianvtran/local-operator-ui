@@ -3639,6 +3639,37 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const isBusy = Boolean(isLoading && currentJobId);
 		const isInputDisabled = unavailable || isBusy;
+		/*
+		 * THE TWO TERMS THAT REFUSE A SEND, AND THE SENTENCE THEY RAISE, IN ONE PLACE (UX
+		 * round 7, U27).
+		 *
+		 * Three doors lead onto the same refusal - Enter, the form's own submit, and a press
+		 * that lands on the disabled Send control - and each used to spell the pair out
+		 * again. The copy on the POINTER path was the one that drifted: it inherited
+		 * `holdCaretOnRefusedPress`, whose gate is `isInputDisabled`, so a press on a Send
+		 * disabled for `noProvider || noModel` was refused SILENTLY and took the caret out of
+		 * the box (measured: `composer.focused true -> false`, value kept, no notice) while
+		 * Enter, in the very same state, raised the line and kept the caret. One term, read
+		 * by the button's `disabled`, by both refusal doors and by the press handler, is what
+		 * stops a fourth door from falling behind the other three.
+		 *
+		 * `isInputDisabled` IS DELIBERATELY NOT IN HERE, and neither is the empty box's own
+		 * disabling term: this pair is "nothing can answer", while `isInputDisabled` is the
+		 * box refusing input (whose press is suppressed and deliberately quiet), and a
+		 * control disabled for its OWN reason keeps the browser's press behaviour - see the
+		 * note on `holdCaretOnRefusedPress`.
+		 */
+		const sendRefused = noProvider || noModel;
+		/**
+		 * Refuse a send and say so, which is what the KEY already does (U27).
+		 *
+		 * One function rather than a `setNoProviderHint(true)` per door: the press and the
+		 * key have to raise the same line for the same state, and the press is exactly where
+		 * the two had drifted apart.
+		 */
+		const explainRefusedSend = useCallback(() => {
+			setNoProviderHint(true);
+		}, []);
 
 		const handleSlashAction = useCallback(
 			async (row: Extract<CompletionRow, { kind: "action" }>["row"]) => {
@@ -4283,7 +4314,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * produces the staged line that arms it.
 				 */
 				if (
-					(noProvider || noModel) &&
+					sendRefused &&
 					event.key === "Enter" &&
 					!event.shiftKey &&
 					!event.nativeEvent.isComposing
@@ -4302,9 +4333,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * AND IT SAYS SO. The refusal is right and silent, and the placeholder
 					 * that explained it disappears the moment the user types: "Enter did
 					 * nothing" with no reason is the complaint (UX round 3 U13). The line
-					 * clears itself, so it cannot become furniture.
+					 * clears itself, so it cannot become furniture. The PRESS raises the same
+					 * line through the same call (U27).
 					 */
-					setNoProviderHint(true);
+					explainRefusedSend();
 					return;
 				}
 				if (
@@ -4321,6 +4353,37 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				}
 				handleKeyDown(event);
 			},
+			/*
+			 * WHAT THIS ARRAY DOES NOT NAME, AND WHAT THAT COSTS (agent review round 1,
+			 * MINOR 3 - recorded rather than fixed). The body now reads `sendRefused` and
+			 * calls `explainRefusedSend`, and the array names neither: `isInputDisabled` is
+			 * listed because the body's own first guard reads it. A provider connected
+			 * while an untouched draft sits in the box can therefore leave a handler built
+			 * for an earlier render still answering with `sendRefused === true`.
+			 *
+			 * THE STALE BRANCH IS A SILENT NO-OP, NOT A LATE SENTENCE, and that is the
+			 * fact the recording understated: Enter is `preventDefault`ed and returns, and
+			 * the sentence the branch raises on its way out is gated by the same pair the
+			 * stale read is wrong about - the notice renders only while
+			 * `(noProvider || noModel) && noProviderHint` - so with a provider now connected
+			 * the hint is set for a notice that draws NOTHING. The reader presses Enter on a
+			 * composer that can send, and the app answers nobody.
+			 *
+			 * THAT GATE IS NAMED BY ITS OWN TEXT, NOT BY A LINE NUMBER, and the reason is the
+			 * history of this one sentence (agent review round 3, MINOR 1): three rounds have
+			 * now quoted three different numbers for the same gate - `:7122`, then `:7175`,
+			 * which the very commit that wrote it had already pushed to `:7177`, because the
+			 * anchor was recorded in the same change that added lines above it. A reference
+			 * that invalidates itself as it is written is worse than no reference, and what
+			 * the sibling recording one fact with one reference is for (round 2's NIT 1) is
+			 * a reference a reader can still resolve. The gate's own text is that reference,
+			 * and this file moves past it only when the gate itself changes.
+			 *
+			 * WHY IT STAYS OPEN. The omission is pre-existing (the base's inline
+			 * `(noProvider || noModel)` was equally unlisted), and closing it means
+			 * rebuilding this handler on every provider change - a behavioural change of
+			 * its own, with its own review, rather than a tidy-up to fold in here.
+			 */
 			[
 				slash,
 				handleSlashPick,
@@ -5062,7 +5125,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * explained rather than sent (UX round 5, U21).
 			 */
 			if (noModel) {
-				setNoProviderHint(true);
+				explainRefusedSend();
 				return;
 			}
 			if (!newMessage.trim() && attachments.length === 0) return;
@@ -5133,6 +5196,37 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				if (isInputDisabled) event.preventDefault();
 			},
 			[isInputDisabled],
+		);
+
+		/*
+		 * THE SEND CONTROL'S OWN PRESS, which the refusal's own predicate does not cover
+		 * (UX round 7, U27).
+		 *
+		 * The same suppression as above, widened to the terms THIS control is disabled by:
+		 * `sendRefused` is the pair this branch added to its `disabled`, and a press on a
+		 * control the box is refusing with has to keep the caret rather than clear it to
+		 * `<body>`. The empty box is absent here on purpose - that control is disabled for
+		 * its own reason, not because the composer refuses, so it keeps the browser's
+		 * normal press behaviour, which is the distinction `holdCaretOnRefusedPress` exists
+		 * to hold.
+		 *
+		 * AND IT ANSWERS THE WAY THE KEY DOES. The press used to be refused in silence while
+		 * Enter raised "Connect a provider to send." for its window; two doors onto one
+		 * refusal have to say the same thing, so the explanation is the same call the key
+		 * makes - and it is withheld in the one state where the KEY is silent too, the box
+		 * refusing input, because "a box that refuses input" and "nothing can answer" are
+		 * two different facts and only the second is this press's to explain.
+		 * `preventDefault` stays ONE call under one gate, for the reason the shared handler's
+		 * own note gives: a second, ungated call would swallow the press on a control
+		 * disabled for its own reason, which this refusal does not claim.
+		 */
+		const holdCaretOnSendPress = useCallback(
+			(event: PointerEvent<HTMLButtonElement>) => {
+				if (!isInputDisabled && !sendRefused) return;
+				event.preventDefault();
+				if (sendRefused && !isInputDisabled) explainRefusedSend();
+			},
+			[isInputDisabled, sendRefused, explainRefusedSend],
 		);
 
 		const handleRemoveAttachment = (id: string) => {
@@ -7200,11 +7294,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 														variant="primary"
 														size={isSmallView ? "icon-sm" : "icon"}
 														type="submit"
-														onPointerDown={holdCaretOnRefusedPress}
+														onPointerDown={holdCaretOnSendPress}
 														disabled={
 															isInputDisabled ||
-															noProvider ||
-															noModel ||
+															sendRefused ||
 															(!newMessage.trim() && attachments.length === 0)
 														}
 														className="rounded-full disabled:bg-surface"

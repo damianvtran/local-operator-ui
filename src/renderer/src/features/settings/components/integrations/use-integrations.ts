@@ -45,7 +45,7 @@ import {
 	LEGACY_CATALOGUE_PAGE,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryKey, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DesktopRequest } from "../../../../../../shared/desktop-contract";
 import type {
@@ -471,6 +471,14 @@ export type UseIntegrations = {
 	/** True when the fallback has no conversation at all to read through. */
 	noConversation: boolean;
 	document: IntegrationDocument | undefined;
+	/**
+	 * The same document, read from the cache ON DEMAND rather than carried by a
+	 * render (QA round 3, Q-1). A poll whose payload is deeply equal to the cached one
+	 * keeps its reference, so nothing gated on `document`'s identity need run again -
+	 * this answers with what the last poll wrote either way, and it is what lets the
+	 * page's focus rule see a row whose operation is still in flight.
+	 */
+	readDocument: () => IntegrationDocument | undefined;
 	isLoading: boolean;
 	isError: boolean;
 	/** True while the chat's folder is one the backend refused (`invalid_cwd`). */
@@ -702,6 +710,28 @@ export function useIntegrations({
 			return catalogFromSessionState(sessionQuery.data, readSessionId);
 		return undefined;
 	}, [route, catalogQuery.data, sessionQuery.data, readSessionId]);
+
+	/*
+	 * THE DOCUMENT AS THE LAST READ OF IT STANDS, asked on demand (QA round 3, Q-1; UX
+	 * round 3, U31): the `document` above is a RENDER's value, and a render is not
+	 * something a poll is guaranteed to produce - React Query's structural sharing hands
+	 * the same object back for a payload deeply equal to the cached one - so anything
+	 * that has to answer "is this row still doing its own work" seconds into an
+	 * operation cannot read its term off one. The read itself is `documentFromCache`,
+	 * below: EXPORTED and a function of its arguments rather than of this hook's
+	 * closure, because the only cells that reached it before read this call site as
+	 * text (agent review round 4, MINOR 2).
+	 */
+	const readDocument = useCallback(
+		(): IntegrationDocument | undefined =>
+			documentFromCache({
+				queryClient,
+				route,
+				catalogKey,
+				sessionId: readSessionId,
+			}),
+		[route, catalogKey, queryClient, readSessionId],
+	);
 
 	/*
 	 * A live read is the CONFIRMATION the window is waiting for, so it closes as
@@ -1043,9 +1073,62 @@ export function useIntegrations({
 		 */
 		folderUnavailable: folderUnavailableFor(refusedCwd, resolvedCwd),
 		refetch,
+		readDocument,
 		control: liveControl,
 		storeKeys,
 		memories,
 		markNeedsKey,
 	};
+}
+
+/*
+ * THE DOCUMENT AS THE LAST READ OF IT STANDS, asked on demand (QA round 3, Q-1; UX
+ * round 3, U31).
+ *
+ * WHY IT IS NOT THE HOOK'S `document`. That value is a RENDER's, and a render is not
+ * something a poll is guaranteed to produce: React Query's structural sharing hands
+ * the same object back for a payload deeply equal to the cached one, and an observer
+ * that tracks only the props its render reads is not notified when none of them
+ * changed - so for the whole length of a slow operation (`connecting` in every poll,
+ * `pollIntervalFor` asking every 2 s) the section can re-render not at all. Anything
+ * that has to answer "is this row still doing its own work" seconds into an operation
+ * therefore cannot read its term off a render: it would keep the value the action
+ * armed it with and drop the row's focus move mid-operation, which is the round-3
+ * defect (QA round 3, Q-1).
+ *
+ * This reads the CACHE, which every poll writes whether or not the reference is
+ * renewed, so the answer is fresh within one poll and independent of whether React
+ * chose to paint. It is a READ and not a subscription: the caller is a rule with a
+ * window to maintain, not a view.
+ *
+ * WHY IT IS EXPORTED AND TAKES ITS ARGUMENTS RATHER THAN CLOSING OVER THE HOOK'S (agent
+ * review round 4, MINOR 2). Nothing in the tree exercised this body: a mutation that
+ * made it `return undefined` - the load-bearing half of the round-3 fix - and the one
+ * that made it `return document`, its revert one level down, both left
+ * `scripts/integration-model.test.mjs` at 64/64, because the only cells that reached it
+ * read the hook's CALL SITE as text. As a function of a cache and two keys it is
+ * drivable with a fake client exactly as `focusHoldWindow` and `focusHoldRead` are, and
+ * the hook's own `readDocument` is the one-line call it should always have been.
+ */
+export function documentFromCache(args: {
+	/** The cache every poll writes; only `getQueryData` is read. */
+	queryClient: { getQueryData: (key: QueryKey) => unknown };
+	/** Which route is serving the document (`useIntegrations`' own union). */
+	route: "catalog" | "session" | null;
+	/** The catalog query's key, for the `catalog` route. */
+	catalogKey: QueryKey;
+	/** The conversation the fallback route reads through, when it has one. */
+	sessionId: string | null;
+}): IntegrationDocument | undefined {
+	if (args.route === "catalog")
+		return args.queryClient.getQueryData(args.catalogKey) as
+			| McpCatalog
+			| undefined;
+	if (args.route === "session" && args.sessionId) {
+		const data = args.queryClient.getQueryData(mcpKeys.list(args.sessionId)) as
+			| DesktopMcpState
+			| undefined;
+		return data ? catalogFromSessionState(data, args.sessionId) : undefined;
+	}
+	return undefined;
 }

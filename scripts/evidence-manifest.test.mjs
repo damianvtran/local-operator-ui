@@ -1047,6 +1047,17 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"markSpokenRestampNote",
 	/*
+	 * THIS BRANCH'S OWN, and the ONE entry the seventh fold adds: it states the pair
+	 * THIS FILE SHIPS as its opening claim - the fold onto `fac2e11ec7` (#493), whose
+	 * pair it re-derives in the fold commit itself - so a reader is owed the check
+	 * rather than the prose. WHY IT WAS NOT HERE BEFORE AND IS NOW: the six folds
+	 * before it wrote their binding as prose with no backticked stamp token and said
+	 * so in as many words, which the earlier version of that note still records. The
+	 * moment the note states the pair as the claim it is, the list's own criterion
+	 * ("THIS FILE'S BINDING is its subject") is met, and leaving it out would be a
+	 * check silently not run for the one note a fold's reader reaches for first.
+	 */
+	"focusHoldOperationRestampNote",
 	/*
 	 * The draft-warm pass's own: it re-stamps a change that moves BOTH trees -
 	 * the contract, store, hooks and panel on one side, the two suites that pin
