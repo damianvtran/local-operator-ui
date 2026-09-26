@@ -2685,9 +2685,20 @@ function SessionPanel({
 		code: sendErrorCode,
 		retry: sendErrorRetry,
 		muted: sendErrorMuted,
-		rowError: draft?.error,
-		rowCode: draft?.errorCode,
-		rowRetry: draft?.errorRetry,
+		/*
+		 * THE ROW IS THE FAILURE'S HOME, SO THE COMPOSER DOES NOT RESTATE IT (S4).
+		 * `pendingNow` answers whether a retained row exists for this identity: when
+		 * it does, the sentence, the controls and the press all belong to that row
+		 * (`deliveryTurn` above), and this notice would be the same failure told
+		 * twice - measured in this change's own driver run as "Couldn't confirm your
+		 * message was sent. Sending it again is safe.RetryClear" standing over a row
+		 * that already said it, which is the contradiction J4 forbids. The inputs go
+		 * `undefined` rather than empty so `composerNoticeFor`'s own arms (the
+		 * late-delivery note, the pre-paint copies) are untouched.
+		 */
+		rowError: pendingNow ? undefined : draft?.error,
+		rowCode: pendingNow ? undefined : draft?.errorCode,
+		rowRetry: pendingNow ? undefined : draft?.errorRetry,
 		lateDelivered,
 	});
 	/*
