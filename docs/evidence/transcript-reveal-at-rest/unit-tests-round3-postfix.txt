@@ -1,0 +1,22 @@
+# Against this branch's modules (fix commit 9fafb5f2b3, after the fold): 41/41, and the hook
+# suite 2/2 (unchanged this round). The suite grew by the two cases above.
+
+== pagination suite ==
+ℹ tests 41
+ℹ suites 0
+ℹ pass 41
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 425.65125
+
+== hook suite ==
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2168.640834

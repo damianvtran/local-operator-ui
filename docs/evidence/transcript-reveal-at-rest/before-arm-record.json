@@ -2,7 +2,7 @@
 	"arm": "before",
 	"ref": "origin/main",
 	"sha256Before": {
-		"src/renderer/src/features/chat/canonical/scroll-paging.ts": "d525e500ceb829ff",
+		"src/renderer/src/features/chat/canonical/scroll-paging.ts": "352a3d55bbdbf88b",
 		"src/renderer/src/features/chat/canonical/use-scroll-paging.ts": "4cf55619fef9c915"
 	},
 	"sha256AfterSwap": {
@@ -10,10 +10,10 @@
 		"src/renderer/src/features/chat/canonical/use-scroll-paging.ts": "e78cfcd67a34e425"
 	},
 	"sha256Restored": {
-		"src/renderer/src/features/chat/canonical/scroll-paging.ts": "d525e500ceb829ff",
+		"src/renderer/src/features/chat/canonical/scroll-paging.ts": "352a3d55bbdbf88b",
 		"src/renderer/src/features/chat/canonical/use-scroll-paging.ts": "4cf55619fef9c915"
 	},
 	"restored": true,
 	"harnessExit": 0,
-	"note": "Digests are SHA-256 truncated to 16 hex; re-derive with `git show HEAD:<path> | shasum -a 256 | cut -c1-16`. RE-STAMPED FROM THE COMMITTED HEAD BYTES (design round 2's digest observation): the capture run printed the capture tree's digests (`scroll-paging.ts` 2a5c4056b1111f36, `use-scroll-paging.ts` b375dea0a576d08e — the tip before the 6966->6834 restatement and biome's one-line collapse of the F1 gate landed; those two text-level edits are the whole difference). The swapped digests re-derive from `origin/main` = 53ce0d4876, which the later folds did not move for these files."
+	"note": "Digests are SHA-256 truncated to 16 hex; re-derive with `git show HEAD:<path> | shasum -a 256 | cut -c1-16`. RE-STAMPED FROM THE COMMITTED HEAD BYTES (design round 2's digest observation, re-stamped again in round 3): the capture run printed the capture tree's digests (`scroll-paging.ts` 2a5c4056b1111f36, `use-scroll-paging.ts` b375dea0a576d08e). That tree predates three later edits: the 6966->6834 comment restatement, the round-3 strict reading of rule 2 (the down branch no longer clears `actFetchSpent`) with F3's lurch-sentence removal, and biome's one-line collapse of the F1 gate in use-scroll-paging.ts. The swapped digests re-derive from `origin/main` = 53ce0d4876, which the later folds did not move for these files."
 }
