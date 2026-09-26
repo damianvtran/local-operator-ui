@@ -26,11 +26,15 @@ Two of the states' arms had been dead on this head since earlier merges, and
 that is recorded here rather than left to the next reader to rediscover:
 
 - `held-press` replaces `refusal`. The state the old arm drove — the composer
-  painting "Sending works once it is ready" — has not existed since #464: a
-  press made before anything has confirmed the target is HELD and then
-  admitted, so the sentence never paints and the arm died waiting for it
-  (measured on this head: typing and pressing Enter leaves the words in the
-  box, no alert, no request). The frame is now what a reader gets instead: the
+  painting "Sending works once it is ready" — is not on the route its gesture
+  takes any more: a press made before anything has confirmed the target is HELD
+  and then admitted since #464, so the arm died waiting for a sentence its own
+  press cannot paint (measured on this head: typing and pressing Enter leaves
+  the words in the box, no alert, no request). The sentence itself survives on
+  two routes this arm cannot reach — the failed window's fallback
+  (`chat-page.tsx`) and the store's admit backstop
+  (`canonical-sessions-store.ts`) — which is why the state is replaced rather
+  than merely re-labelled. The frame is now what a reader gets instead: the
   words still in the box, no error row, and zero `sessions.message` on the
   transport — the last of those is asserted, because a still cannot show it.
 - `error`'s arm waited for the rollback, which #464 deleted with the guard read
