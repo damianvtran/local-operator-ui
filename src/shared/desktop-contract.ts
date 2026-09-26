@@ -902,6 +902,17 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			 * different request for every caller that never asked.
 			 */
 			model: modelSelection.optional(),
+			/*
+			 * The id a `sessions.draft` mint handed the pane, when it has one: the
+			 * create then adopts that id (and the runtime already engaged for it)
+			 * instead of minting a fresh session id. OMITTED when the pane never
+			 * minted — an older backend, a draft the user sent before the first
+			 * keystroke's mint answered, or a set of fields that changed since the
+			 * mint (see the store's drop rule) — so the body is byte-for-byte the
+			 * request this op sent before the draft could be warmed, and a backend
+			 * that cannot resolve the id mints fresh rather than failing the send.
+			 */
+			draftId: sessionId.optional(),
 		})
 		.strict(),
 	/*
@@ -935,6 +946,51 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			/* Present only when the pane's chips were used: the preview then answers
 			   the reading the CHOSEN model gives, which is the ladder and window the
 			   first turn will actually get. */
+			model: modelSelection.optional(),
+		})
+		.strict(),
+	/*
+	 * Mint the id a NEW chat's runtime is warmed and then born on, from the
+	 * pane's first keystroke.
+	 *
+	 * WHY THE OP EXISTS. A draft pane has no session to address, so there is
+	 * nothing to warm: `sessions.warm` needs an id, and the multi-second engage
+	 * the first send pays is exactly what the draft cannot pre-empt without one.
+	 * The mint allocates that id and registers it with the daemon (fast, no
+	 * engage), and the id then unlocks the same three doors a session pane uses
+	 * — `events`, `watch` (the lease) and `warm` — through a deliberately narrow
+	 * allow-list on the backend. `sessions.create` adopts the id on send, so the
+	 * conversation the user lands in IS the one that was warmed; a daemon that
+	 * has never seen the id (restart, expiry, eviction) mints fresh and the send
+	 * works exactly as it did before this op existed.
+	 *
+	 * THE MINT ENGAGES NOTHING, and that is the lifetime design rather than an
+	 * omission: the pane's own subscription and watch lease hold the bridge that
+	 * keeps a warm alive, exactly as they do for a session, so abandoning the
+	 * pane cancels an in-flight warm through the same `_detach` and a runtime
+	 * nobody holds is reaped by the residency drain. There is no second, warmer-
+	 * owned lifetime to get wrong.
+	 *
+	 * `requestId` IS A RECEIPT KEY, unlike `sessions.preview`'s token: a mint is
+	 * fired once per pane, and a retry — a fast second keystroke, a lost
+	 * response — must replay the SAME id, because two ids for one pane would
+	 * warm two runtimes and leave a registry entry nobody can ever consume.
+	 *
+	 * The body is `sessions.create`'s first half, deliberately: same `cwd` bounds,
+	 * same optional `target`, same optional `model` and the same 422 for an
+	 * unresolvable profile. The pane is asking the question it will ask for real
+	 * on the first send, so both derive from one selection and cannot disagree.
+	 *
+	 * Deliberately NOT a `MESSAGE_OPS` member (see `desktopRequestByteBudget`):
+	 * a path and two optional short ids are not prose, so the mint costs the
+	 * control budget — which is what lets a KEYSTROKE issue it.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.draft"),
+			requestId,
+			cwd: z.string().min(1).max(4096),
+			target: target.optional(),
 			model: modelSelection.optional(),
 		})
 		.strict(),
@@ -3400,11 +3456,25 @@ export function desktopEndpoint(request: DesktopRequest): {
 					cwd: request.cwd,
 					...(request.target ? { target: request.target } : {}),
 					...(request.model ? { model: request.model } : {}),
+					// Omitted, not nulled, when the pane has no minted id: see the field's
+					// own note for the byte-identity promise this keeps.
+					...(request.draftId ? { draft_id: request.draftId } : {}),
 				},
 			};
 		case "sessions.preview":
 			return {
 				path: "/v1/desktop/sessions/preview",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					cwd: request.cwd,
+					...(request.target ? { target: request.target } : {}),
+					...(request.model ? { model: request.model } : {}),
+				},
+			};
+		case "sessions.draft":
+			return {
+				path: "/v1/desktop/sessions/draft",
 				method: "POST",
 				body: {
 					request_id: request.requestId,

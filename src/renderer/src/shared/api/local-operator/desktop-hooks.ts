@@ -241,6 +241,20 @@ export type DesktopFeature =
 	 * first send creates is the dead affordance R20 forbids.
 	 */
 	| "draft_selection"
+	/**
+	 * `sessions.draft` plus the draft allow-list on `events`/`watch`/`warm`, and
+	 * `sessions.create` accepting `draft_id`: a NEW chat's runtime can be engaged
+	 * from the first keystroke instead of on the send.
+	 *
+	 * Its own key rather than a bump of `draft_preview`/`draft_selection`, for
+	 * the rule this union states in several places: the draft pane is fully
+	 * useful without this — it simply pays the engage on the first send, exactly
+	 * as it always has — so a backend that cannot warm drafts must leave today's
+	 * wiring rather than lose the preview or the chips with it. Absent also
+	 * means NO mint call at all: the mint would spend a round trip learning 404
+	 * against every older daemon, from a keystroke, for nothing.
+	 */
+	| "session_draft_warm"
 	| "lifecycle"
 	| "mcp"
 	| "mcp_auth"

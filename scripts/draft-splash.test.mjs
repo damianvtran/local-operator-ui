@@ -72,6 +72,8 @@ import { build } from "esbuild";
  */
 
 const SESSION = "7c9e6679-7425";
+/** A `sessions.draft` minted id: the same 12-hex shape a session id has. */
+const DRAFT_ID = "c9fc2c68b834";
 
 const bundle = await build({
 	stdin: {
@@ -83,10 +85,10 @@ const bundle = await build({
 			 * Renders the hook ONCE and hands back the handle it returned. The
 			 * probe renders nothing on purpose: the handle is the whole subject.
 			 */
-			export const handleFor = (sessionId, enabled) => {
+			export const handleFor = (sessionId, enabled, isSession) => {
 				let handle = null;
 				const Probe = () => {
-					handle = useCanonicalSessionStream(sessionId, enabled);
+					handle = useCanonicalSessionStream(sessionId, enabled, isSession);
 					return null;
 				};
 				renderToStaticMarkup(createElement(Probe));
@@ -310,6 +312,47 @@ test("a New chat's draft leaves the pane with nothing to claim", () => {
 		transcriptPaneCollapses(view),
 		true,
 		"the pane kept the column's free height, so the splash could not have it",
+	);
+});
+
+test("a draft that HOLDS a stream owes no page either: the subscription is a bridge, not a conversation", () => {
+	/*
+	 * The draft pre-engage gives the pane a stream before any session exists
+	 * (`sessions.draft`'s minted id, subscribed to keep the warm alive), so the
+	 * pane the first test above describes now has `enabled: true` with an id -
+	 * the state that falsifies the sentence "a draft has neither". Unfixed, the
+	 * pane held `Loading conversation…` over its empty state for the draft's
+	 * first ~200 ms (UX round 1, U1). The third input is the caller's answer
+	 * that this id is a DRAFT's; the SAME id read as a session's keeps waiting,
+	 * which is what makes the term the discriminator rather than the id's shape.
+	 */
+	const bridged = handleFor(DRAFT_ID, true, false);
+	assert.equal(
+		waits(bridged),
+		false,
+		"a bridge subscription is not a page anyone is waiting for; the empty state stays the pane's claim",
+	);
+	assert.equal(
+		waits(handleFor(DRAFT_ID, true)),
+		true,
+		"and the term is what discriminates: the same id as a session's is a page still owed",
+	);
+	// The pane's rule, on the bridged draft's own composed fact: nothing to hold.
+	const view = {
+		status: "connecting",
+		failure: null,
+		awaitingHydration: waits(bridged),
+		recordCount: 0,
+	};
+	assert.equal(
+		transcriptPaneHoldsPlaceholder(view),
+		false,
+		"so the skeleton never flashes between the first keystroke and the draft's first frame",
+	);
+	assert.equal(
+		transcriptPaneCollapses(view),
+		true,
+		"and the splash keeps the column while the user types",
 	);
 });
 
