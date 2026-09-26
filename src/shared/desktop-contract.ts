@@ -1474,6 +1474,31 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	/*
+	 * The per-model rate table's own read, and a SEPARATE op on purpose.
+	 *
+	 * Its rows come from a grouped scan of the RAW LEDGER rather than from the
+	 * rollup `analytics.get` reads, which is what makes it cover the operator's
+	 * whole existing history rather than only the days since the rollup shipped
+	 * — and is also what makes it cost seconds on a large ledger. Riding
+	 * `analytics.get` would add that scan to every analytics panel load,
+	 * including the ones that never scroll to the table, so it is fetched on its
+	 * own and its wait is bounded and stated on its own section.
+	 *
+	 * Same arguments as `analytics.get`, same `.strict()` door, same window
+	 * bounds: the two ops are windowed by the same `since_ms`/`until_ms`, which
+	 * is the one property that lets a reader hold a row here against the
+	 * headline Total above it.
+	 */
+	z
+		.object({
+			op: z.literal("analytics.models"),
+			sessionId: sessionId.optional(),
+			sinceMs: z.number().int().nonnegative().optional(),
+			untilMs: z.number().int().nonnegative().optional(),
+			days: z.number().int().min(1).max(366).optional(),
+		})
+		.strict(),
+	/*
 	 * The two diagnostics reads. They ride their own capability key
 	 * (`diagnostics`) rather than the catalogue one, because `/analytics` and
 	 * `/failovers` must keep working against a backend that lacks these routes.
@@ -2427,6 +2452,15 @@ const DESKTOP_LONG_READ_DEADLINE_MS = 90_000;
  */
 const LEDGER_READ_OPS: ReadonlySet<string> = new Set([
 	"analytics.get",
+	/*
+	 * The worst case of the same shape, and the reason the set is spelled by
+	 * shape rather than by measured cost: `/analytics/models` is a grouped scan
+	 * of the raw ledger with no covering index, measured in SECONDS on a 1.95 M
+	 * row ledger where `analytics.get` measures 12-40 s cold. On the control
+	 * budget it would be abandoned mid-read on nearly every open, so it is here
+	 * beside the op it is a slower sibling of.
+	 */
+	"analytics.models",
 	"sessions.report",
 ]);
 
@@ -2561,6 +2595,7 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"capabilities",
 	"accounts.list",
 	"analytics.get",
+	"analytics.models",
 	"commands.entities",
 	"commands.list",
 	"config.get",
@@ -2609,6 +2644,7 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
  */
 const PANEL_READ_OPS: ReadonlySet<string> = new Set([
 	"analytics.get",
+	"analytics.models",
 	"usage.get",
 	"sessions.report",
 	"info.get",
@@ -2996,6 +3032,52 @@ export type ProviderMethod = {
 	kind: "api_key" | "browser" | "device";
 	requires_secret_input: boolean;
 	paste_fallback: boolean;
+	/**
+	 * The model this method would make the default on a machine with none, as
+	 * the backend's one suggestion map states it. Optional because backends
+	 * before the suggested-defaults change do not send it; absent and `null`
+	 * both mean "no suggestion to show", and nothing is derived in its place.
+	 */
+	suggested_model?: SuggestedModel | null;
+};
+
+/** A backend-owned model suggestion: the id to write and the name to show. */
+export type SuggestedModel = { id: string; name: string };
+
+/**
+ * What a successful sign-in or key save did to the default model.
+ *
+ * The backend decides and writes it (`plan_login_defaults`, the same planner
+ * the terminal uses), and the renderer only renders the `receipt` sentence and
+ * offers "Change": re-deriving the decision here would be a second planner that
+ * can disagree with the one that actually wrote the config.
+ *
+ * - `hosting`/`model` set: this is what was written.
+ * - `hosting` null with a `receipt`: nothing was written, only explained.
+ * - the whole field `null`: an existing working default was left alone.
+ */
+export type DefaultsApplied = {
+	hosting: string | null;
+	/** The model ID. */
+	model: string | null;
+	/** The model's display name, e.g. "Claude Opus 5.5". */
+	model_name: string | null;
+	/** One user-facing sentence describing what happened. */
+	receipt: string;
+};
+
+/**
+ * The result of `auth.key` (PUT /v1/auth/providers/{id}/key).
+ *
+ * Every field is optional: a backend before key validation answers `{}`. A
+ * REJECTED key never arrives here -- it is a 422 whose `detail` names the
+ * reason, and nothing is stored. `valid: null` is "saved, but not checked",
+ * with `reason` saying why.
+ */
+export type SaveKeyResult = {
+	valid?: boolean | null;
+	reason?: string | null;
+	defaults_applied?: DefaultsApplied | null;
 };
 export type DesktopProvider = {
 	id: string;
@@ -3012,6 +3094,8 @@ export type DesktopProvider = {
 	has_credential: boolean;
 	stored_credentials: number;
 	base_url: string | null;
+	/** See `ProviderMethod.suggested_model`; optional for older backends. */
+	suggested_model?: SuggestedModel | null;
 };
 export type AuthOperation = {
 	id: string;
@@ -3030,6 +3114,31 @@ export type AuthOperation = {
 	input_required: boolean;
 	prompt_id: string | null;
 	expires_in: number;
+	/*
+	 * The fields below are additive (backend suggested-defaults change) and are
+	 * optional because an older backend omits them. Every reader falls back to
+	 * what the older snapshot already carried: `instructions` for the device
+	 * code, `auth_url` for the page, and "paste only when asked" for the input.
+	 */
+	/** What the sign-in changed about the default model; only on `succeeded`. */
+	defaults_applied?: DefaultsApplied | null;
+	/** A device flow's one-time code, as its own field. */
+	user_code?: string | null;
+	/**
+	 * A loopback alias for the SAME page as `auth_url`, reported by every
+	 * callback flow on the newer backend (`http://localhost:<port>/launch`), and
+	 * never by a device flow. It is not a second page and not a device page: a
+	 * reader that names a provider to the user takes `auth_url`'s host, which is
+	 * what the panel does (code round 1 M1).
+	 */
+	launch_url?: string | null;
+	/**
+	 * True when the paste box is only a FALLBACK: the flow completes on its own
+	 * when the browser redirects back, and the box exists for the case where it
+	 * cannot (Anthropic). False/absent with `input_required` means the paste is
+	 * the flow itself.
+	 */
+	input_optional?: boolean;
 };
 export type BackendSetting = {
 	key: string;
@@ -3708,6 +3817,25 @@ export function desktopEndpoint(request: DesktopRequest): {
 				query.set("until_ms", String(request.untilMs));
 			return { path: `/v1/desktop/analytics?${query}`, method: "GET" };
 		}
+		/*
+		 * `/analytics/models`, NOT `/analytics?models=1`.
+		 *
+		 * The path segment is what keeps the two reads separable at the
+		 * transport: `desktopRequestDeadlineMs` sizes a wait from the op, and an
+		 * op that sometimes means "the cheap rollup" and sometimes "a 1.95 M-row
+		 * ledger scan" cannot have one honest budget. The two spellings of the
+		 * query string below are deliberately identical to `analytics.get`'s, so
+		 * the server resolves one window from either.
+		 */
+		case "analytics.models": {
+			const query = new URLSearchParams({ days: String(request.days ?? 30) });
+			if (request.sessionId) query.set("session_id", request.sessionId);
+			if (request.sinceMs !== undefined)
+				query.set("since_ms", String(request.sinceMs));
+			if (request.untilMs !== undefined)
+				query.set("until_ms", String(request.untilMs));
+			return { path: `/v1/desktop/analytics/models?${query}`, method: "GET" };
+		}
 		case "info.get":
 			/* No parameters: `/info` has exactly one answer per host. */
 			return { path: "/v1/desktop/info", method: "GET" };
@@ -4123,9 +4251,93 @@ export type DesktopUsageAggregate = {
 	context_tokens: number;
 	cost_micro: number;
 	cost_known_calls: number;
+	/**
+	 * The measured GENERATION window, in integer microseconds, summed over the
+	 * calls that have one — and its two companions.
+	 *
+	 * ADDITIVE and OPTIONAL, which is the whole reason they are declared that
+	 * way rather than as required fields: they are ordinary new fields on
+	 * `dataclasses.asdict(UsageAggregate)`, so a backend that predates the
+	 * feature omits them, and the panel's existing By-provider and By-session
+	 * tables gain a rate column with no new request and no added latency. An
+	 * absent triple means "no call in scope was measured", which is the same
+	 * fact a present `{0, 0, 0}` states; both render the unknown spelling.
+	 *
+	 * `decode_us` starts at the FIRST output delta and ends at the last, so it
+	 * excludes time-to-first-token, provider queueing and consumer backpressure.
+	 * That is what makes it a generation rate rather than a wall rate, and it is
+	 * also why it is forward-fill: there is nothing to backfill it from. The
+	 * rate is `decode_tokens / (decode_us / 1e6)`, and it is UNKNOWN — `—`,
+	 * never `0 tok/s` — whenever `decode_calls === 0`. See the wall half on
+	 * {@link DesktopModelRate}, which is a DIFFERENT quantity and deliberately
+	 * not on this type.
+	 */
+	decode_us?: number;
+	/** Output tokens over exactly the calls counted by `decode_calls`. */
+	decode_tokens?: number;
+	/** How many calls contributed a measured window. `0` means unknown, not zero. */
+	decode_calls?: number;
 	components: Record<string, number>;
 	by_provider: Record<string, DesktopUsageAggregate>;
 	by_session: Record<string, DesktopUsageAggregate>;
+};
+
+/**
+ * One `analytics.models` row: a `(provider, model_id)` group of the RAW LEDGER.
+ *
+ * Two rates live on this type and they are different quantities, so the field
+ * names differ rather than sharing a `tokens`/`us` pair with a label:
+ *
+ * - **`decode_*`** is the measured generation window, the same triple
+ *   {@link DesktopUsageAggregate} carries. Forward-fill: calls recorded before
+ *   the feature contribute `0/0`, so `decode_calls === 0` means the rate is
+ *   unknown and renders `—`.
+ * - **`wall_*`** is the whole call: `wall_tokens / (wall_us / 1e6)` over calls
+ *   that have a duration and reported output tokens. It is built from two
+ *   already-stored columns, so it covers the operator's ENTIRE existing history
+ *   with no migration. It is a WALL rate — it includes time-to-first-token,
+ *   provider queueing and any consumer backpressure — and it must never be
+ *   labelled or read as decode speed. Where the two differ, that gap is the
+ *   diagnosis rather than a defect.
+ *
+ * Both rates come from ONE grouped scan, which is why this is its own op: it
+ * costs seconds on a large ledger and must not ride the panel's headline read.
+ * Every field is an integer.
+ */
+export type DesktopModelRate = {
+	provider: string;
+	model_id: string;
+	/** Every call in the group, twice over: the decode and wall counts are subsets. */
+	calls: number;
+	output_tokens: number;
+	decode_us: number;
+	decode_tokens: number;
+	decode_calls: number;
+	/** Microseconds summed over calls with `duration_ms > 0`. */
+	wall_us: number;
+	wall_tokens: number;
+	/** How many calls contributed a wall window. */
+	wall_calls: number;
+};
+
+/**
+ * `analytics.models`'s `data`.
+ *
+ * `scope` is the store's own word for where the rows came from — `"ledger"`,
+ * never the rollup the headline reads — and it is carried rather than assumed
+ * so a section that renders these rows can say which source it is quoting.
+ *
+ * `since_ms`/`until_ms` are the bounds the scan actually ran with, echoed back,
+ * and are `null` when the request gave none. They are NOT the panel's own
+ * window: the panel derives its window once and passes it, and this echo is
+ * what lets the section's meta line state the window the rows were read over
+ * rather than the one the toolbar currently shows.
+ */
+export type DesktopAnalyticsModelsData = {
+	rows: DesktopModelRate[];
+	scope: string;
+	since_ms: number | null;
+	until_ms: number | null;
 };
 
 /** One `usage_daily` rollup bucket, oldest-first across the series. */

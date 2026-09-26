@@ -105,10 +105,63 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
  * for the same reason: a store that resolves `localStorage` once, at import,
  * stays storage-less for the whole file if that read throws.
  */
-const bootstrapDOM = new JSDOM("<!doctype html>", { url: "http://localhost/" });
+const bootstrapDOM = new JSDOM("<!doctype html>", {
+	url: "http://localhost/",
+	/* JSdom grows its own `requestAnimationFrame` only when it is visual, and Radix's
+	 * menu mount waits on one. */
+	pretendToBeVisual: true,
+});
 globalThis.window = bootstrapDOM.window;
 globalThis.document = bootstrapDOM.window.document;
 globalThis.localStorage = bootstrapDOM.window.localStorage;
+/*
+ * jsdom has no layout, so it ships no `scrollIntoView` — and this grid calls it
+ * on the row whose panel opens (the focus the collapse hands back), which would
+ * otherwise throw inside a passive effect and take the case down with it. The
+ * substitution is the one `scripts/browser-tab-strip-focus.test.mjs` and
+ * `scripts/picker-host-selection.test.mjs` already make for the same call.
+ */
+bootstrapDOM.window.Element.prototype.scrollIntoView = () => {};
+/*
+ * The globals Radix and its popper reach for as BARE names when a menu mounts,
+ * which is how a Connected row opens its panel: the focus scope watches the
+ * layer with a `MutationObserver` and tells a hidden node from a visible one
+ * with `getComputedStyle`, its tab walk is built with a bare `NodeFilter` and a
+ * bare `instanceof` per control type, floating-ui decides whether a node is an
+ * element with a bare `Element`, and the content sizes itself with a
+ * `ResizeObserver`. `requestAnimationFrame` is REACHED but deliberately never
+ * runs: floating-ui only starts a frame loop when it is asked for one (`animationFrame`
+ * is false for these surfaces), so a real timer here would only add a queue with
+ * no ordering against React's. Two of those have no analogue outside a browser:
+ * jsdom is not visual here, and the observer is the no-op the app's other jsdom
+ * menu harness uses. The set is `scripts/chat-image-expand.test.mjs`'s, which
+ * drives the app's other Radix menu from jsdom for the same reason; these cases
+ * need it only because the row's overflow menu is the control that opens a
+ * Connected row's panel.
+ */
+globalThis.HTMLElement = bootstrapDOM.window.HTMLElement;
+globalThis.Element = bootstrapDOM.window.Element;
+globalThis.Node = bootstrapDOM.window.Node;
+globalThis.Event = bootstrapDOM.window.Event;
+globalThis.CustomEvent = bootstrapDOM.window.CustomEvent;
+globalThis.MouseEvent = bootstrapDOM.window.MouseEvent;
+globalThis.KeyboardEvent = bootstrapDOM.window.KeyboardEvent;
+globalThis.MutationObserver = bootstrapDOM.window.MutationObserver;
+globalThis.NodeFilter = bootstrapDOM.window.NodeFilter;
+globalThis.HTMLInputElement = bootstrapDOM.window.HTMLInputElement;
+globalThis.getComputedStyle = bootstrapDOM.window.getComputedStyle.bind(
+	bootstrapDOM.window,
+);
+globalThis.requestAnimationFrame =
+	bootstrapDOM.window.requestAnimationFrame.bind(bootstrapDOM.window);
+globalThis.cancelAnimationFrame = bootstrapDOM.window.cancelAnimationFrame.bind(
+	bootstrapDOM.window,
+);
+globalThis.ResizeObserver = class {
+	observe() {}
+	unobserve() {}
+	disconnect() {}
+};
 globalThis.__RIG_ENV__ = {
 	VITE_LOCAL_OPERATOR_API_URL: "http://127.0.0.1:1",
 	VITE_RADIENT_SERVER_BASE_URL: "https://api.example.invalid/v1",
@@ -511,8 +564,20 @@ const createElement = React.createElement;
 const REFUSED_DETAIL = /no longer accepts the sign-in stored on this machine/;
 const UNVERIFIED_DETAIL =
 	/could not confirm the sign-in stored on this machine/;
-/** The control an opened provider panel carries, and the closed grid does not. */
-const BACK_TO_PROVIDERS = /back to providers/i;
+/*
+ * The panel's own sign-in control, and the receipt's action -- the two controls a
+ * case here presses INSIDE an opened panel.
+ *
+ * Named by their words rather than by position, because the panel's anatomy
+ * moved with the rest of this change: the primary action is "Continue in
+ * browser" / "Get a sign-in code" (the button a provider's `method.label` used to
+ * fill), and the receipt's action is "Done" in this context. The method TABS are
+ * deliberately not what a case presses: their labels are the method NAMES
+ * ("Browser sign-in"), which is the naming the tab and the button are kept apart
+ * by (design D4).
+ */
+const CONTINUE_IN_BROWSER = /continue in browser/i;
+const RECEIPT_DONE = /^done$/i;
 const REFUSED_DETAIL_ATTRIBUTE =
 	/title="Radient no longer accepts the sign-in stored on this machine"/;
 
@@ -629,18 +694,21 @@ async function mountUntil(element, predicate, what, timeoutMs = 5000) {
  * is waiting for whenever the surface got that state wrong, and a timeout hides
  * the frame the assertion is about.
  */
-async function renderGrid() {
+async function renderGrid({ providerId = null } = {}) {
 	const queryClient = client();
 	const { container } = await mountUntil(
 		createElement(
 			QueryClientProvider,
 			{ client: queryClient },
-			createElement(ProviderGrid, {}),
+			createElement(
+				ProviderGrid,
+				providerId === null ? {} : { initialProviderId: providerId },
+			),
 		),
 		(node) =>
 			node.textContent.includes("Radient") &&
 			node.textContent.includes("OpenAI"),
-		"the provider cards",
+		"the provider rows",
 	);
 	/*
 	 * Every grid case judges a SETTLED frame. The chip's second input is this
@@ -1047,13 +1115,14 @@ test("the refused chip has its own words, its own tone, and the neighbour's grou
 });
 
 /**
- * The grid card, driven through the shipped hooks and the shipped transport.
+ * The grid's Connected row, driven through the shipped hooks and the shipped
+ * transport.
  *
  * This is the case that fails before the fix: the census row carries a
  * credential, so the old predicate said "Signed in" in the success tone for a
  * login the backend had already refused.
  */
-test("the grid card stops claiming a sign-in the verdict refuses", async () => {
+test("the grid row stops claiming a sign-in the verdict refuses", async () => {
 	loginAnswer = "refused";
 	accountAnswer = "ready";
 	const { container } = await renderGrid();
@@ -1061,21 +1130,34 @@ test("the grid card stops claiming a sign-in the verdict refuses", async () => {
 	assert.equal(
 		occurrences(rendered, "Signed in"),
 		0,
-		`no card may claim a sign-in while the verdict refuses one: ${rendered}`,
+		`no row may claim a sign-in while the verdict refuses one: ${rendered}`,
 	);
 	assert.equal(occurrences(rendered, "Needs re-authentication"), 1, rendered);
-	assert.equal(occurrences(rendered, "Needs sign-in"), 1, rendered);
+	/*
+	 * `Needs sign-in` is ZERO here, where the card grid counted one: OpenAI is an
+	 * ADD row, and an Add row states the action it performs rather than a status.
+	 * The page-wide count is still a count of the claims on screen, and there is
+	 * now exactly one -- the Connected row's, which the two assertions above and
+	 * the row-scoped one below name.
+	 */
+	assert.equal(occurrences(rendered, "Needs sign-in"), 0, rendered);
+	assert.equal(radientChip(container), "Needs re-authentication", rendered);
+	assert.match(rowText(container, "openai"), /Paste an API key/);
 	// D2: the long form is still reachable, and now on both surfaces.
 	assert.match(container.innerHTML, REFUSED_DETAIL_ATTRIBUTE);
 });
 
-test("the grid card keeps its claim on a healthy verdict", async () => {
+test("the grid row keeps its claim on a healthy verdict", async () => {
 	loginAnswer = "ok";
 	accountAnswer = "ready";
 	const { container } = await renderGrid();
 	const rendered = text(container);
 	assert.equal(occurrences(rendered, "Signed in"), 1, rendered);
-	assert.equal(occurrences(rendered, "Needs sign-in"), 1, rendered);
+	assert.equal(radientChip(container), "Signed in", rendered);
+	// A healthy verdict must not blank the list behind the claim: the Add row is
+	// still there, still stating its own action.
+	assert.match(rowText(container, "openai"), /Paste an API key/);
+	assert.equal(occurrences(rendered, "Needs sign-in"), 0, rendered);
 });
 
 /**
@@ -1093,7 +1175,8 @@ test("an absent verdict plus a signed-out account read does not claim a sign-in"
 		0,
 		`the row may not be read as a working sign-in without a verdict: ${rendered}`,
 	);
-	assert.equal(occurrences(rendered, "Needs sign-in"), 2, rendered);
+	assert.equal(occurrences(rendered, "Needs sign-in"), 1, rendered);
+	assert.equal(radientChip(container), "Needs sign-in", rendered);
 	assert.match(
 		container.innerHTML,
 		/title="This app could not confirm the sign-in stored on this machine"/,
@@ -1105,7 +1188,7 @@ test("an absent verdict plus a signed-out account read does not claim a sign-in"
  * picture D1's remedy has to pull the refused card apart from, and the pair only
  * reads as a distinction if this half is still the plain one.
  */
-test("a machine with no stored sign-in keeps the card it had before this change", async () => {
+test("a machine with no stored sign-in keeps the row it had before this change", async () => {
 	loginAnswer = "unknown";
 	accountAnswer = "signed-out";
 	census = [
@@ -1120,14 +1203,22 @@ test("a machine with no stored sign-in keeps the card it had before this change"
 	const { container } = await renderGrid();
 	const rendered = text(container);
 	assert.equal(occurrences(rendered, "Signed in"), 0, rendered);
-	assert.equal(occurrences(rendered, "Needs sign-in"), 2, rendered);
+	/*
+	 * ZERO, where the card grid counted two: a provider whose census counts no
+	 * credential is an ADD row, and the Add block makes no claim about a sign-in at
+	 * all -- it states the action. So the property this case exists for (the
+	 * never-signed-in machine keeps the picture it had) is asserted on the row that
+	 * renders it, and the row still offers the sign-in.
+	 */
+	assert.equal(occurrences(rendered, "Needs sign-in"), 0, rendered);
+	assert.match(rowText(container, "radient"), /Sign in/);
 	assert.equal(
 		occurrences(container.innerHTML, 'title="This app could not confirm'),
 		0,
 		`a machine with no sign-in owes no contradiction prose: ${container.innerHTML}`,
 	);
 	// And the distinction itself: with a row, the same state DOES carry the long
-	// form, which is the whole reason the two cards stop being one picture.
+	// form, which is the whole reason the two rows stop being one picture.
 	census = [RADIENT_ROW, OPENAI_ROW];
 	const withRow = await renderGrid();
 	assert.equal(
@@ -1154,7 +1245,8 @@ test("an unknown verdict does not claim a sign-in either", async () => {
 		0,
 		`an unconfirmed verdict is not a health claim: ${rendered}`,
 	);
-	assert.equal(occurrences(rendered, "Needs sign-in"), 2, rendered);
+	assert.equal(occurrences(rendered, "Needs sign-in"), 1, rendered);
+	assert.equal(radientChip(container), "Needs sign-in", rendered);
 	assert.match(
 		container.innerHTML,
 		/title="This app could not confirm the sign-in stored on this machine"/,
@@ -1195,7 +1287,7 @@ test("without the tunnel capability the verdict is never read, and the fallback 
 	const narrowedText = text(narrowed.container);
 	assert.equal(verdictRequests, 0, "a gated read was issued anyway");
 	assert.equal(occurrences(narrowedText, "Signed in"), 0, narrowedText);
-	assert.equal(occurrences(narrowedText, "Needs sign-in"), 2, narrowedText);
+	assert.equal(occurrences(narrowedText, "Needs sign-in"), 1, narrowedText);
 	assert.equal(
 		occurrences(narrowedText, "Needs re-authentication"),
 		0,
@@ -1225,25 +1317,51 @@ test("the chip's verdict is the callout's cache entry", async () => {
 });
 
 /**
- * The Radient card's chip as a user sees it, or a marker for its state.
+ * One provider's row, and the words of its OWN line.
+ *
+ * The grid's anatomy is a LIST, and which block a provider lands in is the
+ * census's answer: a row in the Connected block makes a claim about its sign-in,
+ * and a row in the Add block makes none at all (it states an action). So a
+ * page-wide count of "Needs sign-in" no longer says whose claim it read -- it
+ * used to be every unconfigured card's own chip -- and these read one row.
+ *
+ * `rowText` reads the row's HEADER (`firstElementChild`) rather than the whole
+ * `<li>`: an open row renders its panel inside that same `<li>`, and the panel's
+ * badge makes the same claim, so a query over the `<li>` could read the panel's
+ * answer and call it the row's.
+ */
+const rowOf = (container, id) =>
+	container.querySelector(`[data-provider-id="${id}"]`);
+
+function rowText(container, id) {
+	const row = rowOf(container, id);
+	assert.ok(row, `no row for ${id}: ${text(container).slice(0, 300)}`);
+	const header = row.firstElementChild;
+	assert.ok(header, `row ${id} has no header: ${text(row).slice(0, 200)}`);
+	return text(header);
+}
+
+/**
+ * The Radient row's claim as a user sees it, or a marker for its state.
  *
  * `withheld` is the reserved-but-invisible slot `loginClaim`'s `null` renders
- * (design round 4, D12); `none` is no Radient card at all (the list is not on
- * screen). Read from the CARD, not from the page text, because the OpenAI
- * card's "Needs sign-in" is on screen in every frame here and a page-wide
- * search cannot tell whose chip it is reading.
+ * (design round 4, D12); `none` is no Radient row at all (the list is not on
+ * screen). Read from the ROW's header, not from the page text and not from the
+ * `<li>`, for the reason `rowText` states.
  */
 function radientChip(container) {
-	const card = container.querySelector('[data-provider-id="radient"]');
-	if (!card) return "none";
-	if (card.querySelector('[data-claim="withheld"]')) return "withheld";
+	const row = rowOf(container, "radient");
+	if (!row) return "none";
+	const header = row.firstElementChild;
+	if (!header) return "none";
+	if (header.querySelector('[data-claim="withheld"]')) return "withheld";
 	for (const label of [
 		"Signed in",
 		"Needs re-authentication",
 		"Needs sign-in",
 		"No key needed",
 	]) {
-		if (text(card).includes(label)) return label;
+		if (text(header).includes(label)) return label;
 	}
 	return "unlabelled";
 }
@@ -1252,7 +1370,7 @@ function radientChip(container) {
  * Mount the grid WITHOUT waiting for anything, so a case can sample its frames
  * from the very first commit.
  */
-async function mountGridRaw() {
+async function mountGridRaw(providerId = null) {
 	const queryClient = client();
 	globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 	const container = document.createElement("div");
@@ -1265,7 +1383,10 @@ async function mountGridRaw() {
 			createElement(
 				QueryClientProvider,
 				{ client: queryClient },
-				createElement(ProviderGrid, {}),
+				createElement(
+					ProviderGrid,
+					providerId === null ? {} : { initialProviderId: providerId },
+				),
 			),
 		);
 	});
@@ -1447,7 +1568,7 @@ test("a failed verdict read does not paint a claim while the account read is out
  * not held until the verdict route recovers. A healthy machine whose verdict
  * route fails must still be told it is signed in once its own account read says
  * so -- the pre-verdict floor this PR states. The panel is opened INSIDE the
- * window, so its badge is held to the same rule as the card: none while no read
+ * window, so its badge is held to the same rule as the row: none while no read
  * can support one, then the account read's answer.
  */
 test("on a failed verdict, the claim appears once the account read answers", async () => {
@@ -1455,10 +1576,17 @@ test("on a failed verdict, the claim appears once the account read answers", asy
 	verdictFails = true;
 	holdAccount = true;
 	accountAnswer = "ready";
-	const { container, queryClient } = await mountGridRaw();
+	const { container, queryClient } = await mountGridRaw("radient");
 	await awaitVerdictError(queryClient);
 	assert.equal(radientChip(container), "withheld", text(container));
-	await pressButton(container, (label) => label.startsWith("Radient"));
+	/*
+	 * The panel is OPEN FROM THE MOUNT, through the grid's own deep link rather
+	 * than by pressing the row's control: `expandAddRow`'s note records the
+	 * measurement that keeps the Connected row's overflow menu out of this
+	 * harness. The window this case is about is the one in which no read that can
+	 * support a claim has answered, and the panel subscribes to both reads inside
+	 * it, which is what the samples below measure.
+	 */
 	assert.ok(panelOpen(container), text(container).slice(0, 200));
 	for (let sample = 0; sample < 4; sample++) {
 		await flush();
@@ -1476,8 +1604,25 @@ test("on a failed verdict, the claim appears once the account read answers", asy
 		}
 		await flush();
 	}
-	assert.equal(occurrences(text(container), "Signed in"), 1, text(container));
-	await pressButton(container, (label) => BACK_TO_PROVIDERS.test(label));
+	/*
+	 * ONE SURFACE STATES ONE VERDICT. The row's claim is the claim; the panel used to
+	 * carry the same words in a badge 40 px below it, which design round 4 (D15) and UX
+	 * round 4 (U16) asked to remove, and the panel now states only what the row cannot
+	 * -- a refusal, in its own words, where its controls are. The panel cannot be
+	 * collapsed from here either (this row's own control is its overflow menu), so the
+	 * sequence below polls the row's claim with the panel still open, which the header
+	 * scope in `radientChip` is what makes a fact about the row.
+	 */
+	assert.equal(radientChip(container), "Signed in", text(container));
+	const panel = rowOf(container, "radient")?.querySelector(
+		"[data-sign-in-state]",
+	);
+	assert.ok(panel, `the panel's body is on screen: ${text(container)}`);
+	assert.equal(
+		occurrences(text(panel), "Signed in"),
+		0,
+		`the panel must not restate the row's claim: ${text(panel)}`,
+	);
 	await chipSequence(container, (chip) => chip === "Signed in");
 });
 
@@ -1562,11 +1707,13 @@ test("the card list is never held behind the verdict read", async () => {
 });
 
 /**
- * The detail panel, which is the surface the incident was photographed on: its
- * green "Signed in" badge sat directly under the account section's own "You are
- * not currently signed in to Radient".
+ * The detail panel, which is the surface the incident was photographed on, and the
+ * surface whose badge design round 4 (D15) removed: the row above it already says
+ * which verdict this is, in the verdict's own tone, with the long form on its
+ * `title` -- so the panel states a refusal in its own words where its controls are
+ * and carries no badge at all.
  */
-test("the detail panel's badge is keyed on the verdict, not on the credential row", async () => {
+test("the detail panel states a refused verdict in its own words, with no badge", async () => {
 	loginAnswer = "refused";
 	accountAnswer = "ready";
 	const refused = await renderDetail();
@@ -1578,7 +1725,17 @@ test("the detail panel's badge is keyed on the verdict, not on the credential ro
 		1,
 		refusedText,
 	);
-	assert.match(refused.container.innerHTML, REFUSED_DETAIL_ATTRIBUTE);
+	/*
+	 * The long form reaches the user through the ALERT's body now, not through a
+	 * badge's `title` -- the badge is gone (D15/U16), and this is the assertion that
+	 * says the sentence did not go with it.
+	 */
+	assert.match(
+		refusedText,
+		REFUSED_DETAIL,
+		`the panel must state the refusal in the verdict's own words: ${refusedText}`,
+	);
+	assert.doesNotMatch(refused.container.innerHTML, /<span[^>]*>Signed in</);
 	// A real unmount rather than a second container: the healthy half asserts
 	// against a panel that rendered from its own answer, not from this one's
 	// state or from a leftover DOM.
@@ -1590,7 +1747,11 @@ test("the detail panel's badge is keyed on the verdict, not on the credential ro
 	const healthy = await renderDetail();
 	await awaitReads(healthy.container, healthy.queryClient);
 	const healthyText = text(healthy.container);
-	assert.equal(occurrences(healthyText, "Signed in"), 1, healthyText);
+	/*
+	 * And a healthy panel states NOTHING: the row above it owns the claim. A count of
+	 * one here is the duplication this round removed; a count of one there is the fix.
+	 */
+	assert.equal(occurrences(healthyText, "Signed in"), 0, healthyText);
 });
 
 /**
@@ -1611,7 +1772,12 @@ test("the panel still starts the first verdict read when nothing has asked yet",
 		queryClient.getQueryData(radientSessionIssueKey)?.radient_login?.state,
 		"ok",
 	);
-	assert.equal(occurrences(text(container), "Signed in"), 1, text(container));
+	/*
+	 * The read happens; the claim is not made HERE. The panel is passed the surround's
+	 * verdict when there is one and derives its own only for a surface that hands it
+	 * nothing -- and neither arm paints a claim the row above already paints (D15/U16).
+	 */
+	assert.equal(occurrences(text(container), "Signed in"), 0, text(container));
 });
 
 /* ---- round 2: the two `unknown` shapes, the refused fallback, and the ---- */
@@ -1669,9 +1835,15 @@ test("a signed-in machine that never made a tunnel is not told to sign in", asyn
 	const { container } = await renderGrid();
 	const body = text(container);
 	assert.equal(occurrences(body, "Signed in"), 1, body);
-	// The other card is the never-configured one, which is what "Needs sign-in"
-	// belongs to here: the reading is that RADIENT is not among them.
-	assert.equal(occurrences(body, "Needs sign-in"), 1, body);
+	/*
+	 * ZERO, where the card grid counted one: with the Radient row in the Connected
+	 * block, no row on this page says "Needs sign-in" -- an Add row states the action
+	 * it performs, not a status. The property this case is about (RADIENT is not
+	 * among the rows told to sign in) is read off the row itself, below, rather than
+	 * off a total that a second row's chip used to inflate.
+	 */
+	assert.equal(occurrences(body, "Needs sign-in"), 0, body);
+	assert.equal(radientChip(container), "Signed in", body);
 	assert.doesNotMatch(container.innerHTML, UNVERIFIED_DETAIL);
 });
 
@@ -1692,6 +1864,10 @@ test("the fallback refuses a claim when the account read says the sign-in was re
 	const body = text(container);
 	assert.equal(occurrences(body, "Signed in"), 0, body);
 	assert.equal(occurrences(body, "Needs re-authentication"), 1, body);
+	/*
+	 * The long form rides the ROW's `title` here -- the row states the claim, tone and
+	 * detail, and the panel adds nothing to it (design round 4 D15, UX round 4 U16).
+	 */
 	assert.match(container.innerHTML, REFUSED_DETAIL_ATTRIBUTE);
 
 	// The arm this must NOT swallow: `unavailable` is what a healthy machine's
@@ -1715,10 +1891,31 @@ test("a refused verdict with no stored sign-in owes no sentence about one", asyn
 	census = [noRow, OPENAI_ROW];
 	const { container } = await renderGrid();
 	const body = text(container);
-	// The label stays -- it is the verdict's own word for one condition (D5) --
-	// and the long form, which names a sign-in stored on this machine, is gone.
-	assert.equal(occurrences(body, "Needs re-authentication"), 1, body);
+	/*
+	 * The long form -- which names a sign-in stored on this machine -- is gone, and
+	 * the label is the verdict's own word for one condition (D5). Where the label
+	 * LIVES moved with this change's anatomy: a provider whose census counts no
+	 * credential is an Add row, and the Add block makes no claim about a sign-in at
+	 * all, so no row on this page states either word. The label-versus-long-form
+	 * distinction is therefore asserted where it still lives -- on
+	 * `providerReadiness` below, which is the one owner of both words -- and the
+	 * surface half is asserted on the surface that would carry it: Radient's own
+	 * panel, whose badge is gated on the census counting a credential.
+	 */
+	assert.equal(occurrences(body, "Needs re-authentication"), 0, body);
+	assert.equal(occurrences(body, "Signed in"), 0, body);
 	assert.doesNotMatch(container.innerHTML, REFUSED_DETAIL_ATTRIBUTE);
+	await expandAddRow(container, "radient");
+	const panel = rowOf(container, "radient")?.querySelector(
+		"[data-sign-in-state]",
+	);
+	assert.ok(panel, `the Add row did not open its panel: ${text(container)}`);
+	assert.equal(
+		occurrences(text(panel), "Needs re-authentication"),
+		0,
+		`a removed row carries no badged claim: ${text(panel)}`,
+	);
+	assert.doesNotMatch(panel.innerHTML, REFUSED_DETAIL_ATTRIBUTE);
 	assert.equal(
 		providerReadiness(
 			noRow,
@@ -1746,23 +1943,52 @@ test("a refused verdict with no stored sign-in owes no sentence about one", asyn
 });
 
 /**
- * M3: a sign-in started from the Radient card refreshes the verdict the chip reads.
+ * M3: a sign-in started from the Radient ROW refreshes the verdict the claim reads.
  *
- * The chip's badge is keyed on the verdict query, and `refreshProviders` -- the
- * callback the card runs the moment a sign-in succeeds -- refreshed only the
+ * The claim is keyed on the verdict query, and `refreshProviders` -- the callback
+ * the row's panel runs the moment a sign-in succeeds -- refreshed only the
  * provider census. So the user who had just repaired the fault was told it was
- * still broken: the grid kept reading "Needs re-authentication" until the 60 s
+ * still broken: the row kept reading "Needs re-authentication" until the 60 s
  * poll or a window focus. Driven the way the reviewer reproduced it (refused /
- * open the card / sign in / `auth.status` answers `succeeded` / back to
- * providers), and asserted on the REQUEST COUNT as well as the words, because a
- * badge that flipped for some other reason would not prove the verdict was re-asked.
+ * open the row's panel / sign in / `auth.status` answers `succeeded` / press the
+ * receipt's action), and asserted on the REQUEST COUNT as well as the words,
+ * because a claim that flipped for some other reason would not prove the verdict
+ * was re-asked.
  */
-test("a successful sign-in from the card refreshes the verdict the chip reads", async () => {
+test("a successful sign-in from the row refreshes the verdict the claim reads", async () => {
 	loginAnswer = "refused";
 	accountAnswer = "ready";
 	authPollStates = ["succeeded"];
-	const { container } = await renderGrid();
-	assert.equal(occurrences(text(container), "Needs re-authentication"), 1);
+	/*
+	 * Mounted with the panel already open on Radient, through the grid's own deep
+	 * link (`initialProviderId`) rather than by pressing the row's control: see
+	 * `expandAddRow`'s note. Everything else about this case is unchanged, and the
+	 * press it drives is the panel's own sign-in control below.
+	 */
+	const { container } = await renderGrid({ providerId: "radient" });
+	/*
+	 * Read on the surface that carries it: with the panel open, the page says the
+	 * verdict TWICE -- the row's line above and the panel's badge beside its own
+	 * control -- and each is asserted where it lives rather than summed into a total
+	 * that no longer means one claim.
+	 */
+	assert.equal(
+		radientChip(container),
+		"Needs re-authentication",
+		text(container),
+	);
+	const panel = rowOf(container, "radient")?.querySelector(
+		"[data-sign-in-state]",
+	);
+	assert.ok(
+		panel,
+		`the deep link did not open the panel: ${text(container).slice(0, 300)}`,
+	);
+	assert.equal(
+		occurrences(text(panel), "Needs re-authentication"),
+		1,
+		`the panel's badge states the refusal too: ${text(panel)}`,
+	);
 	const before = verdictRequests;
 
 	const press = (matcher) => {
@@ -1777,13 +2003,12 @@ test("a successful sign-in from the card refreshes the verdict the chip reads", 
 		});
 	};
 
-	await press((label) => label.startsWith("Radient"));
 	const signIn = [...container.querySelectorAll("button")].find((candidate) =>
-		/sign in to radient/i.test(candidate.textContent ?? ""),
+		CONTINUE_IN_BROWSER.test(candidate.textContent ?? ""),
 	);
 	assert.ok(
 		signIn,
-		`the card did not open its panel: ${text(container).slice(0, 300)}`,
+		`the row did not open its panel: ${text(container).slice(0, 300)}`,
 	);
 	await act(async () => {
 		signIn.dispatchEvent(
@@ -1799,9 +2024,16 @@ test("a successful sign-in from the card refreshes the verdict the chip reads", 
 	}
 	assert.ok(
 		verdictRequests > before,
-		"the verdict was never re-read, so the chip could only change by luck",
+		"the verdict was never re-read, so the claim could only change by luck",
 	);
-	await press((label) => /back to providers/i.test(label));
+	/*
+	 * The receipt's own action collapses the panel (`onDone`), which is the
+	 * close this anatomy has for a row: the row that opened the panel is what
+	 * closes it, and here the control is the receipt's, not a "Back to providers"
+	 * header. With the panel gone the page's only claim is the row's, so the count
+	 * below is a count of one row.
+	 */
+	await press((label) => RECEIPT_DONE.test(label.trim()));
 	const body = text(container);
 	assert.equal(occurrences(body, "Signed in"), 1, body);
 	assert.equal(occurrences(body, "Needs re-authentication"), 0, body);
@@ -1894,7 +2126,12 @@ test("the account section settles on a refused read, with its chip and its sign-
 		body,
 	);
 	assert.equal(occurrences(body, "Needs re-authentication"), 1, body);
-	assert.match(container.innerHTML, REFUSED_DETAIL_ATTRIBUTE);
+	/*
+	 * THE SECTION'S OWN SENTENCE, not the badge's title: the badge this assertion used
+	 * to read is gone (D15/U16), and what the user is owed -- why the details could not
+	 * be read -- is the account read's sentence in the body.
+	 */
+	assert.match(body, /refused the sign-in this app is holding/);
 	assert.ok(
 		/sign in/i.test(body),
 		`the section rendered no sign-in control: ${body}`,
@@ -1917,26 +2154,53 @@ async function renderGridWith({ accountAnswer: answer }) {
 /* ---- Q-8: a FAILED verdict read, and the two surfaces that used to loop on it -- */
 
 /**
- * Press the first button whose label the matcher accepts, failing with the frame
- * when there is none: a missing control is the finding, not a harness error.
+ * Whether the grid is showing an opened provider's panel.
+ *
+ * Identified by the panel's OWN body rather than by a control: the panel is no
+ * longer a screen with its own "Back to providers" header, it is a block inside
+ * the row that opened it, and the body it renders in every phase carries
+ * `data-sign-in-state` (the marker the sign-in stories read too). Nothing else in
+ * this grid renders one.
  */
-async function pressButton(container, matcher) {
-	const button = [...container.querySelectorAll("button")].find((candidate) =>
-		matcher(candidate.textContent ?? ""),
+const panelOpen = (container) =>
+	container.querySelector("[data-sign-in-state]") !== null;
+
+/**
+ * Press an ADD row's own control, which is the button that opens its panel.
+ *
+ * ONE ROW KIND ONLY, deliberately. An Add row carries one control and it IS the
+ * action (`aria-expanded`, its label reading "Close" while its panel is open),
+ * so a press both opens and closes it. A CONNECTED row has no such control: its
+ * panel is reached through the row's overflow MENU, and this helper asserts the
+ * trigger is not one rather than reaching for it, because driving that menu under
+ * this harness's jsdom does not merely fail -- it stops the process (measured on
+ * the fold: the `pointerdown` returns, no render lands, and no later event-loop
+ * phase runs, so neither a timer nor a `setImmediate` in the case ever fires, and
+ * the file is killed at its timeout). Radix's menu content is what does it: the
+ * same press on the same trigger with the content never mounted is harmless. Each
+ * case that needs a Connected row's panel open therefore mounts it through the
+ * grid's own deep link (`initialProviderId`, which is `renderGrid`'s and
+ * `mountGridRaw`'s argument here, and what Settings' `?provider=` query and the
+ * connect dialog use in the app) and says so in its own words.
+ */
+async function expandAddRow(container, id) {
+	const row = rowOf(container, id);
+	assert.ok(row, `no row for ${id}: ${text(container).slice(0, 300)}`);
+	const header = row.firstElementChild;
+	const action = header?.querySelector("button[aria-expanded]");
+	assert.ok(action, `no control on ${id}'s row: ${text(row).slice(0, 200)}`);
+	assert.equal(
+		action.getAttribute("aria-haspopup"),
+		null,
+		`${id} is a CONNECTED row, whose panel is behind its overflow menu - open it with the grid's \`initialProviderId\` instead (see this helper's own note)`,
 	);
-	assert.ok(button, `no control matched: ${text(container).slice(0, 300)}`);
 	await act(async () => {
-		button.dispatchEvent(
+		action.dispatchEvent(
 			new window.MouseEvent("click", { bubbles: true, cancelable: true }),
 		);
 	});
+	await act(async () => {});
 }
-
-/** Whether the grid is showing an opened provider's panel. */
-const panelOpen = (container) =>
-	[...container.querySelectorAll("button")].some((candidate) =>
-		BACK_TO_PROVIDERS.test(candidate.textContent ?? ""),
-	);
 
 /**
  * Sample the surface for `ms`, recording every frame that was on the loading gate
@@ -1996,26 +2260,38 @@ function ownVerdictFetches(queryClient) {
  * observer mounts; and the grid held its list on `isPending`, which a data-less
  * query re-enters for every attempt. So the press mounted the panel, the mount
  * re-asked, the gate unmounted the panel, the read failed, the panel remounted.
+ * The list-hold half is gone at the source in this anatomy -- nothing waits on the
+ * verdict but the Radient row's claim (D12/D14, asserted above) -- so the panel's
+ * mount is the only variable the press leaves behind.
  *
  * THE BOUND: the press may cost ZERO further verdict reads. The grid already
  * owns the read and has recorded its failure; the panel only reports it. The
  * window is two seconds, which the pre-fix loop fills with dozens of reads here.
  */
-for (const [card, matcher] of [
-	["Radient", (label) => label.startsWith("Radient")],
-	["OpenAI", (label) => label.startsWith("OpenAI")],
+for (const [card, providerId] of [
+	["OpenAI", null],
+	["Radient", "radient"],
 ]) {
-	test(`a failing verdict route does not stop the ${card} card from opening`, async () => {
+	test(`a failing verdict route does not stop the ${card} row from opening`, async () => {
 		verdictFails = true;
 		accountAnswer = "ready";
-		const { container, queryClient } = await renderGrid();
+		/*
+		 * HOW EACH ROW'S PANEL IS REACHED, and it is not the same control. An ADD row
+		 * (OpenAI here) owns its action button, and this case presses it. A CONNECTED
+		 * row reaches its panel through its overflow MENU, which this harness cannot
+		 * drive at all -- see `expandAddRow`'s note for the measurement -- so Radient's
+		 * panel is opened through the grid's own deep link, and the property this case
+		 * is about (the panel's mount must not re-commission a failed verdict read) is
+		 * asserted on the same composition either way.
+		 */
+		const { container, queryClient } = await renderGrid({ providerId });
 		assert.equal(
 			queryClient.getQueryState(radientSessionIssueKey)?.status,
 			"error",
 		);
 		const before = verdictRequests;
 		const own = ownVerdictFetches(queryClient);
-		await pressButton(container, matcher);
+		if (providerId === null) await expandAddRow(container, "openai");
 		const seen = await watch(container, 2000, { expectPanel: true });
 		own.stop();
 		const reads = own.count;
@@ -2057,7 +2333,7 @@ for (const [card, matcher] of [
  * The re-attempt is HELD open so the frame under it can be sampled; releasing it
  * lets it fail again, and the list must still be there after.
  */
-test("a failed verdict read never puts the card list back behind its loading gate", async () => {
+test("a failed verdict read never puts the row list back behind its loading gate", async () => {
 	accountAnswer = "ready";
 	// The first read, held and then FAILED: the hold releases on a failure too.
 	verdictFails = true;
@@ -2094,7 +2370,12 @@ test("a failed verdict read never puts the card list back behind its loading gat
 		`a failed first read left the list on its gate: ${text(container)}`,
 	);
 
-	const reattempt = async (label, expectPanel) => {
+	const reattempt = async (
+		label,
+		expectPanel,
+		grid = { container, queryClient },
+	) => {
+		const { container, queryClient } = grid;
 		holdVerdict = true;
 		const before = verdictRequests;
 		await act(async () => {
@@ -2132,14 +2413,30 @@ test("a failed verdict read never puts the card list back behind its loading gat
 		);
 	};
 
-	// With the card list on screen.
-	await reattempt("card list", false);
+	// With the ROW list on screen.
+	await reattempt("row list", false);
 	assert.ok(text(container).includes("OpenAI"), text(container));
-	// And with a panel open, which is the composition the loop lived in.
-	await pressButton(container, (label) => label.startsWith("Radient"));
+	/*
+	 * And with a panel open, which is the composition the loop lived in. A SECOND
+	 * grid, mounted with Radient's panel already open through the grid's own deep
+	 * link rather than by pressing a control in the first one: this harness cannot
+	 * drive the overflow menu a Connected row reaches its panel through, and
+	 * `expandAddRow`'s note records the measurement. Waiting for the first grid's
+	 * reads (then releasing the hold) keeps the two mounts from sharing a frame.
+	 */
+	holdVerdict = false;
+	releaseVerdict();
+	await awaitReads(container, queryClient);
+	const opened = await mountGridRaw("radient");
+	/*
+	 * The second mount's own reads have to have answered before its panel exists at
+	 * all: a grid whose provider census is still in flight renders "Loading
+	 * providers", and there is no row for the deep link to open under.
+	 */
+	await awaitReads(opened.container, opened.queryClient);
 	assert.ok(
-		panelOpen(container),
-		`the card did not open: ${text(container).slice(0, 200)}`,
+		panelOpen(opened.container),
+		`the deep link did not open the panel: ${text(opened.container).slice(0, 200)}`,
 	);
-	await reattempt("open panel", true);
+	await reattempt("open panel", true, opened);
 });
