@@ -1,0 +1,91 @@
+[build] current: assets 2026-09-26T16:29:08.043Z >= sources 2026-09-26T16:27:53.756Z
+[note] abandoned scratch trees
+        4 seen, 0 owned by a live pid (kept), 4 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8123
+  serve records 1 linked from /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T//lop-ui-hitzones-backend-8jr80y/config/run/serve   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui/.worktrees/hitzones-2f6d
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-70629
+  frames        /Users/damian/.local-operator/sessions/67f8b21daa75/scratchpad/evidence-staging/wizard/frames
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-70629/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8123   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8123","backend":"http://127.0.0.1:8123"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8123)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] hello
+        {
+  "armed": true,
+  "outDir": "/Users/damian/.local-operator/sessions/67f8b21daa75/scratchpad/evidence-staging/wizard/frames",
+  "title": "Local Operator",
+  "route": "/chat",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/hitzones-2f6d/out/renderer/index.html#/chat",
+  "theme": "localOperatorDark",
+  "viewport": {
+    "width": 1380,
+    "height": 900,
+    "devicePixelRatio": 2
+  },
+  "visibilityState": "visible",
+  "hasFocus": false,
+  "apiBaseUrl": "http://127.0.0.1:8123",
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) LocalOperator/0.31.0 Chrome/152.0.7977.78 Electron/44.3.0 Safari/537.36"
+}
+[note] facts (from main)
+        {
+  "windowMode": "headless",
+  "appVersion": "0.31.0",
+  "platform": "darwin",
+  "title": "Local Operator",
+  "windowSize": {
+    "width": 1380,
+    "height": 900
+  },
+  "contentBounds": {
+    "width": 1380,
+    "height": 900
+  },
+  "visible": false,
+  "focused": false,
+  "minimized": false,
+  "frames": [],
+  "outDir": "/Users/damian/.local-operator/sessions/67f8b21daa75/scratchpad/evidence-staging/wizard/frames"
+}
+[PASS] window mode is headless and the window is never shown or focused
+[note] window chrome
+        {"mode":"integrated","platform":"mac","viewport":{"width":1380,"height":900},"lane":{"x":0,"y":0,"w":1380,"h":32,"display":"block"},"vocabulary":{"drag":"drag","noDrag":"no-drag","plain":"none"}}
+[PASS] the window is the integrated chrome with the mac lane drawn
+[PASS] the computed app-region vocabulary is the one this read filters on
+[PASS] hit-zones-onboarding-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 23.5 vs 32.1 own / 237.3 other
+[note] frame onboarding-wizard
+        {"label":"hit-zones-onboarding-dark","path":"/Users/damian/.local-operator/sessions/67f8b21daa75/scratchpad/evidence-staging/wizard/frames/hit-zones-onboarding-dark.png","bytes":257559,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":2}
+[PASS] [onboarding-wizard] the overlay is in the document
+        7 control(s) sampled, region 72 entr(ies)
+[PASS] [onboarding-wizard] every sampled point of every control is OUTSIDE the window drag region
+        7 control(s) x 5 samples in region 72 entr(ies); 0 swallowed now, 0 would be without this surface's own opt-out; 3 disabled, 0 unpaintable and 0 outside the visible box were not sampled
+[PASS] [onboarding-wizard] every sampled point's top element is the control it belongs to
+        7 control(s) x 5 samples
+[PASS] [onboarding-wizard] the lane outside the overlay still drags
+        lane left of the overlay (330, 16): inside=true | lane right of the overlay (1050, 16): inside=true
+[note] surfaces not exercised
+        a first-run profile shows the wizard and nothing else; the panels, the palette and the sheet need --seed-onboarding-complete
+[PASS] no process from this run outlived its boot
+
+frames: hit-zones-onboarding-dark.png
+frames directory: /Users/damian/.local-operator/sessions/67f8b21daa75/scratchpad/evidence-staging/wizard/frames
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-70629/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-70629 (the frames are also in --out)
+
+ALL CHECKS PASSED
