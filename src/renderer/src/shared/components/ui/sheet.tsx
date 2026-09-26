@@ -109,6 +109,13 @@ export const SheetContent = forwardRef<
 			<SheetOverlay />
 			<SheetPrimitive.Content
 				ref={ref}
+				/*
+				 * Not a drag surface; see the marker's note in `dialog.tsx` and the rule it
+				 * is read by in `styles/index.css`. The sheet covers the lane's own strip on
+				 * its side of the window, and the controls above that strip - its close, the
+				 * brand row - reach the pointer only while the rect subtracts.
+				 */
+				data-titlebar-no-drag=""
 				className={cn(sheetVariants({ side }), className)}
 				{...props}
 			>
