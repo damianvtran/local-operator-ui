@@ -848,7 +848,16 @@ test("the row's press is the same act as the typed command, and keeps the reader
 	);
 	assert.match(source, /function focusRowAfterRemoval\(pressed: HTMLElement\)/);
 	assert.match(source, /element\.isConnected/);
-	assert.match(source, /successor\?\.focus\(\)/);
+	/*
+	 * AND IT DOES NOT TAKE THE READER'S SCROLL WITH IT (QA round 2, Q2). `preventScroll` is half of
+	 * what this clause's own name claims: a plain `focus()` scrolls its element into view, and the
+	 * successor is picked from DOCUMENT order - so on the one-scroll panel it can be a node of the
+	 * ENTITY region, which shares the reader's scroller. The behaviour is read by the driver's
+	 * arrival pair (`--scene session-archive`, D30's clauses): under a plain call the reader's
+	 * `scrollTop` moved `20 -> 4` and a surviving row's top by 16px, and under this one both are
+	 * byte-equal across every sampled frame. The pin is the cheap half; the reading is the claim.
+	 */
+	assert.match(source, /successor\?\.focus\(\{ preventScroll: true \}\)/);
 });
 
 /*

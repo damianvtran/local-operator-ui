@@ -785,7 +785,24 @@ function focusRowAfterRemoval(pressed: HTMLElement): () => void {
 		const successor =
 			live.find(({ position }) => position > index)?.element ??
 			live.filter(({ position }) => position < index).at(-1)?.element;
-		successor?.focus();
+		/*
+		 * `preventScroll`, because the hold above is the only thing that may move the reader and this
+		 * callback is not the hold: a plain `focus()` scrolls its element into view itself, and the
+		 * successor is chosen from DOCUMENT order - so it can be a node of the ENTITY region, which in
+		 * the one-scroll panel shares the reader's own scroller. MEASURED on the merged panel (QA
+		 * round 2, Q2's clauses): an ACCEPTED archive moved the reader's `scrollTop` `20 -> 4`, took a
+		 * surviving row's top with it by 16px, and left the arrival's own yield clause red for a
+		 * scroll the app had no business writing. `focus()` says where the caret is; where the reader
+		 * is standing is the reader's - the division `holdFocusedRow` states for its own correction.
+		 *
+		 * WHICH node takes the caret is deliberately NOT changed here: `rows` is document-wide and the
+		 * pressed control's row is not always resolvable from the control's own parent (the pair
+		 * wrapper is the row button's SIBLING), so `index` can be `-1` and the successor is then the
+		 * document's first `[data-chat-row]`. That mis-target is pre-existing - the same markup picks
+		 * the same node on `origin/main` - and choosing the row that should take the caret is a UX
+		 * decision, recorded on the PR rather than taken in a remediation commit.
+		 */
+		successor?.focus({ preventScroll: true });
 	};
 }
 

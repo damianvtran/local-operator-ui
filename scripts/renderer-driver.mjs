@@ -2584,15 +2584,25 @@ async function scrolledArrival(
 	 * template literal inside the page script would terminate the script string it lives in, and
 	 * building the rule by concatenation is what `pnpm lint` refuses.
 	 */
-	const capRule = `[data-sidebar-region="scroller"] { max-height: ${cap} !important; }`;
+	const capRule = `[data-q9-cap-host] { max-height: ${cap} !important; }`;
 	const capped = await cdp.evaluate(`(() => {
 		const list = document.querySelector('[data-sidebar-region="scroller"]');
 		if (list === null) return { ok: false, why: "no list region" };
 		/*
 		 * THE CAP IS THE RIG'S ONLY EDIT, and it is the one thing the app's own layout cannot be
-		 * driven to: the region's maxHeight comes from the split, and it is measured from the list's
-		 * own content - so the box is content-sized at rest, it does not overflow, and a scroll
+		 * driven to: the scroller is content-sized at rest, so it does not overflow, and a scroll
 		 * written on it would be clamped away (measured: 241 against 241, scrollTop 0).
+		 *
+		 * AND IT CAPS THE COLUMN THE BAND LIVES IN, NOT THE LIST ITSELF (QA round 2, Q1). A cap on
+		 * the list pins the very box the band is meant to yield: measured at this head, a max-height
+		 * of 200px on the merged scroller left it 200 -> 200 while a declared 58px offer band arrived,
+		 * with the extent dipping 292 -> 260 - so the band's own arithmetic (design round 8's D27
+		 * pairing and design round 9's D30 yield) was being read off the rig instead of off the app,
+		 * and the coupling it exists to prove read RED on a tree that does it right (the panel's own
+		 * box 96 -> 38 for the same 58 band on origin/main). The app's own mechanism is the flex
+		 * column's: the band is the panel's last child and the scroller is the flexible one left of
+		 * it, so capping the COLUMN is what leaves the list short of its content - the state a reader
+		 * scrolls in - while the band still takes its height off the box.
 		 *
 		 * IT IS A STYLESHEET RULE, AND THAT IS NOT DECORATION. Two measured attempts to hold this
 		 * inline failed: a plain value was overwritten by the split's own recompute in the resize
@@ -2605,12 +2615,20 @@ async function scrolledArrival(
 		 * Everything after this line is the app's: the press is the app's control, the card is the
 		 * app's message, and the commit that gives the band its height is the app's own.
 		 */
+		const host =
+			document.querySelector("[data-archive-toast-band]")?.parentElement ?? list;
+		host.setAttribute("data-q9-cap-host", "1");
 		const sheet = document.createElement("style");
 		sheet.setAttribute("data-q9-cap", "1");
 		sheet.textContent = ${JSON.stringify(capRule)};
 		document.head.appendChild(sheet);
-		const applied = getComputedStyle(list).maxHeight;
-		return { ok: true, bandAtSeed: ${JSON.stringify(bandNow)}, appliedMaxHeight: applied };
+		const applied = getComputedStyle(host).maxHeight;
+		return {
+			ok: true,
+			bandAtSeed: ${JSON.stringify(bandNow)},
+			appliedMaxHeight: applied,
+			cappedHost: host.tagName.toLowerCase(),
+		};
 	})()`);
 	if (capped?.ok !== true) return { label, capped };
 	/*
@@ -2657,6 +2675,15 @@ async function scrolledArrival(
 			const top = rect.top + list.clientTop;
 			return { top, bottom: top + list.clientHeight };
 		};
+		/*
+		 * THE WALK'S OWN STEP: one row of the reader's list, measured rather than assumed, so the
+		 * loop below cannot drift from the rows it is looking for.
+		 */
+		const rowStep = (() => {
+			const button = list.querySelector("[data-session-row] [data-chat-row]");
+			const height = button ? Math.round(button.getBoundingClientRect().height) : 0;
+			return height > 0 ? height : 32;
+		})();
 		const pickFocus = () => {
 			/*
 			 * THE CURSOR THE CALLER NAMED, when it named one (agent review round 5): the departure's own
@@ -2678,19 +2705,58 @@ async function scrolledArrival(
 			});
 			return inside[inside.length - 1] ?? null;
 		};
+		/*
+		 * THE READER'S OWN POSITION IS APPLIED BEFORE THE CURSOR IS PICKED (QA round 2, Q1), and the
+		 * order is the merged panel's. In the split, the chats list WAS the scroller: a reader at 20
+		 * had session rows in the clip, so picking first found one. In the one-scroll panel the
+		 * scroller carries the ENTITY region above the chats, so those 20px scroll the entity region
+		 * into the clip and leave the first session row just BELOW its lower edge - measured here as
+		 * "no session row starts inside the clip", which returned an arrival with no before-reading,
+		 * no samples and no press, and made the whole leg read null rather than red (the vacuous pass
+		 * this clause exists to prevent). So the position goes on first and the cursor is the last row
+		 * that starts inside the clip from where the reader actually is.
+		 */
+		list.scrollTop = ${JSON.stringify(scroll)};
 		let chosen = pickFocus();
-		if (chosen === null) return { ok: false, why: "no session row starts inside the clip" };
-		chosen.querySelector("[data-chat-row]").focus();
-		list.scrollTop = ${JSON.stringify(scroll)};
-		chosen = pickFocus() ?? chosen;
+		let walked = 0;
+		/*
+		 * AND WHEN THE READER'S OWN POSITION LEAVES NO SESSION ROW INSIDE THE CLIP, THE WALK CARRIES
+		 * THEM DOWN to the first position that does - one row of their own list at a time, bounded by
+		 * the content's own end (scrollTop stops moving once the extent is spent). This is the state
+		 * the clause is about, not a number being tuned: a session row has to start in the clip for
+		 * the band's arrival to be able to push it out at all (the geometryOk clause reads exactly
+		 * that), and the position reached is reported back and asserted (scrollAtPress > 0).
+		 */
+		while (chosen === null && walked < 60) {
+			const before = list.scrollTop;
+			list.scrollTop = before + rowStep;
+			if (list.scrollTop === before) break;
+			walked += 1;
+			chosen = pickFocus();
+		}
+		if (chosen === null)
+			return {
+				ok: false,
+				why: "no session row starts inside the clip, even at the end of the reader's own walk",
+			};
 		const button = chosen.querySelector("[data-chat-row]");
+		/*
+		 * THE POSITION REACHED IS PUT BACK AFTER THE FOCUS, because focus() scrolls its element into
+		 * view itself: the state under test is a reader who put the list where they wanted with a
+		 * cursor inside it, and a probe whose scroll was the browser's focus scroll would be measuring
+		 * that instead.
+		 */
+		const reached = Math.round(list.scrollTop);
 		button.focus();
-		list.scrollTop = ${JSON.stringify(scroll)};
+		list.scrollTop = reached;
 		return {
 			ok: true,
 			focusedId: chosen.getAttribute("data-session-row"),
 			focusHeld: document.activeElement === button,
 			scrollTop: list.scrollTop,
+			readerAt: ${JSON.stringify(scroll)},
+			walked,
+			rowStep,
 		};
 	})()`);
 	if (placed?.ok !== true) return { label, capped, placed };
@@ -2981,6 +3047,15 @@ function arrivalReading(arrival, base, expect = "none") {
 		state: {
 			overflowAtRest: before.overflowAtRest,
 			scrollAtPress: atPress.reading?.scrollTop,
+			/*
+			 * WHERE THE READER'S OWN POSITION PUT THE CURSOR, and how far the walk below carried
+			 * them past it: the merged scroller's first content is the entity region, so a shallow
+			 * scroll need not leave a session row inside the clip (see `scrolledArrival`).
+			 */
+			readerAt: arrival.placed?.readerAt ?? null,
+			walked: arrival.placed?.walked ?? null,
+			rowStep: arrival.placed?.rowStep ?? null,
+			cappedHost: arrival.capped?.cappedHost ?? null,
 			bandAtSeed: arrival.seeded?.bandAtSeed,
 			bandAtPress: atPress.reading?.band,
 			bandAfter: after.band,
@@ -3859,16 +3934,28 @@ async function sceneSessionArchive(cdp) {
 		}),
 	);
 	/*
-	 * AND THE SAME LIST SCROLLED TO ITS BOTTOM, WHICH IS THE OVERFLOWING CASE AND THE ONE THIS FIX
-	 * IS FOR (design round 6's Q-3 ruling; QA round 4 closed the reading this check used to owe).
+	 * AND THE SAME LIST SCROLLED TO ITS BOTTOM: RETIRED (QA round 2, Q1), WITH THE READING THAT RETIRES IT.
 	 *
-	 * The committed note here claimed `list.scrollTop = list.scrollHeight` returned 0 and left the
-	 * case unasserted. It was read on a list whose band-0 box is 289 against 288 of content, where
-	 * nothing can scroll; once the band's own box (147) is what overflows, the same assignment gives
-	 * 142 - measured at this head, verbatim `{"scrolledBy":142,"setBottom":142}` with the rows moving
-	 * by exactly that (688 -> 546, 764 -> 622, 796 -> 654, 828 -> 686) while the entity region holds
-	 * its box and its scroll. So the region IS the scroller, and this is the check the note owes: the
-	 * list takes the scroll, the region above it does not move, and the band is unchanged.
+	 * It quantified the TOPOLOGY the one-scroll panel removed. In the split, the band sat INSIDE the
+	 * bottom region, so the band's own box (147) was what the list overflowed - `scrollTop =
+	 * scrollHeight` had 142 to spend - and the reader scrolled into that list was the reader at risk.
+	 * In the merged panel the band is the COLUMN's last child and the scroller is the flexible one
+	 * left of it, so the band takes its height off the scroller's own box (the check above measures
+	 * `516 -> 374` for a 142 band with every row's top byte-equal), and the scroller is content-sized:
+	 * its extent never exceeds its box. MEASURED at this head, in the reading below:
+	 * `{"setBottom":0,"scrolledBy":0,"list":{"height":374,"scrollHeight":374}}`. The state cannot
+	 * arise, so a check here could only ever be red or vacuous - which is exactly why it is a note.
+	 *
+	 * WHAT IS LOST: the uncapped "reader standing in a scrolled list while the band arrives" case, and
+	 * with it this clause's reading of the entity region's TOP as scroll-invariant. The merged
+	 * scroller carries the entity region as its first content, so that top follows the scroll by
+	 * construction - the arrival readings below show it moving `312 -> 328` with a scroll of `20 -> 4`
+	 * - while the region's own box height and its own `scrollTop` do hold, and that pair is what the
+	 * note's reading records instead.
+	 * WHAT REPLACES IT: the D27/D30 arrival pair below, which builds the same state where the app can
+	 * be driven to it (the rig caps the column, the reader is scrolled, a row departs) and reads the
+	 * position, the extent, the rows' own tops and the write trap from there; and the check above, for
+	 * the band's yield of the box with the rows unmoved.
 	 */
 	const bottomBefore = await listAndRowOffsets(cdp);
 	const setBottom = await cdp
@@ -3883,8 +3970,6 @@ async function sceneSessionArchive(cdp) {
 	const heldWhileScrolled =
 		bottomAfter.band === bottomBefore.band &&
 		bottomAfter.list.height === bottomBefore.list.height &&
-		(bottomAfter.entities?.top ?? null) ===
-			(bottomBefore.entities?.top ?? null) &&
 		(bottomAfter.entities?.height ?? null) ===
 			(bottomBefore.entities?.height ?? null) &&
 		(bottomAfter.entities?.scrollTop ?? 0) ===
@@ -3895,10 +3980,15 @@ async function sceneSessionArchive(cdp) {
 			const now = bottomAfter.rows.find((r) => r.id === row.id);
 			return now === undefined || Math.abs(row.top - now.top - scrolledBy) <= 1;
 		});
-	check(
-		"and with the overflowing list scrolled to its bottom only the LIST moves: the entity region's box and scroll are byte-equal, the list's own box and the band are unchanged, and its rows move by exactly the scroll (design round 6's Q-3 ruling, the overflowing case)",
-		heldWhileScrolled && rowsFollowTheScroll,
+	note(
+		"the overflowing-scroll clause this walk used to assert, RETIRED: the band's own box is no longer inside the list, so the scroller has no scroll to take (QA round 2, Q1)",
 		JSON.stringify({
+			retiredBecause:
+				"the band is the column's last child, not the list's: it takes its height off the scroller's own box (516 -> 374 for a 142 band, every row's top byte-equal), and the scroller is content-sized, so its extent never exceeds its box",
+			coverageLost:
+				"the uncapped reader-scrolled case, and the entity region's top as scroll-invariant (it is the scroller's first content, so its top follows the scroll: 312 -> 328 across a 20 -> 4 scroll)",
+			replacedBy:
+				"the D27/D30 arrival pair below (the same state, built where the app can be driven to it) and the yield check above",
 			scrolledBy,
 			setBottom,
 			heldWhileScrolled,
